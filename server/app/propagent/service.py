@@ -45,11 +45,11 @@ from .models import (
 
 log = logging.getLogger("santosh.propagent")
 _LOCK = threading.RLock()
-DOC_KINDS = {"token_receipt": "Token / booking amount ki raseed (draft)", "offer_letter": "Offer letter (draft)",
-             "agreement_checklist": "Agreement se pehle ki checklist", "commission_bill": "Commission ka bill (draft)"}
-DEAL_STATUS = {"draft": "Baat chal rahi", "token": "Token diya", "agreement": "Agreement hua", "registered": "Registry hui",
-               "done": "Poora", "fell": "Toot gaya"}
-DISCLAIMER = "DRAFT - vakil / CA se check karwaiye. Yeh kanooni salah nahi hai."
+DOC_KINDS = {"token_receipt": "Token / booking amount receipt (draft)", "offer_letter": "Offer letter (draft)",
+             "agreement_checklist": "Pre-agreement checklist", "commission_bill": "Commission bill (draft)"}
+DEAL_STATUS = {"draft": "In discussion", "token": "Token paid", "agreement": "Agreement signed", "registered": "Registered",
+               "done": "Done", "fell": "Fell through"}
+DISCLAIMER = "DRAFT - have a lawyer / CA check it. This is not legal advice."
 
 
 class PropError(Exception):
@@ -140,10 +140,10 @@ def actor_name(tenant: str, actor: str) -> str:
 def _clean(text: Any, n: int = 600) -> str:
     """Outside / her words: OTP / PIN / card / Aadhaar / PAN numbers never kept."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[ID hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[ID removed]", t)
     t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN hataya]", t)
+    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
     return t.strip()[:n]
 
 
@@ -207,7 +207,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             elif k in ("gst_pct", "sale_pct", "rent_months"):
                 x = float(v) if isinstance(v, (int, float)) else float(re.sub(r"[^\d.]", "", str(v)) or 0)
                 if x < 0 or x > (40 if k == "gst_pct" else 24):
-                    raise PropError(f"{k}: {v} sahi nahi lagta.")
+                    raise PropError(f"{k}: {v} does not look right.")
                 setattr(r, k, x)
             elif k in ("visit_minutes", "gap_minutes", "stale_days"):
                 setattr(r, k, max(5, min(240 if k != "stale_days" else 365, int(_num(v) if not isinstance(v, int) else v))))
@@ -223,34 +223,34 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                         if x.get(f) not in (None, ""):
                             val = float(x[f])
                             if val < 0 or (f.endswith("pct") and val > 20):
-                                raise PropError(f"{area}.{f} = {val} sahi nahi lagta.")
+                                raise PropError(f"{area}.{f} = {val} does not look right.")
                             row[f] = val
                     clean[str(area).strip().lower()[:60]] = row
                 r.rates = _dump(clean)
             elif k == "rera_agent_no":
                 no = re.sub(r"\s", "", str(v)).upper()
                 if no and not R.rera_agent_ok(no, r.state or "MH"):
-                    raise PropError("RERA agent number aisa nahi dikhta (MahaRERA: A5 + 10 ank, jaise A51800012345).")
+                    raise PropError("This does not look like a RERA agent number (MahaRERA: A5 + 10 digits, such as A51800012345).")
                 r.rera_agent_no = no
             elif k in ("rera_valid_until", "coc"):
                 d = _date(v)
                 if v and not d:
-                    raise PropError(f"{k}: taarikh DD-MM-YYYY mein.")
+                    raise PropError(f"{k}: give the date as DD-MM-YYYY.")
                 setattr(r, k, d.isoformat() if d else "")
             elif k == "morning_time":
                 if not re.fullmatch(r"\d{1,2}:\d{2}", str(v)):
-                    raise PropError("Subah ka samay HH:MM mein.")
+                    raise PropError("Give the morning time as HH:MM.")
                 r.morning_time = str(v)
             elif k == "state":
                 r.state = str(v).upper()[:4]
             elif k == "phone":
                 p = R.phone(v)
                 if v and not p:
-                    raise PropError("Phone 10 ank ka.")
+                    raise PropError("The phone number must have 10 digits.")
                 r.phone = p
             else:
                 setattr(r, k, str(v)[:2000])
-        return {"settings": _settings_view(r, today(tenant)), "say": "Property ki settings save."}
+        return {"settings": _settings_view(r, today(tenant)), "say": "Property settings saved."}
 
 
 # ---------------------------------------------------------------- listings
@@ -286,7 +286,7 @@ def _title(L: PropagentListing) -> str:
     if L.bhk is not None and L.kind in ("flat", "house", "row_house"):
         bits.append("1 RK" if L.bhk == 0 else f"{L.bhk} BHK")
     bits.append(R.KINDS.get(L.kind, L.kind))
-    bits.append({"sale": "bikri ke liye", "rent": "kiraye par", "lease": "lease par"}.get(L.purpose, ""))
+    bits.append({"sale": "for sale", "rent": "for rent", "lease": "on lease"}.get(L.purpose, ""))
     where = L.locality or L.city
     if where:
         bits.append(f"· {where}")
@@ -301,7 +301,7 @@ def _listing_view(s, L: PropagentListing, st: PropagentSettings, full: bool = Fa
          "carpet_sqft": L.carpet_sqft or None, "built_sqft": L.built_sqft or None, "plot_sqft": L.plot_sqft or None, "floor": L.floor,
          "facing": L.facing, "furnishing": L.furnishing, "parking": L.parking, "age_years": L.age_years, "price": L.price or None,
          "rent": L.rent or None, "deposit": L.deposit or None, "maintenance": L.maintenance or None, "negotiable": L.negotiable,
-         "price_text": R.short(L.price if L.purpose == "sale" else L.rent) + ("" if L.purpose == "sale" else " / mahina") if (L.price or L.rent) else "",
+         "price_text": R.short(L.price if L.purpose == "sale" else L.rent) + ("" if L.purpose == "sale" else " / month") if (L.price or L.rent) else "",
          "available_from": L.available_from, "amenities": _j(L.amenities, []), "description": L.description,
          "mandate": _j(L.mandate, {}), "status": L.status, "status_label": R.STATUSES.get(L.status, L.status), "public": L.public,
          "photos": [{"id": p.id, "kind": p.kind, "note": p.note} for p in ph if p.kind != "qr"], "has_qr": any(p.kind == "qr" for p in ph),
@@ -318,13 +318,13 @@ def _listing_view(s, L: PropagentListing, st: PropagentSettings, full: bool = Fa
 def _listing(s, tenant: str, ref: str) -> PropagentListing:
     ref = str(ref or "").strip()
     if not ref:
-        raise PropError("Kaunsi listing? (L-0001 ya id)")
+        raise PropError("Which listing? (L-0001 or id)")
     L = s.get(PropagentListing, ref)
     if L is None or L.tenant_id != tenant:
         num = ref.upper() if ref.upper().startswith("L-") else f"L-{ref.zfill(4)}" if ref.isdigit() else ref
         L = s.scalars(select(PropagentListing).where(PropagentListing.tenant_id == tenant, PropagentListing.number == num)).first()
     if L is None:
-        raise PropError(f"Listing '{ref}' nahi mili.")
+        raise PropError(f"Listing '{ref}' not found.")
     return L
 
 
@@ -378,12 +378,12 @@ def save_listing(tenant: str, listing: str = "", words: str = "", actor: str = "
             elif k in ("price", "rent", "deposit", "maintenance"):
                 x = R.money(v)
                 if x is not None and (x > 5e10):
-                    raise PropError(f"{k} bahut bada lagta hai.")
+                    raise PropError(f"{k} looks too large.")
                 setattr(L, k, float(x or 0))
             elif k in ("carpet_sqft", "built_sqft", "plot_sqft"):
                 x = _num(v) if not isinstance(v, (int, float)) else float(v)
                 if x < 0 or x > 5e7:
-                    raise PropError(f"{k} sahi nahi.")
+                    raise PropError(f"{k} is not valid.")
                 setattr(L, k, x)
             elif k == "bhk":
                 L.bhk = None if v in ("", None) else max(0, min(12, int(float(v))))
@@ -396,12 +396,12 @@ def save_listing(tenant: str, listing: str = "", words: str = "", actor: str = "
             elif k == "pin":
                 p = re.sub(r"\D", "", str(v))
                 if p and not re.fullmatch(r"[1-9]\d{5}", p):
-                    raise PropError("PIN code 6 ank ka.")
+                    raise PropError("The PIN code must have 6 digits.")
                 L.pin = p
             elif k == "owner_phone":
                 p = R.phone(v)
                 if v and not p:
-                    raise PropError("Malik ka phone 10 ank ka.")
+                    raise PropError("The owner's phone number must have 10 digits.")
                 L.owner_phone = p
             elif k == "furnishing":
                 L.furnishing = v if v in R.FURNISH else R.furnishing_of(str(v))
@@ -449,11 +449,11 @@ def save_listing(tenant: str, listing: str = "", words: str = "", actor: str = "
         v = _listing_view(s, L, st, full=True)
     say = f"{v['number']} {'banai' if new else 'badli'}: {v['title']}" + (f", {v['price_text']}" if v["price_text"] else "") + "."
     if unpublished:
-        say += " Yeh public thi aur badli hai, isliye page band kiya: dobara dikhane ke liye aapki haan chahiye."
+        say += " It was public and has changed, so the page was taken down: showing it again needs your approval."
     if stale:
-        say += " Purana publish card ab bekaar."
+        say += " The old publish card is no longer valid."
     if v["checks"]["block"]:
-        say += " Public karne se pehle: " + " ".join(v["checks"]["block"][:3])
+        say += " Before making it public: " + " ".join(v["checks"]["block"][:3])
     _publish(tenant, "propagent_listing", {"listing": v["id"], "number": v["number"], "status": v["status"]}, conv)
     return {"listing": v, "new": new, "say": say}
 
@@ -488,7 +488,7 @@ def _store_dir(tenant: str, lid: str) -> Path:
 
 def add_photo(tenant: str, listing: str, data: bytes, kind: str = "photo", note: str = "") -> dict:
     if not data or len(data) > 15 * 1024 * 1024:
-        raise PropError("Photo khaali hai ya 15 MB se badi.")
+        raise PropError("The photo is empty or larger than 15 MB.")
     try:
         from PIL import Image, ImageOps
         im = Image.open(io.BytesIO(data))
@@ -498,13 +498,13 @@ def add_photo(tenant: str, listing: str, data: bytes, kind: str = "photo", note:
         im.save(buf, "JPEG", quality=85)           # pixels only: EXIF (GPS, camera, time) is not carried over
         clean = buf.getvalue()
     except Exception:
-        raise PropError("Yeh photo nahi lagti (JPG / PNG / WEBP).")
+        raise PropError("This does not look like a photo (JPG / PNG / WEBP).")
     kind = kind if kind in ("photo", "qr", "plan") else "photo"
     with _LOCK, session() as s:
         L = _listing(s, tenant, listing)
         n = len(_photos(s, L.id))
         if n >= 30:
-            raise PropError("Ek listing mein 30 photo tak.")
+            raise PropError("A listing can have up to 30 photos.")
         sha = hashlib.sha256(clean).hexdigest()
         path = _store_dir(tenant, L.id) / f"{kind}_{n + 1:02d}_{sha[:8]}.jpg"
         path.write_bytes(clean)
@@ -520,7 +520,7 @@ def add_photo(tenant: str, listing: str, data: bytes, kind: str = "photo", note:
         if L.public and _public_hash(s, L, st) != L.public_hash:
             L.public = False
         _stale_cards(s, tenant, L.id, ("publish",))
-        return {"photo": {"id": p.id, "kind": kind}, "say": f"{L.number}: {'MahaRERA QR' if kind == 'qr' else 'photo'} lagi (location / camera ki jaankari hata di)."}
+        return {"photo": {"id": p.id, "kind": kind}, "say": f"{L.number}: {'MahaRERA QR' if kind == 'qr' else 'photo'} added (location / camera details removed)."}
 
 
 def attach_file(tenant: str, listing: str, file_id: str, kind: str = "photo") -> dict:
@@ -528,7 +528,7 @@ def attach_file(tenant: str, listing: str, file_id: str, kind: str = "photo") ->
     try:
         _name, _mime, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise PropError(f"File {file_id} nahi mili: {e}")
+        raise PropError(f"File {file_id} not found: {e}")
     return add_photo(tenant, listing, data, kind)
 
 
@@ -536,7 +536,7 @@ def photo_path(tenant: str, photo_id: str) -> Path:
     with session() as s:
         p = s.get(PropagentPhoto, photo_id)
         if p is None or p.tenant_id != tenant or not Path(p.path).exists():
-            raise PropError("Photo nahi mili.")
+            raise PropError("Photo not found.")
         return Path(p.path)
 
 
@@ -563,13 +563,13 @@ def _template_text(v: dict) -> str:
     if v.get("parking"):
         lines.append(f"Parking: {v['parking']}.")
     if v.get("amenities"):
-        lines.append("Suvidha: " + ", ".join(v["amenities"]) + ".")
+        lines.append("Amenities: " + ", ".join(v["amenities"]) + ".")
     if v.get("price_text"):
-        lines.append(("Daam: " if v["purpose"] == "sale" else "Kiraya: ") + v["price_text"] + (" (baat ho sakti hai)" if v.get("negotiable") else "") + ".")
+        lines.append(("Price: " if v["purpose"] == "sale" else "Rent: ") + v["price_text"] + (" (negotiable)" if v.get("negotiable") else "") + ".")
     if v.get("deposit"):
         lines.append(f"Deposit: {R.short(v['deposit'])}.")
     if v.get("available_from"):
-        lines.append(f"Kab se: {v['available_from']}.")
+        lines.append(f"Available from: {v['available_from']}.")
     return " ".join(x for x in lines if x)
 
 
@@ -585,7 +585,7 @@ def describe(tenant: str, listing: str) -> dict:
     t2 = str(got.get("text") or "").strip()
     if t2 and R.numbers_in(t2) <= (R.numbers_in(facts) | R.numbers_in(v["title"])) and not R.risky_claims(t2):
         text, used = t2[:1500], "model"
-    return {"text": text, "by": used, "say": "Listing ka text taiyaar (sirf aapke facts se). Pasand ho to 'description' mein save kijiye."}
+    return {"text": text, "by": used, "say": "The listing text is ready (from your facts only). If you like it, save it in 'description'."}
 
 
 # ---------------------------------------------------------------- cards (HER tap)
@@ -646,7 +646,7 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(PropagentCard, card_id)
         if c is None or c.tenant_id != tenant or c.status != "waiting":
-            raise PropError("Yeh card ab baaki nahi hai.")
+            raise PropError("This card is no longer pending.")
         digest, title, amount = c.hash, DOC_KINDS.get(c.sub, c.sub), R.short(c.money)
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
@@ -674,15 +674,15 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
                 by_tap: bool = False) -> dict:
     """ONLY her tap in the app (API, by_tap=True). Tools can never reach this."""
     if not by_tap:
-        raise PropError("Yeh haan sirf aapke tap se (app ka card).")
+        raise PropError("This approval is given only by your tap (the card in the app).")
     with session() as s:
         c = s.get(PropagentCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise PropError("Card nahi mila.")
+            raise PropError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"{c.number} pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"{c.number} is already '{c.status}'."}
         if not card_hash or card_hash != c.hash or _card_hash(c.kind, c.sub, c.ref, _j(c.body, {})) != c.hash:
-            raise PropError("Card badal gaya hai; naya card dekhiye.")
+            raise PropError("The card has changed; look at the new card.")
         kind, sub, ref, body = c.kind, c.sub, c.ref, _j(c.body, {})
         conv = c.conv
     if not yes:
@@ -690,7 +690,7 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
             c = s.get(PropagentCard, card_id)
             c.status, c.reason, c.decided_at = "rejected", _clean(reason, 300), now()
             v = _card_view(c)
-        return {"card": v, "say": f"{v['number']}: nahi." + (f" ({v['reason']})" if v["reason"] else "")}
+        return {"card": v, "say": f"{v['number']}: declined." + (f" ({v['reason']})" if v["reason"] else "")}
     if card_needs_fingerprint(tenant, card_id):
         _verify_fingerprint(tenant, card_id, card_hash, proof)
     if kind == "publish":
@@ -703,7 +703,7 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
         c = s.get(PropagentCard, card_id)
         c.status, c.result, c.decided_at = "approved", _dump(result), now()
         v = _card_view(c)
-    return {"card": v, "result": result, "say": result.get("say", "Haan ho gayi.")}
+    return {"card": v, "result": result, "say": result.get("say", "Approved.")}
 
 
 def card_sent(tenant: str, card_id: str) -> dict:
@@ -711,9 +711,9 @@ def card_sent(tenant: str, card_id: str) -> dict:
     with _LOCK, session() as s:
         c = s.get(PropagentCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise PropError("Card nahi mila.")
+            raise PropError("Card not found.")
         if c.kind != "message" or c.status not in ("approved", "sent"):
-            raise PropError("Pehle aapki haan (card par tap), phir 'bhej diya'.")
+            raise PropError("First your approval (tap on the card), then 'sent'.")
         c.status = "sent"
         body = _j(c.body, {})
         if c.sub == "lead":
@@ -726,7 +726,7 @@ def card_sent(tenant: str, card_id: str) -> dict:
                 l.shared = _dump(sh)
                 if l.stage == "new":
                     l.stage = "contacted"
-        return {"card": _card_view(c), "say": f"{c.number}: bhej diya darj."}
+        return {"card": _card_view(c), "say": f"{c.number}: recorded as sent."}
 
 
 # ---------------------------------------------------------------- publish (her tap)
@@ -739,16 +739,16 @@ def publish_request(tenant: str, listing: str, where: str = "page", actor: str =
         L = _listing(s, tenant, listing)
         v = _listing_view(s, L, st)
         if L.status not in ("active", "under_offer"):
-            raise PropError(f"{L.number} '{v['status_label']}' hai: sirf chalu listing public hoti hai.")
+            raise PropError(f"{L.number} is '{v['status_label']}': only an active listing can be made public.")
         if v["checks"]["block"]:
-            raise PropError("Public nahi kar sakte: " + " ".join(v["checks"]["block"]))
+            raise PropError("Cannot make it public: " + " ".join(v["checks"]["block"]))
         body = {"where": where, "listing": L.id, "number": L.number, "public_hash": _public_hash(s, L, st),
                 "show": _ad_text(v, _settings_view(st, today(tenant))), "warn": v["checks"]["warn"]}
         c = _card_view(_make_card(s, tenant, "publish", where, L.id, body, 0, actor, conv))
-    say = (f"{c['number']}: {v['number']} ko {'Hoola page par' if where == 'page' else 'portal / status ke liye' if where == 'copy' else 'portal sheet mein'}"
-           " dikhane ka card aapki haan ke liye bheja hai.")
+    say = (f"{c['number']}: a card to show {v['number']} {'on a Hoola page' if where == 'page' else 'for a portal / status' if where == 'copy' else 'in the portal sheet'}"
+           " has been sent for your approval.")
     if v["checks"]["warn"]:
-        say += " Dhyaan: " + " ".join(v["checks"]["warn"][:3])
+        say += " Note: " + " ".join(v["checks"]["warn"][:3])
     return _send_card(tenant, c, say, conv)
 
 
@@ -771,12 +771,12 @@ def _do_publish(tenant: str, lid: str, where: str, body: dict, conv: str) -> dic
         st = _st(s, tenant)
         L = s.get(PropagentListing, lid)
         if L is None or L.tenant_id != tenant:
-            raise PropError("Listing nahi mili.")
+            raise PropError("Listing not found.")
         if _public_hash(s, L, st) != body.get("public_hash"):
-            raise PropError("Card ke baad listing badli hai; naya card bhejiye.")
+            raise PropError("The listing changed after the card was made; send a new card.")
         v = _listing_view(s, L, st)
         if v["checks"]["block"]:
-            raise PropError("Ab bhi rukawat: " + " ".join(v["checks"]["block"]))
+            raise PropError("Still blocked: " + " ".join(v["checks"]["block"]))
         pub = _j(L.published, [])
         pub.append({"where": where, "at": now().isoformat(timespec="minutes")})
         L.published = _dump(pub[-20:])
@@ -788,15 +788,15 @@ def _do_publish(tenant: str, lid: str, where: str, body: dict, conv: str) -> dic
                 L.page_token = secrets.token_urlsafe(18)
             base = (get_settings().public_base_url or "").rstrip("/")
             out["url"] = f"{base}/api/propagent/page/{L.page_token}"
-            out["say"] = f"{L.number} ab Hoola page par dikh rahi hai: {out['url']}"
+            out["say"] = f"{L.number} is now showing on a Hoola page: {out['url']}"
         elif where == "copy":
             out["text"] = body.get("show", "")
-            out["say"] = f"{L.number} ka text taiyaar: copy karke apne portal account / WhatsApp status par khud daaliye (Hoola portal par khud nahi daalta)."
+            out["say"] = f"The text for {L.number} is ready: copy it and post it yourself from your portal account / WhatsApp status (Hoola does not post to portals)."
         number = L.number
     if where == "sheet":
         f = portal_sheet(tenant, [lid], conv)
         out["file"] = f["file"]
-        out["say"] = f"{number} ki portal sheet (Excel) bani: apne portal account mein khud upload kijiye."
+        out["say"] = f"The portal sheet (Excel) for {number} is ready: upload it yourself in your portal account."
     return out
 
 
@@ -828,29 +828,29 @@ def portal_sheet(tenant: str, ids: list[str] | None = None, conv: str = "") -> d
     f = chatfiles.store(tenant, f"Listings_{today(tenant).isoformat()}.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "propagent", "title": "Listings sheet"}, conv)
-    return {"file": f, "say": "Listings ki sheet bani."}
+    return {"file": f, "say": "The listings sheet is ready."}
 
 
 def unpublish(tenant: str, listing: str) -> dict:
     with _LOCK, session() as s:
         L = _listing(s, tenant, listing)
         L.public = False
-        return {"listing": L.number, "say": f"{L.number} ka Hoola page band. Portal par daali ho to wahan se khud hataiye."}
+        return {"listing": L.number, "say": f"The Hoola page for {L.number} is taken down. If it is on a portal, remove it there yourself."}
 
 
 def page_html(token: str) -> tuple[int, str]:
     """Public page by its random token. Never the owner's name / phone / full address."""
     if not token or len(token) < 16:
-        return 404, "<h1>Nahi mila</h1>"
+        return 404, "<h1>Not found</h1>"
     with session() as s:
         L = s.scalars(select(PropagentListing).where(PropagentListing.page_token == token)).first()
         if L is None:
-            return 404, "<h1>Nahi mila</h1>"
+            return 404, "<h1>Not found</h1>"
         if not L.public or L.status not in ("active", "under_offer"):
-            return 410, "<h1>Yeh property ab uplabdh nahi</h1>"
+            return 410, "<h1>This property is no longer available</h1>"
         st = _st(s, L.tenant_id)
         if _public_hash(s, L, st) != L.public_hash:
-            return 410, "<h1>Yeh property ab uplabdh nahi</h1>"
+            return 410, "<h1>This property is no longer available</h1>"
         v = _listing_view(s, L, st)
         stv = _settings_view(st, today(L.tenant_id))
         imgs = [p for p in _photos(s, L.id)]
@@ -858,11 +858,11 @@ def page_html(token: str) -> tuple[int, str]:
     pics = "".join(f'<img src="{e(token)}/photo/{i}" alt="photo {i + 1}" loading="lazy">' for i, p in enumerate(imgs) if p.kind == "photo")
     qr = "".join(f'<img class="qr" src="{e(token)}/photo/{i}" alt="MahaRERA QR">' for i, p in enumerate(imgs) if p.kind == "qr")
     body = "<br>".join(e(x) for x in _ad_text(v, stv).split("\n"))
-    page = (f"<!doctype html><html lang=hi><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+    page = (f"<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
             f"<meta name=robots content=noindex><title>{e(v['title'])}</title><style>body{{font-family:sans-serif;max-width:720px;margin:auto;"
             f"padding:16px;color:#1b1030}}img{{width:100%;border-radius:12px;margin:6px 0}}.qr{{width:120px;float:right}}"
             f"small{{color:#666}}</style><body>{qr}<h1>{e(v['title'])}</h1><p>{body}</p>{pics}"
-            f"<small>Jaankari malik / agent ki di hui hai; khareedne se pehle kaagaz khud jaanchiye.</small></body></html>")
+            f"<small>The details were given by the owner / agent; check the documents yourself before you buy.</small></body></html>")
     return 200, page
 
 
@@ -888,23 +888,23 @@ def poster(tenant: str, listing: str, conv: str = "") -> dict:
         st = _st(s, tenant)
         L = _listing(s, tenant, listing)
         if not (L.public or _j(L.published, [])):
-            raise PropError("Pehle listing public karne ka card haan kijiye; phir poster.")
+            raise PropError("First approve the card that makes the listing public; then the poster.")
         v = _listing_view(s, L, st)
         text = _ad_text(v, _settings_view(st, today(tenant)))
     from ..brand import service as B
     try:
         out = B.make(tenant, brief=f"Property listing poster. Use ONLY these facts:\n{text}", conv=conv)
     except Exception as e:
-        raise PropError(f"Poster nahi bana: {e}")
-    return {"design": out.get("design") or out, "say": "Poster ka proof Brand Sahayak mein bana: final ke liye wahan aapki haan chahiye."
-            + (" MahaRERA QR poster ke upar daayein kone mein lagaiye." if v["new_project"] else "")}
+        raise PropError(f"The poster could not be made: {e}")
+    return {"design": out.get("design") or out, "say": "The poster proof was made in the Brand Assistant: the final needs your approval there."
+            + (" Put the MahaRERA QR at the top right of the poster." if v["new_project"] else "")}
 
 
 # ---------------------------------------------------------------- leads + matching
 def _lead(s, tenant: str, ref: str) -> PropagentLead:
     ref = str(ref or "").strip()
     if not ref:
-        raise PropError("Kaunsa graahak? (B-0001, naam ya phone)")
+        raise PropError("Which customer? (B-0001, name or phone)")
     l = s.get(PropagentLead, ref)
     if l is not None and l.tenant_id == tenant:
         return l
@@ -913,7 +913,7 @@ def _lead(s, tenant: str, ref: str) -> PropagentLead:
     for x in s.scalars(q).all():
         if x.number.lower() == ref.lower() or (p and x.phone == p) or (x.name and x.name.lower() == ref.lower()):
             return x
-    raise PropError(f"Graahak '{ref}' nahi mila.")
+    raise PropError(f"Customer '{ref}' not found.")
 
 
 def _lead_view(l: PropagentLead) -> dict:
@@ -947,7 +947,7 @@ def save_lead(tenant: str, lead: str = "", name: str = "", phone: str = "", role
               stage: str = "", no_messages: bool | None = None, actor: str = "owner", conv: str = "") -> dict:
     p = R.phone(phone) if phone else ""
     if phone and not p:
-        raise PropError(f"'{phone}' sahi mobile number nahi lagta.")
+        raise PropError(f"'{phone}' does not look like a valid mobile number.")
     w = _clean(words, 1200)
     with _LOCK, session() as s:
         st = _st(s, tenant)
@@ -960,7 +960,7 @@ def save_lead(tenant: str, lead: str = "", name: str = "", phone: str = "", role
         new = l is None
         if new:
             if not (p or name):
-                raise PropError("Naam ya phone chahiye.")
+                raise PropError("A name or phone number is needed.")
             st.lead_seq += 1
             l = PropagentLead(tenant_id=tenant, number=f"B-{st.lead_seq:04d}", stage="new", source="enquiry", words="", notes="",
                               need="{}", shared="[]", feedback="{}", forgotten=False, no_messages=False)
@@ -1003,7 +1003,7 @@ def save_lead(tenant: str, lead: str = "", name: str = "", phone: str = "", role
         if next_when:
             dt = _when(tenant, next_when)
             if not dt:
-                raise PropError("Agla samay samajh nahi aaya (jaise 'kal 4 baje' ya '2026-10-25 16:00').")
+                raise PropError("Could not read the next time (for example 'tomorrow 4 pm' or '2026-10-25 16:00').")
             l.next_at, l.next_what = dt, _clean(next_what or "follow up", 200)
         if notes:
             l.notes = ((l.notes + "\n") if l.notes else "") + _clean(notes, 600)
@@ -1023,11 +1023,11 @@ def save_lead(tenant: str, lead: str = "", name: str = "", phone: str = "", role
         except Exception as e:
             log.info("telecall sync skipped: %s", e)
     m = matches(tenant, lid, limit=5)
-    say = f"{v['number']} {v['name'] or ''} {'joda' if new else 'update'}: {v['need_text'] or 'zaroorat abhi saaf nahi'}."
+    say = f"{v['number']} {v['name'] or ''} {'added' if new else 'updated'}: {v['need_text'] or 'need not clear yet'}."
     if m["matches"]:
-        say += f" {len(m['matches'])} listing mel khaati hain: " + ", ".join(f"{x['number']} ({x['score']})" for x in m["matches"][:3]) + "."
+        say += f" {len(m['matches'])} listing(s) match: " + ", ".join(f"{x['number']} ({x['score']})" for x in m["matches"][:3]) + "."
     if tc:
-        say += " Call list (Telecaller) mein bhi daal diya."
+        say += " Also added to the call list (Telecaller)."
     return {"lead": v, "new": new, "matches": m["matches"], "say": say}
 
 
@@ -1101,23 +1101,23 @@ def share_request(tenant: str, lead: str, listings_: list[str] | None = None, te
         st = _st(s, tenant)
         l = _lead(s, tenant, lead)
         if l.no_messages:
-            raise PropError(f"{l.number} ne message ke liye mana kiya hai.")
+            raise PropError(f"{l.number} has said no to messages.")
         if not l.consent:
-            raise PropError(f"{l.number} ki baat karne ki haan darj nahi (cold list): pehle unki haan.")
+            raise PropError(f"{l.number} has no recorded consent to be contacted (cold list): get their consent first.")
         if not l.phone:
-            raise PropError(f"{l.number} ka phone nahi.")
+            raise PropError(f"{l.number} has no phone number.")
         ids = listings_ or [m["listing"] for m in matches(tenant, l.id, 3)["matches"]]
         if not ids:
-            raise PropError("Bhejne ke liye koi listing nahi (mel khaati koi nahi).")
+            raise PropError("There is no listing to send (none matches).")
         parts, used = [], []
         stv = _settings_view(st, today(tenant))
         for ref in ids[:5]:
             L = _listing(s, tenant, ref)
             v = _listing_view(s, L, st)
             if not v["mandate"].get("consent"):
-                raise PropError(f"{L.number}: malik ki haan (marketing) darj nahi, isliye kisi ko nahi bhej sakte.")
+                raise PropError(f"{L.number}: the owner's consent (marketing) is not recorded, so it cannot be sent to anyone.")
             if v["new_project"] and not R.rera_project_ok(v["rera_project_no"], stv["state"]):
-                raise PropError(f"{L.number}: RERA project number ke bina project ki jaankari nahi bhej sakte.")
+                raise PropError(f"{L.number}: project details cannot be sent without the RERA project number.")
             line = f"• {v['title']}" + (f" - {v['price_text']}" if v["price_text"] else "")
             if v.get("carpet_sqft"):
                 line += f", carpet {v['carpet_sqft']:.0f} sq ft"
@@ -1128,43 +1128,43 @@ def share_request(tenant: str, lead: str, listings_: list[str] | None = None, te
                 line += f"\n  {(get_settings().public_base_url or '').rstrip('/')}/api/propagent/page/{L.page_token}"
             parts.append(line)
             used.append(L.id)
-        hello = f"Namaste {l.name}," if l.name else "Namaste,"
-        msg = text.strip() or (f"{hello} aapki zaroorat ({_need_text(_j(l.need, {})) or 'property'}) ke hisaab se yeh dekhiye:\n"
-                               + "\n".join(parts) + "\nVisit ke liye samay bataiye. - " + (stv["business"] or stv["agent_name"] or ""))
+        hello = f"Hello {l.name}," if l.name else "Hello,"
+        msg = text.strip() or (f"{hello} based on what you are looking for ({_need_text(_j(l.need, {})) or 'property'}), please have a look at these:\n"
+                               + "\n".join(parts) + "\nLet me know a good time for a visit. - " + (stv["business"] or stv["agent_name"] or ""))
         if stv["rera_agent_no"]:
             msg += f"\nRERA agent: {stv['rera_agent_no']}"
         body = {"to": "lead", "name": l.name, "phone": l.phone, "text": _clean(msg, 3000), "listings": used}
         c = _card_view(_make_card(s, tenant, "message", "lead", l.id, body, 0, actor, conv))
-    return _send_card(tenant, c, f"{c['number']}: {l.number} ko {len(used)} listing ka message draft. Aapki haan ke baad aap apne phone se bhejiye.", conv)
+    return _send_card(tenant, c, f"{c['number']}: message draft with {len(used)} listing(s) for {l.number}. After your approval, you send it from your own phone.", conv)
 
 
 def message_request(tenant: str, to: str, ref: str, text: str, actor: str = "owner", conv: str = "") -> dict:
     """Any message to a client (lead) or a property owner: draft card only."""
     if not text.strip():
-        raise PropError("Message kya likhna hai?")
+        raise PropError("What should the message say?")
     with _LOCK, session() as s:
         if to == "owner":
             L = _listing(s, tenant, ref)
             if not L.owner_phone:
-                raise PropError(f"{L.number} ke malik ka phone nahi.")
+                raise PropError(f"The owner of {L.number} has no phone number.")
             body = {"to": "owner", "name": L.owner_name, "phone": L.owner_phone, "text": _clean(text, 3000), "listing": L.number}
             c = _card_view(_make_card(s, tenant, "message", "owner", L.id, body, 0, actor, conv))
-            who = f"{L.number} ke malik"
+            who = f"the owner of {L.number}"
         else:
             l = _lead(s, tenant, ref)
             if l.no_messages or not l.phone:
-                raise PropError(f"{l.number} ko message nahi (mana kiya / phone nahi).")
+                raise PropError(f"No message to {l.number} (said no / no phone).")
             body = {"to": "lead", "name": l.name, "phone": l.phone, "text": _clean(text, 3000), "listings": []}
             c = _card_view(_make_card(s, tenant, "message", "lead", l.id, body, 0, actor, conv))
             who = l.number
-    return _send_card(tenant, c, f"{c['number']}: {who} ko message ka draft aapki haan ke liye.", conv)
+    return _send_card(tenant, c, f"{c['number']}: message draft for {who}, for your approval.", conv)
 
 
 def _do_message(tenant: str, sub: str, ref: str, body: dict) -> dict:
     from urllib.parse import quote
     p = body.get("phone", "")
     return {"wa": f"https://wa.me/91{p}?text={quote(body.get('text', ''))}", "sms": f"sms:+91{p}?body={quote(body.get('text', ''))}",
-            "text": body.get("text", ""), "say": "Message ki haan ho gayi: WhatsApp / SMS khol kar khud bhejiye, phir 'Bhej diya' dabaiye."}
+            "text": body.get("text", ""), "say": "Message approved: open WhatsApp / SMS and send it yourself, then tap 'Sent'."}
 
 
 # ---------------------------------------------------------------- site visits
@@ -1197,13 +1197,13 @@ def _maps_km(tenant: str, a: str, b: str) -> float | None:
 def plan_visit(tenant: str, lead: str, listings_: list[str], day: str, start: str = "10:00", actor: str = "owner", conv: str = "") -> dict:
     d = _date(day) or (today(tenant) + timedelta(days=1) if (day or "").lower() in ("kal", "tomorrow") else None)
     if d is None:
-        raise PropError("Visit ki taarikh chahiye (DD-MM-YYYY ya 'kal').")
+        raise PropError("The visit date is needed (DD-MM-YYYY or 'tomorrow').")
     if d < today(tenant):
-        raise PropError("Yeh din nikal chuka hai.")
+        raise PropError("This day has already passed.")
     if not re.fullmatch(r"\d{1,2}:\d{2}", start or ""):
-        raise PropError("Shuru ka samay HH:MM.")
+        raise PropError("Give the start time as HH:MM.")
     if not listings_:
-        raise PropError("Kaunsi listings dikhani hain?")
+        raise PropError("Which listings should be shown?")
     with session() as s:
         st = _st(s, tenant)
         l = _lead(s, tenant, lead)
@@ -1211,14 +1211,14 @@ def plan_visit(tenant: str, lead: str, listings_: list[str], day: str, start: st
         for ref in listings_[:8]:
             L = _listing(s, tenant, ref)
             if L.status not in ("active", "under_offer"):
-                warn.append(f"{L.number} '{R.STATUSES.get(L.status)}' hai.")
+                warn.append(f"{L.number} is '{R.STATUSES.get(L.status)}'.")
                 continue
             where = ", ".join(x for x in (L.address or L.locality, L.city, L.pin) if x)
             pts.append({"listing": L.id, "number": L.number, "title": _title(L), "where": where, "owner": bool(L.owner_phone)})
         visit_min, gap = st.visit_minutes, st.gap_minutes
         lid, lname, lphone = l.id, l.name, l.phone
     if not pts:
-        raise PropError("Dikhane layak koi listing nahi. " + " ".join(warn))
+        raise PropError("There is no listing that can be shown. " + " ".join(warn))
     cache: dict[tuple[str, str], Any] = {}
 
     def dist(a: str, b: str) -> float | None:
@@ -1239,14 +1239,14 @@ def plan_visit(tenant: str, lead: str, listings_: list[str], day: str, start: st
         t += timedelta(minutes=visit_min)
     end = t.strftime("%H:%M")
     if not known:
-        warn.append(f"Doori pata nahi (Maps nahi): aapke kram mein, beech mein {gap} min maan kar.")
+        warn.append(f"Distances not known (no Maps): kept in your order, assuming {gap} min between stops.")
     with _LOCK, session() as s:
         for v in s.scalars(select(PropagentVisit).where(PropagentVisit.tenant_id == tenant, PropagentVisit.day == d.isoformat(),
                                                         PropagentVisit.status == "planned")).all():
             vs = _j(v.stops, [])
             vend = vs[-1]["at"] if vs else v.start
             if v.start < end and start < (datetime.strptime(vend, "%H:%M") + timedelta(minutes=visit_min)).strftime("%H:%M"):
-                warn.append(f"Usi samay {v.number} visit pehle se hai ({v.start}).")
+                warn.append(f"Visit {v.number} is already at the same time ({v.start}).")
         st = _st(s, tenant)
         st.visit_seq += 1
         V = PropagentVisit(tenant_id=tenant, number=f"V-{st.visit_seq:04d}", lead_id=lid, day=d.isoformat(), stops=_dump(order),
@@ -1268,23 +1268,23 @@ def plan_visit(tenant: str, lead: str, listings_: list[str], day: str, start: st
     msgs = []
     if lphone:
         try:
-            msgs.append(message_request(tenant, "lead", lid, f"Namaste {lname or ''}, site visit {d.strftime('%d-%m-%Y')}:\n{stops}\n"
-                                        "Pahunchne se pehle call kar dijiye.", actor, conv)["card"]["number"])
+            msgs.append(message_request(tenant, "lead", lid, f"Hello {lname or ''}, site visit {d.strftime('%d-%m-%Y')}:\n{stops}\n"
+                                        "Please call before you arrive.", actor, conv)["card"]["number"])
         except PropError:
             pass
     for p in order:
         if p["owner"]:
             try:
-                msgs.append(message_request(tenant, "owner", p["listing"], f"Namaste, {d.strftime('%d-%m-%Y')} ko {p['at']} baje "
-                                            "ek graahak ghar dekhne aayenge. Kya yeh samay theek hai?", actor, conv)["card"]["number"])
+                msgs.append(message_request(tenant, "owner", p["listing"], f"Hello, a customer will come on {d.strftime('%d-%m-%Y')} at {p['at']} "
+                                            "to see the property. Is this time okay?", actor, conv)["card"]["number"])
             except PropError:
                 pass
     view = visit_view(tenant, vid)["visit"]
-    say = f"{vnum}: {d.strftime('%d-%m-%Y')} {start}-{end}, {len(order)} jagah ({' -> '.join(p['number'] for p in order)})."
+    say = f"{vnum}: {d.strftime('%d-%m-%Y')} {start}-{end}, {len(order)} stop(s) ({' -> '.join(p['number'] for p in order)})."
     if msgs:
-        say += f" Graahak / malik ke message ke {len(msgs)} card aapki haan ke liye."
+        say += f" {len(msgs)} message card(s) for the customer / owners are waiting for your approval."
     if warn:
-        say += " Dhyaan: " + " ".join(warn)
+        say += " Note: " + " ".join(warn)
     _publish(tenant, "propagent_visit", {"visit": view, "say": say}, conv)
     return {"visit": view, "cards": msgs, "warn": warn, "say": say}
 
@@ -1301,7 +1301,7 @@ def visit_view(tenant: str, ref: str) -> dict:
         if V is None or V.tenant_id != tenant:
             V = s.scalars(select(PropagentVisit).where(PropagentVisit.tenant_id == tenant, PropagentVisit.number == str(ref).upper())).first()
         if V is None:
-            raise PropError("Visit nahi mili.")
+            raise PropError("Visit not found.")
         return {"visit": _visit_view(s, V)}
 
 
@@ -1326,7 +1326,7 @@ def visit_done(tenant: str, visit: str, feedback: dict | None = None, status: st
         if V is None or V.tenant_id != tenant:
             V = s.scalars(select(PropagentVisit).where(PropagentVisit.tenant_id == tenant, PropagentVisit.number == str(visit).upper())).first()
         if V is None:
-            raise PropError("Visit nahi mili.")
+            raise PropError("Visit not found.")
         V.status = status
         if notes:
             V.notes = _clean(notes, 600)
@@ -1354,7 +1354,7 @@ def visit_done(tenant: str, visit: str, feedback: dict | None = None, status: st
         v = _visit_view(s, V)
     say = f"{v['number']} {status}."
     if liked:
-        say += f" {', '.join(liked)} pasand aayi: daam ki baat ke liye 'deal' banaiye."
+        say += f" Liked: {', '.join(liked)}. To talk price, create a 'deal'."
     return {"visit": v, "say": say}
 
 
@@ -1364,7 +1364,7 @@ def _deal(s, tenant: str, ref: str) -> PropagentDeal:
     if D is None or D.tenant_id != tenant:
         D = s.scalars(select(PropagentDeal).where(PropagentDeal.tenant_id == tenant, PropagentDeal.number == str(ref).upper())).first()
     if D is None:
-        raise PropError(f"Deal '{ref}' nahi mili.")
+        raise PropError(f"Deal '{ref}' not found.")
     return D
 
 
@@ -1398,7 +1398,7 @@ def deal_new(tenant: str, listing: str, lead: str = "", actor: str = "owner", co
         st = _st(s, tenant)
         L = _listing(s, tenant, listing)
         if L.status in ("sold", "rented", "withdrawn"):
-            raise PropError(f"{L.number} '{R.STATUSES[L.status]}' hai.")
+            raise PropError(f"{L.number} is '{R.STATUSES[L.status]}'.")
         l = _lead(s, tenant, lead) if lead else None
         st.deal_seq += 1
         D = PropagentDeal(tenant_id=tenant, number=f"D-{st.deal_seq:04d}", listing_id=L.id, lead_id=l.id if l else "", purpose=L.purpose,
@@ -1419,7 +1419,7 @@ def deal_update(tenant: str, deal: str, ids_text: str = "", ids_side: str = "buy
     with _LOCK, session() as s:
         D = _deal(s, tenant, deal)
         if D.status in ("done", "fell"):
-            raise PropError(f"{D.number} band ho chuki hai.")
+            raise PropError(f"{D.number} is already closed.")
         for k in _DEAL_KEYS:
             if k not in kw or kw[k] is None:
                 continue
@@ -1431,7 +1431,7 @@ def deal_update(tenant: str, deal: str, ids_text: str = "", ids_side: str = "buy
             elif k in ("agreement_by", "registration_by"):
                 d = _date(v)
                 if v and not d:
-                    raise PropError(f"{k}: taarikh DD-MM-YYYY.")
+                    raise PropError(f"{k}: give the date as DD-MM-YYYY.")
                 setattr(D, k, d.isoformat() if d else "")
             elif k == "rate_area":
                 D.rate_area = str(v).strip().lower()[:60]
@@ -1453,17 +1453,17 @@ def deal_update(tenant: str, deal: str, ids_text: str = "", ids_side: str = "buy
             D.checklist = _dump(R.doc_checklist(D.purpose, L.kind if L else "", bool(L and L.new_project), D.loan, D.society,
                                                 D.buyer_nri, D.seller_nri, st.state or "MH"))
         log_ = _j(D.log, [])
-        log_.append({"at": now().isoformat(timespec="minutes"), "what": "bani" if _new else "badli", "by": actor_name(tenant, actor)})
+        log_.append({"at": now().isoformat(timespec="minutes"), "what": "created" if _new else "changed", "by": actor_name(tenant, actor)})
         D.log = _dump(log_[-50:])
         s.flush()
         _stale_doc_cards(s, tenant, D)
         did = D.id
     v = deal_view(tenant, did)["deal"]
-    say = f"{v['number']} {'bani' if _new else 'badli'}: {v['listing_title']}" + (f", {R.short(v['price'])}" if v["price"] else "") + "."
+    say = f"{v['number']} {'created' if _new else 'changed'}: {v['listing_title']}" + (f", {R.short(v['price'])}" if v["price"] else "") + "."
     if v["estimate"]["stamp"].get("missing") and v["purpose"] == "sale":
-        say += " Stamp duty ke liye chahiye: " + ", ".join(v["estimate"]["stamp"]["missing"]) + "."
+        say += " Needed for stamp duty: " + ", ".join(v["estimate"]["stamp"]["missing"]) + "."
     if v["ids"]:
-        say += f" {len(v['ids'])} ID Pehchaan Locker mein (sirf reference yahan)."
+        say += f" {len(v['ids'])} ID(s) in the ID Locker (only the reference is kept here)."
     return {"deal": v, "say": say}
 
 
@@ -1481,7 +1481,7 @@ def _commission_calc(D: PropagentDeal, st: PropagentSettings) -> dict:
         c = com.get(side, {})
         if c.get("amount"):
             gst = round(c["amount"] * st.gst_pct / 100) if st.gst_on else 0
-            out[side] = {"amount": round(c["amount"]), "gst": gst, "total": round(c["amount"]) + gst, "how": "aapki tay rakam"}
+            out[side] = {"amount": round(c["amount"]), "gst": gst, "total": round(c["amount"]) + gst, "how": "the amount you set"}
             continue
         pct = c.get("pct") if c.get("pct") is not None else (st.sale_pct or None if D.purpose == "sale" else None)
         months = c.get("months") if c.get("months") is not None else (st.rent_months or None if D.purpose != "sale" else None)
@@ -1507,7 +1507,7 @@ def deal_view(tenant: str, deal: str) -> dict:
         est = {"stamp": R.stamp_estimate(D.price, r, D.market_value or None, D.women) if D.purpose == "sale" else {},
                "tds": R.tds_sale(D.price, D.market_value or None, D.seller_nri) if D.purpose == "sale" else R.tds_rent(D.price, not D.tenant_business),
                "nri": R.nri_notes(D.buyer_nri, D.seller_nri), "rate_area": area if r else "",
-               "rate_note": "" if r else "Is area ke stamp duty / registration rates settings mein daaliye (IGR se, aapke numbers)."}
+               "rate_note": "" if r else "Enter this area's stamp duty / registration rates in the settings (from IGR, your numbers)."}
         com = _commission_calc(D, st)
         v = {"id": D.id, "number": D.number, "purpose": D.purpose, "listing": L.number if L else "", "listing_id": D.listing_id,
              "listing_title": _title(L) if L else "", "lead": l.number if l else "", "lead_name": l.name if l else "",
@@ -1539,10 +1539,10 @@ def check_item(tenant: str, deal: str, key: str, done: bool = True) -> dict:
                 x["done"] = bool(done)
                 hit = True
         if not hit:
-            raise PropError("Checklist mein yeh nahi mila.")
+            raise PropError("This was not found in the checklist.")
         D.checklist = _dump(cl)
         left = [x["item"] for x in cl if not x["done"]]
-    return {"left": left, "say": f"Checklist: {len(left)} baaki."}
+    return {"left": left, "say": f"Checklist: {len(left)} left."}
 
 
 def deal_status(tenant: str, deal: str, status: str, actor: str = "owner", note: str = "") -> dict:
@@ -1567,9 +1567,9 @@ def deal_status(tenant: str, deal: str, status: str, actor: str = "owner", note:
         num, did = D.number, D.id
     say = f"{num}: {DEAL_STATUS[status]}."
     if status in ("registered", "done"):
-        say += " Listing band ho gayi. Deal poori hone par graahak / malik ki jaankari 'forget' se mitaiye (DPDP)."
+        say += " The listing is closed. When the deal is done, erase the customer's / owner's details with 'forget' (DPDP)."
     if status in ("agreement", "registered", "done") and (deal_view(tenant, did)["deal"]["purpose"] in ("rent", "lease")):
-        say += f" Kirayedari aap khud sambhalengi? 'rentdesk action=from_deal deal={num}' se draft kirayedari ban jayegi (kuch bheja nahi jayega)."
+        say += f" Will you manage the tenancy yourself? 'rentdesk action=from_deal deal={num}' makes a draft tenancy (nothing is sent)."
     return {"deal": deal_view(tenant, did)["deal"], "say": say}
 
 
@@ -1628,9 +1628,9 @@ def _doc_text(kind: str, v: dict, st: dict) -> tuple[str, float]:
         est = v["estimate"]
         sd = est.get("stamp") or {}
         txt = (head + f"AGREEMENT CHECKLIST - {v['number']} - {v['listing_title']}\n\n{cl}\n\n"
-               + (f"Stamp duty (andaaza, aapke rates): {R.short(sd['stamp'])} + cess {R.short(sd.get('cess') or 0) or '0'} + "
+               + (f"Stamp duty (estimate, your rates): {R.short(sd['stamp'])} + cess {R.short(sd.get('cess') or 0) or '0'} + "
                   f"registration {R.short(sd['registration']) if sd.get('registration') else B}\n" if sd.get("stamp") is not None else
-                  ("Stamp duty: aapke rates nahi (settings)\n" if v["purpose"] == "sale" else ""))
+                  ("Stamp duty: your rates are not set (settings)\n" if v["purpose"] == "sale" else ""))
                + (f"TDS: {est['tds'].get('say', '')}\n" if est.get("tds") else "")
                + ("\n".join(est.get("nri") or [])))
         money = v.get("price") or 0
@@ -1655,9 +1655,9 @@ def document_request(tenant: str, deal: str, kind: str, actor: str = "owner", co
     with _LOCK, session() as s:
         body = {"deal": v["number"], "title": DOC_KINDS[kind], "text": txt, "blanks": blanks}
         c = _card_view(_make_card(s, tenant, "document", kind, v["id"], body, money, actor, conv))
-    say = f"{c['number']}: {DOC_KINDS[kind]} ({v['number']}) ka draft aapki haan ke liye."
+    say = f"{c['number']}: draft of {DOC_KINDS[kind]} ({v['number']}), for your approval."
     if blanks:
-        say += f" {blanks} khaali jagah aap / vakil bharenge."
+        say += f" {blanks} blank(s) for you / the lawyer to fill."
     return _send_card(tenant, c, say, conv)
 
 
@@ -1680,7 +1680,7 @@ def _do_document(tenant: str, kind: str, ref: str, body: dict, conv: str) -> dic
             log.warning("propagent pdf store failed: %s", e)
     for f in files:
         _publish(tenant, "pc_file", {**f, "source": "propagent", "title": title}, conv)
-    return {"files": files, "text": text, "say": f"{title}: Word / PDF bana (draft). Vakil se check karwa kar hi sign karwaiye."}
+    return {"files": files, "text": text, "say": f"{title}: Word / PDF made (draft). Get it signed only after a lawyer has checked it."}
 
 
 def _pdf(title: str, text: str) -> bytes | None:
@@ -1710,7 +1710,7 @@ def commission_received(tenant: str, deal: str, side: str, amount, mode: str = "
     """Her word that she got her commission (Hoola never collects)."""
     a = R.money(amount)
     if not a:
-        raise PropError("Kitna mila?")
+        raise PropError("How much was received?")
     if side not in ("buyer", "seller"):
         raise PropError("side: buyer | seller")
     with _LOCK, session() as s:
@@ -1722,7 +1722,7 @@ def commission_received(tenant: str, deal: str, side: str, amount, mode: str = "
         did = D.id
     v = deal_view(tenant, did)["deal"]
     due = v["commission"].get("due")
-    return {"deal": v, "say": f"{v['number']}: {R.short(a)} commission mila darj." + (f" Baaki {R.short(due)}." if due else "")}
+    return {"deal": v, "say": f"{v['number']}: commission of {R.short(a)} recorded as received." + (f" Remaining {R.short(due)}." if due else "")}
 
 
 def commission_report(tenant: str) -> dict:
@@ -1738,7 +1738,7 @@ def commission_report(tenant: str) -> dict:
             rows.append({"deal": d["number"], "listing": d["listing_title"], "status": d["status_label"], "due": c["due"],
                          "due_text": R.short(c["due"])})
     return {"expected": exp, "received": got, "due": max(0, exp - got), "pending": rows,
-            "say": f"Commission: aana tha {R.short(exp) or '₹0'}, mila {R.short(got) or '₹0'}, baaki {R.short(max(0, exp - got)) or '₹0'}."}
+            "say": f"Commission: expected {R.short(exp) or '₹0'}, received {R.short(got) or '₹0'}, remaining {R.short(max(0, exp - got)) or '₹0'}."}
 
 
 # ---------------------------------------------------------------- DPDP: forget after the deal ends
@@ -1746,7 +1746,7 @@ def forget_lead(tenant: str, lead: str) -> dict:
     with _LOCK, session() as s:
         l = _lead(s, tenant, lead)
         if l.stage not in ("lost", "closed"):
-            raise PropError(f"{l.number} abhi '{R.LEAD_STAGES.get(l.stage)}' hai: band (lost / closed) hone par hi mitaate hain.")
+            raise PropError(f"{l.number} is still '{R.LEAD_STAGES.get(l.stage)}': details are erased only once it is closed (lost / closed).")
         l.name, l.phone, l.words, l.notes, l.need = "", "", "", "", "{}"
         l.forgotten = True
         num = l.number
@@ -1756,14 +1756,14 @@ def forget_lead(tenant: str, lead: str) -> dict:
             ids += [x["id"] for x in _j(D.ids, []) if x.get("side") in ("buyer", "tenant")]
             D.ids = _dump([x for x in _j(D.ids, []) if x.get("side") not in ("buyer", "tenant")])
     _drop_ids(tenant, ids)
-    return {"say": f"{num} ki niji jaankari mita di (sirf ginti bachi)."}
+    return {"say": f"Personal details of {num} erased (only the counts remain)."}
 
 
 def forget_owner(tenant: str, listing: str) -> dict:
     with _LOCK, session() as s:
         L = _listing(s, tenant, listing)
         if L.status not in ("sold", "rented", "withdrawn"):
-            raise PropError(f"{L.number} abhi chalu hai: bik / kiraye par jaane ya hatne ke baad mitaate hain.")
+            raise PropError(f"{L.number} is still active: details are erased after it is sold / rented or withdrawn.")
         L.owner_name, L.owner_phone, L.address = "", "", ""
         ids = []
         for D in s.scalars(select(PropagentDeal).where(PropagentDeal.tenant_id == tenant, PropagentDeal.listing_id == L.id)).all():
@@ -1771,7 +1771,7 @@ def forget_owner(tenant: str, listing: str) -> dict:
             D.ids = _dump([x for x in _j(D.ids, []) if x.get("side") not in ("seller", "owner")])
         num = L.number
     _drop_ids(tenant, ids)
-    return {"say": f"{num} ke malik ki niji jaankari mita di."}
+    return {"say": f"Personal details of the owner of {num} erased."}
 
 
 def _drop_ids(tenant: str, ids: list[str]) -> None:
@@ -1803,22 +1803,22 @@ def day(tenant: str) -> dict:
     com = commission_report(tenant)
     bits = []
     if vis:
-        bits.append(f"Aaj {len(vis)} site visit: " + ", ".join(f"{v['start']} {v['lead_name'] or v['lead']}" for v in vis))
+        bits.append(f"{len(vis)} site visit(s) today: " + ", ".join(f"{v['start']} {v['lead_name'] or v['lead']}" for v in vis))
     if tom:
-        bits.append(f"Kal {len(tom)} visit")
+        bits.append(f"{len(tom)} visit(s) tomorrow")
     if fu:
-        bits.append(f"{len(fu)} graahak ko follow up: " + ", ".join(x["number"] for x in fu[:5]))
+        bits.append(f"{len(fu)} customer(s) to follow up: " + ", ".join(x["number"] for x in fu[:5]))
     if dates:
-        bits.append("Jaldi ki taarikh: " + "; ".join(dates))
+        bits.append("Dates coming up: " + "; ".join(dates))
     if waiting:
-        bits.append(f"{len(waiting)} card aapki haan ke liye")
+        bits.append(f"{len(waiting)} card(s) waiting for your approval")
     if stale:
-        bits.append(f"{len(stale)} listing {stv['stale_days']} din se nahi badli (daam / uplabdhta poochiye): " + ", ".join(stale[:5]))
+        bits.append(f"{len(stale)} listing(s) unchanged for {stv['stale_days']} days (ask about price / availability): " + ", ".join(stale[:5]))
     if com["due"]:
-        bits.append(f"Commission baaki {R.short(com['due'])}")
+        bits.append(f"Commission due {R.short(com['due'])}")
     if stv["rera_days_left"] is not None and stv["rera_days_left"] <= 60:
-        bits.append("RERA agent registration " + ("khatam!" if stv["rera_days_left"] < 0 else f"{stv['rera_days_left']} din mein khatam: renew kijiye"))
-    say = ". ".join(bits) + "." if bits else "Property ka aaj sab theek."
+        bits.append("RERA agent registration " + ("has expired!" if stv["rera_days_left"] < 0 else f"expires in {stv['rera_days_left']} days: renew it"))
+    say = ". ".join(bits) + "." if bits else "All good with property today."
     return {"visits": vis, "tomorrow": tom, "follow_ups": fu, "dates": dates, "waiting": waiting, "stale": stale, "commission": com, "say": say}
 
 
@@ -1856,17 +1856,17 @@ def tick(when: datetime | None = None) -> dict:
                     win = "2h" if 0 < left <= 2 else ("1d" if 2 < left <= 26 else "")
                     if win and _once(s, tenant, f"visit:{V.id}:{win}"):
                         l = s.get(PropagentLead, V.lead_id)
-                        alerts.append({"kind": "visit", "visit": V.number, "say": f"{V.number}: {'2 ghante mein' if win == '2h' else 'kal'} "
-                                       f"{V.start} baje {l.name if l else ''} ke saath site visit. Malik ko yaad dilana ho to card banaiye."})
+                        alerts.append({"kind": "visit", "visit": V.number, "say": f"{V.number}: site visit {'in 2 hours' if win == '2h' else 'tomorrow'} "
+                                       f"at {V.start} with {l.name if l else ''}. To remind the owner, make a card."})
                 vu = _date(st.rera_valid_until)
                 if vu:
                     dl = (vu - on).days
                     tight = [x for x in (60, 30, 7, 0) if dl <= x]
                     for w in tight[-1:]:                   # only the tightest window that applies, once
                         if _once(s, tenant, f"rera:{st.rera_valid_until}:{w}"):
-                            alerts.append({"kind": "rera", "say": ("RERA agent registration khatam ho gaya: renew hone tak RERA project ki deal "
-                                                                   "na karwaiye." if dl < 0 else f"RERA agent registration {dl} din mein khatam ({vu.isoformat()}): "
-                                                                   "MahaRERA portal par renew (Certificate of Competency zaroori).")})
+                            alerts.append({"kind": "rera", "say": ("Your RERA agent registration has expired: do not close a RERA project deal "
+                                                                   "until it is renewed." if dl < 0 else f"Your RERA agent registration expires in {dl} days ({vu.isoformat()}): "
+                                                                   "renew on the MahaRERA portal (Certificate of Competency required).")})
                             break
             for a in alerts:
                 out["reminders" if a["kind"] == "visit" else "rera"] += 1
@@ -1875,7 +1875,7 @@ def tick(when: datetime | None = None) -> dict:
                 d = day(tenant)
                 with session() as s:
                     _st(s, tenant).last_morning = on.isoformat()
-                if d["say"] != "Property ka aaj sab theek.":
+                if d["say"] != "All good with property today.":
                     _publish(tenant, "propagent_day", {"say": d["say"], "visits": len(d["visits"]), "follow_ups": len(d["follow_ups"]),
                                                        "waiting": len(d["waiting"]), "due": d["commission"]["due"]})
                     out["morning"] += 1
@@ -1907,7 +1907,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
     ws.append(["Number", "Title", "Purpose", "Status", "Price / rent", "Carpet sq ft", "RERA project", "Public"])
     for v in listings(tenant):
         ws.append([v["number"], v["title"], v["purpose_label"], v["status_label"], v["price_text"], v["carpet_sqft"], v["rera_project_no"],
-                   "haan" if v["public"] else ""])
+                   "yes" if v["public"] else ""])
     ws = wb.create_sheet("Leads")
     ws.append(["Number", "Name", "Phone", "Need", "Stage", "Next"])
     for v in leads(tenant):
@@ -1922,18 +1922,18 @@ def register_file(tenant: str, conv: str = "") -> dict:
     f = chatfiles.store(tenant, f"Property_register_{today(tenant).isoformat()}.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "propagent", "title": "Property register"}, conv)
-    return {"file": f, "say": "Listings, graahak aur deals ka Excel."}
+    return {"file": f, "say": "Excel of listings, customers and deals."}
 
 
 def official_steps(what: str = "rera") -> dict:
     steps = {
-        "rera": ["maharera.maharashtra.gov.in > Agent registration / renewal (aap khud login karti hain, fees aap bharti hain)",
-                 "Certificate of Competency (training + exam) renewal se pehle", "Har RERA project ad mein project number + QR + website"],
-        "igr": ["igrmaharashtra.gov.in > ready reckoner rate / stamp duty calculator (aap dekh kar apne rates settings mein daaliye)",
-                "e-Registration / leave & licence online: aap ya party khud bharte hain"],
-        "portal": ["99acres / MagicBricks / Housing / NoBroker: apne account se khud post kijiye (koi public API nahi)",
-                   "Hoola ka 'copy' card text deta hai, 'sheet' card Excel"],
-        "tds": ["Kharidaar: incometax.gov.in > e-Pay Tax > property TDS form (purana 26QB) bharta hai, PAN + challan khud",
-                "NRI bechne wala: CA se rate / lower deduction certificate"],
+        "rera": ["maharera.maharashtra.gov.in > Agent registration / renewal (you log in yourself and pay the fees)",
+                 "Certificate of Competency (training + exam) before renewal", "Project number + QR + website in every RERA project ad"],
+        "igr": ["igrmaharashtra.gov.in > ready reckoner rate / stamp duty calculator (look it up and enter your rates in the settings)",
+                "e-Registration / leave & licence online: you or the party fill it in"],
+        "portal": ["99acres / MagicBricks / Housing / NoBroker: post from your own account (there is no public API)",
+                   "Hoola's 'copy' card gives the text, the 'sheet' card gives the Excel"],
+        "tds": ["Buyer: fills the property TDS form (old 26QB) at incometax.gov.in > e-Pay Tax, with PAN + challan, themselves",
+                "NRI seller: rate / lower deduction certificate from the CA"],
     }
     return {"what": what, "steps": steps.get(what, steps["rera"])}

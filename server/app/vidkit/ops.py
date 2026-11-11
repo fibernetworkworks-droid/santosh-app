@@ -59,9 +59,9 @@ def _num(v: Any, name: str, lo: float, hi: float, default: float | None = None) 
     try:
         x = float(v)
     except (TypeError, ValueError):
-        raise VideoError(f"{name} ek number hona chahiye.") from None
+        raise VideoError(f"{name} must be a number.") from None
     if math.isnan(x) or x < lo or x > hi:
-        raise VideoError(f"{name} {lo:g} se {hi:g} ke beech rakhiye.")
+        raise VideoError(f"Keep {name} between {lo:g} and {hi:g}.")
     return x
 
 
@@ -72,7 +72,7 @@ def secs(v: Any, name: str = "time") -> float:
     else:
         s = str(v or "").strip().lower()
         if not s:
-            raise VideoError(f"{name} chahiye (jaise 1:30 ya 90).")
+            raise VideoError(f"{name} is needed (for example 1:30 or 90).")
         m = re.fullmatch(r"(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+(?:\.\d+)?)s)?", s)
         if m and any(m.groups()):
             x = int(m.group(1) or 0) * 3600 + int(m.group(2) or 0) * 60 + float(m.group(3) or 0)
@@ -84,9 +84,9 @@ def secs(v: Any, name: str = "time") -> float:
             try:
                 x = float(s)
             except ValueError:
-                raise VideoError(f"{name} '{v}' samajh nahi aaya (jaise 1:30, 90 ya 1m30s).") from None
+                raise VideoError(f"Could not read {name} '{v}' (for example 1:30, 90 or 1m30s).") from None
     if x < 0 or x > MAX_SECONDS:
-        raise VideoError(f"{name} 0 se {MAX_SECONDS // 60} minute ke beech rakhiye.")
+        raise VideoError(f"Keep {name} between 0 and {MAX_SECONDS // 60} minutes.")
     return round(x, 3)
 
 
@@ -103,7 +103,7 @@ def aspect(v: Any) -> tuple[int, int]:
         a, b = int(m.group(1)), int(m.group(2))
         if 0.2 <= a / b <= 5:
             return a, b
-    raise VideoError(f"aspect '{v}' samajh nahi aaya: 9:16 (Reel / Short / Status), 16:9 (YouTube), 1:1, 4:5.")
+    raise VideoError(f"Could not read aspect '{v}': 9:16 (Reel / Short / Status), 16:9 (YouTube), 1:1, 4:5.")
 
 
 # --------------------------------------------------------------------------- probe
@@ -113,28 +113,28 @@ def _ffprobe(path: str) -> dict:
                              capture_output=True, text=True, timeout=60)
         return json.loads(out.stdout or "{}")
     except Exception:
-        raise VideoError("File padhi nahi ja saki.") from None
+        raise VideoError("The file could not be read.") from None
 
 
 def probe(path: str) -> dict[str, Any]:
     if not ffmpeg_ok():
-        raise VideoError("Server par ffmpeg nahi hai; video edit nahi ho sakta.")
+        raise VideoError("ffmpeg is not installed on the server; the video cannot be edited.")
     size = os.path.getsize(path)
     if size > MAX_BYTES:
-        raise VideoError(f"Video bahut bada hai ({size // 1048576} MB); {MAX_BYTES // 1048576} MB tak chalta hai.")
+        raise VideoError(f"The video is too large ({size // 1048576} MB); up to {MAX_BYTES // 1048576} MB works.")
     j = _ffprobe(path)
     vs = [s for s in j.get("streams") or [] if s.get("codec_type") == "video"
           and not (s.get("disposition") or {}).get("attached_pic")]
     if not vs:
-        raise VideoError("Is file mein video nahi hai (sirf awaaz ya photo hai). Awaaz ke liye audio_edit, photo ke liye image_edit.")
+        raise VideoError("This file has no video (only sound or a photo). Use audio_edit for sound, image_edit for a photo.")
     v = vs[0]
     aud = [s for s in j.get("streams") or [] if s.get("codec_type") == "audio"]
     fmt = j.get("format") or {}
     dur = float(fmt.get("duration") or v.get("duration") or 0)
     if dur <= 0:
-        raise VideoError("Video ki lambai nahi mili; file kharab lagti hai.")
+        raise VideoError("Could not read the video's length; the file looks damaged.")
     if dur > MAX_SECONDS:
-        raise VideoError(f"Video {dur / 60:.0f} minute ka hai; {MAX_SECONDS // 60} minute tak chalta hai.")
+        raise VideoError(f"The video is {dur / 60:.0f} minutes long; up to {MAX_SECONDS // 60} minutes works.")
     w, h = int(v.get("width") or 0), int(v.get("height") or 0)
     rot = 0
     for sd in v.get("side_data_list") or []:
@@ -166,11 +166,11 @@ def verdict(p: dict[str, Any]) -> str:
         bits.append("no sound")
     tips = []
     if h > w * 1.2 and d > 90:
-        tips.append("Instagram Reel 90 s tak; isse lamba ho to trim ya split")
+        tips.append("An Instagram Reel can be up to 90 s; if longer, trim or split")
     if w > h * 1.2:
-        tips.append("Reel / Status ke liye reframe aspect 9:16 (mode blur) karein")
+        tips.append("For a Reel / Status, reframe to aspect 9:16 (mode blur)")
     if p["size"] > 16 * 1048576:
-        tips.append("WhatsApp par bhejne ke liye compress target whatsapp")
+        tips.append("To send on WhatsApp, compress with target whatsapp")
     return "; ".join(bits) + (". " + "; ".join(tips) + "." if tips else ".")
 
 
@@ -221,7 +221,7 @@ def _box(st: dict, g: Graph) -> tuple[int, int, int, int]:
     w, h = one("w", g.w, "100%"), one("h", g.h, "100%")
     w, h = min(w, g.w - x), min(h, g.h - y)
     if w < 8 or h < 8:
-        raise VideoError("Box bahut chhota hai ya frame ke bahar hai (x, y, w, h pixels ya '10%').")
+        raise VideoError("The box is too small or outside the frame (x, y, w, h in pixels or '10%').")
     return x, y, _even(w) if w > 2 else w, _even(h) if h > 2 else h
 
 
@@ -229,7 +229,7 @@ def _window(st: dict, g: Graph) -> str:
     a = secs(st["start"], "start") if st.get("start") not in (None, "") else 0.0
     b = secs(st["end"], "end") if st.get("end") not in (None, "") else None
     if b is not None and b <= a:
-        raise VideoError("end, start ke baad hona chahiye.")
+        raise VideoError("end must be after start.")
     if a == 0 and b is None:
         return ""
     return f":enable='between(t,{a},{b if b is not None else 1e9})'"
@@ -293,13 +293,13 @@ def step(st: dict, g: Graph) -> str:
     """Apply one step to the graph; return a one-line description."""
     op = str(st.get("op") or "").strip().lower()
     if op in REFUSED_OPS:
-        raise VideoError("Yeh nahi hota: kisi aur ka watermark / logo hatana, chehra badalna ya kisi ki awaaz / chehre ki "
-                         "nakal (deepfake). Apne hi video ka koi hissa chhupana ho to blur_area use karein.")
+        raise VideoError("This is not done: removing someone else's watermark / logo, swapping a face, or imitating someone's voice / face "
+                         "(deepfake). To hide part of your own video, use blur_area.")
     if op == "trim":
         a = secs(st.get("start", 0), "start")
         b = min(secs(st["end"], "end"), g.dur) if st.get("end") not in (None, "") else g.dur
         if b - a < 0.1:
-            raise VideoError("Trim ke baad kuch bachta hi nahi (start, end se pehle hona chahiye).")
+            raise VideoError("Nothing is left after the trim (start must be before end).")
         g.lin(f"trim=start={a}:end={b}", "setpts=PTS-STARTPTS")
         if g.audio:
             g.af += [f"atrim=start={a}:end={b}", "asetpts=PTS-STARTPTS"]
@@ -308,9 +308,9 @@ def step(st: dict, g: Graph) -> str:
     if op == "cut":
         a, b = secs(st.get("start"), "start"), min(secs(st.get("end"), "end"), g.dur)
         if b <= a:
-            raise VideoError("Cut ka end, start ke baad hona chahiye.")
+            raise VideoError("The cut's end must be after its start.")
         if a <= 0 and b >= g.dur:
-            raise VideoError("Poora video kaatne se kuch nahi bachega.")
+            raise VideoError("Cutting the whole video leaves nothing.")
         g.lin(f"select='not(between(t,{a},{b}))'", f"setpts=N/({g.fps:g}*TB)")
         if g.audio:
             g.af += [f"aselect='not(between(t,{a},{b}))'", "asetpts=N/SR/TB"]
@@ -325,7 +325,7 @@ def step(st: dict, g: Graph) -> str:
         return f"speed x{f:g}" + (" (slow motion)" if f < 1 else "")
     if op == "reverse":
         if g.dur > 60:
-            raise VideoError("Ulta (reverse) 60 second tak ke video par hota hai; pehle trim karein.")
+            raise VideoError("Reverse works on videos up to 60 seconds; trim first.")
         g.lin("reverse")
         if g.audio:
             g.af.append("areverse")
@@ -333,9 +333,9 @@ def step(st: dict, g: Graph) -> str:
     if op == "fade":
         fi, fo = _num(st.get("in"), "in", 0, 30, 0), _num(st.get("out"), "out", 0, 30, 0)
         if not fi and not fo:
-            raise VideoError("fade ke liye in ya out seconds bataiye.")
+            raise VideoError("For a fade, give in or out seconds.")
         if fi + fo > g.dur:
-            raise VideoError("Fade video se lamba hai.")
+            raise VideoError("The fade is longer than the video.")
         vf = ([f"fade=t=in:st=0:d={fi}"] if fi else []) + ([f"fade=t=out:st={max(0.0, g.dur - fo):.3f}:d={fo}"] if fo else [])
         g.lin(*vf)
         if g.audio:
@@ -358,7 +358,7 @@ def step(st: dict, g: Graph) -> str:
             _crop_to(g, ar, st.get("position", "center"))
             return f"reframed {ar[0]}:{ar[1]} by cropping"
         if mode not in ("blur", "pad"):
-            raise VideoError("reframe mode: blur (dhundhla background), pad (rang ki patti) ya crop.")
+            raise VideoError("reframe mode: blur (blurred background), pad (colored bars) or crop.")
         long = max(g.w, g.h)
         if ar[0] < ar[1]:
             ch, cw = _even(long), _even(long * ar[0] / ar[1])
@@ -392,17 +392,17 @@ def step(st: dict, g: Graph) -> str:
         elif st.get("percent"):
             k = _num(st["percent"], "percent", 5, 400) / 100
         else:
-            raise VideoError("resize: preset (720p) ya width / height ya percent bataiye.")
+            raise VideoError("resize: give a preset (720p), a width / height or a percent.")
         w, h = _even(g.w * k), _even(g.h * k)
         if max(w, h) > 3840:
-            raise VideoError("4K se bada video nahi banta.")
+            raise VideoError("A video larger than 4K cannot be made.")
         g.lin(f"scale={w}:{h}:flags=lanczos")
         g.w, g.h = w, h
         return f"resized to {w}x{h}"
     if op == "rotate":
         d = int(_num(st.get("degrees", 90), "degrees", -270, 270)) % 360
         if d not in (90, 180, 270):
-            raise VideoError("rotate degrees: 90, 180 ya 270.")
+            raise VideoError("rotate degrees: 90, 180 or 270.")
         g.lin({90: "transpose=1", 180: "hflip,vflip", 270: "transpose=2"}[d])
         if d != 180:
             g.w, g.h = g.h, g.w
@@ -410,7 +410,7 @@ def step(st: dict, g: Graph) -> str:
     if op == "flip":
         dr = str(st.get("direction", "horizontal")).lower()
         if dr not in ("horizontal", "vertical", "mirror"):
-            raise VideoError("flip direction: horizontal (mirror) ya vertical.")
+            raise VideoError("flip direction: horizontal (mirror) or vertical.")
         g.lin("vflip" if dr == "vertical" else "hflip")
         return f"flipped {dr}"
     if op == "color":
@@ -419,7 +419,7 @@ def step(st: dict, g: Graph) -> str:
         s = _num(st.get("saturation"), "saturation", -100, 100, 0)
         gm = _num(st.get("gamma"), "gamma", 0.3, 3, 1)
         if not (b or c or s) and gm == 1:
-            raise VideoError("color: brightness / contrast / saturation (-100..100) ya gamma bataiye.")
+            raise VideoError("color: give brightness / contrast / saturation (-100..100) or gamma.")
         g.lin(f"eq=brightness={b / 250:.3f}:contrast={1 + c / 100:.3f}:saturation={1 + s / 100:.3f}:gamma={gm:.3f}")
         return f"colour brightness {b:+g} contrast {c:+g} saturation {s:+g}"
     if op == "look":
@@ -436,7 +436,7 @@ def step(st: dict, g: Graph) -> str:
         lvl = str(st.get("strength", "medium")).lower()
         p = {"light": "2:1.5:3:2.5", "medium": "4:3:6:4.5", "strong": "7:5:10:8"}.get(lvl)
         if not p:
-            raise VideoError("strength: light, medium ya strong.")
+            raise VideoError("strength: light, medium or strong.")
         g.lin(f"hqdn3d={p}")
         return f"grain / noise reduced ({lvl})"
     if op == "stabilize":
@@ -456,13 +456,13 @@ def step(st: dict, g: Graph) -> str:
     if op == "text":
         txt = str(st.get("text") or "").strip()
         if not txt:
-            raise VideoError("text likhiye.")
+            raise VideoError("Give the text.")
         _overlay_png(g, _text_png(st, g.w, g.h), _window(st, g))
         return f"text '{txt[:40]}' ({st.get('position', 'bottom')})"
     if op == "watermark":
         path = st.get("_path")
         if not path:
-            raise VideoError("watermark ke liye uske logo ki photo ka file_id chahiye (sirf apna logo).")
+            raise VideoError("A watermark needs the file_id of the logo's photo (your own logo only).")
         size = _num(st.get("size_pct"), "size_pct", 3, 60, 15)
         alpha = _num(st.get("opacity"), "opacity", 5, 100, 85) / 100
         gx, gy = GRAV.get(str(st.get("position", "bottom-right")).lower(), (1, 1))
@@ -491,7 +491,7 @@ def step(st: dict, g: Graph) -> str:
         return "sound removed"
     if op in ("volume", "normalize", "denoise_audio"):
         if not g.audio:
-            raise VideoError("Is video mein awaaz nahi hai (ya pehle mute ho chuki hai).")
+            raise VideoError("This video has no sound (or it was muted earlier).")
         if op == "volume":
             if st.get("db") not in (None, ""):
                 db = _num(st.get("db"), "db", -40, 30)
@@ -511,24 +511,24 @@ def step(st: dict, g: Graph) -> str:
         lvl = str(st.get("strength", "medium")).lower()
         nr = {"light": 8, "medium": 14, "strong": 22}.get(lvl)
         if nr is None:
-            raise VideoError("strength: light, medium ya strong.")
+            raise VideoError("strength: light, medium or strong.")
         g.af += ["highpass=f=60", f"afftdn=nr={nr}:nf=-35"]
         return f"background noise reduced ({lvl})"
-    raise VideoError(f"op '{op}' nahi hai. Ye hain: {', '.join(sorted(STEP_OPS))}.")
+    raise VideoError(f"There is no op '{op}'. Available: {', '.join(sorted(STEP_OPS))}.")
 
 
 def check_steps(steps: Any) -> list[dict]:
     if not isinstance(steps, list) or not steps:
-        raise VideoError("steps chahiye: [{op: ...}, ...]")
+        raise VideoError("steps are needed: [{op: ...}, ...]")
     if len(steps) > MAX_STEPS:
-        raise VideoError(f"Ek baar mein {MAX_STEPS} steps tak.")
+        raise VideoError(f"Up to {MAX_STEPS} steps at a time.")
     out = []
     for st in steps:
         if not isinstance(st, dict) or not st.get("op"):
-            raise VideoError("Har step {op: ...} hona chahiye.")
+            raise VideoError("Every step must be {op: ...}.")
         op = str(st["op"]).strip().lower()
         if op not in STEP_OPS and op not in REFUSED_OPS:
-            raise VideoError(f"op '{st['op']}' nahi hai. Ye hain: {', '.join(sorted(STEP_OPS))}.")
+            raise VideoError(f"There is no op '{st['op']}'. Available: {', '.join(sorted(STEP_OPS))}.")
         if op in REFUSED_OPS:
             step(st, Graph({"width": 100, "height": 100, "duration": 1, "fps": 30, "has_audio": False}))
         out.append(st)
@@ -552,10 +552,10 @@ def _run(cmd: list[str], timeout: int) -> None:
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
-        raise VideoError("Video banane mein bahut der lag gayi; chhota hissa (trim) ya kam steps se try karein.") from None
+        raise VideoError("Making the video took too long; try a shorter part (trim) or fewer steps.") from None
     if r.returncode != 0:
         tail = " | ".join(x for x in (r.stderr or "").strip().splitlines()[-3:] if x)[-300:]
-        raise VideoError(f"ffmpeg ne mana kar diya: {tail or 'unknown error'}")
+        raise VideoError(f"ffmpeg refused: {tail or 'unknown error'}")
 
 
 def _finish(g: Graph, keep_size: bool = False) -> None:
@@ -570,8 +570,8 @@ def _finish(g: Graph, keep_size: bool = False) -> None:
 def _read_out(path: str) -> bytes:
     size = os.path.getsize(path)
     if size > MAX_OUT_BYTES:
-        raise VideoError(f"Bana hua video {size // 1048576} MB ka hai; chat mein {MAX_OUT_BYTES // 1048576} MB tak aata hai. "
-                         "Saath mein compress step / 720p resize jodiye.")
+        raise VideoError(f"The finished video is {size // 1048576} MB; the chat takes up to {MAX_OUT_BYTES // 1048576} MB. "
+                         "Add a compress step / 720p resize as well.")
     return Path(path).read_bytes()
 
 
@@ -630,7 +630,7 @@ def compress(path: str, target_mb: Any = None, quality: str = "") -> dict[str, A
     if target_mb not in (None, ""):
         target = COMPRESS_TARGETS.get(str(target_mb).lower()) or _num(target_mb, "target_mb", 0.1, 500)
         if info["size"] <= target * 1048576 * 0.98:
-            raise VideoError(f"Video pehle se {info['size'] / 1048576:.1f} MB hai, {target:g} MB se chhota.")
+            raise VideoError(f"The video is already {info['size'] / 1048576:.1f} MB, smaller than {target:g} MB.")
     with tempfile.TemporaryDirectory() as td:
         out = os.path.join(td, "out.mp4")
         if target is None:
@@ -647,8 +647,8 @@ def compress(path: str, target_mb: Any = None, quality: str = "") -> dict[str, A
         for attempt in range(3):
             vbr = int(total - (abr if info["has_audio"] else 0))
             if vbr < 60:
-                raise VideoError(f"{dur:.0f} second ka video {target:g} MB mein dekhne laayak nahi banega; "
-                                 "pehle trim / split karein ya bada size chuniye.")
+                raise VideoError(f"A {dur:.0f}-second video will not be watchable at {target:g} MB; "
+                                 "trim / split first, or choose a bigger size.")
             short = 1080 if vbr > 3000 else 720 if vbr > 1200 else 480 if vbr > 500 else 360
             short = min(short, min(info["width"], info["height"]))
             sc = f"scale=-2:{_even(short)}" if info["height"] <= info["width"] else f"scale={_even(short)}:-2"
@@ -663,7 +663,7 @@ def compress(path: str, target_mb: Any = None, quality: str = "") -> dict[str, A
                 break
             total *= 0.85 * target * 1048576 / size
         else:
-            raise VideoError(f"{target:g} MB tak nahi aaya ({size / 1048576:.1f} MB bana); chhota hissa ya bada size chuniye.")
+            raise VideoError(f"Could not get down to {target:g} MB (it came to {size / 1048576:.1f} MB); choose a shorter part or a bigger size.")
         return {"bytes": _read_out(out), "ext": "mp4", "in": info, "out": probe(out), "target_mb": target}
 
 
@@ -677,10 +677,10 @@ def join(paths: list[str], crossfade: Any = 0, fit: str = "blur", fmt: str = "mp
     infos = [probe(p) for p in paths]
     total = sum(i["duration"] for i in infos)
     if total > MAX_SECONDS:
-        raise VideoError(f"Sab clips milakar {MAX_SECONDS // 60} minute tak.")
+        raise VideoError(f"All clips together can be up to {MAX_SECONDS // 60} minutes.")
     cf = _num(crossfade, "crossfade", 0, 3, 0)
     if cf and min(i["duration"] for i in infos) <= cf * 2:
-        raise VideoError("Crossfade har clip ki lambai ke aadhe se chhota rakhiye.")
+        raise VideoError("Keep the crossfade shorter than half of each clip's length.")
     w, h = infos[0]["width"], infos[0]["height"]
     if max(w, h) > MAX_LONG_SIDE:
         k = MAX_LONG_SIDE / max(w, h)
@@ -730,7 +730,7 @@ def slideshow(images: list[str], seconds: Any = 3, aspect_v: Any = "9:16", music
               music_db: Any = -6) -> dict[str, Any]:
     """Her photos -> a video: each photo shown for N seconds, soft fade between, optional gentle zoom and her music."""
     if not 1 <= len(images) <= 40:
-        raise VideoError("Slideshow ke liye 1 se 40 photos.")
+        raise VideoError("A slideshow takes 1 to 40 photos.")
     sec = _num(seconds, "seconds", 1, 15, 3)
     cw, ch = _canvas(aspect(aspect_v), 1920)
     fr = 30
@@ -774,7 +774,7 @@ def add_music(video: str, music: str, music_db: Any = -16, duck: bool = True, ke
     info = probe(video)
     mj = _ffprobe(music)
     if not any(s.get("codec_type") == "audio" for s in mj.get("streams") or []):
-        raise VideoError("Music wali file mein awaaz nahi hai.")
+        raise VideoError("The music file has no sound.")
     dur = info["duration"]
     db = _num(music_db, "music_db", -40, 6, -16)
     fo = _num(fade_out, "fade_out", 0, 10, 2)
@@ -814,7 +814,7 @@ def frames(path: str, at: list | None = None, every: Any = None, count: Any = No
     elif every not in (None, ""):
         e = secs(every, "every")
         if e < 0.5:
-            raise VideoError("every kam se kam 0.5 second.")
+            raise VideoError("every must be at least 0.5 second.")
         times = [round(t * e, 3) for t in range(int(dur // e) + 1)][:24]
     else:
         n = int(_num(count, "count", 1, 24, 9 if sheet else 1))
@@ -830,7 +830,7 @@ def frames(path: str, at: list | None = None, every: Any = None, count: Any = No
             if os.path.exists(out):
                 pics.append((t, Path(out).read_bytes()))
     if not pics:
-        raise VideoError("Koi frame nahi nikla.")
+        raise VideoError("No frame was extracted.")
     if not sheet:
         return {"frames": [{"at": t, "bytes": b} for t, b in pics]}
     from PIL import Image, ImageDraw
@@ -858,9 +858,9 @@ def gif(path: str, start: Any = 0, end: Any = None, width: Any = 480, fps: Any =
     a = secs(start, "start")
     b = min(secs(end, "end"), info["duration"]) if end not in (None, "") else min(info["duration"], a + 6)
     if b - a < 0.3:
-        raise VideoError("GIF ke liye kam se kam 0.3 second chuniye.")
+        raise VideoError("Choose at least 0.3 second for a GIF.")
     if b - a > 15:
-        raise VideoError("GIF 15 second tak (bada GIF bahut bhaari hota hai); chhota hissa chuniye.")
+        raise VideoError("A GIF can be up to 15 seconds (a long GIF is very heavy); choose a shorter part.")
     w = int(_num(width, "width", 120, 960, 480))
     f = _num(fps, "fps", 5, 25, 12)
     with tempfile.TemporaryDirectory() as td:
@@ -882,13 +882,13 @@ def split(path: str, every: Any = None, at: list | None = None) -> list[dict[str
     elif every not in (None, ""):
         e = secs(every, "every")
         if e < 2:
-            raise VideoError("every kam se kam 2 second.")
+            raise VideoError("every must be at least 2 seconds.")
         cuts = [round(e * i, 3) for i in range(1, int(math.ceil(dur / e)))]
     else:
-        raise VideoError("split: every (jaise 30) ya at [times] bataiye.")
+        raise VideoError("split: give every (for example 30) or at [times].")
     bounds = [0.0] + cuts + [dur]
     if len(bounds) - 1 > 20:
-        raise VideoError("20 hisson tak; every bada rakhiye.")
+        raise VideoError("Up to 20 parts; use a larger every.")
     parts = []
     with tempfile.TemporaryDirectory() as td:
         for i in range(len(bounds) - 1):
@@ -929,7 +929,7 @@ def combine(main: str, second: str, layout: str = "pip", position: str = "bottom
             vg = f"[0:v]scale={ww}:-2,setsar=1[l];[1:v]scale={ww}:-2,setsar=1[r];[l][r]vstack=inputs=2:shortest=1[v]"
         dur = min(a["duration"], b["duration"])
     else:
-        raise VideoError("layout: pip (chhota video kone mein), side_by_side ya top_bottom.")
+        raise VideoError("layout: pip (small video in a corner), side_by_side or top_bottom.")
     vg = vg.replace("[v]", "[vx]") + ";[vx]scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p[v]"
     maps = ["-map", "[v]"]
     if audio == "both" and a["has_audio"] and b["has_audio"]:
@@ -966,7 +966,7 @@ def parse_srt(text: str) -> list[dict[str, Any]]:
                         cues.append({"start": a, "end": b, "text": txt[:200]})
                 break
     if not cues:
-        raise VideoError("SRT mein koi caption nahi mila (00:00:01,000 --> 00:00:03,000 jaisa format).")
+        raise VideoError("No caption found in the SRT (format like 00:00:01,000 --> 00:00:03,000).")
     return cues[:3000]
 
 

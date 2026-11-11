@@ -40,8 +40,8 @@ log = logging.getLogger("santosh.shaadi")
 _LOCK = threading.RLock()
 CARD_KINDS = ("vendor_book", "vendor_pay", "spend", "client_quote", "client_pay", "message")
 MONEY_KINDS = ("vendor_book", "vendor_pay", "spend")
-DEFAULT_STAGES = [{"label": "Booking par", "pct": 30}, {"label": "Shaadi se 30 din pehle", "pct": 50},
-                  {"label": "Shaadi ke baad", "pct": 20}]
+DEFAULT_STAGES = [{"label": "On booking", "pct": 30}, {"label": "30 days before the wedding", "pct": 50},
+                  {"label": "After the wedding", "pct": 20}]
 
 
 class ShaadiError(Exception):
@@ -124,7 +124,7 @@ def _int(v, default: int = 0) -> int:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -181,7 +181,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         return name, data
     except Exception as e:
-        raise ShaadiError(f"File {file_id} nahi mili: {e}")
+        raise ShaadiError(f"File {file_id} not found: {e}")
 
 
 def _store(tenant: str, name: str, data: bytes, mime: str, conv: str = "", title: str = "") -> dict:
@@ -291,24 +291,24 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 setattr(r, k, R.clean(kw[k], 2000 if k != "firm" else 160))
         if kw.get("mode"):
             if kw["mode"] not in ("family", "agency"):
-                raise ShaadiError("mode: family (apni family ki shaadi) ya agency (clients ke liye).")
+                raise ShaadiError("mode: family (a wedding in your own family) or agency (for clients).")
             r.mode = kw["mode"]
         if "gstin" in kw and kw["gstin"] is not None:
             g = str(kw["gstin"]).strip().upper()
             if g:
                 from ..india.money import gstin_ok
                 if not gstin_ok(g):
-                    raise ShaadiError("GSTIN sahi nahi lag raha (check digit).")
+                    raise ShaadiError("The GSTIN does not look right (check digit).")
             r.gstin = g
         if "phone" in kw and kw["phone"] is not None:
             p = R.phone(kw["phone"])
             if kw["phone"] and not p:
-                raise ShaadiError("Phone 10 ankon ka chahiye.")
+                raise ShaadiError("The phone number must have 10 digits.")
             r.phone = p
         if "upi_id" in kw and kw["upi_id"] is not None:
             u = str(kw["upi_id"]).strip()
             if u and not re.fullmatch(r"[\w.\-]{2,}@[a-zA-Z]{2,}", u):
-                raise ShaadiError("UPI ID jaisa nahi lag raha (naam@bank).")
+                raise ShaadiError("This does not look like a UPI ID (name@bank).")
             r.upi_id = u
         if kw.get("fee_mode"):
             if kw["fee_mode"] not in ("none", "percent", "flat"):
@@ -318,14 +318,14 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             if k in kw and kw[k] is not None and kw[k] != "":
                 v = _num(kw[k])
                 if v is None or v < 0:
-                    raise ShaadiError(f"{k} sahi number nahi.")
+                    raise ShaadiError(f"{k} is not a valid number.")
                 setattr(r, k, v)
         if "validity_days" in kw and kw["validity_days"]:
             r.validity_days = max(1, min(90, _int(kw["validity_days"], 15)))
         if "morning_time" in kw and kw["morning_time"]:
             m = R.hhmm(kw["morning_time"])
             if m is None:
-                raise ShaadiError("Subah ka samay HH:MM mein.")
+                raise ShaadiError("Give the morning time as HH:MM.")
             r.morning_time = R.fmt(m)
         if "stages" in kw and kw["stages"] is not None:
             st = kw["stages"]
@@ -333,7 +333,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 st = _j(st, [])
             st = [{"label": R.clean(x.get("label"), 80), "pct": float(_num(x.get("pct")) or 0)} for x in st if isinstance(x, dict)]
             if st and abs(sum(x["pct"] for x in st) - 100) > 0.01:
-                raise ShaadiError("Payment stages ka jod 100% hona chahiye.")
+                raise ShaadiError("The payment stages must add up to 100%.")
             r.stages = _dump(st)
         return _settings_view(r)
 
@@ -346,14 +346,14 @@ def _wed(s, tenant: str, ref: str) -> ShaadiWedding:
         live = [w for w in rows if w.status == "planning"]
         if len(live) == 1:
             return live[0]
-        raise ShaadiError("Kaunsi shaadi? (number / naam batayiye)")
+        raise ShaadiError("Which wedding? (give the number / name)")
     for w in rows:
         if ref in (w.id, w.number) or ref.lower() == (w.title or "").lower():
             return w
     hits = [w for w in rows if ref.lower() in (w.title or "").lower() or ref.lower() in f"{w.bride} {w.groom}".lower()]
     if len(hits) == 1:
         return hits[0]
-    raise ShaadiError(f"Shaadi '{ref}' nahi mili.")
+    raise ShaadiError(f"Wedding '{ref}' not found.")
 
 
 def _log(w: ShaadiWedding, text: str, by: str = "") -> None:
@@ -414,23 +414,23 @@ def wedding_new(tenant: str, title: str = "", community: str = "", bride: str = 
             f["date"] = d.isoformat()
     cp = R.phone(client_phone)
     if client_phone and not cp:
-        raise ShaadiError("Client ka phone 10 ankon ka chahiye.")
+        raise ShaadiError("The client's phone number must have 10 digits.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         st.wed_seq += 1
         b = _num(budget)
         w = ShaadiWedding(tenant_id=tenant, number=f"W-{st.wed_seq:03d}", community=comm,
-                          title=R.clean(title, 160) or f"{R.clean(bride, 60) or 'Dulhan'} weds {R.clean(groom, 60) or 'Dulha'}",
+                          title=R.clean(title, 160) or f"{R.clean(bride, 60) or 'Bride'} weds {R.clean(groom, 60) or 'Groom'}",
                           bride=R.clean(bride, 120), groom=R.clean(groom, 120), client=R.clean(client, 120), client_phone=cp,
                           city=R.clean(city, 60), state=R.clean(state, 40), venue=R.clean(venue, 400),
                           guests_estimate=_int(guests_estimate), budget=_dump({"total": b, "heads": {}}), functions=_dump(fns),
                           checklist=_dump(_checklist_items(comm)), conv=conv)
-        _log(w, "Shaadi ki file bani", actor_name(tenant, actor))
+        _log(w, "Wedding file created", actor_name(tenant, actor))
         s.add(w)
         s.flush()
         view = _wedding_view(s, w)
-    say = (f"{view['number']} {view['title']}: {len(fns)} functions ({R.COMMUNITIES[comm]['label']} ke hisaab se, badal sakti hain). "
-           "Dates aap batayiye; muhurat panditji tay karenge, Hoola nahi.")
+    say = (f"{view['number']} {view['title']}: {len(fns)} functions (the usual ones for {R.COMMUNITIES[comm]['label']}; you can change them). "
+           "You give the dates; the pandit decides the muhurat, not Hoola.")
     return {"wedding": view, "say": say}
 
 
@@ -450,7 +450,7 @@ def wedding_update(tenant: str, wedding: str, actor: str = "owner", **kw: Any) -
             if k == "client_phone":
                 ph = R.phone(v)
                 if v and not ph:
-                    raise ShaadiError("Phone 10 ankon ka chahiye.")
+                    raise ShaadiError("The phone number must have 10 digits.")
                 w.client_phone = ph
             elif k == "guests_estimate":
                 w.guests_estimate = _int(v)
@@ -458,7 +458,7 @@ def wedding_update(tenant: str, wedding: str, actor: str = "owner", **kw: Any) -
                 if v not in ("planning", "done", "cancelled"):
                     raise ShaadiError("status: planning | done | cancelled")
                 if v != w.status and not is_owner(actor):
-                    raise ShaadiError("Status sirf owner badal sakti hain.")
+                    raise ShaadiError("Only the owner can change the status.")
                 w.status = v
             elif k == "community":
                 c = R.community_of(v) or (v if v in R.COMMUNITIES else "")
@@ -470,8 +470,8 @@ def wedding_update(tenant: str, wedding: str, actor: str = "owner", **kw: Any) -
             b = _j(w.budget, {})
             b["total"] = _num(kw["budget"])
             w.budget = _dump(b)
-        _log(w, "Badlav: " + ", ".join(k for k in kw if kw[k] is not None)[:200], actor_name(tenant, actor))
-        return {"wedding": _wedding_view(s, w), "say": "Theek, badal diya."}
+        _log(w, "Changed: " + ", ".join(k for k in kw if kw[k] is not None)[:200], actor_name(tenant, actor))
+        return {"wedding": _wedding_view(s, w), "say": "Done, changed."}
 
 
 def fn_set(tenant: str, wedding: str, fn: str = "", name: str = "", date_: str = "", start: str = "", end: str = "", venue: str = "",
@@ -485,30 +485,30 @@ def fn_set(tenant: str, wedding: str, fn: str = "", name: str = "", date_: str =
         f = None if add else _fn(fns, fn or name)
         if f is None:
             if not (add or name or fn):
-                raise ShaadiError("Kaunsa function?")
+                raise ShaadiError("Which function?")
             k = R.fn_key(fn or name) or "custom"
             f = _new_fn(k, R.clean(name or fn, 60) if k == "custom" or name else "")
             fns.append(f)
-            warns.append(f"Naya function: {f['name']}")
+            warns.append(f"New function: {f['name']}")
         if remove:
             fns = [x for x in fns if x["id"] != f["id"]]
             w.functions = _dump(fns)
-            _log(w, f"Function hataya: {f['name']}", actor_name(tenant, actor))
-            return {"wedding": _wedding_view(s, w), "say": f"{f['name']} hata diya."}
+            _log(w, f"Function removed: {f['name']}", actor_name(tenant, actor))
+            return {"wedding": _wedding_view(s, w), "say": f"{f['name']} removed."}
         if name:
             f["name"] = R.clean(name, 60)
         if date_:
             d = _date(date_)
             if not d:
-                raise ShaadiError("Tareekh samajh nahi aayi (DD-MM-YYYY).")
+                raise ShaadiError("Could not read the date (DD-MM-YYYY).")
             if d < today(tenant):
-                warns.append("Yeh tareekh beet chuki hai.")
+                warns.append("This date has already passed.")
             f["date"] = d.isoformat()
         for key, val in (("start", start), ("end", end)):
             if val:
                 m = R.hhmm(val)
                 if m is None:
-                    raise ShaadiError(f"{key} ka samay samajh nahi aaya (jaise 7 pm / 19:30).")
+                    raise ShaadiError(f"Could not read the {key} time (for example 7 pm / 19:30).")
                 f[key] = R.fmt(m)
         if venue:
             f["venue"] = R.clean(venue, 200)
@@ -518,7 +518,7 @@ def fn_set(tenant: str, wedding: str, fn: str = "", name: str = "", date_: str =
             f["side"] = side
         if muhurat:
             f["muhurat"] = R.clean(muhurat, 120)
-            f["muhurat_by"] = R.clean(muhurat_by, 80) or "aapne bataya"
+            f["muhurat_by"] = R.clean(muhurat_by, 80) or "given by you"
         if notes:
             p = R.dowry_problem(notes)
             if p:
@@ -530,15 +530,15 @@ def fn_set(tenant: str, wedding: str, fn: str = "", name: str = "", date_: str =
                 a1, a2 = R.hhmm(f["start"]), R.hhmm(f.get("end") or "") or (R.hhmm(f["start"]) or 0) + 180
                 b1, b2 = R.hhmm(o["start"]), R.hhmm(o.get("end") or "") or (R.hhmm(o["start"]) or 0) + 180
                 if a1 is not None and b1 is not None and a1 < b2 and b1 < a2:
-                    warns.append(f"{o['name']} se samay takra raha hai ({o['start']}).")
+                    warns.append(f"The time clashes with {o['name']} ({o['start']}).")
         w.functions = _dump(fns)
         _log(w, f"{f['name']}: {f.get('date')} {f.get('start')}", actor_name(tenant, actor))
         view = _wedding_view(s, w)
-    say = f"{f['name']}: {f.get('date') or 'tareekh baaki'} {f.get('start') or ''}".strip()
+    say = f"{f['name']}: {f.get('date') or 'date pending'} {f.get('start') or ''}".strip()
     if f["key"] in R.RITUAL_FNS and not f.get("muhurat"):
-        say += ". Muhurat panditji batayenge; jab bataayein mujhe bata dijiye."
+        say += ". The pandit will give the muhurat; tell me when you have it."
     if warns:
-        say += " Dhyaan: " + " ".join(warns)
+        say += " Note: " + " ".join(warns)
     return {"wedding": view, "function": f, "warnings": warns, "say": say}
 
 
@@ -552,7 +552,7 @@ def panchang(tenant: str, wedding: str) -> dict:
     for f in fns:
         d = _date(f.get("date"))
         if not d:
-            out.append({"function": f["name"], "date": "", "say": "Tareekh abhi tay nahi."})
+            out.append({"function": f["name"], "date": "", "say": "The date is not fixed yet."})
             continue
         try:
             p = days.panchang(d, city)
@@ -565,13 +565,13 @@ def panchang(tenant: str, wedding: str) -> dict:
                "nakshatra": p.get("nakshatra"), "month_amanta": p.get("month_amanta"), "sunrise": p.get("sunrise"),
                "holidays": hol, "muhurat": f.get("muhurat") or "", "muhurat_by": f.get("muhurat_by") or ""}
         if f["key"] in R.RITUAL_FNS and not f.get("muhurat"):
-            row["muhurat_note"] = "Muhurat panditji se poochhiye (Hoola nahi nikalta)."
+            row["muhurat_note"] = "Ask the pandit for the muhurat (Hoola does not work it out)."
         if hol:
-            row["holiday_note"] = "Chhutti ka din: venue / hotel / rail mein bheed aur daam zyada ho sakte hain."
+            row["holiday_note"] = "A holiday: venues / hotels / trains may be crowded and prices higher."
         out.append(row)
-    return {"days": out, "note": "Panchang hisaab se nikala (±5 min, amanta mahina). Shubh muhurat aapke panditji ka faisla hai.",
+    return {"days": out, "note": "Worked out from the panchang (±5 min, amanta month). The auspicious muhurat is your pandit's decision.",
             "say": "; ".join(f"{r['function']} {r['date']}: {r.get('tithi') or ''} {r.get('paksha') or ''}, {r.get('nakshatra') or ''}"
-                              for r in out if r.get("date")) or "Abhi kisi function ki tareekh tay nahi."}
+                              for r in out if r.get("date")) or "No function has a date yet."}
 
 
 def timeline_set(tenant: str, wedding: str, fn: str, rows: list | None = None, starter: bool = False, actor: str = "owner") -> dict:
@@ -581,24 +581,24 @@ def timeline_set(tenant: str, wedding: str, fn: str, rows: list | None = None, s
         fns = _j(w.functions, [])
         f = _fn(fns, fn)
         if f is None:
-            raise ShaadiError(f"Function '{fn}' nahi mila.")
+            raise ShaadiError(f"Function '{fn}' not found.")
         out = []
         if starter:
             base = R.hhmm(f.get("start") or "")
             if base is None:
-                raise ShaadiError(f"{f['name']} ka shuru hone ka samay pehle batayiye; uske hisaab se timeline banegi.")
+                raise ShaadiError(f"Give the start time of {f['name']} first; the timeline is built from it.")
             tmpl = R.TIMELINE.get(f["key"]) or R.TIMELINE["default"]
             for off, what, who in tmpl:
                 out.append({"time": R.fmt(base + off), "what": what, "who": who})
             if f["key"] in R.RITUAL_FNS:
-                out.append({"time": f.get("muhurat") or "", "what": "Rasm / phere / nikah (muhurat " +
-                            ("panditji ka: " + f["muhurat"] if f.get("muhurat") else "panditji se poochhna baaki") + ")", "who": "pandit"})
+                out.append({"time": f.get("muhurat") or "", "what": "Ceremony / pheras / nikah (muhurat " +
+                            ("from the pandit: " + f["muhurat"] if f.get("muhurat") else "still to ask the pandit") + ")", "who": "pandit"})
         for r in rows or []:
             if not isinstance(r, dict):
                 continue
             t = R.hhmm(r.get("time")) if r.get("time") else None
             if r.get("time") and t is None:
-                raise ShaadiError(f"Samay samajh nahi aaya: {r.get('time')}")
+                raise ShaadiError(f"Could not read the time: {r.get('time')}")
             out.append({"time": R.fmt(t) if t is not None else "", "what": R.clean(r.get("what"), 200),
                         "who": R.vendor_kind(str(r.get("who") or "")) if r.get("who") else ""})
         out.sort(key=lambda x: (x["time"] == "", x["time"]))
@@ -608,7 +608,7 @@ def timeline_set(tenant: str, wedding: str, fn: str, rows: list | None = None, s
         warns = _fn_warnings(f, vendors)
         view = _wedding_view(s, w)
     return {"function": f, "warnings": warns, "wedding": view,
-            "say": f"{f['name']} ki timeline: {len(f['timeline'])} kaam." + (" Dhyaan: " + " ".join(warns) if warns else "")}
+            "say": f"{f['name']} timeline: {len(f['timeline'])} tasks." + (" Note: " + " ".join(warns) if warns else "")}
 
 
 def _fn_warnings(f: dict, vendors: list[ShaadiVendor]) -> list[str]:
@@ -639,10 +639,10 @@ def day_plan(tenant: str, wedding: str) -> dict:
     days: dict[str, list] = {}
     for f in fns:
         rows = [{**r, "vendor": ", ".join(vname.get(r.get("who") or "", []))} for r in f.get("timeline", [])]
-        days.setdefault(f.get("date") or "tay nahi", []).append({"function": f["name"], "start": f.get("start"), "end": f.get("end"),
+        days.setdefault(f.get("date") or "date not fixed", []).append({"function": f["name"], "start": f.get("start"), "end": f.get("end"),
                                                                "venue": f.get("venue") or w.venue, "muhurat": f.get("muhurat"),
                                                                "timeline": rows, "warnings": _fn_warnings(f, vendors)})
-    order = sorted(days, key=lambda d: (d == "tay nahi", d))
+    order = sorted(days, key=lambda d: (d == "date not fixed", d))
     return {"days": [{"date": d, "functions": sorted(days[d], key=lambda x: x["start"] or "99")} for d in order]}
 
 
@@ -667,7 +667,7 @@ def checklist(tenant: str, wedding: str) -> dict:
         w = _wed(s, tenant, wedding)
         items = _checklist_view(w, today(tenant))
         has = bool(_dates(w))
-    return {"items": items, "say": "" if has else "Function ki tareekh tay hote hi har kaam ki last date nikal jayegi."}
+    return {"items": items, "say": "" if has else "As soon as the function date is fixed, each task gets its last date."}
 
 
 def checklist_mark(tenant: str, wedding: str, item: str, done: bool = True, what: str = "", days=None, actor: str = "owner") -> dict:
@@ -679,15 +679,15 @@ def checklist_mark(tenant: str, wedding: str, item: str, done: bool = True, what
             cl.append({"id": f"c{len(cl) + 1}x{secrets.token_hex(2)}", "days": d, "what": R.clean(what, 200), "kind": "custom",
                        "done": False, "done_on": ""})
             w.checklist = _dump(cl)
-            return {"items": _checklist_view(w, today(tenant)), "say": "Checklist mein joda."}
+            return {"items": _checklist_view(w, today(tenant)), "say": "Added to the checklist."}
         hit = [c for c in cl if c["id"] == item] or [c for c in cl if item and item.lower() in c["what"].lower()]
         if not hit:
-            raise ShaadiError("Checklist mein yeh kaam nahi mila.")
+            raise ShaadiError("This task was not found in the checklist.")
         hit[0]["done"] = bool(done)
         hit[0]["done_on"] = today(tenant).isoformat() if done else ""
         w.checklist = _dump(cl)
-        _log(w, f"Checklist: {hit[0]['what'][:60]} {'ho gaya' if done else 'wapas khula'}", actor_name(tenant, actor))
-        return {"items": _checklist_view(w, today(tenant)), "say": f"'{hit[0]['what']}' {'ho gaya' if done else 'phir se baaki'}."}
+        _log(w, f"Checklist: {hit[0]['what'][:60]} {'done' if done else 'reopened'}", actor_name(tenant, actor))
+        return {"items": _checklist_view(w, today(tenant)), "say": f"'{hit[0]['what']}' {'done' if done else 'pending again'}."}
 
 
 # ---------------------------------------------------------------- guests + RSVP
@@ -713,7 +713,7 @@ def guest_add(tenant: str, wedding: str, name: str, side: str = "", phone: str =
     nm = R.clean(name, 120)
     ph = R.phone(phone)
     if phone and not ph:
-        raise ShaadiError(f"{nm}: phone 10 ankon ka chahiye.")
+        raise ShaadiError(f"{nm}: the phone number must have 10 digits.")
     if side and side not in R.GUEST_SIDES:
         side = {"ladki": "bride", "dulhan": "bride", "ladka": "groom", "dulha": "groom"}.get(side.lower(), "common")
     with _LOCK, session() as s:
@@ -723,12 +723,12 @@ def guest_add(tenant: str, wedding: str, name: str, side: str = "", phone: str =
         if guest:
             g = s.get(ShaadiGuest, guest)
             if g is None or g.wedding_id != w.id:
-                raise ShaadiError("Mehmaan nahi mila.")
+                raise ShaadiError("Guest not found.")
         elif ph:
             g = s.scalars(select(ShaadiGuest).where(ShaadiGuest.wedding_id == w.id, ShaadiGuest.phone == ph)).first()
         if g is None:
             if not nm:
-                raise ShaadiError("Mehmaan ka naam chahiye.")
+                raise ShaadiError("The guest's name is needed.")
             g = ShaadiGuest(tenant_id=tenant, wedding_id=w.id, name=nm)
             s.add(g)
             new = True
@@ -754,7 +754,7 @@ def guest_add(tenant: str, wedding: str, name: str, side: str = "", phone: str =
             for x in invited:
                 f = _fn(fns, str(x))
                 if f is None and str(x).lower() not in ("sab", "all"):
-                    raise ShaadiError(f"Function '{x}' nahi mila.")
+                    raise ShaadiError(f"Function '{x}' not found.")
                 if f:
                     ids.append(f["id"])
             g.invited = _dump(ids)
@@ -764,7 +764,7 @@ def guest_add(tenant: str, wedding: str, name: str, side: str = "", phone: str =
             if v:
                 d = _date(v)
                 if not d:
-                    raise ShaadiError(f"{k} tareekh samajh nahi aayi.")
+                    raise ShaadiError(f"{k}: could not read the date.")
                 setattr(g, k, d.isoformat())
         if travel_mode or travel_from:
             t = _j(g.travel, {})
@@ -792,7 +792,7 @@ def guests_import(tenant: str, wedding: str, file_id: str = "", data: bytes | No
     else:
         rows = list(csv.reader(io.StringIO(data.decode("utf-8-sig", "ignore"))))
     if not rows:
-        raise ShaadiError("File khali hai.")
+        raise ShaadiError("The file is empty.")
     head = [re.sub(r"[^a-z]", "", str(h or "").lower()) for h in rows[0]]
 
     def col(*words):
@@ -804,7 +804,7 @@ def guests_import(tenant: str, wedding: str, file_id: str = "", data: bytes | No
           "side": col("side", "taraf", "paksh"), "adults": col("adult", "log", "count", "members", "heads"),
           "kids": col("kid", "bachch", "child"), "city": col("city", "shahar", "gaon"), "group": col("group", "relation", "rishta")}
     if ci["name"] is None:
-        raise ShaadiError("Sheet mein 'Name / Naam' column chahiye.")
+        raise ShaadiError("The sheet needs a 'Name / Naam' column.")
     added, bad = 0, []
     for r in rows[1:]:
         def cell(k):
@@ -819,7 +819,7 @@ def guests_import(tenant: str, wedding: str, file_id: str = "", data: bytes | No
             added += 1
         except ShaadiError as e:
             bad.append(str(e))
-    return {"added": added, "problems": bad[:20], "say": f"{added} mehmaan jode" + (f"; {len(bad)} line mein dikkat." if bad else ".")}
+    return {"added": added, "problems": bad[:20], "say": f"Added {added} guests" + (f"; {len(bad)} lines had a problem." if bad else ".")}
 
 
 def _guest(s, tenant: str, w: ShaadiWedding, ref: str) -> ShaadiGuest:
@@ -830,7 +830,7 @@ def _guest(s, tenant: str, w: ShaadiWedding, ref: str) -> ShaadiGuest:
     hits = [g for g in rows if ref and ref.lower() in g.name.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise ShaadiError(f"Mehmaan '{ref}' nahi mila" + (" (ek se zyada naam milte hain)" if hits else "") + ".")
+    raise ShaadiError(f"Guest '{ref}' not found" + (" (more than one name matches)" if hits else "") + ".")
 
 
 def rsvp(tenant: str, wedding: str, guest: str, answer: str, fn: str = "", adults=None, kids=None, actor: str = "owner") -> dict:
@@ -848,9 +848,9 @@ def rsvp(tenant: str, wedding: str, guest: str, answer: str, fn: str = "", adult
         if fn:
             f = _fn(fns, fn)
             if f is None:
-                raise ShaadiError(f"Function '{fn}' nahi mila.")
+                raise ShaadiError(f"Function '{fn}' not found.")
             if not _invited(g, f["id"]):
-                raise ShaadiError(f"{g.name} {f['name']} mein bulaye nahi gaye.")
+                raise ShaadiError(f"{g.name} is not invited to {f['name']}.")
             targets = [f]
         for f in targets:
             rs[f["id"]] = a
@@ -888,9 +888,9 @@ def headcount(tenant: str, wedding: str) -> dict:
                         "sides_yes": sides, "invited": sum(c.values()),
                         "plates_range": [c["yes"], c["yes"] + c["maybe"] + c["pending"]]})
         total_guests = sum(g.adults + g.kids for g in gs)
-    say = "; ".join(f"{r['function']}: haan {r['yes']}, shayad {r['maybe']}, jawab baaki {r['pending']}" for r in out)
-    return {"functions": out, "guests": total_guests, "say": say or "Abhi mehmaan nahi jode.",
-            "note": "Plate count caterer ko 'haan' se 'haan + shayad + baaki' ke beech; final ginti aap tay karein."}
+    say = "; ".join(f"{r['function']}: yes {r['yes']}, maybe {r['maybe']}, no reply yet {r['pending']}" for r in out)
+    return {"functions": out, "guests": total_guests, "say": say or "No guests added yet.",
+            "note": "Plate count for the caterer: between 'yes' and 'yes + maybe + pending'; you decide the final number."}
 
 
 def guests(tenant: str, wedding: str, q: str = "", side: str = "", fn: str = "", answer: str = "") -> dict:
@@ -925,12 +925,12 @@ def room_add(tenant: str, wedding: str, place: str, label: str = "", capacity=No
              rate=None, count=None, notes: str = "") -> dict:
     ci, co = _date(check_in), _date(check_out)
     if not ci or not co:
-        raise ShaadiError("Room ki check-in aur check-out tareekh chahiye.")
+        raise ShaadiError("The room's check-in and check-out dates are needed.")
     if co <= ci:
-        raise ShaadiError("Check-out check-in ke baad hona chahiye.")
+        raise ShaadiError("Check-out must be after check-in.")
     cap = _int(capacity, 2)
     if cap < 1 or cap > 20:
-        raise ShaadiError("Ek room mein 1-20 log.")
+        raise ShaadiError("A room holds 1-20 people.")
     n = max(1, min(60, _int(count, 1)))
     out = []
     with _LOCK, session() as s:
@@ -943,7 +943,7 @@ def room_add(tenant: str, wedding: str, place: str, label: str = "", capacity=No
             s.add(r)
             s.flush()
             out.append(_room_view(r, []))
-    return {"rooms": out, "say": f"{n} room ({place}) {ci} se {co} tak block mein jode. Hotel ki booking / advance alag card se."}
+    return {"rooms": out, "say": f"Added {n} room(s) ({place}) to the block, {ci} to {co}. The hotel booking / advance needs a separate card."}
 
 
 def _stay(g: ShaadiGuest, r: ShaadiRoom) -> tuple[date, date]:
@@ -959,23 +959,23 @@ def room_assign(tenant: str, wedding: str, guest: str, room: str = "", remove: b
         g = _guest(s, tenant, w, guest)
         if remove:
             g.room_id = ""
-            return {"say": f"{g.name} ka room hata diya."}
+            return {"say": f"Removed {g.name}'s room."}
         rooms = s.scalars(select(ShaadiRoom).where(ShaadiRoom.wedding_id == w.id)).all()
         r = next((x for x in rooms if room in (x.id, x.label)), None)
         if r is None:
-            raise ShaadiError(f"Room '{room}' nahi mila.")
+            raise ShaadiError(f"Room '{room}' not found.")
         a, b = _stay(g, r)
         ci, co = _date(r.check_in), _date(r.check_out)
         if a < ci or b > co or b <= a:
-            raise ShaadiError(f"{g.name} {a} se {b} rukenge; room {r.label} sirf {ci} se {co} tak block hai.")
+            raise ShaadiError(f"{g.name} stays {a} to {b}; room {r.label} is blocked only {ci} to {co}.")
         others = [x for x in s.scalars(select(ShaadiGuest).where(ShaadiGuest.wedding_id == w.id, ShaadiGuest.room_id == r.id)).all()
                   if x.id != g.id]
         d = a
         while d < b:
             heads = g.adults + g.kids + sum(o.adults + o.kids for o in others if _stay(o, r)[0] <= d < _stay(o, r)[1])
             if heads > r.capacity:
-                raise ShaadiError(f"Room {r.label} ({r.place}) mein {d} ki raat {heads} log ho jaayenge, jagah {r.capacity} ki hai. "
-                                  "Overbooking nahi karenge: doosra room chuniye.")
+                raise ShaadiError(f"Room {r.label} ({r.place}) would have {heads} people on the night of {d}; it holds {r.capacity}. "
+                                  "No overbooking: choose another room.")
             d += timedelta(days=1)
         g.room_id = r.id
         g.needs_room = True
@@ -992,8 +992,8 @@ def rooms(tenant: str, wedding: str) -> dict:
         need = [{"id": g.id, "name": g.name, "heads": g.adults + g.kids, "arrive": g.arrive, "depart": g.depart}
                 for g in gs if g.needs_room and not g.room_id]
     return {"rooms": out, "waiting": need, "free_beds": sum(r["free"] for r in out),
-            "say": f"{len(out)} room, {sum(r['free'] for r in out)} jagah khali; {len(need)} mehmaan ko abhi room nahi mila.",
-            "note": "Hotel / homestay ki asli booking unke front office se (Hoola ke Front office / Homestay Sahayak jodte hain)."}
+            "say": f"{len(out)} room(s), {sum(r['free'] for r in out)} places free; {len(need)} guest(s) have no room yet.",
+            "note": "The actual hotel / homestay booking is made with their front office (Hoola's Front office / Homestay host can connect)."}
 
 
 # ---------------------------------------------------------------- guest travel (hands over to the Travel Sahayak)
@@ -1012,17 +1012,17 @@ def travel_list(tenant: str, wedding: str) -> dict:
                                                "trip": t.get("trip", "")})
     out = [{"from": k.split("|")[0], "arrive": k.split("|")[1], "guests": v, "heads": sum(x["heads"] for x in v)}
            for k, v in sorted(groups.items())]
-    return {"groups": out, "say": f"{len(out)} shahar se mehmaan aa rahe hain." if out else "Bahar se aane wale mehmaan nahi jode.",
-            "note": "Train / flight / bus ke liye Travel Sahayak (IRCTC 60 din pehle 8 baje khulta hai). Booking aur paise aapke tap se."}
+    return {"groups": out, "say": f"Guests are coming from {len(out)} cities." if out else "No out-of-town guests added.",
+            "note": "For train / flight / bus use the Travel agent (IRCTC opens 60 days ahead at 8 am). Booking and payment only with your tap."}
 
 
 def to_trip(tenant: str, wedding: str, from_city: str, actor: str = "owner", conv: str = "") -> dict:
     """Make a DRAFT trip in the Travel Sahayak for one city's guests (names only, never IDs)."""
     if not is_owner(actor):
-        raise ShaadiError("Trip sirf owner ke kehne par.")
+        raise ShaadiError("A trip is made only when the owner asks.")
     groups = [g for g in travel_list(tenant, wedding)["groups"] if g["from"].lower() == (from_city or "").lower()]
     if not groups:
-        raise ShaadiError(f"{from_city} se koi mehmaan nahi.")
+        raise ShaadiError(f"No guests from {from_city}.")
     with session() as s:
         w = _wed(s, tenant, wedding)
         ds = _dates(w)
@@ -1030,7 +1030,7 @@ def to_trip(tenant: str, wedding: str, from_city: str, actor: str = "owner", con
     names = [x["name"] for g in groups for x in g["guests"]]
     arrive = min((g["arrive"] for g in groups if g["arrive"]), default="") or ((ds[0] - timedelta(days=1)).isoformat() if ds else "")
     from ..travel import service as TS
-    trip = TS.new_trip(tenant, text=f"{title}: {from_city} se {dest} shaadi ke liye {len(names)} mehmaan", origin=from_city,
+    trip = TS.new_trip(tenant, text=f"{title}: {len(names)} guests from {from_city} to {dest} for the wedding", origin=from_city,
                        destination=dest, start_date=arrive, travellers=[{"name": n} for n in names], kind="family",
                        actor=actor, conv=conv)
     tid = (trip.get("trip") or {}).get("id") or (trip.get("trip") or {}).get("number") or ""
@@ -1042,8 +1042,8 @@ def to_trip(tenant: str, wedding: str, from_city: str, actor: str = "owner", con
                 t = _j(row.travel, {})
                 t["trip"] = tid
                 row.travel = _dump(t)
-    return {"trip": trip.get("trip"), "say": f"Travel Sahayak mein {from_city} -> {dest} ki trip ({len(names)} log) bani; "
-                                             "options aur booking wahan, aapke tap se."}
+    return {"trip": trip.get("trip"), "say": f"A trip {from_city} -> {dest} ({len(names)} people) was created with the Travel agent; "
+                                             "options and booking happen there, with your tap."}
 
 
 # ---------------------------------------------------------------- vendors
@@ -1068,7 +1068,7 @@ def _vendor(s, tenant: str, w: ShaadiWedding, ref: str) -> ShaadiVendor:
     hits = [v for v in rows if R.vendor_kind(ref) == v.kind and ref.lower() in R.VENDOR_KINDS.get(v.kind, "").lower()]
     if len(hits) == 1:
         return hits[0]
-    raise ShaadiError(f"Vendor '{ref}' nahi mila.")
+    raise ShaadiError(f"Vendor '{ref}' not found.")
 
 
 def _clean_schedule(rows: list | None, quote: float | None, old: list | None = None) -> list[dict]:
@@ -1081,18 +1081,18 @@ def _clean_schedule(rows: list | None, quote: float | None, old: list | None = N
         if amt is None and _num(r.get("pct")) is not None and quote is not None:
             amt = r2(quote * _num(r.get("pct")) / 100)
         if amt is None or amt <= 0:
-            raise ShaadiError(f"Payment '{r.get('label') or i + 1}' ki rakam chahiye (vendor ne jo kaha). Hoola rakam nahi gadhta.")
+            raise ShaadiError(f"Payment '{r.get('label') or i + 1}' needs an amount (what the vendor said). Hoola does not make up amounts.")
         due = _date(r.get("due"))
         if r.get("due") and not due:
-            raise ShaadiError(f"Tareekh samajh nahi aayi: {r.get('due')}")
+            raise ShaadiError(f"Could not read the date: {r.get('due')}")
         prev = old_by.get(r.get("id")) or {}
         if prev.get("status") in ("approved", "paid") and abs((prev.get("amount") or 0) - amt) > 0.5:
-            raise ShaadiError(f"'{prev.get('label')}' pe aapki haan ho chuki hai; uski rakam ab nahi badlegi.")
-        out.append({"id": r.get("id") or "p" + secrets.token_hex(3), "label": R.clean(r.get("label"), 60) or f"Kist {i + 1}",
+            raise ShaadiError(f"'{prev.get('label')}' already has your approval; its amount can no longer change.")
+        out.append({"id": r.get("id") or "p" + secrets.token_hex(3), "label": R.clean(r.get("label"), 60) or f"Installment {i + 1}",
                     "amount": r2(amt), "due": _iso(due), "status": prev.get("status", "planned"), "paid_amount": prev.get("paid_amount"),
                     "ref": prev.get("ref", ""), "paid_on": prev.get("paid_on", "")})
     if quote is not None and out and sum(x["amount"] for x in out) > quote + 0.5:
-        raise ShaadiError(f"Kiston ka jod {_rs(sum(x['amount'] for x in out))} quote {_rs(quote)} se zyada hai.")
+        raise ShaadiError(f"The installments add up to {_rs(sum(x['amount'] for x in out))}, more than the quote {_rs(quote)}.")
     return out
 
 
@@ -1102,7 +1102,7 @@ def vendor_add(tenant: str, wedding: str, name: str = "", kind: str = "", phone:
     """The quote is HER word (what the vendor quoted). Per-plate x plates is worked out only from her two numbers."""
     ph = R.phone(phone)
     if phone and not ph:
-        raise ShaadiError("Vendor ka phone 10 ankon ka chahiye.")
+        raise ShaadiError("The vendor's phone number must have 10 digits.")
     p = R.dowry_problem(f"{name} {quote_note} {notes}")
     if p:
         raise ShaadiError(p)
@@ -1113,12 +1113,12 @@ def vendor_add(tenant: str, wedding: str, name: str = "", kind: str = "", phone:
         v = _vendor(s, tenant, w, vendor) if vendor else None
         if v is None:
             if not name:
-                raise ShaadiError("Vendor ka naam chahiye.")
+                raise ShaadiError("The vendor's name is needed.")
             v = ShaadiVendor(tenant_id=tenant, wedding_id=w.id, name=R.clean(name, 120), kind=R.vendor_kind(kind or name))
             s.add(v)
         elif v.status in ("booked", "done") and (quote is not None or per_plate is not None or plates is not None):
-            raise ShaadiError(f"{v.name} book ho chuka; daam badalna hai to naya quote card (vendor ka likhit quote) chahiye: "
-                              "pehle status 'quoted' karne ke liye owner se baat karein.")
+            raise ShaadiError(f"{v.name} is already booked; to change the price a new quote card (the vendor's written quote) is needed: "
+                              "ask the owner to set the status back to 'quoted' first.")
         if name and v.name != R.clean(name, 120):
             v.name = R.clean(name, 120)
         if kind:
@@ -1130,7 +1130,7 @@ def vendor_add(tenant: str, wedding: str, name: str = "", kind: str = "", phone:
             for x in functions:
                 f = _fn(fns, str(x))
                 if f is None and str(x).lower() not in ("sab", "all"):
-                    raise ShaadiError(f"Function '{x}' nahi mila.")
+                    raise ShaadiError(f"Function '{x}' not found.")
                 if f:
                     ids.append(f["id"])
             v.functions = _dump(ids)
@@ -1141,11 +1141,11 @@ def vendor_add(tenant: str, wedding: str, name: str = "", kind: str = "", phone:
         if quote not in (None, ""):
             q = _num(quote)
             if q is None or q <= 0:
-                raise ShaadiError("Quote ki rakam sahi nahi.")
+                raise ShaadiError("The quote amount is not valid.")
             v.quote = r2(q)
         elif v.quote is None and v.per_plate and v.plates:
             v.quote = r2(v.per_plate * v.plates)
-            warns.append(f"Quote = {_rs(v.per_plate)} x {v.plates} plate = {_rs(v.quote)} (aapke diye number se). GST alag hai ya shamil, vendor se likhit lijiye.")
+            warns.append(f"Quote = {_rs(v.per_plate)} x {v.plates} plate = {_rs(v.quote)} (from the numbers you gave). Get it in writing from the vendor whether GST is extra or included.")
         if quote_note:
             v.quote_note = R.clean(quote_note, 500)
         if notes:
@@ -1158,7 +1158,7 @@ def vendor_add(tenant: str, wedding: str, name: str = "", kind: str = "", phone:
         for o in s.scalars(select(ShaadiVendor).where(ShaadiVendor.wedding_id == w.id, ShaadiVendor.kind == v.kind,
                                                      ShaadiVendor.status.in_(("booked", "waiting")))).all():
             if o.id != v.id and (set(_j(o.functions, [])) or {f["id"] for f in fns}) & mine and v.kind not in ("other", "transport"):
-                warns.append(f"{R.VENDOR_KINDS.get(v.kind)} ke liye {o.name} pehle se {o.status} hai.")
+                warns.append(f"{o.name} is already {o.status} for {R.VENDOR_KINDS.get(v.kind)}.")
         if v.phone:
             my_dates = {f.get("date") for f in fns if f["id"] in mine and f.get("date")}
             for o in s.scalars(select(ShaadiVendor).where(ShaadiVendor.tenant_id == tenant, ShaadiVendor.phone == v.phone,
@@ -1172,10 +1172,10 @@ def vendor_add(tenant: str, wedding: str, name: str = "", kind: str = "", phone:
                 odates = {f.get("date") for f in ofn if (not _j(o.functions, []) or f["id"] in _j(o.functions, [])) and f.get("date")}
                 both = sorted(my_dates & odates)
                 if both:
-                    warns.append(f"{v.name} {ow.number} mein bhi {', '.join(both)} ko book hai.")
+                    warns.append(f"{v.name} is also booked in {ow.number} on {', '.join(both)}.")
         view = _vendor_view(s, v, fns)
     return {"vendor": view, "warnings": warns, "say": f"{view['name']} ({view['kind_label']}): {view['quote_text']}."
-            + (" Dhyaan: " + " ".join(warns) if warns else "")}
+            + (" Note: " + " ".join(warns) if warns else "")}
 
 
 def vendors(tenant: str, wedding: str) -> dict:
@@ -1200,20 +1200,20 @@ def _card_view(c: ShaadiCard) -> dict:
 
 def _fn_line(fns: list[dict], ids: list[str]) -> list[str]:
     pick = [f for f in fns if not ids or f["id"] in ids]
-    return [f"{f['name']} {f.get('date') or '(tareekh baaki)'}" for f in pick]
+    return [f"{f['name']} {f.get('date') or '(date pending)'}" for f in pick]
 
 
 def _show(s, tenant: str, kind: str, params: dict) -> tuple[dict, float]:
     """Exactly what the card shows, rebuilt from the data as it is NOW (so a change after the card makes it stale)."""
     w = s.get(ShaadiWedding, params["wedding"])
     if w is None:
-        raise ShaadiError("Shaadi nahi mili.")
+        raise ShaadiError("Wedding not found.")
     fns = _j(w.functions, [])
     base = {"wedding": w.number, "title": w.title}
     if kind in ("vendor_book", "vendor_pay"):
         v = s.get(ShaadiVendor, params["vendor"])
         if v is None or v.wedding_id != w.id:
-            raise ShaadiError("Vendor nahi mila.")
+            raise ShaadiError("Vendor not found.")
         sch = _j(v.schedule, [])
         if kind == "vendor_book":
             adv = next((x for x in sch if "advance" in x["label"].lower() or "booking" in x["label"].lower()), sch[0] if sch else None)
@@ -1225,7 +1225,7 @@ def _show(s, tenant: str, kind: str, params: dict) -> tuple[dict, float]:
             return show, (adv["amount"] if adv else 0.0)
         item = next((x for x in sch if x["id"] == params.get("item")), None)
         if item is None:
-            raise ShaadiError("Yeh kist nahi mili.")
+            raise ShaadiError("This installment was not found.")
         show = {**base, "vendor": v.name, "kind": R.VENDOR_KINDS.get(v.kind, v.kind), "phone": v.phone, "item": item["label"],
                 "amount": item["amount"], "due": item["due"], "quote": v.quote,
                 "paid_before": sum(x.get("paid_amount") or 0 for x in sch if x.get("status") == "paid")}
@@ -1240,7 +1240,7 @@ def _show(s, tenant: str, kind: str, params: dict) -> tuple[dict, float]:
             return {**base, "client": w.client, "client_phone": w.client_phone, **q}, 0.0
         stg = q["stages"][params["stage"]] if 0 <= params.get("stage", -1) < len(q["stages"]) else None
         if stg is None:
-            raise ShaadiError("Yeh stage nahi mila.")
+            raise ShaadiError("This stage was not found.")
         return {**base, "client": w.client, "client_phone": w.client_phone, "stage": stg["label"], "amount": stg["amount"],
                 "total": q["total"]}, 0.0
     if kind == "message":
@@ -1248,7 +1248,7 @@ def _show(s, tenant: str, kind: str, params: dict) -> tuple[dict, float]:
         text = params["text"]
         return {**base, "audience": params.get("audience_say", ""), "text": text, "count": len(rec),
                 "recipients": [{"id": r["id"], "name": r["name"], "phone": r["phone"]} for r in rec], "skipped": skipped}, 0.0
-    raise ShaadiError("Card ka kind nahi pehchana.")
+    raise ShaadiError("Unknown card kind.")
 
 
 def _make_card(tenant: str, wedding_id: str, kind: str, params: dict, actor: str, conv: str, key: str = "") -> dict:
@@ -1261,7 +1261,7 @@ def _make_card(tenant: str, wedding_id: str, kind: str, params: dict, actor: str
             if key and p.get("_key") == key:
                 if c.hash == h:
                     return {"card": _card_view(c), "existing": True, "status": "needs_tap",
-                            "say": f"{c.number} ka card pehle se aapki haan ka intezaar kar raha hai."}
+                            "say": f"Card {c.number} is already waiting for your approval."}
                 c.status = "stale"
         st = _st(s, tenant)
         st.card_seq += 1
@@ -1279,17 +1279,17 @@ def _say_card(view: dict) -> str:
     k = view["kind"]
     if k == "vendor_book":
         adv = sh.get("advance")
-        return (f"{view['number']}: {sh['vendor']} ({sh['kind']}) {_rs(sh.get('quote'))} book karna" +
-                (f", advance {_rs(adv['amount'])}" if adv else "") + " - aapki haan ka card bheja hai.")
+        return (f"{view['number']}: {sh['vendor']} ({sh['kind']}) {_rs(sh.get('quote'))} to book" +
+                (f", advance {_rs(adv['amount'])}" if adv else "") + " - a card has been sent for your approval.")
     if k == "vendor_pay":
-        return f"{view['number']}: {sh['vendor']} ko '{sh['item']}' {_rs(sh['amount'])} dena - aapki haan ka card bheja hai."
+        return f"{view['number']}: pay {sh['vendor']} '{sh['item']}' {_rs(sh['amount'])} - a card has been sent for your approval."
     if k == "spend":
-        return f"{view['number']}: {sh['what']} {_rs(sh['amount'])} kharch - aapki haan ka card bheja hai."
+        return f"{view['number']}: expense {sh['what']} {_rs(sh['amount'])} - a card has been sent for your approval."
     if k == "client_quote":
-        return f"{view['number']}: client {sh.get('client')} ko quote {_rs(sh.get('total'))} - aapki haan ka card bheja hai."
+        return f"{view['number']}: quote {_rs(sh.get('total'))} to client {sh.get('client')} - a card has been sent for your approval."
     if k == "client_pay":
-        return f"{view['number']}: client se '{sh['stage']}' {_rs(sh['amount'])} maangna - aapki haan ka card bheja hai."
-    return f"{view['number']}: {sh.get('count')} logon ko message - aapki haan ka card bheja hai (bhejengi aap)."
+        return f"{view['number']}: ask the client for '{sh['stage']}' {_rs(sh['amount'])} - a card has been sent for your approval."
+    return f"{view['number']}: message to {sh.get('count')} people - a card has been sent for your approval (you send it yourself)."
 
 
 def _card_out(tenant: str, out: dict, conv: str) -> dict:
@@ -1304,9 +1304,9 @@ def book_request(tenant: str, wedding: str, vendor: str, actor: str = "owner", c
         w = _wed(s, tenant, wedding)
         v = _vendor(s, tenant, w, vendor)
         if v.quote is None:
-            raise ShaadiError(f"{v.name} ka quote (vendor ne jo daam bataya) pehle likhiye. Hoola daam nahi gadhta.")
+            raise ShaadiError(f"Enter the quote for {v.name} first (the price the vendor gave). Hoola does not make up prices.")
         if v.status in ("booked", "done"):
-            raise ShaadiError(f"{v.name} pehle se book hai.")
+            raise ShaadiError(f"{v.name} is already booked.")
         wid, vid = w.id, v.id
     out = _make_card(tenant, wid, "vendor_book", {"vendor": vid}, actor, conv, key=f"book:{vid}")
     with _LOCK, session() as s:
@@ -1320,15 +1320,15 @@ def pay_request(tenant: str, wedding: str, vendor: str, item: str = "", actor: s
         w = _wed(s, tenant, wedding)
         v = _vendor(s, tenant, w, vendor)
         if v.status not in ("booked", "done"):
-            raise ShaadiError(f"{v.name} abhi book nahi hua; pehle booking ka card.")
+            raise ShaadiError(f"{v.name} is not booked yet; the booking card comes first.")
         sch = _j(v.schedule, [])
         it = next((x for x in sch if item and (x["id"] == item or item.lower() in x["label"].lower())), None)
         if it is None:
             it = next((x for x in sch if x["status"] == "planned"), None) if not item else None
         if it is None:
-            raise ShaadiError("Kaunsi kist? (vendor ki payment schedule mein jodiye)")
+            raise ShaadiError("Which installment? (add it to the vendor's payment schedule)")
         if it["status"] in ("approved", "paid"):
-            raise ShaadiError(f"'{it['label']}' par pehle hi haan / payment ho chuki.")
+            raise ShaadiError(f"'{it['label']}' is already approved / paid.")
         wid, vid, iid = w.id, v.id, it["id"]
     return _card_out(tenant, _make_card(tenant, wid, "vendor_pay", {"vendor": vid, "item": iid}, actor, conv, key=f"pay:{vid}:{iid}"), conv)
 
@@ -1337,7 +1337,7 @@ def spend_request(tenant: str, wedding: str, what: str, amount, head: str = "", 
                   actor: str = "owner", conv: str = "") -> dict:
     amt = _num(amount)
     if amt is None or amt <= 0:
-        raise ShaadiError("Kharche ki rakam chahiye (bill / quote se).")
+        raise ShaadiError("The expense amount is needed (from the bill / quote).")
     p = R.dowry_problem(f"{what} {payee}")
     if p:
         raise ShaadiError(p)
@@ -1345,7 +1345,7 @@ def spend_request(tenant: str, wedding: str, what: str, amount, head: str = "", 
         w = _wed(s, tenant, wedding)
         f = _fn(_j(w.functions, []), fn) if fn else None
         if fn and f is None:
-            raise ShaadiError(f"Function '{fn}' nahi mila.")
+            raise ShaadiError(f"Function '{fn}' not found.")
         wid = w.id
     params = {"what": R.clean(what, 200), "amount": r2(amt), "head": head if head in R.HEADS else ("other" if head else ""),
               "function": f["id"] if f else "", "payee": R.clean(payee, 80)}
@@ -1359,7 +1359,7 @@ def _quote_numbers(st: ShaadiSettings, w: ShaadiWedding, params: dict) -> dict:
         amt = _num(x.get("amount")) if isinstance(x, dict) else None
         nm = R.clean(x.get("name"), 120) if isinstance(x, dict) else ""
         if not nm or amt is None:
-            blanks.append(f"'{nm or '?'}' ki rakam")
+            blanks.append(f"the amount for '{nm or '?'}'")
             continue
         lines.append({"name": nm, "amount": r2(amt)})
     budget = _j(w.budget, {}).get("total")
@@ -1367,7 +1367,7 @@ def _quote_numbers(st: ShaadiSettings, w: ShaadiWedding, params: dict) -> dict:
     fee_note = ""
     if st.fee_mode == "percent":
         if not budget:
-            blanks.append("shaadi ka budget (fee % ke liye)")
+            blanks.append("the wedding budget (for the fee %)")
         else:
             fee = r2(budget * st.fee_value / 100)
             fee_note = f"{st.fee_value:g}% of budget {_rs(budget)}"
@@ -1375,7 +1375,7 @@ def _quote_numbers(st: ShaadiSettings, w: ShaadiWedding, params: dict) -> dict:
         fee = r2(st.fee_value)
         fee_note = "flat planning fee"
     if st.fee_mode == "none" and not lines:
-        blanks.append("planning fee (Niyam mein fee_mode) ya quote ki lines")
+        blanks.append("a planning fee (fee_mode in Rules) or quote lines")
     sub = r2(fee + sum(x["amount"] for x in lines))
     gst = r2(sub * st.gst_pct / 100) if st.gstin else 0.0
     total = r2(sub + gst)
@@ -1388,7 +1388,7 @@ def _quote_numbers(st: ShaadiSettings, w: ShaadiWedding, params: dict) -> dict:
     valid = (clock().date() + timedelta(days=st.validity_days)).isoformat()
     return {"fee": fee, "fee_note": fee_note, "lines": lines, "subtotal": sub, "gst_pct": st.gst_pct if st.gstin else 0, "gst": gst,
             "total": total, "stages": amounts, "valid_until": valid if not params.get("valid_until") else params["valid_until"],
-            "blanks": blanks, "gst_note": "" if st.gstin else "GSTIN nahi diya: GST nahi lagaya."}
+            "blanks": blanks, "gst_note": "" if st.gstin else "No GSTIN given: GST not added."}
 
 
 def quote_request(tenant: str, wedding: str, lines: list | None = None, actor: str = "owner", conv: str = "") -> dict:
@@ -1396,13 +1396,13 @@ def quote_request(tenant: str, wedding: str, lines: list | None = None, actor: s
         w = _wed(s, tenant, wedding)
         st = _st(s, tenant)
         if st.mode != "agency":
-            raise ShaadiError("Client quote sirf agency mode mein (Niyam: mode agency).")
+            raise ShaadiError("A client quote is only for agency mode (Rules: mode agency).")
         if not w.client:
-            raise ShaadiError("Client ka naam pehle likhiye.")
+            raise ShaadiError("Enter the client's name first.")
         valid = (today(tenant) + timedelta(days=st.validity_days)).isoformat()
         q = _quote_numbers(st, w, {"lines": lines or [], "valid_until": valid})
         if q["blanks"]:
-            raise ShaadiError("Quote ke liye yeh chahiye: " + "; ".join(q["blanks"]) + ". Hoola daam nahi gadhta.")
+            raise ShaadiError("The quote needs: " + "; ".join(q["blanks"]) + ". Hoola does not make up prices.")
         wid = w.id
     return _card_out(tenant, _make_card(tenant, wid, "client_quote", {"lines": lines or [], "valid_until": valid}, actor, conv,
                                         key="client_quote"), conv)
@@ -1414,7 +1414,7 @@ def client_pay_request(tenant: str, wedding: str, stage: int = 0, actor: str = "
         acc = [c for c in s.scalars(select(ShaadiCard).where(ShaadiCard.wedding_id == w.id, ShaadiCard.kind == "client_quote",
                                                             ShaadiCard.status == "approved")).all()]
         if not acc:
-            raise ShaadiError("Pehle client quote par aapki haan chahiye.")
+            raise ShaadiError("The client quote needs your approval first.")
         params = {**_j(acc[-1].ref, {}), "stage": int(stage)}
         params.pop("_key", None)
         wid = w.id
@@ -1430,7 +1430,7 @@ def _recipients(s, w: ShaadiWedding, params: dict) -> tuple[list[dict], list[str
             if params.get("kind") and v.kind != params["kind"]:
                 continue
             if not v.phone:
-                skipped.append(f"{v.name} (phone nahi)")
+                skipped.append(f"{v.name} (no phone)")
                 continue
             out.append({"id": v.id, "name": v.name, "phone": v.phone})
         return out, skipped
@@ -1448,10 +1448,10 @@ def _recipients(s, w: ShaadiWedding, params: dict) -> tuple[list[dict], list[str
         if params.get("pending") and not f and all(v != "pending" for v in _j(g.rsvp, {}).values()) and _j(g.rsvp, {}):
             continue
         if g.no_messages:
-            skipped.append(f"{g.name} (message nahi chahte)")
+            skipped.append(f"{g.name} (does not want messages)")
             continue
         if not g.phone:
-            skipped.append(f"{g.name} (phone nahi)")
+            skipped.append(f"{g.name} (no phone)")
             continue
         out.append({"id": g.id, "name": g.name, "phone": g.phone})
     out.sort(key=lambda x: x["name"].lower())
@@ -1470,7 +1470,7 @@ RSVP_ASK = {"hinglish": "Namaste {name} ji, {fn} ({when}) mein aap aa payenge? K
             "english": "Dear {name}, will you be able to join us for {fn} ({when})? How many of you? Just reply yes / no. - {host}"}
 
 
-def invite_text(tenant: str, wedding: str, kind: str = "invite", fn: str = "", lang: str = "hinglish", host: str = "") -> dict:
+def invite_text(tenant: str, wedding: str, kind: str = "invite", fn: str = "", lang: str = "english", host: str = "") -> dict:
     """Text from the wedding's REAL facts only. Anything missing stays a [blank] (and blocks sending)."""
     with session() as s:
         w = _wed(s, tenant, wedding)
@@ -1478,27 +1478,27 @@ def invite_text(tenant: str, wedding: str, kind: str = "invite", fn: str = "", l
         st = _st(s, tenant)
         pick = [f for f in fns if not fn or f is _fn(fns, fn)]
         if fn and not pick:
-            raise ShaadiError(f"Function '{fn}' nahi mila.")
-        hostname = R.clean(host, 80) or (w.client if st.mode == "agency" else "") or "[aapka naam]"
+            raise ShaadiError(f"Function '{fn}' not found.")
+        hostname = R.clean(host, 80) or (w.client if st.mode == "agency" else "") or "[your name]"
 
         def when(f):
-            parts = [f.get("date") or "[tareekh]", f.get("start") or "[samay]", f.get("venue") or w.venue or "[jagah]"]
+            parts = [f.get("date") or "[date]", f.get("start") or "[time]", f.get("venue") or w.venue or "[venue]"]
             return ", ".join(parts)
         lines = "\n".join(f"• {f['name']}: {when(f)}" for f in pick)
         if kind == "rsvp":
-            tmpl = RSVP_ASK.get(lang, RSVP_ASK["hinglish"])
+            tmpl = RSVP_ASK.get(lang, RSVP_ASK["english"])
             f = pick[0] if pick else None
-            text = tmpl.format(name="{name}", fn=f["name"] if f else "shaadi", when=when(f) if f else "[tareekh]", host=hostname)
+            text = tmpl.format(name="{name}", fn=f["name"] if f else "the wedding", when=when(f) if f else "[date]", host=hostname)
         else:
-            tmpl = INVITE.get(lang, INVITE["hinglish"])
-            text = tmpl.format(name="{name}", bride=w.bride or "[dulhan]", groom=w.groom or "[dulha]", lines=lines, host=hostname)
+            tmpl = INVITE.get(lang, INVITE["english"])
+            text = tmpl.format(name="{name}", bride=w.bride or "[bride]", groom=w.groom or "[groom]", lines=lines, host=hostname)
     blanks = re.findall(r"\[[^\]]+\]", text)
-    return {"text": text, "blanks": blanks, "say": "Draft taiyaar" + (f"; khaali: {', '.join(sorted(set(blanks)))}" if blanks else "") + ".",
-            "note": "Card ka design chahiye to Brand Sahayak (action invite_design)."}
+    return {"text": text, "blanks": blanks, "say": "Draft ready" + (f"; blank: {', '.join(sorted(set(blanks)))}" if blanks else "") + ".",
+            "note": "For a card design, use the Brand Assistant (action invite_design)."}
 
 
 def message_request(tenant: str, wedding: str, text: str = "", kind: str = "invite", to: str = "guests", fn: str = "", side: str = "",
-                    pending: bool = False, guests_: list | None = None, lang: str = "hinglish", vendor_kind: str = "",
+                    pending: bool = False, guests_: list | None = None, lang: str = "english", vendor_kind: str = "",
                     actor: str = "owner", conv: str = "") -> dict:
     """Every message to guests / vendors is a card; on her tap she gets one WhatsApp / SMS draft link per person and sends herself."""
     if not text:
@@ -1507,9 +1507,9 @@ def message_request(tenant: str, wedding: str, text: str = "", kind: str = "invi
     p = R.dowry_problem(text)
     if p:
         raise ShaadiError(p)
-    blanks = [b for b in re.findall(r"\[[^\]]+\]", text) if b != "[hataya]"]
+    blanks = [b for b in re.findall(r"\[[^\]]+\]", text) if b != "[removed]"]
     if blanks:
-        raise ShaadiError("Message mein khaali jagah hai: " + ", ".join(sorted(set(blanks))) + ". Pehle bhariye.")
+        raise ShaadiError("The message has blanks: " + ", ".join(sorted(set(blanks))) + ". Fill them in first.")
     with session() as s:
         w = _wed(s, tenant, wedding)
         wid = w.id
@@ -1518,19 +1518,19 @@ def message_request(tenant: str, wedding: str, text: str = "", kind: str = "invi
             aud.append("booked vendors" + (f" ({vendor_kind})" if vendor_kind else ""))
         else:
             if side:
-                aud.append({"bride": "dulhan ki taraf", "groom": "dulhe ki taraf"}.get(side, side))
+                aud.append({"bride": "bride's side", "groom": "groom's side"}.get(side, side))
             if fn:
-                aud.append(f"{fn} ke mehmaan")
+                aud.append(f"{fn} guests")
             if pending:
-                aud.append("jinka jawab baaki")
+                aud.append("no reply yet")
             if guests_:
-                aud.append(f"{len(guests_)} chune hue")
+                aud.append(f"{len(guests_)} selected")
     params = {"text": text, "to": to, "fn": fn, "side": side, "pending": bool(pending), "guests": list(guests_ or []),
-              "kind": R.vendor_kind(vendor_kind) if vendor_kind else "", "audience_say": ", ".join(aud) or "saare mehmaan"}
+              "kind": R.vendor_kind(vendor_kind) if vendor_kind else "", "audience_say": ", ".join(aud) or "all guests"}
     with session() as s:
         rec, _sk = _recipients(s, s.get(ShaadiWedding, wid), params)
     if not rec:
-        raise ShaadiError("Kisi ko bhejne layak phone nahi mila.")
+        raise ShaadiError("No one has a phone number to send to.")
     return _card_out(tenant, _make_card(tenant, wid, "message", params, actor, conv, key=f"msg:{R.digest(params)[:16]}"), conv)
 
 
@@ -1540,7 +1540,7 @@ def challenge(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(ShaadiCard, card_id)
         if c is None or c.tenant_id != tenant or c.status != "waiting":
-            raise ShaadiError("Yeh card ab baaki nahi hai.")
+            raise ShaadiError("This card is no longer pending.")
         view = _card_view(c)
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
@@ -1552,7 +1552,7 @@ def challenge(tenant: str, card_id: str) -> dict:
         chid = ch.id
     sh = view["show"]
     return {"challenge_id": chid, "message": msg, "expires_at": exp.isoformat(),
-            "show": {"title": f"Shaadi {view['number']}", "amount": view["amount_text"], "payee": sh.get("vendor") or sh.get("payee") or ""}}
+            "show": {"title": f"Wedding {view['number']}", "amount": view["amount_text"], "payee": sh.get("vendor") or sh.get("payee") or ""}}
 
 
 def _verify_fingerprint(tenant: str, card_id: str, digest: str, proof: dict | None) -> None:
@@ -1569,17 +1569,17 @@ def _verify_fingerprint(tenant: str, card_id: str, digest: str, proof: dict | No
 def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: str = "", proof: dict | None = None,
            by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise ShaadiError("Yeh faisla sirf aapke tap se (app ka card).")
+        raise ShaadiError("This decision is made only by your tap (the card in the app).")
     with session() as s:
         c = s.get(ShaadiCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise ShaadiError("Card nahi mila.")
+            raise ShaadiError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"{c.number} pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"{c.number} is already '{c.status}'."}
         params = _j(c.ref, {})
         kind = c.kind
         if not card_hash or card_hash != c.hash:
-            raise ShaadiError("Card badal gaya hai; naya card dekhiye.")
+            raise ShaadiError("The card has changed; look at the new card.")
         try:
             show, _amt = _show(s, tenant, kind, params)
         except ShaadiError:
@@ -1589,7 +1589,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
             c.status = "stale"
         money = c.money
     if stale:
-        raise ShaadiError("Card banne ke baad cheezein badal gayi (daam / kist / mehmaan); naya card banwaiye.")
+        raise ShaadiError("Things changed after the card was made (price / installment / guests); ask for a new card.")
     if yes and money:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1608,8 +1608,8 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
                 if yes:
                     sh = show or {}
                     adv = sh.get("advance")
-                    text = (f"Namaste {v.name} ji, {w.title} ke liye aapki booking pakki: " + ", ".join(sh.get("functions", []))
-                            + f". Tay rakam {_rs(v.quote)}." + (f" Advance {_rs(adv['amount'])} hum bhej rahe hain." if adv else ""))
+                    text = (f"Hello {v.name}, your booking for {w.title} is confirmed: " + ", ".join(sh.get("functions", []))
+                            + f". Agreed amount {_rs(v.quote)}." + (f" We are sending the advance of {_rs(adv['amount'])}." if adv else ""))
                     result["draft"] = {"text": text, "wa": _wa(v.phone, text), "sms": _sms(v.phone, text)}
                     if adv:
                         sch = _j(v.schedule, [])
@@ -1625,10 +1625,10 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
                         x["status"] = "approved" if yes else "planned"
                 v.schedule = _dump(sch)
             if yes:
-                result["pay_note"] = "Hoola paise nahi bhejta: aap apne UPI / bank se dijiye, phir 'Maine de diya' (UTR) dabaiye."
-            _log(w, f"{c.number} {'haan' if yes else 'nahi'}: {v.name}", "Owner")
+                result["pay_note"] = "Hoola does not send money: pay from your own UPI / bank, then tap 'I have paid' (UTR)."
+            _log(w, f"{c.number} {'yes' if yes else 'no'}: {v.name}", "Owner")
         elif kind == "spend":
-            _log(w, f"{c.number} {'haan' if yes else 'nahi'}: {params['what']} {_rs(params['amount'])}", "Owner")
+            _log(w, f"{c.number} {'yes' if yes else 'no'}: {params['what']} {_rs(params['amount'])}", "Owner")
         elif kind == "message" and yes:
             sh = show or {}
             links = []
@@ -1636,7 +1636,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
                 t = sh["text"].replace("{name}", r["name"].split()[0] if r["name"] else "")
                 links.append({"id": r["id"], "name": r["name"], "wa": _wa(r["phone"], t), "sms": _sms(r["phone"], t)})
             result["links"] = links
-            result["note"] = "Har naam par tap karke WhatsApp / SMS se aap khud bhejiye; Hoola apne aap nahi bhejta."
+            result["note"] = "Tap each name and send it yourself by WhatsApp / SMS; Hoola does not send on its own."
         result_kind = kind
         c.result = _dump(result)
         view = _card_view(c)
@@ -1645,14 +1645,14 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         pdf = quote_pdf(tenant, card_id)
         f = _store(tenant, f"{view['number']}_wedding_quote.pdf", pdf, "application/pdf", conv, f"{wtitle} quote")
         sh = view["show"]
-        text = f"Namaste {sh.get('client')} ji, {wtitle} ki planning ka quote {_rs(sh.get('total'))} (PDF saath mein), {sh.get('valid_until')} tak."
+        text = f"Hello {sh.get('client')}, the planning quote for {wtitle} is {_rs(sh.get('total'))} (PDF attached), valid until {sh.get('valid_until')}."
         result.update({"file_id": f.get("file_id", ""), "draft": {"text": text, "wa": _wa(cphone, text), "sms": _sms(cphone, text)}})
     if yes and result_kind == "client_pay":
         sh = view["show"]
         up = _upi(tenant, sh["amount"], f"{wnum} {sh['stage']}")
-        text = f"Namaste {sh.get('client')} ji, {wtitle}: '{sh['stage']}' ki rakam {_rs(sh['amount'])}." + (f" UPI: {up}" if up else "")
+        text = f"Hello {sh.get('client')}, {wtitle}: the amount for '{sh['stage']}' is {_rs(sh['amount'])}." + (f" UPI: {up}" if up else "")
         result.update({"upi": up, "draft": {"text": text, "wa": _wa(cphone, text), "sms": _sms(cphone, text)},
-                       "note": "Client apne app se aapko bhejega; Hoola paise nahi leta."})
+                       "note": "The client pays you from their own app; Hoola does not take money."})
     if result_kind in ("client_quote", "client_pay"):
         with session() as s:
             c = s.get(ShaadiCard, card_id)
@@ -1666,19 +1666,19 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
                     sent = _j(g.invite_sent, [])
                     sent.append(card_id)
                     g.invite_sent = _dump(sent[-20:])
-    say = f"{view['number']}: " + ("haan, " + {"vendor_book": "booking pakki; vendor ko message draft aur advance aap bhejiye.",
-                                               "vendor_pay": "theek; payment aap apne UPI / bank se kijiye, phir 'Maine de diya'.",
-                                               "spend": "kharch maana.", "client_quote": "quote PDF + client ke liye message draft taiyaar.",
-                                               "client_pay": "client ke liye message draft + UPI link (aap bhejiye).",
-                                               "message": f"{len(result.get('links', []))} drafts taiyaar, aap bhejiye."}[result_kind]
-                                    if yes else "nahi.")
+    say = f"{view['number']}: " + ("approved - " + {"vendor_book": "booking confirmed; you send the vendor the message draft and the advance.",
+                                               "vendor_pay": "okay; pay from your own UPI / bank, then tap 'I have paid'.",
+                                               "spend": "expense accepted.", "client_quote": "quote PDF + a message draft for the client are ready.",
+                                               "client_pay": "a message draft for the client + UPI link (you send it).",
+                                               "message": f"{len(result.get('links', []))} drafts ready, you send them."}[result_kind]
+                                    if yes else "declined.")
     return {"card": view, "say": say, **result}
 
 
 def mark_paid(tenant: str, wedding: str, vendor: str, item: str = "", amount=None, ref: str = "", actor: str = "owner") -> dict:
     """Her word that SHE paid (after her Haan). Hoola records it; never moves money."""
     if not is_owner(actor):
-        raise ShaadiError("Payment ka hisaab sirf owner likhti hain.")
+        raise ShaadiError("Only the owner records payments.")
     with _LOCK, session() as s:
         w = _wed(s, tenant, wedding)
         v = _vendor(s, tenant, w, vendor)
@@ -1686,35 +1686,35 @@ def mark_paid(tenant: str, wedding: str, vendor: str, item: str = "", amount=Non
         it = next((x for x in sch if item and (x["id"] == item or item.lower() in x["label"].lower())), None) or \
             next((x for x in sch if x["status"] == "approved"), None)
         if it is None:
-            raise ShaadiError("Is vendor ki koi kist aapki haan ke baad baaki nahi.")
+            raise ShaadiError("This vendor has no approved installment pending.")
         if it["status"] != "approved":
-            raise ShaadiError(f"'{it['label']}' par pehle aapki haan (card) chahiye.")
+            raise ShaadiError(f"'{it['label']}' needs your approval (card) first.")
         amt = _num(amount) if amount not in (None, "") else it["amount"]
         it.update({"status": "paid", "paid_amount": r2(amt), "ref": R.clean(ref, 40)[-12:], "paid_on": today(tenant).isoformat()})
         v.schedule = _dump(sch)
         if v.quote is not None and sum(x.get("paid_amount") or 0 for x in sch if x["status"] == "paid") >= v.quote - 0.5:
             v.status = "done"
-        _log(w, f"{v.name}: {it['label']} {_rs(amt)} diya", "Owner")
+        _log(w, f"{v.name}: {it['label']} {_rs(amt)} paid", "Owner")
         view = _vendor_view(s, v, _j(w.functions, []))
-    short = " (kist se kam)" if amt < it["amount"] - 0.5 else ""
-    return {"vendor": view, "say": f"{view['name']}: {it['label']} {_rs(amt)} diya darj{short}. Baaki {_rs(view['due'])}."}
+    short = " (less than the installment)" if amt < it["amount"] - 0.5 else ""
+    return {"vendor": view, "say": f"{view['name']}: {it['label']} {_rs(amt)} recorded as paid{short}. Remaining {_rs(view['due'])}."}
 
 
 def spend_paid(tenant: str, card_id: str, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise ShaadiError("Sirf owner.")
+        raise ShaadiError("Owner only.")
     with _LOCK, session() as s:
         c = s.get(ShaadiCard, card_id)
         if c is None or c.tenant_id != tenant or c.kind != "spend":
-            raise ShaadiError("Kharche ka card nahi mila.")
+            raise ShaadiError("The expense card was not found.")
         if c.status != "approved":
-            raise ShaadiError("Pehle is kharche par aapki haan chahiye.")
+            raise ShaadiError("This expense needs your approval first.")
         c.status = "done"
         r = _j(c.result, {})
         r["ref"] = R.clean(ref, 40)[-12:]
         r["paid_on"] = today(tenant).isoformat()
         c.result = _dump(r)
-        return {"card": _card_view(c), "say": f"{c.number} diya darj."}
+        return {"card": _card_view(c), "say": f"{c.number} recorded as paid."}
 
 
 def cards(tenant: str, wedding: str = "", status: str = "") -> list[dict]:
@@ -1731,7 +1731,7 @@ def quote_pdf(tenant: str, card_id: str) -> bytes:
     with session() as s:
         c = s.get(ShaadiCard, card_id)
         if c is None or c.tenant_id != tenant or c.kind != "client_quote":
-            raise ShaadiError("Quote nahi mila.")
+            raise ShaadiError("Quote not found.")
         st = _st(s, tenant)
         sh = _j(c.show, {})
         final = c.status == "approved"
@@ -1758,7 +1758,7 @@ def quote_pdf(tenant: str, card_id: str) -> bytes:
 def budget_set(tenant: str, wedding: str, amount, head: str = "", fn: str = "", actor: str = "owner") -> dict:
     v = _num(amount)
     if v is None or v < 0:
-        raise ShaadiError("Budget ki rakam chahiye.")
+        raise ShaadiError("The budget amount is needed.")
     with _LOCK, session() as s:
         w = _wed(s, tenant, wedding)
         b = _j(w.budget, {})
@@ -1772,7 +1772,7 @@ def budget_set(tenant: str, wedding: str, amount, head: str = "", fn: str = "", 
             if fn:
                 f = _fn(_j(w.functions, []), fn)
                 if f is None:
-                    raise ShaadiError(f"Function '{fn}' nahi mila.")
+                    raise ShaadiError(f"Function '{fn}' not found.")
                 key = f["id"]
             b.setdefault("heads", {}).setdefault(key, {})[h] = r2(v)
         w.budget = _dump(b)
@@ -1787,7 +1787,7 @@ def budget(tenant: str, wedding: str) -> dict:
         fns = _j(w.functions, [])
         b = _j(w.budget, {})
         names = {f["id"]: f["name"] for f in fns}
-        names["all"] = "Poori shaadi"
+        names["all"] = "Whole wedding"
         table: dict[str, dict[str, dict]] = {}
 
         def cell(k, h):
@@ -1819,21 +1819,21 @@ def budget(tenant: str, wedding: str) -> dict:
                 rows.append({"function": names.get(k, k), "head": h, "head_label": R.VENDOR_KINDS.get(h, h.title()),
                              "planned": r2(x["planned"]), "committed": r2(x["committed"]), "paid": r2(x["paid"]), "over": bool(over)})
                 if over:
-                    warns.append(f"{names.get(k, k)} / {R.VENDOR_KINDS.get(h, h)}: {_rs(x['committed'])} pakka, budget {_rs(x['planned'])}.")
+                    warns.append(f"{names.get(k, k)} / {R.VENDOR_KINDS.get(h, h)}: {_rs(x['committed'])} committed, budget {_rs(x['planned'])}.")
         tot = {"planned_total": b.get("total"), "planned_heads": r2(sum(r["planned"] for r in rows)),
                "committed": r2(sum(r["committed"] for r in rows)), "paid": r2(sum(r["paid"] for r in rows))}
         if b.get("total") and tot["committed"] > b["total"]:
-            warns.append(f"Pakka kharch {_rs(tot['committed'])} kul budget {_rs(b['total'])} se zyada.")
+            warns.append(f"Committed spend {_rs(tot['committed'])} is more than the total budget {_rs(b['total'])}.")
     rows.sort(key=lambda r: (r["function"], r["head"]))
     return {"rows": rows, **tot, "warnings": warns,
-            "say": f"Budget {_rs(b.get('total'))}; pakka {_rs(tot['committed'])}; diya {_rs(tot['paid'])}." + (" " + " ".join(warns[:3]) if warns else "")}
+            "say": f"Budget {_rs(b.get('total'))}; committed {_rs(tot['committed'])}; paid {_rs(tot['paid'])}." + (" " + " ".join(warns[:3]) if warns else "")}
 
 
 # ---------------------------------------------------------------- shagun / gift register (owner only, never shared)
 def gift_add(tenant: str, wedding: str, giver: str, value=None, kind: str = "cash", what: str = "", relation: str = "",
              side: str = "", for_whom: str = "both", fn: str = "", day: str = "", note: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise ShaadiError("Shagun register sirf owner ke liye hai.")
+        raise ShaadiError("The shagun register is for the owner only.")
     p = R.dowry_problem(f"{what} {note} {relation}")
     if p:
         raise ShaadiError(p)
@@ -1841,7 +1841,7 @@ def gift_add(tenant: str, wedding: str, giver: str, value=None, kind: str = "cas
         kind = "item" if what else "cash"
     v = _num(value)
     if kind in ("cash", "upi", "cheque") and v is None:
-        raise ShaadiError("Shagun ki rakam chahiye.")
+        raise ShaadiError("The shagun amount is needed.")
     warns = []
     with _LOCK, session() as s:
         w = _wed(s, tenant, wedding)
@@ -1858,11 +1858,11 @@ def gift_add(tenant: str, wedding: str, giver: str, value=None, kind: str = "cas
                                                                                  ShaadiGift.day == g.day)).all()
                        if x.giver.lower() == g.giver.lower())
             if same >= R.CASH_LIMIT:
-                warns.append(f"{g.giver} se ek din mein {_rs(same)} nakad: Rs 2 lakh ya zyada nakad lena income-tax mein mana hai "
-                             "(purana s.269ST); bank / UPI se lijiye. CA se poochhiye.")
+                warns.append(f"{_rs(same)} in cash from {g.giver} in one day: income tax law does not allow taking Rs 2 lakh or more in cash "
+                             "(old s.269ST); take it by bank / UPI. Ask your CA.")
         gid = g.id
     return {"gift": {"id": gid, "giver": R.mask_name(R.clean(giver, 120)), "kind": kind, "value": v}, "warnings": warns,
-            "say": "Shagun register mein likha." + (" Dhyaan: " + " ".join(warns) if warns else "")}
+            "say": "Recorded in the shagun register." + (" Note: " + " ".join(warns) if warns else "")}
 
 
 def gifts(tenant: str, wedding: str, full: bool = False) -> dict:
@@ -1881,18 +1881,18 @@ def gifts(tenant: str, wedding: str, full: bool = False) -> dict:
         by_side[x["side"]] = r2(by_side.get(x["side"], 0) + (x["value"] or 0))
     return {"gifts": out, "count": len(out), "by_kind": by_kind, "by_side": by_side,
             "total": r2(sum(x["value"] or 0 for x in out)), "private": True,
-            "say": f"{len(out)} shagun / tohfe, kul {_rs(sum(x['value'] or 0 for x in out))}. Yeh list sirf aapke liye hai."}
+            "say": f"{len(out)} shagun / gifts, total {_rs(sum(x['value'] or 0 for x in out))}. This list is only for you."}
 
 
 def gift_remove(tenant: str, gift_id: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise ShaadiError("Sirf owner.")
+        raise ShaadiError("Owner only.")
     with _LOCK, session() as s:
         g = s.get(ShaadiGift, gift_id)
         if g is None or g.tenant_id != tenant:
-            raise ShaadiError("Entry nahi mili.")
+            raise ShaadiError("Entry not found.")
         s.delete(g)
-    return {"say": "Hata diya."}
+    return {"say": "Removed."}
 
 
 def gift_list_pdf(tenant: str, wedding: str, for_whom: str = "bride") -> bytes:
@@ -1920,10 +1920,10 @@ def gift_list_pdf(tenant: str, wedding: str, for_whom: str = "bride") -> bytes:
 def gift_list_file(tenant: str, wedding: str, for_whom: str = "bride", actor: str = "owner", conv: str = "") -> dict:
     """The presents list as HER file (only she gets it; it is never sent anywhere by Hoola)."""
     if not is_owner(actor):
-        raise ShaadiError("Shagun register sirf owner ke liye hai.")
+        raise ShaadiError("The shagun register is for the owner only.")
     pdf = gift_list_pdf(tenant, wedding, for_whom)
     f = _store(tenant, f"presents_list_{for_whom}.pdf", pdf, "application/pdf", conv, "List of presents")
-    return {"file_id": f.get("file_id", ""), "say": "Tohfon ki list PDF aapki file mein; dulha-dulhan dono sign karein (Dowry Prohibition Rules 1985)."}
+    return {"file_id": f.get("file_id", ""), "say": "The list of presents PDF is in your files; both bride and groom should sign it (Dowry Prohibition Rules 1985)."}
 
 
 # ---------------------------------------------------------------- registration checklist + invite design
@@ -1939,10 +1939,10 @@ def registration(tenant: str, wedding: str) -> dict:
     last = ds[-1] if ds else None
     out = {"law": r["law"], "items": r["items"], "state_note": R.STATE_NOTES.get(code or "", ""),
            "by": (last + timedelta(days=90)).isoformat() if last and code == "MH" else "",
-           "note": "Sirf checklist: asli niyam registrar office / vakil batayenge. Hoola koi application file nahi karta.",
-           "say": f"{r['law']}: {len(r['items'])} kaagaz ki list." + (" " + R.STATE_NOTES[code] if code in R.STATE_NOTES else "")}
+           "note": "A checklist only: the registrar's office / a lawyer will tell you the actual rules. Hoola does not file any application.",
+           "say": f"{r['law']}: a list of {len(r['items'])} documents." + (" " + R.STATE_NOTES[code] if code in R.STATE_NOTES else "")}
     if law == "sma":
-        out["say"] += " Special Marriage Act mein 30 din pehle notice deni hoti hai."
+        out["say"] += " Under the Special Marriage Act, notice must be given 30 days ahead."
     return out
 
 
@@ -1953,14 +1953,14 @@ def invite_design(tenant: str, wedding: str, fn: str = "", words: str = "", conv
         w = _wed(s, tenant, wedding)
         brief = f"Wedding invitation card: {w.bride} weds {w.groom}. " + t["text"].split("\n", 2)[-1][:600] + (" " + words if words else "")
     if t["blanks"]:
-        brief += " (khaali: " + ", ".join(sorted(set(t["blanks"]))) + ")"
+        brief += " (blank: " + ", ".join(sorted(set(t["blanks"]))) + ")"
     from ..brand import service as BS
     try:
         out = BS.make(tenant, brief=R.clean(brief, 1500), kind="", sizes="whatsapp", conv=conv)
     except Exception as e:
-        raise ShaadiError(f"Brand Sahayak se design nahi bana: {e}")
+        raise ShaadiError(f"The Brand Assistant could not make the design: {e}")
     return {"design": out.get("design") if isinstance(out, dict) else out,
-            "say": "Card ka design Brand Sahayak mein ban raha hai; final artwork wahan aapki haan se."}
+            "say": "The card design is being made in the Brand Assistant; the final artwork there needs your approval."}
 
 
 # ---------------------------------------------------------------- views
@@ -2026,15 +2026,15 @@ def day(tenant: str) -> dict:
                         due_pay.append(f"{w.number} {v.name} {x['label']} {_rs(x['amount'])} ({d.strftime('%d %b')})")
     w_cards = waiting(tenant)
     if soon:
-        parts.append("Is hafte: " + "; ".join(soon[:6]))
+        parts.append("This week: " + "; ".join(soon[:6]))
     if todo:
-        parts.append("Kaam: " + "; ".join(todo[:6]))
+        parts.append("Tasks: " + "; ".join(todo[:6]))
     if due_pay:
-        parts.append("Payment aane wale: " + "; ".join(due_pay[:5]))
+        parts.append("Payments coming up: " + "; ".join(due_pay[:5]))
     if w_cards:
-        parts.append(f"{len(w_cards)} card aapki haan ka intezaar kar rahe")
+        parts.append(f"{len(w_cards)} card(s) waiting for your approval")
     return {"soon": soon, "todo": todo, "payments": due_pay, "waiting": w_cards, "weddings": len(ws),
-            "say": (". ".join(parts) + ".") if parts else "Shaadi ka aaj sab theek."}
+            "say": (". ".join(parts) + ".") if parts else "All good with the weddings today."}
 
 
 def overview(tenant: str) -> dict:
@@ -2046,14 +2046,14 @@ def overview(tenant: str) -> dict:
 # ---------------------------------------------------------------- DPDP forget
 def forget(tenant: str, wedding: str, include_gifts: bool = False, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise ShaadiError("Sirf owner.")
+        raise ShaadiError("Owner only.")
     with _LOCK, session() as s:
         w = _wed(s, tenant, wedding)
         if w.status not in ("done", "cancelled"):
-            raise ShaadiError("Shaadi poori / radd hone ke baad hi mehmaanon ki details mitayi ja sakti hain.")
+            raise ShaadiError("Guest details can be erased only after the wedding is done / cancelled.")
         n = 0
         for i, g in enumerate(s.scalars(select(ShaadiGuest).where(ShaadiGuest.wedding_id == w.id)).all(), 1):
-            g.name, g.phone, g.notes, g.travel, g.city, g.grp = f"Mehmaan {i}", "", "", "{}", "", ""
+            g.name, g.phone, g.notes, g.travel, g.city, g.grp = f"Guest {i}", "", "", "{}", "", ""
             n += 1
         w.client, w.client_phone = ("Client" if w.client else ""), ""
         w.forgotten = True
@@ -2062,8 +2062,8 @@ def forget(tenant: str, wedding: str, include_gifts: bool = False, actor: str = 
             for g in s.scalars(select(ShaadiGift).where(ShaadiGift.wedding_id == w.id)).all():
                 s.delete(g)
                 gn += 1
-        _log(w, f"DPDP: {n} mehmaanon ki details mitayi" + (f", {gn} shagun entry" if gn else ""), "Owner")
-    return {"guests": n, "gifts": gn, "say": f"{n} mehmaanon ke naam / phone / safar mita diye; ginti aur hisaab rahe."}
+        _log(w, f"DPDP: details of {n} guests erased" + (f", {gn} shagun entries" if gn else ""), "Owner")
+    return {"guests": n, "gifts": gn, "say": f"Erased the names / phones / travel of {n} guests; the counts and accounts are kept."}
 
 
 # ---------------------------------------------------------------- worker
@@ -2096,18 +2096,18 @@ def tick(when: datetime | None = None) -> dict:
                         if d and d == on + timedelta(days=1) and _once(s, tenant, f"fn:{f['id']}:{d}"):
                             tl = "; ".join(f"{r['time']} {r['what']}" for r in f.get("timeline", [])[:6])
                             alerts.append({"kind": "tomorrow", "wedding": w.number,
-                                           "say": f"Kal {w.number} {f['name']}" + (f" {f['start']}" if f.get("start") else "")
-                                                  + (f". Timeline: {tl}" if tl else ". Timeline abhi nahi bani.")})
+                                           "say": f"Tomorrow: {w.number} {f['name']}" + (f" {f['start']}" if f.get("start") else "")
+                                                  + (f". Timeline: {tl}" if tl else ". No timeline made yet.")})
                     for c in _checklist_view(w, on):
                         if not c["done"] and c["state"] == "today" and _once(s, tenant, f"cl:{w.id}:{c['id']}:{c['due']}"):
-                            alerts.append({"kind": "checklist", "wedding": w.number, "say": f"{w.number}: aaj tak '{c['what']}'."})
+                            alerts.append({"kind": "checklist", "wedding": w.number, "say": f"{w.number}: due today - '{c['what']}'."})
                     for v in s.scalars(select(ShaadiVendor).where(ShaadiVendor.wedding_id == w.id, ShaadiVendor.status == "booked")).all():
                         for x in _j(v.schedule, []):
                             d = _date(x.get("due"))
                             if x["status"] == "planned" and d and d <= on and _once(s, tenant, f"pay:{v.id}:{x['id']}:{x['due']}"):
                                 alerts.append({"kind": "payment", "wedding": w.number, "vendor": v.id, "item": x["id"],
-                                               "say": f"{w.number}: {v.name} ki '{x['label']}' {_rs(x['amount'])} ka din aa gaya; "
-                                                      "card banau?"})
+                                               "say": f"{w.number}: '{x['label']}' {_rs(x['amount'])} to {v.name} is due today; "
+                                                      "shall I make the card?"})
             for a in alerts:
                 _publish(tenant, "shaadi_alert", a)
                 out["alerts"] += 1
@@ -2124,7 +2124,7 @@ def tick(when: datetime | None = None) -> dict:
                         st.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Shaadi ka aaj sab theek.":
+                if d["say"] != "All good with the weddings today.":
                     _publish(tenant, "shaadi_day", {"say": d["say"], "soon": d["soon"], "todo": d["todo"][:6], "payments": d["payments"][:5]})
                     out["morning"] += 1
         except Exception:
