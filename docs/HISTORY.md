@@ -1051,3 +1051,33 @@ Phase G5 of `docs/LANGGRAPH_TURN_PLAN.md` (bug class 2: told late / twice / neve
 - TESTS: NEW `test_g5_turngraph.py` 11; g0-g4, v0260, v0552, v0652, v0657, v0714, v0722, v0186, v0226, harness2/3, routines, v0649 same off and on (v0554 card khabar 3 reds also fail at v0.783).
 - NOT COVERED: voice late results / card notes / call brain answers (G6); a stopped run that crashed before deliver may have its stopped report told once more; `_recent_said` not consulted on the graph path (a service that posts its own line + a followup could show twice); a long job end still sends 2 phone notifications (goal card + final message); a crash inside `check` after it published could publish again (G1 node re-run gap). FOUND, not fixed, both paths: with kaamwatch on, `goal._waiting_on_job` counts the job's own `goal:` kaam_jobs row as a running job, so a long job can pause up to an hour after its first segment. Nothing verified live. Next: G6 voice as a channel.
 
+
+## v0.789.0 CHHOTA BADLAAV - small exact edits + tiered checks (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4")
+Before: "make the button grey" went through `website action=change` -> Opus wrote the whole section again -> the full
+Chromium matrix + journeys + gates. Lovable changes a few lines (line-replace) and checks only what changed.
+E1 LINE EDITS (`site/lineedit.py`, no model call):
+- `website_dekho what=search` + q: every place the text / colour / class is in the site's code (pages/<page>/<section>.html |
+  css | js + design/kit.css), with file and line (30 shown, total counted).
+- `website action=edit_lines` + site + file + search + replace: one exact replace. The search text must appear EXACTLY once:
+  0 = refused naming the closest lines, 2+ = refused asking for more of the surrounding text, search == replace / empty =
+  refused. The result goes through `code_write` - the same safety cleaner as every build, one Undo step - and returns the diff.
+- `website action=write_file` + file + code: the whole file (rare).
+- The `website` description now says SMALL EXACT CHANGES FIRST; action=change stays for new sections / layout / many parts.
+  Both live in the existing tools (registry count unchanged); Plan / Chat mode still refuse `website` (turnmode).
+E2 TIERED CHECKS:
+- `checks.run(..., only=pages, quick=True)`: only those pages in the browser (scroll width, a11y / contrast, console errors, the
+  page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture / video.
+- `service.save_version(quick=pages)`: used by edit_lines / write_file / a code file / her own-hand preview edit (one section).
+  Needs a FULL report to stand on (else the full check runs); `_quick_merge` replaces only the touched pages' results, keeps
+  every other page, the visitor journeys and Lighthouse items from the last full run; the gates re-run; report `tier: quick`,
+  `checked_pages`, `quick_s`. Edits that pile up while a job runs, Opus code changes and action=change keep the full check.
+- `hosting.blockers` refuses Go live (and the blog's auto-update of a live site) while the last report is quick; her Go live
+  tap (`launch_request`) starts the full check, then the card is hers again.
+- Studio version card: "Quick check of home in 6.2s · the full check runs before going live".
+- Switch `site_quick_checks` (default on).
+MEASURED HERE (real Chromium, the test site): one page quick-checked in 6.2 s, the whole edit 6.3 s - the plan's target was
+< 20 s. The edit itself costs Rs 0; the turn that asks for it is the only model cost (not measured on her server).
+Tests: test_v0789_chhota_badlaav.py (8: search file + line, exact-once edits + refusals + cleaner + Undo, quick check then full
+before live, switch off / no base = full, the merge rule, the agent tool actions + Plan mode, the real Chromium timing, the
+Studio line).
+NOT VERIFIED live: a real model choosing edit_lines for "make the button grey" on her server, and the rupees of that turn.

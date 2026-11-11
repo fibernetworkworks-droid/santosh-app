@@ -690,7 +690,7 @@
       const ok = !st.some(x => x.state === 'error'), chk = M(v.checks);
       const fresh = nowS() - Number(a.ended) < 3600 && ok && S(v.status) === 'ready' && hasVersion(v);
       box.innerHTML = `<details class="actd done"${ACT_OPEN ? ' open' : ''}><summary>${ok ? `<span class="tick" aria-hidden="true">${ico('check', 11)}</span>` : '<span class="xmark" aria-hidden="true">!</span>'}<span><b>${ok ? 'Worked' : 'Stopped'} for ${dur(Number(a.ended) - Number(a.started))} · ${st.filter(x => !x.final).length} steps</b></span><span class="chev" aria-hidden="true">${ico('chev', 14)}</span></summary>${stepList(a)}</details>
-        ${fresh ? `<div class="vcard"><span class="vth" aria-hidden="true"></span><span class="vt"><b>Version ${esc(S(v.version))} is ready</b><span>${chk.passed === true ? 'Every check passed · ' : ''}not live until you publish</span></span>
+        ${fresh ? `<div class="vcard"><span class="vth" aria-hidden="true"></span><span class="vt"><b>Version ${esc(S(v.version))} is ready</b><span>${S(chk.tier) === 'quick' ? `Quick check of ${esc(L(chk.checked_pages).join(', ') || 'this page')}${chk.quick_s != null ? ` in ${esc(S(chk.quick_s))}s` : ''} · the full check runs before going live` : chk.passed === true ? 'Every check passed · not live until you publish' : 'not live until you publish'}</span></span>
           <button class="b dark sm" type="button" data-view="publish">${ico('globe', 14)}Go live…</button></div>
           <div class="sugg"><span>Next, you could</span>${['Add a shop with cart', 'Add online payments', 'Add a Hindi version'].map(t => `<button type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
     } else box.innerHTML = '';
