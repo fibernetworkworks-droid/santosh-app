@@ -122,7 +122,7 @@
       wrap.addEventListener('click', e => {
         if (e.target === wrap || e.target.closest('[data-close]')) { close(); return; }
         if (e.target.closest('[data-use]') && view) { const p = view.pack(); close(); const out = opts.useText ? opts.useText(p) : p.out.prompt;
-          /* BAHI: the ledger learns a prompt was taken (shape only; nothing from an incognito chat). Never blocks her. */
+          /* NATIJA KHATA: the ledger learns a prompt was taken (shape only; nothing from an incognito chat). Never blocks her. */
           api('POST', '/api/prompting/runs', {text: out, brief: p.brief, origin: 'improve', how: 'use', conversation_id: opts.conversationId ? String(opts.conversationId() || '') : ''}).catch(() => {});
           if (opts.onUse) opts.onUse(out, p); return; }
         const pk = e.target.closest('[data-pick]'); if (pk) read(pk.dataset.pick);

@@ -103,7 +103,7 @@
       st.pack = pack; st.savedId = ''; go('#/w');
     } catch (e) { toast(e.message, true); if (btn) { btn.disabled = false; btn.textContent = btn.id === 'hpAgain' ? 'Read my words again' : 'Improve my prompt'; } }
   }
-  /* BAHI: tell the ledger a prompt was taken out (shape only). Never blocks her. */
+  /* NATIJA KHATA: tell the ledger a prompt was taken out (shape only). Never blocks her. */
   function hand(how) {
     const rd = location.hash === '#/ready';
     const body = rd ? {text: st.ready.run.text || st.ready.prompt, section: 'web', recipe_id: st.ready.id || '', how}
@@ -163,7 +163,7 @@
       ${(r.items || []).length ? `<div class="hp-rows">${rows(r.items)}</div>` : '<p class="hp-empty">Nothing saved yet. Make a prompt and press Save to keep it here.</p>'}`);
   }
 
-  /* ---------- results: the ledger (BAHI) ---------- */
+  /* ---------- results: the ledger (NATIJA KHATA) ---------- */
   const GRADE = {kept: 'Kept', kept_after_edit: 'Kept after an edit', redone: 'Redone', dropped: 'Dropped', unused: 'Never used'};
   function runState(r) {
     if (r.grade) return GRADE[r.grade] + (r.grade.startsWith('kept') && !r.by_her ? ' (still there after 3 days)' : '');

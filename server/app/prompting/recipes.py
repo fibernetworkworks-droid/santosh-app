@@ -125,7 +125,7 @@ def listing(section: str = "", q: str = "", limit: int = 30) -> dict[str, Any]:
             hay = (r["title"] + " " + r["makes"] + " " + r["intent"]).lower()
             if all(w in hay for w in words):
                 out.append({k: r[k] for k in ("id", "section", "title", "makes", "blanks", "starter")})
-    try:                                         # BAHI: recipes whose results were kept come first, with the count
+    try:                                         # NATIJA KHATA: recipes whose results were kept come first, with the count
         from . import ledger as L
         rates = L.recipe_rates()
         for r in out:

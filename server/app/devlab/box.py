@@ -157,7 +157,7 @@ def build_base(nocache: bool = False) -> dict[str, Any]:
             "why": "" if rc == 0 else "base image nahi bani (log dekhiye)"}
 
 
-def _limits(network: bool, writable: bool = False) -> list[str]:
+def _limits(network: bool, writable: bool = False, net_name: str = "") -> list[str]:
     """The walls. Nothing here is negotiable by the repo's own code.
 
     `writable` is true for the SETUP step alone, and only because a sealed step cannot leave anything behind: the
@@ -177,12 +177,14 @@ def _limits(network: bool, writable: bool = False) -> list[str]:
             "--env", "PYTHONDONTWRITEBYTECODE=1", "--env", "HOOLA_LAB=1"]
     if not writable:
         args.insert(1, "--read-only")
-    args += ["--network", "bridge"] if network else ["--network", "none"]
+    # Phase 6: `net_name` is the inside-only network whose single way out is the allow-list proxy (devlab/net.py).
+    # It is never a route of the box's own, so it is used instead of "none", never instead of the walls above.
+    args += ["--network", "bridge"] if network else ["--network", net_name or "none"]
     return args
 
 
 def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOUT, network: bool = False,
-           commit_to: str = "", env: dict[str, str] | None = None) -> dict[str, Any]:
+           commit_to: str = "", env: dict[str, str] | None = None, net: dict[str, Any] | None = None) -> dict[str, Any]:
     """Run ONE shell command on a copy of her files inside `image`.
 
     network=False (a check) means there is no route out at all. commit_to != "" keeps the container and commits it as
@@ -194,10 +196,16 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
     keep = bool(commit_to)
     # Writability is DERIVED from commit_to and cannot be asked for: the only reason to let a container keep what it
     # writes is that we are about to commit it. No caller can unseal a check by passing a flag.
-    args = [d, "run", "--name", name] + [a for a in _limits(network, writable=keep) if not (keep and a == "--rm")]
+    net = net if (net and not network and not keep) else None      # a pass through the proxy is for a command, never for setup
+    args = [d, "run", "--name", name] + [a for a in _limits(network, writable=keep, net_name=str((net or {}).get("network") or ""))
+                                         if not (keep and a == "--rm")]
     shell = f'mkdir -p "$HOME" 2>/dev/null || true; {command}'
     for k, v in (env or {}).items():          # her plain per-repo variables (never a secret: refused where they are saved)
         args += ["--env", f"{k}={v}"]
+    for k, v in ((net or {}).get("env") or {}).items():       # where the proxy is (+ which CA to trust when a secret is added outside)
+        args += ["--env", f"{k}={v}"]
+    for m in ((net or {}).get("mounts") or []):
+        args += ["-v", str(m)]
     args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw", image, "bash", "-lc", shell]
     rc, txt, secs = _run(args, timeout + 30)
     timed_out = rc == 124 or f"[timed out after {timeout + 30}s]" in txt

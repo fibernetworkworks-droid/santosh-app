@@ -1,4 +1,4 @@
-"""BAHI - the outcome ledger (plan P4, part 7). One row per prompt she took out of Hoola Prompting, and what happened
+"""NATIJA KHATA - the outcome ledger (plan P4, part 7). One row per prompt she took out of Hoola Prompting, and what happened
 to the result afterwards: kept, kept after an edit, redone, dropped, never used.
 
 What a row holds is SHAPE, never her words: the section, the recipe, which slots were filled and from where, the

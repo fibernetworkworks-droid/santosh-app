@@ -1,0 +1,80 @@
+{
+ "base": "cw8-specific-heat-models",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "dulong-petit",
+   "title": "Copper at 100 K by the Dulong-Petit law",
+   "sample": "copper",
+   "unknown": "C = 3R",
+   "params": {
+    "method": 0
+   },
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, 8th ed., Debye temperature Cu 343 K",
+    "note": "from memory - verify against Kittel's table"
+   },
+   "method": "Dulong-Petit"
+  },
+  {
+   "key": "einstein",
+   "title": "Copper at 100 K by the Einstein model",
+   "sample": "copper, thE = sqrt(3/5) x 343 K = 265.7 K",
+   "unknown": "Einstein C",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, 8th ed., Debye temperature Cu 343 K",
+    "note": "from memory - verify against Kittel's table"
+   },
+   "method": "Einstein"
+  },
+  {
+   "key": "debye-al",
+   "title": "Aluminium at 50 K by the Debye model",
+   "sample": "aluminium, thD = 428 K",
+   "unknown": "Debye C",
+   "params": {
+    "thD": 428.0,
+    "thE": 331.5,
+    "T": 50.0
+   },
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, 8th ed., Debye temperature Al 428 K",
+    "note": "from memory - verify against Kittel's table"
+   }
+  },
+  {
+   "key": "debye-pb",
+   "title": "Lead at 20 K by the Debye model",
+   "sample": "lead, thD = 105 K",
+   "unknown": "Debye C",
+   "params": {
+    "thD": 105.0,
+    "thE": 81.3,
+    "T": 20.0
+   },
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, 8th ed., Debye temperature Pb 105 K",
+    "note": "from memory - verify against Kittel's table"
+   }
+  },
+  {
+   "key": "debye-diamond",
+   "title": "Diamond at 300 K by the Debye model",
+   "sample": "diamond, thD = 2230 K",
+   "unknown": "Debye C",
+   "params": {
+    "thD": 2230.0,
+    "thE": 1727.3,
+    "T": 300.0
+   },
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, 8th ed., Debye temperature diamond 2230 K",
+    "note": "from memory - verify against Kittel's table"
+   }
+  }
+ ]
+}

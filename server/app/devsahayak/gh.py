@@ -201,6 +201,14 @@ class Gh:
         rows += [{**c, "id": f"c{c.get('id')}"} for c in talk if isinstance(c, dict)]
         return rows
 
+    def create_hook(self, full: str, url: str, secret: str, events: list[str]) -> dict[str, Any]:
+        """A repository webhook (her token needs Webhooks: write). GitHub signs every delivery with `secret`."""
+        return self.req("POST", f"/repos/{full}/hooks", {"name": "web", "active": True, "events": events,
+                                                         "config": {"url": url, "content_type": "json", "secret": secret, "insecure_ssl": "0"}})
+
+    def delete_hook(self, full: str, hook_id: int) -> None:
+        self.req("DELETE", f"/repos/{full}/hooks/{int(hook_id)}", ok=(404,))
+
     def branches(self, full: str) -> list[str]:
         out = self.req("GET", f"/repos/{full}/branches", params={"per_page": 100})
         return [str(b.get("name") or "") for b in out if b.get("name")] if isinstance(out, list) else []

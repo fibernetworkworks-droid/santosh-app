@@ -1,0 +1,64 @@
+{
+ "base": "cw8-partition-function-levels",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "fermi-dirac",
+   "title": "Two fermions on three levels: heat capacity",
+   "sample": "Fermi-Dirac counting",
+   "unknown": "C = dU/dT",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "Fermi-Dirac"
+  },
+  {
+   "key": "bose-einstein",
+   "title": "Two bosons on three levels: heat capacity",
+   "sample": "Bose-Einstein counting",
+   "unknown": "C = dU/dT",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "Bose-Einstein"
+  },
+  {
+   "key": "entropy-mb",
+   "title": "Two distinguishable particles on three levels: entropy",
+   "sample": "Maxwell-Boltzmann counting",
+   "unknown": "S = -dF/dT",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "entropy-fd",
+   "title": "Two fermions on four levels: entropy",
+   "sample": "Fermi-Dirac counting, four levels",
+   "unknown": "S = -dF/dT",
+   "params": {
+    "cas": 1,
+    "what": 1,
+    "L": 4
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "Fermi-Dirac"
+  }
+ ]
+}

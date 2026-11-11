@@ -1,4 +1,4 @@
-"""v0.806 BAHI - the outcome ledger (plan P4 of docs/HOOLA_PROMPTING_PLAN.md): one row per prompt she took out of
+"""v0.814 NATIJA KHATA (built as 0.806) - the outcome ledger (plan P4 of docs/HOOLA_PROMPTING_PLAN.md): one row per prompt she took out of
 Hoola Prompting and what happened to the result. Shape only - her words are never stored. No model runs here."""
 import json
 from datetime import timedelta
@@ -202,11 +202,11 @@ def test_routes_and_owner_only_view(lg):
 
 def test_engine_hooks_are_wired(lg):
     main = (REPO / "server" / "app" / "main.py").read_text()
-    for needle in ('L.claim(tenant, "web", brief, str(v["id"]))', '_bahi(tenant, sid, "deleted")',
-                   '_bahi(tenant, _bahi_sid(tenant, ref), "published")', '_bahi(tenant, _bahi_sid(tenant, ref), "edited")',
-                   'L.claim, tenant, "image"', 'L.claim(tenant, "script", body.brief', '_bahi(tenant, item_id, "deleted")',
-                   '_bahi(tenant, item_id, "edited")', 'background.add_task(_bahi_chat', '"thumb_" + body.value',
-                   '_bahi(tenant, "conv:" + conversation_id, "redo")'):
+    for needle in ('L.claim(tenant, "web", brief, str(v["id"]))', '_pled(tenant, sid, "deleted")',
+                   '_pled(tenant, _pled_sid(tenant, ref), "published")', '_pled(tenant, _pled_sid(tenant, ref), "edited")',
+                   'L.claim, tenant, "image"', 'L.claim(tenant, "script", body.brief', '_pled(tenant, item_id, "deleted")',
+                   '_pled(tenant, item_id, "edited")', 'background.add_task(_pled_chat', '"thumb_" + body.value',
+                   '_pled(tenant, "conv:" + conversation_id, "redo")'):
         assert needle in main, needle
     assert "_L.ready(j[\"id\"]" in (REPO / "server/app/create/jobs.py").read_text()
     assert "_L.ready(str(r.id)" in (REPO / "server/app/site/service.py").read_text()
@@ -240,11 +240,11 @@ def test_script_route_and_chat_hooks_end_to_end(lg, monkeypatch):
     line = "Write a warm festival greeting message for my bakery customers with the Diwali timings and a thank you"
     rid2 = lg.hand(t, line, brief("script", ("audience",)))
     monkeypatch.setattr("app.fence.is_incognito", lambda cid: cid == "secret")
-    M._bahi_chat(t, "secret", line)
+    M._pled_chat(t, "secret", line)
     assert row(lg, rid2)["status"] == "handed"                              # an incognito chat claims nothing
-    M._bahi_chat(t, "conv1", line)
+    M._pled_chat(t, "conv1", line)
     assert row(lg, rid2)["status"] == "ready" and " conv:conv1 " in row(lg, rid2)["refs"]
-    M._bahi(t, "conv:conv1", "thumb_up")
+    M._pled(t, "conv:conv1", "thumb_up")
     assert row(lg, rid2)["grade"] == "kept" and row(lg, rid2)["thumb"] == "up"
 
 
@@ -297,6 +297,7 @@ def test_results_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F81
     ctx.close()
 
 
-def test_version():
+    assert APP_VERSION == "0.814.0"
+    assert "0.814.0+813" in (REPO / "pubspec.yaml").read_text()
     from app.main import APP_VERSION
     assert APP_VERSION == "0.806.0"

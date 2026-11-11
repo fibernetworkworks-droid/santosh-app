@@ -103,7 +103,7 @@ body.hp-page{background:#fff;font-family:"Schibsted Grotesk",system-ui,sans-seri
   .hp-bench{grid-template-columns:1fr}.hp-pane.sticky{position:static}
 }
 
-/* BAHI - the Results page */
+/* NATIJA KHATA - the Results page */
 .hp-four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:8px 0 16px}
 .hp-four>div{display:flex;flex-direction:column;gap:4px;min-width:0;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .hp-four span{color:var(--mut);font-size:13.5px}

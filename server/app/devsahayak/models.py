@@ -42,6 +42,15 @@ class DevRepo(Base):
     setup_cmd: Mapped[str | None] = mapped_column(Text, nullable=True)        # her own dependency-install command for this repo (the box's one-time setup)
     test_cmd: Mapped[str | None] = mapped_column(Text, nullable=True)         # her own test command for this repo (always wins, never needs a tap)
     env_vars: Mapped[str | None] = mapped_column(Text, nullable=True)         # {NAME: value} set for every command in the box - NOT for secrets
+    # Phase 6: what a command in the box may reach, and keys that are added OUTSIDE the box (devlab/net.py)
+    net_level: Mapped[str | None] = mapped_column(String(8), nullable=True)   # none (default) | limited | full
+    net_hosts: Mapped[str | None] = mapped_column(Text, nullable=True)        # JSON list of her allowed hosts (for "limited")
+    net_secrets: Mapped[str | None] = mapped_column(Text, nullable=True)      # JSON [{host, header, prefix, sealed, at}] - the value is sealed, never returned
+    # Phase 6: GitHub events for this repo (a repository webhook she, or Hoola with her token, adds on GitHub)
+    hook_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)   # the public id in the webhook address
+    hook_secret: Mapped[str | None] = mapped_column(Text, nullable=True)      # sealed: GitHub signs every delivery with it
+    hook_gh: Mapped[int | None] = mapped_column(Integer, nullable=True)       # the webhook's id on GitHub, when Hoola made it
+    hook_seen: Mapped[str | None] = mapped_column(Text, nullable=True)        # JSON: recent delivery ids (a redelivery never runs twice) + last event
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -101,6 +110,9 @@ class DevTask(Base):
     hint: Mapped[str | None] = mapped_column(Text, nullable=True)               # Phase 5: a suggested next message for her (ghost text), made once when a round ends
     sched_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)   # Phase 5: the scheduled task / trigger that started this session
     pr_notes: Mapped[str | None] = mapped_column(Text, nullable=True)           # Phase 5: reviewers' comments on the PR {seen: [ids], open: [{id, who, path, line, text}]}
+    # Phase 6: multi-repo
+    refs: Mapped[str | None] = mapped_column(Text, nullable=True)             # JSON list of her other repos attached to READ
+    grp: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)   # sessions started together, one per repo to change
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
@@ -127,6 +139,9 @@ class DevSchedule(Base):
     last_note: Mapped[str] = mapped_column(Text, default="")                 # why the last due run did not start (still running, no repo...)
     trigger_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)   # sha256 of the trigger token (the token itself is shown once, never stored)
     trigger_hits: Mapped[str | None] = mapped_column(Text, nullable=True)     # timestamps of recent trigger calls (the hourly limit)
+    # Phase 6: start on a GitHub event instead of (or beside) the clock
+    event: Mapped[str | None] = mapped_column(String(24), nullable=True)      # issue_opened | issue_labeled | pr_opened | ci_failed | push
+    event_filter: Mapped[str | None] = mapped_column(Text, nullable=True)     # JSON {label, branch, who: me | team, team: [logins]}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

@@ -1,0 +1,38 @@
+{
+ "base": "um8-ion-bragg",
+ "rig": "um8-ion-workstation",
+ "chapter": "Nuclear and radiation physics",
+ "variants": [
+  {
+   "key": "lead",
+   "title": "Bragg curve of argon ions in lead (Bethe-Bloch)",
+   "sample": "Lead",
+   "unknown": "the Bragg curve and stopping depth of argon ions in lead",
+   "params": {
+    "ZA": 0.39575,
+    "I": 823.0,
+    "rho": 11.35
+   },
+   "note": "Lead is less dense than gold, so the same ions go deeper in micrometres though the loss per gram is similar.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "krypton",
+   "title": "Bragg curve of krypton ions in gold (Bethe-Bloch)",
+   "sample": "Gold",
+   "unknown": "the Bragg curve and stopping depth of krypton ions in gold",
+   "params": {
+    "z": 36.0,
+    "Mu": 83.9115
+   },
+   "note": "A heavier, more highly charged ion at the same speed per nucleon loses energy faster but also carries more of it: its range in micrometres comes out comparable. Kr-84 mass 83.9115 u.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

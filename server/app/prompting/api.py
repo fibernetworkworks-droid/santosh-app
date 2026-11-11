@@ -158,7 +158,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise HTTPException(404, "No such saved prompt.")
         return {"ok": True}
 
-    # ---- BAHI: the outcome ledger (plan P4). Shape only; her words are never stored.
+    # ---- NATIJA KHATA: the outcome ledger (plan P4). Shape only; her words are never stored.
 
     @r.post("/runs")
     async def run_hand(body: HandBody, tenant: str = Depends(current_tenant)):

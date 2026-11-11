@@ -1611,8 +1611,337 @@ Phase G6 of `docs/LANGGRAPH_TURN_PLAN.md` (bug class 10: call and chat are two e
 - FOUND on the old path (left as is): with the switch off a result returned as the immediate tool answer is also queued as 'That big job is done' late news (the v0.657 hang-up callback runs before `_delegate` resumes).
 - NOT COVERED: declared tools / MCP tools / auto-rescue / hold-OTP flows on a call still run directly, not via the graph; the profile is recorded, not yet applied by the prepare node; after a hang-up the reply stays on the call record (no chat copy - the push opens the call record); spoken claims backed only by declared tools use the old check; nothing verified live (no real Gemini call / restart / phone). Next: G7 default ON + delete the old loop.
 
+## v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; their v0.799-v0.805 took the numbers meanwhile) — network levels with an allow-list proxy, keys added outside the box, GitHub events, multi-repo sessions, the phone screen redrawn (owner: "GO PHASE 6")
 
-## v0.806.0 BAHI - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
+The last phase of `docs/HOOLA_CODE_WEB_PLAN.md`. Five parts. Nothing here changes who decides: opening a PR on a public
+repo, posting a review and merging are still her taps, and every new way to START work makes an ordinary session.
+
+**1. Network levels for the box** (`server/app/devlab/net.py`, `netproxy.py`; switch `dev_net`, default OFF).
+A command in the box had no network at all. Per repo (Settings > the repo > "Network for commands") she now picks:
+No network (default) / Package registries and her hosts / Any public website. At every level above none the box still
+has no route of its own: it is put on a Docker network made with `--internal`, and the one way out is a small allow-list
+proxy in its own container (`hoola-lab-proxy`: read-only, no capabilities, not root, 256 MB) which is also on the
+default bridge. Each command gets its own pass (`net.grant`: id + secret, a rule file the proxy reads, removed when the
+command ends, swept if a command died). The proxy serves only `CONNECT host:443` and `http://host:80`, refuses an IP
+address instead of a name, refuses a host off the list by name ("X is not on this repo's allowed list"), and after
+resolving refuses any private / loopback / link-local / CGNAT address - so a box can never reach her own server, the
+Docker host or a metadata address through it, even on "Any public website". "Limited" always allows 17 package
+registries (PyPI, npm, Maven, Gradle, pub.dev, crates, Go, RubyGems, NuGet, Packagist) and NOT GitHub. A proxy that is
+not running never turns into an open network: the command runs with none and says so. The one-time setup step is
+unchanged (it has the network, as before).
+
+**2. Keys added outside the box** ("network secrets"). Per repo, a key for ONE exact host (header name, optional word
+like Bearer). Typed only on the settings screen (`PUT /repos/{o}/{n}/secrets`), sealed with the vault, returned by no
+route. For that host the proxy answers the box's TLS itself with a certificate for that one host signed by this server's
+own lab CA (`data/devlab/net/ca.pem`; the box is told to trust a bundle, the CA key is never mounted into a box), adds
+the header - replacing whatever the box sent - and makes the real, verified TLS connection. Never on plain http. Other
+hosts are tunnelled untouched. If a host echoes the key back, the engine hides it before the model or the page see it.
+At most 5 a repo.
+
+**3. GitHub events** (`server/app/devsahayak/events.py`; switch `dev_events`, default on). Built as a signed REPOSITORY
+WEBHOOK, not a GitHub App: an App needs her to register one and keep its private key on the server; a webhook gives the
+same events with her existing token. Settings > the repo > "Connect GitHub events": Hoola adds the webhook with her
+token when the token may (Webhooks: write); when it may not, she is shown the address and the secret ONCE to add it
+herself. `POST /api/devsahayak/github/{id}` believes a delivery only when `X-Hub-Signature-256` matches (a wrong id and
+a wrong signature are the same 401), runs a redelivery once, ignores bots and Hoola's own `hoola/` branches. A scheduled
+task can now "start" on: an issue label, a new issue, a new pull request, a CI failure, a push (label / branch filter).
+By default only HER events count (the login the token belongs to); "Anyone in the repo" is honoured on a private repo
+only. The event's own words (an issue title) ride along inside `<trigger_payload>` as data. A new pull request from
+someone else gets a DRAFT review (the existing review flow; posting is her tap). 10 runs an hour per task.
+
+**4. Multi-repo sessions.** Composer "+" > "Add another repo…": "Read it" attaches up to 3 of her other repos to the
+session read-only (`DevTask.refs`; `engine.Session.ensure_ref` puts the default branch under the session's own folder
+with secrets hidden; the model gets ONE extra tool `other_repo` = ls / glob / grep / read; nothing there can be changed,
+committed, pushed or run). "Change it too" (up to 2) starts a LINKED session per repo (`DevTask.grp`), each with its own
+pull request and the same checks, each reading the others; the Session card shows "Same job in …".
+
+**5. The phone screen** (`lib/ui/devsahayak_screen.dart`, redrawn by a parallel agent): title Hoola Code; sessions
+grouped Working / Needs you / Earlier; New session box (text, repo, mode); the session page with folded steps, Thinking
+toggle, changed files + diff sheet, question choices, the suggestion chip, the message box (note / answer / revise),
+Stop, Open the PR, Fix CI, Fix reviewer comments; Scheduled tab with Run now + Pause. Merge keeps the old confirm card
+exactly. Compiled by CI only (no Flutter in the sandbox).
+
+**Also fixed (found by the browser test):** a closed dialog on the Hoola Code page kept its HTML, so a one-time trigger
+token or webhook secret stayed in the page after "Done". Every dialog is emptied when it closes.
+
+**Routes** (under `/api/devsahayak`): PATCH `/repos/{o}/{n}` takes `net_level`, `net_hosts`; PUT `/repos/{o}/{n}/secrets`,
+DELETE `/repos/{o}/{n}/secrets/{host}`; POST / DELETE `/repos/{o}/{n}/events`; GET `/net`; POST `/tasks/start` takes
+`refs`, `also`; schedules take `event`, `filter`; public: POST `/github/{id}`, GET `/labcheck`.
+**Columns** (nullable, self-heal): `DevRepo.net_level / net_hosts / net_secrets / hook_id / hook_secret / hook_gh /
+hook_seen`, `DevSchedule.event / event_filter`, `DevTask.refs / grp`.
+**On her server:** `python -m app.devlab net` (vps-ops job `lab_net_check`) proves the network walls for real: the
+inside-only network + proxy container, a registry reachable, a host off the list refused, no way around the proxy, no
+private address, "none" still sealed, "full" works, and a secret that reaches the host (her own server answers with a
+fingerprint at `/labcheck`) without being anywhere in the box. Only then set `DEV_NET=true`.
+
+**Tests** `server/tests/test_v0799_hoola_code_phase6.py` (10): host / header rules; the proxy run for real with sockets,
+TLS and curl (allow, refuse by name, IP refused, private address refused, no / wrong / expired pass, secret arrives,
+replaces the box's own header, never on http, other hosts untouched); the box argv with a pass (inside-only network,
+every other wall kept, setup never takes a pass); the proxy container's own walls; a pass per command, handed back,
+echoed key hidden, proxy down = no network, `dev_net` off = nothing changes; settings + sealed secret; GitHub events
+(signature, redelivery, hers only, anyone only on private, bots, Hoola's branches, CI failure, draft review, hourly
+limit, connect both ways, disconnect); another repo read and never changed + linked sessions; one browser walk.
+
+**NOT VERIFIED:** the inside-only Docker network and the proxy container have never run (no Docker in the sandbox) -
+that is exactly what `lab_net_check` is for, and why `dev_net` is off; no real GitHub delivery has arrived; the phone
+screen has not been seen on a phone. **Not built:** a GitHub App; one session that opens pull requests in two repos
+(linked sessions do that instead); reference repos are not mounted into the box (read through the tool only); secrets
+work for http(s) APIs only (not a database password); the phone has no settings for network / keys / events.
+Deploy: vps-ops deploy (server-only; no new pip; columns make themselves), then `lab_check`, then `lab_net_check`, then
+`DEV_NET=true` in .env if every line says ok. GitHub events need PUBLIC_BASE_URL (https) on the server.
+
+## v0.807.0 BAHI A0 - the GST & Accounts employee, foundation (built as 0.806; their HOOLA CODE PHASE 6 took 0.806.0 - REBASE PROTOCOL, both kept; owner: "LET WE DEVELOP A FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS OF GST" -> "GO A0")
+
+Plan: `docs/ACCOUNTS_EMPLOYEE_PLAN.md` (A0-A12); research `docs/research/accounts/01-04` (what Hoola has, the market, the rules +
+calendar, the WhiteBooks API). Hoola already had the accountant in seven engines that never talk; A0 is the floor they all stand on.
+
+NEW `server/app/bahi/`:
+- `models.py` - `acc_docs` (the register: one row per (source, source_ref); gstin, period, direction, kind, number, date, party + GSTIN,
+  pos, taxable / CGST / SGST / IGST / cess / tax / total, irn, status confirmed | draft | gone, confidence, reason, problems),
+  `acc_periods` (open | locked per GSTIN + month), `acc_events` (append-only trail with before / after), `acc_gst_conn` (her GSTIN's GSP
+  connection - created now, filled by A1; IRP / EWB passwords sealed, no portal password ever), `acc_wb_calls` (the call meter). Registered
+  in `db.init_db` + `ensure_tables()` self-heal.
+- `rules.py` + `rules/*.json` - rules as DATA: `gst_rates` (slabs to 21 Sep 2025 and GST 2.0 from 22 Sep 2025, HSNS cess listing),
+  `due_dates` (TDS 7th, GSTR-1 11th, IFF 13th, 2B 14th, PF / ESI 15th, GSTR-3B 20th with the LOCK said, PMT-06 25th), `limits` (e-invoice
+  Rs 5 cr / Rs 10 cr + 30 days, IRN cancel 24 h, EWB 180 days / Rs 50,000, Rule 37 180 days, s.16(4) 30 Nov, MSME 15 / 45 days, the
+  July 2025 3B lock, the 3-year bar), `forms_map` (24Q -> 138, 26Q -> 140, 27Q -> 144, 27EQ -> 143, Form 16 -> 130, 16A -> 131, 12BB -> 124,
+  13 -> 128, 15G/H -> 121, 3CA/CB/CD -> Form 26). Every row: `basis` (primary | primary-listing | provider-spec | secondary-confirmed |
+  unverified), `source`, `checked_on`, `review_by`; the loader refuses a row without them; `usable()` = not unverified; `freshness()`
+  (by basis, stale, unverified) for the desk; `slabs_on(date)`; `dues_for(period, scheme, employer, tds)` with days left.
+- `wb.py` - the WhiteBooks client built to their OpenAPI specs (NOT their prose docs): `client_id` / `client_secret` headers per product
+  (gst | einv | ewb, one pair may serve all) + `email` query on every call; sandbox / production host from WHITEBOOKS_ENV; success ONLY on
+  `status_cd == "1"` (HTTP is 200 on failure); `WbError(code, plain message)` - WB_ERR_9001 / 9000, NIC 2150 / 2174, not_configured, cap,
+  rate, bad_reply, network; `safe_url` scrubs password / otp / evcotp from every log line (the EWB password rides a query string); a
+  per-tenant daily cap (`whitebooks_daily_calls` 300) and per-minute guard (`whitebooks_per_minute` 50, under the sandbox's 60) refuse
+  BEFORE the call; every call metered; `shape()` keeps structure, never values; primitives ping, public_search, rettrack, otp_request,
+  auth_token, refresh, ledger_balance, einv_auth, ewb_auth; `find_txn` looks for the OTP transaction id where GSTN puts it.
+- `wbcheck.py` - `python -m app.bahi.wbcheck` / vps-ops `wb_check`: sandbox = ping -> GSTIN search -> filing track -> OTP request -> auth
+  token with the spec's sandbox OTP 575757 -> refresh -> ledger balance -> e-invoice login -> e-way bill login, each PASS / FAIL / SKIP,
+  the reply SHAPES saved to data/bahi/wb_shapes.json (no values); production = the ping only (no taxpayer call, no OTP, ever).
+- `register.py` - adapters (read-only): GST Sahayak `gst_docs`, Thok billed orders + purchases (tax split by intra / inter), office
+  bills, her app + website invoices / credit notes via `appmaker/hisaab.build` (the same numbers her CA gets). `sync(months)` is
+  idempotent (fingerprint), flags the same document from two sources on both rows (purchase "inv" vs "bill" normalised), HOLDS a change
+  to a locked month (row kept, `changed_after_lock` note, trail), marks a row its source dropped `gone` (never deletes), writes the trail;
+  `listing`, `summary` (sales / purchases taxable + GST, credit notes netted, problems), `events` (labelled "GST Sahayak · INV-7 · Kumar
+  Stores", never an internal id), `set_lock`.
+- `service.py` overview (employee status, last + this month, last month's dues falling due now, WhiteBooks status - never a key / the
+  email -, connections without secrets, rules freshness, the trail, the phases list with honest states); `api.py` GET /api/bahi/overview,
+  POST /api/bahi/sync, GET /api/bahi/register, GET /api/bahi/rules, POST /api/bahi/periods/{period}/lock.
+- Settings (config.py): `bahi_enabled`, `bahi_filing` (False - prepare only), `whitebooks_env`, `whitebooks_email`,
+  `whitebooks_{gst,einv,ewb}_client_{id,secret}`, `whitebooks_ip_address`, `whitebooks_daily_calls`, `whitebooks_per_minute`,
+  `whitebooks_timeout_s`, `whitebooks_sandbox_*` (only the check reads them).
+
+Hub: the "Accounts Assistant" row goes live as **GST & Accounts** (does / needs / never), hiring gates no existing tool. Console: its own desk
+`static/console/bahi.js` (view `accountsdesk`; employees.js DESKS accounts -> accountsdesk): hero, tabs Overview (dues with days left and
+"date not yet checked on a government site" where unverified, last / this month tiles, Sync, the trail), Register (month / type / source
+filters, notes on flagged rows, Lock / Unlock a month), Rules (by basis, the unverified list, re-check due), Connection (keys set per
+product, calls today / cap, the last contract check steps, the .env line NAMES when unset), Plan (A0 built, A1 next...). Styles `acd-` on the
+Desk Room `ddk-` scale; the tab row scrolls on a phone.
+
+Tests: `test_v0807_bahi_a0.py` (14) - spec headers + email + sandbox host + meter; failures on HTTP 200 -> plain English; not-configured /
+daily cap / minute guard refuse BEFORE the call; no password / OTP / secret in logs; shapes without values + find_txn; the contract check
+on a mock sandbox + production pings only; rule rows carry source / basis / dates, GST 2.0 slabs, freshness; the month calendar; the register
+(5 documents from 3 engines, idempotent, the double-entered bill flagged on both, a draft order not a document); a locked month holds a
+change, unlock applies it, a dropped row is marked gone, the trail; routes + no secret in any reply; the Hub entry; console wiring + CSS; a
+real-browser walk (hire from the Hub -> Open desk -> Register shows the two flags -> Connection says "Not set" -> Plan), light 1280 + dark 390.
+Pins moved: test_v0317 / test_v0687 used "accounts" as the not-yet-live example (now "telecaller"); test_v0475 stamps 33 -> 34 (bahi.js).
+
+NOT VERIFIED: nothing has talked to the real WhiteBooks sandbox (the keys are not on the VPS yet) - the client is built to the published
+specs and the check exists to pin the real reply shapes the first time it runs. Not built (later phases): the GSTIN connect walk (A1), any
+filing, chat / voice tools, the phone screen.
+
+## v0.808.0 WAPAS - every version can come back, before launch too (built as 0.803; their GAME DEV ENGINE LOOK, HOOLA PROMPTING P1, LANGGRAPH G6, HOOLA CODE PHASE 6 and BAHI A0 took 0.803.0-0.807.0 - REBASE PROTOCOL, all kept; L7 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L7")
+Before: a version kept only its BUILT pages, so "go back" existed only for her live address (hosting.rollback, after
+launch); nothing undid one answer's change, and an edited message could not take the site back first.
+- SOURCE PER VERSION (`site/wapas.py`): `service._make_version` now snapshots the section files and the row's plan, look
+  (tokens + design kit), facts, styles, style, languages into `<site>/snaps/v<N>/` (JSON only; photos / media stay in place).
+- RESTORE ANY VERSION: POST /api/sites/{id}/versions/{v}/restore (and `website action=restore_version`): sections + fields
+  back, the hand-edit Undo stack cleared (it belonged to the other version), then a NEW version "Restored vN" through the
+  normal save (checked) - so History stays a straight line and the restore is undone the same way. Enquiries, orders,
+  app rows are DATA and never touched (said every time). Refused while a build runs; a version made before snapshots
+  says so plainly (it can still be Put live if it was published).
+- BOOKMARKS: `site_versions.bookmark` (nullable column, added by the schema self-heal); POST .../versions/{v}/bookmark
+  {name} (empty removes); a bookmarked version is always in the list, however old.
+- WHAT CHANGED: GET .../versions/{v}/diff?against= (default: the version before it): every changed code file (readable
+  code, unified diff, + / - counts, new / removed) + which design tokens changed; 60k cap.
+- STUDIO: History = Bookmarks, then All versions (current, Live, bookmark name), Changes (inline diff), star, Restore,
+  Put live... (the old live rollback, renamed so the two are not confused). Each reply that made a version: "Version N",
+  Bookmark, Undo this change (back to the version before that answer; restores are never counted as an answer's change).
+  Her message: Edit -> Revert and resend (the site goes back to the version before that message, then the edited words
+  go). The chat redraws when a new version lands so every reply gets its own footer.
+- E7 LIVE VIEW SURVIVES A RESTART (`site/stream.py`): slots are also written to `<SITE_DIR>/_live/<site>.json` (at most
+  once a second while words stream, at once on finish / looks / clear); a restart or a second worker reads them back
+  (sequence number continues, a section that was mid-write is marked stale until the build picks it up again).
+Tests: test_v0808_wapas.py (7: any version back as a new version + undo the restore + refusals, data untouched,
+bookmarks + diff routes, the agent action, the live view after a simulated restart, source wiring, a Playwright walk:
+a change -> Version + Undo this change -> undone; Edit -> Revert and resend; History: Changes, Bookmark, Restore).
+NOT VERIFIED live: a real restart of her server during a build (the restart is simulated by clearing the memory).
+
+
+## v0.809.0 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY" - the first of three, "ALL ONE BY ONE")
+
+Before this, a 3D game meant the model writing a player controller, a camera, touch controls, enemies and a HUD from
+scratch in every game - the place 3D builds break. Now those pieces exist once, written by Hoola and proved.
+
+- **The kit** `server/app/gamedesk/kit/hoola_3d.gd` = the `Hoola3D` autoload (pack `kit3d`, `template.HOOLA_OWN`):
+  `world` (sky, ambient, sun with shadows), `ground`, `block`, `moving_block`, `tree`, `mat`, `model` (her approved 3D
+  model or null), `spawn_player` (walk + jump, keyboard arrows / WASD / Space AND a touch stick + jump button,
+  knock-back, respawn after a fall), `follow_camera` (third person, distance 0 = first person, drag / Q E to look),
+  `coin`, `enemy` (patrol / chase; touch = -1 life, landing on it removes it), `goal`, `hurt`, `make_hud` (coins,
+  lives, messages, the on-screen controls). Signals: coin_taken, player_hit, player_fell, goal_reached, enemy_stomped.
+- **Only in a 3D game.** `kit3d.wants(brief, design)` (3D / 3-D / third-person / first-person / low-poly ...; "2D",
+  "match-3", "30 days" never match). A 2D game's project and prompt are unchanged. For a 3D design `ai._ctx` adds the
+  kit's API to the code / fix / change prompts, and the design prompt shapes a 3D game for the kit.
+- **Proof without a model** (`kit3d.proof`, `python -m app.gamedesk proof3d [--save]`, vps-ops `game_3d_proof`):
+  Hoola's own game Diya Run 3D (`kit/proof_main.gd`, built only from the kit) goes through the real pipeline - guard,
+  headless play, web export, browser playtest - then (1) `play_through`: a test player (`kit/proof_bot.gd`, only in a
+  throwaway copy) starts it, walks a route, jumps the steps and WINS with the same keys a person uses; (2)
+  `browser_touch`: in a real Chromium a tap starts it and the on-screen stick is held until the engine reports a coin;
+  (3) `self_test`: the kit's rules in the engine - a guard's touch costs one life, a stomp removes it, a fall respawns,
+  stick + jump button, coin, lift. `--save` keeps it as a finished game in her list with a private play link.
+- Measured here (Godot 4.7.2 + Chromium): test player won in 6.6 s of game time, 24.4 m walked, 6 of 8 coins, top
+  y 2.8 m, 3 lives left; touch collected 2 coins in a real browser; self-test 6 / 6; web download ~9.7 MB.
+- Found while building: a headless engine has no window, so injected touch events arrive with broken positions -
+  the self-test hands touch events to the kit directly and the real-browser check covers the true path.
+
+Tests: `test_v0809_kit3d.py` 28 (3 need Godot, 1 of those a browser; all ran green here). NOT VERIFIED: no
+MODEL-written 3D game has been built from the kit yet (that needs her server and model credit); the proof game has
+not been played on a real phone.
+
+
+## v0.810.0 PRAYOGSHALA WAVE 8
+
+69 physics set-ups built and walked within tolerance (agents' walks + the lead's final walk, 68 / 68 labs): ug_analog_w8 (21:
+diodes, LED, tunnel diode, BJT h-parameters and switch, push-pull, op-amp response / difference / analog computer, active
+filters, JFET, DAC, ADC, sample-and-hold, 7805, PLL, counter, distortion meter, thermostat, cable noise - one shared analog
+bench), ug_modern_w8 (13: work function, Hg ionisation, e/m Thomson / magnetron / focusing, Millikan both methods, Zeeman,
+Planck, microwaves x2, plus existing Franck-Hertz, iodine, ESR), ug_matter_w8 (15: beta range, K-40, four Bethe-Bloch
+stopping-power labs, XRD, nano XRD, band gap, piezo, Gouy, plus existing Quincke, magnetoresistance, P-E loop, dielectric),
+ug_comp_w8 (19 computational labs on comp4-workstation, every one checked against an exact or independent answer), plus
+pg:millikan-oil-drop. Coverage 456 -> 525 of 807 (school 78.4 / 91.5 %, B.Sc 86.8 %, M.Sc 38.1 %, PhD 28.6 %).
+Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 8".
+
+
+## v0.811.0 GAME FREE LIBRARY - Tool Hub wave 1 (owner: "GO TOOL HUB WAVE 1" - the second of three, "ALL ONE BY ONE")
+
+3D games needed real models and surfaces; until now Hoola could only place a model she uploaded herself. Now three
+free libraries are connected, each through its official route (docs/GAME_TOOL_HUB_PLAN.md rows 47-49).
+
+- **Kenney** - 53 low-poly models (platformer pieces, city blocks and roads, shooter props, racing track + trucks),
+  2.7 MB, kept on Hoola's disk in `server/app/gamedesk/library/kenney/` with `index.json` and `LICENSE-KENNEY.md`.
+  They come from Kenney's own GitHub starter kits (KenneyNL/Starter-Kit-3D-Platformer, -City-Builder, -FPS, -Racing),
+  whose READMEs state the models are CC0. kenney.nl has no API and its download sits behind a donate dialog, so
+  nothing there is automated. Each GLB pointed at a shared `Textures/colormap.png`; Hoola embedded it so every file
+  stands alone. All 53 were loaded in real Godot.
+- **Poly Haven** - public API (api.polyhaven.com, no key, unique User-Agent as its terms ask): models (the 1k glTF +
+  .bin + textures packed into one GLB; over 12 MB is refused as too big for a web game) and textures (1k colour map).
+- **ambientCG** - public API v2: materials; the colour map is taken out of the 1K-JPG zip.
+- `gamedesk/glbpack.py`: `embed` / `pack` put every outside buffer and picture inside the GLB; a uri the caller did
+  not hand in is an error, never a fetch. `facts` reads meshes / triangles / animations from the file itself.
+- `gamedesk/library.py`: `search(q, kind, source)` (a library that is down is named and the others still answer),
+  `get`, `add(tenant, project, source, id, kind, key)`. One network door `_fetch`: https only, a fixed host allowlist
+  checked on every redirect hop, a byte ceiling per download.
+- An added item is a DRAFT asset exactly like her own upload (`source library:<name>`, licence + credit + origin in
+  its history) and enters a game only after her OK. It is never called AI: the game's AI credit line is not triggered,
+  and the provenance page lists it as a library asset with its licence (class `library`). Fixed on the way: her own
+  uploads were classified `unknown` there (the stored source is "her upload", the table said "upload").
+- New asset kind `texture` (512 x 512, palette check off by default, free, only from the library or her upload - a
+  request to generate one is refused). `Hoola3D.paint(node, key, tile_m, fallback)` puts it on a block or the ground
+  (triplanar, so it tiles in metres); `Hoola3D.model(...)` already places an approved model.
+- Where she uses it: Assets page > Free library (search, 3D models / Textures, Add); routes GET / POST
+  `/api/gamestudio/{id}/library`; Hoola's tool `game_assets` action `library` / `library_add`, told to look in the
+  library before making or generating a model.
+
+Tests: `test_v0811_game_library.py` 13 (packer, Kenney files, search with one library down, host allowlist, draft ->
+OK -> in the game and not AI, Poly Haven pack + size refusal, textures, routes, tool, real Godot loading a library
+model + texture through the kit, and the real libraries when HOOLA_LIVE_LIBRARY=1 - run green here). NOT built: Meshy
+(her key and her decision on vendor accounts first), HDRI skies, picture previews in the panel, Kenney 2D / audio packs.
+
+## v0.812.0 ECC AGENTS IN HOOLA CODE (built as 0.794; other sessions took 0.794-0.811 meanwhile (their HOOLA CODE PHASE 5 took 0.798.0, PHASE 6 0.806.0) - REBASE PROTOCOL, all kept)
+Owner (11 Nov 2026), after reading github.com/affaan-m/ECC: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE --- MAKE HOOLA CODE
+MORE POWERFULL AND SMOOTH THUS CAN PERFROM ANY HARD CODING TASK SMOOTLY AND PERFECTLY LIKE CLAUDE CODE".
+
+Before: v0.402-v0.451 had adapted ~20 of ECC's agents as text inside `devsahayak/specialists.py`, used only AROUND a
+round (PR review, CI fix rounds, self-review, plan pass); the v0.787 working-copy engine itself never saw them.
+ECC checked at commit d2ef268 (v2.2.3): only 6 commits after the b38be6a snapshot, all its own CI - nothing to re-sync.
+
+What is new:
+- `server/app/devsahayak/ecc/` - the catalogue. 63 of ECC's 71 agent files condensed and rewritten as text (four
+  parallel agents, one per part file; each prompt 1.5-2.6k chars, credited in its own first line, Claude Code-only parts
+  and anything needing the internet dropped): `reviewers_lang.py` (17: python / typescript / react / vue / flutter /
+  kotlin / java / go / rust / swift / cpp / csharp / fsharp / php / ruby / django / fastapi), `reviewers_more.py` (19:
+  code / security / silent-failure / pr-test / database / commit reviewers, type-design, comment, performance, a11y,
+  agent-evaluator, mle, rag, healthcare, bengali, seo, network-config, opensource-sanitizer, harmonyos), `fixers.py` (16:
+  build-error-resolver + 10 language resolvers, tdd-guide, e2e-runner, refactor-cleaner, code-simplifier, doc-updater),
+  `planners.py` (11: planner, architect, code-architect, spec-miner, network / homelab architects, code-explorer,
+  docs-lookup rewritten for OFFLINE lookup in the box, network-troubleshooter, opensource forker / packager).
+  `ecc.NOT_ADDED` = the 8 left out with reasons (marketing-agent, chief-of-staff, conversation-analyzer,
+  harness-optimizer, loop-operator, gan-planner / generator / evaluator). `rules_text.py` = ECC's rules/ condensed
+  (common + 21 languages). Each agent has a tool level: read (look only) / run (+ bash in the box) / edit (+ edit /
+  write, with the coder's guards).
+- `server/app/devsahayak/subagent.py` - the engine's `agent` tool, Claude Code's subagent shape: a fresh conversation
+  with only the task the coder wrote, the agent's text + its level's tools, the SAME working copy through a copy of
+  `engine.Tools` (secrets hidden, links never followed, workflows refused, read before edit; an agent's reads are not
+  the coder's), ends with `report`. Several read / run agents asked in ONE reply run side by side (threads with the
+  session's model / effort and the copied context); edit agents one by one. Limits `dev_agent_steps` 30,
+  `dev_agent_minutes` 12, `dev_agent_max` 10 a round, `dev_agent_parallel` 4. An agent cannot start agents, push or end
+  the round.
+- `engine.py`: the coder's system prompt gets `AGENTS_HOWTO` (when to explore / plan / fix / review with an agent) +
+  `ecc.roster()` (all 63 in one line each, best fits for this repo first) + `ecc.rules_for()` (the repo's languages,
+  9k chars cap); tool list + `agent`; ECC's pre-commit hook as `ecc.gate` on the round's diff before `done` is accepted
+  (console.log / debugger / breakpoint / pdb / pry / var_dump outside tests and docs, `.only` focused tests, conflict
+  markers, key-looking lines) - ONE clean-up chance, then done is accepted.
+- `specialists.py`: the PR review prompt adds the ECC reviewer for a language / framework the old notes did not cover
+  (React, Vue, C++, C#, PHP, Ruby, F#, Django ...); a CI fix round on C++ / C# logs gets the ECC resolver (new log signs).
+- `GET /api/devsahayak/agents` (roster + left-out list); the page draws `agent` (asked / reported, the report folds
+  open) and `gate` steps, and an agent's edits / commands say "by <agent>".
+- Switches: `dev_ecc_agents`, `dev_ecc_rules`, `dev_ecc_rules_chars`, `dev_ecc_gate` (all on).
+- Tests `server/tests/test_v0812_ecc_agents.py` (11): every ECC agent in or left out with a reason, every prompt
+  adapted (no Claude Code-only words), rules per language, suggestions / roster, the gate, the old review / fix paths
+  on new languages, a REAL round through `engine.run` where the coder asks two agents in one reply (they run in two
+  threads with read / run tools only, their reports come back) and the gate stops a `breakpoint()` before done; an edit
+  agent must read first and cannot touch workflows; the round cap and the switch.
+  Older Hoola Code suites re-run green with it (v0402 x2, v0787 engine incl. real Docker, v0789 safety, tech
+  devsahayak, v0748 / v0768 / v0774 / v0777). test_v0473 `test_coder_routes_mounted` fails as before (an old red).
+  FOUND + FIXED while testing: the gate first judged EVERY file in the diff, so a key file a box command planted (hidden,
+  never shippable, the coder may not change it) refused `done` - the v0789 link / key test went 'explained' in long
+  runs. The gate now judges only files that would ship (not hidden / key files / binaries / links); a test holds it.
+  The roster's path matching was also made 0.08 s for a 4,000-file repo (compiled once, one pass).
+NOT VERIFIED: no real model has driven an agent (scripted Claude only - the sandbox has no key); cost per round with
+agents is not measured (each agent is its own model conversation, so a reviewed round costs more); no browser walk of
+the new step kinds.
+
+
+## v0.813.0 GAME ARENA RUNNABLE (owner: "GO ARENA" - the third of three, "ALL ONE BY ONE")
+
+The Game Arena (v0.454) was built to answer "is a Hoola game any good?" with numbers. It had never run on a real game.
+
+- **Found by reading it before running it:** `arena._one_card` - the function that takes a built game, lets the QA
+  bots play it and writes the score card - looked for the web build in `<version>/web`. No build has ever had that
+  folder: the exporter writes `<version>/build`. Every Arena test replaced `_one_card` with a stand-in, so nothing
+  ever executed the line. The first real run would have reported EVERY game as "no playable build" - 0 % started -
+  and that would have read as "Hoola's games do not work". `duel` had the same line. Both now go through
+  `arena._web`, and `test_v0813_game_arena_real.py` runs the REAL `_one_card` on a real game row.
+- **A free self-check** (`arena.selfcheck`, `python -m app.gamedesk arena check`, vps-ops `game_arena_check`): the
+  500 briefs are checked (500 unique, 20 genres), then Hoola's own proof game (v0.809, no model wrote it) is built
+  for real as the hidden Arena tenant and scored through the same path a run uses - the build is found, the QA bots
+  (idle / monkey / keys) play it, the card is written - with the judge left out (the only part that needs a model).
+  The game is deleted afterwards. A scorer that cannot measure a known-good game says NOT READY and why, before a
+  rupee is spent.
+- **Running it:** `python -m app.gamedesk arena run --n 3 --budget 150` (REAL: the model writes each game, so it
+  spends money and stops at the rupee ceiling), `arena status`; vps-ops `game_arena_try` (3 briefs, Rs 150 ceiling,
+  23-minute limit - starting it is her decision) and `game_arena_status`. `_one_card(..., judge_it=False)` exists
+  for the check.
+- Measured here (Godot 4.7.2 + Chromium, software graphics): the proof game started, loaded in 3.2 s, the bots'
+  inputs changed its state, 0 errors, 3 state keys reported, playable = true; `reached_end` false in 12 s of random
+  play (the game needs 5 coins and a climb, so a random bot not finishing it is expected); fun = NOT ASSESSED.
+
+Tests: `test_v0813_game_arena_real.py` 6 (one in the real engine + browser, run green here) beside the 12 older
+Arena tests. NOT VERIFIED: no real Arena run has happened yet - it needs her server, the model and her go-ahead on
+the spend - so there are still NO quality numbers for any Hoola version, and the 2D / 3D briefs' real pass rate is
+unknown. The brief set (SET_V 1) has no 3D briefs yet.
+
+## v0.814.0 NATIJA KHATA (built as 0.806; their 0.806-0.813 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
 
 What it is: one row per prompt she takes OUT of Hoola Prompting, and what happened to the result afterwards. This is
 the measure the whole feature is judged by, and the data the later phases (recipe order, defaults, self-improvement)
@@ -1629,7 +1958,7 @@ need.
   `event(tenant, ref, ev)`: published / downloaded / copied / sent / thumb_up = kept (kept_after_edit when the result
   was edited), edited, deleted / thumb_down = dropped, redo = redone. Her own keep stands against a later redo; only
   her delete undoes it. `failed(ref)` closes a run without a grade (an engine failure is not her verdict).
-- Hooks (all through `main._bahi`, `_bahi_site`, `_bahi_sid`, `_bahi_chat`; each swallows its own errors):
+- Hooks (all through `main._pled`, `_pled_site`, `_pled_sid`, `_pled_chat`; each swallows its own errors):
   POST /api/sites (both the architect path and the plain path), site first build ready (`site/service.py`, with the
   site's cost_usd), /change + /edit, /launch, DELETE; Create image jobs (`create/jobs.py`: run_meter cost, items as
   extra refs, failure), item delete; the Script writer (/api/create/write, item text edit, delete); a chat message of

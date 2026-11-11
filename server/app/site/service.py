@@ -1989,6 +1989,11 @@ def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: 
         row = s.get(Site, r.id)
         row.version = (row.version or 0) + 1
         ver = row.version
+    try:                                     # v0.808 WAPAS: the version keeps its SOURCE too, so it can come back
+        from . import wapas as WP
+        WP.snapshot(_load(r.id), ver)
+    except Exception:
+        log.exception("version source snapshot failed (the version is still made)")
     vdir = B.out_dir(r.tenant_id, r.id, ver)
     live = B.site_dir(r.tenant_id, r.id) / "live"
     if vdir.exists():
@@ -2013,7 +2018,7 @@ def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: 
                           bytes=sum(p.stat().st_size for p in vdir.rglob("*") if p.is_file()),
                           scores=_jd(scores), passed=bool(report.get("passed"))))
     r = _save(r.id, status="ready", stage="preview", checks=report, scores=scores, board=board, error="")
-    try:                                         # BAHI: the first finished build of a site started from a Hoola Prompting prompt
+    try:                                         # NATIJA KHATA: the first finished build of a site started from a Hoola Prompting prompt
         from ..prompting import ledger as _L
         _L.ready(str(r.id), usd=float(getattr(r, "cost_usd", 0) or 0))
     except Exception:
@@ -3080,10 +3085,17 @@ def get(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)
         v = view(r)
+        from . import wapas as WP
+        rows = list(s.scalars(select(SiteVersion).where(SiteVersion.site_id == r.id)
+                              .order_by(SiteVersion.version.desc()).limit(20)).all())
+        seen = {x.version for x in rows}
+        rows += [x for x in s.scalars(select(SiteVersion).where(SiteVersion.site_id == r.id, SiteVersion.bookmark != "",
+                                                                SiteVersion.bookmark.is_not(None))).all()
+                 if x.version not in seen]          # v0.808 a bookmarked version stays in the list however old
         v["versions"] = [{"version": x.version, "note": x.note, "scores": _j(x.scores, {}), "passed": x.passed,
-                          "bytes": x.bytes, "at": x.created_at.isoformat() if x.created_at else ""}
-                         for x in s.scalars(select(SiteVersion).where(SiteVersion.site_id == r.id)
-                                            .order_by(SiteVersion.version.desc()).limit(20)).all()]
+                          "bytes": x.bytes, "at": x.created_at.isoformat() if x.created_at else "",
+                          "bookmark": x.bookmark or "", "restorable": WP.has(r.tenant_id, r.id, x.version)}
+                         for x in sorted(rows, key=lambda x: -x.version)]
         v["leads"] = s.scalar(select(func.count()).select_from(SiteLead).where(SiteLead.site_id == r.id)) or 0
         v["say"] = _say(v)
         return v

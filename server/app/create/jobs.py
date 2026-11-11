@@ -231,7 +231,7 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                 j["items"].append({k: it[k] for k in ("id", "kind", "title", "mime", "size", "created")} | {"meta": meta})
                 _card(j, title, ext, data, {k: v for k, v in meta.items() if k not in ("lines", "speakers", "voices")})
         j["status"] = "done"
-        if j["kind"] == "image":                 # BAHI: the result is ready; its pictures answer for the run from here on
+        if j["kind"] == "image":                 # NATIJA KHATA: the result is ready; its pictures answer for the run from here on
             try:
                 from ..prompting import ledger as _L
                 _L.ready(j["id"], [i["id"] for i in j["items"]],
