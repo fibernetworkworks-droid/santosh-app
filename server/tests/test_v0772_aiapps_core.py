@@ -21,3 +21,15 @@ def test_core(env):
     t = RT.answer(r, "my order arrived damaged", channel="page")
     print(t)
     assert t["outcome"] == "action"
+
+
+def test_a_secret_is_never_stored(env):
+    from app.aiapps import store as ST, runtime as RT
+    from app.aiapps.models import AiAppMessage
+    from app.db import session
+    a = ST.create("t1", "X", soul={"name": "X", "about": "Shop"})
+    out = RT.answer(ST.row("t1", a["id"]), "my OTP is 482913 please", channel="preview")
+    assert out["outcome"] == "refused"
+    with session() as s:
+        q = s.get(AiAppMessage, out["message_id"]).question
+    assert "482913" not in q and "******" in q

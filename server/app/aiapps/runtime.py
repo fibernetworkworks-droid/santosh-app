@@ -82,12 +82,18 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+_SECRET_VAL = re.compile(r"\b(otp|pin|cvv|password|passcode|pwd)\b(\W{0,6}(?:is|hai|=|:)?\W{0,4})(\S+)", re.I)
+
+
 def _mask(t: str) -> str:
+    """Masked before it is stored: card / Aadhaar / bank / PAN (pii) AND whatever follows an OTP / PIN / password word -
+    a visitor who types 'my OTP is 482913' must never leave that number in her log (found by agent C's review)."""
     try:
         from .. import pii
-        return pii.mask_sensitive(t)
+        t = pii.mask_sensitive(t)
     except Exception:                                   # noqa: BLE001
-        return t
+        pass
+    return _SECRET_VAL.sub(lambda m: m.group(1) + m.group(2) + "******", t)
 
 
 def _secret(t: str) -> bool:
