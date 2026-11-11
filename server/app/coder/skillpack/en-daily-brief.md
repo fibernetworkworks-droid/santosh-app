@@ -68,4 +68,4 @@ say "brief ready" without a printed digest; add a random source
 from outside the syllabus lists without asking.
 
 ALSO ASKED AS (Hinglish asks this skill answers): roz subah ka brief
-chahiye, podcast aur newsletter ka saar do, aaj kya sunna aur padhna hai
+chahiye, podcast aur newsletter ka saar do, kya sunna aur padhna hai
