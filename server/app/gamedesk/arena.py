@@ -401,7 +401,13 @@ def build_one(b: dict[str, Any]) -> tuple[str, float, float]:
     return v["id"], max(0.0, _spent_inr() - before), (time.time() - t0) / 60.0
 
 
-def _one_card(b: dict[str, Any], builder=None) -> dict[str, Any]:
+def _web(g, n: int) -> Path:
+    """Where version n's web build really is. v0.812: this read `<version>/web`, a folder no build ever had (the
+    exporter writes `<version>/build`), so the first real run would have scored EVERY game "no playable build"."""
+    return G._vdir(g, n) / "build"
+
+
+def _one_card(b: dict[str, Any], builder=None, judge_it: bool = True) -> dict[str, Any]:
     from . import bible as B
     gid, inr, mins = (builder or build_one)(b)
     g = G._get(TENANT, gid)
@@ -412,8 +418,8 @@ def _one_card(b: dict[str, Any], builder=None) -> dict[str, Any]:
     bal = None
     if good:
         n = good[-1]["n"]
-        web = G._vdir(g, n) / "web"
-        if web.is_dir():
+        web = _web(g, n)
+        if (web / "index.html").is_file():
             played = play(web, g.orientation, G._pdir(TENANT, gid) / "arena")
         d = dna(G._current_files(g), g.design or "")
     shots = []
@@ -422,7 +428,7 @@ def _one_card(b: dict[str, Any], builder=None) -> dict[str, Any]:
             shots.append(p.read_bytes())
         except OSError:
             pass
-    jd = judge(shots, played, b) if shots else None
+    jd = judge(shots, played, b) if shots and judge_it else None
     return card(b, gid, played, inr, mins, jd, d, bal)
 
 
@@ -485,6 +491,46 @@ def _go(rid: str, builder=None) -> None:
                 r.status, r.ended = "failed", now()
     finally:
         _STOP.discard(rid)
+
+
+def selfcheck() -> dict[str, Any]:
+    """`python -m app.gamedesk arena check` (free, no model): is the Arena able to measure a game on THIS server?
+    The brief set is checked, then Hoola's own proof game (kit3d, no model wrote it) is built for real and scored
+    through the SAME path a run uses (`_one_card`: find the build, the QA bots play it, the card) - without the judge,
+    which is the only part that needs a model. A scorer that cannot find or play a known-good game is broken, and
+    this says so before any rupee is spent on a run."""
+    from . import kit3d
+    ensure_tables()
+    G.ensure_table()
+    out: dict[str, Any] = {"health": G.health()}
+    bs = brief_set()
+    out["briefs"] = {"count": len(bs), "unique": len({b["id"] for b in bs}), "genres": len({b["genre"] for b in bs}), "set": SET_V}
+    out["ok"] = False
+    if not out["health"].get("ready"):
+        out["why"] = "Godot or its web templates are not installed on this server"
+        return out
+    made = kit3d.proof(tenant=TENANT, conv="arena-check", save=True)
+    out["proof_built"] = bool(made.get("ok"))
+    if not made.get("ok") or not made.get("game"):
+        out["why"] = "Hoola's own proof game did not build here"
+        out["proof"] = {k: made.get(k) for k in ("guard", "smoke", "export", "playtest", "played", "touch", "kit")}
+        return out
+    gid = made["game"]["id"]
+    b = {"id": "selfcheck", "genre": "3d_proof", "orientation": "landscape", "brief": kit3d.PROOF_BRIEF}
+    try:
+        c = _one_card(b, builder=lambda _b: (gid, 0.0, 0.0), judge_it=False)
+    finally:
+        try:
+            G.delete(TENANT, gid)
+        except Exception:                               # noqa: BLE001
+            log.exception("arena selfcheck cleanup")
+    out["card"] = {k: c.get(k) for k in ("started", "load_s", "fps", "errors", "responds", "reached_end", "events",
+                                         "state_keys", "playable", "fun")}
+    out["dna"] = bool(c.get("dna"))
+    out["ok"] = bool(len(bs) == out["briefs"]["unique"] and c.get("started") and c.get("responds") and not c.get("errors"))
+    if not out["ok"]:
+        out["why"] = "the Arena's bots could not start the proof game, or no input changed anything, or it raised errors"
+    return out
 
 
 def finish_running() -> int:
@@ -621,7 +667,7 @@ def duel(brief_id: str, rival: str, rival_url: str, hoola_game: str = "", seed: 
     if not good:
         raise ArenaError("Us Hoola game ka chalne wala version nahi hai.")
     base = G._pdir(TENANT, gid) / "duel"
-    mine = play(G._vdir(g, good[-1]["n"]) / "web", b["orientation"], base / "hoola")
+    mine = play(_web(g, good[-1]["n"]), b["orientation"], base / "hoola")
     theirs = _play_url(rival_url, b["orientation"], base / "rival")
     rnd = random.Random(seed if seed is not None else int(time.time()))
     hoola_is_a = rnd.random() < 0.5
