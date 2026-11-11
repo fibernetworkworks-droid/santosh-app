@@ -1772,7 +1772,7 @@ launch); nothing undid one answer's change, and an edited message could not take
 - E7 LIVE VIEW SURVIVES A RESTART (`site/stream.py`): slots are also written to `<SITE_DIR>/_live/<site>.json` (at most
   once a second while words stream, at once on finish / looks / clear); a restart or a second worker reads them back
   (sequence number continues, a section that was mid-write is marked stale until the build picks it up again).
-Tests: test_v0808_wapas.py (8: any version back as a new version + undo the restore + refusals, data untouched,
+Tests: test_v0808_wapas.py (7: any version back as a new version + undo the restore + refusals, data untouched,
 bookmarks + diff routes, the agent action, the live view after a simulated restart, source wiring, a Playwright walk:
 a change -> Version + Undo this change -> undone; Edit -> Revert and resend; History: Changes, Bookmark, Restore).
 NOT VERIFIED live: a real restart of her server during a build (the restart is simulated by clearing the memory).
