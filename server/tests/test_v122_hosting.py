@@ -273,7 +273,7 @@ def test_manual_dns_when_not_on_her_cloudflare_and_guards(host_env):
     card = H.connect_domain(T, g["id"], "akotsweets.co.in")
     assert card["plan"]["provider"] == "manual" and card["plan"]["status"] == "manual"
     steps = " ".join(card["plan"]["manual_steps"])
-    assert "Host/Name 'www'" in steps and "origin.hoolasites.in" in steps and "password aap khud" in steps
+    assert "Host/Name 'www'" in steps and "origin.hoolasites.in" in steps and "you type the password yourself" in steps
     assert "forwarding" in card["say"]
     with pytest.raises(H.HostError):
         H.connect_domain(T, g["id"], "sbi-offers.in")

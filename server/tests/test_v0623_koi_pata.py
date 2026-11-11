@@ -103,7 +103,7 @@ def test_import_keeps_old_addresses_layout_and_checked_photos(site_env, public_d
     assert not checks["fake.png"]["ok"] and checks["fake.png"]["type"] == "html"
     assert checks["real.png"]["ok"] and checks["real.png"]["type"] == "jpeg" and "really JPEG" in checks["real.png"]["why"]
     assert not checks["icon-cart.png"]["ok"] if "icon-cart.png" in checks else True
-    assert "purane pate" in pv["say"] and "left out after checking their bytes" in ref["read_by"]
+    assert "old addresses" in pv["say"] and "left out after checking their bytes" in ref["read_by"]
     lay = {x["path"]: x for x in ref["layout"]}
     assert lay["/"]["sections"] is not None and "/about" in lay
     # her tap with keep: the layout rides into look 1, the old addresses wait beside the site

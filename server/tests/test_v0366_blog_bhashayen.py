@@ -73,7 +73,7 @@ def test_a_post_reaches_her_blog_only_with_her_haan(site_env, kalam):
     with pytest.raises(kalam.KalamError):
         kalam.decide_publish(T, pid, True, card_hash="not-the-card")
     out = kalam.decide_publish(T, pid, True, card_hash=req["card"]["hash"])
-    assert "website ke blog par" in out["say"] and out["published"]["slug"] == "diwali-mithai"
+    assert "the website's blog" in out["say"] and out["published"]["slug"] == "diwali-mithai"
     g = S.get(T, sid)
     assert g["version"] == ver + 1
     o = B.out_dir(T, sid, g["version"])
@@ -117,7 +117,7 @@ def test_scheduled_posts_pages_and_her_taps(site_env, kalam):
     assert 'rel="prev"' in post and 'rel="next"' in post and ("Aur padhiye" in post or "More to read" in post)
     # from chat a post can be hidden (a version she makes live) but never deleted; her tap can
     out = S.blog_act(T, sid, "holi-special", "hide")
-    assert "live karo" in out["say"]
+    assert "go live" in out["say"]
     with pytest.raises(S.SiteError):
         S.blog_act(T, sid, "holi-special", "delete")
     assert not (B.out_dir(T, sid, S.get(T, sid)["version"]) / "blog" / "holi-special").exists()

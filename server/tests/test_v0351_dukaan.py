@@ -32,7 +32,7 @@ def _built_shop(S):
     S.approve_plan(T, v["id"])
     S.choose_look(T, v["id"], 0)
     out = S.shop_setup(T, v["id"], SHOP, PRODUCTS)
-    assert "2 naye products" in out["say"]
+    assert "2 new products" in out["say"]
     return v["id"]
 
 
@@ -58,9 +58,9 @@ def test_the_server_decides_prices_stock_and_payment(site_env):
     small = _order(S, sid, [{"slug": "motichoor-laddoo", "qty": 1}], method="cod")
     assert small["total"] == "₹640" and "pay" not in small                                     # ₹40 delivery under ₹2,000
     assert next(p for p in SH.products(sid) if p["slug"] == "kaju-katli")["stock"] == 1
-    for items, why in (([{"slug": "kaju-katli", "qty": 2}], "sirf 1 bache"),
-                       ([{"slug": "no-such", "qty": 1}], "ab dukaan mein nahi"),
-                       ([], "Cart khaali")):
+    for items, why in (([{"slug": "kaju-katli", "qty": 2}], "only 1 left"),
+                       ([{"slug": "no-such", "qty": 1}], "no longer in the shop"),
+                       ([], "cart is empty")):
         with pytest.raises(SH.ShopError) as e:
             _order(S, sid, items)
         assert why in str(e.value)

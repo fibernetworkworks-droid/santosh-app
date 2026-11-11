@@ -214,7 +214,7 @@ def test_cloudflare_registration_polls_price_change_and_ceiling(dom_env, monkeyp
     D.set_key(T, "cf_registrar", CF_TOKEN, CF_ACCOUNT)
     card = DM.buy_request(T, v["id"], "sharmasweetsakot.com", auto_renew=True)
     dom_env.cf_price["sharmasweetsakot.com"] = 12.0              # price moved before her tap
-    with pytest.raises(DM.DomainError, match="daam badal"):
+    with pytest.raises(DM.DomainError, match="changed price"):
         DM.buy(T, card["id"], card["hash"])
     assert not dom_env.registered
     fresh = [e for e in _events("site_domain") if e.get("kind") == "domain"][-1]
@@ -278,5 +278,5 @@ def test_newtika_account_names_the_customer_or_says_newtika(dom_env, monkeypatch
     assert reg["email"] == "ramesh@sharmasweets.in" and reg["phone"] == "+91.9876543210"
     assert reg["postal_info"]["address"]["state"] == "Maharashtra" and reg["postal_info"]["address"]["country_code"] == "IN"
     pb = DM.buy_request(T, v["id"], "sharmasweets.in")           # Porkbun: API can't name her -> said plainly
-    assert "malik: Newtika" in " ".join(pb["lines"])
+    assert "Owner in the registry: Newtika" in " ".join(pb["lines"])
     assert DM.domains(T)[0]["account"] == "hoola"

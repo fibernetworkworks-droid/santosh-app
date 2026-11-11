@@ -136,7 +136,7 @@ def test_views_uptime_report_and_monthly_note(care_env, monkeypatch):
     real = S.gather_facts
     monkeypatch.setattr(S, "gather_facts", lambda t, b="": {**real(t, b), "phone": "9000000001"})
     tips = care.report(T, g["id"])["tips"]
-    assert any("live v1" in t or "live v" in t for t in tips) and any("9000000001" in t for t in tips)
+    assert any("is built but v" in t for t in tips) and any("9000000001" in t for t in tips)
     # monthly note: once, only on the 1st after 9 am IST
     ist = timezone(timedelta(hours=5, minutes=30))
     assert care.monthly(datetime(2026, 11, 2, 10, tzinfo=ist)) == 0

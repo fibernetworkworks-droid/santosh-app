@@ -115,7 +115,7 @@ def test_outside_checker_endpoints_and_cards(host_env):
     assert not [e for e in _events("site_down") if not e.get("ok")]           # one miss = no alarm yet
     c.post("/api/sites-uptime", headers={"x-uptime-key": KEY}, json=bad)
     down = [e for e in _events("site_down") if not e.get("ok")]
-    assert len(down) == 1 and "bahar se" in down[0]["say"] and down[0]["push"]
+    assert len(down) == 1 and "from outside" in down[0]["say"] and down[0]["push"]
     c.post("/api/sites-uptime", headers={"x-uptime-key": KEY}, json=bad)      # told once
     assert len([e for e in _events("site_down") if not e.get("ok")]) == 1
     c.post("/api/sites-uptime", headers={"x-uptime-key": KEY}, json={"results": [{"host": HOST, "ok": True}]})

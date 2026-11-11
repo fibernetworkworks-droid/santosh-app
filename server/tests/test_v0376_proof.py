@@ -69,7 +69,7 @@ def test_a_proof_run_end_to_end_with_its_own_builder(site_env, monkeypatch):
         seen.append((b["id"], budget))
         return sid, 640.0, 75.0, []
     out = PR.start("big-coaching", 99999, builder=builder)
-    assert out["budget_inr"] <= 3000 and "100-page proof shuru" in out["say"]
+    assert out["budget_inr"] <= 3000 and "100-page proof started" in out["say"]
     for _ in range(200):
         if PR.get(out["proof"])["status"] != "running":
             break

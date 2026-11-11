@@ -214,7 +214,7 @@ def test_a_brochure_build_gets_its_own_plan_and_no_data_draft(site_env, monkeypa
     assert [p["slug"] for p in plan["pages"] if p["slug"] not in ("privacy", "terms", "refund", "disclaimer")] == ["home", "festive-boxes"]
     assert plan["pages"][0]["sections"][0]["design"].startswith("SWEETS HERO")
     assert not logic                                                    # no data model drafted for a brochure
-    assert "Data ki lists" not in v.get("say", "") and v["status"] == "looks"
+    assert "The data lists and rules are not applied yet" not in v.get("say", "") and v["status"] == "looks"
     card = AR.card(T, v["spec"])
     assert card["data_none"] and next(m for m in card["modules"] if m["key"] == "data")["ready"]
 
