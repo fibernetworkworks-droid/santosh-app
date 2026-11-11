@@ -1,0 +1,21 @@
+{
+ "base": "ac-dc-generator",
+ "rig": "em-ug-instruments",
+ "chapter": "Network theorems and electrical skills",
+ "variants": [
+  {
+   "key": "dc",
+   "title": "DC generator with a split-ring commutator: emf against speed",
+   "sample": "Generic demonstration generator with a commutator",
+   "method": "DC generator",
+   "unknown": "flux linkage N B A",
+   "aim": "Turn the coil of a demonstration generator fitted with a split-ring commutator, watch the one-way pulsating emf on an oscilloscope, and find N B A from the peak emf at several speeds.",
+   "params": {
+    "mode": 1.0
+   },
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "base": "nodal-slide-lens-combination",
+ "rig": "w7-optics-bench",
+ "chapter": "Geometrical optics and the spectrometer",
+ "variants": [
+  {
+   "key": "principal-point",
+   "title": "Nodal slide: position of the principal point of a lens pair",
+   "sample": "Two convex lenses 5 cm apart (generic lenses, focal lengths hidden)",
+   "unknown": "the position of the second principal (nodal) point",
+   "params": {
+    "mode": 1
+   }
+  },
+  {
+   "key": "pair-10-25",
+   "title": "Nodal slide: focal length of a 10 cm and 25 cm lens pair",
+   "sample": "Two convex lenses 5 cm apart (generic lenses, focal lengths hidden)",
+   "unknown": "the equivalent focal length",
+   "params": {
+    "f1": 0.1,
+    "f2": 0.25
+   }
+  }
+ ]
+}

@@ -1,0 +1,62 @@
+{
+ "base": "tir-gaussian-eyepiece",
+ "rig": "w7-optics-bench",
+ "chapter": "Geometrical optics and the spectrometer",
+ "variants": [
+  {
+   "key": "bk7",
+   "title": "Critical emergence: index of a crown glass prism (N-BK7)",
+   "sample": "60 degree prism of SCHOTT N-BK7 crown glass",
+   "unknown": "the refractive index of the glass",
+   "params": {
+    "n": 1.5168
+   },
+   "source": {
+    "title": "SCHOTT N-BK7 data sheet: nd = 1.51680"
+   }
+  },
+  {
+   "key": "f2",
+   "title": "Critical emergence: index of a flint glass prism (F2)",
+   "sample": "60 degree prism of SCHOTT F2 flint glass",
+   "unknown": "the refractive index of the glass",
+   "params": {
+    "n": 1.62004
+   },
+   "source": {
+    "title": "SCHOTT F2 data sheet: nd = 1.62004"
+   }
+  },
+  {
+   "key": "water",
+   "title": "Critical emergence: index of water as a film on a flint prism",
+   "sample": "Film of distilled water held on an F2 flint prism (n = 1.62004) by a ground-glass plate",
+   "unknown": "the refractive index of the liquid",
+   "params": {
+    "mode": 1,
+    "nl": 1.333,
+    "n": 1.62004
+   },
+   "note": "The prism's own index is known here; the liquid's is hidden.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: water, nD = 1.3330 at 20 C"
+   }
+  },
+  {
+   "key": "glycerol",
+   "title": "Critical emergence: index of glycerol as a film on a flint prism",
+   "sample": "Film of glycerol held on an F2 flint prism (n = 1.62004) by a ground-glass plate",
+   "unknown": "the refractive index of the liquid",
+   "params": {
+    "mode": 1,
+    "nl": 1.4746,
+    "n": 1.62004
+   },
+   "note": "The edge of the bright field lies on the far side of the normal, so the angle of emergence is negative.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: glycerol, nD = 1.4746 at 20 C",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

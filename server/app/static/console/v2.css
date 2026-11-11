@@ -4821,8 +4821,33 @@ html.human #app .landing .halo{display:none}
 #app .hcd-rboxf{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 #app .hcd-rboxf small{font-weight:400;color:var(--mut);margin-left:6px}
 #app .hcd-rboxf input,#app .hcd-rboxf textarea{font:12.5px/1.4 var(--fm,'JetBrains Mono',monospace);width:100%;box-sizing:border-box}
+/* v0.794 HOOLA CODE PHASE 5 - around the session: thinking, passes, reviewers' comments, the suggestion, scheduled tasks, the read-only page */
+#app .hcd[data-side="none"] .hcd-side{display:none}
+#app .hcd-think{margin:6px 0 8px 26px;padding:8px 12px;border-left:2px solid var(--hair2);color:var(--mut);font:400 13.5px/1.55 var(--fr);white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:auto}
+#app .hcd-think small{display:block;font:500 12px var(--fd);color:var(--mut);margin-bottom:2px}
+#app .hcd-pc{padding:7px 0;border-top:1px solid var(--line);font-size:13px;min-width:0}
+#app .hcd-pc b{font-weight:600}
+#app .hcd-pc code{font:12px var(--fm,'JetBrains Mono',monospace);color:var(--mut);word-break:break-all}
+#app .hcd-pc p{margin:3px 0 0;color:var(--lit);white-space:pre-wrap;word-break:break-word}
+#app .hcd-rc .hcd-acts{margin-top:8px}
+#app .hcd-hintk{align-self:center;white-space:nowrap}
+#app .hcd-hintk kbd{font:500 12px var(--fd);color:var(--mut);border:1px solid var(--hair2);border-radius:6px;padding:2px 7px;background:var(--sunk)}
+#app #hcdNote:not(:placeholder-shown) ~ .hcd-hintk{display:none}
+#app .hcd-count{float:right;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;background:var(--sunk);color:var(--mut);font:500 12px var(--fd);padding:0 5px;box-sizing:border-box}
+#app button.hcd-pill{border:0;cursor:pointer;font-family:var(--fd)}
+#app .hcd-title.ro{cursor:default;font-weight:600;padding:0 4px}
+#app .hcd-schedf{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+#app .hcd-schedf textarea{width:100%;box-sizing:border-box;border:1px solid var(--hair2);border-radius:10px;padding:9px 12px;background:var(--bg);font:400 14px/1.5 var(--fd);color:var(--ink);resize:vertical}
+#app .hcd-schedf .hcd-chip input[type="time"]{border:0;background:transparent;font:500 13px var(--fd);color:var(--ink);min-width:0;height:auto;padding:0;flex:0 0 auto}
+#app .hcd-sched{margin-bottom:14px}
+#app .hcd-sched h3{font-size:13px;font-weight:600;margin:14px 0 4px}
+#app .hcd-schedt{font-size:14px;line-height:1.5;margin:6px 0 10px;white-space:pre-wrap;word-break:break-word}
+#app .hcd-sched .hcd-arow{grid-template-columns:minmax(0,1fr)}
+#app .hcd-dlg pre.hcd-term{margin:8px 0;user-select:all}
+#app .hcd-page>.hcd-card{margin-left:auto;margin-right:auto;box-sizing:border-box}
+#app .hcd[data-side="none"] .hcd-bar{margin-bottom:16px}
 
-/* v0.796 DESK ROOM (deptdesk.js, `ddk-`): the department desks for Finance & Banking, Retail & E-commerce, Health
+/* v0.799 DESK ROOM (built as 0.796) (deptdesk.js, `ddk-`): the department desks for Finance & Banking, Retail & E-commerce, Health
    Insurance and Construction & Real Estate. Console tokens only (Light / Dark / System follow). One accent (violet =
    the action), green = working, amber = paused. Scale: text 12.5 / 13 / 14 / 15 / 16 / 21 / 32, weights <= 600,
    corners 10 / 14 / 20, controls 30 / 38 / 46 px, gaps 8 / 12 / 18 / 28. CRISP TEXT: only the hero drawing traces

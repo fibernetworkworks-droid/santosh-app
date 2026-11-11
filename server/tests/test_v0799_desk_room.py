@@ -1,4 +1,4 @@
-"""v0.796 DESK ROOM: a web-console desk for every live AI employee (owner, 11 Nov: "LOT OF EMPLOYEE HAS BEEN DEVELOPED
+"""v0.799 DESK ROOM (built as 0.796): a web-console desk for every live AI employee (owner, 11 Nov: "LOT OF EMPLOYEE HAS BEEN DEVELOPED
 IN APP BUT IT IS NOT AVAILABLE IN WEB CONSOLE CHECK THIS FIRST THEN CATEGORY WISE DEVELOP AND DESIGN IT IN CONSOLE").
 
 The audit found 31 live employees - Finance & Banking 3, Retail & E-commerce 3, Health Insurance 3, Kaan, Construction &
@@ -140,7 +140,7 @@ def test_console_wiring():
 
 
 def test_css_is_crisp_and_on_one_scale():
-    a = CSS.index("/* v0.796 DESK ROOM")
+    a = CSS.index("/* v0.799 DESK ROOM (built as 0.796)")
     blk = CSS[a:]
     assert "backdrop-filter" not in blk and "font-weight:700" not in blk and "text-transform:uppercase" not in blk
     sizes = {float(x) for x in re.findall(r"font(?:-size)?:[^;{}]*?(\d+(?:\.\d+)?)px", blk)}

@@ -1,4 +1,4 @@
-"""v0.796 DESK ROOM: a web-console desk for every AI employee that had none.
+"""v0.799 DESK ROOM (built as 0.796): a web-console desk for every AI employee that had none.
 
 The audit (owner, 11 Nov: "LOT OF EMPLOYEE HAS BEEN DEVELOPED IN APP BUT IT IS NOT AVAILABLE IN WEB CONSOLE"): 31 live
 employees in the Hub - Finance & Banking (3), Retail & E-commerce (3), Health Insurance (3), Voice (Kaan) and

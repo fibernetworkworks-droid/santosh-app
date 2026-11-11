@@ -1,4 +1,4 @@
-/* v0.796 DESK ROOM (console) - one desk per department for the AI employees that had none: Finance & Banking,
+/* v0.799 DESK ROOM (built as 0.796) (console) - one desk per department for the AI employees that had none: Finance & Banking,
    Retail & E-commerce, Health Insurance and Construction & Real Estate (31 live employees whose "Open desk" was a dead
    tap). The server (/api/deskroom, employee/deskroom.py) reads each employee's OWN tool schema into forms, so every
    action the employee knows is here, with the fields that action uses; running one goes through the same tool the chat

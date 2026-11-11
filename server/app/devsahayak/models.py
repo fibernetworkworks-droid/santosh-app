@@ -96,8 +96,38 @@ class DevTask(Base):
     attach: Mapped[str | None] = mapped_column(Text, nullable=True)             # Phase 3: [{name, kind: image|text, size, file | text}] she attached
     cost: Mapped[str | None] = mapped_column(Text, nullable=True)               # Phase 3: {usd, calls, tok_in, tok_out} of this session's own model calls
     job: Mapped[str | None] = mapped_column(Text, nullable=True)                # the background run in flight {what, words, beat, tries} - a restart picks it up again
+    share: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)   # Phase 5: the read-only link's token (None = not shared)
+    share_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # ... and when it stops working
+    hint: Mapped[str | None] = mapped_column(Text, nullable=True)               # Phase 5: a suggested next message for her (ghost text), made once when a round ends
+    sched_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)   # Phase 5: the scheduled task / trigger that started this session
+    pr_notes: Mapped[str | None] = mapped_column(Text, nullable=True)           # Phase 5: reviewers' comments on the PR {seen: [ids], open: [{id, who, path, line, text}]}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class DevSchedule(Base):
+    """Phase 5 (Hoola Code): a coding task that starts by itself - on a schedule, on her "Run now", or when her own
+    program calls its trigger address with its token. Every run is an ordinary session (DevTask.sched_id points here),
+    so the PR tap, the safety checks and her merge tap are exactly the same."""
+    __tablename__ = "devsahayak_schedules"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ds"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    repo: Mapped[str] = mapped_column(String(200), default="")
+    base: Mapped[str] = mapped_column(String(100), default="")
+    kind: Mapped[str] = mapped_column(String(10), default="auto")
+    text: Mapped[str] = mapped_column(Text, default="")
+    mode: Mapped[str] = mapped_column(String(8), default="ask")              # ask | auto (a public repo always asks)
+    days: Mapped[str] = mapped_column(String(16), default="off")             # off | daily | weekdays | weekly:<0-6, Monday = 0>
+    at: Mapped[str] = mapped_column(String(5), default="09:00")              # HH:MM, India time
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    next_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_task: Mapped[str] = mapped_column(String(40), default="")
+    last_note: Mapped[str] = mapped_column(Text, default="")                 # why the last due run did not start (still running, no repo...)
+    trigger_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)   # sha256 of the trigger token (the token itself is shown once, never stored)
+    trigger_hits: Mapped[str | None] = mapped_column(Text, nullable=True)     # timestamps of recent trigger calls (the hourly limit)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class DevReview(Base):

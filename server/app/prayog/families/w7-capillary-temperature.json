@@ -1,0 +1,82 @@
+{
+ "base": "w7-capillary-temperature",
+ "rig": "capillary-rise",
+ "chapter": "Properties of matter: elasticity, viscosity, surface tension",
+ "variants": [
+  {
+   "key": "t20",
+   "title": "Capillary rise: surface tension of water at room temperature, 20 °C",
+   "sample": "Clean water at 20 °C",
+   "method": "Capillary rise read with a travelling microscope",
+   "unknown": "the surface tension of water at this temperature",
+   "params": {
+    "T": 0.07275,
+    "rho": 998.2
+   },
+   "note": "Water at 20 °C: surface tension 72.75 mN/m, density 998.2 kg/m3.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: surface tension (IAPWS) and density of water against temperature (from memory - verify)"
+   }
+  },
+  {
+   "key": "t30",
+   "title": "Capillary rise: surface tension of water at 30 °C",
+   "sample": "Clean water at 30 °C",
+   "method": "Capillary rise read with a travelling microscope",
+   "unknown": "the surface tension of water at this temperature",
+   "params": {
+    "T": 0.0712,
+    "rho": 995.7
+   },
+   "note": "Water at 30 °C: surface tension 71.20 mN/m, density 995.7 kg/m3.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: surface tension (IAPWS) and density of water against temperature (from memory - verify)"
+   }
+  },
+  {
+   "key": "t40",
+   "title": "Capillary rise: surface tension of water at 40 °C",
+   "sample": "Clean water at 40 °C",
+   "method": "Capillary rise read with a travelling microscope",
+   "unknown": "the surface tension of water at this temperature",
+   "params": {
+    "T": 0.0696,
+    "rho": 992.2
+   },
+   "note": "Water at 40 °C: surface tension 69.60 mN/m, density 992.2 kg/m3.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: surface tension (IAPWS) and density of water against temperature (from memory - verify)"
+   }
+  },
+  {
+   "key": "t50",
+   "title": "Capillary rise: surface tension of water at 50 °C",
+   "sample": "Clean water at 50 °C",
+   "method": "Capillary rise read with a travelling microscope",
+   "unknown": "the surface tension of water at this temperature",
+   "params": {
+    "T": 0.06794,
+    "rho": 988.0
+   },
+   "note": "Water at 50 °C: surface tension 67.94 mN/m, density 988.0 kg/m3.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: surface tension (IAPWS) and density of water against temperature (from memory - verify)"
+   }
+  },
+  {
+   "key": "t60",
+   "title": "Capillary rise: surface tension of water at 60 °C",
+   "sample": "Clean water at 60 °C",
+   "method": "Capillary rise read with a travelling microscope",
+   "unknown": "the surface tension of water at this temperature",
+   "params": {
+    "T": 0.06624,
+    "rho": 983.2
+   },
+   "note": "Water at 60 °C: surface tension 66.24 mN/m, density 983.2 kg/m3.",
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics: surface tension (IAPWS) and density of water against temperature (from memory - verify)"
+   }
+  }
+ ]
+}

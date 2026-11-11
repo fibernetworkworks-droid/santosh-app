@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""v0.796.0 DESK ROOM version ritual (built on the v0.795.0 tip). 0.795.0/+794 -> 0.796.0/+795 across the test pins, pubspec,
+"""v0.799.0 DESK ROOM version ritual (built as 0.796; re-versioned on the v0.798.0 tip). 0.798.0/+797 -> 0.799.0/+798 across the test pins, pubspec,
 the console stamps and the APP_VERSION story (theirs kept verbatim as Previous). One console file added (deptdesk.js)."""
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-NEW, NEW_B, OLD, OLD_B = "0.796.0", "+795", "0.795.0", "+794"
+NEW, NEW_B, OLD, OLD_B = "0.799.0", "+798", "0.798.0", "+797"
 n = 0
 for f in sorted((ROOT / "server/tests").glob("*.py")):
     t = f.read_text(encoding="utf-8")
     o = t
-    t = re.sub(r"(?<!v)0\.795\.0", NEW, t)
-    t = re.sub(r"\+794\b", NEW_B, t)
+    t = re.sub(r"(?<!v)0\.798\.0", NEW, t)
+    t = re.sub(r"\+797\b", NEW_B, t)
     if t != o:
         f.write_text(t, encoding="utf-8")
         n += 1
@@ -27,9 +27,9 @@ for f in sorted((ROOT / "server/app/static/console").glob("*.html")):
         f.write_text(t.replace(f"v={OLD}", f"v={NEW}"))
 m = ROOT / "server/app/main.py"
 t = m.read_text()
-ol = re.search(r'^APP_VERSION = "0\.795\.0"   # (.*)$', t, re.M)
+ol = re.search(r'^APP_VERSION = "0\.798\.0"   # (.*)$', t, re.M)
 assert ol
-story = ('v0.796.0 DESK ROOM (owner: "LOT OF EMPLOYEE HAS BEEN DEVELOPED IN APP BUT IT IS NOT AVAILABLE IN WEB CONSOLE CHECK THIS FIRST '
+story = ('v0.799.0 DESK ROOM (built as 0.796; their PRAYOGSHALA WAVE 7, 3D SCENES + THE GAME TOOL HUB and HOOLA CODE PHASE 5 took 0.796.0-0.798.0 - REBASE PROTOCOL, all kept; owner: "LOT OF EMPLOYEE HAS BEEN DEVELOPED IN APP BUT IT IS NOT AVAILABLE IN WEB CONSOLE CHECK THIS FIRST '
          'THEN CATEGORY WISE DEVELOP AND DESIGN IT IN CONSOLE"): the audit found 31 live AI employees whose Open desk pointed at a console '
          'view that did not exist - Finance & Banking 3, Retail & E-commerce 3, Health Insurance 3, Kaan, Construction & Real Estate 21 '
          '(the phone sends them to the SEO desk). Four department desks on the console (static/console/deptdesk.js, view deptdesk, '

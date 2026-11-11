@@ -1,0 +1,15 @@
+{
+ "base": "w7-incline-trolley",
+ "rig": "w7-trolley-incline",
+ "chapter": "Mechanics",
+ "variants": [
+  {"key": "sliding", "title": "Trolley on an inclined plane: wheels locked (sliding friction)", "sample": "Generic lab trolley with its wheels locked, on a wooden plank",
+   "method": "Wheels locked: timed between two photo-gates at angles from 20° to 30°", "unknown": "the coefficient of sliding friction",
+   "params": {"lock": 1, "angle": 0.4363}, "note": "With its wheels locked the trolley slides on its locked wheels, so the plane must be raised past about 17° before it moves.",
+   "source": {"title": "Generic apparatus", "note": "the sliding coefficient 0.30 is a setting of this bench, not a value of a named material"}},
+  {"key": "rolling", "title": "Trolley on an inclined plane: wheels free (rolling friction)", "sample": "Generic lab trolley with its wheels free, on a wooden plank",
+   "method": "Wheels free: timed between two photo-gates at angles from 1.5° to 3.5°", "unknown": "the coefficient of rolling friction",
+   "params": {"lock": 0, "angle": 0.0436}, "note": "Free wheels roll with very little resistance: a slope of under one degree would already keep the trolley moving.",
+   "source": {"title": "Generic apparatus", "note": "the rolling coefficient 0.012 is a setting of this bench, not a value of a named material"}}
+ ]
+}

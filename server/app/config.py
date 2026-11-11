@@ -151,6 +151,8 @@ class Settings(BaseSettings):
     # v0.784 HOOLA CODE ENGINE (owner: "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE"): devsahayak/engine.py + brain.py
     dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
     dev_think: bool = True                  # ... with adaptive thinking
+    dev_hint: bool = True                   # Hoola Code Phase 5: one small model call when a round ends suggests her next message (ghost text)
+    dev_hint_model: str = "claude-haiku-5-5"   # ... on this model
     dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
     dev_ws_steps: int = 150                 # ... model steps in one round

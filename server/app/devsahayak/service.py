@@ -487,6 +487,12 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
         v["notes_waiting"] = len(v["notes"])
         v["ws"] = ws_view(t.id)                                    # v0.784 the working copy: checkpoints, to-do, live / slots
         v["can_continue"] = bool(v["ws"].get("exists")) and t.status in CONTINUE and not t.pr_number
+        v["hint"] = (t.hint or "") if not v["running"] else ""          # Phase 5: a suggested next message (ghost text)
+        v["share"] = {"on": bool(t.share and t.share_until and _aware(t.share_until) > now()),
+                      "path": f"/console/code/shared/{t.share}" if t.share else "",
+                      "until": _aware(t.share_until).isoformat() if t.share_until else ""}
+        v["sched_id"] = t.sched_id or ""
+        v["pr_comments"] = (_j(t.pr_notes or "", {}).get("open") or [])[:30]   # reviewers' comments not acted on yet
     return v
 
 
@@ -1328,14 +1334,15 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
         raise DevError("Hoola is already working on this.")
     _RUNNING.add(tid)
     _STOP.discard(tid)
-    if job is not None:
-        try:
-            with session() as s:
-                row = s.get(DevTask, tid)
-                if row is not None:
+    try:
+        with session() as s:
+            row = s.get(DevTask, tid)
+            if row is not None:
+                row.hint = None                 # a new round: the old suggestion is behind us
+                if job is not None:
                     row.job = json.dumps({**job, "beat": now().isoformat(), "tries": int(job.get("tries") or 0)})
-        except Exception:
-            log.debug("dev job write failed", exc_info=True)
+    except Exception:
+        log.debug("dev job write failed", exc_info=True)
 
     def go() -> None:
         from . import loop as L
@@ -1369,6 +1376,16 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
                 if row is not None:
                     row.notes = None
                     row.job = None
+            try:
+                from . import around as AR
+                AR.make_hint(tid)               # Phase 5: one small call - her likely next message, as ghost text
+            except Exception:
+                log.debug("dev hint failed", exc_info=True)
+            try:
+                from . import around as AR
+                AR.tell_end(tenant, tid)        # Phase 5: her phone hears "done" / "needs you" once, when the run ends
+            except Exception:
+                log.debug("dev end push failed", exc_info=True)
 
     threading.Thread(target=go, name=f"dev-{tid}", daemon=True).start()
     return get_task(tenant, tid)
@@ -1435,7 +1452,8 @@ def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]
     """plan_ok / revise / fix_ci / begin from the console, in the background (the tool + phone paths stay as they are)."""
     with session() as s:
         tid = _find_task(s, tenant, ref).id
-    fn = {"plan_ok": plan_ok, "revise": revise, "fix_ci": fix_ci, "begin": begin}[what]
+    from . import around as AR
+    fn = {"plan_ok": plan_ok, "revise": revise, "fix_ci": fix_ci, "begin": begin, "fix_comments": AR.fix_comments}[what]
     if what == "plan_ok":                       # the card checks run now, so a wrong hash is told at once
         with session() as s:
             t = _find_task(s, tenant, ref)
@@ -1443,12 +1461,41 @@ def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]
                 raise DevError("This plan is not waiting any more.")
             if str(kw.get("hash_") or "") != t.hash:
                 raise DevError("The plan changed; look at the new one.")
+    if what == "fix_comments":                  # told at once when there is nothing to fix (never a failed session)
+        with session() as s:
+            if _find_task(s, tenant, ref).status not in ("pr_open", "checks_failed"):
+                raise DevError("Reviewers' comments are fixed on an open pull request.")
+        if not AR.read_comments(tenant, ref)["open"]:
+            raise DevError("There are no new reviewer comments on this pull request.")
     job = {"what": what, "words": str(kw.get("words") or "")[:6000]} if what in ("revise", "fix_ci") else None
     return _in_thread(tenant, tid, fn, tenant, ref, job=job, **kw)
 
 
+def _pass(tid: str, name: str, state: str, note: str = "", ok: bool | None = None) -> None:
+    """Phase 5: one of the passes around the main work (plan / own review / CI fix / reviewers' comments) starts or ends.
+    The page lists them under 'Passes', so she sees what else ran for this session and how each ended."""
+    ev: dict[str, Any] = {"k": "pass", "name": name, "state": state}
+    if note:
+        ev["note"] = note[:200]
+    if ok is not None:
+        ev["ok"] = bool(ok)
+    _Step(tid).event(ev)
+
+
 def _plan_pass(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt: str, tier: str,
                note: str = "") -> dict[str, Any]:
+    _pass(t.id, "plan", "start", "reads only - nothing is changed")
+    try:
+        out = _plan_pass_run(tenant, t, g, extra_files, issue_txt, tier, note)
+    except BaseException:
+        _pass(t.id, "plan", "end", "stopped", ok=False)
+        raise
+    _pass(t.id, "plan", "end", f"{len(out.get('steps') or [])} steps planned" if out else "no plan - went straight to work", ok=bool(out))
+    return out
+
+
+def _plan_pass_run(tenant: str, t: DevTask, g: Gh, extra_files: list[str], issue_txt: str, tier: str,
+                   note: str = "") -> dict[str, Any]:
     """v0.451 ECC PHASE 4: the READ-ONLY planning pass. Returns the plan (or {} when it could not run - the work then
     goes ahead exactly as before, because a plan is help, never a gate Hoola invented for itself)."""
     from . import loop as L
@@ -1796,8 +1843,12 @@ def fix_ci(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(t)
     fails = _j(t.ci, {}).get("failures") or []
     log_txt = "\n".join(f"[{f.get('name')}] {f.get('text')}" for f in fails)[:12000]
-    return _round(tenant, t, f"<ci_log>\n{log_txt}\n</ci_log>\nThe CI checks above FAILED on this branch. Fix the cause (not the test, "
-                             "unless the test is wrong: then say why in risk).", "")
+    _pass(t.id, "ci_fix", "start", ", ".join(str(f.get("name") or "") for f in fails[:3])[:160] or "a failing check")
+    try:
+        return _round(tenant, t, f"<ci_log>\n{log_txt}\n</ci_log>\nThe CI checks above FAILED on this branch. Fix the cause (not the test, "
+                                 "unless the test is wrong: then say why in risk).", "")
+    finally:
+        _pass(t.id, "ci_fix", "end")
 
 
 def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False) -> dict[str, Any]:
@@ -2484,10 +2535,19 @@ def _follow_deploy(tenant: str, a: DevAction, g: Gh) -> None:
 
 
 # ---------------------------------------------------------------- overview / worker
+def _schedules(tenant: str) -> list[dict[str, Any]]:
+    try:
+        from . import around as AR
+        return AR.schedules(tenant)
+    except Exception:
+        log.debug("dev schedules view failed", exc_info=True)
+        return []
+
+
 def overview(tenant: str) -> dict[str, Any]:
     return {"settings": settings(tenant), "repos": repos(tenant), "tasks": tasks(tenant, limit=30),
             "reviews": reviews(tenant), "actions": actions(tenant), "kinds": KINDS,
-            "models": models(tenant), "usage": _usage(tenant)}      # Phase 3: the composer's pickers and the usage ring
+            "models": models(tenant), "usage": _usage(tenant), "schedules": _schedules(tenant)}      # Phase 3: the composer's pickers and the usage ring
 
 
 _CI_TRIGGER = re.compile(r"\bpull_request(?:_target)?\b|^on:\s*(?:\[[^\]]*\bpush\b[^\]]*\]|push)\s*$|^\s+push\s*:", re.M)
@@ -2743,12 +2803,15 @@ def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str,
                       "a real problem with this PR - say so.\n</lab_evidence>")
         pr_text = (f"<pr>\nRepo {t.repo} PR #{t.pr_number}: {t.pr_title}\nBy: Hoola Developer Sahayak (YOUR OWN work)\n"
                    f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}{acc}\n</pr>")
+        _pass(t.id, "review", "start", "Hoola reads its own pull request")
         out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,
                              json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW)
     except Exception as e:  # noqa: BLE001 - the own review is extra: a PR is never stuck because it could not run
         log.info("devsahayak self review %s: %s", t.id, e)
+        _pass(t.id, "review", "end", "could not run", ok=False)
         return _ci_ready(tenant, t, g, say)
     bad = _self_blocking(out, findings)
+    _pass(t.id, "review", "end", f"{len(bad)} point(s) to fix" if bad else "clean", ok=not bad)
     note = {"round": rounds + 1 if bad else rounds, "summary": str(out.get("summary") or "")[:2000],
             "verdict": "request_changes" if bad else "ok", "problems": bad,
             "has_ci": bool((_j(t.self_review or "", {}) or {}).get("has_ci"))}
@@ -2938,6 +3001,11 @@ def tick(at: datetime | None = None) -> None:
         _resume_cut_runs()
     except Exception:
         log.exception("devsahayak resume of cut runs failed")
+    try:
+        from . import around as AR
+        AR.tick_schedules(at)                   # Phase 5: scheduled coding tasks that are due
+    except Exception:
+        log.exception("devsahayak schedules tick failed")
     with session() as s:
         open_t = [(t.tenant_id, t.id) for t in s.scalars(select(DevTask).where(DevTask.status.in_(("pr_open", "checks_failed")))
                                                           .limit(60)).all()]
@@ -2978,6 +3046,9 @@ def tick(at: datetime | None = None) -> None:
                 _card(tenant, t, say)
             elif v["status"] in ("merged", "closed") and t.ci_told != v["status"]:
                 t.ci_told = v["status"]
+        if v["status"] == "pr_open":            # Phase 5: reviewers' comments on the PR (auto-fix only on a private repo with the switch on)
+            from . import around as AR
+            AR.auto_comments(tenant, tid)
     for a in running:
         try:
             _follow_deploy(a.tenant_id, a, gh(a.tenant_id))
