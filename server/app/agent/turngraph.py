@@ -91,6 +91,11 @@ class TurnState(TypedDict, total=False):
     stop: str               # G1: the last model step's stop reason (the check node needs it on resume)
     data: dict              # G1: the turn's plain-data state (see _data) - what resume rebuilds the live objects from
     stopped: bool           # G2: she stopped this run (Stop / stop words) - never resumable, checked at every node
+    facts: list             # G3: one fact per tool_use of the turn (agent/turnfacts.py: did / card / read / failed /
+                            # ambiguous / stopped / skipped + ledger state + object) - what the check node judges by
+    decision: dict          # G3: the check node's last decision (kind, why, back = the model was sent back to work)
+    decisions: list         # G3: every decision of the turn (newest last, capped)
+    nudges: dict            # G3: the check node's one budget, spent per kind (turnfacts.CAPS / TOTAL)
 
 
 class _Live:
@@ -103,6 +108,9 @@ class _Live:
         self.t = None                                  # santosh._Turn
         self.cv = contextvars.copy_context()           # the ONE context every node body runs in
         self.thread = ""                               # G1: the checkpoint thread (the ledger's key); '' = no ledger
+        self.facts: list = []                          # G3: the turn's facts / the check node's decisions + budget
+        self.decisions: list = []
+        self.used: dict = {}
 
 
 _RUNS: dict[str, _Live] = {}
@@ -174,6 +182,49 @@ def _data(live: _Live) -> dict:
     return out
 
 
+def _g3(live: _Live) -> dict:
+    """G3: the facts + the check node's decisions as plain data for the checkpoint."""
+    j = getattr(live.t, "judge", None) if live.t is not None else None
+    return {"facts": _snapshot(live.facts), "decisions": _snapshot(live.decisions), "nudges": dict(live.used),
+            "decision": dict(j.last) if (j is not None and j.last) else {}}
+
+
+def _judge(live: _Live) -> None:
+    """G3: the graph's check node judges the answer from the turn's facts (santosh._turn_after_model asks t.judge)."""
+    from . import turnfacts
+    live.t.judge = turnfacts.Judge(live.t, live.facts, live.decisions, live.used, stopped=lambda: _stop_now(live))
+
+
+def _record_facts(live: _Live, n_calls: int) -> None:
+    """G3: after a tools step - one fact per tool_use of the step, from its call record, its tool_result and its G1
+    ledger row (never from the reply's words)."""
+    from . import toolledger as L
+    from . import turnfacts
+    t = live.t
+    try:
+        calls = (t.state.get("calls") or [])[n_calls:]
+        ids = {b.get("id") for b in t.blocks or [] if b.get("type") == "tool_use"}
+        results = []
+        for m in reversed(live.history):
+            c = m.get("content")
+            if m.get("role") == "user" and isinstance(c, list) and any(
+                    isinstance(b, dict) and b.get("type") == "tool_result" and b.get("tool_use_id") in ids for b in c):
+                results = c
+                break
+        rows = {}
+        if live.thread:
+            for i in ids:
+                try:
+                    r = L.get(live.thread, i)
+                except Exception:   # noqa: BLE001
+                    r = None
+                if r:
+                    rows[i] = r
+        live.facts.extend(turnfacts.step_facts(t.blocks, results, calls, t.ran_steps, rows))
+    except Exception:   # noqa: BLE001 - a fact that cannot be written never breaks her turn (the check then knows less)
+        log.exception("turn facts could not be recorded")
+
+
 def _node(fn):
     """Run a node body inside the turn's one Context (see the module note)."""
     async def node(state: TurnState) -> dict:
@@ -191,9 +242,10 @@ async def _prepare(live: _Live, state: TurnState) -> dict:
                                    live.tenant_id, live.state)
     if live.thread:
         live.t.tool_runner = _ledger_runner(live.thread)
+    _judge(live)
     # a Stop that landed while preparing is seen at the model node's boundary (no model call is made)
     return _flag(live, {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
-                        "data": _data(live)})
+                        "data": _data(live), **_g3(live)})
 
 
 async def _model(live: _Live, state: TurnState) -> dict:
@@ -225,9 +277,18 @@ async def _check(live: _Live, state: TurnState) -> dict:
     t = live.t
     # G2: a stopped run still keeps the answer the model already gave (as the old loop does); a nudge that sends it
     # back to work ends at the model node's boundary instead
+    # G3: the one place that may send the model back to work (false claim, reminder promise, self-check, open plan
+    # step, promise without action, max_tokens) - t.judge decides from the turn's facts, inside the shared step
+    j = t.judge
+    if j is not None:
+        j.last = None
     route = await S._turn_after_model(t, t.blocks, t.stop)
+    if j is not None and j.last is None:   # sent back / ended by a step the judge does not own (the held hard answer)
+        j._record("hard_fix" if route == "model" else "stand",
+                  "the held hard answer failed its check: one fix round" if route == "model"
+                  else "the answer stands", back=(route == "model"))
     return _flag(live, {"route": route, "final_text": t.final_text or "", "messages": _snapshot(live.history),
-                        "data": _data(live)})
+                        "data": _data(live), **_g3(live)})
 
 
 async def _tools(live: _Live, state: TurnState) -> dict:
@@ -235,11 +296,15 @@ async def _tools(live: _Live, state: TurnState) -> dict:
     t = live.t
     # G2 boundary: a Stop already set = _turn_tools runs none of the step's tools (each gets the "tapped Stop" result,
     # the same rows as the old loop) and ends the turn with the stop line
-    done = await S._turn_tools(t, t.blocks)
+    n_calls = len(t.state.get("calls") or [])
+    try:
+        done = await S._turn_tools(t, t.blocks)
+    finally:
+        _record_facts(live, n_calls)       # G3: what each tool really did (also when the step ends the turn)
     if done is not None:                   # stuck (breaker) / stopped: the turn ends with this line
         return _flag(live, {"route": "finish", "done": True, "final_text": done, "messages": _snapshot(live.history),
-                            "data": _data(live)})
-    return _flag(live, {"route": "model", "messages": _snapshot(live.history), "data": _data(live)})
+                            "data": _data(live), **_g3(live)})
+    return _flag(live, {"route": "model", "messages": _snapshot(live.history), "data": _data(live), **_g3(live)})
 
 
 async def _finish(live: _Live, state: TurnState) -> dict:
@@ -251,10 +316,14 @@ async def _finish(live: _Live, state: TurnState) -> dict:
         text = S._turn_capped(t)
     else:
         text = S._turn_silent(t)
+    from . import turnfacts
+    note = turnfacts.left_note(live.facts)
+    if note and not live.state.get("left"):
+        live.state["left"] = note          # G3: a step whose outcome is unknown is never reported as done
     text = await S._steps_end(live.conversation_id, live.ctx, live.history, live.settings, live.tenant_id,
                               live.user_text, live.state, text)
     out = (S.LAST_OUTCOME.get(live.conversation_id) or {}).get("outcome", "") if live.user_text else ""
-    return {"final_text": text, "outcome": out, "route": "end", "messages": _snapshot(live.history)}
+    return {"final_text": text, "outcome": out, "route": "end", "messages": _snapshot(live.history), **_g3(live)}
 
 
 def _route(state: TurnState) -> str:
@@ -533,6 +602,10 @@ async def resume(conversation_id: str, inbox_id: str, ctx, gender: str, history:
                 log.debug("re-admitting families failed", exc_info=True)
         t.tool_runner = _ledger_runner(th)
         live.t = t
+        live.facts[:] = list(vals.get("facts") or [])            # G3: the facts / decisions / budget so far
+        live.decisions[:] = list(vals.get("decisions") or [])
+        live.used.update(dict(vals.get("nudges") or {}))
+        _judge(live)
         _RUNS[th] = live
         STATS["resumed"] += 1
         log.warning("turn graph: resuming %s at node %s (step %s)", th, nxt, t.ran_steps)

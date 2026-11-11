@@ -2834,3 +2834,9 @@ templates, batch, personalise, translate with code checks, trash/restore, duplic
 overview, status.connected). studio.spec_for draws the brand colour. Tests: test_v0772_interactive_hub.py (10) +
 rewritten browser walk in test_v0747 (real Chromium via HOOLA_CHROMIUM). Not built and said on the page: tables,
 rupee meter, share links, AI mark, GPU-backed apps, public API. No credentials in this entry.
+
+Task ID: v0.775.0 LANGGRAPH G3
+Ask: GO G3 (done-truth from the ledger + nudges in the check node).
+Built: agent/turnfacts.py facts + verdicts + Judge, turngraph check node; chat_graph still off; 25 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
