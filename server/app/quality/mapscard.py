@@ -142,7 +142,7 @@ def guards_in_code() -> dict[str, Any]:
     # 3. the day's plan only proposes
     out["plan_proposes_only"] = "PROPOSED" in src_tools and "nothing was assigned" in src_tools
     # 4. a place with no solar imagery is reported, not filled in
-    out["solar_not_covered"] = '"covered": False' in src_maps and "andaza nahi" in src_tools.lower()
+    out["solar_not_covered"] = '"covered": False' in src_maps and ("andaza nahi" in src_tools.lower() or "will not guess" in src_tools.lower())
     # 5. the cap refuses BEFORE spending - the only guard that can be proved by running it here
     before = mapsbill.would_exceed("__mapscard__", mapsbill.SKU_TEXT_ENT, 1)
     out["cap_refuses"] = (not before) and _cap_fires()
