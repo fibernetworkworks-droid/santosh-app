@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from ..dockit import check, convert, core, edit, health, optimize, organize, stamp
+from ..dockit import check, convert, core, edit, health, optimize, organize, secure, stamp, vault
 from ..dockit.core import DocError
 from .tools import Ctx, ToolError
 
@@ -22,11 +22,13 @@ ACTIONS = ("guide", "info", "merge", "split", "remove", "extract", "organize", "
            "compress", "repair", "to_pdf", "to_images", "extract_images", "to_text",
            # D2 (v0.795): stamps + edit
            "page_numbers", "watermark", "header_footer", "crop", "add", "highlight", "metadata", "bookmarks",
-           "flatten", "nup", "booklet", "fit", "grayscale", "sanitize", "attachments")
+           "flatten", "nup", "booklet", "fit", "grayscale", "sanitize", "attachments",
+           # D3 (v0.805): security
+           "protect", "unlock", "redact", "redact_apply")
 ZIP_OVER = 10            # more output files than this arrive as one ZIP (plus the ZIP only)
-NOT_YET = ("protect with a password, unlock, true redaction (D3); searchable PDF / OCR layer, HTML -> PDF, PDF -> Word / "
-           "Excel / PowerPoint, PDF/A (D4); fill forms, sign (D5); compare two PDFs, translate keeping the layout (D6); "
-           "changing the PDF's OWN existing words in place (a white box + new text on top is offered, said as such)")
+NOT_YET = ("searchable PDF / OCR layer, HTML -> PDF, PDF -> Word / Excel / PowerPoint, PDF/A (D4); fill forms, sign "
+           "(D5); compare two PDFs, translate keeping the layout (D6); changing the PDF's OWN existing words in place "
+           "(a white box + new text on top is offered, said as such); cracking or guessing any password (never)")
 
 GUIDE = (
     "PDF_KIT GUIDE. Her own PDFs (and pictures / Office files) -> NEW files back in chat. Runs on the server: free, no "
@@ -70,6 +72,23 @@ GUIDE = (
     "a4|letter|a3) | booklet (fold-and-staple order; print double-sided, flip on the SHORT edge) | fit (every page onto "
     "sheet a4|letter|legal, margin_mm) | grayscale (black-and-white printing) | sanitize (scripts, auto-actions, attached "
     "files, hidden data out; keep_links) | attachments (files embedded inside the PDF, out as her files).\n"
+    "D3 security (a password NEVER passes through this chat or you - never ask for one, never repeat one):\n"
+    "  protect (allow = what stays permitted, some of print|copy|edit|comment|fill_forms|assemble; default print + "
+    "copy; password=hoola (default) = Hoola makes a strong password and gives her a ONE-TIME link to see it - give her "
+    "the link, the password is not in your result; password=mine = a one-time link where SHE types her own and the "
+    "locked copy arrives in the chat; open_lock=false = no open password, only the restrictions (say: viewers honour "
+    "them, but they are not a real lock)).\n"
+    "  unlock (restrictions only = removed at once; an OPEN password = a one-time link where she types it, 5 tries, "
+    "the unlocked copy arrives in the chat. Only her own documents; never for a file she says belongs to someone "
+    "else).\n"
+    "  redact (presets = some of aadhaar|vid|pan|card|account|ifsc|phone|email|gstin|vehicle|pincode, found by pattern "
+    "AND checksum; find = exact words / names; areas = [{page, x, y, w, h}] boxes she marks; pages) -> a PREVIEW file "
+    "with red boxes + a masked list + redact_id. Show her the list and ask; nothing is removed yet. Scanned pages "
+    "have no text: they are named - nothing found there is NOT proof nothing is there.\n"
+    "  redact_apply (redact_id, after her yes): pages with something to remove are redrawn as pictures with black "
+    "boxes burned in (so the text there can no longer be selected - say so), other pages keep their text; comments / "
+    "bookmarks / form values carrying a found item, metadata, attachments and scripts go; then the whole file is "
+    "read again and must not contain any found item, or nothing is delivered.\n"
     "Recipes: 'WhatsApp pe nahi ja rahi' = compress (or target_kb 15000 for email). 'Portal 200 KB maangta hai' = "
     "compress target_kb=200. 'Page 3 hata do' = remove pages=3. 'Sirf pehla aur aakhri page' = extract pages='first,last'. "
     "'Har page alag' = split mode=each. 'Ye photos ek PDF mein' = to_pdf page_size=a4 margin=small. 'Word ko PDF' = "
@@ -91,8 +110,10 @@ PDF_KIT_TOOLS = [
         "extract_images | to_text | page_numbers (Hindi digits, Bates too) | watermark (text or her logo) | "
         "header_footer | crop (or auto-trim) | add (text / her signature picture / box / note) | highlight (a word "
         "everywhere) | metadata | bookmarks | flatten | nup | booklet | fit (A4) | grayscale | sanitize | attachments. "
-        "Not yet (say so): password lock / unlock, redaction, OCR layer, PDF -> Word / Excel, sign, compare. Never "
-        "asks for a password."),
+        "protect (password lock: Hoola's password shown on a one-time link, or hers typed there) | unlock | redact "
+        "(Aadhaar / PAN / card / account / phone / email / GSTIN presets + words + boxes: preview first) | "
+        "redact_apply (true removal). Not yet (say so): OCR layer, PDF -> Word / Excel, sign, compare. A password "
+        "never goes through the chat."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": list(ACTIONS)},
          "file_id": {"type": "string"},
@@ -142,6 +163,15 @@ PDF_KIT_TOOLS = [
          "per_sheet": {"type": "integer", "enum": sorted(edit.GRIDS)},
          "sheet": {"type": "string", "enum": list(edit.SHEETS)},
          "margin_mm": {"type": "number"}, "keep_links": {"type": "boolean"},
+         "password": {"type": "string", "enum": ["hoola", "mine"],
+                      "description": "protect: hoola = Hoola makes it (one-time link), mine = she types hers on a "
+                                     "one-time page. NEVER a password itself."},
+         "allow": {"type": "array", "items": {"type": "string", "enum": list(secure.PERMS)}},
+         "open_lock": {"type": "boolean"},
+         "presets": {"type": "array", "items": {"type": "string", "enum": list(secure.PRESETS)}},
+         "find": {"type": "array", "items": {"type": "string"}, "description": "redact: exact words / names"},
+         "areas": {"type": "array", "items": {"type": "object"}},
+         "redact_id": {"type": "string"}, "dpi": {"type": "integer"},
      }, "required": ["action"]}},
 ]
 PDF_KIT_LABELS = {"pdf_kit": "PDF par kaam kar raha hoon"}
@@ -277,9 +307,13 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
             made.append(_deliver_pdf(ctx, pdf, _fname(core.stem(n), ".pdf", custom, i, len(docs))))
         return {"made": made}
 
+    if action == "redact_apply":
+        return _redact_apply(ctx, a)
     fid = _one(a)
     name, data = _pdf_in(ctx, fid)
     st = core.stem(name)
+    if action == "unlock":                       # a locked PDF cannot even be counted before it is unlocked
+        return _d3(ctx, action, a, fid, data, name, st, 0, custom)
     n_in = core.page_count(data)
 
     if action == "split":
@@ -372,6 +406,8 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
 
     if action in D2:
         return _d2(ctx, action, a, data, name, st, n_in, custom)
+    if action in D3:
+        return _d3(ctx, action, a, fid, data, name, st, n_in, custom)
     raise ToolError(f"action must be one of: {', '.join(ACTIONS)}.")
 
 
@@ -482,3 +518,96 @@ async def pdf_kit(ctx: Ctx, action: str = "guide", **a: Any):
 
 
 PDF_KIT_HANDLERS = {"pdf_kit": pdf_kit}
+
+
+D3 = ("protect", "unlock", "redact")
+
+
+def _d3(ctx: Ctx, action: str, a: dict, fid: str, data: bytes, name: str, st: str, n_in: int,
+        custom: str) -> dict[str, Any]:
+    conv = str(getattr(ctx, "conversation_id", "") or "")
+    if action == "protect":
+        allow = list(a["allow"]) if isinstance(a.get("allow"), list) else ["print", "copy", "accessibility"]
+        out_name = _fname(f"{st} (locked)", ".pdf", custom)
+        if a.get("open_lock") is False:
+            res = secure.protect(data, "", allow, open_lock=False)
+            said = secure.check_protected(res, "", False, allow)
+            view = _put(ctx, out_name, res)
+            return {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(res)),
+                    "checked": check.summary(said), "say": "Restricted (no open password): viewers honour the "
+                    "restrictions, but they are not a real lock - for a real lock use an open password."}
+        if str(a.get("password") or "hoola") == "mine":
+            token = vault.put("set_password", ctx.tenant_id, conv, {"file_id": fid, "allow": allow, "out_name": out_name,
+                                                                   "meta": {"name": name}}, hours=2)
+            return {"link": vault.link(token), "expires": "2 hours, one use",
+                    "say": "Give her this link: she types her own password there and the locked copy arrives in "
+                           "this chat. The password never comes to the chat or to you."}
+        pw = secure.make_password()
+        res = secure.protect(data, pw, allow, True)
+        said = secure.check_protected(res, pw, True, allow)
+        view = _put(ctx, out_name, res)
+        token = vault.put("show_password", ctx.tenant_id, conv, {"password": pw, "meta": {"name": out_name}}, hours=24)
+        del pw
+        return {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(res)),
+                "checked": check.summary(said), "password_link": vault.link(token), "expires": "24 hours, one use",
+                "say": "Locked with a strong password Hoola made. The password is NOT in this chat: give her the "
+                       "link, she taps 'Show the password' once and saves it. Never write a password in the chat."}
+    if action == "unlock":
+        try:
+            res, kind = secure.unlock(data)
+        except secure.NeedsPassword:
+            token = vault.put("unlock", ctx.tenant_id, conv, {"file_id": fid, "out_name": _fname(f"{st} (unlocked)",
+                                                                                                 ".pdf", custom),
+                                                              "meta": {"name": name}}, hours=2)
+            return {"link": vault.link(token), "expires": "2 hours, 5 tries",
+                    "say": "This PDF has an open password. Give her the link: she types the password there (never "
+                           "in the chat) and the unlocked copy arrives here. Hoola never guesses passwords."}
+        if kind == "none":
+            return {"name": name, "changed": False, "say": "This PDF has no password or restrictions; nothing to unlock."}
+        return _deliver_pdf(ctx, res, _fname(f"{st} (unlocked)", ".pdf", custom)) | {
+            "removed": "the restrictions (printing / copying / editing are allowed now)"}
+    # redact -> preview
+    presets = a.get("presets")
+    terms = a.get("find") if isinstance(a.get("find"), list) else ([a["find"]] if a.get("find") else [])
+    areas = a.get("areas") if isinstance(a.get("areas"), list) else []
+    if presets is None and not terms and not areas:
+        presets = list(secure.DEFAULT_PRESETS)
+    found = secure.find(data, presets or [], terms, a.get("pages") or "all") if (presets or terms) else \
+        {"hits": [], "scanned_pages": [], "pages": n_in}
+    hits = found["hits"] + secure.area_boxes(data, areas)
+    out: dict[str, Any] = {"found": secure.summary(hits), "total": len(hits)}
+    if found["scanned_pages"]:
+        out["scanned_pages"] = found["scanned_pages"][:60]
+        out["warning"] = ("These pages are pictures (scanned): their words could not be searched, so nothing found "
+                          "there does NOT mean nothing is there. Mark boxes on them (areas), or OCR them first (D4).")
+    if not hits:
+        out["say"] = "Nothing matching was found to remove."
+        return out
+    prev = secure.preview(data, hits)
+    view = _put(ctx, _fname(f"{st} (redaction PREVIEW)", ".pdf", custom), prev)
+    whole = (a.get("pages") or "all") == "all"
+    token = vault.put("redact", ctx.tenant_id, conv, {"file_id": fid, "hits": hits, "presets": (presets or []) if whole
+                                                      else [], "terms": terms, "out_name": _fname(f"{st} (redacted)",
+                                                                                                 ".pdf", custom),
+                                                      "meta": {"name": name}}, hours=2)
+    return out | {"preview_file_id": view.get("file_id"), "redact_id": token,
+                  "say": "PREVIEW only - nothing is removed yet. Show her the list (masked) and the red boxes; on her "
+                         "yes call redact_apply with this redact_id. Pages with something to remove become pictures."}
+
+
+def _redact_apply(ctx: Ctx, a: dict) -> dict[str, Any]:
+    token = str(a.get("redact_id") or "")
+    row = vault.get(token)
+    if row is None or row.get("kind") != "redact" or row.get("tenant") != ctx.tenant_id:
+        raise ToolError("That redaction preview has expired or is not hers. Run action=redact again for a fresh preview.")
+    pay = row["payload"]
+    name, data = _pdf_in(ctx, str(pay["file_id"]))
+    r = secure.redact(data, [h | {"boxes": [tuple(b) for b in h["boxes"]]} for h in pay["hits"]],
+                      int(a.get("dpi") or 200), pay.get("terms"), pay.get("presets"))
+    vault.burn(token)
+    out = _deliver_pdf(ctx, r["bytes"], pay["out_name"], core.page_count(data),
+                       ["every found item read again: none left"])
+    return out | {"pages_redrawn": r["pages_redrawn"], "boxes": r["boxes"], "comments_removed": r["comments_removed"],
+                  "also_removed": r["stripped"],
+                  "say": f"Redacted for good: {r['boxes']} boxes. Pages {', '.join(map(str, r['pages_redrawn'][:20]))} are "
+                         "now pictures (their text can no longer be selected); the other pages keep their text."}

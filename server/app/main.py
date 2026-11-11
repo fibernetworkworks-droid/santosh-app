@@ -2149,6 +2149,8 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
 # setting or behaviour is touched (the Mera PC freeze stands; the owner's W3 ask named this lane).
 from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
+from .dockit.api import router as dockit_router                 # noqa: E402
+app.include_router(dockit_router)                               # v0.805 /pdf/key/<token>: one-time password pages (pdf_kit D3)
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

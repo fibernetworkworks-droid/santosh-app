@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import pikepdf
 
-from ..dockit import convert, core, edit, optimize, organize, stamp
+from ..dockit import convert, core, edit, optimize, organize, secure, stamp
 from ..dockit.core import DocError
 
 
@@ -129,6 +129,30 @@ def ink(data: bytes, page: int, test, scale: float = 0.5) -> tuple[int, int, int
         return None
     xs, ys = [a for a, _ in pts], [b for _, b in pts]
     return len(pts), min(xs) / W, min(ys) / H, max(xs) / W, max(ys) / H
+
+
+def aadhaar_number() -> str:
+    """A 12-digit number that passes the Aadhaar (Verhoeff) check, made here - not anyone's."""
+    base = "23456789012"
+    return next(base + str(d) for d in range(10) if secure.verhoeff_ok(base + str(d)))
+
+
+def id_pdf() -> bytes:
+    """Page 1: made-up Indian IDs; page 2: plain text; page 3: a scanned (picture) page."""
+    from reportlab.pdfgen import canvas
+    a = aadhaar_number()
+    b = io.BytesIO()
+    c = canvas.Canvas(b)
+    c.drawString(72, 760, f"Name: Ramesh Kumar   Aadhaar: {a[:4]} {a[4:8]} {a[8:]}")
+    c.drawString(72, 740, "PAN: ABCPE1234F   Mobile: +91 98765 43210   GSTIN: 27AAPFU0939F1ZV")
+    c.drawString(72, 720, "Card 4111 1111 1111 1111   A/c No: 123456789012   ramesh@example.com")
+    c.drawString(72, 700, "Order 1234 5678 9012 is not an Aadhaar number.")
+    c.showPage()
+    c.drawString(72, 760, "Page two: nothing private here.")
+    c.showPage()
+    c.save()
+    scan = convert.images_to_pdf([("s.jpg", noisy_photo(600, 800, 9))], page_size="a4")
+    return organize.merge([("ids.pdf", b.getvalue()), ("scan.pdf", scan)], bookmarks=False)
 
 
 # ---------------------------------------------------------------------------------------------------- scoring
@@ -380,6 +404,62 @@ def cases() -> list[dict[str, Any]]:
         ok = files and files[0]["bytes"] == b"secret attached notes" and gone and any("JavaScript" in r or "opening" in r for r in removed)
         return bool(ok), f"attachment taken out; removed: {', '.join(removed)[:90]}"
 
+    def protect_hoola():
+        pw = secure.make_password()
+        lk = secure.protect(text_pdf(2), pw, ["print"])
+        said = secure.check_protected(lk, pw, True, ["print"])
+        try:
+            organize.extract(lk, "1")
+            opened = True
+        except DocError:
+            opened = False
+        return not opened and len(said) == 2 and secure.password_problem(pw) == "", "locked, refuses without it"
+
+    def unlock_both():
+        r = secure.protect(text_pdf(2), "", ["print"], open_lock=False)
+        u1, k1 = secure.unlock(r)
+        lk = secure.protect(text_pdf(2), "Hoola-Test-2026", ["print", "copy"])
+        try:
+            secure.unlock(lk)
+            asked = False
+        except secure.NeedsPassword:
+            asked = True
+        try:
+            secure.unlock(lk, "wrong-Password-9")
+            wrong = False
+        except DocError:
+            wrong = True
+        u2, k2 = secure.unlock(lk, "Hoola-Test-2026")
+        return k1 == "restrictions" and asked and wrong and k2 == "open password" and n_pages(u2) == 2, \
+            "restrictions removed; open password only with hers; a wrong one refused"
+
+    def checksums():
+        ok = (secure.verhoeff_ok(aadhaar_number()) and not secure.verhoeff_ok("123456789012") and
+              secure.luhn_ok("4111111111111111") and not secure.luhn_ok("4111111111111112") and
+              secure.gstin_ok("27AAPFU0939F1ZV") and not secure.gstin_ok("27AAPFU0939F1ZX"))
+        return ok, "Aadhaar Verhoeff, card Luhn, GSTIN check character"
+
+    def redact_presets():
+        pdf = id_pdf()
+        f = secure.find(pdf, list(secure.DEFAULT_PRESETS) + ["gstin"], ["Ramesh Kumar"])
+        kinds = sorted({h["kind"] for h in f["hits"]})
+        r = secure.redact(pdf, f["hits"], presets=list(secure.DEFAULT_PRESETS) + ["gstin"])
+        t = convert.page_texts(r["bytes"])
+        gone = not any(x in " ".join(t) for x in ("ABCPE1234F", "98765", "4111", "ramesh@", "Ramesh", "27AAPFU"))
+        ok = (kinds == ["aadhaar", "account", "card", "email", "gstin", "pan", "phone", "words"] and gone and
+              "nothing private" in t[1] and r["pages_redrawn"] == [1] and f["scanned_pages"] == [3])
+        return ok, f"{len(f['hits'])} found ({', '.join(kinds)}); none readable after; page 2 keeps its text; scan named"
+
+    def redact_not_fooled():
+        f = secure.find(id_pdf(), ["aadhaar"])
+        return len(f["hits"]) == 1, "an order number that fails the Aadhaar check is left alone"
+
+    def redact_preview_keeps():
+        pdf = id_pdf()
+        f = secure.find(pdf, ["pan"])
+        pv = secure.preview(pdf, f["hits"])
+        return "ABCPE1234F" in convert.page_texts(pv)[0] and "PREVIEW" in convert.page_texts(pv)[0], "preview removes nothing"
+
     return [
         _case("merge", "merge 2 PDFs + a photo, bookmarks", merge),
         _case("split_every", "split every 5 pages", split_every),
@@ -420,6 +500,13 @@ def cases() -> list[dict[str, Any]]:
         _case("nup_booklet_fit", "4-up, booklet, fit to Letter", nup_booklet_fit),
         _case("grayscale", "grayscale", grayscale),
         _case("sanitize", "sanitize + attachments out", sanitize_and_attachments),
+        # D3
+        _case("protect", "lock with a strong password", protect_hoola),
+        _case("unlock", "unlock restrictions / with her password", unlock_both),
+        _case("checksums", "Aadhaar / card / GSTIN checksums", checksums),
+        _case("redact", "true redaction, Indian presets", redact_presets),
+        _case("redact_checksum", "redaction is not fooled by look-alikes", redact_not_fooled),
+        _case("redact_preview", "preview removes nothing", redact_preview_keeps),
     ]
 
 
