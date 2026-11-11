@@ -17,7 +17,7 @@ pronunciation + glossary, personas / profiles, gallery / marketplace, watermark,
 (Twilio), 20+ speech engines and 10 transcription engines behind a model manager.
 
 ## 3. ElevenLabs feature by feature -> Hoola Vocal today
-| ElevenLabs | Hoola Vocal v0.798 | Stands on |
+| ElevenLabs | Hoola Vocal v0.800 | Stands on |
 |---|---|---|
 | Text to speech (voices, languages, settings) | LIVE - 22 voices, 11 Indian languages, style, speed, 40,000 characters | create.service.voice |
 | Voice library | LIVE - Hoola's ready voices, hear + use | avatar voice list |
