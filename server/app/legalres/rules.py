@@ -214,7 +214,7 @@ _ACT_WORDS = {
 def _row(r) -> dict[str, Any]:
     old_act, old, new_act, new, subject, sure = r
     return {"old_act": old_act, "old": old, "new_act": new_act, "new": new, "subject": subject, "sure": sure,
-            "label": "confirmed (matches the published table)" if sure else "unverified (confirm on India Code)",
+            "label": "confirmed (matches the published table)" if sure else "estimate (confirm on India Code)",
             "new_url": ACTS[new_act].get("url", "")}
 
 

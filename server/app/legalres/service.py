@@ -538,7 +538,7 @@ def _model_json(system: str, prompt: str) -> dict:
 def _prompt(question: str, srcs: list[dict], mapping: list[dict]) -> str:
     lines = [f"QUESTION: {question}", ""]
     if mapping:
-        lines.append("OLD -> NEW LAW TABLE (shown separately with its own confirmed / unverified labels; do not restate as fact):")
+        lines.append("OLD -> NEW LAW TABLE (shown separately with its own confirmed / estimate labels; do not restate as fact):")
         for r in mapping:
             lines.append(f"- {r['old_act']} {r['old']} -> {r['new_act']} {r['new'] or '?'} ({r['label']})")
         lines.append("")
@@ -822,7 +822,7 @@ def mapping(text: str = "", act: str = "") -> dict:
     rows = R.mapping_for(text) if text else R.table(act)
     return {"rows": rows, "from": R.NEW_LAW_FROM, "acts": {k: v for k, v in R.ACTS.items() if v.get("url")},
             "sources": R.MAP_SOURCES,
-            "say": ("The mapping is for information: confirm the 'unverified' rows on India Code." if rows else
+            "say": ("The mapping is for information: confirm the 'estimate' rows on India Code." if rows else
                     "No IPC / CrPC / Evidence Act / BNS section found in this text (e.g. 'IPC 420').")}
 
 

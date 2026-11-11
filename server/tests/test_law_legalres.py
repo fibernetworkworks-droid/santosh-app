@@ -84,7 +84,7 @@ def test_rules_mapping_and_grounding():
     m = R.map_old("IPC", "420")
     assert m["new_act"] == "BNS" and m["new"] == "318(4)" and m["sure"]
     assert R.map_old("CRPC", "438")["new"] == "482" and R.map_old("IEA", "65B")["new"] == "63"
-    assert not R.map_old("IPC", "326")["sure"] and "unverified" in R.map_old("IPC", "326")["label"]
+    assert not R.map_old("IPC", "326")["sure"] and "estimate" in R.map_old("IPC", "326")["label"]
     assert R.map_old("IPC", "377")["label"] == "removed"
     assert [x["old"] for x in R.map_new("BNS", "103(1)")] == ["302"]
     refs = R.find_refs("धारा ३०२ आईपीसी aur CrPC ki dhara 438, plus Evidence Act 65B and 420 IPC")
