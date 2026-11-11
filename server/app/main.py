@@ -1813,6 +1813,7 @@ def console_config():
             "flow": bool(getattr(st, "flow_page", False)),
             "prompting": bool(getattr(st, "prompting_page", True)),
             "flow_mic": bool(getattr(st, "flow_page", False) and getattr(st, "flow_composer_mic", False)),
+            "cinema": bool(getattr(st, "cinema_page", False)),   # v0.807 Hoola Cinema inside Create
             "artcraft": bool(getattr(st, "shilp_page", False) and getattr(st, "shilp_enabled", False))}
 
 
@@ -5420,6 +5421,8 @@ from .interactive.console import make_hub_router as _interactive_hub_router  # n
 app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
 from .vocal.api import make_router as _vocal_router  # noqa: E402
 app.include_router(_vocal_router(require_key, current_tenant))   # v0.787 HOOLA VOCAL: the voice studio (speech, dialogue, readings, her voices, effects)
+from .cinema.api import make_router as _cinema_router  # noqa: E402
+app.include_router(_cinema_router(require_key, current_tenant))   # v0.807 HOOLA CINEMA: the Create studio's Cinema section
 
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402
