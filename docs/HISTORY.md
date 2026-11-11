@@ -1081,8 +1081,58 @@ Tests: test_v0789_chhota_badlaav.py (8: search file + line, exact-once edits + r
 before live, switch off / no base = full, the merge rule, the agent tool actions + Plan mode, the real Chromium timing, the
 Studio line).
 NOT VERIFIED live: a real model choosing edit_lines for "make the button grey" on her server, and the rupees of that turn.
+## v0.790.0 HOOLA GAME DEV — game making as its own full-screen app (built as 0.783; owner: "CAN WE DEVLOPE A SEPERATE CONSOLE SECTION / FEATURE -- NAME IT A HOOLA GAME DEV" → "FIEST SHOW ME ALL DESIGN AND PAGES" → "GO BUILD -- DEPLOYE SEVERAL AGENTS TO DEPOLY IF PERFECTLY")
 
-## v0.790.0 VIDEO LEARNER PREMIUM (built as 0.785.0 - their HOOLA AI APPS took 0.785.0 and 0.786-0.789 went to INTERACTIVE PREMIUM / CODE ENGINE / G5 / CHHOTA BADLAAV, REBASE PROTOCOL, all kept; 11 Nov 2026; owner: "CHECK A AI EMPLOYEE SECTION ... HOOLA AI LEARNER FROM VIDEO READ THIS CODE AND DESIGN FIRST" -> seven problems reported -> "FIX ALL 7 PROPERLY. ALSO MAKE ENTIRE SECTION PROPER AND PREMIUM WITH PERFECT ALIGNMENT OF TEXT, BUTTON, TEXTURE ... WITH SOME VISUAL GRAPHICAL ANIMATION IN IT")
+**What it is.** `/console/games`, the twin of Web Studio (`/console/web`) and App Studio (`/console/apps`): a full-screen
+app with its own sidebar, opened from a new **Game Dev** row in the console sidebar (`v2.js` NAV, right after App
+Development). Before a line was built, the owner was shown a 14-page clickable design canvas (Home, Design doc, Play,
+Board, Bible, Scenes, Assets, QA, Release, Live ops, Where it came from, Crew, Game Arena, Big studio) and approved it.
+
+**Pages.** Home (ask box + kinds of game + the six steps every game goes through + "Waiting for your OK" + your games +
+"Or start from"); a game workspace = top bar, **the game's own Hoola thread** on the left (a conversation per game, like App
+Studio's per app), and tabs: **Design** (the design doc rendered by HoolaMD, "Theek hai, bana do", change it in words;
+progress card while it builds) · **Play** (the game in a phone frame from its private `/play/` link in an iframe sandboxed
+WITHOUT same-origin, QR + copy, what Hoola's bots proved, fun said plainly as not assessed, versions with "Go back to this"
+when there is a long project) · Board · Bible · Scenes · Assets · QA · Release · Live ops · Where it came from · Crew; plus
+studio-wide Crew (role cards, hired / not hired), Game Arena and Big studio. A tab that needs a long project offers "Make it a
+long project" for a game that already plays.
+
+**How it reuses the tested pages.** `employees.js` gains ONE export, `gameEmbed(el, page, studio)`, that renders the
+console's existing Game Desk pages (board, bible, scenes, assets, qa, release, liveops, prov, runtime and every role page,
+arena, big) into a pane with the desk's own flags reset for it; `gameEmbed.stop()` ends any poll when a pane is left. While a
+page is embedded, its own error path (`game(el)` / `roleBack`) can never draw the whole Game Desk home into a tab — a calm
+"Try again" panel instead. The console's own Game Desk is unchanged. Server: `gamedesk/service.view()` now carries the game's
+`conversation_id` (so its thread is the same on any browser) and the full `brief` on GET (so "Try again" after a failed first
+build loses nothing). Route `game_dev_page` in `main.py` with the console's strict CSP, `X-Frame-Options: DENY`, nosniff.
+
+**How it was built — several agents, as asked.** The lead laid the foundation (route, sidebar row, `gameEmbed`, the page
+shell) and a fixed DOM contract; a **builder** wrote `gamedev.js` / `gamedev.css` (every class `gdv-*`, every colour a v2.css
+token so dark mode works) and walked it in real Chromium; a **tester** wrote `tests/test_v0783_gamedev.py` against the
+contract in parallel (route + headers, load order, the sidebar row, `gameEmbed` run in node, escaping scan, no keys / eval, a
+hire gate, and a full real-browser walk of every page at 1440 and 390 px with page + console errors failing every step); then
+an **independent reviewer** read the code against the design and the real server. It found 14 problems, most reproduced:
+the game being played restarted every ~3 s while the next version built; the home poll wiped what she was typing every 5 s;
+a single server hiccup threw a game's thread away; an embedded page's error path drew the whole Game Desk home (with its
+own "New game" form) into a tab; stale replies from a game she had left could paint into the one she opened; hint lines
+leaked into her bubble when a title held a `]`; embedded pages showed weight 700 and Sora headings. All 14 were fixed, and
+each has a regression test that fails on the old behaviour — including one the lead caught itself: re-inserting an iframe
+RELOADS it, so "keep the same node" would have passed a node-identity test while the game still restarted; the fix never
+touches the stage that holds the frame. **20 tests, 20 pass.**
+
+**Also found while building:** the earlier dependency reinstall had pulled a newer pip Playwright (1.64.1) that cannot find
+this machine's pre-installed Chromium (revision 1243); it was pinned back to 1.63.0, the version that matches. And main's
+English-tools commit `d84057023` had left the v0.545 scenes test asserting the old Hinglish refusal; its pin was healed.
+
+**NOT VERIFIED, said plainly:** a real Godot build inside the play frame; a live agent reply in a game's thread (no model
+key in tests); the 8 embedded tabs are the console's own pages restyled toward the approved design with scoped CSS, not
+redrawn to it pixel for pixel. The phone app gets nothing new — on the phone, games stay in chat.
+
+## v0.791.0 KHUD PE NA RUKE — a long job no longer waits on itself (11 Nov 2026; found while building G5)
+
+With kaamwatch on (the production default), `goal._waiting_on_job` counted the long job's OWN kaam_jobs row (kind `goal`, state working) as another running job of the chat, so `maybe_continue` paused the job for up to `JOB_WAIT_S` (an hour) after its first round instead of scheduling the next one. The query now skips `kind == "goal"`; a real job of the chat (cloud PC, website, video...) still holds the goal as v0.238 intended. Both paths (old goal rounds and the G4 graph job). Test: `test_v0238_data_desk.py::test_the_long_jobs_own_row_does_not_hold_it`; the G5 test's patch-around removed. Long-job suites (v0186, v0226, v0228, v0222, v0443, g4, g5) green. NOT VERIFIED live.
+
+
+## v0.792.0 VIDEO LEARNER PREMIUM (built as 0.785.0 - their HOOLA AI APPS took 0.785.0 and 0.786-0.791 went to INTERACTIVE PREMIUM / CODE ENGINE / G5 / CHHOTA BADLAAV / GAME DEV / KHUD PE NA RUKE, REBASE PROTOCOL, all kept; 11 Nov 2026; owner: "CHECK A AI EMPLOYEE SECTION ... HOOLA AI LEARNER FROM VIDEO READ THIS CODE AND DESIGN FIRST" -> seven problems reported -> "FIX ALL 7 PROPERLY. ALSO MAKE ENTIRE SECTION PROPER AND PREMIUM WITH PERFECT ALIGNMENT OF TEXT, BUTTON, TEXTURE ... WITH SOME VISUAL GRAPHICAL ANIMATION IN IT")
 
 Read first, by rendering the four screens with the page's own files: seven real problems. All seven fixed, then the page redrawn.
 1. THE LEARNING PILL: it wore the class `live`, which is the chat's side panel (`.live,.studio,.panel{width:var(--right);flex-direction:column}`, and a

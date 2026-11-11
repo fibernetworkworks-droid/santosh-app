@@ -247,7 +247,7 @@ def test_api_tool_and_routing(st, monkeypatch):  # noqa: F811
     ctx = Ctx(tenant_id="default", conversation_id="c1")
     lst = asyncio.run(tools.HANDLERS["game_scenes"](ctx, action="list", id=st["sid"]))
     assert lst["scenes"][0]["name"] == "Coin" and "TileMaps" in lst["not_built"]
-    with pytest.raises(tools.ToolError, match="ek line"):
+    with pytest.raises(tools.ToolError, match="one line"):   # English since d84057023 (tools wave 3)
         asyncio.run(tools.HANDLERS["game_scenes"](ctx, action="new", id=st["sid"], words="x"))
     staff = Ctx(tenant_id="default", conversation_id="c1", actor="staff:x")
     with pytest.raises(tools.ToolError, match="owner"):
