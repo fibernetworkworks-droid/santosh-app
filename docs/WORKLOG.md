@@ -2822,7 +2822,7 @@ Task: owner - deep research on Lovable (design, logic, steps, strategy, chat mot
 Work Log: 4 parallel research passes (engine/tools, UI/motion, strategy, Hoola Studio map); captured in docs/research/lovable/00_INDEX.md; plan in docs/LOVABLE_STUDIO_PLAN.md.
 Stage Summary: docs only, no version bump; waiting for her GO on L0 and her 4 decisions before L8.
 
-Task ID: v0.772.0 HOOLA CODE PHASE 1 (built as 0.768, re-versioned on merge with main at 0.771.0)
+Task ID: v0.773.0 HOOLA CODE PHASE 1 (built as 0.768, re-versioned twice on merge: main was at 0.771.0, then 0.772.0)
 Ask: GO PHASE 1 (docs/HOOLA_CODE_WEB_PLAN.md) + mid-build "create a separate page with its own side bar for Hoola Code".
 Built: /console/code (hoolacode.html / hoolacode.js), code.js rewritten (three zones, folded steps, rail cards, queue take-back, menus, All sessions), devsahayak rename / archive / delete / drop_note + routes; typing-wiped-by-refresh bug and the rotating ring fixed; 8 tests incl. 4 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip, two nullable columns self-heal).
