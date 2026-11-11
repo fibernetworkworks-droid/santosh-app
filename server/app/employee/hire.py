@@ -89,8 +89,24 @@ CATALOG: dict[str, dict[str, Any]] = {
                          "One login on Instagram / Facebook's own page (Hoola never sees your password)"],
                "never": ["Buy followers or likes, or use engagement pods", "Post anything without your OK",
                          "Invent prices, offers or claims", "Read or touch any account you did not connect"]},
-    "accounts": {"name": "Accounts Assistant", "live": False, "icon": "receipt",
-                 "pitch": "Bills, GST returns, payments due and the monthly books."},
+    # v0.806 BAHI A0 (owner: 'FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS' -> 'GO A0'; docs/ACCOUNTS_EMPLOYEE_PLAN.md):
+    # live with the foundation - one register, rules as data, locks, the WhiteBooks pipe on sandbox. Hiring adds the desk and gates
+    # NO existing tool (gst / paisa / office / thok / payroll stay open to every user - the EDU_OPEN law). What it does today vs
+    # later is said on the desk itself (the phases list), never claimed here.
+    "accounts": {"name": "GST & Accounts", "live": True, "icon": "receipt",
+                 "pitch": "Your accountant that never takes a day off: every bill in one register, GST prepared and checked before the "
+                          "deadlines, filed from Hoola when you give the OTP.",
+                 "does": ["One register of every sale and purchase bill - from GST Sahayak, wholesale, office bills and your app - each counted once",
+                          "This month's GST dates with days left, and what happens if one is missed",
+                          "Flags the same bill entered in two places, and any change to a month you have locked",
+                          "Rules kept as data with their source and the date they were checked - nothing remembered silently",
+                          "Coming next: connect your GSTIN through WhiteBooks, then IMS, GSTR-1 and GSTR-3B filed on your OTP"],
+                 "needs": ["Your GSTIN and your GST portal username (the password is never asked)",
+                          "For filing: the OTP the GST portal sends you - Hoola never files without it"],
+                 "never": ["Move money - a challan is a number you pay at your bank",
+                           "File a return without your OTP, or keep your GST portal password",
+                           "Change a month you or your CA locked - a change there becomes an amendment for you to approve",
+                           "Give tax or legal advice as a professional, or certify anything"]},
     "telecaller": {"name": "Telecaller", "live": False, "icon": "phone",
                    "pitch": "Calls your leads and customers with a script, notes every answer."},
     "support": {"name": "Customer Support", "live": False, "icon": "chat",

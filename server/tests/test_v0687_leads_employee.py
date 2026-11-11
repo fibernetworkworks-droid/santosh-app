@@ -44,7 +44,7 @@ def test_the_rest_of_the_catalog_is_untouched(env):
     from app.employee import hire
     cat = {c["key"]: c for c in hire.catalog(T)}
     assert cat["seo"]["live"] and cat["social"]["live"] and cat["paisa_sahayak"]["live"]
-    assert not cat["accounts"]["live"] and not cat["telecaller"]["live"]   # the "coming" rows still coming
+    assert cat["accounts"]["live"] and not cat["telecaller"]["live"]   # the "coming" rows still coming (v0.806 accounts went live)
     assert cat["seo"]["group"] == "Business" and hire.catalog(T)[0]["key"]
 
 
