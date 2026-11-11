@@ -808,9 +808,9 @@ def field_health(r: AppProject, days: int = 14) -> dict[str, Any]:
             "top": [{"what": str(g.get("exception") or "")[:80], "kind": g.get("kind") or "crash",
                      "count": int(g.get("count") or 0), "screens": g.get("screens") or [],
                      "versions": g.get("versions") or [], "status": g.get("status")} for g in top],
-            "says": (f"{days} din mein {hits} crash ({len(crash)} tarah ke)"
-                     + (f" aur {anr_hits} ANR (app jam hui)" if anr_hits else "")
-                     if (hits or anr_hits) else f"{days} din mein kisi phone se koi crash nahi aaya")}
+            "says": (f"{hits} crash{'es' if hits != 1 else ''} in {days} days ({len(crash)} kind{'s' if len(crash) != 1 else ''})"
+                     + (f" and {anr_hits} freeze{'s' if anr_hits != 1 else ''} (ANR)" if anr_hits else "")
+                     if (hits or anr_hits) else f"No crash from any phone in {days} days")}
 
 
 def _ts(s: Any) -> float:

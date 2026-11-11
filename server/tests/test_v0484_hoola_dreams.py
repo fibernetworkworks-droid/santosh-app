@@ -19,7 +19,7 @@ What this suite pins, piece by piece:
 (6) SCHEDULING: light throttle after a run, deep wins when both due, the worker's coder_jobs
     awaits dreams.tick.
 (7) THE ROUTE: GET /api/coder/dreams returns the digest; with the switch off it says so.
-(8) VERSION: APP_VERSION == "0.800.0".
+(8) VERSION: APP_VERSION == "0.801.0".
 """
 import asyncio
 import os
@@ -326,4 +326,4 @@ def test_dreams_route_returns_digest(dr, monkeypatch):
 
 def test_version_stamp(dr):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.800.0"
+    assert APP_VERSION == "0.801.0"

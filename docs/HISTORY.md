@@ -1428,3 +1428,40 @@ Full plan, the licence finding and the ElevenLabs-by-feature table: `docs/HOOLA_
   click stays on the page, the typed line reaches the server with her voice and language).
 - **NOT VERIFIED:** every engine was faked in the tests. No real voice has been heard from this page. Clone and design need the GPU
   lab, which is not connected on her server.
+
+## v0.801.0 APP STUDIO PREMIUM PASS (built as 0.797; their 3D SCENES + GAME TOOL HUB took 0.797.0, HOOLA CODE PHASE 5 0.798.0, DESK ROOM 0.799.0, HOOLA VOCAL 0.800.0 - REBASE PROTOCOL, all kept; owner: "THE WEB CONSOLE APP DEVELOPMENT SECTION LOOKS STALE AND OLD --- MAKE ALL PAGES FUNCTION PROPERLY, ALIGN THE TEXT, TAB, BUTTONS ETC PERFECT, MAKE IT MORE ADVANCED AND PREMIUM")
+
+Every page of /console/apps was first walked in a real Chromium on a seeded built app (a kirana shop app with a finished
+design and an Android build) at 1440 px light, 1440 px dark and 390 px, with screenshots of each page, before anything
+changed. Every page loaded with no script error; what was wrong was the finish:
+
+- Headers: Plan / Looks / Screens / Data / Business / iPhone had a title, Store / Health / Settings had none, Prototype
+  had a different bar 10 px off the others. Now ONE header on every page (`head(title, right, sub)` -> `.phd`: 22 px
+  title, one plain line under it, controls on the right), and ONE panel header row (`ph()` -> `.pnh`); plan
+  sub-sections are `.psub`. The test holds that no panel keeps a bare `<b>` title.
+- Tabs: the tab row ran past the pane (Settings fell off at 1440 px once icons were added). Now an underlined tab bar
+  (ink line under the current page, icons per page) sized by a container query on the pane: icons only where they fit.
+- Buttons: violet and black primaries mixed, sizes 28-34 px. Now one scale (34 / 30 px), primary = ink like Publish
+  (violet stays the working colour), Business cards keep their button on the bottom line.
+- Store: the raw browser "Choose File" box replaced by a styled key-file picker that shows the chosen name.
+- Android: the 4-step pipeline is one strip with a coloured bar under each finished / running step.
+- Settings: App details in two columns; inputs could run past the card edge (no min-width) - fixed.
+- Work card: said "Starting..." after its steps had run (now "After: <last step>") and showed "0s" for steps with no
+  recorded time (now no clock under 1 s).
+- iPhone: the runner note said "iPhone apps compile on a Mac. iPhone apps compile only on a Mac: ... (APP_BUILD_MODE=
+  github) (...)." - now `iosWhy()` says it once, brackets dropped.
+- Plurals ("1 calls"), language codes shown as names (hinglish / en / hi -> Hinglish / English / Hindi).
+- Phone width: a later Web Studio rule pinned the chat column at 440 px and pushed the page sideways - the chat takes the
+  full width, the top bar keeps Publish whole and the rest as icons.
+- English: "Design pakka" -> "Approve design", "Haan, make 3 looks" -> "Approve plan · make 3 looks", "Waiting for your
+  Haan", the feature-switch / language / list-change examples, and two server lines the Studio shows: the approve line
+  (`appmaker/service.py`) and the crash summary (`appmaker/quality.py`, "No crash from any phone in N days").
+- Motion: the page fades in once when she opens a page (`pane.dataset.fresh`, class `pin` - `.in` is the input class and
+  drew a border round the whole page), never on the 2 s poll redraw; off under reduced motion.
+
+Styles = the `v0.794 APP STUDIO PREMIUM PASS` block at the end of `appstudio.css`, scoped `.ws-app`, tokens only (the
+test holds no raw hex in it). Tests: NEW `test_v0801_app_studio_premium.py` (markers, English server lines, a real-browser
+walk of all 12 pages at 1440 and 390 px: header first, one current tab, no boxed body, no sideways scroll, panel headers,
+no Hinglish, no "0s", the tab bar fits; motion once per page); `test_v0693_app_studio.py` pin moved to "Approve design".
+NOT VERIFIED: on her own server with a real build in progress; the thread's older Hinglish job lines from other server
+messages (design ready / failed / stopped) are unchanged.
