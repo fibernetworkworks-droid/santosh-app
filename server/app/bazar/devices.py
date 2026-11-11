@@ -35,7 +35,7 @@ STATE_TTL = 15 * 60
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 PRIVATE_IP = re.compile(r"^(10|192\.168|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){1,3}$")
 HINT = {"ir": "This phone may not have an IR blaster, or it wasn't pointed at the AC.",
-        "bt_hid": "The TV isn't connected to Hoola's Bluetooth remote: say 'TV ko Bluetooth se jodo' (bluetooth action=tv_pair).",
+        "bt_hid": "The TV isn't connected to Hoola's Bluetooth remote: say 'connect the TV by Bluetooth' (bluetooth action=tv_pair).",
         "phone_media": "No music app or speaker responded."}
 
 
@@ -183,7 +183,7 @@ def ir_confirm(tenant: str, did: str, protocol: str) -> dict[str, Any]:
             raise ToolError("Not an IR device")
         d.protocol = protocol
         d.state = {**(d.state or {}), "ac": ir.AcState(True, "cool", ir.DEFAULT_TEMP_C, "auto").to_dict()}  # the test turned it on
-        return {**_dev_out(d), "message": f"{d.name} is ready. Try: '{d.name} 24 pe karo' or '{d.name} band karo'."}
+        return {**_dev_out(d), "message": f"{d.name} is ready. Try: 'set {d.name} to 24' or 'turn off {d.name}'."}
 
 
 def tv_test(tenant: str, did: str) -> dict[str, Any]:
@@ -218,7 +218,7 @@ def command_result(tenant: str, cid: str, ok: bool, error: str = "") -> dict[str
             conv = t.conversation_id if t else ""
         out = {"id": c.id, "status": c.status, "hint": hint}
     if conv:
-        notify(conv, f"Ghar ka device nahi chala: {(error or 'phone ne mana kiya')[:120]}. {hint}".strip())
+        notify(conv, f"Home device did not work: {(error or 'the phone refused')[:120]}. {hint}".strip())
     return out
 
 

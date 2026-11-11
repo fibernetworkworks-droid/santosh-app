@@ -54,7 +54,7 @@ def how(c: dict[str, Any]) -> str:
             "oauth_partner": f"{c['name']} only allows approved apps; Hoola's partner access is pending."}.get(c["auth"], "") + (
         " GitHub: a fine-grained personal access token (github.com > Settings > Developer settings > Fine-grained tokens; only "
         "the repos you choose; Contents / Issues / Pull requests / Actions / Metadata). Or one tap with the token you already "
-        "gave Developer Sahayak." if c["id"] == "github" else "") + (
+        "gave the Developer Assistant." if c["id"] == "github" else "") + (
         " Supabase: one tap and sign in with your Supabase account (or a personal access token sbp_... from "
         "supabase.com/dashboard/account/tokens). Best: pick one project (project ref) and keep read-only on; writes "
         "(migrations, SQL changes, Edge Function deploys) always wait for your tap." if c["id"] == "supabase" else "") + (
@@ -80,11 +80,11 @@ def zoho_url(c: dict[str, Any], url: str) -> str:
     host = (u.hostname or "").lower()
     hosts = (c.get("options") or {}).get("hosts") or []
     if host.startswith("mcp.zoho."):
-        raise ValueError("Yeh Zoho MCP ka console page hai. Wahan apna server kholo > Connect tab > server address copy karke "
-                          "yahan daalo (…zohomcp.in/… jaisa).")
+        raise ValueError("This is the Zoho MCP console page. Open your server there > Connect tab > copy the server address and "
+                          "paste it here (like …zohomcp.in/…).")
     if u.scheme != "https" or not any(host == h or host.endswith("." + h) for h in hosts):
-        raise ValueError("Zoho MCP address …zohomcp.in (ya .com / .eu) par hota hai: mcp.zoho.in > apna server > Connect "
-                          "tab se copy karo.")
+        raise ValueError("A Zoho MCP address is on …zohomcp.in (or .com / .eu): copy it from mcp.zoho.in > your server > Connect "
+                          "tab.")
     return url
 
 

@@ -62,7 +62,7 @@ def _ctl(method: str, path: str, obj: dict | None = None, timeout: float = 30) -
         r = client.request(method, st.mcp_runner_url.rstrip("/") + path, content=body or None, headers=headers,
                            timeout=timeout)
     except Exception as e:
-        raise ToolError(f"MCP runner not reachable ({type(e).__name__}). Ask the admin to check it (Hoola Jaanch).")
+        raise ToolError(f"MCP runner not reachable ({type(e).__name__}). Ask the admin to check it (Hoola Check).")
     finally:
         if not _client_factory:
             client.close()
@@ -79,7 +79,7 @@ def _ctl(method: str, path: str, obj: dict | None = None, timeout: float = 30) -
 
 def health() -> dict[str, Any]:
     if not configured():
-        return {"configured": False, "say": "MCP runner set nahi hai (MCP_RUNNER_URL / MCP_RUNNER_SECRET)."}
+        return {"configured": False, "say": "The MCP runner is not set up (MCP_RUNNER_URL / MCP_RUNNER_SECRET)."}
     try:
         return {"configured": True, **_ctl("GET", "/v1/health", timeout=8)}
     except ToolError as e:
@@ -135,16 +135,16 @@ def connect(tenant_id: str, ref: str, keys: dict[str, str] | None = None, accept
         key = keys.get("APIFY_TOKEN") or keys.get("API_KEY") or next(iter(keys.values()), "")
         if entry.get("src") == "apify" and not key:
             return {"status": "needs_keys", "keys": [{"name": "APIFY_TOKEN", "kind": "secret"}],
-                    "say": "Is Apify actor ke liye apna Apify API token app mein daaliye (Apify Console > Settings > "
-                           "Integrations). Har run aapke Apify credit kharch karta hai."}
+                    "say": "For this Apify actor, add your own Apify API token in the app (Apify Console > Settings > "
+                           "Integrations). Every run uses your Apify credit."}
         return service.mcp_add(tenant_id, entry["u"], entry.get("t", ""), ref, key=key,
                                key_header="Authorization" if key else "", probe_client=probe_client)
     pkg = entry.get("pkg") or []
     if not pkg:
         raise ToolError(f"{entry.get('t')} has no package or address Hoola can run. See its page: {entry.get('l')}")
     if entry.get("pc"):
-        return {"status": "pc_only", "say": f"{entry.get('t')} aapke apne computer ki files / apps par kaam karta hai, "
-                                            "isliye ise aapke PC par chalana hoga (Hoola ke runner par nahi)."}
+        return {"status": "pc_only", "say": f"{entry.get('t')} works on the files / apps of your own computer, "
+                                            "so it has to run on your PC (not on Hoola's runner)."}
     if not configured():
         raise ToolError("One-tap MCP needs the MCP runner box (MCP_RUNNER_URL / MCP_RUNNER_SECRET on the server). "
                         "Ask the admin; until then add the server's https address by hand.")
@@ -159,12 +159,12 @@ def connect(tenant_id: str, ref: str, keys: dict[str, str] | None = None, accept
         if verdict["verdict"] == "block":
             STATS["blocked"] += 1
             return {"status": "blocked", "reasons": verdict["reasons"],
-                    "say": f"{entry.get('t')} suraksha jaanch mein fail hua, Hoola ise nahi chalayega: "
+                    "say": f"{entry.get('t')} failed the safety check, Hoola will not run it: "
                            + "; ".join(verdict["reasons"][:3])}
         if verdict["verdict"] == "caution" and not accept_caution:
             return {"status": "caution", "reasons": verdict["reasons"],
-                    "say": f"{entry.get('t')} mein kuch savdhani wali baatein mili: " + "; ".join(verdict["reasons"][:3])
-                           + ". Aap kahein to phir bhi jodun? (app mein 'Phir bhi jodo')"}
+                    "say": f"{entry.get('t')} has some points of caution: " + "; ".join(verdict["reasons"][:3])
+                           + ". Should I connect it anyway? ('Connect anyway' in the app)"}
         # keys: what the listing says it needs + what she saved before for this server
         old = s.scalars(select(RunnerSpec).join(CustomMcp, CustomMcp.id == RunnerSpec.id).where(
             RunnerSpec.user_id == user.id, RunnerSpec.package == package, CustomMcp.status == "active")).first()
@@ -176,8 +176,8 @@ def connect(tenant_id: str, ref: str, keys: dict[str, str] | None = None, accept
         if missing:
             STATS["needs_keys"] += 1
             return {"status": "needs_keys", "keys": [{"name": n, "kind": key_kind(n)} for n in missing],
-                    "say": f"{entry.get('t')} ko ye chahiye: {', '.join(missing)}. App mein (Connect > MCP servers > "
-                           f"{entry.get('t')}) daaliye; chat mein kabhi na bhejein."}
+                    "say": f"{entry.get('t')} needs: {', '.join(missing)}. Add them in the app (Connect > MCP servers > "
+                           f"{entry.get('t')}); never send them in chat."}
         iid = old.iid if old else secrets.token_hex(12)
         token = secrets.token_urlsafe(32)
         res = _ctl("POST", "/v1/instances", {"iid": iid, "kind": kind, "package": package, "version": "", "env": env,
@@ -189,9 +189,9 @@ def connect(tenant_id: str, ref: str, keys: dict[str, str] | None = None, accept
             if want:
                 STATS["needs_keys"] += 1
                 return {"status": "needs_keys", "keys": [{"name": n, "kind": key_kind(n)} for n in want],
-                        "say": f"{entry.get('t')} chalne ke liye ye maang raha hai: {', '.join(want)}. App mein daaliye."}
+                        "say": f"{entry.get('t')} asks for this to run: {', '.join(want)}. Add it in the app."}
             return {"status": "failed", "error": res.get("error", ""), "detail": (res.get("stderr") or "")[-600:],
-                    "say": f"{entry.get('t')} runner par shuru nahi hua. Hoola ki galti nahi: package ne error diya."}
+                    "say": f"{entry.get('t')} did not start on the runner. Not Hoola's fault: the package gave an error."}
         url = _settings().mcp_runner_url.rstrip("/") + f"/mcp/{iid}"
     finally:
         s.close()
@@ -213,7 +213,7 @@ def connect(tenant_id: str, ref: str, keys: dict[str, str] | None = None, accept
     _ENSURED[iid] = time.time()
     STATS["connected"] += 1
     out.update(tools=res.get("tools", []), runs_on="hoola_runner", checked=verdict["verdict"],
-               say=f"{entry.get('t')} jud gaya ({len(res.get('tools', []))} tools), Hoola ke runner par chal raha hai.")
+               say=f"{entry.get('t')} connected ({len(res.get('tools', []))} tools), running on Hoola's runner.")
     return out
 
 

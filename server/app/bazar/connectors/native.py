@@ -426,8 +426,8 @@ class NativeExecutor:
 
     # ---------------- greetings / WhatsApp ----------------
     def _messages(self, a, ctx) -> list[dict[str, str]]:
-        lang = str(a.get("language") or ctx.user.language or "hi")
-        tpl = GREETINGS.get(lang, GREETINGS["hi"])
+        lang = str(a.get("language") or ctx.user.language or "en")
+        tpl = GREETINGS.get(lang, GREETINGS["en"])
         cs = ctx.session.scalars(select(Contact).where(Contact.user_id == ctx.user.id)).all()
         names = [n.lower() for n in (a.get("names") or [])]
         if names:

@@ -449,7 +449,7 @@ class Native2Executor(NativeExecutor):
             raise ToolError("No customers with a phone number and pending udhar.")
         biz = self._prof(ctx).get("business", {})
         shop = biz.get("name") or ctx.user.name or "our shop"
-        lang = a.get("language") or ctx.user.language or "hi"
+        lang = a.get("language") or ctx.user.language or "en"
         msgs = []
         for r in rows:
             link = build_upi_intent(biz["upi_id"], shop, r["balance"], "Udhar payment") if biz.get("upi_id") else ""
@@ -626,7 +626,7 @@ class Native2Executor(NativeExecutor):
         name = str(a.get("list") or "shopping").lower()
         items = self._core_list_add(ctx, name, [str(i) for i in a["ingredients"]])
         return {"dish": a.get("dish", ""), "added": items, "list": name,
-                "next": "Say 'kirana se mangwa do' and I'll order these from your shop."}
+                "next": "Say 'order these from my shop' and I'll order these from your shop."}
 
     def _save_meal_plan(self, pack, a, ctx):
         prof = self._prof(ctx)

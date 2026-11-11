@@ -55,7 +55,7 @@ def music_app(name: str) -> str:
         return ""
     if n in MUSIC_ALIASES:
         return MUSIC_ALIASES[n]
-    raise ToolError("Yeh music app main nahi jaanta. Chal sakte hain: " + ", ".join(v[1] for v in MUSIC_APPS.values()) + ".")
+    raise ToolError("I do not know this music app. These can play: " + ", ".join(v[1] for v in MUSIC_APPS.values()) + ".")
 
 
 FRIDGE_WARM_C = 8
@@ -237,7 +237,7 @@ class DeviceExecutor:
                 try:
                     ops = hid.youtube_video_ops(str(args.get("video_id", "")).strip(), str(args.get("title", "") or ""))
                 except ValueError as e:
-                    raise ToolError("Yeh YouTube video id sahi nahi hai.") from e
+                    raise ToolError("This YouTube video id is not valid.") from e
                 t = str(args.get("title", "") or "video")[:80]
                 return self._phone(ctx, dev, ops, f"Playing '{t}' on YouTube on {dev.name}.")
             if tool == "tv_search":
@@ -287,7 +287,7 @@ class DeviceExecutor:
         what = {"ac": "AC", "tv": "TV", "fridge": "fridge", "washer": "washing machine"}.get(kind or "", "device")
         if not devs:
             if pack.config["channel"] == "bt_hid":
-                raise ToolError("Pair the TV with Hoola once: say 'TV ko Bluetooth se jodo' (bluetooth action=tv_pair) or "
+                raise ToolError("Pair the TV with Hoola once: say 'connect the TV by Bluetooth' (bluetooth action=tv_pair) or "
                                 "open Hoola › Ghar › TV.")
             if pack.config["channel"] == "ir":
                 raise ToolError("Add your AC once: Santosh app › Ghar › Add AC. I'll test the remote signal with you.")

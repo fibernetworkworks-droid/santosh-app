@@ -14,7 +14,7 @@ class AppCheckExecutor:
         return []
 
     def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any] | NeedsApproval:
-        raise ToolError("App Jaanch ke liye app_check tool use kijiye.")
+        raise ToolError("For App Check, use the app_check tool.")
 
     def execute(self, pack: Pack, action: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
         raise ToolError(f"Unknown action {action}")

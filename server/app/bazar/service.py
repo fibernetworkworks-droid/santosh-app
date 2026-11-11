@@ -60,7 +60,7 @@ STATUS_TEXT = {
     "core": "built into Santosh",
     "no_device": "no device of this kind added yet: Santosh app > Ghar (add the speaker/TV/AC or link the brand account there)",
     "pc_offline": "the PC is offline: switch it on and open Santosh Desktop",
-    "pc_not_paired": "no PC paired yet: Santosh app > Main > Mera PC",
+    "pc_not_paired": "no PC paired yet: Hoola app > Main > My PC",
     "needs_key": "add this server's API key once in the Santosh app (Connect > MCP servers); never in chat",
 }
 
@@ -350,7 +350,7 @@ def _open_action(out: dict[str, Any]) -> dict[str, Any] | None:
         label = "SOS: call or WhatsApp" if out.get("sos_text") else "Send on WhatsApp"
         return {"kind": "links", "links": out["share_links"], "label": label}
     if out.get("payment_link"):
-        return {"kind": "share", "text": out.get("share_text") or out["payment_link"], "label": "Link share kijiye"}
+        return {"kind": "share", "text": out.get("share_text") or out["payment_link"], "label": "Share the link"}
     return None
 
 
@@ -615,8 +615,8 @@ def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bo
         return None
     if approval_words.money_risk(text):
         if source == "voice":
-            say = ("(System: yeh manzoori PAISE/OTP wali hai — bol se nahi hoti. Ek chhoti line mein batao: app ke card "
-                   "par hi Approve dabana hoga; tumhe is step se aage nahi badhna.)")
+            say = ("(System: this approval involves MONEY / an OTP — it cannot be given by voice. Say in one short line: Approve must be tapped on the card "
+                   "in the app; you must not go past this step.)")
         else:
             say = "Payments are approved only on the card - open the card in the app and tap Approve. I did not go ahead with it."
         return {"money": True, "say": say}
@@ -633,11 +633,11 @@ def voice_approve(tenant_id: str, conversation_id: str, text: str, pure_only: bo
     title = said[0]
     if source == "voice":
         if pure:
-            say = (f"(System: usne 'haan' kahi — '{title}' wali manzoori card par approve ho gayi, kaam aage badh raha hai. "
-                   "Bas ek chhoti line bolo: 'manzoori mil gayi, kaam aage badh gaya'.)")
+            say = (f"(System: the user said yes — the approval '{title}' is approved on the card and the work is moving ahead. "
+                   "Say just one short line: 'approval received, the work is moving ahead'.)")
         else:
-            say = (f"(System: usne manzoori di — '{title}' wali manzoori approve ho gayi, kaam aage badh raha hai. Usne yeh "
-                   f"bhi kaha: \"{text}\" — is baat ka jawab do.)")
+            say = (f"(System: the user gave approval — the approval '{title}' is approved and the work is moving ahead. The user "
+                   f"also said: \"{text}\" — answer that.)")
     else:
         say = f"Okay - '{title}' is approved. I am carrying on and will tell you as soon as it is done."
     return {"approved": said, "pure": pure, "say": say}
@@ -660,8 +660,8 @@ def voice_reject(tenant_id: str, conversation_id: str, since=None) -> dict[str, 
     title = said[0]
     if len(said) > 1:
         title = f"{len(said)} manzooriyan"
-    return {"rejected": said, "say": f"(System: usne mana kar diya — '{title}' wala step cancel ho gaya, kuch nahi hua. "
-                                     "Ek chhoti line mein batao aur poochho aage kya karna hai.)"}
+    return {"rejected": said, "say": f"(System: the user said no — the step '{title}' is cancelled, nothing was done. "
+                                     "Say it in one short line and ask what to do next.)"}
 
 
 def voice_tool_approve(tenant_id: str, conversation_id: str, heard: str = "") -> dict[str, Any]:
@@ -680,26 +680,26 @@ def voice_tool_approve(tenant_id: str, conversation_id: str, heard: str = "") ->
     heard = (heard or "").strip()
     pending = voice_pending(tenant_id, conversation_id)
     if not pending:
-        return {"status": "none", "say": ("(System: is call ke chal rahe kaam ki koi pending manzoori nahi mili — kuch "
-                                          "approve nahi hua. Usse ek chhoti line mein poochho kis step ki haan thi, "
-                                          "ya aage badho.)")}
+        return {"status": "none", "say": ("(System: no pending approval was found for the work running on this call — nothing "
+                                          "was approved. Ask in one short line which step the yes was for, "
+                                          "or move on.)")}
     if approval_words.is_pure_rejection(heard):
-        return {"status": "no", "say": ("(System: uske shabd mana kar rahe hain — maine kuch approve NAHI kiya. Uski baat "
-                                        "maano aur poochho aage kya karna hai.)")}
+        return {"status": "no", "say": ("(System: the user's words are a refusal — I approved NOTHING. Accept what "
+                                        "they said and ask what to do next.)")}
     if approval_words.money_risk(heard):
-        return {"status": "money", "say": ("(System: uske shabdon mein PAISE/OTP ki baat hai — aisi manzoori bol se nahi "
-                                           "hoti. Ek chhoti line mein batao: app ke card par hi Approve dabana hoga; tumne "
-                                           "is step se aage nahi badhna.)")}
+        return {"status": "money", "say": ("(System: the user's words mention MONEY / an OTP — such an approval cannot be given by voice. "
+                                           "Say in one short line: Approve must be tapped on the card in the app; you must not "
+                                           "go past this step.)")}
     ap = pending[0]          # ek manzoori, ek haan (sabse nayi)
     title = ap.title or ""
     try:
         decide(tenant_id, ap.id, "approve", notify_ok=False)
     except Exception:
         log.exception("voice tool approve failed for %s", ap.id)
-        return {"status": "none", "say": "(System: manzoori approve nahi ho payi — ek line mein batao ki yeh app ke card se karna hoga.)"}
+        return {"status": "none", "say": "(System: the approval could not be approved — say in one line that this has to be done from the card in the app.)"}
     return {"status": "approved", "title": title,
-            "say": (f"(System: usne manzoori de di — '{title}' wali manzoori card par approve ho gayi, kaam aage badh "
-                    "raha hai. Bas ek chhoti line bolo: 'manzoori mil gayi, kaam aage badh gaya'.)")}
+            "say": (f"(System: the user gave approval — the approval '{title}' is approved on the card and the work is moving "
+                    "ahead. Say just one short line: 'approval received, the work is moving ahead'.)")}
 
 
 EXPIRED_SAY = "This card is too old; no order or payment was made."
@@ -946,7 +946,7 @@ def unlink(tenant_id: str, pack_id: str) -> bool:
 def mcp_directory(query: str = "", field: str = "", limit: int = 8) -> dict[str, Any]:
     if core_settings().connect_clean:   # v0.303 the 63,700-server directory is off: most of it never worked for her
         return {"servers": [], "note": "The MCP directory is off. For apps use composio_apps action=list query=<name> "
-                                       "(her own account in ~1,600 apps); ek server ka https pata ho to bazar_mcp action=add."}
+                                       "(her own account in ~1,600 apps); for a server with an https address use bazar_mcp action=add."}
     if not query and not field:
         return directory.stats()
     found = directory.search(query, limit=limit, field=field)
@@ -1482,7 +1482,7 @@ def fire_due_reminders() -> int:
     for conv, tenant, rid, kind, text, due in fired:
         if not conv:
             continue
-        head = ICON.get(kind, "Yaad dilana")
+        head = ICON.get(kind, "Reminder")
         due_u = due.replace(tzinfo=dt.timezone.utc) if due.tzinfo is None else due
         late = _w._late_by(due_u) >= _w.REMINDER_LATE_S
         if late:

@@ -28,21 +28,21 @@ log = logging.getLogger("santosh.upi")
 # Response codes UPI apps commonly hand back (NPCI). Plain words; `blocked` = the app or bank refused the intent
 # itself, so typing the UPI ID in the app by hand is the way through.
 CODES: dict[str, tuple[str, bool]] = {
-    "U16": ("app ya bank ne risk limit ki wajah se roka", True),
-    "U30": ("bank ne paise kaatne se mana kiya", False),
-    "U66": ("device ya app se payment allowed nahi hui", True),
-    "U90": ("bank ka jawab der se aaya", False),
-    "ZM": ("UPI PIN galat tha", False),
-    "Z6": ("UPI PIN ki koshishein khatam ho gayin", False),
-    "Z9": ("account mein paise kam the", False),
-    "Z8": ("din ki limit poori ho gayi", False),
-    "ZD": ("app ne link ko sahi nahi maana", True),
-    "ZA": ("aapne app mein mana kar diya", False),
-    "ZH": ("UPI ID galat hai", False),
-    "ZX": ("account band / inactive hai", False),
-    "XB": ("bank ne transaction mana kiya", False),
-    "YE": ("bank ne transaction mana kiya", False),
-    "RB": ("bank ne transaction mana kiya", False),
+    "U16": ("the app or bank stopped it because of a risk limit", True),
+    "U30": ("the bank refused to debit the money", False),
+    "U66": ("the payment was not allowed from this device or app", True),
+    "U90": ("the bank's reply came late", False),
+    "ZM": ("the UPI PIN was wrong", False),
+    "Z6": ("the UPI PIN attempts ran out", False),
+    "Z9": ("there was not enough money in the account", False),
+    "Z8": ("the daily limit was reached", False),
+    "ZD": ("the app did not accept the link", True),
+    "ZA": ("you declined it in the app", False),
+    "ZH": ("the UPI ID is wrong", False),
+    "ZX": ("the account is closed / inactive", False),
+    "XB": ("the bank declined the transaction", False),
+    "YE": ("the bank declined the transaction", False),
+    "RB": ("the bank declined the transaction", False),
 }
 # Words some apps put in their failure text when they refuse a payment link to a person's UPI ID.
 BLOCK_WORDS = re.compile(r"security|risk|not allowed|not permitted|declined by|limit exceeded|unsafe|suspicious|"
@@ -175,16 +175,16 @@ def record(tenant_id: str, txn_ref: str, response: str = "", result: str = "", p
             if txn.status in DONE and up.get("said_by") == "app" and answer == "not":
                 # the app said success; her "nahi hua" is kept, but the record stays and she is told to check
                 up["owner_doubt"] = True
-                line = (f"UPI app ne {amt} {name} ko jaane ki baat kahi thi. Agar bank statement mein nahi dikh raha, "
-                        f"UPI app ki history mein ref dekhiye.")
+                line = (f"The UPI app said {amt} went to {name}. If it does not show in the bank statement, "
+                        f"check the ref in the UPI app's history.")
             elif answer == "done":
                 txn.status = "completed"
                 up.update(said_by="owner")
-                line = f"Theek hai, {amt} {name} ko chale gaye ✅ (aapne bataya)."
+                line = f"Okay, {amt} went to {name} ✅ (as you said)."
             else:
                 txn.status = "failed"
                 up.update(said_by="owner")
-                line = f"Theek hai, {amt} {name} ko nahi gaye. Dobara bhejna ho to bataiye."
+                line = f"Okay, {amt} did not go to {name}. Tell me if you want to send it again."
         else:
             r = parse(response)
             if txn.status in DONE or (txn.status == "failed" and r["status"] != "SUCCESS"):
@@ -200,28 +200,28 @@ def record(tenant_id: str, txn_ref: str, response: str = "", result: str = "", p
                 if m.get("mode") != "copy":
                     _mark(s, txn.user_id, m.get("package", ""), "ok")   # the link worked in this app
                 tail = _tail(r["approval_ref"] or r["txn_id"])
-                line = f"{amt} {name} ko chale gaye ✅" + (f" (UPI ref ...{tail})" if tail else "") + "."
+                line = f"{amt} went to {name} ✅" + (f" (UPI ref ...{tail})" if tail else "") + "."
             elif r["status"] == "FAILURE":
                 txn.status = "failed"
                 reason, blocked = CODES.get(r["code"], ("", False))
                 if not blocked and BLOCK_WORDS.search(response or ""):
                     blocked = True
                 if not reason:
-                    reason = "UPI app ne payment poori nahi ki"
-                line = f"{amt} {name} ko nahi gaye: {reason}. Aapke account se kuch nahi kata."
+                    reason = "the UPI app did not complete the payment"
+                line = f"{amt} did not go to {name}: {reason}. Nothing was debited from your account."
                 if blocked:
                     _mark(s, txn.user_id, m.get("package", ""), "blocked")
-                    line += " Chahein to UPI ID copy karke app mein khud bhej sakti hain; agli baar ye app seedha aise hi khulega."
+                    line += " If you like, you can copy the UPI ID and send it yourself in the app; next time this app will open that way directly."
             elif r["status"] == "SUBMITTED":
                 txn.status = "pending"
                 ask = True
-                line = (f"{amt} {name} ko bheja gaya, bank se pakka hona baaki hai ⏳. "
-                        f"UPI app ki history mein dekhkar bataiye: ho gaya?")
+                line = (f"{amt} was sent to {name}; the bank has yet to confirm it ⏳. "
+                        f"Check the UPI app's history and tell me: did it go through?")
             else:
                 up["said_by"] = ""
                 ask = True
-                why = "aap app se wapas aa gayin" if result == "cancelled" else "UPI app ne kuch bataya nahi"
-                line = f"{why.capitalize()}. {amt} {name} ko gaye ya nahi?"
+                why = "you came back from the app" if result == "cancelled" else "the UPI app did not say anything"
+                line = f"{why.capitalize()}. Did {amt} go to {name} or not?"
                 # some apps (personal transfers on GPay / PhonePe) return nothing when they refuse the link
                 blocked = True
         m["upi"] = up
