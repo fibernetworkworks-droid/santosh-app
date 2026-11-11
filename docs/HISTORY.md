@@ -2400,3 +2400,60 @@ new engines only through `voiceengine.pick()`, exactly like the v0.264 OpenAI en
 NOT VERIFIED: no live call has run on any of the three (no keys on the server when this was built). Parking does not
 apply to them (CAN_PARK stays Gemini-only), so a quiet call keeps billing per minute until she hangs up. Hindi /
 Hinglish quality on each engine is unmeasured - her ear test is the judge.
+
+## v0.826.0 APP ENGINE 2 (L9 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L9")
+
+Point at a Web Studio React app (the v0.824 App Engine) and change it - like Lovable's click-to-source + visual edits,
+built on Hoola's own pieces.
+
+- **Click -> source** (`appengine/template/hoola.plugin.mjs`, locked; Vite `enforce: pre`, `@babel/parser` +
+  `magic-string` already in the image): in a PREVIEW build only (`HOOLA_SOURCE=1`) every JSX element in
+  `src/**/*.tsx` gets `data-hs="<file>:<line>:<col>"` and `data-hc="<Component>"`. Component uses are tagged too: the
+  kit spreads its props AFTER its own tag, so `<CardTitle>` on a page points at the PAGE's line - the line a free edit
+  should change. Preview builds also keep hidden source maps (`sourcemap: "hidden"`; `.map` is never served).
+- **Live = clean**: publish now runs a second, clean build of that version's source (`runner.build(source=False)`) and
+  refuses (500) if a tag or a map reached the output. Visitors never get the tags, the maps or the helper.
+- **Preview helper** (`appengine/preview.js`, served only at `/api/app-preview/<token>/__hoola/preview.js`, injected
+  into the preview's index.html, never into a live one): (1) error collector - page errors, unhandled rejections,
+  console.error -> postMessage to the Studio; (2) Select - hover outline + `<tag> Component · file:line` label, a click
+  sends the tag instead of running the app's own click, Esc stops; (3) live style / words drawn at once on every element
+  from that line (nothing saved) until the real change is built.
+- **Free edits** (`appengine/pick.py`, Rs 0, no model): one family at a time on the app's own tokens / scale - text
+  colour, background, size, weight, padding, corners, alignment - swapped inside the element's own
+  `className="..."` at that exact line (none = one is added); plain words replaced when the source text is plain (no
+  `{...}`, no `< > { }`); a computed `className={...}` is refused and named ("ask Hoola in the chat"); every edit goes
+  through rules.py like any write; Undo keeps the last 30 files. Routes: GET `/api/appengine/{id}/pick?hs=`, POST
+  `/edit` `{hs, style, text}`, POST `/undo`.
+- **Error collector**: POST `/api/appengine/{id}/preview-errors` (64 KB, masked with `pii.mask_sensitive`) - each
+  stack's first frame of the app's own code is mapped through that version's hidden source map (`map_position`, a
+  small VLQ reader) to `src/...:line`; one card per fingerprint (count, version); a version that loaded without it
+  marks it "gone" (not seen since vN); dismiss; `app_engine action=logs` and the turn's `<app_engine_project>` block
+  list open errors. Studio: "This app hit a problem" bar with file:line, Try to fix (sends it to Hoola with the line),
+  Dismiss.
+- **Theme file**: `.hoola/theme.json` (colours, radius, fonts, contrast + the class families) written on create /
+  tokens / build; tokens.css is now `@theme static` so every token exists as a CSS variable for the live preview.
+- **Template refresh**: before every build Hoola's locked tooling (vite.config, tsconfig, the plugin, main.tsx,
+  index.css, utils, hoola.ts) is copied fresh into the app and tokens.css / theme.json written again from its look - an
+  app made by an older version builds with today's tooling.
+- **HMR gate** (the plan's "half-write never shown"): the tool marks its writes with the turn's chat (`TURN_CONV`);
+  such a change is NOT built while that turn runs (`santosh.turn_running`), polled every 1.5 s, at most 30 min; the
+  model's own `action=build` means "this change set is complete"; the app row says `held` and the Studio shows "Hoola is
+  changing the app - the preview updates when the change is complete". Her own Studio edits build after the 2 s pause.
+- Studio (`appengine.js` / `.css`): Select button + S key, the style panel (swatches in the app's own colours,
+  Default, Words, Apply · free, Cancel, Undo last change, Open in code = the Code tab scrolled to that line and lit,
+  Ask Hoola about this = a pill on the composer sent as a `selected part: <tag> in <file> line N` hint), the error bar.
+
+### Measured here (real box + real Chromium)
+- Proof card again 5/5 (preview pages carry source tags and the helper, live pages carry neither) + 8/8 traps.
+- Tests `test_v0825_app_engine2.py` (6): free edits + Undo + refusals, theme file + refresh, routes (401 / 400 / 413 /
+  masked), preview tagged / live clean / a real built position mapped back to the page's line, **a half-written change
+  never shown** (a page importing a file not written yet: no build while the turn runs, ONE build with both files when
+  it ends, no half version in History), and a browser walk (S -> click the heading -> file:line -> accent drawn at once
+  -> Apply -> version 2 -> Open in code lights the line -> a planted error is collected, mapped to its line, Try to fix
+  sends it to Hoola). `test_v0814_app_engine.py` 9/9 still green.
+
+### NOT built / NOT verified
+- NOT VERIFIED on her VPS (run vps-ops `appengine_setup` then `appengine_check` after the deploy) or with a real model.
+- Still a fresh ~6 s build per change, not hot reload; the style panel edits one element's line (a list rendered by
+  `.map` changes every item it draws - said by the "same line" behaviour, not yet counted on the panel); no colour
+  picker outside the tokens (on purpose); errors are collected only while the Studio has the preview open.

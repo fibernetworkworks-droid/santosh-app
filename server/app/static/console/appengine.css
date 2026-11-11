@@ -72,3 +72,26 @@
   .ae-code{grid-template-columns:1fr}.ae-files{max-height:160px}
   .ae-frame{min-height:460px}
 }
+
+/* v0.825 L9 - Select, the free style panel, the error bar, the composer pills, the line in Code */
+.b.on{background:var(--pri-soft);border-color:var(--pri);color:var(--pri-ink)}
+.ae-stage{position:relative;display:flex;flex:1 1 auto;min-height:0}
+.ae-stage .ae-frame{flex:1 1 auto}
+.ae-sel{position:absolute;top:12px;right:12px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:var(--bg);color:var(--ink);border:1px solid var(--hair);border-radius:14px;box-shadow:0 12px 40px rgba(20,20,30,.16);padding:12px;display:flex;flex-direction:column;gap:10px;z-index:5}
+.ae-sel[hidden]{display:none}
+.ae-selh{display:flex;align-items:center;gap:8px;min-width:0}.ae-selh .sp{flex:1 1 auto}
+.ae-fam{display:flex;flex-direction:column;gap:5px}
+.ae-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ae-chip{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 9px;border:1px solid var(--hair);border-radius:8px;background:var(--bg);color:var(--lit);font-size:12.5px;cursor:pointer}
+.ae-chip i{width:14px;height:14px;border-radius:50%;border:1px solid var(--hair2);flex:none}
+.ae-chip.on{border-color:var(--pri);background:var(--pri-soft2);color:var(--pri-ink);font-weight:600}
+.ae-chip:focus-visible,.ae-pill button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.ae-in{width:100%;box-sizing:border-box;height:36px;border:1px solid var(--hair);border-radius:9px;padding:0 10px;font:inherit;font-size:14px;background:var(--bg);color:var(--ink)}
+.ae-ebar{display:flex;align-items:center;gap:10px;border:1px solid var(--bad);background:var(--bad-soft);border-radius:12px;padding:8px 12px;font-size:13.5px;color:var(--ink);flex-wrap:wrap}
+.ae-ebar .ell{min-width:0;flex:1 1 220px}.ae-ebar code{font-size:12px}
+.ae-pills{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 0;background:var(--bg);border-top:1px solid var(--line)}
+.ae-pills[hidden]{display:none}
+.ae-pill{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 4px 0 9px;border-radius:999px;background:var(--pri-soft);color:var(--pri-ink);font-size:12.5px}
+.ae-pill button{border:0;background:none;color:inherit;font-size:15px;width:20px;height:20px;border-radius:50%;cursor:pointer}
+.ae-src .ln{display:block}.ae-src .ln.hot{background:var(--pri-soft);border-radius:4px}
+.ae-x{font-size:18px;line-height:1;width:30px;padding:0}

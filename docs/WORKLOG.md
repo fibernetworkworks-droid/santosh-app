@@ -2999,3 +2999,9 @@ Task ID: v0.824.0 APP ENGINE 1 (L8; built as 0.814, main had moved to 0.823.0)
 Task: owner "GO L8" on docs/LOVABLE_STUDIO_PLAN.md (her 4 L8 decisions unanswered - the plan's defaults taken, all switchable).
 Work Log: server/app/appengine/ (template, tokens, rules, image + lock, runner, service, proof), agent/appengine_tools.py (app_engine, registry 627), turnmode APP + prompt block + sticky family, 13 routes, Studio Apps page + workspace (appengine.js/.css), vps-ops appengine_setup / appengine_check; 9 tests incl. the five asks in the real box + a browser walk.
 Stage Summary: pushed. Server deploy + vps-ops appengine_setup, then appengine_check. Not verified on her VPS or with a real model. Next: L9 on her GO.
+
+---
+Task ID: v0.826.0 APP ENGINE 2 (L9)
+Task: owner "GO L9" on docs/LOVABLE_STUDIO_PLAN.md.
+Work Log: hoola.plugin.mjs (preview-only source tags + hidden maps), clean build at publish, preview.js (errors / select / live style), appengine/pick.py (free edits, undo, error collector + source-map lookup), theme.json + @theme static, template refresh, the HMR gate (TURN_CONV / held), 6 routes, Studio Select + style panel + error bar + code line; 6 tests incl. a browser walk.
+Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild - @babel/parser + magic-string are in it). Next: L10 Hoola Cloud on her GO.

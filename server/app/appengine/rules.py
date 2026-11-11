@@ -17,7 +17,7 @@ import posixpath
 import re
 from typing import Any
 
-LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "tsconfig.json", "src/main.tsx", "src/index.css",
+LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.mjs", "tsconfig.json", "src/main.tsx", "src/index.css",
           "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
