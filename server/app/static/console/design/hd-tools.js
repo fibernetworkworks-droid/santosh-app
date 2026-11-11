@@ -176,15 +176,18 @@
     canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); const e = mkEvent(ev);
       if (canEdit() || true) { const t = resolveHit(HD.render.hitTest(e.x, e.y, {deep: true}), e); if (t && !HD.sel.has(t)) HD.sel.set([t]); }
       if (HD.ui && HD.ui.contextMenu) HD.ui.contextMenu(ev.clientX, ev.clientY, e); });
-    window.addEventListener('keydown', ev => { if (ev.code === 'Space' && !typing(ev) && !state.spaceDown) { state.spaceDown = true; if (!state.down) setCursor('grab'); } });
-    window.addEventListener('keyup', ev => { if (ev.code === 'Space') { state.spaceDown = false; if (!state.panning) setCursor((defs[curName] || {}).cursor || 'default'); } });
-    window.addEventListener('blur', () => { state.spaceDown = false; });
-    HD.render.addOverlay(drawOverlay);
-    if (HD.store.on) HD.store.on('change', ch => { if (!ch || !ch.remote) localChanges++; if (TextEdit.el) TextEdit.place(); });
-    if (HD.sel.on) HD.sel.on('change', () => { presence(); redraw(); });
-    if (HD.net && HD.net.on) HD.net.on('presence', redraw);
-    if (!curName) HD.tools.set('move');
+    cancelDrag(); state.hover = null; state.scope = null; state.pen = null; touches.clear(); pinch = null;
+    if (!wiredOnce) { wiredOnce = true;   /* the canvas is new for every file; these listen for the life of the page */
+      window.addEventListener('keydown', ev => { if (ev.code === 'Space' && !typing(ev) && !state.spaceDown && HD.tools.canvas) { state.spaceDown = true; if (!state.down) setCursor('grab'); } });
+      window.addEventListener('keyup', ev => { if (ev.code === 'Space') { state.spaceDown = false; if (!state.panning) setCursor((defs[curName] || {}).cursor || 'default'); } });
+      window.addEventListener('blur', () => { state.spaceDown = false; });
+      HD.render.addOverlay(drawOverlay);
+      if (HD.store.on) HD.store.on('change', ch => { if (!ch || !ch.remote) localChanges++; if (TextEdit.el) TextEdit.place(); });
+      if (HD.sel.on) HD.sel.on('change', () => { presence(); redraw(); });
+      if (HD.net && HD.net.on) HD.net.on('presence', redraw); }
+    if (curName === 'move') setCursor('default'); else { curName = ''; HD.tools.set('move'); }
   }
+  let wiredOnce = false;
   function typing(ev) { const t = ev.target; return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)); }
   function pinchState() { const p = Array.from(touches.values()), r = HD.tools.canvas.getBoundingClientRect();
     return {d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) || 1, mx: (p[0].x + p[1].x) / 2 - r.left, my: (p[0].y + p[1].y) / 2 - r.top, z: zoom()}; }
@@ -307,16 +310,16 @@
   /* ---------------------------------------------------------------- vector path helpers */
   function scalePath(d, fx, fy) {
     if (!d || (fx === 1 && fy === 1)) return d;
-    const re = /([MmLlHhVvCcSsQqTtAaZz])|(-?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?)/g; let m, cmd = '', k = 0; const out = [];
+    const re = /([MmLlHhVvCcSsQqTtAaZz])|(-?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?)/g; let m, cmd = '', k = 0; const segs = [];
     while ((m = re.exec(d))) {
-      if (m[1]) { cmd = m[1]; k = 0; out.push(cmd); continue; }
-      let v = parseFloat(m[2]); const c = cmd.toUpperCase();
+      if (m[1]) { cmd = m[1]; k = 0; segs.push({c: cmd, n: []}); continue; }
+      if (!segs.length) continue; let v = parseFloat(m[2]); const c = cmd.toUpperCase();
       if (c === 'H') v *= fx; else if (c === 'V') v *= fy;
       else if (c === 'A') { const i = k % 7; if (i === 0) v *= Math.abs(fx); else if (i === 1) v *= Math.abs(fy); else if (i === 5) v *= fx; else if (i === 6) v *= fy; }
       else v *= (k % 2 === 0) ? fx : fy;
-      k++; out.push(String(r2(v)));
+      k++; segs[segs.length - 1].n.push(String(c === 'A' && (k - 1) % 7 >= 2 && (k - 1) % 7 <= 4 ? parseFloat(m[2]) : r2(v)));
     }
-    return out.join(' ').replace(/ ?([A-Za-z]) ?/g, '$1').replace(/([0-9.])([A-Za-z])/g, '$1 $2').trim();
+    return segs.map(sg => sg.c + sg.n.join(' ')).join('');
   }
   function ptsToPath(pts, closed) {
     if (!pts.length) return ''; let d = 'M' + r2(pts[0].x) + ' ' + r2(pts[0].y);

@@ -702,7 +702,8 @@
   /* ------------------------------------------------------------------ bitmap cache */
   const C = new Map();
   let cacheBytes = 0;
-  const CACHE_CAP = 256 * 1024 * 1024, CACHE_MAXD = 4096, CACHE_MAXA = 6e6, COST_MIN = 14, HOT_MS = 260;
+  let CACHE_CAP = 256 * 1024 * 1024;           /* bytes of bitmap pixels kept at most (least recently used go first) */
+  const CACHE_MAXD = 4096, CACHE_MAXA = 6e6, COST_MIN = 14, HOT_MS = 260;
   function dropEntry(id, en) { cacheBytes -= en.bytes; en.cv.width = 0; en.cv.height = 0; C.delete(id); }
   function clearCache() { for (const [id, en] of C) { en.cv.width = 0; en.cv.height = 0; C.delete(id); } cacheBytes = 0; }
   function evict() {
@@ -745,18 +746,10 @@
       if (!T.exact) { blitScaled(T, en, op, blendOp, ma, mb, mc, md, me, mf); return true; }
       dropEntry(id, en);
     }
-    if (!T.canBuild || rec.hot > T.now || now() > T.budgetEnd) return false;
-    let sc, bw, bh, offX, offY;
-    if (axis) {
-      const px0 = Math.floor(dx0), py0 = Math.floor(dy0);
-      bw = Math.ceil(dx1) - px0; bh = Math.ceil(dy1) - py0;
-      sc = ma; offX = me - px0; offY = mf - py0;
-    } else {
-      if (T.exact) return false;
-      sc = Math.sqrt(Math.abs(ma * md - mb * mc));
-      bw = Math.ceil((rec.x1 - rec.x0) * sc) + 2; bh = Math.ceil((rec.y1 - rec.y0) * sc) + 2;
-      offX = -rec.x0 * sc + 1; offY = -rec.y0 * sc + 1;
-    }
+    /* a bitmap is only ever MADE for an upright node at the scale and pixel phase it has right now (so it can be shown 1:1) */
+    if (!axis || !T.canBuild || rec.hot > T.now || now() > T.budgetEnd) return false;
+    const px0 = Math.floor(dx0), py0 = Math.floor(dy0);
+    const bw = Math.ceil(dx1) - px0, bh = Math.ceil(dy1) - py0, sc = ma, offX = me - px0, offY = mf - py0;
     if (bw < 1 || bh < 1 || bw > CACHE_MAXD || bh > CACHE_MAXD || bw * bh > CACHE_MAXA) return false;
     const cv = document.createElement('canvas');
     cv.width = bw; cv.height = bh;
@@ -768,7 +761,7 @@
     C.set(id, en);
     cacheBytes += en.bytes;
     stats.built++;
-    if (axis) blitExact(T, en, op, blendOp, me, mf); else blitScaled(T, en, op, blendOp, ma, mb, mc, md, me, mf);
+    blitExact(T, en, op, blendOp, me, mf);
     if (cacheBytes > CACHE_CAP) evict();
     return true;
   }
@@ -864,7 +857,8 @@
       rec.wx0 = (dx0 - T.btx) / bs; rec.wy0 = (dy0 - T.bty) / bs; rec.wx1 = (dx1 - T.btx) / bs; rec.wy1 = (dy1 - T.bty) / bs; rec.serial = T.serial;
     }
     let op = n.opacity;
-    if (op === undefined) op = 1; else { if (n.bind !== undefined) op = G(n, 'opacity'); op = num(+op, 1); if (op > 1) op = 1; }
+    if (n.bind !== undefined) op = G(n, 'opacity');
+    if (op === undefined) op = 1; else { op = num(+op, 1); if (op > 1) op = 1; }
     if (op <= 0.003) return;
     if (T.lod) {
       const dw = dx1 - dx0, dh = dy1 - dy0;
@@ -963,7 +957,8 @@
     const lx0 = Math.max(Math.floor(dx0) - 1, B[0] - pad), ly0 = Math.max(Math.floor(dy0) - 1, B[1] - pad);
     const lx1 = Math.min(Math.ceil(dx1) + 1, B[2] + pad), ly1 = Math.min(Math.ceil(dy1) + 1, B[3] + pad);
     const LW = lx1 - lx0, LH = ly1 - ly0;
-    if (LW <= 0 || LH <= 0 || LW * LH > 5e7) return;
+    if (LW <= 0 || LH <= 0) return;
+    if (LW * LH > 1.3e8) { paintContent(T, n, id, v, rec, type, w, h, op, null, scale, ma, mb, mc, md, me, mf); ctx.globalAlpha = 1; return; }   /* too big for a layer: drawn plainly rather than not at all */
     const saveLD = LD;
     try {
       const F = getLayer(LW, LH);
@@ -1433,7 +1428,10 @@
       let full = sceneFull || !last.valid || page !== last.page || bs !== last.s || debug.noDirty;
       const zooming = last.valid && bs !== last.s;
       if (zooming) lastZoomAt = t0;
-      const exact = wantExact && !zooming;
+      /* loose = something is moving (a zoom, an edit just now): a bitmap may be shown scaled or between pixels for a
+         moment; otherwise every bitmap is shown 1:1 or the node is drawn straight */
+      const loose = zooming || t0 - lastZoomAt < 150 || t0 - lastChangeAt < 250;
+      const exact = !loose || (wantExact && !zooming);
       let regions = null;
       if (!full && pn) { const pr = derive(page, pn); if ((pr.flags & F_BG) !== 0) full = true; }
       if (!full && pending.size > 600) full = true;
@@ -1476,7 +1474,7 @@
       lastRealAt = now();
       if (full) lastFullMs = lastRealAt - t0;
       stats.regions = full ? 0 : regions.length / 4;
-      if (exact && full) wantExact = false;
+      if (exact && full) { wantExact = false; if (settleTimer) { clearTimeout(settleTimer); settleTimer = 0; } }
       if (T !== null && T.inexact) { clearTimeout(settleTimer); settleTimer = setTimeout(() => { settleTimer = 0; wantExact = true; sceneFull = true; schedule(); }, 220); }
       sceneFull = false;
       last.s = bs; last.tx = tx; last.ty = ty; last.page = page; last.w = Wd; last.h = Hd; last.valid = true;
@@ -1657,7 +1655,11 @@
         /* behind a mask: only where the nearest mask below it covers */
         let j = i - 1;
         for (; j >= 0; j--) { const mn = v !== null ? ks[j].n : s.get(ks[j]); if (mn && mn.mask === true && mn.visible !== false) break; }
-        if (j >= 0) { const mn = v !== null ? ks[j].n : s.get(ks[j]); toLocal(mn, x, y, P); if (!(P[0] >= 0 && P[1] >= 0 && P[0] <= W(mn) && P[1] <= H(mn))) continue; }
+        if (j >= 0) {
+          const mn = v !== null ? ks[j].n : s.get(ks[j]), mw = W(mn), mh = H(mn);
+          toLocal(mn, x, y, P);
+          if (!(GEO_MASK[mn.type] === 1 ? inGeom(geomOf(mn, mn.type, mw, mh), mw, mh, P[0], P[1], 0) : (P[0] >= 0 && P[1] >= 0 && P[0] <= mw && P[1] <= mh))) continue;
+        }
       }
       const hit = hitNode(kn, kid, kv, x, y, tol, withLocked);
       if (hit !== null) return hit;
@@ -2129,7 +2131,8 @@
     /* helpers beyond the contract */
     resize, flush, on, stats, debug, hitChain, setEditing, loadFont, fontLoaded, ready, exportBounds, clearCaches,
     bounds: boundsOf, worldMatrix: worldMat, assetURL: null, webFonts: true, pixelGrid: true, frameLabels: true, zoomPreview: true,
-    get canvas() { return canvas; }, get dpr() { return dpr; }, get size() { return {w: cssW, h: cssH}; }
+    get canvas() { return canvas; }, get dpr() { return dpr; }, get size() { return {w: cssW, h: cssH}; },
+    get cacheCapMB() { return CACHE_CAP / 1048576; }, set cacheCapMB(v) { CACHE_CAP = Math.max(1, +v || 256) * 1048576; evict(); }
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else setTimeout(hook, 0);
 })();

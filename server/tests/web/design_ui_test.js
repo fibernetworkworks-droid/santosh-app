@@ -72,7 +72,8 @@ function startMock(seedDoc) {
   });
   const socks = new Set();
   server.on('upgrade', (req, socket) => {
-    socks.add(socket); socket.on('close', () => socks.delete(socket));
+    if (server.down) { socket.destroy(); return; }
+    socks.add(socket); socket.on('close', () => socks.delete(socket)); socket.on('error', () => {});
     const u = new URL(req.url, 'http://localhost'), f = files.get(u.searchParams.get('file')), protos = String(req.headers['sec-websocket-protocol'] || '').split(',').map(s => s.trim());
     const accept = crypto.createHash('sha1').update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
     socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n' + (protos.includes('hoola') ? 'Sec-WebSocket-Protocol: hoola\r\n' : '') + '\r\n');
@@ -96,6 +97,8 @@ function startMock(seedDoc) {
     socket.on('close', gone); socket.on('error', gone);
   });
   return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve({port: server.address().port, files: files, rooms: rooms, log: log, server: server, close: () => new Promise(r => { for (const so of socks) { try { so.destroy(); } catch (e) { /* gone */ } } if (server.closeAllConnections) server.closeAllConnections(); const t = setTimeout(r, 1500); server.close(() => { clearTimeout(t); r(); }); }),
+    /* the connection drops (and stays down until down(false)) */
+    down(on) { server.down = on; if (on) for (const so of socks) { try { so.destroy(); } catch (e) { /* gone */ } } },
     /* a second person in the room, driven by the test */
     ghost(fileId, user, pres) { const room = rooms.get(fileId); if (!room) return; room.ghosts.push(user); for (const c of room.clients) { c.send({t: 'join', user: user}); if (pres) c.send(Object.assign({t: 'pres', cid: user.cid}, pres)); } }})));
 }
@@ -286,6 +289,28 @@ async function walk() {
     await page.mouse.wheel(0, 120); await settle(page); const w2 = await ev(() => { const r = HD.tools.canvas.getBoundingClientRect(); return HD.render.screenToWorld(r.width / 2, r.height / 2); }); assert.ok(w2[1] > w1[1], 'wheel pans down');
     await page.keyboard.press('Shift+1'); await settle(page);
 
+    /* ---- pen: a VECTOR whose path sits in the node's own 0..w / 0..h box; copy + paste; snapping ---- */
+    await page.keyboard.press('p'); assert.equal(await ev(() => HD.tools.current), 'pen');
+    for (const w of [[520, 660], [620, 660], [570, 740], [520, 660]]) { const s = await pt(w[0], w[1]); await page.mouse.click(s[0], s[1]); await page.waitForTimeout(40); } await settle(page);
+    const vid = await ev(() => HD.sel.ids[0]), vec = await node(vid); assert.equal(vec.type, 'VECTOR'); near(vec.x, 520, 1, 'vector x'); near(vec.w, 100, 1, 'vector w'); near(vec.h, 80, 1, 'vector h');
+    assert.match(vec.path, /^M0 0L100 0L50 80(L0 0)?Z$/, 'a closed triangle in its own box: ' + vec.path); assert.equal(await ev(() => HD.tools.current), 'move');
+    await page.locator('.hd-right input[aria-label="Width"]').fill('200'); await page.keyboard.press('Enter'); await settle(page); assert.match((await node(vid)).path, /^M0 0L200 0L100 80/, 'resizing a vector rescales its path');
+    await page.locator('.hd-canvas').focus(); const nb = await ev(() => HD.store.children(HD.sel.page).length);
+    await ev(() => { const dt = new DataTransfer(); document.dispatchEvent(new ClipboardEvent('copy', {clipboardData: dt, bubbles: true, cancelable: true})); window.__copied = dt.getData('text/plain'); document.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }); await settle(page);
+    assert.equal(await ev(() => window.__copied), vec.name, 'the system clipboard gets the layer name'); assert.equal(await ev(() => HD.store.children(HD.sel.page).length), nb + 1, 'paste adds a copy'); assert.notEqual(await ev(() => HD.sel.ids[0]), vid);
+    await page.keyboard.press('Delete'); await settle(page);
+    const cardB = await node('9:5'); await page.mouse.move(...(await pt(cardB.x + 110, cardB.y + 70))); await page.mouse.down(); await page.mouse.move(...(await pt(cardB.x + 30, cardB.y + 70)), {steps: 4}); await page.mouse.move(...(await pt(cardB.x + 110 - 87, cardB.y + 71)), {steps: 3});
+    assert.ok(await ev(() => HD.tools.state.guides.length > 0), 'a smart guide shows while it snaps'); const sx = await ev(() => HD.store.prop('9:5', 'x')); assert.ok(Math.abs(sx - 393) <= 6 && sx !== 393, 'the card left the raw pointer position (393) for a neighbour edge: ' + sx); await shot(page, 'snapping'); await page.mouse.up(); await settle(page);
+    await page.keyboard.press('Control+z'); await settle(page); near((await node('9:5')).x, 480, 0.01, 'undo the snap move');
+
+    /* ---- later phases plug in: a panel, a menu item, a shortcut, a hook ---- */
+    await ev(() => { window.__got = []; HD.ui.registerPanel('right', 'prototype', {title: 'Prototype', render(el) { if (!el.firstChild) el.appendChild(HD.ui.h('p', {class: 'hd-note pad', text: 'from a later phase'})); }});
+      HD.ui.registerMenu('context', {label: 'Create component', run: () => window.__got.push('menu')}); HD.ui.registerShortcut('mod+alt+k', () => window.__got.push('key')); HD.ui.hook('export', ids => window.__got.push('export:' + ids.length)); }); await settle(page);
+    assert.deepEqual(await page.locator('.hd-right .hd-tab').allTextContents(), ['Design', 'Prototype']); await page.locator('.hd-tab', {hasText: 'Prototype'}).click(); await settle(page); assert.equal(await page.locator('.hd-right .hd-pbody.custom').textContent(), 'from a later phase');
+    await page.locator('.hd-tab', {hasText: 'Design'}).click(); await settle(page); await page.locator('.hd-canvas').focus(); await page.keyboard.press('Control+Alt+k'); await page.locator('.hd-top .hd-btn', {hasText: 'Export'}).click();
+    await page.mouse.click(kc[0], kc[1], {button: 'right'}); await page.locator('.hd-mi', {hasText: 'Create component'}).click(); assert.deepEqual(await ev(() => window.__got), ['key', 'export:1', 'menu']);
+    await page.locator('.hd-top .hd-btn', {hasText: 'Share'}).click(); await page.waitForFunction(() => /not switched on/.test((document.querySelector('.hd-toast') || {}).textContent || ''));
+
     /* ---- the server has it, another person shows up, the file renames ---- */
     await page.waitForFunction(() => HD.net.pending() === 0); const saved = mock.files.get('f1').doc.nodes;
     assert.ok(saved[rid] && saved[rid].type === 'RECT' && saved[rid].fills[0].type === 'solid', 'the rectangle reached the server'); assert.equal(saved[tid].chars, 'Namaste नमस्ते!');
@@ -309,11 +334,24 @@ async function walk() {
     assert.equal(await page.locator('.hd-right').isVisible(), false); assert.match(await page.locator('.hd-banner').textContent(), /bigger screen/); assert.equal(await ev(() => HD.tools.current), 'hand'); await shot(page, 'small-screen');
     await ev(() => window.HoolaTheme.setTheme('light')); await page.setViewportSize({width: 1440, height: 900}); await settle(page); assert.equal(await ev(() => HD.tools.current), 'move');
 
+    /* ---- the connection drops: a banner, edits are kept, and they arrive when it is back ---- */
+    mock.down(true); await page.waitForFunction(() => HD.net.status === 'offline', null, {timeout: 45000}); await page.waitForFunction(() => /offline/i.test(document.querySelector('.hd-banner').textContent));
+    assert.match(await page.locator('.hd-status').getAttribute('class'), /offline/); const kx = (await node(rid)).x;
+    await page.locator('.hd-canvas').focus(); const ko = await pt(k.x + 20, k.y + 20); await page.mouse.click(ko[0], ko[1]); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight'); await settle(page);
+    near((await node(rid)).x, kx + 2, 0.01, 'editing goes on offline'); assert.ok(await ev(() => HD.net.pending() > 0), 'the edits wait'); await shot(page, 'offline');
+    assert.equal(await ev(() => { const e = new Event('beforeunload', {cancelable: true}); window.dispatchEvent(e); return e.defaultPrevented; }), true, 'leaving with unsent changes asks first');
+    mock.down(false); await page.waitForFunction(() => HD.net.status === 'live' && HD.net.pending() === 0, null, {timeout: 30000}); await page.waitForFunction(() => document.querySelector('.hd-banner').hidden);
+    near(mock.files.get('f1').doc.nodes[rid].x, kx + 2, 0.01, 'the offline edits reached the server'); near((await node(rid)).x, kx + 2, 0.01, 'and stayed on screen');
+
     /* ---- back to the files: the thumbnail was sent, the new name shows ---- */
     await page.locator('.hd-top button[aria-label="Back to your files"]').click(); await page.locator('.hd-card').first().waitFor();
     assert.equal(await page.locator('.hd-cname').first().textContent(), 'Diwali poster'); await page.waitForFunction(() => document.querySelector('.hd-thumb img'), null, {timeout: 8000}); assert.ok(mock.files.get('f1').thumb && mock.files.get('f1').thumb.length > 100, 'thumbnail uploaded on leaving');
     await ev(() => window.HoolaTheme.setTheme('dark')); await settle(page); await shot(page, 'files-dark'); await ev(() => window.HoolaTheme.setTheme('light'));
-    await page.close();
+    /* open it again in the same tab: one editor, one set of listeners */
+    await page.locator('.hd-open').first().click(); await mounted(page); await settle(page); const again = await ev(() => HD.store.children(HD.sel.page).length);
+    await page.locator('.hd-canvas').focus(); await page.keyboard.press('o'); await dragW([760, 300], [840, 380]); assert.equal(await ev(() => HD.store.children(HD.sel.page).length), again + 1, 'exactly one ellipse after reopening');
+    assert.equal(await ev(() => HD.store.get(HD.sel.ids[0]).type), 'ELLIPSE'); await page.keyboard.press('Control+z'); await settle(page); assert.equal(await ev(() => HD.store.children(HD.sel.page).length), again);
+    await page.waitForFunction(() => HD.net.pending() === 0); await page.close();
 
     /* ---- a view-only file: tools off, a banner, nothing changes ---- */
     mock.server.viewOnly = true; const v = await newPage({width: 1280, height: 800}); await v.goto(base + '#/f/f1'); await mounted(v); await settle(v);

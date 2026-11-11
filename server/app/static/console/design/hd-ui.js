@@ -189,7 +189,7 @@
     const c = el.firstChild || el.appendChild(h('span', {class: 'hd-swc'})); c.style.backgroundImage = ''; c.style.backgroundColor = 'transparent'; clear(c);
     if (!p || p === MIXED) { c.style.backgroundImage = 'linear-gradient(135deg, var(--hair2) 50%, var(--sunk) 50%)'; return; }
     if (p.type === 'solid') c.style.backgroundColor = rgba(p.color, p.opacity === undefined ? 1 : p.opacity);
-    else if (p.type === 'image') { const img = HD.render && HD.render.image ? HD.render.image(p.hash) : null; if (img && img.src) { c.style.backgroundImage = 'url("' + String(img.src).replace(/["\\]/g, '') + '")'; c.style.backgroundSize = 'cover'; c.style.backgroundPosition = 'center'; } else c.appendChild(icon('image', 12)); }
+    else if (p.type === 'image') { const img = HD.render && HD.render.image ? HD.render.image(p.hash) : null; if (img && img.src) { c.style.backgroundImage = 'url("' + String(img.src).replace(/["\\]/g, '') + '")'; c.style.backgroundSize = 'cover'; c.style.backgroundPosition = 'center'; } else { c.appendChild(icon('image', 12)); if (p.hash && (paintSwatch.tries = (paintSwatch.tries || 0) + 1) < 40) setTimeout(() => { ui.sig = ''; refresh(); }, 700); } }
     else c.style.backgroundImage = gradCss(p);
   }
   const RECENT_KEY = 'hoola.design.recent';
@@ -456,7 +456,7 @@
   function syncZoom() { const z = (HD.render.view && HD.render.view.zoom) || 1; if (Math.abs(z - zoomShown) < 0.0005 || !top.zoom) return; zoomShown = z; top.zoom.firstChild.textContent = Math.round(z * 100) + '%'; }
   let peopleSig = '';
   function syncNet() {
-    if (!top.status) return; const st = (HD.net && HD.net.status) || 'offline', lab = st === 'live' ? 'Saved' : st === 'connecting' ? 'Connecting' : 'Offline';
+    if (!top.status) return; const st = (HD.net && HD.net.status) || 'offline', busy = st === 'live' && HD.net.pending && HD.net.pending() > 0, lab = st === 'live' ? (busy ? 'Saving\u2026' : 'Saved') : st === 'connecting' ? 'Connecting' : 'Offline';
     top.status.className = 'hd-status ' + st; top.status.lastChild.textContent = lab; top.status.title = st === 'live' ? 'Every change is saved as you make it.' : st === 'connecting' ? 'Connecting to the server…' : 'No connection. Your changes are kept here and sent when you are back online.';
     const users = [], me = HD.net && HD.net.cid; if (HD.net && HD.net.users && HD.net.users.forEach) HD.net.users.forEach((u, cid) => { if (u && cid !== me && u.cid !== me) users.push({cid: cid, name: String(u.name || 'Guest'), color: u.color || '#EE8F35', u: u}); });
     const sig = users.map(u => u.cid + u.name + u.color).join('|'); if (sig === peopleSig) return; peopleSig = sig; clear(top.people);
@@ -691,6 +691,7 @@
       tips.body.appendChild(h('button', {class: 'hd-tip', type: 'button', disabled: !U().canEdit(), on: {click: () => T().set(t[0])}}, h('span', {class: 'hd-tip-ic'}, icon(t[0], 16)), h('span', {class: 'hd-tip-t'}, h('b', {text: t[1]}), h('span', {text: t[3]})), h('kbd', {text: t[2]})));
     tips.body.appendChild(h('button', {class: 'hd-linkbtn', type: 'button', text: 'All keyboard shortcuts', on: {click: shortcutSheet}}));
   }
+  const ROUNDS = {RECT: 1, FRAME: 1, COMPONENT: 1, INSTANCE: 1, SECTION: 1, POLYGON: 1, STAR: 1}, CORNERS = {RECT: 1, FRAME: 1, COMPONENT: 1, INSTANCE: 1, SECTION: 1};
   function secLayout(el, ids) {
     const s = section(el, 'Layout'), inFlow = id => isAuto(HD.store.parent(id)) && P(id, 'layoutPos') !== 'absolute', allFlow = ids.every(inFlow), anyAutoPar = ids.some(id => isAuto(HD.store.parent(id)));
     const geo = (name, title, label, o) => numField(Object.assign({label: label, title: title, get: () => mixed(ids, id => U().num(id, name, name === 'w' || name === 'h' ? 100 : 0)), set: (v, g) => write(title, () => { for (const id of ids) HD.store.set(id, {[name]: v}); }, g)}, o || {}));
@@ -702,13 +703,13 @@
       line ? h('span', {class: 'hd-field ghost'}) : numField({label: 'H', title: 'Height', min: 0.01, get: () => mixed(ids, id => U().num(id, 'h', 100)), set: sizeSet('h')}),
       toggle('link', 'Keep the proportions', () => ui.ratio, v => { ui.ratio = v; }, 'sm')));
     const hasAuto = ids.some(isAuto), isText = ids.every(id => U().typeOf(id) === 'TEXT');
-    if (anyAutoPar || hasAuto) { const opts = side => { const o = [['fixed', 'Fixed']]; if (hasAuto || isText) o.push(['hug', 'Hug contents']); if (anyAutoPar) o.push(['fill', 'Fill container']); void side; return o; };
+    if (anyAutoPar || hasAuto) { const opts = side => { const o = [['fixed', 'Fixed']]; if (hasAuto || isText) o.push(['hug', 'Hug']); if (anyAutoPar) o.push(['fill', 'Fill']); void side; return o; };
       s.body.appendChild(row(h('label', {class: 'hd-sfield'}, h('span', {class: 'hd-flab', text: 'W'}), select(opts('h'), () => mixed(ids, 'sizeH') || 'fixed', v => setAll('Resizing', ids, 'sizeH', v), 'Horizontal resizing')),
         h('label', {class: 'hd-sfield'}, h('span', {class: 'hd-flab', text: 'H'}), select(opts('v'), () => mixed(ids, 'sizeV') || 'fixed', v => setAll('Resizing', ids, 'sizeV', v), 'Vertical resizing')), h('span', {class: 'hd-ib sm ghost'}))); }
     s.body.appendChild(row(geo('rot', 'Rotation', null, {icon: 'rotate', unit: '°', min: -360, max: 360}),
-      line ? h('span', {class: 'hd-field ghost'}) : numField({icon: 'radius', title: 'Corner radius', min: 0, off: () => ui.corners, get: () => mixed(ids, id => { const r = P(id, 'radius'); return Array.isArray(r) ? (r.every(x => x === r[0]) ? r[0] : MIXED) : (r || 0); }), set: (v, g) => setAll('Corner radius', ids, 'radius', v, g)}),
-      toggle('corners', 'Set each corner on its own', () => ui.corners, v => { ui.corners = v; refresh(); }, 'sm')));
-    if (ui.corners && !line) { const names = ['Top left', 'Top right', 'Bottom right', 'Bottom left'], r = h('div', {class: 'hd-row four'});
+      !ids.some(id => ROUNDS[U().typeOf(id)]) ? h('span', {class: 'hd-field ghost'}) : numField({icon: 'radius', title: 'Corner radius', min: 0, off: () => ui.corners, get: () => mixed(ids, id => { const r = P(id, 'radius'); return Array.isArray(r) ? (r.every(x => x === r[0]) ? r[0] : MIXED) : (r || 0); }), set: (v, g) => setAll('Corner radius', ids, 'radius', v, g)}),
+      ids.some(id => CORNERS[U().typeOf(id)]) ? toggle('corners', 'Set each corner on its own', () => ui.corners, v => { ui.corners = v; refresh(); }, 'sm') : h('span', {class: 'hd-ib sm ghost'})));
+    if (ui.corners && ids.some(id => CORNERS[U().typeOf(id)])) { const names = ['Top left', 'Top right', 'Bottom right', 'Bottom left'], r = h('div', {class: 'hd-row four'});
       names.forEach((nm, i) => r.appendChild(numField({label: ['⌜', '⌝', '⌟', '⌞'][i], title: nm + ' radius', min: 0, get: () => mixed(ids, id => { const v = P(id, 'radius'); return Array.isArray(v) ? (v[i] || 0) : (v || 0); }),
         set: (v, g) => write('Corner radius', () => { for (const id of ids) { const c = P(id, 'radius'), arr = Array.isArray(c) ? c.slice(0, 4) : [c || 0, c || 0, c || 0, c || 0]; while (arr.length < 4) arr.push(0); arr[i] = v; HD.store.set(id, {radius: arr}); } }, g)}))); s.body.appendChild(r); }
     const acts = h('div', {class: 'hd-row tight'}, ibtn('flipH', 'Flip horizontal  (' + keysLabel('shift+h') + ')', () => A().flip('h'), 'sm'), ibtn('flipV', 'Flip vertical  (' + keysLabel('shift+v') + ')', () => A().flip('v'), 'sm'));
@@ -832,7 +833,7 @@
         else body.appendChild(row(nf('blur', 'Blur', {min: 0, wide: true})));
         const hp = pop(line, body, {cls: 'hd-pop-fx', label: 'Effect settings', side: 'left'}); }, 'sm');
       const eye = ibtn('eye', 'Show or hide', () => upd({visible: (list()[i] || {}).visible === false}), 'sm'), rm = ibtn('minus', 'Remove', () => { const a = list().slice(); a.splice(i, 1); setList(a); }, 'sm');
-      ui.syncs.push(() => { const f = list()[i]; if (!f) return; line.classList.toggle('off', f.visible === false); clear(eye).appendChild(icon(f.visible === false ? 'eyeoff' : 'eye')); for (const b of [setBtn, eye, rm]) b.disabled = !U().canEdit(); });
+      const showFx = () => { const f = list()[i]; if (!f) return; line.classList.toggle('off', f.visible === false); clear(eye).appendChild(icon(f.visible === false ? 'eyeoff' : 'eye')); for (const b of [setBtn, eye, rm]) b.disabled = !U().canEdit(); }; ui.syncs.push(showFx); showFx();
       add(line, [h('label', {class: 'hd-sfield grow'}, tsel), setBtn, eye, rm]); s.body.appendChild(line); void fx;
     });
   }
@@ -873,7 +874,7 @@
   }
   function shortcutSheet() {
     const groups = {}; for (const c of commands) { if (!c.keys || !c.label) continue; (groups[c.group || 'Other'] = groups[c.group || 'Other'] || []).push(c); }
-    const extra = {Edit: [['Copy', 'mod+c'], ['Cut', 'mod+x'], ['Paste', 'mod+v']], Canvas: [['Pan', 'space+drag'], ['Zoom', 'mod+scroll'], ['Select a layer inside a group', 'mod+click'], ['Duplicate while dragging', 'alt+drag'], ['Keep the proportions / snap the angle', 'shift+drag'], ['Switch snapping off while dragging', 'mod+drag']]};
+    const extra = {Edit: [['Copy', 'mod+c'], ['Cut', 'mod+x'], ['Paste', 'mod+v']], Canvas: [['Pan', 'space+drag'], ['Zoom', 'mod+scroll'], ['Select a layer inside a group', 'mod+click'], ['Go into a group / edit text', 'enter'], ['Select the parent', 'shift+enter'], ['Next layer', 'tab'], ['Duplicate while dragging', 'alt+drag'], ['Keep the proportions / snap the angle', 'shift+drag'], ['Switch snapping off while dragging', 'mod+drag']]};
     const cols = h('div', {class: 'hd-keycols'});
     for (const col of [['Tools', 'Edit'], ['Arrange'], ['View', 'Canvas', 'Other']]) { const c = h('div', {class: 'hd-keycol'});
       for (const g of col) { const list = (groups[g] || []).map(k => [k.label, norm([].concat(k.keys)[0])]).concat(extra[g] || []); if (!list.length) continue;
@@ -919,7 +920,7 @@
     if (T().key(ev)) ev.preventDefault();
   }
   function editorFocus(ev) { return ui.mounted && !modal.el && !typing(ev); }
-  function onCopy(ev) { if (!editorFocus(ev) || (window.getSelection && String(window.getSelection()))) return; const sig = A().clipText(); if (!sig) return; ev.clipboardData.setData('text/plain', sig); ev.preventDefault(); if (ev.type === 'cut') { if (U().canEdit()) A().remove(); } }
+  function onCopy(ev) { const ws = window.getSelection ? window.getSelection() : null; if (!editorFocus(ev) || (ws && !ws.isCollapsed && String(ws).trim())) return; const sig = A().clipText(); if (!sig) return; ev.clipboardData.setData('text/plain', sig); ev.preventDefault(); if (ev.type === 'cut') { if (U().canEdit()) A().remove(); } }
   function imageSize(blob) { return new Promise(resolve => { const url = URL.createObjectURL(blob), img = new Image(); img.onload = () => { resolve([img.naturalWidth || 200, img.naturalHeight || 200]); URL.revokeObjectURL(url); }; img.onerror = () => { resolve([200, 200]); URL.revokeObjectURL(url); }; img.src = url; }); }
   async function placeImage(blob, name, at) { const size = await imageSize(blob), hash = await uploadImage(blob); if (!hash) return null; let w = size[0], hh = size[1]; const k = Math.min(1, 1600 / Math.max(w, hh)); w *= k; hh *= k; return A().pasteImage(hash, w, hh, name || 'Image', at); }
   function onPaste(ev) {
@@ -974,7 +975,7 @@
     if (!ui.wired) { ui.wired = true;
       HD.store.on('change', ch => { if (!ch || ch.structural !== false) L.dirty = true; refresh(); }); HD.store.on('load', () => { L.dirty = true; Pg.sig = ''; ui.sig = ''; refresh(); });
       HD.sel.on('change', () => { if (pops.length) closePops(0); onSelChange(); }); T().onChange(() => { syncTools(); }); T().onView(syncZoom); HD.render.addOverlay(() => syncZoom());
-      if (HD.net && HD.net.on) { HD.net.on('status', () => { syncNet(); syncBanner(); refresh(); }); HD.net.on('presence', ev => { if (!ev || ev.type !== 'pres') syncNet(); }); HD.net.on('file', f => { if (f && HD.app && HD.app.file && f.name) { HD.app.file.name = f.name; syncTop(); } }); }
+      if (HD.net && HD.net.on) { HD.net.on('status', () => { syncNet(); syncBanner(); refresh(); }); HD.net.on('presence', ev => { if (!ev || ev.type !== 'pres') syncNet(); }); HD.net.on('pending', () => syncNet()); HD.net.on('file', f => { if (f && HD.app && HD.app.file && f.name) { HD.app.file.name = f.name; syncTop(); } }); }
       window.addEventListener('keydown', onKey); document.addEventListener('copy', onCopy); document.addEventListener('cut', onCopy); document.addEventListener('paste', onPaste);
       window.addEventListener('resize', sizeMode); window.addEventListener('dragover', ev => { if (ui.mounted && ev.dataTransfer && Array.from(ev.dataTransfer.types || []).indexOf('Files') >= 0) ev.preventDefault(); }); window.addEventListener('drop', onDrop);
       if (window.HoolaTheme) window.HoolaTheme.onChange(() => { if (ui.mounted) HD.render.invalidate(); });
@@ -988,7 +989,7 @@
     registerPanel: registerPanel, registerMenu: registerMenu, registerShortcut: registerShortcut, command: command, run: runCmd,
     hook: hook, fire: fire, hooks: hooks, contextMenu: contextMenu, menu: menu, pop: pop, closePops: closePops, palette: palette, shortcuts: shortcutSheet,
     icon: icon, h: h, clear: clear, numField: numField, select: select, seg: seg, section: section, row: row, colorLine: colorLine, paintPicker: paintPicker,
-    loadFont: loadFont, fonts: FONTS, setPage: setPage, renameLayer: renameLayer, uploadImage: uploadImage, keysLabel: keysLabel, modal: openModal, closeModal: closeModal, MIXED: MIXED,
+    loadFont: loadFont, fonts: FONTS, setPage: setPage, renameLayer: renameLayer, revealLayers(ids) { reveal([].concat(ids)); layersPaint(); }, uploadImage: uploadImage, keysLabel: keysLabel, modal: openModal, closeModal: closeModal, MIXED: MIXED,
     get token() { return TOKEN; }, get mounted() { return ui.mounted; }, state: ui
   };
 })();

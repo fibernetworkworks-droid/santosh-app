@@ -17,34 +17,33 @@
  * If fn throws, everything it did is put back and nothing is sent. Defaults are never written into ops.
  *
  * THE SYNC HANDSHAKE (HD.store <-> HD.net)
- *   store.tracking(true)            net switches pending-tracking on while a file is connected (off = no
- *                                   book-keeping at all, for a local-only document).
- *   store.onOps(fn(ops, b))         fires once per closed local tx. `ops` is the batch, `b` the store's own
- *                                   batch number (1, 2, 3, ...). The op OBJECTS are the handles: keep them,
- *                                   do not clone or change them.
- *   store.rollback(ops)             the server REJECTED these ops (the same objects it was given). Each prop
- *                                   goes back to what the server has: the last remote value that arrived
- *                                   while it was pending, else the value before the edit. A rejected create
- *                                   is removed, a rejected delete is put back.
- *   store.acked(b)                  every op of batch b has been answered (call rollback for the rejected
- *                                   ones FIRST). Releases the batch's pending marks; in the rare case that an
- *                                   accepted op is not on screen yet (it could not be applied after a reload,
- *                                   or the node was re-made by someone meanwhile) it is put on screen now.
- *   store.applyRemote(ops)          ops of other people. While a local write to (node, prop) is un-acked a
- *                                   remote value for that same (node, prop) is NOT applied (it is remembered
- *                                   as the server's value in case our write is rejected). Ops on a node we
- *                                   deleted (not confirmed yet) are skipped: the server will delete it too.
- *   store.load(doc, cid, {keep:true})   after a reconnect: the fresh document is loaded, the undo stack is
- *                                   kept, and every still-pending batch is applied again on top (an op that
- *                                   does not fit stays pending; its answer settles it).
- *   store.on('desync', fn)          the store can not tell what the server has: a remote delete took a node
- *                                   we had moved in from elsewhere, a node left something we are deleting, a
- *                                   remote reparent would be a cycle here, a rollback hit a node that is
- *                                   gone... net then reconnects and reloads with {keep:true}; nothing typed
- *                                   is lost. server/tests/web/design_core_test.js runs three editors against
- *                                   a contract server with crossing messages to prove they always end equal.
+ * While tracking, the store keeps a second copy of the document: the SHADOW = the document as the server has
+ * it (the init document + every remote op + every op of ours the server accepted, in the server's order). What
+ * is on screen is ALWAYS  shadow + our still-waiting ops, replayed with the server's own rules.
+ *   store.tracking(true)            net switches this on while a file is connected (off = no shadow, no
+ *                                   book-keeping: a local-only document).
+ *   store.onOps(fn(ops, b))         fires once per closed local tx. `ops` is the batch, `b` the store's batch
+ *                                   number (1, 2, 3, ...). The op OBJECTS are the handles: keep them, do not
+ *                                   clone or change them.
+ *   store.acked(ops)                the server ACCEPTED these ops (same objects, in sending order; call it once
+ *                                   per ack frame so the shadow follows the server's order). acked(b) = every
+ *                                   op of batch b not answered yet. Nothing on screen changes.
+ *   store.rollback(ops)             the server REJECTED these ops: they leave the waiting list and the screen is
+ *                                   worked out again (shadow + what still waits). So a rejected set shows the
+ *                                   server's value, a rejected create is gone, a rejected delete is back.
+ *   store.applyRemote(ops)          ops of other people. They go into the shadow. On screen a prop that one of
+ *                                   our waiting ops writes keeps OUR value (the ack will carry the truth);
+ *                                   when both sides change the tree (create / delete / reparent) the screen is
+ *                                   worked out again from the shadow - exact, no guessing, no network.
+ *   store.load(doc, cid, {keep:true})   after a reconnect: the fresh document becomes the shadow, undo is
+ *                                   kept, the waiting ops are replayed on top (net sends them again).
+ *   store.on('desync', fn)          the shadow could not follow the server (an op arrived that the server's own
+ *                                   rules refuse). Should never happen; net then reconnects and reloads.
  *   store.readOnly = true           net sets it for a view-only file / a full offline queue: tx() and the
  *                                   editing calls then do nothing and return undefined.
+ *   store.syncCheck() / pendingInfo() / serverDoc()   for tests and a debug panel.
+ * server/tests/web/design_core_test.js runs three editors against a contract server with crossing messages,
+ * rejects, undo and dropped connections, and checks after EVERY step that screen = shadow + waiting ops.
  */
 (function () {
   'use strict';
@@ -311,17 +310,18 @@
   var depth = 0, cur = null;  /* the open tx */
   var gKey = null, gSeq = 0;
 
-  /* ---------- pending (un-acked local writes) ---------- */
+  /* ---------- sync: the server's copy + our un-acked ops ---------- */
   var tracking = false;
   var batchNo = 0;
-  var pendQ = [];             /* batches in the order they were made: {b, recs} */
+  var shadow = null;          /* id -> node: the document as the SERVER has it (init + remote ops + our acked ops, in its order) */
+  var skid = null;            /* shadow parent id -> Set of child ids */
+  var pendQ = [];             /* our batches the server has not answered yet, oldest first: {b, recs, left} */
   var pendB = new Map();      /* b -> batch */
-  var opRec = new WeakMap();  /* op object -> its record */
-  var pcnt = new Map();       /* "id\nprop" -> how many un-acked local writes */
-  var pbase = new Map();      /* "id\nprop" -> the value the server has (undefined = no such prop) */
-  var pdel = new Map();       /* id -> count: nodes inside a subtree we deleted, not confirmed yet */
-  var pghost = new Set();     /* ids the server has (for now) and we do not show: they sit under something we deleted */
-  var pmove = new Set();      /* ids with an un-acked local `parent` write: the server still has them elsewhere */
+  var opRec = new WeakMap();  /* op object -> its record {op, batch, done, rej} */
+  var pcnt = new Map();       /* "id\nprop" -> how many waiting ops write that prop */
+  var pids = new Map();       /* id -> how many waiting ops are about that node */
+  var pmade = new Map();      /* id -> how many waiting ops (re)make that node (carry `type`) */
+  var pstruct = 0;            /* how many waiting ops change the tree (delete, parent, type) */
 
   var store = HD.store = {ROOT: ROOT, TYPES: TYPES, readOnly: false};
   var sel;                    /* HD.sel, defined below */
@@ -587,10 +587,6 @@
       made: new Set(),           /* ids created in this tx */
       changed: new Set(), removed: new Set(), extra: new Set(), props: new Map(),
       structural: false,
-      first: tracking ? new Map() : null,   /* "id\nprop" -> value before this tx (null = absent) */
-      created: tracking ? new Set() : null, /* forward ops that create a node */
-      again: tracking ? new Set() : null,   /* ...those of them that bring back a node that existed before (undo of a delete) */
-      dels: null,                /* Map forward del op -> inverse creates */
       sel0: sel.ids
     };
   }
@@ -616,15 +612,9 @@
       t.structural = true;
       if (n.parent !== undefined) t.extra.add(n.parent);
     }
-    if (t.first) {
-      for (var k in prev) {
-        var key = id + '\n' + k;
-        if (!t.first.has(key)) t.first.set(key, prev[k]);
-      }
-    }
     return true;
   }
-  function recCreate(id, node, again) {
+  function recCreate(id, node) {
     rawCreate(id, node);
     var t = cur, op = {id: id, p: Object.assign({}, node)};
     /* created under a node that this tx created too: undoing the outer one removes it, no delete of its own */
@@ -633,7 +623,6 @@
     t.changed.add(id);
     t.extra.add(node.parent);
     t.structural = true;
-    if (t.created) { t.created.add(op); if (again) t.again.add(op); }
   }
   function recDelete(id) {
     var n0 = nodes.get(id);
@@ -648,7 +637,6 @@
     t.steps.push([op, inv]);
     if (pid !== undefined) t.extra.add(pid);
     t.structural = true;
-    if (tracking) (t.dels || (t.dels = new Map())).set(op, inv);
     return true;
   }
   /* apply one op the way the server would, recorded (undo / redo use this) */
@@ -662,8 +650,8 @@
       if (p.type !== undefined && p.type !== null && !hasOwn.call(DEF, p.type)) return false;
       return recSet(op.id, n, p);
     }
-    if (p.type === undefined || !hasOwn.call(DEF, p.type) || op.id === ROOT || !nodes.has(p.parent)) return false;
-    recCreate(op.id, cleanCopy(p), true);
+    if (typeof p.type !== 'string' || p.type === 'DOCUMENT' || !hasOwn.call(DEF, p.type) || op.id === ROOT || !nodes.has(p.parent)) return false;
+    recCreate(op.id, cleanCopy(p));
     return true;
   }
   /* the same without recording (abort, re-apply after a reload) */
@@ -712,41 +700,31 @@
     return out;
   }
 
-  function register(b, ops, t) {
-    var recs = new Array(ops.length), i, op, rec, k, key, keys, props, inv, j, c;
-    for (i = 0; i < ops.length; i++) {
-      op = ops[i];
-      rec = {op: op, kind: 'set', keys: null, props: null, ids: null, snap: null, live: true, done: false, again: false};
-      if (op.del) {
-        rec.kind = 'del';
-        inv = t.dels ? t.dels.get(op) : null;
-        rec.snap = inv || [];
-        rec.ids = new Array(rec.snap.length);
-        for (j = 0; j < rec.snap.length; j++) {
-          rec.ids[j] = rec.snap[j].id;
-          pdel.set(rec.ids[j], (pdel.get(rec.ids[j]) || 0) + 1);
-        }
-      } else {
-        var made = t.created.has(op);
-        if (made) { rec.kind = 'create'; rec.again = t.again.has(op); }
-        keys = []; props = [];
-        for (k in op.p) {
-          key = op.id + '\n' + k;
-          c = pcnt.get(key);
-          if (c === undefined) {
-            var was = made ? undefined : t.first.get(key);
-            pbase.set(key, was === null ? undefined : was);
-            pcnt.set(key, 1);
-          } else pcnt.set(key, c + 1);
-          keys.push(key); props.push(k);
-          if (k === 'parent') pmove.add(op.id);
-        }
-        rec.keys = keys; rec.props = props;
-      }
-      recs[i] = rec;
-      opRec.set(op, rec);
+  function bump(map, key, d) {
+    var c = (map.get(key) || 0) + d;
+    if (c > 0) map.set(key, c); else map.delete(key);
+  }
+  function countOp(op, d) {
+    bump(pids, op.id, d);
+    if (op.del) { pstruct += d; return; }
+    var p = op.p, made = hasOwn.call(p, 'type');
+    if (made) bump(pmade, op.id, d);
+    if (made || hasOwn.call(p, 'parent')) pstruct += d;
+  }
+  /* the props a waiting op writes shield those props from remote values - but only while the op really applies
+     (rec.live): a waiting move whose target was deleted meanwhile shields nothing */
+  function countKeys(op, d) {
+    if (op.del) return;
+    for (var k in op.p) bump(pcnt, op.id + '\n' + k, d);
+  }
+  function register(b, ops) {
+    var recs = new Array(ops.length), batch = {b: b, recs: recs, left: ops.length};
+    for (var i = 0; i < ops.length; i++) {
+      recs[i] = {op: ops[i], batch: batch, done: false, rej: false, live: true};
+      opRec.set(ops[i], recs[i]);
+      countOp(ops[i], 1);
+      countKeys(ops[i], 1);
     }
-    var batch = {b: b, recs: recs};
     pendQ.push(batch);
     pendB.set(b, batch);
   }
@@ -789,7 +767,7 @@
       back = mergeOps(back);
     }
     var b = ++batchNo;
-    if (tracking) register(b, fwd, t);
+    if (tracking) register(b, fwd);
 
     var entry = {label: t.label, ops: back, sel0: t.sel0, key: t.key};
     if (t.kind === 'do') {
@@ -949,7 +927,7 @@
   }
 
   store.create = function (type, parentId, props, beforeId) {
-    if (!hasOwn.call(DEF, type)) throw new Error('HD.store.create: unknown type ' + type);
+    if (!hasOwn.call(DEF, type) || type === 'DOCUMENT') throw new Error('HD.store.create: unknown type ' + type);
     return inTx('Create', function () {
       if (!nodes.has(parentId)) throw new Error('HD.store.create: no such parent ' + parentId);
       var id = store.newId(), s = slot(parentId, beforeId, null);
@@ -977,9 +955,10 @@
         props = Object.assign({}, props);            /* a reparent that can not be: keep the rest of the edit */
         delete props.parent; delete props.idx;
       }
-      if (props.type !== undefined && !hasOwn.call(DEF, props.type)) {
+      if (props.type !== undefined && (!hasOwn.call(DEF, props.type) || (props.type === 'DOCUMENT') !== (id === ROOT))) {
         props = Object.assign({}, props); delete props.type;
       }
+      if (props.idx !== undefined && !idxOk(props.idx)) { props = Object.assign({}, props); delete props.idx; }
       return recSet(id, n, props);
     }) || false;
   };
@@ -1093,93 +1072,164 @@
   store.off = function (evt, fn) { em.off(evt, fn); };
   store.onOps = function (fn) { return em.on('ops', fn); };
 
-  /* ================================================================ sync: pending, ack, rollback, remote */
+  /* ================================================================ sync
+   * THE RULE THAT IS ALWAYS TRUE while tracking:   what is on screen  =  shadow + our waiting ops, applied in order
+   * with the server's own rules (rule() below is app/design/doc.py Doc.apply, line for line).
+   *   - a local edit changes the screen and joins the waiting ops;
+   *   - a remote op changes the shadow. Nearly always it can be put on screen directly (skipping the props a
+   *     waiting op of ours writes). When it changes the tree while one of OUR waiting ops changes the tree too,
+   *     the screen is worked out again from the shadow (rebase): exact, no guessing, no network;
+   *   - an ack moves our accepted ops into the shadow (nothing on screen changes), a rejected op is dropped
+   *     from the waiting ops and the screen is worked out again.
+   */
+  function kadd(K, pid, id) {
+    var ks = K.get(pid);
+    if (!ks) { ks = new Set(); K.set(pid, ks); }
+    ks.add(id);
+  }
+  function inside(N, start, anc) {            /* is `anc` the node `start` or above it */
+    var c = start, n, guard = 0;
+    while (c !== undefined && ++guard < 200000) {
+      if (c === anc) return true;
+      n = N.get(c);
+      c = n ? n.parent : undefined;
+    }
+    return guard >= 200000;
+  }
+  function idxOk(v) { return typeof v === 'string' && v.length > 0 && v.length <= 4096; }
+  /* one op on a document (N nodes, K children) under the server's rules: 1 applied, 0 dropped, -1 rejected */
+  function rule(N, K, op) {
+    var id = op.id, n, p, k, v, ks, stack, c, oldP;
+    if (op.del) {
+      if (id === ROOT) return -1;
+      n = N.get(id);
+      if (!n) return 0;
+      ks = K.get(n.parent);
+      if (ks) ks.delete(id);
+      stack = [id];
+      while (stack.length) {
+        c = stack.pop();
+        N.delete(c);
+        ks = K.get(c);
+        if (ks) { ks.forEach(function (x) { stack.push(x); }); K.delete(c); }
+      }
+      return 1;
+    }
+    p = op.p;
+    if (!p || typeof p !== 'object') return -1;
+    n = N.get(id);
+    if (!n) {
+      if (p.type === undefined || p.type === null) return 0;          /* a late edit of a node that is gone */
+      if (typeof p.type !== 'string' || !hasOwn.call(DEF, p.type) || p.type === 'DOCUMENT') return -1;
+      if (typeof p.parent !== 'string' || !N.has(p.parent) || !idxOk(p.idx)) return -1;
+      N.set(id, cleanCopy(p));
+      kadd(K, p.parent, id);
+      return 1;
+    }
+    if (hasOwn.call(p, 'type') && (typeof p.type !== 'string' || !hasOwn.call(DEF, p.type) || (p.type === 'DOCUMENT') !== (id === ROOT))) return -1;
+    oldP = n.parent;
+    if (hasOwn.call(p, 'parent')) {
+      if (id === ROOT || typeof p.parent !== 'string' || !N.has(p.parent)) return -1;
+      if (p.parent !== oldP && inside(N, p.parent, id)) return -1;
+    }
+    if (hasOwn.call(p, 'idx') && id !== ROOT && !idxOk(p.idx)) return -1;
+    for (k in p) {
+      v = p[k];
+      if (v === null) delete n[k]; else if (v !== undefined) n[k] = v;
+    }
+    if (n.parent !== oldP) {
+      ks = K.get(oldP);
+      if (ks) ks.delete(id);
+      kadd(K, n.parent, id);
+    }
+    return 1;
+  }
+
   store.tracking = function (on) {
     if (on === undefined) return tracking;
     on = !!on;
     if (on === tracking) return tracking;
     tracking = on;
     clearPending();
+    if (on) takeShadow(); else { shadow = null; skid = null; }
     return tracking;
   };
   function clearPending() {
-    pendQ = []; pendB.clear(); pcnt.clear(); pbase.clear(); pdel.clear(); pghost.clear(); pmove.clear();
+    pendQ = []; pendB.clear(); pcnt.clear(); pids.clear(); pmade.clear(); pstruct = 0;
     opRec = new WeakMap();
   }
-  store.pendingCount = function () { return pendQ.length; };
-
-  function release(rec, accepted) {
-    var i, key, c;
-    if (rec.keys) {
-      for (i = 0; i < rec.keys.length; i++) {
-        key = rec.keys[i];
-        c = pcnt.get(key);
-        if (c === undefined) continue;
-        if (c <= 1) { pcnt.delete(key); pbase.delete(key); if (rec.props[i] === 'parent') pmove.delete(rec.op.id); }
-        else {
-          pcnt.set(key, c - 1);
-          if (accepted) { var v = rec.op.p[rec.props[i]]; pbase.set(key, v === null ? undefined : v); }
-        }
-      }
-    }
-    if (rec.ids) {
-      for (i = 0; i < rec.ids.length; i++) {
-        c = pdel.get(rec.ids[i]);
-        if (c === undefined) continue;
-        if (c <= 1) pdel.delete(rec.ids[i]); else pdel.set(rec.ids[i], c - 1);
-      }
-      if (!pdel.size) pghost.clear();        /* every delete of ours is answered: nothing is doomed any more */
-    }
+  function takeShadow() {                       /* the screen IS the server's document right now */
+    shadow = new Map(); skid = new Map();
+    nodes.forEach(function (n, id) {
+      shadow.set(id, Object.assign({}, n));
+      if (n.parent !== undefined) kadd(skid, n.parent, id);
+    });
   }
-  store.acked = function (b) {
-    var batch = pendB.get(b);
-    if (!batch) return false;
-    pendB.delete(b);
-    if (pendQ[0] === batch) pendQ.shift();
-    else { var qi = pendQ.indexOf(batch); if (qi >= 0) pendQ.splice(qi, 1); }
-    var ch = null, desync = false, j, i, rec, op, n, key, c, v, fix, r;
-    for (j = 0; j < batch.recs.length; j++) {
-      rec = batch.recs[j];
-      if (rec.done) continue;
-      rec.done = true;
-      if (!rec.live) continue;
-      if (rec.kind === 'del') { release(rec, true); continue; }
-      /* a set / create the server took. Normally the node already shows exactly this. It does not when the op
-         could not be applied here at the time (after a reload) or the node was re-made by someone meanwhile:
-         then what the server now has is put on screen. */
-      op = rec.op; n = nodes.get(op.id); fix = null;
-      for (i = 0; i < rec.keys.length; i++) {
-        key = rec.keys[i];
-        c = pcnt.get(key);
-        if (c === undefined) continue;
-        v = op.p[rec.props[i]];
-        if (c <= 1) {
-          pcnt.delete(key); pbase.delete(key);
-          if (rec.props[i] === 'parent') pmove.delete(op.id);
-          if (n && (v === null ? n[rec.props[i]] !== undefined : !same(n[rec.props[i]], v))) (fix || (fix = {}))[rec.props[i]] = v;
-        } else { pcnt.set(key, c - 1); pbase.set(key, v === null ? undefined : v); }
-      }
-      if (n) {
-        if (!fix) continue;
-        /* the node is here only because a LATER edit of ours re-made it: whether the server had it when this
-           op arrived can not be known from here */
-        if (pcnt.has(op.id + '\ntype')) { desync = true; continue; }
-        if (hasOwn.call(fix, 'parent') && fix.parent !== n.parent && !okParent(op.id, fix.parent)) {
-          desync = true;
-          delete fix.parent; delete fix.idx;
-        }
-        r = rawSet(op.id, n, fix);
-        if (r) chSet(ch || (ch = newChange()), op.id, r[0]);
-      } else if (op.p.type !== undefined && !pdel.has(op.id) && !pghost.has(op.id)) {
-        if (hasOwn.call(DEF, op.p.type) && nodes.has(op.p.parent)) {
-          rawCreate(op.id, cleanCopy(op.p));
-          ch = ch || newChange();
-          ch.ids.add(op.id); ch.structural = true;
-        } else if (!pdel.has(op.p.parent) && !pghost.has(op.p.parent)) desync = true;
+  /* batches of ours still waiting for the server */
+  store.pendingCount = function () { return pendQ.length; };
+  /* for tests and a debug panel */
+  store.pendingInfo = function () {
+    return {batches: pendQ.length, keys: Array.from(pcnt.keys()), ids: Array.from(pids.keys()), structural: pstruct};
+  };
+
+  /* shadow + waiting ops, as a fresh document. mark: remember per waiting op whether it applied */
+  function project(mark) {
+    var N = new Map(), K = new Map(), i, j, recs, rec, live;
+    shadow.forEach(function (sn, id) {
+      N.set(id, Object.assign({}, sn));
+      if (sn.parent !== undefined) kadd(K, sn.parent, id);
+    });
+    for (i = 0; i < pendQ.length; i++) {
+      recs = pendQ[i].recs;
+      for (j = 0; j < recs.length; j++) {
+        rec = recs[j];
+        if (rec.done) continue;
+        live = rule(N, K, rec.op) === 1;
+        if (mark && live !== rec.live) { rec.live = live; countKeys(rec.op, live ? 1 : -1); }
       }
     }
-    if (ch || desync) finish(ch || newChange(), desync);
-    return true;
+    return [N, K];
+  }
+  function nodeDiff(a, b) {
+    var d = null, k;
+    for (k in a) if (!(k in b) || (a[k] !== b[k] && !same(a[k], b[k]))) (d || (d = new Set())).add(k);
+    for (k in b) if (!(k in a)) (d || (d = new Set())).add(k);
+    return d;
+  }
+  /* work the screen out again. ch (optional) collects what changed for the 'change' event. A node that comes out
+     the same keeps its very object. */
+  function rebase(ch) {
+    var old = nodes, pr = project(true), N = pr[0];
+    old.forEach(function (on, id) {
+      var nn = N.get(id);
+      if (!nn) {
+        if (ch) { ch.ids.add(id); ch.removed.add(id); ch.structural = true; }
+        return;
+      }
+      var d = nodeDiff(on, nn);
+      if (!d) { N.set(id, on); return; }
+      if (ch) {
+        ch.ids.add(id); ch.props.set(id, d);
+        if (d.has('parent') || d.has('idx') || d.has('type')) ch.structural = true;
+      }
+    });
+    if (ch) N.forEach(function (nn, id) { if (!old.has(id)) { ch.ids.add(id); ch.structural = true; } });
+    nodes = N; kidSet = pr[1];
+    sorted = new Map(); tail = new Map(); lm = new Map(); wm = new Map(); wb = new Map(); sb = new Map();
+  }
+  /* debug / tests: ids where the screen is NOT shadow + waiting ops (always [] unless there is a bug) */
+  store.syncCheck = function (detail) {
+    if (!tracking) return [];
+    var N = project(false)[0], out = [];
+    nodes.forEach(function (n, id) { var m = N.get(id); if (!m || nodeDiff(n, m)) out.push(detail ? {id: id, screen: n, want: m || null} : id); });
+    N.forEach(function (m, id) { if (!nodes.has(id)) out.push(detail ? {id: id, screen: null, want: m} : id); });
+    return out;
+  };
+  /* the server's document as this client knows it (debug / tests) */
+  store.serverDoc = function () {
+    var out = {};
+    (shadow || nodes).forEach(function (n, id) { out[id] = n; });
+    return {nodes: out};
   };
 
   function newChange() { return {ids: new Set(), structural: false, remote: true, removed: new Set(), props: new Map()}; }
@@ -1199,7 +1249,8 @@
     if (ch.ids.size) em.emit('change', ch);
     if (desync) em.emit('desync', {});
   }
-  function findRec(op) {                    /* a rejected op that is not the object we handed out: match by content */
+  function findRec(op) {                    /* an op that is not the object we handed out: match by content */
+    if (!op) return null;
     for (var i = 0; i < pendQ.length; i++) {
       var recs = pendQ[i].recs;
       for (var j = 0; j < recs.length; j++) {
@@ -1209,174 +1260,130 @@
     }
     return null;
   }
-  store.rollback = function (ops) {
-    ops = toArr(ops);
-    var ch = newChange(), desync = false, i, j, op, rec, n, key, c, r;
-    for (i = 0; i < ops.length; i++) {
-      op = ops[i];
-      rec = opRec.get(op) || findRec(op);
-      if (!rec || rec.done) continue;
-      rec.done = true;
-      if (!rec.live) continue;
-      if (rec.kind === 'del') {
-        release(rec, false);
-        for (j = 0; j < rec.snap.length; j++) {
-          var s = rec.snap[j];
-          if (nodes.has(s.id)) continue;
-          if (!nodes.has(s.p.parent)) { desync = true; continue; }
-          rawCreate(s.id, cleanCopy(s.p));
-          ch.ids.add(s.id); ch.structural = true;
-        }
-      } else if (rec.kind === 'create') {
-        release(rec, false);
-        /* a brand-new node the server refused: gone. A node being brought BACK (undo of a delete) may still be
-           alive on the server, where our delete perhaps never reached it: only a reload can tell. */
-        if (rec.again) desync = true;
-        else if (nodes.has(op.id)) {
-          var lostList = rawDelete(op.id);
-          if (pmove.size && movedIn(lostList, 1)) desync = true;      /* something we moved into it lives on elsewhere */
-          chDel(ch, lostList);
-        }
-      } else {
-        var back = null;
-        for (j = 0; j < rec.keys.length; j++) {
-          key = rec.keys[j];
-          c = pcnt.get(key);
-          if (c === undefined) continue;
-          if (c <= 1) {
-            var v = pbase.get(key);
-            (back || (back = {}))[rec.props[j]] = v === undefined ? null : v;
-            pcnt.delete(key); pbase.delete(key);
-            if (rec.props[j] === 'parent') pmove.delete(op.id);
-          } else pcnt.set(key, c - 1);              /* a later local write is still waiting: it stays on screen */
-        }
-        if (!back) continue;
-        n = nodes.get(op.id);
-        /* the node is not here. Fine when it sits in something we deleted and the server has it there too;
-           not fine when the rejected op was the very move that took it there. */
-        if (!n) { if (!pdel.has(op.id) || hasOwn.call(op.p, 'parent')) desync = true; continue; }
-        if (hasOwn.call(back, 'parent') && back.parent !== n.parent && !okParent(op.id, back.parent)) {
-          desync = true;
-          delete back.parent; delete back.idx;
-        }
-        r = rawSet(op.id, n, back);
-        if (r) chSet(ch, op.id, r[0]);
-      }
+  function settle(rec) {                    /* this op has its answer */
+    rec.done = true;
+    countOp(rec.op, -1);
+    if (rec.live) { rec.live = false; countKeys(rec.op, -1); }
+    var batch = rec.batch;
+    if (--batch.left > 0) return;
+    pendB.delete(batch.b);
+    if (pendQ[0] === batch) pendQ.shift();
+    else { var i = pendQ.indexOf(batch); if (i >= 0) pendQ.splice(i, 1); }
+  }
+
+  /* acked(ops)  the server ACCEPTED these ops of ours (the op objects from onOps, in the order they were sent).
+     acked(b)    the same for every op of batch b that has no answer yet.
+     They move into the shadow; the screen already shows them. */
+  store.acked = function (x) {
+    if (!tracking) return false;
+    var list = [], i, rec, bad = false;
+    if (typeof x === 'number') {
+      var batch = pendB.get(x);
+      if (!batch) return false;
+      list = batch.recs.slice();
+    } else {
+      x = toArr(x);
+      for (i = 0; i < x.length; i++) { rec = opRec.get(x[i]) || findRec(x[i]); if (rec) list.push(rec); }
     }
-    finish(ch, desync);
+    for (i = 0; i < list.length; i++) {
+      rec = list[i];
+      if (rec.done) continue;
+      settle(rec);
+      if (rule(shadow, skid, rec.op) === -1) bad = true;      /* the server took what its own rules refuse: we lost track */
+    }
+    if (bad) em.emit('desync', {});
+    return true;
   };
 
-  /* where the SERVER has x right now: an un-acked local move does not count yet */
-  function serverParent(x) {
-    var key = x + '\nparent';
-    if (pcnt.has(key)) return pbase.get(key);
-    var n = nodes.get(x);
-    return n ? n.parent : undefined;
-  }
-  /* a remote delete of `id`: nodes we moved OUT of it (not acked yet) were still inside it on the server, so
-     they are gone too. Returns true when that can not be worked out here (ask for a reload). */
-  function remoteDelMoved(id, ch) {
-    var extra = null, unsure = false;
-    pmove.forEach(function (m) {
-      if (m === id || !nodes.has(m)) return;
-      var c = serverParent(m), guard = 0;
-      while (c !== undefined && ++guard < 100000) {
-        if (c === id) { (extra || (extra = [])).push(m); return; }
-        if (!nodes.has(c)) { unsure = true; return; }       /* its old home is something we deleted ourselves */
-        c = serverParent(c);
-      }
-    });
-    if (extra) {
-      for (var i = 0; i < extra.length; i++) {
-        if (!nodes.has(extra[i])) continue;
-        var gone = rawDelete(extra[i]);
-        if (movedIn(gone, 1)) unsure = true;
-        chDel(ch, gone);
-      }
+  /* rollback(ops)  the server REJECTED these ops of ours: they leave the waiting list and the screen is worked
+     out again from the server's document + what is still waiting. */
+  store.rollback = function (ops) {
+    ops = toArr(ops);
+    var any = false, i, rec;
+    for (i = 0; i < ops.length; i++) {
+      rec = opRec.get(ops[i]) || findRec(ops[i]);
+      if (!rec || rec.done) continue;
+      rec.rej = true;
+      settle(rec);
+      any = true;
     }
-    return unsure;
-  }
-  /* a subtree was just removed here because the server removed it. A node inside that WE moved in (not acked
-     yet) was somewhere else on the server and may well be alive there: that needs a reload. */
-  function movedIn(list, from) {
-    for (var i = from; i < list.length; i++) if (pmove.has(list[i][0])) return true;
+    if (!any || !tracking) return false;
+    var ch = newChange();
+    rebase(ch);
+    finish(ch, false);
+    return true;
+  };
+
+  /* can the remote ops go on screen one by one, or must the screen be worked out again */
+  function needsRebase(ops) {
+    for (var i = 0; i < ops.length; i++) {
+      var op = ops[i];
+      if (!op || typeof op.id !== 'string') continue;
+      if (op.del) { if (pstruct > 0) return true; continue; }
+      var p = op.p;
+      if (!p || typeof p !== 'object') continue;
+      var made = hasOwn.call(p, 'type');
+      if ((made || hasOwn.call(p, 'parent')) && pstruct > 0) return true;     /* both sides change the tree */
+      if (made && pids.has(op.id)) return true;                              /* a node (back) for which an edit of ours waits */
+      if (pmade.has(op.id)) return true;                                      /* we are (re)making this very node */
+    }
     return false;
   }
+  /* one remote op straight onto the screen; false = it does not fit (the caller rebases) */
+  function remoteLocal(op, ch) {
+    var id = op.id, p, n, use, k, r;
+    if (op.del) {
+      if (id !== ROOT && nodes.has(id)) chDel(ch, rawDelete(id));
+      return true;
+    }
+    p = op.p;
+    if (!p || typeof p !== 'object') return true;
+    n = nodes.get(id);
+    if (n) {
+      use = p;
+      if (pcnt.size) {
+        use = null;
+        for (k in p) if (!pcnt.has(id + '\n' + k)) (use || (use = {}))[k] = p[k];     /* a waiting write of ours wins */
+        if (!use) return true;
+      }
+      if (use.parent !== undefined && use.parent !== n.parent && !okParent(id, use.parent)) return false;
+      r = rawSet(id, n, use);
+      if (r) chSet(ch, id, r[0]);
+      return true;
+    }
+    if (p.type === undefined || p.type === null) return true;        /* not on screen: one of our waiting ops deletes it */
+    if (typeof p.type !== 'string' || !hasOwn.call(DEF, p.type) || id === ROOT) return true;
+    if (!nodes.has(p.parent)) return false;
+    rawCreate(id, cleanCopy(p));
+    ch.ids.add(id); ch.structural = true;
+    return true;
+  }
 
+  /* ops of other people (already accepted by the server, in its order). Never undoable, never sent back,
+     never run through HD.layout. */
   store.applyRemote = function (ops) {
-    if (!isArr(ops)) return;
-    var ch = newChange(), desync = false, i, op, id, p, n, k, key, use, r, gone, guard = tracking && (pcnt.size || pdel.size);
+    if (!isArr(ops) || !ops.length) return;
+    var ch = newChange(), bad = false, need = false, i, op;
+    if (!tracking) {
+      for (i = 0; i < ops.length; i++) if (ops[i] && typeof ops[i].id === 'string') remoteLocal(ops[i], ch);
+      finish(ch, false);
+      return;
+    }
+    if (pendQ.length) need = needsRebase(ops);
     for (i = 0; i < ops.length; i++) {
       op = ops[i];
       if (!op || typeof op.id !== 'string') continue;
-      id = op.id;
-      if (op.del) {
-        if (id === ROOT) continue;
-        if (guard && pcnt.has(id + '\ntype')) { desync = true; continue; }   /* we are (re)making this very node */
-        if (guard && pmove.size && remoteDelMoved(id, ch)) desync = true;
-        if (nodes.has(id)) {
-          gone = rawDelete(id);
-          if (guard && pmove.size && movedIn(gone, 1)) desync = true;
-          chDel(ch, gone);
-        }
-        continue;
-      }
-      p = op.p;
-      if (!p || typeof p !== 'object') continue;
-      if (guard && (pdel.has(id) || pghost.has(id))) {
-        /* we deleted it and the server will too - unless this op carries it out of what we deleted */
-        if (typeof p.parent === 'string' && !pdel.has(p.parent) && !pghost.has(p.parent)) desync = true;
-        continue;
-      }
-      n = nodes.get(id);
-      if (n) {
-        use = p;
-        if (guard && pcnt.size) {
-          use = null;
-          for (k in p) {
-            key = id + '\n' + k;
-            if (pcnt.has(key)) {                        /* ours is on its way: skip, remember */
-              pbase.set(key, p[k] === null ? undefined : p[k]);
-              /* on the server it now sits in something we are deleting; whether our own move saves it depends
-                 on which of our two edits lands first */
-              if (k === 'parent' && (pdel.has(p[k]) || pghost.has(p[k]))) desync = true;
-            } else (use || (use = {}))[k] = p[k];
-          }
-          if (!use) continue;
-        }
-        if (use.parent !== undefined && use.parent !== n.parent) {
-          if (guard && (pdel.has(use.parent) || pghost.has(use.parent))) {
-            gone = rawDelete(id);                      /* moved into something we deleted: it goes with it */
-            if (pmove.size && movedIn(gone, 1)) desync = true;
-            for (k = 0; k < gone.length; k++) pghost.add(gone[k][0]);
-            chDel(ch, gone);
-            continue;
-          }
-          if (!okParent(id, use.parent)) {
-            if (use.parent !== null && id !== ROOT) desync = true;
-            use = Object.assign({}, use);
-            delete use.parent; delete use.idx;
-          }
-        }
-        r = rawSet(id, n, use);
-        if (r) chSet(ch, id, r[0]);
-      } else if (p.type !== undefined) {
-        if (!hasOwn.call(DEF, p.type) || id === ROOT) continue;
-        if (guard && (pdel.has(p.parent) || pghost.has(p.parent))) { pghost.add(id); continue; }   /* born inside what we deleted */
-        if (!nodes.has(p.parent)) { desync = true; continue; }
-        if (guard && pcnt.size) {                     /* an edit of ours for this id is still on its way */
-          for (k in p) { key = id + '\n' + k; if (pcnt.has(key)) pbase.set(key, p[k] === null ? undefined : p[k]); }
-        }
-        rawCreate(id, cleanCopy(p));
-        ch.ids.add(id); ch.structural = true;
-      }
+      if (rule(shadow, skid, op) === -1) bad = true;           /* the server sent what its rules refuse: we lost track */
+      if (!need && !remoteLocal(op, ch)) need = true;
     }
-    finish(ch, desync);
+    if (need) rebase(ch);
+    finish(ch, bad);
   };
 
   /* ================================================================ load */
-  /* load(doc, cid)               a new document: undo and pending are forgotten
-     load(doc, cid, {keep:true})  the same file again after a reconnect: undo is kept, pending batches are put back on top */
+  /* load(doc, cid)               a new document: undo and waiting ops are forgotten
+     load(doc, cid, {keep:true})  the same file again after a reconnect: undo is kept, and the ops the server has
+                                  not answered are put back on top of the fresh document (net sends them again) */
   store.load = function (doc, newCid, opts) {
     var keep = !!(opts && opts.keep), src = doc && doc.nodes ? doc.nodes : {}, id, n, k;
     if (depth > 0) { cur = null; depth = 0; }
@@ -1396,62 +1403,22 @@
         ks = kidSet.get(k);
         if (!ks) { ks = new Set(); kidSet.set(k, ks); }
         ks.add(id);
-      } else if (k === null) delete n.parent;
+      } else if (k !== undefined) delete n.parent;
       if (id.length > pl && id.charCodeAt(0) === pre.charCodeAt(0) && id.slice(0, pl) === pre) {
         var num = +id.slice(pl);
         if (num > counter) counter = num;
       }
     }
     if (!nodes.has(ROOT)) nodes.set(ROOT, {type: 'DOCUMENT', name: 'Document'});
-    if (!keep) {
-      undoS = []; redoS = []; gKey = null;
-      clearPending();
-    } else if (tracking && pendQ.length) reapply();
-    else clearPending();
+    if (!keep) { undoS = []; redoS = []; gKey = null; }
+    if (!keep || !tracking) clearPending();
+    if (tracking) {
+      takeShadow();
+      if (pendQ.length) rebase(null);
+    }
     sel._load();
     em.emit('load', {keep: keep});
   };
-  /* put the still-pending local batches back on top of a fresh document and rebuild the pending marks.
-     An op that does not fit the fresh document (its node is gone) is not applied but STAYS pending: net sends it
-     again, and what happens to it is settled when its answer comes (see acked / rollback). */
-  function reapply() {
-    var i, j, rec, op, k, key, r, list, n, c;
-    pcnt.clear(); pbase.clear(); pdel.clear(); pghost.clear(); pmove.clear();
-    for (i = 0; i < pendQ.length; i++) {
-      var recs = pendQ[i].recs;
-      for (j = 0; j < recs.length; j++) {
-        rec = recs[j]; op = rec.op;
-        rec.keys = null; rec.props = null; rec.ids = null; rec.live = false;
-        if (rec.done) continue;
-        rec.live = true;
-        if (op.del) {
-          rec.kind = 'del';
-          list = op.id !== ROOT && nodes.has(op.id) ? rawDelete(op.id) : [];
-          rec.snap = new Array(list.length); rec.ids = new Array(list.length);
-          for (k = 0; k < list.length; k++) {
-            rec.snap[k] = {id: list[k][0], p: list[k][1]};
-            rec.ids[k] = list[k][0];
-          }
-          if (!list.length) rec.ids = [op.id];         /* not there now; should it come back before our delete lands, it is doomed */
-          for (k = 0; k < rec.ids.length; k++) pdel.set(rec.ids[k], (pdel.get(rec.ids[k]) || 0) + 1);
-          continue;
-        }
-        n = nodes.get(op.id);
-        var before = n ? Object.assign({}, n) : null;
-        r = rawOp({id: op.id, p: op.p});
-        rec.kind = (r && r.create) || (!n && op.p.type !== undefined) ? 'create' : 'set';
-        rec.keys = []; rec.props = [];
-        for (k in op.p) {
-          key = op.id + '\n' + k;
-          c = pcnt.get(key);
-          if (c === undefined) { pbase.set(key, before ? before[k] : undefined); pcnt.set(key, 1); }
-          else pcnt.set(key, c + 1);
-          rec.keys.push(key); rec.props.push(k);
-          if (k === 'parent') pmove.add(op.id);
-        }
-      }
-    }
-  }
 
   /* ================================================================ HD.sel */
   var sem = new Emitter(), selSet = new Set();

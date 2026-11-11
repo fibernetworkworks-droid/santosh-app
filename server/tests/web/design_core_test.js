@@ -703,19 +703,39 @@ test('store: rollback of rejected ops (set -> the server value, create -> gone, 
   assert.ok(S.has('5:2') && S.has('5:3') && S.get('5:3').x === 4);
   deq(S.children('5:2'), ['5:3']);
 
-  /* a rollback that can not be repaired asks for a reload */
+  /* a set that waits while somebody deletes the node: nothing to repair, both sides simply lose it */
   let desync = 0;
   S.on('desync', () => desync++);
   S.set('5:3', {x: 9});
-  S.applyRemote([{id: '5:2', del: 1}]);                             /* the node is gone for everybody */
-  S.rollback(sent[7].ops); S.acked(sent[7].b);
-  assert.equal(desync, 1);
-  /* a remote reparent that would be a cycle here also asks for a reload and never corrupts the tree */
+  S.applyRemote([{id: '5:2', del: 1}]);
+  assert.ok(!S.has('5:2') && !S.has('5:3'));
+  S.acked(sent[7].b);                                               /* the server dropped it silently */
+  deq(S.syncCheck(), []);
+  assert.equal(desync, 0);
+
+  /* both sides change the tree at once: we move A into B (waiting), they move B into A. The server took theirs
+     first, so ours can not happen: the screen shows the server's tree at once, never a loop */
   S.applyRemote([{id: '6:1', p: {type: 'FRAME', parent: '0:1', idx: 'b0', name: 'A'}},
-                 {id: '6:2', p: {type: 'FRAME', parent: '6:1', idx: 'a0', name: 'B'}}]);
-  S.applyRemote([{id: '6:1', p: {parent: '6:2', idx: 'a0'}}]);
-  assert.equal(desync, 2);
+                 {id: '6:2', p: {type: 'FRAME', parent: '0:1', idx: 'b1', name: 'B'}}]);
+  S.move(['6:1'], '6:2', null);
+  assert.equal(S.parent('6:1'), '6:2');
+  S.applyRemote([{id: '6:2', p: {parent: '6:1', idx: 'a0'}}]);
+  assert.equal(S.parent('6:2'), '6:1');
   assert.equal(S.parent('6:1'), '0:1');
+  deq(S.syncCheck(), []);
+  S.rollback(sent[8].ops);                                          /* and the server indeed says no */
+  assert.equal(S.parent('6:1'), '0:1');
+  assert.equal(S.pendingCount(), 0);
+  assert.equal(desync, 0);
+  deq(JSON.parse(JSON.stringify(S.serverDoc())), JSON.parse(JSON.stringify(S.toDoc())));   /* nothing waits: screen = server */
+
+  /* an op the server's own rules refuse can not have come from it: the store says it lost track (net reloads) */
+  S.applyRemote([{id: '6:1', p: {parent: '6:2', idx: 'a0'}}]);     /* a loop */
+  assert.equal(desync, 1);
+  assert.equal(S.parent('6:1'), '0:1');
+  S.applyRemote([{id: '7:1', p: {type: 'RECT', parent: 'no:such', idx: 'a0', name: 'orphan'}}]);
+  assert.equal(desync, 2);
+  assert.equal(S.has('7:1'), false);
 });
 
 test('store: load(doc, cid, {keep:true}) puts pending batches back on a fresh document and keeps undo', () => {
@@ -844,7 +864,7 @@ function converge(seed, steps, drops) {
     const c = {cid, S, HD: env.HD, up: [], down: [], unacked: [], desync: false};
     S.tracking(true);
     S.onOps((ops, b) => { const m = {ops: JSON.parse(JSON.stringify(ops)), real: ops, b}; c.unacked.push(m); c.up.push(m); tr(cid, 'local b' + b, m.ops); });
-    S.on('desync', () => { c.desync = true; });
+    S.on('desync', () => { c.desync = true; if (TRACE) console.log('    ' + cid + ' DESYNC'); });
     S.load(server.doc(), cid);
     return c;
   });
@@ -873,7 +893,10 @@ function converge(seed, steps, drops) {
   }
   function toClient(c) {
     const m = c.down.shift();
-    if (m.t === 'ops') { tr(c.cid, 'remote', m.ops); c.S.applyRemote(m.ops); }
+    if (m.t === 'ops') {
+      tr(c.cid, 'remote', m.ops);
+      c.S.applyRemote(m.ops);
+    }
     else {
       if (TRACE) console.log('    ' + c.cid + ' ack b' + m.b + ' ' + JSON.stringify(m.rejected));
       const i = c.unacked.findIndex(u => u.b === m.b);
@@ -893,6 +916,10 @@ function converge(seed, steps, drops) {
   }
   const WATCH = process.env.HD_WATCH || '', seen = new Map();        /* HD_WATCH=11:13 prints when a node appears / goes */
   const watch = () => {
+    for (const c of clients) {                                      /* THE invariant, after every single step */
+      const off = c.S.syncCheck();
+      if (off.length) assert.fail('seed ' + seed + ': client ' + c.cid + ' screen is not server copy + waiting ops at ' + JSON.stringify(c.S.syncCheck(true).slice(0, 3)));
+    }
     if (!WATCH) return;
     for (const c of clients.concat([{cid: 'server', S: {has: id => server.nodes.has(id)}}])) {
       const h = c.S.has(WATCH);
@@ -919,6 +946,7 @@ function converge(seed, steps, drops) {
   const want = canon(server.doc());
   for (const c of clients) {
     assert.equal(c.S.pendingCount(), 0, 'seed ' + seed + ': client ' + c.cid + ' still has pending batches');
+    assert.deepStrictEqual(canon(JSON.parse(JSON.stringify(c.S.serverDoc()))), want, 'seed ' + seed + ': client ' + c.cid + ' has a wrong copy of the server');
     assert.deepStrictEqual(canon(JSON.parse(JSON.stringify(c.S.toDoc()))), want, 'seed ' + seed + ': client ' + c.cid + ' differs from the server');
     /* and the tree is sound: every child list matches the parent pointers, no cycles */
     let seen = 0;
@@ -938,8 +966,9 @@ test('sync: three editors with crossing messages, rejects, undo and dropped conn
     for (const k in total) total[k] += s[k];
   }
   console.log('  sync: ' + (only ? 1 : runs) + ' runs x 1,500 steps, ' + total.edits + ' edits, ' + total.rejected + ' ops rejected by the server, ' +
-    total.reloads + ' reloads (' + total.repairs + ' asked for by the store), all editors equal to the server');
+    total.reloads + ' dropped connections, the store lost track ' + total.repairs + ' times, all editors equal to the server');
   assert.ok(total.rejected > 0, 'the run should include rejected ops');
+  assert.equal(total.repairs, 0, 'the store never loses track of the server');
 });
 
 /* ============================================================== HD.net */
@@ -1243,36 +1272,46 @@ test('net: a view-only file never sends; offline edits stop at 5,000 queued ops'
   assert.ok(statuses.includes('offline-full'));
 });
 
-test('net: a store desync reloads the room (never a storm); an op too big to send is refused here', () => {
+test('net: both sides move at once; a lost store reloads the room (never a storm); an op too big to send', () => {
   const env = connected(), {HD, N, clock} = env, S = HD.store;
-  let ws = env.ws;
-  /* a remote reparent that would be a cycle against a local, un-acked move -> the store asks for a reload */
+  const ws = env.ws;
   ws.recv({t: 'ops', seq: 11, by: 8, ops: [
     {id: '8:1', p: {type: 'FRAME', parent: '0:1', idx: 'b1', name: 'A'}},
     {id: '8:2', p: {type: 'FRAME', parent: '0:1', idx: 'b2', name: 'B'}}]});
   S.move(['8:1'], '8:2', null);                                     /* ours: A into B (not acked) */
   clock.advance(16);
-  ws.recv({t: 'ops', seq: 12, by: 8, ops: [{id: '8:2', p: {parent: '8:1', idx: 'a1'}}]});   /* theirs: B into A */
-  assert.equal(S.parent('8:2'), '0:1');                             /* the local tree is never bent into a loop */
+  ws.recv({t: 'ops', seq: 12, by: 8, ops: [{id: '8:2', p: {parent: '8:1', idx: 'a1'}}]});   /* theirs: B into A, taken first */
+  assert.equal(S.parent('8:2'), '8:1');                             /* the server's tree, at once, without a reload */
+  assert.equal(S.parent('8:1'), '0:1');
+  assert.equal(N.status, 'live');
+  assert.equal(env.sockets.length, 1);
+  const f = ws.frames('ops')[0];
+  ws.recv({t: 'ack', n: f.n, seq: 13, rejected: [0]});              /* and the server says no to ours */
+  assert.equal(S.pendingCount(), 0);
+  assert.equal(S.parent('8:1'), '0:1');
+  deq(S.syncCheck(), []);
+
+  /* the store lost track of the server (an op its rules refuse) -> a fresh socket, waiting edits kept */
+  S.set('8:1', {name: 'Mine'});
+  ws.recv({t: 'ops', seq: 14, by: 8, ops: [{id: '9:9', p: {type: 'RECT', parent: 'no:such', idx: 'a0', name: 'x'}}]});
   assert.equal(N.status, 'connecting');
   clock.advance(1);
   const ws2 = env.last();
   assert.notEqual(ws2, ws);
   ws2.open();
-  ws2.recv({t: 'init', cid: 9, seq: 13, file: {id: 'F1', name: 'My file', role: 'edit'}, users: [], doc: baseDoc({
+  ws2.recv({t: 'init', cid: 9, seq: 15, file: {id: 'F1', name: 'My file', role: 'edit'}, users: [], doc: baseDoc({
+    '5:1': {type: 'RECT', parent: '0:1', idx: 'a0', name: 'R', x: 0},
     '8:1': {type: 'FRAME', parent: '0:1', idx: 'b1', name: 'A'},
     '8:2': {type: 'FRAME', parent: '8:1', idx: 'a1', name: 'B'}})});
   assert.equal(N.status, 'live');
-  assert.equal(S.parent('8:2'), '8:1');                             /* the server's truth */
-  assert.equal(S.parent('8:1'), '0:1');                             /* our move no longer fits: not applied, still pending */
+  assert.equal(S.get('8:1').name, 'Mine');                          /* the waiting edit is back on top */
   clock.advance(16);
-  const f = ws2.frames('ops')[0];
-  assert.equal(f.ops[0].id, '8:1');
-  ws2.recv({t: 'ack', n: f.n, seq: 14, rejected: [0]});             /* the server says no */
+  const f2 = ws2.frames('ops')[0];
+  deq(f2.ops, [{id: '8:1', p: {name: 'Mine'}}]);
+  ws2.recv({t: 'ack', n: f2.n, seq: 16, rejected: []});
   assert.equal(S.pendingCount(), 0);
-  assert.equal(S.parent('8:1'), '0:1');
 
-  /* a second desync right away waits for its turn (2 s), it is not dropped */
+  /* a second reload right away waits for its turn (2 s), it is not dropped */
   const count = env.sockets.length;
   N.resync(false);
   clock.advance(500);
@@ -1296,6 +1335,7 @@ test('net: a store desync reloads the room (never a storm); an op too big to sen
   assert.equal(rejects.length, 1); assert.equal(rejects[0].tooBig, true);
   ws3.recv({t: 'ack', n: fr[0].n, seq: 20, rejected: []});
   assert.equal(S.pendingCount(), 0);
+  deq(S.syncCheck(), []);
 });
 
 /* ============================================================== speed */

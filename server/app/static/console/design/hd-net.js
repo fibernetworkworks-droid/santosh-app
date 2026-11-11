@@ -18,8 +18,8 @@
  *
  * Sending: every local tx of the store arrives through store.onOps(ops, b). Ops wait in a queue and go out
  * in order, at most ONE frame per animation frame, never while the socket is still busy with the last one.
- * A frame {t:'ops', n, ops} is remembered until its ack: rejected ops -> store.rollback(those op objects),
- * and when every op of a store batch b has been answered -> store.acked(b).
+ * A frame {t:'ops', n, ops} is remembered until its ack: accepted ops -> store.acked(those op objects),
+ * rejected ops -> store.rollback(those op objects).
  * Lost connection: retry after 0.5, 1, 2, 4, 8, 8... seconds. The new init is loaded with
  * store.load(doc, cid, {keep:true}) (pending local edits are put back on top) and every un-acked op is
  * sent again, in the same order, under new frame numbers.
@@ -47,7 +47,6 @@
   var fresh = false;                      /* the next init replaces everything (a version was restored) */
   var queue = [];                         /* [{op, b}] not sent yet */
   var flying = [];                        /* [{n, items}] sent, no ack yet */
-  var left = new Map();                   /* b -> ops of that store batch still unanswered */
   var nextN = 1;
   var backoff = BACKOFF_MIN, retryT = null, tickT = null, flushT = null, flushOn = false;
   var lastHeard = 0, lastPing = 0, lastResync = 0;
@@ -82,9 +81,8 @@
   /* ---------------------------------------------------------------- local ops -> the wire */
   function onLocal(ops, b) {
     if (!want || !ops || !ops.length) return;
-    if (!loaded || !canEdit()) { store.acked(b); return; }    /* before the first init, or a viewer: nothing is sent */
+    if (!loaded || !canEdit()) { store.rollback(ops); return; }    /* before the first init, or a viewer: nothing is sent */
     for (var i = 0; i < ops.length; i++) queue.push({op: ops[i], b: b});
-    left.set(b, ops.length);
     notePending();
     if (net.status !== 'live' && !full && pendingCount() >= OFFLINE_CAP) {
       full = true;
@@ -124,7 +122,6 @@
       var ops = [];
       for (q = 0; q < big.length; q++) ops.push(big[q].op);
       store.rollback(ops);
-      for (q = 0; q < big.length; q++) answered(big[q].b);
       em.emit('reject', {ops: ops, tooBig: true});
       notePending();
     }
@@ -138,23 +135,16 @@
     }
     if (queue.length) scheduleFlush();
   }
-  function answered(b) {                    /* one more op of store batch b has its answer */
-    var c = left.get(b);
-    if (c === undefined) return;
-    if (c <= 1) { left.delete(b); store.acked(b); } else left.set(b, c - 1);
-  }
   function onAck(msg) {
     var i, f = null;
     for (i = 0; i < flying.length; i++) if (flying[i].n === msg.n) { f = flying[i]; flying.splice(i, 1); break; }
     if (typeof msg.seq === 'number' && msg.seq > net.seq) net.seq = msg.seq;
     if (!f) return;
-    var rej = msg.rejected, bad = [];
-    if (rej && rej.length) {
-      for (i = 0; i < rej.length; i++) if (f.items[rej[i]]) bad.push(f.items[rej[i]].op);
-      if (bad.length) store.rollback(bad);
-    }
-    for (i = 0; i < f.items.length; i++) answered(f.items[i].b);
-    if (bad.length) em.emit('reject', {ops: bad});
+    var rej = msg.rejected, no = null, good = [], bad = [];
+    if (rej && rej.length) { no = new Set(); for (i = 0; i < rej.length; i++) no.add(rej[i]); }
+    for (i = 0; i < f.items.length; i++) (no && no.has(i) ? bad : good).push(f.items[i].op);
+    if (good.length) store.acked(good);         /* into the store's copy of the server, in the server's order */
+    if (bad.length) { store.rollback(bad); em.emit('reject', {ops: bad}); }
     notePending();
   }
 
@@ -292,7 +282,7 @@
       flying = [];
       store.load(msg.doc, msg.cid, {keep: true});
     } else {
-      queue = []; flying = []; left.clear();
+      queue = []; flying = [];
       store.load(msg.doc, msg.cid);
     }
     loaded = true; fresh = false; full = false;
@@ -338,7 +328,7 @@
     if (offOps) { offOps(); offOps = null; }
     if (offDesync) { offDesync(); offDesync = null; }
     fileId = null; loaded = false; fresh = false; full = false;
-    queue = []; flying = []; left.clear();
+    queue = []; flying = [];
     net.users.clear();
     net.role = null; net.cid = null; net.file = null; net.seq = 0;
     if (was) {
