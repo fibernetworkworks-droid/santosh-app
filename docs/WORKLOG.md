@@ -2893,3 +2893,9 @@ Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the lo
 content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
 Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
 Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.
+
+---
+Task ID: v0.787.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785.0 and HOOLA INTERACTIVE PREMIUM PASS 0.786.0; L4)
+Task: owner "GO L4" - E1 line-edit tools + E2 tiered checks in the Web Studio.
+Work Log: site/lineedit.py; website_dekho what=search, website action=edit_lines / write_file; checks.run quick; save_version quick + _quick_merge; blockers + Go live starts the full check; Studio version card; 8 tests; real Chromium quick check 6.2 s.
+Stage Summary: pushed; server deploy only. Next: L5 YEH WALA (preview toolbar, element pills, style panel) on her GO.

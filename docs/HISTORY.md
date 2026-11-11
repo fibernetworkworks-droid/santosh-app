@@ -993,3 +993,33 @@ motion can be switched off, no clashing class names). Needs `HOOLA_CHROMIUM=/opt
 and `animation:hmWord ... both`).
 
 **NOT VERIFIED:** she has not seen it on her server. Checked here in light, dark, 1366 x 660 and 400 px wide.
+
+## v0.787.0 CHHOTA BADLAAV - small exact edits + tiered checks (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4")
+Before: "make the button grey" went through `website action=change` -> Opus wrote the whole section again -> the full
+Chromium matrix + journeys + gates. Lovable changes a few lines (line-replace) and checks only what changed.
+E1 LINE EDITS (`site/lineedit.py`, no model call):
+- `website_dekho what=search` + q: every place the text / colour / class is in the site's code (pages/<page>/<section>.html |
+  css | js + design/kit.css), with file and line (30 shown, total counted).
+- `website action=edit_lines` + site + file + search + replace: one exact replace. The search text must appear EXACTLY once:
+  0 = refused naming the closest lines, 2+ = refused asking for more of the surrounding text, search == replace / empty =
+  refused. The result goes through `code_write` - the same safety cleaner as every build, one Undo step - and returns the diff.
+- `website action=write_file` + file + code: the whole file (rare).
+- The `website` description now says SMALL EXACT CHANGES FIRST; action=change stays for new sections / layout / many parts.
+  Both live in the existing tools (registry count unchanged); Plan / Chat mode still refuse `website` (turnmode).
+E2 TIERED CHECKS:
+- `checks.run(..., only=pages, quick=True)`: only those pages in the browser (scroll width, a11y / contrast, console errors, the
+  page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture / video.
+- `service.save_version(quick=pages)`: used by edit_lines / write_file / a code file / her own-hand preview edit (one section).
+  Needs a FULL report to stand on (else the full check runs); `_quick_merge` replaces only the touched pages' results, keeps
+  every other page, the visitor journeys and Lighthouse items from the last full run; the gates re-run; report `tier: quick`,
+  `checked_pages`, `quick_s`. Edits that pile up while a job runs, Opus code changes and action=change keep the full check.
+- `hosting.blockers` refuses Go live (and the blog's auto-update of a live site) while the last report is quick; her Go live
+  tap (`launch_request`) starts the full check, then the card is hers again.
+- Studio version card: "Quick check of home in 6.2s · the full check runs before going live".
+- Switch `site_quick_checks` (default on).
+MEASURED HERE (real Chromium, the test site): one page quick-checked in 6.2 s, the whole edit 6.3 s - the plan's target was
+< 20 s. The edit itself costs Rs 0; the turn that asks for it is the only model cost (not measured on her server).
+Tests: test_v0787_chhota_badlaav.py (8: search file + line, exact-once edits + refusals + cleaner + Undo, quick check then full
+before live, switch off / no base = full, the merge rule, the agent tool actions + Plan mode, the real Chromium timing, the
+Studio line).
+NOT VERIFIED live: a real model choosing edit_lines for "make the button grey" on her server, and the rupees of that turn.
