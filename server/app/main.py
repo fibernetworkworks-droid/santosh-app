@@ -5399,9 +5399,12 @@ for _mk in (_seva_router, _helpdesk_router, _shikayat_router, _aftersales_router
 # v0.772 HOOLA AI APPS (docs/AIAPPS_PLAN.md): AIs that answer HER CUSTOMERS. Order matters: the builder's fixed paths
 # (/api/aiapps/plan, /templates, /import) before the owner router's /api/aiapps/{id}.
 from .aiapps.builder_api import make_router as _aiapps_builder_router  # noqa: E402
+from .aiapps.keys import make_router as _aiapps_keys_router  # noqa: E402
 from .aiapps.api import make_router as _aiapps_owner_router  # noqa: E402
+from .aiapps.public import make_router as _aiapps_public_router  # noqa: E402  (PUBLIC: /ai/{code}, /api/aiapp-pub/*)
+from .aiapps.mcp import make_router as _aiapps_mcp_router  # noqa: E402  (app key: /mcp/aiapp/{code})
 
-for _mk in (_aiapps_builder_router, _aiapps_owner_router):
+for _mk in (_aiapps_builder_router, _aiapps_keys_router, _aiapps_owner_router, _aiapps_public_router, _aiapps_mcp_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.137 Tech suite: 9 Technology & software Sahayaks (each module owns its /api/<mod>/* routes; the few public ones
