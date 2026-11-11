@@ -440,7 +440,7 @@ def cast_set(tenant: str, ref: str, character: str, person: str = "", descriptio
             pe = _person(s, tenant, person)
             entry.update(kind="real", person=pe.number)
             prob = R.consent_problem(_person_view(pe), "ai_likeness", today(tenant).isoformat())
-            warn = f" Dhyaan: {prob}" if prob else ""
+            warn = f" Note: {prob}" if prob else ""
         cast[name] = entry
         p.cast = _dump(cast)
         _log(p, f"Cast: {name} = {entry['person'] or 'AI character'}", actor_name(tenant, actor))
@@ -769,7 +769,7 @@ def right_add(tenant: str, ref: str, kind: str, title: str, owner: str = "", lic
         s.flush()
         v = _right_view(r)
         prob = R.rights_problem({**v, "proof": proof.get("sha256")}, _j(_proj(s, tenant, ref).targets, []), today(tenant).isoformat())
-    return {"right": v, "say": f"{v['number']} {title} darj." + (f" Dhyaan: {prob}" if prob else "")}
+    return {"right": v, "say": f"{v['number']} {title} recorded." + (f" Note: {prob}" if prob else "")}
 
 
 def rights(tenant: str, ref: str = "") -> list[dict]:
@@ -1271,7 +1271,7 @@ def set_rating(tenant: str, ref: str, rating: str, descriptors: str = "", actor:
         p.rating, p.descriptors = rt, R.clean(descriptors, 300)
         _log(p, f"OTT rating {rt}", "Owner")
     lock = " For U/A 13+ and above, a parental lock on the platform is required." if rt in ("UA13", "UA16", "A") else ""
-    return {"rating": rt, "say": f"OTT rating {R.RATING_LABEL[rt]} darj.{lock}"}
+    return {"rating": rt, "say": f"OTT rating {R.RATING_LABEL[rt]} recorded.{lock}"}
 
 
 def set_cbfc(tenant: str, ref: str, category: str = "", number: str = "", day: str = "", applied: bool | None = None,

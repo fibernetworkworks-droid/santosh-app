@@ -38,7 +38,7 @@ from ..db import Base, new_id, now, session
 
 log = logging.getLogger("santosh.mshop")
 _LOCK = threading.Lock()
-DAYS = ("Som", "Mangal", "Budh", "Guru", "Shukra", "Shani", "Ravi")
+DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 # fault id -> label, words, default warranty days, usual days to fix
 FAULTS: dict[str, dict] = {
@@ -611,7 +611,7 @@ def new_job(tenant: str, name: str = "", phone: str = "", brand: str = "", model
     if scrubbed or s2:
         say += " A lock password was in the note and has been removed: Hoola never keeps a customer's password."
     if ck["notes"]:
-        say += " Dhyaan: " + " ".join(ck["notes"][:4])
+        say += " Note: " + " ".join(ck["notes"][:4])
     _publish(tenant, "mshop", {"job": v["id"], "status": v["status"]}, conv)
     return {"saved": True, "job": v, "check": ck, "say": say}
 
@@ -1199,7 +1199,7 @@ def day(tenant: str) -> dict[str, Any]:
     if due:
         lines.append(f"{len(due)} customers' recharges end within {sv['remind_days']} days: reminder drafts are ready.")
     if rc["count"]:
-        lines.append(f"Kal {rc['count']} recharge, {rc['amount']}, commission {rc['commission']}.")
+        lines.append(f"Yesterday: {rc['count']} recharges, {rc['amount']}, commission {rc['commission']}.")
     if len(lines) == 1:
         lines.append("No special work today.")
     return {"date": t, "nice": _nice(t), "open": len(vs), "due_today": due_today, "late": late, "waiting_part": parts,

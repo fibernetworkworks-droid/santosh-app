@@ -49,7 +49,7 @@ SHOT_LISTS: dict[str, list[tuple[str, bool]]] = {
                  ("Games / candid", False)],
     "corporate": [("Headshots (list of names)", True), ("Team group photo", True), ("Office / workspace", False),
                   ("Event stage / awards", False)],
-    "product": [("Har product white background (front / back / side)", True), ("Detail / texture close-up", True),
+    "product": [("Every product on a white background (front / back / side)", True), ("Detail / texture close-up", True),
                 ("Lifestyle / in-use shot", False), ("Size / scale shot", False), ("Packaging", False)],
     "food": [("Hero dish top-angle", True), ("45 degree angle", True), ("Ingredients / process", False), ("Ambience", False)],
     "fashion": [("Full look front / back", True), ("Detail close-up", True), ("Movement shots", False), ("Portrait", False)],

@@ -90,10 +90,10 @@ def test_rules():
     assert shots[0]["camera"] == "wide" and shots[1]["dialogue"] == "Aaj bhi koi nahi aaya." and all(4 <= s["duration"] <= 10 for s in shots)
     day = "2026-10-23"
     p = {"name": "Ritu", "real": True, "consent": {"status": "recorded", "uses": ["ai_likeness"], "until": "2026-12-31"}}
-    assert R.consent_problem(p, "ai_likeness", day) == "" and "awaaz" in R.consent_problem(p, "ai_voice", day)
-    assert "khatam" in R.consent_problem(p, "ai_likeness", "2027-01-05")
-    assert "darj nahi" in R.consent_problem({"name": "X", "real": True, "consent": {}}, "ai_likeness", day)
-    assert "wapas" in R.consent_problem({"name": "X", "real": True, "consent": {"status": "withdrawn"}}, "ai_likeness", day)
+    assert R.consent_problem(p, "ai_likeness", day) == "" and "AI voice" in R.consent_problem(p, "ai_voice", day)
+    assert "ended" in R.consent_problem(p, "ai_likeness", "2027-01-05")
+    assert "not recorded" in R.consent_problem({"name": "X", "real": True, "consent": {}}, "ai_likeness", day)
+    assert "withdrawn" in R.consent_problem({"name": "X", "real": True, "consent": {"status": "withdrawn"}}, "ai_likeness", day)
     assert "guardian" in R.consent_problem({"name": "B", "real": True, "minor": True, "consent": {"status": "recorded",
                                                                                                     "uses": ["ai_likeness"]}}, "ai_likeness", day)
     assert "personality" in R.consent_problem({"name": "Star", "real": True, "public_figure": True}, "ai_likeness", day)
@@ -102,13 +102,13 @@ def test_rules():
     assert "sync" in R.rights_problem(song, ["youtube"], day)
     assert "OTT" in R.rights_problem({**song, "sync": True}, ["youtube", "ott"], day)
     assert R.rights_problem({**song, "sync": True}, ["youtube"], day) == ""
-    assert "saboot" in R.rights_problem({**song, "proof": ""}, ["youtube"], day)
+    assert "proof" in R.rights_problem({**song, "proof": ""}, ["youtube"], day)
     assert R.rights_problem({"title": "Bed", "licence": "ai_generated"}, ["youtube"], day) == ""
     assert R.rating("UA 13+") == "UA13" and R.rating("U/A") == "UA13" and R.rating("x") == ""
     keys = {i["key"] for i in R.checklist(["theatrical", "youtube", "ott"], "feature", True)}
     assert {"cbfc", "access", "yt_altered", "ott_rating", "disclosure", "consents", "rights"} <= keys
     assert "AI" in R.disclosure("Marathi", ["youtube"])["description_line"] and R.disclosure("Hindi", ["youtube"])["steps"]
-    assert R.clean("otp 123456 card 4111 1111 1111 1111") == "otp [hataya] card [hataya]"
+    assert R.clean("otp 123456 card 4111 1111 1111 1111") == "otp [removed] card [removed]"
     assert R.story_problem("an actor struggles in Mumbai") == "" and R.story_problem("Virat Kohli ka deepfake")
     assert R.targets_of("yt, insta, cinema") == ["youtube", "instagram", "theatrical"] and R.fmt("movie") == "feature"
 
@@ -121,7 +121,7 @@ def test_project_script_breakdown_shots(fd, monkeypatch):
     num = p["project"]["number"]
     assert num == "F-0001" and p["project"]["targets"] == ["youtube", "instagram"]
     r = S.script_write(T, num, "")                                             # no model -> honest frame from her words
-    assert "[jagah]" in S.project_view(T, num)["script"] and "dhaancha" in r["say"]
+    assert "[place]" in S.project_view(T, num)["script"] and "outline" in r["say"]
     monkeypatch.setattr(S, "_ask_json", lambda system, prompt, max_tokens=6000:
                         {"script": SCRIPT, "notes": ["Raju ki umar nahi batayi"]} if "screenwriter" in system else {})
     r = S.script_write(T, num, "Meena 40 saal ki hai")
@@ -144,7 +144,7 @@ def test_project_script_breakdown_shots(fd, monkeypatch):
     first = [x for x in r["shots"] if x["scene"] == "sc1"][0]
     assert first["duration"] == 10 and first["characters"] == ["Meena"] and r["dropped"]   # clamp, unknown char, famous dropped
     S.script_restore(T, num, 1)
-    assert "[jagah]" in S.project_view(T, num)["script"]
+    assert "[place]" in S.project_view(T, num)["script"]
 
 
 def test_consent_gate_before_studio(fd):
@@ -156,7 +156,7 @@ def test_consent_gate_before_studio(fd):
     S.cast_set(T, num, "Meena", person="P-001")
     with pytest.raises(S.FilmError) as e:
         asyncio.run(S.storyboard_push(T, num))
-    assert "ijazat" in str(e.value)
+    assert "consent" in str(e.value)
     with pytest.raises(S.FilmError):
         S.consent_record(T, "P-001", "signed_form", _file(), ["ai_likeness"], actor="staff:s1")   # staff can't record
     with pytest.raises(S.FilmError):
@@ -164,9 +164,9 @@ def test_consent_gate_before_studio(fd):
     S.consent_record(T, "P-001", "signed_form", _file(), ["ai_likeness"], until="31-12-2026")
     with pytest.raises(S.FilmError) as e:
         asyncio.run(S.storyboard_push(T, num))                                    # she speaks: voice not in the consent
-    assert "awaaz" in str(e.value)
+    assert "AI voice" in str(e.value)
     r = S.consent_record(T, "P-001", "video", _file("haan.jpg"), ["ai_likeness", "ai_voice", "promo"], until="2026-12-31")
-    assert "ijazat darj" in r["say"]
+    assert "consent recorded" in r["say"]
     pv = S.person_view(T, "P-001")
     assert pv["consent"]["has_proof"] and len(pv["history"]) == 2
     from PIL import Image
@@ -191,7 +191,7 @@ def test_consent_gate_before_studio(fd):
     assert num in w["projects"]
     with pytest.raises(S.FilmError) as e:
         asyncio.run(S.spend(T, num, "draft"))
-    assert "wapas" in str(e.value)
+    assert "withdrawn" in str(e.value)
 
 
 def test_budget_and_paid_shots_only_on_studio_card(fd, monkeypatch):
@@ -220,11 +220,11 @@ def test_budget_and_paid_shots_only_on_studio_card(fd, monkeypatch):
     aid = r["studio"]["waiting_owner"]
     sp = SS.studio_sync(T).load(S.project_view(T, num)["studio_project"])
     assert sp["approvals"][aid]["status"] == "pending" and sp["spent_usd"] == 0 and not sp["jobs"]
-    assert "Studio ka card" in r["say"]
+    assert "studio's own card" in r["say"]
     S.shot_update(T, num, S.project_view(T, num)["shots"][0]["id"], duration=9)
     with pytest.raises(S.FilmError) as e:
         asyncio.run(S.spend(T, num, "draft"))                                   # shot list changed after the storyboard
-    assert "dobara" in str(e.value)
+    assert "again" in str(e.value)
     with pytest.raises(S.FilmError):
         asyncio.run(S.spend(T, num, "preview"))
 
@@ -240,7 +240,7 @@ def test_release_checklist_cards_and_her_tap(fd, monkeypatch):
     S.shots_make(T, num, use_model=False)
     asyncio.run(S.storyboard_push(T, num))
     r = S.right_add(T, num, "song", "Baarish ka gaana", "Raag Music", "licensed", sync=False, platforms=["youtube"])
-    assert "Dhyaan" in r["say"]
+    assert "Note" in r["say"]
     rv = S.release_view(T, num)
     assert {"rights", "final_video", "cbfc", "credits", "yt_altered"} <= set(rv["blockers"]) and rv["cbfc_note"]
     with pytest.raises(S.FilmError):
@@ -288,7 +288,7 @@ def test_release_checklist_cards_and_her_tap(fd, monkeypatch):
     assert S.card_view(T, m["card"]["id"])["status"] == "stale"
     m = S.message_request(T, num, "consent_request", person="P-001", uses=["ai_likeness"], terms="fees aapse baat karke")
     d = S.decide(T, m["card"]["id"], True, m["card"]["hash"], by_tap=True)
-    assert d["draft"]["wa"].startswith("https://wa.me/919822012345") and "khud" in d["say"]
+    assert d["draft"]["wa"].startswith("https://wa.me/919822012345") and "yourself" in d["say"]
     n = S.message_request(T, num, "custom", phone="9811122233", text="Screener link bhej rahe hain")
     assert S.decide(T, n["card"]["id"], False, n["card"]["hash"], "abhi nahi", by_tap=True)["card"]["status"] == "rejected"
 
@@ -309,7 +309,7 @@ def test_forget_worker_tools_and_api(fd):
     S.consent_withdraw(T, "P-001")
     S.forget_person(T, "P-001")
     pv = S.person_view(T, "P-001")
-    assert pv["forgotten"] and pv["phone"] == "" and "hataya" in pv["name"] and pv["history"]
+    assert pv["forgotten"] and pv["phone"] == "" and "removed" in pv["name"] and pv["history"]
     assert not (S._home(T) / "consent" / "P-001").exists()
 
     from app.agent.filmdesk_tools import FILMDESK_HANDLERS, FILMDESK_TOOLS

@@ -395,7 +395,7 @@ def _launch(p):
 def render(jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """jobs: {html, size, out: 'png'|'jpg'|'pdf', scale_to (px wide, optional)} -> {data, fit:{k, overflow}, w, h}."""
     if available():
-        raise RenderError("Poster banane ke liye server par Playwright + Chromium chahiye (deploy/setup_motion.sh).")
+        raise RenderError("Making a poster needs Playwright + Chromium on the server (deploy/setup_motion.sh).")
     from playwright.sync_api import sync_playwright
     out: list[dict[str, Any]] = []
     with sync_playwright() as p:

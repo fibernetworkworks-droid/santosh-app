@@ -46,7 +46,7 @@ def test_coverage_counts_and_cast_table():
     cast = {x["name"]: x for x in c["cast_table"]}
     assert cast["Raju"]["lines"] == 4 and cast["Raju"]["scenes_n"] == 2 and cast["Raju"]["first_scene"] == 2
     assert abs(sum(x["dialogue_pct"] for x in c["cast_table"]) - 100.0) < 0.3                       # shares add up
-    assert c["most_dialogue"] == "Meena" and "zaroori nahi" in c["most_dialogue_note"]
+    assert c["most_dialogue"] == "Meena" and "not necessarily" in c["most_dialogue_note"]
     assert c["places_n"] == 2 and c["company_moves"] >= 1 and c["scene_table"][1]["dialogue_lines"] == 3
 
 
@@ -55,7 +55,7 @@ def test_coverage_flags_are_labelled_and_never_a_verdict():
     text = " | ".join(f["text"] for f in c["flags"])
     assert {f["kind"] for f in c["flags"]} <= {"measured", "heuristic"}
     assert "Scene 3" in text and "INT/EXT" in text                                                  # scene 3 heading has no time of day
-    assert "Guard" in text and "ek line" in text                                                    # one-line, one-scene role
+    assert "Guard" in text and "only one line" in text                                                    # one-line, one-scene role
     assert "soch / ehsaas" in text and "scene 1" in text                                            # 'thinks' in an action line
     assert "target 600 s" in text                                                                   # runtime target far off
     assert "pass" in c["kind_note"].lower() and "insaan" in c["kind_note"]
@@ -66,13 +66,13 @@ def test_coverage_flags_are_labelled_and_never_a_verdict():
 def test_coverage_spots_the_same_character_spelled_twice():
     s = """INT. A - DAY\nMEENA: Hi\nRAJU: Hi\n\nINT. B - DAY\nMeenaa: Bye\nRaju: Bye\n"""
     c = CV.coverage(R.parse_script(s), s)
-    assert any("ek hi kirdaar" in f["text"] and f["kind"] == "heuristic" for f in c["flags"])
+    assert any("the same character" in f["text"] and f["kind"] == "heuristic" for f in c["flags"])
 
 
 def test_coverage_themes_are_word_counts_not_a_rating():
     s = "INT. BAR - NIGHT\nHe drinks sharab and a gun is shown. Blood on the floor.\n\nRAJU: Maar do!\n"
     c = CV.coverage(R.parse_script(s), s)
-    assert c["theme_hits"]["violence"] >= 3 and c["theme_hits"]["substance"] >= 1 and "rating nahi" in c["theme_note"]
+    assert c["theme_hits"]["violence"] >= 3 and c["theme_hits"]["substance"] >= 1 and "not a rating" in c["theme_note"]
 
 
 def test_coverage_empty_script_says_so():
@@ -94,9 +94,9 @@ def test_previs_timeline_and_flags():
     v = PV.previs(_shots(), scenes, 600)
     assert v["shots"] == 3 and v["total_seconds"] == 12 and [r["start_s"] for r in v["timeline"]] == [0, 5, 7]
     text = " | ".join(f["text"] for f in v["flags"])
-    assert "sc1s2: dialogue ko" in text and "sc2s1: dialogue hai par bolne wala" in text and "Zorro" in text
-    assert "Scene 3" in text and "koi shot nahi" in text and "target 600 s" in text
-    assert any("drone" in g for g in v["gear"]) and "Drone shot hai" in text
+    assert "sc1s2: the dialogue needs" in text and "sc2s1: there is dialogue but the speaker" in text and "Zorro" in text
+    assert "Scene 3" in text and "has no shot" in text and "target 600 s" in text
+    assert any("drone" in g for g in v["gear"]) and "There is a drone shot" in text
     assert "180 degree" in v["note"]
 
 
@@ -105,7 +105,7 @@ def test_previs_monotony_and_missing_camera():
     shots = [{"id": f"sc1s{i}", "scene": "sc1", "camera": "static", "duration": 4, "characters": [], "dialogue": None} for i in range(1, 5)]
     shots.append({"id": "sc2s1", "scene": "sc2", "camera": None, "duration": 4, "characters": [], "dialogue": None})
     text = " | ".join(f["text"] for f in PV.previs(shots, scenes)["flags"])
-    assert "4 shot lagataar 'static'" in text and "sc2s1: camera tay nahi" in text
+    assert "4 shots in a row are 'static'" in text and "sc2s1: the camera is not decided" in text
     assert PV.previs([], scenes)["shots"] == 0
 
 

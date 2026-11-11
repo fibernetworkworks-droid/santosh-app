@@ -203,7 +203,7 @@ def call_sheet(project: dict[str, Any], day: dict[str, Any], *, call_time: str =
              f"Shoot day {day.get('order')}" + (f" - {day['date']}" if day.get("date") else " - [fill in the date]"),
              f"Unit call: {ct}", ""]
     for p in places:
-        lines.append(f"Jagah: {p['place']} - {p['address']}")
+        lines.append(f"Place: {p['place']} - {p['address']}")
     lines.append("")
     for s in scenes:
         lines.append(f"Scene {s['n']}: {s['heading']} ({s['hours']} h) - {', '.join(s['cast']) or 'no cast'}")

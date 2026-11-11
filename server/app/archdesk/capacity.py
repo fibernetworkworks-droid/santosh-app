@@ -55,14 +55,14 @@ def compute(inputs: dict[str, Any], sources: dict[str, str] | None = None) -> di
         src = str(sources.get(k) or "assumed")      # a number counts as hers ONLY when it is marked hers
         if v is None:
             if default is None:
-                raise CapacityError(f"'{label}' chahiye - bina iske capacity ka hisaab nahi banta (andaaza nahi lagayenge).")
+                raise CapacityError(f"'{label}' is needed - capacity cannot be calculated without it (no guessing).")
             v, src = default, "assumed"
         if src != "her":
             assumed.append(label)
         vals[k] = v
         shown.append({"key": k, "label": label, "value": v, "unit": unit, "source": "her" if src == "her" else "assumed"})
     if vals["dau"] <= 0:
-        raise CapacityError("Daily active users zero se zyada hone chahiye.")
+        raise CapacityError("Daily active users must be more than zero.")
     vals["write_ratio"] = min(1.0, vals["write_ratio"])
     req_day = vals["dau"] * vals["requests_per_user_per_day"]
     avg_rps = req_day / 86400

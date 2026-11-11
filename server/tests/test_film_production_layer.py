@@ -69,14 +69,14 @@ def test_schedule_respects_day_length_and_flags_long_scene():
     long = [dict(x) for x in sc]
     long[0]["seconds"] = 3600
     sch2 = P.build_schedule(long, day_hours=8)
-    assert any("ek din se lamba" in f for f in sch2["flags"])
+    assert any("longer than one day" in f for f in sch2["flags"])
     with pytest.raises(ValueError):
         P.build_schedule([])
 
 
 def test_schedule_missing_time_is_flagged_not_hidden():
     sch = P.build_schedule(R.parse_script("INT. KITCHEN\nAsha cooks.\n\nINT. ROOM - NIGHT\nAsha sleeps."))
-    assert any("din maana gaya" in f for f in sch["flags"])
+    assert any("taken as day" in f for f in sch["flags"])
 
 
 def test_schedule_dates_skip_days_off_blocked_and_unavailable():
@@ -106,15 +106,15 @@ def test_day_out_of_days_codes_and_hold():
     one = P.day_out_of_days({"days": [{"order": 1, "date": "", "cast": ["C"]}, {"order": 2, "date": "", "cast": []}]})
     assert one["grid"][0]["cells"] == ["SWF", ""]
     summ = {x["who"]: x for x in d["summary"]}
-    assert summ["A"]["work_days"] == 3 and summ["A"]["hold_days"] == 1 and "daam nahi" in d["note"]
+    assert summ["A"]["work_days"] == 3 and summ["A"]["hold_days"] == 1 and "no price" in d["note"]
 
 
 def test_call_sheet_never_invents_details():
     sch = P.build_schedule(_scenes(), start_date="2026-11-02")
     day = sch["days"][0]
     cs = P.call_sheet({"title": "Chai", "number": "F-0001"}, day)
-    assert cs["unit_call"] == "07:00" and "[pata bharo]" in cs["text"] and cs["blanks"]
-    assert all(c["call_is_default"] for c in cs["cast"]) and "asli source" in cs["text"]
+    assert cs["unit_call"] == "07:00" and "[fill in the address]" in cs["text"] and cs["blanks"]
+    assert all(c["call_is_default"] for c in cs["cast"]) and "real source" in cs["text"]
     cs2 = P.call_sheet({"title": "Chai"}, day, call_time="6.30", cast_calls={"meena": "05:45", "x": "99:99"},
                        location_address={"chai stall": "Kothrud, Pune"}, contacts={"1st AD": "98200 00000"}, notes="Baarish cover")
     assert cs2["unit_call"] == "06:30" and "Kothrud, Pune" in cs2["text"] and "98200 00000" in cs2["text"]
@@ -135,7 +135,7 @@ def test_budget_counts_only_her_rates():
     assert by["extra:Permit"]["amount_inr"] == 2500 and "Permit" in by["extra:Permit"]["head"]
     sub = 10000 * sch["shoot_days"] + 500 * sch["shoot_days"] + 2500
     assert b["subtotal_inr"] == sub and b["contingency_inr"] == round(sub * 0.10, 2) and b["total_inr"] == round(sub * 1.1, 2)
-    assert "Cast (kaam ke din)" in b["missing_rates"] and "kam se kam" in b["say"].lower()
+    assert "Cast (working days)" in b["missing_rates"] and "at least" in b["say"].lower()
 
 
 # ---------------------------------------------------------------- service + tools

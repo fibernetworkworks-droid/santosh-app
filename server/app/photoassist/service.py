@@ -176,7 +176,7 @@ def actor_name(tenant: str, actor: str) -> str:
 
 def _need_owner(actor: str) -> None:
     if not is_owner(actor):
-        raise PhotoError("Owner only.")
+        raise PhotoError("Only the owner can do this.")
 
 
 def _st(s, tenant: str) -> PhotoassistSettings:
@@ -320,7 +320,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
             tot = sum(float(_num(r.get("pct")) or 0) for r in rows)
             if rows and abs(tot - 100) > 0.5:
                 raise PhotoError(f"The installments must add up to 100% (now {tot:g}%).")
-            st.stages = _dump([{"label": R.clean(r.get("label") or "Kisht", 60), "pct": float(_num(r.get("pct")) or 0),
+            st.stages = _dump([{"label": R.clean(r.get("label") or "Installment", 60), "pct": float(_num(r.get("pct")) or 0),
                                 "when": r.get("when") if r.get("when") in ("booking", "before", "delivery") else "before",
                                 "days_before": int(_num(r.get("days_before")) or 0)} for r in rows])
         if kw.get("cancel") is not None:
@@ -1918,7 +1918,7 @@ def day(tenant: str) -> dict:
     if tod:
         parts.append("Shoot today: " + ", ".join(f"{b['number']} {b['start']} {b['location'][:30]}" for b in tod))
     if tom:
-        parts.append("Kal: " + ", ".join(f"{b['number']} {b['start']}" for b in tom))
+        parts.append("Tomorrow: " + ", ".join(f"{b['number']} {b['start']}" for b in tom))
     if tom_prep:
         parts.append("Prep for tomorrow: " + "; ".join(tom_prep))
     if holds:

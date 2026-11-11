@@ -14,26 +14,26 @@ from . import ai, ops
 def validate(steps: list[dict], filename: str = "") -> list[dict]:
     """Cheap checks first (names, count, safety words). Raises ops.EditError / ai.AIError; touches no engine."""
     if not isinstance(steps, list) or not steps:
-        raise ops.EditError("Kaun se badlav karne hain? steps mein kam se kam ek op likhiye (guide dekhiye).")
+        raise ops.EditError("Which changes should be made? Write at least one op in steps (see the guide).")
     if len(steps) > ops.MAX_STEPS:
-        raise ops.EditError(f"Ek baar mein {ops.MAX_STEPS} steps tak.")
+        raise ops.EditError(f"Up to {ops.MAX_STEPS} steps at a time.")
     clean, n_ai = [], 0
     for i, st in enumerate(steps, 1):
         if not isinstance(st, dict) or not st.get("op"):
-            raise ops.EditError(f"Step {i} mein 'op' naam chahiye.")
+            raise ops.EditError(f"Step {i} needs an 'op' name.")
         name = str(st["op"]).lower().strip()
         if name in ai.AI_OPS:
             n_ai += 1
             if n_ai > 1:
-                raise ops.EditError("Ek photo par ek baar mein sirf EK AI step (kharcha aur quality dono ke liye). "
-                                    "Doosra badlav alag run mein kijiye.")
+                raise ops.EditError("Only ONE AI step on a photo at a time (for both cost and quality). "
+                                    "Do the second change in a separate run.")
             what = str(st.get("what") or st.get("prompt") or st.get("background") or st.get("style")
                        or st.get("instruction") or "").strip()
             why = ai.check_words(what, name, filename)
             if why:
                 raise ai.AIError(why)
         elif name not in ops.OPS:
-            raise ops.EditError(f"Step {i}: '{name}' nahi hai. Local: {', '.join(sorted(ops.OPS))}. "
+            raise ops.EditError(f"Step {i}: '{name}' does not exist. Local: {', '.join(sorted(ops.OPS))}. "
                                 f"AI: {', '.join(sorted(ai.AI_OPS))}.")
         clean.append({**st, "op": name})
     return clean
@@ -68,7 +68,7 @@ async def process(data: bytes, steps: list[dict], *, fmt: str = "", quality: int
                     im = await asyncio.to_thread(ops.op_upscale_local, im, st.get("factor", 2))
                     report.append({"op": "upscale", "from": f"{before[0]}x{before[1]}", "to": f"{im.width}x{im.height}",
                                    "engine": "local enlargement (no AI engine set)"})
-                    notes.append("AI upscaler set nahi tha: photo sirf bada kiya gaya (Lanczos), naya detail nahi aaya.")
+                    notes.append("No AI upscaler was set up: the photo was only enlarged (Lanczos), no new detail was added.")
                     continue
                 raise
             im = res["image"]
