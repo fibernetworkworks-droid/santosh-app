@@ -27,6 +27,8 @@ struct TrackOrderBlock: View { init(coll: String, id: String) }   // v0.412 the 
 // CalendarBlock(coll:dateKey:), KanbanBlock(coll:), GanttBlock(coll:startKey:endKey:), LineChartView(values:labels:),
 // PieChartView(values:labels:), CarouselView(photos:), OnboardingPager(pages: [("Title","words")], done:). Never a web view.
 struct PayButton: View { init(coll: String, r: Item) }   // v0.419 "Pay online" on the customer's unpaid order (RowsSection already has it); never a card form
+struct ShareButton: View { init(text: String, url: String = "", label: String = "") }   // v0.802 the system share sheet (words and / or a link)
+struct CameraButton: View { init(label: String = "", onPhoto: (String) -> Void) }   // v0.802 Take photo ("local:" value; PhotoRow / PhotosRow already have it; hidden without a camera)
 struct ConnectButtons: View { init(coll: String, r: Item) }   // v0.424 staff buttons for her approved connectors (RowsSection has them); never call an outside API or hold a key
 struct PlansBlock: View { init() }        // v0.419 AutoPay plans + her own subscriptions with Cancel
 struct PartnerJobsBlock: View { init() }  // v0.435 a delivery partner / partner shop's jobs (apply, waiting, take, steps, call, route); only in a partner app
@@ -92,7 +94,8 @@ FILE CONTRACT
   (the server prices the cart). The user's own rows = RowsSection(coll: "orders"). Account: Auth.shared.signedIn / .name /
   .isStaff; profile / "my orders" -> Router.shared.go("hoola_account"); sign in -> Router.shared.go("hoola_login").
   NEVER write your own login / sign-up form or any text field for a password.
-- Actions: openLink("tel:" + phone), openLink("https://wa.me/91" + phone + "?text=..."), ShareLink(item: text) { ... },
+- Actions: openLink("tel:" + phone), openLink("https://wa.me/91" + phone + "?text=..."), ShareButton(text: text, url: link)
+  (the share sheet - e.g. share an order or a receipt link; shareText(text) inside a button's action),
   openLink("https://maps.apple.com/?q=" + address), payUpi(amount, note) (the customer's own UPI app).
 - Look: colours ONLY from the design palette: @Environment(\\.colorScheme) private var scheme, let c = H.c(scheme), then
   c.primary / c.accent / c.ink / c.muted / c.surface / c.bg / c.tint / c.line / c.onPrimary. Corners H.radius. Type with

@@ -257,7 +257,8 @@ struct FormBlock: View {
     }
 }
 
-/// A photo for a form: the system photo library picker (no permission needed), shrunk on the phone, sent by the outbox.
+/// A photo for a form: the system photo library picker (no permission needed) or the camera (v0.802), shrunk on the
+/// phone, sent by the outbox.
 struct PhotoRow: View {
     let label: String
     let key: String
@@ -265,7 +266,8 @@ struct PhotoRow: View {
     @ObservedObject private var state = AppState.shared
     var body: some View {
         HStack {
-            PhotosPicker(selection: $item, matching: .images) { Label(label, systemImage: "camera") }
+            PhotosPicker(selection: $item, matching: .images) { Label(label, systemImage: "photo") }
+            CameraButton { v in state.form[key] = v }                  // v0.802 MEDIA: or take it now (phones with a camera)
             Spacer()
             if !(state.form[key] ?? "").isEmpty { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
         }
