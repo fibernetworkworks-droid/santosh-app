@@ -16,7 +16,20 @@ mkdir -p "$OUT/screens"
 adb wait-for-device
 adb shell wm density | tr -dc '0-9\n' | tail -1 > "$OUT/density.txt"
 adb install -r "$DBG" > "$OUT/install_debug.txt" 2>&1 || { echo "::error::debug install failed"; cat "$OUT/install_debug.txt"; }
+# v0.820 a tap may open ANOTHER app (contacts picker, calendar, Play / browser for "Rate this app", a share sheet).
+# Our force-stop does not close it, and it stays in front of every later screen (v0.815's first run: 7 screens "not
+# opened" behind the contacts picker). Before each screen / tap: close whatever non-launcher app is on top, go home.
+clean_front() {
+  local top
+  top=$(adb shell dumpsys activity activities < /dev/null 2>/dev/null | tr -d '\r' \
+        | grep -m1 -E 'topResumedActivity|mResumedActivity' | grep -oE '[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+' | head -1 | cut -d/ -f1)
+  if [ -n "$top" ] && [ "$top" != "$PKG" ] && ! printf '%s' "$top" | grep -qiE 'launcher|systemui'; then
+    adb shell am force-stop "$top" < /dev/null
+  fi
+  adb shell input keyevent KEYCODE_HOME < /dev/null
+}
 for id in "$@"; do
+  clean_front
   adb shell am force-stop "$PKG"
   adb logcat -c
   adb shell am start -W -n "$PKG/hoola.app.MainActivity" --es hoola_screen "$id" > /dev/null 2>&1
@@ -33,6 +46,7 @@ for id in "$@"; do
     n=0
     while read -r x y label <&3; do
       n=$((n + 1))
+      clean_front
       adb shell am force-stop "$PKG" < /dev/null
       adb logcat -c < /dev/null
       adb shell am start -W -n "$PKG/hoola.app.MainActivity" --es hoola_screen "$id" < /dev/null > /dev/null 2>&1
@@ -48,12 +62,14 @@ for id in "$@"; do
         [ "$(python3 "$HERE/qa.py" sig "$OUT/tap.xml")" != "$before" ] && changed=1
       fi
       printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$label" "$ok" "$changed" "$n" >> "$OUT/taps.txt"
+      clean_front
     done 3< <(python3 "$HERE/qa.py" taps "$OUT/screens/$id.xml")
   fi
 done
 # scrolling on the start screen (debug build: slower than release, so a smooth result here is a safe one; the release
 # build opens on the first-run consent screen, which has nothing to scroll)
 if [ $# -gt 0 ]; then
+  clean_front
   adb shell am force-stop "$PKG"
   adb shell am start -W -n "$PKG/hoola.app.MainActivity" --es hoola_screen "$1" > /dev/null 2>&1
   sleep 3

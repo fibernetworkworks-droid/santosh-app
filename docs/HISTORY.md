@@ -2137,3 +2137,17 @@ e-Way Bill all "not subscribed").
 
 Tests: 2 in test_v0807_bahi_a0.py (values cleaned; the paste check never carries a value and catches dots, a moved GST key; the EWB
 refusal named). NOT VERIFIED: still no accepted WhiteBooks call - the next wb_check after her re-paste or WhiteBooks' activation is the test.
+
+## v0.820.0 PEECHHE KA APP (CI fix for v0.815 APP KE PURZE)
+
+v0.815's first CI run: every new Kotlin / Swift file COMPILED on every job (Android compile / fcm / glogin / fixture2
+incl. the field-service emulator walk; iPhone simulator + unsigned device builds). The Android `smoke` job failed its
+QA report with 7 of 14 screens "not opened" (support, seller_info, privacy, delete_account, hoola_login, hoola_account,
+hoola_inbox) - every screen AFTER the dashboard. Not a crash: the tap walk pressed the dashboard's new "Pick from
+contacts" button, the system contacts picker (com.google.android.contacts) stayed in front, and every later screen
+was opened behind it (the support screenshot is the picker's "No contacts with phone numbers"). The device check
+only ever force-stopped OUR package. FIX: `clean_front` in `appmaker/android/device_check.sh` + `tablet_check.sh` -
+reads the top resumed activity, force-stops it when it is not our app / the launcher / system UI, then HOME; called
+before each screen, before and after each tap, before the scroll check. Any of her real apps with a button that opens
+another app (calendar, contacts, Play, a browser, a share sheet) would have failed the same way. Tests:
+test_v0820_device_check_front.py (3, a fake adb on PATH). NOT VERIFIED until this push's appgen-check.
