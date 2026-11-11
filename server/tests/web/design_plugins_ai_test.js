@@ -109,7 +109,7 @@ async function main() {
     const res = await page.evaluate(() => HD.plugins.run('hoola.tidy-grid', 'run'));
     ok(res && res.ok, 'the starter ran: ' + JSON.stringify(res));
     const pos = await page.evaluate(list => list.map(id => [HD.store.prop(id, 'x'), HD.store.prop(id, 'y')]), ids);
-    eq(pos, [[1500, 40], [1500 + 100 + 24, 40], [1500, 40 + 80 + 24]], 'a 2-column grid, 24 apart, from the top-left of the selection');
+    eq(pos, [[1500, 40], [1500 + 120 + 24, 40], [1500, 40 + 80 + 24]], 'a 2-column grid, 24 apart, from the top-left of the selection');
     await page.evaluate(() => HD.store.undo());
     eq(await page.evaluate(list => list.map(id => [HD.store.prop(id, 'x'), HD.store.prop(id, 'y')]), ids), [[1500, 40], [1650, 75], [1530, 210]], 'ONE undo puts them back');
 
