@@ -3586,24 +3586,24 @@ html.human #app .landing .halo{display:none}
 #hiRoot .hi-rail{background:var(--side-bg);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:14px 12px 12px;overflow-x:hidden;overflow-y:auto;scrollbar-width:none}
 #hiRoot .hi-rail::-webkit-scrollbar{display:none}
 #hiRoot .hi-rail>*{flex:none}
-#hiRoot .hi-rhead{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:14px}
-#hiRoot .hi-mark{border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;text-align:left;font:600 15px/1.1 var(--logo);letter-spacing:-.02em;min-width:0}
+#hiRoot .hi-rhead{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:12px}
+#hiRoot .hi-mark{border:0;background:none;padding:0;display:flex;align-items:center;gap:10px;text-align:left;font:600 15px/1.1 var(--fd);letter-spacing:-.02em;min-width:0}
 #hiRoot .hi-mark i{width:34px;height:34px;border-radius:11px;background:var(--grad);display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 8px 18px -10px rgb(192 85 245 / .7);transition:transform .25s var(--hi-ease)}
 #hiRoot .hi-mark i svg{width:16px;height:16px;stroke-width:0;fill:currentColor;margin-left:1px}
 #hiRoot .hi-mark:hover i{transform:rotate(-6deg) scale(1.06)}
 #hiRoot .hi-mark span{display:grid;gap:3px} #hiRoot .hi-mark small{font:500 12px/1 var(--fd);color:var(--mut);letter-spacing:0}
-#hiRoot .hi-new{height:40px;width:100%;margin:0 0 12px;border-radius:10px;border:0;background:var(--pri);color:var(--on-acc);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;
+#hiRoot .hi-new{height:40px;width:100%;margin:0 0 10px;border-radius:10px;border:0;background:var(--pri);color:var(--on-acc);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;
   box-shadow:inset 0 1px 0 rgb(255 255 255 / .16),0 10px 20px -12px var(--pri);transition:transform .18s var(--hi-ease),background .15s}
 #hiRoot .hi-new svg.hi-i{width:18px;height:18px}
 #hiRoot .hi-new:hover{background:var(--pri-hover);transform:translateY(-1px)}
 #hiRoot .hi-new:active{transform:scale(.98)}
-#hiRoot .hi-rb{position:relative;height:36px;width:100%;border:0;background:none;border-radius:9px;padding:0 10px;display:flex;align-items:center;gap:11px;color:var(--mut);font-size:14px;font-weight:500;white-space:nowrap;text-align:left;transition:background .15s,color .15s}
+#hiRoot .hi-rb{position:relative;height:34px;width:100%;border:0;background:none;border-radius:9px;padding:0 10px;display:flex;align-items:center;gap:11px;color:var(--mut);font-size:14px;font-weight:500;white-space:nowrap;text-align:left;transition:background .15s,color .15s}
 #hiRoot .hi-rb .hi-tile{display:grid;place-items:center;width:20px;height:20px;flex:none;transition:transform .2s var(--hi-ease)}
 #hiRoot .hi-rb svg.hi-i{width:19px;height:19px}
 #hiRoot .hi-rb:hover{background:var(--sunk);color:var(--ink)}
 #hiRoot .hi-rb:hover .hi-tile{transform:scale(1.1)}
 #hiRoot .hi-rb[aria-current="page"]{background:var(--pri-soft);color:var(--pri-ink);font-weight:600}
-#hiRoot .hi-rb[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:8px;width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--pri);animation:hiBar .28s var(--hi-ease) both}
+#hiRoot .hi-rb[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:7px;width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--pri);animation:hiBar .28s var(--hi-ease) backwards}
 #hiRoot .hi-rail hr{border:0;border-top:1px solid var(--line);margin:8px 4px}
 #hiRoot .hi-sp{flex:1 1 8px!important;min-height:8px}
 #hiRoot .hi-rs{border:0;background:none;height:32px;width:100%;padding:0 15px;display:flex;align-items:center;gap:16px;font-size:12.5px;color:var(--mut);white-space:nowrap;border-radius:9px;text-align:left}
@@ -3832,8 +3832,8 @@ html.human #app .landing .halo{display:none}
 #hiRoot .hi-player video{width:100%;height:100%;display:block}
 #hiRoot .hi-kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 #hiRoot .hi-kv:last-child{border-bottom:0}
-#hiRoot .hi-ov{position:fixed;inset:0;background:rgb(10 8 24 / .5);display:grid;place-items:center;padding:16px;z-index:70;animation:hiFade .18s ease both}
-#hiRoot .hi-dlg{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;width:min(480px,100%);display:grid;gap:16px;box-shadow:0 32px 64px -24px rgb(10 8 40 / .5);max-height:90%;overflow:auto;animation:hiPop .26s var(--hi-ease) both}
+#hiRoot .hi-ov{position:fixed;inset:0;background:rgb(10 8 24 / .5);display:grid;place-items:center;padding:16px;z-index:70;animation:hiFade .18s ease backwards}
+#hiRoot .hi-dlg{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;width:min(480px,100%);display:grid;gap:16px;box-shadow:0 32px 64px -24px rgb(10 8 40 / .5);max-height:90%;overflow:auto;animation:hiPop .26s var(--hi-ease) backwards}
 #hiRoot .hi-sw{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);flex:none}
 #hiRoot pre{background:var(--hi-stage);color:#D9DEF2;border-radius:12px;padding:16px;overflow-x:auto;margin:0;max-width:100%;font:13px/1.6 ui-monospace,'SF Mono',Menlo,Consolas,monospace}
 
@@ -3845,19 +3845,19 @@ html.human #app .landing .halo{display:none}
 @keyframes hiGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes hiPulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes hiRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pri) 45%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
-#hiRoot .hi-view.hi-in .hi-wrap>*{animation:hiUp .46s var(--hi-ease) both}
+#hiRoot .hi-view.hi-in .hi-wrap>*{animation:hiUp .46s var(--hi-ease) backwards}
 #hiRoot .hi-view.hi-in .hi-wrap>:nth-child(2){animation-delay:.05s} #hiRoot .hi-view.hi-in .hi-wrap>:nth-child(3){animation-delay:.1s}
 #hiRoot .hi-view.hi-in .hi-wrap>:nth-child(4){animation-delay:.15s} #hiRoot .hi-view.hi-in .hi-wrap>:nth-child(n+5){animation-delay:.2s}
-#hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>*{animation:hiUp .46s var(--hi-ease) both;animation-delay:calc(.08s + var(--i,0) * .035s)}
+#hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>*{animation:hiUp .46s var(--hi-ease) backwards;animation-delay:calc(.08s + var(--i,0) * .035s)}
 #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(2){--i:1} #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(3){--i:2}
 #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(4){--i:3} #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(5){--i:4}
 #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(6){--i:5} #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(7){--i:6}
 #hiRoot .hi-view.hi-in :is(.hi-g3,.hi-g4)>:nth-child(n+8){--i:7}
-#hiRoot .hi-view.hi-tabin .hi-wrap>.hi-tabs~*{animation:hiUp .3s var(--hi-ease) both}
-#hiRoot .hi-view.hi-tabin .hi-panel{animation:hiFade .22s ease both}
-#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage :is(.look,.sub){animation:hiUp .36s var(--hi-ease) both}
+#hiRoot .hi-view.hi-tabin .hi-wrap>.hi-tabs~*{animation:hiUp .3s var(--hi-ease) backwards}
+#hiRoot .hi-view.hi-tabin .hi-panel{animation:hiFade .22s ease backwards}
+#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage :is(.look,.sub){animation:hiUp .36s var(--hi-ease) backwards}
 #hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .sub{animation-delay:.08s}
-#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .bars span{animation:hiGrow .5s var(--hi-ease) both}
+#hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .bars span{animation:hiGrow .5s var(--hi-ease) backwards}
 #hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .bars span:nth-child(2){animation-delay:.06s} #hiRoot .hi-view:is(.hi-in,.hi-scin) .hi-stage .bars span:nth-child(n+3){animation-delay:.12s}
 
 @media (max-width:1100px){ #hiRoot .hi-ed{grid-template-columns:minmax(0,1fr)} #hiRoot .hi-tools{position:static} }

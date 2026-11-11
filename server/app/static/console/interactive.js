@@ -255,7 +255,7 @@ window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
       const shown = lk.kind === 'title' ? `<div class="big">${esc(lk.text || '')}</div>`
         : lk.kind === 'big_number' ? (lk.value ? `<div class="big hi-num">${esc(lk.value)}</div><div>${esc(lk.label || '')}</div>` : `<div class="ph">Needs your number</div>`)
         : lk.kind === 'price' ? (lk.new ? `${lk.old ? `<div class="old hi-num">${esc(lk.old)}</div>` : ''}<div class="big hi-num">${esc(lk.new)}</div><div>${esc(lk.label || '')}</div>` : `<div class="ph">Needs your price</div>`)
-        : lk.kind === 'lower_third' ? `<div style="font-weight:700;font-size:clamp(14px,2.2vw,24px)">${esc(lk.title || '')}</div><div style="color:var(--hi-stage-mut)">${esc(lk.sub || '')}</div>`
+        : lk.kind === 'lower_third' ? `<div style="font-weight:600;font-size:clamp(14px,2.2vw,24px)">${esc(lk.title || '')}</div><div style="color:var(--hi-stage-mut)">${esc(lk.sub || '')}</div>`
         : lk.kind === 'bar_chart' ? (() => { const v = (lk.bars || []).map(b => parseFloat(String(b.value).replace(/,/g, '')) || 0), m = Math.max(...v, 1);
             return v.some(Boolean) ? `<div class="bars" role="img" aria-label="Bar chart preview">${v.map(x => `<span style="height:${Math.max(6, x / m * 90)}px"></span>`).join('')}</div>` : `<div class="ph">Needs your numbers</div>`; })() : '';
       const last = p.scenes.length - 1, size = p.aspect === '9:16' ? '9:16' : p.aspect === '1:1' ? '1:1' : '16:9';

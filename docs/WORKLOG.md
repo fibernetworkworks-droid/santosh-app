@@ -2883,3 +2883,13 @@ Task ID: v0.784.0 SAWAAL CARD (built as 0.783; their LANGGRAPH G4 took 0.783.0; 
 Task: owner "GO L3" - design question cards with visual options before a Studio Build, skipped when her words name the design.
 Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
 Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
+
+---
+Task ID: HI-PREMIUM
+Date: 2026-11-11
+Task: Hoola Interactive premium redesign (owner: "it look stale and old design ... more premium ... with some animation")
+Done: v0.785.0 - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
+(folding sidebar, one heading per page, drawn dropdowns, one control scale, editor rows that do not wrap, thumbnails with
+content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
+Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
+Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.

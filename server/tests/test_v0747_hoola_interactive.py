@@ -191,7 +191,9 @@ OVERVIEW = {**LIST, "brand": {"name": "Sharma Traders", "closing": "", "color": 
 
 def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     """v0.772: the page is its own full screen with its own sidebar. Every one of the twelve pages opens without a
-    script error, her text is never run as HTML, what is not connected is SAID, and a missing number blocks Generate."""
+    script error, her text is never run as HTML, what is not connected is SAID, and a missing number blocks Generate.
+    v0.785 PREMIUM PASS: one heading per page, no raw browser dropdown, nothing in the editor wraps onto a second
+    line, a picture that cannot load shows initials, the sidebar folds, the entrance motion ends by itself."""
     base, browser, key = arena_server
     ctx = browser.new_context(viewport={"width": 1280, "height": 900})
     ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
@@ -218,6 +220,14 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     assert "What video should Hoola make?" in home and "Diwali offer" in home and "<b>Menu</b>" in home
     assert "Voice engine is not set up" in home                                     # said, not hidden
     assert pg.locator("#hiRoot b:has-text('Menu')").count() == 0                    # her title is text, never markup
+    assert pg.locator("#hiRoot .hi-top, #hiRoot #hiTtl").count() == 0                 # no second title bar
+    assert pg.evaluate("document.querySelector('#hiRoot').dataset.slim") == "0"
+    pg.set_viewport_size({"width": 1366, "height": 660})                            # a small laptop: the whole sidebar fits, no scrolling
+    assert pg.evaluate("(r => r.scrollHeight <= r.clientHeight + 1)(document.querySelector('#hiRail'))")
+    pg.set_viewport_size({"width": 1280, "height": 900})
+    pg.wait_for_function("() => !document.querySelector('#hiView').classList.contains('hi-in')")   # the entrance ends by itself
+    pg.locator("#hiRoot .hi-sel[data-a='eg']").first.click()                        # a starter line fills the box
+    assert pg.locator("#hiLine").input_value() == "A festival offer for my shop"
     for page, said in [("avatars", "Priya"), ("voices", "Not connected on this server yet"), ("studio", "Menu"),
                        ("templates", "Festival offer"), ("brand", "Sharma Traders"), ("translate", "Translate the lines"),
                        ("live", "Not connected on this server yet"), ("apps", "Not connected yet"), ("projects", "Diwali offer"),
@@ -226,15 +236,32 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
         pg.wait_for_function("p => document.querySelector('#hiRoot .hi-rb[aria-current=page]')?.dataset.p === p", arg=page)
         assert said in pg.locator("#hiView").text_content(), page
         assert pg.evaluate("document.querySelector('#hiView').scrollWidth <= document.querySelector('#hiView').clientWidth + 1"), page
+        assert pg.locator("#hiRoot h1").count() == 1, page                          # the title is said once, not twice
+        assert pg.evaluate("[...document.querySelectorAll('#hiRoot select')].every(s => getComputedStyle(s).appearance === 'none'"
+                           " && s.closest('.hi-pick, .hi-f'))"), page                # every dropdown is drawn, none is the raw browser one
         if shots:
             pg.wait_for_timeout(1000)
             pg.screenshot(path=f"{shots}/hi-{page}.png")
+    pg.locator("#hiRoot .hi-rb[data-p='avatars']").click()
+    pg.wait_for_function("() => document.querySelectorAll('#hiRoot img[data-av]').length === 0")   # the empty picture became initials
+    assert "PR" in pg.locator("#hiRoot .hi-face").first.text_content()
     pg.locator("#hiRoot .hi-rb[data-p='studio']").click()
     pg.locator("#hiRoot .hi-av", has_text="Menu").click()
     pg.wait_for_selector("#hiRoot .hi-scene")
     st = pg.locator("#hiRoot").text_content()
     assert pg.locator("#hiRoot .hi-scene").count() == 2 and "Needs your numbers" in st and "Scene 2 needs your numbers." in st
     assert pg.locator("#hiMake").is_disabled()
+    one_row = "s => { const t = [...document.querySelectorAll(s)].map(e => Math.round(e.getBoundingClientRect().top + e.getBoundingClientRect().height / 2)); return Math.max(...t) - Math.min(...t) <= 3; }"
+    assert pg.evaluate(f"({one_row})('#hiRoot .hi-tt button')")                     # the five tool tabs sit on ONE row
+    assert pg.evaluate(f"({one_row})('#hiRoot .hi-edhead > *')")                    # back, title, saved, Save as template, Generate: one row
+    assert pg.evaluate(f"({one_row})('#hiRoot .hi-scene:nth-of-type(2) .hd > *')")  # the scene that needs numbers: its header does not wrap
+    assert pg.evaluate("document.querySelector('#hiRoot').dataset.slim") == "1"     # the editor opens with the sidebar folded
+    assert pg.locator("#hiRoot .hi-sc .mini b", has_text="Namaste").count() == 1    # a scene thumbnail shows the scene's own words
+    pg.locator("#hiRoot [data-a='slim']").click()                                   # her own choice wins
+    assert pg.evaluate("document.querySelector('#hiRoot').dataset.slim") == "0"
+    pg.locator("#hiRoot [data-a='slim']").click()
+    pg.locator("#hiRoot .hi-trans [aria-label='Next scene']").click()               # previous / next under the stage
+    assert "Scene 2 of 2" in pg.locator("#hiRoot .hi-stag").text_content()
     if shots:
         pg.wait_for_timeout(1000)
         pg.screenshot(path=f"{shots}/hi-editor.png")
@@ -262,3 +289,26 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.wait_for_function("document.querySelector('#hiRoot').hidden === true")
     assert not errs, errs
     ctx.close()
+
+
+def test_the_premium_pass_keeps_the_console_rules():
+    """v0.785: the page's styles stay inside the console's one stylesheet and its type rules, motion can be switched
+    off, and no class name of the page is one the console already styles (.top / .tag / .live leaked into it)."""
+    import pathlib
+    import re
+    con = pathlib.Path(__file__).resolve().parents[1] / "app" / "static" / "console"
+    css = (con / "v2.css").read_text()
+    blk = css[css.index("v0.775 HOOLA INTERACTIVE, PREMIUM PASS"):css.index("@media (prefers-reduced-motion:reduce){ #hiRoot") + 200]
+    assert "backdrop-filter" not in blk and "text-transform" not in blk
+    assert not re.search(r"font(-weight)?:\s*(700|800|900)\b", blk)                 # nothing above 600
+    assert not re.search(r"font-size:\s*(9|10|11)(\.\d+)?px", blk)                  # nothing under 12px
+    assert "#hiRoot *,#hiRoot *::before,#hiRoot *::after{animation:none!important;transition:none!important}" in blk
+    assert not re.search(r"animation:[^;}]*\b(both|forwards)\b", blk) and "var(--logo)" not in blk   # no held animation; Sora stays on the logo
+    assert blk.count("infinite") == 2                                               # only "working now": the live chip and the running step
+    for line in blk.splitlines():                                                   # every rule of the page is scoped to the page
+        if "{" in line and not line.lstrip().startswith(("@", "/*", "}", "from", "0%", "radial", "linear", "box-shadow", "background")) and "#hiRoot" not in line.split("{")[0]:
+            assert line.startswith("  ") or line.strip().startswith(("--", "display", "transition")), line[:80]
+    js = (con / "interactive.js").read_text()
+    for bad in ('class="top"', 'class="tag ', 'hi-chip live', 'hi-pill', 'font-weight:700'):
+        assert bad not in js, bad
+    assert "if (R) closeMenu()" in (con / "studio.js").read_text()                  # Create Studio no longer throws on a resize before it is opened

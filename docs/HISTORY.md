@@ -896,3 +896,53 @@ Tests: test_v0784_sawaal_card.py (6: library-only options + skip rules + switch,
 the build carrying picks, look 1 built from her palette, source wiring, a Playwright walk at 1440 px (pick, build, POST carries the picks,
 'Your choices' look) and 390 px (fits, Back keeps her words)).
 NOT VERIFIED live: a real Opus build of look 1 from her picks on her server (tests use the fake site AI).
+
+## v0.785.0 HOOLA INTERACTIVE, PREMIUM PASS (owner: "IT LOOK STALE AND OLD DESIGN MAKE IT MORE PERFECT, ALINE TEXT PROPERLY, FIX ALL BUTTON, ICON, TAB MESSY THINGS --- MAKE IT MORE PREMIUM, ADVANCE AND WITH SOME ANIMATION")
+
+No server change. Same twelve pages, same `/api/interactive/studio/*` and `/api/interactive/hub/*` routes, same data. Only
+`static/console/interactive.js`, the `#hiRoot` block in `v2.css` and one line of `studio.js` changed.
+
+**How it was done:** every page was screenshotted in real Chromium first and the faults were read off the pictures, not guessed.
+
+**What was messy, and the fix**
+- Each page said its name twice (a top bar AND a heading). The top bar is gone; one heading per page (`head()` -> `.hi-head`).
+- The icon rail was too tall for a small laptop and its Create button was squashed. It is a real sidebar now: rows of 34,
+  "Create video" on top, the engine state and "Back to console" at the bottom, and it FOLDS to icons (`#hiRoot[data-slim]`).
+  The editor opens folded so the canvas has room; once she presses the fold button her choice wins (`UI.slim`).
+- Editor: the title row, the scene header and the five tool tabs wrapped onto second lines. Title row = `.hi-edhead` (back,
+  title, saved dot, Save as template, Generate). A scene = header (number, move up / down, remove), the words, then a footer
+  with the look chip and "about N s". Tools = one five-part segmented control (`.hi-tt`). A browser test holds each to ONE row.
+- Dropdowns were raw browser selects. They are drawn (`pick()` -> `.hi-pick`, and `.hi-f:has(>select)`), with an icon and chevron.
+- Thumbnails were empty dark boxes. A scene thumbnail shows the scene's own words or bars (`mini()`), with a dot when it
+  still needs her numbers; a video tile has a play mark, its length and a tint (`thumb()`, tint picked from the id).
+- A picture that cannot load showed a broken image. It shows her initials (`photos()` sets `img.onerror`).
+- One control scale: buttons 40 / 32 (+46 for the main ask), fields 42, corners 10 / 16, status chips with a leading dot.
+- Stage: tinted with HER brand colour (`--hi-brand`, validated hex), a "Scene 2 of 3 - 16:9" tag, previous / next under it.
+- Home: starter lines under the ask box (none carries a number), engine state as one slim line, month figures as three tiles.
+
+**Motion - once only, never held**
+- `flash(cls, ms)` puts a class on the view and takes it off again: `hi-in` when a page opens (sections rise in, cards
+  staggered), `hi-tabin` when a tab changes, `hi-scin` when the scene changes (words rise, bars grow). A later redraw of the
+  same page does not replay it.
+- Cards, buttons and thumbnails lift under the pointer; the sidebar marker slides in; the dialog pops.
+- Fill is `backwards`, never `both` / `forwards`: a held animation keeps a layer alive under text (CRISP TEXT, v0.256).
+- The only looping motion is "working now" (the live chip and the running step). Reduce motion and calm switch everything off.
+
+**Found on the way**
+- Three class names of the page (`.top`, `.tag`, `.live`) are styled globally by the console and leaked in (a border under
+  every card icon). Renamed to `.hi-ftop`, `.hi-stag`, `.hi-now`. RULE: inside `#hiRoot` use `hi-` names for anything generic.
+- `studio.js` (Create Studio) threw `Cannot read properties of null` on EVERY window resize until Create had been opened once
+  (`closeMenu()` with no root). One guard.
+- `test_v0255 test_sora_only_on_the_logo` was red on main because v0.774's own sidebar used the logo font; green again.
+
+**Tests:** `test_v0747_hoola_interactive.py` - the browser walk now also checks one `h1` per page, every select drawn, the
+sidebar fits 1366 x 660 without scrolling, the entrance class leaves by itself, a starter line fills the box, the empty picture
+becomes initials, the three editor rows do not wrap, the sidebar folds / opens, next scene works; NEW
+`test_the_premium_pass_keeps_the_console_rules` (no blur, no capitals, nothing above 600 or under 12px, no held animation,
+motion can be switched off, no clashing class names). Needs `HOOLA_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`.
+
+**Still red on main, not from this work, left alone:** `test_v0221 test_console_chrome_speaks_english` (build.js),
+`test_v0255 test_no_heavy_weights_caps_or_tiny_text` and `test_v0256 test_crisp_text_rules` (another block's `font-weight:700`
+and `animation:hmWord ... both`).
+
+**NOT VERIFIED:** she has not seen it on her server. Checked here in light, dark, 1366 x 660 and 400 px wide.
