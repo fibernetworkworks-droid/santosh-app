@@ -1053,6 +1053,13 @@ class Settings(BaseSettings):
     whitebooks_sandbox_einv_password: str = ""
     whitebooks_sandbox_ewb_username: str = ""
     whitebooks_sandbox_ewb_password: str = ""
+    # v0.827 API Setu (apisetu.gov.in) GSTN Tax Payer API - the government's free GSTIN lookup; her API Setu partner account's
+    # app client id + API key, VPS .env ONLY (never in chat / the repo / any reply). `python -m app.bahi.apisetucheck` tests it.
+    apisetu_client_id: str = ""
+    apisetu_api_key: str = ""
+    apisetu_gstn_base: str = "https://apisetu.gov.in/gstn/v1"
+    apisetu_timeout_s: float = 20.0
+    apisetu_test_gstin: str = ""            # the GSTIN apisetucheck looks up; empty = WhiteBooks' GST test GSTIN, else a known one
     ecourtsindia_api_key: str = ""          # v0.763 ecourtsindia.com (eci_live_...) - PAID per call, ONE server key, VPS .env only
     ecourts_daily_calls: int = 30           # v0.763 most paid eCourts calls a day for ALL users together (0 = switched off)
     twelvedata_api_key: str = ""            # v0.760 twelvedata.com (NSE / BSE quotes) - ONE server key, VPS .env only

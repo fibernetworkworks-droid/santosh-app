@@ -1,0 +1,105 @@
+"""v0.827 API Setu GSTN Tax Payer lookup + its check (vps-ops apisetu_check). No network: httpx.MockTransport."""
+import json
+
+import httpx
+import pytest
+
+KEY = "ak-SECRET-9f8e7d"
+REC = {"gstin": "33AAACC1206D1ZN", "legalName": "SAMPLE TRADERS PRIVATE LIMITED", "constitution": "Private Limited Company",
+       "registrationDate": "01/07/2017", "status": "Active", "taxPayerType": "Regular", "centerJurisdiction": "RANGE-III",
+       "stateJurisdiction": "Chennai - Ward 4", "cancellationDate": "", "natureBusinessActivities": ["Wholesale Business"]}
+
+
+@pytest.fixture
+def asenv(env, monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("APISETU_CLIENT_ID", " in.gov.example ")
+    monkeypatch.setenv("APISETU_API_KEY", KEY)
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app.bahi import apisetu
+    seen = []
+
+    def plug(fn):
+        def h(req):
+            seen.append(req)
+            return fn(req)
+        monkeypatch.setattr(apisetu, "_transport", httpx.MockTransport(h))
+    yield apisetu, plug, seen
+    get_settings.cache_clear()
+
+
+def test_lookup_sends_both_headers_and_reads_the_spec_reply(asenv):
+    apisetu, plug, seen = asenv
+    plug(lambda req: httpx.Response(200, json=REC))
+    r = apisetu.taxpayer("33aaacc1206d1zn")
+    req = seen[0]
+    assert str(req.url) == "https://apisetu.gov.in/gstn/v1/taxpayers/33AAACC1206D1ZN"
+    assert req.headers["X-APISETU-CLIENTID"] == "in.gov.example" and req.headers["X-APISETU-APIKEY"] == KEY
+    assert r["active"] is True and r["registered_on"] == "2017-07-01" and r["cancelled_on"] == ""
+    assert r["legal_name"] == "SAMPLE TRADERS PRIVATE LIMITED" and r["activities"] == ["Wholesale Business"]
+
+
+def test_bad_gstin_and_missing_keys_refuse_before_any_call(asenv, monkeypatch):
+    apisetu, plug, seen = asenv
+    plug(lambda req: httpx.Response(200, json=REC))
+    with pytest.raises(apisetu.ApiSetuError) as e:
+        apisetu.taxpayer("33AAACC1206D1ZX")              # wrong check digit
+    assert e.value.code == "bad_gstin"
+    monkeypatch.setenv("APISETU_API_KEY", "")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    with pytest.raises(apisetu.ApiSetuError) as e:
+        apisetu.taxpayer("33AAACC1206D1ZN")
+    assert e.value.code == "not_configured" and "VPS .env" in e.value.message
+    assert seen == []
+
+
+@pytest.mark.parametrize("status,body,code,words", [
+    (401, {"error": "invalid_authentication", "errorDescription": "Authentication failed"}, "invalid_authentication", "did not accept the keys"),
+    (401, {"error": "invalid_authorization", "errorDescription": "You are not authorized to use this API"}, "invalid_authorization", "subscribe"),
+    (404, {"error": "record_not_found", "errorDescription": "No record found for the provided inputs"}, "record_not_found", "no taxpayer"),
+    (503, {}, "unavailable", "down or busy"),
+])
+def test_errors_are_said_plainly(asenv, status, body, code, words):
+    apisetu, plug, _ = asenv
+    plug(lambda req: httpx.Response(status, json=body))
+    with pytest.raises(apisetu.ApiSetuError) as e:
+        apisetu.taxpayer("33AAACC1206D1ZN")
+    assert e.value.code == code and words in e.value.message and KEY not in e.value.message
+
+
+def test_check_passes_records_the_shape_and_never_prints_the_key(asenv, capsys):
+    apisetu, plug, _ = asenv
+    plug(lambda req: httpx.Response(200, json=REC))
+    from app.bahi import apisetucheck
+    assert apisetucheck.main([]) == 0
+    out = capsys.readouterr().out
+    assert "PASS" in out and "SAMPLE TRADERS" in out and KEY not in out and "in.gov.example" not in out
+    assert f"{len(KEY)} characters" in out
+    shape = json.loads(apisetucheck.shape_path().read_text())["shape"]
+    assert shape["legalName"] == "str" and shape["natureBusinessActivities"] == ["str"]
+
+
+def test_check_says_why_it_failed_and_a_404_still_proves_the_keys(asenv, capsys):
+    apisetu, plug, _ = asenv
+    from app.bahi import apisetucheck
+    plug(lambda req: httpx.Response(401, json={"error": "invalid_authorization", "errorDescription": "You are not authorized to use this API"}))
+    assert apisetucheck.main([]) == 1
+    out = capsys.readouterr().out
+    assert "FAIL" in out and "GSTN Tax Payer API" in out
+    plug(lambda req: httpx.Response(404, json={"error": "record_not_found"}))
+    r = apisetucheck.run("27AAGCB1286QKZL")
+    assert r["result"] == "PASS" and r["keys_accepted"] and r["gstin"] == "27AAGCB1286QKZL"
+
+
+def test_check_skips_without_keys_and_vps_ops_has_the_job(asenv, monkeypatch):
+    monkeypatch.setenv("APISETU_CLIENT_ID", "")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app.bahi import apisetucheck
+    r = apisetucheck.run()
+    assert r["result"] == "SKIP" and r["paste"][0]["set"] is False
+    from pathlib import Path
+    wf = (Path(__file__).resolve().parents[2] / ".github/workflows/vps-ops.yml").read_text()
+    assert "- apisetu_check" in wf and "python -m app.bahi.apisetucheck" in wf and "APISETU_API_KEY" in wf
