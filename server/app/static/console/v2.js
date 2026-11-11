@@ -154,7 +154,7 @@ let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let CX = null;         // v0.774 the Connectors page (connectors.js): Composio apps, MCP servers, plugins, public APIs, limits
 IC.connectors = '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>';   // v0.774 a plug
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
-let BAHI = null;       // v0.806 BAHI: the GST & Accounts desk (bahi.js)
+let BAHI = null;       // v0.807 BAHI: the GST & Accounts desk (bahi.js)
 let DDK = null;        // v0.799 DESK ROOM (built as 0.796): the department desks (deptdesk.js) - Finance, Retail, Health Insurance, Construction
 let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her customers
 IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5-4M7.5 9.5h.01M12 9.5h.01M16.5 9.5h.01M8 13c1.2 1 2.5 1.4 4 1.4s2.8-.4 4-1.4"/>';   // a chat bubble with a face
@@ -236,7 +236,7 @@ function go(v, arg) {
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
-  if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));   // v0.806 BAHI: the GST & Accounts employee's desk   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
+  if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));   // v0.807 BAHI: the GST & Accounts employee's desk   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';

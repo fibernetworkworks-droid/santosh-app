@@ -71,7 +71,7 @@ numbers. Her CA gets a clean pack every month instead of a box of bills.
    a WhatsApp photo, a bank line, her Tally) and a stable key so the same invoice never lands twice. The seven engines feed it through
    adapters; they keep working exactly as today.
 2. **Rules are data, with `source` + `checked_on`.** GST rate history (before / after 22 Sep 2025), HSN -> rate, the s.393 TDS table, form
-   numbers (24Q -> 138 ...), due dates, state PT, PF / ESI ceilings, late-fee caps - JSON files under `server/app/accounts/rules/`, each row
+   numbers (24Q -> 138 ...), due dates, state PT, PF / ESI ceilings, late-fee caps - JSON files under `server/app/bahi/rules/`, each row
    carrying where it came from and when it was last read. A row whose `checked_on` is older than its `review_by` makes the answer say so.
    Nothing marked UNVERIFIED in research 03 becomes a computed number until a primary read clears it.
 3. **Drafts, never direct.** Every proposed entry, IMS action, return section and IRN is a DRAFT with a CONFIDENCE and a REASON
@@ -104,7 +104,7 @@ WHITEBOOKS_EWB_CLIENT_ID=...           WHITEBOOKS_EWB_CLIENT_SECRET=...
 ```
 (The Hub shows a separate pair per product; if her account has one pair, the GST pair is used for all three.)
 
-**Module** `server/app/accounts/wb.py` - one client over the three specs: `client_id` / `client_secret` headers + `email` query on every
+**Module** `server/app/bahi/wb.py` (the package is `bahi`, not `accounts` - `app/accounts.py` is the sign-in module) - one client over the three specs: `client_id` / `client_secret` headers + `email` query on every
 call, the sandbox / production base from `WHITEBOOKS_ENV`, **branch on `status_cd` (HTTP is 200 even on failure)**, WB_ERR / GSTN / NIC
 codes mapped to plain English, the EWB password scrubbed from every log line (it rides a query string), a per-tenant rate guard
 (sandbox 60/min), a call meter (WhiteBooks bills per call) with a daily cap per tenant, and a recorder for contract tests.
@@ -135,16 +135,16 @@ sandbox / prepare-only mode.
 
 ## 5. The phases (each = one shippable version: server + tests + console desk + phone where it applies)
 
-### A0 - Foundation (no taxpayer data yet)
-- `accounts/` package: the register tables (`acc_docs`, `acc_lines`, `acc_parties` with GSTIN / PAN / Udyam / MSME class / bank details
+### A0 - Foundation (no taxpayer data yet) - BUILT v0.807.0 (package `server/app/bahi/`, routes `/api/bahi/*`, desk `bahi.js`; see HISTORY)
+- `bahi/` package: the register tables (`acc_docs`, `acc_lines`, `acc_parties` with GSTIN / PAN / Udyam / MSME class / bank details
   history, `acc_rules`, `acc_periods` with lock state, `acc_events` audit trail), the rules-as-data files with source + checked_on, the
   confidence / reason / draft model.
-- `accounts/wb.py` client + `acc_gst_conn` + the sealed credentials + the call meter; **a sandbox contract test** that runs every call we
+- `bahi/wb.py` client + `acc_gst_conn` + the sealed credentials + the call meter; **a sandbox contract test** that runs every call we
   use against `apisandbox.whitebooks.in` with the sandbox GSTIN and OTP 575757 and RECORDS the real response shapes (the specs do not
   document success bodies - this is where `txn`, `refid`, `int_tran_id`, `auth-token`, IRN / AckNo shapes get pinned). vps-ops job
   `wb_check` (the sandbox keys live on the VPS; the job prints pass / fail per call, never a key).
 - Hub: `accounts` live as **GST & Accounts** (does / needs / never filled), hiring adds the desk and gates no existing tool (EDU_OPEN law).
-- Console: its own page **Accounts** (`static/console/accounts.js`) - home (this month's state: what is filed, what is due, what needs her),
+- Console: its own page **GST & Accounts** (`static/console/bahi.js`, view `accountsdesk`) - home (this month's state: what is filed, what is due, what needs her),
   then tabs per phase as they land. Deskroom's one-tool-per-employee shape does not fit an employee that spans gst / paisa / office /
   payroll, so it gets a real page like the Leads / Film desks.
 - Adapters (read-only into the register): appmaker + website orders, gstp docs, thok bills / purchases, office bills, analyst fin_items.

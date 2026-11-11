@@ -407,7 +407,7 @@ jobs:
                 echo 'PY'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               wb_check)
-                # v0.806 BAHI A0: the WhiteBooks contract check - which WHITEBOOKS_* key NAMES are set (values never printed), then
+                # v0.807 BAHI A0: the WhiteBooks contract check - which WHITEBOOKS_* key NAMES are set (values never printed), then
                 # the running app walks every call on the sandbox and records each reply's SHAPE (keys only) to data/bahi/wb_shapes.json
                 echo 'echo "== WhiteBooks keys in $CORE/.env (names only)"; for k in WHITEBOOKS_ENV WHITEBOOKS_EMAIL WHITEBOOKS_GST_CLIENT_ID WHITEBOOKS_GST_CLIENT_SECRET WHITEBOOKS_EINV_CLIENT_ID WHITEBOOKS_EWB_CLIENT_ID WHITEBOOKS_SANDBOX_GSTIN WHITEBOOKS_SANDBOX_GST_USERNAME WHITEBOOKS_SANDBOX_EINV_USERNAME WHITEBOOKS_SANDBOX_EWB_USERNAME; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
                 echo 'echo "== contract check"; cd $CORE && timeout 180 .venv/bin/python -m app.bahi.wbcheck 2>&1 | tail -40' ;;

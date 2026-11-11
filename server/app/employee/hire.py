@@ -89,7 +89,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                          "One login on Instagram / Facebook's own page (Hoola never sees your password)"],
                "never": ["Buy followers or likes, or use engagement pods", "Post anything without your OK",
                          "Invent prices, offers or claims", "Read or touch any account you did not connect"]},
-    # v0.806 BAHI A0 (owner: 'FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS' -> 'GO A0'; docs/ACCOUNTS_EMPLOYEE_PLAN.md):
+    # v0.807 BAHI A0 (owner: 'FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS' -> 'GO A0'; docs/ACCOUNTS_EMPLOYEE_PLAN.md):
     # live with the foundation - one register, rules as data, locks, the WhiteBooks pipe on sandbox. Hiring adds the desk and gates
     # NO existing tool (gst / paisa / office / thok / payroll stay open to every user - the EDU_OPEN law). What it does today vs
     # later is said on the desk itself (the phases list), never claimed here.

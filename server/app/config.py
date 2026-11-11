@@ -964,7 +964,7 @@ class Settings(BaseSettings):
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
     gstinapi_api_key: str = ""              # v0.765 gstinapi.in (gak_...) - PAID per lookup (Rs 0.40-0.80), ONE server key, VPS .env only
     gstin_daily_calls: int = 50             # v0.765 most paid GSTIN lookups a day for ALL users together (0 = switched off)
-    # v0.806 BAHI (GST & Accounts employee, docs/ACCOUNTS_EMPLOYEE_PLAN.md): the WhiteBooks GSP. Keys ONLY in the VPS .env, never
+    # v0.807 BAHI (GST & Accounts employee, docs/ACCOUNTS_EMPLOYEE_PLAN.md): the WhiteBooks GSP. Keys ONLY in the VPS .env, never
     # in chat / the repo / any reply. Build to the OpenAPI specs in their Developer Hub (docs/research/accounts/04_whitebooks_api.md).
     bahi_enabled: bool = True               # the desk + register; off = the console page says it is switched off
     bahi_filing: bool = False               # A1+: filing calls refused while False (prepare-only); A0 never files

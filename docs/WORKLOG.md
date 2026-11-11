@@ -2960,3 +2960,9 @@ Task ID: v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; re-versioned on merge: the
 Ask: GO PHASE 6.
 Built: devlab/net.py + netproxy.py (network levels, allow-list proxy, outside secrets, `python -m app.devlab net`, vps-ops lab_net_check), devsahayak/events.py (signed GitHub webhook events start scheduled tasks), multi-repo (other_repo tool + linked sessions), settings / composer / scheduled page parts, phone screen redrawn by a parallel agent; closed dialogs emptied; 10 tests incl. a real proxy and a browser walk.
 Deploy: vps-ops deploy, then lab_check, lab_net_check, then DEV_NET=true if all ok. Not verified on real Docker, with a real GitHub delivery, or on a phone.
+
+---
+Task ID: v0.807.0 BAHI A0 (built as 0.806)
+Task: owner "GO A0" on docs/ACCOUNTS_EMPLOYEE_PLAN.md - the GST & Accounts employee's foundation.
+Work Log: server/app/bahi/ (register + adapters + locks + trail, rules as data, WhiteBooks client + sandbox contract check, overview, /api/bahi/*); Hub row live as GST & Accounts; console desk bahi.js; vps-ops wb_check; 14 tests incl. a browser walk; main moved to 0.806 meanwhile - merged, re-versioned 0.807.
+Stage Summary: on branch claude/exciting-hawking-113x8i (main on her word). Next: she puts the WhiteBooks SANDBOX keys in the VPS .env + runs vps-ops wb_check (pins the real reply shapes); then GO A1 (connect her GSTIN).

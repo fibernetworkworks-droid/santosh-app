@@ -1689,3 +1689,63 @@ screen has not been seen on a phone. **Not built:** a GitHub App; one session th
 work for http(s) APIs only (not a database password); the phone has no settings for network / keys / events.
 Deploy: vps-ops deploy (server-only; no new pip; columns make themselves), then `lab_check`, then `lab_net_check`, then
 `DEV_NET=true` in .env if every line says ok. GitHub events need PUBLIC_BASE_URL (https) on the server.
+
+## v0.807.0 BAHI A0 - the GST & Accounts employee, foundation (built as 0.806; their HOOLA CODE PHASE 6 took 0.806.0 - REBASE PROTOCOL, both kept; owner: "LET WE DEVELOP A FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS OF GST" -> "GO A0")
+
+Plan: `docs/ACCOUNTS_EMPLOYEE_PLAN.md` (A0-A12); research `docs/research/accounts/01-04` (what Hoola has, the market, the rules +
+calendar, the WhiteBooks API). Hoola already had the accountant in seven engines that never talk; A0 is the floor they all stand on.
+
+NEW `server/app/bahi/`:
+- `models.py` - `acc_docs` (the register: one row per (source, source_ref); gstin, period, direction, kind, number, date, party + GSTIN,
+  pos, taxable / CGST / SGST / IGST / cess / tax / total, irn, status confirmed | draft | gone, confidence, reason, problems),
+  `acc_periods` (open | locked per GSTIN + month), `acc_events` (append-only trail with before / after), `acc_gst_conn` (her GSTIN's GSP
+  connection - created now, filled by A1; IRP / EWB passwords sealed, no portal password ever), `acc_wb_calls` (the call meter). Registered
+  in `db.init_db` + `ensure_tables()` self-heal.
+- `rules.py` + `rules/*.json` - rules as DATA: `gst_rates` (slabs to 21 Sep 2025 and GST 2.0 from 22 Sep 2025, HSNS cess listing),
+  `due_dates` (TDS 7th, GSTR-1 11th, IFF 13th, 2B 14th, PF / ESI 15th, GSTR-3B 20th with the LOCK said, PMT-06 25th), `limits` (e-invoice
+  Rs 5 cr / Rs 10 cr + 30 days, IRN cancel 24 h, EWB 180 days / Rs 50,000, Rule 37 180 days, s.16(4) 30 Nov, MSME 15 / 45 days, the
+  July 2025 3B lock, the 3-year bar), `forms_map` (24Q -> 138, 26Q -> 140, 27Q -> 144, 27EQ -> 143, Form 16 -> 130, 16A -> 131, 12BB -> 124,
+  13 -> 128, 15G/H -> 121, 3CA/CB/CD -> Form 26). Every row: `basis` (primary | primary-listing | provider-spec | secondary-confirmed |
+  unverified), `source`, `checked_on`, `review_by`; the loader refuses a row without them; `usable()` = not unverified; `freshness()`
+  (by basis, stale, unverified) for the desk; `slabs_on(date)`; `dues_for(period, scheme, employer, tds)` with days left.
+- `wb.py` - the WhiteBooks client built to their OpenAPI specs (NOT their prose docs): `client_id` / `client_secret` headers per product
+  (gst | einv | ewb, one pair may serve all) + `email` query on every call; sandbox / production host from WHITEBOOKS_ENV; success ONLY on
+  `status_cd == "1"` (HTTP is 200 on failure); `WbError(code, plain message)` - WB_ERR_9001 / 9000, NIC 2150 / 2174, not_configured, cap,
+  rate, bad_reply, network; `safe_url` scrubs password / otp / evcotp from every log line (the EWB password rides a query string); a
+  per-tenant daily cap (`whitebooks_daily_calls` 300) and per-minute guard (`whitebooks_per_minute` 50, under the sandbox's 60) refuse
+  BEFORE the call; every call metered; `shape()` keeps structure, never values; primitives ping, public_search, rettrack, otp_request,
+  auth_token, refresh, ledger_balance, einv_auth, ewb_auth; `find_txn` looks for the OTP transaction id where GSTN puts it.
+- `wbcheck.py` - `python -m app.bahi.wbcheck` / vps-ops `wb_check`: sandbox = ping -> GSTIN search -> filing track -> OTP request -> auth
+  token with the spec's sandbox OTP 575757 -> refresh -> ledger balance -> e-invoice login -> e-way bill login, each PASS / FAIL / SKIP,
+  the reply SHAPES saved to data/bahi/wb_shapes.json (no values); production = the ping only (no taxpayer call, no OTP, ever).
+- `register.py` - adapters (read-only): GST Sahayak `gst_docs`, Thok billed orders + purchases (tax split by intra / inter), office
+  bills, her app + website invoices / credit notes via `appmaker/hisaab.build` (the same numbers her CA gets). `sync(months)` is
+  idempotent (fingerprint), flags the same document from two sources on both rows (purchase "inv" vs "bill" normalised), HOLDS a change
+  to a locked month (row kept, `changed_after_lock` note, trail), marks a row its source dropped `gone` (never deletes), writes the trail;
+  `listing`, `summary` (sales / purchases taxable + GST, credit notes netted, problems), `events` (labelled "GST Sahayak · INV-7 · Kumar
+  Stores", never an internal id), `set_lock`.
+- `service.py` overview (employee status, last + this month, last month's dues falling due now, WhiteBooks status - never a key / the
+  email -, connections without secrets, rules freshness, the trail, the phases list with honest states); `api.py` GET /api/bahi/overview,
+  POST /api/bahi/sync, GET /api/bahi/register, GET /api/bahi/rules, POST /api/bahi/periods/{period}/lock.
+- Settings (config.py): `bahi_enabled`, `bahi_filing` (False - prepare only), `whitebooks_env`, `whitebooks_email`,
+  `whitebooks_{gst,einv,ewb}_client_{id,secret}`, `whitebooks_ip_address`, `whitebooks_daily_calls`, `whitebooks_per_minute`,
+  `whitebooks_timeout_s`, `whitebooks_sandbox_*` (only the check reads them).
+
+Hub: the "Accounts Assistant" row goes live as **GST & Accounts** (does / needs / never), hiring gates no existing tool. Console: its own desk
+`static/console/bahi.js` (view `accountsdesk`; employees.js DESKS accounts -> accountsdesk): hero, tabs Overview (dues with days left and
+"date not yet checked on a government site" where unverified, last / this month tiles, Sync, the trail), Register (month / type / source
+filters, notes on flagged rows, Lock / Unlock a month), Rules (by basis, the unverified list, re-check due), Connection (keys set per
+product, calls today / cap, the last contract check steps, the .env line NAMES when unset), Plan (A0 built, A1 next...). Styles `acd-` on the
+Desk Room `ddk-` scale; the tab row scrolls on a phone.
+
+Tests: `test_v0807_bahi_a0.py` (14) - spec headers + email + sandbox host + meter; failures on HTTP 200 -> plain English; not-configured /
+daily cap / minute guard refuse BEFORE the call; no password / OTP / secret in logs; shapes without values + find_txn; the contract check
+on a mock sandbox + production pings only; rule rows carry source / basis / dates, GST 2.0 slabs, freshness; the month calendar; the register
+(5 documents from 3 engines, idempotent, the double-entered bill flagged on both, a draft order not a document); a locked month holds a
+change, unlock applies it, a dropped row is marked gone, the trail; routes + no secret in any reply; the Hub entry; console wiring + CSS; a
+real-browser walk (hire from the Hub -> Open desk -> Register shows the two flags -> Connection says "Not set" -> Plan), light 1280 + dark 390.
+Pins moved: test_v0317 / test_v0687 used "accounts" as the not-yet-live example (now "telecaller"); test_v0475 stamps 33 -> 34 (bahi.js).
+
+NOT VERIFIED: nothing has talked to the real WhiteBooks sandbox (the keys are not on the VPS yet) - the client is built to the published
+specs and the check exists to pin the real reply shapes the first time it runs. Not built (later phases): the GSTIN connect walk (A1), any
+filing, chat / voice tools, the phone screen.

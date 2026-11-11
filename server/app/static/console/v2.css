@@ -5097,7 +5097,7 @@ html.human #app .landing .halo{display:none}
 #app .hcd-srow code{font:12.5px var(--fm,'JetBrains Mono',monospace);word-break:break-all}
 #app .hcd-srow small{font-size:12px}
 
-/* v0.806 BAHI (bahi.js, `acd-` on top of the Desk Room `ddk-` scale): the GST & Accounts desk. Tokens only; entrances once;
+/* v0.807 BAHI (bahi.js, `acd-` on top of the Desk Room `ddk-` scale): the GST & Accounts desk. Tokens only; entrances once;
    nothing loops under text. */
 #app .acd-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:10px 12px 10px 16px;border:1px solid var(--hair2);border-radius:14px;background:var(--pri-soft);color:var(--pri-ink);font-size:14px}
 #app .acd-tabs{margin:0 0 18px;overflow-x:auto;scrollbar-width:none}

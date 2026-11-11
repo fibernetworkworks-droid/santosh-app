@@ -1,4 +1,4 @@
-/* v0.806 BAHI - the GST & Accounts desk (console). A0: the foundation, shown honestly.
+/* v0.807 BAHI - the GST & Accounts desk (console). A0: the foundation, shown honestly.
    Tabs: Overview (this month's dates + figures + the trail), Register (every document once, from every engine), Rules (each with its
    source and the day it was checked), Connection (the WhiteBooks pipe - which keys are set, the last sandbox check; never a key),
    Plan (what is built and what comes next).

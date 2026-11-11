@@ -1,4 +1,4 @@
-"""v0.806 BAHI A0 - the GST & Accounts employee's foundation (owner: 'GO A0'; docs/ACCOUNTS_EMPLOYEE_PLAN.md).
+"""v0.807 BAHI A0 - the GST & Accounts employee's foundation (owner: 'GO A0'; docs/ACCOUNTS_EMPLOYEE_PLAN.md).
 
 What A0 promises and these tests hold:
 - the WhiteBooks client keeps the SPEC's contract: client_id / client_secret headers + `email` query on every call, the sandbox host
@@ -318,7 +318,7 @@ def test_console_wiring_and_css():
     assert "accounts: 'accountsdesk'" in emp and "if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));" in v2
     assert "/api/bahi/overview" in js and "/api/bahi/sync" in js and "esc(" in js
     assert "client_secret" not in js and "type=\"password\"" not in js     # the desk never asks for a key or a password
-    blk = css[css.index("/* v0.806 BAHI"):]
+    blk = css[css.index("/* v0.807 BAHI"):]
     assert "infinite" not in blk and "backdrop-filter" not in blk and not re.search(r"#[0-9a-fA-F]{6}", blk)
     wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text(encoding="utf-8")
     assert "          - wb_check\n" in wf and "python -m app.bahi.wbcheck" in wf
