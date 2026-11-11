@@ -71,13 +71,13 @@ def test_rules():
     assert cues[1]["time"] == "19:00" and cues[1]["mins"] == 120 and "music" in cues[1]["av"] and bad == ["kuch bhi"]
     probs = R.cue_problems(cues + [{"time": "22:15", "mins": 30, "what": "DJ night", "who": "DJ", "av": ["music"]}])
     assert any("Noise Rules" in x for x in probs)
-    assert any("takraav" in x for x in R.cue_problems([{"time": "18:00", "mins": 30, "what": "a", "who": "x", "av": []},
+    assert any("clash" in x for x in R.cue_problems([{"time": "18:00", "mins": 30, "what": "a", "who": "x", "av": []},
                                                        {"time": "18:15", "mins": 5, "what": "b", "who": "y", "av": []}]))
     assert R.rsvp_of("haan aa rahe hain +2") == ("yes", 2) and R.rsvp_of("nahi aa payenge")[0] == "no"
     assert R.rsvp_of("shayad aayenge")[0] == "maybe"
     assert R.num("1.5 lakh") == 150000 and R.num("25k") == 25000 and R.num("₹40,000") == 40000 and R.num("") is None
     assert R.gst_split(1000, 18, True)["cgst"] == 90 and R.gst_split(1000, 18, False)["igst"] == 180
-    assert R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [hataya] card [hataya]"
+    assert R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [removed] card [removed]"
 
 
 def test_event_tasks_permits_settings(ep):
@@ -266,7 +266,7 @@ def test_guests_rsvp_invites_show_report_invoice_forget_tick(ep, monkeypatch):
         S.forget(T, e["id"], actor="staff:s1")
     f = S.forget(T, e["id"])
     assert "4 guests" in f["say"] and S.guests(T, e["id"])["summary"]["total"] == 0
-    assert S.event_view(T, e["id"])["client"] == "Client (hataya)"
+    assert S.event_view(T, e["id"])["client"] == "Client (removed)"
 
 
 def test_tick_once_each(ep, monkeypatch):

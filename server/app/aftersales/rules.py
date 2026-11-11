@@ -213,7 +213,7 @@ def coverage(on: date, warranty_end: date | None, amc_until: date | None, amc_pl
     """Who pays for this visit: brand warranty (parts + labour), comprehensive AMC (parts + labour), non-comprehensive AMC
     (visit / labour only), or the customer (her Haan before asking)."""
     if warranty_end and on <= warranty_end:
-        return {"by": "warranty", "parts": True, "labour": True, "say": f"Under warranty (until {warranty_end.isoformat()})"}
+        return {"by": "warranty", "parts": True, "labour": True, "say": f"Warranty (until {warranty_end.isoformat()})"}
     if amc_until and on <= amc_until:
         comp = amc_plan == "comprehensive"
         return {"by": "amc", "parts": comp, "labour": True,

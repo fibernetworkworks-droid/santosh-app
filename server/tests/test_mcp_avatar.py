@@ -45,7 +45,7 @@ def _fresh():
 def test_snapshot_and_what_the_avatar_is_told(mcp):  # noqa: F811
     from app.agent import mcp_live
     svc = mcp["svc"]
-    assert "abhi koi nahi" in mcp_live.prompt_block(mcp_live.snapshot("default"), {})
+    assert "none yet" in mcp_live.prompt_block(mcp_live.snapshot("default"), {})
     ready = _add(svc)
     locked = _add(svc, "https://secure.example.com/mcp", ref="", status=401, name="Notion")
     snap = mcp_live.snapshot("default")
@@ -58,7 +58,7 @@ def test_snapshot_and_what_the_avatar_is_told(mcp):  # noqa: F811
     assert route["mcp_kite__createissue"] == (ready["pack_id"], "createIssue")
     assert "confirm card" in defs[1]["description"] and "confirm" not in defs[0]["description"]
     block = mcp_live.prompt_block(snap, route)
-    assert "Kite" in block and "get_holdings" in block and "Notion" in block and "sign-in baaki" in block
+    assert "Kite" in block and "get_holdings" in block and "Notion" in block and "sign-in pending" in block
     # over the limit: the rest stay reachable through bazar_run, and the avatar is told so
     defs1, route1 = mcp_live.tool_defs(snap, 1)
     assert len(defs1) == 1 and f"bazar_run pack_id={ready['pack_id']}" in mcp_live.prompt_block(snap, route1)
@@ -84,7 +84,7 @@ def test_a_slow_server_never_holds_up_the_reply(mcp, monkeypatch):  # noqa: F811
     t = time.time()
     snap = mcp_live.snapshot("default")
     assert time.time() - t < 1.5 and snap[0]["status"] == "slow"
-    assert "abhi jawab nahi de raha" in mcp_live.prompt_block(snap, {})
+    assert "not responding right now" in mcp_live.prompt_block(snap, {})
 
 
 def test_chat_avatar_knows_and_uses_its_mcp(mcp):  # noqa: F811

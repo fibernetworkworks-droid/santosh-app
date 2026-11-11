@@ -68,7 +68,7 @@ def test_rules():
     plan = R.putaway_plan(30, [{"code": "A-1-1", "kind": "pick", "capacity": 100, "used": 80, "skus": {"s1": ["B1"]}, "rank": 0},
                                {"code": "A-2-2", "kind": "pick", "capacity": 100, "used": 0, "skus": {}, "rank": 3},
                                {"code": "QTN", "kind": "quarantine", "capacity": None, "used": 0, "skus": {}, "rank": 4}], "s1", "B1", fast=True)
-    assert plan[0] == {"bin": "A-1-1", "qty": 20.0, "why": plan[0]["why"], "score": plan[0]["score"]} and "yahi SKU" in plan[0]["why"]
+    assert plan[0] == {"bin": "A-1-1", "qty": 20.0, "why": plan[0]["why"], "score": plan[0]["score"]} and "same SKU" in plan[0]["why"]
     assert plan[1]["bin"] == "A-2-2" and plan[1]["qty"] == 10 and all(p["bin"] != "QTN" for p in plan)
     assert R.parse_scan("HOOLA-BIN:A-12") == {"type": "bin", "code": "A-12"} and R.parse_scan("8901234567890")["type"] == "code"
     assert R.reason_of("3 carton toot gaye", -3) == "damaged" and R.reason_of("", 2) == "found"
@@ -85,12 +85,12 @@ def test_grn_putaway_and_shared_stock(wh):
               supplier="Shree Mills", doc="CH-77", expected=[{"item": "atta", "qty": 50}, {"item": "Rice 25kg", "qty": 10}])
     assert g["number"] == "GRN-0001" and kinds(S)[-1] == "warehouse_grn"
     atta = next(l for l in g["lines"] if l["name"] == "Atta 50kg")
-    assert atta["linked"] and any("toota" in n for n in atta["notes"]) and any("50 tha" in n for n in atta["notes"])
+    assert atta["linked"] and any("damaged" in n for n in atta["notes"]) and any("said 50" in n for n in atta["notes"])
     exp = next(l for l in g["lines"] if l["batch"] == "B0")
     assert exp["to_bin"] == "QTN" and any("EXPIRED" in n for n in exp["notes"]) and "putaway" not in exp
     dal = next(l for l in g["lines"] if l["name"] == "Dal 30kg")
     assert not dal["linked"] and any("stock list" in n for n in dal["notes"])
-    assert "Rice 25kg".lower() in " ".join(g["notes"]).lower() and "kam aaya" in g["draft"]["text"].lower()
+    assert "Rice 25kg".lower() in " ".join(g["notes"]).lower() and "short:" in g["draft"]["text"].lower()
     # shared stock count went up for linked items only (incl. damaged + quarantined: still her stock until a write-off)
     assert stock_qty("Atta 50kg") == 40 and stock_qty("Biscuit carton") == 70 and stock_qty("Mixer grinder") == 2
     assert all(p["bin"] != "QTN" for l in g["lines"] for p in l.get("putaway") or [])
@@ -105,7 +105,7 @@ def test_grn_putaway_and_shared_stock(wh):
     assert total == 38 + 60 + 2 + 5
     S.save_bin(T, code="S-1", kind="pick", capacity=5)
     src = next(l["bin"] for l in S.stock_by_bin(T, sku="atta") if l["bin_kind"] == "pick" or l["bin_kind"] == "bulk")
-    with pytest.raises(S.WarehouseError, match="jagah"):
+    with pytest.raises(S.WarehouseError, match="room"):
         S.move(T, "atta", src, "S-1", 6)
     S.move(T, "atta", src, "S-1", 5)
     assert S.bin_view(T, "S-1")["used"] == 5
@@ -132,13 +132,13 @@ def test_pick_fefo_path_short_and_spot_count(wh):
     assert {t["batch"]: t["qty"] for t in bis} == {"OLD": 20, "NEW": 15}       # oldest expiry first, expired never
     assert any("EXPIRED" in n for n in p["notes"]) and any("chai patti" in n for n in p["notes"])
     atta = next(l for l in p["lines"] if l["name"] == "Atta 50kg")
-    assert atta["short"] == 2 and "Kam:" in p["say"]
+    assert atta["short"] == 2 and "Short:" in p["say"]
     p2 = S.pick_list(T, "list", text="biscuit 20")                             # held stock of the open list is not promised twice
     assert next(l for l in p2["lines"] if l["name"] == "Biscuit carton")["short"] == 5
     S.pick_cancel(T, p2["number"])
     old = next(t for t in tasks if t["batch"] == "OLD")
     r = S.pick_confirm(T, p["number"], picked=[{"n": old["n"], "qty": 18}], all_done=True)
-    assert r["status"] == "done" and "dobara ginne" in r["say"]
+    assert r["status"] == "done" and "Recount task" in r["say"]
     assert stock_qty("Biscuit carton") == 55 - 18 - 15 and stock_qty("Atta 50kg") == 0
     spot = [c for c in S.counts(T, "open") if c["kind"] == "spot"]
     assert spot and spot[0]["bins"] == ["A-2-1"] and "system" not in str(spot[0]["lines"])
@@ -172,7 +172,7 @@ def test_deal_and_thok_sources_do_not_double_count(wh, monkeypatch):
                         quote={"lines": [{"item": "Atta 50kg", "qty": 3, "status": "ok"}]}))
     w = S.pick_list(T, "deal")
     assert w["wave"] and w["orders"] == ["D-1001", "D-1002"] and w["lines"][0]["orders"] == {"D-1001": 5, "D-1002": 3}
-    with pytest.raises(S.WarehouseError, match="pehle se khuli"):
+    with pytest.raises(S.WarehouseError, match="already open"):
         S.pick_list(T, "deal", refs=["D-1001"])
     before = stock_qty("Atta 50kg")
     S.pick_confirm(T, w["number"], all_done=True)
@@ -202,7 +202,7 @@ def test_blind_count_variance_and_her_tap(wh):
     assert S.sku_view(T, "atta")["last_counted"] == DAY.isoformat()
     with pytest.raises(S.WarehouseError, match="tap"):
         S.decide_adjust(T, adj["id"], True, adj["hash"])                    # not her tap
-    with pytest.raises(S.WarehouseError, match="badal gaya"):
+    with pytest.raises(S.WarehouseError, match="has changed"):
         S.decide_adjust(T, adj["id"], True, "wrong", by_tap=True)
     assert S.bin_view(T, "A-1-1")["used"] == 20 and stock_qty("Atta 50kg") == 20       # nothing changed yet
     out = S.decide_adjust(T, adj["id"], True, adj["hash"], by_tap=True)
@@ -217,7 +217,7 @@ def test_blind_count_variance_and_her_tap(wh):
     S.count_enter(T, c2["id"], [{"bin": "A-1-1", "item": "atta", "qty": 15}])
     a2 = S.count_close(T, c2["id"])["adjust"]
     S.move(T, "atta", "A-1-1", "A-2-1", 1)
-    with pytest.raises(S.WarehouseError, match="hila"):
+    with pytest.raises(S.WarehouseError, match="moved"):
         S.decide_adjust(T, a2["id"], True, a2["hash"], by_tap=True)
     assert S.adjust_view(T, a2["id"])["status"] == "stale" and S.bin_view(T, "A-1-1")["used"] == 16
     # reject
@@ -261,7 +261,7 @@ def test_abc_due_expiry_slow_labels_export_tick(wh, monkeypatch):
     assert n == 1 and kinds(S)[-1] == "warehouse_day"
     assert S.tick(datetime(2026, 10, 23, 4, 30, tzinfo=timezone.utc)) == 0   # once a day
     d = S.day(T)
-    assert "jaldi expire" in d["say"]
+    assert "expiring soon" in d["say"]
 
 
 def test_tools_actors(wh):

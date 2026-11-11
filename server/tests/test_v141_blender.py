@@ -54,7 +54,7 @@ def test_guard_allows_scene_code_and_refuses_everything_else():
         p = guard.problems(code)
         assert p, f"not refused: {code!r}"
         assert any(word in x for x in p), (code, p)
-    assert guard.problems("")[0].startswith("script khaali")
+    assert guard.problems("")[0].startswith("script is empty")
     assert "SyntaxError" in guard.problems("def (:")[0]
     assert guard.summary(GOOD)["ops"] == ["mesh"]
 

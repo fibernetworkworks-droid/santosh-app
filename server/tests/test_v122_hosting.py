@@ -341,4 +341,4 @@ def test_rollback_uptime_takedown_and_email_dns(host_env):
     assert "band" in out["say"]
     assert c.get("/", headers={"host": host}).status_code != 200 or 'content="Hoola"' not in c.get("/", headers={"host": host}).text
     lr = asyncio.run(dispatch("website", {"action": "launch", "site": g["id"]}, ctx))
-    assert "Haan, live karo" in lr["say"]
+    assert "go-live button" in lr["say"]
