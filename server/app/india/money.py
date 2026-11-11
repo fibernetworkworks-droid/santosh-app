@@ -48,7 +48,7 @@ def _groups(n: int) -> list[tuple[int, int]]:
 
 
 def words(n: int, lang: str = "en") -> str:
-    """Whole number in words: hinglish (default) | hi (Devanagari) | en (Indian English)."""
+    """Whole number in words: en (Indian English, default) | hi (Devanagari) | hinglish."""
     n = int(n)
     if n < 0:
         return ("minus " if lang != "hi" else "ऋण ") + words(-n, lang)

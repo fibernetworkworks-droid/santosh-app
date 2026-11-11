@@ -251,9 +251,9 @@ def test_presets_and_report(env):
     from app.employee import inbox
     from app.employee import service as emp
     p = emp.setup("default", business_name="FNW Broadband", preset="isp")
-    assert p["role"] == "support_collect" and p["preset"] == "isp" and "router restart" in p["rules"]
+    assert p["role"] == "support_collect" and p["preset"] == "isp" and "restart the router" in p["rules"]
     p = emp.setup("default", preset="isp")
-    assert p["rules"].count("router restart") == 1                       # applying twice does not repeat rules
+    assert p["rules"].count("restart the router") == 1                       # applying twice does not repeat rules
     with pytest.raises(emp.EmployeeError):
         emp.setup("default", preset="spaceship")
     emp.setup("default", enabled=True, inbox_on=True, hours={"open": "00:00", "close": "23:59", "days": list(range(7))})
