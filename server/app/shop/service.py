@@ -126,7 +126,7 @@ def order(tenant: str, what: str, conversation_id: str = "", site: str = "", bud
           address: str = "", notes: str = "", compare: list[str] | None = None, created_by: str = "owner") -> dict[str, Any]:
     what = re.sub(r"\s+", " ", what or "").strip()
     if len(what) < 3:
-        raise ShopError("Kya mangwana / book karna hai? Item, quantity aur site (agar pata ho) bataiye.")
+        raise ShopError("What should I order / book? Tell me the item, the quantity and the site (if you know it).")
     p = plan(tenant, what, site, compare)
     s = S.SITES[p["site"]]
     if p["route"] == "mcp":
@@ -154,8 +154,8 @@ def order(tenant: str, what: str, conversation_id: str = "", site: str = "", bud
         db.add(o)
         db.flush()
         v = _view(o)
-    return {**v, "plan": p, "say": (f"{s['name']} par order taiyaar kar raha hoon: item chun ke cart, address aur slot tak "
-                                    "le jaunga. Payment ke waqt aapko card aayega, pay aap khud karengi.")}
+    return {**v, "plan": p, "say": (f"I am getting the order ready on {s['name']}: I will pick the item and take it through the cart, address and "
+                                    "slot. At payment time you will get a card, and you pay yourself.")}
 
 
 _REF = re.compile(r"\b(?:order|booking|pnr)\s*(?:id|no\.?|number|#)?\s*[:#-]?\s*([A-Z0-9-]*\d[A-Z0-9-]{4,30})", re.I)
@@ -204,7 +204,7 @@ def mark(tenant: str, oid: str, status: str = "", order_ref: str = "", total: st
     with session() as db:
         o = db.get(ShopOrder, oid)
         if o is None or o.tenant_id != tenant:
-            raise ShopError("Yeh order nahi mila.")
+            raise ShopError("This order was not found.")
         if status in ("working", "waiting_payment", "placed", "failed", "cancelled"):
             o.status = status
         if order_ref:

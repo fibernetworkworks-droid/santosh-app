@@ -353,7 +353,7 @@ def find_fix(user: str, prev_reply: str) -> tuple[str, str] | None:
 def note_fix(tenant: str, heard: str, meant: str, by_her: bool = False) -> dict[str, Any]:
     heard, meant = heard.strip().lower()[:80], meant.strip()[:80]
     if not heard or not meant or heard == meant.lower():
-        raise StyleError("heard aur meant dono chahiye, alag alag")
+        raise StyleError("Both heard and meant are needed, and they must differ")
     with _LOCK, session() as s:
         row = s.scalars(select(VoiceFix).where(VoiceFix.tenant_id == tenant, VoiceFix.heard == heard)).first()
         if row is not None and row.meant.lower() != meant.lower():
@@ -391,7 +391,7 @@ def confirm_fix(tenant: str, fix_id: int) -> dict[str, Any]:
     with session() as s:
         row = s.get(VoiceFix, fix_id)
         if row is None or row.tenant_id != tenant:
-            raise StyleError("Yeh sudhaar nahi mila")
+            raise StyleError("This correction was not found")
         row.confirmed, row.source = True, "her"
         s.commit()
         return {"id": row.id, "heard": row.heard, "meant": row.meant, "confirmed": True}
@@ -424,7 +424,7 @@ _SECRETISH = re.compile(r"\d{4,}|@|otp|pin|password|cvv", re.I)
 def add_word(tenant: str, term: str, source: str = "her") -> dict[str, Any]:
     term = re.sub(r"\s+", " ", (term or "").strip())[:60]
     if len(term) < 2 or _SECRETISH.search(term):
-        raise StyleError("Sirf naam / shabd (2-60 akshar, number ya password nahi)")
+        raise StyleError("Only a name / word (2-60 characters, no number or password)")
     with _LOCK, session() as s:
         rows = s.scalars(select(VoiceWord).where(VoiceWord.tenant_id == tenant)).all()
         for r in rows:
@@ -655,8 +655,8 @@ def view(tenant: str) -> dict[str, Any]:
     return {"language": ({"code": lang.get("base"), "name": voicelang.LANGS.get(lang.get("base"), {}).get("name", ""),
                           "mix": lang.get("mix")} if lang else None),
             "profile": pv, "fixes": fixes(tenant), "words": own_words(tenant), "vocab": vocab(tenant),
-            "privacy": "Sirf numbers aur shabd rakhe jaate hain, aapki awaaz ki recording kabhi nahi. Sirf aapki apni awaaz "
-                       "se seekhta hai (Awaaz Pehchaan). Jab chahein band karein ya mita dein."}
+            "privacy": "Only numbers and words are kept, never a recording of your voice. It learns only from your own voice "
+                       "(Voice ID). Turn it off or erase it whenever you like."}
 
 
 def say(tenant: str) -> str:
@@ -665,11 +665,11 @@ def say(tenant: str) -> str:
     if v["language"]:
         bits.append(f"bhasha {v['language']['name']}")
     if pv.get("silence_why") != "default":
-        bits.append(f"aapke rukne ka samay {pv['silence_ms']} ms tak sunta hoon")
+        bits.append(f"I wait up to {pv['silence_ms']} ms through your pauses")
     if pv.get("hint"):
-        bits.append("bolne ka tareeka: " + " ".join(pv["hint"]))
+        bits.append("way of speaking: " + " ".join(pv["hint"]))
     if v["fixes"]:
-        bits.append(f"{sum(1 for f in v['fixes'] if f['confirmed'])} galat suni baatein sudhaari")
+        bits.append(f"{sum(1 for f in v['fixes'] if f['confirmed'])} misheard words corrected")
     if v["words"]:
-        bits.append(f"{len(v['words'])} aapke shabd")
-    return ("Abhi tak: " + "; ".join(bits)) if bits else "Abhi kuch khaas nahi seekha: 2-3 call ke baad dikhega."
+        bits.append(f"{len(v['words'])} of your words")
+    return ("So far: " + "; ".join(bits)) if bits else "Nothing much learned yet: it will show after 2-3 calls."

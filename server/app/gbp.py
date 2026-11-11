@@ -28,14 +28,14 @@ INFO_URL = "https://mybusinessbusinessinformation.googleapis.com/v1/"
 PERF_URL = "https://businessprofileperformance.googleapis.com/v1/"
 READ_MASK = "name,title,storefrontAddress,phoneNumbers,websiteUri,regularHours,metadata,openInfo"
 METRICS = {   # DailyMetric enum values, from the Performance API's own definition
-    "BUSINESS_IMPRESSIONS_DESKTOP_MAPS": "Maps par dekha (computer)",
-    "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH": "Search mein dikha (computer)",
-    "BUSINESS_IMPRESSIONS_MOBILE_MAPS": "Maps par dekha (phone)",
-    "BUSINESS_IMPRESSIONS_MOBILE_SEARCH": "Search mein dikha (phone)",
-    "BUSINESS_DIRECTION_REQUESTS": "Rasta poochha",
-    "CALL_CLICKS": "Call dabaya",
-    "WEBSITE_CLICKS": "Website kholi",
-    "BUSINESS_CONVERSATIONS": "Message aaye",
+    "BUSINESS_IMPRESSIONS_DESKTOP_MAPS": "Seen on Maps (computer)",
+    "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH": "Shown in Search (computer)",
+    "BUSINESS_IMPRESSIONS_MOBILE_MAPS": "Seen on Maps (phone)",
+    "BUSINESS_IMPRESSIONS_MOBILE_SEARCH": "Shown in Search (phone)",
+    "BUSINESS_DIRECTION_REQUESTS": "Asked for directions",
+    "CALL_CLICKS": "Tapped Call",
+    "WEBSITE_CLICKS": "Opened the website",
+    "BUSINESS_CONVERSATIONS": "Messages received",
     "BUSINESS_BOOKINGS": "Booking hui",
 }
 MAX_ACCOUNTS = 5
@@ -68,7 +68,7 @@ async def _headers(tenant_id: str) -> dict:
     except google_auth.GoogleReconnect as e:
         raise GbpError(str(e)) from None
     if creds is None:
-        raise GbpError("Google se login nahi hai. Pehle Google jodiye (Business Profile ki ijazat ke saath).")
+        raise GbpError("Not signed in with Google. Connect Google first (with the Business Profile permission).")
     return {"Authorization": f"Bearer {creds.token}"}
 
 
@@ -80,15 +80,15 @@ def explain(r: httpx.Response) -> str:
     st, msg = str(err.get("status", "")), str(err.get("message", r.text))[:200]
     low = msg.lower()
     if r.status_code == 401 or "insufficient authentication scopes" in low or "insufficient_scope" in low:
-        return ("Google login mein Business Profile ki ijazat (business.manage) nahi hai. Google dobara jodiye aur "
-                "Business Profile wala box tick kijiye.")
+        return ("The Google sign-in does not have the Business Profile permission (business.manage). Connect Google again and "
+                "tick the Business Profile box.")
     if "has not been used" in low or "is disabled" in low or "service_disabled" in low:
-        return "Google Cloud project mein yeh Business Profile API enable nahi hai."
+        return "This Business Profile API is not enabled in the Google Cloud project."
     if r.status_code == 429 or st == "RESOURCE_EXHAUSTED" or "quota" in low:
-        return ("Google ne abhi Business Profile API ki ijazat nahi di (quota 0): 'Application for Basic API Access' "
-                "approve hone tak yeh kaam nahi karega. Approval ke baad quota 300 per minute dikhta hai.")
+        return ("Google has not granted Business Profile API access yet (quota 0): this will not work until the 'Application for "
+                "Basic API Access' is approved. After approval the quota shows 300 per minute.")
     if r.status_code == 403:
-        return "Google ne mana kiya: is Google account ka us Business Profile par access nahi hai, ya API approve nahi hui."
+        return "Google refused: this Google account has no access to that Business Profile, or the API is not approved."
     return f"Google Business Profile error {r.status_code}: {msg}"
 
 
@@ -148,7 +148,7 @@ def _loc_name(loc: str) -> str:
     s = str(loc or "").strip()
     s = s.split("/locations/")[-1] if "/locations/" in s else s.replace("locations/", "")
     if not s.isdigit():
-        raise GbpError("Location ka number (locations/123...) chahiye - gbp_locations se milta hai.")
+        raise GbpError("The location number (locations/123...) is needed - gbp_locations gives it.")
     return f"locations/{s}"
 
 
@@ -171,7 +171,7 @@ def sum_series(resp: dict) -> dict:
 async def numbers(tenant_id: str, location: str, days: int | None = 30, today: date | None = None) -> dict:
     days = 30 if days is None else int(days)        # an explicit 0 is refused below, never turned into 30
     if not 1 <= days <= MAX_DAYS:
-        raise GbpError(f"Din 1 se {MAX_DAYS} ke beech chahiye.")
+        raise GbpError(f"Days must be between 1 and {MAX_DAYS}.")
     name = _loc_name(location)
     end = (today or date.today()) - timedelta(days=1)
     start = end - timedelta(days=days - 1)

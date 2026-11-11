@@ -43,7 +43,7 @@ def clean_background(data: bytes, color: str = "white", model: str = "isnet-gene
     try:
         from rembg import new_session, remove
     except Exception:
-        raise ImageError("Background hatane ka tool (rembg) server par nahi hai: pip install rembg")
+        raise ImageError("The background removal tool (rembg) is not on the server: pip install rembg")
     from PIL import Image, ImageOps
     if _SESSION is None:
         _SESSION = new_session(model)
@@ -62,7 +62,7 @@ def id_photo(data: bytes, size: str = "india_passport", color: str = "white") ->
     from .config import get_settings
     url = (getattr(get_settings(), "hivision_url", "") or "").rstrip("/")
     if not url:
-        raise ImageError("ID photo service set nahi hai (HIVISION_URL). VPS par: docker run -d -p 127.0.0.1:8085:8080 "
+        raise ImageError("The ID photo service is not set up (HIVISION_URL). On the VPS: docker run -d -p 127.0.0.1:8085:8080 "
                          "linzeyi/hivision_idphotos python3 deploy_api.py")
     h, w = SIZES.get((size or "").lower().replace(" ", "_"), SIZES["india_passport"])
     import httpx
@@ -71,9 +71,9 @@ def id_photo(data: bytes, size: str = "india_passport", color: str = "white") ->
                        data={"height": h, "width": w, "hd": "true"}, timeout=120)
         j = r.json()
     except Exception as e:
-        raise ImageError(f"ID photo service se jawab nahi aaya: {type(e).__name__}")
+        raise ImageError(f"The ID photo service did not answer: {type(e).__name__}")
     if not j.get("status"):
-        raise ImageError("Photo mein ek saaf chehra nahi mila. Seedha camera ki taraf, achhi roshni mein photo lijiye.")
+        raise ImageError("No single clear face was found in the photo. Take the photo facing the camera, in good light.")
     std = j.get("image_base64_standard") or j.get("image_base64") or ""
     std = std.split(",", 1)[-1]
     try:
@@ -83,7 +83,7 @@ def id_photo(data: bytes, size: str = "india_passport", color: str = "white") ->
                            timeout=120).json()
         sheet_b = (sheet.get("image_base64") or "").split(",", 1)[-1]
     except Exception as e:
-        raise ImageError(f"ID photo ka background / sheet nahi ban paya: {type(e).__name__}")
+        raise ImageError(f"The ID photo's background / sheet could not be made: {type(e).__name__}")
     out = {"photo": base64.b64decode(single)}
     if sheet_b:
         out["sheet"] = base64.b64decode(sheet_b)

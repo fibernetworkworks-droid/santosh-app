@@ -108,7 +108,7 @@ def save_summary(conv: str, text: str, seconds: float | None = None) -> None:
     if not is_call(conv) or not text:
         return
     try:
-        first = re.sub(r"^📞\s*Call ka hisaab\s*\([^)]*\)\s*:?\s*", "", text.splitlines()[0]).strip()
+        first = re.sub(r"^📞\s*Call (?:ka hisaab|summary)\s*\([^)]*\)\s*:?\s*", "", text.splitlines()[0]).strip()
         with session() as s:
             c = s.get(Conversation, conv)
             if c is None:

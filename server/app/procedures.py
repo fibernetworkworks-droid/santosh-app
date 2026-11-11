@@ -60,7 +60,7 @@ def _request(text: str) -> str:
 def _title(text: str) -> str:
     t = _mask(_request(text), 200)
     t = re.split(r"[\n.?!]", t)[0].strip(" ,")
-    return (t[:1].upper() + t[1:])[:80] or "Kaam"
+    return (t[:1].upper() + t[1:])[:80] or "Task"
 
 
 def _j(v: str, default):
@@ -125,8 +125,8 @@ def hint(tenant: str, user_text: str, limit: int = 2) -> tuple[str, list[str]]:
     found = _match(tenant, user_text, MATCH_FLOOR)[:limit]
     if not found:
         return "", []
-    lines = ["\n\nSeekhe hue kaam (aapne pehle aisa kaam aise kiya tha; sirf madad ke liye, zaroorat ho to badlo, "
-             "aur jo user ne abhi kaha woh hi maano):"]
+    lines = ["\n\nLearned tasks (you did this kind of work this way before; for help only, change it if needed, "
+             "and always follow what the user said just now):"]
     for p, _ in found:
         steps = " -> ".join(s.get("label") or s.get("tool") for s in _j(p.steps, []))
         lines.append(f"- {p.title}: {steps}")
@@ -229,7 +229,7 @@ def update(tenant: str, pid: str, active: bool | None = None, title: str | None 
     with session() as s:
         p = s.get(Procedure, pid)
         if p is None or p.tenant_id != tenant:
-            raise ProcedureError("Yeh seekha hua kaam nahi mila.")
+            raise ProcedureError("This learned task was not found.")
         if active is not None:
             p.active = bool(active)
             if active:
@@ -237,12 +237,12 @@ def update(tenant: str, pid: str, active: bool | None = None, title: str | None 
         if title is not None:
             t = re.sub(r"\s+", " ", str(title)).strip()[:80]
             if not t:
-                raise ProcedureError("Naam khaali nahi ho sakta.")
+                raise ProcedureError("The name cannot be empty.")
             p.title = t
         if steps is not None:                              # the owner rewrote the steps in her own words
             clean = [re.sub(r"\s+", " ", str(x)).strip()[:120] for x in steps if str(x).strip()][:12]
             if not clean:
-                raise ProcedureError("Kam se kam ek kadam likhiye.")
+                raise ProcedureError("Write at least one step.")
             p.steps = json.dumps([{"tool": "", "label": x} for x in clean], ensure_ascii=False)
             p.edited = True
         return view(p)
@@ -254,7 +254,7 @@ def record_run(tenant: str, pid: str, ok: bool, undo_win: bool = False) -> dict[
     with session() as s:
         p = s.get(Procedure, pid)
         if p is None or p.tenant_id != tenant:
-            raise ProcedureError("Yeh seekha hua kaam nahi mila.")
+            raise ProcedureError("This learned task was not found.")
         if undo_win:
             p.wins = max(0, int(p.wins or 0) - 1)
         else:
@@ -270,7 +270,7 @@ def delete(tenant: str, pid: str) -> None:
     with session() as s:
         p = s.get(Procedure, pid)
         if p is None or p.tenant_id != tenant:
-            raise ProcedureError("Yeh seekha hua kaam nahi mila.")
+            raise ProcedureError("This learned task was not found.")
         s.delete(p)
 
 
@@ -289,7 +289,7 @@ def save_video(tenant: str, title: str, trigger: str, steps: list[dict[str, Any]
     from real runs (after_turn scores them like any other procedure)."""
     clean = [s for s in (steps or []) if isinstance(s, dict) and str(s.get("label") or "").strip()][:12]
     if not clean:
-        raise ProcedureError("Video mein koi kadam nahi mila jo save ho.")
+        raise ProcedureError("No step worth saving was found in the video.")
     with session() as s:
         n = s.scalar(select(func.count()).select_from(Procedure).where(Procedure.tenant_id == tenant)) or 0
         if n >= MAX_PER_OWNER:                             # make room: drop the least useful one
@@ -297,7 +297,7 @@ def save_video(tenant: str, title: str, trigger: str, steps: list[dict[str, Any]
                               .order_by(Procedure.wins, Procedure.uses, Procedure.created_at)).first()
             if worst is not None:
                 s.delete(worst)
-        p = Procedure(tenant_id=tenant, title=_title(title or "Video se seekha kaam"),
+        p = Procedure(tenant_id=tenant, title=_title(title or "Task learned from a video"),
                       trigger=_mask(_request(trigger), 240),
                       steps=json.dumps(clean, ensure_ascii=False),
                       watch_out=json.dumps([str(w)[:200] for w in (watch_out or [])[:8]], ensure_ascii=False))

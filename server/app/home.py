@@ -33,12 +33,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .config import get_settings
 from .db import Base, new_id, now, session
 
-GATE_OFF = ("Ghar ka control abhi band hai - owner ne 'home_control' switch on nahi kiya. "
-            "VPS .env mein HOME_CONTROL=1 karke restart karein, tab main ghar ke devices chala sakta hoon.")
+GATE_OFF = ("Home control is off right now - the owner has not turned on the 'home_control' switch. "
+            "Set HOME_CONTROL=1 in the VPS .env and restart; then I can control the home devices.")
 
-NO_LINK = ("Home Assistant juda hua nahi hai. Setup: HA app/website → profile (bottom left) → Security → "
-           "Long-lived access tokens → Create token. Phir VPS .env mein HOME_ASSISTANT_URL (jaise "
-           "http://192.168.1.10:8123) aur HOME_ASSISTANT_TOKEN daal kar restart karein.")
+NO_LINK = ("Home Assistant is not connected. Setup: HA app/website → profile (bottom left) → Security → "
+           "Long-lived access tokens → Create token. Then add HOME_ASSISTANT_URL (for example "
+           "http://192.168.1.10:8123) and HOME_ASSISTANT_TOKEN to the VPS .env and restart.")
 
 # domains Hoola may switch (turn_on / turn_off or their domain-native service); lock rides the
 # confirm-only branch of the guard, never the plain path
@@ -130,7 +130,7 @@ async def ping() -> dict:
     """GET /api/ - HA answers 'API running.' when the link is good."""
     lk = _link()
     if lk is None:
-        return {"ok": False, "why": "link nahi hai", "status": 0}
+        return {"ok": False, "why": "not connected", "status": 0}
     base, token = lk
     try:
         async with _client(base, token) as c:
@@ -139,7 +139,7 @@ async def ping() -> dict:
                 return {"ok": True, "message": r.json().get("message", ""), "status": 200}
             return {"ok": False, "why": f"HA ne {r.status_code} diye", "status": r.status_code}
     except Exception as e:                               # noqa: BLE001 - network errors are a status, not a crash
-        return {"ok": False, "why": f"HA tak nahi pahunch paye: {e.__class__.__name__}", "status": 0}
+        return {"ok": False, "why": f"Could not reach HA: {e.__class__.__name__}", "status": 0}
 
 
 # ----------------------------------------------------------------------------- reads
@@ -173,10 +173,10 @@ async def states(domain: str = "", q: str = "", limit: int = 200) -> dict:
         async with _client(base, token) as c:
             r = await c.get("/api/states")
         if r.status_code != 200:
-            return {"ok": False, "why": f"HA ne {r.status_code} diye (token ya URL check karein)", "devices": []}
+            return {"ok": False, "why": f"HA answered {r.status_code} (check the token or URL)", "devices": []}
         rows = r.json() or []
     except Exception as e:                               # noqa: BLE001
-        return {"ok": False, "why": f"HA tak nahi pahunch paye: {e.__class__.__name__}", "devices": []}
+        return {"ok": False, "why": f"Could not reach HA: {e.__class__.__name__}", "devices": []}
     dom = (domain or "").strip().lower()
     needle = (q or "").strip().lower()
     out = []
@@ -199,7 +199,7 @@ async def states(domain: str = "", q: str = "", limit: int = 200) -> dict:
 async def state_one(entity: str) -> dict:
     eid = (entity or "").strip().lower()
     if not eid:
-        return {"ok": False, "why": "entity_id ya device ka naam bataiye"}
+        return {"ok": False, "why": "Give the entity_id or the device name"}
     lk = _link()
     if lk is None:
         return {"ok": False, "why": NO_LINK}
@@ -211,7 +211,7 @@ async def state_one(entity: str) -> dict:
                 if r.status_code == 200:
                     return {"ok": True, **_view(r.json())}
                 if r.status_code == 404:
-                    return {"ok": False, "why": f"{eid} HA mein nahi mila (action=devices se poora naam dekhein)"}
+                    return {"ok": False, "why": f"{eid} was not found in HA (see the full name with action=devices)"}
                 return {"ok": False, "why": f"HA ne {r.status_code} diye"}
             r = await c.get("/api/states")
             if r.status_code != 200:
@@ -219,9 +219,9 @@ async def state_one(entity: str) -> dict:
             for st in r.json() or []:
                 if eid in st.get("entity_id", "").lower() or eid in _friendly(st).lower():
                     return {"ok": True, **_view(st)}
-            return {"ok": False, "why": f"isi naam ka koi device nahi mila: {eid}"}
+            return {"ok": False, "why": f"no device with this name was found: {eid}"}
     except Exception as e:                               # noqa: BLE001
-        return {"ok": False, "why": f"HA tak nahi pahunch paye: {e.__class__.__name__}"}
+        return {"ok": False, "why": f"Could not reach HA: {e.__class__.__name__}"}
 
 
 # ----------------------------------------------------------------------------- guards
@@ -230,21 +230,21 @@ def _guard(entity_id: str, friendly: str, actor: str, confirm: bool) -> tuple[st
     dom = _domain_of(entity_id)
     if dom == "lock":
         if actor == "routine":
-            return ("Taala routine se nahi kholta/band hota - locks par kabhi bina poochhe haath nahi lagta.",
+            return ("A lock is never opened or closed from a routine - locks are never touched without asking.",
                     "refused", "lock in routine turn")
         if not confirm:
-            return ("Taala confirm ke baad hi: pehle use se poochh lijiye, haan milne par home_on/home_off ko "
-                    "confirm=true bhejein.", "refused", "lock without confirm=true")
+            return ("A lock only after confirmation: ask the user first, and once they say yes send home_on/home_off "
+                    "with confirm=true.", "refused", "lock without confirm=true")
         return None
     if dom not in CONTROL_OK:
-        return (f"{friendly or entity_id} is type ({dom}) ka switch main nahi chalata - sirf lights, fans, "
-                f"switches, covers, media, climate, scenes aur scripts. Padhna ho to state pooch lo.",
+        return (f"I do not control a device of this type ({dom}): {friendly or entity_id} - only lights, fans, "
+                f"switches, covers, media, climate, scenes and scripts. To read it, ask for its state.",
                 "refused", f"domain {dom} not controllable")
     blob = f"{entity_id} {friendly}"
     m = READONLY_WORDS.search(blob)
     if m:
-        return (f"{friendly or entity_id} (fridge / washer / geyser / heater jaisa) main haath nahi lagata - "
-                f"ghar ke bade appliances sirf padhne ke liye hain. Ise on/off aap khud karein.",
+        return (f"I do not touch {friendly or entity_id} (a fridge / washer / geyser / heater kind of appliance) - "
+                f"big home appliances are read-only. Please turn it on/off yourself.",
                 "refused", f"read-only appliance word: {m.group(0)}")
     return None
 
@@ -274,9 +274,9 @@ async def _post(domain_service: str, payload: dict) -> dict:
             r = await c.post(f"/api/services/{domain_service}", json=payload)
         if r.status_code in (200, 201):
             return {"ok": True, "status": r.status_code}
-        return {"ok": False, "why": f"HA ne {r.status_code} diye ({domain_service})", "status": r.status_code}
+        return {"ok": False, "why": f"HA answered {r.status_code} ({domain_service})", "status": r.status_code}
     except Exception as e:                               # noqa: BLE001
-        return {"ok": False, "why": f"HA tak nahi pahunch paye: {e.__class__.__name__}"}
+        return {"ok": False, "why": f"Could not reach HA: {e.__class__.__name__}"}
 
 
 async def _settle(entity_id: str, want: str, wait_s: float = 1.2) -> dict | None:
@@ -295,16 +295,16 @@ async def _settle(entity_id: str, want: str, wait_s: float = 1.2) -> dict | None
 
 def _say_on(friendly: str, dom: str) -> str:
     if dom == "cover":
-        return f"{friendly} khol di."
+        return f"{friendly} is open."
     if dom in ("scene", "script"):
-        return f"{friendly} chala di."
+        return f"{friendly} has been run."
     if dom == "button":
-        return f"{friendly} dabaa diya."
-    return f"{friendly} on kar di."
+        return f"{friendly} has been pressed."
+    return f"{friendly} is on."
 
 
 def _say_off(friendly: str, dom: str) -> str:
-    return f"{friendly} band kar di."
+    return f"{friendly} is off."
 
 
 async def switch(entity: str, on: bool, tenant: str, conv: str, actor: str = "owner",
@@ -313,7 +313,7 @@ async def switch(entity: str, on: bool, tenant: str, conv: str, actor: str = "ow
     Order: gate FIRST (cheap, no HA call), then resolve, then guards, then the service call."""
     eid = (entity or "").strip().lower()
     if not eid:
-        return {"ok": False, "why": "entity_id ya device ka naam bataiye (home_devices se dekhein)."}
+        return {"ok": False, "why": "Give the entity_id or the device name (see home_devices)."}
 
     if not get_settings().home_control:
         audit(tenant, conv, actor, eid, eid, "refused", False, "gate off")
@@ -321,8 +321,8 @@ async def switch(entity: str, on: bool, tenant: str, conv: str, actor: str = "ow
 
     got = await state_one(eid)
     if not got.get("ok"):
-        audit(tenant, conv, actor, eid, eid, "refused", False, got.get("why", "device nahi mila"))
-        return {"ok": False, "why": got.get("why", "device nahi mila")}
+        audit(tenant, conv, actor, eid, eid, "refused", False, got.get("why", "device not found"))
+        return {"ok": False, "why": got.get("why", "device not found")}
     eid = got.get("entity_id", eid)
     friendly = got.get("name", eid)
     dom = _domain_of(eid)
@@ -340,18 +340,18 @@ async def switch(entity: str, on: bool, tenant: str, conv: str, actor: str = "ow
             t = round(float(ex["temperature"]), 1)
         except (TypeError, ValueError):
             audit(tenant, conv, actor, eid, friendly, "refused", False, "bad temperature")
-            return {"ok": False, "why": "Temperature number mein bataiye (jaise 24)."}
+            return {"ok": False, "why": "Give the temperature as a number (for example 24)."}
         if not (AC_MIN <= t <= AC_MAX):
             audit(tenant, conv, actor, eid, friendly, "refused", False, f"temperature {t} out of 20-28")
-            return {"ok": False, "why": f"AC temperature main {AC_MIN:.0f}–{AC_MAX:.0f} °C ke beech hi set karta hoon "
-                                        f"(aapne {t} bola). Ghar ki sehat ke liye yahi theek hai."}
+            return {"ok": False, "why": f"I set the AC temperature only between {AC_MIN:.0f} and {AC_MAX:.0f} °C "
+                                        f"(you said {t}). That range is the safe one for the home."}
         payload["temperature"] = t
     if dom == "media_player" and "volume_level" in ex:
         try:
             v = round(float(ex["volume_level"]), 2)
         except (TypeError, ValueError):
             audit(tenant, conv, actor, eid, friendly, "refused", False, "bad volume")
-            return {"ok": False, "why": "Volume 0.0–1.0 ke beech number mein bataiye."}
+            return {"ok": False, "why": "Give the volume as a number between 0.0 and 1.0."}
         if v > VOLUME_MAX:
             v = VOLUME_MAX
         payload["volume_level"] = v
@@ -377,14 +377,14 @@ async def switch(entity: str, on: bool, tenant: str, conv: str, actor: str = "ow
                                                "unlock" if dom == "lock" else "on" if on else "off"),
           ok, svc if ok else f"{svc} {r.get('why', '')}")
     if not ok:
-        return {"ok": False, "why": r.get("why", "service call fail hua"), "entity_id": eid}
+        return {"ok": False, "why": r.get("why", "the service call failed"), "entity_id": eid}
     settled = await _settle(eid, "on" if on else "off")
     out = {"ok": True, "entity_id": eid, "name": friendly, "service": svc, "say": (_say_on if on else _say_off)(friendly, dom)}
     if settled:
         out["state"] = settled.get("state", "")
         out["name"] = settled.get("name", friendly)
     if dom == "lock":
-        out["say"] = (f"{friendly} band kar diya." if on else f"{friendly} khol diya. Dhyan se.")
+        out["say"] = (f"{friendly} is locked." if on else f"{friendly} is unlocked. Take care.")
     return out
 
 

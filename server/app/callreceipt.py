@@ -115,16 +115,16 @@ async def _ai(turns: list[tuple[str, str]], name: str) -> dict | None:
 
 def render(r: dict) -> str:
     mins = max(1, round((r.get("seconds") or 0) / 60))
-    out = [f"📞 Call ka hisaab ({mins} min)" + (f": {r['summary']}" if r.get("summary") else "")]
+    out = [f"📞 Call summary ({mins} min)" + (f": {r['summary']}" if r.get("summary") else "")]
     if r.get("decisions"):
-        out.append("Tay hua: " + "; ".join(r["decisions"]))
+        out.append("Decided: " + "; ".join(r["decisions"]))
     if r.get("done"):
-        out.append("Ho gaya: " + "; ".join(r["done"]))
+        out.append("Done: " + "; ".join(r["done"]))
     if r.get("failed"):
-        out.append("Nahi ho paya: " + "; ".join(r["failed"]))
+        out.append("Could not be done: " + "; ".join(r["failed"]))
     pending = (r.get("running") or []) + (r.get("follow_up") or [])
     if pending:
-        out.append("Baaki / chal raha hai: " + "; ".join(pending))
+        out.append("Pending / still running: " + "; ".join(pending))
     return "\n".join(out)
 
 

@@ -111,17 +111,17 @@ def risky_parts(name: str, data: bytes) -> list[str]:
     except Exception:
         return out
     if any(n.startswith("xl/charts/") for n in names):
-        out.append("is file mein chart hai: naye copy mein chart nahi rahega (data aur formatting rahegi)")
+        out.append("this file has a chart: the new copy will not keep the chart (data and formatting stay)")
     if any(n.startswith("xl/media/") for n in names) or any(n.startswith("xl/drawings/") for n in names):
-        out.append("photo / logo / shapes naye copy mein nahi rahenge")
+        out.append("photos / logos / shapes will not be kept in the new copy")
     if any("vbaProject" in n for n in names):
-        out.append("macro wali file (.xlsm): macros rakhe jayenge, par Excel 'Enable content' poochh sakta hai")
+        out.append("file with macros (.xlsm): the macros are kept, but Excel may ask 'Enable content'")
     if any(n.startswith("xl/pivotTables/") for n in names):
-        out.append("pivot table hai: Excel mein khol kar 'Refresh' kijiye")
+        out.append("there is a pivot table: open it in Excel and press 'Refresh'")
     if any(n.startswith("xl/externalLinks/") for n in names):
-        out.append("doosri files se jude formulas (external links) hain: unki value Excel kholne par update hogi")
+        out.append("there are formulas linked to other files (external links): their values update when Excel opens the file")
     if any(n.startswith("xl/slicers/") or n.startswith("xl/timelines/") for n in names):
-        out.append("slicer / timeline naye copy mein nahi rahenge")
+        out.append("slicers / timelines will not be kept in the new copy")
     return out
 
 
@@ -133,7 +133,7 @@ def _csv_rows(data: bytes) -> list[list[str]]:
         except Exception:
             continue
     else:
-        raise SheetError("CSV padhi nahi ja saki")
+        raise SheetError("The CSV could not be read")
     try:
         dialect = csv.Sniffer().sniff(text[:5000], delimiters=",;\t|")
     except Exception:
@@ -158,7 +158,7 @@ def _header_at(grid: list[list[Any]]) -> int:
     for i, row in enumerate(grid[:15]):
         if sum(1 for c in row if c not in (None, "")) >= 2:
             return i
-    raise SheetError("Sheet mein koi table nahi mili (heading wali line nahi dikhi)")
+    raise SheetError("No table found in the sheet (no heading row seen)")
 
 
 def _table(name: str, sheet: str, sheets: list[str], grid: list[list[Any]], kind: str) -> Table:
@@ -186,20 +186,20 @@ def load(name: str, data: bytes, sheet: str | None = None, want: list[str] | Non
     if low.endswith((".csv", ".tsv", ".txt")):
         return _table(name, "", [], _csv_rows(data), "csv")
     if low.endswith(".xls"):
-        raise SheetError("Yeh purani .xls file hai: Excel mein kholkar 'Save As' > .xlsx kar dijiye, phir main milaan kar dunga")
+        raise SheetError("This is an old .xls file: open it in Excel and 'Save As' > .xlsx, then I will match it")
     if not low.endswith((".xlsx", ".xlsm")):
-        raise SheetError(f"{name}: sirf Excel (.xlsx) ya CSV ka milaan hota hai")
+        raise SheetError(f"{name}: only Excel (.xlsx) or CSV files can be matched")
     from openpyxl import load_workbook
     try:
         wb = load_workbook(io.BytesIO(data), data_only=True, read_only=True)
     except Exception as e:
-        raise SheetError(f"{name} Excel file khul nahi payi ({type(e).__name__}); file kharab ya password wali to nahi?")
+        raise SheetError(f"The Excel file {name} could not be opened ({type(e).__name__}); is the file damaged or password-protected?")
     try:
         names = wb.sheetnames
         if sheet:
             pick = next((n for n in names if n == sheet), None) or next((n for n in names if hnorm(n) == hnorm(sheet)), None)
             if not pick:
-                raise SheetError(f"'{sheet}' naam ki sheet nahi mili; sheets: {', '.join(names)}")
+                raise SheetError(f"No sheet named '{sheet}' found; sheets: {', '.join(names)}")
             cands = [pick]
         else:
             cands = names
@@ -220,9 +220,9 @@ def load(name: str, data: bytes, sheet: str | None = None, want: list[str] | Non
             if score > best_score:
                 best, best_score = t, score
         if best is None:
-            raise SheetError(f"{name} mein koi table nahi mili")
+            raise SheetError(f"No table found in {name}")
         if len(cands) > 1 and len([n for n in cands if n]) > 1:
-            best.notes.append(f"{len(names)} sheets mein se '{best.sheet}' li (sabse badi table)")
+            best.notes.append(f"took '{best.sheet}' out of {len(names)} sheets (the biggest table)")
         return best
     finally:
         wb.close()
@@ -317,12 +317,12 @@ def pick_key(old: Table, new: Table, cmap: dict[int, int], skip: set[int]) -> tu
                 continue
             j = cmap[i]
             if _filled(old, i) >= 0.6 and _unique(old, i) >= 0.9 and _unique(new, j) >= 0.9:
-                return i, j, f"'{h}' ({label}) dono files mein hai aur har line mein alag"
+                return i, j, f"'{h}' ({label}) is in both files and different on every row"
     for i in range(len(old.headers)):
         if i in skip or i not in cmap:
             continue
         if _macish(old, i) >= 0.8 and _macish(new, cmap[i]) >= 0.8:
-            return i, cmap[i], f"'{old.headers[i]}' mein MAC address hain"
+            return i, cmap[i], f"'{old.headers[i]}' holds MAC addresses"
     best = None
     for i in range(len(old.headers)):
         if i in skip or i not in cmap or hnorm(old.headers[i]) in ROWNO_WORDS:
@@ -331,9 +331,9 @@ def pick_key(old: Table, new: Table, cmap: dict[int, int], skip: set[int]) -> tu
         if u >= 0.97 and _filled(old, i) >= 0.8 and (best is None or u > best[2]):
             best = (i, cmap[i], u)
     if best:
-        return best[0], best[1], f"'{old.headers[best[0]]}' har line mein alag hai"
-    raise SheetError("Dono files mein milaan ke liye koi pakka column (MAC / serial / ID) nahi mila; "
-                     "batayein kis column se milaun (key=...)")
+        return best[0], best[1], f"'{old.headers[best[0]]}' is different on every row"
+    raise SheetError("No reliable column (MAC / serial / ID) found to match the two files; "
+                     "tell me which column to match on (key=...)")
 
 
 def compare(old: Table, new: Table, key: str | None = None, update: list[str] | None = None,
@@ -343,26 +343,26 @@ def compare(old: Table, new: Table, key: str | None = None, update: list[str] | 
     for u in update or []:
         i = _col(old, u)
         if i is None:
-            raise SheetError(f"Purani file mein '{u}' column nahi mila; columns: {', '.join(old.headers[:20])}")
+            raise SheetError(f"Column '{u}' not found in the old file; columns: {', '.join(old.headers[:20])}")
         upd_old.add(i)
         if i not in cmap:
             j = _col(new, u)
             if j is None:
-                raise SheetError(f"Nayi file mein '{u}' column nahi mila; columns: {', '.join(new.headers[:20])}")
+                raise SheetError(f"Column '{u}' not found in the new file; columns: {', '.join(new.headers[:20])}")
             cmap[i] = j
     if key:
         ki = _col(old, key)
         if ki is None:
-            raise SheetError(f"Purani file mein '{key}' column nahi mila; columns: {', '.join(old.headers[:20])}")
+            raise SheetError(f"Column '{key}' not found in the old file; columns: {', '.join(old.headers[:20])}")
         kj = _col(new, key_new or key) if (key_new or ki not in cmap) else cmap[ki]
         if kj is None:
-            raise SheetError(f"Nayi file mein '{key_new or key}' column nahi mila; columns: {', '.join(new.headers[:20])}")
-        why = f"'{old.headers[ki]}' se milaya (aapne kaha)"
+            raise SheetError(f"Column '{key_new or key}' not found in the new file; columns: {', '.join(new.headers[:20])}")
+        why = f"matched on '{old.headers[ki]}' (as you asked)"
         cmap[ki] = kj
     else:
         ki, kj, why = pick_key(old, new, cmap, upd_old)
     if ki in upd_old:
-        raise SheetError("Jis column se milaan ho raha hai wahi update nahi ho sakta; doosra key column batayein")
+        raise SheetError("The column used for matching cannot itself be updated; name another key column")
     compare_cols = sorted(upd_old) if upd_old else [i for i in cmap if i != ki]
 
     def index(t: Table, col: int) -> tuple[dict[str, tuple[int, list[Any]]], list[str], int]:
@@ -420,10 +420,10 @@ def compare(old: Table, new: Table, key: str | None = None, update: list[str] | 
 
 def say(res: dict[str, Any]) -> str:
     c = res["counts"]
-    parts = [f"Milaan '{res['key']['old']}' se: {c['changed']} badle", f"{c['added']} naye", f"{c['missing']} naye mein nahi",
+    parts = [f"Matched on '{res['key']['old']}': {c['changed']} changed", f"{c['added']} new", f"{c['missing']} not in the new file",
              f"{c['same']} same"]
     if res["dupes"]["old"] or res["dupes"]["new"]:
-        parts.append(f"dohraye gaye key: purani {len(res['dupes']['old'])}, nayi {len(res['dupes']['new'])}")
+        parts.append(f"repeated keys: old file {len(res['dupes']['old'])}, new file {len(res['dupes']['new'])}")
     return ", ".join(parts) + "."
 
 
@@ -501,9 +501,9 @@ def apply(old_name: str, old_data: bytes, new_name: str, new_data: bytes, res: d
             grid = [r for n, r in enumerate(grid, start=1) if n not in miss_rows]
             done["missing_deleted"] = len(miss_rows)
         elif missing == "mark" and miss_rows:
-            grid[hdr].append("Hoola milaan")
+            grid[hdr].append("Hoola match")
             for n in miss_rows:
-                grid[n - 1].append("naye mein nahi")
+                grid[n - 1].append("not in the new file")
             done["missing_marked"] = len(miss_rows)
         buf = io.StringIO()
         csv.writer(buf).writerows(grid)
@@ -542,12 +542,12 @@ def apply(old_name: str, old_data: bytes, new_name: str, new_data: bytes, res: d
     miss_rows = sorted({m["row_old"] for m in res["missing"]})
     if missing == "mark" and miss_rows:
         mc = len(old_t.headers) + 1
-        hc = ws.cell(row=old_t.header_row, column=mc, value="Hoola milaan")
+        hc = ws.cell(row=old_t.header_row, column=mc, value="Hoola match")
         src = ws.cell(row=old_t.header_row, column=len(old_t.headers))
         if src.has_style:
             hc._style = copy(src._style)
         for rn in miss_rows:
-            ws.cell(row=rn, column=mc, value="naye mein nahi")
+            ws.cell(row=rn, column=mc, value="not in the new file")
         done["missing_marked"] = len(miss_rows)
     if add and res["added"]:
         # a running serial number column (1, 2, 3...) keeps counting
@@ -562,8 +562,8 @@ def apply(old_name: str, old_data: bytes, new_name: str, new_data: bytes, res: d
         if ws.max_row > last and any(ws.cell(row=x, column=c).value not in (None, "")
                                      for x in range(last + 1, min(ws.max_row, last + 30) + 1)
                                      for c in range(1, len(old_t.headers) + 1)):
-            done["warnings"].append("table ke neeche kuch likha hai (jaise Total): naye rows uske upar daale; "
-                                    "Total ka formula naye rows tak badhaiye")
+            done["warnings"].append("there is something written below the table (such as a Total): new rows were put above it; "
+                                    "extend the Total formula to cover the new rows")
         for a in res["added"]:
             nv = new_by.get(vnorm(a["key"]))
             if not nv:

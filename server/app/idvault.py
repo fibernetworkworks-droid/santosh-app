@@ -43,8 +43,8 @@ PEOPLE = {   # words -> who it belongs to
     "dada": ("dadaji", "grandfather", "nanaji", "ajoba"),
     "dadi": ("dadiji", "grandmother", "naniji", "aaji"),
 }
-PERSON_LABEL = {"self": "Aap", "maa": "Maa", "papa": "Papa", "pati": "Pati", "patni": "Patni", "beta": "Beta",
-                "beti": "Beti", "bhai": "Bhai", "behen": "Behen", "dada": "Dada / Nana", "dadi": "Dadi / Nani"}
+PERSON_LABEL = {"self": "You", "maa": "Mother", "papa": "Father", "pati": "Husband", "patni": "Wife", "beta": "Son",
+                "beti": "Daughter", "bhai": "Brother", "behen": "Sister", "dada": "Grandfather", "dadi": "Grandmother"}
 
 REF = re.compile(r"\{id:([a-z0-9]{6,16})\}")
 AADHAAR = re.compile(r"(?<!\d)([2-9]\d{3})[ -]?(\d{4})[ -]?(\d{4})(?!\d)")
@@ -125,17 +125,17 @@ def validate(kind: str, v: str) -> str:
     """'' when fine, else why not."""
     if kind == "aadhaar":
         if not re.fullmatch(r"[2-9]\d{11}", v) or not verhoeff_ok(v):
-            return "Yeh sahi Aadhaar number nahi lagta (12 ank, aakhri ank check se mel nahi khata)."
+            return "This does not look like a valid Aadhaar number (12 digits; the last digit fails the check)."
     elif kind == "pan" and not re.fullmatch(r"[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]", v):
-        return "PAN 10 akshar ka hota hai, jaise ABCPE1234F."
+        return "A PAN has 10 characters, like ABCPE1234F."
     elif kind == "gstin" and not GSTIN.fullmatch(v):
-        return "GSTIN 15 akshar ka hota hai."
+        return "A GSTIN has 15 characters."
     elif kind == "uan" and not re.fullmatch(r"\d{12}", v):
-        return "UAN 12 ank ka hota hai."
+        return "A UAN has 12 digits."
     elif kind == "abha" and not re.fullmatch(r"\d{14}", v):
-        return "ABHA number 14 ank ka hota hai."
+        return "An ABHA number has 14 digits."
     elif not v or len(v) > 40:
-        return "Number khaali ya bahut lamba hai."
+        return "The number is empty or too long."
     return ""
 
 
@@ -212,7 +212,7 @@ def delete(tenant: str, rid: str) -> dict:
     with session() as s:
         r = s.get(IdRecord, rid)
         if r is None or r.tenant_id != tenant:
-            raise VaultError("Yeh number locker mein nahi mila.")
+            raise VaultError("This number was not found in the locker.")
         s.delete(r)
     return {"deleted": True}
 
@@ -222,7 +222,7 @@ def reveal(tenant: str, rid: str) -> dict:
     with session() as s:
         r = s.get(IdRecord, rid)
         if r is None or r.tenant_id != tenant:
-            raise VaultError("Yeh number locker mein nahi mila.")
+            raise VaultError("This number was not found in the locker.")
         return view(r) | {"value": display(r.kind, _open(r.sealed))}
 
 
@@ -300,7 +300,7 @@ def fill_value(text: str, tenant: str) -> tuple[str, list[str]]:
     def sub(m):
         got = resolve(tenant, m.group(0))
         if got is None:
-            raise VaultError(f"{m.group(0)} locker mein nahi mila.")
+            raise VaultError(f"{m.group(0)} was not found in the locker.")
         kinds.append(got[1])
         return got[0]
     return REF.sub(sub, text or ""), kinds

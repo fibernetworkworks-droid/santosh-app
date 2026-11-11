@@ -93,7 +93,7 @@ def _view(s, p: Project) -> dict[str, Any]:
 def _own(s, tenant: str, pid: str) -> Project:
     p = s.get(Project, pid)
     if p is None or p.tenant_id != tenant or p.deleted:
-        raise ProjectError(404, "Project nahi mila.")
+        raise ProjectError(404, "Project not found.")
     return p
 
 
@@ -118,10 +118,10 @@ def get(tenant: str, pid: str) -> dict[str, Any]:
 def create(tenant: str, name: str, instructions: str = "", emoji: str = "") -> dict[str, Any]:
     name = _clean(name, 80)
     if not name:
-        raise ProjectError(400, "Project ka naam likhiye.")
+        raise ProjectError(400, "Enter a name for the project.")
     with session() as s:
         if s.scalar(select(func.count(Project.id)).where(Project.tenant_id == tenant, Project.deleted.is_(False))) >= 100:
-            raise ProjectError(409, "100 project ho gaye; koi purana hata dijiye.")
+            raise ProjectError(409, "You have 100 projects; remove an old one.")
         p = Project(id="prj_" + secrets.token_hex(6), tenant_id=tenant, name=name, emoji=_clean(emoji, 8) or "📁",
                     instructions=(instructions or "").strip()[:8000])
         s.add(p)
@@ -136,7 +136,7 @@ def patch(tenant: str, pid: str, name: str | None = None, instructions: str | No
         if name is not None:
             n = _clean(name, 80)
             if not n:
-                raise ProjectError(400, "Project ka naam khaali nahi ho sakta.")
+                raise ProjectError(400, "The project name cannot be empty.")
             p.name = n
         if instructions is not None:
             p.instructions = instructions.strip()[:8000]
@@ -162,7 +162,7 @@ def set_chat(tenant: str, conv: str, pid: str | None) -> dict[str, Any]:
     with session() as s:
         c = s.get(Conversation, conv)
         if c is None or c.tenant_id != tenant or c.deleted:
-            raise ProjectError(404, "Chat nahi mila.")
+            raise ProjectError(404, "Chat not found.")
         if pid:
             _own(s, tenant, pid)
         c.project_id = pid or None
@@ -172,18 +172,18 @@ def set_chat(tenant: str, conv: str, pid: str | None) -> dict[str, Any]:
 # ------------------------------------------------------------------ files
 def add_file(tenant: str, pid: str, name: str, data: bytes) -> dict[str, Any]:
     if not data:
-        raise ProjectError(400, "File khaali hai.")
+        raise ProjectError(400, "The file is empty.")
     if len(data) > MAX_FILE:
-        raise ProjectError(413, "25 MB se badi file project mein nahi jaati.")
+        raise ProjectError(413, "A file larger than 25 MB cannot go into a project.")
     from . import filecheck
     rt = filecheck.real_type(name or "file", data)
     if rt.get("danger"):
-        raise ProjectError(400, f"Yeh file khatarnak lag rahi hai ({rt.get('note')}); project mein nahi li.")
+        raise ProjectError(400, f"This file looks dangerous ({rt.get('note')}); it was not added to the project.")
     name = (name or "file").replace("\\", "/").rsplit("/", 1)[-1][:180] or "file"
     with session() as s:
         _own(s, tenant, pid)
         if s.scalar(select(func.count(ProjectFile.id)).where(ProjectFile.project_id == pid)) >= MAX_FILES:
-            raise ProjectError(409, f"Ek project mein {MAX_FILES} files tak.")
+            raise ProjectError(409, f"A project takes up to {MAX_FILES} files.")
     fid = "pf_" + secrets.token_hex(8)
     path = _dir(pid) / fid
     path.write_bytes(data)
@@ -213,7 +213,7 @@ def remove_file(tenant: str, pid: str, fid: str) -> dict[str, Any]:
         _own(s, tenant, pid)
         f = s.get(ProjectFile, fid)
         if f is None or f.project_id != pid:
-            raise ProjectError(404, "File nahi mili.")
+            raise ProjectError(404, "File not found.")
         path, doc = f.path, f.gyaan_doc
         s.delete(f)
     try:

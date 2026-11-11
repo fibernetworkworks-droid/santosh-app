@@ -67,7 +67,7 @@ def choose(tenant: str, engine: str) -> dict[str, Any]:
     if engine not in ENGINES:
         raise ValueError("engine must be gemini or openai")
     if engine == "openai" and not allowed(tenant):
-        raise PermissionError("Real voice (OpenAI) abhi trial mein hai - sirf owner ke liye.")
+        raise PermissionError("Real voice (OpenAI) is in trial for now - only for the owner.")
     with _LOCK:
         _write(DIR / f"{_slug(tenant)}.json", {"engine": engine})
     return view(tenant)
@@ -100,15 +100,15 @@ def pick(tenant: str) -> tuple[str, str]:
     if not st.voice_openai_enabled:   # v0.622 owner: "SWITCH VOICE TO GEMINI - CHATGPT IS VERY BAD"
         return "gemini", ""
     if not st.openai_api_key:
-        return "gemini", "Real voice ke liye server par OpenAI key nahi hai - abhi Gemini awaaz."
+        return "gemini", "The server has no OpenAI key for real voice - using the Gemini voice for now."
     if not allowed(tenant):
-        return "gemini", "Real voice abhi trial mein hai - abhi Gemini awaaz."
+        return "gemini", "Real voice is in trial for now - using the Gemini voice."
     u = _usage()
     if st.voice_openai_month_usd <= 0 or float(u.get("usd") or 0) >= st.voice_openai_month_usd:
-        return "gemini", "Is mahine ka real voice budget poora ho gaya - abhi Gemini awaaz."
+        return "gemini", "This month's real voice budget is used up - using the Gemini voice for now."
     mins = float((u.get("seconds") or {}).get(tenant) or 0) / 60
     if st.voice_openai_user_min and mins >= st.voice_openai_user_min:
-        return "gemini", "Is mahine ke real voice minute poore ho gaye - abhi Gemini awaaz."
+        return "gemini", "This month's real voice minutes are used up - using the Gemini voice for now."
     return "openai", ""
 
 

@@ -689,7 +689,7 @@ def _heard_on_call(conv: str, kind: str) -> bool:
 # the app (she wrote in the last 20 minutes).
 URGENT_KINDS = {"operator_ask", "bazar_approval", "studio_approval", "ask_form", "employee_ask", "site_down",
                 "cyber_incident", "dpo_breach", "google_reconnect"}
-_OWN_REMINDER = re.compile(r"^Yaad dila ra(?:ha|hi) hoon:")
+_OWN_REMINDER = re.compile(r"^(?:Yaad dila ra(?:ha|hi) hoon|Reminder):")
 _AWAKE: dict[str, float] = {}
 _HELD: dict[str, list[dict[str, Any]]] = {}
 NIGHT_SEND_MAX = 3

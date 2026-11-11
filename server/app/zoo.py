@@ -81,7 +81,7 @@ def model(model_id: str) -> dict:
     for m in load_catalog().get("models", []):
         if m.get("id") == (model_id or "").strip():
             return m
-    raise ZooError(f"zoo model '{model_id}' nahi mila. action=models se poora naam dekhein.")
+    raise ZooError(f"zoo model '{model_id}' was not found. See the full name with action=models.")
 
 
 def list_models(kind: str = "", mode: str = "", q: str = "", limit: int = 40) -> list[dict]:
@@ -191,7 +191,7 @@ def _payload(m: dict, prompt: str, image_urls: list[str], aspect: str = "", reso
         p[fld] = max(1, int(num))
     if mode in ("i2i", "i2v"):
         if not image_urls:
-            raise ZooError("is model ko kam se kam EK image URL chahiye (reference photo / start frame).")
+            raise ZooError("this model needs at least ONE image URL (a reference photo / start frame).")
         if m.get("max_images") and len(image_urls) > 1:
             p[m.get("images_param") or "images_list"] = image_urls[: int(m["max_images"])]
         else:
@@ -205,7 +205,7 @@ async def kie_upload(data_url: str) -> str:
     """A data-URI / local reference -> a public kie CDN URL (their base64 upload), for kie models."""
     k = kie_key()
     if not k:
-        raise ZooError("zoo kie: reference upload ke liye ZOO_KIE_KEY chahiye (server env).")
+        raise ZooError("zoo kie: a reference upload needs ZOO_KIE_KEY (server env).")
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=20)) as c:
             r = await c.post(KIE_UPLOAD, headers={"Authorization": f"Bearer {k}", "Content-Type": "application/json"},
@@ -220,7 +220,7 @@ async def kie_upload(data_url: str) -> str:
     d = j.get("data") if isinstance(j.get("data"), dict) else {}
     url = d.get("downloadUrl") or d.get("url") or j.get("downloadUrl") or j.get("url")
     if not url:
-        raise ZooError(f"zoo kie upload ne URL nahi diya: {json.dumps(j)[:200]}")
+        raise ZooError(f"zoo kie upload returned no URL: {json.dumps(j)[:200]}")
     return str(url)
 
 
@@ -246,8 +246,8 @@ async def _kie_submit(m: dict, prompt: str, image_urls: list[str], aspect: str =
     """POST /api/v1/jobs/createTask {model, input} -> "kie:<taskId>" (the prefix routes poll/status)."""
     k = kie_key()
     if not k:
-        raise ZooError("zoo key server par set nahi hai: owner ZOO_KIE_KEY env add karein (kie.ai key). "
-                       "Tab tak zoo list/search kaam karta hai, generate nahi.")
+        raise ZooError("the zoo key is not set on the server: the owner must add the ZOO_KIE_KEY env (kie.ai key). "
+                       "Until then zoo list/search works, generate does not.")
     input_body = _payload(m, prompt, await _kie_images(image_urls), aspect, resolution, duration, num, extra)
     if "aspect_ratio" not in input_body and m.get("aspects"):
         # kie models require aspect_ratio (probe-proven on nano-banana-2-lite, 2026-11-03:
@@ -276,7 +276,7 @@ async def _kie_poll(task_id: str) -> dict:
     """GET /api/v1/jobs/recordInfo?taskId= -> state success|fail|waiting...; resultJson.resultUrls."""
     k = kie_key()
     if not k:
-        raise ZooError("zoo kie key server par set nahi hai (ZOO_KIE_KEY).")
+        raise ZooError("the zoo kie key is not set on the server (ZOO_KIE_KEY).")
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=20)) as c:
             r = await c.get(f"{KIE_BASE}/api/v1/jobs/recordInfo", params={"taskId": task_id},
@@ -310,8 +310,8 @@ async def submit(m: dict, prompt: str, image_urls: list[str] | None = None, aspe
     if gateway_of(m) == "kie":
         return await _kie_submit(m, prompt, list(image_urls or []), aspect, resolution, duration, num, extra)
     if not ready_for(m):
-        raise ZooError("zoo key server par set nahi hai: owner ZOO_MUAPI_KEY env add karein (Muapi.ai key). "
-                       "Tab tak zoo list/search kaam karta hai, generate nahi.")
+        raise ZooError("the zoo key is not set on the server: the owner must add the ZOO_MUAPI_KEY env (Muapi.ai key). "
+                       "Until then zoo list/search works, generate does not.")
     url = f"{BASE}/api/v1/{m['endpoint']}"
     body = _payload(m, prompt, list(image_urls or []), aspect, resolution, duration, num, extra)
     try:
@@ -325,7 +325,7 @@ async def submit(m: dict, prompt: str, image_urls: list[str] | None = None, aspe
         raise ZooError(f"zoo submit failed: {e}", transient=True) from None
     rid = j.get("request_id") or j.get("id") or j.get("task_id")
     if not rid:
-        raise ZooError(f"zoo submit ne request_id nahi diya: {json.dumps(j)[:200]}")
+        raise ZooError(f"zoo submit returned no request_id: {json.dumps(j)[:200]}")
     return str(rid)
 
 

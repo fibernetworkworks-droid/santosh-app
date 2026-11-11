@@ -144,12 +144,12 @@ def pin_fact(tenant_id: str, fact_id: int, pinned: bool) -> MemoryFact:
     with session() as s:
         f = s.get(MemoryFact, int(fact_id))
         if f is None or f.tenant_id != tenant_id:
-            raise ValueError("Yeh yaad nahi mili.")
+            raise ValueError("This memory was not found.")
         if pinned and not f.pinned:
             used = sum(len(x.text) for x in s.scalars(select(MemoryFact).where(
                 MemoryFact.tenant_id == tenant_id, MemoryFact.pinned.is_(True))).all())
             if used + len(f.text) > PINNED_CHARS:
-                raise ValueError(f"'Hamesha yaad' mein {PINNED_CHARS} akshar tak hi aate hain. Pehle koi purani pin hataiye.")
+                raise ValueError(f"'Always remember' holds only up to {PINNED_CHARS} characters. Unpin an older one first.")
         f.pinned = bool(pinned)
         s.flush()
         s.expunge(f)
@@ -215,10 +215,10 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
 
 
 # ---------------- weather (Open-Meteo: free, no key) ----------------
-WMO = {0: "saaf aasmaan", 1: "zyadatar saaf", 2: "halke baadal", 3: "baadal", 45: "kohra", 48: "kohra",
-       51: "halki boondabaandi", 53: "boondabaandi", 55: "tez boondabaandi", 61: "halki baarish", 63: "baarish",
-       65: "tez baarish", 71: "halki barf", 80: "baarish ki bauchhar", 81: "baarish ki bauchhar", 82: "tez bauchhar",
-       95: "aandhi-toofan", 96: "toofan aur ole", 99: "toofan aur ole"}
+WMO = {0: "clear sky", 1: "mostly clear", 2: "partly cloudy", 3: "cloudy", 45: "fog", 48: "fog",
+       51: "light drizzle", 53: "drizzle", 55: "heavy drizzle", 61: "light rain", 63: "rain",
+       65: "heavy rain", 71: "light snow", 80: "rain showers", 81: "rain showers", 82: "heavy showers",
+       95: "thunderstorm", 96: "thunderstorm with hail", 99: "thunderstorm with hail"}
 
 _http: httpx.AsyncClient | None = None
 
@@ -300,14 +300,14 @@ async def compose_briefing(tenant_id: str) -> str:
     p = get_profile(tenant_id)
     tz = tz_of(tenant_id)
     start, end, d = _today_bounds(tz)
-    hello = f"Suprabhat{(' ' + p.name.split(' ')[0]) if p.name else ''}! Aaj {d.strftime('%A, %d %B')} hai."
+    hello = f"Good morning{(' ' + p.name.split(' ')[0]) if p.name else ''}. Today is {d.strftime('%A, %d %B')}."
     parts = [hello]
     try:
         if p.city or p.lat is not None:
             w = await weather_for(tenant_id)
-            line = f"{w['place']}: abhi {round(w['now_c'])}°C, {w['now']}. Aaj {round(w['today_min_c'])}-{round(w['today_max_c'])}°C"
+            line = f"{w['place']}: now {round(w['now_c'])}°C, {w['now']}. Today {round(w['today_min_c'])}-{round(w['today_max_c'])}°C"
             if (w.get("rain_chance_pct") or 0) >= 40:
-                line += f", baarish ki {w['rain_chance_pct']}% sambhavna, chhata rakh lijiye"
+                line += f", {w['rain_chance_pct']}% chance of rain, carry an umbrella"
             parts.append(line + ".")
     except Exception as e:
         log.info("briefing weather skipped: %s", e)
@@ -321,19 +321,19 @@ async def compose_briefing(tenant_id: str) -> str:
         from .cal import service as cal_service
         cal_lines = await asyncio.to_thread(cal_service.today_lines, tenant_id)
         if cal_lines:
-            parts.append("Aaj calendar mein: " + "; ".join(cal_lines) + ".")
+            parts.append("On your calendar today: " + "; ".join(cal_lines) + ".")
     except Exception as e:
         log.info("briefing calendar skipped: %s", e)
     if rem_lines:
-        parts.append("Aaj ke reminders: " + "; ".join(rem_lines) + ".")
+        parts.append("Today's reminders: " + "; ".join(rem_lines) + ".")
     else:
-        parts.append("Aaj koi reminder nahi hai.")
+        parts.append("No reminders today.")
     if open_items:
         lists: dict[str, int] = {}
         for it in open_items:
             lists[it.list_name] = lists.get(it.list_name, 0) + 1
         parts.append("Lists: " + ", ".join(f"{k} mein {v} cheezein" for k, v in lists.items()) + ".")
-    parts.append("Kuch aur karna ho to bas boliye.")
+    parts.append("If you need anything else, just say so.")
     return "\n".join(parts)
 
 

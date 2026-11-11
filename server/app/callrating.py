@@ -15,13 +15,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base, new_id, now, session
 
 REASONS = {
-    "cut_off": "Beech mein kaat diya",
-    "slow": "Jawab der se aaya",
-    "misheard": "Galat samjha",
-    "audio": "Awaaz saaf nahi thi",
-    "not_done": "Kaam nahi hua",
-    "too_long": "Bahut lamba bola",
-    "robotic": "Machine jaisa laga",
+    "cut_off": "Cut me off midway",
+    "slow": "The reply came late",
+    "misheard": "Misunderstood me",
+    "audio": "The voice was not clear",
+    "not_done": "The task was not done",
+    "too_long": "Talked too long",
+    "robotic": "Sounded like a machine",
 }
 
 
@@ -60,7 +60,7 @@ def rate(tenant: str, call_id: str, good: bool, reasons: list[str] | None = None
     except Exception:
         pass
     return {"ok": True, "good": bool(good), "reasons": [REASONS[r] for r in rs],
-            "say": "Shukriya! Isse calls behtar banengi." if good else "Shukriya, yeh theek karne mein madad karega."}
+            "say": "Thank you. This will make calls better." if good else "Thank you, this will help fix it."}
 
 
 def summary(tenant: str | None = None, days: int = 30) -> dict[str, Any]:

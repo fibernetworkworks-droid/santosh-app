@@ -32,14 +32,14 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     from .net import media
     from .pc.service import public_file
     if not data:
-        raise FileError("File khaali hai.")
+        raise FileError("The file is empty.")
     if len(data) > MAX_BYTES:
-        raise FileError(f"File {MAX_BYTES // 1024 // 1024} MB se badi hai; Drive link bhejiye.")
+        raise FileError(f"The file is larger than {MAX_BYTES // 1024 // 1024} MB; send a Drive link instead.")
     name = (name or "file").replace("\\", "/").rsplit("/", 1)[-1][:180] or "file"
     from . import filecheck
     rt = filecheck.real_type(name, data)
     if rt["danger"]:
-        raise FileError(f"Yeh file khatarnak lag rahi hai: {rt['note']}. Hoola ne nahi li (kisi ne bheji ho to mat kholiye).")
+        raise FileError(f"This file looks dangerous: {rt['note']}. Hoola did not take it (if someone sent it to you, do not open it).")
     mt = content_type if content_type and content_type != "application/octet-stream" else (mimetypes.guess_type(name)[0] or "")
     row = ms.store_bytes(tenant, name, data, "mail")
     try:

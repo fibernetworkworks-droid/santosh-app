@@ -67,9 +67,9 @@ def real_type(name: str, data: bytes) -> dict[str, Any]:
     risky = group in DANGER_GROUPS or label in DANGER_LABELS
     if claimed in ("document", "image", "media") and risky and out["score"] >= 0.6 and not (ext in TEXT_OK and group == "code"):
         out["danger"] = True
-        out["note"] = f"naam '{ext}' file jaisa hai par andar program / script ({label}) hai"
+        out["note"] = f"the name looks like a '{ext}' file but inside it is a program / script ({label})"
     elif claimed != "other" and group not in ("", "unknown") and group != claimed and not (
             claimed == "document" and group in ("text", "code", "archive")) and not (claimed == "media" and group in ("audio", "video")):
         out["mismatch"] = True
-        out["note"] = f"naam '{ext}' hai par andar {label} ({group}) hai"
+        out["note"] = f"the name says '{ext}' but inside it is {label} ({group})"
     return out

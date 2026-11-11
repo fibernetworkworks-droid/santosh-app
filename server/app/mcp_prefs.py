@@ -120,9 +120,9 @@ def view(tenant: str, pack_id: str, tools: list[dict[str, Any]], caution: bool =
 def set_pref(tenant: str, pack_id: str, tool: str, known: list[str], enabled: bool | None = None,
              ask: bool | None = None, caution: bool = False) -> dict[str, Any]:
     if tool not in known:
-        raise PrefError("Is server mein yeh tool nahi mila. List dobara kholiye.")
+        raise PrefError("This tool was not found on this server. Open the list again.")
     if ask is False and locked(tool, caution):
-        raise PrefError("Yeh tool bhejta / mitata / paise ya share karta hai: iske liye aapka tap hamesha lagega.")
+        raise PrefError("This tool sends / deletes / moves money or shares: it will always need your tap.")
     with session() as s:
         r = s.scalars(select(McpToolPref).where(McpToolPref.tenant_id == tenant, McpToolPref.pack_id == pack_id,
                                                 McpToolPref.tool == tool)).first()

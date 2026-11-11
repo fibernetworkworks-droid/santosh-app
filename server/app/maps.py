@@ -103,7 +103,7 @@ def set_client(c) -> None:  # tests
 def _key() -> str:
     k = get_settings().google_maps_api_key.strip()
     if not k:
-        raise MapsError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise MapsError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     return k
 
 
@@ -113,16 +113,16 @@ def _explain(r: httpx.Response) -> str:
     except Exception:
         msg = r.text
     if r.status_code == 403 or "not enabled" in msg.lower() or "has not been used" in msg.lower():
-        return "Google Cloud mein yeh Maps API enable nahi hai (Places API (New), Routes API, Geocoding API) ya billing band hai."
+        return "This Maps API is not enabled in Google Cloud (Places API (New), Routes API, Geocoding API) or billing is off."
     if "API key not valid" in msg:
-        return "Google Maps API key sahi nahi hai."
+        return "The Google Maps API key is not valid."
     return f"Google Maps error {r.status_code}: {msg[:160]}"
 
 
 # ---------------------------------------------------------------- user location
 def save_location(tenant_id: str, lat: float, lng: float, accuracy_m: float | None = None) -> None:
     if not (-90 <= lat <= 90 and -180 <= lng <= 180):
-        raise MapsError("Location sahi nahi hai")
+        raise MapsError("The location is not valid")
     with session() as s:
         row = s.get(UserLocation, tenant_id)
         if row is None:
@@ -138,12 +138,12 @@ def where_am_i(tenant_id: str) -> dict | None:
         if row is not None:
             at = row.at if row.at.tzinfo else row.at.replace(tzinfo=timezone.utc)
             if datetime.now(timezone.utc) - at < FRESH:
-                return {"lat": row.lat, "lng": row.lng, "source": "phone", "name": "aapki location"}
+                return {"lat": row.lat, "lng": row.lng, "source": "phone", "name": "your location"}
         p = s.get(Profile, tenant_id)
         if p is not None and p.lat is not None and p.lon is not None:
-            return {"lat": p.lat, "lng": p.lon, "source": "city", "name": p.city or "aapka shehar"}
+            return {"lat": p.lat, "lng": p.lon, "source": "city", "name": p.city or "your city"}
         if row is not None:
-            return {"lat": row.lat, "lng": row.lng, "source": "phone_old", "name": "aapki aakhri location"}
+            return {"lat": row.lat, "lng": row.lng, "source": "phone_old", "name": "your last location"}
     return None
 
 
@@ -277,7 +277,7 @@ async def route(origin: dict, destination: dict, mode: str = "DRIVE", language: 
         raise MapsError(_explain(r))
     routes = r.json().get("routes") or []
     if not routes:
-        raise MapsError("Is jagah tak rasta nahi mila.")
+        raise MapsError("No route found to this place.")
     rt = routes[0]
     secs, free = _secs(rt.get("duration")), _secs(rt.get("staticDuration"))
     steps = []
@@ -288,7 +288,7 @@ async def route(origin: dict, destination: dict, mode: str = "DRIVE", language: 
                 steps.append(ins)
     traffic = ""
     if free and secs > free * 1.25 and secs - free > 300:
-        traffic = f"Traffic hai: aam din se {_human(secs - free)} zyada"
+        traffic = f"There is traffic: {_human(secs - free)} more than a normal day"
     return {"distance_km": round((rt.get("distanceMeters") or 0) / 1000, 1), "duration": _human(secs),
             "duration_min": round(secs / 60), "traffic": traffic, "via": rt.get("description", ""), "mode": mode,
             "first_steps": steps[:6], "warnings": rt.get("warnings", [])}
@@ -307,13 +307,13 @@ async def matrix(origins: list[dict], destinations: list[dict], mode: str = "DRI
     events and is charged as 100 BEFORE the call - the cap refuses it rather than discovering the bill after.
     """
     if not origins or not destinations:
-        raise MapsError("Matrix ke liye kam se kam ek shuruaat aur ek manzil chahiye.")
+        raise MapsError("A matrix needs at least one origin and one destination.")
     n = len(origins) * len(destinations)
     ceiling = MATRIX_HARD_MAX_TRANSIT if mode == "TRANSIT" else MATRIX_HARD_MAX
     mine = max(1, int(get_settings().maps_matrix_max or 100))
     if n > min(ceiling, mine):
-        raise MapsError(f"{len(origins)} x {len(destinations)} = {n} jodiyan hain; ek baar mein {min(ceiling, mine)} "
-                        f"tak hi (har jodi ka alag paisa lagta hai). Kam jagah dein.")
+        raise MapsError(f"{len(origins)} x {len(destinations)} = {n} pairs; at most {min(ceiling, mine)} at a time "
+                        f"(each pair is charged separately). Give fewer places.")
 
     def wp(x):
         return {"waypoint": {"location": {"latLng": {"latitude": x["lat"], "longitude": x["lng"]}}}}
@@ -333,10 +333,10 @@ async def matrix(origins: list[dict], destinations: list[dict], mode: str = "DRI
         data = r.json()
     except ValueError:
         _unbill(rc)
-        raise MapsError("Google Maps ka jawab samajh nahi aaya.")
+        raise MapsError("Could not read the answer from Google Maps.")
     if isinstance(data, dict):
         data = [data]
-    rows: list[list[dict]] = [[{"ok": False, "reason": "Google ne is jodi ka jawab nahi diya"}
+    rows: list[list[dict]] = [[{"ok": False, "reason": "Google did not answer for this pair"}
                                for _ in destinations] for _ in origins]
     for el in data:
         try:
@@ -347,7 +347,7 @@ async def matrix(origins: list[dict], destinations: list[dict], mode: str = "DRI
             continue
         st = el.get("status") or {}
         if (st.get("code") or 0) != 0 or el.get("condition") not in (None, "ROUTE_EXISTS"):
-            rows[i][j] = {"ok": False, "reason": "Is jagah tak rasta nahi mila"}
+            rows[i][j] = {"ok": False, "reason": "No route found to this place"}
             continue
         secs = _secs(el.get("duration"))
         rows[i][j] = {"ok": True, "distance_km": round((el.get("distanceMeters") or 0) / 1000, 1),
@@ -414,7 +414,7 @@ async def solar_building(lat: float, lng: float, tenant_id: str = "") -> dict:
     nothing is stored. Coverage is not universal: a place Google has no imagery for answers NOT_FOUND and is reported
     as 'not covered', never filled in. Billed per successful request."""
     if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
-        raise MapsError("Location sahi nahi hai")
+        raise MapsError("The location is not valid")
     rc = _bill(tenant_id, mapsbill.SKU_SOLAR)
     r = await _client().get(SOLAR_URL, params={"location.latitude": float(lat), "location.longitude": float(lng),
                                                "requiredQuality": "BASE"}, headers={"X-Goog-Api-Key": _key()})
@@ -443,12 +443,12 @@ async def snap_to_roads(points: list[dict], mode: str = "DRIVING", interpolate: 
     """Roads API snapToRoads: a GPS trail -> the road it was on. At most 100 points a request. Billed per request.
     The snapped lat/lng are returned live and not kept (Roads allows lat/lng for 30 days, nothing else)."""
     if not points:
-        raise MapsError("Kam se kam ek point chahiye.")
+        raise MapsError("At least one point is needed.")
     if len(points) > SNAP_MAX_POINTS:
-        raise MapsError(f"Ek baar mein {SNAP_MAX_POINTS} point tak; {len(points)} hain. Hisson mein baant dein.")
+        raise MapsError(f"At most {SNAP_MAX_POINTS} points at a time; there are {len(points)}. Split them into parts.")
     for p in points:
         if not (-90 <= p["lat"] <= 90 and -180 <= p["lng"] <= 180):
-            raise MapsError("Koi point galat hai (lat/lng).")
+            raise MapsError("A point is not valid (lat/lng).")
     mode = mode if mode in ("DRIVING", "WALKING", "CYCLING") else "DRIVING"
     path = "|".join(f"{p['lat']},{p['lng']}" for p in points)
     rc = _bill(tenant_id, mapsbill.SKU_ROADS)
@@ -484,37 +484,37 @@ def grade_address(verdict: dict, address: dict) -> tuple[str, list[str]]:
     bad = False
     if v.get("hasUnconfirmedComponents") or a.get("unconfirmedComponentTypes"):
         bad = True
-        why.append("Kuch hissa confirm nahi hua: " + ", ".join(a.get("unconfirmedComponentTypes") or ["address ka ek hissa"]))
+        why.append("Some parts could not be confirmed: " + ", ".join(a.get("unconfirmedComponentTypes") or ["a part of the address"]))
     if a.get("missingComponentTypes"):
         bad = True
-        why.append("Address mein yeh kam hai: " + ", ".join(a["missingComponentTypes"]))
+        why.append("The address is missing: " + ", ".join(a["missingComponentTypes"]))
     if a.get("unresolvedTokens"):
         bad = True
-        why.append("Yeh shabd samajh nahi aaye: " + ", ".join(a["unresolvedTokens"]))
+        why.append("These words were not understood: " + ", ".join(a["unresolvedTokens"]))
     if not v.get("addressComplete") and not bad:
         bad = True
-        why.append("Address poora nahi lag raha.")
+        why.append("The address does not look complete.")
     for c in a.get("addressComponents") or []:
         nm = (c.get("componentName") or {}).get("text", "")
         t = c.get("componentType", "")
         if c.get("replaced"):
             bad = True
-            why.append(f"{t} badal diya gaya (ab: {nm}) - likha hua galat tha")
+            why.append(f"{t} was replaced (now: {nm}) - what was written was wrong")
         elif c.get("confirmationLevel") == "UNCONFIRMED_AND_SUSPICIOUS":
             bad = True
-            why.append(f"{t} '{nm}' shak wala hai")
+            why.append(f"{t} '{nm}' looks doubtful")
         if c.get("spellCorrected"):
-            why.append(f"{t} ki spelling theek ki: {nm}")
+            why.append(f"{t} spelling corrected: {nm}")
         if c.get("inferred"):
-            why.append(f"{t} apne aap jodi gayi: {nm}")
+            why.append(f"{t} added automatically: {nm}")
     if bad:
         return "galat", why
     if v.get("validationGranularity") in _FINE:
         return "pakka", why
     if v.get("validationGranularity") in _ROAD:
-        why.append("Sirf sadak / block tak pakka hua, ghar ka number nahi - delivery se pehle landmark ya phone confirm karein.")
+        why.append("Confirmed only up to the road / block, not the house number - confirm a landmark or phone number before delivery.")
         return "sadak_tak", why
-    why.append("Google itna pakka nahi bata saka.")
+    why.append("Google could not be that sure.")
     return "sadak_tak", why
 
 
@@ -526,7 +526,7 @@ async def validate_address(address: str, pin: str = "", city: str = "", state: s
     NOTHING is stored: this is a customer's address and Google content. Only the live answer is returned."""
     text = re.sub(r"\s+", " ", str(address or "")).strip()
     if not text:
-        raise MapsError("Address chahiye.")
+        raise MapsError("An address is needed.")
     body_addr: dict = {"regionCode": "IN", "addressLines": [text]}
     if pin:
         body_addr["postalCode"] = re.sub(r"\D", "", str(pin))[:6]
@@ -535,7 +535,7 @@ async def validate_address(address: str, pin: str = "", city: str = "", state: s
     if state:
         body_addr["administrativeArea"] = str(state).strip()
     if sum(len(str(x)) for x in body_addr.values() if not isinstance(x, list)) + len(text) > 280:
-        raise MapsError("Address bahut lamba hai (280 akshar tak chalta hai).")
+        raise MapsError("The address is too long (up to 280 characters).")
     rc = _bill(tenant_id, mapsbill.SKU_ADDRESS_ENT)
     r = await _client().post(VALIDATE_URL, json={"address": body_addr},
                              headers={"X-Goog-Api-Key": _key()})
@@ -562,7 +562,7 @@ async def validate_address(address: str, pin: str = "", city: str = "", state: s
 async def reverse_geocode(lat: float, lng: float, tenant_id: str = "") -> dict | None:
     """A point -> the address Google gives it (Geocoding API, latlng). Live only, never stored."""
     if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
-        raise MapsError("Location sahi nahi hai")
+        raise MapsError("The location is not valid")
     rc = _bill(tenant_id, mapsbill.SKU_GEOCODE)
     r = await _client().get(GEOCODE_URL, params={"latlng": f"{float(lat)},{float(lng)}", "region": "in",
                                                  "language": "en", "key": _key()})
@@ -611,7 +611,7 @@ async def nearby(center: dict, kinds: list[str] | None = None, radius_m: int = 2
     are Enterprise-priced and are meant to be bought one place at a time by place_details() on open.
     """
     if not center or center.get("lat") is None:
-        raise MapsError("Nearby search ke liye ek point chahiye (lat/lng).")
+        raise MapsError("A nearby search needs a point (lat/lng).")
     radius = float(max(1, min(int(radius_m or 2000), NEARBY_MAX_RADIUS_M)))
     body: dict = {"languageCode": language, "regionCode": "IN",
                   "maxResultCount": max(1, min(int(limit or 12), NEARBY_MAX_RESULTS)),
@@ -647,7 +647,7 @@ async def place_details(place_id: str, language: str = "en", tenant_id: str = ""
     """
     pid = str(place_id or "").strip()
     if not pid:
-        raise MapsError("place_id chahiye.")
+        raise MapsError("place_id is needed.")
     rc = _bill(tenant_id, mapsbill.SKU_DETAILS_ENT)
     r = await _client().get(DETAILS_URL + quote(pid, safe=""),
                             params={"languageCode": language},

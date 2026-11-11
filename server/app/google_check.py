@@ -30,13 +30,13 @@ def diagnose(tenant: str, live: bool = True) -> dict[str, Any]:
             problems.append(p)
 
     if not out["server_ready"]:
-        add("Server par Google sign-in set nahi hai: VPS ki .env mein GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, "
-            "PUBLIC_BASE_URL aur SECRET_KEY chahiye.")
+        add("Google sign-in is not set up on the server: the VPS .env needs GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, "
+            "PUBLIC_BASE_URL and SECRET_KEY.")
     try:
         clients = da.clients(tenant)
     except Exception as e:
         clients = []
-        add(f"Drive accounts padhne mein dikkat: {e}")
+        add(f"Problem reading the Drive accounts: {e}")
     # live first: a refresh that works clears an old error, one that fails records it
     for cl in clients:
         row: dict[str, Any] = {"account": cl.address, "kind": cl.kind, "ok": None, "error": ""}
@@ -68,6 +68,6 @@ def diagnose(tenant: str, live: bool = True) -> dict[str, Any]:
     if tenant == st.tenant_id:
         from . import gdrive
         out["service_account"] = gdrive.configured(None)
-    out["say"] = ("Google Drive theek chal raha hai." if drive_ok and not problems else
-                  " ".join(problems[:2]) or "Google Drive juda nahi hai.")
+    out["say"] = ("Google Drive is working fine." if drive_ok and not problems else
+                  " ".join(problems[:2]) or "Google Drive is not connected.")
     return out

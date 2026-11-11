@@ -34,15 +34,15 @@ LOAD_KEY = "units"
 
 # Google's SkippedShipment.Reason.Code, in her words. Unknown codes are passed through, not hidden.
 REASONS = {
-    "NO_VEHICLE": "koi gaadi hi nahi di gayi",
-    "DEMAND_EXCEEDS_VEHICLE_CAPACITY": "maal gaadi ki capacity se zyada hai",
-    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_DISTANCE_LIMIT": "gaadi ki doori ki seema mein nahi aata",
-    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_DURATION_LIMIT": "gaadi ke kaam ke samay mein nahi aata",
-    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_TRAVEL_DURATION_LIMIT": "gaadi ke chalne ke samay mein nahi aata",
-    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_TIME_WINDOWS": "iska samay gaadi ke samay se mel nahi khata",
-    "VEHICLE_NOT_ALLOWED": "yeh gaadi is stop ke liye allowed nahi",
-    "VEHICLE_IGNORED": "gaadi chhodi gayi",
-    "SHIPMENT_IGNORED": "stop chhoda gaya",
+    "NO_VEHICLE": "no vehicle was given at all",
+    "DEMAND_EXCEEDS_VEHICLE_CAPACITY": "the load is more than the vehicle's capacity",
+    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_DISTANCE_LIMIT": "it does not fit within the vehicle's distance limit",
+    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_DURATION_LIMIT": "it does not fit within the vehicle's working time",
+    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_TRAVEL_DURATION_LIMIT": "it does not fit within the vehicle's driving time",
+    "CANNOT_BE_PERFORMED_WITHIN_VEHICLE_TIME_WINDOWS": "its time window does not match the vehicle's",
+    "VEHICLE_NOT_ALLOWED": "this vehicle is not allowed for this stop",
+    "VEHICLE_IGNORED": "vehicle left out",
+    "SHIPMENT_IGNORED": "stop left out",
 }
 
 _lock = threading.Lock()
@@ -69,8 +69,8 @@ def _token() -> str:
     global _creds
     s = get_settings()
     if not configured():
-        raise OptError("Din ka rasta ke liye Google Cloud project aur service-account file chahiye "
-                       "(server par ROUTE_OPT_PROJECT aur ROUTE_OPT_SA_FILE). Maps ki API key isme nahi chalti.")
+        raise OptError("The day's route plan needs a Google Cloud project and a service-account file "
+                       "(ROUTE_OPT_PROJECT and ROUTE_OPT_SA_FILE on the server). The Maps API key does not work for this.")
     with _lock:
         if _creds is None:
             from google.oauth2 import service_account
@@ -79,13 +79,13 @@ def _token() -> str:
                     info = json.load(f)
                 _creds = service_account.Credentials.from_service_account_info(info, scopes=[SCOPE])
             except (OSError, ValueError, KeyError) as e:
-                raise OptError(f"Service-account file padh nahi paya: {type(e).__name__}") from e
+                raise OptError(f"Could not read the service-account file: {type(e).__name__}") from e
         if not _creds.valid or (_creds.expiry and (_creds.expiry.timestamp() - time.time()) < 120):
             import google.auth.transport.requests
             try:
                 _creds.refresh(google.auth.transport.requests.Request())
             except Exception as e:                                  # network / bad key: say so, never leak the key
-                raise OptError(f"Google se token nahi mila ({type(e).__name__}).") from e
+                raise OptError(f"Could not get a token from Google ({type(e).__name__}).") from e
         return _creds.token
 
 
@@ -93,7 +93,7 @@ def _token() -> str:
 def _hm(text: str) -> tuple[int, int]:
     m = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", str(text or ""))
     if not m or int(m.group(1)) > 24 or int(m.group(2)) > 59:
-        raise OptError(f"Samay '{text}' samajh nahi aaya (HH:MM chahiye, jaise 10:30).")
+        raise OptError(f"Could not understand the time '{text}' (HH:MM is needed, for example 10:30).")
     return int(m.group(1)), int(m.group(2))
 
 
@@ -117,7 +117,7 @@ def build_request(stops: list[dict], vehicles: list[dict], day: date, tz_name: s
     Every stop is a mandatory shipment (no penalty_cost = infinite per the proto): the solver may skip one only
     when it is truly infeasible, and then says why."""
     if not stops or not vehicles:
-        raise OptError("Kam se kam ek stop aur ek gaadi chahiye.")
+        raise OptError("At least one stop and one vehicle are needed.")
     tz = ZoneInfo(tz_name)
     g0 = datetime(day.year, day.month, day.day, tzinfo=tz)
     shipments = []
@@ -199,7 +199,7 @@ def parse_response(resp: dict, stops: list[dict], vehicles: list[dict], tz_name:
         si = int(sk.get("index") or 0)
         codes = [(x or {}).get("code", "") for x in sk.get("reasons") or []]
         skipped.append({"stop": (stops[si].get("name") if 0 <= si < len(stops) else sk.get("label")) or f"stop {si + 1}",
-                        "why": [REASONS.get(c, c or "wajah nahi batayi") for c in codes] or ["Google ne wajah nahi batayi"]})
+                        "why": [REASONS.get(c, c or "no reason given") for c in codes] or ["Google gave no reason"]})
     return {"routes": routes, "skipped": skipped, "placed": seen, "submitted": len(stops),
             "complete": seen + len(skipped) == len(stops),
             "validation_errors": [str((e or {}).get("displayName") or (e or {}).get("name") or e)[:160]
@@ -211,10 +211,10 @@ async def optimize(stops: list[dict], vehicles: list[dict], day: date | None = N
                    tz_name: str = "Asia/Kolkata") -> dict:
     s = get_settings()
     if len(vehicles) > MAX_VEHICLES:
-        raise OptError(f"Ek baar mein {MAX_VEHICLES} gaadiyan tak.")
+        raise OptError(f"At most {MAX_VEHICLES} vehicles at a time.")
     cap = max(1, int(s.maps_opt_max_stops or 40))
     if len(stops) > cap:
-        raise OptError(f"Ek baar mein {cap} stop tak (har stop ka paisa lagta hai); {len(stops)} hain. Do hisson mein baant dein.")
+        raise OptError(f"At most {cap} stops at a time (each stop is charged); there are {len(stops)}. Split them into two parts.")
     day = day or datetime.now(ZoneInfo(tz_name)).date()
     body = build_request(stops, vehicles, day, tz_name)
     token = await asyncio.to_thread(_token)                     # before billing: a missing key costs nothing
@@ -228,8 +228,8 @@ async def optimize(stops: list[dict], vehicles: list[dict], day: date | None = N
     if r.status_code >= 400:
         maps._unbill(rc)
         if r.status_code in (401, 403):
-            raise OptError("Google ne Route Optimization se mana kiya: project mein yeh API enable karein aur "
-                           "service account ko access dein.")
+            raise OptError("Google refused Route Optimization: enable this API in the project and "
+                           "give the service account access.")
         raise OptError(maps._explain(r))
     plan = parse_response(r.json() or {}, stops, vehicles, tz_name)
     plan["day"] = day.isoformat()

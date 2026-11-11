@@ -47,9 +47,9 @@ CODE_TTL = timedelta(minutes=15)
 CODE_TRIES = 5
 WA_WINDOW = timedelta(hours=24)
 MAX_OUT = {"whatsapp": 4000, "telegram": 4000, "slack": 3500, "teams": 4000}
-CONTEXT = ("Yeh message maalkin ne {label} se bheja hai (bahar ka app). Jawab chhota aur saaf rakhiye - wahan "
-           "lambi tables theek nahi dikhti. Jo card tap karna ho (bhejna, paisa, delete) woh Hoola app mein hi hoga; "
-           "yeh bata dijiye.")
+CONTEXT = ("The owner sent this message from {label} (an outside app). Keep the reply short and clear - long tables "
+           "do not show well there. Any card that needs a tap (sending, money, delete) happens only in the Hoola app; "
+           "say so.")
 
 
 class BaharError(ValueError):
@@ -212,7 +212,7 @@ async def setup(tenant: str, channel: str, creds: dict[str, str] | None = None, 
         meta.update(bot_name="@" + str((me or {}).get("username") or ""))
     elif channel == "slack":
         if not sec.get("bot_token", "").startswith("xoxb-") or not sec.get("signing_secret"):
-            raise BaharError("Slack app ka Bot token (xoxb-...) aur Signing secret dono chahiye.")
+            raise BaharError("Both the Slack app's Bot token (xoxb-...) and its Signing secret are needed.")
         st, body = await _http("POST", "https://slack.com/api/auth.test",
                                headers={"Authorization": f"Bearer {sec['bot_token']}"})
         if st >= 400 or not (body or {}).get("ok"):
@@ -221,7 +221,7 @@ async def setup(tenant: str, channel: str, creds: dict[str, str] | None = None, 
                     bot_user=str(body.get("user_id") or ""))
     elif channel == "teams":
         if not sec.get("app_id") or not sec.get("app_password"):
-            raise BaharError("Azure Bot ka Microsoft App ID aur client secret (password) dono chahiye.")
+            raise BaharError("Both the Azure Bot's Microsoft App ID and its client secret (password) are needed.")
         await _teams_token(sec, fresh=True)          # proves the pair works before she pairs
     code = f"{secrets.randbelow(10 ** 6):06d}"
     with session() as s:

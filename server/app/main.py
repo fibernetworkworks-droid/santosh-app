@@ -769,7 +769,7 @@ async def post_compact(conversation_id: str, tenant: str = Depends(current_tenan
     async with lk:
         v = await compact.run(conversation_id, tenant, "manual")
     if v is None:
-        return {"compact": None, "say": "Chat abhi chhoti hi hai - saar banane layak purani baatein nahi hain."}
+        return {"compact": None, "say": "This chat is still short - there is no older talk worth summarizing yet."}
     return {"compact": v}
 
 
@@ -1093,11 +1093,11 @@ def chat_export(conversation_id: str, fmt: str = "md", tenant: str = Depends(cur
             text = str(p.get("text") or "").strip()
             if not text or p.get("replaced_by") or p.get("taken_back"):
                 continue                  # empty shell, the old retry branch, or a message she took back
-            who = "Aap" if p.get("role") == "user" else avatar
+            who = "You" if p.get("role") == "user" else avatar
             files = p.get("files") or []
             head = f"## {who} · {at}"
             if p.get("edited"):
-                head += " · (badla hua)"
+                head += " · (edited)"
             out += [head, "", text, ""]
             for f in files:
                 name = f.get("name") if isinstance(f, dict) else str(f)
@@ -1115,7 +1115,7 @@ def chat_export(conversation_id: str, fmt: str = "md", tenant: str = Depends(cur
             elif p.get("detail"):
                 line += f" — {p['detail']}"
             if not n_steps:
-                out += ["**Kadam**", ""]
+                out += ["**Steps**", ""]
             out += [line]
             n_steps += 1
         elif e.kind not in LIVE_ONLY and e.kind != "message":
@@ -1636,7 +1636,7 @@ async def google_callback(request: Request):
     web = console.is_web_state(state)
     if err:
         if web:   # she pressed Cancel on Google's screen: back to the console, not a bare error page
-            msg = "Google sign-in band kiya gaya." if err == "access_denied" else f"Google sign-in nahi hua ({err[:40]})."
+            msg = "Google sign-in was cancelled." if err == "access_denied" else f"Google sign-in did not work ({err[:40]})."
             return RedirectResponse("/console/?error=" + quote(msg), headers=_CONSOLE_NOREF)
         return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{err}</p>", status_code=400)
     if not code:
@@ -1646,7 +1646,7 @@ async def google_callback(request: Request):
     except accounts.AuthError as e:
         if web:
             return RedirectResponse("/console/?error=" + quote(str(e)[:160]), headers=_CONSOLE_NOREF)
-        return HTMLResponse(f"<h3>Sign-in nahi hua</h3><p>{e}</p>", status_code=400)
+        return HTMLResponse(f"<h3>Sign-in did not work</h3><p>{e}</p>", status_code=400)
     if web:   # v0.142 Hoola Console: a one-time code, never the session token, goes into the URL
         apps = "&google=apps" if state.startswith(console.WEB_STATE + "g.") else ""
         return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"]) + apps, headers=_CONSOLE_NOREF)
@@ -1655,8 +1655,8 @@ async def google_callback(request: Request):
     # the app registers this scheme; the page also shows the token in case the link doesn't auto-open
     html = f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">
-<h2>Santosh se juda! ✅</h2><p>{res['email']}</p>
-<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<h2>Connected to Hoola ✅</h2><p>{res['email']}</p>
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
 <script>location.href={deep!r};</script></body>"""
     return HTMLResponse(html)
 
@@ -2441,7 +2441,7 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
         call = v.CALLS.get(resume)
         from . import callconv as _cc   # v0.646 a split call lives on its own record: match the chat behind both
         if call is None or call.tenant != tenant or _cc.chat_of(call.conv) != _cc.chat_of(conv) or call.closed.is_set():
-            await ws.send_text(json.dumps({"type": "error", "code": "gone", "message": "Pichli call ab chalu nahi hai."}))
+            await ws.send_text(json.dumps({"type": "error", "code": "gone", "message": "The previous call is no longer active."}))
             await ws.close(code=4410)
             return
         reader = await call.attach(ws)
@@ -2467,7 +2467,7 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
     if why:
         log.info("voice call for %s runs on Gemini: %s", tenant, why)
     if not st.gemini_api_key:
-        await ws.send_text(json.dumps({"type": "error", "message": "Server par GEMINI_API_KEY set nahi hai."}))
+        await ws.send_text(json.dumps({"type": "error", "message": "GEMINI_API_KEY is not set on the server."}))
         await ws.close()
         return
     await v.serve(v.Call(ws, conv, voice, lang, tenant))
@@ -2739,11 +2739,11 @@ def _mail_linked_page(view: dict | None, error: str = "") -> HTMLResponse:
     scheme = get_settings().app_redirect_scheme
     deep = f"{scheme}://mail?ok={0 if error else 1}"
     import html as _h
-    msg = (f"<h2>Email Santosh se juda! ✅</h2><p>{_h.escape(view['address'])}</p>" if view else
-           f"<h3>Email nahi juda</h3><p>{_h.escape(error)}</p>")
+    msg = (f"<h2>Email connected to Hoola ✅</h2><p>{_h.escape(view['address'])}</p>" if view else
+           f"<h3>Email was not connected</h3><p>{_h.escape(error)}</p>")
     return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
-<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
 <script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
 
 
@@ -2764,11 +2764,11 @@ def _cal_page(address: str | None, error: str = "") -> HTMLResponse:
     import html as _h
     scheme = get_settings().app_redirect_scheme
     deep = f"{scheme}://calendar?ok={0 if error else 1}"
-    msg = (f"<h2>Google Calendar Santosh se juda! ✅</h2><p>{_h.escape(address or '')}</p>" if not error else
-           f"<h3>Calendar nahi juda</h3><p>{_h.escape(error)}</p>")
+    msg = (f"<h2>Google Calendar connected to Hoola ✅</h2><p>{_h.escape(address or '')}</p>" if not error else
+           f"<h3>Calendar was not connected</h3><p>{_h.escape(error)}</p>")
     return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
-<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
 <script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
 
 
@@ -2852,11 +2852,11 @@ def calendar_remove(key: str, tenant: str = Depends(current_tenant)):
 def _linked_page(what: str, host: str, address: str | None, error: str = "") -> HTMLResponse:
     import html as _h
     deep = f"{get_settings().app_redirect_scheme}://{host}?ok={0 if error else 1}"
-    msg = (f"<h2>{what} Santosh se juda! ✅</h2><p>{_h.escape(address or '')}</p>" if not error else
-           f"<h3>{what} nahi juda</h3><p>{_h.escape(error)}</p>")
+    msg = (f"<h2>{what} connected to Hoola ✅</h2><p>{_h.escape(address or '')}</p>" if not error else
+           f"<h3>{what} was not connected</h3><p>{_h.escape(error)}</p>")
     return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
-<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
 <script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
 
 
@@ -3147,11 +3147,11 @@ async def net_upload(file: UploadFile = File(...), to: str = Form(""), thread_id
     if len(data) > MAX_MB * 1024 * 1024:
         raise HTTPException(413, f"The file is bigger than {MAX_MB} MB; send a Drive link.")
     if not data:
-        raise HTTPException(400, "File khaali hai.")
+        raise HTTPException(400, "The file is empty.")
     if thread_id and not to:
         to = _net(net.thread, tenant, thread_id)["peer"]
     if not to:
-        raise HTTPException(400, "Kise bhejna hai (to / thread_id)?")
+        raise HTTPException(400, "Who should it go to (to / thread_id)?")
     row = await asyncio.to_thread(ms.store_bytes, tenant, file.filename or "file", data)
     return await asyncio.to_thread(_net, net.send, tenant, to, "file", {"file_id": row.id, "text": text[:2000]},
                                    (text or row.name)[:80], thread_id, False, "")
@@ -3744,7 +3744,7 @@ class CreateWrite(BaseModel):
     brief: str = Field(min_length=4, max_length=3000)
     format: str = Field(default="", max_length=40)
     length: str = Field(default="", max_length=20)
-    language: str = Field(default="Hinglish", max_length=30)
+    language: str = Field(default="English", max_length=30)
     tone: str = Field(default="", max_length=40)
     genre: str = Field(default="", max_length=60)
     mood: str = Field(default="", max_length=60)
@@ -4117,7 +4117,7 @@ def net_handle(tid: str, body: NetHandleIn, tenant: str = Depends(current_tenant
     from .net import service as net
     t = _net(net.thread, tenant, tid)
     if body.action == "start":
-        handle.start(tenant, t["id"], body.goal.strip()[:500] or t.get("goal") or "Baat ko aage badhao, mere niyam ke andar.")
+        handle.start(tenant, t["id"], body.goal.strip()[:500] or t.get("goal") or "Take the conversation forward, within my rules.")
     else:
         handle._set_mode(tenant, t["id"], "relay")
     return _net(net.thread, tenant, tid)
@@ -4383,7 +4383,7 @@ def net_business_contact(body: ComplainIn, tenant: str = Depends(current_tenant)
         return _net(biz.complain, tenant, body.business, body.text)
     addr = _net(biz.contact, tenant, body.business)
     k = {"quote": "ask", "order": "order"}.get(body.kind, "ask")
-    return _net(net.send, tenant, addr, k, {"text": ({"quote": "Quote chahiye: ", "order": "Order: "}.get(body.kind, "")) + body.text})
+    return _net(net.send, tenant, addr, k, {"text": ({"quote": "Quote needed: ", "order": "Order: "}.get(body.kind, "")) + body.text})
 
 
 @app.post("/api/net/tickets/{number}", dependencies=[Depends(require_key)])
@@ -5218,7 +5218,7 @@ def digilocker_callback(code: str = "", state: str = "", error: str = ""):
         msg = str(e)
     return HTMLResponse("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
                         "<title>Hoola · DigiLocker</title><body style='font-family:sans-serif;padding:24px'>"
-                        f"<h3>Hoola</h3><p>{_h.escape(msg)}</p><p><a href='santosh://home'>Hoola kholiye</a></p>",
+                        f"<h3>Hoola</h3><p>{_h.escape(msg)}</p><p><a href='santosh://home'>Open Hoola</a></p>",
                         headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
 
 
@@ -5281,15 +5281,15 @@ def net_invite_page(code: str):
         inv = s.get(Invite, code)
         owner = inv.tenant_id if inv else None
     if not owner:
-        body = "<h2>Yeh invite purana ho gaya</h2><p>Naya QR ya link maangiye.</p>"
+        body = "<h2>This invite has expired</h2><p>Ask for a new QR or link.</p>"
     else:
         c = idn.my_card(owner)
         who = _h.escape(idn.label(c))
         deep = f"santosh://connect?c={_h.escape(code)}"
-        body = (f"<h2>{who}</h2><p>@{_h.escape(c['handle'])} aapke Hoola se judna chahte hain.</p>"
-                f"<p><a class=b href='{deep}'>Hoola app mein kholiye</a></p>"
-                "<p class=s>Hoola nahi hai? <a href='https://github.com/fibernetworkworks-droid/santosh-app/releases/latest'>"
-                "Yahan se download kijiye</a>, phir yeh link dobara kholiye.</p>")
+        body = (f"<h2>{who}</h2><p>@{_h.escape(c['handle'])} wants to connect with your Hoola.</p>"
+                f"<p><a class=b href='{deep}'>Open in the Hoola app</a></p>"
+                "<p class=s>Don't have Hoola? <a href='https://github.com/fibernetworkworks-droid/santosh-app/releases/latest'>"
+                "Download it here</a>, then open this link again.</p>")
     return HTMLResponse("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
                         "<title>Hoola</title><style>body{font-family:system-ui,sans-serif;background:#0B0A1A;color:#F4F2FF;"
                         "max-width:520px;margin:auto;padding:32px 20px}a{color:#FFB15C}.b{display:inline-block;padding:14px 22px;"
@@ -7461,7 +7461,7 @@ def _intel_bg(tenant: str, site: str, what: str, fn, *a, **k):
         except Exception:   # noqa: BLE001
             pass
     threading.Thread(target=go, daemon=True).start()
-    return {"started": True, "say": f"{what} shuru - natija SEO desk par aayega."}
+    return {"started": True, "say": f"{what} started - the result will show on the SEO desk."}
 
 
 @app.get("/api/seo/intel", dependencies=[Depends(require_key)])
@@ -7720,7 +7720,7 @@ def social_whatsapp_start(s: str = ""):
         row = ss.get(MailLinkState, s) if s else None
         ok = row is not None and row.provider == "social_wh"
     if not ok:
-        return _linked_page("WhatsApp Business", "social", None, "Yeh link purana ho gaya. Social Desk se dobara Connect dabaiye.")
+        return _linked_page("WhatsApp Business", "social", None, "This link has expired. Tap Connect again on the Social Desk.")
     return HTMLResponse(wabiz.start_page(s))
 
 
@@ -10128,7 +10128,7 @@ async def arena_run(run_id: str, tenant: str = Depends(current_tenant)):
         raise HTTPException(404, "run not found")
     cards = await asyncio.to_thread(A.items, run_id)
     return {**run, "items": [{**{k: v for k, v in c.items() if k != "dna"}, **A.brief_info(c.get("brief", ""))} for c in cards],
-            "say": A.report_text(run["summary"]) if run["summary"] else "Abhi chal raha hai."}
+            "say": A.report_text(run["summary"]) if run["summary"] else "Still running."}
 
 
 @app.post("/api/arena/runs/{run_id}/stop", dependencies=[Depends(require_key)])
@@ -10377,7 +10377,7 @@ async def site_cms_post(site_id: str, slug: str, request: Request):
         _cms_who(site_id, request)
         p = next((x for x in BL.posts(site_id) if x["slug"] == slug), None)
         if p is None:
-            raise CM.CmsError("Post nahi mila.", 404)
+            raise CM.CmsError("Post not found.", 404)
         return {"post": {k: p.get(k) for k in ("slug", "title", "body", "excerpt", "category", "status")}}
     return await asyncio.to_thread(_cms_call, go)
 
@@ -10539,7 +10539,7 @@ async def sites_catalog_preview(ref: str, request: Request, tenant: str = Depend
         elif b.get("dataset"):
             rows, src = CAT.from_dataset(tenant, str(b["dataset"])), "dataset"
         else:
-            raise CAT.CatalogError("File, Google Sheet ya dataset - koi ek chahiye.")
+            raise CAT.CatalogError("One of these is needed: a file, a Google Sheet or a dataset.")
         return CAT.preview(tenant, ref, str(b.get("coll") or ""), rows, b.get("mapping") if isinstance(b.get("mapping"), dict) else None,
                            str(b.get("label") or ""), str(b.get("item_label") or ""), src)
     return await asyncio.to_thread(_cat_call, go2)
@@ -10557,7 +10557,7 @@ async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(curren
         r = CAT._site(tenant, ref)
         if r.version:                                # her tap: the next checked version carries the pages (going live = her launch)
             S._after_edit(S._load(r.id), f"catalogue: {out['coll']}")
-            out["say"] = out["say"].split(" Website ki")[0] + " Nayi version ban rahi hai (jaanch ke baad); live karna aapke tap se."
+            out["say"] = out["say"].split(" Website ki")[0] + " A new version is being built (after the checks); going live happens only on your tap."
         return out
     return await asyncio.to_thread(_cat_call, go)
 
@@ -10756,7 +10756,7 @@ async def dhara_hook(token: str, request: Request):
     from .agent import dhara_tools
     raw = await request.body()
     if len(raw) > 256_000:
-        return JSONResponse({"ok": False, "error": "body bohot bada"}, status_code=413)
+        return JSONResponse({"ok": False, "error": "body too large"}, status_code=413)
     try:
         body = json.loads(raw or b"{}")
         if not isinstance(body, dict):
@@ -12060,7 +12060,7 @@ async def app_api_khata_one(app_key: str, member: str, request: Request):
     def go():
         r, w = _be_app(app_key, request)
         if not w.staff:
-            raise W.AppError("Yeh sirf staff ke liye hai.", 403)
+            raise W.AppError("This is for staff only.", 403)
         return KH.summary(r, member)
     return await asyncio.to_thread(_be_call, go)
 
@@ -12326,7 +12326,7 @@ async def app_api_approvals(app_key: str, request: Request, all: int = 0):
         r, w = _be_app(app_key, request)
         if w.m is None:
             from .site import webapp as W
-            raise W.AppError("Pehle login kijiye.", 401)
+            raise W.AppError("Please log in first.", 401)
         return {"approvals": LE.approvals(r, w, bool(all))}
     return await asyncio.to_thread(_be_call, go)
 
@@ -12341,7 +12341,7 @@ async def app_api_decide(app_key: str, appr_id: str, request: Request):
         r, w = _be_app(app_key, request)
         if w.m is None:
             from .site import webapp as W
-            raise W.AppError("Pehle login kijiye.", 401)
+            raise W.AppError("Please log in first.", 401)
         return LE.decide(r, appr_id, str(body.get("decision") or ""), str(body.get("note") or ""), w)
     return await asyncio.to_thread(_be_call, go)
 
@@ -12417,7 +12417,7 @@ async def app_api_members(app_key: str, request: Request):
     def go():
         r, w = _be_app(app_key, request)
         if not w.staff:
-            raise W.AppError("Iski ijaazat nahi.", 403)
+            raise W.AppError("You are not allowed to do this.", 403)
         return {"members": BE.members(r), "admin": bool(w.m and w.m.role == "admin")}
     return await asyncio.to_thread(_be_call, go)
 
@@ -12485,7 +12485,7 @@ async def apps_live(ref: str, request: Request, colls: str = "", tenant: str = D
     except W.AppError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
     except Exception:
-        return JSONResponse({"ok": False, "error": "App nahi mila."}, status_code=404)
+        return JSONResponse({"ok": False, "error": "App not found."}, status_code=404)
     return _live_stream(r, w, "", request, colls)
 
 
@@ -12989,7 +12989,7 @@ async def apps_connect_run(ref: str, key: str, body: dict, tenant: str = Depends
 
     def go():
         if not b.get("her_tap"):
-            raise W.AppError("Sirf aapke tap se.", 403)
+            raise W.AppError("Only on your own tap.", 403)
         return CN.run(_be_data(tenant, ref), key, str(b.get("row") or ""), "her_tap", wait=True)
     return await asyncio.to_thread(_be_owner_call, go)
 
@@ -13173,7 +13173,7 @@ async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
         r = _be_data(tenant, ref)
         o = OD.cfg(r, fresh=True)
         if not o:
-            raise OD.OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
+            raise OD.OwnDbError("This app is not linked to any database.", 404)
         n = OD.tick(force=True)
         return {"ok": True, "synced": n, **OD.status(_be_data(tenant, ref))}
     return await asyncio.to_thread(_be_owner_call, go)
@@ -14315,7 +14315,7 @@ def form_cancel(form_id: str, background: BackgroundTasks, tenant: str = Depends
         with session() as s:
             from .askform import AskForm
             conv = s.get(AskForm, form_id).conversation_id
-        _form_reply(tenant, conv, agent_text, "Form band kiya", background)
+        _form_reply(tenant, conv, agent_text, "Closed the form", background)
     return v
 
 
@@ -15042,7 +15042,7 @@ async def employee_dues_import(file: UploadFile = File(...), tenant: str = Depen
     from .employee import inbox
     data = await file.read(2_000_001)
     if len(data) > 2_000_000:
-        raise HTTPException(413, "CSV 2 MB tak.")
+        raise HTTPException(413, "CSV up to 2 MB.")
     return _inb(inbox.import_dues, tenant, data)
 
 
@@ -15117,14 +15117,14 @@ async def reel_remind(reel_id: str, body: ReelRemindIn, tenant: str = Depends(cu
     from .agent.tools import Ctx, ToolError
     from .reels import service as rs
     v = await asyncio.to_thread(_reel, rs.get, tenant, reel_id)
-    text = (body.text.strip() or f"Reel: {v['title'] or 'jo save ki thi'}")[:400]
+    text = (body.text.strip() or f"Reel: {v['title'] or 'the one you saved'}")[:400]
     if v["url"] and v["url"] not in text:
         text = f"{text} ({v['url']})"
     try:
         r = await create_reminder(Ctx(tenant, await asyncio.to_thread(_tv_conv, tenant)), text, body.when)
     except ToolError as e:
         raise HTTPException(400, str(e))
-    return {"reminder": r, "say": f"Theek hai, {r.get('when') or body.when} ko yaad dila dunga."}
+    return {"reminder": r, "say": f"Okay, I will remind you: {r.get('when') or body.when}."}
 
 
 @app.post("/api/reels/{reel_id}/shop", dependencies=[Depends(require_key)])
@@ -15138,7 +15138,7 @@ async def reel_shop(reel_id: str, body: ReelShopIn, tenant: str = Depends(curren
         raise HTTPException(400, "No buyable item was found in this reel.")
     r = await list_add(Ctx(tenant, await asyncio.to_thread(_tv_conv, tenant)), "shopping", items)
     return {"list": r["list"], "added": r["added"], "items": r["items"],
-            "say": f"{len(r['added'])} cheezein shopping list mein daal di." if r["added"] else "Yeh sab pehle se list mein hai."}
+            "say": f"{len(r['added'])} items added to the shopping list." if r["added"] else "All of these are already on the list."}
 
 
 @app.get("/api/reels/{reel_id}/share", dependencies=[Depends(require_key)])
