@@ -92,6 +92,23 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   deploy) - work in a git worktree. APK release `v0.782.0-b2227`:
   https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.782.0-b2227/app-release.apk
   Roll back exactly like the ones below, with `stable-2026-11-11-connectors-v782` as the branch.
+- SAVE THE STATE (11 Nov 2026, owner: "DEPLOY ON VPS AND SAVE THE STATE" after HOOLA AI APPS): branch
+  `stable-2026-11-11-aiapps-v785` = commit 53e92e82b = v0.785.0, pubspec 0.785.0+784. HOOLA AI APPS D0-D5 (AIs that answer
+  her customers, `docs/AIAPPS_PLAN.md`, HISTORY "v0.785.0 HOOLA AI APPS").
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): APP_VERSION 0.785.0, 15 `server/app/aiapps/` modules, routes
+  mounted (8 lines in main.py), `ai_app` registered, vps-ops `aiapp_proof` present; **58 tests green** (the 7 AI Apps suites
+  + routines); proof card **3/3 apps PROVED, traps refused 22/22, house laws 6/6** (correction -> annotated, cap = no model
+  call, pause, stale hash 409, versions + restore, invented Rs 349 thrown away). The console page was walked in a real
+  Chromium against real routes (templates -> use -> blanks block publish -> publish with hash -> preview -> channels -> logs
+  -> numbers -> versions, 0 page errors).
+  **NOT DEPLOYED AT THE SAVE, said plainly:** this session's GitHub token cannot start a workflow (403 on the dispatch API),
+  and live healthz read **0.784.0**. The owner must run **Actions > VPS ops > deploy** (no new pip packages), then
+  **VPS ops > aiapp_proof**; the branch is cut at the commit that deploy will serve.
+  **NOT VERIFIED:** no real model has answered (every answer came from a fake model - the sandbox has no key); no real
+  visitor; rate limits are per process; no phone screen (console only); WhatsApp delivery through Meta not tried.
+  17 older reds in the wider sweep fail identically on pristine 0.784.0 (crawl jobs x10, officehours / magic21 / crew /
+  seekh version pins, the console English check on build.js) - not this release.
+  Roll back exactly like the ones below, with `stable-2026-11-11-aiapps-v785` as the branch.
 - SAVE THE STATE (8 Nov 2026, owner: "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after P9 HOOLA ADOPT went
   live): branch `stable-2026-11-08-aep-v680` = commit 00aa1dac9 = v0.680.0, pubspec 0.680.0+679 - cut at the LIVE commit
   (healthz 0.680.0; deployed this session by vps-ops > deploy run 42394254940, success in ~50 s, the job took the DB backup).
