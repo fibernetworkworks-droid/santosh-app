@@ -57,7 +57,7 @@
       "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/MathsStandard-MS.pdf"
      ],
      "unverified": true,
-     "note": " Kuch sections ka hisaab total se nikala gaya (andaaza)."
+     "note": " Some sections were worked out from the total (estimate)."
     },
     "Science": {
      "max_marks": 80,
@@ -69,7 +69,7 @@
       "https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/Science-MS.pdf"
      ],
      "unverified": true,
-     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+     "note": "Section-wise counts are not confirmed from the official page; the teacher provides the sections."
     },
     "Social Science": {
      "max_marks": 80,
@@ -82,7 +82,7 @@
       "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/SocialScience_SecP1X_2026-27.pdf"
      ],
      "unverified": true,
-     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+     "note": "Section-wise counts are not confirmed from the official page; the teacher provides the sections."
     },
     "English Language and Literature": {
      "max_marks": 80,
@@ -95,7 +95,7 @@
       "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/English_LL_SecP1_2026-27.pdf"
      ],
      "unverified": true,
-     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+     "note": "Section-wise counts are not confirmed from the official page; the teacher provides the sections."
     }
    },
    "12": {
@@ -149,7 +149,7 @@
       "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Maths-SQP.pdf"
      ],
      "unverified": true,
-     "note": " Kuch sections ka hisaab total se nikala gaya (andaaza)."
+     "note": " Some sections were worked out from the total (estimate)."
     },
     "Physics": {
      "max_marks": 70,
@@ -203,7 +203,7 @@
       "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2024_25/Physics-SQP.pdf"
      ],
      "unverified": true,
-     "note": " Kuch sections ka hisaab total se nikala gaya (andaaza)."
+     "note": " Some sections were worked out from the total (estimate)."
     },
     "Chemistry": {
      "max_marks": 70,
@@ -215,7 +215,7 @@
       "https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Chemistry-MS.pdf"
      ],
      "unverified": true,
-     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+     "note": "Section-wise counts are not confirmed from the official page; the teacher provides the sections."
     },
     "Biology": {
      "max_marks": 70,
@@ -228,7 +228,7 @@
       "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart2/Biology_SecP2_2026-27.pdf"
      ],
      "unverified": true,
-     "note": "Section-wise counts official page se pakke nahi; teacher sections de."
+     "note": "Section-wise counts are not confirmed from the official page; the teacher provides the sections."
     }
    }
   },

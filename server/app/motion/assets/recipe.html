@@ -43,12 +43,12 @@
   // title
   const A = HM.el("div", "layer");
   const aHero = HM.el("div", "emoji hero", A, D.emoji || "🍛");
-  const aTitle = HM.el("div", "title", A, D.dish || "Aaj ki recipe");
+  const aTitle = HM.el("div", "title", A, D.dish || "Today's recipe");
   const meta = HM.el("div", "meta", A);
   const pills = [D.time && "⏱ " + D.time, D.serves && "👥 " + D.serves, D.level && "👩‍🍳 " + D.level].filter(Boolean).map(t => HM.el("div", "pill", meta, t));
   // ingredients into the kadhai
   const B = HM.el("div", "layer");
-  const head = HM.el("div", "head", B, D.dish || ""); HM.el("small", "", head, (D.ingredients_title || "SAAMAAN").toUpperCase());
+  const head = HM.el("div", "head", B, D.dish || ""); HM.el("small", "", head, (D.ingredients_title || "INGREDIENTS").toUpperCase());
   const list = HM.el("div", "list", B);
   const items = ing.map(x => { const it = HM.el("div", "item", list); HM.el("span", "emoji", it, x.emoji || "🥄");
     const tx = HM.el("span", "", it); if (x.qty) { HM.el("b", "", tx, x.qty); tx.appendChild(document.createTextNode(" ")); }
@@ -67,7 +67,7 @@
   const E = HM.el("div", "layer");
   const eHero = HM.el("div", "emoji hero", E, D.emoji || "🍛");
   const steam = [0, 1, 2].map(i => { const s = HM.el("div", "steam", E); s.style.left = `calc(50% + ${(i - 1) * 7}vmin)`; s.style.top = "calc(50% - 30vmin)"; return s; });
-  const eTitle = HM.el("div", "end", E, D.end || "Swad lijiye! 😋");
+  const eTitle = HM.el("div", "end", E, D.end || "Enjoy! 😋");
   const eCredit = (D.credit || D.brand) ? HM.el("div", "credit", E, D.credit || D.brand) : null;
   HM.badge();
 
