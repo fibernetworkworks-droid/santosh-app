@@ -25,6 +25,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
   const OPEN = new Set();                 // folds she opened (kept across repaints)
   let PANE = null;                        // the Changes pane: {path, base, cmp, rows} - null = closed
   let COMMENTS = [], DRAFT = null;        // her comments on lines, waiting for her next message; the one she is writing
+  let TERM = {tid: '', rows: []};          // Phase 4: the session's terminal (output only), fetched while its tab is open
+  let FILES = {tid: '', dirs: {}, open: new Set(), file: null, live: true};   // Phase 4: the Files pane - folders are fetched when she opens them
   let SIDE_AUTO = false;                  // the sessions sidebar stepped aside for the pane (comes back when it closes)
   const BRANCHES = {};                    // repo -> its branches (for Compare against), fetched once
   const HOME = {text: '', kind: 'auto', issue: 0, base: '', mode: '', model: '', effort: '', files: []};   // the composer, kept while she looks elsewhere
@@ -66,6 +68,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     x: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     up: '<path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
     stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>'};
+  const ln = d => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  Object.assign(ICON, {term: ln('M4 5h16v14H4zM7.5 9.5l3 2.5-3 2.5M12.5 15h4'), folder: ln('M3 7h6l2 2h10v10H3z'),
+    box: ln('M12 3l8 4v10l-8 4-8-4V7zM4 7l8 4 8-4M12 11v10'), back: ln('M9 7l-5 5 5 5M4 12h11a5 5 0 010 10h-3')});
   const svg = (k, cls = '') => `<svg class="hcd-ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ICON.dot}</svg>`;
   const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
@@ -73,6 +78,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
   const dur = s => { s = Math.round(+s || 0); return s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s` : `${Math.floor(s / 3600)} h ${String(Math.floor(s % 3600 / 60)).padStart(2, '0')} min`; };
   const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
   const isRun = t => !!t.running;
+  const hasBox = t => !!(t && t.ws && t.ws.on && t.ws.state);        // Phase 4: this session has (or had) its own box
+  const canTalk = t => !!(t && t.ws && t.ws.on) && !t.running && !['merged', 'closed', 'plan_wait', 'ci_running'].includes(t.status);
+  const BOXS = {live: ['ok', 'Live'], opening: ['run', 'Starting'], paused: ['soft', 'Paused']};
   const needsYou = t => !!t.question || NEEDS.has(t.status) || (!!t.pr_number && (OV?.actions || []).some(a => a.status === 'waiting' && a.repo === t.repo && a.pr_number === t.pr_number));
   const group = t => isRun(t) ? 'run' : needsYou(t) ? 'need' : 'old';
   const dotc = t => ({run: 'run', need: 'warn'}[group(t)] || (t.status === 'merged' ? 'ok' : t.status === 'failed' ? 'bad' : 'soft'));
@@ -380,7 +388,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
   }
 
   // ------------------------------------------------------------------ session: the steps ---
-  const QUIET = new Set(['rules', 'read', 'search', 'list', 'usages', 'grep', 'diff', 'refused']);
+  const QUIET = new Set(['rules', 'read', 'search', 'list', 'usages', 'grep', 'diff', 'refused', 'todo', 'box', 'cmdout']);
   const diffHTML = rows => rows && rows.length ? `<pre class="hcd-diff">${rows.map(r => `<span class="${r.startsWith('+') ? 'add' : r.startsWith('-') ? 'del' : 'ctx'}">${esc(r)}</span>`).join('\n')}</pre>` : '';
   const p = x => `<code>${esc(x)}</code>`;
   const fold = (key, label, inner, cls = '', forced = false) => { const on = forced || OPEN.has(key);
@@ -403,6 +411,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
       case 'grep': return `<div class="hcd-step">${svg('search')}<span>Searched the test log for ${p(s.q)}</span>${at}</div>`;
       case 'refused': return `<div class="hcd-step dim">${svg('bad')}<span>A step was refused: ${esc(s.why)}</span>${at}</div>`;
       case 'stopped': return `<div class="hcd-step bad">${svg('bad')}<span><b>Stopped.</b> Nothing was pushed.</span>${at}</div>`;
+      case 'cmd': { const lab = s.bg ? `Started ${p(s.cmd)} in the background` : `Ran ${p(s.cmd)} · <span class="${s.ok ? 'add' : 'del'}">${s.ok ? 'ok' : 'exit ' + esc(String(s.rc))}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}`;
+        const inner = `${s.why ? `<p class="hcd-mut">${esc(s.why)}</p>` : ''}${(s.tail || []).length ? `<pre class="hcd-diff">${s.tail.map(x => `<span class="ctx">${esc(x)}</span>`).join('\n')}</pre>` : ''}<p class="hcd-mut"><button type="button" class="hcd-lk" data-act="term">Open the terminal</button></p>`;
+        return fold('c' + i, lab, inner, 'row' + (s.bg || s.ok ? '' : ' bad'), verbose); }
+      case 'cmdout': return `<div class="hcd-step">${svg('term')}<span>Read the background command ${p(s.id)} · ${s.running ? 'still running' : 'finished' + (s.rc === null || s.rc === undefined ? '' : ', exit ' + esc(String(s.rc)))}</span>${at}</div>`;
+      case 'todo': return `<div class="hcd-step">${svg('list')}<span>Updated its list · ${(s.items || []).filter(x => x.state === 'done').length} of ${(s.items || []).length} done</span>${at}</div>`;
+      case 'box': return `<div class="hcd-step">${svg('box')}<span>${esc(s.text || 'The box')}</span>${at}</div>`;
+      case 'rewind': return `<div class="hcd-step dim">${svg('back')}<span>Rewound: the files and the conversation went back to before a message of yours</span>${at}</div>`;
+      case 'msg': return '';
       default: return '';
     }
   }
@@ -414,13 +430,17 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     if (n('list')) parts.push(`looked in ${plural(n('list'), 'folder')}`);
     if (n('diff')) parts.push('checked its own change');
     if (n('refused')) parts.push(`${plural(n('refused'), 'step')} refused`);
+    if (n('box')) parts.push('set up the box');
+    if (n('todo')) parts.push('updated its list');
+    if (n('cmdout')) parts.push('read a background command');
     const s = parts.join(', '); return s.charAt(0).toUpperCase() + s.slice(1);
   }
-  function stepsHTML(t) {
-    const steps = t.steps || [], verbose = P.view === 'verbose'; let out = '', i = 0;
-    while (i < steps.length) {
-      if (!verbose && QUIET.has(steps[i].k)) { const from = i, list = []; while (i < steps.length && QUIET.has(steps[i].k)) list.push(steps[i++]);
-        out += list.length === 1 ? stepHTML(list[0], t.at, from, false) : fold('g' + from, esc(summary(list)), list.map((s, j) => stepHTML(s, t.at, from + j, false)).join('')); }
+  function stepsHTML(t, from = 0, to = -1) {
+    const steps = t.steps || [], verbose = P.view === 'verbose'; let out = '', i = from;
+    if (to < 0) to = steps.length;
+    while (i < to) {
+      if (!verbose && QUIET.has(steps[i].k)) { const at0 = i, list = []; while (i < to && QUIET.has(steps[i].k)) list.push(steps[i++]);
+        out += list.length === 1 ? stepHTML(list[0], t.at, at0, false) : fold('g' + at0, esc(summary(list)), list.map((s, j) => stepHTML(s, t.at, at0 + j, false)).join('')); }
       else { out += stepHTML(steps[i], t.at, i, verbose); i++; }
     }
     return out;
@@ -444,6 +464,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
   }
   function recap(t) {
     const ci = t.ci?.state;
+    if (t.question && hasBox(t)) return ['need', 'Hoola needs your answer.', 'Pick one or type your own. It goes on in this session, with its work so far still in the box.'];
     if (t.question) return ['need', 'Hoola needs your answer.', 'Nothing was changed. Type your answer below and it continues in this session.'];
     if (t.status === 'ready') return ['need', 'Ready for you.', 'The change is prepared. Opening the pull request is your tap.'];
     if (t.status === 'checks_failed') return ['bad', `CI failed on PR #${t.pr_number}.`, 'Hoola can fix it, or you can ask for a change.'];
@@ -474,8 +495,22 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     let h = `<div class="hcd-me">${esc(t.text || '')}${att.length ? `<div class="hcd-atts">${att.map(a => a.kind === 'image'
       ? `<img class="hcd-pic" data-att="${pi++}" alt="${esc(a.name)}" title="${esc(a.name)}"${PICS.has(t.id + ':' + (pi - 1)) ? ` src="${PICS.get(t.id + ':' + (pi - 1))}"` : ''}>`
       : `<span class="hcd-att">${svg('read')}<span>${esc(a.name)}</span><small>${kb(a.size)}</small></span>`).join('')}</div>` : ''}</div>`;
-    if (t.running || P.view === 'verbose' || !steps.length) h += inner;
-    else h += fold('work', `Worked for ${esc(dur((Date.parse(steps[steps.length - 1].at) - Date.parse(t.at)) / 1000))} · ${plural(steps.length, 'step')}`, inner);
+    const cuts = []; steps.forEach((s, i) => { if (s.k === 'msg') cuts.push(i); });
+    if (!cuts.length) {
+      if (t.running || P.view === 'verbose' || !steps.length) h += inner;
+      else h += fold('work', `Worked for ${esc(dur((Date.parse(steps[steps.length - 1].at) - Date.parse(t.at)) / 1000))} · ${plural(steps.length, 'step')}`, inner);
+    } else {                                  // Phase 4: her later messages split the work into parts, each folded once it is over
+      const snaps = new Set(((t.ws || {}).snaps || []).map(x => x.n)), edges = [0, ...cuts, steps.length];
+      for (let k = 0; k < edges.length - 1; k++) {
+        const a = edges[k] + (k ? 1 : 0), b = edges[k + 1], last = k === edges.length - 2, part = stepsHTML(t, a, b), n = b - a;
+        if (k) { const m = steps[edges[k]];
+          h += `<div class="hcd-me">${esc(m.text || '')}${!t.running && snaps.has(m.n) ? `<small><button type="button" class="hcd-lk" data-act="rewind" data-n="${m.n}" title="Put the files and the conversation back to before this message">Rewind to before this</button></small>` : ''}</div>`; }
+        if (!n) continue;
+        const t0 = k ? steps[edges[k]].at : t.at;
+        if ((last && t.running) || P.view === 'verbose') h += part;
+        else h += fold('work' + k, `Worked for ${esc(dur((Date.parse(steps[b - 1].at) - Date.parse(t0)) / 1000))} · ${plural(n, 'step')}`, part);
+      }
+    }
     if (t.running && !t.stopping) h += `<div class="hcd-work"><i class="hcd-pulse" aria-hidden="true"></i><span>${esc(nowDoing(t))}</span></div>`;
     if (t.status === 'plan_wait' && t.plan) h += planHTML(t);
     else if (!t.running) h += doneHTML(t);
@@ -484,7 +519,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
   function nowDoing(t) {
     const s = (t.steps || []).filter(x => x.k !== 'say' && x.k !== 'note').pop();
     if (!s) return 'Reading the repo…';
-    return ({edit: 'Checking the edit…', new: 'Checking the new file…', check: s.ok ? 'Finishing up…' : 'Looking at the failure…', read: 'Reading the code…', search: 'Searching the code…'})[s.k] || 'Working on the next step…';
+    if (s.k === 'box') return (s.text || 'Setting up the box') + '…';
+    return ({cmd: s.bg ? 'A command is running in the background…' : 'Reading the output…', todo: 'Working down its list…', cmdout: 'Reading the output…', edit: 'Checking the edit…', new: 'Checking the new file…', check: s.ok ? 'Finishing up…' : 'Looking at the failure…', read: 'Reading the code…', search: 'Searching the code…'})[s.k] || 'Working on the next step…';
   }
 
   // ------------------------------------------------------------------ session: the rail ---
@@ -519,6 +555,16 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     if (['pr_open', 'checks_failed', 'ci_running'].includes(t.status)) acts.push(`<button type="button" class="hcd-btn" data-act="refresh">Check CI again</button>`);
     return acts;
   }
+  const todoHTML = (t, sg) => ((t.ws || {}).todo || []).map(x => `<div class="hcd-stage ${x.state === 'done' ? 'done' : x.state === 'doing' ? 'now' : 'todo'}">${sg[x.state === 'done' ? 'done' : x.state === 'doing' ? 'now' : 'todo']}<span>${esc(x.text)}</span><small></small></div>`).join('');
+  function boxHTML(t, kv) {           // Phase 4: this session's own box
+    if (!hasBox(t)) return '';
+    const w = t.ws, b = BOXS[w.state] || ['soft', w.state];
+    return `<section class="hcd-rc" id="hcdBox" aria-labelledby="hcdRcB"><h2 id="hcdRcB">Box<span class="hcd-c ${t.running && w.state === 'live' ? 'run' : b[0]}">${t.running && w.state === 'live' ? 'Working' : esc(b[1])}</span></h2>
+        ${w.state === 'paused' ? '<p class="hcd-mut">Paused to make room. Your edits are saved - your next message brings the box back.</p>' : ''}
+        ${kv('Live on this server', `${w.live || 0} of ${w.cap}`)}${w.check && w.check.cmd ? kv('Your tests', `<code>${esc(w.check.cmd)}</code>`) : kv('Your tests', w.check && w.check.confirm ? 'no command set' : 'no command set')}
+        <p class="hcd-mut">No internet and no keys inside. Commits still go through GitHub from the server.</p>
+        <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-act="term">Terminal</button><button type="button" class="hcd-btn sm" data-act="filesp">Files</button></div></section>`;
+  }
   function railHTML(t) {
     const files = editedFiles(t), kv = (a, b) => `<div class="hcd-row"><span>${a}</span><b>${b}</b></div>`;
     const checks = []; const pf = PROOF[t.proof?.state]; if (pf) checks.push(kv('Proof', `<span class="hcd-c ${pf[0]}">${esc(pf[1])}</span>`));
@@ -531,7 +577,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
         ${files.length ? files.map(f => `<button type="button" class="hcd-file" data-act="file" data-path="${esc(f.path)}" title="Open ${esc(f.path)} in Changes"><code>${esc(f.path)}</code><span><em class="add">+${f.added || 0}</em> <em class="del">−${f.removed || 0}</em></span></button>`).join('') : '<p class="hcd-mut">No changes yet.</p>'}
         ${t.pr_number ? `<div class="hcd-row"><span>Pull request</span><b>#${t.pr_number} · ${esc(STATUS[t.status] || t.status)}</b><button type="button" class="hcd-icb" data-menu="pr" aria-label="Pull request menu: auto-fix, checkout command" title="Pull request menu">${svg('more')}</button></div>` : ''}${checks.join('')}
         ${acts.length ? `<div class="hcd-acts">${acts.join('')}</div>` : ''}</section>
-      <section class="hcd-rc" aria-labelledby="hcdRcP"><h2 id="hcdRcP">Progress</h2>${stages(t).map(([name, s, note]) => `<div class="hcd-stage ${s}">${sg[s]}<span>${name}</span><small>${esc(note)}</small></div>`).join('')}</section>
+      <section class="hcd-rc" aria-labelledby="hcdRcP"><h2 id="hcdRcP">Progress</h2>${todoHTML(t, sg)}${stages(t).filter(r => !(t.ws && (t.ws.todo || []).length) || ['Pull request', 'CI on GitHub'].includes(r[0])).map(([name, s, note]) => `<div class="hcd-stage ${s}">${sg[s]}<span>${name}</span><small>${esc(note)}</small></div>`).join('')}</section>
+      ${boxHTML(t, kv)}
       <section class="hcd-rc" aria-labelledby="hcdRcS"><h2 id="hcdRcS">Session</h2>${kv('Repo', esc(t.repo || ''))}${t.branch ? kv('Branch', `<code>${esc(t.branch)}</code>`) : ''}
         ${t.base ? kv('Works from', `<code>${esc(t.base)}</code>`) : ''}${kv('Kind', esc((KINDS.find(k => k[0] === t.kind) || [0, t.kind])[1]))}
         ${t.mode ? kv('Mode', esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])) : ''}${t.tier ? kv('Job size', esc(t.tier)) : ''}
@@ -559,6 +606,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     if (VIEW !== 'session' || TID !== tid) return;
     const was = TASK && TASK.id === tid ? TASK : null; TASK = t;
     if (was && was.running && !t.running) { await load(); drawSide(); }
+    if (PANE && PANE.tab === 'terminal' && hasBox(t) && (t.running || first || (was && was.running))) loadTerm(false);
+    if (was && was.running && !t.running && PANE && PANE.tab === 'files') { FILES.dirs = {}; loadDir('', true); [...FILES.open].forEach(p0 => loadDir(p0, true)); }
     if (t.pr_number && !t.running && !MERGE) MERGE = (OV?.actions || []).find(a => a.kind === 'merge' && a.status === 'waiting' && a.repo === t.repo && a.pr_number === t.pr_number) || null;
     paint();
   }
@@ -578,8 +627,11 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     put('#hcdTop', 'top', `<button type="button" class="hcd-title" data-act="rename" title="Rename">${esc(t.title || t.number)}</button>
       <button type="button" class="hcd-icb" data-menu="title" aria-label="Session menu: rename, transcript view, archive, delete" title="Session menu">${svg('down')}</button>
       <span class="hcd-flex"></span>
-      ${t.running ? `<span class="hcd-live" id="hcdClock">${t.stopping ? 'Stopping after this step' : 'Working'}</span>` : `<span class="hcd-pill ${dotc(t)}">${esc(STATUS[t.status] || t.status)}</span>`}
-      ${files.length ? `<button type="button" class="hcd-btn sm" data-act="changes" aria-pressed="${!!PANE}">Changes <span class="hcd-stat">${stat({files})}</span></button>` : ''}
+      ${t.running ? `<span class="hcd-live" id="hcdClock">${t.stopping ? 'Stopping after this step' : 'Working'}</span>` : PANE ? '' : `<span class="hcd-pill ${dotc(t)}">${esc(STATUS[t.status] || t.status)}</span>`}
+      ${files.length ? `<button type="button" class="hcd-btn sm" data-act="changes" aria-pressed="${!!PANE && PANE.tab === 'changes'}"${PANE ? ' aria-label="Changes"' : ''}>${PANE ? '' : '<span class="hcd-lbl">Changes </span>'}<span class="hcd-stat">${stat({files})}</span></button>` : ''}
+      ${hasBox(t) ? [['filesp', 'files', 'folder', 'Files'], ['term', 'terminal', 'term', 'Terminal']].map(([act, tab, ic, lab]) => PANE
+        ? `<button type="button" class="hcd-icb" data-act="${act}" aria-pressed="${PANE.tab === tab}" aria-label="${lab}" title="${lab}">${svg(ic)}</button>`
+        : `<button type="button" class="hcd-btn sm" data-act="${act}" aria-pressed="false" aria-label="${lab}" title="${lab}">${svg(ic)}<span class="hcd-lbl">${lab}</span></button>`).join('') : ''}
       <button type="button" class="hcd-icb" data-act="rail" aria-pressed="${railOn}" aria-label="${railOn ? 'Hide' : 'Show'} session details" title="${railOn ? 'Hide' : 'Show'} session details">${svg('rail')}</button>`);
     tick();
     const feed = $('#hcdFeed'), atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
@@ -591,16 +643,19 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     drawPane(false);
     const canC = t.running || CAN_REVISE.has(t.status);
     put('#hcdCc', 'cc', COMMENTS.length && canC ? `<div class="hcd-ccn"><span><b>${plural(COMMENTS.length, 'comment')}</b> will go with your next message</span><span class="hcd-flex"></span><button type="button" class="hcd-btn sm" data-act="changes">View</button><button type="button" class="hcd-icb" data-act="cclear" aria-label="Remove the queued comments" title="Remove them">${svg('x')}</button></div>` : '');
-    const mode = t.running ? 'note' : t.question ? 'answer' : t.status === 'plan_wait' ? 'plan' : CAN_REVISE.has(t.status) ? 'revise' : 'off', f = $('#hcdSteer'), ta = $('#hcdNote');
+    const mode = t.running ? 'note' : t.question ? 'answer' : t.status === 'plan_wait' ? 'plan' : CAN_REVISE.has(t.status) ? 'revise' : canTalk(t) ? 'talk' : 'off', f = $('#hcdSteer'), ta = $('#hcdNote');
     if (f.dataset.mode !== mode) { f.dataset.mode = mode; f.hidden = mode === 'off';
       ta.placeholder = {note: 'Message Hoola - it reads it before its next step', plan: 'Add a note for Hoola - it starts on the plan with your note',
-        revise: 'Ask for a change - Hoola adds a commit to the same pull request', answer: 'Type your answer - Hoola continues this session', off: ''}[mode]; }
+        revise: 'Ask for a change - Hoola adds a commit to the same pull request', answer: 'Type your answer - Hoola continues this session',
+        talk: 'Message Hoola - it goes on in this session, in the same box', off: ''}[mode]; }
     put('#hcdCpB', 'cpb', t.running ? `<button type="button" class="hcd-stop" id="hcdStop" data-act="stop"${t.stopping ? ' disabled' : ''}>${svg('stop')}Stop</button>`
       : `<button type="submit" class="hcd-send" aria-label="Send" title="Send (Enter)">${svg('up')}</button>`);
   }
   function barHTML(t) {
     if (t.running) return '';
-    if (t.question) return `<div class="hcd-ask2 col" id="hcdQ"><b>Hoola asks before it changes anything:</b><span>${esc(t.question)}</span></div>`;
+    if (t.question) { const ch = (t.ws || {}).choices || [];
+      return `<div class="hcd-ask2 col" id="hcdQ"><b>${hasBox(t) ? 'Hoola asks:' : 'Hoola asks before it changes anything:'}</b><span>${esc(t.question)}</span>
+        ${ch.length ? `<div class="hcd-acts" id="hcdChoices">${ch.map((c, i) => `<button type="button" class="hcd-btn" data-act="choice" data-i="${i}">${esc(c)}</button>`).join('')}</div>` : ''}</div>`; }
     if (t.status === 'plan_wait') return `<div class="hcd-ask2"><b>Start on this plan?</b><span class="hcd-flex"></span><button type="button" class="hcd-btn" id="hcdCancel" data-act="cancel">Cancel job</button><button type="button" class="hcd-btn pri" id="hcdYes" data-act="yes">Yes, start</button></div>`;
     if (MERGE) { const a = MERGE; return `<div class="hcd-ask2 col"><div class="hcd-ask2r"><b>${esc(a.method)} merge PR #${a.pr_number} into ${esc(a.base)}?</b><span class="hcd-mut">commit <code>${esc(a.head_sha)}</code> · CI ${esc((CI[a.ci_state] || ['', a.ci_state])[1])}</span><span class="hcd-flex"></span>
         <button type="button" class="hcd-btn" data-act="mergeno">Not now</button><button type="button" class="hcd-btn ok" data-act="mergeyes">Merge</button></div>
@@ -609,6 +664,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
         <p class="hcd-mut">If anything is pushed after this card, it goes stale and asks again.</p></div>`; }
     if (t.status === 'ready' && t.hash) return `<div class="hcd-ask2"><b>The change is ready. Open the pull request?</b><span class="hcd-flex"></span><button type="button" class="hcd-btn pri" id="hcdPush" data-act="push">Open the pull request</button></div>`;
     if (t.status === 'ci_running') return `<div class="hcd-ask2 soft"><span>Waiting for your CI on GitHub. ${t.auto_fix ? 'If it fails, Hoola fixes it and tries again.' : 'Auto-fix is off for this pull request, so a failure waits for you.'}</span><span class="hcd-flex"></span><button type="button" class="hcd-btn" data-act="refresh">Check now</button></div>`;
+    if (canTalk(t)) return '';
     if (!CAN_REVISE.has(t.status) && !t.question) return `<div class="hcd-ask2 soft"><span>This session is finished.</span><span class="hcd-flex"></span><button type="button" class="hcd-btn" data-go="home">New session</button></div>`;
     return '';
   }
@@ -619,12 +675,13 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
   const again = async () => { await load(); drawSide(); await refreshTask(TASK.id, false); };
   async function sendMessage(text) {
     const ta = $('#hcdNote'), v = (text === undefined ? ta.value : text).trim(), mode = $('#hcdSteer').dataset.mode, t = TASK;
-    const cs = mode === 'note' || mode === 'revise' ? COMMENTS : [];
+    const cs = mode === 'note' || mode === 'revise' || mode === 'talk' ? COMMENTS : [];
     if (!t || mode === 'off' || (!v && !cs.length)) return;
     try {
       if (mode === 'note') { await api('POST', `/api/devsahayak/tasks/${tid()}/note`, {text: v, comments: cs}); }
       else if (mode === 'answer') { await api('POST', `/api/devsahayak/tasks/${tid()}/answer`, {text: v}); }
       else if (mode === 'plan') { await api('POST', `/api/devsahayak/tasks/${tid()}/bg/plan_ok`, {hash: t.hash, note: v}); }
+      else if (mode === 'talk' || (t.ws && t.ws.on && t.ws.state)) { await api('POST', `/api/devsahayak/tasks/${tid()}/message`, {text: v, comments: cs}); }   // Phase 4: a conversation
       else { await api('POST', `/api/devsahayak/tasks/${tid()}/bg/revise`, {text: v, comments: cs}); }
       if (cs.length) { COMMENTS = []; DRAFT = null; SIG.pane = ''; }
       if (text === undefined) { ta.value = ''; grow(ta); }
@@ -654,7 +711,72 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
       (s.diff || []).forEach(r => f.live.push({t: r.startsWith('+') ? 'add' : r.startsWith('-') ? 'del' : 'ctx', text: r.replace(/^[+-] ?/, ''), o: '', n: ''})); });
     return Object.values(by);
   }
+  const paneTabs = t => hasBox(t) ? `<div class="hcd-ptabs" role="tablist" aria-label="Pane">${[['changes', 'Changes'], ['files', 'Files'], ['terminal', 'Terminal']].map(([k, l]) => `<button type="button" role="tab" aria-selected="${PANE.tab === k}" data-act="ptab" data-tab="${k}">${l}</button>`).join('')}</div>` : '<b>Changes</b>';
+  const closeBtn = `<button type="button" class="hcd-icb" data-act="pclose" aria-label="Close the pane" title="Close">${svg('x')}</button>`;
+  function termHTML(t) {
+    const rows = TERM.tid === t.id ? TERM.rows : [];
+    const one = r => { const st = r.running ? 'run' : r.ok === false ? 'bad' : 'ok', out = String(r.out || '').replace(/\s+$/, '');
+      const lines = out ? out.split('\n') : [], big = lines.length > 30 && !OPEN.has('t' + r.n);
+      return `<div class="hcd-tr ${st}"><div class="hcd-trh"><code>$ ${esc(r.cmd || '')}</code><span class="hcd-flex"></span>
+          <span class="hcd-c ${st}">${r.running ? 'running' : r.kind === 'setup' ? 'setup failed' : r.timed_out ? 'time limit' : r.ok === false ? 'exit ' + esc(String(r.rc)) : 'ok'}</span>${r.seconds ? `<small>${esc(String(r.seconds))} s</small>` : ''}</div>
+        ${r.why ? `<p class="hcd-mut">${esc(r.why)}</p>` : ''}${lines.length ? `<pre class="hcd-out">${esc((big ? lines.slice(-30) : lines).join('\n'))}</pre>` : '<p class="hcd-mut">(no output)</p>'}
+        ${big ? `<button type="button" class="hcd-lk" data-act="tmore" data-n="${r.n}">Show all ${lines.length} lines</button>` : ''}</div>`; };
+    return `<header class="hcd-ph">${paneTabs(t)}<span class="hcd-flex"></span><span class="hcd-mut">${plural(rows.length, 'command')}</span>${closeBtn}</header>
+      <p class="hcd-pnote">Output only. Hoola runs the commands in the session's box (no internet, no keys) - tell it what to run in a message.</p>
+      <div class="hcd-term" id="hcdTerm">${rows.length ? rows.map(one).join('') : `<p class="hcd-mut">${t.ws.state === 'paused' ? 'Nothing here yet - the box is paused.' : 'No command has run in this session yet.'}</p>`}</div>`;
+  }
+  function filesHTML(t) {
+    const F = FILES, live = F.tid === t.id ? F.live : true;
+    const tree = (path, depth) => { const d = F.dirs[path]; if (!d) return '<p class="hcd-mut">Loading…</p>';
+      return d.map(e => e.dir
+        ? `<button type="button" class="hcd-fl${e.junk ? ' dim' : ''}" style="padding-left:${8 + depth * 14}px" data-act="fdir" data-path="${esc(e.path)}" aria-expanded="${F.open.has(e.path)}">${svg('chev', 'hcd-chev')}<span>${esc(e.name)}</span></button>${F.open.has(e.path) ? tree(e.path, depth + 1) : ''}`
+        : `<button type="button" class="hcd-fl${F.file && F.file.path === e.path ? ' on' : ''}" style="padding-left:${24 + depth * 14}px" data-act="ffile" data-path="${esc(e.path)}"><span>${esc(e.name)}</span>${e.mark ? `<em class="${e.mark === 'new' ? 'add' : 'chg'}" title="${e.mark === 'new' ? 'New in this session' : 'Changed in this session'}">${e.mark === 'new' ? 'new' : 'changed'}</em>` : ''}</button>`).join('') || '<p class="hcd-mut">Empty folder.</p>'; };
+    const f = F.file, lines = f && f.text !== undefined ? f.text.split('\n').slice(0, 2000) : [];
+    return `<header class="hcd-ph">${paneTabs(t)}<span class="hcd-flex"></span><button type="button" class="hcd-btn sm" data-act="frefresh">Refresh</button>${closeBtn}</header>
+      ${!live ? `<p class="hcd-pnote">This session's box is paused, so its files are not on the server right now. Your edits are saved - your next message brings them back.</p>` : `<p class="hcd-pnote">The session's own copy of the repo, as Hoola left it. Read only.</p>
+      <div class="hcd-pb"><nav class="hcd-pfs hcd-tree" aria-label="Files in the box">${tree('', 0)}</nav>
+        <div class="hcd-dv" id="hcdDv">${f ? `<div class="hcd-dh"><code>${esc(f.path)}</code>${f.lines ? `<span class="hcd-mut">${plural(f.lines, 'line')}</span>` : ''}</div>
+          ${f.hidden ? `<p class="hcd-pnote">${esc(f.hidden)}</p>` : f.missing ? '<p class="hcd-pnote">That file is not there any more.</p>' : lines.map((l, i) => `<div class="hcd-dl ctx"><span></span><i></i><i>${i + 1}</i><code>${esc(l) || ' '}</code></div>`).join('')}` : '<p class="hcd-mut hcd-pad2">Pick a file to read it.</p>'}</div></div>`}`;
+  }
+  async function loadTerm(force) {
+    const t = TASK; if (!t || !hasBox(t)) return;
+    if (TERM.tid !== t.id) TERM = {tid: t.id, rows: []};
+    try { const r = await api('GET', `/api/devsahayak/tasks/${tid()}/terminal`); if (TERM.tid !== t.id) return; TERM.rows = r.rows || []; } catch (e) { return; }
+    if (PANE && PANE.tab === 'terminal') { const el = $('#hcdTerm'), end = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 60; drawPane(!!force); const e2 = $('#hcdTerm'); if (e2 && end) e2.scrollTop = e2.scrollHeight; }
+  }
+  async function loadDir(path, force) {
+    const t = TASK; if (!t || !hasBox(t)) return;
+    if (FILES.tid !== t.id) FILES = {tid: t.id, dirs: {}, open: new Set(), file: null, live: true};
+    if (FILES.dirs[path] && !force) return;
+    try { const r = await api('GET', `/api/devsahayak/tasks/${tid()}/files?path=${encodeURIComponent(path)}`); if (FILES.tid !== t.id) return; FILES.live = !!r.live; FILES.dirs[path] = r.entries || []; } catch (e) { FILES.dirs[path] = []; }
+    if (PANE && PANE.tab === 'files') drawPane(true);
+  }
+  async function loadFile(path) {
+    try { FILES.file = await api('GET', `/api/devsahayak/tasks/${tid()}/file?path=${encodeURIComponent(path)}`); FILES.file.path = FILES.file.path || path; } catch (e) { toast(e.message, true); return; }
+    drawPane(true); const dv = $('#hcdDv'); if (dv) dv.scrollTop = 0;
+  }
+  function setTab(tab) {
+    if (!TASK) return;
+    if (!PANE) { openPane(''); }
+    PANE.tab = tab; DRAFT = null; SIG.top = ''; SIG.pane = '';
+    if (tab === 'terminal') loadTerm(true); else if (tab === 'files') { FILES.dirs = FILES.tid === TASK.id ? {} : FILES.dirs; loadDir('', true); }
+    paint();
+  }
+  async function askRewind(n) {
+    const t = TASK; if (!t) return;
+    const r = await dialog(`<h2>Rewind to before this message?</h2>
+      <p class="hcd-mut">The files in this session's box and the conversation go back to where they were before you sent it. Your message comes back into the box so you can change it. A commit already on your pull request stays there.</p>
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no">Cancel</button><button class="hcd-btn pri" value="ok">Rewind</button></div>`);
+    if (r !== 'ok') return;
+    try { const out = await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n});
+      const ta = $('#hcdNote'), back = String(out.text || '').replace(/<\/?her_\w+>/g, '').replace(/\nApply her change to the work below\.$/, '').trim();
+      if (ta && back) { ta.value = back; grow(ta); }
+      toast('Back to before that message.'); FILES.dirs = {}; FILES.file = null; await again(); }
+    catch (e) { toast(e.message, true); }
+  }
   function paneHTML(t) {
+    if (PANE.tab === 'terminal' && hasBox(t)) return termHTML(t);
+    if (PANE.tab === 'files' && hasBox(t)) return filesHTML(t);
     const files = paneFiles(t), f = files.find(x => x.path === PANE.path) || files[0], canC = t.running || CAN_REVISE.has(t.status), pushed = !!(t.pr_number && t.branch);
     if (f) PANE.path = f.path;
     const all = f ? (f.live || parseDiff(f.diff)) : [], cap = f && !OPEN.has('all:' + f.path) && all.length > 600, rows = cap ? all.slice(0, 600) : all;
@@ -668,7 +790,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
         <textarea id="hcdCText" rows="2" maxlength="1000" placeholder="Comment on ${r.n ? 'line ' + r.n : 'this line'} - it goes to Hoola with your next message"></textarea>
         <div class="hcd-acts"><span class="hcd-mut">Enter adds it · Esc cancels</span><span class="hcd-flex"></span><button type="button" class="hcd-btn sm" data-act="ccancel">Cancel</button><button type="submit" class="hcd-btn sm pri">Add comment</button></div></form>`;
       return h; };
-    return `<header class="hcd-ph"><b>Changes</b><span class="hcd-stat">${stat({files})}</span><span class="hcd-mut">· ${plural(files.length, 'file')}</span><span class="hcd-flex"></span>
+    return `<header class="hcd-ph">${paneTabs(t)}<span class="hcd-stat">${stat({files})}</span><span class="hcd-mut">· ${plural(files.length, 'file')}</span><span class="hcd-flex"></span>
         ${pushed ? `<label class="hcd-chip">Compare against <select id="hcdCmp" aria-label="Compare against"><option value="">this change</option>${brs.filter(b => b !== t.branch).map(b => `<option value="${esc(b)}"${PANE.base === b ? ' selected' : ''}>${esc(b)}</option>`).join('')}</select></label>` : ''}
         ${t.status === 'ready' && t.hash && !t.running ? `<button type="button" class="hcd-btn sm pri" data-act="push">Open the pull request</button>` : ''}
         <button type="button" class="hcd-icb" data-act="pclose" aria-label="Close the Changes pane" title="Close">${svg('x')}</button></header>
@@ -690,10 +812,11 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
   }
   function openPane(path) {
     if (!TASK) return;
-    if (!PANE) { PANE = {path: path || '', base: '', cmp: null, rows: []};
+    if (!PANE) { PANE = {path: path || '', base: '', cmp: null, rows: [], tab: 'changes'};
       if (P.side === 'open' && $('#hcdBody').clientWidth < 1100) { SIDE_AUTO = true; P.side = 'min'; drawSide(); }    // make room; it comes back on close
       const t = TASK; if (t.pr_number && !BRANCHES[t.repo]) api('GET', `/api/devsahayak/branches?repo=${encodeURIComponent(t.repo)}`).then(r => { BRANCHES[t.repo] = r.branches || []; drawPane(false); }).catch(() => { BRANCHES[t.repo] = []; }); }
     else if (path) PANE.path = path;
+    if (path) PANE.tab = 'changes';
     DRAFT = null; SIG.top = ''; paint();
   }
   function closePane(quiet) {
@@ -721,7 +844,16 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
     unkind: () => { HOME.kind = 'auto'; drawTray(); },
     unissue: () => { HOME.issue = 0; drawTray(); },
     unfile: b => { const f = HOME.files.splice(+b.dataset.i, 1)[0]; if (f?.url) URL.revokeObjectURL(f.url); drawTray(); },
-    changes: () => { PANE ? closePane() : openPane(''); },
+    changes: () => { PANE && PANE.tab === 'changes' ? closePane() : PANE ? setTab('changes') : openPane(''); },
+    term: () => { PANE && PANE.tab === 'terminal' ? closePane() : setTab('terminal'); },
+    filesp: () => { PANE && PANE.tab === 'files' ? closePane() : setTab('files'); },
+    ptab: b => setTab(b.dataset.tab),
+    tmore: b => { OPEN.add('t' + b.dataset.n); drawPane(true); },
+    fdir: b => { const p0 = b.dataset.path; if (FILES.open.has(p0)) FILES.open.delete(p0); else { FILES.open.add(p0); loadDir(p0); } drawPane(true); },
+    ffile: b => loadFile(b.dataset.path),
+    frefresh: () => { FILES.dirs = {}; loadDir('', true); [...FILES.open].forEach(p0 => loadDir(p0, true)); if (FILES.file) loadFile(FILES.file.path); },
+    choice: b => busy(b, async () => { const c = ((TASK.ws || {}).choices || [])[+b.dataset.i]; if (c) await sendMessage(c); }),
+    rewind: b => askRewind(+b.dataset.n),
     file: b => openPane(b.dataset.path),
     pclose: () => closePane(),
     walk: b => openPane(b.dataset.path),
@@ -805,7 +937,13 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
         <form class="hcd-inline" id="hcdTok"><label for="hcdTokIn" class="hcd-sr">GitHub token</label><input id="hcdTokIn" type="password" autocomplete="off" placeholder="github_pat_…"><button class="hcd-btn" type="submit">Save</button>${st.github ? '<button class="hcd-btn" type="button" id="hcdTokDel">Forget</button>' : ''}</form>
         <p class="hcd-mut">Needs: ${esc((st.permissions || []).join(', '))}.</p></section>
       <section class="hcd-card"><h2>Repos Hoola may work in</h2>
-        ${repos.map(r => `<div class="hcd-repo"><code>${esc(r.repo)}</code><span class="hcd-mut">${r.private ? 'private' : 'public · asks before a PR'}${r.language ? ' · ' + esc(r.language) : ''}</span><button type="button" class="hcd-btn sm" data-rmrepo="${esc(r.repo)}">Remove</button></div>`).join('') || '<p class="hcd-mut">No repos yet.</p>'}
+        ${repos.map((r, i) => `<div class="hcd-repo"><code>${esc(r.repo)}</code><span class="hcd-mut">${r.private ? 'private' : 'public · asks before a PR'}${r.language ? ' · ' + esc(r.language) : ''}</span><button type="button" class="hcd-btn sm" data-rmrepo="${esc(r.repo)}">Remove</button></div>
+          <details class="hcd-rbox"${r.setup_cmd || r.test_cmd || Object.keys(r.env_vars || {}).length ? ' open' : ''}><summary>How this repo runs in the box</summary>
+            <form class="hcd-rboxf" data-repobox="${esc(r.repo)}">
+              <label class="hcd-f"><span>Setup command <small>installs the dependencies once, with internet</small></span><input name="setup" maxlength="380" value="${esc(r.setup_cmd || '')}" placeholder="pip install -r requirements.txt"></label>
+              <label class="hcd-f"><span>Test command <small>Hoola runs exactly this, with no internet</small></span><input name="test" maxlength="380" value="${esc(r.test_cmd || '')}" placeholder="python3 -m pytest -q"></label>
+              <label class="hcd-f"><span>Environment variables <small>one NAME=value a line - never a key or a password</small></span><textarea name="env" rows="2" maxlength="2000" placeholder="APP_ENV=test">${esc(Object.entries(r.env_vars || {}).map(([k, v]) => k + '=' + v).join('\n'))}</textarea></label>
+              <div class="hcd-acts"><span class="hcd-mut">Empty = Hoola reads them from the repo (.hoola/lab.json, AGENTS.md, CI).</span><span class="hcd-flex"></span><button class="hcd-btn sm" type="submit">Save</button></div></form></details>`).join('') || '<p class="hcd-mut">No repos yet.</p>'}
         <form class="hcd-inline" id="hcdAddRepo"><label for="hcdRepoIn" class="hcd-sr">Repo</label><input id="hcdRepoIn" placeholder="owner/name" maxlength="200"><button class="hcd-btn" type="submit">Add</button></form></section>
       <section class="hcd-card"><h2>How Hoola works</h2>
         ${sw('ask_before_pr', 'Ask me before opening a pull request', 'Public repos always ask')}
@@ -819,7 +957,15 @@ window.HoolaCode = function ({api, esc, toast, standalone = false}) {
         <label class="hcd-f"><span>Lines per change</span><input type="number" min="20" max="5000" data-set="max_lines" value="${+st.max_lines || 1500}"></label>
         <label class="hcd-f"><span>Your coding rules (Hoola follows them every time)</span><textarea rows="4" data-set="rules" maxlength="4000">${esc(st.rules || '')}</textarea></label>
         <p class="hcd-mut">Always on: ${esc((st.never || []).slice(0, 4).join(' · '))}</p></section>
+      ${(() => { const w = OV?.workspace || {}; return `<section class="hcd-card" id="hcdWsCard"><h2>Session boxes</h2>
+        <p>${w.on ? (w.ready ? '<span class="hcd-c ok">On</span>' : '<span class="hcd-c warn">On, but the box is not available</span>') : '<span class="hcd-c soft">Off on this server</span>'}${w.on ? ` · ${(w.live || []).length} of ${w.cap} live${w.paused ? ` · ${w.paused} paused` : ''}` : ''}</p>
+        <p class="hcd-mut">${w.on ? `Each session works in its own copy of the repo inside a locked box: no internet, no keys, a time limit on every command. At most ${w.cap} are live at once; a session nobody used for ${w.idle_min} minutes is paused and comes back with its edits on your next message.` : 'When this is switched on, each session works in its own copy of the repo inside a locked box and can run commands. Until then Hoola reads and edits through GitHub, and runs only your test command.'}</p>
+        ${w.on && !w.ready && w.say ? `<p class="hcd-mut">${esc(w.say)}</p>` : ''}</section>`; })()}
     </div></main>`);
+    EL.querySelectorAll('[data-repobox]').forEach(f => f.addEventListener('submit', async ev => { ev.preventDefault();
+      const env = {}; String(f.env.value || '').split('\n').forEach(l => { const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
+      const [o, n] = f.dataset.repobox.split('/');
+      try { await api('PATCH', `/api/devsahayak/repos/${encodeURIComponent(o)}/${encodeURIComponent(n)}`, {setup_cmd: f.setup.value, test_cmd: f.test.value, env_vars: env}); toast('Saved.'); await load(); } catch (e) { toast(e.message, true); } }));
     $('#hcdTok').addEventListener('submit', async ev => { ev.preventDefault(); const v = $('#hcdTokIn').value.trim(); if (!v) return;
       try { await api('PUT', '/api/devsahayak/token', {token: v}); $('#hcdTokIn').value = ''; toast('GitHub connected.'); await load(); settings(); } catch (e) { toast(e.message, true); } });
     $('#hcdTokDel')?.addEventListener('click', async () => { if (!confirm('Forget the GitHub token?')) return; try { await api('DELETE', '/api/devsahayak/token'); await load(); settings(); } catch (e) { toast(e.message, true); } });

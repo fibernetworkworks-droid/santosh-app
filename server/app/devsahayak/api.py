@@ -149,6 +149,33 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def answer(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.answer, tenant, tid, str(_b(body).get("text") or ""))
 
+    # ---- Phase 4: the workspace engine (a session's own box)
+    @r.post("/tasks/{tid}/message")
+    async def message(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.message, tenant, tid, str(b.get("text") or ""), b.get("comments"))
+
+    @r.post("/tasks/{tid}/rewind")
+    async def rewind(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.rewind, tenant, tid, int(_b(body).get("n") or 0))
+
+    @r.get("/tasks/{tid}/terminal")
+    async def terminal(tid: str, after: int = 0, tenant: str = Depends(current_tenant)):
+        return await run(S.terminal, tenant, tid, after)
+
+    @r.get("/tasks/{tid}/files")
+    async def box_files(tid: str, path: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.box_files, tenant, tid, path)
+
+    @r.get("/tasks/{tid}/file")
+    async def box_file(tid: str, path: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.box_file, tenant, tid, path)
+
+    @r.patch("/repos/{owner}/{name}")
+    async def patch_repo(owner: str, name: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.save_repo, tenant, f"{owner}/{name}", b.get("setup_cmd"), b.get("test_cmd"), b.get("env_vars"))
+
     @r.get("/tasks/{tid}/compare")
     async def compare(tid: str, base: str = "", tenant: str = Depends(current_tenant)):
         return await run(S.compare, tenant, tid, base)

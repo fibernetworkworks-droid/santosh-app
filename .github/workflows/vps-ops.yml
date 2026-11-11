@@ -69,6 +69,8 @@ on:
           - cad_setup
           - lab_check
           - lab_try
+          - ws_check
+          - ws_flip
           - lab_setup
           - lab_images
           - lab_prune
@@ -672,6 +674,24 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective aep_trace =\", get_settings().aep_trace)"' ;;
+              ws_check)
+                # HOOLA CODE PHASE 4: does a LIVE session box work on this VPS, and is it locked? No repo of hers and
+                # no model: starts one box on a temp folder, runs commands in it (files stay between commands, the
+                # server sees what the box wrote), then the walls - no internet, read-only root, not root, a command
+                # cut at its time limit, a background command - and that the server can remove the files afterwards.
+                # "FAIL" or "DANGER" anywhere = do NOT run ws_flip; tell the developer.
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devsahayak.wsp check 2>&1 | tail -30' ;;
+              ws_flip)
+                # ... the owner's flip slot for the workspace engine: DEV_WORKSPACE=true in $CORE/.env, the same reviewed
+                # one-boolean shape as coder_flip / trace_flip (the code default stays OFF and the tests pin it). Run
+                # ws_check first. At most 2 sessions are live at once (dev_workspace_live, her number).
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^DEV_WORKSPACE=" $CORE/.env; then sed -i "s#^DEV_WORKSPACE=.*#DEV_WORKSPACE=true#" $CORE/.env; else printf "DEV_WORKSPACE=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^DEV_WORKSPACE=true$" $CORE/.env && echo "== DEV_WORKSPACE=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; s = get_settings(); print(\"== effective dev_workspace =\", s.dev_workspace, \"live boxes allowed =\", s.dev_workspace_live)"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

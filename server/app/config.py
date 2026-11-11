@@ -93,6 +93,15 @@ class Settings(BaseSettings):
     dev_lab: bool = True                    # v0.533 PRAYOGSHALA ON: her VPS answered lab_check with every wall holding (docker 29.8.1, base image built, pass + fail caught, network blocked, read-only root, uid 1000)
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
+    dev_workspace: bool = False             # Hoola Code Phase 4: a session works in a REAL checkout in its own locked box (commands, files kept between messages, a conversation). OFF until `python -m app.devsahayak.wsp check` passes on her VPS (vps-ops ws_check)
+    dev_workspace_live: int = 2             # ... sessions that may be LIVE (box + files on the server) at once on the whole server - her number, 11 Nov 2026; the rest are paused
+    dev_workspace_idle_min: int = 30        # ... a live session nobody used for this long is paused (edits saved, box + files removed, rebuilt on its next message)
+    dev_workspace_cmd_s: int = 300          # ... seconds one command may run in the box
+    dev_workspace_bg_s: int = 900           # ... seconds a background command may run
+    dev_workspace_cmds: int = 60            # ... commands one turn may run
+    dev_workspace_wait_min: int = 20        # ... minutes a new turn waits for a free box when every live one is busy
+    dev_workspace_poll_s: float = 3.0       # ... how often that wait looks again
+    dev_workspace_mem: str = ""             # ... memory cap of one live box ('' = the lab's 2g)
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
     research_engines_allowed: str = "hoola"   # v0.477 R6: comma list of engines she lets run research ("hoola" is always allowed); a vendor must be listed here ...
     research_vendor_terms_ack: str = ""       # ... AND here: the vendors whose current terms SHE has read and accepts for this use (storing + showing the result to her). Nothing is assumed.

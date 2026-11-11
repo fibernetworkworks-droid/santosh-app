@@ -245,3 +245,121 @@ def prune(keep: int = 12) -> list[str]:
         if forget(r["image"]):
             gone.append(r["image"])
     return gone
+
+
+# ---------------------------------------------------------------- Hoola Code Phase 4: a LIVE box for one session
+# A check (above) is one container per command, thrown away. A coding session needs the opposite: ONE box that stays
+# for the life of the session, so files, a build's output and a background command are still there on the next
+# message. The walls are the same ones - no network, no capabilities, non-root, read-only root, memory / CPU / pids
+# caps - and they come from the same `_limits()`, so a live box can never be given more than a check gets. The
+# session's time limit is per COMMAND (`timeout` inside the box, so the process itself is killed, not only our
+# docker client). How many live boxes may exist at once is the caller's rule (devsahayak/wsp.py), not this file's.
+LIVE_PREFIX = "hoola-ws-"
+BG_DIR = "/tmp/hoola-bg"
+
+
+def live_name(key: str) -> str:
+    import re as _re
+    return LIVE_PREFIX + (_re.sub(r"[^a-z0-9_-]", "", str(key or "").lower())[:40] or "x")
+
+
+def _env_flags(env: dict[str, str] | None) -> list[str]:
+    flags: list[str] = []
+    for k, v in (env or {}).items():
+        flags += ["--env", f"{k}={v}"]
+    return flags
+
+
+def start_live(name: str, image: str, files_dir: str, mem: str = "") -> dict[str, Any]:
+    """Start the session's box: the checkout mounted at /work, nothing running in it but `sleep`. A box that already
+    has this name is replaced (it is the same session coming back)."""
+    d = docker()
+    if not d:
+        return {"ok": False, "why": "docker is not installed on this machine"}
+    _run([d, "rm", "-f", name], 60)
+    lim = _limits(False)
+    if mem:
+        for flag in ("--memory", "--memory-swap"):
+            lim[lim.index(flag) + 1] = mem
+    args = [d, "run", "-d", "--name", name, "--init", "--label", "hoola.ws=1"] + lim
+    args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw", image, "sleep", "infinity"]
+    rc, txt, secs = _run(args, 120)
+    return {"ok": rc == 0, "name": name, "seconds": round(secs, 1),
+            "why": "" if rc == 0 else "the box did not start: " + txt.strip()[-300:]}
+
+
+def live_alive(name: str) -> bool:
+    d = docker()
+    if not d:
+        return False
+    rc, out_, _ = _run([d, "inspect", "-f", "{{.State.Running}}", name], 20)
+    return rc == 0 and out_.strip().endswith("true")
+
+
+def exec_live(name: str, command: str, timeout: int = 300, env: dict[str, str] | None = None) -> dict[str, Any]:
+    """One command in the session's box, from the repo root. `timeout` runs INSIDE the box, so the command and its
+    children are killed there when the time is up."""
+    d = docker()
+    if not d:
+        return {"rc": 127, "out": "docker is not installed", "secs": 0.0, "timed_out": False}
+    shell = f'mkdir -p "$HOME" 2>/dev/null || true; cd {WORK}; {command}'
+    args = [d, "exec", "--user", "1000:1000", "--workdir", WORK] + _env_flags(env)
+    args += [name, "timeout", "-k", "5", str(int(timeout)), "bash", "-lc", shell]
+    rc, txt, secs = _run(args, int(timeout) + 30)
+    timed_out = rc in (124, 137) and secs >= timeout - 1
+    return {"rc": 124 if timed_out else rc, "out": txt, "secs": secs, "timed_out": timed_out}
+
+
+def bg_start(name: str, slot: str, command: str, limit: int = 900, env: dict[str, str] | None = None) -> dict[str, Any]:
+    """Start a command that keeps running after this call (a dev server, a watcher). It has its own time limit; its
+    output goes to a file inside the box that `bg_read` shows."""
+    import shlex
+    d = docker()
+    if not d:
+        return {"ok": False, "why": "docker is not installed"}
+    inner = (f"mkdir -p {BG_DIR}; cd {WORK}; rm -f {BG_DIR}/{slot}.rc; "
+             f"(timeout -k 5 {int(limit)} bash -lc {shlex.quote(command)} > {BG_DIR}/{slot}.log 2>&1 & "
+             f"echo $! > {BG_DIR}/{slot}.pid; wait $!; echo $? > {BG_DIR}/{slot}.rc)")
+    args = [d, "exec", "-d", "--user", "1000:1000", "--workdir", WORK] + _env_flags(env) + [name, "bash", "-lc", inner]
+    rc, txt, _ = _run(args, 60)
+    return {"ok": rc == 0, "why": "" if rc == 0 else txt.strip()[-300:]}
+
+
+def bg_read(name: str, slot: str, tail: int = 6000) -> dict[str, Any]:
+    d = docker()
+    if not d:
+        return {"running": False, "rc": None, "out": ""}
+    cmd = (f"if [ -f {BG_DIR}/{slot}.rc ]; then echo \"RC=$(cat {BG_DIR}/{slot}.rc)\"; else echo RC=; fi; "
+           f"tail -c {int(tail)} {BG_DIR}/{slot}.log 2>/dev/null")
+    rc, txt, _ = _run([d, "exec", "--user", "1000:1000", name, "bash", "-lc", cmd], 30)
+    head, _, body = (txt or "").partition("\n")
+    code = head.removeprefix("RC=").strip()
+    done = bool(code) or rc != 0
+    return {"running": not done, "rc": int(code) if code.lstrip("-").isdigit() else None, "out": body}
+
+
+def bg_stop(name: str, slot: str) -> bool:
+    d = docker()
+    if not d:
+        return False
+    cmd = f"kill -TERM $(cat {BG_DIR}/{slot}.pid 2>/dev/null) 2>/dev/null; true"
+    return _run([d, "exec", "--user", "1000:1000", name, "bash", "-lc", cmd], 30)[0] == 0
+
+
+def stop_live(name: str, files_dir: str = "") -> bool:
+    """End the session's box. The files it made are opened up first (they belong to uid 1000), so the server can
+    remove the folder whatever user it runs as."""
+    d = docker()
+    if not d:
+        return False
+    if live_alive(name):
+        _run([d, "exec", "--user", "1000:1000", name, "bash", "-lc", f"chmod -R a+rwX {WORK} 2>/dev/null; true"], 60)
+    return _run([d, "rm", "-f", name], 60)[0] == 0
+
+
+def live_boxes() -> list[str]:
+    d = docker()
+    if not d:
+        return []
+    rc, out_, _ = _run([d, "ps", "--filter", "label=hoola.ws=1", "--format", "{{.Names}}"], 30)
+    return [x.strip() for x in (out_ or "").splitlines() if x.strip()] if rc == 0 else []

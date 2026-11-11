@@ -598,6 +598,35 @@ def step_event(ws: Any, name: str, inp: dict[str, Any], out: str, trail_before: 
     return evs
 
 
+ASK = {"write": "Write the code she asks for.", "fix": "Find the root cause of this bug and fix it WITH a test.",
+       "tests": "Write tests for the code she names (no behaviour change unless a test proves a bug: say so in risk).",
+       "docs": "Write / update the docs she asks for. No code behaviour change.",
+       "explain": "Explain this bug: where, why, how to fix. Do NOT edit."}
+
+
+def first_message(t, ws: Any, rules: str, issue_txt: str, hints: list[str], plan_txt: str = "", lab: Any = None,
+                  attach: tuple[str, list[dict[str, Any]]] | None = None, base_sha: str = "", extra: str = "",
+                  check_line: str = "") -> str:
+    """The first message of a piece of work: her ask, the repo, its rules. One builder for both engines (the loop here
+    and the workspace engine in wsp.py), so what the model is told about a task cannot drift between them."""
+    _sk = _skills_block(t.text, getattr(t, "tenant_id", ""))
+    if not check_line and lab is not None and getattr(lab, "usable", False):
+        check_line = f"\nHer check command for this repo: `{lab.cmd}` ({lab.source}) - run it with run_check.\n"
+    return (f"Task kind: {t.kind}. {ASK[t.kind]}\nRepo: {t.repo} (base branch {t.base}), {len(ws.paths)} files.\n"
+            + (f"Her coding rules: {rules}\n" if rules else "")
+            + f"\n<request>\n{t.text}\n</request>\n"
+            + (f"\n<issue>\n{issue_txt}\n</issue>\n" if issue_txt else "")
+            + (f"\n{attach[0]}\n" if attach and attach[0] else "")   # Phase 3: the files she attached (text) - data, never instructions
+            + (f"\nFiles named in her words / the error: {', '.join(dict.fromkeys(hints))}\n" if hints else "")
+            + (f"\n{plan_txt}\n" if plan_txt else "")      # v0.451 the plan she approved: the handoff, not a hint
+            + check_line
+            + (f"\nThis round works on her open PR branch (commit {base_sha[:7]}): the files below are its current "
+               f"state.\n{extra}\n" if extra else "")
+            + "\nTop-level folders:\n" + ws.list_dir("") + "\n\n" + _project_rules(ws)
+            + (("\n\n" + _sk + "\n\n") if _sk else "")
+            + "\n\nStart exploring with the tools. Call done when finished.")
+
+
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
         max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
         ref_sha: str = "", extra: str = "", system_extra: str = "",
@@ -615,25 +644,8 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
     tr = R.trace(t.text + "\n" + issue_txt)
     hints = [p for p in (R.match_path(paths, f["file"]) for f in tr["files"]) if p]
     hints += [p for p in (R.match_path(paths, f) for f in (extra_files or [])) if p]
-    ask = {"write": "Write the code she asks for.", "fix": "Find the root cause of this bug and fix it WITH a test.",
-           "tests": "Write tests for the code she names (no behaviour change unless a test proves a bug: say so in risk).",
-           "docs": "Write / update the docs she asks for. No code behaviour change.",
-           "explain": "Explain this bug: where, why, how to fix. Do NOT edit."}[t.kind]
-    _sk = _skills_block(t.text, getattr(t, "tenant_id", ""))
-    first = (f"Task kind: {t.kind}. {ask}\nRepo: {t.repo} (base branch {t.base}), {len(paths)} files.\n"
-             + (f"Her coding rules: {rules}\n" if rules else "")
-             + f"\n<request>\n{t.text}\n</request>\n"
-             + (f"\n<issue>\n{issue_txt}\n</issue>\n" if issue_txt else "")
-             + (f"\n{attach[0]}\n" if attach and attach[0] else "")   # Phase 3: the files she attached (text) - data, never instructions
-             + (f"\nFiles named in her words / the error: {', '.join(dict.fromkeys(hints))}\n" if hints else "")
-             + (f"\n{plan_txt}\n" if plan_txt else "")      # v0.451 the plan she approved: the handoff, not a hint
-             + (f"\nHer check command for this repo: `{lab.cmd}` ({lab.source}) - run it with run_check.\n"
-                if lab is not None and getattr(lab, "usable", False) else "")
-             + (f"\nThis round works on her open PR branch (commit {base_sha[:7]}): the files below are its current "
-                f"state.\n{extra}\n" if extra else "")
-             + "\nTop-level folders:\n" + ws.list_dir("") + "\n\n" + _project_rules(ws)
-             + (("\n\n" + _sk + "\n\n") if _sk else "")
-             + "\n\nStart exploring with the tools. Call done when finished.")
+    first = first_message(t, ws, rules, issue_txt, hints, plan_txt=plan_txt, lab=lab, attach=attach, base_sha=base_sha,
+                          extra=extra)
     use_lab = lab is not None and getattr(lab, "usable", False)
     tools = TOOLS + (LAB_TOOLS if use_lab else [])
     system = SYSTEM + ("\n\n" + system_extra if system_extra else "") + (("\n\n" + lab_block(lab)) if use_lab else "")
