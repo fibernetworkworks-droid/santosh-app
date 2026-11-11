@@ -2926,3 +2926,10 @@ Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
 What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
 Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.
+
+---
+Task ID: v0.794.0 PROMPT NAAP (P0 of HOOLA PROMPTING; built as 0.785, re-versioned on merge: main had moved to 0.793.0)
+Ask: the owner pasted the P0 step of docs/HOOLA_PROMPTING_PLAN.md (measure before building).
+Built: quality/prompt_asks.py (60 asks: raw + hand-filled brief), quality/promptcard.py (scorer, free card, live card with a rupee ceiling, rule verdict, her picks), CLI `prompt`, GET /api/quality/prompt, vps-ops prompt_card_check / prompt_card_try; 11 tests, no model.
+Found: the architect plan echoed her words (the brief scored its own text) - fixed; a flag picture the picture engine refuses - replaced.
+Deploy: vps-ops deploy (server-only; no new pip, no tables). Then prompt_card_check (free), then prompt_card_try (Rs 250 cap). Next: read the numbers, then P1 on her GO.
