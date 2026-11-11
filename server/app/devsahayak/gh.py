@@ -134,7 +134,9 @@ class Gh:
         q = " ".join(w for w in words[:3]) + f" repo:{full}"
         try:
             r = self.req("GET", "/search/code", params={"q": q, "per_page": 10})
-        except GhError:
+            self.search_failed = ""
+        except GhError as e:
+            self.search_failed = str(e)[:200]          # v0.784 said to the model, never shown as "no file found"
             return []
         return [str(i.get("path")) for i in (r.get("items") or []) if i.get("path")]
 

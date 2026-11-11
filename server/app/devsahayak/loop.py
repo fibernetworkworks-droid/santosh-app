@@ -323,7 +323,10 @@ class Workspace:
             if any(x in p.lower() for x in low) and p not in hits:
                 hits.append(p)
         self.trail.append(f"dhoondha: {' '.join(w)} ({len(hits)} files)")
-        return "\n".join(hits[:30]) if hits else "No file found. Try other words, or list_dir."
+        failed = str(getattr(self.g, "search_failed", "") or "")
+        note = (f"[GitHub code search FAILED ({failed}) - only file NAMES were matched below; read files to be sure.]\n"
+                if failed else "")
+        return note + ("\n".join(hits[:30]) if hits else "No file found. Try other words, or list_dir.")
 
     def read_file(self, path: str, start: int = 0, end: int = 0) -> str:
         p = self._resolve(path)
@@ -445,36 +448,19 @@ PICK = _threading.local()
 def pick(t: Any = None) -> None:
     PICK.model = str(getattr(t, "model", "") or "")
     PICK.effort = str(getattr(t, "effort", "") or "")
+    from . import brain as _B                      # v0.784 the shared brain reads the same choice
+    _B.PICK.model, _B.PICK.effort = PICK.model, PICK.effort
 
 
 def _anthropic_brain(system: str, messages: list[dict], tools: list[dict]) -> tuple[list[dict], str]:
-    """One Claude call with tools (sync - the dev task already runs off the event loop). Opus by default."""
+    """One Claude call with tools. v0.784: through devsahayak/brain.py - Claude's own (past SAB GLM / one-model when
+    dev_claude is on), adaptive thinking, prompt caching, and old tool output trimmed in place past a budget."""
     from ..config import get_settings
-    st = get_settings()
-    if not st.anthropic_api_key:
+    from . import brain as _B
+    if not get_settings().anthropic_api_key and _B.CLIENT is None:
         raise LoopUnavailable("no ANTHROPIC_API_KEY")
-    import anthropic
-    model = getattr(PICK, "model", "") or getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or st.anthropic_model
-    client = anthropic.Anthropic(api_key=st.anthropic_api_key)
-    kw: dict[str, Any] = dict(model=model, max_tokens=16000, system=system, tools=tools, messages=messages)
-    effort = getattr(PICK, "effort", "") or str(getattr(st, "dev_loop_effort", "high") or "")
-    if effort:
-        kw["extra_body"] = {"output_config": {"effort": effort}}
-    try:
-        resp = client.messages.create(**kw)
-    except Exception as e:
-        if "extra_body" in kw and ("effort" in str(e).lower() or "output_config" in str(e).lower()):
-            kw.pop("extra_body")
-            resp = client.messages.create(**kw)
-        else:
-            raise
-    try:
-        from .. import usage
-        usage.from_anthropic(model, resp)
-    except Exception:
-        pass
-    blocks = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else dict(b) for b in resp.content]
-    return blocks, str(resp.stop_reason or "")
+    _B.trim(messages, int(getattr(get_settings(), "dev_ws_clear_chars", 180000) or 180000))
+    return _B.call(system, messages, tools)
 
 
 BRAIN: Callable[[str, list[dict], list[dict]], tuple[list[dict], str]] = _anthropic_brain   # tests replace it

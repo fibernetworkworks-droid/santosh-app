@@ -2893,3 +2893,8 @@ Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the lo
 content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
 Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
 Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.
+
+Task ID: v0.787.0 HOOLA CODE ENGINE (built as 0.784)
+Ask: "IS HOOLA CODE BACKEND SAME AS CLAUDE CODE" -> no -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
+Built: devsahayak/brain.py (Claude-only, thinking, caching, trimming), devsahayak/engine.py (working copy, Claude Code tools, bash in the box, compaction, continue, checkpoints + rewind, 2 live slots), routes ws / files / rewind, page steps + Working copy card; 13 tests incl. real Docker.
+Deploy: vps-ops deploy (server-only; no new pip; working copies under data/devsahayak/ws). Needs Anthropic credit (Hoola Code is Claude-only now). Found: server venv is Python 3.12 vs box 3.13.
