@@ -370,7 +370,7 @@ def forget_matter(tenant: str, ref: str, actor: str = "owner") -> dict:
             s.delete(x)
         num = m.number
         m.title, m.client, m.court, m.memos, m.status = "(deleted)", "", "", "[]", "forgotten"
-    return {"say": f"Everything in {num} has been deleted."}
+    return {"say": f"{num}: everything in it has been deleted."}
 
 
 # ---------------------------------------------------------------- sources
@@ -902,7 +902,7 @@ def decide_share(tenant: str, share_id: str, yes: bool, card_hash: str = "", by_
     with _LOCK, session() as s:
         x = s.get(LegalresShare, share_id)
         x.status, x.file_id = "shared", f.get("file_id", "")
-        _log(s, tenant, x.matter_id, "share", f"{x.number}: your approval; file + message draft for {to_name}")
+        _log(s, tenant, x.matter_id, "share", f"{x.number}: your approval; {to_name} gets the file + message draft")
         view = _share_view(x)
     say = f"{view['number']}: Word memo ready. Open the message draft and send the file yourself (Hoola does not send it)."
     _publish(tenant, "legalres_share", {"share": view, "links": links, "file": f, "say": say}, conv)
