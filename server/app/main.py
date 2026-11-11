@@ -1084,7 +1084,7 @@ def chat_export(conversation_id: str, fmt: str = "md", tenant: str = Depends(cur
         }, ensure_ascii=False, default=str, indent=1)
         return Response(body, media_type="application/json; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{_export_name(conv, "json")}"'})
-    out = [f"# {conv.title or 'Hoola chat'}", "", f"> {avatar} ki chat · export {time.strftime('%d %b %Y, %H:%M')} · Hoola Console", ""]
+    out = [f"# {conv.title or 'Hoola chat'}", "", f"> Chat with {avatar} · export {time.strftime('%d %b %Y, %H:%M')} · Hoola Console", ""]
     n_steps = 0
     for e in rows:
         p = e.payload if isinstance(e.payload, dict) else {}
@@ -16031,7 +16031,7 @@ async def artifact_ask(aid: str, body: ArtAskIn, tenant: str = Depends(current_t
     except ValueError as e:
         raise HTTPException(429 if "sawaal" in str(e) else 400, str(e))
     except Exception as e:
-        raise HTTPException(503, f"Santosh cannot answer right now ({type(e).__name__})")
+        raise HTTPException(503, f"Hoola cannot answer right now ({type(e).__name__})")
 
 
 @app.post("/api/artifacts/{aid}/revise", dependencies=[Depends(require_key)])

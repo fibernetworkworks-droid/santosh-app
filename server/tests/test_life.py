@@ -131,7 +131,7 @@ def test_morning_briefing_once_a_day(env, monkeypatch):
     asyncio.run(worker.morning_briefings())
     briefs = [x for x in notes(ctx.conversation_id) if x.startswith("Good morning")]
     assert len(briefs) == 1
-    assert "Meghana!" in briefs[0] and "todo mein 1" in briefs[0]
+    assert "Meghana." in briefs[0] and "1 in todo" in briefs[0]
 
 
 def test_weather_tool_uses_profile_city(env, monkeypatch):
@@ -152,4 +152,4 @@ def test_weather_tool_uses_profile_city(env, monkeypatch):
     asyncio.run(get_weather(ctx))
     assert calls == ["Pune"]          # coordinates cached after the first lookup
     text = asyncio.run(life.compose_briefing("default"))
-    assert "Pune" in text and "chhata" in text
+    assert "Pune" in text and "umbrella" in text

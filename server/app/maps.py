@@ -255,7 +255,7 @@ def _secs(v: str | None) -> int:
 
 def _human(secs: int) -> str:
     h, m = divmod(max(0, secs) // 60, 60)
-    return f"{h} ghante {m} min" if h else f"{m} min"
+    return f"{h} h {m} min" if h else f"{m} min"
 
 
 async def route(origin: dict, destination: dict, mode: str = "DRIVE", language: str = "en-IN",

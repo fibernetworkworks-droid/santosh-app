@@ -118,12 +118,12 @@ def _check(field: dict[str, Any], raw: Any) -> str:
         if bad:
             raise FormError(f"{label}: '{bad[0]}' is not in the list.")
         if field["required"] and not vals:
-            raise FormError(f"{label} chuniye.")
+            raise FormError(f"{label}: please choose.")
         return ", ".join(vals)
     v = re.sub(r"\s+", " ", str(raw if raw is not None else "")).strip()[:500]
     if not v:
         if field["required"]:
-            raise FormError(f"{label} bhariye.")
+            raise FormError(f"{label}: please fill this in.")
         return ""
     if kind == "number":
         n = v.replace(",", "").replace("₹", "").strip()

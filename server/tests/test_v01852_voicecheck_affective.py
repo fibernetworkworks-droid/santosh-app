@@ -118,7 +118,7 @@ def test_voicecheck_total_failure_says_model_or_key(env, monkeypatch):
     assert len(res["steps"]) == 7                      # full + 6 rungs, all refused
     assert res["steps"][0]["without_affective"] is True  # the one heal-retry happened on the full setup
     assert all(s["ok"] is False for s in res["steps"])
-    assert "bina affective ke BHI" in res["say"] and "GEMINI_LIVE_MODEL" in res["say"]
+    assert "Even without affective" in res["say"] and "GEMINI_LIVE_MODEL" in res["say"]
 
 
 def test_voicecheck_rung_refusal_still_reports_the_tool(env, monkeypatch):

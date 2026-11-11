@@ -135,7 +135,7 @@ def build_request(stops: list[dict], vehicles: list[dict], day: date, tz_name: s
         shipments.append(sh)
     vs = []
     for i, v in enumerate(vehicles):
-        vh: dict = {"label": str(v.get("name") or f"gaadi {i + 1}")[:60], "travelMode": "DRIVING",
+        vh: dict = {"label": str(v.get("name") or f"vehicle {i + 1}")[:60], "travelMode": "DRIVING",
                     "startLocation": _ll(v["start"]), "endLocation": _ll(v.get("end") or v["start"]),
                     # our own relative weights: time first, distance a tie-break. Units are only comparable to each
                     # other, never rupees.
@@ -173,7 +173,7 @@ def parse_response(resp: dict, stops: list[dict], vehicles: list[dict], tz_name:
     seen = 0
     for r in resp.get("routes") or []:
         vi = int(r.get("vehicleIndex") or 0)
-        vname = vehicles[vi].get("name") if 0 <= vi < len(vehicles) else f"gaadi {vi + 1}"
+        vname = vehicles[vi].get("name") if 0 <= vi < len(vehicles) else f"vehicle {vi + 1}"
         visits, trans = r.get("visits") or [], r.get("transitions") or []
         out = []
         for k, v in enumerate(visits):

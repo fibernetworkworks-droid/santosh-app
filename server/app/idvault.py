@@ -289,7 +289,7 @@ def capture(tenant: str, text: str) -> tuple[str, list[dict]]:
         except VaultError:
             continue
         saved.insert(0, rec)
-        out = out[:start] + f"[{rec['person_label']} ka {rec['kind_label']} {rec['masked']} · {rec['ref']}]" + out[end:]
+        out = out[:start] + f"[{rec['person_label']}: {rec['kind_label']} {rec['masked']} · {rec['ref']}]" + out[end:]
     return out, saved
 
 

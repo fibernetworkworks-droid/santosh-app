@@ -137,7 +137,7 @@ async def ping() -> dict:
             r = await c.get("/api/")
             if r.status_code == 200:
                 return {"ok": True, "message": r.json().get("message", ""), "status": 200}
-            return {"ok": False, "why": f"HA ne {r.status_code} diye", "status": r.status_code}
+            return {"ok": False, "why": f"HA answered {r.status_code}", "status": r.status_code}
     except Exception as e:                               # noqa: BLE001 - network errors are a status, not a crash
         return {"ok": False, "why": f"Could not reach HA: {e.__class__.__name__}", "status": 0}
 
@@ -212,10 +212,10 @@ async def state_one(entity: str) -> dict:
                     return {"ok": True, **_view(r.json())}
                 if r.status_code == 404:
                     return {"ok": False, "why": f"{eid} was not found in HA (see the full name with action=devices)"}
-                return {"ok": False, "why": f"HA ne {r.status_code} diye"}
+                return {"ok": False, "why": f"HA answered {r.status_code}"}
             r = await c.get("/api/states")
             if r.status_code != 200:
-                return {"ok": False, "why": f"HA ne {r.status_code} diye"}
+                return {"ok": False, "why": f"HA answered {r.status_code}"}
             for st in r.json() or []:
                 if eid in st.get("entity_id", "").lower() or eid in _friendly(st).lower():
                     return {"ok": True, **_view(st)}

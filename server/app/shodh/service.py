@@ -511,7 +511,7 @@ def analyse(tenant: str, project: str, question: str, datasets: list[str] | None
         if not code.strip():
             raise ShodhError("The model gave no code; please word the question more clearly.")
         try:
-            r = PL.run(tenant, code, datasets, file_ids, conv, f"Shodh: {question[:60]}", timeout_s=120)
+            r = PL.run(tenant, code, datasets, file_ids, conv, f"Research: {question[:60]}", timeout_s=120)
         except PL.PylabError as e:
             raise ShodhError(str(e))
         attempts.append({"ok": r["ok"], "error": r["error"]})

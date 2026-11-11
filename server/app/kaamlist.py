@@ -116,7 +116,7 @@ def listing(tenant: str, days: int = 7) -> dict[str, Any]:
             continue          # v0.662 this turn STARTED a tracked job - the job's own row tells its true state (no "ho gaya" twice)
         done.append({"source": "task", "kind": "task", "label": "Task", "title": _clip(r.request, 160) or "Task",
                      "state": "done" if r.outcome == "done" else ("failed" if r.outcome == "stuck" else r.outcome),
-                     "say": OUTCOME.get(r.outcome, r.outcome), "detail": _clip(r.left, 160) and f"baaki: {_clip(r.left, 150)}",
+                     "say": OUTCOME.get(r.outcome, r.outcome), "detail": _clip(r.left, 160) and f"pending: {_clip(r.left, 150)}",
                      "pct": -1, "link": "", "conversation_id": getattr(r, "conversation_id", "") or "",
                      "at": _utc(r.created_at).isoformat()})
     try:   # v0.662 the cards that wait for HER tap are her waiting work too (they were missing from this list)

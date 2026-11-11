@@ -332,7 +332,7 @@ async def compose_briefing(tenant_id: str) -> str:
         lists: dict[str, int] = {}
         for it in open_items:
             lists[it.list_name] = lists.get(it.list_name, 0) + 1
-        parts.append("Lists: " + ", ".join(f"{k} mein {v} cheezein" for k, v in lists.items()) + ".")
+        parts.append("Lists: " + ", ".join(f"{v} in {k}" for k, v in lists.items()) + ".")
     parts.append("If you need anything else, just say so.")
     return "\n".join(parts)
 

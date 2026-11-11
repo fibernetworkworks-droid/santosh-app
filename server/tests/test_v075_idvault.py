@@ -73,7 +73,7 @@ def test_chat_remember_and_operator_accept_ids(env):
     with pytest.raises(ToolError):
         asyncio.run(dispatch("remember", {"fact": "mera ATM PIN 4321 hai"}, Ctx("default", cid)))
     lst = asyncio.run(dispatch("id_locker", {"action": "list"}, Ctx("default", cid)))
-    assert lst["ids"][0]["person_label"] == "Maa" and PAN not in json.dumps(lst)
+    assert lst["ids"][0]["person_label"] == "Mother" and PAN not in json.dumps(lst)
     sv = asyncio.run(dispatch("id_locker", {"action": "save", "person": "papa", "kind": "aadhaar", "number": AAD2}, Ctx("default", cid)))
     assert sv["masked"] == "XXXX XXXX 1012" and "Locker" in sv["say"]
     from app.agent.prompts import system_prompt

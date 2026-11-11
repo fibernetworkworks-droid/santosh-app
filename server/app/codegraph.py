@@ -168,7 +168,7 @@ def _download(full: str, ref: str, token: str, dest: Path, max_bytes: int) -> No
                 if r.status_code == 404:
                     raise GraphError("This repo or branch was not found (a private one needs the Developer Assistant token).")
                 if r.status_code != 200:
-                    raise GraphError(f"GitHub ne {r.status_code} diya.")
+                    raise GraphError(f"GitHub answered {r.status_code}.")
                 size = 0
                 with open(dest, "wb") as f:
                     for chunk in r.iter_bytes(1 << 16):
@@ -326,9 +326,9 @@ def ask(tenant: str, repo: str, kind: str, question: str = "", a: str = "", b: s
     elif kind == "path":
         argv = [exe, "path", _clean_arg(a, "The first name"), _clean_arg(b, "The second name")] + g
     elif kind == "explain":
-        argv = [exe, "explain", _clean_arg(a or question, "Naam")] + g
+        argv = [exe, "explain", _clean_arg(a or question, "The name")] + g
     elif kind == "affected":
-        argv = [exe, "affected", _clean_arg(a or question, "Naam"), "--depth", str(depth)] + g
+        argv = [exe, "affected", _clean_arg(a or question, "The name"), "--depth", str(depth)] + g
     else:
         argv = [exe, "god-nodes", "--top", str(max(1, min(30, int(top or 10))))] + g
     code, so, se = _run(argv, int(getattr(_st(), "graphify_query_timeout_s", 60) or 60), cwd=gj.parent)

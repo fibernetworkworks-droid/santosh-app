@@ -168,7 +168,7 @@ def deliver(tenant: str, conv: str, res: dict, background: bool = False) -> dict
         why = res.get("reason") or ""
         msg = ("Please make the payment yourself on your phone; Hoola never pays." if status == "needs_payment"
                else "Please fill in the login / OTP / password part yourself on your phone; Hoola never fills these in.")
-        _open_button(conv, url, f"{site} kholiye", msg)
+        _open_button(conv, url, f"Open {site}", msg)
         out["say"] = (f"Stopped before a step only the user may do ({why}). An Open button for {site} is in the chat. "
                       f"Tell them what is ready and that they finish this step themselves.")
         if background:

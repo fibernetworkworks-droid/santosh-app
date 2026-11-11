@@ -131,7 +131,7 @@ def hint(tenant: str, user_text: str, limit: int = 2) -> tuple[str, list[str]]:
         steps = " -> ".join(s.get("label") or s.get("tool") for s in _j(p.steps, []))
         lines.append(f"- {p.title}: {steps}")
         for w in _j(p.watch_out, [])[:3]:
-            lines.append(f"  dhyan: {w}")
+            lines.append(f"  watch out: {w}")
     STATS["hinted"] += len(found)
     return "\n".join(lines), [p.id for p, _ in found]
 

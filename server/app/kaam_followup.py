@@ -647,7 +647,7 @@ def _ring(conv: str, key: str, state: str, title: str, settings) -> None:
         if settings.voice_ring:
             from . import push as _push
             _push.on_event(conv, {"kind": "voice_ring", "id": key, "at": "",
-                                  "payload": {"reason": f"kaam {state}: {title}"[:80], "ref": key, "conv": conv}})
+                                  "payload": {"reason": f"job {state}: {title}"[:80], "ref": key, "conv": conv}})
             STATS["ring"] = STATS.get("ring", 0) + 1
     except Exception:
         log.debug("voice ring skipped", exc_info=True)

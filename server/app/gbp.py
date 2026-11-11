@@ -36,7 +36,7 @@ METRICS = {   # DailyMetric enum values, from the Performance API's own definiti
     "CALL_CLICKS": "Tapped Call",
     "WEBSITE_CLICKS": "Opened the website",
     "BUSINESS_CONVERSATIONS": "Messages received",
-    "BUSINESS_BOOKINGS": "Booking hui",
+    "BUSINESS_BOOKINGS": "Bookings made",
 }
 MAX_ACCOUNTS = 5
 MAX_LOCATIONS = 20

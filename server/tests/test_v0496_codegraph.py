@@ -212,7 +212,7 @@ def test_download_cap(lane):
     mp.setenv("GRAPHIFY_MAX_REPO_MB", "1")
     from app.config import get_settings
     get_settings.cache_clear()
-    with pytest.raises(cg.GraphError, match="MB se bada"):
+    with pytest.raises(cg.GraphError, match="too large to map"):
         cg.build("t1", "foo/bar")
 
 
