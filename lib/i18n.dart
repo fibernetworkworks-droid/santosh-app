@@ -99,7 +99,7 @@ const Map<String, Map<String, String>> uiStrings = {
     'Haan, karo': 'Yes, do it',
     // v0.191 samajhdaar card: boli/likhi hui manzoori (non-money PC/browser steps)
     'Bol kar bhi ho jayega — "haan karo" ya "approve" kahiye.':
-        'You can just say it — say "haan karo" or "approve" and it is done. No tap needed.',
+        'You can just say it — say "yes" or "approve" and it is done. No tap needed.',
     // ---- campaign card ----
     'Taiyaar': 'READY',
     'Bhej raha hoon': 'SENDING',
@@ -245,7 +245,7 @@ const Map<String, Map<String, String>> uiStrings = {
     'WAPAS': 'BACK',
     'Yeh mail wapas inbox mein hai (unread).': 'This mail is back in your inbox (unread).',
     'Is mail mein login/OTP ka code ho sakta hai — Santosh code kabhi nahi batata.':
-        'This mail may hold a login/OTP code — Santosh never reads codes out.',
+        'This mail may hold a login/OTP code — Hoola never reads codes out.',
     'Nayi mail ki khabar': 'New-mail announcements',
     'Hoola har minute aapka inbox dekhta hai. Zaroori mail ya apne logon ki mail aaye to chat mein bata deta hai; newsletters chup rehte hain. OTP codes kabhi nahi batata.':
         'Hoola checks your inbox every minute and tells you in chat when important mail or mail from your own people arrives; newsletters stay quiet. OTP codes are never shown.',
@@ -268,7 +268,7 @@ const Map<String, Map<String, String>> uiStrings = {
         'Rules act on new mail; sending always waits for your tap.',
     'Koi rule nahi. Bolo "bank ki mail aaye to archive karo" jaisa rule chat mein.':
         'No rules yet. Say a rule in chat, like "archive mail from my bank".',
-    'Gmail, poora': 'Gmail, poora',
+    'Gmail, poora': 'All of Gmail',
     'Gmail ke saare kaam, chat se — hifazat ke saath':
         'Every Gmail job, from chat — with the guardrails on',
     'Padhna, chhaantna: inbox, thread poora, attachments (PDF, Excel, photos bhi), Gmail ke apne snoozed folder samet.':
@@ -288,7 +288,7 @@ const Map<String, Map<String, String>> uiStrings = {
     'Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.':
         'New-mail alerts every minute, important mail first; OTP codes are never shown.',
     'Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.':
-        'If Gmail ever needs a one-time reconnect for settings, tap "Jodiye" here — mail keeps working as before.',
+        'If Gmail ever needs a one-time reconnect for settings, tap "Connect Gmail" here — mail keeps working as before.',
     'Saved searches': 'Saved searches',
     'Chat mein boliye “<naam> dikhao” — yeh sirf dikhata hai, kuch nahi badalta.':
         'Say "show <name>" in chat — it only shows what matches now, nothing changes.',

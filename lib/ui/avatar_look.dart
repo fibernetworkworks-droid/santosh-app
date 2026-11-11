@@ -30,7 +30,7 @@ class LookInfo {
   final String id, name, city, country, region, hair, outfit, gender;
   factory LookInfo.from(Map<String, dynamic> m) => LookInfo('${m['id']}', '${m['name']}', '${m['city']}', '${m['country']}',
       '${m['region']}', '${m['hair'] ?? ''}', '${m['outfit'] ?? ''}', '${m['gender'] ?? (('${m['id']}').startsWith('m') ? 'm' : 'f')}');
-  static const santosh = LookInfo('', 'Santosh', 'Hoola\'s original', 'roop', '', '', '', 'm');
+  static const santosh = LookInfo('', 'Santosh', 'Hoola\'s original', 'look', '', '', '', 'm');
 }
 
 List<LookInfo>? _looks;

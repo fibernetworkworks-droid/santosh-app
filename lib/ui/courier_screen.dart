@@ -621,7 +621,7 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
                     Expanded(child: Text('${_s(q['courier'])}${q['days'] != null ? ' · ~${_s(q['days'])} days' : ''}', style: const TextStyle(fontSize: 12.5))),
                     Text(q['rate'] == null ? 'rate ?' : _rs(q['rate']), style: const TextStyle(fontSize: 12.5)),
                   ]),
-                if (_s(_m(p['pick'])['why']).isNotEmpty) Text('Chuna: ${_s(pick['courier'])} (${_s(_m(p['pick'])['why'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
+                if (_s(_m(p['pick'])['why']).isNotEmpty) Text('Chosen: ${_s(pick['courier'])} (${_s(_m(p['pick'])['why'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
               ]),
             ),
           const SizedBox(height: 12),

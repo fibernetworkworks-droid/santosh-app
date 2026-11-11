@@ -79,9 +79,9 @@ class Santosh extends ChangeNotifier {
   String get serverUrl => hoolaServer;
   String get apiKey => _prefs.getString('key') ?? '';
   String get language => _prefs.getString('lang') ?? 'en-IN';   // v0.164.2 English is the default UI language
-  /// v0.181 the language the CALL starts in: Hinglish, not the UI language. Fresh users were getting English-locked
-  /// calls in a Hinglish product; the server's learned language (voicelang) still wins after her first calls.
-  String get voiceLang => _prefs.getString('vlang') ?? 'hi-IN';
+  /// The language the CALL starts in. English pass (wave 4): a fresh install starts calls in English (was 'hi-IN' since
+  /// v0.181); the server's learned language (voicelang) still wins after the first calls when Hoola is set to `auto`.
+  String get voiceLang => _prefs.getString('vlang') ?? 'en-IN';
   bool get speakReplies => _prefs.getBool('speak') ?? true;
   bool get configured => apiKey.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.

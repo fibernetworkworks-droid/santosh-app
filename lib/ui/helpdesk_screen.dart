@@ -210,7 +210,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
     final f = await _form(context, 'Vendor / technician', const [
       ('name', 'Name'),
       ('kind', 'Type: amc / it / isp / printer / cctv / tally_partner / electrician / software'),
-      ('phone', 'Phone (10 ank)'),
+      ('phone', 'Phone (10 digits)'),
       ('email', 'Email'),
       ('amc_until', 'AMC valid until'),
       ('sla_hours', 'Promised response time in hours'),
