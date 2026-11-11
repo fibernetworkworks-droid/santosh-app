@@ -2885,7 +2885,32 @@ Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your 
 Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
 
 ---
-Task ID: v0.785.0 VIDEO LEARNER PREMIUM
+Task ID: HI-PREMIUM
+Date: 2026-11-11
+Task: Hoola Interactive premium redesign (owner: "it look stale and old design ... more premium ... with some animation")
+Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
+(folding sidebar, one heading per page, drawn dropdowns, one control scale, editor rows that do not wrap, thumbnails with
+content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
+Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
+Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.
+
+Task ID: v0.787.0 HOOLA CODE ENGINE (built as 0.784)
+Ask: "IS HOOLA CODE BACKEND SAME AS CLAUDE CODE" -> no -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
+Built: devsahayak/brain.py (Claude-only, thinking, caching, trimming), devsahayak/engine.py (working copy, Claude Code tools, bash in the box, compaction, continue, checkpoints + rewind, 2 live slots), routes ws / files / rewind, page steps + Working copy card; 13 tests incl. real Docker.
+Deploy: vps-ops deploy (server-only; no new pip; working copies under data/devsahayak/ws). Needs Anthropic credit (Hoola Code is Claude-only now). Found: server venv is Python 3.12 vs box 3.13.
+
+Task ID: v0.788.0 LANGGRAPH G5
+Ask: GO G5 (outcome in state + one delivery node).
+Built: turngraph deliver node, agent/turndeliver.py record, kaam_followup reads it; chat_graph still off; 11 tests. Found goal._waiting_on_job pause bug (not fixed).
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+---
+Task ID: v0.789.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785.0, HOOLA INTERACTIVE PREMIUM PASS 0.786.0, HOOLA CODE ENGINE 0.787.0 and LANGGRAPH G5 0.788.0; L4)
+Task: owner "GO L4" - E1 line-edit tools + E2 tiered checks in the Web Studio.
+Work Log: site/lineedit.py; website_dekho what=search, website action=edit_lines / write_file; checks.run quick; save_version quick + _quick_merge; blockers + Go live starts the full check; Studio version card; 8 tests; real Chromium quick check 6.2 s.
+Stage Summary: pushed; server deploy only. Next: L5 YEH WALA (preview toolbar, element pills, style panel) on her GO.
+Task ID: v0.790.0 VIDEO LEARNER PREMIUM (built as 0.785)
 Ask: read the AI Employees Video Learner code + design -> "FIX ALL 7 PROPERLY ... MAKE ENTIRE SECTION PROPER AND PREMIUM ... VISUAL GRAPHICAL ANIMATION".
 Built: 7 fixes (pill class, Re-learn replaces, run kept + Proven by real work, file picker steps, stage durations, uploads kept, restart pick-up) + the page redrawn (seekh.js, skv- CSS, hub card); 20 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip, no new tables; data/seekh/media + data/seekh/jobs are created by themselves).

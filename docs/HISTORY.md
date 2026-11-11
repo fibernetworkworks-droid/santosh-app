@@ -897,8 +897,192 @@ the build carrying picks, look 1 built from her palette, source wiring, a Playwr
 'Your choices' look) and 390 px (fits, Back keeps her words)).
 NOT VERIFIED live: a real Opus build of look 1 from her picks on her server (tests use the fake site AI).
 
+## v0.785.0 HOOLA AI APPS — AIs that answer HER CUSTOMERS, D0-D5 end to end (11 Nov 2026; owner: "D0 ... D5 --- DO THIS -- DEPLOY A PARALLEL AGENTS TO FINSH THIS END TO END")
 
-## v0.785.0 VIDEO LEARNER PREMIUM (11 Nov 2026; owner: "CHECK A AI EMPLOYEE SECTION ... HOOLA AI LEARNER FROM VIDEO READ THIS CODE AND DESIGN FIRST" -> seven problems reported -> "FIX ALL 7 PROPERLY. ALSO MAKE ENTIRE SECTION PROPER AND PREMIUM WITH PERFECT ALIGNMENT OF TEXT, BUTTON, TEXTURE ... WITH SOME VISUAL GRAPHICAL ANIMATION IN IT")
+After the Dify read for app building (`docs/research/dify/00_APP_BUILDING.md`; ideas only - their licence bars multi-tenant
+use of the source and claims a design patent). Contract: `docs/AIAPPS_PLAN.md`. The core was written first, then four
+parallel agents built on it in their own worktrees; everything merged, mounted and walked in a real browser here.
+
+An AI app sits BESIDE the business AI Employee (WhatsApp inbox v0.59, Seva, Call Centre) and reuses its engines; many apps
+per business. `server/app/aiapps/`:
+- **D0 core** - `models.py` (ai_apps / ai_app_versions / ai_app_keys / ai_app_sessions / ai_app_messages, init_db + self-heal),
+  `soul.py` (the checked settings: about, persona, facts, knowledge, ACTIONS handover / ticket / slots / book only, form,
+  refuse topics, language, monthly rupee cap, DPDP notice; `blanks()`), `store.py` (draft + immutable versions; publish =
+  HER tap bound to the draft hash, 409 stale / 422 unfixed / 422 unfilled [blanks]; restore = old soul published again as
+  the newest version), `runtime.py` (the answer: TRAPS in code first - OTP / PIN / card, payments + refunds, other
+  customers' data, "ignore your instructions", her refuse topics; then her approved answers (gyaan annotations), Seva
+  knowledge, real slots / booking / Seva tickets; the model LAST, from her facts only, under her monthly cap - a reply with a
+  number not in her facts or a claim nobody did is thrown away; a model that fails = an honest hand-over; OTP / PIN values
+  masked before logging).
+- **D1 builder** (agent A) - `builder.py` her one line -> a checked soul, one repair round, invented numbers dropped,
+  missing details as questions; `POST /api/aiapps/plan`.
+- **D2 publishing** (agent B) - `public.py` hosted chat page `/ai/{code}` (self-contained, strict CSP, DPDP notice + consent
+  before the first message, textContent only), `/ai/{code}/embed.js` bubble (sandboxed iframe), `/api/aiapp-pub/{code}/*`;
+  `keys.py` API keys (shown once, sha256 kept, rpm / rph / concurrent limits -> 429) + `POST /api/aiapp-api/v1/chat`;
+  `mcp.py` `/mcp/aiapp/{code}` (initialize / tools/list / tools/call ask, app key); `wa.py` + a guarded hook in
+  `employee/inbox.py` - a live app bound to her business number answers through the existing send path (window, STOP,
+  takeover unchanged; unbound numbers byte-identical). Only a LIVE app with that channel on answers the public.
+- **D3 run + improve** (agent C) - `api.py` owner routes, `ops.py` logs (masked), correct-an-answer (into her approved
+  answers; the same question is answered with her words next time), stats (customer channels only; satisfaction 'no
+  ratings yet', never 0%), gaps, cost alerts once a month at 80% / 100% into her chat (worker slot `aiapp_ops_jobs`).
+- **D4 proof** (agent D) - `proof.py` shop / clinic / school on `__aiappproof__`: 18 normal questions + 22 traps, every trap
+  refused; correction, cap, pause, stale hash, versions + restore and the number guard proved; `python -m app.aiapps.proof`,
+  vps-ops `aiapp_proof`.
+- **D5 templates** (agent A) - `templates.py` 13 trades (kirana, clinic, school, salon, restaurant, coaching, real estate, CA,
+  gym, homestay, repair, pharmacy-info, tiffin form) with a trial that saves nothing; `dsl.py` export (no keys / logs / codes)
+  + import with a dependency check, lands as a draft.
+- Tool `ai_app` (`agent/aiapp_tools.py`; publish_card = a card for HER tap, never a publish), registry 624 -> 625; console page
+  AI Apps (`static/console/aiapps.js` + `.css`, sidebar row).
+
+**Found by the browser walk and fixed here:** a copied template could go live with '[Shop name]' showing to customers
+(publish now refuses unfilled blanks, listed under 'Must be fixed'); a model outage told the visitor 'something went wrong'
+(now the honest hand-over line); the Numbers tab printed the raw object; a JS `null` child printed the word 'null'.
+**Found by agent C:** a typed OTP was stored unmasked in the log (now masked in the core).
+
+Tests: test_v0772_aiapps_{core,builder,publish,ops,proof,console,e2e}.py = 55 passed; tool-count pins 624 -> 625.
+**NOT VERIFIED:** no real customer has used one; every answer here came from a fake model (the sandbox has no model key);
+rate limits are per process (reset on restart, not shared across workers); the phone app has no AI Apps screen (console
+only); WhatsApp delivery through Meta not tried.
+
+## v0.786.0 HOOLA INTERACTIVE, PREMIUM PASS (built as 0.785; their HOOLA AI APPS took 0.785.0; owner: "IT LOOK STALE AND OLD DESIGN MAKE IT MORE PERFECT, ALINE TEXT PROPERLY, FIX ALL BUTTON, ICON, TAB MESSY THINGS --- MAKE IT MORE PREMIUM, ADVANCE AND WITH SOME ANIMATION")
+
+No server change. Same twelve pages, same `/api/interactive/studio/*` and `/api/interactive/hub/*` routes, same data. Only
+`static/console/interactive.js`, the `#hiRoot` block in `v2.css` and one line of `studio.js` changed.
+
+**How it was done:** every page was screenshotted in real Chromium first and the faults were read off the pictures, not guessed.
+
+**What was messy, and the fix**
+- Each page said its name twice (a top bar AND a heading). The top bar is gone; one heading per page (`head()` -> `.hi-head`).
+- The icon rail was too tall for a small laptop and its Create button was squashed. It is a real sidebar now: rows of 34,
+  "Create video" on top, the engine state and "Back to console" at the bottom, and it FOLDS to icons (`#hiRoot[data-slim]`).
+  The editor opens folded so the canvas has room; once she presses the fold button her choice wins (`UI.slim`).
+- Editor: the title row, the scene header and the five tool tabs wrapped onto second lines. Title row = `.hi-edhead` (back,
+  title, saved dot, Save as template, Generate). A scene = header (number, move up / down, remove), the words, then a footer
+  with the look chip and "about N s". Tools = one five-part segmented control (`.hi-tt`). A browser test holds each to ONE row.
+- Dropdowns were raw browser selects. They are drawn (`pick()` -> `.hi-pick`, and `.hi-f:has(>select)`), with an icon and chevron.
+- Thumbnails were empty dark boxes. A scene thumbnail shows the scene's own words or bars (`mini()`), with a dot when it
+  still needs her numbers; a video tile has a play mark, its length and a tint (`thumb()`, tint picked from the id).
+- A picture that cannot load showed a broken image. It shows her initials (`photos()` sets `img.onerror`).
+- One control scale: buttons 40 / 32 (+46 for the main ask), fields 42, corners 10 / 16, status chips with a leading dot.
+- Stage: tinted with HER brand colour (`--hi-brand`, validated hex), a "Scene 2 of 3 - 16:9" tag, previous / next under it.
+- Home: starter lines under the ask box (none carries a number), engine state as one slim line, month figures as three tiles.
+
+**Motion - once only, never held**
+- `flash(cls, ms)` puts a class on the view and takes it off again: `hi-in` when a page opens (sections rise in, cards
+  staggered), `hi-tabin` when a tab changes, `hi-scin` when the scene changes (words rise, bars grow). A later redraw of the
+  same page does not replay it.
+- Cards, buttons and thumbnails lift under the pointer; the sidebar marker slides in; the dialog pops.
+- Fill is `backwards`, never `both` / `forwards`: a held animation keeps a layer alive under text (CRISP TEXT, v0.256).
+- The only looping motion is "working now" (the live chip and the running step). Reduce motion and calm switch everything off.
+
+**Found on the way**
+- Three class names of the page (`.top`, `.tag`, `.live`) are styled globally by the console and leaked in (a border under
+  every card icon). Renamed to `.hi-ftop`, `.hi-stag`, `.hi-now`. RULE: inside `#hiRoot` use `hi-` names for anything generic.
+- `studio.js` (Create Studio) threw `Cannot read properties of null` on EVERY window resize until Create had been opened once
+  (`closeMenu()` with no root). One guard.
+- `test_v0255 test_sora_only_on_the_logo` was red on main because v0.774's own sidebar used the logo font; green again.
+
+**Tests:** `test_v0747_hoola_interactive.py` - the browser walk now also checks one `h1` per page, every select drawn, the
+sidebar fits 1366 x 660 without scrolling, the entrance class leaves by itself, a starter line fills the box, the empty picture
+becomes initials, the three editor rows do not wrap, the sidebar folds / opens, next scene works; NEW
+`test_the_premium_pass_keeps_the_console_rules` (no blur, no capitals, nothing above 600 or under 12px, no held animation,
+motion can be switched off, no clashing class names). Needs `HOOLA_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`.
+
+**Still red on main, not from this work, left alone:** `test_v0221 test_console_chrome_speaks_english` (build.js),
+`test_v0255 test_no_heavy_weights_caps_or_tiny_text` and `test_v0256 test_crisp_text_rules` (another block's `font-weight:700`
+and `animation:hmWord ... both`).
+
+**NOT VERIFIED:** she has not seen it on her server. Checked here in light, dark, 1366 x 660 and 400 px wide.
+
+## v0.787.0 HOOLA CODE ENGINE (built as 0.784; their SAWAAL CARD took 0.784.0, 0.785.0 and HOOLA INTERACTIVE PREMIUM PASS 0.786.0 - REBASE PROTOCOL, all kept)
+Owner: "NOW CHECK IS HOOLA CODE BACKEND IS SAME AS CLAUDE CODE" -> the honest answer was no (the workflow was Claude-Code-like,
+the ENGINE was a GitHub-API task: files read one by one, edits in memory, GitHub code search = 3 words / 10 file names / rate
+limited / silent on failure, ONE declared check command, 40 steps / 20 min, nothing trimmed or cached, no thinking, every
+follow-up a fresh run, and on her server every call went to GLM-5.3-Flash) -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
+- STEP 1 `devsahayak/brain.py` = one Claude call for every Hoola Code loop (the new engine, the old 8-tool loop, plan and review
+  passes): Claude's OWN past SAB GLM / claude_one_model (`dev_claude`, the architect's v0.710 pattern: glmdoor.CLAUDE_ONLY +
+  usage.ONE_MODEL_BYPASS), adaptive thinking (`dev_think`; a refused field is dropped once and remembered), prompt caching
+  (system + last tool + last message), old tool output trimmed in place past `dev_ws_clear_chars` (newest 6 kept). The model
+  picker now offers Claude's models instead of "forced GLM". `model_json` (one-shot / reviews) is Claude's too. A failed GitHub
+  code search is now SAID to the model ("GitHub code search FAILED ...") instead of looking like "no file found".
+- STEP 2 `devsahayak/engine.py` = the working copy (Phase 4 of docs/HOOLA_CODE_WEB_PLAN.md): data/devsahayak/ws/<task>/repo cloned
+  once (outside the box, no token inside), a LOCAL git repo started in it (base commit; node_modules / venv / caches excluded);
+  files holding secrets replaced by a marker before anything sees them and never changeable. Claude Code's tools: read (line
+  numbers, offset / limit) / write / edit / multi_edit (read-first, unique-or-replace_all) / glob / grep (git grep: extended regex,
+  files / content with line numbers / count, context, glob filter; hidden files excluded) / ls / bash (ONE command in the devlab
+  box on THIS checkout: no network, uid 1000, read-only root, caps; the repo's dependency snapshot when it DECLARES a setup, else
+  the base image; devlab's refusals; 80 a round) / todo_write / show_diff / done. 150 steps / 60 min a round. Past
+  `dev_ws_compact_chars` the older conversation is COMPACTED by one model call (cut before an assistant turn so no tool_result
+  loses its tool_use). messages.json per session: "Ask for a change", a CI failure, her own review points and a follow-up on an
+  explained / failed / stopped session (status CONTINUE, no PR yet) CONTINUE the same conversation in the same checkout
+  ("yes, fix it" after an explanation switches the kind). A checkpoint (local commit) after every round; rewind = the checkout
+  and the conversation as they were (POST /tasks/{id}/rewind; GitHub untouched until the next push). After a push the checkout
+  is marked (the next round diffs from the PR head); a branch moved by someone else = a fresh copy, conversation kept.
+  TWO AT A TIME: `dev_ws_live` = 2 (owner) sessions run at once server-wide, the next waits and says so on the page. Disk:
+  working copies of deleted / archived / merged / closed sessions and idle ones (`dev_ws_keep_days` 14) swept hourly by the tick.
+  engine.run returns the old loop's (base_sha, read, ctx, out), so _prepare's safety rules, the PR, the bug proof, the CI rounds,
+  the own review and her taps are unchanged code. No box / no git / switch off = the old loop, said in the log.
+- Routes: GET /api/devsahayak/tasks/{id}/ws, GET .../files?path=, POST .../rewind. The full task view carries `ws` + `can_continue`.
+- Page (code.js): steps for commands in the box ($ command · exit · seconds, output folded open on failure), the to-do list,
+  compaction / waiting for a slot / checkpoint / rewind; a "Working copy" rail card (to-do, checkpoints with Go back, secret
+  files hidden, Browse files dialog with a folder tree + file view); a finished session with a working copy takes a follow-up;
+  a box command counts as "Run your tests" in Progress.
+- Found by its own tests: the follow-up opened the work while holding the DB write lock (SQLite "database is locked");
+  `error` is NOT NULL ("" not None).
+Tests: test_v0787_hoola_code_engine.py (13: brain = Claude + thinking + cache + effort, refused thinking dropped once, trim keeps the
+newest, old loop on the brain + a failed search said, Claude picker, 2 slots then wait, compaction keeps tool pairs, every tool on a
+real checkout (secrets hidden / unsearchable / unchangeable, workflows refused), bash in the REAL box (no internet, sudo refused, no
+secrets inside), a whole session through the service with real Docker: work -> continue -> rewind -> files -> delete, an explained
+session taking "yes, fix it") + the older Hoola Code / lab / plan / review suites green with the engine pinned off in conftest.
+NOT VERIFIED live: no real session has run on her server yet (no GitHub token / repo saved there); Anthropic credit must be there
+(Hoola Code is Claude-only now); restart mid-round is not resumed (the conversation and checkout survive on disk, the round does not
+restart by itself); background commands, env vars / setup script per repo in the page, network allow-lists are not built.
+FOUND while testing (her server, not this change): the server's venv is Python 3.12.3 while the devlab box is 3.13 (CLAUDE.md said
+her server runs 3.13) - test_v0456_devlab's 'box python vs server python' check says GADBAD. The same test found the box base image
+at rev 2 and rebuilt it to rev 3 (what lab_check would do).
+
+## v0.788.0 LANGGRAPH G5 — outcome in state + one delivery node (11 Nov 2026; owner: "GO G5")
+
+Phase G5 of `docs/LANGGRAPH_TURN_PLAN.md` (bug class 2: told late / twice / never / wrong chat), only when `chat_graph` is on (default OFF; every old delivery path unchanged).
+- The graph gains `deliver` (finish -> deliver -> carry | END), resumable. State: `result` (done / partial / stuck / stopped / failed - from her Stop, the ending goal, the breaker / LAST_OUTCOME, step cap / carry, G3 facts), `dkey` (idempotency key `turn:<thread>:<nonce>` minted by prepare / carry and checkpointed; wake reports `news:<followup id>`), `dmark`, `delivery`, `notified`.
+- NEW `agent/turndeliver.py`: table `turn_deliveries` (in `db.init_db` + `ensure_table`), per-channel stamps (intent before a send, sent after), job aliases `job:<key>:<state>`, the right-chat rule (the turn's own chat, else her pinned updates chat - v0.714), the `NEWS` contextvar for wake turns. Chat: the reply the turn's step already saved + streamed is found by id after `dmark` and stamped (written by the node only if no step wrote one, row + stamp in one transaction). Push rides that message event (push.on_event gates unchanged). Call note + ring only for news (wake reports, a long job ending in a background run) via `kaamwatch._voice` / `kaam_followup._ring` (quiet hours, cap, never over a live call), once each.
+- `kaam_followup` on the graph path reads the record (job aliases written by the run that ended the job) instead of `_answered_since` / `_recent_said` timing, and a report queued during a live graph run waits for its record instead of the 5-minute dry line. `turn_inbox` sweep resumes a turn cut at finish / deliver. `worker` drops delivery records older than 7 days.
+- Restart: after deliver sent but before its checkpoint -> the re-run finds the stamps, sends nothing; after the answer streamed but before deliver -> the sweep resumes at deliver, stamps the existing row; a wake reply that landed before a crash is recognised, its missing call note / ring sent once, no second wake.
+- TESTS: NEW `test_g5_turngraph.py` 11; g0-g4, v0260, v0552, v0652, v0657, v0714, v0722, v0186, v0226, harness2/3, routines, v0649 same off and on (v0554 card khabar 3 reds also fail at v0.783).
+- NOT COVERED: voice late results / card notes / call brain answers (G6); a stopped run that crashed before deliver may have its stopped report told once more; `_recent_said` not consulted on the graph path (a service that posts its own line + a followup could show twice); a long job end still sends 2 phone notifications (goal card + final message); a crash inside `check` after it published could publish again (G1 node re-run gap). FOUND, not fixed, both paths: with kaamwatch on, `goal._waiting_on_job` counts the job's own `goal:` kaam_jobs row as a running job, so a long job can pause up to an hour after its first segment. Nothing verified live. Next: G6 voice as a channel.
+
+
+## v0.789.0 CHHOTA BADLAAV - small exact edits + tiered checks (L4 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L4")
+Before: "make the button grey" went through `website action=change` -> Opus wrote the whole section again -> the full
+Chromium matrix + journeys + gates. Lovable changes a few lines (line-replace) and checks only what changed.
+E1 LINE EDITS (`site/lineedit.py`, no model call):
+- `website_dekho what=search` + q: every place the text / colour / class is in the site's code (pages/<page>/<section>.html |
+  css | js + design/kit.css), with file and line (30 shown, total counted).
+- `website action=edit_lines` + site + file + search + replace: one exact replace. The search text must appear EXACTLY once:
+  0 = refused naming the closest lines, 2+ = refused asking for more of the surrounding text, search == replace / empty =
+  refused. The result goes through `code_write` - the same safety cleaner as every build, one Undo step - and returns the diff.
+- `website action=write_file` + file + code: the whole file (rare).
+- The `website` description now says SMALL EXACT CHANGES FIRST; action=change stays for new sections / layout / many parts.
+  Both live in the existing tools (registry count unchanged); Plan / Chat mode still refuse `website` (turnmode).
+E2 TIERED CHECKS:
+- `checks.run(..., only=pages, quick=True)`: only those pages in the browser (scroll width, a11y / contrast, console errors, the
+  page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture / video.
+- `service.save_version(quick=pages)`: used by edit_lines / write_file / a code file / her own-hand preview edit (one section).
+  Needs a FULL report to stand on (else the full check runs); `_quick_merge` replaces only the touched pages' results, keeps
+  every other page, the visitor journeys and Lighthouse items from the last full run; the gates re-run; report `tier: quick`,
+  `checked_pages`, `quick_s`. Edits that pile up while a job runs, Opus code changes and action=change keep the full check.
+- `hosting.blockers` refuses Go live (and the blog's auto-update of a live site) while the last report is quick; her Go live
+  tap (`launch_request`) starts the full check, then the card is hers again.
+- Studio version card: "Quick check of home in 6.2s · the full check runs before going live".
+- Switch `site_quick_checks` (default on).
+MEASURED HERE (real Chromium, the test site): one page quick-checked in 6.2 s, the whole edit 6.3 s - the plan's target was
+< 20 s. The edit itself costs Rs 0; the turn that asks for it is the only model cost (not measured on her server).
+Tests: test_v0789_chhota_badlaav.py (8: search file + line, exact-once edits + refusals + cleaner + Undo, quick check then full
+before live, switch off / no base = full, the merge rule, the agent tool actions + Plan mode, the real Chromium timing, the
+Studio line).
+NOT VERIFIED live: a real model choosing edit_lines for "make the button grey" on her server, and the rupees of that turn.
+
+## v0.790.0 VIDEO LEARNER PREMIUM (built as 0.785.0 - their HOOLA AI APPS took 0.785.0 and 0.786-0.789 went to INTERACTIVE PREMIUM / CODE ENGINE / G5 / CHHOTA BADLAAV, REBASE PROTOCOL, all kept; 11 Nov 2026; owner: "CHECK A AI EMPLOYEE SECTION ... HOOLA AI LEARNER FROM VIDEO READ THIS CODE AND DESIGN FIRST" -> seven problems reported -> "FIX ALL 7 PROPERLY. ALSO MAKE ENTIRE SECTION PROPER AND PREMIUM WITH PERFECT ALIGNMENT OF TEXT, BUTTON, TEXTURE ... WITH SOME VISUAL GRAPHICAL ANIMATION IN IT")
 
 Read first, by rendering the four screens with the page's own files: seven real problems. All seven fixed, then the page redrawn.
 1. THE LEARNING PILL: it wore the class `live`, which is the chat's side panel (`.live,.studio,.panel{width:var(--right);flex-direction:column}`, and a

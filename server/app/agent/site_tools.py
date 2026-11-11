@@ -34,6 +34,11 @@ SITE_TOOLS = [
         "from data_fetch / an ERP read) -> a PREVIEW only (new / changed / rejected rows, thin + duplicate pages, the column "
         "mapping); nothing is written - SHE taps Apply on the console's Catalogue card (a file she has goes there too). "
         "Never type thousands of items into action=change. "
+        "SMALL EXACT CHANGES FIRST (v0.789): for a change of one word, colour, price, link, class or button text, use "
+        "website_dekho what=search + q (the text / colour / class) -> it names the file and line; then action=edit_lines + "
+        "site + file + search (the EXACT text from that file, it must appear once) + replace. No AI rewrite, the same safety "
+        "cleaner, one Undo, a version checked on that page in seconds. action=write_file + file + code = the whole file (rare). "
+        "action=change only for new sections, layout changes or many parts at once. "
         "action=change: site + instruction (her words: 'hero mein meri photo', 'rang halka', 'price list hatao', 'Hindi "
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
@@ -92,11 +97,15 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
          "site": {"type": "string", "description": "site number (S-0001) or name; empty = the latest"},
+         "file": {"type": "string", "description": "edit_lines / write_file / code: a code file path from website_dekho what=search|code (pages/<page>/<section>.html|css|js or design/kit.css)"},
+         "search": {"type": "string", "description": "edit_lines: the EXACT text in the file (must appear once; copy it from website_dekho)"},
+         "replace": {"type": "string", "description": "edit_lines: the new text"},
+         "code": {"type": "string", "description": "write_file: the whole new file"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
          "instruction": {"type": "string"}, "file_id": {"type": "string"}, "about": {"type": "string"},
@@ -108,7 +117,6 @@ SITE_TOOLS = [
          "free": {"type": "boolean"}, "second": {"type": "string", "enum": ["", "en", "hi", "mr", "hinglish"]},
          "languages": {"type": "array", "items": {"type": "string"}, "description": "extra language codes, max 4"},
          "slug": {"type": "string"}, "blog_action": {"type": "string", "enum": ["hide", "show", "cover"]}, "cover": {"type": "string"},
-         "file": {"type": "string", "description": "code mode: one code file path (website_dekho what=code lists them)"},
          "source": {"type": "string", "enum": ["", "screenshot", "figma", "site"]}, "url": {"type": "string"}, "token": {"type": "string"},
          "keep": {"type": "boolean", "description": "design_use from HER OWN old site: keep its page list + section order"},
          "drop": {"type": "array", "items": {"type": "string"}, "description": "moves_ok: old paths she unticked"},
@@ -127,11 +135,11 @@ SITE_TOOLS = [
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
         "Read her websites (nothing changes). what=sites | site (site: board, pages, sections, scores, preview link, "
-        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | ops (site, days: her VISITORS' JavaScript errors (top messages + pages), real-visit speed as p75 bands (LCP / first paint / server answer / layout shift; INP not measured), AI cost of the site, last backup + whether it restored cleanly - use for 'website ki galti dekho', 'site dheemi kyun hai', 'backup theek hai?') | code (site, + file: the code files of the site / one file's code) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
+        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | ops (site, days: her VISITORS' JavaScript errors (top messages + pages), real-visit speed as p75 bands (LCP / first paint / server answer / layout shift; INP not measured), AI cost of the site, last backup + whether it restored cleanly - use for 'website ki galti dekho', 'site dheemi kyun hai', 'backup theek hai?') | code (site, + file: the code files of the site / one file's code) | search (site, q: where a word / colour / class is in the site's code - file + line, for action=edit_lines) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
         "find a business type, or industry) | brief (field, goal, style: the full ready brief) | understand (q: what a "
         "short ask means: business type, goal, 3 looks)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "ops", "blog", "code", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
+         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "ops", "blog", "code", "search", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
          "site": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}, "file": {"type": "string"}},
          "required": ["what"]}},
@@ -227,6 +235,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 "say": "Build started. Each section shows in the live preview as soon as it is made."}
     if action == "change":
         return S.change(t, site, str(a.get("instruction") or ""), conv)
+    if action in ("edit_lines", "write_file"):    # v0.789 CHHOTA BADLAAV: exact search / replace, no AI rewrite
+        from ..site import lineedit as LE
+        try:
+            if action == "edit_lines":
+                return LE.edit(t, site, str(a.get("file") or ""), str(a.get("search") or ""), str(a.get("replace") or ""))
+            return LE.write(t, site, str(a.get("file") or ""), str(a.get("code") or ""))
+        except LE.LineEditError as e:
+            raise S.SiteError(str(e))
     if action == "photo":
         return S.add_photo(t, site, None, str(a.get("file_id") or ""), str(a.get("about") or ""))
     if action == "undo":
@@ -392,6 +408,16 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         r = SC.report(t, site, int(a.get("days") or 30))
         r.pop("site", None)
         return r
+    if what == "search":                          # v0.789 where a text is in the site's code (for edit_lines)
+        from ..db import session
+        from ..site import lineedit as LE
+        with session() as s_:
+            r = S._find(s_, t, site)
+            s_.expunge(r)
+        try:
+            return LE.search(r, str(a.get("q") or ""))
+        except LE.LineEditError as e:
+            raise S.SiteError(str(e))
     if what == "code":                            # v0.373 CODE MODE
         if a.get("file"):
             return S.code_read(t, site, str(a.get("file")))

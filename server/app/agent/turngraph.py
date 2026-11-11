@@ -62,6 +62,21 @@ mid-way) it is the SAME segment continuing from its last finished node, the tool
 exactly as G1 (a done tool reused, a read run again, a send / order never re-sent). A segment cut by its deadline is
 parked the same way (`park_cut`), so a budget never throws the job away. A turn that reaches END cleans its own
 thread, and the job threads of this chat's finished / failed / stopped goals.
+
+G5 (outcome + ONE delivery node, `agent/turndeliver.py`). `finish` -> `deliver` -> (carry | END): every run of the graph
+ends in `deliver`, the one place on the graph path that tells her the result. It puts the outcome into the state
+(`result`: done / partial / stuck / stopped / failed - from her G2 Stop, the G4 job's own status, the breaker, the step
+cap and the G3 facts) and the `notified` record (chat row + SSE, push, live-call note, ring - with times and the target
+chat), backed by a durable turn_deliveries row keyed by the outcome's idempotency key (`dkey`, minted by prepare /
+carry and checkpointed, so a resumed run delivers under the SAME key). The chat row is the one the turn's own step
+already wrote and streamed (found by row id after `dmark`, the chat's newest message when the run began) - the node
+writes it only when no step did, row + stamp in one transaction. Push rides that row's own `message` event
+(push.on_event's gates: quiet hours, a live call, the night hold). A result that is NEWS - a finished job's wake report
+(kaam_followup sets turndeliver.NEWS) or a long job that ended in a background run (a goal round, a routine) - also
+gets the quiet note into her live call and the voice ring, each at most once (intent stamped before, sent after). The
+jobs this reply told (the goal that ended during the run; a watched job that started and ended in it) are written as
+`job:<key>:<state>` aliases: kaam_followup asks THAT record instead of its timing guess (`_answered_since`), so a long
+job's final report is told exactly once, by this node, in the job's own chat.
 """
 from __future__ import annotations
 
@@ -93,7 +108,7 @@ except Exception:   # noqa: BLE001
 STATS = {"turns": 0, "fallback": 0, "no_checkpoint": 0, "resumed": 0, "cleaned": 0, "stopped_at_boundary": 0,
          "parked": 0, "copied": 0, "segments": 0, "job_resumed": 0, "job_fresh": 0, "job_gone": 0, "cut_parked": 0,
          "jobs_forgotten": 0}
-_RESUMABLE = ("model", "tools", "check", "finish", "carry")
+_RESUMABLE = ("model", "tools", "check", "finish", "deliver", "carry")
 
 # G4: the goal a round of a long job continues (set by goal._continuation around its run_turn; taken once by run_steps)
 JOB_RUN: contextvars.ContextVar = contextvars.ContextVar("turngraph_job_run", default=None)
@@ -121,6 +136,11 @@ class TurnState(TypedDict, total=False):
     decision: dict          # G3: the check node's last decision (kind, why, back = the model was sent back to work)
     decisions: list         # G3: every decision of the turn (newest last, capped)
     nudges: dict            # G3: the check node's one budget, spent per kind (turnfacts.CAPS / TOTAL)
+    dkey: str               # G5: this run's delivery (idempotency) key - minted by prepare / carry, checkpointed
+    dmark: int              # G5: the chat's newest message id when this run began (its reply rows come after it)
+    result: str             # G5: the outcome as one word: done | partial | stuck | stopped | failed
+    delivery: dict          # G5: {key, kind turn | news | job, target chat, jobs told}
+    notified: dict          # G5: what she was told on which channel (chat / push / call / ring: state, time, row)
 
 
 class _Live:
@@ -273,7 +293,7 @@ async def _prepare(live: _Live, state: TurnState) -> dict:
     _judge(live)
     # a Stop that landed while preparing is seen at the model node's boundary (no model call is made)
     return _flag(live, {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
-                        "data": _data(live), **_g3(live)})
+                        "data": _data(live), **_g3(live), **_dnew(state.get("run_key", ""), live.conversation_id)})
 
 
 async def _model(live: _Live, state: TurnState) -> dict:
@@ -369,7 +389,103 @@ async def _carry(live: _Live, state: TurnState) -> dict:
     STATS["segments"] += 1
     return _flag(live, {"route": "model", "ran_steps": 0, "capped": False, "done": False, "final_text": "",
                         "outcome": "", "stop": "", "messages": _snapshot(live.history), "data": _data(live),
-                        **_g3(live)})
+                        **_g3(live), **_dnew(state.get("run_key", ""), live.conversation_id),
+                        "result": "", "delivery": {}, "notified": {}})
+
+
+def _dnew(run_key: str, conversation_id: str) -> dict:
+    """G5: a fresh delivery key + mark for a run (a plain turn, or one segment of a long job)."""
+    from . import turndeliver as D
+    return {"dkey": f"turn:{run_key}:{uuid.uuid4().hex[:8]}"[:200], "dmark": D.max_msg_id(conversation_id)}
+
+
+def _result(live: _Live, state: TurnState, jobs: list) -> str:
+    """G5: the run's outcome as one word, from the run's own state - her Stop (G2), the long job's status (G4), the
+    breaker / the outcome _steps_end wrote, the step cap, and the G3 facts (every tool failed = failed)."""
+    from . import santosh as S
+    c = live.conversation_id
+    st = live.state or {}
+    if state.get("stopped") or _stop_now(live) or st.get("halted") or c in S._stopped:
+        return "stopped"
+    mine = [j for j in jobs if j.get("key", "").startswith("goal:")]
+    if mine:
+        return {"done": "done", "failed": "failed", "stopped": "stopped"}.get(mine[0]["state"], "partial")
+    b = st.get("breaker")
+    lo = (S.LAST_OUTCOME.get(c) or {}).get("outcome", "") if live.user_text else ""
+    if lo == "stuck" or (b is not None and getattr(b, "stopped", False)):
+        return "stuck"
+    if state.get("route") == "carry" or state.get("capped") or lo in ("partial", "continuing") or st.get("left"):
+        return "partial"
+    effects = [str((f or {}).get("effect") or "") for f in live.facts]
+    if effects and all(e == "failed" for e in effects):
+        return "failed"
+    return "done"
+
+
+async def _deliver(live: _Live, state: TurnState) -> dict:
+    """G5: the ONE place on the graph path that tells her the result (see the module note and agent/turndeliver.py).
+    Never raises into her turn: a delivery record that cannot be written leaves today's behaviour for that run."""
+    from . import santosh as S
+    from . import turndeliver as D
+    c, tenant, settings = live.conversation_id, live.tenant_id, live.settings
+    key = state.get("dkey") or f"turn:{state.get('run_key', '')}:legacy"
+    mark = int(state.get("dmark") or 0)
+    actor = getattr(live.ctx, "actor", "owner") or "owner"
+    try:
+        news = D.NEWS.get()
+        if not (isinstance(news, dict) and news.get("conv") == c and news.get("key")):
+            news = None
+        t0 = float((live.state or {}).get("t0") or 0) or _time.time()
+        jobs = D.ended_jobs(c, t0) if state.get("route") != "carry" else []
+        result = _result(live, state, jobs)
+        target = D.target_chat(c, tenant)
+        if news:
+            key = news["key"]
+        mine = next((j for j in jobs if j["key"].startswith("goal:")), jobs[0] if jobs else None)
+        kind = "news" if news else ("job" if mine else "turn")
+        D.record(key, tenant, target, thread=state.get("run_key", ""), kind=kind,
+                 job_key=(news or {}).get("job_key") or (mine or {}).get("key", ""),
+                 job_state=(news or {}).get("state") or (mine or {}).get("state", ""), outcome=result, mark=mark)
+        rec = D.get(key) or {}
+        mark = int(rec.get("mark") or mark)
+        # 1. the chat: the reply row the turn's own step wrote (and streamed) - found by row id, never by time
+        row = None
+        if not D.done(key, "chat"):
+            row = D.final_row_since(target, mark, str(state.get("final_text") or "")) if target == c else None
+            if row is not None:
+                D.stamp(key, "chat", D.SENT, row=row, by="step", chat=target)
+                D.STATS["chat_step"] += 1
+            else:
+                text = str(state.get("final_text") or "").strip()
+                if text:          # no step wrote it (a chat that is gone, an ending with no row): once, here
+                    row = D.write_chat(key, target, text)
+        rec = D.get(key) or {}
+        chat = rec.get("channels", {}).get("chat") or {}
+        row = row or chat.get("row")
+        # 2. push: the reply's own `message` event already went through push.on_event and its gates (quiet hours,
+        # a live call on the chat, the night hold) - recorded, never pushed a second time
+        if chat.get("state") == D.SENT and not D.done(key, "push"):
+            D.stamp(key, "push", D.SENT, via="the reply's message event (push.on_event gates)")
+            D.STATS["push"] += 1
+        # 3. news (a wake report; a long job that ended in a background run): the live-call note + the ring, once each
+        hers = actor == "owner" or actor.startswith("approved:")
+        src = news or ({"job_key": mine["key"], "state": mine["state"], "title": mine.get("title", "")} if mine else {})
+        if (bool(news) or bool(mine and not hers)) and not S.VOICE_BRAIN_NOW.get():
+            text = D.reply_text(row) or str(state.get("final_text") or "")
+            D.news_channels(key, tenant, target, text, src.get("job_key", ""), src.get("state", ""),
+                            src.get("title", ""), settings)
+        # 4. the jobs this reply told: kaam_followup asks these records, never a timing guess
+        if chat.get("state") == D.SENT:
+            if news and news.get("job_key"):    # the report this wake turn was woken for (queued before it ran)
+                D.job_told(news["job_key"], news.get("state", ""), key, tenant, target, since=0.0)
+            for j in jobs:                      # the jobs that ended during this run (their reports queue in it)
+                D.job_told(j["key"], j["state"], key, tenant, target, since=t0)
+        rec = D.get(key) or {}
+        return {"result": result, "notified": rec.get("channels") or {},
+                "delivery": {"key": key, "kind": kind, "target": target, "jobs": [j["key"] for j in jobs]}}
+    except Exception:   # noqa: BLE001
+        log.exception("turn graph: the delivery record could not be written")
+        return {"result": "", "delivery": {"key": key, "error": True}}
 
 
 def _job_ok(live: _Live) -> bool:
@@ -610,6 +726,7 @@ def build():
     g.add_node("check", _node(_check))
     g.add_node("tools", _node(_tools))
     g.add_node("finish", _node(_finish))
+    g.add_node("deliver", _node(_deliver))  # G5: the one node that tells her the result
     g.add_node("carry", _node(_carry))      # G4: the next segment of a long job (the run stops before it)
     g.add_edge(START, "prepare")
     g.add_edge("prepare", "model")
@@ -617,7 +734,8 @@ def build():
                                               "model": "model"})
     g.add_conditional_edges("check", _route, {"model": "model", "finish": "finish", "tools": "tools"})
     g.add_conditional_edges("tools", _route, {"model": "model", "finish": "finish"})
-    g.add_conditional_edges("finish", lambda s: "carry" if s.get("route") == "carry" else "end",
+    g.add_edge("finish", "deliver")
+    g.add_conditional_edges("deliver", lambda s: "carry" if s.get("route") == "carry" else "end",
                             {"carry": "carry", "end": END})
     g.add_edge("carry", "model")
     return g
@@ -784,6 +902,23 @@ def _resumable_snap(snap) -> bool:
     if vals.get("stopped"):                # G2: she stopped it - a restart never continues a stopped run
         return False
     return bool(nxt) and nxt[0] in _RESUMABLE and bool(vals.get("prepared")) and bool(vals.get("messages"))
+
+
+async def delivery_due(settings, conversation_id: str, inbox_id: str) -> bool:
+    """G5 (the restart sweep): this inbox row's turn already wrote its answer but its `finish` / `deliver` never ran -
+    it is RESUMED there (the delivery completes once) instead of being marked done by the 'a final reply landed' guess."""
+    if not AVAILABLE or not inbox_id:
+        return False
+    try:
+        th = thread_id(conversation_id, inbox_id)
+        async with _saver(settings, create=False) as saver:
+            if saver is None:
+                return False
+            snap = await _compile(saver).aget_state({"configurable": {"thread_id": th}})
+            return _resumable_snap(snap) and snap.next[0] in ("finish", "deliver")
+    except Exception:   # noqa: BLE001
+        log.exception("delivery check failed")
+        return False
 
 
 async def resumable(settings, conversation_id: str, inbox_id: str) -> bool:

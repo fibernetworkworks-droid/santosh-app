@@ -893,7 +893,7 @@ def _can_answer(tenant: str, c: BizContact) -> str:
 
 
 async def _ai_app_answer(tenant: str, c: BizContact) -> str | None:
-    """v0.772 HOOLA AI APPS: None = no live AI app is bound to this number (the inbox goes on exactly as before).
+    """v0.785 HOOLA AI APPS: None = no live AI app is bound to this number (the inbox goes on exactly as before).
     Bound: the app answers; human mode, STOP and the 24 h window are checked FIRST, and the reply goes through send()."""
     from ..aiapps import wa as AW
     app = await asyncio.to_thread(AW.app_for_number, tenant, c.channel)

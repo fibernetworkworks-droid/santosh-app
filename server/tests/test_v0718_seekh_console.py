@@ -79,7 +79,7 @@ def wait_done(c, jid, deadline_s=15.0):
 # ---------------------------------------------------------------- 1. the lane (8)
 
 def test_router_mounted_with_three_doors():
-    # v0.785: read from the lane's own router + its mount line (a newer FastAPI keeps included routers nested,
+    # v0.790: read from the lane's own router + its mount line (a newer FastAPI keeps included routers nested,
     # so app.routes no longer lists their paths one by one)
     paths = {getattr(r, "path", "") for r in SC.make_router(lambda: None, lambda: "t").routes}
     assert "app.include_router(_seekh_console_router(require_key, current_tenant))" in (SERVER / "app" / "main.py").read_text(encoding="utf-8")
@@ -306,13 +306,13 @@ def test_styles_exist():
 
 
 def test_no_new_tool_road_the_registry_stays():
-    assert len(T.TOOLS) == 624, "the console page adds NO tool - it drives the v0.713 seekh_video organs"
+    assert len(T.TOOLS) == 625, "the console page adds NO tool - it drives the v0.713 seekh_video organs"
 
 
 def test_version_pins():
     main = (SERVER / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.785.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
+    assert 'APP_VERSION = "0.790.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
     pub = ROOT / "pubspec.yaml"
-    assert "version: 0.785.0+784" in pub.read_text(encoding="utf-8")
+    assert "version: 0.790.0+789" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.785.0" in html and "console/v2.js?v=0.785.0" in html
+    assert "console/seekh.js?v=0.790.0" in html and "console/v2.js?v=0.790.0" in html

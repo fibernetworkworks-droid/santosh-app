@@ -444,6 +444,10 @@ TOOLS.extend(CRAWL_TOOLS)
 TOOL_LABELS.update(CRAWL_LABELS)
 HANDLERS.update(CRAWL_HANDLERS)
 
+from .aiapp_tools import AIAPP_HANDLERS, AIAPP_LABELS, AIAPP_TOOLS  # noqa: E402  v0.785 HOOLA AI APPS (customer-facing AI apps)
+TOOLS.extend(AIAPP_TOOLS)
+TOOL_LABELS.update(AIAPP_LABELS)
+HANDLERS.update(AIAPP_HANDLERS)
 from .dhara_tools import DHARA_HANDLERS, DHARA_LABELS, DHARA_TOOLS  # noqa: E402  v0.502 DHARA - her workflows (the n8n lane)
 
 TOOLS.extend(DHARA_TOOLS)

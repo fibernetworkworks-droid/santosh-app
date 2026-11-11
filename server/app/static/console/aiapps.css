@@ -1,0 +1,74 @@
+/* v0.772 HOOLA AI APPS - the console page (aiapps.js). Console tokens only (v2.css :root), prefix aia- */
+.aia{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:18px;color:var(--ink);font-family:var(--fb)}
+.aia h1{font-size:26px;font-weight:600;margin:6px 0 4px}
+.aia h3{font-size:16px;font-weight:600;margin:0 0 8px}
+.aia p{margin:0}
+.aia-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.aia-head .muted{max-width:640px;font-size:14px;line-height:1.5}
+.aia-back{padding:6px 12px;font-size:13px;margin-bottom:6px}
+.aia-row{display:flex;align-items:center;gap:10px}
+.aia-wrap{flex-wrap:wrap}
+.aia-between{justify-content:space-between}
+.aia-end{justify-content:flex-end}
+.aia-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.aia-card{display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--surface);border:1px solid var(--hair);border-radius:var(--r2);padding:16px;color:var(--ink);font:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.aia-card:hover{border-color:var(--hair2);box-shadow:var(--sh2)}
+.aia-card:focus-visible,.aia-tab:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.aia-tpl{cursor:default}
+.aia-name{font-size:15px;font-weight:600}
+.aia-warn{font-size:12.5px;color:var(--warn)}
+.aia-empty{grid-column:1/-1;background:var(--raise);border:1px dashed var(--hair2);border-radius:var(--r2);padding:28px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.aia-panel{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r2);padding:18px;display:flex;flex-direction:column;gap:14px}
+.aia-field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.aia-lab{font-size:13px;font-weight:600;color:var(--lit)}
+.aia-hint{font-size:12.5px;line-height:1.4}
+.aia-in{width:100%;box-sizing:border-box;background:var(--bg);color:var(--ink);border:1px solid var(--hair2);border-radius:var(--r3);padding:9px 12px;font:inherit;font-size:14px}
+.aia-in:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px rgb(var(--acc-rgb) / .15)}
+textarea.aia-in{resize:vertical;line-height:1.45}
+.aia-big{font-size:15px}
+.aia-num{width:96px}
+.aia-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.aia-check{display:flex;align-items:flex-start;gap:9px;font-size:14px;line-height:1.4;cursor:pointer}
+.aia-check input{margin-top:3px;accent-color:var(--pri)}
+.aia-kv{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.aia-kv ul,.aia-box ul{margin:4px 0 0;padding-left:20px}
+.aia-box{border-radius:var(--r3);padding:12px 14px;background:var(--sunk);font-size:14px;line-height:1.45}
+.aia-box.bad{background:rgb(var(--bad-rgb) / .08);color:var(--bad)}
+.aia-box.warn{background:var(--warn-soft);color:var(--warn)}
+.aia-box.ok{background:var(--ok-soft);color:var(--ok)}
+.aia-ok{color:var(--ok);font-size:13.5px}
+.aia-err{color:var(--bad);font-size:14px}
+.aia-tabs{display:flex;gap:4px;border-bottom:1px solid var(--hair);overflow-x:auto}
+.aia-tab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 14px;font:inherit;font-size:14px;font-weight:500;color:var(--mut);cursor:pointer;white-space:nowrap}
+.aia-tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--pri)}
+.aia-body{display:flex;flex-direction:column;gap:16px}
+.aia-chip{font-weight:500}
+.aia-chat{display:flex;flex-direction:column;gap:10px;min-height:220px;max-height:52vh;overflow-y:auto;padding:12px;background:var(--sunk);border-radius:var(--r3)}
+.aia-msg{display:flex;flex-direction:column;gap:6px;max-width:78%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.aia-msg.me{align-self:flex-end;background:var(--pri-soft);color:var(--pri-ink)}
+.aia-msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--hair)}
+.aia-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px}
+.aia-sug{padding:6px 12px;font-size:13px;font-weight:500}
+.aia-chan{display:flex;flex-direction:column;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.aia-chan:first-child{border-top:0;padding-top:0}
+.aia-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;background:var(--code-bg);border:1px solid var(--hair);border-radius:8px;padding:7px 10px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}
+.aia-qr{width:112px;height:112px;image-rendering:pixelated;background:#fff;border-radius:8px;border:1px solid var(--hair)}
+.aia-keys,.aia-list{display:flex;flex-direction:column;gap:8px}
+.aia-item{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 13px;border:1px solid var(--hair);border-radius:var(--r3);background:var(--raise);font-size:14px}
+.aia-log{flex-direction:column;align-items:stretch}
+.aia-q{font-weight:600;overflow-wrap:anywhere}
+.aia-a{color:var(--mut);overflow-wrap:anywhere;white-space:pre-wrap}
+.aia-fix{display:flex;flex-direction:column;gap:8px}
+.aia-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.aia-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:var(--r3);background:var(--raise);border:1px solid var(--hair)}
+.aia-tile span{font-size:12.5px}
+.aia-tile b{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.aia-trial{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.aia-dangerline{color:var(--bad)}
+.btn.aia-danger{background:var(--bad);box-shadow:none}
+.aia-busy{opacity:.6;pointer-events:none}
+.aia-dlgbg{position:fixed;inset:0;z-index:200;background:rgb(0 0 0 / .38);display:flex;align-items:center;justify-content:center;padding:16px}
+.aia-dlg{background:var(--surface);color:var(--ink);border:1px solid var(--hair);border-radius:var(--r2);box-shadow:var(--sh);padding:20px;width:min(460px,100%);display:flex;flex-direction:column;gap:12px;overflow-wrap:anywhere}
+@media (max-width:700px){.aia-two{grid-template-columns:1fr}.aia-msg{max-width:92%}.aia-head{align-items:flex-start}}
+@media (prefers-reduced-motion:reduce){.aia-card{transition:none}}
+.aia-says{margin:0 0 12px;flex-basis:100%;color:var(--mut);font-size:14px}

@@ -291,7 +291,8 @@ def test_the_committed_sidecar_is_gone():
 def test_css_keeps_text_crisp_and_one_scale():
     css = (CONSOLE / "v2.css").read_text(encoding="utf-8")
     a = css.index("/* v0.785 VIDEO LEARNER, PREMIUM")
-    blk = css[a:css.index("/* v0.772 HOOLA INTERACTIVE", a)]
+    end = css.find("\n/* v0.", a + 10)                 # the next version block, whatever it is
+    blk = css[a:end if end > 0 else len(css)]
     assert "backdrop-filter" not in blk and "font-weight:700" not in blk and "font-weight:800" not in blk
     assert "text-transform:uppercase" not in blk
     import re

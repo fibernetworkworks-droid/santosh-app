@@ -1,4 +1,4 @@
-# HOOLA AI APPS - build contract (v0.772, owner: "D0-D5 ... DO THIS -- DEPLOY A PARALLEL AGENTS TO FINISH THIS END TO END")
+# HOOLA AI APPS - build contract (v0.785, owner: "D0-D5 ... DO THIS -- DEPLOY A PARALLEL AGENTS TO FINISH THIS END TO END")
 
 Research: `docs/research/dify/00_APP_BUILDING.md`. Ideas only from Dify (modified Apache + appearance patent): no Dify
 code, no copy of their screens.

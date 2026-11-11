@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - the owner routes (/api/aiapps/*). main.py: app.include_router(make_router(require_key,
+"""v0.785 HOOLA AI APPS - the owner routes (/api/aiapps/*). main.py: app.include_router(make_router(require_key,
 current_tenant)).
 
 HER taps live only here: publish {hash, note} (bound to the draft hash she looked at), restore {version}, status

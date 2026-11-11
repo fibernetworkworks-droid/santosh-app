@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D0: the app object, its draft and its versions.
+"""v0.785 HOOLA AI APPS - D0: the app object, its draft and its versions.
 
 Laws (each one has a test):
   - Going live is HER tap, bound to the hash of the draft she saw (a draft changed underneath her is refused, 409).
@@ -94,6 +94,10 @@ def get(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(a)
     out = view(a, full=True)
     out["check"] = {k: v for k, v in SO.check(out["draft"]).items() if k != "soul"}
+    bl = SO.blanks(out["draft"])
+    if bl:      # shown with the checker's errors, so the console's 'Must be fixed before publishing' lists them
+        out["check"]["errors"] = list(out["check"].get("errors") or []) + [
+            "Fill in before publishing (customers would see these): " + ", ".join(bl[:6])]
     return out
 
 
@@ -152,6 +156,9 @@ def publish(tenant: str, ref: str, h: str, note: str = "", by: str = "owner") ->
         got = SO.check(_j(a.draft, {}))
         if got["errors"]:
             raise AppError("Fix this first: " + got["errors"][0], 422)
+        bl = SO.blanks(got["soul"])
+        if bl:
+            raise AppError("Fill in these blanks first - customers would see them: " + ", ".join(bl[:5]), 422)
         nxt = (s.query(AiAppVersion).filter(AiAppVersion.app_id == a.id).count()) + 1
         v = AiAppVersion(app_id=a.id, tenant_id=tenant, version=nxt, soul=json.dumps(got["soul"], ensure_ascii=False),
                          hash=SO.hash_of(got["soul"]), note=str(note or "")[:500], op="publish", by=by[:40])

@@ -706,6 +706,9 @@ def kaam_jobs() -> None:
         if time.time() - _kaam_last > 86400:
             _kaam_last = time.time()
             kaamwatch.forget_old(30)
+            from .agent import turndeliver
+            if turndeliver.graph_on():   # G5: the graph's delivery records age out with the reports they answer
+                turndeliver.forget_old(7)
     except Exception:
         log.exception("kaam watch tick failed")
 
@@ -737,7 +740,7 @@ _aiapp_last = 0.0
 
 
 def aiapp_ops_jobs() -> None:
-    """v0.772 HOOLA AI APPS: at 80% / 100% of an AI app's monthly cost cap, one note into her chat (once a month each)."""
+    """v0.785 HOOLA AI APPS: at 80% / 100% of an AI app's monthly cost cap, one note into her chat (once a month each)."""
     global _aiapp_last
     if time.time() - _aiapp_last < 600:
         return
