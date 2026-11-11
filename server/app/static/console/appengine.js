@@ -10,7 +10,17 @@
   const PALS = {calm: ['#f7f7f8', '#4f46e5', '#0ea5a4'], warm: ['#fbf7f2', '#c2410c', '#a16207'], fresh: ['#f3faf6', '#15803d', '#0369a1'],
     bold: ['#ffffff', '#e11d48', '#7c3aed'], night: ['#0d0f14', '#8b7cff', '#2dd4bf']};
   const ST = {id: '', app: null, tab: 'preview', device: 'pc', conv: '', rows: [], waiting: false, started: 0, poll: null,
-    file: '', fileCode: null, err: '', sig: '', building: false, gen: 0};
+    file: '', fileCode: null, err: '', sig: '', building: false, gen: 0,
+    select: false, pick: null, pend: {}, ptext: null, sel: [], errs: [], line: 0, theme: null, shown: 0};
+  // v0.825 L9 the live preview of a style choice: the same values the token classes give
+  const CSSOF = {
+    color: v => ({color: `var(--color-${v})`}), bg: v => ({'background-color': `var(--color-${v})`}),
+    size: v => ({'font-size': {xs: '.75rem', sm: '.875rem', base: '1rem', lg: '1.125rem', xl: '1.25rem', '2xl': '1.5rem', '3xl': '1.875rem', '4xl': '2.25rem'}[v] || ''}),
+    weight: v => ({'font-weight': {normal: '400', medium: '500', semibold: '600', bold: '700'}[v] || ''}),
+    pad: v => ({padding: v === '' ? '' : `${Number(v) * 0.25}rem`}),
+    radius: v => ({'border-radius': {none: '0', control: 'var(--radius-control)', card: 'var(--radius-card)', full: '9999px'}[v] || ''}),
+    align: v => ({'text-align': v})};
+  const FAM = [['color', 'Text colour'], ['bg', 'Background'], ['size', 'Text size'], ['weight', 'Weight'], ['pad', 'Padding'], ['radius', 'Corners'], ['align', 'Align']];
   let K = null;
 
   const k = () => (K = K || window.HoolaWSKit);
@@ -76,6 +86,11 @@
   async function send(a, c, text) {
     const {api} = k();
     const hints = [`Web Studio App Engine: this chat is only about app ${S(a.number)} "${S(a.name)}" (app id ${S(a.id)}). Work on THIS app with the app_engine tool; never start a new app or website unless I ask for one.`];
+    for (const x of L(ST.sel)) {                              // v0.825 the parts she selected in the preview (no square brackets)
+      const [f, ln] = S(x.hs).split(':');
+      hints.push(`selected part: <${S(x.tag)}> in ${f} line ${ln}${x.hc ? ' (component ' + S(x.hc) + ')' : ''}, its words: "${S(x.text).replace(/[\[\]"]/g, '').slice(0, 80)}"`);
+    }
+    ST.sel = [];
     await api('POST', `/api/conversations/${enc(c)}/messages`, {text, hints, client_id: 'ae-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)});
   }
 
@@ -90,15 +105,17 @@
     APP.innerHTML = `<div class="ae-shell" data-ae-root>
       <header class="ae-top" id="aeTop"></header>
       <div class="ae-body"><section class="ae-chat" aria-label="Hoola chat"><div class="ae-msgs" id="aeMsgs" aria-live="polite"></div>
+        <div class="ae-pills" id="aePills" hidden></div>
         <form class="ae-comp" data-ae-form="say"><label for="aeSay" class="sr">Message Hoola</label>
           <textarea id="aeSay" rows="2" maxlength="6000" placeholder="Tell Hoola what to change…"></textarea>
           <button class="go" type="submit" aria-label="Send">${k().ico('up', 18)}</button></form></section>
         <section class="ae-pane"><nav class="ae-tabs" id="aeTabs" role="tablist"></nav><div class="ae-view" id="aeView"></div></section></div></div>`;
-    drawTop(); drawTabs(); await drawView(); await readChat(); tick();
+    drawTop(); drawTabs(); await drawView(); await readChat(); readErrs(); tick();
   }
 
   function stateLine(a) {
     const lb = a.last_build || {};
+    if (a.held) return ['Hoola is changing the app - the preview updates when the change is complete', 'v'];
     if (S(a.status) === 'building') return ['Building in the box…', 'v'];
     if (a.dirty && a.version) return ['Changes are being built…', 'v'];
     if (lb.ok === false && lb.why && !a.version) return [S(lb.why), 'bad'];
@@ -133,10 +150,13 @@
       const prob = (lb.ok === false || lb.types_ok === false) && probs.length
         ? `<div class="ae-probs" role="status"><b>${lb.ok === false ? 'The build failed' : 'TypeScript found problems'}</b> - Hoola reads these too.<ul>${probs.map(x => `<li><code>${esc(S(x.file) || '?')}${x.line ? ':' + esc(x.line) : ''}</code> ${esc(S(x.message))}</li>`).join('')}</ul></div>` : '';
       const dev = `<div class="seg ae-dev" role="group" aria-label="Device"><button type="button" data-ae="dev" data-ae-dev="pc" aria-pressed="${ST.device === 'pc'}">Computer</button><button type="button" data-ae="dev" data-ae-dev="phone" aria-pressed="${ST.device === 'phone'}">Phone</button></div>`;
-      el.innerHTML = `<div class="ae-bar">${dev}<span class="sp"></span>${a.preview ? `<a class="b ghost sm" href="${esc(a.preview)}" target="_blank" rel="noopener">${ico('ext', 15)}Open in a new tab</a>` : ''}</div>${prob}
-        ${a.preview ? `<div class="ae-frame ${ST.device}"><iframe title="App preview" id="aeFrame" sandbox="allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer" src="${esc(a.preview)}?v=${esc(a.version)}"></iframe></div>`
+      const sel = `<button class="b sm${ST.select ? ' on' : ''}" type="button" data-ae="select" aria-pressed="${ST.select}" title="Point at a part of the app (S)">${ico('edit', 15)}Select</button>`;
+      const ebar = `<div id="aeEbar">${ebarHtml()}</div>`;
+      el.innerHTML = `<div class="ae-bar">${dev}${a.preview ? sel : ''}<span class="sp"></span>${a.preview ? `<a class="b ghost sm" href="${esc(a.preview)}" target="_blank" rel="noopener">${ico('ext', 15)}Open in a new tab</a>` : ''}</div>${ebar}${prob}
+        ${a.preview ? `<div class="ae-stage"><div class="ae-frame ${ST.device}"><iframe title="App preview" id="aeFrame" sandbox="allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer" src="${esc(a.preview)}?v=${esc(a.version)}"></iframe></div><div class="ae-sel" id="aeSel" ${ST.pick ? '' : 'hidden'}></div></div>`
           : `<div class="panel mut ae-empty">${S(a.status) === 'building' || a.dirty ? 'The first version is being built…' : 'No version yet.'}</div>`}`;
       ST.shown = a.version;
+      if (ST.pick) drawPick();
       return;
     }
     if (ST.tab === 'code') {
@@ -145,10 +165,11 @@
       const files = L(full.files).filter(f => S(f.path) !== 'package-lock.json');
       if (!ST.file) ST.file = (files.find(f => S(f.path) === 'src/App.tsx') || files[0] || {}).path || '';
       let code = '';
-      if (ST.file) { try { code = S((await api('GET', `/api/appengine/${enc(a.id)}/file?path=${enc(ST.file)}`)).code); } catch (e) { code = e.message; } }
+      if (ST.file) { try { code = S((await api('GET', `/api/appengine/${enc(a.id)}/file?path=${enc(ST.file)}&from_line=${Math.max(1, ST.line - 150)}`)).code); } catch (e) { code = e.message; } }
       if (!fresh()) return;
       el.innerHTML = `<div class="ae-code"><nav class="ae-files" aria-label="Files">${files.map(f => `<button type="button" data-ae="file" data-ae-file="${esc(f.path)}" aria-current="${f.path === ST.file}">${esc(f.path)}${f.locked ? ' <span class="mut sm">locked</span>' : ''}</button>`).join('')}</nav>
-        <div class="ae-src"><div class="ae-bar"><code>${esc(ST.file)}</code><span class="sp"></span><span class="mut sm">Read only here - ask Hoola for changes</span></div><pre tabindex="0">${esc(code)}</pre></div></div>`;
+        <div class="ae-src"><div class="ae-bar"><code>${esc(ST.file)}</code><span class="sp"></span><span class="mut sm">Read only here - ask Hoola for changes</span></div><pre tabindex="0">${code.split('\n').map(l => { const n = Number((/^\s*(\d+)\|/.exec(l) || [])[1]) || 0; return `<span class="ln${n && n === ST.line ? ' hot' : ''}" data-ln="${n}">${esc(l)}</span>`; }).join('\n')}</pre></div></div>`;
+      el.querySelector('.ln.hot')?.scrollIntoView({block: 'center'});
       return;
     }
     if (ST.tab === 'design') {
@@ -180,6 +201,93 @@
         <p class="mut sm">Before it goes live Hoola checks the code again: TypeScript, the design rules and the safety rules. A problem stops it and says where.</p></div>`;
     }
   }
+
+  /* ----- v0.825 L9: the error bar, Select, the free style panel ----- */
+  function ebarHtml() {
+    const {esc} = k(), a = ST.app;
+    const open = L(ST.errs).filter(x => x.state === 'open' && Number(x.version) === Number(a.version));
+    if (!open.length) return '';
+    const x = open[0];
+    return `<div class="ae-ebar" role="alert"><b>This app hit a problem</b><span class="ell">${esc(x.message)}${x.file ? ` <code>${esc(x.file)}:${esc(x.line)}</code>` : ''}${open.length > 1 ? ` (+${open.length - 1} more)` : ''}</span>
+      <span class="sp"></span><button class="b sm pri" type="button" data-ae="fixerr" data-ae-fp="${esc(x.fp)}">Try to fix</button><button class="b ghost sm" type="button" data-ae="dismiss" data-ae-fp="${esc(x.fp)}">Dismiss</button></div>`;
+  }
+  function drawEbar() { const el = document.getElementById('aeEbar'); if (el) el.innerHTML = ebarHtml(); }
+  async function readErrs() {
+    try { ST.errs = L((await k().api('GET', `/api/appengine/${enc(ST.id)}/errors`)).errors); } catch { return; }
+    drawEbar();
+  }
+  const toFrame = m => { const f = document.getElementById('aeFrame'); if (f && f.contentWindow) f.contentWindow.postMessage(Object.assign({hoola: 'ae-cmd'}, m), '*'); };
+  let ERRQ = [], ERRT = null;
+  function queueErr(d) {
+    ERRQ.push({kind: d.kind, m: d.m, s: d.s, p: d.p, v: ST.shown});
+    clearTimeout(ERRT);
+    ERRT = setTimeout(async () => {
+      const items = ERRQ.splice(0, 20);
+      try { await k().api('POST', `/api/appengine/${enc(ST.id)}/preview-errors`, {items, version: ST.shown}); } catch { /* the bar just stays */ }
+      readErrs();
+    }, 400);
+  }
+  async function onPick(d) {
+    const {api, toast} = k();
+    ST.pick = {hs: S(d.hs), tag: S(d.tag), hc: S(d.hc), text: S(d.text), info: null};
+    ST.pend = {}; ST.ptext = null;
+    drawPick();
+    try { ST.pick.info = await api('GET', `/api/appengine/${enc(ST.id)}/pick?hs=${enc(ST.pick.hs)}`); }
+    catch (e) { ST.pick.info = {editable_style: false, why: e.message, text: null}; toast(e.message, true); }
+    drawPick();
+  }
+  function drawPick() {
+    const {esc, ico} = k(), el = document.getElementById('aeSel'); if (!el) return;
+    const p = ST.pick;
+    if (!p) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    const [file, line] = p.hs.split(':');
+    const info = p.info, cols = ((ST.app.theme || {}).colors) || {};
+    const chip = (f, v, label) => { const on = (f in ST.pend ? ST.pend[f] : (info.values || {})[f]) === v;
+      const sw = f === 'color' || f === 'bg' ? `<i style="background:${esc(cols[v] || 'transparent')}"></i>` : '';
+      return `<button type="button" class="ae-chip${on ? ' on' : ''}" aria-pressed="${on}" data-ae="pk-chip" data-ae-f="${f}" data-ae-v="${esc(v)}" title="${esc(label || v)}">${sw}${esc(label || v)}</button>`; };
+    const VALS = {color: ['ink', 'muted', 'primary', 'accent', 'ok', 'warn', 'bad', 'primary-ink'], bg: ['bg', 'surface', 'primary', 'accent', 'line'],
+      size: ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl'], weight: ['normal', 'medium', 'semibold', 'bold'], pad: ['0', '2', '4', '6', '8'],
+      radius: ['none', 'control', 'card', 'full'], align: ['left', 'center', 'right']};
+    const body = !info ? '<p class="mut sm">Reading that line…</p>' : `
+      ${info.editable_style ? FAM.map(([f, label]) => `<div class="ae-fam"><span class="ae-l">${label}</span><div class="ae-chips">${VALS[f].map(v => chip(f, v)).join('')}${chip(f, '', 'Default')}</div></div>`).join('')
+        : `<p class="mut sm">${esc(info.why || 'This part cannot be styled here.')}</p>`}
+      ${info.text !== null && info.text !== undefined ? `<label class="ae-l" for="aePkText">Words</label><input id="aePkText" class="ae-in" value="${esc(ST.ptext !== null ? ST.ptext : info.text)}" maxlength="400">` : ''}
+      <div class="ae-row"><button class="b pri sm" type="button" data-ae="pk-apply" ${Object.keys(ST.pend).length || ST.ptext !== null ? '' : 'disabled'}>Apply · free</button>
+        <button class="b ghost sm" type="button" data-ae="pk-cancel">Cancel</button><span class="sp"></span>
+        ${ST.undo ? `<button class="b ghost sm" type="button" data-ae="undo">Undo last change</button>` : ''}</div>`;
+    el.innerHTML = `<div class="ae-selh"><b>&lt;${esc(p.tag)}&gt;</b><span class="mut sm ell">${esc(p.hc ? p.hc + ' · ' : '')}${esc(file)}:${esc(line)}</span><span class="sp"></span>
+        <button class="b ghost sm ae-x" type="button" data-ae="pk-close" aria-label="Close">×</button></div>
+      <div class="ae-row"><button class="b sm" type="button" data-ae="pk-code">Open in code</button><button class="b sm" type="button" data-ae="pk-ask">Ask Hoola about this</button></div>
+      ${body}<p class="mut sm">Style and words here change the code at that line without AI (Rs 0). Anything bigger: ask Hoola.</p>`;
+  }
+  function livePreview() {
+    if (!ST.pick) return;
+    const css = {};
+    for (const [f, v] of Object.entries(ST.pend)) Object.assign(css, v === '' ? Object.fromEntries(Object.keys(CSSOF[f]('x')).map(kk => [kk, ''])) : CSSOF[f](v));
+    toFrame({t: 'style', hs: ST.pick.hs, css, ...(ST.ptext !== null ? {text: ST.ptext} : {})});
+  }
+  function drawPills() {
+    const {esc} = k(), el = document.getElementById('aePills'); if (!el) return;
+    el.innerHTML = L(ST.sel).map((x, i) => `<span class="ae-pill">&lt;${esc(x.tag)}&gt; ${esc(S(x.hs).split(':').slice(0, 2).join(':'))}<button type="button" data-ae="unpill" data-ae-i="${i}" aria-label="Remove">×</button></span>`).join('');
+    el.hidden = !L(ST.sel).length;
+  }
+  addEventListener('message', e => {
+    const f = document.getElementById('aeFrame');
+    if (!f || e.source !== f.contentWindow) return;
+    const d = e.data || {};
+    if (d.hoola !== 'ae') return;
+    if (d.t === 'ready') {
+      if (ST.select) toFrame({t: 'mode', mode: 'select'});
+      k().api('POST', `/api/appengine/${enc(ST.id)}/preview-errors`, {items: [], loaded: ST.shown}).then(readErrs).catch(() => {});
+    }
+    if (d.t === 'err') queueErr(d);
+    if (d.t === 'pick') onPick(d);
+    if (d.t === 'mode') { ST.select = d.mode === 'select'; const b = document.querySelector('[data-ae="select"]'); if (b) { b.setAttribute('aria-pressed', String(ST.select)); b.classList.toggle('on', ST.select); } }
+  });
+  document.addEventListener('input', e => {
+    if (e.target && e.target.id === 'aePkText') { ST.ptext = S(e.target.value); livePreview(); const b = document.querySelector('[data-ae="pk-apply"]'); if (b) b.disabled = false; }
+  });
 
   /* ----- the chat ----- */
   async function readChat() {
@@ -214,7 +322,7 @@
     if (!text) return;
     ta.value = '';
     ST.rows.push({id: 'local-' + Date.now(), role: 'user', text}); ST.waiting = true; ST.sig = ''; drawChat();
-    try { await send(ST.app, ST.conv, text); } catch (e) { ta.value = text; ST.waiting = false; toast(e.message, true); }
+    try { await send(ST.app, ST.conv, text); drawPills(); } catch (e) { ta.value = text; ST.waiting = false; toast(e.message, true); }
   }
 
   /* ----- the loop: the app row (status / version) + the chat ----- */
@@ -227,7 +335,7 @@
       const moved = a.version !== ST.app.version || a.status !== ST.app.status || a.dirty !== ST.app.dirty || a.live_version !== ST.app.live_version
         || JSON.stringify(a.last_build) !== JSON.stringify(ST.app.last_build);
       ST.app = {...ST.app, ...a};
-      if (moved) { drawTop(); if (ST.tab === 'preview' || ST.tab === 'publish') await drawView(); }
+      if (moved) { drawTop(); if (ST.tab === 'preview' || ST.tab === 'publish') await drawView(); if (a.version !== ST.errsV) { ST.errsV = a.version; readErrs(); } }
     } catch { /* keep polling */ }
     await readChat();
     ST.poll = setTimeout(tick, ST.waiting || ST.app.dirty || S(ST.app.status) === 'building' ? 2000 : 6000);
@@ -237,7 +345,34 @@
     const {api, toast} = k(), what = b.dataset.ae;
     if (what === 'tab') { ST.tab = b.dataset.aeTab; history.replaceState(null, '', `#/app/${enc(ST.id)}/${ST.tab}`); drawTabs(); await drawView(); return; }
     if (what === 'dev') { ST.device = b.dataset.aeDev; await drawView(); return; }
-    if (what === 'file') { ST.file = b.dataset.aeFile; await drawView(); return; }
+    if (what === 'file') { ST.file = b.dataset.aeFile; ST.line = 0; await drawView(); return; }
+    if (what === 'select') { ST.select = !ST.select; toFrame({t: 'mode', mode: ST.select ? 'select' : 'off'}); b.setAttribute('aria-pressed', String(ST.select)); b.classList.toggle('on', ST.select); return; }
+    if (what === 'pk-chip') { const f = b.dataset.aeF, v = S(b.dataset.aeV); ST.pend[f] = v; livePreview(); drawPick(); return; }
+    if (what === 'pk-close' || what === 'pk-cancel') { toFrame({t: 'clear'}); ST.pick = null; ST.pend = {}; ST.ptext = null; drawPick(); return; }
+    if (what === 'pk-code') { const [f, ln] = ST.pick.hs.split(':'); ST.file = f; ST.line = Number(ln) || 0; ST.tab = 'code'; history.replaceState(null, '', `#/app/${enc(ST.id)}/code`); drawTabs(); await drawView(); return; }
+    if (what === 'pk-ask') { if (!L(ST.sel).some(x => x.hs === ST.pick.hs)) ST.sel.push({...ST.pick}); drawPills(); document.getElementById('aeSay')?.focus(); return; }
+    if (what === 'unpill') { ST.sel.splice(Number(b.dataset.aeI), 1); drawPills(); return; }
+    if (what === 'pk-apply') {
+      const body = {hs: ST.pick.hs, ...(Object.keys(ST.pend).length ? {style: ST.pend} : {}), ...(ST.ptext !== null ? {text: ST.ptext} : {})};
+      b.disabled = true;
+      try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/edit`, body); toast(S(r.say)); ST.undo = true; ST.pend = {}; ST.ptext = null; ST.pick.info = null; drawPick();
+        ST.pick.info = await api('GET', `/api/appengine/${enc(ST.id)}/pick?hs=${enc(ST.pick.hs)}`); }
+      catch (e) { toast(e.message, true); }
+      drawPick(); return;
+    }
+    if (what === 'undo') {
+      try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/undo`); toast(S(r.say)); ST.undo = Number(r.left) > 0; if (ST.pick) ST.pick.info = await api('GET', `/api/appengine/${enc(ST.id)}/pick?hs=${enc(ST.pick.hs)}`); }
+      catch (e) { toast(e.message, true); }
+      drawPick(); return;
+    }
+    if (what === 'dismiss') { try { await api('POST', `/api/appengine/${enc(ST.id)}/errors/${enc(b.dataset.aeFp)}/dismissed`); } catch (e) { toast(e.message, true); } readErrs(); return; }
+    if (what === 'fixerr') {
+      const x = L(ST.errs).find(y => y.fp === b.dataset.aeFp); if (!x) return;
+      const text = `Fix this error the preview reported: "${S(x.message).slice(0, 300)}"${x.file ? ` (at ${x.file} line ${x.line})` : ''}.`;
+      ST.rows.push({id: 'local-' + Date.now(), role: 'user', text}); ST.waiting = true; ST.sig = ''; drawChat();
+      try { await send(ST.app, ST.conv, text); toast('Sent to Hoola.'); } catch (e) { ST.waiting = false; toast(e.message, true); }
+      return;
+    }
     if (what === 'build') {
       b.disabled = true; ST.app.status = 'building'; drawTop();
       try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/build`); toast(S(r.say), !r.built); ST.app = {...ST.app, ...r}; }
@@ -287,6 +422,10 @@
     if (f.dataset.aeForm === 'new') createApp(f); else if (f.dataset.aeForm === 'say') say(f);
   }, true);
   document.addEventListener('keydown', e => {
+    if ((e.key === 's' || e.key === 'S') && !e.metaKey && !e.ctrlKey && !e.altKey && ST.tab === 'preview' && document.querySelector('[data-ae-root]')
+        && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '') && !(e.target && e.target.isContentEditable)) {
+      const b = document.querySelector('[data-ae="select"]'); if (b) { e.preventDefault(); act(b); } return;
+    }
     if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.id === 'aeSay') { e.preventDefault(); e.target.form.requestSubmit(); }
   });
 

@@ -78,6 +78,8 @@ def _walk(url: str, must: list[str], click: tuple[str, str] | None) -> dict[str,
             t0 = time.time()
             pg.goto(url, wait_until="networkidle")
             text = pg.inner_text("body")
+            tags = pg.evaluate("document.querySelectorAll('[data-hs]').length")
+            helper = pg.evaluate("!!document.querySelector('script[src$=\"__hoola/preview.js\"]')")
             seen = [w for w in must if w in text]
             clicked = None
             if click:
@@ -89,7 +91,7 @@ def _walk(url: str, must: list[str], click: tuple[str, str] | None) -> dict[str,
             phone.goto(url, wait_until="networkidle")
             sw = phone.evaluate("document.documentElement.scrollWidth")
             return {"errors": errs, "seen": seen, "missing": [w for w in must if w not in seen], "clicked": clicked,
-                    "load_s": round(time.time() - t0, 2), "phone_overflow": sw > 392}
+                    "load_s": round(time.time() - t0, 2), "phone_overflow": sw > 392, "source_tags": tags, "helper": helper}
         finally:
             b.close()
 
@@ -151,6 +153,8 @@ def run(browser: bool = True, keep: bool = False) -> dict[str, Any]:
         p = x.get("preview") or {}
         return (x.get("built") and x.get("types_ok") and x.get("rules_ok") and not x.get("error")
                 and (not browser or (not p.get("errors") and not p.get("missing") and p.get("clicked") and not p.get("phone_overflow")
+                                     and p.get("source_tags") and p.get("helper")                       # v0.825 click -> source in the preview
+                                     and not (x.get("live_walk") or {}).get("source_tags") and not (x.get("live_walk") or {}).get("helper")
                                      and not (x.get("live_walk") or {}).get("errors") and not (x.get("live_walk") or {}).get("missing"))))
     ok = sum(1 for x in rows if good(x))
     secs = [x["build_s"] for x in rows if x.get("build_s")]

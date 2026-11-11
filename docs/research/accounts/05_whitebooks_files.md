@@ -25,3 +25,10 @@ Keys accepted, e-invoice + e-way bill sandbox logins PASS. GST public search ans
 track a bare refusal for 27AAGCB1286Q005 - the GST sandbox account is a separate switch-on by WhiteBooks support (the GST doc's
 step 3), and the shared PDF has no GST test GSTIN / username. Next: WhiteBooks support enables the GST sandbox and gives its test
 GSTIN + gst_username; then `WHITEBOOKS_SANDBOX_GST_USERNAME` (and a GST GSTIN line if it differs).
+
+## Update (wb_check 11 Nov 2026, 10:18 UTC, main b60b6694)
+
+WhiteBooks support switched the GST sandbox on and gave its test account: GSTIN 27AAGCB1286QKZL, username MH_NT4.2823. With the
+username set, GST OTP request + auth token (OTP 575757) + refresh PASS. GSTIN search, filing track and ledger still ran on the
+shared 27AAGCB1286Q005 (the separate `WHITEBOOKS_SANDBOX_GST_GSTIN` line was not deployed yet), so they failed - the ledger with
+"Authentication Failed" because the token belongs to the other GSTIN. v0.827 sends the GST steps to the GST GSTIN.

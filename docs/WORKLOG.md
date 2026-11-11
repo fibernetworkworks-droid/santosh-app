@@ -3000,15 +3000,26 @@ Task: owner "GO L8" on docs/LOVABLE_STUDIO_PLAN.md (her 4 L8 decisions unanswere
 Work Log: server/app/appengine/ (template, tokens, rules, image + lock, runner, service, proof), agent/appengine_tools.py (app_engine, registry 627), turnmode APP + prompt block + sticky family, 13 routes, Studio Apps page + workspace (appengine.js/.css), vps-ops appengine_setup / appengine_check; 9 tests incl. the five asks in the real box + a browser walk.
 Stage Summary: pushed. Server deploy + vps-ops appengine_setup, then appengine_check. Not verified on her VPS or with a real model. Next: L9 on her GO.
 
+---
+Task ID: v0.826.0 APP ENGINE 2 (L9)
+Task: owner "GO L9" on docs/LOVABLE_STUDIO_PLAN.md.
+Work Log: hoola.plugin.mjs (preview-only source tags + hidden maps), clean build at publish, preview.js (errors / select / live style), appengine/pick.py (free edits, undo, error collector + source-map lookup), theme.json + @theme static, template refresh, the HMR gate (TURN_CONV / held), 6 routes, Studio Select + style panel + error bar + code line; 6 tests incl. a browser walk.
+Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild - @babel/parser + magic-string are in it). Next: L10 Hoola Cloud on her GO.
 
 ---
-Task ID: v0.826.0 WHITEBOOKS ERROR WORDS (built as 0.825)
+Task ID: v0.827.0 WHITEBOOKS ERROR WORDS (built as 0.825)
 Task: owner shared WhiteBooks files after wb_check (e-invoice + e-way bill PASS, GST search fails).
 Work Log: files read in the scratchpad (not committed); calls match specs; GST sandbox needs WhiteBooks support switch-on; error codes as data + known_error; research note 05.
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she asks WhiteBooks to enable the GST sandbox + share its test GSTIN / gst_username.
 
 ---
-Task ID: v0.826.0 GST TEST GSTIN (same release as ERROR WORDS; their TEEN AWAAZEIN took 0.825.0)
+Task ID: v0.827.0 GST TEST GSTIN (same release as ERROR WORDS; their TEEN AWAAZEIN took 0.825.0, APP ENGINE 2 0.826.0)
 Task: WhiteBooks support gave the GST sandbox test GSTIN 27AAGCB1286QKZL + username MH_NT4.2823.
 Work Log: WHITEBOOKS_SANDBOX_GST_GSTIN for the GST steps; e-invoice / e-way bill keep the shared GSTIN; vps-ops lists the line; 1 test; merged main (0.825 collision), re-versioned 0.826.
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she adds the two lines to the VPS .env, deploy, wb_check. API Setu GST lookup spec read, not built.
+
+---
+Task ID: v0.827.0 API SETU GSTN CHECK (same release; their APP ENGINE 2 took 0.826.0 - merged, re-versioned)
+Task: owner "i have api setu --- api lets check with it" + read her wb_check run.
+Work Log: bahi/apisetu.py (GSTN Tax Payer API per its spec, keys from the VPS .env only) + apisetucheck + vps-ops apisetu_check; 9 tests. wb_check 10:18 UTC: GST OTP + token + refresh PASS, einv + ewb PASS; GSTIN steps still on the shared GSTIN (fix not deployed yet).
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: MERGE TO MAIN, deploy, her APISETU_CLIENT_ID / APISETU_API_KEY + WHITEBOOKS_SANDBOX_GST_GSTIN in the .env, wb_check + apisetu_check.

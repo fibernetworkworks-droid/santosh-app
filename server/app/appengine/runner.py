@@ -102,23 +102,24 @@ def parse_vite(txt: str, root: str = "/tmp/w/") -> list[dict[str, Any]]:
     return out
 
 
-def _box_argv(src: str, out: str) -> list[str]:
+def _box_argv(src: str, out: str, source: bool = True) -> list[str]:
     from ..devlab import box
     return [box.docker(), "run", "--rm", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,exec,size=768m",
             "--user", "1000:1000", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--memory", "1536m", "--memory-swap", "1536m", "--cpus", "2", "--pids-limit", "256",
-            "--env", "NODE_OPTIONS=--max-old-space-size=1024", "--env", "CI=1", "--env", "NO_COLOR=1", "--env", "FORCE_COLOR=0",
+            "--env", "NODE_OPTIONS=--max-old-space-size=1024", "--env", "CI=1", "--env", f"HOOLA_SOURCE={'1' if source else '0'}", "--env", "NO_COLOR=1", "--env", "FORCE_COLOR=0",
             "-v", f"{os.path.abspath(src)}:/src:ro", "-v", f"{os.path.abspath(out)}:/out:rw",
             IMG.IMAGE, "sh", "-c", SCRIPT]
 
 
-def _local(src: str, out: str) -> tuple[int, str, float]:
+def _local(src: str, out: str, source: bool = True) -> tuple[int, str, float]:
     nm = os.environ.get("HOOLA_APPENGINE_NODE_MODULES", "")
     t0 = time.time()
     with tempfile.TemporaryDirectory(prefix="hoola-ae-w-") as w:
         shutil.copytree(src, w, dirs_exist_ok=True)
         os.symlink(nm, os.path.join(w, "node_modules"))
-        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": w, "CI": "1", "LANG": "C.UTF-8", "NO_COLOR": "1", "FORCE_COLOR": "0"}
+        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": w, "CI": "1", "LANG": "C.UTF-8", "NO_COLOR": "1", "FORCE_COLOR": "0",
+               "HOOLA_SOURCE": "1" if source else "0"}
         r1 = subprocess.run(["node", "node_modules/typescript/bin/tsc", "--noEmit", "-p", "tsconfig.json", "--pretty", "false"],
                             cwd=w, capture_output=True, text=True, timeout=TIMEOUT, env=env)
         Path(out, "tsc.txt").write_text((r1.stdout or "") + (r1.stderr or ""))
@@ -131,9 +132,10 @@ def _local(src: str, out: str) -> tuple[int, str, float]:
         return r2.returncode, "", time.time() - t0
 
 
-def build(src: Path, wait: float = 20.0) -> dict[str, Any]:
+def build(src: Path, wait: float = 20.0, source: bool = True) -> dict[str, Any]:
     """Build `src` (a whole app folder). Returns ok, seconds, the built dist folder (a temp dir the caller moves),
-    TypeScript's problems and the build's own problems. Never raises for a failed build; raises RuntimeError only when
+    TypeScript's problems and the build's own problems. `source` = a PREVIEW build (every element tagged with its file
+    and line + hidden source maps, v0.825 L9); False = the clean build that goes live. Never raises for a failed build; raises RuntimeError only when
     the box is not there."""
     av = available()
     if not av["ok"]:
@@ -148,10 +150,10 @@ def build(src: Path, wait: float = 20.0) -> dict[str, Any]:
         os.chmod(out, 0o777)                      # the box writes as uid 1000
         t0 = time.time()
         if mode() == "local":
-            rc, txt, _ = _local(str(src), str(out))
+            rc, txt, _ = _local(str(src), str(out), source)
         else:
             from ..devlab import box
-            rc, txt, _ = box._run(_box_argv(str(src), str(out)), TIMEOUT + 30)
+            rc, txt, _ = box._run(_box_argv(str(src), str(out), source), TIMEOUT + 30)
         secs = round(time.time() - t0, 2)
         STATS["builds"] += 1
         read = lambda n: (out / n).read_text("utf-8", "replace") if (out / n).exists() else ""   # noqa: E731

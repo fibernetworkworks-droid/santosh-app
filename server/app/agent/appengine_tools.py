@@ -29,8 +29,10 @@ APPENGINE_TOOLS = [
         "colour (bg-blue-500, text-white) or a one-off [value]; no outside address (no fetch to http...; data will come "
         "through src/lib/hoola.ts, not connected yet - keep sample data on the page and say it is sample); pages in "
         "src/pages, routes in src/App.tsx, shared parts in src/components (the ui kit: button card input textarea "
-        "label badge tabs dialog table). The preview rebuilds ~2 s after a change; call action=build before you say "
-        "it is done and read its answer - a failed build names file and line (action=logs for the whole log). "
+        "label badge tabs dialog table). Your changes are built (and shown to her) only when your turn ends or you call "
+        "action=build - so finish the whole change set, then call action=build and read its answer before you say it is "
+        "done; a failed build names file and line, and action=logs also lists errors the preview itself reported (with "
+        "the app's file and line). When she selected a part, her message names its file:line - view that line first. "
         "Going live is HER tap in the Studio - never claim it is live. `app` = the app's id or number (the Studio "
         "turn already names it)."),
      "input_schema": {"type": "object", "properties": {
@@ -121,10 +123,13 @@ async def app_engine(ctx: Ctx, action: str, app: str = "", **kw: Any) -> dict:
         raise ToolError(TM.refusal(f"app_engine action={action}"))
     if action in CHANGES and ctx.actor not in ("owner",) and not str(ctx.actor).startswith("approved:"):
         raise ToolError("Only the owner's own turns change an app.")
+    tok = AE.TURN_CONV.set(ctx.conversation_id or "")       # v0.825 the HMR gate: this turn's writes wait for its end
     try:
         return await asyncio.to_thread(_call, ctx, action, app, kw)
     except AE.AppEngineError as e:
         raise ToolError(str(e))
+    finally:
+        AE.TURN_CONV.reset(tok)
 
 
 APPENGINE_HANDLERS = {"app_engine": app_engine}

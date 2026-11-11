@@ -1,4 +1,4 @@
-version: 0.826.0+825
+version: 0.827.0+826
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
