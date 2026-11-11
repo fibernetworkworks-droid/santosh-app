@@ -73,7 +73,7 @@ def test_upi_payment_locked_pinned_payee_receipt_and_check(env):
         dp.claim_paid("default", bid, "12")
     dp.claim_paid("default", bid, "412345678901")
     m = _last("kunal")
-    assert m["card"] == "money" and "Paisa mila" in m["say"] and dl.show("kunal", sid)["pay"]["status"] == "claimed"
+    assert m["card"] == "money" and "Money received" in m["say"] and dl.show("kunal", sid)["pay"]["status"] == "claimed"
     # no handover while money is open
     dl.packing("kunal", sid)
     dl.mark_ready("kunal", sid, place="Counter 1", minutes=120)
@@ -107,14 +107,14 @@ def test_amount_tamper_and_changed_payee_are_stopped(env):
     d = dl._get("kunal", sid)
     d.pay = dict(d.pay, due=99999.0, requests=[])
     dl._save(d)
-    with pytest.raises(dl.DealError, match="nahi pahuncha"):
+    with pytest.raises(dl.DealError, match="could not be reached"):
         dp.request_payment("kunal", sid)
     assert dl.show("default", bid)["pay"]["requests"][-1]["amount"] == 5310
     # a part payment only when he marks it part, never above what is due
     d = dl._get("kunal", sid)
     d.pay = dict(d.pay, due=5310.0)
     dl._save(d)
-    with pytest.raises(dl.DealError, match="baaki"):
+    with pytest.raises(dl.DealError, match="still due"):
         dp.request_payment("kunal", sid, 6000)
     dp.request_payment("kunal", sid, 2000)
     assert "hissa" in _last("default")["say"] and dp.pay_link("default", bid)["amount"] == 2000
@@ -145,7 +145,7 @@ def test_cancel_window_request_and_refund_due(env):
     with pytest.raises(dl.DealError, match="pehle se"):
         dl.cancel("default", bid, "phir se")
     dp.cancel_answer("kunal", sid, False, "maal pack ho chuka")
-    assert "nahi maana" in _last("default")["say"] and dl.show("default", bid)["state"] == "accepted"
+    assert "did not accept" in _last("default")["say"] and dl.show("default", bid)["state"] == "accepted"
     d = dl._get("default", bid)
     d.cancel_req = {}
     dl._save(d)
@@ -167,7 +167,7 @@ def test_dispute_answer_escalate_and_window(env):
     with pytest.raises(dl.DealError, match="poora"):
         dl.handed_over("kunal", sid, code, collect={"mode": "cash", "amount": 100})
     dl.handed_over("kunal", sid, code, collect={"mode": "cash", "amount": dl.show("kunal", sid)["pay"]["due_left"]})
-    with pytest.raises(dl.DealError, match="nahi thi"):
+    with pytest.raises(dl.DealError, match="did not have"):
         dp.dispute("default", bid, "short", [{"item": "Parle-G", "qty": 50}])
     dp.dispute("default", bid, "damaged", [{"item": "Tata Salt 1kg", "qty": 2}], "do packet phate the")
     dc = _last("kunal")
@@ -178,7 +178,7 @@ def test_dispute_answer_escalate_and_window(env):
     assert _last("default")["card"] == "resolve" and dl.show("default", bid)["pay"]["refund_due"] == 52.5
     r = dp.dispute_close("default", bid, False, "poora paisa chahiye")
     assert r["status"] == "escalated" and "1915" in r["official"] and "e-Daakhil" in r["official"]
-    assert "nahi maana" in _last("kunal")["say"]
+    assert "did not accept" in _last("kunal")["say"]
     dp.resolve("kunal", sid, "replace", note="kal naye packet")
     dp.dispute_close("default", bid, True)
     assert dl.show("kunal", sid)["state"] == "closed" and dl.show("default", bid)["state"] == "closed"
@@ -191,7 +191,7 @@ def test_dispute_answer_escalate_and_window(env):
         d = dl._get(t, i)
         d.handed_at = dl.now() - timedelta(hours=49)
         dl._save(d)
-    with pytest.raises(dl.DealError, match="samay"):
+    with pytest.raises(dl.DealError, match="complaint window"):
         dp.dispute("default", bid, "short", note="kam tha")
     dp.tick()
     assert dl.show("default", bid)["state"] == "closed" and dl.show("kunal", sid)["state"] == "closed"
@@ -257,7 +257,7 @@ def test_unaccepted_order_auto_cancels_and_reminders(env):
     with session() as s:
         s.get(Deal, bid).updated_at = dl.now() - timedelta(hours=4)
     dp.tick()
-    assert "pakka nahi kiya" in _last("default")["say"] and dl.show("default", bid)["state"] == "confirmed"
+    assert "has not confirmed" in _last("default")["say"] and dl.show("default", bid)["state"] == "confirmed"
     with session() as s:
         s.get(Deal, bid).updated_at = dl.now() - timedelta(hours=7)
     dp.tick()
@@ -270,7 +270,7 @@ def test_unaccepted_order_auto_cancels_and_reminders(env):
     d.pay = p
     dl._save(d)
     dp.tick()
-    assert "baaki hai" in _last("default")["say"]
+    assert "is still due" in _last("default")["say"]
     n = len(ev("default", "hoola_deal"))
     dp.tick()
     assert len(ev("default", "hoola_deal")) == n                       # once only

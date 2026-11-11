@@ -125,7 +125,7 @@ def test_buyer_checks_every_number_and_the_order_of_steps(env):
                               "amount": 4500, "gst": 810, "status": "ok"}], "subtotal": 4500, "gst": 810, "total": 3000,
            "valid_until": (dl.now() + timedelta(hours=1)).isoformat()}
     r = net._post("kunal", s.peer, "deal_quote", dict(bad, step=s.step + 1, prev=s.last_hash), s.dkey, s.thread_id)
-    assert r["ok"] is False and "hisaab galat" in r["reason"]
+    assert r["ok"] is False and "wrong calculation" in r["reason"]
     assert dl.show("default", bid)["state"] == "asked"
     # an accept before any quote / confirm is out of order
     r = net._post("kunal", s.peer, "deal_accept", {"number": "X-1", "step": s.step + 1, "prev": s.last_hash}, s.dkey, s.thread_id)
@@ -160,7 +160,7 @@ def test_expiry_changed_quote_and_cancel(env):
     with session() as s:
         for row in s.query(dl.Deal).all():
             row.quote = dict(row.quote, valid_until=(dl.now() - timedelta(minutes=1)).isoformat())
-    with pytest.raises(dl.DealError, match="samay"):
+    with pytest.raises(dl.DealError, match="expired"):
         dl.confirm("default", bid, by_tap=True)
     dl.tick()
     assert dl.show("kunal", sid)["state"] == "expired"
@@ -187,7 +187,7 @@ def test_safety_secrets_strangers_public_counter_and_tool(env):
     with pytest.raises(dl.DealError):
         dl.ask("default", "@kunal.raj", [{"item": "", "qty": 0}])
     # a stranger who is not connected and not a public business can't be sent a list
-    with pytest.raises(dl.DealError, match="juda nahi"):
+    with pytest.raises(dl.DealError, match="not connected"):
         dl.ask("default", "@ravi.field", LIST[:1])
     # a public business counter opens a customer connection by itself
     from app.net import business as biz

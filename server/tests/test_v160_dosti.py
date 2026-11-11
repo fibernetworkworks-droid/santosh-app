@@ -228,7 +228,7 @@ def test_skills_from_friends_only_on_her_yes_and_skill_video(env, ai, monkeypatc
     monkeypatch.setattr(motion, "file_path", lambda vid, what: mp4)
     r = dosti.send_video("default", e["id"], "@kunal.raj")
     assert r["status"] == "needs_approval"                          # share_videos = ask (default)
-    assert ev("default", "hoola_outbox")[-1]["reason"] == "skill video bhejna"
+    assert ev("default", "hoola_outbox")[-1]["reason"] == "sending a skill video"
 
 
 def test_tool_owner_only_and_api(env, ai):

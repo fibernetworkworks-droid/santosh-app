@@ -351,7 +351,7 @@ def test_hoola_mandali(sam):
     g = grp.create("default", "FNW Field", members=["Kunal", "@swati.sales"])
     grp.answer_invite("kunal", g["gid"], "accept")
     v = S.link_hoola(T, "FNW Field")
-    assert v["platform"] == "hoola" and {m["name"] for m in S.members(T)} >= {"Kunal ki Meera"}
+    assert v["platform"] == "hoola" and {m["name"] for m in S.members(T)} >= {"Kunal's Meera"}
     grp.answer_invite("swati", g["gid"], "accept")
     grp.post("kunal", g["gid"], "message", "Saala tu kamina hai")
     grp.post("kunal", g["gid"], "message", "Akola OLT kab theek hoga?")
@@ -359,8 +359,8 @@ def test_hoola_mandali(sam):
     assert len(S.members(T)) == 2
     assert kinds(ev, "samudaay_alert")[-1]["kind"] == "abuse"
     assert kinds(ev, "samudaay_question")
-    x = S.request_action(T, "remove", v["id"], member="Kunal ki Meera", reason="gaali")
+    x = S.request_action(T, "remove", v["id"], member="Kunal's Meera", reason="gaali")
     S.decide(T, x["id"], True, x["hash"], by_tap=True)
-    assert all(m["label"] != "Kunal ki Meera" for m in grp.detail("default", g["gid"])["members"])
+    assert all(m["label"] != "Kunal's Meera" for m in grp.detail("default", g["gid"])["members"])
     bad = S.request_action(T, "delete_post", v["id"], post=S.alerts(T, status="")[0]["post_id"])
     assert S.decide(T, bad["id"], True, bad["hash"], by_tap=True)["status"] == "failed"     # Mandali can't delete posts: said plainly

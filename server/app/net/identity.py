@@ -331,10 +331,9 @@ def peer_card(addr: str) -> dict[str, Any] | None:
 
 
 def label(card: dict[str, Any] | None) -> str:
-    """'Kunal ka Raju' / 'Meghana ki Meera'."""
+    """'Kunal's Raju' / 'Meghana's Meera'."""
     if not card:
         return "Unknown Hoola"
     from .policy import clean_name
-    ka = "ki" if card.get("avatar_gender") == "f" else "ka"
     owner = clean_name(card.get("owner_name"), 60) or "@" + clean_name(card.get("handle"), 60)
-    return f"{owner} {ka} {clean_name(card.get('avatar_name'), 30) or 'Hoola'}"
+    return f"{owner}'s {clean_name(card.get('avatar_name'), 30) or 'Hoola'}"

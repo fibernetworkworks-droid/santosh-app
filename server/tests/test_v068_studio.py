@@ -94,7 +94,7 @@ def test_studio_end_to_end(fake, tmp_path, monkeypatch):
         # paid draft: a price card, nothing runs or is spent before her tap
         fakes.LOG.clear()
         card = await ss.generate(T, P, "draft")
-        assert card["waiting_owner"] and card["inr"] > 0 and "Haan" in card["say"]
+        assert card["waiting_owner"] and card["inr"] > 0 and "Yes" in card["say"]
         assert not [x for x in fakes.LOG if x.get("path") == "/openrouter/api/v1/videos"]
         p = ss._load(T, P)
         assert p["spent_usd"] == 0 and p["approvals"][card["waiting_owner"]]["status"] == "pending"
@@ -118,7 +118,7 @@ def test_studio_end_to_end(fake, tmp_path, monkeypatch):
         # the month ceiling: a final run bigger than what is left is refused before any card
         with pytest.raises(ss.StudioJobError) as e:
             await ss.generate(T, P, "final", variants=4)
-        assert "seema" in str(e.value)
+        assert "limit" in str(e.value)
         rv = await ss.review(T, P, "s1")
         assert rv["look"]["score"] == 8 and rv["sheet_url"].startswith("/api/studio/files/")
         assert (await ss.voiceover(T, P, "s2", file_id=vo))["seconds"] > 2
@@ -148,8 +148,8 @@ def test_studio_end_to_end(fake, tmp_path, monkeypatch):
     from app.db import Message, session
     with session() as s:
         notes = [m.display or "" for m in s.query(Message).filter(Message.role == "assistant").all()]
-    assert any("video taiyaar" in n and "AI-generated" in n for n in notes)
-    assert any("draft shot taiyaar" in n for n in notes)
+    assert any("video ready" in n and "AI-generated" in n for n in notes)
+    assert any("draft shots ready" in n for n in notes)
 
 
 def test_tool_api_push_and_guards(fake, tmp_path):

@@ -244,7 +244,7 @@ def test_avatar_film_voice_end_to_end_frame_aligned(hf, monkeypatch):
 def test_avatar_film_lab_down_is_honest(hf, monkeypatch):
     from app.interactive import lab
     monkeypatch.setattr(lab, "configured", lambda: False)
-    with pytest.raises(frames.NotConfigured, match="awaaz"):
+    with pytest.raises(frames.NotConfigured, match="voice"):
         frames.run("default", "avatar_film", spec={"script": "hi."})
 
 
@@ -255,7 +255,7 @@ def test_avatar_film_lab_failure_is_honest(hf, monkeypatch):
     def boom(text, **_):
         raise lab.LabError("engine did not answer")
     monkeypatch.setattr(lab, "voice", boom)
-    with pytest.raises(frames.FramesError, match="awaaz nahi bani"):
+    with pytest.raises(frames.FramesError, match="voice could not be made"):
         frames.run("default", "avatar_film", spec={"script": "hi."})
 
 

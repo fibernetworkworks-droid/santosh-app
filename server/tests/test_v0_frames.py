@@ -220,7 +220,7 @@ def test_render_ok_delivers_file_card(hf):
 def test_check_and_snapshot_and_timeline_actions(hf):
     ctx = conv_ctx()
     chk = run("hoola_frames", {"action": "check", "html": GOOD_HTML}, ctx)
-    assert chk["ok"] is True and "taiyaar" in chk["note"]
+    assert chk["ok"] is True and "ready" in chk["note"]
     snap = run("hoola_frames", {"action": "snapshot", "html": GOOD_HTML, "times": [1.0, 2.0]}, ctx)
     assert len(snap["pngs"]) == 2 and snap["pngs"][0].endswith(".png")
     tl = run("hoola_frames", {"action": "timeline", "html": GOOD_HTML}, ctx)

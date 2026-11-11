@@ -107,14 +107,14 @@ def test_pick_list_to_packer_packed_ready_and_counter_code(env):
     # Swati's own Hoola got the pick list
     task = _last("swati", "hoola_pick")
     assert task["card"] == "task" and task["number"] == a["number"] and len(task["lines"]) == 2
-    assert task["customer"] == "Meghana ka Santosh"
+    assert task["customer"] == "Meghana's Santosh"
     from app.net import pick as pk
     # Ravi is not a packer: a pick update from him is refused
     from app.net import identity as idn
     from app.net import service as nsvc
     s_deal = dl._get("kunal", sid)
     r = nsvc._post("ravi", idn.my_card("kunal")["address"], "pick_update", {"dkey": s_deal.dkey, "status": "packed"}, "tk_x")
-    assert r["ok"] is False and "nahi di gayi" in r["reason"]
+    assert r["ok"] is False and "not given to you" in r["reason"]
     # Swati says "packing" -> the buyer sees packing; then "packed" -> his rule (auto_ready on) sends the pickup code
     pk.mark("swati", task["id"], "packing")
     assert dl.show("default", bid)["state"] == "packing"
@@ -161,7 +161,7 @@ def test_short_pick_goes_to_owner_and_no_auto_ready(env):
         for row in s.query(dl.Deal).filter(dl.Deal.state == "ready").all():
             row.ready = dict(row.ready, until=(dl.now() - timedelta(minutes=5)).isoformat())
     dl.tick()
-    assert "samay par nahi" in _last("kunal")["say"] and "samay nikal" in _last("default")["say"]
+    assert "not picked up in time" in _last("kunal")["say"] and "pickup time has passed" in _last("default")["say"]
     dl.mark_ready("kunal", sid, minutes=120)
     code2 = _last("default")["ready"]["code"]
     if code1 != code2:

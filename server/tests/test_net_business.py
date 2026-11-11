@@ -63,10 +63,10 @@ def test_complaint_ticket_webhook_and_chain(env, hooks):
     biz.assign("kunal", "FNW-1001", "@swati.tech", "Akola site jaiye")
     c = ev("swati", "hoola_chain")[-1]
     assert c["event"] == "with_me" and "FNW-1001" in c["goal"]
-    assert "di gayi" in ev("ravi", "hoola_msg")[-1]["text"]
+    assert "assigned" in ev("ravi", "hoola_msg")[-1]["text"]
     chn.act("swati", c["chain_id"], "done", note="Fiber joint badla, net chalu")
     assert biz.tickets("kunal")[0]["status"] == "resolved"
-    assert "theek ho gayi" in ev("ravi", "hoola_msg")[-1]["text"]
+    assert "has been resolved" in ev("ravi", "hoola_msg")[-1]["text"]
     assert biz.my_tickets("ravi")[0]["status"] == "resolved"
 
 
@@ -114,7 +114,7 @@ def test_quote_from_catalog_and_order(env, monkeypatch):
     r = net.send("ravi", out, "order", {"text": "Order: 1 ONT, kal install"})
     assert r["status"] == "pending"
     k = ev("kunal", "hoola_knock")[-1]
-    assert k["what"] == "order dena chahte hain"
+    assert k["what"] == "wants to place an order"
     net.decide("kunal", k["id"], "accept", note="Order pakka, kal 11 baje")
     assert "Order pakka" in ev("ravi", "hoola_msg")[-1]["text"]
     _ = (_events, ns)
@@ -142,4 +142,4 @@ def test_operator_badge_and_webhook_in(env, hooks):
         r = c.post("/hooks/hoola/kunal.raj/ticket", content=body, headers={"X-Hoola-Signature": sig})
         assert r.status_code == 200 and r.json()["status"] == "in_progress"
         assert c.post("/hooks/hoola/kunal.raj/ticket", content=body, headers={"X-Hoola-Signature": "sha256=bad"}).status_code == 400
-    assert "kaam chal raha" in ev("ravi", "hoola_msg")[-1]["text"]
+    assert "is being worked on" in ev("ravi", "hoola_msg")[-1]["text"]

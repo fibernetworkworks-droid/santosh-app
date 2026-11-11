@@ -33,7 +33,7 @@ def test_trust_tiers_drive_auto_accept_and_reports_limit(env):
     from app.net import trust
     meg = net.resolve("kunal", "@meghana.fnw")
     t = trust.tier("kunal", meg)
-    assert t["tier"] == "known" and t["word"] == "jaan-pehchaan"
+    assert t["tier"] == "known" and t["word"] == "known"
     assert trust.tier("kunal", "hl_nobody@x.example")["tier"] == "stranger"
     dl.set_rules("kunal", auto_quote="connected", auto_accept=True, auto_accept_max=50000)
     # known: the quote goes by itself (her rule says connected) but the order waits for his tap
@@ -71,7 +71,7 @@ def test_trust_tiers_drive_auto_accept_and_reports_limit(env):
         asyncio.run(dispatch("hoola_market", {"action": "trust_set", "to": "@meghana.fnw", "level": "trusted"},
                              Ctx("kunal", net.home_conv("kunal"), actor="peer:x")))
     r = asyncio.run(dispatch("hoola_market", {"action": "trust_show", "to": "@meghana.fnw"}, Ctx("kunal", net.home_conv("kunal"))))
-    assert r["tier"] == "blocked" and "shikayat" in r["why"]
+    assert r["tier"] == "blocked" and "complained" in r["why"]
 
 
 def test_verified_business_credential_checked_in_code(env):
@@ -164,7 +164,7 @@ def test_compare_three_holds_quotes_sorts_and_thanks_the_rest(env):
     rfq._set(rid2, closes_at=dl.now() - timedelta(minutes=1))
     rfq.tick()
     v2 = rfq.show("ravi", rid2)
-    assert v2["state"] == "ready" and any(r.get("say") == "abhi jawab nahi" for r in v2["rows"])
+    assert v2["state"] == "ready" and any(r.get("say") == "no reply yet" for r in v2["rows"])
     # split order keeps the others; close thanks the rest
     rfq.set_split("ravi", rid2, True)
     q_row = [r for r in v2["rows"] if r["quoted"]][0]
@@ -194,7 +194,7 @@ def test_standing_order_signed_once_checked_every_run(env):
     assert r["status"] == "needs_tap" and r["mandate"]["state"] == "draft" and r["mandate"]["number"] == "S-1"
     with pytest.raises(md.MandateError, match="tap"):
         md.sign("default", mid)
-    with pytest.raises(md.MandateError, match="chalu nahi"):
+    with pytest.raises(md.MandateError, match="not on"):
         md.run_now("default", mid)
     from app import main
     with TestClient(main.app) as cl:
@@ -213,7 +213,7 @@ def test_standing_order_signed_once_checked_every_run(env):
     # run 2: inside the rule -> held, placed by itself after the hold
     bid = md.run_now("default", mid)["deal"]["id"]
     c = _last("default")
-    assert c["card"] == "mandate" and "khud pakka" in c["say"]
+    assert c["card"] == "mandate" and "confirm it myself" in c["say"]
     with pytest.raises(dl.DealError, match="tap"):
         dl.confirm("default", bid, by_mandate=mid)       # the hold isn't over yet
     run = [x for x in md._get("default", mid).runs if x["deal_id"] == bid][0]

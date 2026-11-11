@@ -47,14 +47,14 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     from app.net import dealpay as dp, job as jb
     bid, sid = _book(dl)
     c = _last("kunal")
-    assert c["card"] == "quote" and "Khaali samay" in c["say"] and c["draft"]["slots"]
+    assert c["card"] == "quote" and "Free times" in c["say"] and c["draft"]["slots"]
     assert c["draft"]["lines"][0]["item"] == "Visit charge" and c["draft"]["lines"][1]["item"] == "Tap repair"
     assert "address" not in dl._get("kunal", sid).ask                    # only the work, area and time went
     dl.send_quote("kunal", sid, estimate={"min": 400, "max": 900})
     q = dl.show("default", bid)["quote"]
     assert q["service"]["at"] == "their_place" and len(q["slots"]) >= 2 and q["estimate"] == {"min": 400, "max": 900}
     slot = q["slots"][1]
-    with pytest.raises(dl.DealError, match="samay chuniye"):
+    with pytest.raises(dl.DealError, match="Choose one of these times"):
         dl.confirm("default", bid, by_tap=True, slot="2020-01-01T10:00:00+00:00")
     with pytest.raises(dl.DealError, match="pata"):
         dl.confirm("default", bid, by_tap=True, slot=slot)
@@ -76,8 +76,8 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     jb.estimate("kunal", sid, [{"item": "Cartridge", "price": 350, "gst_pct": 18, "note": "andar ka purana kharab"},
                                {"item": "Naya nal", "price": 1200, "gst_pct": 18}])
     e = _last("default")
-    assert e["card"] == "estimate" and "Haan / Na" in e["say"]
-    with pytest.raises(dl.DealError, match="baaki"):
+    assert e["card"] == "estimate" and "Yes / No" in e["say"]
+    with pytest.raises(dl.DealError, match="still pending"):
         jb.done("kunal", sid, "Ho gaya")
     r = asyncio.run(dispatch("hoola_booking", {"action": "approve", "deal_id": bid}, Ctx("default", net.home_conv("default"))))
     assert r["status"] == "needs_tap"
@@ -89,7 +89,7 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     assert [x["status"] for x in dl.show("kunal", sid)["job"]["extras"]] == ["yes", "no"]
     # proof photo: kept on both sides, a real picture, no EXIF
     jb.add_photo("kunal", sid, _photo_bytes(), "after.jpg", "after")
-    with pytest.raises(dl.DealError, match="photo nahi"):
+    with pytest.raises(dl.DealError, match="not look like a photo"):
         jb.add_photo("kunal", sid, b"%PDF-1.4 not a photo", "x.jpg", "after")
     ph = dl.show("default", bid)["job"]["photos"]
     assert len(ph) == 1 and ph[0]["stage"] == "after"
@@ -103,7 +103,7 @@ def test_booking_slots_address_job_card_bill_and_receipt(env):
     forged = jb.build_bill(s, [dict(x, status="yes") for x in s.job["extras"]], True)
     r = net._post("kunal", s.peer, "job_done", {"summary": "x", "bill": forged, "warranty": {"days": 30},
                                                 "step": s.step + 1, "prev": s.last_hash}, s.dkey, s.thread_id)
-    assert r["ok"] is False and "haan nahi" in r["reason"]
+    assert r["ok"] is False and "not approved" in r["reason"]
     # the real bill: quote + approved line, visit charge adjusted (work was done)
     out = jb.done("kunal", sid, "Cartridge badla, leak band", 30, "nal ki fitting")
     b = out["bill"]
@@ -162,7 +162,7 @@ def test_slots_are_held_reschedule_and_reminders(env):
     q1, q2 = dl.show("default", b1)["quote"], dl.show("default", b2)["quote"]
     same = [x for x in q1["slots"] if x in q2["slots"]][0]
     dl.confirm("default", b1, by_tap=True, slot=same, address="A")
-    with pytest.raises(dl.DealError, match="khaali nahi"):              # one job per slot (her capacity 1)
+    with pytest.raises(dl.DealError, match="no longer free"):              # one job per slot (her capacity 1)
         dl.confirm("default", b2, by_tap=True, slot=same, address="A")
     dl.accept("kunal", s1)
     # reschedule: she asks, he offers new times, her tap moves it (both sides)
