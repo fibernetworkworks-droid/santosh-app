@@ -2939,3 +2939,9 @@ Task ID: v0.795.0 YEH WALA (L5)
 Task: owner "GO L5" - preview toolbar (S / T / D / C), selected elements to the model, marked-up screenshots, free style panel on tokens.
 Work Log: site/yehwala.py (selection, comments table, markup screenshot); edit.style + hs-u-* utilities; hoola-edit.js modes; Studio toolbar / pills / style panel / draw / comments; 6 tests incl. a browser walk.
 Stage Summary: pushed; server deploy only. Next: L6 GALTI PAKDO (preview error collector + Try to fix) on her GO.
+
+---
+Task ID: v0.796.0 DESK ROOM
+Task: owner "employees built but not in the web console - check first, then build category-wise in the console".
+Work Log: audit (31 live employees with a dead Open desk); employee/deskroom.py (forms from each tool's own schema, run via chat dispatch); deptdesk.js + ddk- styles; Kaan -> Hoola Flow; 8 tests incl. a browser walk; screenshots checked light / dark / phone.
+Stage Summary: on branch claude/exciting-hawking-113x8i as v0.796.0 (main on her word); server + console only. Next: phone desks for the same 31 (they open the SEO desk on the phone) on her GO.
