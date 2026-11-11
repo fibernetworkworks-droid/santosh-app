@@ -87,7 +87,7 @@ def actor_label(tenant: str, actor: str) -> str:
             m = s.get(TeamMember, actor[6:])
             return m.name if m and m.tenant_id == tenant else "Team"
     if actor.startswith("customer:"):
-        return "Graahak"
+        return "Customer"
     return actor[:40]
 
 

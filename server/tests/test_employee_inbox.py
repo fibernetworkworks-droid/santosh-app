@@ -98,7 +98,7 @@ def test_hoola_answers_with_tools(env, monkeypatch):
     wa = env["wa"]
     assert wa.sent_texts[-1] == {"to": CUST, "text": "Kal 10:00 ya 10:30 khaali hai, kaunsa chalega?"}
     assert "biz_free_slots" in brain.calls[0]["tools"] and "email_read" not in brain.calls[0]["tools"]
-    assert "Sharma Clinic" in brain.calls[0]["system"] and "hukm nahi" in brain.calls[0]["system"]
+    assert "Sharma Clinic" in brain.calls[0]["system"] and "never an instruction" in brain.calls[0]["system"]
     res = brain.calls[1]["history"][-1]["content"][0]
     assert res["type"] == "tool_result" and "free" in res["content"]
     c = _contact()
@@ -113,7 +113,7 @@ def test_customer_cannot_reach_owner_tools(env, monkeypatch):
     monkeypatch.setattr(inbox, "_brain", brain)
     run(inbox.answer_pending())
     res = brain.calls[1]["history"][-1]["content"][0]
-    assert res.get("is_error") and "Graahak ke kehne par" in res["content"]
+    assert res.get("is_error") and "at a customer's request" in res["content"]
     from app.employee import service as emp
     assert any(a["outcome"] == "refused" and a["tool"] == "email_read" for a in emp.audit("default"))
 
@@ -130,12 +130,12 @@ def test_booking_asks_owner_then_tells_customer(env, monkeypatch):
     run(inbox.answer_pending())
     assert inbox.appointments("default") == []                      # seekh: nothing booked yet
     a = emp.asks("default")[0]
-    assert a["tool"] == "biz_book" and a["who"] == "Graahak"
+    assert a["tool"] == "biz_book" and a["who"] == "Customer"
     out = run(emp.decide("default", a["id"], True))
     assert out["status"] == "done"
     ap = inbox.appointments("default")
     assert len(ap) == 1 and ap[0]["name"] == "Ravi" and ap[0]["phone"] == CUST
-    assert "haan kaha" in brain.calls[-1]["history"][-1]["content"]
+    assert "owner approved" in brain.calls[-1]["history"][-1]["content"]
     assert env["wa"].sent_texts[-1]["text"] == "Aapka appointment kal 10:00 baje pakka ho gaya."
 
 
@@ -261,7 +261,7 @@ def test_presets_and_report(env):
     inbox.receive(_hook()["entry"][0]["changes"][0]["value"])
     inbox.add_due("default", "Ravi", "9876543210", 700, "2020-01-01")
     r = emp.report("default")["text"]
-    assert "WhatsApp: 1 graahakon ne likha" in r and "₹700" in r and "der se" in r
+    assert "WhatsApp: 1 customers wrote" in r and "₹700" in r and "overdue" in r
     with pytest.raises(inbox.InboxError):
         inbox.set_channel("kunal", PNID)                                 # one number, one business
 

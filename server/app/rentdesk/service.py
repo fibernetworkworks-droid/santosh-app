@@ -653,7 +653,7 @@ def from_propagent_deal(tenant: str, deal: str, start: str = "", actor: str = "o
         person = (l.name, l.phone)
         rent, dep, num, avail = D.price or None, D.deposit or None, D.number, L.available_from
     u = save_unit(tenant, "", **{k: v for k, v in unit_kw.items() if v not in (None, "")})["unit"]
-    p = save_person(tenant, "", person[0] or "Kirayedar", person[1])["person"]
+    p = save_person(tenant, "", person[0] or "Tenant", person[1])["person"]
     start = start or avail or today(tenant).isoformat()
     out = new_tenancy(tenant, u["number"], p["number"], actor, conv, start=start, rent=rent, deposit=dep,
                       notes=f"{tag} created from the property deal")
@@ -671,7 +671,7 @@ def update_tenancy(tenant: str, tenancy: str, **kw: Any) -> dict:
                             "or a new agreement.")
         _apply_tenancy(t, kw)
         view = _tenancy_view(s, t, True)
-    return {"tenancy": view, "say": f"{view['number']} update."}
+    return {"tenancy": view, "say": f"{view['number']} updated."}
 
 
 def activate(tenant: str, tenancy: str, conv: str = "") -> dict:
@@ -1588,7 +1588,7 @@ def save_vendor(tenant: str, name: str, phone: str = "", trade: str = "other", n
         if notes:
             v.notes = _clean(notes, 500)
         s.flush()
-        return {"vendor": _vendor_view(v), "say": f"Vendor {v.name} ({R.TRADES[v.trade]}) save."}
+        return {"vendor": _vendor_view(v), "say": f"Vendor {v.name} ({R.TRADES[v.trade]}) saved."}
 
 
 def _vendor_view(v: RdVendor) -> dict:

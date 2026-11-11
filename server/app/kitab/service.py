@@ -1652,7 +1652,7 @@ def style_docx(title: str, lang: str, st: dict) -> bytes:
         for w, r in st["spellings"].items():
             d.add_paragraph(f"{w} -> {r}", style="List Bullet")
     if st.get("conventions"):
-        d.add_heading("Niyam", 1)
+        d.add_heading("Rules", 1)
         for k, v in st["conventions"].items():
             d.add_paragraph(f"{k}: {v}", style="List Bullet")
     if st.get("notes"):
@@ -1991,7 +1991,7 @@ def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
         y = d.year if d.month >= 4 else d.year - 1
         no = f"ED/{y % 100:02d}{(y + 1) % 100:02d}/{st.inv_seq:03d}"
         me = {"name": st.name, "address": st.address, "phone": st.phone, "email": st.email, "gstin": st.gstin}
-    rows = [["Seva", "Rakam"], [sh.get("line", ""), sh["base_text"]]]
+    rows = [["Service", "Amount"], [sh.get("line", ""), sh["base_text"]]]
     g = sh.get("gst")
     if g:
         if g["igst"]:
@@ -2041,7 +2041,7 @@ def day(tenant: str) -> dict:
             if pub and (cl.get("legal_deposit") or {}).get("status") not in ("done", "na"):
                 ld = R.legal_deposit_due(pub)
                 if ld >= d - timedelta(days=60):
-                    due.append(f"{b.number}: legal deposit (4 copies) by {ld.isoformat()}")
+                    due.append(f"{b.number}: legal deposit (4 copies) by {ld.isoformat()} at the latest")
         subs = s.scalars(select(KitabSubmission).where(KitabSubmission.tenant_id == tenant, KitabSubmission.status == "sent")).all()
         follow = [f"{x.number} {x.to}" for x in subs if x.follow_on and x.follow_on <= d.isoformat()]
         perms = len(s.scalars(select(KitabPermission.id).where(KitabPermission.tenant_id == tenant,

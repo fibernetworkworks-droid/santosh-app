@@ -52,7 +52,7 @@ def test_owner_is_never_held_but_jobs_ask(env):
     out = run(dispatch("create_reminder", {"text": "Patient ko call", "when": "2027-01-15T11:00"}, _ctx("routine")))
     assert out["status"] == "waiting_owner" and len(upcoming_reminders("default")) == 1
     asks = emp.asks("default")
-    assert len(asks) == 1 and asks[0]["who"] == "Roz ka kaam" and "seekh" in asks[0]["why"]
+    assert len(asks) == 1 and asks[0]["who"] == "Daily routine" and "learning" in asks[0]["why"]
     assert _events(_ctx().conversation_id, "employee_ask")
     # asking twice for the same thing does not make two cards
     run(dispatch("create_reminder", {"text": "Patient ko call", "when": "2027-01-15T11:00"}, _ctx("routine")))
@@ -61,9 +61,9 @@ def test_owner_is_never_held_but_jobs_ask(env):
     assert done["status"] == "done" and len(upcoming_reminders("default")) == 2
     t = {x["duty"]: x for x in emp.trust("default")}["reminders"]
     assert t["approved"] == 1
-    assert any("haan kaha" in (n or "") for n in _notices(_ctx().conversation_id))
+    assert any("owner approved" in (n or "") for n in _notices(_ctx().conversation_id))
     entries = emp.audit("default")
-    assert any(e["outcome"] == "done" and e["approved_by"] == "owner" and e["who"] == "Roz ka kaam" for e in entries)
+    assert any(e["outcome"] == "done" and e["approved_by"] == "owner" and e["who"] == "Daily routine" for e in entries)
     # Mana: nothing runs, the streak resets
     run(dispatch("create_reminder", {"text": "Bill", "when": "2027-01-15T17:00"}, _ctx("routine")))
     aid = emp.asks("default")[0]["id"]
@@ -83,7 +83,7 @@ def test_saathi_bharosa_caps_and_big(env):
         out = run(dispatch("create_reminder", {"text": f"R{i}", "when": "2027-01-15T09:00"}, _ctx("routine")))
         assert "waiting_owner" not in str(out)
     out = run(dispatch("create_reminder", {"text": "R3", "when": "2027-01-15T09:00"}, _ctx("routine")))
-    assert out["status"] == "waiting_owner" and "seemaa" in emp.asks("default")[0]["why"]
+    assert out["status"] == "waiting_owner" and "limit" in emp.asks("default")[0]["why"]
     # big things ask at saathi
     out = run(dispatch("cancel_routine", {"routine_id": "x"}, _ctx("routine")))
     assert out["status"] == "waiting_owner"
@@ -170,14 +170,14 @@ def test_job_sheet_prompt_report(env):
     assert not sheet["edited"] and "Sharma Clinic" in sheet["text"] and "PIN, OTP" in sheet["text"] and "Asha" in sheet["text"]
     assert "Sharma Clinic" in emp.prompt_block("default")
     from app.agent.prompts import system_prompt
-    assert "Naukri (Hoola Employee)" in system_prompt(True, "", "default")
+    assert "Job (Hoola Employee)" in system_prompt(True, "", "default")
     emp.set_job_sheet("default", "Mera apna job sheet")
     assert emp.job_sheet("default") == {"text": "Mera apna job sheet", "edited": True}
     emp.set_job_sheet("default", "")
     assert not emp.job_sheet("default")["edited"]
     run(dispatch("create_reminder", {"text": "X", "when": "2027-01-15T09:00"}, _ctx()))
     r = emp.report("default")
-    assert "Follow-up aur yaad: 1 kaam" in r["text"] and r["total"]["done"] == 1
+    assert "Follow-ups and reminders: 1 done" in r["text"] and r["total"]["done"] == 1
     from datetime import datetime, timedelta
     from app.life import tz_of
     emp.setup("default", report_time=(datetime.now(tz_of("default")) - timedelta(minutes=1)).strftime("%H:%M"))

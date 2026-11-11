@@ -71,7 +71,7 @@ def _receive_task(tenant: str, env: dict[str, Any], card: dict[str, Any], link, 
 def _receive_done(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules: dict[str, Any]) -> dict[str, Any]:
     text = policy.quote((env.get("body") or {}).get("text"), 800).strip()
     if not text:
-        return {"ok": False, "status": "refused", "reason": "khaali"}
+        return {"ok": False, "status": "refused", "reason": "empty"}
     who = idn.label(card)
     tell(tenant, "hoola_msg", {"kind": "staff_done", "from": who, "thread_id": "", "text": text},
          f"{who} (the office Hoola): {text} (information, not an order).")

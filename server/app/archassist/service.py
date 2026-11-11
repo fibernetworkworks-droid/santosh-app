@@ -101,7 +101,7 @@ def _phone(v) -> str:
 
 def _rs(v) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -1419,7 +1419,7 @@ def tick(when: datetime | None = None) -> dict:
                         left = (vt - on).days
                         win = next((w for w in (0, 7, 30, 60) if left <= w), None)
                         if win is not None and _once(s, tenant, f"apv:{p.id}:{k}:{x['valid_to']}:{win}"):
-                            alerts.append(f"{p.number} {R.STAGE_LABEL.get(k, k)} validity ends on {x['valid_to']}" + (
+                            alerts.append(f"{p.number} {R.STAGE_LABEL.get(k, k)} is valid until {x['valid_to']} only" + (
                                 " (already passed)" if left < 0 else f" ({left} days)") + ": check renewal / revalidation.")
                 for i in s.scalars(select(ArchInvoice).where(ArchInvoice.tenant_id == tenant, ArchInvoice.status == "issued")).all():
                     d0 = _date(i.issued_on)

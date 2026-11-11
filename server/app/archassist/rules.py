@@ -102,7 +102,7 @@ STAGE_LABEL = {"building_permission": "Building permission / IOD", "cc": "Commen
                "oc": "Occupancy / completion", "noc_fire": "Fire NOC", "noc_tree": "Tree authority NOC", "noc_airport": "AAI height NOC",
                "noc_env": "Environment clearance (SEIAA)", "noc_heritage": "Heritage NOC", "noc_crz": "CRZ (MCZMA)",
                "noc_railway": "Railway NOC", "noc_highway": "Highway / NHAI NOC", "rera": "RERA project registration",
-               "structural": "Structural design + stability (licensed engineer)", "other": "Doosra"}
+               "structural": "Structural design + stability (licensed engineer)", "other": "Other"}
 
 
 def nocs(facts: dict[str, Any], height: float | None, bua: float | None) -> list[dict[str, str]]:

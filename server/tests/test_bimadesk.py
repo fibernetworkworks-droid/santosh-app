@@ -36,7 +36,7 @@ def test_settlement_match_and_status_message():
     assert st == {"A": "matched", "B": "short", "C": "not received"} and m["duplicate_utr"] == ["U1"] and m["unmatched_payments"][0]["claim"] == "Z"
     s = E.status_message("paid", "C1", "UTR9", "en")
     assert "C1" in s["message"] and s["send"] is False
-    assert "faisla" in E.status_message("rejected", "C2")["message"]
+    assert "faisla" in E.status_message("rejected", "C2", language="hi")["message"]
     with pytest.raises(ValueError):
         E.status_message("???")
 
