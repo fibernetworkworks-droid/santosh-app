@@ -93,6 +93,9 @@ ORIGINAL game that Hoola will build in Godot 4 and run in the phone browser. Sec
 ## Screens (title "Tap to start", playing with score, game over with score + best + "Tap to restart")
 ## Look (3-5 hex colours, simple shapes drawn in code; no image files)
 ## Numbers (speeds, sizes, timings a programmer needs)
+If she asks for a 3D game, say "3D" in the pitch and design it for Hoola's 3D kit: third person (or first person),
+ONE small level (a courtyard or a few rooms), a player who walks and jumps, things to collect, guards that patrol or
+chase, one goal to reach, three lives; low-poly shapes drawn in code.
 Rules: original names, characters and levels only - never copy a specific existing game (if she names one, design an
 ORIGINAL game in that genre and say so in one line); no real-money, betting or gambling mechanics; no violence against
 real groups; fit the orientation given. Write in clear English (game text may use her language if she asked)."""
@@ -228,12 +231,19 @@ def design(brief: str, orientation: str, feedback: str = "", old: str = "") -> s
     return txt[:6000]
 
 
-def _ctx(orientation: str, size: tuple[int, int]) -> str:
-    return f"Viewport: {size[0]} x {size[1]} ({orientation})."
+def _ctx(orientation: str, size: tuple[int, int], design_doc: str = "") -> str:
+    out = f"Viewport: {size[0]} x {size[1]} ({orientation})."
+    try:                                                # v0.809: a 3D design gets Hoola's 3D kit and its API
+        from . import kit3d
+        if kit3d.wants(design_doc):
+            out += "\n\n" + kit3d.API
+    except Exception:                                   # noqa: BLE001  (a game is written without the kit note)
+        log.exception("3d kit note")
+    return out
 
 
 def code(design_doc: str, orientation: str, size: tuple[int, int]) -> dict[str, str]:
-    return parse(ask(GUIDE, f"{_ctx(orientation, size)}\n\nThe approved design doc:\n{design_doc}\n\nWrite the game."))
+    return parse(ask(GUIDE, f"{_ctx(orientation, size, design_doc)}\n\nThe approved design doc:\n{design_doc}\n\nWrite the game."))
 
 
 def _listing(files: dict[str, str]) -> str:
@@ -241,14 +251,14 @@ def _listing(files: dict[str, str]) -> str:
 
 
 def fix(design_doc: str, files: dict[str, str], problems: list[str], orientation: str, size: tuple[int, int]) -> dict[str, str]:
-    p = (f"{_ctx(orientation, size)}\n\nDesign doc:\n{design_doc}\n\nCurrent files:\n{_listing(files)}\n\n"
+    p = (f"{_ctx(orientation, size, design_doc)}\n\nDesign doc:\n{design_doc}\n\nCurrent files:\n{_listing(files)}\n\n"
          "These REAL problems came from running / exporting / playing it - fix every one and return ALL files again "
          "(whole files, same format):\n- " + "\n- ".join(problems[:12]))
     return parse(ask(GUIDE, p))
 
 
 def change(design_doc: str, files: dict[str, str], words: str, orientation: str, size: tuple[int, int]) -> dict[str, str]:
-    p = (f"{_ctx(orientation, size)}\n\nDesign doc:\n{design_doc}\n\nCurrent files:\n{_listing(files)}\n\n"
+    p = (f"{_ctx(orientation, size, design_doc)}\n\nDesign doc:\n{design_doc}\n\nCurrent files:\n{_listing(files)}\n\n"
          f"Her change (do exactly this, keep everything else working; return ALL files, whole, same format): {words}")
     return parse(ask(GUIDE, p))
 

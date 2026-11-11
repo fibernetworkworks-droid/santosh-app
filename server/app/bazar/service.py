@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from ..config import get_settings as core_settings
 from ..db import Conversation as CoreConversation
@@ -106,6 +107,15 @@ def ensure_user(s, tenant_id: str) -> User:
         u = User(id=tenant_id, language="hi", cap_per_order_paise=st.default_cap_per_order_paise,
                  cap_per_day_paise=st.default_cap_per_day_paise, profile={})
         s.add(u)
+        try:
+            s.flush()
+        except IntegrityError:
+            # v0.799: two requests of her FIRST visit (the Connectors page loads its lists together) both found no row
+            # and both inserted it; the loser crashed with a 500. The row exists now - read it instead.
+            s.rollback()
+            u = s.get(User, tenant_id)
+            if u is None:
+                raise
     if prof is not None:
         if prof.name and not u.name:
             u.name = prof.name

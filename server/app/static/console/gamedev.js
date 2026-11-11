@@ -24,6 +24,10 @@
   const TOKEN = store.get('hoola.console.token');
   const APP = $('#gdv');
   if (!TOKEN) { location.replace('/console/'); return; }
+  // v0.799 ENGINE LOOK: a game engine is a dark room (Godot, Unity, Unreal) - this app always opens dark, whatever the
+  // console's own Light / Dark choice is; the embedded console pages read the same tokens, so they go dark with it
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.documentElement.classList.add('gdv-engine');
 
   /* ---------- server ---------- */
   class ApiError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
@@ -83,7 +87,8 @@
     cross: '<path d="M6 6l12 12M18 6L6 18"/>', circle: '<circle cx="12" cy="12" r="7"/>', doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
     board: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/>', school: '<path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c3 2 7 2 10 0v-4.5"/>',
     pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
-    dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>'};
+    dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', play: '<path d="M7 4.5l12 7.5-12 7.5z" fill="currentColor"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>', full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>'};
   const ico = (k, n = 18) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
 
   /* ---------- a game's state in plain words ---------- */
@@ -159,10 +164,10 @@
     }
     stopAll(); W.id = ''; W.game = null;
     document.title = 'Hoola Game Dev';
-    if (!APP.querySelector('.gdv-shell')) APP.innerHTML = '<div class="gdv-shell"><aside class="gdv-side" aria-label="Hoola Game Dev"></aside><main class="gdv-main" id="gdvMain"><div class="gdv-loading">Loading…</div></main></div>';
+    if (!APP.querySelector('.gdv-shell')) APP.innerHTML = '<div class="gdv-shell"><header class="gdv-ebar" id="gdvEbar"></header><div class="gdv-shrow"><aside class="gdv-side" aria-label="Hoola Game Dev"></aside><main class="gdv-main" id="gdvMain"><div class="gdv-loading">Loading…</div></main></div></div>';
     try { await loadHome(); } catch (e) { drawSide(r.view); $('#gdvMain').innerHTML = `<div class="gdv-panel"><p class="gdv-bad">${esc(e.message)}</p></div>`; return; }
     if (S(location.hash) && parse().view !== r.view) return;   // she moved on while it loaded
-    drawSide(r.view === 'games' ? 'games' : r.view);
+    drawSide(r.view === 'games' ? 'games' : r.view); drawEbar();
     const main = $('#gdvMain'); main.scrollTop = 0;
     if (r.view === 'home') drawHome(main);
     else if (r.view === 'games') drawAll(main);
@@ -184,6 +189,7 @@
       try { await loadHome(); } catch { return homePoll(view); }
       if (parse().view !== view) return;
       const rb = $('#gdvRecentBox'); if (rb) rb.innerHTML = recentHtml();
+      drawEbar(); const sb = $('#gdvStatsBox'); if (sb) sb.innerHTML = statsHtml();
       if (view === 'home') {
         const wb = $('#gdvWaitBox'); if (wb) wb.innerHTML = waitHtml();
         const gb = $('#gdvGamesBox'); if (gb) gb.innerHTML = gamesHtml();
@@ -207,6 +213,55 @@
       <a class="gdv-nav" href="/console/">${ico('back', 17)}<span>Back to Hoola</span></a>`;
   }
 
+  /* ---------- the engine bar: only real numbers (the server's Godot, games being made, games that play) ---------- */
+  function drawEbar() {
+    const bar = $('#gdvEbar'); if (!bar) return;
+    const h = HEALTH, making = GAMES.filter(busy).length, plays = GAMES.filter(g => N(g.version)).length;
+    bar.innerHTML = `<span class="gdv-emark" aria-hidden="true">${ico('pad', 17)}</span><b class="gdv-ename">Hoola Game Dev</b><span class="gdv-mono gdv-etag">engine</span>
+      <span class="gdv-grow"></span>
+      <span class="gdv-echip"><span class="gdv-dot gdv-${h.ready ? 'ok' : 'bad'}${h.ready ? ' gdv-glow' : ''}" aria-hidden="true"></span>${h.ready ? `Godot ${esc(h.version || '')} ready` : 'Godot not installed'}</span>
+      ${making ? `<span class="gdv-echip gdv-echip-v"><span class="gdv-dot gdv-v gdv-glow" aria-hidden="true"></span>${making} being made</span>` : ''}
+      <span class="gdv-echip">${plays} of ${GAMES.length} play</span>
+      <a class="gdv-elink" href="/console/">Back to Hoola</a>`;
+  }
+  /* studio at a glance - drawn from her games only; a card with nothing real to show is left out */
+  function statsHtml() {
+    if (!GAMES.length) return '';
+    const cnt = {plays: 0, wait: 0, busy: 0, bad: 0};
+    GAMES.forEach(g => { if (busy(g)) cnt.busy++; else if (g.status === 'design_ready') cnt.wait++; else if (N(g.version)) cnt.plays++; else if (['failed', 'cancelled'].includes(g.status)) cnt.bad++; });
+    const tot = Math.max(1, cnt.plays + cnt.wait + cnt.busy + cnt.bad);
+    const seg = (n, c, l) => n ? `<span class="gdv-seg gdv-seg-${c}" style="flex:${n} 1 0" title="${esc(l)}"></span>` : '';
+    const key = (n, c, l) => n ? `<span class="gdv-key"><i class="gdv-seg-${c}" aria-hidden="true"></i>${esc(l)} ${n}</span>` : '';
+    const built = GAMES.filter(g => N(g.versions)).slice(0, 8), mx = Math.max(1, ...built.map(g => N(g.versions)));
+    const fps = GAMES.filter(g => M(g.numbers).fps_server != null && N(M(g.numbers).fps_server) > 0).slice(0, 6);
+    const versions = GAMES.reduce((a, g) => a + N(g.versions), 0);
+    return `<div class="gdv-stats">
+      <div class="gdv-stat"><span class="gdv-mono gdv-mut">your games</span>
+        <div class="gdv-segs" role="img" aria-label="${cnt.plays} play, ${cnt.wait} wait for your OK, ${cnt.busy} being made, ${cnt.bad} did not work">${seg(cnt.plays, 'ok', 'Plays')}${seg(cnt.wait, 'warn', 'Waiting for your OK')}${seg(cnt.busy, 'v', 'Being made')}${seg(cnt.bad, 'bad', 'Did not work')}</div>
+        <div class="gdv-keys">${key(cnt.plays, 'ok', 'Play')}${key(cnt.wait, 'warn', 'Wait for you')}${key(cnt.busy, 'v', 'Being made')}${key(cnt.bad, 'bad', 'Did not work')}</div>
+        <b class="gdv-big">${GAMES.length} game${GAMES.length === 1 ? '' : 's'}</b><span class="gdv-sr">${Math.round(cnt.plays / tot * 100)}% play</span></div>
+      ${built.length ? `<div class="gdv-stat"><span class="gdv-mono gdv-mut">versions built</span>
+        <div class="gdv-vbars" role="img" aria-label="${built.map(g => `${esc(gname(g))} ${N(g.versions)}`).join(', ')}">${built.map((g, i) => `<span style="height:${Math.max(8, N(g.versions) / mx * 100)}%;animation-delay:${i * 80}ms" title="${esc(gname(g))} · ${N(g.versions)}"></span>`).join('')}</div>
+        <b class="gdv-big">${versions} version${versions === 1 ? '' : 's'}</b></div>` : ''}
+      ${fps.length ? `<div class="gdv-stat"><span class="gdv-mono gdv-mut">frame rate on the server</span>
+        <div class="gdv-fps">${fps.map((g, i) => { const f = N(g.numbers.fps_server); return `<div class="gdv-fpsrow"><span class="gdv-ell">${esc(gname(g))}</span><span class="gdv-fpsbar"><i class="gdv-fps-${f >= 50 ? 'ok' : f >= 30 ? 'warn' : 'bad'}" style="width:${Math.min(100, f / 60 * 100)}%;animation-delay:${i * 90}ms"></i></span><span class="gdv-mono">${esc(numStr(f))}</span></div>`; }).join('')}</div>
+        <span class="gdv-small">Measured when Hoola played each game in Godot on your server, not on a phone.</span></div>` : ''}
+    </div>`;
+  }
+  /* the hero drawing: Hoola's real six steps round a loop, work flowing round it; the middle names her newest game that plays */
+  const LOOP = 'M90 80 C 180 40, 280 40, 370 80 C 430 130, 430 250, 370 300 C 280 340, 180 340, 90 300 C 30 250, 30 130, 90 80 Z';
+  function loopHtml() {
+    const g = GAMES.filter(x => N(x.version)).sort((a, b) => isoS(b.created_at) - isoS(a.created_at))[0];
+    const nodes = [['19.5%', '21%', 'Design', 'one page'], ['50%', '13%', 'Code', 'GDScript'], ['80.5%', '21%', 'Scenes', 'checked'],
+      ['80.5%', '79%', 'Art + sound', 'style locked'], ['50%', '87%', 'Bots play', 'phone speeds'], ['19.5%', '79%', 'Your link', 'then stores']];
+    return `<div class="gdv-loop" role="img" aria-label="How Hoola makes a game: design, code, scenes, art and sound, bots play it, then your link">
+      <svg viewBox="0 0 460 380" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="gdvGrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="currentColor" stroke-width="1"/></pattern></defs>
+        <rect class="gdv-gridbg" width="460" height="380" fill="url(#gdvGrid)"/><path class="gdv-edge" d="${LOOP}"/><path class="gdv-flow" d="${LOOP}"/></svg>
+      ${['saf', 'teal', 'mag'].map((c, i) => `<span class="gdv-pl gdv-pl-${c}" style="offset-path:path('${LOOP}');animation-delay:${-i * 1.6}s" aria-hidden="true"></span>`).join('')}
+      ${nodes.map(([x, y, b, s], i) => `<span class="gdv-node${i === 4 ? ' gdv-node-hot' : ''}" style="left:${x};top:${y}" aria-hidden="true"><b>${b}</b><span class="gdv-mono">${s}</span></span>`).join('')}
+      <span class="gdv-loopc" aria-hidden="true"><b>${g ? 'v' + N(g.version) : 'v1'}</b><span class="gdv-mono gdv-ell">${esc(g ? gname(g) : 'your next game')}</span></span></div>`;
+  }
+
   function recentHtml() {
     const recent = GAMES.slice().sort((a, b) => isoS(b.created_at) - isoS(a.created_at)).slice(0, 6);
     return recent.length ? `<div class="gdv-sidelabel">Recent</div><div class="gdv-recent">${recent.map(g => `<a class="gdv-rec" href="#/game/${enc(g.id)}/${defTab(g)}"><span class="gdv-dot gdv-${stOf(g)[1] || 'none'}" aria-hidden="true"></span><span class="gdv-ell">${esc(gname(g))}</span><span class="gdv-sr">${esc(stOf(g)[0])}</span></a>`).join('')}</div>` : '';
@@ -227,13 +282,20 @@
   }
   function card(g) {
     const [t, c] = stOf(g), p = projOf(g.id), shot = safeUrl(L(g.shots)[0]);
-    const tile = shot ? `<img src="${esc(shot)}" alt="" loading="lazy">` : `<span class="gdv-art gdv-art-${esc(S(g.orientation) || 'portrait')}"><i></i></span>`;
+    const tile = shot ? `<img src="${esc(shot)}" alt="" loading="lazy">` : sceneArt(tintOf(g.id) % 3);
+    const badge = busy(g) ? `<span class="gdv-badge gdv-badge-v">● ${esc(stOf(g)[0])} ${Math.round(N(g.pct))}%</span>` : N(g.version) ? `<span class="gdv-badge gdv-badge-ok">● Plays · v${N(g.version)}</span>` : g.status === 'design_ready' ? '<span class="gdv-badge gdv-badge-warn">● Design · your OK</span>' : '';
     const meta = [S(g.number), N(g.version) ? `v${N(g.version)}` : (g.status === 'design_ready' ? 'design' : ''), ORL[g.orientation] || ''].filter(Boolean).join(' · ');
     const line = p && N(M(p.counts).review) ? `${N(p.counts.review)} task${N(p.counts.review) > 1 ? 's' : ''} wait for you` : busy(g) ? S(g.say) : `Started ${ago(g.created_at)}`;
-    return `<a class="gdv-card" href="#/game/${enc(g.id)}/${defTab(g)}"><span class="gdv-thumb gdv-tint${tintOf(g.id)}" aria-hidden="true">${tile}</span>
+    return `<a class="gdv-card" href="#/game/${enc(g.id)}/${defTab(g)}"><span class="gdv-thumb gdv-tint${tintOf(g.id)}" aria-hidden="true">${tile}${badge}</span>
       <span class="gdv-cbody"><span class="gdv-crow"><b class="gdv-ell">${esc(gname(g))}</b>${pill(p ? 'Long project' : t, p ? 'v' : c)}</span>
         <span class="gdv-small">${esc(meta)}</span><span class="gdv-small gdv-ell">${esc(line)}</span>
         ${busy(g) ? `<span class="gdv-bar" aria-hidden="true"><i style="width:${Math.max(4, Math.min(100, N(g.pct)))}%"></i></span>` : ''}</span></a>`;
+  }
+  /* a small drawn scene for a game with no screenshot yet (decoration only: a runner, a night skyline, a tile board) */
+  function sceneArt(k) {
+    if (k === 0) return '<span class="gdv-sc gdv-sc-run"><i class="gdv-sc-par"></i><i class="gdv-sc-floor"></i><i class="gdv-sc-hero"></i><i class="gdv-sc-coin"></i></span>';
+    if (k === 1) return '<span class="gdv-sc gdv-sc-city"><i></i><i></i><i></i><i class="gdv-sc-moon"></i><i class="gdv-sc-load"></i></span>';
+    return `<span class="gdv-sc gdv-sc-tiles">${Array.from({length: 18}, (_, i) => `<i class="gdv-t${(i * 7 + 3) % 4}${i % 5 === 2 ? ' gdv-tglow' : ''}"></i>`).join('')}</span>`;
   }
   function waitHtml() {
     const wait = GAMES.filter(g => g.status === 'design_ready');
@@ -248,8 +310,9 @@
     const longHref = withProj ? `#/game/${enc(withProj.id)}/board` : playable ? `#/game/${enc(playable.id)}/board` : '#/games';
     const draft = S(PENDING && PENDING.brief);
     main.innerHTML = `<div class="gdv-home">
+      <div class="gdv-herorow">
       <section class="gdv-hero">
-        <span class="gdv-eyebrow"><b>New</b>Original games, built in Godot and played by Hoola first</span>
+        <span class="gdv-eyebrow gdv-mono">Game engine · Godot 4 · the Hoola crew</span>
         <h1>What game should we make today?</h1>
         <p class="gdv-lead">Say it in two lines. Hoola writes a short design doc, builds the game, plays it itself with bots, fixes what breaks, and gives you a private link to play. Nothing goes public until you tap.</p>
         ${hireGate()}
@@ -261,12 +324,15 @@
             <span class="gdv-grow"></span><span class="gdv-small">Design doc first · then your OK</span>
             <button class="gdv-send" type="submit" aria-label="Start this game">${ico('up', 18)}</button></div>
         </form>
-        <div class="gdv-chips" role="group" aria-label="Start from a kind of game">${KINDS.map(([k, v]) => `<button class="gdv-chip" type="button" data-gdv-fill="${esc(v)}">${esc(k)}</button>`).join('')}</div>
+        <div class="gdv-chips gdv-left" role="group" aria-label="Start from a kind of game">${KINDS.map(([k, v]) => `<button class="gdv-chip" type="button" data-gdv-fill="${esc(v)}">${esc(k)}</button>`).join('')}</div>
       </section>
-      <section class="gdv-steps" aria-label="How every game is made">${STEPS.map(([b, s], i) => `<div class="gdv-step"><span class="gdv-small">${i + 1}</span><b>${esc(b)}</b><span class="gdv-small">${esc(s)}</span></div>`).join('')}</section>
+      ${loopHtml()}
+      </div>
       <div id="gdvWaitBox">${waitHtml()}</div>
+      <section class="gdv-sec" id="gdvStatsBox" aria-label="Your studio at a glance">${statsHtml()}</section>
       <section class="gdv-sec"><div class="gdv-sech"><h2>Your games</h2>${GAMES.length > 8 ? '<a href="#/games">View all</a>' : ''}</div>
         <div id="gdvGamesBox">${gamesHtml()}</div></section>
+      <section class="gdv-steps" aria-label="How every game is made">${STEPS.map(([b, s], i) => `<div class="gdv-step" style="animation-delay:${i * 70}ms"><span class="gdv-mono gdv-stepn">0${i + 1}</span><b>${esc(b)}</b><span class="gdv-small">${esc(s)}</span></div>`).join('')}</section>
       <section class="gdv-sec"><h2>Or start from</h2><div class="gdv-starts">
         <button class="gdv-start" type="button" data-gdv-act="focus-ask"><span class="gdv-startic" aria-hidden="true">${ico('pen', 20)}</span><span><b>Describe it</b><span>Two lines in your own words.</span></span></button>
         <a class="gdv-start" href="${longHref}"><span class="gdv-startic" aria-hidden="true">${ico('board', 20)}</span><span><b>A long project</b><span>Turn a game that plays into a board, milestones and nightly builds.</span></span></a>
@@ -390,7 +456,7 @@
   }
 
   /* ---------- the game workspace ---------- */
-  const TABS = [['design', 'Design'], ['play', 'Play'], ['board', 'Board'], ['bible', 'Bible'], ['scenes', 'Scenes'], ['assets', 'Assets'], ['qa', 'QA'], '|',
+  const TABS = [['design', 'Design'], ['play', 'Editor'], ['board', 'Board'], ['bible', 'Bible'], ['scenes', 'Scenes'], ['assets', 'Assets'], ['qa', 'QA'], '|',
     ['release', 'Release'], ['liveops', 'Live ops'], ['prov', 'Where it came from'], '|', ['crew', 'Crew']];
   const TAB_KEYS = TABS.filter(x => x !== '|').map(x => x[0]);
   const TAB_NAME = Object.fromEntries(TABS.filter(x => x !== '|'));
@@ -414,6 +480,7 @@
       <header class="gdv-top"></header>
       <div class="gdv-body2">
         <section class="gdv-chat" aria-label="Chat with Hoola about this game">
+          <div class="gdv-dockh"><span class="gdv-hm" aria-hidden="true"></span><b>Hoola</b><span class="gdv-mono gdv-mut gdv-ell">this game only</span></div>
           <div class="gdv-msgs" id="gdvMsgs" aria-live="polite"></div>
           <form class="gdv-comp" data-gdv-form="thread" aria-label="Message Hoola">
             <label class="gdv-sr" for="gdvTh">Message Hoola about this game</label>
@@ -428,9 +495,11 @@
   }
   function drawTop() {
     const g = W.game, top = APP.querySelector('header.gdv-top'); if (!g || !top) return;
-    const [t, c] = longStatus(g);
+    const [t, c] = longStatus(g), fps = M(g.numbers).fps_server;
     top.innerHTML = `<a class="gdv-homemark" href="#/" aria-label="Hoola Game Dev home">${ico('pad', 17)}</a><span class="gdv-slash" aria-hidden="true">/</span>
-      <b class="gdv-title gdv-ell">${esc(gname(g))}</b><span class="gdv-small">${esc(g.number)}</span>${pill(t, c)}<span class="gdv-grow"></span>
+      <b class="gdv-title gdv-ell">${esc(gname(g))}</b><span class="gdv-small gdv-mono">${esc(g.number)}</span>${pill(t, c)}<span class="gdv-grow"></span>
+      ${N(g.version) ? `<span class="gdv-echip gdv-mono">Godot · web build v${N(g.version)}</span>` : ''}
+      ${fps != null && N(fps) > 0 ? `<span class="gdv-echip gdv-mono gdv-${N(fps) >= 50 ? 'okt' : 'warnt'}">${esc(numStr(fps))} fps on the server</span>` : ''}
       <button class="gdv-b" type="button" data-gdv-act="history">History</button>
       <a class="gdv-b" href="#/game/${enc(g.id)}/play">Play</a>
       <a class="gdv-b gdv-dark" href="#/game/${enc(g.id)}/release">Publish</a>`;
@@ -450,11 +519,15 @@
       // the game she is playing must never restart because the NEXT version moved on (building -> testing ...): keep the
       // very same iframe node whenever the play link is unchanged, and redraw everything around it
       // (moving an iframe in the DOM reloads it too, so the stage holding it is not touched at all - only the column beside it)
-      const oldSrc = pane.querySelector('.gdv-stage iframe')?.getAttribute('src'), oldSide = pane.querySelector('.gdv-play > .gdv-side2');
+      // the key is the play link + the version: a NEW version reloads the viewport (she should play what is live), a
+      // build that is only moving along (building -> testing) leaves the running game alone
+      const oldPlay = pane.querySelector('.gdv-play'), oldKey = oldPlay?.querySelector('.gdv-stage')?.dataset.key;
       const tmp = document.createElement('div'); tmp.innerHTML = playHtml(g, sid);
-      const newSrc = tmp.querySelector('.gdv-stage iframe')?.getAttribute('src'), newSide = tmp.querySelector('.gdv-play > .gdv-side2');
-      if (oldSrc && oldSrc === newSrc && oldSide && newSide) oldSide.replaceWith(newSide);
-      else { pane.innerHTML = ''; while (tmp.firstChild) pane.appendChild(tmp.firstChild); }
+      const newPlay = tmp.querySelector('.gdv-play'), newKey = newPlay?.querySelector('.gdv-stage')?.dataset.key;
+      if (oldPlay && newPlay && oldKey && oldKey === newKey) {
+        [...oldPlay.children].forEach(c => { if (!c.classList.contains('gdv-stage')) c.remove(); });
+        [...newPlay.children].forEach(c => { if (!c.classList.contains('gdv-stage')) oldPlay.appendChild(c); });
+      } else { pane.innerHTML = ''; while (tmp.firstChild) pane.appendChild(tmp.firstChild); }
       paintQr(pane); W.sig = sigOf(g);
       pane.querySelectorAll('.gdv-shots img').forEach(img => img.addEventListener('error', () => { const p = img.closest('.gdv-panel'); img.remove(); if (p && !p.querySelector('.gdv-shots img')) p.remove(); }));
       return;
@@ -483,8 +556,16 @@
     });
   }
 
+  /* the build pipeline: Hoola's real stages, the one it is on now glowing, work flowing along the line into it */
+  const PIPE = [['Design', 'one page'], ['Code', 'GDScript'], ['Build', 'in Godot'], ['Bots play', 'phone speeds'], ['Your link', 'to play']];
+  const PIPE_AT = {designing: 0, design_ready: 1, queued: 1, writing: 1, building: 2, testing: 3, done: 4};
+  function pipeHtml(g) {
+    const at = PIPE_AT[S(g.status)] ?? 0;
+    return `<ol class="gdv-pipe" aria-label="Where the build is: step ${at + 1} of ${PIPE.length}, ${esc(PIPE[at][0])}">${PIPE.map(([b, s], i) =>
+      `<li class="gdv-pn gdv-pn-${i < at ? 'done' : i === at ? 'now' : 'next'}"><span class="gdv-pnic" aria-hidden="true">${i < at ? ico('check', 14) : `<span class="gdv-mono">${i + 1}</span>`}</span><b>${b}</b><span class="gdv-mono">${s}</span></li>`).join('')}</ol>`;
+  }
   function progressHtml(g) {
-    return `<div class="gdv-panel gdv-prog" role="status"><div class="gdv-progh"><span class="gdv-dot gdv-v" aria-hidden="true"></span><b data-gdv-say>${esc(S(g.say) || stOf(g)[0])}</b><span class="gdv-small" data-gdv-pct>${Math.round(N(g.pct))}%</span></div>
+    return `<div class="gdv-panel gdv-prog" role="status">${pipeHtml(g)}<div class="gdv-progh"><span class="gdv-dot gdv-v gdv-glow" aria-hidden="true"></span><b data-gdv-say>${esc(S(g.say) || stOf(g)[0])}</b><span class="gdv-small gdv-mono" data-gdv-pct>${Math.round(N(g.pct))}%</span></div>
       <div class="gdv-bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(N(g.pct))}"><i style="width:${Math.max(4, Math.min(100, N(g.pct)))}%"></i></div>
       <p class="gdv-small" data-gdv-stage${g.stage ? '' : ' hidden'}>${esc(g.stage)}</p>
       <p class="gdv-small">${g.status === 'designing' ? 'The design doc usually takes under a minute. Nothing is built until you say OK.' : 'Building takes a few minutes. Hoola plays the game before you see it.'}</p>
@@ -492,7 +573,7 @@
   }
   function designHtml(g) {
     const s = S(g.status), doc = S(g.design).trim();
-    const docHtml = doc ? `<article class="gdv-doc"><span class="gdv-small">Design doc${N(g.versions) ? ` · ${N(g.versions)} version${N(g.versions) > 1 ? 's' : ''} built` : ''}</span><div class="gdv-md">${md(doc)}</div>` : '';
+    const docHtml = doc ? `<article class="gdv-doc"><div class="gdv-filebar"><span class="gdv-filetab gdv-mono">design.md</span><span class="gdv-small">Design doc${N(g.versions) ? ` · ${N(g.versions)} version${N(g.versions) > 1 ? 's' : ''} built` : ''}</span></div><div class="gdv-md">${md(doc)}</div>` : '';
     if (busy(g)) return `<div class="gdv-col">${progressHtml(g)}${doc && N(g.version) ? docHtml + '</article>' : ''}</div>`;
     if (s === 'design_ready') return `<div class="gdv-col">${docHtml || '<article class="gdv-doc"><p class="gdv-mut">The design doc is empty.</p>'}
       <div class="gdv-acts gdv-docacts"><button class="gdv-b gdv-dark" type="button" data-gdv-act="approve">Theek hai, bana do</button>
@@ -531,29 +612,65 @@
     const nums = M(g.numbers), abs = absUrl(url), land = S(g.orientation) === 'landscape', sq = S(g.orientation) === 'square';
     const checks = L(g.checks), warns = L(g.warnings), hist = L(g.history).slice().reverse();
     const ckRow = (ok, text, extra) => `<div class="gdv-ck gdv-ck-${ok === true ? 'ok' : ok === false ? 'bad' : 'na'}">${ico(ok === true ? 'check' : ok === false ? 'cross' : 'circle', 15)}<span>${esc(text)}${extra ? `<span class="gdv-small"> ${esc(extra)}</span>` : ''}</span></div>`;
-    const numBox = (v, l) => v === null || v === undefined || v === '' ? '' : `<div class="gdv-num"><b>${esc(numStr(v))}</b><span class="gdv-small">${esc(l)}</span></div>`;
-    return `<div class="gdv-play">
-      <div class="gdv-stage">
-        <div class="gdv-phone gdv-${land ? 'land' : sq ? 'square' : 'port'}"><iframe title="${esc(gname(g))}" src="${esc(url)}" sandbox="allow-scripts allow-pointer-lock" loading="lazy"></iframe></div>
-        <a class="gdv-b" href="${esc(url)}" target="_blank" rel="noopener">${ico('ext', 15)}Open full screen</a>
-      </div>
-      <div class="gdv-side2">
-        <div class="gdv-panel gdv-link"><img class="gdv-qr" data-qr="${esc(abs)}" alt="QR code to play on your phone">
-          <div><b>Private play link</b><span class="gdv-small">Scan with your phone, or copy the link. Only people you give it to can open it.</span>
-            <div class="gdv-acts"><button class="gdv-b" type="button" data-gdv-act="copy" data-url="${esc(abs)}">${ico('copy', 15)}Copy link</button><button class="gdv-b" type="button" data-gdv-act="source">${ico('dl', 15)}Download source</button></div></div></div>
-        <div class="gdv-panel"><b>Hoola played version ${N(g.version)} before you</b>
+    // performance, only what Hoola measured; each with a bar against a plain target so it reads at a glance
+    const meter = (v, unit, label, pctOf, good) => v === null || v === undefined || v === '' ? '' :
+      `<div class="gdv-meter"><span class="gdv-meterh"><span>${esc(label)}</span><b class="gdv-mono">${esc(numStr(v))}${unit}</b></span><span class="gdv-meterbar"><i class="gdv-fps-${good ? 'ok' : 'warn'}" style="width:${Math.max(4, Math.min(100, pctOf))}%"></i></span></div>`;
+    const fps = nums.fps_server, ld = nums.load_s, mb = nums.download_mb;
+    const perf = meter(fps, '', 'Frame rate on the server', N(fps) / 60 * 100, N(fps) >= 50) + meter(ld, ' s', 'Time to start', 100 - N(ld) * 10, N(ld) <= 5) + meter(mb, ' MB', 'Download', N(mb) / 50 * 100, N(mb) <= 25);
+    // the output log: the real checks, warnings and version notes, in the order they happened
+    const logRows = [];
+    // plain strings here; every row is esc()'d where it is drawn below
+    checks.forEach(c => logRows.push([c.ok === true ? 'ok' : c.ok === false ? 'err' : 'info', (CHECK[c.step] || S(c.step)) + (L(c.errors).length ? ' · ' + L(c.errors).slice(0, 2).join('; ') : '')]));
+    warns.forEach(w => logRows.push(['warn', S(w)]));
+    L(g.history).forEach(v => logRows.push([v.ok ? 'ok' : 'err', 'v' + N(v.n) + (v.ok ? ' built and played' : ' did not play') + (S(v.words) ? ' · ' + S(v.words) : ''), v.at]));
+    const TAG = {ok: 'ok', err: 'error', warn: 'warn', info: 'note'};
+    const key = url + '|' + N(g.version);
+    return `<div class="gdv-play gdv-editor">
+      <section class="gdv-stage gdv-vp" aria-label="Viewport" data-key="${esc(key)}" data-src="${esc(url)}" data-dev="phone">
+        <div class="gdv-vph"><b>Viewport</b><span class="gdv-mono gdv-mut">2D · ${esc(ORL[g.orientation] || 'phone')}</span><span class="gdv-grow"></span>
+          <span class="gdv-vplive gdv-mono" data-gdv-vplive><span class="gdv-dot gdv-ok gdv-glow" aria-hidden="true"></span>running · version ${N(g.version)}</span></div>
+        <div class="gdv-vptools" role="toolbar" aria-label="Play controls">
+          <button class="gdv-tb gdv-tb-go" type="button" data-gdv-vp="play" aria-label="Play from the start" title="Play from the start">${ico('play', 15)}</button>
+          <button class="gdv-tb" type="button" data-gdv-vp="stop" aria-label="Stop the game" title="Stop">${ico('stop', 14)}</button>
+          <span class="gdv-tbsep" aria-hidden="true"></span>
+          <span class="gdv-seg2" role="group" aria-label="Screen size">${[['phone', 'Phone'], ['tablet', 'Tablet'], ['desktop', 'Computer']].map(([k, t]) => `<button class="gdv-tb" type="button" data-gdv-vp="dev" data-dev="${k}" aria-pressed="${k === 'phone'}">${t}</button>`).join('')}</span>
+          <span class="gdv-grow"></span>
+          <button class="gdv-tb" type="button" data-gdv-vp="full" aria-label="Full screen" title="Full screen">${ico('full', 15)}</button>
+          <a class="gdv-tb" href="${esc(url)}" target="_blank" rel="noopener" aria-label="Open in a new tab" title="Open in a new tab">${ico('ext', 15)}</a>
+        </div>
+        <div class="gdv-vpcanvas">
+          <div class="gdv-phone gdv-${land ? 'land' : sq ? 'square' : 'port'}"><iframe title="${esc(gname(g))}" src="${esc(url)}" sandbox="allow-scripts allow-pointer-lock" allow="fullscreen" loading="lazy"></iframe></div>
+          <div class="gdv-vpstop" hidden><b>Stopped</b><span class="gdv-small">Press play to start the game again from the beginning.</span><button class="gdv-b gdv-pri" type="button" data-gdv-vp="play">${ico('play', 15)}Play</button></div>
+        </div>
+        <p class="gdv-small gdv-vpnote">This is the real game, the same web build your private link opens, running here in your browser.</p>
+      </section>
+      <aside class="gdv-side2 gdv-insp" aria-label="Inspector">
+        <div class="gdv-ih">Inspector<span class="gdv-grow"></span><span class="gdv-mono gdv-mut">${esc(g.number)}</span></div>
+        <div class="gdv-isec"><span class="gdv-ilabel gdv-mono">game</span>
+          <div class="gdv-prop"><span>Version</span><span class="gdv-fld gdv-mono">v${N(g.version)}</span></div>
+          <div class="gdv-prop"><span>Screen</span><span class="gdv-fld">${esc(ORL[g.orientation] || S(g.orientation))}</span></div>
+          <div class="gdv-prop"><span>Versions</span><span class="gdv-fld gdv-mono">${N(g.versions) || hist.length}</span></div></div>
+        ${perf ? `<div class="gdv-isec"><span class="gdv-ilabel gdv-mono">performance</span>${perf}</div>` : ''}
+        <div class="gdv-isec"><span class="gdv-ilabel gdv-mono">Hoola played version ${N(g.version)} before you</span>
           ${checks.map(c => ckRow(c.ok === true ? true : c.ok === false ? false : null, CHECK[c.step] || S(c.step), L(c.errors).length ? L(c.errors).slice(0, 2).join('; ') : '')).join('')}
           ${warns.map(w => ckRow(null, 'Worth a look:', S(w))).join('')}
           ${ckRow(null, 'Is it fun? Only you can say. Not assessed.')}
-          <div class="gdv-nums">${numBox(nums.fps_server, 'fps on the server')}${numBox(nums.load_s != null ? numStr(nums.load_s) + ' s' : '', 'to start')}${numBox(nums.download_mb != null ? numStr(nums.download_mb) + ' MB' : '', 'download')}</div>
           ${g.notes ? `<p class="gdv-small">${esc(g.notes)}</p>` : ''}</div>
-        ${L(g.shots).length ? `<div class="gdv-panel"><b>From Hoola's playtest</b><div class="gdv-shots">${L(g.shots).map(safeUrl).filter(Boolean).map(s => `<img src="${esc(s)}" alt="Screenshot from Hoola's playtest" loading="lazy">`).join('')}</div></div>` : ''}
-        <div class="gdv-panel" id="gdvVersions" tabindex="-1"><b>Versions</b>
-          ${hist.length ? hist.map(v => `<div class="gdv-ver"><b>v${N(v.n)}</b><span class="gdv-ell2">${esc(S(v.words) || S(v.notes) || (N(v.n) === 1 ? 'First version' : ''))}${L(v.errors).length && !v.ok ? `<span class="gdv-small gdv-bad"> ${esc(L(v.errors)[0])}</span>` : ''}</span>
+        <div class="gdv-isec gdv-link"><img class="gdv-qr" data-qr="${esc(abs)}" alt="QR code to play on your phone">
+          <div><b>Private play link</b><span class="gdv-small">Scan with your phone, or copy the link. Only people you give it to can open it.</span>
+            <div class="gdv-acts"><button class="gdv-b" type="button" data-gdv-act="copy" data-url="${esc(abs)}">${ico('copy', 15)}Copy link</button><button class="gdv-b" type="button" data-gdv-act="source">${ico('dl', 15)}Download source</button></div></div></div>
+        ${busy(g) ? progressHtml(g) : changeBox()}
+      </aside>
+      <section class="gdv-dock" aria-label="Output and versions">
+        <div class="gdv-docksec"><div class="gdv-ih">Output<span class="gdv-grow"></span><span class="gdv-mono gdv-mut">Hoola's playtest</span></div>
+          <div class="gdv-log">${logRows.length ? logRows.map((r, i) => `<div class="gdv-logl" style="animation-delay:${Math.min(i, 12) * 90}ms"><span class="gdv-mono gdv-mut">${esc(r[2] ? clockOf(isoS(r[2])) : '')}</span><span class="gdv-logt gdv-logt-${r[0]} gdv-mono">${TAG[r[0]]}</span><span>${esc(r[1])}</span></div>`).join('') : '<p class="gdv-small">No output yet.</p>'}</div></div>
+        <div class="gdv-docksec" id="gdvVersions" tabindex="-1"><div class="gdv-ih">Versions<span class="gdv-grow"></span><span class="gdv-mono gdv-mut">timeline</span></div>
+          ${hist.length ? `<div class="gdv-tl" aria-hidden="true">${L(g.history).map(v => `<span class="gdv-kf gdv-kf-${N(v.n) === N(g.version) ? 'live' : v.ok ? 'ok' : 'bad'}" title="v${N(v.n)}"></span>`).join('')}</div>` : ''}
+          ${hist.length ? hist.map(v => `<div class="gdv-ver"><b class="gdv-mono">v${N(v.n)}</b><span class="gdv-ell2">${esc(S(v.words) || S(v.notes) || (N(v.n) === 1 ? 'First version' : ''))}${L(v.errors).length && !v.ok ? `<span class="gdv-small gdv-bad"> ${esc(L(v.errors)[0])}</span>` : ''}</span>
             ${N(v.n) === N(g.version) ? pill('Live', 'ok') : !v.ok ? pill('Did not play', 'bad') : sid ? `<button class="gdv-linkb" type="button" data-gdv-act="restore" data-n="${N(v.n)}">Go back to this</button>` : pill('Kept', '')}</div>`).join('') : '<p class="gdv-small">No versions yet.</p>'}
           ${!sid && hist.length > 1 ? '<p class="gdv-small">Going back to an older version needs a long project (Board tab).</p>' : ''}</div>
-        ${busy(g) ? progressHtml(g) : changeBox()}
-      </div></div>`;
+        ${L(g.shots).length ? `<div class="gdv-docksec"><div class="gdv-ih">From Hoola's playtest</div><div class="gdv-shots">${L(g.shots).map(safeUrl).filter(Boolean).map(s => `<img src="${esc(s)}" alt="Screenshot from Hoola's playtest" loading="lazy">`).join('')}</div></div>` : ''}
+      </section></div>`;
   }
   function paintQr(root) {
     root.querySelectorAll('img[data-qr]').forEach(img => { try { const q = window.qrcode(0, 'M'); q.addData(img.dataset.qr); q.make(); img.src = q.createDataURL(4, 2); } catch { img.remove(); } });
@@ -825,6 +942,32 @@
     } catch (e) { THREAD.waiting = false; THREAD.rows = THREAD.rows.filter(r => !S(r.id).startsWith('local-')); THREAD.sig = ''; drawMsgs(); toast(e.message, true); }
   }
 
+  /* ---------- the viewport's own controls: the real game frame, never rebuilt by a poll ---------- */
+  function viewportAct(el) {
+    const st = el.closest('.gdv-stage'); if (!st) return;
+    const fr = st.querySelector('iframe'), over = st.querySelector('.gdv-vpstop'), live = st.querySelector('[data-gdv-vplive]');
+    const k = el.dataset.gdvVp;
+    if (k === 'play' || k === 'stop') {
+      const run = k === 'play';
+      if (fr) fr.src = run ? S(st.dataset.src) : 'about:blank';
+      if (over) over.hidden = run;
+      st.classList.toggle('gdv-stopped', !run);
+      if (live) live.innerHTML = run ? `<span class="gdv-dot gdv-ok gdv-glow" aria-hidden="true"></span>running · version ${N(W.game && W.game.version)}` : '<span class="gdv-dot" aria-hidden="true"></span>stopped';
+      if (run) fr?.focus();
+      return;
+    }
+    if (k === 'dev') {
+      st.dataset.dev = S(el.dataset.dev) || 'phone';
+      st.querySelectorAll('[data-gdv-vp="dev"]').forEach(b => b.setAttribute('aria-pressed', String(b === el)));
+      return;
+    }
+    if (k === 'full') {
+      const c = st.querySelector('.gdv-vpcanvas');
+      try { const p = c && c.requestFullscreen && c.requestFullscreen(); if (p && p.catch) p.catch(() => toast('Full screen is not allowed here. Use “Open in a new tab”.', true)); }
+      catch { toast('Full screen is not allowed here. Use “Open in a new tab”.', true); }
+    }
+  }
+
   /* ---------- events (one set, delegated) ---------- */
   APP.addEventListener('submit', e => {
     const f = e.target.closest('form[data-gdv-form]'); if (!f) return;
@@ -850,6 +993,8 @@
     if (fth) { const t = $('#gdvTh'); if (t) { t.value = S(fth.dataset.gdvFillTh); t.focus(); } return; }
     const flt = e.target.closest('[data-gdv-filter]');
     if (flt) { FILTER = flt.dataset.gdvFilter; APP.querySelectorAll('[data-gdv-filter]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gdvFilter === FILTER))); const ab = $('#gdvAllBox'); if (ab) ab.innerHTML = allHtml(); return; }
+    const vp = e.target.closest('[data-gdv-vp]');
+    if (vp) { viewportAct(vp); return; }
     const a = e.target.closest('[data-gdv-act]'); if (!a) return;
     const k = a.dataset.gdvAct;
     if (k === 'hire') { e.preventDefault(); a.disabled = true; return hire(a.dataset.key || 'game_dev'); }

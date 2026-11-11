@@ -26,6 +26,7 @@ on:
           - arena_numbers
           - game_setup
           - game_check
+          - game_3d_proof
           - ack_refresh
           - deploy
           - rollback_stable
@@ -41,6 +42,7 @@ on:
           - rea_setup
           - hf_setup
           - studio_apis
+          - wb_check
           - tool_card
           - tool_card_haiku
           - hard_card
@@ -73,6 +75,7 @@ on:
           - lab_check
           - lab_try
           - lab_setup
+          - lab_net_check
           - lab_images
           - lab_prune
           - zoo_key
@@ -187,6 +190,11 @@ jobs:
               architect_check)
                 # v0.414 HOOLA ARCHITECT live: one REAL Opus spec + the App Sahayak checker on this server; builds nothing, removes the spec
                 echo 'cd $CORE && timeout 900 .venv/bin/python -m app.site.architect check 2>&1 | tail -120' ;;
+              game_3d_proof)
+                # v0.809 HOOLA 3D KIT: Hoola's own 3D game (Diya Run 3D, no model) the whole road on THIS server - guard,
+                # headless play, web export, browser playtest, the test player wins it by keyboard, a real browser plays
+                # it by touch, the kit's own rules - then it is saved as a finished game in her list to open and play
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.gamedesk proof3d --save 2>&1 | tail -90' ;;
               proof_apps)
                 # v0.771 the App plan's five proof apps the whole road on THIS server (no model, hidden tenant
                 # __proofapps__, fresh every run): naksha -> modules built -> brain -> scenario tests on a twin
@@ -404,6 +412,11 @@ jobs:
                 echo 'print("hoola_frames READY: pin=%s version=%s" % (s.get("pin"), s.get("version")))'
                 echo 'PY'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+              wb_check)
+                # v0.807 BAHI A0: the WhiteBooks contract check - which WHITEBOOKS_* key NAMES are set (values never printed), then
+                # the running app walks every call on the sandbox and records each reply's SHAPE (keys only) to data/bahi/wb_shapes.json
+                echo 'echo "== WhiteBooks keys in $CORE/.env (names only)"; for k in WHITEBOOKS_ENV WHITEBOOKS_EMAIL WHITEBOOKS_GST_CLIENT_ID WHITEBOOKS_GST_CLIENT_SECRET WHITEBOOKS_EINV_CLIENT_ID WHITEBOOKS_EWB_CLIENT_ID WHITEBOOKS_SANDBOX_GSTIN WHITEBOOKS_SANDBOX_GST_USERNAME WHITEBOOKS_SANDBOX_EINV_USERNAME WHITEBOOKS_SANDBOX_EWB_USERNAME; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
+                echo 'echo "== contract check"; cd $CORE && timeout 180 .venv/bin/python -m app.bahi.wbcheck 2>&1 | tail -40' ;;
               studio_apis)
                 # v0.308 which real engine behind Create is switched on: key NAMES present in the .env (values never
                 # printed), then the running app asks each provider one free question (python -m app.studio.apis)
@@ -593,6 +606,13 @@ jobs:
                 # same path a coding job takes, minus the model. First run installs deps (a few minutes); later runs reuse
                 # the snapshot. "PASS" here means the box can really run her code.
                 echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab run --repo fibernetworkworks-droid/santosh-app --ref main --cmd "cd server && python3 -m pytest -q -p no:randomly tests/test_v0456_devlab.py tests/test_v0531_lab_loop.py" --timeout 900 2>&1 | tail -30' ;;
+              lab_net_check)
+                # Hoola Code Phase 6: network levels + outside secrets for the coding box, proved on THIS server -
+                # the inside-only Docker network, the allow-list proxy container, a package registry reachable, a
+                # host off the list refused, no way around the proxy, no private address, "none" still sealed, and a
+                # secret that reaches the host without ever being in the box. Run lab_check first (it needs the base
+                # image). Network levels stay OFF (DEV_NET) until every line here says ok.
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.devlab net 2>&1 | tail -30' ;;
               lab_setup)
                 # ... build (or rebuild) the base image on its own: python + node + jdk + git + ripgrep, ~2-4 minutes.
                 echo 'docker --version || echo "DOCKER NAHI HAI"'

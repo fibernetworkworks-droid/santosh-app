@@ -1,0 +1,33 @@
+{
+ "base": "cw8-flow-visualisation",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "streakline",
+   "title": "Streakline: dye released from a fixed point",
+   "sample": "the particle released at t = 1, seen at t = 3",
+   "unknown": "y on the streak",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "streamline",
+   "title": "Streamline of the frozen field at t = 3",
+   "sample": "the field at one instant",
+   "unknown": "y on the streamline",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

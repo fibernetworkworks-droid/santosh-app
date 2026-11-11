@@ -1,0 +1,23 @@
+{
+ "base": "um8-xrd-analysis",
+ "rig": "um8-xrd-bench",
+ "chapter": "Solid state physics and materials",
+ "variants": [
+  {
+   "key": "silicon",
+   "title": "XRD of silicon powder: lattice parameter and crystallite size",
+   "sample": "Silicon powder (diamond cubic)",
+   "unknown": "the lattice type and parameter of silicon and its crystallite size",
+   "params": {
+    "lat": 3.0,
+    "a": 5.4309e-10,
+    "L": 5e-08
+   },
+   "note": "Silicon has the diamond structure: face-centred, with the (200) and (222) lines missing as well, so the ratios run 3, 8, 11, 16, 19. a = 5.4309 A. The crystallite size of this powder (50 nm) is a value of this sample, not of silicon.",
+   "source": {
+    "title": "Lattice parameters, ICDD powder diffraction file / Wyckoff, Crystal Structures; Cu K-alpha1 1.5406 A",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

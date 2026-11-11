@@ -526,6 +526,10 @@ ${SPRITE}`;
         IMG.prompt = q.value; go('image'); return; }
       if (b.dataset.imode === 'new') { IMG.refs = []; IMG.prompt = q.value; go('image'); return; }
       if (b.dataset.isty) { IMG.style = STYLES[+b.dataset.isty]; $$('[data-isty]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); const l = b.closest('.pbody').querySelector('.stys')?.previousElementSibling?.querySelector('.dim'); if (l) l.textContent = IMG.style || 'Auto'; return; }
+      if (b.hasAttribute('data-ienh') && window.HoolaImprove && window.HoolaImprove.ui) {   // HOOLA PROMPTING: the Improve sheet (she sees and edits what Hoola understood)
+        if (!q.value.trim()) { q.focus(); toast('Write a few words first'); return; }
+        window.HoolaImprove.ui.open(q.value, {section: 'image', onUse: t => { q.value = IMG.prompt = String(t).slice(0, 4000); $('#imgCount').textContent = q.value.length + ' / 4000'; toast('Prompt updated: edit it or press Create'); }});
+        return; }
       if (b.hasAttribute('data-ienh')) { if (!q.value.trim()) { q.focus(); toast('Write a few words first'); return; } b.disabled = true; b.classList.add('busy');
         try { const r = await api('POST', '/api/studio/improve', {brief: q.value.trim(), language: 'Hindi', seconds: 30, kind: 'image'}); q.value = IMG.prompt = r.brief; $('#imgCount').textContent = q.value.length + ' / 4000'; toast('Prompt enhanced: edit it or press Create'); } catch (er) { toast(er.message, true); }
         b.disabled = false; b.classList.remove('busy'); return; }

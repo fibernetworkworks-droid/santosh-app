@@ -1,0 +1,22 @@
+{
+ "base": "u8-diode-boltzmann",
+ "rig": "ug8-analog-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "arduino",
+   "title": "Boltzmann constant from a junction, read with an Arduino ADC",
+   "sample": "Diode-connected BC547 read by an Arduino Uno",
+   "method": "Arduino",
+   "unknown": "the Boltzmann constant",
+   "params": {
+    "adc": 1.0
+   },
+   "note": "Both voltages are read by the Arduino's 10-bit converter on its internal 1.1 V reference, so each reading is rounded down to a whole step of 1.07 mV; the current is the voltage across the 1 kohm resistor divided by 1 kohm.",
+   "source": {
+    "title": "ATmega328P data sheet: 10-bit ADC with a 1.1 V internal reference",
+    "note": "From memory - verify (the reference is specified to about +-10 %; this lab takes it as exactly 1.1 V)"
+   }
+  }
+ ]
+}

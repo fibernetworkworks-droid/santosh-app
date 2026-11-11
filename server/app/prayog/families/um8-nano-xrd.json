@@ -1,0 +1,67 @@
+{
+ "base": "um8-nano-xrd",
+ "rig": "um8-xrd-bench",
+ "chapter": "Nanomaterials",
+ "variants": [
+  {
+   "key": "zno",
+   "title": "Crystallite size of ZnO nanoparticles by XRD (Scherrer)",
+   "sample": "ZnO nanopowder (wurtzite)",
+   "unknown": "the crystallite size of a ZnO nanopowder",
+   "params": {
+    "lat": 4.0,
+    "a": 3.2498e-10,
+    "c": 5.2066e-10,
+    "L": 2.5e-08,
+    "ph": 1.0,
+    "pk": 0.0,
+    "pl": 1.0
+   },
+   "note": "Wurtzite ZnO, hexagonal; its strongest line is (101) near 36.3 degrees. The 25 nm size is a value of this batch (set by the synthesis, which is not simulated), not a property of ZnO.",
+   "source": {
+    "title": "Lattice parameters, ICDD powder diffraction file / Wyckoff, Crystal Structures; Cu K-alpha1 1.5406 A",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "tio2",
+   "title": "Crystallite size of TiO2 (anatase) nanoparticles by XRD (Scherrer)",
+   "sample": "TiO2 nanopowder (anatase)",
+   "unknown": "the crystallite size of an anatase TiO2 nanopowder",
+   "params": {
+    "lat": 5.0,
+    "a": 3.7852e-10,
+    "c": 9.5139e-10,
+    "L": 1.2e-08,
+    "ph": 1.0,
+    "pk": 0.0,
+    "pl": 1.0
+   },
+   "note": "Anatase, body-centred tetragonal; its strongest line is (101) near 25.3 degrees. The 12 nm size is a value of this batch, not a property of TiO2.",
+   "source": {
+    "title": "Lattice parameters, ICDD powder diffraction file / Wyckoff, Crystal Structures; Cu K-alpha1 1.5406 A",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "fe2o3",
+   "title": "Crystallite size of Fe2O3 (hematite) nanoparticles by XRD (Scherrer)",
+   "sample": "Fe2O3 nanopowder (hematite)",
+   "unknown": "the crystallite size of a hematite nanopowder",
+   "params": {
+    "lat": 6.0,
+    "a": 5.0356e-10,
+    "c": 1.3749e-09,
+    "L": 3e-08,
+    "ph": 1.0,
+    "pk": 0.0,
+    "pl": 4.0
+   },
+   "note": "Hematite, rhombohedral (indexed on hexagonal axes); its strongest line is (104) near 33.2 degrees. The 30 nm size is a value of this batch, not a property of Fe2O3.",
+   "source": {
+    "title": "Lattice parameters, ICDD powder diffraction file / Wyckoff, Crystal Structures; Cu K-alpha1 1.5406 A",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

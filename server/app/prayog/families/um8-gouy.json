@@ -1,0 +1,19 @@
+{
+ "base": "um8-gouy",
+ "rig": "um8-gouy-bench",
+ "chapter": "Solid state physics and materials",
+ "variants": [
+  {"key": "mnso4", "title": "Magnetic susceptibility of manganese sulphate by the Gouy balance",
+   "sample": "Manganese(II) sulphate monohydrate (MnSO4.H2O) powder",
+   "unknown": "the molar susceptibility of manganese sulphate",
+   "params": {"chim": 14200.0, "M": 169.02, "rho": 1.4},
+   "note": "Mn2+ has five unpaired electrons against one for Cu2+, so its susceptibility is about ten times larger and the pull is easy to see even at small fields. The packed density is a value of this filling.",
+   "source": {"title": "CRC Handbook of Chemistry and Physics, magnetic susceptibility of inorganic compounds: MnSO4.H2O about +14200e-6 cm^3/mol", "note": "from memory - verify"}},
+  {"key": "feso4", "title": "Magnetic susceptibility of ferrous sulphate by the Gouy balance",
+   "sample": "Iron(II) sulphate heptahydrate (FeSO4.7H2O) powder",
+   "unknown": "the molar susceptibility of ferrous sulphate",
+   "params": {"chim": 11200.0, "M": 278.01, "rho": 1.1},
+   "note": "Fe2+ carries four unpaired electrons. The packed density is a value of this filling.",
+   "source": {"title": "CRC Handbook of Chemistry and Physics, magnetic susceptibility of inorganic compounds: FeSO4.7H2O about +11200e-6 cm^3/mol", "note": "from memory - verify"}}
+ ]
+}

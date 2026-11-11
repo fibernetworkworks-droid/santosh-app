@@ -24,6 +24,11 @@
    starts by itself, Run now, history, a trigger address for her own program), and a read-only link to one session.
    With `shared` set, this file draws ONLY that read-only session: no sidebar, no box, no buttons that act.
 
+   PHASE 6 (the same plan): per repo - what a command in the box may reach (no network / package registries + her hosts /
+   any public site), keys that are added OUTSIDE the box for one host each, and GitHub events (a signed webhook) that
+   may start a scheduled task. In the composer "+" > Add another repo: read it, or change it too (its own session and
+   its own pull request). A key is typed only on the settings screen and is never shown again.
+
    Nothing reaches GitHub from this page except through the existing tap routes (push / plan-ok / post / decide). */
 window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''}) {
   let EL = null, VIEW = 'home', TID = '', OV = null, TASK = null, POLL = 0, KIND = 'fix', REPO = '', MERGE = null;
@@ -33,7 +38,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   let COMMENTS = [], DRAFT = null;        // her comments on lines, waiting for her next message; the one she is writing
   let SIDE_AUTO = false;                  // the sessions sidebar stepped aside for the pane (comes back when it closes)
   const BRANCHES = {};                    // repo -> its branches (for Compare against), fetched once
-  const HOME = {text: '', kind: 'auto', issue: 0, base: '', mode: '', model: '', effort: '', files: []};   // the composer, kept while she looks elsewhere
+  const HOME = {text: '', kind: 'auto', issue: 0, base: '', mode: '', model: '', effort: '', files: [], refs: [], also: []};   // the composer, kept while she looks elsewhere
   const PICS = new Map();                 // session id + index -> blob: link of a picture she attached
   const MODES = [['ask', 'Ask before the PR', 'Shows the change and waits for your tap'], ['auto', 'Work and open the PR', 'Private repos only - merging is always yours'],
     ['plan', 'Plan first', 'No file is touched until you say yes']];
@@ -131,7 +136,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     EL.addEventListener('change', ev => { const t = ev.target;
       if (t.id === 'hcdCmp') compareWith(t.value);
       else if (t.id === 'hcdFile') { addFiles(t.files); t.value = ''; }
-      else if (t.id === 'hcdRepo') { REPO = t.value; HOME.base = ''; keepHome(); home(); }
+      else if (t.id === 'hcdRepo') { REPO = t.value; HOME.base = ''; HOME.refs = []; HOME.also = []; keepHome(); home(); }
+      else if (t.name === 'event' && t.form && t.form.id === 'hcdSchedF') schedFields(t.form)
       else if (t.id === 'hcdBase') HOME.base = t.value;
       else if (t.id === 'hcdMode') HOME.mode = t.value;
       else if (t.id === 'hcdModel') HOME.model = t.value;
@@ -194,7 +200,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   // ------------------------------------------------------------------ dialogs + menus ---
   function dialog(html) {
     const d = $('#hcdDlg'); d.innerHTML = `<form method="dialog">${html}</form>`;
-    return new Promise(res => { d.addEventListener('close', () => res(d.returnValue), {once: true}); d.returnValue = ''; d.showModal(); });
+    return new Promise(res => { d.addEventListener('close', () => { res(d.returnValue);
+      setTimeout(() => { if (!d.open) d.innerHTML = ''; }, 0); }, {once: true});      // a closed dialog keeps nothing (a one-time token or secret must not stay in the page)
+      d.returnValue = ''; d.showModal(); });
   }
   async function askName(t) {
     const r = await dialog(`<h2>Rename session</h2><label class="hcd-sr" for="hcdDlgIn">Session name</label>
@@ -294,6 +302,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const chips = [];
     if (HOME.kind !== 'auto') chips.push(`<span class="hcd-att">${esc((KINDS.find(k => k[0] === HOME.kind) || [0, HOME.kind])[1])}<button type="button" class="hcd-icb" data-act="unkind" aria-label="Let Hoola read the kind of work from your words">${svg('x')}</button></span>`);
     if (HOME.issue) chips.push(`<span class="hcd-att">Issue #${HOME.issue}<button type="button" class="hcd-icb" data-act="unissue" aria-label="Remove the issue">${svg('x')}</button></span>`);
+    const short = r => r.split('/')[1] || r;
+    HOME.refs.forEach(r => chips.push(`<span class="hcd-att">Reads ${esc(short(r))}<button type="button" class="hcd-icb" data-act="unref" data-repo="${esc(r)}" aria-label="Do not use ${esc(short(r))}">${svg('x')}</button></span>`));
+    HOME.also.forEach(r => chips.push(`<span class="hcd-att">Also changes ${esc(short(r))}<button type="button" class="hcd-icb" data-act="unref" data-repo="${esc(r)}" aria-label="Do not use ${esc(short(r))}">${svg('x')}</button></span>`));
     HOME.files.forEach((f, k) => chips.push(`<span class="hcd-att">${f.kind === 'image' ? `<img src="${esc(f.url)}" alt="">` : svg('read')}<span>${esc(f.name)}</span><small>${kb(f.size)}</small><button type="button" class="hcd-icb" data-act="unfile" data-i="${k}" aria-label="Remove ${esc(f.name)}">${svg('x')}</button></span>`));
     return chips.join('');
   }
@@ -313,7 +324,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   }
   function plusMenu(btn) {
     if (!window.HoolaMenu) return $('#hcdFile')?.click();
-    HoolaMenu.open(btn, [{label: 'Add files or photos', icon: 'doc', sub: 'Screenshots, logs, code - or paste / drop them', run: () => $('#hcdFile')?.click()}, {header: 'Slash commands'},
+    const others = (OV?.repos || []).filter(r => r.repo !== REPO);
+    HoolaMenu.open(btn, [{label: 'Add files or photos', icon: 'doc', sub: 'Screenshots, logs, code - or paste / drop them', run: () => $('#hcdFile')?.click()},
+      ...(others.length ? [{label: 'Add another repo…', icon: 'braces', sub: 'Let Hoola read it, or change it too', run: () => otherRepos()}] : []), {header: 'Slash commands'},
       ...SLASH.map(([c, d]) => ({label: '/' + c, sub: d, run: () => { if (c === 'issue' || c === 'review') { const l = $('#hcdLine'); l.value = `/${c} ` + l.value; l.focus(); l.setSelectionRange(c.length + 2, c.length + 2); } else slash(c, ''); }}))],
       {align: 'start', place: 'above', label: 'Add', width: 300});
   }
@@ -327,6 +340,22 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       keepHome(); HOME.text = ''; reviewPr(REPO, n); return null; }
     else { toast(`Unknown command /${cmd}. Try ${SLASH.map(x => '/' + x[0]).join(' ')}`, true); return null; }
     drawTray(); return rest;
+  }
+  /* Phase 6: this job needs more than one repo. "Read" = Hoola can look into it. "Change it too" = that repo gets its own
+     session and its own pull request, started together with this one. */
+  async function otherRepos() {
+    keepHome();
+    const others = (OV?.repos || []).filter(r => r.repo !== REPO);
+    const r = await dialog(`<h2>Other repos for this task</h2>
+      <p class="hcd-mut">Hoola changes <b>${esc(REPO.split('/')[1] || REPO)}</b>. It can also read up to 3 of your other repos, or change up to 2 of them as well - each in its own session, with its own pull request and the same checks.</p>
+      ${others.map((x, i) => `<label class="hcd-f hcd-orow"><span>${esc(x.repo.split('/')[1] || x.repo)}</span><select data-orepo="${esc(x.repo)}" aria-label="${esc(x.repo)}">
+        <option value="">Not used</option><option value="read"${HOME.refs.includes(x.repo) ? ' selected' : ''}>Read it</option><option value="also"${HOME.also.includes(x.repo) ? ' selected' : ''}>Change it too</option></select></label>`).join('')}
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no">Cancel</button><button class="hcd-btn pri" value="ok">Use these</button></div>`);
+    if (r !== 'ok') return;
+    const refs = [], also = []; EL.querySelectorAll('#hcdDlg [data-orepo]').forEach(sel => { if (sel.value === 'read') refs.push(sel.dataset.orepo); else if (sel.value === 'also') also.push(sel.dataset.orepo); });
+    if (also.length > 2) return toast('At most 2 other repos can be changed in one go.', true);
+    if (refs.length + also.length > 3) return toast('At most 3 other repos in one task.', true);
+    HOME.refs = refs; HOME.also = also; drawTray();
   }
   async function reviewPr(repo, n) {
     show('reviews'); toast(`Reading pull request #${n}…`);
@@ -387,9 +416,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     try {
       const t = await api('POST', '/api/devsahayak/tasks/start', {kind: HOME.kind, text, repo: REPO, issue: HOME.issue, base: HOME.base, mode: $('#hcdMode').value,
         model: $('#hcdModel')?.value || '', effort: $('#hcdEffort')?.value || '',
-        images: HOME.files.filter(f => f.kind === 'image').map(f => ({name: f.name, data: f.data})), docs: HOME.files.filter(f => f.kind === 'text').map(f => ({name: f.name, text: f.text}))});
+        images: HOME.files.filter(f => f.kind === 'image').map(f => ({name: f.name, data: f.data})), docs: HOME.files.filter(f => f.kind === 'text').map(f => ({name: f.name, text: f.text})),
+        refs: HOME.refs, also: HOME.also});
       HOME.files.forEach(f => f.url && URL.revokeObjectURL(f.url));
-      Object.assign(HOME, {text: '', kind: 'auto', issue: 0, files: []}); line.value = '';      // sent: the box starts empty next time
+      Object.assign(HOME, {text: '', kind: 'auto', issue: 0, files: [], refs: [], also: []}); line.value = '';      // sent: the box starts empty next time
       await load(); show('session', t.id);
     } catch (e) { toast(e.message, true); btn.disabled = false; }
   }
@@ -414,20 +444,25 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'search': return `<div class="hcd-step">${svg('search')}<span>Searched ${p(s.q)} · ${plural(s.n, 'file')}</span>${at}</div>`;
       case 'list': return `<div class="hcd-step">${svg('list')}<span>Looked in folder ${p(s.path || '/')}</span>${at}</div>`;
       case 'usages': return `<div class="hcd-step">${svg('search')}<span>Found where ${p(s.name)} is used · ${plural(s.n, 'place')}</span>${at}</div>`;
-      case 'edit': case 'new': { const lab = `${s.k === 'new' ? 'Created' : 'Edited'} ${p(s.path)} <em class="add">+${s.added || 0}</em>${s.k === 'edit' ? ` <em class="del">−${s.removed || 0}</em>` : ''}`;
+      case 'edit': case 'new': { const lab = `${s.k === 'new' ? 'Created' : 'Edited'} ${p(s.path)} <em class="add">+${s.added || 0}</em>${s.k === 'edit' ? ` <em class="del">−${s.removed || 0}</em>` : ''}${s.by ? ` · by ${esc(s.by)}` : ''}`;
         return s.diff && s.diff.length ? fold('e' + i, lab, diffHTML(s.diff), 'row', verbose) : `<div class="hcd-step">${svg(s.k === 'new' ? 'new' : 'edit')}<span>${lab}</span>${at}</div>`; }
       case 'diff': return `<div class="hcd-step">${svg('read')}<span>Checked its own change · ${plural(s.n, 'file')}</span>${at}</div>`;
       case 'check': return `<div class="hcd-step ${s.ok ? 'ok' : 'bad'}">${svg(s.ok ? 'ok' : 'bad')}<span><b>Ran your tests</b>${s.only ? ` (${esc(s.only)})` : ''} · <span class="${s.ok ? 'add' : 'del'}">${s.ok ? 'passed' : 'failed'}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}${s.cmd ? ` · ${p(s.cmd)}` : ''}</span>${at}</div>${!s.ok && s.tail && s.tail.length ? `<pre class="hcd-diff">${s.tail.map(x => `<span class="${/fail|error|assert/i.test(x) ? 'del' : 'ctx'}">${esc(x)}</span>`).join('\n')}</pre>` : ''}`;
       case 'check_off': return `<div class="hcd-step">${svg('bad')}<span>Your tests could not run here - this change is not measured</span>${at}</div>`;
       case 'grep': return `<div class="hcd-step">${svg('search')}<span>Searched the test log for ${p(s.q)}</span>${at}</div>`;
       case 'refused': return `<div class="hcd-step dim">${svg('bad')}<span>A step was refused: ${esc(s.why)}</span>${at}</div>`;
-      case 'bash': { const ok = s.rc === 0, lab = `<span class="hcd-sh">$ ${esc(s.cmd || '')}</span> · <span class="${ok ? 'add' : 'del'}">${s.timed_out ? 'timed out' : 'exit ' + esc(String(s.rc))}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}`;
+      case 'bash': { const ok = s.rc === 0, lab = `<span class="hcd-sh">$ ${esc(s.cmd || '')}</span> · <span class="${ok ? 'add' : 'del'}">${s.timed_out ? 'timed out' : 'exit ' + esc(String(s.rc))}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}${s.by ? ` · by ${esc(s.by)}` : ''}`;
         return s.tail && s.tail.length ? fold('b' + i, lab, `<pre class="hcd-term">${s.tail.map(x => esc(x)).join('\n')}</pre>`, 'row', verbose || !ok) : `<div class="hcd-step">${svg('list')}<span>${lab}</span>${at}</div>`; }
       case 'todo': return `<div class="hcd-todo">${(s.items || []).map(x => `<div class="hcd-td ${esc(x.status)}"><i aria-hidden="true">${x.status === 'completed' ? '✓' : x.status === 'in_progress' ? '●' : '○'}</i><span>${esc(x.content)}</span></div>`).join('')}</div>`;
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;
       case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.n))} saved - you can go back to here</span>${at}</div>`;
       case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>Went back to checkpoint ${esc(String(s.n))}.</b> The working copy and the conversation are as they were then.</span>${at}</div>`;
+      case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
+        if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}) · ${esc(s.task || '')}</span>${at}</div>`;
+        const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
+        return s.report ? fold('a' + i, lab, `<pre class="hcd-term">${esc(s.report)}</pre>`, 'row', verbose) : `<div class="hcd-step ok">${svg('ok')}<span>${lab}</span>${at}</div>`; }
+      case 'gate': return `<div class="hcd-step bad">${svg('bad')}<span><b>Quality check before finishing</b> · ${plural(s.n || 0, 'thing')} to clean up${(s.items || []).length ? ': ' + (s.items || []).slice(0, 3).map(x => p(x)).join(', ') : ''}</span>${at}</div>`;
       case 'stopped': return `<div class="hcd-step bad">${svg('bad')}<span><b>Stopped.</b> Nothing was pushed.</span>${at}</div>`;
       default: return '';
     }
@@ -606,6 +641,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       <section class="hcd-rc" aria-labelledby="hcdRcS"><h2 id="hcdRcS">Session</h2>${kv('Repo', esc(t.repo || ''))}${t.branch ? kv('Branch', `<code>${esc(t.branch)}</code>`) : ''}
         ${t.base ? kv('Works from', `<code>${esc(t.base)}</code>`) : ''}${kv('Kind', esc((KINDS.find(k => k[0] === t.kind) || [0, t.kind])[1]))}
         ${t.mode ? kv('Mode', esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])) : ''}${t.tier ? kv('Job size', esc(t.tier)) : ''}
+        ${(t.refs || []).length ? kv('Also reads', esc(t.refs.join(', '))) : ''}${(t.group || []).map(g => `<div class="hcd-row"><span>Same job in</span><b>${esc(g.repo)}${g.pr_number ? ' · PR #' + g.pr_number : ''}</b>${shared ? '' : `<button type="button" class="hcd-btn sm" data-tid="${esc(g.id)}">Open</button>`}</div>`).join('')}
         ${t.sched_id ? kv('Started by', 'a scheduled task') : ''}${shared ? '' : kv('Model', esc(OV?.models?.forced ? OV.models.forced.model : ((OV?.models?.options || []).find(o => o.id === (t.model || OV?.models?.default)) || {label: t.model || 'server default'}).label) + (t.effort && !OV?.models?.forced ? ' · ' + esc(t.effort) : ''))}
         ${kv('Steps', String((t.steps || []).filter(s => s.k !== 'think' && s.k !== 'pass').length))}${t.cost && t.cost.calls ? kv('Cost so far', `<span title="List price of this session's ${t.cost.calls} model calls - an estimate, not a bill">${rs(t.cost.inr)}</span>`) : ''}${kv('Started', esc(ago(t.at)))}</section>`;
   }
@@ -827,6 +863,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     unkind: () => { HOME.kind = 'auto'; drawTray(); },
     unissue: () => { HOME.issue = 0; drawTray(); },
     unfile: b => { const f = HOME.files.splice(+b.dataset.i, 1)[0]; if (f?.url) URL.revokeObjectURL(f.url); drawTray(); },
+    unref: b => { HOME.refs = HOME.refs.filter(r => r !== b.dataset.repo); HOME.also = HOME.also.filter(r => r !== b.dataset.repo); drawTray(); },
     changes: () => { PANE ? closePane() : openPane(''); },
     file: b => openPane(b.dataset.path),
     pclose: () => closePane(),
@@ -886,20 +923,31 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         <label class="hcd-f"><span>What should Hoola do each time?</span><textarea name="text" rows="3" maxlength="6000" required placeholder="Update the dependencies that have a security fix, run the tests, and say what changed"></textarea></label>
         <div class="hcd-inline">
           <label class="hcd-chip">Repo <select name="repo" aria-label="Repo">${repos.map(r => `<option value="${esc(r.repo)}"${r.repo === REPO ? ' selected' : ''}>${esc(r.repo.split('/')[1] || r.repo)}</option>`).join('') || '<option value="">no repo yet</option>'}</select></label>
-          <label class="hcd-chip">When <select name="days" aria-label="When">${DAYS.map(([k, n]) => `<option value="${k}"${k === 'weekdays' ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
-          <label class="hcd-chip">At <input type="time" name="at" value="09:00" aria-label="Time, India time" title="India time"></label>
+          <label class="hcd-chip">Starts <select name="event" aria-label="What starts it"><option value="">On a schedule</option>${EVENTS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>
+          <label class="hcd-chip" data-for="clock">When <select name="days" aria-label="When">${DAYS.map(([k, n]) => `<option value="${k}"${k === 'weekdays' ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label class="hcd-chip" data-for="clock">At <input type="time" name="at" value="09:00" aria-label="Time, India time" title="India time"></label>
+          <label class="hcd-chip" data-for="issue_opened issue_labeled" hidden>Label <input name="label" maxlength="60" size="10" placeholder="hoola" aria-label="Issue label"></label>
+          <label class="hcd-chip" data-for="ci_failed push" hidden>Branch <input name="branch" maxlength="100" size="10" placeholder="default" aria-label="Branch"></label>
+          <label class="hcd-chip" data-for="issue_opened issue_labeled pr_opened push" hidden>By <select name="who" aria-label="Whose events count"><option value="me">Only me</option><option value="anyone">Anyone in the repo (private repos)</option></select></label>
           <label class="hcd-chip">Then <select name="mode" aria-label="What happens with the change"><option value="ask">Wait for my tap</option><option value="auto">Open the pull request</option></select></label>
           <span class="hcd-flex"></span><button class="hcd-btn pri" type="submit"${ready ? '' : ' disabled'}>Schedule it</button></div>
-        <p class="hcd-mut">Times are India time. A task runs at most once a day; a run still working is not started twice. "Open the pull request" works on private repos - a public repo always waits for your tap.</p></form>
+        <p class="hcd-mut" data-for="issue_opened issue_labeled pr_opened ci_failed push" hidden>GitHub events must be connected for the repo first (Settings > the repo > GitHub events). The event's own words reach Hoola as information, never as instructions. A new pull request from someone else gets a draft review; posting it is your tap.</p>
+        <p class="hcd-mut" data-for="clock">Times are India time. A task runs at most once a day; a run still working is not started twice. "Open the pull request" works on private repos - a public repo always waits for your tap.</p></form>
       ${list.length ? list.map(schedHTML).join('') : '<p class="hcd-mut">No scheduled tasks yet.</p>'}</main>`);
+  }
+  const EVENTS = [['issue_labeled', 'On an issue label'], ['issue_opened', 'On a new issue'], ['pr_opened', 'On a new pull request'], ['ci_failed', 'On a CI failure'], ['push', 'On a push']];
+  function schedFields(f) {       // show only the fields the chosen start needs
+    const ev = f.event.value; f.querySelectorAll('[data-for]').forEach(x => { x.hidden = !x.dataset.for.split(' ').includes(ev || 'clock'); });
+    if (ev === 'pr_opened' && !f.text.value.trim()) f.text.value = 'Review the pull request';
   }
   function schedHTML(sc) {
     const runs = sc.runs || [];
     return `<section class="hcd-card hcd-sched" data-sched="${esc(sc.id)}"><div class="hcd-sh"><h2>${esc(sc.title)}</h2>
-        <span class="hcd-pill ${!sc.enabled ? 'soft' : sc.next_run ? 'ok' : 'soft'}">${!sc.enabled ? 'Paused' : sc.next_run ? 'Next run ' + esc(until(sc.next_run)) : 'On demand'}</span></div>
+        <span class="hcd-pill ${!sc.enabled ? 'soft' : sc.next_run || sc.event ? 'ok' : 'soft'}">${!sc.enabled ? 'Paused' : sc.event ? 'On a GitHub event' : sc.next_run ? 'Next run ' + esc(until(sc.next_run)) : 'On demand'}</span></div>
       <p class="hcd-mut">${esc((sc.repo || '').split('/')[1] || sc.repo)} · ${esc(sc.when)}${sc.days !== 'off' ? ' (India time)' : ''} · ${sc.mode === 'auto' ? 'opens the pull request' : 'waits for your tap before the pull request'}${sc.trigger ? ' · has a trigger address' : ''}</p>
       <p class="hcd-schedt">${esc(sc.text.length > 320 ? sc.text.slice(0, 320) + '…' : sc.text)}</p>
       ${sc.last_note ? `<p class="hcd-err">${esc(sc.last_note)}</p>` : ''}
+      ${sc.event && !((OV?.repos || []).find(r => r.repo === sc.repo)?.events || {}).on ? `<p class="hcd-err">GitHub events are not connected for this repo yet. Connect them in <button type="button" class="hcd-link" data-go="settings">Settings</button>.</p>` : ''}
       <div class="hcd-acts"><button type="button" class="hcd-btn pri" data-act="schedrun" data-id="${esc(sc.id)}">Run now</button>
         <button type="button" class="hcd-btn" data-act="schedtoggle" data-id="${esc(sc.id)}" data-on="${sc.enabled ? 1 : 0}">${sc.enabled ? 'Pause' : 'Resume'}</button>
         <button type="button" class="hcd-btn" data-act="schedtrig" data-id="${esc(sc.id)}">Trigger address…</button>
@@ -910,7 +958,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   }
   async function newSchedule(f) {
     const b = f.querySelector('button[type="submit"]'); b.disabled = true;
-    try { await api('POST', '/api/devsahayak/schedules', {text: f.text.value.trim(), repo: f.repo.value, days: f.days.value, at: f.at.value || '09:00', mode: f.mode.value});
+    const ev = f.event.value, body = {text: f.text.value.trim(), repo: f.repo.value, days: ev ? 'off' : f.days.value, at: f.at.value || '09:00', mode: f.mode.value};
+    if (ev) { body.event = ev; body.filter = {label: f.label.value.trim(), branch: f.branch.value.trim(), who: f.who.value}; }
+    try { await api('POST', '/api/devsahayak/schedules', body);
       toast('Scheduled.'); await load(); drawSide(); scheduled(); }
     catch (e) { toast(e.message, true); b.disabled = false; }
   }
@@ -991,12 +1041,27 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         <p class="hcd-mut">Needs: ${esc((st.permissions || []).join(', '))}.</p></section>
       <section class="hcd-card"><h2>Repos Hoola may work in</h2>
         ${repos.map(r => `<div class="hcd-repo"><code>${esc(r.repo)}</code><span class="hcd-mut">${r.private ? 'private' : 'public · asks before a PR'}${r.language ? ' · ' + esc(r.language) : ''}</span><button type="button" class="hcd-btn sm" data-rmrepo="${esc(r.repo)}">Remove</button></div>
-          <details class="hcd-rbox"${r.setup_cmd || r.test_cmd || Object.keys(r.env_vars || {}).length ? ' open' : ''}><summary>How this repo runs in the box</summary>
+          <details class="hcd-rbox"${r.setup_cmd || r.test_cmd || Object.keys(r.env_vars || {}).length || (r.net || {}).level !== 'none' || ((r.net || {}).secrets || []).length || (r.events || {}).on ? ' open' : ''}><summary>How this repo runs in the box</summary>
             <form class="hcd-rboxf" data-repobox="${esc(r.repo)}">
               <label class="hcd-f"><span>Setup command <small>installs the dependencies once, with internet</small></span><input name="setup" maxlength="380" value="${esc(r.setup_cmd || '')}" placeholder="pip install -r requirements.txt"></label>
               <label class="hcd-f"><span>Test command <small>Hoola is told to run exactly this</small></span><input name="test" maxlength="380" value="${esc(r.test_cmd || '')}" placeholder="python3 -m pytest -q"></label>
               <label class="hcd-f"><span>Environment variables <small>one NAME=value a line - never a key or a password</small></span><textarea name="env" rows="2" maxlength="2000" placeholder="APP_ENV=test">${esc(Object.entries(r.env_vars || {}).map(([k, v]) => k + '=' + v).join('\n'))}</textarea></label>
-              <div class="hcd-acts"><span class="hcd-mut">Empty = Hoola reads them from the repo (.hoola/lab.json, AGENTS.md, CI).</span><span class="hcd-flex"></span><button class="hcd-btn sm" type="submit">Save</button></div></form></details>`).join('') || '<p class="hcd-mut">No repos yet.</p>'}
+              <label class="hcd-f"><span>Network for commands <small>the one-time setup step always has it</small></span><select name="net" aria-label="Network for commands">
+                <option value="none"${(r.net || {}).level === 'none' || !(r.net || {}).level ? ' selected' : ''}>No network</option>
+                <option value="limited"${(r.net || {}).level === 'limited' ? ' selected' : ''}>Package registries and the hosts below</option>
+                <option value="full"${(r.net || {}).level === 'full' ? ' selected' : ''}>Any public website</option></select></label>
+              <label class="hcd-f"><span>Allowed hosts <small>one a line, like api.example.com or *.example.com</small></span><textarea name="hosts" rows="2" maxlength="2000" placeholder="api.example.com">${esc(((r.net || {}).hosts || []).join('\n'))}</textarea></label>
+              ${(OV?.net || {}).on ? '' : '<p class="hcd-mut" data-netoff>Network levels are switched off on this server until its check passes. Your choice is saved and used once they are on.</p>'}
+              <div class="hcd-acts"><span class="hcd-mut">Empty = Hoola reads them from the repo (.hoola/lab.json, AGENTS.md, CI).</span><span class="hcd-flex"></span><button class="hcd-btn sm" type="submit">Save</button></div></form>
+            <div class="hcd-rsec" data-secrets="${esc(r.repo)}"><h3>Keys added outside the box</h3>
+              <p class="hcd-mut">A key for one outside website. It is added to the request after it leaves the box, so the AI and the box never see it. It is not shown again after you save it.</p>
+              ${((r.net || {}).secrets || []).map(x => `<div class="hcd-srow"><span><code>${esc(x.host)}</code><small class="hcd-mut">${esc(x.header)}${x.prefix ? ' · ' + esc(x.prefix) : ''} · saved ${esc(ago(x.at))}</small></span><button type="button" class="hcd-btn sm" data-rmsecret="${esc(x.host)}" data-repo="${esc(r.repo)}">Remove</button></div>`).join('')}
+              <form class="hcd-inline hcd-secf" data-secretf="${esc(r.repo)}"><input name="host" placeholder="api.example.com" maxlength="200" aria-label="Host" required>
+                <input name="header" value="Authorization" maxlength="40" aria-label="Header name" class="sm"><input name="prefix" value="Bearer" maxlength="16" aria-label="Word before the key" class="xs">
+                <input name="value" type="password" autocomplete="off" placeholder="the key" maxlength="4000" aria-label="The key" required><button class="hcd-btn sm" type="submit">Save key</button></form></div>
+            <div class="hcd-rsec"><h3>GitHub events</h3>
+              <p class="hcd-mut">${(r.events || {}).on ? `<span class="hcd-c ok">Connected</span>${(r.events.last || {}).at ? ' · last event ' + esc(ago(r.events.last.at)) : ' · nothing received yet'}${r.events.by_hoola ? '' : ' · webhook added by you'}` : 'GitHub can tell Hoola when an issue is labelled, a pull request is opened, a CI run fails or something is pushed - to start one of your scheduled tasks.'}</p>
+              <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-events="${esc(r.repo)}" data-on="${(r.events || {}).on ? 1 : 0}">${(r.events || {}).on ? 'Disconnect' : 'Connect GitHub events'}</button></div></div></details>`).join('') || '<p class="hcd-mut">No repos yet.</p>'}
         <form class="hcd-inline" id="hcdAddRepo"><label for="hcdRepoIn" class="hcd-sr">Repo</label><input id="hcdRepoIn" placeholder="owner/name" maxlength="200"><button class="hcd-btn" type="submit">Add</button></form></section>
       <section class="hcd-card"><h2>How Hoola works</h2>
         ${sw('ask_before_pr', 'Ask me before opening a pull request', 'Public repos always ask')}
@@ -1014,7 +1079,25 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     EL.querySelectorAll('[data-repobox]').forEach(f => f.addEventListener('submit', async ev => { ev.preventDefault();
       const env = {}; String(f.env.value || '').split('\n').forEach(l => { const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
       const [o, n] = f.dataset.repobox.split('/');
-      try { await api('PATCH', `/api/devsahayak/repos/${encodeURIComponent(o)}/${encodeURIComponent(n)}`, {setup_cmd: f.setup.value, test_cmd: f.test.value, env_vars: env}); toast('Saved.'); await load(); } catch (e) { toast(e.message, true); } }));
+      try { await api('PATCH', `/api/devsahayak/repos/${encodeURIComponent(o)}/${encodeURIComponent(n)}`, {setup_cmd: f.setup.value, test_cmd: f.test.value, env_vars: env, net_level: f.net.value, net_hosts: String(f.hosts.value || '').split(/[\s,]+/).filter(Boolean)}); toast('Saved.'); await load(); } catch (e) { toast(e.message, true); } }));
+    const rp = full => full.split('/').map(encodeURIComponent).join('/');
+    EL.querySelectorAll('[data-secretf]').forEach(f => f.addEventListener('submit', async ev => { ev.preventDefault();
+      try { await api('PUT', `/api/devsahayak/repos/${rp(f.dataset.secretf)}/secrets`, {host: f.host.value.trim(), header: f.header.value.trim(), prefix: f.prefix.value.trim(), value: f.value.value});
+        f.value.value = ''; toast('Saved. The key is not shown again.'); await load(); settings(); } catch (e) { toast(e.message, true); } }));
+    EL.querySelectorAll('[data-rmsecret]').forEach(b => b.addEventListener('click', async () => { if (!confirm(`Remove the key for ${b.dataset.rmsecret}?`)) return;
+      try { await api('DELETE', `/api/devsahayak/repos/${rp(b.dataset.repo)}/secrets/${encodeURIComponent(b.dataset.rmsecret)}`); await load(); settings(); } catch (e) { toast(e.message, true); } }));
+    EL.querySelectorAll('[data-events]').forEach(b => b.addEventListener('click', async () => { const full = b.dataset.events; b.disabled = true;
+      try {
+        if (b.dataset.on === '1') { if (!confirm(`Stop GitHub events for ${full}? Tasks that start on an event will no longer start.`)) { b.disabled = false; return; }
+          const r = await api('DELETE', `/api/devsahayak/repos/${rp(full)}/events`); toast(r.left_on_github ? 'Disconnected. Remove the webhook on GitHub too (repo > Settings > Webhooks).' : 'Disconnected.'); }
+        else { const r = await api('POST', `/api/devsahayak/repos/${rp(full)}/events`);
+          if (r.by_hoola) toast('Connected. Hoola added the webhook on GitHub.');
+          else await dialog(`<h2>Add this webhook on GitHub</h2><p class="hcd-mut">Your token may not add webhooks, so add it yourself once. <b>The secret is shown only now.</b></p>
+            <ol class="hcd-how">${(r.how || []).map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+            <p class="hcd-mut">Payload URL</p><pre class="hcd-term" id="hcdHookUrl">${esc(r.url)}</pre><p class="hcd-mut">Secret</p><pre class="hcd-term" id="hcdHookSecret">${esc(r.secret)}</pre>
+            <div class="hcd-dlgb"><button type="button" class="hcd-btn" data-act="copy" data-text="${esc(r.url)}">Copy the URL</button><button type="button" class="hcd-btn" data-act="copy" data-text="${esc(r.secret)}">Copy the secret</button><button class="hcd-btn pri" value="ok">Done</button></div>`); }
+        await load(); settings();
+      } catch (e) { toast(e.message, true); b.disabled = false; } }));
     $('#hcdTok').addEventListener('submit', async ev => { ev.preventDefault(); const v = $('#hcdTokIn').value.trim(); if (!v) return;
       try { await api('PUT', '/api/devsahayak/token', {token: v}); $('#hcdTokIn').value = ''; toast('GitHub connected.'); await load(); settings(); } catch (e) { toast(e.message, true); } });
     $('#hcdTokDel')?.addEventListener('click', async () => { if (!confirm('Forget the GitHub token?')) return; try { await api('DELETE', '/api/devsahayak/token'); await load(); settings(); } catch (e) { toast(e.message, true); } });

@@ -1,0 +1,60 @@
+{
+ "base": "cw8-schrodinger-anharmonic",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "b0",
+   "title": "Ground state for b = 0 (pure oscillator, exact 3/2 h-bar omega)",
+   "sample": "b = 0",
+   "unknown": "E0 = 96.54 MeV",
+   "params": {
+    "bb": 0.0
+   },
+   "source": {
+    "title": "University of Delhi LOCF 2019, C-XI Quantum Mechanics Lab item 3",
+    "note": "m = 940 MeV/c2, k = 100 MeV fm-2, b = 0, 10, 30 MeV fm-3 as the syllabus states"
+   }
+  },
+  {
+   "key": "b30",
+   "title": "Ground state for b = 30 MeV fm^-3",
+   "sample": "b = 30 MeV fm^-3",
+   "unknown": "E0",
+   "params": {
+    "bb": 30.0
+   },
+   "source": {
+    "title": "University of Delhi LOCF 2019, C-XI Quantum Mechanics Lab item 3",
+    "note": "m = 940 MeV/c2, k = 100 MeV fm-2, b = 0, 10, 30 MeV fm-3 as the syllabus states"
+   }
+  },
+  {
+   "key": "wavefunction-b10",
+   "title": "Ground-state wave function: mean square radius, b = 10",
+   "sample": "b = 10 MeV fm^-3",
+   "unknown": "<r^2> in fm^2",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "University of Delhi LOCF 2019, C-XI Quantum Mechanics Lab item 3",
+    "note": "m = 940 MeV/c2, k = 100 MeV fm-2, b = 0, 10, 30 MeV fm-3 as the syllabus states"
+   }
+  },
+  {
+   "key": "wavefunction-b0",
+   "title": "Ground-state wave function: mean square radius, b = 0",
+   "sample": "b = 0",
+   "unknown": "<r^2> = 3/2 a^2",
+   "params": {
+    "what": 1,
+    "bb": 0.0
+   },
+   "source": {
+    "title": "University of Delhi LOCF 2019, C-XI Quantum Mechanics Lab item 3",
+    "note": "m = 940 MeV/c2, k = 100 MeV fm-2, b = 0, 10, 30 MeV fm-3 as the syllabus states"
+   }
+  }
+ ]
+}

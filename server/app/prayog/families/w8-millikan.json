@@ -1,0 +1,14 @@
+{
+ "base": "w8-millikan",
+ "rig": "w8-atomic-bench",
+ "chapter": "Modern and atomic physics",
+ "variants": [
+  {"key": "rise-fall", "title": "Millikan's oil-drop experiment by the rise-and-fall method",
+   "sample": "Oil drops in Millikan's chamber, plates at a fixed 500 V",
+   "method": "rise-and-fall (dynamic) method",
+   "unknown": "the charge of the electron",
+   "params": {"meth": 1.0, "V": 500.0},
+   "note": "Each drop is timed falling with the plates shorted and rising with 500 V across them; q = 6 pi eta a (vg + vr) d / V. Air viscosity 1.81e-5 Pa s is from memory - verify; the oil density and the chamber sizes are illustrative.",
+   "source": {"title": "A. C. Melissinos and J. Napolitano, Experiments in Modern Physics: the Millikan oil-drop experiment", "note": "cited from memory, not fetched - verify"}}
+ ]
+}

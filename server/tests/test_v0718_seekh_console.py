@@ -306,13 +306,13 @@ def test_styles_exist():
 
 
 def test_no_new_tool_road_the_registry_stays():
-    assert len(T.TOOLS) == 626, "625 + 1 hoola_design (v0.799 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
+    assert len(T.TOOLS) == 626, "625 + 1 hoola_design (v0.813 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
 
 
 def test_version_pins():
     main = (SERVER / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.799.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
+    assert 'APP_VERSION = "0.813.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
     pub = ROOT / "pubspec.yaml"
-    assert "version: 0.799.0+798" in pub.read_text(encoding="utf-8")
+    assert "version: 0.813.0+812" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.799.0" in html and "console/v2.js?v=0.799.0" in html
+    assert "console/seekh.js?v=0.813.0" in html and "console/v2.js?v=0.813.0" in html

@@ -2267,7 +2267,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "counter"
+     "kernel": "counter",
+     "built": "u8-counter"
     },
     {
      "id": "distortion-factor-meter",
@@ -2281,7 +2282,8 @@
       "distortion factor"
      ],
      "conditions": [],
-     "kernel": "distortion"
+     "kernel": "distortion",
+     "built": "u8-distortion-meter"
     },
     {
      "id": "lvdt",
@@ -2355,7 +2357,8 @@
       "set point and hysteresis"
      ],
      "conditions": [],
-     "kernel": "thermostat"
+     "kernel": "thermostat",
+     "built": "u8-thermostat"
     },
     {
      "id": "temperature-sensor-calibration",
@@ -2409,7 +2412,8 @@
       "noise amplitude"
      ],
      "conditions": [],
-     "kernel": "noise-pickup"
+     "kernel": "noise-pickup",
+     "built": "u8-cable-noise"
     },
     {
      "id": "sample-and-hold",
@@ -2421,7 +2425,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "sample-hold"
+     "kernel": "sample-hold",
+     "built": "u8-sample-hold"
     },
     {
      "id": "clipper-clamper",
@@ -2462,7 +2467,8 @@
       "forward bias",
       "reverse bias"
      ],
-     "kernel": "pn-junction"
+     "kernel": "pn-junction",
+     "built": "u8-pn-diode"
     },
     {
      "id": "diode-boltzmann-constant",
@@ -2479,7 +2485,8 @@
       "Boltzmann constant"
      ],
      "conditions": [],
-     "kernel": "pn-junction"
+     "kernel": "pn-junction",
+     "built": "u8-diode-boltzmann"
     },
     {
      "id": "zener-regulator",
@@ -2510,7 +2517,8 @@
       "turn-on voltage"
      ],
      "conditions": [],
-     "kernel": "pn-junction"
+     "kernel": "pn-junction",
+     "built": "u8-led-vi"
     },
     {
      "id": "solar-cell",
@@ -2598,7 +2606,8 @@
       "h-parameters"
      ],
      "conditions": [],
-     "kernel": "bjt"
+     "kernel": "bjt",
+     "built": "u8-bjt-hparams"
     },
     {
      "id": "bjt-biasing",
@@ -2629,7 +2638,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "bjt"
+     "kernel": "bjt",
+     "built": "u8-bjt-switch"
     },
     {
      "id": "ce-amplifier",
@@ -2673,7 +2683,8 @@
       "output and crossover distortion"
      ],
      "conditions": [],
-     "kernel": "power-amplifier"
+     "kernel": "power-amplifier",
+     "built": "u8-push-pull"
     },
     {
      "id": "wien-bridge-oscillator",
@@ -2744,7 +2755,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dac"
+     "kernel": "dac",
+     "built": "u8-dac"
     },
     {
      "id": "adc-ic",
@@ -2756,7 +2768,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "adc"
+     "kernel": "adc",
+     "built": "u8-adc"
     },
     {
      "id": "opamp-inverting-dc",
@@ -2792,7 +2805,8 @@
       "gain-bandwidth"
      ],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "u8-opamp-response"
     },
     {
      "id": "opamp-adder",
@@ -2835,7 +2849,8 @@
       "CMRR"
      ],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "u8-diff-amp"
     },
     {
      "id": "opamp-integrator",
@@ -2877,7 +2892,8 @@
       "second-order differential equation"
      ],
      "conditions": [],
-     "kernel": "analog-computer"
+     "kernel": "analog-computer",
+     "built": "u8-analog-computer"
     },
     {
      "id": "active-filters",
@@ -2896,7 +2912,8 @@
       "cut-off frequencies"
      ],
      "conditions": [],
-     "kernel": "active-filter"
+     "kernel": "active-filter",
+     "built": "u8-active-filters"
     },
     {
      "id": "rectifier-power-supply",
@@ -2933,7 +2950,8 @@
       "line and load regulation"
      ],
      "conditions": [],
-     "kernel": "rectifier"
+     "kernel": "rectifier",
+     "built": "u8-regulated-supply"
     },
     {
      "id": "jfet-characteristics",
@@ -2962,7 +2980,8 @@
       "gain and bandwidth"
      ],
      "conditions": [],
-     "kernel": "fet"
+     "kernel": "fet",
+     "built": "u8-jfet-cs"
     },
     {
      "id": "mosfet-characteristics",
@@ -3007,7 +3026,8 @@
       "peak-to-valley ratio and negative resistance"
      ],
      "conditions": [],
-     "kernel": "tunnel-diode"
+     "kernel": "tunnel-diode",
+     "built": "u8-tunnel-diode"
     },
     {
      "id": "pll-ic",
@@ -3022,7 +3042,8 @@
       "capture range"
      ],
      "conditions": [],
-     "kernel": "pll"
+     "kernel": "pll",
+     "built": "u8-pll"
     },
     {
      "id": "timer-555",
@@ -3366,7 +3387,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "microwave-optics"
+     "kernel": "microwave-optics",
+     "built": "w8-microwave-reflect"
     },
     {
      "id": "microwave-polarisation-interference",
@@ -3383,7 +3405,8 @@
       "wavelength"
      ],
      "conditions": [],
-     "kernel": "microwave-optics"
+     "kernel": "microwave-optics",
+     "built": "w8-microwave-interference"
     }
    ]
   },
@@ -3402,7 +3425,8 @@
       "Planck's constant"
      ],
      "conditions": [],
-     "kernel": "blackbody-radiator"
+     "kernel": "blackbody-radiator",
+     "built": "w8-planck-blackbody"
     },
     {
      "id": "photoelectric-effect",
@@ -3432,7 +3456,8 @@
       "work function"
      ],
      "conditions": [],
-     "kernel": "thermionic"
+     "kernel": "thermionic",
+     "built": "w8-diode-work-function"
     },
     {
      "id": "led-planck-constant",
@@ -3480,7 +3505,8 @@
       "ionisation potential"
      ],
      "conditions": [],
-     "kernel": "gas-discharge"
+     "kernel": "gas-discharge",
+     "built": "w8-mercury-ionisation"
     },
     {
      "id": "franck-hertz",
@@ -3497,7 +3523,8 @@
       "first excitation potential"
      ],
      "conditions": [],
-     "kernel": "franck-hertz"
+     "kernel": "franck-hertz",
+     "built": "franck-hertz"
     },
     {
      "id": "iodine-absorption",
@@ -3511,7 +3538,8 @@
       "band-head positions"
      ],
      "conditions": [],
-     "kernel": "molecular-spectrum"
+     "kernel": "molecular-spectrum",
+     "built": "iodine-absorption"
     },
     {
      "id": "e-by-m-focusing-bar-magnet",
@@ -3528,7 +3556,8 @@
       "e/m"
      ],
      "conditions": [],
-     "kernel": "electron-beam"
+     "kernel": "electron-beam",
+     "built": "w8-em-focusing"
     },
     {
      "id": "e-by-m-thomson",
@@ -3542,7 +3571,8 @@
       "e/m"
      ],
      "conditions": [],
-     "kernel": "electron-beam"
+     "kernel": "electron-beam",
+     "built": "w8-em-thomson"
     },
     {
      "id": "e-by-m-magnetron",
@@ -3556,7 +3586,8 @@
       "e/m"
      ],
      "conditions": [],
-     "kernel": "magnetron"
+     "kernel": "magnetron",
+     "built": "w8-em-magnetron"
     },
     {
      "id": "millikan-oil-drop",
@@ -3573,7 +3604,8 @@
       "charge of the electron"
      ],
      "conditions": [],
-     "kernel": "oil-drop"
+     "kernel": "oil-drop",
+     "built": "w8-millikan"
     },
     {
      "id": "zeeman-effect",
@@ -3587,7 +3619,8 @@
       "splitting vs magnetic field (e/m)"
      ],
      "conditions": [],
-     "kernel": "zeeman"
+     "kernel": "zeeman",
+     "built": "w8-zeeman"
     },
     {
      "id": "electron-spin-resonance",
@@ -3603,7 +3636,8 @@
       "resonance field vs frequency (g-factor)"
      ],
      "conditions": [],
-     "kernel": "esr"
+     "kernel": "esr",
+     "built": "phd-esr"
     },
     {
      "id": "ccd-quantum-efficiency",
@@ -3672,7 +3706,8 @@
       "range"
      ],
      "conditions": [],
-     "kernel": "gm-absorption"
+     "kernel": "gm-absorption",
+     "built": "um8-beta-absorption"
     },
     {
      "id": "gamma-attenuation",
@@ -3720,7 +3755,8 @@
       "count rate above background"
      ],
      "conditions": [],
-     "kernel": "gm-counter"
+     "kernel": "gm-counter",
+     "built": "um8-k40-salt"
     },
     {
      "id": "gamma-spectrum-identification",
@@ -3783,7 +3819,8 @@
       "stopping power vs energy"
      ],
      "conditions": [],
-     "kernel": "ion-stopping"
+     "kernel": "ion-stopping",
+     "built": "um8-ion-energy-loss"
     },
     {
      "id": "srim-proton-range",
@@ -3802,7 +3839,8 @@
       "range"
      ],
      "conditions": [],
-     "kernel": "ion-stopping"
+     "kernel": "ion-stopping",
+     "built": "um8-ion-proton-range"
     },
     {
      "id": "srim-projectile-z",
@@ -3820,7 +3858,8 @@
       "stopping power vs projectile Z"
      ],
      "conditions": [],
-     "kernel": "ion-stopping"
+     "kernel": "ion-stopping",
+     "built": "um8-ion-projectile-z"
     },
     {
      "id": "srim-bragg-curve",
@@ -3834,7 +3873,8 @@
       "Bragg curve"
      ],
      "conditions": [],
-     "kernel": "ion-stopping"
+     "kernel": "ion-stopping",
+     "built": "um8-ion-bragg"
     },
     {
      "id": "xcom-attenuation",
@@ -3880,7 +3920,8 @@
       "magnetic susceptibility"
      ],
      "conditions": [],
-     "kernel": "quincke-tube"
+     "kernel": "quincke-tube",
+     "built": "quincke-susceptibility"
     },
     {
      "id": "gouy-susceptibility",
@@ -3894,7 +3935,8 @@
       "magnetic susceptibility"
      ],
      "conditions": [],
-     "kernel": "gouy-balance"
+     "kernel": "gouy-balance",
+     "built": "um8-gouy"
     },
     {
      "id": "piezo-coupling",
@@ -3908,7 +3950,8 @@
       "electromechanical coupling coefficient"
      ],
      "conditions": [],
-     "kernel": "piezo"
+     "kernel": "piezo",
+     "built": "um8-piezo-coupling"
     },
     {
      "id": "dielectric-vs-frequency",
@@ -3922,7 +3965,8 @@
       "dielectric constant and loss vs frequency"
      ],
      "conditions": [],
-     "kernel": "dielectric"
+     "kernel": "dielectric",
+     "built": "dielectric-lcr"
     },
     {
      "id": "surface-plasmon-resonance",
@@ -3951,7 +3995,8 @@
       "remanent polarisation and coercive field"
      ],
      "conditions": [],
-     "kernel": "hysteresis"
+     "kernel": "hysteresis",
+     "built": "pe-hysteresis"
     },
     {
      "id": "four-probe-band-gap",
@@ -4000,7 +4045,8 @@
       "magnetoresistance"
      ],
      "conditions": [],
-     "kernel": "magnetoresistance"
+     "kernel": "magnetoresistance",
+     "built": "magnetoresistance"
     },
     {
      "id": "xrd-analysis",
@@ -4015,7 +4061,8 @@
       "particle size (Scherrer)"
      ],
      "conditions": [],
-     "kernel": "xrd"
+     "kernel": "xrd",
+     "built": "um8-xrd-analysis"
     },
     {
      "id": "diode-band-gap",
@@ -4029,7 +4076,8 @@
       "band gap"
      ],
      "conditions": [],
-     "kernel": "pn-junction"
+     "kernel": "pn-junction",
+     "built": "um8-diode-band-gap"
     }
    ]
   },
@@ -4070,7 +4118,8 @@
       "crystallite size"
      ],
      "conditions": [],
-     "kernel": "xrd"
+     "kernel": "xrd",
+     "built": "um8-nano-xrd"
     },
     {
      "id": "nanoparticle-plasmon-uv-vis",
@@ -4260,7 +4309,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "py-basics"
+     "kernel": "py-basics",
+     "built": "cw8-factorial-arrangements"
     },
     {
      "id": "py-projectile",
@@ -4342,7 +4392,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "transformations"
+     "kernel": "transformations",
+     "built": "cw8-frame-transformations"
     },
     {
      "id": "least-squares-fitting",
@@ -4787,7 +4838,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "vector-field"
+     "kernel": "vector-field",
+     "built": "cw8-vector-field-operators"
     },
     {
      "id": "wave-group-dispersion-plots",
@@ -4802,7 +4854,8 @@
       "normal dispersion",
       "anomalous dispersion"
      ],
-     "kernel": "wave-superposition"
+     "kernel": "wave-superposition",
+     "built": "cw8-wave-group-dispersion"
     },
     {
      "id": "graphics-transformations",
@@ -4814,7 +4867,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "transformations"
+     "kernel": "transformations",
+     "built": "cw8-graphics-transformations"
     },
     {
      "id": "xcos-circuits",
@@ -4940,7 +4994,8 @@
       "ground-state energy and wavefunction"
      ],
      "conditions": [],
-     "kernel": "schrodinger-radial"
+     "kernel": "schrodinger-radial",
+     "built": "cw8-schrodinger-anharmonic"
     },
     {
      "id": "schrodinger-morse",
@@ -4971,7 +5026,8 @@
       "velocity distribution vs Maxwell"
      ],
      "conditions": [],
-     "kernel": "molecular-dynamics"
+     "kernel": "molecular-dynamics",
+     "built": "cw8-lennard-jones-md"
     },
     {
      "id": "coin-toss-macrostates",
@@ -5000,7 +5056,8 @@
       "Fermi-Dirac",
       "Bose-Einstein"
      ],
-     "kernel": "partition-function"
+     "kernel": "partition-function",
+     "built": "cw8-partition-function-levels"
     },
     {
      "id": "maxwell-speed-distribution",
@@ -5012,7 +5069,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "kinetic-theory"
+     "kernel": "kinetic-theory",
+     "built": "cw8-maxwell-speeds"
     },
     {
      "id": "specific-heat-models",
@@ -5028,7 +5086,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "specific-heat"
+     "kernel": "specific-heat",
+     "built": "cw8-specific-heat-models"
     },
     {
      "id": "quantum-distributions-plot",
@@ -5047,7 +5106,8 @@
       "non-relativistic",
       "relativistic"
      ],
-     "kernel": "partition-function"
+     "kernel": "partition-function",
+     "built": "cw8-quantum-distributions"
     },
     {
      "id": "planck-law-comparison",
@@ -5135,7 +5195,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "fractal"
+     "kernel": "fractal",
+     "built": "cw8-fractals"
     },
     {
      "id": "flow-visualisation",
@@ -5147,7 +5208,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "vector-field"
+     "kernel": "vector-field",
+     "built": "cw8-flow-visualisation"
     },
     {
      "id": "game-theory-examples",
@@ -5159,7 +5221,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "game-theory"
+     "kernel": "game-theory",
+     "built": "cw8-game-theory"
     },
     {
      "id": "dsp-sequences-convolution",
@@ -5171,7 +5234,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dsp"
+     "kernel": "dsp",
+     "built": "cw8-dsp-convolution"
     },
     {
      "id": "dsp-lti-difference-equation",
@@ -5183,7 +5247,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dsp"
+     "kernel": "dsp",
+     "built": "cw8-dsp-lti"
     },
     {
      "id": "dsp-dft-zero-padding",
@@ -5212,7 +5277,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dsp"
+     "kernel": "dsp",
+     "built": "cw8-dsp-fir"
     },
     {
      "id": "eigenvalue-power-method",
@@ -5256,7 +5322,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "variational"
+     "kernel": "variational",
+     "built": "cw8-geodesics"
     },
     {
      "id": "constrained-lagrangian",
@@ -5268,7 +5335,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "variational"
+     "kernel": "variational",
+     "built": "cw8-constrained-lagrangian"
     }
    ]
   }

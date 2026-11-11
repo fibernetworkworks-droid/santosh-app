@@ -44,7 +44,7 @@ def test_the_rest_of_the_catalog_is_untouched(env):
     from app.employee import hire
     cat = {c["key"]: c for c in hire.catalog(T)}
     assert cat["seo"]["live"] and cat["social"]["live"] and cat["paisa_sahayak"]["live"]
-    assert not cat["accounts"]["live"] and not cat["telecaller"]["live"]   # the "coming" rows still coming
+    assert cat["accounts"]["live"] and not cat["telecaller"]["live"]   # the "coming" rows still coming (v0.807 accounts went live)
     assert cat["seo"]["group"] == "Business" and hire.catalog(T)[0]["key"]
 
 
@@ -107,6 +107,6 @@ def test_no_leads_tool_checks_is_hired():
 # ---------------------------------------------------------------- the version
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.799.0"
+    assert APP_VERSION == "0.813.0"
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.799.0+798" in pub.read_text()
+    assert "0.813.0+812" in pub.read_text()
