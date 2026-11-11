@@ -150,14 +150,14 @@ def describe(s: dict[str, Any]) -> str:
     elif "{account.username}" in v:
         v = "(test username)"
     return {
-        "goto": f"Kholo {s.get('path')}", "click": f"Click: {tg}", "fill": f"Bharo {tg}: {v}", "select": f"Chuno {tg}: {v}",
-        "check": f"Tick: {tg}", "uncheck": f"Tick hatao: {tg}", "hover": f"Mouse le jao: {tg}", "press": f"Key: {s.get('key')}",
-        "expect_text": f"Dikhna chahiye: \"{s.get('text')}\"", "expect_no_text": f"Nahi dikhna chahiye: \"{s.get('text')}\"",
-        "expect_visible": f"Dikhe: {tg}", "expect_hidden": f"Chhupa ho: {tg}", "expect_enabled": f"Chalu ho: {tg}",
-        "expect_disabled": f"Band ho: {tg}", "expect_invalid": f"Galat maana jaaye: {tg}", "expect_valid": f"Sahi maana jaaye: {tg}",
-        "expect_url": f"Address mein ho: {s.get('contains')}", "expect_title": f"Title mein ho: {s.get('contains')}",
-        "viewport": f"Screen chaudai {s.get('width')} px", "wait": f"Ruko {s.get('ms')} ms", "back": "Peeche jao",
-        "screenshot": f"Screenshot: {s.get('name')}", "audit": f"Jaanch: {s.get('kind')}",
+        "goto": f"Open {s.get('path')}", "click": f"Click: {tg}", "fill": f"Fill {tg}: {v}", "select": f"Select {tg}: {v}",
+        "check": f"Tick: {tg}", "uncheck": f"Untick: {tg}", "hover": f"Move the mouse over: {tg}", "press": f"Key: {s.get('key')}",
+        "expect_text": f"Should show: \"{s.get('text')}\"", "expect_no_text": f"Should not show: \"{s.get('text')}\"",
+        "expect_visible": f"Visible: {tg}", "expect_hidden": f"Hidden: {tg}", "expect_enabled": f"Enabled: {tg}",
+        "expect_disabled": f"Disabled: {tg}", "expect_invalid": f"Shown as invalid: {tg}", "expect_valid": f"Accepted as valid: {tg}",
+        "expect_url": f"Address contains: {s.get('contains')}", "expect_title": f"Title contains: {s.get('contains')}",
+        "viewport": f"Screen width {s.get('width')} px", "wait": f"Wait {s.get('ms')} ms", "back": "Go back",
+        "screenshot": f"Screenshot: {s.get('name')}", "audit": f"Check: {s.get('kind')}",
     }.get(op, op)
 
 

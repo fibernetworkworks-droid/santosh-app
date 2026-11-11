@@ -50,8 +50,8 @@ log = logging.getLogger("santosh.fleet")
 _LOCK = threading.RLock()
 SPEND_KINDS = {"service": "Service", "tyre": "Tyre", "permit": "Permit fees", "tax": "Road tax", "insurance": "Insurance",
                "fitness": "Fitness / ATS fees", "puc": "PUC", "challan": "Challan", "repair": "Repair", "fastag": "FASTag recharge",
-               "gps": "GPS / AIS-140", "other": "Doosra kharcha"}
-TRIP_STATUS = {"planned": "Plan", "assigned": "Gaadi tay", "started": "Raste mein", "done": "Poori", "cancelled": "Radd"}
+               "gps": "GPS / AIS-140", "other": "Other expense"}
+TRIP_STATUS = {"planned": "Planned", "assigned": "Vehicle assigned", "started": "On the way", "done": "Done", "cancelled": "Cancelled"}
 BLOCK_DOCS = ("insurance", "fitness", "national_permit", "state_permit", "rc")   # expired = the vehicle can't legally run
 WARN_DOCS = ("puc", "road_tax", "ais140", "speed_governor")
 
@@ -172,8 +172,8 @@ def _st(s, tenant: str) -> FleetSettings:
 def _clean(text: str, n: int = 500) -> str:
     """Her / staff words: secrets never kept (card / OTP / long numbers)."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 
@@ -203,12 +203,12 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             if k in ("diesel_rate", "petrol_rate", "cng_rate", "avg_speed"):
                 x = _num(v)
                 if x < 0 or (k.endswith("_rate") and x > 500) or (k == "avg_speed" and x > 100):
-                    raise FleetError(f"{k}: {v} sahi nahi lagta.")
+                    raise FleetError(f"{k}: {v} does not look right.")
                 setattr(r, k, x)
             elif k in ("fill_pct", "low_kmpl_pct"):
                 x = _num(v)
                 if not 5 <= x <= 100:
-                    raise FleetError(f"{k} 5-100 ke beech.")
+                    raise FleetError(f"{k} must be between 5 and 100.")
                 setattr(r, k, x)
             elif k == "idle_days":
                 r.idle_days = max(1, min(60, int(_num(v))))
@@ -217,13 +217,13 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 r.toll_per_km = _dump({str(a): _num(b) for a, b in d.items() if _num(b) > 0})
             elif k == "morning_time":
                 if not re.fullmatch(r"\d{1,2}:\d{2}", str(v)):
-                    raise FleetError("Subah ka samay HH:MM mein.")
+                    raise FleetError("Morning time must be HH:MM.")
                 r.morning_time = str(v)
             elif k == "home_state":
                 r.home_state = str(v).upper()[:4]
             else:
                 setattr(r, k, str(v)[:2000])
-        return {"settings": _settings_view(r), "say": "Fleet ki settings save."}
+        return {"settings": _settings_view(r), "say": "Fleet settings saved."}
 
 
 # ---------------------------------------------------------------- vehicles
@@ -233,7 +233,7 @@ def _veh(s, tenant: str, ref: str) -> FleetVehicle:
         rows = s.scalars(select(FleetVehicle).where(FleetVehicle.tenant_id == tenant, FleetVehicle.status != "sold")).all()
         if len(rows) == 1:
             return rows[0]
-        raise FleetError("Kaun si gaadi? Number bataiye.")
+        raise FleetError("Which vehicle? Give the number.")
     v = s.get(FleetVehicle, ref)
     if v is not None and v.tenant_id == tenant:
         return v
@@ -246,8 +246,8 @@ def _veh(s, tenant: str, ref: str) -> FleetVehicle:
     if len(tail) == 1:
         return tail[0]
     if len(tail) > 1:
-        raise FleetError(f"'{ref}' se kai gaadiyan milti hain: " + ", ".join(v.reg for v in tail[:5]))
-    raise FleetError(f"Gaadi '{ref}' nahi mili.")
+        raise FleetError(f"'{ref}' matches several vehicles: " + ", ".join(v.reg for v in tail[:5]))
+    raise FleetError(f"Vehicle '{ref}' not found.")
 
 
 def _odo_now(s, v: FleetVehicle) -> float:
@@ -317,7 +317,7 @@ def save_vehicle(tenant: str, reg: str = "", vehicle: str = "", **kw: Any) -> di
         if vt:
             t = vt if vt in R.VEHICLE_TYPES else R.type_of(vt)
             if not t:
-                raise FleetError(f"Gaadi ka type '{vt}' samajh nahi aaya (truck / tempo / pickup / bus / taxi / car ...).")
+                raise FleetError(f"Vehicle type '{vt}' not understood (truck / tempo / pickup / bus / taxi / car ...).")
             v.vtype = t
         elif new:
             v.vtype = R.type_of(" ".join(str(kw.get(k) or "") for k in ("make", "model"))) or "truck"
@@ -334,13 +334,13 @@ def save_vehicle(tenant: str, reg: str = "", vehicle: str = "", **kw: Any) -> di
         if kw.get("reg_date"):
             d = _date(kw["reg_date"])
             if not d or d > on:
-                raise FleetError("Registration ki taarikh sahi nahi.")
+                raise FleetError("The registration date is not valid.")
             v.reg_date = d.isoformat()
         for k in ("capacity_t", "capacity_cbm", "tank_l"):
             if kw.get(k) is not None:
                 x = _num(kw[k])
                 if x < 0 or (k == "capacity_t" and x > 60) or (k == "capacity_cbm" and x > 200) or (k == "tank_l" and x > 1500):
-                    raise FleetError(f"{k}: {kw[k]} sahi nahi lagta.")
+                    raise FleetError(f"{k}: {kw[k]} does not look right.")
                 setattr(v, k, x)
         if kw.get("axles") is not None:
             v.axles = max(0, min(10, int(_num(kw["axles"]))))
@@ -360,7 +360,7 @@ def save_vehicle(tenant: str, reg: str = "", vehicle: str = "", **kw: Any) -> di
         if kw.get("odo") is not None:
             o = _num(kw["odo"])
             if o and v.odo and o < v.odo - 1 and not kw.get("odo_reset"):
-                raise FleetError(f"Odometer {o:g} pichhle ({v.odo:g}) se kam: meter badla ho to odo_reset=true ke saath bhejiye.")
+                raise FleetError(f"Odometer {o:g} is less than the last one ({v.odo:g}): if the meter was replaced, send it with odo_reset=true.")
             v.odo, v.odo_at = o, on.isoformat()
         s.flush()
         if new:
@@ -374,9 +374,9 @@ def save_vehicle(tenant: str, reg: str = "", vehicle: str = "", **kw: Any) -> di
                 s.add(FleetDoc(tenant_id=tenant, vehicle_id=v.id, kind="national_permit"))
         view = _vehicle_view(s, v, on, full=True)
     missing = [d["label"] for d in view["docs"] if d["state"] == "missing"]
-    say = f"{view['reg']} ({view['type_label']}) " + ("jod di." if new else "update.")
+    say = f"{view['reg']} ({view['type_label']}) " + ("added." if new else "updated.")
     if missing:
-        say += " In kaagazon ki expiry bataiye (ya photo bhejiye): " + ", ".join(missing[:8]) + "."
+        say += " Give the expiry of these papers (or send a photo): " + ", ".join(missing[:8]) + "."
     return {"vehicle": view, "new": new, "say": say}
 
 
@@ -420,11 +420,11 @@ def save_doc(tenant: str, vehicle: str, kind: str, expires: str = "", issued: st
             s.add(d)
         exp, iss = _date(expires), _date(issued)
         if expires and not exp:
-            raise FleetError(f"Expiry '{expires}' taarikh nahi lagti (DD-MM-YYYY).")
+            raise FleetError(f"Expiry '{expires}' does not look like a date (DD-MM-YYYY).")
         if issued and not iss:
-            raise FleetError(f"Issue ki taarikh '{issued}' samajh nahi aayi.")
+            raise FleetError(f"Issue date '{issued}' not understood.")
         if exp and iss and exp <= iss:
-            raise FleetError("Expiry issue ki taarikh ke baad honi chahiye.")
+            raise FleetError("The expiry must be after the issue date.")
         if iss:
             d.issued = iss.isoformat()
         if exp:
@@ -454,11 +454,11 @@ def save_doc(tenant: str, vehicle: str, kind: str, expires: str = "", issued: st
         reg = v.reg
     say = f"{reg}: {view['label']}"
     if view["expires"]:
-        say += f" {view['expires']} tak" + (" (andaaza: kaagaz ki asli taarikh bataiye)" if view["guess"] else "") + "."
+        say += f" valid until {view['expires']}" + (" (estimate: give the real date on the paper)" if view["guess"] else "") + "."
         if view["state"] == "expired":
-            say += " Yeh khatam ho chuka hai: renewal ka kharcha card se."
+            say += " It has expired: the renewal expense goes through a card."
     else:
-        say += " darj (expiry abhi khaali)."
+        say += " recorded (expiry still blank)."
     return {"doc": view, "say": say}
 
 
@@ -481,8 +481,8 @@ def docs_due(tenant: str, days: int = 45) -> list[dict]:
 
 def official_steps(what: str = "echallan") -> dict:
     if what == "vahan":
-        return {"steps": R.VAHAN_STEPS, "say": "Vahan / mParivahan se taarikhein aise dekhiye (Hoola site nahi padhta)."}
-    return {"steps": R.ECHALLAN_STEPS, "say": "eChallan aise dekhiye; challan mile to yahan bataiye. Bharna aapka kaam, card se."}
+        return {"steps": R.VAHAN_STEPS, "say": "This is how to check the dates on Vahan / mParivahan (Hoola does not read the site)."}
+    return {"steps": R.ECHALLAN_STEPS, "say": "This is how to check eChallan; if you find a challan, tell me here. Paying is yours to do, through a card."}
 
 
 # ---------------------------------------------------------------- fuel
@@ -503,23 +503,23 @@ def add_fuel(tenant: str, vehicle: str, litres, amount=None, odo=None, day: str 
              source: str = "manual", ref: str = "", actor: str = "owner", conv: str = "", quiet: bool = False) -> dict:
     lit = _num(litres)
     if lit <= 0 or lit > 2000:
-        raise FleetError("Litre sahi nahi (0-2000).")
+        raise FleetError("Litres not valid (0-2000).")
     amt, o = _num(amount), _num(odo)
     d = _date(day) if day else today(tenant)
     if day and not d:
-        raise FleetError(f"Taarikh '{day}' samajh nahi aayi.")
+        raise FleetError(f"Date '{day}' not understood.")
     if d and d > today(tenant):
-        raise FleetError("Aage ki taarikh ka diesel nahi.")
+        raise FleetError("No diesel entry for a future date.")
     with _LOCK, session() as s:
         v = _veh(s, tenant, vehicle)
         if ref:
             dup = s.scalars(select(FleetFuel).where(FleetFuel.tenant_id == tenant, FleetFuel.ref == str(ref)[:80])).first()
             if dup:
-                return {"fuel": _fuel_view(dup), "duplicate": True, "say": f"Yeh entry ({ref}) pehle se hai."}
+                return {"fuel": _fuel_view(dup), "duplicate": True, "say": f"This entry ({ref}) is already there."}
         same = s.scalars(select(FleetFuel).where(FleetFuel.vehicle_id == v.id, FleetFuel.day == d.isoformat(), FleetFuel.litres == lit,
                                                  FleetFuel.amount == amt)).first()
         if same and (not o or same.odo == o):
-            return {"fuel": _fuel_view(same), "duplicate": True, "say": "Yeh diesel entry pehle se hai."}
+            return {"fuel": _fuel_view(same), "duplicate": True, "say": "This diesel entry is already there."}
         prev = s.scalars(select(FleetFuel).where(FleetFuel.vehicle_id == v.id, FleetFuel.odo > 0).order_by(FleetFuel.odo.desc())).first()
         prev_odo = prev.odo if prev else (v.odo or None)
         hist = _kmpl_hist(s, v)
@@ -541,10 +541,10 @@ def add_fuel(tenant: str, vehicle: str, litres, amount=None, odo=None, day: str 
     if view["kmpl"]:
         say += f", average {view['kmpl']:g} km/l"
     elif not o:
-        say += " (odometer bina average nahi banta)"
+        say += " (no average without an odometer reading)"
     say += "."
     if flags:
-        say += " Dhyaan: " + " ".join(x["say"] for x in flags)
+        say += " Note: " + " ".join(x["say"] for x in flags)
         if not quiet:
             _publish(tenant, "fleet_alert", {"kind": "fuel", "vehicle": reg, "fuel": view, "say": say}, conv)
     return {"fuel": view, "flags": flags, "say": say}
@@ -580,7 +580,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
     try:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise FleetError(f"File {file_id} nahi mili: {e}")
+        raise FleetError(f"File {file_id} not found: {e}")
     return name, data
 
 
@@ -603,9 +603,9 @@ def import_fuel(tenant: str, file_id: str = "", data: bytes | None = None, name:
             hi, cols = i, found
             break
     if hi is None:
-        raise FleetError("Sheet mein 'Date' aur 'Litres / Quantity' wale column nahi mile.")
+        raise FleetError("The sheet has no 'Date' and 'Litres / Quantity' columns.")
     if "vehicle" not in cols and not vehicle:
-        raise FleetError("Sheet mein gaadi number ka column nahi: kaun si gaadi ki statement hai, bataiye.")
+        raise FleetError("The sheet has no vehicle number column: tell me which vehicle the statement is for.")
     added, dup, bad, flagged = 0, 0, [], []
     for n, r in enumerate(rows[hi + 1:], start=hi + 2):
         def g(k):
@@ -622,7 +622,7 @@ def import_fuel(tenant: str, file_id: str = "", data: bytes | None = None, name:
         veh = str(g("vehicle") or vehicle or "")
         d = _date(g("day"))
         if not d:
-            bad.append(f"line {n}: taarikh")
+            bad.append(f"line {n}: date")
             continue
         try:
             out = add_fuel(tenant, veh, lit, g("amount"), g("odo"), d.isoformat(), True, str(g("station") or ""), "card",
@@ -636,9 +636,9 @@ def import_fuel(tenant: str, file_id: str = "", data: bytes | None = None, name:
         added += 1
         if out["flags"]:
             flagged.append({"line": n, "vehicle": veh, "say": " ".join(x["say"] for x in out["flags"])})
-    say = f"Fuel statement: {added} entry jodi" + (f", {dup} pehle se thi" if dup else "") + (f", {len(bad)} nahi padh paya" if bad else "") + "."
+    say = f"Fuel statement: {added} entries added" + (f", {dup} already there" if dup else "") + (f", {len(bad)} could not be read" if bad else "") + "."
     if flagged:
-        say += f" {len(flagged)} entry par dhyaan dijiye."
+        say += f" {len(flagged)} entries need a look."
         _publish(tenant, "fleet_alert", {"kind": "fuel_import", "flagged": flagged[:10], "say": say}, conv)
     return {"added": added, "duplicates": dup, "problems": bad[:20], "flagged": flagged[:20], "say": say}
 
@@ -676,7 +676,7 @@ def _service_view(s, v: FleetVehicle, on: date) -> list[dict]:
 def service_set(tenant: str, vehicle: str, item: str, every_km=None, every_months=None, last_km=None, last_on: str = "",
                 remove: bool = False) -> dict:
     if not item:
-        raise FleetError("Kaun sa service item?")
+        raise FleetError("Which service item?")
     with _LOCK, session() as s:
         v = _veh(s, tenant, vehicle)
         it = next((x for x in s.scalars(select(FleetServiceItem).where(FleetServiceItem.vehicle_id == v.id)).all()
@@ -684,7 +684,7 @@ def service_set(tenant: str, vehicle: str, item: str, every_km=None, every_month
         if remove:
             if it:
                 s.delete(it)
-            return {"say": f"{v.reg}: '{item}' schedule se hataya."}
+            return {"say": f"{v.reg}: '{item}' removed from the schedule."}
         if it is None:
             it = FleetServiceItem(tenant_id=tenant, vehicle_id=v.id, item=_clean(item, 80))
             s.add(it)
@@ -697,14 +697,14 @@ def service_set(tenant: str, vehicle: str, item: str, every_km=None, every_month
         if last_on:
             d = _date(last_on)
             if not d:
-                raise FleetError("Pichhli service ki taarikh samajh nahi aayi.")
+                raise FleetError("The last service date was not understood.")
             it.last_on = d.isoformat()
         it.starter, it.reminded = False, ""
         s.flush()
         view = [x for x in _service_view(s, v, today(tenant)) if x["id"] == it.id][0]
-        return {"item": view, "say": f"{v.reg}: {view['item']} har " + " / ".join(
-            p for p in ((f"{view['every_km']:,.0f} km" if view["every_km"] else ""), (f"{view['every_months']} mahine" if view["every_months"] else "")) if p)
-            + (f"; abhi: {view['why']}" if view["why"] else "") + "."}
+        return {"item": view, "say": f"{v.reg}: {view['item']} every " + " / ".join(
+            p for p in ((f"{view['every_km']:,.0f} km" if view["every_km"] else ""), (f"{view['every_months']} months" if view["every_months"] else "")) if p)
+            + (f"; now: {view['why']}" if view["why"] else "") + "."}
 
 
 def _event_view(e: FleetEvent) -> dict:
@@ -719,7 +719,7 @@ def service_done(tenant: str, vehicle: str, items: list | str | None = None, odo
     already approved, or what she paid herself)."""
     d = _date(day) if day else today(tenant)
     if not d:
-        raise FleetError("Taarikh samajh nahi aayi.")
+        raise FleetError("Date not understood.")
     names = [items] if isinstance(items, str) else list(items or [])
     with _LOCK, session() as s:
         v = _veh(s, tenant, vehicle)
@@ -739,9 +739,9 @@ def service_done(tenant: str, vehicle: str, items: list | str | None = None, odo
         s.flush()
         reg = v.reg
         ev = _event_view(e)
-    say = f"{reg}: service darj" + (f" ({', '.join(done)})" if done else "") + (f", {_rs(_num(amount))}" if _num(amount) else "") + "."
+    say = f"{reg}: service recorded" + (f" ({', '.join(done)})" if done else "") + (f", {_rs(_num(amount))}" if _num(amount) else "") + "."
     if names and not done:
-        say += " Schedule mein in naamon ka item nahi mila; schedule badalna ho to service_set."
+        say += " No schedule item with these names was found; to change the schedule use service_set."
     return {"event": ev, "reset": done, "say": say}
 
 
@@ -770,20 +770,20 @@ def tyre(tenant: str, vehicle: str, op: str = "fit", position: str = "", brand: 
                 FleetEvent.vehicle_id == v.id, FleetEvent.kind == "tyre", FleetEvent.status == "fitted")).all()
                 if position and _j(x.data, {}).get("position", "").lower() == position.lower()), None)
             if e is None or e.vehicle_id != v.id:
-                raise FleetError("Kaun sa tyre? (position ya tyre id)")
+                raise FleetError("Which tyre? (position or tyre id)")
             data = _j(e.data, {})
             data.update({"removed_km": o or None, "removed_on": d.isoformat(), "reason": _clean(reason, 200)})
             e.data, e.status = _dump(data), "removed"
             run = (o - e.odo) if (o and e.odo) else None
-            return {"tyre": _event_view(e), "say": f"{v.reg}: {data.get('position', '')} tyre utara" + (f", {run:,.0f} km chala" if run else "") + "."}
+            return {"tyre": _event_view(e), "say": f"{v.reg}: {data.get('position', '')} tyre removed" + (f", ran {run:,.0f} km" if run else "") + "."}
         if not position:
-            raise FleetError("Tyre ki position bataiye (jaise front-left, rear-2-outer, stepney).")
+            raise FleetError("Give the tyre position (for example front-left, rear-2-outer, stepney).")
         old = [x for x in s.scalars(select(FleetEvent).where(FleetEvent.vehicle_id == v.id, FleetEvent.kind == "tyre",
                                                             FleetEvent.status == "fitted")).all()
                if _j(x.data, {}).get("position", "").lower() == position.lower()]
         for x in old:
             data = _j(x.data, {})
-            data.update({"removed_km": o or None, "removed_on": d.isoformat(), "reason": "naya lagaya"})
+            data.update({"removed_km": o or None, "removed_on": d.isoformat(), "reason": "new one fitted"})
             x.data, x.status = _dump(data), "removed"
         e = FleetEvent(tenant_id=tenant, vehicle_id=v.id, kind="tyre", day=d.isoformat(), what=f"Tyre {position}", amount=_num(amount),
                        odo=o or None, status="fitted", by=actor_name(tenant, actor), spend_id=spend,
@@ -791,13 +791,13 @@ def tyre(tenant: str, vehicle: str, op: str = "fit", position: str = "", brand: 
                                    "life_km": _num(life_km) or None}))
         s.add(e)
         s.flush()
-        return {"tyre": _event_view(e), "say": f"{v.reg}: {position} par naya tyre" + (f" ({brand})" if brand else "") + " darj."}
+        return {"tyre": _event_view(e), "say": f"{v.reg}: new tyre at {position}" + (f" ({brand})" if brand else "") + " recorded."}
 
 
 def breakdown(tenant: str, vehicle: str, what: str, place: str = "", day: str = "", hours=None, amount=None, odo=None,
               actor: str = "owner", conv: str = "") -> dict:
     if not what:
-        raise FleetError("Kya kharabi hui?")
+        raise FleetError("What broke down?")
     d = _date(day) if day else today(tenant)
     with _LOCK, session() as s:
         v = _veh(s, tenant, vehicle)
@@ -811,9 +811,9 @@ def breakdown(tenant: str, vehicle: str, what: str, place: str = "", day: str = 
             v.status = "workshop"
         s.flush()
         ev, reg = _event_view(e), v.reg
-    say = f"{reg}: breakdown darj ({what[:60]}). Gaadi 'workshop' mein maani; theek hone par batana."
+    say = f"{reg}: breakdown recorded ({what[:60]}). The vehicle is marked 'workshop'; tell me when it is fixed."
     if n >= 3:
-        say += f" 90 din mein {n} breakdown: badi marammat / purani gaadi ka hisaab dekhiye."
+        say += f" {n} breakdowns in 90 days: look at a major repair / the numbers on an old vehicle."
     if not is_owner(actor):
         _publish(tenant, "fleet_alert", {"kind": "breakdown", "vehicle": reg, "say": say}, conv)
     return {"event": ev, "repeat": n, "say": say}
@@ -823,7 +823,7 @@ def event_close(tenant: str, event: str, amount=None, note: str = "") -> dict:
     with _LOCK, session() as s:
         e = s.get(FleetEvent, event)
         if e is None or e.tenant_id != tenant:
-            raise FleetError("Entry nahi mili.")
+            raise FleetError("Entry not found.")
         e.status = "done"
         if amount is not None:
             e.amount = _num(amount)
@@ -832,13 +832,13 @@ def event_close(tenant: str, event: str, amount=None, note: str = "") -> dict:
         v = s.get(FleetVehicle, e.vehicle_id)
         if e.kind == "breakdown" and v and v.status == "workshop":
             v.status = "active"
-        return {"event": _event_view(e), "say": "Band kiya" + (f"; {v.reg} phir active." if v and e.kind == "breakdown" else ".")}
+        return {"event": _event_view(e), "say": "Closed" + (f"; {v.reg} is active again." if v and e.kind == "breakdown" else ".")}
 
 
 def expense(tenant: str, vehicle: str, what: str, amount, day: str = "", actor: str = "owner", spend: str = "") -> dict:
     a = _num(amount)
     if a <= 0:
-        raise FleetError("Rakam chahiye.")
+        raise FleetError("The amount is needed.")
     d = _date(day) if day else today(tenant)
     with _LOCK, session() as s:
         v = _veh(s, tenant, vehicle)
@@ -846,7 +846,7 @@ def expense(tenant: str, vehicle: str, what: str, amount, day: str = "", actor: 
                        by=actor_name(tenant, actor), spend_id=spend)
         s.add(e)
         s.flush()
-        return {"event": _event_view(e), "say": f"{v.reg}: {what[:60]} {_rs(a)} darj."}
+        return {"event": _event_view(e), "say": f"{v.reg}: {what[:60]} {_rs(a)} recorded."}
 
 
 def challan(tenant: str, vehicle: str, number: str = "", amount=None, day: str = "", offence: str = "", place: str = "",
@@ -859,7 +859,7 @@ def challan(tenant: str, vehicle: str, number: str = "", amount=None, day: str =
         if num:
             for x in s.scalars(select(FleetEvent).where(FleetEvent.tenant_id == tenant, FleetEvent.kind == "challan")).all():
                 if _j(x.data, {}).get("number") == num:
-                    return {"event": _event_view(x), "duplicate": True, "say": f"Challan {num} pehle se darj hai."}
+                    return {"event": _event_view(x), "duplicate": True, "say": f"Challan {num} is already recorded."}
         e = FleetEvent(tenant_id=tenant, vehicle_id=v.id, kind="challan", day=d.isoformat(), what=_clean(offence or "Challan", 300),
                        amount=_num(amount), status="open", by=actor_name(tenant, actor),
                        data=_dump({"number": num, "offence": _clean(offence, 200), "place": _clean(place, 120)}))
@@ -867,10 +867,10 @@ def challan(tenant: str, vehicle: str, number: str = "", amount=None, day: str =
         s.flush()
         reg = v.reg
         ev = _event_view(e)
-    say = f"{reg}: challan" + (f" {num}" if num else "") + (f" {_rs(_num(amount))}" if _num(amount) else "") + " darj (khula)."
+    say = f"{reg}: challan" + (f" {num}" if num else "") + (f" {_rs(_num(amount))}" if _num(amount) else "") + " recorded (open)."
     if re.search(r"overload|over load|194", offence or "", re.I):
-        say += " Overload: aage se trip plan mein capacity se zyada maal nahi."
-    say += " Bharna ho to 'spend' card banaiye; paise aap portal par khud bharengi."
+        say += " Overload: from now on, no more load than the capacity in a trip plan."
+    say += " To pay it, make a 'spend' card; you pay the money yourself on the portal."
     return {"event": ev, "say": say}
 
 
@@ -892,12 +892,12 @@ def _spend_view(s, x: FleetSpend) -> dict:
             "created_at": _aware(x.created_at).isoformat(timespec="minutes") if x.created_at else ""}
 
 
-_PAY_WHERE = {"permit": "vahan.parivahan.gov.in/npermit (national) ya Vahan permit services: aap khud bharti hain.",
-              "tax": "vahan.parivahan.gov.in > Pay your tax: aap khud bharti hain.",
-              "challan": "echallan.parivahan.gov.in > Pay now (OTP / payment aapka).",
-              "fitness": "Vahan par fitness appointment fees / ATS counter.",
-              "insurance": "Apna insurer / agent (policy ki copy yahan bhejiye).",
-              "fastag": "Apne FASTag bank ka app."}
+_PAY_WHERE = {"permit": "vahan.parivahan.gov.in/npermit (national) or Vahan permit services: you pay it yourself.",
+              "tax": "vahan.parivahan.gov.in > Pay your tax: you pay it yourself.",
+              "challan": "echallan.parivahan.gov.in > Pay now (the OTP / payment is yours).",
+              "fitness": "Fitness appointment fees on Vahan / the ATS counter.",
+              "insurance": "Your insurer / agent (send a copy of the policy here).",
+              "fastag": "Your FASTag bank's app."}
 
 
 def spend_request(tenant: str, vehicle: str, kind: str, what: str, amount, vendor: str = "", link_id: str = "",
@@ -906,11 +906,11 @@ def spend_request(tenant: str, vehicle: str, kind: str, what: str, amount, vendo
     k = kind if kind in SPEND_KINDS else "other"
     a = _num(amount)
     if a <= 0:
-        raise FleetError("Kharche ki rakam (aapke workshop / portal / bill se) chahiye; Hoola rakam nahi gadhta.")
+        raise FleetError("The expense amount (from your workshop / portal / bill) is needed; Hoola does not make up an amount.")
     if a > 5_000_000:
-        raise FleetError("Rakam bahut badi lagti hai; dobara jaanchiye.")
+        raise FleetError("The amount looks too large; check it again.")
     if not what:
-        raise FleetError("Kis cheez ka kharcha?")
+        raise FleetError("What is the expense for?")
     on = today(tenant)
     with _LOCK, session() as s:
         v = _veh(s, tenant, vehicle) if vehicle else None
@@ -919,17 +919,17 @@ def spend_request(tenant: str, vehicle: str, kind: str, what: str, amount, vendo
                                                   FleetSpend.kind == k, FleetSpend.vehicle_id == (v.id if v else ""))).all()
         for x in same:
             if x.what.lower() == w.lower() and abs(x.amount - a) < 0.5:
-                return {"spend": _spend_view(s, x), "existing": True, "say": f"{x.number} ka card pehle se aapki haan ka intezaar kar raha hai."}
+                return {"spend": _spend_view(s, x), "existing": True, "say": f"The card for {x.number} is already waiting for your approval."}
         checks = []
         if v is not None:
             if v.status == "sold":
-                checks.append("Yeh gaadi 'sold' darj hai.")
+                checks.append("This vehicle is recorded as 'sold'.")
             past = [e.amount for e in s.scalars(select(FleetEvent).where(FleetEvent.vehicle_id == v.id, FleetEvent.amount > 0)).all()
                     if (k == "service" and e.kind == "service") or (k == "tyre" and e.kind == "tyre")]
             if len(past) >= 2:
                 med = statistics.median(past)
                 if a > med * 1.3:
-                    checks.append(f"Pichhle {SPEND_KINDS[k].lower()} ka aam kharcha {_rs(med)}; yeh {round((a / med - 1) * 100)}% zyada.")
+                    checks.append(f"The usual past expense for {SPEND_KINDS[k].lower()} is {_rs(med)}; this is {round((a / med - 1) * 100)}% more.")
             if k in ("permit", "insurance", "fitness", "puc", "tax"):
                 dk = {"permit": "national_permit" if v.national else "state_permit", "insurance": "insurance", "fitness": "fitness",
                       "puc": "puc", "tax": "road_tax"}[k]
@@ -937,24 +937,24 @@ def spend_request(tenant: str, vehicle: str, kind: str, what: str, amount, vendo
                 if dd and dd.expires:
                     left = (_date(dd.expires) - on).days
                     if left > 60:
-                        checks.append(f"{R.DOC_KINDS[dk]['label']} abhi {left} din aur valid ({dd.expires}); itni jaldi renewal?")
+                        checks.append(f"{R.DOC_KINDS[dk]['label']} is still valid for {left} days ({dd.expires}); renew this early?")
             if k == "challan" and link_id:
                 ev = s.get(FleetEvent, link_id)
                 if ev and ev.amount and abs(ev.amount - a) > 0.5:
-                    checks.append(f"Challan par rakam {_rs(ev.amount)} likhi thi, card par {_rs(a)}.")
+                    checks.append(f"The challan said {_rs(ev.amount)}, the card says {_rs(a)}.")
         st = _st(s, tenant)
         st.spend_seq += 1
         x = FleetSpend(tenant_id=tenant, number=f"FS-{st.spend_seq:04d}", vehicle_id=v.id if v else "", kind=k, what=w, amount=a,
-                       vendor=_clean(vendor, 120), where=_PAY_WHERE.get(k, "Aap khud dijiye (workshop / dukaan / UPI)."),
+                       vendor=_clean(vendor, 120), where=_PAY_WHERE.get(k, "You pay it yourself (workshop / shop / UPI)."),
                        checks=_dump(checks), link_id=str(link_id or "")[:40], asked_by=actor_name(tenant, actor), conv=conv)
         s.add(x)
         s.flush()
         x.hash = _spend_hash(_spend_show(x, v.reg if v else ""))
         view = _spend_view(s, x)
-    say = (f"{view['number']}: {view['kind_label']} {view['amount_text']}" + (f" ({view['vehicle']})" if view["vehicle"] else "")
-           + " ka card aapki haan ke liye bheja hai. Hoola khud paise nahi deta.")
+    say = (f"Card sent for your approval: {view['number']}: {view['kind_label']} {view['amount_text']}" + (f" ({view['vehicle']})" if view["vehicle"] else "")
+           + ". Hoola does not pay the money itself.")
     if checks:
-        say += " Dhyaan: " + " ".join(checks)
+        say += " Note: " + " ".join(checks)
     _publish(tenant, "fleet_spend", {"spend": view, "say": say}, conv)
     return {"spend": view, "status": "needs_tap", "say": say}
 
@@ -978,7 +978,7 @@ def spend_challenge(tenant: str, spend_id: str) -> dict:
     from .. import approvekey as ak
     c = spend_card(tenant, spend_id)
     if not c or c["status"] != "waiting":
-        raise FleetError("Yeh card ab baaki nahi hai.")
+        raise FleetError("This card is no longer pending.")
     digest = c["hash"]
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
@@ -1007,17 +1007,17 @@ def decide_spend(tenant: str, spend_id: str, yes: bool, card_hash: str = "", rea
                  by_tap: bool = False) -> dict:
     """ONLY her tap in the app (API). The tool can never reach this with by_tap."""
     if not by_tap:
-        raise FleetError("Kharche ki haan sirf aapke tap se (app ka card).")
+        raise FleetError("An expense is approved only by your tap (the card in the app).")
     with session() as s:
         x = s.get(FleetSpend, spend_id)
         if x is None or x.tenant_id != tenant:
-            raise FleetError("Card nahi mila.")
+            raise FleetError("Card not found.")
         if x.status != "waiting":
-            return {"spend": _spend_view(s, x), "say": f"{x.number} pehle hi '{x.status}' hai."}
+            return {"spend": _spend_view(s, x), "say": f"{x.number} is already '{x.status}'."}
         v = s.get(FleetVehicle, x.vehicle_id) if x.vehicle_id else None
         now_hash = _spend_hash(_spend_show(x, v.reg if v else ""))
         if not card_hash or card_hash != x.hash or now_hash != x.hash:
-            raise FleetError("Card badal gaya hai; naya card dekhiye.")
+            raise FleetError("The card has changed; look at the new card.")
     if yes:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1029,9 +1029,9 @@ def decide_spend(tenant: str, spend_id: str, yes: bool, card_hash: str = "", rea
         x.decided_at = now()
         view = _spend_view(s, x)
     if yes:
-        say = f"{view['number']} maana: {view['amount_text']}. Paise aap khud dijiye ({view['where']}) aur phir 'Maine kar diya' dabaiye."
+        say = f"{view['number']} approved: {view['amount_text']}. You pay the money yourself ({view['where']}) and then tap 'I have paid'."
     else:
-        say = f"{view['number']}: kharcha nahi" + (f" ({view['reason']})" if view["reason"] else "") + "."
+        say = f"{view['number']}: expense not approved" + (f" ({view['reason']})" if view["reason"] else "") + "."
     return {"spend": view, "say": say}
 
 
@@ -1040,9 +1040,9 @@ def spend_done(tenant: str, spend_id: str, amount=None, ref: str = "", day: str 
     with _LOCK, session() as s:
         x = s.get(FleetSpend, spend_id)
         if x is None or x.tenant_id != tenant:
-            raise FleetError("Card nahi mila.")
+            raise FleetError("Card not found.")
         if x.status != "approved":
-            raise FleetError(f"{x.number} abhi '{x.status}' hai: pehle aapki haan (card par tap).")
+            raise FleetError(f"{x.number} is '{x.status}' now: your approval comes first (tap on the card).")
         a = _num(amount) or x.amount
         x.status, x.paid_amount, x.paid_ref = "done", a, _clean(ref, 80)
         d = (_date(day) or today(tenant)).isoformat()
@@ -1057,7 +1057,7 @@ def spend_done(tenant: str, spend_id: str, amount=None, ref: str = "", day: str 
             s.add(FleetEvent(tenant_id=tenant, vehicle_id=x.vehicle_id, kind="expense", day=d, what=f"{SPEND_KINDS.get(x.kind, '')}: {x.what}",
                              amount=a, spend_id=x.id, by=actor_name(tenant, actor)))
         view = _spend_view(s, x)
-    say = f"{view['number']} poora: {_rs(a)} aapne diya." + (" Service / tyre ho jaye to 'service_done' / 'tyre' se darj kijiye."
+    say = f"{view['number']} complete: you paid {_rs(a)}." + (" When the service / tyre is done, record it with 'service_done' / 'tyre'."
                                                              if x.kind in ("service", "tyre") and not x.link_id else "")
     return {"spend": view, "say": say}
 
@@ -1112,26 +1112,26 @@ def nearest_vehicle(tenant: str, pickup: str, day: str = "", load_t=None, top: i
     """
     from .. import maps
     if not str(pickup or "").strip():
-        raise FleetError("Pickup kahan se hai?")
+        raise FleetError("Where is the pickup from?")
     if not maps.configured():
-        raise FleetError("Google Maps connect nahi hai, isliye road se sabse paas wali gaadi nahi nikal sakta.")
+        raise FleetError("Google Maps is not connected, so the nearest vehicle by road cannot be worked out.")
     try:
         asyncio.get_running_loop()
-        raise FleetError("Abhi nahi ho sakta, thodi der baad try karein.")      # never block the event loop
+        raise FleetError("This cannot be done right now, try again in a little while.")      # never block the event loop
     except RuntimeError:
         pass
     d = _date(day) if day else today(tenant)
     if not d:
-        raise FleetError("Taarikh samajh nahi aayi.")
+        raise FleetError("Date not understood.")
     cands, skipped, unknown = [], [], []
     with session() as s:
         for v in s.scalars(select(FleetVehicle).where(FleetVehicle.tenant_id == tenant,
                                                       FleetVehicle.status == "active").order_by(FleetVehicle.reg)).all():
             if _busy(s, tenant, v.id, d.isoformat()):
-                skipped.append({"vehicle": v.reg, "why": "us din kisi trip par lagi hai"})
+                skipped.append({"vehicle": v.reg, "why": "on a trip that day"})
                 continue
             if _num(load_t) > 0 and v.capacity_t and v.capacity_t < _num(load_t):
-                skipped.append({"vehicle": v.reg, "why": f"capacity {v.capacity_t:g} t, maal {_num(load_t):g} t"})
+                skipped.append({"vehicle": v.reg, "why": f"capacity {v.capacity_t:g} t, load {_num(load_t):g} t"})
                 continue
             last = s.scalars(select(FleetTrip).where(FleetTrip.vehicle_id == v.id, FleetTrip.status == "done",
                                                      FleetTrip.destination != "").order_by(FleetTrip.updated_at.desc())).first()
@@ -1141,13 +1141,13 @@ def nearest_vehicle(tenant: str, pickup: str, day: str = "", load_t=None, top: i
                 cands.append({"vehicle": v.reg, "capacity_t": v.capacity_t or None, "last_drop": last.destination})
     if not cands:
         return {"pickup": pickup, "ranked": [], "nearest": None, "no_known_position": unknown, "skipped": skipped,
-                "note": "Kisi khali gaadi ki pichhli drop jagah maloom nahi (koi poori hui trip nahi)." if unknown
-                else "Us din koi khali gaadi nahi."}
+                "note": "The last drop place of no free vehicle is known (no completed trip)." if unknown
+                else "No free vehicle that day."}
 
     async def go():
         dst = await maps.resolve(pickup, tenant)
         if not dst:
-            raise FleetError(f"'{pickup}' Google Maps par nahi mila. Area / shehar ke saath bataiye.")
+            raise FleetError(f"'{pickup}' was not found on Google Maps. Give it with the area / city.")
         origins, keep = [], []
         for c in cands:
             try:
@@ -1175,7 +1175,7 @@ def nearest_vehicle(tenant: str, pickup: str, day: str = "", load_t=None, top: i
         else:
             none.append(c["vehicle"])
     ranked.sort(key=lambda r: r["duration_min"])
-    return {"pickup": pickup, "position_is": "har gaadi ki pichhli poori hui trip ki drop jagah (live GPS nahi)",
+    return {"pickup": pickup, "position_is": "the drop place of each vehicle's last completed trip (not live GPS)",
             "nearest": ranked[0] if ranked else None, "ranked": ranked[:max(1, min(int(top or 3), 10))],
             "no_road": none, "no_known_position": unknown, "skipped": skipped}
 
@@ -1210,14 +1210,14 @@ def _paper_check(s, v: FleetVehicle, on: date, interstate: bool) -> tuple[list[s
         label = R.DOC_KINDS[k]["label"]
         if exp is None:
             if k in ("insurance", "fitness") and (k != "fitness" or commercial):
-                warn.append(f"{label} ki expiry darj nahi.")
+                warn.append(f"No expiry recorded for {label}.")
             continue
         if exp < on:
-            (block if k in BLOCK_DOCS else warn).append(f"{label} {d.expires} ko khatam.")
+            (block if k in BLOCK_DOCS else warn).append(f"{label} is valid only until {d.expires}.")
     if interstate and R.VEHICLE_TYPES.get(v.vtype, {}).get("goods") and not v.national:
-        warn.append("Doosre rajya ka goods trip: national permit darj nahi (ya us rajya ka permit chahiye).")
+        warn.append("Goods trip to another state: no national permit recorded (or that state's permit is needed).")
     if v.status != "active":
-        block.append(f"Gaadi abhi '{v.status}' hai.")
+        block.append(f"The vehicle is '{v.status}' now.")
     return block, warn
 
 
@@ -1272,7 +1272,7 @@ def _evaluate(s, tenant: str, t: FleetTrip) -> dict:
         checks["block"] += b
         checks["warn"] += w
         if _busy(s, tenant, v.id, t.day, t.id):
-            checks["block"].append(f"{v.reg} {t.day} ko doosri trip par hai.")
+            checks["block"].append(f"{v.reg} is on another trip on {t.day}.")
         rate = {"diesel": st.diesel_rate, "petrol": st.petrol_rate, "cng": st.cng_rate}.get(v.fuel) or None
         tpk = _j(st.toll_per_km, {}).get(v.vtype) or None
         est = R.trip_estimate(t.km, _kmpl_of(s, v), rate, t.toll, tpk)
@@ -1284,7 +1284,7 @@ def _evaluate(s, tenant: str, t: FleetTrip) -> dict:
     if note:
         checks["warn"].append(note)
     if not t.km:
-        checks["notes"].append("Distance pata nahi: aap km bataiye (Google Maps server par juda ho to Hoola khud nikalega).")
+        checks["notes"].append("Distance not known: give the km (if Google Maps is connected on the server, Hoola works it out).")
     t.checks = _dump(checks)
     return checks
 
@@ -1293,15 +1293,15 @@ def plan_trip(tenant: str, origin: str, destination: str, day: str = "", stops: 
               vehicle: str = "", driver: str = "", driver_phone: str = "", km=None, toll=None, origin_state: str = "",
               dest_state: str = "", ref: str = "", notes: str = "", actor: str = "owner", conv: str = "") -> dict:
     if not origin or not destination:
-        raise FleetError("Kahan se kahan? (origin aur destination)")
+        raise FleetError("From where to where? (origin and destination)")
     d = _date(day) if day else today(tenant)
     if not d:
-        raise FleetError("Trip ki taarikh samajh nahi aayi.")
+        raise FleetError("The trip date was not understood.")
     if d < today(tenant):
-        raise FleetError("Beeti taarikh ki trip plan nahi hoti.")
+        raise FleetError("A trip cannot be planned for a past date.")
     phone = re.sub(r"\D", "", driver_phone or "")[-10:]
     if driver_phone and len(phone) != 10:
-        raise FleetError("Driver ka phone 10 ank ka.")
+        raise FleetError("The driver's phone number must have 10 digits.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         st.trip_seq += 1
@@ -1342,22 +1342,22 @@ def _finish_plan(tenant: str, tid: str, conv: str = "", publish: bool = True) ->
         say += f", {view['km']:g} km" + (" (Google Maps)" if view["km_source"] == "maps" else "")
     say += "."
     if view["vehicle"]:
-        say += f" Gaadi {view['vehicle']}" + (" tay." if view["status"] == "assigned" else " abhi tay nahi:")
+        say += f" Vehicle {view['vehicle']}" + (" assigned." if view["status"] == "assigned" else " not assigned yet:")
     if ch["block"]:
-        say += " Rukawat: " + " ".join(ch["block"])
+        say += " Blocked: " + " ".join(ch["block"])
     elif ch["suggest"] and not view["vehicle"]:
-        say += " Sahi gaadi: " + ", ".join(f"{x['vehicle']} ({x['weight_pct']:g}% bhari)" for x in ch["suggest"]) + "."
+        say += " Right vehicle: " + ", ".join(f"{x['vehicle']} ({x['weight_pct']:g}% full)" for x in ch["suggest"]) + "."
     if ch.get("split"):
-        say += " Ek gaadi mein nahi aata; baantne ka plan: " + "; ".join(
+        say += " It does not fit in one vehicle; split plan: " + "; ".join(
             f"{p['vehicle']} {p['weight_kg']:,.0f} kg" for p in ch["split"]["plan"]) + (
-            f"; phir bhi baaki: {', '.join(x for x in ch['split']['left'] if x)}" if ch["split"]["left"] else "") + "."
+            f"; still left: {', '.join(x for x in ch['split']['left'] if x)}" if ch["split"]["left"] else "") + "."
     if ch["warn"]:
-        say += " Dhyaan: " + " ".join(ch["warn"])
+        say += " Note: " + " ".join(ch["warn"])
     est = view["estimate"]
     if est.get("total_rs"):
-        say += f" Andaaza (aapke rate se): diesel {_rs(est['fuel_rs'])} + toll {_rs(est['toll_rs'])} = {_rs(est['total_rs'])}."
+        say += f" Estimate (at your rates): diesel {_rs(est['fuel_rs'])} + toll {_rs(est['toll_rs'])} = {_rs(est['total_rs'])}."
     elif est.get("missing") and view["vehicle"]:
-        say += " Kharche ka andaaza ke liye chahiye: " + ", ".join(est["missing"]) + "."
+        say += " Needed for the cost estimate: " + ", ".join(est["missing"]) + "."
     if publish:
         _publish(tenant, "fleet_trip", {"trip": view, "say": say}, conv)
     return {"trip": view, "say": say}
@@ -1372,7 +1372,7 @@ def _trip(s, tenant: str, ref: str) -> FleetTrip:
         r = f"TR-{int(r):04d}"
     t = s.scalars(select(FleetTrip).where(FleetTrip.tenant_id == tenant, FleetTrip.number == r)).first()
     if t is None:
-        raise FleetError(f"Trip '{ref}' nahi mili.")
+        raise FleetError(f"Trip '{ref}' not found.")
     return t
 
 
@@ -1381,7 +1381,7 @@ def assign_trip(tenant: str, trip: str, vehicle: str = "", driver: str = "", dri
     with _LOCK, session() as s:
         t = _trip(s, tenant, trip)
         if t.status in ("done", "cancelled"):
-            raise FleetError(f"{t.number} '{t.status}' hai.")
+            raise FleetError(f"{t.number} is '{t.status}'.")
         if vehicle:
             t.vehicle_id = _veh(s, tenant, vehicle).id
         if driver:
@@ -1389,7 +1389,7 @@ def assign_trip(tenant: str, trip: str, vehicle: str = "", driver: str = "", dri
         if driver_phone:
             p = re.sub(r"\D", "", driver_phone)[-10:]
             if len(p) != 10:
-                raise FleetError("Driver ka phone 10 ank ka.")
+                raise FleetError("The driver's phone number must have 10 digits.")
             t.driver_phone = p
         if _num(km) > 0:
             t.km, t.km_source = _num(km), "her"
@@ -1407,20 +1407,20 @@ def trip_status(tenant: str, trip: str, status: str, odo=None, note: str = "", a
     with _LOCK, session() as s:
         t = _trip(s, tenant, trip)
         if t.status in ("done", "cancelled"):
-            raise FleetError(f"{t.number} pehle hi '{t.status}' hai.")
+            raise FleetError(f"{t.number} is already '{t.status}'.")
         o = _num(odo)
         v = s.get(FleetVehicle, t.vehicle_id) if t.vehicle_id else None
         if status == "started":
             if v is None:
-                raise FleetError("Pehle gaadi tay kijiye.")
+                raise FleetError("Assign a vehicle first.")
             ch = _evaluate(s, tenant, t)
             if ch["block"]:
-                raise FleetError("Trip shuru nahi: " + " ".join(ch["block"]))
+                raise FleetError("Trip not started: " + " ".join(ch["block"]))
             t.odo_start = o or (v.odo or None)
         if status == "done":
             if o:
                 if t.odo_start and o < t.odo_start:
-                    raise FleetError("Aakhri odometer shuru se kam.")
+                    raise FleetError("The end odometer is less than the start.")
                 t.odo_end = o
                 if v and (not v.odo or o >= v.odo):
                     v.odo, v.odo_at = o, today(tenant).isoformat()
@@ -1431,9 +1431,9 @@ def trip_status(tenant: str, trip: str, status: str, odo=None, note: str = "", a
     say = f"{view['number']}: {view['status_label']}."
     if status == "done" and view["odo_start"] and view["odo_end"]:
         run = view["odo_end"] - view["odo_start"]
-        say += f" {run:,.0f} km chali" + (f" (plan {view['km']:g} km)" if view["km"] else "") + "."
+        say += f" Ran {run:,.0f} km" + (f" (plan {view['km']:g} km)" if view["km"] else "") + "."
         if view["km"] and run > view["km"] * 1.2 + 10:
-            say += " Plan se kaafi zyada: rasta badla ya galat odometer?"
+            say += " Much more than the plan: a different route or a wrong odometer?"
     return {"trip": view, "say": say}
 
 
@@ -1462,9 +1462,9 @@ def load_check(tenant: str, items: list, vehicle: str = "") -> dict:
         res = [{"vehicle": v.reg, **R.load_fit(its, _veh_dict(s, v), st["fill_pct"])} for v in vs]
         split = R.split_load(its, [_veh_dict(s, v) for v in vs], st["fill_pct"]) if not any(r["fits"] for r in res) else None
     ok = sorted([r for r in res if r["fits"]], key=lambda r: r["weight_pct"] or 0, reverse=True)
-    say = (f"Yeh maal {ok[0]['vehicle']} mein ({ok[0]['weight_pct']:g}% wazan)." if ok else "Kisi ek gaadi mein nahi aata.")
+    say = (f"This load fits in {ok[0]['vehicle']} ({ok[0]['weight_pct']:g}% of weight)." if ok else "It does not fit in any one vehicle.")
     if split and split["plan"]:
-        say += " Baantkar: " + "; ".join(f"{p['vehicle']} {p['weight_kg']:,.0f} kg" for p in split["plan"]) + "."
+        say += " Split: " + "; ".join(f"{p['vehicle']} {p['weight_kg']:,.0f} kg" for p in split["plan"]) + "."
     return {"results": res, "split": split, "say": say}
 
 
@@ -1546,28 +1546,28 @@ def day(tenant: str) -> dict:
     idle_v = idle(tenant)
     parts = []
     if today_trips:
-        parts.append(f"Aaj {len(today_trips)} trip" + (f" ({len(blocked)} mein rukawat)" if blocked else "") + ".")
+        parts.append(f"{len(today_trips)} trips today" + (f" ({len(blocked)} blocked)" if blocked else "") + ".")
     if expired:
-        parts.append("Khatam kaagaz: " + ", ".join(f"{d['vehicle']} {d['label']}" for d in expired[:5]) + ".")
+        parts.append("Expired papers: " + ", ".join(f"{d['vehicle']} {d['label']}" for d in expired[:5]) + ".")
     if due:
-        parts.append("Jaldi khatam: " + ", ".join(f"{d['vehicle']} {d['label']} ({d['days_left']} din)" for d in due[:5]) + ".")
+        parts.append("Expiring soon: " + ", ".join(f"{d['vehicle']} {d['label']} ({d['days_left']} days)" for d in due[:5]) + ".")
     if svc:
         parts.append("Service: " + ", ".join(f"{x['vehicle']} {x['item']} ({x['why']})" for x in svc[:5]) + ".")
     if tyres:
-        parts.append(f"{len(tyres)} tyre apni life ke paas.")
+        parts.append(f"{len(tyres)} tyres near the end of their life.")
     if fuel_flags:
-        parts.append(f"Diesel par {len(fuel_flags)} ishaare (pichhle 3 din).")
+        parts.append(f"{len(fuel_flags)} diesel flags (last 3 days).")
     if challans:
-        parts.append(f"{len(challans)} challan khule.")
+        parts.append(f"{len(challans)} challans open.")
     if waiting:
-        parts.append(f"{len(waiting)} kharche aapki haan ka intezaar.")
+        parts.append(f"{len(waiting)} expenses waiting for your approval.")
     if approved:
-        parts.append(f"{len(approved)} maane hue kharche abhi dene baaki.")
+        parts.append(f"{len(approved)} approved expenses still to be paid.")
     if idle_v:
-        parts.append("Khadi gaadiyan: " + ", ".join(x["vehicle"] for x in idle_v[:5]) + ".")
+        parts.append("Idle vehicles: " + ", ".join(x["vehicle"] for x in idle_v[:5]) + ".")
     if workshop:
-        parts.append("Workshop mein: " + ", ".join(workshop[:5]) + ".")
-    return {"say": " ".join(parts) or "Fleet mein aaj sab theek.", "trips": today_trips, "blocked": blocked, "expired": expired,
+        parts.append("In the workshop: " + ", ".join(workshop[:5]) + ".")
+    return {"say": " ".join(parts) or "All good in the fleet today.", "trips": today_trips, "blocked": blocked, "expired": expired,
             "due": due, "service": svc, "tyres": tyres, "fuel_flags": fuel_flags, "challans": challans, "waiting": waiting,
             "approved": approved, "idle": idle_v, "workshop": workshop}
 
@@ -1614,15 +1614,15 @@ def tick(when: datetime | None = None) -> dict:
                         continue
                     if _once(s, tenant, f"doc:{d.id}:{d.expires}:{x['window']}"):
                         if x["state"] == "expired":
-                            say = f"{v.reg}: {x['label']} {d.expires} ko khatam ho gaya. {x['where']}"
+                            say = f"{v.reg}: {x['label']} expired on {d.expires}. {x['where']}"
                         else:
-                            say = f"{v.reg}: {x['label']} {x['days_left']} din mein khatam ({d.expires}). {x['where']}"
+                            say = f"{v.reg}: {x['label']} expires in {x['days_left']} days ({d.expires}). {x['where']}"
                         alerts.append({"kind": "doc", "vehicle": v.reg, "doc": x, "say": say})
                 for v in vs.values():
                     for it in _service_view(s, v, on):
                         if it["state"] in ("due", "late") and _once(s, tenant, f"svc:{it['id']}:{it['last_on']}:{it['last_km']}:{it['state']}"):
                             alerts.append({"kind": "service", "vehicle": v.reg, "item": it,
-                                           "say": f"{v.reg}: {it['item']} {'ka samay nikal gaya' if it['state'] == 'late' else 'jaldi'} ({it['why']})."})
+                                           "say": f"{v.reg}: {it['item']} {'is overdue' if it['state'] == 'late' else 'is due soon'} ({it['why']})."})
             for a in alerts:
                 out["docs" if a["kind"] == "doc" else "service"] += 1
                 _publish(tenant, "fleet_alert", a)
@@ -1630,7 +1630,7 @@ def tick(when: datetime | None = None) -> dict:
                 d = day(tenant)
                 with session() as s:
                     _st(s, tenant).last_morning = on.isoformat()
-                if d["say"] != "Fleet mein aaj sab theek.":
+                if d["say"] != "All good in the fleet today.":
                     _publish(tenant, "fleet_day", _day_card(d))
                     out["morning"] += 1
         except Exception:
@@ -1680,7 +1680,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
         for v in s.scalars(select(FleetVehicle).where(FleetVehicle.tenant_id == tenant, FleetVehicle.status != "sold")).all():
             for d in s.scalars(select(FleetDoc).where(FleetDoc.vehicle_id == v.id)).all():
                 x = _doc_view(d, on)
-                ws.append([v.reg, x["label"], x["number"], x["expires"] + (" (andaaza)" if x["guess"] else ""), x["days_left"], x["state"]])
+                ws.append([v.reg, x["label"], x["number"], x["expires"] + (" (estimate)" if x["guess"] else ""), x["days_left"], x["state"]])
     ws = wb.create_sheet("Cost per km (30 d)")
     ws.append(["Number", "km", "Fuel", "Service", "Tyre", "Breakdown", "Expense", "Challan", "Total", "Per km", "Idle days"])
     for r in cost_report(tenant)["vehicles"]:

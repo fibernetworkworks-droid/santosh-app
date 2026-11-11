@@ -220,7 +220,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def decide(cid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         if "yes" not in b:
-            raise HTTPException(400, "yes chahiye (Haan / Mana).")
+            raise HTTPException(400, "yes is required (Yes / No).")
         return await run(S.decide_card, tenant, cid, bool(b.get("yes")), _s(b.get("hash")), _s(b.get("reason")), b.get("proof"),
                          by_tap=True)
 

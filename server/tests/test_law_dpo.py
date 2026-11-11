@@ -58,10 +58,10 @@ def test_rules():
     assert "पालक" in mr
     score, level, notes = R.dpia_score({"purpose": True, "children": True, "health_fin": True, "scale": True, "new_tech": False,
                                         "abroad": True, "sharing": False, "security": False, "consent_ok": True, "erase_ok": True})
-    assert score == 10 and level == "high" and any("Kami" in n for n in notes)
+    assert score == 10 and level == "high" and any("Gap" in n for n in notes)
     assert len(R.child_flags({"children": True, "purpose": "targeted ads for kids"})) == 2
     assert R.child_flags({"children": False}) == []
-    assert R.scrub("OTP 445566 and card 4111 1111 1111 1111") == "OTP [hataya] and card [hataya]"
+    assert R.scrub("OTP 445566 and card 4111 1111 1111 1111") == "OTP [removed] and card [removed]"
     assert R.has_blank(R.breach_report_text({}, "X")) and R.BLANK not in R.breach_people_text(
         {k: "x" for k in R.BREACH_FIELDS}, "Org", "Meera")
 
@@ -73,7 +73,7 @@ def test_scan_notice_and_tap(dp):
     assert any(f["key"] == "telecall" and f["records"] == 1 for f in out["found"])
     acts = S.activities(T)
     tele = next(a for a in acts if a["source"] == "telecall")
-    assert tele["records"] == 1 and not tele["confirmed"] and any("sahi hai" in c for c in tele["checks"])
+    assert tele["records"] == 1 and not tele["confirmed"] and any("'Correct'" in c for c in tele["checks"])
     S.scan(T)                                                    # no duplicates on a second scan
     assert len([a for a in S.activities(T) if a["source"] == "telecall"]) == 1
     S.activity_save(T, tele["number"], confirmed=True, retention="band lead 1 saal", retention_days=365)
@@ -122,7 +122,7 @@ def test_request_verify_erase_reply(dp):
     with session() as s:
         assert s.get(TeleLead, lid) is None
     rep = S.request_reply(T, r["number"])["card"]
-    assert "hata diya" in rep["data"]["text"]
+    assert "has been removed from" in rep["data"]["text"]
     d = S.decide_card(T, rep["id"], True, rep["hash"], by_tap=True)
     assert d["send"]["wa"].startswith("https://wa.me/919876543210")
     S.request_sent(T, r["number"], "WhatsApp")
@@ -203,11 +203,11 @@ def test_breach_flow_and_tick(dp, monkeypatch):
     S.tick(aware + timedelta(hours=67))
     S.tick(aware + timedelta(hours=67, minutes=5))
     al = [p for k, p in S.EVENTS if k == "dpo_alert" and p["kind"] == "breach"]
-    assert len(al) == 1 and "ghante baaki" in al[0]["say"]
+    assert len(al) == 1 and "hours left" in al[0]["say"]
     rep = S.breach_send(T, b["number"], "report")["card"]
     S.decide_card(T, rep["id"], True, rep["hash"], by_tap=True)
     monkeypatch.setattr(S, "clock", lambda: aware + timedelta(hours=80))
-    assert "72 ghante nikal" in S.breach_sent(T, b["number"], "report", "ref")["say"]
+    assert "72 hours had already passed" in S.breach_sent(T, b["number"], "report", "ref")["say"]
     S.breach_sent(T, b["number"], "people")
     assert S.breach_close(T, b["number"])["breach"]["status"] == "closed"
 
