@@ -2,7 +2,7 @@
 name: webapp-testing
 description: Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.
 license: Complete terms in LICENSE.txt
-when_to_use: website test karo, page check karo, button kaam kar raha hai ya nahi, form test, screenshot lo, console errors dekho, app ka UI test, Playwright, localhost app test
+when_to_use: website test karo, page check karo, button kaam kar raha hai ya nahi, form test, screenshot lo, console errors dekho, app ka UI test, Playwright, localhost app test, test my website, check the page, does the button work, take a screenshot
 ---
 
 # Web Application Testing

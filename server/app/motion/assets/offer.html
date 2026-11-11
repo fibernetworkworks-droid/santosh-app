@@ -70,7 +70,7 @@
   // D call to action
   const E = HM.el("div", "layer");
   const dates = D.dates ? HM.el("div", "dates", E, D.dates) : null;
-  const go = HM.el("div", "go", E, D.cta || "Hurry in!");
+  const go = HM.el("div", "go", E, D.cta || "Visit us soon");
   const brand = D.brand ? HM.el("div", "sub", E, D.brand) : null;
   const row = HM.el("div", "row", E);
   const pills = [D.phone && "📞 " + D.phone, D.place && "📍 " + D.place, D.upi && "UPI: " + D.upi].filter(Boolean).map(x => HM.el("div", "pill", row, x));

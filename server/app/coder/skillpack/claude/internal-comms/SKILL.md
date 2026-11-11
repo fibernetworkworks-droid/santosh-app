@@ -2,7 +2,7 @@
 name: internal-comms
 description: A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).
 license: Complete terms in LICENSE.txt
-when_to_use: weekly update, status report, hafte ka update, newsletter, FAQ jawab, incident report, leadership update, team ko update bhejna, 3P update, progress plans problems
+when_to_use: weekly update, status report, hafte ka update, newsletter, FAQ jawab, incident report, leadership update, team ko update bhejna, 3P update, progress plans problems, weekly team update, write an update for the team
 ---
 
 ## When to use this skill

@@ -2,7 +2,7 @@
 name: skill-maker
 description: Turn a task she repeats into a reusable Hoola skill: interview, draft within the limits, dry-run on sample asks, save only after her yes, then tune it from the desk numbers.
 license: Hoola original, written by Newtika Pvt Ltd. Inspired by the general idea of a create-test-improve loop for skills; contains no text from any third-party skill.
-when_to_use: naya skill, skill sudharo, skill kaam nahi kar raha, reusable skill, baar baar wala kaam, tareeka save karo, reusable instructions, skill improve
+when_to_use: naya skill, skill sudharo, skill kaam nahi kar raha, reusable skill, baar baar wala kaam, tareeka save karo, reusable instructions, skill improve, new skill, make a skill, the skill is not working, save this method
 ---
 
 # Making a Hoola skill

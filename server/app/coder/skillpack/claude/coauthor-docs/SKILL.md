@@ -2,7 +2,7 @@
 name: coauthor-docs
 description: A staged way to write a real document together with the user: proposals, specs, decision notes, reports, PRDs, letters. Ask what the reader must do, collect the raw material, agree an outline, draft one section at a time, then re-read it as the reader before it is called done.
 license: Hoola original, written by Newtika Pvt Ltd. Inspired by the general idea of a staged co-writing workflow; contains no text from any third-party skill.
-when_to_use: document likhna hai, proposal banao, spec likho, decision doc, report draft karo, PRD, RFC, ek saath likhein, draft ko behtar karo, letter ya note likhna, long document ka plan
+when_to_use: document likhna hai, proposal banao, spec likho, decision doc, report draft karo, PRD, RFC, ek saath likhein, draft ko behtar karo, letter ya note likhna, long document ka plan, write a document, write a proposal, draft a report, improve my draft
 ---
 
 # Co-authoring a document
