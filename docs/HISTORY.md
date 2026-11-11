@@ -1749,3 +1749,30 @@ Pins moved: test_v0317 / test_v0687 used "accounts" as the not-yet-live example 
 NOT VERIFIED: nothing has talked to the real WhiteBooks sandbox (the keys are not on the VPS yet) - the client is built to the published
 specs and the check exists to pin the real reply shapes the first time it runs. Not built (later phases): the GSTIN connect walk (A1), any
 filing, chat / voice tools, the phone screen.
+
+## v0.808.0 WAPAS - every version can come back, before launch too (built as 0.803; their GAME DEV ENGINE LOOK, HOOLA PROMPTING P1, LANGGRAPH G6, HOOLA CODE PHASE 6 and BAHI A0 took 0.803.0-0.807.0 - REBASE PROTOCOL, all kept; L7 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L7")
+Before: a version kept only its BUILT pages, so "go back" existed only for her live address (hosting.rollback, after
+launch); nothing undid one answer's change, and an edited message could not take the site back first.
+- SOURCE PER VERSION (`site/wapas.py`): `service._make_version` now snapshots the section files and the row's plan, look
+  (tokens + design kit), facts, styles, style, languages into `<site>/snaps/v<N>/` (JSON only; photos / media stay in place).
+- RESTORE ANY VERSION: POST /api/sites/{id}/versions/{v}/restore (and `website action=restore_version`): sections + fields
+  back, the hand-edit Undo stack cleared (it belonged to the other version), then a NEW version "Restored vN" through the
+  normal save (checked) - so History stays a straight line and the restore is undone the same way. Enquiries, orders,
+  app rows are DATA and never touched (said every time). Refused while a build runs; a version made before snapshots
+  says so plainly (it can still be Put live if it was published).
+- BOOKMARKS: `site_versions.bookmark` (nullable column, added by the schema self-heal); POST .../versions/{v}/bookmark
+  {name} (empty removes); a bookmarked version is always in the list, however old.
+- WHAT CHANGED: GET .../versions/{v}/diff?against= (default: the version before it): every changed code file (readable
+  code, unified diff, + / - counts, new / removed) + which design tokens changed; 60k cap.
+- STUDIO: History = Bookmarks, then All versions (current, Live, bookmark name), Changes (inline diff), star, Restore,
+  Put live... (the old live rollback, renamed so the two are not confused). Each reply that made a version: "Version N",
+  Bookmark, Undo this change (back to the version before that answer; restores are never counted as an answer's change).
+  Her message: Edit -> Revert and resend (the site goes back to the version before that message, then the edited words
+  go). The chat redraws when a new version lands so every reply gets its own footer.
+- E7 LIVE VIEW SURVIVES A RESTART (`site/stream.py`): slots are also written to `<SITE_DIR>/_live/<site>.json` (at most
+  once a second while words stream, at once on finish / looks / clear); a restart or a second worker reads them back
+  (sequence number continues, a section that was mid-write is marked stale until the build picks it up again).
+Tests: test_v0808_wapas.py (8: any version back as a new version + undo the restore + refusals, data untouched,
+bookmarks + diff routes, the agent action, the live view after a simulated restart, source wiring, a Playwright walk:
+a change -> Version + Undo this change -> undone; Edit -> Revert and resend; History: Changes, Bookmark, Restore).
+NOT VERIFIED live: a real restart of her server during a build (the restart is simulated by clearing the memory).

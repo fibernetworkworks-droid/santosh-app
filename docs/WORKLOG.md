@@ -2966,3 +2966,9 @@ Task ID: v0.807.0 BAHI A0 (built as 0.806)
 Task: owner "GO A0" on docs/ACCOUNTS_EMPLOYEE_PLAN.md - the GST & Accounts employee's foundation.
 Work Log: server/app/bahi/ (register + adapters + locks + trail, rules as data, WhiteBooks client + sandbox contract check, overview, /api/bahi/*); Hub row live as GST & Accounts; console desk bahi.js; vps-ops wb_check; 14 tests incl. a browser walk; main moved to 0.806 meanwhile - merged, re-versioned 0.807.
 Stage Summary: on branch claude/exciting-hawking-113x8i (main on her word). Next: she puts the WhiteBooks SANDBOX keys in the VPS .env + runs vps-ops wb_check (pins the real reply shapes); then GO A1 (connect her GSTIN).
+
+---
+Task ID: v0.808.0 WAPAS (L7)
+Task: owner "GO L7" - E5 restore any version, bookmarks, undo per reply, diffs, revert and resend; E7 durable live slots.
+Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snapshot; site_versions.bookmark; 3 routes + website action=restore_version; stream.py on-disk slots; Studio History / reply footer / Edit + Revert and resend; 8 tests incl. a browser walk.
+Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.
