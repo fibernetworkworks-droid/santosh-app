@@ -54,7 +54,7 @@ _COND = ("diabetes", "sugar", "bp", "blood pressure", "hypertension", "thyroid",
 
 def material_facts(answers: list[dict], history_notes: str = "") -> dict[str, Any]:
     if not answers:
-        raise ValueError("answers rows do: q, answer (yes/no/text).")
+        raise ValueError("Give answers as rows: q, answer (yes/no/text).")
     hist = (history_notes or "").lower()
     found = sorted({c for c in _COND if re.search(r"\b" + re.escape(c) + r"\b", hist)})
     flags, said_no = [], 0
