@@ -125,7 +125,7 @@ def test_script_is_personal_and_has_no_false_promises(env, fake_ai):
     out = S.make_script(T, "Ramesh")
     sc = out["script"]
     assert "Ramesh" in sc["opener"] and sc["objections"][0]["if"] == "price zyada hai"
-    assert "guaranteed" not in sc["value"].lower() and "jhoota vaada" in sc["warning"]
+    assert "guaranteed" not in sc["value"].lower() and "false promises" in sc["warning"]
     assert sc["wa_link"].startswith("https://wa.me/919876543210")
     assert S.get_lead(T, "Ramesh")["script"]["opener"]
 
@@ -135,7 +135,7 @@ def test_a_person_calls_hoola_logs_and_learns(env, fake_ai):
     S.save_settings(T, business="Greenview Homes", caller_name="Asha", start_hour="09:00", end_hour="21:00")
     S.add_lead(T, "Ramesh", "9876543210", "website", need="2BHK")
     st = S.start_call(T, "Ramesh")
-    assert st["tel"] == "tel:9876543210" and "khud" in st["say"]
+    assert st["tel"] == "tel:9876543210" and "yourself" in st["say"]
     with session() as s:                                                       # she was away 3 minutes on the call
         c = s.get(S.TeleCall, st["call_id"])
         c.started_at = now() - timedelta(minutes=3)

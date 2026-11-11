@@ -94,7 +94,7 @@ def test_enrol_needs_the_persons_own_consent(vid):
         heard["live"] = True
         short = c.post("/api/voiceid/enrol", json={"name": "Asha", "relation": "maa"}).json()
         r = c.post(f"/api/voiceid/enrol/{short['enrol_id']}", files={"file": ("a.wav", wav(speech(MAA_HZ, 4)), "audio/wav")})
-        assert r.status_code == 400 and "kam aayi" in r.json()["detail"]
+        assert r.status_code == 400 and "Too little speech" in r.json()["detail"]
         s, r = enrol(c, "Asha", "maa", MAA_HZ)
         assert r.status_code == 200, r.text
         m = r.json()

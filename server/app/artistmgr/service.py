@@ -960,7 +960,7 @@ def forget(tenant: str, gig: str, actor: str = "owner") -> dict:
         if g.status not in ("done", "cancelled"):
             raise ArtistError("Only after the gig is done or cancelled.")
         g.phone, g.email, g.offer_text, g.notes = "", "", "", ""
-        g.promoter = "Promoter (hataya)" if g.promoter else ""
+        g.promoter = "Promoter (removed)" if g.promoter else ""
         g.forgotten = True
         for c in s.scalars(select(ArtistmgrCard).where(ArtistmgrCard.ref_id == g.id)).all():
             c.show = _dump({"gig": g.number, "hataya": True})

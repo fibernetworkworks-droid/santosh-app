@@ -107,7 +107,7 @@ def test_no_answer_asks_her_then_her_word_counts(bz):
     out = upiresult.record("default", op["txn_ref"], "", "cancelled")
     assert out["status"] == "awaiting_payment" and out["card"]["ask"] and out["card"]["blocked"]
     out = upiresult.record("default", op["txn_ref"], answer="done")
-    assert out["status"] == "completed" and "aapne bataya" in out["say"]
+    assert out["status"] == "completed" and "as you said" in out["say"]
     st, meta, _ = _txn(op["txn_ref"])
     assert meta["upi"]["said_by"] == "owner"
     op2 = _send(bz, amount=300)

@@ -176,7 +176,7 @@ def test_a_built_module_is_proved_by_its_own_stories(droid_env):
     got = AR.build(_app(aid), "complaints")           # run_tests on
     assert got["proof"]["ran"] is True, got["proof"]
     assert got["proof"]["pass"] >= 1 and got["proof"]["fail"] == 0, got["proof"]
-    assert "kahaniyan pass" in got["says"]
+    assert "stories passed" in got["says"]
     assert got["ok"] is True
 
 

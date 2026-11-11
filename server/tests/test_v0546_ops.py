@@ -161,7 +161,7 @@ def test_failures_raise_an_alert_only_when_there_is_enough_to_judge(droid_env):
     OPS.flush()
     hit = [a for a in OPS.rules(_app(aid)) if a["key"] == "errors"]
     assert hit and hit[0]["level"] == "bad"
-    assert "fail ho rahi hain" in hit[0]["say"]
+    assert "calls are failing" in hit[0]["say"]
 
 
 def test_she_is_told_once_a_day_per_kind(droid_env):
@@ -210,7 +210,7 @@ def test_the_card_says_what_is_not_measured(droid_env):
     card = OPS.dashboard(_app(aid))
     assert card["traffic"]["calls"] == 0
     assert any("no call" in g for g in card["not_measured"])
-    assert any("kharche ka koi hisaab" in g for g in card["not_measured"])
+    assert any("no cost has been recorded" in g for g in card["not_measured"])
     assert "people" in card and "cost" in card and "field" in card
 
 
