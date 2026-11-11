@@ -1817,8 +1817,11 @@ def hoola_prompting_page():
     prompts. Same sign-in as the console (its token in this browser), the /api/prompting routes, the same strict CSP."""
     if not getattr(get_settings(), "prompting_page", True):
         return RedirectResponse("/console/", status_code=307)
-    return FileResponse(STATIC / "console" / "promptapp.html", headers={
-        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+    # the file stamps are written at serve time: a release that forgets this file can no longer leave her browser on
+    # an old prompting.js (found live: the stamps sat at 0.807.0 while the server ran 0.819.0)
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "promptapp.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
