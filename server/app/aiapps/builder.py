@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D1: her one line about her business -> a CHECKED soul (nothing saved).
+"""v0.785 HOOLA AI APPS - D1: her one line about her business -> a CHECKED soul (nothing saved).
 
 The idea (Dify's one-sentence generator, ideas only): a planner call writes the whole draft, a validator refuses
 anything Hoola cannot do, bad output gets ONE repair round. Hoola's own laws on top:

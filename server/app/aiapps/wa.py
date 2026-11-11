@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D2: an AI app answering on HER business WhatsApp number.
+"""v0.785 HOOLA AI APPS - D2: an AI app answering on HER business WhatsApp number.
 
 When one of her LIVE apps names a business phone_number_id in `channels.whatsapp`, that number's customer messages are
 answered by the app (runtime channel 'whatsapp', one session per customer wa_id) instead of the Employee brain. The

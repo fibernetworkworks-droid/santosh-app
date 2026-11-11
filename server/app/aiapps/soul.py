@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - the SOUL: everything an AI app is, as one checked object.
+"""v0.785 HOOLA AI APPS - the SOUL: everything an AI app is, as one checked object.
 
 A soul may only promise what Hoola can do. The checker refuses an unknown action, an unknown field type, an unsafe
 setting; everything she writes is kept as HER words (never re-written by a model behind her back).
@@ -145,3 +145,18 @@ def check(raw: Any) -> dict[str, Any]:
 
 def hash_of(soul: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(soul, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
+
+
+_BLANK = re.compile(r"\[[^\[\]\n]{2,60}\]")
+
+
+def blanks(soul: dict[str, Any]) -> list[str]:
+    """Template placeholders still unfilled ('[Shop name]'). A live app must never show one to a customer."""
+    parts = [soul.get("about") or "", soul.get("opening") or "", soul.get("notice") or "", soul.get("persona") or ""]
+    parts += list(soul.get("facts") or []) + list(soul.get("suggested") or [])
+    found: list[str] = []
+    for p in parts:
+        for m in _BLANK.findall(str(p)):
+            if m not in found:
+                found.append(m)
+    return found[:12]

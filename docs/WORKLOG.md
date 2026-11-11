@@ -2888,7 +2888,7 @@ Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits +
 Task ID: HI-PREMIUM
 Date: 2026-11-11
 Task: Hoola Interactive premium redesign (owner: "it look stale and old design ... more premium ... with some animation")
-Done: v0.785.0 - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
+Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
 (folding sidebar, one heading per page, drawn dropdowns, one control scale, editor rows that do not wrap, thumbnails with
 content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
 Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).

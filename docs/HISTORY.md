@@ -897,7 +897,54 @@ the build carrying picks, look 1 built from her palette, source wiring, a Playwr
 'Your choices' look) and 390 px (fits, Back keeps her words)).
 NOT VERIFIED live: a real Opus build of look 1 from her picks on her server (tests use the fake site AI).
 
-## v0.785.0 HOOLA INTERACTIVE, PREMIUM PASS (owner: "IT LOOK STALE AND OLD DESIGN MAKE IT MORE PERFECT, ALINE TEXT PROPERLY, FIX ALL BUTTON, ICON, TAB MESSY THINGS --- MAKE IT MORE PREMIUM, ADVANCE AND WITH SOME ANIMATION")
+## v0.785.0 HOOLA AI APPS — AIs that answer HER CUSTOMERS, D0-D5 end to end (11 Nov 2026; owner: "D0 ... D5 --- DO THIS -- DEPLOY A PARALLEL AGENTS TO FINSH THIS END TO END")
+
+After the Dify read for app building (`docs/research/dify/00_APP_BUILDING.md`; ideas only - their licence bars multi-tenant
+use of the source and claims a design patent). Contract: `docs/AIAPPS_PLAN.md`. The core was written first, then four
+parallel agents built on it in their own worktrees; everything merged, mounted and walked in a real browser here.
+
+An AI app sits BESIDE the business AI Employee (WhatsApp inbox v0.59, Seva, Call Centre) and reuses its engines; many apps
+per business. `server/app/aiapps/`:
+- **D0 core** - `models.py` (ai_apps / ai_app_versions / ai_app_keys / ai_app_sessions / ai_app_messages, init_db + self-heal),
+  `soul.py` (the checked settings: about, persona, facts, knowledge, ACTIONS handover / ticket / slots / book only, form,
+  refuse topics, language, monthly rupee cap, DPDP notice; `blanks()`), `store.py` (draft + immutable versions; publish =
+  HER tap bound to the draft hash, 409 stale / 422 unfixed / 422 unfilled [blanks]; restore = old soul published again as
+  the newest version), `runtime.py` (the answer: TRAPS in code first - OTP / PIN / card, payments + refunds, other
+  customers' data, "ignore your instructions", her refuse topics; then her approved answers (gyaan annotations), Seva
+  knowledge, real slots / booking / Seva tickets; the model LAST, from her facts only, under her monthly cap - a reply with a
+  number not in her facts or a claim nobody did is thrown away; a model that fails = an honest hand-over; OTP / PIN values
+  masked before logging).
+- **D1 builder** (agent A) - `builder.py` her one line -> a checked soul, one repair round, invented numbers dropped,
+  missing details as questions; `POST /api/aiapps/plan`.
+- **D2 publishing** (agent B) - `public.py` hosted chat page `/ai/{code}` (self-contained, strict CSP, DPDP notice + consent
+  before the first message, textContent only), `/ai/{code}/embed.js` bubble (sandboxed iframe), `/api/aiapp-pub/{code}/*`;
+  `keys.py` API keys (shown once, sha256 kept, rpm / rph / concurrent limits -> 429) + `POST /api/aiapp-api/v1/chat`;
+  `mcp.py` `/mcp/aiapp/{code}` (initialize / tools/list / tools/call ask, app key); `wa.py` + a guarded hook in
+  `employee/inbox.py` - a live app bound to her business number answers through the existing send path (window, STOP,
+  takeover unchanged; unbound numbers byte-identical). Only a LIVE app with that channel on answers the public.
+- **D3 run + improve** (agent C) - `api.py` owner routes, `ops.py` logs (masked), correct-an-answer (into her approved
+  answers; the same question is answered with her words next time), stats (customer channels only; satisfaction 'no
+  ratings yet', never 0%), gaps, cost alerts once a month at 80% / 100% into her chat (worker slot `aiapp_ops_jobs`).
+- **D4 proof** (agent D) - `proof.py` shop / clinic / school on `__aiappproof__`: 18 normal questions + 22 traps, every trap
+  refused; correction, cap, pause, stale hash, versions + restore and the number guard proved; `python -m app.aiapps.proof`,
+  vps-ops `aiapp_proof`.
+- **D5 templates** (agent A) - `templates.py` 13 trades (kirana, clinic, school, salon, restaurant, coaching, real estate, CA,
+  gym, homestay, repair, pharmacy-info, tiffin form) with a trial that saves nothing; `dsl.py` export (no keys / logs / codes)
+  + import with a dependency check, lands as a draft.
+- Tool `ai_app` (`agent/aiapp_tools.py`; publish_card = a card for HER tap, never a publish), registry 624 -> 625; console page
+  AI Apps (`static/console/aiapps.js` + `.css`, sidebar row).
+
+**Found by the browser walk and fixed here:** a copied template could go live with '[Shop name]' showing to customers
+(publish now refuses unfilled blanks, listed under 'Must be fixed'); a model outage told the visitor 'something went wrong'
+(now the honest hand-over line); the Numbers tab printed the raw object; a JS `null` child printed the word 'null'.
+**Found by agent C:** a typed OTP was stored unmasked in the log (now masked in the core).
+
+Tests: test_v0772_aiapps_{core,builder,publish,ops,proof,console,e2e}.py = 55 passed; tool-count pins 624 -> 625.
+**NOT VERIFIED:** no real customer has used one; every answer here came from a fake model (the sandbox has no model key);
+rate limits are per process (reset on restart, not shared across workers); the phone app has no AI Apps screen (console
+only); WhatsApp delivery through Meta not tried.
+
+## v0.786.0 HOOLA INTERACTIVE, PREMIUM PASS (built as 0.785; their HOOLA AI APPS took 0.785.0; owner: "IT LOOK STALE AND OLD DESIGN MAKE IT MORE PERFECT, ALINE TEXT PROPERLY, FIX ALL BUTTON, ICON, TAB MESSY THINGS --- MAKE IT MORE PREMIUM, ADVANCE AND WITH SOME ANIMATION")
 
 No server change. Same twelve pages, same `/api/interactive/studio/*` and `/api/interactive/hub/*` routes, same data. Only
 `static/console/interactive.js`, the `#hiRoot` block in `v2.css` and one line of `studio.js` changed.
