@@ -946,7 +946,7 @@ def tasks_from_review(tenant: str, payload: dict[str, Any]) -> dict[str, Any]:
             s.add(t)
             s.flush()
             v = task_view(t)
-        v["say"] = f"{number}: new task from App Review (draft). To start it, say 'start{number}'."
+        v["say"] = f"{number}: new task from App Review (draft). To start it, say 'start {number}'."
         _publish(tenant, "devsahayak_task", {"task": v, "say": v["say"]})
         out.append({"id": v["id"], "number": number, "title": v["title"]})
     return {"tasks": out, "repo": r.full_name if r else "", "status": "draft",

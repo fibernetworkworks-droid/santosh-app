@@ -120,7 +120,7 @@ def test_project_engine_rounds_and_extra_round(ed, monkeypatch):
     from app.videoedit import service as V
     jv = V.get(T, job)
     assert jv["platform"] == "reel" and "Diwali reel" in jv["brief"] and jv["length_s"] == 30
-    with pytest.raises(S.EditError, match="pehle se"):
+    with pytest.raises(S.EditError, match="already has an edit"):
         S.edit_start(T, num)
     _render(job, 1)
     sy = S.sync(T, num)
@@ -132,13 +132,13 @@ def test_project_engine_rounds_and_extra_round(ed, monkeypatch):
     c = rv["card"]
     with pytest.raises(S.EditError, match="tap"):
         S.decide(T, c["id"], True, c["hash"])
-    with pytest.raises(S.EditError, match="badal"):
+    with pytest.raises(S.EditError, match="changed"):
         S.decide(T, c["id"], True, "wrong", by_tap=True)
     d = S.decide(T, c["id"], True, c["hash"], by_tap=True)
     assert "wa.me/919822012345" in d["draft"]["wa"] and "hoola_v1.mp4" in d["draft"]["text"]
     # client notes -> round 1
     n = S.comments_add(T, num, "0:03 logo bada karo\n0:12 spelling 'Glow'\nek aur reel bhi bana do", version=1)
-    assert len(n["comments"]) == 3 and "quote se bahar" in n["say"]
+    assert len(n["comments"]) == 3 and "outside the quote" in n["say"]
     seen = {}
     real = V.revise
 
@@ -186,7 +186,7 @@ def test_quote_invoice_paid_delivery(ed):
     assert card["show"]["total"] == 8260
     # a newer draft makes the old card stale
     S.quote_make(T, num, [{"code": "reel", "qty": 1}])
-    with pytest.raises(S.EditError, match="badal"):
+    with pytest.raises(S.EditError, match="changed"):
         S.decide(T, card["id"], True, card["hash"], by_tap=True)
     assert S.cards(T, "stale")[0]["id"] == card["id"]
     S.quote_make(T, num, [{"code": "reel", "qty": 2}, {"what": "Subtitles", "qty": 1, "rate": 1000}], rounds=2)
@@ -200,7 +200,7 @@ def test_quote_invoice_paid_delivery(ed):
     assert inv["show"]["total"] == 4130 and inv["show"]["upi"] == "framecut@okaxis"
     di = S.decide(T, inv["id"], True, inv["hash"], by_tap=True)
     assert "upi://pay?pa=framecut%40okaxis" in di["draft"]["upi"] and "am=4130.00" in di["draft"]["upi"]
-    with pytest.raises(S.EditError, match="pehle hi"):
+    with pytest.raises(S.EditError, match="already"):
         S.invoice_request(T, num, "advance")
     with pytest.raises(S.EditError, match="owner"):
         S.paid(T, num, 4000, actor="staff:2")
@@ -285,7 +285,7 @@ def test_refund_fingerprint_api_and_tools(ed, monkeypatch):
     with pytest.raises(ToolError, match="owner"):
         asyncio.run(EDITDESK_HANDLERS["edit_desk"](ctx, action="paid", project=out["project"]["number"], amount=10))
     ctx.actor = "customer:wa:9822012345"
-    with pytest.raises(ToolError, match="graahak"):
+    with pytest.raises(ToolError, match="customer"):
         asyncio.run(EDITDESK_HANDLERS["edit_desk"](ctx, action="notes", project=out["project"]["number"], text="0:10 cut"))
     ctx.actor = "owner"
     seen = asyncio.run(EDITDESK_HANDLERS["edit_desk_dekho"](ctx, what="project", project=out["project"]["number"]))

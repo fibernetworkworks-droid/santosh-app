@@ -253,7 +253,7 @@ def settings(tenant: str) -> dict:
 
 def save_settings(tenant: str, actor: str = "owner", **kw) -> dict:
     if not is_owner(actor):
-        raise EditError("Owner only.")
+        raise EditError("Only the owner can do this.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         for k, v in kw.items():
@@ -1033,7 +1033,7 @@ def quote_make(tenant: str, ref: str, lines: list | None = None, rounds: int | N
 def quote_accept(tenant: str, ref: str, actor: str = "owner") -> dict:
     """The client said yes to the quote that went (her word): rounds from it, advance invoice can follow."""
     if not is_owner(actor):
-        raise EditError("Owner only.")
+        raise EditError("Only the owner can do this.")
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         q = s.scalars(select(EditdeskQuote).where(EditdeskQuote.project_id == p.id, EditdeskQuote.status == "sent")
@@ -1131,7 +1131,7 @@ def invoice_request(tenant: str, ref: str, kind: str = "final", amount: Any = No
 def paid(tenant: str, ref: str, amount: Any, tds: Any = None, mode: str = "upi", utr: str = "", invoice: str = "", actor: str = "owner") -> dict:
     """She records money that reached HER account (Hoola never takes it). TDS the client deducted counts against the invoice."""
     if not is_owner(actor):
-        raise EditError("Owner only.")
+        raise EditError("Only the owner can do this.")
     amt, td = _num(amount), _num(tds) or 0.0
     if amt is None or amt < 0:
         raise EditError("How much money came in?")
@@ -1316,7 +1316,7 @@ def deliver_request(tenant: str, ref: str, actor: str = "owner", conv: str = "")
 
 def cancel(tenant: str, ref: str, reason: str, refund: Any = None, actor: str = "owner", conv: str = "") -> dict:
     if not is_owner(actor):
-        raise EditError("Owner only.")
+        raise EditError("Only the owner can do this.")
     if not (reason or "").strip():
         raise EditError("Write the reason for cancelling.")
     amt = _num(refund)
@@ -1564,7 +1564,7 @@ def _do_refund(tenant: str, card_id: str, show: dict, conv: str) -> dict:
 
 def refund_sent(tenant: str, ref: str, utr: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise EditError("Owner only.")
+        raise EditError("Only the owner can do this.")
     with _LOCK, session() as s:
         p = _project(s, tenant, ref)
         ex = _j(p.delivered, {})
@@ -1837,7 +1837,7 @@ def report(tenant: str, days: int = 30) -> dict:
 def forget(tenant: str, client: str, actor: str = "owner") -> dict:
     """DPDP Act 2023: a client's personal details removed once their projects are closed / cancelled; numbers stay for accounts."""
     if not is_owner(actor):
-        raise EditError("Owner only.")
+        raise EditError("Only the owner can do this.")
     with _LOCK, session() as s:
         c = _client(s, tenant, client)
         open_p = s.scalars(select(EditdeskProject).where(EditdeskProject.client_id == c.id,

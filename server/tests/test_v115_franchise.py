@@ -44,8 +44,8 @@ def test_rules():
     assert R.break_even(100000, 50) == 200000
     assert R.licence_status("fssai", date(2026, 11, 10), DAY)["state"] == "late_window"
     assert R.licence_status("fssai", date(2027, 1, 30), DAY)["state"] == "renew_now"
-    assert "3 guna" in R.licence_status("fssai", date(2026, 9, 1), DAY)["text"]
-    assert "naya licence" in R.licence_status("fssai", date(2026, 1, 1), DAY)["text"]
+    assert "3 times" in R.licence_status("fssai", date(2026, 9, 1), DAY)["text"]
+    assert "new licence" in R.licence_status("fssai", date(2026, 1, 1), DAY)["text"]
     assert R.licence_status("trade", date(2027, 6, 1), DAY)["state"] == "ok"
 
 

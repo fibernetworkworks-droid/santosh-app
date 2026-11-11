@@ -173,7 +173,7 @@ def test_real_custom_render_and_checks(env, tmp_path):
     mo.check_custom(good, "9:16")
     jitter = good.replace("b.style.left=(5+t*20)", "b.style.left=(5+Math.random()*60+t*0)").replace("HM.badge();", "HM.badge();window.R=Math.random;")
     # Math.random is seeded by the renderer, but calling it inside seek still changes frame to frame: caught
-    with pytest.raises(mo.MotionError, match="alag frame"):
+    with pytest.raises(mo.MotionError, match="different frame"):
         mo.check_custom(jitter, "9:16")
     blank = '<!doctype html><html><body><div id="stage"></div><script>window.HOOLA={duration:3,seek(t){}}</script></body></html>'
     with pytest.raises(mo.MotionError):

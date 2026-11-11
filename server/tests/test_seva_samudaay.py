@@ -180,7 +180,7 @@ def test_moderation_only_on_her_tap(sam):
     with pytest.raises(ToolError):
         run("samudaay", action="moderate", kind="ban", member="Admin Anil", reason="x")   # admins are never targets
     noreason = S.request_action(T, "mute", cid, member="Spammer Sam")
-    with pytest.raises(S.SamError, match="Wajah"):
+    with pytest.raises(S.SamError, match="reason"):
         S.decide(T, noreason["id"], True, noreason["hash"], by_tap=True)
     done = S.decide(T, card["id"], True, card["hash"], by_tap=True)
     assert done["status"] == "done" and fake.calls == [("remove", "s1")]

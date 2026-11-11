@@ -97,7 +97,7 @@ def test_web_and_youtube_sources(ai):
         assert "transcript" in kinds["youtube"]["note"].lower()       # no Gemini key in tests: title only, says so
     finally:
         ingest.set_http(None)
-    with pytest.raises(ingest.SourceError, match="andar ke network"):
+    with pytest.raises(ingest.SourceError, match="internal network"):
         ingest._public("http://127.0.0.1/admin")
 
 
