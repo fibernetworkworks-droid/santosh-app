@@ -79,7 +79,8 @@ API = """- 3D KIT: this game's files include hoola_3d.gd (the Hoola3D autoload, 
   * `Hoola3D.ground(level, Vector2(w, d), color)`; `Hoola3D.block(level, centre, size, color)` = wall / floor /
     platform (StaticBody3D); `Hoola3D.moving_block(level, from, to, size, color, seconds)` carries the player;
     `Hoola3D.tree(level, pos, height)` = decoration; `Hoola3D.mat(color, glow)` -> StandardMaterial3D for your own meshes;
-    `Hoola3D.model(level, key, pos, size)` places one of her approved 3D models or returns null (keep a drawn fallback).
+    `Hoola3D.model(level, key, pos, size)` places one of her approved 3D models or returns null (keep a drawn fallback);
+    `Hoola3D.paint(node, key, tile_m, fallback_color)` puts one of her approved textures on a block / the ground.
   * `var p := Hoola3D.spawn_player(level, pos, color, speed, jump_height, hp)` -> CharacterBody3D that already walks,
     jumps (keyboard arrows / WASD / Space AND touch stick + jump button), takes knock-back and respawns after a fall.
     A jump clears `jump_height` metres: make every step lower than that. Then `Hoola3D.follow_camera(p, 7.5)` (third

@@ -17,7 +17,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.811.0"
+    assert APP_VERSION == "0.813.0"
 
 
 OLD = """<html><body><nav><a href="./">Home</a><a href="menu/">Menu</a><a href="contact/">Contact</a></nav>

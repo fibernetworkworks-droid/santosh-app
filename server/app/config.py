@@ -163,6 +163,15 @@ class Settings(BaseSettings):
     dev_ws_clear_chars: int = 180000        # ... past this, old tool output is trimmed (brain.trim)
     dev_ws_compact_chars: int = 480000      # ... past this, the older conversation is summarised (engine.compact)
     dev_ws_keep_days: int = 14              # ... an idle session's working copy is kept this long
+    # v0.794 ECC AGENTS (owner: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE"): devsahayak/ecc/ (63 agents) + subagent.py
+    dev_ecc_agents: bool = True             # the coder gets the `agent` tool + the roster (Claude Code-style subagents)
+    dev_ecc_rules: bool = True              # ECC's coding rules for the repo's languages in the coder's system prompt
+    dev_ecc_rules_chars: int = 9000         # ... at most this many characters of them
+    dev_ecc_gate: bool = True               # ECC's pre-commit check on the diff before `done` is accepted (one clean-up chance)
+    dev_agent_steps: int = 30               # model steps for one agent
+    dev_agent_minutes: int = 12             # minutes for one agent
+    dev_agent_max: int = 10                 # agents per round
+    dev_agent_parallel: int = 4             # read / run agents asked in one reply that run at the same time
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)

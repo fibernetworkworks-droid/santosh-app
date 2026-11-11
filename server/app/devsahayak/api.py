@@ -94,6 +94,15 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def overview(tenant: str = Depends(current_tenant)):
         return await run(S.overview, tenant)
 
+    @r.get("/agents")
+    async def agents(tenant: str = Depends(current_tenant)):
+        """v0.794 the ECC agents Hoola Code can hand work to (and the ECC agents left out, with why)."""
+        from . import ecc
+        from . import subagent as SA
+        rows = [{k: a[k] for k in ("name", "title", "group", "tools", "when")} for a in ecc.catalog().values()]
+        return {"on": SA.on(), "agents": sorted(rows, key=lambda a: (a["group"], a["name"])),
+                "not_added": [{"name": k, "why": v} for k, v in sorted(ecc.NOT_ADDED.items())], "credit": ecc.CREDIT}
+
     @r.get("/settings")
     async def get_settings(tenant: str = Depends(current_tenant)):
         return await run(S.settings, tenant)
