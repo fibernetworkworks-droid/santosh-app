@@ -87,6 +87,11 @@ class DevTask(Base):
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)    # v0.768 her own name for the session (rename)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # v0.768 archived = out of the list, kept
     auto_fix: Mapped[bool | None] = mapped_column(Boolean, nullable=True)        # Phase 2: False = a red CI run on THIS PR is not fixed by itself (None = on)
+    mode: Mapped[str | None] = mapped_column(String(8), nullable=True)          # Phase 3: ask | auto | plan (None = her setting decides)
+    model: Mapped[str | None] = mapped_column(String(80), nullable=True)        # Phase 3: the model she picked for THIS session (None = the server's)
+    effort: Mapped[str | None] = mapped_column(String(8), nullable=True)        # Phase 3: low | medium | high
+    attach: Mapped[str | None] = mapped_column(Text, nullable=True)             # Phase 3: [{name, kind: image|text, size, file | text}] she attached
+    cost: Mapped[str | None] = mapped_column(Text, nullable=True)               # Phase 3: {usd, calls, tok_in, tok_out} of this session's own model calls
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 

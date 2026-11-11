@@ -3783,7 +3783,7 @@ html.human #app .landing .halo{display:none}
 #app .hcd-page h1{margin-bottom:10px}
 #app .hcd-lede{font-size:13.5px;line-height:1.55;color:var(--mut);margin:18px auto}
 #app .hcd-home .hcd-lede{text-align:center}
-#app .hcd-ask{position:relative;border:1px solid var(--hair2);border-radius:18px;padding:14px 56px 14px 16px;background:var(--surface);box-shadow:var(--sh)}
+#app .hcd-ask{position:relative;border:1px solid var(--hair2);border-radius:18px;padding:14px 16px 54px;background:var(--surface);box-shadow:var(--sh)}
 #app .hcd-ask:focus-within,#app .hcd-cp:focus-within{border-color:var(--pri)}
 #app .hcd-ask textarea{display:block;width:100%;box-sizing:border-box;border:0;outline:none;resize:none;background:transparent;font:400 15.5px/1.55 var(--fd);color:var(--ink)}
 #app .hcd-ask .hcd-send{position:absolute;right:12px;bottom:12px}
@@ -3878,6 +3878,24 @@ html.human #app .landing .halo{display:none}
 #app .hcd-stage.now span{font-weight:600}
 #app .hcd-stage small{font-size:12px;color:var(--mut)}
 #app .hcd-ring{width:10px;height:10px;margin:0 3px;border-radius:50%;border:1.5px solid var(--hair2);box-sizing:border-box;display:inline-block}
+/* Phase 3: the composer - "+", the tray of what she attached, the one row of settings, the usage ring */
+#app .hcd-plus{position:absolute;left:12px;bottom:12px;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--hair2);border-radius:10px;background:var(--bg);color:var(--lit);cursor:pointer}
+#app .hcd-plus:hover{border-color:var(--mut);color:var(--ink)}
+#app .hcd-tray{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+#app .hcd-tray[hidden]{display:none}
+#app .hcd-att{display:inline-flex;align-items:center;gap:6px;max-width:260px;min-height:30px;padding:2px 4px 2px 8px;border:1px solid var(--hair2);border-radius:9px;background:var(--sunk);font-size:12.5px;color:var(--ink)}
+#app .hcd-att>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .hcd-att small{color:var(--mut);font-size:12px;white-space:nowrap}
+#app .hcd-att img{width:24px;height:24px;border-radius:5px;object-fit:cover}
+#app .hcd-att .hcd-icb{width:22px;height:22px}
+#app .hcd-att .hcd-ic{width:14px;height:14px}
+#app .hcd-atts{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px;margin-top:8px}
+#app .hcd-atts .hcd-att{background:var(--bg);padding-right:8px}
+#app .hcd-pic{width:120px;height:90px;border-radius:9px;object-fit:cover;background:var(--glass3,var(--hair2));border:1px solid var(--hair2)}
+#app .hcd-chip.fixed{padding:0 10px;color:var(--lit);font-weight:500;cursor:help}
+#app .hcd-chip select{max-width:170px;text-overflow:ellipsis}
+#app .hcd-askrow .hcd-chip{padding-left:6px}
+#app .hcd-use{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
 /* Phase 2: the Changes pane (beside the chat), comments on lines, the queued-comments strip */
 #app .hcd-pane{flex:1.35 1 0;min-width:0;display:flex;flex-direction:column;border-left:1px solid var(--line);background:var(--bg);container:hcdp / inline-size}
 #app .hcd-pane[hidden]{display:none}

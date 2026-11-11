@@ -12,6 +12,7 @@ import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi.responses import Response
 
 
 def make_router(require_key, current_tenant) -> APIRouter:
@@ -92,7 +93,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         files = b.get("files") or []
         return await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
-                         int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""))
+                         int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""),
+                         str(b.get("base") or ""), str(b.get("mode") or ""), str(b.get("model") or ""), str(b.get("effort") or ""),
+                         b.get("images"), b.get("docs"))
+
+    @r.get("/tasks/{tid}/attach/{index}")
+    async def attachment(tid: str, index: int, tenant: str = Depends(current_tenant)):
+        raw, kind = await run(S.attachment, tenant, tid, index)       # Phase 3: a picture she attached, for her own bubble
+        return Response(content=raw, media_type=kind, headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"})
 
     @r.post("/tasks/{tid}/note")
     async def note(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
