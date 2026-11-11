@@ -215,7 +215,7 @@ def test_wiring_in_voice_and_api(env, qdir, monkeypatch):
 def test_phone_screen_wired():
     dart = (ROOT / "lib/ui/call_quality_screen.dart").read_text()
     assert "reply_start_ms_p99" in dart and "dead_air_s" in dart and "talk_over_per_100" in dart
-    assert "pehle se behtar" in dart and "ke muqable" in dart and "_alert(alert)" in dart
+    assert "pehle se behtar" in dart and "vs v${cmp['against']}" in dart and "_alert(alert)" in dart
 
 
 def test_version():
