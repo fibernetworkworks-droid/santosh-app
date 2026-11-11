@@ -373,7 +373,7 @@ def _run(r: AppProject) -> None:
                 code_only.add(sid)
                 _states(r.id, {sid: "code"})
                 continue
-            _states(r.id, {sid: "fixing"}, f"Fixing: {sid}")
+            _states(r.id, {sid: "fixing"}, f"Fixing a screen that did not compile: {sid}")
             fixed = _fix(sid, all_ids, "COMPILE ERRORS (Xcode):\n- " + "\n- ".join(el), swift[sid])
             if fixed:
                 swift[sid] = fixed
