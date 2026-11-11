@@ -1,0 +1,23 @@
+{
+ "base": "u8-opamp-response",
+ "rig": "ug8-analog-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "lf351",
+   "title": "Op-amp frequency response and gain-bandwidth with an LF351",
+   "sample": "LF351 JFET-input op-amp",
+   "method": "inverting and non-inverting",
+   "unknown": "the gain-bandwidth product of the LF351",
+   "params": {
+    "A0": 100000.0,
+    "fa": 40.0
+   },
+   "note": "The JFET-input LF351 has about four times the 741's gain-bandwidth product, so each gain keeps its gain four times further up in frequency.",
+   "source": {
+    "title": "LF351 data sheet (Texas Instruments): gain-bandwidth 4 MHz, open-loop gain about 100 V/mV",
+    "note": "From memory - verify"
+   }
+  }
+ ]
+}

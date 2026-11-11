@@ -1,0 +1,46 @@
+{
+ "base": "cw8-vector-field-operators",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "divergence",
+   "title": "Divergence of F = (sin xy, cos yz, e^xz) at a point",
+   "sample": "a three-dimensional vector field",
+   "unknown": "div F",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "curl",
+   "title": "Curl of G = (-e^x sin y, y sin x, z^2): its z component",
+   "sample": "a circulating field",
+   "unknown": "(curl G)_z",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "gradient-forward",
+   "title": "Gradient by forward differences (first order)",
+   "sample": "phi = sin x cos y e^z",
+   "unknown": "|grad phi|",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

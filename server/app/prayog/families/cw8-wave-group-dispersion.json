@@ -1,0 +1,35 @@
+{
+ "base": "cw8-wave-group-dispersion",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "anomalous",
+   "title": "Capillary ripples: anomalous dispersion, v_g = 3/2 v_p",
+   "sample": "capillary waves, omega^2 = (sigma/rho) k^3",
+   "unknown": "group velocity",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "anomalous dispersion: the group moves faster than the crests (model units sigma/rho = 1)"
+  },
+  {
+   "key": "normal-k2",
+   "title": "Deep-water waves at k0 = 2: normal dispersion",
+   "sample": "gravity waves, omega^2 = g k",
+   "unknown": "group velocity",
+   "params": {
+    "k0": 2.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "normal dispersion: the group moves at half the phase velocity (model units g = 1)"
+  }
+ ]
+}

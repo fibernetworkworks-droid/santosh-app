@@ -1,0 +1,96 @@
+{
+ "base": "cw8-quantum-distributions",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "fd-nonrel",
+   "title": "Fermi-Dirac gas at mu = 0: mean energy",
+   "sample": "non-relativistic fermions, 300 K",
+   "unknown": "<E> = 1.700 kT",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "BIPM SI brochure, 9th edition (2019)",
+    "note": "kB and e are exact; the rest is mathematics (zeta and eta functions)"
+   },
+   "method": "Fermi-Dirac"
+  },
+  {
+   "key": "be-nonrel",
+   "title": "Bose-Einstein gas at mu = 0: mean energy",
+   "sample": "non-relativistic bosons, 300 K",
+   "unknown": "<E> = 0.770 kT",
+   "params": {
+    "method": 2
+   },
+   "source": {
+    "title": "BIPM SI brochure, 9th edition (2019)",
+    "note": "kB and e are exact; the rest is mathematics (zeta and eta functions)"
+   },
+   "method": "Bose-Einstein"
+  },
+  {
+   "key": "mb-rel",
+   "title": "Ultra-relativistic classical gas: mean energy",
+   "sample": "E = pc, Maxwell-Boltzmann, 3000 K",
+   "unknown": "<E> = 3 kT",
+   "params": {
+    "cas": 1,
+    "T": 3000.0
+   },
+   "source": {
+    "title": "BIPM SI brochure, 9th edition (2019)",
+    "note": "kB and e are exact; the rest is mathematics (zeta and eta functions)"
+   }
+  },
+  {
+   "key": "fd-rel",
+   "title": "Ultra-relativistic fermions at mu = 0: mean energy",
+   "sample": "E = pc, Fermi-Dirac, 3000 K",
+   "unknown": "<E> = 3.151 kT",
+   "params": {
+    "cas": 1,
+    "method": 1,
+    "T": 3000.0
+   },
+   "source": {
+    "title": "BIPM SI brochure, 9th edition (2019)",
+    "note": "kB and e are exact; the rest is mathematics (zeta and eta functions)"
+   },
+   "method": "Fermi-Dirac"
+  },
+  {
+   "key": "photon-gas",
+   "title": "Black-body photons (ultra-relativistic bosons at mu = 0)",
+   "sample": "photon gas at 5800 K",
+   "unknown": "<E> = 2.701 kT",
+   "params": {
+    "cas": 1,
+    "method": 2,
+    "T": 5800.0
+   },
+   "source": {
+    "title": "BIPM SI brochure, 9th edition (2019)",
+    "note": "kB and e are exact; the rest is mathematics (zeta and eta functions)"
+   },
+   "method": "Bose-Einstein"
+  },
+  {
+   "key": "be-cold",
+   "title": "Non-relativistic bosons at a low temperature",
+   "sample": "bosons at 10 K",
+   "unknown": "<E> = 0.770 kT",
+   "params": {
+    "method": 2,
+    "T": 10.0
+   },
+   "source": {
+    "title": "BIPM SI brochure, 9th edition (2019)",
+    "note": "kB and e are exact; the rest is mathematics (zeta and eta functions)"
+   },
+   "method": "Bose-Einstein"
+  }
+ ]
+}

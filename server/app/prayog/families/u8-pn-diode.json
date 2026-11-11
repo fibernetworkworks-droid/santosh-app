@@ -1,0 +1,25 @@
+{
+ "base": "u8-pn-diode",
+ "rig": "ug8-analog-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "germanium",
+   "title": "V-I characteristic of a germanium point-contact diode (1N34A)",
+   "sample": "Germanium diode, 1N34A type",
+   "method": "forward and reverse bias",
+   "unknown": "the cut-in voltage and dynamic resistance of a germanium diode",
+   "params": {
+    "Is": 2e-07,
+    "n": 1.3,
+    "Rs": 7.0,
+    "Rsh": 100000.0
+   },
+   "note": "Germanium's narrower band gap gives a saturation current far larger than silicon's, so it cuts in near 0.3 V and leaks microamps in reverse. The 100 kohm reverse leakage is illustrative.",
+   "source": {
+    "title": "1N34A SPICE model (Is = 0.2 uA, n = 1.3, Rs = 7 ohm)",
+    "note": "From memory - verify"
+   }
+  }
+ ]
+}

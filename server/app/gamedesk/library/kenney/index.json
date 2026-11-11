@@ -1,0 +1,819 @@
+{
+"source": "kenney",
+"licence": "CC0 1.0 (3D models), from Kenney's own GitHub starter kits (the kits' code is MIT)",
+"credit": "Kenney (kenney.nl)",
+"items": [
+{
+"id": "platformer_block_coin",
+"name": "block coin",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"block",
+"coin",
+"jump",
+"platformer"
+],
+"kb": 74.5,
+"triangles": 788,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_brick_particle",
+"name": "brick particle",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"brick",
+"jump",
+"particle",
+"platformer"
+],
+"kb": 16.4,
+"triangles": 44,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_brick",
+"name": "brick",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"brick",
+"jump",
+"platformer"
+],
+"kb": 31.8,
+"triangles": 188,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_character",
+"name": "character",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"character",
+"jump",
+"platformer"
+],
+"kb": 95.4,
+"triangles": 550,
+"animations": 4,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_cloud",
+"name": "cloud",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"cloud",
+"jump",
+"platformer"
+],
+"kb": 33.1,
+"triangles": 204,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_coin",
+"name": "coin",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"coin",
+"jump",
+"platformer"
+],
+"kb": 31.5,
+"triangles": 252,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_dust",
+"name": "dust",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"dust",
+"jump",
+"platformer"
+],
+"kb": 43.5,
+"triangles": 336,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_flag",
+"name": "flag",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"flag",
+"jump",
+"platformer"
+],
+"kb": 22.9,
+"triangles": 132,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_grass_small",
+"name": "grass small",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"grass",
+"jump",
+"platformer",
+"small"
+],
+"kb": 18.8,
+"triangles": 72,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_grass",
+"name": "grass",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"grass",
+"jump",
+"platformer"
+],
+"kb": 18.7,
+"triangles": 72,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_platform_falling",
+"name": "platform falling",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"falling",
+"jump",
+"platform",
+"platformer"
+],
+"kb": 26.6,
+"triangles": 180,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_platform_grass_large_round",
+"name": "platform grass large round",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"grass",
+"jump",
+"large",
+"platform",
+"platformer",
+"round"
+],
+"kb": 21.0,
+"triangles": 124,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_platform_large",
+"name": "platform large",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"jump",
+"large",
+"platform",
+"platformer"
+],
+"kb": 33.4,
+"triangles": 254,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_platform_medium",
+"name": "platform medium",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"jump",
+"medium",
+"platform",
+"platformer"
+],
+"kb": 27.4,
+"triangles": 188,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "platformer_platform",
+"name": "platform",
+"kit": "Starter Kit 3D Platformer",
+"tags": [
+"jump",
+"platform",
+"platformer"
+],
+"kb": 23.0,
+"triangles": 144,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-3D-Platformer"
+},
+{
+"id": "city_building_garage",
+"name": "building garage",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"garage",
+"town"
+],
+"kb": 28.7,
+"triangles": 196,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_building_small_a",
+"name": "building small a",
+"kit": "Starter Kit City Builder",
+"tags": [
+"a",
+"building",
+"city",
+"small",
+"town"
+],
+"kb": 48.7,
+"triangles": 452,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_building_small_b",
+"name": "building small b",
+"kit": "Starter Kit City Builder",
+"tags": [
+"b",
+"building",
+"city",
+"small",
+"town"
+],
+"kb": 58.5,
+"triangles": 600,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_building_small_c",
+"name": "building small c",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"c",
+"city",
+"small",
+"town"
+],
+"kb": 78.4,
+"triangles": 834,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_building_small_d",
+"name": "building small d",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"d",
+"small",
+"town"
+],
+"kb": 48.4,
+"triangles": 448,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_grass_trees_tall",
+"name": "grass trees tall",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"grass",
+"tall",
+"town",
+"trees"
+],
+"kb": 55.8,
+"triangles": 472,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_grass_trees",
+"name": "grass trees",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"grass",
+"town",
+"trees"
+],
+"kb": 47.2,
+"triangles": 380,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_grass",
+"name": "grass",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"grass",
+"town"
+],
+"kb": 14.4,
+"triangles": 30,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_pavement_fountain",
+"name": "pavement fountain",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"fountain",
+"pavement",
+"town"
+],
+"kb": 23.7,
+"triangles": 152,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_pavement",
+"name": "pavement",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"pavement",
+"town"
+],
+"kb": 13.5,
+"triangles": 20,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_road_corner",
+"name": "road corner",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"corner",
+"road",
+"town"
+],
+"kb": 20.8,
+"triangles": 126,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_road_intersection",
+"name": "road intersection",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"intersection",
+"road",
+"town"
+],
+"kb": 22.8,
+"triangles": 154,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_road_split",
+"name": "road split",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"road",
+"split",
+"town"
+],
+"kb": 19.1,
+"triangles": 100,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_road_straight_lightposts",
+"name": "road straight lightposts",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"lightposts",
+"road",
+"straight",
+"town"
+],
+"kb": 27.7,
+"triangles": 190,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "city_road_straight",
+"name": "road straight",
+"kit": "Starter Kit City Builder",
+"tags": [
+"building",
+"city",
+"road",
+"straight",
+"town"
+],
+"kb": 15.9,
+"triangles": 54,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-City-Builder"
+},
+{
+"id": "fps_blaster_repeater",
+"name": "blaster repeater",
+"kit": "Starter Kit FPS",
+"tags": [
+"blaster",
+"first person",
+"repeater",
+"shooter"
+],
+"kb": 73.8,
+"triangles": 700,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_blaster",
+"name": "blaster",
+"kit": "Starter Kit FPS",
+"tags": [
+"blaster",
+"first person",
+"shooter"
+],
+"kb": 67.3,
+"triangles": 624,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_cloud",
+"name": "cloud",
+"kit": "Starter Kit FPS",
+"tags": [
+"cloud",
+"first person",
+"shooter"
+],
+"kb": 32.3,
+"triangles": 204,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_enemy_flying",
+"name": "enemy flying",
+"kit": "Starter Kit FPS",
+"tags": [
+"enemy",
+"first person",
+"flying",
+"shooter"
+],
+"kb": 65.6,
+"triangles": 544,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_grass_small",
+"name": "grass small",
+"kit": "Starter Kit FPS",
+"tags": [
+"first person",
+"grass",
+"shooter",
+"small"
+],
+"kb": 17.9,
+"triangles": 72,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_grass",
+"name": "grass",
+"kit": "Starter Kit FPS",
+"tags": [
+"first person",
+"grass",
+"shooter"
+],
+"kb": 17.9,
+"triangles": 72,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_platform_large_grass",
+"name": "platform large grass",
+"kit": "Starter Kit FPS",
+"tags": [
+"first person",
+"grass",
+"large",
+"platform",
+"shooter"
+],
+"kb": 25.8,
+"triangles": 180,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_platform",
+"name": "platform",
+"kit": "Starter Kit FPS",
+"tags": [
+"first person",
+"platform",
+"shooter"
+],
+"kb": 25.8,
+"triangles": 180,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_wall_high",
+"name": "wall high",
+"kit": "Starter Kit FPS",
+"tags": [
+"first person",
+"high",
+"shooter",
+"wall"
+],
+"kb": 29.1,
+"triangles": 208,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "fps_wall_low",
+"name": "wall low",
+"kit": "Starter Kit FPS",
+"tags": [
+"first person",
+"low",
+"shooter",
+"wall"
+],
+"kb": 26.1,
+"triangles": 178,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-FPS"
+},
+{
+"id": "racing_decoration_empty",
+"name": "decoration empty",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"decoration",
+"empty",
+"racing",
+"track"
+],
+"kb": 64.5,
+"triangles": 596,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_decoration_forest",
+"name": "decoration forest",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"decoration",
+"forest",
+"racing",
+"track"
+],
+"kb": 195.4,
+"triangles": 2006,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_decoration_tents",
+"name": "decoration tents",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"decoration",
+"racing",
+"tents",
+"track"
+],
+"kb": 174.1,
+"triangles": 1900,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_track_bump",
+"name": "track bump",
+"kit": "Starter Kit Racing",
+"tags": [
+"bump",
+"car",
+"racing",
+"track"
+],
+"kb": 27.5,
+"triangles": 166,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_track_corner",
+"name": "track corner",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"corner",
+"racing",
+"track"
+],
+"kb": 111.1,
+"triangles": 1136,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_track_finish",
+"name": "track finish",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"finish",
+"racing",
+"track"
+],
+"kb": 34.0,
+"triangles": 274,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_track_straight",
+"name": "track straight",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"racing",
+"straight",
+"track"
+],
+"kb": 20.9,
+"triangles": 106,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_track_tents",
+"name": "track tents",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"racing",
+"tents",
+"track"
+],
+"kb": 174.1,
+"triangles": 1900,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_vehicle_motorcycle",
+"name": "vehicle motorcycle",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"motorcycle",
+"racing",
+"track",
+"vehicle"
+],
+"kb": 104.9,
+"triangles": 960,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_vehicle_truck_green",
+"name": "vehicle truck green",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"green",
+"racing",
+"track",
+"truck",
+"vehicle"
+],
+"kb": 111.8,
+"triangles": 1104,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_vehicle_truck_purple",
+"name": "vehicle truck purple",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"purple",
+"racing",
+"track",
+"truck",
+"vehicle"
+],
+"kb": 86.7,
+"triangles": 814,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_vehicle_truck_red",
+"name": "vehicle truck red",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"racing",
+"red",
+"track",
+"truck",
+"vehicle"
+],
+"kb": 100.3,
+"triangles": 946,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+},
+{
+"id": "racing_vehicle_truck_yellow",
+"name": "vehicle truck yellow",
+"kit": "Starter Kit Racing",
+"tags": [
+"car",
+"racing",
+"track",
+"truck",
+"vehicle",
+"yellow"
+],
+"kb": 101.3,
+"triangles": 989,
+"animations": 0,
+"from": "https://github.com/KenneyNL/Starter-Kit-Racing"
+}
+]
+}

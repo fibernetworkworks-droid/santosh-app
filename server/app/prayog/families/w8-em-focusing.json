@@ -1,0 +1,14 @@
+{
+ "base": "w8-em-focusing",
+ "rig": "w8-electron-bench",
+ "chapter": "Modern and atomic physics",
+ "variants": [
+  {"key": "bar-magnet", "title": "e/m of the electron by the bar magnet method",
+   "sample": "Cathode-ray tube at 250 V, a bar magnet and a deflection magnetometer",
+   "method": "bar magnet method",
+   "unknown": "e/m of the electron",
+   "params": {"meth": 1.0, "Va": 250.0, "L": 0.2, "Mm": 1.0, "BH": 3.5e-5},
+   "note": "The magnet's field across the tube bends the beam into a circular arc; the same field is then read with a deflection magnetometer as B = BH tan(theta). Earth's horizontal field BH = 35 microtesla is from memory - verify for your site; the magnet moment and tube length are illustrative. A low-precision method: expect a few per cent.",
+   "source": {"title": "Indu Prakash and Ramakrishna, A Text Book of Practical Physics: e/m by the bar magnet method", "note": "cited from memory, not fetched - verify"}}
+ ]
+}
