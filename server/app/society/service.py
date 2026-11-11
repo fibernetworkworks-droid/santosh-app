@@ -53,9 +53,9 @@ from .models import (
 
 log = logging.getLogger("santosh.society")
 _LOCK = threading.RLock()
-CARD_KINDS = {"bills": "Maintenance bills", "notice": "Notice / circular", "message": "Members ko message", "spend": "Kharcha",
+CARD_KINDS = {"bills": "Maintenance bills", "notice": "Notice / circular", "message": "Message to members", "spend": "Expense",
               "penalty": "Penalty"}
-COMPLAINT_STATUS = {"open": "Khuli", "assigned": "Vendor ko di", "working": "Kaam chal raha", "resolved": "Theek hui", "closed": "Band"}
+COMPLAINT_STATUS = {"open": "Open", "assigned": "Given to vendor", "working": "Work in progress", "resolved": "Resolved", "closed": "Closed"}
 NOTICE_KINDS = {"notice": "Notice", "circular": "Circular", "agm": "AGM notice", "sgm": "SGM notice", "committee": "Committee meeting",
                 "defaulters": "Defaulters list", "minutes": "Minutes"}
 
@@ -159,13 +159,13 @@ def actor_name(tenant: str, actor: str) -> str:
 
 def _need_owner(actor: str) -> None:
     if not is_owner(actor):
-        raise SocietyError("Yeh sirf owner / secretary kar sakti hain.")
+        raise SocietyError("Only the owner / secretary can do this.")
 
 
 def _clean(text, n: int = 500) -> str:
     """Words from her / staff / members: secrets and long numbers never kept."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
     t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
     t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[hataya]", t)
     return t.strip()[:n]
@@ -229,7 +229,7 @@ def settings(tenant: str) -> dict:
 
 def _clean_heads(v) -> list[dict]:
     if not isinstance(v, list):
-        raise SocietyError("heads ek list chahiye: [{key, label, basis, rate}].")
+        raise SocietyError("heads must be a list: [{key, label, basis, rate}].")
     out, seen = [], set()
     for h in v[:30]:
         if not isinstance(h, dict):
@@ -240,14 +240,14 @@ def _clean_heads(v) -> list[dict]:
         seen.add(key)
         basis = str(h.get("basis") or "per_flat")
         if basis not in R.BASES:
-            raise SocietyError(f"{key}: basis '{basis}' nahi chalega ({', '.join(R.BASES)}).")
+            raise SocietyError(f"{key}: basis '{basis}' is not allowed ({', '.join(R.BASES)}).")
         rate = h.get("rate")
         if isinstance(rate, dict):
             rate = {str(k): _num(x) for k, x in rate.items() if _num(x) > 0} or None
         elif rate not in (None, ""):
             rate = _num(rate)
             if rate < 0:
-                raise SocietyError(f"{key}: rate minus nahi.")
+                raise SocietyError(f"{key}: rate cannot be negative.")
         else:
             rate = None
         row = {"key": key, "label": _clean(h.get("label") or key.replace("_", " ").title(), 80), "basis": basis, "rate": rate}
@@ -274,14 +274,14 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
                 from ..bazar.connectors.upi import valid_vpa
                 u = str(v).strip()
                 if u and not valid_vpa(u):
-                    raise SocietyError(f"UPI ID '{u}' sahi nahi lagta (naam@bank).")
+                    raise SocietyError(f"UPI ID '{u}' does not look right (name@bank).")
                 r.upi_id = u
             elif k == "heads":
                 r.heads = _dump(_clean_heads(v))
             elif k in ("noc_pct", "interest_pct"):
                 x = _num(v)
                 if not 0 <= x <= 100:
-                    raise SocietyError(f"{k} 0-100 ke beech.")
+                    raise SocietyError(f"{k} must be between 0 and 100.")
                 setattr(r, k, x)
             elif k in ("grace_days", "due_days", "visitor_days"):
                 setattr(r, k, max(0, min(365, int(_num(v)))))
@@ -292,7 +292,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise SocietyError("GSTIN sahi nahi (check digit).")
+                        raise SocietyError("GSTIN is not valid (check digit).")
                 r.gstin = g
             elif k == "gst_on":
                 r.gst_on = bool(v)
@@ -304,21 +304,21 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
             elif k == "term_ends":
                 d = _date(v)
                 if v and not d:
-                    raise SocietyError("term_ends ki taarikh samajh nahi aayi.")
+                    raise SocietyError("Could not read the term_ends date.")
                 r.term_ends = _iso(d)
             elif k == "morning_time":
                 if not re.fullmatch(r"\d{1,2}:\d{2}", str(v)):
-                    raise SocietyError("Subah ka samay HH:MM mein.")
+                    raise SocietyError("Morning time as HH:MM.")
                 r.morning_time = str(v)
             else:
                 setattr(r, k, _clean(v, 2000))
         if r.gst_on and not r.gstin:
-            raise SocietyError("GST lagana hai to society ka GSTIN chahiye.")
+            raise SocietyError("To charge GST the society's GSTIN is needed.")
         block, warn = R.check_heads(_heads(r), r.state, r.noc_pct, r.interest_pct)
         if block:
             raise SocietyError(" ".join(block))
         view = _settings_view(r)
-    say = "Society ki settings save." + (" Dhyaan: " + " ".join(warn) if warn else "")
+    say = "Society settings saved." + (" Note: " + " ".join(warn) if warn else "")
     return {"settings": view, "say": say}
 
 
@@ -330,7 +330,7 @@ def set_head(tenant: str, key: str, rate=None, label: str = "", basis: str = "",
         heads = _heads(_st(s, tenant))
     k = re.sub(r"[^a-z0-9_]", "_", str(key or label).strip().lower())[:30]
     if not k:
-        raise SocietyError("Kaun sa head?")
+        raise SocietyError("Which head?")
     heads = [h for h in heads if h["key"] != k] if remove else heads
     if not remove:
         cur = next((h for h in heads if h["key"] == k), None)
@@ -356,7 +356,7 @@ _FLAT_KEYS = ("wing", "carpet_sqft", "cost", "taps", "lift", "owner_name", "owne
 def _flat(s, tenant: str, ref: str) -> SocietyFlat:
     ref = str(ref or "").strip()
     if not ref:
-        raise SocietyError("Kaun sa flat? (jaise A-101)")
+        raise SocietyError("Which flat? (for example A-101)")
     f = s.get(SocietyFlat, ref)
     if f is not None and f.tenant_id == tenant:
         return f
@@ -369,12 +369,12 @@ def _flat(s, tenant: str, ref: str) -> SocietyFlat:
     if len(tail) == 1:
         return tail[0]
     if len(tail) > 1:
-        raise SocietyError(f"'{ref}' se kai flat milte hain: " + ", ".join(f.unit for f in tail[:6]))
+        raise SocietyError(f"'{ref}' matches several flats: " + ", ".join(f.unit for f in tail[:6]))
     low = ref.lower()
     byname = [f for f in rows if low and len(low) >= 3 and low in (f.owner_name or "").lower()]
     if len(byname) == 1:
         return byname[0]
-    raise SocietyError(f"Flat '{ref}' nahi mila.")
+    raise SocietyError(f"Flat '{ref}' not found.")
 
 
 def _outstanding(s, f: SocietyFlat) -> tuple[int, int, date | None]:
@@ -418,13 +418,13 @@ def _flat_view(s, f: SocietyFlat, full: bool = False) -> dict:
          "advance": adv / 100, "oldest_due": _iso(oldest), "status": f.status}
     gaps = []
     if not f.owner_name:
-        gaps.append("owner ka naam")
+        gaps.append("owner name")
     if not f.carpet_sqft:
         gaps.append("carpet area")
     if not f.cost:
-        gaps.append("construction cost (sinking / repair fund ke liye)")
+        gaps.append("construction cost (for sinking / repair fund)")
     if f.taps is None:
-        gaps.append("nal ki ginti")
+        gaps.append("number of taps")
     if not _j(f.nominations, []):
         gaps.append("nomination")
     v["missing"] = gaps
@@ -446,7 +446,7 @@ def save_flat(tenant: str, unit: str = "", flat: str = "", actor: str = "owner",
         else:
             key = R.unit_key(unit)
             if not key:
-                raise SocietyError("Flat number chahiye (jaise A-101).")
+                raise SocietyError("Flat number is needed (for example A-101).")
             f = s.scalars(select(SocietyFlat).where(SocietyFlat.tenant_id == tenant, SocietyFlat.unit == key,
                                                      SocietyFlat.status != "forgotten")).first()
             new = f is None
@@ -460,17 +460,17 @@ def save_flat(tenant: str, unit: str = "", flat: str = "", actor: str = "owner",
             if k in ("owner_phone", "tenant_phone"):
                 p = R.phone10(v)
                 if v and not p:
-                    raise SocietyError(f"{k}: 10 ankon ka mobile number chahiye.")
+                    raise SocietyError(f"{k}: a 10-digit mobile number is needed.")
                 setattr(f, k, p)
             elif k == "carpet_sqft":
                 x = _num(v)
                 if x < 0 or x > 50000:
-                    raise SocietyError("Carpet area sahi nahi lagta.")
+                    raise SocietyError("Carpet area does not look right.")
                 f.carpet_sqft = x
             elif k in ("cost", "opening_due"):
                 p = R.paise(v)
                 if p < 0:
-                    raise SocietyError(f"{k} minus nahi.")
+                    raise SocietyError(f"{k} cannot be negative.")
                 setattr(f, k, p)
             elif k == "taps":
                 f.taps = max(0, int(_num(v)))
@@ -485,7 +485,7 @@ def save_flat(tenant: str, unit: str = "", flat: str = "", actor: str = "owner",
             elif k in ("member_since", "tenant_from", "tenant_to"):
                 d = _date(v)
                 if v and not d:
-                    raise SocietyError(f"{k}: taarikh samajh nahi aayi.")
+                    raise SocietyError(f"{k}: could not read the date.")
                 setattr(f, k, _iso(d))
             else:
                 setattr(f, k, _clean(v, 300))
@@ -493,13 +493,13 @@ def save_flat(tenant: str, unit: str = "", flat: str = "", actor: str = "owner",
         if f.opening_due and not s.scalars(select(SocietyBill).where(SocietyBill.flat_id == f.id, SocietyBill.number == "OPENING")).first():
             on = today(tenant)
             s.add(SocietyBill(tenant_id=tenant, number="OPENING", flat_id=f.id, period="opening", bill_date=on.isoformat(),
-                              due_date=on.isoformat(), lines=_dump([{"head": "opening", "label": "Pichhla baaki (opening)",
+                              due_date=on.isoformat(), lines=_dump([{"head": "opening", "label": "Previous dues (opening)",
                                                                        "amount": f.opening_due}]),
                               principal=f.opening_due, total=f.opening_due, status="issued"))
         view = _flat_view(s, f)
     say = f"{view['unit']} {'joda' if new else 'badla'}."
     if view["missing"]:
-        say += " Baaki: " + ", ".join(view["missing"]) + "."
+        say += " Due: " + ", ".join(view["missing"]) + "."
     return {"flat": view, "new": new, "say": say}
 
 
@@ -544,7 +544,7 @@ def import_flats(tenant: str, data: bytes, name: str = "flats.csv", actor: str =
             head_i, cols = i, found
             break
     if head_i < 0:
-        raise SocietyError("Sheet mein 'Flat' / 'Unit' column nahi mila.")
+        raise SocietyError("No 'Flat' / 'Unit' column found in the sheet.")
     added = changed = 0
     bad = []
     for n, r in enumerate(rows[head_i + 1:], start=head_i + 2):
@@ -563,7 +563,7 @@ def import_flats(tenant: str, data: bytes, name: str = "flats.csv", actor: str =
             if p:
                 kw["owner_phone"] = p
             else:
-                bad.append(f"Row {n}: phone '{g('owner_phone')}' sahi nahi")
+                bad.append(f"Row {n}: phone '{g('owner_phone')}' is not valid")
         for k in ("carpet_sqft", "taps", "cost", "opening_due"):
             if g(k) not in (None, ""):
                 kw[k] = g(k)
@@ -577,7 +577,7 @@ def import_flats(tenant: str, data: bytes, name: str = "flats.csv", actor: str =
         except SocietyError as e:
             bad.append(f"Row {n}: {e}")
     return {"added": added, "changed": changed, "bad": bad[:30],
-            "say": f"{added} flat jode, {changed} badle." + (f" {len(bad)} row mein dikkat." if bad else "")}
+            "say": f"{added} flats added, {changed} changed." + (f" {len(bad)} rows had problems." if bad else "")}
 
 
 def nominate(tenant: str, flat: str, name: str, relation: str = "", share_pct=None, revoke: bool = False, actor: str = "owner") -> dict:
@@ -589,21 +589,21 @@ def nominate(tenant: str, flat: str, name: str, relation: str = "", share_pct=No
         if revoke:
             hit = [n for n in noms if n["name"].lower() == str(name).lower() and not n.get("revoked")]
             if not hit:
-                raise SocietyError(f"'{name}' nomination mein nahi.")
+                raise SocietyError(f"'{name}' is not in the nomination.")
             for n in hit:
                 n["revoked"] = today(tenant).isoformat()
         else:
             if not name:
-                raise SocietyError("Nominee ka naam chahiye.")
+                raise SocietyError("Nominee name is needed.")
             pct = _num(share_pct) if share_pct not in (None, "") else None
             live = [n for n in noms if not n.get("revoked")]
             total = sum(n.get("share_pct") or 0 for n in live) + (pct or 0)
             if pct is not None and total > 100.01:
-                raise SocietyError(f"Nominees ka hissa 100% se zyada ho jayega ({total:g}%).")
+                raise SocietyError(f"Nominee shares would be more than 100% ({total:g}%).")
             noms.append({"name": _clean(name, 80), "relation": _clean(relation, 40), "share_pct": pct, "on": today(tenant).isoformat()})
         f.nominations = _dump(noms)
         view = _flat_view(s, f)
-    return {"flat": view, "say": f"{view['unit']}: nomination register update. Asli form member ka sign kiya hua file mein rakhiye."}
+    return {"flat": view, "say": f"{view['unit']}: nomination register updated. Keep the original form signed by the member on file."}
 
 
 def transfer(tenant: str, flat: str, new_owner: str, phone: str = "", premium=None, on: str = "", share_cert: str = "",
@@ -611,14 +611,14 @@ def transfer(tenant: str, flat: str, new_owner: str, phone: str = "", premium=No
     """Ownership change (sale / gift / succession): old member to history (contact dropped), premium checked against the cap."""
     _need_owner(actor)
     if not new_owner:
-        raise SocietyError("Naye member ka naam chahiye.")
+        raise SocietyError("New member name is needed.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         sr = R.state_rules(st.state)
         prem = R.paise(premium)
         cap = sr.get("transfer_premium_cap")
         if cap and prem > cap:
-            raise SocietyError(f"Transfer premium {rs(prem)}: {sr['law']} mein {rs(cap)} se zyada nahi.")
+            raise SocietyError(f"Transfer premium {rs(prem)}: {sr['law']} allows at most {rs(cap)}.")
         f = _flat(s, tenant, flat)
         due, _, _ = _outstanding(s, f)
         hist = _j(f.history, [])
@@ -630,10 +630,10 @@ def transfer(tenant: str, flat: str, new_owner: str, phone: str = "", premium=No
         if share_cert:
             f.share_cert = _clean(share_cert, 40)
         view = _flat_view(s, f)
-    say = (f"{view['unit']} ab {view['owner_name']} ke naam. Purane member ka phone hata diya (DPDP). Share certificate par naya naam "
-           "endorse kijiye, nayi nomination lijiye.")
+    say = (f"{view['unit']} now in the name of {view['owner_name']}. Old member's phone removed (DPDP). Endorse the new name on the share certificate "
+           "and take a new nomination.")
     if due:
-        say += f" Dhyaan: is flat par {rs(due)} baaki hai."
+        say += f" Note: {rs(due)} is due on this flat."
     return {"flat": view, "say": say}
 
 
@@ -641,7 +641,7 @@ def parking(tenant: str, flat: str, slot: str, kind: str = "car", resolution: st
     _need_owner(actor)
     slot = re.sub(r"\s+", "", str(slot or "")).upper()[:20]
     if not slot:
-        raise SocietyError("Slot number chahiye.")
+        raise SocietyError("Slot number is needed.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         f = _flat(s, tenant, flat)
@@ -650,15 +650,15 @@ def parking(tenant: str, flat: str, slot: str, kind: str = "car", resolution: st
             mine = [p for p in mine if p["slot"] != slot]
         else:
             if st.state == "MH" and not resolution:
-                raise SocietyError("Parking allotment general body tay karti hai (Rules 2026): resolution ka hawala dijiye.")
+                raise SocietyError("Parking allotment is decided by the general body (Rules 2026): give the resolution reference.")
             for o in s.scalars(select(SocietyFlat).where(SocietyFlat.tenant_id == tenant, SocietyFlat.id != f.id)).all():
                 if any(p["slot"] == slot for p in _j(o.parking, [])):
-                    raise SocietyError(f"Slot {slot} pehle se {o.unit} ko diya hai.")
+                    raise SocietyError(f"Slot {slot} is already given to {o.unit}.")
             mine = [p for p in mine if p["slot"] != slot] + [{"slot": slot, "kind": kind if kind in ("car", "two_wheeler") else "car",
                                                                 "resolution": _clean(resolution, 120)}]
         f.parking = _dump(mine)
         view = _flat_view(s, f)
-    return {"flat": view, "say": f"{view['unit']}: parking {'hataya' if remove else slot + ' diya'}."}
+    return {"flat": view, "say": f"{view['unit']}: parking {'removed' if remove else slot + ' given'}."}
 
 
 def parking_register(tenant: str) -> list[dict]:
@@ -712,7 +712,7 @@ def make_bills(tenant: str, period: str = "", only: list | None = None, actor: s
     """Draft this month's bills for every flat (or `only`) and send ONE card for her tap. Nothing reaches members before it."""
     on = today(tenant)
     if period and not re.fullmatch(r"\d{4}-\d{2}", period):
-        raise SocietyError("period YYYY-MM mein (jaise 2026-10).")
+        raise SocietyError("period as YYYY-MM (for example 2026-10).")
     period = period or on.strftime("%Y-%m")
     with _LOCK, session() as s:
         st = _st(s, tenant)
@@ -726,7 +726,7 @@ def make_bills(tenant: str, period: str = "", only: list | None = None, actor: s
             keys = {R.unit_key(x) for x in only}
             fl = [f for f in fl if f.unit in keys or f.id in only]
         if not fl:
-            raise SocietyError("Koi flat register mein nahi.")
+            raise SocietyError("No flats in the register.")
         # old drafts of this period are replaced, their card goes stale
         for b in s.scalars(select(SocietyBill).where(SocietyBill.tenant_id == tenant, SocietyBill.period == period,
                                                      SocietyBill.status == "draft")).all():
@@ -753,13 +753,13 @@ def make_bills(tenant: str, period: str = "", only: list | None = None, actor: s
             drafts.append((f, lines))
             month_base += sum(l["amount"] for l in lines if not l.get("agent"))
         if not any(l for _, l in drafts) and not skipped:
-            raise SocietyError("Kisi bill mein ek bhi line nahi: heads ke rate set kijiye (set_head).")
+            raise SocietyError("No bill has a single line: set the head rates (set_head).")
         batch = secrets.token_hex(8)
         due = on + timedelta(days=st.due_days or 15)
         made, gst_notes = [], set()
         for f, lines in drafts:
             if not lines:
-                problems.append(f"{f.unit}: koi line nahi bani.")
+                problems.append(f"{f.unit}: no lines were made.")
                 continue
             prev = s.scalars(select(SocietyBill).where(SocietyBill.flat_id == f.id, SocietyBill.status.in_(("issued", "part")))).all()
             overdue = []
@@ -768,7 +768,7 @@ def make_bills(tenant: str, period: str = "", only: list | None = None, actor: s
                 overdue.append({"number": b.number, "due_date": _date(b.due_date), "unpaid": unpaid_principal})
             interest, irows = R.interest_on(overdue, st.interest_pct, on, st.grace_days)
             if interest:
-                lines.append({"head": "interest", "label": f"Vyaaj {st.interest_pct:g}% saalana simple (baaki par)", "amount": interest,
+                lines.append({"head": "interest", "label": f"Interest {st.interest_pct:g}% a year, simple (on dues)", "amount": interest,
                               "detail": irows})
             gst, note = R.gst_lines(lines, month_base * 12, st.gst_on)
             if note:
@@ -782,21 +782,21 @@ def make_bills(tenant: str, period: str = "", only: list | None = None, actor: s
             made.append(b)
         s.flush()
         if not made:
-            raise SocietyError("Is mahine ke bill pehle hi gaye: " + ", ".join(skipped[:10]))
+            raise SocietyError("This month's bills were already issued: " + ", ".join(skipped[:10]))
         snap = _batch_snapshot(s, batch)
         total = sum(b.total for b in made)
         data = {"period": period, "count": len(made), "total": total / 100, "total_text": rs(total), "due_date": due.isoformat(),
                 "problems": problems[:30], "warnings": warn + sorted(gst_notes), "skipped": skipped,
                 "sample": [_bill_view(s, b) for b in made[:3]], "upi": bool(st.upi_id)}
-        card = _new_card(s, tenant, "bills", batch, f"{period} ke {len(made)} maintenance bill ({rs(total)})", data, _hash(snap),
+        card = _new_card(s, tenant, "bills", batch, f"{period} {len(made)} maintenance bills ({rs(total)})", data, _hash(snap),
                          actor, conv)
         view = _card_view(s, card)
-    say = (f"{period} ke {len(made)} bill taiyaar ({rs(total)}), due {due:%d-%m-%Y}. Members tak tabhi jayenge jab aap card par "
-           "Haan karengi.")
+    say = (f"{period} {len(made)} bills ready ({rs(total)}), due {due:%d-%m-%Y}. They reach members only when you tap "
+           "Yes on the card.")
     if problems:
-        say += f" {len(problems)} baat dekhni hai (card par)."
+        say += f" {len(problems)} items to check (on the card)."
     if not data["upi"]:
-        say += " Society ka UPI ID nahi diya: bill mein pay link nahi hoga."
+        say += " No society UPI ID set: the bill will have no pay link."
     _publish(tenant, "society_card", {"card": view, "say": say}, conv)
     return {"card": view, "status": "needs_tap", "say": say}
 
@@ -820,11 +820,11 @@ def _bill_text(s, tenant: str, b: SocietyBill, st: SocietySettings) -> str:
     if b.gst:
         lines += f"\n- GST: {rs(b.gst)}"
     link = pay_link(tenant, due, f"{b.number} {f.unit}")
-    txt = (f"Namaskar {f.owner_name or ''},\n{st.name or 'Society'}: {f.unit} ka maintenance bill {b.number} ({b.period}).\n{lines}\n"
-           f"Is bill ka total: {rs(b.total)}. Kul baaki (pichhla mila kar): {rs(due)}. Aakhri taarikh: {_date(b.due_date):%d-%m-%Y}.")
+    txt = (f"Hello {f.owner_name or ''},\n{st.name or 'Society'}: {f.unit} maintenance bill {b.number} ({b.period}).\n{lines}\n"
+           f"This bill's total: {rs(b.total)}. Total due (including previous): {rs(due)}. Last date: {_date(b.due_date):%d-%m-%Y}.")
     if link:
-        txt += f"\nUPI se bharein: {link}"
-    txt += "\nPaise bharne ke baad society ko bata dijiye. Hum kabhi OTP / PIN nahi maangte."
+        txt += f"\nPay by UPI: {link}"
+    txt += "\nAfter paying, please tell the society. We never ask for an OTP / PIN."
     return txt
 
 
@@ -940,7 +940,7 @@ def challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card(tenant, card_id)
     if not c or c["status"] != "waiting":
-        raise SocietyError("Yeh card ab baaki nahi hai.")
+        raise SocietyError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|society|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -969,19 +969,19 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
                 via: str = "", by_tap: bool = False) -> dict:
     """ONLY her tap in the app (API). The tool can never reach this with by_tap."""
     if not by_tap:
-        raise SocietyError("Yeh faisla sirf aapke tap se (app ka card).")
+        raise SocietyError("This decision is only by your tap (the app card).")
     with _LOCK, session() as s:
         c = s.get(SocietyCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise SocietyError("Card nahi mila.")
+            raise SocietyError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(s, c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(s, c), "say": f"This card is already '{c.status}'."}
         snap = _snapshot(s, c)
         if snap is None or _hash(snap) != c.hash:
             c.status = "stale"
-            raise SocietyError("Card ke baad cheezein badal gayi: naya card banwaiye.")
+            raise SocietyError("Things changed after the card: make a new card.")
         if not card_hash or card_hash != c.hash:
-            raise SocietyError("Card badal gaya hai; naya card dekhiye.")
+            raise SocietyError("The card has changed; see the new card.")
         kind = c.kind
     if yes and kind == "spend":
         from .. import approvekey as ak
@@ -1002,12 +1002,12 @@ def decide_card(tenant: str, card_id: str, yes: bool, card_hash: str = "", reaso
         elif kind == "spend":
             x = s.get(SocietySpend, c.target)
             x.status = "approved" if yes else "rejected"
-            out["say"] = (f"{x.number} maana: {rs(x.amount)}. Paise society ke account se aap / treasurer dijiye, phir 'Maine de diya'."
-                          if yes else f"{x.number}: kharcha nahi.")
+            out["say"] = (f"{x.number} approved: {rs(x.amount)}. You / the treasurer pay from the society account, then tap 'I have paid'."
+                          if yes else f"{x.number}: no expense.")
         elif kind == "penalty":
             p = s.get(SocietyPenalty, c.target)
             p.status = "approved" if yes else "rejected"
-            out["say"] = (f"{p.number} maana: agle bill mein {rs(p.amount)} judega." if yes else f"{p.number}: penalty nahi.")
+            out["say"] = (f"{p.number} approved: {rs(p.amount)} will be added to the next bill." if yes else f"{p.number}: no penalty.")
         out["card"] = _card_view(s, c)
     after = out.pop("_after", None)
     if after:
@@ -1023,7 +1023,7 @@ def _apply_bills(s, tenant: str, c: SocietyCard, yes: bool, via: str) -> dict:
     if not yes:
         for b in rows:
             b.status = "cancelled"
-        return {"say": "Bill nahi bheje; drafts radd."}
+        return {"say": "Bills not sent; drafts cancelled."}
     st = _st(s, tenant)
     drafts, sent = [], 0
     for b in rows:
@@ -1061,11 +1061,11 @@ def _apply_bills(s, tenant: str, c: SocietyCard, yes: bool, via: str) -> dict:
         if pdf:
             _publish(tenant, "pc_file", {**pdf, "source": "society", "title": "Maintenance bills"}, conv)
         return {"file": pdf}
-    say = f"{len(rows)} bill jaari. "
+    say = f"{len(rows)} bills issued. "
     if via == "business":
-        say += f"{sent} business WhatsApp par gaye (sirf 24 ghante ki window wale); baaki ke WhatsApp draft aap bhejiye."
+        say += f"{sent} went on business WhatsApp (only those inside the 24-hour window); you send the WhatsApp drafts for the rest."
     else:
-        say += "Har member ka WhatsApp draft taiyaar: aap bhejiye (ya society group mein PDF)."
+        say += "A WhatsApp draft is ready for every member: you send them (or the PDF in the society group)."
     return {"bills": drafts, "_after": after, "say": say}
 
 
@@ -1081,7 +1081,7 @@ def _galla_hint(s, tenant: str, amount: int, day: str) -> str:
         hit = s.scalars(select(GallaEntry).where(GallaEntry.tenant_id == tenant, GallaEntry.day == day,
                                                  GallaEntry.amount_paise == amount, GallaEntry.void.is_(False))).first()
         if hit:
-            return f"Galla mein {day} ko {rs(amount)} ka UPI credit dikha ({hit.app or 'UPI'}): yahi lagta hai (pakka saboot nahi)."
+            return f"The till shows a UPI credit on {day} of {rs(amount)} ({hit.app or 'UPI'}): this looks like it (not firm proof)."
     except Exception:
         pass
     return ""
@@ -1092,14 +1092,14 @@ def receive(tenant: str, flat: str, amount, mode: str = "upi", ref: str = "", da
     _need_owner(actor)
     a = R.paise(amount)
     if a <= 0:
-        raise SocietyError("Kitne paise mile? (rakam chahiye)")
+        raise SocietyError("How much was received? (amount needed)")
     mode = mode if mode in ("upi", "cash", "cheque", "neft") else "upi"
     on = _date(day) or today(tenant)
     if on > today(tenant):
-        raise SocietyError("Aage ki taarikh ki receipt nahi.")
+        raise SocietyError("No receipts with a future date.")
     warn = []
     if mode == "cash" and a >= 20_000_000:
-        warn.append("Ek din mein ek member se Rs 2 lakh ya zyada cash lena mana hai (Income-tax Act; purana 269ST): bank se lijiye.")
+        warn.append("Taking Rs 2 lakh or more in cash from one member in a day is not allowed (Income-tax Act; old 269ST): take it through the bank.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         f = _flat(s, tenant, flat)
@@ -1124,12 +1124,12 @@ def receive(tenant: str, flat: str, amount, mode: str = "upi", ref: str = "", da
         hint = _galla_hint(s, tenant, a, on.isoformat()) if mode == "upi" else ""
         view = _receipt_view(r)
         fv = _flat_view(s, f)
-        text = (f"{st.name or 'Society'}: {f.unit} se {rs(a)} mile ({mode.upper()}), receipt {r.number}, {on:%d-%m-%Y}. "
-                f"Baaki: {fv['due_text'] or rs(0)}. Dhanyavaad.")
-    say = f"Receipt {view['number']}: {f.unit} se {rs(a)}." + (f" {rs(left)} advance." if left > 0 else "") + (" " + hint if hint else "")
+        text = (f"{st.name or 'Society'}: {f.unit} paid {rs(a)} ({mode.upper()}), receipt {r.number}, {on:%d-%m-%Y}. "
+                f"Due: {fv['due_text'] or rs(0)}. Thank you.")
+    say = f"Receipt {view['number']}: {f.unit} paid {rs(a)}." + (f" {rs(left)} advance." if left > 0 else "") + (" " + hint if hint else "")
     if warn:
-        say += " Dhyaan: " + " ".join(warn)
-    return {"receipt": view, "flat": fv, "receipt_text": text, "warnings": warn, "galla_hint": hint, "say": say + " Member ko receipt bhejni ho to 'message' card."}
+        say += " Note: " + " ".join(warn)
+    return {"receipt": view, "flat": fv, "receipt_text": text, "warnings": warn, "galla_hint": hint, "say": say + " To send the receipt to the member, use a 'message' card."}
 
 
 def dues(tenant: str) -> dict:
@@ -1152,9 +1152,9 @@ def dues(tenant: str) -> dict:
     rows.sort(key=lambda x: -x["due"])
     return {"flats": rows, "total": total / 100, "total_text": rs(total), "buckets": {k: v / 100 for k, v in buckets.items()},
             "defaulters": [r for r in rows if r["defaulter"]],
-            "recovery": ("Bahut purana baaki: Section 154B-29 ke tahat Registrar ke paas recovery (Form Y-6, Rs 100 court fee) "
-                         "general body / committee ke resolution ke baad." if state == "MH" else "Recovery aapke bye-laws aur state act se."),
-            "say": f"Kul baaki {rs(total)}, {len(rows)} flat." if rows else "Kisi flat par baaki nahi."}
+            "recovery": ("Very old dues: recovery through the Registrar under Section 154B-29 (Form Y-6, Rs 100 court fee) "
+                         "after a general body / committee resolution." if state == "MH" else "Recovery as per your bye-laws and state act."),
+            "say": f"Total due {rs(total)}, {len(rows)} flats." if rows else "No dues on any flat."}
 
 
 def remind(tenant: str, flats_: list | None = None, text: str = "", via: str = "self", min_days: int = 0, actor: str = "owner",
@@ -1167,22 +1167,22 @@ def remind(tenant: str, flats_: list | None = None, text: str = "", via: str = "
         pick = [r for r in pick if r["unit"] in keys]
     pick = [r for r in pick if r["days"] >= min_days]
     if not pick:
-        raise SocietyError("Yaad dilane laayak baaki kisi flat par nahi.")
-    body = _clean(text, 800) or ("Namaskar {name}, {society}: flat {unit} par {amount} maintenance baaki hai. Kripya jaldi bharein: "
-                                 "{link}. Bhar diya ho to is message ko ignore karein. Hum kabhi OTP / PIN nahi maangte.")
+        raise SocietyError("No flat has dues worth a reminder.")
+    body = _clean(text, 800) or ("Hello {name}, {society}: {amount} maintenance is due on flat {unit}. Please pay soon: "
+                                 "{link}. If you have already paid, ignore this message. We never ask for an OTP / PIN.")
     return _message_card(tenant, "dues", [r["unit"] for r in pick], body, via, actor, conv)
 
 
 def _render(s, tenant: str, f: SocietyFlat, text: str, st: SocietySettings) -> str:
     due, _, _ = _outstanding(s, f)
-    link = pay_link(tenant, due, f"Dues {f.unit}") or "(society ka UPI ID nahi diya)"
+    link = pay_link(tenant, due, f"Dues {f.unit}") or "(no society UPI ID set)"
     return (text.replace("{name}", f.owner_name or "").replace("{unit}", f.unit).replace("{amount}", rs(due))
             .replace("{link}", link).replace("{society}", st.name or "Society"))
 
 
 def _message_card(tenant: str, kind: str, units: list[str], text: str, via: str, actor: str, conv: str) -> dict:
     if re.search(r"\[[^\]]{0,40}\]", text):
-        raise SocietyError("Message mein [khaali] jagah baaki hai: pehle bhariye.")
+        raise SocietyError("The message still has [blank] spaces: fill them first.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         fl, skipped = [], []
@@ -1190,25 +1190,25 @@ def _message_card(tenant: str, kind: str, units: list[str], text: str, via: str,
             try:
                 f = _flat(s, tenant, u)
             except SocietyError:
-                skipped.append(f"{u}: nahi mila")
+                skipped.append(f"{u}: not found")
                 continue
             if f.no_messages:
-                skipped.append(f"{f.unit}: message nahi chahte")
+                skipped.append(f"{f.unit}: does not want messages")
             elif not f.owner_phone:
-                skipped.append(f"{f.unit}: phone nahi")
+                skipped.append(f"{f.unit}: no phone")
             else:
                 fl.append(f)
         if not fl:
-            raise SocietyError("Kisi ko bhej nahi sakte: " + "; ".join(skipped[:8]))
+            raise SocietyError("Cannot send to anyone: " + "; ".join(skipped[:8]))
         m = SocietyMessage(tenant_id=tenant, kind=kind, flat_ids=_dump(sorted(f.id for f in fl)), text=text,
                            result=_dump({"via": via if via in ("self", "business") else "self"}))
         s.add(m)
         s.flush()
         preview = [{"unit": f.unit, "owner": f.owner_name, "text": _render(s, tenant, f, text, st)} for f in fl[:3]]
         data = {"kind": kind, "count": len(fl), "preview": preview, "skipped": skipped, "via": _j(m.result, {}).get("via")}
-        c = _new_card(s, tenant, "message", m.id, f"{len(fl)} members ko message ({kind})", data, _hash(_snapshot_msg(m)), actor, conv)
+        c = _new_card(s, tenant, "message", m.id, f"{len(fl)} members message ({kind})", data, _hash(_snapshot_msg(m)), actor, conv)
         view = _card_view(s, c)
-    say = f"{len(fl)} members ke liye message taiyaar: aapki haan ke baad hi jayega." + (f" {len(skipped)} chhoot gaye." if skipped else "")
+    say = f"{len(fl)} members' message ready: it goes only with your approval." + (f" {len(skipped)} left out." if skipped else "")
     _publish(tenant, "society_card", {"card": view, "say": say}, conv)
     return {"card": view, "status": "needs_tap", "say": say}
 
@@ -1222,7 +1222,7 @@ def message(tenant: str, units: list | str, text: str, via: str = "self", actor:
     if isinstance(units, str):
         units = [u for u in re.split(r"[,\s]+", units) if u]
     if not text:
-        raise SocietyError("Message ka text chahiye.")
+        raise SocietyError("Message text is needed.")
     if units == ["all"]:
         units = [f["unit"] for f in flats(tenant)]
     return _message_card(tenant, "custom", units, _clean(text, 1500), via, actor, conv)
@@ -1232,7 +1232,7 @@ def _apply_message(s, tenant: str, c: SocietyCard, yes: bool, via: str) -> dict:
     m = s.get(SocietyMessage, c.target)
     if not yes:
         m.status = "rejected"
-        return {"say": "Message nahi bheja."}
+        return {"say": "Message not sent."}
     st = _st(s, tenant)
     chan = via or _j(m.result, {}).get("via", "self")
     items, sent = [], 0
@@ -1252,8 +1252,8 @@ def _apply_message(s, tenant: str, c: SocietyCard, yes: bool, via: str) -> dict:
         items.append(it)
     m.status = "sent" if chan == "business" and sent == len(items) else "approved"
     m.result = _dump({"via": chan, "sent": sent, "count": len(items)})
-    say = (f"{sent} business WhatsApp par gaye; baaki {len(items) - sent} ke draft aap bhejiye." if chan == "business"
-           else f"{len(items)} WhatsApp draft taiyaar: har ek par tap karke aap bhejiye.")
+    say = (f"{sent} went on business WhatsApp; you send the drafts for the other {len(items) - sent}." if chan == "business"
+           else f"{len(items)} WhatsApp drafts ready: tap each one to send it yourself.")
     return {"messages": items, "say": say}
 
 
@@ -1261,16 +1261,16 @@ def _apply_message(s, tenant: str, c: SocietyCard, yes: bool, via: str) -> dict:
 def penalty_request(tenant: str, flat: str, what: str, amount, rule: str, actor: str = "owner", conv: str = "") -> dict:
     a = R.paise(amount)
     if a <= 0:
-        raise SocietyError("Penalty ki rakam (bye-law / resolution ke hisaab se) chahiye.")
+        raise SocietyError("Penalty amount (as per the bye-law / resolution) is needed.")
     if not rule:
-        raise SocietyError("Kis bye-law / general body resolution se penalty? Bina hawale ke penalty nahi (Rules 2026: koi charge Act / Rules ke bina nahi).")
+        raise SocietyError("Which bye-law / general body resolution allows this penalty? No penalty without a reference (Rules 2026: no charge without the Act / Rules).")
     if not what:
-        raise SocietyError("Kis baat ki penalty?")
+        raise SocietyError("Penalty for what?")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         f = _flat(s, tenant, flat)
         if re.search(r"\b(late|deri|interest|vyaaj)\b", what, re.I):
-            raise SocietyError("Deri par alag penalty nahi: baaki par vyaaj hi lagta hai (general body ka rate).")
+            raise SocietyError("No separate penalty for delay: only interest on dues applies (the general body's rate).")
         n = _next(st, "penalty")
         p = SocietyPenalty(tenant_id=tenant, number=f"P-{n:04d}", flat_id=f.id, what=_clean(what, 300), amount=a, rule=_clean(rule, 200))
         s.add(p)
@@ -1279,7 +1279,7 @@ def penalty_request(tenant: str, flat: str, what: str, amount, rule: str, actor:
                 "number": p.number}
         c = _new_card(s, tenant, "penalty", p.id, f"{f.unit}: penalty {rs(a)}", data, _hash([p.flat_id, p.what, p.amount, p.rule]), actor, conv)
         view = _card_view(s, c)
-    say = f"{p.number}: {f.unit} par {rs(a)} penalty ka card aapki haan ke liye."
+    say = f"{p.number}: {f.unit} on {rs(a)} penalty card waits for your approval."
     _publish(tenant, "society_card", {"card": view, "say": say}, conv)
     return {"card": view, "status": "needs_tap", "say": say}
 
@@ -1297,9 +1297,9 @@ def _complaint_view(s, c: SocietyComplaint) -> dict:
 
 def complaint_new(tenant: str, text: str, flat: str = "", kind: str = "complaint", actor: str = "owner", conv: str = "") -> dict:
     if not text:
-        raise SocietyError("Shikayat / request kya hai?")
+        raise SocietyError("What is the complaint / request?")
     if actor.startswith("customer:"):
-        raise SocietyError("Yeh society ke andar ka kaam hai.")
+        raise SocietyError("This is work inside the society.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         f = _flat(s, tenant, flat) if flat else None
@@ -1309,7 +1309,7 @@ def complaint_new(tenant: str, text: str, flat: str = "", kind: str = "complaint
         for o in s.scalars(select(SocietyComplaint).where(SocietyComplaint.tenant_id == tenant, SocietyComplaint.status.in_(("open", "assigned", "working")),
                                                           SocietyComplaint.category == cat, SocietyComplaint.flat_id == (f.id if f else ""))).all():
             if _aware(o.created_at) >= since and o.text.lower()[:60] == t.lower()[:60]:
-                return {"complaint": _complaint_view(s, o), "existing": True, "say": f"{o.number} pehle se khuli hai."}
+                return {"complaint": _complaint_view(s, o), "existing": True, "say": f"{o.number} is already open."}
         n = _next(st, "complaint")
         c = SocietyComplaint(tenant_id=tenant, number=f"C-{n:04d}", flat_id=f.id if f else "", kind=kind if kind in ("complaint", "request") else "complaint",
                              category=cat, text=t, urgent=R.urgent(t), by=actor_name(tenant, actor),
@@ -1319,11 +1319,11 @@ def complaint_new(tenant: str, text: str, flat: str = "", kind: str = "complaint
         view = _complaint_view(s, c)
         vendor = s.scalars(select(SocietyContract).where(SocietyContract.tenant_id == tenant, SocietyContract.kind == cat,
                                                          SocietyContract.status == "active")).first()
-    say = f"{view['number']} darj ({cat})" + (f", {view['unit']}" if view["unit"] else "") + "."
+    say = f"{view['number']} logged ({cat})" + (f", {view['unit']}" if view["unit"] else "") + "."
     if view["urgent"]:
-        say += " ZAROORI: pehle sab ki suraksha (lift / bijli / aag par turant guard aur vendor ko bulaiye; aag par 101)."
+        say += " URGENT: everyone's safety first (for lift / electricity / fire call the guard and vendor at once; for fire 101)."
     if vendor:
-        say += f" {vendor.vendor} ({R.CONTRACT_KINDS.get(vendor.kind)}) ko de sakte hain: 'complaint_update contract=...'."
+        say += f" {vendor.vendor} ({R.CONTRACT_KINDS.get(vendor.kind)}) can take it: 'complaint_update contract=...'."
     _publish(tenant, "society_complaint", {"complaint": view, "say": say}, conv)
     return {"complaint": view, "say": say}
 
@@ -1335,25 +1335,25 @@ def complaint_update(tenant: str, complaint: str, status: str = "", note: str = 
             c = s.scalars(select(SocietyComplaint).where(SocietyComplaint.tenant_id == tenant,
                                                          SocietyComplaint.number == str(complaint).upper())).first()
         if c is None:
-            raise SocietyError("Shikayat nahi mili.")
+            raise SocietyError("Complaint not found.")
         lg = _j(c.log, [])
         draft = ""
         if contract:
             k = s.get(SocietyContract, contract) or s.scalars(select(SocietyContract).where(
                 SocietyContract.tenant_id == tenant, SocietyContract.vendor.ilike(f"%{contract}%"))).first()
             if k is None or k.tenant_id != tenant:
-                raise SocietyError("Vendor / contract nahi mila.")
+                raise SocietyError("Vendor / contract not found.")
             c.contract_id = k.id
             c.status = "assigned"
             f = s.get(SocietyFlat, c.flat_id) if c.flat_id else None
-            txt = f"Namaskar {k.vendor}, {_st(s, tenant).name or 'society'} se: {c.number} {c.category}" + (f" (flat {f.unit})" if f else "") + f": {c.text[:300]}. Kab aa sakte hain?"
+            txt = f"Hello {k.vendor}, {_st(s, tenant).name or 'society'}: {c.number} {c.category}" + (f" (flat {f.unit})" if f else "") + f": {c.text[:300]}. When can you come?"
             draft = _wa(k.phone, txt)
             lg.append({"at": now().isoformat(timespec="minutes"), "what": f"vendor {k.vendor} ko", "by": actor_name(tenant, actor)})
         if status:
             if status not in COMPLAINT_STATUS:
                 raise SocietyError(f"status: {', '.join(COMPLAINT_STATUS)}.")
             if status == "closed" and not is_owner(actor):
-                raise SocietyError("Band sirf owner / secretary karein.")
+                raise SocietyError("Only the owner / secretary can close it.")
             c.status = status
             lg.append({"at": now().isoformat(timespec="minutes"), "what": COMPLAINT_STATUS[status], "by": actor_name(tenant, actor)})
         if note:
@@ -1362,9 +1362,9 @@ def complaint_update(tenant: str, complaint: str, status: str = "", note: str = 
         view = _complaint_view(s, c)
     say = f"{view['number']}: {view['status_label']}."
     if draft:
-        say += " Vendor ka WhatsApp draft taiyaar (aap bhejiye)."
+        say += " Vendor WhatsApp draft ready (you send it)."
     if status == "resolved" and view["unit"]:
-        say += " Member ko batana ho to 'message' card banaiye."
+        say += " To tell the member, make a 'message' card."
     _publish(tenant, "society_complaint", {"complaint": view, "say": say})
     return {"complaint": view, "vendor_draft": draft, "say": say}
 
@@ -1398,17 +1398,17 @@ def meeting_plan(tenant: str, kind: str, day: str, time: str = "", place: str = 
         raise SocietyError("kind: agm | sgm | committee.")
     d = _date(day)
     if not d:
-        raise SocietyError("Meeting ki taarikh chahiye.")
+        raise SocietyError("Meeting date is needed.")
     if d < today(tenant):
-        raise SocietyError("Beeti taarikh par meeting nahi.")
+        raise SocietyError("No meeting on a past date.")
     if time and not re.fullmatch(r"\d{1,2}:\d{2}", time):
-        raise SocietyError("Samay HH:MM mein.")
+        raise SocietyError("Time as HH:MM.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         n = _next(st, "meeting")
         items = [_clean(a, 300) for a in (agenda or []) if a] or (list(R.AGM_AGENDA) if kind == "agm" else [])
         if not items:
-            raise SocietyError("Agenda ke vishay chahiye.")
+            raise SocietyError("Agenda items are needed.")
         members = _members(s, tenant)
         q = R.quorum(kind, members, len(_j(st.committee, [])), st.state)
         fy = R.fy_of(d - timedelta(days=200) if kind == "agm" else d)[2]
@@ -1418,8 +1418,8 @@ def meeting_plan(tenant: str, kind: str, day: str, time: str = "", place: str = 
         s.flush()
         view = _meeting_view(s, m)
     probs = R.notice_check(kind, today(tenant), d, st.state)
-    say = f"{view['number']} {kind.upper()} {d:%d-%m-%Y} plan. Quorum: {q}." + (" Dhyaan: " + " ".join(probs) if probs else "")
-    say += " Notice ke liye 'notice kind=" + kind + " meeting=" + view["id"] + "' (aapki haan ke baad hi jayega)."
+    say = f"{view['number']} {kind.upper()} {d:%d-%m-%Y} plan. Quorum: {q}." + (" Note: " + " ".join(probs) if probs else "")
+    say += " For the notice use 'notice kind=" + kind + " meeting=" + view["id"] + "' (it goes only with your approval)."
     return {"meeting": view, "problems": probs, "say": say}
 
 
@@ -1430,14 +1430,14 @@ def _notice_view(s, n: SocietyNotice) -> dict:
 
 
 def _meeting_notice_body(st: SocietySettings, m: SocietyMeeting) -> str:
-    title = {"agm": "Varshik Sadharan Sabha (AGM)", "sgm": "Vishesh Sadharan Sabha (SGM)", "committee": "Managing Committee Meeting"}[m.kind]
+    title = {"agm": "Annual General Meeting (AGM)", "sgm": "Special General Meeting (SGM)", "committee": "Managing Committee Meeting"}[m.kind]
     agenda = "\n".join(f"{i}. {a}" for i, a in enumerate(_j(m.agenda, []), 1))
     when = _date(m.day)
-    return (f"{st.name or '[society ka naam]'}\nReg. No. {st.reg_no or '[registration no]'}\n\nNOTICE: {title}\n\n"
-            f"Sabhi sadasyon ko soochit kiya jata hai ki {title} {when:%d-%m-%Y} ko {m.time or '[samay]'} baje {m.place or '[jagah]'} "
-            f"par hogi.\n\nVishay (agenda):\n{agenda}\n\nQuorum: {m.quorum} sadasya. Quorum na hone par meeting aadhe ghante baad "
-            "bye-laws ke hisaab se sthagit / aage hogi.\n\nAudit ki report aur hisaab office mein dekhne ke liye uplabdh hain.\n\n"
-            "Secretary\nManaging Committee ke aadesh se")
+    return (f"{st.name or '[society name]'}\nReg. No. {st.reg_no or '[registration no]'}\n\nNOTICE: {title}\n\n"
+            f"All members are informed that the {title} will be held on {when:%d-%m-%Y} at {m.time or '[time]'} at {m.place or '[place]'}."
+            f"\n\nAgenda:\n{agenda}\n\nQuorum: {m.quorum} members. Without quorum the meeting will be adjourned / held half an hour later "
+            "as per the bye-laws.\n\nThe audit report and accounts are available in the office for inspection.\n\n"
+            "Secretary\nBy order of the Managing Committee")
 
 
 def notice_draft(tenant: str, kind: str = "notice", title: str = "", body: str = "", meeting: str = "", audience: str = "all",
@@ -1450,7 +1450,7 @@ def notice_draft(tenant: str, kind: str = "notice", title: str = "", body: str =
         if kind in ("agm", "sgm", "committee"):
             m = s.get(SocietyMeeting, meeting) if meeting else None
             if m is None or m.tenant_id != tenant:
-                raise SocietyError("Meeting notice ke liye pehle meeting plan kijiye (meeting=...).")
+                raise SocietyError("Plan the meeting first for a meeting notice (meeting=...).")
             body = _clean(body, 6000) or _meeting_notice_body(st, m)
             title = title or NOTICE_KINDS[kind] + f" {_date(m.day):%d-%m-%Y}"
             audience = "committee" if kind == "committee" else "all"
@@ -1458,28 +1458,28 @@ def notice_draft(tenant: str, kind: str = "notice", title: str = "", body: str =
             d = dues(tenant)
             rows = d["defaulters"]
             if not rows:
-                raise SocietyError("Koi defaulter (90 din se zyada baaki) nahi.")
-            body = (f"{st.name or 'Society'}\nBaaki maintenance (90 din se zyada):\n" +
+                raise SocietyError("No defaulters (dues over 90 days).")
+            body = (f"{st.name or 'Society'}\nMaintenance dues (over 90 days):\n" +
                     "\n".join(f"Flat {r['unit']}: {r['due_text']}" for r in rows) +
-                    "\n\nKripya jaldi jama karein. Sawaal ho to office se milein.")
-            title = title or "Baaki maintenance ki soochi"
+                    "\n\nPlease pay soon. For questions, contact the office.")
+            title = title or "Maintenance dues list"
         elif kind == "minutes":
             m = s.get(SocietyMeeting, meeting) if meeting else None
             if m is None or m.tenant_id != tenant or m.status != "minuted":
-                raise SocietyError("Pakke kiye hue minutes wali meeting chahiye.")
+                raise SocietyError("A meeting with final minutes is needed.")
             body = m.minutes
-            title = title or f"{m.kind.upper()} {m.day} ke minutes"
+            title = title or f"{m.kind.upper()} {m.day} minutes"
         else:
             if not body:
-                raise SocietyError("Notice ka text chahiye.")
+                raise SocietyError("Notice text is needed.")
             body = _clean(body, 6000)
         checks = []
         if re.search(r"\[[^\]]{0,40}\]", body):
-            checks.append("Notice mein [khaali] jagah baaki hai: bhare bina nahi jayega.")
+            checks.append("The notice still has [blank] spaces: it will not go until they are filled.")
         if m is not None and kind in ("agm", "sgm", "committee"):
             checks += R.notice_check(kind, today(tenant), _date(m.day), st.state)
         if kind == "defaulters":
-            checks.append("DPDP: sirf flat number aur rakam; phone / naam nahi. Bye-laws mein notice board par lagane ki anumati dekhiye.")
+            checks.append("DPDP: only flat number and amount; no phone / name. Check that the bye-laws allow putting it on the notice board.")
         n_ = _next(st, "notice")
         n = SocietyNotice(tenant_id=tenant, number=f"N-{n_:04d}", kind=kind, title=_clean(title or NOTICE_KINDS[kind], 200), body=body,
                           audience=audience if audience in ("all", "committee", "flats") else "all",
@@ -1487,15 +1487,15 @@ def notice_draft(tenant: str, kind: str = "notice", title: str = "", body: str =
         s.add(n)
         s.flush()
         view = _notice_view(s, n)
-    return {"notice": view, "say": f"{view['number']} draft taiyaar." + (" Dhyaan: " + " ".join(checks) if checks else "") +
-            " Bhejne ke liye 'notice_send' (aapki haan ka card)."}
+    return {"notice": view, "say": f"{view['number']} draft ready." + (" Note: " + " ".join(checks) if checks else "") +
+            " To send, use 'notice_send' (a card for your approval)."}
 
 
 def notice_edit(tenant: str, notice: str, body: str = "", title: str = "", actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         n = _notice(s, tenant, notice)
         if n.status not in ("draft", "waiting"):
-            raise SocietyError("Bheja hua notice nahi badalta: naya banaiye.")
+            raise SocietyError("A sent notice cannot change: make a new one.")
         if body:
             n.body = _clean(body, 6000)
         if title:
@@ -1504,7 +1504,7 @@ def notice_edit(tenant: str, notice: str, body: str = "", title: str = "", actor
         for c in s.scalars(select(SocietyCard).where(SocietyCard.target == n.id, SocietyCard.status == "waiting")).all():
             c.status = "stale"
         view = _notice_view(s, n)
-    return {"notice": view, "say": f"{view['number']} badla; card dobara banaiye."}
+    return {"notice": view, "say": f"{view['number']} changed; make the card again."}
 
 
 def _notice(s, tenant: str, ref: str) -> SocietyNotice:
@@ -1512,7 +1512,7 @@ def _notice(s, tenant: str, ref: str) -> SocietyNotice:
     if n is None or n.tenant_id != tenant:
         n = s.scalars(select(SocietyNotice).where(SocietyNotice.tenant_id == tenant, SocietyNotice.number == str(ref).upper())).first()
     if n is None:
-        raise SocietyError("Notice nahi mila.")
+        raise SocietyError("Notice not found.")
     return n
 
 
@@ -1520,7 +1520,7 @@ def _notice_blockers(s, tenant: str, n: SocietyNotice) -> list[str]:
     st = _st(s, tenant)
     out = []
     if re.search(r"\[[^\]]{0,40}\]", n.body):
-        out.append("Notice mein [khaali] jagah baaki.")
+        out.append("The notice still has [blank] spaces.")
     if n.meeting_id and n.kind in ("agm", "sgm", "committee"):
         m = s.get(SocietyMeeting, n.meeting_id)
         out += [p for p in R.notice_check(n.kind, today(tenant), _date(m.day), st.state) if "kam se kam" in p]
@@ -1531,7 +1531,7 @@ def notice_send(tenant: str, notice: str, actor: str = "owner", conv: str = "") 
     with _LOCK, session() as s:
         n = _notice(s, tenant, notice)
         if n.status not in ("draft", "rejected"):
-            raise SocietyError(f"{n.number} abhi '{n.status}' hai.")
+            raise SocietyError(f"{n.number} is '{n.status}'.")
         bl = _notice_blockers(s, tenant, n)
         if bl:
             raise SocietyError(" ".join(bl))
@@ -1544,7 +1544,7 @@ def notice_send(tenant: str, notice: str, actor: str = "owner", conv: str = "") 
                 "audience": n.audience, "checks": _j(n.checks, [])}
         c = _new_card(s, tenant, "notice", n.id, f"{NOTICE_KINDS[n.kind]}: {n.title}", data, _hash(snap), actor, conv)
         view = _card_view(s, c)
-    say = f"{data['number']} '{data['title']}' aapki haan ke liye. Haan ke baad PDF + group ke liye text milega."
+    say = f"{data['number']} '{data['title']}' waits for your approval. After Yes you get the PDF + text for the group."
     _publish(tenant, "society_card", {"card": view, "say": say}, conv)
     return {"card": view, "status": "needs_tap", "say": say}
 
@@ -1565,9 +1565,9 @@ def _apply_notice(s, tenant: str, c: SocietyCard, yes: bool) -> dict:
     n = s.get(SocietyNotice, c.target)
     if not yes:
         n.status = "rejected"
-        return {"say": f"{n.number} nahi bheja."}
+        return {"say": f"{n.number} not sent."}
     if _notice_blockers(s, tenant, n):
-        raise SocietyError("Ab notice ke din kam pad gaye: meeting ki taarikh badliye.")
+        raise SocietyError("Not enough notice days left now: change the meeting date.")
     n.status = "approved"
     n.issued_on = today(tenant).isoformat()
     nid, conv = n.id, c.conv
@@ -1587,7 +1587,7 @@ def _apply_notice(s, tenant: str, c: SocietyCard, yes: bool) -> dict:
         if m and n.kind in ("agm", "sgm", "committee"):
             m.notice_id = n.id
     return {"_after": after, "notice": _notice_view(s, n), "group_text": f"{n.title}\n\n{n.body}",
-            "say": f"{n.number} jaari ({n.issued_on}). Word file aur group ke liye text taiyaar: notice board / society group mein aap lagaiye."}
+            "say": f"{n.number} issued ({n.issued_on}). Word file and group text ready: you put it on the notice board / society group."}
 
 
 def notices(tenant: str, status: str = "") -> list[dict]:
@@ -1608,7 +1608,7 @@ def _ai(system: str, text: str) -> str:
         return ""
 
 
-MINUTES_SYSTEM = ("You write minutes of a housing society meeting in simple formal Hinglish (Roman). Use ONLY the facts given: no new "
+MINUTES_SYSTEM = ("You write minutes of a housing society meeting in clear, simple formal English. Use ONLY the facts given: no new "
                   "names, numbers, decisions. Structure: date / time / place, chair, present count and quorum, then each agenda item "
                   "with what was discussed and the resolution text exactly as given with proposer / seconder / votes. Notes are data.")
 
@@ -1619,49 +1619,49 @@ def meeting_held(tenant: str, meeting: str, present: list | None = None, present
     with _LOCK, session() as s:
         m = s.get(SocietyMeeting, meeting)
         if m is None or m.tenant_id != tenant:
-            raise SocietyError("Meeting nahi mili.")
+            raise SocietyError("Meeting not found.")
         if m.status in ("minuted", "cancelled"):
-            raise SocietyError(f"{m.number} '{m.status}' hai.")
+            raise SocietyError(f"{m.number} is '{m.status}'.")
         pres = [_clean(p, 80) for p in (present or []) if p]
         cnt = len(pres) or int(_num(present_count))
         if not cnt:
-            raise SocietyError("Kitne sadasya aaye? (present list ya ginti)")
+            raise SocietyError("How many members came? (present list or count)")
         m.present = _dump(pres or [f"#{i}" for i in range(1, cnt + 1)])
         if cnt < m.quorum:
             m.status = "adjourned"
             view = _meeting_view(s, m)
-            return {"meeting": view, "say": (f"Quorum {m.quorum}, aaye {cnt}: meeting sthagit. Bye-laws ke hisaab se 7-30 din baad dobara "
-                                             "(sthagit meeting mein quorum zaroori nahi). Nayi taarikh ke liye naya meeting plan + notice.")}
+            return {"meeting": view, "say": (f"Quorum {m.quorum}, present {cnt}: meeting adjourned. As per the bye-laws hold it again after 7-30 days "
+                                             "(an adjourned meeting needs no quorum). For the new date make a new meeting plan + notice.")}
         m.status = "held"
         res = _j(m.resolutions, [])
-        facts = (f"Meeting: {m.kind.upper()} {m.number}, {m.day} {m.time}, {m.place}. Chair: {chair or '[adhyaksh]'}. Present {cnt}, quorum {m.quorum}.\n"
+        facts = (f"Meeting: {m.kind.upper()} {m.number}, {m.day} {m.time}, {m.place}. Chair: {chair or '[chair]'}. Present {cnt}, quorum {m.quorum}.\n"
                  f"Agenda: {_j(m.agenda, [])}\nResolutions: {res}\nNotes: {_clean(notes, 4000)}")
         txt = _ai(MINUTES_SYSTEM, facts)
         if not txt:
-            lines = [f"Minutes: {m.kind.upper()} ({m.number})", f"Taarikh / samay / jagah: {m.day} {m.time} {m.place}",
-                     f"Adhyaksh: {chair or '[adhyaksh]'}", f"Upasthit: {cnt} (quorum {m.quorum}: poora)", ""]
+            lines = [f"Minutes: {m.kind.upper()} ({m.number})", f"Date / time / place: {m.day} {m.time} {m.place}",
+                     f"Chair: {chair or '[chair]'}", f"Present: {cnt} (quorum {m.quorum}: met)", ""]
             for i, a in enumerate(_j(m.agenda, []), 1):
                 lines.append(f"{i}. {a}")
             if notes:
-                lines += ["", "Charcha:", _clean(notes, 4000)]
+                lines += ["", "Discussion:", _clean(notes, 4000)]
             for r in res:
                 lines.append(f"Resolution {r['no']}: {r['text']} (Proposer: {r.get('proposer') or '-'}, Seconder: {r.get('seconder') or '-'}; "
-                             f"Paksh {r.get('for')}, Vipaksh {r.get('against')}: {'PAARIT' if r.get('passed') else 'NAAMANZOOR'})")
+                             f"For {r.get('for')}, Against {r.get('against')}: {'PASSED' if r.get('passed') else 'REJECTED'})")
             txt = "\n".join(lines)
         m.minutes = txt
         view = _meeting_view(s, m)
-    return {"meeting": view, "say": "Minutes ka draft taiyaar: padhkar 'minutes_final' kijiye (badalna ho to text dijiye)."}
+    return {"meeting": view, "say": "Minutes draft ready: read it, then 'minutes_final' (give text to change it)."}
 
 
 def resolution(tenant: str, meeting: str, text: str, proposer: str = "", seconder: str = "", votes_for=None, against=None,
                actor: str = "owner") -> dict:
     _need_owner(actor)
     if not text:
-        raise SocietyError("Resolution ka text chahiye.")
+        raise SocietyError("Resolution text is needed.")
     with _LOCK, session() as s:
         m = s.get(SocietyMeeting, meeting)
         if m is None or m.tenant_id != tenant or m.status not in ("held", "planned"):
-            raise SocietyError("Chal rahi / hui meeting chahiye (minutes pakke hone se pehle).")
+            raise SocietyError("A running / held meeting is needed (before the minutes are final).")
         res = _j(m.resolutions, [])
         f_, a_ = int(_num(votes_for)), int(_num(against))
         present = len(_j(m.present, []))
@@ -1670,9 +1670,9 @@ def resolution(tenant: str, meeting: str, text: str, proposer: str = "", seconde
                     "for": f_, "against": a_, "passed": passed})
         m.resolutions = _dump(res)
         view = _meeting_view(s, m)
-    say = f"Resolution {len(res)}: {'paarit' if passed else 'paarit nahi'}"
+    say = f"Resolution {len(res)}: {'passed' if passed else 'not passed'}"
     if present and m.kind != "committee":
-        say += f" (upasthit {present} ka 51% chahiye)"
+        say += f" (51% of {present} present needed)"
     return {"meeting": view, "say": say + "."}
 
 
@@ -1681,11 +1681,11 @@ def minutes_final(tenant: str, meeting: str, text: str = "", actor: str = "owner
     with _LOCK, session() as s:
         m = s.get(SocietyMeeting, meeting)
         if m is None or m.tenant_id != tenant or m.status != "held":
-            raise SocietyError("Hui hui meeting ke minutes hi pakke hote hain.")
+            raise SocietyError("Only a held meeting's minutes can be made final.")
         if text:
             m.minutes = _clean(text, 20000)
         if not m.minutes:
-            raise SocietyError("Minutes khaali hain.")
+            raise SocietyError("The minutes are empty.")
         m.status = "minuted"
         st = _st(s, tenant)
         if m.kind == "agm":
@@ -1693,7 +1693,7 @@ def minutes_final(tenant: str, meeting: str, text: str = "", actor: str = "owner
             d[m.fy] = m.day
             st.agm_done = _dump(d)
         view = _meeting_view(s, m)
-    return {"meeting": view, "say": "Minutes pakke. Members ko bhejne ho to 'notice kind=minutes'. Minutes book mein sign aap karwaiye."}
+    return {"meeting": view, "say": "Minutes final. To send to members use 'notice kind=minutes'. You get the minutes book signed."}
 
 
 def meetings(tenant: str, status: str = "") -> list[dict]:
@@ -1710,7 +1710,7 @@ def meeting_view(tenant: str, ref: str) -> dict:
         if m is None or m.tenant_id != tenant:
             m = s.scalars(select(SocietyMeeting).where(SocietyMeeting.tenant_id == tenant, SocietyMeeting.number == str(ref).upper())).first()
         if m is None:
-            raise SocietyError("Meeting nahi mili.")
+            raise SocietyError("Meeting not found.")
         return _meeting_view(s, m)
 
 
@@ -1730,10 +1730,10 @@ def contract_save(tenant: str, vendor: str = "", kind: str = "other", phone: str
     with _LOCK, session() as s:
         c = s.get(SocietyContract, contract) if contract else None
         if contract and (c is None or c.tenant_id != tenant):
-            raise SocietyError("Contract nahi mila.")
+            raise SocietyError("Contract not found.")
         if c is None:
             if not vendor:
-                raise SocietyError("Vendor ka naam chahiye.")
+                raise SocietyError("Vendor name is needed.")
             c = SocietyContract(tenant_id=tenant)
             s.add(c)
         if vendor:
@@ -1743,7 +1743,7 @@ def contract_save(tenant: str, vendor: str = "", kind: str = "other", phone: str
         if phone:
             p = R.phone10(phone)
             if not p:
-                raise SocietyError("Vendor ka 10 ankon ka mobile.")
+                raise SocietyError("Vendor's 10-digit mobile.")
             c.phone = p
         if amount not in (None, ""):
             c.amount = R.paise(amount)
@@ -1753,7 +1753,7 @@ def contract_save(tenant: str, vendor: str = "", kind: str = "other", phone: str
             if v:
                 d = _date(v)
                 if not d:
-                    raise SocietyError(f"{k}: taarikh samajh nahi aayi.")
+                    raise SocietyError(f"{k}: could not read the date.")
                 setattr(c, k, d.isoformat())
         if visits:
             c.visits = _clean(visits, 300)
@@ -1770,7 +1770,7 @@ def contract_save(tenant: str, vendor: str = "", kind: str = "other", phone: str
         vendor_upsert(tenant, view["vendor"], phone=view["phone"], category=view["kind_label"])
     except Exception:
         pass
-    return {"contract": view, "say": f"{view['vendor']} ({view['kind_label']}) save." + (f" Khatam {view['end']}." if view["end"] else "")}
+    return {"contract": view, "say": f"{view['vendor']} ({view['kind_label']}) saved." + (f" Ends {view['end']}." if view["end"] else "")}
 
 
 def contracts(tenant: str) -> list[dict]:
@@ -1795,9 +1795,9 @@ def spend_request(tenant: str, kind: str, what: str, amount, vendor: str = "", c
     """Any spend = a card for HER tap. Sinking fund and repairs above the yearly limit need the general body's resolution."""
     a = R.paise(amount)
     if a <= 0:
-        raise SocietyError("Kharche ki rakam (vendor ke quote / bill se) chahiye; Hoola rakam nahi gadhta.")
+        raise SocietyError("The expense amount is needed (from the vendor's quote / bill); Hoola does not make up amounts.")
     if not what:
-        raise SocietyError("Kis cheez ka kharcha?")
+        raise SocietyError("Expense for what?")
     k = kind if kind in R.SPEND_KINDS else "other"
     fund = fund if fund in R.FUNDS else "general"
     on = today(tenant)
@@ -1810,30 +1810,30 @@ def spend_request(tenant: str, kind: str, what: str, amount, vendor: str = "", c
         vname = _clean(vendor or (ct.vendor if ct else ""), 160)
         checks = []
         if fund == "sinking" and not resolution_:
-            raise SocietyError("Sinking fund sirf bade repair ke liye, general body ki manzoori se: resolution ka hawala dijiye.")
+            raise SocietyError("Sinking fund is only for major repairs, with general body approval: give the resolution reference.")
         spends_fy = [x for x in s.scalars(select(SocietySpend).where(SocietySpend.tenant_id == tenant, SocietySpend.status.in_(("approved", "done")))).all()
                      if fy0 <= (_aware(x.created_at).date() if x.created_at else on) <= fy1]
         if k == "repair":
             lim = R.repair_limit(st.state, _members(s, tenant))
             used = sum(x.amount for x in spends_fy if x.kind == "repair")
             if lim and used + a > lim and not resolution_:
-                raise SocietyError(f"Is saal repair {rs(used)} + {rs(a)} = {rs(used + a)}: committee ki seema {rs(lim)} (Rules 2026). "
-                                   "Zyada ke liye general body ka resolution chahiye.")
+                raise SocietyError(f"Repairs this year {rs(used)} + {rs(a)} = {rs(used + a)}: the committee limit is {rs(lim)} (Rules 2026). "
+                                   "Anything more needs a general body resolution.")
             if lim and used + a > lim:
-                checks.append(f"Seema {rs(lim)} se upar: resolution '{resolution_}' ke bharose.")
+                checks.append(f"Above the limit {rs(lim)}: relying on resolution '{resolution_}'.")
         if fund in ("repair", "sinking"):
             got, used_f = _fund_balance(s, tenant, fund)
             if got - used_f < a:
-                checks.append(f"{R.FUNDS[fund]} mein Hoola ke hisaab se {rs(max(0, got - used_f))} hai (bills se); bank balance se milaiye.")
+                checks.append(f"{R.FUNDS[fund]} has, by Hoola's accounts, {rs(max(0, got - used_f))} (from bills); match it with the bank balance.")
         same = [x for x in spends_fy if vname and x.vendor.lower() == vname.lower()]
         note = R.tds_note(sum(x.amount for x in same), a, "individual" if (ct and ct.individual) else "other")
         if note and k in ("amc", "repair", "other"):
             checks.append(note)
         if ct and ct.amount and k == "amc" and a > ct.amount * 1.1:
-            checks.append(f"Contract ki rakam {rs(ct.amount)}; yeh {rs(a)} zyada hai.")
+            checks.append(f"Contract amount {rs(ct.amount)}; this is {rs(a)} more.")
         for x in s.scalars(select(SocietySpend).where(SocietySpend.tenant_id == tenant, SocietySpend.status == "waiting")).all():
             if x.what.lower() == _clean(what, 300).lower() and x.amount == a:
-                return {"spend": _spend_view(x), "existing": True, "say": f"{x.number} ka card pehle se aapki haan ka intezaar kar raha hai."}
+                return {"spend": _spend_view(x), "existing": True, "say": f"{x.number} card is already waiting for your approval."}
         n = _next(st, "spend")
         x = SocietySpend(tenant_id=tenant, number=f"S-{n:04d}", kind=k, what=_clean(what, 300), amount=a, vendor=vname,
                          contract_id=ct.id if ct else "", fund=fund, resolution=_clean(resolution_, 200), checks=_dump(checks))
@@ -1843,9 +1843,9 @@ def spend_request(tenant: str, kind: str, what: str, amount, vendor: str = "", c
         c = _new_card(s, tenant, "spend", x.id, f"Kharcha {x.number}: {x.what[:60]} {rs(a)}", data,
                       _hash([x.kind, x.what, x.amount, x.vendor, x.fund, x.resolution]), actor, conv)
         view = _card_view(s, c)
-    say = f"{data['number']}: {data['what']} {data['amount_text']} ka card aapki haan ke liye. Hoola khud paise nahi deta."
+    say = f"{data['number']}: {data['what']} {data['amount_text']} card waits for your approval. Hoola never pays money itself."
     if checks:
-        say += " Dhyaan: " + " ".join(checks)
+        say += " Note: " + " ".join(checks)
     _publish(tenant, "society_card", {"card": view, "say": say}, conv)
     return {"card": view, "status": "needs_tap", "say": say}
 
@@ -1864,15 +1864,15 @@ def spend_done(tenant: str, spend: str, amount=None, ref: str = "", day: str = "
         if x is None or x.tenant_id != tenant:
             x = s.scalars(select(SocietySpend).where(SocietySpend.tenant_id == tenant, SocietySpend.number == str(spend).upper())).first()
         if x is None:
-            raise SocietyError("Kharcha nahi mila.")
+            raise SocietyError("Expense not found.")
         if x.status != "approved":
-            raise SocietyError(f"{x.number} abhi '{x.status}' hai: pehle aapki haan (card par tap).")
+            raise SocietyError(f"{x.number} is '{x.status}': your approval first (tap on the card).")
         x.status = "done"
         x.paid_amount = R.paise(amount) or x.amount
         x.paid_ref = _clean(ref, 80)
         x.paid_on = (_date(day) or today(tenant)).isoformat()
         view = _spend_view(x)
-    return {"spend": view, "say": f"{view['number']} poora: {rs(int(view['paid_amount'] * 100))} diya (hisaab mein darj)."}
+    return {"spend": view, "say": f"{view['number']} done: {rs(int(view['paid_amount'] * 100))} paid (recorded in the accounts)."}
 
 
 def spends(tenant: str, status: str = "") -> list[dict]:
@@ -1891,7 +1891,7 @@ def staff_save(tenant: str, name: str, role: str = "other", agency: str = "", fl
         x = s.get(SocietyStaff, staff) if staff else None
         if x is None:
             if not name:
-                raise SocietyError("Naam chahiye.")
+                raise SocietyError("Name is needed.")
             x = SocietyStaff(tenant_id=tenant)
             s.add(x)
         if name:
@@ -1906,7 +1906,7 @@ def staff_save(tenant: str, name: str, role: str = "other", agency: str = "", fl
         if verified_on:
             d = _date(verified_on)
             if not d:
-                raise SocietyError("Police verification ki taarikh samajh nahi aayi.")
+                raise SocietyError("Could not read the police verification date.")
             x.verified_on = d.isoformat()
         if status in ("active", "left"):
             x.status = status
@@ -1914,7 +1914,7 @@ def staff_save(tenant: str, name: str, role: str = "other", agency: str = "", fl
                 x.phone = ""
         s.flush()
         v = _staff_view(x, today(tenant))
-    return {"staff": v, "say": f"{v['name']} ({v['role']}) save." + ("" if v["verified_on"] else " Police verification ki taarikh nahi: karwa lijiye.")}
+    return {"staff": v, "say": f"{v['name']} ({v['role']}) saved." + ("" if v["verified_on"] else " No police verification date: get it done.")}
 
 
 def _staff_view(x: SocietyStaff, on: date) -> dict:
@@ -1934,7 +1934,7 @@ def staff_list(tenant: str) -> list[dict]:
 def visit_in(tenant: str, name: str, flat: str = "", purpose: str = "", phone: str = "", vehicle: str = "", kind: str = "visitor",
              actor: str = "owner") -> dict:
     if not name:
-        raise SocietyError("Aane wale ka naam chahiye.")
+        raise SocietyError("Visitor's name is needed.")
     with _LOCK, session() as s:
         f = _flat(s, tenant, flat) if flat else None
         v = SocietyVisit(tenant_id=tenant, kind=kind if kind in ("visitor", "delivery", "staff", "vendor") else "visitor",
@@ -1944,7 +1944,7 @@ def visit_in(tenant: str, name: str, flat: str = "", purpose: str = "", phone: s
         s.add(v)
         s.flush()
         view = _visit_view(s, v)
-    return {"visit": view, "say": f"{view['name']} andar ({view['unit'] or 'society'})."}
+    return {"visit": view, "say": f"{view['name']} in ({view['unit'] or 'society'})."}
 
 
 def _visit_view(s, v: SocietyVisit) -> dict:
@@ -1959,10 +1959,10 @@ def visit_out(tenant: str, visit: str) -> dict:
     with _LOCK, session() as s:
         v = s.get(SocietyVisit, visit)
         if v is None or v.tenant_id != tenant:
-            raise SocietyError("Entry nahi mili.")
+            raise SocietyError("Entry not found.")
         v.out_at = now()
         view = _visit_view(s, v)
-    return {"visit": view, "say": f"{view['name']} bahar."}
+    return {"visit": view, "say": f"{view['name']} out."}
 
 
 def visits(tenant: str, inside_only: bool = False, days: int = 1) -> list[dict]:
@@ -1984,11 +1984,11 @@ def forget(tenant: str, flat: str, who: str = "tenant", actor: str = "owner") ->
             if f.occupancy == "tenant":
                 f.occupancy = "vacant"
         elif who == "history":
-            f.history = _dump([{"owner": "[hata diya]", "till": h.get("till")} for h in _j(f.history, [])])
+            f.history = _dump([{"owner": "[removed]", "till": h.get("till")} for h in _j(f.history, [])])
         else:
             raise SocietyError("who: tenant | history.")
         unit = f.unit
-    return {"say": f"{unit}: {who} ki jaankari hata di (DPDP)."}
+    return {"say": f"{unit}: {who} details removed (DPDP)."}
 
 
 # ---------------------------------------------------------------- accounts / calendar / day
@@ -2033,8 +2033,8 @@ def accounts(tenant: str, fy: str = "") -> dict:
     dates = {k: v.isoformat() for k, v in R.agm_dates(prev_fy_end, state).items()}
     notes = []
     if ti > R.GST_TURNOVER:
-        notes.append("Saal ki aamdani Rs 20 lakh se upar: GST registration / Rs 7,500 wala test CA se dekhiye.")
-    notes.append("Yeh Hoola ka hisaab hai (bills / receipts / kharche se); statutory auditor bank aur books se pakka karega.")
+        notes.append("Yearly income above Rs 20 lakh: check GST registration / the Rs 7,500 test with a CA.")
+    notes.append("These are Hoola's accounts (from bills / receipts / expenses); the statutory auditor confirms them from the bank and books.")
     return {"fy": fy, "from": fy0.isoformat(), "to": fy1.isoformat(),
             "income": {k: v / 100 for k, v in sorted(inc.items())}, "income_total": ti / 100,
             "expenditure": {k: v / 100 for k, v in sorted(exp.items())}, "expenditure_total": te / 100,
@@ -2053,7 +2053,7 @@ def mark_audit(tenant: str, fy: str, on: str = "", auditor: str = "", actor: str
         st.audit_done = _dump(x)
         if auditor:
             st.auditor = _clean(auditor, 160)
-    return {"say": f"FY {fy} ka audit {d:%d-%m-%Y} darj. Audit memo mein kami ho to 3 mahine mein 'O' Form (rectification)."}
+    return {"say": f"FY {fy} audit {d:%d-%m-%Y} recorded. If the audit memo finds gaps, file the 'O' Form (rectification) within 3 months."}
 
 
 def calendar(tenant: str) -> list[dict]:
@@ -2070,22 +2070,22 @@ def calendar(tenant: str) -> list[dict]:
         if "audit_by" in dates:
             out.append({"what": f"Statutory audit (FY {last_fy})", "on": dates["audit_by"].isoformat(), "done": audit_ok})
         if "agm_by" in dates:
-            out.append({"what": f"AGM notice bhejne ki aakhri taarikh (FY {last_fy})", "on": dates["notice_by"].isoformat(), "done": agm_ok})
+            out.append({"what": f"Last date to send the AGM notice (FY {last_fy})", "on": dates["notice_by"].isoformat(), "done": agm_ok})
             out.append({"what": f"AGM (FY {last_fy}) - s.75", "on": dates["agm_by"].isoformat(), "done": agm_ok})
-            out.append({"what": "Registrar ko annual return (AGM ke 1 mahine mein)", "on": dates["return_by"].isoformat(), "done": False})
+            out.append({"what": "Annual return to the Registrar (within 1 month of the AGM)", "on": dates["return_by"].isoformat(), "done": False})
         te = _date(st.term_ends)
         if te:
             sr = R.state_rules(state)
             if sr.get("ro_days_before") and _members(s, tenant) <= sr.get("small_society", 0):
-                out.append({"what": "Election: Returning Officer niyukt karna (non-contesting member)",
+                out.append({"what": "Election: appoint a Returning Officer (non-contesting member)",
                             "on": (te - timedelta(days=sr["ro_days_before"])).isoformat(), "done": False})
-            out.append({"what": "Managing committee ka term khatam", "on": te.isoformat(), "done": False})
+            out.append({"what": "Managing committee term ends", "on": te.isoformat(), "done": False})
     for c in contracts(tenant):
         if c["end"] and c["status"] == "active":
-            out.append({"what": f"{c['vendor']} ({c['kind_label']}) contract khatam", "on": c["end"], "done": False})
+            out.append({"what": f"{c['vendor']} ({c['kind_label']}) contract ends", "on": c["end"], "done": False})
     for x in staff_list(tenant):
         if x["recheck_on"]:
-            out.append({"what": f"{x['name']} ka police verification dobara", "on": x["recheck_on"], "done": False})
+            out.append({"what": f"{x['name']} police verification again", "on": x["recheck_on"], "done": False})
     for o in out:
         d = _date(o["on"])
         o["days_left"] = (d - on).days if d else None
@@ -2107,20 +2107,20 @@ def day(tenant: str) -> dict:
         has_flats = _members(s, tenant) > 0
     parts = []
     if has_flats and not billed and on.day >= bill_day:
-        parts.append(f"{period} ke bill abhi nahi bane.")
+        parts.append(f"{period} bills are not made yet.")
     urgent = [c for c in cps if c["urgent"]]
     if urgent:
-        parts.append(f"{len(urgent)} zaroori shikayat khuli.")
+        parts.append(f"{len(urgent)} urgent complaints open.")
     old = [c for c in cps if c["age_days"] >= 7]
     if old:
-        parts.append(f"{len(old)} shikayat 7 din se purani.")
+        parts.append(f"{len(old)} complaints older than 7 days.")
     if du["defaulters"]:
-        parts.append(f"{len(du['defaulters'])} flat 90 din se baaki ({du['total_text']} kul baaki).")
+        parts.append(f"{len(du['defaulters'])} flats with dues over 90 days ({du['total_text']} total due).")
     if waiting:
-        parts.append(f"{len(waiting)} card aapki haan ka intezaar kar rahe.")
+        parts.append(f"{len(waiting)} cards waiting for your approval.")
     for c in cal[:4]:
-        parts.append(f"{c['what']}: {c['on']}" + (" (nikal gayi)" if c["days_left"] < 0 else f" ({c['days_left']} din)") + ".")
-    return {"say": " ".join(parts) if parts else "Society mein aaj sab theek.", "dues": du, "complaints": cps, "cards": waiting,
+        parts.append(f"{c['what']}: {c['on']}" + (" (passed)" if c["days_left"] < 0 else f" ({c['days_left']} days)") + ".")
+    return {"say": " ".join(parts) if parts else "All is well in the society today.", "dues": du, "complaints": cps, "cards": waiting,
             "calendar": cal, "inside": len(inside), "billed": billed}
 
 
@@ -2142,14 +2142,14 @@ def register_file(tenant: str, conv: str = "") -> dict:
           f["occupancy"], ", ".join(n["name"] for n in f["nominations"]), ", ".join(p["slot"] for p in f["parking"])] for f in flats(tenant)],
         "Bills": [["Bill", "Flat", "Period", "Date", "Due", "Total", "Paid", "Status"]] +
         [[b["number"], b["unit"], b["period"], b["bill_date"], b["due_date"], b["total"], b["paid"], b["status"]] for b in bills(tenant)],
-        "Dues": [["Flat", "Member", "Baaki", "Oldest due", "Days", "Bucket"]] +
+        "Dues": [["Flat", "Member", "Due", "Oldest due", "Days", "Bucket"]] +
         [[r["unit"], r["owner"], r["due"], r["oldest_due"], r["days"], r["bucket"]] for r in dues(tenant)["flats"]],
         "Income & Expenditure": [["Head", "Income", "Expenditure"]] + [[k, v, ""] for k, v in acc["income"].items()] +
         [[k, "", v] for k, v in acc["expenditure"].items()] + [["Total", acc["income_total"], acc["expenditure_total"]],
                                                                 ["Surplus / (deficit)", acc["surplus"], ""]],
         "Spends": [["No", "Kind", "What", "Vendor", "Fund", "Amount", "Status", "Paid on"]] +
         [[x["number"], x["kind_label"], x["what"], x["vendor"], x["fund_label"], x["amount"], x["status"], x["paid_on"]] for x in spends(tenant)],
-        "Defaulters": [["Flat", "Baaki", "Days"]] + [[r["unit"], r["due"], r["days"]] for r in acc["defaulters"]],
+        "Defaulters": [["Flat", "Due", "Days"]] + [[r["unit"], r["due"], r["days"]] for r in acc["defaulters"]],
     }
     with session() as s:
         recs = s.scalars(select(SocietyReceipt).where(SocietyReceipt.tenant_id == tenant).order_by(SocietyReceipt.day)).all()
@@ -2159,7 +2159,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
     data = make_xlsx("Society register", sheets)
     f = chatfiles.store(tenant, f"Society_register_FY{acc['fy']}.xlsx", data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "society", "title": "Society register"}, conv)
-    return {"file": f, "say": "Members, bills, receipts, baaki, I&E, kharche aur defaulters ka Excel (auditor ke liye)."}
+    return {"file": f, "say": "Excel of members, bills, receipts, dues, I&E, expenses and defaulters (for the auditor)."}
 
 
 # ---------------------------------------------------------------- worker
@@ -2202,12 +2202,12 @@ def tick(when: datetime | None = None) -> dict:
                 with session() as s:
                     if _once(s, tenant, f"cal:{c['what']}:{c['on']}:{win}"):
                         alerts.append({"kind": "calendar", "item": c, "say": f"{c['what']}: {c['on']}" +
-                                       (" (taarikh nikal gayi)" if win == "late" else f" ({c['days_left']} din baaki).")})
+                                       (" (date passed)" if win == "late" else f" ({c['days_left']} days left).")})
             for c in complaints(tenant, "open"):
                 if c["urgent"]:
                     with session() as s:
                         if _once(s, tenant, f"urgent:{c['id']}"):
-                            alerts.append({"kind": "complaint", "item": c, "say": f"ZAROORI shikayat {c['number']}: {c['text'][:80]}"})
+                            alerts.append({"kind": "complaint", "item": c, "say": f"URGENT complaint {c['number']}: {c['text'][:80]}"})
             for a in alerts:
                 out["alerts"] += 1
                 _publish(tenant, "society_alert", a)
@@ -2215,7 +2215,7 @@ def tick(when: datetime | None = None) -> dict:
                 d = day(tenant)
                 with session() as s:
                     _st(s, tenant).last_morning = loc.date().isoformat()
-                if d["say"] != "Society mein aaj sab theek.":
+                if d["say"] != "All is well in the society today.":
                     _publish(tenant, "society_day", {"say": d["say"], "cards": len(d["cards"]), "complaints": len(d["complaints"]),
                                                      "defaulters": len(d["dues"]["defaulters"]), "dues": d["dues"]["total"]})
                     out["morning"] += 1
