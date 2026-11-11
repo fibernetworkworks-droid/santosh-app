@@ -2362,8 +2362,46 @@ project, the code written through ONE tool and built in a locked Docker box.
   style panel (L9), tests / browser check before done + scans (L11), prerendered HTML for SEO, a custom domain for
   an app, GitHub sync (L14), drafts (L13), growing the vetted list by her tap.
 
+## v0.825.0 TEEN AWAAZEIN (built as 0.816; their 0.816-0.824 took the numbers - REBASE PROTOCOL, all kept) — three more call voices she can pick (owner: "LETS DEPLOY ALL --- USER WILL CHOOSE THE VOICE THEY WANT")
 
-## v0.825.0 WHITEBOOKS ERROR WORDS (owner shared WhiteBooks' own files after wb_check)
+After the deep research (`reports/Human voice in every language.md`) and the price check (Phonic 1 $0.07/min, Grok Voice
+3.0 $0.08/min, GPT-Live-1 $0.05/min voice layer + the brain), the three top-ranked live voices are now choices on the
+phone's Profile > Call voice screen beside Gemini. **Gemini stays the default and is not touched**: main.py reaches the
+new engines only through `voiceengine.pick()`, exactly like the v0.264 OpenAI engine.
+
+- `server/app/voice_more.py` (NEW): `GrokCall`, `GptLiveCall`, `PhonicCall`, each a `voice_openai.OpenAICall`, so
+  everything that is not the wire is inherited (phone protocol = same APK, memory + context, the Haiku brain behind
+  santosh_kaam, hold on her words, OTP / approvals by voice, job news, stall watchdog, turn saver, captions in time,
+  scorecard, resume). Wires written from each vendor's docs, read 11 Nov 2026:
+  - Grok: `wss://api.x.ai/v1/realtime?model=grok-voice-3.0`, OpenAI Realtime event names, xAI session body (voice
+    rex / eve, server_vad, audio/pcm 24 kHz, reasoning none, function tools). No usage numbers on the stream: cost =
+    minutes x $0.08.
+  - GPT-Live-1: `wss://api.openai.com/v1/live/sessions`, session.start (model gpt-live-1, voice stone / nira, pcm 24 kHz,
+    delegation client). GPT-Live opens a delegation when work is needed; Hoola's brain answers it through the same
+    santosh_kaam path; the answer goes back as session.commentary.append for that delegation id. News = commentary
+    for the session, quiet notes = session.thinking.append. Live has no turn-done or "she started talking" event, so
+    his turn ends when his audio stopped 1 s and her phone played it, and her words while he is audible = she cut in
+    (UNVERIFIED heuristics). Cost = the session's own usage.seconds x $0.05 (+ the brain, counted as usual).
+  - Phonic 1: `wss://api.phonic.ai/v1/sts/ws`, config (phonic-1, voice sandeep / divya, pcm_16000 in so no resampling,
+    pcm_24000 out, language from the call + English, multilingual auto, santosh_kaam as a strict custom_websocket tool,
+    no_input_end_conversation_sec 3600 so it never hangs up on a quiet call), audio_chunk <= 40 ms, tool_call ->
+    tool_call_output, user_started_speaking = barge-in, assistant_finished_speaking = turn end. Cost = minutes x $0.07.
+- `voice_openai.OpenAICall.run()` now calls `_open()` / `_configure()` / `_session_min()` and sends `engine: self.engine`
+  in `ready` — behaviour for the OpenAI engine byte-for-byte the same (its tests unchanged and green).
+- `voiceengine.py`: ENGINES += grok / gptlive / phonic (`MORE`), per-engine key, on/off, who may pick it (default
+  everyone), monthly budget (default $25 each, whole app) and per-user minutes (default 60); spend in its own box in
+  `usage-YYYY-MM.json` under `engines`; `view()` grows `engines` (name, ready, why, ₹ per minute, month ₹, minutes).
+- Settings: `XAI_API_KEY`, `PHONIC_API_KEY` (GPT-Live uses the existing `OPENAI_API_KEY`) + `VOICE_{GROK,GPTLIVE,PHONIC}_*`.
+- Phone: `lib/ui/voice_engine_screen.dart` lists the three with a line, ₹ a minute, the reason when it cannot run,
+  and this month's numbers for the one she picked.
+- Tests: `test_v0816_teen_awaazein.py` (7) - pick + fallbacks + minutes, and one end-to-end call per engine against a
+  scripted fake of its wire.
+
+NOT VERIFIED: no live call has run on any of the three (no keys on the server when this was built). Parking does not
+apply to them (CAN_PARK stays Gemini-only), so a quiet call keeps billing per minute until she hangs up. Hindi /
+Hinglish quality on each engine is unmeasured - her ear test is the judge.
+
+## v0.826.0 WHITEBOOKS ERROR WORDS + GST TEST GSTIN (built as 0.825; their TEEN AWAAZEIN took 0.825.0 - REBASE PROTOCOL, both kept; owner shared WhiteBooks' own files after wb_check)
 
 Live wb_check (11 Nov, 09:44 UTC) after her email fix: keys accepted, e-invoice + e-way bill sandbox logins PASS; GST public search
 "Public API Search Taxpayer Fail", filing track a bare refusal, OTP login SKIP (no GST username). She then shared ten WhiteBooks files
@@ -2377,3 +2415,12 @@ e-invoice + e-way bill preparation sheets). Read end to end (not committed - the
   review_by; `wb.known_error(code)` -> "GST system: Invalid GSTIN." / "e-invoice system: <message>. <fix>"; `_message_of` uses it after
   Hoola's own PLAIN lines. `wb_check` FAIL lines add WhiteBooks' own reply when ours is generic.
 Test: test_v0807_bahi_a0.py +1. NOT VERIFIED: the GST sandbox is still off until WhiteBooks enables it.
+
+GST TEST GSTIN (same release): WhiteBooks support replied - the GST sandbox public taxpayer search is tested with GSTIN
+27AAGCB1286QKZL and username MH_NT4.2823, a different GSTIN from the e-invoice / e-way bill one (27AAGCB1286Q005, their shared PDF).
+NEW setting `whitebooks_sandbox_gst_gstin` (WHITEBOOKS_SANDBOX_GST_GSTIN; empty = the shared one): wb_check's GSTIN search, filing
+track, OTP login (state code from it) and ledger use it; e-invoice + e-way bill keep the shared GSTIN; the paste check and vps-ops
+wb_check list the new line. Test: test_v0807_bahi_a0.py +1 (each product's request carries its own GSTIN, username header, 0 fails).
+Also started (not built yet): API Setu's GSTN Tax Payer API spec read (cf-media.api-setu.in/specfiles/gstn.yaml: GET
+https://apisetu.gov.in/gstn/v1/taxpayers/{gstin}, headers X-APISETU-CLIENTID + X-APISETU-APIKEY; v1 and v2 both answer 401 without keys).
+

@@ -29,7 +29,7 @@ m = ROOT / "server/app/main.py"
 t = m.read_text()
 ol = re.search(r'^APP_VERSION = "0\.825\.0"   # (.*)$', t, re.M)
 assert ol
-story = ('v0.826.0 GST TEST GSTIN - WhiteBooks support answered: the GST sandbox (public taxpayer search) is tested with GSTIN '
+story = ('v0.826.0 WHITEBOOKS ERROR WORDS + GST TEST GSTIN (built as 0.825; their TEEN AWAAZEIN took 0.825.0 - REBASE PROTOCOL, both kept) - (1) the owner shared WhiteBooks own files, read end to end: Hoola calls match their specs; 123 GSTN + 128 NIC IRP error codes as data (bahi/wb_errors.json) said in the system own words by wb.known_error; wb_check shows WhiteBooks own reply when ours is generic; research note 05. (2) WhiteBooks support answered: the GST sandbox (public taxpayer search) is tested with GSTIN '
          '27AAGCB1286QKZL and username MH_NT4.2823 - a different test GSTIN from the e-invoice / e-way bill one in their shared PDF '
          '(27AAGCB1286Q005); new WHITEBOOKS_SANDBOX_GST_GSTIN (empty = the shared one, as before): wb_check runs GSTIN search, filing '
          'track, the OTP login (state code from it) and the ledger with the GST GSTIN, e-invoice + e-way bill keep the shared one; the '

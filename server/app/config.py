@@ -732,6 +732,36 @@ class Settings(BaseSettings):
     composio_monthly_calls: int = 90000               # whole app per month (stays inside the free 1 lakh); 0 = unlimited
     voice_openai_breath: bool = False                 # v0.290 OFF: the generated breath sounded like radio static before his first word (owner)
     voice_openai_session_min: int = 50                # OpenAI sessions end at 60 min: move to a fresh one before that
+    # v0.816 TEEN AWAAZEIN (owner: "LETS DEPLOY ALL --- USER WILL CHOOSE THE VOICE THEY WANT"): three more call engines
+    # beside Gemini - Grok Voice 3.0 (xAI), GPT-Live-1 (OpenAI) and Phonic 1. Each needs its key in the VPS .env, has
+    # its own monthly budget (whole app) and per-user minutes; out of key / budget / minutes = the call runs on Gemini
+    # and the Call voice screen says why. Gemini stays the default and is never changed by any of this.
+    xai_api_key: str = ""                             # VPS .env only (XAI_API_KEY)
+    phonic_api_key: str = ""                          # VPS .env only (PHONIC_API_KEY)
+    voice_grok_enabled: bool = True
+    voice_grok_model: str = "grok-voice-3.0"
+    voice_grok_voice_m: str = "rex"
+    voice_grok_voice_f: str = "eve"
+    voice_grok_usd_min: float = 0.08                  # xAI's list price per minute (its stream carries no usage numbers)
+    voice_grok_month_usd: float = 25.0                # whole app per calendar month (IST); 0 = off
+    voice_grok_user_min: int = 60                     # per user per month; 0 = unlimited
+    voice_grok_tenants: str = "*"                     # who may pick it: "*" = everyone, "" = only the owner, or a list
+    voice_gptlive_enabled: bool = True
+    voice_gptlive_model: str = "gpt-live-1"
+    voice_gptlive_voice_m: str = "stone"
+    voice_gptlive_voice_f: str = "nira"               # OpenAI's Hindi voice
+    voice_gptlive_usd_min: float = 0.05               # OpenAI's price for the voice layer (billed per second); Hoola's brain is counted as usual
+    voice_gptlive_month_usd: float = 25.0
+    voice_gptlive_user_min: int = 60
+    voice_gptlive_tenants: str = "*"
+    voice_phonic_enabled: bool = True
+    voice_phonic_model: str = "phonic-1"
+    voice_phonic_voice_m: str = "sandeep"             # Phonic's voice with an Indian accent
+    voice_phonic_voice_f: str = "divya"
+    voice_phonic_usd_min: float = 0.07                # Phonic Starter, one price per conversation minute
+    voice_phonic_month_usd: float = 25.0
+    voice_phonic_user_min: int = 60
+    voice_phonic_tenants: str = "*"
     voice_ack_tts_model: str = "gemini-3.8-flash-tts"   # v0.181 (was gemini-2.5-flash-preview-tts): new TTS, far more natural delivery; legacy model is the automatic fallback
     voice_compress_trigger: int = 60000    # v0.224 Gemini Live context compression starts here (0 = Google's default near the limit)
     voice_compress_target: int = 35000     # ...and slides the window back to about this many tokens

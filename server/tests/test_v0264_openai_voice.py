@@ -191,7 +191,7 @@ def test_pick_falls_back_to_gemini(env, monkeypatch, tmp_path):
 def test_engine_api_refuses_others_and_bad_names(oa):
     from app import main
     with TestClient(main.app) as c:
-        assert c.put("/api/voice/engine", json={"engine": "grok"}).status_code == 400
+        assert c.put("/api/voice/engine", json={"engine": "elevenlabs"}).status_code == 400
         assert c.put("/api/voice/engine", json={"engine": "gemini"}).json()["will_use"] == "gemini"
 
 

@@ -3002,7 +3002,13 @@ Stage Summary: pushed. Server deploy + vps-ops appengine_setup, then appengine_c
 
 
 ---
-Task ID: v0.825.0 WHITEBOOKS ERROR WORDS
+Task ID: v0.826.0 WHITEBOOKS ERROR WORDS (built as 0.825)
 Task: owner shared WhiteBooks files after wb_check (e-invoice + e-way bill PASS, GST search fails).
 Work Log: files read in the scratchpad (not committed); calls match specs; GST sandbox needs WhiteBooks support switch-on; error codes as data + known_error; research note 05.
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she asks WhiteBooks to enable the GST sandbox + share its test GSTIN / gst_username.
+
+---
+Task ID: v0.826.0 GST TEST GSTIN (same release as ERROR WORDS; their TEEN AWAAZEIN took 0.825.0)
+Task: WhiteBooks support gave the GST sandbox test GSTIN 27AAGCB1286QKZL + username MH_NT4.2823.
+Work Log: WHITEBOOKS_SANDBOX_GST_GSTIN for the GST steps; e-invoice / e-way bill keep the shared GSTIN; vps-ops lists the line; 1 test; merged main (0.825 collision), re-versioned 0.826.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she adds the two lines to the VPS .env, deploy, wb_check. API Setu GST lookup spec read, not built.
