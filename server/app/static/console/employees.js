@@ -15,7 +15,11 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems', leads: 'leadsdesk'};   // v0.420 the Game Desk roles share it   // v0.686.0 the Lead Generation employee's desk
+  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems', leads: 'leadsdesk', kaan: 'flow',
+    paisa_sahayak: 'deptdesk', vitt_sahayak: 'deptdesk', risk_desk: 'deptdesk', dukaan_desk: 'deptdesk', retail_growth: 'deptdesk', retail_trust: 'deptdesk',
+    bima_desk: 'deptdesk', bima_assist: 'deptdesk', bima_risk: 'deptdesk'};   // v0.796 DESK ROOM: these opened a view that did not exist; Kaan's desk is Hoola Flow
+  for (const k of ['const_store', 'const_labour', 'const_customer', 'const_quality', 'const_meet', 'const_approvals', 'const_qs', 'const_rera', 'const_contracts', 'const_tender', 'const_drawqa',
+                   'const_bim', 'const_predesign', 'const_survey', 'const_delay', 'const_green', 'const_land', 'const_plan', 'const_ehs', 'const_studio', 'const_learn']) DESKS[k] = 'deptdesk';   // v0.796 the 21 Construction seats   // v0.420 the Game Desk roles share it   // v0.686.0 the Lead Generation employee's desk
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -248,7 +252,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
 
   async function act(what, key) {
     if (what === 'open') { location.hash = ''; const v = DESKS[key] || key + 'desk';
-      if (openView) openView(v, v === 'systems' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.453 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
+      if (openView) openView(v, v === 'systems' || v === 'deptdesk' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.453 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);

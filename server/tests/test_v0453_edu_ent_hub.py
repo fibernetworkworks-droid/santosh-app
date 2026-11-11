@@ -90,7 +90,7 @@ def test_console_hub_departments_and_desks():
     from app.enterprise import rules as R
     for k in R.ROLES:
         assert f"{k}: 'systems'" in EMP, k
-    assert "openView(v, v === 'systems' ? key : '')" in EMP              # Open desk lands on that enterprise role
+    assert "openView(v, v === 'systems' || v === 'deptdesk' ? key : '')" in EMP   # Open desk lands on that enterprise role (v0.796 + a department desk on its employee)
     for d in ("edu", "ent"):
         assert CSS.count(f"#hire .ae-d-{d}{{") == 3, d                    # light + both dark selectors
 
