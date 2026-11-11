@@ -1,0 +1,128 @@
+{
+ "base": "pe9-multivibrators",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "transistor-mono",
+   "title": "Multivibrators: transistor monostable pulse width",
+   "sample": "BC547 monostable on 9 V, timing R from the box, unknown C",
+   "method": "transistor",
+   "unknown": "the pulse width and so the timing capacitor",
+   "params": {
+    "tech": 0,
+    "mode": 1
+   },
+   "source": {
+    "title": "BC547 V_BE about 0.65 V, V_CE(sat) about 0.1 V",
+    "note": "From memory - verify"
+   }
+  },
+  {
+   "key": "transistor-bistable",
+   "title": "Multivibrators: transistor bistable (binary) toggled by a trigger",
+   "sample": "BC547 bistable with steering diodes, triggered from the generator",
+   "method": "transistor",
+   "unknown": "the output period against the trigger period (division by two)",
+   "params": {
+    "tech": 0,
+    "mode": 2
+   },
+   "source": {
+    "title": "Binary (toggle) bistable",
+    "note": "Illustrative trigger frequencies"
+   }
+  },
+  {
+   "key": "555-astable",
+   "title": "Multivibrators: 555 astable period and duty cycle",
+   "sample": "NE555 on 9 V, R1 = 1 kohm, R2 from the box, unknown C",
+   "method": "IC 555",
+   "unknown": "the period, duty cycle and so the timing capacitor",
+   "params": {
+    "tech": 1,
+    "mode": 0,
+    "R1": 1000.0
+   },
+   "source": {
+    "title": "NE555 thresholds V_cc/3 and 2V_cc/3",
+    "note": "From memory - verify"
+   }
+  },
+  {
+   "key": "555-mono",
+   "title": "Multivibrators: 555 monostable pulse width",
+   "sample": "NE555 on 9 V, timing R from the box, unknown C",
+   "method": "IC 555",
+   "unknown": "the pulse width and so the timing capacitor",
+   "params": {
+    "tech": 1,
+    "mode": 1
+   },
+   "source": {
+    "title": "NE555 thresholds V_cc/3 and 2V_cc/3",
+    "note": "From memory - verify"
+   }
+  },
+  {
+   "key": "555-bistable",
+   "title": "Multivibrators: 555 bistable (Schmitt) thresholds",
+   "sample": "NE555 with trigger and threshold joined, on a triangle input",
+   "method": "IC 555",
+   "unknown": "the two switching thresholds against the supply",
+   "params": {
+    "tech": 1,
+    "mode": 2
+   },
+   "source": {
+    "title": "NE555 thresholds V_cc/3 and 2V_cc/3",
+    "note": "From memory - verify"
+   }
+  },
+  {
+   "key": "opamp-astable",
+   "title": "Multivibrators: op-amp astable period",
+   "sample": "741 astable, feedback divider R1 = 10 kohm, R2 = 22 kohm, timing R from the box, unknown C",
+   "method": "op-amp",
+   "unknown": "the period and so the timing capacitor",
+   "params": {
+    "tech": 2,
+    "mode": 0
+   },
+   "source": {
+    "title": "LM741 output swing about +-13 V on +-15 V",
+    "note": "From memory - verify"
+   }
+  },
+  {
+   "key": "opamp-mono",
+   "title": "Multivibrators: op-amp monostable pulse width",
+   "sample": "741 monostable with a clamp diode, timing R from the box, unknown C",
+   "method": "op-amp",
+   "unknown": "the pulse width and so the timing capacitor",
+   "params": {
+    "tech": 2,
+    "mode": 1
+   },
+   "source": {
+    "title": "LM741 swing +-13 V; silicon clamp diode 0.7 V",
+    "note": "From memory - verify"
+   }
+  },
+  {
+   "key": "opamp-bistable",
+   "title": "Multivibrators: op-amp bistable (Schmitt trigger) thresholds",
+   "sample": "741 Schmitt trigger, feedback R1 from the box, R2 = 22 kohm",
+   "method": "op-amp",
+   "unknown": "the switching thresholds and so the saturation voltage",
+   "params": {
+    "tech": 2,
+    "mode": 2
+   },
+   "source": {
+    "title": "LM741 output swing about +-13 V on +-15 V",
+    "note": "From memory - verify"
+   }
+  }
+ ]
+}

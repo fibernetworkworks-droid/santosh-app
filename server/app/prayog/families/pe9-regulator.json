@@ -1,0 +1,39 @@
+{
+ "base": "pe9-regulator",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "series-transistor",
+   "title": "Regulated power supply: series transistor regulator",
+   "sample": "BC-type power transistor (current gain 100) on a 6.2 V zener fed through 470 ohm",
+   "method": "series transistor regulator",
+   "unknown": "line regulation, load regulation and ripple of the series regulator",
+   "params": {
+    "kind": 1,
+    "Rs": 470.0,
+    "IL": 0.1
+   },
+   "source": {
+    "title": "Illustrative: current gain 100, saturation current 1e-13 A, 6.2 V zener of 5 ohm",
+    "note": "Illustrative values"
+   }
+  },
+  {
+   "key": "ic",
+   "title": "Regulated power supply: IC voltage regulator (7805 type)",
+   "sample": "7805-type three-terminal regulator",
+   "method": "IC regulator",
+   "unknown": "line regulation, load regulation and ripple of the IC regulator",
+   "params": {
+    "kind": 2,
+    "IL": 0.5,
+    "Vin": 12.0
+   },
+   "source": {
+    "title": "7805-type typical line regulation about 0.17 mV/V, output resistance about 10 mohm, dropout 2 V",
+    "note": "From memory - verify against the LM7805 data sheet"
+   }
+  }
+ ]
+}

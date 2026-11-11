@@ -1,0 +1,73 @@
+{
+ "base": "pe9-opamp-linear",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "non-inverting",
+   "title": "Op-amp linear amplifiers: non-inverting amplifier",
+   "sample": "741, R1 = 10 kohm, R_f = 100 kohm",
+   "method": "non-inverting",
+   "unknown": "the gain 1 + R_f/R1 and the frequency response",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "summing",
+   "title": "Op-amp linear amplifiers: summing amplifier",
+   "sample": "741, two inputs of 10 kohm, R_f = 100 kohm",
+   "method": "summing",
+   "unknown": "the gain from each input and the frequency response",
+   "params": {
+    "kind": 2
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "difference",
+   "title": "Op-amp linear amplifiers: difference amplifier",
+   "sample": "741, R1 = 10 kohm, R_f = 100 kohm on both sides",
+   "method": "difference",
+   "unknown": "the differential gain and the frequency response",
+   "params": {
+    "kind": 3
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "follower",
+   "title": "Op-amp linear amplifiers: voltage follower",
+   "sample": "741 with the output tied to the inverting input",
+   "method": "voltage follower",
+   "unknown": "the gain of 1 and the bandwidth",
+   "params": {
+    "kind": 4
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "averaging",
+   "title": "Op-amp linear amplifiers: averaging amplifier",
+   "sample": "741, two inputs of 10 kohm, R_f = 5 kohm",
+   "method": "averaging",
+   "unknown": "the gain of 1/2 from each input and the frequency response",
+   "params": {
+    "kind": 5,
+    "Rf": 5000.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

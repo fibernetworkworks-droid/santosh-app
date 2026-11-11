@@ -1,0 +1,23 @@
+{
+ "base": "pm9-beta-feather",
+ "rig": "pm9-msc-bench",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "tl204",
+   "title": "Range of Tl-204 betas in aluminium and Feather's rule",
+   "sample": "Sealed Tl-204 beta source (end point 763.7 keV)",
+   "unknown": "the range of the Tl-204 betas in aluminium and their end-point energy",
+   "params": {
+    "E1": 0.7637,
+    "f1": 1.0,
+    "f2": 0.0
+   },
+   "note": "A single beta group. Feather's rule is strictly for end points above about 0.8 MeV, so here it gives the energy to a few per cent only; the Katz-Penfold relation is better at this energy. End point from NNDC, from memory - verify.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

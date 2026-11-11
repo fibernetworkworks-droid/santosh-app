@@ -1,0 +1,59 @@
+{
+ "base": "po9-photometry",
+ "rig": "po9-optics-bench",
+ "chapter": "Radiometry and photometry",
+ "source": {
+  "title": "Luminous efficacy of radiation: incandescent about 15 lm/W, white LED about 300 lm/W, CFL about 330 lm/W (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "led",
+   "title": "Luminous intensity of an LED lamp",
+   "sample": "LED lamp",
+   "unknown": "the luminous intensity",
+   "params": {
+    "Iv": 64.0,
+    "K": 300.0
+   }
+  },
+  {
+   "key": "cfl",
+   "title": "Luminous intensity of a compact fluorescent lamp",
+   "sample": "Compact fluorescent lamp",
+   "unknown": "the luminous intensity",
+   "params": {
+    "Iv": 72.0,
+    "K": 330.0
+   }
+  },
+  {
+   "key": "inverse-square",
+   "title": "Inverse square law with an incandescent lamp",
+   "sample": "Incandescent lamp",
+   "unknown": "the inverse-square check",
+   "params": {
+    "mode": 1
+   }
+  },
+  {
+   "key": "irradiance",
+   "title": "Radiant flux density of an incandescent lamp at 1 m",
+   "sample": "Incandescent lamp",
+   "unknown": "the radiant flux density",
+   "params": {
+    "mode": 2
+   }
+  },
+  {
+   "key": "led-irradiance",
+   "title": "Radiant flux density of an LED lamp at 1 m",
+   "sample": "LED lamp",
+   "unknown": "the radiant flux density",
+   "params": {
+    "Iv": 64.0,
+    "K": 300.0,
+    "mode": 2
+   }
+  }
+ ]
+}

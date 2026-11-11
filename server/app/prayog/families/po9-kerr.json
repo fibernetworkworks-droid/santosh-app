@@ -1,0 +1,19 @@
+{
+ "base": "po9-kerr",
+ "rig": "po9-optics-bench",
+ "chapter": "Electro-optics",
+ "source": {
+  "title": "Kaye and Laby: Kerr constant of nitrobenzene about 2.4e-12 m/V^2 at 589 nm (from memory - verify)"
+ },
+ "variants": [
+  {
+   "key": "half-wave",
+   "title": "Kerr effect: half-wave voltage of a nitrobenzene cell",
+   "sample": "Nitrobenzene Kerr cell, 50 mm path, 5 mm gap",
+   "unknown": "the half-wave voltage",
+   "params": {
+    "mode": 1
+   }
+  }
+ ]
+}

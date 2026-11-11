@@ -1,0 +1,24 @@
+{
+ "base": "pm9-gm-efficiency",
+ "rig": "pm9-msc-bench",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "gamma",
+   "title": "Efficiency of a GM counter for gamma rays",
+   "sample": "Cs-137 gamma source, 37 kBq certificate, in a Perspex cap that stops its betas",
+   "unknown": "the intrinsic efficiency of the GM tube for 662 keV gamma rays",
+   "params": {
+    "A": 37000.0,
+    "yld": 0.851,
+    "eint": 0.01,
+    "t": 1200.0
+   },
+   "note": "Only about 1 % of the gamma rays crossing the tube are counted: a gamma must first eject an electron from the wall. 0.851 gamma per decay (NNDC, from memory - verify); the activity and the intrinsic efficiency are illustrative values of this source and tube; the slight absorption of the gammas in the Perspex cap is neglected.",
+   "source": {
+    "title": "NNDC / ENSDF decay data",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

@@ -1,0 +1,45 @@
+{
+ "base": "pe9-opamp-params",
+ "rig": "pe9-elec-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "tl071",
+   "title": "Op-amp parameters of a TL071 (JFET input)",
+   "sample": "TL071 JFET-input op-amp",
+   "method": "",
+   "unknown": "V_os, I_b, CMRR, slew rate and gain-bandwidth of the TL071",
+   "params": {
+    "Vos": 0.003,
+    "Ib": 6.5e-11,
+    "cmrr_db": 86.0,
+    "SR": 13000000.0,
+    "A0": 200000.0,
+    "fa": 15.0
+   },
+   "source": {
+    "title": "TL071 typical: V_os 3 mV, I_b 65 pA, CMRR 86 dB, SR 13 V/us, GBW 3 MHz",
+    "note": "From memory - verify against the data sheet"
+   }
+  },
+  {
+   "key": "op07",
+   "title": "Op-amp parameters of an OP07 (precision)",
+   "sample": "OP07 precision op-amp",
+   "method": "",
+   "unknown": "V_os, I_b, CMRR, slew rate and gain-bandwidth of the OP07",
+   "params": {
+    "Vos": 6e-05,
+    "Ib": 1.8e-09,
+    "cmrr_db": 120.0,
+    "SR": 300000.0,
+    "A0": 500000.0,
+    "fa": 1.2
+   },
+   "source": {
+    "title": "OP07 typical: V_os 60 uV, I_b 1.8 nA, CMRR 120 dB, SR 0.3 V/us, GBW 0.6 MHz",
+    "note": "From memory - verify against the data sheet"
+   }
+  }
+ ]
+}

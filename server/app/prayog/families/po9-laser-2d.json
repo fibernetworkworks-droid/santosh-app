@@ -1,0 +1,42 @@
+{
+ "base": "po9-laser-2d",
+ "rig": "po9-optics-bench",
+ "chapter": "Diffraction",
+ "source": {
+  "title": "He-Ne laser 632.8 nm; mesh and aperture sizes are those of the object under test"
+ },
+ "variants": [
+  {
+   "key": "cross-grating",
+   "title": "Diffraction of He-Ne light by a cross grating: the line spacing",
+   "sample": "Cross grating, about 100 lines per mm",
+   "unknown": "the lattice spacing",
+   "params": {
+    "d": 1e-05,
+    "a": 5e-06,
+    "N": 40.0,
+    "L": 0.5
+   }
+  },
+  {
+   "key": "circular",
+   "title": "Diffraction of He-Ne light by a circular aperture: its diameter",
+   "sample": "Circular aperture (pinhole)",
+   "unknown": "the aperture size",
+   "params": {
+    "mode": 1,
+    "a": 0.0002
+   }
+  },
+  {
+   "key": "square",
+   "title": "Diffraction of He-Ne light by a square aperture: its side",
+   "sample": "Square aperture",
+   "unknown": "the aperture size",
+   "params": {
+    "mode": 2,
+    "a": 0.0003
+   }
+  }
+ ]
+}
