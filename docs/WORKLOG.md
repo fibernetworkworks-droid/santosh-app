@@ -2939,3 +2939,9 @@ Task ID: v0.795.0 YEH WALA (L5)
 Task: owner "GO L5" - preview toolbar (S / T / D / C), selected elements to the model, marked-up screenshots, free style panel on tokens.
 Work Log: site/yehwala.py (selection, comments table, markup screenshot); edit.style + hs-u-* utilities; hoola-edit.js modes; Studio toolbar / pills / style panel / draw / comments; 6 tests incl. a browser walk.
 Stage Summary: pushed; server deploy only. Next: L6 GALTI PAKDO (preview error collector + Try to fix) on her GO.
+
+---
+Task ID: v0.798.0 HOOLA PROMPTING P1-P3 (built as 0.796; main had moved to 0.797.0)
+Ask: "GO P1 TO P3" (owner: test everything together later, after all the build work).
+Built: server/app/prompting/ (anatomy, brief, dialect, context, recipes, store, api), static/console/improve.js + improve.css (the Improve sheet: chat box, Web Studio, Create Image), /console/prompting (promptapp.html, prompting.js, prompting.css), sidebar row; 17 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; one new table prompt_saved self-heals). Next: P4 the outcome ledger on her GO.

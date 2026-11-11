@@ -6,7 +6,9 @@ PROMPT ENGINEERING WORKS --- AND PREPARE A ULTIMATE MOAT PLAN FOR HOOLA".
 
 Research (sources for every claim below): `docs/research/prompting/00_INDEX.md`. This is the plan; each phase starts
 on her GO. STATE: P0 built as v0.794 (built as 0.785) (the card exists, `python -m app.quality prompt`); no live run yet, so no
-numbers. P1 onwards not started.
+numbers (owner: test everything together at the end). P1-P3 built as v0.798 for web / image / script (engine, Improve
+button in the console chat box + Web Studio + Create Image, the page /console/prompting); the phone composer button is
+not built. P4 onwards not started.
 
 ## 0. The verdict in seven lines
 

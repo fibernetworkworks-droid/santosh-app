@@ -1372,3 +1372,61 @@ model-written code unguarded, so Hoola's guarded runner stays the server path. O
 vendor MCPs sign in with OAuth to HER vendor account — whether that fits her "no consumer-subscription OAuth" rule.
 
 Also healed: four game-role tests still asserted the old Hinglish "hired nahi" after main's English-tools commit d84057023.
+
+
+## v0.798.0 HOOLA PROMPTING P1-P3 - the understanding engine, the Improve button, the Prompting page (built as 0.796; their 0.796.0-0.797.0 took the numbers - REBASE PROTOCOL, all kept; owner: "GO P1 TO P3")
+
+Plan: `docs/HOOLA_PROMPTING_PLAN.md` parts 2-6 and 11. Research: `docs/research/prompting/00_INDEX.md`. The owner chose to
+test everything together at the end, so P0's live card has NOT run: these three sections are built without its numbers.
+
+**P1 - the engine, `server/app/prompting/`**
+- `anatomy.py` - the parts a complete ask has, as data: web (what / who / the one key action / pages / look / content),
+  image (subject / scene / kind / exact words / shape / colours / layout / light), script (platform / length / audience /
+  message / hook / last line / tone / language). `required` slots are the ones worth a question.
+- `brief.py` - `understand(tenant, text, section)`: (1) code reads what is certain - `facts_of` (price, percent, phone,
+  time, date, quoted words; copied exactly, locked) and `code_slots` (picture shape from 'story / banner / poster',
+  script length + platform, language, the website action from 'whatsapp / booking / cart'); (2) `context.fill` puts in
+  what Hoola knows (brand kit name / tagline / colours / tone), labelled her_memory, her own words win; (3) ONE small
+  model call (`ASK[0]`, `net.ai.llm_json`, switch `prompting_fill_model`) proposes the remaining slots and `model_slots`
+  checks it in code: a value it says is hers must share half its content words with her text (`supported`), any number
+  not in her text drops the value (`_numbers_ok`), a praise / magic word drops the value, everything else is labelled
+  hoola_guess; a model outage = a brief from code alone, never an error. `_finish` recomputes facts, missing and at most
+  3 questions (a required slot that is empty or only a guess). `apply(brief, set, drop)` = her answers (strongest source)
+  and removals; `validate` rebuilds any brief the page sends back (known slots / sources only, sizes cut, intent never
+  altered). `score` = 0-100 in code with a reason per point lost (required 60, detail 15, no clash 10, limits 5, wording
+  10) and the note "This counts what is in your prompt. It cannot promise the result."
+- `dialect.py` - web (her line first, then labelled lines, FACTS exactly, NOT DECIDED YET as marked samples, MUST NOT),
+  image (a described scene, exact words in quotes or "No text ...", aspect as a field), script (labelled lines + fmt /
+  length / language / tone fields). `run` says where it goes: Web Studio box or the chat box. No magic phrase (tested).
+- `recipes.py` - 10 image + 8 script starters with blanks (an empty blank leaves its slot OUT, never a made-up value) +
+  the Web Studio's template library as ready website prompts. Marked as starters; no kept-rate claimed.
+- `store.py` - table `prompt_saved` (registered in `db.init_db`, self-heals per engine), fenced to the tenant, 200 max.
+- `api.py` - GET /sections, POST /understand, POST /compile (no model), GET /recipes, POST /recipes/use, GET / POST /saved,
+  GET / DELETE /saved/{id}. Every route only reads and writes text.
+
+**P2 - the Improve button** `static/console/improve.js` (`HoolaImprove({api, esc, toast})` -> mount / open / sections; the
+last instance at `HoolaImprove.ui`) + `improve.css` (own tokens, prefix hpi-, light + dark, no blur). The sheet shows her
+words, chips per slot coloured by source (your words / your business / Hoola's suggestion / missing), locked facts,
+questions with tap answers, the score and the finished prompt; `Keep mine` / `Use this prompt`. Wired into: the console
+chat box (`#impBtn` in the chip row; a non web / picture / script line gets a 3-way choice or Keep mine), the Web Studio
+home box (`data-improve`, section web), Create Image (the old Enhance button opens the sheet when it is loaded; Create
+Video keeps the old Enhance). After Use, the button reads Undo and restores her text exactly until she edits.
+
+**P3 - the page** `/console/prompting` (`promptapp.html`, `prompting.js`, `prompting.css`; route + `prompting` in
+/api/console/config; console sidebar row). Home (one box, Auto / section chips, recipes, Continue, what Hoola knows),
+workbench (her words + "Read my words again" | chips, facts, questions | score, prompt, Open in Web Studio / Put in the
+Hoola chat, Copy, Save), Recipes (search, kind, blanks form; a website template opens as a ready prompt), My prompts.
+Run only HANDS THE TEXT OVER (`hoola.prompt.toWeb` read once by webstudio.js into its box; `hoola.flow.toChat` for the
+chat box) - nothing is sent or built for her.
+
+**Tests** `server/tests/test_v0798_prompting.py` - 17, no model: section guess, locked facts, code slots, the model
+checked by code, model outage, answers / removals / validate, score reasons, dialects, brand fill, recipes, routes end
+to end, tenant fence, switch off, wiring, and 2 real-browser walks (the page at 1360 + 390 px; the console chat box and
+the Web Studio with Use + Undo). Screens were looked at by eye (light). Stamp count in v2.html 29 -> 31.
+
+**Not built / not verified**
+- The phone app's composer button (Flutter cannot be compiled here; a CI-only change was left out on purpose).
+- Sections beyond web / image / script (P5-P6), Create Video / Script-writer page buttons, the outcome ledger (P4),
+  price shown inside the workbench (each engine still shows its own price card), dark mode looked at by eye.
+- No real model has filled a brief on the server: the fill call's quality on GLM / Haiku is unknown until used live.
+- P0's live card has not run, so there is no measured gain behind these three sections yet (owner's choice).

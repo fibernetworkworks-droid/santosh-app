@@ -1,4 +1,4 @@
-"""v0.796 HOOLA PROMPTING P1-P3 (docs/HOOLA_PROMPTING_PLAN.md): the understanding engine (a prompt = a BRIEF: her
+"""v0.798 HOOLA PROMPTING P1-P3 (built as 0.796) (docs/HOOLA_PROMPTING_PLAN.md): the understanding engine (a prompt = a BRIEF: her
 facts locked, a guess labelled a guess, nothing silent, no magic phrase), the Improve button, and the Prompting page.
 No model runs here: the one small fill call is replaced by a fake."""
 import json
@@ -398,5 +398,5 @@ def test_improve_button_in_the_console_and_the_web_studio(arena_server, monkeypa
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.795.0"
-    assert "0.795.0+794" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.798.0"
+    assert "0.798.0+797" in (REPO / "pubspec.yaml").read_text()
