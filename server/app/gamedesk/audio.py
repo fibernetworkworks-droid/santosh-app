@@ -442,7 +442,7 @@ def _get(s, tenant: str, ref: str) -> GameAudio:
     q = select(GameAudio).where(GameAudio.tenant_id == tenant)
     r = s.scalars(q.where(GameAudio.id == ref)).first() or s.scalars(q.where(GameAudio.number == ref.upper())).first()
     if r is None:
-        raise AudioError("Yeh audio setup nahi mila (A-001 dijiye).")
+        raise AudioError("This audio setup was not found (give A-001).")
     return r
 
 
@@ -536,7 +536,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise AudioError("Sirf PASS hua audio setup OK ho sakta hai." if r.status != "testing" else "Jaanch abhi chal rahi hai.")
+            raise AudioError("Only an audio setup that PASSED can be OKed." if r.status != "testing" else "The check is still running.")
         for o in s.scalars(select(GameAudio).where(GameAudio.tenant_id == tenant, GameAudio.studio_id == r.studio_id,
                                                    GameAudio.status == "approved")).all():
             o.status = "rejected"
@@ -677,11 +677,11 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
 def apply(tenant: str, studio: str) -> dict[str, Any]:
     st = _studio(tenant, studio)
     if for_game(tenant, st.game_id) is None:
-        raise AudioError("Koi approved audio setup nahi; pehle jaanch PASS karke OK kijiye.")
+        raise AudioError("No approved audio setup; pass the check and OK it first.")
     try:
         from . import bible as B
         bv = B.view(tenant, st.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, st.game_id, bv, words="Audio setup game mein")
-    return {"ok": True, "say": "Audio setup game mein ja raha hai (rebuild chal raha hai)."}
+    G.data_build(tenant, st.game_id, bv, words="Audio setup into the game")
+    return {"ok": True, "say": "The audio setup is going into the game (a rebuild is running)."}

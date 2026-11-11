@@ -27,7 +27,7 @@ def stage(r: S.GameStudio) -> tuple[Path, int, str, int]:
     g = G._get(r.tenant_id, r.game_id)
     good = G._good(g)
     if not good:
-        raise S.StudioError("Abhi koi chalne wala version nahi; pehle game banne dijiye.")
+        raise S.StudioError("There is no working version yet; let the game be built first.")
     live = good[-1]
     src = G._vdir(g, live["n"]) / "proj"
     dest = G._pdir(r.tenant_id, g.id) / "github"
@@ -105,9 +105,9 @@ def request(tenant: str, ref: str, repo: str = "", private: bool = True, conv: s
         s.expunge(o)
     card = {"kind": "github", "id": o.id, "game": {"id": r.id, "number": r.number, "title": r.title},
             "repo": f"{o.owner}/{o.repo}", "private": o.private, "version": ver, "files": n, "hash": o.hash,
-            "say": (f"{r.title} ka code (version {ver}, {n} files: Godot project + tasks + decisions) aapke GitHub "
-                    f"'{o.owner}/{o.repo}' mein daalun? " + ("Private: sirf aap dekh payengi." if o.private else
-                                                             "PUBLIC: koi bhi dekh sakta hai.") + " Aapki haan chahiye."),
+            "say": (f"{r.title}: put the code (version {ver}, {n} files: Godot project + tasks + decisions) into your GitHub "
+                    f"'{o.owner}/{o.repo}'? " + ("Private: only you can see it." if o.private else
+                                                             "PUBLIC: anyone can see it.") + " Your approval is needed."),
             "push": True}
     from ..seo.service import _publish
     _publish(tenant, "site_github", card, conv or r.conversation_id)
@@ -121,7 +121,7 @@ def push(tenant: str, o: Any, hash_: str) -> dict[str, Any]:
     r = _load(tenant, o.site_id[5:])
     folder, _n, fp, _v = stage(r)
     if hash_ != GH._hash(o, fp):
-        raise GH.GithubError("Game ka naya version aa gaya; naya card mangiye ('game code GitHub mein daalo').")
+        raise GH.GithubError("A new version of the game has arrived; ask for a new card ('put the game code on GitHub').")
     gh = GH.Gh(GH._token(tenant))
     GH._set(o.id, status="pushing")
     try:
@@ -149,8 +149,8 @@ def push(tenant: str, o: Any, hash_: str) -> dict[str, Any]:
         raise
     url = f"https://github.com/{o.owner}/{o.repo}"
     GH._set(o.id, status="done", url=url)
-    S._decide(r, f"Code GitHub mein gaya (version {o.version})", url, by="hoola")
-    say = f"{r.title} ka code GitHub mein chala gaya (version {o.version}): {url}"
+    S._decide(r, f"Code went to GitHub (version {o.version})", url, by="hoola")
+    say = f"{r.title}: the code went to GitHub (version {o.version}): {url}"
     from ..seo.service import _publish
     _publish(tenant, "site_github", {"kind": "github_done", "id": o.id, "url": url, "say": say, "push": False,
                                      "at": now().isoformat()}, r.conversation_id)

@@ -413,7 +413,7 @@ def godot_cross_check(p: dict, job: Path, n: int = 360) -> dict:
     m = re.search(r"HOOLA_SIM (\[.*\])", logtxt or "")
     if not m:
         errs = engine.errors_in(logtxt or "") or [(logtxt or "").strip()[-300:] or "nothing printed"]
-        raise SimError("Sim check Godot mein nahi chala: " + "; ".join(errs[:3])[:400])
+        raise SimError("The sim check did not run in Godot: " + "; ".join(errs[:3])[:400])
     got = np.array(json.loads(m.group(1)))
     y, f = y0.copy(), orbit_f(True)
     for k in range(n):
@@ -440,7 +440,7 @@ def _get(s, tenant: str, ref: str) -> GameSim:
     q = select(GameSim).where(GameSim.tenant_id == tenant)
     r = s.scalars(q.where(GameSim.id == ref)).first() or s.scalars(q.where(GameSim.number == ref.upper())).first()
     if r is None:
-        raise SimError("Yeh simulator nahi mila (M-001 dijiye).")
+        raise SimError("This simulator was not found (give M-001).")
     return r
 
 
@@ -487,8 +487,8 @@ def setup(tenant: str, words: str = "", kind: str = "", params: dict | None = No
     from . import engine
     ensure_table()
     if REFUSE.search(words or "") or REFUSE.search(json.dumps(scenario or {})):
-        raise SimError("Hathiyar / targeting / combat simulator Hoola nahi banata. Training simulator (udaan, antariksh, "
-                       "gaadi, machine, safety) bana sakta hoon.")
+        raise SimError("Hoola does not build weapon / targeting / combat simulators. I can build a training simulator (flight, space, "
+                       "vehicle, machine, safety).")
     kind = kind if kind in KINDS else guess_kind(words)
     sid = _studio(tenant, studio).id if studio else ""
     res = simulate(kind, params or {}, scenario)
@@ -525,7 +525,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise SimError("Sirf PASS hua simulator OK ho sakta hai.")
+            raise SimError("Only a simulator that PASSED can be OKed.")
         r.status = "approved"
         s.flush()
         s.expunge(r)
@@ -582,11 +582,11 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
 def apply(tenant: str, studio: str) -> dict[str, Any]:
     st = _studio(tenant, studio)
     if for_game(tenant, st.game_id) is None:
-        raise SimError("Koi approved orbit simulator nahi (flight / driving abhi sirf report + log hain).")
+        raise SimError("No approved orbit simulator (flight / driving are only a report + log for now).")
     try:
         from . import bible as B
         bv = B.view(tenant, st.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, st.game_id, bv, words="Simulator game mein")
-    return {"ok": True, "say": "Simulator game mein ja raha hai (rebuild chal raha hai)."}
+    G.data_build(tenant, st.game_id, bv, words="Simulator into the game")
+    return {"ok": True, "say": "The simulator is going into the game (a rebuild is running)."}

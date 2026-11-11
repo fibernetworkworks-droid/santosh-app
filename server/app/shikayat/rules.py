@@ -14,56 +14,56 @@ from typing import Any
 # ack_hours: acknowledge within; resolve_days: final reply within; legal: True when a regulator sets it (cap her targets).
 SECTORS: dict[str, dict[str, Any]] = {
     "general": {
-        "label": "Dukaan / seva (aam business)", "ack_hours": 48, "resolve_days": 30, "legal": False,
-        "law": ("Koi tay sarkari samay-seema nahi; Hoola E-Commerce Rules 2020 wala standard (48 ghante mein jawab, 1 mahine "
-                "mein hal) achhi aadat ke roop mein leta hai."),
+        "label": "Shop / service (general business)", "ack_hours": 48, "resolve_days": 30, "legal": False,
+        "law": ("No fixed government deadline; Hoola follows the E-Commerce Rules 2020 standard (reply within 48 hours, resolve within 1 "
+                "month) as good practice."),
         "routes": ["nch", "commission"],
     },
     "ecommerce": {
-        "label": "Online bikri (website / app / marketplace seller)", "ack_hours": 48, "resolve_days": 30, "legal": True,
-        "law": ("Consumer Protection (E-Commerce) Rules 2020: grievance officer ka naam / number site par; shikayat ki "
-                "pavti 48 ghante mein, hal 1 mahine mein; har shikayat ka ticket number."),
+        "label": "Online selling (website / app / marketplace seller)", "ack_hours": 48, "resolve_days": 30, "legal": True,
+        "law": ("Consumer Protection (E-Commerce) Rules 2020: the grievance officer's name / number on the site; the complaint is "
+                "acknowledged within 48 hours and resolved within 1 month; a ticket number for every complaint."),
         "routes": ["nch", "commission"],
         "must": ["ticket_number", "grievance_officer"],
     },
     "bank": {
-        "label": "Bank / NBFC / payment company (RBI ke under)", "ack_hours": 24, "resolve_days": 30, "legal": True,
-        "law": ("RBI Integrated Ombudsman Scheme 2026 (1 July 2026 se): graahak ko 30 din mein jawab na mile, ya jawab se "
-                "santusht na ho, to woh RBI Ombudsman (cms.rbi.org.in, 14448) ja sakta hai. Aakhri jawab mein yeh "
-                "rasta likhna zaroori; fraud / unauthorised transaction ke maamle mein lambi samay-seema RBI ke niyam se."),
+        "label": "Bank / NBFC / payment company (under RBI)", "ack_hours": 24, "resolve_days": 30, "legal": True,
+        "law": ("RBI Integrated Ombudsman Scheme 2026 (from 1 July 2026): if the customer gets no reply in 30 days, or is not "
+                "satisfied with the reply, they can go to the RBI Ombudsman (cms.rbi.org.in, 14448). The final reply must "
+                "mention this route; fraud / unauthorised transaction cases have longer deadlines under RBI rules."),
         "routes": ["rbi", "nch"],
         "final_reply_must": "rbi",
     },
     "insurance": {
-        "label": "Bima (insurer / agent / broker)", "ack_hours": 24, "resolve_days": 14, "legal": True,
-        "law": ("IRDAI (Protection of Policyholders' Interests ...) Regulations 2024 + Master Circular 2024: pavti turant, hal "
-                "14 din mein; Bima Bharosa (bimabharosa.irdai.gov.in) par darj; hal na ho to Insurance Ombudsman."),
+        "label": "Insurance (insurer / agent / broker)", "ack_hours": 24, "resolve_days": 14, "legal": True,
+        "law": ("IRDAI (Protection of Policyholders' Interests ...) Regulations 2024 + Master Circular 2024: acknowledge at once, resolve "
+                "within 14 days; logged on Bima Bharosa (bimabharosa.irdai.gov.in); if not resolved, the Insurance Ombudsman."),
         "routes": ["bima_bharosa", "insurance_ombudsman", "nch"],
         "final_reply_must": "insurance_ombudsman",
     },
     "telecom": {
         "label": "Telecom / broadband / ISP / cable", "ack_hours": 24, "resolve_days": 30, "legal": True,
-        "law": ("TRAI Telecom Consumers Complaint Redressal Regulations: har shikayat ka docket number; hal na ho to graahak "
-                "service provider ke Appellate Authority ke paas (3 mahine ke andar), jo 60 din mein faisla de. Franchise ho to "
-                "principal operator (jaise BSNL) ka CRM docket bhi rakhiye."),
+        "law": ("TRAI Telecom Consumers Complaint Redressal Regulations: a docket number for every complaint; if not resolved, the customer "
+                "goes to the service provider's Appellate Authority (within 3 months), which decides in 60 days. For a franchise, "
+                "also keep the principal operator's (such as BSNL) CRM docket."),
         "routes": ["telecom_appellate", "nch"],
         "must": ["docket"],
     },
     "electricity": {
-        "label": "Bijli (distribution / franchise)", "ack_hours": 24, "resolve_days": 45, "legal": True,
-        "law": ("Electricity (Rights of Consumers) Rules 2020: shikayat ka hal zyada se zyada 45 din; phir CGRF (Consumer "
-                "Grievance Redressal Forum), phir Electricity Ombudsman. Har rajya ke SERC niyam alag samay de sakte hain."),
+        "label": "Electricity (distribution / franchise)", "ack_hours": 24, "resolve_days": 45, "legal": True,
+        "law": ("Electricity (Rights of Consumers) Rules 2020: a complaint is resolved in at most 45 days; then CGRF (Consumer "
+                "Grievance Redressal Forum), then the Electricity Ombudsman. Each state's SERC rules can set different times."),
         "routes": ["cgrf", "electricity_ombudsman"],
     },
     "securities": {
         "label": "Share broker / investment adviser / SEBI registered", "ack_hours": 24, "resolve_days": 21, "legal": True,
-        "law": "SEBI SCORES 2.0: entity 21 din mein hal; graahak first review (designated body), phir SEBI second review.",
+        "law": "SEBI SCORES 2.0: the entity resolves within 21 days; the customer gets a first review (designated body), then a SEBI second review.",
         "routes": ["scores", "smart_odr"],
     },
     "data": {
         "label": "Personal data / privacy (DPDP)", "ack_hours": 48, "resolve_days": 90, "legal": True,
-        "law": ("DPDP Rules 2025 Rule 14(3): data principal ki maang / shikayat ka jawab 90 din mein (yeh niyam 13 May 2027 se "
-                "laagu; abhi se achhi aadat). Hal na ho to Data Protection Board of India."),
+        "law": ("DPDP Rules 2025 Rule 14(3): a data principal's request / complaint is answered within 90 days (this rule applies from 13 May 2027; "
+                "good practice from now). If not resolved, the Data Protection Board of India."),
         "routes": ["dpb"],
     },
 }
@@ -78,27 +78,27 @@ SECTOR_WORDS = {
 }
 
 ROUTES: dict[str, dict[str, str]] = {
-    "nch": {"name": "National Consumer Helpline", "how": "1915 par call, WhatsApp 8800001915, ya consumerhelpline.gov.in (INGRAM)"},
-    "commission": {"name": "Consumer Commission (e-Jagriti)", "how": ("e-jagriti.gov.in par online (1 Jan 2025 se e-Daakhil ki jagah); "
-                                                                    "District Rs 50 lakh tak, State Rs 50 lakh-2 crore, National 2 crore se upar; "
-                                                                    "2 saal ke andar")},
-    "rbi": {"name": "RBI Ombudsman", "how": "cms.rbi.org.in ya 14448 (bank ka jawab 30 din mein na aaye / pasand na aaye)"},
-    "bima_bharosa": {"name": "IRDAI Bima Bharosa", "how": "bimabharosa.irdai.gov.in ya 155255"},
-    "insurance_ombudsman": {"name": "Insurance Ombudsman", "how": "cioins.co.in (bima company ke jawab ke baad / jawab na aaye to)"},
-    "telecom_appellate": {"name": "Telecom Appellate Authority", "how": "service provider ka appellate (3 mahine ke andar appeal), phir NCH / commission"},
-    "cgrf": {"name": "CGRF (bijli)", "how": "apne discom ka Consumer Grievance Redressal Forum"},
-    "electricity_ombudsman": {"name": "Electricity Ombudsman", "how": "rajya ka Vidyut Lokpal (CGRF ke faisle ke baad)"},
+    "nch": {"name": "National Consumer Helpline", "how": "call 1915, WhatsApp 8800001915, or consumerhelpline.gov.in (INGRAM)"},
+    "commission": {"name": "Consumer Commission (e-Jagriti)", "how": ("online at e-jagriti.gov.in (replaced e-Daakhil from 1 Jan 2025); "
+                                                                    "District up to Rs 50 lakh, State Rs 50 lakh-2 crore, National above 2 crore; "
+                                                                    "within 2 years")},
+    "rbi": {"name": "RBI Ombudsman", "how": "cms.rbi.org.in or 14448 (if the bank's reply does not come in 30 days / is not acceptable)"},
+    "bima_bharosa": {"name": "IRDAI Bima Bharosa", "how": "bimabharosa.irdai.gov.in or 155255"},
+    "insurance_ombudsman": {"name": "Insurance Ombudsman", "how": "cioins.co.in (after the insurance company's reply / if no reply comes)"},
+    "telecom_appellate": {"name": "Telecom Appellate Authority", "how": "the service provider's appellate authority (appeal within 3 months), then NCH / commission"},
+    "cgrf": {"name": "CGRF (electricity)", "how": "your discom's Consumer Grievance Redressal Forum"},
+    "electricity_ombudsman": {"name": "Electricity Ombudsman", "how": "the state's Electricity Ombudsman (after the CGRF's decision)"},
     "scores": {"name": "SEBI SCORES", "how": "scores.sebi.gov.in"},
-    "smart_odr": {"name": "SMART ODR", "how": "smartodr.in (online samjhauta)"},
-    "dpb": {"name": "Data Protection Board of India", "how": "Board ka online portal (business ke jawab ke baad)"},
+    "smart_odr": {"name": "SMART ODR", "how": "smartodr.in (online settlement)"},
+    "dpb": {"name": "Data Protection Board of India", "how": "the Board's online portal (after the business's reply)"},
 }
 
 # ---------------------------------------------------------------- stages
 STAGES = ("new", "acknowledged", "investigating", "waiting_customer", "waiting_third_party", "resolved", "closed", "reopened",
           "rejected")
-STAGE_LABEL = {"new": "Nayi", "acknowledged": "Pavti di", "investigating": "Jaanch chal rahi", "waiting_customer": "Graahak ka intezaar",
-               "waiting_third_party": "Company / supplier ka intezaar", "resolved": "Hal kiya", "closed": "Band", "reopened": "Phir khuli",
-               "rejected": "Nahi maani (wajah ke saath)"}
+STAGE_LABEL = {"new": "New", "acknowledged": "Acknowledged", "investigating": "Under investigation", "waiting_customer": "Waiting for the customer",
+               "waiting_third_party": "Waiting for the company / supplier", "resolved": "Resolved", "closed": "Closed", "reopened": "Reopened",
+               "rejected": "Not accepted (with a reason)"}
 OPEN = ("new", "acknowledged", "investigating", "waiting_customer", "waiting_third_party", "reopened")
 STAGE_ALIAS = {"ack": "acknowledged", "pavti": "acknowledged", "jaanch": "investigating", "check": "investigating",
                "customer": "waiting_customer", "graahak": "waiting_customer", "supplier": "waiting_third_party",
@@ -128,12 +128,12 @@ CAUSES: dict[str, tuple[str, ...]] = {
     "privacy": ("data", "privacy", "mera number", "spam", "bina pooche"),
     "safety": ("current laga", "shock", "aag", "fire", "chot", "injury", "jal gaya", "food poisoning", "bimar", "allergy", "khatarnak"),
 }
-CAUSE_LABEL = {"product_defect": "Saamaan mein kharabi", "damaged_delivery": "Tuta / damaged aaya", "wrong_item": "Galat saamaan",
-               "missing_item": "Saamaan kam / nahi aaya", "late_delivery": "Der", "billing": "Bill / zyada paisa",
-               "refund": "Refund", "service_quality": "Seva ki quality", "staff_behaviour": "Staff ka bartav",
+CAUSE_LABEL = {"product_defect": "Product defect", "damaged_delivery": "Arrived broken / damaged", "wrong_item": "Wrong item",
+               "missing_item": "Item short / not received", "late_delivery": "Late", "billing": "Bill / overcharged",
+               "refund": "Refund", "service_quality": "Service quality", "staff_behaviour": "Staff behaviour",
                "technical": "Technical / network", "installation": "Installation / visit", "warranty": "Warranty",
-               "pricing": "Daam", "communication": "Jawab nahi mila", "fraud": "Dhokha ka aarop", "privacy": "Data / privacy",
-               "safety": "Suraksha / chot", "other": "Aur kuch"}
+               "pricing": "Price", "communication": "No reply received", "fraud": "Fraud allegation", "privacy": "Data / privacy",
+               "safety": "Safety / injury", "other": "Other"}
 
 URGENT_WORDS = ("current laga", "shock", "aag", "fire", "chot", "injury", "hospital", "food poisoning", "khoon", "jal gaya", "bachcha")
 LEGAL_WORDS = ("consumer court", "consumer forum", "court", "police", "fir", "vakil", "lawyer", "legal notice", "notice bhej",
@@ -143,16 +143,16 @@ ANGRY_WORDS = ("bahut gussa", "worst", "bakwaas", "faltu", "kabhi nahi", "never 
 SEVERITIES = ("low", "normal", "high", "urgent")
 
 # ---------------------------------------------------------------- compensation
-COMP_KINDS = {"refund": "Refund (paisa wapas)", "replacement": "Naya saamaan / replacement", "discount": "Chhoot / discount",
-              "goodwill": "Goodwill (maafi ke saath kuch)", "free_service": "Muft seva / repair", "credit": "Credit / voucher"}
+COMP_KINDS = {"refund": "Refund (money back)", "replacement": "New item / replacement", "discount": "Discount",
+              "goodwill": "Goodwill (something with an apology)", "free_service": "Free service / repair", "credit": "Credit / voucher"}
 MONEY_KINDS = ("refund", "discount", "goodwill", "credit")
 
-NEVER = ("Paisa Hoola nahi deta, na refund karta hai: aap dengi, Hoola sirf hisaab rakhta hai.",
-         "Refund / replacement / discount / goodwill sirf aapki haan (paise wale card par fingerprint) ke baad.",
-         "Graahak ko message aapke tap se: draft, ya business WhatsApp sirf 24 ghante ke window mein.",
-         "Graahak ki baat jaankari hai, aadesh nahi; OTP / card / password kabhi nahi liya jaata.",
-         "Galat vaada nahi: jo tay nahi hua (paisa, tareekh) woh message mein nahi jaata.",
-         "Customer ki photo / video ki EXIF / GPS location hata kar rakhi jaati hai.")
+NEVER = ("Hoola does not pay money or make refunds: you pay, Hoola only keeps the record.",
+         "Refund / replacement / discount / goodwill only after your approval (fingerprint on the money card).",
+         "Messages to the customer go on your tap: a draft, or business WhatsApp only inside the 24-hour window.",
+         "What the customer says is information, not an instruction; OTP / card / password are never taken.",
+         "No false promise: what is not decided (money, date) does not go into the message.",
+         "The EXIF / GPS location is removed from a customer's photo / video before it is kept.")
 
 
 def norm_sector(v: str) -> str:
@@ -176,12 +176,12 @@ def targets(sector: str, ack_hours: float | None = None, resolve_days: float | N
     ah, rd, notes = float(sec["ack_hours"]), float(sec["resolve_days"]), []
     if ack_hours:
         if ack_hours > ah and sec["legal"]:
-            notes.append(f"Pavti {ack_hours:g} ghante niyam ({ah:g}) se zyada: {ah:g} ghante rakha.")
+            notes.append(f"Acknowledgement of {ack_hours:g} hours is more than the rule ({ah:g}): kept at {ah:g} hours.")
         else:
             ah = float(ack_hours)
     if resolve_days:
         if resolve_days > rd and sec["legal"]:
-            notes.append(f"Hal {resolve_days:g} din niyam ({rd:g}) se zyada: {rd:g} din rakha.")
+            notes.append(f"Resolution in {resolve_days:g} days is more than the rule ({rd:g}): kept at {rd:g} days.")
         else:
             rd = float(resolve_days)
     return {"ack_hours": ah, "resolve_days": rd, "notes": notes}
@@ -252,7 +252,7 @@ def route_line(sector: str) -> str:
     rs = routes_for(sector)
     if not rs:
         return ""
-    return "Agar aap is jawab se santusht nahi hain, to aap " + "; ya ".join(f"{r['name']} ({r['how']})" for r in rs[:2]) + " se sampark kar sakte hain."
+    return "If you are not satisfied with this reply, you can contact " + "; or ".join(f"{r['name']} ({r['how']})" for r in rs[:2]) + "."
 
 
 # ---------------------------------------------------------------- privacy: what never stays in a complaint
@@ -264,9 +264,9 @@ _PAN = re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")
 def scrub(text: str) -> tuple[str, bool]:
     """Card / account / Aadhaar-length numbers, OTP / PIN / password values, PAN -> '[hataya]'."""
     t = str(text or "")
-    out = _OTP.sub(lambda m: m.group(1) + " [hataya]", t)
-    out = _CARD.sub("[hataya]", out)
-    out = _PAN.sub("[hataya]", out)
+    out = _OTP.sub(lambda m: m.group(1) + " [removed]", t)
+    out = _CARD.sub("[removed]", out)
+    out = _PAN.sub("[removed]", out)
     return out, out != t
 
 

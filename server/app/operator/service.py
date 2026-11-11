@@ -182,7 +182,7 @@ def _set(task_id: str, publish: bool = True, **cols: Any) -> OperatorTask:
     # v0.179 the job reached an end while a question was still open: close that ask card too (its own key)
     if cols.get("status") in _TERMINAL and prev_pending:
         _close_pending_ask(row, _j(prev_pending, None),
-                           "Yeh sawaal ab purana ho gaya - kaam aage badh gaya / band ho gaya, iski zaroorat nahi rahi.")
+                           "This question is now out of date - the task moved on / ended, so it is no longer needed.")
     return row
 
 
@@ -190,7 +190,7 @@ def get(tenant: str, task_id: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(OperatorTask, task_id)
         if row is None or row.tenant_id != tenant:
-            raise OperatorJobError("Yeh kaam nahi mila")
+            raise OperatorJobError("This task was not found")
         return view(row)
 
 
@@ -213,26 +213,26 @@ def start(tenant: str, task: str, start_url: str = "", file_ids: list[str] | Non
           created_by: str = "owner", guide: str = "") -> dict[str, Any]:
     task = re.sub(r"\s+", " ", task or "").strip()
     if len(task) < 6:
-        raise OperatorJobError("Kya karna hai, thoda saaf bataiye (website + kaam).")
+        raise OperatorJobError("Say a little more clearly what to do (website + task).")
     from .. import usage
     if not usage.allowed(tenant, "website"):           # v0.98 the month's AI limit is used up
         raise OperatorJobError(usage.blocked_text(tenant))
     if not available():
-        raise OperatorJobError("Computer Operator is server par abhi chalu nahi hai (Playwright / Chromium nahi mila).")
+        raise OperatorJobError("Computer Operator is not running on this server yet (Playwright / Chromium not found).")
     from .. import idvault, pii
     # v0.75 Aadhaar / PAN / other ID numbers go into her Pehchaan Locker; the job text keeps only {id:...} references
     task, _saved = idvault.capture(tenant, task)
     secrets = [k for k in pii.find(task) if k in ("otp_pin", "password", "card", "cvv")]
     if secrets:
-        raise OperatorJobError(f"Kaam ke text mein {pii.describe(secrets)} mat likhiye; woh aap khud page par bharengi.")
+        raise OperatorJobError(f"Do not write {pii.describe(secrets)} in the task text; you will fill that in on the page yourself.")
     if start_url:
         from .guard import url_problem
         why = url_problem(start_url, bool(_st().operator_allow_private))
         if why:
-            raise OperatorJobError(f"Yeh link nahi khul sakta: {why}")
+            raise OperatorJobError(f"This link cannot be opened: {why}")
     cur = active(tenant)
     if cur:
-        raise OperatorJobError(f"Ek kaam pehle se chal raha hai ({cur['task'][:80]}). Pehle use poora / band hone dijiye.")
+        raise OperatorJobError(f"A task is already running ({cur['task'][:80]}). Let it finish / stop first.")
     files = []
     if file_ids:
         from ..mailbox.service import MailError, _file_row
@@ -245,7 +245,7 @@ def start(tenant: str, task: str, start_url: str = "", file_ids: list[str] | Non
     with session() as s:
         row = OperatorTask(tenant_id=tenant, conversation_id=conversation_id or _home_conv(tenant), task=task[:3000],
                            start_url=start_url or "", files=json.dumps(files), created_by=created_by[:64],
-                           stage="Line mein", guide=(guide or None) and guide[:6000])
+                           stage="Queued", guide=(guide or None) and guide[:6000])
         s.add(row)
         s.flush()
         s.expunge(row)
@@ -273,13 +273,13 @@ async def _safe_run(task_id: str) -> None:
     try:
         await run_job(task_id)
     except asyncio.CancelledError:
-        _set(task_id, status="cancelled", stage="Rok diya", pending=None)
+        _set(task_id, status="cancelled", stage="Stopped", pending=None)
         raise
     except Exception as e:
         log.exception("operator job %s", task_id)
         try:
-            row = _set(task_id, status="failed", stage="Ruk gaya", pending=None, error=str(e)[:300])
-            _note(row, f"Website ka kaam poora nahi ho paya: {row.error}")
+            row = _set(task_id, status="failed", stage="Stopped", pending=None, error=str(e)[:300])
+            _note(row, f"The website task could not be completed: {row.error}")
         except Exception:
             pass
 
@@ -296,7 +296,7 @@ def cancel(tenant: str, task_id: str) -> dict[str, Any]:
                 a.status = "rejected"
                 a.event.set()
     if v["status"] == "queued" and task_id not in _running:
-        row = _set(task_id, status="cancelled", stage="Rok diya", pending=None)
+        row = _set(task_id, status="cancelled", stage="Stopped", pending=None)
         return view(row)
     return get(tenant, task_id)
 
@@ -307,8 +307,8 @@ def resume_pending() -> int:
         ids = [r.id for r in s.scalars(select(OperatorTask).where(OperatorTask.status.in_(ACTIVE))).all()]
     for i in ids:
         row = _set(i, status="stopped", stage="Server restart", pending=None,
-                   error="Server restart hua, browser band ho gaya. Dobara boliye; seekha hua kaam wahin se tez chalega.")
-        _note(row, f"Website ka kaam ruk gaya (server restart): {row.task[:120]}. Dobara boliye to phir se karunga.")
+                   error="The server restarted and the browser closed. Ask again; a learned task will run faster from there.")
+        _note(row, f"The website task stopped (server restart): {row.task[:120]}. Ask again and I will do it again.")
     return len(ids)
 
 
@@ -325,8 +325,8 @@ def expire_stale_asks(ttl_h: int) -> int:
     n = 0
     for i in ids:
         try:
-            _set(i, status="stopped", stage="Bahut purana sawaal", pending=None,
-                 error="Yeh sawaal bahut der tak khula pada tha; ab band kar diya.")
+            _set(i, status="stopped", stage="Very old question", pending=None,
+                 error="This question was left open for too long; it is closed now.")
             n += 1
         except OperatorJobError:
             pass
@@ -340,14 +340,14 @@ async def _asked(tenant: str, a: Approval) -> None:
     if not t:
         return
     pend = a.public()
-    row = _set(t["id"], status="waiting", stage=f"Aapka intezaar: {a.reason[:120]}", pending=pend)
+    row = _set(t["id"], status="waiting", stage=f"Waiting for you: {a.reason[:120]}", pending=pend)
     site = site_of(row.url or pend.get("url", ""))
     _publish(row, "operator_ask", {**pend, "task_id": row.id, "task": row.task[:200], "site": site})
     if a.kind == "otp":
         _ask_otp(row, a, site)
     elif a.kind == "payment" and "OTP" in (a.reason or ""):
-        _say(row, f"(Computer Operator: {site or 'website'} par bank / payment ka OTP aaya hai. Tell her in one short line: "
-                  "yeh paise wala OTP hai, isliye woh khud live screen par bhariye; Hoola isse nahi bharega. Don't ask her "
+        _say(row, f"(Computer Operator: {site or 'website'} has sent a bank / payment OTP. Tell the user in one short line: "
+                  "this is a money OTP, so they must type it themselves on the live screen; Hoola will not type it. Don't ask them "
                   "to say it.)")
 
 
@@ -363,14 +363,14 @@ def _ask_otp(row: OperatorTask, a: Approval, site: str) -> None:
     """v0.83 the moment a website sends an OTP, Hoola asks for it: out loud in a live call, and in the chat (+ push).
     Whatever she says or types next goes straight into that page's OTP box (answer_from_chat / voice capture)."""
     where = site or "website"
-    n = f"{a.digits} ankon ka " if a.digits else ""
-    in_call = _say(row, f"(Computer Operator: {where} ne abhi aapke phone par {n}OTP bheja hai. Ask her out loud right now, "
-                        f"one short line, e.g. '{where} ka OTP aaya hoga, bata dijiye'. When she says the digits the system "
-                        "types them into the box by itself: you only say 'mil gaya, bhar diya'. Never say the digits "
-                        "yourself, never write them anywhere. If she can't find it, tell her to check SMS / email.)")
-    _note(row, f"{where} ne aapke phone par {n}OTP bheja hai. Jo OTP aaya hai bas yahan likh dijiye"
-               + (" ya call par bol dijiye" if in_call else " (ya call karke bol dijiye)")
-               + ", main khud sahi box mein bhar dunga. SMS aaye to 'Allow' dabaiye, woh bhi apne aap bhar jayega.")
+    n = f"{a.digits}-digit " if a.digits else ""
+    in_call = _say(row, f"(Computer Operator: {where} has just sent a {n}OTP to the user's phone. Ask them out loud right now, "
+                        f"one short line, e.g. '{where} should have sent an OTP, please tell me'. When they say the digits the system "
+                        "types them into the box by itself: you only say 'got it, filled in'. Never say the digits "
+                        "yourself, never write them anywhere. If they can't find it, tell them to check SMS / email.)")
+    _note(row, f"{where} has sent a {n}OTP to your phone. Just type the OTP here"
+               + (" or say it on the call" if in_call else " (or call and say it)")
+               + ", and I will put it in the right box myself. If an SMS comes, tap 'Allow' and that will also be filled in automatically.")
 
 
 # v0.83 the OTP she just gave (chat, call, SMS) - so a second route for the same OTP says "done" instead of failing
@@ -400,11 +400,11 @@ async def fill_otp(tenant: str, request_id: str, value: str) -> dict[str, Any]:
     if str(request_id).startswith("pcotp_"):
         from ..pc import operator as pcop
         if not pcop.give_otp(tenant, request_id, value):
-            raise OperatorJobError("PC par ab koi OTP box intezaar nahi kar raha.")
+            raise OperatorJobError("No OTP box is waiting on the PC now.")
         _FILLED[tenant] = time.time()
-        return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP PC ke box mein bhar diya. Aage badh raha hoon."}
+        return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP filled into the box on the PC. Moving on."}
     await resolve(tenant, request_id, "approved", value)
-    return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP page mein bhar diya. Aage badh raha hoon."}
+    return {"ok": True, "kind": "otp", "masked": "•" * len(value), "say": "OTP filled into the page. Moving on."}
 
 
 def _expire_ask_by_id(tenant: str, request_id: str, say: str) -> bool:
@@ -417,7 +417,7 @@ def _expire_ask_by_id(tenant: str, request_id: str, say: str) -> bool:
         for row in rows:
             pend = _j(row.pending, None)
             if isinstance(pend, dict) and pend.get("id") == request_id:
-                row.pending, row.stage = "", "Aage badh raha hoon" if row.status == "running" else row.stage
+                row.pending, row.stage = "", "Moving on" if row.status == "running" else row.stage
                 s.flush()
                 s.expunge(row)
                 hit = (row, pend)
@@ -437,7 +437,7 @@ async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -
         req = pcop.pending_otp(tenant)
         if status == "approved":
             if not pcop.give_otp(tenant, request_id, answer):
-                raise OperatorJobError("PC par ab koi OTP box intezaar nahi kar raha, ya OTP 4-8 ank ka nahi hai.")
+                raise OperatorJobError("No OTP box is waiting on the PC now, or the OTP is not 4-8 digits.")
             _FILLED[tenant] = time.time()
         else:
             pcop.refuse_otp(tenant, request_id)
@@ -450,19 +450,19 @@ async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -
             a = await op.resolve_human(request_id, "approved" if status == "approved" else "rejected", answer)
         except OperatorError as e:
             # v0.179 the browser no longer knows this request (restarted / gone): close the card, then say so
-            _expire_ask_by_id(tenant, request_id, "Yeh sawaal band ho gaya - website ka kaam aage nahi badha.")
+            _expire_ask_by_id(tenant, request_id, "This question is closed - the website task did not go further.")
             raise OperatorJobError(str(e)) from None
     else:
         # v0.179 browser is closed: the ask card must not stay pending forever - close it and tell her plainly
         if _expire_ask_by_id(tenant, request_id,
-                             "Browser band ho gaya tha, isliye yeh sawaal purana ho gaya. Kaam dobara boliye to phir se hoga."):
-            raise OperatorJobError("Yeh sawaal purana ho gaya (browser band hai); card chat mein band kar diya hai.")
-        raise OperatorJobError("Browser band hai; yeh sawaal ab purana ho gaya.")
+                             "The browser had closed, so this question is out of date. Ask for the task again and it will run again."):
+            raise OperatorJobError("This question is out of date (the browser is closed); the card has been closed in the chat.")
+        raise OperatorJobError("The browser is closed; this question is now out of date.")
     if a.kind == "otp" and a.status == "approved":
         _FILLED[tenant] = time.time()
     t = active(tenant)
     if t:
-        _publish(_set(t["id"], publish=False, status="running", stage="Aage badh raha hoon", pending=None),
+        _publish(_set(t["id"], publish=False, status="running", stage="Moving on", pending=None),
                  "operator_ask", {**a.public(), "task_id": t["id"]})
         _publish(_row(t["id"]))
     return a.public()
@@ -471,7 +471,7 @@ async def resolve(tenant: str, request_id: str, status: str, answer: str = "") -
 async def captcha_image(tenant: str, request_id: str) -> bytes:
     have = _ops.get(tenant)
     if not have:
-        raise OperatorJobError("Browser band hai.")
+        raise OperatorJobError("The browser is closed.")
     try:
         return await have[1].captcha_image(request_id)
     except OperatorError as e:
@@ -481,7 +481,7 @@ async def captcha_image(tenant: str, request_id: str) -> bytes:
 async def captcha_refresh(tenant: str, request_id: str) -> dict[str, Any]:
     have = _ops.get(tenant)
     if not have:
-        raise OperatorJobError("Browser band hai.")
+        raise OperatorJobError("The browser is closed.")
     try:
         return {"ok": await have[1].captcha_refresh(request_id)}
     except OperatorError as e:
@@ -492,7 +492,7 @@ async def captcha_solve(tenant: str, request_id: str) -> dict[str, Any]:
     """v0.78 Hoola reads the CAPTCHA (OCR) and returns the solved text."""
     have = _ops.get(tenant)
     if not have:
-        raise OperatorJobError("Browser band hai.")
+        raise OperatorJobError("The browser is closed.")
     try:
         solved = await have[1].captcha_solve(request_id)
         return {"ok": True, "solved": solved}
@@ -504,7 +504,7 @@ async def captcha_fill(tenant: str, request_id: str, value: str) -> dict[str, An
     """v0.78 After the owner confirms / corrects the solved CAPTCHA, type it into the box."""
     have = _ops.get(tenant)
     if not have:
-        raise OperatorJobError("Browser band hai.")
+        raise OperatorJobError("The browser is closed.")
     try:
         return await have[1].captcha_fill(request_id, value)
     except OperatorError as e:
@@ -560,9 +560,9 @@ async def answer_from_chat(tenant: str, text: str) -> dict[str, Any] | None:
         else:
             await fill_otp(tenant, a.id, value)
     except OperatorJobError as e:
-        return {"ok": False, "kind": a.kind, "say": f"Page mein nahi bhar paya: {e}"}
+        return {"ok": False, "kind": a.kind, "say": f"Could not fill it into the page: {e}"}
     return {"ok": True, "kind": a.kind, "masked": "•" * len(value),
-            "say": ("OTP" if a.kind == "otp" else "CAPTCHA") + " page mein bhar diya. Aage badh raha hoon."}
+            "say": ("OTP" if a.kind == "otp" else "CAPTCHA") + " filled into the page. Moving on."}
 
 
 def _row(task_id: str) -> OperatorTask:
@@ -583,13 +583,13 @@ def _live_session(tenant: str):
 async def frame(tenant: str) -> bytes:
     op, s = _live_session(tenant)
     if not s:
-        raise OperatorJobError("Abhi koi browser khula nahi hai")
+        raise OperatorJobError("No browser is open right now")
     try:
         return await op.screenshot(s, quality=55)
     except Exception:
         if s.last_shot:
             return s.last_shot
-        raise OperatorJobError("Page ki photo nahi mili")
+        raise OperatorJobError("No picture of the page was found")
 
 
 async def owner_input(tenant: str, kind: str, x: float = 0, y: float = 0, text: str = "", key: str = "") -> dict[str, Any]:
@@ -597,7 +597,7 @@ async def owner_input(tenant: str, kind: str, x: float = 0, y: float = 0, text: 
     never shown to the model."""
     op, s = _live_session(tenant)
     if not s:
-        raise OperatorJobError("Abhi koi browser khula nahi hai")
+        raise OperatorJobError("No browser is open right now")
     if kind == "click":
         await op.owner_click(s, x, y)
     elif kind == "type":
@@ -660,7 +660,7 @@ def _system(row: OperatorTask, mem: Memory) -> str:
                      "; ".join(f"{f['name']} (file_id={f['file_id']})" for f in files))
     from .. import idvault
     ids = idvault.summary_for_model(row.tenant_id)
-    lines.append("ID LOCKER (her Pehchaan Locker; numbers are masked for you): " + (ids or "empty") +
+    lines.append("ID LOCKER (her ID Locker; numbers are masked for you): " + (ids or "empty") +
                  ". To fill an ID box use fill(ref, value='{id:...}') with the reference: the real number goes only "
                  "into the box (official .gov.in / .nic.in sites directly; any other site asks her once). Missing ID: "
                  "ask_owner(kind='question') - her answer comes back as a reference.")
@@ -688,13 +688,13 @@ async def run_job(task_id: str) -> dict[str, Any]:
     sem = _sem.setdefault(loop_id, asyncio.Semaphore(max(1, int(_st().operator_max_jobs or 2))))
     async with sem:
         if task_id in _cancel:
-            return view(_set(task_id, status="cancelled", stage="Rok diya"))
+            return view(_set(task_id, status="cancelled", stage="Stopped"))
         from .. import usage
         usage.bind(row.tenant_id, "website")
         op = await operator(row.tenant_id)
         op.id_tenant = row.tenant_id
         job = Job(row, op, memory(row.tenant_id))
-        _set(task_id, status="running", stage="Shuru kar raha hoon")
+        _set(task_id, status="running", stage="Starting")
         try:
             return await _loop(job)
         finally:
@@ -722,7 +722,7 @@ async def _loop(job: Job) -> dict[str, Any]:
     final = ""
     for n in range(int(st.operator_max_steps or 120)):
         if row.id in _cancel:
-            return _end(job, "cancelled", "Aapne rok diya.")
+            return _end(job, "cancelled", "You stopped it.")
         T.trim_history(history)
         blocks, stop = await _brain(system, history)
         history.append({"role": "assistant", "content": blocks})
@@ -764,13 +764,13 @@ async def _loop(job: Job) -> dict[str, Any]:
         if job.finished is not None or br.stopped or row.id in _cancel:
             break
     if row.id in _cancel:
-        return _end(job, "cancelled", "Aapne rok diya.")
+        return _end(job, "cancelled", "You stopped it.")
     if job.finished is not None:
         ok = job.finished.get("ok", True) is not False
         return await _wrap(job, "done" if ok else "failed", job.finished.get("summary") or final, job.finished)
     if br.stopped:
-        return await _wrap(job, "failed", f"Atak gaya ({br.stopped}). {final}".strip(), {})
-    return await _wrap(job, "failed" if not final else "done", final or "Kaam poora nahi ho paya.", {})
+        return await _wrap(job, "failed", f"Got stuck ({br.stopped}). {final}".strip(), {})
+    return await _wrap(job, "failed" if not final else "done", final or "The task could not be completed.", {})
 
 
 def _mask_result(content):
@@ -814,7 +814,7 @@ async def _wrap(job: Job, status: str, summary: str, fin: dict) -> dict[str, Any
             except Exception:
                 pass
             if danger:
-                outputs.append({"name": p.name, "refused": "file ke andar program / script hai"})
+                outputs.append({"name": p.name, "refused": "the file has a program / script inside"})
                 continue
             f = store_bytes(row.tenant_id, p.name, data, "to_phone")
             pf = public_file(f)
@@ -841,22 +841,22 @@ async def _wrap(job: Job, status: str, summary: str, fin: dict) -> dict[str, Any
         net = getattr(job.op, "_net", None)
         blocked = reach.learn_from_job(row.start_url, row.task, status == "done", list(getattr(net, "failed", []) or []), last)
         if blocked and status != "done":
-            text += (f"\n({', '.join(blocked)} Hoola ke server se nahi khulta; agli baar yeh kaam seedha aapke PC par "
-                     "chalega, ya office proxy lagne ke baad server se.)")
+            text += (f"\n({', '.join(blocked)} cannot be opened from Hoola's server; next time this task will run directly on your PC, "
+                     "or from the server once an office proxy is set up.)")
     except Exception:
         log.exception("reach learning")
-    row2 = _set(row.id, status=status, stage={"done": "Ho gaya", "failed": "Poora nahi hua"}.get(status, status),
+    row2 = _set(row.id, status=status, stage={"done": "Done", "failed": "Not completed"}.get(status, status),
                 summary=text, proof=proof, outputs=outputs, recipe=job.saved_recipe, pending=None, log=job.log,
                 error="" if status == "done" else (fin.get("pending") or "")[:300])
-    lines = [("Website ka kaam ho gaya: " if status == "done" else "Website ka kaam poora nahi hua: ") + text]
+    lines = [("The website task is done: " if status == "done" else "The website task was not completed: ") + text]
     if proof:
-        lines.append("Saboot: " + " | ".join(proof))
+        lines.append("Proof: " + " | ".join(proof))
     if fin.get("pending"):
         lines.append("Baaki: " + str(fin["pending"])[:300])
     if outputs:
         lines.append("Files: " + ", ".join(o["name"] for o in outputs))
     if job.saved_recipe:
-        lines.append(f"Yeh kaam seekh liya ('{job.saved_recipe}'): agli baar tez hoga.")
+        lines.append(f"Learned this task ('{job.saved_recipe}'): it will be faster next time.")
     _note(row2, "\n".join(lines))
     try:
         from ..voice import inject
@@ -867,15 +867,15 @@ async def _wrap(job: Job, status: str, summary: str, fin: dict) -> dict[str, Any
 
 
 def _end(job: Job, status: str, text: str) -> dict[str, Any]:
-    row = _set(job.row.id, status=status, stage="Rok diya" if status == "cancelled" else status, pending=None,
+    row = _set(job.row.id, status=status, stage="Stopped" if status == "cancelled" else status, pending=None,
                summary=text, log=job.log)
-    _note(row, f"Website ka kaam rok diya: {row.task[:120]}")
+    _note(row, f"The website task was stopped: {row.task[:120]}")
     return view(row)
 
 
 def _recipe_name(task: str) -> str:
     words = re.sub(r"[^\w\s]", " ", task).split()
-    return " ".join(words[:8])[:60] or "website kaam"
+    return " ".join(words[:8])[:60] or "website task"
 
 
 # ---------------------------------------------------------------- tool handlers (inside one job)
@@ -906,13 +906,13 @@ async def _tool(job: Job, name: str, a: dict[str, Any]) -> Any:
         return {"_image": await op.screenshot(s, full_page=bool(a.get("full_page"))), "note": f"Page: {s.page.url}"}
     if name == "click":
         r = await op.act(s, "click", str(a.get("ref", "")), approval_id=a.get("approval_id") or None)
-        job.step(f"Click: {r.get('target') or a.get('ref')}" if r.get("ok") else f"Ruka: {r.get('blocked')}")
+        job.step(f"Click: {r.get('target') or a.get('ref')}" if r.get("ok") else f"Stopped: {r.get('blocked')}")
         return r
     if name == "fill":
         r = await op.act(s, "type" if a.get("slowly") else "fill", str(a.get("ref", "")), value=str(a.get("value", "")),
                          var=a.get("var") or None)
         if r.get("ok"):
-            job.step(f"Bhara: {r.get('target')}")
+            job.step(f"Filled: {r.get('target')}")
         return r
     if name == "select":
         return await op.act(s, "select", str(a.get("ref", "")), value=str(a.get("option", "")))
@@ -978,7 +978,7 @@ async def _ask(job: Job, s, a: dict[str, Any]) -> dict[str, Any]:
 async def _wait_owner(job: Job, s, req: Approval) -> dict[str, Any]:
     op = job.op
     got = await op.wait_human(req.id, float(_st().operator_wait_owner_s or 900))
-    _set(job.row.id, status="running", stage="Aage badh raha hoon", pending=None)
+    _set(job.row.id, status="running", stage="Moving on", pending=None)
     d = got.public()
     if d.get("answer"):          # v0.75 an ID number in her answer goes to the locker; the model gets the reference
         from .. import idvault
@@ -1019,7 +1019,7 @@ async def _recipe_run(job: Job, a: dict[str, Any]) -> dict[str, Any]:
         if r.get("status") != "waiting_human":
             if r.get("status") == "done":
                 job.ran_recipe = name                    # v0.785 the Video Learner reads which learned recipe really ran
-                job.step(f"Seekha hua kaam poora: {name}")
+                job.step(f"Learned task finished: {name}")
             return r
         req = job.op.approvals.get(r["request"]["id"])
         got = await _wait_owner(job, s, req)
@@ -1071,7 +1071,7 @@ async def _youtube(url: str, question: str) -> dict[str, Any]:
         return {"ok": False, "error": "Not a YouTube video link"}
     st = _st()
     if not st.gemini_api_key:
-        return {"ok": False, "error": "Video dekhne ke liye GEMINI_API_KEY chahiye"}
+        return {"ok": False, "error": "Watching a video needs GEMINI_API_KEY"}
     from google import genai
     from google.genai import types
     client = genai.Client(api_key=st.gemini_api_key)

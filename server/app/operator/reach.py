@@ -171,7 +171,7 @@ def probe(host: str, port: int = 443, timeout: float = PROBE_TIMEOUT) -> tuple[b
     try:
         infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except OSError:
-        return False, "naam nahi mila (DNS)"
+        return False, "name not found (DNS)"
     ips = []
     for i in infos:
         try:
@@ -182,18 +182,18 @@ def probe(host: str, port: int = 443, timeout: float = PROBE_TIMEOUT) -> tuple[b
             ips.append(str(ip))
     ips.sort(key=lambda x: ":" in x)                # IPv4 first (most VPSs have no IPv6 route)
     if not ips:
-        return False, "sirf andar ka (private) address"
+        return False, "internal (private) address only"
     last = ""
     for ip in ips[:3]:
         try:
             with socket.create_connection((ip, port), timeout=timeout):
                 return True, ""
         except socket.timeout:
-            last = "jawab nahi diya (timeout)"
+            last = "no reply (timeout)"
         except OSError as e:
             last = type(e).__name__
     STATS["probe_fail"] += 1
-    return False, last or "nahi juda"
+    return False, last or "could not connect"
 
 
 def check(task: str, start_url: str = "", live: bool = True) -> dict[str, Any]:
@@ -204,7 +204,7 @@ def check(task: str, start_url: str = "", live: bool = True) -> dict[str, Any]:
     rec = remembered(site)
     if rec:
         return {"site": site, "ok": False, "remembered": True,
-                "why": rec.get("why") or "pichhli baar is server se nahi khula"}
+                "why": rec.get("why") or "did not open from this server last time"}
     if not live:
         return {"site": site, "ok": True}
     ok, why = probe(site)
@@ -233,7 +233,7 @@ def learn_from_job(start_url: str, task: str, ok: bool, net_failed: list[str], l
     out = []
     for h in dict.fromkeys(hosts):
         if base(h) not in out:
-            note_fail(h, "is server se khula nahi")
+            note_fail(h, "did not open from this server")
             out.append(base(h))
     return out
 
@@ -261,6 +261,6 @@ def _bootstrap() -> None:
             if status == "failed" and (url or "").startswith("chrome-error"):
                 site = site_for(task, start_url)
                 if site:
-                    note_fail(site, "pichhle kaam mein is server se nahi khula")
+                    note_fail(site, "did not open from this server in the last task")
     except Exception:
         log.exception("reach bootstrap")

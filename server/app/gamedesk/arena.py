@@ -119,8 +119,8 @@ def brief_set() -> list[dict[str, Any]]:
                                             "memory", "sort", "rhythm") else rnd.choice(("portrait", "landscape"))
             out.append({"id": f"g{SET_V}-{gkey}-{i:02d}", "genre": gkey, "genre_name": gname, "setting": setting,
                         "who": who, "orientation": orient,
-                        "brief": f"Ek {gname} banao: {setting} mein. {gverb.capitalize()}. {who} ke liye, "
-                                 f"ek haath se, bina padhe samajh aaye."})
+                        "brief": f"Make a {gname} set in {setting}. {gverb.capitalize()}. It is for {who}, "
+                                 f"playable with one hand and understood without reading."})
     return out
 
 
@@ -438,7 +438,7 @@ def start(n: int = 8, seed: int = 1, budget_inr: float = 0.0, note: str = "", ba
     n = max(1, min(60, int(n or 8)))
     with session() as s:
         if s.scalars(select(GArenaRun).where(GArenaRun.status == "running")).first():
-            raise ArenaError("Ek arena run pehle se chal raha hai.")
+            raise ArenaError("An arena run is already going.")
         cnt = len(s.scalars(select(GArenaRun.id)).all()) + 1
         r = GArenaRun(number=f"A-{cnt:03d}", set_v=SET_V, version=APP_VERSION, seed=int(seed or 1), n=n,
                       note=str(note or "")[:200], budget_inr=float(budget_inr or MAX_INR_DEFAULT))
@@ -545,7 +545,7 @@ def finish_running() -> int:
 
 def stop(rid: str) -> dict[str, Any]:
     _STOP.add(rid)
-    return {"stopping": True, "say": "Arena run is brief ke baad ruk jayega."}
+    return {"stopping": True, "say": "The arena run will stop after this brief."}
 
 
 def _rview(r: GArenaRun) -> dict[str, Any]:
@@ -559,7 +559,7 @@ def view(rid: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(GArenaRun, rid)
         if r is None:
-            raise ArenaError("Woh run nahi mila.")
+            raise ArenaError("That run was not found.")
         out = _rview(r)
         out["items"] = [dict(i.card or {}) for i in
                         s.scalars(select(GArenaItem).where(GArenaItem.run_id == rid).order_by(GArenaItem.at)).all()]
@@ -597,7 +597,7 @@ def _play_url(url: str, orientation: str, out: Path) -> dict[str, Any]:
     from . import playtest as P
     from . import qa as Q
     if not str(url or "").startswith("https://"):
-        raise ArenaError("Rival ka public https link dijiye (sirf uska khula page khulega).")
+        raise ArenaError("Give the rival's public https link (only its open page will be opened).")
     out.mkdir(parents=True, exist_ok=True)
     vw, vh = {"portrait": (360, 640), "landscape": (640, 360), "square": (512, 512)}.get(orientation, (360, 640))
     res: dict[str, Any] = {"started": False, "load_s": None, "fps": None, "errors": 0, "responds": None,
@@ -655,17 +655,17 @@ def duel(brief_id: str, rival: str, rival_url: str, hoola_game: str = "", seed: 
     ensure_tables()
     b = next((x for x in brief_set() if x["id"] == brief_id), None)
     if b is None:
-        raise ArenaError("Woh brief nahi mila.")
+        raise ArenaError("That brief was not found.")
     with session() as s:
         it = s.scalars(select(GArenaItem).where(GArenaItem.brief_id == brief_id, GArenaItem.game_id != "")
                        .order_by(GArenaItem.at.desc())).first()
         gid = hoola_game or (it.game_id if it else "")
     if not gid:
-        raise ArenaError("Is brief ka Hoola game pehle banwaiye (arena run), ya game id dijiye.")
+        raise ArenaError("Have the Hoola game for this brief built first (arena run), or give a game id.")
     g = G._get(TENANT, gid)
     good = G._good(g)
     if not good:
-        raise ArenaError("Us Hoola game ka chalne wala version nahi hai.")
+        raise ArenaError("That Hoola game has no working version.")
     base = G._pdir(TENANT, gid) / "duel"
     mine = play(_web(g, good[-1]["n"]), b["orientation"], base / "hoola")
     theirs = _play_url(rival_url, b["orientation"], base / "rival")
@@ -680,13 +680,13 @@ def duel(brief_id: str, rival: str, rival_url: str, hoola_game: str = "", seed: 
             except OSError:
                 pass
     if not imgs:
-        raise ArenaError("Dono mein se kisi ka screen nahi mila.")
+        raise ArenaError("No screen was found for either of the two.")
     text = (f"Brief: {b['brief']}\nScreen: {b['orientation']}\n\nA measured: {facts_line(A)}\nB measured: {facts_line(Bx)}\n\n"
             "The first frames are A, the rest are B. Which game is better?")
     try:
         raw = parse_json(AI.ask_with_images(DUEL_SYSTEM, text, imgs[:4], max_tokens=700))
     except Exception as e:                              # noqa: BLE001
-        raise ArenaError(f"Judge se jawab nahi aaya: {type(e).__name__}")
+        raise ArenaError(f"No answer came from the judge: {type(e).__name__}")
     pickw = str((raw or {}).get("winner") or "tie").strip().upper()[:1]
     winner = "tie" if pickw not in ("A", "B") else ("hoola" if (pickw == "A") == hoola_is_a else "rival")
     sc = {"hoola": (raw or {}).get("a" if hoola_is_a else "b"), "rival": (raw or {}).get("b" if hoola_is_a else "a")}

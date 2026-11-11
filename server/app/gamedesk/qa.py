@@ -505,7 +505,7 @@ def approve_golden(tenant: str, ref: str, rel: str = "") -> dict[str, Any]:
     prof = (last.get("golden") or {}).get("profile", "desktop")
     src = _qdir(tenant, r.id) / rel
     if not rel or ".." in rel or not src.is_file():
-        raise QaError("Koi screen nahi mili jise golden banaya jaye; pehle QA chalaiye.")
+        raise QaError("No screen was found to make golden; run QA first.")
     dst = _qdir(tenant, r.id) / "golden" / f"{prof}.png"
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
@@ -547,7 +547,7 @@ def report_bug(tenant: str, ref: str, title: str, detail: str = "", severity: st
     ensure_table()
     title = re.sub(r"\s+", " ", title or "").strip()[:200]
     if len(title) < 4:
-        raise QaError("Bug ek line mein likhiye (kya galat hota hai).")
+        raise QaError("Write the bug in one line (what goes wrong).")
     r = _studio(tenant, ref)
     g = G._get(tenant, r.game_id) if r.game_id else None
     ver = (G._good(g) or [{}])[-1].get("n", 0) if g else 0
@@ -567,9 +567,9 @@ def fix_bug(tenant: str, ref: str, number: str) -> dict[str, Any]:
     with session() as s:
         b = s.scalars(select(GameBug).where(GameBug.studio_id == r.id, GameBug.number == str(number).upper())).first()
         if b is None:
-            raise QaError("Yeh bug nahi mila.")
+            raise QaError("This bug was not found.")
         if b.task:
-            raise QaError(f"{b.number} ke liye {b.task} pehle se hai.")
+            raise QaError(f"{b.number} already has {b.task}.")
         rp = b.repro or {}
         crit = [{"text": f"QA bot '{rp['bot']}' (seed {rp.get('seed', 1)}, {rp.get('profile', 'desktop')}) no longer finds {b.number}",
                  "by": "test"}] if rp.get("bot") else [{"text": f"{b.title} no longer happens", "by": "her"}]
@@ -591,9 +591,9 @@ def set_bug(tenant: str, ref: str, number: str, status: str) -> dict[str, Any]:
     with session() as s:
         b = s.scalars(select(GameBug).where(GameBug.studio_id == r.id, GameBug.number == str(number).upper())).first()
         if b is None:
-            raise QaError("Yeh bug nahi mila.")
+            raise QaError("This bug was not found.")
         if status == "fixed" and (b.repro or {}).get("bot"):
-            raise QaError("Bot wala bug tab 'fixed' hota hai jab wahi bot use dobara na paye: QA chalaiye.")
+            raise QaError("A bot's bug becomes 'fixed' when the same bot cannot find it again: run QA.")
         b.status, b.updated_at = status, now()
         s.flush()
         return bug_view(b)
@@ -629,7 +629,7 @@ def start(tenant: str, ref: str) -> dict[str, Any]:
     r = _studio(tenant, ref)
     with _RLOCK:
         if r.id in _RUN:
-            raise QaError("QA bots abhi khel rahe hain; khatam hone dijiye.")
+            raise QaError("The QA bots are playing now; let them finish.")
         _RUN.add(r.id)
     if os.environ.get("GAME_WORKER", "true").lower() in ("0", "false", "off"):
         with _RLOCK:

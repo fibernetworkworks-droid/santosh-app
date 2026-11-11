@@ -547,7 +547,7 @@ def godot_lab(inp: dict, net: dict, job: Path, seed: int = 3) -> dict:
     m = re.search(r"HOOLA_NET (\{.*\})", logtxt or "")
     if not m:
         errs = engine.errors_in(logtxt or "") or [(logtxt or "").strip()[-300:] or "the lab printed nothing"]
-        raise NetError("Netcode lab Godot mein nahi chala: " + "; ".join(errs[:3])[:400])
+        raise NetError("The netcode lab did not run in Godot: " + "; ".join(errs[:3])[:400])
     return json.loads(m.group(1))
 
 
@@ -625,7 +625,7 @@ def _get(s, tenant: str, ref: str) -> GameNet:
     q = select(GameNet).where(GameNet.tenant_id == tenant)
     r = s.scalars(q.where(GameNet.id == ref)).first() or s.scalars(q.where(GameNet.number == ref.upper())).first()
     if r is None:
-        raise NetError("Yeh netcode setup nahi mila (N-001 dijiye).")
+        raise NetError("This netcode setup was not found (give N-001).")
     return r
 
 
@@ -744,7 +744,7 @@ def set_server(tenant: str, ref: str, url: str) -> dict[str, Any]:
     """HER game server's address (wss:// only, her own domain - never a Hoola host)."""
     url = (url or "").strip()
     if url and not re.fullmatch(r"wss://[a-z0-9.-]+(:\d{2,5})?(/[\w./-]*)?", url, re.I):
-        raise NetError("Server ka pata wss://aapka-domain/... hona chahiye (sirf secure websocket).")
+        raise NetError("The server address must be wss://your-domain/... (secure websocket only).")
     with session() as s:
         r = _get(s, tenant, ref)
         r.server_url = url
@@ -757,7 +757,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise NetError("Sirf PASS hua netcode setup OK ho sakta hai." if r.status != "testing" else "Bots abhi khel rahe hain.")
+            raise NetError("Only a netcode setup that PASSED can be OKed." if r.status != "testing" else "The bots are still playing.")
         for o in s.scalars(select(GameNet).where(GameNet.tenant_id == tenant, GameNet.studio_id == r.studio_id,
                                                  GameNet.status == "approved")).all():
             o.status = "rejected"
@@ -807,12 +807,12 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
 def apply(tenant: str, studio: str) -> dict[str, Any]:
     st = _studio(tenant, studio)
     if for_game(tenant, st.game_id) is None:
-        raise NetError("Netcode abhi game build mein nahi jaata (game ka code network nahi khol sakta); kit download karke "
-                       "apne server par chalaiye - game ke andar connection agla kadam hai.")
+        raise NetError("Netcode does not go into the game build yet (the game's code cannot open the network); download the kit and "
+                       "run it on your own server - the connection inside the game is the next step.")
     try:
         from . import bible as B
         bv = B.view(tenant, st.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, st.game_id, bv, words="Netcode game mein")
-    return {"ok": True, "say": "Netcode game mein ja raha hai (rebuild chal raha hai)."}
+    G.data_build(tenant, st.game_id, bv, words="Netcode into the game")
+    return {"ok": True, "say": "Netcode is going into the game (a rebuild is running)."}

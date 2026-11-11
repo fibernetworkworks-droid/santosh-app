@@ -165,10 +165,10 @@ def view(r: GameProject, full: bool = False) -> dict[str, Any]:
     good = _good(r)
     live = good[-1] if good else {}
     url = play_url(r.token) if good else ""
-    say = {"designing": "Design doc likh raha hoon", "design_ready": "Design taiyaar hai: padhiye aur 'theek hai' boliye",
-           "queued": "Line mein", "writing": "Code likh raha hoon", "building": "Godot mein bana raha hoon",
-           "testing": "Khud khel kar jaanch raha hoon", "done": "Game taiyaar hai: link kholkar khelo",
-           "failed": "Nahi ban paya", "cancelled": "Rok diya"}.get(r.status, r.status)
+    say = {"designing": "Writing the design doc", "design_ready": "The design is ready: read it and say 'OK'",
+           "queued": "Queued", "writing": "Writing the code", "building": "Building in Godot",
+           "testing": "Playing it myself to check", "done": "The game is ready: open the link and play",
+           "failed": "Could not be built", "cancelled": "Stopped"}.get(r.status, r.status)
     d = {"id": r.id, "number": r.number, "title": r.title or r.brief[:60], "brief": r.brief if full else r.brief[:400], "status": r.status,
          "stage": r.stage, "pct": r.pct, "error": r.error, "orientation": r.orientation, "say": say,
          "design": r.design if (full or r.status == "design_ready") else "", "url": url, "play_url": url,
@@ -228,10 +228,10 @@ MONEY_OUT = re.compile(rf"\b(?:{_EARNED})\b[^.;!?\n]{{0,60}}\b(?:{_CASHOUT})\b|"
 # a few shapes that need no pairing at all
 MONEY_OUT_FLAT = re.compile(r"\b(play to earn|play-to-earn|p2e|earn real (?:money|cash)|paisa kamao|paise kamao|"
                             r"nft|crypto|cryptocurrenc\w*|token sale|airdrop|entry fee|buy-?in|stake\w*|wager\w*)\b", re.I)
-MONEY_OUT_SAY = ("Aisa game Hoola nahi bana sakta: us mein jeeta hua coin / point / item game ke BAAHAR paise mein badla ja "
-                 "sakta hai (withdraw, redeem, UPI, trade). India ke Online Gaming Act 2025 + Rules 2026 mein yeh 'online "
-                 "money game' hai - jo use publish karta hai uske liye yeh non-bailable jurm hai (3 saal tak, ₹1 crore tak). "
-                 "Coins / points sirf game ke andar chalein (naye level, skins, power-ups) - aisa game khushi se bana dunga.")
+MONEY_OUT_SAY = ("Hoola cannot build this kind of game: a coin / point / item won in it can be turned into money OUTSIDE the game "
+                 "(withdraw, redeem, UPI, trade). Under India's Online Gaming Act 2025 + Rules 2026 this is an 'online "
+                 "money game' - for whoever publishes it, it is a non-bailable offence (up to 3 years, up to ₹1 crore). "
+                 "Keep coins / points inside the game only (new levels, skins, power-ups) - I will gladly build that game.")
 WEAPON_SIM = re.compile(r"\b(weapon targeting|missile|target acquisition|bomb(ing)? run|military (strike|targeting)|"
                         r"sniper training sim|kill chain)\b", re.I)
 
@@ -240,16 +240,16 @@ def problem(brief: str) -> str:
     """Asks the Game Desk never builds, in plain words with the honest alternative."""
     b = brief or ""
     if MONEY.search(b):
-        return ("Real-money, betting ya jua wale games Hoola nahi banata (India mein online money games band hain). "
-                "Points / coins wala normal game bana sakta hoon.")
+        return ("Hoola does not build real-money, betting or gambling games (online money games are banned in India). "
+                "I can build a normal game with points / coins.")
     if MONEY_OUT.search(b) or MONEY_OUT_FLAT.search(b):
         return MONEY_OUT_SAY
     if WEAPON_SIM.search(b):
-        return "Hathiyar nishana / military targeting simulator Hoola nahi banata. Flying, driving ya safety training sim bana sakta hoon."
+        return "Hoola does not build weapon-aiming / military targeting simulators. I can build a flying, driving or safety training sim."
     m = FAMOUS.search(b)
     if m and CLONE.search(b):
-        return (f"'{m.group(0)}' ki copy nahi banaunga (naam, characters, levels unke hain). Usi type ka ek naya, apna "
-                "original game bana deta hoon: bas 'original banao' boliye.")
+        return (f"'{m.group(0)}' will not be copied (the name, characters and levels are theirs). I can build a new, original "
+                "game of the same type: just say 'make an original'.")
     return ""
 
 
@@ -257,13 +257,13 @@ def _limits(tenant: str) -> None:
     with session() as s:
         rows = s.scalars(select(GameProject).where(GameProject.tenant_id == tenant)).all()
     if any(r.status in BUSY for r in rows):
-        raise GameError("Ek game pehle se ban raha hai; khatam hone dijiye.")
+        raise GameError("A game is already being built; let it finish.")
     day = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     runs = sum(1 for r in rows for v in (r.versions or []) if (v.get("at") or "") >= day)
     designs = sum(1 for r in rows if r.created_at and (r.created_at if r.created_at.tzinfo else
                                                         r.created_at.replace(tzinfo=timezone.utc)).isoformat() >= day)
     if runs >= int(os.environ.get("GAME_DAY_BUILDS", "15")) or designs >= int(os.environ.get("GAME_DAY_NEW", "10")):
-        raise GameError("Aaj ki game banane ki seema poori ho gayi; kal phir.")
+        raise GameError("Today's limit for building games is used up; try again tomorrow.")
 
 
 def _number(tenant: str) -> str:
@@ -276,7 +276,7 @@ def start(tenant: str, conv: str, brief: str, orientation: str = "portrait", act
     ensure_table()
     brief = re.sub(r"\s+", " ", str(brief or "")).strip()[:2000]
     if len(brief) < 8:
-        raise GameError("Kaisa game? Do-teen line mein bataiye: kya karna hai, kaise jeetna hai, kis ke liye.")
+        raise GameError("What kind of game? Say it in two or three lines: what the player does, how to win, who it is for.")
     why = problem(brief)
     if why:
         raise GameError(why)
@@ -296,16 +296,16 @@ def approve(tenant: str, pid: str, feedback: str = "") -> dict[str, Any]:
     """Her OK on the design (build starts) - or her changes to it (a new design doc, still waiting for her OK)."""
     r = _get(tenant, pid)
     if r.status != "design_ready":
-        raise GameError("Is game ka design abhi OK karne layak nahi (pehle design doc banne dijiye).")
+        raise GameError("This game's design cannot be approved yet (let the design doc be made first).")
     feedback = re.sub(r"\s+", " ", str(feedback or "")).strip()[:1500]
     if feedback:
         why = problem(feedback)
         if why:
             raise GameError(why)
-        _save(r, status="designing", stage="design badal raha hoon", pct=5, pending={"mode": "design", "feedback": feedback})
+        _save(r, status="designing", stage="changing the design", pct=5, pending={"mode": "design", "feedback": feedback})
     else:
         _limits_build(tenant)
-        _save(r, status="queued", stage="line mein", pct=10, pending={"mode": "build"}, error="")
+        _save(r, status="queued", stage="queued", pct=10, pending={"mode": "build"}, error="")
     _publish(r)
     _submit(r.id)
     return view(r)
@@ -315,26 +315,26 @@ def _limits_build(tenant: str) -> None:
     with session() as s:
         rows = s.scalars(select(GameProject).where(GameProject.tenant_id == tenant)).all()
     if any(r.status in ("queued", "writing", "building", "testing") for r in rows):
-        raise GameError("Ek game pehle se ban raha hai; khatam hone dijiye.")
+        raise GameError("A game is already being built; let it finish.")
     day = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     if sum(1 for r in rows for v in (r.versions or []) if (v.get("at") or "") >= day) >= int(os.environ.get("GAME_DAY_BUILDS", "15")):
-        raise GameError("Aaj ki game banane ki seema poori ho gayi; kal phir.")
+        raise GameError("Today's limit for building games is used up; try again tomorrow.")
 
 
 def change(tenant: str, pid: str, words: str, task: str = "") -> dict[str, Any]:
     r = _get(tenant, pid)
     if r.status in BUSY:
-        raise GameError("Abhi bana raha hoon; khatam hote hi badlav bataiye.")
+        raise GameError("I am building it now; tell me the change as soon as it finishes.")
     if not bool(_good(r)):
-        raise GameError("Abhi koi chalne wala version nahi; pehle design OK karke banwaiye.")
+        raise GameError("There is no working version yet; approve the design and have it built first.")
     words = re.sub(r"\s+", " ", str(words or "")).strip()[:1500]
     if not words:
-        raise GameError("Kya badalna hai? Ek line mein bataiye.")
+        raise GameError("What should change? Say it in one line.")
     why = problem(words)
     if why:
         raise GameError(why)
     _limits_build(tenant)
-    _save(r, status="queued", stage="line mein", pct=10, pending={"mode": "change", "words": words, "task": task or ""}, error="")
+    _save(r, status="queued", stage="queued", pct=10, pending={"mode": "change", "words": words, "task": task or ""}, error="")
     _publish(r)
     _submit(r.id)
     return view(r)
@@ -344,12 +344,12 @@ def restore(tenant: str, pid: str, n: int, task: str = "") -> dict[str, Any]:
     """v0.386: an older version's code back as a NEW version (no model call; the same checks + playtest run again)."""
     r = _get(tenant, pid)
     if r.status in BUSY:
-        raise GameError("Abhi bana raha hoon; khatam hone dijiye.")
+        raise GameError("I am building it now; let it finish.")
     old = next((v for v in (r.versions or []) if v.get("n") == int(n or 0) and v.get("ok")), None)
     if old is None or not (_vdir(r, old["n"]) / "proj" / "main.gd").is_file():
-        raise GameError("Woh version nahi mila (sirf chalne wale version wapas aa sakte hain).")
+        raise GameError("That version was not found (only working versions can come back).")
     _limits_build(tenant)
-    _save(r, status="queued", stage="line mein", pct=10, error="",
+    _save(r, status="queued", stage="queued", pct=10, error="",
           pending={"mode": "restore", "n": old["n"], "words": f"version {old['n']} wapas", "task": task or ""})
     _publish(r)
     _submit(r.id)
@@ -360,12 +360,12 @@ def data_build(tenant: str, pid: str, bible_version: int, task: str = "", words:
     """v0.395 Game Bible applied to the live game: the SAME code + the new hoola_bible.gd, no model call, full checks."""
     r = _get(tenant, pid)
     if r.status in BUSY:
-        raise GameError("Abhi bana raha hoon; khatam hone dijiye.")
+        raise GameError("I am building it now; let it finish.")
     if not _good(r):
-        raise GameError("Pehle game ka pehla version banne dijiye.")
+        raise GameError("Let the game's first version be built first.")
     _limits_build(tenant)
-    _save(r, status="queued", stage="line mein", pct=10, error="",
-          pending={"mode": "data", "words": words or f"Bible v{int(bible_version)} game mein", "task": task or ""})
+    _save(r, status="queued", stage="queued", pct=10, error="",
+          pending={"mode": "data", "words": words or f"Bible v{int(bible_version)} into the game", "task": task or ""})
     _publish(r)
     _submit(r.id)
     return view(r)
@@ -431,7 +431,7 @@ def reject_version(tenant: str, pid: str, n: int) -> None:
     with session() as s:
         row = s.get(GameProject, pid)
         if row is None or row.tenant_id != tenant:
-            raise GameError("Yeh game nahi mila.")
+            raise GameError("This game was not found.")
         vers = [dict(v) for v in (row.versions or [])]
         for v in vers:
             if v.get("n") == int(n or 0):
@@ -447,7 +447,7 @@ def cancel(tenant: str, pid: str) -> dict[str, Any]:
         engine.kill(h)
     if r.status in BUSY:
         task = (r.pending or {}).get("task", "")
-        _save(r, status="cancelled", stage="rok diya", error="")
+        _save(r, status="cancelled", stage="stopped", error="")
         _publish(r)
         _studio_hook(r, task, None, "cancelled")
     return view(r)
@@ -472,7 +472,7 @@ def _get(tenant: str, pid: str) -> GameProject:
             r = s.scalars(select(GameProject).where(GameProject.tenant_id == tenant,
                                                     GameProject.number == str(pid).upper())).first()
         if r is None or r.tenant_id != tenant:
-            raise GameError("Yeh game nahi mila.")
+            raise GameError("This game was not found.")
         s.expunge(r)
         return r
 
@@ -495,7 +495,7 @@ def source_zip(tenant: str, pid: str) -> tuple[bytes, str]:
     r = _get(tenant, pid)
     good = _good(r)
     if not good:
-        raise GameError("Abhi koi chalne wala version nahi.")
+        raise GameError("There is no working version yet.")
     proj = _vdir(r, good[-1]["n"]) / "proj"
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -518,7 +518,7 @@ def _heal(tenant: str) -> None:
             if r.status in BUSY and r.id not in _RUNNING:
                 upd = r.updated_at if r.updated_at.tzinfo else r.updated_at.replace(tzinfo=timezone.utc)
                 if datetime.now(timezone.utc) - upd > timedelta(minutes=20):
-                    r.status, r.error = "failed", "server restart ho gaya tha; 'dobara' boliye"
+                    r.status, r.error = "failed", "the server had restarted; say 'again'"
 
 
 def _prune(tenant: str) -> None:
@@ -567,7 +567,7 @@ def run_job(pid: str) -> None:
     except Exception as e:
         STATS["failed"] += 1
         log.exception("game job %s", pid)
-        _fail(r, f"andar ki gadbad: {type(e).__name__}")
+        _fail(r, f"internal error: {type(e).__name__}")
     finally:
         with _LOCK:
             _RUNNING.pop(pid, None)
@@ -598,7 +598,7 @@ def _design(r: GameProject) -> None:
     doc = ai.design(r.brief, r.orientation, feedback=fb, old=r.design if fb else "")
     m = re.match(r"#\s*(.+)", doc)
     title = (m.group(1).strip() if m else r.brief[:60])[:120]
-    _save(r, design=doc, title=title, status="design_ready", stage="aapki haan ka intezaar", pct=20, pending={}, error="")
+    _save(r, design=doc, title=title, status="design_ready", stage="waiting for your approval", pct=20, pending={}, error="")
     _publish(r)
 
 
@@ -634,15 +634,15 @@ def _build(r: GameProject, holder: dict) -> None:
     vdir = _vdir(r, n)
     shutil.rmtree(vdir, ignore_errors=True)
     vdir.mkdir(parents=True)
-    _stage(r, "writing", "code likh raha hoon" if mode == "build" else "badlav kar raha hoon", 30)
+    _stage(r, "writing", "writing the code" if mode == "build" else "making the change", 30)
     task = (r.pending or {}).get("task", "")
     if mode == "restore":
         src = _vdir(r, int((r.pending or {}).get("n") or 0)) / "proj"
         files = {p.name: p.read_text(encoding="utf-8") for p in src.glob("*.gd") if p.name != "hoola_probe.gd"}
-        files["__notes__"] = f"Version {(r.pending or {}).get('n')} ka code wapas (koi naya code nahi likha)."
+        files["__notes__"] = f"Version {(r.pending or {}).get('n')}: code brought back (no new code written)."
     elif mode == "data":
         files = _current_files(r)
-        files["__notes__"] = "Game Bible ke naye naam / numbers (koi naya code nahi likha)."
+        files["__notes__"] = "New names / numbers from the Game Bible (no new code written)."
     elif mode == "change":
         files = ai.change(r.design, _current_files(r), words, r.orientation, size)
     else:
@@ -671,7 +671,7 @@ def _build(r: GameProject, holder: dict) -> None:
             STATS["guard_refused"] += 1
             checks.append({"step": "guard", "ok": False, "errors": bad[:6]})
         else:
-            _stage(r, "building", "Godot mein chala kar dekh raha hoon", 45 + rnd * 3)
+            _stage(r, "building", "Running it in Godot to check", 45 + rnd * 3)
             _write(vdir / "proj", r, files, scn)
             _copy_assets(vdir / "proj", ast)
             for _f, (_t, extra) in pk.items():
@@ -680,21 +680,21 @@ def _build(r: GameProject, holder: dict) -> None:
             checks.append({"step": "play_headless", "ok": smoke["ok"], "errors": smoke["errors"][:6]})
             bad = smoke["errors"]
             if not bad:
-                _stage(r, "building", "Web ke liye bana raha hoon", 60)
+                _stage(r, "building", "Building for the web", 60)
                 exp = engine.export_web(vdir, holder=holder)
                 checks.append({"step": "export_web", "ok": exp["ok"], "errors": exp["errors"][:4]})
                 bad = exp["errors"]
                 if not bad:
                     if _cancelled(r, holder):
                         return
-                    _stage(r, "testing", "khud khel kar jaanch raha hoon", 80)
+                    _stage(r, "testing", "playing it myself to check", 80)
                     play = playtest.run(_play_build(vdir, holder), vdir / "shots", r.orientation)
                     checks.append({"step": "playtest", "ok": play["ok"], "errors": play["errors"][:6]})
                     bad = play["errors"]
         if not bad or fixed >= FIX_ROUNDS * 2:
             break
         fixed += 1
-        _stage(r, "writing", f"galti theek kar raha hoon ({fixed})", 35 + rnd * 5)
+        _stage(r, "writing", f"fixing an error ({fixed})", 35 + rnd * 5)
         new = ai.fix(r.design, files, bad, r.orientation, size)
         notes = new.pop("__notes__", "") or notes
         if new.get("main.gd"):
@@ -709,7 +709,7 @@ def _build(r: GameProject, holder: dict) -> None:
     ok = bool(checks) and all(c["ok"] for c in checks[-3:]) and checks[-1]["step"] == "playtest" and checks[-1]["ok"]
     if fixed and ok:
         STATS["fixed"] += 1
-    errors = [] if ok else (checks[-1]["errors"] if checks else ["kuch nahi bana"])
+    errors = [] if ok else (checks[-1]["errors"] if checks else ["nothing was built"])
     ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "task": task, "base": (_good(r)[-1]["n"] if _good(r) else 0),
            "src": _src_hash(vdir / "proj"), "bible": bib[1] if bib else 0,
            # v0.455 PROVENANCE: the model(s) that wrote THIS build's code, so the store disclosure is a fact she can
@@ -735,8 +735,8 @@ def _build(r: GameProject, holder: dict) -> None:
     else:
         had_good = bool(_good(r))
         _save(r, versions=(r.versions or []) + [ver], token=token, status="done" if had_good else "failed", stage="",
-              pct=100, pending={}, error=("Naya badlav nahi chala, purana version abhi bhi khelne layak hai: " if had_good
-                                          else "Game nahi chal paya: ") + "; ".join(errors[:2])[:300])
+              pct=100, pending={}, error=("The new change did not run; the old version can still be played: " if had_good
+                                          else "The game could not run: ") + "; ".join(errors[:2])[:300])
     _publish(r)
     _studio_hook(r, task, ver, "" if ok else "; ".join(errors[:3])[:400])
 

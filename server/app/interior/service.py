@@ -132,7 +132,7 @@ def _num(v) -> float | None:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -199,7 +199,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         return name, data
     except Exception as e:
-        raise InteriorError(f"File {file_id} nahi mili: {e}")
+        raise InteriorError(f"File {file_id} not found: {e}")
 
 
 def _store(tenant: str, name: str, data: bytes, mime: str, conv: str = "", title: str = "") -> dict:
@@ -216,7 +216,7 @@ def _clean_image(data: bytes) -> bytes:
         img = Image.open(io.BytesIO(data))
         img.load()
     except Exception:
-        raise InteriorError("Yeh photo khul nahi rahi.")
+        raise InteriorError("This photo cannot be opened.")
     try:
         img = ImageOps.exif_transpose(img)
     except Exception:
@@ -292,7 +292,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise InteriorError("GSTIN sahi nahi lagta (check digit / format).")
+                        raise InteriorError("The GSTIN does not look right (check digit / format).")
                     r.state_code = g[:2]
                 r.gstin = g
             elif k == "stages":
@@ -303,7 +303,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 r.stages = _dump(st)
             elif k == "warranty":
                 if not isinstance(v, dict):
-                    raise InteriorError("warranty = {kind: aapke shabd}.")
+                    raise InteriorError("warranty = {kind: your words}.")
                 cur = _j(r.warranty, {})
                 for kk, vv in v.items():
                     kk = kk if kk in R.KINDS else R.kind_of(kk)
@@ -319,7 +319,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             elif k in ("fee_value", "gst_works", "gst_design"):
                 n = _num(v)
                 if n is None or n < 0 or (k != "fee_value" and n > 40):
-                    raise InteriorError(f"{k} sahi number nahi.")
+                    raise InteriorError(f"{k} is not a valid number.")
                 setattr(r, k, n)
             elif k == "validity_days":
                 r.validity_days = max(1, min(int(_num(v) or 15), 120))
@@ -333,7 +333,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 setattr(r, k, R.clean(v, 2000) if k in ("terms", "rules", "address") else R.clean(v, 160))
         r.title = title
         view = _settings_view(r)
-    return {"settings": view, "say": "Niyam save ho gaye."}
+    return {"settings": view, "say": "Rules saved."}
 
 
 # ---------------------------------------------------------------- rate card (HER numbers)
@@ -350,23 +350,23 @@ def rate_save(tenant: str, name: str = "", rate=None, unit: str = "", kind: str 
         if rate_id:
             x = s.get(InteriorRate, rate_id)
             if x is None or x.tenant_id != tenant:
-                raise InteriorError("Rate nahi mila.")
+                raise InteriorError("Rate not found.")
         elif code:
             x = s.scalars(select(InteriorRate).where(InteriorRate.tenant_id == tenant, InteriorRate.code == code.strip())).first()
         if x is None and name:
             x = s.scalars(select(InteriorRate).where(InteriorRate.tenant_id == tenant, InteriorRate.name == R.clean(name, 200))).first()
         if x is None:
             if not name:
-                raise InteriorError("Rate ka naam chahiye (jaise 'Wardrobe BWP ply + laminate').")
+                raise InteriorError("The rate needs a name (such as 'Wardrobe BWP ply + laminate').")
             x = InteriorRate(tenant_id=tenant, name=R.clean(name, 200))
             s.add(x)
         n = _num(rate)
         if n is not None:
             if n < 0 or n > 10_000_000:
-                raise InteriorError("Rate sahi nahi lagta.")
+                raise InteriorError("The rate does not look right.")
             x.rate = n
         elif not rate_id and not x.rate:
-            raise InteriorError("Rate (aapka, per unit, GST se pehle) chahiye; Hoola rate nahi gadhta.")
+            raise InteriorError("A rate (yours, per unit, before GST) is needed; Hoola does not make up rates.")
         if name:
             x.name = R.clean(name, 200)
         x.kind = kind if kind in R.KINDS else (R.kind_of(kind or x.name) if (kind or not x.kind or x.kind == "other") else x.kind)
@@ -394,9 +394,9 @@ def rate_remove(tenant: str, rate_id: str) -> dict:
     with session() as s:
         x = s.get(InteriorRate, rate_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Rate nahi mila.")
+            raise InteriorError("Rate not found.")
         x.active = False
-    return {"say": "Rate card se hataya."}
+    return {"say": "Removed from the rate card."}
 
 
 def rates(tenant: str, q: str = "") -> list[dict]:
@@ -434,7 +434,7 @@ def import_rates(tenant: str, file_id: str = "", data: bytes | None = None, name
             head_i = i
             break
     if head_i < 0:
-        raise InteriorError("Sheet mein 'Item / Name' aur 'Rate' column nahi mile.")
+        raise InteriorError("No 'Item / Name' and 'Rate' columns were found in the sheet.")
     hs = [_norm(c) for c in rows[head_i]]
 
     def col(*names):
@@ -456,7 +456,7 @@ def import_rates(tenant: str, file_id: str = "", data: bytes | None = None, name
             continue
         rt = _num(g("rate"))
         if rt is None or rt <= 0:
-            bad.append(f"line {n}: {nm[:40]} (rate nahi)")
+            bad.append(f"line {n}: {nm[:40]} (no rate)")
             continue
         try:
             rate_save(tenant, nm, rt, str(g("unit") or ""), str(g("kind") or ""), str(g("code") or ""), str(g("spec") or ""),
@@ -464,7 +464,7 @@ def import_rates(tenant: str, file_id: str = "", data: bytes | None = None, name
             added += 1
         except InteriorError as e:
             bad.append(f"line {n}: {e}")
-    return {"added": added, "bad": bad[:20], "say": f"{added} rate card mein aaye." + (f" {len(bad)} chhode (rate nahi / galat)." if bad else "")}
+    return {"added": added, "bad": bad[:20], "say": f"{added} rate(s) added to the rate card." + (f" {len(bad)} skipped (no rate / wrong)." if bad else "")}
 
 
 def _match_rate(rows: list[InteriorRate], code: str, name: str) -> InteriorRate | None:
@@ -500,7 +500,7 @@ def vendor_save(tenant: str, name: str, trade: str = "", phone: str = "", gstin:
             v = s.scalars(select(InteriorVendor).where(InteriorVendor.tenant_id == tenant, InteriorVendor.name == R.clean(name, 120))).first()
         if v is None:
             if not name:
-                raise InteriorError("Vendor ka naam chahiye.")
+                raise InteriorError("The vendor's name is needed.")
             v = InteriorVendor(tenant_id=tenant, name=R.clean(name, 120))
             s.add(v)
         if trade:
@@ -509,7 +509,7 @@ def vendor_save(tenant: str, name: str, trade: str = "", phone: str = "", gstin:
         if phone:
             p = R.phone(phone)
             if not p:
-                raise InteriorError("Phone number 10 ankon ka nahi lagta.")
+                raise InteriorError("The phone number does not look like 10 digits.")
             v.phone = p
         if gstin:
             v.gstin = gstin.strip().upper()[:15]
@@ -537,8 +537,8 @@ def _vendor(s, tenant: str, ref: str) -> InteriorVendor:
     if len(hits) == 1:
         return hits[0]
     if not hits:
-        raise InteriorError(f"Vendor '{ref}' nahi mila; pehle vendor jodiye.")
-    raise InteriorError("Kai vendor milte hain: " + ", ".join(v.name for v in hits[:5]))
+        raise InteriorError(f"Vendor '{ref}' not found; add the vendor first.")
+    raise InteriorError("Several vendors match: " + ", ".join(v.name for v in hits[:5]))
 
 
 # ---------------------------------------------------------------- projects + brief + measurement
@@ -551,7 +551,7 @@ def _proj(s, tenant: str, ref: str) -> InteriorProject:
         live = [p for p in rows if p.status not in ("done", "cancelled")]
         if len(live) == 1:
             return live[0]
-        raise InteriorError("Kaun sa project? (number / naam / client)")
+        raise InteriorError("Which project? (number / name / client)")
     rl = ref.lower().strip()
     hits = [p for p in rows if rl in (p.number.lower(), p.name.lower(), p.client.lower())]
     if not hits:
@@ -559,8 +559,8 @@ def _proj(s, tenant: str, ref: str) -> InteriorProject:
     if len(hits) == 1:
         return hits[0]
     if not hits:
-        raise InteriorError(f"Project '{ref}' nahi mila.")
-    raise InteriorError("Kai project milte hain: " + ", ".join(f"{p.number} {p.name}" for p in hits[:5]))
+        raise InteriorError(f"Project '{ref}' not found.")
+    raise InteriorError("Several projects match: " + ", ".join(f"{p.number} {p.name}" for p in hits[:5]))
 
 
 def _log(p: InteriorProject, text: str, by: str = "") -> None:
@@ -612,7 +612,7 @@ def project_save(tenant: str, name: str = "", project: str = "", actor: str = "o
             new = False
         else:
             if not (name or kw.get("client")):
-                raise InteriorError("Project ka naam ya client ka naam chahiye.")
+                raise InteriorError("The project's name or the client's name is needed.")
             st = _st(s, tenant)
             st.proj_seq += 1
             p = InteriorProject(tenant_id=tenant, number=f"IP-{st.proj_seq:04d}", conv=conv or "")
@@ -627,7 +627,7 @@ def project_save(tenant: str, name: str = "", project: str = "", actor: str = "o
             if k == "phone":
                 ph = R.phone(v)
                 if v and not ph:
-                    raise InteriorError("Client ka phone 10 ankon ka nahi lagta.")
+                    raise InteriorError("The client's phone does not look like 10 digits.")
                 p.phone = ph
             elif k == "pin":
                 p.pin = re.sub(r"\D", "", str(v))[:6]
@@ -639,13 +639,13 @@ def project_save(tenant: str, name: str = "", project: str = "", actor: str = "o
             elif k == "target_handover":
                 d = _date(v)
                 if v and not d:
-                    raise InteriorError("Handover tareekh samajh nahi aayi (DD-MM-YYYY).")
+                    raise InteriorError("Could not understand the handover date (DD-MM-YYYY).")
                 p.target_handover = _iso(d)
             elif k == "status":
                 if v not in STATUS:
                     raise InteriorError("status = " + " | ".join(STATUS))
                 if v in ("done", "handover") and not is_owner(actor):
-                    raise InteriorError("Handover / poora sirf owner.")
+                    raise InteriorError("Handover / completed: owner only.")
                 p.status = v
             elif k == "client_gstin":
                 g = str(v).strip().upper()
@@ -658,7 +658,7 @@ def project_save(tenant: str, name: str = "", project: str = "", actor: str = "o
                 setattr(p, k, R.clean(v, 400))
         if not p.name:
             p.name = f"{p.client or 'Client'} {p.home}".strip()
-        _log(p, "naya project" if new else "project badla", actor_name(tenant, actor))
+        _log(p, "new project" if new else "project changed", actor_name(tenant, actor))
         s.flush()
         view = _project_view(s, p, full=True)
     return {"project": view, "say": f"{view['number']} {view['name']} " + ("bana." if new else "save.")}
@@ -690,7 +690,7 @@ def brief(tenant: str, project: str, room: str = "", style: str = "", budget=Non
             if notes:
                 r["notes"] = R.clean(notes, 800)
             p.rooms = _dump(rooms)
-            said = f"{r['name']} ka brief save"
+            said = f"{r['name']}: brief saved"
         else:
             bf = _j(p.brief, {})
             bf["must"] = sorted(set(bf.get("must", []) + lst(must)))
@@ -703,7 +703,7 @@ def brief(tenant: str, project: str, room: str = "", style: str = "", budget=Non
             b = _num(budget)
             if b is not None and b > 0:
                 p.budget = b
-            said = "Project ka brief save"
+            said = "Project brief saved"
         if p.status == "brief" and room:
             p.status = "measure"
         _log(p, said, actor_name(tenant, actor))
@@ -715,7 +715,7 @@ def measure(tenant: str, project: str, room: str, l=None, w=None, h=None, unit: 
             notes: str = "", by: str = "", actor: str = "owner") -> dict:
     """Site measurement from HER / her staff's numbers. Areas by code; a missing number stays missing."""
     if not room:
-        raise InteriorError("Kaun sa kamra?")
+        raise InteriorError("Which room?")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         u = unit or st.measure_unit or "ft"
@@ -727,9 +727,9 @@ def measure(tenant: str, project: str, room: str, l=None, w=None, h=None, unit: 
             if v not in (None, ""):
                 ft = R.length(v, u)
                 if ft is None:
-                    raise InteriorError(f"'{v}' naap samajh nahi aaya.")
+                    raise InteriorError(f"'{v}': could not understand the measurement.")
                 if ft > 200:
-                    raise InteriorError(f"{v} {u} bahut bada lagta hai; ikai (ft / m / mm) dekhiye.")
+                    raise InteriorError(f"{v} {u} looks too large; check the unit (ft / m / mm).")
                 dims[k] = ft
         ops = []
         for o in openings or []:
@@ -750,13 +750,13 @@ def measure(tenant: str, project: str, room: str, l=None, w=None, h=None, unit: 
         p.rooms = _dump(rooms)
         if p.status in ("brief", "measure"):
             p.status = "concept" if all(x.get("areas", {}).get("floor_sqft") for x in rooms) else "measure"
-        _log(p, f"naap: {r['name']}", r["measured_by"])
+        _log(p, f"measurements: {r['name']}", r["measured_by"])
         ar = r["areas"]
-    say = f"{r['name']}: " + (f"floor {ar['floor_sqft']} sq ft" if ar["floor_sqft"] is not None else "floor area abhi nahi")
+    say = f"{r['name']}: " + (f"floor {ar['floor_sqft']} sq ft" if ar["floor_sqft"] is not None else "floor area not yet known")
     if ar["wall_sqft"] is not None:
-        say += f", deewar (darwaze-khidki ghata kar) {ar['wall_sqft']} sq ft"
+        say += f", walls (minus doors and windows) {ar['wall_sqft']} sq ft"
     if ar["missing"]:
-        say += ". Baaki naap: " + ", ".join(ar["missing"])
+        say += ". Measurements still needed: " + ", ".join(ar["missing"])
     return {"room": r, "say": say + "."}
 
 
@@ -780,8 +780,8 @@ def measure_sheet(tenant: str, project: str, conv: str = "") -> dict:
     bio = io.BytesIO()
     wb.save(bio)
     f = _store(tenant, f"{num}_naap.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", conv,
-               f"{num} naap sheet")
-    return {"file": f, "say": "Naap sheet ka Excel."}
+               f"{num} measurement sheet")
+    return {"file": f, "say": "Measurement sheet in Excel."}
 
 
 # ---------------------------------------------------------------- concept / moodboard
@@ -798,7 +798,7 @@ def concept(tenant: str, project: str, room: str = "", style: str = "", words: s
         rooms = _j(p.rooms, [])
         r = _room(rooms, room) if room else None
         if room and r is None:
-            raise InteriorError(f"Kamra '{room}' is project mein nahi.")
+            raise InteriorError(f"Room '{room}' is not in this project.")
         stl = (style if style in R.STYLES else R.style_of(style)) or (r or {}).get("style") or p.style or "modern"
         pnum, home = p.number, p.home
         dims = (r or {}).get("dims") or {}
@@ -806,7 +806,7 @@ def concept(tenant: str, project: str, room: str = "", style: str = "", words: s
         avoid = (r or {}).get("avoid") or _j(p.brief, {}).get("avoid", [])
     sd = R.STYLES.get(stl, R.STYLES["modern"])
     palette = list(sd["palette"])
-    source = f"{sd['label']} style ka sujhav"
+    source = f"{sd['label']} style suggestion"
     if brand_colors:
         try:
             from ..brand import service as bs
@@ -814,12 +814,12 @@ def concept(tenant: str, project: str, room: str = "", style: str = "", words: s
             cols = k.get("colors") or {}
             if cols:
                 palette = [cols[x] for x in ("primary", "secondary", "accent", "dark", "light") if cols.get(x)]
-                source = "aapke brand kit ke rang"
+                source = "your brand kit colours"
         except Exception:
             pass
     items: list[dict] = []
     for fid in (file_ids or [])[:MAX_PHOTOS]:
-        items.append({"file_id": str(fid), "ai": False, "room": (r or {}).get("name", ""), "note": "aapki photo"})
+        items.append({"file_id": str(fid), "ai": False, "room": (r or {}).get("name", ""), "note": "your photo"})
     notes: list[str] = []
     n = max(0, min(int(pictures or 0), 3))
     if n:
@@ -833,11 +833,11 @@ def concept(tenant: str, project: str, room: str = "", style: str = "", words: s
         for i in range(n):
             try:
                 png = _make_picture(base + ("" if i == 0 else f" Variation {i + 1}: different angle."))
-                f = _store(tenant, f"{pnum}_concept_{i + 1}.png", png, "image/png", conv, f"{pnum} concept (AI se bana)")
-                items.append({"file_id": f.get("file_id", ""), "ai": True, "room": (r or {}).get("name", ""), "note": "AI se bana (sujhav)",
+                f = _store(tenant, f"{pnum}_concept_{i + 1}.png", png, "image/png", conv, f"{pnum} concept (made with AI)")
+                items.append({"file_id": f.get("file_id", ""), "ai": True, "room": (r or {}).get("name", ""), "note": "Made with AI (suggestion)",
                               "prompt": base[:400]})
             except Exception as e:
-                notes.append(f"Tasveer {i + 1} nahi bani: {str(e)[:120]}")
+                notes.append(f"Picture {i + 1} was not made: {str(e)[:120]}")
                 break
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
@@ -853,11 +853,11 @@ def concept(tenant: str, project: str, room: str = "", style: str = "", words: s
         if p.status in ("brief", "measure"):
             p.status = "concept"
         _log(p, f"concept {key}", actor_name(tenant, actor))
-    card = {"project": pnum, "room": (r or {}).get("name", "Poora ghar"), "style": sd["label"], "palette": palette,
+    card = {"project": pnum, "room": (r or {}).get("name", "Whole home"), "style": sd["label"], "palette": palette,
             "palette_from": source, "materials": sd["materials"], "items": b["items"], "notes": notes,
-            "ai_note": "AI se bani tasveerein sirf sujhav hain; asli material / rang site par dekh kar pakka kijiye."}
+            "ai_note": "Pictures made with AI are only suggestions; confirm the real material / colour on site."}
     _publish(tenant, "interior_concept", {"concept": card, "say": f"{pnum} moodboard: {card['room']}."}, conv)
-    return {"concept": card, "say": f"Moodboard taiyaar ({source})." + (" " + " ".join(notes) if notes else "")}
+    return {"concept": card, "say": f"Moodboard ready ({source})." + (" " + " ".join(notes) if notes else "")}
 
 
 def render3d(tenant: str, project: str, room: str, words: str = "", conv: str = "", actor: str = "owner") -> dict:
@@ -866,19 +866,19 @@ def render3d(tenant: str, project: str, room: str, words: str = "", conv: str = 
         p = _proj(s, tenant, project)
         r = _room(_j(p.rooms, []), room)
         if r is None:
-            raise InteriorError(f"Kamra '{room}' nahi mila.")
+            raise InteriorError(f"Room '{room}' not found.")
         stl = R.STYLES.get(r.get("style") or p.style or "modern", R.STYLES["modern"])
     d = r.get("dims") or {}
     if not (d.get("l") and d.get("w") and d.get("h")):
-        raise InteriorError("3D ke liye kamre ka poora naap (L, W, H) chahiye.")
+        raise InteriorError("3D needs the room's full measurements (L, W, H).")
     try:
         from ..blender3d import service as b3
     except Exception:
-        raise InteriorError("3D Studio is server par nahi hai; moodboard ki tasveerein bana sakte hain.")
+        raise InteriorError("3D Studio is not on this server; moodboard pictures can still be made.")
     brief_text = (f"Interior room {r['name']} {d['l']:.1f} x {d['w']:.1f} ft, height {d['h']:.1f} ft, {stl['label']} style, colours "
                   f"{', '.join(stl['palette'])}, " + ", ".join(r.get("must") or []) + (f". {R.clean(words, 300)}" if words else ""))
     out = b3.start(tenant, conv, brief_text, {"views": ["three_quarter"], "quality": "preview"}, actor)
-    return {"render": out, "say": "3D render shuru; card khud aayega (AI se bana)."}
+    return {"render": out, "say": "3D render started; the card will come by itself (made with AI)."}
 
 
 # ---------------------------------------------------------------- BOQ
@@ -892,26 +892,26 @@ def _resolve_line(s, tenant: str, p: InteriorProject, ln: dict, rate_rows: list[
     unit = R.unit_of(str(ln.get("unit") or ""), "") or (x.unit if x else R.KINDS[kind]["unit"])
     notes = []
     rate = _num(ln.get("rate"))
-    rate_src = "aapka (is line ke liye)" if rate is not None else ""
+    rate_src = "yours (for this line)" if rate is not None else ""
     if rate is None and x is not None:
         if x.unit == unit:
             rate, rate_src = x.rate, "rate card"
         else:
-            notes.append(f"rate card ki ikai {x.unit}, line ki {unit}")
+            notes.append(f"rate card unit {x.unit}, line unit {unit}")
     qty = _num(ln.get("qty"))
-    qty_src = "aapka" if qty is not None else ""
+    qty_src = "yours" if qty is not None else ""
     if qty is None:
         area_key = str(ln.get("qty_from") or R.KINDS[kind]["area"] or "")
         if area_key and r is not None:
             qty, nt = R.qty_from_area(area_key, r.get("areas") or {}, unit)
             if qty is not None:
-                qty_src = f"naap ({area_key})"
+                qty_src = f"measurements ({area_key})"
             elif nt:
                 notes.append(nt)
         elif area_key and room and r is None:
-            notes.append(f"kamra '{room}' nahi mila")
+            notes.append(f"room '{room}' not found")
     if x is None and not name:
-        raise InteriorError("Har line mein item ka naam ya rate card ka code chahiye.")
+        raise InteriorError("Every line needs an item name or a rate card code.")
     gst = _num(ln.get("gst_pct"))
     if gst is None:
         gst = x.gst_pct if x is not None and x.gst_pct is not None else gst_default
@@ -934,11 +934,11 @@ def boq_view_rows(s, p: InteriorProject) -> list[dict]:
 
 def boq_set(tenant: str, project: str, lines: list | None, replace: bool = False, actor: str = "owner") -> dict:
     if not lines:
-        raise InteriorError("BOQ lines chahiye: [{room, name / code, qty, unit, rate (agar card mein nahi), qty_from}].")
+        raise InteriorError("BOQ lines are needed: [{room, name / code, qty, unit, rate (if not in the card), qty_from}].")
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         if p.contract_quote:
-            raise InteriorError("Quote pakka ho chuka hai; ab badlav = change order (action=change).")
+            raise InteriorError("The quote is already final; a change now = a change order (action=change).")
         st = _st(s, tenant)
         rate_rows = s.scalars(select(InteriorRate).where(InteriorRate.tenant_id == tenant, InteriorRate.active.is_(True))).all()
         cur = [] if replace else _j(p.boq, [])
@@ -964,7 +964,7 @@ def boq_remove(tenant: str, project: str, line_id: str) -> dict:
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         if p.contract_quote:
-            raise InteriorError("Quote pakka hai; hatana = change order.")
+            raise InteriorError("The quote is final; removing = a change order.")
         cur = [c for c in _j(p.boq, []) if c["id"] != line_id]
         p.boq = _dump(cur)
         view = _boq_summary(cur)
@@ -978,9 +978,9 @@ def _boq_summary(lines: list[dict]) -> dict:
     for c in lines:
         if c["amount"] is not None:
             by_room[c["room"] or "Common"] = by_room.get(c["room"] or "Common", 0) + c["amount"]
-    say = f"{len(lines)} line, jo pata hai unka jod {_rs(known)} (GST se pehle)."
+    say = f"{len(lines)} line(s); the total of what is known is {_rs(known)} (before GST)."
     if blanks:
-        say += f" {len(blanks)} line mein khaali jagah (rate / naap aapse chahiye)."
+        say += f" {len(blanks)} line(s) have blanks (the rate / measurement is needed from you)."
     return {"lines": lines, "subtotal_known": R.r2(known), "blanks": blanks, "by_room": {k: R.r2(v) for k, v in by_room.items()}, "say": say}
 
 
@@ -1004,7 +1004,7 @@ def boq_file(tenant: str, project: str, conv: str = "") -> dict:
     bio = io.BytesIO()
     wb.save(bio)
     f = _store(tenant, f"{num}_BOQ.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", conv, f"{num} BOQ")
-    return {"file": f, "say": "BOQ ka Excel."}
+    return {"file": f, "say": "BOQ in Excel."}
 
 
 # ---------------------------------------------------------------- quotation
@@ -1024,7 +1024,7 @@ def _totals(tenant: str, s, p: InteriorProject, lines: list[dict]) -> tuple[dict
         if p.carpet_sqft:
             fee, fee_note = R.r2(p.carpet_sqft * st.fee_value), f"{p.carpet_sqft:g} sq ft x Rs {st.fee_value:g}"
         else:
-            blanks.append("Design fee: carpet area (sq ft) chahiye")
+            blanks.append("Design fee: carpet area (sq ft) is needed")
     elif st.fee_mode == "flat" and st.fee_value:
         fee, fee_note = R.r2(st.fee_value), "flat"
     gst_rows = []
@@ -1072,10 +1072,10 @@ def quote_make(tenant: str, project: str, conv: str = "", actor: str = "owner") 
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         if p.contract_quote:
-            raise InteriorError("Quote pehle hi pakka hai; ab change order.")
+            raise InteriorError("The quote is already final; use a change order now.")
         lines = _j(p.boq, [])
         if not lines:
-            raise InteriorError("Pehle BOQ banaiye (action=boq).")
+            raise InteriorError("Make the BOQ first (action=boq).")
         st = _st(s, tenant)
         totals, blanks = _totals(tenant, s, p, lines)
         olds = s.scalars(select(InteriorQuote).where(InteriorQuote.project_id == p.id)).all()
@@ -1094,8 +1094,8 @@ def quote_make(tenant: str, project: str, conv: str = "", actor: str = "owner") 
         s.flush()
         q.hash = R.digest(_quote_show(q, p))
         view = _quote_view(s, q)
-    say = f"{view['number']} draft: {view['total_text']} (GST samet)." + (f" {len(blanks)} khaali jagah bhariye, tabhi client ko jayega." if blanks else
-                                                                         " 'Client ko bhejne' ke liye card maangiye.")
+    say = f"{view['number']} draft: {view['total_text']} (with GST)." + (f" {len(blanks)} blank(s) to fill; only then can it go to the client." if blanks else
+                                                                         " Ask for the card to send it to the client.")
     return {"quote": view, "say": say}
 
 
@@ -1104,7 +1104,7 @@ def _quote(s, tenant: str, ref: str) -> InteriorQuote:
     if q is None:
         q = s.scalars(select(InteriorQuote).where(InteriorQuote.tenant_id == tenant, InteriorQuote.number == ref)).first()
     if q is None or q.tenant_id != tenant:
-        raise InteriorError("Quote nahi mila.")
+        raise InteriorError("Quote not found.")
     return q
 
 
@@ -1119,12 +1119,12 @@ def quote_request(tenant: str, ref: str, conv: str = "", actor: str = "owner") -
         q = _quote(s, tenant, ref)
         p = s.get(InteriorProject, q.project_id)
         if q.status not in ("draft", "waiting"):
-            raise InteriorError(f"{q.number} '{q.status}' hai.")
+            raise InteriorError(f"{q.number} is '{q.status}'.")
         blanks = _j(q.blanks, [])
         if blanks:
-            raise InteriorError("Pehle khaali jagah bhariye: " + "; ".join(blanks[:6]))
+            raise InteriorError("Fill the blanks first: " + "; ".join(blanks[:6]))
         if not p.client:
-            raise InteriorError("Client ka naam chahiye.")
+            raise InteriorError("The client's name is needed.")
         st = _st(s, tenant)
         why = R.title_problem(st.title, st.coa_reg)
         if why:
@@ -1132,24 +1132,24 @@ def quote_request(tenant: str, ref: str, conv: str = "", actor: str = "owner") -
         q.status = "waiting"
         q.hash = R.digest(_quote_show(q, p))
         view = _quote_view(s, q)
-    say = f"{view['number']} ({view['total_text']}) client {view['client']} ko bhejne se pehle aapki haan ka card bheja hai."
+    say = f"{view['number']} ({view['total_text']}): a card has been sent for your approval before it goes to client {view['client']}."
     _publish(tenant, "interior_quote", {"quote": view, "say": say}, conv)
     return {"quote": view, "status": "needs_tap", "say": say}
 
 
 def decide_quote(tenant: str, ref: str, yes: bool, card_hash: str = "", reason: str = "", by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise InteriorError("Quotation client ko sirf aapke tap se (app ka card).")
+        raise InteriorError("A quotation goes to the client only on your tap (the card in the app).")
     with _LOCK, session() as s:
         q = _quote(s, tenant, ref)
         p = s.get(InteriorProject, q.project_id)
         if q.status != "waiting":
-            return {"quote": _quote_view(s, q), "say": f"{q.number} pehle hi '{q.status}' hai."}
+            return {"quote": _quote_view(s, q), "say": f"{q.number} is already '{q.status}'."}
         if not card_hash or card_hash != q.hash or R.digest(_quote_show(q, p)) != q.hash:
-            raise InteriorError("Card badal gaya hai; naya card dekhiye.")
+            raise InteriorError("The card has changed; see the new card.")
         if not yes:
             q.status, q.reason, q.decided_at = "rejected", R.clean(reason, 300), now()
-            return {"quote": _quote_view(s, q), "say": f"{q.number} nahi bheja."}
+            return {"quote": _quote_view(s, q), "say": f"{q.number} not sent."}
         q.status, q.decided_at = "approved", now()
         qid = q.id
     pdf = quote_pdf(tenant, qid, final=True)
@@ -1160,11 +1160,11 @@ def decide_quote(tenant: str, ref: str, yes: bool, card_hash: str = "", reason: 
         q.file_id = f.get("file_id", "")
         t = _j(q.totals, {})
         st = _st(s, tenant)
-        text = (f"Namaste {p.client} ji, {st.firm or 'hamari team'} ki taraf se {p.name} ka quotation {q.number} bhej rahe hain: "
-                f"kul {_rs(t.get('total'))} (GST samet), {q.valid_until} tak valid. Koi sawaal ho to bataiye.")
+        text = (f"Hello {p.client}, {st.firm or 'our team'} is sending you the quotation for {p.name}, {q.number}: "
+                f"total {_rs(t.get('total'))} (with GST), valid until {q.valid_until}. If you have any questions, tell us.")
         draft = {"text": text, "wa": _wa(p.phone, text), "sms": _sms(p.phone, text), "file_id": q.file_id}
         view = _quote_view(s, q)
-    return {"quote": view, "draft": draft, "say": f"{view['number']} final PDF bana. Message draft taiyaar: aap khud bhejiye (PDF saath lagaiye)."}
+    return {"quote": view, "draft": draft, "say": f"{view['number']} final PDF made. Message draft ready: send it yourself (attach the PDF)."}
 
 
 def quote_mark(tenant: str, ref: str, what: str, actor: str = "owner") -> dict:
@@ -1174,13 +1174,13 @@ def quote_mark(tenant: str, ref: str, what: str, actor: str = "owner") -> dict:
         p = s.get(InteriorProject, q.project_id)
         if what == "sent":
             if q.status != "approved":
-                raise InteriorError("Pehle aapki haan (card), phir bhejna.")
+                raise InteriorError("First your approval (the card), then sending.")
             q.status = "sent"
         elif what == "accepted":
             if not is_owner(actor):
-                raise InteriorError("Client ki manzoori sirf owner darj karti hain.")
+                raise InteriorError("Only the owner records the client's approval.")
             if q.status not in ("approved", "sent"):
-                raise InteriorError("Yeh quote aapki haan se client ko gaya hi nahi.")
+                raise InteriorError("This quote never went to the client with your approval.")
             q.status = "accepted"
             p.contract_quote = q.id
             p.status = "approved"
@@ -1327,20 +1327,20 @@ def stages(tenant: str, project: str) -> dict:
         total = _contract_total(s, p)
     paid = sum(x["paid_amount"] for x in out if x["status"] == "paid")
     return {"stages": out, "contract_total": total, "paid": R.r2(paid), "left": R.r2((total or 0) - paid) if total is not None else None,
-            "say": (f"Kul {_rs(total)}, mila {_rs(paid)}." if total is not None else "Quote abhi pakka nahi (stages client ki manzoori par bante hain).")}
+            "say": (f"Total {_rs(total)}, received {_rs(paid)}." if total is not None else "The quote is not final yet (stages are made on the client's approval).")}
 
 
 def stage_due(tenant: str, stage_id: str, due_on: str) -> dict:
     d = _date(due_on)
     if not d:
-        raise InteriorError("Tareekh samajh nahi aayi.")
+        raise InteriorError("Could not understand the date.")
     with session() as s:
         x = s.get(InteriorStage, stage_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Stage nahi mila.")
+            raise InteriorError("Stage not found.")
         x.due_on = d.isoformat()
         v = _stage_view(s, x)
-    return {"stage": v, "say": f"{v['label']}: {v['due_on']} tak."}
+    return {"stage": v, "say": f"{v['label']}: due {v['due_on']}."}
 
 
 def _pay_show(s, x: InteriorStage, tenant: str) -> dict:
@@ -1353,52 +1353,52 @@ def pay_request(tenant: str, stage_id: str, conv: str = "", actor: str = "owner"
     with _LOCK, session() as s:
         x = s.get(InteriorStage, stage_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Stage nahi mila.")
+            raise InteriorError("Stage not found.")
         if x.status in ("paid", "cancelled"):
-            raise InteriorError(f"Yeh stage '{x.status}' hai.")
+            raise InteriorError(f"This stage is '{x.status}'.")
         if x.amount <= 0:
-            raise InteriorError("Is stage ki rakam 0 hai.")
+            raise InteriorError("This stage's amount is 0.")
         x.status = "waiting"
         x.hash = R.digest(_pay_show(s, x, tenant))
         v = _stage_view(s, x)
-    say = f"{v['project']} {v['label']} {v['amount_text']}: client se maangne ka card aapki haan ke liye bheja hai."
+    say = f"{v['project']} {v['label']} {v['amount_text']}: a card to ask the client has been sent for your approval."
     _publish(tenant, "interior_payment", {"stage": v, "say": say}, conv)
     return {"stage": v, "status": "needs_tap", "say": say}
 
 
 def decide_payment(tenant: str, stage_id: str, yes: bool, card_hash: str = "", by_tap: bool = False) -> dict:
     if not by_tap:
-        raise InteriorError("Paise maangna sirf aapke tap se (app ka card).")
+        raise InteriorError("Asking for money happens only on your tap (the card in the app).")
     with _LOCK, session() as s:
         x = s.get(InteriorStage, stage_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Stage nahi mila.")
+            raise InteriorError("Stage not found.")
         if x.status != "waiting":
-            return {"stage": _stage_view(s, x), "say": f"Yeh stage '{x.status}' hai."}
+            return {"stage": _stage_view(s, x), "say": f"This stage is '{x.status}'."}
         if not card_hash or card_hash != x.hash or R.digest(_pay_show(s, x, tenant)) != x.hash:
-            raise InteriorError("Card badal gaya hai; naya card dekhiye.")
+            raise InteriorError("The card has changed; see the new card.")
         if not yes:
             x.status = "planned"
-            return {"stage": _stage_view(s, x), "say": "Theek hai, abhi nahi maanga."}
+            return {"stage": _stage_view(s, x), "say": "OK, not asked for now."}
         x.status = "requested"
         p = s.get(InteriorProject, x.project_id)
         st = _st(s, tenant)
         v = _stage_view(s, x)
         phone, client, firm = p.phone, p.client, st.firm
     link = _upi(tenant, v["amount"], f"{v['project']} {v['label']}")
-    text = (f"Namaste {client} ji, {v['project']} ka '{v['label']}' stage: {v['amount_text']} dene ki vinti hai."
-            + (f" UPI: {link}" if link else "") + f" Dhanyavaad, {firm or ''}".rstrip(", "))
+    text = (f"Hello {client}, {v['project']} stage '{v['label']}': please pay {v['amount_text']}."
+            + (f" UPI: {link}" if link else "") + f" Thank you, {firm or ''}".rstrip(", "))
     return {"stage": v, "draft": {"text": text, "wa": _wa(phone, text), "sms": _sms(phone, text), "upi": link},
-            "say": "Message draft taiyaar; aap khud bhejiye. Paise mile to 'mila' darj kijiye (Hoola paise nahi leta)."}
+            "say": "Message draft ready; send it yourself. When the money arrives, record it as 'received' (Hoola does not take money)."}
 
 
 def stage_paid(tenant: str, stage_id: str, amount=None, ref: str = "", day: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise InteriorError("Paise mile, yeh sirf owner darj karti hain.")
+        raise InteriorError("Only the owner records money received.")
     with _LOCK, session() as s:
         x = s.get(InteriorStage, stage_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Stage nahi mila.")
+            raise InteriorError("Stage not found.")
         a = _num(amount)
         x.paid_amount = a if a is not None else x.amount
         x.paid_ref = R.clean(ref, 80)
@@ -1406,7 +1406,7 @@ def stage_paid(tenant: str, stage_id: str, amount=None, ref: str = "", day: str 
         x.status = "paid"
         v = _stage_view(s, x)
     short = R.r2(v["amount"] - v["paid_amount"])
-    return {"stage": v, "say": f"{v['label']}: {_rs(v['paid_amount'])} mila darj." + (f" {_rs(short)} kam aaya." if short > 0.5 else "")}
+    return {"stage": v, "say": f"{v['label']}: {_rs(v['paid_amount'])} received, recorded." + (f" {_rs(short)} short." if short > 0.5 else "")}
 
 
 # ---------------------------------------------------------------- vendor work orders (her tap + fingerprint)
@@ -1446,33 +1446,33 @@ def order_request(tenant: str, project: str, vendor: str, lines: list | None = N
                    "amount": R.r2(qty * rate) if qty is not None and rate is not None else None, "line": b["id"] if b else "",
                    "spec": R.clean(ln.get("spec") or (b["spec"] if b else ""), 300)}
             if not name:
-                blanks.append("item ka naam")
+                blanks.append("item name")
             if qty is None:
                 blanks.append(f"{name}: qty")
             if rate is None and _num(amount) is None:
-                blanks.append(f"{name}: vendor ka rate")
+                blanks.append(f"{name}: the vendor's rate")
             if b and rate is not None and b.get("rate") is not None:
                 if rate >= b["rate"]:
-                    checks.append(f"{name}: vendor rate {_rs(rate)} client rate {_rs(b['rate'])} se kam nahi (margin nahi).")
+                    checks.append(f"{name}: vendor rate {_rs(rate)} is not below the client rate {_rs(b['rate'])} (no margin).")
             out.append(row)
         amt = _num(amount)
         if amt is None:
             amt = sum(r["amount"] for r in out if r["amount"] is not None) if out and not blanks else None
         if amt is None or amt <= 0:
-            blanks.append("order ki kul rakam (vendor ka quote)")
+            blanks.append("the order's total amount (the vendor's quote)")
         if blanks:
-            raise InteriorError("Order ke liye yeh chahiye: " + "; ".join(dict.fromkeys(blanks)) + ". Hoola rate nahi gadhta.")
+            raise InteriorError("The order needs: " + "; ".join(dict.fromkeys(blanks)) + ". Hoola does not make up rates.")
         sd, fd = _date(start), _date(finish)
         if start and not sd or finish and not fd:
-            raise InteriorError("Tareekh samajh nahi aayi (DD-MM-YYYY).")
+            raise InteriorError("Could not understand the date (DD-MM-YYYY).")
         if sd and fd and fd < sd:
-            raise InteriorError("Khatam tareekh shuru se pehle hai.")
+            raise InteriorError("The end date is before the start.")
         if p.target_handover and fd and fd.isoformat() > p.target_handover:
-            checks.append(f"Vendor ka kaam {fd} tak, handover {p.target_handover} ka hai.")
+            checks.append(f"The vendor's work runs until {fd}, handover is on {p.target_handover}.")
         for o in s.scalars(select(InteriorOrder).where(InteriorOrder.project_id == p.id, InteriorOrder.vendor_id == v.id,
                                                        InteriorOrder.status == "waiting")).all():
             if abs(o.amount - amt) < 0.5:
-                return {"order": _order_view(s, o), "existing": True, "say": f"{o.number} ka card pehle se aapki haan ka intezaar kar raha hai."}
+                return {"order": _order_view(s, o), "existing": True, "say": f"{o.number}'s card is already waiting for your approval."}
         st = _st(s, tenant)
         st.wo_seq += 1
         o = InteriorOrder(tenant_id=tenant, project_id=p.id, vendor_id=v.id, number=f"WO-{st.wo_seq:04d}", lines=_dump(out), amount=amt,
@@ -1481,8 +1481,8 @@ def order_request(tenant: str, project: str, vendor: str, lines: list | None = N
         s.flush()
         o.hash = R.digest(_order_show(s, o))
         view = _order_view(s, o)
-    say = f"{view['number']}: {view['vendor']} ko {view['amount_text']} ka order - aapki haan ka card bheja hai." + \
-          (" Dhyaan: " + " ".join(checks) if checks else "")
+    say = f"{view['number']}: {view['vendor']}, order of {view['amount_text']} - a card has been sent for your approval." + \
+          (" Note: " + " ".join(checks) if checks else "")
     _publish(tenant, "interior_order", {"order": view, "say": say}, conv)
     return {"order": view, "status": "needs_tap", "say": say}
 
@@ -1500,7 +1500,7 @@ def order_challenge(tenant: str, order_id: str) -> dict:
     from .. import approvekey as ak
     c = order_card(tenant, order_id)
     if not c or c["status"] != "waiting":
-        raise InteriorError("Yeh card ab baaki nahi hai.")
+        raise InteriorError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|interior|{order_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1527,15 +1527,15 @@ def _verify_fingerprint(tenant: str, order_id: str, digest: str, proof: dict | N
 def decide_order(tenant: str, order_id: str, yes: bool, card_hash: str = "", reason: str = "", proof: dict | None = None,
                  by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise InteriorError("Vendor order sirf aapke tap se (app ka card).")
+        raise InteriorError("A vendor order happens only on your tap (the card in the app).")
     with session() as s:
         o = s.get(InteriorOrder, order_id)
         if o is None or o.tenant_id != tenant:
-            raise InteriorError("Card nahi mila.")
+            raise InteriorError("Card not found.")
         if o.status != "waiting":
-            return {"order": _order_view(s, o), "say": f"{o.number} pehle hi '{o.status}' hai."}
+            return {"order": _order_view(s, o), "say": f"{o.number} is already '{o.status}'."}
         if not card_hash or card_hash != o.hash or R.digest(_order_show(s, o)) != o.hash:
-            raise InteriorError("Card badal gaya hai; naya card dekhiye.")
+            raise InteriorError("The card has changed; see the new card.")
     if yes:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1549,17 +1549,17 @@ def decide_order(tenant: str, order_id: str, yes: bool, card_hash: str = "", rea
             p.status = "production"
         view = _order_view(s, o)
     if not yes:
-        return {"order": view, "say": f"{view['number']}: order nahi."}
+        return {"order": view, "say": f"{view['number']}: no order."}
     pdf = _order_pdf(tenant, order_id)
     f = _store(tenant, f"{view['number']}_work_order.pdf", pdf, "application/pdf", conv, f"{view['number']} work order")
     with session() as s:
         o = s.get(InteriorOrder, order_id)
         o.file_id = f.get("file_id", "")
         view = _order_view(s, o)
-    text = (f"Namaste {view['vendor']} ji, {view['project']} ke liye work order {view['number']}: {view['amount_text']}"
-            + (f", {view['start']} se {view['finish']} tak" if view["start"] and view["finish"] else "") + ". PDF bhej rahe hain.")
+    text = (f"Hello {view['vendor']}, for {view['project']}, work order {view['number']}: {view['amount_text']}"
+            + (f", {view['start']} to {view['finish']}" if view["start"] and view["finish"] else "") + ". We are sending the PDF.")
     return {"order": view, "draft": {"text": text, "wa": _wa(view["vendor_phone"], text), "sms": _sms(view["vendor_phone"], text)},
-            "say": f"{view['number']} maana; work order PDF + vendor ke liye message draft (aap bhejiye). Paise aap khud denge."}
+            "say": f"{view['number']} approved; work order PDF + a message draft for the vendor (you send it). You pay the money yourself."}
 
 
 def _order_pdf(tenant: str, order_id: str) -> bytes:
@@ -1588,12 +1588,12 @@ def order_done(tenant: str, order_id: str, actor: str = "owner") -> dict:
     with session() as s:
         o = s.get(InteriorOrder, order_id)
         if o is None or o.tenant_id != tenant:
-            raise InteriorError("Order nahi mila.")
+            raise InteriorError("Order not found.")
         if o.status != "approved":
-            raise InteriorError(f"{o.number} '{o.status}' hai.")
+            raise InteriorError(f"{o.number} is '{o.status}'.")
         o.status = "done"
         v = _order_view(s, o)
-    return {"order": v, "say": f"{v['number']} ka kaam poora darj."}
+    return {"order": v, "say": f"{v['number']}: work recorded as complete."}
 
 
 def orders(tenant: str, project: str = "", status: str = "") -> list[dict]:
@@ -1622,22 +1622,22 @@ def _change_view(s, c: InteriorChange) -> dict:
 def change_request(tenant: str, project: str, what: str, add: list | None = None, remove: list | None = None, actor: str = "owner",
                    conv: str = "") -> dict:
     if not what:
-        raise InteriorError("Badlav kya hai? (ek line)")
+        raise InteriorError("What is the change? (one line)")
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         if not p.contract_quote:
-            raise InteriorError("Abhi quote pakka nahi; BOQ hi badaliye aur naya quote banaiye.")
+            raise InteriorError("The quote is not final yet; just change the BOQ and make a new quote.")
         st = _st(s, tenant)
         rate_rows = s.scalars(select(InteriorRate).where(InteriorRate.tenant_id == tenant, InteriorRate.active.is_(True))).all()
         adds = [_resolve_line(s, tenant, p, ln, rate_rows, st.gst_works) for ln in (add or []) if isinstance(ln, dict)]
         blanks = [f"{a['name']}: " + " + ".join(a["blanks"]) for a in adds if a["blanks"]]
         if blanks:
-            raise InteriorError("Change ke liye yeh chahiye: " + "; ".join(blanks) + ". Hoola rate nahi gadhta.")
+            raise InteriorError("The change needs: " + "; ".join(blanks) + ". Hoola does not make up rates.")
         cur = {c["id"]: c for c in _j(p.boq, [])}
         rem = [str(x) for x in (remove or [])]
         missing = [x for x in rem if x not in cur]
         if missing:
-            raise InteriorError("BOQ mein yeh line nahi: " + ", ".join(missing))
+            raise InteriorError("This line is not in the BOQ: " + ", ".join(missing))
         delta = sum(a["amount"] * (1 + a["gst_pct"] / 100) for a in adds) - \
             sum((cur[x]["amount"] or 0) * (1 + cur[x]["gst_pct"] / 100) for x in rem)
         delta = R.r2(delta)
@@ -1650,10 +1650,10 @@ def change_request(tenant: str, project: str, what: str, add: list | None = None
             _apply_change(s, tenant, p, c)
             c.status = "applied"
             v = _change_view(s, c)
-            return {"change": v, "say": f"{v['number']}: daam nahi badla, seedha darj."}
+            return {"change": v, "say": f"{v['number']}: the price did not change, recorded directly."}
         c.hash = R.digest(_change_show(s, c))
         v = _change_view(s, c)
-    say = f"{v['number']}: {v['what']} ({v['delta_text']} GST samet) - daam badalta hai, aapki haan ka card bheja hai."
+    say = f"{v['number']}: {v['what']} ({v['delta_text']} with GST) - the price changes, a card has been sent for your approval."
     _publish(tenant, "interior_change", {"change": v, "say": say}, conv)
     return {"change": v, "status": "needs_tap", "say": say}
 
@@ -1682,28 +1682,28 @@ def _apply_change(s, tenant: str, p: InteriorProject, c: InteriorChange) -> None
 
 def decide_change(tenant: str, change_id: str, yes: bool, card_hash: str = "", reason: str = "", by_tap: bool = False) -> dict:
     if not by_tap:
-        raise InteriorError("Daam badalne wala badlav sirf aapke tap se (app ka card).")
+        raise InteriorError("A change that alters the price happens only on your tap (the card in the app).")
     with _LOCK, session() as s:
         c = s.get(InteriorChange, change_id)
         if c is None or c.tenant_id != tenant:
-            raise InteriorError("Card nahi mila.")
+            raise InteriorError("Card not found.")
         if c.status != "waiting":
-            return {"change": _change_view(s, c), "say": f"{c.number} pehle hi '{c.status}' hai."}
+            return {"change": _change_view(s, c), "say": f"{c.number} is already '{c.status}'."}
         if not card_hash or card_hash != c.hash or R.digest(_change_show(s, c)) != c.hash:
-            raise InteriorError("Card badal gaya hai; naya card dekhiye.")
+            raise InteriorError("The card has changed; see the new card.")
         p = s.get(InteriorProject, c.project_id)
         if not yes:
             c.status, c.reason = "rejected", R.clean(reason, 300)
-            return {"change": _change_view(s, c), "say": f"{c.number} nahi maana."}
+            return {"change": _change_view(s, c), "say": f"{c.number} not approved."}
         _apply_change(s, tenant, p, c)
         c.status = "approved"
         v = _change_view(s, c)
         phone, client = p.phone, p.client
         total = _contract_total(s, p)
-    text = (f"Namaste {client} ji, {v['project']} mein badlav {v['number']}: {v['what']}. Rakam {v['delta_text']} (GST samet); "
-            f"naya kul {_rs(total)}. Aapki likhit haan (reply) ke baad kaam karenge.")
+    text = (f"Hello {client}, {v['project']} change {v['number']}: {v['what']}. Amount {v['delta_text']} (with GST); "
+            f"new total {_rs(total)}. We will do the work after your written yes (reply).")
     return {"change": v, "draft": {"text": text, "wa": _wa(phone, text), "sms": _sms(phone, text)},
-            "say": f"{v['number']} maana; naya kul {_rs(total)}. Client ke liye message draft (aap bhejiye, unki haan likhit mein lijiye)."}
+            "say": f"{v['number']} approved; new total {_rs(total)}. Message draft for the client (you send it; take their yes in writing)."}
 
 
 def changes(tenant: str, project: str) -> list[dict]:
@@ -1728,12 +1728,12 @@ def _task_checks(s, tenant: str, p: InteriorProject, t: InteriorTask) -> list[st
         for o in others:
             if o.start and o.end and o.start <= t.end and t.start <= o.end:
                 op = s.get(InteriorProject, o.project_id)
-                out.append(f"Vendor usi samay {op.number if op else ''} {o.room} ({o.start} - {o.end}) mein laga hai.")
+                out.append(f"The vendor is busy at the same time on {op.number if op else ''} {o.room} ({o.start} - {o.end}).")
     if p.target_handover and t.end and t.end > p.target_handover:
-        out.append(f"{t.end} handover ({p.target_handover}) ke baad.")
+        out.append(f"{t.end} is after the handover ({p.target_handover}).")
     d = _date(t.start)
     if d and d.weekday() == 6:
-        out.append(f"{t.start} Ravivaar hai (society / building ka niyam dekhiye).")
+        out.append(f"{t.start} is a Sunday (check the society / building rules).")
     rows = [_task_view(s, x) for x in s.scalars(select(InteriorTask).where(InteriorTask.project_id == p.id)).all()]
     out += [x for x in R.sequence_problems(rows) if t.room in x or not t.room]
     return out
@@ -1743,9 +1743,9 @@ def task_add(tenant: str, project: str, what: str = "", kind: str = "", room: st
              end: str = "", note: str = "", actor: str = "owner") -> dict:
     sd, ed = _date(start), _date(end) or _date(start)
     if not sd:
-        raise InteriorError("Shuru ki tareekh chahiye.")
+        raise InteriorError("A start date is needed.")
     if ed < sd:
-        raise InteriorError("Khatam tareekh shuru se pehle.")
+        raise InteriorError("The end date is before the start.")
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         v = _vendor(s, tenant, vendor) if vendor else None
@@ -1759,14 +1759,14 @@ def task_add(tenant: str, project: str, what: str = "", kind: str = "", room: st
             p.status = "install"
         view = _task_view(s, t)
     return {"task": view, "checks": checks, "say": f"Schedule: {view['what']} {view['start']} - {view['end']}." +
-            (" Dhyaan: " + " ".join(checks) if checks else "")}
+            (" Note: " + " ".join(checks) if checks else "")}
 
 
 def task_update(tenant: str, task_id: str, status: str = "", start: str = "", end: str = "", note: str = "", actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         t = s.get(InteriorTask, task_id)
         if t is None or t.tenant_id != tenant:
-            raise InteriorError("Kaam nahi mila.")
+            raise InteriorError("Task not found.")
         if status:
             if status not in ("planned", "started", "done", "delayed", "cancelled"):
                 raise InteriorError("status = planned | started | done | delayed | cancelled")
@@ -1774,19 +1774,19 @@ def task_update(tenant: str, task_id: str, status: str = "", start: str = "", en
         if start:
             d = _date(start)
             if not d:
-                raise InteriorError("Tareekh samajh nahi aayi.")
+                raise InteriorError("Could not understand the date.")
             t.start = d.isoformat()
         if end:
             d = _date(end)
             if not d:
-                raise InteriorError("Tareekh samajh nahi aayi.")
+                raise InteriorError("Could not understand the date.")
             t.end = d.isoformat()
         if note:
             t.note = R.clean(note, 300)
         p = s.get(InteriorProject, t.project_id)
         checks = _task_checks(s, tenant, p, t) if (start or end) else []
         view = _task_view(s, t)
-    return {"task": view, "checks": checks, "say": f"{view['what']}: {view['status']}." + (" Dhyaan: " + " ".join(checks) if checks else "")}
+    return {"task": view, "checks": checks, "say": f"{view['what']}: {view['status']}." + (" Note: " + " ".join(checks) if checks else "")}
 
 
 def schedule(tenant: str, project: str) -> dict:
@@ -1798,7 +1798,7 @@ def schedule(tenant: str, project: str) -> dict:
     on = today(tenant).isoformat()
     late = [r for r in rows if r["status"] in ("planned", "started", "delayed") and r["end"] and r["end"] < on]
     return {"tasks": rows, "problems": R.sequence_problems(rows), "late": late, "target_handover": target,
-            "say": f"{len(rows)} kaam schedule mein" + (f", {len(late)} der se" if late else "") + "."}
+            "say": f"{len(rows)} task(s) in the schedule" + (f", {len(late)} late" if late else "") + "."}
 
 
 # ---------------------------------------------------------------- snags (photos without EXIF)
@@ -1812,7 +1812,7 @@ def _snag_view(s, x: InteriorSnag) -> dict:
 def _add_photo(tenant: str, x: InteriorSnag, data: bytes, stage: str) -> None:
     phs = _j(x.photos, [])
     if len(phs) >= MAX_PHOTOS:
-        raise InteriorError(f"Ek snag par {MAX_PHOTOS} photo tak.")
+        raise InteriorError(f"Up to {MAX_PHOTOS} photos per snag.")
     clean = _clean_image(data)
     pid = "ph" + secrets.token_hex(5)
     path = _dir(tenant, x.project_id) / f"{x.id}_{pid}.jpg"
@@ -1824,7 +1824,7 @@ def _add_photo(tenant: str, x: InteriorSnag, data: bytes, stage: str) -> None:
 def snag_add(tenant: str, project: str, what: str, room: str = "", vendor: str = "", file_id: str = "", data: bytes | None = None,
              actor: str = "owner") -> dict:
     if not what:
-        raise InteriorError("Kya kharabi hai? (ek line)")
+        raise InteriorError("What is the defect? (one line)")
     if file_id:
         _n, data = _load_file(tenant, file_id)
     with _LOCK, session() as s:
@@ -1838,32 +1838,32 @@ def snag_add(tenant: str, project: str, what: str, room: str = "", vendor: str =
         if data:
             _add_photo(tenant, x, data, "before")
         view = _snag_view(s, x)
-    return {"snag": view, "say": f"Snag #{view['number']} ({view['room'] or 'ghar'}): {view['what']}" + (" + photo (location / EXIF hataya)." if data else ".")}
+    return {"snag": view, "say": f"Snag #{view['number']} ({view['room'] or 'home'}): {view['what']}" + (" + photo (location / EXIF hataya)." if data else ".")}
 
 
 def snag_photo(tenant: str, snag_id: str, data: bytes | None = None, file_id: str = "", stage: str = "fixed") -> dict:
     if file_id:
         _n, data = _load_file(tenant, file_id)
     if not data:
-        raise InteriorError("Photo chahiye.")
+        raise InteriorError("A photo is needed.")
     with _LOCK, session() as s:
         x = s.get(InteriorSnag, snag_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Snag nahi mila.")
+            raise InteriorError("Snag not found.")
         _add_photo(tenant, x, data, stage)
         view = _snag_view(s, x)
-    return {"snag": view, "say": "Photo judi (location / EXIF hataya)."}
+    return {"snag": view, "say": "Photo attached (location / EXIF removed)."}
 
 
 def snag_status(tenant: str, snag_id: str, status: str, actor: str = "owner") -> dict:
     if status not in ("open", "fixed", "closed"):
         raise InteriorError("status = open | fixed | closed")
     if status == "closed" and not is_owner(actor):
-        raise InteriorError("Snag band sirf owner karti hain (theek hua dekh kar).")
+        raise InteriorError("Only the owner closes a snag (after seeing it fixed).")
     with session() as s:
         x = s.get(InteriorSnag, snag_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Snag nahi mila.")
+            raise InteriorError("Snag not found.")
         x.status = status
         view = _snag_view(s, x)
     return {"snag": view, "say": f"Snag #{view['number']}: {status}."}
@@ -1873,11 +1873,11 @@ def snag_file(tenant: str, snag_id: str, photo_id: str) -> Path:
     with session() as s:
         x = s.get(InteriorSnag, snag_id)
         if x is None or x.tenant_id != tenant:
-            raise InteriorError("Snag nahi mila.")
+            raise InteriorError("Snag not found.")
         for ph in _j(x.photos, []):
             if ph["id"] == photo_id and Path(ph["path"]).exists():
                 return Path(ph["path"])
-    raise InteriorError("Photo nahi mili.")
+    raise InteriorError("Photo not found.")
 
 
 def snags(tenant: str, project: str, status: str = "") -> list[dict]:
@@ -1905,12 +1905,12 @@ def warranty_rows(tenant: str, project: str) -> list[dict]:
 
 def handover(tenant: str, project: str, force: bool = False, reason: str = "", actor: str = "owner", conv: str = "") -> dict:
     if not is_owner(actor):
-        raise InteriorError("Handover sirf owner.")
+        raise InteriorError("Handover: owner only.")
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         open_snags = s.scalars(select(InteriorSnag).where(InteriorSnag.project_id == p.id, InteriorSnag.status != "closed")).all()
         if open_snags and not (force and reason):
-            raise InteriorError(f"{len(open_snags)} snag abhi khule hain; band kijiye ya force + wajah dijiye.")
+            raise InteriorError(f"{len(open_snags)} snag(s) are still open; close them or give force + a reason.")
         unpaid = [x for x in s.scalars(select(InteriorStage).where(InteriorStage.project_id == p.id)).all()
                   if x.status not in ("paid", "cancelled") and x.amount > 0]
         p.handed_over = today(tenant).isoformat()
@@ -1937,22 +1937,22 @@ def handover(tenant: str, project: str, force: bool = False, reason: str = "", a
     pdf = _pdf(f"Handover {pnum}", blocks)
     f = _store(tenant, f"{pnum}_handover_warranty.pdf", pdf, "application/pdf", conv, f"{pnum} handover + warranty")
     missing = [r["label"] for r in rows if not r["terms"]]
-    say = f"{pnum} handover darj; warranty sheet PDF bani."
+    say = f"{pnum} handover recorded; warranty sheet PDF made."
     if missing:
-        say += " Inki warranty aapne nahi likhi: " + ", ".join(missing) + " (Niyam mein likhiye)."
+        say += " You have not written the warranty for these: " + ", ".join(missing) + " (write it in Rules)."
     if unpaid_text:
-        say += " Baaki paise: " + "; ".join(unpaid_text) + "."
+        say += " Money still due: " + "; ".join(unpaid_text) + "."
     return {"file": f, "missing_warranty": missing, "unpaid": unpaid_text, "say": say}
 
 
 def forget(tenant: str, project: str, actor: str = "owner") -> dict:
     """DPDP: after the job ends, the client's personal details go; numbers / amounts stay for accounts."""
     if not is_owner(actor):
-        raise InteriorError("Sirf owner.")
+        raise InteriorError("Owner only.")
     with _LOCK, session() as s:
         p = _proj(s, tenant, project)
         if p.status not in ("done", "cancelled"):
-            raise InteriorError("Project poora / radd hone ke baad hi.")
+            raise InteriorError("Only after the project is completed / cancelled.")
         p.client, p.phone, p.email, p.site, p.client_gstin = "Client (hataya)", "", "", "", ""
         p.pin, p.forgotten = "", True
         for x in s.scalars(select(InteriorSnag).where(InteriorSnag.project_id == p.id)).all():
@@ -1963,7 +1963,7 @@ def forget(tenant: str, project: str, actor: str = "owner") -> dict:
                     pass
             x.photos = "[]"
         num = p.number
-    return {"say": f"{num}: client ki personal details aur snag photos hata di (hisaab rakha)."}
+    return {"say": f"{num}: the client's personal details and snag photos were removed (the accounts are kept)."}
 
 
 # ---------------------------------------------------------------- views / day / worker
@@ -2018,27 +2018,27 @@ def day(tenant: str) -> dict:
                                                                                     InteriorQuote.status == "sent")).all()
                     if q.valid_until and q.valid_until <= (on + timedelta(days=3)).isoformat()]
         handovers = [p.number for p in ps.values() if p.target_handover and p.target_handover <= (on + timedelta(days=7)).isoformat()]
-    starting = [f"{n} {t['what']} ({t['room'] or 'ghar'})" for t, n in tasks if t["start"] in (on.isoformat(), tom)]
+    starting = [f"{n} {t['what']} ({t['room'] or 'home'})" for t, n in tasks if t["start"] in (on.isoformat(), tom)]
     late = [f"{n} {t['what']}" for t, n in tasks if t["end"] and t["end"] < on.isoformat()]
     w = waiting(tenant)
     parts = []
     if starting:
-        parts.append("Aaj / kal shuru: " + "; ".join(starting[:6]))
+        parts.append("Starting today / tomorrow: " + "; ".join(starting[:6]))
     if late:
-        parts.append("Der se: " + "; ".join(late[:6]))
+        parts.append("Late: " + "; ".join(late[:6]))
     if due:
-        parts.append("Paise ka stage aa gaya: " + "; ".join(f"{d['project']} {d['label']} {d['amount_text']}" for d in due[:5]))
+        parts.append("Payment stage due: " + "; ".join(f"{d['project']} {d['label']} {d['amount_text']}" for d in due[:5]))
     if snag_open:
         parts.append("Khule snag: " + ", ".join(f"{k} ({v})" for k, v in snag_open.items()))
     if expiring:
-        parts.append("Quote ki validity khatam ho rahi: " + ", ".join(q["number"] for q in expiring))
+        parts.append("Quote validity is ending: " + ", ".join(q["number"] for q in expiring))
     if handovers:
-        parts.append("Handover is hafte: " + ", ".join(handovers))
+        parts.append("Handover this week: " + ", ".join(handovers))
     nw = sum(len(v) for v in w.values())
     if nw:
-        parts.append(f"{nw} card aapki haan ka intezaar kar rahe")
+        parts.append(f"{nw} card(s) waiting for your approval")
     return {"projects": len(ps), "starting": starting, "late": late, "stages_due": due, "snags": snag_open, "expiring": expiring,
-            "handovers": handovers, "waiting": w, "say": (". ".join(parts) + ".") if parts else "Interior ka aaj sab theek."}
+            "handovers": handovers, "waiting": w, "say": (". ".join(parts) + ".") if parts else "All is well with interiors today."}
 
 
 def overview(tenant: str) -> dict:
@@ -2075,12 +2075,12 @@ def tick(when: datetime | None = None) -> dict:
                                                               InteriorTask.status.in_(("planned", "started")))).all():
                     if t.end and t.end < on and _once(s, tenant, f"late:{t.id}:{t.end}"):
                         p = s.get(InteriorProject, t.project_id)
-                        alerts.append({"kind": "late", "say": f"{p.number if p else ''}: {t.what} ({t.room or 'ghar'}) {t.end} tak hona tha, poora darj nahi."})
+                        alerts.append({"kind": "late", "say": f"{p.number if p else ''}: {t.what} ({t.room or 'home'}) was due {t.end}, not recorded as complete."})
                 for x in s.scalars(select(InteriorStage).where(InteriorStage.tenant_id == tenant, InteriorStage.status == "planned")).all():
                     if x.due_on and x.due_on <= on and _once(s, tenant, f"due:{x.id}:{x.due_on}"):
                         p = s.get(InteriorProject, x.project_id)
-                        alerts.append({"kind": "stage", "stage": x.id, "say": f"{p.number if p else ''} '{x.label}' {_rs(x.amount)} ka samay aa gaya; "
-                                                                             "maangne ka card banau?"})
+                        alerts.append({"kind": "stage", "stage": x.id, "say": f"{p.number if p else ''} '{x.label}' {_rs(x.amount)} is due; "
+                                                                             "shall I make the card to ask for it?"})
             for a in alerts:
                 _publish(tenant, "interior_alert", a)
                 out["alerts"] += 1
@@ -2097,7 +2097,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Interior ka aaj sab theek.":
+                if d["say"] != "All is well with interiors today.":
                     _publish(tenant, "interior_day", {"say": d["say"], "starting": d["starting"], "late": d["late"],
                                                       "stages_due": len(d["stages_due"]), "projects": d["projects"]})
                     out["morning"] += 1

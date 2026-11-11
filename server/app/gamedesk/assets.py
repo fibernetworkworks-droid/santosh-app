@@ -222,7 +222,7 @@ def _clean_key(key: str, words: str) -> str:
     if k and not k[0].isalpha():
         k = f"a_{k}"[:40]
     if not KEY.match(k or ""):
-        raise AssetError("Asset ka naam (key) chhote angrezi akshar / number / _ mein: jaise red_bat, sfx_jump.")
+        raise AssetError("The asset's name (key) must be lowercase English letters / numbers / _: such as red_bat, sfx_jump.")
     return k
 
 
@@ -248,13 +248,13 @@ def request(tenant: str, ref: str, kind: str, key: str = "", words: str = "", **
         if a is None:
             n = len(s.scalars(select(GameAsset.id).where(GameAsset.studio_id == r.id)).all())
             if n >= MAX_ASSETS:
-                raise AssetError(f"Is game mein {MAX_ASSETS} assets ho gaye.")
+                raise AssetError(f"This game already has {MAX_ASSETS} assets.")
             a = GameAsset(tenant_id=tenant, studio_id=r.id, key=key, kind=kind, history=[])
             s.add(a)
         elif a.kind != kind:
-            raise AssetError(f"'{key}' pehle se ek {a.kind} hai; doosra naam dijiye.")
+            raise AssetError(f"'{key}' is already a {a.kind}; give another name.")
         elif a.status in ("making",):
-            raise AssetError(f"'{key}' abhi ban raha hai.")
+            raise AssetError(f"'{key}' is being made now.")
         a.words, a.spec, a.error = words or a.words, sp, ""
         a.cost_inr = float(_price(kind, sp))
         a.status = "priced" if a.cost_inr else "making"
@@ -303,7 +303,7 @@ def _spec(kind: str, spec: dict, r) -> dict[str, Any]:
         out["voice"] = str(spec.get("voice") or "")[:40]
         out["language"] = str(spec.get("language") or "Hindi")[:20]
         if not out["text"]:
-            raise AssetError("Voice line ka text dijiye (kya bolna hai).")
+            raise AssetError("Give the text of the voice line (what to say).")
     return out
 
 
@@ -327,7 +327,7 @@ def spend(tenant: str, ref: str, ids: list[str]) -> dict[str, Any]:
             a.status, a.updated_at = "making", now()
             started.append(aid)
     if not started:
-        raise AssetError("Koi priced asset nahi chuna.")
+        raise AssetError("No priced asset was chosen.")
     for aid in started:
         _submit(tenant, aid)
     return assets(tenant, ref)
@@ -344,7 +344,7 @@ def _make_safe(tenant: str, aid: str) -> None:
         make(tenant, aid)
     except Exception as e:                             # noqa: BLE001
         log.exception("asset %s", aid)
-        _fail(aid, f"andar ki gadbad: {type(e).__name__}")
+        _fail(aid, f"internal error: {type(e).__name__}")
 
 
 def _fail(aid: str, err: str) -> None:
@@ -534,7 +534,7 @@ def make(tenant: str, aid: str) -> dict[str, Any]:
     with session() as s:
         a = s.get(GameAsset, aid)
         if a is None or a.tenant_id != tenant or a.status != "making":
-            raise AssetError("Yeh asset banne ki line mein nahi.")
+            raise AssetError("This asset is not in the queue to be made.")
         s.expunge(a)
     k = KINDS[a.kind]
     bible = _bible(tenant, a.studio_id)
@@ -566,8 +566,8 @@ def make(tenant: str, aid: str) -> dict[str, Any]:
         raise
     except Exception as e:                              # noqa: BLE001
         msg = str(e)[:300]
-        _fail(aid, f"nahi ban paya: {msg}")
-        raise AssetError(f"'{a.key}' nahi ban paya: {msg}") from None
+        _fail(aid, f"could not be made: {msg}")
+        raise AssetError(f"'{a.key}' could not be made: {msg}") from None
     return _store(tenant, aid, data, ext, meta, source=k["source"], cost=a.cost_inr)
 
 
@@ -627,7 +627,7 @@ def collect_models(tenant: str, ref: str = "") -> int:
         except Exception:                               # noqa: BLE001
             continue
         if v["status"] in ("failed", "cancelled"):
-            _fail(a.id, "3D Studio: " + (v.get("error") or "nahi bana"))
+            _fail(a.id, "3D Studio: " + (v.get("error") or "not made"))
             continue
         glb = (v.get("exports") or {}).get("glb") or {}
         if v["status"] == "done" and glb.get("name") and not glb.get("too_big"):
@@ -647,19 +647,19 @@ def upload(tenant: str, ref: str, kind: str, key: str, data_b64: str, words: str
     try:
         data = base64.b64decode(data_b64 or "", validate=False)
     except Exception:                                   # noqa: BLE001
-        raise AssetError("File padhi nahi gayi.") from None
+        raise AssetError("The file could not be read.") from None
     if not data or len(data) > 12 * 1024 * 1024:
-        raise AssetError("File 12 MB tak.")
+        raise AssetError("Files up to 12 MB.")
     r = _studio(tenant, ref)
     key = _clean_key(key, words)
     media = KINDS[kind]["media"]
     sig = data[:12]
     if media == "image" and not (sig.startswith(b"\x89PNG") or sig.startswith(b"\xff\xd8")):
-        raise AssetError("Picture PNG ya JPEG honi chahiye.")
+        raise AssetError("The picture must be PNG or JPEG.")
     if media == "audio" and not (sig.startswith(b"RIFF") or sig.startswith(b"OggS") or sig.startswith(b"ID3") or sig[:2] == b"\xff\xfb"):
-        raise AssetError("Awaaz WAV, OGG ya MP3 honi chahiye.")
+        raise AssetError("The sound must be WAV, OGG or MP3.")
     if media == "model" and not sig.startswith(b"glTF"):
-        raise AssetError("3D model GLB (glTF binary) hona chahiye.")
+        raise AssetError("The 3D model must be GLB (glTF binary).")
     sp = _spec(kind, {"text": "her voice"} if kind == "voice" else {}, r)
     with session() as s:
         a = s.scalars(select(GameAsset).where(GameAsset.studio_id == r.id, GameAsset.key == key)).first()
@@ -667,7 +667,7 @@ def upload(tenant: str, ref: str, kind: str, key: str, data_b64: str, words: str
             a = GameAsset(tenant_id=tenant, studio_id=r.id, key=key, kind=kind, history=[], words=words[:600])
             s.add(a)
         elif a.kind != kind:
-            raise AssetError(f"'{key}' pehle se ek {a.kind} hai.")
+            raise AssetError(f"'{key}' is already a {a.kind}.")
         a.spec, a.status, a.cost_inr = sp, "making", 0.0
         s.flush()
         aid = a.id
@@ -679,8 +679,8 @@ def upload(tenant: str, ref: str, kind: str, key: str, data_b64: str, words: str
         if ext == "mp3":
             data, ext = _ogg(data, "mp3")
             if ext == "mp3":
-                _fail(aid, "MP3 ko OGG banane ke liye server par ffmpeg chahiye")
-                raise AssetError("MP3 ko OGG banane ke liye server par ffmpeg chahiye; WAV ya OGG bhejiye.")
+                _fail(aid, "turning MP3 into OGG needs ffmpeg on the server")
+                raise AssetError("Turning MP3 into OGG needs ffmpeg on the server; send WAV or OGG.")
         return _store(tenant, aid, data, ext, {}, source="her upload")
     return _store(tenant, aid, data, "glb", {}, source="her upload")
 
@@ -798,13 +798,13 @@ def approve(tenant: str, ref: str, key: str, version: int = 0) -> dict[str, Any]
     with session() as s:
         a = s.scalars(select(GameAsset).where(GameAsset.studio_id == r.id, GameAsset.key == key)).first()
         if a is None:
-            raise AssetError(f"'{key}' nahi mila.")
+            raise AssetError(f"'{key}' not found.")
         v = int(version or a.version)
         h = next((x for x in a.history or [] if x.get("v") == v), None)
         if not h:
-            raise AssetError("Woh version nahi mila.")
+            raise AssetError("That version was not found.")
         if (h.get("checks") or {}).get("errors"):
-            raise AssetError("Is version ki jaanch fail hai: " + "; ".join(h["checks"]["errors"][:2]))
+            raise AssetError("This version failed its check: " + "; ".join(h["checks"]["errors"][:2]))
         a.approved, a.status, a.updated_at = v, "approved", now()
         s.flush()
         s.expunge(a)
@@ -818,7 +818,7 @@ def reject(tenant: str, ref: str, key: str) -> dict[str, Any]:
     with session() as s:
         a = s.scalars(select(GameAsset).where(GameAsset.studio_id == r.id, GameAsset.key == key)).first()
         if a is None:
-            raise AssetError(f"'{key}' nahi mila.")
+            raise AssetError(f"'{key}' not found.")
         a.status = "approved" if a.approved else "rejected"
         a.updated_at = now()
         s.flush()
@@ -831,9 +831,9 @@ def remove(tenant: str, ref: str, key: str) -> None:
     with session() as s:
         a = s.scalars(select(GameAsset).where(GameAsset.studio_id == r.id, GameAsset.key == key)).first()
         if a is None:
-            raise AssetError(f"'{key}' nahi mila.")
+            raise AssetError(f"'{key}' not found.")
         if a.status == "making":
-            raise AssetError("Abhi ban raha hai.")
+            raise AssetError("It is being made now.")
         shutil.rmtree(_dir(tenant, r.id, key), ignore_errors=True)
         s.delete(a)
 
@@ -895,11 +895,11 @@ def apply(tenant: str, ref: str) -> dict[str, Any]:
     """The approved assets into the live game: same code, the files + HoolaAssets, the usual checks (no model call)."""
     r = _studio(tenant, ref)
     if for_game(tenant, r.game_id) is None:
-        raise AssetError("Koi approved asset nahi; pehle asset OK kijiye.")
+        raise AssetError("No approved asset; OK an asset first.")
     try:
         from . import bible as B
         bv = B.view(tenant, r.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, r.game_id, bv, words="Assets game mein")
+    G.data_build(tenant, r.game_id, bv, words="Assets into the game")
     return assets(tenant, ref)

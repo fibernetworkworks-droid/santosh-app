@@ -369,7 +369,7 @@ def new_project(tenant: str, engine: str, title: str, engine_version: str = "", 
         raise BigError("Engine: unity, unreal ya godot.")
     title = re.sub(r"\s+", " ", str(title or "")).strip()[:120]
     if len(title) < 2:
-        raise BigError("Project ka naam likhiye.")
+        raise BigError("Write the project's name.")
     why = G.problem(f"{title} {about}")
     if why:
         raise BigError(why)
@@ -395,10 +395,10 @@ def _project(s, tenant: str, ref: str) -> BigProject:
     else:
         rows = s.scalars(q).all()
         if len(rows) != 1:
-            raise BigError("Kaunsa project? project = " + (", ".join(r.number for r in rows[:8]) or "koi studio project nahi - console mein banaiye"))
+            raise BigError("Which project? project = " + (", ".join(r.number for r in rows[:8]) or "no studio project - make one in the console"))
         p = rows[0]
     if p is None:
-        raise BigError("Woh studio project nahi mila.")
+        raise BigError("That studio project was not found.")
     return p
 
 
@@ -418,7 +418,7 @@ def add_task(tenant: str, ref: str, title: str, detail: str = "", priority: int 
     ensure_tables()
     title = re.sub(r"\s+", " ", str(title or "")).strip()[:200]
     if len(title) < 3:
-        raise BigError("Task ek line mein likhiye (kya badalna / jodna hai).")
+        raise BigError("Write the task in one line (what to change / add).")
     why = G.problem(f"{title} {detail}")
     if why:
         raise BigError(why)
@@ -439,7 +439,7 @@ def _task(s, tenant: str, p: BigProject, ref: str) -> BigTask:
     ref = str(ref or "").strip().upper()
     t = s.scalars(select(BigTask).where(BigTask.project_id == p.id, (BigTask.number == ref) | (BigTask.id == ref.lower()))).first()
     if t is None:
-        raise BigError("Woh task nahi mila.")
+        raise BigError("That task was not found.")
     return t
 
 
@@ -472,7 +472,7 @@ def _propose(tenant: str, p: BigProject, tid: str, ctx: dict, feedback: str = ""
         t = s.get(BigTask, tid)
         s.expunge(t)
     if key and not _rate_ok(key):
-        raise BigError("Is ghante 40 proposals ho gaye; thodi der baad.")
+        raise BigError("40 proposals were made this hour; try again in a while.")
     raw = _ask_model(p, t, ctx, feedback)
     chk = check_files(p.engine, raw.get("files") or [], p.module)
     run = str(raw.get("run") or "").strip()
@@ -518,7 +518,7 @@ def propose_again(tenant: str, ref: str, tno: str, ctx: dict | None = None, note
         s.expunge(p)
         t = _task(s, tenant, p, tno)
         if t.status in ("done",):
-            raise BigError("Yeh task ho chuka hai.")
+            raise BigError("This task is already done.")
         tid = t.id
     return _propose(tenant, p, tid, ctx or {}, feedback=f"Her note: {note}" if note else "", key=key) | {"engine": p.engine}
 
@@ -533,7 +533,7 @@ def report(tenant: str, ref: str, tno: str, applied: bool, compiled: bool | None
         s.expunge(p)
         t = _task(s, tenant, p, tno)
         if t.status not in ("proposed", "applied", "failed"):
-            raise BigError(f"Task {t.status} hai - pehle proposal.")
+            raise BigError(f"The task is {t.status} - a proposal comes first.")
         tid = t.id
         if not applied:
             t.status = "rejected"
@@ -565,9 +565,9 @@ def ask(tenant: str, ref: str, question: str, ctx: dict | None = None, key: str 
     from . import ai
     q = str(question or "").strip()
     if len(q) < 3:
-        raise BigError("Sawaal likhiye.")
+        raise BigError("Write the question.")
     if key and not _rate_ok("ask:" + key, 30):
-        raise BigError("Is ghante 30 sawaal ho gaye; thodi der baad.")
+        raise BigError("30 questions were asked this hour; try again in a while.")
     with session() as s:
         p = _project(s, tenant, ref)
         s.expunge(p)

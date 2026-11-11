@@ -455,7 +455,7 @@ def _get(s, tenant: str, ref: str) -> GameHaptics:
     q = select(GameHaptics).where(GameHaptics.tenant_id == tenant)
     r = s.scalars(q.where(GameHaptics.id == ref)).first() or s.scalars(q.where(GameHaptics.number == ref.upper())).first()
     if r is None:
-        raise HapticsError("Yeh haptics set nahi mila (H-001 dijiye).")
+        raise HapticsError("This haptics set was not found (give H-001).")
     return r
 
 
@@ -536,7 +536,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise HapticsError("Sirf PASS hua haptics set OK ho sakta hai.")
+            raise HapticsError("Only a haptics set that PASSED can be OKed.")
         for o in s.scalars(select(GameHaptics).where(GameHaptics.tenant_id == tenant, GameHaptics.studio_id == r.studio_id,
                                                      GameHaptics.status == "approved")).all():
             o.status = "rejected"
@@ -647,11 +647,11 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
 def apply(tenant: str, studio: str) -> dict[str, Any]:
     st = _studio(tenant, studio)
     if for_game(tenant, st.game_id) is None:
-        raise HapticsError("Koi approved haptics set nahi; pehle OK kijiye.")
+        raise HapticsError("No approved haptics set; OK one first.")
     try:
         from . import bible as B
         bv = B.view(tenant, st.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, st.game_id, bv, words="Haptics game mein")
-    return {"ok": True, "say": "Haptics game mein ja rahe hain (rebuild chal raha hai)."}
+    G.data_build(tenant, st.game_id, bv, words="Haptics into the game")
+    return {"ok": True, "say": "Haptics are going into the game (a rebuild is running)."}
