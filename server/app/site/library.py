@@ -243,7 +243,7 @@ def understand(text: str) -> dict[str, Any]:
     styles = _styles_for(best["id"], goal)
     ask = ""
     if len(m) > 1 and m[1]["score"] >= best["score"] * 0.92 and m[1]["industry"] != best["industry"]:
-        ask = f"{best['en']} ya {m[1]['en']}?"
+        ask = f"{best['en']} or {m[1]['en']}?"
     return {"field": best["id"], "field_label": f["en"], "industry": f["industry"], "goal": goal, "styles": styles,
             "score": best["score"], "alternatives": m[1:4], "ask": ask}
 
