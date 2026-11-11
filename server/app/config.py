@@ -179,6 +179,11 @@ class Settings(BaseSettings):
     dev_reality_check: bool = True          # an independent reality-checker agent looks once before a round may finish
     dev_reality_min_lines: int = 30         # ... only for a change of at least this many added lines
     game_agency_experts: bool = True        # the Game Developer's crew roles carry The Agency's expert notes (gamedesk/agency.py)
+    # HOOLA CODE MEMORY (owner: "check this repo [thedotmack/claude-mem] and devlope same for hoola code"): devsahayak/memory.py
+    dev_memory: bool = True                 # per-repo memory: observer at each round's end, an index for the next session, the memory tool
+    dev_memory_model: str = "claude-haiku-5-5"   # ... the observer's model (one cheap call per round)
+    dev_memory_mode: str = "code"           # ... "code" = every meaningful finding, "chill" = only what is painful to rediscover
+    dev_memory_primer_chars: int = 6000     # ... the index a new session starts with, fitted to this many characters
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)

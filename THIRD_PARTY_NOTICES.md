@@ -243,3 +243,9 @@ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEM
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+## claude-mem (thedotmack/claude-mem) - Apache-2.0
+Read at commit 6b779c0 (10 Nov 2026). **No upstream code is included.** v0.828.0 HOOLA CODE MEMORY
+(`server/app/devsahayak/memory.py`) is Hoola's own Python built from its design: an observer that turns a session's work
+into typed observations + a summary, a budget-fitted index at the start of the next session, and the three-step
+search -> timeline -> details retrieval. (Hoola's chat memory, `server/app/coder/`, v0.485, followed the same design.)
