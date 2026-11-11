@@ -2391,3 +2391,38 @@ read-only shared page use the same styles but the phone app's Flutter screen is 
 NOT VERIFIED (honest): no real model has answered any D6 action (the sandbox has no key; the card and tests use a
 scripted one); translation quality, layout fit on dense pages and summary quality are unmeasured; compare reads
 text order from pdfplumber / pdfium, so a re-flowed document can show more changes than a person would.
+## v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814; their HOOLA CINEMA took 0.814.0 and 0.815-0.818 followed - REBASE PROTOCOL, all kept; owner ran vps-ops wb_check after putting the sandbox keys in the VPS .env)
+
+Her first live run, sandbox: every WHITEBOOKS_* name set except WHITEBOOKS_SANDBOX_GST_USERNAME (not in WhiteBooks' shared sandbox PDF,
+which covers e-Invoice + e-Way Bill only); ping PASS; public_search, rettrack, einv_auth FAIL WB_ERR_9001; ewb_auth FAIL "Invalid
+credentials provided or your account is not active" (the same refusal without its code); otp_request SKIP. Hoola's requests were read
+again against the specs (client_id / client_secret headers, email query) and match, and a refusal on all three products with their own
+keys leaves two causes: a bad paste, or an account WhiteBooks has not activated (her Developer Hub dashboard showed GST / e-Invoice /
+e-Way Bill all "not subscribed").
+
+- `wb.clean()` / `wb.email()`: every WhiteBooks value (email, client ids / secrets, sandbox identities) loses stray spaces, tabs,
+  Windows line ends and wrapping quotes before it is sent.
+- `wbcheck.paste_check()`: printed first by wb_check - per value how it LOOKS, never the value: client ids by leading letters + length
+  (the Hub shows them, e.g. GSTS...), secrets / passwords by length only, flags for non-keyboard characters (the Hub shows a secret as dots
+  until the eye / copy button is used), a space inside, not an email, not a 15-character GSTIN, and an e-invoice / e-way bill id with the
+  same start as the GST one ("is the GST key pasted here?"). The vps-ops redaction sed leaves these lines alone (a length is 2 characters).
+- When every value looks right and WhiteBooks still answers 9001, wb_check says so: ask WhiteBooks support to activate sandbox API access
+  for GST, e-Invoice and e-Way Bill on the developer account.
+- `wb._code_of`: a status_desc saying "invalid credentials" / "account is not active" without a code is WB_ERR_9001.
+
+Tests: 2 in test_v0807_bahi_a0.py (values cleaned; the paste check never carries a value and catches dots, a moved GST key; the EWB
+refusal named). NOT VERIFIED: still no accepted WhiteBooks call - the next wb_check after her re-paste or WhiteBooks' activation is the test.
+
+## v0.820.0 PEECHHE KA APP (CI fix for v0.815 APP KE PURZE)
+
+v0.815's first CI run: every new Kotlin / Swift file COMPILED on every job (Android compile / fcm / glogin / fixture2
+incl. the field-service emulator walk; iPhone simulator + unsigned device builds). The Android `smoke` job failed its
+QA report with 7 of 14 screens "not opened" (support, seller_info, privacy, delete_account, hoola_login, hoola_account,
+hoola_inbox) - every screen AFTER the dashboard. Not a crash: the tap walk pressed the dashboard's new "Pick from
+contacts" button, the system contacts picker (com.google.android.contacts) stayed in front, and every later screen
+was opened behind it (the support screenshot is the picker's "No contacts with phone numbers"). The device check
+only ever force-stopped OUR package. FIX: `clean_front` in `appmaker/android/device_check.sh` + `tablet_check.sh` -
+reads the top resumed activity, force-stops it when it is not our app / the launcher / system UI, then HOME; called
+before each screen, before and after each tap, before the scroll check. Any of her real apps with a button that opens
+another app (calendar, contacts, Play, a browser, a share sheet) would have failed the same way. Tests:
+test_v0820_device_check_front.py (3, a fake adb on PATH). NOT VERIFIED until this push's appgen-check.

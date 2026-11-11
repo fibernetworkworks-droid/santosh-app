@@ -174,6 +174,9 @@ def test_recipes_are_valid_and_never_invent(pr):
 def test_routes_end_to_end(pr):
     c = client()
     assert c.get("/api/prompting/sections").status_code == 401
+    from app.main import APP_VERSION
+    page = c.get("/console/prompting").text                      # stamps follow the running version, whatever the file says
+    assert page.count(f"?v={APP_VERSION}") == 5 and page.count("?v=") == 5
     secs = c.get("/api/prompting/sections", headers=H).json()
     assert [s["key"] for s in secs["sections"]] == ["web", "image", "script"]
     assert c.post("/api/prompting/understand", headers=H, json={"text": "aaj mausam kaisa hai"}).json() == {"choose_section": True}
@@ -421,5 +424,5 @@ def test_first_visit_race_on_the_connectors_user_row(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.819.0"
-    assert "0.819.0+818" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.821.0"
+    assert "0.821.0+820" in (REPO / "pubspec.yaml").read_text()

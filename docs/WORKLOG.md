@@ -3022,3 +3022,7 @@ Task ID: v0.819.0 HOOLA DOCUMENT KIT D6 (D0-D5 ride along)
 Ask: "GO D6".
 Built: dockit/smart.py (compare / summarize / ask / translate / smart split), 5 actions, proof card 66/66 (AI cases scripted), test_v0819_dockit_d6.py 10; merged main v0.818.0 (their base kept whole; restored the pdf_kit registration their tools.py dropped), registry 627, 0.819.0+818.
 Deploy: vps-ops deploy, then docs_setup / docs_check / pdf_card. The AI actions need a model key on the server (already there for chat).
+Task ID: v0.819.0 WHITEBOOKS PASTE CHECK (built as 0.814)
+Task: owner ran vps-ops wb_check (run 42986671553): all keys set, every product refused WB_ERR_9001.
+Work Log: requests re-read against the specs (match); values cleaned before use; wb_check prints a paste check (no values) + an activation hint; EWB refusal named; 2 tests.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she re-checks the paste lines / asks WhiteBooks to activate sandbox access, then wb_check again.
