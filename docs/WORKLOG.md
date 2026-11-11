@@ -3023,3 +3023,9 @@ Task ID: v0.827.0 API SETU GSTN CHECK (same release; their APP ENGINE 2 took 0.8
 Task: owner "i have api setu --- api lets check with it" + read her wb_check run.
 Work Log: bahi/apisetu.py (GSTN Tax Payer API per its spec, keys from the VPS .env only) + apisetucheck + vps-ops apisetu_check; 9 tests. wb_check 10:18 UTC: GST OTP + token + refresh PASS, einv + ewb PASS; GSTIN steps still on the shared GSTIN (fix not deployed yet).
 Stage Summary: on branch claude/exciting-hawking-113x8i. Next: MERGE TO MAIN, deploy, her APISETU_CLIENT_ID / APISETU_API_KEY + WHITEBOOKS_SANDBOX_GST_GSTIN in the .env, wb_check + apisetu_check.
+
+---
+Task ID: v0.829.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0)
+Task: owner "CHECK" on the v0.827 wb_check + apisetu_check runs.
+Work Log: read runs 43003949634 (deploy), 43004320897 (wb_check: search PASS, OTP 'user name does not exists', rettrack bare refusal), 43004363250 (apisetu_check: ReadTimeout); apisetu.gov.in answers 401 in 2 s from outside -> NIC drops the VPS; relay worker extended to API Setu; base() falls back to DATA_GOV_IN_BASE; wb_check GST-login hint; 3 tests; merged main.
+Stage Summary: on branch claude/exciting-hawking-113x8i. Next: she pastes the new worker.js into her Cloudflare worker, deploy, apisetu_check; asks WhiteBooks for the GST sandbox login (username + GSTIN).

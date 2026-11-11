@@ -2541,3 +2541,25 @@ keeps nothing; END TO END session 2 starts with session 1's memory in its first 
 NOT VERIFIED: no real model has been the observer (scripted only); its cost (one Haiku call per round) not measured;
 NOT built from claude-mem: Chroma vector search (FTS5 only), the live web viewer / My Work, TeamBrain, cloud sync,
 `/learn-codebase` front-loading, and a bridge into the chat's v0.485 vault.
+
+## v0.829.0 API SETU RELAY + GST LOGIN HINT (built as 0.828; their HOOLA CODE MEMORY took 0.828.0 - REBASE PROTOCOL, both kept)
+
+Owner: "CHECK" after deploying v0.827 and running wb_check + apisetu_check (11 Nov 2026, 10:31 UTC).
+
+What her runs showed:
+- WhiteBooks (wb_check): ping, GSTIN search (now with the GST test GSTIN 27AAGCB1286QKZL), e-invoice and e-way bill logins PASS.
+  rettrack still a bare refusal (no reason in the reply). OTP request FAILED with "user name does not exists" - it had passed at
+  10:18 with the earlier username, so the name WhiteBooks gave (for the PUBLIC search, which needs no login at all) is not a GST
+  sandbox login. wb_check now prints that plainly and asks for the GST sandbox LOGIN (gst_username + the GSTIN it belongs to) in
+  WHITEBOOKS_SANDBOX_GST_USERNAME / WHITEBOOKS_SANDBOX_GST_GSTIN.
+- API Setu (apisetu_check): both keys set (10 / 64 characters), lookup = ReadTimeout from the VPS. From this sandbox the same URL
+  answers 401 "Authentication failed" in ~1.8 s (v1 and v2), so the API is up and NIC drops the VPS - the data.gov.in story (v0.756).
+
+The fix: her existing Cloudflare relay worker `deploy/datagov-relay/worker.js` also forwards ONLY `GET /gstn/v1|v2/taxpayers/<15
+characters>` to apisetu.gov.in with ONLY X-APISETU-CLIENTID / X-APISETU-APIKEY (nothing else passed on, nothing kept); data.gov.in
+paths unchanged. `apisetu.base()` = APISETU_GSTN_BASE if set, else DATA_GOV_IN_BASE + `/gstn/v1` when that relay is set, else
+apisetu.gov.in (config default for APISETU_GSTN_BASE is now empty). A timeout on the direct road names the relay fix; a 404 from a
+relay that has the old code says to paste the new worker. vps-ops apisetu_check also lists APISETU_GSTN_BASE / DATA_GOV_IN_BASE
+names. Tests in test_v0827_apisetu.py (+3) and the BAHI suite green.
+
+NOT VERIFIED: API Setu through the relay has not answered live; the GST sandbox login is still waiting on WhiteBooks.
