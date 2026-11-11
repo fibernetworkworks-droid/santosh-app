@@ -47,6 +47,8 @@ on:
           - maps_card
           - research_card
           - research_runoff_check
+          - prompt_card_check
+          - prompt_card_try
           - parity_card_check
           - parity_card
           - long_jobs
@@ -437,6 +439,19 @@ jobs:
                 echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality research 2>&1 | tail -20'
                 echo 'echo "== live, 4 topics"; cd $CORE && timeout 1500 .venv/bin/python -m app.quality research --live --only official_cpi,rule_gst_einvoice,calc_smartphones,scholarly_rag --label vps-ops 2>&1 | tail -30'
                 echo 'echo "== live, the traps"; cd $CORE && timeout 900 .venv/bin/python -m app.quality research --live --kind trap --label vps-ops 2>&1 | tail -20' ;;
+              prompt_card_check)
+                # v0.785 HOOLA PROMPTING P0 NAAP: the FREE part of the prompt card (the 60 asks are valid, the scorer is
+                # calibrated on planted cases, no engine guard would refuse an ask, the rupee estimate) + the saved live
+                # cards and her picks. No model call.
+                echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality prompt 2>&1 | tail -20'
+                echo 'echo "== saved live cards"; cd $CORE && timeout 60 .venv/bin/python -m app.quality prompt --status 2>&1 | tail -20' ;;
+              prompt_card_try)
+                # v0.785 HOOLA PROMPTING P0 NAAP: a SMALL live try - 2 asks per section (web plan, picture, script), each
+                # run twice (her raw line, then the hand-filled brief) through the real engines, scored the same way.
+                # Spends real model calls; the card stops itself at Rs 250. The full 60: on the VPS itself -
+                # python -m app.quality prompt --live --budget-inr 1500 [--judge].
+                echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality prompt 2>&1 | tail -8'
+                echo 'echo "== live try, 2 per section"; cd $CORE && timeout 2400 .venv/bin/python -m app.quality prompt --live --limit 2 --budget-inr 250 --label vps-ops 2>&1 | tail -40' ;;
               parity_card_check)
                 # v0.732 CLAUDE PARITY Phase 0: the FREE part (60 conversations valid, the scorer calibrated on planted
                 # transcripts - an honest one passes, every planted fault fails for its own reason - and the expected tool in

@@ -896,3 +896,59 @@ Tests: test_v0784_sawaal_card.py (6: library-only options + skip rules + switch,
 the build carrying picks, look 1 built from her palette, source wiring, a Playwright walk at 1440 px (pick, build, POST carries the picks,
 'Your choices' look) and 390 px (fits, Back keeps her words)).
 NOT VERIFIED live: a real Opus build of look 1 from her picks on her server (tests use the fake site AI).
+
+
+## v0.785.0 PROMPT NAAP - P0 of HOOLA PROMPTING: measure before building (owner pasted the P0 step of the plan = GO)
+
+Plan: `docs/HOOLA_PROMPTING_PLAN.md` part 11. Research: `docs/research/prompting/00_INDEX.md`. No user-facing change.
+
+**The question:** does a complete brief beat her rough line in Hoola's OWN engines, and by how much, per section? A
+section with no gain is dropped before it is built.
+
+**Files**
+- `server/app/quality/prompt_asks.py` - 60 asks, 20 each for web / image / script, 10 Hinglish + 10 English per
+  section. Each has `raw` (her rough line), `brief` (the same job filled in BY HAND in the section's anatomy), `must`
+  (what she wanted, checkable) and `facts` (literals that must come back unchanged; a list = alternative spellings,
+  because a Hinglish script may say "5 baje" for "5 am"). Made-up businesses, no phone numbers.
+- `server/app/quality/promptcard.py` - the scorer, the free card, the live card, her verdicts.
+- `python -m app.quality prompt` (free) | `--live --budget-inr N [--section] [--limit N per section] [--only] [--judge]`
+  | `--status` | `verdict <id> raw|brief|same ["why"]`.
+- `GET /api/quality/prompt`; vps-ops `prompt_card_check` (free) and `prompt_card_try` (2 asks per section, Rs 250 cap).
+- `server/tests/test_v0785_prompt_card.py` - 11 tests, engines replaced by fakes, no model.
+
+**What runs live**
+- web = the website architect's PLAN only (`architect._ask` + `clean` + `depth`): one call, no project row, no build.
+- script = `create.service.write("script", ...)`; the brief arm also sets format / length / language / tone.
+- image = `photogen.make` (fast), the PNG kept in `data/quality/promptcard-img/`, then ONE reader call answering
+  yes / no per statement from the picture.
+- optional `--judge` = a blind pick for web / script with the shown order alternating; the card prints how often
+  the first-shown side won.
+
+**Scoring (code, 0-100)** web: must 55, facts 20, architect depth 15, nothing invented 10. script: must 50, facts 25,
+length band 10, nothing invented 15. image: share of statements the reader confirms. A pair is a win only with a
+lead over 5 points. Section rule: BUILD = gain >= 10 AND the brief clearly better in >= 60% of pairs; DROP = gain
+< 4; else RETHINK; under 8 finished pairs = no verdict; once she has picked 5 pairs of a section her picks decide.
+All thresholds and weights are judgement, not measured.
+
+**Money** a live card refuses to start without `--budget-inr`; each ask is a PAIR (raw then brief) and a pair starts
+only when the budget has room for both, sections interleaved, so a budget that runs out leaves both arms with the
+same coverage. Rupees = `usage.run_meter` x the server's rate (+ the picture engine's flat price when its call was
+not metered). Three dead pairs in a row stop the card.
+
+**Found by its own checks while building**
+1. The architect's plan carries HER words back (`spec["words"]`), so with the same plan the brief arm scored 88 and
+   the raw arm 37 - the brief was being paid for its own text. The web runner drops that field and `unecho()` removes
+   any pasted-back copy (whole, or any line of 40+ characters) before scoring; a test holds "same plan = same marks".
+2. The picture engine's own guard refuses a national-flag picture - the free card asks the engines' free guards for
+   every ask, found it, and the ask was replaced (kites).
+3. A price followed by a full stop ("Rs 299.") read as invented; a JSON-escaped rupee sign was not read.
+
+**Not verified / limits**
+- NO live card has run. There are no numbers. Rs 25 / 3 / 4 a run are ASSUMED (about Rs 1,280 for all 120 runs).
+- The brief is hand-filled: this is the CEILING of the idea. BUILD means worth building; whether Hoola can fill the
+  brief itself is P1's proof.
+- web scores the PLAN, not a built site. The script length band is rough (2-9 words a second over the whole
+  screenplay). The picture reader is a model: its yes / no can be wrong; her verdict on the saved PNGs outranks it.
+- The engines run on whatever model the server routes to (GLM door / one-model rules apply as in production).
+- Older reds proven on the commit before this one, untouched: test_v0240_calm_brand::test_version (28 == 25),
+  test_v0649_web_studio three-looks walk, test_v0693_app_studio design-run, test_v0784_sawaal_card look-one.

@@ -14,6 +14,8 @@
          (v0.478 R7: the card across the engines, scored the same way; --apply writes the winner as the default, only when she says so)
    | parity [--check | --live] [--judge] [--only id,id] [--limit N] [--cat followup|one_tool|long|make|memory|trap|lang]
        [--label x] | parity --status   (v0.732 CLAUDE PARITY card: 60 multi-turn conversations through the real run_turn)
+   | prompt [--live --budget-inr N] [--section web|image|script] [--limit N] [--only id,id] [--judge] [--label x] | prompt --status
+       | prompt verdict <id> raw|brief|same ["why"]   (v0.785 HOOLA PROMPTING P0: her raw line vs a hand-filled brief, per section)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -71,6 +73,42 @@ def _skillscard(argv: list[str]) -> int:
     print("\n".join(SC.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
+
+
+def _promptcard(argv: list[str]) -> int:
+    """v0.785 HOOLA PROMPTING P0 NAAP. Free by default; --live spends model calls and needs --budget-inr."""
+    from . import promptcard as PC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "verdict":
+        if len(argv) < 3:
+            print('usage: python -m app.quality prompt verdict <id> raw|brief|same ["why"]')
+            return 2
+        try:
+            v = PC.set_verdict(argv[1], argv[2], argv[3] if len(argv) > 3 else "")
+        except ValueError as e:
+            print(str(e))
+            return 2
+        print(f"  {argv[1]}: her pick = {v['pick']}")
+        return 0
+    if "--status" in argv:
+        for c in PC.saved():
+            print(f"  {c['file']}  {c.get('label') or ''}  Rs {c.get('inr')}  " + ", ".join(
+                f"{s} {d.get('verdict')} ({d.get('gain')})" for s, d in c["sections"].items()))
+        print(f"  her picks: {len(PC.verdicts())}")
+        return 0
+    items = PC.pick(only=val("--only"), limit=int(val("--limit") or 0), section=val("--section"))
+    if "--live" in argv:
+        try:
+            card = asyncio.run(PC.live_card(items, budget_inr=float(val("--budget-inr") or 0), judge="--judge" in argv))
+        except ValueError as e:
+            print(str(e))
+            return 2
+    else:
+        card = PC.free_card(items if (val("--only") or val("--limit") or val("--section")) else None)
+    card = PC.save(card, val("--label"))
+    print("\n".join(PC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0 if card.get("kind") == "live" or card.get("ok") else 1
 
 
 def _runoff(argv: list[str]) -> int:
@@ -291,6 +329,8 @@ def main(argv: list[str]) -> int:
         return _leadscard(argv[1:])
     if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
         return _skillscard(argv[1:])
+    if argv and argv[0] == "prompt":        # v0.785 HOOLA PROMPTING P0 (free; --live costs model calls, needs --budget-inr)
+        return _promptcard(argv[1:])
     if argv and argv[0] == "research":      # v0.471 R0 RESEARCH card (free; --live costs model calls + web)
         return _researchcard(argv[1:])
     if argv and argv[0] == "code":          # v0.360 coding card (model calls: ~12 Opus jobs)

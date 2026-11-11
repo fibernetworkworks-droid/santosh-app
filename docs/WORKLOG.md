@@ -2889,3 +2889,10 @@ Task ID: PLAN HOOLA PROMPTING (11 Nov 2026)
 Ask: new feature HOOLA PROMPTING (sections: web design, app development, script...) - deep research first, then the moat plan.
 Done: two web reads (how prompting works: vendor guides + papers; the prompt-product market) -> docs/research/prompting/00_INDEX.md; plan docs/HOOLA_PROMPTING_PLAN.md (brief object, six machines, 13 sections, page, score, outcome ledger, phases P0-P12, 6 owner decisions). Docs only, no version change.
 Next: P0 NAAP (the prompt card) on her GO.
+
+---
+Task ID: v0.785.0 PROMPT NAAP (P0 of HOOLA PROMPTING)
+Ask: the owner pasted the P0 step of the plan (measure before building).
+Built: quality/prompt_asks.py (60 asks: raw + hand-filled brief), quality/promptcard.py (scorer, free card, live card with a rupee ceiling, rule verdict, her picks), CLI `prompt`, GET /api/quality/prompt, vps-ops prompt_card_check / prompt_card_try; 11 tests, no model.
+Found: the architect plan echoed her words (brief scored its own text) - fixed; a flag picture the picture engine refuses - replaced.
+Deploy: vps-ops deploy (server-only; no new pip, no tables). Then prompt_card_check (free), then prompt_card_try (Rs 250 cap). Next: read the numbers, then P1 on her GO.
