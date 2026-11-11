@@ -897,7 +897,104 @@ the build carrying picks, look 1 built from her palette, source wiring, a Playwr
 'Your choices' look) and 390 px (fits, Back keeps her words)).
 NOT VERIFIED live: a real Opus build of look 1 from her picks on her server (tests use the fake site AI).
 
-## v0.785.0 HOOLA CODE PHASE 4 (built as 0.783; their LANGGRAPH G4 took 0.783.0 and SAWAAL CARD 0.784.0) — the workspace engine: a real checkout in a locked box, commands, a conversation (owner: "GO PHASE 4 WITH 2 LIVE SESSIONS")
+## v0.785.0 HOOLA AI APPS — AIs that answer HER CUSTOMERS, D0-D5 end to end (11 Nov 2026; owner: "D0 ... D5 --- DO THIS -- DEPLOY A PARALLEL AGENTS TO FINSH THIS END TO END")
+
+After the Dify read for app building (`docs/research/dify/00_APP_BUILDING.md`; ideas only - their licence bars multi-tenant
+use of the source and claims a design patent). Contract: `docs/AIAPPS_PLAN.md`. The core was written first, then four
+parallel agents built on it in their own worktrees; everything merged, mounted and walked in a real browser here.
+
+An AI app sits BESIDE the business AI Employee (WhatsApp inbox v0.59, Seva, Call Centre) and reuses its engines; many apps
+per business. `server/app/aiapps/`:
+- **D0 core** - `models.py` (ai_apps / ai_app_versions / ai_app_keys / ai_app_sessions / ai_app_messages, init_db + self-heal),
+  `soul.py` (the checked settings: about, persona, facts, knowledge, ACTIONS handover / ticket / slots / book only, form,
+  refuse topics, language, monthly rupee cap, DPDP notice; `blanks()`), `store.py` (draft + immutable versions; publish =
+  HER tap bound to the draft hash, 409 stale / 422 unfixed / 422 unfilled [blanks]; restore = old soul published again as
+  the newest version), `runtime.py` (the answer: TRAPS in code first - OTP / PIN / card, payments + refunds, other
+  customers' data, "ignore your instructions", her refuse topics; then her approved answers (gyaan annotations), Seva
+  knowledge, real slots / booking / Seva tickets; the model LAST, from her facts only, under her monthly cap - a reply with a
+  number not in her facts or a claim nobody did is thrown away; a model that fails = an honest hand-over; OTP / PIN values
+  masked before logging).
+- **D1 builder** (agent A) - `builder.py` her one line -> a checked soul, one repair round, invented numbers dropped,
+  missing details as questions; `POST /api/aiapps/plan`.
+- **D2 publishing** (agent B) - `public.py` hosted chat page `/ai/{code}` (self-contained, strict CSP, DPDP notice + consent
+  before the first message, textContent only), `/ai/{code}/embed.js` bubble (sandboxed iframe), `/api/aiapp-pub/{code}/*`;
+  `keys.py` API keys (shown once, sha256 kept, rpm / rph / concurrent limits -> 429) + `POST /api/aiapp-api/v1/chat`;
+  `mcp.py` `/mcp/aiapp/{code}` (initialize / tools/list / tools/call ask, app key); `wa.py` + a guarded hook in
+  `employee/inbox.py` - a live app bound to her business number answers through the existing send path (window, STOP,
+  takeover unchanged; unbound numbers byte-identical). Only a LIVE app with that channel on answers the public.
+- **D3 run + improve** (agent C) - `api.py` owner routes, `ops.py` logs (masked), correct-an-answer (into her approved
+  answers; the same question is answered with her words next time), stats (customer channels only; satisfaction 'no
+  ratings yet', never 0%), gaps, cost alerts once a month at 80% / 100% into her chat (worker slot `aiapp_ops_jobs`).
+- **D4 proof** (agent D) - `proof.py` shop / clinic / school on `__aiappproof__`: 18 normal questions + 22 traps, every trap
+  refused; correction, cap, pause, stale hash, versions + restore and the number guard proved; `python -m app.aiapps.proof`,
+  vps-ops `aiapp_proof`.
+- **D5 templates** (agent A) - `templates.py` 13 trades (kirana, clinic, school, salon, restaurant, coaching, real estate, CA,
+  gym, homestay, repair, pharmacy-info, tiffin form) with a trial that saves nothing; `dsl.py` export (no keys / logs / codes)
+  + import with a dependency check, lands as a draft.
+- Tool `ai_app` (`agent/aiapp_tools.py`; publish_card = a card for HER tap, never a publish), registry 624 -> 625; console page
+  AI Apps (`static/console/aiapps.js` + `.css`, sidebar row).
+
+**Found by the browser walk and fixed here:** a copied template could go live with '[Shop name]' showing to customers
+(publish now refuses unfilled blanks, listed under 'Must be fixed'); a model outage told the visitor 'something went wrong'
+(now the honest hand-over line); the Numbers tab printed the raw object; a JS `null` child printed the word 'null'.
+**Found by agent C:** a typed OTP was stored unmasked in the log (now masked in the core).
+
+Tests: test_v0772_aiapps_{core,builder,publish,ops,proof,console,e2e}.py = 55 passed; tool-count pins 624 -> 625.
+**NOT VERIFIED:** no real customer has used one; every answer here came from a fake model (the sandbox has no model key);
+rate limits are per process (reset on restart, not shared across workers); the phone app has no AI Apps screen (console
+only); WhatsApp delivery through Meta not tried.
+
+## v0.786.0 HOOLA INTERACTIVE, PREMIUM PASS (built as 0.785; their HOOLA AI APPS took 0.785.0; owner: "IT LOOK STALE AND OLD DESIGN MAKE IT MORE PERFECT, ALINE TEXT PROPERLY, FIX ALL BUTTON, ICON, TAB MESSY THINGS --- MAKE IT MORE PREMIUM, ADVANCE AND WITH SOME ANIMATION")
+
+No server change. Same twelve pages, same `/api/interactive/studio/*` and `/api/interactive/hub/*` routes, same data. Only
+`static/console/interactive.js`, the `#hiRoot` block in `v2.css` and one line of `studio.js` changed.
+
+**How it was done:** every page was screenshotted in real Chromium first and the faults were read off the pictures, not guessed.
+
+**What was messy, and the fix**
+- Each page said its name twice (a top bar AND a heading). The top bar is gone; one heading per page (`head()` -> `.hi-head`).
+- The icon rail was too tall for a small laptop and its Create button was squashed. It is a real sidebar now: rows of 34,
+  "Create video" on top, the engine state and "Back to console" at the bottom, and it FOLDS to icons (`#hiRoot[data-slim]`).
+  The editor opens folded so the canvas has room; once she presses the fold button her choice wins (`UI.slim`).
+- Editor: the title row, the scene header and the five tool tabs wrapped onto second lines. Title row = `.hi-edhead` (back,
+  title, saved dot, Save as template, Generate). A scene = header (number, move up / down, remove), the words, then a footer
+  with the look chip and "about N s". Tools = one five-part segmented control (`.hi-tt`). A browser test holds each to ONE row.
+- Dropdowns were raw browser selects. They are drawn (`pick()` -> `.hi-pick`, and `.hi-f:has(>select)`), with an icon and chevron.
+- Thumbnails were empty dark boxes. A scene thumbnail shows the scene's own words or bars (`mini()`), with a dot when it
+  still needs her numbers; a video tile has a play mark, its length and a tint (`thumb()`, tint picked from the id).
+- A picture that cannot load showed a broken image. It shows her initials (`photos()` sets `img.onerror`).
+- One control scale: buttons 40 / 32 (+46 for the main ask), fields 42, corners 10 / 16, status chips with a leading dot.
+- Stage: tinted with HER brand colour (`--hi-brand`, validated hex), a "Scene 2 of 3 - 16:9" tag, previous / next under it.
+- Home: starter lines under the ask box (none carries a number), engine state as one slim line, month figures as three tiles.
+
+**Motion - once only, never held**
+- `flash(cls, ms)` puts a class on the view and takes it off again: `hi-in` when a page opens (sections rise in, cards
+  staggered), `hi-tabin` when a tab changes, `hi-scin` when the scene changes (words rise, bars grow). A later redraw of the
+  same page does not replay it.
+- Cards, buttons and thumbnails lift under the pointer; the sidebar marker slides in; the dialog pops.
+- Fill is `backwards`, never `both` / `forwards`: a held animation keeps a layer alive under text (CRISP TEXT, v0.256).
+- The only looping motion is "working now" (the live chip and the running step). Reduce motion and calm switch everything off.
+
+**Found on the way**
+- Three class names of the page (`.top`, `.tag`, `.live`) are styled globally by the console and leaked in (a border under
+  every card icon). Renamed to `.hi-ftop`, `.hi-stag`, `.hi-now`. RULE: inside `#hiRoot` use `hi-` names for anything generic.
+- `studio.js` (Create Studio) threw `Cannot read properties of null` on EVERY window resize until Create had been opened once
+  (`closeMenu()` with no root). One guard.
+- `test_v0255 test_sora_only_on_the_logo` was red on main because v0.774's own sidebar used the logo font; green again.
+
+**Tests:** `test_v0747_hoola_interactive.py` - the browser walk now also checks one `h1` per page, every select drawn, the
+sidebar fits 1366 x 660 without scrolling, the entrance class leaves by itself, a starter line fills the box, the empty picture
+becomes initials, the three editor rows do not wrap, the sidebar folds / opens, next scene works; NEW
+`test_the_premium_pass_keeps_the_console_rules` (no blur, no capitals, nothing above 600 or under 12px, no held animation,
+motion can be switched off, no clashing class names). Needs `HOOLA_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`.
+
+**Still red on main, not from this work, left alone:** `test_v0221 test_console_chrome_speaks_english` (build.js),
+`test_v0255 test_no_heavy_weights_caps_or_tiny_text` and `test_v0256 test_crisp_text_rules` (another block's `font-weight:700`
+and `animation:hmWord ... both`).
+
+**NOT VERIFIED:** she has not seen it on her server. Checked here in light, dark, 1366 x 660 and 400 px wide.
+
+## v0.787.0 HOOLA CODE PHASE 4 (built as 0.783; their LANGGRAPH G4 took 0.783.0, SAWAAL CARD 0.784.0, HOOLA AI APPS 0.785.0 and HOOLA INTERACTIVE PREMIUM PASS 0.786.0) — the workspace engine: a real checkout in a locked box, commands, a conversation (owner: "GO PHASE 4 WITH 2 LIVE SESSIONS")
 
 Phase 4 of `docs/HOOLA_CODE_WEB_PLAN.md`, the one that changes HOW Hoola codes. Until now a session was a task: the
 repo was read through the GitHub API, edits lived in memory, and the only thing Hoola could run was her one declared

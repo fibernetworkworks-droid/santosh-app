@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D3 run & improve: what her app said, her corrections, its numbers, its gaps, its cost alerts.
+"""v0.785 HOOLA AI APPS - D3 run & improve: what her app said, her corrections, its numbers, its gaps, its cost alerts.
 
   logs     - every question and answer (masked), newest first, filterable by outcome / words.
   correct  - HER better answer for one logged question: saved as her approved answer (gyaan annotations), so the

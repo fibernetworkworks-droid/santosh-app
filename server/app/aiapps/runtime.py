@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - the engine that answers HER CUSTOMERS.
+"""v0.785 HOOLA AI APPS - the engine that answers HER CUSTOMERS.
 
 The order of an answer, every time (cheapest and safest first; the model is the LAST resort):
 
@@ -296,8 +296,12 @@ def _model(a: AiApp, soul: dict[str, Any], q: str, acc: dict[str, Any]) -> dict[
         usage.bind(tenant=a.tenant_id, feature="aiapps")
     except Exception:                                   # noqa: BLE001
         pass
-    with usage.run_meter(acc):
-        out = (ASK[0](system, f"CUSTOMER:\n{q}", 500) or "").strip()
+    try:
+        with usage.run_meter(acc):
+            out = (ASK[0](system, f"CUSTOMER:\n{q}", 500) or "").strip()
+    except Exception as e:                              # noqa: BLE001
+        log.info("ai app %s: model unavailable: %s", a.id, e)
+        return _unknown(f"model unavailable ({str(e)[:60]})")
     if not out or "UNKNOWN" in out:
         return _unknown("not in her facts")
     allowed = set(re.findall(r"\d+(?:[.,]\d+)?", " ".join(facts) + " " + (soul.get("about") or "")))

@@ -2884,7 +2884,17 @@ Task: owner "GO L3" - design question cards with visual options before a Studio 
 Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
 Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
 
-Task ID: v0.785.0 HOOLA CODE PHASE 4 (built as 0.783; re-versioned on merge: LANGGRAPH G4 took 0.783.0, SAWAAL CARD 0.784.0)
+---
+Task ID: HI-PREMIUM
+Date: 2026-11-11
+Task: Hoola Interactive premium redesign (owner: "it look stale and old design ... more premium ... with some animation")
+Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
+(folding sidebar, one heading per page, drawn dropdowns, one control scale, editor rows that do not wrap, thumbnails with
+content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
+Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
+Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.
+
+Task ID: v0.787.0 HOOLA CODE PHASE 4 (built as 0.783; re-versioned twice on merge: LANGGRAPH G4 took 0.783.0, SAWAAL CARD 0.784.0, HOOLA AI APPS 0.785.0, HOOLA INTERACTIVE PREMIUM PASS 0.786.0)
 Ask: GO PHASE 4 WITH 2 LIVE SESSIONS (the workspace engine).
 Built: devsahayak/wsp.py (real checkout in one locked box per session, run_command / background / todo / ask_her, conversation history, 2 live + pause / resume, snapshots + rewind, restart pickup), devlab/box.py live-box functions, message / rewind / terminal / files routes, per-repo box settings, page tabs Files + Terminal + Box card; fixed revise-on-open-PR not saving its round; 20 tests incl. 3 browser walks.
 Deploy: vps-ops deploy, then ws_check (every line ok), then ws_flip (DEV_WORKSPACE=true). No new pip; one new table + five nullable columns self-heal. NOT verified on a real Docker box or model; coding cards not re-run with the engine on.
