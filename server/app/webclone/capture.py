@@ -183,7 +183,7 @@ def capture(url: str, out_dir: Path, tenant_id: str = "") -> dict:
     except CaptureError:
         raise
     except Exception as e:
-        raise CaptureError(f"Yeh website khuli hi nahi ({e.__class__.__name__}) - link check kijiye.") from e
+        raise CaptureError(f"This website did not open at all ({e.__class__.__name__}) - check the link.") from e
 
     manifest["title"] = title
     manifest["dom_chars"] = len(dom)
