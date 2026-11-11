@@ -707,7 +707,9 @@
     drawMsgs();
     if (THREAD.conv) await readThread();
   }
-  const clean = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
+  // the console's hint lines ride at the END of her message as "\n\n[Web console ...]"; a ] inside a game title (or a
+  // message sent from another screen) must never let them show in her bubble, so cut at the FIRST hint marker
+  const clean = t => { const x = S(t), i = x.indexOf('\n\n[Web console '); return i >= 0 ? x.slice(0, i) : x; };
   const tsec = a => { const t = S(a); if (!t) return 0; const ms = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + 'Z'); return isNaN(ms) ? 0 : ms / 1000; };
   async function readSteps(c) {
     try {
