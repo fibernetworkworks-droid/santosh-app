@@ -96,7 +96,7 @@ CATALOG: dict[str, dict[str, Any]] = {
     "accounts": {"name": "GST & Accounts", "live": True, "icon": "receipt",
                  "pitch": "Your accountant that never takes a day off: every bill in one register, GST prepared and checked before the "
                           "deadlines, filed from Hoola when you give the OTP.",
-                 "does": ["One register of every sale and purchase bill - from GST Sahayak, wholesale, office bills and your app - each counted once",
+                 "does": ["One register of every sale and purchase bill - from the GST Assistant, wholesale, office bills and your app - each counted once",
                           "This month's GST dates with days left, and what happens if one is missed",
                           "Flags the same bill entered in two places, and any change to a month you have locked",
                           "Rules kept as data with their source and the date they were checked - nothing remembered silently",
@@ -168,7 +168,7 @@ CATALOG: dict[str, dict[str, Any]] = {
     "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
              "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
     # v0.585 PAISA SAHAYAK (register docs/research/banking_finance_industry, Wave 1 consumer slice: #1-3, 5-8)
-    "paisa_sahayak": {"name": "Paisa Sahayak (money safety)", "live": True, "icon": "receipt", "group": FIN_GROUP,
+    "paisa_sahayak": {"name": "Money Safety Assistant", "live": True, "icon": "receipt", "group": FIN_GROUP,
                       "pitch": "On your side with money: reads a loan's real cost, finds hidden bank charges, warns about scams, and drafts the complaint. It calculates and explains; you decide and you tap.",
                       "does": ["Loan reader: EMI, every fee, the money you actually receive and the true yearly rate (APR); a 'flat rate' turned into its real rate; offers side by side",
                                "Part-payment check: interest saved against the prepayment charge you typed in",
@@ -182,7 +182,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                                 "Give personalised investment, tax or legal advice, or promise a loan or a score",
                                 "Store your statement: it reads it, answers, and forgets"]},
     # v0.602 VITT SAHAYAK (register docs/research/banking_finance_industry, Wave 2: institution assists with a named decider)
-    "vitt_sahayak": {"name": "Vitt Sahayak (finance desk)", "live": True, "icon": "receipt", "group": FIN_GROUP,
+    "vitt_sahayak": {"name": "Finance Desk Assistant", "live": True, "icon": "receipt", "group": FIN_GROUP,
                      "pitch": "A finance-desk assistant for owners, CAs and credit teams: goal and tax-date maths, TDS and ageing checks, AML and name-screening triage, credit memo drafts. It prepares and checks; the CA, analyst or committee decides.",
                      "does": ["Goal planner: monthly SIP per low / mid / high scenario, inflation-adjusted; advance-tax instalment dates",
                               "TDS in your books against 26AS / AIS rows: what matches, what to ask the party",
@@ -209,7 +209,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                             "Block an account or accuse anyone: alerts are evidence for the analyst or compliance officer",
                             "Store your rows: it reads them, answers, and forgets"]},
     # v0.604 DUKAAN DESK (register docs/research/retail_ecommerce_industry, Wave 1: kirana and small online seller copilots; prepare and check, the owner decides)
-    "dukaan_desk": {"name": "Dukaan Desk (shop and online seller)", "live": True, "icon": "receipt", "group": RETAIL_GROUP,
+    "dukaan_desk": {"name": "Shop Desk (shop and online seller)", "live": True, "icon": "receipt", "group": RETAIL_GROUP,
                     "pitch": "A copilot for a shop or a small online seller: the day's sales, what to reorder, what is stuck or expiring, margin and MRP checks, oversell and return-risk warnings, settlement matching and GST split. It prepares and checks; you set prices, place orders and publish.",
                     "does": ["Daily summary: total, cash / UPI / credit split, best hour, top items; weekly sales forecast with your own festival multipliers",
                              "Reorder quantities with the formula shown, fast and slow movers, expiring stock and the cash stuck in dead stock",
@@ -250,7 +250,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                                "Check that a GSTIN or bank account really exists: only its format and check digit",
                                "Store your rows: it reads them, answers, and forgets"]},
     # v0.609 BIMA DESK (health-insurance register Wave 1: customer side + admin)
-    "bima_desk": {"name": "Bima Desk (health-insurance claims and servicing)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
+    "bima_desk": {"name": "Insurance Desk (health-insurance claims and servicing)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
                   "pitch": "A coworker for the policyholder, the broker desk and the claims-admin team: what documents a claim needs, a transparent payable worksheet, why a settlement came out lower, appeal outlines, renewals and grievance clocks. It prepares; the insurer, the TPA or a named officer decides.",
                   "does": ["Claim document checklist (cashless or reimbursement) with missing items and filing deadlines",
                            "Itemised payable worksheet (non-payables, tariff caps, room-rent proportion, co-pay, deductible) and the gap to the settled amount",
@@ -262,7 +262,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                             "Send a message, file an appeal or store your documents: it drafts and checks, you send",
                             "Verify an ID with any authority: format checks only, Aadhaar shown masked"]},
     # v0.610 BIMA ASSIST (health-insurance register Wave 2: assists with a named human decider)
-    "bima_assist": {"name": "Bima Assist (adviser, claims and compliance desk)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
+    "bima_assist": {"name": "Insurance Assist (adviser, claims and compliance desk)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
                     "pitch": "Drafts and flags for the people who decide: plan side-by-sides, disclosure prompts, coverage and waiting-period checks with the clause shown, pre-auth checks, query replies, medical timelines, rejection and grievance letters, ombudsman packets, wording and mis-selling reviews, FHIR claim skeletons and code maps.",
                     "does": ["Plan comparison from the numbers you give, material-fact prompts, proposal completeness check",
                              "Coverage and exclusion checks (waiting periods, moratorium, sub-limits, room-rent proportion) with each line tied to the clause you supplied",
@@ -274,7 +274,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                               "Recommend a plan or tell anyone to switch insurers: suitability is the adviser's and the customer's call",
                               "Store your documents: it reads, drafts and forgets"]},
     # v0.611 BIMA RISK (health-insurance register Wave 3: pricing, underwriting and fraud signals)
-    "bima_risk": {"name": "Bima Risk (actuary, underwriting and SIU desk)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
+    "bima_risk": {"name": "Insurance Risk (actuary, underwriting and SIU desk)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
                   "pitch": "Worksheets for the people who decide: loss ratio and frequency by group, a run-off triangle working paper, premium-vs-cost fairness checks, underwriting rule routing with the rule shown, provider and duplicate-claim outliers, cashless-upgrade flags, a neutral case file and a fairness audit of the fraud model. Hits are questions, not verdicts.",
                   "does": ["Experience tables (loss ratio, frequency, severity, thin groups marked), observed price trends, chain-ladder triangle as a working paper",
                            "Pricing-fairness gaps and jumps on the relativities you give; protected attributes refused as factors",
@@ -285,8 +285,8 @@ CATALOG: dict[str, dict[str, Any]] = {
                             "Use religion, caste, gender, locality or name as a rule or rating factor",
                             "Share data with any industry database or store your rows: it reads, answers and forgets"]},
     # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
-    "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
-             "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",
+    "kaan": {"name": "Transcription", "live": True, "icon": "ear", "group": VOICE_GROUP,
+             "pitch": "Audio to text: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",
              "does": ["Transcribe an audio / video file from chat into text (mp3, wav, m4a, ogg, flac... up to 5 GB)",
                       "Detect the language (hi, mr, en... 90+), or you name it; translate-to-English on the capable models",
                       "Per-word timestamps for subtitles and precise edits",
@@ -433,7 +433,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                            "A PDF you can hand to your team; changes in your words make the next version",
                            "Reads your pull requests against the approved design (on its own if you switch it on)"],
                   "needs": ["What the system must do, who uses it and roughly how many people a day",
-                            "Optional: your GitHub repo (connected once in the Developer Sahayak)"],
+                            "Optional: your GitHub repo (connected once in the Developer Assistant)"],
                   "never": ["Push, merge or deploy anything - its PR notes go out only on your tap",
                             "Run your code on its server or touch your PC",
                             "Make up scale numbers: no users-a-day number, no capacity sheet",
@@ -459,7 +459,7 @@ CATALOG: dict[str, dict[str, Any]] = {
     # v0.453 EDUCATION, RESEARCH & LAB: the Shiksha suite (v0.381 / v0.387 / v0.403) and Prayogshala (v0.415 / v0.441) were
     # live on the server and the phone but never in the Hub. Hiring one adds the Education Desk to the console sidebar; it
     # does NOT gate the tools - every user had them before this version and keeps them (see EDU_OPEN).
-    "tutor": {"name": "Personal Tutor (Guru Sahayak)", "live": True, "icon": "book", "group": EDU_GROUP,
+    "tutor": {"name": "Personal Tutor", "live": True, "icon": "book", "group": EDU_GROUP,
               "pitch": "Teaches one learner at a time: a hint first, then a step, the full answer last - and practice that comes back before it is forgotten.",
               "does": ["Explains a doubt with a hint ladder, one rung each time the learner asks",
                        "Checks an answer with code or the answer key before calling it right",
@@ -473,7 +473,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                         "Work with a child without the guardian's consent, or past the daily time you set",
                         "Share a child's details or report with anyone but the guardian, and that only on your tap",
                         "Call an answer certain when no code or answer key checked it"]},
-    "school_office": {"name": "School Office Assistant (Daftar)", "live": True, "icon": "book", "group": EDU_GROUP,
+    "school_office": {"name": "School Office Assistant", "live": True, "icon": "book", "group": EDU_GROUP,
                       "pitch": "Runs the school office: attendance, grading, timetable and report cards - with every mark signed off by the teacher.",
                       "does": ["Daily attendance and an absence alert card for each guardian, sent on your tap",
                                "Grades answer sheets, OMR sheets, Google Forms quizzes, code and rubric work",
@@ -485,7 +485,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                                 "Handle a child's marks or attendance without the guardian's consent",
                                 "Send a guardian a message, alert or report card without your tap, or to any other child's guardian",
                                 "Send bulk WhatsApp messages by itself"]},
-    "curriculum": {"name": "Curriculum & Exam Designer (Pathyakram)", "live": True, "icon": "book", "group": EDU_GROUP,
+    "curriculum": {"name": "Curriculum & Exam Designer", "live": True, "icon": "book", "group": EDU_GROUP,
                    "pitch": "Question banks, board-pattern papers with answer keys, year and lesson plans, and rubrics - every item approved by a teacher.",
                    "does": ["A question bank where every AI question is a draft until a teacher approves it",
                             "Papers in your board's pattern with an answer key and blueprint",
@@ -497,7 +497,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                              "State a board pattern or marks as certain without a source - it says 'estimate'",
                              "Send a paper, quiz or plan out without the teacher's or your tap",
                              "Touch a leaked or 'leaked' exam paper"]},
-    "research": {"name": "Research Assistant (Shodh)", "live": True, "icon": "book", "group": EDU_GROUP,
+    "research": {"name": "Research Assistant", "live": True, "icon": "book", "group": EDU_GROUP,
                  "pitch": "Finds and reads the literature through official scholarly APIs, maps the gaps and keeps your references exact.",
                  "does": ["Searches OpenAlex, Crossref, arXiv and PubMed; every DOI is checked on Crossref",
                           "Screens papers against your question and summarises the ones that pass",
@@ -510,7 +510,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                            "Write a thesis, assignment or paper for you to submit as your own",
                            "Put a number in the results that the analysis did not produce",
                            "Get past a paywall (only legal open-access copies)"]},
-    "school_register": {"name": "School Register (Shiksha)", "live": True, "icon": "book", "group": EDU_GROUP,
+    "school_register": {"name": "School Register", "live": True, "icon": "book", "group": EDU_GROUP,
                         "pitch": "The school's register: classes, learners, guardian consent and the gradebook every other education employee works from.",
                         "does": ["Classes, sections and learners in one register",
                                  "Guardian consent recorded per learner before any child's data is used",
@@ -520,7 +520,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                         "never": ["Use a child's details without the guardian's consent",
                                   "Show marks to anyone but the learner's own guardian",
                                   "Treat an AI mark as final"]},
-    "lab": {"name": "Virtual Science Lab (Prayogshala)", "live": True, "icon": "book", "group": EDU_GROUP,
+    "lab": {"name": "Virtual Science Lab", "live": True, "icon": "book", "group": EDU_GROUP,
             "pitch": "22 NCERT physics practicals in a realistic 3D lab: real equipment, the steps, the record book, the graph and the viva.",
             "does": ["Theory, steps, record book, graph and viva for each practical",
                      "Readings computed by the same physics code that checks them, within 1 %",
@@ -581,13 +581,13 @@ CATALOG: dict[str, dict[str, Any]] = {
         "never": ['File on a government portal for you - you file', 'Give legal advice: it cites the rule, not an opinion']},
     # v0.512 CONSTRUCTION & REAL ESTATE - Wave 1 (records and money, register #s in brackets; tier A; the tier-C
     # refusals ride construction/gates.py and every tool description)
-    "const_store": {"name": 'Material Store Manager (Saaman)', "live": True, "icon": "hammer", "group": CONST_GROUP,
-        "pitch": 'Store ka hisaab: GRN, issue, stock, barbadi - the sheet the store in-charge signs.',
+    "const_store": {"name": 'Material Store Manager', "live": True, "icon": "hammer", "group": CONST_GROUP,
+        "pitch": 'Store accounts: GRN, issues, stock, wastage - the sheet the store in-charge signs.',
         "does": ['Goods received notes with challan / invoice numbers (#61)', 'Issues to gangs and sites, min-max reorder alerts',
                  'Reconciliation: received vs issued vs on-hand with the wastage %'],
         "needs": ['Your item list and reorder levels (Hoola learns them as you go)'],
         "never": ['Order anything itself - the indent card waits for your tap', 'Invent a rate, a quantity or a vendor']},
-    "const_labour": {"name": 'Labour & Wages Desk (Mazdoor Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_labour": {"name": 'Labour & Wages Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Muster, licences, wage audit and the BOCW cess / TDS arithmetic - determined numbers only.',
         "does": ['Daily muster rolls (#85), contract-labour licence and BOCW renewal calendar',
                  'Wage-audit working paper with the trail: workers x days x rate, OT rule stated (#87)',
@@ -595,7 +595,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['Your wage rates with their source (Hoola never supplies a minimum wage from memory)'],
         "never": ['Move money - wages are paid by you, recorded after', 'File a licence or a return for you',
                   'Give the minimum wage from memory - the pack cites, it never guesses']},
-    "const_customer": {"name": 'Customer Money & Handover Desk (Grahak Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_customer": {"name": 'Customer Money & Handover Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Demand letters, receipts, possession checklists and the DLP clock after handover.',
         'does': ['Milestone-linked demand drafts with the interest clause from YOUR agreement (#92)',
                  'Receipts against demands, part-paid tracked', 'Handover checklist per unit, keys and utilities recorded (#97)',
@@ -604,7 +604,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['Your projects, units and payment milestones'],
         "never": ['Send a demand or a vendor letter itself - sent only on your word',
                   'Decide a legal entitlement (interest claims ride the letter, not the ledger)']},
-    "const_quality": {"name": 'Quality Records Keeper (Gunvatta)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_quality": {"name": 'Quality Records Keeper', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'ITPs with hold points, NCRs, material-test lots, the IS 456 cube draft - drafts, never verdicts; permits and toolbox talks for the EHS officer.',
         "does": ['Inspection & test plans per activity with HOLD points (#75)', 'NCR log with severity and close-out',
                  'Material test register: lab results as reported, verdict pending until a human says it (#76)',
@@ -616,7 +616,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['Your QA plan (the sitesup cube_limits ride the same law)'],
         "never": ['Accept work or a cube - the QA engineer signs', 'Grade a lab result by itself',
                   'Issue a permit-to-work or a safety clearance - the safety officer signs']},
-    "const_meet": {"name": 'Meeting Secretary (Baithak)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_meet": {"name": 'Meeting Secretary', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'OAC / site / coordination meetings: minutes as said, actions chased till closed.',
         "does": ['Meeting records with attendees and minutes (#67)', 'Action items with owners and due dates, late-first chase',
                  'One clean minutes PDF to circulate'],
@@ -624,7 +624,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "never": ['Mark an action done by itself - closed on your word', 'Take a decision the meeting did not take']},
     # v0.531 CONSTRUCTION WAVE 2 - file-builders & checkers (tier B: a named licensee on every output)
     "const_approvals": {"name": 'Approvals Office (Liaison Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
-        "pitch": 'Building permission se OC tak - file ke kaagaz, checklist, fees aur renewal calendar.',
+        "pitch": 'From building permission to OC - the file\'s papers, checklist, fees and renewal calendar.',
         "does": ['Approval files per authority with the document checklist (#28)',
                  'The packet assembler: forms, drawings, NOCs, undertakings - index PDF with the gaps shown (#29, #36)',
                  'Fire-NOC packet, EC / CTE-CTO tracker, utility liaison files (#30, #31, #32)',
@@ -633,7 +633,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['Your authority list and their actual document demands (the starter checklist bends to your ULB)'],
         "never": ['File anything on a portal - the owner\'s DSC / the licensee files', 'Sign or certify any form',
                   'Invent a fee or a rule - the pack cites or the tool refuses']},
-    "const_qs": {"name": 'QS Desk (Naap-Rate)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_qs": {"name": 'QS Desk (measurements and rates)', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'IS 1200 take-off with the formula trail, rate build-up, BOQ, cost control - working paper, never a certificate.',
         "does": ['Quantity take-off by IS 1200 formulae - qty + formula + inputs stored together, recompute runs on demand (#37)',
                  'Bar-bending schedule DRAFTS with the d^2/162 trail (#73)',
@@ -654,7 +654,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['Your registration details, quarters and receipts'],
         "never": ['Certify completion % or an escrow withdrawal - promoter / CA / architect / engineer declare',
                   'File anything with MahaRERA for you', 'Let a withdrawal through without the certificate ref']},
-    "const_contracts": {"name": 'Contracts Desk (Theka-Kaayda)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_contracts": {"name": 'Contracts Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Contract register, obligations chase, variation papers, claims working papers.',
         "does": ['Contract register with notice windows from YOUR contract (#44)',
                  'Obligations both sides with the due-date chase, late first (#44)',
@@ -676,7 +676,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['The tenders you are watching and your go / no-go factors'],
         "never": ['Bid into a portal by itself - the bid manager submits', 'Make the bid / no-bid call',
                   'Rate a vendor on its own opinion']},
-    "const_drawqa": {"name": 'Drawing QA Desk (Dekh-Rekh)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_drawqa": {"name": 'Drawing QA Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Drawing register, bye-law rule rows, declared-vs-limit arithmetic - the architect reviews.',
         "does": ['Drawing register: dwg no, revision, scale-as-noted, source - document level, PDF/DWG-first (#16)',
                  'Bye-law rules as DATA: clause + source required, pack rows and project rules side by side (#9)',
@@ -685,7 +685,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['The bye-law limits that bind your plot (with their clause + source)'],
         "never": ['Claim model-level checking - a PDF was never a model',
                   'Approve or pass a drawing - the project architect does', 'Supply a bye-law limit from memory']},
-    "const_bim": {"name": 'BIM Desk (Model Kaam)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_bim": {"name": 'BIM Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Open formats only: IFC read honestly, BCF issues out, IDS subset checks, clash candidates, 4D/5D on the model\'s own quantities.',
         "does": ['IFC (STEP text) read: classes, GUIDs, quantities, placements - the read says what it saw (#18)',
                  'Model health report: duplicate GUIDs, nameless, no-quantity, no-placement gaps (#18)',
@@ -702,7 +702,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                   'Invent a quantity - the model\'s numbers ride with their GUID, or the row refuses',
                   'Approve the as-built set - the site architect / QS does (tier C)',
                   'Be a live 3D twin or a sensor platform - a data-link register is what it is']},
-    "const_predesign": {"name": 'Pre-design Desk (Shuruat)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_predesign": {"name": 'Pre-design Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Load take-down, preliminary sizing by IS tables, MEP estimates, fire rule hits - working papers for the named engineer.',
         "does": ['Slab load take-down: LL from the IS 875 pack rows, self-weight with the trail (#10)',
                  'Column load + preliminary size by IS 456 cl 39.3 (short braced axial), rounding shown (#10)',
@@ -718,7 +718,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                   'Issue Form A/B - only the Licensed Agency does',
                   'Order formwork struck or tag a scaffold safe - the site engineer / competent person do (tier C)',
                   'Striking times outside Table 10 scope (blending cements, <= 15 degC) - refused, never improvised']},
-    "const_survey": {"name": 'Survey Desk (Naap-Zameen)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_survey": {"name": 'Survey Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Traverse closure, shoelace areas, grid volumes, scan deviations, RERA carpet statements - arithmetic for the survey lead.',
         "does": ['Survey jobs from coordinate rows or LandXML CgPoints (surfaces/observations NOT parsed - said on the tin) (#22)',
                  'Traverse loop closure + precision; shoelace boundary area vs the 7/12 record with its source (#22)',
@@ -732,7 +732,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                   'Interpret the orthomosaic or the point cloud - it does arithmetic on YOUR readings',
                   'Guess a Z, a policy, or a tolerance',
                   'Compute an area from lat/lng degrees or fetch/interpret a map server - both refused']},
-    "const_delay": {"name": 'Delay Desk (Deri-Kaagaz)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_delay": {"name": 'Delay Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'As-planned vs as-built with slip days, windows, notice-compliance arithmetic - working paper, never an entitlement verdict.',
         "does": ['Baseline + as-built programmes as DATA - criticality is YOUR mark, no CPM computed (#47)',
                  'Analysis windows (your choice of ranges) and which activities fell inside (#47)',
@@ -743,7 +743,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "never": ['Decide delay entitlement / EOT - the forensic planner + counsel do (tier C refusal)',
                   'Issue the notice - it is drafted into the record only',
                   'Compute a CPM network or declare a critical path']},
-    "const_green": {"name": 'Performance Desk (Hara-Hisaab)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_green": {"name": 'Performance Desk (energy and green)', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Meters, tariffs, ECBC/daylight checks, embodied carbon, water/RWH, green credits, Cx scripts, T&C records, M&V - explained, not certified.',
         "does": ['Meter readings + your bill\'s tariff slabs -> the bill arithmetic and EPI benchmark (#104)',
                  'ECBC / daylight rule rows (clause + source) -> declared vs limit arithmetic (#111, #113)',
@@ -758,7 +758,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                   'Run a building simulation and hand you results',
                   'Accept a T&C result - the arithmetic flags, the T&C engineer accepts']},
     # ---- Wave 4 (v0.586.0): the remaining seats (plan §12 rows, five new desks) ----
-    "const_land": {"name": 'Land & Feasibility Desk (Zameen Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_land": {"name": 'Land & Feasibility Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Parcel register, title checklist, 7/12 reconciliation, FSI worksheet, cost/funding totals, JV shares - arithmetic for the developer.',
         "does": ['Parcel register: survey no, village, area AS FED with its 7/12 / mutation source (#1)',
                  'Title document checklist with the mark and the NAME of whoever marked it (#2)',
@@ -770,7 +770,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "never": ['Certify a clear title - the title advocate does (tier C)',
                   'Fetch or interpret a land record - rows are pasted with their source',
                   'Advise the funding structure or sign a JV term - CFO / owner / legal head do']},
-    "const_plan": {"name": 'Planning & Controls Desk (Niyojan Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_plan": {"name": 'Planning & Controls Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Baseline variance, resources, risks (P x I), site instructions, cash-flow, EVM, dashboard, agencies, plant bookings - controls arithmetic, no criticality.',
         "does": ['Activity register with YOUR baseline; actual dates and % complete as YOUR word (#63)',
                  'Date variance per activity - critical path is NEVER computed (planner marks it, tier C) (#63)',
@@ -782,7 +782,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['Your baseline, your % complete, your P/I marks, your bills'],
         "never": ['Declare the critical path or an extension of time - planner / PMC do (tier C)',
                   'Forecast EAC or slip "automatically" - arithmetic only, judgement yours']},
-    "const_ehs": {"name": 'EHS & Welfare Desk (Suraksha Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_ehs": {"name": 'EHS & Welfare Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Training & competency register with expiry arithmetic, environmental readings vs FED limits, labour-camp register - Hoola seats no sensors.',
         "does": ['Training & competency register: worker, trade, training, validity -> expired / due-30d lists (#83)',
                  'Environmental readings AS FED vs limits FED WITH SOURCES -> exceedance arithmetic (#84)',
@@ -799,7 +799,7 @@ CATALOG: dict[str, dict[str, Any]] = {
         "needs": ['Your shots, your purpose notes, your asset status'],
         "never": ['Render a frame or produce the deck - Hoola keeps the register, the GPU/designer work'],
         },
-    "const_learn": {"name": 'Training & Coaching Desk (Siksha Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+    "const_learn": {"name": 'Training & Coaching Desk', "live": True, "icon": "hammer", "group": CONST_GROUP,
         "pitch": 'Trainee register, assessments on YOUR pass line, quizzes with the key, contractor records discipline - explained, never advised.',
         "does": ['Trainee / module / assessment registers; pass list = arithmetic on YOUR pass line (#121)',
                  'Topic register with syllabus mapping + quizzes (answer key held) -> score arithmetic (#122)',
@@ -877,9 +877,9 @@ def catalog(tenant: str) -> list[dict[str, Any]]:
 def hire(tenant: str, key: str, trust: str = "seekh") -> dict[str, Any]:
     c = CATALOG.get(key)
     if c is None:
-        raise HireError("Aisa koi employee nahi.")
+        raise HireError("There is no such employee.")
     if not c.get("live"):
-        raise HireError(f"{c['name']} abhi taiyaar ho raha hai; jald aayega.")
+        raise HireError(f"{c['name']} is still being prepared; it is coming soon.")
     ensure_table()
     with session() as s:
         r = _row(s, tenant, key)
@@ -898,7 +898,7 @@ def _set(tenant: str, key: str, status_: str) -> dict[str, Any]:
     with session() as s:
         r = _row(s, tenant, key)
         if r is None or r.status == "left":
-            raise HireError("Yeh employee abhi hired nahi hai.")
+            raise HireError("This employee is not hired yet.")
         r.status = status_
         if status_ == "left":
             r.left_at = now()
@@ -929,7 +929,7 @@ def save_settings(tenant: str, key: str, **kw: Any) -> dict[str, Any]:
     with session() as s:
         r = _row(s, tenant, key)
         if r is None or r.status == "left":
-            raise HireError("Yeh employee abhi hired nahi hai.")
+            raise HireError("This employee is not hired yet.")
         st = _view(r)["settings"]
         trust = kw.pop("trust", None)
         if trust in TRUST:
