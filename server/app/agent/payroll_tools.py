@@ -55,7 +55,7 @@ PAYROLL_TOOLS = [
          "gross": {"type": "number"}, "month": {"type": "integer"}, "gender": {"type": "string"}},
          "required": ["what"]}},
 ]
-PAYROLL_LABELS = {"payroll": "Salary ka kaam kar raha hoon", "payroll_dekho": "Payroll register dekh raha hoon"}
+PAYROLL_LABELS = {"payroll": "Working on salaries", "payroll_dekho": "Checking the payroll register"}
 
 _EMP = ("phone", "gender", "dob", "doj", "designation", "pay", "gross", "uan", "esic_ip", "pan", "account", "ifsc", "regime",
         "declared", "prev_income", "prev_tds", "pf_member", "eps_member", "pf_on_full", "fixed_term", "alias")

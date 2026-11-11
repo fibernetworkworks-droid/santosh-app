@@ -14,7 +14,7 @@ DEVICE_TOOLS = [
         "right settings. You can only open settings for her, never change them yourself."),
      "input_schema": {"type": "object", "properties": {}}},
 ]
-DEVICE_LABELS = {"phone_health": "Phone ki settings dekh raha hoon"}
+DEVICE_LABELS = {"phone_health": "Checking phone settings"}
 
 
 async def phone_health(ctx: Ctx, **_) -> dict[str, Any]:

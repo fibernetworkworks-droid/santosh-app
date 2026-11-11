@@ -67,7 +67,7 @@ WEBFETCH_TOOLS = [
          "max_chars": {"type": "integer", "description": "Longest text to return (default 10000, max 24000)"}},
          "required": ["url"]}},
 ]
-WEBFETCH_LABELS = {"web_fetch": "Website padh raha hoon"}
+WEBFETCH_LABELS = {"web_fetch": "Reading the web page"}
 
 
 def _robots_or_guard(msg: str) -> bool:

@@ -78,7 +78,7 @@ KITAB_TOOLS = [
          "book": {"type": "string"}, "chapter": {"type": "string"}, "status": {"type": "string"}, "hours": {"type": "number"}},
          "required": ["what"]}},
 ]
-KITAB_LABELS = {"kitab": "Kitaab ka kaam kar raha hoon", "kitab_dekho": "Kitaab ka kaam dekh raha hoon"}
+KITAB_LABELS = {"kitab": "Working on the ledger book", "kitab_dekho": "Checking the ledger book"}
 
 _SET_KEYS = ("name", "role", "imprint", "address", "phone", "email", "gstin", "sac", "upi_id", "lang", "rate", "follow_days",
              "morning_time", "rules")

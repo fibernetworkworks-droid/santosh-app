@@ -446,7 +446,7 @@ OFFICEHOURS_TOOLS = [
          }},
 ]
 
-OFFICEHOURS_LABELS = {"officehours": "Office hours baithak chal rahi hai",
-                      "officehours_dekho": "Baithak ke notes dekh raha hoon"}
+OFFICEHOURS_LABELS = {"officehours": "Office hours session in progress",
+                      "officehours_dekho": "Checking the session notes"}
 
 OFFICEHOURS_HANDLERS = {"officehours": officehours, "officehours_dekho": officehours_dekho}

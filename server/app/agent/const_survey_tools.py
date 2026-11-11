@@ -61,8 +61,8 @@ SURVEY_TOOLS = [
          "carpet": {"type": "string"}},
          "required": ["what"]}},
 ]
-SURVEY_LABELS = {"const_survey": "Survey desk par kaam kar raha hoon",
-                 "const_survey_dekho": "Survey desk dekh raha hoon"}
+SURVEY_LABELS = {"const_survey": "Working on the survey desk",
+                 "const_survey_dekho": "Viewing the survey desk"}
 
 
 def _s(v: Any) -> str:

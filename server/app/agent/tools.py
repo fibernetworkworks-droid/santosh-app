@@ -81,16 +81,16 @@ TOOLS = [
 ]
 
 TOOL_LABELS = {
-    "list_lead_lists": "Contact lists dekh raha hoon",
-    "get_lead_list": "Leads padh raha hoon",
-    "check_template": "Template ke rules check kar raha hoon",
-    "submit_template": "Meta ko template approval ke liye bhej raha hoon",
-    "check_template_status": "Meta approval status dekh raha hoon",
-    "create_campaign": "Campaign taiyaar kar raha hoon",
-    "confirm_send": "Bhejne ki permission set kar raha hoon",
-    "get_campaign_status": "Campaign ki report nikaal raha hoon",
-    "control_campaign": "Campaign update kar raha hoon",
-    "haan_karo": "Manzoori laga raha hoon",
+    "list_lead_lists": "Checking contact lists",
+    "get_lead_list": "Reading leads",
+    "check_template": "Checking the template rules",
+    "submit_template": "Sending the template to Meta for approval",
+    "check_template_status": "Checking Meta approval status",
+    "create_campaign": "Preparing the campaign",
+    "confirm_send": "Setting up send permission",
+    "get_campaign_status": "Pulling the campaign report",
+    "control_campaign": "Updating the campaign",
+    "haan_karo": "Approving the step",
 }
 
 

@@ -40,7 +40,7 @@ LEGALRES_TOOLS = [
          "q": {"type": "string"}, "text": {"type": "string"}, "act": {"type": "string"}},
          "required": ["what"]}},
 ]
-LEGALRES_LABELS = {"legalres": "Kanoon ke sources padh raha hoon", "legalres_dekho": "Research memo dekh raha hoon"}
+LEGALRES_LABELS = {"legalres": "Reading legal sources", "legalres_dekho": "Checking the research memo"}
 
 
 def _s(v: Any) -> str:

@@ -52,7 +52,7 @@ DEVOPS_TOOLS = [
          "days": {"type": "integer"}, "source": {"type": "string"}},
          "required": ["what"]}},
 ]
-DEVOPS_LABELS = {"devops": "DevOps ka kaam kar raha hoon", "devops_dekho": "Builds, logs aur deploys dekh raha hoon"}
+DEVOPS_LABELS = {"devops": "Working on DevOps", "devops_dekho": "Checking builds, logs and deploys"}
 
 _OWNER_ONLY = {"repo_add", "repo_remove", "settings", "forget_logs"}
 

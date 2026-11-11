@@ -68,7 +68,7 @@ PHOTO_ASSIST_TOOLS = [
          "end": {"type": "string"}, "shooter": {"type": "string"}, "month": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-PHOTO_ASSIST_LABELS = {"photo_assist": "Photo studio ka kaam kar raha hoon", "photo_assist_dekho": "Shoot ki booking dekh raha hoon"}
+PHOTO_ASSIST_LABELS = {"photo_assist": "Working in the photo studio", "photo_assist_dekho": "Checking the shoot booking"}
 
 _SET_KEYS = ("studio", "gstin", "address", "phone", "email", "upi_id", "buffer_minutes", "hold_hours", "delivery_days",
              "retention_days", "copyright", "stages", "cancel", "terms", "rpc_number", "rpc_until", "morning_time", "rules")

@@ -73,8 +73,8 @@ GREEN_TOOLS = [
          "site": {"type": "string"}, "family": {"type": "string"}, "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-GREEN_LABELS = {"const_green": "Performance desk par kaam kar raha hoon",
-                "const_green_dekho": "Performance desk dekh raha hoon"}
+GREEN_LABELS = {"const_green": "Working on the performance desk",
+                "const_green_dekho": "Viewing the performance desk"}
 
 
 def _s(v: Any) -> str:

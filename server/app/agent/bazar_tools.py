@@ -100,9 +100,9 @@ BAZAR_TOOLS = [
      "input_schema": {"type": "object", "properties": {}}},
 ]
 
-BAZAR_LABELS = {"bazar_find": "Sahi app/dukaan dhoondh raha hoon", "bazar_run": "Kaam kar raha hoon",
-                "bazar_contact": "Contact dekh raha hoon", "bazar_activity": "Orders aur payments dekh raha hoon",
-                "bazar_mcp": "MCP server dekh raha hoon", "composio_apps": "Aapke apps dekh raha hoon"}
+BAZAR_LABELS = {"bazar_find": "Finding the right app or shop", "bazar_run": "Doing the task",
+                "bazar_contact": "Looking up the contact", "bazar_activity": "Checking orders and payments",
+                "bazar_mcp": "Checking the MCP server", "composio_apps": "Checking your apps"}
 
 
 async def _call(fn, *a):

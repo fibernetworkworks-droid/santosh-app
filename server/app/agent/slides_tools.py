@@ -75,11 +75,11 @@ SLIDES_TOOLS = [
          "role": {"type": "string", "enum": ["reader", "commenter", "writer"]}}, "required": ["presentation", "people"]}},
 ]
 
-SLIDES_LABELS = {"slides_find": "Presentation dhoondh raha hoon", "slides_read": "Slides padh raha hoon",
-                 "slides_create": "Presentation bana raha hoon", "slides_add": "Slides jod raha hoon",
-                 "slides_edit": "Slide badal raha hoon", "slides_arrange": "Slides jama raha hoon",
-                 "slides_delete": "Delete ki manzoori le raha hoon", "slides_export": "PDF / PPT bana raha hoon",
-                 "slides_share": "Share ki manzoori le raha hoon"}
+SLIDES_LABELS = {"slides_find": "Finding the presentation", "slides_read": "Reading the slides",
+                 "slides_create": "Creating the presentation", "slides_add": "Adding slides",
+                 "slides_edit": "Editing the slide", "slides_arrange": "Arranging slides",
+                 "slides_delete": "Asking approval to delete", "slides_export": "Making a PDF / PPT",
+                 "slides_share": "Asking approval to share"}
 
 
 async def _t(fn, *a, **kw):

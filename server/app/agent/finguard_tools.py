@@ -45,7 +45,7 @@ FINGUARD_TOOLS = [
          "prior_complaint_no": {"type": "string"}, "prior_date": {"type": "string"}, "outcome": {"type": "string"}},
          "required": ["action"]}},
 ]
-FINGUARD_LABELS = {"paisa_sahayak": "Paisa Sahayak se hisaab / jaanch kar raha hoon"}
+FINGUARD_LABELS = {"paisa_sahayak": "Checking accounts with Paisa Sahayak"}
 
 
 def _actor(ctx: Ctx) -> str:

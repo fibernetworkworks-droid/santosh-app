@@ -67,7 +67,7 @@ COSEC_TOOLS = [
          "entity": {"type": "string"}, "meeting": {"type": "string"}, "status": {"type": "string"}, "within_days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-COSEC_LABELS = {"cosec": "Company secretary ka kaam kar raha hoon", "cosec_dekho": "Company ki file dekh raha hoon"}
+COSEC_LABELS = {"cosec": "Doing company secretary work", "cosec_dekho": "Viewing the company file"}
 
 _OWNER_ONLY = ("settings", "filed", "skip", "forget")
 

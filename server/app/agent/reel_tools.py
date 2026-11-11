@@ -22,7 +22,7 @@ REEL_TOOLS = [
          "link": {"type": "string"}, "reel_id": {"type": "string"}, "query": {"type": "string"},
          "note": {"type": "string"}, "days": {"type": "integer"}}, "required": ["action"]}},
 ]
-REEL_LABELS = {"reel": "Reel dekh raha hoon"}
+REEL_LABELS = {"reel": "Watching the reel"}
 
 
 async def reel(ctx: Ctx, action, link="", reel_id="", query="", note="", days=7, **_):

@@ -75,7 +75,7 @@ SHAADI_TOOLS = [
          "answer": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-SHAADI_LABELS = {"shaadi": "Shaadi ka kaam kar raha hoon", "shaadi_dekho": "Shaadi ki file dekh raha hoon"}
+SHAADI_LABELS = {"shaadi": "Working on the wedding", "shaadi_dekho": "Checking the wedding file"}
 
 
 def _s(v: Any) -> str:

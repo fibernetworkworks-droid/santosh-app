@@ -37,7 +37,7 @@ DELAY_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-DELAY_LABELS = {"const_delay": "Delay working paper bana raha hoon", "const_delay_dekho": "Delay desk dekh raha hoon"}
+DELAY_LABELS = {"const_delay": "Preparing the delay working paper", "const_delay_dekho": "Viewing the delay desk"}
 
 
 def _s(v: Any) -> str:

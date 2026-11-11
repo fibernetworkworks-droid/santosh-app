@@ -24,7 +24,7 @@ ARMY_TOOLS = [
          "required": ["action"]}},
 ]
 
-ARMY_LABELS = {"agent_army": "Agent Army mein dhoondh raha hoon"}
+ARMY_LABELS = {"agent_army": "Searching Agent Army"}
 
 
 async def agent_army(ctx: Ctx, action, query="", field="", kind="", tier="", ref="", limit=8, **_):

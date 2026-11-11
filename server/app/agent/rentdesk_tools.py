@@ -78,7 +78,7 @@ RENTDESK_TOOLS = [
          "tenancy": {"type": "string"}, "status": {"type": "string"}, "q": {"type": "string"}},
          "required": ["what"]}},
 ]
-RENTDESK_LABELS = {"rentdesk": "Kiraye ka kaam kar raha hoon", "rentdesk_dekho": "Kiraye ka hisaab dekh raha hoon"}
+RENTDESK_LABELS = {"rentdesk": "Working on rent", "rentdesk_dekho": "Checking rent accounts"}
 
 OWNER_ONLY = ("settings", "activate", "received", "charge", "waive", "refund_done", "forget", "unit", "person", "tenancy", "update", "from_deal")
 STAFF_OK = ("check", "agreement", "receipt", "pay_link", "message", "rent_change", "notice", "tenant_notice", "repair", "assign",
@@ -267,4 +267,4 @@ RENTDESK_BIZ_TOOLS = [
      "input_schema": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}},
 ]
 RENTDESK_BIZ_HANDLERS = {"biz_rent_status": biz_rent_status, "biz_rent_repair": biz_rent_repair}
-RENTDESK_BIZ_LABELS = {"biz_rent_status": "Kiraye ka hisaab dekh raha hoon", "biz_rent_repair": "Repair ki baat likh raha hoon"}
+RENTDESK_BIZ_LABELS = {"biz_rent_status": "Checking the rent accounts", "biz_rent_repair": "Noting the repair request"}

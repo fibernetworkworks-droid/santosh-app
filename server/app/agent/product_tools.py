@@ -65,7 +65,7 @@ PRODUCT_TOOLS = [
          "release": {"type": "string"}, "since": {"type": "string"}},
          "required": ["what"]}},
 ]
-PRODUCT_LABELS = {"product": "Product ka kaam kar raha hoon", "product_dekho": "Roadmap aur specs dekh raha hoon"}
+PRODUCT_LABELS = {"product": "Working on the product", "product_dekho": "Checking the roadmap and specs"}
 
 
 def _s(v: Any) -> str:

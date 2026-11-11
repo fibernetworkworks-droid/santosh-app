@@ -658,8 +658,8 @@ CRAWL_TOOLS = [
          }},
 ]
 
-CRAWL_LABELS = {"crawl_start": "Site ka background crawl shuru kar raha hoon",
-                "crawl_status": "Crawl ki progress dekh raha hoon",
-                "crawl_results": "Crawl ke results nikaal raha hoon"}
+CRAWL_LABELS = {"crawl_start": "Starting a background site crawl",
+                "crawl_status": "Checking crawl progress",
+                "crawl_results": "Pulling out the crawl results"}
 
 CRAWL_HANDLERS = {"crawl_start": crawl_start, "crawl_status": crawl_status, "crawl_results": crawl_results}

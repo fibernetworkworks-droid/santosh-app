@@ -44,7 +44,7 @@ RISKDESK_TOOLS = [
          "max_amount": {"type": "number"}, "trades": {"type": "array", "items": {"type": "object"}}, "product_name": {"type": "string"}},
          "required": ["action"]}},
 ]
-RISKDESK_LABELS = {"risk_desk": "Risk Desk se parchi / jaanch bana raha hoon"}
+RISKDESK_LABELS = {"risk_desk": "Preparing Risk Desk slips and checks"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

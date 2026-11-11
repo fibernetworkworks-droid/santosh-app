@@ -23,7 +23,7 @@ MOTION_TOOLS = [
          "music": {"type": "string", "enum": ["upbeat", "calm", "festive", "none"]}, "id": {"type": "string"}},
          "required": ["action"]}},
 ]
-MOTION_LABELS = {"motion_video": "Video bana raha hoon"}
+MOTION_LABELS = {"motion_video": "Making a video"}
 
 
 async def motion_video(ctx: Ctx, action, kind="explainer", brief="", aspect="9:16", music="upbeat", id="", **_):

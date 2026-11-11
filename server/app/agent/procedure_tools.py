@@ -15,7 +15,7 @@ PROCEDURE_TOOLS = [
          "action": {"type": "string", "enum": ["list", "off", "on", "forget", "forget_all"]},
          "id": {"type": "string"}}, "required": ["action"]}},
 ]
-PROCEDURE_LABELS = {"seekhe_kaam": "Seekhe hue kaam dekh raha hoon"}
+PROCEDURE_LABELS = {"seekhe_kaam": "Checking learned tasks"}
 
 
 async def seekhe_kaam(ctx: Ctx, action: str = "list", id: str = "", **_) -> dict[str, Any]:

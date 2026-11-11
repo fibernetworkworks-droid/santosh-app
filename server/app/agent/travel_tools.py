@@ -62,7 +62,7 @@ TRAVEL_TOOLS = [
          "origin": {"type": "string"}, "destination": {"type": "string"}},
          "required": ["what"]}},
 ]
-TRAVEL_LABELS = {"travel": "Yatra ka plan sambhal raha hoon", "travel_dekho": "Yatra ki details dekh raha hoon"}
+TRAVEL_LABELS = {"travel": "Managing the travel plan", "travel_dekho": "Checking travel details"}
 
 _OWNER_ONLY = {"settings", "cancel", "forget", "booked"}
 

@@ -224,7 +224,7 @@ APP_TOOLS = [
          "idea": {"type": "string"}, "coll": {"type": "string"}},
          "required": ["what"]}},
 ]
-APP_LABELS = {"app_banao": "App design bana raha hoon", "app_dekho": "App design dekh raha hoon"}
+APP_LABELS = {"app_banao": "Designing the app", "app_dekho": "Viewing the app design"}
 _OWNER_ONLY = {"delete"}
 _TAP_LIKE = {"plan_ok", "look", "approve"}
 

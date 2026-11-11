@@ -47,7 +47,7 @@ FRANCHISE_TOOLS = [
          "outlet": {"type": "string"}, "month": {"type": "string"}, "brand": {"type": "string"}},
          "required": ["what"]}},
 ]
-FRANCHISE_LABELS = {"franchise": "Franchise ka kaam kar raha hoon", "franchise_dekho": "Outlets ka hisaab dekh raha hoon"}
+FRANCHISE_LABELS = {"franchise": "Working on the franchise", "franchise_dekho": "Checking outlet accounts"}
 
 
 def _s(v: Any) -> str:

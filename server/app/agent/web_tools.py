@@ -55,9 +55,9 @@ WEB_TOOLS = [
                       "required": ["url"]}},
 ]
 
-WEB_LABELS = {"google_search": "Google par dhoondh raha hoon", "web_sources": "Web ke pages padh raha hoon", "open_website": "Website padh raha hoon",
-              "open_on_phone": "Phone par khol raha hoon", "browse_web": "Apne browser mein website dekh raha hoon",
-              "browse_result": "Apne browser ka nateeja dekh raha hoon"}
+WEB_LABELS = {"google_search": "Searching Google", "web_sources": "Reading web pages", "open_website": "Reading the website",
+              "open_on_phone": "Opening on the phone", "browse_web": "Viewing a website in my browser",
+              "browse_result": "Checking the result from my browser"}
 
 
 async def google_search(ctx: Ctx, query, **_):

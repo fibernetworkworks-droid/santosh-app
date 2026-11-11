@@ -60,7 +60,7 @@ MOTIONDESK_TOOLS = [
          "required": ["what"]}},
 ]
 
-MOTIONDESK_LABELS = {"motion_desk": "Motion design studio ka kaam kar raha hoon", "motion_desk_dekho": "Studio ke kaam dekh raha hoon"}
+MOTIONDESK_LABELS = {"motion_desk": "Working in the motion design studio", "motion_desk_dekho": "Checking studio work"}
 
 _SET_KEYS = ("studio", "gstin", "address", "phone", "email", "upi_id", "gst_pct", "sac", "rounds", "round_fee", "advance_pct",
              "pay_days", "rights", "rights_years", "rights_territory", "terms", "rules", "morning_time")

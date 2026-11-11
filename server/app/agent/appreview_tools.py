@@ -41,7 +41,7 @@ APPREVIEW_TOOLS = [
          "review": {"type": "string"}, "key": {"type": "string"}},
          "required": ["what"]}},
 ]
-APPREVIEW_LABELS = {"app_review": "App ki code / policy jaanch kar raha hoon", "app_review_dekho": "App review dekh raha hoon"}
+APPREVIEW_LABELS = {"app_review": "Reviewing app code and policy", "app_review_dekho": "Viewing the app review"}
 
 _OWNER_ONLY = {"mark", "handoff", "settings"}
 _TOKEN = re.compile(r"\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{10,}")

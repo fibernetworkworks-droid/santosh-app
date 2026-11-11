@@ -68,7 +68,7 @@ ITADMIN_TOOLS = [
          "system": {"type": "string"}, "guide": {"type": "string"}},
          "required": ["what"]}},
 ]
-ITADMIN_LABELS = {"it_admin": "IT admin ka kaam kar raha hoon", "it_admin_dekho": "Licence, log aur access dekh raha hoon"}
+ITADMIN_LABELS = {"it_admin": "Doing IT admin work", "it_admin_dekho": "Checking licences, logs and access"}
 
 _OWNER_ONLY = {"renewed", "licence_remove", "change_done", "review_item", "review_close", "guide_publish", "sync", "forget_person", "settings"}
 

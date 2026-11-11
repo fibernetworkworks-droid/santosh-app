@@ -69,7 +69,7 @@ DARZI_TOOLS = [
          "trial_on": {"type": "string"}},
          "required": ["what"]}},
 ]
-DARZI_LABELS = {"darzi": "Darzi ka kaam kar raha hoon", "darzi_dekho": "Darzi ka register dekh raha hoon"}
+DARZI_LABELS = {"darzi": "Working on tailoring orders", "darzi_dekho": "Checking the tailoring register"}
 _OWNER_ONLY = {"rules"}
 
 

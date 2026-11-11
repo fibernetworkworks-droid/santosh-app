@@ -72,7 +72,7 @@ CYBER_TOOLS = [
          "incident": {"type": "string"}},
          "required": ["what"]}},
 ]
-CYBER_LABELS = {"cyber": "Suraksha jaanch kar raha hoon", "cyber_dekho": "Suraksha ka haal dekh raha hoon"}
+CYBER_LABELS = {"cyber": "Running a security check", "cyber_dekho": "Checking security status"}
 
 _OWNER_ONLY = {"teach", "rule_remove", "settings", "incident_close", "domain_remove"}
 _KEYLIKE = re.compile(r"(AIza[0-9A-Za-z_\-]{20,}|\b[0-9a-f]{32}\b|\b[0-9a-f]{64}\b(?=.*\b(key|token|api)\b)|sk-[A-Za-z0-9]{16,}|"

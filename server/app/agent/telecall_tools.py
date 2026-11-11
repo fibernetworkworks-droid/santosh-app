@@ -52,7 +52,7 @@ TELECALL_TOOLS = [
          "assigned": {"type": "string"}, "purpose": {"type": "string"}},
          "required": ["what"]}},
 ]
-TELECALL_LABELS = {"telecall": "Call list ka kaam kar raha hoon", "telecall_dekho": "Call list dekh raha hoon"}
+TELECALL_LABELS = {"telecall": "Working on the call list", "telecall_dekho": "Checking the call list"}
 _OWNER_ONLY = {"settings", "forget_old"}
 
 

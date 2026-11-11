@@ -108,10 +108,10 @@ LEADS_TOOLS = [
          "ask": {"type": "string"}},
          "required": []}},
 ]
-LEADS_LABELS = {"leads_run": "Leads ka run bana raha hoon", "leads_status": "Leads ka haal dekh raha hoon",
-                "leads_list": "Leads store khoj raha hoon", "leads_export": "Leads export taiyaar kar raha hoon",
-                "leads_forget": "Leads mita raha hoon (aapke kaha se)",
-                "leads_enrich": "Rows ki website padh ke email/socials bhar raha hoon"}
+LEADS_LABELS = {"leads_run": "Creating a leads run", "leads_status": "Checking leads status",
+                "leads_list": "Searching the leads store", "leads_export": "Preparing the leads export",
+                "leads_forget": "Deleting leads (as you asked)",
+                "leads_enrich": "Reading row websites to fill in emails and socials"}
 
 
 def _s(v: Any) -> str:

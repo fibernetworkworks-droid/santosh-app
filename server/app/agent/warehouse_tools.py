@@ -64,7 +64,7 @@ WAREHOUSE_TOOLS = [
          "count": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-WAREHOUSE_LABELS = {"warehouse": "Godown ka kaam kar raha hoon", "warehouse_dekho": "Godown dekh raha hoon"}
+WAREHOUSE_LABELS = {"warehouse": "Working on the warehouse", "warehouse_dekho": "Checking the warehouse"}
 
 _OWNER_ONLY = ("settings", "opening", "bins_many")
 

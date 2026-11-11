@@ -21,7 +21,7 @@ ID_TOOLS = [
                                              "vehicle", "other"]},
          "number": {"type": "string"}, "note": {"type": "string"}}, "required": ["action"]}},
 ]
-ID_LABELS = {"id_locker": "Pehchaan Locker dekh raha hoon"}
+ID_LABELS = {"id_locker": "Checking the ID Locker"}
 
 
 async def id_locker(ctx: Ctx, action, person="self", kind="aadhaar", number="", note="", **_):

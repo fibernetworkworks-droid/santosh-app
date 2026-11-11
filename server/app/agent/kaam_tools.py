@@ -21,7 +21,7 @@ KAAM_TOOLS = [
      "input_schema": {"type": "object", "properties": {"q": {"type": "string"},
                                                        "action": {"type": "string", "enum": ["status", "stop", "cards"]}}}},
 ]
-KAAM_LABELS = {"kaam_status": "Kaam ki haalat dekh raha hoon"}
+KAAM_LABELS = {"kaam_status": "Checking task status"}
 
 
 async def kaam_status(ctx: Ctx, q: str = "", action: str = "status", **_):

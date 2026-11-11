@@ -73,8 +73,8 @@ DESK_TOOLS = [
                                                                 "enum": ["any", "exchange", "call", "job", "file", "decision"]}},
                       "required": ["query"]}},
 ]
-DESK_LABELS = {"doc_desk": "Documents dekh raha hoon", "sheet_milaan": "Dono sheets mila raha hoon",
-               "yaad_khojo": "Yaad kar raha hoon"}
+DESK_LABELS = {"doc_desk": "Checking documents", "sheet_milaan": "Matching the two sheets",
+               "yaad_khojo": "Recalling from memory"}
 
 
 def _err(e: Exception) -> ToolError:

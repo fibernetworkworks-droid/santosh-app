@@ -45,7 +45,7 @@ QS_TOOLS = [
          "what": {"type": "string", "enum": ["day", "takeoffs", "rates", "boq", "abstract", "budget"]},
          "project": {"type": "string"}}, "required": ["what"]}},
 ]
-QS_LABELS = {"const_qs": "Naap aur rate ka hisaab kar raha hoon", "const_qs_dekho": "QS desk dekh raha hoon"}
+QS_LABELS = {"const_qs": "Calculating measurements and rates", "const_qs_dekho": "Viewing the QS desk"}
 
 
 def _s(v: Any) -> str:

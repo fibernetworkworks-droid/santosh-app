@@ -67,7 +67,7 @@ QUALITY_TOOLS = [
          "incident": {"type": "string"}},
          "required": ["what"]}},
 ]
-QUALITY_LABELS = {"const_quality": "Quality ka record likh raha hoon", "const_quality_dekho": "Quality records dekh raha hoon"}
+QUALITY_LABELS = {"const_quality": "Writing the quality record", "const_quality_dekho": "Checking quality records"}
 
 
 def _s(v: Any) -> str:

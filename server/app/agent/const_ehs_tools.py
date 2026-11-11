@@ -32,8 +32,8 @@ EHS_TOOLS = [
          "project": {"type": "string"}, "kind": {"type": "string"}},
          "required": ["what"]}},
 ]
-EHS_LABELS = {"const_ehs": "Suraksha-welfare desk par kaam kar raha hoon",
-              "const_ehs_dekho": "Suraksha desk dekh raha hoon"}
+EHS_LABELS = {"const_ehs": "Working on the safety and welfare desk",
+              "const_ehs_dekho": "Viewing the safety desk"}
 
 
 def _s(v: Any) -> str:

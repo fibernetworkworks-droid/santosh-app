@@ -50,7 +50,7 @@ ANALYST_TOOLS = [
          "years": {"type": "number"}},
          "required": ["what"]}},
 ]
-ANALYST_LABELS = {"paisa": "Hisaab-kitaab dekh raha hoon", "paisa_dekho": "Business ka paisa dekh raha hoon"}
+ANALYST_LABELS = {"paisa": "Checking the accounts", "paisa_dekho": "Checking business money"}
 
 
 def _s(v: Any) -> str:

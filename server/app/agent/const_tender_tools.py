@@ -35,7 +35,7 @@ TENDER_TOOLS = [
          "status": {"type": "string"}, "tender": {"type": "string"}, "rating": {"type": "string"}},
          "required": ["what"]}},
 ]
-TENDER_LABELS = {"const_tender": "Tender ka record jod raha hoon", "const_tender_dekho": "Tender desk dekh raha hoon"}
+TENDER_LABELS = {"const_tender": "Compiling the tender record", "const_tender_dekho": "Viewing the tender desk"}
 
 
 def _s(v: Any) -> str:

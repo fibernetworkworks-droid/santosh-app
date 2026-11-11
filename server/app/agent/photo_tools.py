@@ -25,7 +25,7 @@ PHOTO_TOOLS = [
          "aspect": {"type": "string"}, "quality": {"type": "string", "enum": ["fast", "best"]},
          "filename": {"type": "string"}}, "required": ["action", "prompt"]}},
 ]
-PHOTO_LABELS = {"photo_banao": "Photo bana raha hoon"}
+PHOTO_LABELS = {"photo_banao": "Making a photo"}
 
 
 async def photo_banao(ctx: Ctx, action="make", prompt="", file_ids=None, aspect="", quality="fast", filename="", **_):

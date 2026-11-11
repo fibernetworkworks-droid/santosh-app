@@ -72,7 +72,7 @@ GST_TOOLS = [
          "liability": {"type": "object"}, "credit": {"type": "object"}},
          "required": ["what"]}},
 ]
-GST_LABELS = {"gst": "GST ka kaam kar raha hoon", "gst_dekho": "GST register dekh raha hoon"}
+GST_LABELS = {"gst": "Working on GST", "gst_dekho": "Checking the GST register"}
 
 _LINE = ("txval", "rate", "hsn", "desc", "qty", "uqc", "igst", "cgst", "sgst", "cess")
 

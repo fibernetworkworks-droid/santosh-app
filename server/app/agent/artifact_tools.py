@@ -60,8 +60,8 @@ ARTIFACT_TOOLS = [
      "input_schema": {"type": "object", "properties": {}}},
 ]
 
-ARTIFACT_LABELS = {"artifact": "Page likh raha hoon", "artifact_make": "Page bana raha hoon",
-                   "artifact_list": "Aapke pages dekh raha hoon"}
+ARTIFACT_LABELS = {"artifact": "Writing the page", "artifact_make": "Building the page",
+                   "artifact_list": "Looking at your pages"}
 
 
 async def artifact_make(ctx: Ctx, request, artifact_id=None, data=None, _wait=None, **_):

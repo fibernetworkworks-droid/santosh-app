@@ -24,7 +24,7 @@ RECALL_TOOLS = [
          "when": {"type": "string", "description": "aaj | kal | parso | is hafte | pichhle hafte | YYYY-MM-DD"},
          "query": {"type": "string"}}, "required": ["when"]}},
 ]
-RECALL_LABELS = {"haal_ki_chats": "Pichhli chats dekh raha hoon"}
+RECALL_LABELS = {"haal_ki_chats": "Checking recent chats"}
 
 
 def window(when: str, tz) -> tuple[datetime, datetime, str]:

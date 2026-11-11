@@ -43,8 +43,8 @@ LAND_TOOLS = [
          "project": {"type": "string"}, "kind": {"type": "string"}, "parcel": {"type": "string"}},
          "required": ["what"]}},
 ]
-LAND_LABELS = {"const_land": "Zameen desk par kaam kar raha hoon",
-               "const_land_dekho": "Zameen desk dekh raha hoon"}
+LAND_LABELS = {"const_land": "Working on the land desk",
+               "const_land_dekho": "Viewing the land desk"}
 
 
 def _s(v: Any) -> str:

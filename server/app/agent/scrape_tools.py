@@ -1208,15 +1208,15 @@ SCRAPE_TOOLS = [
          "required": ["url"]}},
 ]
 
-SCRAPE_LABELS = {"scrape_page": "Website turant khol kar padh raha hoon",
-                 "scrape_tables": "Page ki table nikaal raha hoon",
-                 "scrape_extract": "Website se data nikaal raha hoon",
-                 "scrape_many": "Kayi pages se data nikaal raha hoon",
-                 "scrape_site": "Poori site padh kar map bana raha hoon",
-                 "scrape_stealth": "Website advanced mode mein khol raha hoon",
-                 "scrape": "Website khol raha hoon (auto mode)",
-                 "scrape_map": "Site ka url-naksha bana raha hoon",
-                 "scrape_extract_json": "Page padh kar JSON data bana raha hoon"}
+SCRAPE_LABELS = {"scrape_page": "Opening and reading the website quickly",
+                 "scrape_tables": "Extracting tables from the page",
+                 "scrape_extract": "Extracting data from the website",
+                 "scrape_many": "Extracting data from several pages",
+                 "scrape_site": "Reading the whole site and mapping it",
+                 "scrape_stealth": "Opening the website in advanced mode",
+                 "scrape": "Opening the website (auto mode)",
+                 "scrape_map": "Mapping the site's URLs",
+                 "scrape_extract_json": "Reading the page and building JSON data"}
 
 SCRAPE_HANDLERS = {"scrape_page": scrape_page, "scrape_extract": scrape_extract, "scrape_many": scrape_many,
                    "scrape_site": scrape_site, "scrape_stealth": scrape_stealth, "scrape": scrape,

@@ -29,7 +29,7 @@ MEET_TOOLS = [
          "what": {"type": "string", "enum": ["actions", "meets", "meet"]}, "meet": {"type": "string"}},
          "required": ["what"]}},
 ]
-MEET_LABELS = {"const_meet": "Baithak ka record likh raha hoon", "const_meet_dekho": "Meetings dekh raha hoon"}
+MEET_LABELS = {"const_meet": "Writing the meeting record", "const_meet_dekho": "Checking meetings"}
 
 
 def _s(v: Any) -> str:

@@ -74,7 +74,7 @@ SITESUP_TOOLS = [
          "status": {"type": "string"}, "kind": {"type": "string"}, "incident": {"type": "string"}},
          "required": ["what"]}},
 ]
-SITESUP_LABELS = {"sitesup": "Site ka kaam likh raha hoon", "sitesup_dekho": "Site ka haal dekh raha hoon"}
+SITESUP_LABELS = {"sitesup": "Writing up site work", "sitesup_dekho": "Checking site status"}
 
 
 def _s(v: Any) -> str:

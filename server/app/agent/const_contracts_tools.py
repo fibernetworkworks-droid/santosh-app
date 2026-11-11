@@ -48,7 +48,7 @@ CONTRACTS_TOOLS = [
          "what": {"type": "string", "enum": ["day", "contracts", "obligs", "variations", "claims"]},
          "contract": {"type": "string"}}, "required": ["what"]}},
 ]
-CONTRACTS_LABELS = {"const_contracts": "Contract ka record dekh raha hoon", "const_contracts_dekho": "Contracts dekh raha hoon"}
+CONTRACTS_LABELS = {"const_contracts": "Checking the contract record", "const_contracts_dekho": "Checking contracts"}
 
 
 def _s(v: Any) -> str:

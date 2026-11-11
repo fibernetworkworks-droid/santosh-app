@@ -67,7 +67,7 @@ PIDESK_TOOLS = [
          "case": {"type": "string"}, "status": {"type": "string"}, "value": {"type": "string"}, "kind": {"type": "string"}},
          "required": ["what"]}},
 ]
-PIDESK_LABELS = {"pidesk": "PI desk ka kaam kar raha hoon", "pidesk_dekho": "Case file dekh raha hoon"}
+PIDESK_LABELS = {"pidesk": "Working on the PI desk", "pidesk_dekho": "Checking the case file"}
 
 _OWNER_ONLY = ("settings", "close", "forget", "consent")
 

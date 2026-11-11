@@ -53,7 +53,7 @@ COMPLIANCE_TOOLS = [
          "month": {"type": "string"}},
          "required": ["what"]}},
 ]
-COMPLIANCE_LABELS = {"compliance": "Compliance ka kaam kar raha hoon", "compliance_dekho": "Compliance calendar dekh raha hoon"}
+COMPLIANCE_LABELS = {"compliance": "Doing compliance work", "compliance_dekho": "Viewing the compliance calendar"}
 
 _OWNER_ONLY = ("facts", "settings", "add", "na", "reopen", "forget")
 _FACT_ARGS = ("entity", "state", "employees", "contract_workers", "contractor", "turnover", "gstin", "gst_scheme", "tan", "salary_tds",

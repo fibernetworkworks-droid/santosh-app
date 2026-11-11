@@ -51,7 +51,7 @@ DOCWRITER_TOOLS = [
          "product": {"type": "string"}, "doc": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-DOCWRITER_LABELS = {"docs_writer": "Docs likh raha hoon", "docs_writer_dekho": "Docs dekh raha hoon"}
+DOCWRITER_LABELS = {"docs_writer": "Writing docs", "docs_writer_dekho": "Checking docs"}
 
 TOKEN_RX = re.compile(r"(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})")
 

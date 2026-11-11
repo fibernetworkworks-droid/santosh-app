@@ -55,7 +55,7 @@ GYAAN_TOOLS = [
          "confirm": {"type": "boolean"}}, "required": ["action"]}},
 ]
 
-GYAAN_LABELS = {"gyaan_khojo": "Aapke Gyaan mein dhoondh raha hoon", "gyaan": "Gyaan sambhal raha hoon"}
+GYAAN_LABELS = {"gyaan_khojo": "Searching your Gyaan", "gyaan": "Managing Gyaan"}
 
 
 def _owner(ctx: Ctx) -> bool:

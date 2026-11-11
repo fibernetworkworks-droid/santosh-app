@@ -147,7 +147,7 @@ SITE_TOOLS = [
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}, "file": {"type": "string"}},
          "required": ["what"]}},
 ]
-SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
+SITE_LABELS = {"website": "Building the website", "website_dekho": "Checking the website"}
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
 _NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok", "design_from", "design_use"}
 _TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok", "design_use", "moves_ok"}

@@ -50,7 +50,7 @@ FEEDBACK_TOOLS = [
          "q": {"type": "string"}, "unreplied": {"type": "boolean"}, "limit": {"type": "integer"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-FEEDBACK_LABELS = {"feedback": "Feedback padh raha hoon", "feedback_dekho": "Graahakon ki baat dekh raha hoon"}
+FEEDBACK_LABELS = {"feedback": "Reading feedback", "feedback_dekho": "Checking customer feedback"}
 
 
 def _s(v: Any) -> str:
