@@ -1497,3 +1497,35 @@ plan with the ledger in the turn, not-seen-since / ignore / reopen, build proble
 errors only in the preview, the preview link never kept, source wiring, and the PLANTED-ERROR walk: a section that throws ->
 the card names pages/home/hero.js -> Try to fix -> one exact edit -> the next preview is clean - fixed on try 1).
 NOT VERIFIED live: a real model fixing a real error from <error_to_fix> on her server.
+
+
+## v0.803.0 GAME DEV ENGINE LOOK (built as 0.802; their GALTI PAKDO took 0.802.0, both kept; owner: "NOW MAKE IT MORE STUNING ADVANCE AND A REAL GAME ENGINE FEEL DESIGN WITH ANIMATIONS AND GRAPHICAL VISUALIZATION IN IT" -> five engine boards on the design canvas (v2 · Engine look) -> "GO BUILD - WHOLE APP, REAL GAME IN VIEWPORT")
+
+The whole Hoola Game Dev app (`/console/games`) redrawn as a game engine, behaviour unchanged.
+
+- **Always dark.** `gamedev.js` sets `data-theme="dark"` + `html.gdv-engine` on load; `gamedev.css` puts one engine palette on
+  `:root.gdv-engine[data-theme]` (specificity above v2.css's dark block). The embedded console game pages (board, bible,
+  scenes, QA, release, crew roles...) read the same tokens, so they wear the engine look without their own CSS changing.
+- **Home.** Engine bar (`#gdvEbar`, `drawEbar`) with only real numbers: Godot ready / not installed, games being made, games
+  that play. Hero with a living pipeline loop (`loopHtml`: Hoola's six steps, work flowing round; the middle names her newest
+  game that plays). Game cards get a living drawn thumbnail when there is no screenshot (`sceneArt`: runner / night skyline /
+  tile board - decoration) and a status badge. Studio charts (`statsHtml`, `#gdvStatsBox`, redrawn by the home poll) from her
+  own games only: the state split, versions built per game, frame rate measured on the server - a card with nothing real
+  to show is left out. The six steps became a connected strip.
+- **Workspace = editor.** Engine top bar (web build version + server fps chips when measured), the Hoola chat as a dock,
+  tabs. The Play tab (key `play`, label "Editor") is the REAL game in the viewport - the same web build the private link
+  opens - with its own toolbar (`viewportAct`): play from the start, stop (the frame goes blank, an overlay offers Play),
+  phone / tablet / computer size, full screen (falls back to a toast), open in a new tab. Inspector: version, screen,
+  measured performance as bars, Hoola's checks, the private link + QR, the change box / progress. Output dock: the real
+  checks, warnings and version notes as a log; a versions timeline with the restore buttons.
+- **The viewport is never rebuilt by a poll.** `.gdv-stage[data-key]` = play link + live version: the same key keeps the
+  stage node (only the inspector and the dock are swapped), a NEW version reloads it (before, the same link kept showing
+  the old build until a reload).
+- **Build pipeline** (`pipeHtml`) on the progress card: design, code, build, bots play, your link - the real stage glows,
+  work flows along the line into it; the pct / say / stage hooks still update in place.
+- design.md shown as an editor file tab. Every loop is off under the computer's reduce-motion setting and Hoola's Calm.
+  Type rules kept: weights <= 600, nothing under 12px, no all-caps (mono labels are lower case).
+- Board embed fix: a two-word role chip on a task card wraps instead of overlapping the line under it.
+
+Tests: `test_v0783_gamedev.py` 20 + the release suites; screenshots checked by eye at 1440 and 390 (home, editor, design,
+building, board, crew). NOT VERIFIED: on her server with a real Godot build (the walk uses a stand-in web page as the game).
