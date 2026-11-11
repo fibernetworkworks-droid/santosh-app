@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from ..dockit import archive, check, convert, core, edit, forms, fromdoc, health, ocrlayer, optimize, organize, secure, sign, stamp, vault
+from ..dockit import archive, check, convert, core, edit, forms, fromdoc, health, ocrlayer, optimize, organize, secure, sign, smart, stamp, vault
 from ..dockit.core import DocError
 from .tools import Ctx, ToolError
 
@@ -29,12 +29,13 @@ ACTIONS = ("guide", "info", "merge", "split", "remove", "extract", "organize", "
            "ocr", "to_word", "to_excel", "to_powerpoint", "pdfa", "web_to_pdf",
            # D5 (v0.814): forms + signing
            "form_fields", "form_fill", "form_create", "signature_save", "sign", "sign_verify", "sign_request",
-           "sign_status", "sign_cancel")
+           "sign_status", "sign_cancel",
+           # D6 (v0.819): compare + AI
+           "compare", "summarize", "ask", "translate", "smart_split")
 ZIP_OVER = 10            # more output files than this arrive as one ZIP (plus the ZIP only)
-NOT_YET = ("compare two PDFs, translate keeping the layout (D6); a LEGALLY valid digital signature of her identity (Class "
-           "3 DSC on her USB token, or Aadhaar eSign through a licensed provider - owner decision D4); OTP checks for "
-           "outside signers; changing the PDF's OWN existing words in place (a white box + new text on top is offered, "
-           "said as such); cracking or guessing any password (never)")
+NOT_YET = ("a LEGALLY valid digital signature of her identity (Class 3 DSC on her USB token, or Aadhaar eSign through a "
+           "licensed provider - owner decision D4); OTP checks for outside signers; changing the PDF's OWN existing words "
+           "in place (a white box + new text on top is offered, said as such); cracking or guessing any password (never)")
 
 GUIDE = (
     "PDF_KIT GUIDE. Her own PDFs (and pictures / Office files) -> NEW files back in chat. Runs on the server: free, no "
@@ -123,6 +124,19 @@ GUIDE = (
     "signs on the page in turn, the last signature adds a signing record page and seals the file, and the signed copy "
     "arrives in this chat; no OTP check - the record says identity = whoever held the link) | sign_status / "
     "sign_cancel (request_id).\n"
+    "D6 compare + AI:\n"
+    "  compare (file_ids [old, new]): by code, no AI - changed pages, lines added / removed / changed, and the MONEY, "
+    "DATES and other numbers that moved pulled out; plus a PDF: a 'What changed' page + each changed page boxed in "
+    "red. Lead with the money / date changes.\n"
+    "  summarize (length short|medium|long, focus, language) | ask (question): only the document's own words, every "
+    "point with its page [p.N]; code checks the pages exist and every number is in the document - the result names "
+    "any number that is NOT (say it plainly, never present it as the document's). 'Not in this document' is an answer.\n"
+    "  translate (to = hindi / marathi / english / bengali / telugu / kannada / malayalam / punjabi / french ...; "
+    "keep_layout true = each page redrawn with the translation in the same places; false = a Word file; tamil / "
+    "gujarati / odia / urdu come as Word; glossary {term: translation}); lines whose numbers changed and lines that did "
+    "not fit are listed - check them.\n"
+    "  smart_split (a bundle of many documents): the AI names where each starts -> a PLAN only; show her the list and "
+    "on her yes call split mode=ranges with its ranges.\n"
     "Recipes: 'WhatsApp pe nahi ja rahi' = compress (or target_kb 15000 for email). 'Portal 200 KB maangta hai' = "
     "compress target_kb=200. 'Page 3 hata do' = remove pages=3. 'Sirf pehla aur aakhri page' = extract pages='first,last'. "
     "'Har page alag' = split mode=each. 'Ye photos ek PDF mein' = to_pdf page_size=a4 margin=small. 'Word ko PDF' = "
@@ -149,8 +163,10 @@ PDF_KIT_TOOLS = [
         "redact_apply (true removal) | ocr (searchable scans, 13 Indian languages) | to_word | to_excel | "
         "to_powerpoint | pdfa | web_to_pdf (a web page link -> PDF) | form_fields | form_fill (incl. a sheet of rows) | "
         "form_create | signature_save | sign (her signature picture and / or a digital signature) | sign_verify | "
-        "sign_request (others sign on a private page, in order) | sign_status | sign_cancel. Not yet (say so): compare, "
-        "translate, a legally valid identity signature (DSC / Aadhaar eSign). A password never goes through the chat."),
+        "sign_request (others sign on a private page, in order) | sign_status | sign_cancel | compare (two versions: what "
+        "changed, money / dates first) | summarize | ask (answers with page numbers, numbers checked) | translate "
+        "(keeping the layout) | smart_split. Not yet (say so): a legally valid identity signature (DSC / Aadhaar "
+        "eSign). A password never goes through the chat."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": list(ACTIONS)},
          "file_id": {"type": "string"},
@@ -224,6 +240,9 @@ PDF_KIT_TOOLS = [
          "field": {"type": "string"}, "reason": {"type": "string"}, "location": {"type": "string"},
          "signers": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}}}},
          "days": {"type": "integer"}, "message": {"type": "string"}, "request_id": {"type": "string"},
+         "question": {"type": "string"}, "length": {"type": "string", "enum": list(smart.LENGTHS)},
+         "focus": {"type": "string"}, "to": {"type": "string", "description": "translate: the language"},
+         "keep_layout": {"type": "boolean"}, "glossary": {"type": "object"}, "highlight": {"type": "boolean"},
          "x": {"type": "string", "description": "sign: mm or % from the left"},
          "y": {"type": "string", "description": "sign: mm or % from the top"},
          "w": {"type": "number", "description": "sign: signature width in mm"},
@@ -368,6 +387,8 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
         return _redact_apply(ctx, a)
     if action in ("signature_save", "sign_status", "sign_cancel"):
         return _d5_plain(ctx, action, a)
+    if action == "compare":
+        return _compare(ctx, a, custom)
     if action == "web_to_pdf":
         size = {"a4": "A4", "letter": "Letter", "legal": "Legal", "a5": "A5"}.get(str(a.get("page_size") or "a4").lower(), "A4")
         pdf, title = archive.url_to_pdf(str(a.get("url") or ""), size, bool(a.get("landscape")))
@@ -476,6 +497,8 @@ def _run(ctx: Ctx, action: str, a: dict) -> dict[str, Any]:
         return _d4(ctx, action, a, data, name, st, n_in, custom)
     if action in D5:
         return _d5(ctx, action, a, data, name, st, n_in, custom)
+    if action in D6:
+        return _d6(ctx, action, a, data, name, st, n_in, custom)
     raise ToolError(f"action must be one of: {', '.join(ACTIONS)}.")
 
 
@@ -823,3 +846,59 @@ def _d5(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: i
             notes.append("The server has no SECRET_KEY, so her certificate is kept only until the next restart.")
     out = _deliver_pdf(ctx, res, _fname(f"{st} (signed)", ".pdf", custom), n_in)
     return out | extra | {"what_it_is": " ".join(notes)}
+
+
+D6 = ("summarize", "ask", "translate", "smart_split")
+
+
+def _compare(ctx: Ctx, a: dict, custom: str) -> dict[str, Any]:
+    ids = _ids(a)
+    if len(ids) != 2:
+        raise ToolError("Compare needs two PDFs: file_ids [old, new].")
+    (na, da), (nb, db) = _pdf_in(ctx, ids[0]), _pdf_in(ctx, ids[1])
+    r = smart.compare(da, db, a.get("highlight") is not False)
+    out = {k: v for k, v in r.items() if k != "bytes"} | {"old": na, "new": nb}
+    if r["same"]:
+        return out | {"say": "The words of the two PDFs are the same."}
+    if r.get("bytes"):
+        out |= {"report": _deliver_pdf(ctx, r["bytes"], _fname(f"{core.stem(nb)} (what changed)", ".pdf", custom))}
+    return out
+
+
+def _d6(ctx: Ctx, action: str, a: dict, data: bytes, name: str, st: str, n_in: int, custom: str) -> dict[str, Any]:
+    lang = str(a.get("language") or "")
+    if action == "summarize":
+        r = smart.summarize(data, str(a.get("length") or "medium"), lang, str(a.get("focus") or ""))
+        return {"name": name} | r | _warn(r["check"], r)
+    if action == "ask":
+        r = smart.ask(data, str(a.get("question") or a.get("text") or ""), lang)
+        return {"name": name} | r | _warn(r["check"], r)
+    if action == "smart_split":
+        r = smart.smart_split(data, lang)
+        return {"name": name} | r | {"say": "A PLAN only - nothing is split yet. Show her the list; on her yes call "
+                                           "split mode=ranges with these ranges."}
+    r = smart.translate(data, str(a.get("to") or a.get("language") or ""), a.get("keep_layout") is not False,
+                        a.get("pages") or "all", dict(a.get("glossary") or {}))
+    fname = _fname(f"{st} ({r['language']})", r["ext"], custom)
+    if r["ext"] == ".pdf":
+        out = _deliver_pdf(ctx, r["bytes"], fname)
+    else:
+        _check_office(r["bytes"], ".docx")
+        view = _put(ctx, fname, r["bytes"])
+        out = {"file_id": view.get("file_id"), "name": view.get("name"), "kb": core.kb(len(r["bytes"]))}
+    return out | {"language": r["language"], "note": r["note"], "check_these": r["flagged"][:30],
+                  "did_not_fit": r["overflow"][:30]}
+
+
+def _warn(chk: dict, r: dict) -> dict[str, Any]:
+    notes = []
+    if chk["numbers_not_in_document"]:
+        notes.append(f"These numbers in the answer are NOT in the document: {', '.join(chk['numbers_not_in_document'])} "
+                     "- tell her plainly, do not present them as the document's.")
+    if chk["bad_page_refs"]:
+        notes.append(f"Page references that do not exist: {chk['bad_page_refs']}.")
+    if r.get("pages_read", 0) < r.get("pages", 0):
+        notes.append(f"Only the first {r['pages_read']} of {r['pages']} pages fit in one read.")
+    if r.get("unreadable_pages"):
+        notes.append(f"Pages {r['unreadable_pages'][:20]} could not be read (scans without the text reader).")
+    return {"warnings": notes} if notes else {}

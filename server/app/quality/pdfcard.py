@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import pikepdf
 
-from ..dockit import archive, convert, core, edit, forms, fromdoc, ocrlayer, optimize, organize, secure, sign, stamp
+from ..dockit import archive, convert, core, edit, forms, fromdoc, ocrlayer, optimize, organize, secure, sign, smart, stamp
 from ..dockit.core import DocError
 
 
@@ -220,6 +220,36 @@ def blank_form() -> bytes:
         {"name": "city", "type": "choice", "page": 1, "x": 20, "y": 55, "options": ["Akola", "Pune", "Mumbai"]},
         {"name": "Sign here", "type": "signature", "page": 1, "x": 110, "y": 230}])
     return out
+
+
+def quote_pdf(total: str = "4,650", due: str = "12/11/2026", extra: str = "") -> bytes:
+    from reportlab.pdfgen import canvas
+    b = io.BytesIO()
+    c = canvas.Canvas(b)
+    c.drawString(72, 760, "Quotation for Sharma Traders")
+    c.drawString(72, 740, f"Total amount Rs {total} due on {due}")
+    c.drawString(72, 720, "Terms: payment in 30 days")
+    if extra:
+        c.drawString(72, 700, extra)
+    c.showPage()
+    c.drawString(72, 760, "Page two text unchanged")
+    c.showPage()
+    c.save()
+    return b.getvalue()
+
+
+class _FakeModel:
+    """The card never calls a real model: a scripted one proves the pipes (and the checks) for free."""
+    def __init__(self, fn):
+        self.fn, self.old = fn, None
+
+    def __enter__(self):
+        self.old = smart.ask_model
+        smart.ask_model = self.fn
+        return self
+
+    def __exit__(self, *a):
+        smart.ask_model = self.old
 
 
 # ---------------------------------------------------------------------------------------------------- scoring
@@ -669,6 +699,49 @@ def cases() -> list[dict[str, Any]]:
             (sign._req_dir() / f"{q['request_id']}{ext}").unlink(missing_ok=True)
         return ok, "order kept; record page added; sealed"
 
+    def compare_money_dates():
+        r = smart.compare(quote_pdf(), quote_pdf("4,950", "15/11/2026", "New clause: late fee Rs 200"))
+        ok = (r["changed_pages"] == [1] and any("4,650" in x and "4,950" in x for x in r["money_changed"]) and
+              any("15/11/2026" in x for x in r["dates_changed"]) and r.get("bytes") and
+              "What changed" in convert.page_texts(r["bytes"])[0] and n_pages(r["bytes"]) == 2)
+        return bool(ok), f"money {r['money_changed'][:1]}, dates {r['dates_changed'][:1]}, report + boxed page 1"
+
+    def compare_same():
+        r = smart.compare(quote_pdf(), quote_pdf())
+        return r["same"] and "bytes" not in r, "identical words = 'same', no report made"
+
+    def answer_check():
+        with _FakeModel(lambda s, u, m=0: "The total is Rs 4,650 [p.1], plus a fee of Rs 999 [p.9]."):
+            r = smart.ask(quote_pdf(), "What is the total?")
+        c = r["check"]
+        return c["numbers_not_in_document"] == ["999"] and c["bad_page_refs"] == [9] and c["pages_cited"] == [1], \
+            "an invented number and a wrong page are both caught"
+
+    def translate_layout():
+        import json as _j
+
+        def fake(s, u, m=0):
+            return _j.dumps([ln.split(". ", 1)[1].replace("Quotation for", "कोटेशन -").replace("Terms", "शर्तें")
+                             for ln in u.splitlines()])
+        with _FakeModel(fake):
+            r = smart.translate(quote_pdf(), "hindi")
+        t = convert.page_texts(r["bytes"])[0]
+        ok = "कोटेशन" in t and "4,650" in t and "Quotation" not in t and n_pages(r["bytes"]) == 2 and not r["flagged"]
+        return ok, "Hindi in place of the English, numbers kept, the original words gone"
+
+    def translate_flags_numbers():
+        import json as _j
+        with _FakeModel(lambda s, u, m=0: _j.dumps([ln.split(". ", 1)[1].replace("4,650", "4,560")
+                                                    for ln in u.splitlines()])):
+            r = smart.translate(quote_pdf(), "marathi")
+        return any("4,650" in x for x in r["flagged"]), "a line whose number changed in translation is flagged"
+
+    def smart_split_plan():
+        with _FakeModel(lambda s, u, m=0: '[{"start": 1, "title": "Invoice A"}, {"start": 3, "title": "Invoice B"}, '
+                                           '{"start": 99, "title": "ghost"}]'):
+            r = smart.smart_split(text_pdf(5))
+        return r["ranges"] == ["1-2", "3-5"], f"plan {r['ranges']} (a page that does not exist dropped)"
+
     return [
         _case("merge", "merge 2 PDFs + a photo, bookmarks", merge),
         _case("split_every", "split every 5 pages", split_every),
@@ -735,6 +808,13 @@ def cases() -> list[dict[str, Any]]:
         _case("sign_tamper", "a change after signing is caught", sign_tamper),
         _case("sign_field_second", "sign a form's box, then sign again", sign_field_and_second),
         _case("sign_request", "two people sign in order, sealed", sign_request_flow),
+        # D6
+        _case("compare", "compare: money + dates pulled out, report", compare_money_dates),
+        _case("compare_same", "compare: identical = same", compare_same),
+        _case("answer_check", "answers: invented numbers / pages caught (scripted model)", answer_check),
+        _case("translate", "translate keeping the layout (scripted model)", translate_layout),
+        _case("translate_flags", "translation number check (scripted model)", translate_flags_numbers),
+        _case("smart_split", "smart split = a checked plan (scripted model)", smart_split_plan),
     ]
 
 

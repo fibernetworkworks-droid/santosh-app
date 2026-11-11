@@ -52,7 +52,7 @@ def test_schema_and_not_yet():
               "sign_status", "sign_cancel"):
         assert a in spec["input_schema"]["properties"]["action"]["enum"]
     assert toolsearch.schema_ok(spec)
-    assert "compare" in T.NOT_YET and "Aadhaar eSign" in T.NOT_YET
+    assert "compare" not in T.NOT_YET and "Aadhaar eSign" in T.NOT_YET
 
 
 def test_form_fields_fill_and_readback(env):
