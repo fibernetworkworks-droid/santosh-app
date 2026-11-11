@@ -137,6 +137,7 @@ IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
 let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens from the AI Employees hub
+let HVO = null;         // v0.787 HOOLA VOCAL (vocal.js) - the voice studio, its own full page
 let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
 let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
 let FLW = null;         // v0.751 HOOLA FLOW (flow.js) - the Kaan pack as a console page
@@ -144,6 +145,7 @@ let FLOW_TEXT = '';   // v0.777 text from the Hoola Flow page waiting for the ch
 let FMIC = null;        // v0.751 the chat box mic through Kaan (flow.js HoolaFlowMic)
 IC.code = '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>';
 IC.flow = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>';   // v0.751 HOOLA FLOW
+IC.vocal = '<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>';   // v0.787 HOOLA VOCAL: a sound wave
 IC.interactive = '<rect x="3" y="4" width="18" height="13" rx="2.5"/><circle cx="9" cy="10" r="2.2"/><path d="M5.8 15.2c.7-1.6 1.9-2.4 3.2-2.4s2.5.8 3.2 2.4"/><path d="M15 8.5l3 1.8-3 1.8z" fill="currentColor" stroke="none"/><path d="M8 20h8"/>';
 IC.seekh = '<path d="M2 5.5a2 2 0 0 1 2-2h9l2.5 2.5H20a2 2 0 0 1 2 2V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M10 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/>';   // v0.718 a video folder with a play
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
@@ -207,6 +209,7 @@ function go(v, arg) {
   if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
   if (v !== 'interactive') HIV?.leave();
+  if (v !== 'vocal') HVO?.leave();
   if (v !== 'flow') FLW?.leave();
   if (v !== 'connectors') CX?.leave();
   if (v !== 'aiapps') AIA?.leave();
@@ -214,6 +217,7 @@ function go(v, arg) {
   if (v === 'connectors') CX?.open($('#connectors'), arg);   // v0.774 the Connectors page
   if (v === 'flow') FLW?.open($('#flow'));   // v0.751 HOOLA FLOW
   if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
+  if (v === 'vocal') HVO?.open();                          // v0.787 HOOLA VOCAL
   if (v === 'interactive') HIV?.open($('#interactive'));   // v0.747 HOOLA INTERACTIVE
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
   if (v === 'socialdesk') EMP?.social($('#socialdesk'));
@@ -371,6 +375,15 @@ async function enter() {
       return api('POST', `/api/conversations/${encodeURIComponent(id)}/files`, undefined, {form: fd});
     }});
     if (!NAV.some(([k]) => k === 'interactive')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['interactive', 'Hoola Interactive']);
+  }
+  if (CONFIG.vocal && window.HoolaVocal && !HVO) {               // v0.787 HOOLA VOCAL: the voice studio, a row under Hoola Interactive
+    HVO = HoolaVocal({api, esc, toast, back: () => go('chat'), go: v => go(NAV.some(([k]) => k === v) ? v : 'chat'), upload: async file => {
+      let id = CONV;
+      if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
+      const fd = new FormData(); fd.append('file', file, file.name);
+      return api('POST', `/api/conversations/${encodeURIComponent(id)}/files`, undefined, {form: fd});
+    }});
+    if (!NAV.some(([k]) => k === 'vocal')) { const at = NAV.findIndex(([k]) => k === 'interactive'); NAV.splice((at < 0 ? NAV.findIndex(([k]) => k === 'creative') : at) + 1, 0, ['vocal', 'Hoola Vocal']); }
   }
   if (window.HoolaSeekh && !SKH) {               // v0.718 the Video Learner: stays on its page while Hoola works
     SKH = HoolaSeekh({api, esc, toast, open: (v, arg) => go(v, arg), live: () => $('#app').classList.add('open'),

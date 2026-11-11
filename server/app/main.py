@@ -1766,6 +1766,7 @@ def console_config():
             "panel": bool(st.console_v2 or st.side_panel), "projects": bool(st.console_v2 or st.chat_projects),
             "human": bool(getattr(st, "console_human", False)),
             "interactive": bool(getattr(st, "interactive_page", False)),
+            "vocal": bool(getattr(st, "vocal_page", False)),
             "hoola_code": bool(getattr(st, "hoola_code_page", False)),
             "flow": bool(getattr(st, "flow_page", False)),
             "flow_mic": bool(getattr(st, "flow_page", False) and getattr(st, "flow_composer_mic", False)),
@@ -5372,6 +5373,8 @@ from .interactive.console import make_router as _interactive_studio_router  # no
 app.include_router(_interactive_studio_router(require_key, current_tenant))   # v0.747 HOOLA INTERACTIVE: the console video studio
 from .interactive.console import make_hub_router as _interactive_hub_router  # noqa: E402
 app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
+from .vocal.api import make_router as _vocal_router  # noqa: E402
+app.include_router(_vocal_router(require_key, current_tenant))   # v0.787 HOOLA VOCAL: the voice studio (speech, dialogue, readings, her voices, effects)
 
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402
