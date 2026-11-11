@@ -59,7 +59,7 @@ def test_rules():
     assert R.price_for(None, 5000, 10, 4)[0] == 5000 and R.price_for(None, None, 10, 4)[0] is None
     lines, warns = R.safety_lines("trek", "ek senior, asthma", 18, {"rain_chance_pct": 80, "max_c": 39})
     assert any("Asthma" in l for l in lines) and any("co-guide" in l for l in lines)
-    assert any("Baarish" in w and "taalna" in w for w in warns) and any("Garmi" in w for w in warns)
+    assert any("rain" in w and "postponing" in w for w in warns) and any("Heat" in w for w in warns)
     sc = R.scrub("OTP 445566 card 4111 1111 1111 1111 aadhaar 2345 6789 0124 PAN ABCDE1234F")
     assert "445566" not in sc and "4111" not in sc and "2345 6789" not in sc and "ABCDE1234F" not in sc
     assert "998556" in R.gst_note("guide") and "5%" in R.gst_note("tour5")
@@ -198,7 +198,7 @@ def test_money_cards_fingerprint_and_ledger(tg, monkeypatch):
     S.paid_out(T, sp["id"])
     with pytest.raises(S.TourError):
         S.ledger_add(T, "spend", 100)                                                # spends only via card
-    assert "zabardasti" in S.ledger_add(T, "commission_in", 300, "Silk emporium")["say"]
+    assert "never force" in S.ledger_add(T, "commission_in", 300, "Silk emporium")["say"]
     S.ledger_add(T, "tip", 200, "Ravi", b["number"])
     L = S.ledger(T)
     assert L["totals"] == {"payment": 1200, "refund": 600, "spend": 450, "commission_in": 300, "tip": 200}
@@ -216,7 +216,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     assert [x["name"] for x in p["stops"]] == ["Shaniwar Wada", "Kasba Ganpati", "Lal Mahal"]
     assert p["stops"][0]["arrive"] == "07:30" and p["stops"][1]["arrive"] == "08:30" and p["stops"][2]["arrive"] == "09:10"
     w = " ".join(p["warnings"])
-    assert "Lal Mahal mon ko band" in w and "8:00" in w and "Kasba Ganpati" in w            # closed day, opens later, timing unknown
+    assert "Lal Mahal is closed on mon" in w and "8:00" in w and "Kasba Ganpati" in w            # closed day, opens later, timing unknown
     assert p["stops"][1]["open"] == "not known" and p["ticket_total"] == 2 * 25 + 300 and p["asi_steps"]
     S.save_tour(T, "TP-01", places=[{"name": "Shaniwar Wada", "asi": True}])
     assert S.day_plan(T, b["number"], publish=False)["ticket_total"] is None                # ASI rate not given -> blank
@@ -235,7 +235,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     bt = S.save_booking(T, tour="TP-02", day=on.isoformat(), start_time="23:00", guests=2, lead_name="Z", phone="9000000009",
                         special_needs="wheelchair")["booking"]
     sf = asyncio.run(S.weather_check(T, bt["number"]))
-    assert any("Baarish" in x for x in sf["warnings"]) and any("Wheelchair" in x for x in sf["lines"])
+    assert any("rain" in x for x in sf["warnings"]) and any("Wheelchair" in x for x in sf["lines"])
     far = asyncio.run(S.weather_check(T, b["number"]))
     assert "2 din" in far["say"] or "forecast" in far["say"] or not far["weather"]
     # roll call
@@ -251,7 +251,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     fr = S.intro_script(T, tour="TP-01", language="french")
     assert fr["language"] == "fr" and fr["text"].startswith("Bonjour")
     monkeypatch.setattr(S, "_ai_json", lambda *a, **k: {"text": "Bonjour sans numéro"})
-    assert "nahi ban paaya" in S.intro_script(T, tour="TP-01", language="fr")["note"]
+    assert "could not be made" in S.intro_script(T, tour="TP-01", language="fr")["note"]
     monkeypatch.setattr(S, "_ai_json", lambda *a, **k: {"places": [{"name": "Vishrambaug Wada", "why": "1 hour, Rs 20"},
                                                                      {"name": "Shaniwar Wada"}]})
     sug = S.suggest_places(T, "TP-01")

@@ -137,7 +137,7 @@ def test_survey_link_public(fb):
     S.save_settings(T, business="Annapurna", review_link="https://g.page/r/abc/review", language="hinglish")
     v = S.survey_new(T, "nps", "Diwali feedback")
     tok = v["token"]
-    assert v["link"].endswith("/api/feedback/s/" + tok) and "wa.me" in v["whatsapp"] and "SAB" in v["say"]
+    assert v["link"].endswith("/api/feedback/s/" + tok) and "wa.me" in v["whatsapp"] and "ALL" in v["say"]
     app_ = FastAPI()
     app_.include_router(api.make_router(lambda: None, lambda: T))
     with TestClient(app_) as cl:

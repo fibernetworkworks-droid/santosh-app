@@ -86,7 +86,7 @@ def test_rules():
     b, _w = R.asset_problems({"name": "X", "licence": "unknown"}, "j1", "2026-10-23")
     assert b
     b, _w = R.asset_problems({"name": "Track", "licence": "subscription_single", "project_job": "j0", "jobs": ["j0"]}, "j1", "2026-10-23")
-    assert b and "naya" in b[0]
+    assert b and "new" in b[0]
     b, w = R.asset_problems({"name": "Pic", "licence": "cc_by", "valid_until": "2026-01-01"}, "j1", "2026-10-23")
     assert b and w
     assert R.gst_split("27AAA", "29BBB") == "inter" and R.gst_split("27AAA", "27BBB") == "intra" and R.gst_split("27AAA", "") == "intra"
