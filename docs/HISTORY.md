@@ -739,3 +739,36 @@ The Web Studio site chat now works like Lovable's:
 Tests: test_v0777_chat_jaisa.py (5, incl. a Playwright walk: thinking shimmer, queued bubble, paste chip, soft-fade spans, past tense,
 Rs line, Details timeline; 7 repeat runs green) + the older Studio suites green (v0649 / v0655 / v0663 / v0664 / v0667 / v0669 / v0671 / v0707,
 routines, v0657, v0475). NOT VERIFIED live: the first real Studio turn on her server (the browser walk uses a scripted turn).
+
+
+## v0.778.0 HOOLA FLOW LIKE WISPR FLOW (owner: "NOW SAME FOR HOOLA FLOW --- CHECK DESIGN AND MAKE IT SAME AS WISPERFLOW")
+
+"Same" = what Hoola Code got: its own page with its own sidebar. Hoola Flow (v0.751, the Kaan pack as a console page) now
+lives at `/console/flow` (`flowapp.html` + `flowapp.js` boot like `hoolacode.js`, styles in `flow.css`, route behind
+`flow_page`, microphone allowed for that page only); the console's Hoola Flow row opens it (`go('flow')` -> location).
+
+The design follows Wispr Flow's desktop hub (docs.wisprflow.ai: sidebar Home / Dictionary / Snippets / Style + Settings, a
+Home with "Welcome back" and usage stats, light theme default with dark / system, hold-a-key dictation with the Flow bar):
+- **Sidebar** - Home / Dictionary / Snippets / Style, then Transcribe (A file to text, Live captions), a tip card, Settings and
+  Back to Hoola. Hash routes `#/`, `#/dictionary`, `#/snippets`, `#/style`, `#/files`, `#/live`, `#/settings`, `#/t/<id>`.
+- **Home** - serif "Welcome back, <first name>" (from /api/me), a pill with the day streak, words and WPM counted from her
+  last 100 transcripts (WPM from dictations of 20 s or more; the pill says where the numbers come from), the dictate card,
+  history grouped Today / Yesterday / date with the time in its own column, Copy / Open on hover, search.
+- **The Flow bar** - a dark pill at the bottom of every page. Click, or hold Space: release after 0.45 s = done
+  (push-to-talk); a tap keeps listening and Space again (or the tick) finishes; Esc cancels and the transcript the server
+  made is deleted. While listening: waveform, clock, her words so far above the pill. When done the text is rendered in
+  her Style, copied to the clipboard and the new row is highlighted at the top of the history.
+- **Dictionary** (tabs All / Listening hints / Spelling fixes) and **Snippets** ("say a short cue, Hoola writes the whole
+  text") share the existing word list; a snippet is a row with `note: "snippet"` (the field existed), 120 chars max.
+- **Style** - As said / Clean / Notes / Social as cards with a preview of the same spoken line; honest about what each does
+  (Clean only tidies, Notes / Social only pick). Kept in this browser (`hoola.flow.style`).
+- Files, live captions, one transcript and settings keep their v0.751 behaviour in the new look. "Put in the Hoola chat"
+  hands the text to the console through `localStorage['hoola.flow.toChat']`; the console puts it in the chat box of the
+  chat that opens (never sends).
+- Found on the way: `studio.js` threw on any window resize before the Create Studio had been opened (R was null) - guarded.
+
+Tests: `test_v0751_hoola_flow.py` browser walk rewritten for the page (console row -> page, welcome + stats, day groups,
+search, transcript + styles, dictionary / snippet adds with the exact POST bodies, Style saved, settings, live, files,
+the Flow bar with a fake microphone: hold Space -> waveform + words -> release -> her Style used + clipboard + toast, tap +
+Esc = cancelled, the chat-box handoff, phone width with no sideways scroll) + a route test. NOT VERIFIED: a real
+microphone on her server; Wispr's exact pixel values (built from its documented layout and public screenshots).

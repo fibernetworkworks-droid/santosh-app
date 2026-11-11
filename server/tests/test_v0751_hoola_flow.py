@@ -110,71 +110,158 @@ def test_page_files_are_wired():
     assert 'id="v-flow"' in html and "/static/console/flow.js?v=" in html
 
 
+from datetime import datetime, timedelta, timezone
+
+_NOW = datetime.now(timezone.utc)
 OV = {"ready": True, "engine": {"ok": True, "default_model": "small", "live_model": "base",
                                 "ladder": [{"name": "tiny", "params": "39M", "note": "fastest"}, {"name": "small", "params": "244M", "note": "balanced"}]},
       "recording": {"on": True, "how": ""}, "speakers": {"on": True}, "voiceprint": {"on": False, "why": "Voiceprint is off."},
       "usage": {"minutes": 42.5, "cap": 0, "remaining": None, "month": "2026-11"}, "retention": {"days": 0}, "words": 2, "live_active": 0,
       "styles": [], "exports": ["srt"], "doors": {"api": "/api/kaan", "mcp": "python -m app.kaan.mcp_server"},
-      "items": [{"id": "kn_1", "title": "Supplier call - <b>Sharma</b>", "kind": "file", "language": "hi", "n_turns": 3, "duration_s": 2530,
-                 "text": "Sharma ji will send the quote", "created_at": "2026-11-10T09:00:00+00:00", "pinned": False, "status": "ready", "task": "transcribe"},
-                {"id": "kn_2", "title": "Dictation 10 Nov", "kind": "dictated", "language": "en", "n_turns": 0, "duration_s": 41,
-                 "text": "Ravi the coupon bug is fixed", "created_at": "2026-11-10T09:30:00+00:00", "pinned": False, "status": "ready", "task": "transcribe"}]}
+      "items": [{"id": "kn_2", "title": "Dictation 10 Nov", "kind": "dictated", "language": "en", "n_turns": 0, "duration_s": 30,
+                 "text": "Ravi the coupon bug is fixed and the release goes out tonight", "created_at": _NOW.isoformat(), "pinned": False, "status": "ready", "task": "transcribe"},
+                {"id": "kn_1", "title": "Supplier call - <b>Sharma</b>", "kind": "file", "language": "hi", "n_turns": 3, "duration_s": 2530,
+                 "text": "Sharma ji will send the quote", "created_at": (_NOW - timedelta(days=1)).isoformat(), "pinned": False, "status": "ready", "task": "transcribe"}]}
 DETAIL = {"id": "kn_1", "title": "Supplier call - <b>Sharma</b>", "file_name": "x", "kind": "file", "language": "hi", "duration_s": 2530, "model": "small",
           "task": "transcribe", "pinned": False, "text": "Sharma ji will send the quote by Friday.", "segments": [{"start": 4, "end": 9, "text": "Sharma ji"}],
           "speakers": {"turns": [{"turn": 1, "speaker": "Meghana", "start": 4, "end": 18, "text": "Next order by the 18th."},
                                  {"turn": 2, "speaker": "", "start": 19, "end": 40, "text": "Sharma ji will send the quote by Friday."}]}}
 MINUTES = {"action_candidates": [{"turn": 2, "speaker": "", "cue": "will", "text": "Sharma ji will send the quote by Friday."}], "keywords": ["quote", "friday"]}
+VOCAB = {"items": [{"term": "sharma ten", "fix_to": "SHARMA10", "note": ""}, {"term": "Akola", "fix_to": "", "note": ""},
+                   {"term": "my upi", "fix_to": "meghana@okaxis", "note": "snippet"}], "n": 3}
 
 
-def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
+def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
+    """v0.777 the Wispr-Flow-like page on /console/flow: sidebar, welcome + stats, history by day, the Flow bar,
+    Dictionary / Snippets / Style, a transcript, settings - and the console's Hoola Flow row opens it."""
+    import os
     base, browser, key = arena_server
+    monkeypatch.setenv("FLOW_PAGE", "true")
+    from app.config import get_settings
+    get_settings.cache_clear()
     ctx = browser.new_context(viewport={"width": 1360, "height": 900})
     ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
     pg = ctx.new_page()
     errs = []
-    pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.on("pageerror", lambda e: errs.append(f"{e} {getattr(e, 'stack', '')} @ {pg.url}"))
+    shots = os.environ.get("HOOLA_SHOTS")
+    snap = (lambda n: pg.screenshot(path=f"{shots}/flow_{n}.png")) if shots else (lambda n: None)
     pg.route("**/api/console/config", lambda r: r.fulfill(json={"app": "Hoola", "v2": True, "stream": True, "sessions": True,
                                                                    "panel": True, "projects": True, "human": True, "flow": True, "flow_mic": True}))
+    pg.route("**/api/me", lambda r: r.fulfill(json={"signed_in": True, "name": "Meghana Ingle", "email": "m@example.com"}))
     pg.route("**/api/flow/overview*", lambda r: r.fulfill(json=OV))
     pg.route("**/api/flow/t/kn_1", lambda r: r.fulfill(json=DETAIL))
     pg.route("**/api/kaan/kn_1/minutes", lambda r: r.fulfill(json=MINUTES))
     pg.route("**/api/kaan/kn_1/style", lambda r: r.fulfill(json={"style": "clean", "rendered": {"text": "Sharma ji will send the quote by Friday."}, "note": "clean: tidied"}))
-    pg.route("**/api/kaan/vocab", lambda r: r.fulfill(json={"items": [{"term": "sharma ten", "fix_to": "SHARMA10"}, {"term": "Akola", "fix_to": ""}], "n": 2}))
-    pg.goto(base + "/console/")
-    pg.wait_for_selector("#composer")
+    added = []
+    pg.route("**/api/kaan/vocab", lambda r: (added.append(r.request.post_data_json), r.fulfill(json={"ok": True}))[1] if r.request.method == "POST" else r.fulfill(json=VOCAB))
+    pg.goto(base + "/console/")                                     # the console row opens the page
     pg.wait_for_selector(".sn[data-v='flow']")
     pg.locator(".sn[data-v='flow']").click()
-    pg.wait_for_selector(".hfl-starts")
-    home = pg.locator(".hfl").text_content()
-    assert "Speak. Hoola writes it." in home and "42.5 min" in home and "No monthly limit set" in home and "<b>Sharma</b>" in home
-    assert pg.locator(".hfl-row").count() == 2
-    pg.fill("#hflq", "coupon")
-    assert pg.locator(".hfl-row").count() == 1
-    pg.fill("#hflq", "")
-    pg.locator(".hfl-row[data-tid='kn_1']").click()
-    pg.wait_for_selector(".hfl-turn")
-    t = pg.locator(".hfl").text_content()
+    pg.wait_for_url("**/console/flow**")
+    pg.wait_for_selector(".wf-row")
+    home = pg.locator(".wf-main").text_content()
+    assert "Welcome back, Meghana" in home and "Hold Space to dictate" in home and "<b>Sharma</b>" in home
+    assert "Today" in home and "Yesterday" in home and "24 WPM" in home.replace("\n", "") and "2 days" in home
+    assert "Click or hold Space to dictate" in pg.locator("#wfbar").text_content()
+    assert pg.locator(".wf-nv.on").text_content() == "Home"
+    snap("home")
+    pg.fill("#wfq", "coupon")
+    assert pg.locator(".wf-row").count() == 1
+    pg.fill("#wfq", "")
+    pg.locator(".wf-row[data-tid='kn_1']").click()
+    pg.wait_for_selector(".wf-turn")
+    assert pg.url.endswith("#/t/kn_1")
+    t = pg.locator(".wf-main").text_content()
     assert "Meghana" in t and "Speaker 2" in t and "Action items found" in t and "Make reminders from these" in t and "SRT subtitles" in t
     pg.locator("[data-tv='clean']").click()
-    pg.wait_for_selector(".hfl-rend")
-    assert "by Friday" in pg.locator(".hfl-rend").text_content()
-    pg.locator("#hflrem").click()                                   # the ask lands in the chat box, not sent
-    pg.wait_for_function("document.querySelector('#msg') && document.querySelector('#msg').value.includes('Make reminders')")
-    pg.locator(".sn[data-v='flow']").click()                       # back to the page: it keeps the transcript she had open
-    pg.wait_for_selector(".hfl-turn")
-    pg.locator(".hfl-nv[data-go='words']").click()
-    pg.wait_for_selector(".hfl-wr")
-    w = pg.locator(".hfl").text_content()
-    assert "SHARMA10" in w and "hint only" in w
-    pg.locator(".hfl-nv[data-go='settings']").click()
-    pg.wait_for_selector(".hfl-grid2.big")
-    s = pg.locator(".hfl").text_content()
-    assert "Ready on this server" in s and "Default for files" in s and "Voiceprint is off." in s and "/api/kaan" in s
-    pg.locator(".hfl-nv[data-go='dictate']").click()
-    pg.wait_for_selector("#hflgo")
-    assert pg.locator("#hflgo").is_enabled()
-    pg.locator(".hfl-nv[data-go='files']").click()
-    pg.wait_for_selector("#hfldrop")
-    assert pg.locator("#hflmake").is_disabled()                     # nothing chosen yet
+    pg.wait_for_selector(".wf-rend")
+    assert "by Friday" in pg.locator(".wf-rend").text_content()
+    snap("transcript")
+    pg.locator(".wf-nv[data-go='words']").click()
+    pg.wait_for_selector(".wf-wr")
+    w = pg.locator(".wf-main").text_content()
+    assert "SHARMA10" in w and "listening hint" in w and "meghana@okaxis" not in w   # a snippet is not a dictionary word
+    snap("dictionary")
+    pg.locator("#wfadd").click()
+    pg.fill("#wfw1", "Newtika")
+    pg.locator(".wf-dlg button[type=submit]").click()
+    pg.wait_for_selector(".wf-modal", state="detached")
+    assert added[-1] == {"term": "Newtika", "fix_to": ""}
+    pg.locator(".wf-nv[data-go='snippets']").click()
+    pg.wait_for_selector(".wf-sn")
+    assert "meghana@okaxis" in pg.locator(".wf-main").text_content() and pg.locator(".wf-sn").count() == 1
+    pg.locator("#wfadd").click()
+    pg.fill("#wfs1", "my address")
+    pg.fill("#wfs2", "12 MG Road, Akola")
+    pg.locator(".wf-dlg button[type=submit]").click()
+    pg.wait_for_selector(".wf-modal", state="detached")
+    assert added[-1] == {"term": "my address", "fix_to": "12 MG Road, Akola", "note": "snippet"}
+    snap("snippets")
+    pg.locator(".wf-nv[data-go='style']").click()
+    pg.wait_for_selector(".wf-sty")
+    pg.locator(".wf-sty[data-sty='verbatim']").click()
+    assert pg.evaluate("localStorage.getItem('hoola.flow.style')") == "verbatim"
+    assert pg.locator(".wf-sty[aria-checked='true']").get_attribute("data-sty") == "verbatim"
+    snap("style")
+    pg.locator(".wf-side [data-go='settings']").click()
+    pg.wait_for_selector(".wf-sets")
+    s = pg.locator(".wf-main").text_content()
+    assert "Ready on this server" in s and "Default for files" in s and "Voiceprint is off." in s and "/api/kaan" in s and "As said" in s
+    pg.locator(".wf-nv[data-go='live']").click()
+    pg.wait_for_selector("#wfgo")
+    assert pg.locator("#wfgo").is_enabled() and pg.locator("#wfbar").text_content().strip() != ""
+    pg.locator(".wf-nv[data-go='files']").click()
+    pg.wait_for_selector("#wfdrop")
+    assert pg.locator("#wfmake").is_disabled()                     # nothing chosen yet
+    # the Flow bar end to end: hold Space -> waveform + words so far -> release -> written in her Style, copied, on top
+    ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=base)
+    calls = []
+    pg.route("**/api/kaan/live/start", lambda r: (calls.append("start"), r.fulfill(json={"id": "kl_1"}))[1])
+    pg.route("**/api/kaan/live/kl_1/chunk", lambda r: r.fulfill(json={"new": [{"start": 0, "text": "hello world"}]}))
+    pg.route("**/api/kaan/live/kl_1/stop", lambda r: (calls.append("stop"), r.fulfill(json={"transcript_id": "kn_9"}))[1])
+    pg.route("**/api/flow/t/kn_9/rename", lambda r: r.fulfill(json={"ok": True}))
+    pg.route("**/api/kaan/kn_9/style", lambda r: (calls.append(r.request.post_data_json["style"]), r.fulfill(json={"rendered": {"text": "hello world"}}))[1])
+    pg.add_init_script("""navigator.mediaDevices.getUserMedia = async () => { const c = new AudioContext(), o = c.createOscillator(),
+        d = c.createMediaStreamDestination(); o.connect(d); o.start(); return d.stream; };""")
+    pg.goto(base + "/console/flow")
+    pg.wait_for_selector("#wfpill")
+    pg.keyboard.down("Space")
+    pg.wait_for_selector("#wfwave")
+    pg.wait_for_selector("#wflive >> text=hello world", timeout=10000)
+    assert pg.locator("#wfok").is_visible() and pg.locator("#wfx").is_visible()
+    snap("recording")
+    pg.wait_for_timeout(600)
+    pg.keyboard.up("Space")                                        # held > 0.45 s = push-to-talk: release finishes
+    pg.wait_for_selector("#wfpill", timeout=10000)
+    assert calls[:2] == ["start", "stop"] and calls[2] == "verbatim"   # her Style (As said, picked above) was used
+    assert pg.evaluate("navigator.clipboard.readText()") == "hello world"
+    assert "Copied" in pg.locator("#toast").text_content()
+    pg.keyboard.press("Space")                                     # a tap keeps listening ...
+    pg.wait_for_selector("#wfwave")
+    pg.keyboard.press("Escape")                                    # ... and Esc cancels, nothing kept
+    pg.wait_for_selector("#toast >> text=Cancelled")
+    pg.goto(base + "/console/flow#/t/kn_1")                        # 'Put in the Hoola chat' -> the console chat box, not sent
+    pg.wait_for_selector("#wfrem")
+    pg.locator("#wfrem").click()
+    pg.wait_for_url("**/console/")
+    pg.wait_for_selector("#msg")
+    for _ in range(50):                                            # page CSP forbids wait_for_function's eval
+        if "Make reminders" in pg.input_value("#msg"):
+            break
+        pg.wait_for_timeout(100)
+    assert "Make reminders" in pg.input_value("#msg")
+    pg.set_viewport_size({"width": 390, "height": 844})             # phone width: no sideways scroll
+    pg.goto(base + "/console/flow")
+    pg.wait_for_selector(".wf-row")
+    assert pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+    snap("phone")
     assert not errs, errs
     ctx.close()
+
+
+def test_flow_page_route_is_switched(flow_env):  # noqa: F811
+    with client() as c:
+        r = c.get("/console/flow")
+        assert r.status_code == 200 and "flowapp.js" in r.text and "flow.css" in r.text
+        assert "microphone=(self)" in r.headers["permissions-policy"] and "script-src 'self'" in r.headers["content-security-policy"]
