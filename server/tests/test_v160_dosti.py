@@ -71,7 +71,7 @@ def test_settings_tiers_and_mere_niyam(env, ai):
     with pytest.raises(dosti.DostiError):
         dosti.set_settings("default", who="everyone")
     lines = av.rules_summary(av.get("default")["rules"], "Santosh")
-    assert any("Dosti" in l and "mujhse poochh" in l for l in lines)
+    assert any("Friends (open talk)" in l and "ask" in l for l in lines)
     # other Mere Niyam edits keep the Dosti setting
     av.save("default", rules=dict(av.get("default")["rules"], quiet={"on": False}))
     assert dosti.settings("default")["on"] is True

@@ -126,7 +126,7 @@ def test_licences_renewals_and_tick(ia):
                        per_seat=True, renews_on=(on + timedelta(days=20)).isoformat(), auto_renew=True)
     assert a["licence"]["kind"] == "m365" and a["licence"]["waste"]["rupees_year"] == 5220 and "3 seat khaali" in a["say"]
     b = S.save_licence(T, name="TallyPrime TSS", cost=4500, renews_on=(on + timedelta(days=5)).isoformat())
-    assert "Auto-renew on hai ya off" in b["say"]
+    assert "Is auto-renew on or off" in b["say"]
     with pytest.raises(S.ItadminError):
         S.save_licence(T, name="X", renews_on="kal")
     r = S.renewals(T, 30)
@@ -135,7 +135,7 @@ def test_licences_renewals_and_tick(ia):
     S.tick()
     S.tick()
     ren = [p for k, p in S.EVENTS if k == "itadmin_renewal"]
-    assert len(ren) == 2 and any("seat khaali" in p["say"] for p in ren)
+    assert len(ren) == 2 and any("seats unused" in p["say"] for p in ren)
     with pytest.raises(S.ItadminError):
         S.renewed(T, "L-002", actor="staff:tm_1")
     out = S.renewed(T, "L-002", cost=5400)
@@ -210,7 +210,7 @@ def test_microsoft_sync_and_api_change_on_tap(ia):
     with session() as s:
         assert "s3cret" not in s.get(ItadminConn, f"{T}:microsoft").secret_sealed
     r = S.sync(T, "microsoft")
-    assert r["counts"]["users"] == 3 and "devices" in r["missing"] and "kuch badla nahi" in r["say"]
+    assert r["counts"]["users"] == 3 and "devices" in r["missing"] and "nothing changed" in r["say"]
     lic = S.licences(T, "m365")[0]
     assert lic["seats_bought"] == 5 and lic["seats_used"] == 3 and lic["name"] == "Microsoft 365 Business Basic"
     acc = {a["account"]: a for a in S.access_list(T)}
@@ -233,7 +233,7 @@ def test_microsoft_sync_and_api_change_on_tap(ia):
     K.ms_save(T, "dir-1", "app-1", "s3cret-value", mode="read")
     c2 = S.request_change(T, "user_signout", access=acc["asha@ingle.in"]["id"])["change"]
     d2 = S.decide_change(T, c2["id"], True, c2["hash"], by_tap=True)
-    assert d2["change"]["status"] == "approved" and "khud" in d2["say"] and not [x for x in fake.calls if "revokeSignInSessions" in x[1]]
+    assert d2["change"]["status"] == "approved" and "yourself" in d2["say"] and not [x for x in fake.calls if "revokeSignInSessions" in x[1]]
     assert K.forget(T, "microsoft")["removed"] == "microsoft" and K.status(T)["microsoft"] is None
     assert H.assets(T) == []
 
@@ -272,7 +272,7 @@ def test_google_link_sync_and_change(ia, monkeypatch):
     assert acc["admin@ingle.in"]["level"] == "admin" and acc["admin@ingle.in"]["mfa"] == "no"
     rv = S.start_review(T)["review"]
     flagged = {i["account"]: i["flags"] for i in rv["items"]}
-    assert "admin bina 2-step" in flagged["admin@ingle.in"]
+    assert "admin without 2-step" in flagged["admin@ingle.in"]
     with pytest.raises(S.ItadminError):
         S.review_item(T, rv["id"], acc["ramesh@ingle.in"]["id"], "remove", actor="staff:tm_1")
     out = S.review_item(T, rv["id"], acc["ramesh@ingle.in"]["id"], "remove")
@@ -287,7 +287,7 @@ def test_google_link_sync_and_change(ia, monkeypatch):
     assert len(g) == 1 and json.loads(g[0][2]) == {"suspended": True}
     # user creation / password: never by API, console steps only
     nc = S.request_change(T, "password_reset", person="Ramesh Patil", system="Google Workspace")["change"]
-    assert not nc["by_api"] and any("khud" in x for x in nc["steps"])
+    assert not nc["by_api"] and any("yourself" in x for x in nc["steps"])
     get_settings.cache_clear()
 
 
@@ -320,7 +320,7 @@ def test_guides_and_staff_questions(ia, monkeypatch):
     a = S.ask(T, "naye laptop par email kaise lagaun?", person="Asha", actor="staff:tm_1")
     assert a["answer"] == "guide" and a["guide"]["number"] == "G-001"
     q = S.ask(T, "mujhe Tally ka access chahiye", person="Asha", actor="staff:tm_1")
-    assert q["answer"] == "access_request" and q["change"]["status"] == "waiting" and "haan" in q["say"]
+    assert q["answer"] == "access_request" and q["change"]["status"] == "waiting" and "approves" in q["say"]
     assert S.ask(T, "wifi ka password batao")["answer"] == "refused"
     t = S.ask(T, "scanner se scan nahi ho raha", person="Asha", actor="staff:tm_1")
     assert t["answer"] == "ticket" and t["ticket"]["number"].startswith("HD-")

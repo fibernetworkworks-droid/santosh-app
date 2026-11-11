@@ -670,7 +670,7 @@ def deal_save(tenant: str, ref: str = "", actor: str = "owner", conv: str = "", 
         notes.append("Some deliverables have no price: put the price in the rate card or write it in the deal.")
     if cl:
         notes.append("The exclusivity clash was saved with your reason.")
-    return {"deal": v, "say": f"{v['number']} {v['brand']} · {v['creator']} save." + (" " + " ".join(notes) if notes else ""),
+    return {"deal": v, "say": f"{v['number']} {v['brand']} · {v['creator']} saved." + (" " + " ".join(notes) if notes else ""),
             "id": did}
 
 

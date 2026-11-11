@@ -1449,7 +1449,7 @@ def prompt_block(tenant: str) -> str:
         if r is None:
             return ""
         n = len(s.scalars(select(WapsiReturn.id).where(WapsiReturn.tenant_id == tenant, WapsiReturn.status.in_(OPEN))).all())
-    return (f"RETURNS (wapsi): {n} open returns. Do return / refund work with the `wapsi` tool; a refund is approved only by the user's yes (fingerprint) on its card, and "
+    return (f"WAPSI: {n} open returns. Do return / refund work with the `wapsi` tool; a refund is approved only by the user's yes (fingerprint) on its card, and "
             "the user sends the money themselves.")
 
 

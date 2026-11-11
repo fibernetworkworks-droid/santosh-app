@@ -357,7 +357,7 @@ def save_room(tenant: str, room: str = "", **kw: Any) -> dict:
         view = _room_view(r)
     if not view["priced"]:
         warn.append("This room has no price yet: it will stay blank in the quote.")
-    return {"room": view, "warnings": warn, "say": f"{view['number']} {view['name']} save." + (" " + " ".join(warn) if warn else "")}
+    return {"room": view, "warnings": warn, "say": f"{view['number']} {view['name']} saved." + (" " + " ".join(warn) if warn else "")}
 
 
 def rooms(tenant: str) -> list[dict]:
@@ -456,7 +456,7 @@ def save_guest(tenant: str, guest: str = "", name: str = "", phone: str = "", aa
             g.form_c = _dump(fc)
     with session() as s:
         view = _guest_view(s.get(HsGuest, gid), True)
-    say = f"{view['number']} {view['name']} save."
+    say = f"{view['number']} {view['name']} saved."
     if jobs:
         say += " ID number is in the ID Locker (only masked here)."
     return {"guest": view, "say": say}

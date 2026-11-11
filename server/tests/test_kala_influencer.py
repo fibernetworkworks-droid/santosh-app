@@ -76,7 +76,7 @@ def test_rules():
     assert ok["ok"] and ok["label_first"]
     assert not R.disclosure_check("Loving it #collab", "instagram", "post")["ok"]                       # weak label only
     buried = R.disclosure_check("Mera naya face wash\nbahut accha\n#ad", "instagram", "post")
-    assert not buried["ok"] and "pehli line" in buried["block"][0]
+    assert not buried["ok"] and "first line" in buried["block"][0]
     gift = R.disclosure_check("#gifted thank you brand", "instagram", "post", "barter")
     assert gift["ok"]
     vid = R.disclosure_check("#ad reel", "instagram", "reel", duration_s=30)
@@ -148,7 +148,7 @@ def test_roster_rates_and_gates(inf):
     # unpriced deliverable stays blank
     out = S.deal_save(T, creator="Riya Sharma", brand="Nimbu Co", product="nimbu pani",
                       deliverables=[{"platform": "youtube", "fmt": "short"}])
-    assert out["deal"]["fee"] is None and out["deal"]["deliverables"][0]["price"] is None and "daam nahi" in out["say"]
+    assert out["deal"]["fee"] is None and out["deal"]["deliverables"][0]["price"] is None and "no price" in out["say"]
     pc = S.pitch_request(T, out["deal"]["number"])
     with pytest.raises(S.InfluencerError):
         S.decide(T, pc["card"]["id"], True, pc["card"]["hash"], by_tap=True)          # [daam?] blocks the pitch
@@ -173,7 +173,7 @@ def test_exclusivity_clash_refused(inf):
     ok = S.deal_save(T, creator="Riya Sharma", brand="Pure Skin", product="face wash", force=True,
                      reason="Glow Herbals ne email par permission di", deliverables=[{"platform": "instagram", "fmt": "reel",
                                                                                      "due": "2026-11-20"}])
-    assert "takrav" in ok["say"]
+    assert "clash" in ok["say"]
     # after the window: no clash
     _deal(S, brand="Fresh Face", product="face wash", deliverables=[{"platform": "instagram", "fmt": "reel", "due": "2027-01-15"}])
     with pytest.raises(S.InfluencerError):
@@ -196,7 +196,7 @@ def test_content_cards_only_by_her_tap(inf):
         S.decide(T, c["card"]["id"], True, c["card"]["hash"], by_tap=False)                         # ... tools never decide
     with pytest.raises(S.InfluencerError) as e:
         S.decide(T, c["card"]["id"], True, c["card"]["hash"], by_tap=True)                          # blockers refuse her Haan
-    assert "Haan nahi ho sakti" in str(e.value)
+    assert "Cannot be approved" in str(e.value)
     S.post_save(T, p, caption="#ad Mera naya face wash, 7 din mein glow!")
     with pytest.raises(S.InfluencerError):                                                          # old card is stale now
         S.decide(T, c["card"]["id"], True, c["card"]["hash"], by_tap=True)
@@ -209,7 +209,7 @@ def test_content_cards_only_by_her_tap(inf):
     g = S.golive_request(T, p)
     with pytest.raises(S.InfluencerError) as e:                                                     # brand OK not recorded
         S.decide(T, g["card"]["id"], True, g["card"]["hash"], by_tap=True)
-    assert "Brand ki haan" in str(e.value)
+    assert "The brand's approval" in str(e.value)
     S.post_save(T, p, brand_ok=True)
     g = S.golive_request(T, p)
     out = S.decide(T, g["card"]["id"], True, g["card"]["hash"], by_tap=True)
@@ -245,7 +245,7 @@ def test_money_invoice_payout_fingerprint(inf, monkeypatch):
     po = S.payout_request(T, d["number"])
     with pytest.raises(S.InfluencerError) as e:
         S.decide(T, po["card"]["id"], True, po["card"]["hash"], by_tap=True)                        # brand hasn't paid
-    assert "paise darj nahi" in str(e.value)
+    assert "No money from the brand is recorded" in str(e.value)
     with pytest.raises(S.InfluencerError):
         S.received(T, d["number"], 60480, 5600, actor="staff:s1")
     r = S.received(T, d["number"], 60480, 5600, "UTR998877665544")
