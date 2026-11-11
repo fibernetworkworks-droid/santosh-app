@@ -113,8 +113,8 @@ def _agent_system(name: str, task: str, research: bool = False) -> str:
             "- Work only on this task with your tools; check every result; use only real ids / numbers / links from "
             "tool results. A family you need but do not see: call tool_search.\n"
             "- You cannot talk to the owner. Your FINAL message is your report back to the main agent: the "
-            "deliverable itself - facts, numbers, links - compact, max ~8 lines, no greetings, no 'main kar raha "
-            "hoon'. Hinglish or English, whichever carries the data best.\n"
+            "deliverable itself - facts, numbers, links - compact, max ~8 lines, no greetings, no 'I am working "
+            "on it'. Write in clear, simple English.\n"
             "- Verify before you report: if a part could not be done, say plainly which part and why.\n"
             "- Sends / payments / deletions show the owner's confirm card like always: if a tool returned a card, "
             "say so in your report - it is NOT done until she taps.\n"
@@ -196,8 +196,8 @@ async def _run_agent(spec: dict, team_id: str, mission: str, main_families: set[
         ctx.place = (shared or {}).get("place") if (shared or {}).get("place") in ("pc", "hoolapc") else "server"
         ctx.admit = _agent_admit(spec, main_families, settings)
         history = [{"role": "user", "content": [{"type": "text", "text":
-                    f"[Main agent se - owner ki baat, tumhare brief ke roop mein - NOT the owner speaking]\n"
-                    f"Mission: {mission}\nTumhara task: {task}"}]}]
+                    f"[From the main agent - the owner's request, as your brief - NOT the owner speaking]\n"
+                    f"Mission: {mission}\nYour task: {task}"}]}]
         brain = santosh.llm.choose(history)
         research = bool((shared or {}).get("research"))   # v0.437 a deep-research crew gets room + must cite
         max_steps = max(2, int(settings.team_research_max_steps if research else settings.team_agent_max_steps))
@@ -325,18 +325,18 @@ async def _run_crew(specs: list[dict], team_id: str, mission: str, main_families
         if t in pending:
             out.append({"name": name, "ok": False, "stopped": False, "timed_out": True,
                         "seconds": float(timeout or 0), "tools": [],
-                        "deliverable": "time out - agent ko band karna pada"})
+                        "deliverable": "timed out - the agent had to be stopped"})
             continue
         if t.cancelled():
             out.append({"name": name, "ok": False, "stopped": True, "seconds": 0.0, "tools": [],
-                        "deliverable": "roka gaya"})
+                        "deliverable": "stopped"})
             continue
         o = t.exception() or t.result()
         if isinstance(o, dict):
             out.append(o)
         elif isinstance(o, asyncio.CancelledError):
             out.append({"name": name, "ok": False, "stopped": True, "seconds": 0.0, "tools": [],
-                        "deliverable": "roka gaya"})
+                        "deliverable": "stopped"})
         else:
             out.append({"name": name, "ok": False, "stopped": False, "seconds": 0.0, "tools": [],
                         "deliverable": f"(crash: {o})"})
@@ -350,7 +350,7 @@ LIVE: dict[str, dict] = {}
 
 def _live_open(team_id: str, tenant: str, conv: str, mission: str, specs: list[dict], bg: bool = False) -> dict:
     d = {"bg": bg, "tenant": tenant, "conv": conv, "mission": _clip(mission, 120), "t0": time.time(),
-         "agents": {_clip(x.get("name"), 40): "chal raha" for x in specs}}
+         "agents": {_clip(x.get("name"), 40): "running" for x in specs}}
     LIVE[team_id] = d
     return d
 
@@ -361,9 +361,9 @@ def _live_settle(team_id: str, name: str, t) -> None:
         return
     try:
         o = None if t.cancelled() else (t.exception() or t.result())
-        d["agents"][name] = "ho gaya" if isinstance(o, dict) and o.get("ok") else "nahi ho paya"
+        d["agents"][name] = "done" if isinstance(o, dict) and o.get("ok") else "failed"
     except Exception:
-        d["agents"][name] = "nahi ho paya"
+        d["agents"][name] = "failed"
 
 
 def live_lines(tenant: str, convs: set[str] | None = None) -> list[str]:
@@ -373,18 +373,18 @@ def live_lines(tenant: str, convs: set[str] | None = None) -> list[str]:
         if d["tenant"] != tenant or (convs is not None and d["conv"] not in convs):
             continue
         ag = d["agents"]
-        done = sum(1 for v in ag.values() if v != "chal raha")
-        running = [n for n, v in ag.items() if v == "chal raha"]
+        done = sum(1 for v in ag.values() if v != "running")
+        running = [n for n, v in ag.items() if v == "running"]
         mins = int((time.time() - d["t0"]) // 60)
-        line = f"Agent team '{d['mission']}': {done}/{len(ag)} agent ho gaye ({mins} min se)"
+        line = f"Agent team '{d['mission']}': {done}/{len(ag)} agents done ({mins} min so far)"
         if running:
-            line += "; abhi chal rahe: " + ", ".join(running[:4])
+            line += "; still running: " + ", ".join(running[:4])
         out.append(line)
     return out
 
 
 def inline_running(tenant: str) -> int:
-    return sum(sum(1 for v in d["agents"].values() if v == "chal raha")
+    return sum(sum(1 for v in d["agents"].values() if v == "running")
                for d in list(LIVE.values()) if d["tenant"] == tenant and not d.get("bg"))
 
 
@@ -395,7 +395,7 @@ def stop_team(tenant: str, team_id: str) -> bool:
         row = s.get(AgentTeam, team_id)
         if row is None or row.tenant_id != tenant or row.status in ("done", "failed", "stopped"):
             return False
-        row.status, row.error, row.updated_at = "stopped", "owner ne roka", now()
+        row.status, row.error, row.updated_at = "stopped", "stopped by the owner", now()
     _RUNNING.discard(team_id)
     STATS["stopped"] += 1
     return True
@@ -406,7 +406,7 @@ def _digest(results: list[dict], per: int = 340) -> str:
     lines = []
     for r in results:
         if r.get("stopped"):
-            lines.append(f"[{r['name']}] roka gaya")
+            lines.append(f"[{r['name']}] stopped")
         elif r.get("ok"):
             lines.append(f"[{r['name']}] {r['deliverable'][:per]}")
         else:
@@ -423,30 +423,30 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
     tenant, conv = ctx.tenant_id, ctx.conversation_id
     if not getattr(settings, "agent_team", True):
         STATS["refused"] += 1
-        return {"note": "Agent team is abhi band hai (config agent_team). Kaam khud karo."}
+        return {"note": "The agent team is turned off right now (config agent_team). Do the work yourself."}
     if actor == "wake":
         STATS["refused"] += 1
-        return {"note": "Ek wake turn report deta hai, team deploy nahi karta. Aage ke turn mein deploy karo."}
+        return {"note": "A wake turn only reports; it does not deploy a team. Deploy in a later turn."}
     if not _allowed_actors(actor):
         STATS["refused"] += 1
-        return {"note": "Sirf owner / approved kaam ke liye team deploy hoti hai."}
+        return {"note": "A team is deployed only for the owner's / approved work."}
     mission = _clip(mission, 500)
     specs_in = [a for a in (agents or []) if isinstance(a, dict) and _clip(a.get("task"), 100)]
     if not mission or not specs_in:
         STATS["refused"] += 1
-        return {"note": ("Do cheezein chahiye: mission (poora kaam ek line mein) aur agents "
-                         "[{name, task}] - har agent ka task KHUMBHAL ke saath poora likho.")}
+        return {"note": ("Two things are needed: mission (the whole job in one line) and agents "
+                         "[{name, task}] - write each agent's task in full, with care.")}
     cap = max(1, int(settings.team_max_agents))
     used = int(getattr(ctx, "team_used", 0) or 0)
     room = max(0, 8 - used)                       # one turn never spawns more than 8 agents in total
     take = min(len(specs_in), cap, room)
     note_cap = ""
     if take < len(specs_in):
-        note_cap = (f"{len(specs_in)} maange the, {take} chal rahe hain "
-                    f"(ek turn mein max {min(cap, 8)} agents, ek deploy mein max {cap}).")
+        note_cap = (f"{len(specs_in)} were asked for, {take} are running "
+                    f"(max {min(cap, 8)} agents in one turn, max {cap} in one deploy).")
     if take == 0:
         STATS["refused"] += 1
-        return {"note": "Is turn ki agent budget poori ho gayi - pehle is team ka natija merge karo."}
+        return {"note": "The agent budget of this turn is used up - merge this team's result first."}
     kept_in_turn = False
     if mode == "background":
         from . import santosh as _s0
@@ -460,10 +460,10 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
         free = max(0, int(getattr(settings, "team_tenant_inline_max", 8)) - inline_running(tenant))
         if free == 0:
             STATS["refused"] += 1
-            return {"note": "Abhi aapke liye pehle se kai agents chal rahe hain - unka natija aane do, phir naya "
-                            "team lagao (agent_status se dekho)."}
+            return {"note": "Several agents are already running for you - let their result come in, then deploy a new "
+                            "team (check with agent_status)."}
         if take > free:
-            note_cap = (note_cap + " " if note_cap else "") + f"Abhi {free} agent hi aur lag sakte the."
+            note_cap = (note_cap + " " if note_cap else "") + f"Only {free} more agents could be added right now."
             take = free
     specs = specs_in[:take]
     research_ask = bool(getattr(ctx, "research", False))
@@ -502,11 +502,11 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
                       "ok": sum(1 for r in results if r.get("ok")), "agents": len(results)},
                      turn_id=turn_id, actor="team")
     ok_n = sum(1 for r in results if r.get("ok"))
-    note = ("Yeh sub-agents ke deliverables hain - SACH sirf yahi hai. Inke links/numbers apne jawab mein use karo, "
-            "unhe apne shabdon mein ek jawab mein merge karo; jahan agent fail hua wahan saaf batao. "
-            "Kuch apne aap se mat jodo."
-            if ok_n else "Koi agent kuch deliver nahi kar paya - use kya hua saaf batao, ek akela dobara try "
-                         "ya seedha khud karo.")
+    note = ("These are the sub-agents' deliverables - ONLY this is true. Use their links/numbers in your answer, "
+            "merge them into one answer in your own words; where an agent failed, say so plainly. "
+            "Add nothing of your own."
+            if ok_n else "No agent could deliver anything - say plainly what happened, retry with a single agent "
+                         "or do it yourself directly.")
     if kept_in_turn:
         note = ("This crew ran inside this turn (not in the background) - its work is below. Write the full answer NOW, "
                 "in this reply. " + note)
@@ -526,8 +526,8 @@ async def _deploy_background(specs: list[dict], mission: str, tenant: str, conv:
                                                                       AgentTeam.status == "running")) or 0)
         if running >= max(1, int(settings.team_bg_max_running)):
             STATS["refused"] += 1
-            return {"note": "Iske pehle ki background team abhi chal rahi hai - uske baad yeh lag jayegi "
-                            "(ya agent_status se pehli wali dekho)."}
+            return {"note": "The earlier background team is still running - this one starts after it "
+                            "(or check the first one with agent_status)."}
         row = AgentTeam(tenant_id=tenant, conversation_id=conv, mission=mission,
                         spec=json.dumps({"mission": mission, "agents": specs, "research": research}, ensure_ascii=False))
         s.add(row)
@@ -540,11 +540,11 @@ async def _deploy_background(specs: list[dict], mission: str, tenant: str, conv:
                      turn_id=turn_id, actor="team")
     bus.publish(conv, "agent_team", {"id": team_id, "number": f"team {team_id[-4:]}",
                                      "name": _clip(mission, 60), "status": "started",
-                                     "stage": f"{len(specs)} agents lage hain"})
+                                     "stage": f"{len(specs)} agents are at work"})
     names = ", ".join(f"{s.get('name')} ({_clip(s.get('task'), 60)})" for s in specs)
-    note = ("Background crew chal pada. ABHI ek-do line mein batao ki team lag gayi (kaun kya karega) aur natija "
-            "poora hone par KHUD report hoga - phir ruk jao, abhi kuch aur mat karo. Deliverables baad mein "
-            "agent_status action=check se milenge.")
+    note = ("The background crew has started. NOW say in one or two lines that the team is at work (who does what) and that the result "
+            "will be reported BY ITSELF when it is complete - then stop, do nothing else now. The deliverables come later "
+            "from agent_status action=check.")
     if note_cap:
         note = note_cap + " " + note
     return {"team": team_id, "mode": "background", "agents": names, "note": note}
@@ -557,20 +557,20 @@ async def agent_status(ctx, action: str = "check", id: str = "", **_) -> dict:
     action = (action or "check").lower()
     if action == "stop":
         if not id:
-            return {"note": "Kis team ko rokna hai? deploy_agents ke result wale id se batao."}
+            return {"note": "Which team should stop? Give the id from the deploy_agents result."}
         with session() as s:
             row = s.get(AgentTeam, id)
             if row is None or row.tenant_id != tenant:
-                return {"note": "Is id ki koi team nahi mili."}
+                return {"note": "No team found with this id."}
             if row.status in ("done", "failed", "stopped"):
-                return {"note": f"Woh team pehle hi {row.status} ho chuki hai."}
-            row.status, row.error, row.updated_at = "stopped", "owner ne roka", now()
+                return {"note": f"That team is already {row.status}."}
+            row.status, row.error, row.updated_at = "stopped", "stopped by the owner", now()
         _RUNNING.discard(id)
         STATS["stopped"] += 1
         bus.publish(row.conversation_id, "agent_team", {"id": id, "number": f"team {id[-4:]}",
                                                         "name": _clip(row.mission, 60),
-                                                        "status": "stopped", "say": "owner ne rok diya"})
-        return {"note": "Team roka gaya - jo agent chal rahe the apna aadha kaam chhod denge."}
+                                                        "status": "stopped", "say": "stopped by the owner"})
+        return {"note": "Team stopped - the agents that were running will leave their work half done."}
     with session() as s:
         q = select(AgentTeam).where(AgentTeam.tenant_id == tenant).order_by(AgentTeam.created_at.desc()).limit(8)
         if id:
@@ -578,7 +578,7 @@ async def agent_status(ctx, action: str = "check", id: str = "", **_) -> dict:
         rows = s.scalars(q).all()
     live = live_lines(tenant)
     if not rows and not live:
-        return {"note": "Abhi tak koi team deploy nahi hui (ya purani ho gayi)."}
+        return {"note": "No team has been deployed yet (or it has aged out)."}
     out = []
     for r in rows:
         try:
@@ -593,7 +593,7 @@ async def agent_status(ctx, action: str = "check", id: str = "", **_) -> dict:
                     "error": _clip(r.error, 200) if r.status == "failed" else "",
                     "updated": (_aware(r.updated_at) or now()).isoformat()})
     return {"teams": out, "live": live,
-            "note": "Yahi sach hai jo teams ne diya - iske alawa kuch claim mat karo."}
+            "note": "Only what the teams delivered is true - claim nothing beyond it."}
 
 
 async def session_log(ctx, limit: int = 30, kinds: str = "", **_) -> dict:
@@ -603,7 +603,7 @@ async def session_log(ctx, limit: int = 30, kinds: str = "", **_) -> dict:
     lim = min(max(int(limit or 30), 1), 100)
     rows = _evlog.recent(ctx.conversation_id, limit=lim, kinds=kl)
     if not rows:
-        return {"log": "Is chat ka ab koi event record nahi hua (ya purani entries retain window se nikal gayi)."}
+        return {"log": "No event has been recorded for this chat yet (or the old entries left the retain window)."}
     return {"count": len(rows), "log": _evlog.render(rows)}
 
 
@@ -656,7 +656,7 @@ async def run_background(team_id: str) -> None:
         try:
             bus.publish(conv, "agent_team", {"id": team_id, "number": f"team {team_id[-4:]}",
                                              "name": _clip(mission, 60), "status": "running",
-                                             "stage": f"{settled['n']}/{total} agents kaam poore"})
+                                             "stage": f"{settled['n']}/{total} agents finished"})
         except Exception:
             pass
 
@@ -805,5 +805,5 @@ TEAM_TOOLS = [
                                                     "agent_finished, team_synthesized, wake..."}}}},
 ]
 
-TEAM_LABELS = {"deploy_agents": "Agent team lagao", "agent_status": "Team ki haalat", "session_log": "Session log"}
+TEAM_LABELS = {"deploy_agents": "Deploying the agent team", "agent_status": "Checking team status", "session_log": "Session log"}
 TEAM_HANDLERS = {"deploy_agents": deploy_agents, "agent_status": agent_status, "session_log": session_log}

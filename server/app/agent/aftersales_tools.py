@@ -66,7 +66,7 @@ AFTERSALES_TOOLS = [
          "visit": {"type": "string"}, "q": {"type": "string"}, "unit": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-AFTERSALES_LABELS = {"service_desk": "Service ka kaam kar raha hoon", "service_desk_dekho": "Service register dekh raha hoon"}
+AFTERSALES_LABELS = {"service_desk": "Working on service", "service_desk_dekho": "Checking the service register"}
 
 
 def _s(v: Any) -> str:

@@ -42,7 +42,7 @@ OPERATOR_TOOLS = [
          "name": {"type": "string", "description": "recipe name for forget_recipe"}},
          "required": ["action"]}},
 ]
-OPERATOR_LABELS = {"computer_operator": "Apne browser mein website par kaam kar raha hoon"}
+OPERATOR_LABELS = {"computer_operator": "Working on a website in my browser"}
 
 
 def _short(v: dict[str, Any]) -> dict[str, Any]:
@@ -178,7 +178,7 @@ async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, 
                          " so she does it on her phone; (3) the office proxy (one-time setup) so the server can open it. "
                          "Don't start computer_operator again for this site unless she asks to try the server (where=server).")}
     r["place"] = "pc"
-    r["where"] = "Aapka PC (Chrome on HER computer, via Santosh Desktop) - not your own browser"
+    r["where"] = "Her PC (Chrome on HER computer, via Santosh Desktop) - not your own browser"
     if asked:
         r["say"] = ("Started in Chrome on your PC. The live card is in the chat; if an OTP comes just tell me here "
                     "and I will enter it in the PC box.")

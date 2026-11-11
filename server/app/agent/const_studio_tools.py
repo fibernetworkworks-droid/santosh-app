@@ -29,8 +29,8 @@ STUDIO_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-STUDIO_LABELS = {"const_studio": "Studio desk par kaam kar raha hoon",
-                 "const_studio_dekho": "Studio desk dekh raha hoon"}
+STUDIO_LABELS = {"const_studio": "Working on the studio desk",
+                 "const_studio_dekho": "Viewing the studio desk"}
 
 LEARN_TOOLS = [
     {"name": "const_learn", "description": (
@@ -58,8 +58,8 @@ LEARN_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-LEARN_LABELS = {"const_learn": "Siksha desk par kaam kar raha hoon",
-                "const_learn_dekho": "Siksha desk dekh raha hoon"}
+LEARN_LABELS = {"const_learn": "Working on the training desk",
+                "const_learn_dekho": "Viewing the training desk"}
 
 
 def _s(v: Any) -> str:

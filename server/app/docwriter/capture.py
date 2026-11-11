@@ -151,14 +151,14 @@ def run(base_url: str, steps: list[dict[str, Any]], out_dir: Path, device: str =
         lang: str = "en", hide: list[dict[str, str]] | None = None) -> dict[str, Any]:
     """Walk the steps; returns {shots: [{step, file, alt, hash, box}], log: [...], error}."""
     if available():
-        raise CaptureError("Playwright / Chromium nahi hai (VPS: bash ~/santosh_app/server/deploy/setup_sites.sh)")
+        raise CaptureError("Playwright / Chromium is missing (VPS: bash ~/santosh_app/server/deploy/setup_sites.sh)")
     from playwright.sync_api import Error as PwError
     from playwright.sync_api import sync_playwright
     host = (urlparse(base_url).hostname or "").lower()
     if not host or urlparse(base_url).scheme not in ("http", "https"):
-        raise CaptureError("Product ka link http(s) hona chahiye")
+        raise CaptureError("The product link must be http(s)")
     if not public_host(host):
-        raise CaptureError("Yeh address public internet par nahi; Hoola ise nahi kholega")
+        raise CaptureError("This address is not on the public internet; Hoola will not open it")
     w, h, dsf, mobile = R.VIEWPORTS.get(device, R.VIEWPORTS["phone"])
     out_dir.mkdir(parents=True, exist_ok=True)
     shots: list[dict[str, Any]] = []
@@ -201,7 +201,7 @@ def run(base_url: str, steps: list[dict[str, Any]], out_dir: Path, device: str =
                     if do in ("fill", "select") and target is not None:
                         what = target.evaluate(BOX_JS)
                         if R.SECRET_BOX.search(what):
-                            raise R.StepError(f"step {i}: yeh password / OTP / PIN / card ka box hai; Hoola isme nahi bharta")
+                            raise R.StepError(f"step {i}: this is a password / OTP / PIN / card box; Hoola does not fill it")
                     if st.get("shot"):          # taken BEFORE the action: shows where to tap / what to fill
                         n += 1
                         shots.append(_shoot(page, target, out_dir, i, n, dsf, st, product, lang, hide or []))
@@ -238,7 +238,7 @@ def run(base_url: str, steps: list[dict[str, Any]], out_dir: Path, device: str =
                     error = str(e)
                     break
                 except PwError as e:
-                    error = f"step {i} ({do}) nahi hua: " + str(e).splitlines()[0][:160]
+                    error = f"step {i} ({do}) did not work: " + str(e).splitlines()[0][:160]
                     break
             ctx.close()
         finally:

@@ -166,17 +166,17 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
         if kw.get("glossary") is not None and isinstance(kw["glossary"], list):
             r.glossary = _jd([{"term": _tidy(g.get("term"), 60), "avoid": _tidy(g.get("avoid"), 60), "note": _tidy(g.get("note"), 120)}
                               for g in kw["glossary"] if isinstance(g, dict) and g.get("term")][:120])
-    return settings(tenant) | {"say": "Docs ke niyam save."}
+    return settings(tenant) | {"say": "Docs rules saved."}
 
 
 def glossary_add(tenant: str, term: str, avoid: str = "", note: str = "") -> dict[str, Any]:
     if not term.strip():
-        raise DocError("Shabd chahiye")
+        raise DocError("A term is needed")
     st = settings(tenant)
     g = [x for x in st["glossary"] if x["term"].lower() != term.strip().lower()]
     g.append({"term": term.strip()[:60], "avoid": avoid.strip()[:60], "note": note.strip()[:120]})
     save_settings(tenant, glossary=g)
-    return {"glossary": g, "say": f"Shabdavali: '{term}'" + (f" (na ki '{avoid}')" if avoid else "") + " yaad rahega."}
+    return {"glossary": g, "say": f"Glossary: '{term}'" + (f" (not '{avoid}')" if avoid else "") + " will be remembered."}
 
 
 def set_github(tenant: str, token: str) -> dict[str, Any]:
@@ -184,7 +184,7 @@ def set_github(tenant: str, token: str) -> dict[str, Any]:
     from ..bazar.security import vault
     token = (token or "").strip()
     if len(token) < 20:
-        raise DocError("Yeh token adhoora lagta hai.")
+        raise DocError("This token looks incomplete.")
     try:
         me = GH.Gh(token).me()
     except GH.GhError as e:
@@ -194,14 +194,14 @@ def set_github(tenant: str, token: str) -> dict[str, Any]:
         for old in s.scalars(select(DocKey).where(DocKey.tenant_id == tenant, DocKey.provider == "github")).all():
             s.delete(old)
         s.add(DocKey(tenant_id=tenant, provider="github", sealed=vault().seal(token), label=label))
-    return {"ok": True, "label": label, "say": f"GitHub jud gaya ({label}). Token kahin dikhaya nahi jayega; Hoola sirf padhega."}
+    return {"ok": True, "label": label, "say": f"GitHub connected ({label}). The token is never shown anywhere; Hoola only reads."}
 
 
 def forget_github(tenant: str) -> dict[str, Any]:
     with session() as s:
         for k in s.scalars(select(DocKey).where(DocKey.tenant_id == tenant, DocKey.provider == "github")).all():
             s.delete(k)
-    return {"ok": True, "say": "GitHub token hata diya. GitHub settings mein bhi token delete kar dijiye."}
+    return {"ok": True, "say": "GitHub token removed. Delete the token in GitHub settings too."}
 
 
 def _gh_token(tenant: str) -> str:
@@ -247,16 +247,16 @@ def _pview(p: DocProduct, full: bool = False) -> dict[str, Any]:
 def verify_steps(p: DocProduct) -> dict[str, Any]:
     t = p.verify_token
     return {"token": t, "meta": f'<meta name="hoola-docs-verify" content="{t}">',
-            "file": f"https://{p.host}/.well-known/hoola-docs.txt  (andar sirf: {t})", "dns": f"TXT  {p.host}  hoola-docs-verify={t}",
-            "say": "Yeh product aapka hai, yeh sabit karne ke liye inme se ek kijiye (Google Search Console jaisa): home page ke <head> "
-                   "mein meta tag, ya .well-known file, ya DNS TXT record. Phir 'Jaancho' dabaiye."}
+            "file": f"https://{p.host}/.well-known/hoola-docs.txt  (containing only: {t})", "dns": f"TXT  {p.host}  hoola-docs-verify={t}",
+            "say": "To prove this product is yours, do one of these (like Google Search Console): a meta tag in the home page <head>, "
+                   "or the .well-known file, or a DNS TXT record. Then check again."}
 
 
 def _find_product(s, tenant: str, ref: str) -> DocProduct:
     ref = (ref or "").strip()
     rows = s.scalars(select(DocProduct).where(DocProduct.tenant_id == tenant).order_by(DocProduct.created_at.desc())).all()
     if not rows:
-        raise DocError("Abhi koi product nahi joda. Pehle batayiye docs kis cheez ke: Hoola ki app / website, aapki live site, GitHub repo ya file.")
+        raise DocError("No product is connected yet. First tell me what the docs are for: an app / website made in Hoola, your live site, a GitHub repo or a file.")
     if not ref:
         return rows[0]
     for r in rows:
@@ -266,7 +266,7 @@ def _find_product(s, tenant: str, ref: str) -> DocProduct:
     for r in rows:
         if low in (r.name or "").lower() or low in (r.host or "") or low in (r.ref or "").lower():
             return r
-    raise DocError(f"Product '{ref}' nahi mila.")
+    raise DocError(f"Product '{ref}' not found.")
 
 
 def products(tenant: str) -> list[dict[str, Any]]:
@@ -318,7 +318,7 @@ def add_product(tenant: str, kind: str, ref: str = "", name: str = "", file_ids:
         from urllib.parse import urlparse
         u = urlparse(url)
         if not u.hostname or u.scheme not in ("http", "https"):
-            raise DocError("Website ka poora link dijiye (https://...)")
+            raise DocError("Give the website's full link (https://...)")
         host = u.hostname.lower()
         ref = f"{u.scheme}://{u.netloc}{u.path or '/'}"
         name = name or host
@@ -334,13 +334,13 @@ def add_product(tenant: str, kind: str, ref: str = "", name: str = "", file_ids:
     elif kind == "files":
         ids = [x for x in (file_ids or [x.strip() for x in ref.split(",")]) if x]
         if not ids:
-            raise DocError("File chahiye (PRD / Word / PDF / OpenAPI)")
+            raise DocError("A file is needed (PRD / Word / PDF / OpenAPI)")
         ref, verified, how = ",".join(ids[:10]), True, "her_files"
-        name = name or "Meri files"
+        name = name or "My files"
     with session() as s:
         old = s.scalars(select(DocProduct).where(DocProduct.tenant_id == tenant, DocProduct.kind == kind, DocProduct.ref == ref)).first()
         if old:
-            return {"product": _pview(old), "say": f"'{old.name}' pehle se juda hai."}
+            return {"product": _pview(old), "say": f"'{old.name}' is already connected."}
         p = DocProduct(tenant_id=tenant, kind=kind, ref=ref, name=_tidy(name, 160), host=host, verified=verified, verify_how=how,
                        verify_token="hoola-" + secrets.token_hex(10), extra=_jd({"number": num} if num else {}))
         s.add(p)
@@ -356,7 +356,7 @@ def add_product(tenant: str, kind: str, ref: str = "", name: str = "", file_ids:
         out = snapshot(tenant, pid)
     with session() as s:
         v = _pview(s.get(DocProduct, pid), full=True)
-    say = f"'{v['name']}' juda." + (f" {v['parts']} hisse mile." if v["parts"] else "")
+    say = f"'{v['name']}' connected." + (f" {v['parts']} hisse mile." if v["parts"] else "")
     if not v["verified"]:
         say += " " + (out.get("note") or v.get("verify", {}).get("say", ""))
     return {"product": v, "say": say}
@@ -369,12 +369,12 @@ def verify_product(tenant: str, ref: str) -> dict[str, Any]:
         p = _find_product(s, tenant, ref)
         s.expunge(p)
     if p.verified:
-        return {"product": get_product(tenant, p.id), "say": "Pehle se sabit hai."}
+        return {"product": get_product(tenant, p.id), "say": "Already verified."}
     if p.kind != "web":
-        raise DocError("Yeh jaanch sirf live website / web app ke liye.")
+        raise DocError("This check is only for a live website / web app.")
     from . import capture as CP
     if not CP.public_host(p.host):
-        raise DocError("Yeh address public internet par nahi.")
+        raise DocError("This address is not on the public internet.")
     found = ""
     base = f"https://{p.host}" if not p.ref.startswith("http://") else f"http://{p.host}"
     try:
@@ -398,12 +398,12 @@ def verify_product(tenant: str, ref: str) -> dict[str, Any]:
         except Exception:
             pass
     if not found:
-        return {"verified": False, "verify": verify_steps(p), "say": "Abhi saboot nahi mila. Meta tag / file / DNS TXT lagakar dobara jaanchiye."}
+        return {"verified": False, "verify": verify_steps(p), "say": "No proof found yet. Add the meta tag / file / DNS TXT and check again."}
     with session() as s:
         row = s.get(DocProduct, p.id)
         row.verified, row.verify_how = True, found
     snapshot(tenant, p.id)
-    return {"verified": True, "product": get_product(tenant, p.id), "say": f"Sabit ho gaya ({found}). Ab screenshot aur steps le sakta hoon."}
+    return {"verified": True, "product": get_product(tenant, p.id), "say": f"Verified ({found}). I can now take screenshots and steps."}
 
 
 def _read_parts(tenant: str, p: DocProduct) -> tuple[dict[str, dict], str, dict[str, Any]]:
@@ -509,7 +509,7 @@ def _read_parts(tenant: str, p: DocProduct) -> tuple[dict[str, dict], str, dict[
             try:
                 name, data = _load_file(tenant, fid)
             except Exception as e:
-                raise DocError(f"File nahi mili: {fid} ({e})")
+                raise DocError(f"File not found: {fid} ({e})")
             if re.search(r"\.(json|ya?ml)$", name, re.I):
                 try:
                     spec = OA.load(data)
@@ -536,7 +536,7 @@ def snapshot(tenant: str, ref: str) -> dict[str, Any]:
         p = _find_product(s, tenant, ref)
         s.expunge(p)
     if not p.verified and p.kind not in ("github",):
-        raise DocError("Pehle sabit kijiye ki yeh product aapka hai (verify).")
+        raise DocError("First prove that this product is yours (verify).")
     old = _j(p.parts, {})
     parts, version, extra = _read_parts(tenant, p)
     changed = [k for k in parts if k in old and old[k].get("hash") != parts[k]["hash"]]
@@ -566,9 +566,9 @@ def record_flow(tenant: str, product: str, name: str, steps: Any, device: str = 
         p = _find_product(s, tenant, product)
         s.expunge(p)
     if p.kind != "web":
-        raise DocError("Steps ke screenshot sirf live website / web app par. Hoola ki app / site ke screenshot pehle se hain.")
+        raise DocError("Step screenshots only work on a live website / web app. Apps / sites made in Hoola already have screenshots.")
     if not p.verified:
-        raise DocError("Pehle sabit kijiye ki yeh site aapki hai (verify).")
+        raise DocError("First prove that this site is yours (verify).")
     if isinstance(steps, str):
         steps = [x for x in steps.splitlines() if x.strip()]
     try:
@@ -603,8 +603,8 @@ def record_flow(tenant: str, product: str, name: str, steps: Any, device: str = 
         v = _fview(f)
     snap = snapshot(tenant, p.id)
     card = {"kind": "shots", "flow": v, "product": p.name, "changed_steps": changed, "blocked": res["blocked"],
-            "say": (f"'{v['name']}': {len(res['shots'])} screenshot liye" + (f", {len(changed)} badle hue" if changed else "")
-                    + (". Ruk gaya: " + res["error"] if res["error"] else ". Personal jaankari dhak di.")),
+            "say": (f"'{v['name']}': {len(res['shots'])} screenshots taken" + (f", {len(changed)} badle hue" if changed else "")
+                    + (". Stopped: " + res["error"] if res["error"] else ". Personal details were masked.")),
             "images": [f"/api/docwriter/flows/{fid}/img/{x['file']}" for x in res["shots"]]}
     _publish(tenant, "docwriter_shots", card, conv)
     return card | {"snapshot": snap}
@@ -762,7 +762,7 @@ def write(tenant: str, product: str = "", kind: str = "", lang: str = "", title:
         p = _find_product(s, tenant, product)
         s.expunge(p)
     if not p.verified:
-        raise DocError("Pehle sabit kijiye ki yeh product aapka hai (verify).")
+        raise DocError("First prove that this product is yours (verify).")
     if not _j(p.parts, {}) or p.kind in ("hoola_app", "hoola_site"):
         snapshot(tenant, p.id)
         with session() as s:
@@ -773,7 +773,7 @@ def write(tenant: str, product: str = "", kind: str = "", lang: str = "", title:
         return release_notes(tenant, p.id, lang=lang, words=words, conv=conv)
     ids = _pick_parts(kind, parts, focus)
     if not ids and kind not in ("faq",):
-        raise DocError(f"{R.KINDS[kind]['label']} ke liye product mein kuch nahi mila" + (" (OpenAPI file nahi mili)" if kind == "api" else "") + ".")
+        raise DocError(f"{R.KINDS[kind]['label']}: nothing was found in the product for it" + (" (no OpenAPI file found)" if kind == "api" else "") + ".")
     with session() as s:
         flows = {f.id: _j(f.shots, []) for f in s.scalars(select(DocFlow).where(DocFlow.product_id == p.id)).all()}
         d = DocDoc(tenant_id=tenant, number=_number(s, tenant), product_id=p.id, kind=kind, lang=lang,
@@ -797,8 +797,8 @@ def write(tenant: str, product: str = "", kind: str = "", lang: str = "", title:
         d.sections = _jd(sections)
     chk = check(tenant, did)
     v = get(tenant, did)
-    say = (f"{v['number']} '{v['title']}' taiyaar ({len(sections)} hisse, {sum(len(x['shots']) for x in sections)} screenshot). "
-           f"{len(chk['blocking'])} rukawat, {len(chk['warnings'])} sujhav." + (" Model nahi tha: seedha product se likha." if
+    say = (f"{v['number']} '{v['title']}' is ready ({len(sections)} sections, {sum(len(x['shots']) for x in sections)} screenshots). "
+           f"{len(chk['blocking'])} blockers, {len(chk['warnings'])} suggestions." + (" No model was available: written straight from the product." if
                                                                                   all(x.get('by') != 'model' for x in sections) else ""))
     _publish(tenant, "docwriter_doc", _card(v, say), conv)
     return {"doc": v, "say": say}
@@ -871,7 +871,7 @@ def release_notes(tenant: str, product: str = "", lang: str = "", words: str = "
     if words:
         groups["improved"].append(_tidy(words, 400))
     if not any(groups.values()):
-        raise DocError("Is release mein koi badlav nahi mila (merged PR / naye screen). Aap batayiye kya badla.")
+        raise DocError("No changes were found in this release (merged PRs / new screens). Tell me what changed.")
     heads = {"new": "New", "improved": "Improved", "fixed": "Fixed", "breaking": "Changes you need to know"} if lang == "en" else \
         {"new": "Naya", "improved": "Behtar hua", "fixed": "Theek hua", "breaking": "Dhyaan dijiye (badlav)"}
     raw = "\n\n".join(f"### {heads[g]}\n\n" + "\n".join(f"- {x}" for x in items) for g, items in groups.items() if items)
@@ -889,7 +889,7 @@ def release_notes(tenant: str, product: str = "", lang: str = "", words: str = "
         did = d.id
     check(tenant, did)
     v = get(tenant, did)
-    say = f"{v['number']} release notes taiyaar: " + ", ".join(f"{len(x)} {heads[g].lower()}" for g, x in groups.items() if x) + "."
+    say = f"{v['number']} release notes ready: " + ", ".join(f"{len(x)} {heads[g].lower()}" for g, x in groups.items() if x) + "."
     _publish(tenant, "docwriter_doc", _card(v, say), conv)
     return {"doc": v, "say": say}
 
@@ -919,10 +919,10 @@ def _find(s, tenant: str, ref: str) -> DocDoc:
         d = s.scalars(q.where(DocDoc.title.ilike(f"%{ref}%")).order_by(DocDoc.updated_at.desc())).first()
         if d:
             return d
-        raise DocError(f"Doc '{ref}' nahi mila.")
+        raise DocError(f"Doc '{ref}' not found.")
     d = s.scalars(q.order_by(DocDoc.updated_at.desc())).first()
     if not d:
-        raise DocError("Abhi koi doc nahi.")
+        raise DocError("No docs yet.")
     return d
 
 
@@ -995,16 +995,16 @@ def check(tenant: str, doc: str) -> dict[str, Any]:
         if sec.get("by") == "model":
             extra = sorted(n for n in _numbers(sec["body"]) - known if len(n.replace(",", "").replace(".", "")) >= 2)
             if extra:
-                res["warnings"].append({"kind": "fact", "text": f"'{sec['title'][:40]}': yeh number product mein nahi mila: {', '.join(extra[:5])}",
+                res["warnings"].append({"kind": "fact", "text": f"'{sec['title'][:40]}': this number was not found in the product: {', '.join(extra[:5])}",
                                         "section": sec["id"]})
         if sec.get("stale"):
-            res["warnings"].append({"kind": "stale", "text": f"'{sec['title'][:40]}' purana ho gaya: {sec.get('why')}", "section": sec["id"]})
+            res["warnings"].append({"kind": "stale", "text": f"'{sec['title'][:40]}' is out of date: {sec.get('why')}", "section": sec["id"]})
     contact_ok = [st["contact"]] if st["contact"] else []
     masked = R.mask_text(md, contact_ok)
     if masked.count("[hataya]") > md.count("[hataya]"):
-        res["blocking"].append({"kind": "pii", "text": "Docs mein kisi ka e-mail / phone hai (aapke business contact ke alawa): hataiye"})
+        res["blocking"].append({"kind": "pii", "text": "The docs contain someone's e-mail / phone (other than your business contact): remove it"})
     if not secs:
-        res["blocking"].append({"kind": "empty", "text": "Doc khaali hai"})
+        res["blocking"].append({"kind": "empty", "text": "The doc is empty"})
     with session() as s:
         d = s.get(DocDoc, did)
         d.checks = _jd(res)
@@ -1029,8 +1029,8 @@ def edit(tenant: str, doc: str, section: str, body: str | None = None, title: st
         secs = _j(d.sections, [])
         sec = next((x for x in secs if x["id"] == section or x["title"].lower() == (section or "").lower()), None)
         if sec is None:
-            raise DocError("Section nahi mila")
-        _keep_version(d, "aapne badla")
+            raise DocError("Section not found")
+        _keep_version(d, "you edited")
         if body is not None:
             sec["body"] = str(body)[:20000]
         if title is not None:
@@ -1040,7 +1040,7 @@ def edit(tenant: str, doc: str, section: str, body: str | None = None, title: st
         did = d.id
     _reset_pending(tenant, did)
     check(tenant, did)
-    return {"doc": get(tenant, did), "say": "Badlav save. Sync ise apne aap nahi badlega."}
+    return {"doc": get(tenant, did), "say": "Change saved. Sync will not overwrite it by itself."}
 
 
 def revise(tenant: str, doc: str, instruction: str, section: str = "", conv: str = "") -> dict[str, Any]:
@@ -1053,7 +1053,7 @@ def revise(tenant: str, doc: str, instruction: str, section: str = "", conv: str
         did, lang = d.id, d.lang
     targets = [x for x in secs if not section or x["id"] == section or section.lower() in x["title"].lower()]
     if not targets:
-        raise DocError("Section nahi mila")
+        raise DocError("Section not found")
     done = 0
     for sec in targets[:12]:
         facts = _jd((parts.get(sec.get("part")) or {}).get("facts") or {})[:5000]
@@ -1064,7 +1064,7 @@ def revise(tenant: str, doc: str, instruction: str, section: str = "", conv: str
             sec["body"], sec["title"], sec["by"] = str(out["body"])[:12000], _tidy(out.get("title") or sec["title"], 160), "model"
             done += 1
     if not done:
-        raise DocError("Abhi model nahi chal raha; section khud likh dijiye (edit).")
+        raise DocError("No model is running right now; write the section yourself (edit).")
     with session() as s:
         d = s.get(DocDoc, did)
         _keep_version(d, instruction)
@@ -1088,11 +1088,11 @@ def translate(tenant: str, doc: str, to: str, conv: str = "") -> dict[str, Any]:
     st = settings(tenant)
     dst = R.lang_of(to, "")
     if not dst:
-        raise DocError("Kis bhasha mein? English, Hindi, Marathi ya Hinglish")
+        raise DocError("Which language? English, Hindi, Marathi or Hinglish")
     with session() as s:
         d = _find(s, tenant, doc)
         if d.lang == dst:
-            raise DocError("Doc pehle se usi bhasha mein hai")
+            raise DocError("The doc is already in that language")
         src, secs, did = d.lang, _j(d.sections, []), d.id
         base = dict(product_id=d.product_id, kind=d.kind, title=d.title, product_version=d.product_version)
     keep = list(st["keep"]) + [g["term"] for g in st["glossary"]] + ([st["product_name"]] if st["product_name"] else [])
@@ -1108,9 +1108,9 @@ def translate(tenant: str, doc: str, to: str, conv: str = "") -> dict[str, Any]:
             try:
                 tr = _ai(TR_SYSTEM.format(src=R.LANGS.get(src, src), dst=R.LANGS[dst], glossary=gl), locked, 3500).strip()
             except Exception as e:
-                raise DocError(f"Translation abhi nahi ho paya (model): {e.__class__.__name__}")
+                raise DocError(f"Translation could not be done right now (model): {e.__class__.__name__}")
             if not tr:
-                raise DocError("Translation abhi nahi ho paya (model ne khaali diya)")
+                raise DocError("Translation could not be done right now (the model returned nothing)")
             res, lost = R.unlock(tr, table)
             lost_all += lost
             texts.append(res)
@@ -1119,7 +1119,7 @@ def translate(tenant: str, doc: str, to: str, conv: str = "") -> dict[str, Any]:
     with session() as s:
         old = s.scalars(select(DocDoc).where(DocDoc.tenant_id == tenant, DocDoc.translation_of == did, DocDoc.lang == dst)).first()
         if old:
-            _keep_version(old, "dobara anuvaad")
+            _keep_version(old, "translated again")
             old.sections, old.status = _jd(out_secs), "draft"
             nid = old.id
         else:
@@ -1136,10 +1136,10 @@ def translate(tenant: str, doc: str, to: str, conv: str = "") -> dict[str, Any]:
         with session() as s:
             d = s.get(DocDoc, nid)
             c = _j(d.checks, {})
-            c.setdefault("blocking", []).append({"kind": "lost", "text": "Anuvaad mein yeh cheezein chhoot gayi, jodiye: " + ", ".join(lost_all[:6])})
+            c.setdefault("blocking", []).append({"kind": "lost", "text": "These items were lost in translation, add them: " + ", ".join(lost_all[:6])})
             d.checks, d.status = _jd(c), "draft"
     v = get(tenant, nid)
-    say = f"{v['number']}: {R.LANGS[dst].split(' ')[0]} mein taiyaar" + (f"; {len(lost_all)} cheezein chhooti (card dekhiye)" if lost_all else "") + "."
+    say = f"{v['number']}: ready in {R.LANGS[dst].split(' ')[0]}" + (f"; {len(lost_all)} items lost (see the card)" if lost_all else "") + "."
     _publish(tenant, "docwriter_doc", _card(v, say), conv)
     return {"doc": v, "say": say, "checks": res}
 
@@ -1177,15 +1177,15 @@ def sync(tenant: str, product: str = "", redraft: bool = True, conv: str = "") -
             if not pid or pid.startswith(("api:", "release:")):
                 continue
             if pid not in parts:
-                sec["stale"], sec["why"] = True, "product se yeh hissa hat gaya"
+                sec["stale"], sec["why"] = True, "this part was removed from the product"
             elif parts[pid]["hash"] != sec.get("part_hash"):
-                sec["stale"], sec["why"] = True, "product mein yeh hissa badla"
+                sec["stale"], sec["why"] = True, "this part changed in the product"
             else:
                 continue
             stale.append(sec["title"])
             if sec.get("edited"):
                 mine.append(sec["title"])
-                sec["why"] += " (aapne khud likha tha: dekh kar badaliye)"
+                sec["why"] += " (you wrote this yourself: review and change it)"
                 continue
             if redraft and pid in parts and not tr_of:
                 w = _write_section(kind, pid, parts[pid], st, lang, "", p.name)
@@ -1225,10 +1225,10 @@ def sync(tenant: str, product: str = "", redraft: bool = True, conv: str = "") -
         with session() as s:
             num = s.get(DocDoc, did).number
         report.append({"doc": did, "number": num, "stale": stale, "updated": updated, "yours": mine, "new_parts": len(new_parts)})
-    say = (f"{p.name} {snap['old_version'] or ''} -> {snap['version']}: {len(snap['changed'])} badle, {len(snap['added'])} naye, "
-           f"{len(snap['removed'])} hate. " + ("; ".join(f"{r['number']}: {r['updated']} update" + (f", {len(r['yours'])} aapke likhe dekhiye"
+    say = (f"{p.name} {snap['old_version'] or ''} -> {snap['version']}: {len(snap['changed'])} changed, {len(snap['added'])} new, "
+           f"{len(snap['removed'])} removed. " + ("; ".join(f"{r['number']}: {r['updated']} updated" + (f", {len(r['yours'])} written by you to review"
                                                                                                    if r['yours'] else "") for r in report)
-                                                or "Docs pehle se sahi hain.") + (" Public docs aapke tap ke bina nahi badlenge." if report else ""))
+                                                or "Docs are already up to date.") + (" Public docs will not change without your tap." if report else ""))
     card = {"kind": "sync", "product": {"id": p.id, "name": p.name}, "snapshot": snap, "docs": report, "say": say}
     if report or snap["changed"] or snap["added"] or snap["removed"]:
         _publish(tenant, "docwriter_sync", card, conv)
@@ -1490,10 +1490,10 @@ def _reset_pending(tenant: str, did: str) -> None:
 def publish_request(tenant: str, doc: str, dest: str = "page", repo: str = "", conv: str = "") -> dict[str, Any]:
     """Makes the card. Blocking checks stop it (they can't be forced); nothing goes public until her tap on the card."""
     if dest not in DESTS:
-        raise DocError("Kahan: page (Hoola docs page) | github (pull request) | wordpress")
+        raise DocError("Where: page (Hoola docs page) | github (pull request) | wordpress")
     res = check(tenant, doc)
     if res["blocking"]:
-        raise DocError("Pehle yeh theek kijiye: " + "; ".join(x["text"] for x in res["blocking"][:5]))
+        raise DocError("Fix this first: " + "; ".join(x["text"] for x in res["blocking"][:5]))
     with session() as s:
         d = _find(s, tenant, doc)
         prod = s.get(DocProduct, d.product_id)
@@ -1508,13 +1508,13 @@ def publish_request(tenant: str, doc: str, dest: str = "page", repo: str = "", c
         pub["pending"] = {"dest": dest, "repo": repo, "hash": h, "at": now().isoformat()}
         d.publish, d.status = _jd(pub), "waiting"
         v = _view(d)
-    where = {"page": "Hoola docs page (public link)", "github": f"GitHub '{repo}' mein pull request (docs/hoola/, aap merge karengi)",
-             "wordpress": "aapki WordPress site par naya page"}[dest]
+    where = {"page": "Hoola docs page (public link)", "github": f"GitHub '{repo}' as a pull request (docs/hoola/, you merge it)",
+             "wordpress": "a new page on your WordPress site"}[dest]
     if dest == "wordpress" and not _wp_ready(tenant):
-        raise DocError("WordPress juda nahi hai (Kalam Sahayak > Niyam mein jodiye).")
+        raise DocError("WordPress is not connected (connect it in Content writer > Rules).")
     if dest == "github" and not _gh_token(tenant):
-        raise DocError("GitHub token juda nahi (Docs Sahayak > Sources).")
-    say = f"{v['number']} '{v['title']}' {where} par daalun? Aapki haan chahiye."
+        raise DocError("No GitHub token connected (Technical writer > Sources).")
+    say = f"Publish {v['number']} '{v['title']}' to: {where}? Your approval is needed."
     card = {"kind": "publish", "doc": _card(v)["doc"], "dest": dest, "where": where, "repo": repo, "hash": h,
             "warnings": [x["text"] for x in res["warnings"][:6]],
             "preview": "\n\n".join(f"## {x['title']}\n{x['body'][:300]}" for x in v["section_list"][:3]), "say": say}
@@ -1538,20 +1538,20 @@ def page_url(token: str) -> str:
 def decide_publish(tenant: str, doc: str, yes: bool, hash_: str, by_tap: bool = False, conv: str = "") -> dict[str, Any]:
     """ONLY her tap in the app (API). The hash must match the card AND the doc as it is now."""
     if not by_tap:
-        raise DocError("Publish sirf aapke app tap se hota hai.")
+        raise DocError("Publishing happens only from your tap in the app.")
     with session() as s:
         d = _find(s, tenant, doc)
         pub = _j(d.publish, {})
         pend = pub.get("pending") or {}
         if not pend:
-            raise DocError("Koi publish card nahi hai.")
+            raise DocError("There is no publish card.")
         if not hash_ or hash_ != pend.get("hash") or hash_ != _publish_hash(tenant, d, pend["dest"], pend.get("repo", "")):
-            raise DocError("Card ke baad doc badal gaya; naya card mangiye.")
+            raise DocError("The doc changed after the card was made; ask for a new card.")
         did = d.id
         if not yes:
             pub["pending"] = None
             d.publish, d.status = _jd(pub), "ready"
-            return {"ok": True, "say": "Theek hai, public nahi kiya."}
+            return {"ok": True, "say": "All right, it was not made public."}
         s.expunge(d)
     dest, repo = pend["dest"], pend.get("repo", "")
     url = ""
@@ -1570,7 +1570,7 @@ def decide_publish(tenant: str, doc: str, yes: bool, hash_: str, by_tap: bool = 
             files[f"docs/hoola/{slug}/img/{f.name}"] = f.read_bytes()
         try:
             pr = GH.open_pr(_gh_token(tenant), repo, files, f"docs: {d.title} (v{d.version}, Hoola)",
-                            f"{d.kind} in {R.LANGS.get(d.lang, d.lang)}, written by Hoola Docs Sahayak from the product and checked "
+                            f"{d.kind} in {R.LANGS.get(d.lang, d.lang)}, written by Hoola's technical writer from the product and checked "
                             "against the style guide. Please review and merge.", f"hoola-docs/{d.number.lower()}-v{d.version}")
         except GH.GhError as e:
             raise DocError(str(e))
@@ -1592,7 +1592,7 @@ def decide_publish(tenant: str, doc: str, yes: bool, hash_: str, by_tap: bool = 
         pub["done"] = pub["done"][-20:]
         row.publish, row.status = _jd(pub), "published"
         v = _view(row)
-    say = f"{v['number']} public ho gaya: {url}" if url else f"{v['number']} public ho gaya."
+    say = f"{v['number']} is now public: {url}" if url else f"{v['number']} is now public."
     _publish(tenant, "docwriter_doc", _card(v, say), conv or d.conv)
     return {"ok": True, "url": url, "doc": v, "say": say}
 
@@ -1621,7 +1621,7 @@ def unpublish_page(tenant: str, doc: str) -> dict[str, Any]:
         d.page_token, d.page_html = "", ""
         if d.status == "published":
             d.status = "ready"
-    return {"ok": True, "say": "Docs page hata diya; purana link band."}
+    return {"ok": True, "say": "Docs page removed; the old link no longer works."}
 
 
 def page_by_token(token: str) -> str | None:
@@ -1639,7 +1639,7 @@ def delete(tenant: str, doc: str) -> dict[str, Any]:
         num, did = d.number, d.id
         s.delete(d)
     shutil.rmtree(_dir(tenant, "docs", did), ignore_errors=True)
-    return {"ok": True, "say": f"{num} hata diya."}
+    return {"ok": True, "say": f"{num} removed."}
 
 
 def remove_product(tenant: str, ref: str) -> dict[str, Any]:
@@ -1649,7 +1649,7 @@ def remove_product(tenant: str, ref: str) -> dict[str, Any]:
             s.delete(f)
         name = p.name
         s.delete(p)
-    return {"ok": True, "say": f"'{name}' hata diya (uske docs rahenge)."}
+    return {"ok": True, "say": f"'{name}' removed (its docs stay)."}
 
 
 # ---------------------------------------------------------------- day view, worker, prompt
@@ -1661,13 +1661,13 @@ def day(tenant: str) -> dict[str, Any]:
     unverified = [p for p in ps if not p["verified"]]
     bits = []
     if stale:
-        bits.append(f"{len(stale)} doc purane (product badla): " + ", ".join(d["number"] for d in stale[:5]))
+        bits.append(f"{len(stale)} docs out of date (the product changed): " + ", ".join(d["number"] for d in stale[:5]))
     if waiting:
-        bits.append(f"{len(waiting)} publish card aapki haan ke liye")
+        bits.append(f"{len(waiting)} publish cards waiting for your approval")
     if unverified:
-        bits.append(f"{len(unverified)} product abhi sabit nahi")
+        bits.append(f"{len(unverified)} products not verified yet")
     return {"products": ps, "docs": ds[:30], "stale": stale, "waiting": waiting, "kinds": [{"id": k, **v} for k, v in R.KINDS.items()],
-            "say": "; ".join(bits) or (f"{len(ds)} docs, sab product ke saath." if ds else "Abhi koi doc nahi. Batayiye kis cheez ka manual banau.")}
+            "say": "; ".join(bits) or (f"{len(ds)} docs, all in step with the product." if ds else "No docs yet. Tell me what you want a manual for.")}
 
 
 def everything(tenant: str) -> dict[str, Any]:

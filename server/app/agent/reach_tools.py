@@ -415,6 +415,6 @@ REACH_TOOLS = [
          "limit": {"type": "integer", "description": "search: 1..8 results, default 5"}}}},
 ]
 
-REACH_LABELS = {"reach": "Reach manch se internet dekh raha hoon"}
+REACH_LABELS = {"reach": "Browsing the internet with Reach"}
 
 REACH_HANDLERS = {"reach": reach}

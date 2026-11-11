@@ -296,22 +296,22 @@ EMAIL_TOOLS = [
          "mute": {"type": "string", "description": "Sender emails to never announce (comma-separated), or 'clear'"}}}},
 ]
 
-EMAIL_LABELS = {"email_check": "Inbox dekh raha hoon", "email_read": "Email padh raha hoon",
-                "email_thread": "Poora conversation padh raha hoon", "email_triage": "Inbox chhaant raha hoon",
-                "email_attachment": "Attachment khol raha hoon",
-                "email_draft": "Email likh raha hoon", "email_forward": "Email forward kar raha hoon",
-                "email_action": "Emails sambhal raha hoon", "email_label": "Labels sambhal raha hoon",
-                "email_drafts": "Mailbox ke drafts sambhal raha hoon",
-                "email_filters": "Gmail ka filter sambhal raha hoon",
-                "email_forwarding": "Forwarding addresses sambhal raha hoon",
-                "email_alias": "Send-as alias sambhal raha hoon",
-                "email_threads": "Poore conversations sambhal raha hoon",
-                "email_delete": "Delete ki manzoori le raha hoon",
-                "email_follow_up": "Follow-up laga raha hoon", "email_bulk": "Bulk email taiyaar kar raha hoon",
-                "email_bulk_status": "Bulk email dekh raha hoon", "email_contacts": "Address dhoondh raha hoon",
-                "email_accounts": "Email settings dekh raha hoon",
-                "email_rule": "Inbox rule sambhal raha hoon", "email_snooze": "Mail snooze kar raha hoon",
-                "email_vacation": "Vacation reply sambhal raha hoon"}
+EMAIL_LABELS = {"email_check": "Checking the inbox", "email_read": "Reading the email",
+                "email_thread": "Reading the whole conversation", "email_triage": "Sorting through the inbox",
+                "email_attachment": "Opening the attachment",
+                "email_draft": "Writing an email", "email_forward": "Forwarding the email",
+                "email_action": "Managing emails", "email_label": "Managing labels",
+                "email_drafts": "Managing mailbox drafts",
+                "email_filters": "Managing Gmail filters",
+                "email_forwarding": "Managing forwarding addresses",
+                "email_alias": "Managing send-as aliases",
+                "email_threads": "Managing whole conversations",
+                "email_delete": "Getting approval to delete",
+                "email_follow_up": "Setting a follow-up", "email_bulk": "Preparing bulk email",
+                "email_bulk_status": "Checking bulk email", "email_contacts": "Looking up an address",
+                "email_accounts": "Checking email settings",
+                "email_rule": "Managing inbox rules", "email_snooze": "Snoozing the mail",
+                "email_vacation": "Managing the vacation reply"}
 
 
 async def _t(fn, *a, **kw):
@@ -620,17 +620,17 @@ async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None,
                         "the new subject / body / to; sending = the owner's tap on the card.")
     if action == "delete":
         if not id:
-            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+            raise ToolError("Which draft? Give the id (from the email_drafts list).")
         out = await _t(_bazar, ctx, "confirm_draft_delete", {"id": str(id)})
         out.setdefault("say", "A confirm card is in the chat; the Gmail draft goes only after the user approves.")
         return out
     if action == "read":
         if not id:
-            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+            raise ToolError("Which draft? Give the id (from the email_drafts list).")
         return await _t(ms.gmail_draft_view, ctx.tenant_id, str(id), account)
     if action == "edit":
         if not id:
-            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+            raise ToolError("Which draft? Give the id (from the email_drafts list).")
         if to is None and cc is None and subject is None and body is None:
             raise ToolError("What should change? Give only the one of to / cc / subject / body that changes.")
         # v0.707 names / typos went straight into the To header - resolved like email_draft does
@@ -641,7 +641,7 @@ async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None,
                         None if body is None else str(body), markdown, account)
     if action == "send":
         if not id:
-            raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+            raise ToolError("Which draft? Give the id (from the email_drafts list).")
         out = await _t(_bazar, ctx, "confirm_draft_send", {"id": str(id), "account": account or ""})
         out.setdefault("say", "A confirm card is in the chat; the Gmail draft really goes out only after the user approves.")
         return out
@@ -889,11 +889,11 @@ async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None,
                         "what matches RIGHT NOW — it changes nothing."}
     if action == "run":
         if not rule_id:
-            raise ToolError("Kaunsa saved search? rule_id do (email_rule action='searches' se).")
+            raise ToolError("Which saved search? Give rule_id (from email_rule action='searches').")
         return await _t(sync.search_run, ctx.tenant_id, str(rule_id), account)
     if action in ("pause", "resume"):
         if not rule_id:
-            raise ToolError("Kaunsa rule? rule_id do (email_rule list se).")
+            raise ToolError("Which rule? Give rule_id (from the email_rule list).")
         out = await _t(sync.rule_edit, ctx.tenant_id, str(rule_id), action == "resume")
         return {**out, "note": "Rule " + ("turned on." if action == "resume" else "paused (not deleted).")}
     if action == "delete":
@@ -902,7 +902,7 @@ async def email_rule(ctx: Ctx, action="list", name="", match=None, actions=None,
         return {"deleted": rule_id}
     if action == "test":
         if not rule_id:
-            raise ToolError("Kaunsa rule? rule_id do (email_rule list se).")
+            raise ToolError("Which rule? Give rule_id (from the email_rule list).")
         return await _t(sync.rule_test, ctx.tenant_id, str(rule_id), account)
     return {"rules": await _t(sync.rules_list, ctx.tenant_id),
             "note": "Rules run on new mail. Actions: label, archive, star, mark_read, important, mute, "
@@ -935,7 +935,7 @@ async def email_snooze(ctx: Ctx, action="list", email_id=None, when=None, hours=
             raise ToolError("That snooze was not found (ids are from the email_snooze list).")
         return {"cancelled": snooze_id, "note": "The mail is back in the inbox (unread)."}
     if not email_id:
-        raise ToolError("Kaunsi email? email_id do (email_check se).")
+        raise ToolError("Which email? Give email_id (from email_check).")
     wake = _snooze_when(ctx, when, hours, days)
     out = await _t(sync.snooze_add, ctx.tenant_id, ctx.conversation_id, str(email_id), wake)
     return {**out, "note": f"The mail was removed from the inbox; it will come back at {out['wake_label']} (marked unread)."}

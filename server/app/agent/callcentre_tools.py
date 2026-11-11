@@ -47,7 +47,7 @@ CALLCENTRE_TOOLS = [
          "outcome": {"type": "string"}, "call_id": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-CALLCENTRE_LABELS = {"call_centre": "Call centre ka kaam kar raha hoon", "call_centre_dekho": "Phone line dekh raha hoon"}
+CALLCENTRE_LABELS = {"call_centre": "Doing call centre work", "call_centre_dekho": "Checking the phone line"}
 
 
 def _s(v: Any) -> str:

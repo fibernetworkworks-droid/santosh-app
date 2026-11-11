@@ -43,7 +43,7 @@ DEV_TOOLS = [
          "task": {"type": "string"}, "repo": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-DEV_LABELS = {"dev": "Code par kaam kar raha hoon", "dev_dekho": "Repo aur PR dekh raha hoon"}
+DEV_LABELS = {"dev": "Working on code", "dev_dekho": "Checking the repo and PRs"}
 
 
 def _s(v: Any) -> str:

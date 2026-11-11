@@ -54,7 +54,7 @@ DRIVERS_TOOLS = [
          "within": {"type": "integer"}},
          "required": ["what"]}},
 ]
-DRIVERS_LABELS = {"drivers": "Driver ki duty / trip sheet sambhal raha hoon", "drivers_dekho": "Driver aur duty dekh raha hoon"}
+DRIVERS_LABELS = {"drivers": "Managing driver duty and trip sheets", "drivers_dekho": "Checking drivers and duty"}
 
 _OWNER_ONLY = {"driver", "settings", "vehicle", "forget", "to_payroll", "trip_ok", "leave"}
 _DKEYS = ("phone", "licence", "classes", "dl_valid_to", "medical_valid_to", "badge", "badge_valid_to", "police_on", "hazardous_valid_to",

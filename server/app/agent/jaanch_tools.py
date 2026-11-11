@@ -14,7 +14,7 @@ JAANCH_TOOLS = [
      "input_schema": {"type": "object", "properties": {"action": {"type": "string", "enum": ["check", "report"]}},
                       "required": ["action"]}},
 ]
-JAANCH_LABELS = {"hoola_jaanch": "Apni jaanch kar raha hoon"}
+JAANCH_LABELS = {"hoola_jaanch": "Running a self-check"}
 
 
 async def hoola_jaanch(ctx: Ctx, action="check", **_):

@@ -15,7 +15,7 @@ RETAILTRUST_TOOLS = [
          "action": {"type": "string", "enum": _ACTIONS}, "orders": {"type": "array", "items": {"type": "object"}}, "max_per_customer": {"type": "number"}, "window_hours": {"type": "number"}, "shared_address_accounts": {"type": "number"}, "high_value": {"type": "number"}, "customers": {"type": "array", "items": {"type": "object"}}, "min_orders": {"type": "number"}, "max_return_rate_pct": {"type": "number"}, "flow_text": {"type": "string"}, "checks": {"type": "object"}, "complaints": {"type": "array", "items": {"type": "object"}}, "today": {"type": "string"}, "ack_hours": {"type": "number"}, "resolve_days": {"type": "number"}, "items": {"type": "array", "items": {"type": "object"}}, "seller": {"type": "object"}, "label": {"type": "object"}, "deliveries": {"type": "array", "items": {"type": "object"}}, "decisions": {"type": "array", "items": {"type": "object"}}, "alert_pct": {"type": "number"}, "quotes": {"type": "array", "items": {"type": "object"}}, "max_spread_pct": {"type": "number"}},
          "required": ["action"]}},
 ]
-RETAILTRUST_LABELS = {"retail_trust": "Retail Trust se jaanch kar raha hoon"}
+RETAILTRUST_LABELS = {"retail_trust": "Running Retail Trust checks"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

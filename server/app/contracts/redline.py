@@ -163,11 +163,11 @@ def build(source_docx: bytes | None, text: str, edits: list[dict[str, Any]], tit
         if op in ("replace", "delete"):
             find = e.get("find") or ""
             if not find.strip():
-                skipped.append({**e, "why": "kya badalna hai woh text nahi"})
+                skipped.append({**e, "why": "no text given for what to change"})
                 continue
             i = _find_para(paras, e.get("anchor", ""), find)
             if i is None:
-                skipped.append({**e, "why": "contract mein yeh shabd nahi mile"})
+                skipped.append({**e, "why": "these words were not found in the contract"})
                 continue
             ptext = paras[i].text
             taken = per_para.setdefault(i, [])
@@ -181,19 +181,19 @@ def build(source_docx: bytes | None, text: str, edits: list[dict[str, Any]], tit
                 if low >= 0 and not any(low < en and low + len(find) > st for st, en, *_ in taken):
                     start = low
             if start < 0:
-                skipped.append({**e, "why": "yeh hissa pehle hi badla ja chuka"})
+                skipped.append({**e, "why": "this part has already been changed"})
                 continue
             taken.append((start, start + len(find), op, e.get("replace", "") if op == "replace" else "", e))
         elif op == "replace_para":
             i = _find_para(paras, e.get("anchor", ""))
             if i is None or not (e.get("text") or "").strip():
-                skipped.append({**e, "why": "clause nahi mili"})
+                skipped.append({**e, "why": "clause not found"})
                 continue
             per_para.setdefault(i, []).append((0, len(paras[i].text), "delete", "", e))
             inserts.append((i, e["text"], e))
         elif op == "insert":
             if not (e.get("text") or "").strip():
-                skipped.append({**e, "why": "nayi clause ka text nahi"})
+                skipped.append({**e, "why": "no text for the new clause"})
                 continue
             i = _find_para(paras, e.get("anchor", "")) if e.get("anchor") else None
             inserts.append((i, e["text"], e))
@@ -241,12 +241,12 @@ def check_edit(e: dict, text: str, allowed_numbers: set[str]) -> str:
     """A model-proposed edit is used only if its 'find' is really in the contract and it adds no number from nowhere."""
     op = e.get("op")
     if op not in ("replace", "delete", "insert", "replace_para"):
-        return "op galat"
+        return "bad op"
     if op in ("replace", "delete") and (not e.get("find") or _norm(e["find"]) not in _norm(text)):
-        return "find contract mein nahi"
+        return "find text is not in the contract"
     new = (e.get("replace") or e.get("text") or "")
     for n in _NUMS.findall(new):
         n2 = n.replace(",", "")
         if n2 not in allowed_numbers and n not in text:
-            return f"naya number {n} kahin se nahi aaya"
+            return f"new number {n} does not come from anywhere"
     return ""

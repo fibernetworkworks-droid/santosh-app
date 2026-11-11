@@ -194,40 +194,40 @@ def apk_signer(path: Path) -> dict[str, Any]:
 
 # ---------------------------------------------------------------- APK manifest
 DANGER_PERMS = {
-    "READ_SMS": ("high", "aapke SMS (OTP bhi) padh sakta hai"),
-    "RECEIVE_SMS": ("high", "aane wale SMS / OTP pakad sakta hai"),
-    "SEND_SMS": ("high", "aapke naam se SMS bhej sakta hai"),
-    "RECEIVE_MMS": ("medium", "MMS pakad sakta hai"),
-    "READ_CALL_LOG": ("high", "aapki call history padh sakta hai"),
-    "PROCESS_OUTGOING_CALLS": ("high", "aapki outgoing calls dekh / mod sakta hai"),
-    "REQUEST_INSTALL_PACKAGES": ("high", "doosre apps khud install karwa sakta hai"),
-    "SYSTEM_ALERT_WINDOW": ("medium", "doosre apps ke upar nakli screen dikha sakta hai"),
-    "REQUEST_DELETE_PACKAGES": ("medium", "apps uninstall karwane ko keh sakta hai"),
-    "READ_CONTACTS": ("medium", "aapke contacts padh sakta hai"),
-    "WRITE_CONTACTS": ("medium", "contacts badal sakta hai"),
-    "CALL_PHONE": ("medium", "bina dialer khole call laga sakta hai"),
-    "READ_PHONE_STATE": ("medium", "phone ki pehchaan / SIM details padh sakta hai"),
-    "READ_PHONE_NUMBERS": ("medium", "aapka mobile number padh sakta hai"),
-    "ANSWER_PHONE_CALLS": ("medium", "calls utha / kaat sakta hai"),
-    "QUERY_ALL_PACKAGES": ("medium", "dekh sakta hai phone mein kaunse bank / UPI apps hain"),
-    "MANAGE_EXTERNAL_STORAGE": ("medium", "phone ki saari files padh / mita sakta hai"),
-    "WRITE_SETTINGS": ("medium", "phone settings badal sakta hai"),
-    "GET_ACCOUNTS": ("medium", "phone mein jude accounts dekh sakta hai"),
-    "RECORD_AUDIO": ("low", "mic se record kar sakta hai"),
-    "CAMERA": ("low", "camera chala sakta hai"),
-    "ACCESS_FINE_LOCATION": ("low", "aapki sahi location jaan sakta hai"),
-    "ACCESS_BACKGROUND_LOCATION": ("medium", "app band hone par bhi location le sakta hai"),
-    "READ_MEDIA_IMAGES": ("low", "photos padh sakta hai"),
-    "READ_EXTERNAL_STORAGE": ("low", "files / photos padh sakta hai"),
-    "BODY_SENSORS": ("low", "health sensors padh sakta hai"),
-    "USE_FULL_SCREEN_INTENT": ("low", "lock screen par poori screen dikha sakta hai"),
+    "READ_SMS": ("high", "can read your SMS (OTPs too)"),
+    "RECEIVE_SMS": ("high", "can catch incoming SMS / OTPs"),
+    "SEND_SMS": ("high", "can send SMS in your name"),
+    "RECEIVE_MMS": ("medium", "can catch MMS"),
+    "READ_CALL_LOG": ("high", "can read your call history"),
+    "PROCESS_OUTGOING_CALLS": ("high", "can see / redirect your outgoing calls"),
+    "REQUEST_INSTALL_PACKAGES": ("high", "can get other apps installed by itself"),
+    "SYSTEM_ALERT_WINDOW": ("medium", "can show a fake screen over other apps"),
+    "REQUEST_DELETE_PACKAGES": ("medium", "can ask to uninstall apps"),
+    "READ_CONTACTS": ("medium", "can read your contacts"),
+    "WRITE_CONTACTS": ("medium", "can change contacts"),
+    "CALL_PHONE": ("medium", "can place a call without opening the dialer"),
+    "READ_PHONE_STATE": ("medium", "can read the phone's identity / SIM details"),
+    "READ_PHONE_NUMBERS": ("medium", "can read your mobile number"),
+    "ANSWER_PHONE_CALLS": ("medium", "can answer / end calls"),
+    "QUERY_ALL_PACKAGES": ("medium", "can see which bank / UPI apps are on the phone"),
+    "MANAGE_EXTERNAL_STORAGE": ("medium", "can read / delete all files on the phone"),
+    "WRITE_SETTINGS": ("medium", "can change phone settings"),
+    "GET_ACCOUNTS": ("medium", "can see the accounts added to the phone"),
+    "RECORD_AUDIO": ("low", "can record from the mic"),
+    "CAMERA": ("low", "can use the camera"),
+    "ACCESS_FINE_LOCATION": ("low", "can know your exact location"),
+    "ACCESS_BACKGROUND_LOCATION": ("medium", "can get your location even when the app is closed"),
+    "READ_MEDIA_IMAGES": ("low", "can read photos"),
+    "READ_EXTERNAL_STORAGE": ("low", "can read files / photos"),
+    "BODY_SENSORS": ("low", "can read health sensors"),
+    "USE_FULL_SCREEN_INTENT": ("low", "can show a full screen on the lock screen"),
 }
 COMPONENT_PERMS = {
-    "android.permission.BIND_ACCESSIBILITY_SERVICE": ("high", "accessibility service: screen padh kar khud tap kar sakta hai (bank fraud apps yahi maangte hain)"),
-    "android.permission.BIND_DEVICE_ADMIN": ("high", "device admin: phone lock / reset kar sakta hai aur uninstall rok sakta hai"),
-    "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE": ("high", "saari notifications (OTP bhi) padh sakta hai"),
-    "android.permission.BIND_VPN_SERVICE": ("medium", "VPN: aapka internet traffic apne raaste bhej sakta hai"),
-    "android.permission.BIND_INPUT_METHOD": ("medium", "keyboard: jo aap type karte hain woh dekh sakta hai"),
+    "android.permission.BIND_ACCESSIBILITY_SERVICE": ("high", "accessibility service: can read the screen and tap by itself (this is what bank fraud apps ask for)"),
+    "android.permission.BIND_DEVICE_ADMIN": ("high", "device admin: can lock / reset the phone and block its own uninstall"),
+    "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE": ("high", "can read all notifications (OTPs too)"),
+    "android.permission.BIND_VPN_SERVICE": ("medium", "VPN: can route your internet traffic its own way"),
+    "android.permission.BIND_INPUT_METHOD": ("medium", "keyboard: can see what you type"),
 }
 
 
@@ -283,38 +283,38 @@ def apk_flags(pkg: dict[str, Any], man: dict[str, Any], signer: dict[str, Any], 
         lvl, why = COMPONENT_PERMS[c]
         flags.append(_flag(lvl, why, f"component:{c.rsplit('.', 1)[-1]}"))
     if man.get("sms_receiver") and not any(f["code"] == "perm:RECEIVE_SMS" for f in flags):
-        flags.append(_flag("high", "har aane wale SMS ko pakadne ke liye bana hai", "sms_receiver"))
+        flags.append(_flag("high", "is built to catch every incoming SMS", "sms_receiver"))
     if man.get("launcher") is False:
-        flags.append(_flag("medium", "iska koi app icon nahi hai: install hone ke baad chhup kar chal sakta hai", "no_launcher"))
+        flags.append(_flag("medium", "has no app icon: it can run hidden after install", "no_launcher"))
     if man.get("debuggable"):
-        flags.append(_flag("medium", "test (debug) build hai, asli company ka release jaisa nahi", "debuggable"))
+        flags.append(_flag("medium", "is a test (debug) build, not like a real company's release", "debuggable"))
     try:
         tsdk = int(str(pkg.get("target_sdk") or "0"))
     except ValueError:
         tsdk = 0
     if 0 < tsdk < 29:
-        flags.append(_flag("medium", f"purane Android (SDK {tsdk}) ke liye bana hai; Play Store par naye apps aise nahi aate, "
-                                     "fraud apps aksar aise hote hain taaki permissions bina pooche mil jaayein", "old_target"))
+        flags.append(_flag("medium", f"is built for old Android (SDK {tsdk}); new apps do not come to the Play Store like this, "
+                                     "fraud apps often do it to get permissions without asking", "old_target"))
     cert = signer.get("cert") or {}
     subj = (cert.get("subject") or "").lower()
     if not signer.get("schemes"):
-        flags.append(_flag("high", "is APK par koi signature nahi hai (asli apps hamesha signed hote hain)", "unsigned"))
+        flags.append(_flag("high", "this APK has no signature (real apps are always signed)", "unsigned"))
     elif "android debug" in subj:
-        flags.append(_flag("medium", "Android Debug key se sign hai (developer ka test build, kisi company ka nahi)", "debug_cert"))
+        flags.append(_flag("medium", "is signed with the Android Debug key (a developer's test build, not a company's)", "debug_cert"))
     brands, lures = name_lures(name)
     label_b, label_l = name_lures(man.get("label") or "")
     pid = str(pkg.get("package_name") or "")
     brands = sorted(set(brands) | set(label_b))
     lures = sorted(set(lures) | set(label_l))
     if pid in OFFICIAL_PKGS:
-        flags.append(_flag("medium", f"package naam asli {OFFICIAL_PKGS[pid]} jaisa hai, par file Play Store se nahi aayi; "
-                                     "asli app sirf Play Store se hi install kijiye", "official_pkg_sideloaded"))
+        flags.append(_flag("medium", f"the package name looks like the real {OFFICIAL_PKGS[pid]}, but the file did not come from the Play Store; "
+                                     "install the real app only from the Play Store", "official_pkg_sideloaded"))
     elif brands:
-        flags.append(_flag("high", f"naam mein '{', '.join(brands)}' hai, par bank / UPI / sarkari apps kabhi APK file ki tarah "
-                                   "WhatsApp / SMS par nahi bheje jaate", "brand_lure"))
+        flags.append(_flag("high", f"the name contains '{', '.join(brands)}', but bank / UPI / government apps are never sent as an APK file "
+                                   "on WhatsApp / SMS", "brand_lure"))
     elif lures:
-        flags.append(_flag("high", f"naam mein '{', '.join(lures)}' hai: KYC, reward, challan, bijli bill, courier, shaadi ka "
-                                   "card jaisi APK files aam fraud tareeka hai", "lure_name"))
+        flags.append(_flag("high", f"the name contains '{', '.join(lures)}': APK files posing as KYC, a reward, a challan, an electricity bill, a courier or a wedding "
+                                   "card are a common fraud method", "lure_name"))
     return flags
 
 
@@ -412,29 +412,29 @@ def pe_version_info(path: Path, resources: list[dict[str, Any]]) -> tuple[dict[s
 def exe_flags(name: str, basics: dict[str, Any], vinfo: dict[str, str], level: str) -> list[dict[str, str]]:
     flags: list[dict[str, str]] = []      # (the double-extension trick is flagged once for every kind, in service._run)
     if basics.get("signed") is False:
-        flags.append(_flag("medium", "is program par company ka digital signature nahi hai", "unsigned"))
+        flags.append(_flag("medium", "this program has no company digital signature", "unsigned"))
     if level == "requireAdministrator":
-        flags.append(_flag("medium", "chalte hi Administrator (poore PC ka control) maangta hai", "admin"))
+        flags.append(_flag("medium", "asks for Administrator (control of the whole PC) as soon as it runs", "admin"))
     if not vinfo.get("CompanyName") and not vinfo.get("ProductName"):
-        flags.append(_flag("low", "file mein company / product ka naam nahi likha", "no_version_info"))
+        flags.append(_flag("low", "the file does not name a company / product", "no_version_info"))
     brands, lures = name_lures(name)
     if brands:
-        flags.append(_flag("high", f"naam mein '{', '.join(brands)}' hai: bank / sarkari daftar kabhi .exe file nahi bhejte", "brand_lure"))
+        flags.append(_flag("high", f"the name contains '{', '.join(brands)}': a bank / government office never sends an .exe file", "brand_lure"))
     elif lures and any(w in lures for w in ("kyc", "refund", "challan", "e challan", "lottery", "prize", "invitation", "wedding")):
-        flags.append(_flag("high", f"naam mein '{', '.join(lures)}' hai: aise naam wale programs aam fraud tareeka hain", "lure_name"))
+        flags.append(_flag("high", f"the name contains '{', '.join(lures)}': programs with names like this are a common fraud method", "lure_name"))
     return flags
 
 
 VERDICT_TEXT = {
-    "danger": "Khatarnak lag raha hai: install / open mat kijiye.",
-    "caution": "Dhyaan se: kuch cheezein theek nahi lagi.",
-    "clear": "Koi bada khatra nahi dikha (yeh guarantee nahi hai).",
-    "unknown": "Poori jaanch nahi ho paayi.",
+    "danger": "This looks dangerous: do not install / open it.",
+    "caution": "Be careful: some things do not look right.",
+    "clear": "No major risk seen (this is not a guarantee).",
+    "unknown": "The full check could not be completed.",
 }
 ADVICE = {
-    "apk": "Apps sirf Play Store se install kijiye. Kisi ne WhatsApp / SMS par APK bheji ho to use mat kholiye, aur koi app "
-           "accessibility ya SMS permission maange to mana kar dijiye. Galti se install kar liya ho aur paise kate hon to "
-           "turant 1930 par call kijiye ya cybercrime.gov.in par shikayat kijiye.",
-    "exe": "Program sirf company ki official website se download kijiye. Email / WhatsApp par aayi .exe file na chalayein.",
-    "script": "Yeh file kholte hi commands chalati hai. Jab tak pakka na ho ki kisne aur kyon bheji, mat kholiye.",
+    "apk": "Install apps only from the Play Store. If someone sent you an APK on WhatsApp / SMS, do not open it, and if any app "
+           "asks for accessibility or SMS permission, refuse. If you installed it by mistake and money was debited, "
+           "call 1930 at once or file a complaint at cybercrime.gov.in.",
+    "exe": "Download programs only from the company's official website. Do not run an .exe file that came by email / WhatsApp.",
+    "script": "This file runs commands as soon as it is opened. Do not open it until you are sure who sent it and why.",
 }

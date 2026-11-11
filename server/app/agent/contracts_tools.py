@@ -60,7 +60,7 @@ CONTRACTS_TOOLS = [
          "contract": {"type": "string"}, "q": {"type": "string"}, "status": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-CONTRACTS_LABELS = {"contracts": "Contract ka kaam kar raha hoon", "contracts_dekho": "Contract dekh raha hoon"}
+CONTRACTS_LABELS = {"contracts": "Doing contract work", "contracts_dekho": "Viewing the contract"}
 
 _OWNER_ONLY = ("signed", "stamped", "playbook", "rates", "settings", "status", "forget")
 

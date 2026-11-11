@@ -51,7 +51,7 @@ CHAI_TOOLS = [
          "date": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-CHAI_LABELS = {"chai": "Chai stall ka kaam kar raha hoon", "chai_dekho": "Galla dekh raha hoon"}
+CHAI_LABELS = {"chai": "Doing tea stall work", "chai_dekho": "Checking the cash box"}
 
 
 def _owner(ctx: Ctx) -> bool:

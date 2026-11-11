@@ -14,7 +14,7 @@ _FACTS = {k: {"type": "string"} for k in ("nature", "extent", "when", "location"
 DPO_TOOLS = [
     {"name": "dpo", "description": (
         "Data protection officer (DPDP Act 2023 + DPDP Rules 2025; notice / consent / rights / breach duties apply from 13-05-2027). "
-        "Jaankari only, not legal advice. action=settings (owner): org, contact_name, contact_email, contact_phone (the person who "
+        "Information only, not legal advice. action=settings (owner): org, contact_name, contact_email, contact_phone (the person who "
         "answers people), link (https page / form to withdraw consent and ask), identifiers (how she identifies a person, e.g. "
         "'registered mobile'), reply_days (her target, max 90), languages, sdf, third_schedule ecommerce|gaming|social, morning_time, "
         "rules. action=scan: pre-fill records of processing from the Hoola modules she uses (counts only). action=activity (owner): "
@@ -71,7 +71,7 @@ DPO_TOOLS = [
          "breach": {"type": "string"}},
          "required": ["what"]}},
 ]
-DPO_LABELS = {"dpo": "Data suraksha ka kaam kar raha hoon", "dpo_dekho": "Data suraksha register dekh raha hoon"}
+DPO_LABELS = {"dpo": "Working on data protection", "dpo_dekho": "Checking the data protection register"}
 
 OWNER_ONLY = ("settings", "activity", "dpia", "notice_edit", "sent", "close", "breach_sent", "breach_close", "vendor")
 

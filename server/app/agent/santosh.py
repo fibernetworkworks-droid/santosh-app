@@ -683,7 +683,7 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
         log.exception("hard check failed")
         return []
     finally:
-        bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch liya", "state": "done",
+        bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Answer checked", "state": "done",
                                               "id": "hard-check"})
 
 
@@ -1719,7 +1719,7 @@ def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
     if not rel:
         return ""
     mk = _y.fact_marks([i for i, _ in rel])   # v0.665 dated; Hoola's own guesses marked as such
-    return ("JUDE HUE FACTS (by meaning for this ask; 'Hoola ne samjha' = your own reading, not her words):\n"
+    return ("RELATED FACTS (by meaning for this ask; a fact marked 'Hoola ne samjha' is your own reading, not her words):\n"
             + "\n".join(f"- {t}{mk.get(i, '')}" for i, t in rel))
 
 
@@ -2048,7 +2048,7 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
         tail += "\n\n" + _hardr.recipe(((state.get("hard_why") or {}).get("why")) or [])
     if _secret:   # v0.250 incognito: she knows nothing from here is kept; never promise it is
         tail += ("\n\nINCOGNITO CHAT: she opened this chat in incognito. Nothing from it goes into her memory (no facts, "
-                 "no diary, no search, no memory page) and other chats will not know it. Never say 'yaad rakh liya'; if "
+                 "no diary, no search, no memory page) and other chats will not know it. Never say you have saved it to memory; if "
                  "she wants something remembered, tell her to say it in a normal chat.")
     try:   # v0.164 a chat in one of her projects: its instructions, notes and files
         from .. import projects
@@ -2510,8 +2510,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                     state["calls"].append({"tool": b["name"], "ok": False, "error": "cut off (time limit)",
                                            "args": args_in, "key": _key(b["name"], args_in)})
                     bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
-                                                          "id": b["id"], "detail": "samay khatam, beech mein roka"})
-                    _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Samay khatam, roka gaya")
+                                                          "id": b["id"], "detail": "time ran out, stopped midway"})
+                    _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Time ran out, stopped")
                 except Exception:   # noqa: BLE001
                     log.debug("cut-off step card failed", exc_info=True)
                 raise
@@ -2520,8 +2520,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
                                        "key": _key(b["name"], args_in)})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"],
-                                                      "detail": "roka gaya"})
-                _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Roka gaya")
+                                                      "detail": "stopped"})
+                _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Stopped")
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                         "content": "Stopped by the owner while this step was running; it may have partly happened."}
             except ToolAmbiguous as e:   # G1 graph resume: started before a restart, outcome unknown - never re-run
@@ -2664,7 +2664,7 @@ async def _turn_tools(t: "_Turn", blocks: list):
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, True)})
             bus.publish(conversation_id, "work", {"id": "breaker", "tool": "", "scene": "work", "phase": "stopped",
-                                                  "label": "Atak gaya, roka gaya", "data": {}})
+                                                  "label": "Got stuck, stopped", "data": {}})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
         if (settings.agent_goal and not state.get("goal") and not state.get("extended")
@@ -2930,7 +2930,7 @@ async def _pakka_rest(state: dict, final_text: str, settings, ran_tools: bool, c
     if v["done"]:
         state.pop("left", None)
         return ""
-    state["left"] = v["missing"] or "kuch hissa baaki"
+    state["left"] = v["missing"] or "a part is still left"
     if v["next"]:
         state["kept_going"] = state.get("kept_going", 0) + 1
         pakka.STATS["kept_going"] += 1
@@ -3028,7 +3028,7 @@ def stop(conversation_id: str) -> None:
         except Exception:
             log.exception("graph run stop failed")
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
-                                          "label": "Roka gaya", "data": {}})
+                                          "label": "Stopped", "data": {}})
     try:
         from . import goal as _goal
         _goal.mark_stopped(conversation_id)
@@ -3270,7 +3270,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                     bus.publish(conversation_id, "typing", {"on": False})
                     return _ks["say"]
         except Exception:
-            log.exception("kaam stop by words failed")   # a broken stop never blocks her ask
+            log.exception("stop by words failed")   # a broken stop never blocks her ask
     _mark("checks")
     lock = _locks[conversation_id]
     _steer_e = None
@@ -3464,7 +3464,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 except Exception:
                     log.exception("parking the cut long job failed")
             final_text = TIMEOUT_GOAL if (_parked or (goal_on and who == "goal")) else gendered(TIMEOUT_TEXT, _gender)
-            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
+            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "stopped at the time limit", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)
             if live is not None:
@@ -3480,7 +3480,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _ran = _tools_since(history, _h0)
             if _ran:    # wave 13: steps already ran (a mail may be gone) - never invite a blind repeat
                 final_text = final_text + AFTER_TOOLS
-            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, f"galti: {str(e)[:120]}", _t_turn0)
+            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, f"error: {str(e)[:120]}", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": str(e)[:200]},
                              turn_id=_turn_id, actor=who)
             if live is not None:

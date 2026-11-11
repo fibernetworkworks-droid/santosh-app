@@ -45,7 +45,7 @@ GURU_TOOLS = [
          "what": {"type": "string", "enum": ["day", "progress", "path", "report", "settings", "rules"]},
          "learner": {"type": "string"}, "subject": {"type": "string"}}, "required": ["what"]}},
 ]
-GURU_LABELS = {"guru": "Padha raha hoon", "guru_dekho": "Padhai ki pragati dekh raha hoon"}
+GURU_LABELS = {"guru": "Teaching", "guru_dekho": "Checking learning progress"}
 
 
 def _s(v: Any) -> str:

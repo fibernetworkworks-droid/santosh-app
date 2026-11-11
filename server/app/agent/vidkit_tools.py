@@ -85,7 +85,7 @@ VIDEO_KIT_TOOLS = [
          "filename": {"type": "string"},
      }, "required": ["action"]}},
 ]
-VIDEO_KIT_LABELS = {"video_kit": "Video edit kar raha hoon"}
+VIDEO_KIT_LABELS = {"video_kit": "Editing the video"}
 
 
 def _owner_path(ctx: Ctx, fid: str) -> tuple[str, str]:
@@ -120,9 +120,9 @@ def _ids(a: dict) -> list[str]:
 
 def _need(ids: list[str], lo: int, hi: int, what: str) -> None:
     if not ids:
-        raise ToolError("Kaunsa video? Video chat mein attach karne ko kahiye, phir uska file_id do.")
+        raise ToolError("Which video? Ask the user to attach the video in the chat, then give its file_id.")
     if not lo <= len(ids) <= hi:
-        raise ToolError(f"{what} ke liye {lo} se {hi} file chahiye.")
+        raise ToolError(f"{what} needs {lo} to {hi} files.")
 
 
 def _mb(n: int) -> float:
@@ -137,10 +137,10 @@ def _resolve_steps(ctx: Ctx, steps: list[dict]) -> list[dict]:
         if isinstance(st, dict) and str(st.get("op", "")).lower() == "watermark":
             fid = st.get("file_id") or st.get("logo_file_id")
             if not fid:
-                raise ToolError("watermark ke liye uske logo ki photo ka file_id chahiye (sirf apna logo).")
+                raise ToolError("a watermark needs the file_id of a photo of the logo (only their own logo).")
             name, path = _owner_path(ctx, str(fid))
             if Path(name).suffix.lower() not in IMAGE_EXT:
-                raise ToolError("Watermark ke liye logo ek photo (PNG / JPG) honi chahiye.")
+                raise ToolError("The logo for a watermark must be a photo (PNG / JPG).")
             st["_path"] = path
         out.append(st)
     return out
@@ -161,7 +161,7 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
         return {"guide": GUIDE, "ffmpeg": ops.ffmpeg_ok(), "ops": sorted(ops.STEP_OPS), "looks": sorted(ops.LOOKS),
                 "aspects": sorted(k for k in ops.ASPECTS if ":" in k)}
     if not ops.ffmpeg_ok():
-        raise ToolError("Server par ffmpeg nahi hai, isliye video edit abhi nahi ho sakta (owner: apt install ffmpeg).")
+        raise ToolError("ffmpeg is not on the server, so video editing is not possible right now (owner: apt install ffmpeg).")
     ids = _ids(a)
     custom = str(a.get("filename") or "")
     try:
@@ -201,13 +201,13 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
                 if action == "run":
                     row["steps"] = r["steps"]
                     if max(r["in"]["width"], r["in"]["height"]) > ops.MAX_LONG_SIDE:
-                        row["note"] = "1080p par laaya gaya (chat ke liye)"
+                        row["note"] = "brought down to 1080p (for the chat)"
                 results.append(row)
             done = [r for r in results if r["ok"]]
             if not done:
-                raise ToolError("Koi video nahi bana: " + "; ".join(r["error"] for r in results)[:400])
+                raise ToolError("No video was made: " + "; ".join(r["error"] for r in results)[:400])
             return {"status": "done", "edited": len(done), "of": len(ids), "results": results,
-                    "note": "Video chat mein file ke roop mein hai. Ek line mein batao kya badla."}
+                    "note": "The video is in the chat as a file. Say in one line what changed."}
         if action == "compress":
             _need(ids, 1, MAX_FILES, "Compress")
             results = []
@@ -225,7 +225,7 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
                 raise ToolError("; ".join(r["error"] for r in results)[:400])
             return {"status": "done", "results": results}
         if action == "join":
-            _need(ids, 2, MAX_FILES, "Jodne")
+            _need(ids, 2, MAX_FILES, "Joining")
             paths = [await asyncio.to_thread(_owner_path, ctx, f) for f in ids]
             r = await asyncio.to_thread(ops.join, [p for _, p in paths], a.get("crossfade") or 0, a.get("fit") or "blur",
                                         a.get("format") or "mp4")
@@ -237,7 +237,7 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
             for f in ids:
                 name, path = await asyncio.to_thread(_owner_path, ctx, f)
                 if Path(name).suffix.lower() not in IMAGE_EXT:
-                    raise ToolError(f"'{name}' photo nahi hai; slideshow sirf photos se banta hai (video jodne ke liye join).")
+                    raise ToolError(f"'{name}' is not a photo; a slideshow is made only from photos (use join to join videos).")
                 paths.append(path)
             music = None
             if a.get("music_file_id"):
@@ -248,27 +248,27 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
             row.update(photos=r["photos"], seconds=r["seconds"], size=r["size"], music=bool(music))
             out = {"status": "done", **row}
             if music:
-                out["note"] = "Music sirf wahi jiska haq unke paas ho (apna / licensed)."
+                out["note"] = "Use only music they have the right to use (their own / licensed)."
             return out
         if action == "music":
             mid = a.get("music_file_id")
             if mid and ids and len(ids) == 1:
                 ids = ids + [str(mid)]
-            _need(ids, 2, 2, "Music (pehla video, doosra music)")
+            _need(ids, 2, 2, "Music (first the video, then the music)")
             (vn, vp), (_, mp) = [await asyncio.to_thread(_owner_path, ctx, f) for f in ids]
             r = await asyncio.to_thread(ops.add_music, vp, mp, a.get("music_db", -16), a.get("duck", True) is not False,
                                         a.get("keep_original", True) is not False, a.get("fade_out", 2))
             row = await _one(ctx, vn, "with music", r, custom)
             return {"status": "done", **row, "original_sound_kept": r["original_sound"], "ducked": r["ducked"],
-                    "note": "Music sirf wahi chalaiye jiska haq unke paas ho (apna / licensed); Instagram / YouTube ki "
-                            "library ka gaana bahar ki file mein nahi chalta."}
+                    "note": "Use only music they have the right to use (their own / licensed); a song from the Instagram / YouTube "
+                            "library does not play in a file outside those apps."}
         if action == "captions":
             _need(ids, 1, 1, "Captions")
             name, path = await asyncio.to_thread(_owner_path, ctx, ids[0])
             if a.get("srt_file_id"):
                 sn, sp = await asyncio.to_thread(_owner_path, ctx, a["srt_file_id"])
                 if Path(sn).suffix.lower() not in (".srt", ".txt", ".vtt"):
-                    raise ToolError("Captions ki file .srt honi chahiye.")
+                    raise ToolError("The captions file must be .srt.")
                 cues = ops.parse_srt(Path(sp).read_text(encoding="utf-8", errors="replace").replace("WEBVTT", ""))
                 source = "her SRT file"
             elif a.get("srt"):
@@ -277,12 +277,12 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
             elif a.get("auto"):
                 cues = await asyncio.to_thread(ops.auto_cues, path, a.get("language") or None)
                 if not cues:
-                    raise ToolError("Awaaz se captions abhi is server par nahi bante (speech engine nahi hai) ya video mein "
-                                    "boli hui baat nahi mili. Doosra raasta: kaan se transcript banwa kar uska SRT export "
-                                    "kijiye, phir srt_file_id ke saath captions chalaiye; ya video_edit (captions=true).")
+                    raise ToolError("Captions from speech cannot be made on this server right now (no speech engine), or no "
+                                    "speech was found in the video. Another way: make a transcript with kaan, export its SRT, "
+                                    "then run captions with srt_file_id; or use video_edit (captions=true).")
                 source = "the speech in the video (auto - check spellings)"
             else:
-                raise ToolError("Captions kahan se? srt_file_id (uski .srt file), srt (text) ya auto=true (awaaz se).")
+                raise ToolError("Captions from where? srt_file_id (their .srt file), srt (text) or auto=true (from speech).")
             r = await asyncio.to_thread(ops.burn_captions, path, cues, a.get("position") or "bottom", a.get("size"),
                                         a.get("color") or "white", bool(a.get("box")))
             row = await _one(ctx, name, "captions", r, custom)
@@ -303,7 +303,7 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
                                             f["bytes"])
                 out.append({"file_id": v["file_id"], "name": v["name"], "at": t})
             return {"status": "done", "frames": out,
-                    "note": "Thumbnail ke upar title chahiye to image_edit (text) us frame par chalaiye."}
+                    "note": "For a title on the thumbnail, run image_edit (text) on that frame."}
         if action == "gif":
             _need(ids, 1, 1, "GIF")
             name, path = await asyncio.to_thread(_owner_path, ctx, ids[0])
@@ -321,7 +321,7 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
                 out.append({"file_id": v["file_id"], "name": v["name"], "from": p["from"], "to": p["to"]})
             return {"status": "done", "parts": out}
         if action == "combine":
-            _need(ids, 2, 2, "Combine (pehla main video, doosra chhota / bagal wala)")
+            _need(ids, 2, 2, "Combine (first the main video, then the small / side one)")
             (mn, mp), (_, sp) = [await asyncio.to_thread(_owner_path, ctx, f) for f in ids]
             r = await asyncio.to_thread(ops.combine, mp, sp, a.get("layout") or "pip", a.get("position") or "bottom-right",
                                         a.get("size_pct") or 30, a.get("audio") or "main")
@@ -329,7 +329,7 @@ async def video_kit(ctx: Ctx, action: str = "guide", **a: Any):
             return {"status": "done", **row}
     except ops.VideoError as e:
         raise ToolError(str(e))
-    raise ToolError(f"video_kit action '{action}' nahi hai: guide | info | run | convert | compress | join | slideshow | "
+    raise ToolError(f"video_kit action '{action}' is not an action: guide | info | run | convert | compress | join | slideshow | "
                     "music | captions | frames | gif | split | combine.")
 
 

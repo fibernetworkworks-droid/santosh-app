@@ -43,7 +43,7 @@ DAFTAR_TOOLS = [
          "class": {"type": "string"}, "month": {"type": "string"}, "assessment": {"type": "string"},
          "learner": {"type": "string"}, "term": {"type": "string"}}, "required": ["what"]}},
 ]
-DAFTAR_LABELS = {"daftar": "School office ka kaam kar raha hoon", "daftar_dekho": "School ka register dekh raha hoon"}
+DAFTAR_LABELS = {"daftar": "Working on the school office", "daftar_dekho": "Checking the school register"}
 
 
 def _s(v: Any) -> str:

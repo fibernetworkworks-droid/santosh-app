@@ -61,7 +61,7 @@ CUSTOMS_TOOLS = [
          "required": ["what"]}},
 ]
 
-CUSTOMS_LABELS = {"customs": "Import desk par kaam", "customs_dekho": "Import desk dekh raha hoon"}
+CUSTOMS_LABELS = {"customs": "Working on the import desk", "customs_dekho": "Checking the import desk"}
 
 _SHIP = ("supplier", "supplier_country", "origin", "incoterm", "place", "currency", "fx", "invoice_no", "invoice_date", "invoice_value", "freight",
          "insurance", "mode", "port", "be_type", "igm_no", "igm_date", "bl_no", "bl_date", "containers", "shipping_line", "cha", "eta", "free_days",

@@ -47,9 +47,9 @@ PHOTOS_TOOLS = [
          "album": {"type": "string"}}, "required": ["action"]}},
 ]
 
-PHOTOS_LABELS = {"photos_pick": "Photos chunne ka card bana raha hoon", "photos_picked": "Chuni hui photos dekh raha hoon",
-                 "photos_send": "Photos bhej raha hoon", "photos_upload": "Photos Google Photos mein daal raha hoon",
-                 "photos_albums": "Albums dekh raha hoon"}
+PHOTOS_LABELS = {"photos_pick": "Building the photo-picking card", "photos_picked": "Checking the picked photos",
+                 "photos_send": "Sending photos", "photos_upload": "Uploading photos to Google Photos",
+                 "photos_albums": "Checking albums"}
 
 
 async def _t(fn, *a, **kw):

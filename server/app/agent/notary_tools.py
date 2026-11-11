@@ -56,7 +56,7 @@ NOTARY_TOOLS = [
          "doc": {"type": "string"}, "status": {"type": "string"}, "q": {"type": "string"}, "year": {"type": "integer"}},
          "required": ["what"]}},
 ]
-NOTARY_LABELS = {"notary": "Notary ka kaagaz taiyaar kar raha hoon", "notary_dekho": "Notary register / documents dekh raha hoon"}
+NOTARY_LABELS = {"notary": "Preparing the notary document", "notary_dekho": "Checking the notary register and documents"}
 
 _OWNER_ONLY = ("notarise", "correct", "receipt", "register_file", "settings", "stamp_rate", "fee", "forget")
 

@@ -233,12 +233,12 @@ def card_text(p: dict[str, Any]) -> str:
                 f"**Report mein:** har number ke saath uska source aur date, aur jo confirm nahi ho paya woh alag se.\n\n"
                 f"Theek hai to **\"Haan, shuru karo\"** likhiye. Kuch badalna ho to saath mein likh dijiye "
                 f"(jaise \"Haan, par Pakistan se bhi tulna\"). Nahi karna to **\"nahi\"**.")
-    return (f"**Research plan** - I need your Haan before I start.\n\n**Question:** {p['ask'][:400]}\n\n"
+    return (f"**Research plan** - I need your approval before I start.\n\n**Question:** {p['ask'][:400]}\n\n"
             f"**What I will find out:**\n{qs}\n\n**Where I will look:** {where}\n**Current to:** {p['as_of']}\n"
             f"**Estimate:** ~{est['minutes']} min, {money} ({src_en}){cap_en}\n"
             f"**In the report:** every number with its source and date, and what could not be confirmed kept separate.\n\n"
-            f"Reply **\"Haan, shuru karo\"** to start. Add a change in the same message "
-            f"(e.g. \"Haan, but also compare with Pakistan\"). Reply **\"no\"** to drop it.")
+            f"Reply **\"Yes, start\"** to start. Add a change in the same message "
+            f"(e.g. \"Yes, but also compare with Pakistan\"). Reply **\"no\"** to drop it.")
 
 
 def approved_block(p: dict[str, Any], note: str = "") -> str:

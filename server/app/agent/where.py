@@ -40,10 +40,10 @@ _PLACE: dict[str, tuple[str, float]] = {}
 _WORK: dict[str, tuple[str, float]] = {}      # conv -> (place where website work is really running, last touch)
 _WHY: dict[str, str] = {}                    # conv -> named | follow | work (for the line the model gets)
 
-PC_WORDS = "Aapka PC (Santosh Desktop: Chrome / apps on HER own computer)"
-HOOLA_WORDS = "Hoola ka apna browser (on Hoola's server - not her PC, not her phone)"
+PC_WORDS = "Your PC (Santosh Desktop: Chrome / apps on HER own computer)"
+HOOLA_WORDS = "Hoola's own browser (on Hoola's server - not her PC, not her phone)"
 # v0.194 the third computer: Hoola's OWN cloud PC (the coworker VM, Linux + Chromium + install software)
-HOOLAPC_WORDS = "Hoola ka apna cloud PC (the Linux computer owned by Hoola: Chromium, apt/pip installs, shell)"
+HOOLAPC_WORDS = "Hoola's own cloud PC (the Linux computer owned by Hoola: Chromium, apt/pip installs, shell)"
 
 _NOUN = r"(?:pc|p\.c\.|computer|kompyuter|compyuter|laptop|desktop|पीसी|कंप्यूटर|कम्प्यूटर|लैपटॉप|डेस्कटॉप)"
 _PC = [
@@ -273,25 +273,25 @@ def note(where: str, conv: str = "") -> str:
     """The line the model gets with her message when a place holds for it."""
     if conv and _WHY.get(conv) == "work" and where in ("pc", "hoola", "hoolapc"):
         if where == "pc":
-            return ("[Jagah: the website work in this chat is running in Chrome on HER PC. Keep every website step of it there "
+            return ("[Place: the website work in this chat is running in Chrome on HER PC. Keep every website step of it there "
                     "(pc_do / pc_task_result) - do NOT open your own browser (browse_web / computer_operator) for it. If her PC "
-                    "doesn't answer, tell her plainly and ask; never switch by yourself. Call it 'aapka PC'.]")
+                    "doesn't answer, tell her plainly and ask; never switch by yourself. Call it 'your PC'.]")
         if where == "hoolapc":
-            return ("[Jagah: the website work in this chat is running in Chromium on HOOLA KA APNA PC (your own cloud "
+            return ("[Place: the website work in this chat is running in Chromium on HOOLA KA APNA PC (your own cloud "
                     "computer). Keep every website step of it there (hoola_pc_do / pc_task_result) - do NOT open the server "
                     "browser (browse_web / computer_operator) or her PC (pc_do) for it. If the Hoola PC doesn't answer, tell "
                     "her plainly and ask; never switch by yourself.]")
-        return ("[Jagah: the website work in this chat is running in YOUR OWN browser (Hoola's browser on the server). Keep it "
+        return ("[Place: the website work in this chat is running in YOUR OWN browser (Hoola's browser on the server). Keep it "
                 "there (browse_web / computer_operator); don't move it to her PC unless she says 'PC par'.]")
     return {
-        "pc": "[Jagah: she said HER PC. Website work runs in Chrome on her PC (pc_do, or computer_operator where=pc), "
-              "not in your own browser. Call it 'aapka PC', never 'mera PC'.]",
-        "hoolapc": "[Jagah: she said HOOLA KA APNA PC (your own cloud computer). The job runs there (hoola_pc_do): "
+        "pc": "[Place: she said HER PC. Website work runs in Chrome on her PC (pc_do, or computer_operator where=pc), "
+              "not in your own browser. Call it 'your PC', never 'my PC'.]",
+        "hoolapc": "[Place: she said HOOLA KA APNA PC (your own cloud computer). The job runs there (hoola_pc_do): "
                    "Chromium, and you may install software / run commands freely inside your own VM. Not her PC (pc_do), "
                    "not the server browser (browse_web).]",
-        "hoola": "[Jagah: she said YOUR OWN browser (Hoola's browser on the server): browse_web / computer_operator. "
+        "hoola": "[Place: she said YOUR OWN browser (Hoola's browser on the server): browse_web / computer_operator. "
                  "Not her PC. If the site refuses your server, tell her and ask before moving it to her PC.]",
-        "phone": "[Jagah: she said her PHONE: open_on_phone opens it there for her.]",
+        "phone": "[Place: she said her PHONE: open_on_phone opens it there for her.]",
     }.get(where, "")
 
 

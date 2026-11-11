@@ -18,7 +18,7 @@ _OWNER_ONLY = {"settings", "paid", "payout_sent", "forget"}
 INFLUENCER_TOOLS = [
     {"name": "influencer", "description": (
         "Influencer / talent manager coworker. NEVER invent rates, follower counts, dates or numbers; ask her. Never buy followers "
-        "/ bots / pods (refused). Cards = only her tap decides (say 'aapki haan ka card bheja hai'). action=settings*: agency, gstin, "
+        "/ bots / pods (refused). Cards = only her tap decides (say 'the approval card is sent'). action=settings*: agency, gstin, "
         "gst_registered, lut, upi_id, commission_pct, pay_days, terms, morning_time. action=creator: creator (to update) or name, "
         "phone, email, city, language, niche, platform+handle+followers(+avg_likes, avg_comments) as she said, qualification "
         "(health), sebi_reg, virtual, upi_id, share_pct, pan (her {id:..} ref ok), status. action=rate: creator, platform, fmt, "
@@ -70,7 +70,7 @@ INFLUENCER_TOOLS = [
          "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-INFLUENCER_LABELS = {"influencer": "Influencer ka kaam kar raha hoon", "influencer_dekho": "Creators aur deals dekh raha hoon"}
+INFLUENCER_LABELS = {"influencer": "Working on influencers", "influencer_dekho": "Checking creators and deals"}
 
 _SET_KEYS = ("agency", "gstin", "gst_registered", "lut", "address", "phone", "email", "upi_id", "commission_pct", "pay_days",
              "morning_time", "terms", "rules")

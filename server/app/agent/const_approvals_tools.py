@@ -41,7 +41,7 @@ APPROVALS_TOOLS = [
          "what": {"type": "string", "enum": ["day", "files", "file", "calendar"]}, "file": {"type": "string"},
          "days": {"type": "number"}}, "required": ["what"]}},
 ]
-APPROVALS_LABELS = {"const_approvals": "Approval file jod raha hoon", "const_approvals_dekho": "Approvals dekh raha hoon"}
+APPROVALS_LABELS = {"const_approvals": "Compiling the approvals file", "const_approvals_dekho": "Checking approvals"}
 
 
 def _s(v: Any) -> str:

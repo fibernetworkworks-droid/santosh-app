@@ -35,7 +35,7 @@ BLENDER_TOOLS = [
          "transparent": {"type": "boolean"}, "code": {"type": "string"}, "title": {"type": "string"}},
          "required": ["action"]}},
 ]
-BLENDER_LABELS = {"blender_3d": "3D bana raha hoon (Blender)"}
+BLENDER_LABELS = {"blender_3d": "Building a 3D model (Blender)"}
 
 _OPT_KEYS = ("photos", "exports", "views", "quality", "aspect", "turntable", "print", "style", "transparent")
 

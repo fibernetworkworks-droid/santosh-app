@@ -15,7 +15,7 @@ ASKFORM_TOOLS = [
         "(\"[Form bhara: ...]\"); until then don't ask the same things in chat. Use it only when 3+ details are missing; "
         "for one or two, just ask in a line."),
      "input_schema": {"type": "object", "properties": {
-         "title": {"type": "string", "description": "Short, e.g. 'Train ticket ki jaankari'"},
+         "title": {"type": "string", "description": "Short, e.g. 'Train ticket details'"},
          "why": {"type": "string", "description": "One line: what you will do with it"},
          "fields": {"type": "array", "items": {"type": "object", "properties": {
              "name": {"type": "string"}, "label": {"type": "string"},
@@ -25,7 +25,7 @@ ASKFORM_TOOLS = [
              "required": ["label"]}}},
          "required": ["title", "fields"]}},
 ]
-ASKFORM_LABELS = {"ask_form": "Aapke liye form bana raha hoon"}
+ASKFORM_LABELS = {"ask_form": "Building a form for you"}
 
 
 async def ask_form(ctx: Ctx, title, fields, why: str = "", **_):

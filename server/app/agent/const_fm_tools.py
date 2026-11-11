@@ -13,7 +13,7 @@ FM_TOOLS = [
     {"name": "const_fm", "description": (
         "Facility & property FM desk (#102-#108, property/society seats ke tools). action=wo_add: "
         "project, location, issue, priority -> work order. action=wo_update: wo (id), status "
-        "open|in_progress|done|cancelled, by (naam zaroori). action=ppm_add: project, rows [asset, "
+        "open|in_progress|done|cancelled, by (name required). action=ppm_add: project, rows [asset, "
         "task, freq_days, last_done]. action=ppm_due: project (optional) -> next-due arithmetic. "
         "action=comp_add: project, rows [system(lift|fire|stp|wtp|other), cert_no, agency, last, due]. "
         "action=comp_due: project -> overdue list (certificate agency ki). action=roster_add: rows "
@@ -37,8 +37,8 @@ FM_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-FM_LABELS = {"const_fm": "FM desk par kaam kar raha hoon",
-             "const_fm_dekho": "FM desk dekh raha hoon"}
+FM_LABELS = {"const_fm": "Working on the FM desk",
+             "const_fm_dekho": "Viewing the FM desk"}
 
 
 def _s(v: Any) -> str:

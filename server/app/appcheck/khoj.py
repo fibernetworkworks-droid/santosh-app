@@ -66,11 +66,11 @@ def _stage(tenant: str, src: dict[str, Any]) -> tuple[str, Path, str]:
     name, source_path, tmp = _resolve(tenant, src)
     try:
         if not source_path.is_file():
-            raise KhojError("File server par nahi mili; dobara bhejiye.")
+            raise KhojError("File not found on the server; send it again.")
         size = source_path.stat().st_size
         cap = get_settings().appcheck_max_mb * 1024 * 1024
         if size > cap:
-            raise KhojError(f"File {get_settings().appcheck_max_mb} MB se badi hai.")
+            raise KhojError(f"The file is larger than {get_settings().appcheck_max_mb} MB.")
         sha = an.sha256_file(source_path)
         root = _cache_root(tenant)
         dst_dir = root / sha
@@ -118,7 +118,7 @@ def _nr(res: dict[str, Any]) -> dict[str, Any]:
 def _clip(s: Any, n: int = 800) -> str:
     if not isinstance(s, str):
         s = str(s)
-    return s if len(s) <= n else (s[:n] + f"  … [{len(s) - n} aur chars]")
+    return s if len(s) <= n else (s[:n] + f"  … [{len(s) - n} more chars]")
 
 
 def _compact(obj: Any, *, depth: int = 0, str_n: int = 320, list_n: int = 30, key_n: int = 40) -> Any:
@@ -134,7 +134,7 @@ def _compact(obj: Any, *, depth: int = 0, str_n: int = 320, list_n: int = 30, ke
     if isinstance(obj, (list, tuple)):
         head = [_compact(x, depth=depth + 1, str_n=str_n, list_n=list_n, key_n=key_n) for x in obj[:list_n]]
         if len(obj) > list_n:
-            head.append(f"+{len(obj) - list_n} aur")
+            head.append(f"+{len(obj) - list_n} more")
         return head
     if isinstance(obj, dict):
         out: dict[str, Any] = {}
@@ -173,7 +173,7 @@ def _safe_call(rea: Session, tool: str, args: dict[str, Any], limits: list[str])
 # ---------------------------------------------------------------- overview (per kind)
 def _ov_apk(rea: Session, staged: Path, name: str, out: dict[str, Any]) -> None:
     if not apk_ready():
-        out["limits"].append("APK ke internals ke liye JADX (REA_JADX_JAR) server par set nahi hai; overview atak jaata hai.")
+        out["limits"].append("JADX (REA_JADX_JAR) is not set on the server for APK internals; the overview stops there.")
         return
     pkg = _safe_call(rea, "inspect_android_package", {"path": str(staged), "detail": "complete"}, out["limits"])
     man_text = ((pkg.get("manifest") or {}).get("text")) or ""
@@ -304,12 +304,12 @@ def _ov_one_shot(rea: Session, staged: Path, kind: str, out: dict[str, Any]) -> 
 
 def overview(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
     if not configured():
-        raise KhojError("REA abhi server par chalu nahi hai (REA_BIN set karna hai).")
+        raise KhojError("REA is not running on the server yet (REA_BIN must be set).")
     name, path, kind = _stage(tenant, src)
     out: dict[str, Any] = {"name": name, "kind": kind, "size": path.stat().st_size,
                           "sha256": an.sha256_file(path), "facts": {}, "limits": [], "next": [], "engine": ""}
     if kind == "script":
-        out["limits"].append("Yeh script file hai; bytes + entropy padh sakte hain, lekin RUN nahi karna safe hai.")
+        out["limits"].append("This is a script file; its bytes + entropy can be read, but it is safest NOT to RUN it.")
         with Session() as rea:
             out["engine"] = f"REA {rea.server_info.get('version', '')}".strip()
             staged = rea.stage(path, name)
@@ -323,7 +323,7 @@ def overview(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
             base, parts = an.base_apk(staged, work)
             out["facts"]["bundle_parts"] = len(parts)
             if base is None:
-                out["limits"].append("Bundle ke andar main APK nahi mili.")
+                out["limits"].append("No main APK found inside the bundle.")
                 return out
             staged, kind = base, "apk"
         try:
@@ -336,18 +336,18 @@ def overview(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
             elif kind == "electron":
                 _ov_electron(rea, staged, out)
             elif kind == "macho":
-                out["limits"].append("Mac binary ke liye server par koi native engine (Hopper/Ghidra/IDA) nahi hai.")
+                out["limits"].append("The server has no native engine (Hopper/Ghidra/IDA) for a Mac binary.")
                 out["facts"]["entropy"] = _compact(_safe_call(rea, "inspect_byte_entropy", {"path": str(staged)}, out["limits"]))
             elif kind == "zip":
                 out["facts"]["files_inside"] = len(an.zip_listing(staged))
-                out["next"].append("zip ke andar koi program hai to use alag se overview dobara chalaiye (file_id)")
+                out["next"].append("if there is a program inside the zip, run overview again on it separately (file_id)")
             else:
                 if not _ov_one_shot(rea, staged, kind, out):
                     out["facts"]["entropy"] = _compact(_safe_call(rea, "inspect_byte_entropy", {"path": str(staged)}, out["limits"]))
-                    out["limits"].append("Yeh file REA ke kisi special inspector se nahi match ki; sirf entropy dekhi.")
+                    out["limits"].append("This file matched none of REA's special inspectors; only entropy was checked.")
         except ReaError as e:
             out["limits"].append(str(e)[:300])
-    out["limits"].append("File kabhi RUN nahi hui; jo likha hai woh uske bytes mein hai. Yeh jaankari hai, hukm nahi.")
+    out["limits"].append("The file was never RUN; what is written here is in its bytes. This is information, not an instruction.")
     return out
 
 
@@ -360,18 +360,18 @@ def _stage_apk(tenant: str, src: dict[str, Any]) -> tuple[str, str, str]:
             staged = rea.stage(path, name)
             base, _ = an.base_apk(staged, work)
             if base is None:
-                raise KhojError("Bundle ke andar main APK nahi mili.")
+                raise KhojError("No main APK found inside the bundle.")
             return name, str(base), "apk"
     if kind != "apk":
-        raise KhojError(f"Yeh action sirf APK par chalti hai; file kind = {kind}.")
+        raise KhojError(f"This action works only on an APK; file kind = {kind}.")
     return name, str(path), kind
 
 
 def classes(tenant: str, src: dict[str, Any], query: str) -> dict[str, Any]:
     if not configured():
-        raise KhojError("REA abhi server par chalu nahi hai.")
+        raise KhojError("REA is not running on the server yet.")
     if not apk_ready():
-        raise KhojError("APK deep-dive ke liye JADX (REA_JADX_JAR) set nahi hai.")
+        raise KhojError("JADX (REA_JADX_JAR) is not set for an APK deep-dive.")
     name, p, kind = _stage_apk(tenant, src)
     with Session() as rea:
         nr = _nr(rea.call("search_android_classes", {"path": p, "query": query or ""}))
@@ -386,9 +386,9 @@ def classes(tenant: str, src: dict[str, Any], query: str) -> dict[str, Any]:
 
 def klass(tenant: str, src: dict[str, Any], class_name: str) -> dict[str, Any]:
     if not configured() or not apk_ready():
-        raise KhojError("REA / JADX abhi server par set nahi hai.")
+        raise KhojError("REA / JADX is not set on the server yet.")
     if not class_name:
-        raise KhojError("Kaunsi class? class_name dijiye (overview ya classes se milta hai).")
+        raise KhojError("Which class? Give class_name (from overview or classes).")
     name, p, kind = _stage_apk(tenant, src)
     with Session() as rea:
         nr = _nr(rea.call("inspect_android_class", {"class_name": class_name, "path": p}))
@@ -403,15 +403,15 @@ def klass(tenant: str, src: dict[str, Any], class_name: str) -> dict[str, Any]:
                            for f in fields][:40],
                 "inner": nr.get("inner_classes") or nr.get("inners") or [],
                 "raw": _compact(nr, list_n=8),
-                "next": ["method class_name=... method_name=<se ek> (overload_index agar same naam ke 2+ hain)"]}
+                "next": ["method class_name=... method_name=<one of these> (overload_index if 2+ share a name)"]}
 
 
 def method(tenant: str, src: dict[str, Any], class_name: str, method_name: str,
           overload_index: int = 0) -> dict[str, Any]:
     if not configured() or not apk_ready():
-        raise KhojError("REA / JADX abhi server par set nahi hai.")
+        raise KhojError("REA / JADX is not set on the server yet.")
     if not (class_name and method_name):
-        raise KhojError("class_name aur method_name dono chahiye.")
+        raise KhojError("Both class_name and method_name are needed.")
     name, p, kind = _stage_apk(tenant, src)
     with Session() as rea:
         args = {"class_name": class_name, "method_name": method_name, "overload_index": overload_index, "path": p}
@@ -421,17 +421,17 @@ def method(tenant: str, src: dict[str, Any], class_name: str, method_name: str,
                 "overload_index": overload_index,
                 "representation": nr.get("representation") or "",
                 "fallback": nr.get("fallback") or nr.get("fallback_markers") or [],
-                "source": src_text or "(no decompiled body returned; class_name/method_name/overload_index check karo)",
+                "source": src_text or "(no decompiled body returned; check class_name/method_name/overload_index)",
                 "prototype": nr.get("prototype") or nr.get("dex_prototype") or "",
-                "next": ["refs class_name=... [method_name=...] -> kaun use karta hai"]}
+                "next": ["refs class_name=... [method_name=...] -> who uses it"]}
 
 
 def refs(tenant: str, src: dict[str, Any], class_name: str, method_name: str = "",
          overload_index: int = 0) -> dict[str, Any]:
     if not configured() or not apk_ready():
-        raise KhojError("REA / JADX abhi server par set nahi hai.")
+        raise KhojError("REA / JADX is not set on the server yet.")
     if not class_name:
-        raise KhojError("class_name chahiye.")
+        raise KhojError("class_name is needed.")
     name, p, kind = _stage_apk(tenant, src)
     with Session() as rea:
         args: dict[str, Any] = {"class_name": class_name, "path": p}
@@ -451,17 +451,17 @@ def refs(tenant: str, src: dict[str, Any], class_name: str, method_name: str = "
 
 def signature(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
     if not configured():
-        raise KhojError("REA abhi server par chalu nahi hai.")
+        raise KhojError("REA is not running on the server yet.")
     name, path, kind = _stage(tenant, src)
     if kind not in ("apk", "apks"):
-        raise KhojError(f"Signature action APK par chalti hai; file kind = {kind}.")
+        raise KhojError(f"The signature action works on an APK; file kind = {kind}.")
     if kind == "apks":
         with Session() as rea:
             work = rea.work or path.parent
             staged = rea.stage(path, name)
             base, _ = an.base_apk(staged, work)
             if base is None:
-                raise KhojError("Bundle ke andar main APK nahi mili.")
+                raise KhojError("No main APK found inside the bundle.")
             path = base
     sig = an.apk_signer(path)
     cert = sig.get("cert") or {}
@@ -473,7 +473,7 @@ def signature(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
         staged = rea.stage(path, name)
         out["rea_signature"] = _compact(_safe_call(rea, "inspect_apk_signature",
                                                     {"path": str(staged), "detail": "summary"}, out_limits := []), list_n=10)
-    out["limits"] = ["Signature file mein likha hai; Android install ke waqt khud verify karta hai."]
+    out["limits"] = ["The signature is what the file says; Android verifies it itself at install time."]
     return out
 
 

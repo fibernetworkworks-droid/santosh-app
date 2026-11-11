@@ -82,7 +82,7 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
                                 "browse_web / computer_operator there, and doc_studio for a PDF.")
             needs = admit._DESKTOP.search(task) or _DESKTOP_APPS.search(task)
             raise ToolError(f"{name}: she did not ask for a PC - every job runs on the SERVER unless she says 'PC pe "
-                            "karo'. " + ("This task names desktop software: ASK her first in one line ('Yeh aapke PC "
+                            "karo'. " + ("This task names desktop software: ASK her first in one line ('Shall I do this on your PC?' / 'Yeh aapke PC "
                                          "pe karun?') and wait for her yes; until then do what the server can. "
                                          if needs else "") +
                             "Server route: research = web_sources / google_search / open_website (browse_web for a "

@@ -12,10 +12,10 @@ from .tools import Ctx, ToolError
 
 LABOUR_TOOLS = [
     {"name": "const_labour", "description": (
-        "Labour compliance + wages desk (mazdoor kaayda, wages, BOCW cess). action=muster: site, day, contractor, "
+        "Labour compliance + wages desk (labour law, wages, BOCW cess). action=muster: site, day, contractor, "
         "trade, present, absent, ot_hours, wage_basis day|hour|piece, note - the daily muster roll row. action=licence: "
         "kind contract_labour|bocw|epf|esic|other, number, authority, holder, site, valid_from, valid_to, status, note - "
-        "renewal calendar. action=wage_rate: trade, rate, basis, site, wef, source (KAHAN se aaya number - agreement / "
+        "renewal calendar. action=wage_rate: trade, rate, basis, site, wef, source (WHERE the number came from - agreement / "
         "notification / your word), note. action=wage_audit: site, day, trade, workers, ot_hours, advances, deductions "
         "-> the working paper (gross - advance - katuayi = to pay; with the source of the rate). action=wage_paid: site, day, "
         "trade, amount, workers, note - record AFTER the payment is made. action=cess_tds: base (construction cost / "
@@ -39,7 +39,7 @@ LABOUR_TOOLS = [
          "what": {"type": "string", "enum": ["day", "licences", "rates"]}},
          "required": ["what"]}},
 ]
-LABOUR_LABELS = {"const_labour": "Mazdoor ka hisaab aur kaayda dekh raha hoon", "const_labour_dekho": "Labour desk dekh raha hoon"}
+LABOUR_LABELS = {"const_labour": "Checking labour accounts and rules", "const_labour_dekho": "Viewing the labour desk"}
 
 
 def _s(v: Any) -> str:

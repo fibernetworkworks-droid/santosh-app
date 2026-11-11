@@ -30,7 +30,7 @@ SHOP_TOOLS = [
          "total": {"type": "string"}},
          "required": ["action"]}},
 ]
-SHOP_LABELS = {"order_karo": "Order taiyaar kar raha hoon"}
+SHOP_LABELS = {"order_karo": "Preparing the order"}
 
 
 def _run(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:

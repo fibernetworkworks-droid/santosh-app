@@ -46,7 +46,7 @@ WAPSI_TOOLS = [
          "auto_approve": {"type": "boolean"}, "refund_before_qc": {"type": "number"}, "morning_time": {"type": "string"}},
          "required": ["action"]}},
     {"name": "wapsi_dekho", "description": (
-        "Read the returns desk (nothing changes). what=day (new requests, refunds waiting for her haan / to send, QC due, old "
+        "Read the returns desk (nothing changes). what=day (new requests, refunds waiting for her approval / to send, QC due, old "
         "returns) | returns (status: open|new|refund_waiting|..., q) | return (ref: everything incl. check, photos, pickup, QC, "
         "refund) | refunds (status) | policy | customer (phone: return history + signals) | rules (law notes + what Hoola never does)."),
      "input_schema": {"type": "object", "properties": {
@@ -54,7 +54,7 @@ WAPSI_TOOLS = [
          "status": {"type": "string"}, "q": {"type": "string"}, "ref": {"type": "string"}, "phone": {"type": "string"}},
          "required": ["what"]}},
 ]
-WAPSI_LABELS = {"wapsi": "Return / refund ka kaam kar raha hoon", "wapsi_dekho": "Returns dekh raha hoon"}
+WAPSI_LABELS = {"wapsi": "Working on returns / refunds", "wapsi_dekho": "Checking returns"}
 
 
 def _s(v: Any) -> str:
@@ -204,4 +204,4 @@ WAPSI_BIZ_TOOLS = [
      "input_schema": {"type": "object", "properties": {}}},
 ]
 WAPSI_BIZ_HANDLERS = {"biz_return_start": biz_return_start, "biz_return_status": biz_return_status}
-WAPSI_BIZ_LABELS = {"biz_return_start": "Return ki request likh raha hoon", "biz_return_status": "Return ka haal dekh raha hoon"}
+WAPSI_BIZ_LABELS = {"biz_return_start": "Writing the return request", "biz_return_status": "Checking the return status"}

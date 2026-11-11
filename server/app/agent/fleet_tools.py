@@ -70,7 +70,7 @@ FLEET_TOOLS = [
          "load_t": {"type": "number"}},
          "required": ["what"]}},
 ]
-FLEET_LABELS = {"fleet": "Fleet ka kaam kar raha hoon", "fleet_dekho": "Gaadiyan aur kaagaz dekh raha hoon"}
+FLEET_LABELS = {"fleet": "Working on the fleet", "fleet_dekho": "Checking vehicles and papers"}
 
 OWNER_ONLY = ("settings", "vehicle", "service_set", "spend_done", "register")
 

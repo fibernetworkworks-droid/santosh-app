@@ -12,7 +12,7 @@ from .tools import Ctx, ToolError
 
 CUSTOMER_TOOLS = [
     {"name": "const_customer", "description": (
-        "Grahak ke paise + possession desk (builder's customer side). action=demand: project, unit, customer, phone, "
+        "Customer payments + possession desk (builder's customer side). action=demand: project, unit, customer, phone, "
         "milestone (plinth / slab / registration), amount, due, interest_pct (the clause of your agreement), note -> DRAFT "
         "demand. action=letter: demand (id) -> the demand-letter PDF (file). action=demand_send: demand (id) - OWNER ONLY, "
         "approval to send. action=receipt: demand (id) or project+unit, amount, mode neft|rtgs|cheque|upi|loan, day, note. "
@@ -43,7 +43,7 @@ CUSTOMER_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-CUSTOMER_LABELS = {"const_customer": "Grahak ke paise ka kaam kar raha hoon", "const_customer_dekho": "Customer desk dekh raha hoon"}
+CUSTOMER_LABELS = {"const_customer": "Working on customer payments", "const_customer_dekho": "Viewing the customer desk"}
 
 
 def _s(v: Any) -> str:

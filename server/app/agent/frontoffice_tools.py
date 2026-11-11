@@ -67,7 +67,7 @@ FRONTOFFICE_TOOLS = [
          "start": {"type": "string"}, "end": {"type": "string"}},
          "required": ["what"]}},
 ]
-FRONTOFFICE_LABELS = {"front_office": "Hotel ka front desk sambhal raha hoon", "front_office_dekho": "Hotel ki booking dekh raha hoon"}
+FRONTOFFICE_LABELS = {"front_office": "Managing the hotel front desk", "front_office_dekho": "Checking hotel bookings"}
 
 OWNER_ONLY = ("settings", "room_type", "rooms", "received", "no_show", "forget")
 

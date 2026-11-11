@@ -69,7 +69,7 @@ EVENTPLAN_TOOLS = [
          "event": {"type": "string"}, "doc": {"type": "string"}, "head": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-EVENTPLAN_LABELS = {"event_plan": "Event ka kaam kar raha hoon", "event_plan_dekho": "Event dekh raha hoon"}
+EVENTPLAN_LABELS = {"event_plan": "Working on the event", "event_plan_dekho": "Checking the event"}
 
 _OWNER_ONLY = {"settings", "client_paid", "booking_paid", "spend_paid", "forget"}
 _SET_KEYS = ("firm", "gstin", "address", "phone", "email", "upi_id", "margin_pct", "head_margins", "fee_mode", "fee_pct", "gst_pct",

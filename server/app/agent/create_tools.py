@@ -29,7 +29,7 @@ CREATE_TOOLS = [
          "title": {"type": "string"}},
          "required": ["action"]}},
 ]
-CREATE_LABELS = {"create_studio": "Create Studio mein bana raha hoon"}
+CREATE_LABELS = {"create_studio": "Creating in Create Studio"}
 
 
 def _store(ctx: Ctx, title: str, ext: str, data: bytes, what: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:

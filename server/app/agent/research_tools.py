@@ -77,7 +77,7 @@ RESEARCH_TOOLS = [
                                                        "id": {"type": "string", "description": "the run id; empty = the latest run of this chat"}},
                       "required": ["action"]}},
 ]
-RESEARCH_LABELS = {"research_run": "Research chala raha hoon (pages padh raha hoon)", "research_status": "Research ki haalat dekh raha hoon", "research_document": "Research ka document bana raha hoon", "research_watch": "Research watch dekh raha hoon"}
+RESEARCH_LABELS = {"research_run": "Running research (reading pages)", "research_status": "Checking research status", "research_document": "Building the research document", "research_watch": "Checking the research watch"}
 
 _ALLOWED = ("owner", "goal", "routine", "wake")
 

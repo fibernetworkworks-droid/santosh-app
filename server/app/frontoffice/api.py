@@ -209,7 +209,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                            tenant: str = Depends(current_tenant)):
         data = await file.read()
         if len(data) > 5 * 1024 * 1024:
-            raise HTTPException(413, "Sheet 5 MB se badi hai.")
+            raise HTTPException(413, "The sheet is larger than 5 MB.")
         return await run(S.import_sheet, tenant, data, file.filename or "sheet.csv", source, room_type)
 
     # ---- cards: HER tap

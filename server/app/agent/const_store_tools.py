@@ -10,7 +10,7 @@ from .tools import Ctx, ToolError
 
 STORE_TOOLS = [
     {"name": "const_store", "description": (
-        "Material store / saaman ka hisaab (construction store in-charge's desk). action=lot: item, unit, min_qty "
+        "Material store accounts (construction store in-charge's desk). action=lot: item, unit, min_qty "
         "(reorder level), max_qty (storage cap). action=grn: item, qty, rate, vendor, invoice_no (challan), vehicle, "
         "site, day, ok (quantity / quality checked), note - stock goes up. action=issue: item, qty, site, gang, "
         "purpose, day, waste (true = written-off), note - stock goes down (never takes more than the stock). action=reconcile: "
@@ -30,7 +30,7 @@ STORE_TOOLS = [
          "what": {"type": "string", "enum": ["stock", "reconcile"]}, "item": {"type": "string"}},
          "required": ["what"]}},
 ]
-STORE_LABELS = {"const_store": "Store ka hisaab likh raha hoon", "const_store_dekho": "Store dekh raha hoon"}
+STORE_LABELS = {"const_store": "Writing the store accounts", "const_store_dekho": "Checking the store"}
 
 
 def _s(v: Any) -> str:

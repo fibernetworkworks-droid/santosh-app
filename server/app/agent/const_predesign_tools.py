@@ -21,18 +21,18 @@ PREDESIGN_TOOLS = [
         "name, pu_kn, fck, fy, steel_pct -> IS 456 cl 39.3 working paper (50 mm module, rounding shown). "
         "action=beam_depth: project, name, span_m, support cantilever|simply_supported|continuous, depth_mm "
         "-> span/ratio check (span > 10 m is refused - modification factors are the engineer's). action=mep_elec: "
-        "project, name, connected_kw, demand_factor, diversity, pf, note (source likho) -> kVA. "
+        "project, name, connected_kw, demand_factor, diversity, pf, note (write the source) -> kVA. "
         "action=mep_water: project, name, occupants -> KLD (CPHEEO pack row). action=mep_hvac: project, name, "
         "area_m2, tr_per_m2, source -> TR. action=fire_check: project, rule_id, declared -> within/breach "
-        "(clause cited; faisla fire consultant ka). action=fire_demand: project, name, density_lpm_m2, "
+        "(clause cited; the fire consultant decides). action=fire_demand: project, name, density_lpm_m2, "
         "density_source, area_m2, duration_min, hose_add_lpm -> L/min + m3. Wave 3.5: action=form_area: "
         "project, name, rows [kind slab|beam|column|wall, L, B, H, count] -> contact area, geometry is YOURS "
         "from dims (#74; shuttering DESIGN is the site engineer's). action=strike_check: project, element_kind "
         "vertical|slab_soffit|beam_soffit|props_slab_le4m5|props_beam_le6m|props_slab_gt4m5|props_beam_gt6m, "
-        "cement opc, ambient_c, age_h -> IS 456 Table 10 min (OPC + >15 degC only, warna REFUSE; striking "
+        "cement opc, ambient_c, age_h -> IS 456 Table 10 min (OPC + >15 degC only, else REFUSE; striking "
         "the ORDER is the site engineer's, tier C). action=props_check: project, name, declared_kn_m2, "
         "allowable_kn_m2, source (supplier table) -> within/exceeds. action=scaffold_tag: project, "
-        "scaffold_id, status ok|defective|altered, checked_by (competent person ka NAAM), next_check -> "
+        "scaffold_id, status ok|defective|altered, checked_by (competent person's NAME), next_check -> "
         "tag register (#74, the competent person applies the tag). action=day: desk summary."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["rule_add", "slab_load", "column_load", "column_size",
@@ -66,8 +66,8 @@ PREDESIGN_TOOLS = [
          "family": {"type": "string"}, "project": {"type": "string"}, "kind": {"type": "string"}},
          "required": ["what"]}},
 ]
-PREDESIGN_LABELS = {"const_predesign": "Pre-design ka hisaab kar raha hoon",
-                    "const_predesign_dekho": "Pre-design desk dekh raha hoon"}
+PREDESIGN_LABELS = {"const_predesign": "Doing pre-design calculations",
+                    "const_predesign_dekho": "Viewing the pre-design desk"}
 
 
 def _s(v: Any) -> str:

@@ -46,8 +46,8 @@ PLAN_TOOLS = [
          "project": {"type": "string"}, "kind": {"type": "string"}},
          "required": ["what"]}},
 ]
-PLAN_LABELS = {"const_plan": "Niyojan desk par kaam kar raha hoon",
-               "const_plan_dekho": "Niyojan desk dekh raha hoon"}
+PLAN_LABELS = {"const_plan": "Working on the planning desk",
+               "const_plan_dekho": "Viewing the planning desk"}
 
 
 def _s(v: Any) -> str:

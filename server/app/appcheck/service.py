@@ -38,13 +38,13 @@ def _resolve(tenant: str, src: dict[str, Any]) -> tuple[str, Path, Path | None]:
             raise CheckError(str(e))
         p = Path(f.stored_path)
         if not p.is_file():
-            raise CheckError("Yeh file ab server par nahi hai (24 ghante baad hat jaati hai); dobara bhejiye.")
+            raise CheckError("This file is no longer on the server (files are removed after 24 hours); send it again.")
         return f.name, p, None
     tmp = Path(tempfile.mkdtemp(prefix="chk_src_"))
     try:
         if src.get("email_id"):
             if src.get("attachment_id") in (None, ""):
-                raise CheckError("Email ka kaunsa attachment jaanchna hai? (attachment_id)")
+                raise CheckError("Which attachment of the email should be checked? (attachment_id)")
             try:
                 name, _mt, data = ms.attachment(tenant, str(src["email_id"]), str(src["attachment_id"]))
             except ms.MailError as e:
@@ -55,11 +55,11 @@ def _resolve(tenant: str, src: dict[str, Any]) -> tuple[str, Path, Path | None]:
                 c, f = dsv.resolve(tenant, str(src["drive"]))
                 name, _mt, data, _c, _f = dsv.fetch(tenant, dsv.make_ref(c, f["id"]))
             except Exception as e:
-                raise CheckError(f"Drive se file nahi mili: {str(e)[:150]}")
+                raise CheckError(f"File not found in Drive: {str(e)[:150]}")
         else:
-            raise CheckError("Kaunsi file? file_id (phone / PC se aayi file), email attachment ya Drive file dijiye.")
+            raise CheckError("Which file? Give a file_id (a file from the phone / PC), an email attachment or a Drive file.")
         if len(data) > get_settings().appcheck_max_mb * 1024 * 1024:
-            raise CheckError(f"File {get_settings().appcheck_max_mb} MB se badi hai.")
+            raise CheckError(f"The file is larger than {get_settings().appcheck_max_mb} MB.")
         from ..pc.service import safe_name
         p = tmp / safe_name(name)
         p.write_bytes(data)
@@ -96,7 +96,7 @@ def _check_apk(rea: Session, path: Path, name: str, out: dict[str, Any]) -> list
             out["facts"]["built_with"] = "Flutter"
     except ReaError:
         pass
-    out["limits"].append("Signature kisne kiya yeh file mein likha hua dikhaya hai; asli jaanch Android install ke waqt karta hai.")
+    out["limits"].append("The signer shown is what the file says; Android does the real check at install time.")
     return an.apk_flags(pkg, man, signer, name)
 
 
@@ -108,7 +108,7 @@ def _check_exe(rea: Session, path: Path, name: str, out: dict[str, Any]) -> list
         pe = _nr(rea.call("inspect_pe_resources", {"path": str(path)}))
         vinfo, level = an.pe_version_info(path, pe.get("resources") or [])
     except ReaError as e:
-        out["limits"].append(f"Resources nahi padh paaye: {str(e)[:120]}")
+        out["limits"].append(f"Could not read the resources: {str(e)[:120]}")
     out["facts"].update({"company": vinfo.get("CompanyName", ""), "product": vinfo.get("ProductName", ""),
                          "description": vinfo.get("FileDescription", ""), "original_name": vinfo.get("OriginalFilename", ""),
                          "version": vinfo.get("FileVersion", "") or vinfo.get("ProductVersion", ""),
@@ -126,7 +126,7 @@ def _check_exe(rea: Session, path: Path, name: str, out: dict[str, Any]) -> list
         pass
     _deps(rea, path, out)
     if basics.get("signed"):
-        out["limits"].append("Digital signature maujood hai; Windows khud jaanchega ki woh sahi company ka hai ya nahi.")
+        out["limits"].append("A digital signature is present; Windows itself checks whether it belongs to the right company.")
     return an.exe_flags(name, basics, vinfo, level)
 
 
@@ -153,26 +153,26 @@ def _check_electron(rea: Session, path: Path, out: dict[str, Any]) -> list[dict[
                                                          "integrity_policy": "record-and-continue"}))
     counts = {k: v for k, v in res.items() if isinstance(v, int) and not isinstance(v, bool)}
     out["facts"].update({"built_with": "Electron / JavaScript", **{k: counts[k] for k in list(counts)[:8]}})
-    out["limits"].append("JavaScript app ka structure dekha; is tarah ke apps ke liye koi pakka khatra-niyam nahi lagaya.")
+    out["limits"].append("The JavaScript app's structure was read; no firm risk rule is applied to apps of this kind.")
     return []
 
 
 def _run(name: str, path: Path, kind: str, out: dict[str, Any]) -> list[dict[str, str]]:
     flags: list[dict[str, str]] = []
     if an.double_extension(name):
-        flags.append(an._flag("high", "naam document / photo jaisa hai par asal mein program hai (do extension wali chaal)", "double_ext"))
+        flags.append(an._flag("high", "the name looks like a document / photo but it is really a program (the double-extension trick)", "double_ext"))
     if kind == "script":
         lvl = an.SCRIPT_EXT.get(Path(name.lower()).suffix, "medium")
-        flags.append(an._flag(lvl, f"'{Path(name).suffix}' file kholte hi commands chalati hai", "script"))
+        flags.append(an._flag(lvl, f"'{Path(name).suffix}' file runs commands as soon as it is opened", "script"))
         b, lu = an.name_lures(name)
         if b or lu:
-            flags.append(an._flag("high", f"naam mein '{', '.join(b + lu)}' hai: aisi files aam fraud tareeka hain", "lure_name"))
+            flags.append(an._flag("high", f"the name contains '{', '.join(b + lu)}': files like this are a common fraud method", "lure_name"))
         return flags
     if kind == "other":
-        out["limits"].append("Yeh APK / EXE / app file nahi lagti; App Jaanch sirf apps aur programs padhta hai.")
+        out["limits"].append("This does not look like an APK / EXE / app file; App Check reads only apps and programs.")
         return flags
     if kind == "macho":
-        out["limits"].append("Mac app ki gehri jaanch abhi server par nahi hoti.")
+        out["limits"].append("A deep check of Mac apps is not done on the server yet.")
         return flags
     with Session() as rea:
         out["engine"] = f"REA {rea.server_info.get('version', '')}".strip()
@@ -184,23 +184,23 @@ def _run(name: str, path: Path, kind: str, out: dict[str, Any]) -> list[dict[str
                                                                               ".bat", ".cmd", ".ps1", ".hta", ".lnk", ".jar")]
             if inner:
                 out["facts"]["programs_inside"] = [i["name"] for i in inner[:10]]
-                flags.append(an._flag("medium", f"zip ke andar program hai: {', '.join(Path(i['name']).name for i in inner[:3])}",
+                flags.append(an._flag("medium", f"there is a program inside the zip: {', '.join(Path(i['name']).name for i in inner[:3])}",
                                       "zip_program"))
                 for i in inner[:3]:
                     if an.double_extension(Path(i["name"]).name):
-                        flags.append(an._flag("high", f"andar '{Path(i['name']).name}' document jaisa naam wala program hai", "double_ext"))
+                        flags.append(an._flag("high", f"inside, '{Path(i['name']).name}' is a program with a document-like name", "double_ext"))
             return flags
         staged = rea.stage(path, name)
         if kind == "apks":
             base, parts = an.base_apk(staged, work)
             out["facts"]["bundle_parts"] = len(parts)
             if base is None:
-                out["limits"].append("Bundle ke andar main APK nahi mila.")
+                out["limits"].append("No main APK found inside the bundle.")
                 return flags
             staged, kind = base, "apk"
         if kind == "apk":
             if not apk_ready():
-                out["limits"].append("APK ki jaanch ke liye server par JADX (REA_JADX_JAR) set nahi hai.")
+                out["limits"].append("JADX (REA_JADX_JAR) is not set on the server for checking an APK.")
                 return flags
             return flags + _check_apk(rea, staged, name, out)
         if kind == "exe":
@@ -216,12 +216,12 @@ def _run(name: str, path: Path, kind: str, out: dict[str, Any]) -> list[dict[str
 # ---------------------------------------------------------------- public
 def check(tenant: str, conversation_id: str, src: dict[str, Any]) -> dict[str, Any]:
     if not configured():
-        raise CheckError("App Jaanch abhi server par chalu nahi hai (REA install karke REA_BIN set karna hai).")
+        raise CheckError("App Check is not running on the server yet (install REA and set REA_BIN).")
     name, path, tmp = _resolve(tenant, src)
     try:
         size = path.stat().st_size
         if size > get_settings().appcheck_max_mb * 1024 * 1024:
-            raise CheckError(f"File {get_settings().appcheck_max_mb} MB se badi hai.")
+            raise CheckError(f"The file is larger than {get_settings().appcheck_max_mb} MB.")
         sha = an.sha256_file(path)
         since = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(days=30)
         with session() as s:
@@ -247,7 +247,7 @@ def check(tenant: str, conversation_id: str, src: dict[str, Any]) -> dict[str, A
         except Exception:
             hit = None
         if hit:
-            flags.insert(0, an._flag("high", f"Hoola Samaj '{hit['community']}' ne is file ko fraud bataya hai", "community_alert"))
+            flags.insert(0, an._flag("high", f"Hoola Community '{hit['community']}' has reported this file as fraud", "community_alert"))
             v = "danger"
         flags.sort(key=lambda f: ORDER.get(f["level"], 3))
         if kind == "zip" and v == "clear":
@@ -292,5 +292,5 @@ def get(tenant: str, cid: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(AppCheck, cid)
         if r is None or r.tenant_id != tenant:
-            raise CheckError("Yeh jaanch nahi mili.")
+            raise CheckError("This check was not found.")
         return dict(r.result) | {"id": r.id}

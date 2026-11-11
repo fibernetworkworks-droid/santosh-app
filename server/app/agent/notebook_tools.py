@@ -113,14 +113,14 @@ NOTEBOOK_TOOLS = [
      "input_schema": {"type": "object", "properties": {"notebook": NB}, "required": ["notebook"]}},
 ]
 
-NOTEBOOK_LABELS = {"notebook_create": "Notebook bana raha hoon", "notebook_list": "Notebooks dekh raha hoon",
-                   "notebook_open": "Notebook khol raha hoon", "notebook_add": "Sources jod raha hoon",
-                   "notebook_discover": "Web par sources dhoondh raha hoon", "notebook_sources": "Sources sambhal raha hoon",
-                   "notebook_remove_source": "Source hata raha hoon", "notebook_ask": "Sources mein jawab dhoondh raha hoon",
-                   "notebook_chat_config": "Notebook chat set kar raha hoon", "notebook_studio": "Studio mein bana raha hoon",
-                   "notebook_output": "Studio item dekh raha hoon", "notebook_note": "Note sambhal raha hoon",
-                   "notebook_make": "Notebook se likh raha hoon", "notebook_audio": "Audio overview bana raha hoon",
-                   "notebook_delete": "Delete ki manzoori le raha hoon"}
+NOTEBOOK_LABELS = {"notebook_create": "Creating a notebook", "notebook_list": "Checking notebooks",
+                   "notebook_open": "Opening the notebook", "notebook_add": "Adding sources",
+                   "notebook_discover": "Finding sources on the web", "notebook_sources": "Managing sources",
+                   "notebook_remove_source": "Removing a source", "notebook_ask": "Searching sources for an answer",
+                   "notebook_chat_config": "Setting up notebook chat", "notebook_studio": "Creating in the studio",
+                   "notebook_output": "Checking a studio item", "notebook_note": "Handling a note",
+                   "notebook_make": "Writing from the notebook", "notebook_audio": "Making an audio overview",
+                   "notebook_delete": "Getting approval to delete"}
 
 
 async def _t(fn, *a, **kw):
@@ -208,13 +208,13 @@ async def notebook_sources(ctx: Ctx, notebook, action, sources=None, title="", *
         return out
     if action in ("on", "off", "only"):
         if not srcs:
-            raise ToolError("Kaunse sources? (number, id ya naam)")
+            raise ToolError("Which sources? (number, id or name)")
         res = await _t(lambda: ns.set_enabled(ctx.tenant_id, nb, ids(), action != "off", only=action == "only"))
         return {"sources": res["sources"]}
     if action == "all_on":
         return {"sources": (await _t(ns.set_enabled, ctx.tenant_id, nb, None, True))["sources"]}
     if not srcs:
-        raise ToolError("Kaunsa source?")
+        raise ToolError("Which source?")
     if action == "rename":
         return {"sources": (await _t(ns.rename_source, ctx.tenant_id, nb, srcs[0], str(title)))["sources"]}
     if action == "refresh":

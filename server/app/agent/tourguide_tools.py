@@ -25,7 +25,7 @@ TOURGUIDE_TOOLS = [
         "booking or tour, language. action=message: booking, kind reminder|custom, text -> CARD. action=review: booking, survey "
         "-> CARD. action=refund: booking, amount, reason -> CARD. action=discount: booking, amount|pct, reason -> CARD. "
         "action=spend: text (what), amount, party, booking -> CARD. action=paid_out*: card, ref. action=travel: booking, origin "
-        "(Yatra Sahayak trip). action=licence*: licence, kind iitf|iitg_heritage|iitg_adventure|rlg|state|asi_site|first_aid|"
+        "(Travel agent trip). action=licence*: licence, kind iitf|iitg_heritage|iitg_adventure|rlg|state|asi_site|first_aid|"
         "adventure|other, ref, holder, authority, issued, valid_to, note. action=ledger_add*: kind tip|commission_in|commission_out, "
         "amount, party, booking, note. action=forget*: booking. action=register. (* = owner only)"),
      "input_schema": {"type": "object", "properties": {
@@ -61,7 +61,7 @@ TOURGUIDE_TOOLS = [
          "booking": {"type": "string"}, "status": {"type": "string"}, "day": {"type": "string"}, "month": {"type": "string"}},
          "required": ["what"]}},
 ]
-TOURGUIDE_LABELS = {"tour_guide": "Tour ka kaam kar raha hoon", "tour_guide_dekho": "Tour ki diary dekh raha hoon"}
+TOURGUIDE_LABELS = {"tour_guide": "Working on the tour", "tour_guide_dekho": "Checking the tour diary"}
 
 OWNER_ONLY = ("settings", "tour", "received", "paid_out", "licence", "ledger_add", "forget")
 

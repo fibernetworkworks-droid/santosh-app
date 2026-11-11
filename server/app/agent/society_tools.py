@@ -86,7 +86,7 @@ SOCIETY_TOOLS = [
          "meeting": {"type": "string"}, "inside": {"type": "boolean"}, "fy": {"type": "string"}},
          "required": ["what"]}},
 ]
-SOCIETY_LABELS = {"society": "Society ka kaam kar raha hoon", "society_dekho": "Society ka register dekh raha hoon"}
+SOCIETY_LABELS = {"society": "Working on the society", "society_dekho": "Checking the society register"}
 
 OWNER_ONLY = ("settings", "head", "flat", "import_flats", "nominate", "transfer", "parking", "receipt", "meeting", "meeting_held",
               "resolution", "minutes_final", "contract", "spend_done", "staff", "audit_done", "forget", "register")

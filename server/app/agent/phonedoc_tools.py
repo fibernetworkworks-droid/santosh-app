@@ -20,9 +20,9 @@ PHONEDOC_TOOLS = [
         "water, wont_turn_on, otp_not_coming, bluetooth, camera, lost_stolen, forgot_lock, hacked_fraud, gps, other), "
         "for_whom (empty = her own phone: the phone checks itself first), device, app_package (for one app crashing). "
         "Returns findings from the phone + step 1. Give ONE step at a time in simple words, the settings screen opens on "
-        "her phone by itself; then ask 'theek hua?'. "
+        "her phone by itself; then ask if it is fixed. "
         "action=step: case, step_id, result fixed | not_fixed | skipped | cant, note -> the next step (or escalation when "
-        "they run out). Steps marked careful (factory reset, network reset, reinstall) only after she clearly says haan. "
+        "they run out). Steps marked careful (factory reset, network reset, reinstall) only after she clearly says yes. "
         "action=check: read the phone again now. action=recheck: case: did the last step change what the phone says. "
         "action=open: setting (key), package, url: open that screen on her phone again. "
         "action=escalate: case, kind repair | operator | official, make_job (she runs the mobile shop: log a repair job), "
@@ -39,7 +39,7 @@ PHONEDOC_TOOLS = [
          "phone": {"type": "string"}, "status": {"type": "string"}},
          "required": ["action"]}},
 ]
-PHONEDOC_LABELS = {"phone_doctor": "Phone ki dikkat theek kar raha hoon"}
+PHONEDOC_LABELS = {"phone_doctor": "Fixing a phone problem"}
 
 
 def _s(v: Any) -> str:

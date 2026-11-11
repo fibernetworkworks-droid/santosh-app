@@ -223,7 +223,7 @@ async def ondc_listing(ctx: Ctx, action, **kw):
     raise ToolError("action?")
 
 
-HANDOFF_LABELS: dict[str, str] = {"a2a_bahar": "Bahar ke AI agent se baat", "consent_jaanch": "Consent jaanch raha hoon",
-                                  "digilocker": "DigiLocker dekh raha hoon", "ondc_listing": "ONDC ki taiyaari"}
+HANDOFF_LABELS: dict[str, str] = {"a2a_bahar": "Talking to an outside AI agent", "consent_jaanch": "Checking consent",
+                                  "digilocker": "Checking DigiLocker", "ondc_listing": "Preparing the ONDC listing"}
 HANDOFF_HANDLERS: dict[str, Any] = {"a2a_bahar": a2a_bahar, "consent_jaanch": consent_jaanch, "digilocker": digilocker_tool,
                                     "ondc_listing": ondc_listing}

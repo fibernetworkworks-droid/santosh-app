@@ -68,7 +68,7 @@ def _model_json(system: str, prompt: str, max_tokens: int = 6000) -> dict:
     try:
         return ai.ask_json(system, prompt, max_tokens=max_tokens, kind="edu") or {}
     except Exception as e:
-        raise PathyakramError(f"Model se jawab nahi mila: {e}")
+        raise PathyakramError(f"No answer from the model: {e}")
 
 
 def _team(actor: str) -> None:
@@ -86,7 +86,7 @@ def _ctx_defaults(tenant: str, board: str, grade: str, subject: str) -> tuple[st
     grade = R._grade_key(grade)
     subject = _s(subject, 80)
     if not grade or not subject:
-        raise PathyakramError("Class (grade) aur subject dono chahiye.")
+        raise PathyakramError("Both class (grade) and subject are needed.")
     return board, grade, subject
 
 
@@ -98,9 +98,9 @@ def frameworks_view(board: str = "CBSE", grade: str = "", subject: str = "") -> 
         out["chapters"] = R.chapters(subject, grade) or None
         out["pattern"] = R.pattern(board, grade, subject) or None
         if not out["chapters"]:
-            out["chapters_note"] = "Is class / subject ke chapters library mein nahi; teacher chapter list de."
+            out["chapters_note"] = "This class / subject has no chapters in the library; the teacher gives the chapter list."
         if not out["pattern"]:
-            out["pattern_note"] = "Is board / class / subject ka official pattern library mein nahi; sections khud bataiye."
+            out["pattern_note"] = "The official pattern for this board / class / subject is not in the library; give the sections yourself."
     else:
         books = (fw.get("ncert") or {}).get("textbooks") or {}
         out["ncert_books"] = {s: sorted(v) for s, v in books.items()}
@@ -129,17 +129,17 @@ def generate(tenant: str, subject: str, grade: str, board: str = "", chapter: st
     counts = {k: int(v) for k, v in (counts or {"mcq": 5, "short": 3}).items() if k in R.QTYPES and int(v or 0) > 0}
     total = sum(counts.values())
     if not total:
-        raise PathyakramError(f"Kitne sawaal, kis type ke? counts jaise {{'mcq': 5, 'short': 3}}; types: {', '.join(R.QTYPES)}")
+        raise PathyakramError(f"How many questions, of which type? counts like {{'mcq': 5, 'short': 3}}; types: {', '.join(R.QTYPES)}")
     if total > MAX_GEN:
-        raise PathyakramError(f"Ek baar mein {MAX_GEN} sawaal tak; baaki agli baar.")
+        raise PathyakramError(f"At most {MAX_GEN} questions at a time; the rest next time.")
     chapter = _s(chapter, 200)
     if not chapter and not topic:
-        raise PathyakramError("Chapter ya topic chahiye.")
+        raise PathyakramError("A chapter or topic is needed.")
     lib = R.chapters(subject, grade)
     warn = []
     if lib and chapter and not any(R.norm_text(chapter) in R.norm_text(c) or R.norm_text(c) in R.norm_text(chapter)
                                    for c in lib["chapters"]):
-        warn.append(f"'{chapter}' {lib['book']} (NCERT class {grade}) ke chapters mein nahi mila; doosri kitaab ho to theek.")
+        warn.append(f"'{chapter}' is not in the chapters of {lib['book']} (NCERT class {grade}); fine if you use another book.")
     language = _s(language, 20) or S.settings(tenant)["medium"] or "English"
     want = "; ".join(f"{n} x {k}" + (f" ({marks[k]} marks each)" if marks and marks.get(k) else "") for k, n in counts.items())
     prompt = (f"Board: {board}. Class: {grade}. Subject: {subject}. Chapter: {chapter or '-'}. Topic: {_s(topic, 200) or '-'}.\n"
@@ -157,8 +157,8 @@ def generate(tenant: str, subject: str, grade: str, board: str = "", chapter: st
                 it["marks"] = marks[it["qtype"]]
     res = S.save_questions(tenant, items, board=board, grade=grade, subject=subject, language=language, source="ai")
     got = len(res["added"])
-    say = (f"{got} naye sawaal bank mein draft hain (Q-number); teacher padh kar approve karein."
-           + (f" {len(res['skipped'])} chhod diye (check fail / pehle se the)." if res["skipped"] else "")
+    say = (f"{got} new questions are drafts in the bank (Q-number); the teacher reads and approves them."
+           + (f" {len(res['skipped'])} skipped (failed a check / already there)." if res["skipped"] else "")
            + (" " + " ".join(warn) if warn else ""))
     return {**res, "asked": total, "warnings": warn, "say": say, "disclaimer": R.DISCLAIMER}
 
@@ -174,18 +174,18 @@ def blueprint(tenant: str, subject: str, grade: str, board: str = "", sections: 
                 continue
             qt = _s(s.get("qtype") or s.get("type"), 20).lower()
             clean, probs = R.check_question({"qtype": qt, "text": "placeholder text", "answer": "x", "marks": 1})
-            if any("samajh nahi aaya" in x for x in probs):
-                raise PathyakramError(f"Section {s.get('name') or i + 1}: qtype '{qt}' samajh nahi aaya; inmein se: {', '.join(R.QTYPES)}")
+            if any("samajh nahi aaya" in x or x.startswith("! type '") for x in probs):
+                raise PathyakramError(f"Section {s.get('name') or i + 1}: qtype '{qt}' not understood; use one of: {', '.join(R.QTYPES)}")
             secs.append({"name": _s(s.get("name"), 20) or "ABCDEFGH"[i % 8], "qtype": clean["qtype"],
                          "count": int(s.get("count") or 0), "marks_each": float(s.get("marks_each") or s.get("marks") or 0),
                          "choice": int(s.get("choice") or 0)})
         mm = float(max_marks or R.blueprint_total(secs))
         bp = {"sections": secs, "max_marks": mm, "duration_min": int(duration_min or 0), "source": "teacher",
-              "verified": True, "say": "Teacher ka diya blueprint."}
+              "verified": True, "say": "Blueprint given by the teacher."}
     else:
         p = R.pattern(board, grade, subject)
         if not p or not p.get("sections"):
-            raise PathyakramError("Is board / class / subject ka official pattern library mein nahi. Sections bataiye, jaise "
+            raise PathyakramError("The official pattern for this board / class / subject is not in the library. Give the sections, like "
                                   "[{name:'A', qtype:'mcq', count:20, marks_each:1}, {name:'B', qtype:'very_short', count:5, "
                                   "marks_each:2}].")
         secs = [{"name": s.get("name", ""), "qtype": s.get("qtype", "short"), "count": int(s.get("count") or 0),
@@ -194,10 +194,10 @@ def blueprint(tenant: str, subject: str, grade: str, board: str = "", sections: 
         bp = {"sections": secs, "max_marks": float(max_marks or p.get("max_marks") or R.blueprint_total(secs)),
               "duration_min": int(duration_min or p.get("duration_min") or 0), "source": p.get("source", ""),
               "session": p.get("session", ""), "verified": p.get("verified", False),
-              "say": f"{board} {p.get('session', '')} sample paper ka pattern" + ("" if p.get("verified") else " (andaaza: source se pakka karein)")}
+              "say": f"{board} {p.get('session', '')} sample paper pattern" + ("" if p.get("verified") else " (estimate: confirm with the source)")}
     probs = R.check_blueprint(bp["sections"], bp["max_marks"])
     if R.fatal(probs):
-        raise PathyakramError("Blueprint sahi nahi: " + "; ".join(x.lstrip("! ") for x in probs))
+        raise PathyakramError("The blueprint is not right: " + "; ".join(x.lstrip("! ") for x in probs))
     bp.update(board=board, grade=grade, subject=subject, total=R.blueprint_total(bp["sections"]))
     return bp
 
@@ -277,19 +277,19 @@ def make_paper(tenant: str, subject: str, grade: str, board: str = "", title: st
         s.flush()
         view = _paper_view(p)
     S.mark_used(tenant, [i["question_id"] for i in items], num)
-    say = (f"{num} bana: {len(items)} sawaal, {total}/{bp['max_marks']} marks." +
-           (f" {len(gaps)} section mein sawaal kam ({', '.join(g['section'] for g in gaps)}): bank mein aur approved sawaal "
-            "chahiye ya fill_missing." if gaps else "") +
-           (f" {drafts} sawaal abhi draft hain: approve se pehle padhiye." if drafts else "") +
-           (f" {generated} naye sawaal banaye." if generated else ""))
+    say = (f"{num} made: {len(items)} questions, {total}/{bp['max_marks']} marks." +
+           (f" {len(gaps)} sections are short of questions ({', '.join(g['section'] for g in gaps)}): the bank needs more approved questions, "
+            "or use fill_missing." if gaps else "") +
+           (f" {drafts} questions are still drafts: read them before you approve." if drafts else "") +
+           (f" {generated} new questions written." if generated else ""))
     _publish(tenant, "pathyakram_paper", {"paper": view, "say": say}, conv)
     return {"paper": view, "say": say, "disclaimer": R.DISCLAIMER}
 
 
 def _instructions(bp: dict) -> list[str]:
     secs = bp["sections"]
-    out = [f"Is paper mein {len(secs)} section hain: " + ", ".join(f"{s['name']} ({s['count']} x {s['marks_each']:g})" for s in secs) + ".",
-           "Sabhi sawaal anivarya hain, jahan vikalp (choice) diya hai wahan ek kijiye."]
+    out = [f"This paper has {len(secs)} sections: " + ", ".join(f"{s['name']} ({s['count']} x {s['marks_each']:g})" for s in secs) + ".",
+           "All questions are compulsory; where a choice is given, attempt one."]
     if bp.get("duration_min"):
         out.insert(0, f"Samay: {bp['duration_min']} minute. Poorna ank: {bp['max_marks']:g}.")
     return out
@@ -300,7 +300,7 @@ def _paper_row(s, tenant: str, ref: str) -> PathyakramPaper:
     p = s.scalars(select(PathyakramPaper).where(PathyakramPaper.tenant_id == tenant,
                                                 (PathyakramPaper.id == ref) | (PathyakramPaper.number == ref))).first()
     if p is None:
-        raise PathyakramError(f"Paper '{ref}' nahi mila.")
+        raise PathyakramError(f"Paper '{ref}' not found.")
     return p
 
 
@@ -351,11 +351,11 @@ def swap(tenant: str, ref: str, n: int, question_ref: str = "", actor: str = "ow
     with _LOCK, session() as s:
         p = _paper_row(s, tenant, ref)
         if p.status == "shared":
-            raise PathyakramError("Yeh paper baanta ja chuka hai; naya paper banaiye.")
+            raise PathyakramError("This paper has already been shared; make a new paper.")
         items = _j(p.items, [])
         it = next((i for i in items if i["n"] == int(n)), None)
         if it is None:
-            raise PathyakramError(f"Paper mein sawaal {n} nahi.")
+            raise PathyakramError(f"The paper has no question {n}.")
         old = s.get(ShikshaQuestion, it["question_id"])
         board, grade, subject, num = p.board, p.grade, p.subject, p.number
     taken = {i["question_id"] for i in items}
@@ -364,13 +364,13 @@ def swap(tenant: str, ref: str, n: int, question_ref: str = "", actor: str = "ow
             new = S._q_row(s, tenant, question_ref)
             s.expunge(new)
         if new.qtype != old.qtype or abs(new.marks - old.marks) > 0.01:
-            raise PathyakramError(f"{new.number} ka type / marks ({new.qtype}, {new.marks:g}) purane sawaal se alag hai.")
+            raise PathyakramError(f"{new.number}: its type / marks ({new.qtype}, {new.marks:g}) differ from the old question.")
         if new.id in taken:
-            raise PathyakramError(f"{new.number} pehle se is paper mein hai.")
+            raise PathyakramError(f"{new.number} is already in this paper.")
     else:
         got = _pick(_candidates(tenant, board, grade, subject, old.qtype, old.marks, [], True), 1, taken)
         if not got:
-            raise PathyakramError("Bank mein is type / marks ka koi aur approved sawaal nahi.")
+            raise PathyakramError("The bank has no other approved question of this type / marks.")
         new = got[0]
     with _LOCK, session() as s:
         p = _paper_row(s, tenant, ref)
@@ -383,7 +383,7 @@ def swap(tenant: str, ref: str, n: int, question_ref: str = "", actor: str = "ow
             p.status, p.approved_by = "draft", ""
         view = _paper_view(p)
     S.mark_used(tenant, [new.id], num)
-    return {"paper": view, "say": f"{num}: sawaal {n} ab {new.number} hai."}
+    return {"paper": view, "say": f"{num}: question {n} is now {new.number}."}
 
 
 def approve_paper(tenant: str, ref: str, actor: str = "owner") -> dict:
@@ -396,14 +396,14 @@ def approve_paper(tenant: str, ref: str, actor: str = "owner") -> dict:
             ShikshaQuestion.id.in_([i["question_id"] for i in items]))).all()}
         drafts = [i["number"] for i in items if status.get(i["question_id"]) != "approved"]
         if drafts:
-            raise PathyakramError("Pehle yeh sawaal approve kijiye: " + ", ".join(drafts[:20]))
+            raise PathyakramError("Approve these questions first: " + ", ".join(drafts[:20]))
         total = round(sum(i["marks"] for i in items if not i.get("choice")), 2)
         if abs(total - p.max_marks) > 0.01:
-            raise PathyakramError(f"Marks {total} hain, paper {p.max_marks:g} ka hai; gaps bharen.")
+            raise PathyakramError(f"Marks {total}, but the paper is for {p.max_marks:g}; fill the gaps.")
         for i in items:
             i["status"] = "approved"
         p.items, p.status, p.approved_by, p.updated_at = _d(items), "approved", actor or "owner", now()
-        return {"paper": _paper_view(p), "say": f"{p.number} approve ho gaya."}
+        return {"paper": _paper_view(p), "say": f"{p.number} approved."}
 
 
 def _paper_text(view: dict, key: bool) -> str:
@@ -453,7 +453,7 @@ def year_plan(tenant: str, subject: str, grade: str, board: str = "", chapters: 
     if not chs:
         lib = R.chapters(subject, grade)
         if not lib:
-            raise PathyakramError("Is class / subject ke chapters library mein nahi; chapter list bataiye (kram se).")
+            raise PathyakramError("This class / subject has no chapters in the library; give the chapter list (in order).")
         chs, src, verified = lib["chapters"], lib["source"], lib["verified"]
     months = max(2, min(int(months or 10), 12))
     rev = max(0, min(int(revision_months or 0), months - 1))
@@ -477,13 +477,13 @@ def year_plan(tenant: str, subject: str, grade: str, board: str = "", chapters: 
         rows[i]["chapters"] = ["Revision + practice papers"]
     for i, r in enumerate(rows):
         if i == teach - 1:
-            r["assessment"] = "Final syllabus complete - pre-board / annual exam ki taiyaari"
+            r["assessment"] = "Final syllabus complete - prepare for the pre-board / annual exam"
         elif i < teach and (i + 1) % 3 == 0:
-            r["assessment"] = "Periodic test (pichhle 3 mahine)"
+            r["assessment"] = "Periodic test (last 3 months)"
     if teach >= 6:
         rows[teach // 2]["assessment"] = rows[teach // 2]["assessment"] or "Half-yearly exam"
     body = {"rows": rows, "chapters": chs, "weights": w, "source": src, "verified": verified,
-            "periods_per_week": periods_per_week, "note": "Assessments sujhaav hain: school ke calendar se milaiye."}
+            "periods_per_week": periods_per_week, "note": "Assessments are suggestions: match them with the school calendar."}
     return _save_plan(tenant, "year", board, grade, subject, f"{subject} year plan - Class {grade}", body, conv)
 
 
@@ -496,7 +496,7 @@ def _save_plan(tenant: str, kind: str, board: str, grade: str, subject: str, tit
         s.add(p)
         s.flush()
         view = _plan_view(p)
-    say = f"{view['number']} ({kind} plan) draft taiyaar; teacher padh kar approve karein."
+    say = f"{view['number']} ({kind} plan) draft ready; the teacher reads and approves it."
     _publish(tenant, "pathyakram_plan", {"plan": {k: view[k] for k in ("id", "number", "kind", "title", "status")}, "say": say}, conv)
     return {"plan": view, "say": say, "disclaimer": R.DISCLAIMER}
 
@@ -512,7 +512,7 @@ def _plan_row(s, tenant: str, ref: str) -> PathyakramPlan:
     p = s.scalars(select(PathyakramPlan).where(PathyakramPlan.tenant_id == tenant,
                                                (PathyakramPlan.id == ref) | (PathyakramPlan.number == ref))).first()
     if p is None:
-        raise PathyakramError(f"Plan '{ref}' nahi mila.")
+        raise PathyakramError(f"Plan '{ref}' not found.")
     return p
 
 
@@ -535,7 +535,7 @@ def approve_plan(tenant: str, ref: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         p = _plan_row(s, tenant, ref)
         p.status, p.approved_by, p.updated_at = "approved", actor or "owner", now()
-        return {"plan": _plan_view(p), "say": f"{p.number} approve ho gaya."}
+        return {"plan": _plan_view(p), "say": f"{p.number} approved."}
 
 
 # ---------------------------------------------------------------- lesson plan (5E) + rubric
@@ -552,7 +552,7 @@ def lesson_plan(tenant: str, subject: str, grade: str, topic: str, board: str = 
     board, grade, subject = _ctx_defaults(tenant, board, grade, subject)
     topic = _s(topic, 200)
     if not topic:
-        raise PathyakramError("Lesson ka topic chahiye.")
+        raise PathyakramError("A lesson topic is needed.")
     total = max(20, min(int(minutes or 40), 120)) * max(1, min(int(periods or 1), 6))
     language = _s(language, 20) or S.settings(tenant)["medium"] or "English"
     out = _model_json(LESSON_SYSTEM, f"Board {board}, class {grade}, {subject}. Topic: {topic}. Total time: {total} minutes "
@@ -565,7 +565,7 @@ def lesson_plan(tenant: str, subject: str, grade: str, topic: str, board: str = 
                           "teacher": _s(st.get("teacher"), 900), "students": _s(st.get("students"), 900)})
     if not steps or {x["phase"] for x in steps} != set(PHASES):
         missing = sorted(set(PHASES) - {x["phase"] for x in steps})
-        raise PathyakramError("Model ka plan adhoora tha (5E ke phase nahi mile: " + ", ".join(missing or ["sab"]) + "); dobara try kijiye.")
+        raise PathyakramError("The model's plan was incomplete (5E phases missing: " + ", ".join(missing or ["all"]) + "); try again.")
     got = sum(x["minutes"] for x in steps)                 # minutes always add up to the class time, in code
     if got != total:
         for x in steps:
@@ -591,7 +591,7 @@ def rubric(tenant: str, task: str, subject: str, grade: str, board: str = "", cr
     board, grade, subject = _ctx_defaults(tenant, board, grade, subject)
     task = _s(task, 600)
     if not task:
-        raise PathyakramError("Kis kaam ka rubric (project, essay, presentation...)?")
+        raise PathyakramError("A rubric for which task (project, essay, presentation...)?")
     levels = max(2, min(int(levels or 4), 6))
     total_points = max(1.0, float(total_points or 20))
     out = _model_json(RUBRIC_SYSTEM, f"Task: {task}. Class {grade} {subject} ({board}). {levels} levels per criterion. "
@@ -607,7 +607,7 @@ def rubric(tenant: str, task: str, subject: str, grade: str, board: str = "", cr
                      "levels": [{"label": _s(x.get("label"), 40) or f"Level {i + 1}", "descriptor": _s(x.get("descriptor"), 600),
                                  "share": levels - i} for i, x in enumerate(lv)]})
     if len(crit) < 2:
-        raise PathyakramError("Model ka rubric adhoora tha; dobara try kijiye.")
+        raise PathyakramError("The model's rubric was incomplete; try again.")
     # points in code: criteria shares rescaled to the total; each level = the criterion's points x share / levels
     raw = [c["points"] if c["points"] > 0 else 1.0 for c in crit]
     scale = total_points / sum(raw)
@@ -680,12 +680,12 @@ def share_request(tenant: str, what: str, ref: str, via: str = "file", to_name: 
     with session() as s:
         row = _paper_row(s, tenant, ref) if what == "paper" else _plan_row(s, tenant, ref)
         if row.status not in ("approved", "shared"):
-            raise PathyakramError(f"{row.number} abhi teacher ne approve nahi kiya; pehle approve.")
+            raise PathyakramError(f"{row.number} is not approved by the teacher yet; approve it first.")
         rid, rnum, title = row.id, row.number, row.title
     if via == "form" and what != "paper":
-        raise PathyakramError("Google Form quiz sirf paper se banta hai.")
+        raise PathyakramError("A Google Form quiz can be made only from a paper.")
     if via in ("whatsapp", "email") and not _s(to_contact, 160):
-        raise PathyakramError("Kisko bhejna hai: phone / email chahiye.")
+        raise PathyakramError("Who is it for: a phone / email is needed.")
     with _LOCK, session() as s:
         for old in s.scalars(select(PathyakramShare).where(PathyakramShare.tenant_id == tenant, PathyakramShare.ref_id == rid,
                                                            PathyakramShare.status == "waiting")).all():
@@ -697,9 +697,9 @@ def share_request(tenant: str, what: str, ref: str, via: str = "file", to_name: 
         s.flush()
         x.hash = _hash(_share_show(tenant, x))
         view = _share_view(x)
-    say = (f"{view['number']}: {rnum} ({title[:60]}) " + {"file": "ki file", "form": "ka Google Form quiz",
-           "whatsapp": f"{view['to_name'] or view['to_contact']} ko WhatsApp draft", "email": f"{view['to_contact']} ko email draft"}[via]
-           + (" answer key ke saath" if with_key else "") + " - aapke tap ke bina kuch nahi hoga.")
+    say = (f"{view['number']}: {rnum} ({title[:60]}) " + {"file": "as a file", "form": "as a Google Form quiz",
+           "whatsapp": f"WhatsApp draft for {view['to_name'] or view['to_contact']}", "email": f"email draft for {view['to_contact']}"}[via]
+           + (" with the answer key" if with_key else "") + " - nothing happens without your tap.")
     _publish(tenant, "pathyakram_share", {"share": view, "title": title, "number": rnum, "say": say}, conv)
     return {"share": view, "status": "needs_tap", "say": say}
 
@@ -718,7 +718,7 @@ def _form_questions(view: dict) -> tuple[list[dict], list[str]]:
     for sec in view["sections"]:
         for q in sec["questions"]:
             if q["choice"]:
-                left.append(f"Q{q['n']} (OR vikalp)")
+                left.append(f"Q{q['n']} (OR choice)")
                 continue
             if q["qtype"] in ("mcq", "assertion_reason", "true_false") and q.get("options"):
                 out.append({"title": f"Q{q['n']}. {q['text']}"[:500], "type": "choice", "options": q["options"],
@@ -733,23 +733,23 @@ def _form_questions(view: dict) -> tuple[list[dict], list[str]]:
 
 def decide_share(tenant: str, share_id: str, yes: bool, card_hash: str = "", by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise PathyakramError("Paper / plan bahar bhejne ki haan sirf aapke app ke tap se.")
+        raise PathyakramError("Approval to send a paper / plan outside comes only from your tap in the app.")
     with _LOCK, session() as s:
         x = s.get(PathyakramShare, share_id)
         if x is None or x.tenant_id != tenant:
-            raise PathyakramError("Card nahi mila.")
+            raise PathyakramError("Card not found.")
         if x.status != "waiting":
-            return {"share": _share_view(x), "say": f"{x.number} pehle hi '{x.status}' hai."}
+            return {"share": _share_view(x), "say": f"{x.number} is already '{x.status}'."}
     stale = not card_hash or card_hash != x.hash or _hash(_share_show(tenant, x)) != x.hash
     if stale:                                       # saved before refusing
         with _LOCK, session() as s:
             s.get(PathyakramShare, share_id).status = "stale"
-        raise PathyakramError("Paper / plan ya card badal gaya hai; naya card banaiye.")
+        raise PathyakramError("The paper / plan or the card has changed; make a new card.")
     if not yes:
         with _LOCK, session() as s:
             y = s.get(PathyakramShare, share_id)
             y.status, y.decided_at = "rejected", now()
-            return {"share": _share_view(y), "say": f"{y.number}: nahi bheja."}
+            return {"share": _share_view(y), "say": f"{y.number}: not sent."}
     result: dict[str, Any] = {}
     if x.what == "paper":
         result["paper_file"] = paper_file(tenant, x.ref_id, False, conv)["file"]
@@ -757,25 +757,25 @@ def decide_share(tenant: str, share_id: str, yes: bool, card_hash: str = "", by_
             result["key_file"] = paper_file(tenant, x.ref_id, True, conv)["file"]
     else:
         result["plan_file"] = plan_file(tenant, x.ref_id, conv)["file"]
-    say = f"{x.number}: file taiyaar."
+    say = f"{x.number}: file ready."
     if x.via == "form":
         view = paper(tenant, x.ref_id, key=True)
         qs, left = _form_questions(view)
         if not qs:
-            raise PathyakramError("Is paper mein koi objective sawaal nahi jo Google Form quiz mein ja sake.")
+            raise PathyakramError("This paper has no objective question that can go into a Google Form quiz.")
         from ..forms import service as F
         try:
             form = F.create(tenant, conv, f"{view['title']} ({view['number']})", qs, description="; ".join(view["instructions"])[:3000],
                             quiz=True)
         except Exception as e:
-            raise PathyakramError(f"Google Form nahi bana: {e}")
+            raise PathyakramError(f"Google Form could not be made: {e}")
         result.update(form={k: form.get(k) for k in ("id", "title", "responder_link", "edit_link")}, left_out=left)
-        say = f"{x.number}: Google Form quiz bana ({len(qs)} sawaal)." + (f" Form mein nahi gaye: {', '.join(left[:8])}." if left else "")
+        say = f"{x.number}: Google Form quiz made ({len(qs)} questions)." + (f" Not put in the form: {', '.join(left[:8])}." if left else "")
     elif x.via in ("whatsapp", "email"):
-        text = f"Namaste {x.to_name}, {('paper' if x.what == 'paper' else 'plan')} ki file saath mein hai. {x.note}".strip()
+        text = f"Hello {x.to_name}, the {('paper' if x.what == 'paper' else 'plan')} file is attached. {x.note}".strip()
         result["links"] = {"whatsapp": _wa(x.to_contact, text)} if x.via == "whatsapp" else {
             "email": f"mailto:{urllib.parse.quote(x.to_contact)}?subject={urllib.parse.quote('File')}&body={urllib.parse.quote(text)}"}
-        say = f"{x.number}: file + message draft taiyaar; file khud bhejiye (Hoola khud nahi bhejta)."
+        say = f"{x.number}: file + message draft ready; send the file yourself (Hoola does not send it)."
     with _LOCK, session() as s:
         y = s.get(PathyakramShare, share_id)
         y.status, y.decided_at, y.result = "shared", now(), _d(result)
@@ -802,9 +802,9 @@ def day(tenant: str) -> dict:
     ps = papers(tenant)
     lines = [base["say"]] if base.get("drafts") or base.get("consent_pending") else []
     if waiting:
-        lines.append(f"{len(waiting)} paper / plan bhejne ke card aapke tap ke intezaar mein.")
+        lines.append(f"{len(waiting)} cards to send a paper / plan are waiting for your tap.")
     if ps:
-        lines.append(f"Sabse naya paper {ps[0]['number']} ({ps[0]['status']}).")
+        lines.append(f"Latest paper {ps[0]['number']} ({ps[0]['status']}).")
     return {**base, "papers": ps[:10], "waiting": waiting, "plans": plans(tenant)[:10],
             "say": " ".join(lines) or base["say"]}
 

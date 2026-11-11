@@ -35,7 +35,7 @@ EMPLOYEE_TOOLS = [
          "text": {"type": "string", "description": "send_task: the task in plain words"}},
          "required": ["action"]}},
 ]
-EMPLOYEE_LABELS = {"employee": "Naukri ka hisaab dekh raha hoon"}
+EMPLOYEE_LABELS = {"employee": "Checking employment accounts"}
 
 
 async def employee(ctx: Ctx, action: str = "status", duty: str = "", level: str = "", to: str = "", text: str = "",

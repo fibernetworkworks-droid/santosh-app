@@ -20,7 +20,7 @@ KAAN_TOOLS = [
     {"name": "kaan", "description": (
         "Audio/video transcription (Whisper W0) + W1 diarize/minutes + W2 live captions + W3 styles/vocab "
         "+ W4 exports/gyaan. "
-        "transcribe: file_id + model (default small; turbo translate NAHI) + language + task transcribe|translate "
+        "transcribe: file_id + model (default small; turbo does NOT translate) + language + task transcribe|translate "
         "(whisper X->English only) -> text, segments (per-word timing); vocab=true (default) applies the tenant's terms as an "
         "initial_prompt hint + fix_to deterministic replacement (count in note). "
         "vocab_add (term, fix_to empty or a replacement) / vocab_list / vocab_remove. "
@@ -52,10 +52,10 @@ KAAN_TOOLS = [
                                     "voiceprint matches her enrolled Awaaz Pehchaan prints (W6; needs "
                                     "KAAN_VOICEPRINT=1 + KAAN_RETENTION_DAYS>0, checked BEFORE the engine)"},
          "finalize_model": {"type": "string", "enum": ["", "tiny", "base", "small", "medium", "large-v3"],
-                            "description": "live_stop: khaali = captions se transcript; model naam = 10-min tak ka clean batch pass"},
+                            "description": "live_stop: empty = transcript from the captions; a model name = a clean batch pass of up to 10 min"},
          "limit": {"type": "integer"}}, "required": ["action"]}},
 ]
-KAAN_LABELS = {"kaan": "Kaan se sun-kar likh raha hoon"}
+KAAN_LABELS = {"kaan": "Listening and transcribing"}
 
 
 def _actor(ctx: Ctx) -> str:

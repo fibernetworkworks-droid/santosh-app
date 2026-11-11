@@ -59,7 +59,7 @@ IMAGE_EDIT_TOOLS = [
          "cols": {"type": "integer"}, "gap": {"type": "integer"}, "bg": {"type": "string"},
      }, "required": ["action"]}},
 ]
-IMAGE_EDIT_LABELS = {"image_edit": "Photo edit kar raha hoon"}
+IMAGE_EDIT_LABELS = {"image_edit": "Editing the photo"}
 
 
 def _owner_file(ctx: Ctx, fid: str) -> tuple[str, bytes]:
@@ -100,20 +100,20 @@ async def image_edit(ctx: Ctx, action: str = "guide", **a: Any):
     action = (action or "guide").strip().lower()
     if action == "guide":
         return {"guide": GUIDE, "ai_engines": ai.status(), "local_ops": sorted(ops.OPS), "ai_ops": sorted(ai.AI_OPS),
-                "note": "ai_engines.ready=false: us kaam ke liye server par key / package nahi hai; local ops hamesha chalte hain."}
+                "note": "ai_engines.ready=false: the server has no key / package for that job; local ops always work."}
     if action == "run":
         return await _run(ctx, a)
     if action == "collage":
         return await _collage(ctx, a)
-    raise ToolError(f"image_edit action '{action}' nahi hai: guide | run | collage.")
+    raise ToolError(f"image_edit action '{action}' is not an action: guide | run | collage.")
 
 
 async def _run(ctx: Ctx, a: dict) -> dict[str, Any]:
     ids = _ids(a)
     if not ids:
-        raise ToolError("Kaunsi photo? Photo chat mein attach karne ko kahiye, phir uska file_id do.")
+        raise ToolError("Which photo? Ask the user to attach the photo in the chat, then give its file_id.")
     if len(ids) > MAX_FILES:
-        raise ToolError(f"Ek baar mein {MAX_FILES} photo tak.")
+        raise ToolError(f"At most {MAX_FILES} photos at a time.")
     steps = a.get("steps") or []
     try:
         names = {}
@@ -121,11 +121,11 @@ async def _run(ctx: Ctx, a: dict) -> dict[str, Any]:
             names[fid] = (await asyncio.to_thread(_owner_file, ctx, fid))[0]
             pipeline.validate(steps, names[fid])
     except (ops.EditError, ai.AIError) as e:
-        raise ToolError(str(e) + " (Refuse hua kaam dobara doosre shabdon mein mat try karo.)")
+        raise ToolError(str(e) + " (Do not retry a refused job in other words.)")
     uses_ai = any(str(s.get("op", "")).lower() in ai.AI_OPS for s in steps if isinstance(s, dict))
     if uses_ai:
         if len(ids) > MAX_AI_FILES:
-            raise ToolError(f"AI badlav ek baar mein {MAX_AI_FILES} photo tak (har photo ka alag kharcha hai).")
+            raise ToolError(f"AI edits: at most {MAX_AI_FILES} photos at a time (each photo costs separately).")
         _gate_actor(ctx)
     results: list[dict] = []
     for i, fid in enumerate(ids, 1):
@@ -160,18 +160,18 @@ async def _run(ctx: Ctx, a: dict) -> dict[str, Any]:
     done = [r for r in results if r["ok"]]
     out: dict[str, Any] = {"status": "done" if done else "failed", "edited": len(done), "of": len(ids), "results": results}
     if uses_ai:
-        out["cost_note"] = "AI badlav server ki gateway / Gemini key se hua; rupees is tool mein priced nahi (usage mein ginta hai)."
-    out["note"] = ("Edited photo chat mein card ke saath hai. Ek line mein batao kya badla; engine ka naam wahi bolo jo "
-                   "'engines' mein hai, apni taraf se mat gadho.")
+        out["cost_note"] = "The AI edit ran on the server's gateway / Gemini key; rupees are not priced in this tool (it counts in usage)."
+    out["note"] = ("The edited photo is in the chat with its card. Say in one line what changed; name the engine exactly as it is in "
+                   "'engines', do not make one up.")
     if not done:
-        raise ToolError("Koi photo nahi bani: " + "; ".join(r["error"] for r in results)[:400])
+        raise ToolError("No photo was made: " + "; ".join(r["error"] for r in results)[:400])
     return out
 
 
 async def _collage(ctx: Ctx, a: dict) -> dict[str, Any]:
     ids = _ids(a)
     if not 2 <= len(ids) <= 20:
-        raise ToolError("Collage ke liye 2 se 20 photo ke file_ids chahiye.")
+        raise ToolError("A collage needs the file_ids of 2 to 20 photos.")
     try:
         imgs = []
         for fid in ids:

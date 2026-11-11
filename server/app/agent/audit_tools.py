@@ -48,7 +48,7 @@ AUDIT_TOOLS = [
          "company": {"type": "string"}, "paid_up_reserves": {"type": "number"}, "borrowings": {"type": "number"}, "revenue": {"type": "number"}},
          "required": ["what"]}},
 ]
-AUDIT_LABELS = {"audit": "Audit ka kaam kar raha hoon", "audit_dekho": "Audit file dekh raha hoon"}
+AUDIT_LABELS = {"audit": "Doing audit work", "audit_dekho": "Viewing the audit file"}
 
 
 def _s(v: Any) -> str:

@@ -142,9 +142,9 @@ GAMEDESK_TOOLS.append(
          "target": {"type": "string", "description": "itch.io page: user/game"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS = {"game_desk": "Game bana raha hoon", "game_studio": "Game project dekh raha hoon",
-                   "game_bible": "Game Bible dekh raha hoon", "game_assets": "Game ke assets dekh raha hoon",
-                   "game_qa": "Game ki QA dekh raha hoon", "game_release": "Game ki release dekh raha hoon"}
+GAMEDESK_LABELS = {"game_desk": "Building the game", "game_studio": "Checking the game project",
+                   "game_bible": "Checking the Game Bible", "game_assets": "Checking game assets",
+                   "game_qa": "Checking game QA", "game_release": "Checking the game release"}
 
 # v0.420 Phase 7 batch 1: the Game Desk ROLE PACKS - each its own employee, each gated on ITS hire
 GAMEDESK_TOOLS.append(
@@ -187,7 +187,7 @@ GAMEDESK_TOOLS.append(
          "setup": {"type": "string", "description": "P-001 or the id"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_world": "World bana raha hoon", "game_physics": "Game ki physics jaanch raha hoon"})
+GAMEDESK_LABELS.update({"game_world": "Building the world", "game_physics": "Checking game physics"})
 
 # v0.421 Phase 7 batch 2: Spatial Audio + Haptics
 GAMEDESK_TOOLS.append(
@@ -222,7 +222,7 @@ GAMEDESK_TOOLS.append(
          "id": {"type": "string"}, "set": {"type": "string", "description": "H-001"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_audio": "Game ki awaaz jaanch raha hoon", "game_haptics": "Game ki vibration bana raha hoon"})
+GAMEDESK_LABELS.update({"game_audio": "Checking game audio", "game_haptics": "Building game vibration"})
 
 # v0.422 Phase 7 batch 3: Multiplayer + AR / VR
 GAMEDESK_TOOLS.append(
@@ -256,7 +256,7 @@ GAMEDESK_TOOLS.append(
          "setup": {"type": "string", "description": "X-001"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_net": "Multiplayer netcode jaanch raha hoon", "game_xr": "VR / AR setup jaanch raha hoon"})
+GAMEDESK_LABELS.update({"game_net": "Checking multiplayer netcode", "game_xr": "Checking the VR / AR setup"})
 
 # v0.423 Phase 7 batch 4: training simulators, digital twin, VFX pipeline
 GAMEDESK_TOOLS.append(
@@ -303,8 +303,8 @@ GAMEDESK_TOOLS.append(
          "words": {"type": "string"}, "plan": {"type": "object"}, "setup": {"type": "string", "description": "V-001"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_sim": "Simulator jaanch raha hoon", "game_twin": "Digital twin chala raha hoon",
-                        "game_vfx": "VFX pipeline jaanch raha hoon"})
+GAMEDESK_LABELS.update({"game_sim": "Checking the simulator", "game_twin": "Running the digital twin",
+                        "game_vfx": "Checking the VFX pipeline"})
 
 # v0.425 Phase 8: Hoola Runtime (replay / bot / telemetry) + Ask Hoola in the editor
 GAMEDESK_TOOLS.append(
@@ -321,7 +321,7 @@ GAMEDESK_TOOLS.append(
          "id": {"type": "string"}, "on": {"type": "boolean"}, "telemetry": {"type": "boolean"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_runtime": "Game runtime jaanch raha hoon"})
+GAMEDESK_LABELS.update({"game_runtime": "Checking the game runtime"})
 
 # v0.428 Phase 9: live ops
 GAMEDESK_TOOLS.append(
@@ -347,7 +347,7 @@ GAMEDESK_TOOLS.append(
          "starts": {"type": "string"}, "ends": {"type": "string"}, "set": {"type": "object"}, "sig": {"type": "string"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_liveops": "Game ke live ops dekh raha hoon"})
+GAMEDESK_LABELS.update({"game_liveops": "Checking game live ops"})
 
 # v0.433 Phase 10: big-studio mode (the Hoola Crew inside Unity / Unreal on her machines)
 GAMEDESK_TOOLS.append(
@@ -367,7 +367,7 @@ GAMEDESK_TOOLS.append(
          "detail": {"type": "string"}, "task": {"type": "string"}, "note": {"type": "string"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_bigstudio": "Studio project dekh raha hoon"})
+GAMEDESK_LABELS.update({"game_bigstudio": "Checking the studio project"})
 
 # v0.447 Game Arena: "is a Hoola game any good?" as numbers (owner only)
 GAMEDESK_TOOLS.append(
@@ -389,7 +389,7 @@ GAMEDESK_TOOLS.append(
          "genre": {"type": "string"}, "brief": {"type": "string"}, "rival": {"type": "string"}, "url": {"type": "string"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_arena": "Game arena chala raha hoon"})
+GAMEDESK_LABELS.update({"game_arena": "Running the game arena"})
 
 # v0.455 provenance: what shipped, and what of it is hers
 GAMEDESK_TOOLS.append(
@@ -409,7 +409,7 @@ GAMEDESK_TOOLS.append(
          "action": {"type": "string", "enum": ["sheet", "steam", "disclosure", "human"]}, "id": {"type": "string"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_provenance": "Dekh raha hoon kya kahan se aaya"})
+GAMEDESK_LABELS.update({"game_provenance": "Checking where things came from"})
 
 # v0.456 scenes as checked data - the 12-file ceiling
 GAMEDESK_TOOLS.append(
@@ -427,7 +427,7 @@ GAMEDESK_TOOLS.append(
          "id": {"type": "string"}, "words": {"type": "string"}, "name": {"type": "string"}},
          "required": ["action"]}})
 
-GAMEDESK_LABELS.update({"game_scenes": "Scene bana raha hoon"})
+GAMEDESK_LABELS.update({"game_scenes": "Building the scene"})
 
 
 def _short(v: dict) -> dict:
@@ -834,7 +834,7 @@ async def game_world(ctx: Ctx, action="", words="", kind="", params=None, seed=N
     if not await asyncio.to_thread(hire.is_hired, t, W.KEY):
         raise ToolError("Procedural World Engineer is not hired: hire it in Employees with one tap.")
     if action not in ("list", "status"):
-        _owner_only(ctx, "World banana / badalna")
+        _owner_only(ctx, "Making / changing a world")
     run = asyncio.to_thread
     try:
         if action == "make":

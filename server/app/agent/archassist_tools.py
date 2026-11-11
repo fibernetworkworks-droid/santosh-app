@@ -70,7 +70,7 @@ ARCHASSIST_TOOLS = [
          "project": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-ARCHASSIST_LABELS = {"archassist": "Architect office ka kaam kar raha hoon", "archassist_dekho": "Project file dekh raha hoon"}
+ARCHASSIST_LABELS = {"archassist": "Doing architect office work", "archassist_dekho": "Viewing the project file"}
 
 _OWNER_ONLY = ("settings", "sub_update", "fee", "paid", "forget")
 
