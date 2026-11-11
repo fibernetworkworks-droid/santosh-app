@@ -357,9 +357,15 @@ def problems(p: dict[str, Any]) -> list[str]:
     return out
 
 
+def _brand_color(tenant: str) -> dict[str, str]:
+    """v0.772: her Brand page colour is drawn into the film (the composition already takes brand.color)."""
+    c = str((_load(tenant).get("brand") or {}).get("color") or "")
+    return {"color": c} if re.fullmatch(r"#[0-9A-Fa-f]{6}", c) else {}
+
+
 def spec_for(tenant: str, p: dict[str, Any], silent: bool) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     spec: dict[str, Any] = {"shape": p["shape"], "title": p["title"], "lang": p["lang"], "aspect": p["aspect"],
-                            "silent": bool(silent), "brand": {"name": p.get("brand", "")},
+                            "silent": bool(silent), "brand": {"name": p.get("brand", ""), **_brand_color(tenant)},
                             "scenes": [{"say": s["say"], "look": s["look"]} for s in p["scenes"]]}
     if p["items"]:
         spec["items"] = p["items"]

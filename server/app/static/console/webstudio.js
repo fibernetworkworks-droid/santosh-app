@@ -54,7 +54,9 @@
   }
 
   const ICON = {
-    home: '<path d="M4 11l8-7 8 7v9H4z"/>', grid: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>',
+    home: '<path d="M4 11l8-7 8 7v9H4z"/>',
+    clip: '<path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"/>', down: '<path d="M12 5v14M5 12l7 7 7-7"/>',
+    list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>', grid: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>',
     tpl: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
     back: '<path d="M15 5l-7 7 7 7"/>', plus: '<path d="M12 5v14M5 12h14"/>', up: '<path d="M12 19V5M5 12l7-7 7 7"/>',
     chat: '<path d="M4 5h16v11H8l-4 4z"/>', move: '<path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/>',
@@ -112,13 +114,15 @@
   const TPL = {q: '', sector: '', kind: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
   let TPLSEL = null;
   const lakh = n => Number(n || 0).toLocaleString('en-IN');
-  const THREAD = {site: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, timer: null, sig: ''};
+  const THREAD = {site: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, timer: null, sig: '', steps: [], stepMap: new Map(),
+    costs: [], queue: [], files: [], thoughts: new Map(), stream: null, connected: false, pinned: false, think: null, detail: null};
 
   /* ================= router ================= */
   function parts() { return S(location.hash).replace(/^#\/?/, '').split('/').filter(Boolean); }
   async function route() {
     stopPoll(); clearTimeout(THREAD.timer); EDIT = false;
     const p = parts();
+    if (!(p[0] === 'site' && p[1])) stopStream();                 // v0.775 the thread's live stream ends with the site
     if (!(p[0] === 'site' && p[1] && LIVE.site === decodeURIComponent(p[1]))) stopLive();
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
@@ -548,8 +552,11 @@
           <div class="msgs" id="wsMsgs" aria-live="polite"></div>
           <div id="wsState" style="padding:0 18px"></div>
           <form class="comp" data-form="thread"><label for="wsTh" class="sr">Message Hoola about this website</label>
+            <div class="tray" id="wsTray" hidden></div>
             <textarea id="wsTh" rows="2" maxlength="4000" placeholder="Ask Hoola to change anything…"></textarea>
             <div class="cbar">
+              <button class="ib" type="button" data-act="attach" aria-label="Attach files or photos" title="Attach files or photos">${ico('clip', 16)}</button>
+              <input type="file" id="wsFile" multiple hidden>
               <button class="ib" type="button" data-act="select" aria-label="Select on the page" title="Select on the page">${ico('sel', 16)}</button>
               <div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-cmode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
               <span class="sp"></span><button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
@@ -571,7 +578,7 @@
     const ic = run ? '<span class="spin" aria-hidden="true"></span>' : bad ? `<span class="xmark" aria-hidden="true">!</span>` : `<span class="tick" aria-hidden="true">${ico('check', 11)}</span>`;
     const cnt = Number(x.total) ? `<span class="cnt">${esc(S(x.done || 0))}/${esc(S(x.total))}</span>` : '';
     const t = run ? `<span class="tm" data-t0="${Number(x.at)}"></span>` : `<span class="tm">${dur((Number(x.end) || Number(x.at)) - Number(x.at))}</span>`;
-    return `<li class="${run ? 'run' : bad ? 'bad' : 'ok'}">${ic}<div class="sl"><span class="ell">${esc(S(x.label))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${cnt}${t}</li>`;
+    return `<li class="${run ? 'run' : bad ? 'bad' : 'ok'}">${ic}<div class="sl"><span class="ell">${esc(pastLabel(x.label, x.state))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${cnt}${t}</li>`;
   }
   function stepList(a, last) {
     const st = L(a.steps).filter(x => !x.final || x.state === 'error');
@@ -641,7 +648,7 @@
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
-    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish}[VIEW] || preview;
+    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish, details: detailsView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
     if (WORKING(CUR)) startPoll();
@@ -1111,7 +1118,43 @@
   function stopPoll() { if (POLL) { clearTimeout(POLL); POLL = null; } }
   async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); } catch (e) { toast(e.message, true); } }
 
-  /* ---------- the site's own Hoola thread (never the home chat) ---------- */
+  /* ---------- the site's own Hoola thread (never the home chat) ----------
+     v0.775 CHAT JAISA (built as 0.771) (L1 of docs/LOVABLE_STUDIO_PLAN.md): the thread rides the conversation's LIVE event stream
+     (stream.js, /events?live=1) instead of polling every 1.5 s: the reply arrives word by word (HoolaStream.Pacer) and
+     each new word fades in out of a soft focus (HoolaMD.Live soft); "Thinking…" shimmers while the model reasons and
+     folds into "Thought for 12s"; each tool step shows live (present tense) and turns past tense when done ("Reading
+     the site" -> "Read the site"); a finished turn keeps "Worked for 42s · 5 steps · Rs 3.10" with a Details button
+     that opens the Timeline + Changes where the preview sits; her new message scrolls to the TOP of the view (the
+     stream never yanks her down; a "Latest" button appears instead); a message sent while Hoola works waits greyed
+     ("Runs after this") with Interrupt; files / photos attach (paperclip, drop, paste) and a long paste becomes a
+     chip that travels as a text file. Polling stays only as the fallback when the stream is down (and a slow safety
+     read every 4 s while a turn runs). Rupees are the server's own meter for that turn (/api/conversations/{c}/costs). */
+  const PAST = {Checking: 'Checked', Working: 'Worked', Viewing: 'Viewed', Reading: 'Read', Managing: 'Managed',
+    Searching: 'Searched', Doing: 'Did', Creating: 'Created', Writing: 'Wrote', Running: 'Ran', Building: 'Built',
+    Making: 'Made', Preparing: 'Prepared', Finding: 'Found', Sending: 'Sent', Getting: 'Got', Asking: 'Asked',
+    Setting: 'Set', Adding: 'Added', Looking: 'Looked', Opening: 'Opened', Handling: 'Handled', Fetching: 'Fetched',
+    Reviewing: 'Reviewed', Noting: 'Noted', Changing: 'Changed', Talking: 'Talked', Logging: 'Logged',
+    Removing: 'Removed', Compiling: 'Compiled', Updating: 'Updated', Editing: 'Edited', Extracting: 'Extracted',
+    Applying: 'Applied', Replying: 'Replied', Pulling: 'Pulled', Starting: 'Started', Uploading: 'Uploaded',
+    Moving: 'Moved', Turning: 'Turned', Posting: 'Posted', Remembering: 'Remembered', Learning: 'Learned',
+    Planning: 'Planned', Cleaning: 'Cleaned', Recalling: 'Recalled', Watching: 'Watched', Designing: 'Designed',
+    Using: 'Used', Booking: 'Booked', Cancelling: 'Cancelled', Calling: 'Called', Recording: 'Recorded',
+    Stopping: 'Stopped', Calculating: 'Calculated', Deploying: 'Deployed', Controlling: 'Controlled',
+    Previewing: 'Previewed', Organizing: 'Organized', Retrieving: 'Retrieved', Forwarding: 'Forwarded',
+    Snoozing: 'Snoozed', Sorting: 'Sorted', Forgetting: 'Forgot', Exporting: 'Exported', Summarizing: 'Summarized',
+    Teaching: 'Taught', Approving: 'Approved', Acting: 'Acted', Listening: 'Listened', Deleting: 'Deleted',
+    Verifying: 'Verified', Importing: 'Imported', Fixing: 'Fixed', Testing: 'Tested', Digging: 'Dug',
+    Browsing: 'Browsed', Mapping: 'Mapped', Saving: 'Saved', Copying: 'Copied', Duplicating: 'Duplicated',
+    Merging: 'Merged', Matching: 'Matched', Helping: 'Helped', Arranging: 'Arranged', Switching: 'Switched',
+    Operating: 'Operated', Cloning: 'Cloned', Playing: 'Played', Thinking: 'Thought', Drawing: 'Drew',
+    Generating: 'Generated', Loading: 'Loaded', Assembling: 'Assembled', Choosing: 'Chose', Picking: 'Picked',
+    Painting: 'Painted', Shooting: 'Shot', Putting: 'Put', Linking: 'Linked', Connecting: 'Connected'};
+  const pastLabel = (label, state) => {
+    const t = S(label); if (state === 'run' || state === 'running') return t;
+    const m = /^([A-Z][a-z]+ing)\b/.exec(t);
+    return m && PAST[m[1]] ? PAST[m[1]] + t.slice(m[1].length) : t;
+  };
+  const LONG_PASTE = 1500;                                   // a paste longer than this travels as a text file
   async function ensureConv() {
     if (THREAD.conv && THREAD.site === CUR.id) return THREAD.conv;
     THREAD.site = CUR.id;
@@ -1119,14 +1162,121 @@
     if (c) { try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); } catch { c = ''; } }
     if (!c) { c = await newConv(`Website · ${name(CUR)}`); store.set(convKey(CUR.id), c); }
     THREAD.conv = c;
+    startStream(c);
     return c;
   }
   async function openThread() {
-    clearTimeout(THREAD.timer);
-    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
-    drawMsgs();
-    if (THREAD.conv) await readThread();
+    clearTimeout(THREAD.timer); stopStream();
+    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false,
+      since: 0, steps: [], stepMap: new Map(), stepsRead: false, startedS: 0, turn: '', costs: [], think: null,
+      queue: [], files: [], pinned: true, thoughts: new Map()});
+    drawMsgs(); drawTray();
+    if (THREAD.conv) { startStream(THREAD.conv); await readThread(); }
   }
+  /* ----- the live stream ----- */
+  function stopStream() { if (THREAD.stream) { THREAD.stream.abort(); THREAD.stream = null; } THREAD.connected = false; }
+  function startStream(c) {
+    if (!window.HoolaStream || (THREAD.stream && THREAD.streamConv === c)) return;
+    stopStream();
+    THREAD.streamConv = c;
+    const s = window.HoolaStream.open({url: `/api/conversations/${enc(c)}/events`, token: TOKEN, after: 0,
+      onState: st => { THREAD.connected = st === 'ok'; },
+      onAuth: () => location.replace('/console/'),
+      onEvent: ev => { if (THREAD.stream === s && THREAD.conv === c) onThreadEvent(ev); }});
+    THREAD.stream = s;
+  }
+  function liveBox() {
+    let b = $('#wsLiveBox'); if (!b) return null;
+    if (!THREAD.liveR || THREAD.liveR.el !== b.querySelector('.ho')) {
+      b.innerHTML = `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b></div><div class="ho textmd"></div>`;
+      const el = b.querySelector('.ho');
+      THREAD.liveR = window.HoolaMD && window.HoolaMD.Live ? new window.HoolaMD.Live(el, {soft: true}) : {el, update(t) { el.textContent = t; }, clear() { el.textContent = ''; }};
+    }
+    return b;
+  }
+  function showLive(text, streaming) {
+    THREAD.live = text;
+    const b = liveBox(); if (!b) return;
+    b.hidden = !S(text).trim();
+    THREAD.liveR.update(S(text), streaming);
+    keepPinned();
+  }
+  function endLive() {
+    THREAD.pacer?.flush?.(); THREAD.pacer = null; THREAD.live = ''; THREAD.turn = '';
+    const b = $('#wsLiveBox'); if (b) { b.hidden = true; b.innerHTML = ''; } THREAD.liveR = null;
+  }
+  function onThreadEvent(ev) {
+    const p = M(ev.payload);
+    switch (ev.kind) {
+      case 'reply_start':
+        THREAD.waiting = true; THREAD.turn = S(p.turn);
+        if (window.HoolaStream) THREAD.pacer = new window.HoolaStream.Pacer((t, fin) => showLive(t, !fin));
+        drawWork(); return;
+      case 'delta':
+        if (!THREAD.pacer) THREAD.pacer = new window.HoolaStream.Pacer((t, fin) => showLive(t, !fin));
+        if (p.seq && p.seq <= (THREAD.seq || 0)) return; THREAD.seq = p.seq || 0;
+        if (THREAD.think && !THREAD.think.end) { THREAD.think.end = nowS(); drawWork(); }
+        THREAD.pacer.push(S(p.text)); return;
+      case 'delta_reset': THREAD.pacer?.reset?.(); return;
+      case 'reply_end': THREAD.pacer?.flush?.(); return;
+      case 'think':
+        if (p.clear) return;
+        if (!THREAD.think || THREAD.think.end) THREAD.think = {t0: nowS(), end: 0};
+        drawWork(); return;
+      case 'step': {
+        const k = S(p.id) || ('e' + ev.id), t = ev.at ? tsec(ev.at) : nowS();
+        const x = THREAD.stepMap.get(k) || {label: S(p.label) || S(p.tool), at: t, state: 'run'};
+        if (p.label) x.label = S(p.label);
+        if (p.state && p.state !== 'running') { x.state = p.state === 'error' ? 'error' : 'done'; x.end = t; }
+        THREAD.stepMap.set(k, x);
+        THREAD.steps = [...THREAD.stepMap.values()].filter(y => y.at).sort((a, b) => a.at - b.at);
+        THREAD.waiting = true; drawWork(); return;
+      }
+      case 'typing':
+        if (p.on) { if (!THREAD.waiting) { THREAD.waiting = true; THREAD.startedS = THREAD.startedS || nowS(); drawWork(); } }
+        return;
+      case 'message': {
+        if (S(p.source) === 'greeting') return;
+        const row = {id: ev.id, role: p.role, text: S(p.text), at: ev.at, source: p.source, files: p.files};
+        if (p.role === 'user') {
+          if (THREAD.queue.some(q => clean(q.text) === clean(row.text))) return;   // still waiting its turn (drawn greyed below)
+          const mine = THREAD.rows.findIndex(r => S(r.id).startsWith('local-') && clean(r.text) === clean(row.text));
+          if (mine >= 0) THREAD.rows[mine] = {...THREAD.rows[mine], ...row};
+          else if (!THREAD.rows.some(r => r.id === row.id)) THREAD.rows.push(row);
+          drawMsgs(); return;
+        }
+        if (p.role !== 'assistant' || p.ack || !row.text.trim()) return;
+        if (!THREAD.rows.some(r => r.id === row.id)) THREAD.rows.push(row);
+        endLive(); THREAD.seq = 0;
+        if (THREAD.think && !THREAD.think.end) THREAD.think.end = nowS();
+        if (THREAD.think) { THREAD.lastThink = THREAD.think; thoughtFor(row.text); } THREAD.think = null;
+        finishTurn();
+        return;
+      }
+      default: return;   // cards and other kinds belong to the main console; the Studio shows its own work card
+    }
+  }
+  const tkey = t => clean(t).trim().slice(0, 240);
+  function thoughtFor(text) { const k = THREAD.lastThink; if (text && k && k.end && k.end > k.t0) THREAD.thoughts.set(tkey(text), k.end - k.t0); }
+  async function finishTurn() {
+    const c = THREAD.conv;
+    if (THREAD.queue.length) {                               // the next message she queued now runs: it moves into the thread
+      const nx = THREAD.queue.shift(); THREAD.rows.push({...nx, at: new Date(nowS() * 1000).toISOString()});
+      THREAD.startedS = nowS(); THREAD.scrollTo = nx.id; THREAD.pinned = false;
+    } else { THREAD.waiting = false; THREAD.startedS = 0; }
+    await Promise.all([readSteps(c), readCosts(c)]);
+    if (c !== THREAD.conv) return;
+    drawMsgs(); reload();
+  }
+  async function readCosts(c) {
+    try { const r = await api('GET', `/api/conversations/${enc(c)}/costs?limit=60`); THREAD.costs = L(r.costs); } catch { /* the rupee line is extra */ }
+  }
+  const costFor = (a, b) => {
+    let inr = 0, n = 0;
+    for (const x of L(THREAD.costs)) { const e = tsec(x.end) || tsec(x.start); if (e >= a - 2 && e <= b + 120) { inr += Number(x.inr) || 0; n++; } }
+    return n ? inr : null;
+  };
+  const rs = v => v == null ? '' : v < 0.01 ? 'under Rs 0.01' : 'Rs ' + v.toFixed(v < 10 ? 2 : 0);
   const clean = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
   /* v0.658 the chat's own work feed, like Lovable: every tool step a turn ran (the timeline's step events), with a live
      timer while Hoola works and "Worked for 42s · 5 steps" kept above each answer. Times are the server's clock. */
@@ -1145,53 +1295,91 @@
         if (pl.label) x.label = S(pl.label);
         by.set(k, x);
       }
+      THREAD.stepMap = by;
       THREAD.steps = [...by.values()].filter(x => x.at).sort((a, b) => a.at - b.at);
     } catch { /* the feed is extra: the chat still works without it */ }
   }
   const stepsBetween = (a, b) => L(THREAD.steps).filter(x => x.at >= a - 2 && (!b || x.at <= b + 2));
   const md = t => window.HoolaMD ? window.HoolaMD.render(t, false) : `<p>${esc(t)}</p>`;
+  const who = t => `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
+  const fileChips = fs => L(fs).length ? `<div class="mfiles">${L(fs).map(f => `<span class="fchip">${ico('clip', 12)}<span class="ell">${esc(S(M(f).name) || 'File')}</span></span>`).join('')}</div>` : '';
+  /* the turns in her thread: [{user row, assistant row, start, end, steps}] */
+  function turnsOf(rows) {
+    const out = []; let cur = null;
+    for (const r of rows) {
+      if (r.role === 'user') { cur = {user: r, start: tsec(r.at) || 0}; out.push(cur); continue; }
+      if (cur && !cur.reply) { cur.reply = r; cur.end = tsec(r.at); cur.steps = cur.start && cur.end ? stepsBetween(cur.start, cur.end) : []; }
+      else out.push({reply: r, start: tsec(r.at), end: tsec(r.at), steps: []});
+    }
+    return out;
+  }
   function drawMsgs() {
     const box = $('#wsMsgs'); if (!box) return;
+    if (!box.querySelector('#wsHist')) {
+      box.innerHTML = `<div id="wsHist" class="hist"></div><div id="wsWork"></div><div id="wsLiveBox" class="livebox" hidden></div><div id="wsQ"></div>
+        <button class="jump" type="button" data-act="jump-latest" hidden>${ico('down', 14)}<span>Latest</span></button>`;
+      box.addEventListener('scroll', () => { THREAD.pinned = box.scrollHeight - box.scrollTop - box.clientHeight < 60; const j = box.querySelector('.jump'); if (j) j.hidden = THREAD.pinned || !THREAD.userScrolled; }, {passive: true});
+      ['wheel', 'touchmove', 'keydown'].forEach(k => box.addEventListener(k, () => { THREAD.userScrolled = true; }, {passive: true}));   // only HER scrolling up shows Latest
+      THREAD.liveR = null;
+    }
     const all = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
     const first = all.findIndex(r => r.role === 'user');
     const rows = first < 0 ? [] : all.slice(first);
-    const st = L(THREAD.steps), lastSt = st[st.length - 1] || {};
-    const s = rows.map(r => r.id).join(',') + '|' + THREAD.live.length + '|' + THREAD.waiting + '|' + st.length + lastSt.state + (lastSt.end || '');
-    if (s === THREAD.sig) return;
-    THREAD.sig = s;
-    const near = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-    const shown = rows.slice(-40);
-    let lastUser = 0;
-    const t0 = tsec(shown[0]?.at);
-    const day = t0 ? `<div class="dday">${new Date(t0 * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(t0 * 1000).toLocaleDateString([], {day: 'numeric', month: 'short'})} · ${esc(clockOf(t0))}</div>` : '';
-    const who = t => `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
-    const html = day + shown.map(r => {
-      if (r.role === 'user') { lastUser = tsec(r.at) || lastUser; return `<div class="me">${esc(clean(r.text))}</div>`; }
-      const end = tsec(r.at), steps = lastUser && end ? stepsBetween(lastUser, end) : [];
-      const took = lastUser && end > lastUser ? end - lastUser : 0;
-      const k = 'turn-' + r.id;
-      const head = steps.length || took >= 3 ? `<details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>Worked for ${dur(took)}${steps.length ? ` · ${steps.length} step${steps.length > 1 ? 's' : ''}` : ''}</summary>${steps.length ? stepList({steps}) : ''}</details>` : '';
-      return head + who(end) + `<div class="ho">${md(S(r.text))}</div>`;
-    }).join('');
-    const since = THREAD.startedS || lastUser || nowS();
-    const live = THREAD.waiting ? (() => {
-      const steps = stepsBetween(since);
-      return `<div class="working wcard" aria-live="polite"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span>${esc(S(steps[steps.length - 1]?.label) || 'Reading your ask')}</span></span><span class="tm" data-t0="${since}"></span></div>
-        ${steps.length ? stepList({steps}) : ''}</div>${THREAD.live ? who(0) + `<div class="ho">${md(THREAD.live)}</div>` : ''}`;
-    })() : '';
-    box.innerHTML = rows.length || THREAD.waiting ? html + live
-      : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
+    const s = rows.map(r => r.id).join(',') + '|' + THREAD.waiting + '|' + L(THREAD.steps).length + '|' + L(THREAD.costs).length + '|' + THREAD.queue.length + '|' + THREAD.thoughts.size + '|' + [...OPEN_T].join(',');
+    const hist = $('#wsHist');
+    if (s !== THREAD.sig) {
+      THREAD.sig = s;
+      const shown = rows.slice(-40);
+      const t0 = tsec(shown[0]?.at);
+      const day = t0 ? `<div class="dday">${new Date(t0 * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(t0 * 1000).toLocaleDateString([], {day: 'numeric', month: 'short'})} · ${esc(clockOf(t0))}</div>` : '';
+      const turns = turnsOf(shown);
+      hist.innerHTML = rows.length ? day + turns.map((t, i) => {
+        let h = '';
+        if (t.user) h += `<div class="me" data-mid="${esc(S(t.user.id))}">${esc(clean(t.user.text))}${fileChips(t.user.files)}</div>`;
+        if (!t.reply) return h;
+        const took = t.start && t.end > t.start ? t.end - t.start : 0, steps = L(t.steps), k = 'turn-' + t.reply.id;
+        const inr = t.start ? costFor(t.start, t.end) : null;
+        const th = Number(THREAD.thoughts.get(tkey(t.reply.text))) || 0;   // how long the model thought for THIS answer
+        const bits = [th >= 1 ? `Thought for ${dur(th)}` : '', took >= 1 ? `Worked for ${dur(took)}` : '', steps.length ? `${steps.length} step${steps.length > 1 ? 's' : ''}` : '', rs(inr)].filter(Boolean);
+        const head = bits.length ? `<div class="turnhead"><details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>${esc(bits.join(' · '))}</summary>${steps.length ? stepList({steps}) : ''}</details>
+          <button class="ib sm" type="button" data-act="details" data-ta="${t.start}" data-tb="${t.end}" title="Timeline and changes" aria-label="Details of this answer">${ico('list', 14)}</button></div>` : '';
+        return h + head + who(t.end) + `<div class="ho">${md(S(t.reply.text))}</div>`;
+      }).join('') : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
-    if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
-    if (THREAD.waiting) startTick();
+      if (THREAD.scrollTo) { const el = hist.querySelector(`[data-mid="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el) box.scrollTop = Math.max(0, el.offsetTop - 12); }
+      else keepPinned();
+    }
+    drawWork(); drawQueue();
+  }
+  function drawQueue() {
+    const q = $('#wsQ'); if (!q) return;
+    q.innerHTML = THREAD.queue.map((r, i) => `<div class="me queued" data-mid="${esc(S(r.id))}">${esc(clean(r.text))}${fileChips(r.files)}
+      ${i === 0 ? `<span class="qacts"><button class="b sm" type="button" data-act="stop-turn" title="Stop the current work so this runs next">Interrupt</button></span>` : ''}</div>`).join('');
+  }
+  function keepPinned() { const box = $('#wsMsgs'); if (box && THREAD.pinned) box.scrollTop = box.scrollHeight; }
+  /* the working card under her message: thinking shimmer + the live steps + the clock + Stop */
+  function drawWork() {
+    const w = $('#wsWork'); if (!w) return;
+    if (!THREAD.waiting) { w.innerHTML = ''; return; }
+    const since = THREAD.startedS || nowS();
+    const steps = stepsBetween(since), cur = [...steps].reverse().find(x => x.state === 'run');
+    const thinking = THREAD.think && !THREAD.think.end;
+    const label = thinking ? '' : cur ? pastLabel(cur.label, 'run') : steps.length ? 'Working on the next step' : (THREAD.live ? 'Writing the answer' : 'Reading your ask');
+    w.innerHTML = `<div class="working wcard" aria-live="polite"><div class="step whead"><span class="spin" aria-hidden="true"></span>
+        <span class="wt">${thinking ? `<b class="thinking">Thinking…</b>` : `<b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span>${esc(label)}</span>`}</span>
+        <span class="tm" data-t0="${since}"></span><button class="b sm" type="button" data-act="stop-turn" title="Stop after the step it is on">Stop</button></div>
+      ${steps.length ? stepList({steps}) : ''}</div>`;
+    startTick(); keepPinned();
   }
   async function readThread() {
     const c = THREAD.conv; if (!c) return;
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/messages?limit=60`);
       if (c !== THREAD.conv) return;
-      THREAD.rows = L(r.messages);
+      const local = THREAD.rows.filter(x => S(x.id).startsWith('local-') && !L(r.messages).some(m => m.role === 'user' && clean(m.text) === clean(x.text)));
+      const waitingTexts = new Set(THREAD.queue.map(q => clean(q.text)));
+      THREAD.rows = [...L(r.messages).filter(m => !(m.role === 'user' && waitingTexts.has(clean(m.text)))), ...local];
     } catch { return; }
     if (!THREAD.waiting) {                                   // a reload while Hoola is still answering: pick it up again
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
@@ -1201,34 +1389,96 @@
         THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
       }
     }
-    if (THREAD.waiting || !THREAD.stepsRead) { await readSteps(c); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
+    if (THREAD.waiting || !THREAD.stepsRead) { await Promise.all([readSteps(c), readCosts(c)]); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
     if (THREAD.waiting) {
       let snap = null;
       try { const res = await api('GET', `/api/conversations/${enc(c)}/live`, undefined, {raw: true}); if (res.status === 200) snap = await res.json(); } catch {}
-      THREAD.live = S(snap?.text);
+      if (snap && S(snap.text) && !THREAD.pacer) showLive(S(snap.text), true);   // a reload mid-reply continues the text
       // answered = a reply AFTER her own newest line (a new chat starts with a greeting, which is not the answer)
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
       let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
-      const answered = lu >= 0 && Number(talk[lu].id) > THREAD.since && talk.slice(lu + 1).some(m => m.role === 'assistant');
-      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); reload(); }
-      else if (Date.now() - THREAD.started > 15 * 60e3) THREAD.waiting = false;
+      const answered = lu >= 0 && talk.slice(lu + 1).some(m => m.role === 'assistant');
+      if (answered && !snap && !THREAD.queue.length) {
+        if (THREAD.think) { THREAD.think.end = THREAD.think.end || nowS(); THREAD.lastThink = THREAD.think; THREAD.think = null; thoughtFor([...talk].reverse().find(m => m.role === 'assistant')?.text); }
+        THREAD.waiting = false; THREAD.startedS = 0; endLive(); reload();
+      }
+      else if (Date.now() - (THREAD.started || Date.now()) > 15 * 60e3) THREAD.waiting = false;
     }
     drawMsgs();
-    if (THREAD.waiting) { clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 1500); }
+    // the stream carries the work; this read is the fallback (stream down) and a slow safety net (stream up)
+    clearTimeout(THREAD.timer);
+    if (THREAD.waiting || !THREAD.connected) THREAD.timer = setTimeout(readThread, THREAD.connected ? 4000 : 1500);
+  }
+  /* ----- attachments: paperclip, drop, paste (a long paste becomes a chip that travels as a .txt file) ----- */
+  function drawTray() {
+    const t = $('#wsTray'); if (!t) return;
+    const fs = L(THREAD.files);
+    t.hidden = !fs.length;
+    t.innerHTML = fs.map((f, i) => `<span class="fchip${f.state === 'up' ? ' up' : f.state === 'bad' ? ' bad' : ''}" title="${esc(f.note || '')}">${ico(f.kind === 'paste' ? 'doc' : 'clip', 12)}<span class="ell">${esc(f.label)}</span><button type="button" class="x" data-act="att-x" data-i="${i}" aria-label="Remove ${esc(f.label)}">×</button></span>`).join('');
+  }
+  async function addFile(file, label, kind) {
+    const f = {label: label || file.name || 'File', kind: kind || 'file', state: 'up', id: ''};
+    THREAD.files.push(f); drawTray();
+    try {
+      const c = await ensureConv();
+      const fd = new FormData(); fd.append('file', file, file.name || 'file.txt');
+      const r = await api('POST', `/api/conversations/${enc(c)}/files`, undefined, {form: fd});
+      f.id = S(r.file_id); f.state = f.id ? 'ok' : 'bad'; if (!f.id) f.note = 'Could not attach';
+    } catch (e) { f.state = 'bad'; f.note = e.message; toast(e.message, true); }
+    drawTray();
+  }
+  function pasted(ev) {
+    const t = ev.clipboardData?.getData('text') || '';
+    const imgs = [...(ev.clipboardData?.files || [])];
+    if (imgs.length) { ev.preventDefault(); imgs.slice(0, 6).forEach(f => addFile(f, f.name || 'Pasted picture', 'file')); return; }
+    if (t.length < LONG_PASTE) return;
+    ev.preventDefault();
+    const kind = /^\s*[[{]/.test(t) ? 'JSON' : /\t|,.*,.*\n/.test(t) && /\n/.test(t) ? 'Table' : /[{};]\s*\n/.test(t) ? 'Code' : 'Text';
+    const lines = t.split('\n').length;
+    addFile(new File([t], `pasted-${kind.toLowerCase()}.txt`, {type: 'text/plain'}), `Pasted ${kind.toLowerCase()} · ${lines} lines`, 'paste');
   }
   async function ask(text) {
     text = S(text).trim(); if (!text || !CUR) return;
+    if (L(THREAD.files).some(f => f.state === 'up')) return toast('Wait a moment: a file is still attaching.', true);
     const v = CUR, plan = store.get(MODE_KEY + '.chat') === 'plan';
+    const files = L(THREAD.files).filter(f => f.state === 'ok' && f.id);
     try {
       const c = await ensureConv();
       THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
-      THREAD.rows.push({id: 'local-' + Date.now(), role: 'user', text});
-      THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.live = ''; drawMsgs();
+      const id = 'local-' + Date.now(), busy = THREAD.waiting, row = {id, role: 'user', text, files: files.map(f => ({name: f.label}))};
+      if (busy) THREAD.queue.push(row);                       // she sent while Hoola works: it waits its turn, greyed, at the bottom
+      else { THREAD.rows.push(row); THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.think = null; THREAD.lastThink = null; endLive(); }
+      THREAD.files = []; drawTray();
+      if (busy) { THREAD.pinned = true; drawQueue(); keepPinned(); } else { THREAD.scrollTo = id; THREAD.pinned = false; THREAD.sig = ''; drawMsgs(); }
       const hints = [`Web Studio: this chat is only about website ${S(v.number)} "${name(v)}" (site id ${S(v.id)}). Work on THIS website with the website tool; never start a new website unless I ask for one.`];
       if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I say Haan.');
-      await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
-      clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
+      await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints,
+        ...(files.length ? {files: files.map(f => f.id).slice(0, 6)} : {})});
+      clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, THREAD.connected ? 4000 : 900);
     } catch (e) { THREAD.waiting = false; drawMsgs(); toast(e.message, true); }
+  }
+  async function stopTurn() {
+    if (!THREAD.conv) return;
+    try { await api('POST', `/api/conversations/${enc(THREAD.conv)}/stop`, {}); toast('Stopping after the step it is on.'); }
+    catch (e) { toast(e.message, true); }
+  }
+  /* ----- Details: the turn's Timeline and Changes, where the preview sits ----- */
+  function detailsView(pane, v) {
+    const a = Number(THREAD.detail?.a) || 0, b = Number(THREAD.detail?.b) || 0;
+    const steps = stepsBetween(a, b), tab = THREAD.detail?.tab === 'changes' ? 'changes' : 'timeline';
+    const nextUser = L(THREAD.rows).map(r => r.role === 'user' ? tsec(r.at) : 0).filter(t => t > b).sort((x, y) => x - y)[0] || 0;
+    const vers = L(v.versions).filter(x => { const t = tsec(x.at); return t >= a - 2 && (!nextUser || t < nextUser); });
+    const inr = costFor(a, b);
+    const tl = steps.length ? `<ol class="tline">${steps.map(x => `<li class="${x.state === 'error' ? 'bad' : x.state === 'run' ? 'run' : 'ok'}"><span class="tdot" aria-hidden="true"></span>
+        <div class="tl1"><b>${esc(pastLabel(x.label, x.state))}</b><span class="mut sm">${esc(clockOf(x.at))}${x.end ? ' · ' + dur(x.end - x.at) : ''}</span></div></li>`).join('')}</ol>`
+      : '<p class="mut">This answer used no tools: Hoola replied from what it already knew.</p>';
+    const ch = vers.length ? vers.map(x => `<div class="ver">${pill('v' + S(x.version), '')}<span class="sp ell">${esc(S(x.note) || 'Version')} <span class="mut sm">· ${esc(clockOf(tsec(x.at)))}</span></span>
+        ${Number(x.version) > 1 ? `<button class="b sm" type="button" data-act="detail-compare" data-from="${Number(x.version) - 1}" data-to="${Number(x.version)}">Before / after</button>` : ''}</div>`).join('')
+      : '<p class="mut">No new version came from this answer.</p>';
+    pane.innerHTML = `<div class="dtop"><button class="b sm" type="button" data-view="preview">${ico('back', 14)}<span>Back to preview</span></button>
+        <div class="seg" role="tablist" aria-label="Details"><button type="button" role="tab" data-dtab="timeline" aria-pressed="${tab === 'timeline'}">Timeline</button><button type="button" role="tab" data-dtab="changes" aria-pressed="${tab === 'changes'}">Changes</button></div>
+        <span class="sp"></span><span class="mut sm">${esc([b > a ? 'Worked for ' + dur(b - a) : '', steps.length ? `${steps.length} step${steps.length > 1 ? 's' : ''}` : '', rs(inr)].filter(Boolean).join(' · '))}</span></div>
+      <div class="main" style="max-width:820px">${tab === 'timeline' ? tl : ch}</div>`;
   }
 
   /* ---------- small dialog ---------- */
@@ -1306,6 +1556,13 @@
     }
     if (d.lpage) { LIVE.follow = false; APP.querySelector('[data-live="follow"]')?.setAttribute('aria-pressed', 'false'); setLivePage(d.lpage); return; }
     if (d.lcode) { LIVE.codeKey = d.lcode; LIVE.codePinned = true; drawLiveBits(); return; }
+    if (d.act === 'details') { THREAD.detail = {a: Number(d.ta) || 0, b: Number(d.tb) || 0, tab: 'timeline'}; VIEW = 'details'; drawPane(); return; }
+    if (d.dtab) { if (THREAD.detail) THREAD.detail.tab = d.dtab; drawPane(); return; }
+    if (d.act === 'detail-compare') { LIVE.justDone = {site: S(CUR.id), from: Number(d.from), to: Number(d.to)}; LIVE.compare = true; VIEW = 'preview'; drawPane(); return; }
+    if (d.act === 'stop-turn') { stopTurn(); return; }
+    if (d.act === 'attach') { $('#wsFile')?.click(); return; }
+    if (d.act === 'att-x') { THREAD.files.splice(Number(d.i), 1); drawTray(); return; }
+    if (d.act === 'jump-latest') { const bx = $('#wsMsgs'); if (bx) { THREAD.pinned = true; bx.scrollTop = bx.scrollHeight; } b.hidden = true; return; }
     if (d.act === 'compare') { LIVE.compare = !LIVE.compare; drawPane(); return; }
     if (d.act === 'jd-close') { LIVE.justDone = null; LIVE.compare = false; drawPane(); return; }
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
@@ -1495,6 +1752,12 @@
     } catch (er) { toast(er.message, true); }
     finally { BUSY = false; if (btn?.isConnected) btn.disabled = false; }
   });
+
+  APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.775 attachments
+  APP.addEventListener('change', e => { if (e.target.id === 'wsFile') { [...e.target.files].slice(0, 6).forEach(f => addFile(f)); e.target.value = ''; } });
+  APP.addEventListener('dragover', e => { if (e.target.closest?.('.chat') && e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); e.target.closest('.chat').classList.add('drop'); } });
+  APP.addEventListener('dragleave', e => { e.target.closest?.('.chat')?.classList.remove('drop'); });
+  APP.addEventListener('drop', e => { const c = e.target.closest?.('.chat'); if (!c || !e.dataTransfer?.files?.length) return; e.preventDefault(); c.classList.remove('drop'); [...e.dataTransfer.files].slice(0, 6).forEach(f => addFile(f)); });
 
   route();
 })();

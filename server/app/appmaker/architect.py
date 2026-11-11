@@ -589,7 +589,10 @@ def _steps_for(story: dict[str, Any], m: dict[str, Any], sch: dict[str, Any]) ->
         data[f["key"]] = {"phone": "9876500022", "number": 1, "email": "a@b.com", "date": "2026-11-05",
                           "choice": (f.get("options") or ["one"])[0], "yes_no": True}.get(f.get("type"), "Asha Sharma")
     own = (c.get("rules") or {}).get("read") == "own"
-    steps = [{"do": "signup", "who": "u1"},
+    # v0.771 a list only staff may write (fees, sales registers) was walked by a plain member, so the module's own
+    # proof failed on "Iski ijaazat nahi" - the app was right, the walk was wrong. Found by the proof apps.
+    staff_only = (c.get("rules") or {}).get("create") == "admin"
+    steps = [{"do": "signup", "who": "u1", **({"role": "staff"} if staff_only else {})},
              {"do": "create", "who": "u1", "list": coll, "data": data, "save": "x1"},
              {"do": "read", "who": "u1", "list": coll, "expect_count": 1}]
     if own:                       # the privacy half: somebody else must NOT see it

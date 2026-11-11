@@ -2801,6 +2801,15 @@ Ask: GO G1 (resume after restart + tool ledger).
 Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; chat_graph still off; 9 tests.
 Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
 
+
+Task ID: HI-PLAN — Hoola Interactive product plan (11 Nov 2026)
+Owner: "first check how HeyGen looks in design and all its features in all backend 100% every page and tools... deep
+research and make a same plan for Hoola Interactive end to end". Three research agents read HeyGen's public files
+(app string catalogue + design tokens, help centre, release posts, v3 OpenAPI, LiveAvatar docs); reports kept in
+docs/research/heygen/ (4 files). Plan written: docs/HOOLA_INTERACTIVE_CONSOLE_PLAN.md (12 pages, feature matrix,
+tables, routes, API, meter, safety rules, phases I0-I11, her decisions, not-verified list). Docs only: no code, no
+version bump. No credentials in this entry.
+
 Task ID: v0.770.0 LANGGRAPH G2
 Ask: GO G2 (one run per chat + Stop as state).
 Built: agent/turnrun.py tickets + stop flag/event, turngraph stop checks, turn_inbox no double start; chat_graph still off; 14 tests.
@@ -2812,3 +2821,22 @@ Task ID: LOVABLE STUDIO PLAN (11 Nov 2026)
 Task: owner - deep research on Lovable (design, logic, steps, strategy, chat motion) + an end-to-end plan for Hoola Web Studio.
 Work Log: 4 parallel research passes (engine/tools, UI/motion, strategy, Hoola Studio map); captured in docs/research/lovable/00_INDEX.md; plan in docs/LOVABLE_STUDIO_PLAN.md.
 Stage Summary: docs only, no version bump; waiting for her GO on L0 and her 4 decisions before L8.
+
+Task ID: v0.773.0 HOOLA CODE PHASE 1 (built as 0.768, re-versioned twice on merge: main was at 0.771.0, then 0.772.0)
+Ask: GO PHASE 1 (docs/HOOLA_CODE_WEB_PLAN.md) + mid-build "create a separate page with its own side bar for Hoola Code".
+Built: /console/code (hoolacode.html / hoolacode.js), code.js rewritten (three zones, folded steps, rail cards, queue take-back, menus, All sessions), devsahayak rename / archive / delete / drop_note + routes; typing-wiped-by-refresh bug and the rotating ring fixed; 8 tests incl. 4 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip, two nullable columns self-heal).
+
+Task ID: HI-BUILD — v0.774.0 HOOLA INTERACTIVE the whole product in the console (11 Nov 2026)
+Owner: "GO - BUILD IT INTO CONSOLE END TO END". Rewrote static/console/interactive.js as a full-page overlay with its
+own twelve-item rail (styles in v2.css); new interactive/hub.py + 17 /api/interactive/hub routes (brand, glossary,
+templates, batch, personalise, translate with code checks, trash/restore, duplicate, brains, usage, voice sample,
+overview, status.connected). studio.spec_for draws the brand colour. Tests: test_v0772_interactive_hub.py (10) +
+rewritten browser walk in test_v0747 (real Chromium via HOOLA_CHROMIUM). Not built and said on the page: tables,
+rupee meter, share links, AI mark, GPU-backed apps, public API. No credentials in this entry.
+
+---
+Task ID: v0.775.0 CHAT JAISA (L1)
+Task: owner "GO L1" - Lovable-grade Studio chat (live stream, soft words, thinking, past-tense steps, Details, rupees, queue, attachments).
+Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.775 (other sessions took 0.771-0.774).
+Stage Summary: pushed; server deploy only (no APK needed). Next: L2 TEEN MODE on her GO.

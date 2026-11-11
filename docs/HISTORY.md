@@ -540,3 +540,176 @@ Phase G2 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 6 and 8), only when `chat
 - TESTS: NEW `test_g2_turngraph.py` 14; g1 9, g0 11, harness2 15, harness3 17, routines 3, v0657 14, v0664 10, v0649 11 same off and on.
 - NOT COVERED: order is by entry into run_turn, not inbox created_at; tickets are one process's memory (inbox + sweep stay the cross-restart net); Stop does not cut other awaits inside a node (finishes, then the boundary ends it); a slow head ticket makes later messages wait; old-path flaws left alone; nothing verified live. Next: G3 done-truth from the ledger.
 
+
+## v0.771.0 PROOF APPS — the App plan's five proof apps, the whole road on the server (11 Nov 2026; owner: "CONTINUE THE WORK"; built as 0.770, their LANGGRAPH G2 took 0.770.0 - REBASE PROTOCOL, both kept)
+
+The App plan (`docs/COMPLEX_APPS_PLAN.md`) had twelve pillars built (A-L) and its own gate unmet: "a proof app" -
+none existed. `server/app/appmaker/proofapps.py` builds the plan's five: **School ERP** (leave workflow Pending ->
+Approved by a teacher only, fee register with due = amount - paid and two rules, notices readable by members only),
+**Clinic** (a doctor's slot unique, Booked -> Checked in -> Done by the desk only, patient privacy, rating after Done),
+**Food delivery** (the phone never prices - amount = qty x rate_of(item) on the server, 1-20 per order, a four-state
+kitchen workflow, rating only after Delivered, menu public but kitchen-only), **Multi-vendor marketplace** (vendors
+own their listings - another vendor's edit refused, a free listing refused, sales split into 10% commission + payout,
+vendors cannot read the register), **Field-service CRM** (private phone, the office assigns, a technician cannot take
+another's job, Done requires visit notes, 24 h SLA stored, rating after Done).
+
+Each one: a hand-written naksha (no model, the same every run) -> Pillar K's checker -> every module approved by its
+hash and built through the real engines (lists, logic draft, push) with its own generated proof -> the brain applied
+through the real logic engine (on her app that stays HER tap; this is the harness's own hidden app) -> hand-written
+Pillar J scenarios checked against the app as it now is and played on a twin. Tenant `__proofapps__`, last run's
+projects / twins / rows / accounts cleared first. Card: per app modules built, scenarios pass, refusals checked, her
+next steps, what is NOT proved; saved to data/proofapps/last.json. `python -m app.appmaker.proofapps [--only <key>]
+[--json]`, vps-ops `proof_apps`.
+
+**Found by its first run, all three in the pillars, all fixed:**
+- Pillar J (`quality._Run._role`): making a test person staff / admin ends their logins (`webapp.set_role`: "a new
+  role = log in again"), and the runner never logged them in again. Since v0.540 every staff / admin step ran SIGNED
+  OUT: an allowed step failed, and a "must be refused" step by staff passed for the wrong reason. They log in again now.
+- Pillar J: the per-IP signup limit (5 an hour per site) answered the sixth scenario sign-up with 429, so every later
+  story failed on nothing to do with her app. The limits are lifted for the twin only (`_unthrottle`) - hidden, test
+  rows only, reachable by nobody but the runner. Her real apps keep every limit.
+- Pillar K (`architect._steps_for`): a module whose list only staff may write (fees, sales) had its proof walked by a
+  plain member, so the module read as failed. The walk signs up as staff for such a list.
+
+**Named by the proof, NOT built:** a customer seeing a row written FOR her by staff (her child's fee row, her
+prescription, a vendor's own sales - rows belong to whoever wrote them; needs a gate / pass list), prescriptions and
+report cards as PDFs, the family's rider / vendor apps (design + native build), offline-first on a technician's phone.
+
+**NOT VERIFIED:** nothing here ran on a real phone, which is what the plan's gate asks. Payment keys, Firebase,
+connector accounts and live tracking stay her next steps and are never counted as passes.
+
+Tests `test_v0771_proof_apps.py` 5 (all five proved, >= 2 real refusals per app + what is not proved named, her
+credentials stay next steps, only the hidden tenant touched, a second run starts fresh); test_v0542_naksha 13/13,
+test_v0540_jaanch + test_routines 19/19 green with the fixes.
+
+## v0.772.0 VIDEO KIT (built as 0.771.0; their PROOF APPS took 0.771.0, both kept) - exact video edits on the server's ffmpeg (owner: "NOW START VIDEO EDITING")
+
+The third editing desk after IMAGE EDIT (v0.768) and AUDIO EDIT (v0.769). Hoola already had `video_edit` (v0.65, the AI
+editor that watches footage and makes a Reel from a brief) and the Edit Desk (a freelance editor's business desk on top of
+it). What was missing was the plain, exact edit she can name: "pehle 3 second hatao", "reel size mein karo", "WhatsApp ke
+liye chhota karo", "number plate blur karo". NEW `server/app/vidkit/ops.py` + tool `video_kit` (`agent/vidkit_tools.py`),
+registry 623 -> 624, family `video_kit` with its own words in `admit.EXTRA_KEYS`, a prompt line beside audio_edit.
+
+- **run** = up to 15 steps turned into ONE ffmpeg filter graph (labelled video segments + a plain audio chain): trim, cut,
+  speed (0.25-4, audio pitch kept), reverse (<= 60 s), fade, crop (aspect + position or a box in px / %), reframe (9:16 with
+  a soft blurred background, a colour pad, or a crop), resize (presets / width / percent), rotate, flip, colour (brightness /
+  contrast / saturation -100..100, gamma), 9 looks, sharpen, grain removal (hqdn3d), light stabilising (deshake), blur_area
+  (time window; chroma radius kept inside the half-size planes - found by a test on a small box), text (rendered by the
+  image_edit text engine onto a transparent PNG so Hindi + English + the rupee sign all have glyphs), her logo (her photo
+  file only), zoom, fps, mute, volume, loudness, sound noise removal. Frame sizes are tracked through the chain; the output
+  is even-sized, yuv420p, max 1080p, H.264 + AAC + faststart (or webm / mov), with `-map_metadata -1`.
+- **other actions**: info (+ a verdict with tips), convert, compress (to a target MB / whatsapp / email, resolution picked
+  from the bitrate, up to 3 tries until it fits, honest refusal when it cannot be watchable), join (any shapes -> the first
+  clip's frame, blur / pad fit, xfade + acrossfade), slideshow (photos, gentle zoom, fades, her music), music (looped to the
+  video, ducked under speech with sidechaincompress, or replacing silence), captions (ASS script at the video's own pixel
+  size via libass with `shaping=complex` - plain SRT burning broke Hindi conjuncts (नमस्ते showed a halant); her SRT /
+  SRT text / auto via faster-whisper when installed, else it names the kaan -> SRT route; the .srt comes back too),
+  frames / contact sheet, GIF (palettegen, <= 15 s), split (every / at, exact re-encoded cuts), combine (PiP / side by
+  side / top-bottom).
+- **refused by name**: delogo / remove_watermark / face_swap / deepfake / voice_clone - and the guide says others' videos
+  are not downloaded and new AI footage belongs to Create / video_studio.
+- Phone videos with rotation metadata are probed with their turned size (ffmpeg auto-rotates on decode).
+
+Tests `server/tests/test_vidkit.py` 26 on real generated video (pixel checks for reframe / crop / flip / text / logo / blur,
+lengths for trim / cut / speed / join / crossfade / slideshow, size for compress, metadata gone, 1080p cap, the tool with
+batch + one-bad-file + refusals before any file is touched). NOT VERIFIED: auto captions on the VPS (depends on
+faster-whisper being installed there); long (30-60 min) videos timed only by the timeout rule, not on her server.
+
+
+## v0.773.0 HOOLA CODE PHASE 1 (built as 0.768; their IMAGE EDIT took 0.768.0, AUDIO EDIT 0.769.0, LANGGRAPH G2 0.770.0, PROOF APPS 0.771.0, VIDEO KIT 0.772.0 - REBASE PROTOCOL twice, all kept) - its own page, laid out like Claude Code on the web (11 Nov 2026; owner: "GO PHASE 1" on docs/HOOLA_CODE_WEB_PLAN.md, then mid-build "CREATE A SEPERATE PAGE WITH ITS OWN SIDE BAR FOR HOOLA CODE")
+
+Phase 1 of the plan (the shell and the session) plus her mid-build ask. Nothing about HOW Hoola codes changed - same loop, same routes, same taps.
+- OWN PAGE: `/console/code` (`static/console/hoolacode.html` + `hoolacode.js`, route `main.hoola_code_page`, same CSP and sign-in token as the console; switch `hoola_code_page` off = 307 to /console/). Only ONE sidebar - the sessions. Every screen has an address (`#/s/<id>`, `#/reviews`, `#/settings`, `#/all`), so Back works and a link opens one session. The console's "Hoola Code" row now opens this page (`v2.js go('code')`); `code.js` is no longer loaded inside the console and the `#v-code` section is gone. Why: inside the console the page had two sidebars and the chat was squeezed to ~450 px on a 1280 laptop.
+- LAYOUT (`code.js` rewritten, `.hcd-` rules in v2.css replaced): sessions sidebar 272 px (collapses to a 52 px strip that keeps running / needs-you sessions one click away) / chat column 760 px / right rail 300 px of cards - Changes (files, the PR, proof, CI, own review, security, the next action), Progress (read / change / tests / own check / PR / CI, each read from the real steps - never a made-up bar), Session. The rail hides itself when the page is narrower than 780 px and comes back as an overlay on her click; the same action buttons are on the recap card in the chat, so they are reachable with the rail hidden.
+- SESSION: title bar (click the title to rename; menu: Rename, Transcript view Normal / Verbose, Open the PR, Archive, Delete), steps folded into summaries ("Read the repo's rules, read 2 files, searched 1 time"), an edit's diff folded under its row, a failed test run never folded, a finished session folded to "Worked for N - M steps", a recap card in words, the plan / open-PR / merge question as ONE bar above the message box, her queued notes shown with a take-back button, Stop in the message box. Enter sends, Shift + Enter = new line.
+- SIDEBAR: New session, Review a pull request, search, groups by repo (default) / status / none and a Show filter (Group and sort menu, remembered in this browser), a "..." menu per row, View all -> All sessions page (Active / Archived tabs, server search, Archive / Unarchive / Delete).
+- SERVER (small): `devsahayak_tasks.title` (her own name; never the PR title on GitHub) + `archived_at` (both nullable, added by the column self-heal); `service.rename / archive / delete_task / drop_note`, `tasks(archived=, q_text=)`; routes PATCH `/tasks/{id}` {title | archived}, DELETE `/tasks/{id}` (the row + its steps; an open PR and its branch stay; a waiting merge card goes stale; refused while it works), DELETE `/tasks/{id}/note/{i}` (a queued note comes back as text; refused once Hoola has read it), GET `/tasks?archived=1&q=`. Task views carry `archived` and `notes` (her queued words).
+- TWO BUGS FIXED: (1) every 2 s refresh rebuilt the whole page with innerHTML, so a half-typed note was wiped and the box lost focus - the session is now mounted ONCE and `paint()` repaints only the regions whose HTML changed; the message box is never repainted; clicks go through ONE listener on the root. (2) the working mark was a rotating ring (banned by CRISP TEXT, v0.256) - now a still dot with a soft pulse of shadow.
+- HOME: one box + Send, and under it repo / kind of work / issue number. The mode, model and branch pickers of the design are Phase 3.
+- PROOF: `tests/test_v0768_hoola_code_shell.py` 8 - rename / archive / search (with % and _ as plain characters) / delete / another tenant refused; a running session not archived or deleted, a queued note taken back; the routes; and FOUR walks in a real browser against an API whose answers change between polls: typing survives a new step arriving (text, focus and the fold she opened all kept - this fails on the v0.748 page), steps fold, no rotating ring, a note comes back into the box; the layout at 1280 px (rail 300, chat >= 600, nothing off-screen), rail hide / show / overlay, sidebar collapse, Verbose, rename; the page on its own address with one sidebar, hash routes, Back, a deep link; the switch. `test_v0748` browser walk updated to the new page. Screenshots were looked at before shipping.
+- NOT DONE / NOT VERIFIED: no live GitHub repo has run through the new page yet; the Changes pane with line comments, Create PR on the card, the question dialog = Phase 2; mode / model / branch pickers, attachments = Phase 3; Terminal / Files / a continuing conversation = Phase 4; steps still arrive by a 2 s poll; the phone screen is unchanged; "Merge when ready" stays her tap (decision 1 of the plan, not yet answered).
+
+## v0.774.0 HOOLA INTERACTIVE, THE WHOLE PRODUCT (built as 0.772) — its own page, its own sidebar, twelve pages (owner: "GO - BUILD IT INTO CONSOLE END TO END")
+
+After the HeyGen research (`docs/research/heygen/`), the plan (`docs/HOOLA_INTERACTIVE_CONSOLE_PLAN.md`) and the
+clickable twelve-page design she approved. This is the build of that design into the real console.
+
+**The page.** `static/console/interactive.js` (rewritten); its styles are the `#hiRoot` block in `v2.css` (the console keeps ONE stylesheet - a test holds that). Hoola Interactive opens as a
+full-screen overlay `#hiRoot` with its own icon rail: Home · Avatars · Voices · Studio · Templates · Brand · Translate ·
+Live · Apps · Projects · Developers · Settings, and "Console" to go back to the chat (`back: () => go('chat')` from
+v2.js; `leave()` hides it). Console tokens only, so Light / Dark / System follow; the old `.hiv` block left v2.css.
+Sub-views: editor, making (real steps), video, avatar, proofread. One click / input / change / submit listener on the
+root; her text always through `esc()`.
+
+**Studio** is the script-first editor: script on the left (one block per scene, move / remove / add), a layout
+preview canvas with the scene strip, and tools on the right (Look · Avatar · Voice · Video · Brand). It saves through
+the same `/api/interactive/studio/project` as v0.747, shows what blocks the make in her words, and Generate opens a
+box with scenes, estimated length, size and sound before she taps. Nothing about the film pipeline changed.
+
+**NEW `interactive/hub.py` + `/api/interactive/hub/*` (17 routes)** — everything around the film that needs no GPU:
+- `brand` — name, closing line, colour (`#RRGGBB` or refused). New videos start with them; `studio.spec_for` now
+  passes the colour into the composition (`_brand_color`), so it is drawn, not just stored.
+- `glossary` — "keep exactly as written" or "always translate as X in language L".
+- `templates` — six starters that state no price or date (a test checks they contain no digit) + her own, saved from
+  any project. Blanks are `{name}`-style; `template_use` fills them ONLY from her values and refuses a missing one by
+  name. Her values become the project's `facts`, so her numbers are trusted the same way her edits are.
+- `batch` — up to 20 scripts → one draft each, cut into scenes at sentence ends by code (no model call, no rewrite).
+- `personalise` — a project that says `{name}` × up to 20 names → a draft each. Nothing is sent from here.
+- `translate` — a Hoola-made video into another language as a NEW draft: one model call for the words (spoken lines
+  and the words on screen), then CODE compares the digits of every line with its source and applies the glossary; a
+  line that fails is flagged (`tr[i].flag`) with the source kept beside it; a wrong line count refuses. The Proofread
+  page edits the lines and opens the draft in Studio.
+- `trash` / `restore` / `empty` — delete keeps the project and its video file for 30 days; restore brings both back;
+  a restored "ready" project whose file is gone becomes a draft instead of a dead player.
+- `duplicate`, `brains` (what a live avatar may know: name, facts ≥ 20 chars, opening line, http(s) links only),
+  `usage` (videos and minutes this month, read from the videos' own records), `voice` (a sample line; 503 with the
+  reason when the engine is off), `overview` (one call for the whole page).
+- `status().connected` — the honest switchboard. True today: video, photo avatar, templates, translate (words);
+  voice when the engine is set up. False and printed on the page as "Not connected on this server yet": twin,
+  AI-made faces, voice clone, lip-matched dubbing of outside videos, the live stream, the public API.
+
+**Not built, said on the page too:** real tables (still one JSON per tenant under `studio._LOCK` — plan phase I1),
+jobs that survive a restart, a rupee meter, share links and insights, an AI mark inside the file, pronunciation rules,
+logo and fonts in the brand kit, every GPU-backed app (talking photo, slides, link, podcast, series, clips, cleanup,
+lip sync, upscale), the Developers API. The Apps page shows those as "Not connected yet" with the button disabled.
+
+**Tests.** NEW `test_v0772_interactive_hub.py` (10): brand colour reaches the spec; a template takes only her values
+and names what is missing; own template + many names; batch cuts by code; a translation is checked not trusted (a
+changed number, a broken glossary rule, a missing line); trash keeps the file and the 30 days are real; usage counts
+this month only and status names what is off; brains; routes locked + switched; the page is wired with no sample
+data. `test_v0747`'s browser test rewritten to the new page: twelve rail items, every page opened with no script
+error and no sideways scroll, her `<b>` title shown as text, the unset voice engine said, a missing number disabling
+Generate, Console hiding the page. It runs in real Chromium with
+`HOOLA_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` (the Python Playwright's own browser build is
+not installed in the sandbox, so without that variable it skips).
+
+**NOT VERIFIED, said plainly:** not opened by her yet; no video has been made through the new page on the VPS
+(the make path is the unchanged v0.747 one); `translate` has only run against scripted model answers, never the
+live model; the phone-width layout was checked in the design prototype, not in the console build.
+
+REBASE PROTOCOL: built as 0.772.0; main took 0.772 and 0.773 meanwhile — merged, both kept, shipped as 0.774.0
+(pubspec 0.774.0+773, console stamps 0.774.0, pins swept). Mera PC freeze respected: nothing in `server/app/pc/`,
+`desktop/`, `lib/` touched. Server + console only; old APKs keep working.
+
+## v0.775.0 CHAT JAISA (built as 0.771; L1 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L1")
+The Web Studio site chat now works like Lovable's:
+- LIVE: `webstudio.html` loads `stream.js`; the per-site thread opens `/api/conversations/{id}/events?live=1` (HoolaStream) - reply_start /
+  delta / reply_end go through HoolaStream.Pacer into HoolaMD.Live({soft:true}) so each new word fades in out of a soft focus; step / think /
+  typing / message events drive the work card. Polling stays as the fallback (1.5 s when the stream is down, 4 s safety read while a turn runs).
+- THINKING: a think event shows a shimmering "Thinking..." (1.8 s sweep); the finished turn says "Thought for Ns".
+- VERBS: a running step reads present tense, a finished one past tense (`PAST` map in webstudio.js; a test proves every first -ing word of
+  agent/labels_en.py is covered). Applies to the site build activity steps too (test_v0649 pin moved to "Planned three designs").
+- COST: `usage.turn_meter` (a TURN contextvar beside the run meter) counts every model call of a chat turn; `santosh.run_turn` writes one
+  `turn_costs` row (app/turncost.py, registered in init_db + ensure_table, newest 400 per chat kept; switch `chat_turn_cost`);
+  GET /api/conversations/{id}/costs gives start / end / calls / usd / inr. The turn head reads "Thought for 3s · Worked for 42s · 5 steps · Rs 3.10".
+- DETAILS: a button per answer opens VIEW 'details' in the right pane - Timeline (each step, its clock time and duration) and Changes (versions
+  made by that answer, each with Before / after through the existing compare view).
+- QUEUE + STOP: Stop on the work card (POST /stop); a message sent while Hoola works waits greyed at the bottom ("Runs after this step",
+  Interrupt) and moves into the thread when its turn starts.
+- ATTACH: paperclip, drag-drop and pasted pictures upload through /api/conversations/{id}/files; a paste over 1,500 chars becomes a chip
+  ("Pasted text · 121 lines") sent as a .txt file; files ride the message (`files`).
+- SCROLL: her new message scrolls to the top of the view; the stream never yanks her down; "Latest" appears only after she scrolls up.
+- Found while testing: `.jump / .tray / .livebox` had display rules that beat the `hidden` attribute (the Latest button covered a chip) - fixed.
+Tests: test_v0775_chat_jaisa.py (5, incl. a Playwright walk: thinking shimmer, queued bubble, paste chip, soft-fade spans, past tense,
+Rs line, Details timeline) + the older Studio suites green (v0649 / v0655 / v0663 / v0664 / v0667 / v0669 / v0671 / v0707, routines, v0657).
+NOT VERIFIED live: the first real Studio turn on her server (the browser walk uses a scripted turn).

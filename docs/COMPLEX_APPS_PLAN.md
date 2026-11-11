@@ -155,7 +155,7 @@ twin; ANRs captured at all for the first time and told apart from crashes; Play 
 halt and rollback; server-side feature flags (the only rollback that works in minutes).
 Not built: iOS phased release (Android only), scenarios for payments / live tracking / chat, and a gate that BLOCKS a
 store upload on a failed run (the verdict is written, nothing reads it yet).
-**The checkpoint is NOT met:** this pillar ends on "all proof apps green" and no proof app exists.
+**The checkpoint:** "all proof apps green" - met ON THE SERVER in v0.771.0 (see Proof apps below); not yet on a real phone.
 - From the spec, Opus writes scenario tests per user story ("customer orders, rider picks, customer rates") that run
   end to end against a real test server on both platforms; unit tests for every rule / function; load tests for
   big apps; ANR / crash monitoring; staged rollouts (5% → 100%), feature flags, instant rollback.
@@ -192,6 +192,9 @@ market, not a fault), and phone-side latency (this is the backend's).
 3. **Food delivery** (after D, E, H): 3 apps + admin, live rider tracking, gateway checkout, refunds by her tap.
 4. **Multi-vendor marketplace** (after E, F, H): vendors, catalogue, split settlements via the gateway, courier connector.
 5. **Field-service CRM** (after G, J): offline-first technicians, photos, signatures, scheduling, SLA escalations.
+
+**Status: PROVED ON THE SERVER in v0.771.0 PROOF APPS** (`server/app/appmaker/proofapps.py`, `python -m app.appmaker.proofapps`, vps-ops `proof_apps`) - all five go the whole road on a hidden tenant: a hand-written naksha (no model) through Pillar K's checker, every module approved and built through the real engines, the brain applied through the real logic engine, then hand-written Pillar J scenarios on a twin, each with privacy refusals (another customer opening my row, a member doing staff work, a parent posting a notice). Its first run found three bugs in the pillars themselves (Pillar J ran every staff / admin step signed out; the signup limit failed every story after the fifth person; Pillar K walked a staff-only list as a plain member) - fixed.
+**Still NOT met, said plainly:** none of this ran on a real phone, which is what this section's title asks; the rider / vendor apps of a family are not built in the proof; payment keys, Firebase, connector accounts and live tracking stay HER next steps; and three gaps the proof named are not built: a customer seeing a row written FOR her by staff (her child's fee row, her prescription, a vendor's own sales) needs a gate, prescriptions / report cards as PDFs, and offline-first on a technician's phone.
 
 ## What "any app" will still not include (said plainly)
 

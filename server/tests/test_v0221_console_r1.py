@@ -39,7 +39,8 @@ def test_one_cache_buster_on_every_asset():
     refs = re.findall(r'(?:src|href)="/static/console/([\w/.-]+)\?([^"]*)"', html)
     assert refs, "no console assets found"
     stamps = {q for name, q in refs if name != "vendor/qrcode.js"}
-    assert stamps == {"v=0.543.0"}, f"mixed console cache stamps: {sorted(stamps)}"
+    from app.main import APP_VERSION   # v0.774: was a typed literal that went stale for 200 versions; the stamps follow the app version
+    assert stamps == {f"v={APP_VERSION}"}, f"mixed console cache stamps: {sorted(stamps)}"
     assert all(q == "v=1.4.4" for name, q in refs if name == "vendor/qrcode.js")
 
 
@@ -77,5 +78,5 @@ def test_console_chrome_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.770.0"    # conscious-bump guard: moves with every release (bump with pubspec)
-    assert "0.770.0+769" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.775.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert "0.775.0+774" in (ROOT / "pubspec.yaml").read_text()

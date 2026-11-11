@@ -20,6 +20,7 @@ on:
           - voicecheck
           - mospi_check
           - architect_check
+          - proof_apps
           - archdesk_check
           - arena_numbers
           - game_setup
@@ -183,6 +184,10 @@ jobs:
               architect_check)
                 # v0.414 HOOLA ARCHITECT live: one REAL Opus spec + the App Sahayak checker on this server; builds nothing, removes the spec
                 echo 'cd $CORE && timeout 900 .venv/bin/python -m app.site.architect check 2>&1 | tail -120' ;;
+              proof_apps)
+                # v0.771 the App plan's five proof apps the whole road on THIS server (no model, hidden tenant
+                # __proofapps__, fresh every run): naksha -> modules built -> brain -> scenario tests on a twin
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.appmaker.proofapps 2>&1 | tail -60' ;;
               archdesk_check)
                 # v0.417 Architecture Desk (Principal Software Architect) live: Mermaid drawn in this server's Chromium,
                 # the capacity sums, then ONE real Opus design for a fixed sample brief as its own check tenant (her

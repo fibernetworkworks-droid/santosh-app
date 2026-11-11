@@ -456,6 +456,7 @@ class _Run:
 
     def act(self, st: dict[str, Any]) -> tuple[int, Any]:
         do = st["do"]
+        self._unthrottle()
         tok = (self.who.get(st.get("who") or "") or {}).get("token", "")
         if do == "signup":
             who = st["who"]
@@ -497,6 +498,16 @@ class _Run:
             return self.call("POST", f"{self.api}/c/{coll}/{rid}/rate", {"stars": st.get("stars", 5)}, tok)
         return -1, {"error": f"{do}?"}
 
+    def _unthrottle(self) -> None:
+        """v0.771 the per-IP signup / login / create limits guard her REAL app from abuse. Every step here comes from
+        one place (this process, or the one server it talks to), so after five scenario sign-ups the sixth was told
+        "Bahut zyada koshish" (429) and every later story failed for a reason that had nothing to do with her app -
+        found by the first run of the proof apps. The limits are lifted for the twin only: it is hidden, holds only
+        test rows, and nobody but this runner can reach its key."""
+        site = f"|app:{self.t.id}|"
+        for k in [k for k in list(W._RATE) if site in k]:
+            W._RATE.pop(k, None)
+
     def _role(self, who: str, role: str) -> None:
         """The owner sets staff / admin, exactly as she does in the console - not something the app can do to itself."""
         from . import backend as BE
@@ -509,6 +520,16 @@ class _Run:
         if mid:
             BE.set_role(self.t, mid, role)
             m["id"] = mid
+            # v0.771 a new role ends that person's logins ("a new role = log in again", webapp.set_role), so the token
+            # from sign-up stopped working the moment they became staff. Before this, every staff / admin step ran as a
+            # SIGNED-OUT visitor: an allowed step failed, and - worse - a "must be refused" step by staff passed for
+            # the wrong reason. Found by the proof apps. They now log in again, exactly as a real person would.
+            code, body = self.call("POST", f"{self.api}/login",
+                                   {"email": m.get("email", ""), "password": "jaanch-" + self.tag})
+            if code == 200 and isinstance(body, dict) and body.get("token"):
+                m["token"] = body["token"]
+            else:
+                log.info("jaanch: %s could not log in again as %s (%s)", who, role, code)
 
 
 def _judge(st: dict[str, Any], code: int, body: Any) -> dict[str, Any]:
