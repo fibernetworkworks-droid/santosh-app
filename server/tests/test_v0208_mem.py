@@ -251,7 +251,8 @@ def test_watchdog_stays_silent_on_signalless_shutdown():
 def test_vps_ops_restarts_carry_kill_timeout():
     yml = (REPO / ".github" / "workflows" / "vps-ops.yml").read_text()
     restarts = [ln for ln in yml.splitlines() if "pm2 restart santosh" in ln]
-    assert len(restarts) == 10                          # ack_refresh + deploy + rollback_stable + rea_setup (v0.210.0)
+    assert len(restarts) == 11                          # ack_refresh + deploy + rollback_stable + rea_setup (v0.210.0)
+    # +1 ws_flip (v0.785.0 HOOLA CODE PHASE 4 - the owner's switch for the workspace engine)
     # +1 the live-talk engine_attach deploy (the dev's own post-v0.476 line); healed at v0.477 -
     # the count moved in their infra commit without this pin moving (pre-existing red on their base)
                                                         # + hf_setup (v0.471.0 HOOLA FRAMES) + lab_setup (v0.461.0)
