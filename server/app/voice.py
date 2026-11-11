@@ -364,6 +364,7 @@ VOICE_VIA_KAAM = {
     "const_approvals", "const_approvals_dekho", "const_qs", "const_qs_dekho", "const_rera", "const_rera_dekho", "const_contracts", "const_contracts_dekho", "const_tender", "const_tender_dekho", "const_drawqa", "const_drawqa_dekho",   # v0.531 construction Wave 2 (same law - the file-builders ride kaam)
     "const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho", "const_survey", "const_survey_dekho", "const_delay", "const_delay_dekho", "const_green", "const_green_dekho",   # v0.550 construction Wave 3 (heavy desks ride kaam - IFC/IDS/working papers are not call talk)
     "kaan",   # v0.589 KAAN PACK (transcription; a long file is not call talk - kaam runs it, GHANTI rings when done)
+    "hoola_design",   # v0.777 HOOLA DESIGN (a design file takes a model call of up to a minute and ends in a link to open - kaam runs it)
     "blender_3d", "postgres", "hoola_market", "hoola_booking", "hoola_deal", "hoola_pick", "a2a_bahar", "consent_jaanch",
     "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio", "notebook_studio", "notebook_output", "notebook_discover",
     "notebook_sources", "notebook_chat_config", "notebook_note",

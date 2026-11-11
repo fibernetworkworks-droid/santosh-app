@@ -1,0 +1,74 @@
+/* HOOLA DESIGN - styles for hd-export.js (D4 hand-off): the Export section and dialog, the Inspect tab.
+   Same tokens as design.css; nothing under 12px, no weight above 600, solid backgrounds under every text. */
+
+/* ---- Export section (Design panel) */
+.hdx-row{gap:4px}
+.hdx-size{display:flex;align-items:center;flex:0 0 74px;min-width:0;height:28px;background:var(--sunk);border:1px solid transparent;border-radius:7px}
+.hdx-size:hover{border-color:var(--hair2)}
+.hdx-size:focus-within{border-color:var(--pri);background:var(--surface)}
+.hdx-size .hd-in{background:transparent;border:0;height:26px;padding:0 0 0 8px;min-width:0}
+.hdx-size .hd-in:focus{background:transparent}
+.hdx-size .hd-ib{width:20px;height:24px;margin-right:1px;color:var(--dim)}
+.hdx-suffix{flex:1 1 0}
+.hdx-fmt{flex:0 0 66px;width:66px}
+.hdx-add{display:block;padding:4px 2px 6px}
+.hdx-prevwrap{margin:6px 0 8px}
+.hdx-prev{min-height:44px;display:grid;place-items:center;padding:8px;border-radius:9px;border:1px solid var(--line);overflow:hidden;
+  background-color:var(--surface);background-image:linear-gradient(45deg,var(--check) 25%,transparent 25%,transparent 75%,var(--check) 75%),linear-gradient(45deg,var(--check) 25%,transparent 25%,transparent 75%,var(--check) 75%);
+  background-size:12px 12px;background-position:0 0,6px 6px}
+.hdx-prevcv{display:block;max-width:100%;height:auto;box-shadow:0 0 0 1px rgb(var(--fg-rgb) / .08)}
+.hdx-cap{font-size:12px;color:var(--mut);padding:5px 1px 0;line-height:1.35}
+.hdx-cap.bad{color:var(--bad)}
+.hdx-go,.hdx-wide{width:100%;justify-content:center;min-width:0}
+.hdx-golab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hdx-file{pointer-events:none}
+
+/* ---- Export dialog */
+.hdx-dialog{width:min(560px,100%)}
+.hdx-dbody{padding:14px 20px 6px;display:flex;flex-direction:column;gap:12px;overflow:auto;min-height:0}
+.hdx-scope{align-self:flex-start;max-width:100%}
+.hdx-scope .hd-segb{padding:0 10px;height:26px;font-size:13px;white-space:nowrap}
+.hdx-scope .hd-segb:disabled{color:var(--dim);opacity:.6}
+.hdx-drow{display:flex;gap:10px;align-items:flex-end;min-width:0}
+.hdx-lab{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--mut);min-width:0;flex:0 0 96px}
+.hdx-lab.grow{flex:1 1 0}
+.hdx-lab .hdx-size{flex:none;width:100%}
+.hdx-lab .hdx-fmt{flex:none;width:100%}
+.hdx-lab .hdx-suffix{flex:none;height:28px}
+.hdx-opts{display:flex;flex-direction:column;gap:2px}
+.hdx-opts:empty{display:none}
+.hdx-opts input[type=checkbox]{accent-color:var(--pri);width:15px;height:15px;margin:0;flex:none}
+.hdx-h3{font-size:13px;font-weight:600;color:var(--ink);margin-top:2px}
+.hdx-list{border:1px solid var(--line);border-radius:10px;max-height:190px;overflow:auto;background:var(--raise)}
+.hdx-item{display:flex;align-items:center;gap:10px;min-height:32px;padding:4px 12px;border-bottom:1px solid var(--line);font-size:13px;min-width:0}
+.hdx-item:last-child{border-bottom:0}
+.hdx-iname{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.hdx-isize{flex:none;color:var(--mut);font-size:12.5px;white-space:nowrap}
+.hdx-item.bad .hdx-isize{color:var(--bad)}
+.hdx-item .hd-linkbtn{flex:none;padding:2px}
+.hdx-dnote{padding:0}
+.hdx-dnote.bad{color:var(--bad)}
+.hdx-foot{display:flex;align-items:center;gap:8px;padding:12px 20px 16px;border-top:1px solid var(--line)}
+.hdx-sum{flex:1 1 0;min-width:0;font-size:12.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---- Inspect tab */
+.hdx-inspect .hd-shead .hd-seg{flex:none}
+.hdx-inspect .hd-shead .hd-segb{font-size:12px;min-width:0;padding:0 6px;height:22px}
+.hdx-kvs{display:grid;grid-template-columns:1fr;gap:2px}
+.hdx-kvs.two{grid-template-columns:1fr 1fr;column-gap:6px}
+.hdx-kv{display:flex;align-items:baseline;gap:6px;min-height:26px;padding:3px 6px;border-radius:6px;text-align:left;min-width:0;font-size:13px}
+.hdx-kv:hover,.hdx-color:hover,.hdx-chars:hover{background:var(--sunk)}
+.hdx-k{color:var(--dim);font-size:12.5px;flex:none}
+.hdx-v{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;margin-left:auto;text-align:right}
+.hdx-h4{font-size:12.5px;font-weight:500;color:var(--mut);margin:8px 0 2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdx-chars{display:block;width:100%;text-align:left;margin-top:6px;padding:7px 8px;border-radius:7px;border:1px solid var(--line);font-size:13px;line-height:1.4;color:var(--lit);white-space:pre-wrap;overflow-wrap:anywhere;max-height:120px;overflow:auto}
+.hdx-colors{display:flex;flex-direction:column;gap:1px}
+.hdx-color{display:flex;align-items:center;gap:8px;min-height:28px;padding:3px 6px;border-radius:6px;text-align:left;min-width:0;font-size:13px}
+.hdx-sw{margin:0}
+.hdx-cv{color:var(--ink);font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdx-cw{margin-left:auto;color:var(--dim);font-size:12px;flex:none;white-space:nowrap}
+.hdx-code{margin:2px 0 8px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:12px/1.55 var(--mono);white-space:pre;overflow:auto;max-height:300px;tab-size:2;user-select:text;-webkit-user-select:text}
+.hdx-code code{font:inherit}
+.hdx-asset{display:flex;align-items:center;gap:8px;min-height:30px;padding:1px 0 1px 6px;min-width:0;font-size:13px}
+.hdx-aname{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdx-ameta{flex:none;color:var(--dim);font-size:12px;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}

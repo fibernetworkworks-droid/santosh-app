@@ -29,6 +29,7 @@
     web: I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/>'),
     image: I('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'),
     script: I('<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/>'),
+    results: I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
     recipes: I('<path d="M5 4h14v16H5z"/><path d="M9 8h6M9 12h6"/>'), saved: I('<path d="M6 3h12v18l-6-4-6 4z"/>'),
     back: I('<path d="M15 6l-6 6 6 6"/>')};
   const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', ready: null, recipe: null, q: '', rsec: ''};
@@ -41,7 +42,7 @@
         <div class="hp-sep">Make a prompt for</div>
         ${st.secs.map(s => nav(s.key, '#/s/' + s.key, s.label, s.key)).join('')}
         <div class="hp-sep">Library</div>
-        ${nav('recipes', '#/recipes', 'Recipes')}${nav('saved', '#/saved', 'My prompts')}
+        ${nav('recipes', '#/recipes', 'Recipes')}${nav('saved', '#/saved', 'My prompts')}${nav('results', '#/results', 'Results')}
         <div class="hp-grow"></div>
         <a class="hp-nav" href="/console/">${ICON.back}<span>Back to the console</span></a>
       </nav><main class="hp-main" id="hpMain"><div class="hp-wrap">${body}</div></main></div>`;
@@ -51,7 +52,7 @@
       .map(([k, l]) => `<button type="button" data-sec="${esc(k)}" aria-pressed="${st.section === k}">${esc(l)}</button>`).join('')}</span>`;
   }
   const cards = items => items.map(r => `<button type="button" class="hp-card" data-recipe="${esc(r.id)}"><b>${esc(r.title)}</b><span>${esc(r.makes || '')}</span>
-      <i><span class="hp-tag">${esc((st.secs.find(s => s.key === r.section) || {label: r.section}).label)}</span> ${r.blanks && r.blanks.length ? esc(r.blanks.length + ' blank' + (r.blanks.length > 1 ? 's' : '') + ' to fill') : 'ready to use'}</i></button>`).join('');
+      <i><span class="hp-tag">${esc((st.secs.find(s => s.key === r.section) || {label: r.section}).label)}</span> ${r.kept ? `<span class="hp-kept">kept ${r.kept.kept} of ${r.kept.of} times</span> ` : ''}${r.blanks && r.blanks.length ? esc(r.blanks.length + ' blank' + (r.blanks.length > 1 ? 's' : '') + ' to fill') : 'ready to use'}</i></button>`).join('');
 
   /* ---------- home / a section ---------- */
   async function home(section) {
@@ -102,6 +103,13 @@
       st.pack = pack; st.savedId = ''; go('#/w');
     } catch (e) { toast(e.message, true); if (btn) { btn.disabled = false; btn.textContent = btn.id === 'hpAgain' ? 'Read my words again' : 'Improve my prompt'; } }
   }
+  /* NATIJA KHATA: tell the ledger a prompt was taken out (shape only). Never blocks her. */
+  function hand(how) {
+    const rd = location.hash === '#/ready';
+    const body = rd ? {text: st.ready.run.text || st.ready.prompt, section: 'web', recipe_id: st.ready.id || '', how}
+      : {text: how === 'copy' ? st.pack.out.prompt : (st.pack.out.run.text || st.pack.out.prompt), brief: st.pack.brief, how};
+    return api('POST', '/api/prompting/runs', {...body, origin: 'page'}).catch(() => null);
+  }
   function run(r) {
     try { localStorage.setItem(r.to === 'web' ? 'hoola.prompt.toWeb' : 'hoola.flow.toChat', String(r.text || '')); }
     catch (e) { toast('This browser could not hand the text over. Use Copy.', true); return; }
@@ -120,7 +128,7 @@
         <span class="hp-seg" role="group" aria-label="Kind">${[['', 'All'], ...st.secs.map(s => [s.key, s.label])].map(([k, l]) => `<button type="button" data-rsec="${esc(k)}" aria-pressed="${st.rsec === k}">${esc(l)}</button>`).join('')}</span>
         <button class="hp-b" type="submit">Search</button></form>
       <div class="hp-grid">${cards(r.items || []) || '<p class="hp-empty">Nothing matches. Try one word, like "poster" or "reel".</p>'}</div>
-      <p style="margin-top:16px;color:var(--dim);font-size:13px">These are starting points written by Hoola. They are not ranked by results yet.</p>`);
+      <p style="margin-top:16px;color:var(--dim);font-size:13px">These are starting points written by Hoola. Once enough people have used a recipe, the ones whose results were kept come first, with the count.</p>`);
   }
   async function openRecipe(id) {
     const list = await api('GET', '/api/prompting/recipes?section=' + (id.startsWith('web:') ? 'web' : '') + '&q=' + (id.startsWith('web:') ? encodeURIComponent(st.q) : '')).catch(() => ({items: []}));
@@ -136,7 +144,7 @@
   async function useRecipe(id, values) {
     try {
       const got = await api('POST', '/api/prompting/recipes/use', {recipe_id: id, values});
-      if (got.ready) { st.ready = got.ready; go('#/ready'); return; }
+      if (got.ready) { st.ready = {...got.ready, id}; go('#/ready'); return; }
       st.pack = got; st.savedId = ''; st.text = got.brief.intent; go('#/w');
     } catch (e) { toast(e.message, true); }
   }
@@ -155,6 +163,46 @@
       ${(r.items || []).length ? `<div class="hp-rows">${rows(r.items)}</div>` : '<p class="hp-empty">Nothing saved yet. Make a prompt and press Save to keep it here.</p>'}`);
   }
 
+  /* ---------- results: the ledger (NATIJA KHATA) ---------- */
+  const GRADE = {kept: 'Kept', kept_after_edit: 'Kept after an edit', redone: 'Redone', dropped: 'Dropped', unused: 'Never used'};
+  function runState(r) {
+    if (r.grade) return GRADE[r.grade] + (r.grade.startsWith('kept') && !r.by_her ? ' (still there after 3 days)' : '');
+    return {handed: r.how === 'copy' ? 'Copied out of Hoola' : 'Not run yet', running: 'Being made', ready: 'Made - waiting to see what you do with it', settled: 'Closed'}[r.status] || r.status;
+  }
+  function four(n) {
+    const v = (x, unit) => x === null || x === undefined ? '<b class="hp-na">-</b>' : `<b>${esc(String(x))}${unit || ''}</b>`;
+    return `<div class="hp-four">
+      <div><span>Kept rate</span>${v(n.kept_rate, '%')}<small>${n.kept} kept of ${n.graded} judged</small></div>
+      <div><span>Redos for each kept result</span>${v(n.redos_per_kept)}<small>${n.redone} redone</small></div>
+      <div><span>Rupees for each kept result</span>${v(n.inr_per_kept === null || n.inr_per_kept === undefined ? null : 'Rs ' + n.inr_per_kept)}<small>AI list price, not a bill</small></div>
+      <div><span>Minutes to a kept result</span>${v(n.minutes_to_kept)}<small>from taking the prompt to keeping the result</small></div></div>
+      ${n.enough ? '' : `<p class="hp-empty">Numbers appear after ${n.min_runs} results have been judged. So far: ${n.graded}. ${n.open ? n.open + ' still open.' : ''}</p>`}`;
+  }
+  async function results() {
+    const r = await api('GET', '/api/prompting/ledger' + (st.everyone ? '?everyone=1' : ''));
+    const n = r.numbers, lab = k => (st.secs.find(s => s.key === k) || {label: k}).label;
+    shell('results', `<div class="hp-top"><h1>Results</h1><span class="hp-tag">last ${n.days} days</span>
+        ${r.owner ? `<span class="hp-seg" role="group" aria-label="Whose numbers"><button type="button" data-who="" aria-pressed="${!st.everyone}">Mine</button><button type="button" data-who="1" aria-pressed="${!!st.everyone}">All users who share</button></span>` : ''}</div>
+      <p class="hp-lead">What happened to the results of the prompts you took from here. This is how Hoola Prompting is judged.</p>
+      ${four(n.all)}
+      <h2 class="hp-sub2">By kind</h2>
+      <div class="hp-rows">${Object.keys(n.sections).map(k => { const s = n.sections[k]; return `<div class="hp-rowi hp-wrapr"><div><b>${esc(lab(k))}</b>
+          <span>${s.enough ? `${s.kept_rate}% kept (${s.kept} of ${s.graded})` : `${s.graded} judged so far - numbers after ${s.min_runs}`} · ${s.redone} redone · ${s.dropped} dropped · ${s.unused} never used</span>
+          <span>Prompt Score check: ${esc(s.score_check.say)}</span></div></div>`; }).join('')}</div>
+      ${st.everyone ? '' : `<h2 class="hp-sub2">Your recent prompts</h2>
+      ${(r.recent || []).length ? `<div class="hp-rows">${r.recent.map(x => `<div class="hp-rowi hp-wrapr"><div><b>${esc(lab(x.section))}${x.recipe ? ' · from a recipe' : ''} · score ${x.score || '-'}</b>
+          <span>${esc(runState(x))}${x.edited_before ? ' · you changed the prompt before running it' : ''}${x.edits ? ` · ${x.edits} change${x.edits > 1 ? 's' : ''} to the result` : ''}${x.inr ? ` · Rs ${x.inr}` : ''} · ${esc(new Date(x.at).toLocaleString())}</span></div>
+          <button type="button" class="hp-b sm${x.thumb === 'up' ? ' pri' : ''}" data-thumb="up" data-run="${esc(x.id)}" aria-pressed="${x.thumb === 'up'}">Good result</button>
+          <button type="button" class="hp-b sm${x.thumb === 'down' ? ' danger' : ''}" data-thumb="down" data-run="${esc(x.id)}" aria-pressed="${x.thumb === 'down'}">Not right</button></div>`).join('')}</div>`
+        : '<p class="hp-empty">Nothing yet. Make a prompt and press its Open or Use button; what you do with the result shows here.</p>'}
+      <h2 class="hp-sub2">What is kept about your prompts</h2>
+      <p class="hp-lead">Only the shape: the kind, the recipe, which details were filled, the score and what happened to the result. Your words, prices, names and numbers are not stored here. Nothing is written from an incognito chat.</p>
+      <div class="hp-acts"><label class="hp-sw"><input type="checkbox" id="hpLedger" ${r.prefs.ledger ? 'checked' : ''}> Keep this record for me</label>
+        <label class="hp-sw"><input type="checkbox" id="hpShare" ${r.prefs.share ? 'checked' : ''}> Let my results (shape only) help order recipes for everyone</label>
+        <button type="button" class="hp-b sm danger" id="hpForget">Delete my record</button></div>`}
+      <p style="margin-top:16px;color:var(--dim);font-size:13px">${esc(n.note)}</p>`);
+  }
+
   /* ---------- routing + events ---------- */
   function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }
   async function route() {
@@ -164,6 +212,7 @@
       else if (h === '#/ready') { if (st.ready) ready(); else go('#/recipes'); }
       else if (h === '#/recipes') await recipes();
       else if (h === '#/saved') await saved();
+      else if (h === '#/results') await results();
       else if (h.startsWith('#/s/') && st.secs.some(s => s.key === h.slice(4))) await home(h.slice(4));
       else await home('');
     } catch (e) { toast(e.message, true); }
@@ -180,9 +229,13 @@
     if (b.dataset.sec !== undefined) { st.section = b.dataset.sec; document.querySelectorAll('[data-sec]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
     if (b.dataset.rsec !== undefined) { st.rsec = b.dataset.rsec; st.q = $('#hpQ') ? $('#hpQ').value.trim() : st.q; recipes(); return; }
     if (b.dataset.recipe) { openRecipe(b.dataset.recipe); return; }
+    if (b.dataset.who !== undefined) { st.everyone = !!b.dataset.who; results().catch(er => toast(er.message, true)); return; }
+    if (b.dataset.thumb) { try { await api('POST', `/api/prompting/runs/${encodeURIComponent(b.dataset.run)}/thumb`, {value: b.dataset.thumb}); await results(); } catch (er) { toast(er.message, true); } return; }
+    if (b.id === 'hpForget') { if (!confirm('Delete the whole record of your prompts and their results? This cannot be undone.')) return;
+      try { const r = await api('DELETE', '/api/prompting/ledger?confirm=DELETE'); toast(`Deleted ${r.deleted} record${r.deleted === 1 ? '' : 's'}.`); await results(); } catch (er) { toast(er.message, true); } return; }
     if (b.id === 'hpAgain') { understand($('#hpHers').value, st.pack.brief.section); return; }
-    if (b.id === 'hpRun') { run(location.hash === '#/ready' ? st.ready.run : st.pack.out.run); return; }
-    if (b.id === 'hpCopy') { copy(location.hash === '#/ready' ? st.ready.prompt : st.pack.out.prompt); return; }
+    if (b.id === 'hpRun') { b.disabled = true; await hand('run'); run(location.hash === '#/ready' ? st.ready.run : st.pack.out.run); return; }
+    if (b.id === 'hpCopy') { hand('copy'); copy(location.hash === '#/ready' ? st.ready.prompt : st.pack.out.prompt); return; }
     if (b.id === 'hpSave') { b.disabled = true;
       try { const r = await api('POST', '/api/prompting/saved', {brief: st.pack.brief, id: st.savedId}); st.savedId = r.id; toast('Saved in My prompts.'); bench(); }
       catch (er) { toast(er.message, true); b.disabled = false; } return; }
@@ -191,6 +244,11 @@
         st.pack = {brief: r.brief, score: r.score, out: r.out, source_labels: r.source_labels}; st.savedId = r.id; st.text = r.brief.intent; go('#/w'); } catch (er) { toast(er.message, true); } return; }
     if (b.dataset.del) { if (!confirm('Delete this saved prompt?')) return;
       try { await api('DELETE', '/api/prompting/saved/' + encodeURIComponent(b.dataset.del)); toast('Deleted.'); route(); } catch (er) { toast(er.message, true); } }
+  });
+  document.addEventListener('change', async e => {
+    if (e.target.id !== 'hpLedger' && e.target.id !== 'hpShare') return;
+    try { await api('PUT', '/api/prompting/ledger/prefs', e.target.id === 'hpLedger' ? {ledger: e.target.checked} : {share: e.target.checked}); toast('Saved.'); }
+    catch (er) { e.target.checked = !e.target.checked; toast(er.message, true); }
   });
   window.addEventListener('hashchange', route);
   (async () => {

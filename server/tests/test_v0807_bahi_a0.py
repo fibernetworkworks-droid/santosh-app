@@ -319,6 +319,8 @@ def test_console_wiring_and_css():
     assert "/api/bahi/overview" in js and "/api/bahi/sync" in js and "esc(" in js
     assert "client_secret" not in js and "type=\"password\"" not in js     # the desk never asks for a key or a password
     blk = css[css.index("/* v0.807 BAHI"):]
+    nxt = re.search(r"/\* (v0\.\d{3}|=+ )", blk[10:])   # only this block - later sessions append their own after it
+    blk = blk[:10 + nxt.start()] if nxt else blk
     assert "infinite" not in blk and "backdrop-filter" not in blk and not re.search(r"#[0-9a-fA-F]{6}", blk)
     wf = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text(encoding="utf-8")
     assert "          - wb_check\n" in wf and "python -m app.bahi.wbcheck" in wf
