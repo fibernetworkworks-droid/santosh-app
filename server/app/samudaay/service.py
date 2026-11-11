@@ -770,7 +770,7 @@ def _welcome_now(c: SamCommunity, force: bool = False) -> int:
             return 0
         names = [m.name for m in due][:8]
         name = ", ".join(names) + (f" and {len(due) - 8} more" if len(due) > 8 else "")
-        rules = c.rules or R.DEFAULT_RULES.get(c.language, R.DEFAULT_RULES["hinglish"])
+        rules = c.rules or R.DEFAULT_RULES.get(c.language, R.DEFAULT_RULES["english"])
         text = R.render(t.text, name=name, community=c.name, rules=rules, username="")
         for m in due:
             m.welcome_due, m.welcomed = False, True
@@ -798,7 +798,7 @@ def draft_template(tenant: str, text: str = "", comm: str = "", language: str = 
         raise SamError("kind: welcome ya rules.")
     with session() as s:
         c = _community(s, tenant, comm) if comm else None
-        lang = (language or (c.language if c else "hinglish")).lower()
+        lang = (language or (c.language if c else "english")).lower()
         if lang not in R.LANGS:
             raise SamError("Language: hinglish, hindi, marathi or english.")
         cid = c.id if c else ""
@@ -1065,7 +1065,7 @@ def request_action(tenant: str, kind: str, comm: str = "", member: str = "", pos
             if kind == "fact_note" and not text:
                 text = "🔎 This message is not confirmed to be true. Before forwarding it, check PIB Fact Check (factcheck.pib.gov.in) or the original source."
             if kind == "warn" and not text:
-                rules = c.rules or R.DEFAULT_RULES.get(c.language, R.DEFAULT_RULES["hinglish"])
+                rules = c.rules or R.DEFAULT_RULES.get(c.language, R.DEFAULT_RULES["english"])
                 text = f"{m.name}, please follow the group rules: {rules}."
             if not (text or "").strip():
                 raise SamError("What should it say?")
