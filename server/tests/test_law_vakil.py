@@ -92,14 +92,14 @@ def test_rules_parsing_and_limitation():
     y = R.limitation("money_loan", "2024-02-29", today=DAY)                         # 28 Feb 2027 is a Sunday -> s.4
     assert y["last_date"] == "2027-03-01" and "Section 5" in y["notes"][0]
     # unknown period is asked, never guessed; her advocate's number is used and labelled
-    assert not R.limitation("cheque_138", "2026-10-01")["ok"] and "vakil" in R.limitation("slp", "2026-10-01")["ask"]
+    assert not R.limitation("cheque_138", "2026-10-01")["ok"] and "advocate" in R.limitation("slp", "2026-10-01")["ask"]
     assert not R.limitation("something_else", "2026-10-01")["ok"]
     mine = R.limitation("cheque_138", "2026-10-01", n=1, unit="m", today=DAY)
     assert mine["ok"] and mine["last_date"] == "2026-11-02" and mine["source"] == "aapka bataya"   # 1 Nov is Sunday
     over = R.limitation("review", "2026-10-01", n=45, unit="d", today=DAY)
-    assert "aapka maana" in over["steps"][0]
+    assert "using yours" in over["steps"][0]
     late = R.limitation("appeal_other_civil", "2026-10-01", cc_applied="2026-11-05", cc_ready="2026-11-10", today=DAY)
-    assert late["excluded_days"] == 0 and "baad maangi" in " ".join(late["steps"])
+    assert late["excluded_days"] == 0 and "requested after" in " ".join(late["steps"])
     assert {k for k, _ in R.checklist("cheque_138")} >= {"vakalatnama", "cheque", "return_memo", "notice"}
 
 
@@ -115,7 +115,7 @@ def test_diary_paste_and_cause_list(vk):
     S.save_client(T, ref="Ramesh Patil", id_ref="{id:abc123}")
     out = S.status_paste(T, STATUS_TEXT)
     assert out["matched"] and out["matter"]["cnr"] == "MHAK010004562024" and out["matter"]["next_date"] == "2026-11-15"
-    assert out["matter"]["stage"] == "Evidence" and any("Agli tareekh" in c for c in out["changes"])
+    assert out["matter"]["stage"] == "Evidence" and any("Next date" in c for c in out["changes"])
     assert len(out["matter"]["hearings"]) == 2
     again = S.status_paste(T, STATUS_TEXT)
     assert len(again["matter"]["hearings"]) == 2                                    # nothing doubled
@@ -130,14 +130,14 @@ def test_diary_paste_and_cause_list(vk):
     cl = S.cause_list(T, CAUSE_TEXT)
     got = {x["matter"]: x for x in cl["found"]}
     assert set(got) == {"M-0001", "M-0002"} and got["M-0001"]["item"] == 1 and got["M-0001"]["date_changed"]
-    assert [x["matter"] for x in cl["not_listed"]] == ["M-0003"] and "list mein nahi mile" in cl["say"]
+    assert [x["matter"] for x in cl["not_listed"]] == ["M-0003"] and "not on the list" in cl["say"]
     assert S.matter_view(T, "M-0001")["next_date"] == "2026-10-26"
     h = S.hearing(T, "M-0001", "2026-10-26", "Evidence", "PW1 ki cross poori hui", "2026-11-20", "Evidence (PW2)", "evidence")
-    assert h["matter"]["next_date"] == "2026-11-20" and "Agli tareekh 2026-11-20" in h["say"]
+    assert h["matter"]["next_date"] == "2026-11-20" and "Next date 2026-11-20" in h["say"]
     with pytest.raises(S.VakilError):
         S.hearing(T, "M-0001", "2026-10-26", next_date="2026-10-20")
     no_next = S.hearing(T, "M-0002", "2026-10-26", result="Bail par sunwaai adhoori")
-    assert "nahi bataayi" in no_next["say"]
+    assert "No next date" in no_next["say"]
     S.event(T, "M-0001", "2024-01-10", "Rs 2,00,000 udhaar diya")
     S.event(T, "M-0001", "2024-02-15", "Legal notice bheja")
     d = S.doc_set(T, "M-0001", "plaint", "have")
@@ -163,7 +163,7 @@ def test_drafts(vk, monkeypatch):
     assert "tabiyat kharab" in adj["draft"]["text"] and "DRAFT" in adj["draft"]["text"] and adj["file"]["name"].endswith(".docx")
     assert "MAH/1234/2015" in adj["draft"]["text"] and "vakil_draft" in kinds(S)
     blank = S.draft(T, "M-0001", "adjournment")
-    assert blank["draft"]["blanks"] >= 1 and "wajah" in blank["draft"]["text"]
+    assert blank["draft"]["blanks"] >= 1 and "reason" in blank["draft"]["text"]
     v = S.draft(T, "M-0001", "vakalatnama")
     assert "Welfare" in v["draft"]["text"] and "enrolment" in v["draft"]["text"]
     with pytest.raises(S.VakilError):
@@ -176,7 +176,7 @@ def test_drafts(vk, monkeypatch):
                         "1. Plaintiff lent Rs 2,00,000 on 2024-01-10 and Rs 9,99,999 later. 2. See AIR 1999 SC 123.")
     syn = S.draft(T, "M-0001", "synopsis")
     t = syn["draft"]["text"]
-    assert "2,00,000" in t and "9,99,999" not in t and "[?]" in t and "AIR 1999" not in t and "[citation chahiye]" in t
+    assert "2,00,000" in t and "9,99,999" not in t and "[?]" in t and "AIR 1999" not in t and "[citation needed]" in t
     monkeypatch.setattr(S, "_ai", lambda *a, **k: "")
     assert "Facts in brief" in S.draft(T, "M-0001", "synopsis")["draft"]["text"]
     seen = {}
@@ -186,7 +186,7 @@ def test_drafts(vk, monkeypatch):
         return {"doc": {"id": "ld1", "number": "L-0007", "title": "Reply to notice", "text": "Draft reply"}}
     monkeypatch.setattr(S, "_lekhak_reply", fake_lekhak)
     nr = S.draft(T, "M-0001", "notice_reply", words="Notice mein 5 lakh maange, jawab: koi udhaar baaki nahi", to="Adv. Kale")
-    assert nr["draft"]["lekhak_doc"] == "ld1" and "5 lakh" in seen["words"] and "aapke tap" in nr["say"]
+    assert nr["draft"]["lekhak_doc"] == "ld1" and "5 lakh" in seen["words"] and "your tap" in nr["say"]
     with pytest.raises(S.VakilError):
         S.draft(T, "M-0001", "notice_reply", words="hi")
     assert len(S.matter_view(T, "M-0001")["drafts"]) == 7
@@ -199,7 +199,7 @@ def test_cards_only_her_tap(vk, monkeypatch):
     msg = S.message_request(T, "M-0001", "client")
     card = msg["card"]
     assert card["status"] == "waiting" and "15" in card["body"]["text"] and "Ramesh Patil" in card["body"]["text"]
-    assert "vakil_card" in kinds(S) and "Maine kuch nahi bheja" in msg["say"]
+    assert "vakil_card" in kinds(S) and "I have sent nothing" in msg["say"]
     assert S.message_request(T, "M-0001", "client")["card"]["id"] == card["id"]          # never asked twice
     with pytest.raises(S.VakilError):
         S.decide(T, card["id"], True, card["hash"])                                     # tools can't approve
@@ -218,7 +218,7 @@ def test_cards_only_her_tap(vk, monkeypatch):
     S.save_matter(T, "Anil Joshi vs Bank", client="Anil Joshi", case="RCS 789/2023")
     with pytest.raises(S.VakilError) as e:
         S.message_request(T, "M-0001", "client", text="Anil Joshi ka case bhi isi din hai.")
-    assert "doosre matter" in str(e.value)
+    assert "another matter" in str(e.value)
     with pytest.raises(S.VakilError):
         S.message_request(T, "M-0001", "opposite")                                      # never writes to the other side itself
     with pytest.raises(S.VakilError):
@@ -227,7 +227,7 @@ def test_cards_only_her_tap(vk, monkeypatch):
     od = S.decide(T, opp["id"], True, opp["hash"], by_tap=True)
     assert od["links"]["email"].startswith("mailto:kale%40law.in")
     S.card_done(T, opp["id"], on="2026-10-23")
-    assert any("Doosre paksh" in e["what"] for e in S.matter_view(T, "M-0001")["events"])
+    assert any("other side" in e["what"] for e in S.matter_view(T, "M-0001")["events"])
     S.save_client(T, ref="Anil Joshi", no_messages=True)
     with pytest.raises(S.VakilError):
         S.message_request(T, "M-0002", "client")
@@ -284,7 +284,7 @@ def test_day_tick_forget(vk, monkeypatch):
     S.limitation(T, "appeal_other_civil", "2026-10-01", "M-0002")                   # 31 Oct: 8 days left
     d = S.day(T)
     assert d["today"][0]["matter"] == "M-0001" and d["tomorrow"][0]["matter"] == "M-0002"
-    assert d["stale"][0]["matter"] == "M-0003" and d["limitation"][0]["days_left"] == 8 and "Aaj ki tareekhein" in d["say"]
+    assert d["stale"][0]["matter"] == "M-0003" and d["limitation"][0]["days_left"] == 8 and "Today's hearings" in d["say"]
     when = datetime(2026, 10, 23, 3, 0, tzinfo=timezone.utc)                        # 08:30 IST
     out = S.tick(when)
     assert out["morning"] == 1 and out["alerts"] == 2                               # limitation window 15 + stale date
