@@ -26,13 +26,13 @@ def _d(v: Any) -> dt.date:
             return dt.datetime.strptime(s, f).date()
         except ValueError:
             pass
-    raise ValueError(f"Tareekh samajh nahi aayi: '{v}' (2026-11-05).")
+    raise ValueError(f"Could not read the date: '{v}' (use 2026-11-05).")
 
 
 def _no_protected(names, what="rule"):
     bad = [n for n in names if any(p == str(n).lower() or str(n).lower().startswith(p + "_") for p in PROTECTED)]
     if bad:
-        raise ValueError(f"{what} protected attribute par nahi ban sakta: {', '.join(map(str, bad))}. Medical / age-band rule use karo.")
+        raise ValueError(f"{what} cannot be built on a protected attribute: {', '.join(map(str, bad))}. Use a medical / age-band rule.")
 
 
 def experience(rows: list[dict], group_by: str = "age_band", loss_ratio_alert: Any = 100, min_exposure: Any = 0) -> dict[str, Any]:
@@ -76,7 +76,7 @@ def price_trend(obs: list[dict]) -> dict[str, Any]:
 def triangle(tri: list[list], tail: Any = 1.0) -> dict[str, Any]:
     """Cumulative run-off triangle, one row per origin period, rows shorter as periods are newer."""
     if len(tri or []) < 3:
-        raise ValueError("Kam se kam 3 origin rows (cumulative paid, nayi row chhoti).")
+        raise ValueError("At least 3 origin rows are needed (cumulative paid, newer rows shorter).")
     n = max(len(r) for r in tri)
     fac = []
     for j in range(n - 1):
@@ -134,7 +134,7 @@ def uw_triage(proposals: list[dict], rules: list[dict]) -> dict[str, Any]:
                 ok = {">": lambda: _f(v) > _f(t), ">=": lambda: _f(v) >= _f(t), "<": lambda: _f(v) < _f(t), "<=": lambda: _f(v) <= _f(t),
                       "==": lambda: str(v).lower() == str(t).lower(), "in": lambda: str(v).lower() in [str(x).lower() for x in (t or [])]}[op]()
             except KeyError:
-                raise ValueError(f"op galat: {op}")
+                raise ValueError(f"invalid op: {op}")
             if ok:
                 rt = str(r.get("route", "refer")).lower()
                 hits.append({"label": r.get("label") or r.get("field"), "field": r["field"], "value": v, "route": "refer" if rt == "decline" else rt, "manual_ref": r.get("manual_ref", "[manual page]"),

@@ -24,7 +24,7 @@ def info(pin: str) -> dict:
     p = re.sub(r"\s", "", str(pin or ""))
     ok = valid(p)
     return {"pin": p, "valid": ok, **({"zone": ZONES.get(p[0], "")} if ok else
-                                      {"say": "Yeh PIN code India Post ki list mein nahi hai."})}
+                                      {"say": "This PIN code is not in the India Post list."})}
 
 
 def find_in(text: str) -> list[str]:

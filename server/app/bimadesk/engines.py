@@ -24,7 +24,7 @@ def _d(v: Any) -> dt.date:
             return dt.datetime.strptime(s, f).date()
         except ValueError:
             pass
-    raise ValueError(f"Tareekh samajh nahi aayi: '{v}' (2026-11-05).")
+    raise ValueError(f"Could not read the date: '{v}' (use 2026-11-05).")
 
 
 def _today(v: Any) -> dt.date:
@@ -143,7 +143,7 @@ _STATUS = {
 }
 
 
-def status_message(status: str, claim_id: str = "", extra: str = "", language: str = "hi") -> dict[str, Any]:
+def status_message(status: str, claim_id: str = "", extra: str = "", language: str = "en") -> dict[str, Any]:
     s = (status or "").lower().strip()
     if s not in _STATUS:
         raise ValueError("status: " + ", ".join(_STATUS))
