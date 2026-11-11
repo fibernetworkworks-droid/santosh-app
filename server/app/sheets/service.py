@@ -361,7 +361,7 @@ def plan_update(tenant: str, spreadsheet: str, set_values: dict, where: list[dic
     if not set_values:
         raise SheetError("What should change? Give set, such as {Status: Paid}.")
     if not where and not rows:
-        raise SheetError("Kaunsi rows? where (condition) ya rows (row numbers) do.")
+        raise SheetError("Which rows? Give where (condition) or rows (row numbers).")
     c, meta = resolve(tenant, spreadsheet)
     t = load(c, meta, tab, header_row)
     idx = select_rows(t, where, rows)
@@ -426,7 +426,7 @@ def create(tenant: str, title: str, tabs: list[dict] | None = None, account: str
                          "Profile > Google Sheets.")
     tabs = tabs or [{"name": "Sheet1"}]
     names = [str(t.get("name") or f"Sheet{i + 1}")[:90] for i, t in enumerate(tabs)]
-    meta = c.create(str(title)[:200] or "Santosh sheet", names)
+    meta = c.create(str(title)[:200] or "Hoola sheet", names)
     data, fmt = [], []
     for t, tm in zip(tabs, meta["tabs"]):
         header = [str(h) for h in (t.get("header") or [])]
@@ -723,7 +723,7 @@ def named_range(tenant: str, spreadsheet: str, action: str, name: str | None = N
         raise SheetError("Give a name (the named range's name).")
     if action == "add":
         if not rng:
-            raise SheetError("Range do (jaise 'A1:C10' ya 'Summary!B2:F20').")
+            raise SheetError("Give a range (such as 'A1:C10' or 'Summary!B2:F20').")
         t, a1 = _split_tab_range(meta, str(rng), tab)
         c.batch(meta["id"], [{"addNamedRange": {"namedRange": {"name": str(name)[:250],
                                                                "range": _a1_to_grid_range(a1, t["id"])}}}])
@@ -1102,7 +1102,7 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             msg = f"{p['summary']['title']}: {len(pl['ranges'])} range(s) cleared. (Undo: version history.)"
         elif p["action"] == "delete_tab":
             do_delete_tab(c, pl["sid"], pl["tab_id"])
-            msg = f"{p['summary']['title']}: tab '{pl.get('tab', '')}' hata di. (Undo: version history.)"
+            msg = f"{p['summary']['title']}: tab '{pl.get('tab', '')}' deleted. (Undo: version history.)"
         elif p["action"] == "protect":
             do_protect(c, pl["sid"], pl["tab_id"], pl["range"], pl.get("description", ""), pl.get("editors", []))
             msg = f"{p['summary']['title']}: range '{pl['range']}' locked."

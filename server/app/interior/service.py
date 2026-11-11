@@ -968,7 +968,7 @@ def boq_remove(tenant: str, project: str, line_id: str) -> dict:
         cur = [c for c in _j(p.boq, []) if c["id"] != line_id]
         p.boq = _dump(cur)
         view = _boq_summary(cur)
-    return {"boq": view, "say": "Line hatai. " + view["say"]}
+    return {"boq": view, "say": "Line removed. " + view["say"]}
 
 
 def _boq_summary(lines: list[dict]) -> dict:
@@ -1191,7 +1191,7 @@ def quote_mark(tenant: str, ref: str, what: str, actor: str = "owner") -> dict:
             raise InteriorError("what = sent | accepted | rejected")
         _log(p, f"quote {q.number} {what}", actor_name(tenant, actor))
         view = _quote_view(s, q)
-    return {"quote": view, "say": f"{view['number']}: {what}." + (" Payment stages bane." if what == "accepted" else "")}
+    return {"quote": view, "say": f"{view['number']}: {what}." + (" Payment stages made." if what == "accepted" else "")}
 
 
 def _make_stages(s, tenant: str, p: InteriorProject, q: InteriorQuote) -> None:
@@ -1666,7 +1666,7 @@ def _apply_change(s, tenant: str, p: InteriorProject, c: InteriorChange) -> None
     p.boq = _dump(cur)
     if c.delta > 0.5:
         n = len(s.scalars(select(InteriorStage).where(InteriorStage.project_id == p.id)).all())
-        s.add(InteriorStage(tenant_id=tenant, project_id=p.id, seq=n + 1, label=f"{c.number} (badlav): {c.what[:60]}", amount=c.delta,
+        s.add(InteriorStage(tenant_id=tenant, project_id=p.id, seq=n + 1, label=f"{c.number} (change): {c.what[:60]}", amount=c.delta,
                             source=c.id))
     elif c.delta < -0.5:
         left = -c.delta
@@ -1838,7 +1838,7 @@ def snag_add(tenant: str, project: str, what: str, room: str = "", vendor: str =
         if data:
             _add_photo(tenant, x, data, "before")
         view = _snag_view(s, x)
-    return {"snag": view, "say": f"Snag #{view['number']} ({view['room'] or 'home'}): {view['what']}" + (" + photo (location / EXIF hataya)." if data else ".")}
+    return {"snag": view, "say": f"Snag #{view['number']} ({view['room'] or 'home'}): {view['what']}" + (" + photo (location / EXIF removed)." if data else ".")}
 
 
 def snag_photo(tenant: str, snag_id: str, data: bytes | None = None, file_id: str = "", stage: str = "fixed") -> dict:
@@ -1953,7 +1953,7 @@ def forget(tenant: str, project: str, actor: str = "owner") -> dict:
         p = _proj(s, tenant, project)
         if p.status not in ("done", "cancelled"):
             raise InteriorError("Only after the project is completed / cancelled.")
-        p.client, p.phone, p.email, p.site, p.client_gstin = "Client (hataya)", "", "", "", ""
+        p.client, p.phone, p.email, p.site, p.client_gstin = "Client (removed)", "", "", "", ""
         p.pin, p.forgotten = "", True
         for x in s.scalars(select(InteriorSnag).where(InteriorSnag.project_id == p.id)).all():
             for ph in _j(x.photos, []):
@@ -2029,7 +2029,7 @@ def day(tenant: str) -> dict:
     if due:
         parts.append("Payment stage due: " + "; ".join(f"{d['project']} {d['label']} {d['amount_text']}" for d in due[:5]))
     if snag_open:
-        parts.append("Khule snag: " + ", ".join(f"{k} ({v})" for k, v in snag_open.items()))
+        parts.append("Open snags: " + ", ".join(f"{k} ({v})" for k, v in snag_open.items()))
     if expiring:
         parts.append("Quote validity is ending: " + ", ".join(q["number"] for q in expiring))
     if handovers:

@@ -687,10 +687,10 @@ def update(tenant: str, case_ref: str, stage: str = "", owner: str | None = None
             if o and team and o.lower() not in team and o.lower() not in ("main", "owner", "aap", "me"):
                 raise ShikayatError("That name is not in the team: " + ", ".join(m["name"] for m in _j(st.team, [])))
             c.owner = o[:80]
-            bits.append(f"Zimmedaar: {o or 'aap'}")
+            bits.append(f"Owner of the case: {o or 'you'}")
         if severity in R.SEVERITIES:
             c.severity = severity
-            bits.append(f"Gambhirta: {severity}")
+            bits.append(f"Severity: {severity}")
         if causes:
             cs = [x for x in causes if x in R.CAUSES or x == "other"]
             if cs:
@@ -1454,7 +1454,7 @@ def day(tenant: str) -> dict[str, Any]:
         resolved = [c for c in rows if c.stage == "resolved"]
         not_told = [c for c in resolved if not c.told_at]
         if urgent:
-            parts.append("Zaroori: " + ", ".join(f"{c.number} ({c.customer or c.product or 'graahak'})" for c in urgent[:4]))
+            parts.append("Urgent: " + ", ".join(f"{c.number} ({c.customer or c.product or 'customer'})" for c in urgent[:4]))
         if ack_late:
             parts.append(f"{len(ack_late)} acknowledged late: " + ", ".join(c.number for c in ack_late[:5]))
         elif no_ack:

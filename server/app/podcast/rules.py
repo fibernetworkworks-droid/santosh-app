@@ -63,8 +63,8 @@ def phone(v: Any) -> str:
 
 def scrub(text: str) -> str:
     """Card-like / Aadhaar-like numbers and OTP / PIN values never get stored from pasted text."""
-    t = re.sub(r"(?i)\b(otp|pin|cvv|password|passcode)\s*[:\-]?\s*\S+", r"\1 [hataya]", str(text or ""))
-    return re.sub(r"\b(?:\d[ -]?){12,19}\b", "[number hataya]", t)
+    t = re.sub(r"(?i)\b(otp|pin|cvv|password|passcode)\s*[:\-]?\s*\S+", r"\1 [removed]", str(text or ""))
+    return re.sub(r"\b(?:\d[ -]?){12,19}\b", "[number removed]", t)
 
 
 # ---------------------------------------------------------------- time codes

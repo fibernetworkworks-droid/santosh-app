@@ -852,7 +852,7 @@ async def _wrap(job: Job, status: str, summary: str, fin: dict) -> dict[str, Any
     if proof:
         lines.append("Proof: " + " | ".join(proof))
     if fin.get("pending"):
-        lines.append("Baaki: " + str(fin["pending"])[:300])
+        lines.append("Pending: " + str(fin["pending"])[:300])
     if outputs:
         lines.append("Files: " + ", ".join(o["name"] for o in outputs))
     if job.saved_recipe:
@@ -884,7 +884,7 @@ async def _tool(job: Job, name: str, a: dict[str, Any]) -> Any:
     if name == "open":
         s = await job.sess(create=True)
         r = await op.goto(s, str(a.get("url", "")))
-        job.step(f"Khola: {site_of(r.get('url', ''))}")
+        job.step(f"Opened: {site_of(r.get('url', ''))}")
         return r
     if name in ("web_search", "read_url", "youtube_howto"):
         return await _research(name, a)
@@ -923,7 +923,7 @@ async def _tool(job: Job, name: str, a: dict[str, Any]) -> Any:
         if fid not in job.files:
             return {"ok": False, "error": "Only files the owner gave for this job can be uploaded. Ask her (ask_owner question) to attach it in the chat."}
         r = await op.act(s, "upload", str(a.get("ref", "")), value=fid, var=a.get("var") or None)
-        job.step(f"File lagayi: {r.get('value')}")
+        job.step(f"File attached: {r.get('value')}")
         return r
     if name == "press":
         return await op.act(s, "press", a.get("ref") or None, value=str(a.get("key", "Enter")))
@@ -971,7 +971,7 @@ async def _ask(job: Job, s, a: dict[str, Any]) -> dict[str, Any]:
     op = job.op
     req = await op.request_human(s, str(a.get("kind", "question")), str(a.get("reason", "")), a.get("ref") or None,
                                  a.get("options") or None)
-    job.step(f"Aapse poocha: {req.reason[:80]}")
+    job.step(f"Asked you: {req.reason[:80]}")
     return await _wait_owner(job, s, req)
 
 

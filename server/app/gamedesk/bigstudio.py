@@ -375,7 +375,7 @@ def new_project(tenant: str, engine: str, title: str, engine_version: str = "", 
         raise BigError(why)
     module = str(module or "").strip()
     if module and not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{1,59}", module):
-        raise BigError("C++ module: letters, digits, _ (jaise MyGame).")
+        raise BigError("C++ module: letters, digits, _ (such as MyGame).")
     with session() as s:
         n = len(s.scalars(select(BigProject.id).where(BigProject.tenant_id == tenant)).all()) + 1
         p = BigProject(tenant_id=tenant, number=f"E-{n:03d}", engine=engine, title=title,

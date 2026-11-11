@@ -741,7 +741,7 @@ def run_sheet(tenant: str, episode: str, minutes=None, with_model: bool = True) 
     with _LOCK, session() as s:
         e = _ep(s, tenant, episode)
         e.run_sheet = _dump(rows)
-        _log(e, "Run sheet bani")
+        _log(e, "Run sheet made")
     return {"run_sheet": rows, "minutes": t, "show": show, "say": f"Run sheet ready ({t} min, {len(rows)} parts)."}
 
 
@@ -975,7 +975,7 @@ def transcribe(tenant: str, episode: str, file_id: str = "", text: str = "", act
         if nt:
             nt["status"] = "stale"
             e.notes = _dump(nt)
-        _log(e, f"Transcript ({src}, {len(segs)} hisse)", actor_name(tenant, actor))
+        _log(e, f"Transcript ({src}, {len(segs)} parts)", actor_name(tenant, actor))
     timed = src != "lekhak"
     return {"segments": len(segs), "source": src, "timed": timed,
             "say": f"Transcript made ({len(segs)} parts)." + ("" if timed else " No timings found: give SRT / VTT for chapters.")}
@@ -1053,7 +1053,7 @@ def make_notes(tenant: str, episode: str, links: Any = None, with_model: bool = 
     with _LOCK, session() as s:
         e = _ep(s, tenant, episode)
         e.notes = _dump(notes)
-        _log(e, "Show notes bane", actor_name(tenant, actor))
+        _log(e, "Show notes made", actor_name(tenant, actor))
     say = "Show notes draft made." + ("" if ans else " (No model was available: you write the summary; chapters come from the transcript's own words.)")
     if dropped:
         say += f" {len(dropped)} point(s) removed because they were not in the transcript."
@@ -1092,7 +1092,7 @@ def edit_notes(tenant: str, episode: str, summary: str | None = None, points: An
         nt["edited"] = True
         nt["status"] = "draft"
         e.notes = _dump(nt)
-        _log(e, "Show notes aapne badle", actor_name(tenant, actor))
+        _log(e, "Show notes changed by you", actor_name(tenant, actor))
         return {"notes": nt, "problems": R.chapter_problems(nt.get("chapters", []), dur), "say": "Show notes changed."}
 
 
@@ -1155,8 +1155,8 @@ def crosspost(tenant: str, episode: str, url: str = "") -> dict:
         "instagram": f"{head}{title} 🎙️\n{nt.get('summary', '')[:300]}\n" + "\n".join(f"• {p}" for p in pts[:3]) + f"\nLink in bio.{tail}",
         "linkedin": f"{head}New episode: {title}\n\n{nt.get('summary', '')}\n\n" + "\n".join(f"• {p}" for p in pts[:5]) + f"\n\n{link}{tail}",
         "x": (f"{head}{title} — {q[:120] + ' ' if q else ''}{link}")[:280],
-        "whatsapp": f"{head}{show}: {title}\n{nt.get('summary', '')[:400]}\nSuniye: {link}{tail}",
-        "newsletter": f"{title}\n\n{description(tenant, episode, 'newsletter')}\n\nSuniye: {link}",
+        "whatsapp": f"{head}{show}: {title}\n{nt.get('summary', '')[:400]}\nListen: {link}{tail}",
+        "newsletter": f"{title}\n\n{description(tenant, episode, 'newsletter')}\n\nListen: {link}",
     }
     return {"drafts": out, "say": "Cross-post drafts ready: copy and post them yourself (Hoola posts nothing)."}
 
@@ -1225,7 +1225,7 @@ def music_use(tenant: str, episode: str, music: str, remove: bool = False) -> di
         if not remove:
             ids.append(m.id)
         e.music = _dump(ids)
-        return {"music": _music_of(s, e), "say": f"{m.title} {'hataya' if remove else 'joda'} ({e.number})."}
+        return {"music": _music_of(s, e), "say": f"{m.title} {'removed' if remove else 'added'} ({e.number})."}
 
 
 def _music_of(s, e: PodcastEpisode) -> list[dict]:
@@ -1810,7 +1810,7 @@ def feed_info(tenant: str) -> dict:
     b = _base()
     return {"on": True, "url": f"{b}/api/podcast/feed/{tok}.xml" if b else f"/api/podcast/feed/{tok}.xml",
             "submit": {"apple": "Apple Podcasts Connect > + > New Show > RSS feed URL", "spotify": "Spotify for Creators > Add your podcast > RSS",
-                       "youtube": "YouTube Studio > Content > Podcasts > RSS feed (jahan uplabdh)", "jiosaavn": "JioSaavn podcaster form"}}
+                       "youtube": "YouTube Studio > Content > Podcasts > RSS feed (where available)", "jiosaavn": "JioSaavn podcaster form"}}
 
 
 def feed_set(tenant: str, on: bool, new_token: bool = False, actor: str = "owner") -> dict:
@@ -2077,7 +2077,7 @@ def tick(when: datetime | None = None) -> dict:
                                 if g and _j(g.release, {}).get("status") != "signed"]
                         alerts.append({"kind": "recording", "episode": e.number,
                                        "say": f"Tomorrow / today: {e.number} '{e.title}' recording ({_fmt_local(tenant, ra)})."
-                                              + ("" if _j(e.run_sheet, []) else " Run sheet banau?")
+                                              + ("" if _j(e.run_sheet, []) else " Shall I make the run sheet?")
                                               + (f" Release pending: {', '.join(miss)} - shall I make the card?" if miss else "")})
                     if ra and e.status == "booked" and ra + timedelta(hours=6) < n and _once(s, tenant, f"noaudio:{e.id}:{ra.isoformat()}"):
                         alerts.append({"kind": "no_audio", "episode": e.number,

@@ -1023,7 +1023,7 @@ def summary(tenant: str, ref: str) -> str:
         if n.get("ok"):
             lines.append(f"Nightly build: ran (version {n['version']}"
                          + (f", {n['fps']} fps" if n.get("fps") else "") + (f", {n['load_s']} s to open" if n.get("load_s") else "")
-                         + ")" + (f"; dhyan: {', '.join(n.get('warnings') or [])}" if n.get("warnings") else "") + ".")
+                         + ")" + (f"; note: {', '.join(n.get('warnings') or [])}" if n.get("warnings") else "") + ".")
         else:
             lines.append("Nightly build: FAIL - " + "; ".join((n.get("errors") or ["?"])[:2])[:200]
                          + (f". Possibly: {', '.join(n.get('suspects')[:2])}" if n.get("suspects") else "") + ".")
@@ -1035,7 +1035,7 @@ def summary(tenant: str, ref: str) -> str:
         lines.append(f"Today: {', '.join(t.number + ' ' + t.title[:40] for t in todo[:3])}.")
     if cur:
         lines.append(f"Milestone {cur['name']}: {cur['done']}/{cur['total']} ({cur['pct']}%)"
-                     + (f", lakshya {cur['target']}" if cur.get("target") else "") + ".")
+                     + (f", target {cur['target']}" if cur.get("target") else "") + ".")
     return "\n".join(lines)
 
 

@@ -287,7 +287,7 @@ def clean(text: Any, n: int = 500) -> str:
     """Her / client words: secrets never kept (OTP / PIN / password values, card-like numbers, Aadhaar-like 12 digits)."""
     t = str(text or "")
     t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 

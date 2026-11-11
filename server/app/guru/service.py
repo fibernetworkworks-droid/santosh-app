@@ -694,7 +694,7 @@ def report(tenant: str, learner_ref: str) -> dict:
              + (f", {int(w['accuracy'] * 100)}% correct." if w["accuracy"] is not None else ".")]
     strong = [t["topic"] for t in p["topics"] if t["mastery"] >= 0.75][:3]
     if strong:
-        lines.append("Achha: " + ", ".join(strong) + ".")
+        lines.append("Doing well: " + ", ".join(strong) + ".")
     if p["weak"]:
         lines.append("Needs more practice: " + ", ".join(p["weak"]) + ".")
     if p["due"]:
@@ -751,7 +751,7 @@ def decide_share(tenant: str, share_id: str, yes: bool, card_hash: str = "", by_
         body = _j(x.report, {})
         x.status = "shared"
         view = _share_view(x)
-    msg = f"Namaste {body.get('to') or ''}, {body.get('text', '')}".strip()
+    msg = f"Hello {body.get('to') or ''}, {body.get('text', '')}".strip()
     c = str(body.get("contact") or "")
     if x.via == "whatsapp":
         d = re.sub(r"\D", "", c)[-10:]

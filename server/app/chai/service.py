@@ -32,7 +32,7 @@ log = logging.getLogger("santosh.chai")
 
 DEFAULT_MENU = [
     {"name": "Chai", "price": 10, "milk_ml": 50, "sugar_g": 8, "tea_g": 2.5, "share": 70},
-    {"name": "Special / adrak chai", "price": 15, "milk_ml": 80, "sugar_g": 10, "tea_g": 3, "share": 20},
+    {"name": "Special / ginger chai", "price": 15, "milk_ml": 80, "sugar_g": 10, "tea_g": 3, "share": 20},
     {"name": "Coffee", "price": 20, "milk_ml": 110, "sugar_g": 10, "tea_g": 0, "share": 10},
 ]
 
@@ -172,9 +172,9 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
                     continue
                 menu.append({"name": str(x["name"]).strip()[:60], "price": _num(x.get("price", 0), "Daam", 0, 10000),
                              "milk_ml": _num(x.get("milk_ml", 0), "Milk (ml)", 0, 1000),
-                             "sugar_g": _num(x.get("sugar_g", 0), "Chini (g)", 0, 200),
-                             "tea_g": _num(x.get("tea_g", 0), "Patti (g)", 0, 100),
-                             "share": _num(x.get("share", 0), "Hissa %", 0, 100)})
+                             "sugar_g": _num(x.get("sugar_g", 0), "Sugar (g)", 0, 200),
+                             "tea_g": _num(x.get("tea_g", 0), "Tea leaves (g)", 0, 100),
+                             "share": _num(x.get("share", 0), "Share %", 0, 100)})
             if not menu:
                 raise ChaiError("The menu needs at least one item (name + price).")
             r.menu = json.dumps(menu, ensure_ascii=False)
@@ -214,7 +214,7 @@ def set_stock(tenant: str, milk_l=None, sugar_kg=None, tea_kg=None) -> dict[str,
                 st[k] = round(_num(v, k, 0, hi), 3)
         st["at"] = galla.today(tenant).isoformat()
         r.stock = json.dumps(st)
-        return {"stock": st, "say": "Stock likh liya: " + ", ".join(f"{k.split('_')[0]} {v:g}{k.split('_')[1]}"
+        return {"stock": st, "say": "Stock noted: " + ", ".join(f"{k.split('_')[0]} {v:g}{k.split('_')[1]}"
                                                                   for k, v in st.items() if k != "at") + "."}
 
 
@@ -280,7 +280,7 @@ def plan_tomorrow(tenant: str, for_date: str = "", weather: dict | None = None, 
             reasons.append(f"Chance of rain tomorrow {rain:.0f}%: more tea sells, +10%.")
         if isinstance(tmax, (int, float)) and tmax >= 38:
             factor *= 0.90
-            reasons.append(f"Kal {tmax:.0f}°C garmi: chai kam, -10%.")
+            reasons.append(f"Tomorrow {tmax:.0f}°C heat: less tea sells, -10%.")
         cups = cups * factor
         safety = 1 + r.safety_pct / 100
         milk_l = cups * pc["milk_ml"] * r.milk_factor / 1000 * safety

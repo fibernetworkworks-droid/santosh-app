@@ -350,7 +350,7 @@ def restore(tenant: str, pid: str, n: int, task: str = "") -> dict[str, Any]:
         raise GameError("That version was not found (only working versions can come back).")
     _limits_build(tenant)
     _save(r, status="queued", stage="queued", pct=10, error="",
-          pending={"mode": "restore", "n": old["n"], "words": f"version {old['n']} wapas", "task": task or ""})
+          pending={"mode": "restore", "n": old["n"], "words": f"version {old['n']} brought back", "task": task or ""})
     _publish(r)
     _submit(r.id)
     return view(r)
