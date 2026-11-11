@@ -2950,3 +2950,8 @@ Task ID: v0.804.0 HOOLA PROMPTING P1-P3 (built as 0.796; main had moved to 0.797
 Ask: "GO P1 TO P3" (owner: test everything together later, after all the build work).
 Built: server/app/prompting/ (anatomy, brief, dialect, context, recipes, store, api), static/console/improve.js + improve.css (the Improve sheet: chat box, Web Studio, Create Image), /console/prompting (promptapp.html, prompting.js, prompting.css), sidebar row; 17 tests incl. 2 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip; one new table prompt_saved self-heals). Next: P4 the outcome ledger on her GO.
+
+Task ID: v0.805.0 LANGGRAPH G6
+Ask: GO G6 (voice as a channel).
+Built: agent/turnchannel.py, call ticket in turndeliver, voice _delegate / _late_result / _check_spoken_claim on the record + facts, stop-words fix on calls; chat_graph still off; 11 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).

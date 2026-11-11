@@ -292,4 +292,4 @@ def test_the_long_jobs_own_row_does_not_hold_it(gz):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.804.0"
+    assert APP_VERSION == "0.805.0"
