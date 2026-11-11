@@ -1664,7 +1664,7 @@ def day(tenant: str) -> dict:
                 m = _money(s, d)
                 if (m["outstanding"] or 0) > 1:
                     unpaid.append(f"{d.number} {d.brand} {_rs(m['outstanding'])} (since {d.due_on})")
-        excl = [f"{d.number} {d.brand}: {d.excl_category} ends {d.excl_to}" for d in ds
+        excl = [f"{d.number} {d.brand}: {d.excl_category} (ends {d.excl_to})" for d in ds
                 if d.excl_to and t.isoformat() <= d.excl_to <= (t + timedelta(days=7)).isoformat()]
         waiting = len(s.scalars(select(InfluencerCard).where(InfluencerCard.tenant_id == tenant,
                                                              InfluencerCard.status == "waiting")).all())

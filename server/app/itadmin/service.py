@@ -911,7 +911,7 @@ def review_item(tenant: str, review: str, access: str, decision: str, actor: str
         with session() as s:
             a = s.get(ItadminAccess, access)
             kind = "user_disable" if a is not None and a.source in ("google", "microsoft") else "access_remove"
-        ch = request_change(tenant, kind, access=access, what=f"Review: {it['system']} - remove access of {it['person'] or it['account']}",
+        ch = request_change(tenant, kind, access=access, what=f"Review: {it['system']}: remove {it['person'] or it['account']}'s access",
                             actor=actor, conv=conv)
         out = {"change": ch["change"], "say": "A removal card was sent (it is removed only with your approval)."}
     return out
@@ -1456,7 +1456,7 @@ def day(tenant: str) -> dict:
     if ren["save_year"]:
         lines.append(f"Unused seats: ~₹{ren['save_year']:,}/year could be saved")
     for c in due_cl[:5]:
-        lines.append(f"{c['person']}: {c['kind']} checklist {c['done']}/{c['total']} (tareekh {c['due']})")
+        lines.append(f"{c['person']}: {c['kind']} checklist {c['done']}/{c['total']} (date {c['due']})")
     if waiting:
         lines.append(f"{len(waiting)} changes waiting for your approval")
     if approved:
@@ -1525,7 +1525,7 @@ def tick(when: datetime | None = None) -> dict:
                 conns = [c.provider for c in s.scalars(select(ItadminConn).where(ItadminConn.tenant_id == t, ItadminConn.status == "ok")).all()
                          if not c.last_sync or (n - (c.last_sync if c.last_sync.tzinfo else c.last_sync.replace(tzinfo=timezone.utc))) > timedelta(hours=24)]
             for l in due:
-                when_txt = "today" if l["days_left"] == 0 else (f"{-l['days_left']} days overdue" if l["days_left"] < 0 else f"in {l['days_left']} days")
+                when_txt = "today" if l["days_left"] == 0 else (f"{-l['days_left']} days overdue" if l["days_left"] < 0 else f"{l['days_left']} days away")
                 say = f"{l['name']}: renewal {when_txt} ({l['renews_on']})."
                 if l["auto_renew"] is False:
                     say += " Auto-renew is OFF: you have to renew it yourself."

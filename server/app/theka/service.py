@@ -883,7 +883,7 @@ def save_sub(tenant: str, name: str, phone: str = "", individual: bool | None = 
         if rate_basis:
             x.rate_basis = str(rate_basis)[:40]
     return {"say": f"{'New' if new else 'Updated'} petty contractor: {name}"
-                   + (f" (naap: {rate_basis})" if rate_basis else "") + "."}
+                   + (f" (rate basis: {rate_basis})" if rate_basis else "") + "."}
 
 
 def sub_bill(tenant: str, sub: str, amount, project: str = "", day: str = "", note: str = "", advance_recover=None) -> dict:
