@@ -1,0 +1,34 @@
+{
+ "base": "babinet-compensator",
+ "rig": "w7-optics-bench",
+ "chapter": "Polarisation",
+ "variants": [
+  {
+   "key": "ellipticity",
+   "title": "Babinet compensator: ratio of the axes of the ellipse",
+   "sample": "Elliptical light made with a quarter-wave plate (generic setting, hidden)",
+   "unknown": "the ellipticity",
+   "params": {
+    "mode": 0
+   }
+  },
+  {
+   "key": "orientation",
+   "title": "Babinet compensator: tilt of the major axis of the ellipse",
+   "sample": "Elliptical light made with a quarter-wave plate (generic setting, hidden)",
+   "unknown": "the orientation of the ellipse",
+   "params": {
+    "mode": 1
+   }
+  },
+  {
+   "key": "phase",
+   "title": "Babinet compensator: phase difference between the components",
+   "sample": "Elliptical light made with a quarter-wave plate (generic setting, hidden)",
+   "unknown": "the phase difference",
+   "params": {
+    "mode": 2
+   }
+  }
+ ]
+}

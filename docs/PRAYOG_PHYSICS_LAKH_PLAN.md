@@ -191,3 +191,34 @@ OOM kill). Run at most 4 - 6 agents at a time, and never edit a rig's .js while 
   discharge the lab does not model).
 - Computational labs: the lab-wide caveat is that a model parameter (Hulthen screening length, tight-binding t = 1, Ising J = 1) is a model unit, not
   a measured constant. schrodinger-screened-coulomb uses the exactly solvable Hulthen potential, not Yukawa, and says so.
+
+**Wave 7 (11 Nov 2026): school + B.Sc mechanics / heat / optics / electricity - 362 -> 456 set-ups (44.9 % -> 56.5 %)**
+- Four packs, each its own trio: `school_w7` (32 rows, rigs sw7-motion / measure / heat-sound / electric benches),
+  `ug_mech_w7` (22 rows, rigs w7-oscillation-bench, w7-heat-bench, w7-harmonics-bench, w7-optical-lever, w7-trolley-incline,
+  w7-air-table), `ug_optics_w7` (20 rows, rig w7-optics-bench; reuses msc-interferometer, polar-bench, fibre-bench labs),
+  `ug_em_w7` (20 rows, rigs em-ug-instruments, bg-lamp-scale). Every claimed lab walked within tolerance; 94 / 94 again on the
+  final tree before the push.
+- `tools/prayog_claim.py` takes "<level>:<id>" keys. Ids repeat across level files (stefan-constant, malus-law, brewster-angle,
+  fibre-numerical-aperture, fibre-bending-loss, capillary-rise-surface-tension, ultrasonic-interferometer); a bare id lands on
+  the FIRST file (pg before ug alphabetically) and the tool now warns. Always qualify a claim whose id is in two files.
+- `tests/test_v0418_prayog.py` was red on main (count pinned at 22, the twin loaded kernels.js only): it now counts every pack's
+  builders and the JS twin loads every pack exactly as the page does (a pack's IIFE gets `this = {HoolaKernels}`), so pack
+  kernels and calcs are compared numerically too.
+- Rigs `sw7-*` are BUILT from pieces in the build agent's scratch folder; edit the output .js directly from now on (the
+  scratch copy is gone with the session).
+- Not built, with the reason (do not fake): qualitative school activities (push-pull, inertia coin, balloon rocket, vibration,
+  ping-pong fork, convection x2, transparent / opaque, magnetic / non-magnetic, filings, stone release, rubber sheet, bell jar,
+  charging by rubbing, graph with error bars), jaltarang, dispersion / colour (needs n(lambda) + colour matching), assembly /
+  diagnosis (household circuit, assemble, open-circuit fault, identify components, switch board, coil winding), pspice
+  (software, no unknown), least-squares-graph (deterministic kernels give no scatter), sextant-height (needs an outdoor scene),
+  two-d-oscillation-momentum (row too vague to check), ultrasonic-grating (acousto-optic rig), microphone response (no
+  transducer kernel), fourier-optics-4f (mostly qualitative), holography (no unknown).
+- Constants written from memory in this wave are labelled "from memory - verify" inside each lab: cork 240 kg/m3; wood Y 11 GPa;
+  nylon 3 GPa; paint absorptances 0.95 / 0.25; kerosene c 2010, brass c 380; paraffin wax (57 C, 200 kJ/kg, 2.5 kJ/kg K);
+  brass / iron expansivity 19e-6 / 11.8e-6; glycerine 4.9e-4, soda glass 2.55e-5; liquid conductivities; red LED 1.8 V; drag
+  1.28 / 0.47; steel / brass E and G (Kaye and Laby); SWG 24 / 22 diameters; tungsten R ~ T^1.2, emissivity 0.35; turpentine
+  1760 / 870; Earth's field ~35-36 uT, dip ~42 deg; soft iron / hard steel Hc and Bs; NdFeB moment; lycopodium 32 um; glycerol
+  nD 1.4746, kerosene ~1.44, mica ~1.58; air n-1 2.765e-4; quartz expansivities; G.652 MFD 9.2 um; Gloge 1972 and Sladen et al.
+  1976 cited from memory.
+- Next: B.Sc analog electronics (22 left), computational (47), digital / communication / sensors, modern / nuclear / solid
+  state; then M.Sc (136 left) and PhD (80 left).

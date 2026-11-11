@@ -24,8 +24,12 @@ HOW IT IS PROVED: `verify()` writes the scenes into a real project with the guar
 REAL engine, headless, with a quit timer - because a scene with an unknown node type does not error, it HANGS, so
 "never reached the end" is itself a failure. Nothing here reports a scene as good on the strength of generating it.
 
-NOT BUILT, said plainly: TileMaps (they need a TileSet and an atlas texture, which is art and a second pipeline),
-3D scenes, and shaders. 2D node scenes with animation and instancing are what this ships.
+v0.79x 3D: the same rule for 3D scenes - meshes with real materials, lights with shadows, a camera, a sky / fog / glow
+environment, 3D physics shapes, and her APPROVED 3D models (res://assets/<key>.glb, made on the Assets tab) placed by
+name, all proved in the real engine (models are imported first, exactly as a build does).
+
+NOT BUILT, said plainly: TileMaps / GridMaps (they need a TileSet / MeshLibrary, which is art and a second pipeline), and
+shaders. A headless check cannot SEE a 3D scene: it proves the scene loads and counts what is in it, not how it looks.
 """
 from __future__ import annotations
 
@@ -64,13 +68,28 @@ NODES = {
 }
 # Properties we will write, with how to render them. Anything not here is dropped and NAMED, never guessed at.
 VEC2 = {"position", "scale", "size", "offset", "velocity", "global_position", "pivot_offset"}
-FLOATS = {"rotation", "wait_time", "speed_scale", "modulate_a", "value", "max_value", "min_value", "width",
+FLOATS = {"fov", "near", "far", "light_energy", "omni_range", "spot_range", "spot_angle", "mass", "rotation_degrees", "rotation", "wait_time", "speed_scale", "modulate_a", "value", "max_value", "min_value", "width",
           "zoom_x", "zoom_y", "gravity_scale", "friction", "radius", "height", "one_shot_delay"}
 INTS = {"z_index", "layer", "max_lines", "amount"}
-BOOLS = {"visible", "one_shot", "autostart", "flip_h", "flip_v", "disabled", "emitting", "centered"}
+BOOLS = {"shadow_enabled", "current", "visible", "one_shot", "autostart", "flip_h", "flip_v", "disabled", "emitting", "centered"}
 STRINGS = {"text", "animation", "tooltip_text", "placeholder_text"}
-COLORS = {"color", "modulate", "self_modulate", "font_color"}
+COLORS = {"light_color", "color", "modulate", "self_modulate", "font_color"}
 SHAPES = {"rect": "RectangleShape2D", "circle": "CircleShape2D", "capsule": "CapsuleShape2D"}
+# v0.79x 3D SCENES (owner: "HOW BIG 3D GRAPHICAL STUNNING GAME" -> "GO BOTH"). Measured in Godot 4.7.2 headless before a
+# line was written: Vector3 position / rotation_degrees / scale, primitive meshes carrying a StandardMaterial3D, lights with
+# shadows, a current Camera3D, a WorldEnvironment (colour or procedural sky, ambient, fog, glow), 3D collision shapes,
+# Vector3 animation tracks, and an approved .glb model placed by its asset name all load exactly as written.
+NODES3D = {
+    "Node3D", "MeshInstance3D", "Camera3D", "DirectionalLight3D", "OmniLight3D", "SpotLight3D", "WorldEnvironment",
+    "StaticBody3D", "RigidBody3D", "CharacterBody3D", "AnimatableBody3D", "Area3D", "CollisionShape3D", "Path3D",
+    "PathFollow3D", "Marker3D", "GPUParticles3D", "CPUParticles3D", "AudioStreamPlayer3D", "VisibleOnScreenNotifier3D",
+}
+VEC3 = {"position", "rotation_degrees", "scale"}            # Vector3 on a 3D node (rotation_degrees is a float in 2D)
+SHAPES3D = {"box": "BoxShape3D", "sphere": "SphereShape3D", "capsule": "CapsuleShape3D", "cylinder": "CylinderShape3D"}
+MESHES = {"box": "BoxMesh", "sphere": "SphereMesh", "cylinder": "CylinderMesh", "capsule": "CapsuleMesh",
+          "plane": "PlaneMesh", "prism": "PrismMesh", "torus": "TorusMesh"}
+MODEL_KEY = re.compile(r"^[a-z][a-z0-9_]{0,39}$")          # an approved 3D model asset: res://assets/<key>.glb
+NODES = NODES | NODES3D
 # Never, in any shape: a script's source inside a scene.
 BANNED_TEXT = re.compile(r'sub_resource\s+type\s*=\s*"GDScript"|script/source|\bExpression\b|\bGDExtension\b|'
                          r'\bClassDB\b|source_code\s*=', re.I)
@@ -95,6 +114,19 @@ def _vec2(v: Any) -> str:
     return f"Vector2({_f(v[0])}, {_f(v[1])})"
 
 
+def _vec3(v: Any) -> str:
+    if not (isinstance(v, (list, tuple)) and len(v) == 3):
+        raise SceneError(f"{v!r} must be three numbers, like [0, 1.5, -4]")
+    return f"Vector3({_f(v[0])}, {_f(v[1])}, {_f(v[2])})"
+
+
+def _unit(v: Any, what: str) -> str:
+    x = float(v)
+    if not 0.0 <= x <= 1.0:
+        raise SceneError(f"{what} must be between 0 and 1")
+    return _f(x)
+
+
 def _color(v: Any) -> str:
     if isinstance(v, (list, tuple)) and len(v) in (3, 4):
         vals = [max(0.0, min(1.0, float(x))) for x in v] + ([1.0] if len(v) == 3 else [])
@@ -115,8 +147,11 @@ def _str(v: Any) -> str:
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _prop(key: str, val: Any) -> str | None:
-    """One property line, or None when we do not write that key (the caller names it)."""
+def _prop(key: str, val: Any, three: bool = False) -> str | None:
+    """One property line, or None when we do not write that key (the caller names it). `three`: a 3D node, where
+    position / rotation_degrees / scale are Vector3."""
+    if three and key in VEC3:
+        return _vec3(val)
     if key in VEC2:
         return _vec2(val)
     if key in FLOATS:
@@ -132,8 +167,125 @@ def _prop(key: str, val: Any) -> str | None:
     return None
 
 
+# ---------------------------------------------------------------- 3D resources (mesh + material, shape, environment)
+def _check_material(m: Any, path: str) -> list[str]:
+    if m is None:
+        return []
+    if not isinstance(m, dict):
+        return [f"{path}: a material must be an object"]
+    out = []
+    for k in m:
+        if k not in ("color", "metallic", "roughness", "emission", "emission_energy", "unshaded"):
+            out.append(f"{path}: Hoola does not write the material key '{k}' (it is dropped, not guessed)")
+    try:
+        if "color" in m: _color(m["color"])
+        if "emission" in m: _color(m["emission"])
+        if "metallic" in m: _unit(m["metallic"], "metallic")
+        if "roughness" in m: _unit(m["roughness"], "roughness")
+        if "emission_energy" in m and not 0 <= float(m["emission_energy"]) <= 16:
+            out.append(f"{path}: emission_energy must be 0 - 16")
+    except (SceneError, TypeError, ValueError) as e:
+        out.append(f"{path}: {e}")
+    return out
+
+
+def _material_block(mid: str, m: dict) -> str:
+    lines = [f'[sub_resource type="StandardMaterial3D" id="{mid}"]']
+    if "color" in m: lines.append(f"albedo_color = {_color(m['color'])}")
+    if "metallic" in m: lines.append(f"metallic = {_unit(m['metallic'], 'metallic')}")
+    if "roughness" in m: lines.append(f"roughness = {_unit(m['roughness'], 'roughness')}")
+    if "emission" in m:
+        lines += ["emission_enabled = true", f"emission = {_color(m['emission'])}"]
+        if "emission_energy" in m: lines.append(f"emission_energy_multiplier = {_f(m['emission_energy'])}")
+    if m.get("unshaded"): lines.append("shading_mode = 0")
+    return "\n".join(lines)
+
+
+def _check_mesh(me: Any, path: str) -> list[str]:
+    if not isinstance(me, dict) or str(me.get("kind")) not in MESHES:
+        return [f"{path}: mesh kind must be one of {', '.join(sorted(MESHES))}"]
+    out = [f"{path}: Hoola does not write the mesh key '{k}' (it is dropped, not guessed)" for k in me
+           if k not in ("kind", "size", "radius", "height", "inner_radius", "outer_radius", "material")]
+    try:
+        if "size" in me:
+            (_vec2 if me["kind"] == "plane" else _vec3)(me["size"])
+        for k in ("radius", "height", "inner_radius", "outer_radius"):
+            if k in me and not 0 < float(me[k]) <= 10000:
+                out.append(f"{path}: mesh {k} must be above 0")
+    except (SceneError, TypeError, ValueError) as e:
+        out.append(f"{path}: {e}")
+    return out + _check_material(me.get("material"), path)
+
+
+def _mesh_blocks(sid: str, me: dict) -> list[str]:
+    blocks, lines = [], [f'[sub_resource type="{MESHES[me["kind"]]}" id="{sid}"]']
+    if "size" in me:
+        lines.append(f"size = {(_vec2 if me['kind'] == 'plane' else _vec3)(me['size'])}")
+    for k in ("radius", "height", "inner_radius", "outer_radius"):
+        if k in me:
+            lines.append(f"{k} = {_f(me[k])}")
+    if isinstance(me.get("material"), dict):
+        blocks.append(_material_block(sid + "_mat", me["material"]))
+        lines.append(f'material = SubResource("{sid}_mat")')
+    return blocks + ["\n".join(lines)]
+
+
+ENV_KEYS = {"background", "sky", "ambient", "ambient_energy", "fog", "fog_density", "glow"}
+
+
+def _check_env(en: Any, path: str) -> list[str]:
+    if not isinstance(en, dict):
+        return [f"{path}: environment must be an object"]
+    out = [f"{path}: Hoola does not write the environment key '{k}'" for k in en if k not in ENV_KEYS]
+    try:
+        if "background" in en: _color(en["background"])
+        if "ambient" in en: _color(en["ambient"])
+        if "sky" in en:
+            sk = en["sky"]
+            if not isinstance(sk, dict):
+                out.append(f"{path}: sky must be an object of colours (top, horizon, ground)")
+            else:
+                for k, v in sk.items():
+                    if k not in ("top", "horizon", "ground"):
+                        out.append(f"{path}: sky key '{k}' is not one Hoola writes")
+                    else:
+                        _color(v)
+        if "fog_density" in en and not 0 <= float(en["fog_density"]) <= 1:
+            out.append(f"{path}: fog_density must be 0 - 1")
+        if "ambient_energy" in en and not 0 <= float(en["ambient_energy"]) <= 16:
+            out.append(f"{path}: ambient_energy must be 0 - 16")
+    except (SceneError, TypeError, ValueError) as e:
+        out.append(f"{path}: {e}")
+    return out
+
+
+def _env_blocks(eid: str, en: dict) -> list[str]:
+    blocks, lines = [], [f'[sub_resource type="Environment" id="{eid}"]']
+    if isinstance(en.get("sky"), dict):
+        sk = en["sky"]
+        mat = [f'[sub_resource type="ProceduralSkyMaterial" id="{eid}_skym"]']
+        if "top" in sk: mat.append(f"sky_top_color = {_color(sk['top'])}")
+        if "horizon" in sk:
+            mat += [f"sky_horizon_color = {_color(sk['horizon'])}", f"ground_horizon_color = {_color(sk['horizon'])}"]
+        if "ground" in sk: mat.append(f"ground_bottom_color = {_color(sk['ground'])}")
+        blocks.append("\n".join(mat))
+        blocks.append(f'[sub_resource type="Sky" id="{eid}_sky"]\nsky_material = SubResource("{eid}_skym")')
+        lines += ["background_mode = 2", f'sky = SubResource("{eid}_sky")']
+    elif "background" in en:
+        lines += ["background_mode = 1", f"background_color = {_color(en['background'])}"]
+    if "ambient" in en:
+        lines += ["ambient_light_source = 2", f"ambient_light_color = {_color(en['ambient'])}"]
+    if "ambient_energy" in en: lines.append(f"ambient_light_energy = {_f(en['ambient_energy'])}")
+    if en.get("fog"):
+        lines.append("fog_enabled = true")
+        if "fog_density" in en: lines.append(f"fog_density = {_f(en['fog_density'])}")
+    if en.get("glow"): lines.append("glow_enabled = true")
+    return blocks + ["\n".join(lines)]
+
+
 # ---------------------------------------------------------------- the checker
-def check(spec: dict, scripts: set[str], scenes: set[str], _seen: set[str] | None = None) -> list[str]:
+def check(spec: dict, scripts: set[str], scenes: set[str], _seen: set[str] | None = None,
+          models: set[str] | None = None) -> list[str]:
     """Everything wrong with one scene spec, in plain words. Empty list = it can be generated."""
     out: list[str] = []
     name = str((spec or {}).get("name") or "")
@@ -143,8 +295,8 @@ def check(spec: dict, scripts: set[str], scenes: set[str], _seen: set[str] | Non
     if not isinstance(root, dict):
         out.append("the scene has no root node")
         return out
-    if root.get("instance"):
-        out.append("the root of a scene cannot itself be an instance of another scene")
+    if root.get("instance") or root.get("model") is not None:
+        out.append("the root of a scene cannot itself be an instance of another scene or a model")
     count = {"n": 0, "anims": 0}
 
     def walk(node: Any, path: str, siblings: set[str]) -> None:
@@ -167,7 +319,21 @@ def check(spec: dict, scripts: set[str], scenes: set[str], _seen: set[str] | Non
                 out.append(f"{path}/{nm}: '{k}' is refused - a scene may never carry script source "
                            "(an embedded script in a .tscn RUNS and escapes the code guard)")
         inst = node.get("instance")
-        if inst:
+        model = node.get("model")
+        three = False
+        if model is not None:
+            # v0.79x a real 3D model: an APPROVED asset of this game, placed by its name (res://assets/<key>.glb)
+            three = True
+            if node.get("type") or inst:
+                out.append(f"{path}/{nm}: give a model, a type or an instance - only one")
+            elif not MODEL_KEY.match(str(model)):
+                out.append(f"{path}/{nm}: model {model!r} must be an asset name like chair")
+            elif str(model) not in (models or set()):
+                out.append(f"{path}/{nm}: model {model!r} is not an approved 3D model of this game "
+                           "(make it and approve it on the Assets tab first)")
+        elif inst:
+            pos = (node.get("props") or {}).get("position")
+            three = isinstance(pos, (list, tuple)) and len(pos) == 3
             if node.get("type"):
                 out.append(f"{path}/{nm}: give either a type or an instance, not both")
             if not FILE.match(str(inst)):
@@ -178,6 +344,7 @@ def check(spec: dict, scripts: set[str], scenes: set[str], _seen: set[str] | Non
                 out.append(f"{path}/{nm}: {inst} instancing itself (a loop) - Godot would never finish loading it")
         else:
             t = str(node.get("type") or "")
+            three = t in NODES3D
             if t not in NODES:
                 out.append(f"{path}/{nm}: node type {t!r} is not one Hoola writes"
                            + (" (an unknown type does not error in Godot, it hangs the load)" if t else ""))
@@ -189,11 +356,27 @@ def check(spec: dict, scripts: set[str], scenes: set[str], _seen: set[str] | Non
                 out.append(f"{path}/{nm}: script {scr!r} is not a file of this game")
         sh = node.get("shape")
         if sh is not None:
-            if not isinstance(sh, dict) or str(sh.get("kind")) not in SHAPES:
-                out.append(f"{path}/{nm}: shape kind must be one of {', '.join(sorted(SHAPES))}")
+            kinds = SHAPES3D if three else SHAPES
+            if not isinstance(sh, dict) or str(sh.get("kind")) not in kinds:
+                out.append(f"{path}/{nm}: shape kind must be one of {', '.join(sorted(kinds))}")
+            elif three:
+                try:
+                    if "size" in sh: _vec3(sh["size"])
+                except SceneError as e:
+                    out.append(f"{path}/{nm}.shape: {e}")
+        me = node.get("mesh")
+        if me is not None:
+            if str(node.get("type")) != "MeshInstance3D":
+                out.append(f"{path}/{nm}: a mesh belongs on a MeshInstance3D")
+            out.extend(_check_mesh(me, f"{path}/{nm}"))
+        en = node.get("environment")
+        if en is not None:
+            if str(node.get("type")) != "WorldEnvironment":
+                out.append(f"{path}/{nm}: an environment belongs on a WorldEnvironment")
+            out.extend(_check_env(en, f"{path}/{nm}"))
         for k, v in (node.get("props") or {}).items():
             try:
-                if _prop(str(k), v) is None:
+                if _prop(str(k), v, three) is None:
                     out.append(f"{path}/{nm}: Hoola does not write the property '{k}' (it is dropped, not guessed)")
             except SceneError as e:
                 out.append(f"{path}/{nm}.{k}: {e}")
@@ -274,12 +457,14 @@ def _value_for(path: str, v: Any) -> str:
     prop = path.rsplit(":", 1)[-1]
     if prop in COLORS:
         return _color(v)
+    if isinstance(v, (list, tuple)) and len(v) == 3 and prop in VEC3 | VEC2:   # a 3D track: Vector3
+        return _vec3(v)
     if prop in VEC2:
         return _vec2(v)
     if prop in BOOLS:
         return "true" if bool(v) else "false"
     if isinstance(v, (list, tuple)):
-        return _vec2(v)
+        return _vec3(v) if len(v) == 3 else _vec2(v)
     return _f(v)
 
 
@@ -316,9 +501,9 @@ def _anim_blocks(anims: list, prefix: str) -> tuple[list[str], dict[str, str]]:
     return blocks, {"__lib__": lib}
 
 
-def build(spec: dict, scripts: set[str], scenes: set[str]) -> str:
+def build(spec: dict, scripts: set[str], scenes: set[str], models: set[str] | None = None) -> str:
     """spec -> the .tscn text. Call `check()` first: this assumes a checked spec and still refuses the hole."""
-    bad = check(spec, scripts, scenes)
+    bad = check(spec, scripts, scenes, models=models)
     if bad:
         raise SceneError("; ".join(bad[:4]))
     ext: dict[str, str] = {}                            # res path -> id
@@ -336,7 +521,12 @@ def build(spec: dict, scripts: set[str], scenes: set[str]) -> str:
     def emit(node: dict, parent: str | None) -> None:
         nm = node["name"]
         head = f'[node name="{nm}"'
-        if node.get("instance"):
+        three = (str(node.get("type") or "") in NODES3D or node.get("model") is not None
+                 or (node.get("instance") and isinstance((node.get("props") or {}).get("position"), (list, tuple))
+                     and len((node.get("props") or {}).get("position")) == 3))
+        if node.get("model") is not None:
+            head += f' parent="{parent or "."}" instance=ExtResource("{ext_id("assets/" + str(node["model"]) + ".glb", "PackedScene")}")'
+        elif node.get("instance"):
             head += f' parent="{parent or "."}" instance=ExtResource("{ext_id(str(node["instance"]), "PackedScene")}")'
         else:
             head += f' type="{node["type"]}"' + (f' parent="{parent}"' if parent is not None else "")
@@ -345,10 +535,19 @@ def build(spec: dict, scripts: set[str], scenes: set[str]) -> str:
             lines.append(f'script = ExtResource("{ext_id(str(node["script"]), "Script")}")')
         if node.get("shape"):
             sid = f"shape_{len(subs)}"
-            subs.append(_shape_block(sid, SHAPES[str(node["shape"]["kind"])], node["shape"]))
+            kind = (SHAPES3D if three else SHAPES)[str(node["shape"]["kind"])]
+            subs.append(_shape_block(sid, kind, node["shape"]))
             lines.append(f'shape = SubResource("{sid}")')
+        if node.get("mesh"):
+            mid = f"mesh_{len(subs)}"
+            subs.extend(_mesh_blocks(mid, node["mesh"]))
+            lines.append(f'mesh = SubResource("{mid}")')
+        if node.get("environment"):
+            eid = f"env_{len(subs)}"
+            subs.extend(_env_blocks(eid, node["environment"]))
+            lines.append(f'environment = SubResource("{eid}")')
         for k, v in (node.get("props") or {}).items():
-            got = _prop(str(k), v)
+            got = _prop(str(k), v, three)
             if got is not None:
                 lines.append(f"{k} = {got}")
         if node.get("animations"):
@@ -370,6 +569,13 @@ def build(spec: dict, scripts: set[str], scenes: set[str]) -> str:
 
 
 def _shape_block(sid: str, kind: str, sh: dict) -> str:
+    if kind == "BoxShape3D":
+        return f'[sub_resource type="{kind}" id="{sid}"]\nsize = {_vec3(sh.get("size") or [1, 1, 1])}'
+    if kind == "SphereShape3D":
+        return f'[sub_resource type="{kind}" id="{sid}"]\nradius = {_f(sh.get("radius") or 0.5)}'
+    if kind in ("CapsuleShape3D", "CylinderShape3D"):
+        return (f'[sub_resource type="{kind}" id="{sid}"]\nradius = {_f(sh.get("radius") or 0.5)}\n'
+                f"height = {_f(sh.get('height') or 2)}")
     if kind == "RectangleShape2D":
         return f'[sub_resource type="{kind}" id="{sid}"]\nsize = {_vec2(sh.get("size") or [32, 32])}'
     if kind == "CircleShape2D":
@@ -379,7 +585,7 @@ def _shape_block(sid: str, kind: str, sh: dict) -> str:
 
 
 # ---------------------------------------------------------------- a whole game's scenes
-def build_all(specs: list[dict], scripts: set[str]) -> tuple[dict[str, str], list[str]]:
+def build_all(specs: list[dict], scripts: set[str], models: set[str] | None = None) -> tuple[dict[str, str], list[str]]:
     """(files, problems) for every scene of a game. Order-independent: instancing is resolved against ALL names."""
     if not isinstance(specs, list):
         return {}, ["scenes must be a list"]
@@ -401,12 +607,12 @@ def build_all(specs: list[dict], scripts: set[str]) -> tuple[dict[str, str], lis
     out: dict[str, str] = {}
     total_nodes = 0
     for f, sp in names.items():
-        bad = check(sp, scripts, known, _seen={f})
+        bad = check(sp, scripts, known, _seen={f}, models=models)
         if bad:
             problems += [f"{f}: {b}" for b in bad[:4]]
             continue
         try:
-            out[f] = build(sp, scripts, known)
+            out[f] = build(sp, scripts, known, models=models)
         except SceneError as e:
             problems.append(f"{f}: {e}")
             continue
@@ -438,6 +644,10 @@ func _ready() -> void:
 		var ok := ResourceLoader.exists(path)
 		var nodes := 0
 		var anims: Array = []
+		var meshes := 0
+		var lights := 0
+		var cameras := 0
+		var three := false
 		if ok:
 			var ps = load(path)
 			if ps == null:
@@ -448,12 +658,20 @@ func _ready() -> void:
 					ok = false
 				else:
 					nodes = _count(inst)
+					three = inst is Node3D
 					for c in _all(inst):
 						if c is AnimationPlayer:
 							for a in c.get_animation_list():
 								anims.append(a)
+						if c is MeshInstance3D and c.mesh != null:
+							meshes += 1
+						if c is Light3D:
+							lights += 1
+						if c is Camera3D:
+							cameras += 1
 					inst.free()
-		out.append({"scene": n, "loaded": ok, "nodes": nodes, "animations": anims})
+		out.append({"scene": n, "loaded": ok, "nodes": nodes, "animations": anims, "three": three,
+			"meshes": meshes, "lights": lights, "cameras": cameras})
 	print("HOOLA_SCN " + JSON.stringify(out))
 	get_tree().quit()
 
@@ -472,7 +690,7 @@ func _all(n: Node) -> Array:
 
 
 def verify(files: dict[str, str], scripts: dict[str, str], job: Path, title: str = "Scenes",
-           orientation: str = "portrait") -> dict[str, Any]:
+           orientation: str = "portrait", models: dict[str, Path] | None = None) -> dict[str, Any]:
     """Load every generated scene in the REAL engine. A bad scene HANGS the load rather than erroring, so the run
     carries a quit timer and 'never reached the end' is itself the failure."""
     from . import engine, template
@@ -496,6 +714,14 @@ def verify(files: dict[str, str], scripts: dict[str, str], job: Path, title: str
         p = job / "proj" / name
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(txt, encoding="utf-8")
+    # v0.79x a 3D scene may place her APPROVED models (res://assets/<key>.glb): copy them in and let the engine import
+    # them first, exactly like a real build does - a model that does not import is then a load failure, never a pass
+    if models:
+        (job / "proj" / "assets").mkdir(parents=True, exist_ok=True)
+        for key, src in models.items():
+            if MODEL_KEY.match(str(key)) and Path(src).is_file():
+                shutil.copyfile(src, job / "proj" / "assets" / f"{key}.glb")
+        engine._run(job, ["--path", "proj", "--import"], "sceneimport.log", 180)
     code, logtxt, to = engine._run(job, ["--path", "proj", "--quit-after", "600"], "scenecheck.log", 180)
     m = re.search(r"HOOLA_SCN (\[.*\])", logtxt or "")
     errs = engine.errors_in(logtxt or "")
@@ -557,6 +783,24 @@ def _scripts_of(tenant: str, gid: str) -> dict[str, str]:
     return {k: v for k, v in G._current_files(g).items() if k.endswith(".gd")}
 
 
+def _models_of(tenant: str, gid: str) -> dict[str, Path]:
+    """Her APPROVED 3D models for this game, {asset key: the .glb on disk} - the same files a build copies to
+    res://assets/<key>.glb. Empty when the game has no long project or no approved model."""
+    try:
+        from . import assets as A
+        got = A.for_game(tenant, gid)
+    except Exception:                                   # noqa: BLE001 - no models is never a reason to fail a scene
+        return {}
+    if not got:
+        return {}
+    out: dict[str, Path] = {}
+    for rel, src in (got[1] or {}).items():
+        m = re.fullmatch(r"assets/([a-z][a-z0-9_]{0,39})\.glb", str(rel))
+        if m:
+            out[m.group(1)] = Path(src)
+    return out
+
+
 def _rows(tenant: str, sid: str) -> list[GameScene]:
     ensure_table()
     with session() as s:
@@ -581,7 +825,8 @@ def view(tenant: str, ref: str) -> dict[str, Any]:
             "how": ("The model never writes a .tscn - it writes a spec, Hoola checks it and generates the scene, then "
                     "loads it in the real engine before you ever see it. A scene may not carry script source: an "
                     "embedded script in a .tscn RUNS and would escape the code guard."),
-            "not_built": "TileMaps (they need a TileSet and atlas art), 3D scenes and shaders."}
+            "three_d": "3D scenes: meshes with real materials, lights and shadows, a camera, a sky / fog / glow, 3D physics and your approved 3D models from the Assets tab.",
+            "not_built": "TileMaps / GridMaps (they need a TileSet or MeshLibrary of art) and shaders. The check proves a 3D scene loads and counts what is in it; it cannot see how it looks."}
 
 
 def propose(tenant: str, ref: str, words: str, name: str = "") -> dict[str, Any]:
@@ -599,19 +844,21 @@ def propose(tenant: str, ref: str, words: str, name: str = "") -> dict[str, Any]
     if len(rows) >= MAX_SCENES:
         raise SceneError(f"{MAX_SCENES} scenes tak.")
     others = {f"{r.name.lower()}.tscn" for r in rows if r.status == "approved"}
-    spec = ai.scene_spec(G._get(tenant, st.game_id).design or "", sorted(scripts), sorted(others), words, name)
+    models = _models_of(tenant, st.game_id)
+    spec = ai.scene_spec(G._get(tenant, st.game_id).design or "", sorted(scripts), sorted(others), words, name,
+                         models=sorted(models))
     nm = str(spec.get("name") or name or "Scene1")
     spec["name"] = nm
     file = f"{nm.lower()}.tscn"
-    bad = check(spec, set(scripts), others | {file}, _seen={file})
+    bad = check(spec, set(scripts), others | {file}, _seen={file}, models=set(models))
     if bad:
         raise SceneError("Scene theek nahi bana: " + "; ".join(bad[:3]))
-    built, probs = build_all([spec], set(scripts))
+    built, probs = build_all([spec], set(scripts), models=set(models))
     if probs:
         raise SceneError("; ".join(probs[:3]))
     # every APPROVED scene goes in too, so an instance of one is proved as it will really load
-    approved = _approved_files(tenant, st.id, set(scripts))
-    rep = verify({**approved, **built}, scripts, G._pdir(tenant, st.game_id) / "scenecheck")
+    approved = _approved_files(tenant, st.id, set(scripts), set(models))
+    rep = verify({**approved, **built}, scripts, G._pdir(tenant, st.game_id) / "scenecheck", models=models)
     mine = next((r for r in rep.get("scenes", []) if r.get("scene") == file), {})
     with session() as s:
         row = GameScene(tenant_id=tenant, studio_id=st.id, name=nm, words=str(words or "")[:500], spec=spec,
@@ -623,13 +870,15 @@ def propose(tenant: str, ref: str, words: str, name: str = "") -> dict[str, Any]
     return {"id": row.id, "name": nm, "file": file, "status": row.status, "nodes": row.nodes,
             "verdict": rep["verdict"], "why": rep["why"],
             "animations": mine.get("animations") or [],
+            "three_d": bool(mine.get("three")), "meshes": int(mine.get("meshes") or 0),
+            "lights": int(mine.get("lights") or 0), "cameras": int(mine.get("cameras") or 0),
             "say": ("Scene ban gaya aur asli engine mein khul bhi gaya - dekhiye aur 'haan' boliye."
                     if row.status == "draft" else "Scene asli engine mein nahi khula: " + rep["why"])}
 
 
-def _approved_files(tenant: str, sid: str, scripts: set[str]) -> dict[str, str]:
+def _approved_files(tenant: str, sid: str, scripts: set[str], models: set[str] | None = None) -> dict[str, str]:
     specs = [r.spec for r in _rows(tenant, sid) if r.status == "approved" and r.spec]
-    out, _ = build_all(specs, scripts)
+    out, _ = build_all(specs, scripts, models=models)
     return out
 
 
@@ -677,7 +926,7 @@ def for_game(tenant: str, game_id: str) -> dict[str, str]:
                 return {}
             sid = st.id
         scripts = set(_scripts_of(tenant, game_id))
-        return _approved_files(tenant, sid, scripts)
+        return _approved_files(tenant, sid, scripts, set(_models_of(tenant, game_id)))
     except Exception:                                   # noqa: BLE001 - a scene problem must never stop a build
         log.exception("scenes for game %s", game_id)
         return {}

@@ -1,0 +1,23 @@
+{
+ "base": "constant-current-voltage-source",
+ "rig": "em-ug-instruments",
+ "chapter": "Electricity and magnetism",
+ "variants": [
+  {
+   "key": "constant-current",
+   "title": "Performance of a constant-current source",
+   "sample": "Generic regulated constant-current source, 10 mA",
+   "method": "Load line with a decade box",
+   "unknown": "output vs load",
+   "aim": "Load a constant-current source with a decade box, read its current and the voltage across the load, and find its output resistance and the compliance voltage where it stops regulating.",
+   "params": {
+    "mode": 1.0,
+    "RL": 400.0,
+    "Ro": 20000.0
+   },
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  }
+ ]
+}

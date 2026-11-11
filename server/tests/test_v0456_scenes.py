@@ -220,7 +220,7 @@ def test_the_model_is_told_the_rules_and_never_writes_a_scene():
     assert "never write a .tscn" in ai.SCENE or "never writes a .tscn" in ai.SCENE.replace("You never write", "never write")
     assert "MAY NEVER CARRY SCRIPT SOURCE" in ai.SCENE and "escapes Hoola's code guard" in ai.SCENE
     assert "INSTANCES ARE HOW CONTENT SCALES" in ai.SCENE
-    assert "TileMaps, 3D and shaders are NOT available" in ai.SCENE
+    assert "TileMaps and shaders are NOT available" in ai.SCENE   # v0.79x: 3D became available, TileMaps/shaders still not
     assert "SCENES (v0.456)" in ai.GUIDE and "Never write a .tscn yourself" in ai.GUIDE
 
 

@@ -1,0 +1,35 @@
+{
+ "base": "w7-maxwell-needle",
+ "rig": "w7-oscillation-bench",
+ "chapter": "Properties of matter: elasticity, viscosity, surface tension",
+ "variants": [
+  {
+   "key": "steel",
+   "title": "Maxwell's needle: rigidity modulus of a steel wire",
+   "sample": "Mild steel wire, 1.0 mm diameter",
+   "method": "Maxwell's needle, cylinders changed over",
+   "unknown": "the modulus of rigidity of steel",
+   "params": {
+    "eta": 82200000000.0
+   },
+   "note": "Steel: η about 82 GPa.",
+   "source": {
+    "title": "Kaye and Laby, Tables of Physical and Chemical Constants: elastic moduli of metals (from memory - verify)"
+   }
+  },
+  {
+   "key": "brass",
+   "title": "Maxwell's needle: rigidity modulus of a brass wire",
+   "sample": "Brass (70/30) wire, 1.0 mm diameter",
+   "method": "Maxwell's needle, cylinders changed over",
+   "unknown": "the modulus of rigidity of brass",
+   "params": {
+    "eta": 37300000000.0
+   },
+   "note": "Brass is less rigid than steel (η about 37 GPa), so both periods are about 1.5 times longer.",
+   "source": {
+    "title": "Kaye and Laby, Tables of Physical and Chemical Constants: elastic moduli of metals (from memory - verify)"
+   }
+  }
+ ]
+}

@@ -2926,3 +2926,21 @@ Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
 What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
 Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.
+
+---
+Task ID: v0.794.0 PROMPT NAAP (P0 of HOOLA PROMPTING; built as 0.785, re-versioned on merge: main had moved to 0.793.0)
+Ask: the owner pasted the P0 step of docs/HOOLA_PROMPTING_PLAN.md (measure before building).
+Built: quality/prompt_asks.py (60 asks: raw + hand-filled brief), quality/promptcard.py (scorer, free card, live card with a rupee ceiling, rule verdict, her picks), CLI `prompt`, GET /api/quality/prompt, vps-ops prompt_card_check / prompt_card_try; 11 tests, no model.
+Found: the architect plan echoed her words (the brief scored its own text) - fixed; a flag picture the picture engine refuses - replaced.
+Deploy: vps-ops deploy (server-only; no new pip, no tables). Then prompt_card_check (free), then prompt_card_try (Rs 250 cap). Next: read the numbers, then P1 on her GO.
+
+---
+Task ID: v0.795.0 YEH WALA (L5)
+Task: owner "GO L5" - preview toolbar (S / T / D / C), selected elements to the model, marked-up screenshots, free style panel on tokens.
+Work Log: site/yehwala.py (selection, comments table, markup screenshot); edit.style + hs-u-* utilities; hoola-edit.js modes; Studio toolbar / pills / style panel / draw / comments; 6 tests incl. a browser walk.
+Stage Summary: pushed; server deploy only. Next: L6 GALTI PAKDO (preview error collector + Try to fix) on her GO.
+
+Task ID: v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; re-versioned on merge: PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0)
+Ask: GO PHASE 5.
+Built: devsahayak/around.py (schedules + trigger, share link, suggestion, reviewers' comments, end-of-run push), think + pass steps, public routes /hooks/{id} + /shared/{token}, page: Thinking view, Passes card, reviewers' card, ghost text, Scheduled page, share dialog, read-only page; 12 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; table devsahayak_schedules + five nullable columns self-heal). Not verified with a real model, GitHub comment feed or FCM.

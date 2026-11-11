@@ -1233,3 +1233,196 @@ so the env variables and the scrubbed output have not been through a real `docke
 round. **NOT BUILT (this session's withdrawn engine had them, unproved):** background commands, a Terminal pane,
 pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-ops deploy, server-only, no new pip;
 four nullable columns create themselves.
+
+
+## v0.796.0 PRAYOGSHALA WAVE 7 (built as 0.794.0; re-versioned past 0.795.0, all kept) (owner: "Coverage 44.9% ... NOW LETS WORK ON PENDING LAB WORK END TO END")
+
+94 physics set-ups built and walked in a real browser within tolerance, by four build agents in their own pack trios
+(kernels + JS twin + labs + rigs): school_w7 (32: Class 6-12 motion, measuring, pressure / floatation, heat, sound,
+electricity), ug_mech_w7 (22: pendulums, springs, coupled oscillators, Searle, Maxwell needle, optical lever, trolley,
+2-D collision (SIMULATED DATA), harmonics, Callendar-Barnes, Angstrom, cooling, Stefan, capillary vs temperature),
+ug_optics_w7 (20: TIR, Wollaston, nodal slide, biprism, Michelson x2, Fabry-Perot, FTS, lycopodium, resolving power,
+Malus, Babinet, Brewster, five fibre set-ups, quartz expansion, laser characteristics), ug_em_w7 (20: ballistic
+galvanometer family, solenoid, Carey Foster, potentiometer, Anderson, universal bridge, Q-meter, RC / RL, transformer,
+motor, generator, falling magnet, galvanometer conversion, CC / CV source, magnetometer, B-H curve). Coverage
+362 -> 456 of 807 (school 6-10 78.4 %, 11-12 91.5 %, B.Sc 65.4 %, M.Sc 37.6 %, PhD 28.6 %).
+Engine: `tools/prayog_claim.py` takes "<level>:<id>" and warns on ambiguous bare ids (four optics claims would have
+overwritten M.Sc rows). Tests: test_v0418_prayog.py was red on main (22-lab pins; twin loaded kernels.js only) - it now
+counts every pack and the JS twin loads every pack, so pack kernels and calcs are compared numerically (39 / 39 green).
+Skipped rows and every constant written from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 7".
+## v0.794.0 PROMPT NAAP - P0 of HOOLA PROMPTING: measure before building (built as 0.785; their 0.785.0-0.793.0 took the numbers - REBASE PROTOCOL, all kept; owner pasted the P0 step of the plan = GO)
+
+Plan: `docs/HOOLA_PROMPTING_PLAN.md` part 11. Research: `docs/research/prompting/00_INDEX.md`. No user-facing change.
+
+**The question:** does a complete brief beat her rough line in Hoola's OWN engines, and by how much, per section? A
+section with no gain is dropped before it is built.
+
+**Files**
+- `server/app/quality/prompt_asks.py` - 60 asks, 20 each for web / image / script, 10 Hinglish + 10 English per
+  section. Each has `raw` (her rough line), `brief` (the same job filled in BY HAND in the section's anatomy), `must`
+  (what she wanted, checkable) and `facts` (literals that must come back unchanged; a list = alternative spellings,
+  because a Hinglish script may say "5 baje" for "5 am"). Made-up businesses, no phone numbers.
+- `server/app/quality/promptcard.py` - the scorer, the free card, the live card, her verdicts.
+- `python -m app.quality prompt` (free) | `--live --budget-inr N [--section] [--limit N per section] [--only] [--judge]`
+  | `--status` | `verdict <id> raw|brief|same ["why"]`.
+- `GET /api/quality/prompt`; vps-ops `prompt_card_check` (free) and `prompt_card_try` (2 asks per section, Rs 250 cap).
+- `server/tests/test_v0794_prompt_card.py` - 11 tests, engines replaced by fakes, no model.
+
+**What runs live**
+- web = the website architect's PLAN only (`architect._ask` + `clean` + `depth`): one call, no project row, no build.
+- script = `create.service.write("script", ...)`; the brief arm also sets format / length / language / tone.
+- image = `photogen.make` (fast), the PNG kept in `data/quality/promptcard-img/`, then ONE reader call answering
+  yes / no per statement from the picture.
+- optional `--judge` = a blind pick for web / script with the shown order alternating; the card prints how often
+  the first-shown side won.
+
+**Scoring (code, 0-100)** web: must 55, facts 20, architect depth 15, nothing invented 10. script: must 50, facts 25,
+length band 10, nothing invented 15. image: share of statements the reader confirms. A pair is a win only with a
+lead over 5 points. Section rule: BUILD = gain >= 10 AND the brief clearly better in >= 60% of pairs; DROP = gain
+< 4; else RETHINK; under 8 finished pairs = no verdict; once she has picked 5 pairs of a section her picks decide.
+All thresholds and weights are judgement, not measured.
+
+**Money** a live card refuses to start without `--budget-inr`; each ask is a PAIR (raw then brief) and a pair starts
+only when the budget has room for both, sections interleaved, so a budget that runs out leaves both arms with the
+same coverage. Rupees = `usage.run_meter` x the server's rate (+ the picture engine's flat price when its call was
+not metered). Three dead pairs in a row stop the card.
+
+**Found by its own checks while building**
+1. The architect's plan carries HER words back (`spec["words"]`), so with the same plan the brief arm scored 88 and
+   the raw arm 37 - the brief was being paid for its own text. The web runner drops that field and `unecho()` removes
+   any pasted-back copy (whole, or any line of 40+ characters) before scoring; a test holds "same plan = same marks".
+2. The picture engine's own guard refuses a national-flag picture - the free card asks the engines' free guards for
+   every ask, found it, and the ask was replaced (kites).
+3. A price followed by a full stop ("Rs 299.") read as invented; a JSON-escaped rupee sign was not read.
+
+**Not verified / limits**
+- NO live card has run. There are no numbers. Rs 25 / 3 / 4 a run are ASSUMED (about Rs 1,280 for all 120 runs).
+- The brief is hand-filled: this is the CEILING of the idea. BUILD means worth building; whether Hoola can fill the
+  brief itself is P1's proof.
+- web scores the PLAN, not a built site. The script length band is rough (2-9 words a second over the whole
+  screenplay). The picture reader is a model: its yes / no can be wrong; her verdict on the saved PNGs outranks it.
+- The engines run on whatever model the server routes to (GLM door / one-model rules apply as in production).
+- Older reds proven on the commit before this one, untouched: test_v0240_calm_brand::test_version (28 == 25),
+  test_v0649_web_studio three-looks walk, test_v0693_app_studio design-run, test_v0784_sawaal_card look-one.
+
+## v0.795.0 YEH WALA - point at the page instead of describing it (L5 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L5")
+Before: Edit mode only typed words / swapped a picture; to change anything else she had to describe where it was, and
+"AI se badlo" pasted quoted text into the box (plan gap D3). Now the Studio preview has Lovable's pointing tools, in Hoola's look.
+- PREVIEW TOOLBAR (`webstudio.js` YW block, `#wsYW`): Select / Text / Draw / Comment (keys S T D C), Comments count, Undo, Done,
+  hide; drag the grip and it snaps to left / centre / right (remembered in this browser). The composer's Select button opens it
+  in Select. `hoola-edit.js` gained the modes (select / comment / view) through `edit-cmd` messages from its parent only;
+  Text mode is the v0.295 behaviour unchanged (the phone app's edit mode too).
+- SELECT -> MODEL (E3): click a part (Ctrl / Shift adds, up to 8): a violet outline + name tooltip in the page, a pill in the
+  composer ("Home · Hero · heading 'Sharma Sweets'"). On send, PUT /api/sites/{id}/selection (each part checked against the
+  section store: `yehwala._element`) and the hint "selected elements: N"; `turnmode.site_block` adds `<selected_elements>`
+  (label, page, the code FILE for edit_lines, the element's HTML without edit numbers, its style picks) ONCE to that turn,
+  then it is gone (30 min limit). Her bubble shows only her words.
+- STYLE PANEL (one part selected; free, no model): text colour / background from the site's own tokens (brand, accent, text,
+  soft, page, panel, dark), size steps, weight, align, padding 0-4, corners; "As designed" removes a pick. Stored as
+  `hs-u-<prop>-<value>` classes (`edit.style`, list `edit.STYLE`; utilities in `hoola-site.css` use the token variables, so a
+  raw colour can never be written - refused). Each pick = `edit_element op=style` -> one Undo step, a quick-checked version
+  (v0.789 tier). Measured in the test: 0 model calls, Rs 0.
+- COMMENTS for her team (`site_comments`, registered in db.init_db + self-heal): on a part of the page, numbered pins in the
+  preview, list with Resolve / Reopen / Delete; never sent to Hoola. GET/POST /api/sites/{id}/comments,
+  POST /api/sites/{id}/comments/{cid}/{resolved|open|deleted}.
+- DRAW: pen strokes + numbered notes over the preview frame; Send to Hoola = POST /api/sites/{id}/markup -> the server's
+  Chromium screenshots THAT page (the site's own files only) at her width / height / scroll, draws her strokes + note numbers,
+  adds the notes as a list under the picture, stores it as her chat file and attaches it to her message. Side panels step
+  aside while drawing.
+- GET /api/sites/{id}/element = one part as the style panel needs it.
+Tests: test_v0795_yeh_wala.py (6: tokens-only free style + Undo + it reaches the built page, selection once + her sites only,
+comments CRUD, the marked-up screenshot (real Chromium), source wiring, a Playwright walk: Select -> pill + style panel ->
+brand colour -> new version -> her message carries <selected_elements> -> Comment pin + list -> Draw + Send -> hide / Done).
+NOT VERIFIED live: a real model acting on <selected_elements> and on a marked-up screenshot on her server.
+
+## v0.797.0 3D SCENES + THE GAME TOOL HUB (owner: "HOW BIG 3D GRAPHICAL STUNING GAME CAN BE BUILD VIA HOOLA AI --- IS THERE ANY WAY THAT OUR ENGINE WILL CONNECTED TO 100 OF PERFECT GAMING DESIGNING TOOLS" → "GO BOTH")
+
+**1. 3D scenes as checked data.** `gamedesk/scene.py` gains the 3D half of the v0.545 rule — the model writes a SPEC,
+Hoola checks it in code and GENERATES the `.tscn`, and every scene is loaded in the real engine before she sees it.
+Measured in Godot 4.7.2 headless BEFORE a line was written: Vector3 position / rotation_degrees / scale, primitive meshes
+carrying a StandardMaterial3D (albedo, metallic, roughness, emission), lights with shadows, a current Camera3D, a
+WorldEnvironment (colour or procedural sky, ambient, fog, glow), 3D collision shapes, Vector3 animation tracks, and a
+`.glb` model placed by name all load exactly as written; a `.glb` imports headless and instances. The spec now takes:
+20 3D node types (NODES3D), `mesh` on a MeshInstance3D (box / sphere / cylinder / capsule / plane / prism / torus +
+`material`), `environment` on a WorldEnvironment (sky top / horizon / ground or a background colour, ambient, fog, glow),
+3D shapes (box / sphere / capsule / cylinder), light / camera props, and **her APPROVED 3D models** from the Assets tab
+placed with `{"model": "<asset key>"}` → `res://assets/<key>.glb` (`scene._models_of` reads the same files a build
+copies; a model that was not approved, a path-like key, a model root, or model + type together are refused by name).
+`verify()` copies the models in and runs Godot's import first, exactly as a build does, so a model that cannot import is a
+FAIL, never a pass; the probe now also reports `three`, `meshes`, `lights`, `cameras`. Every unknown key inside a mesh,
+material or environment is dropped AND named (a `script` key inside a mesh is refused like a `source` key on a node), and
+the emitted text is still re-scanned for an embedded script. The SCENE prompt teaches what a stunning 3D scene is made of
+(a sky, one sun with shadows, a little fog, a framing camera, real roughness / metal, emission where things glow, models /
+instances for repeats); the tool description was rewritten to keep every honesty rule inside the registry's 1,200-character
+cut (the first draft lost "cannot SEE how it looks" to that cut — caught by the suite). Proved live: a 15-node courtyard
+with sky, sun shadows, fog, glow, a glowing spinning diya and three instances of a real `.glb` chair → PASS with 5 meshes,
+1 light, 1 camera and the `spin` animation counted by the engine; the same scene with a missing model file → FAIL.
+`tests/test_v0792_scenes3d.py` (20) + the 2D suite (13) = 33 green. NOT BUILT: TileMaps / GridMaps and shaders. A headless
+check proves a 3D scene loads and counts what is in it; it cannot SEE how it looks — said in the tool, the view and the code.
+
+**2. The Game Tool Hub, researched.** `docs/GAME_TOOL_HUB_PLAN.md`: 110 game-making tools classified into four lanes
+(Hoola's own server / cloud API with her key / the vendor's own MCP / her own machine), each with its official API, official
+MCP, the licence clause that decides, cost, and status — **62 have an official route today** (lane 1: 15, lane 2: 25,
+lane 3: 13, lane 4: 9; 19 already built), 8 need a partner deal, 9 are blocked (no API or the licence forbids Hoola's shape),
+31 unverified with what would settle each. Build waves start with CC0 libraries (Poly Haven, Kenney, ambientCG) and her-key
+3D / audio (Meshy, Tripo, ElevenLabs). Findings that tighten the moat plan: **Epic DOES ship "Unreal MCP" in UE 5.8**
+(Experimental, localhost, no auth — re-checked by the lead on Epic's own page); the AI-3D vendors' terms forbid a shared
+Newtika account (her key and her plan, always); Tripo's free tier keeps all rights; Blender's new official MCP runs
+model-written code unguarded, so Hoola's guarded runner stays the server path. One question is the owner's: most official
+vendor MCPs sign in with OAuth to HER vendor account — whether that fits her "no consumer-subscription OAuth" rule.
+
+Also healed: four game-role tests still asserted the old Hinglish "hired nahi" after main's English-tools commit d84057023.
+
+## v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; their PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0) — around the session: thinking, passes, reviewers' comments, the suggestion, scheduled tasks + trigger, phone push, read-only link (owner: "GO PHASE 5")
+
+Phase 5 of `docs/HOOLA_CODE_WEB_PLAN.md`. Nothing here changes what a session may do: a scheduled or triggered run is an
+ordinary session, so the checks on a change, her PR tap and her merge tap are the same code. New module
+`server/app/devsahayak/around.py`; the page is `static/console/code.js` (+ `hoolacode.js` for the read-only page).
+
+**What she gets**
+- **Thinking view.** The model's own thinking is kept per step (`engine._round` emits `{"k": "think"}`, scrubbed for
+  keys, 3,000 chars a step). Session menu > Transcript view: Normal / Thinking / Verbose. It is shown, never sent
+  anywhere else.
+- **Passes card** (right rail). The plan pass, Hoola's own review, a CI fix round and a reviewers'-comments round each
+  write a start and an end step (`service._pass`), with how they ended ("3 steps planned", "clean", "2 point(s) to fix").
+- **Reviewers' comments.** People's comments on her pull request are read from GitHub (`gh.pr_comments`: line comments +
+  conversation; bots left out; text scrubbed) and shown on a card. "Fix N comments" = one round on the same PR with the
+  comments as DATA (`<pr_review_comments>`: Hoola decides which are right and says which it did not follow). The same
+  comment is never asked twice (`DevTask.pr_notes` seen list). By itself only when the PR's Auto-fix switch is on AND
+  the repo is private (on a public repo anyone can comment, so it always waits for her tap), at most 6 rounds a PR.
+- **A suggested next message** (ghost text in the message box; Tab takes it). One small call when a round ends
+  (`around.make_hint`, `dev_hint`, `dev_hint_model` = Haiku, no tools, 60 tokens). NONE / too long / a key = nothing shown.
+- **Scheduled tasks** (sidebar > Scheduled, `#/scheduled`). A task that starts by itself: every day / Monday to Friday /
+  one weekday, a time in India time, or only on demand; Run now; Pause; history of its sessions. At most 12; never more
+  often than daily; a missed slot (server down) runs once; a run still working is not started twice.
+  Table `devsahayak_schedules`, worker `around.tick_schedules` from `service.tick`.
+- **Trigger address** for her own program: `POST /api/devsahayak/hooks/<id>` with `Authorization: Bearer hct_...`.
+  The token is shown ONCE and only its sha256 is stored; a new token ends the old one; wrong id and wrong token give the
+  same 401; 10 runs an hour (429); a paused task answers 409. The caller's `text` is added to the task inside
+  `<trigger_payload>` as DATA, never instructions. The answer carries only `{ok, session}`.
+- **Phone push** when a background run ends: "Hoola Code: done" (PR ready) or "Hoola Code needs you" (failed, or Hoola
+  asked a question). One event per run (`around.tell_end`, flag `end` on `devsahayak_task`); states that already push
+  from their own card (ready / plan / explained / refused / CI failed) are not told twice.
+- **Read-only link** to one session (session menu > Share a read-only link, confirm first). Random 43-character token,
+  7 days, she can stop it at once; an ended link never comes back to life. The page `/console/code/shared/<token>` needs
+  no sign-in and can only ask `GET /api/devsahayak/shared/<token>`; the view is REDUCED: repo name without the owner, no
+  attachments, no cost, no PR link, no hidden-file list, no buttons that act (no composer, no merge, no comments on
+  lines, no Compare). Headers: noindex, no-referrer, frame DENY.
+
+**Routes** (all under `/api/devsahayak`): GET/POST `/schedules`, PATCH/DELETE `/schedules/{id}`, POST `/schedules/{id}/run`,
+POST/DELETE `/schedules/{id}/trigger`, POST `/tasks/{id}/share`, GET `/tasks/{id}/comments`, POST
+`/tasks/{id}/bg/fix_comments`; public: POST `/hooks/{id}`, GET `/shared/{token}`; page `/console/code/shared/{token}`.
+**Columns** (nullable, self-heal): `DevTask.share`, `share_until`, `hint`, `sched_id`, `pr_notes`.
+**Switches:** `dev_hint` (True), `dev_hint_model`. conftest pins `DEV_HINT=false` for the older suites.
+
+**Tests** `server/tests/test_v0794_hoola_code_around.py` (12): thinking kept + scrubbed; pass start / end; comments read
+as data, fixed once, never twice, "nothing to fix" is not a failed session; auto only private + Auto-fix; the suggestion
+(one call, small model, no tools, NONE / long / key dropped, renewed each round); when a schedule is due; schedule rules
++ one run for missed slots + pause + Run now + limit 12; trigger (hash only, 401 / 409 / 429, payload as data, new token
+ends the old); share (reduced view, expiry, stop, headers); end-of-run push told once; two browser walks (session page +
+Scheduled page + trigger + share; the read-only page makes only its one GET, with no Authorization header).
+
+**NOT VERIFIED:** no real Claude suggestion, no real GitHub comment feed, no real FCM push, no real program calling the
+trigger. The trigger's hourly limit is per task row (not per IP). The phone app has no Scheduled screen (console only).
+**Not built from the plan's Phase 5 line:** live "subagent" children as separate panes (the passes are a card, not
+panes). Deploy: vps-ops deploy (server-only; no new pip; one new table + five nullable columns make themselves).

@@ -1,0 +1,22 @@
+{
+ "base": "solenoid-field",
+ "rig": "bg-lamp-scale",
+ "chapter": "Electricity and magnetism",
+ "variants": [
+  {
+   "key": "hall-probe",
+   "title": "Field along the axis of a solenoid with a Hall-probe gaussmeter",
+   "sample": "Generic laboratory solenoid, 40 cm long",
+   "method": "Hall-probe gaussmeter",
+   "unknown": "field along the axis and dB/dx",
+   "aim": "Move the Hall probe of a gaussmeter along the axis of a solenoid, read the field every few centimetres, and plot the field and its gradient dB/dx.",
+   "params": {
+    "meth": 1.0
+   },
+   "note": "The gaussmeter reads the axial field directly to 0.01 mT; the same solenoid as the search-coil lab.",
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  }
+ ]
+}

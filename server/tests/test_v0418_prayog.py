@@ -38,7 +38,11 @@ def test_catalogue_has_22_physics_labs_all_checked():
         r = lsl.run_check(lab)
         assert r["ok"], (lab["id"], r)
         assert r["error"] <= 0.01
-    assert len(S.labs()) == 22                     # nothing silently left out
+    # v0.781 the catalogue grew past the first 22 through lab packs (app/prayog/labs/*.py): every builder of every pack
+    # must open - nothing silently left out (this pin said 22 for ever and went red the day the first pack landed)
+    every = {b()["id"] for b in S._all_builders()}
+    S.labs.cache_clear()
+    assert set(S.labs()) == every, sorted(every - set(S.labs()))[:20]
 
 
 def test_ncert_checks_compare_against_independent_formulas():
@@ -88,6 +92,10 @@ def test_learner_table_results_come_from_code():
 # ------------------------------------------------------------------------------------------- JS twin
 _TWIN = r"""
 const H = require(process.argv[2]);
+// v0.781 every kernel pack (static/prayog/packs/*.js) registers into the same HoolaKernels, exactly as the page loads it
+const fs = require('fs'), path = require('path'), dir = path.join(path.dirname(process.argv[2]), 'packs');
+for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.js')).sort())
+  new Function('require', fs.readFileSync(path.join(dir, f), 'utf8')).call({ HoolaKernels: H }, require);
 const fx = JSON.parse(require('fs').readFileSync(0, 'utf8'));
 process.stdout.write(JSON.stringify(fx.map(f => {
   if (f.calc) return { calc: H.CALCS[f.calc].fn(f.rows, H.paramsFor(f.kernel, f.params)) };
@@ -117,7 +125,8 @@ def _close(a, b, path=""):
 
 def _fixtures():
     fx = []
-    for lab in _labs():                               # every lab, at its own settings, as the phone would run it
+    from app.prayog import service as _S
+    for lab in [b() for b in _S._all_builders()]:     # every lab of every pack, at its own settings, as the phone runs it
         base = dict(lab.get("params") or {})
         fx.append({"kernel": lab["kernel"], "params": base, "cfg": lab.get("cfg") or {}, "steps": 25, "dt": 0.04,
                    "skip_measure": lab["kernel"] == "circuit" and not (lab.get("cfg") or {}).get("measure")})
@@ -130,15 +139,22 @@ def _fixtures():
     fx.append({"kernel": "lens", "params": {"u": 0.12}, "steps": 1, "dt": 0.1})              # virtual image
     fx.append({"kernel": "prism", "params": {"i": 0.3}, "steps": 1, "dt": 0.1})              # total internal reflection
     fx.append({"kernel": "gauge", "params": {"kind": 1.0, "L": 0.00137, "ze": 0.00002}, "steps": 1, "dt": 0.1})
+    core = {"pendulum_g": "pendulum", "spring_k_static": "spring", "spring_k_shm": "spring", "incline_mu": "incline",
+            "stokes_eta": "stokes", "cooling_k": "cooling", "boyle_pv": "boyle", "mix_c": "mixtures", "res_v": "resonance",
+            "sono_mu": "sonometer", "mirror_f": "mirror", "lens_f": "lens", "prism_n": "prism", "slab_n": "slab",
+            "induct_ratio": "induction", "gauge_mean": "gauge"}
+    for name in ("ohm_R", "bridge_S", "pot_r", "diode_knee", "rc_tau"):
+        core[name] = "circuit"
     for name, spec in KN.CALCS.items():
+        if name not in core:                          # a pack's calc: fed through the kernel of a lab that names it
+            k = next((lab["kernel"] for lab in [b() for b in _S._all_builders()] if name in json.dumps(lab)), None)
+            if not k:
+                continue
+            core[name] = k
         rows = [{k: 0.3 + 0.1 * i + 0.01 * j for j, k in enumerate(spec["needs"])} for i in range(3)]
         if name == "pot_r":
             rows = [{"k2": 0, "l": 0.4}, {"k2": 1, "l": 0.35}]
-        fx.append({"calc": name, "kernel": "circuit" if name in ("ohm_R", "bridge_S", "pot_r", "diode_knee", "rc_tau") else
-                   {"pendulum_g": "pendulum", "spring_k_static": "spring", "spring_k_shm": "spring", "incline_mu": "incline",
-                    "stokes_eta": "stokes", "cooling_k": "cooling", "boyle_pv": "boyle", "mix_c": "mixtures", "res_v": "resonance",
-                    "sono_mu": "sonometer", "mirror_f": "mirror", "lens_f": "lens", "prism_n": "prism", "slab_n": "slab",
-                    "induct_ratio": "induction", "gauge_mean": "gauge"}[name],
+        fx.append({"calc": name, "kernel": core[name],
                    "params": {"Rb": 10.0} if name == "pot_r" else {}, "rows": rows})
     return fx
 
@@ -173,11 +189,13 @@ def test_javascript_twin_gives_the_same_numbers(tmp_path):
 
 
 def test_both_twins_know_the_same_kernels_and_calcs():
+    import re
     src = (STATIC / "kernels.js").read_text()
+    packs = "\n".join(p.read_text() for p in sorted((STATIC / "packs").glob("*.js")))   # v0.781 the packs' own twins
     for name in KN.KERNELS:
-        assert f"K.{name} = " in src, name
+        assert f"K.{name} = " in src or re.search(rf"\b{re.escape(name)}\b", packs), name
     for name in KN.CALCS:
-        assert f"    {name}: {{" in src, name
+        assert f"    {name}: {{" in src or re.search(rf"\b{re.escape(name)}\b", packs), name
 
 
 @needs_node
@@ -234,10 +252,12 @@ def test_a_lab_that_fails_its_ncert_check_is_left_out(monkeypatch):
         lab["id"] = "broken-pendulum"
         lab["check"]["textbook"] = "spring_T"            # the wrong formula: 2 s vs 0.63 s
         return lab
+    S.labs.cache_clear()
+    n = len(S.labs())
     monkeypatch.setattr(catalog, "BUILDERS", catalog.BUILDERS + (broken,))
     S.labs.cache_clear()
     try:
-        assert "broken-pendulum" not in S.labs() and len(S.labs()) == 22
+        assert "broken-pendulum" not in S.labs() and len(S.labs()) == n
     finally:
         S.labs.cache_clear()
 
@@ -299,8 +319,8 @@ def _client():
 def test_routes_are_public_read_only():
     c = _client()
     d = c.get("/api/prayog/labs", params={"variants": False}).json()
-    assert len(d["labs"]) == 22 and "simulation" in d["note"]     # the 22 set-ups; their variants page separately
-    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]} == {"convex-lens"}
+    assert len(d["labs"]) == min(100, len(S.labs())) and "simulation" in d["note"]   # every set-up, paged at 100
+    assert "convex-lens" in {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]}
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"
     assert c.get("/api/prayog/labs/nahi-hai").status_code == 404
@@ -357,7 +377,7 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.793.0"
+    assert APP_VERSION == "0.798.0"
 
 
 # ------------------------------------------------------------------------------------------- the realistic studio

@@ -1,0 +1,35 @@
+{
+ "base": "w7-coupled-spring-oscillators",
+ "rig": "w7-oscillation-bench",
+ "chapter": "Oscillations, waves and acoustics",
+ "variants": [
+  {
+   "key": "undamped",
+   "title": "Coupled spring oscillators on an air track: undamped",
+   "sample": "Two generic 200 g gliders, three springs",
+   "method": "Periods of the two normal modes",
+   "unknown": "the coupling coefficient",
+   "params": {
+    "gam": 0.0
+   },
+   "note": "On the air cushion friction is negligible: the modes ring for minutes.",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  },
+  {
+   "key": "damped",
+   "title": "Coupled spring oscillators on an air track: damped",
+   "sample": "Two generic 200 g gliders with damping magnets",
+   "method": "Mode periods, then the decay of the in-phase mode",
+   "unknown": "the damping coefficient and the coupling coefficient",
+   "params": {
+    "gam": 0.03
+   },
+   "note": "Magnets on the gliders induce eddy currents in the aluminium track: the amplitude falls as exp(−γ t).",
+   "source": {
+    "title": "Generic apparatus: the value is a setting of this bench, not a property of a named material"
+   }
+  }
+ ]
+}

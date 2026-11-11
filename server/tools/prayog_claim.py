@@ -1,6 +1,8 @@
 """Apply built-claims to the physics syllabus, then re-measure coverage.
 
-Each build agent writes `<claims dir>/<name>.json` = {"<syllabus set-up id>": "<lab id>", ...}. This applies every
+Each build agent writes `<claims dir>/<name>.json` = {"<syllabus set-up id>": "<lab id>", ...}. A set-up id that is
+in more than one level file (e.g. `stefan-constant` in ug and pg) is claimed as "<level>:<id>" (`ug:stefan-constant`);
+a bare id still lands on the FIRST file that has it, and the run warns when a bare id is ambiguous. This applies every
 claim whose lab REALLY opens, refuses the rest by name, and prints the coverage meter. Agents never edit the
 syllabus themselves, so parallel waves cannot collide.
 
@@ -45,17 +47,26 @@ def main(argv: list[str]) -> int:
         for rid in revoked:
             claims.pop(rid, None)
     print(f"{len(claims)} claim(s) from {claims_dir}" + (f"  ({len(revoked)} revoked)" if revoked else ""))
+    seen: dict[str, list[str]] = {}
+    for path in sorted(SYL.glob("*.json")):
+        for ch in json.loads(path.read_text(encoding="utf-8")).get("chapters") or []:
+            for st in ch.get("setups") or []:
+                seen.setdefault(st["id"], []).append(path.stem)
+    for k in claims:
+        if ":" not in k and len(seen.get(k, [])) > 1:
+            print(f"  ! '{k}' is in {', '.join(seen[k])}: it lands on {seen[k][0]}; write '<level>:{k}' to pick the level")
 
     applied, refused, unknown = [], [], []
     for path in sorted(SYL.glob("*.json")):
         doc = json.loads(path.read_text(encoding="utf-8"))
         changed = False
+        level = path.stem
         for ch in doc.get("chapters") or []:
             for st in ch.get("setups") or []:
                 if st["id"] in revoked and st.get("built"):
                     del st["built"]
                     changed = True
-                lab_id = claims.pop(st["id"], None)
+                lab_id = claims.pop(f"{level}:{st['id']}", None) or claims.pop(st["id"], None)
                 if not lab_id:
                     continue
                 if not S.get(lab_id):                # a lab that does not open is NOT coverage

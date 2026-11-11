@@ -154,3 +154,53 @@ def apply(html: str, e: str, op: str, value: str, photos: set[str], ok_href) -> 
     else:
         raise EditError("Yeh badlav samajh nahi aaya.")
     return str(soup), what
+
+
+# ---------------------------------------------------------------- v0.795 YEH WALA: the free style panel
+# Her style picks are utility classes (`hs-u-<prop>-<value>`, hoola-site.css) on the element - the site's OWN colour
+# tokens, a type scale step, a spacing step, a corner, an alignment, a weight. No raw colour can be written: a value
+# outside these lists is refused (the design-system rule), and no model is asked.
+STYLE: dict[str, dict[str, str]] = {
+    "color": {"primary": "the brand colour", "accent": "the accent", "ink": "the text colour", "muted": "soft text",
+              "bg": "the page colour"},
+    "bg": {"none": "no background", "primary": "the brand colour", "accent": "the accent", "surface": "a soft panel",
+           "ink": "dark"},
+    "size": {"m1": "smaller", "1": "a step bigger", "2": "two steps bigger", "3": "three steps bigger"},
+    "space": {"0": "no padding", "1": "a little padding", "2": "some padding", "3": "more padding", "4": "lots of padding"},
+    "radius": {"0": "square corners", "sm": "slightly round", "md": "round", "lg": "very round", "full": "pill"},
+    "align": {"left": "left", "center": "centre", "right": "right"},
+    "weight": {"400": "regular", "600": "semi-bold", "700": "bold"},
+}
+STYLE_LABEL = {"color": "text colour", "bg": "background", "size": "size", "space": "padding", "radius": "corners",
+               "align": "alignment", "weight": "weight"}
+
+
+def style(html: str, e: str, prop: str, value: str) -> tuple[str, str]:
+    """One style pick for one element: replaces that property's old utility class ('default' removes it)."""
+    prop, value = str(prop or "").strip(), str(value or "").strip()
+    if prop not in STYLE:
+        raise EditError("That style cannot be changed here.")
+    if value != "default" and value not in STYLE[prop]:
+        raise EditError("Only your website's own colours can be used." if prop in ("color", "bg")
+                        else "That step is not on the list.")
+    soup = _soup(html)
+    el = _find(soup, e)
+    cls = [c for c in (el.get("class") or []) if not c.startswith(f"hs-u-{prop}-")]
+    if value != "default":
+        cls.append(f"hs-u-{prop}-{value}")
+    if cls:
+        el["class"] = cls
+    elif el.has_attr("class"):
+        del el["class"]
+    return str(soup), f"{STYLE_LABEL[prop]}: {'as designed' if value == 'default' else STYLE[prop][value]}"
+
+
+def styles_of(html: str, e: str) -> dict[str, str]:
+    """The style picks already on an element (for the panel)."""
+    el = _find(_soup(html), e)
+    out = {}
+    for c in el.get("class") or []:
+        m = re.match(r"hs-u-([a-z]+)-(.+)$", c)
+        if m and m.group(1) in STYLE:
+            out[m.group(1)] = m.group(2)
+    return out
