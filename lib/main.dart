@@ -36,7 +36,7 @@ Future<void> main() async {
   final app = await Santosh.load();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Color(0xFF0B0A1A), systemNavigationBarIconBrightness: Brightness.light));
+    systemNavigationBarColor: Color(0xFF151515), systemNavigationBarIconBrightness: Brightness.light));
   runApp(SantoshApp(app: app));
 }
 
@@ -414,7 +414,9 @@ class _HomeState extends State<Home> {
   }
 }
 
-/// Floating glass tab bar with the live-voice button raised in the middle.
+/// v0.488 The floating tab pill (the shape of the app this design follows): one rounded surface with a hairline border,
+/// five equal slots, the open tab lifted on a lighter chip with its icon in saffron. Baat (live voice) is the middle slot
+/// now, no longer a raised glowing button - the glow was the loudest thing on every screen.
 class _NavBar extends StatelessWidget {
   const _NavBar({required this.tab, required this.onTap});
   final int tab;
@@ -430,17 +432,15 @@ class _NavBar extends StatelessWidget {
         child: Press(
           onTap: () => onTap(i),
           haptic: false,
-          child: SizedBox(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
             height: 62,
+            decoration: BoxDecoration(color: sel ? C.bubble : Colors.transparent, borderRadius: BorderRadius.circular(31)),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              AnimatedScale(scale: sel ? 1.12 : 1, duration: const Duration(milliseconds: 220), curve: Curves.easeOutBack,
-                  child: Icon(sel ? on : icon, color: sel ? C.accent : C.muted, size: 23)),
+              Icon(sel ? on : icon, color: sel ? C.accent : C.muted, size: 24),
               const SizedBox(height: 3),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(fontSize: 11, fontWeight: sel ? FontWeight.w800 : FontWeight.w600, color: sel ? C.accent : C.muted),
-                child: Text(label),
-              ),
+              Text(label, maxLines: 1, style: uiSans(fontSize: 12, fontWeight: sel ? FontWeight.w600 : FontWeight.w500, color: sel ? C.ink : C.muted)),
             ]),
           ),
         ),
@@ -451,42 +451,16 @@ class _NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: SizedBox(
-          height: 84,
-          child: Stack(clipBehavior: Clip.none, alignment: Alignment.bottomCenter, children: [
-            Glass(
-              radius: 26,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              opacity: .1,
-              child: Row(children: [
-                _item(0, Icons.home_outlined, Icons.home_rounded, 'Today'),
-                _item(1, Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded, 'Chat'),
-                const Expanded(child: SizedBox()),
-                _item(3, Icons.power_outlined, Icons.power_rounded, 'Connect'),
-                _item(4, Icons.person_outline_rounded, Icons.person_rounded, 'Main'),
-              ]),
-            ),
-            Positioned(
-              top: -4,
-              child: Semantics(
-                button: true,
-                label: 'Talk — live voice',
-                child: Press(
-                  onTap: () => onTap(2),
-                  child: Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const RadialGradient(colors: [Color(0xFFFFE3BE), Color(0xFFFF9A3C), Color(0xFFB45CFF)], stops: [0, .35, 1], center: Alignment(-.35, -.4)),
-                      boxShadow: [BoxShadow(color: const Color(0xFFFF8C3C).withOpacity(tab == 2 ? .75 : .5), blurRadius: tab == 2 ? 30 : 22, offset: const Offset(0, 8))],
-                      border: Border.all(color: Colors.white.withOpacity(tab == 2 ? .7 : .25), width: 2),
-                    ),
-                    child: const Icon(Icons.mic_rounded, color: C.onAccent, size: 28),
-                  ),
-                ),
-              ),
-            ),
+        child: Container(
+          height: 74,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: C.surface, borderRadius: BorderRadius.circular(37), border: Border.all(color: C.hair)),
+          child: Row(children: [
+            _item(0, Icons.home_outlined, Icons.home_rounded, 'Today'),
+            _item(1, Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded, 'Chat'),
+            _item(2, Icons.graphic_eq_rounded, Icons.graphic_eq_rounded, 'Talk'),
+            _item(3, Icons.power_outlined, Icons.power_rounded, 'Connect'),
+            _item(4, Icons.person_outline_rounded, Icons.person_rounded, 'Main'),
           ]),
         ),
       );

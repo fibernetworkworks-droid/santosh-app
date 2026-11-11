@@ -353,7 +353,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 4, 8, 6),
       decoration: BoxDecoration(
-        color: const Color(0xF0151030),
+        color: const Color(0xF021201F),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0x33FFFFFF)),
         boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 24, offset: Offset(0, 10))],
@@ -418,22 +418,19 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
 
   Widget _captions() {
     if (call.heard.isEmpty && call.reply.isEmpty) return const SizedBox(height: 8);
-    return Glass(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    // v0.488 live captions, centred and quiet: what she said in muted sans, the reply in the reply serif (no card)
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 150),
+        constraints: const BoxConstraints(maxHeight: 190),
         child: SingleChildScrollView(
           reverse: true,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (call.heard.isNotEmpty) ...[
-              const Text('YOU', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.muted)),
-              Text(call.heard, style: const TextStyle(fontSize: 15, height: 1.35, color: C.ink)),
-            ],
+          child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            if (call.heard.isNotEmpty)
+              Text(call.heard, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, height: 1.35, color: C.muted)),
             if (call.reply.isNotEmpty) ...[
-              if (call.heard.isNotEmpty) const SizedBox(height: 8),
-              Text(app.aName.toUpperCase(), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.accent)),
-              Text(call.reply, style: const TextStyle(fontSize: 15, height: 1.35, color: C.ink, fontWeight: FontWeight.w600)),
+              if (call.heard.isNotEmpty) const SizedBox(height: 14),
+              Text(call.reply, textAlign: TextAlign.center, style: replyText(size: 22).copyWith(height: 1.4)),
             ],
           ]),
         ),
@@ -454,7 +451,12 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           opacity: onTap == null ? .35 : 1,
           child: GestureDetector(
             onTap: onTap,
-            child: Glass(radius: 22, padding: const EdgeInsets.all(14), child: Icon(icon, color: C.chip)),
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(color: C.surface, shape: BoxShape.circle, border: Border.fromBorderSide(BorderSide(color: C.hair))),
+              child: Icon(icon, color: C.ink),
+            ),
           ),
         ),
       );
@@ -474,10 +476,9 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                 height: 92,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: call.inCall
-                      ? const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFB91C1C)], begin: Alignment.topLeft, end: Alignment.bottomRight)
-                      : C.gradient,
-                  boxShadow: [BoxShadow(color: (call.inCall ? const Color(0xFFEF4444) : C.accent).withOpacity(.45), blurRadius: 28, offset: const Offset(0, 10))],
+                  color: call.inCall ? C.bad : null,
+                  gradient: call.inCall ? null : C.gradient,
+                  boxShadow: call.inCall ? const <BoxShadow>[] : [BoxShadow(color: C.accent.withOpacity(.35), blurRadius: 28, offset: const Offset(0, 10))],
                 ),
                 child: call.act == CallAct.connecting
                     ? const Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(color: C.onAccent, strokeWidth: 3))

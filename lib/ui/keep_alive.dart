@@ -64,7 +64,7 @@ class HoolaKeepAlive {
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const Icon(Icons.battery_alert_rounded, color: Color(0xFFFFB15C)),
+                const Icon(Icons.battery_alert_rounded, color: Color(0xFFF4A24C)),
                 const SizedBox(width: 8),
                 Expanded(child: Text(newKills ? 'Phone ne ${app.aName} stopped' : '$brand phone: once, 1 minute', style: display(20))),
               ]),
@@ -191,7 +191,7 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
           Glass(
             child: Row(children: [
               Icon(r == null ? Icons.hourglass_top_rounded : (probs.isEmpty ? Icons.verified_rounded : Icons.battery_alert_rounded),
-                  color: r == null ? C.muted : (probs.isEmpty ? C.ok : const Color(0xFFFFB15C)), size: 34),
+                  color: r == null ? C.muted : (probs.isEmpty ? C.ok : const Color(0xFFF4A24C)), size: 34),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -217,7 +217,7 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: const Color(0x2EFFB15C), borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(color: const Color(0x2EF4A24C), borderRadius: BorderRadius.circular(16)),
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

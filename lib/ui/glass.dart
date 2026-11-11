@@ -1,6 +1,3 @@
-import 'dart:math' as math;
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,21 +13,25 @@ final ValueNotifier<bool> auroraPaused = ValueNotifier(false);
 
 /// Santosh "Night Glass": deep indigo night, frosted glass, saffron action colour, violet for you.
 class C {
-  static const ink = Color(0xFFF4F2FF);       // main text
-  static const muted = Color(0xFFB9B3DA);     // secondary text (≥ 7:1 on bg)
-  static const faint = Color(0xFF9C96C2);     // captions
-  static const accent = Color(0xFFFFB15C);    // saffron: primary actions, active tab
-  static const accentSoft = Color(0xFFFFC27A);
+  // v0.488 CLAUDE-STYLE DESIGN: one quiet neutral ground, a warm off-white ink, saffron only where Hoola is acting.
+  static const ink = Color(0xFFF3F1EC);       // main text
+  static const muted = Color(0xFFA09B93);     // secondary text (>= 6:1 on the ground)
+  static const faint = Color(0xFF8E8981);     // captions
+  static const accent = Color(0xFFF4A24C);    // saffron: primary actions, active tab, "Hoola is working"
+  static const accentSoft = Color(0xFFF6B66E);
   static const accent2 = Color(0xFFC055F5);
   static const violet = Color(0xFF7C5CFF);
-  static const onAccent = Color(0xFF1B1030);  // text on saffron
-  static const chip = Color(0xFFD7D2F2);
-  static const ok = Color(0xFF34D399);
-  static const warn = Color(0xFFFFC27A);
-  static const bad = Color(0xFFF87171);
+  static const onAccent = Color(0xFF1B1305);  // text on saffron
+  static const chip = Color(0xFFE2DFD8);      // icon / chip ink on neutral surfaces
+  static const ok = Color(0xFF44CF95);
+  static const warn = Color(0xFFF4B85C);
+  static const bad = Color(0xFFF2706F);
   static const teal = Color(0xFF2DD4BF);
-  static const bgTop = Color(0xFF0B0A1A);
-  static const bgBottom = Color(0xFF120E2A);
+  static const bgTop = Color(0xFF151515);     // the ground
+  static const bgBottom = Color(0xFF1A1A19);
+  static const surface = Color(0xFF202020);   // composer, tab pill, cards
+  static const bubble = Color(0xFF2A2A28);    // her own message
+  static const hair = Color(0xFF30302D);      // hairline borders
   static const panel = Color(0x14FFFFFF);     // inner panels on glass
   static const line = Color(0x14FFFFFF);
   static const gradient = LinearGradient(colors: [Color(0xFFFFD9A8), Color(0xFFFF9A3C), Color(0xFFC055F5)],
@@ -38,8 +39,26 @@ class C {
   static const youGradient = LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFB44CF0)], begin: Alignment.topLeft, end: Alignment.bottomRight);
 }
 
+/// v0.488 the interface sans: Schibsted Grotesk (the web console's own, the closest free match to the app this design
+/// follows). Looked up by name so a google_fonts build that lacks the family falls back to Manrope instead of failing.
+TextStyle uiSans({double? fontSize, FontWeight? fontWeight, Color? color, double? height, double? letterSpacing}) {
+  try {
+    return GoogleFonts.getFont('Schibsted Grotesk', fontSize: fontSize, fontWeight: fontWeight, color: color, height: height, letterSpacing: letterSpacing);
+  } catch (_) {
+    return GoogleFonts.manrope(fontSize: fontSize, fontWeight: fontWeight, color: color, height: height, letterSpacing: letterSpacing);
+  }
+}
+
+TextTheme uiSansTheme(TextTheme base) {
+  try {
+    return GoogleFonts.getTextTheme('Schibsted Grotesk', base);
+  } catch (_) {
+    return GoogleFonts.manropeTextTheme(base);
+  }
+}
+
 TextStyle display(double size, {FontWeight w = FontWeight.w700, Color color = C.ink}) =>
-    GoogleFonts.sora(fontSize: size, fontWeight: w, color: color, height: 1.12, letterSpacing: -size * .015);
+    uiSans(fontSize: size, fontWeight: w, color: color, height: 1.15, letterSpacing: -size * .01);
 
 /// v0.249 CLAUDE JAISA AKSHAR: Hoola's reply is set the way Claude sets its own - a serif at 16px / 1.5,
 /// weight 400 (Claude's own token is `--font-claude-response: Anthropic Serif; 1rem; 400; 1.5`).
@@ -53,30 +72,30 @@ TextStyle replyText({double size = 16, Color color = C.ink}) =>
 
 ThemeData santoshTheme() {
   final scheme = ColorScheme.fromSeed(seedColor: C.accent, brightness: Brightness.dark).copyWith(
-    primary: C.accent, onPrimary: C.onAccent, secondary: C.violet, surface: const Color(0xFF17122F), onSurface: C.ink,
+    primary: C.accent, onPrimary: C.onAccent, secondary: C.violet, surface: C.surface, onSurface: C.ink,
   );
   final base = ThemeData(useMaterial3: true, colorScheme: scheme, brightness: Brightness.dark);
   return base.copyWith(
-    textTheme: GoogleFonts.manropeTextTheme(base.textTheme).apply(bodyColor: C.ink, displayColor: C.ink),
+    textTheme: uiSansTheme(base.textTheme).apply(bodyColor: C.ink, displayColor: C.ink),
     scaffoldBackgroundColor: C.bgTop,
     splashFactory: InkSparkle.splashFactory,
     appBarTheme: AppBarTheme(backgroundColor: Colors.transparent, elevation: 0, foregroundColor: C.ink,
-        titleTextStyle: GoogleFonts.sora(fontSize: 19, fontWeight: FontWeight.w600, color: C.ink)),
+        titleTextStyle: uiSans(fontSize: 18, fontWeight: FontWeight.w600, color: C.ink)),
     inputDecorationTheme: InputDecorationTheme(
       labelStyle: const TextStyle(color: C.muted),
       hintStyle: const TextStyle(color: C.faint),
       enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0x33FFFFFF))),
       focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: C.accent, width: 1.6)),
     ),
-    dialogTheme: DialogTheme(backgroundColor: const Color(0xF21A1438), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26))),
-    snackBarTheme: SnackBarThemeData(backgroundColor: const Color(0xF2221A47), contentTextStyle: const TextStyle(color: C.ink),
+    dialogTheme: DialogTheme(backgroundColor: C.surface, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26))),
+    snackBarTheme: SnackBarThemeData(backgroundColor: C.bubble, contentTextStyle: const TextStyle(color: C.ink),
         behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? C.onAccent : const Color(0xFFE9E6FA)),
       trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? C.accent : const Color(0x2EFFFFFF)),
     ),
     chipTheme: base.chipTheme.copyWith(backgroundColor: const Color(0x17FFFFFF), side: const BorderSide(color: Color(0x29FFFFFF)),
-        labelStyle: const TextStyle(color: C.ink, fontWeight: FontWeight.w600), selectedColor: const Color(0x38FFB15C)),
+        labelStyle: const TextStyle(color: C.ink, fontWeight: FontWeight.w600), selectedColor: const Color(0x38F4A24C)),
     pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: _GlassPageTransition()}),
   );
 }
@@ -94,75 +113,28 @@ class _GlassPageTransition extends PageTransitionsBuilder {
   }
 }
 
-/// The night sky behind every screen: slow-drifting coloured light that the glass panels blur.
-class Aurora extends StatefulWidget {
+/// The ground behind every screen. v0.488: a flat neutral ground, like the app it is modelled on (the drifting
+/// coloured light is gone - it was the costliest pixel on a budget phone and the loudest thing on screen). A [tint]
+/// (the Baat mood colour) is a very faint glow from the top edge only.
+class Aurora extends StatelessWidget {
   const Aurora({super.key, required this.child, this.tint});
   final Widget child;
   final Color? tint;   // optional mood colour (Baat screen)
-  @override
-  State<Aurora> createState() => _AuroraState();
-}
-
-class _AuroraState extends State<Aurora> with SingleTickerProviderStateMixin {
-  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(seconds: 24))..repeat();
-
-  @override
-  void initState() {
-    super.initState();
-    auroraPaused.addListener(_onPaused);
-  }
-
-  void _onPaused() {
-    if (auroraPaused.value) {
-      _t.stop();   // ticker sleeps: no ticks, no repaints, zero GPU work while the list flies
-    } else if (!_t.isAnimating) {
-      _t.repeat();   // resumes from the value it froze at — the drift never jumps
-    }
-  }
-
-  @override
-  void dispose() {
-    auroraPaused.removeListener(_onPaused);
-    _t.dispose();
-    super.dispose();
-  }
-
-  Widget _blob(Color c, double size, double x, double y, double o) => Positioned(
-        left: x,
-        top: y,
-        child: IgnorePointer(
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
-            child: Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: c.withOpacity(o))),
-          ),
-        ),
-      );
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: const BoxDecoration(color: C.bgTop),
-        child: Stack(children: [
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _t,
-              builder: (context, _) {
-                final a = _t.value * 2 * math.pi;
-                final w = MediaQuery.sizeOf(context).width;
-                final h = MediaQuery.sizeOf(context).height;
-                return Stack(children: [
-                  _blob(const Color(0xFF6D4AFF), 340, -120 + math.sin(a) * 30, -90 + math.cos(a) * 24, .55),
-                  _blob(widget.tint ?? const Color(0xFFFF8A2A), 290, w - 180 + math.cos(a * .8) * 26, h * .32 + math.sin(a) * 30, .33),
-                  _blob(const Color(0xFF14B8A6), 260, 40 + math.sin(a * .6) * 40, h - 200 + math.cos(a * .7) * 20, .22),
-                ]);
-              },
-            ),
-          ),
-          Positioned.fill(child: widget.child),
-        ]),
+        decoration: BoxDecoration(
+          color: C.bgTop,
+          gradient: tint == null
+              ? null
+              : RadialGradient(center: const Alignment(0, -1.1), radius: 1.1, colors: [tint!.withOpacity(.16), C.bgTop]),
+        ),
+        child: child,
       );
 }
 
-/// Frosted glass panel.
+/// A quiet panel: a faint lift over the ground and a hairline border. v0.488: no blur, no sheen, no glow
+/// (the [flat] flag stays so every caller keeps compiling; every panel is flat now).
 class Glass extends StatelessWidget {
   const Glass({super.key, required this.child, this.radius = 24, this.padding = const EdgeInsets.all(14), this.opacity = .07,
       this.margin, this.border, this.tint, this.flat = false});
@@ -173,44 +145,19 @@ class Glass extends StatelessWidget {
   final double opacity;
   final Color? border;
   final Color? tint;
-
-  /// v0.164.3 blur perf guard: [flat] skips the BackdropFilter and keeps the same
-  /// night-glass paint (translucent fill, hairline border, top sheen, shadow). Every
-  /// BackdropFilter re-blurs the whole layer beneath it each frame, so a Glass card
-  /// inside the scrolling chat list is the #1 jank source on budget phones — cards
-  /// there are flat. The true blur stays where it shines: the header and the composer.
   final bool flat;
 
   @override
-  Widget build(BuildContext context) {
-    final body = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: (tint ?? Colors.white).withOpacity(opacity),
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: border ?? Colors.white.withOpacity(.14)),
-        gradient: LinearGradient(colors: [Colors.white.withOpacity(.06), Colors.white.withOpacity(0)],
-            begin: Alignment.topCenter, end: Alignment.center),
-      ),
-      child: child,
-    );
-    return Container(
-      margin: margin,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: const [BoxShadow(color: Color(0x59050314), blurRadius: 30, offset: Offset(0, 10))],
-      ),
-      child: flat
-          ? body
-          : ClipRRect(
-              borderRadius: BorderRadius.circular(radius),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                child: body,
-              ),
-            ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        margin: margin,
+        padding: padding,
+        decoration: BoxDecoration(
+          color: (tint ?? Colors.white).withOpacity(opacity),
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: border ?? C.hair),
+        ),
+        child: child,
+      );
 }
 
 /// Press feedback for any tappable: a soft squash + a light haptic tick.
@@ -256,12 +203,10 @@ class GradientButton extends StatelessWidget {
           onTap: onTap,
           child: Container(
             height: height,
-            decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(18), boxShadow: const [
-              BoxShadow(color: Color(0x59FFA046), blurRadius: 24, offset: Offset(0, 10)),
-            ]),
+            decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(height > 54 ? 27.0 : height / 2)),
             child: Center(
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(label, style: GoogleFonts.manrope(fontSize: height > 50 ? 16 : 14.5, fontWeight: FontWeight.w800, color: C.onAccent)),
+                Text(label, style: uiSans(fontSize: height > 50 ? 16 : 14.5, fontWeight: FontWeight.w600, color: C.onAccent)),
                 if (icon != null) ...[const SizedBox(width: 8), Icon(icon, color: C.onAccent, size: 20)],
               ]),
             ),
@@ -284,8 +229,8 @@ class GlassButton extends StatelessWidget {
         child: Container(
           height: height,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(color: const Color(0x17FFFFFF), borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0x29FFFFFF))),
+          decoration: BoxDecoration(color: C.surface, borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: C.hair)),
           child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
             if (icon != null) ...[Icon(icon, color: color, size: 18), const SizedBox(width: 8)],
             Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 14)),
@@ -321,7 +266,7 @@ class Avatar extends StatelessWidget {
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const SweepGradient(colors: [Color(0xFFFFB15C), Color(0xFFC055F5), Color(0xFF7C5CFF), Color(0xFFFFB15C)]),
+            gradient: const SweepGradient(colors: [Color(0xFFF4A24C), Color(0xFFC055F5), Color(0xFF7C5CFF), Color(0xFFF4A24C)]),
             boxShadow: [BoxShadow(color: (glow ?? C.accent).withOpacity(.45), blurRadius: 16)],
           ),
           child: AvatarFace(size: size - 4),          // the owner's look: Santosh or a female look (v0.48)
@@ -339,14 +284,28 @@ class Avatar extends StatelessWidget {
       ]);
 }
 
-/// Section caption.
+/// v0.488 an ALL-CAPS section label read as a quiet sentence-case one ("NEEDS YOUR YES" -> "Needs your yes"); well-known
+/// acronyms stay as they are, and a label that is not all caps is returned untouched.
+String softCaps(String t) {
+  if (t.isEmpty || t != t.toUpperCase() || t == t.toLowerCase()) return t;
+  const keep = {'GST', 'TV', 'UPI', 'AI', 'PDF', 'SMS', 'OTP', 'EMI', 'QR', 'ID', 'PAN', 'PC', 'KYC', 'ONDC', 'CA', 'USB', 'WIFI', 'AC', 'FAQ', 'API', 'URL', 'APK', 'ATM', 'HR', 'CRM', 'ERP', 'SEO', 'EC2'};
+  final words = t.split(' ');
+  for (var i = 0; i < words.length; i++) {
+    final w = words[i];
+    if (keep.contains(w)) continue;
+    words[i] = i == 0 && w.isNotEmpty ? w[0] + w.substring(1).toLowerCase() : w.toLowerCase();
+  }
+  return words.join(' ');
+}
+
+/// Section caption (v0.488: sentence case, 13 / 600, no wide tracking).
 class Caption extends StatelessWidget {
   const Caption(this.text, {super.key});
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.faint, letterSpacing: .9)),
+        child: Text(softCaps(text), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .1)),
       );
 }
 

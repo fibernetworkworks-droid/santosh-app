@@ -122,14 +122,15 @@ def test_ui_kit_pins_the_real_tokens():
         if name == "fe-ui-kit":
             body = b
     # the tokens are the REAL values from lib/ui/glass.dart class C, not invented
-    for token in ("#FFB15C", "#7C5CFF", "#F4F2FF", "#B9B3DA", "#0B0A1A", "#120E2A",
-                  "#1B1030", "#C055F5", "#34D399", "#F87171", "#FFD9A8",
-                  "Sora", "NEVER", "7:1"):
+    # v0.832: the phone app moved to the neutral dark tokens; the kit follows the source of truth
+    for token in ("#F4A24C", "#7C5CFF", "#F3F1EC", "#A09B93", "#151515", "#202020",
+                  "#1B1305", "#C055F5", "#44CF95", "#F2706F", "#FFD9A8",
+                  "Schibsted Grotesk", "NEVER", "7:1"):
         assert token in body, token
     # cross-check against the source of truth itself
     from pathlib import Path
     glass = (Path(__file__).resolve().parents[2] / "lib" / "ui" / "glass.dart").read_text(encoding="utf-8")
-    for hexv in ("0xFFFFB15C", "0xFF7C5CFF", "0xFFF4F2FF", "0xFF0B0A1A"):
+    for hexv in ("0xFFF4A24C", "0xFF7C5CFF", "0xFFF3F1EC", "0xFF151515"):
         assert hexv in glass, hexv
 
 

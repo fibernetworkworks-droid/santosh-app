@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
@@ -14,11 +13,11 @@ import '../glass.dart';
 
 // ---- palette (Hoola's own dark theme, from the approved designs) ----
 class SC {
-  static const bg = Color(0xFF0B0A1A);
-  static const stage = Color(0xFF06050F);
-  static const card = Color(0xFF15112B);
-  static const card2 = Color(0xFF1D1838);
-  static const field = Color(0xFF0F0C22);
+  static const bg = Color(0xFF151515);
+  static const stage = Color(0xFF0B0A09);
+  static const card = Color(0xFF1F1E1D);
+  static const card2 = Color(0xFF292827);
+  static const field = Color(0xFF181716);
   static const line = Color(0x14FFFFFF);
   static const line2 = Color(0x1FFFFFFF);
   static const teal = Color(0xFF5EEAD4);
@@ -26,9 +25,9 @@ class SC {
 }
 
 TextStyle sora(double size, {FontWeight w = FontWeight.w600, Color color = C.ink}) =>
-    GoogleFonts.sora(fontSize: size, fontWeight: w, color: color, letterSpacing: -size * .012);
+    uiSans(fontSize: size, fontWeight: w, color: color, letterSpacing: -size * .012);
 TextStyle body(double size, {FontWeight w = FontWeight.w600, Color color = C.ink, double? height}) =>
-    GoogleFonts.manrope(fontSize: size, fontWeight: w, color: color, height: height);
+    uiSans(fontSize: size, fontWeight: w, color: color, height: height);
 
 void studioSnack(BuildContext context, String t) =>
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(t), behavior: SnackBarBehavior.floating));
@@ -100,7 +99,7 @@ String langShown(String l) => langs.firstWhere((x) => x[0] == l, orElse: () => [
 
 /// The tone of a project's placeholder (before a picture exists), stable per name.
 Color toneOf(String key) {
-  const tones = [Color(0xFF2A1A0C), Color(0xFF10283A), Color(0xFF3B1230), Color(0xFF1A2A1A), Color(0xFF2B1650), Color(0xFF2F2A10)];
+  const tones = [Color(0xFF2A1A0C), Color(0xFF10283A), Color(0xFF3B1230), Color(0xFF1A2A1A), Color(0xFF343332), Color(0xFF2F2A10)];
   var h = 0;
   for (final c in key.codeUnits) {
     h = (h * 31 + c) & 0x7fffffff;
@@ -459,7 +458,7 @@ class _SVideoState extends State<SVideo> {
             SImage(app: widget.app, url: widget.poster, radius: 0, icon: Icons.movie_rounded),
           if (widget.overlay != null) widget.overlay!,
           if (widget.badge != null)
-            Positioned(left: 10, top: 10, child: Tag(widget.badge!, fg: C.ink, bg: const Color(0xB306050F))),
+            Positioned(left: 10, top: 10, child: Tag(widget.badge!, fg: C.ink, bg: const Color(0xB30B0A09))),
           if (!playing)
             Center(
               child: Container(

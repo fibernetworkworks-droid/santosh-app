@@ -11,7 +11,7 @@ Future<void> showApproveSheet(BuildContext context, Santosh app, Map<String, dyn
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: const Color(0x99060412),
+      barrierColor: const Color(0x990C0B0A),
       builder: (_) => _ApproveSheet(app: app, v: v),
     );
 
@@ -38,7 +38,7 @@ class _ApproveSheet extends StatelessWidget {
       child: Glass(
         radius: 34,
         opacity: .1,
-        tint: const Color(0xFF1A143A),
+        tint: const Color(0xFF282726),
         padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + mq.padding.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Center(child: Container(width: 44, height: 5, decoration: BoxDecoration(color: const Color(0x47FFFFFF), borderRadius: BorderRadius.circular(3)))),
@@ -62,7 +62,7 @@ class _ApproveSheet extends StatelessWidget {
                 if (amount.isNotEmpty)
                   Center(
                     child: Column(children: [
-                      const Text('TOTAL AMOUNT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.muted, letterSpacing: .8)),
+                      Text(softCaps('TOTAL AMOUNT'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .1)),
                       TweenAnimationBuilder<double>(
                         tween: Tween(begin: .85, end: 1),
                         duration: const Duration(milliseconds: 500),
@@ -76,7 +76,7 @@ class _ApproveSheet extends StatelessWidget {
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.only(top: 6),
-                      child: Pill('DEMO · NO REAL MONEY WILL BE CUT', fg: C.accentSoft, bg: Color(0x24FFB15C)),
+                      child: Pill('DEMO · NO REAL MONEY WILL BE CUT', fg: C.accentSoft, bg: Color(0x24F4A24C)),
                     ),
                   ),
                 if (amount.isNotEmpty || demo) const SizedBox(height: 12),
@@ -201,9 +201,9 @@ class _SlideToApproveState extends State<SlideToApprove> with SingleTickerProvid
           child: Container(
             height: h,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFFFB15C), Color(0xFFFF9A3C)]),
+              gradient: const LinearGradient(colors: [Color(0xFFF4A24C), Color(0xFFFF9A3C)]),
               borderRadius: BorderRadius.circular(22),
-              boxShadow: const [BoxShadow(color: Color(0x66FF963C), blurRadius: 28, offset: Offset(0, 12))],
+              boxShadow: const <BoxShadow>[],
             ),
             child: Stack(alignment: Alignment.centerLeft, children: [
               Center(

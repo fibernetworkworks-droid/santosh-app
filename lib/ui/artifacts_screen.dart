@@ -95,7 +95,7 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(gradient: C.gradient, borderRadius: BorderRadius.circular(13)),
+            decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(13)),
             child: const Icon(Icons.auto_awesome_mosaic_rounded, color: C.onAccent, size: 22),
           ),
           const SizedBox(width: 12),

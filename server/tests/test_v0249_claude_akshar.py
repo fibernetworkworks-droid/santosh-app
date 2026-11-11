@@ -113,8 +113,8 @@ def test_phone_chat_uses_it_everywhere_a_reply_is_drawn():
     assert chat.count("MdText(") >= 3
     assert chat.count("style: replyText()") == 3          # saved reply, revealed reply, streaming reply
     assert "fontSize: 15, height: 1.45" not in chat       # the old 15 / 1.45 is gone from the chat
-    # her own bubble: sans (the default theme font), at Claude's 16 / 1.5
-    assert chat.count("color: Colors.white, fontSize: 16, height: 1.5") == 2
+    # her own bubble: sans (the default theme font). v0.832 moved it to the neutral bubble: warm ink 16.5 / 1.45
+    assert chat.count("color: C.ink, fontSize: 16.5, height: 1.45") == 2
     assert "replyText()" not in chat.split("case 'message':")[1].split("Column(crossAxisAlignment: CrossAxisAlignment.end")[1][:600]
 
 
@@ -139,8 +139,8 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.831.0"
-    assert "0.831.0+830" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.832.0"
+    assert "0.832.0+831" in (ROOT / "pubspec.yaml").read_text()
     assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 20   # grows as main adds console files
 
 

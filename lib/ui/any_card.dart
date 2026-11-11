@@ -26,8 +26,8 @@ class AnyEventCard extends StatelessWidget {
   static const _done = {'done', 'completed', 'complete', 'approved', 'live', 'placed', 'finished', 'delivered', 'success', 'ok', 'ready', 'zip',
     'published', 'signed', 'final', 'sent'};
 
-  static const _surf1 = Color(0xFF1C1838);
-  static const _surf2 = Color(0xFF16132C);
+  static const _surf1 = Color(0xFF292827);
+  static const _surf2 = Color(0xFF21201F);
   static const _hair = Color(0x13FFFFFF);
   static const _vio = Color(0xFFA28DFF);
 
@@ -149,8 +149,8 @@ class AnyEventCard extends StatelessWidget {
 
     final eyebrow = Row(children: [
       Expanded(
-        child: Text(desk.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: C.faint)),
+        child: Text(softCaps(desk.toUpperCase()), maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.faint)),
       ),
       if (told) ...[
         const Icon(Icons.check_rounded, size: 12, color: C.ok),
@@ -295,7 +295,7 @@ class AnyEventCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       gradient: const LinearGradient(colors: [Color(0xFFFFC07A), Color(0xFFFFA94A)],
                           begin: Alignment.topCenter, end: Alignment.bottomCenter),
-                      boxShadow: const [BoxShadow(color: Color(0x66FFA046), blurRadius: 16, offset: Offset(0, 6), spreadRadius: -8)],
+                      boxShadow: const <BoxShadow>[],
                     ),
                     child: const Text('Open', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.onAccent)),
                   ),

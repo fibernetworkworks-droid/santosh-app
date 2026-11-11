@@ -261,7 +261,7 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
                     width: 20,
                     height: 20,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: const Color(0x26FFB15C), borderRadius: BorderRadius.circular(6)),
+                    decoration: BoxDecoration(color: const Color(0x26F4A24C), borderRadius: BorderRadius.circular(6)),
                     child: Text('${i + 1}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: C.accentSoft)),
                   ),
                   const SizedBox(width: 8),

@@ -465,7 +465,7 @@ class ProjectTile extends StatelessWidget {
                     child: Container(
                       width: 32,
                       height: 32,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xB30B0A1A)),
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xB3131211)),
                       child: const Icon(Icons.play_arrow_rounded, color: C.ink, size: 20),
                     ),
                   ),

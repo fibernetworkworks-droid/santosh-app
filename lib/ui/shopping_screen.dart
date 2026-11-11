@@ -146,7 +146,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
             Pill((_statusHi[st] ?? st.replaceAll('_', ' ')).toUpperCase(), fg: color, bg: color.withOpacity(.14)),
-            if (o['demo'] == true) const Pill('DEMO', fg: C.accentSoft, bg: Color(0x24FFB15C)),
+            if (o['demo'] == true) const Pill('DEMO', fg: C.accentSoft, bg: Color(0x24F4A24C)),
             Pill('#${(o['order_id'] as String? ?? '').padRight(6).substring(0, 6)}'),
           ]),
         ]),

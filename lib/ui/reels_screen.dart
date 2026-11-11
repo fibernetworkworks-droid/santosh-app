@@ -615,7 +615,7 @@ class _SavedReelsScreenState extends State<SavedReelsScreen> {
                         Container(
                           width: 42,
                           height: 42,
-                          decoration: BoxDecoration(color: const Color(0x22FFB15C), borderRadius: BorderRadius.circular(12)),
+                          decoration: BoxDecoration(color: const Color(0x22F4A24C), borderRadius: BorderRadius.circular(12)),
                           child: Icon(_icons[r['kind']] ?? Icons.movie_rounded, color: C.accent),
                         ),
                         const SizedBox(width: 12),

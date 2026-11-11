@@ -98,7 +98,7 @@ class _OperatorFrameState extends State<OperatorFrame> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          color: const Color(0xFF101018),
+          color: const Color(0xFF151413),
           child: img == null
               ? Center(
                   child: _gone

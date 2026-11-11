@@ -42,7 +42,7 @@ class GoalCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Container(width: 38, height: 38, alignment: Alignment.center,
-            decoration: BoxDecoration(gradient: C.gradient, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(12)),
             child: const Text('◎', style: TextStyle(color: C.onAccent, fontSize: 20, fontWeight: FontWeight.w800))),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

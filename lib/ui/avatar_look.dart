@@ -64,7 +64,7 @@ class AvatarFace extends StatelessWidget {
           child: Container(
             width: size,
             height: size,
-            color: isLook(l) ? const Color(0xFFEDE7F6) : const Color(0xFF2A1F5E),
+            color: isLook(l) ? const Color(0xFFEDE7F6) : const Color(0xFF403F3E),
             child: Image.asset(headAsset(l), fit: BoxFit.cover, filterQuality: FilterQuality.medium,
                 errorBuilder: (_, __, ___) => Image.asset('assets/images/santosh_head.png', fit: BoxFit.cover)),
           ),
@@ -74,7 +74,7 @@ class AvatarFace extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: const BoxDecoration(
-          shape: BoxShape.circle, gradient: SweepGradient(colors: [Color(0xFFFFB15C), Color(0xFFC055F5), Color(0xFF7C5CFF), Color(0xFFFFB15C)])),
+          shape: BoxShape.circle, gradient: SweepGradient(colors: [Color(0xFFF4A24C), Color(0xFFC055F5), Color(0xFF7C5CFF), Color(0xFFF4A24C)])),
       child: child,
     );
   }
@@ -206,7 +206,7 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
-            color: on ? const Color(0x33FFB15C) : C.panel,
+            color: on ? const Color(0x33F4A24C) : C.panel,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: on ? C.accent : C.line, width: on ? 2 : 1),
           ),

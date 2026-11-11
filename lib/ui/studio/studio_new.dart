@@ -308,13 +308,13 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
             Stack(children: [
               ClipRRect(borderRadius: BorderRadius.circular(16),
                   child: Image.memory(p.bytes, width: 76, height: 76, fit: BoxFit.cover)),
-              Positioned(left: 6, bottom: 6, child: Tag(p.name.text.trim(), fg: C.ink, bg: const Color(0xBF0B0A1A), size: 10)),
+              Positioned(left: 6, bottom: 6, child: Tag(p.name.text.trim(), fg: C.ink, bg: const Color(0xBF131211), size: 10)),
               Positioned(
                 right: 2,
                 top: 2,
                 child: GestureDetector(
                   onTap: () => setState(() => _photos.remove(p)),
-                  child: const CircleAvatar(radius: 11, backgroundColor: Color(0xCC0B0A1A), child: Icon(Icons.close_rounded, size: 14, color: C.ink)),
+                  child: const CircleAvatar(radius: 11, backgroundColor: Color(0xCC131211), child: Icon(Icons.close_rounded, size: 14, color: C.ink)),
                 ),
               ),
             ]),
@@ -421,9 +421,9 @@ class _NewVideoScreenState extends State<NewVideoScreen> {
     'ad': [Color(0xFF10283A), Icons.campaign_rounded],
     'indian_wedding': [Color(0xFF3A0E1A), Icons.favorite_rounded],
     'documentary': [Color(0xFF1A2A1A), Icons.landscape_rounded],
-    'animation_3d': [Color(0xFF1B2350), Icons.emoji_emotions_rounded],
-    'anime': [Color(0xFF2B1650), Icons.auto_awesome_rounded],
-    'news': [Color(0xFF1C1C2C), Icons.newspaper_rounded],
+    'animation_3d': [Color(0xFF373635), Icons.emoji_emotions_rounded],
+    'anime': [Color(0xFF343332), Icons.auto_awesome_rounded],
+    'news': [Color(0xFF252423), Icons.newspaper_rounded],
   };
 
   Widget _look() => ListView(padding: const EdgeInsets.fromLTRB(20, 4, 20, 24), children: [

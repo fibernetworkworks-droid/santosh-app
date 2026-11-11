@@ -356,9 +356,9 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
       padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
       decoration: BoxDecoration(
-        color: const Color(0x24FFB15C),
+        color: const Color(0x24F4A24C),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x55FFB15C)),
+        border: Border.all(color: const Color(0x55F4A24C)),
       ),
       child: Row(children: [
         const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: C.accentSoft)),
@@ -576,32 +576,37 @@ class _ChatScreenState extends State<ChatScreen> {
         const Expanded(child: Divider(color: Color(0x1FFFFFFF), height: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text(label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.faint, letterSpacing: 1.2)),
+          child: Text(softCaps(label), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.faint, letterSpacing: .1)),
         ),
         const Expanded(child: Divider(color: Color(0x1FFFFFFF), height: 1)),
       ]),
     );
   }
 
-  Widget _header() => Glass(
-        margin: const EdgeInsets.fromLTRB(14, 8, 14, 6),
-        padding: const EdgeInsets.all(10),
+  /// v0.488 the chat bar: no glass card, just the bar - chats on the left, the avatar and what it is doing in the
+  /// middle, voice and new chat on the right (the shape of the app this design follows).
+  Widget _header() => Padding(
+        padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
         child: Row(children: [
-          LiveAvatar(online: app.connected, busy: app.typing, feeling: app.mood),
-          const SizedBox(width: 12),
+          IconButton(tooltip: app.g('Purani chats'), onPressed: _showChats, icon: const Icon(Icons.menu_rounded, color: C.ink)),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(app.aName, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: display(20, w: FontWeight.w700)),
-              Text(!app.connected ? app.g('Connect ho raha hai…') : app.typing ? (app.currentStep ?? app.g('Kaam kar raha hoon…'))
-                  : app.incognito ? '🕶 Incognito · ${app.g('will not be remembered')}' : 'Online · ${languages[app.language] ?? ''}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: app.connected ? C.ok : C.muted)),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              LiveAvatar(online: app.connected, busy: app.typing, feeling: app.mood, size: 36),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(app.aName, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: display(17, w: FontWeight.w600)),
+                  Text(!app.connected ? app.g('Connect ho raha hai…') : app.typing ? (app.currentStep ?? app.g('Kaam kar raha hoon…'))
+                      : app.incognito ? '🕶 Incognito · ${app.g('will not be remembered')}' : 'Online · ${languages[app.language] ?? ''}',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: app.typing ? C.accent : (app.connected ? C.muted : C.faint))),
+                ]),
+              ),
             ]),
           ),
           if (widget.onVoice != null)
-            IconButton(tooltip: app.g('Bolkar baat karein'), onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
-          IconButton(tooltip: app.g('Purani chats'), onPressed: _showChats, icon: const Icon(Icons.history_rounded, color: C.chip)),
-          IconButton(tooltip: app.g('Naya chat'), onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
+            IconButton(tooltip: app.g('Bolkar baat karein'), onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.ink)),
+          IconButton(tooltip: app.g('Naya chat'), onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.edit_outlined, color: C.ink)),
         ]),
       );
 
@@ -628,9 +633,9 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0x24FFB15C),
+          color: const Color(0x24F4A24C),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x55FFB15C)),
+          border: Border.all(color: const Color(0x55F4A24C)),
         ),
         child: Row(children: [
           const Icon(Icons.pending_actions_rounded, color: C.accentSoft, size: 18),
@@ -649,7 +654,7 @@ class _ChatScreenState extends State<ChatScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xF2141029),
+      backgroundColor: C.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => ListenableBuilder(
         listenable: app,
@@ -691,7 +696,7 @@ class _ChatScreenState extends State<ChatScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xF2141029),
+      backgroundColor: C.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         var q = '';   // v0.164.2 search box: filter old chats by title, client side
@@ -828,7 +833,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0x2EFFB15C), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: const Color(0x2EF4A24C), borderRadius: BorderRadius.circular(16)),
           child: Text(onTap == null ? t : '$t  ${app.g('(dobara koshish ke liye tap kijiye)')}', style: const TextStyle(fontSize: 13, color: Color(0xFFFFD9A8))),
         ),
       );
@@ -874,16 +879,12 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 
-  /// v0.178 the 40 px gradient starter tile with the saffron glow (the house pattern).
+  /// v0.488 the 40 px starter tile: a quiet neutral tile with a saffron icon (no gradient, no glow).
   Widget _starterTile(String s) => Container(
         width: 40,
         height: 40,
-        decoration: BoxDecoration(
-          gradient: C.gradient,
-          borderRadius: BorderRadius.circular(13),
-          boxShadow: const [BoxShadow(color: Color(0x4DFFA046), blurRadius: 12, offset: Offset(0, 4))],
-        ),
-        child: Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 20, color: C.onAccent),
+        decoration: BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(13)),
+        child: Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 20, color: C.accent),
       );
 
   Widget _item(FeedItem it, {bool fresh = false}) {
@@ -900,22 +901,21 @@ class _ChatScreenState extends State<ChatScreen> {
         final bubble = me
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                decoration: BoxDecoration(gradient: C.youGradient, boxShadow: const [BoxShadow(color: Color(0x597C5CFF), blurRadius: 18, offset: Offset(0, 6))], borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(22), topRight: Radius.circular(22), bottomLeft: Radius.circular(22), bottomRight: Radius.circular(8))),
+                decoration: BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(22)),   // v0.488 her message: a quiet neutral bubble
                 child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
                   // v0.282 her files sit ABOVE the bubble now (SentFiles); a QR read from a photo stays here
                   for (final f in (it.data['files'] as List? ?? const []))
                     if (f is Map && f['codes'] is List) QrNote(codes: f['codes'] as List),
                   if ((it.data['files'] as List? ?? const []).any((f) => f is Map && f['codes'] is List)) const SizedBox(height: 6),
                   if (selecting)
-                    SelectableText(text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5))
+                    SelectableText(text, style: const TextStyle(color: C.ink, fontSize: 16.5, height: 1.45))
                   else
-                    Text(text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.5)),
+                    Text(text, style: const TextStyle(color: C.ink, fontSize: 16.5, height: 1.45)),
                 ]),
               )
-            : Glass(flat: true,
-                radius: 22,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            // v0.488 Hoola's reply is flat text on the ground, not a card (the serif does the work)
+            : Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                   // v0.222 SAAF CHAT: Hoola's reply rendered (lists, headings, bold, code, tables, links), not raw marks
                   fresh
@@ -928,7 +928,7 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Align(
             alignment: me ? Alignment.centerRight : Alignment.centerLeft,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
+              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * (me ? .82 : 1.0)),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: me ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -1051,7 +1051,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       width: 20,
       height: 20,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF34D399) : const Color(0xFFFFC27A)),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF34D399) : const Color(0xFFF6B66E)),
       child: Icon(state == 'done' ? Icons.check : Icons.priority_high, size: 13, color: Colors.white),
     );
   }
@@ -1066,7 +1066,7 @@ class _ChatScreenState extends State<ChatScreen> {
     HapticFeedback.mediumImpact();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xF2141029),
+      backgroundColor: C.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
         top: false,
@@ -1149,7 +1149,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final out = await showDialog<String>(
       context: context,
       builder: (dctx) => AlertDialog(
-        backgroundColor: const Color(0xF2141029),
+        backgroundColor: C.surface,
         title: Text(app.g('Edit message'), style: const TextStyle(fontWeight: FontWeight.w700)),
         content: TextField(controller: ctl, autofocus: true, minLines: 1, maxLines: 8,
             decoration: InputDecoration(hintText: app.g('Your message'))),
@@ -1197,7 +1197,7 @@ class _ChatScreenState extends State<ChatScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(app.g('IS PAR JAWAB'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.accentSoft, letterSpacing: .8)),
+            Text(softCaps(app.g('IS PAR JAWAB')), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.accentSoft, letterSpacing: .1)),
             const SizedBox(height: 2),
             Text(r, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip)),
           ]),
@@ -1257,9 +1257,9 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                 decoration: BoxDecoration(
-                  color: s == 'What is waiting for my yes?' ? const Color(0x26FFB15C) : const Color(0x14FFFFFF),
+                  color: s == 'What is waiting for my yes?' ? const Color(0x26F4A24C) : const Color(0x14FFFFFF),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: s == 'What is waiting for my yes?' ? const Color(0x59FFB15C) : const Color(0x22FFFFFF)),
+                  border: Border.all(color: s == 'What is waiting for my yes?' ? const Color(0x59F4A24C) : const Color(0x22FFFFFF)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 15,
@@ -1275,45 +1275,96 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _composer() => Glass(
+  /// v0.488 the pill composer: a + button, the text, then either Send (when there is something to send) or a mic and the
+  /// white voice-call button. The rim warms to saffron while she speaks.
+  Widget _composer() => Container(
         margin: const EdgeInsets.fromLTRB(14, 6, 14, 12),
-        padding: const EdgeInsets.all(8),
-        border: _listening ? const Color(0x66FFB15C) : null,   // v0.178 the glass rim warms up while she speaks
-        child: Row(children: [
-          IconButton(tooltip: app.g('Photo, PDF, video ya koi bhi file'), onPressed: _attach, icon: const Icon(Icons.attach_file_rounded, color: C.chip)),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+        decoration: BoxDecoration(
+          color: C.surface,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: _listening ? C.accent : C.hair),
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Semantics(
+            button: true,
+            label: app.g('Photo, PDF, video ya koi bhi file'),
+            child: Press(
+              onTap: _attach,
+              child: Container(
+                width: 46,
+                height: 46,
+                decoration: const BoxDecoration(color: C.bubble, shape: BoxShape.circle),
+                child: const Icon(Icons.add_rounded, color: C.ink, size: 26),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
           Expanded(
-            child: TextField(
-              controller: _text,
-              focusNode: _composeFocus,
-              minLines: 1,
-              maxLines: 4,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _send(),
-              decoration: InputDecoration(border: InputBorder.none, hintText: _listening ? app.g('Sun raha hoon…') : app.g('{a} se boliye…', a: app.aName)),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: TextField(
+                controller: _text,
+                focusNode: _composeFocus,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _send(),
+                style: const TextStyle(fontSize: 16.5),
+                decoration: InputDecoration(border: InputBorder.none, hintText: _listening ? app.g('Sun raha hoon…') : app.g('{a} se boliye…', a: app.aName)),
+              ),
             ),
           ),
           ValueListenableBuilder(
             valueListenable: _text,
             builder: (context, v, _) {
               final typing = v.text.trim().isNotEmpty || _files.isNotEmpty;
-              return Semantics(
-                button: true,
-                label: typing ? 'Send' : (_listening ? 'Stop listening' : app.g('Speak to {a}', a: app.aName)),
-                child: Press(
-                  onTap: typing ? _send : _mic,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: C.gradient,
-                      borderRadius: BorderRadius.circular(17),
-                      boxShadow: [BoxShadow(color: const Color(0x59FFA046), blurRadius: _listening ? 26 : 16, spreadRadius: _listening ? 4 : 0)],
+              if (typing) {
+                return Semantics(
+                  button: true,
+                  label: 'Send',
+                  child: Press(
+                    onTap: _send,
+                    child: Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle),
+                      child: const Icon(Icons.arrow_upward_rounded, color: C.bgTop, size: 24),
                     ),
-                    child: Icon(typing ? Icons.send_rounded : (_listening ? Icons.stop_rounded : Icons.mic_rounded), color: C.onAccent),
+                  ),
+                );
+              }
+              return Row(mainAxisSize: MainAxisSize.min, children: [
+                Semantics(
+                  button: true,
+                  label: _listening ? 'Stop listening' : app.g('Speak to {a}', a: app.aName),
+                  child: Press(
+                    onTap: _mic,
+                    child: Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(color: _listening ? C.accent : C.bubble, shape: BoxShape.circle),
+                      child: Icon(_listening ? Icons.stop_rounded : Icons.mic_none_rounded, color: _listening ? C.onAccent : C.ink, size: 24),
+                    ),
                   ),
                 ),
-              );
+                if (widget.onVoice != null) ...[
+                  const SizedBox(width: 6),
+                  Semantics(
+                    button: true,
+                    label: app.g('Bolkar baat karein'),
+                    child: Press(
+                      onTap: widget.onVoice,
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle),
+                        child: const Icon(Icons.graphic_eq_rounded, color: C.bgTop, size: 24),
+                      ),
+                    ),
+                  ),
+                ],
+              ]);
             },
           ),
         ]),
@@ -2134,7 +2185,7 @@ class _DownButton extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xEE231B45),
+                color: const Color(0xEE31302F),
                 border: Border.all(color: const Color(0x33FFFFFF)),
                 boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 14, offset: Offset(0, 6))],
               ),
@@ -2470,7 +2521,7 @@ class _EmailCard extends StatelessWidget {
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xF2141029),
+      backgroundColor: C.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),

@@ -1487,7 +1487,7 @@ class _BackgroundCardState extends State<_BackgroundCard> with WidgetsBindingObs
     Widget fix(String title, String sub, String button, Future<void> Function() onTap) => Container(
           margin: const EdgeInsets.only(top: 10),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0x2EFFB15C), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: const Color(0x2EF4A24C), borderRadius: BorderRadius.circular(16)),
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

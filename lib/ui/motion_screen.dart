@@ -178,7 +178,7 @@ class _MotionScreenState extends State<MotionScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: on ? const Color(0x33FFB15C) : const Color(0x14FFFFFF),
+          color: on ? const Color(0x33F4A24C) : const Color(0x14FFFFFF),
           border: Border.all(color: on ? C.accent : const Color(0x22FFFFFF), width: on ? 1.6 : 1),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

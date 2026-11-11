@@ -78,7 +78,7 @@ class _TopPluginsState extends State<TopPlugins> {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(gradient: C.gradient, borderRadius: BorderRadius.circular(11)),
+            decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(11)),
             child: const Icon(Icons.bolt_rounded, color: C.onAccent, size: 20),
           ),
           const SizedBox(width: 10),

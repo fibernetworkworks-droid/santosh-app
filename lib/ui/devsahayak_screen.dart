@@ -290,7 +290,7 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
               isExpanded: true,
               value: repo.isEmpty ? null : repo,
               hint: const Text('No repo yet'),
-              dropdownColor: const Color(0xFF17122F),
+              dropdownColor: C.surface,
               underline: const SizedBox.shrink(),
               items: [for (final n in names) DropdownMenuItem<String>(value: n, child: Text(_repoShort(n), overflow: TextOverflow.ellipsis))],
               onChanged: _busy ? null : (v) => setState(() => _repo = v ?? ''),
@@ -301,7 +301,7 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
             child: DropdownButton<String>(
               isExpanded: true,
               value: _modeNow,
-              dropdownColor: const Color(0xFF17122F),
+              dropdownColor: C.surface,
               underline: const SizedBox.shrink(),
               items: [for (final m in _modes) DropdownMenuItem<String>(value: m[0], child: Text(m[1], overflow: TextOverflow.ellipsis))],
               onChanged: _busy ? null : (v) => setState(() => _mode = v ?? ''),
@@ -916,7 +916,7 @@ class _DevTaskPageState extends State<DevTaskPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF17122F),
+      backgroundColor: C.surface,
       builder: (c) => SafeArea(
         child: SizedBox(
           height: MediaQuery.of(c).size.height * .8,

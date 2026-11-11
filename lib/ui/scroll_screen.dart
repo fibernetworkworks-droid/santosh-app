@@ -235,7 +235,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
                               begin: Alignment.bottomCenter,
                               end: Alignment.topCenter,
                               colors: budget > 0 && (d['min'] as num) > budget
-                                  ? [const Color(0xFFF87171), const Color(0xFFFFB15C)]
+                                  ? [const Color(0xFFF87171), const Color(0xFFF4A24C)]
                                   : [C.violet, C.accent2]),
                         ),
                       ),
@@ -257,7 +257,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
     if (apps.isEmpty) return const SizedBox.shrink();
     final top = (apps.first['min'] as num).toDouble();
     return _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('BY APP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
+      Text(softCaps('BY APP'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: C.faint, letterSpacing: .1)),
       const SizedBox(height: 10),
       for (final a in apps)
         Padding(
@@ -313,7 +313,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
     final top = hours.reduce((a, b) => a > b ? a : b);
     if (top <= 0) return const SizedBox.shrink();
     return _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('TIME OF DAY', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
+      Text(softCaps('TIME OF DAY'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: C.faint, letterSpacing: .1)),
       const SizedBox(height: 12),
       SizedBox(
         height: 56,
@@ -397,7 +397,7 @@ class _ScrollScreenState extends State<ScrollScreen> with WidgetsBindingObserver
   Widget _budgetCard(Map<String, dynamic> r) {
     final cur = (r['budget_min'] as num? ?? 0).toInt();
     return _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('DAILY LIMIT', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: C.faint, letterSpacing: .8)),
+      Text(softCaps('DAILY LIMIT'), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: C.faint, letterSpacing: .1)),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final m in const [0, 30, 60, 90, 120, 180])
