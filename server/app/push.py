@@ -280,6 +280,9 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
     _say = str(p.get("say") or "")[:300]
     if kind == "devsahayak_task":
         t = p.get("task") or {}
+        if p.get("end"):          # Hoola Code Phase 5: a background run just ended - done, or it needs her
+            head = "Hoola Code: done" if p.get("end") == "done" else "Hoola Code needs you"
+            return (f"{name}: {head}", _say or str(t.get("title") or ""))
         if t.get("status") in ("checks_failed", "refused", "explained") or (t.get("number") and _say.startswith(str(t.get("number"))) and "CI" in _say):
             return (f"{name}: Developer: {t.get('number', '')}", _say)
         return None

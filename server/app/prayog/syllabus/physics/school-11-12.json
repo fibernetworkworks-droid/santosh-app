@@ -83,7 +83,8 @@
       "internal volume"
      ],
      "conditions": [],
-     "kernel": "vernier"
+     "kernel": "vernier",
+     "built": "sw7-vernier-inside-depth"
     },
     {
      "id": "screw-gauge-wire",
@@ -124,7 +125,8 @@
       "volume"
      ],
      "conditions": [],
-     "kernel": "screw-gauge"
+     "kernel": "screw-gauge",
+     "built": "sw7-screw-gauge-sheet"
     },
     {
      "id": "spherometer-radius",
@@ -159,7 +161,8 @@
       "least count 0.2 cm",
       "least count 0.5 cm"
      ],
-     "kernel": "paper-scale"
+     "kernel": "paper-scale",
+     "built": "sw7-paper-scale"
     },
     {
      "id": "graph-with-error-bars",
@@ -190,7 +193,8 @@
       "mass of each body"
      ],
      "conditions": [],
-     "kernel": "beam-balance"
+     "kernel": "beam-balance",
+     "built": "sw7-beam-balance"
     },
     {
      "id": "limiting-friction-horizontal",
@@ -275,7 +279,8 @@
       "angle for maximum range"
      ],
      "conditions": [],
-     "kernel": "projectile"
+     "kernel": "projectile",
+     "built": "sw7-projectile-range"
     }
    ]
   },
@@ -295,7 +300,8 @@
       "weight of the roller"
      ],
      "conditions": [],
-     "kernel": "incline-roller"
+     "kernel": "incline-roller",
+     "built": "sw7-incline-roller"
     },
     {
      "id": "double-incline-energy",
@@ -307,7 +313,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "double-incline"
+     "kernel": "double-incline",
+     "built": "sw7-double-incline"
     }
    ]
   },
@@ -508,7 +515,8 @@
       "specific heat capacity"
      ],
      "conditions": [],
-     "kernel": "mixtures"
+     "kernel": "mixtures",
+     "built": "sw7-specific-heat-liquid"
     },
     {
      "id": "wax-cooling-curve",
@@ -522,7 +530,8 @@
       "melting point"
      ],
      "conditions": [],
-     "kernel": "phase-cooling"
+     "kernel": "phase-cooling",
+     "built": "sw7-wax-cooling-curve"
     },
     {
      "id": "bimetallic-strip",
@@ -534,7 +543,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "bimetal"
+     "kernel": "bimetal",
+     "built": "sw7-bimetallic-strip"
     },
     {
      "id": "liquid-level-on-heating",
@@ -546,7 +556,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "expansion-liquid"
+     "kernel": "expansion-liquid",
+     "built": "sw7-liquid-level-heating"
     },
     {
      "id": "rate-of-heat-loss-factors",
@@ -563,7 +574,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "cooling"
+     "kernel": "cooling",
+     "built": "sw7-rate-of-heat-loss"
     }
    ]
   },
@@ -620,7 +632,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "pendulum-damped"
+     "kernel": "pendulum-damped",
+     "built": "sw7-pendulum-dissipation"
     },
     {
      "id": "spring-mass-oscillation",
@@ -864,7 +877,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "multimeter"
+     "kernel": "multimeter",
+     "built": "sw7-multimeter"
     },
     {
      "id": "household-circuit",
@@ -1129,7 +1143,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "lens"
+     "kernel": "lens",
+     "built": "sw7-lens-combination"
     }
    ]
   },
@@ -1240,7 +1255,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "diode"
+     "kernel": "diode",
+     "built": "sw7-diode-led-multimeter"
     },
     {
      "id": "ldr-light-intensity",

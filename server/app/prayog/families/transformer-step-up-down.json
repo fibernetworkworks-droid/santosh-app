@@ -1,0 +1,22 @@
+{
+ "base": "transformer-step-up-down",
+ "rig": "em-ug-instruments",
+ "chapter": "Network theorems and electrical skills",
+ "variants": [
+  {
+   "key": "step-up",
+   "title": "Step-up transformer: turns ratio and efficiency",
+   "sample": "Generic demonstration transformer connected as step-up",
+   "method": "Open-circuit ratio and loaded efficiency",
+   "unknown": "turns ratio and efficiency",
+   "aim": "Find the turns ratio of a small step-up transformer from its open-circuit voltages, then load it and find its efficiency from the input power and the output power.",
+   "params": {
+    "nr": 2.0,
+    "RL": 200.0
+   },
+   "source": {
+    "title": "University of Delhi B.Sc. (Hons.) Physics practical lists (LOCF 2019 / UGCF 2022)"
+   }
+  }
+ ]
+}

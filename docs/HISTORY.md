@@ -1,12 +1,42 @@
-## v0.742.0 AIHUBMIX — free GLM 5.3 Flash (and more) for testing every Hoola feature (10 Nov 2026; owner: "AIHubMix -- LETS DO IT")
 
-AIHubMix (aihubmix.com/models/free, read 10 Nov) runs 71 models billed at $0. The catch is a one-time $1 top-up, after which each account gets 100 requests a day, 10 a minute, and 1M tokens a day shared across its free models. Its tool support is not published per model.
-- `agent/providers.py`: new provider `aihubmix` (https://aihubmix.com/v1, key `AIHUBMIX_API_KEY`). `providers.free()` is True for OpenRouter `:free` and AIHubMix `-free` names, so the dropdown shows them as Free.
-- The WHOLE server can run on it with only that key: `GLM_MODEL=aihubmix:coding-glm-5.3-flash-free`. `llm.glm_ready()` is now `providers.ready(GLM_MODEL)`, and `llm.model_in_force()` (her pick, else GLM_MODEL) decides the provider in `_target` / `is_openrouter` / `is_nvidia` / picture checks. `glmdoor._ready` and `modelchoice.offered` follow, so background jobs, Web Studio and the SDK door use it too.
-- `modelprofile._norm` drops `coding-` and `-free / :free / -latest / -instruct / -it / -preview`, so `coding-glm-5.3-flash-free` is matched to `z-ai/glm-5.3-flash` in OpenRouter's catalogue and gets its pictures / tools / window.
-- `santosh._friendly_error`: an AIHubMix 429 or limit says the free limit is used up (per minute / per day), not "something went wrong".
-- Tests: `test_v0742_aihubmix.py` has 5 tests: names + free flag + matching, the whole server on AIHubMix with only its key (url, key, model, no extra fields, GLM 5.3 Flash's abilities, pictures stay on it), the SDK door, the dropdown showing Free, and the plain limit line.
-- NOT VERIFIED LIVE: no AIHubMix key yet. Whether its free GLM 5.3 Flash accepts tools like the paid one is unknown until the first call. Its data terms were not read; use it for test chats only.
+
+## v0.799.0 DESK ROOM (built as 0.796; their 0.796-0.798 took the numbers, all kept) - a console desk for every live AI employee (owner: "LOT OF EMPLOYEE HAS BEEN DEVELOPED IN APP BUT IT IS NOT AVAILABLE IN WEB CONSOLE CHECK THIS FIRST THEN CATEGORY WISE DEVELOP AND DESIGN IT IN CONSOLE")
+
+THE AUDIT (catalog `employee/hire.py` x console `employees.js` DESKS x `v2.html` views): 84 employees, 63 live. Every live one
+in Games (10), Education (6), Enterprise (10), Business (seo / social / leads), cad, architect and film already had a console
+desk. 31 did not, and their "Open desk" tap went to `<key>desk`, a view that does not exist - nothing happened:
+Finance & Banking (paisa_sahayak, vitt_sahayak, risk_desk), Retail & E-commerce (dukaan_desk, retail_growth, retail_trust),
+Health Insurance (bima_desk, bima_assist, bima_risk), Voice (kaan) and Construction & Real Estate (21 const_* seats). They were
+never desks on the PHONE either: they are chat tools, and `employees_screen.dart` `_deskFor` falls back to the SEO desk for
+them (not changed in this release - phone code compiles only on CI).
+
+WHAT WAS BUILT
+- `server/app/employee/deskroom.py`: `DEPTS` (four departments, their lanes; Construction in five lanes), `tools_of(key)` (the
+  employee's own tool + its read-only `<key>_dekho` when it exists), `spec(tool)` = the tool's schema + its FULL description from
+  its own module (the registry copy is cut to 1,200 chars for the model and lost later actions' inputs) read into one form per
+  action: the fields that action names, choices from `a|b|c`, hints from `( )`, `[{a, b}]` = a row table with those columns,
+  `[x]` = one per line, `{k: v}` = key: value lines, `file_id` = a file picker, and what the action gives back (`->`). 423
+  actions, 409 read exactly; the 14 whose inputs the tool never lists say so and show every field folded. `run()` = the SAME
+  `dispatch` the chat uses, `Ctx(actor="owner")`, the conversation = her Hoola updates chat (cards land there); hired only,
+  paused refused, never another employee's tool, unknown fields dropped, a 9+ digit account / card number cut to its last
+  four, 90 s cap, output scrubbed. Routes: GET /api/deskroom, GET /api/deskroom/{dept}, POST /api/deskroom/{key}/run.
+- `server/app/static/console/deptdesk.js` (view `deptdesk`): crumb, department switcher, hero (serif title, line, a line drawing
+  per department that traces itself once, employees / working / actions counts), employee rail by lane with status dots, the
+  employee panel (pitch, Working / Paused / Not hired; not hired = what it does / never / needs + Hire on the careful trust
+  level), Work / Records tabs, action chips with what each gives, Find an action when there are many, the form (number / text
+  / choice / Default-Yes-No / row table with + Add row and Paste from Excel / lists / file), Run (Ctrl+Enter), and the result as
+  tiles, tables, flag lists, letters in the reading serif and a notes callout, with Copy. Records opens today's desk (`day`) or
+  the first list by itself. Ask in chat puts a line in the chat box, never sends it.
+- `employees.js`: the 30 keys -> 'deptdesk' (opened on that employee), kaan -> 'flow' (Hoola Flow is Kaan's console page).
+- `v2.css` block "v0.796 DESK ROOM": tokens only, light / dark / system, scale 12.5-32, weights <= 600, entrances once and
+  BACKWARDS (the form and result animate only when they first appear, never on a repaint), only the running dot loops.
+- Tests `test_v0799_desk_room.py` (8): every live employee opens a real view (the audit, held), the four departments = every
+  live seat, forms from the full description (>95% exact), routes + hire gate + real runs (loan EMI 16,607.15, a store GRN read
+  back as stock, paused refused, account masked), dispatch-as-owner pin, console wiring, crisp CSS, a real-browser walk in light
+  1280 and dark 390. Pins moved in test_v0453 / test_v0456 (openView now passes the key for deptdesk too).
+
+NOT VERIFIED: not opened on her live console yet; actions that make a card were not walked to the card; the phone still opens
+the SEO desk for these 31 (a phone desk is the next step if she wants it).
 
 ## v0.741.0 MORE PROVIDERS — Gemini / Groq / Mistral / NVIDIA / Z.ai in the model dropdown (10 Nov 2026; owner: "CHECK ALL MORE FREE POWERFUL OPTION" -> "GO")
 
@@ -1235,6 +1265,21 @@ pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-o
 four nullable columns create themselves.
 
 
+## v0.796.0 PRAYOGSHALA WAVE 7 (built as 0.794.0; re-versioned past 0.795.0, all kept) (owner: "Coverage 44.9% ... NOW LETS WORK ON PENDING LAB WORK END TO END")
+
+94 physics set-ups built and walked in a real browser within tolerance, by four build agents in their own pack trios
+(kernels + JS twin + labs + rigs): school_w7 (32: Class 6-12 motion, measuring, pressure / floatation, heat, sound,
+electricity), ug_mech_w7 (22: pendulums, springs, coupled oscillators, Searle, Maxwell needle, optical lever, trolley,
+2-D collision (SIMULATED DATA), harmonics, Callendar-Barnes, Angstrom, cooling, Stefan, capillary vs temperature),
+ug_optics_w7 (20: TIR, Wollaston, nodal slide, biprism, Michelson x2, Fabry-Perot, FTS, lycopodium, resolving power,
+Malus, Babinet, Brewster, five fibre set-ups, quartz expansion, laser characteristics), ug_em_w7 (20: ballistic
+galvanometer family, solenoid, Carey Foster, potentiometer, Anderson, universal bridge, Q-meter, RC / RL, transformer,
+motor, generator, falling magnet, galvanometer conversion, CC / CV source, magnetometer, B-H curve). Coverage
+362 -> 456 of 807 (school 6-10 78.4 %, 11-12 91.5 %, B.Sc 65.4 %, M.Sc 37.6 %, PhD 28.6 %).
+Engine: `tools/prayog_claim.py` takes "<level>:<id>" and warns on ambiguous bare ids (four optics claims would have
+overwritten M.Sc rows). Tests: test_v0418_prayog.py was red on main (22-lab pins; twin loaded kernels.js only) - it now
+counts every pack and the JS twin loads every pack, so pack kernels and calcs are compared numerically (39 / 39 green).
+Skipped rows and every constant written from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 7".
 ## v0.794.0 PROMPT NAAP - P0 of HOOLA PROMPTING: measure before building (built as 0.785; their 0.785.0-0.793.0 took the numbers - REBASE PROTOCOL, all kept; owner pasted the P0 step of the plan = GO)
 
 Plan: `docs/HOOLA_PROMPTING_PLAN.md` part 11. Research: `docs/research/prompting/00_INDEX.md`. No user-facing change.
@@ -1319,3 +1364,136 @@ Tests: test_v0795_yeh_wala.py (6: tokens-only free style + Undo + it reaches the
 comments CRUD, the marked-up screenshot (real Chromium), source wiring, a Playwright walk: Select -> pill + style panel ->
 brand colour -> new version -> her message carries <selected_elements> -> Comment pin + list -> Draw + Send -> hide / Done).
 NOT VERIFIED live: a real model acting on <selected_elements> and on a marked-up screenshot on her server.
+
+## v0.797.0 3D SCENES + THE GAME TOOL HUB (owner: "HOW BIG 3D GRAPHICAL STUNING GAME CAN BE BUILD VIA HOOLA AI --- IS THERE ANY WAY THAT OUR ENGINE WILL CONNECTED TO 100 OF PERFECT GAMING DESIGNING TOOLS" → "GO BOTH")
+
+**1. 3D scenes as checked data.** `gamedesk/scene.py` gains the 3D half of the v0.545 rule — the model writes a SPEC,
+Hoola checks it in code and GENERATES the `.tscn`, and every scene is loaded in the real engine before she sees it.
+Measured in Godot 4.7.2 headless BEFORE a line was written: Vector3 position / rotation_degrees / scale, primitive meshes
+carrying a StandardMaterial3D (albedo, metallic, roughness, emission), lights with shadows, a current Camera3D, a
+WorldEnvironment (colour or procedural sky, ambient, fog, glow), 3D collision shapes, Vector3 animation tracks, and a
+`.glb` model placed by name all load exactly as written; a `.glb` imports headless and instances. The spec now takes:
+20 3D node types (NODES3D), `mesh` on a MeshInstance3D (box / sphere / cylinder / capsule / plane / prism / torus +
+`material`), `environment` on a WorldEnvironment (sky top / horizon / ground or a background colour, ambient, fog, glow),
+3D shapes (box / sphere / capsule / cylinder), light / camera props, and **her APPROVED 3D models** from the Assets tab
+placed with `{"model": "<asset key>"}` → `res://assets/<key>.glb` (`scene._models_of` reads the same files a build
+copies; a model that was not approved, a path-like key, a model root, or model + type together are refused by name).
+`verify()` copies the models in and runs Godot's import first, exactly as a build does, so a model that cannot import is a
+FAIL, never a pass; the probe now also reports `three`, `meshes`, `lights`, `cameras`. Every unknown key inside a mesh,
+material or environment is dropped AND named (a `script` key inside a mesh is refused like a `source` key on a node), and
+the emitted text is still re-scanned for an embedded script. The SCENE prompt teaches what a stunning 3D scene is made of
+(a sky, one sun with shadows, a little fog, a framing camera, real roughness / metal, emission where things glow, models /
+instances for repeats); the tool description was rewritten to keep every honesty rule inside the registry's 1,200-character
+cut (the first draft lost "cannot SEE how it looks" to that cut — caught by the suite). Proved live: a 15-node courtyard
+with sky, sun shadows, fog, glow, a glowing spinning diya and three instances of a real `.glb` chair → PASS with 5 meshes,
+1 light, 1 camera and the `spin` animation counted by the engine; the same scene with a missing model file → FAIL.
+`tests/test_v0792_scenes3d.py` (20) + the 2D suite (13) = 33 green. NOT BUILT: TileMaps / GridMaps and shaders. A headless
+check proves a 3D scene loads and counts what is in it; it cannot SEE how it looks — said in the tool, the view and the code.
+
+**2. The Game Tool Hub, researched.** `docs/GAME_TOOL_HUB_PLAN.md`: 110 game-making tools classified into four lanes
+(Hoola's own server / cloud API with her key / the vendor's own MCP / her own machine), each with its official API, official
+MCP, the licence clause that decides, cost, and status — **62 have an official route today** (lane 1: 15, lane 2: 25,
+lane 3: 13, lane 4: 9; 19 already built), 8 need a partner deal, 9 are blocked (no API or the licence forbids Hoola's shape),
+31 unverified with what would settle each. Build waves start with CC0 libraries (Poly Haven, Kenney, ambientCG) and her-key
+3D / audio (Meshy, Tripo, ElevenLabs). Findings that tighten the moat plan: **Epic DOES ship "Unreal MCP" in UE 5.8**
+(Experimental, localhost, no auth — re-checked by the lead on Epic's own page); the AI-3D vendors' terms forbid a shared
+Newtika account (her key and her plan, always); Tripo's free tier keeps all rights; Blender's new official MCP runs
+model-written code unguarded, so Hoola's guarded runner stays the server path. One question is the owner's: most official
+vendor MCPs sign in with OAuth to HER vendor account — whether that fits her "no consumer-subscription OAuth" rule.
+
+Also healed: four game-role tests still asserted the old Hinglish "hired nahi" after main's English-tools commit d84057023.
+
+
+## v0.800.0 HOOLA VOCAL (built as 0.787; owner: "NOW LETS WORK ON 11LABS ::: HOOLA VOCAL ::: clone VoiceStudio and make same 11labs for hoola end to end")
+
+Full plan, the licence finding and the ElevenLabs-by-feature table: `docs/HOOLA_VOCAL_PLAN.md`.
+
+- **Licence:** VoiceStudio is AGPL-3.0 and its default weights are CC-BY-NC. Read for the feature map only; ZERO code or weights
+  copied (a test asserts it). Everything runs on Hoola's own engines.
+- **Server:** NEW `server/app/vocal/service.py` (rules) + `vocal/api.py` (20 routes under `/api/vocal`), switch `vocal_page`,
+  console flag `vocal`. Storage `data/vocal/<tenant>/vocal.json` + `audio/` + `samples/`.
+  `tts`, `dialogue`, `preview`, `voice_clone` (consent must be True; bytes sniffed, never the file name), `voice_design`
+  (refuses "sound like ..."), `voice_remove` (deletes the recording), `rule_add/remove` + `apply_rules`, `pieces` (cut at sentence
+  ends) + `join_wavs` (one format only - two kinds of voice in one dialogue are refused, not garbled), `sfx`, `cleanup`, `music`,
+  `project_save` / `chapter_make` / `project_export`, `history_remove`, `audio_file` (id shape checked, tenant-scoped), `usage`,
+  `connected()` = the honest switchboard.
+- **Console:** NEW `static/console/vocal.js` (overlay `#hvRoot`, twelve pages, a player bar), sidebar row "Hoola Vocal" under Hoola
+  Interactive. The Interactive design block in v2.css is now scoped `:is(#hiRoot,#hvRoot)`; Vocal's own pieces are the `.hv-*` rules.
+- **Live bug fixed (in Hoola Interactive since v0.774):** `v2.js` line 234 sends every click on `[data-v]` to `go()`. Both pages'
+  tabs carried `data-v`, so one tab click hid the page and returned her to chat. Renamed `data-val`. RULE: inside a full-page overlay
+  never use `data-v`.
+- **Tests:** `test_v0787_hoola_vocal.py` (11): rules applied by code, long text cut and rejoined exactly, consent, sniffed bytes, no
+  named-person imitation, dialogue casting, chapters + export, effects determinism, history / usage, the not-connected switchboard,
+  no AGPL names, and a real-Chromium walk of all twelve pages (title once, no sideways scroll, her text never run as HTML, a tab
+  click stays on the page, the typed line reaches the server with her voice and language).
+- **NOT VERIFIED:** every engine was faked in the tests. No real voice has been heard from this page. Clone and design need the GPU
+  lab, which is not connected on her server.
+
+## v0.801.0 APP STUDIO PREMIUM PASS (built as 0.797; their 3D SCENES + GAME TOOL HUB took 0.797.0, HOOLA CODE PHASE 5 0.798.0, DESK ROOM 0.799.0, HOOLA VOCAL 0.800.0 - REBASE PROTOCOL, all kept; owner: "THE WEB CONSOLE APP DEVELOPMENT SECTION LOOKS STALE AND OLD --- MAKE ALL PAGES FUNCTION PROPERLY, ALIGN THE TEXT, TAB, BUTTONS ETC PERFECT, MAKE IT MORE ADVANCED AND PREMIUM")
+
+Every page of /console/apps was first walked in a real Chromium on a seeded built app (a kirana shop app with a finished
+design and an Android build) at 1440 px light, 1440 px dark and 390 px, with screenshots of each page, before anything
+changed. Every page loaded with no script error; what was wrong was the finish:
+
+- Headers: Plan / Looks / Screens / Data / Business / iPhone had a title, Store / Health / Settings had none, Prototype
+  had a different bar 10 px off the others. Now ONE header on every page (`head(title, right, sub)` -> `.phd`: 22 px
+  title, one plain line under it, controls on the right), and ONE panel header row (`ph()` -> `.pnh`); plan
+  sub-sections are `.psub`. The test holds that no panel keeps a bare `<b>` title.
+- Tabs: the tab row ran past the pane (Settings fell off at 1440 px once icons were added). Now an underlined tab bar
+  (ink line under the current page, icons per page) sized by a container query on the pane: icons only where they fit.
+- Buttons: violet and black primaries mixed, sizes 28-34 px. Now one scale (34 / 30 px), primary = ink like Publish
+  (violet stays the working colour), Business cards keep their button on the bottom line.
+- Store: the raw browser "Choose File" box replaced by a styled key-file picker that shows the chosen name.
+- Android: the 4-step pipeline is one strip with a coloured bar under each finished / running step.
+- Settings: App details in two columns; inputs could run past the card edge (no min-width) - fixed.
+- Work card: said "Starting..." after its steps had run (now "After: <last step>") and showed "0s" for steps with no
+  recorded time (now no clock under 1 s).
+- iPhone: the runner note said "iPhone apps compile on a Mac. iPhone apps compile only on a Mac: ... (APP_BUILD_MODE=
+  github) (...)." - now `iosWhy()` says it once, brackets dropped.
+- Plurals ("1 calls"), language codes shown as names (hinglish / en / hi -> Hinglish / English / Hindi).
+- Phone width: a later Web Studio rule pinned the chat column at 440 px and pushed the page sideways - the chat takes the
+  full width, the top bar keeps Publish whole and the rest as icons.
+- English: "Design pakka" -> "Approve design", "Haan, make 3 looks" -> "Approve plan · make 3 looks", "Waiting for your
+  Haan", the feature-switch / language / list-change examples, and two server lines the Studio shows: the approve line
+  (`appmaker/service.py`) and the crash summary (`appmaker/quality.py`, "No crash from any phone in N days").
+- Motion: the page fades in once when she opens a page (`pane.dataset.fresh`, class `pin` - `.in` is the input class and
+  drew a border round the whole page), never on the 2 s poll redraw; off under reduced motion.
+
+Styles = the `v0.794 APP STUDIO PREMIUM PASS` block at the end of `appstudio.css`, scoped `.ws-app`, tokens only (the
+test holds no raw hex in it). Tests: NEW `test_v0801_app_studio_premium.py` (markers, English server lines, a real-browser
+walk of all 12 pages at 1440 and 390 px: header first, one current tab, no boxed body, no sideways scroll, panel headers,
+no Hinglish, no "0s", the tab bar fits; motion once per page); `test_v0693_app_studio.py` pin moved to "Approve design".
+NOT VERIFIED: on her own server with a real build in progress; the thread's older Hinglish job lines from other server
+messages (design ready / failed / stopped) are unchanged.
+
+## v0.802.0 GALTI PAKDO - the preview tells Hoola when it breaks; Try to fix follows a ladder (L6 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L6")
+Before: an error in the preview was invisible to Hoola (and a section script's error was swallowed by its own try/catch);
+she had to notice it and describe it. Lovable's error collector + Try to fix, in Hoola's shape:
+- COLLECTOR (`hoola-site.js`, last block): runs ONLY in a frame whose page is /api/site-preview/... - `error`,
+  `unhandledrejection` (AbortError skipped), failed `fetch` (5xx = Data error, network = Data error) and `window.__hoolaErr`
+  (called by the build's per-section catch with `pages/<page>/<section>.js`; on her live site nothing defines it, so the catch
+  stays silent as before). Max 20 per page load, posted to the parent window only.
+- RELAY (Studio): only messages from its own preview frame; batched 1.2 s; POST /api/sites/{id}/preview-errors with her login
+  (64 KB cap -> 413, 20 items, masked by `ops.clean_message`: emails, long numbers, query strings; the preview's private link
+  is cut from messages and stacks).
+- STORE (`site/galti.py`, table `site_errors`, registered in db.init_db + self-heal): one row per fingerprint (kind +
+  message with numbers folded + file + line): count, page, version, stack (6 lines), first / last seen, status
+  (open / ignored / fixed - it reopens if it comes back), the LEDGER of attempts. A site that stopped on a build problem
+  shows a Build problem card (GET /api/sites/{id}/errors).
+- CARDS: above the chat box (up to 3 + "N more") and a "This page hit a problem" bar over the preview: title (Page error /
+  Data error / Build problem), page, times seen, version, Show details (file:line, stack, attempts), Ignore, Try to fix
+  (Ctrl+Enter when the chat box is empty).
+- THE LADDER (plan section 8): Try to fix -> POST /api/sites/{id}/errors/{eid}/fix -> the Build message + `<error_to_fix>`
+  (the error, its file, every earlier attempt and its result) read ONCE by that turn via `turnmode.site_block`; the model is
+  told to find the cause first, change as little as possible (edit_lines) and NOT claim it fixed. An attempt is marked
+  'did not fix' when the same error is seen on a version newer than the one it started from. After two that did not hold,
+  the button and the server switch to "Plan for root cause" (Plan mode, "what have we already tried") - never a third blind
+  patch. Not seen on a newer version after an attempt = "Not seen since vN" (proven by the preview, never claimed).
+- AGENT: `website_dekho what=errors` (+ all) - the open errors with the ledger; the description says read before fixing.
+NOT BUILT: the plan's "5 free fixes a day" (Hoola has no per-turn charge to waive, so nothing says free); ladder steps 3-6
+stay manual (History > restore a version already exists; rebuild one section = action=change; remix not built).
+Tests: test_v0802_galti_pakdo.py (9: one card per fingerprint + masking + caps + her sites only, the ladder two fixes then a
+plan with the ledger in the turn, not-seen-since / ignore / reopen, build problem + routes + the agent read + 413, section
+errors only in the preview, the preview link never kept, source wiring, and the PLANTED-ERROR walk: a section that throws ->
+the card names pages/home/hero.js -> Try to fix -> one exact edit -> the next preview is clean - fixed on try 1).
+NOT VERIFIED live: a real model fixing a real error from <error_to_fix> on her server.

@@ -193,6 +193,14 @@ class Gh:
         out = self.req("GET", f"/repos/{full}/pulls/{int(n)}/files", params={"per_page": 100})
         return out if isinstance(out, list) else []
 
+    def pr_comments(self, full: str, n: int) -> list[dict[str, Any]]:
+        """People's comments on a PR: the ones on lines of the diff and the ones in the conversation (newest 100 of each)."""
+        line = self.req("GET", f"/repos/{full}/pulls/{n}/comments", params={"per_page": 100, "sort": "created", "direction": "desc"}) or []
+        talk = self.req("GET", f"/repos/{full}/issues/{n}/comments", params={"per_page": 100}) or []
+        rows = [{**c, "id": f"l{c.get('id')}"} for c in line if isinstance(c, dict)]
+        rows += [{**c, "id": f"c{c.get('id')}"} for c in talk if isinstance(c, dict)]
+        return rows
+
     def branches(self, full: str) -> list[str]:
         out = self.req("GET", f"/repos/{full}/branches", params={"per_page": 100})
         return [str(b.get("name") or "") for b in out if b.get("name")] if isinstance(out, list) else []

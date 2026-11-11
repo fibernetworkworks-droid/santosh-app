@@ -23,7 +23,7 @@ def test_sync_never_adds_a_desk_row():
 
 
 def test_desks_still_open_from_the_hub():
-    assert "if (openView) openView(v, v === 'systems' ? key : '')" in EMP
+    assert "if (openView) openView(v, v === 'systems' || v === 'deptdesk' ? key : '')" in EMP   # v0.799 + the department desks
     for v in ("seodesk", "socialdesk", "caddesk", "gamedesk", "archdesk", "edudesk"):
         assert f"if (v === '{v}') EMP?." in V2, v
     assert "(k === 'hire' && /desk$/.test(VIEW))" in V2                              # AI Employees lit on a desk
