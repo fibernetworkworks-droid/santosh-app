@@ -50,7 +50,7 @@ def claim_checklist(claim_type: str = "reimbursement", have: list | None = None,
         need = ["pre-authorisation request (hospital fills)", "policy / e-card", "photo ID", "doctor's note with diagnosis and plan", "estimate from hospital",
                 "final bill and discharge summary at discharge"] + _EXTRA.get(str(kind or "").lower(), [])
     elif ct not in ("reimbursement", "cashless"):
-        raise ValueError("claim_type: cashless ya reimbursement.")
+        raise ValueError("claim_type: cashless or reimbursement.")
     got = [str(h).lower() for h in (have or [])]
     missing = [n for n in need if not any(w in g or g in n.lower() for g in got for w in [n.lower().split()[0]])]
     out: dict[str, Any] = {"claim_type": ct, "needed": need, "have": have or [], "missing": missing, "complete": not missing,
@@ -72,7 +72,7 @@ def claim_checklist(claim_type: str = "reimbursement", have: list | None = None,
 def payable(items: list[dict], sum_insured: Any = 0, room_rent_cap: Any = 0, room_rent_charged: Any = 0, copay_pct: Any = 0, deductible: Any = 0,
             non_payable: list | None = None, settled: Any = None) -> dict[str, Any]:
     if not items:
-        raise ValueError("items rows do: name, billed (optional: payable_cap).")
+        raise ValueError("Give items rows: name, billed (optional: payable_cap).")
     npl = [str(x).lower() for x in (non_payable or [])]
     rows, tot, np_amt, capd = [], 0.0, 0.0, 0.0
     for it in items[:2000]:
@@ -113,7 +113,7 @@ def payable(items: list[dict], sum_insured: Any = 0, room_rent_cap: Any = 0, roo
 
 def settlement_match(payments: list[dict], expected: list[dict], tolerance: Any = 1) -> dict[str, Any]:
     if not expected:
-        raise ValueError("expected rows do: claim, payable (optional tds).")
+        raise ValueError("Give expected rows: claim, payable (optional tds).")
     tol = _f(tolerance)
     by: dict[str, float] = {}
     utr_seen: dict[str, int] = {}
@@ -155,7 +155,7 @@ def status_message(status: str, claim_id: str = "", extra: str = "", language: s
 
 def ageing(claims: list[dict], today: Any = None, tat_days: Any = 30, warn_days: Any = 5) -> dict[str, Any]:
     if not claims:
-        raise ValueError("claims rows do: id, received, status (closed/open), last_doc_date.")
+        raise ValueError("Give claims rows: id, received, status (closed/open), last_doc_date.")
     t = _today(today)
     rows, late, soon = [], [], []
     for c in claims[:20000]:
@@ -177,7 +177,7 @@ def ageing(claims: list[dict], today: Any = None, tat_days: Any = 30, warn_days:
 
 def renewals(policies: list[dict], today: Any = None, window_days: Any = 60, portability_days: Any = 45) -> dict[str, Any]:
     if not policies:
-        raise ValueError("policies rows do: id, holder, renewal_date, premium (optional ncb_pct, claims_this_year).")
+        raise ValueError("Give policies rows: id, holder, renewal_date, premium (optional ncb_pct, claims_this_year).")
     t = _today(today)
     due = []
     for p in policies[:20000]:
@@ -199,7 +199,7 @@ _CATS = [("claim", ("claim", "reject", "repudiat", "settle", "deduction", "cashl
 
 def grievance(items: list[dict], today: Any = None, ack_days: Any = 3, resolve_days: Any = 14) -> dict[str, Any]:
     if not items:
-        raise ValueError("items rows do: id, received, text (optional acknowledged).")
+        raise ValueError("Give items rows: id, received, text (optional acknowledged).")
     t = _today(today)
     out = []
     for it in items[:5000]:
@@ -216,7 +216,7 @@ def grievance(items: list[dict], today: Any = None, ack_days: Any = 3, resolve_d
 
 def appeal(reasons: list[str], rejected_on: Any = None, today: Any = None, insurer_replied_on: Any = None) -> dict[str, Any]:
     if not reasons:
-        raise ValueError("reasons list do (the insurer's own words).")
+        raise ValueError("Give the list of reasons (the insurer's own words).")
     t = _today(today)
     pts = []
     for r in reasons[:20]:
@@ -250,7 +250,7 @@ def _pan_ok(p: str) -> bool:
 
 def kyc_check(docs: dict) -> dict[str, Any]:
     if not docs:
-        raise ValueError("docs dikhao: {aadhaar, pan, bank_account, ifsc, dob, name}.")
+        raise ValueError("Give the docs: {aadhaar, pan, bank_account, ifsc, dob, name}.")
     out, ok = [], True
     a = re.sub(r"\D", "", str(docs.get("aadhaar", "")))
     if a:

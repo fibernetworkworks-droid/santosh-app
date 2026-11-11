@@ -317,7 +317,7 @@ def _ws_url(tenant: str, d: dict[str, Any]) -> str:
     with S.session() as s:
         urls = S._urls(tenant, S._row(s, tenant))
     if not urls:
-        raise S.CcError("PUBLIC_BASE_URL set nahi.")
+        raise S.CcError("PUBLIC_BASE_URL is not set.")
     return f"{urls['stream']}?c={d['call_id']}&t={d['ticket']}"
 
 

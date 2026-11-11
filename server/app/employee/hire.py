@@ -143,7 +143,7 @@ CATALOG: dict[str, dict[str, Any]] = {
             "does": ["Designs the part from your words (and your sizes in mm) as clean, parametric CadQuery code",
                      "Builds it in a locked box on Hoola's server and checks it: valid solid, one body, the size you asked",
                      "Gives you STEP (for any CAD / CNC shop), STL (for 3D printing), 4 views and a drawing PDF",
-                     "Changes it on your words: 'holes 10 mm karo', 'wall 3 mm moti'",
+                     "Changes it on your words: 'make the holes 10 mm', 'make the wall 3 mm thick'",
                      "Keeps every version on the CAD Desk"],
             "needs": ["What the part is and its main sizes in mm (a photo of a sketch with numbers helps)"],
             "never": ["Call a design certified, approved or safe to use without a qualified engineer",
