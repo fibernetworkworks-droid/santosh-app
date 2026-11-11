@@ -140,7 +140,7 @@ def test_new_order_flow_quote_ready_deliver_and_learning(env):
     D.pay(T, "D-0001", 2000, "UPI")
     done = D.deliver(T, "D-0001", paid_now=2500, conv=conv)
     assert done["order"]["status"] == "delivered" and done["order"]["balance"] == "₹0"
-    assert done["order"]["late_days"] == 0 and any("De diya" in x["what"] for x in done["log"])
+    assert done["order"]["late_days"] == 0 and any("Delivered" in x["what"] for x in done["log"])
     with pytest.raises(D.DarziError):
         D.cancel(T, "D-0001")
     # slip PDF
@@ -164,7 +164,7 @@ def test_learns_how_long_a_garment_really_takes(env):
     # the price she charged before is what Hoola proposes for a garment not in her list
     D.save_settings(T, prices={"kurti": None})
     r = D.new_order(T, [{"garment": "kurti"}], name="C1", phone="9000000101", deliver_on="20 din", force=True)
-    assert r["quotes"][0]["price"] == "₹400" and "pichhla" in r["quotes"][0]["why"].lower()
+    assert r["quotes"][0]["price"] == "₹400" and "last" in r["quotes"][0]["why"].lower()
 
 
 def test_day_summary_and_morning_once(env, monkeypatch):
@@ -178,7 +178,7 @@ def test_day_summary_and_morning_once(env, monkeypatch):
     d = D.day(T)
     assert [o["customer"]["name"] for o in d["late"]] == ["Late Wali"]
     assert [o["customer"]["name"] for o in d["trials"]] == ["Trial Wali"]
-    assert "Der ho gayi" in d["text"] and len(d["week"]) == 7
+    assert "Late:" in d["text"] and len(d["week"]) == 7
     conv_ctx()
     now_local = datetime.now(D._tz(T))
     D.save_settings(T, morning_time=f"{now_local.hour:02d}:{now_local.minute:02d}")

@@ -66,7 +66,7 @@ def test_rules():
     assert len(out) <= 500 and out.endswith("• Aur bhi")
     probs = {p["id"] for p in R.note_problems("Ab 100% guarantee. Call 9876543210 [blank]", "")}
     assert {"blank", "personal", "promise"} <= probs
-    assert R.mask("mail ramesh@x.com otp is 482913 ghp_" + "a" * 30) == "mail [email] otp [hataya] [key hataya]"
+    assert R.mask("mail ramesh@x.com otp is 482913 ghp_" + "a" * 30) == "mail [email] otp [removed] [key removed]"
     g = R.gherkin("Tracking", [{"id": "US-1", "as_a": "graahak", "i_want": "order dekhna", "so_that": "pata rahe",
                                 "criteria": [{"given": "order hua", "when": "tracking kholu", "then": "status dikhe"}]}])
     assert "Scenario: US-1.1" in g and "Given order hua" in g and "Then status dikhe" in g
@@ -120,7 +120,7 @@ def test_ideas_dedupe_merge_score(pm):
     k = S.kano_set(T, merged["number"], answers=[["pasand", "farak nahi"], ["pasand", "chalega"]])
     assert k["opportunity"]["kano"] == "attractive"
     sol = S.add_solution(T, a["number"], "Order status SMS")
-    assert "3 tareeke" in sol["say"]
+    assert "3 approaches" in sol["say"]
     assert S.duplicates(T) == [] or all(p["similar"] >= 0.55 for p in S.duplicates(T))
 
 
@@ -146,7 +146,7 @@ def test_roadmap_capacity_dependencies_plan(pm, monkeypatch):
     rm = S.roadmap(T)
     assert rm["buckets"]["now"]["effort"] <= 1.0 + 1e-6 and o[0] in [v["number"] for v in rm["buckets"]["now"]["items"]]
     pl = S.place(T, o[2], "later")
-    assert any("nirbhar" in w["say"] for w in pl["warnings"]) or any("nirbhar" in p["say"] for p in pl["roadmap"]["problems"])
+    assert any("depends on" in w["say"] for w in pl["warnings"]) or any("depends on" in p["say"] for p in pl["roadmap"]["problems"])
     S.place(T, o[3], "now")
     rm = S.roadmap(T)
     assert any(p["id"] == "effort_now" for p in rm["problems"])

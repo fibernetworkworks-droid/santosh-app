@@ -43,7 +43,7 @@ def test_attendance_and_monthly_pct(office):
     m = D.attendance(T, "10-A")
     riya = next(x for x in m["learners"] if x["name"] == "Riya")
     assert riya["pct"] == 100.0 and m["school_days"] == 1
-    with pytest.raises(D.DaftarError, match="Aage"):
+    with pytest.raises(D.DaftarError, match="future date"):
         D.mark_attendance(T, "10-A", day="2099-01-01")
 
 
@@ -70,7 +70,7 @@ def test_grade_sheet_unsigned_and_report_card(office):
     assert out["stats"]["unmatched"] == ["99"] and out["stats"]["no_consent"] == [kids[2]] and "UNSIGNED" in out["say"]
     rc = D.report_card(T, kids[0])
     assert rc["subjects"] == [] and rc["unsigned_left"] == 1                   # nothing signed yet
-    with pytest.raises(D.DaftarError, match="sign-off"):
+    with pytest.raises(D.DaftarError, match="signed-off"):
         D.report_card_file(T, kids[0])
     ids = [m["id"] for m in D.unsigned(T, "10-A")["marks"]]
     S.sign_off(T, ids)
@@ -167,7 +167,7 @@ def test_timetable_has_no_clashes(office):
             a, b = grid["9-A"][d][p], grid["10-A"][d][p]
             assert not (a and b and a.split(" / ")[1] == b.split(" / ")[1])    # no teacher in two rooms
     assert "Mrs Rao" in r["teachers"]
-    with pytest.raises(D.DaftarError, match="hafte"):
+    with pytest.raises(D.DaftarError, match="week"):
         D.timetable(T, [{"class": "9-A", "subject": "Maths", "teacher": "X", "per_week": 50}], periods=6)
 
 
