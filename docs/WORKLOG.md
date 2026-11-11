@@ -2955,3 +2955,8 @@ Task ID: v0.805.0 LANGGRAPH G6
 Ask: GO G6 (voice as a channel).
 Built: agent/turnchannel.py, call ticket in turndeliver, voice _delegate / _late_result / _check_spoken_claim on the record + facts, stop-words fix on calls; chat_graph still off; 11 tests.
 Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+Task ID: v0.806.0 HOOLA CODE PHASE 6 (built as 0.799; re-versioned on merge: their v0.799-v0.805 took the numbers meanwhile)
+Ask: GO PHASE 6.
+Built: devlab/net.py + netproxy.py (network levels, allow-list proxy, outside secrets, `python -m app.devlab net`, vps-ops lab_net_check), devsahayak/events.py (signed GitHub webhook events start scheduled tasks), multi-repo (other_repo tool + linked sessions), settings / composer / scheduled page parts, phone screen redrawn by a parallel agent; closed dialogs emptied; 10 tests incl. a real proxy and a browser walk.
+Deploy: vps-ops deploy, then lab_check, lab_net_check, then DEV_NET=true if all ok. Not verified on real Docker, with a real GitHub delivery, or on a phone.
