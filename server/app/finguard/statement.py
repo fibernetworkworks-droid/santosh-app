@@ -75,7 +75,7 @@ def parse_csv(text: str) -> list[dict[str, Any]]:
             head, hi = low, i
             break
     if head is None:
-        raise ValueError("Statement ka header nahi mila (date, narration, debit/credit chahiye).")
+        raise ValueError("Could not find the statement header (date, narration, debit/credit are needed).")
 
     def col(*names):
         for n in names:
@@ -177,15 +177,15 @@ def charges(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if fees > 0:
             pct = r["debit"] / fees * 100.0
             if not (GST_BAND[0] <= pct <= GST_BAND[1]):
-                flags.append({"kind": "measured", "text": f"{r['date']}: GST Rs {r['debit']:.2f} us din ke charges Rs {fees:.2f} ka {pct:.1f}% hai (aam taur par ~18%): bank se breakup maangiye (dar maani hui hai, jaanch lijiye)."})
+                flags.append({"kind": "measured", "text": f"{r['date']}: GST Rs {r['debit']:.2f} against that day's charges of Rs {fees:.2f} is {pct:.1f}% (usually ~18%): ask the bank for the breakup (the rate is assumed, check it)."})
     fee_total = round(sum(v["total"] for v in by_class.values()), 2)
     for c in by_class.values():
         if c["count"] >= 3:
-            flags.append({"kind": "heuristic", "text": f"{c['label']}: {c['count']} baar, kul Rs {c['total']:.2f}: kya yeh aapki sahmati wali sewa hai? Bank se band/waive karne ko poochh sakte hain."})
+            flags.append({"kind": "heuristic", "text": f"{c['label']}: {c['count']} times, total Rs {c['total']:.2f}: is this a service you agreed to? You can ask the bank to stop / waive it."})
     for r in dups[:5]:
-        flags.append({"kind": "measured", "text": f"{r['date']}: ek hi line Rs {r['debit']:.2f} do baar ({r['narration'][:40]}): dobara kata gaya ho sakta hai, bank se poochhiye."})
+        flags.append({"kind": "measured", "text": f"{r['date']}: the same line Rs {r['debit']:.2f} twice ({r['narration'][:40]}): it may have been debited twice, ask the bank."})
     for r in by_class.get("return_fee", {}).get("lines", [])[:3]:
-        flags.append({"kind": "heuristic", "text": f"{r['date']}: return / bounce charge Rs {r['amount']:.2f}: pehle check kijiye ki wajah aapki taraf se thi ya bank/system ki."})
+        flags.append({"kind": "heuristic", "text": f"{r['date']}: return / bounce charge Rs {r['amount']:.2f}: first check whether the cause was on your side or the bank's / system's."})
     span = ""
     if rows:
         d0, d1 = date.fromisoformat(rows[0]["date"]), date.fromisoformat(rows[-1]["date"])
@@ -195,15 +195,15 @@ def charges(rows: list[dict[str, Any]]) -> dict[str, Any]:
     else:
         year = None
     return {"period": span, "fee_total": fee_total, "gst_on_charges": gst_total, "all_in_total": round(fee_total + gst_total, 2),
-            "yearly_projection": year, "projection_note": "Is statement ke hisaab se saal ka andaaza (sirf agar 25+ din ka statement ho)." if year else "",
+            "yearly_projection": year, "projection_note": "Yearly estimate based on this statement (only if the statement covers 25+ days)." if year else "",
             "classes": sorted(by_class.values(), key=lambda c: -c["total"]), "flags": flags,
-            "note": "Yeh statement ki lines ka jod hai, kisi charge ko galat kehna nahi. Galat lage to bank ko likhiye (action=complaint). GST dar aur fee ki shabdawali maani hui hain: jaanch lijiye."}
+            "note": "This is the sum of the statement's lines, not a claim that any charge is wrong. If one looks wrong, write to the bank (action=complaint). The GST rate and the fee wording are assumed: check them."}
 
 
 def spend(rows: list[dict[str, Any]], overrides: dict[str, str] | None = None, budget: dict[str, float] | None = None) -> dict[str, Any]:
     rows = _clean_rows(rows)
     if not rows:
-        raise ValueError("Statement mein koi line nahi mili.")
+        raise ValueError("No lines found in the statement.")
     months: dict[str, dict[str, Any]] = {}
     keyed: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     for r in rows:
@@ -235,7 +235,7 @@ def spend(rows: list[dict[str, Any]], overrides: dict[str, str] | None = None, b
     full = out_m[len(out_m) // 2:] if len(out_m) > 2 else out_m
     for row in out_m:
         if row["in"] and row["out"] > row["in"]:
-            flags.append({"kind": "measured", "text": f"{row['month']}: kharcha (Rs {row['out']:,.2f}) aay (Rs {row['in']:,.2f}) se zyada."})
+            flags.append({"kind": "measured", "text": f"{row['month']}: expenses (Rs {row['out']:,.2f}) were more than income (Rs {row['in']:,.2f})."})
     return {"months": out_m, "recurring": sorted(rec, key=lambda x: -x["avg_amount"])[:10], "biggest_debits": [
         {"date": r["date"], "narration": r["narration"], "amount": r["debit"]} for r in big], "flags": flags,
-        "note": "Category shabdon se anumaan hai (apni category `overrides` se theek karwa sakte hain). Apne hi khaton ke beech transfer 'aay' aur 'kharcha' dono mein dikh sakte hain."}
+        "note": "Categories are guessed from words (you can correct your own with `overrides`). Transfers between your own accounts can show under both 'income' and 'expense'."}
