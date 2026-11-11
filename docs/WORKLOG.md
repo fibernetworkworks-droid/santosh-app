@@ -2883,3 +2883,9 @@ Task ID: v0.784.0 SAWAAL CARD (built as 0.783; their LANGGRAPH G4 took 0.783.0; 
 Task: owner "GO L3" - design question cards with visual options before a Studio Build, skipped when her words name the design.
 Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
 Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
+
+---
+Task ID: PLAN HOOLA PROMPTING (11 Nov 2026)
+Ask: new feature HOOLA PROMPTING (sections: web design, app development, script...) - deep research first, then the moat plan.
+Done: two web reads (how prompting works: vendor guides + papers; the prompt-product market) -> docs/research/prompting/00_INDEX.md; plan docs/HOOLA_PROMPTING_PLAN.md (brief object, six machines, 13 sections, page, score, outcome ledger, phases P0-P12, 6 owner decisions). Docs only, no version change.
+Next: P0 NAAP (the prompt card) on her GO.
