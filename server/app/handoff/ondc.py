@@ -121,7 +121,7 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
                 try:
                     setattr(r, k, max(lo, min(hi, int(kw[k]))))
                 except (TypeError, ValueError):
-                    raise HandoffError(f"{k} ek number ho")
+                    raise HandoffError(f"{k} must be a number")
         for k in ("returnable", "cancellable", "cod"):
             if kw.get(k) is not None:
                 setattr(r, k, bool(kw[k]))
@@ -147,7 +147,7 @@ def set_item(tenant: str, item: str, **fields) -> dict[str, Any]:
             try:
                 clean[k] = round(float(v), 2)
             except (TypeError, ValueError):
-                raise HandoffError("MRP ek number ho")
+                raise HandoffError("MRP must be a number")
         elif k == "veg":
             clean[k] = bool(v)
         elif k == "hsn":

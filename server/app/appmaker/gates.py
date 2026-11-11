@@ -444,7 +444,7 @@ def scan(r: AppProject, platform: str = "android") -> dict[str, Any]:
     """Run every gate on the newest build of this app. Nothing here changes the app."""
     from . import family as FA
     if platform not in ("android", "ios"):
-        raise GateError("Platform: android ya ios.")
+        raise GateError("Platform: android or ios.")
     proj, apk = _proj(r, platform)
     if not proj.exists():
         raise GateError("The app needs a build first; the security check runs after that.")

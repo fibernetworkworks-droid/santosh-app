@@ -104,7 +104,7 @@ def build(tenant: str, ref: str, conv: str = "", kind: str = "sim", only: list[s
           notes: dict[str, str] | None = None) -> dict[str, Any]:
     """Her tap / words 'iPhone app banao' (kind sim) or 'TestFlight par bhejo' (kind testflight) on an approved design."""
     if kind not in KINDS:
-        raise IosError("kind: sim ya testflight")
+        raise IosError("kind: sim or testflight")
     with session() as s:
         r = AS._find(s, tenant, ref)
         s.expunge(r)
@@ -541,7 +541,7 @@ def qa_line(qa: dict[str, Any] | None) -> str:
         bits.append(f"{fl['tapped']} buttons tapped" + (f", {len(fl.get('dead') or [])} did nothing" if fl.get("dead") else ""))
     big = qa.get("ipad") or {}                                  # v0.370 the same screens on a ipad
     if big.get("total"):
-        bits.append(f"iPad par {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
+        bits.append(f"on iPad {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
                     + ", ".join((big.get('crashed') or [])[:4]) + ")" if big.get("crashed") else ""))
     return " " + ", ".join(bits) + "."
 
@@ -583,13 +583,13 @@ def _say(r: AppProject, st: dict[str, Any]) -> str:
     if s == "writing":
         return f"The iPhone app is being built: {st.get('now') or 'screens in SwiftUI'}."
     if s in ("building", "fixing"):
-        return "Mac par compile + iPhone simulator check" + (f", round {st.get('rounds')}" if st.get("rounds") else "") + "."
+        return "Compile on a Mac + iPhone simulator check" + (f", round {st.get('rounds')}" if st.get("rounds") else "") + "."
     if s == "uploading":
         return "Sending to TestFlight."
     if s == "ready":
         tf = st.get("testflight") or {}
         if st.get("kind") == "testflight" and tf:
-            return f"iPhone app TestFlight par (v{tf.get('version')}, build {tf.get('build')})."
+            return f"The iPhone app is on TestFlight (v{tf.get('version')}, build {tf.get('build')})."
         return f"The iPhone app is ready (build {st.get('build')}), simulator check passed. Say 'send to TestFlight'."
     if s == "zip":
         return "The iPhone Xcode project ZIP is ready (no Mac build is set up)."

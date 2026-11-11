@@ -211,7 +211,7 @@ def set_kpi(tenant: str, name: str = "", definition: str = "", unit: str = "", t
             found["target"] = R.num(target)
         found["better"] = "down" if better == "down" else "up"
         r.kpis = _jd(ks)
-    return {"kpi": found, "kpis": ks, "say": f"KPI '{found['name']}' save."}
+    return {"kpi": found, "kpis": ks, "say": f"KPI '{found['name']}' saved."}
 
 
 # ---------------------------------------------------------------- GitHub (her token, read-only by default)
@@ -1465,7 +1465,7 @@ def _public_text(what: str, ref_obj: dict | None, tenant: str, lang: str = "both
 def publish_request(tenant: str, what: str = "release", ref: str = "", dest: str = "copy", lang: str = "both", conv: str = "") -> dict:
     """Prepares the card. Nothing leaves until decide_publish(by_tap=True) from her app."""
     if what not in ("release", "roadmap"):
-        raise ProductError("release ya roadmap")
+        raise ProductError("release or roadmap")
     if dest not in ("github", "page", "copy"):
         raise ProductError("Where: github (release) | page (Hoola's public page) | copy (you paste it yourself)")
     if what == "roadmap" and dest == "github":
@@ -1630,7 +1630,7 @@ def metric_add(tenant: str, kpi: str, value: Any, day: str = "", note: str = "")
         raise ProductError("This KPI was not found: create a KPI / north star in Rules.")
     with session() as s:
         s.add(ProductMetric(tenant_id=tenant, kpi=key, day=_day(day, tenant), value=v, note=R.tidy(note, 300)))
-    return {"say": f"'{ids[key]}' = {v:g} ({_day(day, tenant)}) save."}
+    return {"say": f"'{ids[key]}' = {v:g} ({_day(day, tenant)}) saved."}
 
 
 def _avg(xs: list[float]) -> float | None:

@@ -962,7 +962,7 @@ def approvals(r: AppProject, w: W.Who, everything: bool = False) -> list[dict[st
 
 def decide(r: AppProject, appr_id: str, decision: str, note: str, w: W.Who) -> dict[str, Any]:
     if decision not in ("approve", "reject"):
-        _fail("Faisla: approve ya reject.", 400)
+        _fail("Decision: approve or reject.", 400)
     from .. import locks as LK
     with LK.hold(f"appr:{appr_id}"):                 # v0.390 two approvers in two worker processes: one decides first
         x = _raw(r, appr_id)

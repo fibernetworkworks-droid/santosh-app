@@ -722,7 +722,7 @@ def add_plan(r: AppProject, name: str, amount_rs: Any, period: str, count: Any, 
     if "subscriptions" not in GW.CAN.get(gw, set()):
         raise PayError("Subscriptions for this gateway cannot be made from Hoola.", 400)
     if period not in PERIODS:
-        raise PayError("Har: week | month | year.", 400)
+        raise PayError("Period: week | month | year.", 400)
     try:
         amount, n = GW.paise(amount_rs), int(count)
     except (TypeError, ValueError):

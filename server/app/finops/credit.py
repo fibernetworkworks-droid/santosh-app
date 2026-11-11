@@ -17,7 +17,7 @@ def _div(a: float, b: float):
 
 def ratios(fin: dict) -> dict[str, Any]:
     if not isinstance(fin, dict) or not fin:
-        raise ValueError("financials do: revenue, ebitda, net_profit, interest, debt_service (instalments due), current_assets, current_liabilities, total_debt, net_worth.")
+        raise ValueError("Give financials: revenue, ebitda, net_profit, interest, debt_service (instalments due), current_assets, current_liabilities, total_debt, net_worth.")
     ebitda, ds = _f(fin.get("ebitda")), _f(fin.get("debt_service"))
     r = {"current_ratio": _div(_f(fin.get("current_assets")), _f(fin.get("current_liabilities"))),
          "debt_to_equity": _div(_f(fin.get("total_debt")), _f(fin.get("net_worth"))),

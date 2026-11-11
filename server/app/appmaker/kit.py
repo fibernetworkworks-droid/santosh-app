@@ -591,7 +591,7 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
             f'<link rel="stylesheet" href="assets/app-kit.css"><link rel="stylesheet" href="assets/screens.css"></head>')
     tools = ('<div class="proto-tools" aria-label="Preview controls"><button data-plat="android">Android</button>'
              '<button data-plat="ios">iPhone</button><button data-mode>' + ("Light" if tk.get("dark") else "Dark") +
-             '</button><a href="all.html">Sab screens</a></div>')
+             '</button><a href="all.html">All screens</a></div>')
     page = (head + f'<body class="{body_cls}" data-start="{esc("splash" if "splash" in plan.get("code_screens", []) else first)}" '
             f'data-home="{esc(first)}" data-base="{"dark" if tk.get("dark") else "light"}" data-mode-kind="{esc(tk.get("mode") or "both")}">'
             f'{tools}<div class="device"><div class="frame">{STATUS["android"]}{STATUS["ios"]}'

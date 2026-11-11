@@ -247,7 +247,7 @@ def test_school_portal_from_one_line_used_by_parent_teacher_and_principal(school
     # 6. attendance: the teacher marks it once a day; the parent sees her own child's days
     assert c.post(f"{base}/c/attendance", headers=ht, json={"student": st["id"], "day": "2026-11-02", "present": True}).status_code == 200
     r = c.post(f"{base}/c/attendance", headers=ht, json={"student": st["id"], "day": "2026-11-02", "present": False})
-    assert r.status_code == 409 and "already exists" in r.json()["error"]
+    assert r.status_code == 409 and "pehle se" in r.json()["error"]
     assert c.post(f"{base}/c/attendance", headers=hp, json={"student": st["id"], "day": "2026-11-03"}).status_code == 403
     days = c.get(f"{base}/c/attendance", headers=hp).json()["rows"]
     assert [(d["day"], d["present"]) for d in days] == [("2026-11-02", True)]

@@ -142,7 +142,7 @@ def check(tenant: str, ref: str, platform: str = "android", fix: bool = False, c
     """Her ask: score every screen, Opus looks at the ones under MATCH_MIN and lists the differences; fix=True rebuilds
     those screens with the differences as notes (the rest of the app is kept)."""
     if platform not in ("android", "ios"):
-        raise AS.AppError("platform: android ya ios")
+        raise AS.AppError("platform: android or ios")
     with session() as s:
         r = AS._find(s, tenant, ref)
         s.expunge(r)

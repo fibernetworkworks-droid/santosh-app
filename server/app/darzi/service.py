@@ -883,7 +883,7 @@ def deliver(tenant: str, order: str, paid_now: Any = None, note: str = "", by: s
             p = _paise(paid_now)
             if p:
                 o.paid_paise += p
-                _log(o, f"Delivery par mile: {_rs(p)}", by)
+                _log(o, f"Received at delivery: {_rs(p)}", by)
         t = today(tenant)
         o.status, o.delivered_on = "delivered", t.isoformat()
         if not o.ready_at:

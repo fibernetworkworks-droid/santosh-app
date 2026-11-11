@@ -29,7 +29,7 @@ BUCKETS = [("not_due", None), ("1-30", 30), ("31-60", 60), ("61-90", 90), ("90+"
 
 def ageing(items: list[dict], as_of: Any = None) -> dict[str, Any]:
     if not items:
-        raise ValueError("invoices rows do: party, invoice_no, due_date, amount, paid.")
+        raise ValueError("Give invoices rows: party, invoice_no, due_date, amount, paid.")
     today = _d(as_of) if as_of else dt.date.today()
     tot = {b: 0.0 for b, _ in BUCKETS}
     parties: dict[str, dict] = {}

@@ -234,7 +234,7 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
             ck.err(where, f"'{coll}' has no field '{field}'")
             continue
         if any(x["coll"] == coll for x in out["workflows"]):
-            ck.err(where, "ek list par ek hi workflow")
+            ck.err(where, "only one workflow per list")
             continue
         states = [str(s).strip()[:40] for s in _strs(w.get("states"))][:20]
         if len(states) < 2 or len(set(states)) != len(states):

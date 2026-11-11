@@ -17,7 +17,7 @@ def _f(v: Any) -> float:
 def triage(txns: list[dict], cash_threshold: Any = 1000000, structuring_band_pct: Any = 10, min_structured: int = 3, passthrough_pct: Any = 90,
            fanout: int = 10) -> dict[str, Any]:
     if not txns:
-        raise ValueError("txns rows do: account, date, amount, type (cash_in/cash_out/credit/debit), counterparty.")
+        raise ValueError("Give txns rows: account, date, amount, type (cash_in/cash_out/credit/debit), counterparty.")
     thr, band = _f(cash_threshold), _f(structuring_band_pct)
     by = defaultdict(list)
     for t in txns[:20000]:
