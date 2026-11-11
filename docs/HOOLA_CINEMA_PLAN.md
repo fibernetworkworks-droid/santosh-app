@@ -1,7 +1,7 @@
 # HOOLA CINEMA - plan, what is built, what is left
 
 Owner, 11 Nov 2026: "https://github.com/Autom8AI/Open-Higgsfield-AI.git -- read this repo first" -> "GO BUILD THE WHOLE SET AS
-HOOLA CINEMA END TO END". Built as 0.807, shipped as v0.811.0.
+HOOLA CINEMA END TO END". Built as 0.807, shipped as v0.814.0.
 
 ## What was read
 
@@ -11,7 +11,7 @@ Airtable through Composio for sign-in and the library. Its README still describe
 code is different. Licence: README and one package.json say MIT, there is no LICENSE file. Treated as ideas only: ZERO code
 copied (a test greps for its names). Every request shape in Hoola was read from the ENGINE'S OWN documents instead.
 
-## What is built (v0.811.0)
+## What is built (v0.814.0)
 
 | Tool | What she gets | Engine | Models |
 |---|---|---|---|

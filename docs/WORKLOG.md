@@ -2974,7 +2974,7 @@ Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snap
 Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.
 
 ---
-Task ID: HOOLA-CINEMA (v0.811.0, built as 0.807)
+Task ID: HOOLA-CINEMA (v0.814.0, built as 0.807)
 Task: owner "read this repo first" (Autom8AI/Open-Higgsfield-AI) -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END".
 Work Log: read the fork end to end (no LICENSE file; ideas only); read 19 engine doc pages from docs.kie.ai for the real request shapes; server/app/cinema (specs, kie, service, api); static/console/cinema.js mounted in studio.js as view cinema; styles at the end of studio.css; 26 camera moves on the Video page; settings cinema_page / kie_api_key / cinema_daily_jobs; test_v0807_hoola_cinema.py 14 incl. a browser walk; docs/HOOLA_CINEMA_PLAN.md.
 Stage Summary: pushed; server deploy only. She adds KIE_API_KEY to the VPS .env before any tool can run. NOT VERIFIED live. Three decisions wait for her (character swap rule, who pays, upload limit) - see the plan doc.
