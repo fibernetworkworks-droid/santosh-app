@@ -93,7 +93,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/notices")
     async def new_notice(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
-        return await run(S.notice_draft, tenant, _s(b.get("lang") or "hi"), b.get("activities"))
+        return await run(S.notice_draft, tenant, _s(b.get("lang") or "en"), b.get("activities"))
 
     @r.patch("/notices/{nid}")
     async def edit_notice(nid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

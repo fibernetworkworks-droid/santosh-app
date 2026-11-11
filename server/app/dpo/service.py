@@ -466,8 +466,8 @@ def _notice_view(n: DpoNotice) -> dict:
             "activity_ids": _j(n.activity_ids, [])}
 
 
-def notice_draft(tenant: str, lang: str = "hi", activity_ids: list | None = None, actor: str = "owner") -> dict:
-    lang = lang if lang in R.LANGS else "hi"
+def notice_draft(tenant: str, lang: str = "en", activity_ids: list | None = None, actor: str = "owner") -> dict:
+    lang = lang if lang in R.LANGS else "en"
     with _LOCK, session() as s:
         st = _st(s, tenant)
         q = select(DpoActivity).where(DpoActivity.tenant_id == tenant, DpoActivity.status == "active")
