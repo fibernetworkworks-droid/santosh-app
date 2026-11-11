@@ -470,7 +470,7 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
         if working or painting:
             nxt = {"kind": "wait", "label": "Being made", "inr": 0}
         elif nokf and st.painter and not prefs_of(p).get("pics_skip"):
-            nxt = {"kind": "keyframes", "label": "Pehli tasveerein", "inr": _inr(KEYFRAME_USD * len(nokf))}
+            nxt = {"kind": "keyframes", "label": "Opening pictures", "inr": _inr(KEYFRAME_USD * len(nokf))}
         elif unpicked or all(x["quality"] == "preview" for x in shots):
             nxt = {"kind": "generate", "label": "Make the video", "inr": (est.get(want) or {}).get("inr", 0)}
         elif newer or not outs:
@@ -588,14 +588,14 @@ def _her_file(tenant: str, st: Studio, file_id: str, sub: str, kinds: tuple[str,
 
 
 # ---------------------------------------------------------------- actions
-async def create(tenant: str, name: str, aspect: str = "9:16", style: str = "reel", language: str = "Hindi",
+async def create(tenant: str, name: str, aspect: str = "9:16", style: str = "reel", language: str = "English",
                  brief: str = "", conversation_id: str = "", prefs: dict | None = None) -> dict[str, Any]:
     name = re.sub(r"\s+", " ", name or "").strip()[:60]
     if len(name) < 2:
         raise StudioJobError("The project needs a name")
     st = await studio(tenant)
     try:
-        st.create(name, aspect or "9:16", style or "reel", language or "Hindi", float(_st().studio_project_usd or 5), None, brief[:2000])
+        st.create(name, aspect or "9:16", style or "reel", language or "English", float(_st().studio_project_usd or 5), None, brief[:2000])
     except StudioError as e:
         raise StudioJobError(str(e)) from None
     pr = _clean_prefs(prefs or {})
@@ -1580,7 +1580,7 @@ Keep every fact she gave (names, prices, offers, dates, phone numbers, text) exa
 dates, real people or brand names. One paragraph, max 70 words, in English except quoted text. Output only the description."""
 
 
-async def improve_brief(brief: str, language: str = "Hindi", seconds: int = 30, kind: str = "video") -> dict:
+async def improve_brief(brief: str, language: str = "English", seconds: int = 30, kind: str = "video") -> dict:
     brief = (brief or "").strip()
     if len(brief) < 4:
         raise StudioJobError("First write a little about what the video is about."
@@ -1604,7 +1604,7 @@ SAMPLE_LINES = {"Hindi": "Namaste! Main aapke video mein yahi awaaz hoon.", "Mar
                 "English": "Hello! This is the voice in your video.", "Hinglish": "Hello! Aapke video mein yahi awaaz hogi."}
 
 
-async def voice_sample(tenant: str, voice: str = "male", language: str = "Hindi") -> dict:
+async def voice_sample(tenant: str, voice: str = "male", language: str = "English") -> dict:
     """A short line in the voice she is choosing (made once per voice + language, kept)."""
     if not _st().gemini_api_key:
         raise StudioJobError("Hearing the voice needs GEMINI_API_KEY on the server.")
@@ -1614,7 +1614,7 @@ async def voice_sample(tenant: str, voice: str = "male", language: str = "Hindi"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{voice}_{slug(language)}.wav"
     if not out.is_file():
-        line = SAMPLE_LINES.get(language, SAMPLE_LINES["Hindi"])
+        line = SAMPLE_LINES.get(language, SAMPLE_LINES["English"])
         try:
             got = await asyncio.to_thread(st.speak, line, language, voice)
         except Exception as e:

@@ -183,7 +183,7 @@ def watch(tenant: str, ref: str, question: str = "", language: str = "") -> dict
         pass
     if meta.get("seconds", 0) > 3 * 3600:
         raise YTError("This video is longer than 3 hours; a video that long cannot be watched.")
-    lang = {"hi": "Hindi (Devanagari)", "hinglish": "Hinglish", "en": "English", "mr": "Marathi"}.get(language, "the user's language (Hinglish if unsure)")
+    lang = {"hi": "Hindi (Devanagari)", "hinglish": "Hinglish", "en": "English", "mr": "Marathi"}.get(language, "clear, simple English")
     ask = (f"Answer this question about the video, citing timestamps like [12:34]: {question}" if question else
            "Summarise this video: what it is about (2 lines), the key points in order with [mm:ss] timestamps, any numbers, "
            "steps or recommendations, and who would find it useful.")

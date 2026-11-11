@@ -33,7 +33,7 @@ class GroupRow(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     gid: Mapped[str] = mapped_column(String(60), index=True)
     hub: Mapped[str] = mapped_column(String(200))                      # admin avatar address
-    name: Mapped[str] = mapped_column(String(80), default="Mandali")
+    name: Mapped[str] = mapped_column(String(80), default="Group")
     emoji: Mapped[str] = mapped_column(String(8), default="👥")
     role: Mapped[str] = mapped_column(String(8), default="member")      # admin | member
     status: Mapped[str] = mapped_column(String(10), default="invited")  # invited | active | left | removed | declined
@@ -483,7 +483,7 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
                 return {"ok": False, "status": "refused", "reason": "the group id belongs to someone else"}
             if g.status == "active":
                 return {"ok": True, "status": "active"}
-            g.name = policy.clean_name(body.get("name") or "Mandali", 80) or "Mandali"
+            g.name = policy.clean_name(body.get("name") or "Group", 80) or "Group"
             g.emoji, g.status = str(body.get("emoji") or "👥")[:8], "invited"
             s.flush()
             s.expunge(g)
@@ -577,7 +577,7 @@ def _show(tenant: str, post: dict[str, Any], rules: dict[str, Any], p: GroupPost
         return
     with session() as s:
         g = s.scalars(select(GroupRow).where(GroupRow.tenant_id == tenant, GroupRow.gid == post["gid"])).first()
-        mute, name = (g.mute, g.name) if g else ("mentions", "Mandali")
+        mute, name = (g.mute, g.name) if g else ("mentions", "Group")
     if p is None:
         with session() as s:
             p = s.scalars(select(GroupPost).where(GroupPost.tenant_id == tenant, GroupPost.post_id == post["post_id"])).first()

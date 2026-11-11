@@ -63,7 +63,7 @@ def ready() -> dict[str, bool]:
 
 
 # ---------------------------------------------------------------- song (Google Lyria)
-def song_prompt(brief: str = "", genre: str = "", language: str = "Hindi", vocals: str = "duet", mood: str = "",
+def song_prompt(brief: str = "", genre: str = "", language: str = "English", vocals: str = "duet", mood: str = "",
                 bpm: int = 0, seconds: int = 0, lyrics: str = "") -> str:
     v = (vocals or "").lower().strip()
     instrumental = v in ("none", "no vocals", "instrumental", "no")
@@ -74,7 +74,7 @@ def song_prompt(brief: str = "", genre: str = "", language: str = "Hindi", vocal
     if not instrumental:
         who = {"female": "a female lead singer", "male": "a male lead singer", "duet": "a male and female duet",
                "choir": "a lead singer with a choir"}.get(v, v or "a lead singer")
-        parts.append(f"sung in {language or 'Hindi'} by {who}, clear diction")
+        parts.append(f"sung in {language or 'English'} by {who}, clear diction")
     if mood:
         parts.append(f"mood: {mood}")
     if bpm:
@@ -95,7 +95,7 @@ def _lyria(prompt: str) -> bytes:
         raise CreateError(str(e)) from None
 
 
-async def song(brief: str = "", genre: str = "", language: str = "Hindi", vocals: str = "duet", mood: str = "",
+async def song(brief: str = "", genre: str = "", language: str = "English", vocals: str = "duet", mood: str = "",
                bpm: int = 0, seconds: int = 0, lyrics: str = "") -> dict[str, Any]:
     if not ready()["song"]:
         raise CreateError("A song needs GEMINI_API_KEY and STUDIO_MUSIC_MODEL (Google Lyria) on the server.")
@@ -129,7 +129,7 @@ language asked (Hindi / Hinglish in Latin letters unless asked otherwise). A mem
 people, no brand names except hers, nothing copied from existing songs. Output ONLY the lyrics."""
 
 
-async def write(kind: str, brief: str, fmt: str = "", length: str = "", language: str = "Hinglish", tone: str = "",
+async def write(kind: str, brief: str, fmt: str = "", length: str = "", language: str = "English", tone: str = "",
                 genre: str = "", mood: str = "") -> str:
     from ..studio import service as ss
     brief = (brief or "").strip()
@@ -137,9 +137,9 @@ async def write(kind: str, brief: str, fmt: str = "", length: str = "", language
         raise CreateError("First write one line about what this is about.")
     if kind == "script":
         system, prompt = SCRIPT_SYSTEM, (f"Brief: {brief[:2500]}\nFormat: {fmt or 'ad film'}\nLength: {length or '45 seconds'}\n"
-                                         f"Dialogue language: {language or 'Hinglish'}\nTone: {tone or 'warm'}")
+                                         f"Dialogue language: {language or 'English'}\nTone: {tone or 'warm'}")
     elif kind == "lyrics":
-        system, prompt = LYRICS_SYSTEM, (f"Song idea: {brief[:1500]}\nGenre: {genre or 'Bollywood'}\nLanguage: {language or 'Hindi'}\n"
+        system, prompt = LYRICS_SYSTEM, (f"Song idea: {brief[:1500]}\nGenre: {genre or 'Bollywood'}\nLanguage: {language or 'English'}\n"
                                          f"Mood: {mood or 'warm'}")
     else:
         raise CreateError("kind: script | lyrics")
@@ -203,10 +203,10 @@ def wav_bytes(pcm: bytes, rate: int = 24000) -> bytes:
 def how_to_say(language: str, style: str = "", speed: float = 1.0) -> str:
     st = STYLES.get((style or "").lower(), style or STYLES["friendly"])
     pace = "slightly slower than normal" if speed < 0.95 else "a little faster than normal" if speed > 1.1 else "a natural pace"
-    return f"Say this in natural {language or 'Hindi'}, {st}, at {pace}"
+    return f"Say this in natural {language or 'English'}, {st}, at {pace}"
 
 
-async def voice(text: str, voice_name: str = "", language: str = "Hindi", style: str = "friendly", speed: float = 1.0,
+async def voice(text: str, voice_name: str = "", language: str = "English", style: str = "friendly", speed: float = 1.0,
                 tenant: str = "") -> dict[str, Any]:
     if not ready()["voice"]:
         raise CreateError("The voice needs GEMINI_API_KEY on the server.")

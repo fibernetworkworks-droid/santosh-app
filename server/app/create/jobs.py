@@ -200,13 +200,13 @@ async def _run(j: dict[str, Any], p: dict[str, Any]) -> None:
                                     voice=str(p.get("voice") or ""))
                     made.append((j["title"], ".png", r["png"], meta))
             elif j["kind"] == "song":
-                r = await cs.song(p.get("brief") or "", p.get("genre") or "", p.get("language") or "Hindi",
+                r = await cs.song(p.get("brief") or "", p.get("genre") or "", p.get("language") or "English",
                                   p.get("vocals") or "duet", p.get("mood") or "", int(p.get("bpm") or 0),
                                   int(p.get("seconds") or 0), p.get("lyrics") or "")
                 made.append((j["title"], r["ext"], r["bytes"], {"genre": p.get("genre") or "", "language": p.get("language") or "",
                                                                "vocals": p.get("vocals") or "", "mood": p.get("mood") or ""}))
             elif j["kind"] == "voice":
-                r = await cs.voice(p.get("text") or "", p.get("voice") or "", p.get("language") or "Hindi",
+                r = await cs.voice(p.get("text") or "", p.get("voice") or "", p.get("language") or "English",
                                    p.get("style") or "friendly", float(p.get("speed") or 1.0), t)
                 made.append((j["title"], r["ext"], r["bytes"], {"voice": r["voice"], "seconds": r["seconds"],
                                                                "style": p.get("style") or "", "language": p.get("language") or ""}))
