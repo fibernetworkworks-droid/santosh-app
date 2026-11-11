@@ -179,7 +179,8 @@ def test_app_script_escapes_server_values():
             continue
         if re.search(r"\besc\s*\(|encodeURIComponent\s*\(|\bNumber\s*\(|\bnum\s*\(|\bmd\s*\(|HoolaMD|\.length\b", expr):
             continue
-        if re.search(r"document\.title\s*=|\.textContent\s*=|\btoast\s*\(|\bconsole\.|new Error\s*\(|\bthrow\b", line):
+        # plain text, not HTML: the tab title, textContent, a toast, an Error, and the hint lines sent to the model
+        if re.search(r"document\.title\s*=|\.textContent\s*=|\btoast\s*\(|\bconsole\.|new Error\s*\(|\bthrow\b|\bhints\s*=", line):
             continue
         bad.append(line.strip()[:160])
     assert not bad, "unescaped server values:\n" + "\n".join(bad)
@@ -284,7 +285,8 @@ class Walk:
     def __init__(self, browser, base, key, width=1440):
         self.base, self.step, self.errors, self.bad_http = base, "boot", [], []
         self.ctx = browser.new_context(viewport={"width": width, "height": 900})
-        self.ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
+        # init scripts run in EVERY frame, the sandboxed play frame too (opaque origin: localStorage throws there)
+        self.ctx.add_init_script(f"if (window === window.top) localStorage.setItem('hoola.console.token', '{key}')")
         # the page links Google Fonts; the sandbox may have no route out, and a font is not what is under test
         self.ctx.route("https://fonts.googleapis.com/**", lambda r: r.fulfill(body="", content_type="text/css"))
         self.ctx.route("https://fonts.gstatic.com/**", lambda r: r.fulfill(body=b"", content_type="font/woff2"))
