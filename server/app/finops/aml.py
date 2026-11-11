@@ -28,25 +28,25 @@ def triage(txns: list[dict], cash_threshold: Any = 1000000, structuring_band_pct
         near = [t for t in ts if str(t.get("type", "")).startswith("cash") and low <= _f(t.get("amount")) < thr]
         if len(near) >= min_structured:
             alerts.append({"account": acc, "rule": "structuring_like", "evidence": [(t.get("date"), _f(t.get("amount"))) for t in near[:10]],
-                           "why": f"{len(near)} cash entries Rs {low:,.0f}-{thr:,.0f} ke beech (limit ke bilkul neeche)."})
+                           "why": f"{len(near)} cash entries between Rs {low:,.0f}-{thr:,.0f} (just under the limit)."})
         cin = sum(_f(t.get("amount")) for t in ts if str(t.get("type")) in ("credit", "cash_in"))
         cout = sum(_f(t.get("amount")) for t in ts if str(t.get("type")) in ("debit", "cash_out"))
         if cin and cout >= cin * _f(passthrough_pct) / 100.0 and cin >= thr * 0.5:
             alerts.append({"account": acc, "rule": "pass_through", "evidence": {"in": round(cin, 2), "out": round(cout, 2)},
-                           "why": f"Jitna aaya (Rs {cin:,.0f}) lagbhag utna chala gaya (Rs {cout:,.0f})."})
+                           "why": f"About as much went out (Rs {cout:,.0f}) as came in (Rs {cin:,.0f})."})
         cps = {str(t.get("counterparty")) for t in ts if t.get("counterparty")}
         if len(cps) >= fanout:
-            alerts.append({"account": acc, "rule": "many_counterparties", "evidence": len(cps), "why": f"{len(cps)} alag counterparties."})
+            alerts.append({"account": acc, "rule": "many_counterparties", "evidence": len(cps), "why": f"{len(cps)} different counterparties."})
         rnd = [t for t in ts if _f(t.get("amount")) >= 10000 and _f(t.get("amount")) % 10000 == 0]
         if len(ts) >= 5 and len(rnd) / len(ts) >= 0.8:
-            alerts.append({"account": acc, "rule": "round_amounts", "evidence": len(rnd), "why": "Zyadatar rakam gol (10,000 ke multiple)."})
+            alerts.append({"account": acc, "rule": "round_amounts", "evidence": len(rnd), "why": "Most amounts are round (multiples of 10,000)."})
     for a in alerts:
         a["kind"] = "heuristic"
-        a["draft_narrative"] = (f"Account {a['account']}: rule '{a['rule']}' laga. {a['why']} Customer ka profile / income / kaam: [analyst bharega]. "
-                                "Alert ka kaaran innocent ho sakta hai: [analyst ki raay]. Agla kadam: [analyst tay karega].")
+        a["draft_narrative"] = (f"Account {a['account']}: rule '{a['rule']}' fired. {a['why']} Customer's profile / income / occupation: [analyst to fill in]. "
+                                "The alert may have an innocent cause: [analyst's view]. Next step: [analyst to decide].")
     return {"alerts": alerts, "accounts": len(by), "clean_accounts": len(by) - len({a["account"] for a in alerts}),
-            "kind_note": "Yeh rules ishaare hain, saboot nahi; zyadatar alerts galat nikalte hain. Threshold aapka diya hua hai, hamara nahi.",
-            "decider": "Case band karna ya STR ka faisla analyst / MLRO ka hai; yahan kuch file nahi hota."}
+            "kind_note": "These rules are signals, not proof; most alerts turn out to be false. The threshold is the one you gave, not ours.",
+            "decider": "Closing a case or deciding on an STR is for the analyst / MLRO; nothing is filed here."}
 
 
 _TITLES = {"mr", "mrs", "ms", "dr", "shri", "smt", "sri", "kumari", "md", "mohd", "mohammad", "muhammad", "mohammed"}
@@ -90,7 +90,7 @@ def _tok_sim(a: str, b: str) -> float:
 
 def screen(names: list[str], watch: list[dict], threshold: Any = 0.7) -> dict[str, Any]:
     if not names or not watch:
-        raise ValueError("names aur watch list (aapki apni: [{name, list, ref}]) do; hamare paas koi list nahi hai.")
+        raise ValueError("Give names and a watch list (your own: [{name, list, ref}]); we have no list of our own.")
     th = _f(threshold)
     res = []
     for n in names[:500]:
@@ -117,5 +117,5 @@ def screen(names: list[str], watch: list[dict], threshold: Any = 0.7) -> dict[st
             if score >= th:
                 hits.append({"watch_name": w.get("name"), "list": w.get("list"), "ref": w.get("ref"), "score": round(score, 2), "explained_by": why})
         res.append({"name": n, "possible_matches": sorted(hits, key=lambda h: -h["score"])[:5]})
-    return {"results": res, "threshold": th, "not_checked": "Date of birth, desh, ID, alias spelling in doosri lipi: yeh nahi mile. Score naam ki samaanta hai, pehchaan nahi.",
-            "decider": "True match hai ya nahi, compliance officer tay karta hai; yahan koi block ya freeze nahi hota."}
+    return {"results": res, "threshold": th, "not_checked": "Date of birth, country, ID, alias spellings in other scripts: these were not matched. The score is name similarity, not identity.",
+            "decider": "Whether it is a true match is decided by the compliance officer; nothing is blocked or frozen here."}

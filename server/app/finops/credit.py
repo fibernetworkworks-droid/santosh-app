@@ -38,19 +38,19 @@ def memo(borrower: str, fin: dict, purpose: str = "", amount: Any = None, years:
         if lim is None or v is None:
             continue
         if (op == "min" and v < _f(lim)) or (op == "max" and v > _f(lim)):
-            flags.append(f"{k} {v} aapki policy ({op} {lim}) se bahar.")
+            flags.append(f"{k} {v} is outside your policy ({op} {lim}).")
     trend = []
     if years and len(years) >= 2:
         a, b = years[-2], years[-1]
         for k in ("revenue", "ebitda", "net_profit"):
             if _f(a.get(k)):
-                trend.append(f"{k}: {100 * (_f(b.get(k)) - _f(a.get(k))) / _f(a.get(k)):+.1f}% (pichhle saal se)")
-    md = ["# Credit memo (DRAFT)", f"**Borrower:** {borrower or '[naam]'}", f"**Maqsad / amount:** {purpose or '[maqsad]'} / {amount if amount else '[amount]'}",
-          "## Numbers (aapke diye hue financials se)"] + [f"- {k}: {v if v is not None else 'denominator nahi mila'}" for k, v in rt.items()]
-    md += ["## Trend"] + ([f"- {t}" for t in trend] or ["- [saal-dar-saal numbers do]"])
-    md += ["## Policy se jaanch"] + ([f"- {f}" for f in flags] or ["- " + ("policy floors nahi diye gaye" if not pol else "diye gaye floors ke andar")])
-    md += ["## Jo yahan bharna baaki hai (analyst)", "- Management / promoter background: [ ]", "- Industry aur competition: [ ]", "- Security / collateral aur value: [ ]",
-           "- Covenants / conditions prastaavit: [ ]", "- Mukhya jokhim aur mitigants: [ ]", "- Sanction ki sifaarish: [credit officer]"]
+                trend.append(f"{k}: {100 * (_f(b.get(k)) - _f(a.get(k))) / _f(a.get(k)):+.1f}% (from the previous year)")
+    md = ["# Credit memo (DRAFT)", f"**Borrower:** {borrower or '[name]'}", f"**Purpose / amount:** {purpose or '[purpose]'} / {amount if amount else '[amount]'}",
+          "## Numbers (from the financials you gave)"] + [f"- {k}: {v if v is not None else 'denominator not found'}" for k, v in rt.items()]
+    md += ["## Trend"] + ([f"- {t}" for t in trend] or ["- [give year-on-year numbers]"])
+    md += ["## Policy check"] + ([f"- {f}" for f in flags] or ["- " + ("no policy floors were given" if not pol else "within the floors given")])
+    md += ["## Still to be filled in here (analyst)", "- Management / promoter background: [ ]", "- Industry and competition: [ ]", "- Security / collateral and value: [ ]",
+           "- Proposed covenants / conditions: [ ]", "- Main risks and mitigants: [ ]", "- Sanction recommendation: [credit officer]"]
     return {"memo_markdown": "\n".join(md), "ratios": rt, "policy_flags": flags, "trend": trend,
-            "not_checked": "Financials ki sachchai (audited hain?), CIBIL / bureau, GST-bank flow ka milaan, collateral value: yeh nahi dekha.",
-            "decider": "Sanction / decline credit committee ka hai. Yeh draft koi score ya 'approve' nahi deta."}
+            "not_checked": "Whether the financials are true (audited?), CIBIL / bureau, GST-to-bank flow matching, collateral value: these were not checked.",
+            "decider": "Sanction / decline belongs to the credit committee. This draft gives no score and no 'approve'."}

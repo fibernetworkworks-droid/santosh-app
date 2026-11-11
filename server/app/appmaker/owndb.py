@@ -144,7 +144,7 @@ def schema_name(r: AppProject) -> str:
 
 def _ident(name: str) -> str:
     if not re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", name):
-        raise OwnDbError(f"naam '{name}' database mein nahi chalega")
+        raise OwnDbError(f"the name '{name}' will not work in a database")
     return '"' + name + '"'
 
 
@@ -473,8 +473,8 @@ def _write_through(sess: Session) -> None:
             STATS["push_failed"] += 1
             log.warning("own database write-through failed for %s: %s", aid, e)
             _note_error(aid, str(e))
-            raise OwnDbError("Aapka database (" + str(o.get("label") or "database") + ") abhi jawab nahi de raha; yeh entry "
-                             "save nahi hui. Thodi der baad dobara koshish kijiye.", 503)
+            raise OwnDbError("Your database (" + str(o.get("label") or "database") + ") is not answering right now; this entry "
+                             "was not saved. Try again in a little while.", 503)
 
 
 def stash(sess: Session, site: str, entry: tuple, journal=None) -> None:
@@ -663,13 +663,13 @@ def link(r: AppProject, conn_ref: str, mode: str = "primary", by: str = "owner")
     from . import owndb_conns as OC
     mode = mode if mode in MODES else "primary"
     if cfg(r, fresh=True):
-        raise OwnDbError("Yeh app pehle se ek database se judi hai; pehle 'Alag karo' dabaiye.", 409)
+        raise OwnDbError("This app is already linked to a database; tap 'Unlink' first.", 409)
     try:
         pv, _d = OC.secret_of(r.tenant_id, conn_ref)
     except W.AppError as e:
         raise OwnDbError(str(e), 400)
     if pv.get("can_write") is False:
-        raise OwnDbError(f"'{pv['name']}' ka user sirf padh sakta hai; tables banane / likhne wala user dijiye.", 400)
+        raise OwnDbError(f"The user of '{pv['name']}' can only read; give a user that can create tables / write.", 400)
 
     class _PC:                                           # the view as attributes (name / id / label)
         id, name, label = pv["id"], pv["name"], pv["label"]
@@ -705,11 +705,11 @@ def link(r: AppProject, conn_ref: str, mode: str = "primary", by: str = "owner")
         if isinstance(e, W.AppError):
             raise
         log.exception("own database link failed")
-        raise OwnDbError(f"Database se jodte waqt galti: {str(e)[:200]}", 502)
+        raise OwnDbError(f"Error while linking the database: {str(e)[:200]}", 502)
     if not check["ok"]:
         BE.patch_backend(r, fn=lambda b: b.pop("owndb", None))
         _forget(r.id)
-        raise OwnDbError("Copy ke baad ginti mel nahi khayi: " + "; ".join(check["mismatch"][:4]) + ". App pehle jaisi chal rahi hai.", 502)
+        raise OwnDbError("The counts did not match after the copy: " + "; ".join(check["mismatch"][:4]) + ". The app is running as before.", 502)
 
     def live(b):
         b["owndb"].update({"status": "live", "cursor": cursor, "copied": len(entries), "live_at": now().isoformat(), "last_error": ""})
@@ -722,16 +722,16 @@ def link(r: AppProject, conn_ref: str, mode: str = "primary", by: str = "owner")
     except Exception:                                    # noqa: BLE001
         pass
     return {"schema": s, "kind": o["kind"], "mode": mode, "copied": len(entries), "tables": made["tables"], "counts": check["counts"],
-            "say": (f"App ka data ab aapke database '{pc.name}' mein (schema {s}): {len(entries)} entries copy, ginti mel khayi. "
-                    + ("Har nayi entry pehle wahin save hogi; wahan kiya badlav app mein aa jayega." if mode == "primary"
-                       else "Har badlav ek minute ke andar wahan pahunchega (copy mode)."))}
+            "say": (f"The app's data is now in your database '{pc.name}' (schema {s}): {len(entries)} entries copied, counts match. "
+                    + ("Every new entry is saved there first; a change made there comes into the app." if mode == "primary"
+                       else "Every change reaches it within a minute (copy mode)."))}
 
 
 def unlink(r: AppProject, by: str = "owner") -> dict:
     from . import backend as BE
     o = cfg(r, fresh=True)
     if not o:
-        raise OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
+        raise OwnDbError("This app is not linked to any database.", 404)
     BE.patch_backend(r, fn=lambda b: b.__setitem__("owndb", {**(b.get("owndb") or {}), "status": "off", "off_at": now().isoformat()}))
     _forget(r.id)
     close_pool(r.id)
@@ -742,14 +742,14 @@ def unlink(r: AppProject, by: str = "owner") -> dict:
         LE.audit(r, "own_db_unlinked", by=by, what=o.get("name", ""))
     except Exception:                                    # noqa: BLE001
         pass
-    return {"ok": True, "say": "App ab Hoola ke database par chal rahi hai. Aapke database mein data waisa hi rakha hai (kuch mita nahi)."}
+    return {"ok": True, "say": "The app now runs on Hoola's database. The data in your database was left as it is (nothing was deleted)."}
 
 
 def verify(r: AppProject, o: dict | None = None) -> dict:
     """Counts per list: the app vs her tables."""
     o = o or cfg(r, fresh=True)
     if not o:
-        raise OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
+        raise OwnDbError("This app is not linked to any database.", 404)
     site = "app:" + r.id
     from sqlalchemy import func
     with session() as s:

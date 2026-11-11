@@ -148,8 +148,8 @@ def check(tenant: str, ref: str, platform: str = "android", fix: bool = False, c
         s.expunge(r)
     scores = score_all(r, platform)
     if not scores:
-        raise AS.AppError(("Android" if platform == "android" else "iPhone") + " app ki device check wali screenshots abhi nahi hain: "
-                          "pehle app banne dijiye (build machine par device check ke saath).")
+        raise AS.AppError(("Android" if platform == "android" else "iPhone") + " app has no device-check screenshots yet: "
+                          "let the app be built first (with the device check on the build machine).")
     folder, _st = _native_dir(r, platform)
     low = sorted((sid for sid, x in scores.items() if x["score"] < MATCH_MIN), key=lambda s: scores[s]["score"])[:8]
     from ..site import ai as SA
@@ -187,8 +187,8 @@ def check(tenant: str, ref: str, platform: str = "android", fix: bool = False, c
                 IO.build(tenant, r.id, conv or r.conv, "sim", list(notes), notes)
             rebuilt = list(notes)
     return view(AS._load(r.id), platform) | {"rebuilt": rebuilt,
-                                             "say": (f"{len(low)} screen design se kam mili; " + (f"{len(rebuilt)} dobara ban rahi hain." if rebuilt
-                                                     else "farak card par likhe hain.")) if low else "Sab screens design se mil rahi hain."}
+                                             "say": (f"{len(low)} screens match the design poorly; " + (f"{len(rebuilt)} are being rebuilt." if rebuilt
+                                                     else "the differences are on the card.")) if low else "All screens match the design."}
 
 
 def view(r: AppProject, platform: str = "") -> dict[str, Any]:

@@ -36,12 +36,12 @@ log = logging.getLogger("santosh.darzi")
 _LOCK = threading.Lock()
 
 STATUSES = ("new", "cutting", "stitching", "trial", "ready", "delivered", "cancelled")
-STATUS_LABEL = {"new": "Naya", "cutting": "Cutting", "stitching": "Silai chal rahi", "trial": "Trial / fitting",
-                "ready": "Taiyaar", "delivered": "De diya", "cancelled": "Cancel"}
+STATUS_LABEL = {"new": "New", "cutting": "Cutting", "stitching": "Stitching", "trial": "Trial / fitting",
+                "ready": "Ready", "delivered": "Delivered", "cancelled": "Cancelled"}
 OPEN = ("new", "cutting", "stitching", "trial", "ready")
-DAYS = ("Som", "Mangal", "Budh", "Guru", "Shukra", "Shani", "Ravi")
-DEFAULT_READY = ("Namaste {name} ji, aapka {items} taiyaar hai. {shop} se kabhi bhi le jaiye. "
-                 "{balance_line}Order no. {number}. Dhanyavaad!")
+DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+DEFAULT_READY = ("Hello {name}, your {items} is ready. You can collect it from {shop} any time. "
+                 "{balance_line}Order no. {number}. Thank you.")
 
 
 class DarziError(Exception):
@@ -150,7 +150,7 @@ def _paise(v) -> int:
     try:
         return int(round(float(str(v).replace(",", "").replace("₹", "").replace("rs", "").replace("Rs", "").strip()) * 100))
     except ValueError:
-        raise DarziError(f"'{v}' rupaye ki rakam nahi lagti.")
+        raise DarziError(f"'{v}' does not look like an amount in rupees.")
 
 
 def _digits(p: str) -> str:
@@ -203,7 +203,7 @@ def _date(tenant: str, v: str | None, field: str = "date") -> str:
             return d.isoformat()
     except ValueError:
         pass
-    raise DarziError(f"{field} '{v}' samajh nahi aaya (jaise 28/10, 2026-10-28, kal, 5 din).")
+    raise DarziError(f"Could not read {field} '{v}' (for example 28/10, 2026-10-28, tomorrow, 5 days).")
 
 
 def _nice(d: str) -> str:
@@ -244,9 +244,9 @@ def _shop_name(tenant: str, r: DarziSettings) -> str:
         return r.shop_name
     try:
         from ..employee import service as emp
-        return (emp.profile(tenant) or {}).get("business_name") or "dukaan"
+        return (emp.profile(tenant) or {}).get("business_name") or "the shop"
     except Exception:
-        return "dukaan"
+        return "the shop"
 
 
 def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
@@ -257,21 +257,21 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
             if kw.get(k) is not None:
                 v = str(kw[k]).strip()
                 if k == "morning_time" and v and not re.fullmatch(r"\d{1,2}:\d{2}", v):
-                    raise DarziError("Subah ka samay HH:MM mein (jaise 09:30).")
+                    raise DarziError("Give the morning time as HH:MM (for example 09:30).")
                 setattr(r, k, v[:2000])
         if kw.get("unit") is not None:
             u = str(kw["unit"]).lower().strip()
             if u not in ("inch", "cm"):
-                raise DarziError("Naap inch ya cm mein.")
+                raise DarziError("Measurements must be in inch or cm.")
             r.unit = u
         for k in ("pieces_per_day", "rush_percent", "remeasure_months"):
             if kw.get(k) is not None:
                 try:
                     v = int(kw[k])
                 except (TypeError, ValueError):
-                    raise DarziError(f"{k} ek number hona chahiye.")
+                    raise DarziError(f"{k} must be a number.")
                 if v < 0 or v > 1000:
-                    raise DarziError(f"{k} 0 se 1000 ke beech.")
+                    raise DarziError(f"{k} must be between 0 and 1000.")
                 setattr(r, k, v)
         if kw.get("enabled") is not None:
             r.enabled = bool(kw["enabled"])
@@ -337,8 +337,8 @@ def _find_customer(s, tenant: str, ref: str = "", name: str = "", phone: str = "
             return part[0]
         if len(exact) > 1 or len(part) > 1:
             many = exact or part
-            raise DarziError("Is naam ke kai graahak hain: " + ", ".join(f"{c.name} ({c.phone[-4:] or 'no phone'}) id={c.id}"
-                                                                         for c in many[:6]) + ". Phone ya id bataiye.")
+            raise DarziError("Several customers have this name: " + ", ".join(f"{c.name} ({c.phone[-4:] or 'no phone'}) id={c.id}"
+                                                                         for c in many[:6]) + ". Give the phone or id.")
     return None
 
 
@@ -347,7 +347,7 @@ def customer_upsert(tenant: str, name: str = "", phone: str = "", notes: str = "
         c = _find_customer(s, tenant, customer, name, phone)
         if c is None:
             if not (name or "").strip():
-                raise DarziError("Graahak ka naam chahiye.")
+                raise DarziError("The customer's name is needed.")
             c = DarziCustomer(tenant_id=tenant, name=name.strip()[:120], phone=_digits(phone))
             s.add(c)
             s.flush()
@@ -379,11 +379,11 @@ def save_measure(tenant: str, customer: str = "", garment: str = "", values: Any
     from last time (> 1 inch / 2.5 cm is pointed out: check it before cutting)."""
     vals = G.clean_values(values)
     if not vals and not note:
-        raise DarziError("Koi naap samajh nahi aaya. Jaise: chest 34, kamar 30, lambai 15, bahi 11.5.")
+        raise DarziError("Could not read any measurement. For example: chest 34, waist 30, length 15, sleeve 11.5.")
     gid = G.garment_of(garment)
     c = customer_upsert(tenant, name=name, phone=phone, customer=customer) if (name or phone or customer) else None
     if c is None:
-        raise DarziError("Kis graahak ka naap hai? Naam ya phone bataiye.")
+        raise DarziError("Which customer are these measurements for? Give the name or phone.")
     with session() as s:
         st = _settings_row(s, tenant)
         u = (unit or st.unit or "inch").lower()
@@ -394,7 +394,7 @@ def save_measure(tenant: str, customer: str = "", garment: str = "", values: Any
             lim = 2.5 if u == "cm" else 1.0
             for k, v in vals.items():
                 if k in old and abs(float(old[k]) - v) > lim:
-                    changes.append(f"{G.label(k)}: pehle {old[k]:g}, ab {v:g}")
+                    changes.append(f"{G.label(k)}: was {old[k]:g}, now {v:g}")
             merged = {**old, **vals}                    # a partial update keeps the other old numbers
         else:
             merged = vals
@@ -407,9 +407,9 @@ def save_measure(tenant: str, customer: str = "", garment: str = "", values: Any
     out["customer"] = c
     out["missing"] = [G.label(f) for f in G.missing(gid, merged)]
     out["changed"] = changes
-    out["say"] = (f"{c['name']}{' (' + person + ')' if person else ''} ka {out['garment_label']} naap save: {out['shown']}."
-                  + (f" Abhi chahiye: {', '.join(out['missing'])}." if out["missing"] else "")
-                  + (f" Dhyaan dein, pichhli baar se fark: {'; '.join(changes)}. Cutting se pehle ek baar check kar lein."
+    out["say"] = (f"{out['garment_label']} measurements saved for {c['name']}{' (' + person + ')' if person else ''}: {out['shown']}."
+                  + (f" Still needed: {', '.join(out['missing'])}." if out["missing"] else "")
+                  + (f" Note the difference from last time: {'; '.join(changes)}. Please check once before cutting."
                      if changes else ""))
     return out
 
@@ -419,7 +419,7 @@ def measures(tenant: str, customer: str = "", name: str = "", phone: str = "", g
     with session() as s:
         c = _find_customer(s, tenant, customer, name, phone)
         if c is None:
-            raise DarziError("Graahak nahi mila.")
+            raise DarziError("Customer not found.")
         q = select(DarziMeasure).where(DarziMeasure.tenant_id == tenant, DarziMeasure.customer_id == c.id)
         if garment:
             q = q.where(DarziMeasure.garment == G.garment_of(garment))
@@ -512,7 +512,7 @@ def _norm_items(items: Any) -> list[dict[str, Any]]:
             it["label"] = str(raw.get("garment"))[:80]
         out.append(it)
     if not out:
-        raise DarziError("Kya silna hai? (blouse, suit, lehenga, shirt, pant, alteration...)")
+        raise DarziError("What is to be stitched? (blouse, suit, lehenga, shirt, pant, alteration...)")
     return out
 
 
@@ -539,8 +539,8 @@ def check(tenant: str, items: Any, deliver_on: str = "", trial_on: str = "", cus
             if len(past) >= 3:
                 real = round(statistics.mean(past[:10]))
                 if real > sv["usual_days"].get(i["garment"], 3):
-                    notes.append(f"Pichhle {len(past[:10])} {i['label']} mein asal mein ~{real} din lage "
-                                 f"(niyam {sv['usual_days'].get(i['garment'], 3)} din).")
+                    notes.append(f"The last {len(past[:10])} {i['label']} orders really took ~{real} days "
+                                 f"(your rule says {sv['usual_days'].get(i['garment'], 3)} days).")
                     need_days = max(need_days, real)
         closed = set(sv["closed_days"])
         pieces = sum(i["qty"] for i in its)
@@ -562,27 +562,27 @@ def check(tenant: str, items: Any, deliver_on: str = "", trial_on: str = "", cus
         if dl:
             d = date.fromisoformat(dl)
             if d < t:
-                problems.append(f"Delivery date {_nice(dl)} beet chuki hai.")
+                problems.append(f"Delivery date {_nice(dl)} has passed.")
             elif (d - t).days < need_days:
                 rush = True
-                msg = (f"{_nice(dl)} sirf {(d - t).days} din mein hai; aapke niyam se {need_days} din chahiye "
-                       f"(sabse jaldi {_nice(earliest.isoformat())}).")
-                problems.append(msg + (f" Jaldi ka charge {sv['rush_percent']}% lagega." if sv["rush_percent"] else ""))
+                msg = (f"{_nice(dl)} is only {(d - t).days} days away; your rules need {need_days} days "
+                       f"(earliest {_nice(earliest.isoformat())}).")
+                problems.append(msg + (f" A rush charge of {sv['rush_percent']}% applies." if sv["rush_percent"] else ""))
             if d.weekday() in closed:
-                problems.append(f"{_nice(dl)} ko dukaan band rehti hai.")
+                problems.append(f"The shop is closed on {_nice(dl)}.")
             cap = sv["pieces_per_day"]
             if cap:
                 load = _load(s, tenant, dl, skip_order)
                 if load + pieces > cap:
-                    problems.append(f"{_nice(dl)} ko pehle se {load} kapde dene hain (roz {cap} ka niyam); yeh {pieces} aur "
-                                    f"jodne se zyada ho jayega. Agla khaali din: {_nice(earliest.isoformat()) if earliest > d else 'dekhiye'}.")
+                    problems.append(f"{_nice(dl)} already has {load} pieces due (your rule is {cap} a day); adding these {pieces} "
+                                    f"goes over it. Next free day: {_nice(earliest.isoformat()) if earliest > d else 'please check'}.")
         if tr:
             if dl and tr > dl:
-                problems.append("Trial delivery ke baad nahi ho sakta.")
+                problems.append("The trial cannot be after delivery.")
             if date.fromisoformat(tr) < t:
-                problems.append(f"Trial date {_nice(tr)} beet chuki hai.")
+                problems.append(f"Trial date {_nice(tr)} has passed.")
             elif date.fromisoformat(tr).weekday() in closed:
-                problems.append(f"Trial {_nice(tr)} ko dukaan band hai.")
+                problems.append(f"The shop is closed on the trial day {_nice(tr)}.")
         prices = sv["prices"]
         for i in its:
             gl = prices.get(i["garment"])
@@ -590,26 +590,26 @@ def check(tenant: str, items: Any, deliver_on: str = "", trial_on: str = "", cus
             if c is not None:
                 m = _latest_measure(s, tenant, c.id, i["garment"], i["person"])
                 if m is None and G.GARMENTS[i["garment"]]["must"]:
-                    problems.append(f"{c.name}{' (' + i['person'] + ')' if i['person'] else ''} ka {i['label']} naap nahi hai.")
+                    problems.append(f"No {i['label']} measurements for {c.name}{' (' + i['person'] + ')' if i['person'] else ''}.")
                 elif m is not None:
                     age = (now() - (m.created_at if m.created_at.tzinfo else m.created_at.replace(tzinfo=now().tzinfo))).days
                     if age > 30 * sv["remeasure_months"]:
-                        notes.append(f"{i['label']} ka naap {age // 30} mahine purana hai: dobara naap lena theek rahega.")
+                        notes.append(f"The {i['label']} measurements are {age // 30} months old: it is better to measure again.")
                     miss = G.missing(i["garment"], _j(m.values, {}))
                     if miss:
-                        problems.append(f"{i['label']} ke naap mein {', '.join(G.label(f) for f in miss)} nahi hai.")
+                        problems.append(f"The {i['label']} measurements are missing {', '.join(G.label(f) for f in miss)}.")
                     if m.note:
                         notes.append(f"{i['label']} style note: {m.note[:200]}")
                     i["measure_id"] = m.id
                 last = _last_prices(s, tenant, i["garment"], c.id)
                 if last:
-                    notes.append(f"{c.name} ka pichhla {i['label']}: {_rs(last[0])}.")
+                    notes.append(f"Last {i['label']} for {c.name}: {_rs(last[0])}.")
             elif G.GARMENTS[i["garment"]]["must"]:
-                notes.append("Naya graahak: naap lena hoga.")
+                notes.append("New customer: measurements must be taken.")
             if i.get("asked_paise") and gl and i["asked_paise"] != _paise(gl):
-                notes.append(f"{i['label']}: list mein {_rs(_paise(gl))}, yahan {_rs(i['asked_paise'])}: aapki haan ke liye card banega.")
+                notes.append(f"{i['label']}: {_rs(_paise(gl))} in the list, {_rs(i['asked_paise'])} here: a card will ask for your approval.")
             elif not i.get("asked_paise") and not gl:
-                notes.append(f"{i['label']} ka daam list mein nahi: Hoola daam taiyaar karega, aapki haan ke baad pakka.")
+                notes.append(f"{i['label']} has no price in the list: Hoola will prepare a price, final only after your approval.")
         return {"items": its, "problems": problems, "notes": notes, "earliest": earliest.isoformat(),
                 "earliest_nice": _nice(earliest.isoformat()), "need_days": need_days, "rush": rush,
                 "rush_percent": sv["rush_percent"], "deliver_on": dl, "trial_on": tr, "your_rules": sv["rules"],
@@ -673,7 +673,7 @@ def _get_order(s, tenant: str, ref: str) -> DarziOrder:
             num = f"D-{int(num.replace('D', '').replace('-', '')):04d}"
         o = s.scalars(select(DarziOrder).where(DarziOrder.tenant_id == tenant, DarziOrder.number == num)).first()
     if o is None or o.tenant_id != tenant:
-        raise DarziError(f"Order '{ref}' nahi mila.")
+        raise DarziError(f"Order '{ref}' not found.")
     return o
 
 
@@ -702,16 +702,16 @@ def _prepare_price(s, tenant: str, i: dict[str, Any], customer_id: str, sv: dict
     """What Hoola proposes for an item without a settled price, and why (her list, her earlier orders, her words)."""
     gl = _paise(sv["prices"].get(i["garment"])) if sv["prices"].get(i["garment"]) else 0
     if i.get("asked_paise"):
-        why = f"Aapne {_rs(i['asked_paise'])} kaha" + (f"; list mein {_rs(gl)} hai" if gl else "; yeh list mein naya hai")
+        why = f"You said {_rs(i['asked_paise'])}" + (f"; the list has {_rs(gl)}" if gl else "; this is new to the list")
         return i["asked_paise"], why
     mine = _last_prices(s, tenant, i["garment"], customer_id)
     allp = _last_prices(s, tenant, i["garment"])
     if mine:
-        return mine[0], f"Is graahak ka pichhla {i['label']} {_rs(mine[0])} ka tha."
+        return mine[0], f"This customer's last {i['label']} was {_rs(mine[0])}."
     if allp:
         mid = int(statistics.median(allp))
-        return mid, f"Pichhle {len(allp)} {i['label']} ka beech ka daam {_rs(mid)}."
-    return 0, f"{i['label']} ka daam pehli baar: aap bataiye."
+        return mid, f"The median price of the last {len(allp)} {i['label']} orders is {_rs(mid)}."
+    return 0, f"First price for {i['label']}: please tell me."
 
 
 def new_order(tenant: str, items: Any, customer: str = "", name: str = "", phone: str = "", deliver_on: str = "",
@@ -720,16 +720,16 @@ def new_order(tenant: str, items: Any, customer: str = "", name: str = "", phone
     """Take the job. Runs `check` first: with problems and force=False nothing is saved, the problems come back so they
     can be fixed or she can agree (force=True after she said yes). Prices outside her list become quote cards."""
     if not (customer or name or phone):
-        raise DarziError("Graahak ka naam / phone chahiye.")
+        raise DarziError("The customer's name / phone is needed.")
     if not deliver_on:
         ck = check(tenant, items, "", trial_on, customer, name, phone)
         deliver_on = ck["earliest"]
     ck = check(tenant, items, deliver_on, trial_on, customer, name, phone)
-    hard = [p for p in ck["problems"] if "beet chuki" in p or "delivery ke baad" in p]
+    hard = [p for p in ck["problems"] if "has passed" in p or "after delivery" in p]
     if hard or (ck["problems"] and not force):
         return {"saved": False, "check": ck,
-                "say": "Order abhi save nahi kiya. " + " ".join(ck["problems"])
-                       + ("" if hard else " Theek karke dobara bhejiye, ya owner maan jaaye to force=true.")}
+                "say": "The order was not saved. " + " ".join(ck["problems"])
+                       + ("" if hard else " Fix it and send again, or use force=true if the owner agrees.")}
     c = customer_upsert(tenant, name=name, phone=phone, customer=customer)
     with _LOCK, session() as s:
         st = _settings_row(s, tenant)
@@ -762,9 +762,9 @@ def new_order(tenant: str, items: Any, customer: str = "", name: str = "", phone
         _recompute(o, sv["rush_percent"])
         adv = _paise(advance) if advance not in (None, "") else 0
         o.paid_paise = adv
-        _log(o, f"Order liya: {', '.join(str(i['qty']) + ' ' + i['label'] for i in its)}; delivery {_nice(o.deliver_on)}"
+        _log(o, f"Order taken: {', '.join(str(i['qty']) + ' ' + i['label'] for i in its)}; delivery {_nice(o.deliver_on)}"
                 + (f", trial {_nice(o.trial_on)}" if o.trial_on else "") + (f"; advance {_rs(adv)}" if adv else "")
-                + ("; owner ne niyam se hatkar haan kahi: " + " ".join(ck["problems"]) if ck["problems"] else ""), by)
+                + ("; the owner approved outside the rules: " + " ".join(ck["problems"]) if ck["problems"] else ""), by)
         s.flush()
         view = _order_view(s, o)
         qviews = [_quote_view(s, q) for q in quotes]
@@ -772,12 +772,12 @@ def new_order(tenant: str, items: Any, customer: str = "", name: str = "", phone
         _publish(tenant, "darzi_quote", qv, conv)
     _publish(tenant, "darzi_order", {k: view[k] for k in ("id", "number", "status", "status_label", "what", "deliver_on",
                                                           "deliver_nice", "trial_nice", "total", "balance")} | {"customer": view["customer"]["name"]}, conv)
-    say = (f"Order {view['number']} save: {view['customer']['name']}, {view['what']}, delivery {view['deliver_nice']}"
-           + (f", trial {view['trial_nice']}" if view["trial_nice"] else "") + f". Kul {view['total']}, advance {view['paid']}, baaki {view['balance']}.")
+    say = (f"Order {view['number']} saved: {view['customer']['name']}, {view['what']}, delivery {view['deliver_nice']}"
+           + (f", trial {view['trial_nice']}" if view["trial_nice"] else "") + f". Total {view['total']}, advance {view['paid']}, balance {view['balance']}.")
     if qviews:
-        say += " " + "; ".join(f"{q['label']} ka daam ({q['price'] or 'aap batayengi'}) aapki haan ke liye card par hai" for q in qviews) + "."
+        say += " " + "; ".join(f"the price of {q['label']} ({q['price'] or 'you will tell me'}) is on a card for your approval" for q in qviews) + "."
     if ck["notes"]:
-        say += " Dhyaan: " + " ".join(ck["notes"][:4])
+        say += " Note: " + " ".join(ck["notes"][:4])
     return {"saved": True, "order": view, "quotes": qviews, "check": ck, "say": say}
 
 
@@ -789,7 +789,7 @@ def update_order(tenant: str, order: str, deliver_on: str = "", trial_on: str = 
     ck = check(tenant, items if items is not None else cur_items, deliver_on or o.deliver_on, trial_on or o.trial_on,
                customer=cust, skip_order=oid)
     if ck["problems"] and not force:
-        return {"saved": False, "check": ck, "say": "Badlav save nahi kiya: " + " ".join(ck["problems"])}
+        return {"saved": False, "check": ck, "say": "The change was not saved: " + " ".join(ck["problems"])}
     with session() as s:
         o = _get_order(s, tenant, order)
         sv = _settings_view(_settings_row(s, tenant))
@@ -819,17 +819,17 @@ def update_order(tenant: str, order: str, deliver_on: str = "", trial_on: str = 
                         i["price_paise"] = gl
                     else:
                         s.add(DarziQuote(tenant_id=tenant, order_id=o.id, item=len(new), garment=i["garment"],
-                                         price_paise=i["asked_paise"], list_paise=gl, why=f"Aapne {_rs(i['asked_paise'])} kaha"))
+                                         price_paise=i["asked_paise"], list_paise=gl, why=f"You said {_rs(i['asked_paise'])}"))
                     i.pop("asked_paise", None)
                 new.append(i)
             o.items = json.dumps(new, ensure_ascii=False)
-            changed.append("kapde")
+            changed.append("items")
         o.rush = bool(ck["rush"])
         _recompute(o, sv["rush_percent"])
-        _log(o, "Badla: " + ", ".join(changed or ["kuch nahi"]), by)
+        _log(o, "Changed: " + ", ".join(changed or ["nothing"]), by)
         s.flush()
         v = _order_view(s, o)
-    return {"saved": True, "order": v, "check": ck, "say": f"Order {v['number']} badla: {', '.join(changed) or 'kuch nahi'}."}
+    return {"saved": True, "order": v, "check": ck, "say": f"Order {v['number']} changed: {', '.join(changed) or 'nothing'}."}
 
 
 def set_status(tenant: str, order: str, status: str, note: str = "", by: str = "owner", conv: str = "") -> dict[str, Any]:
@@ -844,18 +844,18 @@ def set_status(tenant: str, order: str, status: str, note: str = "", by: str = "
     with session() as s:
         o = _get_order(s, tenant, order)
         if o.status in ("delivered", "cancelled"):
-            raise DarziError(f"Order {o.number} pehle hi {STATUS_LABEL[o.status]} hai.")
+            raise DarziError(f"Order {o.number} is already {STATUS_LABEL[o.status]}.")
         o.status = status
         if status == "ready":
             o.ready_at = now()
         _log(o, f"Status: {STATUS_LABEL[status]}" + (f" ({note})" if note else ""), by)
         s.flush()
         v = _order_view(s, o)
-    out = {"order": v, "say": f"Order {v['number']} ab: {v['status_label']}."}
+    out = {"order": v, "say": f"Order {v['number']} is now: {v['status_label']}."}
     if status == "ready":
         r = ready_card(tenant, v["id"], conv=conv)
         out["ready"] = r
-        out["say"] += " 'Taiyaar hai' ka message draft card par hai; aap tap karengi tabhi jayega."
+        out["say"] += " The 'ready' message is on a draft card; it goes only when you tap."
     return out
 
 
@@ -863,14 +863,14 @@ def pay(tenant: str, order: str, amount: Any, how: str = "", by: str = "owner") 
     """Note money she received (cash / her UPI). Hoola never takes money itself."""
     p = _paise(amount)
     if p <= 0:
-        raise DarziError("Kitne rupaye mile?")
+        raise DarziError("How many rupees were received?")
     with session() as s:
         o = _get_order(s, tenant, order)
         o.paid_paise += p
-        _log(o, f"Paise mile: {_rs(p)}" + (f" ({how})" if how else ""), by)
+        _log(o, f"Money received: {_rs(p)}" + (f" ({how})" if how else ""), by)
         s.flush()
         v = _order_view(s, o)
-    return {"order": v, "say": f"{v['number']}: {_rs(p)} likh liya. Kul mila {v['paid']}, baaki {v['balance']}."}
+    return {"order": v, "say": f"{v['number']}: {_rs(p)} recorded. Total received {v['paid']}, balance {v['balance']}."}
 
 
 def deliver(tenant: str, order: str, paid_now: Any = None, note: str = "", by: str = "owner", conv: str = "") -> dict[str, Any]:
@@ -878,7 +878,7 @@ def deliver(tenant: str, order: str, paid_now: Any = None, note: str = "", by: s
     with session() as s:
         o = _get_order(s, tenant, order)
         if o.status == "cancelled":
-            raise DarziError("Cancel hua order deliver nahi hota.")
+            raise DarziError("A cancelled order cannot be delivered.")
         if paid_now not in (None, ""):
             p = _paise(paid_now)
             if p:
@@ -894,14 +894,14 @@ def deliver(tenant: str, order: str, paid_now: Any = None, note: str = "", by: s
         except ValueError:
             pass
         took = (t - date.fromisoformat(o.received_on)).days if o.received_on else 0
-        how = ("samay par" if late <= 0 else f"{late} din der se")
-        _log(o, f"De diya ({how}, {took} din lage)" + (f"; {note}" if note else ""), by)
+        how = ("on time" if late <= 0 else f"{late} days late")
+        _log(o, f"Delivered ({how}, took {took} days)" + (f"; {note}" if note else ""), by)
         s.flush()
         v = _order_view(s, o)
     v["took_days"], v["late_days"] = took, max(0, late)
-    say = f"Order {v['number']} {v['customer']['name']} ko de diya, {how} ({took} din)."
+    say = f"Order {v['number']} delivered to {v['customer']['name']}, {how} ({took} days)."
     if v["balance_paise"] > 0:
-        say += f" Baaki {v['balance']} abhi lena hai."
+        say += f" Balance {v['balance']} is still to be collected."
     _publish(tenant, "darzi_order", {"id": v["id"], "number": v["number"], "status": "delivered", "status_label": v["status_label"],
                                      "what": v["what"], "customer": v["customer"]["name"], "balance": v["balance"]}, conv)
     return {"order": v, "log": v.get("log", []), "say": say}
@@ -911,14 +911,14 @@ def cancel(tenant: str, order: str, reason: str = "", by: str = "owner") -> dict
     with session() as s:
         o = _get_order(s, tenant, order)
         if o.status == "delivered":
-            raise DarziError("Diya hua order cancel nahi hota.")
+            raise DarziError("A delivered order cannot be cancelled.")
         o.status = "cancelled"
         for q in s.scalars(select(DarziQuote).where(DarziQuote.order_id == o.id, DarziQuote.status == "pending")).all():
             q.status = "rejected"
         _log(o, "Cancel" + (f": {reason}" if reason else ""), by)
         s.flush()
         v = _order_view(s, o, full=False)
-    return {"order": v, "say": f"Order {v['number']} cancel. Advance {v['paid']} lautana ho to aap khud dijiye."}
+    return {"order": v, "say": f"Order {v['number']} cancelled. If the advance {v['paid']} is to be returned, you give it yourself."}
 
 
 def get_order(tenant: str, order: str) -> dict[str, Any]:
@@ -961,22 +961,22 @@ def decide_quote(tenant: str, quote_id: str, approve: bool, price: Any = None, t
     with session() as s:
         q = s.get(DarziQuote, quote_id)
         if q is None or q.tenant_id != tenant:
-            raise DarziError("Yeh daam card nahi mila.")
+            raise DarziError("This price card was not found.")
         if q.status != "pending":
-            raise DarziError("Is card par pehle hi faisla ho chuka.")
+            raise DarziError("This card has already been decided.")
         st = _settings_row(s, tenant)
         o = s.get(DarziOrder, q.order_id) if q.order_id else None
         if not approve:
             q.status = "rejected"
             if o is not None:
-                _log(o, f"{G.GARMENTS.get(q.garment, G.GARMENTS['other'])['label']} ka daam {_rs(q.price_paise)}: owner ne mana kiya")
+                _log(o, f"{G.GARMENTS.get(q.garment, G.GARMENTS['other'])['label']} price {_rs(q.price_paise)}: the owner said no")
             s.flush()
             v = _quote_view(s, q)
-            say = "Theek hai, yeh daam nahi. Sahi daam bataiye to order mein daal doon."
+            say = "OK, not this price. Tell me the right price and I will put it in the order."
         else:
             p = _paise(price) if price not in (None, "") else q.price_paise
             if p <= 0:
-                raise DarziError("Daam bataiye (rupaye).")
+                raise DarziError("Give the price (rupees).")
             q.status, q.price_paise = "approved", p
             if to_list is None:
                 to_list = not q.list_paise                      # a garment new to her list is added to it
@@ -990,10 +990,10 @@ def decide_quote(tenant: str, quote_id: str, approve: bool, price: Any = None, t
                     its[q.item]["price_paise"] = p
                     o.items = json.dumps(its, ensure_ascii=False)
                 _recompute(o, st.rush_percent)
-                _log(o, f"Daam pakka (owner ki haan): {its[q.item]['label'] if 0 <= q.item < len(its) else q.garment} {_rs(p)}")
+                _log(o, f"Price confirmed (owner approved): {its[q.item]['label'] if 0 <= q.item < len(its) else q.garment} {_rs(p)}")
             s.flush()
             v = _quote_view(s, q)
-            say = f"{v['label']} {_rs(p)} pakka" + (" aur daam ki list mein bhi daal diya." if to_list else ".")
+            say = f"{v['label']} {_rs(p)} confirmed" + (" and added to the price list too." if to_list else ".")
     _publish(tenant, "darzi_quote", v, conv)
     return {"quote": v, "say": say}
 
@@ -1005,9 +1005,9 @@ def _ready_text(tenant: str, s, o: DarziOrder) -> str:
     bal = max(0, o.total_paise - o.paid_paise)
     tpl = st.ready_template or DEFAULT_READY
     its = _j(o.items, [])
-    vals = {"name": (c.name if c else "").split(" ")[0] or "ji", "items": ", ".join(i.get("label", "") for i in its),
+    vals = {"name": (c.name if c else "").split(" ")[0] or "there", "items": ", ".join(i.get("label", "") for i in its),
             "shop": _shop_name(tenant, st), "number": o.number, "balance": _rs(bal),
-            "balance_line": f"Baaki {_rs(bal)}. " if bal else "", "deliver": _nice(o.deliver_on)}
+            "balance_line": f"Balance {_rs(bal)}. " if bal else "", "deliver": _nice(o.deliver_on)}
     try:
         return tpl.format(**vals).strip()
     except (KeyError, IndexError, ValueError):
@@ -1059,21 +1059,21 @@ async def send_ready_business(tenant: str, order: str, text: str = "") -> dict[s
         bc = [x for x in s.scalars(select(BizContact).where(BizContact.tenant_id == tenant)).all() if _digits(x.wa_id) == ph]
         cid = bc[0].id if bc else ""
     if not cid:
-        raise DarziError("Is graahak ne business WhatsApp par kabhi message nahi kiya: apne WhatsApp se bhejiye (draft taiyaar hai).")
+        raise DarziError("This customer has never messaged the business WhatsApp: send it from your own WhatsApp (the draft is ready).")
     try:
         await inbox.send(tenant, cid, body, by="owner")
     except inbox.InboxError as e:
         raise DarziError(str(e))
     with session() as s:
         o = s.get(DarziOrder, oid)
-        _log(o, "'Taiyaar hai' message business WhatsApp se bheja (owner ke tap par)")
-    return {"sent": True, "say": "Message bhej diya."}
+        _log(o, "'Ready' message sent from business WhatsApp (on the owner's tap)")
+    return {"sent": True, "say": "Message sent."}
 
 
 def mark_told(tenant: str, order: str, how: str = "whatsapp") -> dict[str, Any]:
     with session() as s:
         o = _get_order(s, tenant, order)
-        _log(o, f"Graahak ko bataya ({how})")
+        _log(o, f"Customer informed ({how})")
         return {"ok": True}
 
 
@@ -1102,13 +1102,13 @@ def slip_pdf(tenant: str, order: str) -> bytes:
 
     line(shop, 14, True, 18)
     line(f"Order {v['number']}   ·   {v['received_on']}", 10, True)
-    line(f"Graahak: {v['customer']['name']}   {v['customer'].get('phone', '')}")
-    line(f"Trial: {v['trial_nice'] or '-'}    Delivery: {v['deliver_nice']}" + ("   (JALDI)" if v["rush"] else ""), 10, True, 20)
+    line(f"Customer: {v['customer']['name']}   {v['customer'].get('phone', '')}")
+    line(f"Trial: {v['trial_nice'] or '-'}    Delivery: {v['deliver_nice']}" + ("   (RUSH)" if v["rush"] else ""), 10, True, 20)
     for i in v["items"]:
         line(f"{i.get('qty', 1)} x {i.get('label')}" + (f" ({i['person']})" if i.get("person") else "")
-             + (f"   {i['price']}" if i.get("price") else "   daam baaki"), 11, True)
+             + (f"   {i['price']}" if i.get("price") else "   price pending"), 11, True)
         if i.get("fabric"):
-            line(f"   Kapda: {i['fabric']}", 9)
+            line(f"   Fabric: {i['fabric']}", 9)
         if i.get("style"):
             line(f"   Style: {i['style'][:85]}", 9)
         m = i.get("measure")
@@ -1121,8 +1121,8 @@ def slip_pdf(tenant: str, order: str) -> bytes:
         y -= 4
     y -= 6
     if v["rush_charge"]:
-        line(f"Jaldi ka charge: {v['rush_charge']}")
-    line(f"Kul: {v['total']}    Mila: {v['paid']}    Baaki: {v['balance']}", 11, True)
+        line(f"Rush charge: {v['rush_charge']}")
+    line(f"Total: {v['total']}    Received: {v['paid']}    Balance: {v['balance']}", 11, True)
     if v["notes"]:
         line(f"Note: {v['notes'][:90]}", 9)
     pdf.showPage()
@@ -1137,7 +1137,7 @@ def slip_file(tenant: str, order: str, conv: str = "") -> dict[str, Any]:
     f = chatfiles.store(tenant, f"Order-{v['number']}-{re.sub(r'[^A-Za-z0-9]+', '-', v['customer']['name'])[:30]}.pdf", data,
                         "application/pdf")
     _publish(tenant, "pc_file", {**f, "source": "darzi", "title": f"Order {v['number']} slip"}, conv)
-    return {"file": f, "say": f"Order {v['number']} ki slip (PDF) taiyaar."}
+    return {"file": f, "say": f"The slip (PDF) for order {v['number']} is ready."}
 
 
 # ---------------------------------------------------------------- the day: trials, deliveries, late, the week's load
@@ -1165,22 +1165,22 @@ def day(tenant: str, on: str = "") -> dict[str, Any]:
                          "full": bool(st["pieces_per_day"]) and n >= st["pieces_per_day"]})
         pend = s.scalars(select(DarziQuote).where(DarziQuote.tenant_id == tenant, DarziQuote.status == "pending")).all()
         open_n = len(rows)
-    lines = [f"Darzi: {_nice(d)}"]
+    lines = [f"Tailoring: {_nice(d)}"]
     if trials:
         lines.append("Trial: " + "; ".join(f"{o['customer']['name']} ({o['what']}, {o['number']})" for o in trials))
     if deliveries:
-        lines.append("Dena hai: " + "; ".join(f"{o['customer']['name']} ({o['what']}, {o['status_label']})" for o in deliveries))
+        lines.append("To deliver: " + "; ".join(f"{o['customer']['name']} ({o['what']}, {o['status_label']})" for o in deliveries))
     if late:
-        lines.append("Der ho gayi: " + "; ".join(f"{o['customer']['name']} {o['number']} ({_nice(o['deliver_on'])} ka)" for o in late))
+        lines.append("Late: " + "; ".join(f"{o['customer']['name']} {o['number']} (due {_nice(o['deliver_on'])})" for o in late))
     if waiting:
-        lines.append("Taiyaar par 3+ din se nahi le gaye: " + "; ".join(f"{o['customer']['name']} {o['number']}" for o in waiting))
+        lines.append("Ready but not collected for 3+ days: " + "; ".join(f"{o['customer']['name']} {o['number']}" for o in waiting))
     full = [w["nice"] for w in week if w["full"]]
     if full:
-        lines.append("Bhare hue din: " + ", ".join(full))
+        lines.append("Full days: " + ", ".join(full))
     if pend:
-        lines.append(f"{len(pend)} daam aapki haan ka intezaar kar rahe hain.")
+        lines.append(f"{len(pend)} prices are waiting for your approval.")
     if len(lines) == 1:
-        lines.append("Aaj koi trial / delivery nahi." if open_n else "Koi chalu order nahi.")
+        lines.append("No trial / delivery today." if open_n else "No open orders.")
     return {"date": d, "nice": _nice(d), "trials": trials, "deliveries": deliveries, "late": late, "waiting_pickup": waiting,
             "week": week, "quotes_pending": len(pend), "open_orders": open_n, "text": "\n".join(lines)}
 

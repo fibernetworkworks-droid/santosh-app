@@ -145,8 +145,8 @@ def gate_secrets(r: AppProject, proj: Path, apk: Path | None) -> list[dict[str, 
         for why, bit in _hits(text):
             bad.append(f"{p.relative_to(proj)}: {why} ({bit})")
     rows.append(_row("secrets", "No key in the app's own files", "fail" if bad else "pass",
-                     "Keys mil gayi - APK sab ke paas jata hai, isliye yeh rukavat hai: " + "; ".join(bad[:3]) if bad
-                     else "Koi key / token app ki files mein nahi mili.", f"{n} files"))
+                     "Keys were found - the APK reaches everyone, so this blocks the build: " + "; ".join(bad[:3]) if bad
+                     else "No key / token was found in the app's files.", f"{n} files"))
     if apk and apk.exists():
         inside: list[str] = []
         try:
@@ -161,11 +161,11 @@ def gate_secrets(r: AppProject, proj: Path, apk: Path | None) -> list[dict[str, 
                         for why, bit in _hits(raw):
                             inside.append(f"{nm}: {why} ({bit})")
             rows.append(_row("secrets", "Nothing secret inside the built app", "fail" if inside else "pass",
-                             "; ".join(inside[:3]) if inside else "APK ke assets mein koi key nahi.", f"{len(names)} entries"))
+                             "; ".join(inside[:3]) if inside else "No key in the APK's assets.", f"{len(names)} entries"))
         except (zipfile.BadZipFile, OSError) as e:
-            rows.append(_row("secrets", "Nothing secret inside the built app", "not_checked", f"APK padhi nahi ja saki: {e}"))
+            rows.append(_row("secrets", "Nothing secret inside the built app", "not_checked", f"The APK could not be read: {e}"))
     else:
-        rows.append(_row("secrets", "Nothing secret inside the built app", "not_checked", "Is build ki APK nahi mili."))
+        rows.append(_row("secrets", "Nothing secret inside the built app", "not_checked", "The APK of this build was not found."))
     return rows
 
 
@@ -173,7 +173,7 @@ def gate_secrets(r: AppProject, proj: Path, apk: Path | None) -> list[dict[str, 
 def gate_permissions(r: AppProject, proj: Path, spec: dict[str, Any]) -> list[dict[str, Any]]:
     mf = proj / "app/src/main/AndroidManifest.xml"
     if not mf.exists():
-        return [_row("permissions", "Only the permissions the features need", "not_checked", "Manifest nahi mila.")]
+        return [_row("permissions", "Only the permissions the features need", "not_checked", "Manifest not found.")]
     text = mf.read_text(errors="ignore")
     # only what the APP asks for: a permission NAMED ON a <service> (BIND_JOB_SERVICE) is one the system holds, not a request
     perms = sorted(set(re.findall(r'<uses-permission\s+android:name="android\.permission\.([A-Z_]+)"', text)))
@@ -185,19 +185,19 @@ def gate_permissions(r: AppProject, proj: Path, spec: dict[str, Any]) -> list[di
     wants_mic = any(f.get("type") == "audio" for c in (be.get("collections") or []) for f in (c.get("fields") or []))
     extra: list[str] = []
     if "ACCESS_FINE_LOCATION" in perms and not wants_loc:
-        extra.append("location (koi location field ya tracking nahi hai)")
+        extra.append("location (there is no location field or tracking)")
     if "RECORD_AUDIO" in perms and not wants_mic:
-        extra.append("microphone (koi voice-note field nahi hai)")
+        extra.append("microphone (there is no voice-note field)")
     rows = [_row("permissions", "No restricted permission", "fail" if banned else "pass",
-                 "Play ki rok wali permission mili: " + ", ".join(banned) if banned
-                 else "Koi rok wali permission nahi (SMS, call log, background location, camera, exact alarm...).",
+                 "A permission that Play restricts was found: " + ", ".join(banned) if banned
+                 else "No restricted permission (SMS, call log, background location, camera, exact alarm...).",
                  ", ".join(perms)),
             _row("permissions", "Every permission is one of ours", "fail" if unknown else "pass",
-                 "Yeh permission Hoola ke build mein nahi honi chahiye: " + ", ".join(unknown) if unknown
-                 else f"{len(perms)} permissions, sab pehchani hui.", ", ".join(perms)),
+                 "These permissions should not be in a Hoola build: " + ", ".join(unknown) if unknown
+                 else f"{len(perms)} permissions, all known.", ", ".join(perms)),
             _row("permissions", "Each permission has a feature behind it", "fail" if extra else "pass",
-                 "Feature ke bina permission: " + "; ".join(extra) if extra
-                 else "Jo permission hai, uska feature app mein hai.")]
+                 "Permission without a feature: " + "; ".join(extra) if extra
+                 else "Every permission has its feature in the app.")]
     return rows
 
 
@@ -206,31 +206,31 @@ def gate_settings(r: AppProject, proj: Path, apk: Path | None) -> list[dict[str,
     rows: list[dict[str, Any]] = []
     mf = proj / "app/src/main/AndroidManifest.xml"
     if not mf.exists():
-        return [_row("settings", "Release settings", "not_checked", "Manifest nahi mila.")]
+        return [_row("settings", "Release settings", "not_checked", "Manifest not found.")]
     text = mf.read_text(errors="ignore")
     dbg = re.search(r'android:debuggable\s*=\s*"true"', text)
     rows.append(_row("settings", "Not debuggable", "fail" if dbg else "pass",
-                     "Release app debuggable nahi honi chahiye." if dbg else "debuggable kahin set nahi (release default false)."))
+                     "A release app must not be debuggable." if dbg else "debuggable is not set anywhere (release default is false)."))
     backup = re.search(r'android:allowBackup\s*=\s*"true"', text)
     rows.append(_row("settings", "Backups off", "fail" if backup else "pass",
-                     "allowBackup=true se app ka data phone ke backup mein chala jata hai." if backup
-                     else "allowBackup=false (app ka data backup mein nahi jata)."))
+                     "With allowBackup=true the app's data goes into the phone's backup." if backup
+                     else "allowBackup=false (the app's data does not go into a backup)."))
     cfg = proj / "app/src/main/res/xml/network_security_config.xml"
     rel = cfg.read_text(errors="ignore") if cfg.exists() else ""
     clear_ok = 'cleartextTrafficPermitted="false"' in rel
     dbg_cfg = (proj / "app/src/debug/res/xml/network_security_config.xml")
     dbg_only = "10.0.2.2" in (dbg_cfg.read_text(errors="ignore") if dbg_cfg.exists() else "")
     rows.append(_row("settings", "https only", "pass" if clear_ok else "fail",
-                     ("Release build mein sirf https; http sirf debug build mein 10.0.2.2 ke liye (Hoola ki khud ki jaanch)."
+                     ("The release build uses https only; http only in the debug build for 10.0.2.2 (Hoola's own check)."
                       if clear_ok and dbg_only else
-                      "Release build mein sirf https." if clear_ok else "Saaf (http) traffic band nahi hai."),
+                      "The release build uses https only." if clear_ok else "Cleartext (http) traffic is not turned off."),
                      "network_security_config.xml"))
     exported = re.findall(r'<(activity|service|receiver|provider)\b[^>]*android:exported\s*=\s*"true"', text)
     acts = re.findall(r'<(activity|service|receiver|provider)\b', text)
     noexp = len(acts) - len(re.findall(r'android:exported\s*=\s*"(?:true|false)"', text))
     rows.append(_row("settings", "Components exported on purpose", "fail" if noexp > 0 else "pass",
-                     f"{noexp} component par exported likha hi nahi hai (Android 12+ par build hi ruk jata hai)." if noexp > 0
-                     else f"{len(acts)} component, {len(exported)} jaan-boojh kar exported (launcher / push).",
+                     f"{noexp} components do not declare exported at all (on Android 12+ the build itself stops)." if noexp > 0
+                     else f"{len(acts)} components, {len(exported)} exported on purpose (launcher / push).",
                      f"{len(acts)} components"))
     if apk and apk.exists():
         try:
@@ -249,14 +249,14 @@ def gate_settings(r: AppProject, proj: Path, apk: Path | None) -> list[dict[str,
             # SAID, never a blocker: the store gets a .aab signed with her UPLOAD key, so the preview APK's own
             # signature tells her whether THIS file installs on a phone - it says nothing about the store upload.
             rows.append(_row("settings", "The preview app is signed", "pass" if (v1 or v2) else "warn",
-                             "Preview APK par signature hai (" + ("v1" if v1 else "") + (" v2/v3" if v2 else "").strip() + ")."
-                             if (v1 or v2) else "Preview APK par signature nahi mila - woh file phone par install nahi hogi "
-                             "(store par .aab aapki upload key se jata hai, isliye upload nahi ruka).",
+                             "The preview APK is signed (" + ("v1" if v1 else "") + (" v2/v3" if v2 else "").strip() + ")."
+                             if (v1 or v2) else "No signature was found on the preview APK - that file will not install on a phone "
+                             "(the store gets the .aab signed with your upload key, so the upload was not stopped).",
                              f"{len(names)} entries"))
         except (zipfile.BadZipFile, OSError):
-            rows.append(_row("settings", "The built app is signed", "not_checked", "APK padhi nahi ja saki."))
+            rows.append(_row("settings", "The built app is signed", "not_checked", "The APK could not be read."))
     else:
-        rows.append(_row("settings", "The built app is signed", "not_checked", "Is build ki APK nahi mili."))
+        rows.append(_row("settings", "The built app is signed", "not_checked", "The APK of this build was not found."))
     return rows
 
 
@@ -334,12 +334,12 @@ def _worst(vuln: dict[str, Any]) -> str:
 def gate_libraries(r: AppProject, proj: Path) -> list[dict[str, Any]]:
     deps = _deps(proj)
     if not deps:
-        return [_row("libraries", "No library with a known hole", "not_checked", "Library list nahi mili.")]
+        return [_row("libraries", "No library with a known hole", "not_checked", "The library list was not found.")]
     res = _osv(deps)
     if res is None:
         return [_row("libraries", "No library with a known hole", "not_checked",
-                     "OSV.dev (Google ka vulnerability database) is waqt khula nahi; isliye yeh jaanch HUI NAHI - "
-                     "pass nahi maana gaya.", f"{len(deps)} libraries")]
+                     "OSV.dev (Google's vulnerability database) could not be reached right now; so this check did NOT run - "
+                     "it is not counted as a pass.", f"{len(deps)} libraries")]
     bad: list[str] = []
     note: list[str] = []
     for d, vulns in zip(deps, res + [[]] * len(deps)):
@@ -348,9 +348,9 @@ def gate_libraries(r: AppProject, proj: Path) -> list[dict[str, Any]]:
             line = f"{d['name']} {d['version']}: {v.get('id')} ({sev})"
             (bad if sev in BAD_SEVERITY else note).append(line)
     state = "fail" if bad else ("warn" if note else "pass")
-    say = ("Badi (HIGH / CRITICAL) kami wali library: " + "; ".join(bad[:3])) if bad else \
-          ("Chhoti kami wali library: " + "; ".join(note[:3])) if note else \
-          f"{len(deps)} libraries, OSV.dev par koi kami nahi."
+    say = ("Library with a serious (HIGH / CRITICAL) vulnerability: " + "; ".join(bad[:3])) if bad else \
+          ("Library with a minor vulnerability: " + "; ".join(note[:3])) if note else \
+          f"{len(deps)} libraries, no vulnerability on OSV.dev."
     return [_row("libraries", "No library with a known hole", state, say, f"{len(deps)} libraries")]
 
 
@@ -364,8 +364,8 @@ def gate_login(r: AppProject, proj: Path, spec: dict[str, Any], platform: str) -
         st = {"ways": ["email_password"], "staff_2fa": False, "problems": {}}
     ways = st.get("ways") or []
     rows.append(_row("login", "Sign in with Apple where Google is offered", "pass" if ("google" not in ways or "apple" in ways) else "fail",
-                     "Google login hai to iPhone build mein Apple login bhi hai (App Store 4.8)." if "google" in ways
-                     else "Social login nahi hai, yeh niyam nahi lagta.", ", ".join(ways)))
+                     "There is Google login, so the iPhone build has Apple login too (App Store 4.8)." if "google" in ways
+                     else "There is no social login, so this rule does not apply.", ", ".join(ways)))
     scr = proj / ("app/src/main/java/hoola/app/screens" if platform == "android" else "Sources/Screens")
     leaks: list[str] = []
     if scr.exists():
@@ -374,15 +374,15 @@ def gate_login(r: AppProject, proj: Path, spec: dict[str, Any], platform: str) -
             if re.search(r"PasswordVisualTransformation|KeyboardType\.(?:Password|NumberPassword)|\bSecureField\b", text):
                 leaks.append(p.name)
     rows.append(_row("login", "No password box outside the sign-in screen", "fail" if leaks else "pass",
-                     "In screens par password box hai: " + ", ".join(leaks[:3]) if leaks
-                     else "Password sirf kit ki sign-in screen par poocha jata hai."))
+                     "These screens have a password box: " + ", ".join(leaks[:3]) if leaks
+                     else "The password is asked only on the kit's sign-in screen."))
     del_ok = "delete_account" in (spec.get("code_screens") or []) or "hoola_account" in json.dumps(spec.get("screens") or [])
     rows.append(_row("login", "Account deletion inside the app", "pass" if del_ok else "fail",
-                     "App ke andar 'Account delete' hai (dono store ka niyam)." if del_ok
-                     else "App ke andar account delete karne ka raasta nahi mila."))
+                     "The app has 'Delete account' inside it (a rule of both stores)." if del_ok
+                     else "No way to delete the account was found inside the app."))
     probs = st.get("problems") or {}
     rows.append(_row("login", "Every login way she chose can work", "warn" if probs else "pass",
-                     "; ".join(probs.values())[:280] if probs else "Jo login tareeke chune hain, sab taiyaar hain."))
+                     "; ".join(probs.values())[:280] if probs else "All the chosen login methods are ready."))
     return rows
 
 
@@ -392,11 +392,11 @@ def gate_data(r: AppProject, proj: Path, spec: dict[str, Any], platform: str) ->
     code = spec.get("code_screens") or []
     pages = "privacy" in code
     rows.append(_row("data", "Privacy + deletion pages", "pass" if pages else "warn",
-                     "Privacy page app mein hai." if pages else "Privacy page is build mein nahi mila."))
+                     "The privacy page is in the app." if pages else "The privacy page was not found in this build."))
     consent = "consent" in code
     rows.append(_row("data", "DPDP consent on sign-up", "pass" if consent else "warn",
-                     "Sign-up par privacy notice ka tick hai." if consent
-                     else "Sign-up par consent tick is build mein nahi mila (login screen uska apna tick deti hai)."))
+                     "Sign-up has the privacy notice tick." if consent
+                     else "The consent tick at sign-up was not found in this build (the login screen gives its own tick)."))
     st = (spec.get("store") or {}) if platform == "android" else ((spec.get("ios") or {}).get("store") or {})
     said = _j(st.get("data_safety"), {}) if isinstance(st, dict) else {}
     if platform == "android":
@@ -408,8 +408,8 @@ def gate_data(r: AppProject, proj: Path, spec: dict[str, Any], platform: str) ->
     told_loc = "location" in json.dumps(said).lower()
     ok = (not has_loc) or told_loc or not said
     rows.append(_row("data", "Store answers match the build", "pass" if ok else "fail",
-                     "Build location leti hai par store ke data-safety jawab mein location nahi likha." if not ok
-                     else "Data-safety jawab aur build ki permissions mel khate hain."))
+                     "The build takes location but the store's data-safety answers do not mention location." if not ok
+                     else "The data-safety answers match the build's permissions."))
     return rows
 
 
@@ -447,7 +447,7 @@ def scan(r: AppProject, platform: str = "android") -> dict[str, Any]:
         raise GateError("Platform: android ya ios.")
     proj, apk = _proj(r, platform)
     if not proj.exists():
-        raise GateError("Pehle app ki ek build chahiye; uske baad suraksha jaanch chalti hai.")
+        raise GateError("The app needs a build first; the security check runs after that.")
     spec = _spec(FA.home(r) if FA.face_info(r) else r, platform)
     rows: list[dict[str, Any]] = []
     rows += gate_secrets(r, proj, apk)
@@ -457,8 +457,8 @@ def scan(r: AppProject, platform: str = "android") -> dict[str, Any]:
         rows += gate_libraries(r, proj)
     else:
         rows += [_row("permissions", "Only the permissions the features need", "not_checked",
-                      "iPhone build ki jaanch Mac par hoti hai; yahan Info.plist hi padha jata hai."),
-                 _row("settings", "Release settings", "not_checked", "IPA Hoola ke server par nahi banti.")]
+                      "The iPhone build is checked on a Mac; only Info.plist is read here."),
+                 _row("settings", "Release settings", "not_checked", "The IPA is not built on Hoola's server.")]
         rows += _ios_plist(proj)
     rows += gate_login(r, proj, spec, platform)
     rows += gate_data(r, proj, spec, platform)
@@ -468,8 +468,8 @@ def scan(r: AppProject, platform: str = "android") -> dict[str, Any]:
            "warn": len([x for x in rows if x["state"] == "warn"]),
            "fail": len(bad), "not_checked": len([x for x in rows if x["state"] == "not_checked"]),
            "ok": not bad, "blocks": [x["check"] + ": " + x["say"] for x in bad],
-           "not_checked_says": ["Hoola ne yeh nahi dekha: app chalte waqt ka scan (sirf device check), "
-                                "iPhone ki IPA (Mac par banti hai), aur aapke server ki jaanch (woh alag hai)."]}
+           "not_checked_says": ["Hoola did not check these: a scan while the app runs (only the device check), "
+                                "the iPhone IPA (it is built on a Mac), and a check of your server (that is separate)."]}
     STATS["runs"] += 1
     if bad:
         STATS["failed"] += 1
@@ -501,26 +501,26 @@ def must_pass(r: AppProject, platform: str = "android") -> None:
         except GateError:
             raise
         except Exception as e:                             # noqa: BLE001
-            raise GateError(f"Suraksha jaanch chal nahi payi: {e}") from e
+            raise GateError(f"The security check could not run: {e}") from e
     if not got.get("ok"):
         STATS["blocked"] += 1
-        raise GateError("Suraksha jaanch mein " + str(got.get("fail")) + " cheez fail hui, isliye store par nahi bheja: "
-                        + "; ".join((got.get("blocks") or [])[:3]) + " Pehle yeh theek kijiye (app ke Suraksha card par poora haal hai).")
+        raise GateError("The security check failed on " + str(got.get("fail")) + " items, so it was not sent to the store: "
+                        + "; ".join((got.get("blocks") or [])[:3]) + " Fix these first (the app's Security card has the full details).")
 
 
 def _ios_plist(proj: Path) -> list[dict[str, Any]]:
     pl = next(iter(proj.glob("**/Info.plist")), None)
     if pl is None:
-        return [_row("settings", "iPhone settings", "not_checked", "Info.plist nahi mila.")]
+        return [_row("settings", "iPhone settings", "not_checked", "Info.plist not found.")]
     text = pl.read_text(errors="ignore")
     ats = "NSAllowsArbitraryLoads" in text
     rows = [_row("settings", "iPhone: https only (ATS on)", "fail" if ats else "pass",
-                 "NSAllowsArbitraryLoads se http khul jata hai." if ats else "App Transport Security chalu (sirf https).")]
+                 "NSAllowsArbitraryLoads opens up http." if ats else "App Transport Security is on (https only).")]
     for key, what in (("NSLocationWhenInUseUsageDescription", "location"), ("NSMicrophoneUsageDescription", "microphone"),
                       ("NSPhotoLibraryUsageDescription", "photos")):
         if key in text:
             val = re.search(re.escape(key) + r"</key>\s*<string>([^<]{0,200})</string>", text)
             said = (val.group(1) if val else "").strip()
             rows.append(_row("permissions", f"iPhone: why it asks for {what}", "pass" if len(said) > 10 else "fail",
-                             said[:160] if said else f"{what} ki wajah likhi nahi hai (Apple reject karta hai)."))
+                             said[:160] if said else f"The reason for {what} is not written (Apple rejects that)."))
     return rows

@@ -109,11 +109,11 @@ def build(tenant: str, ref: str, conv: str = "", kind: str = "sim", only: list[s
         r = AS._find(s, tenant, ref)
         s.expunge(r)
     if r.status != "approved" or not r.approved_hash:
-        raise IosError("Pehle design pakka kijiye ('Design pakka' button): iPhone app bhi usi design se banti hai.")
+        raise IosError("Approve the design first (the 'Approve design' button): the iPhone app is built from the same design.")
     from .. import kit as K
     h = K.design_hash(AS._screens(r), AS._ctx(r))
     if h != r.approved_hash:
-        raise IosError("Design pakka hone ke baad badla hai; naya design dekh kar dobara pakka kijiye.")
+        raise IosError("The design changed after it was approved; review the new design and approve it again.")
     st = state(r)
     if st.get("status") in ("writing", "building", "fixing", "uploading"):
         with _LOCK:
@@ -122,7 +122,7 @@ def build(tenant: str, ref: str, conv: str = "", kind: str = "sim", only: list[s
             return view(r)
     n = int(st.get("build") or 0) + 1
     _put(r.id, status="writing", kind=kind, build=n, design_version=r.version, error="", note="", rounds=0,
-         started=now().isoformat(), ended="", now="Screens SwiftUI mein likh raha hoon", states={}, conv=conv or r.conv,
+         started=now().isoformat(), ended="", now="Writing the screens in SwiftUI", states={}, conv=conv or r.conv,
          redo=list(only or []), notes={k: str(v)[:4000] for k, v in (notes or {}).items()})
     _start(r.id)
     return view(AS._load(r.id))
@@ -298,7 +298,7 @@ def _run(r: AppProject) -> None:
     _emit(r.id)
     for i, sid in enumerate(ids):
         if AS._load(r.id).stop:
-            raise IosError("rok diya")
+            raise IosError("stopped")
         if sid in G.AUTH_IDS:
             _states(r.id, {sid: "written"})
             continue
@@ -340,8 +340,8 @@ def _run(r: AppProject) -> None:
     rd = ready()
     if not rd["ready"]:
         _put(r.id, status="zip", ended=now().isoformat(), now="", note=rd["why"])
-        AN._note(r, "iPhone app ka Xcode project taiyaar (ZIP). iPhone app sirf Mac par compile hoti hai: GitHub builds repo mein "
-                    "hoola-ios.yml lagate hi 'iPhone app banao' dobara kahiye.")
+        AN._note(r, "The iPhone app's Xcode project is ready (ZIP). An iPhone app compiles only on a Mac: once hoola-ios.yml is added to the GitHub builds repo, "
+                    "ask to 'build the iPhone app' again.")
         _emit(r.id, push=True)
         return
     key = r.id.replace("_", "-")[:60].lower()
@@ -351,7 +351,7 @@ def _run(r: AppProject) -> None:
     all_ids = _all_ids(sp)
     for rnd in range(rounds + 1):
         _put(r.id, status="building" if rnd == 0 else "fixing", rounds=rnd,
-             now="Mac par Xcode se compile + iPhone simulator check" if rnd == 0 else f"Compile ki galtiyan theek: round {rnd}")
+             now="Compiling with Xcode on a Mac + iPhone simulator check" if rnd == 0 else f"Fixing compile errors: round {rnd}")
         _states(r.id, {sid: "compiling" for sid in swift})
         _emit(r.id)
         res = _mac(src_dir, key, "sim", lambda stage: _put(r.id, stage=stage))
@@ -362,7 +362,7 @@ def _run(r: AppProject) -> None:
         bad = {sid: el for cls, el in errs.items() for sid in ids if G.swift_name(sid) == cls}
         if not bad:
             other = [ln.strip() for ln in (res.get("log") or "").splitlines() if "error:" in ln][:3]
-            raise IosError("iPhone build nahi hua: " + ("; ".join(other) or AS._tidy(res.get("log") or "", 200)))
+            raise IosError("The iPhone build failed: " + ("; ".join(other) or AS._tidy(res.get("log") or "", 200)))
         last = rnd == rounds
         for sid, el in bad.items():
             sig = hashlib.sha256("\n".join(re.sub(r"line \d+: ", "", e) for e in el).encode()).hexdigest()[:12]
@@ -373,7 +373,7 @@ def _run(r: AppProject) -> None:
                 code_only.add(sid)
                 _states(r.id, {sid: "code"})
                 continue
-            _states(r.id, {sid: "fixing"}, f"Theek kar raha hoon: {sid}")
+            _states(r.id, {sid: "fixing"}, f"Fixing: {sid}")
             fixed = _fix(sid, all_ids, "COMPILE ERRORS (Xcode):\n- " + "\n- ".join(el), swift[sid])
             if fixed:
                 swift[sid] = fixed
@@ -385,11 +385,11 @@ def _run(r: AppProject) -> None:
         sp["screens_swift"] = swift
         G.write_project(sp, src_dir)
     if not res.get("ok"):
-        raise IosError("iPhone app compile nahi hui.")
+        raise IosError("The iPhone app did not compile.")
     # HOOLA QA on the simulator: a crashed Opus screen gets one fix with the real crash, then its code-made version
     crashed = {k: v for k, v in _crashed(res.get("report"), ids).items() if k in swift}
     if crashed:
-        _put(r.id, status="fixing", now="Simulator check: " + ", ".join(list(crashed)[:4]) + " crash hui - theek kar raha hoon")
+        _put(r.id, status="fixing", now="Simulator check: " + ", ".join(list(crashed)[:4]) + " crashed - fixing")
         _emit(r.id)
         for sid, crash in crashed.items():
             fixed = _fix(sid, all_ids, "THIS SCREEN CRASHED IN THE iPHONE SIMULATOR. Find the cause and fix it (empty lists, "
@@ -419,7 +419,7 @@ def _run(r: AppProject) -> None:
     _zip(r, n, src_dir)
     tf: dict[str, Any] = dict(st.get("testflight") or {})
     if kind == "testflight":
-        _put(r.id, status="uploading", now="TestFlight par bhej raha hoon (Apple ka signing + upload)")
+        _put(r.id, status="uploading", now="Sending to TestFlight (Apple signing + upload)")
         _emit(r.id)
         up = _mac(src_dir, key, "testflight", lambda stage: _put(r.id, stage=stage))
         if not up.get("uploaded"):
@@ -431,13 +431,13 @@ def _run(r: AppProject) -> None:
                  "written": written, "code": sorted(code_only), "testflight": kind == "testflight"})
     _put(r.id, status="ready", ended=now().isoformat(), now="", error="", last_bn=bn, testflight=tf, history=hist[-20:],
          stats={"model": len(swift), "code": len(code_only)}, kinds={sid: ("code" if sid in code_only else "model") for sid in ids})
-    msg = (f"iPhone app taiyaar: {r.name or 'App'} (v{sp['ios']['version']}, build {bn}). {len(swift)} screens Opus ne SwiftUI mein "
-           f"likhi" + (f", {len(code_only)} saada (code se)" if code_only else "") + "." + qa_line(state(AS._load(r.id)).get("qa")))
+    msg = (f"The iPhone app is ready: {r.name or 'App'} (v{sp['ios']['version']}, build {bn}). Opus wrote {len(swift)} screens "
+           f"in SwiftUI" + (f", {len(code_only)} plain ones (from code)" if code_only else "") + "." + qa_line(state(AS._load(r.id)).get("qa")))
     if kind == "testflight":
-        msg += (" TestFlight par pahunch gayi: Apple ki processing ke baad (10-30 minute) TestFlight app mein dikhegi. "
-                "App Store par bhejna App Store Connect mein aapka tap hai.")
+        msg += (" It reached TestFlight: after Apple's processing (10-30 minutes) it shows in the TestFlight app. "
+                "Sending it to the App Store is your tap in App Store Connect.")
     else:
-        msg += " TestFlight par bhejne ke liye 'TestFlight par bhejo' kahiye."
+        msg += " To send it to TestFlight, say 'send to TestFlight'."
     AN._note(r, msg)
     _emit(r.id, push=True)
 
@@ -458,17 +458,17 @@ def _upload_why(text: str) -> str:
     t = text or ""
     if "MISSING_SECRET" in t:
         miss = re.findall(r"MISSING_SECRET (\w+)", t)
-        return ("TestFlight ke liye builds repo mein secret nahi mila: " + ", ".join(miss)
-                + ". GitHub > builds repo > Settings > Secrets and variables > Actions mein daaliye (App Store Connect key).")
+        return ("A secret needed for TestFlight is missing in the builds repo: " + ", ".join(miss)
+                + ". Add it under GitHub > builds repo > Settings > Secrets and variables > Actions (App Store Connect key).")
     if re.search(r"No suitable application records|Could not find .*app|app record", t, re.I):
-        return "App Store Connect mein yeh app abhi bani nahi: My Apps > + > New App, bundle ID wahi chuniye jo card par hai."
+        return "This app does not exist in App Store Connect yet: My Apps > + > New App, and choose the bundle ID shown on the card."
     if re.search(r"bundle version must be higher|has already been used|CFBundleVersion", t, re.I):
-        return "Yeh build number Apple pehle le chuka hai; 'TestFlight par bhejo' dobara kahiye (naya number lagega)."
+        return "Apple has already taken this build number; say 'send to TestFlight' again (a new number will be used)."
     if re.search(r"agreement|Program License", t, re.I):
-        return "Apple Developer ka naya agreement accept karna baaki hai (developer.apple.com > Account)."
+        return "The new Apple Developer agreement has not been accepted yet (developer.apple.com > Account)."
     if re.search(r"authentication|401|Invalid issuer|key", t, re.I):
-        return "App Store Connect key kaam nahi kar rahi (ID / Issuer ID / .p8 dobara check kijiye; key ko Admin access chahiye)."
-    return "TestFlight upload nahi hua: " + AS._tidy(t[-300:], 300)
+        return "The App Store Connect key is not working (check the ID / Issuer ID / .p8 again; the key needs Admin access)."
+    return "The TestFlight upload failed: " + AS._tidy(t[-300:], 300)
 
 
 def _icon_b64(sp: dict[str, Any]) -> str:
@@ -531,14 +531,14 @@ def qa_line(qa: dict[str, Any] | None) -> str:
     if not qa or not qa.get("ran"):
         return ""
     p = qa.get("perf") or {}
-    bits = [f"iPhone simulator check: {qa.get('opened')}/{qa.get('total')} screens bina crash ke khuli"]
+    bits = [f"iPhone simulator check: {qa.get('opened')}/{qa.get('total')} screens opened without a crash"]
     if p.get("launch_ms") is not None:
-        bits.append(f"app {p['launch_ms']} ms mein khulti hai")
+        bits.append(f"the app opens in {p['launch_ms']} ms")
     if p.get("app_mb") is not None:
         bits.append(f"app {p['app_mb']} MB")
     fl = qa.get("flows") or {}
     if fl.get("tapped"):
-        bits.append(f"{fl['tapped']} button dabaye" + (f", {len(fl.get('dead') or [])} se kuch nahi hua" if fl.get("dead") else ""))
+        bits.append(f"{fl['tapped']} buttons tapped" + (f", {len(fl.get('dead') or [])} did nothing" if fl.get("dead") else ""))
     big = qa.get("ipad") or {}                                  # v0.370 the same screens on a ipad
     if big.get("total"):
         bits.append(f"iPad par {big.get('opened')}/{big.get('total')} screens" + (f" ({len(big.get('crashed') or [])} crash: "
@@ -581,21 +581,21 @@ def view(r: AppProject) -> dict[str, Any]:
 def _say(r: AppProject, st: dict[str, Any]) -> str:
     s = st.get("status")
     if s == "writing":
-        return f"iPhone app ban rahi hai: {st.get('now') or 'screens SwiftUI mein'}."
+        return f"The iPhone app is being built: {st.get('now') or 'screens in SwiftUI'}."
     if s in ("building", "fixing"):
         return "Mac par compile + iPhone simulator check" + (f", round {st.get('rounds')}" if st.get("rounds") else "") + "."
     if s == "uploading":
-        return "TestFlight par bhej rahi hoon."
+        return "Sending to TestFlight."
     if s == "ready":
         tf = st.get("testflight") or {}
         if st.get("kind") == "testflight" and tf:
             return f"iPhone app TestFlight par (v{tf.get('version')}, build {tf.get('build')})."
-        return f"iPhone app taiyaar (build {st.get('build')}), simulator check paas. 'TestFlight par bhejo' kahiye."
+        return f"The iPhone app is ready (build {st.get('build')}), simulator check passed. Say 'send to TestFlight'."
     if s == "zip":
-        return "iPhone ka Xcode project ZIP taiyaar (Mac build set nahi hai)."
+        return "The iPhone Xcode project ZIP is ready (no Mac build is set up)."
     if s == "failed":
-        return f"iPhone build mein dikkat: {st.get('error')}"
-    return "Design pakka hai: 'iPhone app banao' kahiye." if r.approved_hash else "Pehle design pakka kijiye."
+        return f"Problem in the iPhone build: {st.get('error')}"
+    return "The design is approved: say 'build the iPhone app'." if r.approved_hash else "Approve the design first."
 
 
 def get(tenant: str, ref: str) -> dict[str, Any]:

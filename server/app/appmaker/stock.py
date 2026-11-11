@@ -50,9 +50,9 @@ def _int(v: Any, what: str) -> int:
     try:
         f = float(str(v).strip())
     except (TypeError, ValueError):
-        raise StockError(f"{what}: poora number chahiye.")
+        raise StockError(f"{what}: a whole number is needed.")
     if f != int(f) or f < 0 or f > MAX_QTY:
-        raise StockError(f"{what}: 0 se {MAX_QTY:,} tak poora number.")
+        raise StockError(f"{what}: a whole number from 0 to {MAX_QTY:,}.")
     return int(f)
 
 
@@ -120,15 +120,15 @@ def reserve(r: AppProject, want: list[tuple[str, int, str]]) -> list[tuple[str, 
         short = [(pid, int(st[pid]["qty"])) for pid, q in taken if int(st[pid]["qty"]) < q]
         if short:
             STATS["refused"] += 1
-            raise StockError("; ".join(f"{names[p]}: {'khatam ho gaya (sold out)' if left == 0 else f'sirf {left} bache hain'}"
-                                       for p, left in short) + ". Cart badal kar dobara bhejiye.", 409)
+            raise StockError("; ".join(f"{names[p]}: {'sold out' if left == 0 else f'only {left} left'}"
+                                       for p, left in short) + ". Change the cart and send it again.", 409)
         for pid, q in taken:
             cur = dict(st[pid])
             before, cur["qty"] = int(cur["qty"]), int(cur["qty"]) - q
             low = int(cur.get("low", LOW_DEFAULT))
             if cur["qty"] <= low < before or (cur["qty"] == 0 and before > 0 and not cur.get("warned")):
                 if not cur.get("warned"):
-                    lows.append(f"{names[pid]}: {cur['qty']} bache" if cur["qty"] else f"{names[pid]}: khatam")
+                    lows.append(f"{names[pid]}: {cur['qty']} left" if cur["qty"] else f"{names[pid]}: sold out")
                     cur["warned"] = True
             st[pid] = cur
         be["stock"] = st
@@ -139,8 +139,8 @@ def reserve(r: AppProject, want: list[tuple[str, int, str]]) -> list[tuple[str, 
         STATS["low_notes"] += 1
         try:
             from .android.service import _note
-            _note(r, f"{r.name or 'Aapki app'} ({r.number}) stock kam: " + ", ".join(lows)
-                  + ". Naya maal aaye to stock badha dijiye (app ka data > Stock).")
+            _note(r, f"{r.name or 'Your app'} ({r.number}) low stock: " + ", ".join(lows)
+                  + ". When new stock arrives, increase the stock (app data > Stock).")
         except Exception:                                # noqa: BLE001
             pass
     return taken

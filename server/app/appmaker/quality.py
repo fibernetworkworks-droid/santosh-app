@@ -101,21 +101,21 @@ def check(raw: Any, sch: dict[str, Any], spec: dict[str, Any] | None = None) -> 
     items = raw.get("scenarios") if isinstance(raw, dict) else raw
     items = items if isinstance(items, list) else []
     if len(items) > CAPS["scenarios"]:
-        ck.warnings.append(f"{len(items)} kahaniyan hain, pehli {CAPS['scenarios']} hi chalengi")
+        ck.warnings.append(f"there are {len(items)} scenarios, only the first {CAPS['scenarios']} will run")
     out: list[dict[str, Any]] = []
     for i, sc in enumerate(items[:CAPS["scenarios"]]):
-        where = f"kahani {i + 1}"
+        where = f"scenario {i + 1}"
         if not isinstance(sc, dict):
-            ck.err(where, "kahani ek object honi chahiye")
+            ck.err(where, "a scenario must be an object")
             continue
         story = str(sc.get("story") or "").strip()[:160]
         if not story:
-            ck.err(where, "story (ek line, kya ho raha hai) chahiye")
+            ck.err(where, "story (one line, what is happening) is needed")
             continue
         where = f"'{story[:40]}'"
         steps_in = sc.get("steps") if isinstance(sc.get("steps"), list) else []
         if not steps_in:
-            ck.err(where, "steps chahiye")
+            ck.err(where, "steps are needed")
             continue
         steps, actors = [], set()
         for j, st in enumerate(steps_in[:CAPS["steps"]]):
@@ -123,7 +123,7 @@ def check(raw: Any, sch: dict[str, Any], spec: dict[str, Any] | None = None) -> 
             if s is not None:
                 steps.append(s)
         if len(actors) > CAPS["actors"]:
-            ck.err(where, f"{len(actors)} log hain, seema {CAPS['actors']}")
+            ck.err(where, f"there are {len(actors)} people, the limit is {CAPS['actors']}")
         if steps and ck.errors == []:
             pass
         if steps:
@@ -136,36 +136,36 @@ def check(raw: Any, sch: dict[str, Any], spec: dict[str, Any] | None = None) -> 
             if st["do"] == "signup":
                 seen.add(who)
             elif who and who not in seen:
-                ck.err(f"'{sc['story'][:40]}'", f"'{who}' ne pehle signup nahi kiya")
+                ck.err(f"'{sc['story'][:40]}'", f"'{who}' has not signed up first")
                 break
     return {"scenarios": out, "errors": ck.errors[:40], "warnings": ck.warnings[:20]}
 
 
 def _step(ck: Checker, where: str, st: Any, actors: set[str]) -> dict[str, Any] | None:
     if not isinstance(st, dict):
-        ck.err(where, "step ek object hona chahiye")
+        ck.err(where, "a step must be an object")
         return None
     do = slug(st.get("do"), 12)
     if do not in VERBS:
-        ck.err(where, f"'{st.get('do')}' kaam nahi hai (sirf: {', '.join(sorted(VERBS))})")
+        ck.err(where, f"'{st.get('do')}' is not an action (only: {', '.join(sorted(VERBS))})")
         return None
     out: dict[str, Any] = {"do": do}
     who = slug(st.get("who"), 20)
     if not who:
-        ck.err(where, "who (kaun kar raha hai) chahiye")
+        ck.err(where, "who (the person doing it) is needed")
         return None
     out["who"] = who
     actors.add(who)
     must = str(st.get("must") or "ok").strip().lower()
     if must not in MUST:
-        ck.err(where, f"must sirf {' / '.join(MUST)} ho sakta hai")
+        ck.err(where, f"must can only be {' / '.join(MUST)}")
         return None
     out["must"] = must
 
     if do == "signup":
         role = str(st.get("role") or "member").strip().lower()
         if role not in ROLES:
-            ck.err(where, f"role sirf {' / '.join(ROLES)}")
+            ck.err(where, f"role can only be {' / '.join(ROLES)}")
             return None
         out["role"] = role
         return out
@@ -173,7 +173,7 @@ def _step(ck: Checker, where: str, st: Any, actors: set[str]) -> dict[str, Any] 
     if do == "fn":
         name = slug(st.get("name"))
         if ck.fns and name not in ck.fns:
-            ck.err(where, f"'{name}' naam ka function is app mein nahi hai")
+            ck.err(where, f"this app has no function named '{name}'")
             return None
         out["name"] = name
         out["args"] = [a for a in (st.get("args") or [])][:8] if isinstance(st.get("args"), list) else []
@@ -184,18 +184,18 @@ def _step(ck: Checker, where: str, st: Any, actors: set[str]) -> dict[str, Any] 
     if do in ("create", "read"):
         coll = slug(st.get("list"))
         if coll not in ck.colls:
-            ck.err(where, f"'{st.get('list')}' naam ki list nahi hai (hain: {', '.join(sorted(ck.colls))})")
+            ck.err(where, f"there is no list named '{st.get('list')}' (lists: {', '.join(sorted(ck.colls))})")
             return None
         out["list"] = coll
         if do == "create":
             data = st.get("data") if isinstance(st.get("data"), dict) else {}
             bad = [k for k in data if slug(k, 60) not in ck.fields.get(coll, set()) and k not in ("status", "cart", "cid")]
             if bad:
-                ck.err(where, f"'{coll}' mein yeh field nahi hain: {', '.join(bad[:4])}")
+                ck.err(where, f"'{coll}' does not have these fields: {', '.join(bad[:4])}")
                 return None
             missing = [f for f in ck.required.get(coll, []) if not str(data.get(f, "")).strip()]
             if missing and st.get("must", "ok") != "refused":
-                ck.err(where, f"'{coll}' mein yeh bharna zaroori hai: {', '.join(missing[:5])}")
+                ck.err(where, f"'{coll}' requires these to be filled: {', '.join(missing[:5])}")
                 return None
             out["data"] = {str(k)[:60]: data[k] for k in list(data)[:30]}
             if st.get("save"):
@@ -209,19 +209,19 @@ def _step(ck: Checker, where: str, st: Any, actors: set[str]) -> dict[str, Any] 
     # the row verbs
     row = slug(st.get("row"), 20)
     if not row:
-        ck.err(where, "row (pehle save kiya hua naam) chahiye")
+        ck.err(where, "row (a name saved earlier) is needed")
         return None
     out["row"] = row
     if do == "set":
         data = st.get("data") if isinstance(st.get("data"), dict) else {}
         if not data:
-            ck.err(where, "data chahiye (jaise {\"status\": \"delivered\"})")
+            ck.err(where, "data is needed (for example {\"status\": \"delivered\"})")
             return None
         out["data"] = {str(k)[:60]: data[k] for k in list(data)[:20]}
     elif do == "assign":
         out["to"] = slug(st.get("to"), 20)
         if not out["to"]:
-            ck.err(where, "to (kis staff ko) chahiye")
+            ck.err(where, "to (which staff member) is needed")
             return None
         actors.add(out["to"])
     elif do == "rate":
@@ -286,7 +286,7 @@ def _prompt(r: AppProject, words: str) -> str:
     return json.dumps({"app": {"name": r.name, "goal": r.goal, "brief": str(r.brief or "")[:1200]},
                        "lists": lists, "functions": fns,
                        "rules_in_force": [s for s in (spec.get("rules") or [])][:20],
-                       "her_words": str(words or "").strip()[:1000] or "Is app ki poori jaanch ki kahaniyan likhiye."},
+                       "her_words": str(words or "").strip()[:1000] or "Write the test scenarios that check this whole app."},
                       ensure_ascii=False)
 
 
@@ -306,7 +306,7 @@ def draft(r: AppProject, words: str = "", ask: Callable | None = None) -> dict[s
     with OPS.meter(r, note="jaanch"):
         out = ask(AUTHOR_SYSTEM, prompt)
     if not isinstance(out, dict):
-        raise W.AppError("Jaanch ki kahaniyan nahi bani; dobara koshish kijiye.", 502)
+        raise W.AppError("The test scenarios could not be made; try again.", 502)
     got = check(out, sch, spec)
     if got["errors"]:
         fixed = ask(AUTHOR_SYSTEM, prompt + "\n\n" + REPAIR.format(errors="\n".join(got["errors"][:30])))
@@ -332,9 +332,9 @@ def keep(r: AppProject, h: str) -> dict[str, Any]:
     j = (_j(r.backend, {}).get("jaanch") or {})
     d = j.get("draft") or {}
     if d.get("hash") != h:
-        raise W.AppError("Yeh draft badal gaya; naya draft dekhiye.", 409)
+        raise W.AppError("This draft has changed; see the new draft.", 409)
     if d.get("errors"):
-        raise W.AppError("Is draft mein galtiyan hain; pehle theek kijiye.", 400)
+        raise W.AppError("This draft has errors; fix them first.", 400)
     BE.patch_backend(r, set_={"jaanch": {**j, "live": {"scenarios": d["scenarios"], "hash": h, "at": now().isoformat()}}})
     return {"ok": True, "scenarios": len(d["scenarios"])}
 
@@ -363,7 +363,7 @@ def twin(r: AppProject) -> AppProject:
             s.flush()
             s.expunge(t)
             return t
-        t = AppProject(tenant_id=r.tenant_id, number=f"{r.number}-J", name=f"{r.name} (jaanch)", brief=r.brief,
+        t = AppProject(tenant_id=r.tenant_id, number=f"{r.number}-J", name=f"{r.name} (test)", brief=r.brief,
                        field=r.field, goal=r.goal, language=r.language, status="approved", stage="jaanch",
                        facts=r.facts,                       # her products come from facts + plan: the load test needs them
                        plan=json.dumps({**_j(r.plan, {}), TWIN_TAG: r.id}, ensure_ascii=False),
@@ -390,7 +390,7 @@ def twin_key(t: AppProject) -> str:
 def wipe(t: AppProject) -> dict[str, int]:
     """Every run starts from an empty app: last run's rows and accounts are gone."""
     if not is_twin(t):
-        raise W.AppError("wipe sirf jaanch ki twin app par", 400)
+        raise W.AppError("wipe works only on the test twin app", 400)
     site = "app:" + t.id
     with session() as s:
         rows = s.query(W.SiteAppRow).filter(W.SiteAppRow.site_id == site).delete(synchronize_session=False)
@@ -482,13 +482,13 @@ class _Run:
             return self.call("POST", f"{self.api}/fn/{st['name']}", {"args": st.get("args") or []}, tok)
         coll, rid = self.rows.get(st.get("row") or "", ("", ""))
         if not rid:
-            return -1, {"error": f"'{st.get('row')}' naam ki row pehle bani hi nahi"}
+            return -1, {"error": f"no row named '{st.get('row')}' was created earlier"}
         if do == "open":                        # a row is opened FROM the person's own list: not in it = not visible
             code, body = self.call("GET", f"{self.api}/c/{coll}", None, tok)
             if code != 200:
                 return code, body
             hit = next((x for x in (body.get("rows") or []) if str(x.get("id")) == rid), None)
-            return (200, hit) if hit is not None else (403, {"error": "row is user ko nahi dikhti"})
+            return (200, hit) if hit is not None else (403, {"error": "this user cannot see the row"})
         if do == "set":
             return self.call("PATCH", f"{self.api}/c/{coll}/{rid}", dict(st.get("data") or {}), tok)
         if do == "assign":
@@ -536,12 +536,12 @@ def _judge(st: dict[str, Any], code: int, body: Any) -> dict[str, Any]:
     """Did this step do what the story says? A refusal that did not happen is a failure, not a pass."""
     ok2 = 200 <= code < 300
     if code == 0:
-        return {"state": "not_run", "why": "server se baat nahi hui"}
+        return {"state": "not_run", "why": "could not reach the server"}
     if code == -1:
         return {"state": "not_run", "why": str((body or {}).get("error") or "")[:120]}
     if st["must"] == "refused":
-        return ({"state": "pass", "why": f"mana kiya ({code})"} if not ok2 else
-                {"state": "fail", "why": "yeh mana hona tha, par ho gaya"})
+        return ({"state": "pass", "why": f"refused ({code})"} if not ok2 else
+                {"state": "fail", "why": "this should have been refused, but it went through"})
     if not ok2:
         msg = str((body or {}).get("detail") or (body or {}).get("error") or body)[:140]
         return {"state": "fail", "why": f"{code}: {msg}"}
@@ -549,18 +549,18 @@ def _judge(st: dict[str, Any], code: int, body: Any) -> dict[str, Any]:
     if st["do"] == "read":
         rows = (body or {}).get("rows") or []
         if "expect_count" in st and len(rows) != st["expect_count"]:
-            return {"state": "fail", "why": f"{st['expect_count']} rows aani thi, {len(rows)} aayi"}
+            return {"state": "fail", "why": f"expected {st['expect_count']} rows, got {len(rows)}"}
         return {"state": "pass", "why": f"{len(rows)} rows"}
     if st["do"] == "open" and isinstance(st.get("expect"), dict):
         got = body if isinstance(body, dict) else {}
         data = {**(got.get("data") or {}), **{k: v for k, v in got.items() if k != "data"}}
         for k, v in st["expect"].items():
             if str(data.get(k, "")) != str(v):
-                return {"state": "fail", "why": f"{k}: '{v}' hona tha, '{data.get(k, '')}' hai"}
+                return {"state": "fail", "why": f"{k}: expected '{v}', it is '{data.get(k, '')}'"}
     if st["do"] == "fn" and "expect" in st:
         got = (body or {}).get("value", body)
         if str(got) != str(st["expect"]):
-            return {"state": "fail", "why": f"{st['expect']!r} aana tha, {got!r} aaya"}
+            return {"state": "fail", "why": f"expected {st['expect']!r}, got {got!r}"}
     return {"state": "pass", "why": ""}
 
 
@@ -569,7 +569,7 @@ def run(r: AppProject, call: Callable | None = None, base: str = "", scenarios: 
     from . import backend as BE
     items = scenarios if scenarios is not None else saved(r)
     if not items:
-        return {"ran": False, "why": "abhi koi kahani nahi hai - pehle 'jaanch ki kahaniyan banao'.",
+        return {"ran": False, "why": "there are no scenarios yet - first ask to 'make the test scenarios'.",
                 "stories": [], "pass": 0, "fail": 0, "not_run": 0}
     t = twin(r)
     wipe(t)
@@ -614,11 +614,11 @@ def _says(rep: dict[str, Any]) -> str:
     if rep["fail"]:
         first = next((s for s in rep["stories"] if s["state"] == "fail"), {})
         why = (first.get("steps") or [{}])[-1].get("why", "")
-        return (f"{rep['pass']}/{rep['total']} kahaniyan pass, {rep['fail']} fail. Pehli: "
+        return (f"{rep['pass']}/{rep['total']} scenarios passed, {rep['fail']} failed. First: "
                 f"\"{first.get('story', '')[:70]}\" - {why[:90]}")
     if rep["not_run"]:
-        return f"{rep['pass']}/{rep['total']} pass; {rep['not_run']} chal hi nahi payi (server / data)."
-    return f"Sab {rep['total']} kahaniyan pass."
+        return f"{rep['pass']}/{rep['total']} passed; {rep['not_run']} could not run at all (server / data)."
+    return f"All {rep['total']} scenarios passed."
 
 
 # ---------------------------------------------------------------- 2. every rule and formula, through the REAL engine
@@ -655,7 +655,7 @@ def rule_cases(r: AppProject, ask: Callable | None = None) -> dict[str, Any]:
     from . import backend as BE
     spec = _spec(r)
     if not (spec.get("rules") or spec.get("formulas")):
-        return {"cases": [], "why": "is app ke dimaag mein abhi koi rule / formula nahi hai"}
+        return {"cases": [], "why": "this app's logic has no rule / formula yet"}
     ask = ask or (lambda system, prompt: AI.ask_json(system, prompt, 6000))
     out = ask(RULES_SYSTEM, _rules_prompt(r))
     cases = (out or {}).get("cases") if isinstance(out, dict) else None
@@ -672,13 +672,13 @@ def rules_run(r: AppProject) -> dict[str, Any]:
     rules, formulas = spec.get("rules") or [], spec.get("formulas") or []
     fns = spec.get("functions") or []
     if not (rules or formulas or fns):
-        return {"ran": False, "why": "is app ke dimaag mein abhi kuch nahi hai", "pass": 0, "fail": 0,
+        return {"ran": False, "why": "this app's logic is empty for now", "pass": 0, "fail": 0,
                 "covered": 0, "total": 0, "rows": []}
     from . import backend as BE
     t = twin(r)
     c = LE.compiled(t)
     if c is None:
-        return {"ran": False, "why": "is app ka dimaag (logic) abhi on nahi hai", "pass": 0, "fail": 0,
+        return {"ran": False, "why": "this app's logic is not on yet", "pass": 0, "fail": 0,
                 "covered": 0, "total": 0, "rows": []}
     keys = {x["key"] for x in (BE.schema(t).get("collections") or [])}
     cases = (_j(r.backend, {}).get("jaanch") or {}).get("cases") or []
@@ -715,10 +715,10 @@ def rules_run(r: AppProject) -> dict[str, Any]:
                 rows.append({"kind": "rule", "what": msg, "state": "not_run", "why": (good or bad)[:120]})
             elif good:
                 rows.append({"kind": "rule", "what": msg, "state": "fail",
-                             "why": f"sahi row ko mana kar diya: {good}"})
+                             "why": f"a valid row was refused: {good}"})
             elif not bad:
                 rows.append({"kind": "rule", "what": msg, "state": "fail",
-                             "why": "galat row bhi chal gayi - yeh rule kisi ko rokta hi nahi"})
+                             "why": "an invalid row went through too - this rule stops nobody"})
             else:
                 rows.append({"kind": "rule", "what": msg, "state": "pass", "why": bad[:80]})
         else:
@@ -728,7 +728,7 @@ def rules_run(r: AppProject) -> dict[str, Any]:
                 got = LE.compute(t, c, coll, dict(case.get("row") or {}), None).get(field)
                 ok = str(got) == str(case.get("expect"))
                 rows.append({"kind": "formula", "what": f"{coll}.{field}", "state": "pass" if ok else "fail",
-                             "why": "" if ok else f"{case.get('expect')!r} aana tha, {got!r} aaya"})
+                             "why": "" if ok else f"expected {case.get('expect')!r}, got {got!r}"})
             except Exception as e:                                  # noqa: BLE001
                 rows.append({"kind": "formula", "what": f"{coll}.{field}", "state": "not_run",
                              "why": f"{type(e).__name__}: {str(e)[:100]}"})
@@ -739,16 +739,16 @@ def rules_run(r: AppProject) -> dict[str, Any]:
             try:
                 got = L.call_function(c["fns"], f["name"], test.get("args") or [])
                 if test.get("fails"):
-                    rows.append({"kind": "function", "what": what, "state": "fail", "why": f"fail hona tha, {got!r} mila"})
+                    rows.append({"kind": "function", "what": what, "state": "fail", "why": f"should have failed, got {got!r}"})
                 elif "expect" in test and str(got) != str(test["expect"]):
                     rows.append({"kind": "function", "what": what, "state": "fail",
-                                 "why": f"{test['expect']!r} aana tha, {got!r} aaya"})
+                                 "why": f"expected {test['expect']!r}, got {got!r}"})
                 else:
                     rows.append({"kind": "function", "what": what, "state": "pass", "why": ""})
             except L.Fail:
                 rows.append({"kind": "function", "what": what,
                              "state": "pass" if test.get("fails") else "fail",
-                             "why": "" if test.get("fails") else "fail ho gaya"})
+                             "why": "" if test.get("fails") else "failed"})
             except Exception as e:                                  # noqa: BLE001
                 rows.append({"kind": "function", "what": what, "state": "not_run", "why": str(e)[:100]})
 
@@ -759,8 +759,8 @@ def rules_run(r: AppProject) -> dict[str, Any]:
            "not_run": sum(1 for x in rows if x["state"] == "not_run"),
            "uncovered": [f"rule {i + 1}: {str((rules[i] or {}).get('message') or '')[:50]}"
                          for i in range(len(rules)) if i not in seen_rules][:10]}
-    out["says"] = (f"{out['pass']} check pass, {out['fail']} fail; {covered}/{total} rules-formulas-functions ke paas "
-                   f"koi test hai" + (f" ({len(out['uncovered'])} ke paas nahi)" if out["uncovered"] else ""))
+    out["says"] = (f"{out['pass']} checks passed, {out['fail']} failed; {covered}/{total} rules-formulas-functions have "
+                   f"a test" + (f" ({len(out['uncovered'])} have none)" if out["uncovered"] else ""))
     STATS["rules"] += 1
     return out
 
@@ -779,14 +779,14 @@ def load(r: AppProject, customers: int = 200, base: str = "", product: str = "")
         prods = BE._base_products(t) or {}
         product = next(iter(prods), "")
     if not product:
-        return {"ran": False, "why": "is app mein koi product nahi hai, to load test ka matlab nahi"}
+        return {"ran": False, "why": "this app has no products, so a load test makes no sense"}
     try:
         out = asyncio.run(LT.run(base or "http://127.0.0.1:8077", key, product, customers=max(10, min(5000, customers))))
     except Exception as e:                                          # noqa: BLE001
-        return {"ran": False, "why": f"load test chal nahi paya: {type(e).__name__}: {str(e)[:120]}"}
+        return {"ran": False, "why": f"the load test could not run: {type(e).__name__}: {str(e)[:120]}"}
     STATS["loads"] += 1
     out["ran"] = True
-    out["says"] = (f"{customers} customers ek saath: order p95 {out.get('p95', {}).get('order', '?')} ms, "
+    out["says"] = (f"{customers} customers at once: order p95 {out.get('p95', {}).get('order', '?')} ms, "
                    f"{out.get('orders', '?')} orders")
     return out
 
@@ -830,18 +830,18 @@ def card(r: AppProject) -> dict[str, Any]:
     health = field_health(r)
     gaps = []
     if not stories:
-        gaps.append("koi scenario test nahi hai")
+        gaps.append("there are no scenario tests")
     elif not last:
-        gaps.append("scenario test kabhi chalaye nahi gaye")
+        gaps.append("the scenario tests have never been run")
     if not (j.get("cases") or []):
-        gaps.append("rules ke test case nahi bane")
+        gaps.append("no test cases were made for the rules")
     if not (j.get("load") or {}):
-        gaps.append("load test kabhi nahi chalaya")
+        gaps.append("a load test has never been run")
     return {"app": r.id, "name": r.name, "scenarios": len(stories), "last_run": last,
             "rules": {"rules": len(spec.get("rules") or []), "formulas": len(spec.get("formulas") or []),
                       "functions": len(spec.get("functions") or []), "cases": len(j.get("cases") or [])},
             "load": j.get("load") or {}, "field": health, "not_checked": gaps,
-            "says": "; ".join([x for x in [last.get("says"), health.get("says")] if x]) or "Jaanch abhi shuru nahi hui."}
+            "says": "; ".join([x for x in [last.get("says"), health.get("says")] if x]) or "Testing has not started yet."}
 
 
 def run_all(r: AppProject, call: Callable | None = None, base: str = "") -> dict[str, Any]:

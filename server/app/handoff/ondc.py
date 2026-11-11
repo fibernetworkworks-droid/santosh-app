@@ -30,7 +30,7 @@ from ..db import Base, now, session
 from ..net import policy
 from .aa import HandoffError, _utc
 
-DOMAINS = {"RET10": "Grocery (kirana)", "RET11": "Food & beverage (khana / restaurant)", "RET12": "Fashion (kapde, joote)",
+DOMAINS = {"RET10": "Grocery", "RET11": "Food & beverage (meals / restaurant)", "RET12": "Fashion (clothes, shoes)",
            "RET13": "Beauty & personal care", "RET14": "Electronics", "RET15": "Appliances", "RET16": "Home & kitchen",
            "RET18": "Health & wellness"}
 PACKAGED = {"RET10", "RET13", "RET14", "RET15", "RET16", "RET18"}     # Legal Metrology (Packaged Commodities) fields
@@ -102,12 +102,12 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
         if kw.get("gstin") is not None:
             g = str(kw["gstin"]).strip().upper()
             if g and not GSTIN.match(g):
-                raise HandoffError("GSTIN 15 akshar ka hota hai (jaise 27ABCDE1234F1Z5).")
+                raise HandoffError("A GSTIN has 15 characters (for example 27ABCDE1234F1Z5).")
             r.gstin = g
         if kw.get("fssai") is not None:
             f = re.sub(r"\D", "", str(kw["fssai"]))
             if f and not FSSAI.match(f):
-                raise HandoffError("FSSAI number 14 ankon ka hota hai.")
+                raise HandoffError("An FSSAI number has 14 digits.")
             r.fssai = f
         if isinstance(kw.get("care"), dict):
             c = kw["care"]
@@ -137,7 +137,7 @@ def set_item(tenant: str, item: str, **fields) -> dict[str, Any]:
     items = deal._catalog_items(tenant)
     m = deal.match(items, item)
     if m is None or not m.get("id"):
-        raise HandoffError(f"'{item}' aapke stock list mein nahi; pehle stock mein daaliye.")
+        raise HandoffError(f"'{item}' is not in your stock list; add it to stock first.")
     clean: dict[str, Any] = {}
     for k in ITEM_KEYS:
         v = fields.get(k)
@@ -153,7 +153,7 @@ def set_item(tenant: str, item: str, **fields) -> dict[str, Any]:
         elif k == "hsn":
             h = re.sub(r"\D", "", str(v))
             if h and len(h) not in (4, 6, 8):
-                raise HandoffError("HSN 4, 6 ya 8 ankon ka hota hai")
+                raise HandoffError("An HSN has 4, 6 or 8 digits")
             clean[k] = h
         else:
             clean[k] = policy.quote(v, 300 if k in ("maker_address", "description") else 80)
@@ -185,40 +185,40 @@ def readiness(tenant: str) -> dict[str, Any]:
         exported = _utc(r.exported_at)
     block, warn = [], []
     if not v["gstin"]:
-        block.append("GSTIN: zyadatar seller apps aur ONDC par bechne ke liye GSTIN chahiye (kuch categories mein PAN se bhi).")
+        block.append("GSTIN: most seller apps and selling on ONDC need a GSTIN (in some categories a PAN works too).")
     if v["domain"] in FOOD and not v["fssai"]:
-        block.append("FSSAI licence / registration number (14 ank) khane ki cheezon ke liye zaroori hai.")
+        block.append("An FSSAI licence / registration number (14 digits) is required for food items.")
     care = v["care"]
     if not (care.get("name") and (care.get("email") or care.get("phone"))):
-        block.append("Customer care (naam + phone / email): e-commerce rules mein graahak ko dikhana zaroori hai.")
+        block.append("Customer care (name + phone / email): e-commerce rules require showing it to the customer.")
     if not v["store_name"]:
-        block.append("Dukaan ka naam.")
+        block.append("The shop's name.")
     if not v["pincodes"] and not v["radius_km"]:
-        warn.append("Kahan tak deliver karengi (pincode ya km): seller app mein bhi bharna hoga.")
+        warn.append("How far you deliver (pincodes or km): the seller app will need it too.")
     if not items:
-        block.append("Stock list khaali hai: Hoola Deals > Stock mein cheezein daaliye (ya sheet se).")
+        block.append("The stock list is empty: add items in Hoola Deals > Stock (or from a sheet).")
     bad_items = []
     for it in items:
         miss = []
         if not it.get("price"):
-            miss.append("daam")
+            miss.append("price")
         if it.get("mrp") is not None and it["price"] and it["price"] * (1 + it["gst_pct"] / 100) > it["mrp"] + 0.01:
-            miss.append("daam MRP se zyada")
+            miss.append("price above MRP")
         if v["domain"] in PACKAGED:
             for k, say in (("mrp", "MRP"), ("net_quantity", "net quantity"), ("maker", "maker / packer"),
-                           ("maker_address", "maker ka pata"), ("generic_name", "aam naam"), ("packed_on", "mahina-saal")):
+                           ("maker_address", "maker's address"), ("generic_name", "generic name"), ("packed_on", "month-year")):
                 if not it.get(k):
                     miss.append(say)
         if not it.get("image_file_id"):
             miss.append("photo")
         if it.get("free") is None:
-            miss.append("stock ginti")
+            miss.append("stock count")
         if v["domain"] in FOOD and it.get("veg") is None:
             miss.append("veg / non-veg")
         if miss:
             bad_items.append({"item": it["name"], "missing": miss})
     if bad_items:
-        warn.append(f"{len(bad_items)} cheezon mein jaankari adhoori (seller app maangega).")
+        warn.append(f"{len(bad_items)} items have incomplete details (the seller app will ask for them).")
     changed = 0
     if exported:
         from ..net import deal
@@ -226,15 +226,15 @@ def readiness(tenant: str) -> dict[str, Any]:
             changed = len(s.scalars(select(deal.StockItem.id).where(deal.StockItem.tenant_id == tenant,
                                                                     deal.StockItem.updated_at > exported)).all())
         if changed:
-            warn.append(f"Pichhle export ke baad {changed} cheezon ka stock / daam badla: nayi sheet seller app mein daaliye.")
+            warn.append(f"Stock / price changed for {changed} items since the last export: upload the new sheet to the seller app.")
     return {"listing": v, "ready": not block, "blockers": block, "warnings": warn, "items": len(items), "item_gaps": bad_items[:60],
             "changed_since_export": changed,
-            "how": ["ondc.org par 'seller apps' ki list se ek seller app chuniye (unki fees / commission dekh kar).",
-                    "Seller app mein register kijiye: GSTIN / PAN, bank account (paise wahi bhejte hain), FSSAI (khana).",
-                    "Hoola ki export sheet seller app ke 'bulk upload / catalogue' mein daaliye (unke template mein copy).",
-                    "Order seller app mein aayenge; stock badle to Hoola se nayi sheet nikaaliye."],
-            "say": "Taiyaar hai: sheet nikaal kar seller app mein daaliye." if not block else
-                   "Pehle yeh bharna hoga: " + "; ".join(block)}
+            "how": ["Choose a seller app from the 'seller apps' list on ondc.org (after checking their fees / commission).",
+                    "Register in the seller app: GSTIN / PAN, bank account (they send the money), FSSAI (food).",
+                    "Upload Hoola's export sheet in the seller app's 'bulk upload / catalogue' (copy it into their template).",
+                    "Orders arrive in the seller app; when stock changes, export a new sheet from Hoola."],
+            "say": "Ready: export the sheet and upload it to the seller app." if not block else
+                   "These must be filled in first: " + "; ".join(block)}
 
 
 def export(tenant: str) -> dict[str, Any]:
@@ -246,7 +246,7 @@ def export(tenant: str) -> dict[str, Any]:
         v = view(r)
         items = _items(tenant, r)
     if not items:
-        raise HandoffError("Stock list khaali hai; pehle cheezein daaliye.")
+        raise HandoffError("The stock list is empty; add items first.")
     wb = Workbook()
     ws = wb.active
     ws.title = "ONDC catalogue"
@@ -275,9 +275,9 @@ def export(tenant: str) -> dict[str, Any]:
                    ("Serviceable pincodes", ", ".join(v["pincodes"])), ("Radius km", v["radius_km"]),
                    ("Fulfilment", v["fulfilment"]), ("Seller app", v["seller_app"])):
         s2.append([k, val])
-    s3 = wb.create_sheet("Kaise")
-    for line in rd["how"] + ["", "Yeh sheet Hoola ne aapke stock se banayi. Seller app ka apna template ho to columns wahan copy kijiye.",
-                             "Hoola ONDC network se khud nahi judta; listing aur orders aapke seller app mein."]:
+    s3 = wb.create_sheet("How to")
+    for line in rd["how"] + ["", "Hoola made this sheet from your stock. If the seller app has its own template, copy the columns there.",
+                             "Hoola does not connect to the ONDC network itself; listings and orders are in your seller app."]:
         s3.append([line])
     buf = io.BytesIO()
     wb.save(buf)
@@ -290,5 +290,5 @@ def export(tenant: str) -> dict[str, Any]:
         r.exported_at = now()
     STATS["exports"] += 1
     return {"file": {k: f.get(k) for k in ("file_id", "name", "size", "url")}, "items": len(items), "ready": rd["ready"],
-            "blockers": rd["blockers"], "say": f"{len(items)} cheezon ki ONDC sheet taiyaar. Apne seller app mein upload kijiye." +
-            ("" if rd["ready"] else " Pehle yeh bhi bharna: " + "; ".join(rd["blockers"]))}
+            "blockers": rd["blockers"], "say": f"The ONDC sheet for {len(items)} items is ready. Upload it in your seller app." +
+            ("" if rd["ready"] else " Also fill these in first: " + "; ".join(rd["blockers"]))}

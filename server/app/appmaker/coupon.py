@@ -58,9 +58,9 @@ def _money(v: Any, what: str, lo: float = 0, hi: float = 10_000_000) -> float:
     try:
         f = round(float(str(v).replace(",", "").replace("₹", "").strip()), 2)
     except (TypeError, ValueError):
-        raise CouponError(f"{what}: number chahiye.")
+        raise CouponError(f"{what}: a number is needed.")
     if not lo <= f <= hi:
-        raise CouponError(f"{what}: {lo:g} se {hi:,.0f} tak.")
+        raise CouponError(f"{what}: from {lo:g} to {hi:,.0f}.")
     return f
 
 
@@ -70,7 +70,7 @@ def save(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
     body = body if isinstance(body, dict) else {}
     code = re.sub(r"\s+", "", str(body.get("code") or "")).upper()
     if not CODE.match(code):
-        raise CouponError("Code 4-16 akshar ka, sirf A-Z aur 0-9 (jaise DIWALI10).")
+        raise CouponError("The code must be 4-16 characters, only A-Z and 0-9 (for example DIWALI10).")
     with LK.app(r.id), session() as s:
         row = s.get(AppProject, r.id)
         be = BE._j(row.backend, {})
@@ -80,14 +80,14 @@ def save(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
         else:
             c = dict(cs.get(code) or {"used": 0, "who": [], "made": now().isoformat()})
             if code not in cs and len(cs) >= MAX_CODES:
-                raise CouponError(f"Ek app mein {MAX_CODES} codes tak.")
+                raise CouponError(f"Up to {MAX_CODES} codes per app.")
             kind = str(body.get("kind") or c.get("kind") or "percent")
             if kind not in ("percent", "flat"):
-                raise CouponError("kind: percent ya flat.")
+                raise CouponError("kind: percent or flat.")
             c["kind"] = kind
             if "value" in body or "value" not in c:
                 c["value"] = _money(body.get("value"), "Discount", 1, 90 if kind == "percent" else 1_000_000)
-            for k, what in (("cap", "Zyada se zyada chhoot"), ("min", "Kam se kam order")):
+            for k, what in (("cap", "Maximum discount"), ("min", "Minimum order")):
                 if k in body:
                     c[k] = _money(body[k], what, 1) if body[k] not in (None, "", 0, "0") else None
             if "until" in body:
@@ -99,7 +99,7 @@ def save(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
                         raise CouponError("Last date YYYY-MM-DD.")
                 c["until"] = u or None
             if "uses" in body:
-                c["uses"] = int(_money(body["uses"], "Kitni baar", 1, 1_000_000)) if body["uses"] not in (None, "") else None
+                c["uses"] = int(_money(body["uses"], "Number of uses", 1, 1_000_000)) if body["uses"] not in (None, "") else None
             if "once" in body:
                 c["once"] = bool(body["once"])
             if "on" in body:
@@ -115,15 +115,15 @@ def save(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
 
 def _why(c: dict[str, Any] | None, subtotal: float, who: str) -> str:
     if c is None or not c.get("on", True):
-        return "Yeh code nahi chalta."
+        return "This code is not valid."
     if c.get("until") and c["until"] < _today().isoformat():
-        return "Yeh code khatam ho gaya."
+        return "This code has expired."
     if c.get("uses") is not None and c.get("used", 0) >= c["uses"]:
-        return "Yeh code poora istemaal ho chuka."
+        return "This code has been fully used."
     if c.get("once") and who and who in (c.get("who") or []):
-        return "Yeh code aap pehle hi istemaal kar chuke hain."
+        return "You have already used this code."
     if c.get("min") and subtotal < c["min"]:
-        return f"Yeh code ₹{c['min']:g} ya zyada ke order par chalta hai."
+        return f"This code works on orders of ₹{c['min']:g} or more."
     return ""
 
 
@@ -162,7 +162,7 @@ def apply(r: AppProject, code: str, subtotal: float, w: W.Who) -> tuple[float, d
         why = _why(c, subtotal, w.id)
         if why:
             STATS["not_applied"] += 1
-            return 0.0, {"coupon": code[:16], "coupon_note": f"{code[:16]} nahi laga: {why}"}
+            return 0.0, {"coupon": code[:16], "coupon_note": f"{code[:16]} was not applied: {why}"}
         d = discount_of(c, subtotal)
         c = dict(c)
         c["used"] = int(c.get("used", 0)) + 1
