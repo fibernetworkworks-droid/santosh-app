@@ -166,6 +166,7 @@ struct PhotosStripView: View {
                 HStack(spacing: 8) {
                     ForEach(list, id: \.self) { s in
                         ServerPhoto(src: s, height: 84).frame(width: 84).onTapGesture { big = big == s ? "" : s }
+                            .accessibilityLabel(T("Photo")).accessibilityAddTraits(.isButton)   // v0.802 an image-only tap
                     }
                 }
             }

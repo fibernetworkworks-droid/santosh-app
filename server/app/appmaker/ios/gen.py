@@ -444,6 +444,16 @@ def uses_photos(spec: dict[str, Any]) -> bool:
                for f in (c.get("fields") or []) if isinstance(f, dict))
 
 
+def uses_device(spec: dict[str, Any], part: str) -> bool:
+    """v0.802 DEVICE: a model-written screen uses this Device.swift part (BiometricLock / AddToCalendarButton ...), so the
+    Info.plist gets its usage string - only the screens that will really be written count (house-rule clean ones)."""
+    pat = re.compile(r"\b" + re.escape(part) + r"\s*\(")
+    ids = _ids(spec)[1]
+    given = spec.get("screens_swift") or {}
+    return any(isinstance(given.get(sid), str) and pat.search(given[sid]) and not scan_screen(given[sid], sid, ids)
+               for sid in ids if sid not in AUTH_IDS)
+
+
 def project_yml(spec: dict[str, Any]) -> str:
     app = spec.get("app") or {}
     ios = spec.get("ios") or {}
@@ -605,6 +615,14 @@ def info_plist(spec: dict[str, Any]) -> str:
     if uses_photos(spec):
         extra += ("    <key>NSPhotoLibraryUsageDescription</key>\n"
                   "    <string>Pick a photo to send with your request. Only the photo you choose is used.</string>\n")
+    if uses_device(spec, "BiometricLock"):              # v0.802 Face ID needs its own line (Touch ID / passcode need none)
+        extra += ("    <key>NSFaceIDUsageDescription</key>\n"
+                  "    <string>Face ID unlocks this part of the app only when you tap Unlock. Your face never leaves the phone.</string>\n")
+    if uses_device(spec, "AddToCalendarButton"):        # v0.802 iOS 16 asks for calendar access before Apple's new-event sheet
+        extra += ("    <key>NSCalendarsUsageDescription</key>\n"
+                  "    <string>Adds the event you chose to your calendar when you tap Add to calendar. Nothing else is read.</string>\n"
+                  "    <key>NSCalendarsWriteOnlyAccessUsageDescription</key>\n"
+                  "    <string>Adds the event you chose to your calendar when you tap Add to calendar.</string>\n")
     bg_extra = "\n        <string>location</string>" if uses_tracking(spec) else ""   # v0.412 the shift, with the blue pill
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

@@ -37,6 +37,11 @@ struct StopsBlock: View { init() }        // v0.350 staff: open rows with a [loc
 struct RateBox: View { init(coll: String, r: Item) }   // v0.353 the customer rates her finished row once (RowsSection already shows it)
 struct AssignBox: View { init(coll: String, r: Item) }   // v0.352 staff row: who has it + assign / take / give back (RowsSection already shows it)
 struct InboxButton: View { init() }       // v0.340 the updates inbox ("hoola_inbox")
+// v0.802 DEVICE (Device.swift), each only on the user's own tap - never gate the whole app on them:
+struct BiometricLock: View { init(reason: String, onOk: @escaping () -> Void) }   // Face ID / Touch ID / passcode before a private part (khata, staff money); show that part only after onOk
+struct RateAppButton: View { init() }     // "Rate this app" on a thank-you / account screen (Apple may show nothing; never reward a rating)
+struct AddToCalendarButton: View { init(title: String, start: Date, end: Date, location: String = "", notes: String = "") }   // the phone's own new-event sheet for a booking / appointment / class
+struct PickContactButton: View { init(onPicked: @escaping (String, String) -> Void) }   // (name, phone) of ONE contact the user taps, no permission - e.g. fill a form's phone
 struct RefField: View { init(label: String, to: String, value: Binding<String>) }   // v0.382 a [ref:<list>] field: pick a row of that list (stores its id)
 struct WorkflowBox: View { init(coll: String, r: Item) }   // v0.382 the allowed workflow steps / approval waiting (RowsSection already shows it)
 struct RelatedBlock: View { init(coll: String, r: Item) }  // v0.382 a row's linked children + Add (RowsSection already shows it)

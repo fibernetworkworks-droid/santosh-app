@@ -199,6 +199,7 @@ struct FormBlock: View {
                         Text(it.name).font(.headline)
                         Spacer()
                         Stepper("\(q)", value: Binding(get: { q }, set: { state.setQty(it.id, $0) }), in: 0...99).fixedSize()
+                            .accessibilityLabel(it.name).accessibilityValue("\(q)")   // v0.802 VoiceOver says what it counts
                     }
                     Muted(rupees(it.price * Double(q)))
                 }
@@ -267,7 +268,7 @@ struct PhotoRow: View {
         HStack {
             PhotosPicker(selection: $item, matching: .images) { Label(label, systemImage: "camera") }
             Spacer()
-            if !(state.form[key] ?? "").isEmpty { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+            if !(state.form[key] ?? "").isEmpty { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityLabel(T("Photo added")) }
         }
         .onChange(of: item) { new in
             guard let new = new else { return }
