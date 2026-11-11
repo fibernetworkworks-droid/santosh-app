@@ -1,0 +1,60 @@
+{
+  "base": "school-glass-slab-ray",
+  "chapter": "Light: Reflection and Refraction (Class 10)",
+  "variants": [
+    {
+      "key": "bk7",
+      "title": "Glass slab: tracing a ray through borosilicate crown glass",
+      "sample": "Borosilicate crown glass slab (N-BK7)",
+      "unknown": "the refractive index of the glass",
+      "note": "The commonest school slab: ordinary borosilicate crown glass. Its refractive index at the sodium yellow line is 1.5168.",
+      "params": { "n": 1.5168 },
+      "source": { "title": "SCHOTT N-BK7 optical glass datasheet", "note": "nd = 1.51680 at 587.56 nm (helium d line)" }
+    },
+    {
+      "key": "silica",
+      "title": "Glass slab: tracing a ray through fused silica",
+      "sample": "Fused silica (quartz glass) slab",
+      "unknown": "the refractive index of fused silica",
+      "note": "Fused silica bends light least of the glasses here, so the ray goes through almost straight.",
+      "params": { "n": 1.45846 },
+      "source": { "title": "I. H. Malitson, Journal of the Optical Society of America 55, 1205 (1965)", "note": "n = 1.45846 at 587.6 nm, via refractiveindex.info" }
+    },
+    {
+      "key": "f2",
+      "title": "Glass slab: tracing a ray through light flint glass",
+      "sample": "Light flint glass slab (F2)",
+      "unknown": "the refractive index of the flint glass",
+      "note": "Flint glass has lead oxide in it and bends light much more than crown glass.",
+      "params": { "n": 1.62004 },
+      "source": { "title": "SCHOTT F2 optical glass datasheet", "note": "nd = 1.62004 at 587.56 nm" }
+    },
+    {
+      "key": "sf10",
+      "title": "Glass slab: tracing a ray through dense flint glass",
+      "sample": "Dense flint glass slab (N-SF10)",
+      "unknown": "the refractive index of the dense flint glass",
+      "note": "The densest glass in this set: at 60 degrees of incidence the ray is pushed sideways nearly twice as far as in crown glass.",
+      "params": { "n": 1.72828 },
+      "source": { "title": "SCHOTT N-SF10 optical glass datasheet", "note": "nd = 1.72828 at 587.56 nm" }
+    },
+    {
+      "key": "acrylic",
+      "title": "Slab: tracing a ray through an acrylic (perspex) block",
+      "sample": "Acrylic (PMMA / perspex) block",
+      "unknown": "the refractive index of acrylic",
+      "note": "Many school kits use a clear plastic block instead of glass. It scratches easily, so it is handled by its edges.",
+      "params": { "n": 1.4914 },
+      "source": { "title": "S. N. Kasarova et al., Optical Materials 29, 1481 (2007)", "note": "PMMA n = 1.4914 at 589.3 nm, via refractiveindex.info" }
+    },
+    {
+      "key": "polycarbonate",
+      "title": "Slab: tracing a ray through a polycarbonate block",
+      "sample": "Polycarbonate block",
+      "unknown": "the refractive index of polycarbonate",
+      "note": "Polycarbonate is the tough plastic used for safety goggles; it bends light rather more than acrylic.",
+      "params": { "n": 1.5855 },
+      "source": { "title": "N. Sultanova, S. Kasarova and I. Nikolov, Acta Physica Polonica A 116, 585 (2009)", "note": "Polycarbonate n = 1.5855 at 589.3 nm, via refractiveindex.info" }
+    }
+  ]
+}

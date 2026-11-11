@@ -1,0 +1,36 @@
+{
+  "base": "fibre-numerical-aperture",
+  "rig": "fibre-bench",
+  "chapter": "Lasers, fibre optics and applied optics",
+  "variants": [
+    {
+      "key": "pof",
+      "title": "Numerical aperture of a step-index plastic fibre",
+      "sample": "1 mm step-index plastic optical fibre (PMMA core, fluorinated polymer cladding)",
+      "unknown": "the numerical aperture and the acceptance angle",
+      "params": {
+        "n1": 1.492,
+        "n2": 1.402,
+        "dcore": 0.001
+      },
+      "source": {
+        "title": "Step-index POF data sheets (Mitsubishi Eska, Toray PFU): PMMA core n = 1.492, cladding n = 1.402, NA 0.50"
+      }
+    },
+    {
+      "key": "glass62",
+      "title": "Numerical aperture of a 62.5/125 multimode glass fibre",
+      "sample": "62.5/125 micron graded-index multimode glass fibre",
+      "unknown": "the numerical aperture and the acceptance angle",
+      "params": {
+        "n1": 1.48,
+        "n2": 1.4542,
+        "dcore": 6.25e-05
+      },
+      "note": "A glass telecom fibre takes in a much narrower cone than a plastic one; that is exactly why it can carry a signal for kilometres without smearing it.",
+      "source": {
+        "title": "Corning InfiniCor 62.5/125 multimode fibre: numerical aperture 0.275, Ge-doped silica core index 1.480 at 850 nm; the cladding index here is the one that gives that NA"
+      }
+    }
+  ]
+}

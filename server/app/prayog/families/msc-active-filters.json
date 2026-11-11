@@ -1,0 +1,50 @@
+{
+ "base": "msc-active-filters",
+ "rig": "msc-signal-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "high-pass",
+   "title": "Active filters with Bode plots: second-order high-pass",
+   "sample": "Sallen-Key high-pass, R = 10 kΩ, C = 10 nF",
+   "method": "high pass",
+   "unknown": "the cut-off frequency and roll-off of the high-pass",
+   "params": {
+    "kind": 1
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "band-pass",
+   "title": "Active filters with Bode plots: band-pass",
+   "sample": "High-pass corner 100 Hz followed by low-pass corner 100 kHz (buffered)",
+   "method": "band pass",
+   "unknown": "the lower -3 dB frequency of the pass band",
+   "params": {
+    "kind": 2,
+    "R": 15900.0,
+    "C": 1e-07,
+    "R2": 1000.0,
+    "C2": 1.6e-09
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "all-pass",
+   "title": "Active filters with Bode plots: all-pass phase shifter",
+   "sample": "First-order all-pass, R = 10 kΩ, C = 10 nF",
+   "method": "all pass (phase shifter)",
+   "unknown": "the frequency of the 90° phase lag and the constant gain",
+   "params": {
+    "kind": 3
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

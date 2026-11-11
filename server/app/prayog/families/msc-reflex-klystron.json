@@ -1,0 +1,20 @@
+{
+ "base": "msc-reflex-klystron",
+ "rig": "msc-microwave-bench",
+ "chapter": "Microwaves",
+ "variants": [
+  {
+   "key": "mode3",
+   "title": "Reflex klystron: the third mode",
+   "sample": "Reflex klystron, mode 3",
+   "unknown": "the electronic tuning range of mode 3",
+   "params": {
+    "mode": 3
+   },
+   "note": "A lower reflector voltage and less power than mode 2.",
+   "source": {
+    "title": "S. Y. Liao, Microwave Devices and Circuits, 3rd ed.: reflex klystron, N = n + 3/4"
+   }
+  }
+ ]
+}

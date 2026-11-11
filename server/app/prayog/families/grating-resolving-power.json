@@ -1,0 +1,33 @@
+{
+  "base": "grating-resolving-power",
+  "rig": "spectrometer-bench",
+  "chapter": "Diffraction",
+  "variants": [
+    {
+      "key": "g15000",
+      "title": "Resolving power of a grating ruled 15 000 lines to the inch",
+      "sample": "Plane transmission grating, 15 000 lines per inch",
+      "unknown": "the dispersive power and the resolving power",
+      "params": {
+        "d": 1.6933333e-06,
+        "a": 8.4666667e-07
+      },
+      "source": {
+        "title": "A grating ruled 15 000 lines per inch has d = 25.4 mm / 15 000 = 1.6933 micron"
+      }
+    },
+    {
+      "key": "g600",
+      "title": "Resolving power of a grating ruled 600 lines to the millimetre",
+      "sample": "Plane transmission grating, 600 lines per mm",
+      "unknown": "the dispersive power and the resolving power",
+      "params": {
+        "d": 1.6666667e-06,
+        "a": 8.3333333e-07
+      },
+      "source": {
+        "title": "A grating ruled 600 lines per mm has d = 1.6667 micron"
+      }
+    }
+  ]
+}

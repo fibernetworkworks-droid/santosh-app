@@ -1,0 +1,23 @@
+{
+ "base": "ph2-fpp-film",
+ "rig": "ph2-semi-bench",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "oxide",
+   "title": "Four-point probe: sheet resistance and resistivity of an oxide film",
+   "sample": "Aluminium-doped zinc oxide film on glass, 300 nm (illustrative resistivity 8×10⁻⁶ Ω m)",
+   "method": "collinear four-point probe",
+   "unknown": "sheet resistance and resistivity",
+   "note": "Film resistivity and thickness are lab values (unsourced / illustrative).",
+   "params": {
+    "Rs": 26.7,
+    "t": 3e-07
+   },
+   "source": {
+    "title": "Oxide-film resistivity 8×10⁻⁶ Ω m, thickness 300 nm (lab values)",
+    "note": "unsourced / illustrative: chosen for the lab"
+   }
+  }
+ ]
+}

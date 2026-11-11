@@ -1,0 +1,33 @@
+{
+ "base": "sn-dipole-antenna",
+ "rig": "sn-sensor-bench",
+ "chapter": "Communication electronics and microwaves",
+ "variants": [
+  {
+   "key": "full-wave",
+   "title": "Radiation pattern of a full-wave dipole antenna",
+   "sample": "Dipole one wavelength long (ell = 1)",
+   "unknown": "the half-power beamwidth of a full-wave dipole",
+   "params": {
+    "ell": 1.0
+   },
+   "note": "A dipole one wavelength long has a narrower beam, about 48 degrees, and twice the peak field of a half-wave one at the same current.",
+   "source": {
+    "title": "C. A. Balanis, Antenna Theory: half-power beamwidth of a full-wave dipole about 47.8 degrees (from the pattern)"
+   }
+  },
+  {
+   "key": "short-dipole",
+   "title": "Radiation pattern of a short dipole antenna (a tenth of a wavelength)",
+   "sample": "Dipole a tenth of a wavelength long (ell = 0.1)",
+   "unknown": "the half-power beamwidth of a short dipole",
+   "params": {
+    "ell": 0.1
+   },
+   "note": "A short dipole's pattern tends to sin theta with a beamwidth of 90 degrees, but its field is much weaker at the same current.",
+   "source": {
+    "title": "C. A. Balanis, Antenna Theory: the short dipole, E proportional to sin theta"
+   }
+  }
+ ]
+}

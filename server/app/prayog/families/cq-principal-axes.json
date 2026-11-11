@@ -1,0 +1,21 @@
+{
+ "base": "cq-principal-axes",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "cube-corner",
+   "title": "Principal axes of a uniform cube about its corner",
+   "sample": "Uniform cube of side 1 m, mass 1 kg, about a corner",
+   "unknown": "the smallest principal moment (along the body diagonal)",
+   "params": {
+    "cas": 1,
+    "n": 2
+   },
+   "source": {
+    "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, Department of Physics and Astrophysics, University of Delhi",
+    "note": "the practical list names these functions and methods"
+   }
+  }
+ ]
+}

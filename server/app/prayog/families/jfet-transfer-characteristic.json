@@ -1,0 +1,22 @@
+{"base": "jfet-transfer-characteristic", "rig": "elec-ug-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+   {"key": "spec1", "title": "JFET transfer characteristic: specimen 1 of the batch",
+    "sample": "An unmarked n-channel JFET, specimen 1 (pinch-off voltage unknown)",
+    "unknown": "the pinch-off voltage V_P of this specimen",
+    "params": {"Idss": 0.006, "Vp": -1.6},
+    "note": "The pinch-off voltage and I_DSS of a junction FET are not properties of a material: they depend on how the channel was doped and etched, and a datasheet only gives a wide range for the type. That is exactly why they are measured specimen by specimen rather than looked up. Each specimen in this batch is a different member of that spread.",
+    "source": {"title": "A. S. Sedra and K. C. Smith, Microelectronic Circuits, JFET square law (I_D = I_DSS(1 - V_GS/V_P)^2); the specimen's own V_P is the quantity this experiment finds"}},
+   {"key": "spec2", "title": "JFET transfer characteristic: specimen 2 of the batch",
+    "sample": "An unmarked n-channel JFET, specimen 2 (pinch-off voltage unknown)",
+    "unknown": "the pinch-off voltage V_P of this specimen",
+    "params": {"Idss": 0.010, "Vp": -2.4},
+    "note": "A second specimen of the same type: a larger I_DSS goes with a more negative pinch-off voltage, because both follow the same channel geometry.",
+    "source": {"title": "A. S. Sedra and K. C. Smith, Microelectronic Circuits, JFET square law; the specimen's own V_P is the quantity this experiment finds"}},
+   {"key": "spec3", "title": "JFET transfer characteristic: specimen 3 of the batch",
+    "sample": "An unmarked n-channel JFET, specimen 3 (pinch-off voltage unknown)",
+    "unknown": "the pinch-off voltage V_P of this specimen",
+    "params": {"Idss": 0.015, "Vp": -3.6},
+    "note": "The widest-channel specimen of the three. Note how the whole transfer characteristic stretches while its shape stays the same square law.",
+    "source": {"title": "A. S. Sedra and K. C. Smith, Microelectronic Circuits, JFET square law; the specimen's own V_P is the quantity this experiment finds"}}
+ ]}

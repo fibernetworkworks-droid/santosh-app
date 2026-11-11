@@ -1,0 +1,47 @@
+{
+ "base": "flip-flops-nand",
+ "rig": "flip-flops-nand",
+ "chapter": "Digital electronics, microprocessors and microcontrollers",
+ "variants": [
+  {
+   "key": "rs-latch",
+   "title": "RS latch of two NAND gates",
+   "method": "two cross-coupled NAND gates with active-low inputs",
+   "unknown": "the characteristic table of the RS latch",
+   "sample": "SN7400 quad 2-input NAND, two gates used",
+   "params": {
+    "kind": 0.0
+   },
+   "source": {
+    "title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, flip-flops from NAND gates"
+   }
+  },
+  {
+   "key": "d-latch",
+   "title": "Gated D latch from five NAND gates",
+   "method": "a clocked RS latch with R = NOT D",
+   "unknown": "the characteristic table of the D latch",
+   "sample": "SN7400 quad 2-input NAND, five gates used",
+   "params": {
+    "kind": 2.0
+   },
+   "source": {
+    "title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, flip-flops from NAND gates"
+   }
+  },
+  {
+   "key": "jk-level",
+   "title": "Level-triggered JK flip-flop from NAND gates (race-around)",
+   "method": "a clocked RS latch with feedback from Q and Q-bar",
+   "unknown": "the characteristic table of the JK flip-flop and its race-around",
+   "sample": "SN7400 and SN7410 (triple 3-input NAND)",
+   "params": {
+    "kind": 3.0
+   },
+   "note": "With J = K = 1 the level-triggered circuit flips over and over while the clock is HIGH.",
+   "source": {
+    "title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, flip-flops from NAND gates"
+   }
+  }
+ ]
+}

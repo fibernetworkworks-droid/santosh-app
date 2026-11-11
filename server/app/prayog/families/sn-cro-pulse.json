@@ -1,0 +1,33 @@
+{
+ "base": "sn-cro-pulse",
+ "rig": "sn-scope-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "c-470p",
+   "title": "Rise, fall and delay times of a pulse through an RC network with 470 pF",
+   "sample": "Unknown capacitor from the E6 series (470 pF)",
+   "unknown": "the capacitor, from the rise time on the scope",
+   "params": {
+    "C": 4.7e-10
+   },
+   "note": "With 470 pF the edges are tens of times shorter than with 4.7 nF, which brings the scope's own rise time closer to the signal's.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 470 pF"
+   }
+  },
+  {
+   "key": "c-4n7",
+   "title": "Rise, fall and delay times of a pulse through an RC network with 4.7 nF",
+   "sample": "Unknown capacitor from the E6 series (4.7 nF)",
+   "unknown": "the capacitor, from the rise time on the scope",
+   "params": {
+    "C": 4.7e-09
+   },
+   "note": "The slower edges show the exponential shape clearly across the screen.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 4.7 nF"
+   }
+  }
+ ]
+}

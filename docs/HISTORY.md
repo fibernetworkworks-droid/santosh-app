@@ -470,3 +470,73 @@ Her live v0.765 test: gstin_verify works on her free gstinapi.in account; compli
 available to accounts that have bought a credit pack". 'gstin compliance' then fell back to gstin_verify and came back ok:true as if it
 were the compliance answer. box.call now adds `instead_of` (the failed recipes) and a NOT WHAT SHE ASKED FOR line with the reasons to
 note_for_you whenever an earlier recipe errored before the one that answered. Test in test_v0765_box_gstin.py.
+
+## v0.767.0 LANGGRAPH G1 — a graph turn resumes after a restart + the tool ledger (10 Nov 2026; owner: "GO G1")
+
+Phase G1 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 1 and 9), only when `chat_graph` is on (default OFF; the old path is unchanged).
+- Stable thread id `"<conversation>:<inbox id>"`: `turn_inbox.run_owned` sets `GRAPH_TURN` / `GRAPH_RESUME`, `turngraph.run_steps` takes them once; a turn with no inbox row gets a random id; a conversation with no id falls back to the old loop.
+- Every node checkpoints the turn's working state as plain data (the `_steps_begin` dict minus the breaker / native tool list, breaker counters, admitted families, final text, prepared, last stop).
+- Sweep: a turn that began and was not answered is checked with `turngraph.resumable()` (next node model / tools / check / finish, prepare done) -> `run_owned(save_user=False, graph_resume=True)`, no RESUME_NOTE; else today's re-run. `resume()` restores history, state and breaker without re-running the hard-ask judge / hint lookup, re-runs prepare in the turn's shared context, then `ainvoke(None)`.
+- NEW `agent/toolledger.py` (table `turn_tool_ledger`, in `db.init_db` + `ensure_table`): `intent` before `_run_tool`, `done` with the output / `failed` with the error after. On resume: done = stored result reused (tool not called), failed = same error, intent with no end = re-run only if read-only (`draftcheck._is_read` + `santosh._parallel_ok`), otherwise `santosh.ToolAmbiguous` -> the model reads "may already have run, outcome unknown, check before any retry".
+- LangGraph's `NodeCancelledError` is turned back into CancelledError so a cut turn keeps its checkpoint. END or an error reply deletes the thread's checkpoints + ledger rows; ledger rows older than `chat_graph_ledger_keep_h` (24 h) go; daily inbox housekeeping deletes threads of removed rows. New settings `chat_graph_keep_finished`, `chat_graph_ledger_keep_h`.
+- TESTS: NEW `test_g1_turngraph.py` 9; g0 11, harness2 15, harness3 17, routines 3, v0657 14, v0664 kaam ek baar 10, v0649 11 and others same with the switch off and on.
+- NOT VERIFIED / STILL OPEN: the crash is simulated (CancelledError + cleared memory), not a real process kill; a crash inside the model node after the model answered re-runs that call (a second model call, maybe a second assistant row); a crash in prepare uses the old RESUME_NOTE path; tool_search results and narration state are rebuilt, not restored; a reused done tool skips event-log / coder-memory capture; timed-out turns keep checkpoints until the daily housekeeping. Next: G2 (one run per chat + Stop as state).
+
+
+## v0.768.0 IMAGE EDIT (built as 0.759.0, re-versioned twice as main moved; owner: "Image editing --- perfect work on it end to end deeply and perfectly for hoola", after the aixploria.com read mapped 4,863 AI tools to Hoola - 210 of them image editing)
+
+ONE new tool `image_edit` (registry 621 -> 622) in `server/app/imgedit/`; photo_banao / photo_clean / id_photo keep their specs.
+- LOCAL (`ops.py`, Pillow + numpy, no key, deterministic): resize (17 presets: Insta post / square / Story, YouTube thumb /
+  banner, FB cover, LinkedIn, WhatsApp DP, marketplace / Amazon, A4 150 / 300 dpi, visiting card; fit contain / cover / inside /
+  stretch), crop (box or aspect + gravity), rotate, flip, adjust, auto_enhance, filters (grayscale, sepia, invert, blur, sharpen,
+  denoise, pixelate, posterize, vignette, sketch, SCAN = photo of a paper -> flat white page), redact (blur / pixelate / black
+  regions), border, pad, round_corners, bg_color, text + watermark (each character drawn from a font that has it: Devanagari,
+  Latin, the rupee sign, dots), upscale_local (plain enlargement, said so), convert + compress to a target KB, collage,
+  before/after. Every output re-encoded: camera EXIF / GPS never travels. 50 MP input cap, 8192 px side, 12 steps.
+- AI (`ai.py`): remove_bg, upscale, remove_object, replace_bg, restyle, restore, colorize, edit. First engine REALLY set up runs and
+  is named: rembg (local) / Gemini via photogen / the zoo gateways (`ai.ROUTES`, every id pinned against zoo_catalog.json). No
+  engine = says which key to set; upscale alone falls back to a plain enlargement and says "no new detail". A failing engine
+  moves to the next, failures reported. Generative edits labelled "AI se bana".
+- SAFETY before any engine: photogen.problem + watermark / copyright / photographer's mark removal refused; an AI edit of a file
+  named like an Aadhaar / PAN / marksheet / cheque refused (resize / crop / compress of her own ID is fine); body edits on a
+  child's picture refused.
+- PIPELINE (`run.py`): local steps + at most ONE AI step per photo, validated before anything is paid for; up to 10 photos, 5 for an
+  AI step; one bad file never sinks the batch; routine / staff actors usage-gated for AI steps; collage action.
+- TESTS `test_imgedit.py` 38. NOT VERIFIED: no AI engine has answered a live call (no key in the sandbox, rembg not installed);
+  kie / muapi request shapes read from zoo_catalog.json only. The first real "background hata do" with ZOO_KIE_KEY set is the proof.
+
+## v0.769.0 AUDIO EDIT (owner: "NOW START AUDIO EDITING" - the second wave of the aixploria coverage map, 60 audio-editing tools)
+
+ONE new tool `audio_edit` (registry 622 -> 623) in `server/app/audedit/`. Every edit is LOCAL on the server's own ffmpeg:
+no key, no model, no cost, nothing leaves the server, so - unlike image_edit's AI half - all of it is testable and was
+tested on real audio.
+- `ops.py`: steps -> one ffmpeg filter chain: trim / cut a middle part / fade in-out / volume (dB or %) / normalize to a named
+  loudness (podcast -16, social / music -14, audiobook -19, broadcast -23 LUFS, or a number; loudnorm, the file's own sample
+  rate given back after loudnorm's internal 192 kHz) / speed 0.25-4 with pitch kept (chained atempo) / pitch +-12 semitones
+  (rubberband, else asetrate + atempo) / denoise light-medium-strong (highpass + afftdn) / enhance_voice (highpass, lowpass,
+  afftdn, compressor, presence EQ, loudnorm -16) / remove_silence / eq bass-treble / mono / stereo / sample_rate / reverse
+  (<= 10 min). Plus convert (6 formats, a video's sound pulled out), join (2-20, crossfade or gap), mix (voice + music looped
+  to the voice, quieter, ducked under speech by sidechaincompress, faded out), split (every N s or at times, <= 20 parts),
+  loudness report (LUFS, true peak, range, a plain verdict, clipping risk), waveform PNG. Times read as 90 / 1:30 / 1m30s.
+  Every output re-encoded with -map_metadata -1 (no artist / comment / phone tags travel). Limits: 200 MB, 2 h, 12 steps,
+  ffmpeg time limit scaled to length; a silent video / non-audio file is refused in plain words.
+- Tool `agent/audedit_tools.py`: guide | info | run | convert | join | mix | split | waveform; steps checked before any file is
+  touched; one bad file never sinks a batch; mix answers with the "only music you have the right to use" line.
+- NOT built, said plainly in the guide and prompt: AI vocal / instrument separation, cloning or impersonating a voice,
+  transcription (= kaan), new music or speech (= Create studio).
+- TESTS `test_audedit.py` 19, all on real ffmpeg with generated audio and video: lengths after trim / cut / speed / join /
+  mix / split MEASURED, normalize lands within 1.5 LU of -16 and keeps the sample rate, silence removal shortens the file,
+  metadata gone, a video's sound extracted, a silent video refused, every op and all 6 formats run, the tool reached from
+  real Hinglish / English asks. Registry pins 622 -> 623.
+- NOT VERIFIED live: the VPS's ffmpeg build is assumed to carry the same filters (afftdn, loudnorm, silenceremove,
+  sidechaincompress); rubberband falls back to asetrate when missing. The first real voice note cleaned on the VPS is the proof.
+
+## v0.770.0 LANGGRAPH G2 — one run per chat + Stop as state (11 Nov 2026; owner: "GO G2")
+
+Phase G2 of `docs/LANGGRAPH_TURN_PLAN.md` (bug classes 6 and 8), only when `chat_graph` is on (default OFF; with it off no ticket is made and the old path is unchanged).
+- NEW `agent/turnrun.py`: per-chat tickets in arrival order (taken when `run_turn` is entered, before any pre-lock work), the live-run registry, the stop flag + event, the inbox-owner check. A turn takes the old `_locks` chat lock only as the oldest ticket and gives the ticket back in a finally - so a later message can no longer overtake an earlier one (proved with the switch off: A with slow pre-lock work ran after B) and the short gap between two runs can no longer let the sweep start a queued row a second time.
+- A message during a live run: her own words during her own job still reach it via the steer queue (today's design); wakes / routines / goal rounds / anything else run right after, in order. `turn_inbox.run_owned` drops a second start of a row already owned here; the sweep skips chats with a live or queued ticket. The inbox id is trusted only from that row's own task (background tasks inherit context vars; the G1 leak closed).
+- Stop: `santosh.stop` (button, kaamstop, stop words) also sets the run's flag and an event so `_watched` cancels the in-flight model / tool call at once; every graph node checks the flag at its boundary (model node says the usual stopped line via new `_turn_halted`, mid-tool = the usual "Stopped by the owner..." result, ledger row failed/stopped); the inbox row stays 'stopped'; `stopped` rides every checkpoint and `_resumable_snap` refuses it. Messages queued behind a stopped run keep today's behaviour.
+- TESTS: NEW `test_g2_turngraph.py` 14; g1 9, g0 11, harness2 15, harness3 17, routines 3, v0657 14, v0664 10, v0649 11 same off and on.
+- NOT COVERED: order is by entry into run_turn, not inbox created_at; tickets are one process's memory (inbox + sweep stay the cross-restart net); Stop does not cut other awaits inside a node (finishes, then the boundary ends it); a slow head ticket makes later messages wait; old-path flaws left alone; nothing verified live. Next: G3 done-truth from the ledger.
+

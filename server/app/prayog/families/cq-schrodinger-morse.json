@@ -1,0 +1,35 @@
+{
+ "base": "cq-schrodinger-morse",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "v1",
+   "title": "Morse potential of H2: the v = 1 level",
+   "sample": "H2 ground state, omega_e = 4401.213 and omega_e x_e = 121.336 cm^-1",
+   "unknown": "the binding energy of v = 1",
+   "params": {
+    "kst": 1,
+    "xd1": 1.8
+   },
+   "source": {
+    "title": "NIST Chemistry WebBook, H2 ground state constants (Huber and Herzberg)",
+    "note": "omega_e = 4401.213 cm^-1, omega_e x_e = 121.336 cm^-1"
+   }
+  },
+  {
+   "key": "v2",
+   "title": "Morse potential of H2: the v = 2 level",
+   "sample": "H2 ground state, omega_e = 4401.213 and omega_e x_e = 121.336 cm^-1",
+   "unknown": "the binding energy of v = 2",
+   "params": {
+    "kst": 2,
+    "xd1": 1.8
+   },
+   "source": {
+    "title": "NIST Chemistry WebBook, H2 ground state constants (Huber and Herzberg)",
+    "note": "omega_e = 4401.213 cm^-1, omega_e x_e = 121.336 cm^-1"
+   }
+  }
+ ]
+}

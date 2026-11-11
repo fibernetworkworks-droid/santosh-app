@@ -1,0 +1,36 @@
+{
+ "base": "ph3-transit",
+ "rig": "ph3-transit",
+ "chapter": "Radio astronomy and astrophysics data",
+ "variants": [
+  {
+   "key": "kepler",
+   "title": "Exoplanet transit light curve (SIMULATED DATA, Kepler-like)",
+   "sample": "SIMULATED Kepler-like target: faint star, 29.4-minute cadence, 88 days",
+   "method": "box least-squares period search and folded light curve",
+   "unknown": "the planet radius ratio, the orbital period and the inclination",
+   "params": {
+    "P": 4.9,
+    "k": 0.05,
+    "b": 0.55,
+    "rho": 1100,
+    "u": 0.45,
+    "t0": 2.1,
+    "sig": 0.00025,
+    "cad": 0.020417,
+    "span": 88.0,
+    "seed": 63
+   },
+   "note": "SIMULATED DATA, not an observation of any real star. A Neptune-sized planet around a Sun-like star: a shallower dip, a longer period and a lower noise per point at the long cadence of the Kepler mission.",
+   "source": {
+    "title": "Borucki et al. (2010), Science 327, 977: Kepler long cadence 29.4 minutes (the cadence only; the star and planet are invented)"
+   },
+   "check": {
+    "params": {
+     "u": 0.0
+    }
+   },
+   "aim": "Analyse a SIMULATED Kepler-like light curve (29.4-minute cadence, 88 days): find the period by box least squares, fold, measure depth and duration, and deduce the radius ratio and inclination of an invented Neptune-sized planet."
+  }
+ ]
+}

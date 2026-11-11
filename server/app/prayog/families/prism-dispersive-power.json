@@ -1,0 +1,47 @@
+{
+  "base": "prism-dispersive-power",
+  "rig": "spectrometer-bench",
+  "chapter": "Geometrical optics and the spectrometer",
+  "variants": [
+    {
+      "key": "bk7",
+      "title": "Dispersive power of crown glass (N-BK7) from the mercury lines",
+      "sample": "Equilateral prism of SCHOTT N-BK7 crown glass",
+      "unknown": "the dispersive power and the Cauchy constants of the glass",
+      "params": {
+        "n0": 1.504518,
+        "nB": 4.2211e-15
+      },
+      "source": {
+        "title": "SCHOTT N-BK7 data sheet: nF = 1.52238, nC = 1.51432, Abbe number 64.17 (so 1/V = 0.0156); Cauchy constants fitted to the F and C lines"
+      }
+    },
+    {
+      "key": "f2",
+      "title": "Dispersive power of flint glass (F2) from the mercury lines",
+      "sample": "Equilateral prism of SCHOTT F2 flint glass",
+      "note": "Flint glass has roughly twice the dispersive power of crown glass, which is why an achromatic doublet pairs one of each.",
+      "unknown": "the dispersive power and the Cauchy constants of the glass",
+      "params": {
+        "n0": 1.594307,
+        "nB": 8.929e-15
+      },
+      "source": {
+        "title": "SCHOTT F2 data sheet: nF = 1.63208, nC = 1.61503, Abbe number 36.37 (so 1/V = 0.0275); Cauchy constants fitted to the F and C lines"
+      }
+    },
+    {
+      "key": "sf10",
+      "title": "Dispersive power of dense flint glass (N-SF10) from the mercury lines",
+      "sample": "Equilateral prism of SCHOTT N-SF10 dense flint glass",
+      "unknown": "the dispersive power and the Cauchy constants of the glass",
+      "params": {
+        "n0": 1.687891,
+        "nB": 1.42027e-14
+      },
+      "source": {
+        "title": "SCHOTT N-SF10 data sheet: nF = 1.74797, nC = 1.72085, Abbe number 28.53; Cauchy constants fitted to the F and C lines"
+      }
+    }
+  ]
+}

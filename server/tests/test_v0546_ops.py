@@ -276,4 +276,4 @@ def test_the_twin_is_never_alerted_about(droid_env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.766.0"
+    assert APP_VERSION == "0.770.0"

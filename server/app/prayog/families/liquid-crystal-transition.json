@@ -1,0 +1,31 @@
+{
+ "base": "liquid-crystal-transition",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "6cb",
+   "title": "Nematic-isotropic transition of 6CB",
+   "sample": "6CB (4-cyano-4'-hexylbiphenyl) cell",
+   "unknown": "clearing point of 6CB",
+   "params": {
+    "Tni": 302.15
+   },
+   "source": {
+    "title": "Liquid-crystal clearing points (nematic to isotropic): 5CB 35.0 degC, 6CB 29.0 degC, 7CB 42.8 degC (Merck / Sigma-Aldrich product data; Collings and Hird)"
+   }
+  },
+  {
+   "key": "7cb",
+   "title": "Nematic-isotropic transition of 7CB",
+   "sample": "7CB (4-cyano-4'-heptylbiphenyl) cell",
+   "unknown": "clearing point of 7CB",
+   "params": {
+    "Tni": 315.95
+   },
+   "source": {
+    "title": "Liquid-crystal clearing points (nematic to isotropic): 5CB 35.0 degC, 6CB 29.0 degC, 7CB 42.8 degC (Merck / Sigma-Aldrich product data; Collings and Hird)"
+   }
+  }
+ ],
+ "rig": "msc-sweep-bench"
+}

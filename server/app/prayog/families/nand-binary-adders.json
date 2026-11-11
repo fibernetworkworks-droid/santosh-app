@@ -1,0 +1,19 @@
+{"base": "nand-binary-adders", "rig": "digital-trainer",
+ "chapter": "Digital electronics, microprocessors and microcontrollers",
+ "variants": [
+   {"key": "half", "title": "Half adder from NAND gates", "method": "half adder",
+    "unknown": "the sum and carry truth table of the half adder", "params": {"fn": 1.0},
+    "sample": "2 x SN7400 quad 2-input NAND",
+    "note": "Sum = A xor B (four NAND gates), carry = A.B (two more).",
+    "source": {"title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, adders"}},
+   {"key": "full", "title": "Full adder from NAND gates", "method": "full adder",
+    "unknown": "the sum and carry truth table of the full adder", "params": {"fn": 2.0},
+    "sample": "3 x SN7400 quad 2-input NAND",
+    "note": "Two half adders in cascade with their carries combined, so eight rows instead of four.",
+    "source": {"title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, adders"}},
+   {"key": "fourbit", "title": "4-bit ripple-carry adder from full adders", "method": "4-bit adder",
+    "unknown": "the four-bit sum and the final carry", "params": {"fn": 5.0},
+    "sample": "Four full adders chained (3 x SN7400 per stage on the trainer)",
+    "note": "Each stage's carry out feeds the next stage's carry in, so the answer is only right once the carry has rippled all the way along.",
+    "source": {"title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, ripple-carry adder"}}
+ ]}

@@ -1007,6 +1007,36 @@ FAMILY = {"pendulum": "mech", "spring": "osc_wave", "incline": "mech", "stokes":
           "mirror": "optics", "lens": "optics", "prism": "optics", "slab": "optics", "induction": "em", "gauge": "mech"}
 
 
+
+# --------------------------------------------------------------------------------------------- kernel packs
+def _load_packs() -> list[str]:
+    """Merge every `app/prayog/packs/<name>.py` into KERNELS / FAMILY / TEXTBOOK / CALCS. A broken pack is
+    logged and skipped, never fatal: one bad pack must not take the whole lab down."""
+    import importlib
+    import logging
+    import pkgutil
+
+    from . import packs as _packs
+
+    log = logging.getLogger("santosh.prayog")
+    loaded = []
+    for mod in sorted(m.name for m in pkgutil.iter_modules(_packs.__path__)):
+        try:
+            m = importlib.import_module(f"{_packs.__name__}.{mod}")
+            for name, K in (getattr(m, "KERNELS", {}) or {}).items():
+                if name in KERNELS:
+                    raise ValueError(f"kernel '{name}' is already taken")
+                KERNELS[name] = K
+            FAMILY.update(getattr(m, "FAMILY", {}) or {})
+            TEXTBOOK.update(getattr(m, "TEXTBOOK", {}) or {})
+            CALCS.update(getattr(m, "CALCS", {}) or {})
+            loaded.append(mod)
+        except Exception as e:                       # noqa: BLE001 - one bad pack is skipped, not fatal
+            log.warning("prayog kernel pack %s left out: %s", mod, e)
+    return loaded
+
+
+
 def kernel_vars(name: str, cfg: dict | None) -> list[str]:
     K = KERNELS[name]
     return K.vars(cfg or {}) if hasattr(K, "vars") else list(K.VARS)
@@ -1147,3 +1177,6 @@ CALCS: dict[str, dict] = {
 
 def calc(name: str, rows: list[dict], p: dict) -> float:
     return float(CALCS[name]["fn"](rows, p))
+
+
+PACKS = _load_packs()          # last: every pack merges into the tables above

@@ -1,0 +1,40 @@
+{
+ "base": "msc-neutron-activation",
+ "rig": "gm-halflife-bench",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "silver",
+   "title": "Neutron-activated silver foil (silver-108)",
+   "sample": "Silver foil activated by thermal neutrons: Ag-109(n,gamma) and Ag-107(n,gamma)Ag-108",
+   "method": "decay counting of the 2.4 minute component",
+   "unknown": "the half-life of silver-108",
+   "params": {
+    "T": 142.92,
+    "tc": 20.0,
+    "N0": 150,
+    "seed": 68
+   },
+   "note": "Silver gives two activities; the slower one, 2.38 minutes, is counted once the faster 24.6 s one has died away.",
+   "source": {
+    "title": "NNDC / ENSDF: Ag-108 half-life 2.382 min (Ag-110 24.56 s)"
+   }
+  },
+  {
+   "key": "aluminium",
+   "title": "Neutron-activated aluminium foil (aluminium-28)",
+   "sample": "Aluminium foil activated by thermal neutrons: Al-27(n,gamma)Al-28",
+   "unknown": "the half-life of aluminium-28",
+   "params": {
+    "T": 134.7,
+    "tc": 20.0,
+    "N0": 150,
+    "seed": 69
+   },
+   "note": "Only one stable isotope of aluminium, so the foil gives one clean activity of 2.245 minutes and a 1.78 MeV gamma ray.",
+   "source": {
+    "title": "NNDC / ENSDF: Al-28 half-life 2.245 min, gamma 1778.99 keV"
+   }
+  }
+ ]
+}

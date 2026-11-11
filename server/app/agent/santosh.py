@@ -1248,8 +1248,14 @@ HALT_EVERY_S = 0.1           # how often a running step checks for Rokiye / Paus
 HALTS = {"stop": 0, "pause": 0}
 
 
+def _run_stopped(conversation_id: str) -> bool:
+    """G2: the chat's live graph run was stopped (always False on the old path: it never has a graph run)."""
+    from . import turnrun
+    return turnrun.stopped(conversation_id)
+
+
 def _halt_reason(conversation_id: str, ctx: Ctx, state: dict | None = None) -> str:
-    if conversation_id in _stopped:
+    if conversation_id in _stopped or _run_stopped(conversation_id):
         return "stop"
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor in ("owner", "goal") or actor.startswith("approved:") or state is None or state.get("paused0") is None:
@@ -1267,12 +1273,18 @@ async def _watched(work, conversation_id: str, ctx: Ctx, state: dict | None = No
     """Run one model call or tool call, but cancel it the moment she taps Rokiye (or pauses the job), instead of
     waiting for the step to finish by itself. Exceptions of the work itself pass through unchanged."""
     task = asyncio.ensure_future(work)
+    from . import turnrun
+    ev = turnrun.stop_event(conversation_id)   # G2: a graph run's Stop wakes this at once (None on the old path)
+    evw = asyncio.ensure_future(ev.wait()) if ev is not None else None
     try:
         while True:
-            done, _ = await asyncio.wait({task}, timeout=HALT_EVERY_S)
-            if done:
+            done, _ = await asyncio.wait({task} if evw is None else {task, evw}, timeout=HALT_EVERY_S,
+                                         return_when=asyncio.FIRST_COMPLETED)
+            if task in done:
                 return task.result()
             why = _halt_reason(conversation_id, ctx, state)
+            if not why and evw is not None and evw.done():
+                evw = None                     # never spin on a spent event
             if why:
                 task.cancel()
                 try:
@@ -1284,6 +1296,9 @@ async def _watched(work, conversation_id: str, ctx: Ctx, state: dict | None = No
     except asyncio.CancelledError:
         task.cancel()
         raise
+    finally:
+        if evw is not None and not evw.done():
+            evw.cancel()
 
 
 # wave 13: an error AFTER tools ran used to give only the generic line - she repeated the ask and a mail went twice
@@ -1924,6 +1939,11 @@ def small_prompt_on(settings, ctx) -> bool:
     return who in ("owner", "wake", "goal") or who.startswith("approved:")
 
 
+class ToolAmbiguous(Exception):
+    """G1 (graph path only): a non-read tool was started before a restart and its outcome is unknown - it is not run
+    again; the message is the tool_result the model sees."""
+
+
 class _Turn:
     """G0 (docs/LANGGRAPH_TURN_PLAN.md): the locals of one turn's think -> tools loop, held in one object so the SAME
     step functions serve the old while-loop (`_steps_inner`) and the LangGraph nodes (`agent/turngraph.py`) - the two
@@ -1936,6 +1956,7 @@ class _Turn:
     def __init__(self, **kw):
         self.blocks: list = []
         self.stop = ""
+        self.tool_runner = None   # G1: the graph path wraps each tool call in its ledger (None = _run_tool directly)
         for k in self._FIELDS:
             setattr(self, k, kw.get(k))
 
@@ -2189,17 +2210,7 @@ async def _turn_model(t: "_Turn"):
                                                              settings, tools, live, state.get("max_tokens")),
                                                      conversation_id, ctx, state)
         except _Halted as h:
-            state["halted"] = h.why
-            part = live.partial() if live is not None else ""
-            if part:               # v0.161 she stopped it mid-sentence: what she saw is kept, marked stopped
-                live.stopped = True
-                bus.publish(conversation_id, "message", {"role": "assistant", "text": part, "source": "agent",
-                                                         "stopped": True, **_tag(live)})
-                _save(conversation_id, "assistant", [{"type": "text", "text": part}], display=part)
-            final_text = gendered(HALTED_TEXT[h.why], gender)
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
-                                                     **_tag(live, bool(part))})
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            final_text = _turn_halted(t, h.why)
             return final_text
         finally:
             _ctx.CONV.reset(_conv_tok)
@@ -2209,6 +2220,24 @@ async def _turn_model(t: "_Turn"):
         t.final_text, t.ran_tools, t.brain, t.mcp_defs, t.mcp_route, t.tools = (final_text, ran_tools, brain, mcp_defs,
                                                                                mcp_route, tools)
         t.sys_fams, t.system = sys_fams, system
+
+
+def _turn_halted(t: "_Turn", why: str) -> str:
+    """Rokiye / Pause ended the model step: what she saw of it is kept (marked stopped), then the one honest line.
+    G2: the graph's model node says exactly this when a Stop is already set at its boundary (no model call made)."""
+    conversation_id, gender, live, state = t.conversation_id, t.gender, t.live, t.state
+    state["halted"] = why
+    part = live.partial() if live is not None else ""
+    if part:               # v0.161 she stopped it mid-sentence: what she saw is kept, marked stopped
+        live.stopped = True
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": part, "source": "agent",
+                                                 "stopped": True, **_tag(live)})
+        _save(conversation_id, "assistant", [{"type": "text", "text": part}], display=part)
+    final_text = gendered(HALTED_TEXT[why], gender)
+    bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
+                                             **_tag(live, bool(part))})
+    _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+    return final_text
 
 
 async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
@@ -2398,7 +2427,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                                                   "args": livework.args_brief(args_in)})   # v0.171 masked, display-safe
             _work(conversation_id, b["id"], shown, label, "start", args_in)
             try:
-                out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
+                out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route) if t.tool_runner is None
+                                     else t.tool_runner(b, args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
                 _fail = tool_failure(out)   # v0.665 {"ok": False} / status failed is a failure too, not only "error"
                 fine = not _fail
@@ -2454,6 +2484,14 @@ async def _turn_tools(t: "_Turn", blocks: list):
                 _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Roka gaya")
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                         "content": "Stopped by the owner while this step was running; it may have partly happened."}
+            except ToolAmbiguous as e:   # G1 graph resume: started before a restart, outcome unknown - never re-run
+                breaker.after(b["name"], False)
+                state["calls"].append({"tool": b["name"], "ok": False, "error": "outcome unknown after a restart",
+                                       "args": args_in, "key": _key(b["name"], args_in)})
+                bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"],
+                                                      "detail": "may already have run - check before retrying"})
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Outcome unknown after a restart")
+                return {"type": "tool_result", "tool_use_id": b["id"], "content": str(e), "is_error": True}
             except ToolError as e:
                 breaker.after(b["name"], False)
                 help_ = await pakka.on_failure(tenant_id, b["name"], str(e), state.get("request", ""), state)
@@ -2674,8 +2712,8 @@ def _turn_silent(t: "_Turn") -> str:
 def turn_loop_source() -> str:
     """The source of the whole turn loop in its old order (source-pin tests read this since the G0 split)."""
     import inspect as _insp
-    return "\n".join(_insp.getsource(f) for f in (_steps_inner, _turn_prepare, _turn_model, _turn_after_model,
-                                                      _turn_tools, _turn_capped, _turn_silent))
+    return "\n".join(_insp.getsource(f) for f in (_steps_inner, _turn_prepare, _turn_model, _turn_halted,
+                                                      _turn_after_model, _turn_tools, _turn_capped, _turn_silent))
 
 
 
@@ -2926,6 +2964,12 @@ def stop(conversation_id: str) -> None:
     and an open goal of this chat is marked stopped (v0.187: Rokiye stops the goal, not just the turn)."""
     _stopped.add(conversation_id)
     _STOP_AT[conversation_id] = time.time()   # v0.662 when: a Stop during a turn's preparation is no longer erased
+    if getattr(get_settings(), "chat_graph", False):   # G2: the live graph run is stopped AS STATE (flag + event + inbox)
+        try:
+            from . import turnrun
+            turnrun.stop(conversation_id)
+        except Exception:
+            log.exception("graph run stop failed")
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
                                           "label": "Roka gaya", "data": {}})
     try:
@@ -2958,6 +3002,15 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     hiccup, a bug in place / persona / memory code), the user always gets a reply and the typing dots always go
     away. (Owner: 'some tasks never replied'.) The real work is in _run_turn; CancelledError still passes through.
     v0.191 `save_user=False` = the inbox re-run of a crashed turn: her message row already exists, never double it."""
+    _gr, _gtok = None, None
+    if getattr(get_settings(), "chat_graph", False):
+        # G2 (docs/LANGGRAPH_TURN_PLAN.md): ONE RUN PER CHAT - a ticket in arrival order, before any pre-lock work
+        from . import turnrun
+        _iid, _res = turnrun.inbox_for(conversation_id)
+        _gr = turnrun.enter(conversation_id, _iid, actor or "owner", _res)
+        if _gr is None:
+            return ""                  # this inbox row is already running / queued in this process: never twice
+        _gtok = turnrun.CURRENT.set(_gr)
     try:
         return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
                                save_user)
@@ -2975,6 +3028,14 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         except Exception:
             log.exception("even the crash reply failed")
             return ""
+    finally:
+        if _gr is not None:
+            from . import turnrun
+            turnrun.leave(_gr)
+            try:
+                turnrun.CURRENT.reset(_gtok)
+            except ValueError:
+                turnrun.CURRENT.set(None)
 
 
 async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None = None, voice: bool = False,
@@ -3149,7 +3210,17 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if steer_on:   # v0.223 the instruction reaches the RUNNING job at its next step (agent.steer)
             from . import steer as _steer
             _steer_e = _steer.offer(conversation_id, user_text, client_id)
+    _gr = None
+    if getattr(settings, "chat_graph", False):   # G2: the chat lock is taken in ticket (arrival) order
+        from . import turnrun
+        _gr = turnrun.CURRENT.get()
+        if _gr is not None and _gr.conv == conversation_id:
+            await turnrun.wait_turn(_gr)
+        else:
+            _gr = None
     async with _holding(lock, conversation_id):
+        if _gr is not None:
+            turnrun.go_live(_gr)
         if _steer_e is not None:
             from . import steer as _steer
             if _steer.claim(conversation_id, _steer_e):

@@ -3,6 +3,7 @@
    code paths), checks each step's `ok`, then checks the final result against the lab's true value within `tol`.
    Usage: node tools/prayog_walk.js http://localhost:8791 [id ...]   (needs playwright; screenshots -> $SHOTS if set)
    With no ids it walks EVERY experiment (catalogue labs + their variants), paged from the server.
+   LOAD_MS=<ms> is the page-load budget (default 300000: a busy machine renders slowly, never fail a good lab on time alone).
    BASE=<lab id> walks one family; SHARD=i/n walks every n-th experiment starting at i (CI runs n shards in parallel). */
 const { chromium } = require('playwright');
 const base = process.argv[2] || 'http://localhost:8791';
@@ -28,7 +29,10 @@ const only = process.argv.slice(3);
     let out;
     try {
       await page.goto(`${base}/static/prayog/lab.html?id=${id}&test=1`);
-      await page.waitForFunction(() => window.__studio && window.__studio.steps, null, { timeout: 60000 });
+      // a rig that throws on start sets window.__studioError: fail at once with its message instead of waiting out the budget
+      await page.waitForFunction(() => window.__studioError || (window.__studio && window.__studio.steps), null, { timeout: +(process.env.LOAD_MS || 300000) });
+      const startErr = await page.evaluate(() => window.__studioError || '');
+      if (startErr) throw new Error('rig failed to start: ' + startErr);
       if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${id}-0.png` });
       out = await page.evaluate(async () => {
         const S = window.__studio, log = [];

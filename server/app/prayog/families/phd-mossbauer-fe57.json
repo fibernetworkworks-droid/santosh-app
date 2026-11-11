@@ -1,0 +1,23 @@
+{
+ "base": "phd-mossbauer-fe57",
+ "chapter": "Magnetic resonance and hyperfine methods",
+ "rig": "phd-resonance-bench",
+ "variants": [
+  {
+   "key": "hematite",
+   "title": "Moessbauer spectrum of hematite (simulated instrument, illustrative parameters)",
+   "sample": "Alpha-Fe2O3 hematite, B_hf about 51.7 T, isomer shift 0.37 mm/s, quadrupole shift -0.20 mm/s (unsourced / illustrative)",
+   "method": "constant-acceleration drive",
+   "unknown": "isomer shift, quadrupole splitting, hyperfine field",
+   "params": {
+    "Bhf": 51.7,
+    "delta": 0.00037,
+    "eps": -0.0002
+   },
+   "note": "A larger field spreads the sextet over almost 17 mm/s, and the shifts move its centre and make the pattern asymmetric. All three numbers are quoted from memory and unsourced.",
+   "source": {
+    "title": "Greenwood and Gibb, Moessbauer Spectroscopy (1971); hematite parameters quoted from memory (unsourced / illustrative)"
+   }
+  }
+ ]
+}

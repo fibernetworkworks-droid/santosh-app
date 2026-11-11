@@ -1,0 +1,34 @@
+{
+ "base": "cr-finite-element-intro",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "uniform-load",
+   "title": "Finite elements: -u'' = 1, a uniform load",
+   "sample": "-u'' = 1 on (0, 1)",
+   "unknown": "u(0.4)",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "The nodal values are exact; only the interpolation between nodes is not."
+  },
+  {
+   "key": "sine-load-midpoint",
+   "title": "Finite elements: sine load, solution at the midpoint",
+   "sample": "-u'' = pi^2 sin(pi x)",
+   "unknown": "u(0.5)",
+   "params": {
+    "xp": 0.5
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

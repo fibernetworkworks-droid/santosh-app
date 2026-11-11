@@ -1,0 +1,33 @@
+{
+ "base": "sn-meter-loading",
+ "rig": "sn-sensor-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "scope-1m",
+   "title": "Loading effect of an oscilloscope input (1 megohm)",
+   "sample": "Oscilloscope input, 1 megohm",
+   "unknown": "the input resistance of a 1 megohm scope input",
+   "params": {
+    "Rm": 1000000.0
+   },
+   "note": "A scope's direct input is 1 megohm in parallel with a few tens of picofarads; a 10x probe raises the resistance to 10 megohm. Only the resistance matters at DC. Typical class value, not one model.",
+   "source": {
+    "title": "Typical oscilloscope input: 1 megohm (Tektronix, XYZs of Oscilloscopes primer)"
+   }
+  },
+  {
+   "key": "analogue-100k",
+   "title": "Loading effect of an analogue multimeter (20 kilohm per volt)",
+   "sample": "Analogue multimeter on its 5 V range, 20 kilohm per volt",
+   "unknown": "the input resistance of an analogue meter on the 5 V range",
+   "params": {
+    "Rm": 100000.0
+   },
+   "note": "An analogue meter's input resistance is its ohms-per-volt sensitivity times the range: 20 kilohm per volt on 5 V is 100 kilohm. Typical class value, not one model.",
+   "source": {
+    "title": "Ohms-per-volt sensitivity of a moving-coil voltmeter: input resistance = sensitivity x range (standard instrumentation textbooks)"
+   }
+  }
+ ]
+}

@@ -1,0 +1,63 @@
+{
+ "base": "cq-planck-law",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "stefan-boltzmann-sun",
+   "title": "Stefan-Boltzmann law by integrating Planck's law (Sun)",
+   "sample": "Black body at the Sun's nominal 5772 K",
+   "unknown": "the total emitted power per unit area",
+   "params": {
+    "cas": 0,
+    "T": 5772
+   },
+   "source": {
+    "title": "IAU 2015 Resolution B3: nominal solar effective temperature 5772 K",
+    "note": "h, k, c from the SI Brochure (exact)"
+   }
+  },
+  {
+   "key": "rayleigh-jeans-sun",
+   "title": "Rayleigh-Jeans law against Planck's law at the peak (Sun)",
+   "sample": "Black body at the Sun's nominal 5772 K",
+   "unknown": "the ratio of the Rayleigh-Jeans law to Planck's law at the peak",
+   "params": {
+    "cas": 2,
+    "T": 5772
+   },
+   "source": {
+    "title": "IAU 2015 Resolution B3: nominal solar effective temperature 5772 K",
+    "note": "h, k, c from the SI Brochure (exact)"
+   }
+  },
+  {
+   "key": "wien-law-sun",
+   "title": "Wien's law against Planck's law at the peak (Sun)",
+   "sample": "Black body at the Sun's nominal 5772 K",
+   "unknown": "the ratio of Wien's law to Planck's law at the peak",
+   "params": {
+    "cas": 3,
+    "T": 5772
+   },
+   "source": {
+    "title": "IAU 2015 Resolution B3: nominal solar effective temperature 5772 K",
+    "note": "h, k, c from the SI Brochure (exact)"
+   }
+  },
+  {
+   "key": "cmb-peak",
+   "title": "Wien displacement law for the cosmic microwave background",
+   "sample": "Cosmic microwave background, 2.72548 K",
+   "unknown": "the peak wavelength",
+   "params": {
+    "cas": 1,
+    "T": 2.72548
+   },
+   "source": {
+    "title": "D. J. Fixsen, Astrophys. J. 707, 916 (2009): CMB temperature 2.72548 +/- 0.00057 K",
+    "note": "h, k, c from the SI Brochure (exact)"
+   }
+  }
+ ]
+}

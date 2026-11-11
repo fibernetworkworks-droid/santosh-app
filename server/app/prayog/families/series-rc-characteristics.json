@@ -1,0 +1,59 @@
+{
+ "base": "series-rc-characteristics",
+ "rig": "ac-bench",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "c001",
+   "title": "Series RC circuit: an unmarked 0.01 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.01 µF, with the resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 1e-08,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "c0022",
+   "title": "Series RC circuit: an unmarked 0.022 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.022 µF, with the resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 2.2e-08,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "c0047",
+   "title": "Series RC circuit: an unmarked 0.047 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.047 µF, with the resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 4.7e-08,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "c01",
+   "title": "Series RC circuit: an unmarked 0.1 µF capacitor",
+   "sample": "An unmarked capacitor, nominally 0.1 µF, with the resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 1e-07,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  }
+ ]
+}

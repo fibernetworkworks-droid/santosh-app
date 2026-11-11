@@ -1,0 +1,59 @@
+{
+ "base": "owen-bridge",
+ "rig": "ac-bridge",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "l10",
+   "title": "Owen's bridge: self-inductance of a 10 mH coil",
+   "sample": "An unmarked coil, nominally a 10 mH coil, of unknown winding resistance",
+   "unknown": "its self-inductance and its own resistance",
+   "params": {
+    "L1": 0.01,
+    "R1": 10.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "l22",
+   "title": "Owen's bridge: self-inductance of a 22 mH coil",
+   "sample": "An unmarked coil, nominally a 22 mH coil, of unknown winding resistance",
+   "unknown": "its self-inductance and its own resistance",
+   "params": {
+    "L1": 0.022,
+    "R1": 20.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "l47",
+   "title": "Owen's bridge: self-inductance of a 47 mH coil",
+   "sample": "An unmarked coil, nominally a 47 mH coil, of unknown winding resistance",
+   "unknown": "its self-inductance and its own resistance",
+   "params": {
+    "L1": 0.047,
+    "R1": 25.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  },
+  {
+   "key": "l100",
+   "title": "Owen's bridge: self-inductance of a 100 mH coil",
+   "sample": "An unmarked coil, nominally a 100 mH coil, of unknown winding resistance",
+   "unknown": "its self-inductance and its own resistance",
+   "params": {
+    "L1": 0.1,
+    "R1": 50.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
+   }
+  }
+ ]
+}

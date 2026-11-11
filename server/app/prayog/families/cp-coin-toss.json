@@ -1,0 +1,65 @@
+{
+ "base": "cp-coin-toss",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Coin tossing: {macro}",
+  "unknown": "the probability of the macrostate",
+  "axes": {
+   "macro": [
+    {
+     "key": "m10k5",
+     "label": "5 heads out of 10",
+     "sample": "m = 10 coins, k = 5 heads",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "mtoss": 10,
+      "khead": 5
+     }
+    },
+    {
+     "key": "m10k6",
+     "label": "6 heads out of 10",
+     "sample": "m = 10 coins, k = 6 heads",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "mtoss": 10,
+      "khead": 6
+     }
+    },
+    {
+     "key": "m4k2",
+     "label": "2 heads out of 4",
+     "sample": "m = 4 coins, k = 2 heads",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "mtoss": 4,
+      "khead": 2
+     }
+    },
+    {
+     "key": "m20k10",
+     "label": "10 heads out of 20",
+     "sample": "m = 20 coins, k = 10 heads",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "mtoss": 20,
+      "khead": 10
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

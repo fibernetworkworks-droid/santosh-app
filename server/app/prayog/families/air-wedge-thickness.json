@@ -1,0 +1,56 @@
+{
+  "base": "air-wedge-thickness",
+  "rig": "interference-bench",
+  "chapter": "Interference",
+  "variants": [
+    {
+      "key": "swg36",
+      "title": "Air wedge: thickness of an SWG 36 wire",
+      "sample": "Standard wire gauge 36 copper wire as the spacer",
+      "unknown": "the diameter of the wire",
+      "params": {
+        "ts": 0.000193
+      },
+      "source": {
+        "title": "BS 3737 standard wire gauge: SWG 36 = 0.0076 in = 0.1930 mm"
+      }
+    },
+    {
+      "key": "swg33",
+      "title": "Air wedge: thickness of an SWG 33 wire",
+      "sample": "Standard wire gauge 33 copper wire as the spacer",
+      "unknown": "the diameter of the wire",
+      "params": {
+        "ts": 0.000254
+      },
+      "source": {
+        "title": "BS 3737 standard wire gauge: SWG 33 = 0.0100 in = 0.2540 mm"
+      }
+    },
+    {
+      "key": "swg30",
+      "title": "Air wedge: thickness of an SWG 30 wire",
+      "sample": "Standard wire gauge 30 copper wire as the spacer",
+      "unknown": "the diameter of the wire",
+      "params": {
+        "ts": 0.000315
+      },
+      "source": {
+        "title": "BS 3737 standard wire gauge: SWG 30 = 0.0124 in = 0.3150 mm"
+      }
+    },
+    {
+      "key": "foil",
+      "title": "Air wedge: thickness of kitchen aluminium foil",
+      "sample": "A strip of household aluminium foil as the spacer",
+      "unknown": "the thickness of the foil",
+      "params": {
+        "ts": 1.6e-05
+      },
+      "note": "Household foil is far too thin for a micrometer to measure well, but the fringes give it easily.",
+      "source": {
+        "title": "Household aluminium foil, standard duty: nominal thickness 16 micron (Aluminium Foil Association / EN 546 range 0.0090-0.0200 mm)"
+      }
+    }
+  ]
+}

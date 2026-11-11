@@ -134,6 +134,24 @@ RESUME_NOTE = ("[Server restart: yeh kaam beech mein ruk gaya tha aur ab dobara 
                "karo, phir use saaf batao kya pehle ho chuka tha aur kya ab hua.]")
 
 
+# G1 (docs/LANGGRAPH_TURN_PLAN.md, chat_graph only): the inbox row a graph turn belongs to, so its checkpoint thread id
+# is stable ("<conversation>:<inbox id>") and the restart sweep can find it. Unlike CURRENT it is not cleared by
+# started(); the graph takes it once (take_graph_turn). GRAPH_RESUME = this run continues from that checkpoint.
+GRAPH_TURN: contextvars.ContextVar = contextvars.ContextVar("turn_inbox_graph_turn", default=None)
+GRAPH_RESUME: contextvars.ContextVar = contextvars.ContextVar("turn_inbox_graph_resume", default=False)
+
+
+def take_graph_turn(conversation_id: str) -> tuple[str | None, bool]:
+    """(inbox id, resume?) of THIS chat's turn, once; a nested turn in another chat (or a second loop) gets (None, False)."""
+    got = GRAPH_TURN.get()
+    if not got or got[1] != conversation_id:
+        return None, False
+    GRAPH_TURN.set(None)
+    resume = bool(GRAPH_RESUME.get())
+    GRAPH_RESUME.set(False)
+    return got[0], resume
+
+
 def started(conversation_id: str) -> None:
     """Called by the turn once it holds the lock and her words are in history: stamps THIS inbox row."""
     iid = CURRENT.get()
@@ -164,12 +182,26 @@ def mark(inbox_id: str | None, status: str) -> None:
 
 async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenant: str, voice: bool,
                     context: str = "", client_id: str = "", save_user: bool = True, place: str = "",
-                    actor: str = "") -> str:
+                    actor: str = "", graph_resume: bool = False) -> str:
     """The background task: the normal turn, wrapped in the inbox states. Used by the endpoint (fresh) and by
     the sweep's re-run (save_user decided there)."""
     from .agent import run_turn
+    _g2 = bool(getattr(get_settings(), "chat_graph", False))
+    if _g2 and inbox_id:
+        from .agent import turnrun
+        if turnrun.owns(inbox_id):
+            # G2 one run per chat: this row already has a turn running / queued in this process - never twice (its
+            # status belongs to that turn, so it is not touched here)
+            STATS["duplicate_run"] = STATS.get("duplicate_run", 0) + 1
+            log.warning("turn inbox: %s is already running here - the second start is dropped", inbox_id)
+            return ""
+    if _g2 and inbox_id:
+        from .agent import turnrun
+        turnrun.claim_inbox(inbox_id)
     mark(inbox_id, "running")
     tok = CURRENT.set(inbox_id)
+    gtok = GRAPH_TURN.set((inbox_id, conversation_id) if inbox_id else None)
+    rtok = GRAPH_RESUME.set(bool(graph_resume and inbox_id))
     try:
         kw = {k: v for k, v in (("context", context), ("client_id", client_id), ("place", place)) if v}
         if not save_user:
@@ -177,6 +209,13 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
         if actor:
             kw["actor"] = actor
         out = await run_turn(conversation_id, text, tenant, voice, **kw)
+        if _g2 and inbox_id:
+            from .agent import turnrun
+            if turnrun.was_stopped(inbox_id):
+                # G2 Stop as state: she stopped this run - it stays 'stopped' (the sweep never re-runs or resumes it)
+                mark(inbox_id, "stopped")
+                STATS["stopped"] = STATS.get("stopped", 0) + 1
+                return out
         mark(inbox_id, "done")
         STATS["done"] += 1
         return out
@@ -186,10 +225,18 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
         mark(inbox_id, "failed")
         raise
     finally:
+        if _g2 and inbox_id:
+            from .agent import turnrun
+            turnrun.release_inbox(inbox_id)
         try:
             CURRENT.reset(tok)
         except ValueError:
             CURRENT.set(None)
+        for var, t_, empty in ((GRAPH_TURN, gtok, None), (GRAPH_RESUME, rtok, False)):
+            try:
+                var.reset(t_)
+            except ValueError:
+                var.set(empty)
 
 
 def _final_since(conversation_id: str, since: datetime) -> bool:
@@ -284,7 +331,15 @@ async def sweep() -> int:
             conv = r["conversation_id"]
             if not conv or santosh.turn_running(conv):
                 continue                       # a live turn (maybe queued behind her previous one) owns this chat
+            if getattr(st, "chat_graph", False):
+                from .agent import turnrun
+                if turnrun.busy(conv) or turnrun.owns(r["id"]):
+                    # G2: a run of this chat is live or QUEUED here (its ticket is held while it waits for the lock,
+                    # and the lock is briefly free between two runs) - the row belongs to that run, never a second
+                    STATS["skipped_busy"] = STATS.get("skipped_busy", 0) + 1
+                    continue
             context = r["context"]
+            graph_resume = False
             began = r["started_at"] or _her_row_at(conv, r["created_at"], r["text"])
             if began is not None:
                 # v0.657 PAKKA KAAM: the turn REALLY began - answered only by a FINAL reply after that moment
@@ -293,8 +348,14 @@ async def sweep() -> int:
                     STATS["skipped_answered"] += 1
                     continue
                 save_user = False                 # her words are in history; it died mid-work -> resume, not restart
-                context = (RESUME_NOTE + "\n" + context).strip()
-                STATS["resumed"] = STATS.get("resumed", 0) + 1
+                if getattr(st, "chat_graph", False) and await _graph_resumable(st, conv, r["id"]):
+                    # G1: the graph checkpointed this turn - it CONTINUES from its last finished node (done tools are
+                    # not run again, the tool ledger decides an interrupted one); no RESUME_NOTE re-run
+                    graph_resume = True
+                    STATS["graph_resumed"] = STATS.get("graph_resumed", 0) + 1
+                else:
+                    context = (RESUME_NOTE + "\n" + context).strip()
+                    STATS["resumed"] = STATS.get("resumed", 0) + 1
             else:
                 # never got the lock (queued behind another turn, or died before it): the earlier turn's reply is NOT
                 # this one's answer, so it runs now
@@ -313,18 +374,36 @@ async def sweep() -> int:
                         r["id"], conv, r["tries"] + 1, save_user)
             t = asyncio.ensure_future(run_owned(r["id"], conv, r["text"], r["tenant_id"], r["voice"],
                                                 context=context, client_id=r["client_id"],
-                                                save_user=save_user, place=r["place"], actor=r["actor"]))
+                                                save_user=save_user, place=r["place"], actor=r["actor"],
+                                                **({"graph_resume": True} if graph_resume else {})))
             _BG.add(t)
             t.add_done_callback(_BG.discard)
         if out == 0:   # light housekeeping on the quiet pass
+            gone: list[str] = []
             with session() as s:
                 for r in s.scalars(select(TurnInbox).where(
                         TurnInbox.status.in_(("done", "failed", "skipped", "stopped")),
                         TurnInbox.updated_at < now() - timedelta(days=1)).limit(200)).all():
+                    gone.append(f"{r.conversation_id}:{r.id}")
                     s.delete(r)
+            if gone:   # G1: a graph turn that never reached END (timed out / failed) leaves its checkpoints - gone with the row
+                try:
+                    from .agent import turngraph
+                    await turngraph.forget_threads(st, gone)
+                except Exception:
+                    log.debug("graph checkpoint housekeeping failed", exc_info=True)
     except Exception:
         log.exception("turn inbox sweep failed")
     return out
+
+
+async def _graph_resumable(st, conversation_id: str, inbox_id: str) -> bool:
+    try:
+        from .agent import turngraph
+        return await turngraph.resumable(st, conversation_id, inbox_id)
+    except Exception:
+        log.exception("graph checkpoint check failed (the old re-run answers)")
+        return False
 
 
 def pending(tenant: str) -> list[dict[str, Any]]:

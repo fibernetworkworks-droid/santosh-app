@@ -1,0 +1,163 @@
+{
+ "base": "cr-schrodinger-numerical",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "oscillator-level-1",
+   "title": "Harmonic oscillator, first excited state, by shooting",
+   "sample": "level 1 (one node)",
+   "unknown": "E1 = 3/2",
+   "params": {
+    "lev": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "oscillator-level-2",
+   "title": "Harmonic oscillator, second excited state, by shooting",
+   "sample": "level 2 (two nodes)",
+   "unknown": "E2 = 5/2",
+   "params": {
+    "lev": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "oscillator-split-step",
+   "title": "Harmonic oscillator ground state by split-step Fourier",
+   "sample": "imaginary-time evolution",
+   "unknown": "E0 = 1/2",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 64
+    }
+   }
+  },
+  {
+   "key": "oscillator-split-step-1",
+   "title": "Harmonic oscillator first excited state by split-step Fourier",
+   "sample": "imaginary time with projection",
+   "unknown": "E1 = 3/2",
+   "params": {
+    "method": 1,
+    "lev": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 64
+    }
+   }
+  },
+  {
+   "key": "well-ground",
+   "title": "Infinite square well, ground state",
+   "sample": "width 1, level 1",
+   "unknown": "E1 = pi^2/2",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 64
+    }
+   }
+  },
+  {
+   "key": "well-third",
+   "title": "Infinite square well, third level",
+   "sample": "width 1, level 3",
+   "unknown": "E3 = 9 pi^2/2",
+   "params": {
+    "cas": 1,
+    "lev": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 64
+    }
+   }
+  },
+  {
+   "key": "hydrogen-1s",
+   "title": "Hydrogen atom radial equation, 1s",
+   "sample": "n = 1, l = 0",
+   "unknown": "E = -1/2 hartree",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Hydrogen levels E = -1/(2 n^2) hartree (atomic units)",
+    "note": "no conversion to eV is used"
+   },
+   "check": {
+    "params": {
+     "n": 1600
+    }
+   }
+  },
+  {
+   "key": "hydrogen-2s",
+   "title": "Hydrogen atom radial equation, 2s",
+   "sample": "n = 2, l = 0",
+   "unknown": "E = -1/8 hartree",
+   "params": {
+    "cas": 2,
+    "lev": 1
+   },
+   "source": {
+    "title": "Hydrogen levels E = -1/(2 n^2) hartree (atomic units)",
+    "note": "no conversion to eV is used"
+   },
+   "check": {
+    "params": {
+     "n": 1600
+    }
+   }
+  },
+  {
+   "key": "hydrogen-2p",
+   "title": "Hydrogen atom radial equation, 2p",
+   "sample": "n = 2, l = 1",
+   "unknown": "E = -1/8 hartree",
+   "params": {
+    "cas": 2,
+    "ell": 1
+   },
+   "source": {
+    "title": "Hydrogen levels E = -1/(2 n^2) hartree (atomic units)",
+    "note": "no conversion to eV is used"
+   },
+   "check": {
+    "params": {
+     "n": 1600
+    }
+   }
+  }
+ ]
+}

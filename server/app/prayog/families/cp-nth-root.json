@@ -1,0 +1,99 @@
+{
+ "base": "cp-nth-root",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "The {rt} {method}",
+  "unknown": "the n-th root of the number",
+  "axes": {
+   "rt": [
+    {
+     "key": "sq2",
+     "label": "square root of 2",
+     "sample": "Square root of 2",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "a": 2,
+      "m": 2,
+      "xa": 1.0,
+      "xb": 2.0,
+      "x0": 1.0,
+      "x1": 2.0
+     }
+    },
+    {
+     "key": "cb7",
+     "label": "cube root of 7",
+     "sample": "Cube root of 7",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "a": 7,
+      "m": 3,
+      "xa": 1.0,
+      "xb": 3.0,
+      "x0": 2.0,
+      "x1": 3.0
+     }
+    },
+    {
+     "key": "fifth100",
+     "label": "fifth root of 100",
+     "sample": "Fifth root of 100",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "a": 100,
+      "m": 5,
+      "xa": 2.0,
+      "xb": 3.0,
+      "x0": 2.5,
+      "x1": 3.0
+     }
+    },
+    {
+     "key": "cbhalf",
+     "label": "cube root of 0.5",
+     "sample": "Cube root of 0.5",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "a": 0.5,
+      "m": 3,
+      "xa": 0.4,
+      "xb": 1.0,
+      "x0": 0.8,
+      "x1": 1.0
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "newton",
+     "label": "by Newton-Raphson",
+     "method": "Newton-Raphson from a starting guess",
+     "params": {
+      "method": 1
+     }
+    },
+    {
+     "key": "bisect",
+     "label": "by bisection",
+     "method": "Bisection on a sign-changing bracket",
+     "params": {
+      "method": 0
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

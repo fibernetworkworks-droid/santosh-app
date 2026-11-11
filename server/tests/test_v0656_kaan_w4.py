@@ -209,7 +209,7 @@ def test_actor_lanes_export_reads_to_gyaan_writes(w4_env):
 
 
 def test_actions_grew_registry_did_not():
-    assert len(tools.TOOLS) == 621, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
+    assert len(tools.TOOLS) == 623, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
     assert _ACTIONS[-2:] == ["export", "to_gyaan"] and len(_ACTIONS) == 18
     spec = next(t for t in tools.TOOLS if t["name"] == "kaan")
     assert spec["input_schema"]["properties"]["action"]["enum"] == _ACTIONS
@@ -236,4 +236,4 @@ def test_exports_purity_and_gyaan_laziness():
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.766.0"
+    assert APP_VERSION == "0.770.0"

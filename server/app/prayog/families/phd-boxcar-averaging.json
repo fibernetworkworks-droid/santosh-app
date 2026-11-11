@@ -1,0 +1,24 @@
+{
+ "base": "phd-boxcar-averaging",
+ "rig": "phd-noise-bench",
+ "chapter": "Signal recovery and noise",
+ "variants": [
+  {
+   "key": "long-lived-phosphor",
+   "title": "Boxcar averaging of a long-lived fluorescence decay",
+   "sample": "Long-lived fluorescence (a ruby-like phosphor), decay of a few milliseconds",
+   "unknown": "decay time and SNR against number of averages",
+   "note": "A slow fluorescence decay of 3 ms (unsourced, illustrative: the lab's own number, not a looked-up lifetime) is sampled with a 0.75 ms gate; the noise per gate is the same as in the base experiment.",
+   "source": {
+    "title": "Unsourced / illustrative",
+    "note": "the 3 ms lifetime is a typical order of magnitude for a long-lived phosphor, not a looked-up value"
+   },
+   "params": {
+    "tau": 0.003,
+    "w": 0.00075,
+    "vn": 0.0116,
+    "seed": 37.0
+   }
+  }
+ ]
+}

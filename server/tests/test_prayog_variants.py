@@ -144,3 +144,59 @@ def test_shipped_syllabus_files_are_valid():
                 if st.get("built"):
                     assert S.get(st["built"]), st["built"]
     count.totals(docs)
+
+
+def test_no_kernel_pack_or_lab_pack_is_silently_left_out():
+    """A kernel-name collision makes the loader skip a WHOLE pack with only a log line, so one worker's pack can
+    silently erase another's. Every pack module on disk must have loaded, and every lab builder must have produced a lab."""
+    import pkgutil
+
+    from app.prayog import kernels as KN, labs as L, packs as P, service as S
+
+    on_disk = sorted(m.name for m in pkgutil.iter_modules(P.__path__))
+    assert sorted(KN.PACKS) == on_disk, f"kernel packs left out: {sorted(set(on_disk) - set(KN.PACKS))}"
+    S.labs.cache_clear()
+    built = {b.__name__ for b in S._all_builders()}
+    served = len(S.labs())
+    assert served == len(S._all_builders()), f"{len(S._all_builders()) - served} lab builder(s) produced no lab (checker refused)"
+    assert built
+    lab_mods = sorted(m.name for m in pkgutil.iter_modules(L.__path__))
+    assert lab_mods                                   # and the lab packs themselves all imported (a bad one is only logged)
+    import importlib
+    for m in lab_mods:
+        importlib.import_module(f"{L.__name__}.{m}")
+
+
+def test_a_variant_may_override_cfg_whole_blocks(tmp_path, monkeypatch):
+    """A universal bridge's R, L and C settings balance on different measurement blocks: cfg is overridable, and a
+    block (measure) is replaced whole rather than half-merged."""
+    _fam(tmp_path, monkeypatch, {"base": "ohms-law", "variants": [
+        {"key": "x", "title": "Ohm's law with another measure", "cfg": {"measure": {"mode": "value", "note": "v"}}}]})
+    base = S.labs()["ohms-law"]
+    fam = specs.families()["ohms-law"]
+    lab = specs.apply(base, fam, fam["variants"][0])
+    assert lab["cfg"]["measure"] == {"mode": "value", "note": "v"}
+    assert lab["cfg"]["net"] == base["cfg"]["net"]              # the netlist the variant did not name is kept
+    assert "measure" not in (base.get("cfg") or {}) or base["cfg"]["measure"] != lab["cfg"]["measure"]
+
+
+def test_no_revoked_row_counts_and_no_claim_points_at_a_lab_that_does_not_open():
+    """A syllabus row dropped as a partial match must stay uncounted for good, and coverage must never lean on a lab
+    that fails to open (the meter's whole point is that 'built' means the experiment really runs)."""
+    revoked = json.loads((Path(count.__file__).resolve().parent / "syllabus" / "revoked.json").read_text())["revoked"]
+    assert revoked and all(reason.strip() for reason in revoked.values())          # every revocation says WHY
+    cov = count.coverage()
+    assert cov["broken"] == [], f"claims whose lab does not open: {cov['broken'][:5]}"
+    for d in count.load():
+        for ch in d["chapters"]:
+            for st in ch["setups"]:
+                assert not (st["id"] in revoked and st.get("built")), f"revoked row counted: {st['id']}"
+
+
+def test_a_rig_that_throws_on_start_stops_its_render_loop_and_the_walker_fails_fast():
+    """A rig that threw during start used to leave the render loop running on an empty scene (a browser pinned at 360 %
+    CPU) while the walker waited out its whole budget. start() now marks the studio dead and reports the error."""
+    js = (STATIC / "studio" / "studio.js").read_text()
+    assert "S.dead = true" in js and "if (S.dead) return;" in js and "window.__studioError" in js
+    walk = (Path(__file__).resolve().parent.parent / "tools" / "prayog_walk.js").read_text()
+    assert "window.__studioError" in walk and "rig failed to start" in walk

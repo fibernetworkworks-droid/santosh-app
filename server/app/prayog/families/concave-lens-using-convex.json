@@ -1,0 +1,47 @@
+{
+ "base": "concave-lens-using-convex",
+ "rig": "convex-mirror-using-lens",
+ "chapter": "Ray Optics and Optical Instruments",
+ "variants": [
+  {
+   "key": "crown",
+   "title": "Concave lens of crown glass (N-BK7), using a convex lens",
+   "sample": "Biconcave crown glass (N-BK7) lens, n = 1.5168, both faces R = 30 cm",
+   "unknown": "the focal length f of the concave lens",
+   "params": {
+    "n2": 1.5168,
+    "R2": 0.3
+   },
+   "source": {
+    "title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"
+   }
+  },
+  {
+   "key": "flint",
+   "title": "Concave lens of flint glass (F2), using a convex lens",
+   "sample": "Biconcave flint glass (F2) lens, n = 1.62004, both faces R = 30 cm",
+   "unknown": "the focal length f of the concave lens",
+   "params": {
+    "n2": 1.62004,
+    "R2": 0.3
+   },
+   "source": {
+    "title": "SCHOTT optical glass data sheet F2: nd = 1.62004 (587.6 nm); refractiveindex.info"
+   },
+   "note": "Flint bends light more than crown glass, so the same faces give a shorter focal length."
+  },
+  {
+   "key": "acrylic",
+   "title": "Concave lens of acrylic (PMMA), using a convex lens",
+   "sample": "Biconcave acrylic (PMMA) lens, n = 1.4905, both faces R = 30 cm",
+   "unknown": "the focal length f of the concave lens",
+   "params": {
+    "n2": 1.4905,
+    "R2": 0.3
+   },
+   "source": {
+    "title": "PMMA refractive index 1.4905 at 589 nm (refractiveindex.info, Szczurowski data)"
+   }
+  }
+ ]
+}

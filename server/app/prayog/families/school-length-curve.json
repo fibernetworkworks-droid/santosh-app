@@ -1,0 +1,11 @@
+{"base": "school-length-curve", "rig": "school-measuring-bench", "chapter": "Measurement",
+ "variants": [
+   {"key": "short-line", "title": "Length of a short curved line with a thread",
+    "sample": "An ink line on the card (its length is unknown)", "method": "thread laid along the line, then the metre scale",
+    "unknown": "the length of the curved line", "params": {"L": 0.32},
+    "source": {"title": "Science, Textbook for Class VI, NCERT - Motion and Measurement of Distances (measuring a curved line with a thread)"}},
+   {"key": "long-line", "title": "Length of a long curved line with a thread",
+    "sample": "A longer ink line on the card (its length is unknown)", "method": "thread laid along the line, then the metre scale",
+    "unknown": "the length of the curved line", "params": {"L": 0.58},
+    "source": {"title": "Science, Textbook for Class VI, NCERT - Motion and Measurement of Distances"}}
+ ]}

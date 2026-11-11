@@ -1,0 +1,46 @@
+{
+ "base": "msc-wien-bridge",
+ "rig": "msc-signal-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "r10k-c22n",
+   "title": "Wien-bridge oscillator: R = 10 kΩ, C = 22 nF",
+   "sample": "Equal R = 10 kΩ and C = 22 nF in both arms",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "R": 10000.0,
+    "C": 2.2e-08
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "r22k-c4n7",
+   "title": "Wien-bridge oscillator: R = 22 kΩ, C = 4.7 nF",
+   "sample": "Equal R = 22 kΩ and C = 4.7 nF in both arms",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "R": 22000.0,
+    "C": 4.7e-09
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "r4k7-c1n",
+   "title": "Wien-bridge oscillator at tens of kilohertz: R = 4.7 kΩ, C = 1 nF",
+   "sample": "Equal R = 4.7 kΩ and C = 1 nF in both arms",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "R": 4700.0,
+    "C": 1e-09
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

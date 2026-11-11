@@ -1,0 +1,31 @@
+{
+ "base": "inductor-impedance",
+ "chapter": "Alternating Current",
+ "variants": [
+  {
+   "key": "hz50",
+   "title": "Impedance of a coil on 50 Hz mains",
+   "sample": "A coil on the 50 Hz supply (India, Europe)",
+   "unknown": "the inductance of the coil",
+   "params": {
+    "f": 50.0
+   },
+   "source": {
+    "title": "Standard mains frequencies 50 Hz and 60 Hz (IEC 60038 standard voltages and frequencies)"
+   }
+  },
+  {
+   "key": "hz60",
+   "title": "Impedance of a coil on 60 Hz mains",
+   "sample": "A coil on the 60 Hz supply (North America)",
+   "unknown": "the inductance of the coil",
+   "params": {
+    "f": 60.0
+   },
+   "note": "The reactance 2 pi f L is 20 % larger at 60 Hz, so the current is a little smaller.",
+   "source": {
+    "title": "Standard mains frequencies 50 Hz and 60 Hz (IEC 60038 standard voltages and frequencies)"
+   }
+  }
+ ]
+}

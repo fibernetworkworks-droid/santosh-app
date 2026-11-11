@@ -1,0 +1,49 @@
+{
+ "base": "phd-josephson",
+ "chapter": "Low temperature and superconductivity",
+ "rig": "phd-transport-bench",
+ "variants": [
+  {
+   "key": "drive-14ghz",
+   "title": "Josephson I-V and Shapiro steps with a 14 GHz drive (simulated instrument)",
+   "sample": "Shunted Nb-type tunnel junction (simulated)",
+   "method": "I-V with microwaves at 14 GHz",
+   "unknown": "Shapiro step voltage and 2e/h",
+   "params": {
+    "f": 14000000000.0
+   },
+   "note": "A lower drive frequency puts the first step at 29 uV (V = hf/2e).",
+   "source": {
+    "title": "RSJ model: Stewart (1968), McCumber (1968); Ambegaokar and Baratoff, Phys. Rev. Lett. 10, 486 (1963); Shapiro, Phys. Rev. Lett. 11, 80 (1963)"
+   }
+  },
+  {
+   "key": "drive-20ghz",
+   "title": "Josephson I-V and Shapiro steps with a 20 GHz drive (simulated instrument)",
+   "sample": "Shunted Nb-type tunnel junction (simulated)",
+   "method": "I-V with microwaves at 20 GHz",
+   "unknown": "Shapiro step voltage and 2e/h",
+   "params": {
+    "f": 20000000000.0
+   },
+   "note": "A higher drive frequency puts the first step at 41 uV and widens the gap between steps.",
+   "source": {
+    "title": "RSJ model: Stewart (1968), McCumber (1968); Ambegaokar and Baratoff, Phys. Rev. Lett. 10, 486 (1963); Shapiro, Phys. Rev. Lett. 11, 80 (1963)"
+   }
+  },
+  {
+   "key": "junction-2k",
+   "title": "Josephson I-V and Shapiro steps, junction at 2 K (simulated)",
+   "sample": "Shunted Nb-type tunnel junction at 2 K (simulated)",
+   "method": "I-V with microwaves at 16 GHz",
+   "unknown": "Ic and the Shapiro step voltage",
+   "params": {
+    "Tb": 2.0
+   },
+   "note": "At 2 K the Ambegaokar-Baratoff factor tanh(Delta/2kT) is nearly 1, so Ic is about 4 % higher than at 4.2 K.",
+   "source": {
+    "title": "RSJ model: Stewart (1968), McCumber (1968); Ambegaokar and Baratoff, Phys. Rev. Lett. 10, 486 (1963); Shapiro, Phys. Rev. Lett. 11, 80 (1963)"
+   }
+  }
+ ]
+}

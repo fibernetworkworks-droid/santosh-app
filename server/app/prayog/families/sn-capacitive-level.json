@@ -1,0 +1,21 @@
+{
+ "base": "sn-capacitive-level",
+ "rig": "sn-sensor-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "oil",
+   "title": "Capacitive level probe in transformer oil",
+   "sample": "Mineral transformer oil, relative permittivity about 2.2",
+   "unknown": "the level of oil in an unknown tank",
+   "params": {
+    "er": 2.2
+   },
+   "note": "Oil has a low permittivity, so the capacitance changes only a little with level and the sensitivity is about 70 times smaller than in water. The value 2.2 is a typical figure for mineral insulating oil, not a looked-up one (unsourced / illustrative).",
+   "source": {
+    "title": "Relative permittivity of mineral insulating oil about 2.2 (typical, not looked up)",
+    "note": "Unsourced / illustrative lab setting"
+   }
+  }
+ ]
+}

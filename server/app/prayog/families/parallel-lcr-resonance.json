@@ -1,0 +1,67 @@
+{
+ "base": "parallel-lcr-resonance",
+ "rig": "ac-bench",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "l10",
+   "title": "Parallel LCR anti-resonance: a 10 mH coil",
+   "sample": "Decade inductance box set to an unknown step, coil resistance 10 Ω",
+   "unknown": "the anti-resonant frequency and the dynamic impedance",
+   "params": {
+    "L": 0.01,
+    "C": 1e-07,
+    "R": 10.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "l22",
+   "title": "Parallel LCR anti-resonance: a 22 mH coil",
+   "sample": "Decade inductance box set to an unknown step, coil resistance 15 Ω",
+   "unknown": "the anti-resonant frequency and the dynamic impedance",
+   "params": {
+    "L": 0.022,
+    "C": 1e-07,
+    "R": 15.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "l47",
+   "title": "Parallel LCR anti-resonance: a 47 mH coil",
+   "sample": "Decade inductance box set to an unknown step, coil resistance 22 Ω",
+   "unknown": "the anti-resonant frequency and the dynamic impedance",
+   "params": {
+    "L": 0.047,
+    "C": 1e-07,
+    "R": 22.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "l100",
+   "title": "Parallel LCR anti-resonance: a 100 mH coil",
+   "sample": "Decade inductance box set to an unknown step, coil resistance 33 Ω",
+   "unknown": "the anti-resonant frequency and the dynamic impedance",
+   "params": {
+    "L": 0.1,
+    "C": 1e-07,
+    "R": 33.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  }
+ ]
+}

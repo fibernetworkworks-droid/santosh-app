@@ -1,0 +1,24 @@
+{
+  "base": "jaeger-bubble",
+  "chapter": "Properties of matter: elasticity, viscosity, surface tension",
+  "variants": [
+    {"key": "water20", "title": "Jaeger's method: surface tension of water at 20 °C",
+     "sample": "Water at 20 °C", "method": "Jaeger's maximum bubble pressure",
+     "unknown": "the surface tension of water at 20 °C",
+     "params": {"Tst": 0.07275, "rhol": 998.2, "rhom": 998.2},
+     "note": "Clean water against air at 20 °C: surface tension 72.75 mN/m, density 998.2 kg/m3.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, Surface tension of water against air 0-100 °C, and Density of water"}},
+    {"key": "water40", "title": "Jaeger's method: surface tension of water at 40 °C",
+     "sample": "Water at 40 °C", "method": "Jaeger's maximum bubble pressure",
+     "unknown": "the surface tension of water at 40 °C",
+     "params": {"Tst": 0.06956, "rhol": 992.2, "rhom": 998.2},
+     "note": "Surface tension falls steadily with temperature: 69.56 mN/m at 40 °C against 72.75 mN/m at 20 °C.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, Surface tension of water against air 0-100 °C, and Density of water"}},
+    {"key": "water60", "title": "Jaeger's method: surface tension of water at 60 °C",
+     "sample": "Water at 60 °C", "method": "Jaeger's maximum bubble pressure",
+     "unknown": "the surface tension of water at 60 °C",
+     "params": {"Tst": 0.06618, "rhol": 983.2, "rhom": 998.2},
+     "note": "At 60 °C water gives 66.18 mN/m. The manometer liquid stays at room temperature, so its density is unchanged.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics, Surface tension of water against air 0-100 °C, and Density of water"}}
+  ]
+}

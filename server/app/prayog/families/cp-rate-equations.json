@@ -1,0 +1,69 @@
+{
+ "base": "cp-rate-equations",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Autocatalysis: {rate} {method}",
+  "unknown": "the concentration of X at the end of the run",
+  "axes": {
+   "rate": [
+    {
+     "key": "k12",
+     "label": "k = 1.2 per unit time",
+     "sample": "A + X -> 2X with k = 1.2, a0 = 1 mol/L, x0 = 0.02",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "y0": 0.02,
+      "rr": 1.2,
+      "Kk": 1.0,
+      "tmax": 10.0
+     }
+    },
+    {
+     "key": "k04",
+     "label": "k = 0.4 per unit time",
+     "sample": "A + X -> 2X with k = 0.4, a0 = 1 mol/L, x0 = 0.05",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "y0": 0.05,
+      "rr": 0.4,
+      "Kk": 1.0,
+      "tmax": 30.0
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "rk2",
+     "label": "by RK2 (Heun)",
+     "method": "Runge-Kutta 2 (Heun), second order",
+     "params": {
+      "method": 1
+     }
+    },
+    {
+     "key": "rk4",
+     "label": "by RK4",
+     "method": "Runge-Kutta 4, fourth order",
+     "params": {
+      "method": 2
+     }
+    },
+    {
+     "key": "euler",
+     "label": "by Euler's method",
+     "method": "Euler, first order",
+     "params": {
+      "method": 0
+     }
+    }
+   ]
+  }
+ },
+ "rig": "comp-workstation"
+}

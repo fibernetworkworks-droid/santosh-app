@@ -1,0 +1,34 @@
+{
+ "base": "msc-passive-filters",
+ "rig": "msc-signal-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "high-pass",
+   "title": "Passive RC filters with Bode plots: high-pass",
+   "sample": "RC high-pass, R = 10 kΩ, C = 10 nF",
+   "method": "high pass",
+   "unknown": "the cut-off frequency and roll-off of the RC high-pass",
+   "params": {
+    "kind": 5
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "low-pass-4k7",
+   "title": "Passive RC filters with Bode plots: low-pass, R = 4.7 kΩ, C = 100 nF",
+   "sample": "RC low-pass, R = 4.7 kΩ, C = 100 nF",
+   "method": "low pass",
+   "unknown": "the cut-off frequency of the RC low-pass",
+   "params": {
+    "R": 4700.0,
+    "C": 1e-07
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

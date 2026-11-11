@@ -1,0 +1,33 @@
+{
+  "base": "capillary-rise",
+  "chapter": "Mechanical Properties of Fluids",
+  "grid": {
+    "title": "Capillary rise: surface tension of {liquid} ({bore})",
+    "unknown": "the surface tension of the liquid",
+    "method": "Capillary rise read with a travelling microscope",
+    "axes": {
+      "liquid": [
+        {"key": "water20", "label": "water at 20 °C", "sample": "Clean water at 20 °C",
+         "params": {"T": 0.07275, "rho": 998.2},
+         "note": "Clean water against air at 20 °C has a surface tension of 72.75 mN/m and a density of 998.2 kg/m3.",
+         "source": {"title": "CRC Handbook of Chemistry and Physics, Surface tension of common liquids and Density of water"}},
+        {"key": "water50", "label": "water at 50 °C", "sample": "Water at 50 °C",
+         "params": {"T": 0.06791, "rho": 988.0},
+         "note": "Surface tension falls as a liquid is warmed: water gives 67.91 mN/m at 50 °C against 72.75 mN/m at 20 °C.",
+         "source": {"title": "CRC Handbook of Chemistry and Physics, Surface tension of water against air, 0-100 °C"}},
+        {"key": "glycerol", "label": "glycerol", "sample": "Glycerol at 20 °C",
+         "params": {"T": 0.0634, "rho": 1261.0},
+         "note": "Glycerol: surface tension 63.4 mN/m and density 1261 kg/m3 at 20 °C. It is far more viscous, so the column takes longer to settle.",
+         "source": {"title": "CRC Handbook of Chemistry and Physics, Surface tension and density of glycerol at 20 °C"}},
+        {"key": "ethanol", "label": "ethyl alcohol", "sample": "Ethyl alcohol at 20 °C",
+         "params": {"T": 0.02239, "rho": 789.0},
+         "note": "Ethyl alcohol wets glass well but has less than a third of water's surface tension: 22.39 mN/m at 20 °C.",
+         "source": {"title": "CRC Handbook of Chemistry and Physics, Surface tension of common liquids: ethanol at 20 °C"}}
+      ],
+      "bore": [
+        {"key": "r20", "label": "bore radius 0.20 mm", "params": {"r": 0.0002}},
+        {"key": "r30", "label": "bore radius 0.30 mm", "params": {"r": 0.0003}}
+      ]
+    }
+  }
+}

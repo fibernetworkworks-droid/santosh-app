@@ -1,0 +1,45 @@
+{
+ "base": "phd-meissner-acsusc",
+ "chapter": "Low temperature and superconductivity",
+ "rig": "phd-cryostat-insert",
+ "variants": [
+  {
+   "key": "niobium-sphere",
+   "title": "Meissner effect by AC susceptibility: a niobium-type sphere (illustrative)",
+   "sample": "Niobium-type sphere of radius 20 um, Tc about 9 K (unsourced / illustrative)",
+   "method": "two-coil mutual inductance, chi' and chi'' against T",
+   "unknown": "Tc and the London penetration depth",
+   "params": {
+    "Tc": 9.2,
+    "w": 0.05,
+    "a": 2e-05,
+    "ns": 1.9e+28,
+    "chi2": 0.1
+   },
+   "note": "A larger sphere with a lower Tc: the shielding is almost perfect (f close to 1) so the penetration depth is a small correction. Radius and superfluid density are illustrative.",
+   "source": {
+    "title": "Unsourced / illustrative sample constants",
+    "note": "Tc about 9 K is the order of magnitude for niobium; the sphere radius and ns are chosen for the lab, not looked up."
+   }
+  },
+  {
+   "key": "small-grain",
+   "title": "Meissner effect by AC susceptibility: a small 0.5 um grain",
+   "sample": "Ceramic grain of radius 0.5 um with Tc about 92 K (unsourced / illustrative)",
+   "method": "two-coil mutual inductance, chi' and chi'' against T",
+   "unknown": "Tc and the London penetration depth",
+   "params": {
+    "Tc": 92.0,
+    "w": 0.5,
+    "a": 5e-07,
+    "ns": 2e+28,
+    "chi2": 0.12
+   },
+   "note": "A grain only a few penetration depths across shields noticeably less than a bulk sample: f is about 0.2. Values are illustrative.",
+   "source": {
+    "title": "Unsourced / illustrative sample constants",
+    "note": "sphere radius and superfluid density are chosen for the lab, not looked up."
+   }
+  }
+ ]
+}

@@ -1,0 +1,71 @@
+{
+ "base": "rc-frequency-response",
+ "rig": "ac-bench",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "low-c001",
+   "title": "Frequency response of a low-pass RC filter, 0.01 µF",
+   "sample": "A 10 kΩ resistance box with a 0.01 µF capacitor",
+   "method": "output taken across the capacitor",
+   "unknown": "the cut-off frequency and the roll-off in decibels per decade",
+   "params": {
+    "C": 1e-08,
+    "mode": 0.0,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "low-c01",
+   "title": "Frequency response of a low-pass RC filter, 0.1 µF",
+   "sample": "A 10 kΩ resistance box with a 0.1 µF capacitor",
+   "method": "output taken across the capacitor",
+   "unknown": "the cut-off frequency and the roll-off in decibels per decade",
+   "params": {
+    "C": 1e-07,
+    "mode": 0.0,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "high-c001",
+   "title": "Frequency response of a high-pass RC filter, 0.01 µF",
+   "sample": "A 10 kΩ resistance box with a 0.01 µF capacitor",
+   "method": "output taken across the resistance",
+   "unknown": "the cut-off frequency and the roll-off in decibels per decade",
+   "params": {
+    "C": 1e-08,
+    "mode": 1.0,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "high-c01",
+   "title": "Frequency response of a high-pass RC filter, 0.1 µF",
+   "sample": "A 10 kΩ resistance box with a 0.1 µF capacitor",
+   "method": "output taken across the resistance",
+   "unknown": "the cut-off frequency and the roll-off in decibels per decade",
+   "params": {
+    "C": 1e-07,
+    "mode": 1.0,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  }
+ ]
+}

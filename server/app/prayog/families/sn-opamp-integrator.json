@@ -1,0 +1,33 @@
+{
+ "base": "sn-opamp-integrator",
+ "rig": "sn-scope-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "c-22n",
+   "title": "Op-amp integrator with a 22 nF feedback capacitor",
+   "sample": "Unknown capacitor from the E6 series (22 nF)",
+   "unknown": "the feedback capacitor from the ramp slope",
+   "params": {
+    "C": 2.2e-08
+   },
+   "note": "A larger capacitor makes the ramp gentler, so the same input gives a smaller output swing.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 22 nF"
+   }
+  },
+  {
+   "key": "c-47n",
+   "title": "Op-amp integrator with a 47 nF feedback capacitor",
+   "sample": "Unknown capacitor from the E6 series (47 nF)",
+   "unknown": "the feedback capacitor from the ramp slope",
+   "params": {
+    "C": 4.7e-08
+   },
+   "note": "The ramp is about five times gentler than with 10 nF, so the slope reading has fewer volts to work with.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 47 nF"
+   }
+  }
+ ]
+}

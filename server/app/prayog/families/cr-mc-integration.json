@@ -1,0 +1,62 @@
+{
+ "base": "cr-mc-integration",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "sin-hit-or-miss",
+   "title": "Monte Carlo integration of sin x by hit or miss",
+   "sample": "sin x on [0, pi]",
+   "unknown": "integral",
+   "params": {
+    "method": 0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "sin-importance",
+   "title": "Monte Carlo integration of sin x by importance sampling",
+   "sample": "sin x on [0, pi], triangular density",
+   "unknown": "integral",
+   "params": {
+    "method": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "gauss-sample-mean",
+   "title": "Monte Carlo integration of exp(-x^2) by the sample mean",
+   "sample": "exp(-x^2) on [0, 1]",
+   "unknown": "integral",
+   "params": {
+    "cas": 1,
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Exact value (sqrt(pi)/2) erf(1)."
+  },
+  {
+   "key": "gauss-importance",
+   "title": "Monte Carlo integration of exp(-x^2) by importance sampling",
+   "sample": "exp(-x^2) on [0, 1], density e^-x",
+   "unknown": "integral",
+   "params": {
+    "cas": 1,
+    "method": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

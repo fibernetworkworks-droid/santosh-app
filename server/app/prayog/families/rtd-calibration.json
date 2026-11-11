@@ -1,0 +1,38 @@
+{
+  "base": "rtd-calibration",
+  "rig": "platinum-resistance-thermometer",
+  "chapter": "Heat and thermodynamics",
+  "variants": [
+    {
+      "key": "off-balance",
+      "title": "Calibration of a resistance temperature device with an off-balance bridge",
+      "sample": "Pt100 platinum element",
+      "method": "Off-balance bridge",
+      "unknown": "the slope of the calibration curve at 50 °C",
+      "params": {
+        "mode": 1
+      },
+      "note": "No balancing: the bridge output voltage is read on a voltmeter and the resistance is worked out from it.",
+      "source": {
+        "title": "IEC 60751 / ITS-90 platinum resistance thermometer: A = 3.9083e-3 per °C, B = -5.775e-7 per °C^2"
+      },
+      "aim": "Calibrate a Pt100 device against a mercury thermometer, reading the output of an unbalanced bridge, and find the slope of the calibration curve at 50 °C."
+    },
+    {
+      "key": "pt1000-null",
+      "title": "Calibration of a Pt1000 resistance temperature device by the null method",
+      "sample": "Pt1000 platinum element (1000 ohm at 0 degC)",
+      "method": "Null method",
+      "unknown": "the slope of the calibration curve at 50 °C",
+      "params": {
+        "R0": 1000,
+        "Rref": 1000
+      },
+      "note": "Ten times the resistance of a Pt100: the slope of the curve at 50 °C is ten times larger, about 3.85 ohm per kelvin.",
+      "source": {
+        "title": "IEC 60751: Pt1000 industrial platinum resistance thermometer, R0 = 1000 ohm"
+      },
+      "aim": "Calibrate a Pt1000 device against a mercury thermometer on a balanced bridge and find the slope of its calibration curve at 50 °C."
+    }
+  ]
+}

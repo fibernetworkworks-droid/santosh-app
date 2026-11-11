@@ -1,0 +1,35 @@
+{
+ "base": "phd-nmr-pfg",
+ "chapter": "Magnetic resonance and hyperfine methods",
+ "rig": "phd-resonance-bench",
+ "variants": [
+  {
+   "key": "water-5c",
+   "title": "PFG-NMR self-diffusion: water near 5 C (illustrative D)",
+   "sample": "Water near 5 C, D about 1.3e-9 m^2/s (unsourced / illustrative)",
+   "method": "Stejskal-Tanner spin echo",
+   "unknown": "self-diffusion coefficient",
+   "params": {
+    "D": 1.3e-09
+   },
+   "note": "Colder water diffuses more slowly than at 25 C; the value is quoted from memory and unsourced.",
+   "source": {
+    "title": "E. O. Stejskal and J. E. Tanner, J. Chem. Phys. 42, 288 (1965)"
+   }
+  },
+  {
+   "key": "glycerol-water",
+   "title": "PFG-NMR self-diffusion: a glycerol-water mixture (illustrative D)",
+   "sample": "Glycerol-water mixture, D about 2e-10 m^2/s (unsourced / illustrative)",
+   "method": "Stejskal-Tanner spin echo",
+   "unknown": "self-diffusion coefficient",
+   "params": {
+    "D": 2e-10
+   },
+   "note": "A viscous mixture diffuses ten times slower than water, so a much larger gradient is needed to attenuate the echo.",
+   "source": {
+    "title": "E. O. Stejskal and J. E. Tanner, J. Chem. Phys. 42, 288 (1965)"
+   }
+  }
+ ]
+}

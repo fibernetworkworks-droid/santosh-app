@@ -1,0 +1,15 @@
+{"base": "archimedes-balance", "chapter": "Gravitation and Floatation",
+ "grid": {"title": "Archimedes' principle in {liq}", "unknown": "the density of {liq}",
+   "axes": {"liq": [
+     {"key": "brine", "label": "salty water", "sample": "Saturated salt water (brine)",
+      "params": {"rho_l": 1198.0},
+      "source": {"title": "CRC Handbook of Chemistry and Physics - concentrative properties of aqueous solutions",
+                 "note": "saturated sodium chloride solution (26.4 % by mass) has a density of 1.198 g/cm3 at 20 C"}},
+     {"key": "kerosene", "label": "kerosene", "sample": "Kerosene",
+      "params": {"rho_l": 800.0},
+      "source": {"title": "CRC Handbook of Chemistry and Physics - densities of common liquids",
+                 "note": "kerosene, density about 0.80 g/cm3 at room temperature"}},
+     {"key": "glycerine", "label": "glycerine", "sample": "Glycerine",
+      "params": {"rho_l": 1261.0},
+      "source": {"title": "CRC Handbook of Chemistry and Physics - physical constants of organic compounds",
+                 "note": "glycerol (glycerine), density 1.2613 g/cm3 at 20 C"}}]}}}

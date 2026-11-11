@@ -1,0 +1,75 @@
+{
+ "base": "cr-random-deviates",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "gaussian-inverse",
+   "title": "Gaussian deviates by the tabulated inverse transform",
+   "sample": "standard normal, P(|x| < 1)",
+   "unknown": "probability of the interval",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "gaussian-rejection",
+   "title": "Gaussian deviates by acceptance-rejection",
+   "sample": "standard normal, P(|x| < 1)",
+   "unknown": "probability of the interval",
+   "params": {
+    "cas": 1,
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Efficiency is the area under the curve over the area of the box."
+  },
+  {
+   "key": "exponential-rejection",
+   "title": "Exponential deviates by acceptance-rejection",
+   "sample": "exponential, lambda = 1, P(x < 1)",
+   "unknown": "probability of the interval",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "binomial-inverse",
+   "title": "Discrete deviates (binomial 5, 0.3) by the inverse transform",
+   "sample": "binomial n = 5, p = 0.3, P(k = 1)",
+   "unknown": "probability of k = 1",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "binomial-rejection",
+   "title": "Discrete deviates (binomial 5, 0.3) by acceptance-rejection",
+   "sample": "binomial n = 5, p = 0.3, P(k = 1)",
+   "unknown": "probability of k = 1",
+   "params": {
+    "cas": 2,
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

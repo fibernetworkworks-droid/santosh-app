@@ -1,0 +1,48 @@
+{
+ "base": "cr-pic-plasma",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "two-stream",
+   "title": "Two-stream instability: growth rate at the fastest mode",
+   "sample": "two cold beams of speed +-1, k v0 = 0.61 wp",
+   "unknown": "growth rate",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Cold two-stream dispersion relation (w^2 - k^2 v0^2)^2 = wp^2 (w^2 + k^2 v0^2)",
+    "note": "gamma max = wp / (2 sqrt 2); normalised units, no constant"
+   }
+  },
+  {
+   "key": "two-stream-k08",
+   "title": "Two-stream instability at a shorter wavelength, k v0 = 0.8 wp",
+   "sample": "two cold beams, k v0 = 0.8 wp",
+   "unknown": "growth rate",
+   "params": {
+    "cas": 1,
+    "kk": 0.8
+   },
+   "source": {
+    "title": "Cold two-stream dispersion relation (w^2 - k^2 v0^2)^2 = wp^2 (w^2 + k^2 v0^2)",
+    "note": "normalised units, no constant"
+   }
+  },
+  {
+   "key": "two-stream-k045",
+   "title": "Two-stream instability at a longer wavelength, k v0 = 0.45 wp",
+   "sample": "two cold beams, k v0 = 0.45 wp",
+   "unknown": "growth rate",
+   "params": {
+    "cas": 1,
+    "kk": 0.45
+   },
+   "source": {
+    "title": "Cold two-stream dispersion relation (w^2 - k^2 v0^2)^2 = wp^2 (w^2 + k^2 v0^2)",
+    "note": "normalised units, no constant"
+   }
+  }
+ ]
+}

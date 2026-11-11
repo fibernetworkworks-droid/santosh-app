@@ -1,0 +1,26 @@
+{
+ "base": "gold-colloid-uv-vis",
+ "rig": "uv-vis-bench",
+ "chapter": "Nanomaterials",
+ "grid": {
+  "title": "Gold nanoparticles: {size} by UV-visible spectrophotometry",
+  "unknown": "the plasmon peak and the particle size of {size}",
+  "sample": "Citrate-capped gold colloid in water, {size}",
+  "axes": {
+   "size": [
+    {"key": "d10", "label": "a 10 nm colloid", "params": {"d": 10.0},
+     "note": "A 10 nm colloid is a clear ruby red and its plasmon band sits near 517 nm, close to the small-particle limit where the peak hardly moves with size at all.",
+     "source": {"title": "Haiss, Thanh, Aveyard and Fernig, Anal. Chem. 79 (2007) 4215: lambda_spr = 512 + 6.53 exp(0.0216 d) and d = exp(3.00 A_spr/A450 - 2.20), fitted for spherical citrate-capped gold from about 5 to 100 nm"}},
+    {"key": "d30", "label": "a 30 nm colloid", "params": {"d": 30.0},
+     "note": "At 30 nm the band has moved only a few nanometres to the red, but it has grown noticeably taller against the 450 nm absorbance - which is why the ratio, not the peak position, is the better size measure for small particles.",
+     "source": {"title": "Haiss, Thanh, Aveyard and Fernig, Anal. Chem. 79 (2007) 4215: lambda_spr = 512 + 6.53 exp(0.0216 d) and d = exp(3.00 A_spr/A450 - 2.20), fitted for spherical citrate-capped gold from about 5 to 100 nm"}},
+    {"key": "d60", "label": "a 60 nm colloid", "params": {"d": 60.0},
+     "note": "A 60 nm colloid looks distinctly less red and more purple, and its band has moved well past 530 nm: here the peak position itself becomes a useful size measure.",
+     "source": {"title": "Haiss, Thanh, Aveyard and Fernig, Anal. Chem. 79 (2007) 4215: lambda_spr = 512 + 6.53 exp(0.0216 d) and d = exp(3.00 A_spr/A450 - 2.20), fitted for spherical citrate-capped gold from about 5 to 100 nm"}},
+    {"key": "d90", "label": "a 90 nm colloid", "params": {"d": 90.0},
+     "note": "By 90 nm the colloid is purple and the band is broad and far to the red. This is the top of the range the relations were fitted over; beyond it, and for any particle that is not a sphere, they must not be used at all.",
+     "source": {"title": "Haiss, Thanh, Aveyard and Fernig, Anal. Chem. 79 (2007) 4215: lambda_spr = 512 + 6.53 exp(0.0216 d) and d = exp(3.00 A_spr/A450 - 2.20), fitted for spherical citrate-capped gold from about 5 to 100 nm"}}
+   ]
+  }
+ }
+}

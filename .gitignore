@@ -28,6 +28,7 @@ server/data/studio/
 
 # the sandbox test venv lives inside the repo tree - NEVER commit it (GitHub 100 MB cap)
 server/venv/
+server/2-*
 lab_listen/
 
 # v0.538: runtime byproducts, never source. The coder spool is a durable retry QUEUE (app/coder/spool.py) and

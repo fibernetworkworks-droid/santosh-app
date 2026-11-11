@@ -1,0 +1,63 @@
+{
+ "base": "cr-mc-two-level-spin",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "weak-field",
+   "title": "Two-level spins in a weak field, x = 0.3",
+   "sample": "x = mu B / kT = 0.3",
+   "unknown": "magnetisation",
+   "params": {
+    "x": 0.3
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "m is close to x at small x."
+  },
+  {
+   "key": "strong-field",
+   "title": "Two-level spins in a strong field, x = 2",
+   "sample": "x = mu B / kT = 2",
+   "unknown": "magnetisation",
+   "params": {
+    "x": 2.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Saturation: m approaches 1."
+  },
+  {
+   "key": "specific-heat",
+   "title": "Specific heat of two-level spins at x = 1",
+   "sample": "x = 1",
+   "unknown": "c / k per spin",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "schottky-peak",
+   "title": "Specific heat at the Schottky maximum, x = 1.2",
+   "sample": "x = 1.2",
+   "unknown": "c / k per spin",
+   "params": {
+    "cas": 1,
+    "x": 1.2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "The maximum of x^2 sech^2 x is 0.439 near x = 1.2."
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "base": "msc-hpge-spectra",
+ "rig": "msc-gamma-spectrometer",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "co60",
+   "title": "HPGe resolution with Co-60",
+   "sample": "Co-60 sealed source, 37 kBq, on a coaxial HPGe detector",
+   "method": "Gaussian fit of the 1173 keV line",
+   "unknown": "the FWHM of the 1173 keV line",
+   "params": {
+    "src": 1,
+    "task": 1,
+    "seed": 48
+   },
+   "note": "The two Co-60 lines are 159 keV apart: with 1.7 keV wide peaks they stand completely separate.",
+   "source": {
+    "title": "NNDC / ENSDF: Co-60 1173.228 keV (99.85 %) and 1332.492 keV (99.98 %)"
+   }
+  },
+  {
+   "key": "soil",
+   "title": "HPGe spectrum of a soil sample",
+   "sample": "Soil sample, 1 kg, in a Marinelli beaker 5 cm from the crystal (world-average activity)",
+   "method": "20 000 s count",
+   "unknown": "the energy of the strongest line, and so the nuclide",
+   "params": {
+    "src": 6,
+    "task": 4,
+    "act": 0.001,
+    "d": 5,
+    "t": 20000,
+    "nch": 16384,
+    "seed": 49
+   },
+   "note": "World-average soil: K-40 400, uranium series 35, thorium series 30 Bq/kg. The lines identify the nuclides.",
+   "source": {
+    "title": "UNSCEAR 2000 Report, Annex B: world-average soil activity concentrations; NNDC / ENSDF line energies"
+   }
+  }
+ ]
+}

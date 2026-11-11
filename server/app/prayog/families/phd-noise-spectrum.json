@@ -1,0 +1,41 @@
+{
+ "base": "phd-noise-spectrum",
+ "rig": "phd-noise-bench",
+ "chapter": "Signal recovery and noise",
+ "variants": [
+  {
+   "key": "opamp-front-end",
+   "title": "Noise spectrum of an op-amp front end",
+   "sample": "Op-amp front end with a 100 ohm source",
+   "unknown": "white noise floor and 1/f corner",
+   "note": "With a small source resistance the amplifier's own voltage noise dominates the floor and a 1/f rise shows below 250 Hz. The noise density and corner are typical orders of magnitude, not a named part's datasheet.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "R": 100.0,
+    "en": 4e-09,
+    "fc": 250.0,
+    "seed": 23.0
+   }
+  },
+  {
+   "key": "carbon-resistor",
+   "title": "Noise spectrum of a carbon resistor",
+   "sample": "Carbon resistor, 100 kilohm, with excess 1/f noise",
+   "unknown": "white noise floor and 1/f corner",
+   "note": "A carbon resistor carrying a bias current shows excess 1/f noise well above its Johnson floor: the corner here is near 900 Hz. The excess level is the lab's own.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "R": 100000.0,
+    "en": 5e-09,
+    "fc": 900.0,
+    "seed": 47.0
+   }
+  }
+ ]
+}

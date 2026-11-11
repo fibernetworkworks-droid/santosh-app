@@ -1,0 +1,35 @@
+{
+ "base": "msc-nai-efficiency",
+ "rig": "msc-gamma-spectrometer",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "na22",
+   "title": "NaI(Tl) efficiency at 511 keV (Na-22)",
+   "sample": "Na-22 sealed source, 37 kBq",
+   "unknown": "the intrinsic photopeak efficiency of the crystal at 511 keV",
+   "params": {
+    "src": 2,
+    "seed": 44
+   },
+   "note": "The 511 keV line is the annihilation photon: 1.806 per decay (two per positron, 90.3 % of decays).",
+   "source": {
+    "title": "NNDC / ENSDF: Na-22 511.0 keV, 180.6 % per decay (beta+ branch 90.3 %)"
+   }
+  },
+  {
+   "key": "am241",
+   "title": "NaI(Tl) efficiency at 59.5 keV (Am-241)",
+   "sample": "Am-241 sealed source, 37 kBq",
+   "unknown": "the intrinsic photopeak efficiency of the crystal at 59.5 keV",
+   "params": {
+    "src": 4,
+    "seed": 46
+   },
+   "note": "At 60 keV the crystal stops almost every photon that reaches it, so the intrinsic efficiency is close to the photofraction.",
+   "source": {
+    "title": "NNDC / ENSDF: Am-241 59.541 keV, 35.9 % per decay"
+   }
+  }
+ ]
+}

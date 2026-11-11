@@ -1,0 +1,21 @@
+{"base": "mosfet-transfer-characteristic", "rig": "elec-ug-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+   {"key": "spec1", "title": "MOSFET threshold voltage: specimen 1 of the batch",
+    "sample": "An n-channel enhancement MOSFET, specimen 1 (threshold voltage unknown)",
+    "unknown": "the threshold voltage V_th of this specimen",
+    "params": {"Vth": 1.8, "kn": 0.02},
+    "note": "A MOSFET datasheet gives the gate threshold voltage only as a range (for small signal parts, typically a volt or two wide) because it depends on the oxide thickness and the charge trapped in it. The threshold of the device in front of you is measured, not looked up.",
+    "source": {"title": "A. S. Sedra and K. C. Smith, Microelectronic Circuits, MOSFET square law (I_D = (k/2)(V_GS - V_th)^2); the specimen's own V_th is the quantity this experiment finds"}},
+   {"key": "spec2", "title": "MOSFET threshold voltage: specimen 2 of the batch",
+    "sample": "An n-channel enhancement MOSFET, specimen 2 (threshold voltage unknown)",
+    "unknown": "the threshold voltage V_th of this specimen",
+    "params": {"Vth": 2.4, "kn": 0.02},
+    "source": {"title": "A. S. Sedra and K. C. Smith, Microelectronic Circuits, MOSFET square law; the specimen's own V_th is the quantity this experiment finds"}},
+   {"key": "spec3", "title": "MOSFET threshold voltage: a stronger specimen",
+    "sample": "An n-channel enhancement MOSFET, specimen 3 (threshold voltage unknown, wider channel)",
+    "unknown": "the threshold voltage V_th of this specimen",
+    "params": {"Vth": 3.0, "kn": 0.03},
+    "note": "A wider channel gives a larger k, so the current rises faster past the threshold while the threshold itself is set by the oxide.",
+    "source": {"title": "A. S. Sedra and K. C. Smith, Microelectronic Circuits, MOSFET square law; the specimen's own V_th is the quantity this experiment finds"}}
+ ]}

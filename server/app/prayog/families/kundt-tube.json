@@ -1,0 +1,38 @@
+{
+  "base": "kundt-tube",
+  "chapter": "Oscillations, waves and acoustics",
+  "variants": [
+    {
+      "key": "steel",
+      "title": "Kundt's tube: speed of sound in a steel rod",
+      "sample": "Steel rod, 1.00 m, clamped at the middle",
+      "method": "Dust figures in an air column",
+      "unknown": "the speed of sound in steel and its Young's modulus",
+      "params": {
+        "vr": 5048,
+        "rho": 7850
+      },
+      "note": "Steel is stiffer than brass, so the rod sings higher (about 2.5 kHz) and the dust heaps are closer together (about 6.9 cm). v = sqrt(Y / rho) with Y = 200 GPa, rho = 7850 kg/m3.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics / Engineering ToolBox: Young's modulus of steel about 200 GPa, density 7850 kg/m3; v = sqrt(Y/rho) for a thin rod"
+      },
+      "aim": "Make a clamped steel rod sing so that dust in a glass tube heaps at the nodes, measure the heap spacing, and find the speed of sound in the rod."
+    },
+    {
+      "key": "glass",
+      "title": "Kundt's tube: speed of sound in a glass rod",
+      "sample": "Glass rod, 1.00 m, clamped at the middle",
+      "method": "Dust figures in an air column",
+      "unknown": "the speed of sound in glass and its Young's modulus",
+      "params": {
+        "vr": 5292,
+        "rho": 2500
+      },
+      "note": "Soda-lime glass is light and stiff (Y about 70 GPa, rho 2500 kg/m3), so sound runs through it faster than in brass. Stroke it gently with a damp cloth.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics / Engineering ToolBox: Young's modulus of soda-lime glass about 70 GPa, density 2500 kg/m3; v = sqrt(Y/rho) for a thin rod"
+      },
+      "aim": "Make a clamped glass rod sing so that dust in a glass tube heaps at the nodes, measure the heap spacing, and find the speed of sound in the rod."
+    }
+  ]
+}

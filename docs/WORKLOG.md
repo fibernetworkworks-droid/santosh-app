@@ -2795,3 +2795,20 @@ Stage Summary: pushed; needs GSTINAPI_API_KEY on the VPS, then a live test.
 ---
 Task ID: v0.766.0 GSTIN SACH
 Task: her live GSTIN test - fallback answer passed off as compliance. Work: instead_of + note; 1 test; box suites 29 green. Stage: pushed.
+
+Task ID: v0.767.0 LANGGRAPH G1
+Ask: GO G1 (resume after restart + tool ledger).
+Built: turngraph resume, agent/toolledger.py, turn_inbox graph_resume sweep; chat_graph still off; 9 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 still needed if not done).
+
+Task ID: v0.770.0 LANGGRAPH G2
+Ask: GO G2 (one run per chat + Stop as state).
+Built: agent/turnrun.py tickets + stop flag/event, turngraph stop checks, turn_inbox no double start; chat_graph still off; 14 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+---
+Task ID: LOVABLE STUDIO PLAN (11 Nov 2026)
+Task: owner - deep research on Lovable (design, logic, steps, strategy, chat motion) + an end-to-end plan for Hoola Web Studio.
+Work Log: 4 parallel research passes (engine/tools, UI/motion, strategy, Hoola Studio map); captured in docs/research/lovable/00_INDEX.md; plan in docs/LOVABLE_STUDIO_PLAN.md.
+Stage Summary: docs only, no version bump; waiting for her GO on L0 and her 4 decisions before L8.

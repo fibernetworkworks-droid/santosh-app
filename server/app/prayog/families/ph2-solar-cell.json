@@ -1,0 +1,26 @@
+{
+ "base": "ph2-solar-cell",
+ "rig": "ph2-semi-bench",
+ "chapter": "Optoelectronic and semiconductor devices",
+ "variants": [
+  {
+   "key": "thin-film",
+   "title": "Solar cell I-V under a solar simulator: thin-film cell",
+   "sample": "Thin-film cell (cadmium-telluride-type diode parameters, illustrative)",
+   "method": "I-V sweep at several intensities",
+   "unknown": "Voc, Isc, fill factor and efficiency",
+   "note": "Jsc 25 mA/cm² at one sun, n = 1.6, J0 = 10⁻⁶ A/m², Rs 1 Ω cm², Rsh 500 Ω cm²: typical lab values (unsourced / illustrative).",
+   "params": {
+    "Jsc1": 250.0,
+    "n": 1.6,
+    "J0": 1e-06,
+    "rs": 0.0001,
+    "rsh": 0.05
+   },
+   "source": {
+    "title": "Thin-film cell diode parameters (lab values)",
+    "note": "unsourced / illustrative: chosen for the lab"
+   }
+  }
+ ]
+}

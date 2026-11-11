@@ -267,7 +267,8 @@
       "self-heating error"
      ],
      "conditions": [],
-     "kernel": "cryo_thermometry"
+     "kernel": "cryo_thermometry",
+     "built": "phd-cryo-thermometry"
     },
     {
      "id": "sc-tc-four-probe",
@@ -330,7 +331,8 @@
       "chi' and chi'' vs T"
      ],
      "conditions": [],
-     "kernel": "ac_susc"
+     "kernel": "ac_susc",
+     "built": "phd-meissner-acsusc"
     },
     {
      "id": "josephson-iv",
@@ -351,7 +353,8 @@
       "no microwaves",
       "microwave irradiated"
      ],
-     "kernel": "rcsj"
+     "kernel": "rcsj",
+     "built": "phd-josephson"
     },
     {
      "id": "squid-magnetometry",
@@ -392,7 +395,8 @@
       "flux noise"
      ],
      "conditions": [],
-     "kernel": "squid"
+     "kernel": "squid",
+     "built": "phd-dc-squid"
     },
     {
      "id": "dilution-refrigerator",
@@ -513,7 +517,8 @@
       "dephasing time vs T"
      ],
      "conditions": [],
-     "kernel": "weak_loc"
+     "kernel": "weak_loc",
+     "built": "phd-weak-localisation"
     },
     {
      "id": "hall-bar-mobility",
@@ -574,7 +579,8 @@
       "gap vs temperature (BCS)"
      ],
      "conditions": [],
-     "kernel": "tunnel_bcs"
+     "kernel": "tunnel_bcs",
+     "built": "phd-tunnel-nis"
     },
     {
      "id": "dlts",
@@ -679,7 +685,8 @@
       "SNR vs time constant"
      ],
      "conditions": [],
-     "kernel": "lockin"
+     "kernel": "lockin",
+     "built": "phd-lockin-detection"
     },
     {
      "id": "johnson-noise",
@@ -700,7 +707,8 @@
       "300 K",
       "77 K"
      ],
-     "kernel": "johnson"
+     "kernel": "johnson",
+     "built": "phd-johnson-noise"
     },
     {
      "id": "shot-noise",
@@ -718,7 +726,8 @@
       "noise vs current"
      ],
      "conditions": [],
-     "kernel": "shot_noise"
+     "kernel": "shot_noise",
+     "built": "phd-shot-noise"
     },
     {
      "id": "boxcar-averaging",
@@ -736,7 +745,8 @@
       "decay time"
      ],
      "conditions": [],
-     "kernel": "boxcar"
+     "kernel": "boxcar",
+     "built": "phd-boxcar-averaging"
     },
     {
      "id": "noise-spectral-density",
@@ -757,7 +767,8 @@
       "1/f corner frequency"
      ],
      "conditions": [],
-     "kernel": "noise_psd"
+     "kernel": "noise_psd",
+     "built": "phd-noise-spectrum"
     },
     {
      "id": "poisson-statistics-research",
@@ -778,7 +789,8 @@
       "low rate",
       "high rate"
      ],
-     "kernel": "poisson"
+     "kernel": "poisson",
+     "built": "phd-poisson-counting"
     }
    ]
   },
@@ -880,7 +892,8 @@
       "laser mode structure"
      ],
      "conditions": [],
-     "kernel": "fabry_perot"
+     "kernel": "fabry_perot",
+     "built": "phd-fabry-perot"
     },
     {
      "id": "laser-frequency-lock",
@@ -1080,7 +1093,8 @@
       "coherence time"
      ],
      "conditions": [],
-     "kernel": "g2"
+     "kernel": "g2",
+     "built": "phd-hbt-g2"
     },
     {
      "id": "single-photon-antibunching",
@@ -1097,7 +1111,8 @@
       "heralded g2(0)"
      ],
      "conditions": [],
-     "kernel": "g2"
+     "kernel": "g2",
+     "built": "phd-heralded-antibunching"
     },
     {
      "id": "hong-ou-mandel",
@@ -1190,7 +1205,8 @@
      "conditions": [
       "several laser powers"
      ],
-     "kernel": "tweezers"
+     "kernel": "tweezers",
+     "built": "phd-optical-tweezers"
     }
    ]
   },
@@ -1223,7 +1239,8 @@
       "several concentrations",
       "several temperatures"
      ],
-     "kernel": "bloch"
+     "kernel": "bloch",
+     "built": "phd-pulsed-nmr"
     },
     {
      "id": "nmr-diffusion",
@@ -1242,7 +1259,8 @@
      "conditions": [
       "several temperatures"
      ],
-     "kernel": "bloch"
+     "kernel": "bloch",
+     "built": "phd-nmr-pfg"
     },
     {
      "id": "mossbauer-fe57",
@@ -1644,7 +1662,8 @@
       "outgassing rate"
      ],
      "conditions": [],
-     "kernel": "pumpdown"
+     "kernel": "pumpdown",
+     "built": "ph2-vac-research"
     },
     {
      "id": "thermal-evaporation-research",
@@ -1665,7 +1684,8 @@
       "tooling factor"
      ],
      "conditions": [],
-     "kernel": "evaporation"
+     "kernel": "evaporation",
+     "built": "ph2-qcm-evap"
     },
     {
      "id": "ebeam-evaporation",
@@ -1882,7 +1902,8 @@
       "mu-/mu+ capture effect"
      ],
      "conditions": [],
-     "kernel": "muon_decay"
+     "kernel": "muon_decay",
+     "built": "ph3-muon"
     },
     {
      "id": "muon-speed",
@@ -1941,7 +1962,8 @@
       "differential cross-section vs angle"
      ],
      "conditions": [],
-     "kernel": "compton"
+     "kernel": "compton",
+     "built": "ph3-compton"
     },
     {
      "id": "relativistic-dynamics",
@@ -2127,7 +2149,8 @@
       "pd at minimum"
      ],
      "conditions": [],
-     "kernel": "paschen"
+     "kernel": "paschen",
+     "built": "phd-paschen-curve"
     },
     {
      "id": "plasma-oes",
@@ -2187,7 +2210,8 @@
       "local standard of rest velocity"
      ],
      "conditions": [],
-     "kernel": "hi21"
+     "kernel": "hi21",
+     "built": "ph3-hi21"
     },
     {
      "id": "radio-sun-drift",
@@ -2225,7 +2249,8 @@
       "inclination"
      ],
      "conditions": [],
-     "kernel": "transit"
+     "kernel": "transit",
+     "built": "ph3-transit"
     },
     {
      "id": "hubble-law",
@@ -2346,7 +2371,8 @@
      "conditions": [
       "several lattice sizes"
      ],
-     "kernel": "ising"
+     "kernel": "ising",
+     "built": "cr-ising-binder"
     },
     {
      "id": "heisenberg-xy-mc",
@@ -2364,7 +2390,8 @@
       "critical temperature"
      ],
      "conditions": [],
-     "kernel": "spin_mc"
+     "kernel": "spin_mc",
+     "built": "cr-xy-heisenberg-mc"
     },
     {
      "id": "md-lennard-jones",
@@ -2450,7 +2477,8 @@
       "density of states"
      ],
      "conditions": [],
-     "kernel": "tight_binding"
+     "kernel": "tight_binding",
+     "built": "cr-tight-binding"
     },
     {
      "id": "exact-diagonalisation",
@@ -2469,7 +2497,8 @@
       "correlation function"
      ],
      "conditions": [],
-     "kernel": "ed_spin"
+     "kernel": "ed_spin",
+     "built": "cr-exact-diagonalisation"
     },
     {
      "id": "fdtd-em",
@@ -2506,7 +2535,8 @@
       "two-stream instability growth rate"
      ],
      "conditions": [],
-     "kernel": "pic"
+     "kernel": "pic",
+     "built": "cr-pic-plasma"
     },
     {
      "id": "n-body",
@@ -2525,7 +2555,8 @@
       "relaxation time"
      ],
      "conditions": [],
-     "kernel": "nbody"
+     "kernel": "nbody",
+     "built": "cr-n-body"
     },
     {
      "id": "mcmc-fitting",
@@ -2544,7 +2575,8 @@
       "credible intervals"
      ],
      "conditions": [],
-     "kernel": "mcmc"
+     "kernel": "mcmc",
+     "built": "cr-mcmc-fitting"
     },
     {
      "id": "schrodinger-numerical",

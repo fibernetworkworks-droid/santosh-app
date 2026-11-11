@@ -1,0 +1,43 @@
+{
+ "base": "plasma-glow-discharge",
+ "chapter": "Vacuum, low temperature and plasma",
+ "variants": [
+  {
+   "key": "neon",
+   "title": "Langmuir probe in a neon glow discharge",
+   "sample": "Neon, orange-red glow",
+   "unknown": "electron temperature in neon",
+   "params": {
+    "M": 20.18
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: Ne 20.180, He 4.0026, H2 2.016 (ion mass in u); Ar 39.948"
+   }
+  },
+  {
+   "key": "helium",
+   "title": "Langmuir probe in a helium glow discharge",
+   "sample": "Helium, pink-white glow",
+   "unknown": "electron temperature in helium",
+   "params": {
+    "M": 4.0026
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: Ne 20.180, He 4.0026, H2 2.016 (ion mass in u); Ar 39.948"
+   }
+  },
+  {
+   "key": "hydrogen",
+   "title": "Langmuir probe in a hydrogen glow discharge",
+   "sample": "Hydrogen, magenta glow",
+   "unknown": "electron temperature in hydrogen",
+   "params": {
+    "M": 2.016
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: Ne 20.180, He 4.0026, H2 2.016 (ion mass in u); Ar 39.948"
+   }
+  }
+ ],
+ "rig": "msc-plasma-bench"
+}

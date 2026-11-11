@@ -1,0 +1,37 @@
+{
+ "base": "phd-esr",
+ "chapter": "Magnetic resonance and hyperfine methods",
+ "rig": "phd-resonance-bench",
+ "variants": [
+  {
+   "key": "x-band",
+   "title": "ESR of DPPH at X-band, 9.4 GHz (illustrative line width)",
+   "sample": "DPPH powder at 9.4 GHz (g and width unsourced / illustrative)",
+   "method": "field-modulated derivative detection at three microwave frequencies",
+   "unknown": "g-factor and line width",
+   "params": {
+    "f": 9400000000.0,
+    "dB": 0.0002
+   },
+   "note": "A research spectrometer: the resonance is at 0.33 T, a thousand times the Helmholtz-coil field, and the line is wider in tesla because of unresolved structure.",
+   "source": {
+    "title": "Slichter, Principles of Magnetic Resonance; DPPH g = 2.0036 quoted from memory (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "q-band",
+   "title": "ESR of DPPH at Q-band, 34 GHz (illustrative line width)",
+   "sample": "DPPH powder at 34 GHz (g and width unsourced / illustrative)",
+   "method": "field-modulated derivative detection at three microwave frequencies",
+   "unknown": "g-factor and line width",
+   "params": {
+    "f": 34000000000.0,
+    "dB": 0.0002
+   },
+   "note": "A high-frequency spectrometer: the resonance is at 1.2 T and separates g-factors more clearly.",
+   "source": {
+    "title": "Slichter, Principles of Magnetic Resonance; DPPH g = 2.0036 quoted from memory (unsourced / illustrative)"
+   }
+  }
+ ]
+}

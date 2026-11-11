@@ -1,0 +1,98 @@
+{
+ "base": "phd-pulsed-nmr",
+ "chapter": "Magnetic resonance and hyperfine methods",
+ "rig": "phd-resonance-bench",
+ "variants": [
+  {
+   "key": "ir-glycerin",
+   "title": "Pulsed NMR inversion recovery: glycerin (illustrative T1)",
+   "sample": "Glycerin (unsourced / illustrative)",
+   "method": "inversion recovery",
+   "unknown": "T1",
+   "params": {
+    "T1": 0.05,
+    "T2": 0.03
+   },
+   "cfg": {
+    "measure": "t1"
+   },
+   "note": "A viscous liquid relaxes fast: T1 is tens of milliseconds, so the delays are short.",
+   "source": {
+    "title": "Bloch relaxation formulas; the T1 and T2 of this sample are chosen for the lab (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "ir-water-ions",
+   "title": "Pulsed NMR inversion recovery: water with paramagnetic ions (illustrative T1)",
+   "sample": "Water with paramagnetic ions (unsourced / illustrative)",
+   "method": "inversion recovery",
+   "unknown": "T1",
+   "params": {
+    "T1": 0.25,
+    "T2": 0.2
+   },
+   "cfg": {
+    "measure": "t1"
+   },
+   "note": "Paramagnetic ions shorten T1 of the water protons from seconds to a fraction of a second.",
+   "source": {
+    "title": "Bloch relaxation formulas; the T1 and T2 of this sample are chosen for the lab (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "hahn-mineral-oil",
+   "title": "Pulsed NMR Hahn echo: mineral oil (illustrative T2)",
+   "sample": "Mineral oil (unsourced / illustrative)",
+   "method": "Hahn spin echo",
+   "unknown": "T2",
+   "params": {
+    "T1": 0.06,
+    "T2": 0.035
+   },
+   "cfg": {
+    "measure": "t2"
+   },
+   "note": "A pi/2 - tau - pi sequence refocuses the static-field inhomogeneity; the echo height falls as exp(-2 tau/T2).",
+   "source": {
+    "title": "Bloch relaxation formulas; the T1 and T2 of this sample are chosen for the lab (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "hahn-water-ions",
+   "title": "Pulsed NMR Hahn echo: water with paramagnetic ions (illustrative T2)",
+   "sample": "Water with paramagnetic ions (unsourced / illustrative)",
+   "method": "Hahn spin echo",
+   "unknown": "T2",
+   "params": {
+    "T1": 0.25,
+    "T2": 0.15
+   },
+   "cfg": {
+    "measure": "t2"
+   },
+   "note": "A shorter T2 than T1: the transverse magnetisation dephases faster than the longitudinal one recovers.",
+   "source": {
+    "title": "Bloch relaxation formulas; the T1 and T2 of this sample are chosen for the lab (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "cpmg-gradient",
+   "title": "Pulsed NMR CPMG train in a field gradient (illustrative T2)",
+   "sample": "Water with paramagnetic ions in a 2 mT/m gradient (unsourced / illustrative)",
+   "method": "Carr-Purcell-Meiboom-Gill train",
+   "unknown": "T2",
+   "params": {
+    "T1": 0.25,
+    "T2": 0.15,
+    "G": 0.002
+   },
+   "cfg": {
+    "measure": "cpmg"
+   },
+   "note": "In a field gradient a single Hahn echo also loses height to diffusion; the CPMG train (closely spaced pi pulses) measures T2 without it.",
+   "source": {
+    "title": "Bloch relaxation formulas; the T1 and T2 of this sample are chosen for the lab (unsourced / illustrative)"
+   }
+  }
+ ]
+}

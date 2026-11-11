@@ -1,0 +1,33 @@
+{
+ "base": "cq-logistic-map",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "second-doubling",
+   "title": "Logistic map: the second period doubling",
+   "sample": "Logistic map x -> r x (1 - x), period 2 to period 4",
+   "unknown": "the parameter r of the second period doubling",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "R. M. May, Nature 261, 459 (1976)",
+    "note": "the second period doubling is at r = 1 + sqrt(6)"
+   }
+  },
+  {
+   "key": "feigenbaum",
+   "title": "Logistic map: the Feigenbaum ratio from superstable cycles",
+   "sample": "Superstable cycles of period 2^k of x -> r x (1 - x)",
+   "unknown": "the ratio of successive bifurcation intervals",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "M. J. Feigenbaum, J. Stat. Phys. 19, 25 (1978)",
+    "note": "delta = 4.669201609... (OEIS A006890)"
+   }
+  }
+ ]
+}

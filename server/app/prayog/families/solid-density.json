@@ -1,0 +1,15 @@
+{"base": "solid-density", "rig": "archimedes-balance", "chapter": "Gravitation and Floatation",
+ "grid": {"title": "Density of a solid: {metal}", "unknown": "the density of {metal}",
+   "axes": {"metal": [
+     {"key": "iron", "label": "an iron cylinder", "sample": "Iron cylinder",
+      "params": {"rho_s": 7870.0},
+      "source": {"title": "CRC Handbook of Chemistry and Physics - physical constants of the elements",
+                 "note": "iron, density 7.87 g/cm3 at 20 C"}},
+     {"key": "copper", "label": "a copper cylinder", "sample": "Copper cylinder",
+      "params": {"rho_s": 8960.0},
+      "source": {"title": "CRC Handbook of Chemistry and Physics - physical constants of the elements",
+                 "note": "copper, density 8.96 g/cm3 at 20 C"}},
+     {"key": "brass", "label": "a brass cylinder", "sample": "Brass cylinder",
+      "params": {"rho_s": 8500.0},
+      "source": {"title": "CRC Handbook of Chemistry and Physics - densities of alloys",
+                 "note": "cartridge brass (70 Cu / 30 Zn), density 8.50 g/cm3"}}]}}}

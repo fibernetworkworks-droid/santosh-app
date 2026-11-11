@@ -1,0 +1,59 @@
+{
+ "base": "zener-characteristic",
+ "rig": "semiconductor-board",
+ "chapter": "Semiconductor Electronics",
+ "variants": [
+  {
+   "key": "v3v3",
+   "title": "Zener diode 1N4728A: 3.3 V breakdown",
+   "sample": "1N4728A Zener diode, 3.3 V 1 W",
+   "unknown": "the breakdown voltage of a 1N4728A",
+   "params": {
+    "Vz": 3.3
+   },
+   "note": "Only the nominal breakdown voltage is taken from the datasheet; the dynamic resistance is kept at the lab's 10 ohm for every diode.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A, 1 W Zener diodes, datasheet: nominal Zener voltage Vz at Izt"
+   }
+  },
+  {
+   "key": "v4v7",
+   "title": "Zener diode 1N4732A: 4.7 V breakdown",
+   "sample": "1N4732A Zener diode, 4.7 V 1 W",
+   "unknown": "the breakdown voltage of a 1N4732A",
+   "params": {
+    "Vz": 4.7
+   },
+   "note": "Only the nominal breakdown voltage is taken from the datasheet; the dynamic resistance is kept at the lab's 10 ohm for every diode.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A, 1 W Zener diodes, datasheet: nominal Zener voltage Vz at Izt"
+   }
+  },
+  {
+   "key": "v6v2",
+   "title": "Zener diode 1N4735A: 6.2 V breakdown",
+   "sample": "1N4735A Zener diode, 6.2 V 1 W",
+   "unknown": "the breakdown voltage of a 1N4735A",
+   "params": {
+    "Vz": 6.2
+   },
+   "note": "Only the nominal breakdown voltage is taken from the datasheet; the dynamic resistance is kept at the lab's 10 ohm for every diode.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A, 1 W Zener diodes, datasheet: nominal Zener voltage Vz at Izt"
+   }
+  },
+  {
+   "key": "v9v1",
+   "title": "Zener diode 1N4739A: 9.1 V breakdown",
+   "sample": "1N4739A Zener diode, 9.1 V 1 W",
+   "unknown": "the breakdown voltage of a 1N4739A",
+   "params": {
+    "Vz": 9.1
+   },
+   "note": "Only the nominal breakdown voltage is taken from the datasheet; the dynamic resistance is kept at the lab's 10 ohm for every diode.",
+   "source": {
+    "title": "ON Semiconductor 1N4728A-1N4764A, 1 W Zener diodes, datasheet: nominal Zener voltage Vz at Izt"
+   }
+  }
+ ]
+}

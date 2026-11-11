@@ -1,0 +1,34 @@
+{
+ "base": "michelson-plate-index",
+ "rig": "msc-interferometer",
+ "chapter": "Interferometry",
+ "variants": [
+  {
+   "key": "fused-silica",
+   "title": "Michelson interferometer: refractive index of a fused-silica plate",
+   "sample": "Fused-silica plate, 1.000 mm",
+   "unknown": "the refractive index of fused silica",
+   "params": {
+    "np": 1.4585,
+    "tp": 0.001
+   },
+   "source": {
+    "title": "Malitson, J. Opt. Soc. Am. 55 (1965) 1205: fused silica n = 1.4585 at 589 nm"
+   }
+  },
+  {
+   "key": "cover-slip",
+   "title": "Michelson interferometer: refractive index of a thin BK7 cover slip",
+   "sample": "BK7 microscope cover slip, 0.170 mm",
+   "unknown": "the refractive index of the cover slip glass",
+   "params": {
+    "np": 1.5168,
+    "tp": 0.00017
+   },
+   "note": "A thin plate gives a small shift, so the zoom steps matter more.",
+   "source": {
+    "title": "SCHOTT N-BK7 datasheet: nd = 1.5168; No. 1.5 cover slip thickness 0.17 mm (ISO 8255-1)"
+   }
+  }
+ ]
+}

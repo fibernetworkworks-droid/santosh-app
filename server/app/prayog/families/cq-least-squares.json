@@ -1,0 +1,80 @@
+{
+ "base": "cq-least-squares",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "unweighted",
+   "title": "Least squares: straight line, unweighted",
+   "sample": "Synthetic data y = 2 + 3x with 4 % noise, unweighted fit",
+   "unknown": "the slope",
+   "params": {
+    "wt": 0
+   },
+   "source": {
+    "title": "Synthetic data from a stated law with seeded noise (Hoola Prayogshala)",
+    "note": "the true parameter is known, so the fit has a real error"
+   }
+  },
+  {
+   "key": "power-law",
+   "title": "Least squares: power law y = A x^b",
+   "sample": "Synthetic data y = 5 x^1.5 with 4 % noise",
+   "unknown": "the exponent b",
+   "params": {
+    "cas": 1,
+    "a0": 5,
+    "b0": 1.5
+   },
+   "source": {
+    "title": "Synthetic data from a stated law with seeded noise (Hoola Prayogshala)",
+    "note": "the true parameter is known, so the fit has a real error"
+   }
+  },
+  {
+   "key": "exponential",
+   "title": "Least squares: exponential decay",
+   "sample": "Synthetic data y = 5 exp(-x/4) with 4 % noise",
+   "unknown": "the decay time tau",
+   "params": {
+    "cas": 2,
+    "a0": 5,
+    "b0": 4
+   },
+   "source": {
+    "title": "Synthetic data from a stated law with seeded noise (Hoola Prayogshala)",
+    "note": "the true parameter is known, so the fit has a real error"
+   }
+  },
+  {
+   "key": "quadratic",
+   "title": "Least squares: quadratic, weighted",
+   "sample": "Synthetic data y = 2 + 3x + 0.5x^2 with 2 % noise, weighted fit",
+   "unknown": "the quadratic coefficient",
+   "params": {
+    "cas": 3,
+    "wt": 1,
+    "sig": 0.02
+   },
+   "source": {
+    "title": "Synthetic data from a stated law with seeded noise (Hoola Prayogshala)",
+    "note": "the true parameter is known, so the fit has a real error"
+   }
+  },
+  {
+   "key": "quadratic-unweighted",
+   "title": "Least squares: quadratic, unweighted",
+   "sample": "Synthetic data y = 2 + 3x + 0.5x^2 with 2 % noise, unweighted fit",
+   "unknown": "the quadratic coefficient",
+   "params": {
+    "cas": 3,
+    "wt": 0,
+    "sig": 0.02
+   },
+   "source": {
+    "title": "Synthetic data from a stated law with seeded noise (Hoola Prayogshala)",
+    "note": "the true parameter is known, so the fit has a real error"
+   }
+  }
+ ]
+}

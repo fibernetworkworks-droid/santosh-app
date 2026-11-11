@@ -1,0 +1,33 @@
+{
+ "base": "sn-timer-555",
+ "rig": "sn-scope-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "c-47n",
+   "title": "555 timer as an astable and a monostable: a 47 nF capacitor",
+   "sample": "Unknown timing capacitor from the E6 series (47 nF)",
+   "unknown": "the timing capacitor, from the frequency and the pulse width",
+   "params": {
+    "C": 4.7e-08
+   },
+   "note": "A smaller capacitor makes the astable run faster and the monostable pulse shorter.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 47 nF; NE555 timing relations (TI datasheet)"
+   }
+  },
+  {
+   "key": "c-470n",
+   "title": "555 timer as an astable and a monostable: a 470 nF capacitor",
+   "sample": "Unknown timing capacitor from the E6 series (470 nF)",
+   "unknown": "the timing capacitor, from the frequency and the pulse width",
+   "params": {
+    "C": 4.7e-07
+   },
+   "note": "A larger capacitor slows both modes, so the astable is visible as flashes.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 470 nF; NE555 timing relations (TI datasheet)"
+   }
+  }
+ ]
+}

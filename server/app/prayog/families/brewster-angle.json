@@ -1,0 +1,68 @@
+{
+  "base": "brewster-angle",
+  "rig": "polar-bench",
+  "chapter": "Polarisation",
+  "variants": [
+    {
+      "key": "bk7",
+      "title": "Brewster's angle for crown glass (N-BK7)",
+      "sample": "Plain plate of SCHOTT N-BK7 crown glass, blackened behind",
+      "unknown": "the polarising angle and the refractive index of the glass",
+      "params": {
+        "n": 1.5168
+      },
+      "source": {
+        "title": "SCHOTT N-BK7 data sheet: nd = 1.51680 at 587.6 nm"
+      }
+    },
+    {
+      "key": "f2",
+      "title": "Brewster's angle for flint glass (F2)",
+      "sample": "Plain plate of SCHOTT F2 flint glass, blackened behind",
+      "unknown": "the polarising angle and the refractive index of the glass",
+      "params": {
+        "n": 1.62004
+      },
+      "source": {
+        "title": "SCHOTT F2 data sheet: nd = 1.62004 at 587.6 nm"
+      }
+    },
+    {
+      "key": "sf10",
+      "title": "Brewster's angle for dense flint glass (N-SF10)",
+      "sample": "Plain plate of SCHOTT N-SF10 dense flint glass, blackened behind",
+      "unknown": "the polarising angle and the refractive index of the glass",
+      "params": {
+        "n": 1.72825
+      },
+      "source": {
+        "title": "SCHOTT N-SF10 data sheet: nd = 1.72825 at 587.6 nm"
+      }
+    },
+    {
+      "key": "silica",
+      "title": "Brewster's angle for fused quartz",
+      "sample": "Plain plate of fused quartz, blackened behind",
+      "unknown": "the polarising angle and the refractive index of fused quartz",
+      "params": {
+        "n": 1.45846
+      },
+      "source": {
+        "title": "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965): fused silica n = 1.45846 at 587.56 nm"
+      }
+    },
+    {
+      "key": "water",
+      "title": "Brewster's angle for a water surface",
+      "sample": "A still water surface in a blackened trough",
+      "unknown": "the polarising angle and the refractive index of water",
+      "params": {
+        "n": 1.333
+      },
+      "note": "This is why polaroid sunglasses cut the glare off water: that glare is reflected light, polarised mostly across the plane of incidence.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics: water, nD = 1.3330 at 20 C"
+      }
+    }
+  ]
+}

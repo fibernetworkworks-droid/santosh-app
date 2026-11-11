@@ -1,0 +1,49 @@
+{
+ "base": "phd-weak-localisation",
+ "chapter": "Quantum transport",
+ "rig": "phd-transport-bench",
+ "variants": [
+  {
+   "key": "short-coherence",
+   "title": "Weak localisation in a dirty film, coherence length 0.5 um at 1 K (simulated)",
+   "sample": "Thin metal film, L_phi(1 K) = 0.5 um (simulated, illustrative)",
+   "method": "magnetoconductance, HLN fit",
+   "unknown": "phase coherence length",
+   "params": {
+    "L1": 5e-07
+   },
+   "note": "A dirtier film dephases sooner, so B_phi is four times larger.",
+   "source": {
+    "title": "S. Hikami, A. I. Larkin and Y. Nagaoka, Prog. Theor. Phys. 63, 707 (1980)"
+   }
+  },
+  {
+   "key": "long-coherence",
+   "title": "Weak localisation in a clean film, coherence length 2 um at 1 K (simulated)",
+   "sample": "Thin metal film, L_phi(1 K) = 2 um (simulated, illustrative)",
+   "method": "magnetoconductance, HLN fit",
+   "unknown": "phase coherence length",
+   "params": {
+    "L1": 2e-06
+   },
+   "note": "A cleaner film keeps its phase longer: the curve rises at a much smaller field.",
+   "source": {
+    "title": "S. Hikami, A. I. Larkin and Y. Nagaoka, Prog. Theor. Phys. 63, 707 (1980)"
+   }
+  },
+  {
+   "key": "phonon-dephasing",
+   "title": "Weak localisation with electron-phonon dephasing, L_phi ~ T^-1 (simulated)",
+   "sample": "Thin metal film, p = 2 (simulated, illustrative)",
+   "method": "magnetoconductance, HLN fit at several temperatures",
+   "unknown": "phase coherence length and its temperature law",
+   "params": {
+    "pexp": 2.0
+   },
+   "note": "Electron-phonon dephasing gives L_phi ~ T^(-p/2) with p = 2 to 4; here p = 2, so warming from 2 K to 8 K shortens L_phi four times.",
+   "source": {
+    "title": "S. Hikami, A. I. Larkin and Y. Nagaoka, Prog. Theor. Phys. 63, 707 (1980)"
+   }
+  }
+ ]
+}

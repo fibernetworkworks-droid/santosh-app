@@ -1,0 +1,16 @@
+{
+  "base": "ultrasonic-interferometer",
+  "chapter": "Oscillations, waves and acoustics",
+  "variants": [
+    {"key": "kerosene", "title": "Ultrasonic interferometer: kerosene",
+     "sample": "Kerosene", "method": "2 MHz interferometer, micrometer reflector",
+     "unknown": "the velocity of ultrasound and the adiabatic compressibility of kerosene", "params": {"v": 1324, "rho": 810},
+     "note": "Kerosene is lighter and more compressible than water, so sound is slower and the wavelength shorter: 0.66 mm at 2 MHz.",
+     "source": {"title": "Engineering ToolBox: speed of sound in kerosene 1324 m/s; density about 810 kg/m3 (CRC Handbook range 780-820)"}},
+    {"key": "glycerol", "title": "Ultrasonic interferometer: glycerol",
+     "sample": "Glycerol (glycerine)", "method": "2 MHz interferometer, micrometer reflector",
+     "unknown": "the velocity of ultrasound and the adiabatic compressibility of glycerol", "params": {"v": 1904, "rho": 1261},
+     "note": "Glycerol is far less compressible than water: sound runs at 1904 m/s and the wavelength is 0.95 mm.",
+     "source": {"title": "CRC Handbook of Chemistry and Physics: speed of sound in glycerol 1904 m/s at 20 °C; density 1.261 g/cm3"}}
+  ]
+}

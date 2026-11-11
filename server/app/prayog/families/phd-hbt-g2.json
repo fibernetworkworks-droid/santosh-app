@@ -1,0 +1,40 @@
+{
+ "base": "phd-hbt-g2",
+ "rig": "phd-photon-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "fast-disc",
+   "title": "Intensity correlations with a fast-spinning disc",
+   "sample": "Pseudo-thermal light, disc spun faster (coherence time 20 microseconds)",
+   "unknown": "g2(0) and coherence time",
+   "note": "A faster disc decorrelates the speckle sooner: the central peak is narrower, so the bins are 2.5 microseconds wide. g2(0) is unchanged.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "tc": 2e-05,
+    "bw": 2.5e-06,
+    "seed": 15.0
+   }
+  },
+  {
+   "key": "dim-source",
+   "title": "Intensity correlations with ten times fewer photons",
+   "sample": "Pseudo-thermal light, count rate 6 x 10^4 per second on each counter",
+   "unknown": "g2(0) and coherence time",
+   "note": "Ten times fewer photons per counter: the coincidence bins hold far fewer counts, but g2(0) is still 2 because it is a ratio.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "R1": 63000.0,
+    "R2": 63000.0,
+    "Ts": 30.0,
+    "seed": 17.0
+   }
+  }
+ ]
+}

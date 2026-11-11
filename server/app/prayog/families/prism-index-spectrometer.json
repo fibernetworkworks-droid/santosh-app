@@ -1,0 +1,88 @@
+{
+  "base": "prism-index-spectrometer",
+  "rig": "spectrometer-bench",
+  "chapter": "Geometrical optics and the spectrometer",
+  "variants": [
+    {
+      "key": "bk7",
+      "title": "Prism on the spectrometer: refractive index of crown glass (N-BK7)",
+      "sample": "Equilateral prism of borosilicate crown glass, SCHOTT N-BK7",
+      "unknown": "the refractive index n of the glass at the sodium D line",
+      "params": {
+        "n0": 1.504518,
+        "nB": 4.2211e-15
+      },
+      "source": {
+        "title": "SCHOTT N-BK7 data sheet: nF = 1.52238 (486.13 nm), nC = 1.51432 (656.27 nm); the two-term Cauchy constants are fitted to those two lines"
+      }
+    },
+    {
+      "key": "bak4",
+      "title": "Prism on the spectrometer: refractive index of barium crown glass (N-BAK4)",
+      "sample": "Equilateral prism of barium crown glass, SCHOTT N-BAK4, the glass of binocular prisms",
+      "unknown": "the refractive index n of the glass at the sodium D line",
+      "params": {
+        "n0": 1.553396,
+        "nB": 5.3207e-15
+      },
+      "source": {
+        "title": "SCHOTT N-BAK4 data sheet: nF = 1.57591, nC = 1.56575; Cauchy constants fitted to those two lines"
+      }
+    },
+    {
+      "key": "f2",
+      "title": "Prism on the spectrometer: refractive index of flint glass (F2)",
+      "sample": "Equilateral prism of flint glass, SCHOTT F2",
+      "note": "Flint glass carries lead oxide: it bends light more, and spreads the colours more, than crown glass.",
+      "unknown": "the refractive index n of the glass at the sodium D line",
+      "params": {
+        "n0": 1.594307,
+        "nB": 8.929e-15
+      },
+      "source": {
+        "title": "SCHOTT F2 data sheet: nF = 1.63208, nC = 1.61503; Cauchy constants fitted to those two lines"
+      }
+    },
+    {
+      "key": "sf10",
+      "title": "Prism on the spectrometer: refractive index of dense flint glass (N-SF10)",
+      "sample": "Equilateral prism of dense flint glass, SCHOTT N-SF10",
+      "note": "A very dense glass. Below about 42 degrees of incidence the light cannot leave the second face at all and the image disappears.",
+      "unknown": "the refractive index n of the glass at the sodium D line",
+      "params": {
+        "n0": 1.687891,
+        "nB": 1.42027e-14
+      },
+      "source": {
+        "title": "SCHOTT N-SF10 data sheet: nF = 1.74797, nC = 1.72085; Cauchy constants fitted to those two lines"
+      }
+    },
+    {
+      "key": "silica",
+      "title": "Prism on the spectrometer: refractive index of fused quartz",
+      "sample": "Equilateral prism of fused quartz (fused silica)",
+      "unknown": "the refractive index n of fused quartz at the sodium D line",
+      "params": {
+        "n0": 1.44815,
+        "nB": 3.5402e-15
+      },
+      "source": {
+        "title": "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965): fused silica n = 1.46313 at 486.13 nm and 1.45637 at 656.27 nm; Cauchy constants fitted to those two lines"
+      }
+    },
+    {
+      "key": "water",
+      "title": "Hollow prism on the spectrometer: refractive index of water",
+      "sample": "Hollow glass prism filled with distilled water at 20 C",
+      "method": "Thin parallel glass walls do not change the deviation: the liquid alone bends the light.",
+      "unknown": "the refractive index n of water at the sodium D line",
+      "params": {
+        "n0": 1.324394,
+        "nB": 3.0217e-15
+      },
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics: water at 20 C, n = 1.33718 (486.1 nm), 1.33300 (589.3 nm), 1.33141 (656.3 nm); Cauchy constants fitted to the F and C lines"
+      }
+    }
+  ]
+}

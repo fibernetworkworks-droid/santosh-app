@@ -1,0 +1,22 @@
+{
+ "base": "phd-poisson-counting",
+ "rig": "phd-photon-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "scintillation",
+   "title": "Poisson counting with a scintillation counter",
+   "sample": "Scintillation counter, dead time 2 microseconds",
+   "unknown": "mean-variance relation and interval distribution",
+   "note": "A fast scintillation counter is blind for about 2 microseconds after each pulse, so the dead-time effect appears only at the highest rates.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "td": 2e-06,
+    "seed": 27.0
+   }
+  }
+ ]
+}
