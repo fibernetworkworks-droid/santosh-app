@@ -94,15 +94,6 @@ class Settings(BaseSettings):
     dev_lab: bool = True                    # v0.533 PRAYOGSHALA ON: her VPS answered lab_check with every wall holding (docker 29.8.1, base image built, pass + fail caught, network blocked, read-only root, uid 1000)
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
-    dev_workspace: bool = False             # Hoola Code Phase 4: a session works in a REAL checkout in its own locked box (commands, files kept between messages, a conversation). OFF until `python -m app.devsahayak.wsp check` passes on her VPS (vps-ops ws_check)
-    dev_workspace_live: int = 2             # ... sessions that may be LIVE (box + files on the server) at once on the whole server - her number, 11 Nov 2026; the rest are paused
-    dev_workspace_idle_min: int = 30        # ... a live session nobody used for this long is paused (edits saved, box + files removed, rebuilt on its next message)
-    dev_workspace_cmd_s: int = 300          # ... seconds one command may run in the box
-    dev_workspace_bg_s: int = 900           # ... seconds a background command may run
-    dev_workspace_cmds: int = 60            # ... commands one turn may run
-    dev_workspace_wait_min: int = 20        # ... minutes a new turn waits for a free box when every live one is busy
-    dev_workspace_poll_s: float = 3.0       # ... how often that wait looks again
-    dev_workspace_mem: str = ""             # ... memory cap of one live box ('' = the lab's 2g)
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
     research_engines_allowed: str = "hoola"   # v0.477 R6: comma list of engines she lets run research ("hoola" is always allowed); a vendor must be listed here ...
     research_vendor_terms_ack: str = ""       # ... AND here: the vendors whose current terms SHE has read and accepts for this use (storing + showing the result to her). Nothing is assumed.
@@ -156,6 +147,17 @@ class Settings(BaseSettings):
     dev_spec_focus_steps: int = 12          # steps for one focused pass
     dev_loop_model: str = ""                 # ... '' = site_model (Opus)
     dev_loop_effort: str = "high"           # ... Claude effort for coding
+    # v0.784 HOOLA CODE ENGINE (owner: "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE"): devsahayak/engine.py + brain.py
+    dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
+    dev_think: bool = True                  # ... with adaptive thinking
+    dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
+    dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
+    dev_ws_steps: int = 150                 # ... model steps in one round
+    dev_ws_minutes: int = 60                # ... minutes in one round
+    dev_ws_bash_runs: int = 80              # ... box commands in one round
+    dev_ws_clear_chars: int = 180000        # ... past this, old tool output is trimmed (brain.trim)
+    dev_ws_compact_chars: int = 480000      # ... past this, the older conversation is summarised (engine.compact)
+    dev_ws_keep_days: int = 14              # ... an idle session's working copy is kept this long
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)

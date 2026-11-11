@@ -39,9 +39,6 @@ class DevRepo(Base):
     deploy_workflow: Mapped[str] = mapped_column(String(200), default="")  # .github/workflows/deploy.yml (her own)
     deploy_ref: Mapped[str] = mapped_column(String(100), default="")       # '' = default branch
     notes: Mapped[str] = mapped_column(Text, default="")
-    setup_cmd: Mapped[str | None] = mapped_column(Text, nullable=True)        # Phase 4: her own dependency-install command for this repo (the box's one-time setup)
-    test_cmd: Mapped[str | None] = mapped_column(Text, nullable=True)         # Phase 4: her own check command for this repo (always wins, never needs a tap)
-    env_vars: Mapped[str | None] = mapped_column(Text, nullable=True)         # Phase 4: {NAME: value} set for every command in the box - NOT for secrets
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -95,31 +92,8 @@ class DevTask(Base):
     effort: Mapped[str | None] = mapped_column(String(8), nullable=True)        # Phase 3: low | medium | high
     attach: Mapped[str | None] = mapped_column(Text, nullable=True)             # Phase 3: [{name, kind: image|text, size, file | text}] she attached
     cost: Mapped[str | None] = mapped_column(Text, nullable=True)               # Phase 3: {usd, calls, tok_in, tok_out} of this session's own model calls
-    job: Mapped[str | None] = mapped_column(Text, nullable=True)                # Phase 4: the background run in flight {what, args, beat, tries} - a restart picks it up again
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
-
-
-class DevWorkspace(Base):
-    """Phase 4 (Hoola Code): one session's real checkout. The files live on the server's disk under data/devws/<task>/
-    and, while the session is LIVE, in one locked box (devlab) that stays for the life of the session. At most
-    `dev_workspace_live` are live at once on the whole server; the rest are PAUSED (edits saved, box and files gone,
-    rebuilt on the next message)."""
-    __tablename__ = "devsahayak_workspaces"
-    id: Mapped[str] = mapped_column(String(40), primary_key=True)             # = the task id
-    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
-    repo: Mapped[str] = mapped_column(String(200), default="")
-    base_sha: Mapped[str] = mapped_column(String(40), default="")             # the commit the files on disk are compared with
-    state: Mapped[str] = mapped_column(String(10), default="")                # live | paused | closed
-    image: Mapped[str] = mapped_column(Text, default="")                      # the repo's dependency snapshot the box runs on
-    spec: Mapped[str | None] = mapped_column(Text, nullable=True)             # {test, source, confirm, setup, lang, why} read at clone time
-    todo: Mapped[str | None] = mapped_column(Text, nullable=True)             # [{text, state}] Hoola's own list for this job
-    ask: Mapped[str | None] = mapped_column(Text, nullable=True)              # {q, choices} a question waiting for her
-    snaps: Mapped[str | None] = mapped_column(Text, nullable=True)            # [{n, at, text, files, base}] one per message of hers (rewind)
-    msgs: Mapped[int] = mapped_column(Integer, default=0)
-    busy: Mapped[bool] = mapped_column(Boolean, default=False)                # a turn is running in the box right now
-    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class DevReview(Base):
