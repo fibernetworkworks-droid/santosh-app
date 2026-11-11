@@ -4,7 +4,7 @@ Owner, 11 Nov 2026: "NOW LETS WORK ON DOCUMENT HANDLING CAPABILITIES TOOLS :: ht
 site read all tools. also compare that what hoola existing has ... make a perfect plan that in backend hoola can use
 these tools to perform user asked operations ... make a ultimate plan".
 
-**Status:** D0-D5 built, shipped as v0.816.0 (built as 0.794 / 0.795 / 0.805 / 0.806 / 0.814) (owner: 'GO D0 WITH YOUR RECOMMENDATIONS'; decisions D1-D5 taken as recommended in §6). Next: D6.
+**Status:** D0-D6 built, shipped as v0.819.0 (built as 0.794 / 0.795 / 0.805 / 0.806 / 0.814 / 0.817) (owner: 'GO D0 WITH YOUR RECOMMENDATIONS'; decisions D1-D5 taken as recommended in §6). Next: D7.
 
 This plan covers four things:
 

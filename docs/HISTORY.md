@@ -2251,3 +2251,143 @@ NOT VERIFIED (honest): not on the VPS; no real phone has drawn on the signing pa
 PUBLIC_BASE_URL to be absolute and SECRET_KEY for her signature / certificate to survive a restart; the Hoola
 certificate is self-signed, so Adobe shows "validity unknown" until she trusts it - by design it is not an identity
 certificate; outside signers are not OTP-checked (said on the record page).
+## v0.816.0 NATIJA KHATA (built as 0.806; their 0.806-0.815 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
+
+What it is: one row per prompt she takes OUT of Hoola Prompting, and what happened to the result afterwards. This is
+the measure the whole feature is judged by, and the data the later phases (recipe order, defaults, self-improvement)
+need.
+
+- `server/app/prompting/ledger.py`, tables `prompt_runs` + `prompt_prefs` (registered in db.init_db, self-heal).
+- A row holds SHAPE only: section, recipe id, slot names with their source, score, dialect, engine, model, rupees
+  (AI list price), seconds, status, grade. The prompt is stored as a SHA-256 of its normalised text plus up to 160
+  word hashes salted with the tenant id. No word, price, phone or name of hers is in the table (test).
+- Life of a run: `hand()` (POST /api/prompting/runs from the Improve sheet's Use button and the page's Open / Copy)
+  -> `claim(tenant, section, text, ref)` when an engine starts with that text: exact hash, or >= 60 % word overlap
+  inside 2 hours (= she edited the prompt first, `edited_before`). The same prompt started again inside 6 hours grades
+  the earlier run `redone` and opens a new run (origin `again`). -> `ready(ref, more_refs, model, usd, seconds)` ->
+  `event(tenant, ref, ev)`: published / downloaded / copied / sent / thumb_up = kept (kept_after_edit when the result
+  was edited), edited, deleted / thumb_down = dropped, redo = redone. Her own keep stands against a later redo; only
+  her delete undoes it. `failed(ref)` closes a run without a grade (an engine failure is not her verdict).
+- Hooks (all through `main._pled`, `_pled_site`, `_pled_sid`, `_pled_chat`; each swallows its own errors):
+  POST /api/sites (both the architect path and the plain path), site first build ready (`site/service.py`, with the
+  site's cost_usd), /change + /edit, /launch, DELETE; Create image jobs (`create/jobs.py`: run_meter cost, items as
+  extra refs, failure), item delete; the Script writer (/api/create/write, item text edit, delete); a chat message of
+  40+ characters (never in an incognito chat), reply thumbs, Ask again. Studio downloads call
+  POST /api/prompting/runs/event (only `downloaded` / `copied` are accepted from a page).
+- Silence, by rule (`settle`, run lazily when numbers are read): handed and never run in 24 hours = `unused`; copied
+  out of Hoola = closed with no grade (unknown); a result still there 3 days later, not redone and not deleted =
+  kept, marked quiet and counted apart from her own keeps.
+- The four numbers (`numbers`): kept rate, redos per kept result, rupees per kept result, minutes to a kept result -
+  overall and per section, shown only after 5 judged results. Score check per section: kept rate of runs at or above
+  the median score against those below, said only with 16 judged runs: predicts / no link / backwards.
+- Recipes: `recipe_rates()` (users who share, 5+ judged runs) orders the image / script recipes and shows
+  "kept 5 of 6 times".
+- Her controls: keep my record (off = nothing written), share shape for recipe order, Delete my record
+  (DELETE /api/prompting/ledger?confirm=DELETE). GET /api/prompting/ledger = her numbers + recent runs;
+  `everyone=1` only for the owner tenant (all users who share, no recent list). POST /api/prompting/runs/{id}/thumb.
+- Page: Results tab on /console/prompting (`prompting.js` results(), styles at the end of `prompting.css`).
+- Switch `prompting_ledger` (default on).
+- Tests: `server/tests/test_v0816_prompt_ledger.py`, 14 incl. a browser walk at 1360 and 390 px.
+
+NOT built / NOT verified: no real run has been recorded on the live server. Not hooked: Kalam, video, app builds,
+the architect's plan-only path. Rupees for a website are the site's running AI cost at first build, not the build
+alone. A chat run is marked ready when the message is sent (the reply's time and cost are not read). Decisions 2-5
+of plan part 7 (which questions to stop asking, slot defaults per business type, dialect health alerts, her
+personal defaults) need real rows first and are not built.
+
+## v0.817.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.816 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
+
+Same pages, same routes, same behaviour - the LOOK rebuilt. Seven phases had each added their own rules (311 lines, five
+button heights, corners from 5 to 18px, a class used for two different things). All of them are gone; ONE block in
+`server/app/static/console/v2.css` ("HOOLA CODE (code.js) - THE DESIGN SYSTEM") replaces them.
+
+**The scale (nothing on the page is outside it)**
+- Controls 34px (small 28px, the two composer buttons 36px); a button, a chip, a field and a tab are the same height, so
+  any row of them sits on one line.
+- Corners 8 (control) / 12 (card) / 18 (composer, dialog); type 12 / 13 / 13.5 / 14 / 16 serif for reading / 28 serif for
+  a page title; weights 400 / 500 / 600; space 4 / 8 / 12 / 16 / 24.
+- One hairline inside a card (`--line`), one around it (`--hair2`), one soft shadow (`--lift`); the composer is the one
+  raised thing on a page (a deeper shadow with a faint violet glow under it).
+- Console tokens only, so dark mode follows by itself; primary / green / red buttons take `--on-acc` for their words
+  (white words on the bright dark-mode green were unreadable).
+
+**What changed on the page**
+- Sidebar: sans brand line (it was monospace by accident: `.hcd-sh` was both "section header" and "shell command" - the
+  command is `.hcd-cmd` now), icons on the nav rows, the open session as a raised row, a count badge on Scheduled.
+- Home: four starting points under the box (Fix a bug / Build a feature / Write tests / Explain the code) that only fill
+  the box; the settings row as quiet inline pickers with one drawn chevron (native select arrows are gone everywhere).
+- Session: every step is one grid (16px mark, words, time) so marks and words line up down the page; thinking as a quiet
+  italic quote; the recap as one calm card with a coloured edge instead of a tinted slab; the question / plan bar, the
+  queue and the message box are the same width; a Working pill with the clock in the top bar.
+- Rail: quiet cards on the sidebar colour; buttons share a row and never overflow (a long label wraps to its own row).
+- Changes pane: file list on the sidebar colour with the open file raised, 22px code rows, a 36px sticky file header.
+- Settings: cards flow in two balanced columns (a long repo card no longer leaves a hole), real switches instead of
+  checkboxes, a drawn disclosure arrow on "How this repo runs in the box".
+- All sessions: Active / Archived as one segmented control. Dialogs: 18px corners, deeper shadow.
+- Narrow windows start with the slim sidebar.
+
+**Motion (CRISP TEXT rules kept):** 140 ms hover / press / focus transitions; a page comes in once (`hcd-enter`, removed
+after 320 ms so a later repaint never moves); a dialog pops once; a fold fades in. No blur, nothing spins, text always on
+a solid colour. All of it is off under "reduce motion".
+
+**Test** `server/tests/test_v0807_hoola_code_design.py`: walks 17 views in a real browser with full data (home, finished
+session, steps + thinking, Changes pane with a comment, working, plan, question, dialog, Scheduled, Reviews, Settings,
+All sessions, three in dark, two at 390px) and MEASURES: every control on the scale, every row on one centre line, step
+marks on one vertical line, page title and cards on one left edge, nothing under 12px / over weight 600 / all-caps,
+nothing wider than the window, no button outside its card, motion once and off under reduce-motion. With HOOLA_SHOTS it
+saves a picture of each view. Found by it while building: headings losing their centring to a reset, hint text at 10.4px,
+a rail button whose words left the button, bars narrower than the message box.
+Kept on purpose (older tests pin them): rail 300px, slim sidebar 52px, reading column 760px.
+**NOT VERIFIED:** seen only in headless Chromium here, not on her own screen / Windows ClearType. The phone screen and the
+read-only shared page use the same styles but the phone app's Flutter screen is unchanged.
+## v0.818.0 HOOLA DESIGN (built as 0.777; their CHAT JAISA took 0.777.0 and the 0.778-0.817 chain landed meanwhile - REBASE PROTOCOL, both kept) — Hoola's own design editor on Figma's published architecture (11 Nov 2026; owner: "A HOOLA DESIGN --- DO EXTREEM DEEP RESEARCH HOW FIGMA WORKS IN BACKEND ... MAKE CLONE OF FIGMA FOR HOOLA END TO END" + "DEPOY SEVERAL AGENT")
+- RESEARCH (`docs/research/figma/`, every claim cited to Figma's own engineering blog / help / Evan Wallace): 01 backend + multiplayer (a file = a tree of objects, server-authoritative last-writer-wins PER PROPERTY - not OT, not a full CRDT; client id + counter node ids; fractional index child order; parent+position one property, the server refuses a cycle; one in-memory process per file, checkpoints + a write-ahead log; LiveGraph; dynamic page loading), 02 editor + rendering (C++ -> WebAssembly, own tile-based WebGL / WebGPU renderer, no DOM per layer; plugins in QuickJS), 03 feature inventory (~120 features in tiers) + open-source licences (tldraw: production licence + watermark -> not usable; Plasmic Studio AGPL -> not usable; Penpot MPL = reference only). Original product, original look: no Figma name / assets / code.
+- CONTRACT: `docs/HOOLA_DESIGN_PLAN.md` - data model (node props table), ops, WebSocket frames, REST routes, client module API, phases D1-D9, section 6 = as built. Ten builders worked in parallel against it (4 first wave, 6 second wave), each owning its own files.
+- SERVER `server/app/design/` (+ main.py page route `/console/design` behind `design_page`, router mount, shutdown flush; db.init_db; config `design_*`): `doc.py` the document rules (LWW per prop, null removes, create = set with type/parent/idx, delete = subtree, cycle refused, root protected, size caps), `fracidx.py`, `room.py` (one room per open file: snapshot + journal replay, cid per connection persisted and never reused, bounded per-connection send queue, ONE serialisation per broadcast, checkpoint every 200 ops / 20 s idle / last leave, journal trim, auto version every 30 min keep 50, `HUB.apply_ops` for server-made edits), `store.py` (all DB access, off the event loop), `api.py` (files CRUD + trash / restore / duplicate, doc, thumb, versions + restore + duplicate-as-file, comments, assets by content sniffing - SVG with script refused, view-only share token + public read routes + `?share=` socket, the WebSocket with the console's subprotocol auth), `assets.py` + a daily unused-image sweep (worker slot `design_asset_jobs`, 7 days), `limits.py` (comment 30/min, share reads 120/min, AI 20/hour), `ai.py` + `ailayout.py` + `icons.py` + `templates.py`.
+- CLIENT `server/app/static/console/design/` (plain JS, no build step, strict CSP): `hd-math` `hd-core` (store with a SHADOW of the server's document: screen = shadow + un-acked local ops, replayed by the server's rules; per-client undo as inverse ops; `prop()` defaults never written) `hd-net` (reconnect with backoff, pending ops re-sent, offline queue 5,000, hold / release for version preview) `hd-layout` (text measure from real font metrics, auto layout flex-like with hug / fill / wrap / min-max, constraints, group bounds) `hd-render` (Canvas2D: dirty redraw, viewport culling, LOD, per-subtree bitmap cache, every paint / stroke / effect / blend / mask, booleans with real geometry, toCanvas / toSVG) `hd-tools` (select, deep select, marquee, move / resize / rotate, snapping + smart guides, frame + presets, shapes, pen, pencil, IME text) `hd-ui` (file browser, layers - virtualised, 10,000 rows = 39 DOM rows - pages, Design panel, colour picker + gradients, context menu, command palette, shortcuts) `hd-app`; second wave `hd-vector` (vector edit, booleans, masks, rulers, guides, layout grids, gradient handles, Alt distances) `hd-components` (components, instances + overrides, variants, component props, styles, variables + modes, Assets + library) `hd-export` (PNG / JPG / SVG / image PDF / ZIP, copy as PNG / SVG, SVG + picture import with hostile SVGs inert, Inspect tab with CSS / Flutter / Tailwind, .hoola.json) `hd-collab` (comments with pins that follow layers, version history with read-only preview + restore, share link that works signed out, follow / spotlight / cursor chat) `hd-proto` (interactions, on-canvas wiring, the player with transitions + smart animate, device outlines) `hd-ai` (Ask Hoola composer, Remove / Try again / 3 variations). Console sidebar row "Hoola Design" under Create.
+- AGENT: ONE tool `hoola_design` (create / list / add / share; family `design`, tight admission keys, VOICE_VIA_KAAM only; `share` never makes a public link - she taps Share herself). Registry 624 -> 625. The AI never writes ops or ids: it returns a spec that code validates (depth 8, 400 nodes, allowlisted keys and fonts, max 2 families, invented phone / price / email -> [blanks], contrast >= 4.5 checked in code with one fix pass), one retry on bad JSON, then a plain 502; no model key = 11 built-in layouts, said so.
+- MEASURED: pan 5 ms a frame with 5,000 layers, under 10 ms with 20,000 (headless Chromium, software raster, 1280x800); store loads 50,000 nodes in 20 ms, 1,000 sets in one step 2-6 ms; server ~20,000 op batches a second, ack p50 0.23 ms; a killed server lost nothing; smart animate 120 layers 2.3 ms a frame; three editors with crossing messages, rejects, undo and dropped connections - 3,000-run soak, zero divergence. Two real browsers on a real server: draw, move, recolour, undo / redo, cursors, Hindi text, reopen all matched.
+- PROOF: server 33 + collab 12 + AI + core 4 + render 3 + vector + components 3 + export 3 + proto 3 pytest files; node walks design_core (24), design_ui, design_render (12 sections), design_vector (11), design_components, design_export (273 checks; ZIP read by zipfile, PDF by strict pypdf, hostile SVG made no request), design_proto (169), design_collab (78 checks on a REAL server: two editors + a signed-out visitor).
+- NOT DONE / NOT VERIFIED: NOT Figma's raw speed - Canvas2D in plain JS, not a WASM + WebGL engine (phase D9); target is smooth up to a few thousand visible layers and 10-20 people in a file. Rooms are in memory = ONE server process per file (true on the VPS today). The AI was only ever answered by a FAKE model - real design quality unseen; only the templates were looked at. Not built: D7 bridges (import through her own Figma token, design -> Web / App Studio), D8 plugins, D9 WebGL engine + branches; boolean shapes skip text / lines; flatten keeps no outlined strokes; the PDF is page images; SVG import skips patterns / luminance masks / textPath; instances' own overrides are not in the Inspect code; unread comment dots are per browser; player hit-test by bounding box. Real Google Fonts and EyeDropper not exercised (sandbox).
+
+
+## v0.819.0 HOOLA DOCUMENT KIT D6 - compare + AI (owner: "GO D6"; built as 0.817, shipped as 0.819 - their HOOLA DESIGN took 0.817-0.818, REBASE PROTOCOL, their base kept whole; D0-D5 ride along, never on main before)
+
+- `app/dockit/smart.py` - the only part of the kit that calls a model: `_brain` = the house pattern (cheap brain via
+  llm.openai_create first, Claude messages.create as the fallback, metered by the usage layer), `ask_model` a sync
+  door for the tool's worker thread, a plain refusal when no model is set up (every non-AI action keeps working).
+  - compare (NO model): page texts (scans OCR'd first) diffed line by line per page (difflib), each change
+    changed / removed / added with before / after lines; money (Rs / rupees / /-), dates (dd/mm/yyyy, 12 Nov 2026,
+    ISO) and other numbers that moved pulled out per page; `_highlight` = a "What changed" summary page + each changed
+    page of the new copy rendered at 110 dpi with every 24 px cell that differs from the old page boxed in red (a page
+    only in the new copy is boxed whole); identical words = "same", no report.
+  - summarize (short / medium / long, focus, her language) / ask: the document with [p.N] markers (120k chars a read,
+    pages read vs total said), a system prompt that cites pages and treats the text as data; `check_answer` lists the
+    page references that do not exist and every number in the answer that is NOT in the document; the tool turns
+    those into plain warnings to say to her; 'Not in this document.' is a valid answer.
+  - smart_split: the first 300 chars of every page -> the model's JSON list of starts; code keeps only real,
+    increasing pages, adds a 'start' part if the first start is not page 1 -> ranges; a PLAN until her yes (split
+    mode=ranges makes the files).
+  - translate: pdfplumber lines (`fromdoc._lines`) -> one model call per page (numbered lines in, a JSON list of the
+    same count out, else refused), each line's numbers compared with the original (flagged), glossary passed through;
+    keep the layout = the page rendered at 170 dpi with every original line whited out (so the original words are not
+    left underneath) and the translation drawn in its box, shrunk down to 5 pt to fit, anything still too wide listed;
+    fonts: Devanagari (hi / mr / ne / sa) and Latin via the stamp layer, Bengali / Telugu / Kannada / Malayalam /
+    Gurmukhi via the bundled Noto TTFs with shaping; Tamil / Gujarati / Odia / Urdu / Arabic / CJK / Russian = a Word
+    file (their bundled fonts are woff2), said; 60 pages a call.
+- Tool: actions compare (file_ids [old, new]), summarize, ask, translate, smart_split (55 in all); NOT_YET = a legally
+  valid identity signature (DSC / Aadhaar eSign), OTP for outside signers. Prompt PDF line updated.
+- Proof card +6 (66 total, 66/66): compare pulls out Rs 4,650 -> 4,950 and the date move + report, identical = same,
+  and (with a SCRIPTED model, so the card never spends money) an invented number + a non-existent page caught, Hindi
+  laid in place of the English with numbers kept and the original words gone, a changed number in a translated line
+  flagged, a smart split plan with a ghost page dropped.
+- Tests `test_v0819_dockit_d6.py` 10 (compare through the tool + same + refusal, summary pages + the data-not-
+  instructions rule in the system prompt, invented numbers named, not in the document, translate layout + Word +
+  unknown language, a short translation refused, smart split a plan only + an unreadable answer refused, no model
+  said plainly, the number reader).
+- MERGE NOTE: main's v0.818 added a tool of its own (626), and its tools.py replaced mine in the conflict, dropping the
+  pdf_kit registration; it was restored and the registry is 627 (pins say 626 + 1 pdf_kit).
+
+NOT VERIFIED (honest): no real model has answered any D6 action (the sandbox has no key; the card and tests use a
+scripted one); translation quality, layout fit on dense pages and summary quality are unmeasured; compare reads
+text order from pdfplumber / pdfium, so a re-flowed document can show more changes than a person would.

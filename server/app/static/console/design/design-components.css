@@ -1,0 +1,112 @@
+/* HOOLA DESIGN - styles for hd-components.js (D3 systems): components, instances, variants, styles, variables,
+   the Assets panel and the library. Same tokens as design.css; nothing under 12px, no weight above 600, no all-caps. */
+
+/* ---- shared small pieces */
+.hdc-mini{height:28px;padding:0 10px;font-size:12.5px;border-radius:7px}
+.hdc-mini.grow{flex:1;justify-content:center;min-width:0}
+.hdc-mini.danger{color:var(--bad)}
+.hdc-lab{flex:none;width:88px;font-size:12.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdc-prow > .hd-sfield,.hdc-prow > .hd-in{flex:1 1 0;min-width:0}
+.hdc-prow > .hdc-switch{margin-left:auto}
+.hdc-area{height:auto;min-height:56px;max-height:160px;padding:6px 8px;line-height:1.4;resize:vertical;display:block}
+.hdc-strong{font-weight:600}
+.hdc-clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hdc-sublab{font-size:12px;font-weight:600;color:var(--dim);margin:10px 0 5px}
+.hdc-sublab:first-child{margin-top:2px}
+.hdc-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mag);margin-left:6px;vertical-align:middle;flex:none}
+.hdc-bad{color:var(--bad)}
+.hdc-thumb{display:block;flex:none}
+.hdc-switch{flex:none;width:34px;height:20px;border-radius:999px;background:var(--hair2);position:relative;transition:background .12s var(--ease)}
+.hdc-switch i{position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgb(0 0 0 / .28);transition:transform .12s var(--ease)}
+.hdc-switch.on{background:var(--pri)}
+.hdc-switch.on i{transform:translateX(14px)}
+.hdc-switch:disabled{opacity:.5;cursor:default}
+.hdc-reset{color:var(--mag)}
+
+/* ---- Design panel: instance, component, set */
+.hdc-main{flex:1;min-width:0;display:flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:7px;background:var(--sunk);border:1px solid transparent;color:var(--mag);font-size:13px;font-weight:500;text-align:left}
+.hdc-main:hover:not(:disabled){border-color:var(--hair2)}
+.hdc-main:disabled{color:var(--dim);cursor:default}
+.hdc-main-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdc-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.hdc-chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;min-height:24px;padding:2px 7px 2px 9px;border-radius:999px;background:rgb(179 71 230 / .12);color:var(--ink);font-size:12px}
+.hdc-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdc-chip:hover:not(:disabled){background:rgb(179 71 230 / .22)}
+.hdc-chip:disabled{cursor:default}
+.hdc-resetall{display:block;margin-top:4px}
+.hdc-vtree{display:flex;flex-direction:column;max-height:190px;overflow:auto;margin:0 -6px}
+.hdc-vrow{display:flex;align-items:center;gap:4px;min-height:26px;padding-right:8px;border-radius:6px;font-size:13px;color:var(--lit);text-align:left;flex:none}
+.hdc-vrow:hover{background:var(--sunk)}
+.hdc-vrow.off .hd-lname,.hdc-vrow.off .hd-ltype{opacity:.42}
+.hdc-kind{flex:none;width:24px;height:28px;display:grid;place-items:center;color:var(--dim)}
+.hdc-cprow > .hd-in{flex:1 1 0}
+.hdc-vals{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 10px;padding-left:10px;border-left:2px solid var(--line)}
+
+/* ---- a layer selected inside an instance: only our panel shows */
+.hd-pbody.design.hdc-subsel > :not(.hdc-sub){display:none}
+.hdc-subhead{padding-left:6px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.hdc-subhead .hd-selname{color:var(--mag)}
+.hdc-subhead .hd-seltype{max-width:46%}
+.hdc-sub .hd-row > .hdc-lab{width:auto;margin-right:2px}
+.hdc-sub .hd-row > .hdc-switch{margin-right:auto}
+
+/* ---- styles */
+.hdc-stylebtn.on{background:var(--pri-soft);color:var(--pri-ink)}
+.hd-sec.bare.hdc-linked .hd-sbody{display:block}
+.hdc-stylechip{display:flex;align-items:center;gap:2px;margin-bottom:6px;min-width:0}
+.hdc-stylename,.hdc-srow{display:flex;align-items:center;gap:8px;flex:1;min-width:0;height:28px;padding:0 8px 0 5px;border-radius:7px;font-size:13px;text-align:left}
+.hdc-stylename{background:var(--pri-soft);color:var(--pri-ink)}
+.hdc-srow{width:100%;color:var(--ink)}
+.hdc-srow:hover{background:var(--sunk)}
+.hdc-sw{width:18px;height:18px}
+.hdc-ag{flex:none;width:18px;height:18px;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--mut)}
+.hdc-stylepop .hd-phead,.hdc-styleedit .hd-phead{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:-4px -6px 6px 0}
+.hdc-stylepop .hd-ptitle,.hdc-styleedit .hd-ptitle{font-size:13px;font-weight:600}
+.hdc-picklist{display:flex;flex-direction:column;max-height:260px;overflow:auto;margin:0 -6px}
+.hdc-pick{gap:8px}
+.hdc-pickth{flex:none;width:28px;height:28px;display:grid;place-items:center;border-radius:5px;background:var(--sunk);overflow:hidden}
+.hdc-srowp{display:flex;align-items:center;gap:2px;min-width:0}
+.hdc-srowp > .hd-mi{flex:1;min-width:0}
+.hdc-stylepop .hd-note{padding:4px 6px 8px}
+.hdc-stylevals{margin-top:6px}
+.hdc-stylefoot{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+.hdc-pop.hd-pop-font .hdc-picklist{margin:6px 0 0}
+
+/* ---- variables dialog */
+body:has(.hdc-vars) .hd-pop{z-index:90}
+.hdc-vars{width:min(860px,100%)}
+.hdc-vacts{display:flex;align-items:center;gap:8px}
+.hdc-vscroll{overflow:auto;padding:4px 20px 6px;min-height:150px}
+.hdc-vgrid{display:grid;align-items:center;column-gap:8px;row-gap:6px}
+.hdc-vh{font-size:12.5px;font-weight:600;color:var(--mut);height:36px;display:flex;align-items:center;gap:2px;position:sticky;top:0;background:var(--surface);z-index:1;border-bottom:1px solid var(--line)}
+.hdc-vmode .hd-in{background:transparent}
+.hdc-vmode .hd-in:hover:not(:disabled),.hdc-vmode .hd-in:focus{background:var(--sunk)}
+.hdc-vgroup{grid-column:1 / -1;font-size:12.5px;font-weight:600;color:var(--dim);padding-top:8px}
+.hdc-vempty{grid-column:1 / -1;padding:18px 0;max-width:520px}
+.hdc-vname{display:flex;align-items:center;gap:6px;min-width:0}
+.hdc-vtype{flex:none;width:24px;height:24px;display:grid;place-items:center;border-radius:6px;background:var(--sunk);color:var(--mut);font-size:12.5px;font-weight:600}
+.hdc-vcell{min-width:0;display:flex;align-items:center}
+.hdc-vcell .hd-cbox{margin-right:0}
+.hdc-vdel{display:grid;place-items:center}
+.hdc-vfoot{padding:8px 20px 14px;border-top:1px solid var(--line)}
+
+/* ---- Assets panel */
+.hdc-assets{display:flex;flex-direction:column;min-height:0}
+.hdc-ahead{padding:10px 12px 8px;border-bottom:1px solid var(--line)}
+.hdc-ahead .hd-search{margin:0;width:100%}
+.hdc-agrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hdc-anote{grid-column:1 / -1}
+.hdc-card{display:flex;flex-direction:column;gap:4px;min-width:0;padding:6px 6px 7px;border-radius:9px;border:1px solid var(--line);background:var(--surface);text-align:left;cursor:grab;touch-action:none;user-select:none}
+.hdc-card:hover{border-color:var(--hair2);background:var(--raise)}
+.hdc-cardth{height:66px;border-radius:6px;background:var(--stage);display:grid;place-items:center;overflow:hidden}
+.hdc-cardname{font-size:12.5px;font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdc-cardsub{font-size:12px;color:var(--dim);margin-top:-3px}
+.hdc-ghost{position:fixed;z-index:200;pointer-events:none;transform:translate(-50%,-50%);padding:6px;border-radius:9px;background:var(--surface);border:1px solid var(--pri);box-shadow:var(--sh);opacity:.92}
+.hdc-dragging,.hdc-dragging *{cursor:grabbing !important}
+.hdc-lib{display:flex;flex-direction:column;gap:2px}
+.hdc-libfile{display:flex;align-items:center;gap:4px;height:28px;border-radius:6px;font-size:13px;color:var(--lit);text-align:left;min-width:0}
+.hdc-libfile:hover{background:var(--sunk)}
+.hdc-libitems{display:flex;flex-direction:column;gap:2px;padding:2px 0 6px 18px}
+.hdc-librow{display:flex;align-items:center;gap:5px;min-height:30px;font-size:13px;color:var(--lit);min-width:0}
+.hdc-librow .hd-ltype{color:var(--mag)}
+.hdc-librow .hdc-mini{height:24px;padding:0 8px}

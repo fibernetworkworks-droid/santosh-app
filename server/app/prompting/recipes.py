@@ -125,6 +125,15 @@ def listing(section: str = "", q: str = "", limit: int = 30) -> dict[str, Any]:
             hay = (r["title"] + " " + r["makes"] + " " + r["intent"]).lower()
             if all(w in hay for w in words):
                 out.append({k: r[k] for k in ("id", "section", "title", "makes", "blanks", "starter")})
+    try:                                         # NATIJA KHATA: recipes whose results were kept come first, with the count
+        from . import ledger as L
+        rates = L.recipe_rates()
+        for r in out:
+            if r["id"] in rates:
+                r["kept"] = rates[r["id"]]
+        out.sort(key=lambda r: -(r["kept"]["kept"] / r["kept"]["of"]) if r.get("kept") else 1)
+    except Exception:       # noqa: BLE001
+        pass
     total = len(out)
     if section in ("", "web"):
         try:

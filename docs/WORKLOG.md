@@ -2996,6 +2996,10 @@ Task: owner "GO L7" - E5 restore any version, bookmarks, undo per reply, diffs, 
 Work Log: site/wapas.py (snapshots, restore, bookmark, diff); _make_version snapshot; site_versions.bookmark; 3 routes + website action=restore_version; stream.py on-disk slots; Studio History / reply footer / Edit + Revert and resend; 8 tests incl. a browser walk.
 Stage Summary: pushed; server deploy only. Next: L8 needs her 4 decisions (build server, model per job, free allowances, brand) before the React App Engine.
 
+Task ID: v0.817.0 HOOLA CODE DESIGN PASS (built as 0.807; re-versioned on merge four times: their v0.807-v0.816 took the numbers meanwhile)
+Ask: design still looks old - make it perfectly aligned, premium, smooth, like Claude Code web; show all pages.
+Built: one design-system block in v2.css replacing every earlier hcd rule; nav icons, home starting points, switches, drawn chevrons, page-in motion; test_v0807 measures 17 views and saves pictures.
+Deploy: vps-ops deploy (static files only; no server logic changed).
 ---
 Task ID: HOOLA-CINEMA (v0.814.0, built as 0.807)
 Task: owner "read this repo first" (Autom8AI/Open-Higgsfield-AI) -> "GO BUILD THE WHOLE SET AS HOOLA CINEMA END TO END".
@@ -3008,3 +3012,13 @@ Task ID: v0.816.0 HOOLA DOCUMENT KIT D5 (D0-D4 ride along)
 Ask: "GO D5".
 Built: dockit/forms.py + sign.py + /sign/ pages in api.py, 9 actions, proof card 60/60, test_v0814_dockit_d5.py 13; fixed pyHanko asyncio.run on the server loop; merged main v0.815.0 (their base kept whole), pins re-applied (registry 626, 0.816.0+815).
 Deploy: vps-ops deploy (PUBLIC_BASE_URL + SECRET_KEY needed for the links / sealed keys), then docs_setup / docs_check / pdf_card.
+Task ID: v0.816.0 NATIJA KHATA (HOOLA PROMPTING P4; built as 0.806, main had moved to 0.815.0)
+Ask: "GO" after P1-P3 went live.
+Built: prompting/ledger.py (prompt_runs, prompt_prefs; shape only), 7 ledger routes, hooks in sites / Create image / Script writer / chat, Results tab, recipe order by kept rate; 14 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; two new tables self-heal). Not verified live. Next: P5 on her GO.
+
+---
+Task ID: v0.819.0 HOOLA DOCUMENT KIT D6 (D0-D5 ride along)
+Ask: "GO D6".
+Built: dockit/smart.py (compare / summarize / ask / translate / smart split), 5 actions, proof card 66/66 (AI cases scripted), test_v0819_dockit_d6.py 10; merged main v0.818.0 (their base kept whole; restored the pdf_kit registration their tools.py dropped), registry 627, 0.819.0+818.
+Deploy: vps-ops deploy, then docs_setup / docs_check / pdf_card. The AI actions need a model key on the server (already there for chat).

@@ -1,0 +1,37 @@
+/* HOOLA DESIGN - styles for hd-vector.js (D2 design depth): the edit-shape bar, layout grid rows, layer marks.
+   Same rules as design.css: tokens only, one sans, no weight above 600, no all-caps, nothing under 12px. */
+
+/* the bar shown over the canvas while a shape's points are edited */
+.hdv-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:6px;padding:5px 6px 5px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--sh2);max-width:calc(100% - 24px);white-space:nowrap}
+.hdv-bar[hidden]{display:none}
+.hdv-bar.below{top:38px}
+.hdv-title{font-size:13px;font-weight:600;color:var(--ink);margin-right:2px}
+.hdv-hint{font-size:12.5px;color:var(--mut);margin-right:4px;overflow:hidden;text-overflow:ellipsis}
+.hdv-bar .hd-btn{height:28px;padding:0 9px;font-size:12.5px}
+.hdv-sep{width:1px;height:18px;background:var(--hair);flex:none}
+@media (max-width:1100px){ .hdv-hint{display:none} }
+
+/* layers list: a mask and a boolean group say what they are */
+.hd-lrow.mask .hd-ltype,.hd-lrow.bool .hd-ltype{position:relative}
+.hd-lrow.mask .hd-ltype::after{content:"";position:absolute;right:-3px;bottom:-2px;width:7px;height:7px;border-radius:50%;background:var(--surface);border:1.5px solid var(--pri);box-sizing:border-box}
+.hd-lrow.mask .hd-lname{font-style:italic}
+.hd-lrow.bool .hd-ltype::after{content:"";position:absolute;right:-3px;bottom:-2px;width:7px;height:7px;border-radius:2px;background:var(--pri);border:1.5px solid var(--surface);box-sizing:border-box}
+.hd-lrow.sel.mask .hd-ltype::after{background:var(--pri-soft)}
+.hd-lrow.sel.bool .hd-ltype::after{border-color:var(--pri-soft)}
+
+/* Design panel: layout grid rows + the boolean / mask section */
+.hdv-grid{display:flex;align-items:center;gap:2px;margin-bottom:6px;min-width:0}
+.hdv-grid .hd-sel{flex:1 1 0;min-width:0}
+.hdv-grid .hd-field{flex:0 0 52px;margin:0 2px}
+.hdv-grid .hd-field .hd-flab{display:none}
+.hdv-grid .hd-field .hd-in{padding-left:8px;border-radius:6px}
+.hdv-grid.off{opacity:.55}
+.hdv-gridmore{display:flex;align-items:center;gap:6px;margin:-2px 0 8px;min-width:0}
+.hdv-gridmore .hd-field{flex:1 1 0}
+.hdv-ops{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hdv-ops .hd-btn{height:28px;padding:0 9px;font-size:12.5px}
+.hdv-ops .hd-sel{flex:1 1 0;min-width:0}
+.hdv-pop{display:flex;flex-direction:column;gap:6px}
+.hdv-pop .hd-phead{margin-bottom:2px}
+.hdv-pop .hd-row{margin-bottom:0}
+.hdv-pop .hd-field .hd-flab{width:auto;padding:0 6px 0 8px}

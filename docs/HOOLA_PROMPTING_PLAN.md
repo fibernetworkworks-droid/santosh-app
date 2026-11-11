@@ -8,7 +8,9 @@ Research (sources for every claim below): `docs/research/prompting/00_INDEX.md`.
 on her GO. STATE: P0 built as v0.794 (built as 0.785) (the card exists, `python -m app.quality prompt`); no live run yet, so no
 numbers (owner: test everything together at the end). P1-P3 built as v0.804 for web / image / script (engine, Improve
 button in the console chat box + Web Studio + Create Image, the page /console/prompting); the phone composer button is
-not built. P4 onwards not started.
+not built. P4 (the outcome ledger, NATIJA KHATA) built as v0.816: `prompting/ledger.py`, the Results tab; hooks for web / image /
+script / chat; NOT hooked yet: Kalam, video, app; decisions 2-5 of part 7 (question pruning, slot defaults, dialect
+alerts, personal defaults) wait for real rows. P5 onwards not started.
 
 ## 0. The verdict in seven lines
 
