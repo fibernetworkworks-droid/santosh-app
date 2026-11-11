@@ -1016,7 +1016,8 @@ class Settings(BaseSettings):
     whitebooks_per_minute: int = 50         # under the sandbox's 60 / minute; a call over it is refused, never queued
     whitebooks_timeout_s: float = 30.0
     # sandbox test identities from the Hub's Credentials page (per developer account) - only `python -m app.bahi.wbcheck` reads them
-    whitebooks_sandbox_gstin: str = ""
+    whitebooks_sandbox_gstin: str = ""                 # the e-invoice / e-way bill test GSTIN (WhiteBooks' shared PDF)
+    whitebooks_sandbox_gst_gstin: str = ""             # the GST (returns) test GSTIN WhiteBooks support gives; empty = the one above
     whitebooks_sandbox_gst_username: str = ""
     whitebooks_sandbox_einv_username: str = ""
     whitebooks_sandbox_einv_password: str = ""

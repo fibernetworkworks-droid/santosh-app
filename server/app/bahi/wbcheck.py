@@ -6,7 +6,7 @@ PASS / FAIL / SKIP with a plain line. Never prints a key, a password or an OTP.
 
 SANDBOX (WHITEBOOKS_ENV=sandbox): ping -> GSTIN search -> filing track -> OTP request -> auth token with the spec's sandbox OTP ->
 refresh -> ledger balance -> e-invoice login -> e-way bill login (each needs the sandbox identities from the Hub's Credentials page:
-WHITEBOOKS_SANDBOX_GSTIN / _GST_USERNAME / _EINV_USERNAME / _EINV_PASSWORD / _EWB_USERNAME / _EWB_PASSWORD).
+WHITEBOOKS_SANDBOX_GSTIN (e-invoice / e-way bill) / _GST_GSTIN (GST, else the same) / _GST_USERNAME / _EINV_USERNAME / _EINV_PASSWORD / _EWB_USERNAME / _EWB_PASSWORD).
 PRODUCTION: the ping only - no taxpayer call, no OTP, ever, from a check.
 """
 from __future__ import annotations
@@ -38,6 +38,7 @@ _SETTINGS = (("WHITEBOOKS_EMAIL", "whitebooks_email", "email"),
              ("WHITEBOOKS_EINV_CLIENT_ID", "whitebooks_einv_client_id", "id"), ("WHITEBOOKS_EINV_CLIENT_SECRET", "whitebooks_einv_client_secret", "secret"),
              ("WHITEBOOKS_EWB_CLIENT_ID", "whitebooks_ewb_client_id", "id"), ("WHITEBOOKS_EWB_CLIENT_SECRET", "whitebooks_ewb_client_secret", "secret"),
              ("WHITEBOOKS_SANDBOX_GSTIN", "whitebooks_sandbox_gstin", "gstin"),
+             ("WHITEBOOKS_SANDBOX_GST_GSTIN", "whitebooks_sandbox_gst_gstin", "gstin"),
              ("WHITEBOOKS_SANDBOX_EINV_PASSWORD", "whitebooks_sandbox_einv_password", "secret"),
              ("WHITEBOOKS_SANDBOX_EWB_PASSWORD", "whitebooks_sandbox_ewb_password", "secret"))
 _GSTIN = re.compile(r"^\d{2}[A-Z0-9]{13}$")
@@ -110,15 +111,19 @@ def run(today: date | None = None) -> dict[str, Any]:
     step("ping", wb.ping, product="")
     gstin = wb.clean(st.whitebooks_sandbox_gstin).upper() if wb.env() == "sandbox" else ""   # production: no test GSTIN, so the
                                                                                             # public steps SKIP too
-    step("public_search", lambda: wb.public_search(TENANT, gstin), need=[("whitebooks_sandbox_gstin", gstin)])
-    step("rettrack", lambda: wb.rettrack(TENANT, gstin, _fy(today)), need=[("whitebooks_sandbox_gstin", gstin)])
+    # v0.826: GST (returns) has its OWN test GSTIN (WhiteBooks support gave 27AAGCB1286QKZL with its username); the e-invoice /
+    # e-way bill one (their shared PDF) stays for those two. Empty GST line = the shared one, as before.
+    ggstin = (wb.clean(st.whitebooks_sandbox_gst_gstin).upper() if wb.env() == "sandbox" else "") or gstin
+    gneed = [("whitebooks_sandbox_gst_gstin", ggstin)]
+    step("public_search", lambda: wb.public_search(TENANT, ggstin), need=gneed)
+    step("rettrack", lambda: wb.rettrack(TENANT, ggstin, _fy(today)), need=gneed)
     if wb.env() != "sandbox":
         steps.append({"step": "taxpayer_calls", "result": "SKIP", "line": "production: a check never makes taxpayer calls or asks for an OTP"})
     else:
         user = wb.clean(st.whitebooks_sandbox_gst_username)
-        state = gstin[:2]
+        state = ggstin[:2]
         otp_env = step("otp_request", lambda: wb.otp_request(TENANT, user, state),
-                       need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_gst_username", user)])
+                       need=[("whitebooks_sandbox_gst_gstin", ggstin), ("whitebooks_sandbox_gst_username", user)])
         txn = wb.find_txn(otp_env) if otp_env else ""
         if otp_env and not txn:
             steps.append({"step": "txn", "result": "FAIL", "line": "no transaction id found in the OTP reply - see the recorded shape"})
@@ -126,7 +131,7 @@ def run(today: date | None = None) -> dict[str, Any]:
             step("auth_token", lambda: wb.auth_token(TENANT, user, state, txn, wb.SANDBOX_OTP))
             step("refresh", lambda: wb.refresh(TENANT, user, state, txn))
             per = f"{today.month:02d}{today.year}"
-            step("ledger_balance", lambda: wb.ledger_balance(TENANT, gstin, per, user, state, txn))
+            step("ledger_balance", lambda: wb.ledger_balance(TENANT, ggstin, per, user, state, txn))
         eu, ep = wb.clean(st.whitebooks_sandbox_einv_username), wb.clean(st.whitebooks_sandbox_einv_password)
         step("einv_auth", lambda: wb.einv_auth(TENANT, gstin, eu, ep), product="einv",
              need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_einv_username", eu), ("whitebooks_sandbox_einv_password", ep)])
