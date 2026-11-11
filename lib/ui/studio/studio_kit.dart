@@ -14,7 +14,7 @@ import '../glass.dart';
 
 // ---- palette (Hoola's own dark theme, from the approved designs) ----
 class SC {
-  static const bg = Color(0xFF0B0A1A);
+  static const bg = Color(0xFF151515);
   static const stage = Color(0xFF06050F);
   static const card = Color(0xFF15112B);
   static const card2 = Color(0xFF1D1838);

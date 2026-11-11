@@ -3035,3 +3035,10 @@ Task ID: v0.831.0 HOOLA CLOUD (L10)
 Task: owner "GO L10" on docs/LOVABLE_STUDIO_PLAN.md.
 Work Log: appengine/cloud.py (schema, additive one-run migrations, data-loss card, rule audit, typed lists, preview vs live, public API on site/webapp.py), sealed app frame + shell.js + hoola.ts RPC, tool cloud / cloud_change / cloud_rows, 8 Studio routes + Cloud tab, proof clinic app on Cloud; 6 tests incl. a browser walk; v0.824 / v0.826 tests moved to __app/.
 Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild). Next: L11 SABOOT (auto tests + browser check before done, scans, publish block) on her GO.
+
+
+---
+Task ID: v0.832.0 CLAUDE-STYLE PHONE DESIGN
+Task: owner shared screens of the best chat app, "DESIGN SAME FOR HOOLA APP", approved the artifact preview, "START THE BUILD END TO END".
+Work Log: read main.dart / glass.dart / chat_screen.dart; branch was 1,016 commits behind main (0.831.0) - rebased, re-versioned 0.832.0 (REBASE PROTOCOL); changed tokens, Aurora, Glass, nav pill, chat bar + pill composer, bubble + flat reply, indigo sheets; fe-ui-kit skill + test; stamps 0.832.0; test_v0832_claude_design.py 12 (source pins; Flutter cannot compile here).
+Stage Summary: pushed to claude/loving-goldberg-ywnzsq (no PR). First real check = CI's flutter analyze. Next: restyle Today / Connect / Main per screen, light theme, Kaam + chats drawer, on her GO.

@@ -2641,3 +2641,32 @@ Saved data, sign-in and server-checked rules for the Web Studio's React apps (Ap
 - Not connected yet (said on the Cloud tab and in hoola.ts): files, server functions (DIMAAG), live updates, payments,
   AI from the app, phone OTP / Google sign-in, a password-reset email.
 - Sign-in on a live app is per browser (the shell's storage); an app on its own domain is not built.
+
+
+## v0.832.0 CLAUDE-STYLE PHONE DESIGN
+
+Owner: shared screenshots of the best chat app on a phone ("DESIGN SAME FOR HOOLA APP ... SHOW ME STUNNING APP DESIGN FIRST"),
+approved the artifact preview ("PERFECT START THE BUILD END TO END"). Design only borrows the SHAPE of that app (layout,
+neutral dark ground, serif replies, pill composer, floating tab pill); no name, logo or asset of it is used.
+
+### What changed (phone app only, server untouched)
+- `lib/ui/glass.dart`: tokens `C.bgTop #151515`, `surface #202020`, `bubble #2A2A28`, `hair #30302D`, ink `#F3F1EC`, muted `#A09B93`,
+  saffron `#F4A24C` (onAccent `#1B1305`), ok / warn / bad retuned. `Aurora` is a static ground (a Baat mood `tint` = a very faint
+  top glow); the `auroraPaused` notifier stays because chat_screen drives it. `Glass` = faint white lift + hairline, no BackdropFilter,
+  no sheen, no shadow (the `flat` flag stays so 165 callers compile). `uiSans()` / `uiSansTheme()` = Schibsted Grotesk by NAME with a
+  Manrope fallback (a google_fonts build without the family must not fail). Buttons lose their glow.
+- `lib/main.dart`: `_NavBar` is one rounded pill, five equal slots, the open tab on a lighter chip with a saffron icon. Indices unchanged
+  (0 Today, 1 Chat, 2 Talk = live voice, 3 Connect, 4 Main). System nav bar colour matches the ground.
+- `lib/ui/chat_screen.dart`: `_header()` = menu (chats), avatar + name + live status, voice, new chat - no card. `_composer()` = pill:
+  + (attach), text, then Send (when there is text) or mic + white voice-call button; the rim warms to saffron while she speaks.
+  Her message = `C.bubble` 22px; Hoola's reply = flat text (no card) at full width.
+- Sheets / dialogs / dropdowns that hard-coded the indigo (`0xF2141029`, `0xF21A1438`, `0xF2221A47`, `0xFF17122F`) use `C.surface`.
+- The `fe-ui-kit` skill pack (tokens Hoola uses for videos / emails / pages it makes) + its pin test moved to the new tokens. Tenants that
+  already hold the old seed keep it (create-if-missing); new tenants get the new one.
+- v0.249's chat-bubble pin moved to the new bubble text style.
+
+### Not built / not verified
+- NOT VERIFIED on a device or by `flutter analyze` (Flutter cannot run in the sandbox). First check = CI.
+- The other ~200 screens inherit tokens + Glass but were not individually restyled. Light theme, a Kaam tab, a chats drawer and the
+  call screen of the preview are not built (the app's own Today / Connect / Talk screens remain).
+- Stash-proven red on pristine origin/main (not from this change): `test_v0249_claude_akshar::test_version`, `test_v0555_hoola_card::test_console_uses_it_as_the_default_card`.

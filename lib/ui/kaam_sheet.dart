@@ -10,7 +10,7 @@ Future<void> showKaamSheet(BuildContext context, Santosh app) async {
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xF2141029),
+    backgroundColor: C.surface,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (ctx) => _KaamSheet(app: app),
   );

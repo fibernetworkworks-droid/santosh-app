@@ -306,7 +306,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     vs.sort((a, b) => _num(b['version']).compareTo(_num(a['version'])));
     final pick = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: const Color(0xF21A1438),
+      backgroundColor: C.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
       builder: (ctx) => SafeArea(
         child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(8, 16, 8, 8), children: [
