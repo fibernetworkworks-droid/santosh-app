@@ -1,0 +1,23 @@
+{
+ "base": "um8-ion-energy-loss",
+ "rig": "um8-ion-workstation",
+ "chapter": "Nuclear and radiation physics",
+ "variants": [
+  {
+   "key": "carbon",
+   "title": "Stopping power of protons in carbon against energy (Bethe-Bloch)",
+   "sample": "Graphite (carbon)",
+   "unknown": "the stopping-power curve of protons in carbon and its minimum",
+   "params": {
+    "ZA": 0.49955,
+    "I": 78.0,
+    "rho": 2.21
+   },
+   "note": "Carbon has fewer electrons per gram than water (Z/A 0.4996 against 0.5551, water's hydrogen is electron-rich), so its whole curve sits about 10 % lower. Graphite I = 78 eV.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

@@ -1,0 +1,55 @@
+{
+ "base": "um8-ion-proton-range",
+ "rig": "um8-ion-workstation",
+ "chapter": "Nuclear and radiation physics",
+ "variants": [
+  {
+   "key": "silver",
+   "title": "CSDA range of 100 MeV protons in silver (Bethe-Bloch)",
+   "sample": "Silver",
+   "unknown": "the range of 100 MeV protons in silver",
+   "params": {
+    "ZA": 0.43577,
+    "I": 470.0,
+    "rho": 10.5
+   },
+   "note": "Fewer electrons per gram and a larger mean excitation energy than carbon: the range in g/cm² is about half as long again, and the dense metal makes it far shorter in centimetres.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "gold",
+   "title": "CSDA range of 100 MeV protons in gold (Bethe-Bloch)",
+   "sample": "Gold",
+   "unknown": "the range of 100 MeV protons in gold",
+   "params": {
+    "ZA": 0.40108,
+    "I": 790.0,
+    "rho": 19.32
+   },
+   "note": "Gold's inner electrons are tightly bound (I = 790 eV), so the uncorrected formula is less accurate here than in light media; the shell correction this program leaves out matters most at the low-energy end.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "lead",
+   "title": "CSDA range of 100 MeV protons in lead (Bethe-Bloch)",
+   "sample": "Lead",
+   "unknown": "the range of 100 MeV protons in lead",
+   "params": {
+    "ZA": 0.39575,
+    "I": 823.0,
+    "rho": 11.35
+   },
+   "note": "Lead has the fewest electrons per gram of the four media and the largest I, so it has the longest range in g/cm², though it is still about a centimetre and a half of metal.",
+   "source": {
+    "title": "PDG 'Atomic and nuclear properties of materials' / ICRU Reports 37 and 49: Z/A, mean excitation energy I, density",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}

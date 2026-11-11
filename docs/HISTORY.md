@@ -1689,3 +1689,180 @@ screen has not been seen on a phone. **Not built:** a GitHub App; one session th
 work for http(s) APIs only (not a database password); the phone has no settings for network / keys / events.
 Deploy: vps-ops deploy (server-only; no new pip; columns make themselves), then `lab_check`, then `lab_net_check`, then
 `DEV_NET=true` in .env if every line says ok. GitHub events need PUBLIC_BASE_URL (https) on the server.
+
+## v0.807.0 BAHI A0 - the GST & Accounts employee, foundation (built as 0.806; their HOOLA CODE PHASE 6 took 0.806.0 - REBASE PROTOCOL, both kept; owner: "LET WE DEVELOP A FULL GST AND ACCOUNT EMPLOYEE --- I HAVE WHITEBOOK APIS OF GST" -> "GO A0")
+
+Plan: `docs/ACCOUNTS_EMPLOYEE_PLAN.md` (A0-A12); research `docs/research/accounts/01-04` (what Hoola has, the market, the rules +
+calendar, the WhiteBooks API). Hoola already had the accountant in seven engines that never talk; A0 is the floor they all stand on.
+
+NEW `server/app/bahi/`:
+- `models.py` - `acc_docs` (the register: one row per (source, source_ref); gstin, period, direction, kind, number, date, party + GSTIN,
+  pos, taxable / CGST / SGST / IGST / cess / tax / total, irn, status confirmed | draft | gone, confidence, reason, problems),
+  `acc_periods` (open | locked per GSTIN + month), `acc_events` (append-only trail with before / after), `acc_gst_conn` (her GSTIN's GSP
+  connection - created now, filled by A1; IRP / EWB passwords sealed, no portal password ever), `acc_wb_calls` (the call meter). Registered
+  in `db.init_db` + `ensure_tables()` self-heal.
+- `rules.py` + `rules/*.json` - rules as DATA: `gst_rates` (slabs to 21 Sep 2025 and GST 2.0 from 22 Sep 2025, HSNS cess listing),
+  `due_dates` (TDS 7th, GSTR-1 11th, IFF 13th, 2B 14th, PF / ESI 15th, GSTR-3B 20th with the LOCK said, PMT-06 25th), `limits` (e-invoice
+  Rs 5 cr / Rs 10 cr + 30 days, IRN cancel 24 h, EWB 180 days / Rs 50,000, Rule 37 180 days, s.16(4) 30 Nov, MSME 15 / 45 days, the
+  July 2025 3B lock, the 3-year bar), `forms_map` (24Q -> 138, 26Q -> 140, 27Q -> 144, 27EQ -> 143, Form 16 -> 130, 16A -> 131, 12BB -> 124,
+  13 -> 128, 15G/H -> 121, 3CA/CB/CD -> Form 26). Every row: `basis` (primary | primary-listing | provider-spec | secondary-confirmed |
+  unverified), `source`, `checked_on`, `review_by`; the loader refuses a row without them; `usable()` = not unverified; `freshness()`
+  (by basis, stale, unverified) for the desk; `slabs_on(date)`; `dues_for(period, scheme, employer, tds)` with days left.
+- `wb.py` - the WhiteBooks client built to their OpenAPI specs (NOT their prose docs): `client_id` / `client_secret` headers per product
+  (gst | einv | ewb, one pair may serve all) + `email` query on every call; sandbox / production host from WHITEBOOKS_ENV; success ONLY on
+  `status_cd == "1"` (HTTP is 200 on failure); `WbError(code, plain message)` - WB_ERR_9001 / 9000, NIC 2150 / 2174, not_configured, cap,
+  rate, bad_reply, network; `safe_url` scrubs password / otp / evcotp from every log line (the EWB password rides a query string); a
+  per-tenant daily cap (`whitebooks_daily_calls` 300) and per-minute guard (`whitebooks_per_minute` 50, under the sandbox's 60) refuse
+  BEFORE the call; every call metered; `shape()` keeps structure, never values; primitives ping, public_search, rettrack, otp_request,
+  auth_token, refresh, ledger_balance, einv_auth, ewb_auth; `find_txn` looks for the OTP transaction id where GSTN puts it.
+- `wbcheck.py` - `python -m app.bahi.wbcheck` / vps-ops `wb_check`: sandbox = ping -> GSTIN search -> filing track -> OTP request -> auth
+  token with the spec's sandbox OTP 575757 -> refresh -> ledger balance -> e-invoice login -> e-way bill login, each PASS / FAIL / SKIP,
+  the reply SHAPES saved to data/bahi/wb_shapes.json (no values); production = the ping only (no taxpayer call, no OTP, ever).
+- `register.py` - adapters (read-only): GST Sahayak `gst_docs`, Thok billed orders + purchases (tax split by intra / inter), office
+  bills, her app + website invoices / credit notes via `appmaker/hisaab.build` (the same numbers her CA gets). `sync(months)` is
+  idempotent (fingerprint), flags the same document from two sources on both rows (purchase "inv" vs "bill" normalised), HOLDS a change
+  to a locked month (row kept, `changed_after_lock` note, trail), marks a row its source dropped `gone` (never deletes), writes the trail;
+  `listing`, `summary` (sales / purchases taxable + GST, credit notes netted, problems), `events` (labelled "GST Sahayak · INV-7 · Kumar
+  Stores", never an internal id), `set_lock`.
+- `service.py` overview (employee status, last + this month, last month's dues falling due now, WhiteBooks status - never a key / the
+  email -, connections without secrets, rules freshness, the trail, the phases list with honest states); `api.py` GET /api/bahi/overview,
+  POST /api/bahi/sync, GET /api/bahi/register, GET /api/bahi/rules, POST /api/bahi/periods/{period}/lock.
+- Settings (config.py): `bahi_enabled`, `bahi_filing` (False - prepare only), `whitebooks_env`, `whitebooks_email`,
+  `whitebooks_{gst,einv,ewb}_client_{id,secret}`, `whitebooks_ip_address`, `whitebooks_daily_calls`, `whitebooks_per_minute`,
+  `whitebooks_timeout_s`, `whitebooks_sandbox_*` (only the check reads them).
+
+Hub: the "Accounts Assistant" row goes live as **GST & Accounts** (does / needs / never), hiring gates no existing tool. Console: its own desk
+`static/console/bahi.js` (view `accountsdesk`; employees.js DESKS accounts -> accountsdesk): hero, tabs Overview (dues with days left and
+"date not yet checked on a government site" where unverified, last / this month tiles, Sync, the trail), Register (month / type / source
+filters, notes on flagged rows, Lock / Unlock a month), Rules (by basis, the unverified list, re-check due), Connection (keys set per
+product, calls today / cap, the last contract check steps, the .env line NAMES when unset), Plan (A0 built, A1 next...). Styles `acd-` on the
+Desk Room `ddk-` scale; the tab row scrolls on a phone.
+
+Tests: `test_v0807_bahi_a0.py` (14) - spec headers + email + sandbox host + meter; failures on HTTP 200 -> plain English; not-configured /
+daily cap / minute guard refuse BEFORE the call; no password / OTP / secret in logs; shapes without values + find_txn; the contract check
+on a mock sandbox + production pings only; rule rows carry source / basis / dates, GST 2.0 slabs, freshness; the month calendar; the register
+(5 documents from 3 engines, idempotent, the double-entered bill flagged on both, a draft order not a document); a locked month holds a
+change, unlock applies it, a dropped row is marked gone, the trail; routes + no secret in any reply; the Hub entry; console wiring + CSS; a
+real-browser walk (hire from the Hub -> Open desk -> Register shows the two flags -> Connection says "Not set" -> Plan), light 1280 + dark 390.
+Pins moved: test_v0317 / test_v0687 used "accounts" as the not-yet-live example (now "telecaller"); test_v0475 stamps 33 -> 34 (bahi.js).
+
+NOT VERIFIED: nothing has talked to the real WhiteBooks sandbox (the keys are not on the VPS yet) - the client is built to the published
+specs and the check exists to pin the real reply shapes the first time it runs. Not built (later phases): the GSTIN connect walk (A1), any
+filing, chat / voice tools, the phone screen.
+
+## v0.808.0 WAPAS - every version can come back, before launch too (built as 0.803; their GAME DEV ENGINE LOOK, HOOLA PROMPTING P1, LANGGRAPH G6, HOOLA CODE PHASE 6 and BAHI A0 took 0.803.0-0.807.0 - REBASE PROTOCOL, all kept; L7 of docs/LOVABLE_STUDIO_PLAN.md, owner: "GO L7")
+Before: a version kept only its BUILT pages, so "go back" existed only for her live address (hosting.rollback, after
+launch); nothing undid one answer's change, and an edited message could not take the site back first.
+- SOURCE PER VERSION (`site/wapas.py`): `service._make_version` now snapshots the section files and the row's plan, look
+  (tokens + design kit), facts, styles, style, languages into `<site>/snaps/v<N>/` (JSON only; photos / media stay in place).
+- RESTORE ANY VERSION: POST /api/sites/{id}/versions/{v}/restore (and `website action=restore_version`): sections + fields
+  back, the hand-edit Undo stack cleared (it belonged to the other version), then a NEW version "Restored vN" through the
+  normal save (checked) - so History stays a straight line and the restore is undone the same way. Enquiries, orders,
+  app rows are DATA and never touched (said every time). Refused while a build runs; a version made before snapshots
+  says so plainly (it can still be Put live if it was published).
+- BOOKMARKS: `site_versions.bookmark` (nullable column, added by the schema self-heal); POST .../versions/{v}/bookmark
+  {name} (empty removes); a bookmarked version is always in the list, however old.
+- WHAT CHANGED: GET .../versions/{v}/diff?against= (default: the version before it): every changed code file (readable
+  code, unified diff, + / - counts, new / removed) + which design tokens changed; 60k cap.
+- STUDIO: History = Bookmarks, then All versions (current, Live, bookmark name), Changes (inline diff), star, Restore,
+  Put live... (the old live rollback, renamed so the two are not confused). Each reply that made a version: "Version N",
+  Bookmark, Undo this change (back to the version before that answer; restores are never counted as an answer's change).
+  Her message: Edit -> Revert and resend (the site goes back to the version before that message, then the edited words
+  go). The chat redraws when a new version lands so every reply gets its own footer.
+- E7 LIVE VIEW SURVIVES A RESTART (`site/stream.py`): slots are also written to `<SITE_DIR>/_live/<site>.json` (at most
+  once a second while words stream, at once on finish / looks / clear); a restart or a second worker reads them back
+  (sequence number continues, a section that was mid-write is marked stale until the build picks it up again).
+Tests: test_v0808_wapas.py (7: any version back as a new version + undo the restore + refusals, data untouched,
+bookmarks + diff routes, the agent action, the live view after a simulated restart, source wiring, a Playwright walk:
+a change -> Version + Undo this change -> undone; Edit -> Revert and resend; History: Changes, Bookmark, Restore).
+NOT VERIFIED live: a real restart of her server during a build (the restart is simulated by clearing the memory).
+
+
+## v0.809.0 HOOLA 3D KIT (owner: "GO 3D GAMEPLAY" - the first of three, "ALL ONE BY ONE")
+
+Before this, a 3D game meant the model writing a player controller, a camera, touch controls, enemies and a HUD from
+scratch in every game - the place 3D builds break. Now those pieces exist once, written by Hoola and proved.
+
+- **The kit** `server/app/gamedesk/kit/hoola_3d.gd` = the `Hoola3D` autoload (pack `kit3d`, `template.HOOLA_OWN`):
+  `world` (sky, ambient, sun with shadows), `ground`, `block`, `moving_block`, `tree`, `mat`, `model` (her approved 3D
+  model or null), `spawn_player` (walk + jump, keyboard arrows / WASD / Space AND a touch stick + jump button,
+  knock-back, respawn after a fall), `follow_camera` (third person, distance 0 = first person, drag / Q E to look),
+  `coin`, `enemy` (patrol / chase; touch = -1 life, landing on it removes it), `goal`, `hurt`, `make_hud` (coins,
+  lives, messages, the on-screen controls). Signals: coin_taken, player_hit, player_fell, goal_reached, enemy_stomped.
+- **Only in a 3D game.** `kit3d.wants(brief, design)` (3D / 3-D / third-person / first-person / low-poly ...; "2D",
+  "match-3", "30 days" never match). A 2D game's project and prompt are unchanged. For a 3D design `ai._ctx` adds the
+  kit's API to the code / fix / change prompts, and the design prompt shapes a 3D game for the kit.
+- **Proof without a model** (`kit3d.proof`, `python -m app.gamedesk proof3d [--save]`, vps-ops `game_3d_proof`):
+  Hoola's own game Diya Run 3D (`kit/proof_main.gd`, built only from the kit) goes through the real pipeline - guard,
+  headless play, web export, browser playtest - then (1) `play_through`: a test player (`kit/proof_bot.gd`, only in a
+  throwaway copy) starts it, walks a route, jumps the steps and WINS with the same keys a person uses; (2)
+  `browser_touch`: in a real Chromium a tap starts it and the on-screen stick is held until the engine reports a coin;
+  (3) `self_test`: the kit's rules in the engine - a guard's touch costs one life, a stomp removes it, a fall respawns,
+  stick + jump button, coin, lift. `--save` keeps it as a finished game in her list with a private play link.
+- Measured here (Godot 4.7.2 + Chromium): test player won in 6.6 s of game time, 24.4 m walked, 6 of 8 coins, top
+  y 2.8 m, 3 lives left; touch collected 2 coins in a real browser; self-test 6 / 6; web download ~9.7 MB.
+- Found while building: a headless engine has no window, so injected touch events arrive with broken positions -
+  the self-test hands touch events to the kit directly and the real-browser check covers the true path.
+
+Tests: `test_v0809_kit3d.py` 28 (3 need Godot, 1 of those a browser; all ran green here). NOT VERIFIED: no
+MODEL-written 3D game has been built from the kit yet (that needs her server and model credit); the proof game has
+not been played on a real phone.
+
+
+## v0.810.0 PRAYOGSHALA WAVE 8
+
+69 physics set-ups built and walked within tolerance (agents' walks + the lead's final walk, 68 / 68 labs): ug_analog_w8 (21:
+diodes, LED, tunnel diode, BJT h-parameters and switch, push-pull, op-amp response / difference / analog computer, active
+filters, JFET, DAC, ADC, sample-and-hold, 7805, PLL, counter, distortion meter, thermostat, cable noise - one shared analog
+bench), ug_modern_w8 (13: work function, Hg ionisation, e/m Thomson / magnetron / focusing, Millikan both methods, Zeeman,
+Planck, microwaves x2, plus existing Franck-Hertz, iodine, ESR), ug_matter_w8 (15: beta range, K-40, four Bethe-Bloch
+stopping-power labs, XRD, nano XRD, band gap, piezo, Gouy, plus existing Quincke, magnetoresistance, P-E loop, dielectric),
+ug_comp_w8 (19 computational labs on comp4-workstation, every one checked against an exact or independent answer), plus
+pg:millikan-oil-drop. Coverage 456 -> 525 of 807 (school 78.4 / 91.5 %, B.Sc 86.8 %, M.Sc 38.1 %, PhD 28.6 %).
+Not built and constants from memory: docs/PRAYOG_PHYSICS_LAKH_PLAN.md, "Wave 8".
+
+## v0.811.0 HOOLA CODE DESIGN PASS (built as 0.807; their v0.807-v0.810 took the numbers meanwhile) — one design system for every page of Hoola Code (owner: "DESIGN STILL LOOK OLD AND STALE --- MAKE IT PERFECTLY ALLINED WITH TEXT, BUTTONS, TEXTURE ... MORE PREMIUM AND ADVANCE SMOOTH --- LIKE CLAUDE CODE WEB PORTAL ... SHOW ME ALL PAGES")
+
+Same pages, same routes, same behaviour - the LOOK rebuilt. Seven phases had each added their own rules (311 lines, five
+button heights, corners from 5 to 18px, a class used for two different things). All of them are gone; ONE block in
+`server/app/static/console/v2.css` ("HOOLA CODE (code.js) - THE DESIGN SYSTEM") replaces them.
+
+**The scale (nothing on the page is outside it)**
+- Controls 34px (small 28px, the two composer buttons 36px); a button, a chip, a field and a tab are the same height, so
+  any row of them sits on one line.
+- Corners 8 (control) / 12 (card) / 18 (composer, dialog); type 12 / 13 / 13.5 / 14 / 16 serif for reading / 28 serif for
+  a page title; weights 400 / 500 / 600; space 4 / 8 / 12 / 16 / 24.
+- One hairline inside a card (`--line`), one around it (`--hair2`), one soft shadow (`--lift`); the composer is the one
+  raised thing on a page (a deeper shadow with a faint violet glow under it).
+- Console tokens only, so dark mode follows by itself; primary / green / red buttons take `--on-acc` for their words
+  (white words on the bright dark-mode green were unreadable).
+
+**What changed on the page**
+- Sidebar: sans brand line (it was monospace by accident: `.hcd-sh` was both "section header" and "shell command" - the
+  command is `.hcd-cmd` now), icons on the nav rows, the open session as a raised row, a count badge on Scheduled.
+- Home: four starting points under the box (Fix a bug / Build a feature / Write tests / Explain the code) that only fill
+  the box; the settings row as quiet inline pickers with one drawn chevron (native select arrows are gone everywhere).
+- Session: every step is one grid (16px mark, words, time) so marks and words line up down the page; thinking as a quiet
+  italic quote; the recap as one calm card with a coloured edge instead of a tinted slab; the question / plan bar, the
+  queue and the message box are the same width; a Working pill with the clock in the top bar.
+- Rail: quiet cards on the sidebar colour; buttons share a row and never overflow (a long label wraps to its own row).
+- Changes pane: file list on the sidebar colour with the open file raised, 22px code rows, a 36px sticky file header.
+- Settings: cards flow in two balanced columns (a long repo card no longer leaves a hole), real switches instead of
+  checkboxes, a drawn disclosure arrow on "How this repo runs in the box".
+- All sessions: Active / Archived as one segmented control. Dialogs: 18px corners, deeper shadow.
+- Narrow windows start with the slim sidebar.
+
+**Motion (CRISP TEXT rules kept):** 140 ms hover / press / focus transitions; a page comes in once (`hcd-enter`, removed
+after 320 ms so a later repaint never moves); a dialog pops once; a fold fades in. No blur, nothing spins, text always on
+a solid colour. All of it is off under "reduce motion".
+
+**Test** `server/tests/test_v0807_hoola_code_design.py`: walks 17 views in a real browser with full data (home, finished
+session, steps + thinking, Changes pane with a comment, working, plan, question, dialog, Scheduled, Reviews, Settings,
+All sessions, three in dark, two at 390px) and MEASURES: every control on the scale, every row on one centre line, step
+marks on one vertical line, page title and cards on one left edge, nothing under 12px / over weight 600 / all-caps,
+nothing wider than the window, no button outside its card, motion once and off under reduce-motion. With HOOLA_SHOTS it
+saves a picture of each view. Found by it while building: headings losing their centring to a reset, hint text at 10.4px,
+a rail button whose words left the button, bars narrower than the message box.
+Kept on purpose (older tests pin them): rail 300px, slim sidebar 52px, reading column 760px.
+**NOT VERIFIED:** seen only in headless Chromium here, not on her own screen / Windows ClearType. The phone screen and the
+read-only shared page use the same styles but the phone app's Flutter screen is unchanged.

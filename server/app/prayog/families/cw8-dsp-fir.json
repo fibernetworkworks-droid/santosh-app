@@ -1,0 +1,33 @@
+{
+ "base": "cw8-dsp-fir",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "hann",
+   "title": "Hann window, length 17",
+   "sample": "Hann window",
+   "unknown": "half-amplitude frequency",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "hamming",
+   "title": "Hamming window, length 17",
+   "sample": "Hamming window",
+   "unknown": "half-amplitude frequency",
+   "params": {
+    "method": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

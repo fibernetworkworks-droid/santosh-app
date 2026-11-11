@@ -1,0 +1,19 @@
+{
+ "base": "um8-k40-salt",
+ "rig": "um8-gm-bench",
+ "chapter": "Nuclear and radiation physics",
+ "variants": [
+  {"key": "k2so4", "title": "Radioactivity of potassium sulphate with a GM counter",
+   "sample": "Potassium sulphate (K2SO4), laboratory grade",
+   "unknown": "the count rate above background from the K-40 in potassium sulphate",
+   "params": {"fK": 0.44875},
+   "note": "Potassium sulphate is 44.9 % potassium by mass against 52.4 % for the chloride, so the same 100 g gives about 14 % fewer counts. SIMULATED DATA; the tray efficiency is a design value.",
+   "source": {"title": "IUPAC standard atomic weights K 39.0983, S 32.06, O 15.999 (mass fraction 2 x 39.0983 / 174.25); K-40 data from NNDC / NUBASE", "note": "from memory - verify"}},
+  {"key": "k2co3", "title": "Radioactivity of potassium carbonate with a GM counter",
+   "sample": "Potassium carbonate (K2CO3), laboratory grade",
+   "unknown": "the count rate above background from the K-40 in potassium carbonate",
+   "params": {"fK": 0.5658},
+   "note": "Potassium carbonate is 56.6 % potassium by mass, the richest of the three salts, so it counts the most. SIMULATED DATA; the tray efficiency is a design value.",
+   "source": {"title": "IUPAC standard atomic weights K 39.0983, C 12.011, O 15.999 (mass fraction 2 x 39.0983 / 138.20); K-40 data from NNDC / NUBASE", "note": "from memory - verify"}}
+ ]
+}

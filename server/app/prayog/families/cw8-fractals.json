@@ -1,0 +1,45 @@
+{
+ "base": "cw8-fractals",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "chaos-game",
+   "title": "Sierpinski triangle from the chaos game (self-similar, random)",
+   "sample": "chaos game, seeded",
+   "unknown": "D = log 3/log 2",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "self-similar",
+   "check": {
+    "params": {
+     "n": 64000
+    }
+   }
+  },
+  {
+   "key": "rough-profile",
+   "title": "A rough natural profile: dimension from the variogram",
+   "sample": "random-walk profile (a model coastline), seeded",
+   "unknown": "D = 2 - H = 3/2",
+   "params": {
+    "cas": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "fractals in nature",
+   "check": {
+    "params": {
+     "n": 65536
+    }
+   }
+  }
+ ]
+}
