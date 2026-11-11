@@ -378,4 +378,4 @@ def test_tools_are_registered_with_families_and_handlers():
 
 def test_app_version_pin():
     import app.main as M
-    assert M.APP_VERSION == "0.790.0"
+    assert M.APP_VERSION == "0.791.0"
