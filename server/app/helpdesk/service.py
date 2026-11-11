@@ -268,7 +268,7 @@ def save_vendor(tenant: str, name: str = "", vendor: str = "", **kw: Any) -> dic
             v.notes = scrub(str(kw["notes"]))[0][:400]
         s.flush()
         out = _vendor_view(v, on)
-    return {"vendor": out, "say": f"Vendor: {out['name']} ({out['kind_label']})" + (f", AMC {out['amc_until']} tak" if out["amc_until"] else "") + "."}
+    return {"vendor": out, "say": f"Vendor: {out['name']} ({out['kind_label']})" + (f", AMC until {out['amc_until']}" if out["amc_until"] else "") + "."}
 
 
 def _vendor(s, tenant: str, ref: str) -> HelpdeskVendor | None:

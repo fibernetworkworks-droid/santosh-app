@@ -809,7 +809,7 @@ def _check(s, tenant: str, x: PatrakarStory, at: datetime | None = None) -> dict
     for lst in (res["block"], res["warn"]):          # details never repeat a protected / secret name (cards, logs, model)
         for item in lst:
             for n in hide:
-                item["detail"] = re.sub(re.escape(n), "[naam]", item["detail"], flags=re.I)
+                item["detail"] = re.sub(re.escape(n), "[name]", item["detail"], flags=re.I)
     return res
 
 
@@ -1065,7 +1065,7 @@ def _do_publish(tenant: str, card_id: str, conv: str) -> dict:
         except Exception as e:
             raise PatrakarError(f"It did not reach WordPress: {str(e)[:200]}")
         pub.update({"url": str(r.get("link") or r.get("url") or "")[:400], "post_id": r.get("id")})
-        say = ("Published on WordPress." if sh["mode"] == "publish" else "A draft was created on WordPress (you publish it from there).")
+        say = "On WordPress: " + ("published." if sh["mode"] == "publish" else "a draft was created (you publish it from there).")
     else:
         say = "The copy is ready: paste it into your CMS / YouTube description, then tell me it is posted."
     with _LOCK, session() as s:
@@ -1089,7 +1089,7 @@ def published_at(tenant: str, story: str, url: str = "", actor: str = "owner") -
                 raise PatrakarError("The link must start with http(s).")
             pub["url"] = url[:400]
         x.published, x.status = _dump(pub), "published"
-        return {"story": _story_view(s, x), "say": f"{x.number} chhapi hui likh li."}
+        return {"story": _story_view(s, x), "say": f"{x.number} marked as published."}
 
 
 # ---- pitch

@@ -421,7 +421,7 @@ def hs_confirm(tenant: str, ref: str, line_no: int, hs: str, actor: str = "owner
         ln["hs"], ln["hs_confirmed"] = h, True
         ln["hs_by"] = "owner" if actor == "owner" else actor
         sh.lines = _dump(lines)
-        _log(sh, f"Line {line_no} HS {R.hs_fmt(h)} pakka", "Owner" if actor == "owner" else actor)
+        _log(sh, f"Line {line_no} HS {R.hs_fmt(h)} confirmed", "Owner" if actor == "owner" else actor)
         _stale_filings(s, sh)
         k = _key(tenant, ln.get("desc", ""))[:200]
         m = s.get(CustomsHsMemory, k)
@@ -821,7 +821,7 @@ def decide_filing(tenant: str, filing: str, yes: bool, hash: str = "", reason: s
         return {"filing": fv, "say": "All right, filing is stopped. Tell me if anything needs changing."}
     sheet = datasheet(tenant, sid, conv=cv)
     v = shipment_view(tenant, sid)
-    text = (f"Hello{(' ' + cha['name']) if cha['name'] else ''}, the Bill of Entry for import {num} from {v['supplier']} has to be filed. "
+    text = (f"Hello {cha['name'] or 'there'}, the Bill of Entry for import {num} from {v['supplier']} has to be filed. "
             f"BL/AWB: {v['bl_no'] or '—'}, port: {v['port'] or '—'}, BE type: {v['be_type']}. The data sheet (HS codes, values, documents) is attached; "
             "please show me the draft BE / checklist before filing. Thank you.")
     drafts = {"text": text}
