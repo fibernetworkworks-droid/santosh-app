@@ -342,13 +342,16 @@ async def sweep() -> int:
             graph_resume = False
             began = r["started_at"] or _her_row_at(conv, r["created_at"], r["text"])
             if began is not None:
+                # G5 (chat_graph): the answer landed but the run died before its `finish` / `deliver` node - it is
+                # resumed THERE (the delivery completes once: the record, the jobs it told), not marked done here
+                _due = bool(getattr(st, "chat_graph", False)) and await _graph_delivery_due(st, conv, r["id"])
                 # v0.657 PAKKA KAAM: the turn REALLY began - answered only by a FINAL reply after that moment
-                if _final_since(conv, began):
+                if not _due and _final_since(conv, began):
                     mark(r["id"], "done")
                     STATS["skipped_answered"] += 1
                     continue
                 save_user = False                 # her words are in history; it died mid-work -> resume, not restart
-                if getattr(st, "chat_graph", False) and await _graph_resumable(st, conv, r["id"]):
+                if _due or (getattr(st, "chat_graph", False) and await _graph_resumable(st, conv, r["id"])):
                     # G1: the graph checkpointed this turn - it CONTINUES from its last finished node (done tools are
                     # not run again, the tool ledger decides an interrupted one); no RESUME_NOTE re-run
                     graph_resume = True
@@ -395,6 +398,15 @@ async def sweep() -> int:
     except Exception:
         log.exception("turn inbox sweep failed")
     return out
+
+
+async def _graph_delivery_due(st, conversation_id: str, inbox_id: str) -> bool:
+    try:
+        from .agent import turngraph
+        return await turngraph.delivery_due(st, conversation_id, inbox_id)
+    except Exception:
+        log.exception("graph delivery check failed (the old answered check decides)")
+        return False
 
 
 async def _graph_resumable(st, conversation_id: str, inbox_id: str) -> bool:

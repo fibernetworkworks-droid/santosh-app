@@ -946,6 +946,8 @@ def init_db(url: str | None = None):
         # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
     from .agent import toolledger as _toolledger  # noqa: F401  (G1 LangGraph turn: the tool ledger - registered
         # HERE on day one AND self-healing via toolledger.ensure_table(), the v0.190.1 lesson)
+    from .agent import turndeliver as _turndeliver  # noqa: F401  (G5 LangGraph turn: the delivery record - registered
+        # HERE AND self-healing via turndeliver.ensure_table())
     from .site import plans as _site_plans  # noqa: F401  (v0.782 TEEN MODE site plans + instructions - registered here AND self-healing)
     from . import turncost as _turncost  # noqa: F401  (v0.777 CHAT JAISA each turn's rupees - registered here AND self-healing)
     from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)

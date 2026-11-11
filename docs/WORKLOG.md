@@ -2898,3 +2898,9 @@ Task ID: v0.787.0 HOOLA CODE ENGINE (built as 0.784)
 Ask: "IS HOOLA CODE BACKEND SAME AS CLAUDE CODE" -> no -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
 Built: devsahayak/brain.py (Claude-only, thinking, caching, trimming), devsahayak/engine.py (working copy, Claude Code tools, bash in the box, compaction, continue, checkpoints + rewind, 2 live slots), routes ws / files / rewind, page steps + Working copy card; 13 tests incl. real Docker.
 Deploy: vps-ops deploy (server-only; no new pip; working copies under data/devsahayak/ws). Needs Anthropic credit (Hoola Code is Claude-only now). Found: server venv is Python 3.12 vs box 3.13.
+
+Task ID: v0.788.0 LANGGRAPH G5
+Ask: GO G5 (outcome in state + one delivery node).
+Built: turngraph deliver node, agent/turndeliver.py record, kaam_followup reads it; chat_graph still off; 11 tests. Found goal._waiting_on_job pause bug (not fixed).
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
