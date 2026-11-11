@@ -291,7 +291,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "incline-rolling"
+     "kernel": "incline-rolling",
+     "built": "sw7-rolling-surfaces"
     },
     {
      "id": "rolling-vs-sliding",
@@ -303,7 +304,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "rolling-friction"
+     "kernel": "rolling-friction",
+     "built": "sw7-rolling-vs-sliding"
     },
     {
      "id": "lubricant-reduces-friction",
@@ -340,7 +342,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "fluid-pressure"
+     "kernel": "fluid-pressure",
+     "built": "sw7-liquid-pressure-holes"
     },
     {
      "id": "rubber-sheet-pressure",
@@ -381,7 +384,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "pressure-area"
+     "kernel": "pressure-area",
+     "built": "sw7-pressure-cuboid-sand"
     }
    ]
   },
@@ -401,7 +405,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "free-fall"
+     "kernel": "free-fall",
+     "built": "sw7-free-fall-paper"
     },
     {
      "id": "bottle-upthrust",
@@ -413,7 +418,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "buoyancy"
+     "kernel": "buoyancy",
+     "built": "sw7-bottle-upthrust"
     },
     {
      "id": "cork-nail-sinking",
@@ -428,7 +434,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "buoyancy"
+     "kernel": "buoyancy",
+     "built": "sw7-cork-nail"
     },
     {
      "id": "archimedes-loss-of-weight",
@@ -481,7 +488,8 @@
       "different heights",
       "balls of different mass"
      ],
-     "kernel": "potential-energy"
+     "kernel": "potential-energy",
+     "built": "sw7-ball-in-sand"
     },
     {
      "id": "trolley-hits-block",
@@ -493,7 +501,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "kinetic-energy"
+     "kernel": "kinetic-energy",
+     "built": "sw7-trolley-block"
     },
     {
      "id": "power-climbing-stairs",
@@ -505,7 +514,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "power"
+     "kernel": "power",
+     "built": "sw7-stairs-power"
     }
    ]
   },
@@ -565,7 +575,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "sound-medium"
+     "kernel": "sound-medium",
+     "built": "sw7-sound-through-solids"
     },
     {
      "id": "jaltarang-pitch",
@@ -605,7 +616,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "sound-reflection"
+     "kernel": "sound-reflection",
+     "built": "sw7-reflection-of-sound"
     },
     {
      "id": "pulse-speed-slinky-string",
@@ -695,7 +707,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "radiation"
+     "kernel": "radiation",
+     "built": "sw7-black-white-tins"
     },
     {
      "id": "melting-ice-boiling-water",
@@ -1119,7 +1132,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "electrolysis"
+     "kernel": "electrolysis",
+     "built": "sw7-liquid-conductivity"
     },
     {
      "id": "electroplating-copper",
@@ -1131,7 +1145,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "electrolysis"
+     "kernel": "electrolysis",
+     "built": "sw7-electroplating-copper"
     },
     {
      "id": "ohms-law-v-i",
@@ -1373,7 +1388,8 @@
       "current reversed",
       "magnet reversed"
      ],
-     "kernel": "lorentz-rod"
+     "kernel": "lorentz-rod",
+     "built": "sw7-force-on-conductor"
     },
     {
      "id": "induced-current-coil-magnet",

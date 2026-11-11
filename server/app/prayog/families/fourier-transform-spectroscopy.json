@@ -1,0 +1,44 @@
+{
+ "base": "fourier-transform-spectroscopy",
+ "rig": "w7-optics-bench",
+ "chapter": "Interference",
+ "variants": [
+  {
+   "key": "measured",
+   "title": "Fourier transform spectroscopy: filter band from the interferogram",
+   "sample": "Green interference filter, 550 nm, 10 nm wide (generic catalogue filter)",
+   "method": "measured interferogram",
+   "unknown": "the width of the filter's pass band",
+   "params": {
+    "mode": 0
+   }
+  },
+  {
+   "key": "computed",
+   "title": "Fourier transform spectroscopy: filter band by computer transform",
+   "sample": "Green interference filter, 550 nm, 10 nm wide (generic catalogue filter)",
+   "method": "computer simulation",
+   "unknown": "the width of the filter's pass band",
+   "params": {
+    "mode": 1,
+    "stage": 1,
+    "x": 5.5e-07
+   },
+   "note": "SIMULATED DATA: the computer builds the interferogram of the filter band, samples it and takes its Fourier cosine transform."
+  },
+  {
+   "key": "red-computed",
+   "title": "Fourier transform spectroscopy: a red filter by computer transform",
+   "sample": "Red interference filter, 633 nm, 10 nm wide (generic catalogue filter)",
+   "method": "computer simulation",
+   "unknown": "the width of the filter's pass band",
+   "params": {
+    "mode": 1,
+    "stage": 1,
+    "lam0": 6.33e-07,
+    "x": 6.33e-07
+   },
+   "note": "SIMULATED DATA: the computer builds the interferogram of the filter band, samples it and takes its Fourier cosine transform."
+  }
+ ]
+}

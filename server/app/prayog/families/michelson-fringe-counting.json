@@ -1,0 +1,45 @@
+{
+ "base": "michelson-fringe-counting",
+ "rig": "w7-optics-bench",
+ "chapter": "Interference",
+ "variants": [
+  {
+   "key": "hene",
+   "title": "Michelson interferometer: wavelength of a He-Ne laser",
+   "sample": "He-Ne laser",
+   "unknown": "the wavelength of the laser",
+   "params": {
+    "lam": 6.328e-07
+   },
+   "source": {
+    "title": "He-Ne laser red line 632.8 nm (in air)"
+   }
+  },
+  {
+   "key": "sodium",
+   "title": "Michelson interferometer: wavelength of sodium light",
+   "sample": "Sodium vapour lamp with a ground-glass screen",
+   "unknown": "the mean wavelength of the sodium D lines",
+   "params": {
+    "lam": 5.893e-07
+   },
+   "source": {
+    "title": "NIST Atomic Spectra Database: sodium D lines 588.995 nm and 589.592 nm (mean 589.3 nm)"
+   }
+  },
+  {
+   "key": "air-index",
+   "title": "Michelson interferometer: refractive index of air",
+   "sample": "Air let into an evacuated 5 cm cell in one arm, He-Ne laser",
+   "unknown": "the refractive index of air",
+   "params": {
+    "mode": 1,
+    "dn": 0.0002765
+   },
+   "source": {
+    "title": "Refractivity of standard dry air (15 C, 101 325 Pa) at 633 nm: n - 1 = 2.765 x 10^-4 (Edlen's formula)",
+    "note": "from memory - verify"
+   }
+  }
+ ]
+}
