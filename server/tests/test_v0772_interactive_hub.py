@@ -170,10 +170,10 @@ def test_the_hub_routes_are_locked_switched_and_tenant_scoped(hub, monkeypatch):
 
 def test_the_page_is_wired_and_says_what_is_not_built():
     root = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
-    js, html, css = (root / "interactive.js").read_text(), (root / "v2.html").read_text(), (root / "interactive.css").read_text()
+    js, html, css = (root / "interactive.js").read_text(), (root / "v2.html").read_text(), (root / "v2.css").read_text()
     for page in ("home", "avatars", "voices", "studio", "templates", "brand", "translate", "live", "apps", "projects", "developers", "settings"):
         assert f"['{page}'," in js and f"    {page}()" in js, page             # twelve rail items, twelve drawn pages
-    assert "interactive.css?v=" in html and "#hiRoot" in css
+    assert html.count('rel="stylesheet" href="/static/console/') == 1 and "#hiRoot .hi-rail" in css   # one stylesheet, the console rule
     assert "/api/interactive/hub" in js and "Not connected on this server yet" in js
     assert "sample" not in js.lower()                                       # no sample data ships in the real page
     main = (root.parents[1] / "main.py").read_text()

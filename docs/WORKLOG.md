@@ -2826,3 +2826,11 @@ Task ID: v0.773.0 HOOLA CODE PHASE 1 (built as 0.768, re-versioned twice on merg
 Ask: GO PHASE 1 (docs/HOOLA_CODE_WEB_PLAN.md) + mid-build "create a separate page with its own side bar for Hoola Code".
 Built: /console/code (hoolacode.html / hoolacode.js), code.js rewritten (three zones, folded steps, rail cards, queue take-back, menus, All sessions), devsahayak rename / archive / delete / drop_note + routes; typing-wiped-by-refresh bug and the rotating ring fixed; 8 tests incl. 4 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip, two nullable columns self-heal).
+
+Task ID: HI-BUILD — v0.774.0 HOOLA INTERACTIVE the whole product in the console (11 Nov 2026)
+Owner: "GO - BUILD IT INTO CONSOLE END TO END". Rewrote static/console/interactive.js as a full-page overlay with its
+own twelve-item rail (styles in v2.css); new interactive/hub.py + 17 /api/interactive/hub routes (brand, glossary,
+templates, batch, personalise, translate with code checks, trash/restore, duplicate, brains, usage, voice sample,
+overview, status.connected). studio.spec_for draws the brand colour. Tests: test_v0772_interactive_hub.py (10) +
+rewritten browser walk in test_v0747 (real Chromium via HOOLA_CHROMIUM). Not built and said on the page: tables,
+rupee meter, share links, AI mark, GPU-backed apps, public API. No credentials in this entry.
