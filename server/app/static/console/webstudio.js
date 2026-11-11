@@ -111,6 +111,11 @@
 
   let SITES = [], SPECS = [], CUR = null, CARD = null, VIEW = 'preview', DEVICE = 'pc', LOOK = 0, EDIT = false;
   let POLL = null, SIG = '', PREFILL = '', BUSY = false, RO = null;
+  let IMPUI = null, IMP_BACK = null, IMP_DONE = '';     // HOOLA PROMPTING: the Improve sheet + her original words for Undo
+  try {                                                  // "Open in Web Studio" from the Prompting page: lands in the box, never sent
+    const d = localStorage.getItem('hoola.prompt.toWeb');
+    if (d) { localStorage.removeItem('hoola.prompt.toWeb'); PREFILL = String(d).slice(0, 2000); if (location.hash && location.hash !== '#/') location.hash = '#/'; }
+  } catch (e) { /* private window */ }
   /* v0.683 the 1,00,000-prompt template library: her filters, the rows shown, the template she picked */
   const TPL = {q: '', sector: '', kind: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
   let TPLSEL = null;
@@ -266,6 +271,7 @@
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
+            ${window.HoolaImprove ? `<button class="b ghost" type="button" data-improve title="See what Hoola understood and turn this into a complete website prompt">Improve</button>` : ''}
             <span class="sp"></span>
             <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
@@ -1982,6 +1988,14 @@
     const d = b.dataset;
     if (d.menu) { e.preventDefault(); openMenu(b, d.menu); return; }
     if (d.tpl) { openTpl(d.tpl); return; }
+    if ('improve' in d) {                       // HOOLA PROMPTING: what Hoola understood, as chips she can change; never a silent rewrite
+      const ta = $('#wsAsk'); if (!ta) return;
+      if (IMP_BACK !== null && ta.value === IMP_DONE) { ta.value = IMP_BACK; IMP_BACK = null; IMP_DONE = ''; b.textContent = 'Improve'; ta.focus(); return; }
+      const mine = ta.value;
+      if (!mine.trim()) { ta.focus(); toast('Write one line about the website first.'); return; }
+      IMPUI = IMPUI || window.HoolaImprove({api, esc, toast});
+      IMPUI.open(mine, {section: 'web', onUse: t => { ta.value = S(t).slice(0, 2000); IMP_BACK = mine; IMP_DONE = ta.value; b.textContent = 'Undo'; ta.focus(); }});
+      return; }
     if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }

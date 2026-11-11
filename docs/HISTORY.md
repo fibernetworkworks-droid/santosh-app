@@ -1629,3 +1629,128 @@ building, board, crew). NOT VERIFIED: on her server with a real Godot build (the
 
 NOT VERIFIED (honest): not on the VPS yet; Devanagari shaping in stamps is checked by text extraction, not by eye on
 a real print; grayscale leaves colours in named colour spaces / patterns (said in the guide).
+**NOT VERIFIED:** no real Claude suggestion, no real GitHub comment feed, no real FCM push, no real program calling the
+trigger. The trigger's hourly limit is per task row (not per IP). The phone app has no Scheduled screen (console only).
+**Not built from the plan's Phase 5 line:** live "subagent" children as separate panes (the passes are a card, not
+panes). Deploy: vps-ops deploy (server-only; no new pip; one new table + five nullable columns make themselves).
+
+
+## v0.804.0 HOOLA PROMPTING P1-P3 - the understanding engine, the Improve button, the Prompting page (built as 0.796; their 0.796.0-0.803.0 took the numbers - REBASE PROTOCOL, all kept; owner: "GO P1 TO P3")
+
+Plan: `docs/HOOLA_PROMPTING_PLAN.md` parts 2-6 and 11. Research: `docs/research/prompting/00_INDEX.md`. The owner chose to
+test everything together at the end, so P0's live card has NOT run: these three sections are built without its numbers.
+
+**P1 - the engine, `server/app/prompting/`**
+- `anatomy.py` - the parts a complete ask has, as data: web (what / who / the one key action / pages / look / content),
+  image (subject / scene / kind / exact words / shape / colours / layout / light), script (platform / length / audience /
+  message / hook / last line / tone / language). `required` slots are the ones worth a question.
+- `brief.py` - `understand(tenant, text, section)`: (1) code reads what is certain - `facts_of` (price, percent, phone,
+  time, date, quoted words; copied exactly, locked) and `code_slots` (picture shape from 'story / banner / poster',
+  script length + platform, language, the website action from 'whatsapp / booking / cart'); (2) `context.fill` puts in
+  what Hoola knows (brand kit name / tagline / colours / tone), labelled her_memory, her own words win; (3) ONE small
+  model call (`ASK[0]`, `net.ai.llm_json`, switch `prompting_fill_model`) proposes the remaining slots and `model_slots`
+  checks it in code: a value it says is hers must share half its content words with her text (`supported`), any number
+  not in her text drops the value (`_numbers_ok`), a praise / magic word drops the value, everything else is labelled
+  hoola_guess; a model outage = a brief from code alone, never an error. `_finish` recomputes facts, missing and at most
+  3 questions (a required slot that is empty or only a guess). `apply(brief, set, drop)` = her answers (strongest source)
+  and removals; `validate` rebuilds any brief the page sends back (known slots / sources only, sizes cut, intent never
+  altered). `score` = 0-100 in code with a reason per point lost (required 60, detail 15, no clash 10, limits 5, wording
+  10) and the note "This counts what is in your prompt. It cannot promise the result."
+- `dialect.py` - web (her line first, then labelled lines, FACTS exactly, NOT DECIDED YET as marked samples, MUST NOT),
+  image (a described scene, exact words in quotes or "No text ...", aspect as a field), script (labelled lines + fmt /
+  length / language / tone fields). `run` says where it goes: Web Studio box or the chat box. No magic phrase (tested).
+- `recipes.py` - 10 image + 8 script starters with blanks (an empty blank leaves its slot OUT, never a made-up value) +
+  the Web Studio's template library as ready website prompts. Marked as starters; no kept-rate claimed.
+- `store.py` - table `prompt_saved` (registered in `db.init_db`, self-heals per engine), fenced to the tenant, 200 max.
+- `api.py` - GET /sections, POST /understand, POST /compile (no model), GET /recipes, POST /recipes/use, GET / POST /saved,
+  GET / DELETE /saved/{id}. Every route only reads and writes text.
+
+**P2 - the Improve button** `static/console/improve.js` (`HoolaImprove({api, esc, toast})` -> mount / open / sections; the
+last instance at `HoolaImprove.ui`) + `improve.css` (own tokens, prefix hpi-, light + dark, no blur). The sheet shows her
+words, chips per slot coloured by source (your words / your business / Hoola's suggestion / missing), locked facts,
+questions with tap answers, the score and the finished prompt; `Keep mine` / `Use this prompt`. Wired into: the console
+chat box (`#impBtn` in the chip row; a non web / picture / script line gets a 3-way choice or Keep mine), the Web Studio
+home box (`data-improve`, section web), Create Image (the old Enhance button opens the sheet when it is loaded; Create
+Video keeps the old Enhance). After Use, the button reads Undo and restores her text exactly until she edits.
+
+**P3 - the page** `/console/prompting` (`promptapp.html`, `prompting.js`, `prompting.css`; route + `prompting` in
+/api/console/config; console sidebar row). Home (one box, Auto / section chips, recipes, Continue, what Hoola knows),
+workbench (her words + "Read my words again" | chips, facts, questions | score, prompt, Open in Web Studio / Put in the
+Hoola chat, Copy, Save), Recipes (search, kind, blanks form; a website template opens as a ready prompt), My prompts.
+Run only HANDS THE TEXT OVER (`hoola.prompt.toWeb` read once by webstudio.js into its box; `hoola.flow.toChat` for the
+chat box) - nothing is sent or built for her.
+
+**Tests** `server/tests/test_v0804_prompting.py` - 17, no model: section guess, locked facts, code slots, the model
+checked by code, model outage, answers / removals / validate, score reasons, dialects, brand fill, recipes, routes end
+to end, tenant fence, switch off, wiring, and 2 real-browser walks (the page at 1360 + 390 px; the console chat box and
+the Web Studio with Use + Undo). Screens were looked at by eye (light). Stamp count in v2.html 29 -> 31.
+
+**Also fixed (found while wiring the button)** `bazar.service.ensure_user`: on her FIRST Connectors visit the page's
+lists load together, two requests both created her bazar user row and the loser answered 500 (UNIQUE constraint failed:
+bz_users.id). The loser now reads the row. Test `test_first_visit_race_on_the_connectors_user_row`.
+`test_v0781_connectors_page::test_connectors_page_in_a_real_browser` is unreliable here on main too (3 of 3 failed on an
+untouched main checkout: the sign-in window's toast is not seen within 30 s) - not from this change.
+
+**Not built / not verified**
+- The phone app's composer button (Flutter cannot be compiled here; a CI-only change was left out on purpose).
+- Sections beyond web / image / script (P5-P6), Create Video / Script-writer page buttons, the outcome ledger (P4),
+  price shown inside the workbench (each engine still shows its own price card), dark mode looked at by eye.
+- No real model has filled a brief on the server: the fill call's quality on GLM / Haiku is unknown until used live.
+- P0's live card has not run, so there is no measured gain behind these three sections yet (owner's choice).
+
+## v0.805.0 LANGGRAPH G6 (built as 0.799; their v0.799-v0.804 landed while it was tested - REBASE PROTOCOL, both kept) — voice as a channel of the same graph (11 Nov 2026; owner: "GO G6")
+
+Phase G6 of `docs/LANGGRAPH_TURN_PLAN.md` (bug class 10: call and chat are two engines), only when `chat_graph` is on (default OFF; the old call path unchanged). Gemini Live stays the voice: audio, live session, parking, billing, persona and the declared tool list / budget are untouched.
+- A call's `santosh_kaam` already reached `turngraph.run_steps` with the switch on (nodes, G1 ledger, G2 tickets, G3 facts, G5 record); G6 makes the call a CHANNEL: prepare writes `channel` (call / chat) + `profile` (NEW `agent/turnchannel.py`: Haiku, short history, result cut, memory time cap, no compaction / thinking / hint lookup / MCP wait / long-job segment) into the checkpoint, so a call ask resumed after a restart stays a call-brain run. (The santosh helpers still read the speed choices from `VOICE_BRAIN_NOW`; the profile records them.)
+- Delivery: `Call._delegate` hands the run a ticket (`turndeliver.CALL`); the deliver node fills it (record key, result, facts) and marks the call channel due; the call tells the result once - as the tool answer or later from the record (`_told_on_call`, `_late_from_record`); while the call is live the reply's push is recorded as held; after a hang-up the chat row + push are the delivery and the next call does not repeat it; held-then-hung-up = told on the next call once. `_late_result` reads the record first (stopped dropped, partial / stuck as before, draft-card only = waiting for her tap, talk-only = neutral line; a cancel drops it only if after the run began).
+- `_check_spoken_claim` with a graph run behind it judges the 'ho gaya' by `turnfacts.verdicts` over the run's facts; the 90 s news excuse only for news that is not a graph run's.
+- G4: a call ask that changes the chat's running job via kaam_plan reaches its thread (history line the next segment reads, or the steer queue while a segment runs); a job the call finished is marked told. A run queued on a record's ticket counts as busy.
+- FIXED (graph path): on a voice-brain call the ask is her words + '(Call ne samjha: ...)' and the word 'Call' made every spoken stop look like stopping the call, so 'band karo' stopped nothing; her own words decide now.
+- TESTS: NEW `test_g6_turngraph.py` 11 (graph run with ledger / facts / channel / Haiku, told once + push held, late result from the record, hang-up -> chat push only, held then hung up -> next call once, spoken stop stops the ask, false spoken claim corrected from facts, call reaches the long job thread, registry walk every tool reachable + one undeclared tool end to end, restart keeps the channel, switch off unchanged); g0-g5, test_voice, v0550, v0630, v0634, v0660, v0657, v0649, v0691 call team, harness2, routines same off and on.
+- FOUND on the old path (left as is): with the switch off a result returned as the immediate tool answer is also queued as 'That big job is done' late news (the v0.657 hang-up callback runs before `_delegate` resumes).
+- NOT COVERED: declared tools / MCP tools / auto-rescue / hold-OTP flows on a call still run directly, not via the graph; the profile is recorded, not yet applied by the prepare node; after a hang-up the reply stays on the call record (no chat copy - the push opens the call record); spoken claims backed only by declared tools use the old check; nothing verified live (no real Gemini call / restart / phone). Next: G7 default ON + delete the old loop.
+
+
+## v0.806.0 HOOLA DOCUMENT KIT D3 - security (owner: "GO D3"; built as 0.805, shipped as 0.806 - their LANGGRAPH G6 took 0.805.0 and HOOLA PROMPTING 0.804.0, REBASE PROTOCOL, their base kept whole; D0-D2 ride along, never on main before)
+
+The non-negotiable rule made into code: a PDF password never passes through the chat or the model.
+- `app/dockit/vault.py`: one-time tokens (32 random bytes) for (a) the password Hoola made (24 h), (b) her own
+  password to lock with (2 h), (c) her password to unlock (2 h, 5 tries, then the page closes for good), (d) a
+  redaction waiting for her yes. Sealed on disk with Fernet from SECRET_KEY; without a SECRET_KEY nothing touches
+  disk (process memory only - a restart forgets, the safe failure). Burnt when used, swept when expired.
+- `app/dockit/api.py`: GET / POST /pdf/key/<token> (mounted beside the quick lane in main.py). A GET never reveals
+  a secret (link previews and the model's own fetchers see a button); her tap (POST) shows Hoola's password once,
+  or takes her typed one. Headers: no-store, no-referrer, noindex, a CSP with no scripts, no framing.
+- `app/dockit/secure.py`:
+  - protect: AES-256 (revision 6) with permissions (print / copy / edit / comment / fill_forms / assemble;
+    accessibility always on); owner password random and never shown; open_lock=false = restrictions only (said:
+    not a real lock); `check_protected` proves it refuses without the password and the permissions read back.
+  - unlock: restrictions only -> removed at once (her own file); an open password -> only through the page; a wrong
+    one is said, never retried by guessing.
+  - redaction: presets found by pattern AND checksum where one exists - Aadhaar (Verhoeff), VID, PAN (4th letter
+    holder type), card (Luhn, 13-19 digits), bank account (next to a/c / account / खाता), IFSC, phone (+91 / 0,
+    6-9 start), email, GSTIN (check character), vehicle, PIN code (next to 'pin') - plus her exact words and boxes
+    she marks (mm / % from the top-left of what she sees). Overlapping hits are merged. The model sees only masked
+    values (XXXX XXXX 0124). `preview` = a copy with red boxes + "PREVIEW - NOTHING REMOVED YET"; `redact` = every
+    page with a box is rendered (150-300 dpi, comments not drawn), the boxes burned in black, the page replaced by
+    that picture; comments / bookmark titles / form values carrying a found item removed; then `edit.sanitize`
+    (metadata, XMP, attachments, scripts); then `verify` reads all page text, comments, bookmarks and metadata
+    again - any found item (or, for a whole-file run, any preset match) still readable = nothing delivered.
+    Scanned pages are named in the preview: nothing found there is NOT proof nothing is there.
+- Tool: actions protect / unlock / redact / redact_apply; parameter `password` is an enum hoola | mine (the schema
+  cannot carry a password); `presets`, `find`, `areas`, `redact_id`, `allow`, `open_lock`, `dpi`. The redact_id is
+  tied to her tenant. The guide and the prompt say never to ask for a password in chat. The prompt's PDF line
+  also caught up with D2 (it still listed watermark / page numbers as not yet).
+- Proof card +6 (44 total, 44/44): lock refuses without the password, unlock both ways + a wrong password refused,
+  the three checksums, redaction of 8 kinds on a made-up ID page with page 2's text kept and the scanned page named,
+  an order number that fails the Aadhaar check left alone, preview removes nothing.
+- Tests `test_v0805_dockit_d3.py` 12: the schema cannot carry a password; Hoola's password is not in the tool
+  result or the file, a GET never shows it, a POST shows it once, then 410; her own password typed twice (mismatch /
+  weak refused) locks the copy with the permissions she chose; restrictions-only lock + unlock; open-password unlock
+  with 4 wrong tries counted down and the 5th closing the page; preview (masked list) then apply (none left); another
+  tenant's redact_id refused; marked areas; a left-over item = nothing delivered; the vault seals on disk with a
+  SECRET_KEY and refuses path-like tokens; generated passwords unique and valid; the router mounted.
+
+NOT VERIFIED (honest): not on the VPS; the one-time page has not been opened on her phone (the link must use
+PUBLIC_BASE_URL; it falls back to a relative /pdf/key/... path); redacted pages lose their selectable text (an OCR
+layer for them comes with D4).

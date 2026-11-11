@@ -216,7 +216,7 @@ def test_ledger_switch_alone_can_go_quiet(monkeypatch):
 def test_registry_unchanged_615():
     # KAAM MANCH adds ZERO tools (it is a laws layer, not a family): the count the v0.681/v0.687
     # pins carry stays exactly what their ships left
-    assert len(TOOLS) == 626, "625 + 1 pdf_kit (v0.804 HOOLA DOCUMENT KIT). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
+    assert len(TOOLS) == 626, "625 + 1 pdf_kit (v0.806 HOOLA DOCUMENT KIT). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
 
 
 def test_no_kaam_tool_registered():
@@ -250,9 +250,9 @@ def test_fresh_interpreter_import_inert():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.804.0"                        # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.806.0"                        # conscious-bump guard: moves with every release
 
 
 def test_pubspec_pin():
     pub = (ROOT / "pubspec.yaml").read_text()
-    assert "version: 0.804.0+803" in pub
+    assert "version: 0.806.0+805" in pub

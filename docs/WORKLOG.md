@@ -2954,3 +2954,24 @@ Task ID: v0.804.0 HOOLA DOCUMENT KIT D2 (+ D0 + D1 re-versioned 0.794 -> 0.804)
 Ask: "GO D2".
 Built: dockit/stamp.py + edit.py (15 actions), proof card 38/38, test_v0795_dockit_d2.py 12; merged main v0.803.0 (their base kept whole), pins re-applied (registry 626, 0.804.0+803).
 Deploy: vps-ops deploy, then docs_setup (apt line for the DO console), docs_check, pdf_card.
+Task ID: v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; re-versioned on merge: PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0)
+Ask: GO PHASE 5.
+Built: devsahayak/around.py (schedules + trigger, share link, suggestion, reviewers' comments, end-of-run push), think + pass steps, public routes /hooks/{id} + /shared/{token}, page: Thinking view, Passes card, reviewers' card, ghost text, Scheduled page, share dialog, read-only page; 12 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; table devsahayak_schedules + five nullable columns self-heal). Not verified with a real model, GitHub comment feed or FCM.
+
+---
+Task ID: v0.804.0 HOOLA PROMPTING P1-P3 (built as 0.796; main had moved to 0.797.0, then 0.798.0)
+Ask: "GO P1 TO P3" (owner: test everything together later, after all the build work).
+Built: server/app/prompting/ (anatomy, brief, dialect, context, recipes, store, api), static/console/improve.js + improve.css (the Improve sheet: chat box, Web Studio, Create Image), /console/prompting (promptapp.html, prompting.js, prompting.css), sidebar row; 17 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; one new table prompt_saved self-heals). Next: P4 the outcome ledger on her GO.
+
+Task ID: v0.805.0 LANGGRAPH G6
+Ask: GO G6 (voice as a channel).
+Built: agent/turnchannel.py, call ticket in turndeliver, voice _delegate / _late_result / _check_spoken_claim on the record + facts, stop-words fix on calls; chat_graph still off; 11 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+---
+Task ID: v0.806.0 HOOLA DOCUMENT KIT D3 (D0-D2 ride along)
+Ask: "GO D3".
+Built: dockit/secure.py + vault.py + api.py (/pdf/key/<token>), 4 actions, proof card 44/44, test_v0805_dockit_d3.py 12; merged main v0.805.0 (their base kept whole), pins re-applied (registry 626, 0.806.0+805).
+Deploy: vps-ops deploy, then docs_setup / docs_check / pdf_card. The one-time links need PUBLIC_BASE_URL (and SECRET_KEY to survive a restart) in the VPS .env - not checked from here.
