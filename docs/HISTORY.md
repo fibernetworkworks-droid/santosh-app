@@ -1984,7 +1984,40 @@ real-browser walk (hub, ten pages with no overflow and no script error, her text
 typed words kept, exact bodies sent, factory scenes edited, 26 camera chips). Stamp count 34 -> 35.
 
 **NOT VERIFIED.** No live engine call; rupee cost per job unknown until one runs; all users share the one server key.
-## v0.815.0 NATIJA KHATA (built as 0.806; their 0.806-0.814 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
+
+## v0.815.0 APP KE PURZE (built as 0.802; other sessions took 0.802.0-0.814.0 meanwhile - REBASE PROTOCOL, all kept; owner: "GO DEEP IS ALL ANDROID AND IOS APP COMPONENT IS THERE" -> "GO 1 2 3 - DEPLOY PARALLEL AGENTS")
+
+The audit (both native kits read file by file, a capability grep across Kotlin and Swift) found the kits strong on accounts,
+data, money, maps, push and store work, and three kinds of gap. Four agents fixed them in parallel worktrees; merged here.
+
+1. HONEST PLAN (`appmaker/capabilities.py`, `blueprint.py`, `service.py`, `agent/app_tools.py`, App Studio Plan page).
+   The plan card listed 64 phone features by STORE POLICY only - nothing told it what the kit really builds, so a plan
+   could promise Face ID or a home-screen widget and the app came without it, and `three_d` claimed SceneView / RealityKit
+   while Android draws a server-rendered still and iPhone nothing. Every CAPS entry now carries `built` {android, ios} =
+   yes / partial / no + `built_note`, decided by reading the kit code; `CP.gaps(ids)` and `caps_missing` on every blueprint
+   (re-worked from the current table on view, so old plans are told too); the chat line says "Not in this version yet: ..."
+   and the app_banao tool text forbids promising those; the Plan page has a "Phone features" panel with an Android and an
+   iPhone pill per feature (Built / Partly / Not yet) - it replaced a chip line that never showed anything.
+2. IPHONE PARITY (`ios/template/Sources/Kit/Media.swift`): `CameraButton` (UIImagePickerController .camera, shown only on
+   a phone with a camera, photo sent through the same `local:` upload path) beside the photo picker in PhotoRow /
+   PhotosRow; `ShareButton(text:url:)` + `shareText(_:url:)` (twin of Android's Act.share); one `ImageCache` (NSCache,
+   150 images / 48 MB) for every kit photo download. NSCameraUsageDescription written for photo fields too.
+3. DEVICE FEATURES on both phones, same public names (`kit/Device.kt`, `Sources/Kit/Device.swift`): `BiometricLock` (an
+   Unlock card - Android's framework BiometricPrompt, no new library, screen-lock fallback on Android 8; iPhone
+   LAContext deviceOwnerAuthentication), `RateAppButton` (Play listing link / StoreKit requestReview), `AddToCalendarButton`
+   (calendar insert intent, no permission / EKEventEditViewController, iOS 16 asks first), `PickContactButton` (phone-number
+   picker, one row, no READ_CONTACTS / CNContactPickerViewController, no key); screen-reader labels on the kit's unlabelled
+   tap targets on both. Android USE_BIOMETRIC only when a screen uses it; iPhone Face ID + calendar purpose strings ALWAYS
+   (Device.swift is in every binary and Apple's upload scan flags a protected API with no string, ITMS-90683). The Android
+   CI fixture's dashboard uses all four parts so appgen-check compiles and taps them.
+
+Tests: NEW test_v0802_honest_caps.py (9), test_v0802_ios_media.py (7), test_v0802_ios_device.py, test_v0802_android_device.py (7).
+NOT VERIFIED: none of the new Kotlin / Swift had been compiled when this was written - no SDK in the sandbox; the
+appgen-check (Android) and ios-check (macOS) runs on this push are the first compile. No real phone has tapped any of it;
+the iPhone camera button is hidden on the simulator, so only a real iPhone proves it. Still not built: home-screen widgets,
+real 3D, deep links / app links, right-to-left, in-app tests in generated apps. Older red, not this work:
+test_v0338_app_store.py::test_push_and_submit_through_the_mac (KeyError 'status', red before this change).
+## v0.816.0 NATIJA KHATA (built as 0.806; their 0.806-0.815 took the numbers) - the outcome ledger of HOOLA PROMPTING (P4 of docs/HOOLA_PROMPTING_PLAN.md, owner: "GO")
 
 What it is: one row per prompt she takes OUT of Hoola Prompting, and what happened to the result afterwards. This is
 the measure the whole feature is judged by, and the data the later phases (recipe order, defaults, self-improvement)
@@ -2020,7 +2053,7 @@ need.
   `everyone=1` only for the owner tenant (all users who share, no recent list). POST /api/prompting/runs/{id}/thumb.
 - Page: Results tab on /console/prompting (`prompting.js` results(), styles at the end of `prompting.css`).
 - Switch `prompting_ledger` (default on).
-- Tests: `server/tests/test_v0806_prompt_ledger.py`, 14 incl. a browser walk at 1360 and 390 px.
+- Tests: `server/tests/test_v0816_prompt_ledger.py`, 14 incl. a browser walk at 1360 and 390 px.
 
 NOT built / NOT verified: no real run has been recorded on the live server. Not hooked: Kalam, video, app builds,
 the architect's plan-only path. Rupees for a website are the site's running AI cost at first build, not the build

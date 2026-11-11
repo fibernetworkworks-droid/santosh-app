@@ -2979,7 +2979,7 @@ Task: owner "read this repo first" (Autom8AI/Open-Higgsfield-AI) -> "GO BUILD TH
 Work Log: read the fork end to end (no LICENSE file; ideas only); read 19 engine doc pages from docs.kie.ai for the real request shapes; server/app/cinema (specs, kie, service, api); static/console/cinema.js mounted in studio.js as view cinema; styles at the end of studio.css; 26 camera moves on the Video page; settings cinema_page / kie_api_key / cinema_daily_jobs; test_v0807_hoola_cinema.py 14 incl. a browser walk; docs/HOOLA_CINEMA_PLAN.md.
 Stage Summary: pushed; server deploy only. She adds KIE_API_KEY to the VPS .env before any tool can run. NOT VERIFIED live. Three decisions wait for her (character swap rule, who pays, upload limit) - see the plan doc.
 
-Task ID: v0.815.0 NATIJA KHATA (HOOLA PROMPTING P4; built as 0.806, main had moved to 0.814.0)
+Task ID: v0.816.0 NATIJA KHATA (HOOLA PROMPTING P4; built as 0.806, main had moved to 0.815.0)
 Ask: "GO" after P1-P3 went live.
 Built: prompting/ledger.py (prompt_runs, prompt_prefs; shape only), 7 ledger routes, hooks in sites / Create image / Script writer / chat, Results tab, recipe order by kept rate; 14 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip; two new tables self-heal). Not verified live. Next: P5 on her GO.

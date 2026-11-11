@@ -72,7 +72,7 @@ def collect(project: Path, swift: bool = False) -> list[str]:
             text = "\n".join(ln for ln in f.read_text(errors="replace").splitlines()
                               if not ln.lstrip().startswith(("//", "*", "/*")))       # not the words in comments
             # the kit's own words (Strings.kt / Words): their English first argument, for languages the kit doesn't carry
-            hits = list(rx.finditer(text)) + (list(KIT_T.finditer(text)) if f.name in ("Strings.kt", "Kit.swift") else [])
+            hits = list(rx.finditer(text)) + (list(KIT_T.finditer(text)) if f.name in ("Strings.kt", "Kit.swift", "Media.swift") else [])
             for m in hits:
                 s = m.group(1).replace('\\"', '"').replace("\\\\", "\\").replace("\\n", "\n")
                 if "$" in s and not swift or "\\(" in s:     # a string with code inside stays as it is

@@ -67,6 +67,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
@@ -116,7 +119,7 @@ fun SignatureField(label: String, key: String) {
             return@Column
         }
         Canvas(Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(12.dp)).background(Color.White)
-            .border(1.dp, H.c.line, RoundedCornerShape(12.dp)).onSizeChanged { box = it }
+            .border(1.dp, H.c.line, RoundedCornerShape(12.dp)).onSizeChanged { box = it }.semantics { contentDescription = label }
             .pointerInput(key) {
                 detectDragGestures(onDragStart = { current = listOf(it) }, onDragEnd = { if (current.size > 1) strokes.add(current); current = emptyList() }) { ch, _ ->
                     current = current + ch.position
@@ -191,7 +194,9 @@ fun PhotosStrip(ids: String) {
     var big by remember(ids) { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            list.forEach { s -> Box(Modifier.size(84.dp).clickable { big = if (big == s) "" else s }) { RemotePhoto(s, Modifier.size(84.dp)) } }
+            list.forEachIndexed { i, s ->      // v0.802 a photo-only tap target says what it is to TalkBack
+                Box(Modifier.size(84.dp).clickable(role = Role.Button) { big = if (big == s) "" else s }) { RemotePhoto(s, Modifier.size(84.dp), Strings.photo + " ${i + 1}") }
+            }
         }
         if (big.isNotEmpty()) RemotePhoto(big, Modifier.fillMaxWidth().height(240.dp))
     }

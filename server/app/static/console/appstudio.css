@@ -250,3 +250,10 @@ table.t tr:last-child td{border-bottom:0}
 }
 .ws-app .psub{margin:4px 0 -4px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--mut)}
 .ws-app .psub:first-child{margin-top:0}
+/* v0.802 HONEST CAPS: the Plan page's phone features, one row each with what THIS version builds per platform */
+.ws-app .as-caplist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ws-app .as-caplist li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:8px 0;border-top:1px solid var(--hair)}
+.ws-app .as-caplist li:first-child{border-top:0}
+.ws-app .as-capname{flex:1 1 160px;min-width:0;font-size:14px;color:var(--ink)}
+.ws-app .as-cappills{display:flex;gap:6px;flex-wrap:wrap}
+.ws-app .as-capnote{flex:1 1 100%}
