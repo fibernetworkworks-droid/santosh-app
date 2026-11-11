@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - D2: one app as an MCP server (POST /mcp/aiapp/{code}, JSON-RPC 2.0).
+"""v0.785 HOOLA AI APPS - D2: one app as an MCP server (POST /mcp/aiapp/{code}, JSON-RPC 2.0).
 
 One tool, `ask`. The caller needs a Bearer key of THIS app, the app must be live and its `mcp` channel on; the key's
 limits apply exactly as on the service API. The tool's description is the app's PUBLIC name only - never her facts.

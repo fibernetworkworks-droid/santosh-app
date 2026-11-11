@@ -318,7 +318,7 @@ ${SPRITE}`;
       else if (e.key === 'Tab') closeMenu();
     };
   }
-  addEventListener('resize', () => closeMenu());
+  addEventListener('resize', () => { if (R) closeMenu(); });   // before Create is first opened there is no root: every window resize threw
   const opt = (L, fmt) => L.map(v => ({v, label: fmt ? fmt(v) : String(v)}));
 
   /* ---------------- shared result tiles ---------------- */

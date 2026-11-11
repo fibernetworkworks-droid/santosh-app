@@ -1,4 +1,4 @@
-"""v0.772 HOOLA AI APPS - owner routes of part A (builder, templates, export / import).
+"""v0.785 HOOLA AI APPS - owner routes of part A (builder, templates, export / import).
 
 main.py mounts this BEFORE the owner router (which has /api/aiapps/{id}), so /api/aiapps/plan, /templates and
 /import are matched here first:  app.include_router(builder_api.make_router(require_key, current_tenant)).

@@ -252,4 +252,4 @@ def test_the_routes_and_the_tool_are_reachable(droid_env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.784.0"
+    assert APP_VERSION == "0.787.0"

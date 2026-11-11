@@ -332,7 +332,10 @@ def _run_pages(b, out: Path, pages: list[str], shots_dir: Path | None, axe, repo
 
 
 def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: bool = True,
-        only: list[str] | None = None) -> dict[str, Any]:
+        only: list[str] | None = None, quick: bool = False) -> dict[str, Any]:
+    """quick=True (v0.787 CHHOTA BADLAAV, a small change): only the `only` pages in the browser (scroll width, contrast /
+    a11y, console errors, that page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture /
+    video. The full check still runs before the site goes live (hosting.blockers)."""
     if available():
         raise CheckError("Website jaanch ke liye server par Playwright + Chromium chahiye (deploy/setup_sites.sh).")
     from playwright.sync_api import sync_playwright
@@ -367,14 +370,14 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
         b = _launch(p)
         try:
             report["pages"].update(_run_pages(b, out, pages, shots_dir, axe, report))
-            if shots_dir is not None:
+            if shots_dir is not None and not quick:
                 _og_and_video(b, out, shots_dir, video)
         finally:
             b.close()
     for slug, pr in report["pages"].items():
         report["blocking"] += pr["issues"]
         report["warnings"] += pr["warnings"]
-    if plan.get("big"):
+    if plan.get("big") and not quick:
         seen = {x["text"] for x in report["blocking"]}
         for it in link_scan(out):
             if it["text"] not in seen:
@@ -386,7 +389,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
                              "first_load_kb": home.get("first_load_kb", 0),
                              "blanks": sum(pr.get("blanks", 0) for pr in report["pages"].values()),
                              "samples": sum(pr.get("samples", 0) for pr in report["pages"].values())})
-    lh = lighthouse(out)
+    lh = {} if quick else lighthouse(out)
     if lh:
         report["scores"].update(lh)
         report["source"] = "lighthouse" + ("+axe" if axe else "")
