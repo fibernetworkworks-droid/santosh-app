@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import hoola.kit.*
@@ -12,7 +16,12 @@ import hoola.kit.*
 fun ScreenDashboard() {
     val nav = LocalNav.current
     val orders = AppData.list("orders")
+    var open by remember { mutableStateOf(false) }
     Page("Dashboard", back = true) {
+        // v0.802 DEVICE: every phone feature compiled in CI (lock, rate, calendar, contact picker)
+        if (!open) block { BiometricLock("Unlock to see today's numbers") { open = true } }
+        block { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { RateAppButton(); AddToCalendarButton("Stock check", 1767225600000L, 1767229200000L, "Shop", "Monthly count") } }
+        block { PickContactButton { name, phone -> AppState.form["name"] = name; AppState.form["phone"] = phone } }
         block {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Kpi("₹48,200", "Today", Modifier.weight(1f))

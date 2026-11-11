@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     usage_month_usd: float = 0.0           # v0.98 server ceiling of AI spend per owner per month (0 = none)
     studio_modes: bool = True             # v0.782 TEEN MODE: Studio Plan / Chat refuse changing tools on the server
     studio_design_questions: bool = True  # v0.784 SAWAAL CARD: up to four visual design questions before a Studio Build
+    app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse
+    app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)
+    app_engine_runner: str = "box"        # v0.814 "box" = Docker, no network (production); "local" = host node (dev / tests only)
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
     studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)
     chat_turn_cost: bool = True           # v0.777 CHAT JAISA: each chat turn's rupees kept (turncost) for the Studio line
@@ -163,6 +166,19 @@ class Settings(BaseSettings):
     dev_ws_clear_chars: int = 180000        # ... past this, old tool output is trimmed (brain.trim)
     dev_ws_compact_chars: int = 480000      # ... past this, the older conversation is summarised (engine.compact)
     dev_ws_keep_days: int = 14              # ... an idle session's working copy is kept this long
+    # v0.794 ECC AGENTS (owner: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE"): devsahayak/ecc/ (63 agents) + subagent.py
+    dev_ecc_agents: bool = True             # the coder gets the `agent` tool + the roster (Claude Code-style subagents)
+    dev_ecc_rules: bool = True              # ECC's coding rules for the repo's languages in the coder's system prompt
+    dev_ecc_rules_chars: int = 9000         # ... at most this many characters of them
+    dev_ecc_gate: bool = True               # ECC's pre-commit check on the diff before `done` is accepted (one clean-up chance)
+    dev_agent_steps: int = 30               # model steps for one agent
+    dev_agent_minutes: int = 12             # minutes for one agent
+    dev_agent_max: int = 10                 # agents per round
+    dev_agent_parallel: int = 4             # read / run agents asked in one reply that run at the same time
+    # v0.814 THE AGENCY (owner: "GO 1 2 3"): 35 more agents in devsahayak/ecc/agency_*.py + the reality check before done
+    dev_reality_check: bool = True          # an independent reality-checker agent looks once before a round may finish
+    dev_reality_min_lines: int = 30         # ... only for a change of at least this many added lines
+    game_agency_experts: bool = True        # the Game Developer's crew roles carry The Agency's expert notes (gamedesk/agency.py)
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
@@ -508,11 +524,30 @@ class Settings(BaseSettings):
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
     vocal_page: bool = True                # v0.787 HOOLA VOCAL: the console voice studio (speech, dialogue, readings, her voices, effects)
     hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
+    design_page: bool = True              # v0.777 HOOLA DESIGN: the multiplayer design editor (/console/design, /api/design/*, app/design)
+    design_dir: str = ""                  # uploaded images + thumbnails ('' = data/design/<tenant>/)
+    design_max_nodes: int = 200000        # layers in one file; creates beyond it are refused
+    design_room_max: int = 64             # people (open tabs) in one file at a time
+    design_checkpoint_ops: int = 200      # a room stores its snapshot every this many ops ...
+    design_checkpoint_idle_s: float = 20.0   # ... and after this many quiet seconds (and when the last person leaves)
+    design_autoversion_min: int = 30      # an automatic version every this many minutes of editing (0 = none)
+    design_autoversion_keep: int = 50     # automatic versions kept per file (named ones are never pruned)
+    design_socket_idle_s: float = 60.0    # an editor that sends nothing for this long (it pings every 15 s) is let go
+    design_ai: bool = True                # v0.777 HOOLA DESIGN AI: "Ask Hoola" (one line -> a designed frame, POST /api/design/files/{id}/ai) + the hoola_design tool
+    design_ai_model: str = ""             # the model that designs ('' = the house's strong model, else the chat model: agent/door.model_for)
+    design_ai_engine: str = "auto"        # auto = the model when one is configured, else the built-in layouts | template = built-in layouts only
+    design_ai_per_hour: int = 20          # designs one tenant may ask for in an hour (per server process)
+    design_ai_timeout_s: float = 120.0    # one model call may take this long; after it the request fails plainly
     prompting_page: bool = True           # HOOLA PROMPTING: /console/prompting + /api/prompting/* + the Improve button
+    prompting_ledger: bool = True         # NATIJA KHATA: the outcome ledger (shape only, never her words)
     prompting_fill_model: bool = True     # the one small model call that proposes slots (off = a brief from code alone)
     flow_page: bool = True                # v0.751 HOOLA FLOW: the Kaan pack as a console page (dictate, files, live captions, words, settings)
     flow_composer_mic: bool = True        # v0.751 the chat box mic dictates through Kaan when its engine is ready (else the browser's own)
     shilp_page: bool = True               # v0.752 ARTCRAFT IN CREATE: the Create studio's ArtCraft tool over the shilp lane (/api/shilp)
+    cinema_page: bool = True              # v0.807 HOOLA CINEMA: the Create studio's Cinema section (/api/cinema): motion transfer, character
+                                          # swap, item swap, restyle, talking photo, lip sync, picture to video, content factory, cinema still
+    kie_api_key: str = ""                 # the video engine's key: VPS .env only (KIE_API_KEY), never in chat or the repo
+    cinema_daily_jobs: int = 20           # Cinema jobs one person may start in an IST day (each spends the server's video-engine credits)
     seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section

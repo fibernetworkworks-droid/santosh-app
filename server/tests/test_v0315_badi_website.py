@@ -197,5 +197,5 @@ def test_small_sites_unchanged():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.808.0"
-    assert "0.808.0+807" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.824.0"
+    assert "0.824.0+823" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

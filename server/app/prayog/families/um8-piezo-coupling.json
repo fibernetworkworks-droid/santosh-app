@@ -1,0 +1,13 @@
+{
+ "base": "um8-piezo-coupling",
+ "rig": "um8-piezo-bench",
+ "chapter": "Solid state physics and materials",
+ "variants": [
+  {"key": "batio3", "title": "Electromechanical coupling coefficient of a BaTiO3 disc",
+   "sample": "Barium titanate (BaTiO3) ceramic disc, 20 mm, silvered faces",
+   "unknown": "the coupling coefficient of a barium titanate disc",
+   "params": {"k": 0.35},
+   "note": "Barium titanate was the first piezoceramic; its planar coupling is well below that of PZT, so its resonance and antiresonance lie much closer together and the slow sweeps matter more.",
+   "source": {"title": "Barium titanate ceramic: planar coupling k_p about 0.35 (B. Jaffe, W. R. Cook, H. Jaffe, Piezoelectric Ceramics, 1971)", "note": "from memory - verify"}}
+ ]
+}

@@ -12,6 +12,7 @@ PRODUCTION: the ping only - no taxpayer call, no OTP, ever, from a check.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -30,6 +31,56 @@ def shapes_path() -> Path:
 def _fy(today: date) -> str:
     y = today.year if today.month >= 4 else today.year - 1
     return f"{y}-{str(y + 1)[2:]}"
+
+
+_SETTINGS = (("WHITEBOOKS_EMAIL", "whitebooks_email", "email"),
+             ("WHITEBOOKS_GST_CLIENT_ID", "whitebooks_gst_client_id", "id"), ("WHITEBOOKS_GST_CLIENT_SECRET", "whitebooks_gst_client_secret", "secret"),
+             ("WHITEBOOKS_EINV_CLIENT_ID", "whitebooks_einv_client_id", "id"), ("WHITEBOOKS_EINV_CLIENT_SECRET", "whitebooks_einv_client_secret", "secret"),
+             ("WHITEBOOKS_EWB_CLIENT_ID", "whitebooks_ewb_client_id", "id"), ("WHITEBOOKS_EWB_CLIENT_SECRET", "whitebooks_ewb_client_secret", "secret"),
+             ("WHITEBOOKS_SANDBOX_GSTIN", "whitebooks_sandbox_gstin", "gstin"),
+             ("WHITEBOOKS_SANDBOX_EINV_PASSWORD", "whitebooks_sandbox_einv_password", "secret"),
+             ("WHITEBOOKS_SANDBOX_EWB_PASSWORD", "whitebooks_sandbox_ewb_password", "secret"))
+_GSTIN = re.compile(r"^\d{2}[A-Z0-9]{13}$")
+
+
+def paste_check() -> list[dict[str, Any]]:
+    """How each pasted value LOOKS - never the value itself. Catches the usual paste mistakes: dots copied from a hidden field
+    (the Hub shows a secret as dots until the eye / copy button is used), spaces or a Windows line end, quotes kept by hand, the
+    GST key pasted into the e-invoice line. For a client id only its leading letters are shown (the Hub prints them on screen,
+    e.g. GSTS...); for a secret / password only its length."""
+    st = get_settings()
+    out: list[dict[str, Any]] = []
+    for name, attr, kind in _SETTINGS:
+        raw = str(getattr(st, attr, "") or "")
+        if not raw:
+            continue
+        v = wb.clean(raw)
+        notes: list[str] = []
+        if v != raw:
+            notes.append("had spaces, quotes or a line end around it (Hoola now removes them)")
+        if any(ord(c) > 126 for c in v):
+            notes.append("has non-keyboard characters - probably the hidden dots were copied, use the Hub's copy button")
+        if any(c.isspace() for c in v):
+            notes.append("has a space inside it")
+        if kind == "email" and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", v):
+            notes.append("does not look like an email address")
+        if kind == "gstin" and not _GSTIN.match(v.upper()):
+            notes.append("is not 15 characters like 27AAGCB1286Q005")
+        if kind == "id":
+            lead = re.match(r"[A-Za-z]*", v).group(0)[:6]
+            notes.insert(0, f"starts '{lead}', {len(v)} characters")
+        elif kind == "secret":
+            notes.insert(0, f"{len(v)} characters")
+        out.append({"name": name, "ok": not any("probably" in n or "inside" in n or "does not" in n or "is not" in n for n in notes),
+                    "line": "; ".join(notes) or "looks fine"})
+    ids = {r["name"]: r["line"].split(",")[0] for r in out if r["name"].endswith("_CLIENT_ID")}
+    g = ids.get("WHITEBOOKS_GST_CLIENT_ID")
+    for k in ("WHITEBOOKS_EINV_CLIENT_ID", "WHITEBOOKS_EWB_CLIENT_ID"):
+        if g and ids.get(k) == g and not g.endswith("''"):
+            for r in out:
+                if r["name"] == k:
+                    r["line"] += " - same start as the GST key: is the GST key pasted here? Each product tab has its own key"
+    return out
 
 
 def run(today: date | None = None) -> dict[str, Any]:
@@ -56,14 +107,14 @@ def run(today: date | None = None) -> dict[str, Any]:
         return env_
 
     step("ping", wb.ping, product="")
-    gstin = st.whitebooks_sandbox_gstin.strip().upper() if wb.env() == "sandbox" else ""   # production: no test GSTIN, so the
+    gstin = wb.clean(st.whitebooks_sandbox_gstin).upper() if wb.env() == "sandbox" else ""   # production: no test GSTIN, so the
                                                                                             # public steps SKIP too
     step("public_search", lambda: wb.public_search(TENANT, gstin), need=[("whitebooks_sandbox_gstin", gstin)])
     step("rettrack", lambda: wb.rettrack(TENANT, gstin, _fy(today)), need=[("whitebooks_sandbox_gstin", gstin)])
     if wb.env() != "sandbox":
         steps.append({"step": "taxpayer_calls", "result": "SKIP", "line": "production: a check never makes taxpayer calls or asks for an OTP"})
     else:
-        user = st.whitebooks_sandbox_gst_username
+        user = wb.clean(st.whitebooks_sandbox_gst_username)
         state = gstin[:2]
         otp_env = step("otp_request", lambda: wb.otp_request(TENANT, user, state),
                        need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_gst_username", user)])
@@ -75,13 +126,13 @@ def run(today: date | None = None) -> dict[str, Any]:
             step("refresh", lambda: wb.refresh(TENANT, user, state, txn))
             per = f"{today.month:02d}{today.year}"
             step("ledger_balance", lambda: wb.ledger_balance(TENANT, gstin, per, user, state, txn))
-        eu, ep = st.whitebooks_sandbox_einv_username, st.whitebooks_sandbox_einv_password
+        eu, ep = wb.clean(st.whitebooks_sandbox_einv_username), wb.clean(st.whitebooks_sandbox_einv_password)
         step("einv_auth", lambda: wb.einv_auth(TENANT, gstin, eu, ep), product="einv",
              need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_einv_username", eu), ("whitebooks_sandbox_einv_password", ep)])
-        wu, wp = st.whitebooks_sandbox_ewb_username, st.whitebooks_sandbox_ewb_password
+        wu, wp = wb.clean(st.whitebooks_sandbox_ewb_username), wb.clean(st.whitebooks_sandbox_ewb_password)
         step("ewb_auth", lambda: wb.ewb_auth(TENANT, gstin, wu, wp), product="ewb",
              need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_ewb_username", wu), ("whitebooks_sandbox_ewb_password", wp)])
-    res = {"env": wb.env(), "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "steps": steps,
+    res = {"paste": paste_check(), "env": wb.env(), "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "steps": steps,
            "passed": sum(1 for s in steps if s["result"] == "PASS"), "failed": sum(1 for s in steps if s["result"] == "FAIL"),
            "skipped": sum(1 for s in steps if s["result"] == "SKIP"), "shapes": shapes}
     try:
@@ -104,9 +155,17 @@ def last() -> dict[str, Any] | None:
 def main() -> int:
     res = run()
     print(f"WhiteBooks contract check - {res['env']}")
+    print("  How the pasted values look (never the values):")
+    for r in res["paste"]:
+        print(f"    {'ok ' if r['ok'] else 'FIX'}  {r['name']:<34} {r['line']}")
     for s in res["steps"]:
         print(f"  {s['result']:<4}  {s['step']:<16} {s['line']}")
     print(f"{res['passed']} passed, {res['failed']} failed, {res['skipped']} skipped. Shapes: {shapes_path()}")
+    refused = [s for s in res["steps"] if s["result"] == "FAIL" and s["line"].startswith("WB_ERR_9001")]
+    if refused and all(r["ok"] for r in res["paste"]):
+        print("Every value looks well pasted, so WhiteBooks itself is refusing this account: in the Developer Hub the products may"
+              " still be 'not subscribed' / not active for the sandbox. Ask WhiteBooks support (Get Support in the Hub) to activate"
+              " sandbox API access for GST, e-Invoice and e-Way Bill on your developer account, then run wb_check again.")
     if not wb.configured("gst"):
         print("Set in the server's .env (names only - never paste the values in chat):")
         for line in wb.env_lines():

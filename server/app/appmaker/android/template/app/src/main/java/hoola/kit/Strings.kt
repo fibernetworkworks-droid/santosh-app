@@ -321,4 +321,20 @@ object Strings {
         "या अकाउंटची सर्व माहितीची कॉपी घ्या.", "Is account ki saari jaankari ki copy lijiye.")
     val sgMyDataGet get() = t("Copy my data", "मेरी जानकारी कॉपी करें", "माझी माहिती कॉपी करा", "Meri jaankari copy karein")
     val sgMyDataReady get() = t("Copied. Paste it anywhere to keep it.", "कॉपी हो गई। कहीं पेस्ट कर लें।", "कॉपी झाली. कुठेही पेस्ट करा.", "Copy ho gayi. Kahin paste kar lijiye.")
+
+    // v0.802 DEVICE: lock, rate, calendar, contacts, photo labels
+    val unlockTitle get() = t("Private screen", "निजी स्क्रीन", "खाजगी स्क्रीन", "Private screen")
+    val unlock get() = t("Unlock", "खोलें", "उघडा", "Kholiye")
+    val lockFailed get() = t("Could not confirm it's you. Try again.", "पुष्टि नहीं हो पाई। फिर कोशिश करें।",
+        "खात्री झाली नाही. पुन्हा प्रयत्न करा.", "Confirm nahi ho paya. Phir koshish karein.")
+    val lockOld get() = t("This phone cannot use fingerprint here.", "इस फ़ोन पर यहाँ फ़िंगरप्रिंट नहीं चलता।",
+        "या फोनवर इथे फिंगरप्रिंट चालत नाही.", "Is phone par yahan fingerprint nahi chalta.")
+    val noLock get() = t("This phone has no screen lock, so it opens directly.", "इस फ़ोन पर स्क्रीन लॉक नहीं है, इसलिए सीधे खुल गया।",
+        "या फोनला स्क्रीन लॉक नाही, म्हणून थेट उघडले.", "Is phone par screen lock nahi hai, isliye seedha khul gaya.")
+    val rateApp get() = t("Rate this app", "ऐप को रेटिंग दें", "ॲपला रेटिंग द्या", "App ko rating dein")
+    val addCalendar get() = t("Add to calendar", "कैलेंडर में जोड़ें", "कॅलेंडरमध्ये जोडा", "Calendar mein jodiye")
+    val noCalendar get() = t("No calendar app on this phone.", "इस फ़ोन पर कैलेंडर ऐप नहीं है।", "या फोनवर कॅलेंडर ॲप नाही.", "Is phone par calendar app nahi hai.")
+    val pickContact get() = t("Pick from contacts", "कॉन्टैक्ट से चुनें", "संपर्कातून निवडा", "Contacts se chuniye")
+    val noContact get() = t("No phone number for that contact.", "उस कॉन्टैक्ट का फ़ोन नंबर नहीं मिला।", "त्या संपर्काचा फोन नंबर मिळाला नाही.", "Us contact ka phone number nahi mila.")
+    val photo get() = t("Photo", "फ़ोटो", "फोटो", "Photo")
 }

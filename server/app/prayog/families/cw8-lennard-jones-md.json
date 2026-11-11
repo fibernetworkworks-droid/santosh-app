@@ -1,0 +1,45 @@
+{
+ "base": "cw8-lennard-jones-md",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "equipartition",
+   "title": "Approach to equilibrium: a start with all motion along x",
+   "sample": "36 particles, every velocity along x at t = 0",
+   "unknown": "<v_y^2>/<v_x^2> -> 1",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "reduced (model) units; statistical",
+   "check": {
+    "params": {
+     "n": 16000
+    }
+   }
+  },
+  {
+   "key": "density",
+   "title": "Local number density in one half of the box",
+   "sample": "36 particles at density 0.5",
+   "unknown": "mean density = N/L^2",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "reduced (model) units; statistical; the Fano factor of the count is shown",
+   "check": {
+    "params": {
+     "n": 16000
+    }
+   }
+  }
+ ]
+}

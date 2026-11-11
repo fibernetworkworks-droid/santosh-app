@@ -448,6 +448,7 @@ struct CartList: View {
                     Text(it.name).font(.headline)
                     Spacer()
                     Stepper("\(q)", value: Binding(get: { q }, set: { state.setQty(it.id, $0) }), in: 0...99).fixedSize()
+                        .accessibilityLabel(it.name).accessibilityValue("\(q)")   // v0.802 VoiceOver says what it counts
                 }
                 Muted(rupees(it.price * Double(q)))
             }

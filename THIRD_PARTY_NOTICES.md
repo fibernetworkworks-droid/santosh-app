@@ -56,7 +56,13 @@ open-source project **ECC** by Affaan Mustafa (https://github.com/affaan-m/ECC, 
 `security-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`, the `*-reviewer` and `*-build-resolver` agents for
 Python, TypeScript / JavaScript, Flutter / Dart, Kotlin, Go, Java, Swift and Rust, and `database-reviewer`. The text was
 condensed and re-written for Hoola's read-only tools, CI logs and safety rules; no code was copied and nothing from ECC
-runs inside Hoola. ECC is distributed under the MIT License:
+runs inside Hoola. v0.794 (owner: "ADD ALL MISSING ECC AGENTS TO HOOLA CODE") widened this to ECC's whole agent roster that fits a
+coding session: 63 of ECC's 71 agent files (ECC v2.2.3, commit d2ef268) and its `rules/` (common + 21 languages) were
+condensed and rewritten as text in `server/app/devsahayak/ecc/` (the 8 left out are listed with reasons in
+`ecc.NOT_ADDED`), and ECC's pre-commit quality hook was re-implemented as Hoola's own Python (`ecc.gate`). Hoola Code
+hands work to these agents with its own `agent` tool (`devsahayak/subagent.py`). Still no ECC code runs inside Hoola.
+
+ECC is distributed under the MIT License:
 
 ```
 MIT License
@@ -210,3 +216,30 @@ Read at commit ee3f5a2f (5 Oct 2026); notes in `docs/research/website_cloner/00_
 `server/app/site/moved.py` (v0.622) is Hoola's own Python built from two of its ideas - keep a source-URL -> new-route map
 when a site moves, and compare the old page and the new one at the same width - applied ONLY to the user's own old site
 (ownership proved first, v0.567). Hoola does not clone sites the user does not own.
+
+## The Agency (msitarzewski/agency-agents) - MIT
+Copyright (c) 2025 AgentLand Contributors. Read at commit 8ae6164 (8 Nov 2026). **No upstream code is included and
+nothing from it runs inside Hoola.** v0.814 (owner: "GO 1 2 3") condensed and rewrote, as text: 35 of its engineering /
+testing / security / specialist agent files for Hoola Code (`server/app/devsahayak/ecc/agency_eng.py`,
+`agency_qa.py` - the persona, emoji and internet-only parts dropped; the reality checker is used as the last look
+before a coding round finishes), and its 21 game-development agent files as expert notes + 8 new engine roles for the
+Game Developer's crew (`server/app/gamedesk/agency.py`). The Agency is distributed under the MIT License:
+
+```
+MIT License
+
+Copyright (c) 2025 AgentLand Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```

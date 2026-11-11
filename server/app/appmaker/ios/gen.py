@@ -444,6 +444,22 @@ def uses_photos(spec: dict[str, Any]) -> bool:
                for f in (c.get("fields") or []) if isinstance(f, dict))
 
 
+def uses_camera(spec: dict[str, Any]) -> bool:
+    """v0.802 MEDIA: a photo / photos field shows Take photo (CameraButton) beside the library picker."""
+    return any(f.get("type") in ("photo", "photos") for c in ((spec.get("seed") or {}).get("backend") or {}).get("collections") or []
+               for f in (c.get("fields") or []) if isinstance(f, dict))
+
+
+def uses_device(spec: dict[str, Any], part: str) -> bool:
+    """v0.802 DEVICE: a model-written screen uses this Device.swift part (BiometricLock / AddToCalendarButton ...), so the
+    Info.plist gets its usage string - only the screens that will really be written count (house-rule clean ones)."""
+    pat = re.compile(r"\b" + re.escape(part) + r"\s*\(")
+    ids = _ids(spec)[1]
+    given = spec.get("screens_swift") or {}
+    return any(isinstance(given.get(sid), str) and pat.search(given[sid]) and not scan_screen(given[sid], sid, ids)
+               for sid in ids if sid not in AUTH_IDS)
+
+
 def project_yml(spec: dict[str, Any]) -> str:
     app = spec.get("app") or {}
     ios = spec.get("ios") or {}
@@ -599,12 +615,26 @@ def info_plist(spec: dict[str, Any]) -> str:
            for f in c.get("fields") or []):              # v0.425 RANG: a voice note, only on the user's Record tap
         extra += ("    <key>NSMicrophoneUsageDescription</key>\n"
                   "    <string>The microphone records a voice note only while you hold Record. Nothing is recorded otherwise.</string>\n")
-    if uses_scan(spec):                                  # v0.340 the scanner's camera
+    if uses_scan(spec) or uses_camera(spec):             # v0.340 the scanner's camera; v0.802 Take photo on a photo field
+        what = ("reads a barcode or QR code only when you tap Scan, and takes a photo only when you tap Take photo"
+                if uses_scan(spec) and uses_camera(spec) else
+                "takes a photo only when you tap Take photo. Only the photo you take is sent" if uses_camera(spec) else
+                "reads a barcode or QR code only when you tap Scan. Nothing is recorded")
         extra += ("    <key>NSCameraUsageDescription</key>\n"
-                  "    <string>The camera reads a barcode or QR code only when you tap Scan. Nothing is recorded.</string>\n")
+                  f"    <string>The camera {what}.</string>\n")
     if uses_photos(spec):
         extra += ("    <key>NSPhotoLibraryUsageDescription</key>\n"
                   "    <string>Pick a photo to send with your request. Only the photo you choose is used.</string>\n")
+    # v0.802 Device.swift (Face ID + calendar code) is compiled into EVERY app, and Apple's upload scan flags a binary that
+    # reaches a protected API with no purpose string (ITMS-90683) - so both strings are always written; they are only
+    # shown if a screen really asks.
+    extra += ("    <key>NSFaceIDUsageDescription</key>\n"
+              "    <string>Face ID unlocks this part of the app only when you tap Unlock. Your face never leaves the phone.</string>\n")
+    # v0.802 iOS 16 asks for calendar access before Apple's new-event sheet
+    extra += ("    <key>NSCalendarsUsageDescription</key>\n"
+              "    <string>Adds the event you chose to your calendar when you tap Add to calendar. Nothing else is read.</string>\n"
+              "    <key>NSCalendarsWriteOnlyAccessUsageDescription</key>\n"
+              "    <string>Adds the event you chose to your calendar when you tap Add to calendar.</string>\n")
     bg_extra = "\n        <string>location</string>" if uses_tracking(spec) else ""   # v0.412 the shift, with the blue pill
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

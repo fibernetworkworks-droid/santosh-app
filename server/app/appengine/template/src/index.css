@@ -1,0 +1,11 @@
+/* Hoola App Engine - locked by Hoola. Colours, corners and fonts come from styles/tokens.css only. */
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-bg text-ink font-body antialiased; margin: 0; }
+  h1, h2, h3, h4 { @apply font-head text-ink; }
+  a { @apply text-primary; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
+}

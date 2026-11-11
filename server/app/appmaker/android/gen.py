@@ -391,12 +391,22 @@ def uses_tracking(spec: dict[str, Any]) -> bool:
     return bool((((spec.get("seed") or {}).get("backend") or {}).get("track") or {}).get("on"))
 
 
+def uses_biometric(spec: dict[str, Any]) -> bool:
+    """v0.802 DEVICE: a screen (or a custom component) calls the kit's BiometricLock / Device.askBiometric -> USE_BIOMETRIC.
+    The kit uses the phone's own BiometricPrompt (framework, Android 9+), so no library is added - only this permission."""
+    srcs = list((spec.get("screens_kt") or {}).values()) + [str((c or {}).get("kotlin") or "") for c in spec.get("custom") or []
+                                                            if isinstance(c, dict)]
+    return any(re.search(r"\bBiometricLock\s*\(|\bDevice\.askBiometric\s*\(", str(x or "")) for x in srcs)
+
+
 def manifest_xml(spec: dict[str, Any]) -> str:
     push_service = ('        <service\n            android:name="hoola.kit.HoolaPush"\n            android:exported="false">\n'
                     '            <intent-filter>\n                <action android:name="com.google.firebase.MESSAGING_EVENT" />\n'
                     '            </intent-filter>\n        </service>\n') if fcm_config(spec) else ""   # v0.367 TURANT
     loc = ('    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
            '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n') if uses_location(spec) else ""
+    if uses_biometric(spec):                   # v0.802 fingerprint / face lock (a normal permission, no dialog)
+        loc += '    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n'
     if uses_audio(spec):                       # v0.425 a voice note, only on the user's Record tap
         loc += '    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n'
     track = uses_tracking(spec)

@@ -1,5 +1,5 @@
 // Made by Hoola App Sahayak (v0.425 RANG), the iPhone twin of Rich.kt - all native SwiftUI / Apple frameworks:
-// rows - SignatureRow, PhotosRow (up to 6), VideoRow (photo library, no permission), AudioRow (voice note; the microphone
+// rows - SignatureRow, PhotosRow (up to 6, photo library or the camera since v0.802), VideoRow (photo library, no permission), AudioRow (voice note; the microphone
 // is asked only on Record), RichTextRow (markdown words); showing - ServerPhoto, RichTextView, PhotosStripView,
 // VideoPlayerView / AudioPlayerView (15-minute signed address), PdfViewerView (PDFKit); blocks - CalendarBlock,
 // KanbanBlock, GanttBlock, LineChartView, PieChartView, CarouselView, OnboardingPager.
@@ -37,7 +37,13 @@ struct ServerPhoto: View {
         .frame(height: height).frame(maxWidth: .infinity).clipped().clipShape(RoundedRectangle(cornerRadius: 10))
         .task(id: src) {
             if src.hasPrefix("local:") { img = UIImage(contentsOfFile: String(src.dropFirst(6))) }
-            else if src.hasPrefix("f_"), let d = await Cloud.bytes("/files/\(src)", token: Auth.shared.token) { img = UIImage(data: d) }
+            else if src.hasPrefix("f_") {
+                if let hit = ImageCache.shared.get(src) { img = hit; return }          // v0.802 MEDIA: downloaded once
+                if let d = await Cloud.bytes("/files/\(src)", token: Auth.shared.token), let got = UIImage(data: d) {
+                    ImageCache.shared.put(got, src)
+                    img = got
+                }
+            }
         }
     }
 }
@@ -128,7 +134,8 @@ struct PhotosRow: View {
             if !have.isEmpty { PhotosStripView(ids: have.joined(separator: ",")) }
             HStack {
                 if have.count < max {
-                    PhotosPicker(selection: $items, maxSelectionCount: max - have.count, matching: .images) { Label(Words.addPhotos, systemImage: "camera") }
+                    PhotosPicker(selection: $items, maxSelectionCount: max - have.count, matching: .images) { Label(Words.addPhotos, systemImage: "photo.on.rectangle") }
+                    CameraButton { v in state.form[key] = Array((have + [v]).prefix(max)).joined(separator: ",") }   // v0.802 MEDIA
                 }
                 if !have.isEmpty { Button(Words.remove) { state.form[key] = nil }.buttonStyle(.bordered) }
             }
@@ -166,6 +173,7 @@ struct PhotosStripView: View {
                 HStack(spacing: 8) {
                     ForEach(list, id: \.self) { s in
                         ServerPhoto(src: s, height: 84).frame(width: 84).onTapGesture { big = big == s ? "" : s }
+                            .accessibilityLabel(T("Photo")).accessibilityAddTraits(.isButton)   // v0.802 an image-only tap
                     }
                 }
             }

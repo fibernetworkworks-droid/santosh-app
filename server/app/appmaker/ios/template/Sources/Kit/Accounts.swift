@@ -199,6 +199,7 @@ struct FormBlock: View {
                         Text(it.name).font(.headline)
                         Spacer()
                         Stepper("\(q)", value: Binding(get: { q }, set: { state.setQty(it.id, $0) }), in: 0...99).fixedSize()
+                            .accessibilityLabel(it.name).accessibilityValue("\(q)")   // v0.802 VoiceOver says what it counts
                     }
                     Muted(rupees(it.price * Double(q)))
                 }
@@ -257,7 +258,8 @@ struct FormBlock: View {
     }
 }
 
-/// A photo for a form: the system photo library picker (no permission needed), shrunk on the phone, sent by the outbox.
+/// A photo for a form: the system photo library picker (no permission needed) or the camera (v0.802), shrunk on the
+/// phone, sent by the outbox.
 struct PhotoRow: View {
     let label: String
     let key: String
@@ -265,9 +267,10 @@ struct PhotoRow: View {
     @ObservedObject private var state = AppState.shared
     var body: some View {
         HStack {
-            PhotosPicker(selection: $item, matching: .images) { Label(label, systemImage: "camera") }
+            PhotosPicker(selection: $item, matching: .images) { Label(label, systemImage: "photo") }
+            CameraButton { v in state.form[key] = v }                  // v0.802 MEDIA: or take it now (phones with a camera)
             Spacer()
-            if !(state.form[key] ?? "").isEmpty { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+            if !(state.form[key] ?? "").isEmpty { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityLabel(T("Photo added")) }
         }
         .onChange(of: item) { new in
             guard let new = new else { return }
