@@ -107,7 +107,7 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
             return (f"{name}: needs you", f"Long task is blocked: {title} — {str(p.get('reason') or 'your answer is needed')[:200]}")
         if st == "done":
             rep = p.get("report") if isinstance(p.get("report"), dict) else {}
-            extra = (" · " + str(rep.get("aapka"))[:120]) if rep.get("aapka") and "Kuch nahi" not in str(rep.get("aapka")) else ""
+            extra = (" · " + str(rep.get("aapka"))[:120]) if rep.get("aapka") and not any(w in str(rep.get("aapka")) for w in ("Kuch nahi", "Nothing")) else ""
             return (f"{name}: task complete", f"Long task done: {title}{extra}")
         if st == "working" and p.get("milestone"):   # v0.228 a real milestone, at most a few per job (never every step)
             stage = str(p.get("stage") or "")[:100]

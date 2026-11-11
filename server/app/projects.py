@@ -255,7 +255,7 @@ def prompt_block(conv: str) -> str:
     if instr:
         out.append("Her instructions for this project:\n" + instr)
     if mem:
-        out.append("Her project notes (yaad):\n" + mem)
+        out.append("Her project notes (memory):\n" + mem)
     if fl:
         used, full, by_name = 0, [], []
         for n, size, text in fl:

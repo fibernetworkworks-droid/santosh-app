@@ -203,7 +203,7 @@ def cancel(tenant: str, form_id: str) -> tuple[dict[str, Any], str]:
     if conv:
         from .events import bus
         bus.publish(conv, "ask_form", v)
-    return v, f"[Form band kiya (form closed): '{title}' - the owner did not fill it in. Don't ask again unless she brings it up.]"
+    return v, f"[Form closed: '{title}' - the owner did not fill it in. Don't ask again unless she brings it up.]"
 
 
 def pending(tenant: str, conv: str = "") -> list[dict[str, Any]]:

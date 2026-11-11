@@ -206,7 +206,7 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
     if guessed:
         lines.append("Things YOU picked up from earlier chats - your own reading, not her words (id: fact, noted on). "
                      "They can be wrong or out of date: before you act on one or state it as a fact, check it with her "
-                     "in a few words (e.g. 'aapka godown ab bhi Chakan mein hai na?'):")
+                     "in a few words (e.g. 'is your warehouse still in Chakan?'):")
         lines += [f"- {f.id}: {f.text} (noted {_when(f)})" for f in guessed]
     if memory_count(tenant_id) > len(facts):
         lines.append("Older things the user told you are not listed here: yaad_khojo (or memory_search for a saved "

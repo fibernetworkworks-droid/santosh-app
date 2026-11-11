@@ -193,7 +193,7 @@ def recent_block(tenant: str, conv: str, n: int = 3, max_chars: int = 1500) -> s
     body = "\n".join(out)[:max_chars]
     STATS["recent_blocks"] += 1
     return ("RECENT CALLS (her recent voice calls, from their receipts; the full call is in the Calls section and "
-            "yaad_khojo can open it - answer 'call par kya hua' from here):\n" + body)
+            "yaad_khojo can open it - answer 'what happened on the call' / 'call par kya hua' from here):\n" + body)
 
 
 def set_call_id(conv: str, call_id: str) -> None:

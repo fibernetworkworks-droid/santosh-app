@@ -562,14 +562,14 @@ def profile_view(tenant: str, base_silence: int | None = None) -> dict[str, Any]
         if tot >= 8:
             casual = (fm.get("tum", 0) + fm.get("tu", 0)) / tot
             if casual >= 0.6:
-                words.append("She talks to you casually (tum / tu): you still say aap, but keep it relaxed and friendly, "
+                words.append("She talks to you casually (tum / tu): stay respectful, but keep it relaxed and friendly, "
                              "not formal.")
             elif fm.get("aap", 0) / tot >= 0.8:
                 words.append("She is polite and formal (aap / ji): match it.")
         nt = p.turns or 0
         yes = _top(counts.get("assent") or {}, 3, 0.03, nt)
         if yes:
-            words.append("Her yes-words: " + ", ".join(f"'{w}'" for w in yes) + " (they mean haan).")
+            words.append("Her yes-words: " + ", ".join(f"'{w}'" for w in yes) + " (they mean yes).")
         parts = _top(counts.get("particles") or {}, 3, 0.10, nt)
         if parts:
             words.append("Her everyday words: " + ", ".join(f"'{w}'" for w in parts) + " - use them naturally, sparingly.")
