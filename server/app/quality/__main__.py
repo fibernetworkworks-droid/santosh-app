@@ -5,6 +5,7 @@
      (v0.443 LONG CARD: 25 long jobs x k through the real loop, judged on the end state)
    | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
+   | pdf [--only id,id] [--json]   (v0.794 DOCUMENT KIT proof card: every pdf_kit action on code-made fixtures)
    | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
    | leads [--live] [--only id,id] [--limit N] [--kind tool|rule] [--label x]   (v0.540 LEADS card: reachability + walls)
    | skills [--live] [--only id,id] [--limit N] [--kind pos|neg] [--label x]   (v0.494 SKILLS card: do imported skills reach the model)
@@ -285,6 +286,14 @@ def main(argv: list[str]) -> int:
             print("\n".join(sdk.setup()))
         print("\n".join(sdk.status()))
         return 0
+    if argv and argv[0] == "pdf":           # v0.794 DOCUMENT KIT proof card (free: fixtures made in code, no model)
+        from . import pdfcard as PC
+        only = argv[argv.index("--only") + 1].split(",") if "--only" in argv and len(argv) > argv.index("--only") + 1 else None
+        rep = PC.card(only)
+        print("\n".join(PC.lines(rep)))
+        if "--json" in argv:
+            print(json.dumps(rep, ensure_ascii=False, indent=1, default=str))
+        return 0 if rep["passed"] == rep["ran"] else 1
     if argv and argv[0] == "maps":          # v0.470 MAPS card (free; --live costs model calls + real Maps rupees)
         return _mapscard(argv[1:])
     if argv and argv[0] == "leads":         # v0.540 LEADS card (free = reachability + the walls; --live = real turns)

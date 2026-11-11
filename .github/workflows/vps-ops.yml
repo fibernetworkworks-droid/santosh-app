@@ -68,6 +68,9 @@ on:
           - fix_card_spec
           - cad_check
           - cad_setup
+          - docs_setup
+          - docs_check
+          - pdf_card
           - lab_check
           - lab_try
           - lab_setup
@@ -202,6 +205,16 @@ jobs:
               arena_numbers)
                 # v0.414 the Design Arena runs so far (read-only, free): version, sites, score summary, rupees - before / after numbers
                 echo 'cd $CORE && timeout 120 .venv/bin/python -c "import json; from app.db import init_db; init_db(); from app.site import arena as A; print(json.dumps(A.runs(10), ensure_ascii=False, indent=1, default=str))" 2>&1 | tail -150' ;;
+              docs_setup)
+                # v0.794 HOOLA DOCUMENT KIT: the pdf_kit engines - pip packages into the venv now, and the ONE apt line
+                # (LibreOffice / ocrmypdf / tesseract / JRE) printed for the owner to paste in the DO console (no sudo here)
+                echo 'bash $REPO/server/deploy/setup_docs.sh 2>&1 | tail -40' ;;
+              docs_check)
+                # v0.794 every document engine on this server with one real, timed run (LIVE / MISSING / BROKEN); free
+                echo 'cd $CORE && timeout 600 .venv/bin/python -m app.dockit check 2>&1 | tail -30' ;;
+              pdf_card)
+                # v0.794 the PDF proof card: every pdf_kit action on fixtures made in code, scored by code (free, no model)
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.quality pdf 2>&1 | tail -40' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'

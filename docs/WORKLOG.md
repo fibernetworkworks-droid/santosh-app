@@ -2931,3 +2931,9 @@ Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
 What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
 Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
 Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.
+
+---
+Task ID: v0.794.0 HOOLA DOCUMENT KIT D0 + D1
+Ask: "GO D0 WITH YOUR RECOMMENDATIONS -- I WANT HOOLA CAN PERFROM ALL THIS OPERATIONS SMOOTHLY".
+Built: app/dockit (core / organize / optimize / convert / check / health), pdf_kit tool (registry 626), PDF proof card (24/24 local), engine check, setup_docs.sh, vps-ops docs_setup / docs_check / pdf_card, routing fix; 22 tests.
+Deploy: vps-ops deploy, then docs_setup (paste the printed apt line in the DO console), docs_check, pdf_card.

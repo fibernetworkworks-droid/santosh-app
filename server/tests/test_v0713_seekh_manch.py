@@ -72,7 +72,7 @@ def test_tool_registered_once():
 
 
 def test_registry_pin():
-    assert len(T.TOOLS) == 625, ("617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: learn a way of working from a "
+    assert len(T.TOOLS) == 626, ("625 + 1 pdf_kit (v0.794 HOOLA DOCUMENT KIT). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: learn a way of working from a "
                                  "video - the owner's 'isse seekh lo'). Was 616 (v0.694 WEB CLONE: 615 + 1 "
                                  "web_clone), 615 (+ 1 kala v0.681 KALA MANCH), 606 (v0.665 JHAROKHA + "
                                  "duniya + sandarbh chains in between)")

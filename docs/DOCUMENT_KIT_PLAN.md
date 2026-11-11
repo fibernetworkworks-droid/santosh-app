@@ -4,7 +4,9 @@ Owner, 11 Nov 2026: "NOW LETS WORK ON DOCUMENT HANDLING CAPABILITIES TOOLS :: ht
 site read all tools. also compare that what hoola existing has ... make a perfect plan that in backend hoola can use
 these tools to perform user asked operations ... make a ultimate plan".
 
-Nothing has been built yet. This plan covers four things:
+**Status:** D0 + D1 built in v0.794.0 (owner: 'GO D0 WITH YOUR RECOMMENDATIONS'; decisions D1-D5 taken as recommended in §6). Next: D2.
+
+This plan covers four things:
 
 1. What iLovePDF offers, read from its live pages on 11 Nov 2026.
 2. What Hoola already has, read from this repo at v0.792.0.

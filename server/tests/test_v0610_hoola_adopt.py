@@ -333,8 +333,8 @@ def test_import_is_inert_fresh_interpreter():
 # ---------------------------------------------------------------------------
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.793.0"
-    assert "0.793.0+792" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.794.0"
+    assert "0.794.0+793" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.793.0"')
+    assert line.startswith('APP_VERSION = "0.794.0"')
     assert "HOOLA ADOPT" in line   # the newest story names the adoption phase

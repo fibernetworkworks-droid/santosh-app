@@ -1324,6 +1324,17 @@ TOOL_LABELS.update(VIDEO_KIT_LABELS)
 HANDLERS.update(VIDEO_KIT_HANDLERS)
 del _seen
 
+# v0.794 HOOLA DOCUMENT KIT (docs/DOCUMENT_KIT_PLAN.md D0 + D1): ONE pdf_kit tool (app/dockit) - the iLovePDF-style
+# PDF desk on the server: merge / split (every mode) / remove / extract / organize / rotate / reverse / interleave /
+# compress (level or target KB) / repair / photos + Office -> PDF / pages -> pictures / pictures inside / text. Every
+# output checked before delivery; no key, no model. pdf_tools stays beside it for the old asks.
+from .pdfkit_tools import PDF_KIT_HANDLERS, PDF_KIT_LABELS, PDF_KIT_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in PDF_KIT_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(PDF_KIT_LABELS)
+HANDLERS.update(PDF_KIT_HANDLERS)
+del _seen
+
 # v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
 # author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
 from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402

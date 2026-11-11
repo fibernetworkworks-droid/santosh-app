@@ -484,6 +484,7 @@ LABELS_EN = {
     'pc_status': 'Checking the PC',
     'pc_task_result': 'Checking your PC task',
     'pdf_tools': 'Working on the PDF',
+    'pdf_kit': 'Working on the PDF',
     'phone_doctor': 'Fixing a phone problem',
     'phone_health': 'Checking phone settings',
     'photo_assist': 'Working in the photo studio',

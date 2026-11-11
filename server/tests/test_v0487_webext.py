@@ -459,7 +459,7 @@ def test_spec_rides_the_ext_payload():
 
 def test_versions():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.793.0"
+    assert APP_VERSION == "0.794.0"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
     assert "version: 0.793.0+792" in pubspec
     import santosh_desktop

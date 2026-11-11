@@ -806,7 +806,7 @@ def test_package_export_law_all_names_importable():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.793.0"
+    assert APP_VERSION == "0.794.0"
 
 
 def test_pubspec_pin():
@@ -816,5 +816,5 @@ def test_pubspec_pin():
 
 def test_main_story_markers():
     main = (REPO_ROOT / "server/app/main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.793.0"' in main
+    assert 'APP_VERSION = "0.794.0"' in main
     assert "HOOLA CORE" in main and "aep" in main and "langchain" in main

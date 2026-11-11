@@ -1233,3 +1233,64 @@ so the env variables and the scrubbed output have not been through a real `docke
 round. **NOT BUILT (this session's withdrawn engine had them, unproved):** background commands, a Terminal pane,
 pausing an idle working copy to free disk before the 14-day sweep. Deploy: vps-ops deploy, server-only, no new pip;
 four nullable columns create themselves.
+
+## v0.794.0 HOOLA DOCUMENT KIT D0 + D1 (owner: "GO D0 WITH YOUR RECOMMENDATIONS -- I WANT HOOLA CAN PERFROM ALL THIS OPERATIONS SMOOTHLY")
+
+Plan: `docs/DOCUMENT_KIT_PLAN.md` (every iLovePDF tool mapped against Hoola, phases D0-D8). Her five decisions taken
+as recommended: D1 no iLoveAPI (nothing leaves the server), D2 no Ghostscript (AGPL), D3 protect passwords generated
+or typed in a sealed field (both, generated default; lands in D3), D4 Aadhaar eSign planned after D5, D5 keep the 25 MB
+chat cap (bigger files via Drive).
+
+**D0 - the yardsticks**
+- `python -m app.dockit check` (`app/dockit/health.py`): 12 engines, each LIVE / MISSING / BROKEN from ONE real timed
+  run (not an import): pikepdf, pypdfium2, reportlab, Pillow (D1 core), pypdf, pyhanko, tesseract, LibreOffice,
+  ocrmypdf, pdfplumber, veraPDF, Ghostscript (reported as "NOT used", D2). Exit 1 when a core engine is not LIVE.
+- `python -m app.quality pdf` (`app/quality/pdfcard.py`): 24 cases on fixtures made in code (text PDFs, photo PDFs,
+  blank-separated batch scan, locked, cut-off xref, a Word file), each scored by code (page counts, the first line of
+  a page, rotations, bookmarks, sizes). A case whose engine is missing is SKIP, never a pass. 24/24 in the sandbox.
+- `server/deploy/setup_docs.sh`: pip installs into the venv; the system programs (LibreOffice + Noto / Lohit fonts,
+  tesseract, ocrmypdf, JRE) are PRINTED as one `sudo apt-get install` line for the owner's DigitalOcean console (the
+  deploy user has no passwordless sudo). vps-ops jobs `docs_setup`, `docs_check`, `pdf_card`.
+- requirements: `pdfplumber>=0.11` (MIT; tables -> Excel in D4).
+
+**D1 - the pdf_kit tool** (`app/agent/pdfkit_tools.py`, family `pdf_kit`, registry 625 -> 626) over `app/dockit/`:
+- `core.py`: DocError, limits (200 MB, 2,000 pages, 50 files, 300 output files, 300 rendered pages, 40 MP a page),
+  open (a password PDF refused with the plain way out, never a guessed password, never asked in chat), the ONE page
+  grammar (`1-3,5`, `8-`, `-3`, `5-1` backwards, odd, even, first, last, last-2, all-but-last, `2 se 4`).
+- `organize.py`: merge (PDFs + photos in her order, one bookmark per file), split (ranges + merge_ranges, every N,
+  each, pages, size with an honest "one page alone is over" flag, bookmarks, blank separator pages), remove,
+  extract (her order), organize (reorder / duplicate / blank), reverse, interleave (two-sided scan on a one-sided
+  scanner, backs reversed), rotate.
+- `optimize.py`: compress (less / recommended / extreme = picture re-encode + unreferenced resources + object
+  streams; a target_kb walks deeper rungs until met, else says the smallest reached and suggests split by size;
+  never grows a file, transparent pictures left alone), repair (qpdf recovery; last resort = pages redrawn as
+  pictures, said plainly), info (pages, page sizes in mm, text / scanned / mixed, bookmarks, form fields, signatures,
+  attachments, JavaScript, restrictions, metadata).
+- `convert.py`: photos -> PDF (fit / A4 / Letter / Legal / A5, auto orientation, margins; EXIF orientation applied,
+  camera / GPS metadata never travels - pixels only), pages -> JPG / PNG / WEBP at a dpi, the pictures stored inside
+  (each once), PDF -> text / markdown (scanned pages named, file_read reads them), Word / Excel / PowerPoint /
+  ODF / RTF / TXT / CSV -> PDF via LibreOffice headless (own throwaway profile, one at a time, process group killed
+  on timeout, a plain message when LibreOffice is not installed).
+- `check.py`: every PDF output reopened by pikepdf AND drawn by pypdfium2, page counts asserted where known, split
+  parts must add up; a failing output is never delivered.
+- Delivery: one `pc_file` card per result, or ONE ZIP past 10 results (her chat is not flooded); every row carries
+  `checked: ...`. Originals are never touched.
+- Routing: the "pdf work" intent now opens `("india", "pdf_kit")` and also catches conversions both ways (photos /
+  Word / Excel / PPT -> PDF, PDF -> JPG / text); `EXTRA_KEYS["pdf_kit"]` for plain asks. Before, "lock / password /
+  watermark" asks reached pdf_tools, which can do none of them; pdf_kit says plainly which phase brings them.
+  pdf_tools (merge / pages / rotate / smaller / info / verify) stays registered and in view for the old asks.
+- Prompt: the PDFs line and the TOOL CHOOSER name pdf_kit; label "PDF par kaam kar raha hoon" / "Working on the PDF".
+  On a call it is reached through santosh_kaam (`voice.call_route`).
+
+Tests: `test_v0794_dockit.py` (22: page grammar, the whole proof card, locked refused, limits, compress never grows,
+split-by-size honesty, repair fallback, photo metadata never travels, check refuses bad output, engine check truth,
+registry + routing on real asks (and "make a pdf report" stays with doc_studio), label + prompt, call route, guide /
+not-yet honesty, merge / split / remove / extract, 12 parts -> one ZIP, compress to target, photos + Word -> PDF,
+pictures / text / info, clean refusals with nothing half-delivered, originals unchanged, setup script + vps-ops jobs).
+Registry pins 625 -> 626 in 34 suites; tool-card PDF asks accept pdf_kit beside pdf_tools.
+
+NOT VERIFIED (honest): not run on her VPS yet - the first `vps-ops > docs_check` and `pdf_card` there are the live
+proof; LibreOffice is not installed on the VPS until she pastes the apt line; no real phone / console turn has called
+pdf_kit yet. NOT BUILT (later phases, said by the tool itself): page numbers / watermark / crop / edit (D2), protect /
+unlock / redact (D3), OCR layer / PDF -> Word / Excel / PPT / PDF/A / HTML -> PDF (D4), forms / sign (D5), compare /
+translate keeping layout (D6), workflows / batch / console page / phone screen (D7).

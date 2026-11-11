@@ -170,6 +170,15 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                    "merge audio", "audio speed", "loudness", "normalize audio", "extract audio", "audio nikalo",
                    "video se audio", "remove silence", "silence hata", "pitch", "bass", "background music", "waveform",
                    "audio split", "gaana kaat", "song cut", "recording saaf"),
+    "pdf_kit": ("merge pdf", "pdf merge", "pdf jod", "pdfs jod", "split pdf", "pdf split", "pdf alag", "pdf tod",
+                "compress pdf", "pdf compress", "pdf chhoti", "pdf chota", "pdf ka size", "pdf size", "reduce pdf",
+                "pdf badi hai", "pdf to jpg", "pdf se jpg", "pdf to image", "pdf to png", "jpg to pdf", "photo to pdf",
+                "photos ko pdf", "photo ko pdf", "image to pdf", "images to pdf", "word to pdf", "word ko pdf",
+                "excel to pdf", "excel ko pdf", "ppt to pdf", "ppt ko pdf", "docx to pdf", "pdf pages", "pdf ka page",
+                "pdf ke page", "page hata", "pages hata", "remove page", "delete page", "extract page", "pages nikal",
+                "rotate pdf", "pdf rotate", "pdf ghuma", "pdf ulta", "repair pdf", "pdf kharab", "corrupt pdf",
+                "pdf khul nahi", "pdf to text", "pdf se text", "scan to pdf", "kb ki pdf", "kb ka pdf", "ilovepdf",
+                "reorder pages", "pages reorder", "pdf ke photos", "images from pdf", "pdf ki photos", "blank page"),
     "video_kit": ("video edit", "edit video", "edit this video", "video trim", "trim video", "video cut", "cut video",
                   "video kaat", "video chhota", "video ko", "reel size", "reel shape", "9:16", "vertical video", "compress video",
                   "video compress", "compress this video", "compress the video", "video for whatsapp", "video size", "whatsapp par bhej", "16 mb", "video jod", "join video", "merge video",
@@ -754,10 +763,14 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # a file to MAKE (pdf / word / excel / ppt): the design studio
     (re.compile(_D, re.I), ("docstudio",), "document"),
     # work ON a pdf she has: merge / split / shrink / rotate / pages / lock
+    # v0.794 the document kit (pdf_kit) joins pdf_tools here; conversions both ways count as pdf work too
     (re.compile(r"(?:pdf|पीडीएफ)\w*.{0,70}(?:jod|merge|mila|chhot|compress|split|alag|page|rotate|ghuma|small|"
-                r"lock|password|unlock|watermark|size|badi)|(?:jod|merge|chhot|compress|split|rotate).{0,30}(?:pdf|पीडीएफ)",
-                re.I),
-     ("india",), "pdf work"),
+                r"lock|password|unlock|watermark|size|badi|repair|kharab|reverse|ulta|kb\b)|"
+                r"(?:jod|merge|chhot|compress|split|rotate|repair).{0,30}(?:pdf|पीडीएफ)|"
+                r"\b(?:jpe?g|png|photos?|images?|pictures?|scans?|word|docx?|excel|xlsx?|ppt|pptx|powerpoint)\b.{0,25}"
+                r"\b(?:to|se|ko|into|in)\b.{0,12}(?:pdf|पीडीएफ)|(?:pdf|पीडीएफ)\w*.{0,25}\b(?:to|se|into|ko)\b.{0,12}"
+                r"\b(?:jpe?g|png|images?|photos?|pictures?|text|markdown|md)\b", re.I),
+     ("india", "pdf_kit"), "pdf work"),
     # many records: a list / ranking / API / dataset -> the data desk (+ the studio to print it)
     (re.compile(r"\btop\s*\d+|\b\d{2,}\s+(?:\w+\s+){0,2}(?:ki|ka|ke|of)?\s*(?:list|price|names?|companies|repos?)|"
                 r"list of|price list|github|\brepos?\b|repositor|\bapi\b|dataset|\bcsv\b|statistic|\bstats\b|"
