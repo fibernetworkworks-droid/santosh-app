@@ -680,22 +680,22 @@
   // real error (offline, 500) and must not cost her the mapping.
   async function ensureConv() {
     const g = W.game;
-    if (THREAD.conv && THREAD.game === g.id) return THREAD.conv;
+    if (THREAD.conv && THREAD.game === g.id && THREAD.ok) return THREAD.conv;
     THREAD.game = g.id;
-    let c = store.get(convKey(g.id)) || S(g.conversation_id);
+    let c = THREAD.conv || store.get(convKey(g.id)) || S(g.conversation_id);
     if (c) {
       try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); store.set(convKey(g.id), c); }
       catch (e) { if (e.status === 404) { store.del(convKey(g.id)); c = ''; } else throw e; }
     }
     if (!c) { c = await newConv(`Game · ${gname(g)}`); store.set(convKey(g.id), c); }
-    THREAD.conv = c;
+    THREAD.conv = c; THREAD.ok = true;
     return c;
   }
   async function openThread() {
     clearTimeout(THREAD.timer);
     let c = store.get(convKey(W.id));
     if (!c && W.game && S(W.game.conversation_id)) { c = S(W.game.conversation_id); store.set(convKey(W.id), c); }
-    Object.assign(THREAD, {game: W.id, conv: c, rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
+    Object.assign(THREAD, {game: W.id, conv: c, ok: false, rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
     drawMsgs();
     if (THREAD.conv) await readThread();
   }
@@ -769,8 +769,11 @@
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/messages?limit=60`);
       if (c !== THREAD.conv) return;
-      THREAD.rows = L(r.messages);
-    } catch { return; }
+      THREAD.rows = L(r.messages); THREAD.ok = true;
+    } catch (e) {
+      if (e.status === 404 && c === THREAD.conv) { store.del(convKey(THREAD.game)); THREAD.conv = ''; THREAD.ok = false; THREAD.waiting = false; drawMsgs(); }
+      return;
+    }
     if (!THREAD.waiting) {
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
       const last = talk[talk.length - 1];

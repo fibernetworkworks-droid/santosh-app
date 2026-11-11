@@ -284,6 +284,34 @@ body.gdv-body{overflow:auto;background:var(--bg);color:var(--ink);font:15px/1.5 
 .gdv-embed .gs-role.gs-writes{background:var(--pri-soft);color:var(--pri-ink)}
 .gdv-embed .gs-rcard{border-radius:12px;background:var(--surface)}
 .gdv-embed .gs-grid{gap:14px;margin-top:0}
+/* the game pages' own rules that v2.css scopes to the console (#app ...), here scoped to the embed */
+.gdv-embed .wd-body{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.gdv-embed .wd-prev{width:260px;max-width:100%;height:auto;border-radius:8px;image-rendering:pixelated;border:1px solid var(--line)}
+.gdv-embed .wd-info{flex:1;min-width:240px}
+.gdv-embed .wd-new textarea{width:100%}
+.gdv-embed .wd-new input[type=number]{width:160px}
+.gdv-embed .ph-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.gdv-embed .ph-grid>div{padding:12px 14px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
+.gdv-embed .ph-grid>div>b{display:block;font-size:22px}
+.gdv-embed .ph-grid label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}
+.gdv-embed .ph-tbl{width:100%;border-collapse:collapse;margin-top:8px}
+.gdv-embed .ph-tbl td{vertical-align:top}
+.gdv-embed .au-demos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:8px 0}
+.gdv-embed .au-demos audio{width:100%}
+.gdv-embed .hp-img{width:100%;max-width:640px;image-rendering:auto}
+.gdv-embed .rt-tok{margin:8px 0;padding:10px;overflow-wrap:anywhere}
+.gdv-embed .rt-tok code,.gdv-embed .rt-cfg{font-size:12.5px}
+.gdv-embed .rt-cfg{white-space:pre-wrap;overflow-x:auto}
+.gdv-embed .lo-dau{display:flex;align-items:flex-end;gap:4px;height:44px;margin-top:10px}
+.gdv-embed .lo-dau span{flex:1;background:var(--pri);border-radius:3px 3px 0 0;min-width:6px}
+.gdv-embed .lo-row{margin:8px 0;padding:10px 12px}
+.gdv-embed .lo-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
+.gdv-embed .lo-form textarea{grid-column:1 / -1;font:12.5px/1.4 ui-monospace,Menlo,Consolas,monospace}
+.gdv-embed .bs-row{cursor:pointer}
+.gdv-embed .bs-row:hover td{background:var(--sunk)}
+.gdv-embed .gs-add{margin:0}
+.gdv-embed p.tile.badc{color:var(--bad)}
+
 /* the board's own "Play" button and Archive: the app's top bar plays it, and archiving a project from inside a game tab
    would leave that tab without its project */
 .gdv-embed[data-page="board"] > .vh > a.btn,.gdv-embed #gsArch{display:none !important}
