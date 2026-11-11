@@ -98,9 +98,9 @@ def _lyria(prompt: str) -> bytes:
 async def song(brief: str = "", genre: str = "", language: str = "Hindi", vocals: str = "duet", mood: str = "",
                bpm: int = 0, seconds: int = 0, lyrics: str = "") -> dict[str, Any]:
     if not ready()["song"]:
-        raise CreateError("Gaane ke liye server par GEMINI_API_KEY aur STUDIO_MUSIC_MODEL (Google Lyria) chahiye.")
+        raise CreateError("A song needs GEMINI_API_KEY and STUDIO_MUSIC_MODEL (Google Lyria) on the server.")
     if not (brief.strip() or lyrics.strip() or genre.strip()):
-        raise CreateError("Gaana kis baare mein ho? Ek line, genre ya lyrics dijiye.")
+        raise CreateError("What should the song be about? Give one line, a genre or lyrics.")
     prompt = song_prompt(brief, genre, language, vocals, mood, bpm, seconds, lyrics)
     try:
         data = await asyncio.to_thread(_lyria, prompt)
@@ -108,7 +108,7 @@ async def song(brief: str = "", genre: str = "", language: str = "Hindi", vocals
         raise
     except Exception as e:
         log.exception("create song")
-        raise CreateError(f"Gaana nahi ban paya: {str(e)[:150]}") from None
+        raise CreateError(f"The song could not be made: {str(e)[:150]}") from None
     from .. import usage
     usage.record(_s().studio_music_model, sec_out=60.0)       # PRICES["lyria"]: one song = one "minute" = MUSIC_USD
     return {"bytes": data, "ext": ".mp3", "prompt": prompt, "model": _s().studio_music_model}
@@ -134,7 +134,7 @@ async def write(kind: str, brief: str, fmt: str = "", length: str = "", language
     from ..studio import service as ss
     brief = (brief or "").strip()
     if len(brief) < 4:
-        raise CreateError("Pehle ek line likhiye ki yeh kis baare mein hai.")
+        raise CreateError("First write one line about what this is about.")
     if kind == "script":
         system, prompt = SCRIPT_SYSTEM, (f"Brief: {brief[:2500]}\nFormat: {fmt or 'ad film'}\nLength: {length or '45 seconds'}\n"
                                          f"Dialogue language: {language or 'Hinglish'}\nTone: {tone or 'warm'}")
@@ -147,10 +147,10 @@ async def write(kind: str, brief: str, fmt: str = "", length: str = "", language
         out = (await ss._write(system, prompt, 6000)).strip()
     except Exception as e:
         log.exception("create write")
-        raise CreateError(f"Abhi likh nahi paya: {str(e)[:120]}") from None
+        raise CreateError(f"Could not write it right now: {str(e)[:120]}") from None
     out = re.sub(r"^```\w*\n?|```$", "", out, flags=re.M).strip()
     if not out:
-        raise CreateError("Abhi likh nahi paya; dobara try kijiye.")
+        raise CreateError("Could not write it right now; try again.")
     return out[:20000]
 
 
@@ -186,7 +186,7 @@ def _pcm(text: str, voice: str, how: str) -> bytes:
                 return pcm
         except Exception as e:          # the newer TTS model can be missing on an account: fall back once
             last = e
-    raise CreateError(f"Awaaz nahi ban payi{': ' + str(last)[:120] if last else ''}")
+    raise CreateError(f"The voice could not be made{': ' + str(last)[:120] if last else ''}")
 
 
 def wav_bytes(pcm: bytes, rate: int = 24000) -> bytes:
@@ -209,12 +209,12 @@ def how_to_say(language: str, style: str = "", speed: float = 1.0) -> str:
 async def voice(text: str, voice_name: str = "", language: str = "Hindi", style: str = "friendly", speed: float = 1.0,
                 tenant: str = "") -> dict[str, Any]:
     if not ready()["voice"]:
-        raise CreateError("Awaaz ke liye server par GEMINI_API_KEY chahiye.")
+        raise CreateError("The voice needs GEMINI_API_KEY on the server.")
     text = (text or "").strip()
     if not text:
-        raise CreateError("Kya bolna hai? Script likhiye.")
+        raise CreateError("What should be said? Write the script.")
     if len(text) > MAX_TEXT:
-        raise CreateError(f"Script {MAX_TEXT} akshar tak; isse chhota karke do hisson mein banaiye.")
+        raise CreateError(f"The script can be up to {MAX_TEXT} characters; shorten it or make it in two parts.")
     if voice_name in ("", "mine", "hoola") and tenant:
         from ..avatar import service as av
         a = av.get(tenant)
@@ -241,7 +241,7 @@ script (Hinglish in Latin letters). Skip music-only parts. Never add lines that 
 def _ff(*args: str, timeout: int = 300) -> None:
     r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *args], capture_output=True, timeout=timeout)
     if r.returncode:
-        raise CreateError("Video process nahi hua: " + r.stderr.decode(errors="ignore")[-200:])
+        raise CreateError("The video could not be processed: " + r.stderr.decode(errors="ignore")[-200:])
 
 
 def duration(path: Path) -> float:
@@ -273,10 +273,10 @@ def _listen(audio: bytes, langs: list[str]) -> dict[str, Any]:
     try:
         out = _json(resp.text or "")
     except (ValueError, json.JSONDecodeError):
-        raise CreateError("Video ki baatein samajh nahi aayin; dobara try kijiye.") from None
+        raise CreateError("The speech in the video could not be understood; try again.") from None
     lines = [ln for ln in out.get("lines") or [] if str(ln.get("text") or "").strip()]
     if not lines:
-        raise CreateError("Is video mein koi bolti hui line nahi mili.")
+        raise CreateError("No spoken line was found in this video.")
     out["lines"] = sorted(lines, key=lambda x: float(x.get("start") or 0))
     return out
 
@@ -299,13 +299,13 @@ async def dub(video: bytes, name: str, langs: list[str], keep_sound: bool = True
               progress=None) -> dict[str, Any]:
     """Returns {"source_language", "speakers", "lines", "outputs": [{"language", "bytes", "seconds"}]}."""
     if not ready()["dub"]:
-        raise CreateError("Dubbing ke liye server par GEMINI_API_KEY aur ffmpeg chahiye.")
+        raise CreateError("Dubbing needs GEMINI_API_KEY and ffmpeg on the server.")
     langs = [lang for lang in dict.fromkeys(str(x).strip().title() for x in langs or []) if lang]
     langs = [("Hinglish" if lang.lower() == "hinglish" else lang) for lang in langs][:4]
     if not langs:
-        raise CreateError("Kis bhasha mein dub karna hai? (ek baar mein 4 tak)")
+        raise CreateError("Which language should it be dubbed into? (up to 4 at a time)")
     if len(video) > MAX_DUB_MB * 1024 * 1024:
-        raise CreateError(f"Video {MAX_DUB_MB} MB tak ka hona chahiye.")
+        raise CreateError(f"The video must be up to {MAX_DUB_MB} MB.")
     say = progress or (lambda *_: None)
     with tempfile.TemporaryDirectory(prefix="hoola_dub_") as tmp:
         d = Path(tmp)
@@ -313,7 +313,7 @@ async def dub(video: bytes, name: str, langs: list[str], keep_sound: bool = True
         src.write_bytes(video)
         secs = await asyncio.to_thread(duration, src)
         if secs > MAX_DUB_SECONDS:
-            raise CreateError(f"Abhi {MAX_DUB_SECONDS // 60} minute tak ka video dub hota hai (yeh {int(secs)} s ka hai). Chhota hissa bhejiye.")
+            raise CreateError(f"For now a video of up to {MAX_DUB_SECONDS // 60} minutes can be dubbed (this one is {int(secs)} s). Send a shorter part.")
         aud = d / "a.mp3"
         await asyncio.to_thread(_ff, "-i", str(src), "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", str(aud))
         say("listening")
@@ -368,7 +368,7 @@ def _mix(src: Path, lines: list[dict[str, Any]], clips: list[Path | None], out: 
         chains.append(f"[{n}:a]{'atempo=' + str(tempo) + ',' if tempo != 1.0 else ''}aresample=48000,adelay={ms}|{ms}[v{n}]")
         labels.append(f"[v{n}]")
     if not labels:
-        raise CreateError("Dub ke liye koi line nahi bani.")
+        raise CreateError("No line was made for the dub.")
     has_audio = bool(subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
                                      "-of", "csv=p=0", str(src)], capture_output=True, timeout=60).stdout.strip()) \
         if shutil.which("ffprobe") else True

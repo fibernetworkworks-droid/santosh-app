@@ -22,7 +22,7 @@ from .service import NetError, resolve, tell
 
 MIN_SELLERS, MAX_SELLERS, MAX_ROWS = 2, 5, 5
 WINDOW_DEFAULT, WINDOW_MIN, WINDOW_MAX = 30, 5, 240
-THANKS = "Is baar nahi, dhanyavaad."
+THANKS = "Not this time, thank you."
 STATS = {"started": 0, "shown": 0, "chosen": 0}
 
 
@@ -56,7 +56,7 @@ def _get(tenant: str, rfq_id: str) -> Rfq:
     with session() as s:
         r = s.get(Rfq, rfq_id)
         if r is None or r.tenant_id != tenant:
-            raise RfqError("Yeh tulna (compare) nahi mili.")
+            raise RfqError("This comparison was not found.")
         s.expunge(r)
         return r
 
@@ -83,7 +83,7 @@ def start(tenant: str, to: Any, items: Any, mode: str = "pickup", need_by: str =
         if p not in [x[1] for x in peers]:
             peers.append((n, p))
     if not (MIN_SELLERS <= len(peers) <= MAX_SELLERS):
-        raise RfqError(f"Tulna ke liye {MIN_SELLERS} se {MAX_SELLERS} dukaan / wholesaler bataiye.")
+        raise RfqError(f"For a comparison, name {MIN_SELLERS} to {MAX_SELLERS} shops / wholesalers.")
     dl.check_ask({"items": items, "mode": mode, "need_by": need_by, "note": note, "title": title})      # fail early, once
     try:
         win = int(window_minutes) if window_minutes not in (None, "") else WINDOW_DEFAULT
@@ -105,14 +105,14 @@ def start(tenant: str, to: Any, items: Any, mode: str = "pickup", need_by: str =
             failed.append({"to": name, "reason": str(e)[:200]})
     if not deals:
         _set(rid, state="closed", failed=failed)
-        raise RfqError("Kisi tak list nahi pahunchi: " + "; ".join(f"{f['to']}: {f['reason']}" for f in failed))
+        raise RfqError("The list did not reach anyone: " + "; ".join(f"{f['to']}: {f['reason']}" for f in failed))
     _set(rid, deals=deals, failed=failed)
     STATS["started"] += 1
     _maybe_ready(tenant, rid)
     r = _get(tenant, rid)
     return {"status": r.state, "rfq": view(r),
-            "say": f"List {len(deals)} jagah gayi. Sabke quote aane par (ya {win} minute baad) ek saath tulna dikhaunga; "
-                   "pehla jawab dekh kar jaldi nahi karunga." + (f" Nahi pahunchi: {', '.join(f['to'] for f in failed)}."
+            "say": f"The list went to {len(deals)} places. When all quotes are in (or after {win} minutes) I will show one comparison; "
+                   "I will not rush on the first reply." + (f" Did not reach: {', '.join(f['to'] for f in failed)}."
                                                                   if failed else "")}
 
 
@@ -227,8 +227,8 @@ def rows(tenant: str, r: Rfq) -> list[dict[str, Any]]:
                "verified_name": (q.get("vbc") or {}).get("name", ""), "tier": trust.tier(tenant, d.peer)["tier"],
                "fill_rate": fill_rate(tenant, d.peer), "note": q.get("note", ""), "reason": d.reason}
         if not row["quoted"]:
-            row["say"] = {"rejected": "mana kar diya", "asked": "abhi jawab nahi", "cancelled": "cancel",
-                          "expired": "samay khatam"}.get(d.state, d.state)
+            row["say"] = {"rejected": "declined", "asked": "no reply yet", "cancelled": "cancel",
+                          "expired": "expired"}.get(d.state, d.state)
         out.append(row)
     quoted = sorted([x for x in out if x["quoted"] and x["state"] == "quoted"],
                     key=lambda x: (not x["complete"], float(x["total"] or 0)))
@@ -257,14 +257,14 @@ def _show(tenant: str, rfq_id: str, late: bool = False) -> None:
     dl = _dl()
     if q:
         b = q[0]
-        say = (f"{len(q)} quote aaye. Sabse achha: {b['with']} {dl.inr(b['total'])}" +
-               ("" if b["complete"] else " (kuch cheez kam)") + ". Ek chuniye (Haan aapke tap se hi)." +
-               (" Ek naya quote baad mein aaya." if late else ""))
+        say = (f"{len(q)} quotes received. Best: {b['with']} {dl.inr(b['total'])}" +
+               ("" if b["complete"] else " (some items short)") + ". Choose one (Yes only with your tap)." +
+               (" One new quote came in later." if late else ""))
     else:
-        say = "Kisi ne quote nahi bheja."
+        say = "Nobody sent a quote."
     STATS["shown"] += 1
     tell(tenant, "hoola_rfq", v | {"card": "compare", "say": say},
-         f"[Compare] {say} Kisi ek ko chun-na owner ka tap hai; tum confirm nahi kar sakte. rfq_id={rfq_id}.")
+         f"[Compare] {say} Choosing one is the owner's tap; you cannot confirm. rfq_id={rfq_id}.")
 
 
 def show(tenant: str, rfq_id: str) -> dict[str, Any]:
@@ -285,7 +285,7 @@ def rfqs(tenant: str, open_only: bool = True) -> list[dict[str, Any]]:
 def set_split(tenant: str, rfq_id: str, on: bool) -> dict[str, Any]:
     r = _get(tenant, rfq_id)
     if r.state == "closed":
-        raise RfqError("Yeh tulna band ho chuki hai.")
+        raise RfqError("This comparison is already closed.")
     _set(rfq_id, split=bool(on))
     return show(tenant, rfq_id)
 

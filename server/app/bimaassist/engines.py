@@ -24,7 +24,7 @@ def _d(v: Any) -> dt.date:
             return dt.datetime.strptime(s, f).date()
         except ValueError:
             pass
-    raise ValueError(f"Tareekh samajh nahi aayi: '{v}' (2026-11-05).")
+    raise ValueError(f"Could not understand the date: '{v}' (2026-11-05).")
 
 
 _ATTR = [("premium", "lower"), ("sum_insured", "higher"), ("room_rent_cap", "higher"), ("copay_pct", "lower"), ("waiting_ped_months", "lower"),
@@ -33,7 +33,7 @@ _ATTR = [("premium", "lower"), ("sum_insured", "higher"), ("room_rent_cap", "hig
 
 def plan_compare(plans: list[dict]) -> dict[str, Any]:
     if len(plans or []) < 2:
-        raise ValueError("Kam se kam 2 plans do: name, premium, sum_insured, room_rent_cap, copay_pct, waiting_ped_months, network_count.")
+        raise ValueError("Give at least 2 plans: name, premium, sum_insured, room_rent_cap, copay_pct, waiting_ped_months, network_count.")
     rows, lines = [], []
     for a, better in _ATTR:
         vals = [(str(p.get("name")), p.get(a)) for p in plans if p.get(a) not in (None, "")]
@@ -43,7 +43,7 @@ def plan_compare(plans: list[dict]) -> dict[str, Any]:
         tie = len({_f(v) for _, v in vals}) == 1
         rows.append({"attribute": a, "values": dict(vals), "better_on_paper": None if tie else pick[0]})
         if not tie:
-            lines.append(f"{a}: {pick[0]} ka number behtar dikhta hai ({pick[1]}).")
+            lines.append(f"{a}: {pick[0]} has the better number ({pick[1]}).")
     return {"table": rows, "plain_lines": lines, "decider": "the adviser / the customer: suitability is their call",
             "note": "Numbers only, as given. No plan is recommended; cover wording, exclusions and the insurer's service are not compared.", "not_checked": ["exclusions", "sub-limits not given", "claim experience"]}
 
@@ -93,7 +93,7 @@ def proposal_check(fields: dict, required: list | None = None) -> dict[str, Any]
 def coverage_check(policy: dict, claim: dict) -> dict[str, Any]:
     """policy: {start, initial_waiting_days, ped_waiting_months, moratorium_months, specific_waiting{name:months}, sublimits{name:amt}, room_rent_cap, copay_pct, clauses{key:text}}"""
     if not policy or not claim:
-        raise ValueError("policy aur claim dono do.")
+        raise ValueError("give both policy and claim.")
     cl = policy.get("clauses") or {}
     adm = _d(claim.get("admission"))
     start = _d(policy.get("start"))
@@ -152,7 +152,7 @@ def preauth_checks(policy: dict, request: dict, package_rates: dict | None = Non
 
 def query_reply(queries: list[str], chart: dict) -> dict[str, Any]:
     if not queries:
-        raise ValueError("queries list do (insurer ke sawaal).")
+        raise ValueError("give a queries list (the insurer's questions).")
     items = []
     for q in queries[:30]:
         words = [w for w in re.findall(r"[a-z]{3,}", q.lower()) if w not in ("the", "please", "send", "for", "and", "with", "any", "reason", "report", "copy", "provide")]
@@ -189,7 +189,7 @@ def rejection_letter(claim_id: str, reasons: list[dict], documents_considered: l
         raise ValueError("reasons do: reason, clause_ref, clause_text.")
     bad = [r.get("reason") for r in reasons if not (r.get("clause_ref") and r.get("clause_text"))]
     if bad:
-        raise ValueError("Har kaaran ke saath policy clause (ref + text) chahiye. Ye bina clause ke hain: " + "; ".join(map(str, bad)))
+        raise ValueError("Every reason needs a policy clause (ref + text). These have no clause: " + "; ".join(map(str, bad)))
     body = [f"Re: claim {claim_id}", "", "We have examined the claim against the policy terms. Reasons:"]
     for i, r in enumerate(reasons, 1):
         body.append(f"{i}. {r['reason']} - policy clause {r['clause_ref']}: \"{r['clause_text']}\"")
@@ -234,7 +234,7 @@ _VAGUE = ("reasonable", "customary", "usual", "as decided by the company", "at i
 
 def wording_review(text: str) -> dict[str, Any]:
     if not text or len(text) < 30:
-        raise ValueError("Policy ka text paste karo.")
+        raise ValueError("Paste the policy text.")
     low = text.lower()
     sents = [s.strip() for s in re.split(r"(?<=[.;])\s+", text) if s.strip()]
     long_ = [s[:160] for s in sents if len(s.split()) > 60][:10]
@@ -271,7 +271,7 @@ def fhir_claim(claim: dict) -> dict[str, Any]:
     need = ["id", "patient_id", "insurer_id", "provider_id", "diagnosis_code", "total", "service_date"]
     miss = [n for n in need if not claim.get(n)]
     if miss:
-        raise ValueError("Ye fields chahiye: " + ", ".join(miss))
+        raise ValueError("These fields are required: " + ", ".join(miss))
     res = {"resourceType": "Claim", "id": str(claim["id"]), "status": "active", "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/claim-type", "code": claim.get("type", "institutional")}]},
            "use": "claim", "patient": {"reference": f"Patient/{claim['patient_id']}"}, "created": str(claim["service_date"]), "insurer": {"reference": f"Organization/{claim['insurer_id']}"},
            "provider": {"reference": f"Organization/{claim['provider_id']}"}, "priority": {"coding": [{"code": "normal"}]},
@@ -288,7 +288,7 @@ def code_map(codes: list[str], mapping: dict[str, Any]) -> dict[str, Any]:
     if not codes:
         raise ValueError("codes list do.")
     if not mapping:
-        raise ValueError("Apni mapping table do (code -> payer code ya list). Koi built-in table nahi hai.")
+        raise ValueError("Give your own mapping table (code -> payer code or list). There is no built-in table.")
     out = []
     for c in codes[:2000]:
         m = mapping.get(c)

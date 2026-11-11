@@ -785,7 +785,7 @@ class Studio:
         def fn(q):
             for jid in live:
                 if q["jobs"][jid]["state"] in ("queued", "submitted", "running", "retrying"):
-                    q["jobs"][jid].update(state="cancelled", finished=now(), handle=None, error="rok diya")
+                    q["jobs"][jid].update(state="cancelled", finished=now(), handle=None, error="stopped")
         await self.update(project, fn)
         self._changed(project)
         return {"cancelled": len(live)}

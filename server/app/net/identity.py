@@ -63,11 +63,11 @@ def skeleton(handle: str) -> str:
 def clean_handle(raw: str) -> str:
     h = (raw or "").strip().lstrip("@").lower()
     if not HANDLE_RE.match(h) or ".." in h or "__" in h or not re.search(r"[a-z]", h):
-        raise IdError("Hoola ID 3 se 30 akshar: chhote angrezi akshar, number, . ya _ (jaise meghana.fnw).")
+        raise IdError("A Hoola ID is 3 to 30 characters: small English letters, numbers, . or _ (like meghana.fnw).")
     parts = set(re.split(r"[._]", h))
     whole = h.replace(".", "").replace("_", "")
     if parts & STRICT or whole in RESERVED or whole in STRICT or any(whole == r + x for r in RESERVED for x in ("in", "india", "app")):
-        raise IdError("Yeh ID kisi bank, sarkari ya badi company jaisi lagti hai; koi doosri chuniye.")
+        raise IdError("This ID looks like a bank, government or large company; choose another.")
     return h
 
 
@@ -150,7 +150,7 @@ def phone_hash(phone: str) -> str:
     if len(digits) == 10:
         digits = "91" + digits
     if len(digits) < 11:
-        raise IdError("Mobile number 10 ank ka daaliye.")
+        raise IdError("Enter a 10-number mobile number.")
     pepper = get_settings().secret_key or "hoola"
     return hashlib.sha256(f"{pepper}|{digits}".encode()).hexdigest()
 
@@ -199,13 +199,13 @@ def set_handle(tenant: str, raw: str) -> HoolaId:
             return row
         clash = s.scalars(select(HoolaId).where(HoolaId.tenant_id != tenant, (HoolaId.handle == h) | (HoolaId.old_handle == h))).first()
         if clash:
-            raise IdError("Yeh Hoola ID kisi aur ki hai.")
+            raise IdError("This Hoola ID belongs to someone else.")
         look = s.scalars(select(HoolaId).where(HoolaId.tenant_id != tenant, HoolaId.skeleton == skeleton(h))).first()
         if look:
-            raise IdError(f"Yeh ID @{look.handle} jaisi dikhti hai; log dhokha kha sakte hain. Koi alag ID chuniye.")
+            raise IdError(f"This ID looks like @{look.handle}; people could be misled. Choose a different ID.")
         if now() - _aware(row.created_at) > timedelta(days=7):      # the first week: change freely
             if row.handle_changed_at and now() - _aware(row.handle_changed_at) < timedelta(days=365):
-                raise IdError("Hoola ID saal mein ek hi baar badal sakti hai.")
+                raise IdError("A Hoola ID can be changed only once a year.")
             row.old_handle = row.handle                                # the old ID points here for 90 days
             row.handle_changed_at = now()
         row.handle, row.skeleton = h, skeleton(h)
@@ -225,7 +225,7 @@ def set_discovery(tenant: str, phone: str | None, on: bool) -> HoolaId:
         row = s.get(HoolaId, tenant)
         if on:
             if not phone and not row.phone_hash:
-                raise IdError("Number se dhoondhne ke liye apna mobile number daaliye.")
+                raise IdError("Add your mobile number to be found by number.")
             if phone:
                 row.phone_hash = phone_hash(phone)
             row.discoverable = True
@@ -333,7 +333,7 @@ def peer_card(addr: str) -> dict[str, Any] | None:
 def label(card: dict[str, Any] | None) -> str:
     """'Kunal ka Raju' / 'Meghana ki Meera'."""
     if not card:
-        return "Anjaan Hoola"
+        return "Unknown Hoola"
     from .policy import clean_name
     ka = "ki" if card.get("avatar_gender") == "f" else "ka"
     owner = clean_name(card.get("owner_name"), 60) or "@" + clean_name(card.get("handle"), 60)

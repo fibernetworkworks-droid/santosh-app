@@ -124,11 +124,11 @@ MAX_LINES = 100
 ASKS_PER_DAY = 30                  # lists one peer may send one seller in a day
 OPEN_PER_PEER = 10                 # unanswered lists from one peer at a time
 MAX_TOTAL = 1_00_00_000.0          # Rs 1 crore per deal (phase 1 ceiling)
-STATE_WORDS = {"asked": "list bheji gayi", "quoted": "quote aaya", "confirmed": "confirm hua", "accepted": "order pakka",
-               "packing": "packing chal rahi", "ready": "parcel taiyaar", "handed_over": "saamaan de diya",
-               "on_way": "raste mein", "working": "kaam chal raha",
-               "disputed": "shikayat khuli hai", "closed": "poora hua",
-               "rejected": "mana ho gaya", "cancelled": "cancel hua", "expired": "quote ka samay khatam"}
+STATE_WORDS = {"asked": "list sent", "quoted": "quote received", "confirmed": "buyer confirmed", "accepted": "order confirmed",
+               "packing": "being packed", "ready": "parcel ready", "handed_over": "goods handed over",
+               "on_way": "on the way", "working": "work in progress",
+               "disputed": "complaint open", "closed": "completed",
+               "rejected": "declined", "cancelled": "cancelled", "expired": "quote expired"}
 STATS = {"asks": 0, "quotes": 0, "auto_quotes": 0, "confirms": 0, "accepts": 0, "auto_accepts": 0, "ready": 0,
          "handed_over": 0, "refused": 0}
 
@@ -324,14 +324,14 @@ def rules_view(tenant: str) -> dict[str, Any]:
 
 
 def _rules_say(so: dict[str, Any]) -> str:
-    q = {"off": "har quote aapke tap se jaata hai", "trusted": f"bharose wale graahakon ko {inr(so['auto_quote_max'])} tak ka "
-         "poora quote khud jaata hai", "connected": f"jude hue sabhi graahakon ko {inr(so['auto_quote_max'])} tak ka poora quote "
-         "khud jaata hai"}.get(so["auto_quote"], "")
-    a = (f"stock ho to {inr(so['auto_accept_max'])} tak ka order khud pakka" if so["auto_accept"] else "har order aapke tap se pakka")
-    p = "packing hote hi parcel khud 'taiyaar'" if so.get("auto_ready", True) else "packing ke baad 'taiyaar' aapke tap se"
-    m = ("saamaan se pehle paisa (paid / khata / counter)" if so.get("pay_before", "handover") == "handover" else "paisa baad mein bhi")
-    return (f"{q}; {a}; {p}; {m}; {so.get('cancel_minutes', 30)} min tak free cancel; shikayat "
-            f"{so.get('dispute_hours', 48)} ghante tak" + ("; khata chalu" if so.get("khata") else "") + ".")
+    q = {"off": "every quote goes out with your tap", "trusted": f"for trusted customers a full quote up to {inr(so['auto_quote_max'])} "
+         "goes out by itself", "connected": f"for all connected customers a full quote up to {inr(so['auto_quote_max'])} "
+         "goes out by itself"}.get(so["auto_quote"], "")
+    a = (f"an order up to {inr(so['auto_accept_max'])} is confirmed by itself when stock is there" if so["auto_accept"] else "every order is confirmed with your tap")
+    p = "the parcel is marked 'ready' by itself when packing is done" if so.get("auto_ready", True) else "'ready' after packing needs your tap"
+    m = ("money before the goods (paid / credit account / counter)" if so.get("pay_before", "handover") == "handover" else "money can come later too")
+    return (f"{q}; {a}; {p}; {m}; {so.get('cancel_minutes', 30)} min free cancellation; complaints within "
+            f"{so.get('dispute_hours', 48)} hours" + ("; credit account on" if so.get("khata") else "") + ".")
 
 
 def set_rules(tenant: str, **kw) -> dict[str, Any]:
@@ -343,15 +343,15 @@ def set_rules(tenant: str, **kw) -> dict[str, Any]:
         raise DealError("catalog: off, connected, public")
     for k in ("auto_quote_max", "auto_accept_max"):
         if k in sell and _num(sell[k], 0, MAX_TOTAL) is None:
-            raise DealError(f"{k}: 0 se 1 crore ke beech")
+            raise DealError(f"{k}: between 0 and 1 crore")
     if "auto_accept_who" in sell and sell["auto_accept_who"] not in ("trusted", "connected"):
         raise DealError("auto_accept_who: trusted, connected")
     if "pay_before" in sell and sell["pay_before"] not in ("handover", "none"):
         raise DealError("pay_before: handover, none")
     if "cancel_minutes" in sell and _num(sell["cancel_minutes"], 0, 1440) is None:
-        raise DealError("cancel_minutes: 0 se 1440")
+        raise DealError("cancel_minutes: 0 to 1440")
     if "dispute_hours" in sell and _num(sell["dispute_hours"], 1, 720) is None:
-        raise DealError("dispute_hours: 1 se 720")
+        raise DealError("dispute_hours: 1 to 720")
     if kw.get("upi_id") is not None or kw.get("payee_name") is not None:
         from . import dealpay
         cur_r = rules(tenant)
@@ -367,11 +367,11 @@ def set_rules(tenant: str, **kw) -> dict[str, Any]:
         if kw.get("pickup_minutes") is not None:
             v = _num(kw["pickup_minutes"], 15, 7 * 24 * 60)
             if v is None:
-                raise DealError("pickup_minutes: 15 minute se 7 din")
+                raise DealError("pickup_minutes: 15 minutes to 7 days")
             r.pickup_minutes = int(v)
         if isinstance(kw.get("place"), str):
             if policy.secret_found(kw["place"]):
-                raise DealError("Jagah mein mana ki gayi jaankari hai.")
+                raise DealError("The place contains information that is not allowed.")
             r.place = kw["place"].strip()[:200]
         if isinstance(kw.get("prefix"), str) and re.fullmatch(r"[A-Za-z]{1,6}", kw["prefix"].strip()):
             r.prefix = kw["prefix"].strip().upper()
@@ -440,7 +440,7 @@ def stock(tenant: str, q: str = "") -> list[dict[str, Any]]:
 def set_stock(tenant: str, items: list[dict[str, Any]]) -> dict[str, Any]:
     """Add or update items by name. Only the fields given change (qty can be set to null = not counted)."""
     if not isinstance(items, list) or not items:
-        raise DealError("items: [{name, price, qty, unit, gst_pct, aliases}] chahiye")
+        raise DealError("items: [{name, price, qty, unit, gst_pct, aliases}] is required")
     done = []
     with session() as s:
         for raw in items[:500]:
@@ -449,9 +449,9 @@ def set_stock(tenant: str, items: list[dict[str, Any]]) -> dict[str, Any]:
             name = str(raw.get("name") or raw.get("item") or "").strip()[:140]
             key = norm(name)
             if not key:
-                raise DealError("Har item ka naam chahiye.")
+                raise DealError("Every item needs a name.")
             if policy.secret_found(policy.all_text(raw)):
-                raise DealError("Stock mein mana ki gayi jaankari hai.")
+                raise DealError("The stock list contains information that is not allowed.")
             it = s.scalars(select(StockItem).where(StockItem.tenant_id == tenant, StockItem.key == key)).first()
             if it is None:
                 it = StockItem(tenant_id=tenant, key=key, name=name)
@@ -459,12 +459,12 @@ def set_stock(tenant: str, items: list[dict[str, Any]]) -> dict[str, Any]:
             if "price" in raw:
                 p = _num(raw["price"], 0, MAX_TOTAL)
                 if p is None:
-                    raise DealError(f"{name}: daam galat")
+                    raise DealError(f"{name}: wrong price")
                 it.price = _r2(p)
             if "gst_pct" in raw:
                 g = _num(raw["gst_pct"], 0, 40)
                 if g is None or g not in GST_RATES:
-                    raise DealError(f"{name}: GST % in mein se: {', '.join(str(x).rstrip('0').rstrip('.') for x in GST_RATES)}")
+                    raise DealError(f"{name}: GST % must be one of: {', '.join(str(x).rstrip('0').rstrip('.') for x in GST_RATES)}")
                 it.gst_pct = g
             if "qty" in raw:
                 if raw["qty"] is None:
@@ -472,12 +472,12 @@ def set_stock(tenant: str, items: list[dict[str, Any]]) -> dict[str, Any]:
                 else:
                     qv = _num(raw["qty"], 0, 1e7)
                     if qv is None:
-                        raise DealError(f"{name}: maatra galat")
+                        raise DealError(f"{name}: wrong quantity")
                     it.qty = qv
             if "add" in raw:                         # stock came in: add to what is there
                 av = _num(raw["add"], -1e7, 1e7)
                 if av is None:
-                    raise DealError(f"{name}: add galat")
+                    raise DealError(f"{name}: wrong add value")
                 it.qty = max(0.0, (it.qty or 0.0) + av)
             if isinstance(raw.get("unit"), str):
                 it.unit = raw["unit"].strip()[:30]
@@ -497,7 +497,7 @@ def set_stock(tenant: str, items: list[dict[str, Any]]) -> dict[str, Any]:
                 for t in raw["tiers"][:6]:
                     mn, pr = _num((t or {}).get("min"), 1, 1e7), _num((t or {}).get("price"), 0, MAX_TOTAL)
                     if mn is None or pr is None:
-                        raise DealError(f"{name}: bulk daam [{{min, price}}] galat")
+                        raise DealError(f"{name}: bulk prices [{{min, price}}] are wrong")
                     tiers.append({"min": mn, "price": _r2(pr)})
                 it.tiers = sorted(tiers, key=lambda t: t["min"])
             if isinstance(raw.get("subs"), list):
@@ -516,9 +516,9 @@ def remove_stock(tenant: str, item: str) -> dict[str, Any]:
         if it is None or it.tenant_id != tenant:
             it = s.scalars(select(StockItem).where(StockItem.tenant_id == tenant, StockItem.key == norm(item))).first()
         if it is None or it.tenant_id != tenant:
-            raise DealError("Yeh item stock mein nahi mila.")
+            raise DealError("This item was not found in stock.")
         if (it.reserved or 0) > 0:
-            raise DealError("Is item ka kuch maal pakke order mein rakha hai; pehle wo order poora / cancel kijiye.")
+            raise DealError("Some of this item is held for a confirmed order; complete or cancel that order first.")
         s.delete(it)
     return {"removed": True}
 
@@ -639,19 +639,19 @@ def totals(q: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------- validators (every message is checked on arrival)
 def clean_items(raw: Any) -> list[dict[str, Any]]:
     if not isinstance(raw, list) or not raw:
-        raise DealError("Kya chahiye? items: [{item, qty, unit}] (kam se kam ek)")
+        raise DealError("What do you need? items: [{item, qty, unit}] (at least one)")
     if len(raw) > MAX_LINES:
-        raise DealError(f"Ek baar mein {MAX_LINES} se zyada item nahi.")
+        raise DealError(f"No more than {MAX_LINES} items at a time.")
     out = []
     for x in raw:
         if isinstance(x, str):
             x = {"item": x, "qty": 1}
         if not isinstance(x, dict):
-            raise DealError("item galat")
+            raise DealError("wrong item")
         item = policy.clean_name(x.get("item") or x.get("name"), 120)
         qty = _num(x.get("qty", 1), 0.001, 1e6)
         if not item or qty is None:
-            raise DealError(f"'{x.get('item') or x.get('name') or '?'}': naam aur maatra (0 se zyada) chahiye")
+            raise DealError(f"'{x.get('item') or x.get('name') or '?'}': a name and a quantity (above 0) are required")
         out.append({"item": item, "qty": qty, "unit": policy.clean_name(x.get("unit"), 20),
                     "note": policy.quote(x.get("note"), 200)})
     return out
@@ -665,7 +665,7 @@ def check_ask(body: dict[str, Any]) -> dict[str, Any]:
     need_by = _when(body.get("need_by")) if body.get("need_by") else None
     if body.get("need_by") and (need_by is None or need_by < now() - timedelta(hours=1)
                                 or need_by > now() + timedelta(days=120)):
-        raise DealError("need_by galat (aaj se 120 din ke andar)")
+        raise DealError("wrong need_by (within 120 days from today)")
     out = {"items": items, "mode": mode, "area": policy.quote(body.get("area"), 160), "note": policy.quote(body.get("note"), 600),
            "title": policy.quote(body.get("title"), 120), "need_by": need_by.isoformat() if need_by else ""}
     if svc:
@@ -677,38 +677,38 @@ def check_quote(body: dict[str, Any]) -> dict[str, Any]:
     """The buyer's verifier: every number is recomputed here; a quote whose sums don't add up is refused."""
     v = _num(body.get("v"), 1, 999)
     if v is None or v != int(v):
-        raise DealError("quote version galat")
+        raise DealError("wrong quote version")
     raw = body.get("lines")
     if not isinstance(raw, list) or not raw or len(raw) > MAX_LINES:
-        raise DealError("quote lines galat")
+        raise DealError("wrong quote lines")
     lines = []
     for x in raw:
         if not isinstance(x, dict):
-            raise DealError("quote line galat")
+            raise DealError("wrong quote line")
         qty = _num(x.get("qty"), 0, 1e6)
         asked = _num(x.get("asked", x.get("qty")), 0, 1e6)
         price = None if x.get("price") is None else _num(x.get("price"), 0, MAX_TOTAL)
         gpct = _num(x.get("gst_pct", 0), 0, 40)
         status = x.get("status") if x.get("status") in ("ok", "partial", "out", "not_found", "unknown_stock", "substitute") else ""
         if qty is None or asked is None or gpct is None or gpct not in GST_RATES or not status:
-            raise DealError("quote line mein maatra / GST / status galat")
+            raise DealError("wrong quantity / GST / status in a quote line")
         if price is None and qty > 0:
-            raise DealError("daam ke bina maatra nahi ho sakti")
+            raise DealError("there cannot be a quantity without a price")
         ln = _line(policy.clean_name(x.get("item"), 120) or "?", asked, qty, policy.clean_name(x.get("unit"), 20), price,
                    gpct, status, asked_as=policy.clean_name(x.get("asked_as"), 120))
         for k in ("amount", "gst"):
             if abs(float(x.get(k) or 0) - ln[k]) > 0.011:
-                raise DealError(f"hisaab galat: {ln['item']} ka {k} {x.get(k)} likha hai, sahi {ln[k]}")
+                raise DealError(f"wrong calculation: {ln['item']} {k} {x.get(k)} is written, the right value is {ln[k]}")
         lines.append(ln)
     q = totals({"v": int(v), "lines": lines})
     for k in ("subtotal", "gst", "total"):
         if abs(float(body.get(k) or 0) - q[k]) > 0.011:
-            raise DealError(f"hisaab galat: {k} {body.get(k)} likha hai, joda to {q[k]}")
+            raise DealError(f"wrong calculation: {k} {body.get(k)} is written, the sum is {q[k]}")
     if q["total"] > MAX_TOTAL:
-        raise DealError("rakam bahut badi")
+        raise DealError("amount too large")
     vu = _when(body.get("valid_until"))
     if vu is None or vu < now() or vu > now() + timedelta(days=7, minutes=5):
-        raise DealError("quote ki aakhri tareekh galat ya beet chuki")
+        raise DealError("the quote's last date is wrong or already past")
     q["valid_until"] = vu.isoformat()
     q["note"] = policy.quote(body.get("note"), 600)
     q["place"] = policy.quote(body.get("place"), 200)
@@ -721,10 +721,10 @@ def check_quote(body: dict[str, Any]) -> dict[str, Any]:
 def check_ready(body: dict[str, Any]) -> dict[str, Any]:
     code = str(body.get("code") or "")
     if not re.fullmatch(r"\d{4}", code):
-        raise DealError("pickup code galat")
+        raise DealError("wrong pickup code")
     until = _when(body.get("until"))
     if until is None or until < now() or until > now() + timedelta(days=8):
-        raise DealError("kab tak le jaana hai, galat")
+        raise DealError("wrong pickup deadline")
     return {"code": code, "place": policy.quote(body.get("place"), 200), "until": until.isoformat(),
             "number": policy.clean_name(body.get("number"), 30), "note": policy.quote(body.get("note"), 300)}
 
@@ -736,7 +736,7 @@ def _get(tenant: str, deal_id: str) -> Deal:
         if d is None or d.tenant_id != tenant:
             d = s.scalars(select(Deal).where(Deal.tenant_id == tenant, Deal.number == deal_id)).first()
         if d is None:
-            raise DealError("Yeh deal nahi mili.")
+            raise DealError("This deal was not found.")
         s.expunge(d)
         return d
 
@@ -848,9 +848,9 @@ def _send(tenant: str, d: Deal, kind: str, body: dict[str, Any], say: str) -> di
     call is still delivering (both avatars can live on this server)."""
     key = (d.state if not (kind == "deal_ask") else "", _event_key(kind, body))
     if key not in TRANSITIONS:
-        raise DealError(f"Abhi '{STATE_WORDS.get(d.state, d.state)}' hai; ab yeh nahi ho sakta.")
+        raise DealError(f"It is '{STATE_WORDS.get(d.state, d.state)}' now; this cannot be done.")
     if policy.secret_found(policy.all_text(body)):
-        raise DealError("Isme PIN / OTP / password / card / Aadhaar jaisi jaankari hai; Hoola yeh kabhi nahi bhejta.")
+        raise DealError("This contains information like a PIN / OTP / password / card / Aadhaar; Hoola never sends that.")
     before = (d.state, d.step, d.last_hash, list(d.history or []))
     body = dict(body, step=d.step + 1, prev=d.last_hash)
     _record(d, kind, body, d.role, say)
@@ -862,7 +862,7 @@ def _send(tenant: str, d: Deal, kind: str, body: dict[str, Any], say: str) -> di
             row = s.get(Deal, d.id)
             if row is not None and row.step == before[1] + 1:
                 row.state, row.step, row.last_hash, row.history = before[0], before[1], before[2], before[3]
-        raise DealError(f"{_say_who(d.peer)} tak nahi pahuncha: {res.get('reason') or res.get('status')}")
+        raise DealError(f"{_say_who(d.peer)} could not be reached: {res.get('reason') or res.get('status')}")
     return res
 
 
@@ -874,7 +874,7 @@ def ask(tenant: str, to: str, items: Any, mode: str = "pickup", need_by: str = "
     body = check_ask({"items": items, "mode": mode, "need_by": need_by, "note": note, "title": title, "area": area,
                       "service": service})
     if policy.secret_found(policy.all_text(body)):
-        raise DealError("List mein PIN / OTP / password / card / Aadhaar jaisi jaankari hai; yeh nahi jaayega.")
+        raise DealError("The list contains information like a PIN / OTP / password / card / Aadhaar; it will not be sent.")
     peer = resolve(tenant, to)
     l = _link(tenant, peer)
     if l is None or l.status != "active":
@@ -882,9 +882,9 @@ def ask(tenant: str, to: str, items: Any, mode: str = "pickup", need_by: str = "
         try:
             peer = business.contact(tenant, to)        # a public business counter opens a customer connection
         except NetError:
-            raise DealError(f"{_say_who(peer)} se juda nahi hai. Pehle connect kijiye (ya woh public business ho).")
+            raise DealError(f"{_say_who(peer)} is not connected. Connect first (or they must be a public business).")
     if peer == idn.my_card(tenant)["address"]:
-        raise DealError("Yeh aapka apna Hoola hai.")
+        raise DealError("This is your own Hoola.")
     dkey = new_id("dk")
     title = body["title"] or (", ".join(f"{i['item']} {i['qty']:g}" for i in body["items"][:3])
                               + (f" +{len(body['items']) - 3}" if len(body["items"]) > 3 else "")) or \
@@ -900,7 +900,7 @@ def ask(tenant: str, to: str, items: Any, mode: str = "pickup", need_by: str = "
         s.expunge(d)
     STATS["asks"] += 1
     try:
-        res = _send(tenant, d, "deal_ask", body, f"{len(body['items'])} item ki list bheji")
+        res = _send(tenant, d, "deal_ask", body, f"{len(body['items'])} item list sent")
     except DealError:
         with session() as s:
             row = s.get(Deal, d.id)
@@ -909,12 +909,12 @@ def ask(tenant: str, to: str, items: Any, mode: str = "pickup", need_by: str = "
         raise
     d = _get(tenant, d.id)
     if d.state == "asked" and not tag:     # (a quote may already have come back while sending: its card says it all)
-        _publish(tenant, d, "info", f"Kaam ki baat {_say_who(peer)} ko bheji: {body['service']['what']}." if body.get("service")
-                 else f"List {_say_who(peer)} ko bheji ({len(body['items'])} item).")
+        _publish(tenant, d, "info", f"Job request sent to {_say_who(peer)}: {body['service']['what']}." if body.get("service")
+                 else f"List sent to {_say_who(peer)} ({len(body['items'])} items).")
     if body.get("service"):
-        return {"status": res.get("status"), "deal": view(d), "say": f"Kaam ki baat {_say_who(peer)} ko bheji. Unka Hoola daam aur "
-                "khaali samay bhejega; aap samay chunengi tabhi booking hogi (pata bhi tabhi jaayega)."}
-    return {"status": res.get("status"), "deal": view(d), "say": f"List bhej di. {_say_who(peer)} ka Hoola stock dekh kar quote bhejega."}
+        return {"status": res.get("status"), "deal": view(d), "say": f"Job request sent to {_say_who(peer)}. Their Hoola will send the price and "
+                "free times; the booking happens only when you choose a time (the address goes only then)."}
+    return {"status": res.get("status"), "deal": view(d), "say": f"List sent. {_say_who(peer)}'s Hoola will check stock and send a quote."}
 
 
 def confirm_card(tenant: str, deal_id: str) -> dict[str, Any] | None:
@@ -939,23 +939,23 @@ def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_
     if not by_tap:
         from . import mandate
         if not (by_mandate and mandate.allows(tenant, by_mandate, d)):
-            raise DealError("Order pakka karna sirf aapke tap se hota hai: card par 'Haan, confirm' dabaiye.")
+            raise DealError("An order is confirmed only with your tap: press 'Yes, confirm' on the card.")
     if d.role != "buyer":
-        raise DealError("Yeh aapki khareed nahi hai.")
+        raise DealError("This is not your purchase.")
     if _expired(d):
         d.state, d.waiting = "expired", ""
         _save(d)
-        raise DealError("Quote ka samay khatam ho gaya. Naya quote maangiye.")
+        raise DealError("The quote has expired. Ask for a new quote.")
     if d.state != "quoted":
-        raise DealError(f"Abhi '{STATE_WORDS.get(d.state, d.state)}' hai; confirm nahi ho sakta.")
+        raise DealError(f"It is '{STATE_WORDS.get(d.state, d.state)}' now; it cannot be confirmed.")
     q = d.quote or {}
     if v is not None and int(v) != int(q.get("v") or 0):
-        raise DealError("Quote badal gaya hai; naya quote dekh kar confirm kijiye.")
+        raise DealError("The quote has changed; look at the new quote and confirm.")
     if not any(l.get("qty") for l in q.get("lines") or []):
-        raise DealError("Is quote mein koi saamaan nahi hai.")
+        raise DealError("This quote has no goods in it.")
     opts = list(((q.get("terms") or {}).get("pay_options")) or ["upi", "counter"])
     if pay and pay not in opts:
-        raise DealError(f"Is quote mein '{pay}' nahi hai (khata sirf dukaan ke kholne par). Chuniye: " + ", ".join(opts))
+        raise DealError(f"This quote does not have '{pay}' (credit account only when the shop opens one). Choose: " + ", ".join(opts))
     pay = pay or ("upi" if "upi" in opts else opts[0])
     body = {"v": q.get("v"), "quote_hash": quote_hash(q), "mode": mode if mode in ("pickup", "delivery") else
             (d.ask or {}).get("mode", "pickup"), "pay": pay}
@@ -973,7 +973,7 @@ def confirm(tenant: str, deal_id: str, v: int | None = None, mode: str = "", by_
     STATS["confirms"] += 1
     d = _get(tenant, deal_id)
     if d.state == "confirmed":
-        _publish(tenant, d, "info", f"Order confirm bheja ({inr(q.get('total'))}). Unka Hoola stock dekh kar pakka karega.")
+        _publish(tenant, d, "info", f"Order confirmation sent ({inr(q.get('total'))}). Their Hoola will check stock and confirm it.")
     from . import mandate, rfq
     rfq.after_confirm(tenant, d)                        # v0.112 a compare: thank the others ("is baar nahi")
     mandate.after_confirm(tenant, d, by_tap)            # v0.112 her first tapped standing order sets the base prices
@@ -1006,17 +1006,17 @@ def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", val
     """The seller's quote goes out: the built draft, or her changed lines (qty / price per item). Code does the sums."""
     d = _get(tenant, deal_id)
     if d.role != "seller":
-        raise DealError("Quote sirf bechne wala bhejta hai.")
+        raise DealError("Only the seller sends a quote.")
     if d.state not in ("asked", "quoted"):
-        raise DealError(f"Abhi '{STATE_WORDS.get(d.state, d.state)}' hai; quote nahi bhej sakte.")
+        raise DealError(f"It is '{STATE_WORDS.get(d.state, d.state)}' now; a quote cannot be sent.")
     base = dict(d.draft or {}) or build_quote(tenant, (d.ask or {}).get("items") or [])
     if lines:
         base = _edit_lines(base, lines)
     if not any(l["qty"] for l in base["lines"]):
-        raise DealError("Quote mein ek bhi item nahi hai (sab khatam / nahi mila). Mana (reject) kar dijiye ya daam / maatra dijiye.")
+        raise DealError("The quote has no items (all out of stock / not found). Decline (reject) or give a price / quantity.")
     for l in base["lines"]:
         if l["qty"] and l.get("price") is None:
-            raise DealError(f"'{l['item']}' ka daam bataiye.")
+            raise DealError(f"'{l['item']}' needs a price.")
     r = rules(tenant)
     mins = int(_num(valid_minutes, 5, 7 * 24 * 60) or selling(tenant)["valid_minutes"])
     v = int((d.quote or {}).get("v") or 0) + 1
@@ -1026,7 +1026,7 @@ def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", val
          "valid_until": (now() + timedelta(minutes=mins)).replace(microsecond=0).isoformat(),
          "note": policy.quote(note, 600), "place": r.place}
     if q["total"] > MAX_TOTAL:
-        raise DealError("Rakam bahut badi (1 crore tak).")
+        raise DealError("Amount too large (up to 1 crore).")
     from . import dealpay
     q["terms"] = dealpay.terms_for(tenant, d.peer, q["total"])          # v0.106 pay options, payee, windows
     if (d.ask or {}).get("service"):                    # v0.113 a booking: fresh free slots (or hers) + estimate
@@ -1038,10 +1038,10 @@ def send_quote(tenant: str, deal_id: str, lines: Any = None, note: str = "", val
     from . import trust
     cred = trust.credential(tenant)                     # v0.112 the server-signed verified-business credential rides along
     _send(tenant, d, "deal_quote", q | ({"vbc": cred} if cred else {}),
-          f"Quote v{v}: {inr(q['total'])}, {mins} min ke liye" + (" (khud)" if by == "rules" else ""))
+          f"Quote v{v}: {inr(q['total'])}, {mins} min validity" + (" (auto)" if by == "rules" else ""))
     STATS["quotes"] += 1
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", ("Aapke niyam se quote khud bheja: " if by == "rules" else "Quote bheja: ") + f"{inr(q['total'])}.")
+    _publish(tenant, d, "info", ("Quote sent by itself under your rules: " if by == "rules" else "Quote sent: ") + f"{inr(q['total'])}.")
     return {"status": d.state, "deal": view(d)}
 
 
@@ -1061,7 +1061,7 @@ def _edit_lines(base: dict[str, Any], lines: Any) -> dict[str, Any]:
             qty, price = _num(ch.get("qty"), 0, 1e6), _num(ch.get("price"), 0, MAX_TOTAL)
             g = _num(ch.get("gst_pct", 0), 0, 40)
             if not item or qty is None or price is None or g is None or g not in GST_RATES:
-                raise DealError(f"'{ch.get('item')}': naam, maatra, daam aur sahi GST % chahiye")
+                raise DealError(f"'{ch.get('item')}': a name, quantity, price and a valid GST % are required")
             out.append(_line(item, 0.0, qty, policy.clean_name(ch.get("unit"), 20), price, g, "substitute"))
             continue
         i = out.index(next(x for x in out if x["item"] == cur["item"]))
@@ -1069,17 +1069,17 @@ def _edit_lines(base: dict[str, Any], lines: Any) -> dict[str, Any]:
         if ch.get("qty") is not None:
             qv = _num(ch["qty"], 0, 1e6)
             if qv is None:
-                raise DealError(f"{ln['item']}: maatra galat")
+                raise DealError(f"{ln['item']}: wrong quantity")
             ln["qty"] = qv
         if ch.get("price") is not None:
             pv = _num(ch["price"], 0, MAX_TOTAL)
             if pv is None:
-                raise DealError(f"{ln['item']}: daam galat")
+                raise DealError(f"{ln['item']}: wrong price")
             ln["price"] = pv
         if ch.get("gst_pct") is not None:
             gv = _num(ch["gst_pct"], 0, 40)
             if gv is None or gv not in GST_RATES:
-                raise DealError(f"{ln['item']}: GST % galat")
+                raise DealError(f"{ln['item']}: wrong GST %")
             ln["gst_pct"] = gv
         status = "substitute" if ln["status"] == "substitute" else \
             ("ok" if ln["qty"] >= ln["asked"] else ("partial" if ln["qty"] > 0 else "out"))
@@ -1099,7 +1099,7 @@ def _stock_holds(tenant: str, q: dict[str, Any], smap: list[str] | None = None) 
         if it is None:
             continue                                # an extra / substitute line she typed herself: her word
         if it["free"] is not None and it["free"] + 1e-9 < l["qty"]:
-            short.append(f"{l['item']} ({it['free']:g} bacha)")
+            short.append(f"{l['item']} ({it['free']:g} left)")
     return short
 
 
@@ -1107,17 +1107,17 @@ def accept(tenant: str, deal_id: str, ready_by: str = "", note: str = "", by: st
     """The seller commits: order number, stock held for it, pick list for packing."""
     d = _get(tenant, deal_id)
     if d.role != "seller" or d.state != "confirmed":
-        raise DealError(f"Abhi '{STATE_WORDS.get(d.state, d.state)}' hai; order pakka nahi ho sakta.")
+        raise DealError(f"It is '{STATE_WORDS.get(d.state, d.state)}' now; the order cannot be confirmed.")
     short = _stock_holds(tenant, d.quote or {}, d.smap or [])
     if short:
-        raise DealError("Stock kam pad gaya: " + ", ".join(short) + ". Mana kijiye ya naya quote bhejiye.")
+        raise DealError("Stock ran short: " + ", ".join(short) + ". Decline or send a new quote.")
     from . import dealpay
     pay_part = dealpay.at_accept(tenant, d)            # v0.106 khata limit checked again; the pay record starts
     rules(tenant)                                  # makes her rules row if missing
     from . import booking
     svc = booking.is_service(d)                    # v0.113 a booking gets a job number (J-1001), the slot is held
     if svc and not booking.slot_free(tenant, str((d.ask or {}).get("slot") or ""), d.id):
-        raise DealError("Yeh samay ab khaali nahi raha. Mana kijiye ya naya quote (naye samay) bhejiye.")
+        raise DealError("This time is no longer free. Decline or send a new quote (with new times).")
     jprefix = booking.rules(tenant).prefix if svc else ""
     with session() as s:
         rr = s.get(DealRules, tenant)
@@ -1145,7 +1145,7 @@ def accept(tenant: str, deal_id: str, ready_by: str = "", note: str = "", by: st
     d.number, d.accept, d.reserved, d.waiting = number, body, held, ""
     d.pay, d.accepted_at = pay_part["pay"], now()
     try:
-        _send(tenant, d, "deal_accept", body, f"Order {number} pakka" + (" (niyam se)" if by == "rules" else ""))
+        _send(tenant, d, "deal_accept", body, f"Order {number} confirmed" + (" (by rules)" if by == "rules" else ""))
     except DealError:
         _release(tenant, held)
         raise
@@ -1154,19 +1154,19 @@ def accept(tenant: str, deal_id: str, ready_by: str = "", note: str = "", by: st
     if svc:                                        # no pick list for a booking; the job card starts
         d = _get(tenant, deal_id)
         sv = (d.quote or {}).get("service") or {}
-        _publish(tenant, d, "booked", ("Aapke niyam se booking khud pakki hui. " if by == "rules" else "") +
+        _publish(tenant, d, "booked", ("Booking confirmed by itself under your rules. " if by == "rules" else "") +
                  f"Job {number}: {sv.get('what', '')}, {booking.say_slot(tenant, d.ask.get('slot', ''))}" +
-                 (f", pata: {d.ask.get('address')}" if d.ask.get("address") else "") + ".",
-                 f"Booking {number} pakki ({_say_who(d.peer)}), samay {booking.say_slot(tenant, d.ask.get('slot', ''))}. deal_id={d.id}.")
+                 (f", address: {d.ask.get('address')}" if d.ask.get("address") else "") + ".",
+                 f"Booking {number} confirmed ({_say_who(d.peer)}), time {booking.say_slot(tenant, d.ask.get('slot', ''))}. deal_id={d.id}.")
         return {"status": d.state, "number": number, "pick_list": [], "packers": [], "deal": view(d)}
     pick = [f"{l['item']} x {l['qty']:g} {l.get('unit') or ''}".strip() for l in (d.quote or {}).get("lines") or [] if l.get("qty")]
     from . import pick as pk
     sent = pk.send_tasks(tenant, deal_id)          # v0.105 the pick list goes to her packers' own Hoolas
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "pack", ("Aapke niyam se order khud pakka hua. " if by == "rules" else "") +
-             f"Order {number}: {len(pick)} item pack karne hain." +
-             (f" Pick list {', '.join(sent)} ko bheji." if sent else ""),
-             f"Order {number} pakka ({_say_who(d.peer)}). Pick list: " + "; ".join(pick)[:900] + f". deal_id={d.id}.")
+    _publish(tenant, d, "pack", ("Order confirmed by itself under your rules. " if by == "rules" else "") +
+             f"Order {number}: {len(pick)} items to pack." +
+             (f" Pick list sent to {', '.join(sent)}." if sent else ""),
+             f"Order {number} confirmed ({_say_who(d.peer)}). Pick list: " + "; ".join(pick)[:900] + f". deal_id={d.id}.")
     return {"status": d.state, "number": number, "pick_list": pick, "packers": sent, "deal": view(d)}
 
 
@@ -1186,20 +1186,20 @@ def _release(tenant: str, held: list[dict[str, Any]], used: bool = False) -> Non
 def reject(tenant: str, deal_id: str, reason: str = "") -> dict[str, Any]:
     d = _get(tenant, deal_id)
     if d.role != "seller":
-        raise DealError("Khareedne wala cancel karta hai, mana nahi.")
-    reason = policy.quote(reason, 300) or "Abhi yeh order nahi le sakte."
+        raise DealError("A buyer cancels, not declines.")
+    reason = policy.quote(reason, 300) or "We cannot take this order right now."
     d.reason, d.waiting = reason, ""
-    _send(tenant, d, "deal_reject", {"reason": reason}, "Mana: " + reason)
+    _send(tenant, d, "deal_reject", {"reason": reason}, "Declined: " + reason)
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", "Mana kar diya.")
+    _publish(tenant, d, "info", "Declined.")
     return {"status": d.state, "deal": view(d)}
 
 
 def packing(tenant: str, deal_id: str, note: str = "") -> dict[str, Any]:
     d = _get(tenant, deal_id)
     if d.role != "seller":
-        raise DealError("Packing bechne wala karta hai.")
-    _send(tenant, d, "deal_status", {"status": "packing", "note": policy.quote(note, 300)}, "Packing shuru")
+        raise DealError("Packing is done by the seller.")
+    _send(tenant, d, "deal_status", {"status": "packing", "note": policy.quote(note, 300)}, "Packing started")
     return {"status": "packing", "deal": view(_get(tenant, deal_id))}
 
 
@@ -1207,22 +1207,22 @@ def mark_ready(tenant: str, deal_id: str, place: str = "", minutes: Any = None, 
     """Packed: a 4-digit pickup code goes to the buyer; at the counter the code is checked before handing over."""
     d = _get(tenant, deal_id)
     if d.role != "seller":
-        raise DealError("Parcel bechne wala taiyaar karta hai.")
+        raise DealError("The seller gets the parcel ready.")
     again = d.state == "ready"
     r = rules(tenant)
     mins = int(_num(minutes, 15, 7 * 24 * 60) or r.pickup_minutes)
-    place = policy.quote(place, 200) or r.place or "Dukaan ke counter par"
+    place = policy.quote(place, 200) or r.place or "At the shop counter"
     code = f"{secrets.randbelow(9000) + 1000}"
     body = {"number": d.number, "code": code, "place": place,
             "until": (now() + timedelta(minutes=mins)).replace(microsecond=0).isoformat(), "note": policy.quote(note, 300)}
     d.ready = body
-    _send(tenant, d, "deal_ready", body, f"Parcel taiyaar: {place}")
+    _send(tenant, d, "deal_ready", body, f"Parcel ready: {place}")
     STATS["ready"] += 1
     from . import pick as pk
     pk.notify(tenant, deal_id, "ready")
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", (f"Order {d.number}: naya pickup code aur samay graahak ko bheja (purana code band)." if again else
-                                 f"Order {d.number} taiyaar; graahak ko pickup code bheja. Counter par code milaiye."))
+    _publish(tenant, d, "info", (f"Order {d.number}: new pickup code and time sent to the customer (the old code is off)." if again else
+                                 f"Order {d.number} is ready; pickup code sent to the customer. Match the code at the counter."))
     return {"status": d.state, "deal": view(d)}
 
 
@@ -1231,35 +1231,35 @@ def handed_over(tenant: str, deal_id: str, code: str = "", note: str = "", colle
     counter: `collect` = {mode cash|upi, amount, utr}). Stock held for the order is taken out of the count."""
     d = _get(tenant, deal_id)
     if d.role != "seller" or d.state != "ready":
-        raise DealError("Pehle parcel taiyaar (ready) hona chahiye.")
+        raise DealError("The parcel must be ready first.")
     want = str((d.ready or {}).get("code") or "")
     if not want or str(code or "").strip() != want:
         STATS["refused"] += 1
-        raise DealError("Pickup code nahi mila. Graahak se unke Hoola mein dikha code poochhiye.")
+        raise DealError("Pickup code not found. Ask the customer for the code shown in their Hoola.")
     from . import dealpay
     dealpay.check_handover(tenant, d, collect)           # v0.106 raises when money is open and nothing was collected
     d = _get(tenant, deal_id)
     d.handed_at = now()
-    _send(tenant, d, "deal_status", {"status": "handed_over", "note": policy.quote(note, 300)}, "Saamaan de diya")
+    _send(tenant, d, "deal_status", {"status": "handed_over", "note": policy.quote(note, 300)}, "Goods handed over")
     _release(tenant, d.reserved or [], used=True)
     STATS["handed_over"] += 1
     from . import pick as pk
     pk.notify(tenant, deal_id, "handed_over")
     low = low_stock(tenant, [h.get("stock_id") for h in d.reserved or []])
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", f"Order {d.number} graahak ko de diya." +
-             (" Stock kam: " + ", ".join(f"{x['name']} ({_qty(x['free'])} bacha)" for x in low) + "." if low else ""))
+    _publish(tenant, d, "info", f"Order {d.number} handed over to the customer." +
+             (" Low stock: " + ", ".join(f"{x['name']} ({_qty(x['free'])} left)" for x in low) + "." if low else ""))
     return {"status": d.state, "deal": view(d)}
 
 
 def cancel(tenant: str, deal_id: str, reason: str = "") -> dict[str, Any]:
     d = _get(tenant, deal_id)
     if d.state in END_STATES:
-        raise DealError(f"Yeh deal pehle hi '{STATE_WORDS.get(d.state, d.state)}' hai.")
+        raise DealError(f"This deal is already '{STATE_WORDS.get(d.state, d.state)}'.")
     if d.role == "buyer" and d.state == "ready":
-        raise DealError("Parcel taiyaar ho chuka hai; cancel ke liye dukaan se baat kijiye.")
+        raise DealError("The parcel is already ready; talk to the shop to cancel.")
     if d.state in ("handed_over", "disputed"):
-        raise DealError("Saamaan de diya gaya hai; ab cancel nahi, kuch galat ho to shikayat (dispute) kijiye.")
+        raise DealError("The goods have been handed over; it cannot be cancelled now. If something is wrong, raise a complaint (dispute).")
     from . import dealpay
     if d.role == "buyer" and dealpay.cancel_needs_ok(d):  # v0.106 after the seller's free-cancel window: a request
         return dealpay.cancel_request(tenant, d.id, reason)
@@ -1273,7 +1273,7 @@ def cancel(tenant: str, deal_id: str, reason: str = "") -> dict[str, Any]:
         pk.notify(tenant, deal_id, "cancelled")
     dealpay.after_cancel(tenant, deal_id)
     d = _get(tenant, deal_id)
-    _publish(tenant, d, "info", "Deal cancel ho gayi." + (f" {d.pay.get('refund_say')}" if (d.pay or {}).get("refund_say") else ""))
+    _publish(tenant, d, "info", "Deal cancelled." + (f" {d.pay.get('refund_say')}" if (d.pay or {}).get("refund_say") else ""))
     return {"status": d.state, "deal": view(d)}
 
 
@@ -1291,18 +1291,18 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules_
 
 def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, card: dict, link) -> dict[str, Any]:
     if policy.secret_found(policy.all_text(raw)):
-        raise DealError("mana ki gayi jaankari")
+        raise DealError("information that is not allowed")
     d = _by_key(tenant, env.get("thread", ""), peer)
     try:
         step = int(raw.get("step"))
     except (TypeError, ValueError):
-        raise DealError("step galat")
+        raise DealError("wrong step")
     prev = str(raw.get("prev") or "")
     if kind == "deal_ask":
         if d is not None:
-            raise DealError("yeh deal pehle se hai")
+            raise DealError("this deal already exists")
         if step != 1 or prev:
-            raise DealError("pehla step galat")
+            raise DealError("wrong first step")
         with session() as s:
             from sqlalchemy import func
             n = s.scalar(select(func.count()).select_from(Deal).where(
@@ -1312,9 +1312,9 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         from . import trust                             # v0.112 a blocked / much-reported sender gets far less
         tr = trust.tier(tenant, peer)
         if tr["tier"] == "blocked" and not tr["limited"]:
-            raise DealError("is Hoola se list nahi li jaati")
+            raise DealError("lists are not accepted from this Hoola")
         if n >= (trust.LIMITED_ASKS_PER_DAY if tr["limited"] else ASKS_PER_DAY) or open_n >= OPEN_PER_PEER:
-            raise DealError("aaj is graahak se bahut saari list aa chuki hain")
+            raise DealError("too many lists have come from this customer today")
         body = check_ask(raw)
         title = body["title"] or ", ".join(f"{i['item']} {i['qty']:g}" for i in body["items"][:3]) or \
             ((body.get("service") or {}).get("what") or "Service")[:120]
@@ -1323,7 +1323,7 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
                  title=title[:200], state="asked", ask=body, step=0, last_hash="", history=[], quote={}, draft={},
                  accept={}, ready={}, reserved=[], smap=[], reason="", waiting="", number="", created_at=now(),
                  updated_at=now())
-        _record(d, kind, raw, "buyer", f"{len(body['items'])} item ki list aayi")
+        _record(d, kind, raw, "buyer", f"{len(body['items'])} item list received")
         if body.get("service"):                    # v0.113 a booking: her rate card + her free slots
             from . import booking
             d.draft = booking.draft(tenant, body)
@@ -1334,18 +1334,18 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         STATS["asks"] += 1
         return _after_ask(tenant, d, card)
     if d is None:
-        raise DealError("yeh deal yahan nahi hai")
+        raise DealError("this deal is not here")
     if (kind in FROM_SELLER and d.role == "seller") or (kind in FROM_BUYER and d.role == "buyer"):
-        raise DealError("yeh step aapki taraf se nahi aa sakta")
+        raise DealError("this step cannot come from your side")
     if step != d.step + 1 or prev != d.last_hash:
-        raise DealError("step kram se nahi (purana / dohraya hua / badla hua)")
+        raise DealError("step out of order (old / repeated / changed)")
     if _expired(d) and kind != "deal_cancel":
         d.state = "expired"
         _save(d)
-        raise DealError("quote ka samay khatam")
+        raise DealError("quote expired")
     key = (d.state, _event_key(kind, raw))
     if key not in TRANSITIONS:
-        raise DealError(f"abhi '{d.state}' hai; '{kind}' nahi ho sakta")
+        raise DealError(f"it is '{d.state}' now; '{kind}' cannot be done")
     who = idn.label(card)
     from . import dealpay
     if kind in dealpay.STEP_KINDS:                       # v0.106 money / cancel request / check / dispute steps
@@ -1356,7 +1356,7 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
     if kind == "deal_quote":
         q = check_quote(raw)
         if q["v"] <= int((d.quote or {}).get("v") or 0):
-            raise DealError("purana quote")
+            raise DealError("old quote")
         _record(d, kind, raw, "seller", f"Quote v{q['v']}: {inr(q['total'])}")
         from . import trust
         q["vbc"] = trust.check(raw.get("vbc"), d.peer)     # v0.112 checked here; not part of the quote hash
@@ -1364,38 +1364,38 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         _save(d)
         parts = []
         if q["short"]:
-            parts.append("kam maal: " + ", ".join(q["short"]))
+            parts.append("short on: " + ", ".join(q["short"]))
         if q["missing"]:
-            parts.append("nahi hai: " + ", ".join(q["missing"]))
+            parts.append("not available: " + ", ".join(q["missing"]))
         subs = [l["item"] for l in q["lines"] if l["status"] == "substitute"]
         if subs:
-            parts.append("badle mein: " + ", ".join(subs))
+            parts.append("substitutes: " + ", ".join(subs))
         from . import mandate, rfq
         held = rfq.on_quote(tenant, d) or mandate.on_quote(tenant, d)      # v0.112 a compare / standing order holds it
         if held:
             return {"ok": True, "status": "quoted"}
-        say = f"{who} ka quote: {inr(q['total'])} (GST {inr(q['gst'])} milakar)" + (f"; {'; '.join(parts)}" if parts else "") + \
-              f". Haan dabaane par hi order jaayega."
-        _publish(tenant, d, "confirm", say, f"Deal quote aaya {who} se: {inr(q['total'])}. " + "; ".join(parts) +
-                 f" Owner card par 'Haan, confirm' dabaye tabhi order jaata hai (tum confirm nahi kar sakte). deal_id={d.id}.")
+        say = f"{who}'s quote: {inr(q['total'])} (incl. GST {inr(q['gst'])})" + (f"; {'; '.join(parts)}" if parts else "") + \
+              f". The order goes only when you press Yes."
+        _publish(tenant, d, "confirm", say, f"Deal quote received from {who}: {inr(q['total'])}. " + "; ".join(parts) +
+                 f" The order goes only when the owner presses 'Yes, confirm' on the card (you cannot confirm it). deal_id={d.id}.")
         return {"ok": True, "status": "quoted"}
     if kind == "deal_confirm":
         q = d.quote or {}
         try:
             v = int(raw.get("v"))
         except (TypeError, ValueError):
-            raise DealError("version galat")
+            raise DealError("wrong version")
         if v != int(q.get("v") or 0) or str(raw.get("quote_hash") or "") != quote_hash(q):
-            raise DealError("yeh quote ab lagoo nahi (badal gaya)")
+            raise DealError("this quote no longer applies (it changed)")
         opts = list(((q.get("terms") or {}).get("pay_options")) or ["upi", "counter"])
         choice = raw.get("pay") if raw.get("pay") in opts else ("upi" if "upi" in opts else opts[0])
         rule_no = policy.clean_name(raw.get("mandate"), 20)        # v0.112 placed under the buyer's standing order
         from . import booking
         bk = booking.on_confirm(tenant, d, raw)         # v0.113 the slot is still free; the address stays with the job
         _record(d, kind, raw, "buyer", f"Quote v{v} confirm, {inr(q.get('total'))}, " +
-                {"upi": "UPI se", "counter": "counter par", "khata": "khata par"}.get(choice, choice) +
+                {"upi": "by UPI", "counter": "at the counter", "khata": "on credit account"}.get(choice, choice) +
                 (f" (standing order {rule_no})" if rule_no else "") +
-                (f", samay {booking.say_slot(tenant, bk['slot'])}" if bk else ""))
+                (f", time {booking.say_slot(tenant, bk['slot'])}" if bk else ""))
         d.state, d.waiting = "confirmed", "accept"
         d.pay = dict(d.pay or {}, choice=choice)
         if bk:
@@ -1409,7 +1409,7 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         rb = _when(raw.get("ready_by"))
         if rb and now() - timedelta(hours=1) < rb < now() + timedelta(days=60):
             body["ready_by"] = rb.isoformat()
-        _record(d, kind, raw, "seller", f"Order {body['number']} pakka")
+        _record(d, kind, raw, "seller", f"Order {body['number']} confirmed")
         d.state, d.number, d.accept, d.waiting = "accepted", body["number"], body, ""
         from . import dealpay
         d.pay, d.accepted_at = dealpay.buyer_at_accept(tenant, d, raw), now()
@@ -1418,31 +1418,31 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         if body["ready_by"]:
             try:
                 from ..life import fmt_local, tz_of
-                when = " · taiyaar hoga " + fmt_local(datetime.fromisoformat(body["ready_by"]), tz_of(tenant))
+                when = " · will be ready " + fmt_local(datetime.fromisoformat(body["ready_by"]), tz_of(tenant))
             except Exception:
                 when = ""
         if (d.quote or {}).get("service"):          # v0.113 a booking: say the slot and the job number
             from . import booking
-            _publish(tenant, d, "booked", f"{who} ne booking pakki ki: {body['number']}, "
-                     f"{booking.say_slot(tenant, (d.ask or {}).get('slot', ''))}. Ek din pehle aur 2 ghante pehle yaad dilaunga.")
+            _publish(tenant, d, "booked", f"{who} confirmed the booking: {body['number']}, "
+                     f"{booking.say_slot(tenant, (d.ask or {}).get('slot', ''))}. I will remind you one day before and 2 hours before.")
             return {"ok": True, "status": "accepted"}
-        _publish(tenant, d, "info", f"{who} ne order pakka kiya: {body['number']}{when}.")
+        _publish(tenant, d, "info", f"{who} confirmed the order: {body['number']}{when}.")
         return {"ok": True, "status": "accepted"}
     if kind == "deal_reject":
         reason = policy.quote(raw.get("reason"), 300)
-        _record(d, kind, raw, "seller", "Mana: " + reason)
+        _record(d, kind, raw, "seller", "Declined: " + reason)
         d.state, d.reason, d.waiting = "rejected", reason, ""
         _save(d)
         from . import mandate, rfq
         if rfq.on_reject(tenant, d) or mandate.on_reject(tenant, d):    # v0.112 a compare / standing order says it
             return {"ok": True, "status": "rejected"}
-        _publish(tenant, d, "info", f"{who} ne mana kiya: {reason}")
+        _publish(tenant, d, "info", f"{who} declined: {reason}")
         return {"ok": True, "status": "rejected"}
     if kind == "deal_status":
         st = raw.get("status")
         note = policy.quote(raw.get("note"), 300)
-        _record(d, kind, raw, "seller", {"packing": "Packing shuru", "delayed": "Der hogi", "handed_over": "Saamaan mil gaya",
-                                         "on_the_way": "Raste mein", "arrived": "Pahunch gaye"}[st]
+        _record(d, kind, raw, "seller", {"packing": "Packing started", "delayed": "Running late", "handed_over": "Goods received",
+                                         "on_the_way": "On the way", "arrived": "Arrived"}[st]
                 + (f": {note}" if note else ""))
         d.state = TRANSITIONS[key]
         if st == "on_the_way":                        # v0.113 a booking: when they will reach
@@ -1455,22 +1455,22 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         _save(d)
         if st == "handed_over":
             hrs = int(((d.quote or {}).get("terms") or {}).get("dispute_hours") or 48)
-            _publish(tenant, d, "check", f"{who}: order {d.number} aapko de diya gaya. Sab sahi mila? Kuch kam / kharab ho to "
-                     f"{hrs} ghante ke andar bataiye." + (f" {note}" if note else ""))
+            _publish(tenant, d, "check", f"{who}: order {d.number} has been handed over to you. Is everything right? If anything is missing or damaged, say so within "
+                     f"{hrs} hours." + (f" {note}" if note else ""))
             return {"ok": True, "status": d.state}
         eta_say = ""
         if st == "on_the_way" and (d.job or {}).get("eta"):
             from . import booking
-            eta_say = " Pahunchenge lagbhag " + booking.say_slot(tenant, d.job["eta"]) + "."
-        say = {"packing": f"{who}: aapka order pack ho raha hai.", "delayed": f"{who}: thodi der hogi.",
-               "handed_over": f"{who}: order {d.number} aapko de diya gaya. ✓",
-               "on_the_way": f"{who}: raste mein hain ({d.number}).{eta_say}",
-               "arrived": f"{who}: pahunch gaye, kaam shuru."}[st] + (f" {note}" if note else "")
+            eta_say = " Arriving around " + booking.say_slot(tenant, d.job["eta"]) + "."
+        say = {"packing": f"{who}: your order is being packed.", "delayed": f"{who}: there will be a short delay.",
+               "handed_over": f"{who}: order {d.number} has been handed over to you. ✓",
+               "on_the_way": f"{who}: on the way ({d.number}).{eta_say}",
+               "arrived": f"{who}: arrived, work started."}[st] + (f" {note}" if note else "")
         _publish(tenant, d, "info", say)
         return {"ok": True, "status": d.state}
     if kind == "deal_ready":
         rdy = check_ready(raw)
-        _record(d, kind, raw, "seller", "Parcel taiyaar")
+        _record(d, kind, raw, "seller", "Parcel ready")
         d.state, d.ready = "ready", rdy
         _save(d)
         try:
@@ -1478,9 +1478,9 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
             until = fmt_local(datetime.fromisoformat(rdy["until"]), tz_of(tenant))
         except Exception:
             until = rdy["until"]
-        _publish(tenant, d, "ready", f"Parcel taiyaar: {rdy['place']}. Counter par code {rdy['code']} dikhaiye ({until} tak).",
-                 f"{who}: order {d.number} ka parcel taiyaar hai, {rdy['place']}, {until} tak. Pickup code card par hai "
-                 f"(code sirf owner ko batao, kisi aur Hoola ko kabhi nahi). deal_id={d.id}.")
+        _publish(tenant, d, "ready", f"Parcel ready: {rdy['place']}. Show code {rdy['code']} at the counter (until{until}).",
+                 f"{who}: order {d.number}'s parcel is ready, {rdy['place']}, {until}, until "
+                 f". The pickup code is on the card (tell the code only to the owner, never to another Hoola). deal_id={d.id}.")
         return {"ok": True, "status": "ready"}
     if kind == "deal_cancel":
         reason = policy.quote(raw.get("reason"), 300)
@@ -1495,7 +1495,7 @@ def _receive(tenant: str, kind: str, raw: dict[str, Any], peer: str, env: dict, 
         from . import dealpay
         dealpay.after_cancel(tenant, d.id)
         d = _get(tenant, d.id)
-        _publish(tenant, d, "info", f"{who} ne deal cancel ki: {reason}" +
+        _publish(tenant, d, "info", f"{who} cancelled the deal: {reason}" +
                  (f" {d.pay.get('refund_say')}" if (d.pay or {}).get("refund_say") else ""))
         return {"ok": True, "status": "cancelled"}
     raise DealError("unknown")
@@ -1517,23 +1517,23 @@ def _after_ask(tenant: str, d: Deal, card: dict[str, Any]) -> dict[str, Any]:
     _save(d)
     gaps = []
     if q.get("missing"):
-        gaps.append("nahi hai: " + ", ".join(q["missing"]))
+        gaps.append("not available: " + ", ".join(q["missing"]))
     if q.get("short"):
-        gaps.append("kam hai: " + ", ".join(q["short"]))
+        gaps.append("short on: " + ", ".join(q["short"]))
     if q.get("unknown"):
-        gaps.append("stock / daam pata nahi: " + ", ".join(q["unknown"]))
-    say = f"{who} ne {len((d.ask or {}).get('items') or [])} item ki list bheji. Quote taiyaar: {inr(q.get('total'))}" + \
-          (f" ({'; '.join(gaps)})" if gaps else "") + ". Bhejun?"
+        gaps.append("stock / price not known: " + ", ".join(q["unknown"]))
+    say = f"{who} sent a list of {len((d.ask or {}).get('items') or [])} items. Quote ready: {inr(q.get('total'))}" + \
+          (f" ({'; '.join(gaps)})" if gaps else "") + ". Send it?"
     if (d.ask or {}).get("service"):                    # v0.113 a booking request
         from . import booking
         sv = d.ask["service"]
-        say = (f"{who} ko kaam chahiye: \"{sv.get('what')}\"" + (f" ({sv.get('area')})" if sv.get("area") else "") +
-               (f", {sv.get('when')}" if sv.get("when") else "") + f". Code ka quote {inr(q.get('total'))}" +
-               (f" ({'; '.join(gaps)})" if gaps else "") + ". Khaali samay: " +
-               (", ".join(booking.say_slot(tenant, x) for x in q.get("slots") or []) or "koi nahi") +
-               ". Daam / estimate / samay badal kar bhejun?")
-    _publish(tenant, d, "quote", say, f"Deal list aayi {who} se. Code ne aapke stock se quote banaya: {inr(q.get('total'))}. "
-             + "; ".join(gaps) + f" Owner se poochho: quote bhejein / daam badlein / mana. deal_id={d.id}.")
+        say = (f"{who} needs a job done: \"{sv.get('what')}\"" + (f" ({sv.get('area')})" if sv.get("area") else "") +
+               (f", {sv.get('when')}" if sv.get("when") else "") + f". Quote from code: {inr(q.get('total'))}" +
+               (f" ({'; '.join(gaps)})" if gaps else "") + ". Free times: " +
+               (", ".join(booking.say_slot(tenant, x) for x in q.get("slots") or []) or "none") +
+               ". Change the price / estimate / time before sending?")
+    _publish(tenant, d, "quote", say, f"Deal list received from {who}. Code made a quote from your stock: {inr(q.get('total'))}. "
+             + "; ".join(gaps) + f" Ask the owner: send the quote / change prices / decline. deal_id={d.id}.")
     return {"ok": True, "status": "asked"}
 
 
@@ -1551,8 +1551,8 @@ def _after_confirm(tenant: str, d: Deal, who: str) -> dict[str, Any]:
             return {"ok": True, "status": "accepted"}
         except DealError:
             pass
-    _publish(tenant, d, "accept", f"{who} ne {inr(q.get('total'))} ka order confirm kiya. Pakka karein?",
-             f"Deal confirm aaya {who} se ({inr(q.get('total'))}). Owner 'Pakka' dabaye to order number + pick list banegi. deal_id={d.id}.")
+    _publish(tenant, d, "accept", f"{who}: order of {inr(q.get('total'))} confirmed. Confirm it?",
+             f"Deal confirmation received from {who} ({inr(q.get('total'))}). When the owner presses 'Confirm order', the order number + pick list are made. deal_id={d.id}.")
     return {"ok": True, "status": "confirmed"}
 
 
@@ -1572,8 +1572,8 @@ def tick() -> int:
                 due.append(d)
     for d in due:
         try:
-            _publish(d.tenant_id, d, "info", f"{_say_who(d.peer)} wale quote ka samay khatam ho gaya." +
-                     (" Zaroorat ho to dobara list bhejiye." if d.role == "buyer" else ""))
+            _publish(d.tenant_id, d, "info", f"{_say_who(d.peer)}: the quote has expired." +
+                     (" Send the list again if you still need it." if d.role == "buyer" else ""))
         except Exception:
             pass
         n += 1
@@ -1592,11 +1592,11 @@ def tick() -> int:
     for d in late:
         try:
             if d.role == "seller":
-                _publish(d.tenant_id, d, "pack", f"Order {d.number} ka parcel samay par nahi liya gaya. Naya samay / code bhejun "
-                         "(Parcel taiyaar dobara) ya cancel karein?")
+                _publish(d.tenant_id, d, "pack", f"Order {d.number}'s parcel was not picked up in time. Send a new time / code "
+                         "(Parcel ready again) or cancel?")
             else:
-                _publish(d.tenant_id, d, "info", f"{_say_who(d.peer)}: order {d.number} lene ka samay nikal gaya. Dukaan se "
-                         "naya samay maangiye.")
+                _publish(d.tenant_id, d, "info", f"{_say_who(d.peer)}: order {d.number}: the pickup time has passed. Ask the shop "
+                         "for a new time.")
         except Exception:
             pass
         n += 1
@@ -1627,10 +1627,10 @@ def _on_catalog(tenant: str, peer: str, card: dict[str, Any], link) -> dict[str,
     import time
     so = selling(tenant)
     if so.get("catalog") == "off":
-        return {"ok": False, "status": "refused", "reason": "Yeh dukaan apni price list share nahi karti."}
+        return {"ok": False, "status": "refused", "reason": "This shop does not share its price list."}
     asks = [t for t in _CAT_ASKS.get(f"{tenant}|{peer}", []) if time.time() - t < 3600]
     if len(asks) >= 20:
-        return {"ok": False, "status": "refused", "reason": "bahut baar maangi gayi"}
+        return {"ok": False, "status": "refused", "reason": "asked too many times"}
     _CAT_ASKS[f"{tenant}|{peer}"] = asks + [time.time()]
     return {"ok": True, "status": "catalog", "items": catalog(tenant)}
 
@@ -1644,10 +1644,10 @@ def catalog_of(tenant: str, to: str) -> dict[str, Any]:
         try:
             peer = business.contact(tenant, to)
         except NetError:
-            raise DealError(f"{_say_who(peer)} se juda nahi hai.")
+            raise DealError(f"{_say_who(peer)} is not connected.")
     res = _post(tenant, peer, "deal_catalog", {}, new_id("tk"))
     if not res.get("ok"):
-        raise DealError(res.get("reason") or "Price list nahi mili.")
+        raise DealError(res.get("reason") or "Price list not found.")
     items = []
     for x in (res.get("items") or [])[:300]:
         if isinstance(x, dict) and x.get("item"):
@@ -1656,7 +1656,7 @@ def catalog_of(tenant: str, to: str) -> dict[str, Any]:
                           "price": p, "gst_pct": _num(x.get("gst_pct"), 0, 40) or 0.0,
                           **({"in_stock": bool(x["in_stock"])} if isinstance(x.get("in_stock"), bool) else {})})
     return {"from": _say_who(peer), "items": items,
-            "say": "Yeh unki price list hai (jaankari); quote list bhejne par unke stock se banta hai."}
+            "say": "This is their price list (for information); a quote is made from their stock when you send a list."}
 
 
 _COLS = {"name": ("name", "item", "naam", "product", "cheez", "particulars", "description", "item name"),
@@ -1685,7 +1685,7 @@ def import_stock(tenant: str, name: str, data: bytes) -> dict[str, Any]:
             head_i, cols = i, found
             break
     if head_i < 0:
-        raise DealError("Sheet mein 'naam' aur 'daam' ya 'stock' wale column nahi mile (pehli line mein naam likhiye).")
+        raise DealError("The sheet has no 'name' and 'price' or 'stock' columns (write the names in the first row).")
     items, bad = [], 0
     for r in rows[head_i + 1:]:
         def cell(k):
@@ -1712,9 +1712,9 @@ def import_stock(tenant: str, name: str, data: bytes) -> dict[str, Any]:
             it["unit"] = str(cell("unit"))[:30]
         items.append(it)
     if not items:
-        raise DealError("Sheet mein koi item nahi mila.")
+        raise DealError("No items found in the sheet.")
     out = set_stock(tenant, items)
-    return {"saved": out["saved"], "skipped_cells": bad, "say": f"{out['saved']} item stock mein aa gaye."}
+    return {"saved": out["saved"], "skipped_cells": bad, "say": f"{out['saved']} items added to stock."}
 
 
 def low_stock(tenant: str, ids: list[str] | None = None) -> list[dict[str, Any]]:

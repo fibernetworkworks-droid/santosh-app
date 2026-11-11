@@ -102,10 +102,10 @@ def video(tenant: str, refs: list[str]) -> list[dict[str, Any]]:
     ids = [video_id(r) for r in refs]
     bad = [r for r, i in zip(refs, ids) if not i]
     if bad:
-        raise YTError(f"Yeh YouTube link / video id samajh nahi aaya: {bad[0]}")
+        raise YTError(f"Could not understand this YouTube link / video id: {bad[0]}")
     out = _videos(public_client(tenant), [i for i in ids if i])
     if not out:
-        raise YTError("Yeh video nahi mila (private ya hata diya gaya ho sakta hai).")
+        raise YTError("This video was not found (it may be private or removed).")
     return out
 
 
@@ -132,11 +132,11 @@ def resolve_channel(c: YouTubeClient, ref: str, auth: bool = False) -> dict[str,
     else:      # a name: search, take the best channel
         found = c.get("/search", part="snippet", q=ref, type="channel", maxResults=1).get("items", [])
         if not found:
-            raise YTError(f"'{ref}' naam ka YouTube channel nahi mila.")
+            raise YTError(f"'{ref}': no YouTube channel with this name was found.")
         params["id"] = found[0]["id"]["channelId"]
     items = c.get("/channels", auth=auth, **params).get("items", [])
     if not items:
-        raise YTError(f"'{ref}' channel nahi mila.")
+        raise YTError(f"'{ref}': channel not found.")
     return channel_view(items[0])
 
 
@@ -154,7 +154,7 @@ def channel(tenant: str, ref: str, latest: int = 6) -> dict[str, Any]:
 def comments(tenant: str, ref: str, order: str = "relevance", limit: int = 20, mine: bool = False) -> dict[str, Any]:
     vid = video_id(ref)
     if not vid:
-        raise YTError("Video ka link / id do.")
+        raise YTError("Give the video's link / id.")
     c = get_client(tenant) if mine else public_client(tenant)
     items = c.get("/commentThreads", auth=mine, part="snippet", videoId=vid, maxResults=max(1, min(int(limit or 20), 100)),
                   order="time" if order == "time" else "relevance", textFormat="plainText").get("items", [])
@@ -173,16 +173,16 @@ def watch(tenant: str, ref: str, question: str = "", language: str = "") -> dict
     st = get_settings()
     vid = video_id(ref)
     if not vid:
-        raise YTError("Video ka link / id do.")
+        raise YTError("Give the video's link / id.")
     if not st.gemini_api_key:
-        raise YTError("Video dekh kar samjhane ke liye server par GEMINI_API_KEY chahiye.")
+        raise YTError("Watching and explaining a video needs GEMINI_API_KEY on the server.")
     meta = {}
     try:
         meta = video(tenant, [vid])[0]
     except (YTError, NotConnected):
         pass
     if meta.get("seconds", 0) > 3 * 3600:
-        raise YTError("Yeh video 3 ghante se lamba hai; itna lamba video nahi dekh sakte.")
+        raise YTError("This video is longer than 3 hours; a video that long cannot be watched.")
     lang = {"hi": "Hindi (Devanagari)", "hinglish": "Hinglish", "en": "English", "mr": "Marathi"}.get(language, "the user's language (Hinglish if unsure)")
     ask = (f"Answer this question about the video, citing timestamps like [12:34]: {question}" if question else
            "Summarise this video: what it is about (2 lines), the key points in order with [mm:ss] timestamps, any numbers, "
@@ -202,7 +202,7 @@ def gemini_video(url: str, prompt: str) -> str:
         contents=types.Content(parts=[types.Part(file_data=types.FileData(file_uri=url)), types.Part(text=prompt)]))
     text = (resp.text or "").strip()
     if not text:
-        raise YTError("Google video nahi dekh paya (private / age-restricted / bahut naya ho sakta hai).")
+        raise YTError("Google could not watch the video (it may be private / age-restricted / very new).")
     return text
 
 
@@ -218,7 +218,7 @@ def my_channel(tenant: str, account: str | None = None) -> dict[str, Any]:
     c = get_client(tenant, account)
     items = c.get("/channels", auth=True, part="snippet,statistics,contentDetails", mine="true").get("items", [])
     if not items:
-        raise YTError("Is Google account par koi YouTube channel nahi hai.")
+        raise YTError("This Google account has no YouTube channel.")
     ch = channel_view(items[0])
     vids = []
     if ch["uploads"]:
@@ -232,7 +232,7 @@ def my_videos(tenant: str, limit: int = 25, sort: str = "date") -> dict[str, Any
     c = get_client(tenant)
     ch = c.get("/channels", auth=True, part="contentDetails", mine="true").get("items", [])
     if not ch:
-        raise YTError("Is Google account par koi YouTube channel nahi hai.")
+        raise YTError("This Google account has no YouTube channel.")
     uploads = ch[0]["contentDetails"]["relatedPlaylists"]["uploads"]
     ids, token = [], None
     while len(ids) < min(int(limit or 25), 200):
@@ -293,9 +293,9 @@ def playlist_add(tenant: str, playlist: str, refs: list[str]) -> dict[str, Any]:
     pick = [p for p in mine if p["id"] == playlist or p["title"].lower() == playlist.strip().lower()] or \
            [p for p in mine if playlist.strip().lower() in p["title"].lower()]
     if len(pick) != 1:
-        raise YTError(f"'{playlist}' playlist nahi mili. Playlists: {', '.join(p['title'] for p in mine) or 'koi nahi'}")
+        raise YTError(f"'{playlist}': playlist not found. Playlists: {', '.join(p['title'] for p in mine) or 'none'}")
     if pick[0]["privacy"] == "public":
-        raise YTError("Yeh public playlist hai; isme jodna sab dekhenge. YouTube app mein khud jodiye ya private playlist chuniye.")
+        raise YTError("This is a public playlist; everyone will see what is added. Add it yourself in the YouTube app or choose a private playlist.")
     added = 0
     for r in refs:
         vid = video_id(r)
@@ -327,29 +327,29 @@ def plan_reply(tenant: str, conv: str, comment_id: str, text: str) -> str:
     c = get_client(tenant)
     got = c.get("/comments", auth=True, part="snippet", id=comment_id, textFormat="plainText").get("items", [])
     if not got:
-        raise YTError("Yeh comment nahi mila.")
+        raise YTError("This comment was not found.")
     orig = got[0]["snippet"]
     text = (text or "").strip()
     if not text:
-        raise YTError("Jawab kya likhna hai?")
+        raise YTError("What should the reply say?")
     return pend(tenant, conv, "reply", {"account": c.key, "comment_id": comment_id, "text": text[:9000]},
-                {"title": f"Jawab: {orig.get('authorDisplayName', '')}", "lines": [f"Unka comment: {orig.get('textDisplay', '')[:200]}",
-                                                                                   f"Aapka jawab: {text[:300]}"]})
+                {"title": f"Reply: {orig.get('authorDisplayName', '')}", "lines": [f"Their comment: {orig.get('textDisplay', '')[:200]}",
+                                                                                   f"Your reply: {text[:300]}"]})
 
 
 def plan_update(tenant: str, conv: str, ref: str, title: str | None = None, description: str | None = None,
                 tags: list[str] | None = None, privacy: str | None = None) -> str:
     vid = video_id(ref)
     if not vid:
-        raise YTError("Video ka link / id do.")
+        raise YTError("Give the video's link / id.")
     c = get_client(tenant)
     items = c.get("/videos", auth=True, part="snippet,status", id=vid).get("items", [])
     if not items:
-        raise YTError("Yeh video nahi mila.")
+        raise YTError("This video was not found.")
     v = items[0]
     mine = c.get("/channels", auth=True, part="id", mine="true").get("items", [])
     if not mine or v["snippet"].get("channelId") != mine[0]["id"]:
-        raise YTError("Yeh video aapke channel ka nahi hai; sirf apne videos badal sakte hain.")
+        raise YTError("This video is not on your channel; you can change only your own videos.")
     sn = {k: v["snippet"].get(k) for k in ("title", "description", "tags", "categoryId", "defaultLanguage") if v["snippet"].get(k) is not None}
     lines = []
     if title:
@@ -366,7 +366,7 @@ def plan_update(tenant: str, conv: str, ref: str, title: str | None = None, desc
         status["privacyStatus"] = privacy
         lines.append(f"Privacy: {v['status']['privacyStatus']} → {privacy}")
     if not lines:
-        raise YTError("Kya badalna hai? title, description, tags ya privacy do.")
+        raise YTError("What should change? Give title, description, tags or privacy.")
     return pend(tenant, conv, "update", {"account": c.key, "body": {"id": vid, "snippet": sn, "status": status}},
                 {"title": v["snippet"]["title"][:90], "lines": lines})
 
@@ -377,29 +377,29 @@ def plan_upload(tenant: str, conv: str, file_id: str, title: str, description: s
     c = get_client(tenant)
     f = ms._file_row(tenant, file_id)
     if not re.search(r"\.(mp4|mov|m4v|avi|mkv|webm|3gp|flv|wmv|mpeg|mpg)$", f.name.lower()):
-        raise YTError("Yeh video file nahi lagti (mp4 / mov / mkv ...).")
+        raise YTError("This does not look like a video file (mp4 / mov / mkv ...).")
     privacy = privacy if privacy in ("public", "unlisted", "private") else "private"
     return pend(tenant, conv, "upload", {"account": c.key, "file_id": file_id, "snippet": {"title": title[:100],
                 "description": (description or "")[:5000], "tags": [t[:30] for t in (tags or [])][:30], "categoryId": "22"},
                 "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False,
                            **({"containsSyntheticMedia": True} if synthetic else {})}},
                 {"title": title[:90], "lines": [f"File: {f.name} ({f.size // (1024 * 1024)} MB)", f"Privacy: {privacy}"]
-                 + (["AI se bani video: YouTube par 'altered / synthetic' bataya jayega"] if synthetic else [])})
+                 + (["AI-made video: it will be declared 'altered / synthetic' on YouTube"] if synthetic else [])})
 
 
 def run_pending(tenant: str, pid: str) -> dict[str, Any]:
     p = pending(tenant, pid)
     if p is None or p["status"] != "pending":
-        raise YTError("Yeh YouTube badlav ab baaki nahi hai.")
+        raise YTError("This YouTube change is no longer pending.")
     pl, conv = p["payload"], p["conversation_id"]
     c = get_client(tenant, pl["account"])
     try:
         if p["action"] == "reply":
             c.post("/comments", {"snippet": {"parentId": pl["comment_id"], "textOriginal": pl["text"]}}, "snippet")
-            msg = "Comment ka jawab YouTube par daal diya."
+            msg = "The reply to the comment has been posted on YouTube."
         elif p["action"] == "update":
             c.put("/videos", pl["body"], "snippet,status")
-            msg = f"Video badal diya: {pl['body']['snippet'].get('title', '')}"
+            msg = f"Video changed: {pl['body']['snippet'].get('title', '')}"
         elif p["action"] == "upload":
             from pathlib import Path
             import mimetypes
@@ -407,10 +407,10 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             f = ms._file_row(tenant, pl["file_id"])
             out = c.upload(Path(f.stored_path).read_bytes(), mimetypes.guess_type(f.name)[0] or "video/mp4",
                            pl["snippet"], pl["status"])
-            msg = f"Video upload ho gaya ({pl['status']['privacyStatus']}): {watch_url(out.get('id', ''))}"
+            msg = f"Video uploaded ({pl['status']['privacyStatus']}): {watch_url(out.get('id', ''))}"
             if conv:
                 publish(conv, [{"id": out.get("id", ""), "title": pl["snippet"]["title"], "url": watch_url(out.get("id", ""))}],
-                        "Upload ho gaya")
+                        "Uploaded")
         else:
             raise YTError("unknown action")
     except (YTError, NotConnected):

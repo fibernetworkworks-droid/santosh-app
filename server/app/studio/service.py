@@ -459,24 +459,24 @@ def view(tenant: str, p: dict) -> dict[str, Any]:
     phase = ("planning" if planning and not shots else "painting" if painting else "working" if working
              else "reviewing" if key in _reviewing else "assembling" if assembling
              else "ready" if outs and not outs[-1]["preview"] else "empty" if not shots else "storyboard")
-    nxt: dict[str, Any] = {"kind": "plan", "label": "Storyboard banao", "inr": 0}
+    nxt: dict[str, Any] = {"kind": "plan", "label": "Make the storyboard", "inr": 0}
     if planning:
-        nxt = {"kind": "wait", "label": "Storyboard likh raha hoon", "inr": 0}
+        nxt = {"kind": "wait", "label": "Writing the storyboard", "inr": 0}
     elif shots:
         nokf = [x for x in p["shots"] if not x.get("keyframe") and not x.get("start_image")]
         unpicked = [x for x in shots if not x["picked"]]
         last_out = _ts(outs[-1]["at"]) if outs else 0
         newer = any(_ts(v.get("created")) > last_out for vs in p.get("variants", {}).values() for v in vs) if outs else True
         if working or painting:
-            nxt = {"kind": "wait", "label": "Ban raha hai", "inr": 0}
+            nxt = {"kind": "wait", "label": "Being made", "inr": 0}
         elif nokf and st.painter and not prefs_of(p).get("pics_skip"):
             nxt = {"kind": "keyframes", "label": "Pehli tasveerein", "inr": _inr(KEYFRAME_USD * len(nokf))}
         elif unpicked or all(x["quality"] == "preview" for x in shots):
-            nxt = {"kind": "generate", "label": "Video banao", "inr": (est.get(want) or {}).get("inr", 0)}
+            nxt = {"kind": "generate", "label": "Make the video", "inr": (est.get(want) or {}).get("inr", 0)}
         elif newer or not outs:
-            nxt = {"kind": "assemble", "label": "Final video jodo", "inr": 0}
+            nxt = {"kind": "assemble", "label": "Join the final video", "inr": 0}
         else:
-            nxt = {"kind": "done", "label": "Taiyaar", "inr": 0}
+            nxt = {"kind": "done", "label": "Ready", "inr": 0}
     chars = []
     for k, v in p.get("characters", {}).items():
         imgs = [link(tenant, x, 3) for x in (v.get("images") or [])[:3] if Path(x).is_file()]
@@ -574,12 +574,12 @@ def _her_file(tenant: str, st: Studio, file_id: str, sub: str, kinds: tuple[str,
         raise StudioJobError(str(e)) from None
     src = Path(f.stored_path or "")
     if not src.is_file():
-        raise StudioJobError("Yeh file ab server par nahi hai; dobara bhejiye.")
+        raise StudioJobError("This file is no longer on the server; send it again.")
     ext = Path(f.name or "").suffix.lower()
     ok = {"image": (".jpg", ".jpeg", ".png", ".webp"), "audio": (".mp3", ".wav", ".m4a", ".aac", ".ogg", ".opus", ".mp4"),
           "video": (".mp4", ".mov", ".m4v", ".webm")}
     if not any(ext in ok[k] for k in kinds):
-        raise StudioJobError(f"'{f.name}' yahan nahi chalegi ({'/'.join(kinds)} chahiye).")
+        raise StudioJobError(f"'{f.name}' cannot be used here ({'/'.join(kinds)} needed).")
     d = st.home / "uploads" / sub
     d.mkdir(parents=True, exist_ok=True)
     dst = d / f"{file_id}{ext}"
@@ -592,7 +592,7 @@ async def create(tenant: str, name: str, aspect: str = "9:16", style: str = "ree
                  brief: str = "", conversation_id: str = "", prefs: dict | None = None) -> dict[str, Any]:
     name = re.sub(r"\s+", " ", name or "").strip()[:60]
     if len(name) < 2:
-        raise StudioJobError("Project ka naam chahiye")
+        raise StudioJobError("The project needs a name")
     st = await studio(tenant)
     try:
         st.create(name, aspect or "9:16", style or "reel", language or "Hindi", float(_st().studio_project_usd or 5), None, brief[:2000])
@@ -638,10 +638,10 @@ async def character(tenant: str, project: str, name: str, description: str, file
                     voice: str = "", kind: str = "person") -> dict:
     kind = kind if kind in ("person", "place", "product") else "person"
     if not file_ids:
-        raise StudioJobError("Photo ka file_id chahiye (chat mein photo bhejiye), ya character_generate.")
+        raise StudioJobError("A photo file_id is needed (send the photo in chat), or use character_generate.")
     if kind == "person" and not consent:
-        raise StudioJobError("Asli insaan ki photo se video tabhi banega jab unki ijazat ho. Owner se poochiye; "
-                             "haan ho to consent=true. (Product / logo / mascot ki photo ho to bhi consent=true.)")
+        raise StudioJobError("A video from a real person's photo is made only with that person's permission. Ask the owner; "
+                             "if it is a yes, consent=true. (For a product / logo / mascot photo, also consent=true.)")
     st = await studio(tenant)
     paths = [str(_her_file(tenant, st, f, "characters", ("image",))) for f in file_ids[:4]]
     try:
@@ -679,7 +679,7 @@ async def generate(tenant: str, project: str, quality: str = "preview", shot_ids
                    compare: list[str] | None = None) -> dict:
     """Preview = free, runs now. Draft / final = a card for her tap; nothing paid runs before it."""
     if compare and not (2 <= len(set(compare)) <= 3):
-        raise StudioJobError("Ek saath 2 ya 3 model compare ho sakte hain")
+        raise StudioJobError("2 or 3 models can be compared at a time")
     st = await studio(tenant)
     if quality not in catalog.QUALITY:
         raise StudioJobError(f"quality = {list(catalog.QUALITY)}")
@@ -700,11 +700,11 @@ async def keyframes(tenant: str, project: str, shot_ids: list[str] | None = None
     """v0.157 Paint each shot's opening picture (Nano Banana Pro): a card first (about Rs 12 a picture)."""
     st = await studio(tenant)
     if not st.painter:
-        raise StudioJobError("Tasveer ke liye server par GEMINI_API_KEY chahiye.")
+        raise StudioJobError("Pictures need GEMINI_API_KEY on the server.")
     p = _load(tenant, project)
     ids = [x["id"] for x in p["shots"] if not shot_ids or x["id"] in shot_ids]
     if not ids:
-        raise StudioJobError("Pehle storyboard banaiye (plan).")
+        raise StudioJobError("Make the storyboard first (plan).")
     return await _ask(tenant, st, project, {"kind": "keyframes", "shot_ids": ids, "usd": round(KEYFRAME_USD * len(ids), 4),
                                             "shots": len(ids), "seconds": 0, "models": ["nano-banana-pro"]})
 
@@ -721,7 +721,7 @@ async def character_generate(tenant: str, project: str, name: str, description: 
         r = await st.character_generate(project, name[:40], description[:400], "offline-image")
         await st.update(project, lambda q: q["characters"][name[:40]].update(kind=kind, voice=_voice_name(voice, description)))
         _changed(tenant, project)
-        return {**r, "note": "FAL_KEY nahi hai: abhi ek saada placeholder bana. Asli tasveer ke liye server par FAL_KEY lagaiye."}
+        return {**r, "note": "There is no FAL_KEY: a plain placeholder was made for now. For a real picture, add FAL_KEY on the server."}
     usd = catalog.IMAGE_MODELS["flux-dev"]["usd_per_image"]
     return await _ask(tenant, st, project, {"kind": "character", "name": name[:40], "description": description[:400], "usd": usd,
                                             "shots": 0, "seconds": 0, "models": ["flux-dev"], "char_kind": kind,
@@ -732,9 +732,9 @@ async def _ask(tenant: str, st: Studio, project: str, req: dict) -> dict:
     s = _st()
     left = float(s.studio_month_usd or 0) - month_spent(tenant)
     if req["usd"] > left + 1e-9:
-        raise StudioJobError(f"Is mahine AI video ki seema ${s.studio_month_usd:.2f} (~₹{_inr(s.studio_month_usd)}) hai; "
-                             f"sirf ${max(0, left):.2f} bacha hai aur yeh ${req['usd']:.2f} ka hai. Preview free hai; ya "
-                             "server par STUDIO_MONTH_USD badhaiye.")
+        raise StudioJobError(f"This month's AI video limit is ${s.studio_month_usd:.2f} (~₹{_inr(s.studio_month_usd)}); "
+                             f"only ${max(0, left):.2f} is left and this costs ${req['usd']:.2f}. The preview is free; or "
+                             "raise STUDIO_MONTH_USD on the server.")
     aid = "sa" + base64.b32encode(bytes.fromhex(f"{int(time.time() * 1000) % 16**10:010x}")).decode().lower().rstrip("=")[:10]
     req = {**req, "id": aid, "project": project, "status": "pending", "inr": _inr(req["usd"]),
            "month_left_usd": round(left, 2), "created": dt.datetime.now().isoformat(timespec="seconds")}
@@ -743,8 +743,8 @@ async def _ask(tenant: str, st: Studio, project: str, req: dict) -> dict:
     _publish(tenant, p)
     what = _what(req)
     return {"waiting_owner": aid, "usd": req["usd"], "inr": req["inr"],
-            "say": f"{what} banane mein lagbhag ₹{req['inr']} (${req['usd']:.2f}) lagenge. Card par Haan dabayengi tabhi banega.",
-            "note_for_you": "Nothing is spent until she taps Haan on the card. Don't call generate again for this."}
+            "say": f"{what}: about ₹{req['inr']} (${req['usd']:.2f}) to make. It is made only when you tap Yes on the card.",
+            "note_for_you": "Nothing is spent until she taps Yes on the card. Don't call generate again for this."}
 
 
 async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
@@ -753,7 +753,7 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
     # v0.329 hidden films too (the owner's "Hoola showcase" film is hidden from her lists, its cards still need her Haan)
     project = next((p["project"] for p in listing(tenant, hidden=True) if aid_in(st, p["project"], approval_id)), "")
     if not project:
-        raise StudioJobError("Yeh card purana ho gaya")
+        raise StudioJobError("This card is too old")
     p = st.load(project)
     a = p["approvals"][approval_id]
     if a["status"] != "pending":
@@ -765,7 +765,7 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
         return p["approvals"][approval_id]
     left = float(_st().studio_month_usd or 0) - month_spent(tenant)
     if a["usd"] > left + 1e-9:
-        raise StudioJobError(f"Is mahine ki seema poori ho gayi (${max(0, left):.2f} bacha).")
+        raise StudioJobError(f"This month's limit is used up (${max(0, left):.2f} left).")
     need = p["spent_usd"] + st._reserved(p) + a["usd"]
 
     def ok(q):
@@ -782,7 +782,7 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
             await st.update(project, lambda q: q["characters"][a["name"]].update(
                 kind=a.get("char_kind") or "person", voice=_voice_name(a.get("voice") or "", a["description"])))
             _changed(tenant, project)
-            _note(tenant, p, f"Character '{a['name']}' ki photo ban gayi.")
+            _note(tenant, p, f"Character '{a['name']}': the photo is ready.")
             return {**p["approvals"][approval_id], "result": r}
         if a["kind"] == "keyframes":
             _bg(tenant, project, _do_keyframes(tenant, st, project, a["shot_ids"]))
@@ -847,10 +847,10 @@ async def expire_asks(ttl_h: int = 24) -> int:
 def _what(a: dict) -> str:
     k = a.get("kind")
     if k == "generate":
-        extra = (f" + {a['keyframes']} tasveerein" if a.get("keyframes") else "") + (f", {a['lipsync']} lip sync" if a.get("lipsync") else "")
+        extra = (f" + {a['keyframes']} pictures" if a.get("keyframes") else "") + (f", {a['lipsync']} lip sync" if a.get("lipsync") else "")
         return f"{a.get('shots', 0)} shot{'s' if a.get('shots') != 1 else ''} ({a.get('seconds', 0)} s, {a.get('quality', '')}{extra})"
     if k == "keyframes":
-        return f"{a.get('shots', 0)} shots ki pehli tasveer (Nano Banana Pro)"
+        return f"{a.get('shots', 0)} shots: opening pictures (Nano Banana Pro)"
     if k == "music":
         return f"music ({a.get('mood', '')}, Lyria)"
     return f"character photo '{a.get('name')}'"
@@ -881,7 +881,7 @@ async def _do_keyframes(tenant: str, st: Studio, project: str, ids: list[str]) -
     except Exception as e:
         _painting.pop(key, None)
         log.exception("studio keyframes")
-        _note(tenant, st.load(project), f"Video studio '{project}': tasveerein nahi ban payin: {str(e)[:160]}")
+        _note(tenant, st.load(project), f"Video studio '{project}': the pictures could not be made: {str(e)[:160]}")
         await _pics_error(st, project, f"The opening pictures could not be made: {_paint_why(e)} Nothing was charged.")
         _changed(tenant, project)
         return {}
@@ -901,8 +901,8 @@ async def _do_keyframes(tenant: str, st: Studio, project: str, ids: list[str]) -
         _painting.pop(key, None)
     p = st.load(project)
     _publish(tenant, p)
-    _note(tenant, p, f"Video studio '{project}': {len(r['painted'])} shots ki pehli tasveer taiyaar"
-          + (f" ({len(r['failed'])} nahi bani)" if r["failed"] else "") + ". Free preview ('generate preview') ab inhi se banega.")
+    _note(tenant, p, f"Video studio '{project}': {len(r['painted'])} shots have their opening picture"
+          + (f" ({len(r['failed'])} not made)" if r["failed"] else "") + ". The free preview ('generate preview') will now be made from these.")
     return r
 
 
@@ -920,7 +920,7 @@ async def _paint_then_generate(tenant: str, st: Studio, project: str, a: dict) -
         await _run_generate(tenant, st, project, a["quality"], a["shot_ids"] or None, a["variants"], a.get("model"),
                             _cap(a) + 1e-6, a)
     except Exception as e:
-        _note(tenant, p, f"Video studio '{project}': shots shuru nahi hue: {str(e)[:200]}")
+        _note(tenant, p, f"Video studio '{project}': the shots did not start: {str(e)[:200]}")
 
 
 CHARACTER_LOOK = {
@@ -967,10 +967,10 @@ async def _paint_character(tenant: str, st: Studio, project: str, a: dict) -> No
             st._charge(q, KEYFRAME_USD, f"character {a['name']}", "nano-banana-pro")
         p = await st.update(project, fn)
         _publish(tenant, p)
-        _note(tenant, p, f"Video studio '{project}': '{a['name']}' ki tasveer ban gayi; har shot mein yahi dikhega.")
+        _note(tenant, p, f"Video studio '{project}': '{a['name']}': the picture is ready; this is what every shot will show.")
     except Exception as e:
         log.exception("studio character paint")
-        _note(tenant, p, f"Video studio '{project}': '{a['name']}' ki tasveer nahi ban payi: {str(e)[:150]}")
+        _note(tenant, p, f"Video studio '{project}': '{a['name']}': the picture could not be made: {str(e)[:150]}")
         # v0.311 the reason goes ON the film too (it used to reach only the chat, and the Director just sat on Cast);
         # nothing was charged - the charge is in the success branch only
         why = f"{a['name']}: {_paint_why(e)} Nothing was charged."
@@ -1012,8 +1012,8 @@ async def _run_generate(tenant: str, st: Studio, project: str, quality: str, sho
         old.cancel()
     _watchers[key] = asyncio.ensure_future(_watch(tenant, st, project, quality, r["jobs"]))
     return {"started": r["started"], "quality": quality, "usd": r["estimate_usd"], "inr": _inr(r["estimate_usd"]),
-            "say": ("Free preview ban raha hai (kahani aur timing dekhne ke liye)." if quality == "preview"
-                    else "Shots ban rahe hain; har shot 1-5 minute. Card par dikhega."),
+            "say": ("The free preview is being made (to see the story and timing)." if quality == "preview"
+                    else "The shots are being made; 1-5 minutes per shot. It will show on the card."),
             "note_for_you": "Do not poll: a note arrives when the shots are done."}
 
 
@@ -1034,14 +1034,14 @@ async def _watch(tenant: str, st: Studio, project: str, quality: str, jobs: list
                 p = st.load(project)
             bad = [f"{j['shot']}: {str(j.get('error'))[:120]}" for j in js if j["state"] == "failed"]
             _publish(tenant, p)
-            msg = (f"Video studio '{project}': {done} {quality} shot taiyaar"
-                   + (f", {len(bad)} nahi bane ({'; '.join(bad[:3])})" if bad else "") + ". ")
+            msg = (f"Video studio '{project}': {done} {quality} shots ready"
+                   + (f", {len(bad)} not made ({'; '.join(bad[:3])})" if bad else "") + ". ")
             weak = [f"{sid} ({v.get('look', {}).get('score')}/10)" for sid, vs in p.get("variants", {}).items() for v in vs
                     if v.get("job") in jobs and (v.get("look") or {}).get("score") is not None and v["look"]["score"] < 6]
             if weak:
-                msg += f"In shots ko dobara banana theek rahega: {', '.join(weak[:6])}. "
-            msg += ("Preview jodkar dekhna ho to 'assemble' bolo." if quality == "preview"
-                    else f"Ab tak kharch ${p['spent_usd']:.2f} (~₹{_inr(p['spent_usd'])}). Dekh ke batao, phir final video jod dunga.")
+                msg += f"These shots are worth making again: {', '.join(weak[:6])}. "
+            msg += ("To see the preview joined, say 'assemble'." if quality == "preview"
+                    else f"Spent so far ${p['spent_usd']:.2f} (~₹{_inr(p['spent_usd'])}). Take a look and tell me, then I will join the final video.")
             _note(tenant, p, msg)
             try:
                 from ..voice import inject
@@ -1101,16 +1101,16 @@ async def voiceover(tenant: str, project: str, shot_id: str, text: str = "", fil
         src = _her_file(tenant, st, file_id, "audio", ("audio",))
     elif text.strip():
         if not _st().gemini_api_key:
-            raise StudioJobError("Awaaz ke liye GEMINI_API_KEY chahiye; ya apni recording ka file_id dijiye.")
+            raise StudioJobError("The voice needs GEMINI_API_KEY; or give the file_id of your own recording.")
         from ..avatar import service as av
         a = av.get(tenant)
         voice = prefs_of(st.load(project))["voice"] or ("female" if (a.get("gender") or "m") == "f" else "male")
         try:
             src = Path(await asyncio.to_thread(st.speak, text.strip()[:600], st.load(project)["language"], voice))
         except Exception as e:
-            raise StudioJobError(f"Awaaz nahi ban payi: {str(e)[:150]}") from None
+            raise StudioJobError(f"The voice could not be made: {str(e)[:150]}") from None
     else:
-        raise StudioJobError("text (meri awaaz mein bolunga) ya audio file_id chahiye")
+        raise StudioJobError("text (spoken in my voice) or an audio file_id is needed")
     try:
         r = st.voiceover_set(project, shot_id, str(src), text or None)
     except StudioError as e:
@@ -1123,7 +1123,7 @@ def _tts(tenant: str, st: Studio, text: str, language: str) -> Path:
     """Narration in the avatar's own call voice (Gemini TTS, 24 kHz mono)."""
     s = _st()
     if not s.gemini_api_key:
-        raise StudioJobError("Awaaz ke liye GEMINI_API_KEY chahiye; ya apni recording ka file_id dijiye.")
+        raise StudioJobError("The voice needs GEMINI_API_KEY; or give the file_id of your own recording.")
     from google.genai import Client, types
     from ..avatar import service as av
     a = av.get(tenant)
@@ -1136,7 +1136,7 @@ def _tts(tenant: str, st: Studio, text: str, language: str) -> Path:
         contents=f"Read this as a warm, clear narrator for a short video, in natural {language}: {text}")
     pcm = next((p.inline_data.data for p in resp.candidates[0].content.parts if getattr(p, "inline_data", None)), b"")
     if not pcm:
-        raise StudioJobError("Awaaz nahi ban payi")
+        raise StudioJobError("The voice could not be made")
     d = st.home / "uploads" / "audio"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"tts_{int(time.time() * 1000)}.wav"
@@ -1181,12 +1181,12 @@ async def music(tenant: str, project: str, mood: str = "", file_id: str = "", vo
         d.mkdir(parents=True, exist_ok=True)
         src = await asyncio.to_thread(mm.write, mood, float(secs), d / f"bed_{mood}.wav")
         if not src:
-            raise StudioJobError("music nahi bana")
+            raise StudioJobError("the music could not be made")
     try:
         r = st.music_set(project, str(src), max(0.05, min(float(volume or 0.25), 1.0)))
     except StudioError as e:
         raise StudioJobError(str(e)) from None
-    await st.update(project, lambda q: q["music"].update(mood="apna gaana" if file_id else mood))
+    await st.update(project, lambda q: q["music"].update(mood="own song" if file_id else mood))
     _changed(tenant, project)
     return r
 
@@ -1199,7 +1199,7 @@ def _lyria(prompt: str) -> bytes:
     it = client.interactions.create(model=s.studio_music_model, input=prompt)
     audio = getattr(it, "output_audio", None)
     if not audio or not getattr(audio, "data", None):
-        raise StudioJobError("Lyria ne music nahi diya")
+        raise StudioJobError("Lyria did not return music")
     data = audio.data
     return b64.b64decode(data) if isinstance(data, str) else bytes(data)
 
@@ -1223,10 +1223,10 @@ async def _do_music(tenant: str, st: Studio, project: str, mood: str, seconds: f
         await st.update(project, charged)
         p = st.load(project)
         _publish(tenant, p)
-        _note(tenant, p, f"Video studio '{project}': music taiyaar ({mood}, Google Lyria). Final video jodte waqt lagega.")
+        _note(tenant, p, f"Video studio '{project}': music ready ({mood}, Google Lyria). It is added when the final video is joined.")
     except Exception as e:
         log.exception("studio lyria")
-        _note(tenant, p, f"Video studio '{project}': music nahi bana ({str(e)[:150]}). 'music' bina mood ke free bed laga dega.")
+        _note(tenant, p, f"Video studio '{project}': the music could not be made ({str(e)[:150]}). 'music' without a mood adds a free bed.")
 
 
 # ---------------------------------------------------------------- v0.157 planner
@@ -1253,7 +1253,7 @@ async def plan(tenant: str, project: str, brief: str = "", seconds: int = 30, co
     p = _load(tenant, project)
     brief = (brief or p.get("brief") or "").strip()
     if not brief:
-        raise StudioJobError("Video kis baare mein hai? (brief)")
+        raise StudioJobError("What is the video about? (brief)")
     seconds = max(2, min(int(seconds or 30), 600))   # v0.310 a 4-5 s clip is one short shot, not a 6 s minimum
     if project in _planning and not _planning[project].done():
         return {"status": "already planning"}
@@ -1261,7 +1261,7 @@ async def plan(tenant: str, project: str, brief: str = "", seconds: int = 30, co
         await st.update(project, lambda q: q.update(brief=brief[:2000]))
     _planning[project] = asyncio.ensure_future(_plan(tenant, st, project, brief, seconds))
     _changed(tenant, project)
-    return {"status": "planning", "say": "Storyboard likh raha hoon (1-2 minute); card par aa jayega.",
+    return {"status": "planning", "say": "Writing the storyboard (1-2 minutes); it will show on the card.",
             "note_for_you": "Do not poll; the storyboard arrives as a card + note."}
 
 
@@ -1302,12 +1302,12 @@ async def _plan(tenant: str, st: Studio, project: str, brief: str, seconds: int)
                     raise
         p = st.load(project)
         _publish(tenant, p)
-        _note(tenant, p, f"Video studio '{project}': storyboard taiyaar ({len(p['shots'])} shots, {r['total_seconds']} s). "
-              f"HD ka andaaza ~Rs {r['estimate']['inr']}. Pehle tasveerein (keyframes) ya free preview dekh lijiye.")
+        _note(tenant, p, f"Video studio '{project}': storyboard ready ({len(p['shots'])} shots, {r['total_seconds']} s). "
+              f"HD estimate ~Rs {r['estimate']['inr']}. Look at the pictures (keyframes) or the free preview first.")
         return r
     except Exception as e:
         log.exception("studio plan")
-        _note(tenant, st.load(project), f"Video studio '{project}': storyboard nahi ban paya: {str(e)[:200]}")
+        _note(tenant, st.load(project), f"Video studio '{project}': the storyboard could not be made: {str(e)[:200]}")
         return None
     finally:
         _planning.pop(project, None)
@@ -1366,12 +1366,12 @@ async def assemble(tenant: str, project: str, captions: bool | None = None, tran
         captions = bool(prefs_of(p)["captions"])
     missing = [s["id"] for s in p["shots"] if not p["picked"].get(s["id"])]
     if not p["shots"] or missing:
-        raise StudioJobError(f"In shots ka koi take nahi hai: {missing or 'storyboard khaali'}. Pehle generate.")
+        raise StudioJobError(f"These shots have no take: {missing or 'empty storyboard'}. Generate first.")
     if project in _assembling and not _assembling[project].done():
         return {"status": "already assembling"}
     _assembling[project] = asyncio.ensure_future(_assemble(tenant, st, project, captions, transition))
     _changed(tenant, project)
-    return {"status": "assembling", "say": "Final video jod raha hoon (1-3 minute); card par aa jayega.",
+    return {"status": "assembling", "say": "Joining the final video (1-3 minutes); it will show on the card.",
             "note_for_you": "Do not poll; the video arrives as a card + note."}
 
 
@@ -1394,15 +1394,15 @@ async def _assemble(tenant: str, st: Studio, project: str, captions: bool, trans
     except Exception as e:
         log.exception("studio assemble")
         p = st.load(project)
-        _note(tenant, p, f"Video studio '{project}': final video nahi jud paya: {str(e)[:200]}")
+        _note(tenant, p, f"Video studio '{project}': the final video could not be joined: {str(e)[:200]}")
         return None
     finally:
         _assembling.pop(project, None)
     _publish(tenant, p)
     preview = "preview" in str(r.get("takes_used", ""))
-    _note(tenant, p, f"Video studio '{project}': video taiyaar ({r['seconds']:.0f} s, {r['size']})."
-          + (" Yeh free preview hai (asli shots nahi). Pasand aaye to draft / final shots banwa lijiye." if preview
-             else f" Kul kharch ${p['spent_usd']:.2f} (~₹{_inr(p['spent_usd'])}). 'AI-generated' label laga hai. Post aap khud kijiye."))
+    _note(tenant, p, f"Video studio '{project}': video ready ({r['seconds']:.0f} s, {r['size']})."
+          + (" This is the free preview (not the real shots). If you like it, have the draft / final shots made." if preview
+             else f" Total spent ${p['spent_usd']:.2f} (~₹{_inr(p['spent_usd'])}). It carries the 'AI-generated' label. You post it yourself."))
     return r
 
 
@@ -1468,7 +1468,7 @@ async def settings(tenant: str, project: str, changes: dict) -> dict:
     p = _load(tenant, project)
     pos = changes.get("logo_position")
     if pos and pos not in LOGO_SPOTS:
-        raise StudioJobError("logo ki jagah: " + " / ".join(LOGO_SPOTS))
+        raise StudioJobError("logo position: " + " / ".join(LOGO_SPOTS))
     style = changes.get("style")
     if style and style not in catalog.STYLES:
         raise StudioJobError(f"look: {', '.join(catalog.STYLES)}")
@@ -1517,9 +1517,9 @@ async def delete_shot(tenant: str, project: str, shot_id: str) -> dict:
     p = _load(tenant, project)
     shots = [dict(x) for x in p["shots"] if x["id"] != shot_id]
     if len(shots) == len(p["shots"]):
-        raise StudioJobError(f"Shot {shot_id} nahi mila")
+        raise StudioJobError(f"Shot {shot_id} not found")
     if not shots:
-        raise StudioJobError("Aakhri shot nahi hata sakte; badal dijiye.")
+        raise StudioJobError("The last shot cannot be removed; change it instead.")
     return await _reboard(tenant, project, shots)
 
 
@@ -1529,7 +1529,7 @@ async def redo_shot(tenant: str, project: str, shot_id: str, change: str = "", q
     p = _load(tenant, project)
     s = next((x for x in p["shots"] if x["id"] == shot_id), None)
     if not s:
-        raise StudioJobError(f"Shot {shot_id} nahi mila")
+        raise StudioJobError(f"Shot {shot_id} not found")
     change = re.sub(r"\s+", " ", change or "").strip()[:300]
     if change:
         base = re.sub(r"\s*Change: .*$", "", s["prompt"]).rstrip(". ")
@@ -1551,9 +1551,9 @@ async def cancel(tenant: str, project: str) -> dict:
     p = st.load(project)
     _publish(tenant, p)
     if r["cancelled"]:
-        _note(tenant, p, f"Video studio '{project}': {r['cancelled']} shot rok diye. Jo ban chuke the woh rahenge.")
-    return {**r, "say": (f"{r['cancelled']} shot rok diye. Jo pehle se provider par shuru ho chuka tha, uska paisa "
-                         "provider le sakta hai." if r["cancelled"] else "Kuch chal nahi raha tha.")}
+        _note(tenant, p, f"Video studio '{project}': {r['cancelled']} shots stopped. The ones already made stay.")
+    return {**r, "say": (f"{r['cancelled']} shots stopped. For one that had already started at the provider, the provider "
+                         "may still charge." if r["cancelled"] else "Nothing was running.")}
 
 
 async def hide(tenant: str, project: str) -> dict:
@@ -1561,7 +1561,7 @@ async def hide(tenant: str, project: str) -> dict:
     st = await studio(tenant)
     p = _load(tenant, project)
     if any(j["state"] in ("queued", "submitted", "running", "retrying") for j in p.get("jobs", {}).values()):
-        raise StudioJobError("Pehle chal rahe shots rokiye.")
+        raise StudioJobError("Stop the running shots first.")
     await st.update(project, lambda q: q.update(hidden=True))
     return {"hidden": project}
 
@@ -1583,8 +1583,8 @@ dates, real people or brand names. One paragraph, max 70 words, in English excep
 async def improve_brief(brief: str, language: str = "Hindi", seconds: int = 30, kind: str = "video") -> dict:
     brief = (brief or "").strip()
     if len(brief) < 4:
-        raise StudioJobError("Pehle thoda sa likhiye ki video kis baare mein hai."
-                             if kind != "image" else "Pehle thoda sa likhiye ki picture kis baare mein hai.")
+        raise StudioJobError("First write a little about what the video is about."
+                             if kind != "image" else "First write a little about what the picture is about.")
     try:
         if kind == "image":       # v0.304 the Image page's Enhance: a picture description, not a film brief
             out = await _write(IMAGE_IMPROVE_SYSTEM, f"Her idea: {brief[:1500]}\nLanguage of any words on the picture: {language}", 600)
@@ -1593,10 +1593,10 @@ async def improve_brief(brief: str, language: str = "Hindi", seconds: int = 30, 
                                                f"Length: about {int(seconds)} seconds.", 900)
     except Exception as e:     # a model outage is a plain line on the page, not a 500
         log.warning("improve_brief: %s", e)
-        raise StudioJobError("Abhi behtar nahi ho paya; thodi der baad dobara try kijiye.") from None
+        raise StudioJobError("It could not be improved right now; try again in a little while.") from None
     out = re.sub(r"^\s*(brief|Brief)\s*:\s*", "", out).strip().strip('"')
     if not out:
-        raise StudioJobError("Abhi behtar nahi ho paya; dobara try kijiye.")
+        raise StudioJobError("It could not be improved right now; try again.")
     return {"brief": out[:2000]}
 
 
@@ -1607,7 +1607,7 @@ SAMPLE_LINES = {"Hindi": "Namaste! Main aapke video mein yahi awaaz hoon.", "Mar
 async def voice_sample(tenant: str, voice: str = "male", language: str = "Hindi") -> dict:
     """A short line in the voice she is choosing (made once per voice + language, kept)."""
     if not _st().gemini_api_key:
-        raise StudioJobError("Awaaz sunane ke liye server par GEMINI_API_KEY chahiye.")
+        raise StudioJobError("Hearing the voice needs GEMINI_API_KEY on the server.")
     st = await studio(tenant)
     voice = voice if voice in VOICES else "male"
     d = st.home / "uploads" / "samples"
@@ -1618,7 +1618,7 @@ async def voice_sample(tenant: str, voice: str = "male", language: str = "Hindi"
         try:
             got = await asyncio.to_thread(st.speak, line, language, voice)
         except Exception as e:
-            raise StudioJobError(f"Awaaz nahi ban payi: {str(e)[:150]}") from None
+            raise StudioJobError(f"The voice could not be made: {str(e)[:150]}") from None
         shutil.copyfile(got, out)
     return {"url": link(tenant, out, 3), "voice": voice}
 
@@ -1629,11 +1629,11 @@ async def speak_line(tenant: str, project: str, shot_id: str) -> dict:
     p = _load(tenant, project)
     s = next((x for x in p["shots"] if x["id"] == shot_id), None)
     if not s or not s.get("dialogue"):
-        raise StudioJobError("Is shot mein bolne wali line nahi hai.")
+        raise StudioJobError("This shot has no spoken line.")
     try:
         f = await st._speech(project, s)
     except Exception as e:
-        raise StudioJobError(f"Awaaz nahi ban payi: {str(e)[:150]}") from None
+        raise StudioJobError(f"The voice could not be made: {str(e)[:150]}") from None
     _changed(tenant, project)
     return {"url": link(tenant, f, 3)}
 
@@ -1724,7 +1724,7 @@ def clip_price(tenant: str, model: str = "", seconds: int = 8, resolution: str =
     res = catalog.norm_res(resolution) or "1080p"
     quality = QUALITY_OF_RES.get(res, "final")
     if model and model not in st.models:
-        raise StudioJobError("Yeh model is server par nahi hai")
+        raise StudioJobError("This model is not on this server")
     auto = auto if auto in AUTO_WHY else "quality"
     m = model or st.model_for({"kind": kind}, quality, None, None, (auto, res))
     cfg = st.models[m]
@@ -1752,7 +1752,7 @@ async def models_refresh(tenant: str) -> dict:
     try:
         r = await asyncio.wait_for(st.models_sync(), 30)
     except Exception as e:
-        raise StudioJobError(f"Abhi model list nahi mili: {str(e)[:120]}") from None
+        raise StudioJobError(f"The model list is not available right now: {str(e)[:120]}") from None
     return {**r, "synced_at": st.synced_at}
 
 
