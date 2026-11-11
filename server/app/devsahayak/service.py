@@ -119,8 +119,10 @@ Reply with ONE JSON object:
 def model_json(system: str, prompt: str, max_tokens: int = 12000) -> dict[str, Any]:
     """Claude via the website builder's helper (Opus first, then the chat model, then the cheap brain). Tests replace this."""
     from ..site import ai
+    from . import brain as _B
     try:
-        return ai.ask_json(system, prompt, max_tokens=max_tokens, kind="build")
+        with _B.claude_only():                      # v0.784 USE CLAUDE: Hoola Code's one-shot calls are Claude's too
+            return ai.ask_json(system, prompt, max_tokens=max_tokens, kind="build")
     except ai.AiError as e:
         raise DevError(f"Model nahi mila: {e}")
 
@@ -353,6 +355,51 @@ def _log(t: DevTask, line: str) -> None:
     t.log = json.dumps(lg[-40:])
 
 
+def ws_view(tid: str) -> dict[str, Any]:
+    try:
+        from . import engine as EN
+        return EN.view(tid) if EN.on() or EN.exists(tid) else {"exists": False}
+    except Exception:
+        return {"exists": False}
+
+
+def ws_task_view(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    return ws_view(tid)
+
+
+def ws_files(tenant: str, ref: str, path: str = "") -> dict[str, Any]:
+    from . import engine as EN
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    try:
+        return EN.files(tid, path)
+    except ValueError as e:
+        raise DevError(str(e))
+
+
+def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
+    """Back to checkpoint n: the working copy and the conversation as they were then. GitHub is not touched; a PR
+    already open keeps its commits until the next push."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working in this session right now - stop it first.")
+        tid = t.id
+    try:
+        cp = EN.rewind(tid, n)
+    except ValueError as e:
+        raise DevError(str(e))
+    _Step(tid).event({"k": "rewind", "n": cp["n"], "text": cp.get("label", "")[:80]})
+    with session() as s:
+        row = s.get(DevTask, tid)
+        _log(row, f"rewound to checkpoint {cp['n']}")
+        out = task_view(row, full=True)
+    return out
+
+
 def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     ch = _j(t.changes, [])
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
@@ -384,6 +431,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
         v["steps"] = _j(t.steps or "", [])
         v["notes"] = [str(x) for x in _j(t.notes or "", [])]      # v0.768 her queued words, shown until Hoola reads them
         v["notes_waiting"] = len(v["notes"])
+        v["ws"] = ws_view(t.id)                                    # v0.784 the working copy: checkpoints, to-do, live / slots
+        v["can_continue"] = bool(v["ws"].get("exists")) and t.status in CONTINUE and not t.pr_number
     return v
 
 
@@ -424,6 +473,9 @@ def models(tenant: str = "") -> dict[str, Any]:
     default = str(getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or st.anthropic_model)
     ids = list(dict.fromkeys(x for x in (default, str(st.anthropic_model or ""), str(getattr(st, "chat_simple_model", "") or "")) if x))
     forced = None
+    if bool(getattr(st, "dev_claude", True)):        # v0.784 USE CLAUDE: Hoola Code stands the server's model rules aside
+        return {"options": [{"id": m, "label": _pretty_model(m)} for m in ids], "default": default, "forced": None,
+                "efforts": list(EFFORTS), "default_effort": str(getattr(st, "dev_loop_effort", "high") or "high")}
     try:
         from .. import glmdoor
         if glmdoor.active():
@@ -1188,6 +1240,8 @@ def delete_task(tenant: str, ref: str) -> dict[str, Any]:
     try:
         import shutil
         shutil.rmtree(_attach_dir(tid), ignore_errors=True)      # the pictures she attached go with the session
+        from . import engine as _EN
+        _EN.forget(tid)                                           # v0.784 and its working copy
     except Exception:
         pass
     return {"ok": True, "deleted": tid, "pr_left_open": pr or 0}
@@ -1365,7 +1419,7 @@ def plan_ok(tenant: str, ref: str, hash_: str, by_tap: bool = False, note: str =
 
 
 def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False,
-          plan: dict[str, Any] | None = None) -> dict[str, Any]:
+          plan: dict[str, Any] | None = None, follow_up: str = "") -> dict[str, Any]:
     cfg = _cfg(tenant)
     with session() as s:
         t = s.get(DevTask, tid)
@@ -1382,8 +1436,8 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
     tier = str(sized["tier"])
     att_txt, att_pics = _attach_for_loop(t)                 # Phase 3: what she attached (text files, screenshots)
     # Phase 3 the mode she picked for this session: 'plan' = a plan first and it WAITS, whatever the size of the job
-    force_plan = (t.mode or "") == "plan" and plan is None and t.kind != "explain" and _loop_on()
-    if plan is None and _loop_on() and ((bool(_setting("dev_plan_first", True)) and P.needs_plan(tier)) or force_plan):
+    force_plan = (t.mode or "") == "plan" and plan is None and t.kind != "explain" and _loop_on() and not follow_up
+    if plan is None and not follow_up and _loop_on() and ((bool(_setting("dev_plan_first", True)) and P.needs_plan(tier)) or force_plan):
         plan = _plan_pass(tenant, t, g, extra_files, issue_txt + (("\n\n" + att_txt) if att_txt else ""), tier) or None
         if plan:
             waiting = force_plan or (P.waits(tier) and bool(_setting("dev_plan_gate", True)))
@@ -1410,7 +1464,23 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         s.flush()
     plan_txt = P.as_text(plan or {})
     base_sha = read = ctx = out = None
-    if _loop_on():
+    # v0.784 THE WORKSPACE ENGINE: a real working copy, Claude Code's tools, bash in the locked box, a conversation that
+    # continues. Anything that keeps it from running here (no box, no git, the switch off) falls back to the old loop.
+    from . import engine as EN
+    if EN.on() and _loop_on():
+        try:
+            base_sha, read, ctx, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, issue_txt,
+                                              on_step=_Step(tid), plan_txt=plan_txt, attach=(att_txt, att_pics),
+                                              follow_up=follow_up)
+        except EN.Unavailable as e:
+            log.info("workspace engine unavailable for %s (%s): the old loop", tid, e)
+            base_sha = None
+        except EN.Stopped:
+            from . import loop as L
+            raise L.Stopped("stopped")
+        except GhError:
+            raise
+    if base_sha is None and _loop_on():
         # v0.350 KADAM-BA-KADAM: the model explores the repo with tools and edits step by step (devsahayak/loop.py);
         # anything that stops the loop early falls back to the one-shot path below, so the task never dies of it
         from . import lab as LAB
@@ -1441,7 +1511,7 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
                 the_lab.close()
     if base_sha is None:
         base_sha, read, ctx = _gather(g, t, extra_files)
-        out = _ask_model(t, ctx["context"], cfg.rules, att_txt)
+        out = _ask_model(t, ctx["context"], cfg.rules, att_txt + (("\n\n" + follow_up) if follow_up else ""))
     out["rules_read"] = (ctx.get("found") or {}).get("rules") or []
     explain = str(out.get("explain") or "").strip()[:3000]
     if R.secrets_in(explain):
@@ -1544,6 +1614,8 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         row = s.get(DevTask, t.id)
         row.status, row.head_sha, row.pr_number, row.pr_url, row.base_sha = "pr_open", sha, int(pr.get("number") or 0), \
             str(pr.get("html_url") or ""), head_now
+        from . import engine as _EN
+        _EN.mark_pushed(row.id, sha)                    # v0.784 the working copy now matches the PR branch
         row.ci = json.dumps({"state": "pending", "say": "CI shuru hone wala"})
         if not ci_loop:
             _log(row, f"PR #{row.pr_number} khula")
@@ -1591,6 +1663,9 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         return _card(tenant, s.get(DevTask, tid), say)
 
 
+CONTINUE = ("explained", "failed", "cancelled")   # v0.784 sessions that take a follow-up in the same working copy
+
+
 def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = None) -> dict[str, Any]:
     """Her change in words -> a new commit on the SAME hoola/* branch (or a new prepared change). Her comments on lines
     of the diff (the Changes pane) ride with the message; comments alone are enough."""
@@ -1599,10 +1674,22 @@ def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = No
     if not clean and not block:
         raise DevError("Write what to change, or comment on a line.")
     clean = (clean + ("\n\n" if clean and block else "") + block).strip()
+    from . import engine as EN
+    cont = ""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.status in CONTINUE and not t.pr_number and EN.on() and EN.exists(t.id):
+            cont = t.id
+            t.status, t.error = "new", ""
+            if t.kind == "explain" and guess_kind(clean) != "explain":
+                t.kind = guess_kind(clean)                 # "yes, fix it" after an explanation = now do the work
+            _log(t, "her follow-up: the session continues")
+    if cont:                                               # outside the session: the work opens its own
+        return _work(tenant, cont, gh(tenant), [], warn, follow_up=f"<her_follow_up>\n{clean}\n</her_follow_up>")
     with session() as s:
         t = _find_task(s, tenant, ref)
         if t.status not in ("pr_open", "checks_failed", "ready", "refused"):
-            raise DevError(f"Yeh kaam '{STATUS.get(t.status, t.status)}' hai; naya kaam shuru kijiye.")
+            raise DevError(f"This session is '{STATUS.get(t.status, t.status)}' - start a new session.")
         if t.rounds >= 6:
             raise DevError("Is PR par bahut round ho gaye; naya kaam shuru kijiye.")
         s.expunge(t)
@@ -1632,7 +1719,25 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
     read = []
     paths = [c["path"] for c in _j(t.changes, [])]
     out = None
-    if on_branch and _loop_on():
+    from . import engine as EN
+    if EN.on() and _loop_on():                       # v0.784 the same session continues, in the same working copy
+        try:
+            spec = ""
+            if "<ci_log>" in extra and _setting("dev_spec_fix", False):
+                from . import specialists as SP
+                spec = SP.fix_addendum(extra, paths)
+            _, read, _, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, on_step=_Step(t.id),
+                                     ref_sha=ref, follow_up=extra, system_extra=spec)
+            read = []
+        except EN.Unavailable as e:
+            log.info("workspace engine unavailable for round %s (%s)", t.id, e)
+            out = None
+        except EN.Stopped:
+            from . import loop as L
+            raise L.Stopped("stopped")
+        except GhError:
+            raise
+    if out is None and on_branch and _loop_on():
         # v0.351 a CI fix / revision on the PR branch explores and edits with the same 8 tools (devsahayak/loop.py),
         # starting from the branch's own head; the one-shot answer stays the fallback
         from . import lab as LAB
@@ -1711,6 +1816,8 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str) -> dict[str, Any]:
             allc[c["path"]] = c
         row.changes = json.dumps(list(allc.values()))
         row.head_sha = sha
+        from . import engine as _EN
+        _EN.mark_pushed(row.id, sha)                    # v0.784
         if row.status == "ci_running":           # v0.351 the CI loop goes on: wait for CI on the new commit
             row.ci_since = now()
         else:
@@ -2653,9 +2760,29 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
     return None
 
 
+_SWEPT = {"at": 0.0}
+
+
+def _sweep_ws() -> None:
+    """v0.784 free the disk: working copies of deleted / archived / merged / closed sessions, and idle ones."""
+    import time as _t
+    if _t.time() - _SWEPT["at"] < 3600:
+        return
+    _SWEPT["at"] = _t.time()
+    from . import engine as EN
+    with session() as s:
+        keep = {t.id for t in s.scalars(select(DevTask).where(DevTask.archived_at.is_(None),
+                                                              DevTask.status.notin_(("merged", "closed")))).all()}
+    EN.sweep(keep)
+
+
 def tick(at: datetime | None = None) -> None:
     """Every minute: open Hoola PRs' CI every 5 min (card when the result changes), running deploys every minute."""
     at = at or now()
+    try:
+        _sweep_ws()
+    except Exception:
+        log.debug("ws sweep failed", exc_info=True)
     with session() as s:
         open_t = [(t.tenant_id, t.id) for t in s.scalars(select(DevTask).where(DevTask.status.in_(("pr_open", "checks_failed")))
                                                           .limit(60)).all()]

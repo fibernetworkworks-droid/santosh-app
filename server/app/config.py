@@ -147,6 +147,17 @@ class Settings(BaseSettings):
     dev_spec_focus_steps: int = 12          # steps for one focused pass
     dev_loop_model: str = ""                 # ... '' = site_model (Opus)
     dev_loop_effort: str = "high"           # ... Claude effort for coding
+    # v0.784 HOOLA CODE ENGINE (owner: "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE"): devsahayak/engine.py + brain.py
+    dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
+    dev_think: bool = True                  # ... with adaptive thinking
+    dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
+    dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
+    dev_ws_steps: int = 150                 # ... model steps in one round
+    dev_ws_minutes: int = 60                # ... minutes in one round
+    dev_ws_bash_runs: int = 80              # ... box commands in one round
+    dev_ws_clear_chars: int = 180000        # ... past this, old tool output is trimmed (brain.trim)
+    dev_ws_compact_chars: int = 480000      # ... past this, the older conversation is summarised (engine.compact)
+    dev_ws_keep_days: int = 14              # ... an idle session's working copy is kept this long
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)

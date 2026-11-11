@@ -161,6 +161,19 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def drop_note(tid: str, index: int, tenant: str = Depends(current_tenant)):
         return await run(S.drop_note, tenant, tid, index)
 
+    @r.get("/tasks/{tid}/ws")
+    async def ws_view(tid: str, tenant: str = Depends(current_tenant)):
+        """v0.784 the session's working copy: checkpoints, to-do list, live / slots."""
+        return await run(S.ws_task_view, tenant, tid)
+
+    @r.get("/tasks/{tid}/files")
+    async def ws_files(tid: str, path: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.ws_files, tenant, tid, path)
+
+    @r.post("/tasks/{tid}/rewind")
+    async def ws_rewind(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.ws_rewind, tenant, tid, int(_b(body).get("n") or 0))
+
     @r.get("/tasks/{tid}")
     async def get_task(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.get_task, tenant, tid)
