@@ -115,7 +115,7 @@ def test_csv_parse_and_charges_audit():
     labels = {x["label"] for x in c["classes"]}
     assert "SMS / alert charges" in labels and "Minimum / average balance penalty" in labels
     text = " | ".join(f["text"] for f in c["flags"])
-    assert "SMS / alert charges: 3 baar" in text and "do baar" in text and "NETFLIX" in text      # repeated fee + double debit
+    assert "SMS / alert charges: 3 times" in text and "twice" in text and "NETFLIX" in text      # repeated fee + double debit
     assert "30.0%" in text or "GST Rs 150.00" in text                                           # a GST line far from ~18% of that day's fee
     assert {f["kind"] for f in c["flags"]} <= {"measured", "heuristic"} and "not a claim that any charge is wrong" in c["note"]
     assert c["yearly_projection"] and c["yearly_projection"] > c["all_in_total"]
