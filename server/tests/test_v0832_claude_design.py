@@ -19,19 +19,66 @@ def _body(src: str, start: str, end: str) -> str:
     return src[a:src.index(end, a)]
 
 
-def _balanced(src: str) -> bool:
-    t = re.sub(r"//[^\n]*", "", src)
-    t = re.sub(r"'(?:\\.|[^'\\\n])*'", "''", t)
-    t = re.sub(r'"(?:\\.|[^"\\\n])*"', '""', t)
-    pr, st = {"(": ")", "[": "]", "{": "}"}, []
-    for c in t:
-        if c in pr:
+_NL, _BS, _S1, _S2 = chr(10), chr(92), chr(39), chr(34)
+_PAIR = {"(": ")", "[": "]", "{": "}"}
+
+
+def _skip_string(src: str, i: int) -> int:
+    """src[i] opens a Dart string; return the index after its end ($name and ${expr} interpolation handled)."""
+    c = src[i]
+    raw = i > 0 and src[i - 1] == "r"
+    tri = c * 3
+    q = tri if src.startswith(tri, i) else c
+    i += len(q)
+    n = len(src)
+    while i < n:
+        if not raw and src[i] == _BS:
+            i += 2
+            continue
+        if not raw and src.startswith("${", i):
+            i = _scan(src, i + 2, True)
+            continue
+        if src.startswith(q, i):
+            return i + len(q)
+        if len(q) == 1 and src[i] == _NL:
+            return i
+        i += 1
+    return i
+
+
+def _scan(src: str, i: int, in_interp: bool = False):
+    """Walk code from i; in_interp: stop after the closing brace of a ${...} and return the index there.
+    At top level returns True when brackets balance, False otherwise."""
+    st, n = [], len(src)
+    while i < n:
+        c = src[i]
+        if src.startswith("//", i):
+            j = src.find(_NL, i)
+            i = n if j < 0 else j
+            continue
+        if src.startswith("/*", i):
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if c in (_S1, _S2):
+            i = _skip_string(src, i)
+            continue
+        if c in _PAIR:
             st.append(c)
-        elif c in pr.values():
-            if not st or pr[st[-1]] != c:
+        elif c in _PAIR.values():
+            if not st:
+                if in_interp and c == "}":
+                    return i + 1
+                return False if not in_interp else i + 1
+            if _PAIR[st[-1]] != c:
                 return False
             st.pop()
-    return not st
+        i += 1
+    return i if in_interp else not st
+
+
+def _balanced(src: str) -> bool:
+    return _scan(src, 0) is True
 
 
 def test_edited_dart_files_are_bracket_balanced():
@@ -140,3 +187,86 @@ def test_version_layer():
     main = (REPO / "server/app/main.py").read_text(encoding="utf-8")
     assert 'APP_VERSION = "0.832.0"' in main and "CLAUDE-STYLE PHONE DESIGN" in main
     assert "0.832.0+831" in (REPO / "pubspec.yaml").read_text(encoding="utf-8")
+
+
+# ---- the all-screens pass (second commit of v0.832.0) ----
+LIB = REPO / "lib"
+
+
+def _dart(rel: str) -> str:
+    return (LIB / rel).read_text(encoding="utf-8")
+
+
+def test_no_indigo_or_old_saffron_literals_left_anywhere():
+    import colorsys
+    bad = []
+    for p in LIB.rglob("*.dart"):
+        for m in re.finditer(r"Color\(0x([0-9A-Fa-f]{8})\)", p.read_text(encoding="utf-8", errors="ignore")):
+            h = m.group(1)
+            r, g, b = (int(h[i:i + 2], 16) for i in (2, 4, 6))
+            hh, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+            if 230 <= hh * 360 <= 300 and l < .4 and s > .12 and h.upper() not in ("FFA21CAF", "FF2D2D5F"):
+                bad.append((p.name, h))
+    assert not bad, bad[:5]
+    for old in ("FFB15C", "FFC27A"):
+        assert old not in "".join(p.read_text(encoding="utf-8", errors="ignore") for p in LIB.rglob("*.dart")), old
+
+
+def test_no_decorative_gradients_or_coloured_glows_on_the_shared_screens():
+    for rel in ("ui/top_plugins.dart", "ui/artifacts_screen.dart", "ui/goal_card.dart", "ui/artifact_screen.dart", "ui/notebook_screen.dart"):
+        src = _dart(rel)
+        assert "gradient: C.gradient" not in src and "gradient: C.youGradient" not in src, rel
+    for rel in ("ui/today_screen.dart", "ui/home_sections.dart", "ui/any_card.dart", "ui/approve_sheet.dart"):
+        src = _dart(rel)
+        assert not re.search(r"BoxShadow\(color: (?:grad\.last|glow|tone|col)\.withOpacity\([^)]*\), blurRadius: (?!0\b)", src), rel
+        assert "Color(0x66FFA046)" not in src and "Color(0x66FF963C)" not in src, rel
+    # the avatar orb keeps its gradient and soft glow - it is the person, not chrome
+    assert "gradient: call.inCall ? null : C.gradient" in _dart("ui/live_voice_screen.dart")
+    assert "gradient: C.gradient" in _dart("ui/voice_screen.dart")
+
+
+def test_sentence_case_labels():
+    assert "String softCaps(String t)" in GLASS and "softCaps(text)" in GLASS
+    assert "softCaps(text)" in _dart("ui/home_sections.dart")
+    # every converted label keeps a plain call - and an ordinary mixed-case label is returned untouched
+    assert "t != t.toUpperCase()" in GLASS and "const keep = {" in GLASS
+    for rel in ("ui/today_screen.dart", "ui/chat_screen.dart", "ui/scroll_screen.dart", "ui/approve_sheet.dart", "ui/setup_screen.dart"):
+        assert "softCaps(" in _dart(rel), rel
+    assert "letterSpacing: 1.2" not in _dart("ui/today_screen.dart")
+
+
+def test_today_greeting_and_tiles_follow_the_design():
+    t = _dart("ui/today_screen.dart")
+    assert "replyText(size: 30)" in t                       # the greeting in the reply serif
+    assert "BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(17))" in t
+    assert "LinearGradient(colors: grad" not in t           # no coloured gradient tiles
+    assert "Press(\n          onTap: () => _ask(prompt)" in t   # tiles still ask the same prompts
+
+
+def test_call_screen_captions_and_controls():
+    v = _dart("ui/live_voice_screen.dart")
+    cap = _body(v, "Widget _captions()", "Future<void> _attach()")
+    assert "Glass(" not in cap and "replyText(size: 22)" in cap and "TextAlign.center" in cap
+    assert "'YOU'" not in cap
+    small = _body(v, "Widget _small(", "Widget _orb()")
+    assert "BoxShape.circle" in small and "width: 56" in small
+    orb = _body(v, "Widget _orb()", "class ")
+    assert "color: call.inCall ? C.bad : null" in orb and "0xFFB91C1C" not in orb
+    assert "onTap: call.act == CallAct.connecting ? null : (call.inCall ? call.end : call.start)" in orb   # the same action
+
+
+def test_studio_kit_uses_the_interface_sans_and_no_dead_import():
+    k = _dart("ui/studio/studio_kit.dart")
+    assert "uiSans(" in k and "GoogleFonts" not in k and "google_fonts" not in k
+    assert "static const bg = Color(0xFF151515)" in k
+
+
+def test_all_edited_dart_files_balanced_after_the_all_screens_pass():
+    import subprocess
+    changed = subprocess.run(["git", "diff", "--name-only", "origin/main", "--", "lib"], cwd=REPO,
+                             capture_output=True, text=True).stdout.split()
+    for rel in changed:
+        if rel.endswith(".dart"):
+            src = (REPO / rel).read_text(encoding="utf-8")
+            assert _balanced(src), rel
+            assert "<<<<<<<" not in src, rel

@@ -345,7 +345,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
             ),
           ),
           if (!app.connected)
-            const Positioned(left: 20, right: 20, top: 8, child: Pill('Connecting to the server…', fg: C.warn, bg: Color(0x2EFFB15C))),
+            const Positioned(left: 20, right: 20, top: 8, child: Pill('Connecting to the server…', fg: C.warn, bg: Color(0x2EF4A24C))),
           Positioned(left: 0, right: 0, bottom: 4, child: ArtifactCallPill(app: app)),
           Positioned(right: 12, top: 8, child: BrowserCallThumb(app: app)),
         ]),
@@ -382,12 +382,12 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
           reverse: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (_heard.isNotEmpty) ...[
-              const Text('YOU', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.muted)),
+              Text(softCaps('YOU'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.muted)),
               Text(_heard, style: const TextStyle(fontSize: 15, height: 1.35, color: C.ink)),
             ],
             if (_reply.isNotEmpty) ...[
               if (_heard.isNotEmpty) const SizedBox(height: 8),
-              const Text('SANTOSH', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.accent)),
+              Text(softCaps('SANTOSH'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.accent)),
               Text(_reply, style: const TextStyle(fontSize: 15, height: 1.35, color: C.ink, fontWeight: FontWeight.w600)),
             ],
           ]),

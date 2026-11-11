@@ -2667,6 +2667,12 @@ neutral dark ground, serif replies, pill composer, floating tab pill); no name, 
 
 ### Not built / not verified
 - NOT VERIFIED on a device or by `flutter analyze` (Flutter cannot run in the sandbox). First check = CI.
-- The other ~200 screens inherit tokens + Glass but were not individually restyled. Light theme, a Kaam tab, a chats drawer and the
-  call screen of the preview are not built (the app's own Today / Connect / Talk screens remain).
+- ALL-SCREENS PASS (second commit, same version): swept all 234 Dart files - 43 indigo hard-coded colours -> warm neutrals (by lightness,
+  alpha kept), every old saffron / amber literal -> the new accent, `C.gradient` / `C.youGradient` tiles -> flat accent / bubble, coloured box-shadow
+  glows removed (the avatar orb keeps gradient + soft glow), ALL-CAPS tracked labels -> `softCaps()` sentence case (HomeLabel, Caption + 14
+  literals; acronyms kept), Today greeting in the reply serif 30 and neutral action / time tiles, call captions centred (reply in serif 22, no
+  card), round 56 px call controls, red End button flat `C.bad`, Studio kit fonts on `uiSans`. Tests: 7 new pins + a real Dart bracket scanner
+  (the earlier regex one false-alarmed on 'https://...' strings).
+- Not built: the light theme; the preview's separate Kaam tab / chats drawer / call layout (the app's Today, Kaam sheet, chats sheet and
+  call screen carry the look instead); per-screen layout redesign of the 200 desk screens beyond the shared tokens.
 - Stash-proven red on pristine origin/main (not from this change): `test_v0249_claude_akshar::test_version`, `test_v0555_hoola_card::test_console_uses_it_as_the_default_card`.

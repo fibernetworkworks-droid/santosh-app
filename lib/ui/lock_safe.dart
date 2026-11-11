@@ -162,7 +162,7 @@ class LockSafeBanner extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
         child: Material(
-          color: const Color(0x2EFFB15C),
+          color: const Color(0x2EF4A24C),
           borderRadius: BorderRadius.circular(14),
           child: InkWell(
             borderRadius: BorderRadius.circular(14),

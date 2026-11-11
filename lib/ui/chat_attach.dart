@@ -91,7 +91,7 @@ class _Tile extends StatelessWidget {
     final snippet = '${f['snippet'] ?? ''}';
     Widget nameBar({bool tight = false}) => Container(
           width: double.infinity,
-          color: const Color(0xFF1E1A38),
+          color: const Color(0xFF2A2928),
           padding: const EdgeInsets.fromLTRB(8, 5, 8, 6),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Text(name, maxLines: tight ? 1 : 2, overflow: TextOverflow.ellipsis,
@@ -111,7 +111,7 @@ class _Tile extends StatelessWidget {
         ],
       ]);
     } else if (k == 'video') {
-      body = Container(color: const Color(0xFF1B1830), child: const Center(child: _PlayMark()));
+      body = Container(color: const Color(0xFF252423), child: const Center(child: _PlayMark()));
     } else if (img != null) {   // a PDF / Office file's first page
       body = Column(children: [
         Expanded(child: Container(width: double.infinity, color: Colors.white,
@@ -120,7 +120,7 @@ class _Tile extends StatelessWidget {
       ]);
     } else if (snippet.isNotEmpty) {
       body = Column(children: [
-        Expanded(child: Container(width: double.infinity, color: const Color(0xFF15122B), padding: const EdgeInsets.fromLTRB(8, 7, 8, 0),
+        Expanded(child: Container(width: double.infinity, color: const Color(0xFF1F1E1D), padding: const EdgeInsets.fromLTRB(8, 7, 8, 0),
             child: Text(snippet, overflow: TextOverflow.fade,
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.35, color: C.muted)))),
         nameBar(tight: true),
@@ -136,7 +136,7 @@ class _Tile extends StatelessWidget {
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: const Color(0xFF1A1733), borderRadius: BorderRadius.circular(12),
+        decoration: BoxDecoration(color: const Color(0xFF262524), borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0x26FFFFFF))),
         child: ClipRRect(borderRadius: BorderRadius.circular(11), child: body),
       ),
@@ -150,7 +150,7 @@ class _PlayMark extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: 34,
         height: 34,
-        decoration: const BoxDecoration(color: Color(0xB8110F20), shape: BoxShape.circle),
+        decoration: const BoxDecoration(color: Color(0xB8191817), shape: BoxShape.circle),
         child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
       );
 }
@@ -161,7 +161,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-        decoration: BoxDecoration(color: const Color(0xC7110F20), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: const Color(0xC7191817), borderRadius: BorderRadius.circular(6)),
         child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12)),
       );
 }
@@ -195,7 +195,7 @@ class AttachTray extends StatelessWidget {
                 )),
               if (f.err != null)
                 Positioned.fill(child: Container(
-                  decoration: BoxDecoration(color: const Color(0xE6160F24), borderRadius: BorderRadius.circular(12),
+                  decoration: BoxDecoration(color: const Color(0xE61B1A19), borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: C.bad.withOpacity(.7))),
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     const Icon(Icons.error_outline_rounded, color: C.bad, size: 20),
@@ -219,7 +219,7 @@ class AttachTray extends StatelessWidget {
                     child: Container(
                       width: 24,
                       height: 24,
-                      decoration: BoxDecoration(color: const Color(0xFF2A2547), shape: BoxShape.circle,
+                      decoration: BoxDecoration(color: const Color(0xFF373635), shape: BoxShape.circle,
                           border: Border.all(color: const Color(0x40FFFFFF))),
                       child: const Icon(Icons.close_rounded, size: 14, color: C.ink),
                     ),
@@ -350,9 +350,9 @@ class _AttachViewerState extends State<AttachViewer> {
     final url = '${f['url'] ?? ''}';
     final count = widget.items.length;
     return Scaffold(
-      backgroundColor: const Color(0xFF07060F),
+      backgroundColor: const Color(0xFF0B0A09),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF07060F),
+        backgroundColor: const Color(0xFF0B0A09),
         foregroundColor: Colors.white,
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${f['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),

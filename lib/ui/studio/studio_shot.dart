@@ -254,7 +254,7 @@ class _ShotEditorScreenState extends State<ShotEditorScreen> {
           child: Stack(fit: StackFit.expand, children: [
             SImage(app: app, url: '${s['keyframe'] ?? ''}', radius: 14, tone: toneOf('${widget.name}$_id'), icon: Icons.image_outlined),
             Positioned(left: 8, top: 8, child: Tag('${s['keyframe']}'.isEmpty ? 'Picture pending' : 'First picture', fg: C.ink,
-                bg: const Color(0xB306050F))),
+                bg: const Color(0xB30B0A09))),
             if (s['phase'] == 'paint')
               Container(color: Colors.black45, child: const Center(child: CircularProgressIndicator(color: C.accent))),
           ]),

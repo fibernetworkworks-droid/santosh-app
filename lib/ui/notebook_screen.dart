@@ -1526,7 +1526,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
         child: Container(
           margin: const EdgeInsets.only(bottom: 10, left: 50),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(gradient: C.youGradient, borderRadius: BorderRadius.circular(18)),
+          decoration: BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(18)),
           child: Text(m['text'] as String? ?? '', style: const TextStyle(color: Colors.white, height: 1.35)),
         ),
       );
@@ -1602,7 +1602,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
               child: Container(
                 margin: const EdgeInsets.only(bottom: 10, left: 50),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(gradient: C.youGradient, borderRadius: BorderRadius.circular(18)),
+                decoration: BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(18)),
                 child: Text(_pending, style: const TextStyle(color: Colors.white)),
               ),
             ),
@@ -1618,7 +1618,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
       ),
       Container(
         padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-        decoration: const BoxDecoration(color: Color(0x66120E2A), border: Border(top: BorderSide(color: Color(0x14FFFFFF)))),
+        decoration: const BoxDecoration(color: Color(0x661D1C1B), border: Border(top: BorderSide(color: Color(0x14FFFFFF)))),
         child: SafeArea(
           top: false,
           child: Column(mainAxisSize: MainAxisSize.min, children: [

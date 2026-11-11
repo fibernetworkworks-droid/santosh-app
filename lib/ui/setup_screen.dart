@@ -81,7 +81,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   const Text('Your AI companion. Paying bills, groceries from the shop, cabs, email, reminders — just say it and I will do it.',
                       style: TextStyle(color: C.muted, fontSize: 14, height: 1.5)),
                   const SizedBox(height: 18),
-                  const Text('YOUR LANGUAGE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.4, color: C.muted)),
+                  Text(softCaps('YOUR LANGUAGE'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.muted)),
                   const SizedBox(height: 8),
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     for (final e in languages.entries)

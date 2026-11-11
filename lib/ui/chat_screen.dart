@@ -356,9 +356,9 @@ class _ChatScreenState extends State<ChatScreen> {
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
       padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
       decoration: BoxDecoration(
-        color: const Color(0x24FFB15C),
+        color: const Color(0x24F4A24C),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x55FFB15C)),
+        border: Border.all(color: const Color(0x55F4A24C)),
       ),
       child: Row(children: [
         const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: C.accentSoft)),
@@ -576,7 +576,7 @@ class _ChatScreenState extends State<ChatScreen> {
         const Expanded(child: Divider(color: Color(0x1FFFFFFF), height: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text(label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.faint, letterSpacing: 1.2)),
+          child: Text(softCaps(label), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.faint, letterSpacing: .1)),
         ),
         const Expanded(child: Divider(color: Color(0x1FFFFFFF), height: 1)),
       ]),
@@ -633,9 +633,9 @@ class _ChatScreenState extends State<ChatScreen> {
         margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0x24FFB15C),
+          color: const Color(0x24F4A24C),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x55FFB15C)),
+          border: Border.all(color: const Color(0x55F4A24C)),
         ),
         child: Row(children: [
           const Icon(Icons.pending_actions_rounded, color: C.accentSoft, size: 18),
@@ -833,7 +833,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0x2EFFB15C), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: const Color(0x2EF4A24C), borderRadius: BorderRadius.circular(16)),
           child: Text(onTap == null ? t : '$t  ${app.g('(dobara koshish ke liye tap kijiye)')}', style: const TextStyle(fontSize: 13, color: Color(0xFFFFD9A8))),
         ),
       );
@@ -879,16 +879,12 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 
-  /// v0.178 the 40 px gradient starter tile with the saffron glow (the house pattern).
+  /// v0.488 the 40 px starter tile: a quiet neutral tile with a saffron icon (no gradient, no glow).
   Widget _starterTile(String s) => Container(
         width: 40,
         height: 40,
-        decoration: BoxDecoration(
-          gradient: C.gradient,
-          borderRadius: BorderRadius.circular(13),
-          boxShadow: const [BoxShadow(color: Color(0x4DFFA046), blurRadius: 12, offset: Offset(0, 4))],
-        ),
-        child: Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 20, color: C.onAccent),
+        decoration: BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(13)),
+        child: Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 20, color: C.accent),
       );
 
   Widget _item(FeedItem it, {bool fresh = false}) {
@@ -1055,7 +1051,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       width: 20,
       height: 20,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF34D399) : const Color(0xFFFFC27A)),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: state == 'done' ? const Color(0xFF34D399) : const Color(0xFFF6B66E)),
       child: Icon(state == 'done' ? Icons.check : Icons.priority_high, size: 13, color: Colors.white),
     );
   }
@@ -1201,7 +1197,7 @@ class _ChatScreenState extends State<ChatScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(app.g('IS PAR JAWAB'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.accentSoft, letterSpacing: .8)),
+            Text(softCaps(app.g('IS PAR JAWAB')), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.accentSoft, letterSpacing: .1)),
             const SizedBox(height: 2),
             Text(r, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip)),
           ]),
@@ -1261,9 +1257,9 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                 decoration: BoxDecoration(
-                  color: s == 'What is waiting for my yes?' ? const Color(0x26FFB15C) : const Color(0x14FFFFFF),
+                  color: s == 'What is waiting for my yes?' ? const Color(0x26F4A24C) : const Color(0x14FFFFFF),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: s == 'What is waiting for my yes?' ? const Color(0x59FFB15C) : const Color(0x22FFFFFF)),
+                  border: Border.all(color: s == 'What is waiting for my yes?' ? const Color(0x59F4A24C) : const Color(0x22FFFFFF)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 15,
@@ -2189,7 +2185,7 @@ class _DownButton extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xEE231B45),
+                color: const Color(0xEE31302F),
                 border: Border.all(color: const Color(0x33FFFFFF)),
                 boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 14, offset: Offset(0, 6))],
               ),

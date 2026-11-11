@@ -381,7 +381,7 @@ class _NbAudioScreenState extends State<NbAudioScreen> {
               Container(
                 width: 150,
                 height: 150,
-                decoration: BoxDecoration(shape: BoxShape.circle, gradient: C.gradient,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: C.accent,
                     boxShadow: [BoxShadow(color: C.accent2.withOpacity(.45), blurRadius: 40)]),
                 child: Center(child: Icon(_clip != null ? Icons.record_voice_over_rounded : Icons.podcasts_rounded, size: 70, color: C.onAccent)),
               ),
@@ -793,7 +793,7 @@ class NbMindMapScreen extends StatefulWidget {
 
 class _NbMindMapScreenState extends State<NbMindMapScreen> {
   final Set<String> _open = {'0'};
-  static const _colors = [Color(0xFF7C5CFF), Color(0xFF2DD4BF), Color(0xFFFFB15C), Color(0xFF34D399), Color(0xFFC055F5), Color(0xFFF87171), Color(0xFF38BDF8)];
+  static const _colors = [Color(0xFF7C5CFF), Color(0xFF2DD4BF), Color(0xFFF4A24C), Color(0xFF34D399), Color(0xFFC055F5), Color(0xFFF87171), Color(0xFF38BDF8)];
 
   Widget _node(Map<String, dynamic> n, String path, int depth, Color color, List<String> trail) {
     final kids = nbList(n['children']);
@@ -875,7 +875,7 @@ class _NbMindMapScreenState extends State<NbMindMapScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Tap a branch to open it; use 💬 to ask about it in chat.', style: TextStyle(color: C.faint, fontSize: 12)),
                 const SizedBox(height: 10),
-                _node(root, '0', 0, const Color(0xFF3D2F7A), const []),
+                _node(root, '0', 0, const Color(0xFF565554), const []),
               ]),
             ),
           ),
@@ -1019,7 +1019,7 @@ class _NbFlashcardsScreenState extends State<NbFlashcardsScreen> {
                           padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(28),
-                            gradient: showBack ? C.youGradient : const LinearGradient(colors: [Color(0xFF231B4A), Color(0xFF1A1438)]),
+                            gradient: showBack ? C.youGradient : const LinearGradient(colors: [Color(0xFF343332), Color(0xFF272625)]),
                             border: Border.all(color: Colors.white.withOpacity(.16)),
                             boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 30, offset: Offset(0, 12))],
                           ),

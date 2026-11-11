@@ -496,7 +496,7 @@ class _BazarScreenState extends State<BazarScreen> {
                   leading: Container(
                     width: 34,
                     height: 34,
-                    decoration: BoxDecoration(color: const Color(0x1FFFB15C), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: const Color(0x1FF4A24C), borderRadius: BorderRadius.circular(10)),
                     child: Icon(categoryIcon(e.key, e.value.first['executor'] as String? ?? ''), color: C.accentSoft, size: 19),
                   ),
                   title: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),

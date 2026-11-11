@@ -22,15 +22,15 @@ const _W = 'assets/images/santosh_working.png';
 const _T = 'assets/images/santosh_thinking.png';
 
 const moodStyles = <Mood, MoodStyle>{
-  Mood.idle: MoodStyle('Ready', Color(0xFFFFB15C), _H, ''),
+  Mood.idle: MoodStyle('Ready', Color(0xFFF4A24C), _H, ''),
   Mood.listening: MoodStyle('Listening', Color(0xFF2DD4BF), _H, 'Yes, go ahead…'),
-  Mood.happy: MoodStyle('Happy', Color(0xFFFFB15C), _H, 'That was fun!'),
+  Mood.happy: MoodStyle('Happy', Color(0xFFF4A24C), _H, 'That was fun!'),
   Mood.excited: MoodStyle('Excited', Color(0xFFF472B6), _H, 'Wow, great!'),
   Mood.care: MoodStyle('Fikar', Color(0xFF60A5FA), _H, 'Main hoon na'),
   Mood.think: MoodStyle('Thinking', Color(0xFFA78BFA), _T, 'Hmm…'),
   Mood.wow: MoodStyle('Surprised', Color(0xFFFDE047), _H, 'Really?!'),
   Mood.work: MoodStyle('Working', Color(0xFF34D399), _W, 'On it…'),
-  Mood.talking: MoodStyle('Speaking', Color(0xFFFFB15C), _H, ''),
+  Mood.talking: MoodStyle('Speaking', Color(0xFFF4A24C), _H, ''),
 };
 
 class _Cue {

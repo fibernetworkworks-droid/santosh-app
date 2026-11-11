@@ -63,12 +63,8 @@ class _TodayScreenState extends State<TodayScreen> {
               Container(
                 width: 52,
                 height: 52,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
-                  borderRadius: BorderRadius.circular(17),
-                  boxShadow: [BoxShadow(color: glow, blurRadius: 16, offset: const Offset(0, 5))],
-                ),
-                child: Icon(icon, color: Colors.white, size: 24),
+                decoration: BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(17)),   // v0.488 one quiet tile, the icon carries the accent
+                child: Icon(icon, color: C.accent, size: 24),
               ),
               const SizedBox(height: 8),
               Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .2)),
@@ -85,7 +81,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final isDay = w['is_day'] is bool ? w['is_day'] as bool : true;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(color: const Color(0x12FFFFFF), borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x21FFFFFF))),
+      decoration: BoxDecoration(color: C.surface, borderRadius: BorderRadius.circular(999), border: Border.all(color: C.hair)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text(DayTilesSection.wIconFor(code, isDay), style: const TextStyle(fontSize: 12)),
         const SizedBox(width: 5),
@@ -166,7 +162,7 @@ class _TodayScreenState extends State<TodayScreen> {
             ]);
           }),
           const SizedBox(height: 2),
-          Text(_greet(), style: display(26)),
+          Text(_greet(), style: replyText(size: 30).copyWith(height: 1.2, letterSpacing: -.3)),   // v0.488 the greeting in the reply serif
           const SizedBox(height: 16),
           Stagger(index: 0, child: _hero(context)),
           const SizedBox(height: 12),
@@ -179,7 +175,7 @@ class _TodayScreenState extends State<TodayScreen> {
                   child: Press(
                     onTap: () => showApproveSheet(context, app, a),
                     child: Glass(
-                      border: const Color(0x66FFB15C),
+                      border: const Color(0x66F4A24C),
                       child: Row(children: [
                         const Icon(Icons.verified_outlined, color: C.accent),
                         const SizedBox(width: 12),
@@ -220,7 +216,7 @@ class _TodayScreenState extends State<TodayScreen> {
                 const SizedBox(width: 8),
                 _chip(Icons.mail_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], app.g('Email likho'), 'I want to write an email'),
                 const SizedBox(width: 8),
-                _chip(Icons.smart_display_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], app.g('TV'), 'Play something on the TV'),
+                _chip(Icons.smart_display_rounded, const [Color(0xFFF4A24C), Color(0xFFFB923C)], app.g('TV'), 'Play something on the TV'),
               ]),
             ),
           ])),
@@ -257,11 +253,8 @@ class _TodayScreenState extends State<TodayScreen> {
             Container(
               width: 20,
               height: 20,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Icon(icon, color: Colors.white, size: 12),
+              decoration: BoxDecoration(color: C.bubble, borderRadius: BorderRadius.circular(7)),
+              child: Icon(icon, color: C.accent, size: 13),
             ),
             const SizedBox(width: 6),
             Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.chip)),
@@ -315,17 +308,17 @@ class ReminderSection extends StatelessWidget {
   Widget _tile(IconData icon, List<Color> grad, {double size = 40, double ic = 19}) => Container(
         width: size, height: size,
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          color: C.bubble,   // v0.488 one quiet tile; the icon carries the accent
           borderRadius: BorderRadius.circular(13),
-          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 13, offset: const Offset(0, 4))],
+          boxShadow: const <BoxShadow>[],
         ),
-        child: Icon(icon, size: ic, color: Colors.white),
+        child: Icon(icon, size: ic, color: C.accent),
       );
 
   Widget _groupHead(String label) => Padding(
         padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
         child: Row(children: [
-          Text(app.g(label), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.faint)),
+          Text(softCaps(app.g(label)), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.faint)),
           const SizedBox(width: 8),
           Expanded(child: Container(height: 1, color: Colors.white.withOpacity(.06))),
         ]),
@@ -509,17 +502,17 @@ class RoutinesSection extends StatelessWidget {
   Widget _tile(IconData icon, List<Color> grad, {double size = 40, double ic = 19}) => Container(
         width: size, height: size,
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          color: C.bubble,   // v0.488 one quiet tile; the icon carries the accent
           borderRadius: BorderRadius.circular(13),
-          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 13, offset: const Offset(0, 4))],
+          boxShadow: const <BoxShadow>[],
         ),
-        child: Icon(icon, size: ic, color: Colors.white),
+        child: Icon(icon, size: ic, color: C.accent),
       );
 
   Widget _groupHead(String label) => Padding(
         padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
         child: Row(children: [
-          Text(app.g(label), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.faint)),
+          Text(softCaps(app.g(label)), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.faint)),
           const SizedBox(width: 8),
           Expanded(child: Container(height: 1, color: Colors.white.withOpacity(.06))),
         ]),
@@ -696,7 +689,7 @@ class ListsSection extends StatelessWidget {
       return (Icons.home_rounded, [Color(0xFFFB7185), Color(0xFFE11D48)]);
     }
     if (n.contains('office') || n.contains('dukan')) {
-      return (Icons.work_rounded, [Color(0xFFFFB15C), Color(0xFFD97706)]);
+      return (Icons.work_rounded, [Color(0xFFF4A24C), Color(0xFFD97706)]);
     }
     return (Icons.checklist_rounded, [Color(0xFF60A5FA), Color(0xFF2563EB)]);
   }
@@ -724,17 +717,17 @@ class ListsSection extends StatelessWidget {
   Widget _tile(IconData icon, List<Color> grad, {double size = 40, double ic = 19}) => Container(
         width: size, height: size,
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          color: C.bubble,   // v0.488 one quiet tile; the icon carries the accent
           borderRadius: BorderRadius.circular(13),
-          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 13, offset: const Offset(0, 4))],
+          boxShadow: const <BoxShadow>[],
         ),
-        child: Icon(icon, size: ic, color: Colors.white),
+        child: Icon(icon, size: ic, color: C.accent),
       );
 
   Widget _groupHead(String label, {Color? pill, int? count}) => Padding(
         padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
         child: Row(children: [
-          Text(app.g(label), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.faint)),
+          Text(softCaps(app.g(label)), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.faint)),
           const SizedBox(width: 8),
           Expanded(child: Container(height: 1, color: Colors.white.withOpacity(.06))),
           if (pill != null && count != null) ...[

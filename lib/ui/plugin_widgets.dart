@@ -97,7 +97,7 @@ class BrandLogo extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * .28),
-        gradient: const LinearGradient(colors: [Color(0xFF2B2160), Color(0xFF3A2470)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: const LinearGradient(colors: [Color(0xFF41403F), Color(0xFF4B4A49)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         border: Border.all(color: const Color(0x26FFFFFF)),
       ),
       alignment: Alignment.center,
@@ -147,7 +147,7 @@ class BrandLogo extends StatelessWidget {
                   child: SizedBox(
                       width: size * .3,
                       height: size * .3,
-                      child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0x553A2470)))),
+                      child: const CircularProgressIndicator(strokeWidth: 2, color: Color(0x554B4A49)))),
           // the server has no logo for it (or the phone is offline): the same clean tile as plugins without a brand
           errorBuilder: (_, __, ___) {
             if (failed.add(url)) {
@@ -179,7 +179,7 @@ class PluginAction extends StatelessWidget {
     final (IconData icon, Color fg, Color bg, Color border) = switch (kind) {
       ActionKind.add => (Icons.add_rounded, C.onAccent, C.accent, C.accent),
       ActionKind.linked => (Icons.check_circle_rounded, C.ok, const Color(0x1F34D399), const Color(0x4434D399)),
-      ActionKind.attention => (Icons.link_rounded, C.accentSoft, const Color(0x14FFB15C), const Color(0x66FFB15C)),
+      ActionKind.attention => (Icons.link_rounded, C.accentSoft, const Color(0x14F4A24C), const Color(0x66F4A24C)),
       ActionKind.soon => (Icons.schedule_rounded, C.faint, Colors.transparent, const Color(0x1FFFFFFF)),
       ActionKind.builtin => (Icons.auto_awesome_rounded, C.violet, const Color(0x1F7C5CFF), const Color(0x447C5CFF)),
     };

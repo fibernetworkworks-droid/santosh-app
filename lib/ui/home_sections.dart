@@ -120,18 +120,18 @@ class HomeLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 8, left: 4),
         child: Row(children: [
-          Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.3, color: C.muted)),
+          Text(softCaps(text), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.muted)),
           if (isNew) ...[
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x6634D399))),
-              child: const Text('NEW', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1, color: C.ok)),
+              child: const Text('New', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.ok)),
             ),
           ],
           if (count != null) ...[
             const SizedBox(width: 6),
-            Text('· $count', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.muted)),
+            Text('· $count', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.muted)),
           ],
           if (trailing != null) ...[
             const SizedBox(width: 8),
@@ -241,7 +241,7 @@ class DayTilesSection extends StatelessWidget {
   /// Dark-glass-compatible tint for the band, keyed to the condition.
   static List<Color> _wTint(int? code, bool isDay) {
     if (code == null) return const [Color(0x1AFFFFFF), Color(0x05FFFFFF)];
-    if (code <= 1) return isDay ? const [Color(0x2EFFB15C), Color(0x0AFFB15C)] : const [Color(0x2E7C5CFF), Color(0x0A7C5CFF)];
+    if (code <= 1) return isDay ? const [Color(0x2EF4A24C), Color(0x0AF4A24C)] : const [Color(0x2E7C5CFF), Color(0x0A7C5CFF)];
     if (code == 2 || code == 3) return const [Color(0x2494A3B8), Color(0x0894A3B8)];
     if (code == 45 || code == 48) return const [Color(0x249CA3AF), Color(0x089CA3AF)];
     if ((code >= 51 && code <= 65) || (code >= 80 && code <= 82)) return const [Color(0x2E60A5FA), Color(0x0A60A5FA)];
@@ -372,8 +372,8 @@ class DayTilesSection extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text(_s(w['place']).split(',').first.toUpperCase(),
-                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.faint)),
+                    Text(softCaps(_s(w['place']).split(',').first.toUpperCase()),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.faint)),
                     const SizedBox(height: 4),
                     Text('↑ ${w['today_max_c'] is num ? (w['today_max_c'] as num).round() : '--'}°  ·  ↓ ${w['today_min_c'] is num ? (w['today_min_c'] as num).round() : '--'}°',
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.chip)),
@@ -440,10 +440,10 @@ class DayTilesSection extends StatelessWidget {
           // ---------- agla reminder ----------
           _divider(),
           if (next == null)
-            _drow(Icons.notifications_active_outlined, const Color(0x24FFB15C), C.accentSoft, 'No reminders today',
+            _drow(Icons.notifications_active_outlined, const Color(0x24F4A24C), C.accentSoft, 'No reminders today',
                 'Say — "remind me about medicine tomorrow at 9"')
           else
-            _drow(Icons.notifications_active_outlined, const Color(0x24FFB15C), C.accentSoft, _s(next['text']),
+            _drow(Icons.notifications_active_outlined, const Color(0x24F4A24C), C.accentSoft, _s(next['text']),
                 next['repeat'] is String && (next['repeat'] as String) != 'none'
                     ? 'I will remind you · ${_repeat[next['repeat']] ?? ''}'.trim()
                     : 'I will remind you',
@@ -525,7 +525,7 @@ class EmployeeSection extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 14, offset: const Offset(0, 4))],
+          boxShadow: const <BoxShadow>[],
         ),
         child: Icon(icon, size: ic, color: Colors.white),
       );
@@ -600,7 +600,7 @@ class EmployeeSection extends StatelessWidget {
               onTap: () => _open(context, tab: 5),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(color: const Color(0x14FFB15C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40FFB15C))),
+                decoration: BoxDecoration(color: const Color(0x14F4A24C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40F4A24C))),
                 child: Row(children: [
                   const Icon(Icons.bolt_rounded, size: 17, color: C.accent),
                   const SizedBox(width: 8),
@@ -646,8 +646,8 @@ class EmployeeSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: paused ? const Color(0x55FFC27A) : const Color(0x552DD4BF)),
-                  color: paused ? const Color(0x1AFFC27A) : const Color(0x1A2DD4BF),
+                  border: Border.all(color: paused ? const Color(0x55F6B66E) : const Color(0x552DD4BF)),
+                  color: paused ? const Color(0x1AF6B66E) : const Color(0x1A2DD4BF),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (!paused) Container(width: 6, height: 6, decoration: const BoxDecoration(color: C.ok, shape: BoxShape.circle)),
@@ -684,9 +684,9 @@ class EmployeeSection extends StatelessWidget {
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0x66FFB15C)), color: const Color(0x1AFFB15C)),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0x66F4A24C)), color: const Color(0x1AF4A24C)),
                 child: Row(children: [
-                  _tile(Icons.front_hand_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], size: 26, radius: 9, ic: 14),
+                  _tile(Icons.front_hand_rounded, const [Color(0xFFF4A24C), Color(0xFFFB923C)], size: 26, radius: 9, ic: 14),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('${_s(ask['why']).isEmpty ? 'One task is waiting for your yes' : _s(ask['why'])}',
@@ -705,7 +705,7 @@ class EmployeeSection extends StatelessWidget {
               onTap: () => _open(context, tab: 3),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(color: const Color(0x14FFB15C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40FFB15C))),
+                decoration: BoxDecoration(color: const Color(0x14F4A24C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40F4A24C))),
                 child: Row(children: [
                   const Icon(Icons.group_add_rounded, size: 17, color: C.accent),
                   const SizedBox(width: 8),
@@ -724,7 +724,7 @@ class EmployeeSection extends StatelessWidget {
   static Widget _tier(String level) {
     final (label, fg, bg, bc) = switch (level) {
       'bharosa' => ('TRUST', const Color(0xFF2DD4BF), const Color(0x1A2DD4BF), const Color(0x552DD4BF)),
-      'saathi' => ('SAATHI', C.accentSoft, const Color(0x1AFFB15C), const Color(0x55FFC27A)),
+      'saathi' => ('SAATHI', C.accentSoft, const Color(0x1AF4A24C), const Color(0x55F6B66E)),
       _ => ('LEARNING', C.faint, Colors.white.withOpacity(.06), Colors.white.withOpacity(.14)),
     };
     return Container(
@@ -737,8 +737,8 @@ class EmployeeSection extends StatelessWidget {
   static Widget _stat(String n, String k, {bool hot = false}) => Expanded(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(color: hot ? const Color(0x1AFFB15C) : C.panel, borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: hot ? const Color(0x55FFB15C) : Colors.white.withOpacity(.10))),
+          decoration: BoxDecoration(color: hot ? const Color(0x1AF4A24C) : C.panel, borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: hot ? const Color(0x55F4A24C) : Colors.white.withOpacity(.10))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(n, style: display(16, color: hot ? C.accentSoft : C.ink)),
             const SizedBox(height: 2),
@@ -768,7 +768,7 @@ class NetworkSection extends StatelessWidget {
     switch (kind) {
       case 'meeting': return (Icons.event_rounded, const [Color(0xFF60A5FA), Color(0xFF2563EB)]);
       case 'task': return (Icons.task_alt_rounded, const [Color(0xFF34D399), Color(0xFF059669)]);
-      case 'reminder': return (Icons.alarm_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)]);
+      case 'reminder': return (Icons.alarm_rounded, const [Color(0xFFF4A24C), Color(0xFFFB923C)]);
       case 'ask': return (Icons.front_hand_rounded, const [Color(0xFFFCD34D), Color(0xFFF59E0B)]);
       case 'message': return (Icons.chat_bubble_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)]);
       case 'voice_note': return (Icons.graphic_eq_rounded, const [Color(0xFFE879F9), Color(0xFFC026D3)]);
@@ -792,7 +792,7 @@ class NetworkSection extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 14, offset: const Offset(0, 4))],
+          boxShadow: const <BoxShadow>[],
         ),
         child: Icon(icon, size: ic, color: Colors.white),
       );
@@ -805,7 +805,7 @@ class NetworkSection extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: const <BoxShadow>[],
       ),
       child: Center(child: Text(initial, style: TextStyle(fontSize: size * .42, fontWeight: FontWeight.w800, color: Colors.white))),
     );
@@ -829,7 +829,7 @@ class NetworkSection extends StatelessWidget {
         onTap: () => _open(context, tab: 2),
         child: Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: const Color(0x14FFB15C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40FFB15C))),
+          decoration: BoxDecoration(color: const Color(0x14F4A24C), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x40F4A24C))),
           child: Row(children: [
             _tile(icon, grad, size: 34, radius: 11, ic: 17),
             const SizedBox(width: 10),
@@ -988,8 +988,8 @@ class NetworkSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: knocks > 0 ? const Color(0x55FFC27A) : const Color(0x552DD4BF)),
-                  color: knocks > 0 ? const Color(0x1AFFB15C) : const Color(0x1A2DD4BF),
+                  border: Border.all(color: knocks > 0 ? const Color(0x55F6B66E) : const Color(0x552DD4BF)),
+                  color: knocks > 0 ? const Color(0x1AF4A24C) : const Color(0x1A2DD4BF),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (knocks == 0) Container(width: 6, height: 6, decoration: const BoxDecoration(color: C.ok, shape: BoxShape.circle)),
@@ -1103,8 +1103,8 @@ class NetworkSection extends StatelessWidget {
   static Widget _stat(String n, String k, {bool hot = false}) => Expanded(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
-          decoration: BoxDecoration(color: hot ? const Color(0x1AFFB15C) : C.panel, borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: hot ? const Color(0x55FFB15C) : Colors.white.withOpacity(.10))),
+          decoration: BoxDecoration(color: hot ? const Color(0x1AF4A24C) : C.panel, borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: hot ? const Color(0x55F4A24C) : Colors.white.withOpacity(.10))),
           child: Column(children: [
             Text(n, style: display(15, color: hot ? C.accentSoft : C.ink)),
             const SizedBox(height: 2),
@@ -1131,7 +1131,7 @@ class NotebookSection extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 14, offset: const Offset(0, 4))],
+          boxShadow: const <BoxShadow>[],
         ),
         child: Icon(icon, size: ic, color: Colors.white),
       );
@@ -1154,7 +1154,7 @@ class NotebookSection extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: [col, col.withOpacity(.55)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                 borderRadius: BorderRadius.circular(11),
-                boxShadow: [BoxShadow(color: col.withOpacity(.35), blurRadius: 12, offset: const Offset(0, 3))],
+                boxShadow: const <BoxShadow>[],
               ),
               child: Center(child: em.isEmpty ? const Icon(Icons.auto_stories_rounded, size: 17, color: Colors.white) : Text(em, style: const TextStyle(fontSize: 16))),
             ),
@@ -1318,7 +1318,7 @@ class LearnedSection extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: grad, begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(13),
-          boxShadow: [BoxShadow(color: grad.last.withOpacity(.35), blurRadius: 13, offset: const Offset(0, 4))],
+          boxShadow: const <BoxShadow>[],
         ),
         child: Icon(icon, size: ic, color: Colors.white),
       );
@@ -1334,7 +1334,7 @@ class LearnedSection extends StatelessWidget {
         child: Row(children: [
           _tile(icon, grad),
           const SizedBox(width: 11),
-          Expanded(child: Text(app.g(label), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: C.chip))),
+          Expanded(child: Text(softCaps(app.g(label)), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: .1, color: C.chip))),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: grad.last.withOpacity(.18)),
@@ -1464,7 +1464,7 @@ class LearnedSection extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: const Color(0x5534D399))),
-                child: Text(topic.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .8, color: Color(0xFF6EE7B7))),
+                child: Text(softCaps(topic.toUpperCase()), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: .1, color: Color(0xFF6EE7B7))),
               ),
             Text(_s(l['text']), maxLines: 2, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 12.5, height: 1.4, color: C.ink)),
@@ -1486,7 +1486,7 @@ class LearnedSection extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: const LinearGradient(colors: _cEmerald, begin: Alignment.topLeft, end: Alignment.bottomRight),
             borderRadius: BorderRadius.circular(8),
-            boxShadow: [BoxShadow(color: _cEmerald.last.withOpacity(.30), blurRadius: 9, offset: const Offset(0, 3))],
+            boxShadow: const <BoxShadow>[],
           ),
           child: const Icon(Icons.extension_rounded, size: 14, color: Colors.white),
         ),

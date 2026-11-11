@@ -161,7 +161,7 @@ class _PhoneHoolaScreenState extends State<PhoneHoolaScreen> with WidgetsBinding
         ),
         _card(
           icon: Icons.widgets_rounded,
-          color: const Color(0xFFFFB15C),
+          color: const Color(0xFFF4A24C),
           title: '$name on the home screen',
           sub: 'Widget: $name\'s last chat, the next reminder, and two big buttons — 🎙 Speak (direct call) and ✍ Write.',
           children: [

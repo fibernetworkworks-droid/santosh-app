@@ -999,7 +999,7 @@ class _Bubble extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .8),
           padding: const EdgeInsets.fromLTRB(11, 8, 11, 6),
           decoration: BoxDecoration(
-            color: out ? const Color(0x33FFB15C) : C.panel,
+            color: out ? const Color(0x33F4A24C) : C.panel,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16),
               topRight: const Radius.circular(16),

@@ -246,7 +246,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: on ? const Color(0x33FFB15C) : C.panel,
+            color: on ? const Color(0x33F4A24C) : C.panel,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: on ? C.accent : C.line, width: on ? 2 : 1),
           ),

@@ -65,7 +65,7 @@ class CatchUpScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Glass(
-                    border: const Color(0x66FFB15C),
+                    border: const Color(0x66F4A24C),
                     child: Row(children: [
                       Expanded(
                         child: Text('${(a['title'] as String? ?? '').replaceFirst('[DEMO] ', '')}  ${a['amount'] ?? ''}',

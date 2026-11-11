@@ -95,7 +95,7 @@ ThemeData santoshTheme() {
       trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? C.accent : const Color(0x2EFFFFFF)),
     ),
     chipTheme: base.chipTheme.copyWith(backgroundColor: const Color(0x17FFFFFF), side: const BorderSide(color: Color(0x29FFFFFF)),
-        labelStyle: const TextStyle(color: C.ink, fontWeight: FontWeight.w600), selectedColor: const Color(0x38FFB15C)),
+        labelStyle: const TextStyle(color: C.ink, fontWeight: FontWeight.w600), selectedColor: const Color(0x38F4A24C)),
     pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: _GlassPageTransition()}),
   );
 }
@@ -266,7 +266,7 @@ class Avatar extends StatelessWidget {
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const SweepGradient(colors: [Color(0xFFFFB15C), Color(0xFFC055F5), Color(0xFF7C5CFF), Color(0xFFFFB15C)]),
+            gradient: const SweepGradient(colors: [Color(0xFFF4A24C), Color(0xFFC055F5), Color(0xFF7C5CFF), Color(0xFFF4A24C)]),
             boxShadow: [BoxShadow(color: (glow ?? C.accent).withOpacity(.45), blurRadius: 16)],
           ),
           child: AvatarFace(size: size - 4),          // the owner's look: Santosh or a female look (v0.48)
@@ -284,14 +284,28 @@ class Avatar extends StatelessWidget {
       ]);
 }
 
-/// Section caption.
+/// v0.488 an ALL-CAPS section label read as a quiet sentence-case one ("NEEDS YOUR YES" -> "Needs your yes"); well-known
+/// acronyms stay as they are, and a label that is not all caps is returned untouched.
+String softCaps(String t) {
+  if (t.isEmpty || t != t.toUpperCase() || t == t.toLowerCase()) return t;
+  const keep = {'GST', 'TV', 'UPI', 'AI', 'PDF', 'SMS', 'OTP', 'EMI', 'QR', 'ID', 'PAN', 'PC', 'KYC', 'ONDC', 'CA', 'USB', 'WIFI', 'AC', 'FAQ', 'API', 'URL', 'APK', 'ATM', 'HR', 'CRM', 'ERP', 'SEO', 'EC2'};
+  final words = t.split(' ');
+  for (var i = 0; i < words.length; i++) {
+    final w = words[i];
+    if (keep.contains(w)) continue;
+    words[i] = i == 0 && w.isNotEmpty ? w[0] + w.substring(1).toLowerCase() : w.toLowerCase();
+  }
+  return words.join(' ');
+}
+
+/// Section caption (v0.488: sentence case, 13 / 600, no wide tracking).
 class Caption extends StatelessWidget {
   const Caption(this.text, {super.key});
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.faint, letterSpacing: .9)),
+        child: Text(softCaps(text), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .1)),
       );
 }
 

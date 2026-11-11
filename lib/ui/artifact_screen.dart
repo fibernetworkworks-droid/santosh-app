@@ -489,7 +489,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
   Widget _strip() => _note(
         const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: C.accent)),
         'Hoola is building… it will open here as soon as the new version is ready',
-        const Color(0x2EFFB15C),
+        const Color(0x2EF4A24C),
         const Color(0xFFFFD9A8),
       );
 
@@ -604,7 +604,7 @@ class ArtifactCard extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(gradient: C.gradient, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: C.accent, borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.auto_awesome_mosaic_rounded, color: C.onAccent, size: 22),
             ),
             const SizedBox(width: 10),
@@ -709,10 +709,10 @@ class _ArtifactCallPillState extends State<ArtifactCallPill> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(14, 6, 4, 6),
               decoration: BoxDecoration(
-                color: const Color(0xE61A1438),
+                color: const Color(0xE6272625),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(color: ready ? C.accent.withOpacity(.6) : const Color(0x29FFFFFF)),
-                boxShadow: const [BoxShadow(color: Color(0x59050314), blurRadius: 18, offset: Offset(0, 6))],
+                boxShadow: const [BoxShadow(color: Color(0x590D0C0B), blurRadius: 18, offset: Offset(0, 6))],
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 if (!ready && !failed) ...[
