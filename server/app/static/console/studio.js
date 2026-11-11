@@ -284,6 +284,7 @@ ${SPRITE}`;
      current choice ticked, Arrow keys / Home / End / Enter / Esc, closes on a pick, an outside click, scroll or resize. */
   let popFor = null;
   function closeMenu(focus) {
+    if (!R) return;                     // v0.778 a console window resized before Create was ever opened threw (R is null until then)
     const pop = $('#pop'); if (!pop || pop.hidden) return;
     pop.classList.remove('on'); popFor?.setAttribute('aria-expanded', 'false');
     const b = popFor; popFor = null;

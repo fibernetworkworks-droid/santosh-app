@@ -140,6 +140,7 @@ let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens 
 let HIV = null;         // v0.747 HOOLA INTERACTIVE (interactive.js) - the video studio, its own sidebar row
 let HCD = null;         // v0.748 HOOLA CODE (code.js) - Developer Sahayak as a console page
 let FLW = null;         // v0.751 HOOLA FLOW (flow.js) - the Kaan pack as a console page
+let FLOW_TEXT = '';   // v0.777 text from the Hoola Flow page waiting for the chat box
 let FMIC = null;        // v0.751 the chat box mic through Kaan (flow.js HoolaFlowMic)
 IC.code = '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>';
 IC.flow = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>';   // v0.751 HOOLA FLOW
@@ -187,6 +188,7 @@ function drawNav() {
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
+  if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
@@ -339,6 +341,12 @@ async function enter() {
     FLW = HoolaFlow({api, esc, toast, say: (text, send) => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); msg.focus(); if (send) composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'flow')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['flow', 'Hoola Flow']);
   }
+  try {                                            // v0.777 'Put in the Hoola chat' from the Hoola Flow page: lands in the chat box, never sent
+    const d = localStorage.getItem('hoola.flow.toChat');
+    if (d) { localStorage.removeItem('hoola.flow.toChat'); FLOW_TEXT = d;       // the chat that opens next takes it (see openChat)
+      setTimeout(() => { if (!FLOW_TEXT) return; go('chat'); msg.value = d; msg.dispatchEvent(new Event('input')); msg.focus(); }, 0);
+      setTimeout(() => { FLOW_TEXT = ''; }, 6000); }
+  } catch (e) { /* private window */ }
   if (CONFIG.flow_mic && window.HoolaFlowMic && !FMIC) {   // v0.751 the chat box mic dictates through Kaan when its engine is ready
     FMIC = HoolaFlowMic({api, toast, onText: t => { msg.value = t; msg.dispatchEvent(new Event('input')); scrollDown(true); },
       onState: (on, why) => { $('#micBtn').classList.toggle('on', !!on); $('#micBtn').classList.toggle('busy', why === 'writing');
@@ -1427,7 +1435,8 @@ async function openConv(id, fresh, opts = {}) {
   }
   if (VIEW === 'chat') $('#ttl').textContent = chatFolder();
   slashClose();
-  msg.value = store.get('hoola.draft.' + id) || '';   // v0.173 her unfinished words come back with the chat
+  msg.value = FLOW_TEXT || store.get('hoola.draft.' + id) || '';   // v0.173 her unfinished words come back with the chat (v0.777: text handed over from Hoola Flow first)
+  if (FLOW_TEXT) { FLOW_TEXT = ''; setTimeout(() => { msg.dispatchEvent(new Event('input')); msg.focus(); }, 0); }
   msg.style.height = 'auto'; msg.style.height = Math.min(200, msg.scrollHeight) + 'px';
   $('#sendBtn').disabled = !msg.value.trim() && !FILES.length;
   // skeleton rows while the chat loads (not a spinner)

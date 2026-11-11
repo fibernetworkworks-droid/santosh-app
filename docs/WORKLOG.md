@@ -2852,7 +2852,7 @@ Task: owner "GO L1" - Lovable-grade Studio chat (live stream, soft words, thinki
 Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.777 (other sessions took 0.771-0.776).
 Stage Summary: pushed; server deploy only (no APK needed). Next: L2 TEEN MODE on her GO.
 
-Task ID: v0.778.0 HOOLA CODE PHASE 3 (built as 0.777; their CHAT JAISA took 0.777.0)
+Task ID: v0.779.0 HOOLA CODE PHASE 3 (built as 0.777; re-versioned twice on merge: CHAT JAISA took 0.777.0, HOOLA FLOW 0.778.0)
 Ask: GO PHASE 3 (the composer).
 Built: one box + one row (branch, mode, model + effort, usage ring), kind from her words, slash commands, pictures + text files on the first message, per-session cost, link pre-fill; 8 tests incl. 2 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip; five nullable columns self-heal; pictures under data/devsahayak/).
