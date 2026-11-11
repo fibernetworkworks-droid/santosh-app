@@ -1345,7 +1345,12 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
     """A tool call that can never hang the whole turn.
     v0.193 it also writes the harness session log (tool_call / tool_result, with the turn's context) - best-effort,
     the log can never break the call."""
-    if mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
+    from . import turnmode as _tmode
+    if not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
+        async def _refused(_n=name):
+            raise ToolError(_tmode.refusal(_n))
+        work = _refused()
+    elif mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
         work = mcp_live.run(ctx, mcp_route, name, args or {})
     else:
         work = dispatch(name, args or {}, ctx)
@@ -1471,6 +1476,13 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"], state["used"] = await asyncio.to_thread(procedures.hint, tenant_id, user_text)
         except Exception:
             log.exception("procedure hint failed")
+    try:   # v0.782 TEEN MODE: the mode's rules + this website's standing instructions / approved plan
+        from . import turnmode as _tmode
+        _tm_txt = _tmode.rules() + await asyncio.to_thread(_tmode.site_block, tenant_id)
+        if _tm_txt:
+            state["hint"] = (state.get("hint") or "") + _tm_txt
+    except Exception:
+        log.exception("turn mode block failed")
     _mark("hint")
     return state
 
@@ -3056,6 +3068,12 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         if _gr is None:
             return ""                  # this inbox row is already running / queued in this process: never twice
         _gtok = turnrun.CURRENT.set(_gr)
+    _tc_on = bool(getattr(get_settings(), "chat_turn_cost", True))
+    _tc_acc, _tc_tok, _tc_t0 = {"usd": 0.0, "calls": 0}, None, None
+    if _tc_on:                         # v0.777 CHAT JAISA: this turn's own rupees (turncost), shown in the Studio
+        from .. import usage as _usage
+        from ..db import now as _now
+        _tc_tok, _tc_t0 = _usage._TURN.set(_tc_acc), _now()
     try:
         return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
                                save_user)
@@ -3074,6 +3092,13 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             log.exception("even the crash reply failed")
             return ""
     finally:
+        if _tc_tok is not None:
+            from .. import turncost as _tcost, usage as _usage
+            try:
+                _usage._TURN.reset(_tc_tok)
+            except ValueError:
+                _usage._TURN.set(None)
+            _tcost.record(tenant_id, conversation_id, _tc_t0, _tc_acc)
         if _gr is not None:
             from . import turnrun
             turnrun.leave(_gr)
@@ -3100,6 +3125,15 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if _picked:
             from . import llm as _llm_pick
             _llm_pick.MODEL_NOW.set(_picked)
+    except Exception:   # noqa: BLE001
+        pass
+    try:   # v0.782 TEEN MODE: the Web Studio's Build / Plan / Chat, enforced at _run_tool (agent/turnmode.py)
+        from . import turnmode as _tmode
+        if _tmode.begin(user_text) == "chat":
+            _cm = str(getattr(get_settings(), "studio_chat_model", "") or "")
+            if _cm:                                   # Chat mode may run on a cheaper model the owner named
+                from . import llm as _llm_chat
+                _llm_chat.MODEL_NOW.set(_cm)
     except Exception:   # noqa: BLE001
         pass
     if client_id and (conversation_id, client_id) in _held:
@@ -3417,7 +3451,15 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _mark_failed(conversation_id)
             # v0.657 PAKKA KAAM: the deadline cancels the turn MID-TOOL, so a step may be half done (some mails gone,
             # some not). Never invite a blind resend; a background goal round says the next round carries on.
-            final_text = TIMEOUT_GOAL if (goal_on and who == "goal") else gendered(TIMEOUT_TEXT, _gender)
+            _parked = False
+            if getattr(settings, "chat_graph", False):
+                try:   # G4: a long job's budget never kills it - the cut segment is parked on the job's thread and
+                    # the next round continues from the cut step (the tool ledger decides the step that was cut)
+                    from . import turngraph as _tg
+                    _parked = await _tg.park_cut(conversation_id, settings, who)
+                except Exception:
+                    log.exception("parking the cut long job failed")
+            final_text = TIMEOUT_GOAL if (_parked or (goal_on and who == "goal")) else gendered(TIMEOUT_TEXT, _gender)
             await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)

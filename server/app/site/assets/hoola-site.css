@@ -424,3 +424,18 @@ form[data-hoola-config] [data-config-summary]{display:block;color:var(--c-muted)
 
 /* v0.581 a lesson's video / YouTube player in the website's app pages */
 .hs-appx-video{display:block;width:100%;max-width:720px;aspect-ratio:16/9;border:0;border-radius:var(--radius);background:#000}
+
+/* v0.795 YEH WALA: her style picks from the Studio's style panel - only the site's own tokens and steps */
+.hs-u-color-primary{color:var(--c-primary-text)!important}.hs-u-color-accent{color:var(--c-accent-text)!important}
+.hs-u-color-ink{color:var(--c-ink)!important}.hs-u-color-muted{color:var(--c-muted)!important}.hs-u-color-bg{color:var(--c-bg)!important}
+.hs-u-bg-none{background:none!important}.hs-u-bg-primary{background:var(--c-primary)!important;color:var(--c-on-primary)!important}
+.hs-u-bg-accent{background:var(--c-accent)!important;color:var(--c-on-accent)!important}
+.hs-u-bg-surface{background:var(--c-surface)!important}.hs-u-bg-ink{background:var(--c-ink)!important;color:var(--c-bg)!important}
+.hs-u-size-m1{font-size:.875em!important}.hs-u-size-1{font-size:1.15em!important}.hs-u-size-2{font-size:1.35em!important}
+.hs-u-size-3{font-size:1.65em!important}
+.hs-u-space-0{padding:0!important}.hs-u-space-1{padding:.35em .6em!important}.hs-u-space-2{padding:.7em 1.1em!important}
+.hs-u-space-3{padding:1.1em 1.6em!important}.hs-u-space-4{padding:1.6em 2.2em!important}
+.hs-u-radius-0{border-radius:0!important}.hs-u-radius-sm{border-radius:6px!important}.hs-u-radius-md{border-radius:12px!important}
+.hs-u-radius-lg{border-radius:22px!important}.hs-u-radius-full{border-radius:999px!important}
+.hs-u-align-left{text-align:left!important}.hs-u-align-center{text-align:center!important}.hs-u-align-right{text-align:right!important}
+.hs-u-weight-400{font-weight:400!important}.hs-u-weight-600{font-weight:600!important}.hs-u-weight-700{font-weight:700!important}

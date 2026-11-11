@@ -66,12 +66,16 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
     monkeypatch.setenv("CHAT_MODEL_CHOICE", "false")   # v0.740 older suites pin one model for every turn; test_v0740 checks the dropdown
+    monkeypatch.setenv("STUDIO_DESIGN_QUESTIONS", "false")  # v0.784 older Studio walks pin Build going straight to the workspace; test_v0784 checks the card
     monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile
     monkeypatch.setenv("CHAT_FILES_BY_CODE", "false")  # v0.738 older suites pin pylab keeping only png / csv / xlsx files
     monkeypatch.setenv("CHAT_EVERY_MESSAGE", "false")  # v0.738 older suites pin the research-plan gate + canned stop line; test_v0738 checks every message reaches the model
     monkeypatch.setenv("CONSOLE_HUMAN", "false")       # v0.743 older suites pin the old console wording; test_v0743 checks the friendlier one
     monkeypatch.setenv("INTERACTIVE_PAGE", "false")    # v0.747 older suites pin the console without the Hoola Interactive row
     monkeypatch.setenv("HOOLA_CODE_PAGE", "false")     # v0.748 older suites pin the console without the Hoola Code row
+    monkeypatch.setenv("DEV_WORKSPACE", "false")       # v0.784 older Hoola Code suites run the GitHub-API loop; test_v0784 turns the engine on
+    monkeypatch.setenv("DEV_CLAUDE", "false")          # v0.784 older suites pin the forced-model picker (SAB GLM); test_v0784 turns Claude-only on
+    monkeypatch.setenv("DEV_HINT", "false")            # Phase 5: the next-message suggestion is one more model call; its own test turns it on
     monkeypatch.setenv("FLOW_PAGE", "false")           # v0.751 older suites pin the console without the Hoola Flow row
     monkeypatch.setenv("SHILP_PAGE", "false")          # v0.752 older suites pin the Create studio without the ArtCraft tool
     monkeypatch.setenv("ARCHITECT_OPUS", "true")       # v0.735 older suites pin the architect on Opus; test_v0735_all_glm checks GLM
@@ -105,6 +109,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
+    monkeypatch.setenv("SEEKH_RESUME", "false")        # v0.785 no test picks up a video watch another run left on disk
     monkeypatch.setenv("GOAL_VERIFY_LINKS", "false")   # v0.443 the done=verified gate never reaches the network in tests
     monkeypatch.setenv("CHAT_HEAL_AI", "false")        # v0.158 no model judge of call cards in tests
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call

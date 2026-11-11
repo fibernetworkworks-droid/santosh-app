@@ -146,7 +146,7 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.wait_for_selector(".hcd-home")
     home = pg.locator(".hcd").text_content()
     assert "What should Hoola code today?" in home and "Working" in home and "Plan waits for your OK" in home and "<b>Orders to Postgres</b>" in home
-    assert pg.locator("#hcdKind option").count() == 5
+    assert pg.locator("#hcdMode option").count() == 3          # Phase 3: the kind is read from her words; the row has the mode
     pg.locator("[data-tid='dt1']").click()
     pg.wait_for_selector(".hcd-step")
     s = pg.locator(".hcd-feed").text_content()

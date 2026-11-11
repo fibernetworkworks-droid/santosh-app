@@ -54,7 +54,9 @@
   }
 
   const ICON = {
-    home: '<path d="M4 11l8-7 8 7v9H4z"/>', grid: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>',
+    home: '<path d="M4 11l8-7 8 7v9H4z"/>',
+    clip: '<path d="M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7"/>', down: '<path d="M12 5v14M5 12l7 7 7-7"/>',
+    list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>', doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>', grid: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/>',
     tpl: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
     back: '<path d="M15 5l-7 7 7 7"/>', plus: '<path d="M12 5v14M5 12h14"/>', up: '<path d="M12 19V5M5 12l7-7 7 7"/>',
     chat: '<path d="M4 5h16v11H8l-4 4z"/>', move: '<path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/>',
@@ -70,7 +72,8 @@
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', pin: '<path d="M12 21s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
     more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
     star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
-    edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>', trash: '<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>', pen: '<path d="M3 21c3-1 5-3 7-6l7-7a2.1 2.1 0 0 0-3-3l-7 7c-3 2-5 4-6 7z"/>',
+    note: '<path d="M5 4h14v12l-5 4H5z"/><path d="M14 20v-4h5"/>', trash: '<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
     spark: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
   const ico = (k, n = 18) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
@@ -112,13 +115,15 @@
   const TPL = {q: '', sector: '', kind: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
   let TPLSEL = null;
   const lakh = n => Number(n || 0).toLocaleString('en-IN');
-  const THREAD = {site: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, timer: null, sig: ''};
+  const THREAD = {site: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, timer: null, sig: '', steps: [], stepMap: new Map(),
+    costs: [], queue: [], files: [], thoughts: new Map(), stream: null, connected: false, pinned: false, think: null, detail: null};
 
   /* ================= router ================= */
   function parts() { return S(location.hash).replace(/^#\/?/, '').split('/').filter(Boolean); }
   async function route() {
     stopPoll(); clearTimeout(THREAD.timer); EDIT = false;
     const p = parts();
+    if (!(p[0] === 'site' && p[1])) stopStream();                 // v0.777 the thread's live stream ends with the site
     if (!(p[0] === 'site' && p[1] && LIVE.site === decodeURIComponent(p[1]))) stopLive();
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
@@ -396,7 +401,75 @@
     }, plan ? 14000 : 6000);
   }
 
-  async function startFromAsk(text) {
+  /* ================= v0.784 SAWAAL CARD (L3): a few design choices she can SEE before a Build ================= */
+  const WIRES = {               // the top of the home page as a wireframe (from the hero's own description, server side)
+    split: '<rect x="8" y="14" width="46" height="7" rx="2"/><rect x="8" y="25" width="38" height="4" rx="2" class="l"/><rect x="8" y="33" width="30" height="4" rx="2" class="l"/><rect x="8" y="44" width="20" height="8" rx="4" class="a"/><rect x="64" y="10" width="48" height="56" rx="4" class="p"/>',
+    full: '<rect x="4" y="6" width="112" height="64" rx="4" class="p"/><rect x="22" y="26" width="76" height="8" rx="2" class="w"/><rect x="34" y="38" width="52" height="4" rx="2" class="w"/><rect x="48" y="48" width="24" height="8" rx="4" class="a"/>',
+    grid: '<rect x="8" y="8" width="60" height="7" rx="2"/><rect x="8" y="19" width="40" height="4" rx="2" class="l"/><rect x="8" y="30" width="32" height="18" rx="3" class="p"/><rect x="44" y="30" width="32" height="18" rx="3" class="p"/><rect x="80" y="30" width="32" height="18" rx="3" class="p"/><rect x="8" y="52" width="32" height="14" rx="3" class="p"/><rect x="44" y="52" width="32" height="14" rx="3" class="p"/><rect x="80" y="52" width="32" height="14" rx="3" class="p"/>',
+    type: '<rect x="8" y="12" width="104" height="14" rx="3"/><rect x="8" y="30" width="86" height="14" rx="3"/><rect x="8" y="50" width="50" height="4" rx="2" class="l"/><rect x="8" y="58" width="22" height="8" rx="4" class="a"/>',
+    centre: '<rect x="24" y="14" width="72" height="8" rx="2"/><rect x="32" y="26" width="56" height="4" rx="2" class="l"/><rect x="48" y="36" width="24" height="8" rx="4" class="a"/><rect x="14" y="50" width="92" height="18" rx="4" class="p"/>',
+  };
+  const wire = k => `<svg class="wire" viewBox="0 0 120 76" aria-hidden="true">${WIRES[k] || WIRES.centre}</svg>`;
+  function qFont(o) {           // each font pair shown in its own type (the bundled woff2 files, nothing from outside)
+    if (!o) return {h: 'inherit', b: 'inherit'};
+    let st = $('#wsQFonts'); if (!st) { st = document.createElement('style'); st.id = 'wsQFonts'; document.head.appendChild(st); }
+    const h = `hq-${o.id}-h`, b = `hq-${o.id}-b`;
+    if (!st.textContent.includes(`'${h}'`)) {
+      st.textContent += (o.head_url ? `@font-face{font-family:'${h}';src:url(${o.head_url}) format('woff2');font-display:swap}` : '')
+        + (o.body_url ? `@font-face{font-family:'${b}';src:url(${o.body_url}) format('woff2');font-display:swap}` : '');
+    }
+    return {h: o.head_url ? `'${h}',serif` : 'inherit', b: o.body_url ? `'${b}',sans-serif` : 'inherit'};
+  }
+  function qOption(q, o, i) {
+    const c = M(o.colours), id = `wsq-${q.id}-${i}`;
+    let art = '';
+    if (q.kind === 'style') {
+      const f = qFont(o.font);
+      art = `<span class="qart qstyle" style="background:${HEX(c.bg)};color:${HEX(c.ink)};border-radius:${Math.min(16, Number(o.radius) || 0)}px">
+        <b style="font-family:${esc(f.h)}">Aa</b><i style="background:${HEX(c.primary)};border-radius:${Math.min(12, Number(o.radius) || 0)}px"></i><i class="ac" style="background:${HEX(c.accent)}"></i></span>`;
+    } else if (q.kind === 'palette') {
+      art = `<span class="qart qpal">${['bg', 'surface', 'ink', 'primary', 'accent'].map(k => `<i style="background:${HEX(c[k])}" title="${k} ${HEX(c[k])}"></i>`).join('')}</span>`;
+    } else if (q.kind === 'fonts') {
+      const f = qFont(o);
+      art = `<span class="qart qfont"><b style="font-family:${esc(f.h)}">${esc(S(o.head))}</b><span style="font-family:${esc(f.b)}">Fresh every morning, made with care.</span></span>`;
+    } else if (q.kind === 'hero') art = `<span class="qart qhero">${wire(S(o.wire))}</span>`;
+    return `<label class="qopt" for="${id}"><input type="radio" id="${id}" name="${esc(q.id)}" value="${esc(S(o.id))}"${i === 0 ? ' checked' : ''}>
+      ${art}<span class="qtxt"><b>${esc(S(o.label))}</b>${o.line && q.kind !== 'palette' ? `<span class="mut sm">${esc(S(o.line))}</span>` : ''}</span></label>`;
+  }
+  async function askDesign(text) {
+    // resolves {design} (null = Hoola picks) or null (she went back); a failed read never blocks her Build
+    const q = await api('GET', '/api/site-design/questions?brief=' + encodeURIComponent(text)).catch(() => null);
+    if (!q || q.skip || !L(q.questions).length) return {design: null};
+    APP.innerHTML = `<div class="wsp wsp-in" data-questions="1">
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+        <span class="pname">New website</span>${pill('A few choices', 'v')}<span class="sp"></span></header>
+      <form class="wsq" id="wsQ" aria-labelledby="wsQh">
+        <div class="qhead"><h1 id="wsQh">A few quick choices</h1>
+          <p class="mut">So the first design is yours. Pick what you like, or skip and Hoola picks. Two more designs come with it, so you can still compare.</p>
+          <blockquote class="qask">${esc(text.length > 220 ? text.slice(0, 220) + '…' : text)}</blockquote></div>
+        ${L(q.questions).map(x => `<fieldset class="qset qk-${esc(S(x.kind))}"><legend>${esc(S(x.title))}</legend>
+          <div class="qopts">${L(x.options).map((o, i) => qOption(x, o, i)).join('')}</div></fieldset>`).join('')}
+        <div class="qbar"><button class="b ghost" type="button" data-q="back">${ico('back', 16)}Back</button><span class="sp"></span>
+          <button class="b" type="button" data-q="skip">Skip, Hoola picks</button>
+          <button class="b pri" type="submit">Build with these${ico('arrow', 16)}</button></div>
+      </form></div>`;
+    document.title = 'A few choices · Hoola Web Studio';
+    const f = $('#wsQ');
+    f.querySelector('input')?.focus();
+    return new Promise(res => {
+      const done = v => { removeEventListener('keydown', esc_); res(v); };
+      const esc_ = e => { if (e.key === 'Escape' && $('#wsQ')) { e.preventDefault(); done(null); } };
+      addEventListener('keydown', esc_);
+      f.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); done({design: Object.fromEntries(new FormData(f))}); });
+      f.addEventListener('click', e => {
+        const b = e.target.closest('[data-q]'); if (!b) return;
+        e.stopPropagation();
+        done(b.dataset.q === 'skip' ? {design: null} : null);
+      });
+    });
+  }
+
+  async function startFromAsk(text, design = null) {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const conv = await newConv('');
     try {
@@ -410,6 +483,7 @@
       const body = {brief: text, conversation_id: conv, deep: true};   // v0.708 a system ask is planned deep first
       if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.686 the template's library card
       TPLSEL = null;
+      if (design) body.design = design;                // v0.784 her picks on the question card = look 1
       const v = await api('POST', '/api/sites', body);
       store.set(convKey(v.id), conv);
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website · ${name(v)}`}).catch(() => {});
@@ -536,7 +610,7 @@
 
   const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
   function drawShell() {
-    const v = CUR, mode = store.get(MODE_KEY + '.chat') === 'plan' ? 'plan' : 'build';
+    const v = CUR, mode = chatMode();
     APP.innerHTML = `<div class="wsp">
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
@@ -548,10 +622,14 @@
           <div class="msgs" id="wsMsgs" aria-live="polite"></div>
           <div id="wsState" style="padding:0 18px"></div>
           <form class="comp" data-form="thread"><label for="wsTh" class="sr">Message Hoola about this website</label>
-            <textarea id="wsTh" rows="2" maxlength="4000" placeholder="Ask Hoola to change anything…"></textarea>
+            <div class="pills" id="wsPills" hidden></div>
+            <div class="tray" id="wsTray" hidden></div>
+            <textarea id="wsTh" rows="2" maxlength="4000" placeholder="${esc(MODE_PH[mode])}"></textarea>
             <div class="cbar">
+              <button class="ib" type="button" data-act="attach" aria-label="Attach files or photos" title="Attach files or photos">${ico('clip', 16)}</button>
+              <input type="file" id="wsFile" multiple hidden>
               <button class="ib" type="button" data-act="select" aria-label="Select on the page" title="Select on the page">${ico('sel', 16)}</button>
-              <div class="seg" role="group" aria-label="Mode"><button type="button" data-cmode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-cmode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
+              <div class="seg" role="group" aria-label="Mode (Alt+P)" title="Build changes the site · Plan writes a plan first · Chat only talks (Alt+P)">${MODES.map(m => `<button type="button" data-cmode="${m}" aria-pressed="${mode === m}">${MODE_NAME[m]}</button>`).join('')}</div>
               <span class="sp"></span><button class="send" type="submit" aria-label="Send">${ico('up', 16)}</button></div></form>
         </section>
         <section class="pane" id="wsPane" aria-label="Website"></section>
@@ -571,7 +649,7 @@
     const ic = run ? '<span class="spin" aria-hidden="true"></span>' : bad ? `<span class="xmark" aria-hidden="true">!</span>` : `<span class="tick" aria-hidden="true">${ico('check', 11)}</span>`;
     const cnt = Number(x.total) ? `<span class="cnt">${esc(S(x.done || 0))}/${esc(S(x.total))}</span>` : '';
     const t = run ? `<span class="tm" data-t0="${Number(x.at)}"></span>` : `<span class="tm">${dur((Number(x.end) || Number(x.at)) - Number(x.at))}</span>`;
-    return `<li class="${run ? 'run' : bad ? 'bad' : 'ok'}">${ic}<div class="sl"><span class="ell">${esc(S(x.label))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${cnt}${t}</li>`;
+    return `<li class="${run ? 'run' : bad ? 'bad' : 'ok'}">${ic}<div class="sl"><span class="ell">${esc(pastLabel(x.label, x.state))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${cnt}${t}</li>`;
   }
   function stepList(a, last) {
     const st = L(a.steps).filter(x => !x.final || x.state === 'error');
@@ -614,7 +692,7 @@
       const ok = !st.some(x => x.state === 'error'), chk = M(v.checks);
       const fresh = nowS() - Number(a.ended) < 3600 && ok && S(v.status) === 'ready' && hasVersion(v);
       box.innerHTML = `<details class="actd done"${ACT_OPEN ? ' open' : ''}><summary>${ok ? `<span class="tick" aria-hidden="true">${ico('check', 11)}</span>` : '<span class="xmark" aria-hidden="true">!</span>'}<span><b>${ok ? 'Worked' : 'Stopped'} for ${dur(Number(a.ended) - Number(a.started))} · ${st.filter(x => !x.final).length} steps</b></span><span class="chev" aria-hidden="true">${ico('chev', 14)}</span></summary>${stepList(a)}</details>
-        ${fresh ? `<div class="vcard"><span class="vth" aria-hidden="true"></span><span class="vt"><b>Version ${esc(S(v.version))} is ready</b><span>${chk.passed === true ? 'Every check passed · ' : ''}not live until you publish</span></span>
+        ${fresh ? `<div class="vcard"><span class="vth" aria-hidden="true"></span><span class="vt"><b>Version ${esc(S(v.version))} is ready</b><span>${S(chk.tier) === 'quick' ? `Quick check of ${esc(L(chk.checked_pages).join(', ') || 'this page')}${chk.quick_s != null ? ` in ${esc(S(chk.quick_s))}s` : ''} · the full check runs before going live` : chk.passed === true ? 'Every check passed · not live until you publish' : 'not live until you publish'}</span></span>
           <button class="b dark sm" type="button" data-view="publish">${ico('globe', 14)}Go live…</button></div>
           <div class="sugg"><span>Next, you could</span>${['Add a shop with cart', 'Add online payments', 'Add a Hindi version'].map(t => `<button type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
     } else box.innerHTML = '';
@@ -641,7 +719,7 @@
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
-    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish}[VIEW] || preview;
+    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
     if (WORKING(CUR)) startPoll();
@@ -696,12 +774,13 @@
     pane.innerHTML = viewsBar(top)
       + (jd ? `<div class="edbar okbar"><b>New version v${esc(S(jd.to))} is ready</b><span class="ell">You are looking at it now. Nothing is live until you publish.</span><span class="sp"></span>
           <button class="b sm" type="button" data-act="compare">Before / after</button><button class="ib" type="button" data-act="jd-close" aria-label="Close">×</button></div>` : '')
-      + (EDIT ? `<div class="edbar"><b>Edit mode</b><span>Click any words to type · click a picture to change it · free, no AI</span><span class="sp"></span>
-          <button class="b sm" type="button" data-act="undo">Undo</button><button class="b sm pri" type="button" data-act="edit-done">Done</button></div>` : '')
+
       + (st === 'failed' || st === 'stopped' ? `<div class="edbar"><b>${st === 'failed' ? 'The last build stopped on a problem' : 'Building is paused'}</b><span class="ell">${esc(S(v.error))}</span><span class="sp"></span><button class="b sm pri" type="button" data-act="resume">${st === 'failed' ? 'Try again' : 'Continue'}</button></div>` : '')
       + (WORKING(v) ? `<div class="edbar"><span class="spin" aria-hidden="true"></span><span class="ell">${esc(S(b.now) || 'Updating your website…')}</span></div>` : '')
-      + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}</div>`;
+      + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}</div>`
+      + (EDIT ? '<div id="wsYW"></div>' : '');
     fit();
+    if (EDIT) ywDraw();                                  // v0.795 YEH WALA: the preview toolbar, style panel, draw layer
   }
 
   function looksView(pane, v) {
@@ -718,6 +797,199 @@
           ${est.say ? `<span class="mut sm">${esc(S(est.say))}</span>` : ''}<button class="b pri" type="button" data-act="pick-look">Build in this look</button></div>`;
     fit();
   }
+
+  /* ================= v0.795 YEH WALA (L5): point at the page instead of describing it ================= */
+  const YW = {mode: 'select', sel: [], tokens: {}, comments: [], strokes: [], notes: [], pen: 'pen', min: false, site: '',
+    pos: (() => { try { return localStorage.getItem('hoola.ws.ptb') || 'center'; } catch { return 'center'; } })(), page: '', wait: null, cmOpen: false, el: null};
+  const PT = [['select', 'S', 'Select', 'sel'], ['text', 'T', 'Text', 'edit'], ['draw', 'D', 'Draw', 'pen'], ['comment', 'C', 'Comment', 'note']];
+  const ywFrame = () => APP.querySelector('.frame iframe');
+  function ywPost(m) { const f = ywFrame(); if (f && f.contentWindow) f.contentWindow.postMessage({hoola: 'edit-cmd', ...m}, '*'); }
+  function ywPins() {
+    let n = 0;
+    return L(YW.comments).map(c => ({k: S(c.k), e: S(c.e), n: Number(c.n) || ++n, done: S(c.status) === 'resolved'}));
+  }
+  function ywSync() {
+    ywPost({mode: YW.mode === 'draw' ? 'view' : YW.mode});
+    ywPost({t: 'selected', items: YW.sel});
+    ywPost({t: 'pins', pins: ywPins()});
+  }
+  function drawPills() {
+    const p = $('#wsPills'); if (!p) return;
+    p.hidden = !YW.sel.length;
+    p.innerHTML = YW.sel.map((x, i) => `<span class="pill2" title="${esc(x.name)}">${ico('sel', 12)}<span class="ell">${esc(x.label || x.name || 'Selected part')}</span><button type="button" class="x" data-act="pill-x" data-i="${i}" aria-label="Remove ${esc(x.label || x.name)}">×</button></span>`).join('')
+      + (YW.sel.length ? '<span class="mut sm">Your next message is about these</span>' : '');
+  }
+  function ywDraw() {
+    const host = $('#wsYW'); if (!host || !CUR) return;
+    YW.site = S(CUR.id);
+    const open = L(YW.comments).filter(c => S(c.status) === 'open').length;
+    host.innerHTML = `<div class="ptb pos-${esc(YW.pos)}${YW.min ? ' min' : ''}" role="toolbar" aria-label="Preview tools">
+        ${YW.min ? `<button type="button" class="ptmax" data-act="pt-min" aria-label="Show the preview tools">${ico('sel', 16)}</button>` : `
+        <span class="grip" aria-hidden="true" title="Drag to move">⋮⋮</span>
+        ${PT.map(([m, key, label, ic]) => `<button type="button" data-act="pt-mode" data-m="${m}" aria-pressed="${YW.mode === m}" title="${label} (${key})">${ico(ic, 16)}<span>${label}</span><kbd>${key}</kbd></button>`).join('')}
+        <span class="ptsep" aria-hidden="true"></span>
+        <button type="button" data-act="pt-cm" aria-pressed="${YW.cmOpen}" title="Comments for your team">${ico('note', 16)}<span>${open || ''}</span></button>
+        <button type="button" data-act="undo" title="Undo your last change">${ico('back', 16)}</button>
+        <button type="button" class="ptdone" data-act="edit-done">Done</button>
+        <button type="button" data-act="pt-min" aria-label="Hide the preview tools" title="Hide">–</button>`}</div>
+      <div class="ptnote" aria-live="polite">${esc({select: 'Select: click a part of the page · Ctrl / Shift adds more · the style panel is free', text: 'Text: click any words and type · free, no AI', draw: 'Draw: mark the page, add a note, send it to Hoola', comment: 'Comment: click the part your note is about · for your team, not sent to Hoola'}[YW.mode])}</div>
+      <div id="wsStyle"></div><div id="wsCm"></div><div id="wsDraw"></div>`;
+    const f = APP.querySelector('.frame');
+    if (f && !f.querySelector('canvas.drawc')) { const c = document.createElement('canvas'); c.className = 'drawc'; c.setAttribute('aria-label', 'Draw on the page'); f.appendChild(c); ywCanvas(c); }
+    const cv = f?.querySelector('canvas.drawc'); if (cv) cv.hidden = YW.mode !== 'draw';
+    ywDrag(host.querySelector('.ptb'));
+    ywPanel(); ywCmList(); ywDrawBar(); ywPaint();
+  }
+  function ywDrag(bar) {
+    const g = bar?.querySelector('.grip'); if (!g) return;
+    g.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      const host = bar.parentElement.getBoundingClientRect(), w = bar.offsetWidth;
+      bar.classList.add('dragging');
+      const move = e2 => { bar.style.left = Math.max(8, Math.min(host.width - w - 8, e2.clientX - host.left - 14)) + 'px'; bar.style.transform = 'none'; };
+      const up = e2 => {
+        removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+        const x = (e2.clientX - host.left) / host.width;
+        YW.pos = x < 0.34 ? 'left' : x > 0.66 ? 'right' : 'center';            // snap to a third
+        try { localStorage.setItem('hoola.ws.ptb', YW.pos); } catch {}
+        bar.classList.remove('dragging'); bar.style.left = ''; bar.style.transform = '';
+        bar.className = bar.className.replace(/pos-\w+/, 'pos-' + YW.pos);
+      };
+      addEventListener('pointermove', move); addEventListener('pointerup', up);
+    });
+  }
+  function setPT(m) {
+    if (!PT.some(x => x[0] === m)) return;
+    YW.mode = m; if (m !== 'select') { YW.sel = YW.sel; }
+    ywSync(); ywDraw();
+  }
+  async function ywPanel() {
+    const box = $('#wsStyle'); if (!box) return;
+    if (!EDIT || YW.mode !== 'select' || YW.sel.length !== 1) { box.innerHTML = ''; YW.el = null; return; }
+    const one = YW.sel[0];
+    let el;
+    try { el = await api('GET', `/api/sites/${enc(CUR.id)}/element?k=${encodeURIComponent(one.k)}&e=${encodeURIComponent(one.e)}`); }
+    catch (er) { box.innerHTML = `<div class="stylep"><p class="li bad">${esc(er.message)}</p></div>`; return; }
+    if (YW.sel.length !== 1 || YW.sel[0].e !== one.e || YW.sel[0].k !== one.k) return;
+    YW.el = el; one.label = S(el.label); drawPills();
+    const t = YW.tokens, has = M(el.styles);
+    const sw = (prop, val, col, label) => `<button type="button" class="sw2${has[prop] === val ? ' on' : ''}" data-act="sty" data-p="${prop}" data-v="${val}" title="${esc(label)}" aria-label="${esc(label)}" aria-pressed="${has[prop] === val}"><i style="background:${HEX(col) || 'transparent'}"></i></button>`;
+    const chip = (prop, val, label) => `<button type="button" class="chip2${has[prop] === val ? ' on' : ''}" data-act="sty" data-p="${prop}" data-v="${val}" aria-pressed="${has[prop] === val}">${esc(label)}</button>`;
+    const reset = prop => has[prop] ? `<button type="button" class="chip2 ghost" data-act="sty" data-p="${prop}" data-v="default">As designed</button>` : '';
+    const textual = !['img', 'picture', 'video'].includes(S(el.tag));
+    box.innerHTML = `<aside class="stylep" aria-label="Style">
+      <div class="sph"><b class="ell">${esc(S(el.label))}</b><span class="pfree">Free · no AI</span></div>
+      ${textual ? `<div class="spr"><span>Text colour</span><div class="sws">${sw('color', 'primary', t.primary, 'Brand colour')}${sw('color', 'accent', t.accent, 'Accent')}${sw('color', 'ink', t.ink, 'Text colour')}${sw('color', 'muted', t.ink, 'Soft text')}${sw('color', 'bg', t.bg, 'Page colour')}${reset('color')}</div></div>` : ''}
+      <div class="spr"><span>Background</span><div class="sws">${sw('bg', 'primary', t.primary, 'Brand colour')}${sw('bg', 'accent', t.accent, 'Accent')}${sw('bg', 'surface', t.surface, 'Soft panel')}${sw('bg', 'ink', t.ink, 'Dark')}${chip('bg', 'none', 'None')}${reset('bg')}</div></div>
+      ${textual ? `<div class="spr"><span>Size</span><div class="sws">${chip('size', 'm1', 'Smaller')}${chip('size', '1', '+1')}${chip('size', '2', '+2')}${chip('size', '3', '+3')}${reset('size')}</div></div>
+      <div class="spr"><span>Weight</span><div class="sws">${chip('weight', '400', 'Regular')}${chip('weight', '600', 'Semi-bold')}${chip('weight', '700', 'Bold')}${reset('weight')}</div></div>
+      <div class="spr"><span>Align</span><div class="sws">${chip('align', 'left', 'Left')}${chip('align', 'center', 'Centre')}${chip('align', 'right', 'Right')}${reset('align')}</div></div>` : ''}
+      <div class="spr"><span>Padding</span><div class="sws">${['0', '1', '2', '3', '4'].map(n => chip('space', n, n)).join('')}${reset('space')}</div></div>
+      <div class="spr"><span>Corners</span><div class="sws">${[['0', 'Square'], ['sm', 'S'], ['md', 'M'], ['lg', 'L'], ['full', 'Pill']].map(([v2, l2]) => chip('radius', v2, l2)).join('')}${reset('radius')}</div></div>
+      <p class="mut sm">Only your site's own colours. Every change is a version you can Undo. For anything else, write it in the chat: your message will be about this part.</p></aside>`;
+  }
+  async function ywLoadComments() {
+    if (!CUR) return;
+    try { YW.comments = L((await api('GET', `/api/sites/${enc(CUR.id)}/comments`)).comments); } catch { YW.comments = []; }
+    if (EDIT) { ywPost({t: 'pins', pins: ywPins()}); ywCmList(); const b = APP.querySelector('[data-act="pt-cm"] span'); if (b) b.textContent = L(YW.comments).filter(c => S(c.status) === 'open').length || ''; }
+  }
+  async function ywComment(k, e, nm) {
+    const f = await dialog('Comment for your team', `<p class="mut sm">On ${esc(nm || 'this part')} · not sent to Hoola</p><label class="fld">Comment<textarea class="in" name="text" rows="3" maxlength="1000" required></textarea></label>`);
+    if (!f) return;
+    const text = S(f.get('text')).trim(); if (!text) return;
+    try { await api('POST', `/api/sites/${enc(CUR.id)}/comments`, {k, e, text}); YW.cmOpen = true; await ywLoadComments(); toast('Comment added.'); }
+    catch (er) { toast(er.message, true); }
+  }
+  function ywCmList() {
+    const box = $('#wsCm'); if (!box) return;
+    if (!YW.cmOpen || YW.mode === 'draw') { box.innerHTML = ''; return; }      // drawing gets the whole page
+    const cs = L(YW.comments);
+    box.innerHTML = `<aside class="cmtp" aria-label="Comments"><div class="sph"><b>Comments</b><span class="mut sm">${cs.filter(c => S(c.status) === 'open').length} open</span><span class="sp"></span><button type="button" class="ib" data-act="pt-cm" aria-label="Close comments">×</button></div>
+      ${cs.length ? cs.map(c => `<div class="cmi${S(c.status) === 'resolved' ? ' done' : ''}"><span class="cmn">${esc(S(c.n))}</span><div class="cmb"><span class="mut sm ell">${esc(S(c.label))}</span><p>${esc(S(c.text))}</p>
+          <span class="mut sm">${esc(S(c.author))}</span><div class="inl">${S(c.status) === 'open' ? `<button type="button" class="b sm" data-act="cm-res" data-id="${esc(S(c.id))}">Resolve</button>` : `<button type="button" class="b sm" data-act="cm-open" data-id="${esc(S(c.id))}">Reopen</button>`}<button type="button" class="b sm ghost" data-act="cm-del" data-id="${esc(S(c.id))}">Delete</button></div></div></div>`).join('')
+        : '<p class="mut sm">No comments yet. Pick Comment, then click a part of the page.</p>'}</aside>`;
+  }
+  /* ----- Draw: strokes and numbered notes over the frame, sent as a marked-up screenshot ----- */
+  function ywCanvas(c) {
+    let cur = null;
+    const pt = ev => { const r = c.getBoundingClientRect(); return [Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (ev.clientY - r.top) / r.height))]; };
+    c.addEventListener('pointerdown', async ev => {
+      if (YW.mode !== 'draw') return;
+      ev.preventDefault();
+      if (YW.pen === 'note') {
+        const p = pt(ev), f = await dialog(`Note ${YW.notes.length + 1}`, '<label class="fld">What should change here?<input class="in" name="text" maxlength="200"></label>');
+        if (f) { YW.notes.push({x: p[0], y: p[1], text: S(f.get('text')).trim()}); ywPaint(); ywDrawBar(); }
+        return;
+      }
+      cur = [pt(ev)]; YW.strokes.push(cur); c.setPointerCapture(ev.pointerId); ywPaint();
+    });
+    c.addEventListener('pointermove', ev => { if (!cur) return; cur.push(pt(ev)); ywPaint(); });
+    const end = () => { if (cur) { cur = null; ywDrawBar(); } };
+    c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+  }
+  function ywPaint() {
+    const c = APP.querySelector('canvas.drawc'); if (!c) return;
+    const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
+    g.strokeStyle = '#6D4AFF'; g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round';
+    YW.strokes.forEach(st => { g.beginPath(); st.forEach(([x, y], i) => i ? g.lineTo(x * r.width, y * r.height) : g.moveTo(x * r.width, y * r.height)); if (st.length === 1) g.lineTo(st[0][0] * r.width + 0.1, st[0][1] * r.height); g.stroke(); });
+    YW.notes.forEach((n, i) => { g.fillStyle = '#6D4AFF'; g.beginPath(); g.arc(n.x * r.width, n.y * r.height, 11, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = '600 12px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(i + 1), n.x * r.width, n.y * r.height); });
+  }
+  function ywDrawBar() {
+    const box = $('#wsDraw'); if (!box) return;
+    if (YW.mode !== 'draw') { box.innerHTML = ''; return; }
+    const n = YW.strokes.length + YW.notes.length;
+    box.innerHTML = `<div class="drawbar"><div class="seg" role="group" aria-label="Draw tool"><button type="button" data-act="dr-pen" aria-pressed="${YW.pen === 'pen'}">${ico('pen', 14)}Pen</button><button type="button" data-act="dr-note" aria-pressed="${YW.pen === 'note'}">${ico('note', 14)}Note</button></div>
+      <input class="in" id="wsDrawText" maxlength="600" placeholder="What should change? (optional)" aria-label="What should change">
+      <button type="button" class="b sm" data-act="dr-clear"${n ? '' : ' disabled'}>Clear</button>
+      <button type="button" class="b sm pri" data-act="dr-send"${n ? '' : ' disabled'}>Send to Hoola</button></div>`;
+  }
+  function ywWhere() {
+    return new Promise(res => { YW.wait = res; ywPost({t: 'where'}); setTimeout(() => { if (YW.wait === res) { YW.wait = null; res({y: 0, page: YW.page}); } }, 900); });
+  }
+  async function ywSend() {
+    const f = APP.querySelector('.frame'); if (!f || !CUR) return;
+    const text = S($('#wsDrawText')?.value).trim();
+    const w = await ywWhere();
+    toast('Taking a screenshot of this page…');
+    try {
+      const r = await api('POST', `/api/sites/${enc(CUR.id)}/markup`, {page: w.page.replace(/\/$/, '') || 'home', width: Number(f.dataset.w), height: Number(f.dataset.h), y: w.y, strokes: YW.strokes, notes: YW.notes});
+      THREAD.files.push({label: 'Marked-up screenshot', kind: 'file', state: 'ok', id: S(r.file_id)}); drawTray();
+      YW.strokes = []; YW.notes = []; ywPaint(); ywDrawBar();
+      await ask(text || 'Please change what I marked on this screenshot.');
+    } catch (er) { toast(er.message, true); }
+  }
+  async function ywAct(act, b) {
+    const d = b.dataset;
+    if (act === 'pt-mode') return setPT(d.m);
+    if (act === 'pt-min') { YW.min = !YW.min; return ywDraw(); }
+    if (act === 'pt-cm') { YW.cmOpen = !YW.cmOpen; if (YW.cmOpen) await ywLoadComments(); return ywDraw(); }
+    if (act === 'pill-x') { YW.sel.splice(Number(d.i), 1); drawPills(); ywPost({t: 'selected', items: YW.sel}); return ywPanel(); }
+    if (act === 'sty') {
+      const one = YW.sel[0]; if (!one) return;
+      await editSend({k: one.k, e: one.e, op: 'style', value: JSON.stringify({prop: d.p, value: d.v})});
+      return ywPanel();
+    }
+    if (act === 'cm-res' || act === 'cm-open' || act === 'cm-del') {
+      if (act === 'cm-del' && !confirm('Delete this comment?')) return;
+      try { await api('POST', `/api/sites/${enc(CUR.id)}/comments/${enc(d.id)}/${act === 'cm-res' ? 'resolved' : act === 'cm-open' ? 'open' : 'deleted'}`, {}); }
+      catch (er) { return toast(er.message, true); }
+      return ywLoadComments();
+    }
+    if (act === 'dr-pen' || act === 'dr-note') { YW.pen = act === 'dr-pen' ? 'pen' : 'note'; return ywDrawBar(); }
+    if (act === 'dr-clear') { YW.strokes = []; YW.notes = []; ywPaint(); return ywDrawBar(); }
+    if (act === 'dr-send') return ywSend();
+  }
+  addEventListener('keydown', e => {                        // S / T / D / C while the preview tools are open
+    if (!EDIT || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target; if (t && (t.closest('input, textarea, select, [contenteditable]') || t.closest('dialog'))) return;
+    const m = {s: 'select', t: 'text', d: 'draw', c: 'comment'}[e.key.toLowerCase()];
+    if (m) { e.preventDefault(); setPT(m); }
+    else if (e.key === 'Escape' && YW.sel.length) { YW.sel = []; drawPills(); ywPost({t: 'selected', items: []}); ywPanel(); }
+  });
+  addEventListener('resize', () => { if (EDIT) ywPaint(); });
 
   /* ================= v0.664 ASLI SAMAY: the website built in front of her ================= */
   const LIVE = {site: '', ctl: null, seq: 0, slots: {}, looks: [], page: 'home', follow: true, code: false, codeKey: '',
@@ -1018,9 +1290,13 @@
       <form class="cardp" data-form="facts"><h3>Business details</h3><p class="mut sm">Used on every page. A change here is used in the next version; ask in the chat to rebuild now.</p>
         <div class="g2">${fields.map(([k, l]) => `<label class="fld">${esc(l)}<input class="in" name="${k}" value="${esc(S(f[k]))}" autocomplete="off"></label>`).join('')}</div>
         <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save details</button></div></form>
+      <form class="cardp" data-form="instr"><h3>Instructions for Hoola</h3><p class="mut sm">Your standing brief for this website: who it is for, tone, colours, words to use or avoid, what must never change. Hoola reads it on every message about this site, in every mode.</p>
+        <textarea id="wsInstr" class="in" rows="7" maxlength="10000" placeholder="Example: For families in Nagpur. Warm and simple English. Never change the phone number or the Book now button."></textarea>
+        <div class="inl"><span class="mut sm" id="wsInstrN">0 / 10,000</span><span class="sp"></span><button class="b pri" type="submit">Save instructions</button></div></form>
       <section class="cardp"><h3>SEO and Google</h3><p class="mut">Page titles, descriptions, sitemap and Search Console are set by Hoola on every build.</p><div class="inl">${studioBtn('Check SEO now', 'Is website ka SEO check karo', false)}</div></section>
       <section class="cardp"><h3>Team</h3><p class="mut">Writers draft, editors review, publishers put live.</p><div class="inl">${studioBtn('Invite a team member', 'Is website ke CMS mein ek team member jodo: ', false)}</div></section>
       <section class="cardp danger"><h3>Take the site down</h3><p class="mut">The site stops answering; your pages, data and versions are kept.</p><div class="inl"><button class="b bad" type="button" data-act="takedown">Take down…</button></div></section></div>`;
+    loadInstr();
   }
 
   async function historyView(pane, v) {
@@ -1111,7 +1387,43 @@
   function stopPoll() { if (POLL) { clearTimeout(POLL); POLL = null; } }
   async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); } catch (e) { toast(e.message, true); } }
 
-  /* ---------- the site's own Hoola thread (never the home chat) ---------- */
+  /* ---------- the site's own Hoola thread (never the home chat) ----------
+     v0.777 CHAT JAISA (built as 0.771) (L1 of docs/LOVABLE_STUDIO_PLAN.md): the thread rides the conversation's LIVE event stream
+     (stream.js, /events?live=1) instead of polling every 1.5 s: the reply arrives word by word (HoolaStream.Pacer) and
+     each new word fades in out of a soft focus (HoolaMD.Live soft); "Thinking…" shimmers while the model reasons and
+     folds into "Thought for 12s"; each tool step shows live (present tense) and turns past tense when done ("Reading
+     the site" -> "Read the site"); a finished turn keeps "Worked for 42s · 5 steps · Rs 3.10" with a Details button
+     that opens the Timeline + Changes where the preview sits; her new message scrolls to the TOP of the view (the
+     stream never yanks her down; a "Latest" button appears instead); a message sent while Hoola works waits greyed
+     ("Runs after this") with Interrupt; files / photos attach (paperclip, drop, paste) and a long paste becomes a
+     chip that travels as a text file. Polling stays only as the fallback when the stream is down (and a slow safety
+     read every 4 s while a turn runs). Rupees are the server's own meter for that turn (/api/conversations/{c}/costs). */
+  const PAST = {Checking: 'Checked', Working: 'Worked', Viewing: 'Viewed', Reading: 'Read', Managing: 'Managed',
+    Searching: 'Searched', Doing: 'Did', Creating: 'Created', Writing: 'Wrote', Running: 'Ran', Building: 'Built',
+    Making: 'Made', Preparing: 'Prepared', Finding: 'Found', Sending: 'Sent', Getting: 'Got', Asking: 'Asked',
+    Setting: 'Set', Adding: 'Added', Looking: 'Looked', Opening: 'Opened', Handling: 'Handled', Fetching: 'Fetched',
+    Reviewing: 'Reviewed', Noting: 'Noted', Changing: 'Changed', Talking: 'Talked', Logging: 'Logged',
+    Removing: 'Removed', Compiling: 'Compiled', Updating: 'Updated', Editing: 'Edited', Extracting: 'Extracted',
+    Applying: 'Applied', Replying: 'Replied', Pulling: 'Pulled', Starting: 'Started', Uploading: 'Uploaded',
+    Moving: 'Moved', Turning: 'Turned', Posting: 'Posted', Remembering: 'Remembered', Learning: 'Learned',
+    Planning: 'Planned', Cleaning: 'Cleaned', Recalling: 'Recalled', Watching: 'Watched', Designing: 'Designed',
+    Using: 'Used', Booking: 'Booked', Cancelling: 'Cancelled', Calling: 'Called', Recording: 'Recorded',
+    Stopping: 'Stopped', Calculating: 'Calculated', Deploying: 'Deployed', Controlling: 'Controlled',
+    Previewing: 'Previewed', Organizing: 'Organized', Retrieving: 'Retrieved', Forwarding: 'Forwarded',
+    Snoozing: 'Snoozed', Sorting: 'Sorted', Forgetting: 'Forgot', Exporting: 'Exported', Summarizing: 'Summarized',
+    Teaching: 'Taught', Approving: 'Approved', Acting: 'Acted', Listening: 'Listened', Deleting: 'Deleted',
+    Verifying: 'Verified', Importing: 'Imported', Fixing: 'Fixed', Testing: 'Tested', Digging: 'Dug',
+    Browsing: 'Browsed', Mapping: 'Mapped', Saving: 'Saved', Copying: 'Copied', Duplicating: 'Duplicated',
+    Merging: 'Merged', Matching: 'Matched', Helping: 'Helped', Arranging: 'Arranged', Switching: 'Switched',
+    Operating: 'Operated', Cloning: 'Cloned', Playing: 'Played', Thinking: 'Thought', Drawing: 'Drew',
+    Generating: 'Generated', Loading: 'Loaded', Assembling: 'Assembled', Choosing: 'Chose', Picking: 'Picked',
+    Painting: 'Painted', Shooting: 'Shot', Putting: 'Put', Linking: 'Linked', Connecting: 'Connected'};
+  const pastLabel = (label, state) => {
+    const t = S(label); if (state === 'run' || state === 'running') return t;
+    const m = /^([A-Z][a-z]+ing)\b/.exec(t);
+    return m && PAST[m[1]] ? PAST[m[1]] + t.slice(m[1].length) : t;
+  };
+  const LONG_PASTE = 1500;                                   // a paste longer than this travels as a text file
   async function ensureConv() {
     if (THREAD.conv && THREAD.site === CUR.id) return THREAD.conv;
     THREAD.site = CUR.id;
@@ -1119,14 +1431,122 @@
     if (c) { try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); } catch { c = ''; } }
     if (!c) { c = await newConv(`Website · ${name(CUR)}`); store.set(convKey(CUR.id), c); }
     THREAD.conv = c;
+    startStream(c);
     return c;
   }
   async function openThread() {
-    clearTimeout(THREAD.timer);
-    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
-    drawMsgs();
-    if (THREAD.conv) await readThread();
+    clearTimeout(THREAD.timer); stopStream();
+    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false,
+      since: 0, steps: [], stepMap: new Map(), stepsRead: false, startedS: 0, turn: '', costs: [], think: null,
+      queue: [], files: [], pinned: true, thoughts: new Map()});
+    drawMsgs(); drawTray();
+    await loadPlans(); THREAD.sig = ''; drawMsgs();
+    if (THREAD.conv) { startStream(THREAD.conv); await readThread(); }
   }
+  /* ----- the live stream ----- */
+  function stopStream() { if (THREAD.stream) { THREAD.stream.abort(); THREAD.stream = null; } THREAD.connected = false; }
+  function startStream(c) {
+    if (!window.HoolaStream || (THREAD.stream && THREAD.streamConv === c)) return;
+    stopStream();
+    THREAD.streamConv = c;
+    const s = window.HoolaStream.open({url: `/api/conversations/${enc(c)}/events`, token: TOKEN, after: 0,
+      onState: st => { THREAD.connected = st === 'ok'; },
+      onAuth: () => location.replace('/console/'),
+      onEvent: ev => { if (THREAD.stream === s && THREAD.conv === c) onThreadEvent(ev); }});
+    THREAD.stream = s;
+  }
+  function liveBox() {
+    let b = $('#wsLiveBox'); if (!b) return null;
+    if (!THREAD.liveR || THREAD.liveR.el !== b.querySelector('.ho')) {
+      b.innerHTML = `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b></div><div class="ho textmd"></div>`;
+      const el = b.querySelector('.ho');
+      THREAD.liveR = window.HoolaMD && window.HoolaMD.Live ? new window.HoolaMD.Live(el, {soft: true}) : {el, update(t) { el.textContent = t; }, clear() { el.textContent = ''; }};
+    }
+    return b;
+  }
+  function showLive(text, streaming) {
+    THREAD.live = text;
+    const b = liveBox(); if (!b) return;
+    b.hidden = !S(text).trim();
+    THREAD.liveR.update(S(text).replace(/\n?\s*\[\[start-building:[^\]\n]*\]?\]?\s*$/, ''), streaming);   // the marker never shows while it streams
+    keepPinned();
+  }
+  function endLive() {
+    THREAD.pacer?.flush?.(); THREAD.pacer = null; THREAD.live = ''; THREAD.turn = '';
+    const b = $('#wsLiveBox'); if (b) { b.hidden = true; b.innerHTML = ''; } THREAD.liveR = null;
+  }
+  function onThreadEvent(ev) {
+    const p = M(ev.payload);
+    switch (ev.kind) {
+      case 'reply_start':
+        THREAD.waiting = true; THREAD.turn = S(p.turn);
+        if (window.HoolaStream) THREAD.pacer = new window.HoolaStream.Pacer((t, fin) => showLive(t, !fin));
+        drawWork(); return;
+      case 'delta':
+        if (!THREAD.pacer) THREAD.pacer = new window.HoolaStream.Pacer((t, fin) => showLive(t, !fin));
+        if (p.seq && p.seq <= (THREAD.seq || 0)) return; THREAD.seq = p.seq || 0;
+        if (THREAD.think && !THREAD.think.end) { THREAD.think.end = nowS(); drawWork(); }
+        THREAD.pacer.push(S(p.text)); return;
+      case 'delta_reset': THREAD.pacer?.reset?.(); return;
+      case 'reply_end': THREAD.pacer?.flush?.(); return;
+      case 'think':
+        if (p.clear) return;
+        if (!THREAD.think || THREAD.think.end) THREAD.think = {t0: nowS(), end: 0};
+        drawWork(); return;
+      case 'step': {
+        const k = S(p.id) || ('e' + ev.id), t = ev.at ? tsec(ev.at) : nowS();
+        const x = THREAD.stepMap.get(k) || {label: S(p.label) || S(p.tool), at: t, state: 'run'};
+        if (p.label) x.label = S(p.label);
+        if (p.state && p.state !== 'running') { x.state = p.state === 'error' ? 'error' : 'done'; x.end = t; }
+        THREAD.stepMap.set(k, x);
+        THREAD.steps = [...THREAD.stepMap.values()].filter(y => y.at).sort((a, b) => a.at - b.at);
+        THREAD.waiting = true; drawWork(); return;
+      }
+      case 'typing':
+        if (p.on) { if (!THREAD.waiting) { THREAD.waiting = true; THREAD.startedS = THREAD.startedS || nowS(); drawWork(); } }
+        return;
+      case 'message': {
+        if (S(p.source) === 'greeting') return;
+        const row = {id: ev.id, role: p.role, text: S(p.text), at: ev.at, source: p.source, files: p.files};
+        if (p.role === 'user') {
+          if (THREAD.queue.some(q => clean(q.text) === clean(row.text))) return;   // still waiting its turn (drawn greyed below)
+          const mine = THREAD.rows.findIndex(r => S(r.id).startsWith('local-') && clean(r.text) === clean(row.text));
+          if (mine >= 0) THREAD.rows[mine] = {...THREAD.rows[mine], ...row};
+          else if (!THREAD.rows.some(r => r.id === row.id)) THREAD.rows.push(row);
+          drawMsgs(); return;
+        }
+        if (p.role !== 'assistant' || p.ack || !row.text.trim()) return;
+        if (!THREAD.rows.some(r => r.id === row.id)) THREAD.rows.push(row);
+        endLive(); THREAD.seq = 0;
+        if (THREAD.think && !THREAD.think.end) THREAD.think.end = nowS();
+        if (THREAD.think) { THREAD.lastThink = THREAD.think; thoughtFor(row.text); } THREAD.think = null;
+        finishTurn();
+        return;
+      }
+      default: return;   // cards and other kinds belong to the main console; the Studio shows its own work card
+    }
+  }
+  const tkey = t => clean(t).trim().slice(0, 240);
+  function thoughtFor(text) { const k = THREAD.lastThink; if (text && k && k.end && k.end > k.t0) THREAD.thoughts.set(tkey(text), k.end - k.t0); }
+  async function finishTurn() {
+    const c = THREAD.conv;
+    if (THREAD.queue.length) {                               // the next message she queued now runs: it moves into the thread
+      const nx = THREAD.queue.shift(); THREAD.rows.push({...nx, at: new Date(nowS() * 1000).toISOString()});
+      THREAD.startedS = nowS(); THREAD.scrollTo = nx.id; THREAD.pinned = false;
+    } else { THREAD.waiting = false; THREAD.startedS = 0; }
+    await Promise.all([readSteps(c), readCosts(c)]);
+    if (c !== THREAD.conv) return;
+    drawMsgs(); reload();
+  }
+  async function readCosts(c) {
+    try { const r = await api('GET', `/api/conversations/${enc(c)}/costs?limit=60`); THREAD.costs = L(r.costs); } catch { /* the rupee line is extra */ }
+  }
+  const costFor = (a, b) => {
+    let inr = 0, n = 0;
+    for (const x of L(THREAD.costs)) { const e = tsec(x.end) || tsec(x.start); if (e >= a - 2 && e <= b + 120) { inr += Number(x.inr) || 0; n++; } }
+    return n ? inr : null;
+  };
+  const rs = v => v == null ? '' : v < 0.01 ? 'under Rs 0.01' : 'Rs ' + v.toFixed(v < 10 ? 2 : 0);
   const clean = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
   /* v0.658 the chat's own work feed, like Lovable: every tool step a turn ran (the timeline's step events), with a live
      timer while Hoola works and "Worked for 42s · 5 steps" kept above each answer. Times are the server's clock. */
@@ -1145,53 +1565,179 @@
         if (pl.label) x.label = S(pl.label);
         by.set(k, x);
       }
+      THREAD.stepMap = by;
       THREAD.steps = [...by.values()].filter(x => x.at).sort((a, b) => a.at - b.at);
     } catch { /* the feed is extra: the chat still works without it */ }
   }
   const stepsBetween = (a, b) => L(THREAD.steps).filter(x => x.at >= a - 2 && (!b || x.at <= b + 2));
   const md = t => window.HoolaMD ? window.HoolaMD.render(t, false) : `<p>${esc(t)}</p>`;
+  const who = t => `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
+  const fileChips = fs => L(fs).length ? `<div class="mfiles">${L(fs).map(f => `<span class="fchip">${ico('clip', 12)}<span class="ell">${esc(S(M(f).name) || 'File')}</span></span>`).join('')}</div>` : '';
+  /* the turns in her thread: [{user row, assistant row, start, end, steps}] */
+  function turnsOf(rows) {
+    const out = []; let cur = null;
+    for (const r of rows) {
+      if (r.role === 'user') { cur = {user: r, start: tsec(r.at) || 0}; out.push(cur); continue; }
+      if (cur && !cur.reply) { cur.reply = r; cur.end = tsec(r.at); cur.steps = cur.start && cur.end ? stepsBetween(cur.start, cur.end) : []; }
+      else out.push({reply: r, start: tsec(r.at), end: tsec(r.at), steps: []});
+    }
+    return out;
+  }
+  /* ---------- v0.782 TEEN MODE (L2): Build / Plan / Chat, plans as versions, her instructions ----------
+     Build changes the website. Plan writes a plan (a numbered version kept on the site, /api/sites/{id}/plans) that
+     she opens, edits, comments on, then APPROVES - one Build message carries the approved text - or skips. Chat only
+     talks; a reply that ends with [[start-building: ...]] gets a Start building card (Build / Skip). The server refuses
+     every changing tool in Plan / Chat (agent/turnmode.py) - the switch is not just a polite hint. Alt+P cycles; a
+     message starting /plan, /chat or /build runs in that mode once. */
+  const MODES = ['build', 'plan', 'chat'];
+  const MODE_NAME = {build: 'Build', plan: 'Plan', chat: 'Chat'};
+  const MODE_PH = {build: 'Ask Hoola to change anything…', plan: 'Describe the change - Hoola writes a plan first, nothing changes yet…',
+    chat: 'Ask anything about this website - nothing changes…'};
+  function chatMode() { const m = store.get(MODE_KEY + '.chat'); return MODES.includes(m) ? m : 'build'; }
+  function setChatMode(m) {
+    if (!MODES.includes(m)) return;
+    store.set(MODE_KEY + '.chat', m);
+    APP.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cmode === m)));
+    const t = $('#wsTh'); if (t) t.placeholder = MODE_PH[m];
+  }
+  const modeOfRow = r => { if (!r) return ''; if (r.mode) return r.mode; const m = /\[Web console mode: (build|plan|chat)\]/.exec(S(r.text)); return m ? m[1] : ''; };
+  const SB_RE = /\n?\s*\[\[start-building:\s*([^\]\n]{1,400})\]\]\s*$/;
+  function startBuild(text) { const m = SB_RE.exec(S(text)); return m ? {text: S(text).replace(SB_RE, '').trimEnd(), ask: m[1].trim()} : null; }
+  function buildCard(a) {
+    const k = tkey(a);
+    if (THREAD.sbDone?.has(k)) return '';
+    return `<div class="sbcard"><div><b>Start building</b><span class="mut sm"> · uses money</span></div><p class="sm">${esc(a)}</p>
+      <div class="inl"><button class="b pri sm" type="button" data-act="sb-build" data-sb="${esc(a)}">Build</button><button class="b sm" type="button" data-act="sb-skip" data-sb="${esc(a)}">Skip</button></div></div>`;
+  }
+  const planKey = t => S(t).trim();
+  const planMd = t => md(S(t).replace(/^(#{1,6} [^\n]*)\n(?!\n)/gm, '$1\n\n'));   // a plan's list right under its heading still renders as a list
+  function planCard(text) {
+    const p = L(THREAD.plans).find(x => planKey(x.text) === planKey(text));
+    if (!p) { savePlan(text); return `<div class="plancard"><div class="ph"><b>Plan</b><span class="mut sm">Saving as a version…</span></div></div>`; }
+    const st = S(p.status), first = S(p.text).split('\n').map(x => x.replace(/^#+\s*/, '').trim()).find(x => x && !/^goal$/i.test(x)) || 'Plan';
+    return `<div class="plancard" data-ver="${p.version}"><div class="ph"><b>Plan</b>${pill('v' + p.version, '')}${st !== 'draft' ? pill(st === 'approved' ? 'Approved' : st === 'skipped' ? 'Skipped' : 'Replaced', st === 'approved' ? 'ok' : '') : ''}</div>
+      <p class="mut sm ell">${esc(first)}</p>
+      <div class="inl"><button class="b sm" type="button" data-act="plan-open" data-ver="${p.version}">Open plan</button>${st === 'draft' ? `<button class="b pri sm" type="button" data-act="plan-approve" data-ver="${p.version}">Approve</button><button class="b sm" type="button" data-act="plan-skip" data-ver="${p.version}">Skip</button>` : ''}</div></div>`;
+  }
+  async function loadPlans() {
+    if (!CUR) return;
+    try { const r = await api('GET', `/api/sites/${enc(CUR.id)}/plans`); THREAD.plans = L(r.plans); } catch { THREAD.plans = THREAD.plans || []; }
+  }
+  async function savePlan(text) {
+    const k = planKey(text); THREAD.planSaving = THREAD.planSaving || new Set();
+    if (!CUR || THREAD.planSaving.has(k)) return;
+    THREAD.planSaving.add(k);
+    try { await api('POST', `/api/sites/${enc(CUR.id)}/plans`, {text, source: 'hoola'}); await loadPlans(); }
+    catch (e) { toast(e.message, true); }
+    THREAD.sig = ''; drawMsgs(); if (VIEW === 'plans') drawPane();
+  }
+  async function planStatus(ver, what) {
+    const r = await api('POST', `/api/sites/${enc(CUR.id)}/plans/${Number(ver)}/${what}`, {});
+    await loadPlans(); THREAD.sig = ''; drawMsgs(); if (VIEW === 'plans') drawPane();
+    return r;
+  }
+  async function approvePlan(ver) {
+    const p = L(THREAD.plans).find(x => Number(x.version) === Number(ver)); if (!p) return;
+    await planStatus(ver, 'approve');
+    setChatMode('build');
+    if (VIEW === 'plans') { VIEW = 'preview'; drawPane(); }                 // she watches the build happen
+    // the approved text rides this ONE Build message (one line, so the chat shows only her words)
+    const flat = S(p.text).replace(/\]/g, ')').replace(/\s*\n\s*/g, ' / ').slice(0, 12000);
+    await ask(`Build the approved plan (v${p.version}).`, {mode: 'build', hints: [`approved plan v${p.version} - build exactly this, step by step: ${flat}`]});
+  }
+  function planView(pane, v) {
+    const ps = L(THREAD.plans);
+    if (!ps.length) { pane.innerHTML = `<div class="dtop"><button class="b sm" type="button" data-view="preview">${ico('back', 14)}<span>Back to preview</span></button></div><div class="main"><p class="mut">No plan yet. Switch the chat to Plan and describe the change.</p></div>`; return; }
+    const cur = ps.find(x => Number(x.version) === Number(THREAD.planVer)) || ps[0];
+    THREAD.planVer = cur.version;
+    const i = ps.indexOf(cur), st = S(cur.status);
+    pane.innerHTML = `<div class="dtop"><button class="b sm" type="button" data-view="preview">${ico('back', 14)}<span>Back to preview</span></button>
+        <button class="ib sm" type="button" data-pver="${i + 1 < ps.length ? ps[i + 1].version : ''}" ${i + 1 < ps.length ? '' : 'disabled'} aria-label="Older version">‹</button>
+        <span class="sm"><b>Plan v${cur.version}</b> <span class="mut">of ${ps.length}</span></span>
+        <button class="ib sm" type="button" data-pver="${i > 0 ? ps[i - 1].version : ''}" ${i > 0 ? '' : 'disabled'} aria-label="Newer version">›</button>
+        ${pill(st === 'approved' ? 'Approved' : st === 'skipped' ? 'Skipped' : st === 'superseded' ? 'Replaced' : 'Draft', st === 'approved' ? 'ok' : '')}
+        <span class="mut sm">${esc(S(cur.source) === 'her' ? 'Edited by you' : 'Written by Hoola')} · ${esc(clockOf(tsec(cur.at)))}</span><span class="sp"></span>
+        ${THREAD.planEdit ? '' : `<button class="b sm" type="button" data-act="plan-comment" title="Select a part of the plan first">Comment on selection</button><button class="b sm" type="button" data-act="plan-edit">Edit</button>
+        ${st === 'draft' ? `<button class="b sm" type="button" data-act="plan-skip" data-ver="${cur.version}">Skip</button><button class="b pri sm" type="button" data-act="plan-approve" data-ver="${cur.version}">Approve</button>` : ''}`}</div>
+      <div class="main" style="max-width:820px">${THREAD.planEdit
+        ? `<form data-form="plan-edit"><textarea id="wsPlanEd" class="in" rows="24" maxlength="30000" style="width:100%;font-family:'JetBrains Mono',monospace;font-size:13px">${esc(cur.text)}</textarea>
+           <div class="inl" style="justify-content:flex-end"><button class="b" type="button" data-act="plan-edit-x">Cancel</button><button class="b pri" type="submit">Save as a new version</button></div></form>`
+        : `<article class="plandoc ho">${planMd(cur.text)}</article>`}</div>`;
+  }
+  async function loadInstr() {
+    const box = $('#wsInstr'); if (!box || !CUR) return;
+    try { const r = await api('GET', `/api/sites/${enc(CUR.id)}/instructions`); if (box.isConnected && !box.dataset.touched) { box.value = S(r.text); countInstr(); } } catch {}
+  }
+  function countInstr() { const b = $('#wsInstr'), c = $('#wsInstrN'); if (b && c) c.textContent = `${b.value.length.toLocaleString('en-IN')} / 10,000`; }
+
   function drawMsgs() {
     const box = $('#wsMsgs'); if (!box) return;
+    if (!box.querySelector('#wsHist')) {
+      box.innerHTML = `<div id="wsHist" class="hist"></div><div id="wsWork"></div><div id="wsLiveBox" class="livebox" hidden></div><div id="wsQ"></div>
+        <button class="jump" type="button" data-act="jump-latest" hidden>${ico('down', 14)}<span>Latest</span></button>`;
+      box.addEventListener('scroll', () => { THREAD.pinned = box.scrollHeight - box.scrollTop - box.clientHeight < 60; const j = box.querySelector('.jump'); if (j) j.hidden = THREAD.pinned || !THREAD.userScrolled; }, {passive: true});
+      ['wheel', 'touchmove', 'keydown'].forEach(k => box.addEventListener(k, () => { THREAD.userScrolled = true; }, {passive: true}));   // only HER scrolling up shows Latest
+      THREAD.liveR = null;
+    }
     const all = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
     const first = all.findIndex(r => r.role === 'user');
     const rows = first < 0 ? [] : all.slice(first);
-    const st = L(THREAD.steps), lastSt = st[st.length - 1] || {};
-    const s = rows.map(r => r.id).join(',') + '|' + THREAD.live.length + '|' + THREAD.waiting + '|' + st.length + lastSt.state + (lastSt.end || '');
-    if (s === THREAD.sig) return;
-    THREAD.sig = s;
-    const near = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-    const shown = rows.slice(-40);
-    let lastUser = 0;
-    const t0 = tsec(shown[0]?.at);
-    const day = t0 ? `<div class="dday">${new Date(t0 * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(t0 * 1000).toLocaleDateString([], {day: 'numeric', month: 'short'})} · ${esc(clockOf(t0))}</div>` : '';
-    const who = t => `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
-    const html = day + shown.map(r => {
-      if (r.role === 'user') { lastUser = tsec(r.at) || lastUser; return `<div class="me">${esc(clean(r.text))}</div>`; }
-      const end = tsec(r.at), steps = lastUser && end ? stepsBetween(lastUser, end) : [];
-      const took = lastUser && end > lastUser ? end - lastUser : 0;
-      const k = 'turn-' + r.id;
-      const head = steps.length || took >= 3 ? `<details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>Worked for ${dur(took)}${steps.length ? ` · ${steps.length} step${steps.length > 1 ? 's' : ''}` : ''}</summary>${steps.length ? stepList({steps}) : ''}</details>` : '';
-      return head + who(end) + `<div class="ho">${md(S(r.text))}</div>`;
-    }).join('');
-    const since = THREAD.startedS || lastUser || nowS();
-    const live = THREAD.waiting ? (() => {
-      const steps = stepsBetween(since);
-      return `<div class="working wcard" aria-live="polite"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span>${esc(S(steps[steps.length - 1]?.label) || 'Reading your ask')}</span></span><span class="tm" data-t0="${since}"></span></div>
-        ${steps.length ? stepList({steps}) : ''}</div>${THREAD.live ? who(0) + `<div class="ho">${md(THREAD.live)}</div>` : ''}`;
-    })() : '';
-    box.innerHTML = rows.length || THREAD.waiting ? html + live
-      : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
+    const s = rows.map(r => r.id).join(',') + '|' + THREAD.waiting + '|' + L(THREAD.steps).length + '|' + L(THREAD.costs).length + '|' + THREAD.queue.length + '|' + THREAD.thoughts.size + '|' + [...OPEN_T].join(',');
+    const hist = $('#wsHist');
+    if (s !== THREAD.sig) {
+      THREAD.sig = s;
+      const shown = rows.slice(-40);
+      const t0 = tsec(shown[0]?.at);
+      const day = t0 ? `<div class="dday">${new Date(t0 * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(t0 * 1000).toLocaleDateString([], {day: 'numeric', month: 'short'})} · ${esc(clockOf(t0))}</div>` : '';
+      const turns = turnsOf(shown);
+      hist.innerHTML = rows.length ? day + turns.map((t, i) => {
+        let h = '';
+        if (t.user) h += `<div class="me" data-mid="${esc(S(t.user.id))}">${esc(clean(t.user.text))}${fileChips(t.user.files)}</div>`;
+        if (!t.reply) return h;
+        const took = t.start && t.end > t.start ? t.end - t.start : 0, steps = L(t.steps), k = 'turn-' + t.reply.id;
+        const inr = t.start ? costFor(t.start, t.end) : null;
+        const th = Number(THREAD.thoughts.get(tkey(t.reply.text))) || 0;   // how long the model thought for THIS answer
+        const bits = [th >= 1 ? `Thought for ${dur(th)}` : '', took >= 1 ? `Worked for ${dur(took)}` : '', steps.length ? `${steps.length} step${steps.length > 1 ? 's' : ''}` : '', rs(inr)].filter(Boolean);
+        const head = bits.length ? `<div class="turnhead"><details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>${esc(bits.join(' · '))}</summary>${steps.length ? stepList({steps}) : ''}</details>
+          <button class="ib sm" type="button" data-act="details" data-ta="${t.start}" data-tb="${t.end}" title="Timeline and changes" aria-label="Details of this answer">${ico('list', 14)}</button></div>` : '';
+        const um = modeOfRow(t.user), sb = startBuild(t.reply.text), body = sb ? sb.text : S(t.reply.text);
+        return h + head + who(t.end) + `<div class="ho">${um === 'plan' ? planMd(body) : md(body)}</div>` + (um === 'plan' ? planCard(body) : '') + (sb ? buildCard(sb.ask) : '');
+      }).join('') : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
-    if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
-    if (THREAD.waiting) startTick();
+      if (THREAD.scrollTo) { const el = hist.querySelector(`[data-mid="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el) box.scrollTop = Math.max(0, el.offsetTop - 12); }
+      else keepPinned();
+    }
+    drawWork(); drawQueue();
+  }
+  function drawQueue() {
+    const q = $('#wsQ'); if (!q) return;
+    q.innerHTML = THREAD.queue.map((r, i) => `<div class="me queued" data-mid="${esc(S(r.id))}">${esc(clean(r.text))}${fileChips(r.files)}
+      ${i === 0 ? `<span class="qacts"><button class="b sm" type="button" data-act="stop-turn" title="Stop the current work so this runs next">Interrupt</button></span>` : ''}</div>`).join('');
+  }
+  function keepPinned() { const box = $('#wsMsgs'); if (box && THREAD.pinned) box.scrollTop = box.scrollHeight; }
+  /* the working card under her message: thinking shimmer + the live steps + the clock + Stop */
+  function drawWork() {
+    const w = $('#wsWork'); if (!w) return;
+    if (!THREAD.waiting) { w.innerHTML = ''; return; }
+    const since = THREAD.startedS || nowS();
+    const steps = stepsBetween(since), cur = [...steps].reverse().find(x => x.state === 'run');
+    const thinking = THREAD.think && !THREAD.think.end;
+    const label = thinking ? '' : cur ? pastLabel(cur.label, 'run') : steps.length ? 'Working on the next step' : (THREAD.live ? 'Writing the answer' : 'Reading your ask');
+    w.innerHTML = `<div class="working wcard" aria-live="polite"><div class="step whead"><span class="spin" aria-hidden="true"></span>
+        <span class="wt">${thinking ? `<b class="thinking">Thinking…</b>` : `<b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span>${esc(label)}</span>`}</span>
+        <span class="tm" data-t0="${since}"></span><button class="b sm" type="button" data-act="stop-turn" title="Stop after the step it is on">Stop</button></div>
+      ${steps.length ? stepList({steps}) : ''}</div>`;
+    startTick(); keepPinned();
   }
   async function readThread() {
     const c = THREAD.conv; if (!c) return;
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/messages?limit=60`);
       if (c !== THREAD.conv) return;
-      THREAD.rows = L(r.messages);
+      const local = THREAD.rows.filter(x => S(x.id).startsWith('local-') && !L(r.messages).some(m => m.role === 'user' && clean(m.text) === clean(x.text)));
+      const waitingTexts = new Set(THREAD.queue.map(q => clean(q.text)));
+      THREAD.rows = [...L(r.messages).filter(m => !(m.role === 'user' && waitingTexts.has(clean(m.text)))), ...local];
     } catch { return; }
     if (!THREAD.waiting) {                                   // a reload while Hoola is still answering: pick it up again
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
@@ -1201,34 +1747,106 @@
         THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
       }
     }
-    if (THREAD.waiting || !THREAD.stepsRead) { await readSteps(c); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
+    if (THREAD.waiting || !THREAD.stepsRead) { await Promise.all([readSteps(c), readCosts(c)]); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
     if (THREAD.waiting) {
       let snap = null;
       try { const res = await api('GET', `/api/conversations/${enc(c)}/live`, undefined, {raw: true}); if (res.status === 200) snap = await res.json(); } catch {}
-      THREAD.live = S(snap?.text);
+      if (snap && S(snap.text) && !THREAD.pacer) showLive(S(snap.text), true);   // a reload mid-reply continues the text
       // answered = a reply AFTER her own newest line (a new chat starts with a greeting, which is not the answer)
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
       let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
-      const answered = lu >= 0 && Number(talk[lu].id) > THREAD.since && talk.slice(lu + 1).some(m => m.role === 'assistant');
-      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); reload(); }
-      else if (Date.now() - THREAD.started > 15 * 60e3) THREAD.waiting = false;
+      const answered = lu >= 0 && talk.slice(lu + 1).some(m => m.role === 'assistant');
+      if (answered && !snap && !THREAD.queue.length) {
+        if (THREAD.think) { THREAD.think.end = THREAD.think.end || nowS(); THREAD.lastThink = THREAD.think; THREAD.think = null; thoughtFor([...talk].reverse().find(m => m.role === 'assistant')?.text); }
+        THREAD.waiting = false; THREAD.startedS = 0; endLive(); reload();
+      }
+      else if (Date.now() - (THREAD.started || Date.now()) > 15 * 60e3) THREAD.waiting = false;
     }
     drawMsgs();
-    if (THREAD.waiting) { clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 1500); }
+    // the stream carries the work; this read is the fallback (stream down) and a slow safety net (stream up)
+    clearTimeout(THREAD.timer);
+    if (THREAD.waiting || !THREAD.connected) THREAD.timer = setTimeout(readThread, THREAD.connected ? 4000 : 1500);
   }
-  async function ask(text) {
+  /* ----- attachments: paperclip, drop, paste (a long paste becomes a chip that travels as a .txt file) ----- */
+  function drawTray() {
+    const t = $('#wsTray'); if (!t) return;
+    const fs = L(THREAD.files);
+    t.hidden = !fs.length;
+    t.innerHTML = fs.map((f, i) => `<span class="fchip${f.state === 'up' ? ' up' : f.state === 'bad' ? ' bad' : ''}" title="${esc(f.note || '')}">${ico(f.kind === 'paste' ? 'doc' : 'clip', 12)}<span class="ell">${esc(f.label)}</span><button type="button" class="x" data-act="att-x" data-i="${i}" aria-label="Remove ${esc(f.label)}">×</button></span>`).join('');
+  }
+  async function addFile(file, label, kind) {
+    const f = {label: label || file.name || 'File', kind: kind || 'file', state: 'up', id: ''};
+    THREAD.files.push(f); drawTray();
+    try {
+      const c = await ensureConv();
+      const fd = new FormData(); fd.append('file', file, file.name || 'file.txt');
+      const r = await api('POST', `/api/conversations/${enc(c)}/files`, undefined, {form: fd});
+      f.id = S(r.file_id); f.state = f.id ? 'ok' : 'bad'; if (!f.id) f.note = 'Could not attach';
+    } catch (e) { f.state = 'bad'; f.note = e.message; toast(e.message, true); }
+    drawTray();
+  }
+  function pasted(ev) {
+    const t = ev.clipboardData?.getData('text') || '';
+    const imgs = [...(ev.clipboardData?.files || [])];
+    if (imgs.length) { ev.preventDefault(); imgs.slice(0, 6).forEach(f => addFile(f, f.name || 'Pasted picture', 'file')); return; }
+    if (t.length < LONG_PASTE) return;
+    ev.preventDefault();
+    const kind = /^\s*[[{]/.test(t) ? 'JSON' : /\t|,.*,.*\n/.test(t) && /\n/.test(t) ? 'Table' : /[{};]\s*\n/.test(t) ? 'Code' : 'Text';
+    const lines = t.split('\n').length;
+    addFile(new File([t], `pasted-${kind.toLowerCase()}.txt`, {type: 'text/plain'}), `Pasted ${kind.toLowerCase()} · ${lines} lines`, 'paste');
+  }
+  async function ask(text, opts = {}) {
     text = S(text).trim(); if (!text || !CUR) return;
-    const v = CUR, plan = store.get(MODE_KEY + '.chat') === 'plan';
+    if (L(THREAD.files).some(f => f.state === 'up')) return toast('Wait a moment: a file is still attaching.', true);
+    let mode = opts.mode || chatMode();
+    const cmd = /^\/(plan|chat|build)\b\s*/i.exec(text);          // v0.782 "/plan ..." = this one message in that mode
+    if (cmd) { mode = cmd[1].toLowerCase(); text = text.slice(cmd[0].length).trim(); if (!text) { setChatMode(mode); return; } }
+    const v = CUR;
+    const files = L(THREAD.files).filter(f => f.state === 'ok' && f.id);
     try {
       const c = await ensureConv();
       THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
-      THREAD.rows.push({id: 'local-' + Date.now(), role: 'user', text});
-      THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.live = ''; drawMsgs();
-      const hints = [`Web Studio: this chat is only about website ${S(v.number)} "${name(v)}" (site id ${S(v.id)}). Work on THIS website with the website tool; never start a new website unless I ask for one.`];
-      if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I say Haan.');
-      await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
-      clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
+      const id = 'local-' + Date.now(), busy = THREAD.waiting, row = {id, role: 'user', text, mode, files: files.map(f => ({name: f.label}))};
+      if (busy) THREAD.queue.push(row);                       // she sent while Hoola works: it waits its turn, greyed, at the bottom
+      else { THREAD.rows.push(row); THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.think = null; THREAD.lastThink = null; endLive(); }
+      THREAD.files = []; drawTray();
+      if (busy) { THREAD.pinned = true; drawQueue(); keepPinned(); } else { THREAD.scrollTo = id; THREAD.pinned = false; THREAD.sig = ''; drawMsgs(); }
+      const hints = [`Web Studio: this chat is only about website ${S(v.number)} "${name(v)}" (site id ${S(v.id)}). Work on THIS website with the website tool; never start a new website unless I ask for one.`, `mode: ${mode}`];
+      if (mode === 'plan') hints.push('Plan mode: reply with the PLAN only (## Goal, ## What changes, ## What stays the same, ## Steps, ## Questions if any). Change nothing.');
+      if (mode === 'chat') hints.push('Chat mode: talk only, change nothing (the start-building line is in your rules).');   // no square brackets: a hint must stay one strippable [..] line
+      for (const h of L(opts.hints)) hints.push(h);
+      if (YW.sel.length && S(YW.site) === S(v.id)) {          // v0.795 E3: the elements she pointed at reach this turn once
+        try { await api('PUT', `/api/sites/${enc(v.id)}/selection`, {items: YW.sel.map(x => ({k: x.k, e: x.e}))}); hints.push(`selected elements: ${YW.sel.length} (listed in your rules as selected_elements)`); }
+        catch (er) { toast(er.message, true); }
+        YW.sel = []; drawPills(); ywPost({t: 'selected', items: []}); ywPanel();
+      }
+      await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints,
+        ...(files.length ? {files: files.map(f => f.id).slice(0, 6)} : {})});
+      clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, THREAD.connected ? 4000 : 900);
     } catch (e) { THREAD.waiting = false; drawMsgs(); toast(e.message, true); }
+  }
+  async function stopTurn() {
+    if (!THREAD.conv) return;
+    try { await api('POST', `/api/conversations/${enc(THREAD.conv)}/stop`, {}); toast('Stopping after the step it is on.'); }
+    catch (e) { toast(e.message, true); }
+  }
+  /* ----- Details: the turn's Timeline and Changes, where the preview sits ----- */
+  function detailsView(pane, v) {
+    const a = Number(THREAD.detail?.a) || 0, b = Number(THREAD.detail?.b) || 0;
+    const steps = stepsBetween(a, b), tab = THREAD.detail?.tab === 'changes' ? 'changes' : 'timeline';
+    const nextUser = L(THREAD.rows).map(r => r.role === 'user' ? tsec(r.at) : 0).filter(t => t > b).sort((x, y) => x - y)[0] || 0;
+    const vers = L(v.versions).filter(x => { const t = tsec(x.at); return t >= a - 2 && (!nextUser || t < nextUser); });
+    const inr = costFor(a, b);
+    const tl = steps.length ? `<ol class="tline">${steps.map(x => `<li class="${x.state === 'error' ? 'bad' : x.state === 'run' ? 'run' : 'ok'}"><span class="tdot" aria-hidden="true"></span>
+        <div class="tl1"><b>${esc(pastLabel(x.label, x.state))}</b><span class="mut sm">${esc(clockOf(x.at))}${x.end ? ' · ' + dur(x.end - x.at) : ''}</span></div></li>`).join('')}</ol>`
+      : '<p class="mut">This answer used no tools: Hoola replied from what it already knew.</p>';
+    const ch = vers.length ? vers.map(x => `<div class="ver">${pill('v' + S(x.version), '')}<span class="sp ell">${esc(S(x.note) || 'Version')} <span class="mut sm">· ${esc(clockOf(tsec(x.at)))}</span></span>
+        ${Number(x.version) > 1 ? `<button class="b sm" type="button" data-act="detail-compare" data-from="${Number(x.version) - 1}" data-to="${Number(x.version)}">Before / after</button>` : ''}</div>`).join('')
+      : '<p class="mut">No new version came from this answer.</p>';
+    pane.innerHTML = `<div class="dtop"><button class="b sm" type="button" data-view="preview">${ico('back', 14)}<span>Back to preview</span></button>
+        <div class="seg" role="tablist" aria-label="Details"><button type="button" role="tab" data-dtab="timeline" aria-pressed="${tab === 'timeline'}">Timeline</button><button type="button" role="tab" data-dtab="changes" aria-pressed="${tab === 'changes'}">Changes</button></div>
+        <span class="sp"></span><span class="mut sm">${esc([b > a ? 'Worked for ' + dur(b - a) : '', steps.length ? `${steps.length} step${steps.length > 1 ? 's' : ''}` : '', rs(inr)].filter(Boolean).join(' · '))}</span></div>
+      <div class="main" style="max-width:820px">${tab === 'timeline' ? tl : ch}</div>`;
   }
 
   /* ---------- small dialog ---------- */
@@ -1256,6 +1874,11 @@
     if (!d || d.hoola !== 'edit' || !CUR || !EDIT) return;
     const fr = APP.querySelector('.frame iframe'); if (!fr || ev.source !== fr.contentWindow) return;   // only our own preview
     const k = S(d.k), e = S(d.e);
+    if (d.page != null) YW.page = S(d.page);
+    if (d.t === 'ready') return ywSync();
+    if (d.t === 'where') { const w = YW.wait; YW.wait = null; if (w) w({y: Number(d.y) || 0, page: S(d.page)}); return; }
+    if (d.t === 'select') { YW.sel = L(d.items).slice(0, 8).map(x => ({k: S(x.k), e: S(x.e), name: S(x.name)})); drawPills(); ywPanel(); return; }
+    if (d.t === 'comment') return ywComment(k, e, S(d.name));
     if (d.t === 'text') return editSend({k, e, op: 'text', value: S(d.value)});
     if (d.t === 'remove') { if (confirm(`Remove "${S(d.text).slice(0, 60)}" from the page? (Undo brings it back)`)) editSend({k, e, op: 'remove'}); return; }
     if (d.t === 'link') {
@@ -1295,7 +1918,7 @@
     if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
-    if (d.cmode) { store.set(MODE_KEY + '.chat', d.cmode); APP.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cmode === d.cmode))); return; }
+    if (d.cmode) { setChatMode(d.cmode); return; }
     if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
       const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     if (d.src) { if (d.src === 'focus') { drawSource(''); $('#wsAsk')?.focus(); } else { drawSource(d.src); $('#wsSrc input')?.focus(); } return; }
@@ -1306,6 +1929,32 @@
     }
     if (d.lpage) { LIVE.follow = false; APP.querySelector('[data-live="follow"]')?.setAttribute('aria-pressed', 'false'); setLivePage(d.lpage); return; }
     if (d.lcode) { LIVE.codeKey = d.lcode; LIVE.codePinned = true; drawLiveBits(); return; }
+    if (d.act === 'details') { THREAD.detail = {a: Number(d.ta) || 0, b: Number(d.tb) || 0, tab: 'timeline'}; VIEW = 'details'; drawPane(); return; }
+    if (d.dtab) { if (THREAD.detail) THREAD.detail.tab = d.dtab; drawPane(); return; }
+    if (d.act === 'detail-compare') { LIVE.justDone = {site: S(CUR.id), from: Number(d.from), to: Number(d.to)}; LIVE.compare = true; VIEW = 'preview'; drawPane(); return; }
+    if (d.act === 'stop-turn') { stopTurn(); return; }
+    if (d.act === 'plan-open') { THREAD.planVer = Number(d.ver); THREAD.planEdit = false; VIEW = 'plans'; drawPane(); return; }
+    if (d.act === 'plan-approve') { approvePlan(d.ver).catch(er => toast(er.message, true)); return; }
+    if (d.act === 'plan-skip') { planStatus(d.ver, 'skip').then(() => toast('Plan skipped. Nothing was changed.')).catch(er => toast(er.message, true)); return; }
+    if (d.act === 'plan-edit') { THREAD.planEdit = true; drawPane(); return; }
+    if (d.act === 'plan-edit-x') { THREAD.planEdit = false; drawPane(); return; }
+    if (d.pver) { THREAD.planVer = Number(d.pver); THREAD.planEdit = false; drawPane(); return; }
+    if (d.act === 'plan-comment') {
+      const sel = S(window.getSelection()?.toString()).trim(), doc = APP.querySelector('.plandoc');
+      if (!sel || !doc || !doc.contains(window.getSelection().anchorNode)) return toast('Select a part of the plan first, then press Comment.', true);
+      const fd = await dialog('What should change in this part?', `<blockquote class="mut sm" style="margin:8px 0;border-left:3px solid var(--line);padding-left:8px">${esc(sel.slice(0, 400))}</blockquote><textarea name="c" class="in" rows="3" required style="width:100%"></textarea>`);
+      const c = S(fd?.get('c')).trim(); if (!c) return;
+      ask(`In plan v${THREAD.planVer}, change this part: "${sel.slice(0, 600)}" - ${c}. Write the whole updated plan.`, {mode: 'plan'});
+      return;
+    }
+    if (d.act === 'sb-build' || d.act === 'sb-skip') {
+      (THREAD.sbDone = THREAD.sbDone || new Set()).add(tkey(d.sb)); THREAD.sig = ''; drawMsgs();
+      if (d.act === 'sb-build') { setChatMode('build'); ask(S(d.sb), {mode: 'build'}); }
+      return;
+    }
+    if (d.act === 'attach') { $('#wsFile')?.click(); return; }
+    if (d.act === 'att-x') { THREAD.files.splice(Number(d.i), 1); drawTray(); return; }
+    if (d.act === 'jump-latest') { const bx = $('#wsMsgs'); if (bx) { THREAD.pinned = true; bx.scrollTop = bx.scrollHeight; } b.hidden = true; return; }
     if (d.act === 'compare') { LIVE.compare = !LIVE.compare; drawPane(); return; }
     if (d.act === 'jd-close') { LIVE.justDone = null; LIVE.compare = false; drawPane(); return; }
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
@@ -1323,10 +1972,11 @@
     if (act === 'select') {
       if (!CUR || !hasVersion(CUR)) return toast('Selecting on the page opens once the first version is built.', true);
       VIEW = 'preview';
-      try { await api('POST', `/api/sites/${enc(CUR.id)}/edit-mode`, {}); EDIT = true; drawPane(); } catch (er) { toast(er.message, true); }
+      try { const em = await api('POST', `/api/sites/${enc(CUR.id)}/edit-mode`, {}); YW.tokens = M(em?.tokens); YW.mode = 'select'; EDIT = true; ywLoadComments(); drawPane(); } catch (er) { toast(er.message, true); }
       return;
     }
-    if (act === 'edit-done') { EDIT = false; await reload(); return; }
+    if (act === 'edit-done') { EDIT = false; YW.strokes = []; YW.notes = []; await reload(); return; }
+    if (act && act.startsWith('pt-') || act === 'pill-x' || act === 'sty' || act.startsWith('cm-') || act.startsWith('dr-')) return ywAct(act, b);
     if (BUSY) return;
     const id = CUR ? enc(CUR.id) : '';
     BUSY = true; b.setAttribute('aria-disabled', 'true');
@@ -1439,6 +2089,18 @@
     e.preventDefault();
     const kind = f.dataset.form;
     if (kind === 'thread') { const t = f.querySelector('textarea'); const x = S(t.value).trim(); if (!x) return; t.value = ''; return ask(x); }
+    if (kind === 'instr') {
+      try { await api('PUT', `/api/sites/${enc(CUR.id)}/instructions`, {text: S($('#wsInstr')?.value)}); toast('Instructions saved. Hoola reads them on every message about this site.'); }
+      catch (er) { toast(er.message, true); }
+      return;
+    }
+    if (kind === 'plan-edit') {
+      try {
+        const r = await api('POST', `/api/sites/${enc(CUR.id)}/plans`, {text: S($('#wsPlanEd')?.value), source: 'her', note: 'Edited by you'});
+        THREAD.planEdit = false; THREAD.planVer = Number(r.version); await loadPlans(); THREAD.sig = ''; drawMsgs(); drawPane(); toast(`Saved as plan v${r.version}.`);
+      } catch (er) { toast(er.message, true); }
+      return;
+    }
     if (BUSY) return;
     const btn = f.querySelector('[type=submit]');
     BUSY = true; if (btn) btn.disabled = true;
@@ -1446,8 +2108,14 @@
       if (kind === 'ask') {
         const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return toast('Write one line about the website.', true);
         const plan = store.get(MODE_KEY) === 'plan';
+        let design = null;
+        if (!plan && !(TPLSEL && t.includes('[Hoola template #'))) {   // v0.784 a template already has its design
+          const got = await askDesign(t);
+          if (got === null) { PREFILL = t; drawHome('home'); return; }
+          design = got.design;
+        }
         drawPending(plan, t);                       // v0.707: straight into the workspace, the work shows there
-        try { await startFromAsk(t); }
+        try { await startFromAsk(t, design); }
         catch (er) {
           clearInterval(drawPending._t);
           PREFILL = t; drawHome('home');            // back home with her words still in the box and the reason under it
@@ -1495,6 +2163,18 @@
     } catch (er) { toast(er.message, true); }
     finally { BUSY = false; if (btn?.isConnected) btn.disabled = false; }
   });
+
+  addEventListener('keydown', e => {                       // v0.782 Alt+P cycles Build / Plan / Chat in a site chat
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') && $('#wsTh')) {
+      e.preventDefault(); const m = chatMode(); setChatMode(MODES[(MODES.indexOf(m) + 1) % MODES.length]);
+    }
+  });
+  APP.addEventListener('input', e => { if (e.target.id === 'wsInstr') { e.target.dataset.touched = '1'; countInstr(); } });
+  APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.777 attachments
+  APP.addEventListener('change', e => { if (e.target.id === 'wsFile') { [...e.target.files].slice(0, 6).forEach(f => addFile(f)); e.target.value = ''; } });
+  APP.addEventListener('dragover', e => { if (e.target.closest?.('.chat') && e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); e.target.closest('.chat').classList.add('drop'); } });
+  APP.addEventListener('dragleave', e => { e.target.closest?.('.chat')?.classList.remove('drop'); });
+  APP.addEventListener('drop', e => { const c = e.target.closest?.('.chat'); if (!c || !e.dataTransfer?.files?.length) return; e.preventDefault(); c.classList.remove('drop'); [...e.dataTransfer.files].slice(0, 6).forEach(f => addFile(f)); });
 
   route();
 })();

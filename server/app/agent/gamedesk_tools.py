@@ -409,16 +409,14 @@ GAMEDESK_LABELS.update({"game_provenance": "Dekh raha hoon kya kahan se aaya"})
 # v0.456 scenes as checked data - the 12-file ceiling
 GAMEDESK_TOOLS.append(
     {"name": "game_scenes", "description": (
-        "Real Godot SCENES for her game, as checked data (part of the Game Developer desk) - this is what lets a game be "
-        "bigger than its scripts. Until now a Hoola game was at most 12 GDScript files building every node in code, which "
-        "is right for match-3 / idle / runner but false for a platformer, where the game IS its scenes. Actions: list / "
-        "new (words, name: her words become a scene SPEC, which Hoola checks and generates, then LOADS IN THE REAL ENGINE "
-        "before she sees it - a draft only if it really loaded) / approve (her tap: it goes into the next build) / reject. "
-        "THE MODEL NEVER WRITES A .tscn: a scene may not carry script source, because an embedded script inside a scene "
-        "RUNS and would escape the code guard (measured). Scripts attach by file name to .gd files the guard already "
-        "checked. INSTANCES are how content scales: one coin.tscn placed forty times is data, and the engine reports the "
-        "expanded node count. Quote only the node count and animations the ENGINE reported. TileMaps, 3D and shaders are "
-        "NOT available - say so rather than promising them. id = S-0001 (optional with one project)."),
+        "Scenes as CHECKED DATA - 2D and 3D. Actions: list / new (words, name: her words become a scene SPEC that Hoola "
+        "checks, generates and LOADS IN THE REAL ENGINE; a draft only if it really loaded) / approve (her tap: into the next "
+        "build) / reject. THE MODEL NEVER WRITES A .tscn: an embedded script inside a scene RUNS and would escape the code "
+        "guard (measured), so scripts attach only by file name. INSTANCES scale content: one coin.tscn placed forty times. "
+        "3D: meshes with real materials, lights with shadows, a camera, a sky / fog / glow, 3D physics, and her APPROVED 3D "
+        "models from the Assets tab placed by name - none is ever invented. Quote only what the ENGINE reported (nodes, "
+        "meshes, lights, cameras, animations). The check proves a 3D scene loads; it cannot SEE how it looks, so never call "
+        "one beautiful from the check. TileMaps / GridMaps and shaders are NOT available - say so. id = S-0001."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["list", "new", "approve", "reject"]},
          "id": {"type": "string"}, "words": {"type": "string"}, "name": {"type": "string"}},

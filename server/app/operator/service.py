@@ -826,6 +826,13 @@ async def _wrap(job: Job, status: str, summary: str, fin: dict) -> dict[str, Any
                 job.saved_recipe = r["name"]
             except Exception:
                 log.exception("auto recipe")
+    if status == "done":   # v0.785 a learned-from-video task that really got done becomes Proven by the work itself
+        try:
+            from .. import seekh
+            seekh.operator_done(row.tenant_id, row.task, [job.saved_recipe, getattr(job, "ran_recipe", "")],
+                                row.conversation_id)
+        except Exception:
+            log.exception("seekh proven hook")
     proof = [str(p)[:200] for p in (fin.get("proof") or [])][:10]
     text = summary.strip()[:3000]
     try:   # v0.92 remember the sites that refuse this server, so the next job goes to her PC straight away
@@ -1011,6 +1018,7 @@ async def _recipe_run(job: Job, a: dict[str, Any]) -> dict[str, Any]:
         r = await run_recipe(job.op, job.mem, s, name, variables, start, approval)
         if r.get("status") != "waiting_human":
             if r.get("status") == "done":
+                job.ran_recipe = name                    # v0.785 the Video Learner reads which learned recipe really ran
                 job.step(f"Seekha hua kaam poora: {name}")
             return r
         req = job.op.approvals.get(r["request"]["id"])

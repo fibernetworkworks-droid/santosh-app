@@ -79,7 +79,10 @@ def wait_done(c, jid, deadline_s=15.0):
 # ---------------------------------------------------------------- 1. the lane (8)
 
 def test_router_mounted_with_three_doors():
-    paths = {getattr(r, "path", "") for r in __import__("app.main", fromlist=["app"]).app.routes}
+    # v0.790: read from the lane's own router + its mount line (a newer FastAPI keeps included routers nested,
+    # so app.routes no longer lists their paths one by one)
+    paths = {getattr(r, "path", "") for r in SC.make_router(lambda: None, lambda: "t").routes}
+    assert "app.include_router(_seekh_console_router(require_key, current_tenant))" in (SERVER / "app" / "main.py").read_text(encoding="utf-8")
     assert "/api/seekh/console/watch" in paths
     assert "/api/seekh/console/progress" in paths
     assert "/api/seekh/console/watches" in paths
@@ -291,7 +294,7 @@ def test_v2js_wiring():
     assert "window.HoolaSeekh" in js and "HoolaSeekh({" in js
     # the panel's send/upload ride the chat doors (no new server surface)
     i = js.index("HoolaSeekh({")
-    wiring = js[i:i + 1400]
+    wiring = js[i:i + 2400]
     assert "/api/conversations\"?reuse=1" in wiring.replace("`", "").replace("${", "") or "reuse=1" in wiring
     assert "/messages" in wiring and "/files" in wiring
 
@@ -303,13 +306,13 @@ def test_styles_exist():
 
 
 def test_no_new_tool_road_the_registry_stays():
-    assert len(T.TOOLS) == 625, "624 + 1 hoola_design (v0.777 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
+    assert len(T.TOOLS) == 626, "625 + 1 hoola_design (v0.799 HOOLA DESIGN: the design editor's one tool). the console page adds NO tool - it drives the v0.713 seekh_video organs"
 
 
 def test_version_pins():
     main = (SERVER / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.777.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
+    assert 'APP_VERSION = "0.799.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
     pub = ROOT / "pubspec.yaml"
-    assert "version: 0.777.0+776" in pub.read_text(encoding="utf-8")
+    assert "version: 0.799.0+798" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.748.0" in html and "console/v2.js?v=0.748.0" in html
+    assert "console/seekh.js?v=0.799.0" in html and "console/v2.js?v=0.799.0" in html

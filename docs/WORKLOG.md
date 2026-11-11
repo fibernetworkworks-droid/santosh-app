@@ -2845,3 +2845,102 @@ Task ID: v0.776.0 HOOLA CODE PHASE 2 (built as 0.774; re-versioned twice on merg
 Ask: GO PHASE 2 (review and the pull request), then MERGE.
 Built: Changes pane + Compare against, line comments riding the next message, answer continues the session, own review card, per-PR auto-fix, archive after merge; 10 tests incl. 3 browser walks.
 Deploy: vps-ops deploy (server-only; no new pip; two nullable columns self-heal).
+
+---
+Task ID: v0.777.0 CHAT JAISA (L1)
+Task: owner "GO L1" - Lovable-grade Studio chat (live stream, soft words, thinking, past-tense steps, Details, rupees, queue, attachments).
+Work Log: webstudio.js thread rewritten on HoolaStream; turncost + usage.turn_meter + /costs; 5 new tests + older Studio suites green; re-versioned 0.771 -> 0.777 (other sessions took 0.771-0.776).
+Stage Summary: pushed; server deploy only (no APK needed). Next: L2 TEEN MODE on her GO.
+
+Task ID: v0.779.0 HOOLA CODE PHASE 3 (built as 0.777; re-versioned twice on merge: CHAT JAISA took 0.777.0, HOOLA FLOW 0.778.0)
+Ask: GO PHASE 3 (the composer).
+Built: one box + one row (branch, mode, model + effort, usage ring), kind from her words, slash commands, pictures + text files on the first message, per-session cost, link pre-fill; 8 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; five nullable columns self-heal; pictures under data/devsahayak/).
+
+Task ID: v0.781.0 CONNECTORS PAGE (built as 0.776; rebased twice, on their v0.780.0)
+Ask: check connectors on the web console (phone-only) -> "GO BUILD FULL CONNECTORS PAGE ... A SHORT 1 LINER BELOW EVERY CONNECTOR -- AS WE USE COMPOSIO".
+Built: static/console/connectors.js (6 tabs), bazar/oneline.py (line on every list), bazar/donepage.py (sign-in done page for web + phone); 12 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip, no new tables). Note: ~/santosh_app is the deploy copy (reset --hard on deploy) - work in a worktree.
+
+---
+Task ID: v0.782.0 TEEN MODE (L2)
+Task: owner "GO L2" - Build / Plan / Chat in the Web Studio, server-enforced; plans as versions; Start building card; site instructions.
+Work Log: agent/turnmode.py + _run_tool guard; site/plans.py + routes; Studio composer / plan card / Plan view / instructions; 7 new tests + 131 older green; re-versioned 0.778 -> 0.782.
+Stage Summary: pushed; server deploy only. Next: L3 SAWAAL CARD (design question cards) on her GO.
+
+Task ID: SAVE THE STATE 11 Nov 2026 (connectors)
+Ask: "SAVE THE STATE" after v0.781 CONNECTORS PAGE went live.
+Done: branch stable-2026-11-11-connectors-v782 = 48c3eda0c (the live commit, v0.782.0; live files hash-matched); re-verified in a git-archive copy: markers present + 101 tests green, 0 failed; APK v0.782.0-b2227; checkpoint written in CLAUDE.md. No credentials in this entry.
+
+Task ID: v0.783.0 LANGGRAPH G4
+Ask: GO G4 (long jobs continue on one thread).
+Built: turngraph job thread + carry node + park / park_cut, goal round resumes it, toolledger.move; chat_graph still off; 9 tests.
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+---
+Task ID: v0.784.0 SAWAAL CARD (built as 0.783; their LANGGRAPH G4 took 0.783.0; L3)
+Task: owner "GO L3" - design question cards with visual options before a Studio Build, skipped when her words name the design.
+Work Log: site/designq.py + 2 routes; S.new reads designq.PENDING; look 1 'Your choices' + her hero; Studio question card (webstudio.js/css); switch studio_design_questions; 6 new tests + older Studio suites.
+Stage Summary: pushed; server deploy only. Next: L4 CHHOTA BADLAAV (line edits + tiered checks) on her GO.
+
+---
+Task ID: HI-PREMIUM
+Date: 2026-11-11
+Task: Hoola Interactive premium redesign (owner: "it look stale and old design ... more premium ... with some animation")
+Done: v0.786.0 (built as 0.785) - screenshotted every page first; rebuilt the look in static/console/interactive.js + the #hiRoot block in v2.css
+(folding sidebar, one heading per page, drawn dropdowns, one control scale, editor rows that do not wrap, thumbnails with
+content, brand-tinted stage, once-only motion); fixed Create Studio's resize error (studio.js); tests extended + a rule test.
+Not verified: not seen on the VPS. Pre-existing reds on main left alone (v0221 english, v0255 weights, v0256 crisp).
+Next: she deploys (VPS ops > deploy) and looks; her notes on any page come back here.
+
+Task ID: v0.787.0 HOOLA CODE ENGINE (built as 0.784)
+Ask: "IS HOOLA CODE BACKEND SAME AS CLAUDE CODE" -> no -> "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE".
+Built: devsahayak/brain.py (Claude-only, thinking, caching, trimming), devsahayak/engine.py (working copy, Claude Code tools, bash in the box, compaction, continue, checkpoints + rewind, 2 live slots), routes ws / files / rewind, page steps + Working copy card; 13 tests incl. real Docker.
+Deploy: vps-ops deploy (server-only; no new pip; working copies under data/devsahayak/ws). Needs Anthropic credit (Hoola Code is Claude-only now). Found: server venv is Python 3.12 vs box 3.13.
+
+Task ID: v0.788.0 LANGGRAPH G5
+Ask: GO G5 (outcome in state + one delivery node).
+Built: turngraph deliver node, agent/turndeliver.py record, kaam_followup reads it; chat_graph still off; 11 tests. Found goal._waiting_on_job pause bug (not fixed).
+Deploy: vps-ops deploy (langgraph pip install from v0.761 if not done).
+
+
+---
+Task ID: v0.789.0 CHHOTA BADLAAV (built as 0.785; their HOOLA AI APPS took 0.785.0, HOOLA INTERACTIVE PREMIUM PASS 0.786.0, HOOLA CODE ENGINE 0.787.0 and LANGGRAPH G5 0.788.0; L4)
+Task: owner "GO L4" - E1 line-edit tools + E2 tiered checks in the Web Studio.
+Work Log: site/lineedit.py; website_dekho what=search, website action=edit_lines / write_file; checks.run quick; save_version quick + _quick_merge; blockers + Go live starts the full check; Studio version card; 8 tests; real Chromium quick check 6.2 s.
+Stage Summary: pushed; server deploy only. Next: L5 YEH WALA (preview toolbar, element pills, style panel) on her GO.
+
+Task ID: v0.791.0 KHUD PE NA RUKE
+Ask: found during G5 - a long job paused itself ~1 h (kaamwatch on).
+Built: goal._waiting_on_job skips the job's own kind=goal row; 1 test.
+Deploy: vps-ops deploy.
+
+Task ID: v0.792.0 VIDEO LEARNER PREMIUM (built as 0.785)
+Ask: read the AI Employees Video Learner code + design -> "FIX ALL 7 PROPERLY ... MAKE ENTIRE SECTION PROPER AND PREMIUM ... VISUAL GRAPHICAL ANIMATION".
+Built: 7 fixes (pill class, Re-learn replaces, run kept + Proven by real work, file picker steps, stage durations, uploads kept, restart pick-up) + the page redrawn (seekh.js, skv- CSS, hub card); 20 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip, no new tables; data/seekh/media + data/seekh/jobs are created by themselves).
+
+Task ID: v0.793.0 HOOLA CODE SAFETY + RESUME (built as 0.789; re-versioned on merge: CHHOTA BADLAAV took 0.789.0, HOOLA GAME DEV 0.790.0, KHUD PE NA RUKE 0.791.0, VIDEO LEARNER PREMIUM 0.792.0)
+Ask: GO PHASE 4 WITH 2 LIVE SESSIONS -> MERGE.
+What happened: another session shipped Phase 4 first (v0.787 HOOLA CODE ENGINE, proved on real Docker). This session's parallel engine (wsp.py) was withdrawn, not merged; its missing pieces were re-landed on the shipped engine.
+Built: link wall (the server never follows a link a box command planted), keys hidden after the clone + in output, restart pickup (job heartbeat + resume), per-repo setup / test / variables, question choices, the lost round-count save; 9 tests incl. a browser walk.
+Deploy: vps-ops deploy (server-only; no new pip; four nullable columns self-heal). Not verified on real Docker here.
+
+---
+Task ID: v0.794.0 PROMPT NAAP (P0 of HOOLA PROMPTING; built as 0.785, re-versioned on merge: main had moved to 0.793.0)
+Ask: the owner pasted the P0 step of docs/HOOLA_PROMPTING_PLAN.md (measure before building).
+Built: quality/prompt_asks.py (60 asks: raw + hand-filled brief), quality/promptcard.py (scorer, free card, live card with a rupee ceiling, rule verdict, her picks), CLI `prompt`, GET /api/quality/prompt, vps-ops prompt_card_check / prompt_card_try; 11 tests, no model.
+Found: the architect plan echoed her words (the brief scored its own text) - fixed; a flag picture the picture engine refuses - replaced.
+Deploy: vps-ops deploy (server-only; no new pip, no tables). Then prompt_card_check (free), then prompt_card_try (Rs 250 cap). Next: read the numbers, then P1 on her GO.
+
+---
+Task ID: v0.795.0 YEH WALA (L5)
+Task: owner "GO L5" - preview toolbar (S / T / D / C), selected elements to the model, marked-up screenshots, free style panel on tokens.
+Work Log: site/yehwala.py (selection, comments table, markup screenshot); edit.style + hs-u-* utilities; hoola-edit.js modes; Studio toolbar / pills / style panel / draw / comments; 6 tests incl. a browser walk.
+Stage Summary: pushed; server deploy only. Next: L6 GALTI PAKDO (preview error collector + Try to fix) on her GO.
+
+Task ID: v0.798.0 HOOLA CODE PHASE 5 (built as 0.794; re-versioned on merge: PROMPT NAAP took 0.794.0, YEH WALA 0.795.0, PRAYOGSHALA WAVE 7 0.796.0 and 3D SCENES + GAME TOOL HUB 0.797.0)
+Ask: GO PHASE 5.
+Built: devsahayak/around.py (schedules + trigger, share link, suggestion, reviewers' comments, end-of-run push), think + pass steps, public routes /hooks/{id} + /shared/{token}, page: Thinking view, Passes card, reviewers' card, ghost text, Scheduled page, share dialog, read-only page; 12 tests incl. 2 browser walks.
+Deploy: vps-ops deploy (server-only; no new pip; table devsahayak_schedules + five nullable columns self-heal). Not verified with a real model, GitHub comment feed or FCM.

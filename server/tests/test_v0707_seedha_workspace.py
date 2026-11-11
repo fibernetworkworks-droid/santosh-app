@@ -38,7 +38,8 @@ def test_studio_scripts_move_to_the_workspace_first():
     D = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
     ws = (D / "webstudio.js").read_text()
     i = ws.index("if (kind === 'ask') {")
-    assert ws.index("drawPending(plan, t)", i) < ws.index("await startFromAsk(t)", i)    # the page moves BEFORE the wait
+    # v0.784: the call now carries her design picks (startFromAsk(t, design)); the order it pins is unchanged
+    assert ws.index("drawPending(plan, t)", i) < ws.index("await startFromAsk(t, design)", i)    # the page moves BEFORE the wait
     assert "PREFILL = t; drawHome('home')" in ws                                           # a failure goes back with her words
     assert "Starting the build" in ws                                                       # her Build tap shows at once
     a = (D / "appstudio.js").read_text()

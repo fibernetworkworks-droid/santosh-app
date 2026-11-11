@@ -138,7 +138,7 @@ def test_tools_api_hire_and_ui(st, monkeypatch):  # noqa: F811
         assert hire.CATALOG[k]["live"]
     assert not [k for k, e in hire.CATALOG.items() if e.get("group") == hire.GAME_GROUP and not e["live"]]   # all ten live
     ctx = Ctx(tenant_id="default", conversation_id="c1")
-    with pytest.raises(tools.ToolError, match="hired nahi"):
+    with pytest.raises(tools.ToolError, match="is not hired"):   # English since d84057023 (tools wave 3)
         asyncio.run(tools.HANDLERS["game_twin"](ctx, action="setup"))
     c = TestClient(app)
     assert c.post("/api/gamedesk/vfx", json={}).status_code == 400

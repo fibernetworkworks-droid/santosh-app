@@ -17,6 +17,7 @@ Nothing here pays, sends or approves anything: every gate (cards, money taps, OT
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import re
@@ -41,6 +42,9 @@ STATS = {"waited_job": 0, "set": 0, "finished": 0, "blocked": 0, "continued": 0,
 
 # v0.223 goals whose background round is scheduled / running in THIS process (the recovery sweep never doubles them)
 _PENDING: dict[str, int] = {}
+# G4 (chat_graph only): the goal whose background round THIS task is running (its own _PENDING entry is not "another
+# round already queued" when it schedules the next one)
+_MY_ROUND: contextvars.ContextVar = contextvars.ContextVar("goal_my_round", default=None)
 
 
 def _pend(goal_id: str, d: int) -> None:
@@ -561,7 +565,10 @@ def _waiting_on_job(conv: str) -> bool:
         from ..kaamwatch import KaamJob
         cut = now() - timedelta(seconds=JOB_WAIT_S)
         with session() as s:
-            rows = s.scalars(select(KaamJob).where(KaamJob.conversation_id == conv, KaamJob.state == "working")
+            # v0.791 the long job's OWN kaamwatch row (kind 'goal') is not a job it waits on - it made the goal
+            # pause itself for up to JOB_WAIT_S after its first round whenever kaamwatch was on
+            rows = s.scalars(select(KaamJob).where(KaamJob.conversation_id == conv, KaamJob.state == "working",
+                                                   KaamJob.kind != "goal")
                              .limit(20)).all()
             return any((_aware(r.moved_at) or _aware(r.updated_at) or now()) >= cut for r in rows)
     except Exception:
@@ -613,9 +620,14 @@ def _pause(goal_id: str) -> None:
 
 def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -> bool:
     st = get_settings()
-    if _PENDING.get(view["id"]):
+    mine = _PENDING.get(view["id"], 0) - (1 if (getattr(st, "chat_graph", False) and _MY_ROUND.get() == view["id"])
+                                          else 0)
+    if mine > 0:
         # wave 10: a round of this job is already queued (her message mid-job ran its own turn, which scheduled again):
         # two rounds ran back to back, the second from a stale step list, each spending one of the rounds
+        # G4 (chat_graph only): the pending entry of the round that is asking right now is its OWN - it used to block
+        # the round from ever scheduling the next one (a job's third segment waited for the 10-minute recovery sweep,
+        # and the rounds limit's "Shall I carry on?" was never asked)
         STATS["already_queued"] = STATS.get("already_queued", 0) + 1
         return True
     rounds, mins, who = 0, 0.0, "routine"
@@ -680,7 +692,7 @@ def resume_tick() -> int:
             continue
         if at is not None and at < cutoff:
             continue                     # too old: she moved on; her next message still sees the GOAL JAARI block
-        if conv in _locks and _locks[conv].locked():
+        if (conv in _locks and _locks[conv].locked()) or _graph_busy(conv):
             continue                     # a turn is running in this chat: it carries the goal itself
         if _waiting_on_her(conv) or _waiting_on_job(conv):
             continue
@@ -701,12 +713,32 @@ def _clear_pause(goal_id: str) -> None:
             r.paused_at = None
 
 
+ROUND_DELAY_S = 2.5   # a round waits this long so the turn before it can settle its final writes / events
+
+
+def _graph_busy(conv: str) -> bool:
+    """G2/G4 (chat_graph only): a run of this chat is live or queued in this process - the sweeps leave it alone."""
+    if not getattr(get_settings(), "chat_graph", False):
+        return False
+    try:
+        from . import turnrun
+        return turnrun.busy(conv)
+    except Exception:
+        return False
+
+
 async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: str = "routine") -> None:
-    """One background turn that keeps the goal going. Never raises into the caller's context."""
-    await asyncio.sleep(2.5)          # let the original turn's final writes / events settle first
+    """One background turn that keeps the goal going. Never raises into the caller's context.
+    G4 (chat_graph on): the round does not start a fresh turn - it CONTINUES the job's own graph thread (the next
+    segment, or the segment a restart / deadline cut, from its step); see agent/turngraph.py."""
+    await asyncio.sleep(ROUND_DELAY_S)   # let the original turn's final writes / events settle first
+    _graph = bool(getattr(get_settings(), "chat_graph", False))
     try:
         v0 = active_for(conv)
         if v0 is None or v0["id"] != goal_id or not steps_left(v0):
+            if _graph:                     # G4: the job is over - its parked thread goes too
+                from . import turngraph
+                await turngraph.forget_job(get_settings(), conv, goal_id)
             return                         # v0.223 finished / stopped / replaced while this round waited: nothing to do
         from .santosh import run_turn, LAST_OUTCOME
         # wave 10: the step list is read NOW (her own turn may have finished some while this round waited for the chat)
@@ -714,7 +746,23 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
         ask = (f"[Goal jaari: {v0['goal']} — steps left: " + "; ".join(f"{x['n']}. {x['text']}" for x in left0[:8])
                + ". Carry on, write each step with kaam_plan, and when all is done finish done.]") \
             if (left0 and ask.startswith("[Goal jaari:") and "The owner said keep going" not in ask) else ask
-        out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
+        if _graph:
+            # G4: this round continues the job thread. Cut mid-segment (a restart, a deadline) = that segment goes on
+            # from its step, so the round's line is not saved (it would land between a step and its result)
+            from . import turngraph
+            nxt = await turngraph.job_next(get_settings(), conv, goal_id)
+            tok, rtok = turngraph.JOB_RUN.set((conv, goal_id)), _MY_ROUND.set(goal_id)
+            try:
+                out = await run_turn(conv, ask, tenant_id=tenant, actor=actor,
+                                     **({"save_user": False} if nxt not in (None, "carry") else {}))
+            finally:
+                for var, tk in ((turngraph.JOB_RUN, tok), (_MY_ROUND, rtok)):
+                    try:
+                        var.reset(tk)
+                    except ValueError:
+                        var.set(None)
+        else:
+            out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
         v = active_for(conv)
         if v is not None and v.get("id") == goal_id and steps_left(v):
             # v0.665 "continuing" only while the goal really is still open AND this round did not end stuck / stopped -
@@ -873,7 +921,7 @@ def recover_tick() -> int:
             continue
         if upd is None or upd > old or upd < too_old:
             continue                         # still moving, or so old she has moved on (her next message carries it)
-        if conv in _locks and _locks[conv].locked():
+        if (conv in _locks and _locks[conv].locked()) or _graph_busy(conv):
             continue                         # a turn is running it right now
         if _waiting_on_her(conv) or _waiting_on_job(conv):
             _pause(gid)                      # the resume sweep restarts it once she answers

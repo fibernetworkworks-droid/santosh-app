@@ -76,6 +76,62 @@ def _on() -> bool:
     return os.environ.get("KAAM_FOLLOWUP", "true").lower() not in ("0", "false", "off")
 
 
+def _graph() -> bool:
+    """G5 (docs/LANGGRAPH_TURN_PLAN.md): with chat_graph on, 'already told?' is the delivery RECORD the graph's
+    deliver node writes (agent/turndeliver.py), not the timing guesses below (_recent_said / _answered_since)."""
+    try:
+        from .agent import turndeliver
+        return turndeliver.graph_on()
+    except Exception:
+        return False
+
+
+def _news_key(r) -> str:
+    return f"news:{r.id}"
+
+
+def _told_by_graph(r) -> bool:
+    """G5: this report was already told - by the graph run that ended the job (its reply IS the report: a long job's
+    final segment, her own turn that ran it, her Stop), or by this row's own wake turn before a restart (its reply row
+    landed after the record's mark). A wake turn's reply that landed without its call note / ring gets them now, once."""
+    from .agent import turndeliver as D
+    if D.told(r.key, r.state, at=_aware(getattr(r, "created_at", None))):
+        return True
+    rec = D.news_landed(_news_key(r))
+    if rec is None:
+        return False
+    try:
+        from .config import get_settings
+        D.news_channels(rec["key"], r.tenant_id, rec["conversation_id"] or r.conversation_id,
+                        D.reply_text((rec["channels"].get("chat") or {}).get("row")), r.key, r.state,
+                        f"{r.label} {r.title}".strip(), get_settings())
+    except Exception:
+        log.debug("recovered news channels failed", exc_info=True)
+    D.job_told(r.key, r.state, rec["key"], r.tenant_id, rec["conversation_id"] or r.conversation_id)
+    return True
+
+
+def _news_done(r, channel: str) -> bool:
+    try:
+        from .agent import turndeliver as D
+        return D.done(_news_key(r), channel)
+    except Exception:
+        return False
+
+
+def _graph_run_holds(conv: str, created_at) -> bool:
+    """G5: a graph run of this chat that was already live when this report was queued - it may be the run that tells
+    it (a long job's final segment, her own turn that ran the job). The report waits for its delivery record instead
+    of the 5-minute dry line dropping into the middle of that run."""
+    try:
+        from .agent import turnrun
+        run = turnrun.live_run(conv)
+        at = _aware(created_at)
+        return bool(run is not None and at is not None and run.at <= at.timestamp() + 1)
+    except Exception:
+        return False
+
+
 _table_ready = False
 
 
@@ -203,11 +259,29 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
     eventlog.log_event(r.tenant_id, r.conversation_id, "wake",
                        {"line": f"{r.label} {r.title} {STATE_WORD.get(r.state, r.state)}", "job": r.key,
                         "mode": "wake_turn"})
+    _g5 = _graph()
+    ntok = None
+    if _g5:
+        # G5 (chat_graph): this wake turn's delivery has a record of its own, opened BEFORE the turn runs (its mark =
+        # the chat's newest row now), so after a restart the report is known told by its reply row's id - never by a
+        # time window; the graph's deliver node writes the call note + the ring into it, once each
+        from .agent import turndeliver as D
+        D.record(_news_key(r), r.tenant_id, r.conversation_id, kind="news", job_key=r.key, job_state=r.state)
+        ntok = D.NEWS.set({"key": _news_key(r), "conv": r.conversation_id, "job_key": r.key, "state": r.state,
+                           "title": f"{r.label} {r.title}".strip()})
     try:
         from .agent import santosh
         t0 = time.time()
-        text = await santosh.run_turn(r.conversation_id, _wake_text(r), tenant_id=r.tenant_id, actor="wake",
-                                      save_user=False)
+        try:
+            text = await santosh.run_turn(r.conversation_id, _wake_text(r), tenant_id=r.tenant_id, actor="wake",
+                                          save_user=False)
+        finally:
+            if ntok is not None:
+                from .agent import turndeliver as D
+                try:
+                    D.NEWS.reset(ntok)
+                except ValueError:
+                    D.NEWS.set(None)
         if not str(text or "").strip():
             return False
         if santosh.turn_failed_since(r.conversation_id, t0):
@@ -217,6 +291,10 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
             return False
         _wake_spend(r.conversation_id)
         STATS["wake"] += 1
+        if _g5:
+            from .agent import turndeliver as D
+            if D.done(_news_key(r), "call"):
+                return True      # G5: the graph's deliver node already gave her live call the note (once)
         try:   # the same quiet note into her live call, exactly like the one-shot line
             from . import kaamwatch
             # CALL PAR TEAM: a few full sentences (300 chars left one fragment of a 4-agent result on the call)
@@ -419,6 +497,15 @@ async def tick() -> int:
         if conv and _turn_running(conv):
             with session() as s:
                 r = s.get(KaamFollowup, row["id"])
+                if r and r.status == "pending" and _graph() and _told_by_graph(r):
+                    r.status, r.sent_at = "skipped", now()     # G5: already told (its delivery record says so)
+                    STATS["dup"] += 1
+                    continue
+                if r and r.status == "pending" and _graph() and _graph_run_holds(conv, r.created_at):
+                    # G5: the live graph run may be the one telling it - its deliver node decides (not counted:
+                    # the run ends within its own deadline, then _send asks the record)
+                    STATS["postponed"] += 1
+                    continue
                 if r and r.status == "pending":
                     r.tries += 1
                     age = (now() - (_aware(r.created_at) or now())).total_seconds()
@@ -482,7 +569,18 @@ async def _send(fid: str, settings) -> None:
                 if r2:
                     r2.status, r2.sent_at = "skipped", now()
             return
-        if _recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None), key=key, tenant=tenant):
+        if _graph():
+            # G5: the delivery record decides (the graph run that ended the job told it, or this row's own wake turn
+            # already landed before a restart) - never a time window or the title's words
+            with session() as s:
+                rr0 = s.get(KaamFollowup, fid)
+                v0 = None if rr0 is None else KaamFollowup(
+                    id=rr0.id, tenant_id=rr0.tenant_id, conversation_id=rr0.conversation_id, key=rr0.key,
+                    kind=rr0.kind, label=rr0.label, title=rr0.title, state=rr0.state, created_at=rr0.created_at)
+            dup = v0 is not None and _told_by_graph(v0)
+        else:
+            dup = _recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None), key=key, tenant=tenant)
+        if dup:
             with session() as s:
                 r2 = s.get(KaamFollowup, fid)
                 if r2:
@@ -504,7 +602,8 @@ async def _send(fid: str, settings) -> None:
                 # v0.553 GHANTI: the wake turn is the NORMAL path, and it returned before the ring below - so a
                 # finished job almost never rang her phone. It rings here too (same gates: quiet hours, daily cap,
                 # never over a live call).
-                _ring(conv, snapshot.key, snapshot.state, title, settings)
+                if not (_graph() and _news_done(snapshot, "ring")):   # G5: the deliver node already rang (once)
+                    _ring(conv, snapshot.key, snapshot.state, title, settings)
                 return                   # the wake turn already told her (and the call) in Hoola's own words
             log.info("wake turn declined for %s; the one-shot line goes instead", fid)
         line = ""

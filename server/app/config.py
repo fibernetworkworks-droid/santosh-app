@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-5-5"
     usage_month_usd: float = 0.0           # v0.98 server ceiling of AI spend per owner per month (0 = none)
+    studio_modes: bool = True             # v0.782 TEEN MODE: Studio Plan / Chat refuse changing tools on the server
+    studio_design_questions: bool = True  # v0.784 SAWAAL CARD: up to four visual design questions before a Studio Build
+    site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
+    studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)
+    chat_turn_cost: bool = True           # v0.777 CHAT JAISA: each chat turn's rupees kept (turncost) for the Studio line
     usage_usd_inr: float = 88.0            # v0.98 rupees per dollar for the Kharcha screen
     agent_max_steps: int = 24              # v0.78: more room to finish (the circuit breaker still stops loops)
     agent_max_tokens: int = 2000
@@ -143,6 +148,19 @@ class Settings(BaseSettings):
     dev_spec_focus_steps: int = 12          # steps for one focused pass
     dev_loop_model: str = ""                 # ... '' = site_model (Opus)
     dev_loop_effort: str = "high"           # ... Claude effort for coding
+    # v0.784 HOOLA CODE ENGINE (owner: "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE"): devsahayak/engine.py + brain.py
+    dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
+    dev_think: bool = True                  # ... with adaptive thinking
+    dev_hint: bool = True                   # Hoola Code Phase 5: one small model call when a round ends suggests her next message (ghost text)
+    dev_hint_model: str = "claude-haiku-5-5"   # ... on this model
+    dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
+    dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
+    dev_ws_steps: int = 150                 # ... model steps in one round
+    dev_ws_minutes: int = 60                # ... minutes in one round
+    dev_ws_bash_runs: int = 80              # ... box commands in one round
+    dev_ws_clear_chars: int = 180000        # ... past this, old tool output is trimmed (brain.trim)
+    dev_ws_compact_chars: int = 480000      # ... past this, the older conversation is summarised (engine.compact)
+    dev_ws_keep_days: int = 14              # ... an idle session's working copy is kept this long
     agent_aage: bool = True                 # v0.311 AAGE BADHO: a text-only reply that only promises more work gets one 'do it now' nudge
     agent_progress_window_s: int = 300      # v0.311 a turn that finished a tool this recently gets the long-job deadline (0 = off)
     agent_ack_after_s: float = 5.0          # v0.187 a turn silent this long first says "ek second, dekh raha hoon…" (0 = off)
@@ -482,6 +500,9 @@ class Settings(BaseSettings):
     seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
     seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
     seekh_live_notes: bool = True          # v0.745 notes stream onto the Video Learner page as Gemini writes them
+    seekh_resume: bool = True              # v0.785 a watch a restart cut is picked up again once (off = it is only reported lost)
+    seekh_keep_media: bool = True          # v0.785 the learner keeps its own copy of an uploaded video (the chat lane is swept after 24 h)
+    seekh_media_max_mb: int = 1024         # v0.785 kept videos per owner; over it the oldest copies go (the learned steps stay)
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
     hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
     design_page: bool = True              # v0.777 HOOLA DESIGN: the multiplayer design editor (/console/design, /api/design/*, app/design)

@@ -284,6 +284,7 @@ ${SPRITE}`;
      current choice ticked, Arrow keys / Home / End / Enter / Esc, closes on a pick, an outside click, scroll or resize. */
   let popFor = null;
   function closeMenu(focus) {
+    if (!R) return;                     // v0.778 a console window resized before Create was ever opened threw (R is null until then)
     const pop = $('#pop'); if (!pop || pop.hidden) return;
     pop.classList.remove('on'); popFor?.setAttribute('aria-expanded', 'false');
     const b = popFor; popFor = null;
@@ -317,7 +318,7 @@ ${SPRITE}`;
       else if (e.key === 'Tab') closeMenu();
     };
   }
-  addEventListener('resize', () => closeMenu());
+  addEventListener('resize', () => { if (R) closeMenu(); });   // before Create is first opened there is no root: every window resize threw
   const opt = (L, fmt) => L.map(v => ({v, label: fmt ? fmt(v) : String(v)}));
 
   /* ---------------- shared result tiles ---------------- */

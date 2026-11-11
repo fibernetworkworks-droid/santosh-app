@@ -112,7 +112,9 @@ def test_console_stamps_0_4_8_5():
     # APP_VERSION. Two sessions' conventions disagreed; CLAUDE.md's version ritual lists the console
     # stamps as part of the bump, so the typed number goes and the COUNT - the real guard - stays.
     # v0.768: 28 -> 27. code.js left the console page - Hoola Code is its own page (/console/code, hoolacode.html).
-    assert s.count(f'v={APP_VERSION}') == 27, f"expected 27 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
+    # v0.781: 27 -> 28. connectors.js joined the console page (the Connectors page).
+    # v0.772 AI APPS: 28 -> 29. aiapps.js joined the console page (its stylesheet is loaded by the script, not v2.html).
+    assert s.count(f'v={APP_VERSION}') == 29, f"expected 29 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
     assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
 
@@ -123,11 +125,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'HOOLA DESIGN v0.777' in main and '/console/design' in main  # the newest-story precedent (v0.767.0 carries the marker; older stories live in git history)
+    assert 'HOOLA DESIGN v0.799' in main and '/console/design' in main  # the newest-story precedent (v0.799.0 carries the marker; older stories live in git history)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.777.0+776' in pub
+    assert 'version: 0.799.0+798' in pub

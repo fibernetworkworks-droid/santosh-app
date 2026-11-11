@@ -140,6 +140,21 @@ def forget(thread_id: str, older_than_h: float = 24.0) -> None:
                 TurnToolLedger.updated_at < now() - timedelta(hours=float(older_than_h))))
 
 
+def move(src_thread: str, dst_thread: str) -> int:
+    """G4: a turn's rows follow its state onto the job thread (a long job continues there), so an interrupted tool
+    of that turn is still known as interrupted when the job thread resumes. Returns the rows moved."""
+    if not src_thread or not dst_thread or src_thread == dst_thread:
+        return 0
+    ensure_table()
+    from sqlalchemy import update
+    with session() as s:
+        res = s.execute(update(TurnToolLedger).where(TurnToolLedger.thread_id == src_thread)
+                        .values(thread_id=dst_thread))
+        n = int(getattr(res, "rowcount", 0) or 0)
+    STATS["moved"] = STATS.get("moved", 0) + n
+    return n
+
+
 def rows(thread_id: str) -> list[dict]:
     """Tests / diagnostics."""
     ensure_table()

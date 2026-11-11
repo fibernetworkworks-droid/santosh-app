@@ -12,7 +12,14 @@
     'padding:6px 10px;border-radius:7px}#hoola-ebar button:hover,#hoola-ebar button:focus-visible{background:#3a3260}' +
     '.hoola-ehint{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:2147483647;background:#1c1830;color:#fff;' +
     'font:500 13px system-ui,sans-serif;padding:8px 14px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.25)}' +
-    '[data-m]{opacity:1!important;transform:none!important;filter:none!important}';
+    '[data-m]{opacity:1!important;transform:none!important;filter:none!important}' +
+    /* v0.795 YEH WALA: select / comment / draw modes, selection outline, pins */
+    'html.hoola-m-select [data-e]:hover,html.hoola-m-comment [data-e]:hover{outline:1px solid #6d4aff;outline-offset:2px;background-color:rgba(109,74,255,.04)}' +
+    'html.hoola-m-select,html.hoola-m-select *{cursor:crosshair!important}html.hoola-m-view [data-e]:hover{outline:none}html.hoola-m-view [data-e]{cursor:default}' +
+    '.hoola-sel{outline:1px solid #6d4aff!important;outline-offset:2px;background-color:rgba(109,74,255,.04)!important}' +
+    '#hoola-tip{position:fixed;z-index:2147483647;pointer-events:none;display:none;background:#6d4aff;color:#fff;font:500 12px system-ui,sans-serif;padding:3px 8px;border-radius:999px;white-space:nowrap}' +
+    '.hoola-pin{position:absolute;z-index:2147483646;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50% 50% 50% 4px;background:#6d4aff;color:#fff;font:600 11px/22px system-ui,sans-serif;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25);pointer-events:none}' +
+    '.hoola-pin.done{background:#8a8796}';
   document.head.appendChild(css);
   var bar = document.createElement('div'); bar.id = 'hoola-ebar'; bar.setAttribute('role', 'toolbar');
   document.body.appendChild(bar);
@@ -20,6 +27,64 @@
   hint.textContent = 'Edit mode: kisi bhi cheez par click karke badliye';
   document.body.appendChild(hint);
   var cur = null, before = '';
+  var MODE = 'text', SEL = [];              // v0.795: text (the v0.295 behaviour) | select | comment | view (draw on top)
+  var tip = document.createElement('div'); tip.id = 'hoola-tip'; document.body.appendChild(tip);
+  var HINTS = {text: 'Edit mode: kisi bhi cheez par click karke badliye', select: 'Select: click a part of the page (Ctrl / Shift to add more)',
+    comment: 'Comment: click the part your note is about', view: 'Draw: mark the page, then send it to Hoola'};
+  function setMode(m) {
+    if (!HINTS[m]) return;
+    if (cur) done(true);
+    hide();
+    MODE = m;
+    var cl = document.documentElement.classList;
+    ['text', 'select', 'comment', 'view'].forEach(function (x) { cl.remove('hoola-m-' + x); });
+    cl.add('hoola-m-' + m);
+    hint.textContent = HINTS[m];
+    tip.style.display = 'none';
+  }
+  function nameOf(el) {
+    var t = el.tagName.toLowerCase(), w = text(el).slice(0, 28);
+    var kind = t === 'a' ? 'link' : t === 'button' ? 'button' : t === 'img' ? 'picture' : /^h[1-6]$/.test(t) ? 'heading' : 'text';
+    return kind + (w ? " '" + w + "'" : '');
+  }
+  function paintSel() {
+    document.querySelectorAll('.hoola-sel').forEach(function (x) { x.classList.remove('hoola-sel'); });
+    SEL.forEach(function (s) {
+      var sec = document.querySelector('section[data-k="' + s.k + '"]');
+      var el = sec && sec.querySelector('[data-e="' + s.e + '"]');
+      if (el) el.classList.add('hoola-sel');
+    });
+  }
+  function pins(list) {
+    document.querySelectorAll('.hoola-pin').forEach(function (x) { x.remove(); });
+    (list || []).forEach(function (p) {
+      var sec = document.querySelector('section[data-k="' + p.k + '"]');
+      var el = sec && sec.querySelector('[data-e="' + p.e + '"]');
+      if (!el) return;
+      var r = el.getBoundingClientRect(), d = document.createElement('div');
+      d.className = 'hoola-pin' + (p.done ? ' done' : ''); d.textContent = String(p.n);
+      d.style.left = (r.left + window.scrollX) + 'px'; d.style.top = (r.top + window.scrollY) + 'px';
+      document.body.appendChild(d);
+    });
+  }
+  window.addEventListener('message', function (ev) {      // commands from the Studio (only the page that holds this frame)
+    if (ev.source !== window.parent) return;
+    var d = ev.data || {};
+    if (d.hoola !== 'edit-cmd') return;
+    if (d.mode) setMode(d.mode);
+    if (d.t === 'selected') { SEL = (d.items || []).map(function (x) { return {k: String(x.k), e: String(x.e)}; }); paintSel(); }
+    if (d.t === 'pins') pins(d.pins);
+    if (d.t === 'where') send({t: 'where', w: window.innerWidth, h: window.innerHeight});
+  });
+  document.addEventListener('mouseover', function (ev) {
+    if (MODE !== 'select' && MODE !== 'comment') return;
+    var el = ev.target.closest && ev.target.closest('[data-e]');
+    if (!el || !where(el)) { tip.style.display = 'none'; return; }
+    var r = el.getBoundingClientRect();
+    tip.textContent = nameOf(el); tip.style.display = 'block';
+    tip.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 220)) + 'px';
+    tip.style.top = Math.max(4, r.top - 24) + 'px';
+  }, true);
 
   function send(msg) {
     msg.hoola = 'edit'; msg.y = Math.round(window.scrollY);
@@ -61,6 +126,19 @@
   }
   document.addEventListener('click', function (ev) {
     if (bar.contains(ev.target)) return;
+    if (MODE !== 'text') {                                  // v0.795 select / comment / view never type or follow links
+      ev.preventDefault(); ev.stopPropagation();
+      var pick = ev.target.closest && ev.target.closest('[data-e]');
+      if (!pick || !where(pick) || MODE === 'view') return;
+      var it = {k: where(pick), e: pick.getAttribute('data-e'), text: text(pick).slice(0, 200), tag: pick.tagName.toLowerCase(), name: nameOf(pick)};
+      if (MODE === 'comment') { send({t: 'comment', k: it.k, e: it.e, text: it.text, name: it.name}); return; }
+      var i = SEL.findIndex(function (s) { return s.k === it.k && s.e === it.e; });
+      if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { if (i >= 0) SEL.splice(i, 1); else if (SEL.length < 8) SEL.push(it); }
+      else SEL = i >= 0 && SEL.length === 1 ? [] : [it];
+      paintSel();
+      send({t: 'select', items: SEL});
+      return;
+    }
     var el = ev.target.closest && ev.target.closest('[data-e]');
     if (cur && el === cur) return;
     ev.preventDefault(); ev.stopPropagation();
@@ -82,5 +160,6 @@
   window.addEventListener('scroll', function () { if (cur) place(cur); }, {passive: true});
   var m = /[#&]y=(\d+)/.exec(location.hash);
   if (m) window.addEventListener('load', function () { window.scrollTo(0, +m[1]); });
+  setMode('text');
   send({t: 'ready'});
 })();
