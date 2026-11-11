@@ -339,8 +339,8 @@ def test_the_health_cap_does_not_assert_what_we_could_not_verify():
     """The ABDM/NHA documents could not be read from a primary source, and the vendor sources contradict each
     other on CERT-In vs STQC. So the cap says the requirement is unverified instead of stating it as fact."""
     cap = R.ROLES["health_int"]["cap"]
-    assert "NAHI hai" in cap or "nahi" in cap
-    assert "jaancha" in cap
+    assert "NOT checked" in cap or "not" in cap
+    assert "checked" in cap
     assert "CERT-In empanelled security audit pehle paas karna padta hai" not in cap
 
 
