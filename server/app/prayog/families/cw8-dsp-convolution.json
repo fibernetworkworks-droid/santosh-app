@@ -1,0 +1,37 @@
+{
+ "base": "cw8-dsp-convolution",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "direct-sum",
+   "title": "The direct convolution sum",
+   "sample": "two exponential sequences",
+   "unknown": "y[3]",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "gate",
+   "title": "A gate of length 5 convolved with itself (DU item 2)",
+   "sample": "rectangle signal, N = 5",
+   "unknown": "y[4] = 5",
+   "params": {
+    "al": 1.0,
+    "be": 1.0,
+    "Lx": 5.0,
+    "Lh": 5.0,
+    "m": 4.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

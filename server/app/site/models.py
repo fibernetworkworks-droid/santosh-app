@@ -60,6 +60,7 @@ class SiteVersion(Base):
     scores: Mapped[str] = mapped_column(Text, default="{}")
     passed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    bookmark: Mapped[str | None] = mapped_column(String(80), nullable=True, default="")   # v0.808 WAPAS: her name for it
 
 
 class SiteLead(Base):

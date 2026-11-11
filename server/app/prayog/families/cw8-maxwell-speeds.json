@@ -1,0 +1,80 @@
+{
+ "base": "cw8-maxwell-speeds",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "rms-n2",
+   "title": "Nitrogen at 300 K: rms speed",
+   "sample": "N2, M = 28.0134 g/mol, 300 K",
+   "unknown": "v_rms = sqrt(3kT/m)",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: N2 28.0134 g/mol",
+    "note": "from memory - verify against the IUPAC table"
+   }
+  },
+  {
+   "key": "peak-n2",
+   "title": "Nitrogen at 300 K: most probable speed",
+   "sample": "N2, M = 28.0134 g/mol, 300 K",
+   "unknown": "v_p = sqrt(2kT/m)",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: N2 28.0134 g/mol",
+    "note": "from memory - verify against the IUPAC table"
+   },
+   "check": {
+    "params": {
+     "n": 128
+    }
+   }
+  },
+  {
+   "key": "helium-mean",
+   "title": "Helium at 300 K: mean speed",
+   "sample": "He, M = 4.002602 g/mol, 300 K",
+   "unknown": "<v> = sqrt(8kT/pi m)",
+   "params": {
+    "M": 4.002602
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: He 4.002602 g/mol",
+    "note": "from memory - verify against the IUPAC table"
+   }
+  },
+  {
+   "key": "co2-hot",
+   "title": "Carbon dioxide at 600 K: mean speed",
+   "sample": "CO2, M = 44.0095 g/mol, 600 K",
+   "unknown": "<v> = sqrt(8kT/pi m)",
+   "params": {
+    "M": 44.0095,
+    "T": 600.0
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: CO2 44.0095 g/mol",
+    "note": "from memory - verify against the IUPAC table"
+   }
+  },
+  {
+   "key": "oxygen-cold",
+   "title": "Oxygen at 100 K: rms speed",
+   "sample": "O2, M = 31.9988 g/mol, 100 K",
+   "unknown": "v_rms",
+   "params": {
+    "M": 31.9988,
+    "T": 100.0,
+    "what": 1
+   },
+   "source": {
+    "title": "IUPAC standard atomic weights: O2 31.9988 g/mol",
+    "note": "from memory - verify against the IUPAC table"
+   }
+  }
+ ]
+}
