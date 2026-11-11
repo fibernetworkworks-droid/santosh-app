@@ -20,7 +20,7 @@ SAMUDAAY_TOOLS = [
         "action=faq_delete: faq_id. action=answer: question_id + answer (her own words; replies in the group and saves to FAQ) or "
         "faq_id. action=ignore: question_id. action=moderate: kind delete_post|mute|unmute|remove|ban|unban|warn|reply|fact_note, "
         "member (name / @username / id) and / or post (post id), reason, hours (mute), text -> a CARD; it happens only when she taps "
-        "Haan. action=announce: text -> card. action=dismiss: alert_id, note, allow_site / ok_word (learn). action=join: request_id, "
+        "Yes. action=announce: text -> card. action=dismiss: alert_id, note, allow_site / ok_word (learn). action=join: request_id, "
         "yes. action=roles: member, roles [owner|admin|moderator|vip|member]. action=forget: member (erase their data). "
         "action=register (Excel). NEVER ask for or accept a Telegram bot token in chat: she types it in the app (Community Assistant > Connect bot)."),
      "input_schema": {"type": "object", "properties": {

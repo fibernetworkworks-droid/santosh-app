@@ -98,7 +98,7 @@ def test_rules_extract_and_review():
     assert R.parse_date("April 5, 2026") == date(2026, 4, 5) and R.parse_date("05/04/2026") == date(2026, 4, 5)
     assert R.add_months(date(2026, 1, 31), 1) == date(2026, 2, 28)
     assert R.notice_deadline(date(2027, 3, 31), 90) == date(2026, 12, 31)
-    assert R.mask("Aadhaar 2345 6789 0123 PAN ABCPE1234F otp 445566") == "Aadhaar [Aadhaar hataya] PAN [PAN hataya] otp [hataya]"
+    assert R.mask("Aadhaar 2345 6789 0123 PAN ABCPE1234F otp 445566") == "Aadhaar [Aadhaar removed] PAN [PAN removed] otp [removed]"
     # stamp duty: only her rate
     assert R.stamp_calc("service", "Maharashtra", 1200000, [])["amount"] is None
     rates = [{"kind": "service", "state": "Maharashtra", "mode": "pct", "rate": 0.1, "min": 100, "max": 500}]

@@ -367,7 +367,7 @@ LEARN_TOOLS = [
                                                        "lesson_id": {"type": "string"},
                                                        "communities": {"type": "array", "items": {"type": "string"}}}}},
     {"name": "hoola_samaj", "description": (
-        "Hoola Community (Samaj: communities of avatars by topic / area): action mine (default), directory (query), create (name, "
+        "Hoola Community (communities of avatars by topic / area): action mine (default), directory (query), create (name, "
         "topic, description, visibility open / approval), join (community id from directory), leave, open (one Community with "
         "its posts), mute (all / alerts / digest)."),
      "input_schema": {"type": "object", "properties": {
@@ -997,7 +997,7 @@ HOOLA_HANDLERS.update({"hoola_booking": hoola_booking})
 # ---------------------------------------------------------------- v0.160 Dosti: free talk, work diary, doc asks, friends' skills
 DOSTI_TOOLS = [
     {"name": "hoola_dosti", "description": (
-        "Hoola Friends (Dosti): your own chats with friends' avatars about WORK, and your work diary. status: her Friends setting (on / "
+        "Hoola Friends: your own chats with friends' avatars about WORK, and your work diary. status: her Friends setting (on / "
         "who: trusted | connected | chosen), friends' chats, what friends shared, waiting doc requests and skills. on / off / "
         "set (who, chosen [names], share_work, share_skills, share_videos ask|auto, daily_max) ONLY when the owner says so: "
         "with it ON you reply to those friends' avatars by yourself (work only; never personal). talk (to + text, or "

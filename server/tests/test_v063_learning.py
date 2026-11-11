@@ -70,7 +70,7 @@ def test_breaker_rules():
     for i in range(4):
         b2.before(f"t{i}", {})
         b2.after(f"t{i}", False)
-    assert b2.stopped and "Ruko" in b2.before("t9", {})                     # 4 failures in a row: stop
+    assert b2.stopped and "Stop" in b2.before("t9", {})                     # 4 failures in a row: stop
     b3 = Breaker(max_calls=3)
     for i in range(3):
         assert b3.before("x", {"i": i}) is None

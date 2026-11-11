@@ -193,7 +193,7 @@ def test_tool_guide_run_and_batch(tool_env):
     g = run(T.audio_edit(tool_env.ctx, "guide"))
     assert g["ffmpeg"] and set(g["ops"]) == ops.STEP_OPS and "NOT done here" in g["guide"]
     r = run(T.audio_edit(tool_env.ctx, "run", file_ids=["v", "vid"], steps=[{"op": "normalize", "target": "social"}], format="mp3"))
-    assert r["edited"] == 2 and r["results"][1]["note"] == "video ki awaaz nikali gayi"
+    assert r["edited"] == 2 and r["results"][1]["note"] == "the video's sound was extracted"
     assert [n for n, _ in tool_env.out] == ["voice edited.mp3", "clip edited.mp3"]
 
 

@@ -54,7 +54,7 @@ def test_rules():
     assert R.night_rate(plan, date(2026, 10, 22), [4, 5]) == (3000, "base")       # Thursday
     assert R.night_rate(plan, date(2026, 10, 23), [4, 5])[0] == 3500               # Friday night
     assert R.night_rate(plan, date(2027, 1, 1), [4, 5])[0] == 6000                 # season across the new year
-    assert R.night_rate({}, date(2026, 10, 22), [4, 5]) == (None, "rate nahi")     # never a guess
+    assert R.night_rate({}, date(2026, 10, 22), [4, 5]) == (None, "no rate")     # never a guess
     assert R.cancel_fee({}, date(2026, 11, 1), date(2026, 10, 31), 3000, 6000)[0] == 0
     assert R.cancel_fee({"free_days": 2, "fee": "first_night"}, date(2026, 11, 1), date(2026, 10, 25), 3000, 6000)[0] == 0
     assert R.cancel_fee({"free_days": 2, "fee": "first_night"}, date(2026, 11, 1), date(2026, 10, 31), 3000, 6000)[0] == 3000
