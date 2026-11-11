@@ -92,9 +92,9 @@ BYOX_TOOLS = [
 ]
 
 BYOX_LABELS: dict[str, str] = {
-    "byox_list": "BYOX categories dhundh raha hoon…",
-    "byox_guide": "BYOX guide padh raha hoon…",
-    "byox_plan": "BYOX learning plan bana raha hoon…",
+    "byox_list": "Looking up BYOX categories…",
+    "byox_guide": "Reading the BYOX guide…",
+    "byox_plan": "Making a BYOX learning plan…",
 }
 
 

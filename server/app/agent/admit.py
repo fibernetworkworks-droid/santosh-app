@@ -709,7 +709,7 @@ def search_spec() -> dict:
     return dict(_SPEC)
 
 
-_LABEL = "Tools dhoondh raha hoon"
+_LABEL = "Finding tools"
 
 
 def _match(text: str, tight: bool = False) -> set[str]:
@@ -819,7 +819,7 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     (re.compile(r"web\s*clone|website\s+clone|site\s+clone|clone\s+(?:this|is|yeh|ye)\s+(?:site|website|page)|"
                 r"(?:site|website|page)\s+ko\s+clone|(?:site|website)\s+ka\s+(?:clone|rebuild)|"
                 r"clone\s+kar(?:a|wa)?\s*(?:do|dena|de)?", re.I),
-     ("webclone",), "web clone ka kaam"),
+     ("webclone",), "web clone"),
 ]
 # desktop-software words (v0.271: they no longer bring a PC into view by themselves - only her words do)
 _DESKTOP = re.compile(r"\btally\b|busy software|\bmarg\b|ffmpeg|libreoffice|pandoc|imagemagick|\bapt\b|pip install|"

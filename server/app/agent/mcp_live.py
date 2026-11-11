@@ -265,4 +265,4 @@ async def run(ctx, route: dict[str, tuple[str, str]], name: str, args: dict) -> 
 def label(name: str, route: dict[str, tuple[str, str]], snap: list[dict]) -> str:
     pid = route.get(name, ("", ""))[0]
     srv = next((s["name"] for s in snap if s["pack_id"] == pid), "MCP")
-    return f"{srv} se kaam kar raha hoon"
+    return f"Working with {srv}"
