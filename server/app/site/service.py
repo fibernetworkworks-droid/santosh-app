@@ -2878,7 +2878,13 @@ def edit_element(tenant: str, ref: str, key: str, e: str, op: str, value: str = 
         raise SiteError("Yeh section ab nahi hai; preview taaza kijiye.")
     before = secs[key]
     try:
-        if op == "insert":                    # v0.338 a photo / video / audio / file she adds after what she clicked
+        if op == "style":                     # v0.795 YEH WALA: the free style panel (site tokens only, no AI)
+            try:
+                spec = json.loads(value or "{}")
+            except ValueError:
+                spec = {}
+            h, what = E.style(before["html"], str(e), str(spec.get("prop") or ""), str(spec.get("value") or ""))
+        elif op == "insert":                  # v0.338 a photo / video / audio / file she adds after what she clicked
             markup, what = _insert_markup(r, value)
             h, _ = E.insert(before["html"], str(e), markup)
             h, _n = E.tag(h)
