@@ -1,0 +1,63 @@
+{
+ "base": "cw8-graphics-transformations",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "reflection",
+   "title": "Reflection of a drawn circle: the signed area flips",
+   "sample": "a circle of radius 1 reflected in a line at 0.5 rad",
+   "unknown": "signed area = -pi r^2",
+   "params": {
+    "cas": 1,
+    "what": 0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "shear",
+   "title": "Shear of a drawn circle: the area is kept",
+   "sample": "a circle sheared by x -> x + 0.6 y",
+   "unknown": "area = pi r^2",
+   "params": {
+    "cas": 2,
+    "what": 0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "rotation",
+   "title": "Rotation of a drawn circle about the origin: the centre moves",
+   "sample": "a circle centred at (1.5, 0.5) turned by 0.7 rad",
+   "unknown": "centroid x",
+   "params": {
+    "cas": 3,
+    "what": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "rotation-area",
+   "title": "Rotation of a drawn circle: the area is kept",
+   "sample": "a circle turned by 0.7 rad",
+   "unknown": "area = pi r^2",
+   "params": {
+    "cas": 3,
+    "what": 0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

@@ -1,0 +1,47 @@
+{
+ "base": "cw8-factorial-arrangements",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "arrangements",
+   "title": "Arrangements C(N, N/2) by Stirling's formula",
+   "sample": "half of N places occupied",
+   "unknown": "ln C(N, N/2)",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "arrangements-quarter",
+   "title": "Arrangements C(N, N/4) by Stirling's formula",
+   "sample": "a quarter of N places occupied",
+   "unknown": "ln C(N, N/4)",
+   "params": {
+    "cas": 1,
+    "frac": 0.25
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "stirling-corrected",
+   "title": "ln N! by Stirling's formula with the 1/(12N) term",
+   "sample": "Stirling with its first correction",
+   "unknown": "ln N!",
+   "params": {
+    "method": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

@@ -1,0 +1,48 @@
+{
+ "base": "u8-active-filters",
+ "rig": "ug8-analog-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "high-pass",
+   "title": "Active filters: second-order Sallen-Key high-pass cut-off",
+   "sample": "Sallen-Key high-pass, R = 10 kohm, C = 10 nF, K = 1.586",
+   "method": "high-pass",
+   "unknown": "the cut-off frequency of the high-pass",
+   "params": {
+    "kind": 1.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 / E24) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "band-pass",
+   "title": "Active filters: band-pass filter, lower and upper cut-off",
+   "sample": "Band-pass, R = 10 kohm, C = 10 nF, Q = 2",
+   "method": "band-pass",
+   "unknown": "the lower and upper cut-off frequencies of the band-pass",
+   "params": {
+    "kind": 2.0,
+    "Q": 2.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 / E24) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "band-reject",
+   "title": "Active filters: band-reject (notch) filter, its two cut-offs",
+   "sample": "Notch filter, R = 10 kohm, C = 10 nF, Q = 2",
+   "method": "band-reject",
+   "unknown": "the two cut-off frequencies of the band-reject filter",
+   "params": {
+    "kind": 3.0,
+    "Q": 2.0
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 / E24) for the resistors and capacitors"
+   }
+  }
+ ]
+}

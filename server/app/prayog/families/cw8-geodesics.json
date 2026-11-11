@@ -1,0 +1,38 @@
+{
+ "base": "cw8-geodesics",
+ "rig": "comp4-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "sphere",
+   "title": "Great circle on a sphere: from (10 N, 0 E) to (50 N, 100 E)",
+   "sample": "surface of a sphere (unit radius)",
+   "unknown": "R x angle",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "method": "surface of a sphere"
+  },
+  {
+   "key": "sphere-equator",
+   "title": "Two points far apart on a sphere",
+   "sample": "from (0 N, 0 E) to (30 S, 140 E)",
+   "unknown": "R x angle",
+   "params": {
+    "cas": 1,
+    "la1": 0.0,
+    "lo1": 0.0,
+    "la2": -30.0,
+    "lo2": 140.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

@@ -222,3 +222,30 @@ OOM kill). Run at most 4 - 6 agents at a time, and never edit a rig's .js while 
   1976 cited from memory.
 - Next: B.Sc analog electronics (22 left), computational (47), digital / communication / sensors, modern / nuclear / solid
   state; then M.Sc (136 left) and PhD (80 left).
+
+**Wave 8 (11 Nov 2026): B.Sc electronics, modern, matter, computational - 456 -> 525 set-ups (56.5 % -> 65.1 %)**
+- Packs (each its own trio, kernels prefixed per pack - two packs once both wanted `w8_*`): `ug_analog_w8` (`u8_`, 21 rows, rig
+  ug8-analog-bench: breadboard + generator + 2 DMMs + storage scope, plans keyed by lab id - add more electronics labs there),
+  `ug_modern_w8` (`w8_`, 13 rows incl. 3 existing labs, rigs w8-electron-bench / w8-atomic-bench / w8-microwave-bench),
+  `ug_matter_w8` (`um8_`, 15 rows incl. 4 existing labs, rigs um8-gm-bench / ion-workstation / xrd-bench / junction-oven /
+  piezo-bench / gouy-bench), `ug_comp_w8` (`cw8`, 19 rows, rig comp4-workstation). Plus pg:millikan-oil-drop -> w8-millikan
+  (both methods, oil drops). Every claimed lab and variant walked in the agents' runs (30 + 18 + 30 + 78) and again in the lead's
+  final walk.
+- Lessons: Python 3.12+ `sum()` of floats is compensated - a chaotic / long kernel must use an explicit loop to stay bit-identical
+  to its JS twin (`_sum` in ug_comp_w8). The test server caches family files at start: restart after adding a family JSON.
+  `pkill -f "<cmd>"` inside a command line containing the same text kills its own shell. Never `git stash -u` while a walk is
+  loading pages (the rig files vanish and the walk records 404s).
+- The four stopping-power labs use bare Bethe-Bloch and say so (not SRIM). Count / MD data is SIMULATED and says so.
+- Not built, with the reason: hall-effect ug (mobility needs resistivity the lab does not measure), background-radiation-survey
+  (a place's dose rate cannot be computed), gamma-spectrum-identification (needs a thorium source in msc_elec's gamma kernel),
+  alpha-spark-counter, xcom-attenuation (needs real NIST tables), surface-plasmon-resonance, metal-nanoparticle-synthesis
+  (silver colloid missing), ccd-quantum-efficiency (time - buildable), the waveform-observation communication rows, the
+  programming exercises (8085, 8051, Arduino, combinational design), multimeter-use (next on ug8-analog-bench), xcos-circuits
+  (the Lissajous / beats sample's beat frequency did not converge).
+- From memory - verify (labelled inside each lab): SPICE models 1N4007 / 1N34A; 1N3712, BC547B, LM741, LF351, BFW10, ADC0804,
+  CD4066, LM7805, NE565 data-sheet figures; tungsten work function 4.55 eV, Hg ionisation 10.4375 eV, Cd 643.847 nm, air
+  viscosity, paraffin permittivity; Katz-Penfold and mu_m = 17 E^-1.14, Tl-204 763.7 keV, K-40 data, PDG Z/A, I, density; lattice
+  parameters (Cu, Si, CdS, ZnO, anatase, hematite); PZT / BaTiO3 coupling; Gouy molar susceptibilities; IUPAC molar masses; Kittel
+  Debye temperatures; hbar*c.
+- Next: M.Sc (135 left: electronics 35, materials synthesis 23, optics 18, nuclear 13, solid state 12, computational 13 ...),
+  PhD (80 left), B.Sc remainder (42), school remainder (25, mostly honest gaps).
