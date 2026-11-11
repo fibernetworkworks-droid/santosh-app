@@ -84,7 +84,7 @@ def test_rules():
     assert R.quorum("agm", members=1200, entity_kind="public", present=14)["need"] == 15
     assert R.quorum("agm", entity_kind="private", present=2)["ok"]
     assert R.board_frequency([date(2026, 1, 5), date(2026, 4, 1), date(2026, 9, 1), date(2026, 12, 1)], 2026, False) == [
-        "2026-04-01 aur 2026-09-01 ke beech 153 din (120 se zyada nahi)."]
+        "153 days between 2026-04-01 and 2026-09-01 (no more than 120)."]
     assert R.board_frequency([date(2026, 3, 1), date(2026, 8, 1)], 2026, True) == []
     assert R.board_frequency([date(2026, 6, 1), date(2026, 7, 15)], 2026, True)
     assert R.guess_event("Ramesh ne istifa de diya") == "director_resign" and R.guess_event("naya director add karo") == "director_appoint"
@@ -115,7 +115,7 @@ def test_entity_people_calendar(cs):
     assert by["DPT-3"]["due"] == "2026-06-30" and by["DPT-3"]["late"] and by["DPT-3"]["fee"]["multiple"] == 10
     kyc = [f for f in cal["filings"] if f["form"] == "DIR-3 KYC"]
     assert len(kyc) == 2 and kyc[0]["due"] == "2028-06-30"
-    assert "CS / vakil" in cal["say"]
+    assert "CS / lawyer" in cal["say"]
     # AGM held -> real dates replace the andaaza
     m = S.meeting_new(T, "Akot", "agm", "2026-09-25", "11:00", "Regd office", fy="2025-26")
     assert m["number"] == "AGM-001" and m["agenda"]
@@ -162,7 +162,7 @@ def test_events_registers(cs):
     r = S.event(T, "Akot", "director_resign", "2026-10-15", details={"name": "Anil Rao"})
     assert r["filings"][0]["form"] == "DIR-12"
     r2 = S.event(T, "Akot", "director_resign", "2026-10-16", details={"din": "07654321"})
-    assert any("kam se kam 2" in n for n in r2["notes"])
+    assert any("at least 2" in n for n in r2["notes"])
     ro = S.event(T, "Akot", "ro_change_city", "2026-10-18", details={"address": "MIDC Akola"})
     assert {x["form"] for x in ro["filings"]} == {"MGT-14", "INC-22"}
     assert S.entity_view(T, "Akot")["registered_office"] == "MIDC Akola"
@@ -182,7 +182,7 @@ def test_meeting_notice_minutes_by_tap(cs):
     m = S.meeting_new(T, "Akot", "board", "2026-10-27", "", "", agenda=["Bank account kholna", "Auditor ki fees"])
     S.notice_request(T, m["id"])                                                     # 3 clear days, no time / place
     card = [p for k, p in S.EVENTS if k == "cosec_notice"][-1]["meeting"]["card"]
-    assert any("7 chahiye" in b for b in card["blockers"]) and any("[samay]" in b for b in card["blockers"])
+    assert any("7 needed" in b for b in card["blockers"]) and any("[time]" in b for b in card["blockers"])
     S.meeting_update(T, m["id"], on="2026-11-05", time="11:00", place="Regd office")
     v = S.notice_request(T, m["id"])
     assert not v["card"]["blockers"] and len(v["card"]["recipients"]) == 2 and "NOTICE is hereby given" in v["card"]["text"]
@@ -200,7 +200,7 @@ def test_meeting_notice_minutes_by_tap(cs):
     with pytest.raises(S.CosecError):
         S.resolution(T, m["id"], text="Open account")                                 # before the meeting is held
     a = S.attendance(T, m["id"], ["Ramesh Patil"])
-    assert not a["quorum"]["ok"] and "POORA NAHI" in a["say"]
+    assert not a["quorum"]["ok"] and "NOT MET" in a["say"]
     with pytest.raises(S.CosecError):
         S.resolution(T, m["id"], text="Open account")
     a = S.attendance(T, m["id"], ["Ramesh Patil", "01234567", "Sunita Patil"], chair="Ramesh Patil")
@@ -244,12 +244,12 @@ def test_filing_card_by_tap_and_fingerprint(cs, monkeypatch):
     cal = S.calendar(T, "Akot", "2025-26")
     by = {f["form"]: f for f in cal["filings"]}
     aoc = S.filing_request(T, by["AOC-4"]["id"])
-    assert any("AGM abhi hua nahi" in b for b in aoc["card"]["blockers"])
+    assert any("AGM has not happened yet" in b for b in aoc["card"]["blockers"])
     with pytest.raises(S.CosecError):
         S.decide_filing(T, aoc["id"], True, aoc["hash"], by_tap=True)
     dpt = S.filing_request(T, by["DPT-3"]["id"])
     assert dpt["status"] == "waiting" and not dpt["card"]["blockers"] and "cosec_filing" in kinds(S)
-    assert any("din der" in c for c in dpt["card"]["checks"]) and "DSC" in " ".join(dpt["card"]["steps"])
+    assert any("days late" in c for c in dpt["card"]["checks"]) and "DSC" in " ".join(dpt["card"]["steps"])
     with pytest.raises(S.CosecError):
         S.decide_filing(T, dpt["id"], True, dpt["hash"])                               # not from the app
     with pytest.raises(S.CosecError):
@@ -291,15 +291,15 @@ def test_tick_reminders_once(cs):
     when = datetime(2026, 10, 23, 5, 0, tzinfo=timezone.utc)                         # 10:30 IST
     out = S.tick(when)
     alerts = [p["say"] for k, p in S.EVENTS if k == "cosec_alert"]
-    assert any("DIR-12" in a and "1 din" in a for a in alerts) and any("DPT-3" in a and "der" in a for a in alerts)
+    assert any("DIR-12" in a and "1 day" in a for a in alerts) and any("DPT-3" in a and "late" in a for a in alerts)
     assert out["morning"] == 1
     day = [p for k, p in S.EVENTS if k == "cosec_day"][0]
-    assert "Der ho gayi" in day["say"] and "30 din mein" in day["say"]
+    assert "Overdue" in day["say"] and "Within 30 days" in day["say"]
     n = len(S.EVENTS)
     S.tick(when + timedelta(minutes=5))
     assert len(S.EVENTS) == n                                                         # once each
     S.tick(when + timedelta(days=1))
-    assert any("DIR-12" in p["say"] and "aaj aakhri din" in p["say"] for k, p in S.EVENTS[n:] if k == "cosec_alert")
+    assert any("DIR-12" in p["say"] and "last day today" in p["say"] for k, p in S.EVENTS[n:] if k == "cosec_alert")
 
 
 def test_tools_and_api(cs, monkeypatch):

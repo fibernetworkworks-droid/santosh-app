@@ -567,7 +567,7 @@ def test_a_deploy_needs_a_connected_org_and_the_production_word(env):
     from app.enterprise import run as RUN
     with pytest.raises(RUN.RunError) as e:
         RUN.deploy_validate("t1", "crm_arch", [{"type": "Flow", "name": "F", "body": "<Flow/>"}])
-    assert "juda" in str(e.value)
+    assert "connected" in str(e.value)
     RUN.set_endpoint("t1", "crm_arch", "salesforce", "https://x.my.salesforce.com", "TOK", env="production")
     with pytest.raises(RUN.RunError) as e2:
         RUN.deploy_go("t1", "crm_arch", "0Af000000000001", "owner", "")

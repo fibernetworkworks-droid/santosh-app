@@ -1491,7 +1491,7 @@ def tick(when: datetime | None = None) -> dict:
                         continue
                     win = next((w for w in wins if left <= w), None)
                     if win is not None and _once(s, tenant, f"due:{f.id}:{f.due}:{win}"):
-                        alerts.append(f"{e.number} {e.name}: {f.form} ({f.period}) " + ("last day today" if left == 0 else f"in {left} days ({f.due})")
+                        alerts.append(f"{e.number} {e.name}: {f.form} ({f.period}) " + ("last day today" if left == 0 else f"in {left} day(s) ({f.due})")
                                       + (" - date estimated" if f.est else "") + ".")
                 try:
                     hh, mm = (int(x) for x in (st.morning_time or "09:00").split(":"))
