@@ -954,6 +954,9 @@ ACTIVE: dict[str, list] = {}
 # a santosh_kaam delegation clears it, so cards from the full-brain job it starts DO reach the call as news.
 import contextvars as _cv
 VOICE_DIRECT: "_cv.ContextVar[str]" = _cv.ContextVar("voice_direct", default="")
+# G6 (chat_graph): the santosh_kaam tool call running in this task - _delegate puts the graph run's ticket here, so the
+# call's `did` entry knows which run (and which G3 facts) stand behind it
+_RUN_SLOT: "_cv.ContextVar[dict | None]" = _cv.ContextVar("voice_run_slot", default=None)
 # live calls by id: a phone whose network dropped re-joins the same call with ?resume=<call_id>
 CALLS: dict[str, "Call"] = {}
 # big jobs handed over by a call keep running after the call ends; hold a reference so they are not collected
@@ -2084,6 +2087,8 @@ class Call:
             new = [d for d in did if int(d.get("n") or 0) > mark]
             self._did_mark = max([mark] + [int(d.get("n") or 0) for d in did])
             now = time.monotonic()
+            if Call._claim_by_facts(self, reply, new, now):   # G6: a graph run behind it - judged by its facts
+                return
             if now - max(self._news_sent_at, self._started_at) < 90:
                 return          # a job's own news was just relayed: "ho gaya" may be that news, truthfully
             from .agent import draftcheck
@@ -2180,6 +2185,11 @@ class Call:
                 continue
             items, self._news, self._news_since = self._news, [], 0.0
             self._news_sent_at = now       # v0.654 a "ho gaya" right after relayed news is the news, not a made-up claim
+            gn = getattr(self, "_graph_news_texts", None) or {}
+            if any(x not in gn for x in items):
+                self._plain_news_at = now  # G6: news that is NOT a graph run's result (kaamwatch, cards, check-ins)
+            for x in items:
+                gn.pop(x, None)
             for x in items:
                 self._news_told.append((now, self._news_words(x)))
             if len(items) == 1:
@@ -3117,12 +3127,24 @@ class Call:
                                            place)
         from .agent import santosh as _brain
         t_start = time.time()              # v0.652 only an outcome recorded AFTER this moment is this job's
+        ticket = Call._run_ticket(self, run_conv, inbox_id, request)   # G6: None when chat_graph is off
         tok = _brain.VOICE_BRAIN_NOW.set(brain)   # v0.630 copied into the task: this turn thinks on voice_brain_model
+        ctok = None
+        if ticket is not None:             # G6: the graph run's deliver node fills it (record key, result, facts)
+            from .agent import turndeliver as _td
+            ctok = _td.CALL.set(ticket)
         try:
             job = asyncio.create_task(turn_inbox.run_owned(inbox_id, run_conv, request, self.ctx.tenant_id, False,
                                                            context=note, place=place))
         finally:
             _brain.VOICE_BRAIN_NOW.reset(tok)
+            if ctok is not None:
+                _td.CALL.reset(ctok)
+        if ticket is not None:
+            job._hoola_run = ticket
+            slot = _RUN_SLOT.get()
+            if slot is not None:
+                slot["run"] = ticket
         if brain:
             def _unclaim(_j, rc=run_conv):
                 c = getattr(self, "_claimed", {})
@@ -3152,15 +3174,25 @@ class Call:
         # v0.657 a hang-up inside the first wait cancels this coroutine, so the late-result callback below was never
         # attached and the job's result was lost. This one covers exactly that case (nobody took the job over).
         job.add_done_callback(lambda j, t=t_start, h=handed: None if h["v"] else self._late_result(j, request, t))
+        if ticket is not None:
+            # G6: while this coroutine waits, a result that lands is ITS tool answer - the done callback above runs
+            # before this coroutine resumes, so without this the record path would also queue it as late news
+            ticket["waiting"] = True
         try:
             done, _ = await asyncio.wait({job}, timeout=max(1, wait))
         except asyncio.CancelledError:
+            if ticket is not None:
+                ticket["waiting"] = False   # a hang-up cancelled the wait: the late path tells it after all
             raise
+        if ticket is not None:
+            ticket["waiting"] = False
         if brain:   # v0.633 how long she waited for the brain, per ask (the speed she feels)
             log.info("call %s brain %s in %.1fs", getattr(self, "call_id", "?"),
                      "answered" if job in done else "still working", time.monotonic() - t0)
         handed["v"] = True               # from here this coroutine answers (inline) or hands to _late_result itself
         if job in done:
+            if ticket is not None:         # G6: the tool answer IS the call channel's telling of this run (once)
+                Call._told_on_call(self, ticket, "the tool answer")
             return {"result": job.result()}
         job.add_done_callback(lambda j, t=t_start: self._late_result(j, request, t))
         if get_settings().voice_checkin_max > 0:   # v0.652 a long job is never silence: a short "abhi bhi kar raha hoon"
@@ -3219,6 +3251,15 @@ class Call:
     def _late_result(self, job: asyncio.Task, request: str = "", since: float = 0.0) -> None:
         if job.cancelled():
             return
+        run = getattr(job, "_hoola_run", None)
+        if isinstance(run, dict) and run.get("key"):
+            # G6 (chat_graph): told from THIS run's delivery record - once, never from an earlier ask's outcome; its
+            # result word ('stopped') replaces the half-hour 'something was cancelled on this call' guess below
+            try:
+                if Call._late_from_record(self, job, run, request):
+                    return
+            except Exception:
+                log.exception("voice: late result from the delivery record failed - the old path tells it")
         try:   # v0.649 SACH MEIN ROKO: she cancelled it - its end is not news (no "ho gaya", no "chal raha hai")
             from . import kaamstop
             if kaamstop.recently_cancelled(self.conv):
@@ -3271,6 +3312,192 @@ class Call:
             self.push_news(f"(The answer of that big job{about} came: {str(job.result())[:3000]}. First say briefly what it is "
                               f"about ('that thing you asked for...'), then what is written in the answer, in one or two lines. "
                               f"Say 'it is done' only if the answer clearly says the job is complete.){tail}")
+
+    # ---- G6 (chat_graph): the call as a CHANNEL of the turn graph (agent/turnchannel.py, agent/turndeliver.py)
+    def _run_ticket(self, run_conv: str, inbox_id, request: str) -> dict | None:
+        """The ticket a call hands to the graph run it starts (None when chat_graph is off: the old path untouched)."""
+        try:
+            from .agent import turndeliver as _td
+            if not _td.graph_on():
+                return None
+        except Exception:
+            return None
+        return {"call": str(getattr(self, "call_id", "") or ""), "conv": run_conv,
+                "origin": str(getattr(self, "conv", "") or ""), "inbox": inbox_id or "", "request": str(request)[:600],
+                "t0m": time.monotonic()}
+
+    def _told_on_call(self, run: dict, via: str) -> bool:
+        """The call channel of one graph run, stamped once (record `call` sent). False = it was told already."""
+        from .agent import turndeliver as _td
+        key = run.get("key")
+        if not key:
+            return False
+        if _td.once(key, "call", lambda: True) is None:
+            st = getattr(self, "stats", None)
+            if isinstance(st, dict):
+                st["call_told_once"] = st.get("call_told_once", 0) + 1
+            return False
+        _td.stamp(key, "call", _td.SENT, ok=True, via=via, call=str(getattr(self, "call_id", "") or ""))
+        Call._note_told_run(self, run)
+        return True
+
+    def _note_told_run(self, run: dict) -> None:
+        """What this call has been told by graph runs (the spoken-claim check judges a 'ho gaya' by their facts)."""
+        told = getattr(self, "_told_runs", None)
+        if told is None:
+            told = []
+            try:
+                self._told_runs = told
+            except Exception:
+                return
+        n = (told[-1]["i"] + 1) if told else 1
+        told.append({"i": n, "at": time.monotonic(), "result": run.get("result", ""), "facts": list(run.get("facts") or [])})
+        del told[:-40]
+
+    def _graph_news(self, text: str, run: dict) -> None:
+        """A graph run's result told as news (push_news: at a pause, merged, deduped) - marked as the record's."""
+        gn = getattr(self, "_graph_news_texts", None)
+        if gn is None:
+            gn = {}
+            try:
+                self._graph_news_texts = gn
+            except Exception:
+                pass
+        gn[str(text)] = run.get("key", "")
+        if len(gn) > 50:
+            for k in list(gn)[:25]:
+                gn.pop(k, None)
+        self.push_news(text)
+
+    def _late_from_record(self, job, run: dict, request: str = "") -> bool:
+        """G6: the late result of a graph run, from its delivery record (agent/turndeliver.py). True = handled (told,
+        or rightly not told); False = no record to go by (the old path tells it)."""
+        from .agent import turndeliver as _td
+        key = run["key"]
+        st = getattr(self, "stats", None)
+        st = st if isinstance(st, dict) else {}
+        if run.get("waiting"):             # _delegate is still waiting for it: the tool answer tells this run
+            return True
+        if _td.done(key, "call"):          # the tool answer (or an earlier callback) already told this run
+            st["call_told_once"] = st.get("call_told_once", 0) + 1
+            return True
+        rec = _td.get(key)
+        if rec is None:
+            return False
+        result = str(rec.get("outcome") or run.get("result") or "")
+        about = f" (the user had said: '{request[:200]}')" if request else ""
+        cut = 0.0
+        try:   # v0.649: a cancel on this call AFTER this run began (a job it started, stopped by her words)
+            from . import kaamstop
+            cut = float(kaamstop._RECENT.get(getattr(self, "conv", "") or "") or 0.0)
+        except Exception:
+            cut = 0.0
+        if result == "stopped" or (cut and cut >= float(run.get("t0m") or 0.0) and kaamstop.recently_cancelled(self.conv)):
+            _td.stamp(key, "call", _td.SKIPPED, why="she stopped it")   # the stop line was the news (v0.649)
+            st["cancelled_news_dropped"] = st.get("cancelled_news_dropped", 0) + 1
+            return True
+        try:
+            answer = str(job.result()) if job.exception() is None else ""
+        except Exception:
+            answer = ""
+        answer = answer or str(run.get("text") or "")
+        if self.closed.is_set():
+            push = (rec.get("channels") or {}).get("push") or {}
+            if push.get("state") == _td.SENT:
+                # the call had ended before the result: the reply row + its push told her - not again on the next call
+                _td.stamp(key, "call", _td.SKIPPED, why="told in the chat (the call had ended)")
+                st["late_told_in_chat"] = st.get("late_told_in_chat", 0) + 1
+                return True
+            body = f"result of the big job from the previous call{about}: {answer[:1500]}"
+            _td.once(key, "call", lambda: (self._orphan_note(body), True)[1])
+            _td.stamp(key, "call", _td.SENT, ok=True, via="a note for the next call")
+            return True
+        text = Call._record_line(self, run, result, about, answer)
+        if _td.once(key, "call", lambda: (Call._graph_news(self, text, run), True)[1]) is not None:
+            _td.stamp(key, "call", _td.SENT, ok=True, via="news at a pause", call=str(getattr(self, "call_id", "") or ""))
+            Call._note_told_run(self, run)
+        return True
+
+    def _record_line(self, run: dict, result: str, about: str, answer: str) -> str:
+        """The note a graph run's result becomes on the call - from the record's result word and the run's G3 facts,
+        never from a timing guess. Same words as the old lines where the meaning is the same."""
+        tag = self._tone_tag() if hasattr(self, "_tone_tag") else ""
+        tail = f" {tag}" if tag else ""
+        did, cards = int(run.get("did") or 0), int(run.get("cards") or 0)
+        left = str(run.get("left") or "")[:220]
+        if result == "done" and did:
+            return (f"(That big job{about} is done: {answer[:3000]}. First say briefly what it is about "
+                    f"('that thing you asked for...'), then the result in one or two short lines.){tail}")
+        if result == "done" and cards:
+            return (f"(That big job{about} is ready and waiting for her tap: {answer[:3000]}. First say briefly what it is "
+                    f"about, then that it waits for her approval on the phone. Do NOT say it is done or sent.){tail}")
+        if result == "partial":
+            return (f"(That big job{about} is still running — {left or 'part of it is left'}. Do not tell her it is "
+                    f"complete: say 'the job is still running, I will tell you as soon as it is done', and carry on talking.){tail}")
+        if result in ("stuck", "failed"):
+            why = left or ("the step that would do it failed" if result == "failed" else "it got stuck at one point")
+            return (f"(That big job{about} is stuck: {why}. Tell the truth in one line — what is done, what is left, "
+                    f"what you need from her. Do NOT say it is done.){tail}")
+        return (f"(The answer of that big job{about} came: {answer[:3000]}. First say briefly what it is "
+                f"about ('that thing you asked for...'), then what is written in the answer, in one or two lines. "
+                f"Say 'it is done' only if the answer clearly says the job is complete.){tail}")
+
+    @staticmethod
+    def _did_fact(d: dict) -> dict:
+        from .agent import draftcheck
+        ok, tool = d.get("ok"), str(d.get("tool") or "")
+        eff = "ambiguous" if ok is None else ("failed" if not ok else ("read" if draftcheck._is_read(tool) else "did"))
+        return {"tool": tool, "effect": eff, "object": ""}
+
+    def _claim_by_facts(self, reply: str, new: list, now: float) -> bool:
+        """G6 (chat_graph): a spoken 'ho gaya' after santosh_kaam is judged by the G3 FACTS of the graph runs behind it
+        (and of the runs whose results were just told), not by the 90-second 'news was just relayed' guess. True =
+        judged here (corrected or not); False = no graph run involved (the old check judges it)."""
+        from .agent import turndeliver as _td
+        if not _td.graph_on():
+            return False
+        runs = getattr(self, "_did_runs", None) or {}
+        told = list(getattr(self, "_told_runs", None) or [])
+        tmark = int(getattr(self, "_told_mark", 0) or 0)
+        fresh = [r for r in told if r["i"] > tmark]
+        if told:
+            self._told_mark = max(r["i"] for r in told)
+        facts, graph = [], bool(fresh)
+        for d in new:
+            run = runs.get(d.get("n"))
+            if d.get("tool") == "santosh_kaam" and isinstance(run, dict):
+                graph = True
+                if run.get("key"):
+                    facts += list(run.get("facts") or [])
+                else:                       # still running: nothing it did can back a 'done' yet
+                    facts.append({"tool": "santosh_kaam", "effect": "ambiguous", "object": ""})
+            else:
+                facts.append(Call._did_fact(d))
+        for r in fresh:
+            facts += list(r.get("facts") or [])
+        if not graph:
+            return False
+        if now - max(float(getattr(self, "_plain_news_at", 0.0) or 0.0), self._started_at) < 90:
+            return True                     # other job news / the opening brief was just relayed: today's excuse
+        from .agent import turnfacts
+        bad = [v for v in turnfacts.verdicts(reply, facts) if v.get("verdict") != "true"]
+        if not bad:
+            return True
+        v = bad[0]
+        why = {"card": "only a card is waiting for her tap - nothing has gone yet",
+               "failed": "the step that would do it failed",
+               "unknown": "that step is still running or was cut off - its outcome is not known",
+               "stopped": "she stopped that work",
+               "wrong": f"it was done for {v.get('actual') or 'someone else'}, not for {v.get('named') or 'the one named'}",
+               }.get(v.get("verdict"), "no work of that kind ran")
+        self.stats["voice_fake_done"] = self.stats.get("voice_fake_done", 0) + 1
+        self.stats["voice_claim_by_facts"] = self.stats.get("voice_claim_by_facts", 0) + 1
+        log.warning("call %s: spoken claim %r not backed by the run's facts (%s) - correcting",
+                    getattr(self, "call_id", "?"), v.get("phrase"), v.get("verdict"))
+        self.push_news(f"(Correction: you just said '{v.get('phrase')}', but {why}. Say clearly in one short line what "
+                       f"the real state is - it is not done - and ask whether to do it. If she wants it, do it through "
+                       f"santosh_kaam.)")
+        return True
 
     def _place(self, request: str = "") -> str:
         """v0.93 where she said the job runs (her PC / Hoola's own browser / phone): her words in this turn, else what
@@ -3424,6 +3651,8 @@ class Call:
         prog = asyncio.create_task(self._prog_watch(t0))   # v0.205 one progress sound if it runs long
         self._tools.add(prog)
         prog.add_done_callback(self._tools.discard)
+        slot: dict = {}
+        _RUN_SLOT.set(slot)                 # G6: _delegate names the graph run this santosh_kaam started
         try:
             self._tool_runs += 1            # v0.211 the stall watchdog stays out of a running tool's silence
             out = await self._execute(name, args)
@@ -3467,6 +3696,13 @@ class Call:
                          (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error",
                          "n": self._did_n})
         del self.did[:-60]
+        if slot.get("run") is not None:     # G6: this did entry is that graph run (its facts back or refute a claim)
+            runs = getattr(self, "_did_runs", None)
+            if runs is None:
+                runs = self._did_runs = {}
+            runs[self._did_n] = slot["run"]
+            for k in [k for k in runs if k <= self._did_n - 60]:
+                runs.pop(k, None)
         if state == "error" and name != "santosh_kaam":
             # v0.78 Pakka kaam: a fix that worked before for this failure goes back with the error (no web search here:
             # a call can't wait; santosh_kaam does the full search-and-retry)
@@ -3879,7 +4115,16 @@ class Call:
         claimed = getattr(self, "_claimed", None) or {}
 
         def busy(k: str) -> bool:
-            return _brain._locks[k].locked() or claimed.get(k, 0) > 0
+            if _brain._locks[k].locked() or claimed.get(k, 0) > 0:
+                return True
+            try:   # G6 (chat_graph): a run queued on its ticket holds the record before it takes the lock
+                from .agent import turndeliver as _td
+                if _td.graph_on():
+                    from .agent import turnrun
+                    return turnrun.busy(k)
+            except Exception:
+                pass
+            return False
 
         def take(k: str) -> str:
             return k

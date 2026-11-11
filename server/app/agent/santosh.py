@@ -3251,8 +3251,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         # running (or her words name something else) = the normal turn handles it (a draft, a booking...).
         try:
             from .. import kaamstop
-            if kaamstop.wants_stop(user_text):
-                _ks = await asyncio.to_thread(kaamstop.cancel, tenant_id, user_text, conversation_id)
+            # G6: a call's ask carries the voice model's reading after her words ("\n(Call ne samjha: ...)") - its
+            # "Call" made every spoken "band karo" look like a stop of the call itself; her own words decide
+            _stop_words = str(user_text or "").split("\n(Call ne samjha:", 1)[0] \
+                if getattr(settings, "chat_graph", False) else user_text
+            if kaamstop.wants_stop(user_text) or (_stop_words != user_text and kaamstop.wants_stop(_stop_words)):
+                _ks = await asyncio.to_thread(kaamstop.cancel, tenant_id, _stop_words, conversation_id)
                 if _ks.get("stopped") and getattr(settings, "chat_every_message", False):
                     # parity gap 1: the work is stopped NOW, and her message still reaches the model, which says so
                     STATS_PREP["stop_to_model"] = STATS_PREP.get("stop_to_model", 0) + 1
