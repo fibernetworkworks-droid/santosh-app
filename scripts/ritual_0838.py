@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""v0.799.0 DESK ROOM version ritual (built as 0.796; re-versioned on the v0.798.0 tip). 0.798.0/+797 -> 0.799.0/+798 across the test pins, pubspec,
+the console stamps and the APP_VERSION story (theirs kept verbatim as Previous). One console file added (deptdesk.js)."""
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+NEW, NEW_B, OLD, OLD_B = "0.838.0", "+837", "0.837.0", "+836"
+n = 0
+for f in sorted((ROOT / "server/tests").glob("*.py")):
+    t = f.read_text(encoding="utf-8")
+    o = t
+    t = re.sub(r"(?<!v)0\.837\.0", NEW, t)
+    t = re.sub(r"\+836\b", NEW_B, t)
+    if t != o:
+        f.write_text(t, encoding="utf-8")
+        n += 1
+print("tests swept:", n)
+p = ROOT / "pubspec.yaml"
+t, k = re.subn(r"version: 0\.\d+\.\d+\+\d+", f"version: {NEW}{NEW_B}", p.read_text(), count=1)
+p.write_text(t)
+print("pubspec:", k)
+for f in sorted((ROOT / "server/app/static/console").glob("*.html")):
+    t = f.read_text()
+    if f"v={OLD}" in t:
+        print("stamps:", f.name, t.count(f"v={OLD}"))
+        f.write_text(t.replace(f"v={OLD}", f"v={NEW}"))
+m = ROOT / "server/app/main.py"
+t = m.read_text()
+ol = re.search(r'^APP_VERSION = "0\.837\.0"   # (.*)$', t, re.M)
+assert ol
+story = ('v0.838.0 BAHI A3 - GSTR-1 checked before the 11th, saved as a DRAFT on her tap (owner: "GO A3"): NEW bahi/gstr1.py - builds the portal JSON through the '
+         'GST Sahayak engine, then checks it against the one register (an invoice another engine holds that GSTR-1 would leave out, a customer GSTIN in the '
+         'register that the bill lacks = B2B shown as B2C, a GSTIN failing the check digit, a rate that is not a slab in force on the invoice date, a locked '
+         'month); save_draft PUTs /gstr1/retsave only on her confirm bound to a plan hash, then reads validatehsnsum + retsum; the EVC walk (otpforevc, '
+         'retevcfile) exists but is refused unless BAHI_FILING is on, needs her confirm + the plan hash + her OTP (passed through, never kept); wb.py primitives; '
+         '/api/bahi/gstr1/*; console GSTR-1 tab; 4 tests. NOT BUILT: GSTR-1A, the IRN list compare. NOT VERIFIED on a live portal: the retsave body (gt / cur_gt sent '
+         'as 0), the retsum shape, the EVC file call. Previous: ')
+t = t.replace(ol.group(0), f'APP_VERSION = "{NEW}"   # ' + story + ol.group(1))
+m.write_text(t)
+print("APP_VERSION ->", NEW)

@@ -2677,3 +2677,6 @@ NOT VERIFIED on her VPS or with a real model-built app (the browser walk was run
 
 ## v0.837.0 WB LOGOUT (+ refusal words)
 AUTH403 'Maximum session allowed' was the real cause of the failed GST login; wb.logout added to wb_check and Disconnect; refusals carry WhiteBooks' own words; wb_check tries more 2B months / IMS spellings.
+
+## v0.838.0 BAHI A3
+GSTR-1 checked against the register, saved as a portal draft on her tap (plan hash); EVC filing walk gated by BAHI_FILING. GSTR-1A not built. NOT VERIFIED on a live portal.

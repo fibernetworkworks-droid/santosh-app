@@ -3071,3 +3071,6 @@ Work Log:
 
 Stage Summary:
 - Home and wait screen done; starters are drawn looks, not built sites; composer re-dock animation not built.
+
+Task ID: bahi-a3-0838
+Work: A3 GSTR-1 + v0.838.0 ritual. Stage: ready for MERGE TO MAIN.

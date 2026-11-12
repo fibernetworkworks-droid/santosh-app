@@ -434,3 +434,30 @@ def logout(tenant: str, gst_username: str, state_cd: str, txn: str, ip: str = ""
     """End the GST session at WhiteBooks. A GSP account allows only a few open sessions per user (AUTH403 'Maximum session allowed'),
     so every walk that opens one must close it."""
     return call(tenant, "gst", "GET", "/authentication/logout", headers=_gst_headers(gst_username, state_cd, txn, ip), op="auth/logout")
+
+
+# ------------------------------------------------------------------ A3: GSTR-1 (retsave is a DRAFT on the portal; the EVC file call is gated by BAHI_FILING)
+def gstr1_retsave(tenant: str, gstin: str, ret_period: str, body: dict[str, Any], gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "PUT", "/gstr1/retsave", headers=h, body=body, op="gstr1/retsave")
+
+
+def gstr1_retsum(tenant: str, gstin: str, retperiod: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/gstr1/retsum", query={"gstin": gstin, "retperiod": retperiod},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr1/retsum")
+
+
+def gstr1_validatehsnsum(tenant: str, gstin: str, retperiod: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/gstr1/validatehsnsum", query={"gstin": gstin, "retperiod": retperiod},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr1/validatehsnsum")
+
+
+def otp_for_evc(tenant: str, gstin: str, pan: str, form_type: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    """Sends the EVC OTP to the authorised signatory's registered mobile. The OTP itself never comes back here."""
+    return call(tenant, "gst", "GET", "/authentication/otpforevc", query={"gstin": gstin, "pan": pan, "form_type": form_type},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="auth/otpforevc")
+
+
+def gstr1_evcfile(tenant: str, gstin: str, ret_period: str, pan: str, evcotp: str, content: dict[str, Any], gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "POST", "/gstr1/retevcfile", query={"pan": pan, "evcotp": evcotp}, headers=h, body={"content": content}, op="gstr1/retevcfile")
