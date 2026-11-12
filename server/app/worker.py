@@ -548,7 +548,7 @@ async def tick() -> None:
     for fn in (
         check_approvals, send_batches, pump_simulated_statuses, finish_campaigns, fire_reminders, morning_briefings,
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
-        home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
+        home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
     ):
@@ -715,6 +715,24 @@ async def inbox_jobs() -> None:
         await turn_inbox.sweep()
     except Exception:
         log.exception("turn inbox sweep failed")
+
+
+_cp_last = 0.0
+
+
+async def card_park_jobs() -> None:
+    """G8 (docs/LANGGRAPH_TURN_PLAN.md): a parked turn graph whose card answer a restart cut is resumed; a card she
+    never tapped closes its park after graph_card_park_ttl_h (agent/turnpark.py). Cheap; nothing when the switch is off."""
+    global _cp_last
+    import time
+    if time.time() - _cp_last < 15:
+        return
+    _cp_last = time.time()
+    try:
+        from .agent import turnpark
+        await turnpark.sweep()
+    except Exception:
+        log.exception("card park sweep failed")
 
 
 _kaam_last = 0.0

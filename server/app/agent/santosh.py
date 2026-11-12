@@ -1341,10 +1341,11 @@ def _parallel_ok(b: dict) -> bool:
     return True
 
 
-async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
+async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None, dispatch_fn=None):
     """A tool call that can never hang the whole turn.
     v0.193 it also writes the harness session log (tool_call / tool_result, with the turn's context) - best-effort,
-    the log can never break the call."""
+    the log can never break the call.
+    G8 `dispatch_fn`: a call's direct tools (agent/calltools.py) come through here with the call's own dispatch."""
     from . import turnmode as _tmode
     if not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
         async def _refused(_n=name):
@@ -1353,7 +1354,7 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
     elif mcp_route and name in mcp_route:   # a tool of one of the owner's MCP servers
         work = mcp_live.run(ctx, mcp_route, name, args or {})
     else:
-        work = dispatch(name, args or {}, ctx)
+        work = (dispatch_fn or dispatch)(name, args or {}, ctx)
     _meta = _evlog.CURRENT.get() or {}
     _ev_t = getattr(ctx, "tenant_id", "")
     _ev_c = getattr(ctx, "conversation_id", "")
@@ -3345,8 +3346,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         saved_wake = False
         if save_user:
             # v0.473 a goal's background round is not her words: kept in history, but never shown as her message
+            # G8: her tap's answer to a parked card is not her words either (agent/turnpark.py)
             _save(conversation_id, "user", agent_text,
-                  display=None if (who in ("routine", "goal") and user_text.startswith("[Goal jaari")) else user_text)
+                  display=None if ((who in ("routine", "goal") and user_text.startswith("[Goal jaari"))
+                                   or (who == "approved:card"
+                                       and user_text.startswith("[Card answered by her tap"))) else user_text)
         elif who == "wake" and agent_text.strip():
             # v0.473 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
             # never in her focus words). Before, only Hoola's reply about it was kept: from the next turn on the real

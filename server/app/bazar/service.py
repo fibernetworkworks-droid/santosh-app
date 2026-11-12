@@ -550,9 +550,17 @@ def decide(tenant_id: str, approval_id: str, decision: str, notify_ok: bool = Tr
     if act and act.get("kind") == "upi_copy" and act.get("txn_ref"):
         from . import upiresult
         upiresult.copy_card(tenant_id, act["txn_ref"])
+    parked = False
+    try:   # G8: a graph run parked on this card continues the job with the real result (and tells it itself)
+        from ..agent import turnpark
+        ans = "failed" if outcome.get("error") else ("declined" if decision == "reject" else "done")
+        parked = turnpark.answered("bazar", approval_id, ans,
+                                   str(outcome.get("message") or outcome.get("error") or card["title"] or ""))
+    except Exception:
+        log.exception("card park answer failed")
     if conv:
         bus.publish(conv, "bazar_approval", card)   # the card resolves in place (chat + call) — hamesha
-        if notify_ok:                               # v0.191 voice/text approval apni ek hi line bolti hai
+        if notify_ok and not parked:                # v0.191 voice/text approval apni ek hi line bolti hai
             if outcome.get("error"):
                 notify(conv, f"{card['title']}: could not be done. {outcome['error']}")
             elif decision == "reject":
@@ -730,11 +738,18 @@ def expire_approvals(ttl_h: int = 24) -> int:
                   for ap in stuck]
     n = 0
     for conv, card, say in cards:
+        parked = False
+        try:   # G8: a parked run learns its card expired (closed quietly) / was cut mid-run (resumed: unknown)
+            from ..agent import turnpark
+            parked = turnpark.answered("bazar", str(card.get("id") or ""),
+                                       "unknown" if say is INTERRUPTED_SAY else "expired", say)
+        except Exception:  # noqa: BLE001
+            log.exception("card park expiry failed")
         if not conv:
             continue
         try:
             bus.publish(conv, "bazar_approval", {**card, "result": {"message": say}})
-            if say is INTERRUPTED_SAY:
+            if say is INTERRUPTED_SAY and not parked:
                 notify(conv, f"{card.get('title') or 'Card'}: {say}")
             n += 1
         except Exception:  # noqa: BLE001

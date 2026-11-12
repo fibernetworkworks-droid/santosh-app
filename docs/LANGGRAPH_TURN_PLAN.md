@@ -129,3 +129,65 @@ until G7.
   4. *Call direct tools*: the tools Gemini Live calls itself on a call (not through `santosh_kaam`) still run outside
      the graph and its ledger.
   5. *Live*: none of G0-G7 has been seen on a real turn on the VPS yet.
+
+## 7. Status after G8 (12 Nov 2026)
+
+Built (items 3 and 4 of section 6), each behind its own switch on top of `chat_graph`:
+
+- **Approval cards park the graph** (`graph_card_park`, default on; `agent/turnpark.py`). A graph run whose tools made
+  a card she must tap - a bazar confirm card (orders, payments, and every connector's ask-first change: Drive / Forms /
+  Calendar / Photos / mail label deletes, bulk and public changes) or an email draft / forward card - answers as today
+  ("tap Approve"), then `finish` routes to `deliver` -> `park` instead of END. `deliver` tells the reply once (G5,
+  outcome `waiting`) and writes one `turn_card_parks` row per waiting card (card kind + id, the tool_use id, the tool,
+  its argument hash, the chat's newest message id); the `park` node calls LangGraph's official `interrupt()`, so the
+  checkpoint holds the pending interrupt. The inbox row says `waiting_tap` (the restart sweep never re-runs it, the
+  inbox housekeeping never deletes its thread).
+  Her tap runs the action EXACTLY as before (the card's route: bazar's claim-once conditional update, money only on her
+  tap, nothing auto-approved). Only after it ran, the card's code calls `turnpark.answered(kind, id, answer, result)`
+  (bazar.decide; mailbox.send_draft for her Send; the cancel route for Not now; bazar.expire_approvals for expired /
+  interrupted): the park row is claimed `waiting -> answered` by one conditional UPDATE, and the card's own chat line
+  ("'X' is done.") is not written. `resume_due` then runs ONE ordinary turn of the chat (actor `approved:card` = her
+  tap's authority) through `santosh.run_turn` - its G2 ticket, so a tap while the chat runs another turn waits behind
+  it and never runs a second run on the chat. That turn's history-only line says what she answered; its graph run
+  resumes the parked thread with `Command(resume=...)`. The park node records the answers as G3 facts (done -> did,
+  failed -> failed, declined -> skipped, unknown -> ambiguous) and sends the job back to `model`, which continues the
+  SAME job from that step (the parked tool_use already has its tool_result - "card created" - and the resumed request
+  ends on the user line, so `_api_ready` holds). The result is delivered by that run's own G5 record, once.
+  Answers: done / failed / declined (the model is told not to retry, and the ledger runner refuses the same tool +
+  arguments in that thread) / unknown (bazar 'interrupted') / expired / replaced. Expired and replaced never wake the
+  model: the row closes and, with nothing else waiting, the thread (checkpoint + ledger) is deleted and the inbox row
+  goes `done`.
+  - *Two cards in one run*: the run parks on all of them. Each answer resumes once; the resume line carries every
+    answer claimed at that moment and names the cards still waiting; a resumed run that ends with cards still waiting
+    parks again on those. The job never waits for the slowest card and no answer is told twice.
+  - *TTL*: `graph_card_park_ttl_h` = 26 h. A bazar card expires by itself at `ask_ttl_hours` (24 h) and that closes
+    its park first; an email draft has no expiry of its own, so the TTL closes its park (the draft stays tappable as a
+    plain card - a later Send just sends, as before G8). The worker's `card_park_jobs` slot (every 15 s) closes them
+    and also resumes an answer whose resume a restart cut (answered > 60 s ago, or `resuming` > 30 min).
+  - *Restart while parked*: the checkpoint and the park rows are on disk; a tap after the restart resumes the thread.
+  - *Not parked (today's behaviour)*: the old loop, a call's brain ask (channel `call` - the call tells its own cards),
+    a stopped run, a long job whose turn routes to `carry` (G4 keeps the job's rounds), a run whose checkpointer could
+    not open. `answered()` then finds no row and the card's code says its own line.
+- **Call direct tools on the ledger** (`graph_call_tools`, default on; `agent/calltools.py`). The tools Gemini Live
+  calls itself (declared in `VOICE_TOOL_NAMES`, not via `santosh_kaam`) run through `santosh._run_tool` (new optional
+  `dispatch_fn` = the call's own dispatch), with toolledger rows on the thread `<chat>:call` (a split call's record maps
+  to its chat, so a re-dial after a restart is the same thread). The NEWEST changing row decides: the same tool + the
+  same arguments already `done` within `graph_call_tools_window_m` (30 min) -> not run again (the stored result + a
+  plain note); still `intent` (a restart cut it) -> the honest "may already have run" error; still running here ->
+  "already running". Anything in between (light on / off / on) runs normally; look-ups skip the ledger. No model step,
+  no wait: one small row before a changing tool and one after it. Each direct tool's outcome is one G3 fact (did /
+  card / read / failed / ambiguous) kept per `did` entry: the spoken "ho gaya" check judges by it (a draft card is not
+  "sent") and the receipt in the chat after hang-up lists a card as "waiting for your tap"; the receipt is made once
+  through a G5 record `call:<call id>:receipt`. Gemini audio / session / parking / billing / persona / the declared
+  tool list / `VOICE_TOOL_BUDGET` / every schema untouched.
+
+Not built: parking for the other card kinds (every desk's own `CARD_KINDS`, ask_forms, operator asks, studio price
+cards, pg_write cards - each has its own decide path; adding one = a `card_of` / `still_waiting` branch + one
+`answered()` call in its decide code); a resumed run for an email whose Send was scheduled / in the undo window is told
+"done - scheduled" at her tap, and a later failure of the worker's send is not fed back into the job; an answer that
+lands while the first resume of the same thread is running is resumed after it (by a fresh run when the thread had
+already ended).
+
+NOT VERIFIED live: no real card tap has resumed a parked run on the VPS, and no real call has re-issued a direct
+tool through the ledger. Everything above is tested with a scripted brain, the real bazar demo pack and real rows
+(`tests/test_g8_turngraph.py`).

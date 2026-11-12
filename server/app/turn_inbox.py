@@ -216,6 +216,13 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
                 mark(inbox_id, "stopped")
                 STATS["stopped"] = STATS.get("stopped", 0) + 1
                 return out
+        if _g2 and inbox_id:
+            from .agent import turnpark
+            if turnpark.on() and turnpark.parked_inbox(inbox_id):
+                # G8: the run parked on a card - the row says it waits for her tap (never 'done', never re-run)
+                mark(inbox_id, "waiting_tap")
+                STATS["waiting_tap"] = STATS.get("waiting_tap", 0) + 1
+                return out
         mark(inbox_id, "done")
         STATS["done"] += 1
         return out

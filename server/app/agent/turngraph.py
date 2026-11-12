@@ -156,6 +156,7 @@ class TurnState(TypedDict, total=False):
     notified: dict          # G5: what she was told on which channel (chat / push / call / ring: state, time, row)
     channel: str            # G6: "call" (a live call asked it / the call brain) or "chat" - agent/turnchannel.py
     profile: dict           # G6: the channel's settings (the call brain's speed choices), checkpointed with the run
+    park: dict              # G8: the cards this run waits on (agent/turnpark.py): {cards, mark, at} - set by deliver
 
 
 class _Live:
@@ -174,6 +175,8 @@ class _Live:
         self.job: dict = {}                            # G4: the long job's counters (goal, segments, steps, seconds, mark)
         self.channel = "chat"                          # G6: the run's channel + profile (set by prepare / resume)
         self.profile: dict = {}
+        self.cards: list = []                          # G8: cards her tap must answer, made by this run's tools
+        self.declined: list = []                       # G8: cards she declined in this thread (never run again)
 
 
 _RUNS: dict[str, _Live] = {}
@@ -244,6 +247,10 @@ def _data(live: _Live) -> dict:
             out["__adm"] = sorted(t.adm.families)
     if live.job:
         out["__job"] = dict(live.job)
+    if live.cards:
+        out["__cards"] = [dict(c) for c in live.cards][-20:]
+    if live.declined:
+        out["__declined"] = [dict(c) for c in live.declined][-20:]
     return out
 
 
@@ -315,7 +322,7 @@ async def _prepare(live: _Live, state: TurnState) -> dict:
     live.t = await S._turn_prepare(live.conversation_id, live.ctx, live.gender, live.history, live.settings,
                                    live.tenant_id, live.state)
     if live.thread:
-        live.t.tool_runner = _ledger_runner(live.thread)
+        live.t.tool_runner = _ledger_runner(live.thread, live)
     _judge(live)
     # a Stop that landed while preparing is seen at the model node's boundary (no model call is made)
     return _flag(live, {"messages": _snapshot(live.history), "ran_steps": 0, "route": "model", "prepared": True,
@@ -405,6 +412,8 @@ async def _finish(live: _Live, state: TurnState) -> dict:
     if g is not None:
         live.job = _job_counts(live, g)
         route = "carry"
+    elif _park_cards(live, state):         # G8: a card she must tap - the thread parks after the reply is told
+        route = "park"
     return {"final_text": text, "outcome": out, "route": route, "messages": _snapshot(live.history),
             "data": _data(live), **_g3(live)}
 
@@ -441,6 +450,8 @@ def _result(live: _Live, state: TurnState, jobs: list) -> str:
     lo = (S.LAST_OUTCOME.get(c) or {}).get("outcome", "") if live.user_text else ""
     if lo == "stuck" or (b is not None and getattr(b, "stopped", False)):
         return "stuck"
+    if state.get("route") == "park":       # G8: the job waits for her tap on a card
+        return "waiting"
     if state.get("route") == "carry" or state.get("capped") or lo in ("partial", "continuing") or st.get("left"):
         return "partial"
     effects = [str((f or {}).get("effect") or "") for f in live.facts]
@@ -523,11 +534,111 @@ async def _deliver(live: _Live, state: TurnState) -> dict:
             D.stamp(key, "call", D.SKIPPED, why="the call that asked is gone - the chat row + push are the delivery")
             STATS["call_gone"] += 1
         rec = D.get(key) or {}
-        return {"result": result, "notified": rec.get("channels") or {},
-                "delivery": {"key": key, "kind": kind, "target": target, "jobs": [j["key"] for j in jobs]}}
+        out = {"result": result, "notified": rec.get("channels") or {},
+               "delivery": {"key": key, "kind": kind, "target": target, "jobs": [j["key"] for j in jobs]}}
+        if state.get("route") == "park":   # G8: the park rows, after the reply row (the resume reads the chat after it)
+            out.update(_park_register(live, state))
+        return out
     except Exception:   # noqa: BLE001
         log.exception("turn graph: the delivery record could not be written")
         return {"result": "", "delivery": {"key": key, "error": True}}
+
+
+def _park_ok(live: _Live, state: TurnState) -> bool:
+    """G8: may this run park on a card? A graph run with a checkpoint (a thread), the switch on, not stopped, not a
+    call's brain ask (the call tells its own cards; her tap on the phone reaches the call as a quiet note)."""
+    from . import santosh as S
+    from . import turnpark
+    if not live.thread or not turnpark.on(live.settings):
+        return False
+    if state.get("stopped") or _stop_now(live) or (live.state or {}).get("halted"):
+        return False
+    if live.channel == "call" or S.VOICE_BRAIN_NOW.get() or (live.profile or {}).get("brain"):
+        return False
+    return True
+
+
+def _park_cards(live: _Live, state: TurnState) -> list[dict]:
+    """G8: the cards made by this run's tools that still wait for her tap (each card's own row decides)."""
+    if not live.cards or not _park_ok(live, state):
+        return []
+    from . import turnpark
+    try:
+        return [c for c in live.cards if turnpark.still_waiting(c)]
+    except Exception:   # noqa: BLE001
+        log.exception("card park check failed")
+        return []
+
+
+def _park_register(live: _Live, state: TurnState) -> dict:
+    """G8 (deliver, after the reply row): one park row per waiting card + the mark the resume reads the chat after.
+    Nothing registered = the run ends as before (route end)."""
+    from . import turndeliver as D
+    from . import turnpark
+    try:
+        cards = _park_cards(live, state)
+        mark = D.max_msg_id(live.conversation_id)
+        inbox = ""
+        tid = str(state.get("turn_id") or "")
+        if tid and not tid.startswith(("job-",)) and len(tid) <= 40:
+            from .. import turn_inbox as _ti
+            from ..db import session as _sess
+            with _sess() as s:
+                r = s.get(_ti.TurnInbox, tid)
+                inbox = tid if (r is not None and r.conversation_id == live.conversation_id) else ""
+        n = turnpark.register(live.thread, live.conversation_id, live.tenant_id, inbox, cards, mark) if cards else 0
+        if not n:
+            return {"route": "end"}
+        STATS["card_parks"] = STATS.get("card_parks", 0) + 1
+        return {"park": {"cards": [dict(c) for c in cards], "mark": mark, "at": _time.time(), "inbox": inbox}}
+    except Exception:   # noqa: BLE001 - a park that cannot be written: the turn ends exactly as before G8
+        log.exception("card park registration failed")
+        return {"route": "end"}
+
+
+async def _park_node(state: TurnState) -> dict:
+    """G8: the run waits for her tap. interrupt() stops the run here (checkpointed with the pending interrupt); her
+    tap's resume (turnpark.resume_due -> run_steps -> resume) answers it with Command(resume=...) - this node then
+    runs again, gets the answers, records them as facts and sends the job back to `model` (the line her tap wrote
+    into the chat history says the same to the model). NOT wrapped in _node: interrupt() needs LangGraph's own
+    runnable context, which the turn's shared Context does not carry."""
+    from langgraph.types import interrupt
+    p = dict(state.get("park") or {})
+    if not p.get("cards"):
+        return {"route": "end"}
+    value = interrupt({"thread": state.get("run_key", ""), "cards": p.get("cards")})
+    live = _RUNS.get(state.get("run_key", ""))
+    if live is None:                       # resumed without the live objects (should not happen): nothing to continue
+        return {"route": "end"}
+    return await asyncio.create_task(_park_resumed(live, state, value), context=live.cv)
+
+
+async def _park_resumed(live: _Live, state: TurnState, value) -> dict:
+    from . import turnpark
+    answers = list((value or {}).get("answers") or []) if isinstance(value, dict) else []
+    for a in answers:                      # G3: what her tap really did is a fact of this job
+        eff = turnpark.FACT_EFFECT.get(str(a.get("answer") or ""), "")
+        if not eff:
+            continue
+        live.facts.append({"id": f"{a.get('tool_use_id') or a.get('card')}:tap", "tool": str(a.get("tool") or ""),
+                           "step": 0, "effect": eff, "ledger": "", "object": "",
+                           "error": "" if eff == "did" else str(a.get("result") or a.get("answer"))[:160]})
+        if a.get("answer") == "declined":
+            live.declined.append({"tool": a.get("tool"), "args_hash": a.get("args_hash"), "card": a.get("card")})
+    answered = {(a.get("kind"), a.get("card")) for a in answers}
+    live.cards = [c for c in live.cards if (c.get("kind"), c.get("id")) not in answered]
+    if live.t is not None and live.thread:
+        live.t.tool_runner = _ledger_runner(live.thread, live)
+    STATS["card_resumes"] = STATS.get("card_resumes", 0) + 1
+    return _flag(live, {"route": "model", "ran_steps": 0, "capped": False, "done": False, "final_text": "",
+                        "outcome": "", "stop": "", "messages": _snapshot(live.history), "data": _data(live),
+                        **_g3(live), **_dnew(state.get("run_key", ""), live.conversation_id),
+                        "result": "", "delivery": {}, "notified": {}, "park": {}})
+
+
+def _is_parked(out: dict | None) -> bool:
+    """G8: the run stopped at the park node's interrupt (her tap continues it)."""
+    return bool(out) and bool(out.get("__interrupt__")) and out.get("route") == "park"
 
 
 def _call_ticket(live: _Live) -> dict | None:
@@ -873,6 +984,7 @@ def build():
     g.add_node("finish", _node(_finish))
     g.add_node("deliver", _node(_deliver))  # G5: the one node that tells her the result
     g.add_node("carry", _node(_carry))      # G4: the next segment of a long job (the run stops before it)
+    g.add_node("park", _park_node)          # G8: waits for her tap on a card (interrupt), then back to work
     g.add_edge(START, "prepare")
     g.add_edge("prepare", "model")
     g.add_conditional_edges("model", _route, {"tools": "tools", "check": "check", "finish": "finish",
@@ -880,8 +992,10 @@ def build():
     g.add_conditional_edges("check", _route, {"model": "model", "finish": "finish", "tools": "tools"})
     g.add_conditional_edges("tools", _route, {"model": "model", "finish": "finish"})
     g.add_edge("finish", "deliver")
-    g.add_conditional_edges("deliver", lambda s: "carry" if s.get("route") == "carry" else "end",
-                            {"carry": "carry", "end": END})
+    g.add_conditional_edges("deliver", lambda s: s.get("route") if s.get("route") in ("carry", "park") else "end",
+                            {"carry": "carry", "park": "park", "end": END})
+    g.add_conditional_edges("park", lambda s: "model" if s.get("route") == "model" else "end",
+                            {"model": "model", "end": END})
     g.add_edge("carry", "model")
     return g
 
@@ -955,15 +1069,21 @@ async def _ledger(fn, *a):
         return None
 
 
-def _ledger_runner(thread: str):
+def _ledger_runner(thread: str, live: _Live | None = None):
     """The graph path's per-tool call: the ledger around santosh._run_tool (still the ONLY way a tool runs -
-    approvals, money-on-her-tap, redaction and logging all live there)."""
+    approvals, money-on-her-tap, redaction and logging all live there). G8: a card the result carries is noted on the
+    run (it may park), and a card she declined in this thread is not run again."""
     async def run(b: dict, args: dict, ctx, settings, mcp_route):
         from . import santosh as S
         from . import toolledger as L
         from .tools import ToolError
         name, tid = b["name"], b["id"]
         h = L.args_hash(args)
+        if live is not None and live.declined:
+            from . import turnpark
+            no = turnpark.declined_guard(live.declined)(name, h)
+            if no:
+                raise ToolError(no)
         row = await _ledger(L.get, thread, tid)
         if row and row.get("args_hash") == h:
             if row["state"] == "done":
@@ -1005,8 +1125,24 @@ def _ledger_runner(thread: str):
             await _ledger(L.failed, thread, tid, "crash", f"{type(e).__name__}: {e}")
             raise
         await _ledger(L.done, thread, tid, out)
+        if live is not None:
+            _note_card(live, b, h, out)
         return out
     return run
+
+
+def _note_card(live: _Live, b: dict, ahash: str, out) -> None:
+    """G8: this tool result is a card she must tap - remembered on the run (the finish node decides on the park)."""
+    try:
+        from . import turnpark
+        if not turnpark.on(live.settings):
+            return
+        c = turnpark.card_of(b.get("name") or "", out)
+        if c is None or any(x.get("kind") == c["kind"] and x.get("id") == c["id"] for x in live.cards):
+            return
+        live.cards.append({**c, "tool": b.get("name") or "", "tool_use_id": b.get("id") or "", "args_hash": ahash})
+    except Exception:   # noqa: BLE001
+        log.debug("card note failed", exc_info=True)
 
 
 async def _cleanup(saver, thread: str, settings, force: bool = False, keep_ledger: bool = False) -> None:
@@ -1118,7 +1254,17 @@ _JOB_KEEP = ("auto_plan",)   # G4: per-job keys a new segment keeps (the rest of
 
 async def _after_run(saver, run_key: str, conversation_id: str, settings, out: dict) -> None:
     """A run's ending. G4: stopped at a long job's segment boundary -> the job is parked on its thread; else the run
-    is over: its thread goes (as before), and so do the job threads of this chat's ended goals."""
+    is over: its thread goes (as before), and so do the job threads of this chat's ended goals. G8: stopped at a
+    card's park = kept as it is (her tap resumes it)."""
+    if _is_parked(out):
+        STATS["parked_runs"] = STATS.get("parked_runs", 0) + 1
+        return
+    try:                                   # G8: a thread that parked before and has now ended
+        from . import turnpark
+        if turnpark.on(settings):
+            turnpark.thread_over(run_key)
+    except Exception:   # noqa: BLE001
+        log.debug("card park end failed", exc_info=True)
     if out.get("route") == "carry" and not out.get("stopped"):
         gid = ((out.get("data") or {}).get("__job") or {}).get("goal")
         if gid and saver is not None and await _park(saver, run_key, conversation_id, gid):
@@ -1129,8 +1275,16 @@ async def _after_run(saver, run_key: str, conversation_id: str, settings, out: d
         await _forget_ended_jobs(saver, conversation_id, keep=run_key)
 
 
+def _parked_snap(snap) -> bool:
+    """G8: the thread waits at the park node's interrupt (her tap's answer continues it)."""
+    nxt = tuple(getattr(snap, "next", ()) or ())
+    vals = getattr(snap, "values", None) or {}
+    return bool(nxt) and nxt[0] == "park" and not vals.get("stopped") and bool(vals.get("prepared")) \
+        and bool(vals.get("messages"))
+
+
 async def resume(conversation_id: str, inbox_id: str | None, ctx, gender: str, history: list, settings,
-                 tenant_id: str, user_text: str = "", thread: str | None = None) -> str | None:
+                 tenant_id: str, user_text: str = "", thread: str | None = None, park_value=None) -> str | None:
     """Continue an interrupted turn from its last checkpoint. None = nothing to resume (the caller runs it fresh).
 
     Rebuilds the live objects the nodes need (ctx comes from the new run_turn; settings; the breaker and the turn's
@@ -1154,16 +1308,21 @@ async def resume(conversation_id: str, inbox_id: str | None, ctx, gender: str, h
             return None
         app = _compile(saver)
         snap = await app.aget_state({"configurable": {"thread_id": th}})
-        if not _resumable_snap(snap):
+        if park_value is not None:     # G8: only a thread parked on a card takes her tap's answer
+            if not _parked_snap(snap):
+                return None
+        elif not _resumable_snap(snap):
             return None
         vals = snap.values
         nxt = snap.next[0]
         saved = list(vals.get("messages") or [])
         data = dict(vals.get("data") or {})
-        carry = nxt == "carry"
-        if carry:      # G4: the next segment of a long job
+        parked = nxt == "park"
+        carry = nxt == "carry" or parked
+        if carry:      # G4: the next segment of a long job; G8: the job after her tap (both read the chat since)
             job0 = dict(data.get("__job") or {})
-            history[:] = _job_messages(saved, conversation_id, int(job0.get("mark") or 0))
+            mark = int(((vals.get("park") or {}).get("mark") if parked else job0.get("mark")) or 0)
+            history[:] = _job_messages(saved, conversation_id, mark)
             state = await S._steps_begin(conversation_id, ctx, history, settings, tenant_id, user_text)
             for k in _JOB_KEEP:
                 if k in data:
@@ -1180,6 +1339,8 @@ async def resume(conversation_id: str, inbox_id: str | None, ctx, gender: str, h
             STATS["call_resumed"] = STATS.get("call_resumed", 0) + 1
         live.state = state
         live.job = dict(data.get("__job") or {})
+        live.cards = [dict(c) for c in data.get("__cards") or [] if isinstance(c, dict)]        # G8
+        live.declined = [dict(c) for c in data.get("__declined") or [] if isinstance(c, dict)]
         t = await asyncio.create_task(S._turn_prepare(conversation_id, ctx, gender, history, settings, tenant_id,
                                                       state), context=live.cv)
         if carry:      # a new segment: its notes ride on the round's line, its step budget starts at 0
@@ -1204,7 +1365,7 @@ async def resume(conversation_id: str, inbox_id: str | None, ctx, gender: str, h
                 t.adm.admit_families(fams - set(t.adm.families))
             except Exception:   # noqa: BLE001
                 log.debug("re-admitting families failed", exc_info=True)
-        t.tool_runner = _ledger_runner(th)
+        t.tool_runner = _ledger_runner(th, live)
         live.t = t
         live.facts[:] = list(vals.get("facts") or [])            # G3: the facts / decisions / budget so far
         live.decisions[:] = list(vals.get("decisions") or [])
@@ -1212,10 +1373,17 @@ async def resume(conversation_id: str, inbox_id: str | None, ctx, gender: str, h
             live.used.update(dict(vals.get("nudges") or {}))
         _judge(live)
         _RUNS[th] = live
-        STATS["job_resumed" if thread else "resumed"] += 1
+        if parked:
+            STATS["card_resumed"] = STATS.get("card_resumed", 0) + 1
+        else:
+            STATS["job_resumed" if thread else "resumed"] += 1
         log.warning("turn graph: resuming %s at node %s (step %s)", th, nxt, t.ran_steps)
         try:
-            out = await _invoke(app, None, settings, th)
+            if parked:
+                from langgraph.types import Command
+                out = await app.ainvoke(Command(resume=park_value), _cfg(settings, th))
+            else:
+                out = await _invoke(app, None, settings, th)
         except _NodeCancelled as e:   # a node body cancelled (the old loop let CancelledError through): keep it
             _CUT[conversation_id] = th
             raise asyncio.CancelledError() from e
@@ -1261,6 +1429,20 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
     if _tk is not None:
         inbox_id, want_resume = _tk
     job = _take_job(conversation_id) if not inbox_id else None   # G4: a round of this chat's long job
+    try:
+        from . import turnpark as _tp
+        park = _tp.take(conversation_id) if not inbox_id else None   # G8: her tap answers a parked card
+    except Exception:   # noqa: BLE001
+        park = None
+    if park is not None:
+        got = await resume(conversation_id, None, ctx, gender, history, settings, tenant_id, user_text,
+                           thread=park[0], park_value=park[1])
+        if got is not None:
+            STATS["turns"] += 1
+            return got
+        _tp.STATS["resumed_fresh"] += 1   # the parked thread is gone (cleaned, or made on the old path): the line in
+        _tp.thread_over(park[0])          # the chat history is answered by a fresh run, like any turn
+        log.warning("turn graph: card park %s has nothing to resume - a fresh run answers her tap", park[0])
     if want_resume and inbox_id:
         got = await resume(conversation_id, inbox_id, ctx, gender, history, settings, tenant_id, user_text)
         if got is not None:

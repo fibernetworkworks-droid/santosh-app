@@ -951,6 +951,8 @@ def init_db(url: str | None = None):
         # HERE on day one AND self-healing via toolledger.ensure_table(), the v0.190.1 lesson)
     from .agent import turndeliver as _turndeliver  # noqa: F401  (G5 LangGraph turn: the delivery record - registered
         # HERE AND self-healing via turndeliver.ensure_table())
+    from .agent import turnpark as _turnpark  # noqa: F401  (G8 LangGraph turn: approval-card parks - registered
+        # HERE AND self-healing via turnpark.ensure_table())
     from .site import plans as _site_plans  # noqa: F401  (v0.782 TEEN MODE site plans + instructions - registered here AND self-healing)
     from .site import yehwala as _site_yehwala  # noqa: F401  (v0.795 YEH WALA site comments - registered here AND self-healing)
     from .site import galti as _site_galti  # noqa: F401  (v0.802 GALTI PAKDO preview errors + fix ledger - registered here AND self-healing)
