@@ -61,9 +61,9 @@ def test_rules():
     assert R.hhmm("7 pm") == 19 * 60 and R.hhmm("7:30 shaam") == 19 * 60 + 30 and R.hhmm("10") == 600 and R.hhmm("abc") is None
     assert R.noise_problem(19 * 60, 23 * 60, True) and not R.noise_problem(19 * 60, 21 * 60 + 30, True)
     assert not R.noise_problem(19 * 60, 23 * 60, False)
-    assert "baal vivah" in R.age_problem(17, 25) and "baal vivah" in R.age_problem(20, 20) and R.age_problem(18, 21) == ""
+    assert "child marriage" in R.age_problem(17, 25) and "child marriage" in R.age_problem(20, 20) and R.age_problem(18, 21) == ""
     assert R.dowry_problem("dahej ki list") and not R.dowry_problem("shagun list")
-    assert R.mask_name("Sunita Mehra") == "Sunita M." and R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [hataya] card [hataya]"
+    assert R.mask_name("Sunita Mehra") == "Sunita M." and R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [removed] card [removed]"
     assert R.phone("+91 98220 12345") == "9822012345" and R.phone("12345") == ""
 
 
@@ -71,7 +71,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
     S = sh
     with pytest.raises(S.ShaadiError) as e:
         S.wedding_new(T, bride="A", groom="B", age_bride=16)
-    assert "baal vivah" in str(e.value)
+    assert "child marriage" in str(e.value)
     w = _wedding(S)
     names = [f["name"] for f in w["functions"]]
     assert names[0] == "Sakharpuda" and "Lagna" in names and "Kelvan" in names        # community starter list
@@ -79,7 +79,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
     # muhurat: never computed; stored only as she says, with who gave it
     p = S.panchang(T, w["id"])
     lagna = [d for d in p["days"] if d["function"] == "Lagna"][0]
-    assert lagna["tithi"] and lagna["nakshatra"] and lagna["muhurat"] == "" and "panditji" in lagna["muhurat_note"].lower()
+    assert lagna["tithi"] and lagna["nakshatra"] and lagna["muhurat"] == "" and "pandit" in lagna["muhurat_note"].lower()
     assert all(d.get("muhurat") == "" for d in p["days"] if d.get("date"))
     out = S.fn_set(T, w["id"], "lagna", start="11 am", muhurat="12:35 pm (godhuli nahi)", muhurat_by="Joshi guruji")
     assert out["function"]["muhurat"].startswith("12:35") and out["function"]["muhurat_by"] == "Joshi guruji"
@@ -87,13 +87,13 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
     with pytest.raises(S.ShaadiError):
         S.fn_set(T, w["id"], "haldi", date_="32-13-2026")
     clash = S.fn_set(T, w["id"], "reception", start="11:30 am")
-    assert any("takra" in x for x in clash["warnings"])
+    assert any("clashes" in x for x in clash["warnings"])
     S.fn_set(T, w["id"], "reception", start="7 pm", end="11 pm")
     S.fn_set(T, w["id"], name="Mehendi", add=True)
     S.fn_set(T, w["id"], "mehendi", date_="2026-12-12", start="4 pm")
     # checklist counted back from the first function (10 Dec)
     cl = S.checklist(T, w["id"])["items"]
-    venue = [c for c in cl if "Venue" in c["what"]][0]
+    venue = [c for c in cl if "book the venue" in c["what"]][0]
     assert venue["due"] == (date(2026, 12, 10) - timedelta(days=210)).isoformat() and venue["state"] == "late"
     reg = [c for c in cl if "registration" in c["what"]][0]
     assert reg["due"] == (date(2026, 12, 14) + timedelta(days=30)).isoformat()      # after the LAST function
@@ -104,7 +104,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
         S.timeline_set(T, w["id"], "haldi", starter=True)
     S.vendor_add(T, w["id"], "DJ Bunty", "dj", "9811111111", ["reception"], quote=35000)
     tl = S.timeline_set(T, w["id"], "reception", starter=True)
-    assert tl["function"]["timeline"][0]["time"] == "15:00" and any("raat 10" in x for x in tl["warnings"])
+    assert tl["function"]["timeline"][0]["time"] == "15:00" and any("10 pm" in x for x in tl["warnings"])
     tl = S.timeline_set(T, w["id"], "lagna", starter=True)
     assert any(r["who"] == "pandit" and r["time"].startswith("12:35") for r in tl["function"]["timeline"])
     plan = S.day_plan(T, w["id"])
@@ -139,7 +139,7 @@ def test_guests_rsvp_headcount_import_rooms(sh):
     assert ok["room"]["heads"] == 4
     with pytest.raises(S.ShaadiError) as e:
         S.room_assign(T, w["id"], "Anil", "D-1")
-    assert "Overbooking" in str(e.value)
+    assert "overbooking" in str(e.value)
     S.guest_add(T, w["id"], "Ravi", phone="9000000001", arrive="2026-12-10", depart="2026-12-13")
     with pytest.raises(S.ShaadiError):
         S.room_assign(T, w["id"], "Ravi", "D-2")                                           # arrives before the block
@@ -199,7 +199,7 @@ def test_vendor_booking_fingerprint_stale_pay_budget(sh, monkeypatch):
                                                         {"id": vv["schedule"][1]["id"], "label": "Shaadi ke din", "amount": 190000}])
     with pytest.raises(S.ShaadiError) as e:
         S.decide(T, pc["id"], True, pc["hash"], by_tap=True)
-    assert "badal" in str(e.value)
+    assert "changed" in str(e.value)
     assert S.cards(T, w["id"], "stale")
     # spend card + budget
     sp = S.spend_request(T, w["id"], "Mandap ke phool", "18,000", "florist", "lagna")["card"]
@@ -222,13 +222,13 @@ def test_messages_client_quote_and_dowry_gift_register(sh):
     S.guest_add(T, w["id"], "No Phone", "groom")
     # invite text from real facts only; missing time / host stay blanks and block sending
     t = S.invite_text(T, w["id"], fn="lagna")
-    assert "[samay]" in t["blanks"] and "Priya Kulkarni" in t["text"]
+    assert "[time]" in t["blanks"] and "Priya Kulkarni" in t["text"]
     with pytest.raises(S.ShaadiError):
         S.message_request(T, w["id"], fn="lagna")
     S.fn_set(T, w["id"], "lagna", start="11 am")
     m = S.message_request(T, w["id"], text="Namaste {name} ji, Lagna 14 Dec 11 baje Shubh Lawns. - Kulkarni parivaar", fn="lagna")
     c = m["card"]
-    assert c["show"]["count"] == 1 and any("message nahi chahte" in x for x in c["show"]["skipped"]) and not c["money"]
+    assert c["show"]["count"] == 1 and any("does not want messages" in x for x in c["show"]["skipped"]) and not c["money"]
     out = S.decide(T, c["id"], True, c["hash"], by_tap=True)
     assert len(out["links"]) == 1 and "Namaste%20Sunita%20ji" in out["links"][0]["wa"]
     # client quote: agency mode only, no invented fee
@@ -267,7 +267,7 @@ def test_messages_client_quote_and_dowry_gift_register(sh):
     with pytest.raises(S.ShaadiError):
         S.gift_list_file(T, w["id"], actor="staff:s1")
     reg = S.registration(T, w["id"])
-    assert "Hindu Marriage Act" in reg["law"] and "90 din" in reg["state_note"] and reg["by"] == "2027-03-14"
+    assert "Hindu Marriage Act" in reg["law"] and "90 days" in reg["state_note"] and reg["by"] == "2027-03-14"
 
 
 def r(v):
@@ -301,12 +301,12 @@ def test_trip_forget_tick_tools_api(sh, monkeypatch):
     res = S.tick(when)
     kinds = [k for k, _ in S.EVENTS]
     assert res["alerts"] >= 2 and "shaadi_alert" in kinds and "shaadi_day" in kinds
-    assert any("Kal" in p["say"] for k, p in S.EVENTS if k == "shaadi_alert")
+    assert any("Tomorrow" in p["say"] for k, p in S.EVENTS if k == "shaadi_alert")
     S.EVENTS.clear()
     assert S.tick(when)["alerts"] == 0 and not S.EVENTS
     S.wedding_update(T, w["id"], status="done")
     f = S.forget(T, w["id"])
-    assert f["guests"] == 1 and S.guests(T, w["id"])["guests"][0]["name"] == "Mehmaan 1"
+    assert f["guests"] == 1 and S.guests(T, w["id"])["guests"][0]["name"] == "Guest 1"
 
     # tools
     from app.agent.shaadi_tools import SHAADI_HANDLERS, SHAADI_TOOLS
@@ -353,4 +353,4 @@ def test_invite_design_goes_to_brand(sh, monkeypatch):
     from app.brand import service as BS
     monkeypatch.setattr(BS, "make", lambda tenant, **kw: seen.append(kw) or {"design": {"id": "B-0001"}})
     out = S.invite_design(T, w["id"], "lagna")
-    assert out["design"]["id"] == "B-0001" and "Priya Kulkarni" in seen[0]["brief"] and "khaali" in seen[0]["brief"]
+    assert out["design"]["id"] == "B-0001" and "Priya Kulkarni" in seen[0]["brief"] and "blank" in seen[0]["brief"]

@@ -64,7 +64,7 @@ def test_rules():
     assert not R.rera_agent_ok("X51800012345")
     # stamp duty: never without HER rate
     e = R.stamp_estimate(60e5, None)
-    assert e["stamp"] is None and "stamp duty % (aapke area ka)" in e["missing"]
+    assert e["stamp"] is None and "stamp duty % (for your area)" in e["missing"]
     e = R.stamp_estimate(60e5, {"stamp_pct": 6, "reg_pct": 1, "reg_cap": 30000}, market_value=65e5, women=False)
     assert e["base"] == 65e5 and e["stamp"] == 390000 and e["registration"] == 30000 and e["total"] == 420000 and e["base_note"]
     w = R.stamp_estimate(60e5, {"stamp_pct": 6, "women_less_pct": 1, "reg_flat": 30000}, women=True)
@@ -85,8 +85,8 @@ def test_rules():
     chk = R.listing_checks({**L, "new_project": True, "photos": [], "description": "Guaranteed return, RERA approved"},
                            {"state": "MH", "rera_agent_no": ""})
     joined = " ".join(chk["block"])
-    assert "Malik ki haan" in joined and "P5" in joined and "QR" in joined and "A5" in joined and "Carpet" in joined
-    assert any("Guaranteed" in x for x in chk["warn"]) and any("RERA approved" in x for x in chk["warn"])
+    assert "owner's consent" in joined and "P5" in joined and "QR" in joined and "A5" in joined and "carpet" in joined
+    assert any("guaranteed" in x for x in chk["warn"]) and any("RERA approved" in x for x in chk["warn"])
     route, known = R.visit_order([{"where": "A"}, {"where": "C"}, {"where": "B"}], lambda a, b: {"AB": 1, "AC": 5, "BC": 1}.get(
         "".join(sorted(a + b)), 9))
     assert [p["where"] for p in route] == ["A", "B", "C"] and known
@@ -109,7 +109,7 @@ def test_listing_publish_only_on_her_tap(pa):
     assert L["number"] == "L-0001" and L["status"] == "active" and L["price"] == 52e5
     with pytest.raises(S.PropError) as e:                    # no owner's mandate yet
         S.publish_request(T, "L-0001")
-    assert "Malik" in str(e.value)
+    assert "owner" in str(e.value)
     S.save_listing(T, "L-0001", mandate={"consent": True, "commission_pct": 1})
     ph = S.add_photo(T, "L-0001", _jpeg_with_gps())
     from PIL import Image
@@ -131,7 +131,7 @@ def test_listing_publish_only_on_her_tap(pa):
     assert S.page_photo(token, 0) is not None and S.page_html("short")[0] == 404
     # a change takes the page down until she taps again
     out = S.save_listing(T, "L-0001", price="50 lakh")
-    assert "band kiya" in out["say"] and S.page_html(token)[0] == 410
+    assert "taken down" in out["say"] and S.page_html(token)[0] == 410
     # new project: RERA number + QR + agent number needed
     S.save_listing(T, purpose="sale", kind="flat", bhk=3, price="80 lakh", carpet_sqft=900, city="Akola", new_project=True,
                    project="Green Park", mandate={"consent": True})
@@ -188,7 +188,7 @@ def test_leads_match_share_and_visits(pa, monkeypatch):
     assert [s["number"] for s in stops] == ["L-0001", "L-0002"] and stops[0]["at"] == "11:00"
     assert len(v["cards"]) >= 2                              # client + owners: drafts on cards
     v2 = S.plan_visit(T, "Suresh", ["L-0002"], day, "11:15")
-    assert any("pehle se" in w for w in v2["warn"])
+    assert any("already" in w for w in v2["warn"])
     done = S.visit_done(T, v["visit"]["id"], {"L-0001": "pasand", "L-0002": "nahi"})
     assert "L-0001" in done["say"] and S.lead_view(T, "Suresh")["lead"]["stage"] == "negotiating"
     assert all(m["number"] != "L-0002" for m in S.matches(T, "Suresh")["matches"])

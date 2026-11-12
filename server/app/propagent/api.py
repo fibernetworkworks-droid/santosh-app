@@ -46,7 +46,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def page_photo(token: str, n: int):
         path = await asyncio.to_thread(S.page_photo, token, n)
         if path is None:
-            raise HTTPException(404, "nahi mila")
+            raise HTTPException(404, "not found")
         return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
     # ---- all-in-one + settings

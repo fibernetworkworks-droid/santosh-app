@@ -70,7 +70,7 @@ def _readable(p):
 
 def _hook(event, args):
     if event.startswith(_BLOCK) and event not in ("socket.gethostname",):
-        raise PermissionError(f"Sandbox: '{event}' allowed nahi (no network, no new programs).")
+        raise PermissionError(f"Sandbox: '{event}' is not allowed (no network, no new programs).")
     if event == "open" and args:
         path, mode = args[0], (args[1] if len(args) > 1 else "r")
         if isinstance(mode, int):
@@ -78,15 +78,15 @@ def _hook(event, args):
         else:
             writing = any(c in str(mode or "r") for c in "wax+")
         if writing and not isinstance(path, int) and not _inside(path):
-            raise PermissionError("Sandbox: sirf apne work folder mein likh sakte hain.")
+            raise PermissionError("Sandbox: you can write only inside your own work folder.")
         if not writing and not _readable(path):
-            raise PermissionError("Sandbox: yeh file padhna allowed nahi (sirf di gayi files).")
+            raise PermissionError("Sandbox: reading this file is not allowed (only the files you were given).")
     if event in ("os.listdir", "os.scandir") and args and args[0] is not None and not _readable(args[0]):
-        raise PermissionError("Sandbox: is folder ko dekhna allowed nahi.")
+        raise PermissionError("Sandbox: listing this folder is not allowed.")
     if event in _WRITE_EVENTS:
         for a in args[:2]:
             if isinstance(a, (str, bytes, os.PathLike)) and not _inside(a):
-                raise PermissionError(f"Sandbox: '{event}' work folder ke bahar allowed nahi.")
+                raise PermissionError(f"Sandbox: '{event}' is not allowed outside the work folder.")
 
 import matplotlib as _m  # noqa: E402  (headless charts; loaded before the hook so its font cache can be read)
 ''' + "\n" + r'''
@@ -168,12 +168,12 @@ def run(code: str, files: dict[str, bytes] | None = None, timeout_s: int = 30, m
     `outputs` are the files the code created (charts, CSVs, Excel) - at most OUT_FILES, each at most OUT_FILE_BYTES."""
     code = str(code or "")
     if not code.strip():
-        raise PylabError("Chalaane ke liye code chahiye.")
+        raise PylabError("Code is needed to run.")
     if len(code) > MAX_CODE:
-        raise PylabError(f"Code {MAX_CODE // 1000}k characters se lamba hai.")
+        raise PylabError(f"The code is longer than {MAX_CODE // 1000}k characters.")
     files = files or {}
     if sum(len(b) for b in files.values()) > MAX_INPUT_BYTES:
-        raise PylabError("Input files 40 MB se zyada hain.")
+        raise PylabError("The input files are larger than 40 MB.")
     timeout_s = max(1, min(int(timeout_s or 30), 300))
     mem_mb = max(128, min(int(mem_mb or 1024), 4096))
     work = tempfile.mkdtemp(prefix="pylab_")
@@ -219,7 +219,7 @@ def run(code: str, files: dict[str, bytes] | None = None, timeout_s: int = 30, m
         rc = p.returncode
         error = ""
         if timed_out or rc in (-signal.SIGXCPU, -signal.SIGKILL) and secs >= timeout_s:
-            error, timed_out = f"Time limit ({timeout_s} s) poora ho gaya; code ruk gaya.", True
+            error, timed_out = f"The time limit ({timeout_s} s) ran out; the code was stopped.", True
         elif rc != 0:
             last = [ln for ln in se.strip().splitlines() if ln.strip()][-1:] or [f"exit {rc}"]
             error = "MemoryError: memory limit" if "MemoryError" in se else last[0][:400]

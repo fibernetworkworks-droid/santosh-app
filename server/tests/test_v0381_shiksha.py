@@ -56,8 +56,8 @@ def test_pylab_runs_analysis_and_returns_files():
     ("import os; os.system('id')", "Sandbox"),
     ("import subprocess; subprocess.run(['id'])", "Sandbox"),
     ("open('/tmp/pylab_escape.txt', 'w').write('x')", "work folder"),
-    ("print(open('/etc/passwd').read())", "padhna"),
-    ("import os; print(os.listdir('/home'))", "dekhna"),
+    ("print(open('/etc/passwd').read())", "reading"),
+    ("import os; print(os.listdir('/home'))", "listing"),
     ("import ctypes; ctypes.CDLL(None)", "Sandbox"),
 ])
 def test_pylab_blocks_escapes(code, word):

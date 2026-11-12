@@ -33,15 +33,15 @@ SOURCES = [
 
 # ---------------------------------------------------------------- masking (logs are DATA; secrets never stored)
 _MASKS = [
-    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S), "[private key hataya]"),
-    (re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"), "[token hataya]"),
-    (re.compile(r"\b(sk-(ant-)?[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16}|xox[abpr]-[A-Za-z0-9-]{10,}|rzp_(live|test)_[A-Za-z0-9]{8,})\b"), "[key hataya]"),
-    (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{6,}\b"), "[jwt hataya]"),
+    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S), "[private key removed]"),
+    (re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"), "[token removed]"),
+    (re.compile(r"\b(sk-(ant-)?[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16}|xox[abpr]-[A-Za-z0-9-]{10,}|rzp_(live|test)_[A-Za-z0-9]{8,})\b"), "[key removed]"),
+    (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{6,}\b"), "[jwt removed]"),
     (re.compile(r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{16,}"), r"\1 [hataya]"),
     (re.compile(r"(?i)(\b[a-z][a-z0-9+.-]{1,15}://[^:/\s@]+:)([^@\s]+)(@)"), r"\1[hataya]\3"),
     (re.compile(r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret)(\s*[=:]\s*|\"\s*:\s*\")([^\s\"',;&]{3,})"),
      r"\1\2[hataya]"),
-    (re.compile(r"\b\d{12,19}\b"), "[number hataya]"),
+    (re.compile(r"\b\d{12,19}\b"), "[number removed]"),
 ]
 
 
@@ -68,83 +68,83 @@ def has_secret(text: str) -> bool:
 # ---------------------------------------------------------------- CI failure library
 # id: (label, regexes, why, fix, flaky_likely). Checked in this order; the first strong match wins (later ones become "also").
 CI_PATTERNS: list[tuple[str, str, list[str], str, str, bool]] = [
-    ("disk_full", "Disk bhar gaya", [r"No space left on device", r"\bENOSPC\b", r"not enough space on the disk"],
-     "Runner ki disk bhar gayi (bade Docker images / caches / build output).",
-     "Workflow ke shuru mein purane Docker images / tool caches hatao (docker system prune -af), artifacts chhote karo, ya bada runner lo.", False),
-    ("oom", "Memory khatam (OOM)", [r"JavaScript heap out of memory", r"java\.lang\.OutOfMemoryError", r"\bMemoryError\b",
+    ("disk_full", "Disk full", [r"No space left on device", r"\bENOSPC\b", r"not enough space on the disk"],
+     "The runner's disk is full (large Docker images / caches / build output).",
+     "Remove old Docker images / tool caches at the start of the workflow (docker system prune -af), make the artifacts smaller, or use a bigger runner.", False),
+    ("oom", "Out of memory (OOM)", [r"JavaScript heap out of memory", r"java\.lang\.OutOfMemoryError", r"\bMemoryError\b",
                                     r"exit code 137", r"Killed\s+signal terminated program", r"Gradle build daemon disappeared unexpectedly",
                                     r"The runner has received a shutdown signal", r"Metaspace"],
-     "Build ko runner ki RAM kam padi (Node / Gradle / Java ne zyada memory maangi).",
-     "Node: NODE_OPTIONS=--max-old-space-size=4096; Gradle: org.gradle.jvmargs=-Xmx3g aur workers kam; tests ko parallel kam karo; ya bada runner.", False),
-    ("timeout", "Samay khatam", [r"has exceeded the maximum execution time", r"The job running on runner .* has exceeded",
+     "The runner did not have enough RAM for the build (Node / Gradle / Java asked for more memory).",
+     "Node: NODE_OPTIONS=--max-old-space-size=4096; Gradle: org.gradle.jvmargs=-Xmx3g and fewer workers; run fewer tests in parallel; or use a bigger runner.", False),
+    ("timeout", "Timed out", [r"has exceeded the maximum execution time", r"The job running on runner .* has exceeded",
                                  r"timed out after \d+", r"Timeout of \d+ms exceeded", r"context deadline exceeded", r"timeout-minutes"],
-     "Job ya test tay samay se lamba chala (atka hua test, dheema network, ya bahut bada kaam).",
-     "Atke test ka naam dekho (aakhri chalne wali line), test ka timeout lagao, cache use karo; timeout-minutes zaroorat se zyada mat badhao.", True),
+     "The job or a test ran longer than its time limit (a stuck test, a slow network, or a very large job).",
+     "Find the stuck test (the last line that ran), give the test a timeout, use a cache; do not raise timeout-minutes more than needed.", True),
     ("rate_limit", "Rate limit", [r"API rate limit exceeded", r"429 Too Many Requests", r"toomanyrequests", r"secondary rate limit"],
-     "Kisi service (GitHub API / Docker Hub / npm) ne zyada requests par roka.",
-     "Docker Hub mein login karke pull karo (limit badhti hai), cache use karo, GITHUB_TOKEN se API call karo; thodi der baad dobara chalao.", True),
-    ("network", "Network ki dikkat", [r"\bECONNRESET\b", r"\bETIMEDOUT\b", r"\bEAI_AGAIN\b", r"Could not resolve host", r"Temporary failure in name resolution",
+     "A service (GitHub API / Docker Hub / npm) blocked the run for too many requests.",
+     "Log in to Docker Hub before pulling (the limit goes up), use a cache, call the API with GITHUB_TOKEN; run it again after a while.", True),
+    ("network", "Network problem", [r"\bECONNRESET\b", r"\bETIMEDOUT\b", r"\bEAI_AGAIN\b", r"Could not resolve host", r"Temporary failure in name resolution",
                                       r"Connection reset by peer", r"TLS handshake timeout", r"Read timed out", r"503 Service Unavailable",
                                       r"502 Bad Gateway", r"socket hang up", r"Connection timed out", r"unable to access 'https://"],
-     "Download ya API call beech mein toot gaya (package registry / GitHub / bahar ki service).",
-     "Aksar dobara chalane se theek; baar baar ho to retry lagao (npm ci --fetch-retries, pip --retries, Gradle --offline cache) aur dependency cache use karo.", True),
+     "A download or API call broke midway (package registry / GitHub / an outside service).",
+     "Running it again usually fixes it; if it keeps happening, add retries (npm ci --fetch-retries, pip --retries, Gradle --offline cache) and use a dependency cache.", True),
     ("secret_missing", "Secret / env missing", [r"Input required and not supplied", r"secret\s+\S+\s+(is\s+)?not\s+(set|found|defined)",
                                                 r"environment variable\s+\S+\s+(is\s+)?(not set|missing|undefined)", r"Missing required (env|environment)",
                                                 r"KeyError: '[A-Z_]{3,}'", r"must be set|is not set\b",
                                                 r"Keystore file .* not found", r"keystore password was incorrect"],
-     "Workflow ko koi secret / environment variable nahi mila (naam galat, environment ka secret, ya fork se PR jahan secrets nahi milte).",
-     "Repo > Settings > Secrets and variables > Actions mein naam milaao (bade-chhote akshar), environment ka secret ho to job mein environment: likho. Secret ki value chat mein kabhi mat daalo.", False),
-    ("auth", "Login / ijazat", [r"Bad credentials", r"401 Unauthorized", r"\b403 Forbidden\b", r"Resource not accessible by integration",
+     "The workflow did not get a secret / environment variable (wrong name, a secret that belongs to an environment, or a PR from a fork, which gets no secrets).",
+     "Check the name in Repo > Settings > Secrets and variables > Actions (upper / lower case matters); for an environment secret, add environment: to the job. Never put a secret's value in chat.", False),
+    ("auth", "Login / permission", [r"Bad credentials", r"401 Unauthorized", r"\b403 Forbidden\b", r"Resource not accessible by integration",
                                 r"Permission to .* denied", r"denied: requested access to the resource is denied", r"authentication required",
                                 r"Host key verification failed", r"Permission denied \(publickey"],
-     "Token / key ke paas ye kaam karne ki ijazat nahi, ya token expire ho gaya.",
-     "GITHUB_TOKEN ke liye workflow mein permissions: block (jaise contents: write / packages: write) do; deploy key / token naya banao; SSH host key known_hosts mein daalo.", False),
-    ("lockfile", "Lockfile mel nahi khaata", [r"npm ci can only install packages when your package\.json and package-lock\.json",
+     "The token / key is not allowed to do this, or the token has expired.",
+     "For GITHUB_TOKEN, add a permissions: block to the workflow (such as contents: write / packages: write); create a new deploy key / token; add the SSH host key to known_hosts.", False),
+    ("lockfile", "Lockfile does not match", [r"npm ci can only install packages when your package\.json and package-lock\.json",
                                              r"lockfile .* (out of date|needs to be updated)", r"--frozen-lockfile", r"poetry\.lock is not consistent",
                                              r"Your lockfile needs to be updated", r"pubspec\.lock .* out of date"],
-     "package.json / pyproject badla par lockfile commit nahi hua.",
-     "Laptop par npm install (ya poetry lock / pnpm install) chalao aur lockfile commit karo.", False),
-    ("version", "Version mel nahi khaata", [r"The engine \"node\" is incompatible", r"Unsupported engine", r"requires Java \d+",
+     "package.json / pyproject changed but the lockfile was not committed.",
+     "Run npm install (or poetry lock / pnpm install) on your laptop and commit the lockfile.", False),
+    ("version", "Version mismatch", [r"The engine \"node\" is incompatible", r"Unsupported engine", r"requires Java \d+",
                                             r"Unsupported class file major version", r"Android Gradle plugin requires Java \d+",
                                             r"The current Dart SDK version is", r"requires Python\s*[<>=]", r"python_requires",
                                             r"node: bad option", r"Requires: Python"],
-     "Runner par tool ka version project se alag hai (Node / Java / Dart / Python).",
-     "setup-node / setup-java / setup-python / flutter-action mein wahi version likho jo project maangta hai (.nvmrc, java 17, pubspec environment).", False),
-    ("dependency", "Dependency nahi mili", [r"\bERESOLVE\b", r"npm ERR! code E404", r"No matching distribution found", r"ResolutionImpossible",
+     "The tool version on the runner is different from the project's (Node / Java / Dart / Python).",
+     "In setup-node / setup-java / setup-python / flutter-action, set the version the project asks for (.nvmrc, java 17, pubspec environment).", False),
+    ("dependency", "Dependency not found", [r"\bERESOLVE\b", r"npm ERR! code E404", r"No matching distribution found", r"ResolutionImpossible",
                                            r"Could not resolve dependencies", r"Could not resolve [\w.\-]+:[\w.\-]+", r"Could not find [\w.\-]+:[\w.\-]+",
                                            r"version solving failed", r"ModuleNotFoundError", r"Cannot find module '", r"Duplicate class",
                                            r"error: package .* does not exist", r"Unable to find a matching variant",
                                            r"ImportError: cannot import name"],
-     "Koi package / library nahi mili ya versions aapas mein takra rahe hain.",
-     "Error mein package ka naam dekho: requirements / package.json / build.gradle mein sahi version pin karo; nayi library add hui to lockfile bhi commit karo.", False),
+     "A package / library was not found, or versions conflict with each other.",
+     "Find the package name in the error: pin the right version in requirements / package.json / build.gradle; if a new library was added, commit the lockfile too.", False),
     ("lint", "Lint / format", [r"\d+ problems? \(\d+ errors?", r"\beslint\b.*error", r"would reformat", r"Found \d+ errors?\.", r"\bflake8\b",
                                r"\d+ issues? found", r"Code style issues found", r"lintVitalRelease", r"\bruff\b.*\berror", r"error • .* • \w+",
                                r"Lint found errors"],
-     "Code style / lint ke niyam toote (build theek hai, par checker ne roka).",
-     "Laptop par wahi lint chalao (npm run lint -- --fix / ruff --fix / dart fix --apply / black .) aur commit karo.", False),
-    ("test_failure", "Test fail", [r"^FAILED \S+::\S+", r"=+ \d+ failed", r"Tests?:\s+\d+ failed", r"Test Suites: \d+ failed", r"--- FAIL: ",
+     "Code style / lint rules were broken (the build is fine, but the checker stopped it).",
+     "Run the same lint on your laptop (npm run lint -- --fix / ruff --fix / dart fix --apply / black .) and commit.", False),
+    ("test_failure", "Tests failed", [r"^FAILED \S+::\S+", r"=+ \d+ failed", r"Tests?:\s+\d+ failed", r"Test Suites: \d+ failed", r"--- FAIL: ",
                                    r"There were failing tests", r"AssertionError", r"\bexpect\(.*\)\.", r"Tests failed", r"\d+ tests? completed, \d+ failed",
                                    r"Some tests failed", r"FAIL\s+\S+\.(test|spec)\.", r"Expected: .*\n.*Actual:"],
-     "Code build hua par kuch tests fail hue.",
-     "Fail hone wale test ka naam aur pehli assert line dekho; laptop par sirf wahi test chalao. Agar wahi commit dobara chalane par paas ho jaye to test flaky hai.", True),
-    ("compile", "Code compile nahi hua", [r"error TS\d+", r"SyntaxError", r"error: cannot find symbol", r"^e: (file://|/)\S+\.kt",
+     "The code built but some tests failed.",
+     "Find the failing test's name and its first assert line; run only that test on your laptop. If the same commit passes when run again, the test is flaky.", True),
+    ("compile", "Code did not compile", [r"error TS\d+", r"SyntaxError", r"error: cannot find symbol", r"^e: (file://|/)\S+\.kt",
                                          r"Compilation failed", r"error\[E\d+\]", r"undefined reference to", r"\.dart:\d+:\d+: Error",
                                          r"error CS\d+", r"Build failed with an exception", r"cannot find package", r"IndentationError", r"NameError"],
-     "Code mein syntax / type ki galti hai, isliye build nahi bana.",
-     "Error wali file aur line kholo (log mein file:line hai), wahi theek karke commit karo; laptop par build chala ke dekho.", False),
+     "The code has a syntax / type error, so the build failed.",
+     "Open the file and line with the error (the log shows file:line), fix it and commit; try the build on your laptop.", False),
     ("docker", "Docker build", [r"failed to solve", r"pull access denied", r"manifest unknown", r"COPY failed", r"failed to compute cache key",
                                 r"executor failed running"],
-     "Docker image banana fail hua (base image / COPY ka path / RUN ka command).",
-     "Base image ka naam-tag check karo, COPY ka path build context ke andar ho, RUN wala command laptop par docker build se chala ke dekho.", False),
+     "Building the Docker image failed (base image / COPY path / RUN command).",
+     "Check the base image name and tag, keep the COPY path inside the build context, and try the RUN command with docker build on your laptop.", False),
     ("permission", "File permission", [r"Permission denied", r"\bEACCES\b", r"Operation not permitted"],
-     "Script ya file chalane ki ijazat nahi (aksar ./gradlew ya .sh executable nahi).",
-     "git update-index --chmod=+x gradlew (ya script) karke commit karo; ya workflow mein chmod +x likho.", False),
-    ("runner", "Runner nahi mila / ruk gaya", [r"No runner matching the specified labels", r"lost communication with the server",
+     "No permission to run the script or file (often ./gradlew or a .sh file is not executable).",
+     "Run git update-index --chmod=+x gradlew (or the script) and commit; or add chmod +x in the workflow.", False),
+    ("runner", "No runner / runner stopped", [r"No runner matching the specified labels", r"lost communication with the server",
                                               r"The operation was canceled", r"waiting for a runner"],
-     "Job ko runner nahi mila ya runner beech mein band hua (self-hosted machine off / label galat).",
-     "runs-on ka label dekho; self-hosted runner chalu hai? GitHub status bhi dekho. Dobara chalao.", True),
+     "The job got no runner, or the runner stopped midway (self-hosted machine off / wrong label).",
+     "Check the runs-on label; is the self-hosted runner on? Check GitHub status too. Run it again.", True),
 ]
-CI_LABEL = {p[0]: p[1] for p in CI_PATTERNS} | {"cancelled": "Rok diya gaya", "unknown": "Pehchaan nahi paya"}
+CI_LABEL = {p[0]: p[1] for p in CI_PATTERNS} | {"cancelled": "Cancelled", "unknown": "Not recognized"}
 _CI_RX = [(p[0], [re.compile(r, re.M | re.I if p[0] not in ("compile",) else re.M) for r in p[2]]) for p in CI_PATTERNS]
 _TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z\s?")
 
@@ -165,7 +165,7 @@ def classify_ci(text: str) -> dict[str, Any]:
                 break
     if not hits:
         return {"category": "unknown", "label": CI_LABEL["unknown"], "evidence": [], "also": [], "flaky_likely": False,
-                "why": "Log mein jaani-pehchaani galti nahi mili.", "fix": "Neeche di gayi error lines dekhiye; zaroorat ho to log ka hissa Hoola ko bhejiye."}
+                "why": "No known error was found in the log.", "fix": "Look at the error lines below; if needed, send that part of the log to Hoola."}
     # a 'Process completed with exit code' only test failure + network hit = network wins (flaky); otherwise order above wins
     cid, m = hits[0]
     p = next(x for x in CI_PATTERNS if x[0] == cid)
@@ -231,99 +231,99 @@ _PY_EXC = re.compile(r"^([A-Za-z_][\w.]*(Error|Exception|Exit|Interrupt|Warning)
 
 LOG_PATTERNS: list[tuple[str, str, list[str], str, str, str]] = [
     # id, label, regexes, why, fix, runbook id
-    ("upstream_down", "App band hai (nginx ko jawab nahi)", [r"connect\(\) failed \(111: Connection refused\) while connecting to upstream",
+    ("upstream_down", "App is down (no answer to nginx)", [r"connect\(\) failed \(111: Connection refused\) while connecting to upstream",
                                                            r"no live upstreams", r"\b502\b.*(Bad Gateway)?", r"upstream prematurely closed"],
-     "nginx aage app tak pahunchna chahta hai par app chal nahi rahi / port par sun nahi rahi.",
-     "pm2 status / systemctl status dekho; app ka port nginx ke proxy_pass se milao; app ke apne log ki pehli error dekho.", "app_down"),
-    ("upstream_slow", "App dheemi (504 / timeout)", [r"upstream timed out", r"\b504\b", r"Gateway Time-?out"],
-     "App ne nginx ke tay samay mein jawab nahi diya (dheemi query / atka kaam).",
-     "Dheemi request dhoondho (access log mein URL), DB query / bahar ki API dekho; proxy_read_timeout tabhi badhao jab kaam sach mein lamba ho.", "slow_app"),
-    ("db_down", "Database se connection nahi", [r"(ECONNREFUSED|Connection refused).*(5432|3306|27017|6379)", r"could not connect to server",
+     "nginx is trying to reach the app, but the app is not running / not listening on the port.",
+     "Check pm2 status / systemctl status; match the app's port with nginx's proxy_pass; look at the first error in the app's own log.", "app_down"),
+    ("upstream_slow", "App is slow (504 / timeout)", [r"upstream timed out", r"\b504\b", r"Gateway Time-?out"],
+     "The app did not answer within nginx's time limit (slow query / stuck job).",
+     "Find the slow request (the URL in the access log), check the DB query / outside API; raise proxy_read_timeout only when the work really is long.", "slow_app"),
+    ("db_down", "No connection to the database", [r"(ECONNREFUSED|Connection refused).*(5432|3306|27017|6379)", r"could not connect to server",
                                                r"SQLSTATE\[HY000\] \[2002\]", r"OperationalError", r"too many connections",
                                                r"MongoNetworkError", r"Redis connection .* failed", r"remaining connection slots are reserved"],
-     "App database (Postgres / MySQL / Mongo / Redis) se jud nahi pa rahi ya connections khatam.",
-     "Database service chalu hai? (systemctl status postgresql); connection pool chhota karo; password / host .env mein sahi hai?", "db_down"),
-    ("oom_kill", "Memory khatam, process maara gaya", [r"Out of memory: Killed process", r"oom-kill", r"OOMKilled", r"JavaScript heap out of memory",
+     "The app cannot connect to the database (Postgres / MySQL / Mongo / Redis), or it has run out of connections.",
+     "Is the database service running? (systemctl status postgresql); make the connection pool smaller; are the password / host in .env right?", "db_down"),
+    ("oom_kill", "Out of memory, process killed", [r"Out of memory: Killed process", r"oom-kill", r"OOMKilled", r"JavaScript heap out of memory",
                                                      r"java\.lang\.OutOfMemoryError", r"\bMemoryError\b", r"Cannot allocate memory"],
-     "Server ki RAM khatam hui, Linux ne process band kar diya.",
-     "free -m aur pm2 monit se dekho kaun zyada memory le raha; swap jodo, pm2 max_memory_restart lagao, memory leak dhoondho.", "oom"),
-    ("disk_full", "Disk bhar gayi", [r"No space left on device", r"\bENOSPC\b", r"disk full", r"Disk quota exceeded"],
-     "Server ki disk bhar gayi (logs / backups / docker images).",
-     "df -h aur du -sh /var/log/* dekho; logrotate lagao, purane backup / docker images hatao (dhyaan se).", "disk_full"),
-    ("port_in_use", "Port pehle se laga hai", [r"EADDRINUSE", r"Address already in use", r"bind\(\) to \S+ failed \(98"],
-     "Do process ek hi port lena chahte hain (purani copy chal rahi hai).",
-     "sudo ss -ltnp | grep <port> se dekho kaun hai; purana process band karo, pm2 mein ek hi copy rakho.", "port_in_use"),
-    ("crash_loop", "App baar baar restart", [r"restarting too often|too many unstable restarts", r"Start request repeated too quickly",
+     "The server ran out of RAM and Linux killed the process.",
+     "Use free -m and pm2 monit to see what is using the most memory; add swap, set pm2 max_memory_restart, look for a memory leak.", "oom"),
+    ("disk_full", "Disk full", [r"No space left on device", r"\bENOSPC\b", r"disk full", r"Disk quota exceeded"],
+     "The server's disk is full (logs / backups / docker images).",
+     "Check df -h and du -sh /var/log/*; set up logrotate, remove old backups / docker images (carefully).", "disk_full"),
+    ("port_in_use", "Port already in use", [r"EADDRINUSE", r"Address already in use", r"bind\(\) to \S+ failed \(98"],
+     "Two processes want the same port (an old copy is still running).",
+     "Use sudo ss -ltnp | grep <port> to see what holds it; stop the old process, keep only one copy in pm2.", "port_in_use"),
+    ("crash_loop", "App keeps restarting", [r"restarting too often|too many unstable restarts", r"Start request repeated too quickly",
                                              r"exited with code [1-9]", r"Main process exited, code=exited, status=[1-9]", r"errored",
                                              r"Back-off restarting failed container", r"CrashLoopBackOff"],
-     "App chalte hi band ho rahi hai; restart ka chakkar.",
-     "Restart se pehle ki pehli error line dekho (yahi asli wajah hai); .env / config / migration check karo.", "crash_loop"),
+     "The app stops as soon as it starts; it is in a restart loop.",
+     "Look at the first error line before the restart (that is the real cause); check .env / config / migration.", "crash_loop"),
     ("ssl", "SSL / certificate", [r"certificate (has )?expired", r"SSL_ERROR|ssl_error", r"SSL_do_handshake\(\) failed", r"unable to verify the first certificate",
                                   r"CERT_HAS_EXPIRED", r"self[- ]signed certificate"],
-     "Certificate expire / galat hai ya chain poori nahi.",
-     "certbot renew --dry-run chalao; nginx mein fullchain.pem use karo; system ki ghadi (NTP) sahi hai?", "ssl"),
+     "The certificate is expired / wrong, or the chain is incomplete.",
+     "Run certbot renew --dry-run; use fullchain.pem in nginx; is the system clock (NTP) right?", "ssl"),
     ("permission", "Permission", [r"Permission denied", r"\bEACCES\b", r"\(13: Permission denied\)"],
-     "Process ko file / folder padhne-likhne ki ijazat nahi.",
-     "ls -l se owner dekho; app jis user se chalti hai usko hi folder do (chown); 777 kabhi mat do.", "permission"),
-    ("too_many_files", "Bahut saari files khuli", [r"Too many open files", r"\bEMFILE\b", r"worker_connections are not enough"],
-     "Process ki open files / connections ki seema puri ho gayi.",
-     "ulimit -n badhao (systemd: LimitNOFILE), nginx worker_connections badhao, connections band na hone wali jagah dhoondho.", "limits"),
-    ("dns", "DNS / host nahi mila", [r"getaddrinfo (ENOTFOUND|EAI_AGAIN)", r"Name or service not known", r"Temporary failure in name resolution",
+     "The process is not allowed to read / write the file or folder.",
+     "Check the owner with ls -l; give the folder to the user the app runs as (chown); never use 777.", "permission"),
+    ("too_many_files", "Too many open files", [r"Too many open files", r"\bEMFILE\b", r"worker_connections are not enough"],
+     "The process hit its limit of open files / connections.",
+     "Raise ulimit -n (systemd: LimitNOFILE), raise nginx worker_connections, and find where connections are not being closed.", "limits"),
+    ("dns", "DNS / host not found", [r"getaddrinfo (ENOTFOUND|EAI_AGAIN)", r"Name or service not known", r"Temporary failure in name resolution",
                                      r"could not resolve host"],
-     "Server bahar ka host naam nahi dhoondh paya.",
-     "/etc/resolv.conf aur internet dekho; host ka naam .env mein sahi hai?", "network"),
-    ("timeout", "Bahar ki service ka timeout", [r"\bETIMEDOUT\b", r"timed out", r"Read timed out", r"deadline exceeded"],
-     "Kisi bahar ki service / API ne samay par jawab nahi diya.",
-     "Kaun si service hai dekho (URL / host), timeout + retry lagao, uska status page dekho.", "network"),
-    ("auth", "Login / token fail", [r"jwt expired", r"invalid token", r"401 Unauthorized", r"authentication failed", r"Access denied for user"],
-     "Kisi token / password ki jaanch fail hui (expire / galat / badla gaya).",
-     "Token / password ki tarikh dekho; .env mein naya secret daalo (chat mein kabhi nahi) aur app restart karo.", "auth"),
-    ("module", "Code / package nahi mila", [r"Cannot find module", r"ModuleNotFoundError", r"ImportError", r"ClassNotFoundException",
+     "The server could not resolve an outside host name.",
+     "Check /etc/resolv.conf and the internet connection; is the host name in .env right?", "network"),
+    ("timeout", "Outside service timed out", [r"\bETIMEDOUT\b", r"timed out", r"Read timed out", r"deadline exceeded"],
+     "An outside service / API did not answer in time.",
+     "Find which service it is (URL / host), add a timeout + retry, check its status page.", "network"),
+    ("auth", "Login / token failed", [r"jwt expired", r"invalid token", r"401 Unauthorized", r"authentication failed", r"Access denied for user"],
+     "A token / password check failed (expired / wrong / changed).",
+     "Check the token / password date; put the new secret in .env (never in chat) and restart the app.", "auth"),
+    ("module", "Code / package not found", [r"Cannot find module", r"ModuleNotFoundError", r"ImportError", r"ClassNotFoundException",
                                              r"undefined is not a function", r"is not defined"],
-     "Deploy ke baad koi package / file nahi mili (install nahi hua ya galat build).",
-     "Server par npm ci / pip install -r requirements.txt chalao, build folder poora upload hua? Pichhla version chal raha tha to rollback.", "bad_deploy"),
+     "A package / file was not found after the deploy (not installed, or a wrong build).",
+     "Run npm ci / pip install -r requirements.txt on the server; was the whole build folder uploaded? If the previous version worked, roll back.", "bad_deploy"),
     ("segfault", "Process crash (segfault)", [r"segfault at", r"Segmentation fault", r"SIGSEGV", r"core dumped"],
-     "Native code / library mein crash.",
-     "Kis package ke update ke baad shuru hua dekho; pichhle version par wapas jao; core dump developer ko do.", "crash_loop"),
-    ("exception", "Code mein error (exception)", [r"Traceback \(most recent call last\)", r"Unhandled(Promise)?Rejection", r"uncaughtException",
+     "A crash in native code / a library.",
+     "Find which package update it started after; go back to the previous version; give the core dump to the developer.", "crash_loop"),
+    ("exception", "Error in the code (exception)", [r"Traceback \(most recent call last\)", r"Unhandled(Promise)?Rejection", r"uncaughtException",
                                                  r"\w+Exception\b", r"\w+Error:", r"panic:"],
-     "App ke code mein ek error aaya jo pakda nahi gaya.",
-     "Stack trace ki sabse neeche wali apni file:line dekho (library ki nahi); developer ko yahi trace dijiye.", "exception"),
+     "The app's code raised an error that was not caught.",
+     "Look at the lowest file:line in the stack trace that is your own code (not a library's); give this trace to the developer.", "exception"),
     ("http_5xx", "Server error (5xx)", [r'" 5\d\d '],
-     "Requests par server 5xx de raha hai.", "Usi samay ka app log dekho; ek hi URL par ho to wahi route jaancho.", "slow_app"),
+     "The server is answering requests with 5xx.", "Look at the app log for the same time; if it is always one URL, check that route.", "slow_app"),
 ]
-LOG_LABEL = {p[0]: p[1] for p in LOG_PATTERNS} | {"other": "Doosri error"}
+LOG_LABEL = {p[0]: p[1] for p in LOG_PATTERNS} | {"other": "Other error"}
 _LOG_RX = [(p[0], [re.compile(r, re.I) for r in p[2]]) for p in LOG_PATTERNS]
 
 RUNBOOKS: dict[str, dict[str, Any]] = {
-    "app_down": {"title": "App band hai / 502", "steps": [
-        "pm2 status (ya systemctl status <app>) - app online hai?", "pm2 logs <app> --lines 100 - band hone se pehle ki pehli error",
-        "nginx proxy_pass ka port = app ka port? (ss -ltnp)", "App chalu karo: pm2 restart <app> (aapka kaam, Hoola server par kuch nahi chalata)",
-        "Phir bhi band: pichhle deploy par rollback (DevOps > Deploy > Rollback card)"]},
-    "slow_app": {"title": "App dheemi / 504", "steps": [
-        "Access log mein dheemi URL dhoondho ($request_time agar log format mein ho)", "Usi samay DB par dheemi query (slow query log)",
-        "Bahar ki API ka timeout kitna hai?", "CPU / RAM: top, free -m", "Kaam lamba hi hai to background job banao; proxy timeout sirf tab badhao"]},
-    "db_down": {"title": "Database se connection nahi", "steps": [
-        "systemctl status postgresql (ya mysql / redis)", "Disk bhar to nahi gayi? df -h", "Connections: max_connections vs app ka pool size",
-        ".env mein host / port / user sahi? (password chat mein mat bhejo)", "Restart se pehle backup ki tarikh dekho"]},
-    "oom": {"title": "Memory khatam (OOM)", "steps": [
-        "dmesg -T | grep -i 'killed process' - kaun maara gaya", "free -m, pm2 monit", "Swap jodo (2-4 GB) agar nahi hai",
-        "pm2: max_memory_restart: '500M' (ecosystem file)", "Memory leak: kis deploy ke baad shuru hua?"]},
-    "disk_full": {"title": "Disk bhar gayi", "steps": [
-        "df -h aur du -xh / --max-depth=2 | sort -h | tail", "Logs: logrotate lagao (CERT-In: logs 180 din rakhne hain, to compress karo, delete nahi)",
-        "docker system df / purane images (dhyaan se)", "Purane backups kahin aur bhejo (off-server)", "85% par Hoola alert deta hai"]},
-    "port_in_use": {"title": "Port pehle se laga", "steps": ["sudo ss -ltnp | grep :<port>", "Purani copy band karo", "pm2 delete <purana naam>", "Ek hi process rakho"]},
-    "crash_loop": {"title": "Baar baar restart", "steps": [
-        "Restart se pehle ki PEHLI error line (baaki uske nateeje hain)", ".env / config badla tha?", "Migration chali?", "Pichhla version theek tha to rollback"]},
+    "app_down": {"title": "App is down / 502", "steps": [
+        "pm2 status (or systemctl status <app>) - is the app online?", "pm2 logs <app> --lines 100 - the first error before it went down",
+        "nginx proxy_pass port = the app's port? (ss -ltnp)", "Start the app: pm2 restart <app> (you do this; Hoola runs nothing on the server)",
+        "Still down: roll back to the previous deploy (DevOps > Deploy > Rollback card)"]},
+    "slow_app": {"title": "App is slow / 504", "steps": [
+        "Find the slow URL in the access log ($request_time, if the log format has it)", "A slow DB query at the same time (slow query log)",
+        "What is the outside API's timeout?", "CPU / RAM: top, free -m", "If the work really is long, make it a background job; raise the proxy timeout only then"]},
+    "db_down": {"title": "No connection to the database", "steps": [
+        "systemctl status postgresql (or mysql / redis)", "Is the disk full? df -h", "Connections: max_connections vs the app's pool size",
+        "Are host / port / user in .env right? (do not send the password in chat)", "Check the backup date before a restart"]},
+    "oom": {"title": "Out of memory (OOM)", "steps": [
+        "dmesg -T | grep -i 'killed process' - what was killed", "free -m, pm2 monit", "Add swap (2-4 GB) if there is none",
+        "pm2: max_memory_restart: '500M' (ecosystem file)", "Memory leak: which deploy did it start after?"]},
+    "disk_full": {"title": "Disk full", "steps": [
+        "df -h and du -xh / --max-depth=2 | sort -h | tail", "Logs: set up logrotate (CERT-In: logs must be kept 180 days, so compress, do not delete)",
+        "docker system df / old images (carefully)", "Move old backups somewhere else (off-server)", "Hoola alerts you at 85%"]},
+    "port_in_use": {"title": "Port already in use", "steps": ["sudo ss -ltnp | grep :<port>", "Stop the old copy", "pm2 delete <old name>", "Keep only one process"]},
+    "crash_loop": {"title": "Keeps restarting", "steps": [
+        "The FIRST error line before the restart (the rest follow from it)", "Did .env / config change?", "Did the migration run?", "If the previous version was fine, roll back"]},
     "ssl": {"title": "SSL / certificate", "steps": ["sudo certbot certificates", "sudo certbot renew --dry-run", "nginx: ssl_certificate = fullchain.pem",
-                                                    "timedatectl - ghadi NTP se mili hai (CERT-In bhi kehta hai)"]},
-    "permission": {"title": "Permission denied", "steps": ["ls -l <file>", "App kis user se chalti hai (ps -o user= -p <pid>)", "chown <user> <folder>; 777 kabhi nahi"]},
-    "limits": {"title": "Too many open files", "steps": ["ulimit -n", "systemd unit: LimitNOFILE=65535", "nginx: worker_connections", "Connections band ho rahe hain? (leak)"]},
-    "network": {"title": "Bahar ki service / DNS", "steps": ["dig <host> / curl -I https://<host>", "Uska status page", "Timeout + retry code mein", "Server ka DNS (/etc/resolv.conf)"]},
-    "auth": {"title": "Token / login fail", "steps": ["Token ki expiry", "Naya secret .env mein (chat mein kabhi nahi)", "App restart", "Purana key rotate / revoke"]},
-    "bad_deploy": {"title": "Deploy ke baad toot gaya", "steps": ["Kaunsa commit gaya (DevOps > Deploy)", "npm ci / pip install chala?", "Build folder poora?",
-                                                                  "Rollback card bhejo aur us par aap tap karein"]},
-    "exception": {"title": "Code ka exception", "steps": ["Stack trace ki apni file:line", "Kis request / input par aaya", "Developer ko trace + samay do", "Baar baar ho to us feature ko band karo (flag)"]},
+                                                    "timedatectl - the clock is synced with NTP (CERT-In requires it too)"]},
+    "permission": {"title": "Permission denied", "steps": ["ls -l <file>", "Which user the app runs as (ps -o user= -p <pid>)", "chown <user> <folder>; never 777"]},
+    "limits": {"title": "Too many open files", "steps": ["ulimit -n", "systemd unit: LimitNOFILE=65535", "nginx: worker_connections", "Are connections being closed? (leak)"]},
+    "network": {"title": "Outside service / DNS", "steps": ["dig <host> / curl -I https://<host>", "Its status page", "Timeout + retry in the code", "The server's DNS (/etc/resolv.conf)"]},
+    "auth": {"title": "Token / login failed", "steps": ["Token expiry", "New secret in .env (never in chat)", "App restart", "Rotate / revoke the old key"]},
+    "bad_deploy": {"title": "Broke after a deploy", "steps": ["Which commit went out (DevOps > Deploy)", "Did npm ci / pip install run?", "Is the build folder complete?",
+                                                                  "Send a rollback card; you tap it"]},
+    "exception": {"title": "Exception in the code", "steps": ["Your own file:line in the stack trace", "Which request / input caused it", "Give the developer the trace + the time", "If it keeps happening, turn that feature off (flag)"]},
 }
 
 _NORM = [
@@ -444,7 +444,7 @@ def classify_log(text: str) -> str:
 def explain_log(cat: str) -> dict[str, Any]:
     p = next((x for x in LOG_PATTERNS if x[0] == cat), None)
     if not p:
-        return {"label": LOG_LABEL["other"], "why": "Pehchaani hui error nahi; sample dekhiye.", "fix": "Pehli baar kab aayi (first seen) ke aas-paas kya badla, dekhiye.",
+        return {"label": LOG_LABEL["other"], "why": "Not a recognized error; look at the sample.", "fix": "Check what changed around the time it first appeared (first seen).",
                 "runbook": ""}
     return {"label": p[1], "why": p[3], "fix": p[4], "runbook": p[5]}
 
@@ -495,92 +495,92 @@ def check_script(content: str, lang: str) -> list[dict[str, Any]]:
             continue
         if has_secret(x) or (_INLINE_SECRET.search(x) and "secrets." not in x and "${" not in x and "$env:" not in x.lower()
                              and "getenv" not in x.lower() and "process.env" not in x):
-            out.append(_f("block", i, "inline_secret", "Script ke andar seedha password / token likha hai.",
-                          "Value environment variable / secret store (GitHub Secrets, .env jo repo mein nahi) se lo; jo token dikh gaya use rotate karo."))
+            out.append(_f("block", i, "inline_secret", "A password / token is written directly in the script.",
+                          "Take the value from an environment variable / secret store (GitHub Secrets, a .env that is not in the repo); rotate the token that was exposed."))
         m = re.search(r"\b(curl|wget|iwr|Invoke-WebRequest)\b[^|;]*?(https?://([^/\s'\"]+)[^\s'\"|]*)[^|;]*\|\s*(sudo\s+)?(ba|z|)sh\b", x, re.I)
         m2 = re.search(r"\b(iwr|Invoke-WebRequest|irm|Invoke-RestMethod)\b.*\|\s*(iex|Invoke-Expression)\b", x, re.I)
         if m or m2:
             url = (m.group(2) if m else "")
             known = any(h in url for h in KNOWN_HOSTS)
-            out.append(_f("warn" if known else "block", i, "pipe_to_shell", f"Internet se script utha kar seedha chala raha hai ({url or 'iex'}).",
-                          "Pehle file download karo, checksum / signature milao, padho, phir chalao; ya package manager use karo."))
+            out.append(_f("warn" if known else "block", i, "pipe_to_shell", f"Downloads a script from the internet and runs it directly ({url or 'iex'}).",
+                          "Download the file first, check its checksum / signature, read it, then run it; or use a package manager."))
         if lang in ("bash", "dockerfile", "yaml"):
             if re.search(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-r\s+-f|-f\s+-r)\b", x):
                 tgt = x.split("rm", 1)[1]
                 if re.search(r"(\s|^)/(\s|$|\*)", tgt) or re.search(r"\s(~|\$HOME)/?(\s|$)", tgt):
-                    out.append(_f("block", i, "rm_root", "rm -rf poore system / home par chalega.", "Exact folder ka naam likho; kabhi / ya ~ par nahi."))
+                    out.append(_f("block", i, "rm_root", "rm -rf will run on the whole system / home.", "Name the exact folder; never / or ~."))
                 elif re.search(r"\$\{?\w+\}?", tgt) and not re.search(r"\$\{\w+:\?", tgt):
-                    out.append(_f("block", i, "rm_unguarded_var", "rm -rf ek variable par, bina jaanch ke: variable khaali hua to galat jagah mit jayegi.",
-                                  'Use "${VAR:?VAR khaali hai}" (bash khaali par ruk jayega) aur path ke aage-peeche quotes.'))
+                    out.append(_f("block", i, "rm_unguarded_var", "rm -rf on a variable with no check: if the variable is empty, the wrong place gets deleted.",
+                                  'Use "${VAR:?VAR is empty}" (bash stops when it is empty) and put quotes around the path.'))
             if re.search(r"\b(mkfs(\.\w+)?|fdisk|wipefs)\b|\bdd\b.*\bof=/dev/", x):
-                out.append(_f("block", i, "disk_wipe", "Disk format / overwrite command.", "Ye script mein mat rakho; haath se, sahi disk dekh kar."))
+                out.append(_f("block", i, "disk_wipe", "Disk format / overwrite command.", "Do not keep this in a script; do it by hand, after checking it is the right disk."))
             if re.search(r":\(\)\s*\{\s*:\|:&\s*\};:", x):
-                out.append(_f("block", i, "fork_bomb", "Fork bomb.", "Hatao."))
+                out.append(_f("block", i, "fork_bomb", "Fork bomb.", "Remove it."))
             if re.search(r"\bchmod\s+(-R\s+)?0?777\b", x):
-                out.append(_f("warn", i, "chmod_777", "777 = sabko likhne ki ijazat.", "Owner badlo (chown) aur 750 / 640 do."))
+                out.append(_f("warn", i, "chmod_777", "777 = everyone can write.", "Change the owner (chown) and use 750 / 640."))
             if re.search(r"\bsshpass\s+-p\b", x):
-                out.append(_f("block", i, "sshpass", "Password command line par.", "SSH key use karo."))
+                out.append(_f("block", i, "sshpass", "Password on the command line.", "Use an SSH key."))
             if re.search(r"\bcrontab\s+-r\b", x):
-                out.append(_f("block", i, "crontab_r", "Saare cron jobs mita deta hai.", "crontab -e se ek line badlo."))
+                out.append(_f("block", i, "crontab_r", "Deletes all cron jobs.", "Change one line with crontab -e."))
             if re.search(r"\b(curl)\b.*\s(-k|--insecure)\b|\bwget\b.*--no-check-certificate", x):
-                out.append(_f("warn", i, "tls_off", "HTTPS certificate ki jaanch band.", "-k hatao; certificate theek karo."))
+                out.append(_f("warn", i, "tls_off", "HTTPS certificate check is off.", "Remove -k; fix the certificate."))
             if re.search(r"\beval\s+[\"']?\$", x):
-                out.append(_f("warn", i, "eval_var", "Variable ko code ki tarah chala raha hai.", "eval hatao; seedha command likho."))
+                out.append(_f("warn", i, "eval_var", "Runs a variable as code.", "Remove eval; write the command directly."))
             if re.search(r"\bgit\s+push\b.*(--force\b|-f\b)", x) and "--force-with-lease" not in x:
-                out.append(_f("warn", i, "force_push", "Force push doosron ka kaam mita sakta hai.", "--force-with-lease use karo, main par kabhi nahi."))
+                out.append(_f("warn", i, "force_push", "A force push can erase other people's work.", "Use --force-with-lease, never on main."))
             if re.search(r"(?i)\b(drop\s+database|drop\s+table|truncate\s+table)\b", x):
-                out.append(_f("warn", i, "sql_drop", "Data mitane wala SQL.", "Pehle backup; script mein confirm step; production par haath se."))
+                out.append(_f("warn", i, "sql_drop", "SQL that deletes data.", "Back up first; add a confirm step to the script; on production, do it by hand."))
             if re.search(r">\s*/etc/\S+", x) and ">>" not in x:
-                out.append(_f("warn", i, "overwrite_etc", "System config file poori overwrite ho rahi hai.", "Pehle backup copy (cp file file.bak) ya sirf ek line badlo."))
+                out.append(_f("warn", i, "overwrite_etc", "A system config file is being overwritten completely.", "Make a backup copy first (cp file file.bak), or change only one line."))
         if lang == "powershell":
             if re.search(r"Remove-Item\b.*-Recurse\b.*\$\w+", x, re.I) and not re.search(r"Test-Path|-WhatIf", x, re.I):
-                out.append(_f("block", i, "ps_rm_var", "Remove-Item -Recurse ek variable par bina jaanch.", "Pehle if (-not $Path) { throw }; Test-Path; pehli baar -WhatIf."))
+                out.append(_f("block", i, "ps_rm_var", "Remove-Item -Recurse on a variable with no check.", "First if (-not $Path) { throw }; Test-Path; use -WhatIf the first time."))
             if re.search(r"Set-ExecutionPolicy\s+(Unrestricted|Bypass)", x, re.I):
-                out.append(_f("warn", i, "ps_policy", "Poore system ki script policy dheeli.", "-Scope Process use karo, ya script sign karo."))
+                out.append(_f("warn", i, "ps_policy", "Loosens the script policy for the whole system.", "Use -Scope Process, or sign the script."))
             if re.search(r"ConvertTo-SecureString\s+.*-AsPlainText", x, re.I) and re.search(r"['\"][^'\"$]{4,}['\"]", x):
-                out.append(_f("block", i, "ps_plain_password", "Password script mein likha hai.", "Get-Credential / Windows Credential Manager / env variable."))
+                out.append(_f("block", i, "ps_plain_password", "The password is written in the script.", "Get-Credential / Windows Credential Manager / env variable."))
             if re.search(r"Format-Volume|Clear-Disk", x, re.I):
-                out.append(_f("block", i, "disk_wipe", "Disk format command.", "Script mein mat rakho."))
+                out.append(_f("block", i, "disk_wipe", "Disk format command.", "Do not keep it in a script."))
         if lang == "yaml":
             if re.search(r"\$\{\{\s*github\.event\.(issue|pull_request|comment|review|head_commit|discussion)\.(title|body|head\.ref|message|label)", x):
-                out.append(_f("block", i, "gha_injection", "PR / issue ka text seedha run: script mein - koi bhi command ghusa sakta hai.",
-                              "Pehle env: mein daalo (TITLE: ${{ github.event.pull_request.title }}) aur script mein \"$TITLE\" likho."))
+                out.append(_f("block", i, "gha_injection", "PR / issue text goes straight into a run: script - anyone can inject a command.",
+                              "Put it in env: first (TITLE: ${{ github.event.pull_request.title }}) and write \"$TITLE\" in the script."))
             if re.search(r"permissions:\s*write-all", x):
-                out.append(_f("warn", i, "gha_write_all", "Token ko saari ijazat.", "Sirf jo chahiye: permissions: { contents: read }."))
+                out.append(_f("warn", i, "gha_write_all", "The token gets every permission.", "Only what is needed: permissions: { contents: read }."))
             m3 = re.search(r"uses:\s*([\w.-]+)/([\w.-]+)(/[\w./-]+)?@([\w.-]+)", x)
             if m3 and m3.group(1) not in ("actions", "github", "docker") and not re.fullmatch(r"[0-9a-f]{40}", m3.group(4)):
-                out.append(_f("info", i, "gha_unpinned", f"Bahar ka action {m3.group(1)}/{m3.group(2)} tag se (@{m3.group(4)}), commit SHA se nahi.",
-                              "Bharose ke liye poore 40-akshar SHA par pin karo (tag badla ja sakta hai)."))
+                out.append(_f("info", i, "gha_unpinned", f"Outside action {m3.group(1)}/{m3.group(2)} is pinned by tag (@{m3.group(4)}), not by commit SHA.",
+                              "To be safe, pin it to the full 40-character SHA (a tag can be moved)."))
         if lang == "dockerfile":
             if re.match(r"(?i)FROM\s+[\w./-]+(:latest)?\s*($|\s+AS)", x) and ":" not in x.split()[1]:
-                out.append(_f("warn", i, "docker_latest", "Base image ka version tay nahi (latest).", "Tag pin karo, jaise node:20-slim / python:3.12-slim."))
+                out.append(_f("warn", i, "docker_latest", "The base image version is not fixed (latest).", "Pin a tag, such as node:20-slim / python:3.12-slim."))
             if re.match(r"(?i)(ENV|ARG)\s+\w*(PASS|SECRET|TOKEN|KEY)\w*\s*[= ]\s*\S+", x):
-                out.append(_f("block", i, "docker_secret", "Secret image ke andar baked.", "Runtime par env / docker secret se do; BuildKit --secret."))
+                out.append(_f("block", i, "docker_secret", "A secret is baked into the image.", "Pass it at runtime through env / a docker secret; BuildKit --secret."))
             if re.match(r"(?i)ADD\s+https?://", x):
-                out.append(_f("warn", i, "docker_add_url", "ADD URL se file bina checksum.", "RUN curl + sha256sum -c, ya COPY."))
+                out.append(_f("warn", i, "docker_add_url", "ADD from a URL, with no checksum.", "RUN curl + sha256sum -c, or COPY."))
         if lang == "nginx":
             if re.search(r"ssl_protocols[^;]*\bTLSv1(\.1)?\b(?!\.[23])", x):
-                out.append(_f("warn", i, "nginx_old_tls", "Purana TLS 1.0 / 1.1 chalu.", "ssl_protocols TLSv1.2 TLSv1.3;"))
+                out.append(_f("warn", i, "nginx_old_tls", "Old TLS 1.0 / 1.1 is on.", "ssl_protocols TLSv1.2 TLSv1.3;"))
             if re.search(r"\bautoindex\s+on\b", x):
-                out.append(_f("warn", i, "nginx_autoindex", "Folder ki saari files ki list sabko dikhegi.", "autoindex off;"))
+                out.append(_f("warn", i, "nginx_autoindex", "Everyone will see the list of all files in the folder.", "autoindex off;"))
     if lang == "bash" and content.strip() and not re.search(r"^\s*set\s+-[a-z]*e[a-z]*u[a-z]*o\s+pipefail|^\s*set\s+-euo\s+pipefail", content, re.M):
-        out.append(_f("warn", 1, "no_strict", "set -euo pipefail nahi: beech mein error aaye to bhi script aage chalta rahega.",
-                      "Shebang ke neeche set -euo pipefail likho."))
+        out.append(_f("warn", 1, "no_strict", "No set -euo pipefail: the script keeps going even after an error midway.",
+                      "Add set -euo pipefail below the shebang."))
     if lang == "powershell" and content.strip() and "$ErrorActionPreference" not in content:
-        out.append(_f("warn", 1, "ps_no_stop", "Error par script nahi rukta.", "Upar $ErrorActionPreference = 'Stop' likho."))
+        out.append(_f("warn", 1, "ps_no_stop", "The script does not stop on an error.", "Add $ErrorActionPreference = 'Stop' at the top."))
     if lang == "yaml" and re.search(r"^on:", content, re.M):
         if "pull_request_target" in content and re.search(r"ref:\s*\$\{\{\s*github\.event\.pull_request\.head\.(sha|ref)", content):
-            out.append(_f("block", 1, "gha_prt_checkout", "pull_request_target ke saath PR ka code checkout: fork ka code aapke secrets ke saath chalega.",
-                          "pull_request use karo, ya PR code ko secrets ke bina alag job mein."))
+            out.append(_f("block", 1, "gha_prt_checkout", "pull_request_target with a checkout of the PR's code: a fork's code will run with your secrets.",
+                          "Use pull_request, or run the PR code in a separate job without secrets."))
         if not re.search(r"^\s*permissions:", content, re.M):
-            out.append(_f("info", 1, "gha_no_permissions", "permissions: block nahi (token ko default ijazat).", "Upar permissions: { contents: read } likho."))
+            out.append(_f("info", 1, "gha_no_permissions", "No permissions: block (the token gets the default permissions).", "Add permissions: { contents: read } at the top."))
         if re.search(r"(deploy|production|prod)", content, re.I) and not re.search(r"^\s*environment:", content, re.M):
-            out.append(_f("warn", 1, "gha_no_environment", "Deploy job bina environment: (koi approval / protection nahi).",
-                          "environment: production likho aur GitHub mein us environment par required reviewer lagao."))
+            out.append(_f("warn", 1, "gha_no_environment", "Deploy job without environment: (no approval / protection).",
+                          "Add environment: production and set a required reviewer on that environment in GitHub."))
         if re.search(r"(deploy|production)", content, re.I) and "concurrency" not in content:
-            out.append(_f("info", 1, "gha_no_concurrency", "Do deploy saath chal sakte hain.", "concurrency: { group: deploy-production, cancel-in-progress: false }"))
+            out.append(_f("info", 1, "gha_no_concurrency", "Two deploys can run at the same time.", "concurrency: { group: deploy-production, cancel-in-progress: false }"))
     if lang == "dockerfile" and content.strip() and not re.search(r"^\s*USER\s+\S+", content, re.M | re.I):
-        out.append(_f("warn", 1, "docker_root", "Container root user se chalega.", "Aakhir mein USER node / USER 1000 likho."))
+        out.append(_f("warn", 1, "docker_root", "The container will run as the root user.", "Add USER node / USER 1000 at the end."))
     order = {"block": 0, "warn": 1, "info": 2}
     return sorted(out, key=lambda f: (order[f["level"]], f["line"]))
 
@@ -596,34 +596,34 @@ def verdict(findings: list[dict[str, Any]]) -> str:
 # ---------------------------------------------------------------- checklists
 CHECKLISTS: dict[str, dict[str, Any]] = {
     "deploy": {"title": "Production deploy checklist", "sections": [
-        ("Pehle", ["CI ke saare checks hare (green)", "Kya badla hai padh liya (commits / PR)", "Database migration hai? Pehle backup liya + migration padhi",
-                   "Naye env variables / secrets production mein daale (chat mein nahi)", "Rollback plan: pichhla accha commit pata hai",
-                   "Bheed kam wala samay (raat / Sunday subah nahi jab aap so rahe ho)", "Team / support ko bataya"]),
-        ("Deploy ke waqt", ["Hoola ke Deploy card par aapka tap", "Workflow chalte hue dekhna (Hoola dikhata hai)", "Health URL hara"]),
-        ("Baad mein (15 min)", ["Error logs (Hoola ke clusters) mein naya kuch?", "Main kaam haath se ek baar (login / order / payment page)",
-                                "Response time theek", "Release tag / note likha"]),
+        ("Before", ["All CI checks are green", "Read what changed (commits / PR)", "Is there a database migration? Backup taken first + migration read",
+                   "New env variables / secrets added to production (not in chat)", "Rollback plan: the last good commit is known",
+                   "A low-traffic time (not at night / Sunday morning when you are asleep)", "Team / support told"]),
+        ("During the deploy", ["Your tap on Hoola's Deploy card", "Watch the workflow run (Hoola shows it)", "Health URL is green"]),
+        ("After (15 min)", ["Anything new in the error logs (Hoola's clusters)?", "The main flows once by hand (login / order / payment page)",
+                                "Response time is fine", "Release tag / note written"]),
     ]},
     "release": {"title": "App release checklist", "sections": [
-        ("Pehle", ["Version + build number badhaya", "Changelog likha", "Saare tests + lint hare", "Signing key repo mein nahi (secret mein)",
-                   "Privacy policy / data safety form badla agar naya data liya"]),
-        ("Release", ["Pehle internal / beta track", "Crash rate dekho 24 ghante", "Phir sab users"]),
+        ("Before", ["Version + build number raised", "Changelog written", "All tests + lint are green", "Signing key is not in the repo (in a secret)",
+                   "Privacy policy / data safety form updated if new data is collected"]),
+        ("Release", ["Internal / beta track first", "Watch the crash rate for 24 hours", "Then all users"]),
     ]},
-    "server_setup": {"title": "Naya server (hardening)", "sections": [
-        ("Login", ["SSH sirf key se (PasswordAuthentication no)", "root login band (PermitRootLogin no)", "Apna sudo user", "fail2ban"]),
-        ("Network", ["ufw: sirf 22 / 80 / 443", "Database port bahar band", "Admin panels VPN / IP se"]),
-        ("Updates + ghadi", ["unattended-upgrades", "timedatectl: NTP chalu (CERT-In: ghadi NTP se mili ho)"]),
-        ("Logs + backup", ["Logs 180 din rakhne ka intezaam, India mein (CERT-In) - logrotate + compress", "Roz backup, server se bahar copy",
-                           "Mahine mein ek baar restore karke dekho"]),
-        ("App", ["App root se nahi, apne user se", ".env 600 permission", "pm2 startup / systemd se reboot par chalu", "HTTPS + auto renew (certbot)"]),
+    "server_setup": {"title": "New server (hardening)", "sections": [
+        ("Login", ["SSH by key only (PasswordAuthentication no)", "root login off (PermitRootLogin no)", "Your own sudo user", "fail2ban"]),
+        ("Network", ["ufw: only 22 / 80 / 443", "Database port closed to the outside", "Admin panels through VPN / IP only"]),
+        ("Updates + clock", ["unattended-upgrades", "timedatectl: NTP on (CERT-In: the clock must be synced with NTP)"]),
+        ("Logs + backup", ["Logs kept 180 days, in India (CERT-In) - logrotate + compress", "Daily backup, with a copy off the server",
+                           "Test a restore once a month"]),
+        ("App", ["App runs as its own user, not root", ".env 600 permission", "Starts on reboot through pm2 startup / systemd", "HTTPS + auto renew (certbot)"]),
     ]},
-    "incident": {"title": "Production toot gaya (incident)", "sections": [
-        ("Turant", ["Kya toota, kab se (Hoola uptime / logs)", "Pichhla deploy kab hua? Shak ho to rollback card", "Users / team ko ek line ka update"]),
-        ("Data / hacking ka shak", ["IT Helpdesk > Suraksha: CERT-In 6 ghante wala niyam dekho", "Saboot (logs) mat mitao", "Passwords / keys rotate"]),
-        ("Baad mein", ["Asli wajah (blameless)", "Kya badlenge taaki dobara na ho", "Runbook update"]),
+    "incident": {"title": "Production is down (incident)", "sections": [
+        ("Right now", ["What broke, since when (Hoola uptime / logs)", "When was the last deploy? If in doubt, use the rollback card", "A one-line update to users / the team"]),
+        ("Data leak / hacking suspected", ["IT Helpdesk > Security: check the CERT-In 6-hour rule", "Do not delete the evidence (logs)", "Rotate passwords / keys"]),
+        ("After", ["Root cause (blameless)", "What will change so it does not happen again", "Runbook update"]),
     ]},
     "backup_restore": {"title": "Backup restore test", "sections": [
-        ("Test", ["Naya khaali server / folder", "Aakhri backup se restore", "App chala kar data dekho", "Kitna samay laga likho (RTO)",
-                  "Kitna purana data tha (RPO)"])]},
+        ("Test", ["A new empty server / folder", "Restore from the latest backup", "Start the app and check the data", "Write down how long it took (RTO)",
+                  "How old the data was (RPO)"])]},
 }
 
 
@@ -636,7 +636,7 @@ def checklist_items(kind: str, extra: list[str] | None = None) -> tuple[str, lis
             items.append({"id": f"c{n}", "section": sec, "text": t, "done": False, "by": ""})
     for t in extra or []:
         n += 1
-        items.append({"id": f"c{n}", "section": "Aapke niyam", "text": t[:200], "done": False, "by": ""})
+        items.append({"id": f"c{n}", "section": "Your rules", "text": t[:200], "done": False, "by": ""})
     return c["title"], items
 
 
@@ -685,17 +685,17 @@ def dora(deploys: list[dict[str, Any]], days: int, when: datetime) -> dict[str, 
            "rework_pct": round(100 * len(rework) / len(changes), 1) if changes else None}
     lines = []
     if not total:
-        lines.append(f"Pichhle {days} din mein koi production deploy nahi dikha.")
+        lines.append(f"No production deploy seen in the last {days} days.")
     else:
-        lines.append(f"{days} din: {len(ok)} safal deploy (hafte mein {per_week}), {len(failed)} fail / rollback.")
+        lines.append(f"{days} days: {len(ok)} successful deploys ({per_week} a week), {len(failed)} failed / rolled back.")
         if out["lead_time_h"] is not None:
-            lines.append(f"Commit se production tak beech ka samay ~{out['lead_time_h']} ghante.")
+            lines.append(f"Median time from commit to production: ~{out['lead_time_h']} hours.")
         if out["change_failure_pct"] is not None:
-            lines.append(f"Har 100 badlav mein ~{out['change_failure_pct']:.0f} ne kuch toda.")
+            lines.append(f"About {out['change_failure_pct']:.0f} in every 100 changes broke something.")
         if out["recovery_h"] is not None:
-            lines.append(f"Toote deploy ke baad theek hone mein ~{out['recovery_h']} ghante.")
+            lines.append(f"Time to recover after a broken deploy: ~{out['recovery_h']} hours.")
         if out["rework_pct"]:
-            lines.append(f"{out['rework_pct']:.0f}% deploy bina plan ke (hotfix / revert) the.")
+            lines.append(f"{out['rework_pct']:.0f}% of deploys were unplanned (hotfix / revert).")
     out["say"] = " ".join(lines)
     return out
 
