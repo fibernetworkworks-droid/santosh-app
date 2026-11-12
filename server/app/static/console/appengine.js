@@ -56,6 +56,11 @@
         <div class="ae-row"><span class="mut sm">Data stays on the page for now (marked sample); sign-in and saved data come with Hoola Cloud.</span><span class="sp"></span>
           <button class="b pri" type="submit">${ico('plus', 16)}Create app</button></div>
       </form>
+      <section class="panel ae-imp"><h3>Bring in a project</h3>
+        <p class="mut sm">From a ZIP (this app's own export, GitHub's "Download ZIP", another builder's export) or from a GitHub repository. Files that break Hoola's rules (design tokens, safety, vetted packages) are not brought in; they are listed with the reason, and Hoola can fix them.</p>
+        <form class="ae-row" data-ae-form="imp-zip"><input type="file" name="zip" accept=".zip,application/zip" aria-label="ZIP file" required><button class="b" type="submit">Import ZIP</button></form>
+        <form class="ae-row" data-ae-form="imp-gh"><input name="repo" maxlength="140" placeholder="owner/repository, e.g. asha/shop-app" aria-label="GitHub repository" required><button class="b" type="submit">Import from GitHub</button></form>
+        <div id="aeImpOut" role="status" aria-live="polite"></div></section>
       <div class="sec"><h2>Your apps</h2></div>
       ${L(r.apps).length ? `<div class="grid">${L(r.apps).map(card).join('')}</div>` : '<div class="panel mut">No app yet.</div>'}
     </section></main></div>`;
@@ -243,9 +248,81 @@
           <button class="b ghost sm" type="button" data-ae="chk" data-ae-chk="browser">Browser check</button>
           <button class="b ghost sm" type="button" data-ae="chk" data-ae-chk="quick">Quick scan</button>
           <button class="b ghost sm" type="button" data-ae="chk" data-ae-chk="deep">Deep scan</button></div>
-          <div id="aeChecks" class="mut sm">Loading the last results...</div></section></div>`;
-      drawChecks(el);
+          <div id="aeChecks" class="mut sm">Loading the last results...</div></section>
+        <section class="ae-gitsec"><div class="ae-row"><h3>GitHub</h3><span class="sp"></span></div><div id="aeGit" class="mut sm">Loading...</div></section></div>`;
+      drawChecks(el); drawGit();
     }
+  }
+
+
+  /* ----- v0.839 L14 GITHUB DO TARAF: one branch, both directions, her tap for every move ----- */
+  async function drawGit(cmp) {
+    const box = document.getElementById('aeGit'); if (!box) return;
+    const {esc} = k();
+    let g; try { g = await k().api('GET', `/api/appengine/${enc(ST.id)}/github`); } catch (e) { box.textContent = e.message; return; }
+    if (!document.getElementById('aeGit')) return;
+    box.className = '';
+    if (!g.linked) {
+      box.innerHTML = `<p class="mut sm">Link this app to a GitHub repository: your code goes there and changes made on GitHub can come back. It needs your GitHub token (Profile, typed only in the app). A new repository is private.</p>
+        <form class="ae-row" data-ae-form="git-link"><input name="repo" maxlength="140" placeholder="repository name, e.g. shop-app" aria-label="Repository" required><button class="b pri" type="submit">Link</button></form>`;
+      return;
+    }
+    const ch = L(g.changes);
+    box.innerHTML = `<p><a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.repo)}</a> · branch <b>${esc(g.branch)}</b>${g.private ? '' : ' · <span class="pill bad">PUBLIC</span>'}</p>
+      <p class="mut sm">${esc(g.say)}${ch.length ? ' ' + ch.slice(0, 6).map(x => esc(x.path)).join(', ') + (ch.length > 6 ? '…' : '') : ''}</p>
+      ${cmp ? cmpHtml(cmp) : ''}
+      <div class="ae-row"><button class="b" type="button" data-ae="git" data-ae-git="compare">Compare with GitHub</button>
+        <button class="b pri" type="button" data-ae="git" data-ae-git="pull">Pull</button>
+        <button class="b pri" type="button" data-ae="git" data-ae-git="push">Push</button>
+        <span class="sp"></span><button class="b ghost sm" type="button" data-ae="git" data-ae-git="unlink">Unlink</button></div>`;
+  }
+  function cmpHtml(c) {
+    const {esc} = k(), ch = L(c.changed), cf = L(c.conflicts), ka = Object.entries(c.kept_apart || {});
+    return `<div class="panel" id="aeGitCmp"><b>${c.remote_moved ? 'GitHub has new commits' : 'GitHub has nothing new'}</b>
+      ${ch.length ? `<ul class="dflist">${ch.slice(0, 12).map(x => `<li>${esc(x.say)} <span class="mut sm">${esc(x.what)}</span></li>`).join('')}</ul>` : ''}
+      ${cf.length ? `<div class="dfconf"><b>Both changed - you choose:</b>${cf.map(x => `<fieldset class="dfc" data-item="${esc(x.item)}"><legend>${esc(x.say)}</legend>
+        <label><input type="radio" name="g-${esc(x.item)}" value="site" checked> Keep the app's</label><label><input type="radio" name="g-${esc(x.item)}" value="github"> Use GitHub's</label></fieldset>`).join('')}</div>` : ''}
+      ${ka.length ? `<p class="mut sm">Left alone (locked by Hoola or not text): ${ka.slice(0, 5).map(([p]) => esc(p)).join(', ')}${ka.length > 5 ? '…' : ''}</p>` : ''}</div>`;
+  }
+  async function gitAct(w) {
+    const {api, toast} = k(), base = `/api/appengine/${enc(ST.id)}/github`;
+    try {
+      if (w === 'compare') { drawGit(await api('GET', base + '/compare')); return; }
+      if (w === 'unlink') { if (!confirm('Unlink from GitHub? Nothing on GitHub or in the app changes.')) return; await api('DELETE', base); drawGit(); return; }
+      if (w === 'push') {
+        if (!confirm('Push this app to GitHub as one commit?')) return;
+        const r = await api('POST', base + '/push', {confirm: true}); toast(S(r.say)); drawGit(); return;
+      }
+      if (w === 'pull') {
+        const res = {}; document.querySelectorAll('#aeGitCmp .dfc').forEach(f => { res[f.dataset.item] = f.querySelector('input:checked')?.value || 'site'; });
+        if (!confirm('Pull from GitHub into this app? Incoming files must follow the app\'s rules.')) return;
+        const r = await api('POST', base + '/pull', {confirm: true, resolutions: res}); toast(S(r.say).slice(0, 200)); drawGit(); return;
+      }
+    } catch (e) { toast(e.message, true); drawGit(); }
+  }
+  async function gitLink(f) {
+    const {api, toast} = k(); const repo = S(f.repo.value).trim(); if (!repo) return;
+    if (!confirm(`Link to GitHub repository "${repo}"? It is created (private) if it does not exist.`)) return;
+    try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/github/link`, {repo, confirm: true, private: true}); toast(S(r.say).slice(0, 200)); drawGit(); }
+    catch (e) { toast(e.message, true); }
+  }
+  async function importApp(f) {
+    const {api, toast, go} = k(), out = document.getElementById('aeImpOut'), btn = f.querySelector('button[type=submit]');
+    btn.disabled = true; if (out) out.innerHTML = '<span class="mut sm">Importing...</span>';
+    try {
+      let r;
+      if (f.dataset.aeForm === 'imp-zip') {
+        const file = f.querySelector('input[type=file]').files[0]; if (!file) return;
+        r = await api('POST', '/api/appengine-import/zip?name=' + enc(file.name.replace(/\.zip$/i, '')), undefined, {form: file});
+      } else {
+        if (!confirm('Import this repository as a new app? Nothing is changed on GitHub.')) { btn.disabled = false; if (out) out.innerHTML = ''; return; }
+        r = await api('POST', '/api/appengine-import/github', {repo: S(f.repo.value).trim(), confirm: true});
+      }
+      const {esc} = k();
+      if (out) out.innerHTML = `<p>${esc(r.say)}</p>${L(r.refused).length ? `<ul class="dflist">${L(r.refused).slice(0, 10).map(x => `<li><code>${esc(x.file)}</code> ${esc(x.why)}</li>`).join('')}</ul>` : ''}
+        <a class="b pri" href="#/app/${enc(S(r.id))}">Open the app</a>`;
+    } catch (e) { toast(e.message, true); if (out) out.innerHTML = ''; }
+    btn.disabled = false;
   }
 
   /* ----- v0.832 L11 SABOOT: what Hoola proved before it says done ----- */
@@ -457,6 +534,7 @@
       catch (e) { toast(e.message, true); }
       await drawView(); return;
     }
+    if (what === 'git') { gitAct(b.dataset.aeGit); return; }
     if (what === 'chk') {
       const box = document.getElementById('aeChecks'); const w = b.dataset.aeChk;
       if (box) box.innerHTML = '<span class="mut">Checking... a browser check can take up to a minute.</span>';
@@ -518,7 +596,7 @@
     const f = e.target.closest && e.target.closest('[data-ae-form]');
     if (!f) return;
     e.preventDefault(); e.stopPropagation();
-    if (f.dataset.aeForm === 'new') createApp(f); else if (f.dataset.aeForm === 'say') say(f);
+    if (f.dataset.aeForm === 'new') createApp(f); else if (f.dataset.aeForm === 'say') say(f); else if (f.dataset.aeForm === 'git-link') gitLink(f); else if (f.dataset.aeForm === 'imp-zip' || f.dataset.aeForm === 'imp-gh') importApp(f);
   }, true);
   document.addEventListener('keydown', e => {
     if ((e.key === 's' || e.key === 'S') && !e.metaKey && !e.ctrlKey && !e.altKey && ST.tab === 'preview' && document.querySelector('[data-ae-root]')
