@@ -3110,3 +3110,29 @@ slow one.
 
 2) Not changed here beyond the steering wait (back to pc_wait_seconds 12 s, was 30 s in v0.861, which made a
 follow-up's reply later). Which surface she means (chat vs call) is asked.
+
+
+## v0.863.0 PC SAATH (fix 4 of the one-by-one PC clean-up)
+
+Her 13:11-13:19 log after v0.862 ("IT FORGOT THE LAST JOB ... OPENS NEW TAB ... SUDDENLY IT OPENS THE HOOLA OWN PC ...
+NO CONSISTANCY, NO MEMORY ... VERY DELAYED REPLY"). Three root causes, each fixed:
+
+1. HOOLA'S OWN PC AFTER HER TASK ENDED: v0.858 `where.release` drops the 45-minute "work is running on her PC" lock when
+   a task ends; only the 15-minute follow-up place stays, and only for messages of a few words. "Pizza cancel karo, KFC
+   chicken order karo" (or a call's longer reading) lost the place, so the chat brain was free to pick Hoola's PC / its own
+   browser. Now `operator.HER_PC_AT[tenant]` is stamped when a task on HER PC starts and ends, `her_pc_recent` = 45 min,
+   per person (any chat, call or side record). `pick`: hoola_pc_do refused unless she names Hoola's PC in this message;
+   computer_operator / browse_web for an order on her account site refused with "use pc_do" (no question); pc_do allowed
+   for a site / order task.
+2. A SECOND SWIGGY TAB: `_open_in_named` always pressed ctrl+t. Now the site's own word (`_site_word`: swiggy, amazon) is
+   matched against the front tab, then her tabs (`tabs` + `switch_tab`); the home page of an already-open site is NOT
+   reopened (her cart / login stay) - the answer says the tab is already open and in front; a deeper link opens in that
+   same tab through the address bar; a new site still gets a new tab.
+3. SLOW: `pc act` times showed page_text 10.8 s on Swiggy (the desktop walks the whole UIA tree), wait_for 23 s (it polls
+   page_text), open_url 15 s (8 s title wait + a page_text digest). The digest after every open is gone; page_text and
+   wait_for say in their own descriptions that they are slow on big shopping sites and to use the screenshot /
+   page_elements / wait 2 there.
+
+Tests: `test_v0863_pc_saath.py` (6); `test_v0185_pc_browser.py` (no digest) and `test_v0861_pc_steer_once.py` (a site not
+already open) updated. NOT VERIFIED on her PC. Not done yet: the 64-step task that scrolled the Swiggy home page instead of
+searching (stage 0/0 = no plan for it), and a payment option that is unavailable still ends the task instead of asking her.

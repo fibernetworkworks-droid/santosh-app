@@ -59,7 +59,7 @@ def test_open_url_on_her_pc_never_uses_the_desktop_default_browser_path(monkeypa
     monkeypatch.setattr(asyncio, "sleep", lambda *_a, **_k: asyncio.sleep.__wrapped__(0) if False else _noop())
     op = operator.Op(id="pcop_e", tenant="t", conv="c", task="swiggy")
     op.browser, op.browser_src = "chrome", "remembered"
-    asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
+    asyncio.run(operator._do(op, "open_url", {"url": "zomato.com"}))
     assert "open_url" not in seen and "key" in seen
 
 

@@ -238,12 +238,14 @@ TOOLS = [
     {"name": "open_app", "description": "Open an installed app by name (e.g. 'Tally', 'Excel', 'Word', 'Chrome', 'Notepad'). "
                                          "Also Store apps, or a full .exe path when the Start menu misses it.",
      "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
-    {"name": "open_url", "description": "Open a website as a new tab in the browser she already has open (Chrome / Edge /"
-                                         " Firefox) and wait for the page to load. Only http(s) URLs.",
+    {"name": "open_url", "description": "Open a website in the browser she named. If that site is ALREADY open in a tab, "
+                                         "that tab is used (no new tab; her cart / login stay as they are) - otherwise a "
+                                         "new tab. Only http(s) URLs.",
      "input_schema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}},
     {"name": "page_text", "description": "Read the exact text of the page open in her browser (labels, prices, table "
-                                          "cells, buttons, errors). More exact than screenshots for finding fields or "
-                                          "checking what loaded.",
+                                          "cells, buttons, errors). SLOW on big shopping sites (Swiggy, Amazon: ~10 s) - "
+                                          "there use the screenshot or page_elements (1-2 s) and call this only to read "
+                                          "exact prices / text once.",
      "input_schema": {"type": "object", "properties": {"max_chars": {"type": "integer"}}}},
     # v0.208 SEMANTIC BROWSER (both PCs): act on page elements BY REF - the exact cure for pixel guessing.
     # page_elements lists the real buttons/links/fields once (one cheap step); the PC then clicks/types the
@@ -272,8 +274,9 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"entries": {"type": "array", "items": {"type": "object",
                                                        "properties": {"ref": {"type": "integer"}, "text": {"type": "string"}},
                                                        "required": ["ref", "text"]}}}, "required": ["entries"]}},
-    {"name": "wait_for", "description": "Wait until a text really appears on the open page (max 20s) - smarter than a "
-                                          "blind wait when something is loading.",
+    {"name": "wait_for", "description": "Wait until a text really appears on the open page (max 20s). SLOW on big "
+                                          "shopping sites (it re-reads the page every ~10 s) - there use wait 2 and look "
+                                          "at the next screenshot instead.",
      "input_schema": {"type": "object", "properties": {"text": {"type": "string"}, "seconds": {"type": "integer"}},
                       "required": ["text"]}},
     {"name": "tabs", "description": "List her browser's open tabs: number, title, which is active.",
@@ -603,6 +606,12 @@ class Op:
 
 
 OPS: dict[str, Op] = {}
+HER_PC_AT: dict[str, float] = {}   # v0.863 tenant -> when a task on HER own PC last started / ended
+
+
+def her_pc_recent(tenant: str, secs: float = 45 * 60) -> bool:
+    """v0.863 her own PC did work for her lately: a new order / site ask stays there, never Hoola's own PC."""
+    return bool(tenant) and time.time() - HER_PC_AT.get(tenant, 0.0) <= secs
 _loop: asyncio.AbstractEventLoop | None = None
 
 
@@ -1325,6 +1334,21 @@ def _pick_browser(op: "Op") -> str:
     return op.browser
 
 
+def _site_word(url: str) -> str:
+    """v0.863 the site's own name from its address ('https://www.swiggy.com/x' -> 'swiggy'), '' when unclear."""
+    m = re.match(r"^\s*(?:https?://)?([^/?#:]+)", str(url or ""), re.I)
+    if not m:
+        return ""
+    parts = [x for x in m.group(1).lower().split(".") if x and x not in ("www", "m", "in", "com", "co", "org", "net", "app")]
+    w = parts[-1] if parts else ""
+    return w if len(w) >= 4 else ""
+
+
+def _is_root(url: str) -> bool:
+    """The site's home page (nothing after the address) - opening it again would only lose her place."""
+    return not re.sub(r"^\s*(?:https?://)?[^/?#]+", "", str(url or "")).strip("/? #")
+
+
 async def _open_in_named(op: "Op", url: str, b: str) -> str:
     """Open url in browser b in a NEW TAB (never replacing the page she has open): bring that browser's window to the
     front (focus an existing window first - open_app on a running browser makes ANOTHER window), ctrl+t, type the
@@ -1332,6 +1356,7 @@ async def _open_in_named(op: "Op", url: str, b: str) -> str:
     app, _word = BROWSERS[b]
     op.opened_title = ""
     title = await _front_title(op)
+    brand = _site_word(url)
     fresh = False
     if not _in_front(title, b):
         win = next((w for w in op.windows if _in_front(w, b)), "")
@@ -1357,8 +1382,25 @@ async def _open_in_named(op: "Op", url: str, b: str) -> str:
                 return (f"ERROR: {app} did not come to the front yet (active window: '{title[:80]}'). Take a screenshot; "
                         f"if {app} is open, bring it forward with focus_window and open the site again. Never use "
                         "another browser and never open the link any other way.")
+    # v0.863 PC SAATH: the site is ALREADY open (her cart, her login) -> use that tab, never a second one
+    same = bool(brand and brand in _title(title).lower())
+    if not same and brand and not fresh:
+        try:
+            tl = await _pc(op, "tabs", {}, timeout=15, log=False)
+            hit = next((t for t in (tl.get("tabs") or []) if brand in str(t.get("title") or "").lower()), None)
+            if hit:
+                await _pc(op, "switch_tab", {"tab": str(hit.get("title") or "")[:120], "index": 0}, timeout=20, log=False)
+                title = await _front_title(op)
+                same = brand in _title(title).lower()
+        except Exception:
+            pass
+    if same and _is_root(url):
+        op.opened_title = title
+        log.info("pc task %s: %s already open in %s, tab reused", op.id, brand, app)
+        return (f"{brand} is ALREADY open in {app} (tab: {title[:90]}) - this tab is in front now. Use it as it is "
+                "(her cart / login are here); look at the next screenshot. No new tab was opened.")
     blank = re.match(r"^\s*(new tab|नया टैब|start page|speed dial)\b", _title(title))
-    if not (fresh and blank):
+    if not same and not (fresh and blank):
         await _pc(op, "control", {"op": "key", "keys": "ctrl+t"})   # a NEW tab: her open page stays as it was
         await asyncio.sleep(0.35)
         title = await _front_title(op)
@@ -1375,16 +1417,9 @@ async def _open_in_named(op: "Op", url: str, b: str) -> str:
             loaded = t
             break
     op.opened_title = loaded
-    out = f"opened {url} in {app} (new tab)"
-    if loaded:
+    out = f"opened {url} in {app} " + ("(same tab - the site was already open)" if same else "(new tab)")
+    if loaded:   # v0.863 no page_text digest here any more: on big sites it cost ~10 s; the screenshot shows the page
         out += f"; page title now: {loaded}"
-        try:
-            pt = await _pc(op, "page_text", {"max_chars": 800}, timeout=20, log=False)
-            digest = (pt.get("text") or "").strip()[:600]
-            if digest:
-                out += "\nPage text starts with: " + digest
-        except Exception:
-            pass
     else:
         out += " (still loading - look at the next screenshot)"
     return out
@@ -2838,6 +2873,8 @@ async def _run(op: Op) -> None:
                  (op.reason or op.summary or "")[:200])
         op.action = {"done": "Ho gaya", "partial": "Poora nahi hua", "failed": "Ruk gaya", "cancelled": "Aapne rok diya"}.get(op.status, op.action)
         _work(op, "_end")
+        if op.kind != HOOLA_PC_KIND:
+            HER_PC_AT[op.tenant] = time.time()
         try:   # v0.858 the task ENDED: its 'work is running there' lock goes (it pulled unrelated asks to the PC)
             from ..agent import where
             where.release(op.conv, op.status)
@@ -2964,6 +3001,8 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
              op.device_name or dev or "-", op.brain_model or op.brain, op.browser or "-", op.browser_src or "-",
              op.steps_max, op.minutes, op.task[:200])
     _event(op)
+    if ckind != HOOLA_PC_KIND:
+        HER_PC_AT[tenant] = time.time()    # v0.863 PC SAATH: her own PC is where her work is now (any chat / call)
     op.task_obj = asyncio.create_task(_run(op))
     if wait > 0:
         try:

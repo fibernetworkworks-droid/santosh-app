@@ -275,9 +275,9 @@ def test_open_url_reports_tab_title_and_page_digest(op, monkeypatch):
     assert "opened https://www.irctc.co.in in Google Chrome (new tab)" in body
     assert "page title now: IRCTC | Train Ticket Booking" in body
     assert not any(a == "open_url" for a, _k in pc.calls)
-    assert "Page text starts with: Book train tickets online" in body
-    # the digest call rode along automatically and was not logged as a step
-    assert any(a == "page_text" for a, _k in pc.calls)
+    # v0.863 no page_text digest after opening any more (it took ~10 s on big sites); the screenshot shows the page
+    assert "Page text starts with" not in body
+    assert not any(a == "page_text" for a, _k in pc.calls)
 
 
 def test_open_url_old_desktop_stays_plain(op, monkeypatch):
@@ -339,4 +339,4 @@ def test_desktop_version_moves_with_every_release():
 
 def test_app_version_is_0185():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.862.0"
+    assert APP_VERSION == "0.863.0"
