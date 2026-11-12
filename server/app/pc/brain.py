@@ -203,6 +203,9 @@ async def think_qwen(model: str, system: str, messages: list[dict], tools: list[
     think = str(getattr(st, "pc_qwen_thinking", "") or "").strip().lower()
     if think in ("on", "off"):
         body["reasoning"] = {"enabled": think == "on"}   # OpenRouter's own reasoning switch
+    sort = str(getattr(st, "pc_qwen_provider_sort", "") or "").strip().lower()
+    if sort in ("latency", "throughput", "price"):
+        body["provider"] = {"sort": sort}   # v0.856 PC SPEED: OpenRouter picks the fastest-answering Qwen host
     for attempt in range(3):
         try:
             data = await _post(url, key, body, float(getattr(st, "pc_brain_timeout_s", 90) or 90))

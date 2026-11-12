@@ -429,7 +429,8 @@ class Settings(BaseSettings):
     pc_model: str = "qwen"                  # "qwen" | "sonnet" (a task can name its own); qwen = OpenRouter only, no OpenRouter key = sonnet, said
     pc_qwen_openrouter_model: str = "qwen/qwen3.8-max-0902"   # v0.853 Qwen ONLY via OpenRouter on the server's OpenRouter key (never Alibaba Cloud)
     pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop
-    pc_qwen_thinking: str = ""              # "" = default, "on" / "off" = OpenRouter reasoning.enabled
+    pc_qwen_thinking: str = "off"           # v0.856 PC SPEED: off by default (it thought before EVERY click); "on" / "" = default
+    pc_qwen_provider_sort: str = "latency"  # v0.856 OpenRouter provider.sort for the PC brain: latency | throughput | price | ""
     pc_max_tokens: int = 4000               # output room per PC step (was 1500: thinking could eat the action)
     pc_brain_timeout_s: float = 90.0
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)

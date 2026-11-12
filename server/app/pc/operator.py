@@ -39,7 +39,7 @@ MAX_STEPS = 40
 MAX_STEPS_WEB = 64        # v0.184 browser jobs need more room (forms, logins, OTP, downloads, multi-tab)
 TASK_MINUTES = 15
 TASK_MINUTES_WEB = 22     # v0.184
-KEEP_IMAGES = 3
+KEEP_IMAGES = 2           # v0.856 PC SPEED: 3 -> 2 (less to re-read on every step = a faster answer)
 # v0.184 tasks that will live in her browser get the bigger budget (chosen from her words, not a guess)
 _WEB_TASK = re.compile(r"(https?://|www\.|\.(com|in|org|net|gov|edu)\b|website|web ?site|browser|chrome|edge|"
                        r"brave|firefox|online|youtube|gmail|whatsapp web|form|download|upload|log ?in|sign ?up|"
@@ -113,6 +113,7 @@ Work fast but look before you point: you may send a click followed by keyboard a
 type, press tab, type, press enter). After a click / scroll / drag / open_app / focus_window, any further click,
 scroll, drag or done in the same turn is NOT run (the screen may have moved): look at the new screenshot first.
 After your actions you get a new screenshot.
+SPEED: every turn costs seconds, so finish in as FEW turns as you can. After open_app / ax_launch / focus_window / open_url / switch_tab you may send the typing / keys for it in the SAME turn (they run once that app, window, site or tab is in front; a click still waits for the next screen). For websites prefer page_* tools and for desktop apps ax_* tools: they need no screenshot round. Type a whole text in ONE type action, never line by line. Send done in the same turn as the last keyboard action when nothing needs checking.
 
 How to work:
 - Prefer the fastest reliable way: open_app by name, keyboard shortcuts (ctrl+s, alt+tab, ctrl+f, win to search...),
@@ -913,6 +914,50 @@ async def _shot_retry(op: Op, monitor: str = "") -> list[dict]:
     except Exception:
         await asyncio.sleep(2.5)
         return await _shot(op, monitor)
+
+
+_APP_WORDS = re.compile(r"[a-z0-9]+")
+# v0.856 after these a keyboard step of the same turn may run once their target is in front
+FAST_AFTER = {"open_app", "ax_launch", "focus_window", "open_url", "switch_tab"}
+KEYBOARD = {"type", "key"}
+_URL_NOISE = {"www", "com", "org", "net", "gov", "edu", "http", "https", "html", "php", "index",
+              # a browser's own name is in EVERY tab title - it proves nothing about which page is in front
+              "google", "chrome", "microsoft", "edge", "mozilla", "firefox", "brave", "opera"}
+
+
+def _target_of(name: str, a: dict[str, Any]) -> str:
+    """The words the active window's title should carry after this step (app name, window title, tab, site)."""
+    if name in ("open_app", "ax_launch"):
+        return str(a.get("name") or a.get("app") or "")
+    if name == "focus_window":
+        return str(a.get("title") or "")
+    if name == "switch_tab":
+        return str(a.get("tab") or "")
+    if name == "open_url":
+        from urllib.parse import urlparse
+        try:
+            host = urlparse(str(a.get("url") or "")).hostname or ""
+        except Exception:
+            host = ""
+        return " ".join(w for w in _APP_WORDS.findall(host.lower()) if w not in _URL_NOISE and len(w) >= 3)
+    return ""
+
+
+async def _opened_in_front(op: Op, app: str) -> bool:
+    """v0.856 PC SPEED: is the app this turn opened now the active window? Waits for it briefly (up to ~3 s) with
+    fresh screens, so typing never lands in whatever window was in front before. Any doubt = False (held, as before)."""
+    want = [w for w in _APP_WORDS.findall(app.lower().replace(".exe", "")) if len(w) >= 3 and w not in _URL_NOISE]
+    if not want:
+        return False
+    for _ in range(4):
+        try:
+            await asyncio.sleep(0.6)
+            await _shot(op)
+        except Exception:
+            return False
+        if any(w in (op.window or "").lower() for w in want):
+            return True
+    return False
 
 
 def _trim_images(messages: list[dict]) -> None:
@@ -1864,8 +1909,16 @@ async def _run(op: Op) -> None:
             results = []
             finished = False
             moved = ""                      # a screen-changing action already ran in this turn
+            opened = ""                     # v0.856 the app an open_app / ax_launch of THIS turn opened
             for u in uses:
                 name, a = u["name"], u.get("input") or {}
+                if moved and name in KEYBOARD and opened and moved in FAST_AFTER \
+                        and await _opened_in_front(op, opened):
+                    # v0.856 PC SPEED (every app, website, tab, window and Settings page - not only Notepad): the
+                    # keyboard step of the SAME turn runs once the thing it opened / switched to is really the active
+                    # window (checked on fresh screens); otherwise it is held exactly as before. Clicks stay held.
+                    moved = ""
+                    STATS["fast_type"] = STATS.get("fast_type", 0) + 1
                 if moved and (name in POINTING or moved in FOCUS_MOVERS):
                     # v0.91.1 never point at (or type into) a screen the model has not seen yet; v0.166 the same for
                     # a monitor switch (screenshot) and browser / window moves
@@ -1934,13 +1987,16 @@ async def _run(op: Op) -> None:
                     msg, is_err = f"ERROR: {e}", True
                 if name in MOVES_SCREEN:
                     moved = name
+                    opened = _target_of(name, a) if name in FAST_AFTER and not is_err else ""
                 results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg, **({"is_error": True} if is_err else {})})
             if finished or op.status != "running":
                 break
             last = moved or (uses[-1]["name"] if uses else "")
             if SETTLE_S.get(last):          # let the PC react (menus open, pages paint) before looking again
                 await asyncio.sleep(SETTLE_S[last])
+            t_shot = time.monotonic()
             shot = await _shot_retry(op)
+            log.info("pc step %d screen %.1fs", op.step, time.monotonic() - t_shot)   # v0.856 where the time goes
             prev = results[-1]["content"]
             prev_text = prev if isinstance(prev, str) else " ".join(
                 b.get("text", "") for b in prev if isinstance(b, dict) and b.get("type") == "text")
