@@ -98,7 +98,7 @@ def test_hoola_answers_with_tools(env, monkeypatch):
     wa = env["wa"]
     assert wa.sent_texts[-1] == {"to": CUST, "text": "Kal 10:00 ya 10:30 khaali hai, kaunsa chalega?"}
     assert "biz_free_slots" in brain.calls[0]["tools"] and "email_read" not in brain.calls[0]["tools"]
-    assert "Sharma Clinic" in brain.calls[0]["system"] and "hukm nahi" in brain.calls[0]["system"]
+    assert "Sharma Clinic" in brain.calls[0]["system"] and "not an order" in brain.calls[0]["system"]
     res = brain.calls[1]["history"][-1]["content"][0]
     assert res["type"] == "tool_result" and "free" in res["content"]
     c = _contact()
@@ -135,7 +135,7 @@ def test_booking_asks_owner_then_tells_customer(env, monkeypatch):
     assert out["status"] == "done"
     ap = inbox.appointments("default")
     assert len(ap) == 1 and ap[0]["name"] == "Ravi" and ap[0]["phone"] == CUST
-    assert "haan kaha" in brain.calls[-1]["history"][-1]["content"]
+    assert "said yes" in brain.calls[-1]["history"][-1]["content"]
     assert env["wa"].sent_texts[-1]["text"] == "Aapka appointment kal 10:00 baje pakka ho gaya."
 
 

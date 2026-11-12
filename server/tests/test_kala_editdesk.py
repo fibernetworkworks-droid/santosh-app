@@ -64,7 +64,7 @@ def test_rules():
     assert b["captions"] is True and b["languages"] == ["hindi"] and b["references"] == ["https://youtu.be/abc"]
     assert "123456" not in b["text"] and b["music_said"]
     assert R.parse_brief("wedding teaser 2 min", t0)["kind"] == "wedding" and R.parse_brief("2 min", t0)["length_s"] == 120
-    assert R.brief_questions({}, False, False)[0].startswith("Kis platform")
+    assert R.brief_questions({}, False, False)[0].startswith("Which platform")
     assert R.timecode_at("0:15 pe logo chhota karo") == (15.0, "logo chhota karo")
     assert R.timecode_at("1:02:10 text galat")[0] == 3730.0
     assert R.timecode_at("45 sec par music dheema")[0] == 45.0

@@ -61,7 +61,7 @@ def test_rules():
     assert R.hhmm("7 pm") == 19 * 60 and R.hhmm("7:30 shaam") == 19 * 60 + 30 and R.hhmm("10") == 600 and R.hhmm("abc") is None
     assert R.noise_problem(19 * 60, 23 * 60, True) and not R.noise_problem(19 * 60, 21 * 60 + 30, True)
     assert not R.noise_problem(19 * 60, 23 * 60, False)
-    assert "baal vivah" in R.age_problem(17, 25) and "baal vivah" in R.age_problem(20, 20) and R.age_problem(18, 21) == ""
+    assert "child marriage" in R.age_problem(17, 25) and "child marriage" in R.age_problem(20, 20) and R.age_problem(18, 21) == ""
     assert R.dowry_problem("dahej ki list") and not R.dowry_problem("shagun list")
     assert R.mask_name("Sunita Mehra") == "Sunita M." and R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [hataya] card [hataya]"
     assert R.phone("+91 98220 12345") == "9822012345" and R.phone("12345") == ""
@@ -267,7 +267,7 @@ def test_messages_client_quote_and_dowry_gift_register(sh):
     with pytest.raises(S.ShaadiError):
         S.gift_list_file(T, w["id"], actor="staff:s1")
     reg = S.registration(T, w["id"])
-    assert "Hindu Marriage Act" in reg["law"] and "90 din" in reg["state_note"] and reg["by"] == "2027-03-14"
+    assert "Hindu Marriage Act" in reg["law"] and "90 days" in reg["state_note"] and reg["by"] == "2027-03-14"
 
 
 def r(v):

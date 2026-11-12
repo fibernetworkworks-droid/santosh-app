@@ -87,7 +87,7 @@ def test_rules():
     p = {"refund_days": 7, "refund_max": 2000}
     assert R.policy_check("refund", 500, 3, p)["within"]
     out = R.policy_check("refund", 500, 10, p)
-    assert not out["within"] and "7 din" in out["reasons"][0]
+    assert not out["within"] and "7 days" in out["reasons"][0]
     assert not R.policy_check("waiver", 0, 1, p)["within"] and R.policy_check("refund", 500, 1, {})["reasons"]
     assert any("T+1" in n for n in R.legal_notes("billing", "UPI se paise kat gaye"))
     assert R.similarity("aaj dukaan kitne baje khulegi", "Dukaan kitne baje khulti hai") > 0.5
