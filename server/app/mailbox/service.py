@@ -75,8 +75,8 @@ def check(tenant: str, folder: str = "inbox", unread_only: bool = False, search:
     box = get_box(tenant, account)
     if (folder or "").strip().lower() == "snoozed" and box.kind != "gmail":
         # v0.184.0 in:snoozed is Gmail's own snooze pile; Hoola's own snoozes are listed by email_snooze
-        raise MailError("Snoozed folder Gmail ka apna hai. Hoola ke apne snooze (jo yahan se gaye the) "
-                        "email_snooze action='list' se dikhte hain.")
+        raise MailError("The Snoozed folder is Gmail's own. Hoola's own snoozes (the ones set from here) "
+                        "are listed by email_snooze action='list'.")
     items = _guard(box, lambda: box.list(folder or "inbox", unread_only, search, limit, since, snippets))
     contacts.learn(tenant, [(i.get("from", ""), i.get("from_email", "")) for i in items if not i.get("bulk")], 0.2)
     out = {"account": box.address, "folder": folder or "inbox", "count": len(items),
@@ -84,8 +84,8 @@ def check(tenant: str, folder: str = "inbox", unread_only: bool = False, search:
     if getattr(box, "last_more", False) or (limit and len(items) >= int(limit)):
         # v0.706 the model never knew a list was cut short - it looped check -> act, guessing when to stop
         out["more"] = True
-        out["more_note"] = ("Aur mails bhi hain is filter mein. Bulk kaam ke liye wahi query dobara chalao jab tak "
-                            "'more' na rahe - ek baar act karne ke baad wahi mails wapas aayein to loop hai, ruk jao.")
+        out["more_note"] = ("There are more mails in this filter. For bulk work, run the same query again until "
+                            "'more' is gone - if the same mails come back after you act, it is a loop, so stop.")
     return out
 
 
@@ -184,7 +184,7 @@ def attachment(tenant: str, ref: str, att_id: str) -> tuple[str, str, bytes]:
     try:
         return mime.get_attachment(raw, str(att_id))
     except KeyError:
-        raise MailError("Is email mein yeh attachment nahi mila. email_read se attachment id dekhiye.")
+        raise MailError("This email has no such attachment. Use email_read to see the attachment ids.")
 
 
 def _by_box(tenant: str, refs: list[str]) -> dict[str, tuple[Box, list[str]]]:
@@ -208,15 +208,15 @@ def act_query(tenant: str, action: str, source_folder: str = "inbox", search: st
     """v0.707 ONE call for "saare promotions archive karo": the server finds every matching mail (paged) and acts on all
     of them, then says how many - the model used to loop check -> act 40 times guessing when it was done."""
     if action not in BULK_ACTIONS:
-        raise MailError(f"Bulk action in mein se: {', '.join(BULK_ACTIONS)} (delete / spam ke liye email_delete card).")
+        raise MailError(f"Bulk action is one of: {', '.join(BULK_ACTIONS)} (use the email_delete card for delete / spam).")
     if action == "move" and not folder:
-        raise MailError("Kis folder/label mein?")
+        raise MailError("Which folder or label?")
     box = get_box(tenant, account)
     if box.kind != "gmail" or not hasattr(box, "ids_for"):
-        raise MailError("Query se bulk kaam abhi Gmail par hai - doosre mailbox ke liye email_check ke ids do.")
+        raise MailError("Bulk work by query is only on Gmail for now - for other mailboxes give ids from email_check.")
     ids, more = _guard(box, lambda: box.ids_for(source_folder or "inbox", search, max(1, min(int(cap), 2000))))
     if not ids:
-        return {"done": action, "count": 0, "account": box.address, "note": "Is filter mein koi mail nahi mili."}
+        return {"done": action, "count": 0, "account": box.address, "note": "No mail matches this filter."}
 
     def go():
         if action == "archive":
@@ -231,11 +231,11 @@ def act_query(tenant: str, action: str, source_folder: str = "inbox", search: st
             box.move(ids, folder)
     _guard(box, go)
     out = {"done": action, "count": len(ids), "account": box.address, "from": source_folder,
-           "say": f"{len(ids)} mails par '{action}' ho gaya. Ab dobara check karke loop mat chalao."}
+           "say": f"'{action}' is done on {len(ids)} mails. Do not check again and run it in a loop."}
     if more:
         out["more"] = True
-        out["say"] = (f"{len(ids)} mails par '{action}' ho gaya; aur bhi bachi hain (ek baar mein {cap} tak). Owner se "
-                      "poochho aage karna hai to wahi call ek baar aur.")
+        out["say"] = (f"'{action}' is done on {len(ids)} mails; more are left (up to {cap} at a time). Ask the owner "
+                      "whether to go on; if so, make the same call once more.")
     return out
 
 
@@ -245,7 +245,7 @@ def act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str
     if not refs:
         raise MailError("Kaunsi emails? ids do (email_check se).")
     if action == "move" and not folder:
-        raise MailError("Kis folder/label mein?")
+        raise MailError("Which folder or label?")
     for box, natives in _by_box(tenant, refs).values():
         def go(box=box, natives=natives):
             if action == "archive":
@@ -332,7 +332,7 @@ def label_op(tenant: str, action: str, name: str = "", new_name: str = "", accou
         return out
     if action == "create":
         if not name.strip():
-            raise MailError("Label ka naam do.")
+            raise MailError("Give the label name.")
         if "/" in name and box.kind == "gmail":
             _ensure_label_path(box, name)
         else:
@@ -340,7 +340,7 @@ def label_op(tenant: str, action: str, name: str = "", new_name: str = "", accou
         return {"created": name.strip(), "labels": _guard(box, box.folders)}
     if action == "rename":
         if not name.strip() or not new_name.strip():
-            raise MailError("Kaunsa label, aur naya naam? dono do.")
+            raise MailError("Which label, and what new name? Give both.")
         _guard(box, lambda: box.label_rename(name, new_name))
         return {"renamed": f"{name} -> {new_name}"}
     if action == "delete":
@@ -350,11 +350,11 @@ def label_op(tenant: str, action: str, name: str = "", new_name: str = "", accou
         return {"deleted": name.strip()}
     if action == "color":
         if not name.strip():
-            raise MailError("Kis label ka rang? naam do.")
+            raise MailError("Which label's color? Give the name.")
         pal = LABEL_COLORS.get((color or "").strip().lower())
         if pal is None:
-            raise MailError(f"Rang in mein se hai: {', '.join(LABEL_COLORS)}. (Star ka rang Gmail ki API se nahi "
-                            "badalta — woh web/app se hota hai.)")
+            raise MailError(f"Color must be one of: {', '.join(LABEL_COLORS)}. (A star's color cannot be changed through Gmail's API "
+                            "- do it from the web or the app.)")
         _guard(box, lambda: box.label_color(name, pal[0], pal[1]))
         return {"colored": name.strip(), "color": (color or "").strip().lower()}
     raise MailError("action: list / create / rename / delete / color")
@@ -382,7 +382,7 @@ def push_gmail_draft(tenant: str, draft_id: str) -> dict[str, Any]:
         if d is None or d.tenant_id != tenant:
             raise MailError("Draft not found")
         if d.status != "pending":
-            raise MailError("Sirf taiyaar (pending) draft hi mailbox ke Drafts mein save hota hai.")
+            raise MailError("Only a ready (pending) draft is saved to the mailbox Drafts.")
         to_addr, cc, bcc, subject = d.to_addr, d.cc_addr or "", d.bcc_addr or "", d.subject
         irt, refs, account, thread_id = d.in_reply_to, d.references, d.account, d.thread_id
         atts, body, md = list(d.attachments or []), d.body, bool(d.markdown)
@@ -395,7 +395,7 @@ def push_gmail_draft(tenant: str, draft_id: str) -> dict[str, Any]:
                      html_body=mime.md_to_html(body) if md else None)
     out = _guard(box, lambda: box.save_draft(msg, thread_id or None))
     return {"gmail_draft_id": out.get("draft_id", ""), "account": box.address,
-            "note": "Mailbox ke Drafts folder mein save ho gaya; yahan ka draft bhi pending hai."}
+            "note": "Saved in the mailbox Drafts folder; the draft here is still pending too."}
 
 
 # ---------------- v0.183.0 Gmail settings: vacation reply, signature (sendAs), aliases, auto-forward ----------------
@@ -409,10 +409,10 @@ def settings_gmail(tenant: str, account: str | None = None) -> Box:
         from .accounts import boxes          # call-time import: tests may swap the boxes list
         gmails = [b for b in boxes(tenant) if b.kind == "gmail"]
         if not gmails:
-            raise MailError("Yeh settings Gmail ke apne menu ki cheezein hain — koi Gmail mailbox judi nahi hai.")
+            raise MailError("These settings are Gmail's own menu items - no Gmail mailbox is connected.")
         box = gmails[0]
     if box.kind != "gmail":
-        raise MailError("Yeh settings sirf Gmail mailbox par kaam karti hain (yeh mailbox Gmail nahi hai).")
+        raise MailError("These settings only work on a Gmail mailbox (this mailbox is not Gmail).")
     return box
 
 
@@ -423,7 +423,7 @@ def _ms_dt(tenant: str, when: str | None, field: str) -> datetime | None:
     try:
         return parse_local(str(when), _tz(tenant))
     except ValueError as e:
-        raise MailError(f"{field}: '{when}' samajh nahi aaya ({e}). Local time do, jaise 2026-10-27T09:00.")
+        raise MailError(f"{field}: '{when}' not understood ({e}). Give a local time, such as 2026-10-27T09:00.")
 
 
 def _millis(dt: datetime | None) -> int:
@@ -454,9 +454,9 @@ def _send_as_view(sa: dict[str, Any]) -> dict[str, Any]:
 def _forward_view(v: dict[str, Any]) -> dict[str, Any]:
     disp = v.get("disposition", "keep")
     return {"enabled": bool(v.get("enabled")), "to": v.get("emailAddress", ""), "disposition": disp,
-            "disposition_label": {"keep": "Gmail inbox mein rakhta hai", "archive": "archive kar deta hai",
-                                  "trash": "Trash mein daalta hai",
-                                  "markRead": "padha hua mark kar deta hai"}.get(disp, disp)}
+            "disposition_label": {"keep": "Gmail keeps it in the inbox", "archive": "archives it",
+                                  "trash": "moves it to Trash",
+                                  "markRead": "marks it as read"}.get(disp, disp)}
 
 
 def settings_status(tenant: str, account: str | None = None) -> dict[str, Any]:
@@ -499,19 +499,19 @@ def vacation_set(tenant: str, account: str | None, enable: bool, message: str = 
     enable = bool(enable)
     message = (message or "").strip()
     if enable and not message:
-        raise MailError("Vacation reply ON karne ke liye message do (wahi sabko auto-jawab jayega).")
+        raise MailError("Give a message to turn Vacation reply ON (everyone gets this auto-reply).")
     start_dt = _ms_dt(tenant, start, "start") or (now() if enable else None)
     end_dt = _ms_dt(tenant, end, "end")
     if end_dt and end_dt <= (start_dt or now()):
-        raise MailError("end, start ke baad ka time hona chahiye.")
+        raise MailError("end must be after start.")
     box = settings_gmail(tenant, account)
     if not settings_scope_ok(tenant, box):
         raise MailError(settings_scope_message(box.address))
     _guard(box, lambda: box.vacation_set(enable, message, (subject or "").strip(), _millis(start_dt),
                                          _millis(end_dt), bool(contacts_only)))
     return {"account": box.address, "vacation": _vacation_view(tenant, _guard(box, box.vacation_get)),
-            "note": ("Vacation reply chalu ho gaya. Aane wali har mail ko yahi auto-jawab jayega." if enable
-                     else "Vacation reply band ho gaya.")}
+            "note": ("Vacation reply is on. Every incoming mail gets this auto-reply." if enable
+                     else "Vacation reply is off.")}
 
 
 def send_as_list(tenant: str, account: str | None = None) -> dict[str, Any]:
@@ -525,13 +525,13 @@ def signature_push(tenant: str, account: str | None, signature: str = "") -> dic
         raise MailError(settings_scope_message(box.address))
     sig = (signature or "").strip() or (box.signature or "").strip()
     if not sig:
-        raise MailError("Is mailbox ka signature khaali hai — pehle email_accounts signature='...' se set kijiye.")
+        raise MailError("This mailbox has no signature - first set one with email_accounts signature='...'.")
     rows = _guard(box, box.send_as_list)
     primary = next((sa.get("sendAsEmail") for sa in rows if sa.get("isPrimary")), None) or box.address
     sig_html = "<br>".join(html.escape(line) for line in sig.splitlines()[:12])[:2000]
     _guard(box, lambda: box.send_as_signature(primary, sig_html))
     return {"account": box.address, "pushed_to": primary, "signature": sig[:500],
-            "note": "Signature Gmail ke andar bhi set ho gaya — web, phone, sab jagah wahi dikhega."}
+            "note": "The signature is also set inside Gmail - it shows on the web, phone, everywhere."}
 
 
 def auto_forwarding_get(tenant: str, account: str | None = None) -> dict[str, Any]:
@@ -546,7 +546,7 @@ def auto_forwarding_set(tenant: str, account: str | None, enable: bool, to: str 
     if disp not in ("keep", "archive", "trash", "markRead"):
         raise MailError("disposition: keep / archive / trash / markRead")
     if enable and not contacts.valid(to):
-        raise MailError("Forward kis address par? Sahi email do.")
+        raise MailError("Forward to which address? Give a valid email.")
     box = settings_gmail(tenant, account)
     if not settings_scope_ok(tenant, box):
         raise MailError(settings_scope_message(box.address))
@@ -560,12 +560,12 @@ def auto_forwarding_set(tenant: str, account: str | None, enable: bool, to: str 
         _guard(box, lambda: box.auto_forwarding_set(enable, to, disp))
     except MailError as e:
         if enable and ("400" in str(e) or "403" in str(e)):
-            raise MailError("Gmail ne auto-forward nahi maana: pehle Gmail (web) ke Settings > Forwarding mein us "
-                            f"address ko verify karna hota hai. ({str(e)[:160]})")
+            raise MailError("Gmail did not accept the auto-forward: the address first has to be verified in Gmail (web) "
+                            f"Settings > Forwarding. ({str(e)[:160]})")
         raise
     return {"account": box.address, "forwarding": _forward_view(_guard(box, box.auto_forwarding_get)),
-            "note": (f"Har nayi mail ab {to} par bhi jayegi (Gmail ke apne forward se)." if enable
-                     else "Auto-forward band ho gaya.")}
+            "note": (f"Every new mail will now also go to {to} (through Gmail's own forwarding)." if enable
+                     else "Auto-forward is off.")}
 
 
 # ---------------- v0.186.0 the remaining surface: filters, forwarding addresses, alias add/remove,
@@ -640,7 +640,7 @@ def filter_op(tenant: str, action: str, match: dict[str, Any] | None = None, do:
         if str(d.get("category") or "").strip():
             cat = GmailBox.CATEGORIES.get(str(d["category"]).strip().lower())
             if not cat:
-                raise MailError("category personal / social / updates / forums / promotions mein se hai.")
+                raise MailError("category must be one of personal / social / updates / forums / promotions.")
             act["addLabelIds"].append(cat)
         if str(d.get("forward") or "").strip():
             fwd = str(d["forward"]).strip().lower()
@@ -648,23 +648,23 @@ def filter_op(tenant: str, action: str, match: dict[str, Any] | None = None, do:
             ok = [r for r in rows if (r.get("forwardingEmail") or "").lower() == fwd
                   and r.get("verificationStatus") == "accepted"]
             if not ok:
-                raise MailError(f"'{fwd}' abhi Gmail ka verified forwarding address nahi hai. Pehle email_forwarding "
-                                f"action='add' se jodiye, us inbox mein Google ka verification link click kijiye, "
-                                f"phir yeh filter lagaiye.")
+                raise MailError(f"'{fwd}' is not a verified Gmail forwarding address yet. First add it with email_forwarding "
+                                f"action='add', click Google's verification link in that inbox, "
+                                f"then set this filter.")
             act["forward"] = fwd
         if not act["addLabelIds"] and not act["removeLabelIds"] and not act.get("forward"):
-            raise MailError("Filter kya karega? do mein se: label / archive / star / mark_read / important / "
-                            "not_important / category / forward. (Delete-wala action Gmail filter mein rakha hi "
-                            "nahi jaata — mails kabhi khud nahi jaati.)")
+            raise MailError("What should the filter do? One of: label / archive / star / mark_read / important / "
+                            "not_important / category / forward. (A delete action is deliberately not allowed in a Gmail filter - "
+                            "mail is never removed on its own.)")
         created = _guard(box, lambda: box.filter_create(crit, act))
         return {"created": created.get("id", ""), "account": box.address,
-                "note": "Gmail ka apna filter ban gaya — Gmail ke andar hi chalta rahega, Hoola band ho to bhi."}
+                "note": "Gmail's own filter is created - it keeps running inside Gmail even when Hoola is off."}
     if action == "delete":
         fid = str(filter_id or "").strip()
         if not fid:
             raise MailError("Kaunsa filter? id do (email_filters list se).")
         _guard(box, lambda: box.filter_delete(fid))
-        return {"deleted": fid, "note": "Filter hata diya; uske pehle lagte labels mails par bane rehte hain."}
+        return {"deleted": fid, "note": "Filter removed; labels it already applied stay on the mails."}
     raise MailError("action: list / create / delete")
 
 
@@ -690,18 +690,18 @@ def forwarding_op(tenant: str, action: str, email: str = "", account: str | None
             raise MailError("Kaunsa address? Sahi email do.")
         rows = _guard(box, box.forwarding_list)
         if any((r.get("forwardingEmail") or "").lower() == to for r in rows):
-            return {"email": to, "note": "Yeh address pehle se isi list mein hai."}
+            return {"email": to, "note": "This address is already in the list."}
         _guard(box, lambda: box.forwarding_create(to))
-        return {"email": to, "note": "Google ne us inbox mein ek verification mail bheji hai — us mein link click "
-                                     "kijiye (ya Gmail web ke Forwarding mein code daaliye). Uske baad auto-forward "
+        return {"email": to, "note": "Google sent a verification mail to that inbox - click the link in it "
+                                     "(or enter the code in Gmail web > Forwarding). After that, auto-forward or a filter can use that address."
                                      "ya filter us address par chal sakega."}
     if action == "remove":
         to = (email or "").strip().lower()
         if not to:
             raise MailError("Kaunsa address? email do (email_forwarding list se).")
         _guard(box, lambda: box.forwarding_delete(to))
-        return {"removed": to, "note": "Address forwarding book se hata diya. (Chalu auto-forward Gmail web se bhi "
-                                       "band ho sakta hai.)"}
+        return {"removed": to, "note": "Address removed from the forwarding list. (An active auto-forward can also be turned off in Gmail web.)"
+                                       ""}
     raise MailError("action: list / add / remove")
 
 
@@ -717,24 +717,24 @@ def alias_op(tenant: str, action: str, email: str = "", name: str = "", reply_to
             raise MailError("Kaunsa alias? Sahi email do.")
         rows = _guard(box, box.send_as_list)
         if any((sa.get("sendAsEmail") or "").lower() == to for sa in rows):
-            return {"email": to, "note": "Yeh alias pehle se hai."}
+            return {"email": to, "note": "This alias already exists."}
         created = _guard(box, lambda: box.send_as_create(to, str(name or ""), str(reply_to or "")))
         status = created.get("verificationStatus", "pending")
         return {"email": to, "status": status,
-                "note": ("Alias ban gaya (Google ne confirm bhi kar diya)." if status == "accepted"
-                         else "Alias ban gaya — Google ne us inbox mein confirmation code bheja hai; wahan se confirm "
-                              "kijiye. Uske baad email_draft from_alias se usi address se bhej sakta hai.")}
+                "note": ("Alias created (Google confirmed it too)." if status == "accepted"
+                         else "Alias created - Google sent a confirmation code to that inbox; confirm it there. "
+                              "After that, email_draft with from_alias can send from that address.")}
     if action == "remove":
         to = (email or "").strip().lower()
         if not to:
             raise MailError("Kaunsa alias? email do (email_alias list se).")
         me = alias_find(tenant, to, account)
         if me is None:
-            raise MailError(f"'{to}' naam ka alias is Gmail mein nahi hai.")
+            raise MailError(f"No alias named '{to}' in this Gmail.")
         if me.get("isPrimary"):
-            raise MailError("Primary address kabhi hat nahi sakta — woh khud Gmail ka login hai.")
+            raise MailError("The primary address can never be removed - it is the Gmail login itself.")
         _guard(box, lambda: box.send_as_delete(to))
-        return {"removed": to, "note": "Alias hata di; us par purane mails waise hi pade hain."}
+        return {"removed": to, "note": "Alias removed; old mails sent from it stay as they are."}
     raise MailError("action: list / add / remove")
 
 
@@ -752,8 +752,8 @@ def imap_set(tenant: str, account: str | None, on: bool) -> dict[str, Any]:
     _guard(box, lambda: box.imap_set(bool(on), cur.get("autoExpunge", True),
                                      cur.get("expungeBehavior", "archive"), cur.get("maxFolderSize", 0)))
     return {"account": box.address, "imap": "ON" if on else "OFF",
-            "note": ("IMAP chalu — Outlook/Thunderbird jaise apps phir sync honge." if on
-                     else "IMAP band — IMAP apps is Gmail ko sync nahi karenge.")}
+            "note": ("IMAP is on - apps like Outlook / Thunderbird will sync again." if on
+                     else "IMAP is off - IMAP apps will not sync this Gmail.")}
 
 
 _POP_WINDOW = {"off": "disabled", "disabled": "disabled", "all": "allMail", "allmail": "allMail",
@@ -769,28 +769,28 @@ def pop_set(tenant: str, account: str | None, mode: str, disposition: str = "lea
         raise MailError("pop mode: off / all / from_now_on")
     disp = _POP_DISP.get((disposition or "").strip().lower(), "leaveInInbox")
     _guard(box, lambda: box.pop_set(window, disp))
-    label = {"disabled": "BAND", "allMail": "saari mails (jo abhi tak POP se nahi aayi)",
-             "fromNowOn": "ab se aane wali mails"}[window]
+    label = {"disabled": "BAND", "allMail": "all mails (those not yet fetched by POP)",
+             "fromNowOn": "mails arriving from now on"}[window]
     return {"account": box.address, "pop": window,
-            "note": f"POP ab {label} par hai ({disp}); yeh Gmail web ke POP/IMAP settings mein bhi dikhega."}
+            "note": f"POP is now set to {label} ({disp}); it also shows in Gmail web POP/IMAP settings."}
 
 
 def language_set(tenant: str, account: str | None, lang: str) -> dict[str, Any]:
     box = _settings_box(tenant, account)
     code = (lang or "").strip()
     if not re.fullmatch(r"[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*", code):
-        raise MailError("Language ka code do (RFC 3066), jaise hi / en / en-GB / mr / ta.")
+        raise MailError("Give a language code (RFC 3066), such as hi / en / en-GB / mr / ta.")
     _guard(box, lambda: box.language_set(code))
     return {"account": box.address, "language": code,
-            "note": "Gmail ka display language badal gaya (web + apps jab next refresh ho). "
-                    "Yeh sirf Gmail ka menu language hai — Hoola aapki language mein hi baat karta hai."}
+            "note": "Gmail display language changed (web + apps, on their next refresh). "
+                    "This is only Gmail's menu language - Hoola talks to you in your language."}
 
 
 # ---------------- Gmail drafts: read / edit / send (the drafts that live in Gmail itself) ----------------
 def _draft_box(tenant: str, ref: str, account: str | None) -> tuple[Box, str]:
     box, native = (split_ref(tenant, ref) if "~" in str(ref or "") else (get_box(tenant, account), str(ref or "")))
     if box.kind != "gmail":
-        raise MailError("Yeh kaam Gmail ke apne drafts par hota hai (is mailbox ka draft system alag hai).")
+        raise MailError("This works on Gmail's own drafts (this mailbox keeps drafts in a separate system).")
     if not native:
         raise MailError("Kaunsa draft? id do (email_drafts list se).")
     return box, native
@@ -833,7 +833,7 @@ def gmail_draft_edit(tenant: str, ref: str, to: str | None = None, cc: str | Non
     return {"draft_id": out.get("draft_id", native), "account": box.address,
             "edited": [k for k, v in (("to", to), ("cc", cc), ("subject", subject), ("body", body)) if v is not None],
             "attachments_kept": len(files),
-            "note": "Gmail ka draft badal gaya (attachments waise ke waise)."}
+            "note": "Gmail draft updated (attachments unchanged)."}
 
 
 def send_gmail_draft(tenant: str, ref: str, account: str | None = None) -> dict[str, Any]:
@@ -841,14 +841,14 @@ def send_gmail_draft(tenant: str, ref: str, account: str | None = None) -> dict[
     box, native = _draft_box(tenant, ref, account)
     out = _guard(box, lambda: box.draft_send(native))
     return {"sent": True, "account": box.address, "id": out.get("id", ""), "thread_id": out.get("thread_id", ""),
-            "note": "Gmail ka draft bhej diya."}
+            "note": "Gmail draft sent."}
 
 
 # ---------------- threads as a unit (Gmail): list / read / act on the WHOLE conversation ----------------
 def threads_list(tenant: str, query: str = "in:inbox", limit: int = 10, account: str | None = None) -> dict[str, Any]:
     box = get_box(tenant, account)
     if box.kind != "gmail":
-        raise MailError("Thread-level listing Gmail par hai; is mailbox mein email_check use kijiye.")
+        raise MailError("Thread-level listing is on Gmail; in this mailbox use email_check.")
     rows = _guard(box, lambda: box.threads_list(query or "in:inbox", max(1, min(int(limit or 10), 25))))
     for r in rows:
         r["ref"] = make_ref(box, "th:" + r["thread_id"])
@@ -864,20 +864,20 @@ def thread_act(tenant: str, refs: list[str], action: str, folder: str = "", conf
     if not refs:
         raise MailError("Kaunse threads? refs do (email_threads list se).")
     if action == "move" and not folder:
-        raise MailError("Kis folder/label mein?")
+        raise MailError("Which folder or label?")
     done = 0
     for ref in refs:
         r = str(ref or "")
         if "~" not in r:
-            raise MailError("Yeh thread ka ref nahi lag raha — email_threads list se refs lijiye.")
+            raise MailError("This does not look like a thread ref - take the refs from the email_threads list.")
         if action == "trash" and not confirmed:
             # v0.706 whole conversations went to Trash with no card and no cap (email_delete always asks first)
-            raise MailError("Poori conversation Trash karna delete hai - pehle confirm card chahiye. email_delete ids=<message "
-                            "ids from email_check> use karo; woh card bhejta hai aur uske Haan ke baad hi hatata hai.")
+            raise MailError("Trashing a whole conversation is a delete - a confirm card is needed first. Use email_delete ids=<message "
+                            "ids from email_check>; it sends the card and deletes only after your Yes.")
         box, native = split_ref(tenant, r)
         tid = native[3:] if native.startswith("th:") else native
         if box.kind != "gmail":
-            raise MailError("Thread-level actions Gmail par hain.")
+            raise MailError("Thread-level actions are on Gmail.")
         def go(box=box, tid=tid, action=action, folder=folder):
             if action == "archive":
                 box.thread_modify(tid, remove=["INBOX"])
@@ -905,8 +905,8 @@ def delete_forever(tenant: str, refs: list[str]) -> int:
     n = 0
     for box, natives in _by_box(tenant, refs).values():
         if box.kind != "gmail":
-            raise MailError("Hamesha-ke-liye delete abhi sirf Gmail par hai; baaki mailbox mein email_delete "
-                            "(Trash) use kijiye.")
+            raise MailError("Delete forever is only on Gmail for now; in other mailboxes use email_delete "
+                            "(Trash).")
         for i in natives:
             _guard(box, lambda box=box, i=i: box.message_delete(i))
             n += 1
@@ -961,7 +961,7 @@ def _file_row(tenant: str, file_id: str) -> PcFile:
     with session() as s:
         f = s.get(PcFile, file_id)
         if f is None or f.tenant_id != tenant:
-            raise MailError(f"File {file_id} nahi mili (files 24 ghante baad hat jaati hain).")
+            raise MailError(f"File {file_id} not found (files are removed after 24 hours).")
         s.expunge(f)
         return f
 
@@ -978,7 +978,7 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
             if att is None and len(msg["attachments"]) == 1 and not a.get("attachment_id"):
                 att = msg["attachments"][0]
             if att is None:
-                raise MailError(f"Email {a['email_id']} mein attachment {a.get('attachment_id')} nahi mila. "
+                raise MailError(f"Email {a['email_id']} has no attachment {a.get('attachment_id')}. "
                                 f"Attachments: {[(x['id'], x['name']) for x in msg['attachments']]}")
             out.append({"type": "email", "email_id": msg["id"], "attachment_id": att["id"], "name": att["name"],
                         "size": att["size"], "mime": att["mime"]})
@@ -986,7 +986,7 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
             f = _file_row(tenant, str(a["file_id"]))
             p = Path(f.stored_path or "")
             if not p.exists():
-                raise MailError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
+                raise MailError(f"{f.name} is no longer on the server (files are removed after 24 hours). Send it again.")
             data = p.read_bytes()
             out.append({"type": "file", "file_id": f.id, "name": f.name, "size": len(data),
                         "mime": mimetypes.guess_type(f.name)[0] or "application/octet-stream",
@@ -995,7 +995,7 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
             from .. import artifacts
             art = artifacts.get(tenant, str(a["artifact_id"]))
             if art is None or not art.version:
-                raise MailError("Woh Santosh page (artifact) nahi mila ya abhi ban raha hai.")
+                raise MailError("That Santosh page (artifact) was not found or is still being built.")
             name = re.sub(r"[^\w\- ]+", "", art.title).strip() or "santosh-page"
             out.append({"type": "artifact", "artifact_id": art.id, "name": f"{name}.html", "size": 0, "mime": "text/html"})
         elif a.get("drive_file_id") or a.get("drive_file"):
@@ -1007,8 +1007,8 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
             raise MailError("attachments: use {email_id, attachment_id}, {file_id}, {drive_file_id} or {artifact_id}")
     cap = get_settings().mail_max_attach_mb * 1024 * 1024
     if sum(int(x.get("size") or 0) for x in out) > cap:
-        raise MailError(f"Attachments {get_settings().mail_max_attach_mb} MB se bade hain; email itna bada nahi ja sakta. "
-                        "Badi file ke liye Drive link bhejiye.")
+        raise MailError(f"Attachments are over {get_settings().mail_max_attach_mb} MB; an email cannot be that large. "
+                        "Send a Drive link for a big file.")
     return out
 
 
@@ -1071,9 +1071,9 @@ def _drive_bytes(tenant: str, ref: str, fmt: Any = None) -> tuple[str, str, byte
     try:
         name, mt, data, _c, _f = ds.fetch(tenant, ref, str(fmt).lower() if fmt else None)
     except DriveError as e:
-        raise MailError(str(e) or "Drive file nahi mili.")
+        raise MailError(str(e) or "Drive file not found.")
     except Exception as e:
-        raise MailError(f"Drive file nahi mili ({type(e).__name__}). Google Drive judi hai? Profile > Google Drive.")
+        raise MailError(f"Drive file not found ({type(e).__name__}). Is Google Drive connected? Profile > Google Drive.")
     return name, mt, data
 
 def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str, str, bytes]]:
@@ -1091,7 +1091,7 @@ def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str
             f = _file_row(tenant, a["file_id"])
             p = Path(f.stored_path)
             if not p.exists():
-                raise MailError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
+                raise MailError(f"{f.name} is no longer on the server (files are removed after 24 hours). Send it again.")
             files.append((f.name, a.get("mime") or "application/octet-stream", p.read_bytes()))
         elif t == "drive":
             kept = _kept(tenant, a.get("keep"))
@@ -1104,11 +1104,11 @@ def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str
             from .. import artifacts
             html = artifacts.latest_html(a["artifact_id"])
             if not html:
-                raise MailError("Santosh page nahi mila")
+                raise MailError("Santosh page not found")
             files.append((a["name"], "text/html", html.encode("utf-8")))
     cap = get_settings().mail_max_attach_mb * 1024 * 1024
     if sum(len(d) for _, _, d in files) > cap:
-        raise MailError(f"Attachments {get_settings().mail_max_attach_mb} MB se bade hain.")
+        raise MailError(f"Attachments are over {get_settings().mail_max_attach_mb} MB.")
     return files
 
 
@@ -1164,7 +1164,7 @@ def set_undo_seconds(tenant: str, seconds) -> int:
         if str(seconds).strip().lower() in ("off", "0", "no", "band", ""):
             n = 0
         else:
-            raise MailError("undo_seconds: 0 (off) se 60 ke beech ka number do.")
+            raise MailError("undo_seconds: give a number from 0 (off) to 60.")
     n = max(0, min(n, UNDO_MAX))
     with session() as s:
         row = s.get(MailSetting, (tenant, "undo_seconds"))
@@ -1182,7 +1182,7 @@ def _alias_verified(tenant: str, box: Box, alias: str) -> None:
     (same rule as v0.183.0) instead of a draft Gmail will only refuse."""
     from .accounts import settings_scope_message, settings_scope_ok
     if box.kind != "gmail":
-        raise MailError("Kisi doosre address se bhejna (alias) abhi Gmail mailbox par hota hai.")
+        raise MailError("Sending from another address (alias) works on a Gmail mailbox for now.")
     if alias == box.address:
         return                                            # the mailbox's own address — always fine
     if not settings_scope_ok(tenant, box):
@@ -1190,11 +1190,11 @@ def _alias_verified(tenant: str, box: Box, alias: str) -> None:
     rows = _guard(box, box.send_as_list)
     sa = next((r for r in rows if (r.get("sendAsEmail") or "").strip().lower() == alias), None)
     if sa is None:
-        raise MailError(f"'{alias}' is Gmail ka send-as alias nahi hai. Aliases: "
+        raise MailError(f"'{alias}' is not a send-as alias of this Gmail. Aliases: "
                         f"{', '.join((r.get('sendAsEmail') or '') for r in rows)}")
     if (sa.get("verificationStatus") or "") == "pending":
-        raise MailError(f"'{alias}' abhi verify nahi hua — pehle Gmail (web) ke Settings > Accounts mein us par "
-                        "aaya confirmation click kijiye.")
+        raise MailError(f"'{alias}' is not verified yet - first click the confirmation that arrived there, in Gmail (web) "
+                        "Settings > Accounts.")
 
 
 def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, from_worker: bool = False) -> dict[str, Any]:
@@ -1206,7 +1206,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         if d.status in ("sent", "sending"):
             return {"status": d.status, "already": True}      # a double tap never sends twice
         if d.status == "cancelled":
-            raise MailError("Yeh draft cancel ho chuka hai.")
+            raise MailError("This draft has already been cancelled.")
         for k, col in (("to", "to_addr"), ("cc", "cc_addr"), ("bcc", "bcc_addr"), ("subject", "subject"), ("body", "body")):
             if edits and edits.get(k) is not None:
                 setattr(d, col, str(edits[k]).strip()[:1000] if k != "body" else str(edits[k]))
@@ -1232,7 +1232,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
             view, conv = draft_view(d), d.conversation_id
         bus.publish(conv, "email_sent", view)
         return {"status": "undo_window", "undo_seconds": undo, "send_at": view["send_at"],
-                "note": f"Email {undo} second mein jayega. Rokna ho to abhi cancel kijiye."}
+                "note": f"The email will go in {undo} seconds. Cancel now if you want to stop it."}
     with session() as s:
         d = s.get(EmailDraft, draft_id)
         if d.status in ("sent", "sending"):
@@ -1246,7 +1246,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         # v0.706 getaddresses: a display name with a comma ("Sharma, Ravi" <r@x.com>) was split in two and refused
         for nm, a in email.utils.getaddresses([x for x in (to_addr, cc, bcc) if x]):
             if not contacts.valid(a):
-                raise MailError(f"'{(nm + ' ' + a).strip()}' sahi email address nahi hai")
+                raise MailError(f"'{(nm + ' ' + a).strip()}' is not a valid email address")
         box = get_box(tenant, account or None)
         if alias:
             _alias_verified(tenant, box, alias)     # verified send-as only, before anything moves
@@ -1282,8 +1282,8 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         add_watch(tenant, conv, box, "their_reply", sent.get("message_id", ""), sent.get("thread_id") or thread_id or "",
                   subject, to_addr, int(follow))
     extra = f" ({len(atts)} attachment)" if atts else ""
-    notify(conv, f"Email bhej diya: {to_addr} ko \"{subject}\"{extra}." +
-           (f" {follow} din mein jawab nahi aaya to yaad dilaunga." if follow else ""))
+    notify(conv, f"Email sent to {to_addr}: \"{subject}\"{extra}." +
+           (f" If there is no reply in {follow} days, I will remind you." if follow else ""))
     return {"status": "sent", "to": to_addr, "message_id": sent.get("message_id")}
 
 
@@ -1302,7 +1302,7 @@ def send_due_scheduled() -> int:
                 d = s.get(EmailDraft, did)
                 conv = d.conversation_id if d else ""
             if conv:
-                notify(conv, f"Scheduled email nahi ja paya: {e}. Chat mein email card par 'Phir bhejo' dabaiye.")
+                notify(conv, f"The scheduled email could not be sent: {e}. In the chat, tap 'Send again' on the email card.")
     return n
 
 
@@ -1367,9 +1367,9 @@ def check_watches(limit: int = 30) -> int:
         if not answered and conv:
             who = peer.split(",")[0].strip() or "unhone"
             if mode == "their_reply":
-                notify(conv, f"Follow-up: {who} ne \"{subject}\" ka abhi tak jawab nahi diya. Ek follow-up email likh doon?")
+                notify(conv, f"Follow-up: {who} has not replied to \"{subject}\" yet. Shall I write a follow-up email?")
             else:
-                notify(conv, f"Yaad dila raha hoon: {who} ki email \"{subject}\" ka jawab abhi baaki hai. Jawab likh doon?"
+                notify(conv, f"Reminder: the email from {who}, \"{subject}\", is still waiting for a reply. Shall I write one?"
                              + (f" (email id {ref})" if ref else ""))
             n += 1
     return n
@@ -1390,14 +1390,14 @@ def render(tpl: str, fields: dict[str, Any]) -> str:
 def table_from_rows(rows: list[list[Any]], email_column: str = "", name_column: str = "") -> list[dict[str, Any]]:
     """Header row + data rows -> [{email, name, fields}] (fields keyed by lowercased header)."""
     if not rows:
-        raise MailError("List khaali hai.")
+        raise MailError("The list is empty.")
     header = [_norm(h) or f"col{i + 1}" for i, h in enumerate(rows[0])]
     data = rows[1:]
     ecol = None
     if email_column:
         ecol = header.index(_norm(email_column)) if _norm(email_column) in header else None
         if ecol is None:
-            raise MailError(f"'{email_column}' column nahi mila. Columns: {', '.join(header)}")
+            raise MailError(f"Column '{email_column}' not found. Columns: {', '.join(header)}")
     if ecol is None:
         for i, h in enumerate(header):
             if re.search(r"e-?mail|mail id|email id", h):
@@ -1410,7 +1410,7 @@ def table_from_rows(rows: list[list[Any]], email_column: str = "", name_column: 
                 ecol = i
                 break
     if ecol is None:
-        raise MailError(f"Email wala column nahi mila. Columns: {', '.join(header)}. email_column bataiye.")
+        raise MailError(f"No email column found. Columns: {', '.join(header)}. Tell me the email_column.")
     ncol = header.index(_norm(name_column)) if name_column and _norm(name_column) in header else None
     if ncol is None:
         for i, h in enumerate(header):
@@ -1446,12 +1446,12 @@ def rows_from_source(tenant: str, source: dict[str, Any]) -> tuple[list[list[Any
         with session() as s:
             ll = s.get(LeadList, source["lead_list_id"])
             if ll is None or ll.tenant_id != tenant:
-                raise MailError("Contact list nahi mili")
+                raise MailError("Contact list not found")
             leads = s.scalars(select(Lead).where(Lead.list_id == ll.id)).all()
             keys = sorted({k for ld in leads for k in (ld.extra or {}).keys()})
             rows = [["name", *keys]] + [[ld.name or "", *[(ld.extra or {}).get(k, "") for k in keys]] for ld in leads]
             return rows, ll.name
-    raise MailError("recipients ka source do: rows, email_id+attachment_id (Excel/CSV), file_id ya lead_list_id")
+    raise MailError("Give a source for the recipients: rows, email_id+attachment_id (Excel/CSV), file_id or lead_list_id")
 
 
 def create_bulk(tenant: str, conv: str, subject: str, body: str, source: dict[str, Any], email_column: str = "",
@@ -1473,13 +1473,13 @@ def create_bulk(tenant: str, conv: str, subject: str, body: str, source: dict[st
         p["email"] = a
         good.append(p)
     if not good:
-        raise MailError("List mein ek bhi sahi email address nahi mila.")
+        raise MailError("No valid email address in the list.")
     if len(good) > st.mail_bulk_max:
-        raise MailError(f"Ek baar mein zyada se zyada {st.mail_bulk_max} logon ko. List mein {len(good)} hain.")
+        raise MailError(f"At most {st.mail_bulk_max} people at a time. The list has {len(good)}.")
     keys = set(good[0]["fields"].keys()) | {"name", "email"}
     unknown = sorted({_norm(m) for m in PLACEHOLDER.findall(subject + body)} - keys)
     if unknown:
-        raise MailError(f"Template mein {{{{{', '.join(unknown)}}}}} hai par list mein yeh column nahi. Columns: {', '.join(sorted(keys))}")
+        raise MailError(f"The template has {{{{{', '.join(unknown)}}}}} but the list has no such column. Columns: {', '.join(sorted(keys))}")
     files = describe_attachments(tenant, attachments)
     sig = box.signature.strip()
     if sig and sig not in body:
@@ -1518,13 +1518,13 @@ def start_bulk(tenant: str, bid: str) -> dict[str, Any]:
     with session() as s:
         b = s.get(BulkMail, bid)
         if b is None or b.tenant_id != tenant:
-            raise MailError("Bulk mail nahi mila")
+            raise MailError("Bulk mail not found")
         if b.status != "pending":
             return {"status": b.status}
         b.status = "sending"
         conv, total = b.conversation_id, b.total
     st = get_settings()
-    notify(conv, f"{total} logon ko email bhejna shuru. Har minute ~{st.mail_bulk_per_minute}; khatam hone par report dunga.")
+    notify(conv, f"Started emailing {total} people. About {st.mail_bulk_per_minute} a minute; I will report when it is done.")
     return {"status": "sending", "total": total}
 
 
@@ -1569,7 +1569,7 @@ def bulk_tick() -> int:
         if _sent_today(account) >= st.mail_bulk_daily_cap:
             if _bulk_last.get(bid + ":cap", 0) < time.time() - 3600:
                 _bulk_last[bid + ":cap"] = time.time()
-                notify(conv, f"Aaj ki email limit ({st.mail_bulk_daily_cap}) poori. Baaki mails kal apne aap jayengi.")
+                notify(conv, f"Daily email limit ({st.mail_bulk_daily_cap}) reached. The remaining mails will go tomorrow on their own.")
             continue
         _bulk_last[bid] = time.time()
         try:
@@ -1585,7 +1585,7 @@ def bulk_tick() -> int:
                 with session() as s:   # mailbox broken: pause, don't burn the whole list
                     b = s.get(BulkMail, bid)
                     b.status = "cancelled"
-                notify(conv, f"Bulk email ruk gaya: {err}. Mailbox theek karke dobara boliye.")
+                notify(conv, f"Bulk email stopped: {err}. Fix the mailbox and tell me again.")
         with session() as s:
             r = s.get(BulkRecipient, rid)
             r.status, r.error, r.sent_at = ("sent" if ok else "failed"), err, now()
@@ -1609,7 +1609,7 @@ def _finish_bulk(bid: str) -> None:
         conv, sent, failed, subject = b.conversation_id, b.sent, b.failed, b.subject
         bad = [f"{r.email} ({r.error[:60]})" for r in s.scalars(select(BulkRecipient).where(
             BulkRecipient.bulk_id == bid, BulkRecipient.status == "failed").limit(5)).all()]
-    text = f"Bulk email \"{subject}\" poora: {sent} ko gaya" + (f", {failed} fail" if failed else "") + "."
+    text = f"Bulk email \"{subject}\" finished: {sent} sent" + (f", {failed} fail" if failed else "") + "."
     if bad:
         text += " Fail: " + "; ".join(bad)
     notify(conv, text)
