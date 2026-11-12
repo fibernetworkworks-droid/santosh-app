@@ -146,7 +146,7 @@ def test_plan_from_menu_history_weather_and_stock_orders(env):
     # her Haan: the doodhwala card gives her the WhatsApp draft; nothing is sent by Hoola
     gid = next(o["id"] for o in p2["orders"] if o["supplier"] == "Gopal doodhwala")
     r = C.decide_order(T, gid, True, conv)
-    assert r["order"]["status"] == "approved" and "Bhejo" in r["say"]
+    assert r["order"]["status"] == "approved" and "Send on WhatsApp" in r["say"]
     with pytest.raises(C.ChaiError):
         C.decide_order(T, gid, False)
     bid = next(o["id"] for o in p2["orders"] if o["supplier"] == "Blinkit")

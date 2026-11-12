@@ -296,7 +296,7 @@ def add(tenant: str, ref: str, source: str, iid: str, kind: str = "model", key: 
         if a is None:
             n = len(s.scalars(select(A.GameAsset.id).where(A.GameAsset.studio_id == r.id)).all())
             if n >= A.MAX_ASSETS:
-                raise A.AssetError(f"Is game mein {A.MAX_ASSETS} assets ho gaye.")
+                raise A.AssetError(f"This game already has {A.MAX_ASSETS} assets.")
             a = A.GameAsset(tenant_id=tenant, studio_id=r.id, key=key, kind=kind, history=[],
                             words=f"{src['name']}: {facts.get('name') or iid}"[:600])
             s.add(a)

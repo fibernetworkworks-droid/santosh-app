@@ -421,7 +421,7 @@ def godot_cross_check(st: dict, samples: list[tuple[str, np.ndarray]], job: Path
     m = re.search(r"HOOLA_XR (\[.*\])", logtxt or "")
     if not m:
         errs = engine.errors_in(logtxt or "") or [(logtxt or "").strip()[-300:] or "nothing printed"]
-        raise XrError("Gesture check Godot mein nahi chala: " + "; ".join(errs[:3])[:400])
+        raise XrError("The gesture check did not run in Godot: " + "; ".join(errs[:3])[:400])
     got = json.loads(m.group(1))
     py = [classify(np.array([[round(float(v), 5) for v in p] for p in j])) for _l, j in samples]
     return {"agree": sum(1 for a, b in zip(got, py) if a == b), "samples": len(py)}
@@ -445,7 +445,7 @@ def _get(s, tenant: str, ref: str) -> GameXr:
     q = select(GameXr).where(GameXr.tenant_id == tenant)
     r = s.scalars(q.where(GameXr.id == ref)).first() or s.scalars(q.where(GameXr.number == ref.upper())).first()
     if r is None:
-        raise XrError("Yeh XR setup nahi mila (X-001 dijiye).")
+        raise XrError("This XR setup was not found (give X-001).")
     return r
 
 
@@ -564,7 +564,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise XrError("Sirf PASS hua XR setup OK ho sakta hai." if r.status != "testing" else "Jaanch abhi chal rahi hai.")
+            raise XrError("Only an XR setup that PASSED can be OKed." if r.status != "testing" else "The check is still running.")
         for o in s.scalars(select(GameXr).where(GameXr.tenant_id == tenant, GameXr.studio_id == r.studio_id,
                                                 GameXr.status == "approved")).all():
             o.status = "rejected"
@@ -622,11 +622,11 @@ def for_game(tenant: str, game_id: str) -> tuple[str, dict[str, Path]] | None:
 def apply(tenant: str, studio: str) -> dict[str, Any]:
     st = _studio(tenant, studio)
     if for_game(tenant, st.game_id) is None:
-        raise XrError("Koi approved XR setup nahi; pehle jaanch PASS karke OK kijiye.")
+        raise XrError("No approved XR setup; pass the check and OK it first.")
     try:
         from . import bible as B
         bv = B.view(tenant, st.id)["version"]
     except Exception:                                   # noqa: BLE001
         bv = 0
-    G.data_build(tenant, st.game_id, bv, words="XR setup game mein")
-    return {"ok": True, "say": "XR setup game mein ja raha hai (rebuild chal raha hai)."}
+    G.data_build(tenant, st.game_id, bv, words="XR setup into the game")
+    return {"ok": True, "say": "The XR setup is going into the game (a rebuild is running)."}

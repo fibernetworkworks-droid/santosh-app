@@ -299,7 +299,7 @@ def test_find_by_name_and_info(gs):
     ctx = conv_ctx()
     found = run("sheets_find", {"query": "sales"}, ctx)
     assert {s["title"] for s in found["sheets"]} == {"Sales Oct 2026", "Sales Sep 2026"}
-    with pytest.raises(ToolError, match="kai sheets"):
+    with pytest.raises(ToolError, match="Several sheets"):
         run("sheet_info", {"spreadsheet": "Sales"}, ctx)                   # ambiguous: asks which
     info = run("sheet_info", {"spreadsheet": "sales oct 2026"}, ctx)
     assert info["tabs"][0] == {"tab": "Customers", "columns": ["Name", "City", "Due", "Status", "Salesman"], "grid_rows": 1000}
@@ -330,7 +330,7 @@ def test_append_and_small_update_at_once(gs):
     up = run("sheet_update", {"spreadsheet": "Sales Oct 2026", "where": [{"column": "Name", "value": "Sharma Traders"}],
                               "set": {"Status": "Paid"}}, ctx)
     assert up["rows"] == [2] and grid[1][3] == "Paid"
-    with pytest.raises(ToolError, match="column nahi mila"):
+    with pytest.raises(ToolError, match="column not found"):
         run("sheet_update", {"spreadsheet": "Sales Oct 2026", "rows": [3], "set": {"GSTIN": "x"}}, ctx)
 
 
@@ -464,7 +464,7 @@ def test_delete_tab_refuses_on_last_tab(bz, gs):  # noqa: F811
     for n in list(gs.books[SID]["tabs"]):
         if n != "Notes":
             del gs.books[SID]["tabs"][n]
-    with pytest.raises(ToolError, match="akhaari tab"):
+    with pytest.raises(ToolError, match="last tab"):
         run("sheet_delete_tab", {"spreadsheet": "Sales Oct 2026", "tab": "Notes"}, ctx)
 
 
@@ -581,7 +581,7 @@ def test_notes_set_and_pii_guard(gs):
     sid, tab_id, row, col, note = gs.notes_set[0]
     assert row == 2 and col == 5 and "follow up" in note
     # PII guard refuses Aadhaar in note text
-    with pytest.raises(ToolError, match="personal"):
+    with pytest.raises(ToolError, match="Personal"):
         run("sheet_notes", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
                              "notes": [{"row": 2, "col": 5, "note": "Aadhaar 2342 3456 7890"}]}, ctx)
 
@@ -594,6 +594,6 @@ def test_find_replace_counts_and_pii_guard(gs):
     assert out["values_changed"] == 3 and out["sheets_changed"] == 1
     assert len(gs.find_replace_calls) == 1
     # PII guard refuses Aadhaar in replacement text
-    with pytest.raises(ToolError, match="personal"):
+    with pytest.raises(ToolError, match="Personal"):
         run("sheet_find_replace", {"spreadsheet": "Sales Oct 2026", "tab": "Customers",
                                      "find": "x", "replace": "Aadhaar 2342 3456 7890"}, ctx)

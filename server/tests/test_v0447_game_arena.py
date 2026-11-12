@@ -223,7 +223,7 @@ def test_a_run_builds_judges_scores_originality_and_compares(gd, monkeypatch, tm
     if len(twins) > 1:
         assert max(it["sameness"] for it in twins) == 1.0                  # same DNA twice = caught, not praised
     A.start(n=2, background=False)                                         # left running: one run at a time
-    with pytest.raises(A.ArenaError, match="pehle se"):
+    with pytest.raises(A.ArenaError, match="already"):
         A.start(n=2, background=False)
     A.finish_running()
     r2 = A.start(n=4, seed=3, note="second run", background=False)

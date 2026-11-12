@@ -175,7 +175,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def make(body: Any = Body(default=None), tenant: str = Depends(current_tenant)):
         from ..employee import hire   # v0.410 a game starts only while the Game Developer is hired (the tool checked, the route did not)
         if not hire.is_working(tenant, "game_dev"):
-            raise HTTPException(400, "Game Developer abhi hired nahi hai (ya paused hai). Employees mein 'Hire Game Developer' dabaiye.")
+            raise HTTPException(400, "The Game Developer is not hired yet (or is paused). In Employees, tap 'Hire Game Developer'.")
         b = _b(body)
         return await call(service.start, tenant, str(b.get("conversation_id") or ""), str(b.get("brief") or ""),
                           str(b.get("orientation") or "portrait"))
@@ -387,7 +387,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def asset_file(aid: str, v: int, exp: int = 0, sig: str = ""):
         p, media = A.file_for(aid, v, exp, sig)
         if p is None:
-            raise HTTPException(404, "asset link purana / galat hai")
+            raise HTTPException(404, "the asset link is old / wrong")
         return FileResponse(p, media_type=media, headers={"Cache-Control": "private, max-age=3600",
                                                           "X-Content-Type-Options": "nosniff"})
 
@@ -474,7 +474,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def qa_shot(sid: str, rel: str = "", exp: int = 0, sig: str = ""):
         p = Q.shot_file(sid, rel, exp, sig)
         if p is None:
-            raise HTTPException(404, "screenshot link purana / galat hai")
+            raise HTTPException(404, "the screenshot link is old / wrong")
         return FileResponse(p, media_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
 
     @r.get("/api/gamestudio/{sid}/qa", dependencies=[Depends(require_key)])
@@ -520,7 +520,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def rel_file(rid: str, platform: str, exp: int = 0, sig: str = ""):
         p = PF.kit_file(rid[4:], exp, sig) if rid.startswith("kit-") and platform == "kit" else PF.download_file(rid, platform, exp, sig)
         if p is None:
-            raise HTTPException(404, "download link purana / galat hai")
+            raise HTTPException(404, "the download link is old / wrong")
         return FileResponse(p, filename=p.name, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
     @r.get("/api/gamestudio/{sid}/releases", dependencies=[Depends(require_key)])
@@ -564,7 +564,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def _working(tenant: str, key: str, name: str) -> None:
         from ..employee import hire
         if not hire.is_working(tenant, key):
-            raise HTTPException(400, f"{name} abhi hired nahi hai (ya paused hai). Employees mein hire kijiye.")
+            raise HTTPException(400, f"{name} is not hired yet (or is paused). Hire it in Employees.")
 
     @r.get("/api/gamedesk/worlds", dependencies=[Depends(require_key)])
     async def worlds_list(studio: str = "", tenant: str = Depends(current_tenant)):
@@ -604,7 +604,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def world_file(wid: str, name: str, sig: str = ""):
         p = WD.world_file(wid, name, sig)
         if p is None:
-            raise HTTPException(404, "link purana / galat hai")
+            raise HTTPException(404, "the link is old / wrong")
         media = {".png": "image/png", ".json": "application/json", ".glb": "model/gltf-binary"}.get(p.suffix, "application/octet-stream")
         return FileResponse(p, media_type=media, headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
                             filename=None if p.suffix == ".png" else p.name)
@@ -680,7 +680,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         def _file(xid: str, fname: str, sig: str = ""):
             p = files_fn(xid, fname, sig)
             if p is None:
-                raise HTTPException(404, "link purana / galat hai")
+                raise HTTPException(404, "the link is old / wrong")
             return FileResponse(p, media_type=media.get(p.suffix, "application/octet-stream"),
                                 headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=600"},
                                 filename=p.name if p.suffix == ".zip" else None)
@@ -762,7 +762,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def rt_replay_file(sid: str, rid: str, tenant: str = Depends(current_tenant)):
         p = await call(RT.replay_file, tenant, sid, rid)
         if p is None:
-            raise HTTPException(404, "replay nahi mila")
+            raise HTTPException(404, "replay not found")
         return FileResponse(p, media_type="application/json", filename=p.name)
 
     @r.get("/api/gamedesk/runtime/{sid}/telemetry", dependencies=[Depends(require_key)])
@@ -891,7 +891,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     def _owner(tenant: str) -> None:
         if tenant != "default":
-            raise HTTPException(403, "arena sirf owner ke liye hai")
+            raise HTTPException(403, "the arena is for the owner only")
 
     @r.get("/api/gamedesk/arena", dependencies=[Depends(require_key)])
     async def ar_runs(tenant: str = Depends(current_tenant)):
@@ -1028,7 +1028,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def play(token: str, request: Request, path: str = ""):
         p, media = service.play_file(token, path)
         if p is None:
-            raise HTTPException(404, "game link purana / galat hai")
+            raise HTTPException(404, "the game link is old / wrong")
         headers = {"Content-Security-Policy": CSP, "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
                    "Cache-Control": "no-cache" if p.suffix == ".html" else "public, max-age=3600",
                    "X-Robots-Tag": "noindex",

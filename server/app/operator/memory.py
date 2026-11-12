@@ -296,7 +296,7 @@ async def run_recipe(op: Operator, mem: Memory, s: Session, name: str, variables
             value = sub(st.get("value"))
             g = gate_of(it) if act == "click" else ""
             if g == "payment":
-                a = await op.request_human(s, "payment", st.get("reason") or f"Payment: \"{it['name']}\" - aap khud dabaiye", it["ref"])
+                a = await op.request_human(s, "payment", st.get("reason") or f"Payment: \"{it['name']}\" - press it yourself", it["ref"])
                 return {"status": "waiting_human", "request": a.public(), "resume_step": i + 1, "done": log,
                         "message": "The owner presses the payment button herself; then continue at resume_step."}
             if act == "click" and (st.get("gate") or g == "commit"):

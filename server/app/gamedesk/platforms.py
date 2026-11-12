@@ -233,10 +233,10 @@ def release(tenant: str, ref: str, platforms: list[str], android_format: str = "
     g = G._get(tenant, r.game_id) if r.game_id else None
     good = G._good(g) if g else []
     if not good:
-        raise PlatformError("Pehle game ka ek chalne wala version chahiye.")
+        raise PlatformError("A working version of the game is needed first.")
     with session() as s:
         if s.scalars(select(GameRelease).where(GameRelease.studio_id == r.id, GameRelease.status == "building")).first():
-            raise PlatformError("Ek release abhi ban rahi hai; khatam hone dijiye.")
+            raise PlatformError("A release is being built now; let it finish.")
         n = len(s.scalars(select(GameRelease.id).where(GameRelease.studio_id == r.id)).all())
     idn = identity(tenant, r.id)
     code = _next_code(r.id)
@@ -263,7 +263,7 @@ def _safe(tenant: str, rid: str) -> None:
         with session() as s:
             row = s.get(GameRelease, rid)
             if row is not None:
-                row.status, row.log = "failed", f"andar ki gadbad: {type(e).__name__}: {str(e)[:200]}"
+                row.status, row.log = "failed", f"internal error: {type(e).__name__}: {str(e)[:200]}"
 
 
 def _readme(title: str, platform: str, version: str) -> str:
@@ -705,23 +705,23 @@ def _itch_key(tenant: str) -> str:
 def itch_card(tenant: str, ref: str, rid: str, target: str) -> dict[str, Any]:
     """A card: which files go to which itch.io page and channel. Nothing runs until her tap (`itch_push`)."""
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,60}/[A-Za-z0-9_-]{1,80}", target or ""):
-        raise PlatformError("itch.io page likhiye: aapka-naam/game-ka-naam (jaise meghana/rickshaw-racer).")
+        raise PlatformError("Write the itch.io page: your-name/game-name (such as meghana/rickshaw-racer).")
     if not _itch_key(tenant):
-        raise PlatformError("Pehle app mein apni itch.io API key daaliye (Settings > itch.io); chat mein kabhi nahi.")
+        raise PlatformError("First enter your itch.io API key in the app (Settings > itch.io); never in chat.")
     r = _studio(tenant, ref)
     with session() as s:
         rel = s.get(GameRelease, rid)
         if rel is None or rel.studio_id != r.id:
-            raise PlatformError("Yeh release nahi mili.")
+            raise PlatformError("This release was not found.")
         files = {p: v["file"] for p, v in (rel.platforms or {}).items() if v.get("status") == "done" and p != "android"}
         if not files:
-            raise PlatformError("Is release mein itch.io ke liye koi desktop file nahi bani.")
+            raise PlatformError("No desktop file was built for itch.io in this release.")
         h = hashlib.sha256(json.dumps([rid, target, sorted(files.items())]).encode()).hexdigest()[:24]
         rel.itch = {"card": {"target": target, "files": files, "hash": h, "at": now().isoformat()}, "pushed": (rel.itch or {}).get("pushed", [])}
         s.flush()
         card = {"release": rel.number, "target": target, "channels": {p: f"{target}:{p}" for p in files}, "hash": h,
-                "say": f"{r.title} {rel.version_name} ko itch.io '{target}' par daalun ({', '.join(files)})? "
-                       "Aapki haan chahiye; page public hai ya nahi, yeh itch.io par aapki setting hai."}
+                "say": f"{r.title} {rel.version_name}: put it on itch.io '{target}' ({', '.join(files)})? "
+                       "Your approval is needed; whether the page is public is your setting on itch.io."}
     from ..seo.service import _publish
     _publish(tenant, "game_release", {"kind": "itch", **card}, r.conversation_id)
     return card
@@ -751,14 +751,14 @@ def itch_push(tenant: str, ref: str, rid: str, hash_: str) -> dict[str, Any]:
     with session() as s:
         rel = s.get(GameRelease, rid)
         if rel is None or rel.studio_id != r.id:
-            raise PlatformError("Yeh release nahi mili.")
+            raise PlatformError("This release was not found.")
         card = (rel.itch or {}).get("card") or {}
         if not card or card.get("hash") != hash_:
-            raise PlatformError("Card badal gaya; naya card mangiye.")
+            raise PlatformError("The card has changed; ask for a new card.")
         s.expunge(rel)
     keyv = _itch_key(tenant)
     if not keyv:
-        raise PlatformError("itch.io key nahi mili.")
+        raise PlatformError("itch.io key not found.")
     butler = _butler()
     done = []
     for p, f in card["files"].items():
@@ -780,7 +780,7 @@ def set_itch_key(tenant: str, raw: str) -> dict[str, Any]:
     """Her itch.io API key (from itch.io > Settings > API keys), typed in the APP only; sealed like her other keys."""
     raw = (raw or "").strip()
     if not re.fullmatch(r"[A-Za-z0-9]{20,80}", raw):
-        raise PlatformError("Yeh itch.io API key jaisi nahi lagti.")
+        raise PlatformError("This does not look like an itch.io API key.")
     from ..bazar.security import vault
     from ..site.hosting_models import SiteHostingKey
     with session() as s:

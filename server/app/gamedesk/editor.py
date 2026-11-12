@@ -88,13 +88,13 @@ def create_token(tenant: str, label: str = "") -> dict[str, Any]:
     with session() as s:
         live = s.scalars(select(EditorToken).where(EditorToken.tenant_id == tenant, EditorToken.revoked.is_(False))).all()
         if len(live) >= 10:
-            raise EditorError("Pehle se 10 editor token hain; ek hataiye.")
+            raise EditorError("There are already 10 editor tokens; remove one.")
         tok = TOKEN_PREFIX + secrets.token_urlsafe(32)
         r = EditorToken(tenant_id=tenant, label=(label or "Godot editor")[:60], hash=_h(tok), hint=tok[-4:])
         s.add(r)
         s.flush()
         rid = r.id
-    return {"id": rid, "token": tok, "say": "Yeh token sirf abhi dikh raha hai - editor mein daal dijiye. Hoola ise dobara nahi dikhayega."}
+    return {"id": rid, "token": tok, "say": "This token is shown only now - put it into the editor. Hoola will not show it again."}
 
 
 def tokens(tenant: str) -> list[dict[str, Any]]:
@@ -111,7 +111,7 @@ def revoke(tenant: str, tid: str) -> dict[str, Any]:
     with session() as s:
         r = s.get(EditorToken, tid)
         if r is None or r.tenant_id != tenant:
-            raise EditorError("Token nahi mila.")
+            raise EditorError("Token not found.")
         r.revoked = True
     return {"ok": True}
 
@@ -166,7 +166,7 @@ def _one_project(tenant: str, ref: str):
         return S.get(tenant, ref)
     mine = S.studios(tenant)
     if len(mine) != 1:
-        raise EditorError(f"Kaunsa project? project = {', '.join(p['number'] for p in mine[:8]) or 'koi project nahi'}")
+        raise EditorError(f"Which project? project = {', '.join(p['number'] for p in mine[:8]) or 'no project'}")
     return S.get(tenant, mine[0]["id"])
 
 
@@ -213,9 +213,9 @@ def call_tool(tenant: str, tid: str, name: str, args: dict) -> Any:
     if name == "hoola_ask":
         q = str(args.get("question") or "").strip()
         if len(q) < 3:
-            raise EditorError("Sawaal likhiye.")
+            raise EditorError("Write the question.")
         if not _rate(tid):
-            raise EditorError("Is ghante 30 sawaal ho gaye; thodi der baad.")
+            raise EditorError("30 questions were asked this hour; try again in a while.")
         from . import ai
         from . import bible as B
         g = G._get(tenant, (p.get("game") or {}).get("id") or "")

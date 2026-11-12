@@ -168,7 +168,7 @@ def url_problem(url: str, allow_private: bool = False) -> str:
         return "no website in that link"
     if host in BLOCKED_HOSTS or host.endswith(BLOCKED_SUFFIXES):
         if host == "web.whatsapp.com":
-            return "Santosh doesn't run WhatsApp Web (only the official WhatsApp Business API)"
+            return "Hoola doesn't run WhatsApp Web (only the official WhatsApp Business API)"
         return "" if allow_private and host != "web.whatsapp.com" else "local or internal addresses are blocked"
     try:
         ip = ipaddress.ip_address(host.strip("[]"))

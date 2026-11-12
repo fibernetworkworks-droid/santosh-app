@@ -215,7 +215,7 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
             if kw.get(k) not in (None, ""):
                 v = _num(kw[k])
                 if v < 0:
-                    raise ShikayatError(f"{k} 0 se kam nahi.")
+                    raise ShikayatError(f"{k} cannot be below 0.")
                 setattr(r, k, v)
         for k, lo, hi in (("reopen_days", 1, 365), ("silence_days", 3, 90)):
             if kw.get(k) not in (None, ""):
@@ -238,10 +238,10 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
         if kw.get("morning_time"):
             mt = str(kw["morning_time"])
             if not re.fullmatch(r"\d{1,2}:\d{2}", mt):
-                raise ShikayatError("Samay HH:MM mein.")
+                raise ShikayatError("Time must be HH:MM.")
             r.morning_time = mt.zfill(5)
     out = settings(tenant)
-    out["say"] = f"Niyam: {out['sector_label']} - pavti {out['effective']['ack_hours']:g} ghante, hal {out['effective']['resolve_days']:g} din." + \
+    out["say"] = f"Rules: {out['sector_label']} - acknowledge within {out['effective']['ack_hours']:g} hours, resolve within {out['effective']['resolve_days']:g} days." + \
         (" " + " ".join(out["notes"]) if out["notes"] else "")
     return out
 
@@ -250,7 +250,7 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
 def _get(s, tenant: str, ref: str) -> ShikayatCase:
     ref = str(ref or "").strip()
     if not ref:
-        raise ShikayatError("Kaun si shikayat? Number (SH-0001) bataiye.")
+        raise ShikayatError("Which complaint? Give the number (SH-0001).")
     c = s.get(ShikayatCase, ref)
     if c is not None and c.tenant_id == tenant:
         return c
@@ -267,9 +267,9 @@ def _get(s, tenant: str, ref: str) -> ShikayatCase:
         if len(hits) == 1:
             c = hits[0]
         elif len(hits) > 1:
-            raise ShikayatError("Kai shikayatein: " + ", ".join(f"{h.number} ({h.customer})" for h in hits[:6]))
+            raise ShikayatError("Several complaints: " + ", ".join(f"{h.number} ({h.customer})" for h in hits[:6]))
     if c is None:
-        raise ShikayatError(f"Shikayat '{ref}' nahi mili.")
+        raise ShikayatError(f"Complaint '{ref}' not found.")
     return c
 
 
@@ -357,7 +357,7 @@ def log_complaint(tenant: str, text: str, customer: str = "", phone: str = "", c
                   by: str = "owner", conv: str = "") -> dict[str, Any]:
     text, scrubbed = R.scrub(str(text or "").strip()[:4000])
     if len(text) < 3:
-        raise ShikayatError("Shikayat kya hai, woh likhiye / boliye.")
+        raise ShikayatError("Write or say what the complaint is.")
     ph = _phone(phone)
     channel = channel if channel in R.CHANNELS else "other"
     rec = _utc(received) if isinstance(received, datetime) else _now()
@@ -377,7 +377,7 @@ def log_complaint(tenant: str, text: str, customer: str = "", phone: str = "", c
             recent = []
         for r0 in recent:
             if r0.text == text and _utc(r0.created_at) and _now() - _utc(r0.created_at) < timedelta(minutes=30):
-                return {"case": _view(s, tenant, r0), "duplicate": True, "say": f"Yeh shikayat pehle hi {r0.number} mein darj hai."}
+                return {"case": _view(s, tenant, r0), "duplicate": True, "say": f"This complaint is already logged as {r0.number}."}
         sev0, flags = R.guess_severity(text)
         sev = severity if severity in R.SEVERITIES else sev0
         causes = R.guess_causes(text + " " + product)
@@ -407,7 +407,7 @@ def log_complaint(tenant: str, text: str, customer: str = "", phone: str = "", c
                          amount=_num(amount), text=text, causes=_dump(causes), flags=_dump(sorted(set(flags))), severity=sev,
                          sector=sec, stage="new", owner=str(owner or "").strip()[:80], received_at=rec, ack_by=dl["ack_by"],
                          due_at=dl["due_at"])
-        _log(c, f"Darj ({channel})" + (" - card / OTP jaisi jaankari hatayi" if scrubbed else ""), by)
+        _log(c, f"Logged ({channel})" + (" - removed card / OTP-like details" if scrubbed else ""), by)
         s.add(c)
         s.flush()
         cid, num = c.id, c.number
@@ -419,25 +419,25 @@ def log_complaint(tenant: str, text: str, customer: str = "", phone: str = "", c
             failed.append(f"{fid}: {e}")
     with session() as s:
         v = _view(s, tenant, s.get(ShikayatCase, cid))
-    say = (f"Shikayat {num} darj" + (f" ({v['customer']})" if v["customer"] else "") + f": {', '.join(v['cause_labels'])}. "
-           f"Pavti {v['ack_by']} tak, hal {v['due']} tak ({R.SECTORS[sec]['label']}).")
+    say = (f"Complaint {num} logged" + (f" ({v['customer']})" if v["customer"] else "") + f": {', '.join(v['cause_labels'])}. "
+           f"Acknowledge by {v['ack_by']}, resolve by {v['due']} ({R.SECTORS[sec]['label']}).")
     if "safety" in v["flags"]:
-        say += " SURAKSHA ka maamla: aaj hi graahak se baat kijiye, zaroorat ho to saamaan band karwaiye."
+        say += " This is a SAFETY matter: speak to the customer today and have the product stopped if needed."
     if "legal_threat" in v["flags"]:
-        say += " Graahak ne court / helpline / social media ki baat ki hai: likhit, vinamra jawab aur saare saboot rakhiye."
+        say += " The customer has mentioned court / helpline / social media: reply politely in writing and keep all the proof."
     if "repeat_customer" in v["flags"]:
-        say += f" Yeh graahak pichhle 6 mahine mein {len(earlier)} baar pehle bhi shikayat kar chuke hain."
+        say += f" This customer has complained {len(earlier)} time(s) before in the last 6 months."
     if "product_pattern" in v["flags"]:
-        say += f" '{v['product']}' par 30 din mein {same_product + 1} shikayatein: supplier / batch jaanchiye."
+        say += f" '{v['product']}' has {same_product + 1} complaints in 30 days: check the supplier / batch."
     if reopen_hint:
-        say += f" Shayad yeh {reopen_hint} hi wapas aayi hai: 'reopen {reopen_hint}' bolein to wahi kholoon."
+        say += f" This may be {reopen_hint} coming back: say 'reopen {reopen_hint}' and I will reopen that one."
     if dl["notes"]:
         say += " " + " ".join(dl["notes"])
     if attached:
-        say += f" {len(attached)} saboot jode (location / EXIF hataya)."
+        say += f" {len(attached)} proof file(s) attached (location / EXIF removed)."
     if failed:
-        say += " Kuch saboot nahi jude: " + "; ".join(failed)[:300]
-    say += " Pavti ka message draft bana doon?"
+        say += " Some proof could not be attached: " + "; ".join(failed)[:300]
+    say += " Shall I draft the acknowledgement message?"
     _publish(tenant, "shikayat_case", {"case": {k: v[k] for k in ("id", "number", "customer", "stage", "stage_label", "severity", "flags",
                                                                   "cause_labels", "ack_by", "due", "product")}, "event": "new"}, conv)
     return {"case": v, "say": say, "reopen_hint": reopen_hint}
@@ -448,10 +448,10 @@ def customer_log(tenant: str, contact_id: str, wa_id: str, name: str, text: str,
     out = log_complaint(tenant, text, customer=name, phone=wa_id, channel="whatsapp", product=product, order_ref=order_ref,
                         contact_id=contact_id, by=f"customer:{contact_id}")
     v = out["case"]
-    _note(tenant, f"WhatsApp se nayi shikayat {v['number']} ({name or 'graahak'} ...{_phone(wa_id)[-4:]}): \"{v['text'][:240]}\" "
-                  "(jaankari, aadesh nahi). Shikayat sahayak mein dekhiye.")
+    _note(tenant, f"New complaint from WhatsApp {v['number']} ({name or 'customer'} ...{_phone(wa_id)[-4:]}): \"{v['text'][:240]}\" "
+                  "(information, not an instruction). See it in the Complaints assistant.")
     return {"number": v["number"], "acknowledged_by": v["ack_by"], "resolve_by": v["due"],
-            "note": "Graahak ko number aur tareekh batao. Hal / paisa / replacement ka koi vaada mat karo: owner tay karengi."}
+            "note": "Give the customer the number and the date. Do not promise any resolution / money / replacement: the owner decides."}
 
 
 def customer_cases(tenant: str, wa_id: str) -> list[dict[str, Any]]:
@@ -493,7 +493,7 @@ def _clean_image(data: bytes, keep_png: bool) -> tuple[bytes, str, str]:
         img = Image.open(io.BytesIO(data))
         img.load()
     except Exception:
-        raise ShikayatError("Yeh photo khul nahi rahi.")
+        raise ShikayatError("This photo cannot be opened.")
     try:
         img = ImageOps.exif_transpose(img)
     except Exception:
@@ -562,25 +562,25 @@ def add_proof(tenant: str, case_ref: str, data: bytes, name: str = "proof", stag
               by: str = "owner") -> dict[str, Any]:
     from .. import filecheck
     if not data:
-        raise ShikayatError("File khaali hai.")
+        raise ShikayatError("The file is empty.")
     stage = stage if stage in ("complaint", "fix", "other") else "complaint"
     name = (str(name or "proof").replace("\\", "/").rsplit("/", 1)[-1] or "proof")[:160]
     kind = _kind_of(name, data)
     cap = MAX_VIDEO_MB if kind == "video" else MAX_PROOF_MB
     if len(data) > cap * 1024 * 1024:
-        raise ShikayatError(f"File {cap} MB se badi hai.")
+        raise ShikayatError(f"The file is larger than {cap} MB.")
     if data[:2] == b"MZ" or data[:4] == b"\x7fELF" or data[:2] == b"#!" or \
             Path(name).suffix.lower() in (".exe", ".apk", ".bat", ".cmd", ".sh", ".js", ".vbs", ".ps1", ".msi", ".dll", ".jar", ".scr"):
-        raise ShikayatError("Yeh program / script hai, saboot nahi; nahi rakhi (kisi ne bheji ho to mat kholiye).")
+        raise ShikayatError("This is a program / script, not proof; it was not kept (if someone sent it, do not open it).")
     rt = filecheck.real_type(name, data)
     if rt.get("danger"):
-        raise ShikayatError(f"Yeh file khatarnak lag rahi hai ({rt.get('note')}); nahi rakhi.")
+        raise ShikayatError(f"This file looks dangerous ({rt.get('note')}); it was not kept.")
     with session() as s:
         c = _get(s, tenant, case_ref)
         cid, num = c.id, c.number
         n = len(s.scalars(select(ShikayatProof.id).where(ShikayatProof.case_id == cid)).all())
     if n >= MAX_PROOFS:
-        raise ShikayatError(f"Ek shikayat mein {MAX_PROOFS} saboot tak.")
+        raise ShikayatError(f"Up to {MAX_PROOFS} proof files per complaint.")
     folder = _dir(tenant, cid)
     stem = f"{stage}_{n + 1:02d}_{secrets.token_hex(3)}"
     cleaned, mime = False, ""
@@ -613,11 +613,11 @@ def add_proof(tenant: str, case_ref: str, data: bytes, name: str = "proof", stag
                           sha256=hashlib.sha256(body).hexdigest(), cleaned=cleaned, note=str(note or "")[:300])
         s.add(p)
         c = s.get(ShikayatCase, cid)
-        _log(c, f"Saboot ({'theek hone ka' if stage == 'fix' else 'shikayat ka'} {kind}) joda" + ("" if cleaned or kind == "audio" else " - metadata nahi hata"), by)
+        _log(c, f"Proof ({'fix' if stage == 'fix' else 'complaint'} {kind}) added" + ("" if cleaned or kind == "audio" else " - metadata not removed"), by)
         s.flush()
         v = _proof_view(p)
-    v["say"] = f"{num}: {kind} saboot joda" + (" (location / camera jaankari hatayi)." if cleaned else
-                                              (". Video ki metadata nahi hat payi (ffmpeg nahi)." if kind == "video" else "."))
+    v["say"] = f"{num}: {kind} proof added" + (" (location / camera details removed)." if cleaned else
+                                              (". The video's metadata could not be removed (no ffmpeg)." if kind == "video" else "."))
     return v
 
 
@@ -627,7 +627,7 @@ def attach_file(tenant: str, case_ref: str, file_id: str, stage: str = "complain
     try:
         name, _mime, data = ms.load_files(tenant, [{"type": "file", "file_id": str(file_id)}])[0]
     except Exception as e:
-        raise ShikayatError(f"File {file_id} nahi mili: {e}")
+        raise ShikayatError(f"File {file_id} not found: {e}")
     return add_proof(tenant, case_ref, data, name, stage, note, by)
 
 
@@ -635,7 +635,7 @@ def proof_file(tenant: str, proof_id: str) -> tuple[Path, str]:
     with session() as s:
         p = s.get(ShikayatProof, proof_id)
         if p is None or p.tenant_id != tenant or not Path(p.path).exists():
-            raise ShikayatError("Saboot nahi mila.")
+            raise ShikayatError("Proof not found.")
         return Path(p.path), p.mime or "application/octet-stream"
 
 
@@ -644,15 +644,15 @@ def ack(tenant: str, case_ref: str, how: str = "", by: str = "owner") -> dict[st
     with session() as s:
         c = _get(s, tenant, case_ref)
         if c.ack_at:
-            return {"case": _view(s, tenant, c, False), "say": f"{c.number} ki pavti pehle hi {_local(tenant, c.ack_at)} ko di gayi."}
+            return {"case": _view(s, tenant, c, False), "say": f"{c.number} was already acknowledged on {_local(tenant, c.ack_at)}."}
         c.ack_at = _now()
         if c.stage == "new":
             c.stage = "acknowledged"
         late = _utc(c.ack_by) and c.ack_at > _utc(c.ack_by)
-        _log(c, "Pavti di" + (f" ({how})" if how else "") + (" - samay ke baad" if late else ""), by)
+        _log(c, "Acknowledged" + (f" ({how})" if how else "") + (" - after the deadline" if late else ""), by)
         s.flush()
         v = _view(s, tenant, c, False)
-    return {"case": v, "say": f"{v['number']}: pavti darj." + (" Samay-seema nikal chuki thi; register mein dikhega." if late else "")}
+    return {"case": v, "say": f"{v['number']}: acknowledgement recorded." + (" The deadline had already passed; the register will show it." if late else "")}
 
 
 def update(tenant: str, case_ref: str, stage: str = "", owner: str | None = None, note: str = "", severity: str = "",
@@ -661,7 +661,7 @@ def update(tenant: str, case_ref: str, stage: str = "", owner: str | None = None
     if stage and stage not in R.STAGES:
         raise ShikayatError("Stage: " + " | ".join(R.STAGES))
     if stage in ("resolved", "closed"):
-        raise ShikayatError("Hal / band ke liye 'resolve' / 'close' kijiye (checklist ke saath).")
+        raise ShikayatError("To resolve / close, use 'resolve' / 'close' (with the checklist).")
     if stage == "reopened":
         return reopen(tenant, case_ref, note, by)
     note, _ = R.scrub(note)
@@ -669,13 +669,13 @@ def update(tenant: str, case_ref: str, stage: str = "", owner: str | None = None
         st = _st(s, tenant)
         c = _get(s, tenant, case_ref)
         if c.stage in ("closed", "rejected") and stage:
-            raise ShikayatError(f"{c.number} band hai; 'reopen' kijiye.")
+            raise ShikayatError(f"{c.number} is closed; use 'reopen'.")
         bits = []
         if stage == "rejected":
             if len(note.strip()) < 8:
-                raise ShikayatError("Shikayat na maanne ki saaf wajah likhiye (graahak ko bhi batani hogi).")
+                raise ShikayatError("Write a clear reason for not accepting the complaint (the customer must be told too).")
             c.stage, c.resolution, c.closed_at = "rejected", note.strip()[:2000], _now()
-            bits.append("Nahi maani: " + note[:120])
+            bits.append("Not accepted: " + note[:120])
         elif stage:
             if stage == "acknowledged" and not c.ack_at:
                 c.ack_at = _now()
@@ -685,28 +685,28 @@ def update(tenant: str, case_ref: str, stage: str = "", owner: str | None = None
             team = [m["name"].lower() for m in _j(st.team, [])]
             o = str(owner).strip()
             if o and team and o.lower() not in team and o.lower() not in ("main", "owner", "aap", "me"):
-                raise ShikayatError("Team mein yeh naam nahi: " + ", ".join(m["name"] for m in _j(st.team, [])))
+                raise ShikayatError("That name is not in the team: " + ", ".join(m["name"] for m in _j(st.team, [])))
             c.owner = o[:80]
-            bits.append(f"Zimmedaar: {o or 'aap'}")
+            bits.append(f"Owner of the case: {o or 'you'}")
         if severity in R.SEVERITIES:
             c.severity = severity
-            bits.append(f"Gambhirta: {severity}")
+            bits.append(f"Severity: {severity}")
         if causes:
             cs = [x for x in causes if x in R.CAUSES or x == "other"]
             if cs:
                 c.causes = _dump(cs[:3])
-                bits.append("Wajah: " + ", ".join(R.CAUSE_LABEL.get(x, x) for x in cs))
+                bits.append("Cause: " + ", ".join(R.CAUSE_LABEL.get(x, x) for x in cs))
         if due:
             from ..theka.service import _date
             d = _date(due)
             if not d:
-                raise ShikayatError("Tareekh samajh nahi aayi.")
+                raise ShikayatError("Could not understand the date.")
             new_due = datetime(d.year, d.month, d.day, 18, 0, tzinfo=_tz(tenant)).astimezone(timezone.utc)
             lim = R.deadlines(_utc(c.received_at), c.sector, None, None, "normal")["due_at"]
             if R.SECTORS[c.sector]["legal"] and new_due > lim:
-                bits.append(f"Nayi tareekh niyam ({_local_day(tenant, lim)}) ke baad hai - graahak ko likhit mein wajah dijiye")
+                bits.append(f"The new date is after the rule's limit ({_local_day(tenant, lim)}) - give the customer the reason in writing")
             c.due_at = new_due
-            bits.append(f"Nayi tareekh {d.isoformat()}")
+            bits.append(f"New date {d.isoformat()}")
         if external_ref:
             c.external_ref = str(external_ref)[:80]
             bits.append(f"Docket: {external_ref}")
@@ -715,45 +715,45 @@ def update(tenant: str, case_ref: str, stage: str = "", owner: str | None = None
         if note and stage != "rejected":
             bits.append(note[:300])
         if not bits:
-            raise ShikayatError("Kya badalna hai?")
+            raise ShikayatError("What should change?")
         _log(c, "; ".join(bits), by)
         s.flush()
         v = _view(s, tenant, c, False)
     say = f"{v['number']}: " + "; ".join(bits) + "."
     if v["stage"] == "rejected":
-        say += " Graahak ko wajah aur aage ka rasta batane wala message draft karoon?"
+        say += " Shall I draft a message that tells the customer the reason and the next steps?"
     return {"case": v, "say": say}
 
 
 def note(tenant: str, case_ref: str, text: str, by: str = "owner") -> dict[str, Any]:
     t, _ = R.scrub(text)
     if not t.strip():
-        raise ShikayatError("Note khaali hai.")
+        raise ShikayatError("The note is empty.")
     with session() as s:
         c = _get(s, tenant, case_ref)
         _log(c, t, by)
-        return {"say": f"{c.number}: note likha."}
+        return {"say": f"{c.number}: note added."}
 
 
 def resolve(tenant: str, case_ref: str, resolution: str, fix_proof: str = "", by: str = "owner", conv: str = "") -> dict[str, Any]:
     resolution, _ = R.scrub(resolution)
     if len(resolution.strip()) < 5:
-        raise ShikayatError("Kya hal kiya, woh likhiye (graahak ko yahi bataya jayega).")
+        raise ShikayatError("Write what the resolution was (this is what the customer will be told).")
     with session() as s:
         c = _get(s, tenant, case_ref)
         if c.stage in ("closed", "rejected"):
-            raise ShikayatError(f"{c.number} pehle hi band hai.")
+            raise ShikayatError(f"{c.number} is already closed.")
         c.stage, c.resolution, c.resolved_at = "resolved", resolution.strip()[:2000], _now()
         if fix_proof:
             c.fix_proof = R.scrub(fix_proof)[0][:500]
         if not c.ack_at:
             c.ack_at = c.resolved_at
-        _log(c, "Hal: " + resolution[:200], by)
+        _log(c, "Resolution: " + resolution[:200], by)
         s.flush()
         v = _view(s, tenant, c)
     missing = [x["say"] for x in v["checklist"] if not x["ok"]]
-    say = f"{v['number']} hal kiya." + (" Band karne se pehle: " + "; ".join(missing) + "." if missing else "") + \
-        " Graahak ke liye vinamra closing message draft karoon?"
+    say = f"{v['number']} resolved." + (" Before closing: " + "; ".join(missing) + "." if missing else "") + \
+        " Shall I draft a polite closing message for the customer?"
     _publish(tenant, "shikayat_case", {"case": {k: v[k] for k in ("id", "number", "customer", "stage", "stage_label", "severity")},
                                        "event": "resolved"}, conv)
     return {"case": v, "say": say}
@@ -767,17 +767,17 @@ def _checklist(s, tenant: str, c: ShikayatCase) -> list[dict[str, Any]]:
     told = _utc(c.told_at)
     silent = bool(told and _now() - told >= timedelta(days=st.silence_days) and c.confirmed is None)
     out = [
-        {"item": "resolution", "ok": bool(c.resolution), "say": "kya hal kiya woh likhiye"},
-        {"item": "proof_of_fix", "ok": bool(proofs or c.fix_proof), "say": "theek hone ka saboot (photo / bill / graahak ka sandesh)"},
-        {"item": "customer_told", "ok": bool(told), "say": "graahak ko closing message bhejiye (aapke tap se)"},
+        {"item": "resolution", "ok": bool(c.resolution), "say": "write what the resolution was"},
+        {"item": "proof_of_fix", "ok": bool(proofs or c.fix_proof), "say": "proof of the fix (photo / bill / the customer's message)"},
+        {"item": "customer_told", "ok": bool(told), "say": "send the customer the closing message (on your tap)"},
         {"item": "customer_confirmed", "ok": c.confirmed is True or silent,
-         "say": f"graahak se 'theek ho gaya' ki pushti (ya message ke {st.silence_days} din baad tak jawab na aaye)"},
-        {"item": "compensation_decided", "ok": not pend, "say": "muavze ka card abhi aapki haan / na ka intezaar kar raha hai"},
-        {"item": "compensation_given", "ok": not appr, "say": "jo muavza aapne maana, woh diya? ('de diya' dabaiye)"},
+         "say": f"the customer's confirmation that it is fixed (or no reply for {st.silence_days} days after the message)"},
+        {"item": "compensation_decided", "ok": not pend, "say": "the compensation card is still waiting for your yes / no"},
+        {"item": "compensation_given", "ok": not appr, "say": "has the compensation you approved been given? (tap 'I gave it')"},
     ]
     if c.confirmed is False:
         out[3]["ok"] = False
-        out[3]["say"] = "graahak ne kaha theek nahi hua"
+        out[3]["say"] = "the customer said it is not fixed"
     return out
 
 
@@ -787,41 +787,41 @@ def _approved_comps(s, case_id: str) -> list[ShikayatComp]:
 
 
 def _template(kind: str, biz: str, c: ShikayatCase, tenant: str, comps: list[ShikayatComp], officer: dict) -> str:
-    name = (c.customer.split()[0] + " ji") if c.customer else "Namaste"
-    head = f"{name}, namaste." if c.customer else "Namaste."
+    name = c.customer.split()[0] if c.customer else ""
+    head = f"Hello {name}." if c.customer else "Hello."
     sign = f"\n- {biz}" if biz else ""
     contact = ""
     if officer.get("name") or officer.get("phone"):
-        contact = f"\nShikayat adhikari: {officer.get('name') or ''} {officer.get('phone') or ''} {officer.get('email') or ''}".rstrip()
+        contact = f"\nGrievance officer: {officer.get('name') or ''} {officer.get('phone') or ''} {officer.get('email') or ''}".rstrip()
     about = f" ({c.product})" if c.product else ""
     if kind == "ack":
-        return (f"{head} Aapki shikayat{about} humein mil gayi hai. Shikayat number: {c.number}. Hum ise dekh rahe hain aur "
-                f"{_local_day(tenant, c.due_at)} tak hal karke aapko batayenge. Asuvidha ke liye khed hai.{contact}{sign}")
+        return (f"{head} We have received your complaint{about}. Complaint number: {c.number}. We are looking into it and will resolve it and update you by "
+                f"{_local_day(tenant, c.due_at)}. We are sorry for the inconvenience.{contact}{sign}")
     if kind == "update":
-        return (f"{head} Shikayat {c.number}{about} par kaam chal raha hai: {R.STAGE_LABEL.get(c.stage, c.stage).lower()}. "
-                f"Hum {_local_day(tenant, c.due_at)} tak aapko poori jaankari denge. Dhairya ke liye dhanyavaad.{sign}")
+        return (f"{head} Complaint {c.number}{about} is being worked on: {R.STAGE_LABEL.get(c.stage, c.stage).lower()}. "
+                f"We will give you a full update by {_local_day(tenant, c.due_at)}. Thank you for your patience.{sign}")
     if kind == "satisfaction":
-        return (f"{head} Shikayat {c.number} ke hal se aap kitne santusht hain? 1 se 5 mein jawab de dijiye (5 = bahut achha). "
-                f"Aapki raay se hum aur behtar karenge.{sign}")
+        return (f"{head} How satisfied are you with the way complaint {c.number} was resolved? Please reply with 1 to 5 (5 = very good). "
+                f"Your feedback helps us do better.{sign}")
     if kind == "reject":
-        return (f"{head} Shikayat {c.number}{about} hamne dhyan se dekhi. {c.resolution} Isliye is baar hum ise maan nahi pa rahe, "
-                f"iske liye khed hai. {R.route_line(c.sector) or R.route_line('general')}{contact}{sign}")
+        return (f"{head} We looked at complaint {c.number}{about} carefully. {c.resolution} So we are unable to accept it this time, "
+                f"and we are sorry about that. {R.route_line(c.sector) or R.route_line('general')}{contact}{sign}")
     # close
     gave = ""
     if comps:
         gave = " " + " ".join(
             f"{R.COMP_KINDS.get(x.kind, x.kind)}" + (f" {_rs(x.amount)}" if x.amount and x.kind != "replacement" else "")
-            + (f" ({x.item})" if x.item else "") + (" diya gaya hai." if x.status == "given" else " diya jayega.") for x in comps)
+            + (f" ({x.item})" if x.item else "") + (" has been given." if x.status == "given" else " will be given.") for x in comps)
     route = (" " + R.route_line(c.sector)) if R.SECTORS.get(c.sector, {}).get("legal") else ""
-    return (f"{head} Shikayat {c.number}{about} ke baare mein: {c.resolution.rstrip('.')}.{gave} Aapko jo pareshani hui, uske liye "
-            f"hum maafi chahte hain. Agar ab bhi koi dikkat ho to isi number par bataiye, hum shikayat dobara kholenge.{route}{contact}{sign}")
+    return (f"{head} About complaint {c.number}{about}: {c.resolution.rstrip('.')}.{gave} We apologize for the trouble "
+            f"this caused you. If there is still a problem, tell us on this number and we will reopen the complaint.{route}{contact}{sign}")
 
 
 def _polish(base: str, kind: str, number: str, allowed_money: list[str], rules: list[str]) -> str:
     """Optional: the model makes the template warmer. Refused (template kept) if it adds money / promises / drops facts."""
     try:
-        out = _ai("You rewrite a short customer-service message for an Indian small business. Keep the SAME language mix "
-                  "(Hinglish in Latin letters), polite (aap), warm, 3-6 short sentences. Keep EVERY fact exactly: complaint "
+        out = _ai("You rewrite a short customer-service message for a small business. Write in clear, simple English, "
+                  "polite, warm, 3-6 short sentences. Keep EVERY fact exactly: complaint "
                   "number, dates, amounts, names, phone numbers, the route line. Do NOT add any offer, refund, discount, "
                   "free item, compensation, promise or date that is not already in it. No emojis. Reply with only the message. "
                   f"Her rules: {'; '.join(rules)[:600]}", base, 600).strip()
@@ -852,9 +852,9 @@ def message(tenant: str, case_ref: str, kind: str = "close", polish: bool = True
         st = _st(s, tenant)
         c = _get(s, tenant, case_ref)
         if kind == "close" and not c.resolution:
-            raise ShikayatError(f"{c.number}: pehle 'resolve' kijiye (kya hal kiya), phir closing message.")
+            raise ShikayatError(f"{c.number}: first 'resolve' it (what the resolution was), then the closing message.")
         if kind == "reject" and c.stage != "rejected":
-            raise ShikayatError("Pehle shikayat 'rejected' kijiye (wajah ke saath).")
+            raise ShikayatError("First mark the complaint 'rejected' (with a reason).")
         pend = s.scalars(select(ShikayatComp).where(ShikayatComp.case_id == c.id, ShikayatComp.status == "pending")).all()
         comps = _approved_comps(s, c.id) if kind == "close" else []
         biz = _business(tenant, st)
@@ -876,10 +876,10 @@ def message(tenant: str, case_ref: str, kind: str = "close", polish: bool = True
            "wa_link": f"https://wa.me/91{ph}?text={quote(text)}" if len(ph) == 10 else "",
            "sms_link": f"sms:+91{ph}?body={quote(text)}" if len(ph) == 10 else "",
            "business_ok": window, "contact_id": cid_contact,
-           "say": f"{num}: {'closing' if kind == 'close' else kind} message ka draft taiyaar. Aap bhejiye"
-                  + (" (ya business WhatsApp se, aapke tap par)." if window else " (apne WhatsApp / SMS se).")}
+           "say": f"{num}: {'closing' if kind == 'close' else kind} message draft is ready. You send it"
+                  + (" (or from business WhatsApp, on your tap)." if window else " (from your own WhatsApp / SMS).")}
     if pend:
-        out["say"] += " Dhyaan: muavze ka card abhi baaki hai; message mein uska vaada nahi likha."
+        out["say"] += " Note: the compensation card is still pending; the message does not promise it."
     _publish(tenant, "shikayat_message", {k: out[k] for k in ("case_id", "number", "kind", "text", "wa_link", "sms_link", "business_ok")}, conv)
     return out
 
@@ -889,14 +889,14 @@ async def send_business(tenant: str, case_ref: str, text: str, kind: str = "clos
     from ..employee import inbox
     text = R.scrub(str(text or "").strip())[0]
     if not text:
-        raise ShikayatError("Message khaali hai.")
+        raise ShikayatError("The message is empty.")
     with session() as s:
         c = _get(s, tenant, case_ref)
         if R.MONEY_RE.search(text):
             allowed = [_rs(x.amount) for x in _approved_comps(s, c.id) if x.amount]
             amounts = re.findall(r"₹[\d,]+", text)
             if any(a not in allowed for a in amounts):
-                raise ShikayatError("Message mein aisa paisa likha hai jo aapne muavze mein maana nahi. Pehle card par haan kijiye.")
+                raise ShikayatError("The message mentions money that you have not approved as compensation. Approve the card first.")
         contact = c.contact_id
         if not contact and c.phone:
             from ..employee.models import BizContact
@@ -904,7 +904,7 @@ async def send_business(tenant: str, case_ref: str, text: str, kind: str = "clos
             contact = bc[0].id if bc else ""
         cid = c.id
     if not contact:
-        raise ShikayatError("Is graahak ne business WhatsApp par kabhi message nahi kiya: draft apne WhatsApp / SMS se bhejiye.")
+        raise ShikayatError("This customer has never messaged on business WhatsApp: send the draft from your own WhatsApp / SMS.")
     try:
         await inbox.send(tenant, contact, text, by="owner")
     except inbox.InboxError as e:
@@ -921,8 +921,8 @@ def mark_told(tenant: str, case_ref: str, how: str = "whatsapp", kind: str = "cl
                 c.stage = "acknowledged"
         if kind in ("close", "reject"):
             c.told_at = _now()
-        _log(c, f"Graahak ko {kind} message bheja ({how})")
-        return {"say": f"{c.number}: graahak ko bataya ({how}).", "case_id": c.id}
+        _log(c, f"Sent the customer a {kind} message ({how})")
+        return {"say": f"{c.number}: customer informed ({how}).", "case_id": c.id}
 
 
 def confirm(tenant: str, case_ref: str, fixed: bool = True, satisfaction: Any = None, feedback: str = "", by: str = "owner") -> dict[str, Any]:
@@ -937,23 +937,23 @@ def confirm(tenant: str, case_ref: str, fixed: bool = True, satisfaction: Any = 
                 c.closed_at = None
                 st = _st(s, tenant)
                 c.due_at = _now() + timedelta(days=R.targets(c.sector, st.ack_hours or None, st.resolve_days or None)["resolve_days"])
-            _log(c, "Graahak: theek nahi hua" + (f" - {feedback[:200]}" if feedback else ""), by)
+            _log(c, "Customer: not fixed" + (f" - {feedback[:200]}" if feedback else ""), by)
             s.flush()
-            return {"case": _view(s, tenant, c, False), "say": f"{c.number} phir khuli: graahak ne kaha theek nahi hua. Nayi tareekh {_local_day(tenant, c.due_at)}."}
+            return {"case": _view(s, tenant, c, False), "say": f"{c.number} reopened: the customer said it is not fixed. New date {_local_day(tenant, c.due_at)}."}
         c.confirmed = True
         if satisfaction not in (None, ""):
             sat = int(_num(satisfaction))
             if not 1 <= sat <= 5:
-                raise ShikayatError("Rating 1 se 5.")
+                raise ShikayatError("Rating must be 1 to 5.")
             c.satisfaction = sat
         if feedback:
             c.feedback = R.scrub(feedback)[0][:1000]
-        _log(c, "Graahak: theek ho gaya" + (f", rating {c.satisfaction}/5" if c.satisfaction else ""), by)
+        _log(c, "Customer: fixed" + (f", rating {c.satisfaction}/5" if c.satisfaction else ""), by)
         s.flush()
         v = _view(s, tenant, c, False)
-    say = f"{v['number']}: graahak ne pushti ki." + (f" Rating {v['satisfaction']}/5." if v["satisfaction"] else "")
+    say = f"{v['number']}: the customer confirmed." + (f" Rating {v['satisfaction']}/5." if v["satisfaction"] else "")
     if v["satisfaction"] and v["satisfaction"] <= 2:
-        say += " Rating kam hai: ek baar khud baat kar lijiye."
+        say += " The rating is low: speak to the customer yourself once."
     return {"case": v, "say": say}
 
 
@@ -961,19 +961,19 @@ def close(tenant: str, case_ref: str, force: bool = False, reason: str = "", by:
     with session() as s:
         c = _get(s, tenant, case_ref)
         if c.stage == "closed":
-            return {"case": _view(s, tenant, c, False), "say": f"{c.number} pehle hi band hai."}
+            return {"case": _view(s, tenant, c, False), "say": f"{c.number} is already closed."}
         if not c.resolution:
-            raise ShikayatError("Pehle 'resolve' kijiye: kya hal kiya.")
+            raise ShikayatError("First 'resolve' it: what the resolution was.")
         ck = _checklist(s, tenant, c)
         left = [x for x in ck if not x["ok"]]
         if any(x["item"] == "compensation_decided" for x in left):
-            raise ShikayatError("Muavze ka card abhi baaki hai: pehle haan / na kijiye.")
+            raise ShikayatError("The compensation card is still pending: say yes / no first.")
         if left and not force:
-            raise ShikayatError("Band karne se pehle: " + "; ".join(x["say"] for x in left) + ". (Aap chahein to wajah likh kar 'phir bhi band' kar sakti hain.)")
+            raise ShikayatError("Before closing: " + "; ".join(x["say"] for x in left) + ". (You can still 'Close anyway' if you write a reason.)")
         if left and len(str(reason).strip()) < 5:
-            raise ShikayatError("Checklist poori nahi; 'phir bhi band' ke liye wajah likhiye.")
+            raise ShikayatError("The checklist is not complete; write a reason to 'Close anyway'.")
         c.stage, c.closed_at = "closed", _now()
-        _log(c, "Band" + (f" (checklist adhoori: {', '.join(x['item'] for x in left)}; wajah: {reason[:150]})" if left else ""), by)
+        _log(c, "Closed" + (f" (checklist incomplete: {', '.join(x['item'] for x in left)}; reason: {reason[:150]})" if left else ""), by)
         st = _st(s, tenant)
         learned = _j(st.learned, {})
         days = ((_utc(c.closed_at) - _utc(c.received_at)).total_seconds() / 86400) if c.received_at else 0
@@ -988,11 +988,11 @@ def close(tenant: str, case_ref: str, force: bool = False, reason: str = "", by:
         st.learned = _dump(learned)
         s.flush()
         v = _view(s, tenant, c, False)
-    say = f"{v['number']} band ({days:.1f} din mein)."
+    say = f"{v['number']} closed (in{days:.1f} days)."
     if v["satisfaction"] is None:
-        say += " Graahak se 1-5 rating poochhne ka draft bana doon?"
+        say += " Shall I draft a message asking the customer for a 1-5 rating?"
     if v["ticket_ref"]:
-        say += f" Hoola ticket {v['ticket_ref']} bhi update karna ho to app mein 'Ticket update' dabaiye."
+        say += f" To update Hoola ticket {v['ticket_ref']} as well, tap 'Ticket update' in the app."
     _publish(tenant, "shikayat_case", {"case": {k: v[k] for k in ("id", "number", "customer", "stage", "stage_label", "severity")},
                                        "event": "closed"}, conv)
     return {"case": v, "say": say}
@@ -1004,23 +1004,23 @@ def reopen(tenant: str, case_ref: str, reason: str = "", by: str = "owner") -> d
         st = _st(s, tenant)
         c = _get(s, tenant, case_ref)
         if c.stage in R.OPEN:
-            return {"case": _view(s, tenant, c, False), "say": f"{c.number} abhi khuli hi hai."}
+            return {"case": _view(s, tenant, c, False), "say": f"{c.number} is still open."}
         ca = _utc(c.closed_at) or _utc(c.resolved_at) or _now()
         if _now() - ca <= timedelta(days=st.reopen_days):
             c.stage, c.reopen_count, c.closed_at, c.confirmed = "reopened", c.reopen_count + 1, None, None
             c.due_at = _now() + timedelta(days=R.targets(c.sector, st.ack_hours or None, st.resolve_days or None)["resolve_days"])
-            _log(c, "Phir khuli" + (f": {reason[:200]}" if reason else ""), by)
+            _log(c, "Reopened" + (f": {reason[:200]}" if reason else ""), by)
             s.flush()
             v = _view(s, tenant, c, False)
-            return {"case": v, "say": f"{v['number']} phir khuli ({v['reopen_count']} baar). Nayi tareekh {v['due']}."}
+            return {"case": v, "say": f"{v['number']} reopened ({v['reopen_count']} time(s)). New date {v['due']}."}
         parent = c.number
         data = {"customer": c.customer, "phone": c.phone, "product": c.product, "order_ref": c.order_ref, "channel": c.channel,
                 "contact_id": c.contact_id, "amount": c.amount}
-    out = log_complaint(tenant, (reason or "Pichhli shikayat jaisi dikkat phir aayi") + f" (pichhli: {parent})", by=by, **data)
+    out = log_complaint(tenant, (reason or "The same problem as the earlier complaint has come back") + f" (earlier: {parent})", by=by, **data)
     with session() as s:
         n = s.get(ShikayatCase, out["case"]["id"])
         n.parent = parent
-    out["say"] = f"{parent} ko band hue {st.reopen_days} din se zyada ho gaye, isliye nayi shikayat {out['case']['number']} banayi (pichhli se judi)."
+    out["say"] = f"{parent} was closed more than {st.reopen_days} days ago, so a new complaint {out['case']['number']} was created (linked to the earlier one)."
     return out
 
 
@@ -1028,7 +1028,7 @@ def escalate(tenant: str, case_ref: str, to: str, ref: str = "", by: str = "owne
     """The customer went outside (NCH 1915, ombudsman, consumer commission, social media). Recorded; the case gets priority."""
     to = str(to or "").strip()[:80]
     if not to:
-        raise ShikayatError("Graahak kahan gaye? (1915 / ombudsman / consumer court / social media ...)")
+        raise ShikayatError("Where did the customer go? (1915 / ombudsman / consumer court / social media ...)")
     with session() as s:
         c = _get(s, tenant, case_ref)
         c.escalated = _dump({"to": to, "ref": str(ref or "")[:80], "on": today(tenant).isoformat()})
@@ -1038,23 +1038,23 @@ def escalate(tenant: str, case_ref: str, to: str, ref: str = "", by: str = "owne
         c.flags = _dump(sorted(fl))
         if c.stage in ("closed", "resolved", "rejected"):
             c.stage = "reopened"
-        _log(c, f"Graahak bahar gaye: {to}" + (f" ({ref})" if ref else ""), by)
+        _log(c, f"Customer went outside: {to}" + (f" ({ref})" if ref else ""), by)
         s.flush()
         v = _view(s, tenant, c)
     low = to.lower()
-    tip = "Har notice / message ka jawab samay par, likhit mein; saare saboot aur log taiyaar rakhiye."
+    tip = "Reply to every notice / message on time and in writing; keep all proof and logs ready."
     if "1915" in low or "nch" in low or "helpline" in low:
-        tip = "NCH company ko shikayat bhejta hai: wahan jawab dijiye aur hal ka saboot lagaiye. " + tip
+        tip = "NCH forwards the complaint to the company: reply there and attach proof of the resolution. " + tip
     elif "court" in low or "commission" in low or "jagriti" in low or "forum" in low:
-        tip = "Commission ka notice aaye to tay samay mein jawab (vakil se salah lijiye; Hoola kanooni salah nahi deta). " + tip
+        tip = "If a notice comes from the Commission, reply within the set time (take a lawyer's advice; Hoola does not give legal advice). " + tip
     elif "ombudsman" in low or "lokpal" in low or "rbi" in low or "irdai" in low:
-        tip = "Ombudsman ko apna paksh aur saboot samay par dijiye; award aaye to us ki samay-seema dekhiye. " + tip
-    return {"case": v, "say": f"{v['number']}: graahak {to} gaye - zaroori maamla. {tip}"}
+        tip = "Give the Ombudsman your side and the proof on time; if an award comes, check its deadline. " + tip
+    return {"case": v, "say": f"{v['number']}: the customer went to {to} - urgent matter. {tip}"}
 
 
 # ---------------------------------------------------------------- compensation (HER tap only)
 def _comp_show(x: ShikayatComp, c: ShikayatCase) -> dict[str, Any]:
-    return {"title": f"{c.number} muavza: {R.COMP_KINDS.get(x.kind, x.kind)}", "case": c.number, "customer": c.customer,
+    return {"title": f"{c.number} compensation: {R.COMP_KINDS.get(x.kind, x.kind)}", "case": c.number, "customer": c.customer,
             "kind": x.kind, "amount": _rs(x.amount) if x.amount else "", "item": x.item, "reason": x.reason[:300], "comp": x.number}
 
 
@@ -1069,30 +1069,30 @@ def comp_request(tenant: str, case_ref: str, kind: str, amount: Any = None, item
     kind = {"paisa wapas": "refund", "wapas": "refund", "badal": "replacement", "naya": "replacement", "chhoot": "discount",
             "maafi": "goodwill", "free": "free_service", "muft": "free_service", "voucher": "credit"}.get(kind, kind)
     if kind not in R.COMP_KINDS:
-        raise ShikayatError("Muavza: " + " | ".join(R.COMP_KINDS))
+        raise ShikayatError("Compensation: " + " | ".join(R.COMP_KINDS))
     amt = _num(amount)
     if amt < 0 or amt > 1_00_00_000:
-        raise ShikayatError("Rakam sahi nahi.")
+        raise ShikayatError("The amount is not valid.")
     if kind in R.MONEY_KINDS and amt <= 0:
-        raise ShikayatError("Kitne rupaye? (rakam ke bina card nahi banta)")
+        raise ShikayatError("How many rupees? (no card without an amount)")
     if kind == "replacement" and not str(item).strip():
-        raise ShikayatError("Kya badal kar dena hai? (item)")
+        raise ShikayatError("What should be given as the replacement? (item)")
     reason = R.scrub(reason)[0]
     with _LOCK, session() as s:
         st = _st(s, tenant)
         c = _get(s, tenant, case_ref)
         if c.stage == "closed":
-            raise ShikayatError(f"{c.number} band hai; pehle reopen kijiye.")
+            raise ShikayatError(f"{c.number} is closed; reopen it first.")
         checks = []
         if st.comp_limit and amt > st.comp_limit:
-            checks.append(f"Aapki seema {_rs(st.comp_limit)} se zyada")
+            checks.append(f"Above your limit of {_rs(st.comp_limit)}")
         if c.amount and amt > c.amount:
-            checks.append(f"Kharid ki keemat {_rs(c.amount)} se zyada")
+            checks.append(f"Above the purchase price of {_rs(c.amount)}")
         month0 = datetime(today(tenant).year, today(tenant).month, 1, tzinfo=_tz(tenant)).astimezone(timezone.utc)
         month_total = sum(x.amount for x in s.scalars(select(ShikayatComp).where(
             ShikayatComp.tenant_id == tenant, ShikayatComp.status.in_(("approved", "given")), ShikayatComp.decided_at >= month0)).all())
         if st.month_limit and month_total + amt > st.month_limit:
-            checks.append(f"Is mahine ka muavza {_rs(month_total + amt)} ho jayega (seema {_rs(st.month_limit)})")
+            checks.append(f"This month's compensation will reach {_rs(month_total + amt)} (limit {_rs(st.month_limit)})")
         if c.phone:
             ids = [x.id for x in s.scalars(select(ShikayatCase).where(ShikayatCase.tenant_id == tenant, ShikayatCase.phone == c.phone,
                                                                          ShikayatCase.id != c.id)).all()]
@@ -1100,30 +1100,30 @@ def comp_request(tenant: str, case_ref: str, kind: str, amount: Any = None, item
                 past = s.scalars(select(ShikayatComp).where(ShikayatComp.case_id.in_(ids), ShikayatComp.status.in_(("approved", "given")),
                                                             ShikayatComp.decided_at >= _now() - timedelta(days=365))).all()
                 if past:
-                    checks.append(f"Is graahak ko saal bhar mein {len(past)} baar muavza mila ({_rs(sum(p.amount for p in past))})")
+                    checks.append(f"This customer received compensation {len(past)} time(s) in the past year ({_rs(sum(p.amount for p in past))})")
         learned = _j(st.learned, {})
         for cause in _j(c.causes, []):
             L = learned.get(cause)
             if L and L.get("cases", 0) >= 3 and L.get("comp"):
-                checks.append(f"'{R.CAUSE_LABEL.get(cause, cause)}' mein ab tak ausat {_rs(L['comp'] / L['cases'])} muavza")
+                checks.append(f"'{R.CAUSE_LABEL.get(cause, cause)}': average compensation so far {_rs(L['comp'] / L['cases'])}")
                 break
         for old in s.scalars(select(ShikayatComp).where(ShikayatComp.case_id == c.id, ShikayatComp.status == "pending")).all():
             old.status = "cancelled"
-            old.note = "naya card bana"
+            old.note = "replaced by a new card"
         st.comp_seq += 1
         x = ShikayatComp(tenant_id=tenant, case_id=c.id, number=f"C-{st.comp_seq:04d}", kind=kind, amount=amt,
                          item=str(item or "").strip()[:200], reason=reason.strip()[:1000], checks=_dump(checks), conv=str(conv or "")[:40])
         s.add(x)
         s.flush()
         x.hash = _comp_hash(_comp_show(x, c))
-        _log(c, f"Muavze ka card {x.number}: {R.COMP_KINDS[kind]}" + (f" {_rs(amt)}" if amt else "") + " (aapki haan ka intezaar)", by)
+        _log(c, f"Compensation card {x.number}: {R.COMP_KINDS[kind]}" + (f" {_rs(amt)}" if amt else "") + " (waiting for your approval)", by)
         s.flush()
         v = _comp_view(tenant, x)
         show = _comp_show(x, c)
     v["money"] = amt > 0
     _publish(tenant, "shikayat_comp", {"comp": v, "show": show}, conv)
     say = (f"{show['case']}: {R.COMP_KINDS[kind]}" + (f" {_rs(amt)}" if amt else "") + (f" ({v['item']})" if v["item"] else "") +
-           " ka card bheja. Aapki haan ke baad hi yeh tay hoga; graahak se abhi vaada nahi." + (" Dhyaan: " + "; ".join(checks) + "." if checks else ""))
+           " card sent. It is decided only after your approval; no promise to the customer yet." + (" Note: " + "; ".join(checks) + "." if checks else ""))
     return {"comp": v, "show": show, "say": say, "needs_tap": True}
 
 
@@ -1152,7 +1152,7 @@ def comp_challenge(tenant: str, comp_id: str) -> dict[str, Any]:
     from .. import approvekey as ak
     card = comp_card(tenant, comp_id)
     if not card or card["status"] != "pending":
-        raise ShikayatError("Yeh card ab baaki nahi hai.")
+        raise ShikayatError("This card is no longer pending.")
     digest = _comp_hash({k: v for k, v in card.items() if k not in ("status", "hash")})
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
@@ -1183,16 +1183,16 @@ def decide_comp(tenant: str, comp_id: str, yes: bool, card_hash: str = "", proof
                 by_tap: bool = False) -> dict[str, Any]:
     """ONLY her tap in the app (API). The tool can never reach this."""
     if not by_tap:
-        raise ShikayatError("Muavze ki haan sirf aapke tap se (app ka card).")
+        raise ShikayatError("Compensation can be approved only by your tap (the card in the app).")
     with session() as s:
         x = s.get(ShikayatComp, comp_id)
         if x is None or x.tenant_id != tenant:
-            raise ShikayatError("Card nahi mila.")
+            raise ShikayatError("Card not found.")
         if x.status != "pending":
-            raise ShikayatError(f"Yeh card pehle hi {x.status} hai.")
+            raise ShikayatError(f"This card is already {x.status}.")
         c = s.get(ShikayatCase, x.case_id)
         if not card_hash or card_hash != x.hash or _comp_hash(_comp_show(x, c)) != x.hash:
-            raise ShikayatError("Card badal gaya hai; naya card dekhiye.")
+            raise ShikayatError("The card has changed; see the new card.")
         money = x.amount > 0
     if yes and money:
         from .. import approvekey as ak
@@ -1204,16 +1204,16 @@ def decide_comp(tenant: str, comp_id: str, yes: bool, card_hash: str = "", proof
         x.status = "approved" if yes else "rejected"
         x.decided_at = _now()
         x.note = R.scrub(note)[0][:500]
-        _log(c, f"Muavza {x.number} " + ("MANA (aapki haan)" if yes else "NAHI maana") + (f": {x.note}" if x.note else ""), "owner")
+        _log(c, f"Compensation {x.number} " + ("APPROVED (your yes)" if yes else "NOT approved") + (f": {x.note}" if x.note else ""), "owner")
         s.flush()
         v = _comp_view(tenant, x)
         num = c.number
         conv = x.conv
     if yes:
-        say = (f"{num}: {v['kind_label']}" + (f" {v['amount_text']}" if v["amount_text"] else "") + " maana. Aap khud dijiye "
-               "(UPI / cash / naya saamaan) aur 'de diya' dabaiye; closing message mein ab yeh likha jayega.")
+        say = (f"{num}: {v['kind_label']}" + (f" {v['amount_text']}" if v["amount_text"] else "") + " approved. Give it yourself "
+               "(UPI / cash / new item) and tap 'I gave it'; the closing message will now mention it.")
     else:
-        say = f"{num}: muavza nahi. Graahak ko vinamra jawab mein wajah batayiye."
+        say = f"{num}: no compensation. Tell the customer the reason in a polite reply."
     _publish(tenant, "shikayat_comp", {"comp": v, "event": "decided"}, conv)
     return {"comp": v, "say": say}
 
@@ -1224,15 +1224,15 @@ def comp_given(tenant: str, comp_id: str, how: str = "", ref: str = "") -> dict[
         if x is None or x.tenant_id != tenant:
             x = s.scalars(select(ShikayatComp).where(ShikayatComp.tenant_id == tenant, ShikayatComp.number == str(comp_id).upper())).first()
         if x is None:
-            raise ShikayatError("Card nahi mila.")
+            raise ShikayatError("Card not found.")
         if x.status != "approved":
-            raise ShikayatError("Sirf aapki haan wala muavza 'de diya' ho sakta hai.")
+            raise ShikayatError("Only compensation you approved can be marked as given.")
         x.status, x.given_at = "given", _now()
         x.given_how = (str(how or "")[:120] + (f" ref ...{_digits(ref)[-4:]}" if _digits(ref) else "")).strip()
         c = s.get(ShikayatCase, x.case_id)
-        _log(c, f"Muavza {x.number} diya ({x.given_how or 'aapne bataya'})")
+        _log(c, f"Compensation {x.number} given ({x.given_how or 'you said so'})")
         s.flush()
-        return {"comp": _comp_view(tenant, x), "say": f"{c.number}: muavza diya darj."}
+        return {"comp": _comp_view(tenant, x), "say": f"{c.number}: compensation recorded as given."}
 
 
 # ---------------------------------------------------------------- Hoola Network / WhatsApp tickets
@@ -1252,7 +1252,7 @@ def import_tickets(tenant: str) -> dict[str, Any]:
             made.append(out["case"]["number"])
         except ShikayatError:
             continue
-    return {"imported": made, "say": (f"{len(made)} ticket shikayat mein aaye: " + ", ".join(made)) if made else "Koi naya ticket nahi."}
+    return {"imported": made, "say": (f"{len(made)} ticket(s) brought into complaints: " + ", ".join(made)) if made else "No new ticket."}
 
 
 def ticket_sync(tenant: str, case_ref: str) -> dict[str, Any]:
@@ -1261,13 +1261,13 @@ def ticket_sync(tenant: str, case_ref: str) -> dict[str, Any]:
     with session() as s:
         c = _get(s, tenant, case_ref)
         if not c.ticket_ref:
-            raise ShikayatError("Is shikayat ka koi Hoola ticket nahi.")
+            raise ShikayatError("This complaint has no Hoola ticket.")
         st = {"closed": "closed", "resolved": "resolved", "rejected": "closed", "new": "open", "acknowledged": "assigned"}.get(c.stage, "in_progress")
         ref, text = c.ticket_ref, (c.resolution or R.STAGE_LABEL.get(c.stage, ""))[:400]
     try:
         business.update_ticket(tenant, ref, st, text)
     except Exception as e:
-        raise ShikayatError(f"Ticket update nahi hua: {e}")
+        raise ShikayatError(f"The ticket was not updated: {e}")
     return {"say": f"Ticket {ref}: {st}."}
 
 
@@ -1275,17 +1275,17 @@ def ticket_sync(tenant: str, case_ref: str) -> dict[str, Any]:
 def forget_customer(tenant: str, phone: str) -> dict[str, Any]:
     ph = _phone(phone)
     if len(ph) != 10:
-        raise ShikayatError("10 ank ka number.")
+        raise ShikayatError("The number must have 10 digits.")
     n = 0
     with session() as s:
         for c in s.scalars(select(ShikayatCase).where(ShikayatCase.tenant_id == tenant, ShikayatCase.phone == ph)).all():
             for p in s.scalars(select(ShikayatProof).where(ShikayatProof.case_id == c.id)).all():
                 Path(p.path).unlink(missing_ok=True)
                 s.delete(p)
-            c.customer, c.phone, c.contact_id, c.text, c.feedback = "[hataya]", "", "", "[graahak ke kehne par hataya]", ""
-            c.log = _dump([{"at": _now().isoformat(timespec="seconds"), "by": "owner", "text": "Personal jaankari hatayi (DPDP)"}])
+            c.customer, c.phone, c.contact_id, c.text, c.feedback = "[removed]", "", "", "[removed at the customer's request]", ""
+            c.log = _dump([{"at": _now().isoformat(timespec="seconds"), "by": "owner", "text": "Personal details removed (DPDP)"}])
             n += 1
-    return {"forgotten": n, "say": f"{n} shikayaton se graahak ki personal jaankari aur saboot hata diye (ginti register mein rahegi)."}
+    return {"forgotten": n, "say": f"{n} complaint(s): the customer's personal details and proof were removed (the count stays in the register)."}
 
 
 # ---------------------------------------------------------------- register + summary
@@ -1355,18 +1355,18 @@ def summary(tenant: str, month: str = "") -> dict[str, Any]:
         }
     tips = []
     if out["closed_in_time_pct"] is not None and out["closed_in_time_pct"] < 80:
-        tips.append(f"Sirf {out['closed_in_time_pct']}% samay par band hui")
+        tips.append(f"Only {out['closed_in_time_pct']}% closed on time")
     if out["by_cause"]:
         k, v = next(iter(out["by_cause"].items()))
         if v >= 3:
-            tips.append(f"Sabse zyada: {k} ({v}) - jad se theek kijiye")
+            tips.append(f"Most common: {k} ({v}) - fix the root cause")
     if out["pending_age"]["31-90"] + out["pending_age"]["90+"]:
-        tips.append(f"{out['pending_age']['31-90'] + out['pending_age']['90+']} shikayatein 30 din se purani")
+        tips.append(f"{out['pending_age']['31-90'] + out['pending_age']['90+']} complaints older than 30 days")
     out["tips"] = tips
-    out["say"] = (f"{label}: {out['received']} aayi, {out['disposed']} band, {out['closing_pending']} baaki"
-                  + (f", {out['closed_in_time_pct']}% samay par" if out["closed_in_time_pct"] is not None else "")
+    out["say"] = (f"{label}: {out['received']} received, {out['disposed']} closed, {out['closing_pending']} pending"
+                  + (f", {out['closed_in_time_pct']}% on time" if out["closed_in_time_pct"] is not None else "")
                   + (f", rating {out['satisfaction_avg']}/5" if out["satisfaction_avg"] else "")
-                  + (f", muavza {_rs(out['comp_approved'])}" if out["comp_approved"] else "") + "." + (" " + "; ".join(tips) + "." if tips else ""))
+                  + (f", compensation {_rs(out['comp_approved'])}" if out["comp_approved"] else "") + "." + (" " + "; ".join(tips) + "." if tips else ""))
     return out
 
 
@@ -1433,8 +1433,8 @@ def register_file(tenant: str, month: str = "", conv: str = "") -> dict[str, Any
     wb.save(bio)
     f = chatfiles.store(tenant, f"Shikayat_register_{label}.xlsx", bio.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    _publish(tenant, "pc_file", {**f, "source": "shikayat", "title": f"Shikayat register {label}"}, conv)
-    return {"file": f, "summary": sm, "say": f"Shikayat register {label} Excel mein (Register + Summary). " + sm["say"]}
+    _publish(tenant, "pc_file", {**f, "source": "shikayat", "title": f"Complaint register {label}"}, conv)
+    return {"file": f, "summary": sm, "say": f"Complaint register {label} in Excel (Register + Summary). " + sm["say"]}
 
 
 # ---------------------------------------------------------------- the day, reminders
@@ -1454,24 +1454,24 @@ def day(tenant: str) -> dict[str, Any]:
         resolved = [c for c in rows if c.stage == "resolved"]
         not_told = [c for c in resolved if not c.told_at]
         if urgent:
-            parts.append("Zaroori: " + ", ".join(f"{c.number} ({c.customer or c.product or 'graahak'})" for c in urgent[:4]))
+            parts.append("Urgent: " + ", ".join(f"{c.number} ({c.customer or c.product or 'customer'})" for c in urgent[:4]))
         if ack_late:
-            parts.append(f"{len(ack_late)} ki pavti der se: " + ", ".join(c.number for c in ack_late[:5]))
+            parts.append(f"{len(ack_late)} acknowledged late: " + ", ".join(c.number for c in ack_late[:5]))
         elif no_ack:
-            parts.append(f"{len(no_ack)} ki pavti baaki")
+            parts.append(f"{len(no_ack)} waiting for acknowledgement")
         if overdue:
-            parts.append(f"{len(overdue)} samay-seema paar: " + ", ".join(c.number for c in overdue[:5]))
+            parts.append(f"{len(overdue)} past the deadline: " + ", ".join(c.number for c in overdue[:5]))
         if due_soon:
-            parts.append(f"{len(due_soon)} ki tareekh 2 din mein: " + ", ".join(c.number for c in due_soon[:5]))
+            parts.append(f"{len(due_soon)} due within 2 days: " + ", ".join(c.number for c in due_soon[:5]))
         if not_told:
-            parts.append(f"{len(not_told)} hal ho gayi par graahak ko bataya nahi: " + ", ".join(c.number for c in not_told[:5]))
+            parts.append(f"{len(not_told)} resolved but the customer was not told: " + ", ".join(c.number for c in not_told[:5]))
         if pend_comp:
-            parts.append(f"{len(pend_comp)} muavze ke card aapki haan ke intezaar mein")
+            parts.append(f"{len(pend_comp)} compensation card(s) waiting for your approval")
         if appr:
-            parts.append(f"{len(appr)} maana hua muavza abhi diya nahi")
+            parts.append(f"{len(appr)} approved compensation not given yet")
         v = {"open": len(open_), "no_ack": len(no_ack), "ack_late": len(ack_late), "overdue": len(overdue), "due_soon": len(due_soon),
              "urgent": len(urgent), "resolved_not_told": len(not_told), "comp_pending": len(pend_comp), "comp_to_give": len(appr)}
-    return {"parts": parts, **v, "say": ("Shikayat: " + "; ".join(parts) + ".") if parts else f"Shikayat: {v['open']} khuli, sab samay par."}
+    return {"parts": parts, **v, "say": ("Complaints: " + "; ".join(parts) + ".") if parts else f"Complaints: {v['open']} open, all on time."}
 
 
 def _remind(tenant: str, c: ShikayatCase, tag: str, text: str, out: list[str]) -> None:
@@ -1506,16 +1506,16 @@ def tick(now_at: datetime | None = None) -> int:
                     who = f"{c.number} ({c.customer or c.product or 'graahak'})"
                     if not c.ack_at and ab:
                         if n > ab:
-                            _remind(tenant, c, "ack_late", f"{who}: pavti ki samay-seema nikal gayi - abhi pavti bhejiye", lines)
+                            _remind(tenant, c, "ack_late", f"{who}: the acknowledgement deadline has passed - send the acknowledgement now", lines)
                         elif ab - n <= timedelta(hours=6):
-                            _remind(tenant, c, "ack_soon", f"{who}: pavti {_local(tenant, ab)} tak deni hai", lines)
+                            _remind(tenant, c, "ack_soon", f"{who}: acknowledge by {_local(tenant, ab)}", lines)
                     if du:
                         if n > du:
-                            _remind(tenant, c, "due_late", f"{who}: hal ki tareekh nikal gayi - graahak ko likhit update aur nayi tareekh dijiye", lines)
+                            _remind(tenant, c, "due_late", f"{who}: the resolution date has passed - give the customer a written update and a new date", lines)
                         elif du - n <= timedelta(days=1):
-                            _remind(tenant, c, "due_1", f"{who}: kal tak hal karna hai", lines)
+                            _remind(tenant, c, "due_1", f"{who}: must be resolved by tomorrow", lines)
                         elif du - n <= timedelta(days=3):
-                            _remind(tenant, c, "due_3", f"{who}: hal ke 3 din bache", lines)
+                            _remind(tenant, c, "due_3", f"{who}: 3 days left to resolve", lines)
                 st = s.get(ShikayatSettings, tenant)
                 morning = False
                 if st:
@@ -1529,7 +1529,7 @@ def tick(now_at: datetime | None = None) -> int:
                         st.last_morning = local.date().isoformat()
                         morning = True
             if lines:
-                text = "Shikayat yaad dilana: " + "; ".join(lines[:8]) + "."
+                text = "Complaint reminders: " + "; ".join(lines[:8]) + "."
                 _note(tenant, text)
                 _publish(tenant, "shikayat_alert", {"text": text, "count": len(lines)})
                 sent += 1

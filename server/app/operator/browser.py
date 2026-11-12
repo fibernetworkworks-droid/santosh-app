@@ -215,7 +215,7 @@ def fmt_item(it: dict) -> str:
         s += f" -> {it['href'][:70]}"
     flags = [f for f in ("required", "disabled", "sensitive", "captcha") if it.get(f)]
     if it.get("id_field"):
-        flags.append("ID number: fill with the {id:...} reference from her Pehchaan Locker")
+        flags.append("ID number: fill with the {id:...} reference from her ID Locker")
     if it.get("gate"):
         flags.append(it["gate"])
     if flags:
@@ -721,7 +721,7 @@ class Operator:
             if idvault.REF.search(value):
                 # v0.75 an identity number from her Pehchaan Locker: the real number goes only into this box
                 if not self.id_tenant:
-                    raise OperatorError("Pehchaan Locker is not open for this job.")
+                    raise OperatorError("ID Locker is not open for this job.")
                 if field_kind(it, "") == "secret":
                     return {"ok": False, "blocked": "secret",
                             "message": f"\"{it['name']}\" is a password / OTP / PIN / card box: only the owner types it "
@@ -966,7 +966,7 @@ class Operator:
             # v0.81 the plain answer route works too: her typed answer, or Hoola's OCR answer when she just says yes
             value = (answer or a.suggested_answer or "").strip()
             if not value:
-                raise OperatorError("CAPTCHA likhiye.")
+                raise OperatorError("Type the CAPTCHA.")
             if not s or not a.ref:
                 raise OperatorError("The browser for this request is closed.")
             loc, it = await self._locator(s, a.ref)

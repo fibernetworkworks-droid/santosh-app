@@ -361,7 +361,7 @@ def _get(s, tenant: str, ref: str) -> GameVfx:
     q = select(GameVfx).where(GameVfx.tenant_id == tenant)
     r = s.scalars(q.where(GameVfx.id == ref)).first() or s.scalars(q.where(GameVfx.number == ref.upper())).first()
     if r is None:
-        raise VfxError("Yeh pipeline nahi mili (V-001 dijiye).")
+        raise VfxError("This pipeline was not found (give V-001).")
     return r
 
 
@@ -418,7 +418,7 @@ def approve(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         r = _get(s, tenant, ref)
         if r.status != "draft":
-            raise VfxError("Sirf PASS hui pipeline OK ho sakti hai.")
+            raise VfxError("Only a pipeline that PASSED can be OKed.")
         r.status = "approved"
         s.flush()
         s.expunge(r)
@@ -452,4 +452,4 @@ def get(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def apply(tenant: str, studio: str) -> dict[str, Any]:
-    raise VfxError("VFX pipeline game build mein nahi jaati - yeh render / colour / publish ka kit hai.")
+    raise VfxError("A VFX pipeline does not go into the game build - it is a kit for render / colour / publish.")

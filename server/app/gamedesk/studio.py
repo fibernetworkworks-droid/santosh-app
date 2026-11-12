@@ -146,7 +146,7 @@ def _studio(s, tenant: str, ref: str) -> GameStudio:
     if r is None:
         r = s.scalars(select(GameStudio).where(GameStudio.tenant_id == tenant, GameStudio.number == str(ref or "").upper())).first()
     if r is None or r.tenant_id != tenant:
-        raise StudioError("Yeh studio project nahi mila.")
+        raise StudioError("This studio project was not found.")
     return r
 
 
@@ -155,7 +155,7 @@ def _task(s, tenant: str, ref: str, studio_id: str = "") -> GameTask:
     if t is None and studio_id:
         t = s.scalars(select(GameTask).where(GameTask.studio_id == studio_id, GameTask.number == str(ref or "").upper())).first()
     if t is None or t.tenant_id != tenant:
-        raise StudioError("Yeh task nahi mila.")
+        raise StudioError("This task was not found.")
     return t
 
 
@@ -315,17 +315,17 @@ def create(tenant: str, conv: str, title: str = "", goal: str = "", game: str = 
     with session() as s:
         mine = s.scalars(select(GameStudio).where(GameStudio.tenant_id == tenant, GameStudio.status != "archived")).all()
         if len(mine) >= MAX_STUDIOS:
-            raise StudioError(f"{MAX_STUDIOS} studio projects pehle se chal rahe hain; ek archive kijiye.")
+            raise StudioError(f"{MAX_STUDIOS} studio projects are already running; archive one.")
         n = len(s.scalars(select(GameStudio.id).where(GameStudio.tenant_id == tenant)).all())
         taken = {x.game_id for x in mine}
     if game:
         g = G._get(tenant, game)
         if g.id in taken:
-            raise StudioError(f"{g.number} pehle se ek studio project mein hai.")
+            raise StudioError(f"{g.number} is already in a studio project.")
     else:
         brief = _clean(brief or goal, 2000)
         if len(brief) < 8:
-            raise StudioError("Kaunsa game? Purana game chuniye (G-0001) ya 2-3 line mein naye game ka idea likhiye.")
+            raise StudioError("Which game? Choose an existing game (G-0001) or write the idea for a new game in 2-3 lines.")
         gv = G.start(tenant, conv, brief, orientation, actor)
         g = G._get(tenant, gv["id"])
     r = GameStudio(tenant_id=tenant, conversation_id=conv or g.conversation_id or "", number=f"S-{n + 1:04d}",
@@ -335,7 +335,7 @@ def create(tenant: str, conv: str, title: str = "", goal: str = "", game: str = 
         s.add(r)
         s.flush()
         s.expunge(r)
-    _decide(r, f"Project shuru: {r.title}", f"Lakshya: {r.goal[:300]}", by="her")
+    _decide(r, f"Project started: {r.title}", f"Goal: {r.goal[:300]}", by="her")
     return view(r, full=True)
 
 
@@ -390,7 +390,7 @@ def settings(tenant: str, ref: str, **kw) -> dict[str, Any]:
 def _number(s, sid: str) -> str:
     n = len(s.scalars(select(GameTask.id).where(GameTask.studio_id == sid)).all())
     if n >= MAX_TASKS:
-        raise StudioError("Is project mein bahut task ho gaye; purane band kijiye ya naya project banaiye.")
+        raise StudioError("This project has too many tasks; close old ones or make a new project.")
     return f"T-{n + 1:04d}"
 
 
@@ -398,7 +398,7 @@ def add_task(tenant: str, ref: str, title: str, detail: str = "", milestone: str
              priority: int = 2, source: str = "her", role: str = "", criteria: list | None = None) -> dict[str, Any]:
     title = _clean(title, 200)
     if len(title) < 3:
-        raise StudioError("Task ek line mein likhiye (kya badalna / jodna hai).")
+        raise StudioError("Write the task in one line (what to change / add).")
     why = G.problem(f"{title} {detail}")
     if why:
         raise StudioError(why)
@@ -440,7 +440,7 @@ def plan(tenant: str, ref: str, words: str = "", team: str = "") -> dict[str, An
         s.expunge(r)
         tv = [task_view(t) for t in tasks]
     if sum(1 for t in tv if t["status"] == "todo") >= 40:
-        raise StudioError("To do mein 40 task pehle se hain; pehle unhe poora / band kijiye.")
+        raise StudioError("To do already has 40 tasks; finish / close those first.")
     g = _game(tenant, r.game_id)
     if team and team not in C.TEAMS:
         raise StudioError("team = " + ", ".join(C.TEAMS))
@@ -463,7 +463,7 @@ def plan(tenant: str, ref: str, words: str = "", team: str = "") -> dict[str, An
         except StudioError:
             continue
     if not made:
-        raise StudioError("Hoola koi naya task nahi bana paya; apne shabdon mein ek task likhiye.")
+        raise StudioError("Hoola could not make a new task; write one task in your own words.")
     return {"made": made, "studio": get(tenant, r.id)}
 
 
@@ -476,25 +476,25 @@ def start_task(tenant: str, ref: str, task: str = "") -> dict[str, Any]:
     with session() as s:
         r = _studio(s, tenant, ref)
         if r.status != "active":
-            raise StudioError("Project ruka hua hai; pehle 'chalu karo' boliye.")
+            raise StudioError("The project is paused; say 'resume' first.")
         b = _busy_task(s, r.id)
         if b is not None:
-            raise StudioError(f"{b.number} ({b.title[:50]}) " + ("abhi ban raha hai." if b.status == "working" else
-                              "aapke OK ka intezaar kar raha hai: pehle OK ya wapas kijiye."))
+            raise StudioError(f"{b.number} ({b.title[:50]}) " + ("is being built now." if b.status == "working" else
+                              "is waiting for your OK: OK it or send it back first."))
         if task:
             t = _task(s, tenant, task, r.id)
             if t.studio_id != r.id or t.status not in ("todo", "blocked"):
-                raise StudioError(f"{t.number} '{t.status}' hai; sirf To do / ruka hua task shuru hota hai.")
+                raise StudioError(f"{t.number} is '{t.status}'; only a To do / blocked task can be started.")
         else:
             todo = _ordered([x for x in _tasks(s, r.id) if x.status == "todo"], r.milestones or MILESTONES)
             if not todo:
-                raise StudioError("To do khaali hai: task likhiye ya 'aage ka plan banao' boliye.")
+                raise StudioError("To do is empty: write a task or say 'plan the next steps'.")
             t = todo[0]
         g = _game(tenant, r.game_id)
         if g is None:
-            raise StudioError("Is project ka game nahi mila.")
+            raise StudioError("This project's game was not found.")
         if not G._good(g):
-            raise StudioError("Pehle game ka pehla version banne dijiye (design OK karke 'Build it').")
+            raise StudioError("Let the game's first version be built first (OK the design, then 'Build it').")
         role = t.role or C.pick_role(t.title, t.detail, t.kind)
         crit = "; ".join(c["text"] for c in (t.criteria or []) if c.get("by") != "test")
         words = (f"[{t.number}] {t.title}" + (f". {t.detail}" if t.detail else "") + f" || {C.lens(role)}"
@@ -536,7 +536,7 @@ def after_build(tenant: str, task_id: str, ver: dict | None, err: str = "") -> N
         elif err == "cancelled":
             t.status, t.error = "todo", ""
         else:
-            t.status, t.error = "blocked", (err or "build nahi chala")[:600]
+            t.status, t.error = "blocked", (err or "the build did not run")[:600]
             if ver:
                 t.version = int(ver.get("n") or 0)
         t.updated_at = now()
@@ -592,7 +592,7 @@ def review_task(tenant: str, ref: str, task: str) -> dict[str, Any]:
         r = _studio(s, tenant, ref)
         t = _task(s, tenant, task, r.id)
         if t.status != "review" or not t.version:
-            raise StudioError(f"{t.number} review ke layak nahi ('{t.status}').")
+            raise StudioError(f"{t.number} is not ready for review ('{t.status}').")
         s.expunge(t)
         s.expunge(r)
     g = _game(tenant, r.game_id)
@@ -668,9 +668,9 @@ def write_task(tenant: str, task_id: str) -> None:
     try:
         with usage.scope(tenant, "game"):
             out = G.ai.ask(system, prompt, max_tokens=3000).strip()
-        status, err = ("review", "") if out else ("blocked", "khaali jawab aaya")
+        status, err = ("review", "") if out else ("blocked", "an empty answer came back")
     except Exception as e:                              # noqa: BLE001
-        out, status, err = "", "blocked", f"likh nahi paya: {type(e).__name__}"
+        out, status, err = "", "blocked", f"could not write it: {type(e).__name__}"
     with session() as s:
         row = s.get(GameTask, task_id)
         if row is not None and row.status == "working":
@@ -690,7 +690,7 @@ def approve_task(tenant: str, ref: str, task: str, note: str = "") -> dict[str, 
         r = _studio(s, tenant, ref)
         t = _task(s, tenant, task, r.id)
         if t.status != "review":
-            raise StudioError(f"{t.number} OK ke liye taiyaar nahi ('{t.status}').")
+            raise StudioError(f"{t.number} is not ready for OK ('{t.status}').")
         t.status, t.done_at, t.updated_at = "done", now(), now()
         t.criteria = [({**c, "status": "covered", "evidence": {"by": "her", "at": now().isoformat(), "version": t.version}}
                        if c.get("by") == "her" and c.get("status") != "failed" else c) for c in (t.criteria or [])]
@@ -715,23 +715,23 @@ def reject_task(tenant: str, ref: str, task: str, note: str = "") -> dict[str, A
         r = _studio(s, tenant, ref)
         t = _task(s, tenant, task, r.id)
         if t.status not in ("review", "done"):
-            raise StudioError(f"{t.number} wapas nahi ho sakta ('{t.status}').")
+            raise StudioError(f"{t.number} cannot be sent back ('{t.status}').")
         if t.status == "done":
             newer = s.scalars(select(GameTask).where(GameTask.studio_id == r.id, GameTask.version > t.version,
                                                      GameTask.status.in_(("done", "review")))).first()
             if newer is not None:
-                raise StudioError(f"{t.number} ke baad {newer.number} bana hai; seedha wapas nahi hoga. Ek naya task "
-                                  "likhiye jo ise theek kare, ya 'version N wapas lao' boliye.")
+                raise StudioError(f"{t.number} was followed by {newer.number}; it cannot be undone directly. Write a new task "
+                                  "that fixes it, or say 'bring back version N'.")
         if t.version:
             G.reject_version(tenant, r.game_id, t.version)
         t.criteria = [{**c, "status": "untested", "evidence": {}} for c in (t.criteria or [])]
         t.review = {}
         t.status, t.done_at, t.updated_at = "todo", None, now()
         if note:
-            t.detail = _clean(f"{t.detail} | Pichhli baar galat: {note}", 2000)
+            t.detail = _clean(f"{t.detail} | Wrong last time: {note}", 2000)
         num, title = t.number, t.title
         s.expunge(r)
-    _decide(r, f"{num} wapas: {title}", note or "aapne wapas bheja", task=num, by="her")
+    _decide(r, f"{num} sent back: {title}", note or "you sent it back", task=num, by="her")
     return get(tenant, r.id)
 
 
@@ -741,7 +741,7 @@ def edit_task(tenant: str, ref: str, task: str, **kw) -> dict[str, Any]:
         t = _task(s, tenant, task, r.id)
         if kw.get("status") == "dropped":
             if t.status in ("working", "review"):
-                raise StudioError(f"{t.number} abhi '{t.status}' hai; pehle rokiye / wapas kijiye.")
+                raise StudioError(f"{t.number} is '{t.status}' now; stop it / send it back first.")
             t.status = "dropped"
         elif kw.get("status") == "todo" and t.status in ("dropped", "blocked"):
             t.status = "todo"
@@ -765,10 +765,10 @@ def restore(tenant: str, ref: str, n: int) -> dict[str, Any]:
         r = _studio(s, tenant, ref)
         b = _busy_task(s, r.id)
         if b is not None:
-            raise StudioError(f"{b.number} '{b.status}' hai; pehle use poora kijiye.")
+            raise StudioError(f"{b.number} is '{b.status}'; finish it first.")
         s.expunge(r)
     G.restore(tenant, r.game_id, int(n))
-    _decide(r, f"Version {int(n)} wapas laya", "aapke kehne par", by="her")
+    _decide(r, f"Version {int(n)} brought back", "at your request", by="her")
     return get(tenant, r.id)
 
 
@@ -782,7 +782,7 @@ def _decide(r: GameStudio, text: str, why: str = "", task: str = "", by: str = "
 def decide(tenant: str, ref: str, text: str, why: str = "") -> dict[str, Any]:
     text = _clean(text, 600)
     if len(text) < 3:
-        raise StudioError("Faisla ek line mein likhiye.")
+        raise StudioError("Write the decision in one line.")
     with session() as s:
         r = _studio(s, tenant, ref)
         s.expunge(r)
@@ -815,7 +815,7 @@ def why(tenant: str, ref: str, q: str) -> dict[str, Any]:
                                                                    "at": (t.done_at or t.updated_at).isoformat()}))
     hits.sort(key=lambda h: (-h[0], -(h[1].timestamp() if h[1] else 0)))
     return {"question": q, "found": [h[2] for h in hits[:8]],
-            "note": "" if hits else "Is baare mein koi faisla / task log mein nahi hai; andaza mat lagaiye, use bataiye."}
+            "note": "" if hits else "There is no decision / task about this in the log; do not guess, tell the user so."}
 
 
 # ---------------------------------------------------------------- nightly build
@@ -831,10 +831,10 @@ def nightly(tenant: str, ref: str) -> dict[str, Any]:
     g = _game(tenant, r.game_id)
     good = G._good(g) if g else []
     if not good:
-        raise StudioError("Abhi koi chalne wala version nahi.")
+        raise StudioError("There is no working version yet.")
     live = good[-1]
     if not G.health()["ready"]:
-        raise StudioError("Server par Godot taiyaar nahi; raat ka build nahi chala.")
+        raise StudioError("Godot is not ready on the server; the nightly build did not run.")
     src = G._vdir(g, live["n"]) / "proj"
     res: dict[str, Any] = {"at": now().isoformat(), "version": live["n"], "ok": False, "errors": [], "suspects": []}
     t0 = time.time()
@@ -878,9 +878,9 @@ def nightly(tenant: str, ref: str) -> dict[str, Any]:
         row.nightly = ((row.nightly or []) + [res])[-30:]
     if not res["ok"]:
         try:
-            add_task(tenant, r.id, f"Raat ka build theek karo (version {live['n']})",
+            add_task(tenant, r.id, f"Fix the nightly build (version {live['n']})",
                      "Nightly build fail: " + "; ".join(res["errors"][:3]) + (
-                         f". Shayad inse: {', '.join(res['suspects'][:3])}" if res["suspects"] else ""),
+                         f". Possibly from: {', '.join(res['suspects'][:3])}" if res["suspects"] else ""),
                      kind="fix", priority=1, source="nightly")
         except StudioError:
             pass
@@ -1005,37 +1005,37 @@ def summary(tenant: str, ref: str) -> str:
     prog = progress(r.milestones or MILESTONES, tasks)
     cur = next((m for m in prog if m["total"] and m["done"] < m["total"]), None) or \
         next((m for m in reversed(prog) if m["total"]), None)          # never a milestone with no tasks ("0/0")
-    lines = [f"{r.number} {r.title}: subah ki report"]
-    lines.append(f"Kal: {len(done)} kaam poore" + (f" ({', '.join(t.number + ' ' + t.title[:40] for t in done[:3])})" if done else "") + ".")
+    lines = [f"{r.number} {r.title}: morning report"]
+    lines.append(f"Yesterday: {len(done)} task(s) finished" + (f" ({', '.join(t.number + ' ' + t.title[:40] for t in done[:3])})" if done else "") + ".")
     if review:
-        lines.append(f"Aapke OK ke liye: {', '.join(t.number + ' ' + t.title[:40] for t in review[:3])}.")
+        lines.append(f"For your OK: {', '.join(t.number + ' ' + t.title[:40] for t in review[:3])}.")
     if working:
-        lines.append(f"Ban raha hai: {working[0].number} {working[0].title[:50]}.")
+        lines.append(f"Being built: {working[0].number} {working[0].title[:50]}.")
     if blocked:
-        lines.append(f"Ruka hua: {', '.join(t.number + ' ' + t.title[:40] for t in blocked[:3])}.")
+        lines.append(f"Blocked: {', '.join(t.number + ' ' + t.title[:40] for t in blocked[:3])}.")
     n = (r.nightly or [])[-1] if r.nightly else None
     fresh = bool(n and _utc(datetime.fromisoformat(n["at"])) >= day)
     if r.nightly_on and not fresh and _game(tenant, r.game_id) is not None:
-        lines.append("Raat ka build: kal raat jaancha NAHI gaya (isliye 'sab theek' nahi keh sakte).")
+        lines.append("Nightly build: it was NOT checked last night (so we cannot say 'all fine').")
     if fresh and n.get("skipped"):
-        lines.append(f"Raat ka build: NAHI chala - {n['skipped']}.")
+        lines.append(f"Nightly build: did NOT run - {n['skipped']}.")
     elif fresh:
         if n.get("ok"):
-            lines.append(f"Raat ka build: chala (version {n['version']}"
-                         + (f", {n['fps']} fps" if n.get("fps") else "") + (f", {n['load_s']} s mein khula" if n.get("load_s") else "")
-                         + ")" + (f"; dhyan: {', '.join(n.get('warnings') or [])}" if n.get("warnings") else "") + ".")
+            lines.append(f"Nightly build: ran (version {n['version']}"
+                         + (f", {n['fps']} fps" if n.get("fps") else "") + (f", {n['load_s']} s to open" if n.get("load_s") else "")
+                         + ")" + (f"; note: {', '.join(n.get('warnings') or [])}" if n.get("warnings") else "") + ".")
         else:
-            lines.append("Raat ka build: FAIL - " + "; ".join((n.get("errors") or ["?"])[:2])[:200]
-                         + (f". Shayad: {', '.join(n.get('suspects')[:2])}" if n.get("suspects") else "") + ".")
+            lines.append("Nightly build: FAIL - " + "; ".join((n.get("errors") or ["?"])[:2])[:200]
+                         + (f". Possibly: {', '.join(n.get('suspects')[:2])}" if n.get("suspects") else "") + ".")
     q = (r.qa or [{}])[-1] if r.qa else None
     if q and q.get("at") and _utc(datetime.fromisoformat(q["at"])) >= day:
-        lines.append(f"QA bots: {q.get('verdict')}" + (f", {len(q.get('filed') or [])} bug(s) mile" if q.get("filed") else "")
-                     + (f", theek hue: {', '.join(q['fixed'][:3])}" if q.get("fixed") else "") + ".")
+        lines.append(f"QA bots: {q.get('verdict')}" + (f", {len(q.get('filed') or [])} bug(s) found" if q.get("filed") else "")
+                     + (f", fixed: {', '.join(q['fixed'][:3])}" if q.get("fixed") else "") + ".")
     if todo:
-        lines.append(f"Aaj: {', '.join(t.number + ' ' + t.title[:40] for t in todo[:3])}.")
+        lines.append(f"Today: {', '.join(t.number + ' ' + t.title[:40] for t in todo[:3])}.")
     if cur:
         lines.append(f"Milestone {cur['name']}: {cur['done']}/{cur['total']} ({cur['pct']}%)"
-                     + (f", lakshya {cur['target']}" if cur.get("target") else "") + ".")
+                     + (f", target {cur['target']}" if cur.get("target") else "") + ".")
     return "\n".join(lines)
 
 
