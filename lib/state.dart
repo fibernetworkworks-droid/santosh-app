@@ -1430,7 +1430,8 @@ class Santosh extends ChangeNotifier {
           _steps = FeedItem('steps', {});
           feed.add(_steps!);
         }
-        if (!_replaying) currentStep = p['state'] == 'running' ? p['label'] as String? : currentStep;
+        // v0.863 R3s Hoola's own housekeeping (finding tools, planning, checking) never takes over the working line
+        if (!_replaying && p['housekeeping'] != true) currentStep = p['state'] == 'running' ? p['label'] as String? : currentStep;
         if (!_replaying && p['state'] == 'running' && mood != Mood.care) setMood(Mood.work, hold: Duration.zero);
         final i = _steps!.steps.indexWhere((s) => s['id'] == p['id']);
         if (i >= 0) {

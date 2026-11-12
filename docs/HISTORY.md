@@ -3119,3 +3119,27 @@ The conversation rebuilt in the new design (R1 tokens, R2 shell), still behind M
 
 NOT built in R3 (next): R3s server step `kind` + one turn-result record, the 15 s stall watch, images inside
 replies, the warm artifact WebView. NOT VERIFIED on a real phone.
+
+## v0.863.0 R3s - step kinds + one turn result (owner: "GO R3s" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+The server half of R3. Old phones ignore every new field.
+
+- `server/app/agent/stepkind.py`: `classify(tool, label)` -> (kind, housekeeping); kinds search / read / write / edit /
+  web / run / agent / skill / question / card / memory / other, from the tool name first, the label second.
+  Housekeeping = Hoola's own process (tool_search, kaam_plan, the answer check `jaanch`, memory lookups, skill reads).
+  `enrich()` is called ONCE in `events.bus.publish` for kind "step" (setdefault: a publisher's own kind wins), so the
+  main loop, crews, research and the answer check all carry it without being touched.
+- `server/app/turnresult.py`: one record per chat, from stores that already exist (nothing new written):
+  status of 8 (queued / working / needs_you / done / partial / stuck / stopped / failed, "" = nothing asked yet or an
+  ask with no answer and nothing running - it never guesses), needs_you, one line (the reply's first sentence, the
+  card's title, the job's title, or "Partly done: <what is left>"), made (pages / files / pictures / sites published
+  since her newest message, each once, at most 4), at. Order of truth: waiting card -> waiting job -> turn lock /
+  running inbox / running job -> queued inbox -> failed inbox -> task-log outcome -> answered.
+  Readers: `/api/conversations` rows (first 25, `chats.RESULT_ROWS`, cheap form without the card scan), NEW
+  GET /api/conversations/{id}/result (full form), the reply notification's FCM data (`status`, `needs_you`).
+- Phone (new look only): the steps line hides housekeeping steps and draws the server's kind icon (label fallback for
+  older servers); housekeeping never takes over the working line; the drawer shows a spinner (working / queued), an
+  amber dot (needs you) or a red mark (did not finish / stuck) beside a chat - a finished chat stays quiet.
+- `server/tests/test_v0863_r3s.py` (9).
+
+NOT done here: Work (R6) and the chat card read the record when those screens are rebuilt. NOT VERIFIED live.

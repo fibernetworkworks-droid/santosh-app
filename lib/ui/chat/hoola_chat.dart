@@ -711,7 +711,8 @@ class _StepsLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    final steps = it.steps.where((s) => '${s['label'] ?? ''}'.trim().isNotEmpty).toList();
+    // v0.863 R3s the server says which steps are Hoola's own housekeeping: they are not her work, not counted
+    final steps = it.steps.where((s) => '${s['label'] ?? ''}'.trim().isNotEmpty && s['housekeeping'] != true).toList();
     if (steps.isEmpty) return const SizedBox.shrink();
     final running = steps.where((s) => s['state'] == 'running').toList();
     final failed = steps.where((s) => s['state'] == 'error' || s['state'] == 'failed').length;
@@ -732,7 +733,7 @@ class _StepsLine extends StatelessWidget {
               if (running.isNotEmpty)
                 SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.8, color: c.accent))
               else
-                Icon(stepIcon('${steps.last['label']}'), size: 16, color: c.ink3),
+                Icon(stepIcon('${steps.last['label']}', kind: '${steps.last['kind'] ?? ''}'), size: 16, color: c.ink3),
               const SizedBox(width: 8),
               Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(color: c.ink2))),
               Icon(Icons.chevron_right_rounded, size: 18, color: c.ink3),
@@ -784,7 +785,7 @@ class _StepRow extends StatelessWidget {
             decoration: BoxDecoration(color: bad ? c.badSoft : c.sunk, shape: BoxShape.circle),
             child: running
                 ? Padding(padding: const EdgeInsets.all(8), child: CircularProgressIndicator(strokeWidth: 1.8, color: c.accent))
-                : Icon(bad ? Icons.error_outline_rounded : stepIcon(label), size: 16, color: bad ? c.bad : c.ink2),
+                : Icon(bad ? Icons.error_outline_rounded : stepIcon(label, kind: '${step['kind'] ?? ''}'), size: 16, color: bad ? c.bad : c.ink2),
           ),
           if (!last) Expanded(child: Container(width: 1.5, color: c.line)),
         ]),
@@ -800,8 +801,24 @@ class _StepRow extends StatelessWidget {
   }
 }
 
-/// The kind of a step, read from its words until R3s sends the kind itself.
-IconData stepIcon(String label) {
+/// The icon of a step: from the kind the server sends (v0.863 R3s); an older server's step falls back to its words.
+const _kindIcon = <String, IconData>{
+  'search': Icons.search_rounded,
+  'read': Icons.description_outlined,
+  'write': Icons.edit_note_rounded,
+  'edit': Icons.edit_outlined,
+  'web': Icons.public_rounded,
+  'run': Icons.terminal_rounded,
+  'agent': Icons.groups_outlined,
+  'skill': Icons.auto_awesome_outlined,
+  'question': Icons.help_outline_rounded,
+  'card': Icons.task_alt_rounded,
+  'memory': Icons.bookmark_border_rounded,
+};
+
+IconData stepIcon(String label, {String kind = ''}) {
+  final k = _kindIcon[kind];
+  if (k != null) return k;
   final l = label.toLowerCase();
   bool any(List<String> w) => w.any(l.contains);
   if (any(['search', 'looking up', 'finding', 'khoj'])) return Icons.search_rounded;

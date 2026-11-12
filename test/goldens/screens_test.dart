@@ -76,9 +76,10 @@ void _richChat(Santosh app, {bool working = false, bool writing = false}) {
   app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Which supplier bills are missing from GSTR-2B this month?', 'at': at}));
   final steps = FeedItem('steps', {});
   steps.steps.addAll([
-    {'label': 'Searching your Gmail for bills', 'state': 'done'},
-    {'label': 'Reading 38 bills', 'state': 'done'},
-    {'label': 'Checking each bill against GSTR-2B', 'state': 'done'},
+    {'label': 'Finding the right tools', 'state': 'done', 'kind': 'other', 'housekeeping': true},
+    {'label': 'Searching your Gmail for bills', 'state': 'done', 'kind': 'search'},
+    {'label': 'Reading 38 bills', 'state': 'done', 'kind': 'read'},
+    {'label': 'Checking each bill against GSTR-2B', 'state': 'done', 'kind': 'run'},
   ]);
   app.feed.add(steps);
   app.feed.add(FeedItem('think', {'text': 'Two bills are in her mail but not in 2B.', 'done': true, 'secs': 6}));
@@ -160,7 +161,10 @@ void main() {
   void chats(Santosh a) => a.chatList = [
         for (final t in ['October GST summary', 'Reply to WhatsApp leads', 'Diwali offer poster', 'Clinic website changes',
           'Supplier bills not in GSTR-2B', 'Pune delivery route'])
-          {'id': t, 'title': t},
+          {'id': t, 'title': t, 'result': {
+            'status': t.startsWith('Reply') ? 'working' : t.startsWith('Diwali') ? 'needs_you' : t.startsWith('Pune') ? 'failed' : 'done',
+            'needs_you': t.startsWith('Diwali'),
+          }},
         {'id': 'call1', 'title': 'Call with Santosh · 6:40 pm', 'kind': 'call'},
       ];
   for (final mode in ['light', 'dark']) {

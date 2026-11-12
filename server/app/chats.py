@@ -60,6 +60,9 @@ def plain(text: str) -> str:
     return _HINTS.sub("", text or "")
 
 
+RESULT_ROWS = 25   # v0.863 R3s rows that carry a turn result (the rest load it on open)
+
+
 def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: str = "",
               hide_empty: bool = False) -> list[dict[str, Any]]:
     """Her chats in one query: pinned first, then newest activity. Title = hers / auto, else her first message.
@@ -84,15 +87,20 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
     from .convs import current
     cur = current(tenant)
     out = []
+    from .turnresult import brief   # v0.863 R3s the same turn result every surface reads
     with session() as s:
-        for c, first_text, n in s.execute(q).all():
+        rows = s.execute(q).all()
+    with session() as s:
+        for k, (c, first_text, n) in enumerate(rows):
             title = (c.title or plain(first_text).strip().replace("\n", " ")[:80]
                      or ("Untitled chat" if n else "Naya chat"))   # v0.237 a chat with words but no readable title
             when = _utc(c.last_at or c.created_at)
             out.append({"id": c.id, "title": title, "auto_title": bool(c.title), "pinned": bool(c.pinned),
                         "archived": bool(c.archived), "messages": int(n or 0), "empty": not n,
                         "updated_at": when.isoformat() if when else "", "current": c.id == cur, "busy": _busy(c.id),
-                        "project_id": c.project_id or "", "incognito": bool(c.incognito)})   # v0.250
+                        "project_id": c.project_id or "", "incognito": bool(c.incognito),   # v0.250
+                        # v0.863 R3s the newest ask's result for the first rows (the drawer / list shows these)
+                        "result": brief(tenant, c.id) if k < RESULT_ROWS and n else None})
     return out
 
 

@@ -130,6 +130,9 @@ class EventBus:
         no chat-list touch, no FCM push, no job watch. It is a word of comfort, not part of the chat's story;
         a reload never shows it and the real reply replaces it."""
         call = (call_id if call_id is not None else CALL.get()) or None
+        if kind == "step":   # v0.863 R3s every step says its kind + whether it is Hoola's own housekeeping
+            from .agent.stepkind import enrich
+            enrich(payload)
         if ephemeral:
             data = {"id": 0, "kind": kind, "campaign_id": campaign_id, "payload": payload,
                     "at": datetime.now(timezone.utc).isoformat(), "call": call, "conv": conversation_id,

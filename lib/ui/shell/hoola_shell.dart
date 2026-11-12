@@ -698,11 +698,31 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
     final call = '${ch['kind'] ?? ''}' == 'call';
     final title = '${ch['title'] ?? ''}'.trim();
     final on = id == widget.app.conversationId;
-    return _row(c, call ? Icons.call_outlined : Icons.chat_bubble_outline_rounded, title.isEmpty ? 'New chat' : title,
-        () => widget.onOpenChat(id), selected: on);
+    // v0.863 R3s the chat's newest ask, from the server's one turn result: working / needs you / did not finish.
+    // A finished chat stays quiet (no badge), like a read message.
+    final r = ch['result'] is Map ? Map<String, dynamic>.from(ch['result'] as Map) : const <String, dynamic>{};
+    final st = '${r['status'] ?? ''}';
+    Widget? trail;
+    String? say;
+    if (st == 'working' || st == 'queued') {
+      trail = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.8, color: c.accent));
+      say = 'working';
+    } else if (r['needs_you'] == true || st == 'needs_you') {
+      trail = Container(width: 9, height: 9, decoration: BoxDecoration(color: c.warn, shape: BoxShape.circle));
+      say = 'needs your answer';
+    } else if (st == 'failed' || st == 'stuck') {
+      trail = Icon(Icons.error_outline_rounded, size: 16, color: c.bad);
+      say = 'did not finish';
+    }
+    return Semantics(
+      label: say == null ? null : '${title.isEmpty ? 'New chat' : title}, $say',
+      child: _row(c, call ? Icons.call_outlined : Icons.chat_bubble_outline_rounded, title.isEmpty ? 'New chat' : title,
+          () => widget.onOpenChat(id), selected: on, trail: trail),
+    );
   }
 
-  Widget _row(HoolaColors c, IconData? icon, String text, VoidCallback onTap, {bool selected = false, bool chevron = false}) =>
+  Widget _row(HoolaColors c, IconData? icon, String text, VoidCallback onTap,
+          {bool selected = false, bool chevron = false, Widget? trail}) =>
       Material(
         color: selected ? c.sunk : Colors.transparent,
         borderRadius: HoolaRadius.r(HoolaRadius.tile),
@@ -715,6 +735,7 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
               const SizedBox(width: 10),
               if (icon != null) ...[Icon(icon, size: 18, color: c.ink2), const SizedBox(width: 14)],
               Expanded(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.bodyLarge(c))),
+              if (trail != null) ...[const SizedBox(width: 8), trail],
               if (chevron) Icon(Icons.chevron_right_rounded, size: 18, color: c.ink3),
               const SizedBox(width: 10),
             ]),

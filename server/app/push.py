@@ -592,6 +592,14 @@ def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, An
         if shown is None:
             return None
         data["title"], data["body"] = shown[0][:80], shown[1][:900]
+    if kind == "message" and p.get("role") == "assistant" and ev.get("conv") and token != "x":
+        try:   # v0.863 R3s the notification carries the same turn result the chat list shows
+            from .turnresult import brief
+            r = brief(str(ev.get("tenant") or _tenant(str(ev["conv"])) or ""), str(ev["conv"]))
+            if r.get("status"):
+                data["status"], data["needs_you"] = r["status"], "1" if r["needs_you"] else "0"
+        except Exception:
+            pass
     return {"message": {"token": token, "data": data, "android": {"priority": "HIGH", "ttl": ttl}}}
 
 
