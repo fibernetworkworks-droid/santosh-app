@@ -26,12 +26,12 @@ DAY_HOURS = 8.0
 WEEK_HOURS = 48.0
 OT_RATE = 2.0
 
-NEVER = ("Material indent / purchase sirf aapki haan (card par tap) se; Hoola khud kuch nahi mangwata, na paise deta.",
-         "Client ko DPR / message sirf aapki haan se jaata hai; Hoola apne aap kuch nahi bhejta.",
-         "Kaam rokne ka order (stop-work) sirf aapke tap se; jaan ka khatra ho to turant logon ko door hatana pehle.",
-         "Naap / progress / cube result jaisa bataya waisa hi likhta hai: badha-chadha kar nahi, gadh kar nahi.",
-         "Mazdooron ki salary payroll ka kaam; yahan sirf hazri, ghante aur overtime ke numbers.",
-         "Aadhaar / PAN sirf Pehchaan Locker ke {id:...} reference se; register mein number nahi.")
+NEVER = ("Material indent / purchase only with your approval (a tap on the card); Hoola never orders material or pays money itself.",
+         "A DPR / message to the client goes only with your approval; Hoola never sends anything on its own.",
+         "A stop-work order only with your tap; if there is danger to life, first get people away at once.",
+         "Writes measurements / progress / cube results exactly as you gave them: no exaggeration, no invention.",
+         "Labourers' salary is payroll's job; here only the attendance, hours and overtime numbers.",
+         "Aadhaar / PAN only through the ID Locker {id:...} reference; no numbers in the register.")
 
 TRADES = {
     "mason": ("mason", "mistri", "raj mistri", "rajmistri", "gavandi", "मिस्त्री"),
@@ -71,65 +71,65 @@ UNITS = {"bag": ("bag", "bags", "bori", "katta"), "cum": ("cum", "m3", "cu m", "
 # Checklists: (id, question, critical). A critical "no" = an unsafe condition -> a stop-work suggestion card for HER tap.
 CHECKLISTS: dict[str, dict] = {
     "ppe": {"label": "PPE (helmet, shoes, jacket)", "items": [
-        ("helmet", "Sabke sar par helmet (chin strap ke saath)?", True),
-        ("shoes", "Safety shoes / gum boots pehne hain?", False),
-        ("jacket", "Reflective jacket (gaadi / machine ke paas)?", False),
-        ("gloves", "Kaam ke hisaab se gloves / goggles / mask?", False),
-        ("harness", "Unchai wale kaam par full body harness?", True)]},
-    "height": {"label": "Unchai par kaam (2 m se upar)", "items": [
-        ("edge", "Khule kinaron / slab edge par guard rail (top rail ~1 m + mid rail + toe board)?", True),
-        ("openings", "Floor / shaft openings dhake ya ghere hue?", True),
-        ("harness", "Harness double lanyard, mazboot anchor par bandha?", True),
-        ("ladder", "Seedhi (ladder) bandhi hui, 1:4 dhalaan, upar 1 m nikli?", False),
-        ("net", "Jahan rail nahi, wahan safety net?", False),
-        ("permit", "Height work permit / supervisor ki nazar?", False)]},
+        ("helmet", "Helmet on everyone's head (with chin strap)?", True),
+        ("shoes", "Safety shoes / gumboots worn?", False),
+        ("jacket", "Reflective jacket (near vehicles / machines)?", False),
+        ("gloves", "Gloves / goggles / mask suited to the work?", False),
+        ("harness", "Full body harness for work at height?", True)]},
+    "height": {"label": "Work at height (above 2 m)", "items": [
+        ("edge", "Guard rail at open edges / slab edges (top rail ~1 m + mid rail + toe board)?", True),
+        ("openings", "Floor / shaft openings covered or fenced?", True),
+        ("harness", "Harness with double lanyard, tied to a strong anchor?", True),
+        ("ladder", "Ladder tied, 1:4 slope, 1 m above the top?", False),
+        ("net", "Safety net where there is no railing?", False),
+        ("permit", "Height work permit / supervisor watching?", False)]},
     "scaffold": {"label": "Scaffolding", "items": [
-        ("base", "Base plate + sole board, zameen pakki?", True),
-        ("bracing", "Bracing / ties building se bandhe?", True),
-        ("platform", "Platform poora phatta (boards) bichha, khisakta nahi?", True),
-        ("rails", "Guard rail + toe board har working platform par?", True),
-        ("access", "Chadhne ki seedhi / stair (frame par chadhna nahi)?", False),
-        ("tag", "Inspection tag (pichhle 7 din mein / mausam ke baad jaancha)?", False),
-        ("load", "Upar maal ka dher zyada nahi?", False)]},
-    "excavation": {"label": "Khudai (excavation)", "items": [
-        ("support", "1.5 m se gehri khudai mein shoring / dhalaan (slope)?", True),
-        ("spoil", "Mitti ka dher aur gaadiyan kinare se door?", True),
-        ("barrier", "Gadde ke chaaron taraf barrier / rassi / board?", True),
-        ("access", "Utarne-chadhne ki seedhi?", False),
-        ("water", "Paani nikaalne ka intezaam, kinare dhasak nahi rahe?", False),
-        ("services", "Bijli / gas / paani ki line pehle dekh li?", True)]},
+        ("base", "Base plate + sole board, ground firm?", True),
+        ("bracing", "Bracing / ties fixed to the building?", True),
+        ("platform", "Platform fully boarded and not slipping?", True),
+        ("rails", "Guard rail + toe board on every working platform?", True),
+        ("access", "Ladder / stair for climbing (not climbing the frame)?", False),
+        ("tag", "Inspection tag (checked in the last 7 days / after weather)?", False),
+        ("load", "Not too much material stacked on top?", False)]},
+    "excavation": {"label": "Excavation", "items": [
+        ("support", "Shoring / slope for excavation deeper than 1.5 m?", True),
+        ("spoil", "Soil heap and vehicles kept away from the edge?", True),
+        ("barrier", "Barrier / rope / board all round the pit?", True),
+        ("access", "Ladder for getting in and out?", False),
+        ("water", "Arrangement to drain water, edges not caving in?", False),
+        ("services", "Electricity / gas / water lines checked first?", True)]},
     "pour": {"label": "Concrete pour (formwork + steel)", "items": [
-        ("props", "Props / staging seedhe, bracing, base mazboot?", True),
-        ("form", "Shuttering joints band, oil laga, level / line theek?", False),
-        ("steel", "Sariya drawing ke hisaab se (dia, spacing, laps) - engineer ne dekha?", False),
-        ("cover", "Cover blocks lage?", False),
-        ("cubes", "Cube moulds + slump cone site par?", False),
+        ("props", "Props / staging upright, braced, base strong?", True),
+        ("form", "Shuttering joints closed, oiled, level / line correct?", False),
+        ("steel", "Rebar as per the drawing (dia, spacing, laps) - checked by the engineer?", False),
+        ("cover", "Cover blocks in place?", False),
+        ("cubes", "Cube moulds + slump cone on site?", False),
         ("vibrator", "Vibrator + standby?", False),
-        ("curing", "Curing ka intezaam (paani / gunny)?", False)]},
-    "electrical": {"label": "Site bijli", "items": [
-        ("rccb", "Distribution board mein RCCB / ELCB?", True),
-        ("wires", "Nange taar / zameen par pade joint nahi?", True),
-        ("plugs", "Sahi plug-socket (taar seedhe ghusaye nahi)?", True),
-        ("earthing", "Machines ki earthing?", False)]},
-    "welfare": {"label": "Mazdooron ki suvidha", "items": [
-        ("water", "Peene ka saaf paani?", False),
-        ("toilet", "Toilet (mard / aurat alag)?", False),
-        ("firstaid", "First aid box bhara hua + trained aadmi?", False),
-        ("shelter", "Aaram / khane ki chhaanv (shelter)?", False),
-        ("creche", "Bachche hon to creche / dekhbhaal (aapke rajya ke niyam)?", False)]},
+        ("curing", "Curing arrangement (water / gunny)?", False)]},
+    "electrical": {"label": "Site electricity", "items": [
+        ("rccb", "RCCB / ELCB in the distribution board?", True),
+        ("wires", "No bare wires / joints lying on the ground?", True),
+        ("plugs", "Proper plug-sockets (wires not pushed in directly)?", True),
+        ("earthing", "Machines earthed?", False)]},
+    "welfare": {"label": "Labour welfare", "items": [
+        ("water", "Clean drinking water?", False),
+        ("toilet", "Toilets (separate for men / women)?", False),
+        ("firstaid", "First aid box stocked + a trained person?", False),
+        ("shelter", "Shelter for rest / meals?", False),
+        ("creche", "Creche / child care if there are children (per your state's rules)?", False)]},
 }
 
-TOOLBOX_TOPICS = ("Helmet aur chin strap", "Unchai par harness", "Scaffolding par chadhna-utarna", "Khudai ke kinare", "Bijli ke taar / RCCB",
-                  "Machine ke paas reflective jacket", "Maal uthane ka sahi tareeka (kamar seedhi)", "Garmi mein paani aur chhaanv",
-                  "Aag / fire extinguisher", "Cement / chemical se haath-aankh bachana", "Nashe mein kaam nahi", "Near-miss batana zaroori kyun")
+TOOLBOX_TOPICS = ("Helmet and chin strap", "Harness at height", "Climbing up and down scaffolding", "Edges of excavations", "Electric wires / RCCB",
+                  "Reflective jacket near machines", "Safe lifting technique (straight back)", "Water and shade in the heat",
+                  "Fire / fire extinguisher", "Protecting hands and eyes from cement / chemicals", "No work under the influence of alcohol / drugs", "Why reporting near-misses matters")
 
 INCIDENT_KINDS = {
-    "near_miss": "Near-miss (bach gaye)",
-    "first_aid": "First aid (chhoti chot)",
-    "injury": "Chot (48 ghante ya zyada kaam se bahar)",
-    "death": "Maut",
-    "dangerous": "Dangerous occurrence (dhaancha / scaffold / formwork / khudai girna, crane, aag, bijli...)",
-    "property": "Saamaan / machine ka nuksaan",
+    "near_miss": "Near-miss (narrowly avoided)",
+    "first_aid": "First aid (minor injury)",
+    "injury": "Injury (48 hours or more off work)",
+    "death": "Death",
+    "dangerous": "Dangerous occurrence (structure / scaffold / formwork / excavation collapse, crane, fire, electricity...)",
+    "property": "Damage to material / machines",
 }
 DANGEROUS_WORDS = ("scaffold", "formwork", "shuttering", "staging", "collapse", "gir gaya", "gir gayi", "dhah", "dhasak", "crane", "hoist",
                    "lift", "aag", "fire", "current", "shock", "electrocut", "khudai", "trench", "slab gir", "wall gir", "deewar gir")
@@ -271,19 +271,19 @@ def judge_cubes(grade: str, age: int, results: list[float], earlier_means: list[
     fck = grade_fck(grade)
     vals = [float(x) for x in results if x not in (None, "") and float(x) > 0]
     if not vals:
-        return {"verdict": "no_result", "say": "Cube ka result (N/mm2) chahiye."}
+        return {"verdict": "no_result", "say": "The cube result (N/mm2) is needed."}
     mean = round(sum(vals) / len(vals), 2)
     out = {"mean": mean, "results": vals, "fck": fck}
     if fck is None:
-        return {**out, "verdict": "unknown", "say": f"Mean {mean} N/mm2; grade (M20 / M25...) bataiye to jaanch karun."}
+        return {**out, "verdict": "unknown", "say": f"Mean {mean} N/mm2; tell me the grade (M20 / M25...) and I will check."}
     spread = (max(vals) - min(vals)) * 100 / mean if mean else 0
-    note = f" 3 cube ka farq {spread:.0f}% (15% se zyada: testing / sampling dekhiye)." if len(vals) >= 3 and spread > 15 else ""
+    note = f" Difference between 3 cubes {spread:.0f}% (over 15%: check testing / sampling)." if len(vals) >= 3 and spread > 15 else ""
     if age < 28:
         exp = 0.65 * fck
         ok = mean >= exp
         return {**out, "verdict": "indicative_ok" if ok else "indicative_low", "expected": round(exp, 1),
-                "say": (f"{age} din: mean {mean} N/mm2 (andaaza ~{exp:.1f}+). " + ("Theek chal raha." if ok else
-                        "Kam lag raha: 28 din ka result aane tak dhyaan; engineer ko bataiye.") + note)}
+                "say": (f"{age} din: mean {mean} N/mm2 (andaaza ~{exp:.1f}+). " + ("On track." if ok else
+                        "Looks low: keep watch until the 28-day result arrives; tell the engineer.") + note)}
     lim = dict(limits or {})
     k_ind = float(lim.get("individual_minus", 3.0 if fck <= 15 else 4.0))
     m_add = float(lim.get("mean_plus", 3.0 if fck <= 15 else 4.0))
@@ -296,11 +296,11 @@ def judge_cubes(grade: str, age: int, results: list[float], earlier_means: list[
     fail = bool(low_ones) or (group is not None and group < need_mean)
     say = f"28 din {grade.upper()}: mean {mean} N/mm2."
     if low_ones:
-        say += f" {len(low_ones)} cube {need_ind:g} se kam: FAIL ki nishani - engineer / QA plan (core test / load test) dekhe."
+        say += f" {len(low_ones)} cube(s) below {need_ind:g}: a sign of FAIL - the engineer should check the QA plan (core test / load test)."
     if group is not None:
-        say += f" Pichhle 4 sample ka mean {group} (chahiye {need_mean})" + (" - kam." if group < need_mean else " - theek.")
+        say += f" Mean of the last 4 samples {group} (needed {need_mean})" + (" - low." if group < need_mean else " - OK.")
     if not fail:
-        say += " Pass (Table 11 ke hisaab se; QA plan aakhri)."
+        say += " Pass (per Table 11; the QA plan is final)."
     return {**out, "verdict": "fail" if fail else "pass", "need_individual": need_ind, "need_mean": need_mean, "group_mean": group,
             "say": say + note}
 
@@ -325,19 +325,19 @@ def incident_kind(kind: str, text: str) -> str:
 def report_due(kind: str, at, injury_off_since=None):
     """When the Form XI notice is due (None = no statutory notice). Returns (due datetime or None, plain words)."""
     if kind == "death":
-        return at, "TURANT (forthwith): Inspector-cum-Facilitator, DM / SDO, police station aur parivaar ko; Form XI."
+        return at, "IMMEDIATELY (forthwith): to the Inspector-cum-Facilitator, DM / SDO, police station and the family; Form XI."
     if kind == "dangerous":
-        return at + timedelta(hours=12), "12 ghante mein Form XI: Inspector-cum-Facilitator aur DM / SDO ko (chot na ho tab bhi)."
+        return at + timedelta(hours=12), "Form XI within 12 hours: to the Inspector-cum-Facilitator and the DM / SDO (even if no one is injured)."
     if kind == "injury":
         base = injury_off_since or at
-        return base + timedelta(hours=60), "Chot se 48 ghante kaam se bahar = uske 12 ghante ke andar Form XI (Inspector-cum-Facilitator)."
-    return None, "Kanooni notice nahi; register mein likhna aur seekh lena zaroori."
+        return base + timedelta(hours=60), "An injury keeping someone off work for 48 hours = Form XI within 12 hours of that (Inspector-cum-Facilitator)."
+    return None, "No statutory notice; it is necessary to record it in the register and learn from it."
 
 
 def checklist_result(kind: str, answers: dict) -> dict:
     cl = CHECKLISTS.get(kind)
     if not cl:
-        raise ValueError(f"Checklist '{kind}' nahi: " + ", ".join(CHECKLISTS))
+        raise ValueError(f"Checklist '{kind}' does not exist: " + ", ".join(CHECKLISTS))
     items = []
     for iid, q, critical in cl["items"]:
         raw = answers.get(iid)

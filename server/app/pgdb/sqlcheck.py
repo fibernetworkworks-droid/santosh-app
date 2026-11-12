@@ -23,24 +23,24 @@ BAD_FUNCS = re.compile(
     r"pg_wal_replay_\w+|pg_log_backend_memory_contexts|query_to_xml\w*|table_to_xml\w*|cursor_to_xml\w*|"
     r"database_to_xml\w*|schema_to_xml\w*|xmlparse|pg_file_\w+|copy_\w+_program)\s*\(", re.I)
 NEVER = [
-    (re.compile(r"^\s*alter\s+system\b", re.I), "ALTER SYSTEM (server settings) Hoola kabhi nahi chalata."),
-    (re.compile(r"^\s*copy\b.*\b(program|from\s+'|to\s+')", re.I | re.S), "COPY se server ki file / program: kabhi nahi."),
+    (re.compile(r"^\s*alter\s+system\b", re.I), "ALTER SYSTEM (server settings) Hoola never runs it."),
+    (re.compile(r"^\s*copy\b.*\b(program|from\s+'|to\s+')", re.I | re.S), "COPY to or from a server file / program: never."),
     (re.compile(r"^\s*(create|alter)\s+(role|user)\b.*\bpassword\b", re.I | re.S),
-     "Password wala ROLE / USER: password chat mein nahi aate. Yeh database console mein khud karein."),
-    (re.compile(r"^\s*drop\s+(database|tablespace)\b", re.I), "Poora database / tablespace mitana: yeh aap khud console se karein."),
+     "ROLE / USER with a password: passwords do not go through chat. Do this yourself in the database console."),
+    (re.compile(r"^\s*drop\s+(database|tablespace)\b", re.I), "Dropping a whole database / tablespace: do this yourself from the console."),
     (re.compile(r"^\s*(begin|commit|rollback|start\s+transaction|end|savepoint|release|abort)\b", re.I),
-     "BEGIN / COMMIT mat likhiye: Hoola poore badlav ko khud ek transaction mein chalata hai (sab ya kuch nahi)."),
+     "Do not write BEGIN / COMMIT: Hoola runs the whole change in one transaction itself (all or nothing)."),
     (re.compile(r"^\s*(load|create\s+(or\s+replace\s+)?language|create\s+extension\s+\w*untrusted)\b", re.I),
-     "LOAD / naya language: kabhi nahi."),
+     "LOAD / a new language: never."),
 ]
 DANGER = [
-    (re.compile(r"^\s*drop\b", re.I), "DROP: cheez hamesha ke liye hat jayegi."),
-    (re.compile(r"^\s*truncate\b", re.I), "TRUNCATE: table ki saari rows mit jayengi."),
-    (re.compile(r"^\s*alter\s+table\b.*\bdrop\b", re.I | re.S), "ALTER TABLE ... DROP: column / constraint hat jayega."),
-    (re.compile(r"^\s*(grant|revoke)\b", re.I), "GRANT / REVOKE: kaun kya dekh / badal sakta hai, woh badlega."),
-    (re.compile(r"^\s*(alter|drop|create)\s+(role|user|policy)\b", re.I), "Role / policy ka badlav: access badlega."),
+    (re.compile(r"^\s*drop\b", re.I), "DROP: the object is gone for good."),
+    (re.compile(r"^\s*truncate\b", re.I), "TRUNCATE: all rows of the table will be erased."),
+    (re.compile(r"^\s*alter\s+table\b.*\bdrop\b", re.I | re.S), "ALTER TABLE ... DROP: the column / constraint will be removed."),
+    (re.compile(r"^\s*(grant|revoke)\b", re.I), "GRANT / REVOKE: who can see / change what will change."),
+    (re.compile(r"^\s*(alter|drop|create)\s+(role|user|policy)\b", re.I), "Role / policy change: access will change."),
     (re.compile(r"^\s*alter\s+table\b.*\b(disable\s+row\s+level|no\s+force\s+row)", re.I | re.S),
-     "Row level security band ho raha hai."),
+     "Row level security is being turned off."),
 ]
 
 
@@ -68,7 +68,7 @@ def split(sql: str) -> list[str]:
                 else:
                     j += 1
             if depth:
-                raise SqlError("Comment /* band nahi hua.")
+                raise SqlError("A comment /* was not closed.")
             buf.append(" ")
             i = j
             continue
@@ -77,7 +77,7 @@ def split(sql: str) -> list[str]:
             while True:
                 k = sql.find(c, j)
                 if k < 0:
-                    raise SqlError("Quote band nahi hua.")
+                    raise SqlError("A quote was not closed.")
                 if sql.startswith(c * 2, k):
                     j = k + 2
                     continue
@@ -91,7 +91,7 @@ def split(sql: str) -> list[str]:
                 tag = m.group(0)
                 k = sql.find(tag, i + len(tag))
                 if k < 0:
-                    raise SqlError("$$ quote band nahi hua.")
+                    raise SqlError("A $$ quote was not closed.")
                 buf.append(sql[i:k + len(tag)])
                 i = k + len(tag)
                 continue
@@ -125,12 +125,12 @@ def first_word(stmt: str) -> str:
 def one(sql: str) -> str:
     sql = (sql or "").strip()
     if not sql:
-        raise SqlError("SQL khaali hai.")
+        raise SqlError("The SQL is empty.")
     if len(sql) > MAX_SQL:
-        raise SqlError(f"SQL bahut lamba hai ({len(sql)} akshar; {MAX_SQL} tak).")
+        raise SqlError(f"The SQL is too long ({len(sql)} akshar; {MAX_SQL} at most).")
     parts = split(sql)
     if len(parts) != 1:
-        raise SqlError("Ek baar mein ek hi SELECT chalaiye (';' se alag kai statements nahi).")
+        raise SqlError("Run only one SELECT at a time (not several statements separated by ';').")
     return parts[0]
 
 
@@ -138,7 +138,7 @@ def read_problem(stmt: str) -> str:
     w = first_word(stmt)
     bare = _bare(stmt)
     if w not in READ_START:
-        return f"'{w.upper() or '?'}' padhne wala query nahi hai: badlav ke liye action=write (aapki haan ke baad chalega)."
+        return f"'{w.upper() or '?'}' is not a read query: for a change use action=write (it runs after your approval)."
     if w == "explain":
         m = re.match(r"\s*explain\s*(\((?P<opts>[^)]*)\))?\s*(?P<rest>.*)", bare, re.I | re.S)
         rest = (m.group("rest") if m else "")
@@ -146,14 +146,14 @@ def read_problem(stmt: str) -> str:
         if first_word(inner) not in ("select", "with", "values", "table"):
             return "EXPLAIN sirf SELECT / WITH par."
     if w == "with" and re.search(r"\b(insert|update|delete|merge)\b", bare, re.I):
-        return "WITH ke andar INSERT / UPDATE / DELETE: yeh badlav hai, action=write."
+        return "INSERT / UPDATE / DELETE inside WITH: this is a change, use action=write."
     if re.search(r"\binto\b", bare, re.I) and w == "select":
-        return "SELECT ... INTO naya table banata hai: action=write."
+        return "SELECT ... INTO creates a new table: use action=write."
     if re.search(r"\bfor\s+(update|share|no\s+key\s+update|key\s+share)\b", bare, re.I):
-        return "FOR UPDATE / SHARE rows ko lock karta hai: padhne mein iski zaroorat nahi."
+        return "FOR UPDATE / SHARE locks rows: it is not needed for reading."
     m = BAD_FUNCS.search(bare)
     if m:
-        return f"{m.group(1)}() server par kuch karta hai / bahar jaata hai: Hoola ise nahi chalata."
+        return f"{m.group(1)}() does something on the server / reaches outside: Hoola does not run it."
     return ""
 
 
@@ -168,14 +168,14 @@ def check_read(sql: str) -> str:
 def write_check(sql: str) -> dict:
     sql = (sql or "").strip()
     if not sql:
-        raise SqlError("SQL khaali hai.")
+        raise SqlError("The SQL is empty.")
     if len(sql) > MAX_SQL:
-        raise SqlError(f"SQL bahut lamba hai ({len(sql)} akshar; {MAX_SQL} tak).")
+        raise SqlError(f"The SQL is too long ({len(sql)} akshar; {MAX_SQL} at most).")
     parts = split(sql)
     if not parts:
-        raise SqlError("SQL khaali hai.")
+        raise SqlError("The SQL is empty.")
     if len(parts) > MAX_WRITE_STATEMENTS:
-        raise SqlError(f"Ek card mein {MAX_WRITE_STATEMENTS} statements tak.")
+        raise SqlError(f"At most {MAX_WRITE_STATEMENTS} statements in one card.")
     danger: list[str] = []
     kinds: list[str] = []
     for p in parts:
@@ -185,7 +185,7 @@ def write_check(sql: str) -> dict:
                 raise SqlError(why)
         m = BAD_FUNCS.search(bare)
         if m and m.group(1).lower() not in ("set_config",):
-            raise SqlError(f"{m.group(1)}() Hoola nahi chalata.")
+            raise SqlError(f"{m.group(1)}() is not run by Hoola.")
         w = first_word(p)
         kinds.append(w)
         for rx, why in DANGER:
@@ -196,7 +196,7 @@ def write_check(sql: str) -> dict:
     ddl = any(k in ("create", "alter", "drop", "truncate", "comment", "grant", "revoke", "reindex", "cluster", "vacuum",
                     "analyze", "refresh") for k in kinds)
     if any(k in ("vacuum",) for k in kinds) and len(parts) > 1:
-        raise SqlError("VACUUM transaction ke andar nahi chalta: use akela bhejiye (ya console se).")
+        raise SqlError("VACUUM does not run inside a transaction: send it on its own (or use the console).")
     if "vacuum" in kinds:
-        raise SqlError("VACUUM transaction ke bahar chalta hai; yeh database console / scheduler se karein.")
+        raise SqlError("VACUUM runs outside a transaction; do this from the database console / scheduler.")
     return {"statements": parts, "kinds": kinds, "kind": "schema" if ddl else "data", "danger": danger}
