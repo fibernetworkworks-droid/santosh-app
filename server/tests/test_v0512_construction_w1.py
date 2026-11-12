@@ -328,7 +328,7 @@ def test_voice_log_writes_through_the_service_paths(cst, env):
                      tb_row={"topic": "Height safety", "people": 14},
                      note="Sab theek")
     assert r["parts"] and r["missing"] == []      # everything was spoken, nothing left to ask
-    assert "Roznama" in r["say"]
+    assert "Daily log" in r["say"]
     # the rows really landed through the same paths (progress + labour + material + safety)
     from app.db import session
     from sqlalchemy import select
@@ -343,7 +343,7 @@ def test_voice_log_writes_through_the_service_paths(cst, env):
     r = SS.voice_log(T, "Voice site", day="2026-11-04",
                      activities=[{"activity": "Slab casting", "qty": 6}],
                      rows=[{"contractor": "Ramesh", "trade": "mason", "count": 10, "hours": 8}])
-    assert any("maal" in m for m in r["missing"])   # the five-questions rule: maal / snag missing
+    assert any("material" in m for m in r["missing"])   # the five-questions rule: material / snag missing
 
 
 def test_progress_variance_flags_behind(cst, env):
@@ -354,7 +354,7 @@ def test_progress_variance_flags_behind(cst, env):
     v = SS.progress_variance(T, "Var site")
     row = v["activities"][0]
     assert row["planned"] == 100 and row["done"] == 30 and row["pct"] == 30.0 and row["behind"]
-    assert "PEECHHE" in v["say"]
+    assert "BEHIND" in v["say"]
     SS.progress(T, "Var site", "Blockwork", 70, "2026-11-04")     # 100% now
     v = SS.progress_variance(T, "Var site")
     assert not v["activities"][0]["behind"]

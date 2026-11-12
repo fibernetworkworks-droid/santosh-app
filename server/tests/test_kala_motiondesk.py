@@ -86,12 +86,12 @@ def test_rules():
     b, _w = R.asset_problems({"name": "X", "licence": "unknown"}, "j1", "2026-10-23")
     assert b
     b, _w = R.asset_problems({"name": "Track", "licence": "subscription_single", "project_job": "j0", "jobs": ["j0"]}, "j1", "2026-10-23")
-    assert b and "naya" in b[0]
+    assert b and "new" in b[0]
     b, w = R.asset_problems({"name": "Pic", "licence": "cc_by", "valid_until": "2026-01-01"}, "j1", "2026-10-23")
     assert b and w
     assert R.gst_split("27AAA", "29BBB") == "inter" and R.gst_split("27AAA", "27BBB") == "intra" and R.gst_split("27AAA", "") == "intra"
     st = R.round_state(2, 2)
-    assert st["left"] == 0 and "paise" in st["say"]
+    assert st["left"] == 0 and "paid" in st["say"]
     assert R.color("laal") == "#D32F2F" and R.color("#abcdef") == "#ABCDEF" and R.num("12k") == 12000
 
 
@@ -202,7 +202,7 @@ def test_licences_final_and_handover(md):
     S.use_asset(T, j["number"], mystery["id"])
     with pytest.raises(S.MotiondeskError) as e:
         S.final_request(T, j["number"])
-    assert "licence pata nahi" in str(e.value)
+    assert "licence not known" in str(e.value)
     S.asset_save(T, "Desi beat", source="envato", licence_ref="ENV-123", asset=mystery["id"])
     f = S.final_request(T, j["number"])
     sh = f["card"]["show"]
@@ -227,7 +227,7 @@ def test_licences_final_and_handover(md):
     S.use_asset(T, j2["number"], mystery["id"])
     with pytest.raises(S.MotiondeskError) as e:
         S.final_request(T, j2["number"])
-    assert "naya register" in str(e.value)
+    assert "needs a new registration" in str(e.value)
     with pytest.raises(S.MotiondeskError):
         S.template_save(T, j2["number"], "Diwali offer")
 

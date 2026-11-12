@@ -49,14 +49,14 @@ class GoogleCal:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise CalError(f"Google Calendar se baat nahi ho payi ({type(e).__name__})")
+            raise CalError(f"Could not reach Google Calendar ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
         if r.status_code == 403 and ("insufficient" in r.text.lower() or "scope" in r.text.lower()):
-            raise CalError("Calendar ki permission nahi mili. App mein Profile > Calendar se Google Calendar dobara jodiye.")
+            raise CalError("No calendar permission. In the app, link Google Calendar again from Profile > Calendar.")
         if r.status_code in (404, 410):
-            raise CalError("Yeh event ya calendar nahi mila (shayad hata diya gaya).")
+            raise CalError("This event or calendar was not found (it may have been deleted).")
         if r.status_code >= 400:
             raise CalError(f"Google Calendar error {r.status_code}: {r.text[:200]}")
         return r.json() if r.content else {}

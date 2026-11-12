@@ -188,11 +188,11 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             elif k == "language":
                 v = str(v).lower()
                 if v not in R.LANGS:
-                    raise FeedbackError("Bhasha: hinglish / hi / mr / en.")
+                    raise FeedbackError("Language: hinglish / hi / mr / en.")
             elif k == "review_link":
                 v = str(v).strip()
                 if v and not re.match(r"^https://", v):
-                    raise FeedbackError("Review link https:// se shuru hona chahiye (Google Business Profile > 'Ask for reviews').")
+                    raise FeedbackError("The review link must start with https:// (Google Business Profile > 'Ask for reviews').")
             elif k == "phone":
                 v = R.digits(str(v))
             else:
@@ -206,7 +206,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             r.reply_rules = json.dumps(rl[-20:], ensure_ascii=False)
         if kw.get("clear_rules"):
             r.reply_rules = "[]"
-    return {**settings(tenant), "say": "Niyam save."}
+    return {**settings(tenant), "say": "Rules saved."}
 
 
 # ---------------------------------------------------------------- ingest
@@ -233,7 +233,7 @@ def _add(s, tenant: str, source: str, ext_id: str, text: str = "", stars: float 
             _analyse_into(old)
         return old, False
     if not text and stars is None and score is None:
-        raise FeedbackError("Khaali feedback.")
+        raise FeedbackError("Empty feedback.")
     r = FbItem(tenant_id=tenant, ext_id=ext_id, source=source, author=(author or "")[:120],
                author_key=author_key or (_akey(source, author) if author else ""), at=at or now(), stars=stars, score=score, text=text,
                amount=amount, product=(product or "")[:160], place=(place or "")[:120], reply=(reply or "")[:4000],
@@ -261,16 +261,16 @@ def _after_ingest(tenant: str, new_ids: list[str], conv: str = "") -> None:
         urg = [(u.id, u.source, u.text[:200], u.stars) for u in urgent]
     for iid, src, txt, st in urg:
         _alert(tenant, f"urgent:{iid}", "urgent",
-               f"Zaroori shikayat ({R.SOURCE_LABEL.get(src, src)}{f', {st:g}*' if st else ''}): \"{R.mask(txt)}\" - aaj hi dekhiye.",
+               f"Urgent complaint ({R.SOURCE_LABEL.get(src, src)}{f', {st:g}*' if st else ''}): \"{R.mask(txt)}\" - look at it today.",
                conv, {"item_id": iid})
 
 
 def _result(tenant: str, added: list[str], seen: int, skipped: int, src: str, conv: str = "") -> dict:
     _after_ingest(tenant, added, conv)
     if added:
-        _publish(tenant, "feedback_update", {"source": src, "added": len(added), "say": f"{len(added)} naye feedback padhe."}, conv)
+        _publish(tenant, "feedback_update", {"source": src, "added": len(added), "say": f"{len(added)} new feedback items read."}, conv)
     return {"added": len(added), "already": seen, "skipped": skipped, "source": src,
-            "say": f"{len(added)} naye padhe" + (f", {seen} pehle se the" if seen else "") + (f", {skipped} khaali / samajh nahi aaye" if skipped else "") + "."}
+            "say": f"{len(added)} new read" + (f", {seen} already there" if seen else "") + (f", {skipped} empty / unreadable" if skipped else "") + "."}
 
 
 _SPLIT = re.compile(r"\n\s*\n|\n(?=\s*(?:[-•*]|\d{1,3}[.)])\s)")
@@ -281,7 +281,7 @@ def add_text(tenant: str, text: str, source: str = "text", stars: Any = None, au
     """Pasted reviews / one complaint. Several reviews: blank line or '-' / '1.' per line. '4*' / '★★★★' inside is read."""
     t = (text or "").strip()
     if not t:
-        raise FeedbackError("Feedback ka text dijiye.")
+        raise FeedbackError("Give the feedback text.")
     src = source if source in R.SOURCE_LABEL else "text"
     parts = [p.strip().lstrip("-•* \t") for p in _SPLIT.split(t) if p and p.strip()] if stars is None and score is None else [t]
     added, seen, skipped = [], 0, 0
@@ -366,7 +366,7 @@ def parse_table(rows: list[list]) -> tuple[int, list[str], dict[str, int]]:
         cols = _map_cols(h)
         if ("text" in cols or "stars" in cols or "nps" in cols) and sum(1 for x in h if x) >= 2:
             return i, h, cols
-    raise FeedbackError("Is sheet mein review / rating / comment wala column nahi mila.")
+    raise FeedbackError("This sheet has no review / rating / comment column.")
 
 
 def import_rows(tenant: str, rows: list[list], name: str = "sheet.csv", source: str = "", conv: str = "") -> dict:
@@ -426,14 +426,14 @@ def import_file(tenant: str, name: str = "", data: bytes | None = None, source: 
         except Exception as e:
             raise FeedbackError(str(e))
     if not data:
-        raise FeedbackError("File khaali hai.")
+        raise FeedbackError("The file is empty.")
     if (name or "").lower().endswith((".txt", ".md")):
         return add_text(tenant, data.decode("utf-8", errors="replace"), source or "text", conv=conv)
     from ..analyst.service import _rows
     try:
         rows = _rows(name or "sheet.csv", data)
     except Exception as e:
-        raise FeedbackError(f"Sheet nahi khuli: {e}")
+        raise FeedbackError(f"Could not open the sheet: {e}")
     return import_rows(tenant, rows, name, source, conv)
 
 
@@ -445,7 +445,7 @@ def sync_forms(tenant: str, form: str, conv: str = "") -> dict:
         c, f = FS.resolve(tenant, form)
         resps = c.responses(f["formId"])
     except Exception as e:
-        raise FeedbackError(f"Google Form nahi padh paya: {e}")
+        raise FeedbackError(f"Could not read the Google Form: {e}")
     qs = [q for q in FS.questions_of(f) if q.get("question_id")]
     rate_q = next((q for q in qs if q["type"] in ("scale", "rating") or "high" in q), None)
     hi_val = int((rate_q or {}).get("high", 5) or 5)
@@ -611,7 +611,7 @@ def mark_suspicious(tenant: str) -> int:
                     continue
                 if R.jaccard(sh[a], sh[b]) >= 0.8:
                     for x, y in ((a, rb), (b, ra)):
-                        flags[x].append({"kind": "copy", "why": f"Lagbhag wahi shabd doosre review mein bhi ({R.SOURCE_LABEL.get(y.source, y.source)})"})
+                        flags[x].append({"kind": "copy", "why": f"Almost the same words appear in another review ({R.SOURCE_LABEL.get(y.source, y.source)})"})
         for src, lst in by_src.items():
             if src not in R.SOURCE_PUBLIC:
                 continue
@@ -620,18 +620,18 @@ def mark_suspicious(tenant: str) -> int:
             usual = len(lst) / days
             for r in lst:
                 if r.author_key and per_author[r.author_key] >= 3:
-                    flags[r.id].append({"kind": "same_person", "why": f"Ek hi naam se {per_author[r.author_key]} review"})
+                    flags[r.id].append({"kind": "same_person", "why": f"Same name on {per_author[r.author_key]} reviews"})
                 if r.stars in (1.0, 5.0):
                     at = as_utc(r.at)
                     near = [x for x in lst if x.stars == r.stars and abs((as_utc(x.at) - at).total_seconds()) <= 48 * 3600]
                     if len(near) >= 5 and len(near) >= 6 * usual * 2:
-                        flags[r.id].append({"kind": "burst", "why": f"48 ghante mein {len(near)} review {r.stars:g}* ke (aam taur par ~{usual * 2:.1f})"})
+                        flags[r.id].append({"kind": "burst", "why": f"In 48 hours, {len(near)} reviews of {r.stars:g}* (usually ~{usual * 2:.1f})"})
                 if R.incentive_words(r.text):
-                    flags[r.id].append({"kind": "incentive", "why": "Inaam / discount ke badle likha lagta hai (IS 19000: aise review alag dikhne chahiye)"})
+                    flags[r.id].append({"kind": "incentive", "why": "Looks written in exchange for a reward / discount (IS 19000: such reviews must be shown separately)"})
                 if r.stars is not None and r.text and len(r.text) > 15:
                     a = R.analyse(r.text)
                     if r.stars >= 4 and a["sentiment"] <= -0.5 or r.stars <= 2 and a["sentiment"] >= 0.6:
-                        flags[r.id].append({"kind": "mismatch", "why": "Taare aur shabd mel nahi khaate (galti se bhi ho sakta hai)"})
+                        flags[r.id].append({"kind": "mismatch", "why": "Stars and words do not match (it can also be a mistake)"})
         n = 0
         for r in rows:
             f = flags.get(r.id, [])
@@ -650,12 +650,12 @@ def flagged(tenant: str) -> dict:
         out = [_view(r) for r in rows]
     strong = [x for x in out if any(f["kind"] in ("copy", "burst", "incentive", "same_person") for f in x["flags"])]
     return {"items": out, "strong": len(strong),
-            "what_you_can_do": ["Review ko hatana / chhupana nahi; jawab sabko izzat se.",
-                                "Google: Business Profile > Reviews > review ke paas 'Report review' (policy todne wala ho to).",
-                                "Amazon / Flipkart / Zomato / Swiggy / Play: unke seller / partner panel ka 'report abuse' rasta.",
-                                "Graahak se review badalne ya hatane ke liye kehna ya kuch dena mana hai."],
-            "say": (f"{len(out)} review par shak ke nishaan" + (f", {len(strong)} pakke shak wale" if strong else "") +
-                    ". Yeh sirf ishaara hai; hatana Hoola ka kaam nahi.") if out else "Koi shak wala review nahi mila."}
+            "what_you_can_do": ["Never remove / hide a review; reply to everyone with respect.",
+                                "Google: Business Profile > Reviews > 'Report review' next to the review (if it breaks policy).",
+                                "Amazon / Flipkart / Zomato / Swiggy / Play: the 'report abuse' route in their seller / partner panel.",
+                                "Asking a customer to change or remove a review, or giving anything for it, is not allowed."],
+            "say": (f"{len(out)} reviews show suspicious signs" + (f", {len(strong)} strongly suspicious" if strong else "") +
+                    ". This is only a signal; Hoola does not remove reviews.") if out else "No suspicious review found."}
 
 
 # ---------------------------------------------------------------- themes, scores, fix first
@@ -765,9 +765,9 @@ def themes(tenant: str, days: int | None = None, source: str = "") -> dict:
                                                                            FbItem.at < fd)).all() if k in (_j(r.themes, []) or [others.get(r.id, "")]))
                     after = sum(1 for r in allr if as_utc(r.at) >= fd)
                     fixed = {"on": note.fixed_on, "days": since, "before": before, "after": after,
-                             "say": (f"Theek karne ke baad {since} din mein {after} (usse pehle ke 30 din mein {before})" +
-                                     (" - kam hua" if since >= 7 and after * 30 < before * max(since, 1) else
-                                      (" - abhi bhi aa raha hai" if after else "")))}
+                             "say": (f"In the {since} days since the fix: {after} (in the 30 days before it: {before})" +
+                                     (" - reduced" if since >= 7 and after * 30 < before * max(since, 1) else
+                                      (" - still coming" if after else "")))}
                 except ValueError:
                     fixed = None
             out.append({"key": k, "label": R.theme_label(k, note.label if note else ""), "aspect": aspect, "pol": pol,
@@ -787,28 +787,28 @@ def themes(tenant: str, days: int | None = None, source: str = "") -> dict:
     total = len(cur)
     return {"days": days, "total": total, "prev_total": len(prev), "negative": neg, "positive": pos,
             "labels": dict(Counter(r.label for r in cur)), "rupee_note": "" if st["avg_order_value"] else
-            "Rupaye ka andaaza tab dikhega jab aap apna ausat order value Niyam mein daalengi."}
+            "The rupee estimate will show once you add your average order value in Rules."}
 
 
 def _reasons(t: dict) -> list[str]:
     out = []
     if t["urgent"]:
-        out.append("Sehat / suraksha / dhokhe ki baat: sabse pehle")
-    out.append(f"{t['people']} logon ne kaha" + (f" ({t['public']} public review)" if t["public"] else ""))
+        out.append("Health / safety / fraud: fix this first")
+    out.append(f"{t['people']} people said it" + (f" ({t['public']} public reviews)" if t["public"] else ""))
     if t["trend"]["new"]:
-        out.append("Pichhle period mein nahi tha, ab aa raha hai")
+        out.append("Not there in the previous period, coming up now")
     elif (t["trend"]["pct"] or 0) >= 25:
-        out.append(f"Pichhle period se {t['trend']['say']} badha")
+        out.append(f"Up {t['trend']['say']} from the previous period")
     if t["avg_stars"] is not None and t["avg_stars"] <= 2.5:
-        out.append(f"In reviews ka ausat {t['avg_stars']:g}*")
+        out.append(f"These reviews average {t['avg_stars']:g}*")
     if t["fixability"] >= 0.9:
-        out.append("Apne haath mein hai: jaldi theek ho sakta hai")
+        out.append("In your hands: can be fixed quickly")
     elif t["fixability"] <= 0.3:
-        out.append("Pura theek karna mushkil (jagah / bahar ki baat); bata kar rakhna madad karega")
+        out.append("Hard to fix fully (location / outside factors); telling customers upfront will help")
     if t["rupees"]:
-        out.append(f"Andaaza: ~₹{t['rupees']:,} ke graahak khatre mein (aapke ausat order se)")
+        out.append(f"Estimate: ~₹{t['rupees']:,} of customer business at risk (from your average order value)")
     if t["fixed"] and t["fixed"]["after"]:
-        out.append("Theek kiya tha, phir bhi aa raha hai")
+        out.append("You fixed it, but it is still coming")
     return out
 
 
@@ -820,11 +820,11 @@ def fix_first(tenant: str, days: int | None = None, top: int = 5) -> dict:
                     "urgent": t["urgent"], "reasons": _reasons(t), "examples": t["examples"][:2], "rupees": t["rupees"]})
     keep = [{"key": t["key"], "label": t["label"], "count": t["count"]} for t in th["positive"][:3]]
     if lst:
-        say = "Pehle theek karein: " + "; ".join(f"{x['rank']}. {x['label']} ({x['count']})" for x in lst[:3]) + "."
+        say = "Fix first: " + "; ".join(f"{x['rank']}. {x['label']} ({x['count']})" for x in lst[:3]) + "."
     else:
-        say = "Is period mein koi shikayat ka theme nahi." if th["total"] else "Abhi koi feedback nahi padha."
+        say = "No complaint theme in this period." if th["total"] else "No feedback read yet."
     if keep:
-        say += " Log pasand karte hain: " + ", ".join(k["label"].replace(" - tareef", "") for k in keep) + "."
+        say += " Customers like: " + ", ".join(k["label"].replace(" - praise", "") for k in keep) + "."
     return {"days": th["days"], "fix": lst, "keep_doing": keep, "total": th["total"], "say": say}
 
 
@@ -843,13 +843,13 @@ def scores(tenant: str, days: int | None = None, source: str = "") -> dict:
                        "avg_stars": round(sum(st) / len(st), 2) if st else None}
     parts = []
     if n_c["n"]:
-        parts.append(n_c["say"] + (f", pehle {n_p['nps']:+d}" if n_p["n"] else ""))
+        parts.append(n_c["say"] + (f", earlier {n_p['nps']:+d}" if n_p["n"] else ""))
     if c_c["n"]:
-        parts.append(c_c["say"] + (f", pehle {c_p['csat']}%" if c_p["n"] else ""))
+        parts.append(c_c["say"] + (f", earlier {c_p['csat']}%" if c_p["n"] else ""))
     if (n_c["n"] and n_c["low_n"]) or (c_c["n"] and c_c["low_n"]):
-        parts.append("jawab kam hain, isliye yeh andaaza hai")
+        parts.append("few responses, so this is an estimate")
     return {"days": days, "nps": n_c, "nps_prev": n_p, "csat": c_c, "csat_prev": c_p, "by_source": by_src,
-            "say": "; ".join(parts) + "." if parts else "Abhi score (NPS / taare) wala feedback nahi."}
+            "say": "; ".join(parts) + "." if parts else "No feedback with a score (NPS / stars) yet."}
 
 
 def items(tenant: str, theme: str = "", source: str = "", label: str = "", flagged_only: bool = False, q: str = "",
@@ -884,7 +884,7 @@ def theme_note(tenant: str, key: str, label: str | None = None, fixed_on: str | 
                ignored: bool | None = None) -> dict:
     key = (key or "").strip()
     if not re.fullmatch(r"[a-z0-9_ऀ-ॿ]+:(pos|neg)", key):
-        raise FeedbackError("Theme ka key galat (jaise delivery:neg).")
+        raise FeedbackError("The theme key is wrong (for example delivery:neg).")
     with session() as s:
         t = s.scalars(select(FbTheme).where(FbTheme.tenant_id == tenant, FbTheme.key == key)).first()
         if t is None:
@@ -899,14 +899,14 @@ def theme_note(tenant: str, key: str, label: str | None = None, fixed_on: str | 
             if v and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
                 d = _date(v)
                 if d is None:
-                    raise FeedbackError("Tareekh samajh nahi aayi (YYYY-MM-DD).")
+                    raise FeedbackError("Could not understand the date (YYYY-MM-DD).")
                 v = d.date().isoformat()
             t.fixed_on = v
         if note is not None:
             t.note = str(note).strip()[:600]
         if ignored is not None:
             t.ignored = bool(ignored)
-    return {"key": key, "say": "Theme ki baat save. " + ("Ab se pehle / baad ka hisaab dikhega." if fixed_on else "")}
+    return {"key": key, "say": "Theme note saved. " + ("The before / after comparison will show from now on." if fixed_on else "")}
 
 
 # ---------------------------------------------------------------- alerts
@@ -932,7 +932,7 @@ def check_alerts(tenant: str, conv: str = "") -> list[str]:
     for k, n in c7.items():
         sp = R.spike(n, c28.get(k, 0))
         if sp:
-            text = f"'{R.theme_label(k)}' ki shikayat achanak badhi: 7 din mein {n} (aam taur par ~{sp['usual']}/hafta)."
+            text = f"'{R.theme_label(k)}' complaints rose suddenly: {n} in 7 days (usually ~{sp['usual']}/week)."
             if _alert(tenant, f"spike:{k}:{week[0]}-{week[1]}", "spike", text, conv, {"theme": k}):
                 out.append(text)
     a = [r.stars for r in last7 if r.stars is not None]
@@ -940,7 +940,7 @@ def check_alerts(tenant: str, conv: str = "") -> list[str]:
     if len(a) >= 5 and len(b) >= 10:
         ma, mb = sum(a) / len(a), sum(b) / len(b)
         if mb - ma >= 0.5:
-            text = f"Is hafte ausat rating {ma:.1f}* (pehle {mb:.1f}*). Fix-first list dekhiye."
+            text = f"This week's average rating is {ma:.1f}* (earlier {mb:.1f}*). See the fix-first list."
             if _alert(tenant, f"rating:{week[0]}-{week[1]}", "rating", text, conv):
                 out.append(text)
     return out
@@ -985,7 +985,7 @@ _ASPECT_WORD = {"en": {"taste": "food", "staff": "service", "delivery": "deliver
 
 
 def _template(lang: str, label: str, who: str, aspects: list[dict], sign: str, phone: str) -> str:
-    lang = lang if lang in _TPL else "hinglish"
+    lang = lang if lang in _TPL else "en"
     kind = "pos" if label == "pos" else ("neg" if label in ("neg", "mixed") else "neu")
     pol = "neg" if kind == "neg" else "pos"
     names = [x["aspect"] for x in aspects if x["pol"] == pol and x["aspect"] in R.ASPECTS and not R.is_urgent_aspect(x["aspect"])][:2]
@@ -1001,7 +1001,7 @@ def _template(lang: str, label: str, who: str, aspects: list[dict], sign: str, p
 
 
 def _lang_for(item_lang: str, default: str) -> str:
-    return item_lang if item_lang in R.LANGS else (default if default in R.LANGS else "hinglish")
+    return item_lang if item_lang in R.LANGS else (default if default in R.LANGS else "en")
 
 
 def reply_draft(tenant: str, item_id: str, conv: str = "", note: str = "") -> dict:
@@ -1009,9 +1009,9 @@ def reply_draft(tenant: str, item_id: str, conv: str = "", note: str = "") -> di
     with session() as s:
         r = s.get(FbItem, item_id)
         if r is None or r.tenant_id != tenant:
-            raise FeedbackError("Feedback nahi mila.")
+            raise FeedbackError("Feedback not found.")
         if r.reply:
-            raise FeedbackError("Is review ka jawab platform par pehle se hai.")
+            raise FeedbackError("This review already has a reply on the platform.")
         old = s.scalars(select(FbReply).where(FbReply.item_id == item_id, FbReply.status.in_(("draft", "approved")))).first()
         iv = _view(r)
         meta = _j(r.meta, {})
@@ -1039,11 +1039,11 @@ def reply_draft(tenant: str, item_id: str, conv: str = "", note: str = "") -> di
     can_post = iv["source"] == "google" and bool(meta.get("name")) and _google_on(tenant)
     card = {"reply_id": rid, "item": iv, "text": text, "hash": h, "problems": probs, "status": "draft",
             "where": "google_api" if can_post else "copy",
-            "where_say": ("Haan dabate hi Google par jawab chala jayega." if can_post else
-                          f"Haan ke baad copy karke {R.SOURCE_LABEL.get(iv['source'], 'platform')} par khud daaliye.")
-            if iv["public"] else "Yeh public review nahi; jawab aap WhatsApp / call par dein."}
+            "where_say": ("The reply goes to Google as soon as you tap Yes." if can_post else
+                          f"After you tap Yes, copy it and post it yourself on {R.SOURCE_LABEL.get(iv['source'], 'platform')}.")
+            if iv["public"] else "This is not a public review; reply on WhatsApp / by call yourself."}
     _publish(tenant, "feedback_reply", card, conv)
-    return {**card, "say": "Jawab ka draft card par hai. Public jawab sirf aapki 'Haan' se jaata hai."}
+    return {**card, "say": "The draft reply is on the card. A public reply goes out only with your approval."}
 
 
 def reply_drafts_all(tenant: str, limit: int = 10, conv: str = "") -> dict:
@@ -1053,7 +1053,7 @@ def reply_drafts_all(tenant: str, limit: int = 10, conv: str = "") -> dict:
                          .order_by(FbItem.urgent.desc(), FbItem.at.desc()).limit(200)).all()
         ids = [r.id for r in rows if r.id not in have][:max(1, min(int(limit or 10), 20))]
     made = [reply_draft(tenant, i, conv)["reply_id"] for i in ids]
-    return {"drafts": made, "say": f"{len(made)} jawab ke draft bane; har ek par aapki Haan chahiye." if made else "Koi bina-jawab public review nahi."}
+    return {"drafts": made, "say": f"{len(made)} draft replies made; each one needs your approval." if made else "No public review is waiting for a reply."}
 
 
 def _google_on(tenant: str) -> bool:
@@ -1068,20 +1068,20 @@ def reply_decide(tenant: str, reply_id: str, yes: bool, hash_: str = "", text: s
     with session() as s:
         rep = s.get(FbReply, reply_id)
         if rep is None or rep.tenant_id != tenant:
-            raise FeedbackError("Jawab nahi mila.")
+            raise FeedbackError("Reply not found.")
         if rep.status not in ("draft", "approved"):
-            raise FeedbackError(f"Yeh jawab pehle hi '{rep.status}' hai.")
+            raise FeedbackError(f"This reply is already '{rep.status}'.")
         if not yes:
             rep.status, rep.decided_at = "rejected", now()
-            return {"status": "rejected", "say": "Theek, yeh jawab nahi jayega."}
+            return {"status": "rejected", "say": "OK, this reply will not go out."}
         if text is not None and str(text).strip() and str(text).strip() != rep.text:
             rep.text = str(text).strip()                       # her own words, typed in the app at the tap
         elif hash_ != rep.hash:
-            raise FeedbackError("Card ke baad jawab badal gaya; naya card dekhiye.")
+            raise FeedbackError("The reply changed after the card; see the new card.")
         probs = R.reply_problems(rep.text, st["phone"], st["email"])
         if probs:
             rep.problems = json.dumps(probs, ensure_ascii=False)
-            raise FeedbackError("Yeh jawab public nahi ja sakta: " + " ".join(probs))
+            raise FeedbackError("This reply cannot go public: " + " ".join(probs))
         rep.hash = _hash(rep.id, rep.text)
         item = s.get(FbItem, rep.item_id)
         meta = _j(item.meta, {}) if item else {}
@@ -1096,31 +1096,31 @@ def reply_decide(tenant: str, reply_id: str, yes: bool, hash_: str = "", text: s
                 rep = s.get(FbReply, reply_id)
                 rep.status, rep.where, rep.error = "approved", "copy", str(e)[:400]
             return {"status": "approved", "text": ttext, "error": str(e),
-                    "say": f"Google ne jawab nahi liya ({e}). Text copy karke Google Maps > Reviews > Reply mein daal dijiye."}
+                    "say": f"Google did not accept the reply ({e}). Copy the text and paste it in Google Maps > Reviews > Reply."}
         with session() as s:
             rep = s.get(FbReply, reply_id)
             rep.status, rep.where = "posted", "google_api"
             it = s.get(FbItem, rep.item_id)
             if it:
                 it.reply = ttext
-        return {"status": "posted", "text": ttext, "say": "Jawab Google par chala gaya (Google kuch der moderation mein rakh sakta hai)."}
+        return {"status": "posted", "text": ttext, "say": "The reply is on Google (Google may hold it in moderation for a while)."}
     with session() as s:
         rep = s.get(FbReply, reply_id)
         rep.status, rep.where = "approved", "copy"
     return {"status": "approved", "text": ttext,
-            "say": f"Final. Copy karke {R.SOURCE_LABEL.get(src, 'platform')} par jawab mein daaliye, phir 'Daal diya' dabaiye."}
+            "say": f"Final. Copy it, paste it as the reply on {R.SOURCE_LABEL.get(src, 'platform')}, then mark it as posted."}
 
 
 def reply_done(tenant: str, reply_id: str) -> dict:
     with session() as s:
         rep = s.get(FbReply, reply_id)
         if rep is None or rep.tenant_id != tenant or rep.status != "approved":
-            raise FeedbackError("Pehle jawab par Haan chahiye.")
+            raise FeedbackError("The reply needs your approval first.")
         rep.status = "posted"
         it = s.get(FbItem, rep.item_id)
         if it:
             it.reply = rep.text
-    return {"status": "posted", "say": "Done: jawab daala gaya mark kiya."}
+    return {"status": "posted", "say": "Done: the reply is marked as posted."}
 
 
 def replies(tenant: str, status: str = "") -> list[dict]:
@@ -1174,7 +1174,7 @@ def token_for(sid: str) -> str:
 def survey_of_token(token: str) -> str:
     sid, _, sig = (token or "").partition(".")
     if not sid or not sig or not hmac.compare_digest(token_for(sid), token):
-        raise FeedbackError("Link sahi nahi.")
+        raise FeedbackError("The link is not valid.")
     return sid
 
 
@@ -1188,7 +1188,7 @@ def _survey_view(r: FbSurvey) -> dict:
     link = f"{_base_url()}/api/feedback/s/{tok}"
     return {"id": r.id, "title": r.title, "kind": r.kind, "question": r.question, "follow_up": r.follow_up, "language": r.language,
             "active": r.active, "responses": r.responses, "token": tok, "link": link,
-            "whatsapp": "https://wa.me/?text=" + __import__("urllib.parse").parse.quote(f"{r.title}: 1 minute ka feedback dijiye - {link}"),
+            "whatsapp": "https://wa.me/?text=" + __import__("urllib.parse").parse.quote(f"{r.title}: please share 1 minute of feedback - {link}"),
             "created_at": as_utc(r.created_at).isoformat()}
 
 
@@ -1196,23 +1196,23 @@ def survey_new(tenant: str, kind: str = "nps", title: str = "", question: str = 
                conv: str = "") -> dict:
     st = settings(tenant)
     kind = "csat" if str(kind).lower() == "csat" else "nps"
-    lang = (language or st["language"] or "hinglish").lower()
+    lang = (language or st["language"] or "en").lower()
     if lang not in SURVEY_TEXT:
-        lang = "hinglish"
+        lang = "en"
     b = st["business"] or ("hum" if lang == "hinglish" else ("हम" if lang in ("hi", "mr") else "us"))
     tx = SURVEY_TEXT[lang]
     q = (question or tx[kind].format(b=b)).strip()[:300]
     from .. import pii
     if pii.find(q + " " + (follow_up or "")):
-        raise FeedbackError("Sawal mein niji jaankari (Aadhaar / PAN / bank / OTP) nahi chalegi.")
+        raise FeedbackError("The question cannot contain private information (Aadhaar / PAN / bank / OTP).")
     with session() as s:
-        r = FbSurvey(tenant_id=tenant, title=(title or ("NPS survey" if kind == "nps" else "Anubhav survey")).strip()[:160], kind=kind,
+        r = FbSurvey(tenant_id=tenant, title=(title or ("NPS survey" if kind == "nps" else "Experience survey")).strip()[:160], kind=kind,
                      question=q, follow_up=(follow_up or tx["follow"]).strip()[:300], language=lang)
         s.add(r)
         s.flush()
         v = _survey_view(r)
-    _publish(tenant, "feedback_survey", {**v, "say": "Survey link taiyaar."}, conv)
-    return {**v, "say": "Survey link taiyaar. Ise SAB graahakon ko bhejiye (sirf khush logon ko chun kar nahi); WhatsApp draft card par hai."}
+    _publish(tenant, "feedback_survey", {**v, "say": "Survey link ready."}, conv)
+    return {**v, "say": "Survey link ready. Send it to ALL customers (do not pick only the happy ones); the WhatsApp draft is on the card."}
 
 
 def surveys(tenant: str) -> list[dict]:
@@ -1224,9 +1224,9 @@ def survey_close(tenant: str, sid: str, active: bool = False) -> dict:
     with session() as s:
         r = s.get(FbSurvey, sid)
         if r is None or r.tenant_id != tenant:
-            raise FeedbackError("Survey nahi mila.")
+            raise FeedbackError("Survey not found.")
         r.active = bool(active)
-    return {"id": sid, "active": bool(active), "say": "Survey " + ("khula." if active else "band.")}
+    return {"id": sid, "active": bool(active), "say": "Survey " + ("opened." if active else "closed.")}
 
 
 _RATE: dict[str, list[float]] = {}
@@ -1250,15 +1250,15 @@ def public_page(token: str, error: str = "") -> tuple[int, str]:
     try:
         sid = survey_of_token(token)
     except FeedbackError:
-        return 404, _page("Not found", "<h1>Link sahi nahi.</h1>")
+        return 404, _page("Not found", "<h1>This link is not valid.</h1>")
     with session() as s:
         r = s.get(FbSurvey, sid)
         if r is None:
-            return 404, _page("Not found", "<h1>Link sahi nahi.</h1>")
+            return 404, _page("Not found", "<h1>This link is not valid.</h1>")
         st = _st(s, r.tenant_id)
         biz = st.business or ""
         kind, q, fu, lang, active, title = r.kind, r.question, r.follow_up, r.language, r.active, r.title
-    tx = SURVEY_TEXT.get(lang, SURVEY_TEXT["hinglish"])
+    tx = SURVEY_TEXT.get(lang, SURVEY_TEXT["en"])
     if not active:
         return 410, _page(title, f"<h1>{html.escape(tx['closed'])}</h1>", lang)
     rng = range(0, 11) if kind == "nps" else range(1, 6)
@@ -1268,7 +1268,7 @@ def public_page(token: str, error: str = "") -> tuple[int, str]:
             f'<span>{html.escape(tx["high"])}</span></div><p>{html.escape(fu)}</p><textarea name="text" maxlength="2000"></textarea>'
             f'<div class="hp"><input name="website" tabindex="-1" autocomplete="off"></div>'
             f'<button type="submit">{html.escape(tx["send"])}</button></form>'
-            f'<small>{html.escape(tx["privacy"].format(b=biz or "is business"))}</small>')
+            f'<small>{html.escape(tx["privacy"].format(b=biz or "this business"))}</small>')
     return 200, _page(title, body, lang)
 
 
@@ -1277,7 +1277,7 @@ def public_submit(token: str, form: dict[str, Any], ip: str = "") -> tuple[int, 
     try:
         sid = survey_of_token(token)
     except FeedbackError:
-        return 404, _page("Not found", "<h1>Link sahi nahi.</h1>")
+        return 404, _page("Not found", "<h1>This link is not valid.</h1>")
     if str(form.get("website") or "").strip():                 # honeypot: a bot
         return 200, _page("OK", "<h1>OK</h1>")
     iph = hashlib.sha256(f"{ip}|{sid}".encode()).hexdigest()[:24]
@@ -1285,22 +1285,22 @@ def public_submit(token: str, form: dict[str, Any], ip: str = "") -> tuple[int, 
     with _LOCK:
         hits = [x for x in _RATE.get(iph, []) if t - x < 600]
         if len(hits) >= 5:
-            return 429, _page("Wait", "<h1>Bahut baar bheja; thodi der baad.</h1>")
+            return 429, _page("Wait", "<h1>Too many submissions; please try again in a while.</h1>")
         _RATE[iph] = hits + [t]
         if len(_RATE) > 20000:
             _RATE.clear()
     with session() as s:
         r = s.get(FbSurvey, sid)
         if r is None:
-            return 404, _page("Not found", "<h1>Link sahi nahi.</h1>")
-        tx = SURVEY_TEXT.get(r.language, SURVEY_TEXT["hinglish"])
+            return 404, _page("Not found", "<h1>This link is not valid.</h1>")
+        tx = SURVEY_TEXT.get(r.language, SURVEY_TEXT["en"])
         if not r.active:
             return 410, _page(r.title, f"<h1>{html.escape(tx['closed'])}</h1>", r.language)
         day = now() - timedelta(days=1)
         n = s.scalar(select(func.count()).select_from(FbItem).where(FbItem.tenant_id == r.tenant_id, FbItem.source == "survey",
                                                                     FbItem.created_at >= day, FbItem.ext_id.like(f"survey:{sid}:%"))) or 0
         if n >= 300:
-            return 429, _page(r.title, "<h1>Aaj ke liye bahut jawab; kal dobara.</h1>", r.language)
+            return 429, _page(r.title, "<h1>Too many responses for today; please try again tomorrow.</h1>", r.language)
         raw = str(form.get("score") or "").strip()
         val = R.score_of(raw)
         if val is None or (r.kind == "csat" and not 1 <= val <= 5):
@@ -1359,11 +1359,11 @@ def report_file(tenant: str, days: int | None = None, conv: str = "") -> dict:
         ws.append([x["rank"], x["label"], x["count"], next((t["prev"] for t in th["negative"] if t["key"] == x["key"]), 0),
                    x["trend"]["say"], x["score"], "; ".join(x["reasons"])])
     ws2 = wb.create_sheet("Themes")
-    ws2.append(["Theme", "Tareef / shikayat", "Count", "Previous", "Trend", "People", "Public", "Avg stars", "Impact", "Rupees (andaaza)",
-                "Example 1", "Example 2", "Theek kiya", "Before / after"])
+    ws2.append(["Theme", "Praise / complaint", "Count", "Previous", "Trend", "People", "Public", "Avg stars", "Impact", "Rupees (estimate)",
+                "Example 1", "Example 2", "Fixed on", "Before / after"])
     for t in th["negative"] + th["positive"]:
         ex = [e["text"] for e in t["examples"]] + ["", ""]
-        ws2.append([t["label"], "shikayat" if t["pol"] == "neg" else "tareef", t["count"], t["prev"], t["trend"]["say"], t["people"],
+        ws2.append([t["label"], "complaint" if t["pol"] == "neg" else "praise", t["count"], t["prev"], t["trend"]["say"], t["people"],
                     t["public"], t["avg_stars"], t["impact"], t["rupees"], ex[0], ex[1], (t["fixed"] or {}).get("on", ""),
                     (t["fixed"] or {}).get("say", "")])
     ws3 = wb.create_sheet("Scores")
@@ -1378,7 +1378,7 @@ def report_file(tenant: str, days: int | None = None, conv: str = "") -> dict:
     for it in items(tenant, limit=300, days=th["days"]):
         ws4.append([it["at"][:10], it["source_label"], it["stars"], it["score"], it["label"], ", ".join(it["themes"]), it["text"],
                     "yes" if it["replied"] else "", "; ".join(f["why"] for f in it["flags"])])
-    ws5 = wb.create_sheet("Shak wale")
+    ws5 = wb.create_sheet("Suspicious")
     ws5.append(["Date", "Source", "Stars", "Text", "Signals (report via the platform only; never removed)"])
     for it in fl["items"]:
         ws5.append([it["at"][:10], it["source_label"], it["stars"], it["text"], "; ".join(f["why"] for f in it["flags"])])
@@ -1394,7 +1394,7 @@ def report_file(tenant: str, days: int | None = None, conv: str = "") -> dict:
     fp = chatfiles.store(tenant, f"Feedback_report_{stamp}.pdf", pdf, "application/pdf")
     for f, t in ((fx, "Feedback report (Excel)"), (fp, "Feedback report (PDF)")):
         _publish(tenant, "pc_file", {**f, "source": "feedback", "title": t}, conv)
-    return {"files": [fx, fp], "say": f"{th['days']} din ki feedback report: Excel + PDF.", "fix_first": ff["say"]}
+    return {"files": [fx, fp], "say": f"{th['days']}-day feedback report: Excel + PDF.", "fix_first": ff["say"]}
 
 
 def _pdf(st: dict, th: dict, ff: dict, sc: dict, fl: dict) -> bytes:
@@ -1474,7 +1474,7 @@ def tick(now_: datetime | None = None) -> dict:
                     has = s.scalars(select(FbItem.id).where(FbItem.tenant_id == tenant, FbItem.at >= now() - timedelta(days=31)).limit(1)).first()
                 if has:
                     out = report_file(tenant, 30)
-                    _publish(tenant, "feedback_report", {"text": "Mahine ki feedback report: " + out["fix_first"], "files": out["files"]})
+                    _publish(tenant, "feedback_report", {"text": "Monthly feedback report: " + out["fix_first"], "files": out["files"]})
                     done["reports"] += 1
         except Exception:
             log.exception("feedback tick failed for %s", tenant)
@@ -1486,8 +1486,8 @@ def forget_item(tenant: str, item_id: str) -> dict:
     with session() as s:
         r = s.get(FbItem, item_id)
         if r is None or r.tenant_id != tenant:
-            raise FeedbackError("Feedback nahi mila.")
+            raise FeedbackError("Feedback not found.")
         for rep in s.scalars(select(FbReply).where(FbReply.item_id == item_id)).all():
             s.delete(rep)
         s.delete(r)
-    return {"say": "Hoola ki copy se hata diya (platform par review jaisa tha waisa hai)."}
+    return {"say": "Removed from Hoola's copy (the review on the platform is unchanged)."}

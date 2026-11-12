@@ -18,9 +18,9 @@ def _f(v: Any, name: str, lo: float | None = None) -> float:
     try:
         x = float(str(v).replace(",", "").strip())
     except (TypeError, ValueError):
-        raise ValueError(f"{name}: sankhya batao.") from None
+        raise ValueError(f"{name}: give a number.") from None
     if lo is not None and x < lo:
-        raise ValueError(f"{name} {lo} se kam nahi ho sakta.")
+        raise ValueError(f"{name} cannot be less than {lo}.")
     return x
 
 
@@ -31,7 +31,7 @@ def _r2(x: float) -> float:
 def emi(principal: Any, annual_rate_pct: Any, months: Any) -> float:
     p, r, n = _f(principal, "loan amount", 0.01), _f(annual_rate_pct, "rate", 0), int(_f(months, "months", 1))
     if n > MAX_MONTHS:
-        raise ValueError(f"{MAX_MONTHS} mahine se zyada nahi.")
+        raise ValueError(f"Not more than {MAX_MONTHS} months.")
     i = r / 1200.0
     if i == 0:
         return _r2(p / n)
@@ -53,7 +53,7 @@ def schedule(principal: Any, annual_rate_pct: Any, months: Any, lump: dict[str, 
         interest = _r2(bal * i)
         princ = min(bal, _r2(pay - interest)) if pay > interest else 0.0
         if pay <= interest and i > 0:
-            raise ValueError("EMI byaaj se kam hai: loan kabhi nahi utrega.")
+            raise ValueError("The EMI is less than the interest: the loan will never be paid off.")
         if bal - princ < 1.0 or m >= n and not (lm and m < lm):
             princ = bal                       # the last instalment absorbs the paise left by rounding
         extra = 0.0
@@ -112,20 +112,20 @@ def true_cost(principal: Any, annual_rate_pct: Any, months: Any, *, fee_pct: Any
     total_paid = sched["total_paid"] + bal
     flags = []
     if p and (fee_base / p) * 100 > FEE_FLAG_PCT:
-        flags.append({"kind": "heuristic", "text": f"Processing fee loan ka {round(fee_base / p * 100, 2)}% hai (>{FEE_FLAG_PCT}%): kam ya maaf karwane ki baat kijiye."})
+        flags.append({"kind": "heuristic", "text": f"The processing fee is {round(fee_base / p * 100, 2)}% of the loan (>{FEE_FLAG_PCT}%): ask for it to be reduced or waived."})
     if ins:
-        flags.append({"kind": "measured", "text": f"Insurance Rs {ins:,.2f} loan ke saath judi hai: pooch lijiye kya yeh zaroori hai ya aap apna bima le sakte hain."})
+        flags.append({"kind": "measured", "text": f"Insurance Rs {ins:,.2f} is bundled with the loan: ask whether it is required or whether you can buy your own insurance."})
     if bal:
-        flags.append({"kind": "measured", "text": f"Aakhir mein balloon payment Rs {bal:,.2f}: tab tak EMI se loan poora nahi utarta."})
+        flags.append({"kind": "measured", "text": f"At the end, a balloon payment of Rs {bal:,.2f}: until then the EMIs do not fully pay off the loan."})
     if upfront and fees_deducted:
-        flags.append({"kind": "measured", "text": f"Rs {upfront:,.2f} pehle hi kat jaata hai: haath mein Rs {received:,.2f} aayega, par byaaj Rs {p:,.2f} par chalega."})
+        flags.append({"kind": "measured", "text": f"Rs {upfront:,.2f} is deducted upfront: you receive Rs {received:,.2f} in hand, but interest runs on Rs {p:,.2f}."})
     return {"principal": _r2(p), "emi": pay, "months": n, "stated_rate_pct": r, "fee_before_gst": _r2(fee_base), "fee_gst": _r2(fee_gst),
-            "fee_gst_pct": gst, "gst_note": "GST dar maani hui hai (18%): apne offer letter se milaiye." if fee_gst_pct in (None, "") else "",
+            "fee_gst_pct": gst, "gst_note": "The GST rate is assumed (18%): match it with your offer letter." if fee_gst_pct in (None, "") else "",
             "insurance": _r2(ins), "other_upfront": _r2(oth), "upfront_total": upfront, "money_received": _r2(received),
             "total_interest": sched["total_interest"], "total_paid": _r2(total_paid),
             "total_cost": _r2(total_paid - p + upfront),
             "apr_nominal_pct": round(im * 1200.0, 2), "apr_effective_pct": round(((1 + im) ** 12 - 1) * 100.0, 2), "flags": flags,
-            "note": "APR woh dar hai jo aapko ASAL mein mile paise par lagti hai (sab fees ke baad). Sirf hisaab: kisi lender ki salah nahi."}
+            "note": "APR is the rate you pay on the money you ACTUALLY receive (after all fees). Calculation only: not advice from any lender."}
 
 
 def flat_to_reducing(flat_rate_pct: Any, months: Any) -> dict[str, Any]:
@@ -137,12 +137,12 @@ def flat_to_reducing(flat_rate_pct: Any, months: Any) -> dict[str, Any]:
     im = _irr_monthly(flows)
     return {"flat_rate_pct": fr, "months": n, "emi_per_lakh": _r2(pay), "reducing_rate_pct": round(im * 1200.0, 2),
             "effective_rate_pct": round(((1 + im) ** 12 - 1) * 100.0, 2), "total_interest_per_lakh": _r2(pay * n - p),
-            "note": "Flat rate ka matlab poori rakam par poore samay byaaj. Asli (reducing) dar isse kaafi zyada hoti hai."}
+            "note": "A flat rate means interest on the full amount for the full term. The real (reducing) rate is much higher than this."}
 
 
 def compare(offers: list[dict[str, Any]]) -> dict[str, Any]:
     if not isinstance(offers, list) or len(offers) < 2:
-        raise ValueError("Kam se kam do offers do (name, amount, rate, months, fees).")
+        raise ValueError("Give at least two offers (name, amount, rate, months, fees).")
     rows = []
     for k, o in enumerate(offers[:8], 1):
         c = true_cost(o.get("amount"), o.get("rate"), o.get("months"), fee_pct=o.get("fee_pct", 0), fee_fixed=o.get("fee_fixed", 0),
@@ -153,15 +153,15 @@ def compare(offers: list[dict[str, Any]]) -> dict[str, Any]:
     like = len({(r["principal"], r["months"]) for r in rows}) == 1
     order = sorted(rows, key=lambda r: (r["apr_effective_pct"], r["total_cost"]))
     return {"offers": rows, "lowest_apr": order[0]["name"], "lowest_total_cost": min(rows, key=lambda r: r["total_cost"])["name"],
-            "like_for_like": like, "note": ("Amount / samay alag hain: sirf APR barabari se compare karta hai, total cost nahi." if not like else
-                                          "Amount aur samay ek jaise hain: kam APR aur kam total cost dono dekhiye.") +
-            " Yeh sirf hisaab hai; kaunsa lena hai yeh aapka faisla (aur lender ki approval)."}
+            "like_for_like": like, "note": ("The amounts / terms differ: only APR compares them on equal footing, not total cost." if not like else
+                                          "The amount and term are the same: look at both the lower APR and the lower total cost.") +
+            " This is only a calculation; which one to take is your decision (and the lender's approval)."}
 
 
 def prepay(principal: Any, annual_rate_pct: Any, months: Any, lump_amount: Any, at_month: Any, mode: str = "reduce_tenure",
            charge_pct: Any = 0) -> dict[str, Any]:
     base = schedule(principal, annual_rate_pct, months)
-    after = schedule(principal, annual_rate_pct, months, {"month": int(_f(at_month, "kis mahine", 1)), "amount": lump_amount,
+    after = schedule(principal, annual_rate_pct, months, {"month": int(_f(at_month, "which month", 1)), "amount": lump_amount,
                                                            "mode": "reduce_emi" if mode == "reduce_emi" else "reduce_tenure"})
     charge = _r2(_f(lump_amount, "prepayment", 0) * _f(charge_pct, "prepayment charge %", 0) / 100.0)
     saved = _r2(base["total_interest"] - after["total_interest"])
@@ -169,13 +169,13 @@ def prepay(principal: Any, annual_rate_pct: Any, months: Any, lump_amount: Any, 
             "after": {"months": after["months"], "total_interest": after["total_interest"]}, "interest_saved": saved,
             "prepayment_charge": charge, "net_saving": _r2(saved - charge), "months_saved": base["months"] - after["months"],
             "worth_it": saved > charge,
-            "note": "Charge woh hai jo aapne diya (apne loan agreement se). Floating-rate loans par aksar nahi lagta: agreement dekhiye."}
+            "note": "The charge is what you gave (from your loan agreement). It often does not apply to floating-rate loans: check the agreement."}
 
 
 def debt_plan(debts: list[dict[str, Any]], extra_monthly: Any = 0, income_drop_pct: Any = 0) -> dict[str, Any]:
     """Snowball (smallest balance first) vs avalanche (highest rate first) vs minimums only. All numbers hers."""
     if not isinstance(debts, list) or not debts:
-        raise ValueError("Karz ki list do: har ek ka naam, balance, rate, minimum payment.")
+        raise ValueError("Give the list of debts: for each, the name, balance, rate and minimum payment.")
     base = []
     for k, d in enumerate(debts[:15], 1):
         bal = _f(d.get("balance"), "balance", 0.01)
@@ -221,11 +221,11 @@ def debt_plan(debts: list[dict[str, Any]], extra_monthly: Any = 0, income_drop_p
     flags = []
     for d in base:
         if d["rate"] and d["min"] < d["balance"] * d["rate"] / 1200.0:
-            flags.append({"kind": "measured", "text": f"{d['name']}: minimum payment byaaj se bhi kam hai: balance badhta jayega."})
+            flags.append({"kind": "measured", "text": f"{d['name']}: the minimum payment is less than even the interest: the balance will keep growing."})
     if shortfall > 0:
-        flags.append({"kind": "measured", "text": f"Is kami par minimum bhi poore nahi hote: Rs {_r2(shortfall):,.2f} har mahine kam. Lender se baat/restructuring ya credit counselling ki zaroorat."})
+        flags.append({"kind": "measured", "text": f"With this drop even the minimums are not covered: Rs {_r2(shortfall):,.2f} short every month. You need to talk to the lender / restructure, or get credit counselling."})
     return {"budget_monthly": _r2(budget), "debts": [{"name": d["name"], "balance": _r2(d["balance"]), "rate": d["rate"], "min": _r2(d["min"])} for d in base],
             "minimums_only": mins_only, "snowball": snow, "avalanche": aval,
             "interest_saved_avalanche_vs_snowball": (_r2(snow["total_interest"] - aval["total_interest"]) if snow["debt_free"] and aval["debt_free"] else None),
             "flags": flags,
-            "note": "Avalanche aam taur par kam byaaj deta hai; snowball chhote karz jaldi khatam kar ke hausla deta hai. Kaunsa aap par hai. Yeh salah nahi, hisaab hai; credit counselling ki zaroorat ho to RBI-manyata prapt agency se milen (jaanch kijiye)."}
+            "note": "Avalanche usually costs less interest; snowball clears small debts quickly and keeps you motivated. Which one is up to you. This is a calculation, not advice; if you need credit counselling, go to an RBI-recognised agency (check)."}

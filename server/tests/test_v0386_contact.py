@@ -65,7 +65,7 @@ def test_a_part_nothing_holds_is_refused():
     from app.engineering import contact
     a = cq.Workplane("XY").box(10, 10, 10).val()
     b = cq.Workplane("XY").box(10, 10, 10).translate((30, 0, 0)).val()
-    with pytest.raises(contact.ContactError, match="jude nahi"):
+    with pytest.raises(contact.ContactError, match="not held by"):
         contact.solve([("a", a), ("b", b)], {"fixed": "<X", "loads": [], "nodes": 600, "contact": "frictionless"})
 
 

@@ -113,11 +113,11 @@ def _start(job_dir: Path, runner: Path, job: dict, result_name: str, timeout: in
             except OSError:
                 p.kill()
             p.wait()
-            return {"ok": False, "errors": [f"{timeout} second mein poora nahi hua: part halka karo / loop chhota karo"],
+            return {"ok": False, "errors": [f"did not finish in {timeout} seconds: make the part lighter / the loop shorter"],
                     "timeout": True, "wall_s": round(time.time() - t0, 1)}
     if not res_p.exists():
         tail = (job_dir / ("run.log" if runner == RUNNER else "analysis.log")).read_text(errors="replace")[-400:]
-        raise SandboxError(f"Engineering runner ne jawab nahi diya (exit {p.returncode}): {tail}")
+        raise SandboxError(f"The engineering runner did not answer (exit {p.returncode}): {tail}")
     out = json.loads(res_p.read_text(encoding="utf-8"))
     out["wall_s"] = round(time.time() - t0, 1)
     out["isolated"] = net_isolation()

@@ -206,7 +206,7 @@ def test_not_connected_points_to_profile(env):
 def test_old_link_and_wrong_state_refused(fake):
     from app.forms import accounts as fa
     from app.forms.client import FormError
-    with pytest.raises(FormError, match="purana"):
+    with pytest.raises(FormError, match="expired"):
         fa.finish_link("code", "gfm_nope")
 
 
@@ -249,7 +249,7 @@ def test_quiz_with_answers_and_scores(fake):
     assert "updateSettings" in reqs[0]                         # quiz mode switched on before graded questions
     g = fake.forms[out["id"]]["items"][0]["questionItem"]["question"]["grading"]
     assert g == {"pointValue": 2, "correctAnswers": {"answers": [{"value": "Delhi"}]}}
-    with pytest.raises(ToolError, match="options mein nahi"):
+    with pytest.raises(ToolError, match="not in the options"):
         run("form_create", {"title": "Bad", "questions": [{"title": "Q", "type": "choice", "options": ["a"], "correct": "b"}]}, ctx)
     fake.answer(out["id"], {"Bharat ki rajdhani?": "Delhi", "2+2?": "4"}, "2026-10-19T10:00:00Z", score=3)
     fake.answer(out["id"], {"Bharat ki rajdhani?": "Mumbai", "2+2?": "5"}, "2026-10-19T11:00:00Z", score=0)
@@ -290,7 +290,7 @@ def test_two_forms_same_name_asks_which(fake):
     from app.forms.models import FormsRecent
     with session() as s:
         s.query(FormsRecent).delete()
-    with pytest.raises(ToolError, match="kai forms"):
+    with pytest.raises(ToolError, match="Several forms"):
         run("form_summary", {"form": "Feedback"}, ctx)
 
 
@@ -330,7 +330,7 @@ def test_removing_answered_question_needs_card(fake, monkeypatch):
     na = seen["na"]
     assert na.title == "Delete questions that have answers?" and "B" in json.dumps(na.items)
     res = ex.execute(pack, na.action["name"], na.action["args"], bctx)
-    assert "1 sawaal" in res["message"] and [i["title"] for i in fake.forms[fid]["items"]] == ["A"]
+    assert "1 question" in res["message"] and [i["title"] for i in fake.forms[fid]["items"]] == ["A"]
     from app.bazar.connectors.base import ToolError as BzErr
     with pytest.raises(BzErr):                                                # a card runs once
         ex.execute(pack, na.action["name"], na.action["args"], bctx)
@@ -390,7 +390,7 @@ def test_export_to_sheet_or_phone(fake, monkeypatch):
     monkeypatch.setattr(ss, "create", lambda tenant, title, tabs=None, account=None: made.update(title=title, tabs=tabs)
                         or {"id": "sh1", "title": title, "link": "https://docs.google.com/spreadsheets/d/sh1"})
     out = run("form_export", {"form": fid}, ctx)
-    assert out["exported_to"] == "google_sheet" and made["title"] == "Diwali Milan - jawab"
+    assert out["exported_to"] == "google_sheet" and made["title"] == "Diwali Milan - responses"
     assert made["tabs"][0]["header"][1] == "Aapka naam" and made["tabs"][0]["rows"][0][1] == "Raju"
     assert _events(ctx.conversation_id, "sheet")[-1]["link"].endswith("/sh1")
 
@@ -474,7 +474,7 @@ def test_page_grid_upload_item_types(fake):
     assert f["items"][5]["questionItem"]["question"]["timeQuestion"] == {"duration": True}
     kinds = [q.split(" (")[1].split(",")[0].rstrip(")") for q in out["questions"]]
     assert kinds == ["short", "page", "grid", "grid", "upload", "time"]
-    with pytest.raises(ToolError, match="rows aur columns"):
+    with pytest.raises(ToolError, match="rows and columns"):
         run("form_create", {"title": "Bad grid", "questions": [{"title": "G", "type": "grid", "rows": ["r"]}]}, ctx)
 
 

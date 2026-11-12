@@ -169,14 +169,14 @@ def test_safety_stop_incident(ss):
     S = ss
     make_site(S)
     t = S.toolbox(T, "", "Unchai par harness", 20)
-    assert "20 log" in t["say"]
+    assert "20 people" in t["say"]
     r = S.checklist(T, "", "height", {"edge": False, "openings": True, "harness": True, "ladder": True}, area="2nd floor slab edge")
-    assert r["result"]["unsafe"] == ["edge"] and r["stop"]["status"] == "waiting" and "door hataiye" in r["say"]
+    assert r["result"]["unsafe"] == ["edge"] and r["stop"]["status"] == "waiting" and "move people away" in r["say"]
     stop = r["stop"]
     with pytest.raises(S.SiteError):
         S.decide_stop(T, stop["id"], True, stop["hash"])
     d = S.decide_stop(T, stop["id"], True, stop["hash"], by_tap=True)
-    assert d["stop"]["status"] == "active" and "BAND" in d["notice"]
+    assert d["stop"]["status"] == "active" and "STOPPED" in d["notice"]
     with pytest.raises(S.SiteError):
         S.lift_stop(T, stop["id"], "rail lag gayi")
     with pytest.raises(S.SiteError):
@@ -286,12 +286,12 @@ def test_tick_day_api_and_forget(ss, monkeypatch):
     out = S.tick(noon)
     assert out["morning"] == 1 and out["dpr"] == 1 and out["alerts"] >= 1
     says = " ".join(p.get("say", "") for k, p in S.EVENTS if k in ("sitesup_alert", "sitesup_day"))
-    assert "7 din wale cube" in says and "DPR baaki" in says
+    assert "7-day cube" in says and "DPR is pending" in says
     n = len(S.EVENTS)
     S.tick(noon + timedelta(minutes=1))
     assert len(S.EVENTS) == n                                             # once only
     late = S.tick(datetime(2026, 10, 23, 2, 0, tzinfo=timezone.utc))
-    assert late["alerts"] >= 1 and any("samay nikal gaya" in p.get("say", "") for k, p in S.EVENTS)
+    assert late["alerts"] >= 1 and any("deadline has passed" in p.get("say", "") for k, p in S.EVENTS)
     # API
     from app.sitesup.api import make_router
     app = FastAPI()
