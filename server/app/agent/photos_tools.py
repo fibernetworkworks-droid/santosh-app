@@ -18,7 +18,7 @@ SOURCES = {"type": "array", "description": "Each item: {email_id, attachment_id}
 PHOTOS_TOOLS = [
     {"name": "photos_pick", "description": (
         "Let the user choose photos/videos from their Google Photos. Santosh CANNOT browse or search the user's library "
-        "(Google policy); instead this puts a 'Photos chuniye' card in the chat, the user picks, and Santosh is told when "
+        "(Google policy); instead this puts a 'Choose photos' card in the chat, the user picks, and Santosh is told when "
         "they're done. purpose = what to do next (e.g. 'Ramesh ko email karna'). Then use photos_send with the pick_id."),
      "input_schema": {"type": "object", "properties": {
          "purpose": {"type": "string"}, "max_items": {"type": "integer", "description": "Optional limit"}}}},
@@ -47,9 +47,9 @@ PHOTOS_TOOLS = [
          "album": {"type": "string"}}, "required": ["action"]}},
 ]
 
-PHOTOS_LABELS = {"photos_pick": "Photos chunne ka card bana raha hoon", "photos_picked": "Chuni hui photos dekh raha hoon",
-                 "photos_send": "Photos bhej raha hoon", "photos_upload": "Photos Google Photos mein daal raha hoon",
-                 "photos_albums": "Albums dekh raha hoon"}
+PHOTOS_LABELS = {"photos_pick": "Building the photo-picking card", "photos_picked": "Checking the picked photos",
+                 "photos_send": "Sending photos", "photos_upload": "Uploading photos to Google Photos",
+                 "photos_albums": "Checking albums"}
 
 
 async def _t(fn, *a, **kw):
@@ -73,7 +73,7 @@ def _card(ctx: Ctx, pid: str) -> dict[str, Any]:
 async def photos_pick(ctx: Ctx, purpose="", max_items=0, **_):
     v = await _t(ps.start_pick, ctx.tenant_id, ctx.conversation_id, str(purpose or ""), int(max_items or 0))
     return {"pick_id": v["pick_id"], "status": "waiting",
-            "say": ("A 'Photos chuniye' card is in the chat. Tell the user to tap it, pick the photos in Google Photos and "
+            "say": ("A 'Choose photos' card is in the chat. Tell the user to tap it, pick the photos in Google Photos and "
                     "tap Done; Santosh is told automatically. Then use photos_send with this pick_id."),
             "limits": ps.LIMITS}
 

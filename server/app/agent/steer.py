@@ -66,7 +66,7 @@ def claim(conv: str, e: dict[str, Any]) -> bool:
 def note(texts: list[str]) -> str:
     """What the model reads with the step's results."""
     said = " | ".join(f'"{t[:600]}"' for t in texts)
-    return ("[Owner ne abhi kaam ke BEECH mein likha: " + said + ". Yeh abhi se lagu hai. Pehle EK chhoti line mein "
-            "batao ki samajh gaye aur ab kya karoge (kya badal raha hai), phir usi hisaab se kaam aage badhao. Plan "
-            "badalna ho to kaam_plan add / naya set karo; woh ruk jaane ko kahe to wahin ruko aur bata do. Agar yeh "
-            "sirf ek sawaal hai to EK line mein jawab do aur kaam jaari rakho.]")
+    return ("[The owner just wrote in the MIDDLE of the work: " + said + ". This applies from now. First say in ONE short line "
+            "that you understood and what you will do now (what changes), then carry on the work accordingly. To change the "
+            "plan use kaam_plan add / a new set; if they ask you to stop, stop right there and say so. If this is "
+            "only a question, answer in ONE line and keep working.]")

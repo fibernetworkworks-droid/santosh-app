@@ -38,7 +38,7 @@ RERA_TOOLS = [
          "what": {"type": "string", "enum": ["day", "projects", "updates", "forms", "escrow", "reconcile"]},
          "rera_project": {"type": "string"}}, "required": ["what"]}},
 ]
-RERA_LABELS = {"const_rera": "RERA ka record jod raha hoon", "const_rera_dekho": "RERA desk dekh raha hoon"}
+RERA_LABELS = {"const_rera": "Compiling the RERA record", "const_rera_dekho": "Viewing the RERA desk"}
 
 
 def _s(v: Any) -> str:
@@ -72,7 +72,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return R.reconcile(t, _s(a.get("rera_project")))
     except (R.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -114,7 +114,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return R.reconcile(t, _s(a.get("rera_project")))
     except (R.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def const_rera(ctx: Ctx, action, **a: Any):

@@ -43,7 +43,7 @@ DEV_TOOLS = [
          "task": {"type": "string"}, "repo": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-DEV_LABELS = {"dev": "Code par kaam kar raha hoon", "dev_dekho": "Repo aur PR dekh raha hoon"}
+DEV_LABELS = {"dev": "Working on code", "dev_dekho": "Checking the repo and PRs"}
 
 
 def _s(v: Any) -> str:
@@ -112,7 +112,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
     except (S.DevError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -138,7 +138,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "owasp_2025": R.OWASP, "limits": R.LIMITS}
     except (S.DevError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def dev(ctx: Ctx, action, **a: Any):

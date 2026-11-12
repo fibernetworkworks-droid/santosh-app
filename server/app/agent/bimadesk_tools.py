@@ -34,7 +34,7 @@ BIMADESK_TOOLS = [
          "insurer_replied_on": {"type": "string"}, "docs": {"type": "object"}},
          "required": ["action"]}},
 ]
-BIMADESK_LABELS = {"bima_desk": "Bima Desk se dekh raha hoon"}
+BIMADESK_LABELS = {"bima_desk": "Checking with Bima Desk"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

@@ -10,7 +10,7 @@ from .tools import Ctx, ToolError
 DRIVERS_TOOLS = [
     {"name": "drivers", "description": (
         "Driver coordinator: duties, trip sheets, reminders. action=driver: name (new) or driver (code / name to change), phone, "
-        "licence (the number or a {id:...} locker ref: it goes into the Pehchaan Locker, only the last 4 show), classes (LMV / LMV-TR / "
+        "licence (the number or a {id:...} locker ref: it goes into the ID Locker, only the last 4 show), classes (LMV / LMV-TR / "
         "MGV / HGV / HTV / HPV / TRANS / hazardous), dl_valid_to, medical_valid_to, badge, badge_valid_to, police_on, hazardous_valid_to, "
         "vehicle (usual), payroll_name, member (Hoola Employee team member name / Hoola ID), active (false = left). action=leave: driver, "
         "start, end, kind leave|sick|off|unpaid. action=duty: driver, day (dd-mm-yyyy / aaj / kal), start, end (HH:MM), vehicle, route, "
@@ -54,7 +54,7 @@ DRIVERS_TOOLS = [
          "within": {"type": "integer"}},
          "required": ["what"]}},
 ]
-DRIVERS_LABELS = {"drivers": "Driver ki duty / trip sheet sambhal raha hoon", "drivers_dekho": "Driver aur duty dekh raha hoon"}
+DRIVERS_LABELS = {"drivers": "Managing driver duty and trip sheets", "drivers_dekho": "Checking drivers and duty"}
 
 _OWNER_ONLY = {"driver", "settings", "vehicle", "forget", "to_payroll", "trip_ok", "leave"}
 _DKEYS = ("phone", "licence", "classes", "dl_valid_to", "medical_valid_to", "badge", "badge_valid_to", "police_on", "hazardous_valid_to",
@@ -125,7 +125,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget_driver(t, _s(a.get("driver")))
     except (S.DriversError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -168,7 +168,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"law": R.LAW, "notes": R.LAW_NOTE, "never": list(R.NEVER), "sources": R.SOURCES, "classes": R.CLASSES}
     except (S.DriversError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def drivers(ctx: Ctx, action, **a: Any):

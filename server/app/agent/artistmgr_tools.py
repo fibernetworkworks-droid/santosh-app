@@ -69,7 +69,7 @@ ARTISTMGR_TOOLS = [
          "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-ARTISTMGR_LABELS = {"artist_manager": "Artist ka kaam kar raha hoon", "artist_manager_dekho": "Artist ka calendar dekh raha hoon"}
+ARTISTMGR_LABELS = {"artist_manager": "Doing artist management work", "artist_manager_dekho": "Checking the artist's calendar"}
 
 _GIG_KEYS = ("day", "start", "end", "set_minutes", "city", "venue", "fee", "promoter", "phone", "email", "event", "event_type",
              "advance_pct", "travel_by", "notes")

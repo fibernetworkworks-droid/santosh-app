@@ -17,7 +17,7 @@ class OpenApiError(ValueError):
 def load(data: bytes | str) -> dict[str, Any]:
     text = data.decode("utf-8", "replace") if isinstance(data, bytes) else data
     if len(text) > 3_000_000:
-        raise OpenApiError("OpenAPI file 3 MB se badi hai")
+        raise OpenApiError("The OpenAPI file is larger than 3 MB")
     doc: Any = None
     try:
         doc = json.loads(text)
@@ -26,9 +26,9 @@ def load(data: bytes | str) -> dict[str, Any]:
             import yaml
             doc = yaml.safe_load(text)
         except Exception as e:
-            raise OpenApiError(f"OpenAPI file padh nahi paya: {e.__class__.__name__}")
+            raise OpenApiError(f"Could not read the OpenAPI file: {e.__class__.__name__}")
     if not isinstance(doc, dict) or not (doc.get("openapi") or doc.get("swagger")) or not isinstance(doc.get("paths"), dict):
-        raise OpenApiError("Yeh OpenAPI / Swagger file nahi lagti (openapi / swagger + paths chahiye)")
+        raise OpenApiError("This does not look like an OpenAPI / Swagger file (it needs openapi / swagger + paths)")
     return doc
 
 
@@ -154,7 +154,7 @@ def op_markdown(op: dict[str, Any], auth_names: dict[str, str] | None = None) ->
     """One endpoint as reference Markdown (code-made, so it never says more than the file)."""
     lines = [f"`{op['method']} {op['path']}`", ""]
     if op.get("deprecated"):
-        lines += ["> **Deprecated.** Is endpoint ki jagah naya endpoint use kijiye.", ""]
+        lines += ["> **Deprecated.** Use the new endpoint instead of this one.", ""]
     if op.get("summary"):
         lines.append(op["summary"] + ("" if op["summary"].endswith(".") else "."))
     if op.get("about") and op["about"] != op.get("summary"):

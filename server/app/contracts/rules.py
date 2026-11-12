@@ -9,16 +9,16 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any
 
-DRAFT_LINE = "Yeh draft / jaankari hai, legal advice nahi: vakil / CA / CS se pakka karwaiye."
+DRAFT_LINE = "This is a draft / information, not legal advice: have a lawyer / CA / CS confirm it."
 
 NEVER = [
-    "Contract ki asli file kabhi nahi badalta: redline hamesha nayi Word copy hoti hai",
-    "Draft / redline doosri party ko, e-sign, e-stamp, notice: sirf aapke tap ke card se (Hoola khud nahi bhejta)",
-    "Stamp duty sirf aapke rate se; rate nahi to blank, andaaza nahi",
-    "Section / case citation sirf us source se jo Hoola ne padha (link ke saath), warna [citation chahiye]",
-    "Aadhaar eSign ka OTP har signer khud daalta hai; Hoola OTP / PIN kabhi nahi leta",
-    "Paise kabhi nahi chalata: stamp duty / fee aap portal par khud bharti hain",
-    "Ek client / party ka contract doosre ko kabhi nahi dikhata",
+    "Never changes the contract's original file: a redline is always a new Word copy",
+    "A draft / redline to the other party, e-sign, e-stamp, notice: only from the card you tap (Hoola does not send by itself)",
+    "Stamp duty only from your rate; no rate means blank, never a guess",
+    "A section / case citation only from a source Hoola has read (with the link), otherwise [citation needed]",
+    "Each signer enters the Aadhaar eSign OTP themselves; Hoola never takes an OTP / PIN",
+    "Never moves money: you pay the stamp duty / fee on the portal yourself",
+    "Never shows one client's / party's contract to another",
 ]
 
 KINDS = {
@@ -41,7 +41,7 @@ STATUSES = ("draft", "negotiation", "waiting_sign", "signed", "active", "expired
 
 CLAUSES: dict[str, dict[str, Any]] = {
     "parties": {"label": "Parties", "words": [r"\bbetween\b", r"\bby and between\b", r"hereinafter (?:referred|called)"]},
-    "term": {"label": "Term / avadhi", "words": [r"\bterm of (?:this|the) agreement\b", r"\bshall (?:remain|be) in (?:full )?force\b",
+    "term": {"label": "Term", "words": [r"\bterm of (?:this|the) agreement\b", r"\bshall (?:remain|be) in (?:full )?force\b",
                                                   r"\bvalid (?:for|till|until)\b", r"\bperiod of\b", r"\bcommence\w*\b", r"\bavadhi\b"]},
     "renewal": {"label": "Renewal", "words": [r"\brenew\w*\b", r"\bextend\w*\b", r"\bnaveeni\w*\b"]},
     "auto_renewal": {"label": "Auto-renewal", "words": [r"\bautomatically renew\w*\b", r"\bauto[- ]?renew\w*\b",
@@ -75,41 +75,41 @@ LEVELS = ("high", "medium", "low", "ok")
 
 # Starter playbook: her own standard positions replace these (per key: position / value / standard_text / level / off).
 DEFAULT_PLAYBOOK: dict[str, dict[str, Any]] = {
-    "liability_cap": {"position": "Dono taraf liability ki seema ho (pichhle 12 mahine ki fees tak); unlimited liability nahi.",
+    "liability_cap": {"position": "Liability capped on both sides (up to the fees of the last 12 months); no unlimited liability.",
                       "level": "high",
                       "standard_text": ("The aggregate liability of either Party arising out of or in connection with this Agreement shall not "
                                         "exceed the total fees paid or payable under this Agreement in the twelve (12) months preceding the "
                                         "event giving rise to the claim.")},
-    "indemnity": {"position": "Indemnity dono taraf (mutual) ho, sirf apni galti / third-party claim tak.", "level": "high",
+    "indemnity": {"position": "Indemnity on both sides (mutual), limited to one's own fault / third-party claims.", "level": "high",
                   "standard_text": ("Each Party shall indemnify the other Party against third-party claims to the extent caused by its "
                                     "own breach of this Agreement, negligence or wilful misconduct.")},
-    "governing_law": {"position": "Bharat ka kanoon (laws of India).", "level": "high", "value": "India",
+    "governing_law": {"position": "Laws of India.", "level": "high", "value": "India",
                       "standard_text": "This Agreement shall be governed by and construed in accordance with the laws of India."},
-    "arbitration": {"position": "Jhagda arbitration se, seat aapke shehar mein.", "level": "medium", "value": "",
+    "arbitration": {"position": "Disputes by arbitration, seat in your city.", "level": "medium", "value": "",
                     "standard_text": ("Any dispute arising out of or in connection with this Agreement shall be referred to arbitration by a "
                                       "sole arbitrator under the Arbitration and Conciliation Act, 1996. The seat of arbitration shall be "
                                       "{seat}. The language of arbitration shall be English.")},
-    "payment": {"position": "Humein paise invoice ke 45 din ke andar mile (MSME ho to 45 din se zyada nahi).", "level": "medium",
+    "payment": {"position": "We are paid within 45 days of the invoice (for an MSME, never more than 45 days).", "level": "medium",
                 "value": 45},
-    "notice": {"position": "Contract khatam karne ka notice 90 din se zyada nahi.", "level": "medium", "value": 90},
-    "termination": {"position": "Humein bhi bina wajah (for convenience) notice dekar khatam karne ka haq ho.", "level": "medium"},
-    "auto_renewal": {"position": "Auto-renewal theek hai par notice deadline ka reminder lage.", "level": "low"},
-    "non_compete": {"position": "Contract khatam hone ke baad hum par non-compete nahi.", "level": "high"},
-    "ip": {"position": "Hamari pehle se bani cheezein (background IP) hamari rahein.", "level": "medium"},
-    "confidentiality": {"position": "Confidentiality dono taraf ho.", "level": "low",
+    "notice": {"position": "Notice to end the contract is not more than 90 days.", "level": "medium", "value": 90},
+    "termination": {"position": "We too can end it without cause (for convenience) by giving notice.", "level": "medium"},
+    "auto_renewal": {"position": "Auto-renewal is fine, but with a reminder for the notice deadline.", "level": "low"},
+    "non_compete": {"position": "No non-compete on us after the contract ends.", "level": "high"},
+    "ip": {"position": "What we built before (background IP) stays ours.", "level": "medium"},
+    "confidentiality": {"position": "Confidentiality on both sides.", "level": "low",
                         "standard_text": ("Each Party shall keep the other Party's confidential information confidential and use it only "
                                           "for the purposes of this Agreement.")},
-    "liquidated_damages": {"position": "Penalty / liquidated damages ho to wajib aur seema mein.", "level": "medium"},
-    "limitation": {"position": "Claim karne ka samay kanoon se chhota na ho.", "level": "medium"},
-    "data_protection": {"position": "Personal data share ho to DPDP wali clause ho.", "level": "low",
+    "liquidated_damages": {"position": "Any penalty / liquidated damages must be reasonable and capped.", "level": "medium"},
+    "limitation": {"position": "The time to make a claim is not shorter than the law allows.", "level": "medium"},
+    "data_protection": {"position": "If personal data is shared, there is a DPDP clause.", "level": "low",
                         "standard_text": ("Each Party shall process any personal data received under this Agreement only for the purposes "
                                           "of this Agreement and in compliance with the Digital Personal Data Protection Act, 2023 and the "
                                           "rules made under it.")},
-    "force_majeure": {"position": "Force majeure clause ho.", "level": "low"},
-    "assignment": {"position": "Contract doosri party bina hamari consent ke assign na kare.", "level": "low"},
-    "stamp": {"position": "Stamp duty sign karne se pehle / usi din bhari ho.", "level": "medium"},
-    "term": {"position": "Shuru aur khatam hone ki tareekh saaf ho.", "level": "low"},
-    "dispute": {"position": "Jhagde ka tareeka (arbitration / court) likha ho.", "level": "medium"},
+    "force_majeure": {"position": "There is a force majeure clause.", "level": "low"},
+    "assignment": {"position": "The other party does not assign the contract without our consent.", "level": "low"},
+    "stamp": {"position": "Stamp duty is paid before signing / on the same day.", "level": "medium"},
+    "term": {"position": "The start and end dates are clear.", "level": "low"},
+    "dispute": {"position": "The way disputes are settled (arbitration / court) is written.", "level": "medium"},
 }
 
 _NUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
@@ -425,90 +425,90 @@ def review(ex: dict, pb: dict, meta: dict) -> list[dict[str, Any]]:
     want_law = str((pb.get("governing_law") or {}).get("value") or "India")
     if on("governing_law"):
         if gl and want_law.lower() not in gl.lower():
-            out.append(_risk("governing_law", lvl("governing_law", "high"), f"Kanoon {gl} ka",
-                             f"Contract {gl} ke kanoon se chalega; jhagde mein wahan ke vakil / kharcha lagega. Aapki position: {want_law}.",
+            out.append(_risk("governing_law", lvl("governing_law", "high"), f"Governed by {gl} law",
+                             f"The contract is governed by {gl} law; a dispute means lawyers and costs there. Your position: {want_law}.",
                              {"op": "replace", "find": gl, "replace": want_law}, c["governing_law"]["text"]))
         elif not gl:
-            out.append(_risk("governing_law", "low", "Governing law likha nahi",
-                             "Kis desh / kanoon se contract chalega, yeh saaf nahi.",
+            out.append(_risk("governing_law", "low", "Governing law not written",
+                             "It is not clear which country's law governs the contract.",
                              {"op": "insert", "after": "governing_law", "text": (pb.get("governing_law") or {}).get("standard_text", "")}))
     # dispute / seat
     city = (meta.get("seat_city") or (pb.get("arbitration") or {}).get("value") or "").strip()
     if on("arbitration"):
         if not v.get("arbitration") and not v.get("courts"):
             st = (pb.get("arbitration") or {}).get("standard_text", "")
-            out.append(_risk("arbitration", lvl("dispute", "medium"), "Jhagde ka tareeka nahi",
-                             "Arbitration ya court kuch nahi likha: jhagde mein der aur kharcha badh sakta hai.",
+            out.append(_risk("arbitration", lvl("dispute", "medium"), "No way to settle disputes",
+                             "Neither arbitration nor a court is written: a dispute can take longer and cost more.",
                              {"op": "insert", "after": "governing_law", "text": st.replace("{seat}", city)} if city and st else {}))
         elif v.get("seat") and city and city.lower() not in v["seat"].lower():
-            out.append(_risk("arbitration", lvl("arbitration"), f"Arbitration ki seat {v['seat']}",
-                             f"Seat {v['seat']} hai, aapki pasand {city}. Seat se tay hota hai kaun si court arbitration dekhegi.",
+            out.append(_risk("arbitration", lvl("arbitration"), f"Arbitration seat {v['seat']}",
+                             f"Seat {v['seat']}, you prefer {city}. The seat decides which court supervises the arbitration.",
                              {"op": "replace", "find": v["seat"], "replace": city}, c["arbitration"]["text"]))
         elif v.get("arbitration") and not v.get("seat") and v.get("venue"):
-            out.append(_risk("arbitration", "medium", "Sirf 'venue' likha, 'seat' nahi",
-                             "Venue aur seat alag cheezein hain; seat saaf likhna behtar hai (vakil se pakka karwaiye).",
+            out.append(_risk("arbitration", "medium", "Only 'venue' is written, not 'seat'",
+                             "Venue and seat are different things; it is better to write the seat clearly (have a lawyer confirm).",
                              {}, c["arbitration"]["text"]))
         if v.get("courts") and city and city.lower() not in v["courts"].lower() and not v.get("arbitration"):
-            out.append(_risk("jurisdiction", "medium", f"Court {v['courts']} ki",
-                             f"Case {v['courts']} ki court mein hoga; aapka shehar {city}.",
+            out.append(_risk("jurisdiction", "medium", f"Courts of {v['courts']}",
+                             f"The courts of {v['courts']} will hear the case; your city is {city}.",
                              {"op": "replace", "find": v["courts"], "replace": city}, c["jurisdiction"]["text"]))
     # liability cap
     if on("liability_cap"):
         if v.get("unlimited_liability"):
             out.append(_risk("liability_cap", lvl("liability_cap", "high"), "Unlimited liability",
-                             "Galti hone par nuksaan ki koi seema nahi: poora business daav par lag sakta hai.",
+                             "No limit on damages if something goes wrong: the whole business can be at stake.",
                              {"op": "insert", "after": "liability_cap", "text": (pb["liability_cap"] or {}).get("standard_text", "")},
                              c["liability_cap"]["text"]))
         elif not v.get("cap_found"):
-            out.append(_risk("liability_cap", lvl("liability_cap", "high"), "Liability ki seema nahi",
-                             "Contract mein nuksaan ki koi upper limit nahi likhi; aapki position: " + pb["liability_cap"].get("position", ""),
+            out.append(_risk("liability_cap", lvl("liability_cap", "high"), "No liability cap",
+                             "The contract has no upper limit on damages; your position: " + pb["liability_cap"].get("position", ""),
                              {"op": "insert", "after": "indemnity" if c["indemnity"]["found"] else "", "text": pb["liability_cap"].get("standard_text", "")}))
         elif their and re.search(rf"in no event shall (?:the )?{re.escape(their)}\b", c["liability_cap"]["text"] or "", re.I) and not re.search(
                 r"\b(?:either|each|neither) party\b", c["liability_cap"]["text"] or "", re.I):
-            out.append(_risk("liability_cap", "medium", "Seema sirf doosri party ke liye",
-                             f"Liability ki seema sirf {their} ko bachati hai, aapko nahi. Dono taraf honi chahiye.",
+            out.append(_risk("liability_cap", "medium", "Cap only for the other party",
+                             f"The liability cap protects only {their}, not you. It should be on both sides.",
                              {"op": "replace", "find": f"the {their}", "replace": "either Party"}, c["liability_cap"]["text"]))
     # indemnity
     if on("indemnity") and c["indemnity"]["found"]:
         who = _who_does(c["indemnity"]["text"], r"(?:indemnif|hold harmless)", labels)
         if our and who == our:
-            out.append(_risk("indemnity", lvl("indemnity", "high"), "Indemnity sirf aap par",
-                             f"Sirf {our} (aap) nuksaan bharenge, {their or 'doosri party'} nahi. Aapki position: {pb['indemnity'].get('position', '')}",
+            out.append(_risk("indemnity", lvl("indemnity", "high"), "Indemnity only on you",
+                             f"Only {our} (you) will pay for losses, not {their or 'the other party'}. Your position: {pb['indemnity'].get('position', '')}",
                              {"op": "replace_para", "key": "indemnity", "text": pb["indemnity"].get("standard_text", "")}, c["indemnity"]["text"]))
     # termination / notice
     nd = v.get("notice_days")
     max_nd = int(num((pb.get("notice") or {}).get("value")) or 90)
     if on("notice") and nd and nd > max_nd:
-        out.append(_risk("notice", lvl("notice"), f"Notice {nd} din ka",
-                         f"Contract chhodne ke liye {nd} din pehle batana hoga; aapki seema {max_nd} din.",
+        out.append(_risk("notice", lvl("notice"), f"Notice {nd} days",
+                         f"Leaving the contract needs {nd} days of notice; your limit is {max_nd} days.",
                          {"op": "replace", "find": v.get("notice_phrase") or "", "replace": words_for(max_nd)} if v.get("notice_phrase") else {},
                          c["notice"]["text"] or c["termination"]["text"]))
     if on("termination"):
         if not c["termination"]["found"]:
-            out.append(_risk("termination", "medium", "Khatam karne ki clause nahi", "Contract kab / kaise khatam ho sakta hai, likha nahi."))
+            out.append(_risk("termination", "medium", "No termination clause", "It is not written when / how the contract can end."))
         elif v.get("convenience") and their and not re.search(r"\b(?:either|each|both) part", c["termination"]["text"], re.I) and \
                 re.search(rf"\b{re.escape(their)}\b[^.]{{0,30}}\bmay\b[^.]{{0,20}}\bterminat", c["termination"]["text"], re.I) and \
                 not (our and re.search(rf"\b{re.escape(our)}\b[^.]{{0,30}}\bmay\b[^.]{{0,20}}\bterminat", c["termination"]["text"], re.I)):
-            out.append(_risk("termination", lvl("termination"), "Bina wajah nikalne ka haq sirf unka",
-                             f"{their} notice dekar kabhi bhi contract khatam kar sakte hain, aap nahi. Dono ko barabar haq hona chahiye.",
+            out.append(_risk("termination", lvl("termination"), "Only they can exit without cause",
+                             f"{their} can end the contract at any time by giving notice, you cannot. Both should have the same right.",
                              {"op": "replace", "find": f"The {their} may terminate", "replace": "Either Party may terminate"},
                              c["termination"]["text"]))
         elif not v.get("convenience") and kind not in ("loan", "sale_immovable", "poa"):
-            out.append(_risk("termination", lvl("termination"), "Bina wajah khatam karne ka haq nahi",
-                             "Sirf breach par hi contract khatam ho sakta hai; aap notice dekar nahi nikal saktin.", {}, c["termination"]["text"]))
+            out.append(_risk("termination", lvl("termination"), "No right to end without cause",
+                             "The contract can end only on a breach; you cannot exit by giving notice.", {}, c["termination"]["text"]))
     # auto renewal
     if on("auto_renewal") and v.get("auto_renew"):
         rn = v.get("renewal_notice_days") or nd
-        out.append(_risk("auto_renewal", lvl("auto_renewal", "low"), "Apne aap renew hota hai",
-                         "Agar renew nahi karna to " + (f"{rn} din pehle" if rn else "time par") +
-                         " likhit notice dena hoga. Hoola deadline ka reminder lagata hai.", {}, c["auto_renewal"]["text"]))
+        out.append(_risk("auto_renewal", lvl("auto_renewal", "low"), "Renews automatically",
+                         "If you do not want to renew, written notice is needed " + (f"{rn} days before" if rn else "in time") +
+                         ". Hoola sets a reminder for the deadline.", {}, c["auto_renewal"]["text"]))
     # payment
     pd = v.get("payment_days")
     max_pd = int(num((pb.get("payment") or {}).get("value")) or 45)
     if on("payment") and pd and role in WE_GET_PAID and pd > max_pd:
-        msme = " MSME (Udyam) supplier ho to buyer ko 45 din ke andar dena hota hai (MSMED Act)." if meta.get("msme") else ""
-        out.append(_risk("payment", lvl("payment"), f"Payment {pd} din mein",
-                         f"Aapko invoice ke {pd} din baad paise milenge; aapki seema {max_pd} din.{msme}",
+        msme = " An MSME (Udyam) supplier must be paid by the buyer within 45 days (MSMED Act)." if meta.get("msme") else ""
+        out.append(_risk("payment", lvl("payment"), f"Payment in {pd} days",
+                         f"You are paid {pd} days after the invoice; your limit is {max_pd} days.{msme}",
                          {"op": "replace", "find": v.get("payment_phrase") or "", "replace": words_for(max_pd)} if v.get("payment_phrase") else {},
                          c["payment"]["text"]))
     # non-compete
@@ -518,64 +518,64 @@ def review(ex: dict, pb: dict, meta: dict) -> list[dict[str, Any]]:
         on_us = (not our) or re.search(rf"\b{re.escape(our)}\b", txt, re.I) or re.search(r"\b(?:each|either) party\b", txt, re.I) or kind == "employment"
         if on_us:
             out.append(_risk("non_compete", lvl("non_compete", "high") if after else "medium",
-                             "Non-compete" + (" contract ke baad bhi" if after else ""),
-                             "Contract Act s.27 ke hisaab se kaam / vyapar rokne wala samjhauta (restraint of trade) aam taur par lagu nahi hota, "
-                             "khaas kar contract khatam hone ke baad (goodwill bechne jaise exceptions hain). Phir bhi jhagda ho sakta hai: "
-                             "hatwana behtar." + (" (Delhi HC 2025 Varun Tyagi v Daffodil Software: post-employment non-compete void.)" if kind == "employment" else ""),
+                             "Non-compete" + (" even after the contract" if after else ""),
+                             "Under Contract Act s.27 an agreement that stops work / trade (restraint of trade) is generally not enforceable, "
+                             "especially after the contract ends (there are exceptions such as selling goodwill). It can still lead to a dispute: "
+                             "better to have it removed." + (" (Delhi HC 2025 Varun Tyagi v Daffodil Software: post-employment non-compete void.)" if kind == "employment" else ""),
                              {"op": "delete", "find": _sentence(txt, r"compet|restraint")}, txt, "s27"))
     # IP
     if on("ip") and c["ip"]["found"] and role in ("vendor", "licensor", "employee") and their:
         t = c["ip"]["text"]
         if re.search(rf"\b(?:vest|belong|own|assign)\w*\b[^.]{{0,60}}\b{re.escape(their)}\b", t, re.I) and not re.search(
                 r"pre-?existing|background|already owned|prior", t, re.I):
-            out.append(_risk("ip", lvl("ip"), "Saara IP doosri party ka",
-                             "Kaam ka saara IP unka ho jayega aur aapki pehle se bani cheezon (background IP) ka bachaav nahi likha.",
+            out.append(_risk("ip", lvl("ip"), "All IP goes to the other party",
+                             "All IP in the work becomes theirs and nothing protects what you built before (background IP).",
                              {"op": "insert", "after": "ip", "text": "Nothing in this Agreement transfers either Party's pre-existing intellectual property."}, t))
     # confidentiality
     if on("confidentiality"):
         t = c["confidentiality"]["text"]
         if not c["confidentiality"]["found"] and kind in ("nda", "msa", "service", "consultancy", "software", "vendor"):
-            out.append(_risk("confidentiality", "medium" if kind == "nda" else "low", "Confidentiality clause nahi", "Raaz rakhne ki clause nahi mili.",
+            out.append(_risk("confidentiality", "medium" if kind == "nda" else "low", "No confidentiality clause", "No clause on keeping things confidential was found.",
                              {"op": "insert", "after": "", "text": pb["confidentiality"].get("standard_text", "")}))
         elif c["confidentiality"]["found"] and our and _who_does(t, r"(?:keep|maintain|hold)", labels) == our:
-            out.append(_risk("confidentiality", lvl("confidentiality", "low"), "Confidentiality sirf aap par",
-                             "Sirf aapko raaz rakhna hai; doosri party ko nahi.", {}, t))
+            out.append(_risk("confidentiality", lvl("confidentiality", "low"), "Confidentiality only on you",
+                             "Only you must keep things confidential; the other party need not.", {}, t))
     # LD / penalty
     if on("liquidated_damages") and c["liquidated_damages"]["found"]:
         out.append(_risk("liquidated_damages", lvl("liquidated_damages"), "Penalty / liquidated damages",
-                         "Contract Act s.74: court sirf 'reasonable compensation' deti hai, likhi hui poori rakam zaroori nahi. Phir bhi rakam aur "
-                         "seema dekh lijiye: kya yeh aap par hai?", {}, c["liquidated_damages"]["text"], "s74"))
+                         "Contract Act s.74: a court gives only 'reasonable compensation', not necessarily the full written sum. Still, check the sum and "
+                         "the cap: does it fall on you?", {}, c["liquidated_damages"]["text"], "s74"))
     # claim window
     cw = v.get("claim_window_months")
     if on("limitation") and cw is not None and cw < 36:
-        out.append(_risk("limitation", lvl("limitation"), f"Claim sirf {cw:g} mahine mein",
-                         "Contract claim karne ka samay chhota karta hai (kanoon mein aam taur par 3 saal). Contract Act s.28 aisi shart ko "
-                         "kaafi had tak lagu nahi hone deta; vakil se pakka karwaiye.", {}, c["limitation"]["text"]))
+        out.append(_risk("limitation", lvl("limitation"), f"Claims only within {cw:g} months",
+                         "The contract shortens the time to make a claim (the law generally gives 3 years). Contract Act s.28 makes such a term "
+                         "largely unenforceable; have a lawyer confirm.", {}, c["limitation"]["text"]))
     # data
     if on("data_protection") and not c["data_protection"]["found"] and kind in ("msa", "service", "vendor", "software", "consultancy", "employment"):
-        out.append(_risk("data_protection", lvl("data_protection", "low"), "DPDP / personal data clause nahi",
-                         "Agar customer / staff ka personal data share hoga to DPDP Act 2023 wali clause chahiye.",
+        out.append(_risk("data_protection", lvl("data_protection", "low"), "No DPDP / personal data clause",
+                         "If customer / staff personal data will be shared, a DPDP Act 2023 clause is needed.",
                          {"op": "insert", "after": "confidentiality" if c["confidentiality"]["found"] else "", "text": pb["data_protection"].get("standard_text", "")}))
     if on("force_majeure") and not c["force_majeure"]["found"] and kind in ("msa", "service", "vendor", "purchase", "distribution", "franchise", "software"):
-        out.append(_risk("force_majeure", "low", "Force majeure nahi", "Baadh / lockdown jaisi majboori mein kya hoga, likha nahi."))
+        out.append(_risk("force_majeure", "low", "No force majeure", "It is not written what happens in events like a flood / lockdown."))
     # assignment
     if on("assignment") and c["assignment"]["found"] and re.search(r"\bwithout (?:the )?(?:prior )?(?:written )?consent\b", c["assignment"]["text"] or "", re.I) \
             and their and re.search(rf"\b{re.escape(their)}\b[^.]{{0,40}}\bmay\b[^.]{{0,30}}\bassign", c["assignment"]["text"], re.I):
-        out.append(_risk("assignment", "low", "Doosri party bina poochhe assign kar sakti hai",
-                         "Woh contract kisi aur ko de sakte hain aur aapse poochhna zaroori nahi.", {}, c["assignment"]["text"]))
+        out.append(_risk("assignment", "low", "The other party can assign without asking",
+                         "They can hand the contract to someone else and need not ask you.", {}, c["assignment"]["text"]))
     # term
     if on("term") and not v.get("end") and not v.get("term_months") and kind not in ("employment", "nda", "poa"):
-        out.append(_risk("term", "low", "Avadhi saaf nahi", "Khatam hone ki tareekh ya avadhi nahi mili; register mein tareekh aap daaliye."))
+        out.append(_risk("term", "low", "Term not clear", "No end date or term was found; enter the date in the register yourself."))
     # stamp
     if on("stamp") and not meta.get("stamp_paid"):
-        out.append(_risk("stamp", lvl("stamp"), "Stamp duty ka saboot nahi",
-                         "Stamp duty na bhari ho to Stamp Act s.35 ke hisaab se court mein saboot ke taur par nahi chalta jab tak duty + penalty na "
-                         "bhari jaaye (Supreme Court 7 judges, Dec 2023: contract void nahi hota, kami theek ho sakti hai). Sign se pehle / usi din "
-                         "e-stamp lijiye; rate aapke state ka.", source="stamp"))
+        out.append(_risk("stamp", lvl("stamp"), "No proof of stamp duty",
+                         "If stamp duty is not paid, under Stamp Act s.35 the contract cannot be used as evidence in court until the duty + penalty is "
+                         "paid (Supreme Court 7 judges, Dec 2023: the contract is not void, the defect can be cured). Get the e-stamp before signing / on the same "
+                         "day; the rate is your state's.", source="stamp"))
     if kind in FIRST_SCHEDULE:
-        out.append(_risk("signing", "high", "E-sign se nahi chalega",
-                         f"IT Act First Schedule: {FIRST_SCHEDULE[kind]} par electronic signature lagu nahi; physical sign (aur zaroorat ho to "
-                         "registration) chahiye.", source="first_schedule"))
+        out.append(_risk("signing", "high", "Cannot be e-signed",
+                         f"IT Act First Schedule: {FIRST_SCHEDULE[kind]} cannot be signed electronically; physical signing (and, where needed, "
+                         "registration) is required.", source="first_schedule"))
     order = {x: i for i, x in enumerate(LEVELS)}
     out.sort(key=lambda r: order.get(r["level"], 9))
     return out
@@ -600,14 +600,14 @@ def stamp_calc(kind: str, state: str, value: float | None, rates: list[dict]) ->
     row = next((r for r in rates or [] if r.get("kind") == kind and (not r.get("state") or str(r["state"]).lower() == st)), None)
     row = row or next((r for r in rates or [] if r.get("kind") in ("any", "*") and (not r.get("state") or str(r["state"]).lower() == st)), None)
     if not row:
-        return {"amount": None, "say": f"{KINDS.get(kind, kind)} ({state or 'state?'}) ka stamp rate aapne nahi diya: Niyam mein daaliye ya amount bataiye.",
+        return {"amount": None, "say": f"{KINDS.get(kind, kind)} ({state or 'state?'}): you have not given the stamp rate. Add it under Rules or tell me the amount.",
                 "row": None}
     rate = num(row.get("rate"))
     if rate is None:
-        return {"amount": None, "say": "Rate khaali hai.", "row": row}
+        return {"amount": None, "say": "The rate is empty.", "row": row}
     if (row.get("mode") or "fixed") == "pct":
         if value is None:
-            return {"amount": None, "say": "Contract ki value chahiye (rate % mein hai).", "row": row}
+            return {"amount": None, "say": "The contract value is needed (the rate is in %).", "row": row}
         amt = value * rate / 100
     else:
         amt = rate
@@ -617,7 +617,7 @@ def stamp_calc(kind: str, state: str, value: float | None, rates: list[dict]) ->
     if hi is not None:
         amt = min(amt, hi)
     amt = float(round(amt))
-    return {"amount": amt, "say": f"Aapke rate se stamp duty Rs {amt:,.0f} ({row.get('note') or row.get('mode')}).", "row": row}
+    return {"amount": amt, "say": f"Stamp duty at your rate: Rs {amt:,.0f} ({row.get('note') or row.get('mode')}).", "row": row}
 
 
 # ---------------------------------------------------------------- dates
@@ -636,8 +636,8 @@ def notice_deadline(end: date | None, notice_days: int | None) -> date | None:
 def mask(text: str) -> str:
     """Contract text kept by Hoola: Aadhaar, card / account-like numbers, PAN, OTP / PIN / password values hidden."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[Aadhaar hataya]", t)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[number hataya]", t)
-    t = re.sub(r"\b[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]\b", "[PAN hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[Aadhaar removed]", t)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[number removed]", t)
+    t = re.sub(r"\b[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]\b", "[PAN removed]", t)
     return t

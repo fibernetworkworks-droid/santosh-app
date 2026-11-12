@@ -17,11 +17,11 @@ THEKA_TOOLS = [
         "it_tds_pct, gst_tds, cess_pct, mob_advance, mob_pct, deviation_pct, bg_no, bg_amount, bg_valid_to, insurance_valid_to, "
         "completed_on, status. action=boq: project, items [{code, description, unit, qty, rate}] or file_id (BOQ Excel / CSV), extra "
         "(true for extra items). action=measure: project, item (BOQ item no or words), qty (as measured), detail (L x B x D / "
-        "chainage), day, by. action=ra_bill: project, upto, final. action=bill_status: bill_id, status submitted (ONLY on her haan)|"
-        "passed|paid, amount, on. action=sub: name, phone, individual, pan_ok, work, retention_pct, rate_basis (naap kaisa - sqm / cum / "
+        "chainage), day, by. action=ra_bill: project, upto, final. action=bill_status: bill_id, status submitted (ONLY on her approval)|"
+        "passed|paid, amount, on. action=sub: name, phone, individual, pan_ok, work, retention_pct, rate_basis (how it is measured - sqm / cum / "
         "running ft / lump). action=sub_advance: sub, amount (advance), project, day, note. action=sub_bill: sub, amount, "
-        "project, day, advance_recover (kitna advance isi bill se kaatna hai, oldest pehle), note. action=wage_calc: workers, days, "
-        "rate, basis day|hour|piece, gang, ot_hours, advance_recover, note -> wage working paper trail ke saath (payment aapke tap se). "
+        "project, day, advance_recover (advance to recover from this bill, oldest first), note. action=wage_calc: workers, days, "
+        "rate, basis day|hour|piece, gang, ot_hours, advance_recover, note -> wage working with its paper trail (payment only on her tap). "
         "action=material: project, item, qty, rate, used (true when consumed). action=diary: project, labour, work, "
         "hindrance, lost_hours, by_client (department-side), day. action=eot: project (extension letter draft). action=register (Excel)."),
      "input_schema": {"type": "object", "properties": {
@@ -57,7 +57,7 @@ THEKA_TOOLS = [
          "status": {"type": "string"}, "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-THEKA_LABELS = {"theka": "Theke ka kaam kar raha hoon", "theka_dekho": "Site aur bill dekh raha hoon"}
+THEKA_LABELS = {"theka": "Working on the contract job", "theka_dekho": "Checking sites and bills"}
 
 
 def _s(v: Any) -> str:

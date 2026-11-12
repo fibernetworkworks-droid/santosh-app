@@ -60,7 +60,7 @@ CONTRACTS_TOOLS = [
          "contract": {"type": "string"}, "q": {"type": "string"}, "status": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-CONTRACTS_LABELS = {"contracts": "Contract ka kaam kar raha hoon", "contracts_dekho": "Contract dekh raha hoon"}
+CONTRACTS_LABELS = {"contracts": "Doing contract work", "contracts_dekho": "Viewing the contract"}
 
 _OWNER_ONLY = ("signed", "stamped", "playbook", "rates", "settings", "status", "forget")
 
@@ -136,7 +136,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, cr)
     except (S.ContractError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -172,7 +172,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"kinds": R.KINDS, "never": R.NEVER, "draft": R.DRAFT_LINE, "first_schedule": R.FIRST_SCHEDULE, "sources": R.SOURCES}
     except (S.ContractError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def contracts(ctx: Ctx, action, **a: Any):

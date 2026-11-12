@@ -50,7 +50,7 @@ COURIER_TOOLS = [
          "q": {"type": "string"}, "status": {"type": "string"}, "ref": {"type": "string"}, "on": {"type": "string"}},
          "required": ["what"]}},
 ]
-COURIER_LABELS = {"courier": "Courier ka kaam kar raha hoon", "courier_dekho": "Parcel dekh raha hoon"}
+COURIER_LABELS = {"courier": "Doing courier work", "courier_dekho": "Checking parcels"}
 
 
 def _s(v: Any) -> str:
@@ -125,7 +125,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, ref)
     except (S.CourierError, K.CarrierError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _file(tenant: str, file_id: str) -> tuple[bytes, str]:
@@ -167,7 +167,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"carriers": st["carriers"], "joined": st["joined"]}
     except (S.CourierError, K.CarrierError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def courier(ctx: Ctx, action, **a: Any):
@@ -221,4 +221,4 @@ COURIER_BIZ_TOOLS = [
                                                         "phone": {"type": "string"}, "note": {"type": "string"}}}},
 ]
 COURIER_BIZ_HANDLERS = {"biz_parcel_status": biz_parcel_status, "biz_parcel_fix": biz_parcel_fix}
-COURIER_BIZ_LABELS = {"biz_parcel_status": "Parcel ka haal dekh raha hoon", "biz_parcel_fix": "Delivery ki baat likh raha hoon"}
+COURIER_BIZ_LABELS = {"biz_parcel_status": "Checking the parcel status", "biz_parcel_fix": "Noting the delivery issue"}

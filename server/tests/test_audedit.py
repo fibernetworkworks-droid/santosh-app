@@ -193,7 +193,7 @@ def test_tool_guide_run_and_batch(tool_env):
     g = run(T.audio_edit(tool_env.ctx, "guide"))
     assert g["ffmpeg"] and set(g["ops"]) == ops.STEP_OPS and "NOT done here" in g["guide"]
     r = run(T.audio_edit(tool_env.ctx, "run", file_ids=["v", "vid"], steps=[{"op": "normalize", "target": "social"}], format="mp3"))
-    assert r["edited"] == 2 and r["results"][1]["note"] == "video ki awaaz nikali gayi"
+    assert r["edited"] == 2 and r["results"][1]["note"] == "the video's sound was extracted"
     assert [n for n, _ in tool_env.out] == ["voice edited.mp3", "clip edited.mp3"]
 
 
@@ -201,7 +201,7 @@ def test_tool_refuses_bad_steps_before_touching_files(tool_env):
     with pytest.raises(T.ToolError, match="not an op"):
         run(T.audio_edit(tool_env.ctx, "run", file_ids=["v"], steps=[{"op": "vocal_remove"}]))
     assert tool_env.out == []
-    with pytest.raises(T.ToolError, match="Kaunsa audio"):
+    with pytest.raises(T.ToolError, match="Which audio"):
         run(T.audio_edit(tool_env.ctx, "run", steps=[{"op": "mono"}]))
 
 
@@ -215,7 +215,7 @@ def test_tool_info_join_mix_split_waveform(tool_env):
     assert info["files"][0]["lufs"] is not None
     assert run(T.audio_edit(tool_env.ctx, "join", file_ids=["v", "m"], crossfade=1))["pieces"] == 2
     mx = run(T.audio_edit(tool_env.ctx, "mix", file_ids=["v", "m"]))
-    assert mx["music_looped"] is True and "haq" in mx["note"]
+    assert mx["music_looped"] is True and "right to use" in mx["note"]
     assert len(run(T.audio_edit(tool_env.ctx, "split", file_ids=["v"], every="2"))["parts"]) == 3
     assert run(T.audio_edit(tool_env.ctx, "waveform", file_ids=["v"]))["name"].endswith(".png")
     with pytest.raises(T.ToolError):

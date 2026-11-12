@@ -51,7 +51,7 @@ AUDIO_EDIT_TOOLS = [
          "filename": {"type": "string"},
      }, "required": ["action"]}},
 ]
-AUDIO_EDIT_LABELS = {"audio_edit": "Audio edit kar raha hoon"}
+AUDIO_EDIT_LABELS = {"audio_edit": "Editing the audio"}
 
 
 def _owner_path(ctx: Ctx, fid: str) -> tuple[str, str]:
@@ -86,9 +86,9 @@ def _ids(a: dict) -> list[str]:
 
 def _need(ids: list[str], lo: int, hi: int, what: str) -> None:
     if not ids:
-        raise ToolError("Kaunsa audio? Audio / video chat mein attach karne ko kahiye, phir uska file_id do.")
+        raise ToolError("Which audio? Ask the user to attach the audio / video in the chat, then give its file_id.")
     if not lo <= len(ids) <= hi:
-        raise ToolError(f"{what} ke liye {lo} se {hi} file chahiye.")
+        raise ToolError(f"{what} needs {lo} to {hi} files.")
 
 
 async def audio_edit(ctx: Ctx, action: str = "guide", **a: Any):
@@ -97,7 +97,7 @@ async def audio_edit(ctx: Ctx, action: str = "guide", **a: Any):
         return {"guide": GUIDE, "ffmpeg": ops.ffmpeg_ok(), "ops": sorted(ops.STEP_OPS), "formats": list(ops.FORMATS),
                 "loudness_targets": ops.LOUDNESS}
     if not ops.ffmpeg_ok():
-        raise ToolError("Server par ffmpeg nahi hai, isliye audio edit abhi nahi ho sakta (owner: apt install ffmpeg).")
+        raise ToolError("ffmpeg is not on the server, so audio editing is not possible right now (owner: apt install ffmpeg).")
     ids = _ids(a)
     fmt = str(a.get("format") or "mp3")
     try:
@@ -132,15 +132,15 @@ async def audio_edit(ctx: Ctx, action: str = "guide", **a: Any):
                 if action == "run":
                     row.update(steps=r["steps"], about_seconds=r["est_seconds"])
                 if r["in"].get("from_video"):
-                    row["note"] = "video ki awaaz nikali gayi"
+                    row["note"] = "the video's sound was extracted"
                 results.append(row)
             done = [r for r in results if r["ok"]]
             if not done:
-                raise ToolError("Koi audio nahi bana: " + "; ".join(r["error"] for r in results)[:400])
+                raise ToolError("No audio was made: " + "; ".join(r["error"] for r in results)[:400])
             return {"status": "done", "edited": len(done), "of": len(ids), "results": results,
-                    "note": "Audio chat mein file ke roop mein hai. Ek line mein batao kya badla."}
+                    "note": "The audio is in the chat as a file. Say in one line what changed."}
         if action == "join":
-            _need(ids, 2, 20, "Jodne")
+            _need(ids, 2, 20, "Joining")
             paths = [await asyncio.to_thread(_owner_path, ctx, f) for f in ids]
             r = await asyncio.to_thread(ops.join, [p for _, p in paths], a.get("crossfade") or 0, a.get("gap") or 0, fmt,
                                         a.get("bitrate"))
@@ -149,7 +149,7 @@ async def audio_edit(ctx: Ctx, action: str = "guide", **a: Any):
             return {"status": "done", "file_id": view["file_id"], "name": view["name"], "pieces": r["pieces"],
                     "about_seconds": r["est_seconds"]}
         if action == "mix":
-            _need(ids, 2, 2, "Mix (pehla awaaz, doosra music)")
+            _need(ids, 2, 2, "Mix (first the voice, then the music)")
             (vn, vp), (_, mp) = [await asyncio.to_thread(_owner_path, ctx, f) for f in ids]
             r = await asyncio.to_thread(ops.mix, vp, mp, a.get("music_db", -18), a.get("duck", True) is not False,
                                         a.get("fade_out", 3), fmt, a.get("bitrate"))
@@ -157,7 +157,7 @@ async def audio_edit(ctx: Ctx, action: str = "guide", **a: Any):
                                            r["bytes"])
             return {"status": "done", "file_id": view["file_id"], "name": view["name"], "about_seconds": r["est_seconds"],
                     "music_looped": r["music_looped"],
-                    "note": "Music sirf wahi chalaiye jiska haq unke paas ho (apna / licensed)."}
+                    "note": "Use only music they have the right to use (their own / licensed)."}
         if action == "split":
             _need(ids, 1, 1, "Split")
             name, path = await asyncio.to_thread(_owner_path, ctx, ids[0])
@@ -175,7 +175,7 @@ async def audio_edit(ctx: Ctx, action: str = "guide", **a: Any):
             return {"status": "done", "file_id": v["file_id"], "name": v["name"]}
     except ops.AudioError as e:
         raise ToolError(str(e))
-    raise ToolError(f"audio_edit action '{action}' nahi hai: guide | info | run | convert | join | mix | split | waveform.")
+    raise ToolError(f"audio_edit action '{action}' is not an action: guide | info | run | convert | join | mix | split | waveform.")
 
 
 AUDIO_EDIT_HANDLERS = {"audio_edit": audio_edit}

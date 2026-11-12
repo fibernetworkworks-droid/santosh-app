@@ -57,11 +57,11 @@ HOME_TOOLS = [
 ]
 
 HOME_LABELS = {
-    "home_link": "Ghar ka link dekh raha hoon",
-    "home_devices": "Ghar ke devices dekh raha hoon",
-    "home_on": "Ghar ka device chala raha hoon",
-    "home_off": "Ghar ka device band kar raha hoon",
-    "home_state": "Ghar ka device padh raha hoon",
+    "home_link": "Checking the home link",
+    "home_devices": "Checking home devices",
+    "home_on": "Turning on a home device",
+    "home_off": "Turning off a home device",
+    "home_state": "Reading a home device's status",
 }
 
 

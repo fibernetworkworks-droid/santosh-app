@@ -46,8 +46,8 @@ PLAN_TOOLS = [
          "project": {"type": "string"}, "kind": {"type": "string"}},
          "required": ["what"]}},
 ]
-PLAN_LABELS = {"const_plan": "Niyojan desk par kaam kar raha hoon",
-               "const_plan_dekho": "Niyojan desk dekh raha hoon"}
+PLAN_LABELS = {"const_plan": "Working on the planning desk",
+               "const_plan_dekho": "Viewing the planning desk"}
 
 
 def _s(v: Any) -> str:
@@ -105,7 +105,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                 int(float(a.get("working_days") or 0)))
     except (P.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -148,7 +148,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                "result": _j(r.result, {})} for r in rows]}
     except (P.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def const_plan(ctx: Ctx, action, **a: Any):

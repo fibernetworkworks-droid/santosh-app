@@ -24,7 +24,7 @@ KALAM_TOOLS = [
         "views / clicks / orders / url (learns what works). action=fact: fact + source (her fact list). action=rule: rule. "
         "action=voice: text / file_ids / urls of her OWN writing -> learns her voice. action=copy / delete / unpage. "
         "action=settings (owner only): business, about, audience, language, address, contact, website, cta, tone, do_words, "
-        "dont_words, rules, ai_note. WordPress is joined ONLY in the app (Profile > Content writer > Niyam: site, username, "
+        "dont_words, rules, ai_note. WordPress is joined ONLY in the app (Profile > Content writer > Rules: site, username, "
         "Application Password); never ask for any password in chat. action=wordpress forget=true (owner only) unlinks it. Never say something was published until the result says so."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["write", "revise", "edit", "check", "publish", "repurpose", "files", "result",
@@ -56,7 +56,7 @@ KALAM_TOOLS = [
          "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-KALAM_LABELS = {"kalam": "Likh raha hoon", "kalam_dekho": "Lekh dekh raha hoon"}
+KALAM_LABELS = {"kalam": "Writing", "kalam_dekho": "Checking written pieces"}
 _OWNER_ONLY = {"settings", "wordpress"}
 
 

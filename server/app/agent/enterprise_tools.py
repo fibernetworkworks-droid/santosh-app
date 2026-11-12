@@ -176,8 +176,8 @@ for _key, _spec in R.ROLES.items():
             "kind": {"type": "string"}, "status": {"type": "string"}, "project": {"type": "string"},
             "ref": {"type": "string"}},
             "required": ["what"]}})
-    ENTERPRISE_LABELS[_key] = f"{_spec['label']} ka kaam kar raha hoon"
-    ENTERPRISE_LABELS[_key + "_dekho"] = f"{_spec['label']} ka kaam dekh raha hoon"
+    ENTERPRISE_LABELS[_key] = f"Working as {_spec['label']}"
+    ENTERPRISE_LABELS[_key + "_dekho"] = f"Reviewing {_spec['label']} work"
 
 ENTERPRISE_ROLE_TOOLS = tuple(R.ROLES)
 ENTERPRISE_READ_TOOLS = tuple(k + "_dekho" for k in R.ROLES)
@@ -346,7 +346,7 @@ def _act(ctx: Ctx, role: str, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  if k in a})
     except S.EnterpriseError as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, role: str, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -388,7 +388,7 @@ def _read(ctx: Ctx, role: str, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "kaagaz": spec["artifacts"]}
     except S.EnterpriseError as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 def _make(role: str):

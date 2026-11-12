@@ -5,7 +5,7 @@
   2. Availability calendar per room type per night = rooms - out of order - held nights. A booking (walk-in, phone, WhatsApp,
      agent, or HER pasted OTA mail / exported sheet: MakeMyTrip, Goibibo, Booking.com, Agoda, Airbnb...) that would sell a night
      twice is REFUSED in code; a pasted OTA booking that doesn't fit becomes an "overbook" alert (stop-sell / move the guest).
-  3. Check-in: guest register (IDs straight into the Pehchaan Locker; only {id:...} + masked kept), room assignment (free,
+  3. Check-in: guest register (IDs straight into the ID Locker; only {id:...} + masked kept), room assignment (free,
      not out of order, clean first; dirty only when she says), foreign guest -> passport + visa refs + Form III (C-Form) arrival
      entry due in 24 h (she submits on indianfrro.gov.in), departure entry 24 h after check-out.
   4. Folio: room nights at HER rates, extras (restaurant / room service 5% or 18% by 'specified premises', laundry, extra bed ...),
@@ -55,7 +55,7 @@ _LOCK = threading.RLock()
 HOLDING = ("hold", "confirmed", "in_house")
 STATUS_LABEL = {"hold": "Hold (advance pending)", "confirmed": "Confirmed", "in_house": "In house", "checked_out": "Checked out",
                 "cancelled": "Cancelled", "no_show": "No-show"}
-CARD_LABEL = {"discount": "Discount", "comp": "Complimentary (muft)", "cancel_fee": "Cancellation charge", "refund": "Refund",
+CARD_LABEL = {"discount": "Discount", "comp": "Complimentary", "cancel_fee": "Cancellation charge", "refund": "Refund",
               "bill": "Bill final"}
 MONEY_KINDS = ("refund",)
 FRRO_URL = "https://indianfrro.gov.in/frro/FormC"
@@ -103,7 +103,7 @@ def _date(v, tenant: str = "") -> date | None:
 
 def _rs(v: float | None) -> str:
     if v is None:
-        return "[daam?]"
+        return "[price?]"
     try:
         from ..india.money import inr
         return inr(v)
@@ -552,7 +552,7 @@ def _lock_id(tenant: str, kind: str, value: str, gnum: str, note: str) -> dict:
     from .. import idvault
     k = kind if kind in idvault.KINDS else "other"
     try:
-        rec = idvault.save(tenant, k, value, f"mehmaan {gnum}", note[:120])
+        rec = idvault.save(tenant, k, value, f"guest {gnum}", note[:120])
     except Exception as e:
         raise FoError(f"Invalid {idvault.KINDS.get(k, 'ID')}: {e}")
     return {"ref": rec["ref"], "masked": rec["masked"], "record": rec["id"], "kind": k}
@@ -564,7 +564,7 @@ _ID_KIND = {"aadhaar": "aadhaar", "aadhar": "aadhaar", "passport": "passport", "
 
 def save_guest(tenant: str, guest: str = "", name: str = "", phone: str = "", id_kind: str = "", id_number: str = "",
                visa_number: str = "", **kw: Any) -> dict:
-    """A guest. ID numbers go straight into the Pehchaan Locker; only {id:...} + masked are kept here."""
+    """A guest. ID numbers go straight into the ID Locker; only {id:...} + masked are kept here."""
     with _LOCK, session() as s:
         g = None
         if guest:
@@ -718,7 +718,7 @@ def _bview(s, b: FoBooking, full: bool = False) -> dict:
     f = _folio(s, b)
     v = {"id": b.id, "number": b.number, "status": b.status, "status_label": STATUS_LABEL.get(b.status, b.status),
          "source": b.source, "source_label": R.SOURCE_LABEL.get(b.source, b.source), "ota_ref": b.ota_ref,
-         "guest": g.name if g and not g.forgotten else ("(mitaya)" if g else ""), "guest_number": g.number if g else "",
+         "guest": g.name if g and not g.forgotten else ("(deleted)" if g else ""), "guest_number": g.number if g else "",
          "phone": g.phone if g and not g.forgotten else "", "foreign": bool(g and R.is_foreign(g.nationality)),
          "type": t.code if t else "", "type_name": t.name if t else "", "room": r.number if r else "",
          "arrive": b.arrive, "depart": b.depart, "nights_count": len(_j(b.nights, [])), "adults": b.adults, "children": b.children,
@@ -919,7 +919,7 @@ def check_in(tenant: str, booking: str, room: str = "", id_kind: str = "", id_nu
              passport: str = "", visa_number: str = "", visa_type: str = "", visa_expiry: str = "", arrived_india_on: str = "",
              address: str = "", coming_from: str = "", going_to: str = "", purpose: str = "", companions: Any = None,
              force: bool = False, reason: str = "", actor: str = "owner", conv: str = "") -> dict:
-    """Guest register + room. IDs into the Pehchaan Locker. Foreign guest -> Form C (Form III) arrival entry due in 24 h."""
+    """Guest register + room. IDs into the ID Locker. Foreign guest -> Form C (Form III) arrival entry due in 24 h."""
     with session() as s:
         b = _booking(s, tenant, booking)
         if b.status not in ("hold", "confirmed"):
@@ -1031,7 +1031,7 @@ def move_room(tenant: str, booking: str, room: str, actor: str = "owner", conv: 
             old.status = "dirty"
         b.room_id, b.type_id = rm.id, rm.type_id
         view = _bview(s, b)
-    say = f"{view['number']}: ab room {view['room']}" + (f" (room {old.number} ganda)." if old and view["status"] == "in_house" else ".")
+    say = f"{view['number']}: now in room {view['room']}" + (f" (room {old.number} is dirty)." if old and view["status"] == "in_house" else ".")
     _publish(tenant, "frontoffice_booking", {"booking": view, "say": say}, conv)
     return {"booking": view, "say": say}
 
@@ -1059,7 +1059,7 @@ def check_out(tenant: str, booking: str, actor: str = "owner", conv: str = "") -
         s.flush()
         view = _bview(s, b, True)
         fcv = _fc_view(s, fc) if fc else None
-    out = {"booking": view, "say": f"{view['number']} check-out; room {view['room']} ganda (housekeeping)."}
+    out = {"booking": view, "say": f"{view['number']} check-out; room {view['room']} is dirty (housekeeping)."}
     try:
         c = bill_request(tenant, booking, actor, conv)
         out["card"] = c["card"]
@@ -1100,7 +1100,7 @@ def add_charge(tenant: str, booking: str, kind: str, amount: Any, qty: Any = 1, 
 
 
 def void_charge(tenant: str, charge: str, actor: str = "owner") -> dict:
-    _owner_only(actor, "Line hatana")
+    _owner_only(actor, "Removing a line")
     with _LOCK, session() as s:
         c = s.get(FoCharge, charge)
         if c is None or c.tenant_id != tenant:
@@ -1110,7 +1110,7 @@ def void_charge(tenant: str, charge: str, actor: str = "owner") -> dict:
         c.void = True
         _stale_cards(s, c.booking_id, ("bill",))
         view = _bview(s, s.get(FoBooking, c.booking_id))
-    return {"booking": view, "say": "Line hatayi."}
+    return {"booking": view, "say": "Line removed."}
 
 
 def received(tenant: str, booking: str, amount: Any, mode: str = "upi", ref: str = "", on: str = "", actor: str = "owner",
@@ -1430,9 +1430,9 @@ def decide(tenant: str, cid: str, yes: bool, card_hash: str = "", reason: str = 
                 b.cancel_fee = float(show.get("amount") or 0)
                 s.add(FoCharge(tenant_id=tenant, booking_id=b.id, kind="cancel_fee", text="Cancellation / no-show charge",
                                rate=b.cancel_fee, on=today(tenant).isoformat(), by="Owner"))
-                say = f"{b.number} radd, charge {_rs(b.cancel_fee)}."
+                say = f"{b.number} cancelled, charge {_rs(b.cancel_fee)}."
             else:
-                say = f"{b.number} bina charge radd."
+                say = f"{b.number} cancelled without a charge."
             s.flush()
             paid = _r2(sum(p.amount for p in _payments(s, b)))
             back = _r2(paid - (b.cancel_fee if yes else 0))
@@ -1597,44 +1597,44 @@ def _msg_text(s, b: FoBooking, kind: str, text: str, tenant: str) -> str:
     g = s.get(FoGuest, b.guest_id)
     t = s.get(FoRoomType, b.type_id)
     f = _folio(s, b)
-    hotel = st.hotel_name or "[hotel ka naam]"
-    nm = (g.name.split()[0] if g and g.name else "ji")
-    total = _rs(f["total"]) if not f["blanks"] else "[daam?]"
+    hotel = st.hotel_name or "[hotel name]"
+    nm = (g.name.split()[0] if g and g.name else "guest")
+    total = _rs(f["total"]) if not f["blanks"] else "[price?]"
     pol = R.policy_text(_j(b.policy, {}))
     if kind == "confirmation":
         upi, _n = _upi(st)
-        lines = [f"Namaste {nm} ji, {hotel} mein aapki booking {b.number} pakki hai.",
-                 f"{t.name if t else 'Kamra'} · {b.arrive} se {b.depart} ({len(_j(b.nights, []))} raat) · {b.adults} log.",
-                 f"Kul: {total}" + (" (GST sahit)" if st.gstin and not f["blanks"] else "") + ".",
+        lines = [f"Hello {nm}, your booking {b.number} at {hotel} is confirmed.",
+                 f"{t.name if t else 'Room'} · {b.arrive} to {b.depart} ({len(_j(b.nights, []))} nights) · {b.adults} guests.",
+                 f"Total: {total}" + (" (incl. GST)" if st.gstin and not f["blanks"] else "") + ".",
                  f"Check-in {st.check_in_time}, check-out {st.check_out_time}."]
         if f["balance"] and f["balance"] > 0 and upi:
-            lines.append(f"Advance / baaki UPI se: {upi} (note mein {b.number} likhiye).")
+            lines.append(f"Advance / balance by UPI: {upi} (write {b.number} in the note).")
         lines.append(f"Cancellation: {pol}" if pol else "Cancellation policy: [policy]")
-        lines.append("Aate waqt photo ID saath laaiye (videshi mehmaan: passport + visa).")
+        lines.append("Please bring a photo ID when you arrive (foreign guests: passport + visa).")
         if st.address:
-            lines.append(f"Pata: {st.address}")
+            lines.append(f"Address: {st.address}")
         return "\n".join(lines)
     if kind == "pre_arrival":
-        return (f"Namaste {nm} ji, kal {b.arrive} ko {hotel} mein aapka intezaar hai (booking {b.number}). Check-in {st.check_in_time} "
-                f"ke baad. Photo ID saath laaiye." + (f"\nPata: {st.address}" if st.address else "")
+        return (f"Hello {nm}, we look forward to welcoming you at {hotel} tomorrow, {b.arrive} (booking {b.number}). Check-in is after {st.check_in_time}. "
+                f"Please bring a photo ID." + (f"\nAddress: {st.address}" if st.address else "")
                 + (f"\nPhone: {st.phone}" if st.phone else ""))
     if kind == "payment":
         link = pay_link(tenant, b.id)
         upi, _n = _upi(st)
-        return (f"Namaste {nm} ji, booking {b.number}: baaki {_rs(link.get('amount'))}. UPI: {upi} (note mein {b.number}).\n"
-                "Hum kabhi OTP / PIN nahi maangte.")
+        return (f"Hello {nm}, booking {b.number}: balance {_rs(link.get('amount'))}. UPI: {upi} (write {b.number} in the note).\n"
+                "We never ask for an OTP / PIN.")
     if kind == "review":
         link = st.review_link or "[review link]"
-        return (f"Namaste {nm} ji, {hotel} mein rukne ke liye dhanyavaad! Aapka anubhav kaisa raha? Samay ho to apni raay yahan likhiye: "
-                f"{link}\n(Achhi ho ya buri, har raay se hum seekhte hain.)")
+        return (f"Hello {nm}, thank you for staying at {hotel}. How was your stay? If you have a moment, please leave a review here: "
+                f"{link}\n(Good or bad, we learn from every review.)")
     if kind == "bill":
         bl = s.scalars(select(FoBill).where(FoBill.booking_id == b.id, FoBill.status == "final")).first()
-        return (f"Namaste {nm} ji, {hotel} ka bill {bl.number if bl else ''}: {total}. Mila {_rs(f['paid'])}"
-                + (f", baaki {_rs(f['balance'])}" if f["balance"] and f["balance"] > 0 else "") + ". Dhanyavaad!")
+        return (f"Hello {nm}, your bill from {hotel} {bl.number if bl else ''}: {total}. Received {_rs(f['paid'])}"
+                + (f", balance {_rs(f['balance'])}" if f["balance"] and f["balance"] > 0 else "") + ". Thank you.")
     if kind == "cancel":
-        return (f"Namaste {nm} ji, aapki booking {b.number} ({b.arrive} se {b.depart}) radd kar di gayi hai."
+        return (f"Hello {nm}, your booking {b.number} ({b.arrive} to {b.depart}) has been cancelled."
                 + (f" Cancellation charge {_rs(b.cancel_fee)}." if b.cancel_fee else "")
-                + " Koi paisa wapas banta ho to alag se bataenge.")
+                + " If any refund is due, we will tell you separately.")
     return _clean(text, 1500)
 
 
@@ -1681,7 +1681,7 @@ def edit_message(tenant: str, msg: str, text: str) -> dict:
         m.text = _clean(text, 3000)
         g = s.get(FoGuest, m.guest_id)
         m.hash = _hash({"id": m.id, "text": m.text, "phone": g.phone if g else ""})
-        return {"message": _msg_view(s, m), "say": "Draft badla."}
+        return {"message": _msg_view(s, m), "say": "Draft changed."}
 
 
 async def send_message(tenant: str, msg: str, via: str = "self", card_hash: str = "", by_tap: bool = False) -> dict:
@@ -1701,7 +1701,7 @@ async def send_message(tenant: str, msg: str, via: str = "self", card_hash: str 
             raise FoError("The message has changed; look at the new draft.")
         if g is None or not g.phone:
             raise FoError("The guest has no mobile number.")
-        if re.search(r"\[(daam\?|samay|policy|review link|hotel ka naam)\]", m.text):
+        if re.search(r"\[(daam\?|price\?|samay|policy|review link|hotel ka naam|hotel name)\]", m.text):
             raise FoError("The message has blanks [ ]; fill them in first.")
         text, phone = m.text, g.phone
     if via == "business":
@@ -1731,7 +1731,7 @@ def drop_message(tenant: str, msg: str) -> dict:
             raise FoError("Message not found.")
         if m.status == "draft":
             m.status = "dropped"
-        return {"message": _msg_view(s, m), "say": "Draft hataya."}
+        return {"message": _msg_view(s, m), "say": "Draft removed."}
 
 
 def messages(tenant: str, status: str = "draft") -> list[dict]:
@@ -1761,7 +1761,7 @@ def _import_one(tenant: str, p: dict, room_type: str, actor: str, conv: str) -> 
             return {"parsed": p, "status": "not_found", "say": f"No active booking found for {p['ref']} (already cancelled or never came)."}
         outs = [cancel(tenant, i, "OTA cancellation mail", by_ota=True, actor=actor, conv=conv) for i in ids]
         return {"parsed": p, "status": "cancelled", "bookings": [o["booking"] for o in outs],
-                "say": f"{p['source']} {p['ref']}: {len(ids)} booking radd (OTA ne)."}
+                "say": f"{p['source']} {p['ref']}: {len(ids)} booking(s) cancelled (by the OTA)."}
     miss = [m for m in ("arrive", "depart", "guest") if m in p.get("missing", [])]
     if miss:
         return {"parsed": p, "status": "needs_info", "say": "Not found in the mail: " + ", ".join(miss) + ". Tell me or paste the full mail."}
@@ -1787,7 +1787,7 @@ def _import_one(tenant: str, p: dict, room_type: str, actor: str, conv: str) -> 
         except FoError as e:
             _overbook_alert(tenant, p, str(e), conv)
             raise
-        return {"parsed": p, "status": "updated", "booking": r["booking"], "say": f"{p['ref']} badli (OTA modification): " + r["say"]}
+        return {"parsed": p, "status": "updated", "booking": r["booking"], "say": f"{p['ref']} changed (OTA modification): " + r["say"]}
     n = max(1, int(p.get("rooms") or 1))
     amt = p.get("amount")
     per_room = _r2(amt / n) if amt else None
@@ -1798,7 +1798,7 @@ def _import_one(tenant: str, p: dict, room_type: str, actor: str, conv: str) -> 
                      adults=max(1, (p.get("adults") or n) // n), children=p.get("children") or 0, source=p["source"],
                      ota_ref=p["ref"] + (f"-{i + 1}" if n > 1 else ""), ota_amount=per_room, paid_online=p.get("paid_online"),
                      pay_at_hotel=p.get("pay_at_hotel"), commission=p.get("commission"), meal_plan=p.get("meal_plan") or "",
-                     notes=f"{R.SOURCE_LABEL.get(p['source'], p['source'])} mail se", actor=actor, conv=conv, draft_confirmation=False)
+                     notes=f"from a {R.SOURCE_LABEL.get(p['source'], p['source'])} mail", actor=actor, conv=conv, draft_confirmation=False)
             made.append(r["booking"])
         except FoError as e:
             err = str(e)
@@ -1921,7 +1921,7 @@ def formc_data(tenant: str, fid: str) -> dict:
             ("Arrived at hotel", ev.astimezone(tz).strftime("%d-%m-%Y %H:%M") if ev and x.kind == "arrival" else (b.checked_in_at and _aware(b.checked_in_at).astimezone(tz).strftime("%d-%m-%Y %H:%M")) or ""),
             ("Departed hotel", ev.astimezone(tz).strftime("%d-%m-%Y %H:%M") if ev and x.kind == "departure" else ""),
             ("Coming from", b.coming_from or "[?]"), ("Going to", b.going_to or "[?]"), ("Purpose", b.purpose or "[?]"),
-            ("Address in India (hotel)", st.address or "[hotel ka pata]"), ("Indian phone", g.phone or ""),
+            ("Address in India (hotel)", st.address or "[hotel address]"), ("Indian phone", g.phone or ""),
         ]
         reveal = {k: (ids.get(k) or {}).get("record") for k in ("passport",)}
         if (visa.get("number") or {}).get("record"):
@@ -2001,7 +2001,7 @@ def register_file(tenant: str, start: str = "", end: str = "", conv: str = "") -
             r = s.get(FoRoom, b.room_id) if b.room_id else None
             t = s.get(FoRoomType, b.type_id)
             f = _folio(s, b)
-            gn = g.name if g and not g.forgotten else "(mitaya)"
+            gn = g.name if g and not g.forgotten else "(deleted)"
             bk.append([b.number, R.SOURCE_LABEL.get(b.source, b.source), b.ota_ref, gn, t.name if t else "", r.number if r else "",
                        b.arrive, b.depart, STATUS_LABEL.get(b.status, b.status), f["total"], f["paid"]])
             if b.checked_in_at:
@@ -2036,7 +2036,7 @@ def day(tenant: str) -> dict:
         drafts = s.scalars(select(FoMessage).where(FoMessage.tenant_id == tenant, FoMessage.status == "draft")).all()
     parts = []
     if arr:
-        parts.append(f"Aaj aane wale {len(arr)}: " + ", ".join(f"{v['number']} {v['guest']}" for v in arr[:5]))
+        parts.append(f"Arriving today {len(arr)}: " + ", ".join(f"{v['number']} {v['guest']}" for v in arr[:5]))
     if dep:
         parts.append(f"Departing today {len(dep)}: " + ", ".join(f"{v['number']} room {v['room']}" for v in dep[:5]))
     if fc:

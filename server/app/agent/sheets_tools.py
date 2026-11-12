@@ -208,25 +208,25 @@ SHEETS_TOOLS = [
       "required": ["spreadsheet", "find", "replace"]}},
 ]
 
-SHEETS_LABELS = {"sheets_find": "Sheet dhoondh raha hoon", "sheet_info": "Sheet dekh raha hoon",
-                 "sheet_read": "Sheet padh raha hoon", "sheet_query": "Sheet mein hisaab laga raha hoon",
-                 "sheet_append": "Sheet mein row daal raha hoon", "sheet_update": "Sheet badal raha hoon",
-                 "sheet_write_range": "Cells likh raha hoon", "sheet_delete_rows": "Delete ki manzoori le raha hoon",
-                 "sheet_create": "Nayi sheet bana raha hoon", "sheet_add_tab": "Naya tab bana raha hoon",
-                 "sheet_export": "Sheet ki file bana raha hoon", "sheet_share": "Share ki manzoori le raha hoon",
+SHEETS_LABELS = {"sheets_find": "Finding the sheet", "sheet_info": "Checking the sheet",
+                 "sheet_read": "Reading the sheet", "sheet_query": "Running calculations on the sheet",
+                 "sheet_append": "Adding a row to the sheet", "sheet_update": "Updating the sheet",
+                 "sheet_write_range": "Writing to cells", "sheet_delete_rows": "Asking approval to delete",
+                 "sheet_create": "Creating a new sheet", "sheet_add_tab": "Creating a new tab",
+                 "sheet_export": "Making a file of the sheet", "sheet_share": "Asking approval to share",
                  # v0.210.0 Google Sheets 100% coverage
-                 "sheet_clear": "Clear ki manzoori le raha hoon",
-                 "sheet_copy_tab": "Tab copy kar raha hoon",
-                 "sheet_duplicate_tab": "Tab duplicate kar raha hoon",
-                 "sheet_delete_tab": "Tab delete ki manzoori le raha hoon",
-                 "sheet_format": "Format laga raha hoon",
-                 "sheet_protect": "Lock ki manzoori le raha hoon",
-                 "sheet_named_range": "Named range bana raha hoon",
-                 "sheet_conditional_format": "Conditional format laga raha hoon",
-                 "sheet_data_validation": "Validation laga raha hoon",
-                 "sheet_merge": "Cells merge kar raha hoon",
-                 "sheet_notes": "Note likh raha hoon",
-                 "sheet_find_replace": "Find & replace chala raha hoon"}
+                 "sheet_clear": "Asking approval to clear",
+                 "sheet_copy_tab": "Copying the tab",
+                 "sheet_duplicate_tab": "Duplicating the tab",
+                 "sheet_delete_tab": "Asking approval to delete the tab",
+                 "sheet_format": "Applying formatting",
+                 "sheet_protect": "Asking approval to lock",
+                 "sheet_named_range": "Creating a named range",
+                 "sheet_conditional_format": "Applying conditional formatting",
+                 "sheet_data_validation": "Applying validation",
+                 "sheet_merge": "Merging cells",
+                 "sheet_notes": "Writing a note",
+                 "sheet_find_replace": "Running find & replace"}
 
 
 async def _t(fn, *a, **kw):

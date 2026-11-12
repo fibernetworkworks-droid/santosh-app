@@ -36,7 +36,7 @@ INDIA_TOOLS = [
          "amount": {"type": "number"}, "lang": {"type": "string", "enum": ["hinglish", "hi", "en"]}},
          "required": ["action"]}},
 ]
-INDIA_LABELS = {"pdf_tools": "PDF par kaam kar raha hoon", "india_info": "Calendar / bank dekh raha hoon"}
+INDIA_LABELS = {"pdf_tools": "Working on the PDF", "india_info": "Checking calendar and bank info"}
 
 
 def _day(s: str) -> date:
@@ -119,7 +119,7 @@ def _pdf(ctx: Ctx, action: str, file_id: str, file_ids: list, pages: str, degree
                 data = pdftools.shrink(src)
                 if len(data) >= len(src):
                     return {"name": fname, "size": len(src), "say": "Could not make it smaller (the photos are already small)."}
-                base = name or f"{fname.rsplit('.', 1)[0]} (chhoti)"
+                base = name or f"{fname.rsplit('.', 1)[0]} (small)"
             else:
                 raise ToolError("action = merge | pages | rotate | smaller | info | verify")
     except pdftools.PdfError as e:

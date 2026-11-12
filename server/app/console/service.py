@@ -117,15 +117,15 @@ def has_password(tenant: str) -> bool:
 def set_password(tenant: str, new: str, current: str = "") -> dict[str, Any]:
     new = new or ""
     if len(new) < PW_MIN or len(new) > PW_MAX:
-        raise ConsoleError(f"Password {PW_MIN} se {PW_MAX} akshar ka rakhiye.")
+        raise ConsoleError(f"The password must be {PW_MIN} to {PW_MAX} characters long.")
     if new.strip() != new or len(set(new)) < 4:
-        raise ConsoleError("Thoda mushkil password rakhiye (aage-peeche space nahi, kam se kam 4 alag akshar).")
+        raise ConsoleError("Choose a stronger password (no spaces at the start or end, at least 4 different characters).")
     salt = secrets.token_hex(16)
     with session() as s:
         row = s.get(ConsoleLogin, tenant)
         if row is not None:
             if not current or not hmac.compare_digest(_scrypt(current, row.salt), row.pw_hash):
-                raise ConsoleError("Abhi wala password galat hai.", 403)
+                raise ConsoleError("The current password is wrong.", 403)
             row.salt, row.pw_hash, row.failed, row.locked_until, row.updated_at = salt, _scrypt(new, salt), 0, None, now()
         else:
             s.add(ConsoleLogin(tenant_id=tenant, salt=salt, pw_hash=_scrypt(new, salt)))
@@ -138,7 +138,7 @@ def remove_password(tenant: str, current: str) -> bool:
         if row is None:
             return False
         if not current or not hmac.compare_digest(_scrypt(current, row.salt), row.pw_hash):
-            raise ConsoleError("Abhi wala password galat hai.", 403)
+            raise ConsoleError("The current password is wrong.", 403)
         s.delete(row)
         return True
 
@@ -169,8 +169,8 @@ def login(handle: str, password: str, ip: str = "") -> dict[str, Any]:
     ip = (ip or "?")[:64]
     if _ip_blocked(ip):
         STATS["refused"] += 1
-        raise ConsoleError("Bahut galat koshishein hui. 15 minute baad phir try kijiye.", 429)
-    wrong = ConsoleError("Hoola ID ya password galat hai.", 401)
+        raise ConsoleError("Too many wrong attempts. Try again after 15 minutes.", 429)
+    wrong = ConsoleError("The Hoola ID or password is wrong.", 401)
     tenant = tenant_of_handle(handle)
     outcome = "ok"
     with session() as s:        # decide inside, raise after the commit (a raise inside would roll the counter back)
@@ -189,7 +189,7 @@ def login(handle: str, password: str, ip: str = "") -> dict[str, Any]:
             row.failed, row.locked_until, row.last_login, row.last_ip = 0, None, now(), ip
     if outcome == "locked":
         STATS["locked"] += 1
-        raise ConsoleError("Is Hoola ID par bahut galat koshishein hui. 15 minute baad phir try kijiye.", 429)
+        raise ConsoleError("Too many wrong attempts on this Hoola ID. Try again after 15 minutes.", 429)
     if outcome == "wrong":
         if _counted(ip):
             _IP_FAILS[ip].append(time.monotonic())
@@ -197,8 +197,8 @@ def login(handle: str, password: str, ip: str = "") -> dict[str, Any]:
         raise wrong
     token = accounts.issue_session(tenant)
     STATS["logins"] += 1
-    _tell(tenant, f"Hoola Console mein aapke Hoola ID se login hua ({ip}). Aapne nahi kiya? Main > Console mein password "
-                  "badliye.")
+    _tell(tenant, f"Someone logged in to Hoola Console with your Hoola ID ({ip}). Was it not you? Change the password in Main > Console"
+                  ".")
     return {"session_token": token, "tenant": tenant, "handle": "@" + handle_of(tenant)}
 
 
@@ -230,11 +230,11 @@ def issue_code(session_token: str) -> str:
 def exchange(code: str) -> str:
     from .. import accounts
     if not code or len(code) > 100:
-        raise ConsoleError("Login code galat hai.", 401)
+        raise ConsoleError("The login code is wrong.", 401)
     with session() as s:
         row = s.get(ConsoleCode, _sha(code))
         if row is None or row.used_at is not None or (_utc(row.created_at) or now()) < now() - CODE_TTL:
-            raise ConsoleError("Login code purana ho gaya. Dobara 'Continue with Google' dabaiye.", 401)
+            raise ConsoleError("The login code has expired. Press 'Continue with Google' again.", 401)
         row.used_at = now()
         tok = accounts.decrypt(row.token_enc)
     STATS["exchanged"] += 1
@@ -281,7 +281,7 @@ def conversations(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
             last = s.scalars(select(Message).where(Message.conversation_id == c.id).order_by(Message.id.desc()).limit(1)).first()
             title = (first.display if first else "").strip().replace("\n", " ")
             at = _utc(last.created_at if last else c.created_at)
-            out.append({"id": c.id, "title": title[:80] or "Naya chat", "empty": first is None,
+            out.append({"id": c.id, "title": title[:80] or "New chat", "empty": first is None,
                         "updated_at": at.isoformat() if at else ""})
     out.sort(key=lambda x: x["updated_at"], reverse=True)
     return out[:max(1, min(limit, 100))]
@@ -293,7 +293,7 @@ def pending(tenant: str) -> list[dict[str, Any]]:
     try:
         from ..bazar import service as bz
         for c in bz.pending_approvals(tenant):
-            items.append({"kind": "bazar_approval", "id": c["id"], "title": c.get("title") or "Aapki Haan chahiye",
+            items.append({"kind": "bazar_approval", "id": c["id"], "title": c.get("title") or "Your approval is needed",
                           "sub": " · ".join(x for x in (c.get("amount"), c.get("payee"), c.get("pack")) if x),
                           "money": bool(c.get("money")), "card": c})
     except Exception:
@@ -301,7 +301,7 @@ def pending(tenant: str) -> list[dict[str, Any]]:
     try:
         from ..employee import service as emp
         for a in emp.asks(tenant, "pending", 20):
-            items.append({"kind": "employee_ask", "id": a["id"], "title": a.get("what") or "Employee ka sawaal",
+            items.append({"kind": "employee_ask", "id": a["id"], "title": a.get("what") or "A question from your employee",
                           "sub": " · ".join(x for x in (a.get("who"), a.get("why")) if x), "money": False, "card": a})
     except Exception:
         log.exception("pending employee")
@@ -310,7 +310,7 @@ def pending(tenant: str) -> list[dict[str, Any]]:
         t = ops.active(tenant)
         p = (t or {}).get("pending")
         if t and p:
-            items.append({"kind": "operator_ask", "id": p.get("id", ""), "title": p.get("reason") or "Website ka sawaal",
+            items.append({"kind": "operator_ask", "id": p.get("id", ""), "title": p.get("reason") or "A question about the website",
                           "sub": (t.get("site") or "") + (" · OTP" if p.get("kind") == "otp" else ""),
                           "money": p.get("kind") == "payment", "card": {**p, "task_id": t.get("id")}})
     except Exception:

@@ -70,7 +70,7 @@ FLEET_TOOLS = [
          "load_t": {"type": "number"}},
          "required": ["what"]}},
 ]
-FLEET_LABELS = {"fleet": "Fleet ka kaam kar raha hoon", "fleet_dekho": "Gaadiyan aur kaagaz dekh raha hoon"}
+FLEET_LABELS = {"fleet": "Working on the fleet", "fleet_dekho": "Checking vehicles and papers"}
 
 OWNER_ONLY = ("settings", "vehicle", "service_set", "spend_done", "register")
 
@@ -150,7 +150,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.FleetError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -192,7 +192,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "sources": [{"what": w, "url": u, "date": d} for w, u, d in R.SOURCES]}
     except (S.FleetError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def fleet(ctx: Ctx, action, **a: Any):

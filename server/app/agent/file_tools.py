@@ -22,7 +22,7 @@ FILE_TOOLS = [
          "look": {"type": "boolean", "description": "Also describe what the picture shows (costs a vision call)"}},
          "required": ["file_id"]}},
 ]
-FILE_LABELS = {"file_read": "File padh raha hoon"}
+FILE_LABELS = {"file_read": "Reading the file"}
 
 
 def _owner_lang(tenant: str) -> str:

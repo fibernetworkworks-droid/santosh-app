@@ -13,11 +13,11 @@ FM_TOOLS = [
     {"name": "const_fm", "description": (
         "Facility & property FM desk (#102-#108, property/society seats ke tools). action=wo_add: "
         "project, location, issue, priority -> work order. action=wo_update: wo (id), status "
-        "open|in_progress|done|cancelled, by (naam zaroori). action=ppm_add: project, rows [asset, "
+        "open|in_progress|done|cancelled, by (name required). action=ppm_add: project, rows [asset, "
         "task, freq_days, last_done]. action=ppm_due: project (optional) -> next-due arithmetic. "
         "action=comp_add: project, rows [system(lift|fire|stp|wtp|other), cert_no, agency, last, due]. "
         "action=comp_due: project -> overdue list (certificate agency ki). action=roster_add: rows "
-        "[post, weekday, shift, person]. action=roster_gap: project -> khali posts. action=audit_add: "
+        "[post, weekday, shift, person]. action=roster_gap: project -> vacant posts. action=audit_add: "
         "rows [building, audit_type, last, cycle_yrs(from your municipal circular), agency]. "
         "action=audit_due: project -> next-due (certificate registered engineer ki, tier C). "
         "action=asset_add: rows [asset, space, dept, warranty_till]."),
@@ -37,8 +37,8 @@ FM_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-FM_LABELS = {"const_fm": "FM desk par kaam kar raha hoon",
-             "const_fm_dekho": "FM desk dekh raha hoon"}
+FM_LABELS = {"const_fm": "Working on the FM desk",
+             "const_fm_dekho": "Viewing the FM desk"}
 
 
 def _s(v: Any) -> str:
@@ -76,7 +76,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return F.asset_add(t, _s(a.get("project")), a.get("rows") or [])
     except (F.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 async def const_fm(ctx: Ctx, action, **a: Any):
@@ -95,7 +95,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return F.dekho(ctx.tenant_id, what, _s(a.get("project")))
     except (F.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 FM_HANDLERS = {"const_fm": const_fm, "const_fm_dekho": const_fm_dekho}

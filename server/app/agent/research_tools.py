@@ -71,13 +71,13 @@ RESEARCH_TOOLS = [
          "required": ["action"]}},
     {"name": "research_status", "description": (
         "A background research run: check = progress (goals done, pages read), result = the DOSSIER of a finished run (write the report from it "
-        "- same rules as research_run), stop = Rokiye. Use it when she asks how the research is going, and when a research run has finished "
+        "- same rules as research_run), stop = Stop. Use it when she asks how the research is going, and when a research run has finished "
         "and you are asked to write the report."),
      "input_schema": {"type": "object", "properties": {"action": {"type": "string", "enum": ["check", "result", "stop"]},
                                                        "id": {"type": "string", "description": "the run id; empty = the latest run of this chat"}},
                       "required": ["action"]}},
 ]
-RESEARCH_LABELS = {"research_run": "Research chala raha hoon (pages padh raha hoon)", "research_status": "Research ki haalat dekh raha hoon", "research_document": "Research ka document bana raha hoon", "research_watch": "Research watch dekh raha hoon"}
+RESEARCH_LABELS = {"research_run": "Running research (reading pages)", "research_status": "Checking research status", "research_document": "Building the research document", "research_watch": "Checking the research watch"}
 
 _ALLOWED = ("owner", "goal", "routine", "wake")
 
@@ -184,7 +184,7 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
         return {"started": True, "run_id": rid, "goals": len(goals) or 1, "engine": eng, **({"engine_note": fell_back} if fell_back else {}),
                 "say": ("The research run has STARTED in the background (it takes 10-40 minutes and survives a restart). Tell her in ONE short "
                         "line, in her language, that it has started and that you will bring the report here when it is done; "
-                        "do NOT write any findings now and do not call research_run again. Her stop word is Rokiye."),
+                        "do NOT write any findings now and do not call research_run again. She stops it with Stop."),
                 "check": "research_status check " + rid}
     pol = E.Policy.from_settings(st, **over)
     from .. import usage

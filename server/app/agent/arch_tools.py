@@ -42,7 +42,7 @@ ARCH_TOOLS = [
          "pr": {"type": "integer", "description": "action=review_pr: the PR number"}},
          "required": ["action"]}},
 ]
-ARCH_LABELS = {"software_architect": "Architecture par kaam kar raha hoon"}
+ARCH_LABELS = {"software_architect": "Working on the architecture"}
 
 
 def _short(v: dict[str, Any]) -> dict[str, Any]:

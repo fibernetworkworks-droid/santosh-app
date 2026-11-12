@@ -93,10 +93,10 @@ GCAL_TOOLS = [
          "meeting_alerts": {"type": "integer"}}}},
 ]
 
-GCAL_LABELS = {"calendar_agenda": "Calendar dekh raha hoon", "calendar_add_event": "Calendar mein event daal raha hoon",
-               "calendar_find_event": "Event dhoondh raha hoon", "calendar_cancel_event": "Cancel ki manzoori le raha hoon",
-               "calendar_update_event": "Event badal raha hoon", "calendar_respond": "Invite ka jawab de raha hoon",
-               "calendar_free_slots": "Khaali samay dhoondh raha hoon", "calendar_settings": "Calendar settings dekh raha hoon"}
+GCAL_LABELS = {"calendar_agenda": "Checking the calendar", "calendar_add_event": "Adding an event to the calendar",
+               "calendar_find_event": "Finding the event", "calendar_cancel_event": "Getting approval to cancel",
+               "calendar_update_event": "Changing the event", "calendar_respond": "Replying to the invite",
+               "calendar_free_slots": "Finding free time slots", "calendar_settings": "Checking calendar settings"}
 
 
 async def _t(fn, *a, **kw):
@@ -196,7 +196,7 @@ async def calendar_add_event(ctx: Ctx, title, start, end=None, all_day=False, lo
         body = cs.build_body(ctx.tenant_id, title=str(title), start=s, end=e, all_day=all_day, location=location or "",
                              description=description or "", attendees=people, reminders=reminders, repeat=repeat)
         tz = life.tz_of(ctx.tenant_id)
-        when = (s.strftime("%d %b %Y") + " (poora din)") if all_day else life.fmt_local(s, tz)
+        when = (s.strftime("%d %b %Y") + " (all day)") if all_day else life.fmt_local(s, tz)
         if people:
             pid = cs.pend(ctx.tenant_id, ctx.conversation_id, "create",
                           {"box": box.key, "cal": cal_id, "body": body, "meet": bool(meet)},
@@ -279,7 +279,7 @@ async def calendar_cancel_event(ctx: Ctx, event_id, whole_series=False, **_):
         if whole_series and raw.get("recurringEventId"):
             eid = raw["recurringEventId"]
         ref = cs.make_ref(box, cal_id, eid)
-        summary = {"title": v["title"], "when": v["start"] + (" (har baar)" if whole_series and v["recurring"] else ""),
+        summary = {"title": v["title"], "when": v["start"] + (" (every occurrence)" if whole_series and v["recurring"] else ""),
                    "location": v["location"]}
         if not v["i_am_organizer"] and v["organizer"]:
             summary["note"] = f"A 'cannot attend' reply will go to organizer {v['organizer']}."
@@ -288,7 +288,7 @@ async def calendar_cancel_event(ctx: Ctx, event_id, whole_series=False, **_):
         people = [a["email"] for a in v["attendees"]]
         if people:
             summary["people"] = people
-            summary["note"] = "Sabko cancellation email jayega."
+            summary["note"] = "Everyone will get a cancellation email."
         return cs.pend(ctx.tenant_id, ctx.conversation_id, "cancel",
                        {"box": box.key, "cal": cal_id, "event": eid, "ref": ref, "notify": bool(people)}, summary)
     pid = await _t(work)
@@ -301,7 +301,7 @@ async def calendar_respond(ctx: Ctx, event_id, response, **_):
         def work():
             box, cal_id, raw, v = cs.get_event(ctx.tenant_id, str(event_id))
             return cs.pend(ctx.tenant_id, ctx.conversation_id, "decline", {"box": box.key, "ref": str(event_id)},
-                           {"title": v["title"], "when": v["start"], "note": f"Organizer {v['organizer']} ko bataya jayega."})
+                           {"title": v["title"], "when": v["start"], "note": f"Organizer {v['organizer']} will be told."})
         pid = await _t(work)
         card = await asyncio.to_thread(_card, ctx, pid)
         return {**card, "status": "needs_approval"}

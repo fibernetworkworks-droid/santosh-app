@@ -68,7 +68,7 @@ def test_tool_registered_once():
     assert names.count("seekh_video") == 1
     assert T.FAMILY_OF.get("seekh_video") == "seekh"
     assert "seekh_video" in T.HANDLERS and "seekh_video" in T.TOOL_LABELS
-    assert T.TOOL_LABELS["seekh_video"] == "Video dekh kar seekh raha hoon"
+    assert T.TOOL_LABELS["seekh_video"] == "Learning from the video"
 
 
 def test_registry_pin():

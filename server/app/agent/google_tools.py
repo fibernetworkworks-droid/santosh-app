@@ -12,7 +12,7 @@ GOOGLE_TOOLS = [
         "are linked, and a live test. Tell her the 'say' line and the fix in simple words."),
      "input_schema": {"type": "object", "properties": {}}},
 ]
-GOOGLE_LABELS = {"google_status": "Google connection jaanch raha hoon"}
+GOOGLE_LABELS = {"google_status": "Checking the Google connection"}
 
 
 async def google_status(ctx: Ctx, **_):

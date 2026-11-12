@@ -474,7 +474,7 @@ def test_agent_status_stops_a_running_crew_and_the_runner_bails(env, monkeypatch
         return out
 
     out = run(go())
-    assert "roka gaya" in out["note"] or "rok" in out["note"]
+    assert "stopped" in out["note"]
     assert steps["n"] < 20                    # the runner really bailed early
     with session() as sdb:
         row = sdb.get(AgentTeam, tid)

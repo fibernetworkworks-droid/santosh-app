@@ -11,7 +11,7 @@ from .tools import Ctx, ToolError
 VAKIL_TOOLS = [
     {"name": "vakil", "description": (
         "Lawyer's junior: case diary, hearing dates, cause lists, limitation, drafts, client updates, fee ledger. NOT legal advice: "
-        "every result says 'andaaza / draft, vakil se pakka'. Never invent dates, section numbers, case law or fees. "
+        "every result says it is an estimate / draft to confirm with a lawyer. Never invent dates, section numbers, case law or fees. "
         "action=settings*: advocate, enrolment_no, office, address, phone, email, upi_id, state, place, closed_dates (court holidays), "
         "closed_weekdays (0=Mon..6=Sun), remind_days, morning_time. action=client: name (new) or client (C-001 / name to update), phone, "
         "email, address, kind individual|company|firm, id_ref ({id:...} locker reference ONLY, never the number), no_messages. "
@@ -62,7 +62,7 @@ VAKIL_TOOLS = [
          "matter": {"type": "string"}, "status": {"type": "string"}, "q": {"type": "string"}},
          "required": ["what"]}},
 ]
-VAKIL_LABELS = {"vakil": "Court diary ka kaam kar raha hoon", "vakil_dekho": "Court diary dekh raha hoon"}
+VAKIL_LABELS = {"vakil": "Working on the court diary", "vakil_dekho": "Checking the court diary"}
 
 _OWNER_ONLY = ("settings", "fee", "forget")
 

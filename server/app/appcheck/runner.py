@@ -112,7 +112,7 @@ class Session:
 
     def __init__(self, timeout: float | None = None):
         if not configured():
-            raise NotConfigured("App Jaanch abhi server par chalu nahi hai (REA install karke REA_BIN set karna hai).")
+            raise NotConfigured("App Check is not running on the server yet (install REA and set REA_BIN).")
         self.timeout = float(timeout or get_settings().rea_timeout_s)
         self.proc: subprocess.Popen | None = None
         self.work: Path | None = None
@@ -123,7 +123,7 @@ class Session:
 
     def __enter__(self) -> "Session":
         if not _lock.acquire(timeout=self.timeout):
-            raise ReaError("Abhi ek aur app ki jaanch chal rahi hai; thodi der baad dobara kahiye.")
+            raise ReaError("Another app is being checked right now; ask again in a little while.")
         self._held = True
         try:
             base = Path(get_settings().rea_home or (Path(get_settings().pc_files_dir).parent / "rea_home")).expanduser()
@@ -189,15 +189,15 @@ class Session:
             while b"\n" not in self._buf:
                 left = deadline - time.monotonic()
                 if left <= 0:
-                    raise ReaError("Jaanch mein bahut der lag gayi (time limit), file shayad bahut badi hai.")
+                    raise ReaError("The check took too long (time limit); the file may be very large.")
                 if not sel.select(timeout=left):
                     continue
                 chunk = os.read(fd, 1 << 20)
                 if not chunk:
-                    raise ReaError("REA band ho gaya (jaanch poori nahi hui).")
+                    raise ReaError("REA stopped (the check did not finish).")
                 self._buf += chunk
                 if len(self._buf) > 64 * 1024 * 1024:
-                    raise ReaError("REA ka jawab bahut bada tha.")
+                    raise ReaError("REA's answer was too large.")
         finally:
             sel.close()
         line, self._buf = self._buf.split(b"\n", 1)

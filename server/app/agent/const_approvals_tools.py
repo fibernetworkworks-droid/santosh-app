@@ -41,7 +41,7 @@ APPROVALS_TOOLS = [
          "what": {"type": "string", "enum": ["day", "files", "file", "calendar"]}, "file": {"type": "string"},
          "days": {"type": "number"}}, "required": ["what"]}},
 ]
-APPROVALS_LABELS = {"const_approvals": "Approval file jod raha hoon", "const_approvals_dekho": "Approvals dekh raha hoon"}
+APPROVALS_LABELS = {"const_approvals": "Compiling the approvals file", "const_approvals_dekho": "Checking approvals"}
 
 
 def _s(v: Any) -> str:
@@ -86,7 +86,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return A.screener_list(t, _s(a.get("project")))
     except (A.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -112,7 +112,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return A.cal_due(t, int(a.get("days") or 30))
     except (A.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def const_approvals(ctx: Ctx, action, **a: Any):

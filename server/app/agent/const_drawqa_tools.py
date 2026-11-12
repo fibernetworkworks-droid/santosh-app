@@ -13,9 +13,9 @@ DRAWQA_TOOLS = [
     {"name": "const_drawqa", "description": (
         "Drawing QA & bye-law check (document-level, PDF/DWG-first; a PDF was never a model). action=dwg: project, "
         "dwg_no, rev, kind (plan/section/structural/services), scale_as_noted, source -> register. action=rule_add: "
-        "rule_id, text, limit_value, unit, clause (jaise 'UDCPR 6.1'), source (kaunsa DCPR / ULB letter), direction "
+        "rule_id, text, limit_value, unit, clause (e.g. 'UDCPR 6.1'), source (which DCPR / ULB letter), direction "
         "min|max (setback is MIN, FAR is MAX) - a rule without a clause is not kept. action=check: drawing, rule_id, "
-        "declared -> within/breach (ARITHMETIC; faisla project architect ka). action=review_pack: drawing -> checks + "
+        "declared -> within/breach (ARITHMETIC; the project architect decides). action=review_pack: drawing -> checks + "
         "PDF with an empty sign line (for the architect). "
         "action=dwg_mark: drawing, status received|under_check|returned|ok_drafted."),
      "input_schema": {"type": "object", "properties": {
@@ -33,7 +33,7 @@ DRAWQA_TOOLS = [
          "what": {"type": "string", "enum": ["day", "drawings", "rules", "checks"]},
          "project": {"type": "string"}, "drawing": {"type": "string"}}, "required": ["what"]}},
 ]
-DRAWQA_LABELS = {"const_drawqa": "Drawing register aur checks", "const_drawqa_dekho": "Drawing QA dekh raha hoon"}
+DRAWQA_LABELS = {"const_drawqa": "Checking the drawing register", "const_drawqa_dekho": "Viewing drawing QA"}
 
 
 def _s(v: Any) -> str:
@@ -61,7 +61,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return D.dwg_mark(t, _s(a.get("drawing")), _s(a.get("status")), _s(a.get("note")))
     except (D.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -100,7 +100,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                for r in rows]}
     except (D.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("unknown what")
 
 
 async def const_drawqa(ctx: Ctx, action, **a: Any):

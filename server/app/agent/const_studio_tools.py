@@ -29,8 +29,8 @@ STUDIO_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-STUDIO_LABELS = {"const_studio": "Studio desk par kaam kar raha hoon",
-                 "const_studio_dekho": "Studio desk dekh raha hoon"}
+STUDIO_LABELS = {"const_studio": "Working on the studio desk",
+                 "const_studio_dekho": "Viewing the studio desk"}
 
 LEARN_TOOLS = [
     {"name": "const_learn", "description": (
@@ -58,8 +58,8 @@ LEARN_TOOLS = [
          "project": {"type": "string"}},
          "required": ["what"]}},
 ]
-LEARN_LABELS = {"const_learn": "Siksha desk par kaam kar raha hoon",
-                "const_learn_dekho": "Siksha desk dekh raha hoon"}
+LEARN_LABELS = {"const_learn": "Working on the training desk",
+                "const_learn_dekho": "Viewing the training desk"}
 
 
 def _s(v: Any) -> str:
@@ -82,7 +82,7 @@ def _studio_act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return ST.studio_status(t, _s(a.get("project")), _s(a.get("ref")))
     except (ST.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 def _learn_act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -111,7 +111,7 @@ def _learn_act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return LE.coach_note(t, _s(a.get("project")), _s(a.get("text")), conv)
     except (LE.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("unknown action")
 
 
 async def const_studio(ctx: Ctx, action, **a: Any):
@@ -137,7 +137,7 @@ def _studio_read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     elif what == "reports":
         q = q.where(M.CstudioItem.kind == "report")
     elif what != "items":
-        raise ToolError("what galat")
+        raise ToolError("unknown what")
     with session() as s:
         rows = s.scalars(q).all()
     return {what: [{"id": r.id, "project": r.project, "kind": r.kind, "ref": r.ref,
@@ -162,7 +162,7 @@ def _learn_read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     kinds = {"trainees": ["trainee"], "modules": ["module"], "assessments": ["assess"],
              "topics": ["topic"], "quizzes": ["quiz", "attempt"], "coach": ["coach", "coach_note"]}
     if what not in kinds:
-        raise ToolError("what galat")
+        raise ToolError("unknown what")
     q = select(M.ClearnItem).where(M.ClearnItem.tenant_id == ctx.tenant_id,
                                    M.ClearnItem.kind.in_(kinds[what]))
     if _s(a.get("project")):

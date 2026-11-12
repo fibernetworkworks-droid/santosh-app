@@ -61,7 +61,7 @@ ZOO_TOOLS = [
      }, "required": ["action"]}},
 ]
 
-ZOO_LABELS = {"zoo": "Model zoo (BYOK) mein kaam kar raha hoon"}
+ZOO_LABELS = {"zoo": "Working in the model zoo (BYOK)"}
 
 
 async def zoo_tool(ctx: Ctx, action: str = "guide", **a: Any):
