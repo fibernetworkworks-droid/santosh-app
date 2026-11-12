@@ -200,7 +200,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                              until: str = Form(""), guardian: str = Form(""), tenant: str = Depends(current_tenant)):
         data = await file.read()
         if not data or len(data) > 60 * 1024 * 1024:
-            raise HTTPException(400, "File khaali hai ya 60 MB se badi.")
+            raise HTTPException(400, "The file is empty or larger than 60 MB.")
         from ..mailbox.service import store_bytes
         f = await asyncio.to_thread(store_bytes, tenant, file.filename or "consent", data, "to_phone")
         return await run(S.consent_record, tenant, ref, how, f.id, uses, until, None, guardian, "owner")

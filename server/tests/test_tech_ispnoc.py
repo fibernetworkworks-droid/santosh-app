@@ -102,10 +102,10 @@ def test_feeder_cut_ticket_message_resolve(noc):
     assert r["read"] == 9 and len(r["new"]) == 1
     f = r["new"][0]
     assert f["kind"] == "feeder_cut" and f["number"] == "F-0001" and f["n_affected"] == 8 and f["n_total"] == 8
-    assert f["confidence"] >= 0.8 and f["confidence_label"] == "pakka jaisa"
+    assert f["confidence"] >= 0.8 and f["confidence_label"] == "almost certain"
     assert "8 / 8" in " ".join(f["reasons"]) and "Akot-Ward5 route" in f["explain"] and f["team"] == "field_fibre"
     assert f["location"]["site"] == "Akot POP" and f["location"]["maps"].startswith("https://www.google.com/maps")
-    assert "[samay]" in f["customer_msg"] and "Fiber Network Works" in f["customer_msg"]
+    assert "[time]" in f["customer_msg"] and "Fiber Network Works" in f["customer_msg"]
     assert f["affected"][0]["phone"].count("X") == 4                       # masked in views
     assert S.EVENTS[-1][0] == "ispnoc_fault"
     assert S.ingest(T, "\n".join(lines))["duplicates"] == 9                 # same paste twice = nothing new
@@ -116,13 +116,13 @@ def test_feeder_cut_ticket_message_resolve(noc):
     assert "password" in t["text"].lower() and "Sandeep" in tk["say"]
     assert S.open_ticket(T, "F-0001")["ticket"]["number"] == "N-0001"        # one open ticket per team
     m = S.customer_message(T, "F-0001")
-    assert m["count"] == 8 and m["phones"][0] == "9822010001" and "[samay]" not in m["text"] and not m["blanks"]
+    assert m["count"] == 8 and m["phones"][0] == "9822010001" and "[time]" not in m["text"] and not m["blanks"]
     up = "\n".join(f"{ts(5)} OLT-AKOT EPON0/1:{i} ONU online" for i in range(1, 9))
     r2 = S.ingest(T, up)
-    assert [x["number"] for x in r2["resolved"]] == ["F-0001"] and "Theek hua" in r2["say"]
+    assert [x["number"] for x in r2["resolved"]] == ["F-0001"] and "Fixed:" in r2["say"]
     tkv = S.tickets(T, "fixed")[0]
     assert tkv["status"] == "fixed" and tkv["mttr_hours"] is not None and tkv["mttr_hours"] < 1
-    assert "chalu hai" in S.customer_message(T, "F-0001")["text"]
+    assert "working again" in S.customer_message(T, "F-0001")["text"]
     rep = S.report(T, 30)
     assert rep["faults"] == 1 and rep["teams"][0]["sla_pct"] == 100 and rep["availability_pct"] < 100
 
@@ -142,7 +142,7 @@ def test_power_splitter_single_and_rx(noc):
     sp = kinds["splitter_branch"]
     assert sp["target"] == "SPL-B" and sp["n_affected"] == 3 and sp["location"]["splitter_location"] == "Market chowk pole 12"
     ap = kinds["area_power"]
-    assert ap["team"] == "electricity" and "bijli" in ap["explain"] and "dying gasp" in " ".join(ap["reasons"])
+    assert ap["team"] == "electricity" and "power" in ap["explain"] and "dying gasp" in " ".join(ap["reasons"])
     df = kinds["drop_fibre"]
     assert df["n_affected"] == 1 and "Asha 2" in df["explain"] and "Asha 2" in df["target"]
     # customer power for one ONT; flapping ONT
@@ -154,7 +154,7 @@ def test_power_splitter_single_and_rx(noc):
     # Rx: ONT 0/2:5 normally -18, now -28.1 (EPON PX20+: below -27 bad)
     S.ingest(T, f"{ts(9)} OLT-AKOT EPON0/2:5 rx power -18.0 dBm\n{ts(8)} OLT-AKOT EPON0/2:5 rx power -28.1 dBm")
     rx = [f for f in S.faults(T) if f["kind"] == "rx_bad"]
-    assert rx and "-28.1" in " ".join(rx[0]["reasons"]) and "10.1 dB gira" in " ".join(rx[0]["reasons"])
+    assert rx and "-28.1" in " ".join(rx[0]["reasons"]) and "dropped 10.1 dB" in " ".join(rx[0]["reasons"])
     assert S.optics_check("epon_px20+", 3, [4, 8], rx=-27.5)["gap_db"] > 0
     net = S.network(T)
     assert net["onts"] == 18 and net["olts"][0]["down"] >= 4
@@ -167,7 +167,7 @@ def test_olt_down_uplink_flap_pon_degrade(noc):
     assert S.faults(T)[0]["kind"] == "feeder_cut"
     r = S.ingest(T, f"{ts(45)} OLT-AKOT ping timeout node down\n" + "\n".join(f"{ts(45)} OLT-AKOT EPON0/2:{i} ONU LOS" for i in range(1, 7)))
     od = [f for f in r["new"] if f["kind"] == "olt_down"]
-    assert od and od[0]["n_affected"] == 18 and "OLT ka khud ka alarm" in " ".join(od[0]["reasons"])
+    assert od and od[0]["n_affected"] == 18 and "The OLT's own alarm" in " ".join(od[0]["reasons"])
     assert [f["kind"] for f in S.faults(T)] == ["olt_down"]                 # PON fault folded into the OLT one
     assert S.faults(T, "dismissed")[0]["kind"] == "feeder_cut"
     # SNO note: 18/18 customers > 4 h (pretend time passed)
@@ -202,7 +202,7 @@ def test_changes_only_on_her_tap(noc):
     assert ch["needs_tap"] and c["status"] == "waiting" and c["n_affected"] == 1 and not c["verified"] and c["warn"]
     assert c["commands"] and "onu reboot 6" in " ".join(c["commands"]) and S.EVENTS[-1][0] == "ispnoc_change"
     pr = S.request_change(T, "pon_reset", "OLT-AKOT", "0/1")["change"]
-    assert pr["n_affected"] == 8 and "SAARE" in pr["risk"] and pr["rollback"]
+    assert pr["n_affected"] == 8 and "ALL" in pr["risk"] and pr["rollback"]
     with pytest.raises(S.NocError):
         S.decide_change(T, c["id"], True, c["hash"])                       # no tap = no change
     with pytest.raises(S.NocError):
@@ -295,7 +295,7 @@ def test_tick_alerts_and_morning(noc, monkeypatch):
     out = S.tick(n0 + timedelta(hours=5))
     says = " ".join(p.get("say", "") for k, p in S.EVENTS if k == "ispnoc_alert")
     assert out["sla"] == 1 and out["eta"] == 1 and out["collectors"] == 1 and out["sno"] >= 1
-    assert "SLA" in says and "ETA" in says and "chup" in says and "4 ghante" in says
+    assert "SLA" in says and "ETA" in says and "silent" in says and "4 hours" in says
     S.EVENTS.clear()
     again = S.tick(n0 + timedelta(hours=5, minutes=1))
     assert again["sla"] == again["eta"] == again["collectors"] == 0            # said once

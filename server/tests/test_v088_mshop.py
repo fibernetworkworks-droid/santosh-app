@@ -27,7 +27,7 @@ def test_pure_helpers():
     assert faults_of("display toota aur charging nahi ho rahi") == ["display", "charging_port"]
     assert faults_of("paani mein gir gaya") == ["water"] and faults_of("FRP lock hatana hai") == ["unlock"]
     assert faults_of("kuch ajeeb") == ["other"]
-    assert _scrub("screen lock nahi khulta, password 4821 hai") == ("screen lock nahi khulta, password [hataya] hai", True)
+    assert _scrub("screen lock nahi khulta, password 4821 hai") == ("screen lock nahi khulta, password [removed] hai", True)
     assert _scrub("pattern lock hai")[1] is False
     assert IMEI_CHANGE.search("imei change karna hai") and IMEI_CHANGE.search("IMEI repair") and not IMEI_CHANGE.search("display")
 
@@ -35,15 +35,15 @@ def test_pure_helpers():
 def test_guards_imei_unlock_duplicate(env):
     from app.mshop import service as M
     r = M.new_job(T, "Ravi", "9822000001", "Samsung", "A12", IMEI, "IMEI change karna hai", force=True)
-    assert r["saved"] is False and "kanoonan" in r["say"]                      # never, even with force
+    assert r["saved"] is False and "against the law" in r["say"]                      # never, even with force
     r = M.new_job(T, "Ravi", "9822000001", "Samsung", "A12", IMEI, "FRP lock hatana hai")
-    assert r["saved"] is False and any("saboot" in p for p in r["check"]["problems"])
+    assert r["saved"] is False and any("proof" in p for p in r["check"]["problems"])
     r = M.new_job(T, "Ravi", "9822000001", "Samsung", "A12", IMEI, "FRP lock hatana hai", proof="bill dekha, naam match")
     assert r["saved"]
     r2 = M.new_job(T, "Ravi", "9822000001", "Samsung", "A12", IMEI, "speaker kharab", force=True)
-    assert r2["saved"] is False and "pehle se job" in r2["say"]                # same IMEI already in the shop
+    assert r2["saved"] is False and "is already in the shop" in r2["say"]                # same IMEI already in the shop
     r3 = M.new_job(T, "Asha", "9822000002", "Vivo", "Y20", "490154203237519", "display toota, password 1234 hai")
-    assert r3["saved"] and "[hataya]" in r3["job"]["problem"] and "password" in r3["say"].lower()
+    assert r3["saved"] and "[removed]" in r3["job"]["problem"] and "password" in r3["say"].lower()
     assert any("KYM" in n for n in r3["check"]["notes"])                        # bad IMEI check digit
 
 
@@ -82,7 +82,7 @@ def test_full_repair_flow_bill_haan_ready_deliver_warranty(env, monkeypatch):
     assert done["job"]["warranty_until"] == (M.today(T) + timedelta(days=30)).isoformat()
     assert "photo" in done["say"].lower()                                       # no delivery photo yet
     w = M.warranty(T, IMEI)
-    assert w["found"][0]["under_warranty"] and "HAI" in w["say"]
+    assert w["found"][0]["under_warranty"] and "IS under warranty" in w["say"]
     assert M.warranty(T, "9822012345")["found"]
     # the same phone back with the same fault: warranty claim pointed out, linked to the old job
     r = M.new_job(T, "Ramesh Patil", "9822012345", "Xiaomi", "Redmi Note 12", IMEI, "display mein lines aa rahi")
@@ -90,7 +90,7 @@ def test_full_repair_flow_bill_haan_ready_deliver_warranty(env, monkeypatch):
     assert any("warranty claim" in n for n in r["check"]["notes"])
     # earlier work feeds the next estimate (same model + fault)
     ck = M.check_job(T, "display toota", None, "Xiaomi", "Redmi Note 12")
-    assert any("Isi model" in n and "₹1,800" in n for n in ck["notes"])
+    assert any("This model" in n and "₹1,800" in n for n in ck["notes"])
     assert M.slip_pdf(T, "M-0001")[:4] == b"%PDF"
 
 
@@ -146,7 +146,7 @@ def test_day_morning_tools_role_inbox_api(env):
         from app.mshop.service import RepairJob
         s.scalars(select(RepairJob)).first().promised_on = (M.today(T) - timedelta(days=1)).isoformat()
     d = run("mobile_shop_dekho", what="today")
-    assert d["late"] and "Der ho gayi" in d["text"]
+    assert d["late"] and "Late" in d["text"]
     staff = Ctx(T, ctx.conversation_id, actor="staff:x")
     with pytest.raises(ToolError):
         asyncio.run(HANDLERS["mobile_shop"](staff, action="decide_bill", job="1", approve=True))

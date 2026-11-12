@@ -79,12 +79,12 @@ def manifest_findings(root: ET.Element, where: str, today: date, sdk_hint: dict[
         need, keep = R.PLAY_TARGET["new_and_updates"], R.PLAY_TARGET["existing_min"]
         if today >= R.PLAY_TARGET["since"]:
             if tg < keep:
-                out.append(F("target_sdk", detail=f"{tg} hai (chahiye {need}; {keep} se neeche app naye Android phones par naye "
-                                                  f"logon ko dikhni band)", evidence=ev, sev="critical"))
+                out.append(F("target_sdk", detail=f"{tg} (needs {need}; below {keep} the app stops being shown to new "
+                                                  f"users on newer Android phones)", evidence=ev, sev="critical"))
             elif tg < need:
-                out.append(F("target_sdk", detail=f"{tg} hai (naye update ke liye {need} chahiye)", evidence=ev, sev="high"))
+                out.append(F("target_sdk", detail=f"{tg} (a new update needs {need})", evidence=ev, sev="high"))
         elif tg < need:
-            out.append(F("target_sdk_soon", detail=f"{tg} hai, {R.PLAY_TARGET['since'].strftime('%d %b %Y')} se {need} chahiye",
+            out.append(F("target_sdk_soon", detail=f"{tg}, from {R.PLAY_TARGET['since'].strftime('%d %b %Y')} API {need} is needed",
                          evidence=ev))
     if mn is not None and mn < 23:
         out.append(F("min_sdk_old", detail=str(mn), evidence=ev))
@@ -95,7 +95,7 @@ def manifest_findings(root: ET.Element, where: str, today: date, sdk_hint: dict[
             out.append(F("test_only", evidence=[_ev(where, text='android:testOnly="true"')]))
         ab = a(app, "allowBackup")
         if ab != "false" and not (a(app, "dataExtractionRules") or a(app, "fullBackupContent")):
-            out.append(F("allow_backup", evidence=[_ev(where, text=f'android:allowBackup="{ab or "(likha nahi = true)"}"')]))
+            out.append(F("allow_backup", evidence=[_ev(where, text=f'android:allowBackup="{ab or "(not written = true)"}"')]))
         ct = a(app, "usesCleartextTraffic")
         if ct == "true" or (not ct and not a(app, "networkSecurityConfig") and tg is not None and tg < 28):
             out.append(F("cleartext", evidence=[_ev(where, text=f'android:usesCleartextTraffic="{ct or "(target < 28: default true)"}"')]))
@@ -120,7 +120,7 @@ def manifest_findings(root: ET.Element, where: str, today: date, sdk_hint: dict[
             exp = a(comp, "exported")
             if filters and not exp and tg is not None and tg >= 31 and tag != "provider":
                 out.append(F("missing_exported", key=f"missing_exported:{name}", detail=f"{tag} {name}",
-                             evidence=[_ev(where, text=f"<{tag} {name}> intent-filter, android:exported nahi")]))
+                             evidence=[_ev(where, text=f"<{tag} {name}> intent-filter, no android:exported")]))
                 continue
             exported = exp == "true" or (not exp and filters and (tg is None or tg < 31))
             if tag == "provider":
@@ -148,7 +148,7 @@ def manifest_findings(root: ET.Element, where: str, today: date, sdk_hint: dict[
                              sev=sev))
         facts["exported_without_permission"] = n_exp
         if "android.permission.FOREGROUND_SERVICE" in perms and tg is not None and tg >= 34 and not has_fgs_type:
-            out.append(F("fgs_types", detail="FOREGROUND_SERVICE hai par kisi service par foregroundServiceType nahi", evidence=ev))
+            out.append(F("fgs_types", detail="FOREGROUND_SERVICE is present but no service has a foregroundServiceType", evidence=ev))
         elif has_fgs_type:
             types = sorted({a(c, "foregroundServiceType") for c in app.findall("service") if a(c, "foregroundServiceType")})
             facts["foreground_service_types"] = types
@@ -175,7 +175,7 @@ def permission_findings(perms: list[str], where: str, facts: dict[str, Any]) -> 
     if data:
         out.append(F("perm_sensitive", detail=", ".join(data), evidence=[_ev(where, text=p) for p in short if p in R.SENSITIVE_PERMS]))
     if "com.google.android.gms.permission.AD_ID" in perms:
-        out.append(F("ads_id", detail="AD_ID permission manifest mein hai", evidence=[_ev(where, text="com.google.android.gms.permission.AD_ID")]))
+        out.append(F("ads_id", detail="The AD_ID permission is in the manifest", evidence=[_ev(where, text="com.google.android.gms.permission.AD_ID")]))
     return out
 
 
@@ -186,7 +186,7 @@ def nsc_findings(root: ET.Element, where: str) -> list[dict[str, Any]]:
     base = root.find("base-config")
     open_to = []
     if base is not None and B.a(base, "cleartextTrafficPermitted", base.get("cleartextTrafficPermitted", "")) == "true":
-        open_to.append("base-config (sab domains)")
+        open_to.append("base-config (all domains)")
     for dc in root.findall("domain-config"):
         if dc.get("cleartextTrafficPermitted") == "true":
             open_to += [d.text or "?" for d in dc.findall("domain")][:3]
@@ -214,13 +214,13 @@ def sdk_findings(sdks: list[dict[str, Any]], facts: dict[str, Any], opts: dict[s
                      evidence=[x for s in trackers for x in evidence_of.get(s["name"], [])][:EVIDENCE_PER_KEY]))
     pay = [s for s in sdks if s["kind"] == "payment"]
     if pay:
-        out.append(F("rbi_payment", detail="Mila: " + ", ".join(s["name"] for s in pay),
+        out.append(F("rbi_payment", detail="Found: " + ", ".join(s["name"] for s in pay),
                      evidence=[x for s in pay for x in evidence_of.get(s["name"], [])][:EVIDENCE_PER_KEY]))
         if any(p.endswith(("READ_SMS", "RECEIVE_SMS")) for p in facts.get("permissions") or []):
             out.append(F("sms_and_payment"))
     ai = [s for s in sdks if s["kind"] == "ai"]
     if ai:
-        out.append(F("ai_sdk", detail="Mila: " + ", ".join(s["name"] for s in ai),
+        out.append(F("ai_sdk", detail="Found: " + ", ".join(s["name"] for s in ai),
                      evidence=[x for s in ai for x in evidence_of.get(s["name"], [])][:EVIDENCE_PER_KEY]))
     auth = [s for s in sdks if s["kind"] == "auth"]
     if auth or login_hint:
@@ -295,7 +295,7 @@ def scan_android(path, name: str, opts: dict[str, Any], today: date | None = Non
     try:
         z = zipfile.ZipFile(path)
     except (zipfile.BadZipFile, OSError):
-        raise ScanError("Yeh APK / AAB / ZIP file nahi lagti (khul nahi rahi).")
+        raise ScanError("This does not look like an APK / AAB / ZIP file (it does not open).")
     with z:
         names = z.namelist()
         infos = {i.filename: i for i in z.infolist()}
@@ -305,7 +305,7 @@ def scan_android(path, name: str, opts: dict[str, Any], today: date | None = Non
         elif "AndroidManifest.xml" in names:
             kind, pre, man_name = "apk", "", "AndroidManifest.xml"
         else:
-            raise ScanError("Is file mein AndroidManifest.xml nahi mila: APK / AAB nahi hai.")
+            raise ScanError("AndroidManifest.xml was not found in this file: it is not an APK / AAB.")
         out["kind"] = kind
         findings: list[dict[str, Any]] = []
         root = None
@@ -316,11 +316,11 @@ def scan_android(path, name: str, opts: dict[str, Any], today: date | None = Non
             if text:
                 try:
                     root = ET.fromstring(text.encode())
-                    out["limits"].append("Manifest App Jaanch (REA) se padha gaya.")
+                    out["limits"].append("The manifest was read with App Check (REA).")
                 except ET.ParseError:
                     root = None
         if root is None:
-            raise ScanError("Manifest padha nahi ja saka (file tooti ho sakti hai).")
+            raise ScanError("The manifest could not be read (the file may be damaged).")
         facts, mf = manifest_findings(root, man_name, today, opts=opts)
         findings += mf
         # network security config (any res/xml whose root is network-security-config)
@@ -343,8 +343,8 @@ def scan_android(path, name: str, opts: dict[str, Any], today: date | None = Non
                 if "android debug" in facts["signed_by"].lower():
                     findings.append(F("debug_cert", evidence=[_ev("signing certificate", text=facts["signed_by"])]))
                 if facts["signature_schemes"] == ["v1"] and (facts.get("target_sdk") or 0) >= 24:
-                    findings.append(F("v1_only", evidence=[_ev("META-INF", text="sirf v1")]))
-            out["limits"].append("Signature kisne kiya yeh file mein likha hua padha; cryptographic jaanch Android / Play karta hai.")
+                    findings.append(F("v1_only", evidence=[_ev("META-INF", text="v1 only")]))
+            out["limits"].append("Who signed it was read as written in the file; the cryptographic check is done by Android / Play.")
         # native libraries: 64-bit + 16 KB
         libs: dict[str, list[str]] = {}
         for n in names:
@@ -417,12 +417,12 @@ def scan_android(path, name: str, opts: dict[str, Any], today: date | None = Non
                               evidence=[_ev("dex / assets", text=u) for u in http_seen]))
         findings += sdk_findings(sdks, facts, opts, login_hint, ev_of)
         if opts.get("ios"):
-            findings.append(F("apple_basics", detail="Isi app ka iPhone version ho to: account delete app ke andar (5.1.1(v)), Google / "
-                                                     "Facebook login ke saath Sign in with Apple (4.8), har SDK ka privacy manifest."))
+            findings.append(F("apple_basics", detail="If this app has an iPhone version: account deletion inside the app (5.1.1(v)), Sign in with Apple alongside Google / "
+                                                     "Facebook login (4.8), a privacy manifest for every SDK."))
     out["facts"] = facts
     out["findings"] = merge(findings)
-    out["limits"].append("Sirf file padhi gayi (static); app chalayi nahi gayi, isliye runtime ke khatre (server ki galti, login ki "
-                         "kamzori) yahan nahi dikhenge.")
+    out["limits"].append("Only the file was read (static); the app was not run, so runtime risks (server mistakes, login "
+                         "weaknesses) will not show here.")
     return out
 
 
@@ -462,13 +462,13 @@ def scan_source(path, name: str, opts: dict[str, Any], today: date | None = None
     try:
         z = zipfile.ZipFile(path)
     except (zipfile.BadZipFile, OSError):
-        raise ScanError("ZIP khul nahi rahi.")
+        raise ScanError("The ZIP does not open.")
     findings: list[dict[str, Any]] = []
     facts: dict[str, Any] = {}
     with z:
         infos = [i for i in z.infolist() if not i.is_dir()]
         if len(infos) > MAX_SOURCE_FILES:
-            out["limits"].append(f"Bahut files ({len(infos)}): pehli {MAX_SOURCE_FILES} padhi.")
+            out["limits"].append(f"Too many files ({len(infos)}): the first {MAX_SOURCE_FILES} were read.")
             infos = infos[:MAX_SOURCE_FILES]
 
         def rel(n: str) -> str:
@@ -512,7 +512,7 @@ def scan_source(path, name: str, opts: dict[str, Any], today: date | None = None
                 continue
             total += info.file_size
             if total > MAX_SOURCE_BYTES:
-                out["limits"].append("Code bahut bada tha: kuch files chhod di.")
+                out["limits"].append("The code was too large: some files were skipped.")
                 break
             text = z.read(info).decode("utf-8", "ignore")
             if base == "AndroidManifest.xml" and "/test/" not in p and "/androidTest/" not in p:
@@ -547,7 +547,7 @@ def scan_source(path, name: str, opts: dict[str, Any], today: date | None = None
                         login_hint = m.group(0)
         facts["dependencies"] = sorted(deps)[:200]
         for code, ev in code_hits.items():
-            findings.append(F(code, detail=f"{ev[0]['where']}:{ev[0].get('line', '')} ({len(ev)} jagah)", evidence=ev))
+            findings.append(F(code, detail=f"{ev[0]['where']}:{ev[0].get('line', '')} ({len(ev)} places)", evidence=ev))
         if http_seen:
             findings.append(F("http_url", detail="http:// addresses: " + ", ".join(e["text"] for e in http_seen[:5]), evidence=http_seen))
         if manifests:
@@ -558,7 +558,7 @@ def scan_source(path, name: str, opts: dict[str, Any], today: date | None = None
                 facts.update(mf_facts)
                 findings += mf
             except ET.ParseError:
-                out["limits"].append(f"{mp} padha nahi gaya (XML galat).")
+                out["limits"].append(f"{mp} could not be read (bad XML).")
         elif sdk_hint.get("target") is not None:
             facts.update({"target_sdk": sdk_hint.get("target"), "min_sdk": sdk_hint.get("min")})
         for np_, nt in nscs:
@@ -577,12 +577,12 @@ def scan_source(path, name: str, opts: dict[str, Any], today: date | None = None
                 ev_of[nm] = [_ev("dependencies", text=d)]
         findings += sdk_findings(sdks, facts, opts, login_hint, ev_of)
         if plists or opts.get("ios"):
-            findings.append(F("apple_basics", detail="iPhone version: account delete app ke andar (5.1.1(v)), Google / Facebook login ke "
-                                                     "saath Sign in with Apple (4.8), PrivacyInfo.xcprivacy + required-reason APIs."))
+            findings.append(F("apple_basics", detail="iPhone version: account deletion inside the app (5.1.1(v)), Sign in with Apple alongside Google / Facebook "
+                                                     "login (4.8), PrivacyInfo.xcprivacy + required-reason APIs."))
     facts["files"] = len(infos)
     out["facts"] = facts
     out["findings"] = merge(findings)
-    out["limits"].append("Code sirf padha gaya (static), chalaya / build nahi kiya. Pattern se mili baatein developer se pakki karwaiye.")
+    out["limits"].append("The code was only read (static), not run / built. Have the developer confirm what the patterns found.")
     return out
 
 
@@ -595,7 +595,7 @@ def classify_zip(path, name: str = "") -> str:
         with zipfile.ZipFile(path) as z:
             names = z.namelist()
     except (zipfile.BadZipFile, OSError):
-        raise ScanError("File khul nahi rahi (APK / AAB / ZIP nahi).")
+        raise ScanError("The file does not open (not an APK / AAB / ZIP).")
     if "base/manifest/AndroidManifest.xml" in names:
         return "aab"
     k = an.sniff(Path(path), name or str(path))
@@ -647,7 +647,7 @@ def cert_days(host: str) -> int | None:
 
 
 EXPOSED = [  # path, check(body) -> bool, what
-    ("/.git/HEAD", lambda b: b.startswith(b"ref:") or re.match(rb"^[0-9a-f]{40}\s*$", b) is not None, "Git repo (.git) - poora source code"),
+    ("/.git/HEAD", lambda b: b.startswith(b"ref:") or re.match(rb"^[0-9a-f]{40}\s*$", b) is not None, "Git repo (.git) - the whole source code"),
     ("/.git/config", lambda b: b"[core]" in b, "Git config"),
     ("/.env", lambda b: re.search(rb"(?m)^[A-Z][A-Z0-9_]{2,}=", b) is not None and b"<html" not in b[:300].lower(), ".env (keys / passwords)"),
     ("/.DS_Store", lambda b: b[:8] == b"\x00\x00\x00\x01Bud1", ".DS_Store (folder list)"),
@@ -671,28 +671,28 @@ def scan_web(host: str, verified: bool, fetch: Fetcher | None = None, certs: Cal
     home = f"https://{host}/"
     r = fetch(home, follow=True)
     if not r.get("status"):
-        fs.append(F("web_https", detail=f"https://{host} khul nahi rahi ({r.get('error', 'koi jawab nahi')}).", evidence=[_ev(home)]))
+        fs.append(F("web_https", detail=f"https://{host} does not open ({r.get('error', 'no reply')}).", evidence=[_ev(home)]))
         out["findings"] = fs
-        out["limits"].append("Website se jawab nahi mila; baaki jaanch nahi hui.")
+        out["limits"].append("No reply from the website; the remaining checks were not done.")
         return out
     final = r.get("url") or home
     out["facts"].update({"status": r["status"], "final_url": final})
     if urlparse(final).scheme != "https":
-        fs.append(F("web_https", detail=f"https par jaane par bhi page {final} par http mein khula.", evidence=[_ev(final)]))
+        fs.append(F("web_https", detail=f"Even when opened on https, the page loaded over http at {final}.", evidence=[_ev(final)]))
     plain = fetch(f"http://{host}/", follow=False)
     loc = (plain.get("headers") or {}).get("location", "")
     if plain.get("status") and not (plain["status"] in (301, 302, 307, 308) and loc.startswith("https://")):
-        fs.append(F("web_https", key="web_https:redirect", detail=f"http://{host} par jaane wale https par nahi bheje jaate "
-                                                                  f"(jawab {plain.get('status')}).", evidence=[_ev(f"http://{host}/")], sev="medium"))
+        fs.append(F("web_https", key="web_https:redirect", detail=f"Visitors to http://{host} are not sent to https "
+                                                                  f"(reply {plain.get('status')}).", evidence=[_ev(f"http://{host}/")], sev="medium"))
     h = r.get("headers") or {}
     out["facts"]["server"] = h.get("server", "")
     if "strict-transport-security" not in h:
-        fs.append(F("web_hsts", evidence=[_ev(final, text="Strict-Transport-Security nahi")]))
+        fs.append(F("web_hsts", evidence=[_ev(final, text="No Strict-Transport-Security")]))
     csp = h.get("content-security-policy", "")
     if not csp:
-        fs.append(F("web_csp", evidence=[_ev(final, text="Content-Security-Policy nahi")]))
+        fs.append(F("web_csp", evidence=[_ev(final, text="No Content-Security-Policy")]))
     if "x-frame-options" not in h and "frame-ancestors" not in csp:
-        fs.append(F("web_frame", evidence=[_ev(final, text="X-Frame-Options / frame-ancestors nahi")]))
+        fs.append(F("web_frame", evidence=[_ev(final, text="No X-Frame-Options / frame-ancestors")]))
     if h.get("x-content-type-options", "").lower() != "nosniff":
         fs.append(F("web_nosniff", evidence=[_ev(final)]))
     if "referrer-policy" not in h:
@@ -706,7 +706,7 @@ def scan_web(host: str, verified: bool, fetch: Fetcher | None = None, certs: Cal
         lc = c.lower()
         miss = [x for x, ok in (("Secure", "secure" in lc), ("HttpOnly", "httponly" in lc), ("SameSite", "samesite" in lc)) if not ok]
         if miss:
-            weak.append(f"{nm} ({', '.join(miss)} nahi)")
+            weak.append(f"{nm} (no {', '.join(miss)})")
     if weak:
         fs.append(F("web_cookie", detail=", ".join(weak[:5]), evidence=[_ev(final, text=w) for w in weak]))
     mixed = []
@@ -719,7 +719,7 @@ def scan_web(host: str, verified: bool, fetch: Fetcher | None = None, certs: Cal
     days = certs(host)
     out["facts"]["cert_days_left"] = days
     if days is not None and days < 21:
-        fs.append(F("web_cert", detail=f"SSL certificate {max(days, 0)} din mein khatam" + (" (khatam ho chuka)" if days < 0 else ""),
+        fs.append(F("web_cert", detail=f"SSL certificate expires in {max(days, 0)} days" + (" (already expired)" if days < 0 else ""),
                     sev="high" if days < 3 else None))
     if verified:
         for p, check, what in EXPOSED:
@@ -732,7 +732,7 @@ def scan_web(host: str, verified: bool, fetch: Fetcher | None = None, certs: Cal
         if st.get("status") != 200 or b"contact:" not in (st.get("body") or b"").lower():
             fs.append(F("web_security_txt"))
     else:
-        out["limits"].append("Domain abhi verify nahi hua: .git / .env jaisi khuli files ki jaanch sirf aapke verify kiye domain par hoti hai.")
-    out["limits"].append("Sirf bahar se dikhne wali cheezein dekhi (headers, HTTPS, page); website par koi hamla / login try nahi kiya.")
+        out["limits"].append("The domain is not verified yet: open files like .git / .env are checked only on a domain you have verified.")
+    out["limits"].append("Only things visible from outside were checked (headers, HTTPS, page); no attack / login attempt was made on the website.")
     out["findings"] = merge(fs)
     return out

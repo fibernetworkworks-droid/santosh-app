@@ -113,14 +113,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def cull(sid: str, file: UploadFile = File(...), look: str = Form("true"), tenant: str = Depends(current_tenant)):
         data = await file.read()
         if len(data) > 25 * 1024 * 1024:
-            raise HTTPException(413, "Photo 25 MB se badi.")
+            raise HTTPException(413, "The photo is larger than 25 MB.")
         return await run(S.cull, tenant, sid, [(file.filename or "photo.jpg", data)], None, look != "false")
 
     @r.post("/releases/{rid}/proof")
     async def release_proof_up(rid: str, file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
         data = await file.read()
         if len(data) > 25 * 1024 * 1024:
-            raise HTTPException(413, "Photo 25 MB se badi.")
+            raise HTTPException(413, "The photo is larger than 25 MB.")
         return await run(S.release_signed, tenant, rid, data)
 
     @r.get("/releases/{rid}/proof")
@@ -195,7 +195,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if what == "release_new":
             return await run(S.release_new, tenant, sid, _s(b.get("kind")) or "model", _s(b.get("person")), _s(b.get("guardian")),
                              _s(b.get("place")), b.get("uses"), _s(b.get("lang")) or "en")
-        raise HTTPException(404, "Nahi pehchana.")
+        raise HTTPException(404, "Not recognised.")
 
     @r.get("/cards")
     async def list_cards(status: str = "waiting", tenant: str = Depends(current_tenant)):

@@ -42,11 +42,11 @@ def _money(v: Any) -> float | None:
 def norm_festival(raw: dict[str, Any], seq: int) -> dict[str, Any]:
     name = _clean(raw.get("name"), 120)
     if not name:
-        raise ValueError("Festival ka naam batao.")
+        raise ValueError("Give the festival name.")
     req = _clean(raw.get("requires"), 14).lower()
     status = _clean(raw.get("status"), 12).lower() or "planned"
     if status not in STATUSES:
-        raise ValueError(f"status inme se: {', '.join(STATUSES)}")
+        raise ValueError(f"status must be one of: {', '.join(STATUSES)}")
     return {"id": f"fs{seq}", "name": name, "country": _clean(raw.get("country"), 60), "category": _clean(raw.get("category"), 60),
             "deadline": _day(raw.get("deadline")), "event_date": _day(raw.get("event_date")), "fee_inr": _money(raw.get("fee_inr")),
             "requires": req if req in LEVELS or req == "none" else "unknown", "status": status,
@@ -60,13 +60,13 @@ def festival_packet(project: dict[str, Any], entry: dict[str, Any]) -> list[dict
     ticks = entry.get("ticks") or {}
     has_scenes = int(project.get("scenes_n") or 0) > 0
     rows = [("logline", "Logline / synopsis", bool((project.get("logline") or "").strip())),
-            ("script", "Script ya scene list", has_scenes),
-            ("runtime", "Runtime pata hai", bool(project.get("runtime_s"))),
-            ("language", "Bhasha likhi hai", bool(project.get("language"))),
+            ("script", "Script or scene list", has_scenes),
+            ("runtime", "Runtime is known", bool(project.get("runtime_s"))),
+            ("language", "Language is written", bool(project.get("language"))),
             ("screener", "Screener link / file", None), ("poster", "Poster", None), ("stills", "Stills (3-5)", None),
-            ("trailer", "Trailer (agar maanga)", None), ("bios", "Director / producer bio", None),
+            ("trailer", "Trailer (if asked for)", None), ("bios", "Director / producer bio", None),
             ("subtitles", "English subtitles", None), ("credits", "Credits list", None),
-            ("fee", "Entry fee bhari", None)]
+            ("fee", "Entry fee paid", None)]
     out = []
     for key, label, auto in rows:
         done = auto if auto is not None else bool(ticks.get(key))
@@ -85,9 +85,9 @@ def festival_view(entries: list[dict[str, Any]], today: date, project: dict[str,
         live = e["status"] in ("planned", "submitted")
         if dl and e["status"] == "planned":
             if r["days_left"] < 0:
-                flags.append(f"{e['name']}: deadline nikal chuki ({e['deadline']}), status 'planned' hai.")
+                flags.append(f"{e['name']}: the deadline has passed ({e['deadline']}), status is 'planned'.")
             elif r["days_left"] <= 7:
-                flags.append(f"{e['name']}: deadline {r['days_left']} din me ({e['deadline']}).")
+                flags.append(f"{e['name']}: deadline in {r['days_left']} days ({e['deadline']}).")
         if e["status"] in ("submitted", "accepted", "screened") and e.get("fee_inr"):
             spent += e["fee_inr"]
         # Premiere heuristic: any earlier public screening can break a 'world / international' premiere rule. We flag, a person checks.
@@ -95,10 +95,10 @@ def festival_view(entries: list[dict[str, Any]], today: date, project: dict[str,
             when = e.get("event_date") or e.get("deadline") or ""
             earlier = [n for d, n in screened if n != e["name"] and (not when or d <= when)]
             if earlier:
-                flags.append(f"{e['name']} ko {e['requires']} premiere chahiye par film pehle {', '.join(earlier)} me dikh chuki hai: "
-                             "festival ka apna niyam padhiye (yeh sirf chetavni hai, faisla nahi).")
+                flags.append(f"{e['name']} needs a {e['requires']} premiere but the film has already shown at {', '.join(earlier)}: "
+                             "read the festival's own rule (this is only a warning, not a decision).")
         if e["requires"] == "unknown" and live:
-            flags.append(f"{e['name']}: premiere niyam darj nahi: festival ki site se dekhiye.")
+            flags.append(f"{e['name']}: premiere rule not recorded: check the festival's site.")
         if project is not None:
             pk = festival_packet(project, e)
             r["packet"] = {"done": sum(1 for x in pk if x["done"]), "total": len(pk), "items": pk}
@@ -106,20 +106,20 @@ def festival_view(entries: list[dict[str, Any]], today: date, project: dict[str,
     rows.sort(key=lambda r: (r["status"] not in ("planned", "submitted"), r["deadline"] or "9999", r["name"]))
     by = {s: sum(1 for e in entries if e["status"] == s) for s in STATUSES}
     return {"festivals": rows, "counts": by, "fees_committed_inr": round(spent, 2), "flags": flags,
-            "note": "Deadline, fee aur premiere niyam aapke diye hue hain: Hoola unhe nahi banata, sirf tareekh se milata hai."}
+            "note": "The deadline, fee and premiere rules are the ones you gave: Hoola does not make them up, it only checks them against dates."}
 
 
 # ---------------------------------------------------------------- release windows
 def norm_window(raw: dict[str, Any], seq: int) -> dict[str, Any]:
     medium = _clean(raw.get("medium"), 16).lower()
     if medium not in MEDIA:
-        raise ValueError(f"medium inme se: {', '.join(MEDIA)}")
+        raise ValueError(f"medium must be one of: {', '.join(MEDIA)}")
     territory = [t.strip().lower() for t in re.split(r"[,;/]", _clean(raw.get("territory"), 200)) if t.strip()] or ["world"]
     start, end = _day(raw.get("start")), _day(raw.get("end"))
     if not start:
-        raise ValueError("start tareekh (YYYY-MM-DD) batao.")
+        raise ValueError("Give the start date (YYYY-MM-DD).")
     if end and end < start:
-        raise ValueError("end tareekh start se pehle nahi ho sakti.")
+        raise ValueError("The end date cannot be before the start.")
     return {"id": f"w{seq}", "medium": medium, "territory": sorted(set(territory)), "start": start, "end": end,
             "exclusive": bool(raw.get("exclusive")), "licensee": _clean(raw.get("licensee"), 120),
             "fee_inr": _money(raw.get("fee_inr")), "notes": _clean(raw.get("notes"), 300)}
@@ -143,17 +143,17 @@ def check_windows(windows: list[dict[str, Any]], holdbacks: Any = None) -> dict[
             if a["medium"] == b["medium"] and (a["exclusive"] or b["exclusive"]) and _terr_overlap(a["territory"], b["territory"]) \
                     and _span_overlap(a, b):
                 conflicts.append({"a": a["id"], "b": b["id"], "kind": "exclusive_overlap",
-                                  "why": f"{a['medium']}: {a['licensee'] or a['id']} aur {b['licensee'] or b['id']} ek hi samay, "
-                                         f"ek hi ilaake me, aur ek exclusive hai."})
+                                  "why": f"{a['medium']}: {a['licensee'] or a['id']} and {b['licensee'] or b['id']} at the same time, "
+                                         f"in the same territory, and one is exclusive."})
     rules, bad = [], []
     for h in (holdbacks if isinstance(holdbacks, list) else [])[:20]:
         try:
             after, before, days = str(h.get("after")).lower(), str(h.get("before")).lower(), int(h.get("days"))
         except (AttributeError, TypeError, ValueError):
-            bad.append("holdback niyam adhura hai: after, before, days chahiye.")
+            bad.append("the holdback rule is incomplete: after, before, days are needed.")
             continue
         if after not in MEDIA or before not in MEDIA or days < 0:
-            bad.append(f"holdback '{after}' -> '{before}' galat hai.")
+            bad.append(f"holdback '{after}' -> '{before}' is not valid.")
             continue
         rules.append({"after": after, "before": before, "days": days})
     violations = []
@@ -164,11 +164,11 @@ def check_windows(windows: list[dict[str, Any]], holdbacks: Any = None) -> dict[
                     earliest = (date.fromisoformat(a["start"]) + timedelta(days=r["days"])).isoformat()
                     if b["start"] < earliest:
                         violations.append({"rule": r, "a": a["id"], "b": b["id"], "earliest": earliest,
-                                           "why": f"{r['before']} {b['id']} {b['start']} par shuru hai, par {r['after']} {a['id']} ke "
-                                                  f"{r['days']} din baad ({earliest}) se pehle nahi."})
+                                           "why": f"{r['before']} {b['id']} {b['start']} is the start, but it cannot be before {r['after']} {a['id']} + "
+                                                  f"{r['days']} days ({earliest})."})
     return {"conflicts": conflicts, "holdback_violations": violations, "rules": rules, "rule_problems": bad,
             "clear": not conflicts and not violations and not bad,
-            "note": "Holdback niyam aapke diye hue hain. Yeh jaanch contract nahi: vakil/distributor ka lekha dekhiye."}
+            "note": "The holdback rules are the ones you gave. This check is not the contract: see the lawyer's / distributor's document."}
 
 
 # ---------------------------------------------------------------- recoupment waterfall
@@ -178,15 +178,15 @@ def waterfall(gross_inr: Any, deductions: Any = None, investors: Any = None, sha
     line of each tier takes the rounding so the tiers always add back to the gross."""
     gross = _money(gross_inr)
     if gross is None:
-        raise ValueError("gross (kul aay) rupaye me batao.")
+        raise ValueError("Give gross (total income) in rupees.")
     left = gross
     tiers: list[dict[str, Any]] = []
     for d in (deductions if isinstance(deductions, list) else [])[:TIER_MAX]:
-        name = _clean(d.get("name"), 80) or "kharcha"
+        name = _clean(d.get("name"), 80) or "expense"
         kind = _clean(d.get("kind"), 24).lower()
         val = _money(d.get("value"))
         if kind not in ("fixed_inr", "percent_of_gross", "percent_of_remaining") or val is None:
-            raise ValueError(f"'{name}': kind fixed_inr | percent_of_gross | percent_of_remaining aur value chahiye.")
+            raise ValueError(f"'{name}': kind fixed_inr | percent_of_gross | percent_of_remaining and a value are needed.")
         amt = val if kind == "fixed_inr" else gross * val / 100.0 if kind == "percent_of_gross" else left * val / 100.0
         cap = _money(d.get("cap_inr"))
         if cap is not None:
@@ -200,7 +200,7 @@ def waterfall(gross_inr: Any, deductions: Any = None, investors: Any = None, sha
         name, inv = _clean(iv.get("name"), 80), _money(iv.get("invested_inr"))
         prem = _money(iv.get("premium_pct")) or 0.0
         if not name or inv is None:
-            raise ValueError("har investor ka naam aur invested_inr chahiye.")
+            raise ValueError("every investor needs a name and invested_inr.")
         invs.append({"name": name, "owed": round(inv * (1 + prem / 100.0), 2), "invested": inv, "premium_pct": prem})
     owed_total = round(sum(i["owed"] for i in invs), 2)
     paid_total = round(min(left, owed_total), 2)
@@ -222,7 +222,7 @@ def waterfall(gross_inr: Any, deductions: Any = None, investors: Any = None, sha
     if sh:
         pct_total = round(sum(p or 0 for _, p in sh), 4)
         if any(not n or p is None for n, p in sh) or abs(pct_total - 100.0) > 0.01:
-            problems.append(f"profit shares ka jod {pct_total}% hai: 100% hona chahiye, isliye baanta nahi gaya.")
+            problems.append(f"profit shares add up to {pct_total}%: they must be 100%, so nothing was distributed.")
         else:
             run = 0.0
             for k, (n, p) in enumerate(sh):
@@ -237,5 +237,5 @@ def waterfall(gross_inr: Any, deductions: Any = None, investors: Any = None, sha
     return {"gross_inr": gross, "tiers": tiers, "net_after_recoup_inr": left, "profit_split": split, "unallocated_inr": unallocated,
             "ties_to_gross": abs(total_out - gross) < 0.005, "problems": problems,
             "investors_fully_recouped": (paid_total >= owed_total) if invs else None,
-            "note": ("Yeh ek hisaab hai jo aapke diye number se bana: contract, TDS/GST aur asli statement nahi. "
-                     "Accountant / vakil se milaiye.")}
+            "note": ("This is a calculation made from the numbers you gave: not the contract, TDS/GST or a real statement. "
+                     "Check it with your accountant / lawyer.")}

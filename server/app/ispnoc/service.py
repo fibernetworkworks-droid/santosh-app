@@ -104,7 +104,7 @@ def _dur(a: datetime | None, b: datetime | None) -> str:
     if not a or not b:
         return ""
     m = max(0, int((b - a).total_seconds() // 60))
-    return f"{m} min" if m < 60 else (f"{m // 60} ghante {m % 60} min" if m < 48 * 60 else f"{m // 1440} din {(m % 1440) // 60} ghante")
+    return f"{m} min" if m < 60 else (f"{m // 60} h {m % 60} min" if m < 48 * 60 else f"{m // 1440} days {(m % 1440) // 60} h")
 
 
 def _phone(v: str) -> str:
@@ -163,8 +163,8 @@ def _num(v) -> float | None:
 def _no_secret_keys(kw: dict) -> None:
     for k, v in kw.items():
         if re.search(r"(?i)pass|secret|community|token|key", str(k)) or (isinstance(v, str) and R.has_secret(v)):
-            raise NocError("Device ka password / SNMP community / key Hoola ko mat dijiye. Woh sirf aapke collector ki config "
-                           "(aapke apne network par) mein rehta hai.")
+            raise NocError("Do not give Hoola a device password / SNMP community / key. That stays only in your collector's config "
+                           "(on your own network).")
 
 
 # ---------------------------------------------------------------- settings
@@ -192,7 +192,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("model") is not None:
             m = str(kw["model"]).lower().strip()
             if m not in ("isp", "franchise", "lco"):
-                raise NocError("model = isp (apna licence) | franchise (BSNL / TIP) | lco")
+                raise NocError("model = isp (own licence) | franchise (BSNL / TIP) | lco")
             r.model = m
         if kw.get("optics") is not None:
             o = str(kw["optics"]).lower().strip()
@@ -205,7 +205,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("morning_time"):
             m = re.fullmatch(r"(\d{1,2}):(\d{2})", str(kw["morning_time"]).strip())
             if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
-                raise NocError("Samay HH:MM mein (jaise 09:00).")
+                raise NocError("Give the time as HH:MM (for example 09:00).")
             r.morning_time = f"{int(m.group(1)):02d}:{m.group(2)}"
         if "bsnl_sla_hours" in kw:
             v = _num(kw["bsnl_sla_hours"])
@@ -227,7 +227,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                         continue
                     ph = str(p.get("phone") or "")
                     if ph and not _phone(ph):
-                        raise NocError(f"{p.get('name')}: mobile number 10 ankon ka hona chahiye.")
+                        raise NocError(f"{p.get('name')}: the mobile number must have 10 digits.")
                     rows.append({"name": str(p["name"]).strip()[:80], "phone": _phone(ph), "email": str(p.get("email") or "").strip()[:120],
                                  "area": str(p.get("area") or "").strip()[:120]})
                 teams[team] = rows
@@ -253,7 +253,7 @@ def save_site(tenant: str, name: str, site: str = "", **kw: Any) -> dict:
         row = _find_site(s, tenant, site) if site else None
         if row is None:
             if not str(name or "").strip():
-                raise NocError("Site / POP ka naam dijiye.")
+                raise NocError("Give the site / POP name.")
             row = _find_site(s, tenant, name) or IspnocSite(tenant_id=tenant)
             s.add(row)
         if name:
@@ -265,7 +265,7 @@ def save_site(tenant: str, name: str, site: str = "", **kw: Any) -> dict:
             if k in kw:
                 setattr(row, k, _num(kw[k]))
         s.flush()
-        return {"site": _site_view(row), "say": f"Site {row.name} save ho gayi."}
+        return {"site": _site_view(row), "say": f"Site {row.name} saved."}
 
 
 def _find_site(s, tenant: str, ref: str) -> IspnocSite | None:
@@ -310,7 +310,7 @@ def save_olt(tenant: str, name: str, olt: str = "", **kw: Any) -> dict:
         row = _find_olt(s, tenant, olt) if olt else None
         if row is None:
             if not str(name or "").strip():
-                raise NocError("OLT ka naam dijiye (jaise OLT-AKOT-1).")
+                raise NocError("Give the OLT name (for example OLT-AKOT-1).")
             row = _find_olt(s, tenant, name)
             if row is None:
                 row = IspnocOlt(tenant_id=tenant)
@@ -336,7 +336,7 @@ def save_olt(tenant: str, name: str, olt: str = "", **kw: Any) -> dict:
         if kw.get("ip") is not None:
             ip = str(kw["ip"]).strip()
             if ip and not re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", ip):
-                raise NocError("IP sahi likhiye (jaise 10.10.1.2).")
+                raise NocError("Write a valid IP (for example 10.10.1.2).")
             row.ip = ip
         if kw.get("site") is not None:
             st = _find_site(s, tenant, str(kw["site"]))
@@ -358,7 +358,7 @@ def save_olt(tenant: str, name: str, olt: str = "", **kw: Any) -> dict:
             c = s.get(IspnocCollector, str(kw["collector"]))
             row.collector_id = c.id if c and c.tenant_id == tenant else ""
         s.flush()
-        return {"olt": _olt_view(row), "say": f"OLT {row.name} save ho gaya."}
+        return {"olt": _olt_view(row), "say": f"OLT {row.name} saved."}
 
 
 def _ont_view(o: IspnocOnt, olts: dict | None = None, cls: str = "gpon_b+", full_phone: bool = False) -> dict:
@@ -394,7 +394,7 @@ def save_ont(tenant: str, ont: str = "", **kw: Any) -> dict:
                                                     IspnocOnt.pon == pon, IspnocOnt.onu == onu)).first()
         if row is None:
             if not (sn or (olt and pon and onu)):
-                raise NocError("ONT ke liye SN / MAC, ya OLT + PON + ONU number dijiye.")
+                raise NocError("For an ONT give the SN / MAC, or the OLT + PON + ONU number.")
             row = IspnocOnt(tenant_id=tenant)
             s.add(row)
         if olt:
@@ -415,13 +415,13 @@ def save_ont(tenant: str, ont: str = "", **kw: Any) -> dict:
         if kw.get("active") is not None:
             row.active = bool(kw["active"])
         s.flush()
-        return {"ont": _ont_view(row), "say": f"ONT {_ont_label(row)} save ho gaya."}
+        return {"ont": _ont_view(row), "say": f"ONT {_ont_label(row)} saved."}
 
 
 def save_splitter(tenant: str, name: str, **kw: Any) -> dict:
     with session() as s:
         if not str(name or "").strip():
-            raise NocError("Splitter ka naam dijiye.")
+            raise NocError("Give the splitter name.")
         row = s.scalars(select(IspnocSplitter).where(IspnocSplitter.tenant_id == tenant, IspnocSplitter.name.ilike(str(name).strip()))).first()
         if row is None:
             row = IspnocSplitter(tenant_id=tenant, name=str(name).strip()[:120])
@@ -447,7 +447,7 @@ def save_splitter(tenant: str, name: str, **kw: Any) -> dict:
             if k in kw:
                 setattr(row, k, _num(kw[k]))
         s.flush()
-        return {"splitter": _spl_view(row), "say": f"Splitter {row.name} save ho gaya."}
+        return {"splitter": _spl_view(row), "say": f"Splitter {row.name} saved."}
 
 
 def _spl_view(x: IspnocSplitter) -> dict:
@@ -464,11 +464,11 @@ def remove(tenant: str, what: str, ref: str) -> dict:
         if row is None and what == "olt":
             row = _find_olt(s, tenant, ref)
         if row is None or row.tenant_id != tenant:
-            raise NocError("Nahi mila.")
+            raise NocError("Not found.")
         if what == "olt" and s.scalars(select(IspnocOnt).where(IspnocOnt.tenant_id == tenant, IspnocOnt.olt_id == row.id)).first():
-            raise NocError("Is OLT par ONT hain; pehle unhe hatao ya doosre OLT par daalo.")
+            raise NocError("This OLT has ONTs; remove them first or move them to another OLT.")
         s.delete(row)
-    return {"ok": True, "say": "Hata diya."}
+    return {"ok": True, "say": "Removed."}
 
 
 # ---- import (CSV / Excel) ------------------------------------------------
@@ -527,17 +527,17 @@ def import_inventory(tenant: str, data: bytes | None = None, name: str = "networ
         from ..analyst.service import _load_file
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise NocError("File khaali hai.")
+        raise NocError("The file is empty.")
     rows = [r for r in _rows_of(data, name) if any(c for c in r)]
     if len(rows) < 2:
-        raise NocError("Sheet mein header ke neeche koi line nahi.")
+        raise NocError("The sheet has no line below the header.")
     head = None
     for i, r in enumerate(rows[:10]):
         if len(_hdr(r)) >= 2:
             head = i
             break
     if head is None:
-        raise NocError("Header samajh nahi aaya. Columns jaise: customer, mobile, sn/mac, olt, pon, onu, splitter.")
+        raise NocError("Could not understand the header. Columns like: customer, mobile, sn/mac, olt, pon, onu, splitter.")
     header = rows[head]
     secret_cols = [h for h in header if re.search(r"(?i)pass|pwd|secret|community|key", h)]
     idx = _hdr(header)
@@ -570,11 +570,11 @@ def import_inventory(tenant: str, data: bytes | None = None, name: str = "networ
             done += 1
         except NocError as e:
             bad.append({"row": n, "why": str(e)[:120]})
-    say = f"{done} {kind} line save hui."
+    say = f"{done} {kind} lines saved."
     if bad:
-        say += f" {len(bad)} line chhod di (wajah list mein)."
+        say += f" {len(bad)} lines skipped (reasons in the list)."
     if secret_cols:
-        say += f" Column {', '.join(secret_cols)} padha hi nahi (password / key Hoola ke paas nahi rakhte)."
+        say += f" Column {', '.join(secret_cols)} not read at all (Hoola does not keep passwords / keys)."
     return {"kind": kind, "saved": done, "bad": bad[:50], "ignored_columns": secret_cols, "say": say}
 
 
@@ -657,9 +657,9 @@ def ingest(tenant: str, text: str, olt: str = "", source: str = "paste", conv: s
     """Alarm text -> events (deduped) -> ONT states -> faults. Returns what was read and what Hoola concluded."""
     text = str(text or "")
     if not text.strip():
-        raise NocError("Alarm ka text khaali hai. OLT ka log / syslog / NMS ki CSV paste kijiye.")
+        raise NocError("The alarm text is empty. Paste the OLT log / syslog / the NMS CSV.")
     if len(text) > 2_000_000:
-        raise NocError("Text bahut bada hai (2 MB tak).")
+        raise NocError("The text is too large (up to 2 MB).")
     with _LOCK:
         with session() as s:
             st = _st(s, tenant)
@@ -673,7 +673,7 @@ def ingest(tenant: str, text: str, olt: str = "", source: str = "paste", conv: s
             olts, onts, by_sn, by_pos = _inv(s, tenant)
             hint = _find_olt(s, tenant, olt) if olt else None
             if olt and hint is None:
-                raise NocError(f"OLT '{olt}' Hoola ki list mein nahi. Pehle Network mein jodiye.")
+                raise NocError(f"OLT '{olt}' is not in Hoola's list. Add it in Network first.")
             added = dup = unmapped = 0
             keys_seen: set[str] = set()
             for ev in parsed["events"]:
@@ -711,15 +711,15 @@ def ingest(tenant: str, text: str, olt: str = "", source: str = "paste", conv: s
                         if ont.rx_base is None and R.rx_band(ev["rx"], cls) == "good":
                             ont.rx_base = ev["rx"]
     res = analyse(tenant, conv=conv) if analyse_now and added else {"new": [], "updated": [], "resolved": []}
-    say = f"{added} alarm padhe" + (f", {dup} pehle se the" if dup else "") + (f", {parsed['skipped']} line samajh nahi aayi" if parsed["skipped"] else "") + "."
+    say = f"{added} alarms read" + (f", {dup} already there" if dup else "") + (f", {parsed['skipped']} lines not understood" if parsed["skipped"] else "") + "."
     if unmapped:
-        say += f" {unmapped} alarm kis OLT ke hain pata nahi chala: OLT ka naam batakar dobara bhejiye (olt=...)."
+        say += f" {unmapped} alarms: could not tell which OLT they belong to. Send again with the OLT name (olt=...)."
     if res["new"]:
-        say += " Nayi dikkat: " + "; ".join(f"{f['number']} {f['title']} ({f['n_affected']} customer, {f['confidence_label']})" for f in res["new"][:5]) + "."
+        say += " New faults: " + "; ".join(f"{f['number']} {f['title']} ({f['n_affected']} customers, {f['confidence_label']})" for f in res["new"][:5]) + "."
     if res["resolved"]:
-        say += " Theek hua: " + ", ".join(f["number"] for f in res["resolved"][:8]) + "."
+        say += " Fixed: " + ", ".join(f["number"] for f in res["resolved"][:8]) + "."
     if not res["new"] and not res["updated"] and not res["resolved"] and added:
-        say += " Inse koi khuli dikkat nahi banti."
+        say += " These create no open fault."
     return {"read": added, "duplicates": dup, "skipped": parsed["skipped"], "unmapped": unmapped, "format": parsed["format"],
             "new": res["new"], "updated": res["updated"], "resolved": res["resolved"], "say": say}
 
@@ -800,15 +800,15 @@ def analyse(tenant: str, conv: str = "") -> dict:
                     continue
                 if row.olt_id in olt_down and row.kind != "olt_down":
                     row.status = "dismissed"
-                    _note(row, "Poore OLT ki dikkat mein shaamil ho gaya.")
+                    _note(row, "Merged into the whole-OLT fault.")
                     resolved.append(row.id)
                     continue
                 if _cleared(row, evs):
                     row.status, row.resolved_at = "resolved", t_now
-                    _note(row, f"Alarm saaf: {_dur(row.started_at, t_now)} mein theek.")
+                    _note(row, f"Alarm cleared: fixed in {_dur(row.started_at, t_now)}.")
                     for tk in s.scalars(select(IspnocTicket).where(IspnocTicket.fault_id == row.id, IspnocTicket.status.in_(TICKET_OPEN))).all():
                         tk.status, tk.fixed_at = "fixed", t_now
-                        _tlog(tk, "Alarm saaf ho gaya, ticket fixed.")
+                        _tlog(tk, "Alarm cleared, ticket fixed.")
                     resolved.append(row.id)
     _LAST_ANALYSE[tenant] = time.time()
     views_new = [fault_view(tenant, i) for i in new]
@@ -854,7 +854,7 @@ def _tlog(tk: IspnocTicket, what: str, by: str = "Hoola") -> None:
 
 
 # ---------------------------------------------------------------- views
-STATUS_LABEL = {"open": "Khuli", "ticketed": "Ticket bana", "resolved": "Theek ho gayi", "dismissed": "Shaamil / hatayi"}
+STATUS_LABEL = {"open": "Open", "ticketed": "Ticket made", "resolved": "Fixed", "dismissed": "Merged / removed"}
 
 
 def _get_fault(s, tenant: str, ref: str) -> IspnocFault:
@@ -863,7 +863,7 @@ def _get_fault(s, tenant: str, ref: str) -> IspnocFault:
     if r is None or r.tenant_id != tenant:
         r = s.scalars(select(IspnocFault).where(IspnocFault.tenant_id == tenant, IspnocFault.number == ref.upper())).first()
     if r is None:
-        raise NocError(f"Fault {ref} nahi mila.")
+        raise NocError(f"Fault {ref} not found.")
     return r
 
 
@@ -918,15 +918,15 @@ def fault_view(tenant: str, ref: str, full_phone: bool = False) -> dict:
         if f.status in ("open", "ticketed"):
             share = (f.n_affected / total_subs) if total_subs else 0
             if mins >= 240 and share >= 0.10:
-                notes.append(f"{f.n_affected} / {total_subs} customer ({share:.0%}) 4 ghante se zyada band: TRAI ke draft (Aug 2026) mein yeh "
-                             "'Significant Network Outage' hota (24 ghante mein TRAI ko report). Abhi draft hai"
-                             + ("; BSNL franchise mein BSNL ko turant bataiye." if st.model == "franchise" else "."))
+                notes.append(f"{f.n_affected} / {total_subs} customers ({share:.0%}) down for more than 4 hours: under TRAI's draft (Aug 2026) this would be a "
+                             "'Significant Network Outage' (report to TRAI within 24 hours). It is a draft for now"
+                             + ("; under a BSNL franchise, tell BSNL at once." if st.model == "franchise" else "."))
             if mins >= 24 * 60:
-                notes.append("24 ghante se zyada band: TRAI draft mein aise customers ko kiraye mein chhoot / validity badhane ki baat hai; "
-                             "apni policy ke hisaab se customers ko bataiye.")
+                notes.append("Down for more than 24 hours: the TRAI draft talks of a rent rebate / extended validity for such customers; "
+                             "tell the customers as per your own policy.")
         if f.kind in ("bng", "rogue_onu") and st.model == "franchise":
-            notes.append("Network suraksha / login ki dikkat: BSNL (licensee) ko batana zaroori ho sakta hai (Telecom Cyber Security Rules 2024: "
-                         "suraksha ghatna 6 ghante mein).")
+            notes.append("Network security / login problem: BSNL (the licensee) may have to be told (Telecom Cyber Security Rules 2024: "
+                         "a security incident within 6 hours).")
         loc = {}
         if site is not None:
             loc = {"site": site.name, "address": site.address, "maps": _maps(site.lat, site.lng, site.address), "power": site.power}
@@ -938,9 +938,9 @@ def fault_view(tenant: str, ref: str, full_phone: bool = False) -> dict:
         data = _j(f.data, {})
         suggest = []
         if f.kind in ("flap", "ont_offline") and one is not None and one.onu:
-            suggest.append({"action": "reboot_ont", "olt": f.olt_id, "pon": one.pon, "onu": one.onu, "why": "ONT restart se kabhi kabhi theek hota hai"})
+            suggest.append({"action": "reboot_ont", "olt": f.olt_id, "pon": one.pon, "onu": one.onu, "why": "restarting the ONT sometimes fixes it"})
         if f.kind == "storm":
-            suggest.append({"action": "pon_reset", "olt": f.olt_id, "pon": f.pon, "why": "loop wale customer ka port mile tab tak PON reset (sab ka net jaayega)"})
+            suggest.append({"action": "pon_reset", "olt": f.olt_id, "pon": f.pon, "why": "PON reset until the looping customer's port is found (everyone's internet will drop)"})
         return {
             "id": f.id, "number": f.number, "kind": f.kind, "title": meta["title"], "scope": f.scope, "olt_id": f.olt_id,
             "olt": olt.name if olt else "", "pon": f.pon, "target": target, "status": f.status, "status_label": STATUS_LABEL.get(f.status, f.status),
@@ -971,32 +971,32 @@ def fault_note(tenant: str, ref: str, text: str, actor: str = "owner") -> dict:
         f = _get_fault(s, tenant, ref)
         _note(f, R.scrub(text), actor_name(tenant, actor))
         fid = f.id
-    return {"fault": fault_view(tenant, fid), "say": "Note jod diya."}
+    return {"fault": fault_view(tenant, fid), "say": "Note added."}
 
 
 def dismiss(tenant: str, ref: str, reason: str = "", actor: str = "owner") -> dict:
     with session() as s:
         f = _get_fault(s, tenant, ref)
         f.status, f.resolved_at = "dismissed", clock()
-        _note(f, "Hataya: " + (R.scrub(reason) or "galat alarm"), actor_name(tenant, actor))
+        _note(f, "Removed: " + (R.scrub(reason) or "false alarm"), actor_name(tenant, actor))
         fid = f.id
     v = fault_view(tenant, fid)
-    _publish(tenant, "ispnoc_fault", {"fault": v, "say": f"{v['number']} hata diya."})
-    return {"fault": v, "say": f"{v['number']} hata diya."}
+    _publish(tenant, "ispnoc_fault", {"fault": v, "say": f"{v['number']} removed."})
+    return {"fault": v, "say": f"{v['number']} removed."}
 
 
 def resolve(tenant: str, ref: str, note: str = "", actor: str = "owner") -> dict:
     with session() as s:
         f = _get_fault(s, tenant, ref)
         f.status, f.resolved_at = "resolved", clock()
-        _note(f, "Theek kiya: " + (R.scrub(note) or "(note nahi)"), actor_name(tenant, actor))
+        _note(f, "Fixed: " + (R.scrub(note) or "(no note)"), actor_name(tenant, actor))
         for tk in s.scalars(select(IspnocTicket).where(IspnocTicket.fault_id == f.id, IspnocTicket.status.in_(TICKET_OPEN))).all():
             tk.status, tk.fixed_at = "fixed", clock()
-            _tlog(tk, "Fault theek mark hua.", actor_name(tenant, actor))
+            _tlog(tk, "Fault marked fixed.", actor_name(tenant, actor))
         fid = f.id
     v = fault_view(tenant, fid)
-    _publish(tenant, "ispnoc_fault", {"fault": v, "say": f"{v['number']} theek: {v['duration']}"})
-    return {"fault": v, "say": f"{v['number']} theek mark kiya ({v['duration']} band raha). Naye alarm aaye to Hoola phir khol dega."}
+    _publish(tenant, "ispnoc_fault", {"fault": v, "say": f"{v['number']} fixed: {v['duration']}"})
+    return {"fault": v, "say": f"{v['number']} marked fixed (down for{v['duration']}). If new alarms come, Hoola will open it again."}
 
 
 def customer_message(tenant: str, ref: str, restored: bool = False) -> dict:
@@ -1005,14 +1005,14 @@ def customer_message(tenant: str, ref: str, restored: bool = False) -> dict:
     st = settings(tenant)
     text = v["customer_msg"]
     if restored or v["status"] == "resolved":
-        text = f"Namaskar, {st['isp_name'] or '[ISP ka naam]'} ki taraf se: aapke area ki internet seva ab chalu hai. Abhi bhi dikkat ho to router band karke chalu kijiye ya humein bataiye."
+        text = f"Hello, from {st['isp_name'] or '[ISP name]'}: internet service in your area is working again. If you still have a problem, switch the router off and on, or tell us."
     phones = [a["phone"] for a in v["affected"] if a.get("phone")]
     blanks = re.findall(r"\[[^\]]+\]", text)
     return {"text": text, "phones": phones, "count": len(phones), "blanks": blanks,
             "wa_link": f"https://wa.me/?text={quote(text)}" if text else "",
-            "say": ("Message taiyaar" + (f"; {', '.join(blanks)} bharna baaki" if blanks else "") +
-                    f". {len(phones)} customer ke number hain; aap apne WhatsApp / SMS se bhejiye (Hoola khud nahi bhejta).") if text
-            else "Is dikkat ke liye customer ko message ki zaroorat nahi."}
+            "say": ("Message ready" + (f"; {', '.join(blanks)} still to be filled in" if blanks else "") +
+                    f". {len(phones)} customer numbers; you send it from your own WhatsApp / SMS (Hoola does not send it).") if text
+            else "No customer message is needed for this fault."}
 
 
 # ---------------------------------------------------------------- tickets
@@ -1022,7 +1022,7 @@ def _get_ticket(s, tenant: str, ref: str) -> IspnocTicket:
     if t is None or t.tenant_id != tenant:
         t = s.scalars(select(IspnocTicket).where(IspnocTicket.tenant_id == tenant, IspnocTicket.number == ref.upper())).first()
     if t is None:
-        raise NocError(f"Ticket {ref} nahi mila.")
+        raise NocError(f"Ticket {ref} not found.")
     return t
 
 
@@ -1042,10 +1042,10 @@ def _ticket_view(tenant: str, t: IspnocTicket, f: IspnocFault | None = None) -> 
 
 
 def _ticket_text(tenant: str, v: dict, team: str, eta: str, note: str, isp: str) -> str:
-    lines = [f"{isp or 'Network'} ticket: {v['title']} ({v['number']})", f"Kab se: {v['started']} ({v['duration']})",
+    lines = [f"{isp or 'Network'} ticket: {v['title']} ({v['number']})", f"Since: {v['started']} ({v['duration']})",
              f"OLT: {v['olt'] or '-'}" + (f", PON {v['pon']}" if v["pon"] else "") + (f", {v['target']}" if v["scope"] in ("splitter", "ont", "uplink") else ""),
-             f"Asar: {v['n_affected']} customer" + (f" / {v['n_total']}" if v["n_total"] and v["n_total"] != v["n_affected"] else ""),
-             "Kyun lagta hai: " + "; ".join(v["reasons"][:3])]
+             f"Affected: {v['n_affected']} customers" + (f" / {v['n_total']}" if v["n_total"] and v["n_total"] != v["n_affected"] else ""),
+             "Why it looks so: " + "; ".join(v["reasons"][:3])]
     loc = v["location"]
     if loc.get("site"):
         lines.append(f"Site: {loc['site']}, {loc.get('address') or ''} {loc.get('maps') or ''}".strip())
@@ -1063,7 +1063,7 @@ def _ticket_text(tenant: str, v: dict, team: str, eta: str, note: str, isp: str)
         lines.append(f"ETA: {eta}")
     if note:
         lines.append(f"Note: {note}")
-    lines.append("Kaam hone par isi number par 'theek' bhejiye. Device ka password message mein kabhi mat likhiye.")
+    lines.append("When the work is done, send 'fixed' on this number. Never write a device password in a message.")
     return "\n".join(lines)
 
 
@@ -1081,34 +1081,34 @@ def open_ticket(tenant: str, ref: str, team: str = "", assignee: str = "", phone
     if not assignee and people:
         assignee, phone = people[0]["name"], people[0]["phone"]
     if phone and not _phone(phone):
-        raise NocError("Mobile number 10 ankon ka hona chahiye.")
+        raise NocError("The mobile number must have 10 digits.")
     eta_dt = R.parse_when(eta, clock(), tz(tenant)) if eta else None
     eta_dt = eta_dt.astimezone(timezone.utc) if eta_dt else None
     if eta and eta_dt is None:
-        raise NocError("ETA samajh nahi aaya: '2 ghante', 'shaam 6 baje', '18:30' jaisa likhiye.")
+        raise NocError("Could not understand the ETA: write it like '2 hours', '6 pm', '18:30'.")
     with session() as s:
         f = _get_fault(s, tenant, v["id"])
         dupe = s.scalars(select(IspnocTicket).where(IspnocTicket.fault_id == f.id, IspnocTicket.team == team,
                                                     IspnocTicket.status.in_(TICKET_OPEN))).first()
         if dupe is not None:
-            return {"ticket": _ticket_view(tenant, dupe, f), "fault": v, "say": f"{dupe.number} pehle se khula hai ({R.TEAMS[team]})."}
+            return {"ticket": _ticket_view(tenant, dupe, f), "fault": v, "say": f"{dupe.number} is already open ({R.TEAMS[team]})."}
         sla_h = float(st["bsnl_sla_hours"]) if team == "bsnl" and st["bsnl_sla_hours"] else R.sla_for(f.kind, st["sla"])
         tk = IspnocTicket(tenant_id=tenant, number=_next(s, tenant, "ticket_seq", "N"), fault_id=f.id, team=team, assignee=assignee[:120],
                           phone=_phone(phone), status="assigned" if assignee else "open", eta=eta_dt, sla_hours=sla_h or None,
                           due_at=(_aware(f.started_at) + timedelta(hours=sla_h)) if sla_h else None, ext_ref=R.scrub(ext_ref)[:80],
                           raised_by=actor_name(tenant, actor))
         tk.text = _ticket_text(tenant, v, team, _local(tenant, eta_dt) if eta_dt else "", R.scrub(note), st["isp_name"])
-        _tlog(tk, f"Ticket bana ({R.TEAMS[team]}{', ' + assignee if assignee else ''})", actor_name(tenant, actor))
+        _tlog(tk, f"Ticket made ({R.TEAMS[team]}{', ' + assignee if assignee else ''})", actor_name(tenant, actor))
         s.add(tk)
         if f.status == "open":
             f.status = "ticketed"
         s.flush()
         out = _ticket_view(tenant, tk, f)
-    say = f"{out['number']} {out['team_label']} ke liye taiyaar" + (f" ({assignee})" if assignee else "") + \
-          (f", SLA {out['sla_hours']:g} ghante (due {out['due']})" if out["sla_hours"] else "") + \
-          ". WhatsApp / call button se aap bhejiye; Hoola khud nahi bhejta."
+    say = f"{out['number']} is ready for {out['team_label']}" + (f" ({assignee})" if assignee else "") + \
+          (f", SLA {out['sla_hours']:g} h (due {out['due']})" if out["sla_hours"] else "") + \
+          ". You send it with the WhatsApp / call button; Hoola does not send it."
     if team == "bsnl" and not st["bsnl_sla_hours"]:
-        say += " BSNL agreement ke SLA ghante Niyam mein daaliye, tab Hoola deri gin payega."
+        say += " Add the SLA hours of the BSNL agreement in Rules; then Hoola can count the delay."
     _publish(tenant, "ispnoc_ticket", {"ticket": out, "say": say}, conv)
     return {"ticket": out, "fault": fault_view(tenant, v["id"]), "say": say}
 
@@ -1129,7 +1129,7 @@ def update_ticket(tenant: str, ref: str, status: str = "", eta: str = "", note: 
         if eta:
             e = R.parse_when(eta, clock(), tz(tenant))
             if e is None:
-                raise NocError("ETA samajh nahi aaya: '2 ghante', 'shaam 6 baje', '18:30'.")
+                raise NocError("Could not understand the ETA: '2 hours', '6 pm', '18:30'.")
             tk.eta = e.astimezone(timezone.utc)
             told = _j(tk.told, {})
             told.pop("eta", None)
@@ -1141,7 +1141,7 @@ def update_ticket(tenant: str, ref: str, status: str = "", eta: str = "", note: 
                 tk.status = "assigned"
         if phone:
             if not _phone(phone):
-                raise NocError("Mobile number 10 ankon ka hona chahiye.")
+                raise NocError("The mobile number must have 10 digits.")
             tk.phone = _phone(phone)
         if ext_ref:
             tk.ext_ref = R.scrub(ext_ref)[:80]
@@ -1152,9 +1152,9 @@ def update_ticket(tenant: str, ref: str, status: str = "", eta: str = "", note: 
         still_open = f is not None and f.status in ("open", "ticketed")
     say = f"{out['number']}: {out['status']}" + (f", ETA {out['eta']}" if out["eta"] else "") + "."
     if status == "fixed" and still_open:
-        say += " Alarm abhi saaf nahi dikha: naye alarm paste kijiye (ya collector bhejega) to Hoola fault band karega; ya 'theek' mark kijiye."
+        say += " The alarm has not cleared yet: paste new alarms (or the collector will send them) and Hoola will close the fault; or mark it 'fixed'."
     if status == "fixed" and out["mttr_hours"] is not None:
-        say += f" MTTR {out['mttr_hours']:g} ghante" + (" (SLA se der)" if out["late"] else "") + "."
+        say += f" MTTR {out['mttr_hours']:g} h" + (" (past SLA)" if out["late"] else "") + "."
     _publish(tenant, "ispnoc_ticket", {"ticket": out, "say": say}, conv)
     return {"ticket": out, "say": say}
 
@@ -1171,8 +1171,8 @@ def tickets(tenant: str, status: str = "open", limit: int = 40) -> list[dict]:
 
 
 # ---------------------------------------------------------------- changes on live equipment (her Haan)
-CH_LABEL = {"waiting": "Aapki haan ka intezaar", "rejected": "Mana", "approved": "Haan: aap khud karengi", "queued": "Haan: collector karega",
-            "running": "Collector chala raha hai", "done": "Ho gaya", "failed": "Nahi hua", "expired": "Samay nikal gaya", "cancelled": "Radd"}
+CH_LABEL = {"waiting": "Waiting for your approval", "rejected": "Declined", "approved": "Approved: you will do it yourself", "queued": "Approved: the collector will do it",
+            "running": "The collector is running it", "done": "Done", "failed": "Failed", "expired": "Timed out", "cancelled": "Cancelled"}
 
 
 def _change_hash(c: IspnocChange, olt: IspnocOlt | None) -> str:
@@ -1187,7 +1187,7 @@ def _get_change(s, tenant: str, ref: str) -> IspnocChange:
     if c is None or c.tenant_id != tenant:
         c = s.scalars(select(IspnocChange).where(IspnocChange.tenant_id == tenant, IspnocChange.number == ref.upper())).first()
     if c is None:
-        raise NocError(f"Badlav {ref} nahi mila.")
+        raise NocError(f"Change {ref} not found.")
     return c
 
 
@@ -1200,18 +1200,18 @@ def _change_view(tenant: str, c: IspnocChange, olt: IspnocOlt | None, col: Ispno
             "status_label": CH_LABEL.get(c.status, c.status), "via": c.via, "created": _local(tenant, c.created_at),
             "decided": _local(tenant, c.decided_at), "done": _local(tenant, c.done_at), "output": c.output[-2000:],
             "asked_by": c.asked_by, "collector": col.name if col else "",
-            "warn": "" if c.verified else "Yeh commands aapke OLT ke manual / Telnet help se milaiye (is make ka CLI public nahi hai). Galat ho to 'Badlo' se theek karke phir haan kijiye.",
+            "warn": "" if c.verified else "Check these commands against your OLT's manual / Telnet help (the CLI of this make is not public). If wrong, correct them with 'Edit' and then approve again.",
             "steps": _manual_steps(olt, cmds, _j(c.rollback, [])) if c.status in ("approved", "waiting") else ""}
 
 
 def _manual_steps(olt: IspnocOlt | None, cmds: list[str], back: list[str]) -> str:
     if olt is None:
         return ""
-    s = f"1. Apne network se OLT {olt.name} ({olt.ip or 'IP'}) par Telnet / SSH / web CLI se login kijiye (password sirf aap jaanti hain).\n"
-    s += "2. Yeh lines ek-ek karke chalaiye:\n" + "\n".join(f"   {c}" for c in cmds)
+    s = f"1. From your own network, log in to OLT {olt.name} ({olt.ip or 'IP'}) over Telnet / SSH / web CLI (only you know the password).\n"
+    s += "2. Run these lines one by one:\n" + "\n".join(f"   {c}" for c in cmds)
     if back:
-        s += "\n3. Kuch galat ho to wapas (rollback):\n" + "\n".join(f"   {c}" for c in back)
-    s += "\n4. Phir yahan 'Ho gaya' dabaiye; Hoola agle alarm / Rx se jaanchega."
+        s += "\n3. If something goes wrong, roll back:\n" + "\n".join(f"   {c}" for c in back)
+    s += "\n4. Then press 'Done' here; Hoola will check from the next alarm / Rx."
     return s
 
 
@@ -1221,32 +1221,32 @@ def request_change(tenant: str, action: str, olt: str, pon: str = "", onu: str =
     if action not in R.CHANGE_ACTIONS:
         raise NocError("action = " + " | ".join(R.CHANGE_ACTIONS))
     if actor.startswith("customer:"):
-        raise NocError("Yeh graahak ke liye nahi.")
+        raise NocError("This is not available to customers.")
     with session() as s:
         o = _find_olt(s, tenant, olt)
         if o is None:
-            raise NocError("OLT batayiye (naam ya IP) jo Network list mein ho.")
+            raise NocError("Name an OLT (name or IP) that is in the Network list.")
         pon_n, onu_n = R.norm_pon(pon), re.sub(r"\D", "", str(onu or ""))
         if action in ("reboot_ont", "ont_disable", "ont_enable") and not (pon_n and onu_n):
-            raise NocError("ONT ke liye PON aur ONU number chahiye.")
+            raise NocError("An ONT needs the PON and ONU number.")
         if action == "pon_reset" and not pon_n:
-            raise NocError("PON port batayiye.")
+            raise NocError("Give the PON port.")
         if action == "uplink_reset" and not port:
-            raise NocError("Uplink port batayiye (jaise ge0/9).")
+            raise NocError("Give the uplink port (for example ge0/9).")
         if action == "custom" or commands:
             cmds = [str(c).strip() for c in (commands or []) if str(c).strip()][:40]
             back = [str(c).strip() for c in (rollback or []) if str(c).strip()][:40]
             if not cmds:
-                raise NocError("Apni command lines dijiye.")
+                raise NocError("Give your command lines.")
             verified = False
         else:
             t = R.commands_for(o.make, action, o.tech, pon_n, onu_n, port)
             cmds, back, verified = t["commands"], t["rollback"], t["verified"]
         probs = R.command_problems(cmds + back)
         if probs:
-            raise NocError("Yeh lines Hoola ke through nahi chalengi (password / erase / reload / firmware / copy): " + "; ".join(probs[:3]))
+            raise NocError("These lines will not run through Hoola (password / erase / reload / firmware / copy): " + "; ".join(probs[:3]))
         if any(R.has_secret(c) for c in cmds + back):
-            raise NocError("Command mein password / key nahi hona chahiye.")
+            raise NocError("A command must not contain a password / key.")
         if action in ("reboot_ont", "ont_disable", "ont_enable"):
             n = 1
         elif action == "pon_reset":
@@ -1267,7 +1267,7 @@ def request_change(tenant: str, action: str, olt: str, pon: str = "", onu: str =
                                                     IspnocChange.pon == pon_n, IspnocChange.onu == onu_n)).first()
         if same is not None and _j(same.commands, []) == cmds:
             col = s.get(IspnocCollector, o.collector_id) if o.collector_id else None
-            return {"change": _change_view(tenant, same, o, col), "needs_tap": True, "say": f"{same.number} pehle se aapki haan ke liye rakha hai."}
+            return {"change": _change_view(tenant, same, o, col), "needs_tap": True, "say": f"{same.number} is already waiting for your approval."}
         c = IspnocChange(tenant_id=tenant, number=_next(s, tenant, "change_seq", "C"), action=action, olt_id=o.id, pon=pon_n, onu=onu_n,
                          fault_id=fid, reason=R.scrub(reason)[:400], commands=_dump(cmds), rollback=_dump(back), verified=verified,
                          risk=R.risk_of(action, n), n_affected=n, status="waiting", asked_by=actor_name(tenant, actor))
@@ -1277,7 +1277,7 @@ def request_change(tenant: str, action: str, olt: str, pon: str = "", onu: str =
         col = s.get(IspnocCollector, o.collector_id) if o.collector_id else None
         out = _change_view(tenant, c, o, col)
     say = (f"{out['number']}: {out['action_label']} ({out['olt']}" + (f" PON {out['pon']}" if out["pon"] else "") + (f" ONU {out['onu']}" if out["onu"] else "")
-           + f"). Asar: {out['n_affected']} customer. Aapki haan ka card bheja hai; haan ke bina equipment par kuch nahi badlega.")
+           + f"). Affected: {out['n_affected']} customers. A card has been sent for your approval; nothing changes on the equipment without your approval.")
     _publish(tenant, "ispnoc_change", {"change": out, "say": say}, conv)
     return {"change": out, "needs_tap": True, "say": say}
 
@@ -1286,19 +1286,19 @@ def edit_change(tenant: str, ref: str, commands: list[str], rollback: list[str] 
     with session() as s:
         c = _get_change(s, tenant, ref)
         if c.status != "waiting":
-            raise NocError("Sirf intezaar wala badlav badal sakte hain.")
+            raise NocError("Only a change that is still waiting can be edited.")
         cmds = [str(x).strip() for x in commands if str(x).strip()][:40]
         back = [str(x).strip() for x in (rollback if rollback is not None else _j(c.rollback, [])) if str(x).strip()][:40]
         if not cmds:
-            raise NocError("Command lines khaali hain.")
+            raise NocError("The command lines are empty.")
         probs = R.command_problems(cmds + back)
         if probs or any(R.has_secret(x) for x in cmds + back):
-            raise NocError("Password / erase / reload / firmware / copy wali lines nahi chalengi.")
+            raise NocError("Lines with password / erase / reload / firmware / copy will not run.")
         c.commands, c.rollback, c.verified = _dump(cmds), _dump(back), False
         o = s.get(IspnocOlt, c.olt_id)
         c.hash = _change_hash(c, o)
         out = _change_view(tenant, c, o)
-    say = f"{out['number']} ki lines badli; naya card. Ab phir se haan chahiye."
+    say = f"{out['number']}: lines changed; new card. Your approval is needed again."
     _publish(tenant, "ispnoc_change", {"change": out, "say": say})
     return {"change": out, "needs_tap": True, "say": say}
 
@@ -1310,30 +1310,30 @@ def _collector_online(c: IspnocCollector | None) -> bool:
 def decide_change(tenant: str, ref: str, yes: bool, hash_: str, reason: str = "", by_tap: bool = False) -> dict:
     """ONLY from her tap (POST /api/ispnoc/changes/{id}/decide). The hash must be the card she saw."""
     if not by_tap:
-        raise NocError("Equipment ka badlav sirf aapke app mein haan dabane se hota hai.")
+        raise NocError("A change on equipment happens only when you press Yes in your app.")
     with session() as s:
         c = _get_change(s, tenant, ref)
         o = s.get(IspnocOlt, c.olt_id)
         if c.status != "waiting":
-            return {"change": _change_view(tenant, c, o), "say": f"{c.number} pehle hi tay ho chuka: {CH_LABEL.get(c.status, c.status)}."}
+            return {"change": _change_view(tenant, c, o), "say": f"{c.number} is already decided: {CH_LABEL.get(c.status, c.status)}."}
         if not hash_ or not hmac.compare_digest(str(hash_), c.hash) or c.hash != _change_hash(c, o):
-            raise NocError("Card purana hai (badlav badal gaya). Naya card dekhkar haan kijiye.")
+            raise NocError("The card is old (the change was edited). See the new card and approve it.")
         c.decided_at = clock()
         if not yes:
             c.status = "rejected"
             c.output = R.scrub(reason)[:400]
             out = _change_view(tenant, c, o)
-            say = f"{c.number}: mana. Kuch nahi badla."
+            say = f"{c.number}: declined. Nothing changed."
         else:
             col = s.get(IspnocCollector, o.collector_id) if o and o.collector_id else None
             if col is not None and col.changes_ok and _collector_online(col):
                 c.status, c.via = "queued", "collector"
-                say = f"{c.number}: haan. Collector '{col.name}' agle {JOB_TTL_MIN} minute mein bilkul yahi lines chalayega, nateeja yahan aayega."
+                say = f"{c.number}: approved. Collector '{col.name}' will run exactly these lines within {JOB_TTL_MIN} minutes; the result will come here."
             else:
                 c.status, c.via = "approved", "manual"
-                why = ("collector band hai" if col is not None and not _collector_online(col) else
-                       "collector ko badlav ki ijazat nahi" if col is not None else "is OLT par collector nahi")
-                say = f"{c.number}: haan. {why}, isliye steps diye hain: aap khud chalaiye, phir 'Ho gaya'."
+                why = ("The collector is offline" if col is not None and not _collector_online(col) else
+                       "The collector is not allowed to make changes" if col is not None else "This OLT has no collector")
+                say = f"{c.number}: approved. {why}, so the steps are given: run them yourself, then press 'Done'."
             out = _change_view(tenant, c, o, col)
     _publish(tenant, "ispnoc_change", {"change": out, "say": say})
     return {"change": out, "say": say}
@@ -1342,11 +1342,11 @@ def decide_change(tenant: str, ref: str, yes: bool, hash_: str, reason: str = ""
 def change_done(tenant: str, ref: str, ok: bool, output: str = "", actor: str = "owner") -> dict:
     """She ran an approved change herself."""
     if not is_owner(actor):
-        raise NocError("Yeh sirf owner mark kar sakti hain.")
+        raise NocError("Only the owner can mark this.")
     with session() as s:
         c = _get_change(s, tenant, ref)
         if c.status not in ("approved", "expired"):
-            raise NocError("Pehle card par haan chahiye (ya yeh collector se chal raha hai).")
+            raise NocError("Approval on the card is needed first (or it is running through the collector).")
         c.status, c.done_at, c.output = ("done" if ok else "failed"), clock(), R.scrub(output)[:4000]
         out = _change_view(tenant, c, s.get(IspnocOlt, c.olt_id))
     say = f"{out['number']}: {out['status_label']}."
@@ -1358,11 +1358,11 @@ def cancel_change(tenant: str, ref: str) -> dict:
     with session() as s:
         c = _get_change(s, tenant, ref)
         if c.status not in ("waiting", "approved", "queued"):
-            raise NocError("Yeh badlav ab radd nahi ho sakta.")
+            raise NocError("This change can no longer be cancelled.")
         c.status = "cancelled"
         out = _change_view(tenant, c, s.get(IspnocOlt, c.olt_id))
-    _publish(tenant, "ispnoc_change", {"change": out, "say": f"{out['number']} radd."})
-    return {"change": out, "say": f"{out['number']} radd."}
+    _publish(tenant, "ispnoc_change", {"change": out, "say": f"{out['number']} cancelled."})
+    return {"change": out, "say": f"{out['number']} cancelled."}
 
 
 def changes(tenant: str, status: str = "", limit: int = 40) -> list[dict]:
@@ -1382,7 +1382,7 @@ def optics_check(cls: str = "", km: float = 0, splits: list[int] | None = None, 
         out["measured_band"] = band
         gap = round(out["rx_expected"] - rx, 2)
         out["gap_db"] = gap
-        out["say"] += f" Naapa {rx} dBm ({band})" + (f": umeed se {gap} dB kam, connector saaf / splice / mod dekhiye." if gap >= 3 else ".")
+        out["say"] += f" Measured {rx} dBm ({band})" + (f": {gap} dB below expected; check connector cleaning / splice / bend." if gap >= 3 else ".")
     return out
 
 
@@ -1406,7 +1406,7 @@ def create_collector(tenant: str, name: str, site: str = "", changes_ok: bool = 
     import secrets as _s
     from ..bazar.security import vault
     if not str(name or "").strip():
-        raise NocError("Collector ka naam dijiye (jaise 'Akot POP box').")
+        raise NocError("Give the collector a name (for example 'Akot POP box').")
     secret = _s.token_urlsafe(32)
     with session() as s:
         st = _find_site(s, tenant, site) if site else None
@@ -1416,8 +1416,8 @@ def create_collector(tenant: str, name: str, site: str = "", changes_ok: bool = 
         s.flush()
         view = _collector_view(tenant, c)
     return {"collector": view, "secret": secret,
-            "say": "Collector bana. Secret sirf abhi dikh raha hai: apne POP / office ke computer par collector ki config mein daaliye. "
-                   "Device ke password usi computer par rahenge, Hoola ke paas nahi."}
+            "say": "Collector created. The secret is shown only now: put it in the collector's config on your POP / office computer. "
+                   "Device passwords stay on that computer, not with Hoola."}
 
 
 def _collector_view(tenant: str, c: IspnocCollector) -> dict:
@@ -1435,7 +1435,7 @@ def update_collector(tenant: str, cid: str, changes_ok: bool | None = None, olts
     with session() as s:
         c = s.get(IspnocCollector, cid)
         if c is None or c.tenant_id != tenant:
-            raise NocError("Collector nahi mila.")
+            raise NocError("Collector not found.")
         if changes_ok is not None:
             c.changes_ok = bool(changes_ok)
         if active is not None:
@@ -1449,7 +1449,7 @@ def update_collector(tenant: str, cid: str, changes_ok: bool | None = None, olts
                 if o is not None:
                     o.collector_id = c.id
         view = _collector_view(tenant, c)
-    return {"collector": view, "say": "Collector update ho gaya."}
+    return {"collector": view, "say": "Collector updated."}
 
 
 def verify_collector(cid: str, method: str, path: str, ts: str, sig: str, body: bytes, nonce: str = "") -> IspnocCollector:
@@ -1492,7 +1492,7 @@ def collector_push(c: IspnocCollector, body: dict) -> dict:
             row.last_info = _dump({k: str(v)[:200] for k, v in list(info.items())[:20]})
         olt_ids = [o.id for o in s.scalars(select(IspnocOlt).where(IspnocOlt.tenant_id == tenant, IspnocOlt.collector_id == c.id)).all()]
     if back:
-        _publish(tenant, "ispnoc_alert", {"say": f"Collector '{c.name}' wapas juda.", "kind": "collector_back"})
+        _publish(tenant, "ispnoc_alert", {"say": f"Collector '{c.name}' is connected again.", "kind": "collector_back"})
     total = {"read": 0, "new": [], "resolved": []}
     batches = []
     for b in (body.get("batches") or [])[:50]:
@@ -1545,7 +1545,7 @@ def collector_jobs(c: IspnocCollector) -> dict:
                 continue
             if ch.hash != _change_hash(ch, o):
                 ch.status = "failed"
-                ch.output = "Card ke baad badlav badal gaya; nahi chalaya."
+                ch.output = "The change was edited after the card; not run."
                 continue
             cmds = _j(ch.commands, [])
             ch.status = "running"
@@ -1584,15 +1584,15 @@ def day(tenant: str) -> dict:
     down = sum(f["n_affected"] for f in fs if f["kind"] not in ("rx_bad", "rx_high", "pon_degrade", "flap"))
     parts = []
     if fs:
-        parts.append(f"{len(fs)} khuli dikkat ({down} customer band)")
+        parts.append(f"{len(fs)} open faults ({down} customers down)")
     if late:
-        parts.append(f"{len(late)} ticket SLA se der")
+        parts.append(f"{len(late)} tickets past SLA")
     if ch:
-        parts.append(f"{len(ch)} badlav aapki haan ke liye")
+        parts.append(f"{len(ch)} changes waiting for your approval")
     if off:
-        parts.append(f"{len(off)} collector band")
+        parts.append(f"{len(off)} collectors offline")
     return {"faults": fs, "tickets": tks, "late": late, "waiting_haan": ch, "collectors": cols, "customers_down": down,
-            "say": ("Network: " + ", ".join(parts) + ".") if parts else "Network: koi khuli dikkat nahi."}
+            "say": ("Network: " + ", ".join(parts) + ".") if parts else "Network: no open faults."}
 
 
 def report(tenant: str, days: int = 30) -> dict:
@@ -1648,15 +1648,15 @@ def report(tenant: str, days: int = 30) -> dict:
     mttr = round(sum(t["mttr_hours"] * t["fixed"] for t in all_fixed) / max(1, sum(t["fixed"] for t in all_fixed)), 2) if all_fixed else None
     tips = []
     if top and top[0][1] >= 3:
-        tips.append(f"{top[0][0]} par {top[0][1]} baar dikkat: us route / splitter ki ek baar poori jaanch karwaiye.")
+        tips.append(f"{top[0][0]}: {top[0][1]} faults: get that route / splitter checked fully once.")
     if mttr is not None and mttr > 10:
-        tips.append(f"Theek karne ka ausat {mttr:g} ghante: TRAI draft 10 ghante ka hai; spare patch cord / splicer team ke paas rakhiye.")
+        tips.append(f"Average time to fix is {mttr:g} h: the TRAI draft says 10 hours; keep spare patch cords / a splicer with the team.")
     availability = None
     if subs:
         availability = round(100 - 100 * cust_min / (subs * days * 24 * 60), 3)
     return {"days": days, "faults": sum(k["count"] for k in kinds), "by_kind": kinds, "teams": teams, "top_pons": [{"pon": p, "count": c} for p, c in top],
             "mttr_hours": mttr, "customer_minutes_down": cust_min, "subscribers": subs, "availability_pct": availability, "tips": tips,
-            "say": f"{days} din: {sum(k['count'] for k in kinds)} dikkat" + (f", ausat {mttr:g} ghante mein theek" if mttr is not None else "")
+            "say": f"{days} days: {sum(k['count'] for k in kinds)} faults" + (f", fixed in {mttr:g} h on average" if mttr is not None else "")
                    + (f", service {availability}% chali" if availability is not None else "") + "."}
 
 
@@ -1680,9 +1680,9 @@ def send_morning(tenant: str) -> dict:
     d = day(tenant)
     lines = [d["say"]]
     for f in d["faults"][:6]:
-        lines.append(f"- {f['number']} {f['title']}: {f['n_affected']} customer, {f['duration']}" + (" (ticket)" if f["tickets"] else " (ticket nahi)"))
+        lines.append(f"- {f['number']} {f['title']}: {f['n_affected']} customers, {f['duration']}" + (" (ticket)" if f["tickets"] else " (no ticket)"))
     for t in d["late"][:5]:
-        lines.append(f"- {t['number']} {t['team_label']} der se (due {t['due']})")
+        lines.append(f"- {t['number']} {t['team_label']} late (due {t['due']})")
     text = "NOC: " + "\n".join(lines)
     _publish(tenant, "ispnoc_day", {"say": d["say"], "text": text, "faults": len(d["faults"]), "late": len(d["late"]),
                                    "waiting": len(d["waiting_haan"])})
@@ -1702,15 +1702,15 @@ def tick(when: datetime | None = None) -> dict:
                 for c in s.scalars(select(IspnocCollector).where(IspnocCollector.tenant_id == tenant, IspnocCollector.active.is_(True))).all():
                     if c.last_seen and t_now - _aware(c.last_seen) > timedelta(minutes=COLLECTOR_OFFLINE_MIN) and not c.offline_told:
                         c.offline_told = True
-                        alerts.append(f"Collector '{c.name}' {COLLECTOR_OFFLINE_MIN} minute se chup hai: us POP ki bijli / net / computer dekhiye "
-                                      "(ho sakta hai wahan ki dikkat ki khabar Hoola tak na pahunch rahi ho).")
+                        alerts.append(f"Collector '{c.name}' has been silent for {COLLECTOR_OFFLINE_MIN} minutes: check power / internet / the computer at that POP "
+                                      "(news of a fault there may not be reaching Hoola).")
                         out["collectors"] += 1
                 for tk in s.scalars(select(IspnocTicket).where(IspnocTicket.tenant_id == tenant, IspnocTicket.status.in_(TICKET_OPEN))).all():
                     if tk.due_at and t_now > _aware(tk.due_at) and not _told(tk, "sla"):
-                        alerts.append(f"{tk.number} ({R.TEAMS.get(tk.team, tk.team)}) SLA {tk.sla_hours:g} ghante se der ho gayi.")
+                        alerts.append(f"{tk.number} ({R.TEAMS.get(tk.team, tk.team)}) is past its SLA of {tk.sla_hours:g} h.")
                         out["sla"] += 1
                     if tk.eta and t_now > _aware(tk.eta) + timedelta(minutes=15) and not _told(tk, "eta"):
-                        alerts.append(f"{tk.number}: ETA {_local(tenant, tk.eta)} nikal gaya; {tk.assignee or 'team'} se naya samay poochhiye.")
+                        alerts.append(f"{tk.number}: ETA {_local(tenant, tk.eta)} has passed; ask {tk.assignee or 'the team'} for a new time.")
                         out["eta"] += 1
                 subs = len(s.scalars(select(IspnocOnt.id).where(IspnocOnt.tenant_id == tenant, IspnocOnt.active.is_(True))).all())
                 for f in s.scalars(select(IspnocFault).where(IspnocFault.tenant_id == tenant, IspnocFault.status.in_(("open", "ticketed")))).all():
@@ -1718,17 +1718,17 @@ def tick(when: datetime | None = None) -> dict:
                     if f.kind in ("rx_bad", "rx_high", "pon_degrade", "flap"):
                         continue
                     if subs and mins >= 240 and f.n_affected / subs >= 0.10 and not _told(f, "sno"):
-                        alerts.append(f"{f.number}: {f.n_affected} / {subs} customer 4 ghante se band. Bada outage: "
-                                      + ("BSNL ko turant bataiye; " if st.model == "franchise" else "")
-                                      + "TRAI draft (Aug 2026) aise outage ki 24 ghante mein report ki baat karta hai.")
+                        alerts.append(f"{f.number}: {f.n_affected} / {subs} customers down for 4 hours. Major outage: "
+                                      + ("tell BSNL at once; " if st.model == "franchise" else "")
+                                      + "the TRAI draft (Aug 2026) talks of reporting such an outage within 24 hours.")
                         out["sno"] += 1
                     if mins >= 24 * 60 and f.n_affected and not _told(f, "day"):
-                        alerts.append(f"{f.number}: 24 ghante se zyada band ({f.n_affected} customer). Customers ko bataiye aur chhoot ki apni policy dekhiye.")
+                        alerts.append(f"{f.number}: down for more than 24 hours ({f.n_affected} customers). Tell the customers and check your own rebate policy.")
                         out["sno"] += 1
                 for ch in s.scalars(select(IspnocChange).where(IspnocChange.tenant_id == tenant, IspnocChange.status.in_(("queued", "running")))).all():
                     if ch.decided_at and t_now - _aware(ch.decided_at) > timedelta(minutes=JOB_TTL_MIN if ch.status == "queued" else 2 * JOB_TTL_MIN):
                         ch.status = "expired"
-                        alerts.append(f"{ch.number}: collector ne {JOB_TTL_MIN} minute mein nahi chalaya, radd. Zaroorat ho to naya card banaiye.")
+                        alerts.append(f"{ch.number}: the collector did not run it within {JOB_TTL_MIN} minutes; cancelled. Create a new card if needed.")
                         out["expired"] += 1
                 s.execute(delete(IspnocEvent).where(IspnocEvent.tenant_id == tenant, IspnocEvent.at < t_now - timedelta(days=KEEP_DAYS)))
                 morning, last = st.morning_time, st.last_morning

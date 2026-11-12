@@ -70,7 +70,7 @@ def _hits(text: str, words: tuple[str, ...]) -> int:
 def coverage(scenes: list[dict[str, Any]], script_text: str = "", runtime_target_s: int | None = None) -> dict[str, Any]:
     n = len(scenes)
     if not n:
-        return {"scenes": 0, "note": "Pehle script (scenes) chahiye.", "flags": [], "kind_note": NOTE}
+        return {"scenes": 0, "note": "A script (scenes) is needed first.", "flags": [], "kind_note": NOTE}
     total_s = sum(int(s.get("seconds") or 0) for s in scenes)
     rows, chars = [], {}
     for sc in scenes:
@@ -111,36 +111,36 @@ def coverage(scenes: list[dict[str, Any]], script_text: str = "", runtime_target
     night = sum(1 for s in scenes if s.get("time") == "night")
     longest = max(rows, key=lambda r: r["seconds"])
     if total_s and longest["seconds"] / total_s > ONE_SCENE_SHARE and n > 3:
-        flag("measured", f"Scene {longest['n']} akeli film ka {round(100 * longest['seconds'] / total_s)}% hai ({longest['seconds']} s): "
-                         "kya yeh ek hi baithak mein shoot hoga?")
+        flag("measured", f"Scene {longest['n']} alone is {round(100 * longest['seconds'] / total_s)}% of the film ({longest['seconds']} s): "
+                         "will it be shot in one sitting?")
     missing_head = [r["n"] for r in rows if not r["time"] or not r["int_ext"]]
     if missing_head:
-        flag("measured", f"Scene {', '.join(map(str, missing_head[:12]))}: heading mein INT/EXT ya din/raat nahi likha: "
-                         "schedule ke liye yeh chahiye.")
+        flag("measured", f"Scene {', '.join(map(str, missing_head[:12]))}: the heading does not say INT/EXT or day/night: "
+                         "the schedule needs this.")
     if runtime_target_s and total_s:
         diff = total_s - int(runtime_target_s)
         if abs(diff) > 0.15 * int(runtime_target_s):
-            flag("measured", f"Anumaanit samay {total_s} s hai, aapka target {runtime_target_s} s ({diff:+d} s).")
+            flag("measured", f"Estimated time {total_s} s, your target {runtime_target_s} s ({diff:+d} s).")
     for c in cast:
         if c["lines"] == 1 and c["scenes_n"] <= 1:
-            flag("measured", f"{c['name']}: sirf ek line, ek scene: kya yeh kirdaar kisi aur ke saath mil sakta hai?")
+            flag("measured", f"{c['name']}: only one line, one scene: could this character be merged with another?")
         if c["lines"] == 0 and c["scenes_n"] >= 1:
-            flag("measured", f"{c['name']}: scene mein hai par bolta kuch nahi: jaan-boojh kar hai?")
+            flag("measured", f"{c['name']}: is in the scene but says nothing: is that on purpose?")
         if c["longest_speech_words"] > LONG_SPEECH_WORDS:
-            flag("measured", f"{c['name']}: ek speech {c['longest_speech_words']} shabdon ki hai (>{LONG_SPEECH_WORDS}): "
-                             "kaat sakte hain ya tod sakte hain?")
+            flag("measured", f"{c['name']}: one speech is {c['longest_speech_words']} words long (>{LONG_SPEECH_WORDS}): "
+                             "can it be cut or split?")
     names = [c["name"] for c in cast]
     seen: set[tuple[str, str]] = set()
     for i, a in enumerate(names):
         for b in names[i + 1:]:
             if _close(_norm(a), _norm(b)) and (a, b) not in seen:
                 seen.add((a, b))
-                flag("heuristic", f"'{a}' aur '{b}' ek hi kirdaar ho sakte hain (spelling alag): ek naam rakhiye warna cast do ginega.")
+                flag("heuristic", f"'{a}' and '{b}' may be the same character (different spelling): keep one name or the cast count will show two.")
     talky = 0
     for r in rows:
         talky = talky + 1 if r["dialogue_share"] >= 0.9 and r["dialogue_lines"] >= 3 else 0
         if talky == 3:
-            flag("heuristic", f"Scene {r['n'] - 2}-{r['n']}: teen scene lagataar sirf baatein: kya beech mein koi action / drishya chahiye?")
+            flag("heuristic", f"Scene {r['n'] - 2}-{r['n']}: three scenes in a row of only talk: does it need some action / a visual in between?")
     unf = []
     for sc in scenes:
         for a in sc.get("action") or []:
@@ -149,8 +149,8 @@ def coverage(scenes: list[dict[str, Any]], script_text: str = "", runtime_target
                 unf.append(f"scene {sc['n']}")
                 break
     if unf:
-        flag("heuristic", f"{', '.join(unf[:8])}: action line mein soch / ehsaas jaisa shabd hai jo camera nahi dikha sakta: "
-                          "use kiya jaa sakne wale drishya mein badliye.")
+        flag("heuristic", f"{', '.join(unf[:8])}: the action line has a thought / feeling word the camera cannot show: "
+                          "change it into something that can be seen.")
     pos, acc = {}, 0
     for r in rows:
         acc += r["seconds"]
@@ -169,16 +169,16 @@ def coverage(scenes: list[dict[str, Any]], script_text: str = "", runtime_target
         "dialogue_words": all_dw, "dialogue_pct": round(100.0 * all_dw / max(1, sum(r["dialogue_words"] + r["action_words"] for r in rows)), 1),
         "characters_n": len(cast), "places_n": uniq_places, "company_moves": moves, "night_scenes": night,
         "night_pct": round(100.0 * night / n, 1), "avg_scene_s": round(total_s / n, 1),
-        "most_dialogue": lead, "most_dialogue_note": "sabse zyada bolne wala (shabdon se), zaroori nahi ki hero ho." if lead else "",
+        "most_dialogue": lead, "most_dialogue_note": "speaks the most (by word count); not necessarily the hero." if lead else "",
         "quarter_marks": {f"{p}%": f"scene {s}" for p, s in pos.items()},
-        "script_marks_note": "Yeh sirf samay ke hisaab se ginti hai: aapke apne mod (act breaks) kahani se tay hote hain.",
+        "script_marks_note": "This is only a count by time: your own turning points (act breaks) are decided by the story.",
         "script_language": {"devanagari_letters": dev, "latin_letters": lat,
-                            "note": "Subtitle / dub plan ke liye; mishrit (Hinglish) script ho sakti hai."},
+                            "note": "For the subtitle / dub plan; the script may be mixed (Hinglish)."},
         "theme_hits": theme_hits,
-        "theme_note": "Yeh sirf shabd-ginti hai, rating nahi. Rating aap aur board tay karte hain (action=rating).",
+        "theme_note": "This is only a word count, not a rating. You and the board decide the rating (action=rating).",
         "scene_table": rows, "cast_table": cast, "flags": flags, "kind_note": NOTE,
     }
 
 
-NOTE = ("Yeh coverage ginti aur shabd-suchi se bani hai. 'Pass / consider / recommend' jaisa faisla kisi padhne wale insaan ka hai: "
-        "yahan kuch bhi woh nahi kehta. 'heuristic' wali line sirf ek ishara hai.")
+NOTE = ("This coverage is made from counts and word lists. A verdict like 'Pass / consider / recommend' belongs to a human reader: "
+        "nothing here says that. A 'heuristic' line is only a hint.")

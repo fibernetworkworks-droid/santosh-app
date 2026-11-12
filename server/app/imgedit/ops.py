@@ -28,13 +28,13 @@ def load(data: bytes) -> Image.Image:
         im = Image.open(io.BytesIO(data))
         w, h = im.size
         if w * h > MAX_IN_PIXELS:
-            raise EditError(f"Photo bahut badi hai ({w}x{h}); {MAX_IN_PIXELS // 1_000_000} megapixel tak chalti hai.")
+            raise EditError(f"The photo is too large ({w}x{h}); up to {MAX_IN_PIXELS // 1_000_000} megapixels work.")
         im = ImageOps.exif_transpose(im)
         im.load()
     except EditError:
         raise
     except Exception:
-        raise EditError("Yeh file photo nahi lagti; JPG / PNG / WEBP / GIF photo bhejiye.") from None
+        raise EditError("This file does not look like a photo; send a JPG / PNG / WEBP / GIF photo.") from None
     if im.mode in ("P", "LA", "PA"):
         im = im.convert("RGBA")
     elif im.mode not in ("RGB", "RGBA", "L"):
@@ -58,7 +58,7 @@ def encode(im: Image.Image, fmt: str = "", quality: int = 92, target_kb: float |
     """Re-encode (this alone drops EXIF / GPS). fmt png|jpg|webp, '' = png when there is transparency else jpg."""
     f = (fmt or "").lower().replace("jpeg", "jpg")
     if f not in ("png", "jpg", "webp", ""):
-        raise EditError("Format png, jpg ya webp mein se chuniye.")
+        raise EditError("Choose the format from png, jpg or webp.")
     if not f:
         f = "png" if _has_alpha(im) else "jpg"
     quality = int(max(20, min(100, quality)))
@@ -77,7 +77,7 @@ def encode(im: Image.Image, fmt: str = "", quality: int = 92, target_kb: float |
         return once(im, quality), f
     limit = int(float(target_kb) * 1024)
     if limit < 2048:
-        raise EditError("Target size 2 KB se bada rakhiye.")
+        raise EditError("Keep the target size above 2 KB.")
     cur = im
     best = b""
     for _ in range(14):                      # lower quality first, then shrink, until it fits
@@ -93,8 +93,8 @@ def encode(im: Image.Image, fmt: str = "", quality: int = 92, target_kb: float |
         if min(w, h) <= 160:
             break
         cur = cur.resize((max(1, int(w * 0.85)), max(1, int(h * 0.85))), Image.LANCZOS)
-    raise EditError(f"{target_kb:g} KB mein yeh photo nahi aa rahi (sabse chhota {len(best) // 1024} KB bana). "
-                    "Bada target rakhiye ya photo ka size ghataiye.")
+    raise EditError(f"{target_kb:g} KB: this photo cannot fit in that (the smallest made was {len(best) // 1024} KB). "
+                    "Set a bigger target or reduce the photo size.")
 
 
 # --------------------------------------------------------------------------- small helpers
@@ -105,34 +105,34 @@ def _rgb(c: Any, default: str = "white") -> tuple[int, int, int]:
     try:
         return ImageColor.getrgb(s)[:3]
     except ValueError:
-        raise EditError(f"Rang '{s}' samajh nahi aaya (jaise white, black, #ff8800).") from None
+        raise EditError(f"Could not understand the colour '{s}' (for example white, black, #ff8800).") from None
 
 
 def _num(v: Any, name: str, lo: float, hi: float, default: float | None = None) -> float:
     if v is None or v == "":
         if default is None:
-            raise EditError(f"{name} chahiye.")
+            raise EditError(f"{name} is needed.")
         return default
     try:
         x = float(v)
     except (TypeError, ValueError):
-        raise EditError(f"{name} ek number hona chahiye.") from None
+        raise EditError(f"{name} must be a number.") from None
     if math.isnan(x) or x < lo or x > hi:
-        raise EditError(f"{name} {lo:g} se {hi:g} ke beech rakhiye.")
+        raise EditError(f"{name} must be between {lo:g} and {hi:g}.")
     return x
 
 
 def _check_size(w: int, h: int) -> None:
     if w < 1 or h < 1:
-        raise EditError("Size 1 pixel se chhota nahi ho sakta.")
+        raise EditError("The size cannot be smaller than 1 pixel.")
     if max(w, h) > MAX_SIDE:
-        raise EditError(f"Ek side {MAX_SIDE} pixel se zyada nahi ho sakti.")
+        raise EditError(f"A side cannot be more than {MAX_SIDE} pixels.")
 
 
 def _aspect(s: Any) -> float:
     m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*[:x/]\s*(\d+(?:\.\d+)?)\s*", str(s or ""))
     if not m or float(m.group(2)) == 0 or float(m.group(1)) == 0:
-        raise EditError("Aspect 4:5, 1:1, 16:9 jaise likhiye.")
+        raise EditError("Write the aspect like 4:5, 1:1, 16:9.")
     return float(m.group(1)) / float(m.group(2))
 
 
@@ -153,7 +153,7 @@ def op_resize(im, width=None, height=None, percent=None, preset=None, fit=None, 
     if preset:
         p = PRESETS.get(str(preset).lower())
         if not p:
-            raise EditError("Preset ye hain: " + ", ".join(sorted(PRESETS)))
+            raise EditError("The presets are: " + ", ".join(sorted(PRESETS)))
         width, height = p
         if fit is None:                     # a feed picture fills its frame; a print / listing size keeps the whole photo
             fit = "cover" if str(preset).lower() in ("insta_post", "insta_square", "story", "reel_cover", "status",
@@ -166,7 +166,7 @@ def op_resize(im, width=None, height=None, percent=None, preset=None, fit=None, 
     elif height and not width:
         height = int(_num(height, "height", 1, MAX_SIDE)); width = max(1, round(w0 * height / h0))
     elif not (width and height):
-        raise EditError("width, height, percent ya preset mein se kuch bataiye.")
+        raise EditError("Give one of width, height, percent or preset.")
     width, height = int(width), int(height)
     _check_size(width, height)
     fit = str(fit or "contain").lower()
@@ -177,7 +177,7 @@ def op_resize(im, width=None, height=None, percent=None, preset=None, fit=None, 
     if fit == "inside":
         c = im.copy(); c.thumbnail((width, height), Image.LANCZOS); return c
     if fit != "contain":
-        raise EditError("fit: contain, cover, inside ya stretch.")
+        raise EditError("fit: contain, cover, inside or stretch.")
     c = im.copy(); c.thumbnail((width, height), Image.LANCZOS)
     if c.size == (width, height):
         return c
@@ -195,14 +195,14 @@ def op_crop(im, box=None, aspect=None, gravity="center", **_):
     w, h = im.size
     if box:
         if not (isinstance(box, (list, tuple)) and len(box) == 4):
-            raise EditError("box [left, top, right, bottom] hona chahiye.")
+            raise EditError("box must be [left, top, right, bottom].")
         v = [float(x) for x in box]
         if all(0 <= x <= 1 for x in v):
             v = [v[0] * w, v[1] * h, v[2] * w, v[3] * h]
         l, t, r, b = (int(round(x)) for x in v)
         l, t, r, b = max(0, l), max(0, t), min(w, r), min(h, b)
         if r - l < 2 or b - t < 2:
-            raise EditError("Crop box khaali hai ya photo ke bahar hai.")
+            raise EditError("The crop box is empty or outside the photo.")
         return im.crop((l, t, r, b))
     if aspect:
         a = _aspect(aspect)
@@ -213,7 +213,7 @@ def op_crop(im, box=None, aspect=None, gravity="center", **_):
             cw, ch = w, round(w / a)
         l = round((w - cw) * gx); t = round((h - ch) * gy)
         return im.crop((l, t, l + cw, t + ch))
-    raise EditError("crop ke liye box ya aspect bataiye.")
+    raise EditError("For crop, give a box or an aspect.")
 
 
 def op_rotate(im, degrees=90, expand=True, fill="white", **_):
@@ -235,7 +235,7 @@ def op_flip(im, direction="h", **_):
         return ImageOps.mirror(im)
     if d in ("v", "vertical"):
         return ImageOps.flip(im)
-    raise EditError("direction: h ya v.")
+    raise EditError("direction: h or v.")
 
 
 def _scale_rgb(im, fn):
@@ -352,20 +352,20 @@ def op_filter(im, name="grayscale", amount=None, **_):
 def op_redact(im, regions=None, mode="blur", strength=None, **_):
     """regions = [[l,t,r,b], ...] (0-1 fractions of the photo, or pixels). Privacy cover: blur / pixelate / black."""
     if not regions or not isinstance(regions, (list, tuple)):
-        raise EditError("regions [[left, top, right, bottom], ...] bataiye - kaun si jagah chhupani hai.")
+        raise EditError("Give regions [[left, top, right, bottom], ...] - which places to hide.")
     if len(regions) > 40:
-        raise EditError("Ek baar mein 40 jagah tak.")
+        raise EditError("Up to 40 places at a time.")
     out = im.convert("RGBA") if im.mode != "RGBA" else im.copy()
     w, h = out.size
     for r in regions:
         if not (isinstance(r, (list, tuple)) and len(r) == 4):
-            raise EditError("Har region [left, top, right, bottom] hona chahiye.")
+            raise EditError("Every region must be [left, top, right, bottom].")
         v = [float(x) for x in r]
         if all(0 <= x <= 1 for x in v):
             v = [v[0] * w, v[1] * h, v[2] * w, v[3] * h]
         l, t, rr, b = max(0, int(v[0])), max(0, int(v[1])), min(w, int(v[2])), min(h, int(v[3]))
         if rr - l < 2 or b - t < 2:
-            raise EditError("Ek region photo ke bahar hai ya khaali hai.")
+            raise EditError("A region is outside the photo or empty.")
         patch = out.crop((l, t, rr, b))
         m = str(mode or "blur").lower()
         if m == "black":
@@ -377,7 +377,7 @@ def op_redact(im, regions=None, mode="blur", strength=None, **_):
             rad = _num(strength, "strength", 2, 80, max(10, min(patch.size) // 4))
             patch = patch.filter(ImageFilter.GaussianBlur(radius=rad))
         else:
-            raise EditError("mode: blur, pixelate ya black.")
+            raise EditError("mode: blur, pixelate or black.")
         out.paste(patch, (l, t))
     return out if im.mode == "RGBA" else out.convert(im.mode if im.mode in ("RGB", "L") else "RGB")
 
@@ -487,9 +487,9 @@ def op_text(im, text="", position="bottom-right", size_pct=5, color="white", opa
     """Text over the photo (a caption, a price, a watermark with her OWN name). position: a corner / edge / center."""
     t = str(text or "").strip()
     if not t:
-        raise EditError("text likhiye.")
+        raise EditError("Write the text.")
     if len(t) > 140:
-        raise EditError("Text 140 akshar tak.")
+        raise EditError("Text up to 140 characters.")
     base = im.convert("RGBA")
     w, h = base.size
     px = max(8, round(min(w, h) * _num(size_pct, "size_pct", 1, 40) / 100))
@@ -555,13 +555,13 @@ OPS: dict[str, Callable[..., Image.Image]] = {
 def run(im: Image.Image, steps: list[dict]) -> tuple[Image.Image, list[dict]]:
     """Run the local steps in order. Returns the image and one report row per step."""
     if len(steps) > MAX_STEPS:
-        raise EditError(f"Ek baar mein {MAX_STEPS} steps tak.")
+        raise EditError(f"Up to {MAX_STEPS} steps at a time.")
     rep = []
     for i, st in enumerate(steps, 1):
         name = str((st or {}).get("op") or "").lower()
         fn = OPS.get(name)
         if fn is None:
-            raise EditError(f"Step {i}: '{name}' local op nahi hai. Local ops: " + ", ".join(sorted(OPS)))
+            raise EditError(f"Step {i}: '{name}' is not a local op. Local ops: " + ", ".join(sorted(OPS)))
         before = im.size
         params = {k: v for k, v in st.items() if k != "op"}
         try:
@@ -569,7 +569,7 @@ def run(im: Image.Image, steps: list[dict]) -> tuple[Image.Image, list[dict]]:
         except EditError as e:
             raise EditError(f"Step {i} ({name}): {e}") from None
         except TypeError as e:
-            raise EditError(f"Step {i} ({name}): galat parameter ({e}).") from None
+            raise EditError(f"Step {i} ({name}): wrong parameter ({e}).") from None
         rep.append({"op": name, "from": f"{before[0]}x{before[1]}", "to": f"{im.width}x{im.height}"})
     return im, rep
 
@@ -577,7 +577,7 @@ def run(im: Image.Image, steps: list[dict]) -> tuple[Image.Image, list[dict]]:
 def collage(images: list[Image.Image], cols: int = 0, gap: int = 12, bg: str = "white", cell: int = 800) -> Image.Image:
     n = len(images)
     if not 2 <= n <= 20:
-        raise EditError("Collage ke liye 2 se 20 photo chahiye.")
+        raise EditError("A collage needs 2 to 20 photos.")
     cols = int(cols) or math.ceil(math.sqrt(n))
     cols = max(1, min(cols, n))
     rows = math.ceil(n / cols)

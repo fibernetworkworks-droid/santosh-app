@@ -72,19 +72,19 @@ def check_words(words: str, op: str, filename: str = "") -> str:
     from .. import photogen
     w = " ".join(str(words or "").split())
     if op in GENERATIVE and op in NEEDS_WHAT and not w:
-        return "Kya badalna hai, ek line mein bataiye."
+        return "Say in one line what should change."
     if op in GENERATIVE:
         why = photogen.problem(w or op, edit=True)
         if why:
             return why
         if _WATERMARK.search(w):
-            return ("Watermark, copyright mark, photographer ka naam ya signature hatana Hoola nahi karta - woh doosre ki "
-                    "mehnat hai. Apni photo ho to original bina-watermark file bhejiye.")
+            return ("Hoola does not remove a watermark, copyright mark, photographer's name or signature - that is someone else's "
+                    "work. If the photo is yours, send the original file without the watermark.")
         if filename and _DOC_NAME.search(filename):
-            return ("Yeh kisi sarkari / bank / marks ke kaagaz ki photo lagti hai; AI se uska andar ka likha hua badalna "
-                    "Hoola nahi karta (nakli kaagaz ban sakta hai). Sirf size / crop / compress jaise badlav ho sakte hain.")
+            return ("This looks like a photo of a government / bank / marks document; Hoola does not use AI to change what is written "
+                    "inside it (it could make a fake document). Only changes like size / crop / compress are possible.")
         if _BODY.search(w) and _MINOR.search(w):
-            return "Bachchon ki tasveer mein aise badlav Hoola nahi karta."
+            return "Hoola does not make such changes to pictures of children."
     elif w:
         why = photogen.problem(w, edit=True)
         if why:
@@ -128,15 +128,15 @@ def plan(op: str) -> list[dict]:
     rows: list[dict] = []
     if op == "remove_bg":
         rows.append({"engine": "rembg", "id": "rembg", "ready": _rembg_ok(),
-                     "why": "" if _rembg_ok() else "rembg package server par nahi hai"})
+                     "why": "" if _rembg_ok() else "the rembg package is not on the server"})
     if op in GENERATIVE:
         rows.append({"engine": "gemini", "id": "photogen", "ready": _gemini_ok(),
-                     "why": "" if _gemini_ok() else "GEMINI_API_KEY server par nahi hai"})
+                     "why": "" if _gemini_ok() else "GEMINI_API_KEY is not on the server"})
     for m in _zoo_candidates(op):
         ok = zoo.ready_for(m)
         gw = zoo.gateway_of(m)
         rows.append({"engine": "zoo", "id": m["id"], "name": m.get("name"), "gateway": gw, "ready": bool(ok),
-                     "why": "" if ok else ("ZOO_KIE_KEY" if gw == "kie" else "ZOO_MUAPI_KEY") + " server par nahi hai"})
+                     "why": "" if ok else ("ZOO_KIE_KEY" if gw == "kie" else "ZOO_MUAPI_KEY") + " is not on the server"})
     return rows
 
 
@@ -185,7 +185,7 @@ async def _fetch(url: str, limit: int = 30_000_000) -> bytes:
         if r.status_code >= 400:
             raise AIError(f"result download HTTP {r.status_code}")
         if len(r.content) > limit:
-            raise AIError("result bahut bada hai")
+            raise AIError("the result is too large")
         return r.content
 
 
@@ -199,7 +199,7 @@ async def run_op(op: str, im, params: dict, tenant: str = "", filename: str = ""
     """Run one AI job. Returns {"image": PIL image, "engine": ..., "label": bool (generative), "note": ...}.
     Raises AIError with a plain reason; NoEngine when nothing is set up."""
     if op not in AI_OPS:
-        raise AIError(f"'{op}' AI op nahi hai. AI ops: " + ", ".join(sorted(AI_OPS)))
+        raise AIError(f"'{op}' is not an AI op. AI ops: " + ", ".join(sorted(AI_OPS)))
     what = str(params.get("what") or params.get("prompt") or params.get("background") or params.get("style")
                or params.get("instruction") or "").strip()
     why = check_words(what, op, filename)
@@ -230,10 +230,10 @@ async def run_op(op: str, im, params: dict, tenant: str = "", filename: str = ""
             tried.append(f"{r['id']}: {str(e)[:120]}")
             continue
     if tried:
-        raise AIError("Engine chale par sab fail: " + " | ".join(tried[:3]))
+        raise AIError("The engines ran but all failed: " + " | ".join(tried[:3]))
     need = sorted({r["why"] for r in rows if r["why"]})
-    raise NoEngine("Is kaam ka koi engine abhi set nahi hai (" + "; ".join(need) + "). Owner VPS .env mein key daale, "
-                   "tab chalega." + (" Tab tak 'upscale_local' se seedha bada kar sakta hoon (naya detail nahi aata)."
+    raise NoEngine("No engine is set up for this job yet (" + "; ".join(need) + "). It will work once the owner adds the key "
+                   "in the VPS .env." + (" Until then I can simply enlarge it with 'upscale_local' (no new detail is added)."
                                       if op == "upscale" else ""))
 
 
@@ -248,13 +248,13 @@ async def _zoo_run(op: str, model_id: str, im, what: str, tenant: str, params: d
     prompt = TEMPLATES[op].format(what=what) if op in GENERATIVE else ""
     r = await zoo.run(m, prompt, tenant=tenant, image_urls=[ref], extra=extra, wait_s=110.0)
     if r["status"] == "failed":
-        raise AIError(r.get("error") or "engine ne fail bataya")
+        raise AIError(r.get("error") or "the engine reported a failure")
     if r["status"] != "done" or not r.get("urls"):
-        raise AIError("engine ne abhi tak jawab nahi diya (der lag rahi hai)")
+        raise AIError("the engine has not replied yet (it is taking long)")
     data = await _fetch(r["urls"][0])
     try:
         out = Image.open(io.BytesIO(data))
         out.load()
     except Exception:
-        raise AIError("engine ka result photo nahi nikla") from None
+        raise AIError("the engine's result was not a photo") from None
     return out.convert("RGBA") if out.mode in ("RGBA", "LA", "P") else out.convert("RGB")
