@@ -3069,3 +3069,22 @@ checker of v0.859 wrote nothing on success. Nothing can be fixed one by one with
 No behaviour changed. Files: `server/app/pc/operator.py`, `server/app/agent/pc_tools.py` (frozen-PC exception
 recorded). Tests: `test_v0860_pc_log.py` (2) + the PC suites (104) green.
 Read a run with: pm2 logs santosh --lines 2000 --nostream | grep -E "pc task|pc_do|pc plan|pc check" | tail -60
+
+
+## v0.861.0 PC EK BAAR - Hoola stops interrupting a running PC task (fix 2 of the one-by-one PC clean-up)
+
+Her v0.860 log of the biryani run (11:29-11:34): no task was replaced and Chrome was used, but the chat brain called
+pc_do again every 15-20 s while the task ran - 'Continue the running task...', 'Step 3: ...', 'The Chrome tab is now
+on...', 'Read out exactly what is in the cart', 'Status check only', 'Do not repeat earlier steps' - and each call
+put a new note into the task, which stopped and re-read it before its next step. Cause: pc_do waits 12 s and returns
+'still working', a steering call returned at once, so the model kept calling it.
+
+Fix (`agent/pc_tools.py`): on a running task in the same chat, Hoola's words are passed in ONCE per ask of hers
+(`santosh.ASK_NOW` stored as `Op.hoola_key`; a round with no ask of hers = at most once a minute, `Op.hoola_at`); a
+repeat is logged `pc_do repeat ... not passed in`. The steering call now waits up to 30 s (or until the task ends)
+and its answer says plainly that the task posts its own result and pc_do must not be called again to check or repeat
+steps; the start answer says the same. Her own new words (a new ask) still go straight in. Tests:
+`test_v0861_pc_steer_once.py` (2) + the PC suites (75) green.
+
+Still open from the same log (next fixes): one job became 3 separate tasks (cart / address / pay), and 'Cash on
+Delivery not available' ended the task as partial instead of asking her how to pay.

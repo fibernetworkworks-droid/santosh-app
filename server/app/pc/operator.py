@@ -587,6 +587,8 @@ class Op:
     answer: str = ""
     answer_event: asyncio.Event = field(default_factory=asyncio.Event)
     told_at: float = 0.0           # v0.858 the last spoken PC update on her live call
+    hoola_key: str = ""            # v0.861 the ask whose words Hoola last passed into this task
+    hoola_at: float = 0.0          # v0.861 when Hoola last passed words in (a repeat inside one ask is dropped)
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,

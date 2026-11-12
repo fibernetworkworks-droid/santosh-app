@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 
 import asyncio
+import time
 
 from ..bazar import service
 from ..bazar.connectors.base import ToolError as BazarError
@@ -130,14 +131,35 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
     if live is not None and operator.same_chat(live.conv, ctx.conversation_id) and live.kind != operator.HOOLA_PC_KIND and not fresh \
             and (not pc or str(pc).lower() in (live.device_name or "").lower() or str(pc) == live.device_id
                  or not live.device_name):
-        operator.tell(ctx.tenant_id, ctx.conversation_id, task, hers=False)
-        log.info("pc_do steered into running %s (chat %s)", live.id, ctx.conversation_id)
+        # v0.861 her 11:29 pizza run: the chat brain re-sent its own instructions ('Step 3...', 'Status check only',
+        # 'Do not repeat earlier steps') every 15-20 s; each one stopped the PC task to re-read. Words reach the task
+        # once per ask of hers: a repeat inside the same ask (or a round with no ask of hers) is not passed in again.
+        from .santosh import ASK_NOW
+        key = (ASK_NOW.get() or "").strip()[:300]
+        repeat = (key and key == live.hoola_key) or (not key and time.time() - live.hoola_at < 60)
+        if repeat:
+            log.info("pc_do repeat for running %s not passed in (same ask, chat %s)", live.id, ctx.conversation_id)
+        else:
+            operator.tell(ctx.tenant_id, ctx.conversation_id, task, hers=False)
+            live.hoola_key, live.hoola_at = key, time.time()
+            log.info("pc_do steered into running %s (chat %s)", live.id, ctx.conversation_id)
+        wait = max(get_settings().pc_wait_seconds, 30) if _wait is None else float(_wait)
+        if wait > 0 and not live.done_event.is_set():
+            try:
+                await asyncio.wait_for(asyncio.shield(live.done_event.wait()), wait)
+            except asyncio.TimeoutError:
+                pass
+        if not live.done_event.is_set():
+            live.reported = True
         out = live.live()
         out.pop("timeline", None)
-        out.update(where="Aapka PC (HER computer) - the SAME task that is already running", steered=True,
-                   say=("Her words went INTO the PC task that is already running (it reads them before its next step); "
-                        "no new task was started. Tell her in one short line that you passed it on. Use fresh=true "
-                        "only for a completely different new job."))
+        out.update(where="Aapka PC (HER computer) - the SAME task that is already running", steered=not repeat,
+                   say=(("The PC task already has these instructions; nothing new was passed in. " if repeat else
+                         "Her words went INTO the PC task that is already running; no new task was started. ") +
+                        ("It has finished - tell her its result." if live.done_event.is_set() else
+                         "It is still working and posts its result to the chat by itself. Do NOT call pc_do again to "
+                         "check on it or to repeat steps - only when SHE says something new. Tell her in one short "
+                         "line that it is on it.")))
         return out
     other = [o for o in operator.running_all(ctx.tenant_id) if o.kind != operator.HOOLA_PC_KIND
              and not operator.same_chat(o.conv, ctx.conversation_id)]
@@ -166,7 +188,8 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
     r.setdefault("where", "Aapka PC (HER computer, Santosh Desktop) - not your own browser")
     if r["status"] in ("running", "needs_confirm"):
         r["say"] = ("Still working on the PC (live card in chat; a confirm card appears if a step needs approval). The "
-                    "result is posted automatically; if asked before that, call pc_task_result with session_id "
+                    "result is posted to the chat automatically. Do NOT call pc_do again to check on it or to repeat its "
+                    "steps (that interrupts it); if she asks for the status, call pc_task_result with session_id "
                     f"'{r['session_id']}'.")
     return r
 

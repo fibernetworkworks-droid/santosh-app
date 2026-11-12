@@ -197,7 +197,7 @@ def test_pc_do_follow_up_steers_the_running_task(monkeypatch):
     monkeypatch.setattr(operator, "start", start)
     ctx = types.SimpleNamespace(tenant_id="t_r", conversation_id="c_r")
     try:
-        r = asyncio.run(pc_tools.pc_do(ctx, "Chrome mein kholo aur order karo"))
+        r = asyncio.run(pc_tools.pc_do(ctx, "Chrome mein kholo aur order karo", _wait=0))
         assert r["steered"] and r["session_id"] == "pcop_r" and not started
         assert op.notes and op.browser == "chrome"
         r = asyncio.run(pc_tools.pc_do(ctx, "Tally kholo", fresh=True))     # a really new job still starts fresh
