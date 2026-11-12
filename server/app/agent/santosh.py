@@ -1941,6 +1941,7 @@ def _request(history: list[dict], system: str, tools, brain: str, conversation_i
 
 
 PROMPT_STATS = {"small": 0, "small_chars": 0}
+PC_MANAGER = {"turns": 0}   # v0.864 turns about her PC that ran on pc_manager_model with the PC rules
 
 
 def small_prompt_on(settings, ctx) -> bool:
@@ -2091,6 +2092,15 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
         except Exception:
             log.exception("skill tool admission failed")
     _mark("admit")
+    try:   # v0.864 PC MANAGER: a turn about her PC runs on Sonnet with the PC rules and the pc tools in view
+        from . import pc_manager as _pcm
+        if _pcm.wanted(settings, ctx, conversation_id, tenant_id, state.get("request", "") or "", adm):
+            state["pc_turn"] = True
+            if adm is not None:
+                adm.admit_families(["pc"])
+                adm.why.setdefault("pc", "pc manager")
+    except Exception:
+        log.exception("pc manager check failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
@@ -2112,13 +2122,18 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
         PROMPT_STATS["small"] += 1
         PROMPT_STATS["small_chars"] = len(_small_sys)
 
+    _pc_rules = ""
+    if state.get("pc_turn"):
+        from . import pc_manager as _pcm2
+        _pc_rules = "\n\n" + _pcm2.RULES
+
     def _system(fams) -> str:
         if small:
-            return _small_sys
+            return _small_sys + _pc_rules
         # v0.473 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
         text = system_prompt(settings.wa_dry_run, _ctxb, tenant_id,
                              families=None if (fams is None or not settings.prompt_slim) else fams) + tail
-        return text + (_admit.unloaded_note(text, adm) if adm is not None else "")
+        return text + (_admit.unloaded_note(text, adm) if adm is not None else "") + _pc_rules
     sys_fams = frozenset(adm.families) if adm is not None else None
     system = await asyncio.to_thread(_system, sys_fams)
     tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs
@@ -2189,12 +2204,38 @@ async def _turn_model(t: "_Turn"):
             # (an open long job in the chat used to switch both on for EVERY call question)
             _EFFORT_NOW.set("")
             _THINK_NOW.set(False)
+        _pc_model = ""
+        _or_key = ""
+        if state.get("pc_turn") and getattr(settings, "pc_via_openrouter", True):
+            try:
+                from . import providers as _pv_pc
+                _or_key = _pv_pc.key_of("openrouter")
+            except Exception:
+                _or_key = ""
+        if state.get("pc_turn") and _or_key:
+            # v0.866 SONNET VIA OPENROUTER: the same Sonnet manager, billed to her OpenRouter credit (the OpenAI-shaped
+            # brain path with an 'openrouter:' model, the way her console model pick already runs)
+            brain = "glm"
+            llm.MODEL_NOW.set("openrouter:" + str(getattr(settings, "pc_openrouter_sonnet", "")
+                                                   or "anthropic/claude-sonnet-5.5"))
+            _MODEL_NOW.set("")
+            PC_MANAGER["turns"] += 1
+        if state.get("pc_turn") and not _or_key and _claude_ready():
+            # v0.864 PC MANAGER: the brain running her PC job = Sonnet (past SAB HAIKU and the GLM door), this turn only
+            brain = "claude"
+            _pc_model = str(getattr(settings, "pc_manager_model", "") or "claude-sonnet-5-5")
+            _MODEL_NOW.set(_pc_model)
+            PC_MANAGER["turns"] += 1
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
             # still streams on the Soch card)
             live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings, conversation_id)))
         _mark("step_setup")
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
+        _pc_toks = None
+        if _pc_model:
+            from .. import usage as _u_pc, glmdoor as _g_pc
+            _pc_toks = (_u_pc.ONE_MODEL_BYPASS.set(True), _g_pc.CLAUDE_ONLY.set(True))
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
                 blocks, stop, brain = await _watched(_think(brain, system, _request(history, system, tools, brain,
@@ -2233,6 +2274,10 @@ async def _turn_model(t: "_Turn"):
             return final_text
         finally:
             _ctx.CONV.reset(_conv_tok)
+            if _pc_toks:
+                from .. import usage as _u_pc, glmdoor as _g_pc
+                _g_pc.CLAUDE_ONLY.reset(_pc_toks[1])
+                _u_pc.ONE_MODEL_BYPASS.reset(_pc_toks[0])
         history.append({"role": "assistant", "content": blocks})
         return blocks, stop
     finally:

@@ -3395,3 +3395,194 @@ The plan's last phase. What was proven, what was fixed, and what still needs a r
 - NOT DONE, said plainly: 60 fps on a budget phone was not measured (no phone here; the blur and moving aurora are
   already gone in the new design); TalkBack was not walked by hand on a phone; sounds were not added (her decision);
   ~23 special-layout screens (bottom bars, full-screen viewers, black editors) keep their own frame.
+
+
+## v0.859.0 DESKTOP AI D0 + D1 + D2 + D4 (owner: "GO D0 D1 D2 D4" on docs/DESKTOP_AI_PLAN.md)
+
+- **D0 THE PC CARD** (`server/app/quality/pccard_tasks.py`, `pccard.py`, `pccard_api.py`): 40 Windows tasks in her world
+  (apps 6, browser 10, office 5 - skippable without Office, settings 6, files 5, web forms 3, shopping 5 that MUST stop at
+  the approval card), each with a CODE check (title / windows / page / answer / status, all / any). Runs through the real
+  operator (`start(..., replace=False)`, a busy PC is never taken over) only on a PC whose name contains "test" or with
+  `confirm_not_her_pc`; an approval stop is checked then `stop()`ed - nothing is bought; questions answered from the
+  task's own `answer` at most twice; one run at a time; results saved like the other cards (success %, median seconds /
+  steps, false-done, asks, per group). Owner routes GET /api/quality/pccard, POST .../run, POST .../stop. Rupees not
+  measured (no per-task meter); file checks read the screen, not the disk (a desktop file check is D3).
+- **D1 CLAUDE'S OWN COMPUTER TOOLSET** (`pc/operator.py`): on the Claude PC brain the pixel lane is
+  `computer_toolset_20260801` (Sonnet / Opus 5.5 are trained on it); the clashing custom tools (click, type, key, scroll,
+  drag, screenshot, wait) are dropped and Hoola's exact tools ride beside it. Members map onto the desktop's existing
+  actions (`_from_native`; xdotool key names -> desktop names; triple click = double + one; key repeat; scroll up/down)
+  - no exe change; middle click / hold key / mouse down-up / held modifiers are refused with a reason. ZOOM = a
+  full-resolution capture cropped on the server to the region and scaled to the usual size, then the model's
+  screenshot scale is restored (a full-size capture changes the desktop's click scale). Results of toolset calls carry
+  `toolset_name`. If the API refuses the toolset (400 before any toolset call), this process falls back to the custom
+  tools and says so in the log. Qwen keeps the custom tools. Switch `pc_native_tools`.
+- **D2 PLAN + STAGE CHECKS**: `pc_plan_model` (Sonnet) splits a job into 2-7 stages with a visible "done when", a stage
+  that ASKS her for any open choice, and an approval stage before any send / order / payment; the plan rides the first
+  message; `stage_done(stage, evidence)` is checked on a fresh screenshot + page text by `pc_check_model` (Haiku); not
+  confirmed = "NOT YET" with the reason, twice = move on (never a loop); stage progress on the live card and the call.
+  Short jobs get no plan. Switch `pc_plan`.
+- **D4 VERIFY BEFORE DONE**: `done(success=true)` is checked on the screen against her ask (+ the last stage); not ok =
+  "NOT VERIFIED: <what is missing>" back to the model (max 2), then accepted; a checker that cannot run never blocks.
+  Switch `pc_verify`.
+- Tests: `test_v0859_desktop_ai.py` 8, `test_v0859_pc_card.py` 21; conftest pins PC_PLAN / PC_VERIFY / PC_NATIVE_TOOLS
+  off for the older PC suites (their fake model client would get the planner / checker calls). PC sweep 187 passed,
+  1 red pre-existing (test_v067 replay).
+- NOT VERIFIED: no live call with the toolset (the VPS anthropic SDK version and API version header may matter - the
+  fallback covers a refusal), no real PC run, no card numbers yet. Cost: + one planner call per job, + one Haiku check
+  per stage / done.
+
+
+## v0.860.0 PC KA HISAAB - every PC task explains itself in the log (fix 1 of the one-by-one PC clean-up)
+
+Owner, after her v0.859 pizza test: "VERY BAD WORKFLOW AND PERFORMANCE - EVERY THING IS MESSY - LETS START WITH
+LITTLE FIXES ONE BY ONE". Her grep (11:08-11:12) showed one run reaching step 69 and then two more runs each starting
+again at step 0 within 3 minutes - but no line said WHY a task started, was replaced, or ended, and the planner /
+checker of v0.859 wrote nothing on success. Nothing can be fixed one by one without seeing it, so fix 1 is the trail:
+
+- `pc task start <id> chat=... pc=... brain=... browser=<name>(said|remembered|default) budget=N steps/M min | task`
+- `pc task <old> REPLACED at step N by a new task (old chat, new chat) | old | new` (warning)
+- `pc_do new task (chat, fresh=, running elsewhere=, running here=)` / `pc_do steered into running <id>`
+- `pc plan <id> N stages: a > b > c`, `pc check <id> ok=True|False | what | why`
+- `pc task <id> asks her: ... | options`, `got her answer: ...`, `told (her words|Hoola, from chat ...)`
+- `pc task end <id> status=... steps=N Ns stage=k/n asks=yes|no | reason or summary`
+
+No behaviour changed. Files: `server/app/pc/operator.py`, `server/app/agent/pc_tools.py` (frozen-PC exception
+recorded). Tests: `test_v0860_pc_log.py` (2) + the PC suites (104) green.
+Read a run with: pm2 logs santosh --lines 2000 --nostream | grep -E "pc task|pc_do|pc plan|pc check" | tail -60
+
+
+## v0.861.0 PC EK BAAR - Hoola stops interrupting a running PC task (fix 2 of the one-by-one PC clean-up)
+
+Her v0.860 log of the biryani run (11:29-11:34): no task was replaced and Chrome was used, but the chat brain called
+pc_do again every 15-20 s while the task ran - 'Continue the running task...', 'Step 3: ...', 'The Chrome tab is now
+on...', 'Read out exactly what is in the cart', 'Status check only', 'Do not repeat earlier steps' - and each call
+put a new note into the task, which stopped and re-read it before its next step. Cause: pc_do waits 12 s and returns
+'still working', a steering call returned at once, so the model kept calling it.
+
+Fix (`agent/pc_tools.py`): on a running task in the same chat, Hoola's words are passed in ONCE per ask of hers
+(`santosh.ASK_NOW` stored as `Op.hoola_key`; a round with no ask of hers = at most once a minute, `Op.hoola_at`); a
+repeat is logged `pc_do repeat ... not passed in`. The steering call now waits up to 30 s (or until the task ends)
+and its answer says plainly that the task posts its own result and pc_do must not be called again to check or repeat
+steps; the start answer says the same. Her own new words (a new ask) still go straight in. Tests:
+`test_v0861_pc_steer_once.py` (2) + the PC suites (75) green.
+
+Still open from the same log (next fixes): one job became 3 separate tasks (cart / address / pay), and 'Cash on
+Delivery not available' ended the task as partial instead of asking her how to pay.
+
+
+## v0.862.0 PC CHROME HI - never Edge first (fix 3 of the one-by-one PC clean-up)
+
+Her report before the next test: "1) every time it first opens Edge, then understands the task needs Chrome; 2) no
+real-time conversation, just a late reply; 3) every process is very slow".
+
+1) ROOT CAUSE, read in code (operator open_url + desktop control.open_url): on her PC open_url went through
+`_open_in_named` only when Chrome was not already seen; and when that path failed (a cold Chrome taking more than the
+6 s it was given to come forward) and her browser was only 'remembered' / 'default', it FELL BACK to the desktop's own
+open_url. That one opens in the browser it found running (tasklist, cached 30 s) and, with none, calls
+os.startfile = Windows' DEFAULT browser = Edge. Fix: on her PC every site goes through `_open_in_named` (focus her
+browser / new tab / address bar), there is no fallback, a cold browser gets 15 s, and the error tells the model to
+bring her browser forward and never to use another browser or another way. Hoola's own PC keeps the desktop path.
+The v0.858 test that pinned the fallback is rewritten to the new rule.
+
+3) Her v0.859 log split each turn: the model's think 1.5-3.5 s, the actions after it 1-11 s - the time is in the
+actions on her PC, not the model. Each action now logs `pc act <task> <name> <seconds>` so the next log names the
+slow one.
+
+2) Not changed here beyond the steering wait (back to pc_wait_seconds 12 s, was 30 s in v0.861, which made a
+follow-up's reply later). Which surface she means (chat vs call) is asked.
+
+
+## v0.863.0 PC SAATH (fix 4 of the one-by-one PC clean-up)
+
+Her 13:11-13:19 log after v0.862 ("IT FORGOT THE LAST JOB ... OPENS NEW TAB ... SUDDENLY IT OPENS THE HOOLA OWN PC ...
+NO CONSISTANCY, NO MEMORY ... VERY DELAYED REPLY"). Three root causes, each fixed:
+
+1. HOOLA'S OWN PC AFTER HER TASK ENDED: v0.858 `where.release` drops the 45-minute "work is running on her PC" lock when
+   a task ends; only the 15-minute follow-up place stays, and only for messages of a few words. "Pizza cancel karo, KFC
+   chicken order karo" (or a call's longer reading) lost the place, so the chat brain was free to pick Hoola's PC / its own
+   browser. Now `operator.HER_PC_AT[tenant]` is stamped when a task on HER PC starts and ends, `her_pc_recent` = 45 min,
+   per person (any chat, call or side record). `pick`: hoola_pc_do refused unless she names Hoola's PC in this message;
+   computer_operator / browse_web for an order on her account site refused with "use pc_do" (no question); pc_do allowed
+   for a site / order task.
+2. A SECOND SWIGGY TAB: `_open_in_named` always pressed ctrl+t. Now the site's own word (`_site_word`: swiggy, amazon) is
+   matched against the front tab, then her tabs (`tabs` + `switch_tab`); the home page of an already-open site is NOT
+   reopened (her cart / login stay) - the answer says the tab is already open and in front; a deeper link opens in that
+   same tab through the address bar; a new site still gets a new tab.
+3. SLOW: `pc act` times showed page_text 10.8 s on Swiggy (the desktop walks the whole UIA tree), wait_for 23 s (it polls
+   page_text), open_url 15 s (8 s title wait + a page_text digest). The digest after every open is gone; page_text and
+   wait_for say in their own descriptions that they are slow on big shopping sites and to use the screenshot /
+   page_elements / wait 2 there.
+
+Tests: `test_v0863_pc_saath.py` (6); `test_v0185_pc_browser.py` (no digest) and `test_v0861_pc_steer_once.py` (a site not
+already open) updated. NOT VERIFIED on her PC. Not done yet: the 64-step task that scrolled the Swiggy home page instead of
+searching (stage 0/0 = no plan for it), and a payment option that is unavailable still ends the task instead of asking her.
+
+
+## v0.864.0 PC MANAGER (the root cause of "no single PC task is smooth")
+
+Owner, 12 Nov: "NO SINGLE TASK IS SMOOTHLY PERFORMED IN PC ... 20 DAYS AGO EVERYTHING WAS ABSOLUTELY PERFECT ... FIND
+ROOT CAUSE", then "put the manager back on Sonnet with its PC rules".
+
+ROOT CAUSE (measured on the code, not guessed): `server/app/pc/operator.py` was byte-identical from 5 Nov to 10 Nov
+(1,754 lines) and `agent/pc_tools.py` from 30 Oct to 10 Nov, so the PC code did not cause the drop. Two things around
+it did:
+1. v0.631 SAB HAIKU (6 Nov): `claude_one_model` = Haiku rewrites EVERY Claude call at the SDK door. The PC loop had no
+   bypass until v0.851 (12 Nov), so from 6 Nov the screen reader / clicker was Haiku (or GLM-Flash through the GLM door
+   when it was on). The chat turn that RUNS the PC job is still Haiku.
+2. v0.732 parity Phase 2/3 (~9-10 Nov): a chat turn gets the small fixed prompt - ONE line about PCs ("her PC only when
+   she asks") instead of the ~40 lines of PC rules in prompts.py - and ~22 core tools, pc_do not among them.
+Her logs match a weak manager without rules: one order split into 3 PC tasks, steering every 15-20 s ("Step 3...",
+"Report the screen"), the job forgotten on a follow-up, the KFC order sent to Hoola's own PC. On 12 Nov the PC code
+then grew 108 KB -> 187 KB in one day (v0.836-v0.863: planner, checker, native toolset, Qwen default, steering,
+ask_user, team) with nothing walked on a real PC, which added waits and failure points on top.
+
+FIX: NEW `agent/pc_manager.py`: `wanted()` (her place pc / a PC job running or just run in this chat / the pc family
+admitted / her PC used in the last 45 min and her words about a site, an order or the computer; never when she named
+Hoola's PC, her phone or the server) and `RULES` (places never mix, ONE job = ONE pc_do task with the whole goal and the
+stop point, her new words into the running task once and never a check / re-push, a blocker = tell her the reason and
+ask, continue from the open tab / cart, money = her tap, say where it runs). `santosh` turn setup marks `pc_turn`,
+admits the pc family and appends RULES to the system prompt (small and full); `_turn_model` runs that turn on
+`pc_manager_model` (Sonnet) with usage.ONE_MODEL_BYPASS + glmdoor.CLAUDE_ONLY set around its model calls only (reset
+after, never leaking into tools). Every other turn keeps Haiku + the small prompt. Switch `pc_manager`; counter
+`santosh.PC_MANAGER`. Tests `test_v0864_pc_manager.py` (5). NOT VERIFIED on her PC; the 12 Nov PC layers (planner,
+checker) are still on - turning them off is the next step she decides.
+
+
+## v0.865.0 PC SEEDHA (planner + checker off)
+
+Owner, after the root-cause report and v0.864 PC MANAGER: "TURN OFF PLANNER AND CHECKER ALSO". `config.py`:
+`pc_plan` True -> False (no Sonnet planner call before the first PC step, no stages, no per-stage screen check) and
+`pc_verify` True -> False (no Haiku screen check before 'done', no send-backs). The v0.859 D2 / D4 code stays and a
+`PC_PLAN=true` / `PC_VERIFY=true` line in the VPS .env turns them back on. No test change: tests/conftest.py already
+pinned both off for the older suites; the v0.859 suite sets them on for itself. NOT VERIFIED on her PC.
+
+
+## v0.866.0 SONNET VIA OPENROUTER
+
+Owner, after "RS 3000 IS GONE IN TESTING": "I HAVE CREDIT IN OPENROUTER USE SONET VIA THAT". Her PC work (the manager
+turn in chat / call and the PC loop) now runs on Sonnet billed to the server's OpenRouter key
+(`providers.key_of('openrouter')`). OpenRouter's id read live from openrouter.ai/api/v1/models:
+`anthropic/claude-sonnet-5.5` (vision + tools).
+- PC loop: `pc/brain.choose` returns brain `sonnet-or` when `pc_via_openrouter` is on and the key exists; `think` sends it
+  over the same OpenAI-shaped path Qwen uses (`think_qwen`), with the system message marked `cache_control` ephemeral
+  (OpenRouter passes Anthropic prompt caching through) and without the Qwen-only reasoning / provider-sort fields.
+  Claude's native computer toolset (v0.859 D1) needs the Anthropic API, so it now runs only on brain `sonnet`.
+- Manager: a PC turn (`pc_manager.wanted`) with the key runs on brain `glm` with `llm.MODEL_NOW` =
+  `openrouter:anthropic/claude-sonnet-5.5` - the path her console model pick already uses; no key = v0.864's Anthropic
+  Sonnet path.
+- `pc_via_openrouter` default on; `pc_openrouter_sonnet` names the model. conftest pins it off for the older suites.
+Tests: `test_v0866_sonnet_openrouter.py` (3). NOT VERIFIED: no live OpenRouter Sonnet call from here (no key in the
+sandbox); tools are only the cached system prompt - tool definitions are not cached on this path, so a PC step may cost a
+little more per token than the direct API with caching. Prices are OpenRouter's (Sonnet 5.5 $2 / M input as listed).
+
+
+## v0.873.0 REDESIGN JOINS MAIN (owner: "MERGE TO MAIN")
+
+The Claude-style phone redesign (R0-R9, `docs/HOOLA_APP_REDESIGN_PLAN.md`) had been built on the branch
+`claude/hoola-project-review-6ba8s5` as v0.859.0-v0.872.0, while main moved on its own PC line v0.859.0-v0.866.0
+(DESKTOP AI D0-D4, PC KA HISAAB, PC EK BAAR, PC CHROME HI, PC SAATH, PC MANAGER, PC SEEDHA, SONNET VIA OPENROUTER).
+Release APKs are built only from main, so the owner's phone never got the redesign. This merge joins the two lines
+(a merge commit, both histories kept as they were). Conflicts: ~230 test version pins (every conflicting hunk was
+checked to differ only in the version number), pubspec, APP_VERSION, the CLAUDE.md "Current version" line and this
+file (both sections kept). The numbers v0.859-v0.866 now mean two different releases each - look one up by its
+NAME here. Merged version 0.873.0 (pubspec 0.873.0+872), above both lines. No product code was edited in the merge.

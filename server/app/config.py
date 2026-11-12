@@ -424,6 +424,10 @@ class Settings(BaseSettings):
     browser_llm: str = "auto"               # auto (Claude when its key is set, else OmniRoute/GLM) | claude | omniroute | glm
     browser_max_steps: int = 40
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
+    pc_via_openrouter: bool = True          # v0.866 Sonnet for her PC work (manager + PC loop) billed to the OpenRouter key
+    pc_openrouter_sonnet: str = "anthropic/claude-sonnet-5.5"   # the OpenRouter id (read from openrouter.ai/api/v1/models)
+    pc_manager: bool = True                 # v0.864 PC MANAGER: a chat / call turn about her PC runs on pc_manager_model with the PC rules
+    pc_manager_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for that turn
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     pc_team_max: int = 4                    # v0.836 DESKTOP TEAM: at most this many PCs work for one person at the same time (one agent per PC)
     # v0.851 PC BRAIN (owner: "QWEN 3.8 AND SONET 5.5 --- WILL START WITH QWEN"): the model that sees the screen in the PC loop
@@ -433,6 +437,11 @@ class Settings(BaseSettings):
     pc_qwen_thinking: str = "off"           # v0.856 PC SPEED: off by default (it thought before EVERY click); "on" / "" = default
     pc_qwen_provider_sort: str = "latency"  # v0.856 OpenRouter provider.sort for the PC brain: latency | throughput | price | ""
     pc_max_tokens: int = 4000               # output room per PC step (was 1500: thinking could eat the action)
+    pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane
+    pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works
+    pc_verify: bool = False                  # v0.859 D4: 'done' only after the screen is checked against her ask
+    pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
+    pc_plan_model: str = "claude-sonnet-5-5"   # v0.859 the planner (one call per PC job)
     pc_brain_timeout_s: float = 90.0
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
     chat_artifact_direct: bool = True       # parity Phase 6: the chat model writes pages itself (tool `artifact`: create /

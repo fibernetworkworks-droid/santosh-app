@@ -50,6 +50,12 @@ def _full_voice_menu(monkeypatch):
     """v0.627 production declares the small call menu; the older suites (with or without `env`) pin the full one.
     test_v0627_chhota_menu switches the small one on for itself."""
     from app.config import get_settings
+    try:    # v0.863 'her PC worked lately' is per process: one test's PC task must not steer the next test's pick
+        from app.pc import operator as _pcop
+        _pcop.HER_PC_AT.clear()
+    except Exception:
+        pass
+    monkeypatch.setenv("PC_VIA_OPENROUTER", "false")  # v0.866 older PC suites pin the Anthropic Sonnet path; test_v0866 turns it on
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
     monkeypatch.setenv("SITE_FULL_LOOKS", "false")    # v0.649 older site suites pin page-top looks; test_v0649 checks the whole site
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
@@ -64,6 +70,9 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_WORK_IN_TURN", "false")  # PARITY Phase 4: older suites pin background crews / research + the 900 s turn; test_parity_p4 checks in-turn
     monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
     monkeypatch.setenv("PC_MODEL", "sonnet")          # v0.851 older PC suites pin the Claude loop; test_v0851_pc_brain checks Qwen
+    monkeypatch.setenv("PC_PLAN", "false")            # v0.859 D2 / D4 / D1 off for the older PC suites (their fake model
+    monkeypatch.setenv("PC_VERIFY", "false")          # client would also get the planner / checker calls); the D1-D4
+    monkeypatch.setenv("PC_NATIVE_TOOLS", "false")    # suite (test_v0859_desktop_ai) turns them on for itself
     monkeypatch.setenv("CHAT_CORE_TOOLS", "false")    # Parity Phase 3: older suites pin the core families + old result text; test_v0733_clean_tools checks the core set
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model

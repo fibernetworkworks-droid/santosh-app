@@ -63,6 +63,11 @@ def _her_account_site(name: str, args: dict[str, Any], ctx) -> None:
     if place in ("hoola", "server", "pc", "hoolapc") or where._asked(conv, "hoola") or \
             where.working(conv) in ("pc", "hoolapc"):
         return                                   # she named a place, or a PC task runs: the steer moves it there
+    if _her_pc_lately(ctx):
+        STATS["kept_her_pc"] = STATS.get("kept_her_pc", 0) + 1   # v0.863 PC SAATH: her orders run on her PC
+        raise ToolError("Her own PC (her Chrome, her Swiggy / Amazon login and cart) was working for her minutes ago. "
+                        "This order goes THERE: call pc_do with the full task (it continues in the tab that is "
+                        "already open). Never your own browser and never Hoola's own PC for her orders.")
     try:
         from ..pc import hub
         online = hub.hub.is_online(getattr(ctx, "tenant_id", "") or "")
@@ -78,6 +83,15 @@ def _her_account_site(name: str, args: dict[str, Any], ctx) -> None:
                     "with the full task (and the browser she named). Only if she says Hoola's browser, use this tool.")
 
 
+def _her_pc_lately(ctx) -> bool:
+    """v0.863 a task on HER own PC started or ended in the last 45 min (any chat or call of hers)."""
+    try:
+        from ..pc import operator as pcop
+        return pcop.her_pc_recent(getattr(ctx, "tenant_id", "") or "")
+    except Exception:
+        return False
+
+
 def check(name: str, args: dict[str, Any], ctx) -> None:
     """Raise ToolError with the right tool when the pick is plainly wrong; return quietly otherwise."""
     if name in ("computer_operator", "browse_web"):
@@ -91,6 +105,9 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
     conv = getattr(ctx, "conversation_id", "") or ""
     named = place in ("pc", "hoolapc") or where._asked(conv, "pc") or where._asked(conv, "hoolapc") or \
         where.working(conv) in ("pc", "hoolapc")
+    if not named and name == "pc_do" and _her_pc_lately(ctx):
+        t0 = str((args or {}).get("task") or "")
+        named = bool((where._WEBBY.search(t0) or _ORDERISH.search(t0)) and not where._DATA.search(t0))   # v0.863
     if adm is not None and "pc" not in adm.families and not named:
         STATS["pc_not_in_view"] += 1
         raise ToolError(f"{name} was not offered for this ask: she named no PC and the job needs no desktop software. "
@@ -104,6 +121,12 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
         hoola_pc = place == "hoolapc" or where._asked(conv, "hoolapc")
         if not her_pc and not hoola_pc:
             her_pc, hoola_pc = where.working(conv) == "pc", where.working(conv) == "hoolapc"
+        if name == "hoola_pc_do" and place != "hoolapc" and not where._asked(conv, "hoolapc") and _her_pc_lately(ctx) \
+                and (where._WEBBY.search(task) or _ORDERISH.search(task)):
+            STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1     # v0.863 PC SAATH: not after her task ENDED either
+            raise ToolError("Her own PC did her work minutes ago (this order / site job lives there: her login, her "
+                            "cart, her open tab). Use pc_do with her words. Hoola's own PC only when she names it in "
+                            "this message ('Hoola ke PC par').")
         if name == "hoola_pc_do" and place != "hoolapc" and where._her_pc_busy(conv):
             STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1     # v0.858 never wander to Hoola's PC mid-task
             raise ToolError("Her task is RUNNING on HER OWN PC in this chat right now. Her follow-up belongs to that "
@@ -130,6 +153,9 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
         place_now = place or where.working(conv)
         if place == "server":
             place_now = ""
+        if name == "pc_do" and not place_now and _her_pc_lately(ctx) and (where._WEBBY.search(task) or
+                                                                          _ORDERISH.search(task)):
+            place_now = "pc"     # v0.863 PC SAATH: her follow-up order after her PC task ended stays on her PC
         if place_now not in ("pc", "hoolapc") and not where._asked(conv, "pc") and not where._asked(conv, "hoolapc"):
             STATS["pc_not_hers"] += 1
             if place_now == "hoola":

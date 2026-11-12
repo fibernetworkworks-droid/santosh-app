@@ -24,15 +24,20 @@ class FakePC:
         self.calls = []
         self.control = control
         self.old = False            # simulates a desktop older than 1.3.0
+        self.front = "Excel - Book1"   # v0.862 focus brings a window forward; Enter in the address bar loads a page
 
-    async def __call__(self, op, action, args=None, timeout=40):
+    async def __call__(self, op, action, args=None, timeout=40, log=True):
         args = dict(args or {})
         self.calls.append((action, args))
         if self.old and action in ("open_url", "window"):
             raise RuntimeError("Unknown action " + action)
         if action == "screen":
-            return {"image_b64": JPEG, "width": 1280, "height": 720, "active_window": "Excel - Book1",
+            return {"image_b64": JPEG, "width": 1280, "height": 720, "active_window": self.front,
                     "windows": ["Excel - Book1", "New Tab - Google Chrome"], "monitor": args.get("monitor", "primary")}
+        if action == "focus":
+            self.front = args.get("title") or self.front
+        if action == "control" and args.get("op") == "key" and args.get("keys") == "enter":
+            self.front = "IRCTC Next Generation - Google Chrome"
         if action == "open_url":
             return {"opened": args["url"]}
         if action == "window":
@@ -97,10 +102,12 @@ def test_site_opens_in_her_browser_in_one_step(op, monkeypatch):
         [tu(2, "done", answer="IRCTC aapke browser mein khul gaya.", success=True)],
     ])
     _wire_claude(monkeypatch, claude)
-    r = run(operator.start("default", bz["conv"], "mere PC pe Chrome mein IRCTC kholo", wait=5))
+    r = run(operator.start("default", bz["conv"], "mere PC pe Chrome mein IRCTC kholo", wait=20))
     assert r["status"] == "done"
-    assert ("open_url", {"url": "https://www.irctc.co.in"}) in pc.calls
-    assert not any(c[0] == "control" for c in pc.calls)          # no clicks needed
+    # v0.862 her Chrome comes forward, a new tab, the address typed - never the desktop open_url (Edge risk)
+    assert not any(c[0] == "open_url" for c in pc.calls)
+    assert ("control", {"op": "type", "text": "https://www.irctc.co.in"}) in pc.calls
+    assert not any(c[0] == "control" and "click" in c[1].get("op", "") for c in pc.calls)   # no clicks needed
 
 
 def test_open_url_refuses_non_websites(op, monkeypatch):
@@ -155,11 +162,11 @@ def test_old_desktop_gets_a_clean_upgrade_note(op, monkeypatch):
     operator, pc, bz = op
     pc.old = True
     claude = FakeClaude([
-        [tu(1, "open_url", url="https://example.com")],
+        [tu(1, "window", op="maximize")],   # v0.862 open_url no longer uses a desktop-only action on her PC
         [tu(2, "done", answer="Desktop update kijiye", success=False)],
     ])
     _wire_claude(monkeypatch, claude)
-    run(operator.start("default", bz["conv"], "site kholo", wait=5))
+    run(operator.start("default", bz["conv"], "window bada karo", wait=5))
     assert any("SantoshDesktop.exe install kijiye" in str(b["content"]) for b in _tool_results(claude))
 
 
