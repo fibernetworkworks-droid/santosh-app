@@ -95,14 +95,14 @@ def test_rules():
     # trim size only (no bleed) + RGB + low dpi
     bad = R.preflight(_png(525, 301), "card.png", card)
     texts = " ".join(i["text"] for i in bad["issues"])
-    assert not bad["ok"] and "Bleed nahi" in texts and "CMYK" in texts and "Resolution kam" in texts
+    assert not bad["ok"] and "No bleed" in texts and "CMYK" in texts and "Resolution low" in texts
     # a PDF at trim size: no bleed + Helvetica not embedded
     p = R.preflight(_pdf_page(89, 51), "card.pdf", card)
     t2 = " ".join(i["text"] for i in p["issues"])
-    assert not p["ok"] and "Bleed nahi" in t2 and "Helvetica" in t2
+    assert not p["ok"] and "No bleed" in t2 and "Helvetica" in t2
     p2 = R.preflight(_pdf_page(95, 57), "card.pdf", card)
-    assert not [i for i in p2["issues"] if "naap" in i["text"] or "Bleed" in i["text"]] and p2["fonts_unembedded"]
-    assert R.preflight(_pdf_page(200, 100), "x.pdf", card)["issues"][0]["text"].startswith("Page ka naap")
+    assert not [i for i in p2["issues"] if "Page size" in i["text"] or "bleed" in i["text"].lower()] and p2["fonts_unembedded"]
+    assert R.preflight(_pdf_page(200, 100), "x.pdf", card)["issues"][0]["text"].startswith("Page size")
     flex = R.format_spec("flex_6x3")
     assert flex["wide"] and flex["dpi"] == 100
     # licences
@@ -119,14 +119,14 @@ def test_rules():
     g2 = R.gst_lines(10000, 18, "27", "27")
     assert g2["kind"] == "cgst_sgst" and [r["amount"] for r in g2["rows"]] == [900, 900]
     assert R.gst_lines(10000, 18, "27", "27", export=True, lut=True)["tax"] == 0
-    assert "poochh" in R.tds_note("business", None, 60000) and "nahi katta" in R.tds_note("individual", None, 1)
+    assert "ask the client" in R.tds_note("business", None, 60000) and "no TDS" in R.tds_note("individual", None, 1)
     assert R.hex_to_cmyk("#FFFFFF") == (0, 0, 0, 0) and R.hex_to_cmyk("#000000") == (0, 0, 0, 100)
     a = R.assignment_text("Meera", "Ramesh Sweets", "Logo")
-    assert any("5 saal" in b for b in a["blanks"]) and "s.19" in a["note"]
+    assert any("5 years" in b for b in a["blanks"]) and "s.19" in a["note"]
     h = R.tm_help("Ramesh Sweets", "mithai shop")
     assert {c["class"] for c in h["classes"]} >= {30} and "tmrsearch.ipindia.gov.in" in h["links"][0]
     assert R.kind_of("visiting card chahiye") == "visiting_card" and R.kind_of("naya logo") == "logo"
-    assert "[hataya]" in R.clean("mera otp 445566 hai, card 4111 1111 1111 1111")
+    assert "[removed]" in R.clean("mera otp 445566 hai, card 4111 1111 1111 1111")
 
 
 def test_client_job_quote_card_only_her_tap(gd):
@@ -145,7 +145,7 @@ def test_client_job_quote_card_only_her_tap(gd):
     assert j["number"] == "G-0001" and j["sizes"] == ["insta_post", "story", "insta_square"] and j["quote"]["missing"]
     with pytest.raises(S.GraphicError) as e:      # no price -> no quote (Hoola never prices)
         S.quote_request(T, "G-0001")
-    assert "daam" in str(e.value)
+    assert "price" in str(e.value)
     with pytest.raises(S.GraphicError):           # staff can't set prices
         S.job_save(T, "G-0001", actor="staff:s1", lines=[{"name": "3 posts", "rate": 3000}])
     S.job_save(T, "G-0001", lines=[{"name": "Diwali posts (3 size)", "qty": 1, "rate": 3000}], rounds=1, extra_round_price=800)
@@ -258,7 +258,7 @@ def test_upload_preflight_print_order_handover_invoice(gd):
     S.asset_remove(T, "G-0001", "Cool Script")
     with pytest.raises(S.GraphicError) as e:                          # money still due
         S.handover_request(T, "G-0001")
-    assert "baaki" in str(e.value)
+    assert "due" in str(e.value)
     with pytest.raises(S.GraphicError):
         S.paid(T, "G-0001", 1770, actor="staff:s1")
     inv = S.invoice_request(T, "G-0001", "advance")
@@ -311,7 +311,7 @@ def test_discount_fingerprint_tm_and_forget(gd, monkeypatch):
     _client(S)
     S.job_save(T, client="C-001", kind="logo", brief="Mithai shop ka logo", lines=[{"name": "Logo", "rate": 10000}])
     v = S.job_view(T, "G-0001")
-    assert v["quote"]["total"] == 10000 and "GSTIN nahi" in v["quote"]["gst_note"]
+    assert v["quote"]["total"] == 10000 and "No GSTIN" in v["quote"]["gst_note"]
     with pytest.raises(S.GraphicError):
         S.discount_request(T, "G-0001", amount=20000)
     d = S.discount_request(T, "G-0001", amount=1000, reason="Purana client")
@@ -331,7 +331,7 @@ def test_discount_fingerprint_tm_and_forget(gd, monkeypatch):
     assert any(c["class"] == 30 for c in h["classes"])
     with pytest.raises(S.GraphicError):
         S.tm_record(T, "G-0001", "maybe")
-    assert "jokhim" in S.tm_record(T, "G-0001", "registered_same", [30])["say"]
+    assert "risk" in S.tm_record(T, "G-0001", "registered_same", [30])["say"]
     with pytest.raises(S.GraphicError):
         S.forget_client(T, "C-001")
     S.cancel(T, "G-0001", "client ne mana kiya")

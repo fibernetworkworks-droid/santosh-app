@@ -127,7 +127,7 @@ def _num(v) -> float | None:
     try:
         return float(str(v).replace(",", "").replace("₹", "").replace("rs", "").strip())
     except ValueError:
-        raise DriversError(f"'{v}' number nahi lagta.")
+        raise DriversError(f"'{v}' does not look like a number.")
 
 
 def _phone(v) -> str:
@@ -137,7 +137,7 @@ def _phone(v) -> str:
     if d.startswith("0") and len(d) == 11:
         d = d[1:]
     if d and not re.fullmatch(r"[6-9]\d{9}", d):
-        raise DriversError("Mobile 10 ank ka chahiye (6-9 se shuru).")
+        raise DriversError("Mobile must be 10 digits (starting 6-9).")
     return d
 
 
@@ -195,7 +195,7 @@ def save_settings(tenant: str, **kw) -> dict:
             if kw.get(k):
                 v = R.hm(kw[k])
                 if not v:
-                    raise DriversError(f"{k}: samay HH:MM mein.")
+                    raise DriversError(f"{k}: time as HH:MM.")
                 setattr(r, k, v)
         if kw.get("police_months") is not None:
             r.police_months = max(0, min(120, int(kw["police_months"])))
@@ -211,7 +211,7 @@ def save_settings(tenant: str, **kw) -> dict:
                     continue
                 looser = (v > R.LAW[k]) if k != "between_h" else (v < R.LAW[k])
                 if looser:
-                    said.append(f"{k} = {v:g} kaanoon ki seema ({R.LAW[k]:g}) se dheela hai: check kaanoon wali seema se hi hoga.")
+                    said.append(f"{k} = {v:g} is looser than the legal limit ({R.LAW[k]:g}): checks will use the legal limit.")
                 her[k] = v
         r.rules = _dump(her)
         if kw.get("note"):
@@ -221,7 +221,7 @@ def save_settings(tenant: str, **kw) -> dict:
                 notes.append(n)
             r.notes = _dump(notes[-30:])
         out = _settings_view(r)
-    out["say"] = "Niyam save." + (" " + " ".join(said) if said else "")
+    out["say"] = "Rules saved." + (" " + " ".join(said) if said else "")
     return out
 
 
@@ -229,7 +229,7 @@ def set_vehicle(tenant: str, number: str, gvw_kg=None, kind: str = "", kmpl=None
     """Light vehicle facts for checks when the fleet module doesn't have the vehicle (gross weight, kind, her km / litre)."""
     num = re.sub(r"[\s-]", "", str(number or "")).upper()
     if not num:
-        raise DriversError("Gaadi number chahiye.")
+        raise DriversError("Vehicle number is needed.")
     with session() as s:
         r = _st(s, tenant)
         v = _j(r.vehicles, {})
@@ -242,7 +242,7 @@ def set_vehicle(tenant: str, number: str, gvw_kg=None, kind: str = "", kmpl=None
             cur["kmpl"] = _num(kmpl)
         v[num] = cur
         r.vehicles = _dump(v)
-    return {"vehicle": num, **cur, "say": f"{num}: save."}
+    return {"vehicle": num, **cur, "say": f"{num}: saved."}
 
 
 def _veh_key(v: str) -> str:
@@ -313,7 +313,7 @@ def _docs_of(d: DriversDriver, t0: date, police_months: int) -> list[dict]:
 def _find(s, tenant: str, ref: str, active_only: bool = False) -> DriversDriver:
     ref = str(ref or "").strip()
     if not ref:
-        raise DriversError("Kaun sa driver? Naam ya code batayiye.")
+        raise DriversError("Which driver? Give the name or code.")
     q = select(DriversDriver).where(DriversDriver.tenant_id == tenant)
     rows = s.scalars(q).all()
     if active_only:
@@ -329,8 +329,8 @@ def _find(s, tenant: str, ref: str, active_only: bool = False) -> DriversDriver:
     if len(part) == 1:
         return part[0]
     if len(part) > 1:
-        raise DriversError("Is naam ke kai driver hain: " + ", ".join(f"{r.code} {r.name}" for r in part[:6]) + ". Code batayiye.")
-    raise DriversError(f"Driver '{ref}' nahi mila.")
+        raise DriversError("Several drivers have this name: " + ", ".join(f"{r.code} {r.name}" for r in part[:6]) + ". Give the code.")
+    raise DriversError(f"Driver '{ref}' not found.")
 
 
 def _licence(tenant: str, value: str, name: str) -> tuple[str, str]:
@@ -342,9 +342,9 @@ def _licence(tenant: str, value: str, name: str) -> tuple[str, str]:
         for r in idvault.list_(tenant):
             if r["ref"] == v:
                 return r["ref"], r["masked"]
-        raise DriversError("Yeh locker reference nahi mila.")
+        raise DriversError("This locker reference was not found.")
     if not R.dl_valid(v):
-        raise DriversError("Licence number aisa hota hai: MH14 2011 0062821 (state + RTO + saal + 7 ank).")
+        raise DriversError("A licence number looks like MH14 2011 0062821 (state + RTO + year + 7 digits).")
     try:
         rec = idvault.save(tenant, "dl", R.dl_clean(v), person="driver", note=f"Driver: {name}"[:120])
     except idvault.VaultError as e:
@@ -368,7 +368,7 @@ def save_driver(tenant: str, name: str = "", driver: str = "", **kw) -> dict:
         else:
             name = _clean(name, 80)
             if not name:
-                raise DriversError("Driver ka naam chahiye.")
+                raise DriversError("Driver name is needed.")
             d = DriversDriver(tenant_id=tenant, name=name)
             st.seq += 1
             d.code = f"D-{st.seq:03d}"
@@ -382,13 +382,13 @@ def save_driver(tenant: str, name: str = "", driver: str = "", **kw) -> dict:
         if kw.get("classes") is not None:
             cl = R.classes_of(kw["classes"])
             if kw["classes"] and not cl:
-                raise DriversError("Licence class samjha nahi: LMV / LMV-TR / MGV / HGV / HTV / HPV / TRANS / hazardous.")
+                raise DriversError("Licence class not understood: LMV / LMV-TR / MGV / HGV / HTV / HPV / TRANS / hazardous.")
             d.classes = _dump(cl)
         for k in ("dl_valid_to", "medical_valid_to", "badge_valid_to", "police_on", "hazardous_valid_to"):
             if kw.get(k) is not None:
                 v = _date(kw[k], tenant) if kw[k] else None
                 if kw[k] and not v:
-                    raise DriversError(f"{k}: taareekh samjhi nahi (dd-mm-yyyy).")
+                    raise DriversError(f"{k}: could not read the date (dd-mm-yyyy).")
                 setattr(d, k, _iso(v))
         for k, n in (("badge", 40), ("payroll_name", 80), ("vehicle", 40), ("notes", 400)):
             if kw.get(k) is not None:
@@ -404,9 +404,9 @@ def save_driver(tenant: str, name: str = "", driver: str = "", **kw) -> dict:
     warn = []
     dl = _date(v["dl_valid_to"])
     if dl and dl < today(tenant):
-        warn.append("Licence khatam ho chuka: renew hone tak duty nahi milegi.")
+        warn.append("Licence has expired: no duties until it is renewed.")
     if not v["dl"]:
-        warn.append("Licence number nahi diya (Locker mein rahega, sirf aakhri 4 ank dikhenge).")
+        warn.append("No licence number given (it stays in the Locker; only the last 4 digits are shown).")
     v["say"] = f"{v['code']} {v['name']} save." + (" " + " ".join(warn) if warn else "")
     return v
 
@@ -417,7 +417,7 @@ def _member_id(tenant: str, ref: str) -> str:
     for m in emp.team(tenant):
         if ref in (m["id"].lower(), m["name"].lower(), (m["address"] or "").lower()):
             return m["id"]
-    raise DriversError("Yeh vyakti Hoola Employee team mein nahi (Employee > Team mein jodiye, Hoola ID ke saath).")
+    raise DriversError("This person is not in the Hoola Employee team (add them in Employee > Team, with a Hoola ID).")
 
 
 def drivers(tenant: str, active: bool | None = None) -> list[dict]:
@@ -455,10 +455,10 @@ def forget_driver(tenant: str, ref: str) -> dict:
     with session() as s:
         d = _find(s, tenant, ref)
         if d.active:
-            raise DriversError("Pehle driver ko 'left' kijiye (active=false), phir mitaiye.")
+            raise DriversError("First mark the driver 'left' (active=false), then delete.")
         lref = d.dl_ref
         d.phone, d.dl_ref, d.dl_masked, d.notes, d.badge, d.member_id = "", "", "", "", "", ""
-        d.name = f"Purana driver {d.code}"
+        d.name = f"Former driver {d.code}"
         code = d.code
     if lref:
         for r in idvault.list_(tenant):
@@ -467,7 +467,7 @@ def forget_driver(tenant: str, ref: str) -> dict:
                     idvault.delete(tenant, r["id"])
                 except Exception:
                     pass
-    return {"forgotten": code, "say": f"{code} ki niji jaankari mita di (phone, licence, notes). Duty / trip ke number hisaab ke liye bache."}
+    return {"forgotten": code, "say": f"{code} personal details deleted (phone, licence, notes). Duty / trip numbers remain for the accounts."}
 
 
 # ---------------------------------------------------------------- leave
@@ -475,7 +475,7 @@ def add_leave(tenant: str, driver: str, start, end=None, kind: str = "leave", no
     a = _date(start, tenant)
     b = _date(end, tenant) if end else a
     if not a or not b:
-        raise DriversError("Chhutti kab se kab tak (dd-mm-yyyy)?")
+        raise DriversError("Leave from when to when (dd-mm-yyyy)?")
     if b < a:
         a, b = b, a
     kind = kind if kind in ("leave", "sick", "off", "unpaid") else "leave"
@@ -489,9 +489,9 @@ def add_leave(tenant: str, driver: str, start, end=None, kind: str = "leave", no
                                                     DriversDuty.status == "planned")).all()
         name, lid = d.name, lv.id
         cl = [f"{x.number} {x.day} {x.start}-{x.end} {x.vehicle}".strip() for x in clash]
-    say = f"{name}: {_show(a)}" + (f" se {_show(b)}" if b != a else "") + " chhutti darj."
+    say = f"{name}: {_show(a)}" + (f" to {_show(b)}" if b != a else "") + " leave recorded."
     if cl:
-        say += " In duty ke liye doosra driver chahiye: " + "; ".join(cl) + " (`plan` se dekhiye)."
+        say += " These duties need another driver: " + "; ".join(cl) + " (see with `plan`)."
     return {"id": lid, "clashes": cl, "say": say}
 
 
@@ -525,9 +525,9 @@ def cancel_leave(tenant: str, leave_id: str) -> dict:
     with session() as s:
         lv = s.get(DriversLeave, leave_id)
         if lv is None or lv.tenant_id != tenant:
-            raise DriversError("Chhutti nahi mili.")
+            raise DriversError("Leave not found.")
         s.delete(lv)
-    return {"say": "Chhutti hata di."}
+    return {"say": "Leave removed."}
 
 
 # ---------------------------------------------------------------- duties
@@ -576,9 +576,9 @@ def save_duty(tenant: str, driver: str, day, start, end, vehicle: str = "", rout
     dd = _date(day, tenant)
     a, b = R.hm(start), R.hm(end)
     if not dd or not a or not b:
-        raise DriversError("Duty: din (dd-mm-yyyy / aaj / kal), shuru aur khatam ka samay (6:00, 14:30) chahiye.")
+        raise DriversError("Duty: day (dd-mm-yyyy / today / tomorrow), start and end time (6:00, 14:30) are needed.")
     if dd < today(tenant) - timedelta(days=31):
-        raise DriversError("Itni purani duty nahi badalte.")
+        raise DriversError("Duties this old cannot be changed.")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         x = None
@@ -586,22 +586,22 @@ def save_duty(tenant: str, driver: str, day, start, end, vehicle: str = "", rout
             x = s.scalars(select(DriversDuty).where(DriversDuty.tenant_id == tenant,
                                                     (DriversDuty.id == duty) | (DriversDuty.number == duty.upper()))).first()
             if x is None:
-                raise DriversError("Duty nahi mili.")
+                raise DriversError("Duty not found.")
         d = _find(s, tenant, driver, active_only=True)
         veh = _veh_key(vehicle) or (x.vehicle if x else "") or d.vehicle
         facts = {"day": dd, "start": a, "end": b, "break_min": int(break_min or 0), "vehicle": veh, "hazardous": bool(hazardous),
                  "fleet_id": fleet_id}
         chk = _check(s, tenant, d, facts, exclude=x.id if x else "")
         if chk["block"]:
-            raise DriversError("Yeh duty nahi lag sakti: " + " ".join(chk["block"]))
+            raise DriversError("This duty cannot be assigned: " + " ".join(chk["block"]))
         if chk["law"]:
             owner = actor == "owner" or actor.startswith("approved:")
             if not force or not owner:
-                return {"saved": False, "checks": chk, "say": "Niyam ki dikkat: " + " ".join(chk["law"]) +
-                        (" Phir bhi lagani ho to owner 'force' + wajah ke saath kahein (log mein rahega)." if owner else
-                         " Yeh sirf owner badal sakti hain.")}
+                return {"saved": False, "checks": chk, "say": "Rule problem: " + " ".join(chk["law"]) +
+                        (" To assign it anyway, the owner says 'force' with a reason (it stays in the log)." if owner else
+                         " Only the owner can change this.")}
             if len(_clean(reason, 300)) < 5:
-                raise DriversError("Niyam se bahar duty ke liye wajah likhiye (log mein rahegi).")
+                raise DriversError("Write a reason for a duty outside the rules (it stays in the log).")
         if x is None:
             st.duty_seq += 1
             x = DriversDuty(tenant_id=tenant, number=f"DU-{st.duty_seq:04d}")
@@ -617,7 +617,7 @@ def save_duty(tenant: str, driver: str, day, start, end, vehicle: str = "", rout
     tips = chk["warn"]
     v["say"] = (f"{v['number']}: {v['driver']} {_show(dd)} {a}-{b}" + (f" · {veh}" if veh else "") + (f" · {v['route']}" if v['route'] else "")
                 + f" ({chk['work_h']:g} ghante" + (f", {chk['ot_h']:g} OT" if chk["ot_h"] else "") + ")."
-                + (" Niyam se bahar, aapki wajah ke saath: " + v["forced"] if v["forced"] else "")
+                + (" Outside the rules, with your reason: " + v["forced"] if v["forced"] else "")
                 + (" Dhyaan: " + " ".join(tips) if tips else ""))
     v["saved"] = True
     return v
@@ -630,7 +630,7 @@ def set_duty_status(tenant: str, duty: str, status: str, note: str = "") -> dict
         x = s.scalars(select(DriversDuty).where(DriversDuty.tenant_id == tenant,
                                                 (DriversDuty.id == duty) | (DriversDuty.number == str(duty).upper()))).first()
         if x is None:
-            raise DriversError("Duty nahi mili.")
+            raise DriversError("Duty not found.")
         x.status = status
         if note:
             x.note = _clean(note, 400)
@@ -663,9 +663,9 @@ def plan(tenant: str, day, needs: list[dict]) -> dict:
     saved: she picks (`duty`)."""
     dd = _date(day, tenant)
     if not dd:
-        raise DriversError("Kis din ka plan?")
+        raise DriversError("Plan for which day?")
     if not needs:
-        raise DriversError("Kaun si duty chahiye? (samay, gaadi, route)")
+        raise DriversError("Which duties are needed? (time, vehicle, route)")
     out = []
     with session() as s:
         ds = s.scalars(select(DriversDriver).where(DriversDriver.tenant_id == tenant, DriversDriver.active.is_(True))).all()
@@ -673,7 +673,7 @@ def plan(tenant: str, day, needs: list[dict]) -> dict:
         for n in needs[:20]:
             a, b = R.hm(n.get("start")), R.hm(n.get("end"))
             if not a or not b:
-                out.append({"need": n, "error": "samay chahiye"})
+                out.append({"need": n, "error": "time needed"})
                 continue
             facts = {"day": dd, "start": a, "end": b, "break_min": int(n.get("break_min") or 0), "vehicle": _veh_key(n.get("vehicle", "")),
                      "hazardous": bool(n.get("hazardous"))}
@@ -692,12 +692,12 @@ def plan(tenant: str, day, needs: list[dict]) -> dict:
                                                                 "id": new_id("plan")})
             out.append({"need": {**n, "start": a, "end": b}, "best": best, "drivers": [c[1] for c in cands[:6]]})
     gaps = [o for o in out if not o.get("best")]
-    say = f"{_show(dd)} ke liye {len(out)} duty: " + "; ".join(
+    say = f"{_show(dd)} - {len(out)} duties: " + "; ".join(
         f"{o['need'].get('start')}-{o['need'].get('end')} {o['need'].get('vehicle', '')}: " +
-        (o["best"]["name"] if o.get("best") else "koi driver niyam mein nahi") for o in out)
+        (o["best"]["name"] if o.get("best") else "no driver within the rules") for o in out)
     if gaps:
-        say += ". Jinke liye koi nahi: chhutti badlein, samay badlein, ya bahar ka driver."
-    return {"day": dd.isoformat(), "plan": out, "say": say + " Pakka karne ke liye `duty` se lagaiye."}
+        say += ". Where there is no one: change leave, change times, or use an outside driver."
+    return {"day": dd.isoformat(), "plan": out, "say": say + " To confirm, assign with `duty`."}
 
 
 # ---------------------------------------------------------------- trip sheets
@@ -751,9 +751,9 @@ def _flags(s, tenant: str, t: DriversTrip) -> list[dict]:
     f = R.check_trip(trip, _prev_end(s, tenant, t.vehicle, t.day, t.start_time, t.id), _kmpl_ref(s, tenant, t.vehicle, t.id) if t.vehicle else None,
                      _j(st.rules, {}), st.fuel_tolerance)
     if t.fuel_amount and not t.fuel_l:
-        f.append({"kind": "fuel_litres", "level": "info", "say": "Fuel ke rupaye likhe, litre nahi: bill se litre likhiye (km / litre check ke liye)."})
+        f.append({"kind": "fuel_litres", "level": "info", "say": "Fuel rupees written, not litres: write the litres from the bill (for the km / litre check)."})
     if not t.vehicle:
-        f.append({"kind": "no_vehicle", "level": "warn", "say": "Gaadi number nahi likha."})
+        f.append({"kind": "no_vehicle", "level": "warn", "say": "No vehicle number written."})
     return f
 
 
@@ -821,7 +821,7 @@ def add_trip(tenant: str, driver: str, day=None, vehicle: str = "", text: str = 
         if fields.get(k):
             v = R.hm(fields[k])
             if not v:
-                raise DriversError(f"{k}: samay samjha nahi.")
+                raise DriversError(f"{k}: could not read the time.")
             got[k] = v
     if fields.get("route"):
         got["route"] = _clean(fields["route"], 200)
@@ -829,7 +829,7 @@ def add_trip(tenant: str, driver: str, day=None, vehicle: str = "", text: str = 
         ex = []
         for e in fields["expenses"] if isinstance(fields["expenses"], list) else []:
             if isinstance(e, dict) and _num(e.get("amount")):
-                ex.append({"what": _clean(e.get("what") or "Kharcha", 60), "amount": _num(e.get("amount"))})
+                ex.append({"what": _clean(e.get("what") or "Expense", 60), "amount": _num(e.get("amount"))})
         got["expenses"] = (got.get("expenses") or []) + ex
     dd = _date(day, tenant) or today(tenant)
     status = "draft" if source in ("driver", "photo") else "ok"
@@ -837,13 +837,13 @@ def add_trip(tenant: str, driver: str, day=None, vehicle: str = "", text: str = 
         st = _st(s, tenant)
         d = _find(s, tenant, driver)
         if actor.startswith("staff:") and d.member_id != actor.split(":", 1)[1]:
-            raise DriversError("Aap sirf apni trip sheet bhej sakte hain.")
+            raise DriversError("You can only send your own trip sheet.")
         t = None
         if trip:
             t = s.scalars(select(DriversTrip).where(DriversTrip.tenant_id == tenant,
                                                     (DriversTrip.id == trip) | (DriversTrip.number == trip.upper()))).first()
             if t is None:
-                raise DriversError("Trip sheet nahi mili.")
+                raise DriversError("Trip sheet not found.")
         if t is None:
             st.trip_seq += 1
             t = DriversTrip(tenant_id=tenant, number=f"TS-{st.trip_seq:04d}", driver_id=d.id, day=dd.isoformat(), status=status, source=source)
@@ -880,10 +880,10 @@ def add_trip(tenant: str, driver: str, day=None, vehicle: str = "", text: str = 
         v = _trip_view(t, {d.id: d.name})
     bad = [f["say"] for f in flags if f["level"] in ("bad", "warn")]
     v["say"] = (f"{v['number']} {v['driver']} {v['day']}" + (f" · {v['km']:g} km" if v["km"] is not None else "")
-                + (f" · fuel {v['fuel_l']:g} L" if v["fuel_l"] else "") + (f" · kharcha Rs {v['spent']:,.0f}" if v["spent"] else "")
-                + (" (draft: aap dekh kar 'sahi hai' kahiye)" if v["status"] == "draft" else "") + "."
+                + (f" · fuel {v['fuel_l']:g} L" if v["fuel_l"] else "") + (f" · expenses Rs {v['spent']:,.0f}" if v["spent"] else "")
+                + (" (draft: check it and say 'correct')" if v["status"] == "draft" else "") + "."
                 + (" Dhyaan: " + " ".join(bad) if bad else "")
-                + (" Kharche ka paisa dena aapka / payroll ka kaam; Hoola nahi deta." if v["spent"] else ""))
+                + (" Paying expenses is your / payroll's job; Hoola does not pay." if v["spent"] else ""))
     return v
 
 
@@ -894,12 +894,12 @@ def trip_photo(tenant: str, file_id: str, driver: str, day=None, vehicle: str = 
     try:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise DriversError(f"File {file_id} nahi mili: {e}")
+        raise DriversError(f"File {file_id} not found: {e}")
     res = ocr.read_pdf(data) if name.lower().endswith(".pdf") else ocr.read(data, "hindi")
     text = (res or {}).get("text", "") if res else ""
     if not text.strip():
-        return {"read": False, "say": "Photo se likha hua nahi padh paya (OCR nahi / dhundhli photo). Numbers bol dijiye: start km, end km, "
-                                      "samay, diesel litre / rupaye, toll."}
+        return {"read": False, "say": "Could not read the writing in the photo (no OCR / blurry photo). Tell me the numbers: start km, end km, "
+                                      "times, diesel litres / rupees, toll."}
     v = add_trip(tenant, driver, day, vehicle, text=text, source="photo", file_id=file_id)
     v["read"] = True
     v["ocr_conf"] = (res or {}).get("conf")
@@ -910,7 +910,7 @@ def trip_ok(tenant: str, trip: str, ok: bool = True) -> dict:
     with session() as s:
         t = s.scalars(select(DriversTrip).where(DriversTrip.tenant_id == tenant, (DriversTrip.id == trip) | (DriversTrip.number == str(trip).upper()))).first()
         if t is None:
-            raise DriversError("Trip sheet nahi mili.")
+            raise DriversError("Trip sheet not found.")
         t.status = "ok" if ok else "rejected"
         t.flags = _dump(_flags(s, tenant, t))
         v = _trip_view(t)
@@ -998,7 +998,7 @@ def _new_msg(s, tenant: str, driver: DriversDriver, kind: str, ref: str, text: s
 
 
 def _duty_line(x: DriversDuty) -> str:
-    return (f"{x.start}-{x.end}" + (f", gaadi {x.vehicle}" if x.vehicle else "") + (f", {x.route}" if x.route else "")
+    return (f"{x.start}-{x.end}" + (f", vehicle {x.vehicle}" if x.vehicle else "") + (f", {x.route}" if x.route else "")
             + (f" (aaraam {x.break_min} min)" if x.break_min else ""))
 
 
@@ -1017,8 +1017,8 @@ def day_plan(tenant: str, day=None, conv: str = "") -> dict:
             d = s.get(DriversDriver, did)
             if d is None:
                 continue
-            text = (f"Namaste {d.name.split(' ')[0]} ji, {_show(dd)} ki duty: " + "; ".join(_duty_line(x) for x in xs)
-                    + ". Trip sheet mein shuru / aakhri km, diesel aur toll zaroor likhiye." + (f" - {biz}" if biz else ""))
+            text = (f"Hello {d.name.split(' ')[0]}, your duties on {_show(dd)}: " + "; ".join(_duty_line(x) for x in xs)
+                    + ". Please write the start / end km, diesel and toll in the trip sheet." + (f" - {biz}" if biz else ""))
             m = _new_msg(s, tenant, d, "duty", dd.isoformat(), text)
             msgs.append(_msg_view(s, tenant, m))
         on_leave = []
@@ -1028,8 +1028,8 @@ def day_plan(tenant: str, day=None, conv: str = "") -> dict:
         free = [d.name for d in s.scalars(select(DriversDriver).where(DriversDriver.tenant_id == tenant, DriversDriver.active.is_(True))).all()
                 if d.id not in per and d.name not in on_leave]
     out = {"day": dd.isoformat(), "messages": msgs, "on_leave": on_leave, "free": free,
-           "say": (f"{_show(dd)}: {len(rows)} duty, {len(msgs)} driver ke message taiyaar (draft)." if rows else f"{_show(dd)} ki koi duty nahi lagi.")
-           + (f" Chhutti: {', '.join(on_leave)}." if on_leave else "") + (" Bhejne ke liye card par tap kijiye." if msgs else "")}
+           "say": (f"{_show(dd)}: {len(rows)} duty, {len(msgs)} driver messages ready (draft)." if rows else f"{_show(dd)}: no duties assigned.")
+           + (f" On leave: {', '.join(on_leave)}." if on_leave else "") + (" Tap the card to send." if msgs else "")}
     if msgs:
         _publish(tenant, "drivers_plan", out, conv)
     return out
@@ -1039,14 +1039,14 @@ def message(tenant: str, driver: str, text: str, kind: str = "custom", ref: str 
     from ..net import policy
     text = _clean(text, 1500)
     if not text:
-        raise DriversError("Message mein kya likhna hai?")
+        raise DriversError("What should the message say?")
     if policy.secret_found(text):
-        raise DriversError("Message mein OTP / PIN / card / Aadhaar jaisi jaankari hai: aisa kabhi nahi bhejte.")
+        raise DriversError("The message has OTP / PIN / card / Aadhaar details: such things are never sent.")
     with session() as s:
         d = _find(s, tenant, driver)
         m = _new_msg(s, tenant, d, kind if kind in ("duty", "licence", "sheet", "custom") else "custom", ref or new_id("r"), text)
         v = _msg_view(s, tenant, m)
-    v["say"] = f"Draft {v['number']} {v['driver']} ke liye taiyaar: card par 'bhejo' aap tap karengi."
+    v["say"] = f"Draft {v['number']} {v['driver']} ready: you tap 'send' on the card."
     _publish(tenant, "drivers_message", v)
     return v
 
@@ -1058,12 +1058,12 @@ def sheet_reminders(tenant: str, conv: str = "") -> dict:
             d = s.get(DriversDriver, x["driver_id"])
             if d is None or not d.active:
                 continue
-            text = (f"{d.name.split(' ')[0]} ji, {_show(_date(x['day']))} ki duty ({x['start']}-{x['end']} {x['vehicle']}) ki trip sheet "
-                    "nahi mili. Shuru / aakhri km, samay, diesel aur toll bhej dijiye, ya sheet ki photo.")
+            text = (f"Hi {d.name.split(' ')[0]}, the trip sheet for your duty on {_show(_date(x['day']))} ({x['start']}-{x['end']} {x['vehicle']}) "
+                    "has not come in. Please send the start / end km, times, diesel and toll, or a photo of the sheet.")
             out.append(_msg_view(s, tenant, _new_msg(s, tenant, d, "sheet", x["day"], text)))
-    res = {"messages": out, "say": f"{len(out)} driver ko trip sheet ki yaad ka draft taiyaar." if out else "Koi trip sheet baaki nahi."}
+    res = {"messages": out, "say": f"{len(out)} drivers have a trip sheet reminder draft ready." if out else "No trip sheets pending."}
     if out:
-        _publish(tenant, "drivers_plan", {**res, "day": "", "title": "Trip sheet baaki"}, conv)
+        _publish(tenant, "drivers_plan", {**res, "day": "", "title": "Trip sheets pending"}, conv)
     return res
 
 
@@ -1080,35 +1080,35 @@ async def send_message(tenant: str, msg_id: str, via: str, hash_: str, by_tap: b
     WhatsApp number (Meta's 24 h window: the driver must have written to it). via=hoola: the driver is her team member on
     Hoola Network."""
     if not by_tap:
-        raise DriversError("Driver ko message sirf aapke tap se jaata hai.")
+        raise DriversError("A message to a driver goes only by your tap.")
     if via not in ("self", "business", "hoola"):
         raise DriversError("via: self | business | hoola")
     with session() as s:
         m = s.get(DriversMessage, msg_id)
         if m is None or m.tenant_id != tenant:
-            raise DriversError("Message nahi mila.")
+            raise DriversError("Message not found.")
         if m.status != "draft":
-            raise DriversError(f"Yeh message {m.status} hai.")
+            raise DriversError(f"This message is {m.status}.")
         if not hash_ or hash_ != m.hash or _msg_hash(m) != m.hash:
-            raise DriversError("Card purana hai (message badal gaya): naya card dekhiye.")
+            raise DriversError("The card is out of date (the message changed): see the new card.")
         d = s.get(DriversDriver, m.driver_id)
         if d is None:
-            raise DriversError("Driver nahi mila.")
+            raise DriversError("Driver not found.")
         if d.no_messages and via != "self":
-            raise DriversError(f"{d.name} ne message mana kiya hai: apne phone se baat kijiye.")
+            raise DriversError(f"{d.name} has refused messages: talk from your own phone.")
         text, phone, member = m.text, d.phone, d.member_id
         bc_id = address = ""
         if via == "business":
             from ..employee.models import BizContact
             bc = s.scalars(select(BizContact).where(BizContact.tenant_id == tenant, BizContact.wa_id == "91" + phone)).first() if phone else None
             if bc is None:
-                raise DriversError("Is driver ne aapke business WhatsApp par kabhi message nahi kiya: draft apne phone se bhejiye.")
+                raise DriversError("This driver has never messaged your business WhatsApp: send the draft from your own phone.")
             bc_id = bc.id
         if via == "hoola":
             from ..employee.models import TeamMember
             tm = s.get(TeamMember, member) if member else None
             if tm is None or not tm.active or not tm.address:
-                raise DriversError("Driver Hoola Employee team mein (Hoola ID ke saath) nahi hai.")
+                raise DriversError("The driver is not in the Hoola Employee team (with a Hoola ID).")
             address = tm.address
     result = ""
     if via == "business":
@@ -1122,10 +1122,10 @@ async def send_message(tenant: str, msg_id: str, via: str, hash_: str, by_tap: b
         try:
             r = await asyncio.to_thread(_net_send, tenant, address, text)
         except Exception as e:
-            raise DriversError(f"Hoola Network par nahi gaya: {e}")
+            raise DriversError(f"Did not go over the Hoola Network: {e}")
         result = f"Hoola Network: {r.get('status', '')}"[:300]
     else:
-        result = "aapne apne phone se bheja"
+        result = "you sent it from your own phone"
     with session() as s:
         m = s.get(DriversMessage, msg_id)
         m.status, m.via, m.sent_at, m.result = "sent", via, now(), result
@@ -1134,7 +1134,7 @@ async def send_message(tenant: str, msg_id: str, via: str, hash_: str, by_tap: b
                                                          DriversDuty.day == m.ref)).all():
                 x.told = True
         v = _msg_view(s, tenant, m)
-    v["say"] = "Bhej diya (aapke tap se)." if via != "self" else "Theek, bheja hua maan liya."
+    v["say"] = "Sent (by your tap)." if via != "self" else "OK, marked as sent."
     return v
 
 
@@ -1147,10 +1147,10 @@ def cancel_message(tenant: str, msg_id: str) -> dict:
     with session() as s:
         m = s.get(DriversMessage, msg_id)
         if m is None or m.tenant_id != tenant:
-            raise DriversError("Message nahi mila.")
+            raise DriversError("Message not found.")
         if m.status == "draft":
             m.status = "cancelled"
-    return {"say": "Draft hata diya."}
+    return {"say": "Draft removed."}
 
 
 # ---------------------------------------------------------------- documents / reminders
@@ -1186,12 +1186,12 @@ def _doc_reminders(tenant: str, t0: date) -> list[dict]:
                 rem[doc["doc"]] = key
                 when = _show(_date(doc["on"]))
                 if doc["days_left"] < 0:
-                    line = f"{d.name}: {doc['label']} {when} ko khatam ho gaya."
-                    dtext = f"{d.name.split(' ')[0]} ji, aapka {doc['label']} {when} ko khatam ho gaya. Jaldi renew karaiye aur copy bhejiye."
+                    line = f"{d.name}: {doc['label']} {when} has expired."
+                    dtext = f"Hi {d.name.split(' ')[0]}, your {doc['label']} expired on {when}. Please renew it soon and send a copy."
                 else:
-                    line = f"{d.name}: {doc['label']} {when} ko khatam ({doc['days_left']} din)."
-                    dtext = (f"{d.name.split(' ')[0]} ji, aapka {doc['label']} {when} ko khatam ho raha hai. Renew karakar copy bhej dijiye"
-                             + (" (licence 1 saal pehle se renew ho sakta hai, Parivahan Sarathi par)." if doc["doc"] == "dl" else "."))
+                    line = f"{d.name}: {doc['label']} {when} expires ({doc['days_left']} days)."
+                    dtext = (f"Hi {d.name.split(' ')[0]}, your {doc['label']} expires on {when}. Please renew it and send a copy"
+                             + (" (a licence can be renewed up to 1 year early, on Parivahan Sarathi)." if doc["doc"] == "dl" else "."))
                 m = _new_msg(s, tenant, d, "licence", f"{doc['doc']}:{doc['on']}", dtext)
                 out.append({"driver": d.name, "doc": doc["doc"], "days_left": doc["days_left"], "say": line, "message": _msg_view(s, tenant, m)})
             d.reminded = _dump(rem)
@@ -1212,22 +1212,22 @@ def day(tenant: str, dd: date | None = None) -> dict:
     free = [d["name"] for d in all_d if d["id"] not in busy and d["id"] not in off]
     parts = []
     if du:
-        parts.append(f"Aaj {len(du)} duty")
+        parts.append(f"Today {len(du)} duties")
     if tomorrow:
-        parts.append(f"kal {len(tomorrow)} (bataya: {sum(1 for x in tomorrow if x['told'])})")
+        parts.append(f"tomorrow {len(tomorrow)} (told: {sum(1 for x in tomorrow if x['told'])})")
     if ms:
-        parts.append(f"{len(ms)} trip sheet baaki")
+        parts.append(f"{len(ms)} trip sheets pending")
     exp = [x for x in docs if x["state"] == "expired"]
     if exp:
-        parts.append(f"{len(exp)} kaagaz khatam")
+        parts.append(f"{len(exp)} documents expired")
     soon = [x for x in docs if x["state"] == "soon"]
     if soon:
-        parts.append(f"{len(soon)} kaagaz 30 din mein khatam")
+        parts.append(f"{len(soon)} documents expiring in 30 days")
     if flagged:
-        parts.append(f"{len(flagged)} trip sheet mein dikkat / draft")
+        parts.append(f"{len(flagged)} trip sheets with problems / drafts")
     return {"day": t0.isoformat(), "duties": du, "tomorrow": tomorrow, "missing_sheets": ms, "docs": docs, "flagged": flagged,
             "leaves": lv, "free": free, "drafts": messages(tenant, "draft", 30),
-            "say": (", ".join(parts) + ".") if parts else "Aaj ke liye kuch khaas nahi.", "has": bool(parts)}
+            "say": (", ".join(parts) + ".") if parts else "Nothing special for today.", "has": bool(parts)}
 
 
 # ---------------------------------------------------------------- attendance for payroll
@@ -1300,7 +1300,7 @@ def attendance(tenant: str, month: str = "") -> dict:
                          "km": round(km, 1), "trips": len(tr), "spent": round(spent, 2),
                          "sheets_missing": sum(1 for x in du if x.status == "done" and x.day not in {t.day for t in tr})})
     return {"month": a.strftime("%Y-%m"), "from": a.isoformat(), "to": b.isoformat(), "rows": rows,
-            "say": f"{a:%b %Y}: {len(rows)} driver. OT = 8 ghante / din ya 48 / hafte se upar (jo zyada ho). Paise dena payroll / aapka kaam."}
+            "say": f"{a:%b %Y}: {len(rows)} drivers. OT = over 8 hours / day or 48 / week (whichever is more). Paying is payroll's / your job."}
 
 
 def attendance_file(tenant: str, month: str = "", conv: str = "") -> dict:
@@ -1319,13 +1319,13 @@ def attendance_file(tenant: str, month: str = "", conv: str = "") -> dict:
         c = x["checks"]
         drows.append([x["day"], x["number"], x["driver"], x["start"], x["end"], x["break_min"], x["vehicle"], x["route"], x["status"],
                       " | ".join((c.get("law") or []) + ([f"wajah: {x['forced']}"] if x["forced"] else []))[:300]])
-    data = officegen.make_xlsx(f"Driver hazri {at['month']}", {"Attendance": sheet, "Trips": trows, "Duties": drows,
-                                                                "Note": [["Note"], ["OT = 8 h / din ya 48 h / hafte se upar (OSH Code 2020; jo zyada ho)."],
-                                                                         ["Payroll ke 'LOP days' / 'OT hours' column isi naam se padhe jaate hain."],
-                                                                         ["Paise / advance Hoola nahi deta."]]})
-    f = chatfiles.store(tenant, f"Driver hazri {at['month']}.xlsx", data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    _publish(tenant, "pc_file", {**f, "source": "drivers", "title": f"Driver hazri {at['month']}"}, conv)
-    return {"file": f, "month": at["month"], "say": f"Driver hazri {at['month']} ki Excel taiyaar (payroll mein import ho sakti hai)."}
+    data = officegen.make_xlsx(f"Driver attendance {at['month']}", {"Attendance": sheet, "Trips": trows, "Duties": drows,
+                                                                "Note": [["Note"], ["OT = over 8 h / day or 48 h / week (OSH Code 2020; whichever is more)."],
+                                                                         ["Payroll reads the 'LOP days' / 'OT hours' columns by these names."],
+                                                                         ["Hoola does not pay money / advances."]]})
+    f = chatfiles.store(tenant, f"Driver attendance {at['month']}.xlsx", data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    _publish(tenant, "pc_file", {**f, "source": "drivers", "title": f"Driver attendance {at['month']}"}, conv)
+    return {"file": f, "month": at["month"], "say": f"Driver attendance {at['month']} Excel ready (it can be imported into payroll)."}
 
 
 def to_payroll(tenant: str, month: str = "") -> dict:
@@ -1333,9 +1333,9 @@ def to_payroll(tenant: str, month: str = "") -> dict:
     her Haan in payroll; nothing is paid here."""
     from ..payroll import service as P
     at = attendance(tenant, month)
-    entries = [{"employee": r["payroll_name"], "lop_days": r["lop"], "ot_hours": r["ot_hours"], "note": "Driver Sahayak"} for r in at["rows"]]
+    entries = [{"employee": r["payroll_name"], "lop_days": r["lop"], "ot_hours": r["ot_hours"], "note": "Driver Assistant"} for r in at["rows"]]
     if not entries:
-        return {"saved": 0, "say": "Is mahine koi hazri nahi."}
+        return {"saved": 0, "say": "No attendance this month."}
     ok, missing = [], []
     for e in entries:
         try:
@@ -1348,8 +1348,8 @@ def to_payroll(tenant: str, month: str = "") -> dict:
         else:
             missing.append(f"{e['employee']} ({'; '.join(r.get('errors') or [])[:80]})")
     return {"saved": len(ok), "missing": missing,
-            "say": f"Payroll mein {len(ok)} driver ki hazri gayi ({at['month']})." + (f" Nahi mile: {'; '.join(missing)} - payroll mein naam / code dekhiye." if missing else "")
-            + " Salary run payroll mein aapki haan se hi banega."}
+            "say": f"Attendance of {len(ok)} drivers sent to payroll ({at['month']})." + (f" Not found: {'; '.join(missing)} - check the name / code in payroll." if missing else "")
+            + " The salary run is made in payroll only with your approval."}
 
 
 # ---------------------------------------------------------------- overview / worker
@@ -1383,7 +1383,7 @@ def tick(when: datetime | None = None) -> dict:
                 rem = _doc_reminders(tenant, loc.date())
                 out["reminders"] += len(rem)
                 if rem:
-                    _publish(tenant, "drivers_alert", {"items": rem, "say": "Kaagaz: " + " ".join(r["say"] for r in rem)})
+                    _publish(tenant, "drivers_alert", {"items": rem, "say": "Documents: " + " ".join(r["say"] for r in rem)})
                 dv = day(tenant, loc.date())
                 if dv["has"]:
                     _publish(tenant, "drivers_day", {k: dv[k] for k in ("day", "say", "duties", "missing_sheets", "docs", "free")})
