@@ -144,14 +144,14 @@ def test_the_edit_toolbar_offers_add_in_a_real_browser(site_env):
             pg.evaluate("window.__msgs = []; window.addEventListener('message', e => window.__msgs.push(e.data))")
             pg.click(f'img[data-hoola-img="{photo}"]')
             labels = pg.eval_on_selector_all("#hoola-ebar button", "bs => bs.map(b => b.textContent)")
-            assert labels == ["Photo badlo", "+ Jodo", "Hatao"]
-            pg.click("#hoola-ebar button:has-text('+ Jodo')")
+            assert labels == ["Change photo", "+ Add", "Remove"]
+            pg.click("#hoola-ebar button:has-text('+ Add')")
             pg.wait_for_function("window.__msgs.some(m => m.t === 'add')")
             msg = pg.evaluate("window.__msgs.find(m => m.t === 'add')")
             assert msg["k"] == home and msg["e"]
-            pg.click(f'#{S.sec_id("home", "hero")} h1')                       # words: Link? no; AI, + Jodo, Hatao
+            pg.click(f'#{S.sec_id("home", "hero")} h1')                       # words: Link? no; AI, + Add, Hatao
             labels = pg.eval_on_selector_all("#hoola-ebar button", "bs => bs.map(b => b.textContent)")
-            assert "+ Jodo" in labels and "AI se badlo" in labels
+            assert "+ Add" in labels and "Change with AI" in labels
             b.close()
     finally:
         srv.shutdown()

@@ -18,7 +18,7 @@
   function rs(p) { var r = Math.round(p) / 100; return '₹' + r.toLocaleString('en-IN', {maximumFractionDigits: 2}); }
   function req(method, path, body) {
     return fetch(API + path, {method: method, headers: body ? {'Content-Type': 'application/json'} : {}, body: body ? JSON.stringify(body) : undefined})
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || 'Kuch gadbad hui, dobara koshish kijiye.'); return j; }); });
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || 'Something went wrong. Please try again.'); return j; }); });
   }
 
   function abs(u) {                                      // v0.446 her gateway page lives on Hoola's server (the API's origin)
@@ -42,7 +42,7 @@
     });
     Array.prototype.forEach.call(d.querySelectorAll('[data-hoola-buy]'), function (b) {
       var p = P[b.getAttribute('data-hoola-buy')];
-      if (p && !p.in_stock) { b.disabled = true; b.textContent = 'Stock khatam'; }
+      if (p && !p.in_stock) { b.disabled = true; b.textContent = 'Out of stock'; }
       var box2 = b.closest('.hs-buybox'); if (box2 && p) { var pr = box2.querySelector('[data-hoola-price]'); if (pr) pr.textContent = p.price_text; starsOn(box2, b.getAttribute('data-hoola-buy')); }
     });
   }
@@ -71,7 +71,7 @@
     var p = P[slug];
     if (p && !p.in_stock) return;
     cart[slug] = Math.min(99, (cart[slug] || 0) + 1); save();
-    toast((p ? p.title : 'Item') + ' cart mein daala');
+    toast((p ? p.title : 'Item') + ' added to cart');
   }
   function toast(t) {
     var n = el('div', 'hs-shop-toast', t); n.setAttribute('role', 'status'); d.body.appendChild(n);
@@ -87,22 +87,22 @@
     }
     while (box.firstChild) box.removeChild(box.firstChild);
     var panel = el('div', 'hs-shop-in'); box.appendChild(panel);
-    var x = el('button', 'hs-shop-x', 'Band karein'); x.type = 'button'; x.addEventListener('click', close); panel.appendChild(x);
+    var x = el('button', 'hs-shop-x', 'Close'); x.type = 'button'; x.addEventListener('click', close); panel.appendChild(x);
     view(panel); box.hidden = false;
     var f = panel.querySelector('input,button:not(.hs-shop-x)'); (f || x).focus();
   }
   function close() { if (box) box.hidden = true; if (btn) btn.focus(); }
 
   function cartView(panel) {
-    panel.appendChild(el('h2', '', 'Aapka cart'));
+    panel.appendChild(el('h2', '', 'Your cart'));
     var slugs = Object.keys(cart).filter(function (k) { return cart[k] > 0; });
-    if (!slugs.length) { panel.appendChild(el('p', 'muted', 'Cart khaali hai.')); return; }
+    if (!slugs.length) { panel.appendChild(el('p', 'muted', 'Your cart is empty.')); return; }
     var list = el('ul', 'hs-cart'), sub = 0;
     slugs.forEach(function (s) {
       var p = P[s], q = cart[s];
-      var li = el('li'); li.appendChild(el('span', 'hs-cart-t', p ? p.title + (p.unit ? ' (' + p.unit + ')' : '') : 'Yeh cheez ab nahi milti'));
+      var li = el('li'); li.appendChild(el('span', 'hs-cart-t', p ? p.title + (p.unit ? ' (' + p.unit + ')' : '') : 'This item is no longer available'));
       var minus = el('button', '', '−'), plus = el('button', '', '+'), qty = el('b', '', String(q));
-      minus.type = plus.type = 'button'; minus.setAttribute('aria-label', 'Ek kam'); plus.setAttribute('aria-label', 'Ek zyada');
+      minus.type = plus.type = 'button'; minus.setAttribute('aria-label', 'One less'); plus.setAttribute('aria-label', 'One more');
       minus.addEventListener('click', function () { cart[s] = q - 1; if (cart[s] <= 0) delete cart[s]; save(); open(cartView); });
       plus.addEventListener('click', function () { cart[s] = Math.min(99, q + 1); save(); open(cartView); });
       var qbox = el('span', 'hs-cart-q'); qbox.appendChild(minus); qbox.appendChild(qty); qbox.appendChild(plus); li.appendChild(qbox);
@@ -111,7 +111,7 @@
       list.appendChild(li);
     });
     panel.appendChild(list);
-    panel.appendChild(el('p', 'hs-cart-sub', 'Saaman: ' + rs(sub)));
+    panel.appendChild(el('p', 'hs-cart-sub', 'Subtotal: ' + rs(sub)));
     var ws = wishes().filter(function (s2) { return P[s2] && !cart[s2]; });
     if (ws.length) {                                      // v0.452 saved for later
       var wl = el('div', 'hs-wishlist'); wl.appendChild(el('p', 'muted', 'Saved for later:'));
@@ -121,7 +121,7 @@
     }
     var dl = opt('delivery'), fr = opt('free');
     if (dl && dl !== '₹0') panel.appendChild(el('p', 'muted', 'Delivery: ' + dl + (fr ? ' (' + fr + ' se upar free)' : '') + ' - final total order par.'));
-    var go = el('button', 'btn btn-primary', 'Aage badhein'); go.type = 'button';
+    var go = el('button', 'btn btn-primary', 'Continue'); go.type = 'button';
     go.addEventListener('click', function () { open(checkoutView); }); panel.appendChild(go);
   }
 
@@ -133,19 +133,19 @@
     l.appendChild(i); form.appendChild(l); return i;
   }
   function checkoutView(panel) {
-    panel.appendChild(el('h2', '', 'Order karein'));
+    panel.appendChild(el('h2', '', 'Place order'));
     var f = el('form', 'hs-form hs-checkout'); f.noValidate = false;
-    field(f, 'Naam', 'name', 'text', true, {autocomplete: 'name'});
-    field(f, 'Mobile (10 ank)', 'phone', 'tel', true, {inputmode: 'numeric', autocomplete: 'tel', pattern: '[6-9][0-9]{9}', maxlength: '10'});
+    field(f, 'Name', 'name', 'text', true, {autocomplete: 'name'});
+    field(f, 'Mobile (10 digits)', 'phone', 'tel', true, {inputmode: 'numeric', autocomplete: 'tel', pattern: '[6-9][0-9]{9}', maxlength: '10'});
     var pick = null;
     if (opt('pickup') === '1') {
       var pl = el('label', 'hs-check'); pick = d.createElement('input'); pick.type = 'checkbox'; pick.name = 'pickup';
-      pl.appendChild(pick); pl.appendChild(el('span', '', 'Dukaan se khud le jaunga')); f.appendChild(pl);
+      pl.appendChild(pick); pl.appendChild(el('span', '', 'I will pick it up from the shop')); f.appendChild(pl);
     }
-    var addr = field(f, 'Poora pata', 'address', 'textarea', true, {autocomplete: 'street-address', rows: '3'});
+    var addr = field(f, 'Full address', 'address', 'textarea', true, {autocomplete: 'street-address', rows: '3'});
     var pin = field(f, 'Pincode', 'pincode', 'text', true, {inputmode: 'numeric', pattern: '[1-9][0-9]{5}', maxlength: '6', autocomplete: 'postal-code'});
     if (pick) pick.addEventListener('change', function () { addr.required = pin.required = !pick.checked; addr.closest('label').hidden = pin.closest('label').hidden = pick.checked; });
-    field(f, 'Kuch kehna hai? (optional)', 'note', 'text', false);
+    field(f, 'Anything to add? (optional)', 'note', 'text', false);
     var cp = field(f, 'Coupon code (optional)', 'coupon', 'text', false, {autocomplete: 'off', maxlength: '16'});   // v0.446
     var cmsg = el('p', 'muted hs-coupon-msg'); cmsg.setAttribute('role', 'status'); f.appendChild(cmsg);
     cp.addEventListener('change', function () {
@@ -157,7 +157,7 @@
     var hp = d.createElement('input'); hp.name = 'website'; hp.className = 'hp'; hp.tabIndex = -1; hp.autocomplete = 'off'; f.appendChild(hp);
     var pays = el('fieldset', 'hs-pay-ways'); pays.appendChild(el('legend', '', 'Payment'));
     var ways = [];
-    if (ONLINE) ways.push(['online', 'Online payment (UPI / card / netbanking - surakshit page)']);
+    if (ONLINE) ways.push(['online', 'Online payment (UPI / card / netbanking - secure page)']);
     if (opt('upi') === '1') ways.push(['upi', 'UPI (GPay, PhonePe, Paytm...)']);
     if (opt('cod') === '1') ways.push(['cod', 'Cash on delivery']);
     ways.forEach(function (w, i) {
@@ -166,7 +166,7 @@
     });
     f.appendChild(pays);
     var rl = el('label', 'hs-check'), rm = d.createElement('input'); rm.type = 'checkbox'; rm.name = 'remind';   // v0.452 opt-in only
-    rl.appendChild(rm); rl.appendChild(el('span', '', 'Order adhoora rahe to WhatsApp par ek baar yaad dilana (dukaan khud bhejegi)'));
+    rl.appendChild(rm); rl.appendChild(el('span', '', 'If the order is left unfinished, remind me once on WhatsApp (the shop sends it itself)'));
     f.appendChild(rl);
     rm.addEventListener('change', function () {
       var ph = f.querySelector('[name=phone]').value;
@@ -175,16 +175,16 @@
         items: Object.keys(cart).map(function (s2) { return {slug: s2, qty: cart[s2]}; })}).catch(function () {});
     });
     var msg = el('p', 'hs-form-msg'); msg.setAttribute('role', 'status');
-    var sub = el('button', 'btn btn-primary', 'Order bhejiye'); sub.type = 'submit';
+    var sub = el('button', 'btn btn-primary', 'Send order'); sub.type = 'submit';
     f.appendChild(sub); f.appendChild(msg); panel.appendChild(f);
-    if (!ways.length) { sub.disabled = true; msg.textContent = 'Online order abhi band hai; dukaan ko call kijiye.'; }
+    if (!ways.length) { sub.disabled = true; msg.textContent = 'Online ordering is closed right now; please call the shop.'; }
     var cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);   // v0.538 a retry = the same order
     f.addEventListener('submit', function (e) {
       e.preventDefault(); if (!f.reportValidity()) return;
       var fd = new FormData(f), body = {cid: cid, items: Object.keys(cart).map(function (s) { return {slug: s, qty: cart[s]}; })};
       ['name', 'phone', 'address', 'pincode', 'note', 'method', 'website', 'coupon'].forEach(function (k) { body[k] = fd.get(k) || ''; });
       body.pickup = !!(pick && pick.checked);
-      sub.disabled = true; msg.textContent = 'Bhej rahe hain...';
+      sub.disabled = true; msg.textContent = 'Sending...';
       req('POST', '/order', body).then(function (o) {
         cart = {}; save(); remember(o);
         if (o.online && abs(o.online.url)) { location.href = abs(o.online.url); return; }   // her gateway's page
@@ -206,7 +206,7 @@
     if (o.coupon_note) panel.appendChild(el('p', 'muted', o.coupon_note));
     panel.appendChild(el('p', 'hs-cart-sub', 'Total: ' + o.total + (o.delivery && o.delivery !== '₹0' ? ' (delivery ' + o.delivery + ')' : '')));
     if (o.method === 'online' && o.status === 'new') {      // v0.446 not paid yet: her gateway's page again
-      var pb = el('button', 'btn btn-primary', 'Abhi pay karein ' + o.total); pb.type = 'button';
+      var pb = el('button', 'btn btn-primary', 'Pay now ' + o.total); pb.type = 'button';
       var pm = el('p', 'hs-form-msg'); pm.setAttribute('role', 'status');
       pb.addEventListener('click', function () {
         pb.disabled = true;
@@ -214,10 +214,10 @@
           if (abs(j.url)) location.href = abs(j.url);
         }).catch(function (er) { pm.textContent = er.message; pb.disabled = false; });
       });
-      panel.appendChild(el('p', 'muted', 'Payment abhi baaki hai. Order tabhi pakka hoga jab payment gateway bataye.'));
+      panel.appendChild(el('p', 'muted', 'Payment is still pending. The order is confirmed only when the payment gateway confirms it.'));
       panel.appendChild(pb); panel.appendChild(pm);
     } else if (o.paid_online) {
-      panel.appendChild(el('p', 'hs-status', 'Online payment mil gaya (gateway ne pakka kiya).'));
+      panel.appendChild(el('p', 'hs-status', 'Online payment received (confirmed by the gateway).'));
     }
     if (o.status === 'delivered') reviewBox(panel, o);
     if (['confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].indexOf(o.status) >= 0) {   // v0.452 her GST bill (if she is registered)
@@ -233,13 +233,13 @@
     }
     if (o.pay && o.status === 'new') {
       var pay = el('div', 'hs-shop-pay');
-      pay.appendChild(el('p', '', o.pay.amount + ' bhejiye: ' + o.pay.vpa));
+      pay.appendChild(el('p', '', o.pay.amount + ' to pay: ' + o.pay.vpa));
       var img = d.createElement('img'); img.alt = 'UPI QR code'; img.width = 180; img.height = 180;
       if (/^data:image\/svg\+xml;base64,/.test(o.pay.qr || '')) img.src = o.pay.qr;
       pay.appendChild(img);
-      if (/^upi:\/\/pay\?/.test(o.pay.link || '')) { var a = el('a', 'btn btn-primary', 'UPI app mein pay karein'); a.href = o.pay.link; pay.appendChild(a); }
-      var f = el('form', 'hs-form'); var u = field(f, 'Pay karne ke baad UTR / reference number', 'utr', 'text', true, {inputmode: 'text', maxlength: '22'});
-      var b = el('button', 'btn btn-ghost', 'Maine pay kar diya'); b.type = 'submit'; f.appendChild(b);
+      if (/^upi:\/\/pay\?/.test(o.pay.link || '')) { var a = el('a', 'btn btn-primary', 'Pay in your UPI app'); a.href = o.pay.link; pay.appendChild(a); }
+      var f = el('form', 'hs-form'); var u = field(f, 'UTR / reference number after you pay', 'utr', 'text', true, {inputmode: 'text', maxlength: '22'});
+      var b = el('button', 'btn btn-ghost', 'I have paid'); b.type = 'submit'; f.appendChild(b);
       var m = el('p', 'hs-form-msg'); m.setAttribute('role', 'status'); f.appendChild(m);
       f.addEventListener('submit', function (e) {
         e.preventDefault(); b.disabled = true;
@@ -249,29 +249,29 @@
       });
       pay.appendChild(f); panel.appendChild(pay);
     } else if (o.status === 'payment_told') {
-      panel.appendChild(el('p', 'muted', 'Payment ki khabar dukaan ko mil gayi; woh check karke order pakka karenge.'));
+      panel.appendChild(el('p', 'muted', 'The shop has been told about your payment; they will check it and confirm the order.'));
     } else if (o.method === 'cod' && o.status === 'new') {
-      panel.appendChild(el('p', 'muted', 'Cash on delivery: saaman milne par payment kijiye.'));
+      panel.appendChild(el('p', 'muted', 'Cash on delivery: pay when you receive the goods.'));
     }
-    var t = el('p', 'hs-track'); t.appendChild(el('span', '', 'Order ka haal yahan dekhiye: '));
+    var t = el('p', 'hs-track'); t.appendChild(el('span', '', 'Track your order here: '));
     var ta = el('a', '', 'yeh link'); ta.href = trackLink(o); t.appendChild(ta); panel.appendChild(t);
   }
 
   function reviewBox(panel, o) {                         // v0.446 only a delivered order's buyer, once per item
-    var wrap = el('div', 'hs-reviews'); wrap.appendChild(el('h3', '', 'Review dijiye'));
+    var wrap = el('div', 'hs-reviews'); wrap.appendChild(el('h3', '', 'Leave a review'));
     (o.items || []).forEach(function (x) {
       var slug = x.slug; if (!slug) return;
       var f = el('form', 'hs-form hs-review'); f.appendChild(el('p', '', x.title));
-      var sel = d.createElement('select'); sel.name = 'stars'; sel.setAttribute('aria-label', 'Taare');
+      var sel = d.createElement('select'); sel.name = 'stars'; sel.setAttribute('aria-label', 'Stars');
       [5, 4, 3, 2, 1].forEach(function (n) { var op = d.createElement('option'); op.value = String(n); op.textContent = '★'.repeat(n); sel.appendChild(op); });
       f.appendChild(sel);
-      var tx = field(f, 'Do shabd (optional)', 'text', 'text', false, {maxlength: '300'});
-      var b = el('button', 'btn btn-ghost', 'Bhejiye'); b.type = 'submit'; f.appendChild(b);
+      var tx = field(f, 'A few words (optional)', 'text', 'text', false, {maxlength: '300'});
+      var b = el('button', 'btn btn-ghost', 'Send'); b.type = 'submit'; f.appendChild(b);
       var m = el('p', 'hs-form-msg'); m.setAttribute('role', 'status'); f.appendChild(m);
       f.addEventListener('submit', function (e) {
         e.preventDefault(); b.disabled = true;
         req('POST', '/order/' + encodeURIComponent(o.number) + '/review', {token: o.token, slug: slug, stars: Number(sel.value), text: tx.value})
-          .then(function (j) { m.textContent = j.say || 'Shukriya!'; }).catch(function (er) { m.textContent = er.message; b.disabled = false; });
+          .then(function (j) { m.textContent = j.say || 'Thank you!'; }).catch(function (er) { m.textContent = er.message; b.disabled = false; });
       });
       wrap.appendChild(f);
     });

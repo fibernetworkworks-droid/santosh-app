@@ -370,7 +370,7 @@ ${SPRITE}`;
     ['Temple at dawn','image','world','A South Indian temple gopuram at dawn, mist, golden rim light, birds in the sky, ultra detailed'],
     ['Street food promo','video','product','Close-up of pav bhaji being made on a big tawa at a Mumbai street stall at night, sizzling butter, bokeh lights'],
     ['Festive jingle','music','music','A 30-second festive jingle for a sweet shop, shehnai and dhol, joyful'],
-    ['Hinglish podcast intro','voice','voice','Hello doston, welcome back to Business Ki Baat, jahan hum chhote business ki badi kahaniyan sunte hain!']];
+    ['Podcast intro','voice','voice','Hello friends, welcome back to Business Talk, where we tell the big stories of small businesses!']];
   const ALLTOOLS = [['video','Video generator','Words to video with the best model per shot','film','new'],['image','Image generator','Posters, product shots, characters','portrait',''],
     ['music','Music studio','Whole songs, instrumentals and jingles','music','new'],['voice','Voice studio','Voice-overs in 22 voices, Indian languages','voice',''],
     ['dubbing','Dubbing','Your video in another language','portrait','new'],['editor','Video editor','Your clips, edited by your words','film',''],
