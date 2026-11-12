@@ -561,7 +561,7 @@ def assemble(ctx: dict[str, Any], screens: dict[str, dict[str, Any]], out: Path,
             h = (f'<section id="scr-{esc(sid)}" class="scr pending" data-screen="{esc(sid)}"><header class="ab"><button class="ab-back" '
                  f'data-back aria-label="Back"></button><h1 class="ab-title">{esc(labels.get(sid) or sid)}</h1></header><div class="body center">'
                  f'<div class="sk sk-card"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div>'
-                 f'<p class="t-small muted">Design ban raha hai…</p></div></section>')
+                 f'<p class="t-small muted">Building the design…</p></div></section>')
         h = expand(h)
         if sid in tabs:
             h = re.sub(r"<section\b", '<section data-tabbed="1"', h, count=1)

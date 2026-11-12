@@ -147,7 +147,7 @@ def expand(html: str, site: dict[str, Any], endpoint: str, icon) -> tuple[str, l
         vpa = f.get("upi") or ""
         if not vpa_ok(vpa):
             from .build import wa_link
-            link = wa_link(f, f"{what} order karna hai" if what else "")
+            link = wa_link(f, f"I would like to order {what}" if what else "")
             if not link:
                 return f'<span class="{esc(cls)}" aria-disabled="true">{inner}</span>'
             return f'<a class="{esc(cls)}" href="{esc(link)}" target="_blank" rel="noopener">{esc(w["order"])}</a>'
