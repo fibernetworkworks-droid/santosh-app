@@ -337,7 +337,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
     a11y, console errors, that page's links, h1, weight) - no Lighthouse, no whole-site link scan, no share picture /
     video. The full check still runs before the site goes live (hosting.blockers)."""
     if available():
-        raise CheckError("Website jaanch ke liye server par Playwright + Chromium chahiye (deploy/setup_sites.sh).")
+        raise CheckError("The website check needs Playwright + Chromium on the server (deploy/setup_sites.sh).")
     from playwright.sync_api import sync_playwright
     if plan.get("big"):                      # v0.315 a big site: designed pages + 2 items of every list in the browser,
         from . import sitemap as SM          # every page's links from the files (link_scan below)

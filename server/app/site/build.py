@@ -515,7 +515,7 @@ SHOP_GRID_MAX = 60
 def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
     items = (site.get("shop") or {}).get("products") or []
     if not items:
-        return '<p class="muted">Products jald aa rahe hain.</p>'
+        return '<p class="muted">Products are coming soon.</p>'
     lists = [c for c in site.get("catalog") or [] if c.get("items")]
     if lists:                                    # v0.538 a big catalogue: its products are on their own list pages
         own = {f'{c["key"]}/' for c in lists}
@@ -531,13 +531,13 @@ def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]])
         unit = f' <small>/ {esc(p["unit"])}</small>' if p.get("unit") else ""
         cards.append(f'<li class="hs-prod" data-hoola-product="{esc(p["slug"])}">{img}<h3>{esc(p["title"])}</h3>'
                      f'<p class="hs-price"><span data-hoola-price>{esc(p["price_text"])}</span>{unit}</p>'
-                     + (buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>')
+                     + (buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Out of stock</p>')
                      + '</li>')
     return more + f'<ul class="hs-prods">{"".join(cards)}</ul>'
 
 
 def shop_page(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
-    return (f'<section class="hs"><div class="wrap"><h1>Shop</h1><p class="lead">Cart mein daaliye, ghar baithe mangwaiye.</p>'
+    return (f'<section class="hs"><div class="wrap"><h1>Shop</h1><p class="lead">Add to cart and get it delivered to your home.</p>'
             f'{shop_grid(site, rel, photos)}</div></section>')
 
 
@@ -555,7 +555,7 @@ def buy_box(site: dict[str, Any], slug: str) -> str:
 
 def buy_box_of(p: dict[str, Any]) -> str:
     unit = f' <small>/ {esc(p["unit"])}</small>' if p.get("unit") else ""
-    act = buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>'
+    act = buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Out of stock</p>'
     return (f'<section class="hs hs-buybox" aria-label="Buy {esc(p["title"])}"><div class="wrap">'
             f'<p class="hs-price"><span data-hoola-price>{esc(p["price_text"])}</span>{unit}</p>{act}</div></section>')
 
@@ -636,7 +636,7 @@ def lang_switch(site: dict[str, Any], slug: str, rel: str) -> str:
 
 def cta_button(site: dict[str, Any], rel: str, cls: str) -> str:
     f, kind = site["facts"], site.get("cta") or "call"
-    w, t = wa_link(f, f"Namaste, {f.get('name') or ''} - website se message"), tel_link(f)
+    w, t = wa_link(f, f"Hello, {f.get('name') or ''} - message from the website"), tel_link(f)
     if kind in ("whatsapp", "order") and w:
         return f'<a class="{cls}" href="{w}" rel="noopener" target="_blank" data-m="magnetic">WhatsApp</a>'
     if kind in ("booking",) and any(p["slug"] == "booking" for p in site["plan"].get("pages", [])):
@@ -670,7 +670,7 @@ def footer(site: dict[str, Any], plan: dict[str, Any], rel: str) -> str:
             f'<div><h2>Links</h2><ul>{quick}</ul></div><div><h2>Contact</h2><ul>{"".join(contact)}</ul></div></div>'
             f'<div class="hs-legal"><span>© <span data-year>2026</span> {esc(f.get("name") or "")}'
             f'{" · " + " · ".join(regs) if regs else ""}</span><span>{legal}</span></div>'
-            + ('<p class="hs-ai-note">Is website ki kuch tasveeren AI se banayi gayi hain. / Some pictures on this site are '
+            + ('<p class="hs-ai-note">Some pictures on this site are '
                'AI-generated.</p>' if site.get("ai_photos") else "") + photo_credits(site) + '</div></footer>')
 
 
@@ -688,7 +688,7 @@ def photo_credits(site: dict[str, Any]) -> str:
 
 def floats(site: dict[str, Any]) -> str:
     f = site["facts"]
-    w, t = wa_link(f, f"Namaste, {f.get('name') or ''}"), tel_link(f)
+    w, t = wa_link(f, f"Hello, {f.get('name') or ''}"), tel_link(f)
     if not (w or t):
         return ""
     out = '<div class="hs-float">'

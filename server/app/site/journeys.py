@@ -32,7 +32,7 @@ def _fake_order(body: dict[str, Any], products: dict[str, dict]) -> dict[str, An
         p = products.get(str(it.get("slug"))) or {}
         items.append({"title": p.get("title", it.get("slug")), "unit": p.get("unit", ""), "qty": it.get("qty", 1),
                       "amount": p.get("price_text", "₹0")})
-    return {"number": "O-CHECK", "token": "check", "status": "new", "status_text": "Naya order", "items": items,
+    return {"number": "O-CHECK", "token": "check", "status": "new", "status_text": "New order", "items": items,
             "subtotal": "₹1", "delivery": "₹0", "total": "₹1", "method": body.get("method") or "cod", "utr_told": False}
 
 
@@ -149,7 +149,7 @@ def _shop(page, seen: dict[str, Any]) -> str:
     except Exception:
         return "Add to cart did not put the product in the cart"
     page.locator(".hs-cart-b").click()
-    page.get_by_role("button", name=re.compile("Aage badhein")).click()
+    page.locator(".hs-shop-in .btn-primary").first.click()      # the cart's Continue button, whatever its words
     form = page.locator("form.hs-checkout")
     form.wait_for(timeout=4000)
     form.locator("[name=name]").fill("Hoola Check")

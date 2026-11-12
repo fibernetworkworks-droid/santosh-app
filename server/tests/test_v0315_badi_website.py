@@ -116,7 +116,7 @@ def test_a_60_page_site_builds_from_one_template(site_env, monkeypatch):
     v = S.new(T, "Sharma Sweets, Akot: 60 pages wali website chahiye, har mithai ka alag page", name="Sharma Sweets",
               answers={"phone": "9876543210"})
     assert fake.maps == 1 and v["size"]["items"] == len(SWEETS) + len(AREAS) and not v["mapping"]
-    assert "site map taiyaar" in v["say"] and v["estimate"]["pages"] == v["size"]["total"]
+    assert "site map is ready" in v["say"] and v["estimate"]["pages"] == v["size"]["total"]
     plan = json.loads(S._load(v["id"]).plan)
     n_sections = sum(len(p["sections"]) for p in plan["pages"])
     S.approve_plan(T, v["id"])

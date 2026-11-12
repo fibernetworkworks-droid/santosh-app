@@ -53,15 +53,15 @@ def refuse_reason(cmd: str) -> str:
     """'' = runnable. Anything else is said to her as the reason, not swallowed."""
     c = _clean(cmd)
     if not c:
-        return "command khaali hai"
+        return "the command is empty"
     if len(c) >= MAX_CMD:
-        return "command bahut lambi hai"
+        return "the command is too long"
     if REFUSE.search(c):
-        return "is command mein sudo / docker / service jaisa hissa hai - lab mein nahi chalega"
+        return "this command has a part like sudo / docker / service - it will not run in the lab"
     if SECRETY.search(c):
-        return "command mein key / password jaisa text hai - lab mein kabhi nahi"
+        return "the command has text that looks like a key / password - never in the lab"
     if "\n" in (cmd or ""):
-        return "ek hi line ki command dijiye"
+        return "give a single-line command"
     return ""
 
 
@@ -176,7 +176,7 @@ def discover(paths: list[str], files: dict[str, str], hers: dict[str, str] | Non
         cand.append({"cmd": LANGS[lang]["test"], "source": f"{lang} default"})
 
     if hers.get("test"):
-        test, source, confirm = hers["test"], "aapne khud bataya", False
+        test, source, confirm = hers["test"], "given by you", False
     elif hoola_file.get("test"):
         test, source, confirm = hoola_file["test"], ".hoola/lab.json", False
     elif cand:
@@ -188,15 +188,15 @@ def discover(paths: list[str], files: dict[str, str], hers: dict[str, str] | Non
              or (LANGS[lang]["setup"] if lang else ""))
     why = ""
     if not test:
-        why = ("Is repo mein test ka command kahin likha nahi hai (AGENTS.md / CLAUDE.md / CI / .hoola/lab.json). "
-               "Aap bata dijiye - Hoola khud se command banakar nahi chalayega.")
+        why = ("This repo does not say anywhere how to run its tests (AGENTS.md / CLAUDE.md / CI / .hoola/lab.json). "
+               "Tell Hoola the command - Hoola will not make up a command and run it.")
     bad = refuse_reason(test) if test else ""
     if bad:
-        test, why = "", f"Jo command mili ({source}) woh nahi chal sakti: {bad}"
+        test, why = "", f"The command that was found ({source}) cannot be run: {bad}"
     if refused:                      # her repo declared something we will not run: she is TOLD, never silently swapped
         r0 = refused[0]
-        why = (f"{r0['source']} mein likhi command `{r0['cmd']}` nahi chal sakti ({r0['why']}). "
-               + (f"Iske bajay `{test}` ({source}) chala sakta hoon - aap haan kahiye." if test else "")).strip()
+        why = (f"{r0['source']} has the command `{r0['cmd']}`, which cannot be run ({r0['why']}). "
+               + (f"Instead `{test}` ({source}) can be run - say yes to approve." if test else "")).strip()
     return {"setup": setup, "test": test, "source": source, "confirm": bool(test) and confirm, "lang": lang,
             "candidates": cand[:8], "refused": refused[:3], "why": why, "timeout": hoola_file.get("timeout", 0)}
 

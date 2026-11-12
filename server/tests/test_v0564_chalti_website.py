@@ -172,7 +172,7 @@ def test_alerts_compare_with_her_own_week_and_speak_once_a_day(site_env):
     ev = [e for e in _events("site_ops") if e.get("site") == sid]
     assert len(ev) == 2 and all(e["push"] for e in ev)
     err = next(e for e in ev if e["kind"] == "errors")
-    assert "80 JavaScript galtiyan" in err["say"] and "aam din ~20" in err["say"] and "TypeError" in err["say"]
+    assert "80 JavaScript errors" in err["say"] and "a usual day ~20" in err["say"] and "TypeError" in err["say"]
     slow = next(e for e in ev if e["kind"] == "slow")
     assert "at most 10 s" in slow["say"] and "pichhle hafte at most 2.5 s" in slow["say"]
     from app.push import render

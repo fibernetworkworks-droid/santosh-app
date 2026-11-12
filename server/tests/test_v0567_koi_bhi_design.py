@@ -246,13 +246,13 @@ def test_preview_then_her_tap_makes_look_one_hers(site_env, public_dns, monkeypa
         {"style": "luxury_dark", "head_kind": "serif", "radius_px": 2, "primary": "#C9A227", "sections": ["hero", "reviews"],
          "notes": "Gold on black"} if "VISUAL SYSTEM" in system else real(system, prompt, *a, **k)))
     pv = IN.read(T, "screenshot", data=_png([("#0B0B0E", 0.7), ("#F4EFE6", 0.2), ("#C9A227", 0.1)]))
-    assert pv["token"] and "Pehla look isi design se" in pv["say"]
+    assert pv["token"] and "The first look will be made from this design" in pv["say"]
     assert S._load(v["id"]).looks == before.looks                                    # a preview changes nothing
     out = IN.use(T, pv["token"], v["id"])
     assert out["remade_looks"]
     r = S._load(v["id"])
     looks = json.loads(r.looks)
-    assert looks[0]["mine"] and looks[0]["label"] == "Aapke design se" and looks[0]["style"] == "luxury_dark"
+    assert looks[0]["mine"] and looks[0]["label"] == "From your design" and looks[0]["style"] == "luxury_dark"
     tk = looks[0]["tokens"]
     assert _near(tk["bg"], "#0B0B0E") and tk["radius"] == 2 and _near(tk["primary"], "#C9A227")
     assert tk["head"] in [__import__("app.site.taxonomy", fromlist=["T"]).FONTS[k]["head"] for k in IN.HEAD_KIND["serif"]]

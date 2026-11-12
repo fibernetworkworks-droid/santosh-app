@@ -33,11 +33,11 @@ def test_files_must_be_what_they_say(tmp_path):
     assert v["kind"] == "video" and v["name"] == "dukaan-ka-video" and (tmp_path / "media" / "dukaan-ka-video.mp4").exists()
     assert M.add(tmp_path, MP4, "x.mp4", "Dukaan ka video")["name"] == "dukaan-ka-video-2"       # never overwrites
     assert M.add(tmp_path, PDF, "Menu.pdf")["kind"] == "file" and M.add(tmp_path, MP3, "bhajan.mp3")["kind"] == "audio"
-    for data, name, why in ((b"MZ\x90\x00" + b"\x00" * 500, "menu.pdf", "andar kuch aur"),     # a program renamed .pdf
-                            (b"PK\x03\x04junk", "price.xlsx", "andar kuch aur"),
-                            (PDF, "virus.exe", "Yeh file nahi lagti"),
-                            (b"", "a.pdf", "khaali"),
-                            (b"%PDF-" + b"x" * (21 * 1024 * 1024), "big.pdf", "20.0 MB tak")):
+    for data, name, why in ((b"MZ\x90\x00" + b"\x00" * 500, "menu.pdf", "something else is inside"),     # a program renamed .pdf
+                            (b"PK\x03\x04junk", "price.xlsx", "something else is inside"),
+                            (PDF, "virus.exe", "does not look like a supported file"),
+                            (b"", "a.pdf", "empty"),
+                            (b"%PDF-" + b"x" * (21 * 1024 * 1024), "big.pdf", "up to 20.0 MB")):
         with pytest.raises(M.MediaError) as e:
             M.add(tmp_path, data, name)
         assert why in str(e.value), (name, str(e.value))
@@ -71,15 +71,15 @@ def test_she_adds_every_kind_and_the_site_shows_it(site_env):
     song = S.add_media(T, sid, MP3, "jingle.mp3", "Jingle")["name"]
     photo = S.add_photo(T, sid, _png(), "", "Kaju katli thali")["name"]
     ins = lambda key, spec: S.edit_element(T, sid, key, _e_of(S, sid, key), "insert", json.dumps(spec))   # noqa: E731
-    assert "video jodi" in ins(home, {"kind": "video", "name": vid, "caption": "Hamari <dukaan>"})["say"]
+    assert "video added" in ins(home, {"kind": "video", "name": vid, "caption": "Hamari <dukaan>"})["say"]
     ins(home, {"kind": "file", "name": pdf, "caption": "Menu download"})
     ins(home, {"kind": "audio", "name": song})
     ins(home, {"kind": "youtube", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "caption": "Tyohar special"})
     ins(home, {"kind": "photo", "name": photo, "caption": "Thali"})
     ins(contact, {"kind": "video", "name": vid})                              # a page one level deep
-    for bad, why in (({"kind": "youtube", "url": "https://evil.example/x"}, "YouTube link nahi"),
-                     ({"kind": "video", "name": pdf}, "file nahi mili"),        # a PDF is not a video
-                     ({"kind": "photo", "name": "nope"}, "photo is website mein nahi"),
+    for bad, why in (({"kind": "youtube", "url": "https://evil.example/x"}, "does not look like a YouTube link"),
+                     ({"kind": "video", "name": pdf}, "file was not found"),        # a PDF is not a video
+                     ({"kind": "photo", "name": "nope"}, "photo is not in this website"),
                      ({"kind": "exe"}, "chuniye")):
         with pytest.raises(S.SiteError) as e:
             ins(home, bad)

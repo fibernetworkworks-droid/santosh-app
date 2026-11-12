@@ -268,7 +268,7 @@ def test_change_rebuilds_only_what_she_asked_and_queue_and_stop(site_env):
         assert json.loads(row.queued) == ["footer mein Instagram link"]
         row.status = "ready"
     st = S.stop(T, v["id"])
-    assert "Rok" in st["say"]
+    assert "Stopping" in st["say"]
 
 
 def test_forms_leads_cors_and_tools(site_env):

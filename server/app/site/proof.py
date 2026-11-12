@@ -130,35 +130,35 @@ def big_set() -> list[dict[str, Any]]:
         {"id": "big-hospital", "name": "Sanjeevani Multispeciality Hospital", "field": "hospital", "city": "Nagpur", "lang": "hi",
          "features": ["blog", "lang", "app"], "app": "patients book appointments online; staff see and update each request",
          "lists": {"departments": depts, "doctors": doctors[:24], "areas we serve": _list(AREAS, 20, "h-areas")},
-         "posts": [("Heart attack ke shuruaati sanket", "Seene mein dard, saans phoolna aur paseena - turant 108 ya hamara emergency number."),
-                   ("Monsoon mein bachchon ki sehat", "Ubla paani, machhardani aur haath dhona - teen aadatein jo bimari rokti hain."),
-                   ("Knee replacement ke baad pehle 30 din", "Physiotherapy roz, chalne ka abhyas aur dawai samay par.")]},
+         "posts": [("Early signs of a heart attack", "Chest pain, breathlessness and sweating - call 108 or our emergency number at once."),
+                   ("Children's health in the monsoon", "Boiled water, mosquito nets and hand washing - three habits that stop illness."),
+                   ("The first 30 days after a knee replacement", "Physiotherapy every day, walking practice and medicines on time.")]},
         {"id": "big-coaching", "name": "Vidyapeeth Classes", "field": "coaching_centre", "city": "Kota", "lang": "hi",
          "features": ["blog", "lang", "app"], "app": "students log in to see their test marks and attendance; staff add marks",
          "lists": {"courses": courses, "centres": [f"{a} centre" for a in _list(AREAS, 10, "c-centres")],
                    "faculty": doctors[:16]},
-         "posts": [("JEE ki taiyari ka 90 din ka plan", "Pehle 30 din concepts, agle 30 din questions, aakhri 30 din mock tests."),
-                   ("NEET Biology mein 340+ kaise", "NCERT har line, diagrams roz, aur galtiyon ki notebook."),
-                   ("Board aur JEE saath kaise", "Board ke liye likhne ka abhyas, JEE ke liye speed - dono ka samay alag rakhiye.")]},
+         "posts": [("A 90-day plan for JEE preparation", "First 30 days concepts, next 30 days questions, last 30 days mock tests."),
+                   ("How to score 340+ in NEET Biology", "Every line of NCERT, diagrams daily, and a notebook of mistakes."),
+                   ("Preparing for the Boards and JEE together", "Writing practice for the Boards, speed for JEE - keep separate time for each.")]},
         {"id": "big-mithai", "name": "Annapurna Mithai Bhandar", "field": "sweet_shop", "city": "Indore", "lang": "hi",
          "features": ["shop", "blog", "lang"], "app": "",
          "lists": {"products": priced, "branches": [f"{a} branch" for a in _list(AREAS, 8, "m-br")]},
-         "posts": [("Diwali gift box kaise chunein", "Dry fruit wale dabbe lambe chalte hain; mawa wali mithai 2-3 din mein."),
-                   ("Asli kesar ki pehchaan", "Paani mein dheere rang chhodta hai aur khushboo tez hoti hai."),
-                   ("Namkeen ko kurkura kaise rakhein", "Hawa-band dabba, dhoop se door, aur geela chammach kabhi nahi.")]},
+         "posts": [("How to choose a Diwali gift box", "Dry fruit boxes keep for a long time; mawa sweets are best within 2-3 days."),
+                   ("How to spot real saffron", "It releases its colour slowly in water and has a strong aroma."),
+                   ("How to keep namkeen crisp", "An airtight box, away from sunlight, and never a wet spoon.")]},
         {"id": "big-realestate", "name": "Shubh Griha Developers", "field": "real_estate", "city": "Pune", "lang": "mr",
          "features": ["blog", "lang", "app"], "app": "buyers send site-visit requests; staff confirm the visit time",
          "lists": {"projects": projects, "localities": _list(AREAS, 20, "r-loc"), "services": ["Home loan help",
                    "Site visits", "Interior packages", "Resale", "Rental management", "Legal checks"]},
-         "posts": [("Pehla ghar lene se pehle 7 kagaz", "7/12 utara, RERA number, OC, CC, title search, loan sanction, sale deed."),
-                   ("RERA kya hai aur kyon zaroori", "Har project ka RERA number website par dekhiye; possession date wahi pakki."),
-                   ("Carpet vs built-up area", "Daam hamesha carpet area par poochiye - RERA yahi kehta hai.")]},
+         "posts": [("7 documents to check before buying your first home", "7/12 extract, RERA number, OC, CC, title search, loan sanction, sale deed."),
+                   ("What RERA is and why it matters", "Check every project's RERA number on the website; the possession date there is the binding one."),
+                   ("Carpet vs built-up area", "Always ask for the price on the carpet area - that is what RERA requires.")]},
         {"id": "big-isp", "name": "Jaldi Fiber Net", "field": "isp", "city": "Akola", "lang": "mr",
          "features": ["blog", "lang", "app"], "app": "customers raise complaints and track them; staff update status",
          "lists": {"plans": plans, "service areas": _list(AREAS, 40, "i-areas")},
-         "posts": [("WiFi slow ho to pehle yeh 5 kaam", "Router restart, cable check, 5 GHz band, router ki jagah, aur speed test."),
-                   ("Fiber aur AirFiber mein farak", "Fiber cable se aata hai, zyada stable; AirFiber hawa se, jaldi lagta hai."),
-                   ("Ghar ke WiFi ko surakshit rakhein", "Mazboot password, WPA3, aur router ka admin password badliye.")]},
+         "posts": [("Slow WiFi? Try these 5 things first", "Restart the router, check the cable, use the 5 GHz band, move the router, and run a speed test."),
+                   ("Fiber vs AirFiber", "Fiber comes over a cable and is more stable; AirFiber comes over the air and is quicker to install."),
+                   ("Keep your home WiFi safe", "Use a strong password and WPA3, and change the router's admin password.")]},
     ]
     out = []
     for b in base:
@@ -175,7 +175,7 @@ def big_set() -> list[dict[str, Any]]:
 def brief(brief_id: str) -> dict[str, Any]:
     b = next((x for x in big_set() if x["id"] == brief_id), None)
     if b is None:
-        raise ValueError("Yeh proof brief nahi hai.")
+        raise ValueError("This is not a proof brief.")
     return b
 
 
@@ -441,7 +441,7 @@ def start(brief_id: str, budget_inr: float = 0.0, builder=None) -> dict[str, Any
     ensure_tables()
     b = brief(brief_id)
     if any(t.is_alive() for t in _RUNNING.values()):
-        raise ValueError("Ek proof pehle se chal raha hai.")
+        raise ValueError("A proof is already running.")
     cap = float(getattr(get_settings(), "site_arena_max_inr", 3000) or 3000)
     budget = min(float(budget_inr or cap), cap)
     with session() as s:
@@ -453,7 +453,7 @@ def start(brief_id: str, budget_inr: float = 0.0, builder=None) -> dict[str, Any
     th = threading.Thread(target=_go, args=(pid, b, budget, builder), name=f"proof-{pid}", daemon=True)
     _RUNNING[pid] = th
     th.start()
-    return {"proof": pid, "budget_inr": budget, "say": f"100-page proof shuru: {b['name']} (v{APP_VERSION}), kharcha seema ₹{budget:,.0f}."}
+    return {"proof": pid, "budget_inr": budget, "say": f"100-page proof started: {b['name']} (v{APP_VERSION}), cost limit ₹{budget:,.0f}."}
 
 
 def _go(pid: str, b: dict[str, Any], budget: float, builder=None) -> None:
@@ -479,10 +479,10 @@ def stop(pid: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(ArenaProof, pid)
         if p is None:
-            raise ValueError("Yeh proof nahi mila.")
+            raise ValueError("This proof was not found.")
         if p.status == "running":
             p.status = "stopped"
-    return {"ok": True, "say": "Proof ruk jayega (chalta kadam poora hone ke baad)."}
+    return {"ok": True, "say": "The proof will stop (after the running step finishes)."}
 
 
 _BOOT = time.time()
@@ -505,8 +505,8 @@ def resume_interrupted() -> int:
             with session() as s:
                 p = s.get(ArenaProof, pid)
                 p.status, p.stage = "failed", ""
-                p.card = json.dumps({**c, "error": "Server restart ho gaya; dobara chalaiye." if kind == "rival" else
-                                     "Do baar server restart mein ruka; dobara chalaiye."}, ensure_ascii=False)
+                p.card = json.dumps({**c, "error": "The server restarted; run it again." if kind == "rival" else
+                                     "Stopped by a server restart twice; run it again."}, ensure_ascii=False)
             continue
         _mark(pid, resumes=int(c.get("resumes") or 0) + 1)
         try:
@@ -541,7 +541,7 @@ def get(pid: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(ArenaProof, pid)
         if p is None:
-            raise ValueError("Yeh proof nahi mila.")
+            raise ValueError("This proof was not found.")
         return _view(p)
 
 
@@ -687,7 +687,7 @@ def rival(brief_id: str, builder: str, url: str, crawl_fn=None, shots_fn=None, j
     try:
         url = WB._check_url(url)
     except Exception as e:
-        raise ValueError(f"Yeh address khul nahi sakta: {e}")
+        raise ValueError(f"This address cannot be opened: {e}")
     with session() as s:
         p = ArenaProof(kind="rival", brief_id=brief_id, builder=(builder or "other")[:40].lower(), url=url[:500],
                        version=APP_VERSION, stage="Crawling")
@@ -716,7 +716,7 @@ def rival(brief_id: str, builder: str, url: str, crawl_fn=None, shots_fn=None, j
         th.start()
     else:
         go()
-    return {"proof": pid, "say": f"{builder or 'Doosri'} website naap raha hoon (150 page tak)."}
+    return {"proof": pid, "say": f"{builder or 'The other'} website is being measured (up to 150 pages)."}
 
 
 # ---------------------------------------------------------------- 5. side by side

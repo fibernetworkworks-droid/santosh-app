@@ -220,7 +220,7 @@ def test_her_domain_saas_dns_plan_apply_undo_and_activation(host_env):
     ops = {(x["op"], x["type"], x["name"]) for x in plan["changes"]}
     assert ("add", "CNAME", "www.sharmasweets.in") in ops
     assert ("update", "CNAME", "sharmasweets.in") in ops                      # old A record -> Hoola, with a risk line
-    assert any("pehle A 203.0.113.9" in x for x in plan["risks"])
+    assert any("pointed to A 203.0.113.9" in x for x in plan["risks"])
     assert sum(1 for x in plan["changes"] if x["type"] == "TXT" and x["name"].startswith("_cf-custom-hostname")) == 2
     assert not any(x["type"] == "MX" for x in plan["changes"])                 # mail untouched
     assert _events("site_dns")[-1]["push"] is True
@@ -273,7 +273,7 @@ def test_manual_dns_when_not_on_her_cloudflare_and_guards(host_env):
     card = H.connect_domain(T, g["id"], "akotsweets.co.in")
     assert card["plan"]["provider"] == "manual" and card["plan"]["status"] == "manual"
     steps = " ".join(card["plan"]["manual_steps"])
-    assert "Host/Name 'www'" in steps and "origin.hoolasites.in" in steps and "password aap khud" in steps
+    assert "Host/Name 'www'" in steps and "origin.hoolasites.in" in steps and "you type the password yourself" in steps
     assert "forwarding" in card["say"]
     with pytest.raises(H.HostError):
         H.connect_domain(T, g["id"], "sbi-offers.in")

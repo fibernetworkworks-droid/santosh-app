@@ -49,7 +49,7 @@ def test_what_went_missing_is_named(tmp_path):
     assert not any(k in ("whatsapp", "email", "form", "page") for k, _w in kinds)       # those stayed
     assert "website" not in {w for k, w in kinds if k == "field"}                         # the honeypot is Hoola's own
     line = KP.say_line(res["lost"])
-    assert "+919876543210" in line and "wapas lagao" in line
+    assert "+919876543210" in line and "put it back" in line
     # the same change, but SHE asked for the phone to go: the phone link + field are not reported
     asked = KP.check(old, new, "phone number hata do website se")
     assert not any(x["kind"] in ("phone", "field") for x in asked["lost"])

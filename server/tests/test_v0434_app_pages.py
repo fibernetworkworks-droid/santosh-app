@@ -159,7 +159,7 @@ def test_export_and_delete_my_data_and_private_fields(linked):
     assert "cost" not in c.get(f"{base}/c/orders", headers=ha).json()["rows"][0]          # staff-only field
     assert c.get(f"{base}/c/orders", headers=hb).json()["rows"][0]["cost"] == 40
     m = {x["list"]: x for x in c.get(f"{base}/matrix", headers=hb).json()["matrix"]}
-    assert m["orders"]["staff_see"] == ["Cost price"] and m["orders"]["create"] == "login wale"
+    assert m["orders"]["staff_see"] == ["Cost price"] and m["orders"]["create"] == "signed-in users"
     # the audit log: who did what (admin only)
     assert c.get(f"{base}/audit", headers=ha).status_code == 403
     log_ = c.get(f"{base}/audit", headers=hb).json()["audit"]

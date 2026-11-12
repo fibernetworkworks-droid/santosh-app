@@ -414,10 +414,10 @@ def check_alerts(now_: datetime | None = None) -> list[dict[str, Any]]:
         if (row.errors or 0) >= max(ERR_SPIKE_MIN, ERR_SPIKE_X * med) and not _said(row, "errors"):
             top = sorted(json.loads(row.err_top or "{}").items(), key=lambda kv: -kv[1])[:1]
             if _mark(row.site_id, day, "errors"):
-                say = (f"{site.name or 'Website'}: aaj visitors ke browser mein {row.errors} JavaScript galtiyan"
-                       + (f" (aam din ~{int(med)})" if hist else "")
-                       + (f"; sabse zyada: \"{top[0][0][:90]}\" ({top[0][1]} baar)" if top else "")
-                       + ". 'website ki galti dekho' kahiye.")
+                say = (f"{site.name or 'Website'}: visitors' browsers hit {row.errors} JavaScript errors today"
+                       + (f" (a usual day ~{int(med)})" if hist else "")
+                       + (f"; most common: \"{top[0][0][:90]}\" ({top[0][1]} times)" if top else "")
+                       + ". Say 'show the website errors'.")
                 _tell(site, "errors", say, {"errors": row.errors, "median": med})
                 said.append({"site": row.site_id, "kind": "errors"})
         # slow: LCP p75 over 4 s on >= 30 measured visits, and worse than her own week when the week was measured
@@ -428,10 +428,10 @@ def check_alerts(now_: datetime | None = None) -> list[dict[str, Any]]:
             wv = p75_value("lcp", wk) if sum(wk) >= SLOW_MIN_SAMPLES else None
             if v > SLOW_LCP_MS and (wv is None or v >= SLOW_WORSE_X * wv):
                 if _mark(row.site_id, day, "slow"):
-                    say = (f"{site.name or 'Website'} aaj dheemi khul rahi hai: {row.samples} visits mein main hissa "
-                           f"dikhne mein {band_label('lcp', p75(sp))} laga (75% visits)"
-                           + (f"; pichhle hafte {band_label('lcp', p75(wk))}" if wv else "")
-                           + ". 'website tez karo' kahiye.")
+                    say = (f"{site.name or 'Website'} is opening slowly today: in {row.samples} visits the main part took "
+                           f"{band_label('lcp', p75(sp))} to show (75% of visits)"
+                           + (f"; last week {band_label('lcp', p75(wk))}" if wv else "")
+                           + ". Say 'make the website faster'.")
                     _tell(site, "slow", say, {"lcp_p75_max": v})
                     said.append({"site": row.site_id, "kind": "slow"})
     return said
@@ -546,9 +546,9 @@ def _tell_restore(res: dict[str, Any]) -> None:
                 s.add(SiteOpsDay(site_id=site_id, tenant_id=site.tenant_id, day=day))
         if not _mark(site_id, day, "backup"):
             continue
-        why = res.get("error") or "kuch files waapas waisi nahi aayin"
-        _tell(site, "backup", f"{site.name or host}: kal raat ka backup waapas laane ki jaanch fail hui ({why[:120]}). "
-                              "Website abhi theek chal rahi hai; backup ko theek karwana zaroori hai.", {"day": res.get("day")})
+        why = res.get("error") or "some files did not come back the same"
+        _tell(site, "backup", f"{site.name or host}: the check that restores last night's backup failed ({why[:120]}). "
+                              "The website is running fine right now; the backup must be fixed.", {"day": res.get("day")})
 
 
 def restore_status() -> dict[str, Any]:
@@ -616,11 +616,11 @@ def owner_view(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
                        "restore_test": {"day": rs.get("day"), "ok": (rs.get("ok") if rs.get("ok") is not False else host_ok),
                                         "at": rs.get("at"), "files_checked": rs.get("files_checked")} if rs else None}}
     lcp = (out["speed"].get("lcp") or {})
-    out["say"] = (f"{r.name}: {days} din mein visitors ke browser mein {out['errors']} galtiyan"
-                  + (f" (pichhle {days} din {out['errors_prev']})" if out["errors_prev"] else "")
-                  + (f"; main hissa dikhne mein {lcp['p75']} (75% visits, {out['speed']['samples']} visits naape)" if lcp else
-                     "; speed abhi naapi nahi gayi (koi visit nahi aayi)")
-                  + f"; banane ka AI kharcha ~₹{out['cost']['ai_inr']:,.0f}."
-                  + (" Backup waapas laane ki jaanch: theek." if out["backup"]["restore_test"] and out["backup"]["restore_test"]["ok"]
-                     else (" Backup waapas laane ki jaanch FAIL." if out["backup"]["restore_test"] else "")))
+    out["say"] = (f"{r.name}: in {days} days visitors' browsers hit {out['errors']} errors"
+                  + (f" ({out['errors_prev']} in the {days} days before)" if out["errors_prev"] else "")
+                  + (f"; the main part shows in {lcp['p75']} (75% visits, {out['speed']['samples']} visits measured)" if lcp else
+                     "; speed has not been measured yet (no visits came)")
+                  + f"; AI cost of building ~₹{out['cost']['ai_inr']:,.0f}."
+                  + (" Backup restore check: fine." if out["backup"]["restore_test"] and out["backup"]["restore_test"]["ok"]
+                     else (" Backup restore check FAILED." if out["backup"]["restore_test"] else "")))
     return out

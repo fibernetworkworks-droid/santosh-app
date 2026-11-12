@@ -189,7 +189,7 @@ DELEGATE_SCHEMA = {
 }
 
 DELEGATE_TOOLS = [DELEGATE_SCHEMA]
-DELEGATE_LABELS = {"delegate_task": "Kaarobar tez karne ke liye madadgar bhej raha hoon"}
+DELEGATE_LABELS = {"delegate_task": "Sending a helper to speed up the work"}
 DELEGATE_HANDLERS: dict = {"delegate_task": None}   # set below
 
 

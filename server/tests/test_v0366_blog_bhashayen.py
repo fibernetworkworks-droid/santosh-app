@@ -73,7 +73,7 @@ def test_a_post_reaches_her_blog_only_with_her_haan(site_env, kalam):
     with pytest.raises(kalam.KalamError):
         kalam.decide_publish(T, pid, True, card_hash="not-the-card")
     out = kalam.decide_publish(T, pid, True, card_hash=req["card"]["hash"])
-    assert "website ke blog par" in out["say"] and out["published"]["slug"] == "diwali-mithai"
+    assert "the website's blog" in out["say"] and out["published"]["slug"] == "diwali-mithai"
     g = S.get(T, sid)
     assert g["version"] == ver + 1
     o = B.out_dir(T, sid, g["version"])
@@ -99,7 +99,7 @@ def test_scheduled_posts_pages_and_her_taps(site_env, kalam):
     later = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
     sch = S.blog_publish(T, sid, {"title": "Holi special", "body": "Holi ki mithai ki list.\n\nGujiya aur malpua.",
                                   "meta": {"category": "Tyohar"}}, later)
-    assert sch["post"]["status"] == "scheduled" and "ko website par aayega" in sch["say"]
+    assert sch["post"]["status"] == "scheduled" and "is scheduled for" in sch["say"]
     v0 = S.get(T, sid)["version"]
     assert not (B.out_dir(T, sid, v0) / "blog").exists()                            # not before its time
     for i in range(11):                                                           # 11 more -> two blog pages
@@ -117,7 +117,7 @@ def test_scheduled_posts_pages_and_her_taps(site_env, kalam):
     assert 'rel="prev"' in post and 'rel="next"' in post and ("Aur padhiye" in post or "More to read" in post)
     # from chat a post can be hidden (a version she makes live) but never deleted; her tap can
     out = S.blog_act(T, sid, "holi-special", "hide")
-    assert "live karo" in out["say"]
+    assert "go live" in out["say"]
     with pytest.raises(S.SiteError):
         S.blog_act(T, sid, "holi-special", "delete")
     assert not (B.out_dir(T, sid, S.get(T, sid)["version"]) / "blog" / "holi-special").exists()

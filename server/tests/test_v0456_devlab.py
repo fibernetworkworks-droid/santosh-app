@@ -44,7 +44,7 @@ docker_only = pytest.mark.skipif(not _docker(), reason="no docker on this machin
 # ---------------------------------------------------------------- the command is declared, never invented
 def test_her_own_command_wins_and_needs_no_tap():
     d = spec.discover(["pyproject.toml"], {"AGENTS.md": AGENTS}, {"test": "make test"})
-    assert d["test"] == "make test" and d["source"] == "aapne khud bataya" and d["confirm"] is False
+    assert d["test"] == "make test" and d["source"] == "given by you" and d["confirm"] is False
 
 
 def test_the_repo_rules_beat_its_ci_and_the_language_default():
@@ -65,7 +65,7 @@ def test_a_repo_file_can_state_it_outright_and_is_trusted():
 
 def test_nothing_declared_means_nothing_runs():
     d = spec.discover(["main.c", "Makefile.in"], {})
-    assert d["test"] == "" and "bata dijiye" in d["why"] and "khud se command banakar nahi" in d["why"]
+    assert d["test"] == "" and "Tell Hoola the command" in d["why"] and "will not make up a command" in d["why"]
 
 
 def test_commands_that_are_refused_outright():
@@ -81,7 +81,7 @@ def test_a_refused_command_is_reported_never_quietly_swapped():
     d = spec.discover(["pyproject.toml"], {"AGENTS.md": "## Testing\n- Test: sudo pytest\n",
                                            "pyproject.toml": "[project]\nname='x'\n"})
     assert d["refused"] and d["refused"][0]["cmd"] == "sudo pytest" and d["refused"][0]["source"] == "AGENTS.md"
-    assert "nahi chal sakti" in d["why"]                          # she is told, in her words
+    assert "cannot be run" in d["why"]                          # she is told, in her words
     assert d["test"] == "python3 -m pytest -q" and d["confirm"] is True   # the offer still waits for her tap
 
 
@@ -126,7 +126,7 @@ def test_a_pass_is_shown_short_because_nobody_debugs_a_pass():
 
 def test_a_timeout_is_not_a_pass():
     r = out.shape("still running", 124, "/tmp/x.log", 600.0, timed_out=True)
-    assert r["ok"] is False and r["timed_out"] is True and "roka gaya" in out.say(r, "npm test")
+    assert r["ok"] is False and r["timed_out"] is True and "was stopped" in out.say(r, "npm test")
 
 
 def test_the_log_can_be_asked_a_second_question():
@@ -171,7 +171,7 @@ def test_a_check_is_given_no_network_and_no_powers():
 def test_the_box_says_why_when_docker_is_missing(monkeypatch):
     monkeypatch.setattr(box, "docker", lambda: "")
     av = box.available()
-    assert av["ok"] is False and "docker nahi hai" in av["why"]
+    assert av["ok"] is False and "docker is not installed" in av["why"]
     assert service.check("a/b")["stage"] == "box"                  # and a run stops there, with that reason
     assert box.run_in("img", "/tmp", "true")["rc"] == 127 and box.images() == [] and box.has_image("x") is False
 
@@ -218,7 +218,7 @@ def test_the_real_box_is_sealed():
     for line in service.selftest():
         print(line)
     lines = "\n".join(service.selftest())
-    assert "GADBAD" not in lines and "KHATRA" not in lines
+    assert "PROBLEM" not in lines and "DANGER" not in lines
 
 
 # ---------------------------------------------------------------- v0.532 the image must be buildable where the code RUNS
@@ -336,7 +336,7 @@ def test_a_stale_image_is_named_and_rebuilt_not_used_quietly(monkeypatch):
 def test_the_selftest_proves_an_install_survives_the_commit():
     """The two stages that would have caught v0.537 before she ever ran it."""
     src = (Path(service.__file__).read_text("utf-8") if hasattr(service, "__file__") else "")
-    assert "repo ka apna `pip install` chalta hai" in src and "install snapshot mein bacha rehta hai" in src
+    assert "the repo's own `pip install` works" in src and "the install stays in the snapshot" in src
     assert "commit_to=tag" in src and "network=True" in src       # the real road: install with the net, then commit
     assert "import tabulate" in src                               # ... and ask the committed image for it back
 
@@ -351,7 +351,7 @@ def test_the_box_runs_the_same_python_as_the_server():
     assert "python3-dev" not in t and "python3-venv" not in t    # apt's 3.11 must not shadow or mislead
     assert box.BASE_REV == "3"                                   # ... and her built image is named stale until rebuilt
     src = Path(service.__file__).read_text("utf-8")
-    assert "box ka python" in src and "sys.version_info" in src  # the self-test compares and says GADBAD
+    assert "box Python" in src and "sys.version_info" in src  # the self-test compares and says PROBLEM
     assert "render.py:517" in t                                  # the reason is written where the image is
 
 

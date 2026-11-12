@@ -57,7 +57,7 @@ def test_her_lottie_file_is_checked_before_it_is_kept(tmp_path):
     good["layers"][0]["ks"]["o"]["x"] = "var $bm_rt = time * 10;"          # an expression (code)
     doc, notes = LT.check(json.dumps(good).encode())
     assert "$bm_rt" not in json.dumps(doc) and "x" not in doc["layers"][0]["ks"]["o"]
-    assert any("expressions hata" in n for n in notes)
+    assert any("expressions were removed" in n for n in notes)
     for bad, why in ((b"not json", "JSON"), (json.dumps({"v": "5"}).encode(), "zaroori"),
                      (json.dumps({**LT.builtin("dots"), "assets": [{"id": "i", "p": "https://x.example/a.png", "u": ""}]}).encode(), "server"),
                      (b"{" + b" " * 1_600_000 + b"}", "1.5 MB")):
@@ -74,7 +74,7 @@ def test_her_lottie_file_is_checked_before_it_is_kept(tmp_path):
             LT.store(tmp_path, name, json.dumps(LT.builtin("wave")).encode())
     html, used, prob = LT.expand('<div data-hoola-lottie="check"></div><div data-hoola-lottie="ghost"></div>', "../", {"check"})
     assert used == {"check"} and 'data-src="../assets/lottie/check.json"' in html
-    assert "data-hoola-lottie-missing" in html and prob == ["animation 'ghost' nahi hai"]
+    assert "data-hoola-lottie-missing" in html and prob == ["there is no animation 'ghost'"]
 
 
 class _Quiet(http.server.SimpleHTTPRequestHandler):

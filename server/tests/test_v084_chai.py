@@ -82,7 +82,7 @@ def test_ingest_dedupe_and_day_summary(env):
     cash = G.add_cash(T, 300, "aaj", note="shaam")
     d = G.day_summary(T)
     assert d["total"] == "₹415" and d["upi_count"] == 11 and d["cash"] == "₹300"
-    assert d["best"][0]["hour"] == 7 and "7 subah" in d["best"][0]["label"]
+    assert d["best"][0]["hour"] == 7 and "7 am" in d["best"][0]["label"]
     G.void(T, cash["id"])
     assert G.day_summary(T)["total"] == "₹115"
 
@@ -113,7 +113,7 @@ def test_best_hours_over_weeks(env):
     assert G.ingest_alerts(T, items)["added"] == len(items)
     assert G.ingest_alerts(T, [{"app": "com.phonepe.app.business", "amount": 5, "at_ms": _at(20, 9)}])["added"] == 0   # too old
     h = G.best_hours(T, 28)
-    assert h["top"][0]["hour"] == 17 and "5 shaam" in h["text"]
+    assert h["top"][0]["hour"] == 17 and "5 pm" in h["text"]
 
 
 def test_plan_from_menu_history_weather_and_stock_orders(env):

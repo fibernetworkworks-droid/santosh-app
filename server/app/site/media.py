@@ -109,18 +109,18 @@ def add(src: Path, data: bytes, filename: str, about: str = "") -> dict[str, Any
     ext = _ext(filename)
     kind = kind_of(ext)
     if not kind:
-        raise MediaError("Yeh file nahi lagti: video (MP4 / WebM), audio (MP3 / M4A / OGG / WAV) ya file (PDF, Word, "
-                         "Excel, PowerPoint, TXT, CSV) bhejiye. Photo ke liye photo wala button.")
+        raise MediaError("This does not look like a supported file: send a video (MP4 / WebM), audio (MP3 / M4A / OGG / WAV) or file (PDF, Word, "
+                         "Excel, PowerPoint, TXT, CSV). For a photo use the photo button.")
     if not data:
-        raise MediaError("File khaali hai.")
+        raise MediaError("The file is empty.")
     limit = KINDS[kind][1]
     if len(data) > limit:
-        raise MediaError(f"Yeh {kind} {size_text(len(data))} ki hai; {size_text(limit)} tak chalegi.")
+        raise MediaError(f"This {kind} is {size_text(len(data))}; up to {size_text(limit)} is allowed.")
     if not sniff(data, ext):
-        raise MediaError(f"Yeh file sach mein .{ext} nahi lag rahi (andar kuch aur hai). Asli file bhejiye.")
+        raise MediaError(f"This file does not really look like a .{ext} (something else is inside). Send the real file.")
     items = manifest(src)
     if sum(int(i.get("bytes") or 0) for i in items) + len(data) > SITE_LIMIT:
-        raise MediaError("Is website ki files ki jagah bhar gayi (400 MB); purani hataiye ya video chhota kijiye.")
+        raise MediaError("This website's file space is full (400 MB); remove old files or make the video smaller.")
     base = re.sub(r"[^a-z0-9]+", "-", (about or filename.rsplit(".", 1)[0] or kind).lower()).strip("-")[:30] or kind
     name, n = base, 2
     while any(i["name"] == name for i in items):
@@ -148,7 +148,7 @@ def block(item: dict[str, Any] | None, kind: str, caption: str = "", url: str = 
     if kind == "youtube":
         return f'<div class="hs-emedia" data-hoola-video="{_html.escape(url)}" data-title="{cap or "Video"}"></div>'
     if not item:
-        raise MediaError("Yeh file nahi mili; dobara upload kijiye.")
+        raise MediaError("This file was not found; upload it again.")
     nm = _html.escape(item["name"])
     if kind == "video":
         return (f'<figure class="hs-emedia"><video data-hoola-media="{nm}" controls preload="metadata" playsinline '

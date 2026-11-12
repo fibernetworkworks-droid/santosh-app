@@ -117,7 +117,7 @@ def start(site_id: str, order: dict[str, Any]) -> dict[str, Any]:
     from ..paygate import gw as GW
     p = project_of(site_id)
     if p is None or not PY.on(p):
-        raise SH.ShopError("Online payment abhi chalu nahi; UPI ya Cash on delivery chuniye.", 409)
+        raise SH.ShopError("Online payment is not turned on yet; pick UPI or Cash on delivery.", 409)
     cl, gw = PY._client(p)
     PY.ensure_tables()
     amount = int(order["total_paise"])
@@ -126,7 +126,7 @@ def start(site_id: str, order: dict[str, Any]) -> dict[str, Any]:
     try:
         made = cl.create_order(amount, pid, cust, {"site": site_id, "order": order["number"]}, PY._return_url(p, pid), None)
     except GW.GwError as e:
-        raise SH.ShopError(f"Payment shuru nahi hua: {e}", 502)
+        raise SH.ShopError(f"The payment did not start: {e}", 502)
     with session() as s:
         s.add(AppPayment(id=pid, app_id=p.id, kind="site", coll="shop", row_id=order["id"], member="", gateway=gw,
                          gw_order=made["gw_order"], amount=amount, label=f"Website order {order['number']}",
@@ -145,7 +145,7 @@ def again(site_id: str, number: str, token: str) -> dict[str, Any]:
     with session() as s:
         o = SH._mine(s, site_id, number, token)
         if o.method != "online" or o.status != "new":
-            raise SH.ShopError("Is order ka online payment ab nahi.", 409)
+            raise SH.ShopError("Online payment is no longer open for this order.", 409)
         oid, pid = o.id, o.pay_id or ""
         view = {"id": o.id, "number": o.number, "name": o.name, "phone": o.phone, "total_paise": o.total}
     p = project_of(site_id)
@@ -173,8 +173,8 @@ def on_paid(order_id: str, payment_id: str, amount: int, gw: str, label: str) ->
             what = "confirmed"
             STATS["paid"] += 1
         else:                                       # it was cancelled meanwhile (abandoned) - the money is not lost
-            hist.append({"at": SH._iso(), "note": f"Payment {SH.rupees(amount)} aaya jab order '{o.status}' tha - refund ya "
-                                                  "dobara pakka karna aapka faisla.", "by": gw})
+            hist.append({"at": SH._iso(), "note": f"Payment {SH.rupees(amount)} arrived when the order was '{o.status}' - a refund or "
+                                                  "confirming it again is your decision.", "by": gw})
             what = "late"
             STATS["late_paid"] += 1
         o.history, o.updated_at = json.dumps(hist), now()
@@ -192,7 +192,7 @@ def release_unpaid(hours: int = ABANDON_H) -> int:
     n = 0
     for site_id, number in todo:
         try:
-            cancel(site_id, number, "payment nahi aaya")
+            cancel(site_id, number, "payment did not arrive")
             n += 1
         except Exception:                           # noqa: BLE001
             log.exception("release unpaid %s", number)
@@ -219,11 +219,11 @@ def refund(tenant: str, ref: str, number: str, amount_rs: Any = None, why: str =
     with session() as s:
         o = s.scalars(select(SH.SiteShopOrder).where(SH.SiteShopOrder.site_id == site_id, SH.SiteShopOrder.number == number)).first()
         if o is None:
-            raise SH.ShopError("Yeh order nahi mila.", 404)
+            raise SH.ShopError("This order was not found.", 404)
         pid = o.pay_id or ""
     p = project_of(site_id)
     if not pid or p is None:
-        raise SH.ShopError("Is order ka online payment nahi hai (UPI / COD ka refund aap khud karti hain).", 409)
+        raise SH.ShopError("This order has no online payment (you refund UPI / COD yourself).", 409)
     out = PY.refund(p, pid, amount_rs, why or f"Order {number}", her_tap=True)
     with session() as s:
         o = s.scalars(select(SH.SiteShopOrder).where(SH.SiteShopOrder.site_id == site_id, SH.SiteShopOrder.number == number)).first()
@@ -249,7 +249,7 @@ def coupon_check(site_id: str, code: str, items: Any) -> dict[str, Any]:
     code = re.sub(r"\s+", "", str(code or "")).upper()
     sub = _subtotal(site_id, items)
     if p is None or not code:
-        return {"ok": False, "why": "Yeh code nahi chalta.", "subtotal": SH.rupees(sub), "discount": SH.rupees(0), "total": SH.rupees(sub)}
+        return {"ok": False, "why": "This code does not work.", "subtotal": SH.rupees(sub), "discount": SH.rupees(0), "total": SH.rupees(sub)}
     c = CP._all(p).get(code) if CP.CODE.match(code) else None
     why = CP._why(c, sub / 100, "")
     if why:
@@ -304,20 +304,20 @@ def review(site_id: str, number: str, token: str, slug: str, stars: Any, text: s
     except (TypeError, ValueError):
         st = 0
     if not 1 <= st <= 5:
-        raise SH.ShopError("1 se 5 taare chuniye.")
+        raise SH.ShopError("Pick 1 to 5 stars.")
     slug = SH._slug(slug)
     with session() as s:
         o = SH._mine(s, site_id, number, token)
         if o.status != "delivered":
-            raise SH.ShopError("Review saaman milne ke baad hi.", 409)
+            raise SH.ShopError("A review can be given only after the item is delivered.", 409)
         if slug not in {x["slug"] for x in json.loads(o.items or "[]")}:
-            raise SH.ShopError("Yeh cheez is order mein nahi thi.", 400)
+            raise SH.ShopError("This item was not in this order.", 400)
         if s.scalars(select(SiteShopReview).where(SiteShopReview.order_id == o.id, SiteShopReview.slug == slug)).first():
-            raise SH.ShopError("Is cheez ka review pehle hi diya hai.", 409)
+            raise SH.ShopError("A review has already been given for this item.", 409)
         first = (o.name or "").split(" ")[0][:40]
         s.add(SiteShopReview(site_id=site_id, slug=slug, order_id=o.id, stars=st, text=SH._tidy(text, 600), name=first))
     STATS["reviews"] += 1
-    return {"ok": True, "say": "Shukriya! Aapka review lag gaya."}
+    return {"ok": True, "say": "Thank you. Your review is posted."}
 
 
 def reviews(site_id: str, slug: str = "") -> dict[str, Any]:
@@ -351,6 +351,6 @@ def hide_review(tenant: str, ref: str, rid: str, hide: bool = True) -> dict[str,
     with session() as s:
         x = s.get(SiteShopReview, rid)
         if x is None or x.site_id != site_id:
-            raise SH.ShopError("Review nahi mila.", 404)
+            raise SH.ShopError("Review not found.", 404)
         x.status = "hidden" if hide else "shown"
     return {"ok": True, "status": "hidden" if hide else "shown"}

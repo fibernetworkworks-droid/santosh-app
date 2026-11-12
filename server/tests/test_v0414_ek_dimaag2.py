@@ -192,8 +192,8 @@ def test_spec_card_has_stories_payments_notifications_and_other_apps(school):
     mods = {m["key"]: m for m in card["modules"]}
     assert list(mods) == ["stories", "pages", "users", "flows", "data", "logic", "payments", "notifications", "integrations", "features", "quality", "phases", "risks"]
     assert len(mods["stories"]["lines"]) == 4 and mods["stories"]["lines"][0].startswith("Parent: admission online")
-    assert "record" in json.dumps(card) or "Staff payment record" in mods["payments"]["lines"][0]
-    assert any("Paisa kabhi khud nahi" in x for x in mods["payments"]["lines"])
+    assert "record" in json.dumps(card) or "Staff record payments" in mods["payments"]["lines"][0]
+    assert any("Money never moves on its own" in x for x in mods["payments"]["lines"])
     assert len(mods["notifications"]["lines"]) == 2 and "WhatsApp" in mods["notifications"]["lines"][1]
     assert mods["integrations"]["lines"][0].startswith("Google Sheets") and "random_crm" not in json.dumps(mods)
     assert card["data_ready"]
@@ -319,7 +319,7 @@ def test_revise_before_and_after_the_build(school, monkeypatch):
     monkeypatch.setattr(AI, "ask_json", lambda s, p, m=6000, k="build": json.loads(json.dumps(school_more))
                         if "her_change" in p else old_ask(s, p, m, k))
     out = c.post(f"/api/site-architect/{card['id']}/revise", json={"words": "gallery page bhi"}).json()
-    assert out["added_pages"] == ["Gallery"] and out["removed_pages"] == [] and changes == ["Naye pages jodo: Gallery"]
+    assert out["added_pages"] == ["Gallery"] and out["removed_pages"] == [] and changes == ["Add new pages: Gallery"]
     assert "logic_draft" not in out and got["number"] == out["site"]
 
 

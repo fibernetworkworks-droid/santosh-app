@@ -90,7 +90,7 @@ def apex_of(host: str) -> str:
 
 
 REDIRECT_ROLES = ("apex", "redirect")
-STAGE_WORDS = {"dns": "Verifying - DNS records dekh rahe hain", "ssl": "Setting up - https certificate ban raha hai",
+STAGE_WORDS = {"dns": "Verifying - looking at the DNS records", "ssl": "Setting up - the https certificate is being made",
                "active": "Live"}
 
 
@@ -161,7 +161,7 @@ def slug_for(name: str) -> str:
 def free_host(r: Site) -> str:
     c = cfg()
     if not c["base"]:
-        raise HostError("Free Hoola address abhi chalu nahi (server par SITES_BASE_DOMAIN set nahi).")
+        raise HostError("The free Hoola address is not turned on yet (SITES_BASE_DOMAIN is not set on the server).")
     from .guard import name_problem
     base = slug_for(r.name or (r.number or "site"))
     if base in RESERVED or name_problem(base):
@@ -316,17 +316,17 @@ def blockers(r: Site) -> list[str]:
     out = [b["text"] for b in chk.get("blocking", [])]
     blanks = (chk.get("scores") or {}).get("blanks", 0)
     if blanks:
-        out.append(f"{blanks} jagah [blank] baaki hai - preview mein Hoola ki sample value dikh rahi hai (phone / daam / naam jo pata nahi tha); asli bata dijiye, phir live")
+        out.append(f"{blanks} [blank] places are still open - the preview shows Hoola's sample value (a phone / price / name that was not known); give the real ones, then go live")
     samples = (chk.get("scores") or {}).get("samples", 0)     # v0.714 app screens drawn with sample rows
     if samples:
-        out.append(f"{samples} app screen abhi sample data dikha rahi hai - asli list judne ke baad hi live")
+        out.append(f"{samples} app screens still show sample data - they can go live only after the real list is connected")
     if chk.get("tier") == "quick":           # v0.789 the last change had only the quick check of its own page
         out.append("the last change had the quick check only (its own page); the full check of every page runs first "
                    "(about a minute), then tap Go live again")
     if r.status != "ready":
-        out.append(f"website abhi '{r.status}' hai")
+        out.append(f"the website is '{r.status}' right now")
     if not r.version:
-        out.append("abhi koi version nahi bana")
+        out.append("no version has been made yet")
     return out
 
 
@@ -349,8 +349,8 @@ def launch_request(tenant: str, ref: str, free: bool = True, conv: str = "") -> 
     blk = blockers(r)
     card = {"site": S.view(r, False), "hosts": hosts, "version": r.version, "blockers": blk, "hash": _live_hash(r, hosts),
             "scores": _j(r.scores, {}), "preview": S.preview_url(r), "kind": "launch",
-            "say": ("Live karne se pehle: " + "; ".join(blk[:3])) if blk else
-                   f"v{r.version} ko {', '.join(hosts)} par live karein? Aapki haan chahiye."}
+            "say": ("Before going live: " + "; ".join(blk[:3])) if blk else
+                   f"Put v{r.version} live on {', '.join(hosts)}? Your approval is needed."}
     _publish(tenant, "site_launch", {**card, "push": not blk}, conv or r.conv)
     return card
 
@@ -363,12 +363,12 @@ def launch(tenant: str, ref: str, hash_: str, free: bool = True) -> dict[str, An
         s.expunge(r)
     blk = blockers(r)
     if blk:
-        raise HostError("Live nahi kar sakte: " + "; ".join(blk[:4]))
+        raise HostError("Cannot go live: " + "; ".join(blk[:4]))
     hosts = [h.hostname for h in _hosts_of(r) if h.kind == "custom"]
     if free or not hosts:
         hosts.append(free_host(r))
     if hash_ != _live_hash(r, hosts):
-        raise HostError("Website card ke baad badal gayi; naya 'live karo' card dekhiye.")
+        raise HostError("The website changed after the card; look at the new 'go live' card.")
     main = _main_host(r, hosts)
     _publish_files(r, main, r.version)
     with session() as s:
@@ -393,7 +393,7 @@ def launch(tenant: str, ref: str, hash_: str, free: bool = True) -> dict[str, An
     learn(r.field, "section", [x["type"] for p in _j(r.plan, {}).get("pages", []) for x in p.get("sections", [])])
     url = f"https://{main}/"
     out = {"ok": True, "url": url, "hosts": hosts, "version": r.version,
-           "say": f"Live! {url} (v{r.version})." + (" Aapke domain par DNS / SSL poora hote hi wahan bhi khulegi." if any(
+           "say": f"Live! {url} (v{r.version})." + (" It will also open on your domain as soon as DNS / SSL is complete." if any(
                _is_pending(h) for h in hosts) else "")}
     _publish(tenant, "site_live", {**out, "site": S.view(S._load(r.id), False)}, r.conv)
     return out
@@ -464,7 +464,7 @@ def _publish_files(r: Site, host: str, version: int) -> None:
     else:
         src = B.out_dir(r.tenant_id, r.id, version)
         if not src.exists():
-            raise HostError(f"v{version} ab nahi hai (sirf aakhri 20 rakhe jaate hain).")
+            raise HostError(f"v{version} is no longer kept (only the last 20 are kept).")
         if tmp.exists():
             shutil.rmtree(tmp)
         shutil.copytree(src, tmp)
@@ -518,14 +518,14 @@ def rollback_request(tenant: str, ref: str, version: int, conv: str = "") -> dic
         s.expunge(r)
         ok = s.scalars(select(SiteVersion).where(SiteVersion.site_id == r.id, SiteVersion.version == int(version))).first()
     if not ok or not B.out_dir(tenant, r.id, int(version)).exists():
-        raise HostError(f"v{version} nahi mila.")
+        raise HostError(f"v{version} was not found.")
     live = [h for h in _hosts_of(r) if h.live_version]
     if not live:
-        raise HostError("Website abhi live nahi hai.")
+        raise HostError("The website is not live right now.")
     h = hashlib.sha256(f"rollback|{r.id}|{version}|{live[0].live_version}".encode()).hexdigest()[:16]
     card = {"kind": "rollback", "site": S.view(r, False), "version": int(version), "from": live[0].live_version,
             "hosts": [x.hostname for x in live], "hash": h,
-            "say": f"Live site v{live[0].live_version} se v{version} par wapas karein? Aapki haan chahiye."}
+            "say": f"Roll the live site back from v{live[0].live_version} to v{version}? Your approval is needed."}
     _publish(tenant, "site_launch", {**card, "push": True}, conv or r.conv)
     return card
 
@@ -537,17 +537,17 @@ def rollback(tenant: str, ref: str, version: int, hash_: str) -> dict[str, Any]:
         s.expunge(r)
     live = [h for h in _hosts_of(r) if h.live_version]
     if not live:
-        raise HostError("Website abhi live nahi hai.")
+        raise HostError("The website is not live right now.")
     h = hashlib.sha256(f"rollback|{r.id}|{version}|{live[0].live_version}".encode()).hexdigest()[:16]
     if h != hash_:
-        raise HostError("Card purana ho gaya; naya dekhiye.")
+        raise HostError("The card is out of date; look at the new one.")
     main = _main_host(r, [x.hostname for x in live])
     _publish_files(r, main, int(version))
     with session() as s:
         for x in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.status != "removed")).all():
             x.live_version = int(version)
     host_map(force=True)
-    out = {"ok": True, "version": int(version), "say": f"Live site ab v{version} hai (wapas kar diya)."}
+    out = {"ok": True, "version": int(version), "say": f"The live site is now v{version} (rolled back)."}
     _publish(tenant, "site_live", {**out, "url": f"https://{main}/", "site": S.view(S._load(r.id), False)}, r.conv)
     return out
 
@@ -594,7 +594,7 @@ def take_down(tenant: str, ref: str) -> dict[str, Any]:
     for x in drop:
         _drop_host(x)
     host_map(force=True)
-    return {"ok": True, "say": f"Website band kar di ({', '.join(names)})." if names else "Website kahin live nahi thi."}
+    return {"ok": True, "say": f"Website taken down ({', '.join(names)})." if names else "The website was not live anywhere."}
 
 
 # ---------------------------------------------------------------- her own domain
@@ -614,7 +614,7 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
         taken = s.scalars(select(SiteHost).where(SiteHost.hostname.in_((d, f"www.{d}")), SiteHost.status != "removed",
                                                  SiteHost.site_id != r.id)).first()
     if taken:
-        raise HostError(f"{d} pehle se ek doosri Hoola website se juda hai.")
+        raise HostError(f"{d} is already connected to another Hoola website.")
     loc = D.where_is(tenant, d)
     c = cfg()
     apex_ok = (loc["provider"] in ("cloudflare", D.HOOLA_CF) or (loc["provider"] == "porkbun" and saas_on())   # Porkbun: ALIAS
@@ -626,8 +626,8 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
         mode, target = "direct", c["direct_ip"]
         main_name = f"www.{d}" if (primary or "").lower() == "www" else d
         verify.append({"type": "TXT", "name": f"_hoola.{d}", "value": verify_token(tenant, d),
-                       "why": "Hoola ko dikhana ki domain aapka hai"})
-        shown = [{"type": "A", "name": n, "value": target, "why": "website seedha Hoola par (DNS only)"} for n in (d, f"www.{d}")]
+                       "why": "shows Hoola that the domain is yours"})
+        shown = [{"type": "A", "name": n, "value": target, "why": "website directly on Hoola (DNS only)"} for n in (d, f"www.{d}")]
         for n in names:
             rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom", mode="direct",
                                  role="main" if n == main_name else "redirect", status="pending", ssl_status="dns",
@@ -639,14 +639,14 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
             try:
                 ch = cf.custom_hostname_find(c["cf_zone"], n) or cf.custom_hostname_create(c["cf_zone"], n)
             except CfError as e:
-                raise HostError(f"Hoola Hosting mein {n} nahi jud paya: {e}")
+                raise HostError(f"Hoola Hosting could not connect {n}: {e}")
             ov = ch.get("ownership_verification") or {}
             if ov.get("name") and ov.get("value"):
                 verify.append({"type": ov.get("type", "txt").upper(), "name": ov["name"], "value": ov["value"],
-                               "why": "Cloudflare ko dikhana ki domain aapka hai"})
+                               "why": "shows Cloudflare that the domain is yours"})
             for vr in (ch.get("ssl") or {}).get("validation_records") or []:
                 if vr.get("txt_name") and vr.get("txt_value"):
-                    verify.append({"type": "TXT", "name": vr["txt_name"], "value": vr["txt_value"], "why": "SSL (https) jaanch"})
+                    verify.append({"type": "TXT", "name": vr["txt_name"], "value": vr["txt_value"], "why": "SSL (https) check"})
             rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom", mode="saas",
                                  role="main" if n.startswith("www.") else "apex", status="pending", cf_id=ch.get("id", ""),
                                  ssl_status=(ch.get("ssl") or {}).get("status", ""), verify=json.dumps(verify)))
@@ -656,8 +656,8 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
             rows.append(SiteHost(tenant_id=tenant, site_id=r.id, hostname=n, kind="custom", mode="proxy",
                                  role="main" if n.startswith("www.") else "apex", status="pending"))
     else:
-        raise HostError("Aapka domain jodne ke liye server par Hoola Hosting chalu honi chahiye (SITES_DIRECT_IP, ya Cloudflare "
-                        "for SaaS), ya domain ka DNS aapke apne Cloudflare account mein ho aur uska token Hoola mein juda ho.")
+        raise HostError("To connect your domain, Hoola Hosting must be on at the server (SITES_DIRECT_IP, or Cloudflare "
+                        "for SaaS), or the domain's DNS must be in your own Cloudflare account with its token connected in Hoola.")
     keep = {x.hostname for x in rows}
     gone: list[_Gone] = []
     with session() as s:
@@ -677,18 +677,18 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
     except D.DnsError as e:
         raise HostError(str(e))
     card = {"kind": "dns", "site": S.view(r, False), "domain": d, "plan": pl, "mode": mode,
-            "say": (f"{d} ke liye {pl['todo']} DNS badlav: aapki haan par Hoola laga dega." if D.can_apply(pl["provider"])
-                    else f"{d} ke liye yeh {pl['todo']} records apne domain ki company ki site par daaliye (steps card mein).")}
+            "say": (f"{pl['todo']} DNS changes for {d}: Hoola applies them only with your approval." if D.can_apply(pl["provider"])
+                    else f"{d}: add these {pl['todo']} records on your domain company's site (the steps are on the card).")}
     if mode == "direct":
         main_name = next(x.hostname for x in rows if x.role == "main")
         card["primary"] = main_name
         card["records"] = [{"type": x["type"], "name": x["name"], "value": x["content"]} for x in desired]
-        card["say"] += (f" Main address {main_name} hoga, doosra uspar le jayega. Records dikhte hi Hoola khud https banayega "
-                        "aur batayega (Verifying -> Setting up -> Live).")
+        card["say"] += (f" The main address will be {main_name}; the other one leads to it. As soon as the records are visible Hoola sets up https itself "
+                        "and tell you (Verifying -> Setting up -> Live).")
         if pl["provider"] == "cloudflare":
-            card["say"] += " Cloudflare mein in records ka orange cloud band (DNS only) rahega."
+            card["say"] += " In Cloudflare the orange cloud stays off (DNS only) for these records."
     if not apex_ok:
-        card["say"] += f" Bina www wala {d} kholne ke liye apni domain company mein '{d} -> www.{d}' forwarding laga dijiye."
+        card["say"] += f" To open {d} without www, set up '{d} -> www.{d}' forwarding at your domain company."
     _publish(tenant, "site_dns", {**card, "push": True}, conv or r.conv)
     return card
 
@@ -703,7 +703,7 @@ def set_primary(tenant: str, ref: str, host: str) -> dict[str, Any]:
         rows = s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
                                                 SiteHost.status != "removed")).all()
         if host not in {x.hostname for x in rows}:
-            raise HostError(f"{host} is website se juda nahi hai.")
+            raise HostError(f"{host} is not connected to this website.")
         for x in rows:
             x.role = "main" if x.hostname == host else "redirect"
         live = max([x.live_version or 0 for x in rows] or [0])
@@ -717,7 +717,7 @@ def set_primary(tenant: str, ref: str, host: str) -> dict[str, Any]:
                                                       SiteHost.status != "removed")).all():
                 _link(host, x.hostname)
     host_map(force=True)
-    return {"ok": True, "primary": host, "say": f"Ab main address {host} hai; baaki wahan le jayenge."}
+    return {"ok": True, "primary": host, "say": f"The main address is now {host}; the others lead there."}
 
 
 def dns_apply(tenant: str, plan_id: str, hash_: str) -> dict[str, Any]:
@@ -780,7 +780,7 @@ def _check_pending(h: SiteHost) -> None:
     if st == "active":
         host_map(force=True)
         _publish(h.tenant_id, "site_live", {"ok": True, "url": f"https://{h.hostname}/", "hosts": [h.hostname],
-                                            "say": f"{h.hostname} par website khul gayi (https ke saath)."})
+                                            "say": f"{h.hostname} now opens the website (with https)."})
 
 
 def direct_records_seen(h: SiteHost) -> tuple[bool, str]:
@@ -791,19 +791,19 @@ def direct_records_seen(h: SiteHost) -> tuple[bool, str]:
     a = D.lookup(h.hostname, "A")
     asked = {k: v for k, v in a.items() if v != ["?"]}
     if not asked:
-        return False, "DNS abhi poochh nahi paaye (thodi der mein phir dekhenge)"
+        return False, "DNS could not be asked right now (will look again shortly)"
     got = sorted({x for v in asked.values() for x in v})
     if not all(ip in v for v in asked.values()):
         if not got:
-            return False, f"{h.hostname} ka A record abhi nahi dikh raha (chahiye: A -> {ip})"
-        hint = (" Cloudflare mein orange cloud band karke 'DNS only' kijiye." if not any(ip == x for x in got) and
+            return False, f"{h.hostname}: the A record is not visible yet (needed: A -> {ip})"
+        hint = (" In Cloudflare turn the orange cloud off and set 'DNS only'." if not any(ip == x for x in got) and
                 any(x.startswith(("104.", "172.6", "188.114.")) for x in got) else "")
-        return False, f"{h.hostname} abhi {', '.join(got[:3])} par ja raha hai; chahiye sirf {ip}.{hint}"
+        return False, f"{h.hostname} points to {', '.join(got[:3])} right now; it must be only {ip}.{hint}"
     want = verify_token(h.tenant_id, d)
     txt = D.lookup(f"_hoola.{d}", "TXT")
     seen = [k for k, v in txt.items() if v != ["?"] and any(want in x for x in v)]
     if not seen:
-        return False, f"TXT record _hoola.{d} = {want} abhi nahi dikh raha"
+        return False, f"TXT record _hoola.{d} = {want} is not visible yet"
     return True, ""
 
 
@@ -814,7 +814,7 @@ def _check_direct(h: SiteHost) -> None:
         ok, prob = direct_records_seen(h)
         if ok:
             stage = "ssl"
-            prob = "" if h.live_version else "Records sahi hain; website live karte hi https ban jayega"
+            prob = "" if h.live_version else "The records are right; https is made as soon as the website goes live"
             if h.live_version:
                 with session() as s:          # the edge may ask for a certificate from now on
                     row = s.get(SiteHost, h.id)
@@ -824,19 +824,19 @@ def _check_direct(h: SiteHost) -> None:
             age = (datetime.now(timezone.utc) - h.created_at.replace(tzinfo=h.created_at.tzinfo or timezone.utc)).total_seconds() \
                 if h.created_at else 0
             if age > 3600:
-                prob = "Unable to verify (1 ghante se): " + prob
+                prob = "Unable to verify (for 1 hour): " + prob
     if stage == "ssl" and h.live_version:
         if _fetch_ok(h.hostname):
             st, stage, prob = "active", "active", ""
         else:
-            prob = "https certificate ban raha hai (pehli baar 1-2 min); CAA record ho to Let's Encrypt ko allow kijiye"
+            prob = "the https certificate is being made (1-2 min the first time); if there is a CAA record, allow Let's Encrypt"
     with session() as s:
         row = s.get(SiteHost, h.id)
         row.status, row.ssl_status, row.problem, row.last_check = st, stage, prob[:300], now()
     if st == "active":
         host_map(force=True)
         _publish(h.tenant_id, "site_live", {"ok": True, "url": f"https://{h.hostname}/", "hosts": [h.hostname],
-                                            "say": f"{h.hostname} par website khul gayi (https ke saath)."})
+                                            "say": f"{h.hostname} now opens the website (with https)."})
 
 
 def _fetch_ok(host: str) -> bool:
@@ -870,16 +870,16 @@ def _record(h: SiteHost, ok: bool, why: str = "", source: str = "inside") -> Non
             row.fails, row.down_told, row.problem = 0, False, ""
         else:
             row.fails = (row.fails or 0) + 1
-            row.problem = why or "site nahi khuli (DNS / SSL / server)"
+            row.problem = why or "site did not open (DNS / SSL / server)"
         fails, told = row.fails, row.down_told
         if not ok and fails >= 2 and not told:
             row.down_told = True
     if not ok and fails >= 2 and not told:
         why = why or _why_down(h.hostname)
-        where = " (bahar se jaanch)" if source == "outside" else ""
-        _publish(h.tenant_id, "site_down", {"host": h.hostname, "say": f"{h.hostname} nahi khul rahi{where}: {why}", "push": True})
+        where = " (checked from outside)" if source == "outside" else ""
+        _publish(h.tenant_id, "site_down", {"host": h.hostname, "say": f"{h.hostname} is not opening{where}: {why}", "push": True})
     elif ok and back:
-        _publish(h.tenant_id, "site_down", {"host": h.hostname, "ok": True, "say": f"{h.hostname} phir se chal rahi hai.", "push": False})
+        _publish(h.tenant_id, "site_down", {"host": h.hostname, "ok": True, "say": f"{h.hostname} is running again.", "push": False})
 
 
 # ---------------------------------------------------------------- v0.224 the outside checker (GitHub Actions, off this box)
@@ -926,11 +926,11 @@ def _why_down(host: str) -> str:
     a = D.lookup(host, "A")
     cn = D.lookup(host, "CNAME")
     if not any(v and v != ["?"] for v in list(a.values()) + list(cn.values())):
-        return "DNS mein iska record nahi mil raha (domain expire / record hata?)"
+        return "its DNS record is not found (domain expired / record removed?)"
     days = ssl_days(host)
     if days is not None and days < 0:
-        return "SSL certificate khatam ho gaya"
-    return "server jawab nahi de raha; Hoola dekh raha hai"
+        return "the SSL certificate has expired"
+    return "the server is not answering; Hoola is looking into it"
 
 
 def ssl_days(host: str) -> int | None:

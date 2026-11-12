@@ -74,7 +74,7 @@ def test_a_site_map_job_starts_again_after_a_restart(site_env, monkeypatch):
     _age(S, sid)                                                          # dies again without a shutdown: give up, say so
     calls.clear()
     S.recover_stuck()
-    assert calls == [] and S._load(sid).stage == "plan" and "phir se kahiye" in S._load(sid).error
+    assert calls == [] and S._load(sid).stage == "plan" and "say 'make a big site map' again" in S._load(sid).error
 
 
 def test_version():

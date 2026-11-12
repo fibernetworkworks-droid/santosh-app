@@ -152,7 +152,7 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
             from ..net.ai import llm
             return llm(system, prompt, min(max_tokens, 8000), timeout=240)
         what = "Website" if kind in SITE_KINDS else "PDF design" if kind in DOC_KINDS else "App design"
-        raise AiError(f"{what} {app_model_label()} se hota hai, par server par ANTHROPIC_API_KEY nahi hai.")
+        raise AiError(f"{what} is made by {app_model_label()}, but the server has no ANTHROPIC_API_KEY.")
     STATS["app_calls"] += 1
     last: Exception | None = None
     attempt = 0
@@ -181,8 +181,8 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
         log.warning("app: %s unavailable, falling back (APP_MODEL_FALLBACK on): %s", model, last)
         return ask(system, prompt, max_tokens, "edit")
     STATS["app_failed"] += 1
-    why = "yeh model is API key par nahi khulta" if last is not None and _permanent(last) else "abhi bahut busy hai"
-    raise AiError(f"{app_model_label()} se jawab nahi mila ({why}). Thodi der baad 'Phir se chalao' dabaiye. "
+    why = "this model does not open on this API key" if last is not None and _permanent(last) else "it is very busy right now"
+    raise AiError(f"{app_model_label()} did not answer ({why}). Tap 'Run again' in a little while. "
                   f"[{type(last).__name__ if last else 'error'}]")
 
 
@@ -228,7 +228,7 @@ def ask(system: str, prompt: str, max_tokens: int = 6000, kind: str = "build", i
     try:
         return llm(system, prompt, min(max_tokens, 8000), timeout=240)
     except Exception as e:
-        raise AiError(f"Model nahi mila: {e}")
+        raise AiError(f"The model was not found: {e}")
 
 
 def parse_json(raw: str) -> dict[str, Any]:
@@ -408,7 +408,7 @@ problems need. Return the same JSON shape: {"html": "...", "css": "...", "js": "
 
 CHANGE_SYSTEM = """The owner asked for a change to her website, in her own words (Hinglish / Hindi / Marathi / English). Decide
 exactly what must change. Return JSON:
-{"say": "one short line in her language saying what you will do",
+{"say": "one short line in clear, simple English saying what you will do",
  "sections": [{"key": "page__type", "instruction": "precise instruction for the designer"}],
  "add": [{"page": "slug", "type": "section type, or 'custom' + a name for anything the library has no type for (EMI calculator,
           plan comparison, size guide...)", "name": "for custom", "after": "page__type or ''", "instruction": "..."}],

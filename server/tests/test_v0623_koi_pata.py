@@ -103,12 +103,12 @@ def test_import_keeps_old_addresses_layout_and_checked_photos(site_env, public_d
     assert not checks["fake.png"]["ok"] and checks["fake.png"]["type"] == "html"
     assert checks["real.png"]["ok"] and checks["real.png"]["type"] == "jpeg" and "really JPEG" in checks["real.png"]["why"]
     assert not checks["icon-cart.png"]["ok"] if "icon-cart.png" in checks else True
-    assert "purane pate" in pv["say"] and "left out after checking their bytes" in ref["read_by"]
+    assert "old addresses" in pv["say"] and "left out after checking their bytes" in ref["read_by"]
     lay = {x["path"]: x for x in ref["layout"]}
     assert lay["/"]["sections"] is not None and "/about" in lay
     # her tap with keep: the layout rides into look 1, the old addresses wait beside the site
     out = IN.use(T, pv["token"], keep=True)
-    assert out["keep"] and out["old_addresses"] == len(paths) and "purane pate jodo" in out["say"]
+    assert out["keep"] and out["old_addresses"] == len(paths) and "connect the old addresses" in out["say"]
     f = json.loads(S._load(out["site"]).facts)
     assert f["design_ref"]["keep"] and f["design_ref"]["layout"][0]["path"] == "/"
     note = IN.brief_note(f["design_ref"])
@@ -222,6 +222,6 @@ def test_tool_actions_and_her_tap(site_env):
     MV.save_source(T, v["id"], "sharmasweets.in", [{"path": "/contact-us.php", "title": "Contact"}])
     ctx = conv_ctx()
     got = asyncio.run(SITE_HANDLERS["website"](ctx, "moves", site=v["id"]))
-    assert got["total"] == 1 and got["hash"] and "haan" in got["say"]
+    assert got["total"] == 1 and got["hash"] and "'yes'" in got["say"]
     done = asyncio.run(SITE_HANDLERS["website"](ctx, "moves_ok", site=v["id"], hash=got["hash"]))
     assert done["ok"] and done["redirects"] == 1 and done["live_addresses"] == 0

@@ -133,6 +133,6 @@ def check(old_dir: Path, new_dir: Path, words: str = "") -> dict[str, Any]:
 def say_line(lost: list[dict[str, str]]) -> str:
     if not lost:
         return ""
-    items = ", ".join(x["say"] for x in lost[:5]) + (f" aur {len(lost) - 5} aur" if len(lost) > 5 else "")
-    return (f"Dhyan dijiye: is badlav ke baad yeh cheezein website par nahi mili - {items}. "
-            "Galti se hata ho to bolie 'wapas lagao'; aapne khud kaha tha to theek hai.")
+    items = ", ".join(x["say"] for x in lost[:5]) + (f" and {len(lost) - 5} more" if len(lost) > 5 else "")
+    return (f"Please note: after this change these things were not found on the website - {items}. "
+            "If they were removed by mistake say 'put it back'; if you asked for it yourself, that is fine.")

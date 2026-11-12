@@ -37,8 +37,8 @@ from . import rules as R
 log = logging.getLogger("santosh.payroll")
 _LOCK = threading.Lock()
 COMPONENTS = ("basic", "da", "hra", "conveyance", "special", "other")
-STATUS_LABEL = {"draft": "Ban raha", "ready": "Aapki haan baaki", "approved": "Haan mili: bank file taiyaar", "paid": "Salary di gayi",
-                "rejected": "Mana"}
+STATUS_LABEL = {"draft": "Being prepared", "ready": "Waiting for your approval", "approved": "Approved: bank file ready", "paid": "Salary paid",
+                "rejected": "Declined"}
 
 
 class PayError(Exception):
@@ -255,7 +255,7 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
         if kw.get("state"):
             sc = R.state_code(kw["state"])
             if not sc:
-                raise PayError("State samajh nahi aaya (jaise Maharashtra / 27).")
+                raise PayError("The state was not understood (for example Maharashtra / 27).")
             r.state = sc
         for k in ("pf_on", "esi_on", "enabled"):
             if k in kw and kw[k] is not None:
@@ -269,7 +269,7 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
         if kw.get("pay_account"):
             a = re.sub(r"\s", "", str(kw["pay_account"]))
             if not re.fullmatch(r"\d{9,18}", a):
-                raise PayError("Bank account number 9-18 ank ka hota hai.")
+                raise PayError("A bank account number has 9 to 18 digits.")
             r.pay_account = _seal(json.dumps({"account": a, "ifsc": str(kw.get("pay_ifsc") or "").upper()}))
         if kw.get("morning_time"):
             r.morning_time = str(kw["morning_time"]).zfill(5)[:5]
@@ -292,7 +292,7 @@ def _emp_view(e: PayEmployee) -> dict[str, Any]:
 def _emp(s, tenant: str, ref: str) -> PayEmployee:
     ref = str(ref or "").strip()
     if not ref:
-        raise PayError("Kaun sa employee? Naam ya code bataiye.")
+        raise PayError("Which employee? Give the name or code.")
     e = s.get(PayEmployee, ref)
     if e and e.tenant_id == tenant:
         return e
@@ -305,8 +305,8 @@ def _emp(s, tenant: str, ref: str) -> PayEmployee:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise PayError(f"'{ref}' naam ke {len(hits)} log: " + ", ".join(f"{h.name} ({h.code})" for h in hits[:6]) + ". Code bataiye.")
-    raise PayError(f"Employee '{ref}' nahi mila.")
+        raise PayError(f"'{ref}' matches {len(hits)} people: " + ", ".join(f"{h.name} ({h.code})" for h in hits[:6]) + ". Give the code.")
+    raise PayError(f"Employee '{ref}' was not found.")
 
 
 def save_employee(tenant: str, name: str = "", employee: str = "", phone: str = "", gender: str = "", dob: str = "", doj: str = "",
@@ -320,7 +320,7 @@ def save_employee(tenant: str, name: str = "", employee: str = "", phone: str = 
         new = e is None
         if new:
             if not str(name).strip():
-                raise PayError("Naam chahiye.")
+                raise PayError("A name is needed.")
             n = len(s.scalars(select(PayEmployee.id).where(PayEmployee.tenant_id == tenant)).all()) + 1
             e = PayEmployee(tenant_id=tenant, code=f"E-{n:03d}")
             s.add(e)
@@ -335,7 +335,7 @@ def save_employee(tenant: str, name: str = "", employee: str = "", phone: str = 
             if v:
                 d = _date(v)
                 if not d:
-                    raise PayError(f"{k} date samajh nahi aayi: {v}")
+                    raise PayError(f"{k} date was not understood: {v}")
                 setattr(e, k, d.isoformat())
         if designation:
             e.designation = str(designation)[:80]
@@ -349,25 +349,25 @@ def save_employee(tenant: str, name: str = "", employee: str = "", phone: str = 
         if uan:
             u = re.sub(r"\D", "", str(uan))
             if len(u) != 12:
-                raise PayError("UAN 12 ank ka hota hai.")
+                raise PayError("A UAN has 12 digits.")
             e.uan = u
         if esic_ip:
             ip = re.sub(r"\D", "", str(esic_ip))
             if len(ip) != 10:
-                raise PayError("ESIC IP number 10 ank ka hota hai.")
+                raise PayError("An ESIC IP number has 10 digits.")
             e.esic_ip = ip
         if pan:
             pv = str(pan).strip().upper()
             if not re.fullmatch(r"[A-Z]{5}\d{4}[A-Z]", pv):
-                raise PayError("PAN galat (jaise ABCDE1234F).")
+                raise PayError("The PAN is wrong (example: ABCDE1234F).")
             e.pan = _seal(pv)
         if account:
             a = re.sub(r"\s", "", str(account))
             if not re.fullmatch(r"\d{9,18}", a):
-                raise PayError("Bank account number 9-18 ank ka hota hai.")
+                raise PayError("A bank account number has 9 to 18 digits.")
             f = str(ifsc or _j(_open(e.bank), {}).get("ifsc", "")).strip().upper()
             if not re.fullmatch(r"[A-Z]{4}0[A-Z0-9]{6}", f):
-                raise PayError("IFSC galat (jaise SBIN0001234).")
+                raise PayError("The IFSC is wrong (example: SBIN0001234).")
             e.bank = _seal(json.dumps({"account": a, "ifsc": f}))
         if regime in ("new", "old"):
             e.regime = regime
@@ -390,10 +390,10 @@ def save_employee(tenant: str, name: str = "", employee: str = "", phone: str = 
             e.aliases = json.dumps(al[-8:])
         s.flush()
         v = _emp_view(e)
-    say = f"{'Naya employee' if new else 'Update'}: {v['name']} ({v['code']}), mahine ka {_rs(v['monthly_gross'])}."
+    say = f"{'New employee' if new else 'Update'}: {v['name']} ({v['code']}), monthly pay {_rs(v['monthly_gross'])}."
     miss = [x for x, ok in (("bank account", v["bank"]["account"]), ("UAN", v["uan"] or not v["pf_member"]), ("PAN", v["pan"])) if not ok]
     if miss:
-        say += " Abhi chahiye: " + ", ".join(miss) + "."
+        say += " Still needed: " + ", ".join(miss) + "."
     return {"employee": v, "say": say}
 
 
@@ -433,16 +433,16 @@ def set_attendance(tenant: str, period: str, entries: list[dict], by: str = "own
                 if x.get(k) not in (None, ""):
                     setattr(a, k, max(0.0, _f(x[k])))
             if a.lop_days > R.days_in(p):
-                errs.append(f"{e.name}: {a.lop_days:g} din chhutti mahine se zyada.")
+                errs.append(f"{e.name}: {a.lop_days:g} days of leave is more than the month has.")
                 a.lop_days = float(R.days_in(p))
             if x.get("note"):
                 a.note = str(x["note"])[:200]
-            done.append(f"{e.name}: " + ", ".join(t for t in (f"{a.lop_days:g} din bina pagaar" if a.lop_days else "",
-                                                             f"{a.ot_hours:g} ghante OT" if a.ot_hours else "",
+            done.append(f"{e.name}: " + ", ".join(t for t in (f"{a.lop_days:g} days without pay" if a.lop_days else "",
+                                                             f"{a.ot_hours:g} hours OT" if a.ot_hours else "",
                                                              f"+{_rs(a.extra)}" if a.extra else "", f"-{_rs(a.deduct)}" if a.deduct else "") if t))
-    say = (f"{R.nice(p)} attendance: " + "; ".join(done)) if done else "Kuch save nahi hua."
+    say = (f"{R.nice(p)} attendance: " + "; ".join(done)) if done else "Nothing was saved."
     if errs:
-        say += " Dhyaan: " + " ".join(errs)
+        say += " Note: " + " ".join(errs)
     return {"saved": len(done), "errors": errs, "say": say}
 
 
@@ -461,7 +461,7 @@ def import_attendance(tenant: str, period: str, data: bytes, name: str = "attend
         try:
             wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         except Exception as e:
-            raise PayError(f"Excel nahi khula: {e}")
+            raise PayError(f"The Excel file did not open: {e}")
         rows = [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)]
     else:
         rows = list(csv.reader(io.StringIO(data.decode("utf-8-sig", errors="replace"))))
@@ -478,7 +478,7 @@ def import_attendance(tenant: str, period: str, data: bytes, name: str = "attend
             keymap, start = km, i + 1
             break
     if not keymap:
-        raise PayError("Sheet mein 'Name' aur 'Present / LOP / OT' wale column chahiye.")
+        raise PayError("The sheet needs a 'Name' column and 'Present / LOP / OT' columns.")
     entries = []
     for r in rows[start:]:
         d = {keymap[j]: r[j] for j in keymap if j < len(r) and r[j] not in (None, "")}
@@ -494,7 +494,7 @@ def import_attendance(tenant: str, period: str, data: bytes, name: str = "attend
 def add_advance(tenant: str, employee: str, amount, emi=None, given_on: str = "", note: str = "") -> dict[str, Any]:
     amt = _f(amount)
     if amt <= 0:
-        raise PayError("Advance ki rakam chahiye.")
+        raise PayError("The advance amount is needed.")
     with session() as s:
         e = _emp(s, tenant, employee)
         g = _date(given_on) or today(tenant)
@@ -502,7 +502,7 @@ def add_advance(tenant: str, employee: str, amount, emi=None, given_on: str = ""
                        note=str(note)[:200])
         s.add(a)
         name = e.name
-    return {"say": f"{name} ko {_rs(amt)} advance note: har mahine {_rs(_f(emi) or amt)} katega."}
+    return {"say": f"{name}: advance of {_rs(amt)} noted; {_rs(_f(emi) or amt)} will be deducted every month."}
 
 
 # ---------------------------------------------------------------- the monthly run
@@ -570,7 +570,7 @@ def _line(s, tenant: str, st: PaySettings, e: PayEmployee, p: str, a: PayAttenda
         eps_ok = e.eps_member and not (e.dob and _age(e.dob, on) >= 58)
         pfx = R.pf(p, wages, eps_ok, e.pf_on_full)
         if not e.uan:
-            problems.append(f"{e.name}: UAN nahi (ECR mein nahi jayega).")
+            problems.append(f"{e.name}: no UAN (will not go into the ECR).")
     ln["pf"] = pfx
     # ESIC: coverage fixed for the contribution period
     ex = {"ee": 0, "er": 0, "esi_wages": 0}
@@ -584,7 +584,7 @@ def _line(s, tenant: str, st: PaySettings, e: PayEmployee, p: str, a: PayAttenda
         if es.get("covered"):
             ex = R.esi(gross, paid_days)
             if not e.esic_ip:
-                problems.append(f"{e.name}: ESIC IP number nahi.")
+                problems.append(f"{e.name}: no ESIC IP number.")
     ln["esi"] = ex
     # Professional tax
     half = None
@@ -606,7 +606,7 @@ def _line(s, tenant: str, st: PaySettings, e: PayEmployee, p: str, a: PayAttenda
     ln["tds"] = t["this_month"]
     ln["tax_year"] = {k: t[k] for k in ("taxable", "total")}
     if t["total"] > 0 and not e.pan:
-        problems.append(f"{e.name}: TDS banta hai par PAN nahi (bina PAN 20% kaatna padega).")
+        problems.append(f"{e.name}: TDS applies but there is no PAN (without a PAN 20% must be deducted).")
     # advances + other deductions
     adv = 0.0
     for av in s.scalars(select(PayAdvance).where(PayAdvance.tenant_id == tenant, PayAdvance.employee_id == e.id,
@@ -621,14 +621,14 @@ def _line(s, tenant: str, st: PaySettings, e: PayEmployee, p: str, a: PayAttenda
     ln["ctc_month"] = round(gross + ln["employer"]["pf"] + pfx["edli"] + pfx["admin"] + ex["er"])
     # checks
     if st.min_wage and paid_days and wages_full < st.min_wage:
-        problems.append(f"{e.name}: {_rs(wages_full)} minimum wage {_rs(st.min_wage)} se kam.")
+        problems.append(f"{e.name}: {_rs(wages_full)} is below the minimum wage {_rs(st.min_wage)}.")
     if wages and (ln["advance"] + ln["other_deduct"] + pfx["ee"] + ex["ee"]) > 0.5 * gross:
-        problems.append(f"{e.name}: katauti pagaar ke 50% se zyada (Code on Wages): advance ki kist kam kijiye.")
+        problems.append(f"{e.name}: deductions are more than 50% of pay (Code on Wages): lower the advance installment.")
     if not _j(_open(e.bank), {}).get("account"):
-        problems.append(f"{e.name}: bank account nahi (bank file mein nahi jayega; cash / cheque ki entry rakhiye).")
+        problems.append(f"{e.name}: no bank account (will not go into the bank file; keep a cash / cheque entry).")
     last = _last_net(s, tenant, e.id, p)
     if last and abs(ln["net"] - last) > 0.25 * last and not a:
-        problems.append(f"{e.name}: pichhle mahine {_rs(last)}, is baar {_rs(ln['net'])} (25% se zyada farak).")
+        problems.append(f"{e.name}: last month {_rs(last)}, this time {_rs(ln['net'])} (a difference of more than 25%).")
     ln["problems"] = problems
     return ln, problems
 
@@ -641,11 +641,11 @@ def prepare_run(tenant: str, period: str, conv: str = "") -> dict[str, Any]:
         st = _st(s, tenant)
         r = s.scalars(select(PayRun).where(PayRun.tenant_id == tenant, PayRun.period == p, PayRun.kind == "monthly")).first()
         if r and r.status == "paid":
-            raise PayError(f"{R.nice(p)} ki salary di ja chuki. Badlaav agle mahine arrears mein.")
+            raise PayError(f"{R.nice(p)} salary has already been paid. Changes go into next month's arrears.")
         emps = [e for e in s.scalars(select(PayEmployee).where(PayEmployee.tenant_id == tenant)).all()
                 if (not e.doj or _date(e.doj) <= last) and (not e.dol or _date(e.dol) >= first)]
         if not emps:
-            raise PayError("Koi employee nahi. Pehle employee jodiye (naam, pagaar, joining date).")
+            raise PayError("No employees yet. Add an employee first (name, pay, joining date).")
         att = {a.employee_id: a for a in s.scalars(select(PayAttendance).where(PayAttendance.tenant_id == tenant,
                                                                                PayAttendance.period == p)).all()}
         on = today(tenant)
@@ -666,15 +666,15 @@ def prepare_run(tenant: str, period: str, conv: str = "") -> dict[str, Any]:
         ny, nm = R.next_month(p)
         pay_by = date(ny, nm, 7)
         if on > pay_by:
-            checks.insert(0, f"Salary {pay_by.strftime('%d %b')} tak deni thi (Code on Wages): {(on - pay_by).days} din late.")
+            checks.insert(0, f"Salary was due by {pay_by.strftime('%d %b')} (Code on Wages): {(on - pay_by).days} days late.")
         if not st.min_wage:
-            checks.append("Minimum wage set nahi: state ki notification wali rakam bataiye taaki Hoola check kare.")
+            checks.append("Minimum wage is not set: give the amount from your state's notification so Hoola can check it.")
         if len(emps) >= 20 and not st.pf_on:
-            checks.append(f"{len(emps)} log hain: 20 ya zyada par EPFO registration zaroori. PF chalu kijiye.")
+            checks.append(f"{len(emps)} people: with 20 or more, EPFO registration is required. Turn PF on.")
         if len(emps) >= 10 and not st.esi_on:
-            checks.append(f"{len(emps)} log: 10 ya zyada par ESIC lagta hai (jahan ESIC notified hai).")
+            checks.append(f"{len(emps)} people: with 10 or more, ESIC applies (where ESIC is notified).")
         if p == "2026-09" and st.pf_on:
-            checks.append("September 2026: PF 1-16 ko 15,000 aur 17-30 ko 25,000 ki seema par (S.O. 5109(E)), ek hi ECR 15 Oct tak.")
+            checks.append("September 2026: PF on a wage ceiling of 15,000 for 1-16 and 25,000 for 17-30 (S.O. 5109(E)), one single ECR by 15 Oct.")
         if not r:
             r = PayRun(tenant_id=tenant, period=p, kind="monthly")
             s.add(r)
@@ -683,15 +683,15 @@ def prepare_run(tenant: str, period: str, conv: str = "") -> dict[str, Any]:
         r.checks = json.dumps(checks, ensure_ascii=False)
         r.status = "ready"
         r.approved_at = None
-        _runlog(r, f"Payroll taiyaar: {len(lines)} log, net {_rs(tot['net'])}")
+        _runlog(r, f"Payroll ready: {len(lines)} people, net {_rs(tot['net'])}")
         s.flush()
         v = _run_view(r)
-    say = (f"{R.nice(p)} payroll taiyaar: {tot['employees']} log, kul pagaar {_rs(tot['gross'])}, haath mein {_rs(tot['net'])}. "
+    say = (f"{R.nice(p)} payroll is ready: {tot['employees']} people, gross pay {_rs(tot['gross'])}, take-home {_rs(tot['net'])}. "
            f"PF challan {_rs(tot['pf_challan'])}, ESIC {_rs(tot['esi_challan'])}, PT {_rs(tot['pt'])}, TDS {_rs(tot['tds'])}. "
-           f"Company ka kharcha {_rs(tot['cost'])}.")
+           f"Cost to the company {_rs(tot['cost'])}.")
     if checks:
-        say += f" {len(checks)} cheezein dekhni hain: " + " ".join(checks[:3])
-    say += " Salary dene se pehle aapki haan."
+        say += f" {len(checks)} things to look at: " + " ".join(checks[:3])
+    say += " Your approval is needed before salaries are paid."
     _publish(tenant, "payroll_run", {"run_id": v["id"], "status": v["status"]}, conv)
     return {"run": v, "say": say}
 
@@ -714,7 +714,7 @@ def _run(s, tenant: str, ref: str) -> PayRun:
         except ValueError:
             r = None
     if not r or r.tenant_id != tenant:
-        raise PayError("Payroll nahi mila.")
+        raise PayError("The payroll was not found.")
     return r
 
 
@@ -733,15 +733,15 @@ def decide(tenant: str, ref: str, approve: bool, note: str = "", conv: str = "")
     with _LOCK, session() as s:
         r = _run(s, tenant, ref)
         if r.status not in ("ready", "rejected", "approved"):
-            raise PayError(f"Abhi haan / na nahi ({STATUS_LABEL.get(r.status)}).")
+            raise PayError(f"It cannot be approved or declined right now ({STATUS_LABEL.get(r.status)}).")
         r.status = "approved" if approve else "rejected"
         r.approved_at = now() if approve else None
-        _runlog(r, ("Haan" if approve else "Mana") + (f": {note[:100]}" if note else ""), "owner")
+        _runlog(r, ("Approved" if approve else "Declined") + (f": {note[:100]}" if note else ""), "owner")
         v = _run_view(r, False)
     _publish(tenant, "payroll_run", {"run_id": v["id"], "status": v["status"]}, conv)
     if approve:
-        return {"run": v, "say": "Haan mili. Bank file, payslip, ECR aur ESIC sheet bana raha hoon: bank mein upload aur payment aap karengi."}
-    return {"run": v, "say": "Theek, roka. Kya badalna hai bataiye."}
+        return {"run": v, "say": "Approved. Making the bank file, payslips, ECR and ESIC sheet: you upload to the bank and make the payment yourself."}
+    return {"run": v, "say": "OK, held. Tell me what should change."}
 
 
 # ---------------------------------------------------------------- files
@@ -821,7 +821,7 @@ def files(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     with session() as s:
         r = _run(s, tenant, ref)
         if r.status not in ("approved", "paid"):
-            raise PayError("Pehle aapki haan chahiye: payroll dekh kar 'haan' kahiye.")
+            raise PayError("Your approval is needed first: look at the payroll and say 'yes'.")
         st = _st(s, tenant)
         lines = _j(r.lines, [])
         p = r.period
@@ -877,9 +877,9 @@ def files(tenant: str, ref: str, conv: str = "") -> dict[str, Any]:
     for f in out:
         _publish(tenant, "pc_file", {**f, "source": "payroll", "title": f.get("name", "")}, conv)
     say = (f"{R.nice(p)}: payslips (PDF), salary register, bank file, " + ("ECR, " if ecr else "") + ("ESIC sheet " if esi_rows else "") +
-           "taiyaar. Bank file apne net banking ke bulk upload mein daal kar payment aap karengi; ECR EPFO portal par, ESIC sheet ESIC portal par.")
+           "ready. You upload the bank file to your net banking bulk upload and make the payment yourself; the ECR goes on the EPFO portal, the ESIC sheet on the ESIC portal.")
     if missing:
-        say += " Bank file mein nahi (account nahi): " + ", ".join(missing[:8]) + "."
+        say += " Not in the bank file (no account): " + ", ".join(missing[:8]) + "."
     return {"files": out, "missing_bank": missing, "say": say}
 
 
@@ -887,7 +887,7 @@ def mark_paid(tenant: str, ref: str, paid_on: str = "", by: str = "owner", conv:
     with _LOCK, session() as s:
         r = _run(s, tenant, ref)
         if r.status != "approved":
-            raise PayError("Pehle haan, phir payment. Abhi status: " + STATUS_LABEL.get(r.status, r.status))
+            raise PayError("Approval first, then payment. Status now: " + STATUS_LABEL.get(r.status, r.status))
         d = _date(paid_on) or today(tenant)
         r.status, r.paid_on = "paid", d.isoformat()
         for ln in _j(r.lines, []):                       # advances recovered this month
@@ -899,10 +899,10 @@ def mark_paid(tenant: str, ref: str, paid_on: str = "", by: str = "owner", conv:
                 cut = min(left, av.balance)
                 av.balance = round(av.balance - cut, 2)
                 left -= cut
-        _runlog(r, f"Salary di gayi {d.isoformat()}", by)
+        _runlog(r, f"Salary paid {d.isoformat()}", by)
         v = _run_view(r, False)
     _publish(tenant, "payroll_run", {"run_id": v["id"], "status": v["status"]}, conv)
-    return {"run": v, "say": f"{v['period_nice']} ki salary {d.isoformat()} ko di: log mein likha. Ab PF / ESIC 15 tareekh tak, TDS 7 tak."}
+    return {"run": v, "say": f"{v['period_nice']} salary paid on {d.isoformat()}: written in the log. Next: PF / ESIC by the 15th, TDS by the 7th."}
 
 
 def payslip_drafts(tenant: str, ref: str) -> dict[str, Any]:
@@ -915,10 +915,10 @@ def payslip_drafts(tenant: str, ref: str) -> dict[str, Any]:
     out = []
     for ln in lines:
         out.append({"employee": ln["name"], "to": phones.get(ln["employee_id"], ""),
-                    "text": (f"Namaste {ln['name'].split()[0]} ji, {R.nice(r.period)} ki salary: kaam ke din {ln['paid_days']:g}/{ln['days']}, "
-                             f"kul {_rs(ln['gross'])}, katauti {_rs(ln['deductions'])} (PF {_rs(ln['pf']['ee'])}, ESIC {_rs(ln['esi']['ee'])}, "
-                             f"PT {_rs(ln['pt'])}, TDS {_rs(ln['tds'])}), haath mein {_rs(ln['net'])}. - {st.company or 'HR'}")})
-    return {"drafts": out, "say": f"{len(out)} employee ke liye payslip message draft (aap bhejengi)."}
+                    "text": (f"Hello {ln['name'].split()[0]}, your salary for {R.nice(r.period)}: days paid {ln['paid_days']:g}/{ln['days']}, "
+                             f"gross {_rs(ln['gross'])}, deductions {_rs(ln['deductions'])} (PF {_rs(ln['pf']['ee'])}, ESIC {_rs(ln['esi']['ee'])}, "
+                             f"PT {_rs(ln['pt'])}, TDS {_rs(ln['tds'])}), take-home {_rs(ln['net'])}. - {st.company or 'HR'}")})
+    return {"drafts": out, "say": f"{len(out)} payslip message drafts for employees (you send them)."}
 
 
 # ---------------------------------------------------------------- leaving: full and final
@@ -928,7 +928,7 @@ def full_and_final(tenant: str, employee: str, last_day: str, leave_days=0, noti
     Code on Wages: pay within 2 working days of leaving."""
     ld = _date(last_day)
     if not ld:
-        raise PayError("Aakhri din ki date chahiye.")
+        raise PayError("The date of the last working day is needed.")
     p = f"{ld.year:04d}-{ld.month:02d}"
     with _LOCK, session() as s:
         st = _st(s, tenant)
@@ -941,7 +941,7 @@ def full_and_final(tenant: str, employee: str, last_day: str, leave_days=0, noti
         wages = R.code_wages(pay.get("basic", 0) + pay.get("da", 0), sum(pay.values()))
         enc = R.leave_encashment(wages, _f(leave_days))
         doj = _date(e.doj)
-        gr = R.gratuity(wages, doj, ld, e.fixed_term, death_or_disability) if doj else {"eligible": False, "amount": 0, "why": "Joining date nahi."}
+        gr = R.gratuity(wages, doj, ld, e.fixed_term, death_or_disability) if doj else {"eligible": False, "amount": 0, "why": "No joining date."}
         adv_bal = sum(a.balance for a in s.scalars(select(PayAdvance).where(PayAdvance.tenant_id == tenant, PayAdvance.employee_id == e.id,
                                                                            PayAdvance.balance > 0)).all())
         recover = round(_f(notice_recovery) + _f(other) + max(0.0, adv_bal - ln["advance"]))
@@ -957,9 +957,9 @@ def full_and_final(tenant: str, employee: str, last_day: str, leave_days=0, noti
         s.flush()
         v = _run_view(r)
         name = e.name
-    say = (f"{name} ka full & final: {ld.isoformat()} tak ki salary {_rs(ln['net'])}, chhutti ke paise {_rs(enc)}, gratuity "
-           + (_rs(gr["amount"]) + f" ({gr['years']} saal)" if gr.get("eligible") else f"nahi ({gr.get('why', '')})")
-           + (f", recovery {_rs(recover)}" if recover else "") + f". Kul {_rs(total)}, {due.strftime('%d %b')} tak dena hai (2 working din). Aapki haan?")
+    say = (f"{name}: full & final. Salary up to {ld.isoformat()}: {_rs(ln['net'])}, leave encashment {_rs(enc)}, gratuity "
+           + (_rs(gr["amount"]) + f" ({gr['years']} years)" if gr.get("eligible") else f"none ({gr.get('why', '')})")
+           + (f", recovery {_rs(recover)}" if recover else "") + f". Total {_rs(total)}, to be paid by {due.strftime('%d %b')} (2 working days). Do you approve?")
     _publish(tenant, "payroll_run", {"run_id": v["id"], "status": v["status"]}, conv)
     return {"run": v, "fnf": fnf, "say": say}
 
@@ -983,7 +983,7 @@ def bonus_report(tenant: str, fy_period: str, rate: float = 8.33) -> dict[str, A
                 rows.append({"employee": names[eid], "months": len(ws), "bonus": b})
     tot = sum(x["bonus"] for x in rows)
     return {"fy": R.fy_of(fy_period), "rows": rows, "total": tot,
-            "say": f"FY {R.fy_of(fy_period)} bonus ({rate:g}%): {len(rows)} log, kul {_rs(tot)}. 30 November tak dena (FY ke 8 mahine mein)."}
+            "say": f"FY {R.fy_of(fy_period)} bonus ({rate:g}%): {len(rows)} people, total {_rs(tot)}. To be paid by 30 November (within 8 months of the FY)."}
 
 
 # ---------------------------------------------------------------- calendar + morning
@@ -1024,9 +1024,9 @@ def calendar(tenant: str, ahead: int = 12) -> dict[str, Any]:
         parts.append("Late: " + ", ".join(f"{x['label']} ({x.get('period_nice', '')})" for x in late[:4]))
     soon = [x for x in items if x["days"] <= 3]
     if soon:
-        parts.append("Jaldi: " + ", ".join(f"{x['label']} {x['due_nice']}" for x in soon[:5]))
+        parts.append("Soon: " + ", ".join(f"{x['label']} {x['due_nice']}" for x in soon[:5]))
     return {"date": on.isoformat(), "employees": n_emp, "due": items, "late": late,
-            "text": ". ".join(parts) or "Payroll mein abhi kuch due nahi."}
+            "text": ". ".join(parts) or "Nothing is due in payroll right now."}
 
 
 def due_mornings() -> list[str]:

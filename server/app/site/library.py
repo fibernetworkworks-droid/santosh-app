@@ -236,14 +236,14 @@ def understand(text: str) -> dict[str, Any]:
     m = match(text)
     if not m:
         return {"field": "", "goal": guess_goal(text, "enquiry"), "styles": ["editorial_calm", "bold_modern", "warm_local"],
-                "alternatives": [], "ask": "Aapka kaam / dukaan kis cheez ka hai? (jaise: mithai shop, clinic, coaching)"}
+                "alternatives": [], "ask": "What is your work / shop about? (for example: sweet shop, clinic, coaching)"}
     best = m[0]
     f = fields()[best["id"]]
     goal = guess_goal(text, f["goal"])
     styles = _styles_for(best["id"], goal)
     ask = ""
     if len(m) > 1 and m[1]["score"] >= best["score"] * 0.92 and m[1]["industry"] != best["industry"]:
-        ask = f"{best['en']} ya {m[1]['en']}?"
+        ask = f"{best['en']} or {m[1]['en']}?"
     return {"field": best["id"], "field_label": f["en"], "industry": f["industry"], "goal": goal, "styles": styles,
             "score": best["score"], "alternatives": m[1:4], "ask": ask}
 

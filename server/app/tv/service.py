@@ -16,18 +16,18 @@ class TvError(Exception):
 def pick(query: str, country: str = "") -> dict:
     hits = catalog.find(query, limit=5, country=country)
     if not hits:
-        raise TvError(f"'{query}' naam ka free channel nahi mila. Hoola TV mein sirf free, official channels hain "
-                      "(Doordarshan, free news, bhakti, music, duniya ke free channels). Paid channels (Star, Sony, Colors) ke liye unka app.")
+        raise TvError(f"'{query}' is not a free channel that was found. Hoola TV has only free, official channels "
+                      "(Doordarshan, free news, devotional, music, free channels of the world). For paid channels (Star, Sony, Colors) use their app.")
     return hits[0]
 
 
 def detail(cid: str) -> dict:
     c = catalog.get(cid)
     if c is None:
-        raise TvError("Yeh channel nahi mila.")
+        raise TvError("This channel was not found.")
     st = catalog.stream_for(c)
     if st is None:
-        raise TvError(f"{c['name']} abhi chal nahi raha. Thodi der baad try kijiye.")
+        raise TvError(f"{c['name']} is not playing right now. Try again in a little while.")
     v = catalog.view(c)
     return {**v, "url": st["url"], "user_agent": st.get("user_agent", ""), "referrer": st.get("referrer", ""),
             "alternates": [s["url"] for s in c["streams"][1:] if s.get("ok", True)]}
@@ -37,12 +37,12 @@ async def play_on_tv(tenant: str, conversation_id: str, cid: str, tv: str = "") 
     from ..bt import service as bt
     c = catalog.get(cid)
     if c is None:
-        raise TvError("Yeh channel nahi mila.")
+        raise TvError("This channel was not found.")
     st = catalog.stream_for(c, for_tv=True)
     if st is None:
         return {"status": "failed", "channel": c["name"],
-                "error": f"{c['name']} sirf phone pe chalta hai (TV is stream ko nahi le sakta). Phone pe chalayein, ya TV pe "
-                         f"YouTube khol kar '{c['name']} live' chalayein (youtube_play on=tv)."}
+                "error": f"{c['name']} plays only on the phone (the TV cannot take this stream). Play it on the phone, or on the TV "
+                         f"open YouTube and play '{c['name']} live' (youtube_play on=tv)."}
     base = get_settings().public_base_url.rstrip("/")
     args = {"url": st["url"], "title": c["name"], "tv": tv}
     if base.startswith("https://") and c.get("logo_src"):

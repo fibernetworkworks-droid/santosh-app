@@ -31,8 +31,8 @@ from ..db import Base, new_id, now, session
 STATUSES = ("new", "payment_told", "confirmed", "packed", "shipped", "delivered", "cancelled")
 NEXT = {"new": ("confirmed", "cancelled"), "payment_told": ("confirmed", "cancelled"), "confirmed": ("packed", "shipped", "cancelled"),
         "packed": ("shipped", "cancelled"), "shipped": ("delivered",), "delivered": (), "cancelled": ()}
-WORDS = {"new": "Naya order", "payment_told": "Payment ki khabar (check kijiye)", "confirmed": "Pakka", "packed": "Pack ho gaya",
-         "shipped": "Bhej diya", "delivered": "Pahunch gaya", "cancelled": "Radd"}
+WORDS = {"new": "New order", "payment_told": "Payment reported (check it)", "confirmed": "Confirmed", "packed": "Packed",
+         "shipped": "Shipped", "delivered": "Delivered", "cancelled": "Cancelled"}
 MAX_LINES, MAX_QTY, MAX_PRODUCTS, MAX_TOTAL_PAISE = 30, 99, 500, 5_00_000_00     # 5 lakh rupees an order
 PIN = re.compile(r"^[1-9]\d{5}$")
 UTR = re.compile(r"^[A-Za-z0-9]{6,22}$")
@@ -145,7 +145,7 @@ def paise(v: Any) -> int:
     s = re.sub(r"[₹,\s]|rs\.?|inr", "", str(v if v is not None else "").lower())
     m = re.fullmatch(r"(\d{1,7})(?:\.(\d{1,2}))?", s)
     if not m:
-        raise ShopError(f"Price samajh nahi aaya: {str(v)[:20]}")
+        raise ShopError(f"The price was not understood: {str(v)[:20]}")
     return int(m.group(1)) * 100 + int((m.group(2) or "0").ljust(2, "0"))
 
 
@@ -206,7 +206,7 @@ def upsert_products(site_id: str, items: list[dict[str, Any]]) -> dict[str, int]
                 if not title or it.get("price") in (None, ""):
                     continue
                 if len(have) >= max_products():
-                    raise ShopError(f"Ek dukaan mein {max_products()} products tak.")
+                    raise ShopError(f"A shop can have up to {max_products()} products.")
                 p = SiteShopProduct(site_id=site_id, slug=slug, title=title, price=paise(it["price"]))
                 s.add(p)
                 have[slug] = p
@@ -342,7 +342,7 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
     except _SameCheckout:                                 # v0.538 a twin of this checkout landed first: that one order
         got = _again(site_id, re.sub(r"[^A-Za-z0-9_-]", "", str(body.get("cid") or ""))[:40], cfg)
         if got is None:
-            raise ShopError("Order abhi nahi ho paya; ek baar phir dabaiye.", 503)
+            raise ShopError("The order could not be placed right now; tap once more.", 503)
         return got
 
 
@@ -350,9 +350,9 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
     """A visitor's checkout. Everything money-related is computed HERE from her products; returns the order and how to pay."""
     ensure_tables()
     if not cfg.get("on"):
-        raise ShopError("Is website par abhi online order band hai.", 403)
+        raise ShopError("Online orders are turned off on this website right now.", 403)
     if str(body.get("website") or "").strip():                         # honeypot
-        raise ShopError("Order nahi ho paya.")
+        raise ShopError("The order could not be placed.")
     iph = hashlib.sha256(f"{ip}|{site_id}".encode()).hexdigest()[:24]
     cid = re.sub(r"[^A-Za-z0-9_-]", "", str(body.get("cid") or ""))[:40]
     seen = _again(site_id, cid, cfg)
@@ -367,17 +367,17 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
     address = _tidy(body.get("address"), 600)
     pin = str(body.get("pincode") or "").strip()
     if not name or len(phone) != 10 or phone[0] not in "6789":
-        raise ShopError("Naam aur sahi 10 ankon ka mobile number chahiye.")
+        raise ShopError("A name and a valid 10-digit mobile number are needed.")
     if not pickup:
         if len(address) < 10 or not PIN.match(pin):
-            raise ShopError("Poora pata aur 6 ankon ka pincode chahiye.")
+            raise ShopError("The full address and a 6-digit pincode are needed.")
         if cfg.get("pincodes") and pin not in cfg["pincodes"]:
-            raise ShopError("Is pincode par abhi delivery nahi hoti.")
+            raise ShopError("There is no delivery to this pincode right now.")
     if method not in ("upi", "cod", "online") or (method == "cod" and not cfg.get("cod")) or \
             (method == "online" and not cfg.get("online")):
-        raise ShopError("Payment ka tareeka chuniye.")
+        raise ShopError("Pick a payment method.")
     if method == "upi" and not cfg.get("upi"):
-        raise ShopError("Dukaan ka UPI ID abhi set nahi; Cash on delivery chuniye ya dukaan ko call kijiye.")
+        raise ShopError("The shop's UPI ID is not set yet; pick Cash on delivery or call the shop.")
     want: dict[str, int] = {}
     for line in (body.get("items") if isinstance(body.get("items"), list) else [])[:MAX_LINES]:
         if not isinstance(line, dict):
@@ -390,7 +390,7 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
         if sg and 0 < q <= MAX_QTY:
             want[sg] = min(MAX_QTY, want.get(sg, 0) + q)
     if not want:
-        raise ShopError("Cart khaali hai.")
+        raise ShopError("The cart is empty.")
     first_number = next_number(site_id)            # v0.542 before this checkout writes anything (one atomic step)
     with session() as s:
         prods = {p.slug: p for p in s.scalars(select(SiteShopProduct).where(
@@ -399,13 +399,13 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
         for sg, q in want.items():
             p = prods.get(sg)
             if p is None:
-                raise ShopError("Cart ki ek cheez ab dukaan mein nahi hai; cart dobara dekhiye.", 409)
+                raise ShopError("One item in the cart is no longer in the shop; look at the cart again.", 409)
             if p.stock is not None and p.stock < q:
-                raise ShopError(f"{p.title}: sirf {p.stock} bache hain.", 409)
+                raise ShopError(f"{p.title}: only {p.stock} left.", 409)
             lines.append({"slug": sg, "title": p.title, "unit": p.unit, "qty": q, "price": p.price, "amount": p.price * q})
             sub += p.price * q
         if cfg.get("min_order") and sub < cfg["min_order"]:
-            raise ShopError(f"Kam se kam {rupees(cfg['min_order'])} ka order.")
+            raise ShopError(f"The minimum order is {rupees(cfg['min_order'])}.")
         off, code, cnote = 0, "", ""
         if str(body.get("coupon") or "").strip():          # v0.446 her code, applied by the server (never trusted from the page)
             from . import shoppay as SP
@@ -414,7 +414,7 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
         delivery = 0 if pickup or (cfg.get("free_above") and goods >= cfg["free_above"]) else int(cfg.get("delivery") or 0)
         total = goods + delivery
         if total > MAX_TOTAL_PAISE:
-            raise ShopError("Itna bada order online nahi; dukaan ko call kijiye.")
+            raise ShopError("An order this large cannot be placed online; call the shop.")
         for sg, q in want.items():     # one conditional UPDATE each: two buyers can never both take the last piece
             if prods[sg].stock is None:
                 continue
@@ -424,9 +424,9 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
                 if code:
                     from . import shoppay as SP
                     SP.give_back(site_id, code, phone)
-                raise ShopError(f"{prods[sg].title}: abhi-abhi khatam ho gaya; cart dobara dekhiye.", 409)
+                raise ShopError(f"{prods[sg].title}: just sold out; look at the cart again.", 409)
         o = SiteShopOrder(site_id=site_id, tenant_id=tenant_id, number="", token=secrets.token_urlsafe(16), cid=cid or None,
-                          name=name, phone=phone, address="Dukaan se le jayenge" if pickup else address,
+                          name=name, phone=phone, address="Pickup from the shop" if pickup else address,
                           pincode="" if pickup else pin, note=_tidy(body.get("note"), 400), items=json.dumps(lines, ensure_ascii=False),
                           subtotal=sub, delivery=delivery, total=total, method=method, ip_hash=iph,
                           discount=off or None, coupon=code or None,
@@ -447,7 +447,7 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
                         SP.give_back(site_id, code, phone)
                     raise _SameCheckout()               # the other copy won: this one's stock goes back (rollback)
         else:
-            raise ShopError("Order abhi nahi ho paya; ek baar phir dabaiye.", 503)
+            raise ShopError("The order could not be placed right now; tap once more.", 503)
         out = public_view(o)
         start_view = {"id": o.id, "number": o.number, "name": name, "phone": phone, "total_paise": total}
     if cnote:
@@ -486,7 +486,7 @@ def public_view(o: SiteShopOrder) -> dict[str, Any]:
 def _mine(s, site_id: str, number: str, token: str) -> SiteShopOrder:
     o = s.scalars(select(SiteShopOrder).where(SiteShopOrder.site_id == site_id, SiteShopOrder.number == number)).first()
     if o is None or not token or not secrets.compare_digest(o.token, str(token)):
-        raise ShopError("Order nahi mila.", 404)
+        raise ShopError("Order not found.", 404)
     return o
 
 
@@ -502,11 +502,11 @@ def tell_paid(site_id: str, number: str, token: str, utr: str, ip: str = "") -> 
     _rate(f"paid:{ip}", 10, 600)
     utr = re.sub(r"\s", "", str(utr or ""))
     if not UTR.match(utr):
-        raise ShopError("UTR / UPI reference number sahi nahi (UPI app ki payment detail mein milta hai).")
+        raise ShopError("The UTR / UPI reference number is not right (it is in the payment details of your UPI app).")
     with session() as s:
         o = _mine(s, site_id, number, token)
         if o.method != "upi" or o.status not in ("new", "payment_told"):
-            raise ShopError("Is order par yeh nahi ho sakta.", 409)
+            raise ShopError("This cannot be done on this order.", 409)
         o.utr, o.status, o.updated_at = utr, "payment_told", now()
         o.history = json.dumps(json.loads(o.history or "[]") + [{"at": _iso(), "to": "payment_told", "utr": utr}])
         return public_view(o)
@@ -535,9 +535,9 @@ def set_status(site_id: str, number: str, to: str) -> dict[str, Any]:
     with session() as s:
         o = s.scalars(select(SiteShopOrder).where(SiteShopOrder.site_id == site_id, SiteShopOrder.number == number)).first()
         if o is None:
-            raise ShopError("Yeh order nahi mila.", 404)
+            raise ShopError("This order was not found.", 404)
         if to not in NEXT.get(o.status, ()):
-            raise ShopError(f"'{WORDS.get(o.status)}' se '{WORDS.get(to, to)}' nahi ho sakta.", 409)
+            raise ShopError(f"'{WORDS.get(o.status)}' cannot go to '{WORDS.get(to, to)}'.", 409)
         if to == "cancelled":
             for x in json.loads(o.items or "[]"):
                 p = s.scalars(select(SiteShopProduct).where(SiteShopProduct.site_id == site_id, SiteShopProduct.slug == x["slug"])).first()

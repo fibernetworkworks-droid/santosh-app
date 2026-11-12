@@ -56,7 +56,7 @@ door (a compact hero) followed by its main screen; marketing pages (about, conta
 
 Return JSON only:
 {"name": "the business / portal name if she gave one, else a short fitting name",
- "summary": "2-3 short lines in her language (Hinglish ok): what will be built",
+ "summary": "2-3 short lines in clear, simple English: what will be built",
  "field_hint": "the business type in 1-4 English words (school, clinic, housing society, sweet shop...)",
  "kind": "brochure" | "lead_site" | "shop" | "booking_site" | "content_site" | "web_app" | "portal" | "marketplace",
  "complexity": "simple" | "standard" | "complex",
@@ -331,7 +331,7 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool =
     from . import guard
     words = _t(words, 2000)
     if len(words) < 6:
-        raise ArchError("Ek line mein bataiye kya banana hai (jaise: 'school ka portal - admission, fees, marks, notices').")
+        raise ArchError("Say in one line what to build (for example: 'a school portal - admissions, fees, marks, notices').")
     bad = guard.brief_problem(words)
     if bad:
         raise ArchError(bad)
@@ -341,7 +341,7 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool =
     spec = clean(raw, words, tier)
     _plan_log(spec, "first")
     if not spec["pages"]:
-        raise ArchError("Plan samajh nahi aaya; thoda aur bataiye (kaun use karega, kya karega).", 502)
+        raise ArchError("The plan was not understood; say a little more (who will use it, what they will do).", 502)
     spec = _deepen(spec, words, tier)
     p = _new_project(tenant, spec, conv)
     data = _data_draft(p, spec, logic_ask) if needs_data(spec) else dict(NO_DATA)
@@ -481,7 +481,7 @@ def _project(tenant: str, ref: str):
     with session() as s:
         p = s.scalars(select(AppProject).where(AppProject.tenant_id == tenant, or_(AppProject.id == ref, AppProject.number == ref))).first()
         if p is None or "architect" not in _j(p.plan, {}):
-            raise ArchError("Yeh spec card nahi mila.", 404)
+            raise ArchError("This spec card was not found.", 404)
         s.expunge(p)
     return p
 
@@ -529,61 +529,61 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
     for pg in spec.get("pages") or []:
         by[pg["for"]].append(pg["title"])
     f = spec.get("features") or {}
-    feats = [x for x, on in (("Dukaan (cart + checkout)", f.get("shop")), ("Blog", f.get("blog")),
+    feats = [x for x, on in (("Shop (cart + checkout)", f.get("shop")), ("Blog", f.get("blog")),
                              ("Booking slots", f.get("booking"))) if on]
     if f.get("languages"):
         from . import lang as LG
-        feats.append("Bhashayen: " + ", ".join(LG.LANGS.get(c, c) for c in f["languages"]))
+        feats.append("Languages: " + ", ".join(LG.LANGS.get(c, c) for c in f["languages"]))
     data_ok = bool(data.get("hash")) and not data.get("errors")
     no_data = bool(data.get("none"))
     pay = spec.get("payments") or {}
-    PAYL = {"none": "Koi payment nahi", "record": "Staff payment record karega (office mein diya paisa)",
-            "upi": "Aapke UPI ID ka QR - har payment aap confirm karengi", "cod": "Cash on delivery"}
-    HOW = {"in_app": "app mein", "push": "phone par push", "whatsapp": "WhatsApp (connect karne ke baad)",
-           "email": "email (connect karne ke baad)"}
-    WHO = {"row_owner": "jiski entry hai", "staff": "staff", "admins": "admin", "owner": "aap"}
+    PAYL = {"none": "No payments", "record": "Staff record payments (money paid at the office)",
+            "upi": "QR of your UPI ID - you confirm every payment", "cod": "Cash on delivery"}
+    HOW = {"in_app": "in the app", "push": "push on the phone", "whatsapp": "WhatsApp (after it is connected)",
+           "email": "email (after it is connected)"}
+    WHO = {"row_owner": "the person the entry belongs to", "staff": "staff", "admins": "admin", "owner": "you"}
     modules = [
-        {"key": "stories", "title": f"Kaun kya karega ({len(spec.get('stories') or [])} kahaniyan)", "required": True,
-         "lines": [f"{x['who']}: {x['want']}" + (f" - taaki {x['so']}" if x.get("so") else "") for x in (spec.get("stories") or [])[:20]]
-                  or ["(koi kahani nahi)"]},
+        {"key": "stories", "title": f"Who does what ({len(spec.get('stories') or [])} stories)", "required": True,
+         "lines": [f"{x['who']}: {x['want']}" + (f" - so that {x['so']}" if x.get("so") else "") for x in (spec.get("stories") or [])[:20]]
+                  or ["(no stories)"]},
         {"key": "pages", "title": f"Pages ({len(spec.get('pages') or [])})", "required": True,
-         "lines": [f"Sabke liye: {', '.join(by['public'][:24])}" + (" ..." if len(by["public"]) > 24 else "")]
-                  + ([f"Login ke baad: {', '.join(by['member'][:16])}"] if by["member"] else [])
+         "lines": [f"For everyone: {', '.join(by['public'][:24])}" + (" ..." if len(by["public"]) > 24 else "")]
+                  + ([f"After sign-in: {', '.join(by['member'][:16])}"] if by["member"] else [])
                   + ([f"Staff (/admin/): {', '.join(by['staff'][:16])}"] if by["staff"] else [])
-                  + ([f"Kul {spec['page_count']} public pages (badi website: pehle site map)"] if spec.get("page_count", 0) >= 10 else []),
+                  + ([f"In all {spec['page_count']} public pages (large website: the site map comes first)"] if spec.get("page_count", 0) >= 10 else []),
          "items": [{"title": pg["title"], "for": pg["for"], "sub": pg.get("purpose") or "",
                     "main": pg["slug"] == spec.get("main_screen"),
                     "tags": [x.get("label") or x["type"] for x in pg.get("sections") or []],
                     "lines": [f"{x.get('label') or x['type']}: {x.get('design') or ''}".strip(": ") for x in pg.get("sections") or []]}
                    for pg in (spec.get("pages") or [])[:60]]},
-        {"key": "users", "title": f"Kaun use karega ({len(spec.get('roles') or [])})", "required": True,
-         "lines": [f"{r['label']}: {r['can']}" for r in spec.get("roles") or []] + ["Staff / admin: /admin/ panel (aap role dete hain)"]},
+        {"key": "users", "title": f"Who will use it ({len(spec.get('roles') or [])})", "required": True,
+         "lines": [f"{r['label']}: {r['can']}" for r in spec.get("roles") or []] + ["Staff / admin: the /admin/ panel (you give the roles)"]},
         {"key": "flows", "title": f"User journeys ({len(spec.get('flows') or [])})", "info": True, "required": True,
-         "lines": [f"{x['who']} - {x['name']}: " + " -> ".join(x["steps"]) for x in spec.get("flows") or []] or ["(koi journey nahi)"],
+         "lines": [f"{x['who']} - {x['name']}: " + " -> ".join(x["steps"]) for x in spec.get("flows") or []] or ["(no journeys)"],
          "items": [{"title": x["name"], "sub": x["who"], "steps": x["steps"]} for x in spec.get("flows") or []]},
         {"key": "data", "title": f"Data ({len(lists)} lists)", "ready": data_ok or no_data,
          "lines": [f"{c['label']}: {', '.join(c['fields'])}" for c in lists] or
                   (["No data lists needed: nobody signs in; enquiries arrive through the site's own form"] if no_data else
-                   (data.get("errors") or ["Data ka draft nahi bana"])[:2])},
-        {"key": "logic", "title": "Niyam, workflow, approvals", "ready": data_ok,
-         "lines": (data.get("lines") or [])[:14] or ["Koi niyam nahi"]},
+                   (data.get("errors") or ["The data draft was not made"])[:2])},
+        {"key": "logic", "title": "Rules, workflow, approvals", "ready": data_ok,
+         "lines": (data.get("lines") or [])[:14] or ["No rules"]},
         {"key": "payments", "title": "Payment", "lines": [PAYL[pay.get("mode") or "none"] + (f": {pay['what']}" if pay.get("what") else ""),
-                                                          "Paisa kabhi khud nahi chalta - har payment aapki jaanch se"]},
-        {"key": "notifications", "title": f"Khabar ({len(spec.get('notifications') or [])})",
-         "lines": [f"{n['when']} -> {WHO[n['who']]} ({HOW[n['how']]})" for n in spec.get("notifications") or []] or ["Koi khabar nahi"]},
-        {"key": "integrations", "title": f"Doosre apps ({len(spec.get('integrations') or [])})",
+                                                          "Money never moves on its own - every payment is checked by you"]},
+        {"key": "notifications", "title": f"Notifications ({len(spec.get('notifications') or [])})",
+         "lines": [f"{n['when']} -> {WHO[n['who']]} ({HOW[n['how']]})" for n in spec.get("notifications") or []] or ["No notifications"]},
+        {"key": "integrations", "title": f"Other apps ({len(spec.get('integrations') or [])})",
          "lines": [f"{INTEGRATIONS[x['name']]}: {x['why']}" for x in spec.get("integrations") or []]
-                  + (["Banne ke baad Connect tab se aap khud jodengi (login aapka)"] if spec.get("integrations") else ["Koi nahi"])},
-        {"key": "features", "title": "Features", "lines": feats or ["Sirf zaroori (enquiry form, WhatsApp)"]},
+                  + (["After the build you connect them yourself from the Connect tab (your own sign-in)"] if spec.get("integrations") else ["None"])},
+        {"key": "features", "title": "Features", "lines": feats or ["Only the essentials (enquiry form, WhatsApp)"]},
         {"key": "quality", "title": "Quality & safety", "info": True, "required": True,
          "lines": [f"{lab}: {x}" for k, lab in QUALITY for x in (spec.get("quality") or {}).get(k) or []]
                   or ["Hoola's own checks run on every version: safety gates, speed, accessibility, links"]},
         {"key": "phases", "title": f"Launch plan ({len(spec.get('phases') or [])} phases)", "info": True, "required": True,
-         "lines": [f"{x['name']}: {', '.join(x['includes'])}" for x in spec.get("phases") or []] or ["Sab ek saath (launch)"]},
+         "lines": [f"{x['name']}: {', '.join(x['includes'])}" for x in spec.get("phases") or []] or ["Everything together (launch)"]},
         {"key": "risks", "title": "Risks, assumptions, what you give", "info": True, "required": True,
          "lines": [f"Risk: {x['risk']}" + (f" - plan: {x['plan']}" if x.get("plan") else "") for x in spec.get("risks") or []]
                   + [f"Assumed: {x}" for x in spec.get("assumptions") or []]
-                  + [f"You give: {x}" for x in spec.get("content_needed") or []] or ["(kuch nahi)"]},
+                  + [f"You give: {x}" for x in spec.get("content_needed") or []] or ["(nothing)"]},
     ]
     body = {"spec": spec, "data_hash": data.get("hash") or "", "modules": [m["key"] for m in modules]}
     return {"id": p.id, "number": p.number, "status": a.get("status") or "waiting", "name": spec.get("name") or p.name,
@@ -592,9 +592,9 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
             "kind": spec.get("kind") or "", "complexity": spec.get("complexity") or "",
             "depth": spec.get("depth") or depth(spec) if spec.get("pages") else {},
             "warnings": (data.get("warnings") or [])[:6],
-            "say": (f"Spec card taiyaar ({p.number}): {len(spec.get('pages') or [])} pages, {len(spec.get('roles') or [])} tarah ke "
-                    f"log, {len(lists)} lists. Har hissa dekh kar 'Haan, banao' dabaiye (jo hissa nahi chahiye use band kar dijiye)."
-                    if a.get("status") != "built" else f"Is spec se website {a.get('site')} ban rahi hai.")}
+            "say": (f"Spec card ready ({p.number}): {len(spec.get('pages') or [])} pages, {len(spec.get('roles') or [])} kinds of "
+                    f"users, {len(lists)} lists. Look at each part and tap 'Build this plan' (turn off any part you do not want)."
+                    if a.get("status") != "built" else f"Website {a.get('site')} is being built from this spec.")}
 
 
 def redraft_data(tenant: str, ref: str, words: str = "", logic_ask=None) -> dict[str, Any]:
@@ -602,7 +602,7 @@ def redraft_data(tenant: str, ref: str, words: str = "", logic_ask=None) -> dict
     p = _project(tenant, ref)
     a = _j(p.plan, {}).get("architect") or {}
     if a.get("status") == "built":
-        raise ArchError("Yeh spec se website ban chuki hai; ab website ke App & data tab mein badlav kijiye.", 409)
+        raise ArchError("The website has already been built from this spec; make changes in the website's App & data tab now.", 409)
     spec = dict(a.get("spec") or {})
     if words:
         spec["app_words"] = (spec.get("app_words", "") + "\nBadlav: " + _t(words, 1000)).strip()[:3000]
@@ -623,7 +623,7 @@ def revise(tenant: str, ref: str, words: str, logic_ask=None) -> dict[str, Any]:
     from . import service as S
     words = _t(words, 1500)
     if len(words) < 3:
-        raise ArchError("Kya badalna hai? Ek line likhiye (jaise 'alumni page bhi jodo').")
+        raise ArchError("What should change? Write one line (for example 'add an alumni page too').")
     p = _project(tenant, ref)
     a = _j(p.plan, {}).get("architect") or {}
     old = a.get("spec") or {}
@@ -633,7 +633,7 @@ def revise(tenant: str, ref: str, words: str, logic_ask=None) -> dict[str, Any]:
     new = clean(raw, old.get("words", ""), old.get("complexity") or size(old.get("words", "")))
     new["depth"] = depth(new)
     if not new["pages"]:
-        raise ArchError("Badlav samajh nahi aaya; thoda aur saaf likhiye.", 502)
+        raise ArchError("The change was not understood; write it a little more clearly.", 502)
     new["changes"] = (old.get("changes") or [])[-19:] + [{"words": words, "at": now().isoformat()}]
     data_moved = new["app_words"].strip() != (old.get("app_words") or "").strip() or \
         new["notifications"] != old.get("notifications") or new["payments"] != old.get("payments")
@@ -641,7 +641,7 @@ def revise(tenant: str, ref: str, words: str, logic_ask=None) -> dict[str, Any]:
         data = (_data_draft(p, new, logic_ask) if needs_data(new) else dict(NO_DATA)) if data_moved or \
             (needs_data(new) and (a.get("data") or {}).get("none")) else (a.get("data") or {})
         c = _save_card(p.id, new, data)
-        return {**c, "say": "Spec badal diya. " + c["say"]}
+        return {**c, "say": "Spec changed. " + c["say"]}
     # built: rebuild only what the change touches
     site = a.get("site") or ""
     old_t = {x["title"].lower(): x for x in old.get("pages") or []}
@@ -651,20 +651,20 @@ def revise(tenant: str, ref: str, words: str, logic_ask=None) -> dict[str, Any]:
     out: dict[str, Any] = {"site": site, "added_pages": added, "removed_pages": removed}
     said = []
     if added or removed:
-        ins = "; ".join(([f"Naye pages jodo: {', '.join(added)}"] if added else [])
-                        + ([f"Ye pages hatao: {', '.join(removed)}"] if removed else []))
+        ins = "; ".join(([f"Add new pages: {', '.join(added)}"] if added else [])
+                        + ([f"Remove these pages: {', '.join(removed)}"] if removed else []))
         try:
             out["pages"] = S.change(tenant, site, ins)
-            said.append("pages ka badlav website par ban raha hai")
+            said.append("the page changes are being built on the website")
         except S.SiteError as e:
-            said.append(f"pages abhi nahi badle ({e})")
+            said.append(f"the pages have not changed yet ({e})")
     if data_moved:
         d = AL.logic_draft(tenant, site, f"{words}\n{new['app_words'][:1500]}")
         out["logic_draft"] = {k: d.get(k) for k in ("hash", "lines", "errors", "ready")}
-        said.append("data / niyam ka draft taiyaar - App & data tab mein 'Apply' dabaiye")
+        said.append("the data / rules draft is ready - tap 'Apply' in the App & data tab")
     plan_spec = dict(new)
     _set_spec(p.id, plan_spec)
-    out["say"] = ("Spec badal diya: " + "; ".join(said) + ".") if said else "Spec badal diya; kuch dobara banane ki zaroorat nahi."
+    out["say"] = ("Spec changed: " + "; ".join(said) + ".") if said else "Spec changed; nothing needs to be built again."
     return out
 
 
@@ -688,9 +688,9 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     from . import service as S
     c = card(tenant, ref)
     if c["status"] == "built":
-        raise ArchError(f"Is spec se website {c['site']} pehle hi ban rahi hai.", 409)
+        raise ArchError(f"Website {c['site']} is already being built from this spec.", 409)
     if not h or h != c["hash"]:
-        raise ArchError("Spec card badal gaya; naya card dekh kar dobara haan kahiye.", 409)
+        raise ArchError("The spec card has changed; look at the new card and approve again.", 409)
     on = set(MODULES) if modules is None else ({str(m) for m in modules} & set(MODULES)) | {"stories", "pages", "users"}
     p = _project(tenant, ref)
     a = _j(p.plan, {}).get("architect") or {}
@@ -709,9 +709,9 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
         data_later = True
     pages = spec.get("pages") or []
     pub = [x["title"] for x in pages if x["for"] == "public"]
-    inner = [f"{x['title']} ({'login ke baad' if x['for'] == 'member' else 'staff'})" for x in pages if x["for"] != "public"]
+    inner = [f"{x['title']} ({'after sign-in' if x['for'] == 'member' else 'staff'})" for x in pages if x["for"] != "public"]
     brief = (f"{spec.get('words', '')}\nPages: {', '.join(pub)}"
-             + (f"\nApp ke andar: {', '.join(inner)}" if inner else ""))[:2000]
+             + (f"\nInside the app: {', '.join(inner)}" if inner else ""))[:2000]
     hint = spec.get("field_hint") or ""
     u = L.understand(hint) if hint else {}
     field = u.get("field") if u.get("field") in L.fields() else ""
@@ -722,31 +722,31 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     except S.SiteError as e:
         raise ArchError(str(e)) from e
     sid = v["id"]
-    done = [f"Website {v['number']} ka plan"]
+    done = [f"Website {v['number']} plan"]
     if "data" in on:
         AL.attach(tenant, sid, p.id)
         p = _project(tenant, p.id)
         if "logic" in on:
             LS.apply(p, _data_hash(p), by="owner")
-            done.append("data + niyam lagu")
+            done.append("data + rules applied")
         else:
             d = (_j(p.backend, {}) or {}).get("logic_draft") or {}
             ops = LS._schema_ops(d.get("lists"), d.get("fields"))
             if ops:
                 BE.change_schema(p, ops, "architect: lists")
-            done.append("data ki lists (niyam band)")
+            done.append("data lists (rules off)")
     f = spec.get("features") or {}
     if "features" in on:
         if f.get("languages"):
             try:
                 S.set_languages(tenant, sid, f["languages"])
-                done.append("bhashayen")
+                done.append("languages")
             except S.SiteError as e:
                 log.info("architect languages skipped: %s", e)
         if f.get("shop"):
             try:
                 S.shop_setup(tenant, sid, {"on": True})
-                done.append("dukaan chalu (products aap denge)")
+                done.append("shop on (you give the products)")
             except Exception as e:               # noqa: BLE001
                 log.info("architect shop skipped: %s", e)
     pay = spec.get("payments") or {}
@@ -756,25 +756,25 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
         except Exception as e:                   # noqa: BLE001
             log.info("architect payments skipped: %s", e)
     if "payments" in on and pay.get("mode") == "upi":
-        done.append("UPI QR (apna UPI ID website ke Shop / Answer mein dijiye)")
+        done.append("UPI QR (give your UPI ID in the website's Shop / Answer)")
     todo = [INTEGRATIONS[x["name"]] for x in spec.get("integrations") or []] if "integrations" in on else []
     _mark(p.id, built=True, site=v["number"], modules=sorted(on), connect_later=todo)
     try:
         _publish(_project(tenant, p.id), card(tenant, p.id))
     except Exception:                            # noqa: BLE001
         log.debug("spec publish", exc_info=True)
-    say = f"Haan mil gaya. Ban raha hai: {', '.join(done)}."
+    say = f"Approved. Being built: {', '.join(done)}."
     if data_later:
-        say += " Data ki lists aur niyam abhi nahi lage (draft theek nahi tha) - website ke App & data tab se 'Data dobara' kijiye."
+        say += " The data lists and rules are not applied yet (the draft was not right) - draft the data again from the website's App & data tab."
     if todo:
-        say += f" Baad mein Connect tab se jodiye: {', '.join(todo)}."
+        say += f" Connect later from the Connect tab: {', '.join(todo)}."
     try:
         r = S._load(sid)
         if r.stage != "sitemap":
             S.approve_plan(tenant, sid, conv)
-            say += " 3 looks ban rahe hain; card par ek chuniye."
+            say += " 3 looks are being made; pick one on the card."
         else:
-            say += " Badi website ka site map ban raha hai; plan card aate hi haan kahiye."
+            say += " The site map of the large website is being made; approve as soon as the plan card arrives."
     except S.SiteError as e:
         say += f" ({e})"
     return {"site": sid, "number": v["number"], "app": p.id, "app_number": p.number, "modules": sorted(on), "say": say}
@@ -858,11 +858,11 @@ def build_now(tenant: str, words: str, conv: str = "") -> dict[str, Any]:
             raise
         log.warning("build mode: architect plan failed, plain site path: %s", e)
         v = S.new(tenant, words, conv)
-        return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
+        return {**v, "say": "The deep plan could not be made right now; building the website directly. " + (v.get("say") or "")}
     except Exception:                            # v0.715 any other failure of the plan never kills her Build tap
         log.exception("build mode: architect plan crashed, plain site path")
         v = S.new(tenant, words, conv)
-        return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
+        return {**v, "say": "The deep plan could not be made right now; building the website directly. " + (v.get("say") or "")}
     got = approve(tenant, c["id"], c["hash"], None, conv)
     v = S.view(S._load(got["site"]))
     return {**v, "spec": c["id"], "spec_number": c["number"], "say": got["say"]}
