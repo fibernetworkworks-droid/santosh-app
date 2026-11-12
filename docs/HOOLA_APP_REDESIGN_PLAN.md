@@ -114,7 +114,7 @@ R0's golden screenshots decide, side by side with the owner's Claude screenshots
 | thinking mark between send and first word | typing dots / mood | the Hoola working mark (thinking state) under her message from the tap until the first word |
 | ~55 tokens / s, no flicker | `_Reveal` paces words (v0.283: 60-79 words / s, catch-up capped) | same pacing + soft tail fade; parse only the growing block (3a) |
 | message shown at once on tap | yes (local echo) | kept, with a "sending" tick that turns solid when the server has it |
-| connection reused (keep-alive) | REST calls go through `api.dart` | one shared HTTP client for every call (keep-alive), measured |
+| connection reused (keep-alive) | already one shared HTTP client (`api.dart:52`) | kept; one upload path (`api.dart:2121`) opens its own client - moved onto the shared one |
 | artifact WebView pre-warmed | opens cold | keep one WebView warm while a chat is open |
 | first word in 0.25-0.6 s | NOT comparable: a Hoola turn picks tools, reads memory and runs a model through the server (Claude's figure is only their network + first token) | the app MEASURES it: tap -> first word, logged per turn and shown in Settings > Usage; the server work to make it faster is separate (not a design job) |
 
