@@ -724,7 +724,7 @@ img.in{animation:vin .3s ease}
 .pjf{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 4px 4px 8px;border-radius:10px;background:var(--glass)}
 .pjf span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pjf small{color:var(--faint);font-size:11.5px}
 .pjf .ib{width:28px;height:28px}
-#v-chat.dropping::after{content:"Files yahan chhodiye";position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:24px;display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:800;color:var(--accent);background:rgba(11,10,26,.72);z-index:30;pointer-events:none}
+#v-chat.dropping::after{content:"Drop files here";position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:24px;display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:800;color:var(--accent);background:rgba(11,10,26,.72);z-index:30;pointer-events:none}
 /* skeletons instead of spinners */
 .skel{display:block;border-radius:14px;background:linear-gradient(90deg,var(--glass) 0%,var(--glass2) 40%,var(--glass) 80%);background-size:300% 100%;animation:shimmer 1.3s ease-in-out infinite}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}

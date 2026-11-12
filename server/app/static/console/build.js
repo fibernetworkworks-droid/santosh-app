@@ -56,8 +56,8 @@ window.HoolaBuild = function (C) {
 
   /* ---------------- words ---------------- */
   const ST = {
-    site: {draft: 'Starting', planned: 'Plan: needs your Haan', looks: 'Pick a look', building: 'Building', checking: 'Checking', ready: 'Ready', failed: 'Problem', stopped: 'Stopped'},
-    app: {draft: 'Starting', planned: 'Plan: needs your Haan', looks: 'Pick a look', designing: 'Designing screens', checking: 'Checking', ready: 'Design ready', approved: 'Design approved', failed: 'Problem', stopped: 'Stopped'},
+    site: {draft: 'Starting', planned: 'Plan: needs your approval', looks: 'Pick a look', building: 'Building', checking: 'Checking', ready: 'Ready', failed: 'Problem', stopped: 'Stopped'},
+    app: {draft: 'Starting', planned: 'Plan: needs your approval', looks: 'Pick a look', designing: 'Designing screens', checking: 'Checking', ready: 'Design ready', approved: 'Design approved', failed: 'Problem', stopped: 'Stopped'},
     an: {writing: 'Writing Kotlin', building: 'Compiling', fixing: 'Fixing errors', ready: 'APK ready', zip: 'Project ZIP', failed: 'Problem'}};
   const TILE = {todo: ['to do', 'todo'], writing: ['writing', 'run'], written: ['written', 'ok'], compiling: ['compiling', 'run'], fixing: ['fixing', 'fix'], done: ['✓', 'ok'], code: ['simple version', 'fix']};
   const making = o => S(o.v?.status) === 'looks' && !L(o.v?.looks).length;      // the 3 looks are still being made
@@ -103,7 +103,7 @@ window.HoolaBuild = function (C) {
       const s = S(p.status);
       if (p.now) logLine(o, 'Android: ' + p.now, ['ready', 'zip'].includes(s) ? 'ok' : s === 'failed' ? 'bad' : 'run');
       if (s === 'failed' && p.error) logLine(o, 'Android: ' + p.error, 'bad');
-      if (s === 'ready' && S(prev?.status) !== 'ready') logLine(o, `APK taiyaar (build ${S(p.build)})`, 'ok');
+      if (s === 'ready' && S(prev?.status) !== 'ready') logLine(o, `APK ready (build ${S(p.build)})`, 'ok');
       return;
     }
     const s = S(p.status), b = M(p.board);
@@ -111,7 +111,7 @@ window.HoolaBuild = function (C) {
     if (prev && S(prev.status) !== s) {
       if (s === 'failed') logLine(o, 'Problem: ' + S(p.error), 'bad');
       if (s === 'stopped') logLine(o, 'Stopped', 'stop');
-      if (s === 'ready') logLine(o, `${o.type === 'site' ? 'Website' : 'App design'} v${S(p.version)} taiyaar`, 'ok');
+      if (s === 'ready') logLine(o, `${o.type === 'site' ? 'Website' : 'App design'} v${S(p.version)} ready`, 'ok');
     }
   }
 
@@ -189,7 +189,7 @@ window.HoolaBuild = function (C) {
     let body = '';
     if (s === 'planned' && v.mapping) body = nowLine('Planning the site map (big site)…', true);   // v0.315
     else if (s === 'planned') body = (v.size ? sizeLine(v) : '') + L(v.plan?.pages).slice(0, 8).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('')
-      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
+      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Approve plan · make 3 looks', 'go')}</div>`;
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Preview in new tab</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
@@ -202,7 +202,7 @@ window.HoolaBuild = function (C) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
     if (s === 'planned') body = `<div class="bln faint">${L(v.plan?.screens).length + L(v.plan?.code_screens).length} screens · bottom tabs: ${esc(L(v.plan?.tabs).join(' · '))}</div>`
-      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
+      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Approve plan · make 3 looks', 'go')}</div>`;
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o) + miniScreens(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Prototype</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
@@ -290,7 +290,7 @@ window.HoolaBuild = function (C) {
     // now line
     const b = M(o.v?.board), an = o.an || {};
     const anShown = !!S(an.status) && (anWorking(o) || S(o.v?.status) === 'approved' || !o.v);     // the Android build leads now
-    const nowText = anWorking(o) ? S(an.now) || ST.an[an.status] : anShown ? (an.status === 'ready' ? `APK taiyaar (build ${S(an.build)})` : ST.an[an.status] || S(an.status)) : S(b.now);
+    const nowText = anWorking(o) ? S(an.now) || ST.an[an.status] : anShown ? (an.status === 'ready' ? `APK ready (build ${S(an.build)})` : ST.an[an.status] || S(an.status)) : S(b.now);
     const run = busy(o);
     studio.querySelector('.stnow').innerHTML = (nowText || o.v) ? `<div class="stn ${run ? 'run' : S(o.v?.status) === 'failed' || an.status === 'failed' ? 'bad' : 'idle'}">
         ${run ? spin(22) : '<span class="stok" aria-hidden="true">✓</span>'}
@@ -374,7 +374,7 @@ window.HoolaBuild = function (C) {
     switch (o.tab) {
       case 'plan': return planPane(o);
       case 'looks': return looksPane(o);
-      case 'board': return `<section class="bbox"><h4>Board: pages and their parts</h4>${progress(o)}${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bchips">${L(p.sections).map(s => chip(s.label, s.state)).join('')}</div></div>`).join('') || '<div class="stempty">Plan pakka hote hi hisse yahan dikhenge.</div>'}</section>`;
+      case 'board': return `<section class="bbox"><h4>Board: pages and their parts</h4>${progress(o)}${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bchips">${L(p.sections).map(s => chip(s.label, s.state)).join('')}</div></div>`).join('') || '<div class="stempty">The parts show here once the plan is approved.</div>'}</section>`;
       case 'kadam': return kadamPane(o);
       case 'jaanch': return sitePane(o);
       case 'data': return `<div class="stdata"><div class="stempty">${spin()} Loading the app…</div></div>`;
@@ -425,7 +425,7 @@ window.HoolaBuild = function (C) {
         + (M(pl.scope).request ? `<div class="bln faint" style="font-style:italic">Aapne kaha: "${esc(pl.scope.request)}"</div>` : '');
     return `<section class="bbox"><h4>Plan</h4>${list || '<div class="stempty">Writing the plan…</div>'}</section>`
       + (qs.length ? `<section class="bbox"><h4>A few questions (answer what you know)</h4><form class="bqs" data-form="answers">${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" autocomplete="off"></label>`).join('')}<div class="acts"><button class="btn soft" type="submit">Send answers</button></div></form></section>` : '')
-      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Haan, make 3 looks', 'go')}</div>` : '');
+      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Approve plan · make 3 looks', 'go')}</div>` : '');
   }
   function looksPane(o) {
     const looks = L(o.v?.looks);
@@ -450,7 +450,7 @@ window.HoolaBuild = function (C) {
       + ((phone || pc) ? `<section class="bbox"><h4>On phone and computer (real screenshots)</h4><div class="bshots">${pic(phone, 'Phone screenshot', 'ph')}${pic(pc, 'Computer screenshot', 'pc')}</div>
           ${vid ? `<video class="bvid" data-src="${esc(vid)}" controls muted playsinline preload="none" aria-label="Scroll video"></video>` : ''}</section>` : '')
       + (checksBlock(o, 'Checks (small phone, contrast, buttons, links)') || `<div class="stempty">${working(o) ? spin() + ' Checks run after the website is built.' : 'Checks have not run yet.'}</div>`)
-      + (S(v.status) === 'ready' ? `<section class="bbox next"><h4>Next: Domain → Hosting + DNS → Live</h4><p class="faint" style="font-size:13px">Buying a domain and going live need your Haan (the card comes in the chat).</p>
+      + (S(v.status) === 'ready' ? `<section class="bbox next"><h4>Next: Domain → Hosting + DNS → Live</h4><p class="faint" style="font-size:13px">Buying a domain and going live need your approval (the card comes in the chat).</p>
           <div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('say-domain', 'Find a domain', 'go')}${btn('say-live', 'Prepare to go live')}</div></section>` : '');
   }
   function screensPane(o) {
@@ -666,7 +666,7 @@ window.HoolaBuild = function (C) {
           return `<div class="bscrow"><i class="${c}"></i><span>${esc(x.label)}</span><em class="${c}">${esc(t)}</em></div>`; }).join('') || '<div class="stempty">…</div>'}
           ${N(a.rounds) ? `<p class="faint" style="font-size:12px;margin-top:6px">Fixed compile errors by itself in ${a.rounds} round(s).</p>` : ''}</section>
         <section class="bbox"><h4>APK</h4>${apk.file ? `<div class="bln">${esc(apk.file)} · ${mb(apk.size)} · v${esc(S(apk.version_name))}</div>
-            <div class="bln faint">package ${esc(S(apk.package))}${apk.sha256 ? ` · SHA-256 ${esc(S(apk.sha256).slice(0, 8))}…${esc(S(apk.sha256).slice(-6))}` : ''}</div>` : `<div class="stempty">${anWorking(o) ? spin() + ' ' : ''}APK compile poora hone par yahan.</div>`}
+            <div class="bln faint">package ${esc(S(apk.package))}${apk.sha256 ? ` · SHA-256 ${esc(S(apk.sha256).slice(0, 8))}…${esc(S(apk.sha256).slice(-6))}` : ''}</div>` : `<div class="stempty">${anWorking(o) ? spin() + ' ' : ''}Shows here once the APK compile finishes.</div>`}
           ${dl ? `<div class="bqr"><img data-qr="${esc(location.origin + dl)}" alt="QR code for the APK link" width="148" height="148"><span class="faint">Scan with your phone to download the APK. The link lasts a few days.</span></div>` : ''}
           <p class="faint" style="font-size:12px">This is a preview build for your phone. Publishing on the Play Store is the next step, from your own developer account.</p>
           <div class="acts">${dl ? `<a class="btn go" href="${esc(dl)}" download>APK download</a>` : ''}${zip ? `<a class="btn soft" href="${esc(zip)}" download>Project ZIP${a.zip_size ? ' (' + mb(a.zip_size) + ')' : ''}</a>` : ''}
@@ -724,8 +724,8 @@ window.HoolaBuild = function (C) {
         case 'theme': await themeDialog(o); break;
         case 'plat': o.plat = b.dataset.p; draw(); break;
         case 'zoom': zoom(b.dataset.full, b.dataset.cap); break;
-        case 'say-domain': C.say(`${title(o)} website ke liye achha domain dhoondho`); break;
-        case 'say-live': C.say(`${title(o)} website live karne ki taiyaari karo (domain, hosting, DNS)`); break;
+        case 'say-domain': C.say(`Find a good domain for the ${title(o)} website`); break;
+        case 'say-live': C.say(`Get the ${title(o)} website ready to go live (domain, hosting, DNS)`); break;
       }
     } finally { if (b.tagName === 'BUTTON' && b.isConnected) b.disabled = false; }
   }
@@ -968,7 +968,7 @@ window.HoolaBuild = function (C) {
       nkbox.innerHTML = `<h4>The plan <span>${mods.length ? built + '/' + mods.length + ' built' : 'not made yet'}</span></h4>
         <p class="stnote">Your one line becomes the whole app as a plan - who uses it, what it stores, what it does - and you say yes to ONE PIECE AT A TIME. Each piece says what you get, what it needs first, and what it will ask of you. Nothing is built before you agree to that piece.</p>
         ${nk.one_line ? `<p class="stnote"><b>${esc(S(nk.one_line))}</b></p>` : ''}
-        <form class="stapp nkask" autocomplete="off"><div class="row"><input name="words" placeholder="${mods.length ? 'A change: riders ko bhi app chahiye' : 'kirana dukaan ki app, ghar pe delivery'}" maxlength="400"><button class="btn${mods.length ? '' : ' go'}" type="submit">${mods.length ? 'Change the plan' : 'Make the plan'}</button></div></form>
+        <form class="stapp nkask" autocomplete="off"><div class="row"><input name="words" placeholder="${mods.length ? 'A change: riders need the app too' : 'an app for a grocery shop, home delivery'}" maxlength="400"><button class="btn${mods.length ? '' : ' go'}" type="submit">${mods.length ? 'Change the plan' : 'Make the plan'}</button></div></form>
         ${qs.length ? `<h5>Before building</h5><p class="stnote">Only questions whose answer changes what gets built.</p>${qs.map((q, i) => `<form class="stapp nkq" data-ask="${esc(S(q.ask))}"><div class="row"><label class="stnote" style="flex:1">${esc(S(q.ask))}<input name="said" maxlength="200"></label><button class="btn" type="submit">Answer</button></div></form>`).join('')}` : ''}
         ${L(nk.user_types).length ? `<p class="stnote">Who uses it: ${L(nk.user_types).map(u => esc(S(u.label)) + (u.app && u.app !== 'main' ? ' (' + esc(S(u.app)) + ' app)' : '')).join(' · ')}</p>` : ''}
         ${mods.map(m => `<div class="cnact">
@@ -1019,7 +1019,7 @@ window.HoolaBuild = function (C) {
     const drawJaanch = (j, ro) => {
       const last = j.last_run || {}, ru = j.rules || {}, fd = j.field || {}, rl = (ro && ro.rollout) || {}, fl = L(ro && ro.flags);
       const pct = Math.round((Number(rl.fraction) || 0) * 100);
-      jnbox.innerHTML = `<h4>Jaanch <span>${Number(j.scenarios) || 0} stor${j.scenarios === 1 ? 'y' : 'ies'}${last.fail ? ' · ' + last.fail + ' failing' : ''}</span></h4>
+      jnbox.innerHTML = `<h4>Checks <span>${Number(j.scenarios) || 0} stor${j.scenarios === 1 ? 'y' : 'ies'}${last.fail ? ' · ' + last.fail + ' failing' : ''}</span></h4>
         <p class="stnote">Your app is PROVED, not hoped for. Hoola writes a test for each user story, then plays it against a throwaway copy of your app - sign up, order, and check that another customer is REFUSED. Your real app and your customers' data are never touched.</p>
         ${last.at ? `<p class="stnote">Last run ${esc(S(last.at).slice(0, 16).replace('T', ' '))} · <b>${Number(last.pass) || 0}/${Number(last.total) || 0} passed</b>${last.fail ? ' · ' + last.fail + ' failed' : ''}${last.not_run ? ' · ' + last.not_run + ' could not run' : ''}<br>${esc(S(last.says))}</p>` : '<p class="stempty">Never run.</p>'}
         ${L(last.failed).length ? `<ul class="stlines">${L(last.failed).map(x => `<li><b>${esc(S(x.story))}</b>: ${esc(S(x.why))}</li>`).join('')}</ul>` : ''}
@@ -1582,7 +1582,7 @@ window.HoolaBuild = function (C) {
     const ybox = document.createElement('section'); ybox.className = 'stcol stkhata'; box.appendChild(ybox);
     const drawY = v => {
       const cs = L(v.customers); if (!cs.length) { ybox.remove(); return; }
-      ybox.innerHTML = `<h4>Khata yaad <span>${cs.length} owe</span></h4><p class="stnote">${esc(S(v.note))}</p>
+      ybox.innerHTML = `<h4>Credit reminders <span>${cs.length} owe</span></h4><p class="stnote">${esc(S(v.note))}</p>
         <div class="row"><input data-tpl placeholder="Approved UTILITY template name (for business WhatsApp)" aria-label="Template name"></div>
         <div class="sttbl"><table><thead><tr><th>Customer</th><th>Owes</th><th>Phone</th><th></th></tr></thead><tbody>${cs.map(c => `<tr data-m="${esc(S(c.member))}"><td>${esc(S(c.name))}</td><td>₹${N(c.balance)}</td><td>${esc(S(c.phone) || '-')}</td>
           <td>${c.link ? `<a class="ib" href="${esc(S(c.link))}" target="_blank" rel="noopener">Open in WhatsApp</a>` : ''} ${c.phone && !c.recent ? '<button class="ib" type="button" data-ysend>Send via business</button>' : (c.recent ? 'reminded recently' : '')}</td></tr>`).join('')}</tbody></table></div>`;
@@ -1738,7 +1738,7 @@ window.HoolaBuild = function (C) {
     const prev = S(b.preview).replace(/\/$/, '');
     box.innerHTML = `<form class="stapp" data-f="write" autocomplete="off"><b>Write a new post</b>
         <label><span>What should it be about? Your own facts, offers and experience (Hoola never makes them up)</span>
-        <textarea name="brief" rows="3" placeholder="Diwali par mithai kaise chunein - hamari kaju katli roz subah banti hai, 1985 se Akot mein"></textarea></label>
+        <textarea name="brief" rows="3" placeholder="How to choose Diwali sweets - our kaju katli is made fresh every morning, in Akot since 1985"></textarea></label>
         <div class="acts"><button class="btn go" type="submit">Write draft</button><span class="stnote">Written in your voice by the Content writer; facts are checked before it goes up.</span></div></form>
       ${waiting.length ? `<section class="stcol"><h4>Drafts <span>${waiting.length}</span></h4>${waiting.map(d => `<div class="stblog-d" data-id="${esc(S(d.id))}">
         <div class="stblog-row"><b>${esc(S(d.title) || 'Untitled')}</b><small>${esc(S(d.number))} · ${N(d.words)} words · ${esc(S(d.status))}</small></div>
@@ -1750,7 +1750,7 @@ window.HoolaBuild = function (C) {
         <td>${esc(BSTAT[S(p.status)] || S(p.status))}</td>
         <td><select data-x="cover" aria-label="Cover photo"><option value="">No cover</option>${photos.map(n => `<option${n === S(p.cover) ? ' selected' : ''}>${esc(S(n))}</option>`).join('')}</select></td>
         <td>${p.status === 'published' ? `<a class="btn soft" target="_blank" rel="noopener" href="${esc(prev)}/blog/${esc(S(p.slug))}/">View</a> <button class="btn soft" type="button" data-x="hide">Hide</button>` : `<button class="btn soft" type="button" data-x="show">Show</button>`}
-          <button class="btn soft danger" type="button" data-x="delete">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No posts yet. Write one above, or ask in chat: "blog likho: …".</p>'}</section>
+          <button class="btn soft danger" type="button" data-x="delete">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="stempty">No posts yet. Write one above, or ask in chat: "write a blog: …".</p>'}</section>
       <p class="stnote">${esc(S(b.say))} Every post has its own page, a category page, an RSS feed and Google's article data; your site's other languages get it translated.</p>`;
     const reload = () => loadBlog(o, root);
     box.querySelector('[data-f=write]').addEventListener('submit', async e => {
@@ -2096,7 +2096,7 @@ window.HoolaBuild = function (C) {
     });
     const ph = box.querySelector('[data-x=phone]');
     if (ph) ph.addEventListener('click', async e => {
-      if (!confirm('Plan an Android / iPhone app on the same data as this website? Nothing is built until you say Haan on its plan card.')) return;
+      if (!confirm('Plan an Android / iPhone app on the same data as this website? Nothing is built until you approve its plan card.')) return;
       e.target.disabled = true;
       try { const r = await api('POST', base(o) + '/phone-app', {conversation_id: C.conv() || ''}); toast(S(r?.say) || 'Phone app plan ready.'); }
       catch (er) { toast(er.message, true); e.target.disabled = false; }
@@ -2263,7 +2263,7 @@ window.HoolaBuild = function (C) {
         <label><span>Your own animation (Lottie .json, up to 1.5 MB)</span><input name="file" type="file" accept=".json,application/json" required></label>
         <label><span>Name for it</span><input name="name" placeholder="my-logo" pattern="[a-z][a-z0-9-]{1,39}" required></label></div>
         <div class="acts"><button class="btn soft" type="submit">Add animation</button></div>
-        <p class="stnote">Built in, no file needed: animations pulse, check, sparkle, scroll, dots, wave and 3D scenes orb, knot, particles, waves, blocks - ask for them in chat (e.g. "hero mein 3D orb lagao").</p></form>
+        <p class="stnote">Built in, no file needed: animations pulse, check, sparkle, scroll, dots, wave and 3D scenes orb, knot, particles, waves, blocks - ask for them in chat (e.g. "put a 3D orb in the hero").</p></form>
       <div class="stdpv" aria-live="polite"></div>`;
     box.appendChild(sec);
     const pv = sec.querySelector('.stdpv'), reload = () => { sec.remove(); designBox(o, box); };
@@ -2524,12 +2524,12 @@ window.HoolaBuild = function (C) {
   function specCard(p, el) {
     const c = M(p), mods = L(c.modules), built = S(c.status) === 'built';
     el.classList.add('bcard', 'stspec');
-    el.innerHTML = `<div class="hd"><span class="bic" aria-hidden="true">${IC_WEB}</span><b>${esc(S(c.name) || 'Website plan')} · ${esc(S(c.number))}</b><span class="tag ${built ? 'ok' : 'warn'}">${built ? 'Building ' + esc(S(c.site)) : 'Spec: needs your Haan'}</span></div>`
+    el.innerHTML = `<div class="hd"><span class="bic" aria-hidden="true">${IC_WEB}</span><b>${esc(S(c.name) || 'Website plan')} · ${esc(S(c.number))}</b><span class="tag ${built ? 'ok' : 'warn'}">${built ? 'Building ' + esc(S(c.site)) : 'Spec: needs your approval'}</span></div>`
       + (c.summary ? `<p class="bsay">${esc(S(c.summary))}</p>` : '')
       + mods.map(m => `<fieldset class="stmod"><legend><label><input type="checkbox" data-mod="${esc(S(m.key))}"${m.required || built ? ' disabled' : ''} checked> <b>${esc(S(m.title))}</b>${m.ready === false ? ' <span class="badc">needs a fix</span>' : ''}</label></legend>
           ${L(m.lines).slice(0, 14).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('')}</fieldset>`).join('')
       + L(c.questions).map(q => `<div class="warnc bln">? ${esc(S(q))}</div>`).join('')
-      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change anything</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
+      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change anything</button><button class="btn go" type="button" data-sp="ok">Yes, build it</button></div>`);
     el.onclick = async e => {
       const b = e.target.closest('[data-sp]'); if (!b) return;
       const url = `/api/site-architect/${encodeURIComponent(S(c.id))}`;

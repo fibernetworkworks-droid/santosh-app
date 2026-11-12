@@ -207,7 +207,7 @@ function go(v, arg) {
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -610,12 +610,12 @@ function flushStepBuf() {
 // v0.279 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
 const ATT = window.HoolaAttach ? HoolaAttach({api, esc, toast, token: () => TOKEN,
   itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN ? (PN.open(item), true) : false}) : null;
-const FILE_ONLY = 'Ye file dekho';   // the words a files-only message carries to Hoola
+const FILE_ONLY = 'Look at this file';   // the words a files-only message carries to Hoola
 function userBubble(text, files, eid, cid, at) {
   const d = document.createElement('div'); d.className = 'mu';
   const tiles = files?.length && ATT ? ATT.sent(files) : null;   // v0.279 her files sit above the bubble, like Claude
   d.innerHTML = (files?.length && !ATT ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
-  if (tiles && text === FILE_ONLY) d.classList.add('fonly');    // a files-only message shows just the tiles
+  if (tiles && (text === FILE_ONLY || text === 'Ye file dekho')) d.classList.add('fonly');    // a files-only message shows just the tiles
   if (cid) d.dataset.cid = cid;
   if (eid && !files?.length) attachEdit(d, text, eid);
   if (at) d.dataset.at = at;                             // v0.178 the jump rail reads the day off this
@@ -988,7 +988,7 @@ function workEvent(p) {
   if (p.id && p.data) STEPS_DATA.set(String(p.id), p.data);   // v0.171 the step's facts join its args in the chip
   $('#stageCap').textContent = err ? (p.phase === 'stopped' ? 'Stopped: ' : 'Problem: ') + (p.error || p.label || '') : (p.label || p.tool || 'Working');
   const site = p.data && (p.data.site || p.data.url) ? ' · ' + String(p.data.site || p.data.url).slice(0, 60) : '';
-  $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · done' : p.phase === 'waiting' ? ' · needs your Haan' : '');
+  $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · done' : p.phase === 'waiting' ? ' · needs your approval' : '');
   $('#nowline').classList.toggle('err', err);
   // Detailed activity opens only when the user requests it.
 }
@@ -1082,10 +1082,9 @@ function slider(label, onDone) {
   w.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finish().catch(() => {}); } });
   return w;
 }
-function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'}) {
+function decisionRow(el, {yes, no, yesLabel = 'Slide to approve', noLabel = 'No'}) {
   if (HUMAN) {   // v0.743 plain English on every approval, and the promise said once
-    if (yesLabel === 'Slide for Haan') yesLabel = 'Slide to approve';
-    if (noLabel === 'Mana') noLabel = 'Not now';
+    if (noLabel === 'No') noLabel = 'Not now';
     el.insertAdjacentHTML('beforeend', '<p class="hxnote">Nothing happens until you approve.</p>');
   }
   const s = slider(yesLabel, async () => { try { await yes(); } catch (e) { toast(e.message, true); throw e; } });
@@ -1095,7 +1094,7 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'
   const row = document.createElement('div'); row.className = 'decrow'; row.append(s, a);   // v0.222 slider + Mana on one row
   el.classList.add('ask'); el.append(row);
 }
-const fingerprintMsg = 'This card moves money: Haan needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
+const fingerprintMsg = 'This card moves money: approving it needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
 
 // v0.228 the four-part final report of a long job: what was done / what was made / what is left / her part
 function goalReport(r) {
@@ -1285,7 +1284,7 @@ function renderCard(kind, p, at, live) {
       const ps = Array.isArray(p.places) ? p.places : [];
       const bits = x => [x.type, x.distance_km != null ? x.distance_km + ' km' : '',
                          x.rating != null ? '\u2605 ' + x.rating + (x.reviews ? ' (' + x.reviews + ')' : '') : '',
-                         x.open_now === true ? 'Khula hai' : x.open_now === false ? 'Band hai' : '',
+                         x.open_now === true ? 'Open now' : x.open_now === false ? 'Closed' : '',
                          x.status && x.status !== 'OPERATIONAL' ? x.status.replace(/_/g, ' ').toLowerCase() : '']
                         .filter(Boolean).join(' \u00b7 ');
       el.innerHTML = head(p.title || 'Jagahein', ps.length ? String(ps.length) : '', 'v') +
@@ -1308,11 +1307,11 @@ function renderCard(kind, p, at, live) {
         `</div></div>`;
       break; }
     case 'bazar_approval': {
-      el.innerHTML = head(p.title || 'Your approval is required', p.money ? 'paisa' : 'Your approval', p.money ? 'bad' : 'warn')
+      el.innerHTML = head(p.title || 'Your approval is required', p.money ? 'money' : 'Your approval', p.money ? 'bad' : 'warn')
         + (p.amount ? `<div class="big">${esc(p.amount)}</div>` : '') + (p.payee ? `<div class="faint" style="font-size:13px">${esc(p.payee)}</div>` : '')
         + (p.items || []).map(i => `<div class="ln"><span>${esc(i.name)}</span><b>${esc(i.price)}</b></div>`).join('')
         + ((p.disclosures || []).length ? `<div class="kvg">${p.disclosures.map(i => `<span>${esc(i.label)}<b>${esc(i.value)}</b></span>`).join('')}</div>` : '')
-        + (p.voice_ok && !p.money ? `<p class="faint" style="font-size:12.5px">You can also approve by voice or in chat — say "haan karo" or "approve".</p>` : '');
+        + (p.voice_ok && !p.money ? `<p class="faint" style="font-size:12.5px">You can also approve by voice or in chat — say "approve".</p>` : '');
       if (p.status && p.status !== 'pending') { decided(el, p.status === 'approved', p.status === 'approved' ? '✓ Approved' : '✕ ' + p.status); break; }
       decisionRow(el, {
         yes: async () => { try { await api('POST', `/api/bazar/approvals/${encodeURIComponent(p.id)}`, {decision: 'approve'}); decided(el, true, '✓ Approved'); }
@@ -1332,12 +1331,12 @@ function renderCard(kind, p, at, live) {
       el.innerHTML = head(p.reason || 'The website needs you', p.site || 'Hoola’s browser', 'warn')
         + (k === 'payment' ? `<p class="muted" style="font-size:13.5px">Payment step: Hoola never presses this. Open the live view in the phone app and press it yourself.</p>` : '')
         + (k === 'captcha' ? `<img class="cap" alt="CAPTCHA" hidden>` + (p.suggested_answer ? `<div class="faint" style="font-size:13px">Hoola read: <b>${esc(p.suggested_answer)}</b></div>` : '') : '')
-        + (typed ? `<input class="fld" type="${k === 'question' ? 'text' : 'password'}" inputmode="${k === 'otp' ? 'numeric' : 'text'}" autocomplete="one-time-code" placeholder="${k === 'otp' ? 'OTP' : k === 'captcha' ? 'CAPTCHA' : 'Jawab'}" aria-label="Answer">
+        + (typed ? `<input class="fld" type="${k === 'question' ? 'text' : 'password'}" inputmode="${k === 'otp' ? 'numeric' : 'text'}" autocomplete="one-time-code" placeholder="${k === 'otp' ? 'OTP' : k === 'captcha' ? 'CAPTCHA' : 'Answer'}" aria-label="Answer">
             <p class="faint" style="font-size:12.5px">This goes only into the page’s box. It is never shown to the chat, memory or the AI.</p>` : '');
       if (p.status && p.status !== 'pending') { decided(el, true, '✓ Answered'); break; }
       if (k === 'captcha') api('GET', `/api/operator/requests/${encodeURIComponent(p.id)}/captcha`, undefined, {raw: true}).then(r => r.blob()).then(b => { const i = el.querySelector('img.cap'); if (i) { i.src = URL.createObjectURL(b); i.hidden = false; } }).catch(() => {});
       if (k === 'payment') break;
-      decisionRow(el, {yesLabel: typed ? 'Fill the page' : 'Slide for Haan',
+      decisionRow(el, {yesLabel: typed ? 'Fill the page' : 'Slide to approve',
         yes: async () => { const inp = el.querySelector('input.fld'); const answer = inp ? inp.value.trim() || (k === 'captcha' ? p.suggested_answer || '' : '') : '';
           if (typed && !answer) { toast('Type the answer first.', true); throw new Error('empty'); }
           await api('POST', `/api/operator/requests/${encodeURIComponent(p.id)}`, {status: 'approved', answer}); if (inp) inp.value = ''; decided(el, true, typed ? '✓ Filled in the box (••••)' : '✓ Approved'); },
@@ -1345,7 +1344,7 @@ function renderCard(kind, p, at, live) {
       break; }
     case 'email_draft': {
       el.innerHTML = head(p.subject || 'Email draft', p.status === 'pending' ? 'Waiting to send' : p.status, p.status === 'sent' ? 'ok' : 'warn')
-        + `<div class="kv"><span>To</span><b>${esc(p.to)}</b>${p.cc ? `<span>Cc</span><b>${esc(p.cc)}</b>` : ''}${p.send_at_label ? `<span>Kab</span><b>${esc(p.send_at_label)}</b>` : ''}</div>`
+        + `<div class="kv"><span>To</span><b>${esc(p.to)}</b>${p.cc ? `<span>Cc</span><b>${esc(p.cc)}</b>` : ''}${p.send_at_label ? `<span>When</span><b>${esc(p.send_at_label)}</b>` : ''}</div>`
         + `<textarea aria-label="Email body">${esc(p.body)}</textarea>` + ((p.attachments || []).length ? `<div class="srcs">${p.attachments.map(a => `<span class="chip">📎 ${esc(a.name)}</span>`).join('')}</div>` : '');
       if (!['pending', 'failed'].includes(p.status)) { el.querySelector('textarea').disabled = true; break; }
       const a = document.createElement('div'); a.className = 'acts dec';
@@ -1642,7 +1641,7 @@ function findRun(q) {
     if (FIND.total) findGo(1, true);
     else FIND.box.querySelector('.fcount').textContent = '0 mile';
     highlightHits();
-  }).catch(() => { if (FIND) FIND.box.querySelector('.fcount').textContent = 'dikkat'; });
+  }).catch(() => { if (FIND) FIND.box.querySelector('.fcount').textContent = 'error'; });
 }
 async function findGo(d, first) {
   if (!FIND || !FIND.hits.length) return;
@@ -1912,7 +1911,7 @@ const KEYS = [
   {k: 'Ctrl+K', g: 'Search', label: 'Search all chats', fn: () => CH?.openSearch()},
   {k: 'Alt+ArrowDown', g: 'Chat', label: 'Agli chat', fn: () => chatStep(1)},
   {k: 'Alt+ArrowUp', g: 'Chat', label: 'Pichhli chat', fn: () => chatStep(-1)},
-  {k: 'Ctrl+Shift+O', g: 'Chat', label: 'Nayi chat', fn: () => $('#newChat').click()},
+  {k: 'Ctrl+Shift+O', g: 'Chat', label: 'New chat', fn: () => $('#newChat').click()},
   {k: '/', g: 'Composer', label: 'Focus the message box', when: e => !typingIn(e), fn: () => { go('chat'); msg.focus(); }},
   {k: '?', g: 'Saamaany', label: 'Yahin shorcut list', when: e => !typingIn(e), fn: () => openKeys()},
   {k: 'Escape', g: 'Saamaany', label: 'Close · Stop', fn: escLayer},
@@ -1956,7 +1955,7 @@ function openKeys() {           // the cheat sheet: toggle, glass, English
   const w = document.createElement('div'); w.className = 'kbg'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true'); w.setAttribute('aria-label', 'Keyboard shortcuts');
   w.innerHTML = `<div class="kbox gl"><h3>Shorcut ke list</h3>
     ${groups.map(([g, xs]) => `<div class="kgrp"><b>${esc(g)}</b>${xs.map(x => `<div class="krow"><span>${esc(x.label)}</span><kbd>${esc(x.k)}</kbd></div>`).join('')}</div>`).join('')}
-    <p class="faint">Type "/" in the message box for commands like /nayi /dhoondo /export. Ctrl+K searches all chats.</p></div>`;
+    <p class="faint">Type "/" in the message box for commands like /new /search /export. Ctrl+K searches all chats.</p></div>`;
   document.body.appendChild(w);
   w.addEventListener('click', e => { if (e.target === w) w.remove(); });
 }
@@ -2002,7 +2001,7 @@ $('#files').addEventListener('click', e => {
   const v = e.target.closest('[data-view]');
   if (v && ATT) ATT.view(FILES, +v.dataset.view);
 });
-$('#micBtn').title = 'Bolo karke likhiye (dictation)';
+$('#micBtn').title = 'Speak to type (dictation)';
 $('#toolsBtn').addEventListener('click', () => go('kaam'));
 
 /* v0.173 dictation in the composer: mic button speaks hi-IN into the box (Chrome / Android); the live call
@@ -2136,11 +2135,11 @@ async function drawToday() {
   let d = {reminders: [], lists: {}, pending: []}; try { d = {...d, ...(await api('GET', '/api/console/today') || {})}; d.reminders ||= []; d.lists ||= {}; d.pending ||= []; } catch (e) { box.innerHTML += `<p class="badc">${esc(e.message)}</p>`; return; }
   const date = new Date().toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
   box.innerHTML = `<div class="vh"><h2>Today · ${esc(date)}</h2></div>
-    <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>waiting for your Haan</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>upcoming reminders</span></div>
+    <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>waiting for your approval</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>upcoming reminders</span></div>
     <div class="kpi gl"><b>${Object.values(d.lists).reduce((n, l) => n + l.length, 0)}</b><span>items in lists</span></div><div class="kpi gl"><b class="hid">${esc(ME?.handle || '')}</b><span>your Hoola ID</span></div></div>
     <div class="grid2">
       <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">No reminders.</div>'}</div>
-      <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">No lists yet. Ask in chat, for example: "doodh shopping list mein daalo".</div>'}</div>
+      <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">No lists yet. Ask in chat, for example: "add milk to the shopping list".</div>'}</div>
       <div class="tile gl" id="todayWork"><h3>Work</h3><div class="empty">Loading…</div></div>
       <div class="tile gl"><h3>Your approval is required <span class="tag warn">${d.pending.length}</span></h3>${d.pending.length ? d.pending.map(q => `<div class="ln"><span>${esc(q.title)}</span><b>${q.money ? '📱 phone' : 'console'}</b></div>`).join('') + '<button class="btn soft" type="button" id="toQueue">Open cards</button>' : '<div class="empty">Nothing yet.</div>'}</div>
     </div>`;
@@ -2180,7 +2179,7 @@ async function drawMain() {
         <p class="muted" style="font-size:13.5px">Sign-in only reads your name and email. To work in Gmail, Calendar, Drive, Docs and Sheets, give Google permission separately.</p>
         <div class="feat">${['gmail', 'calendar', 'drive', 'docs', 'sheets'].map(k => `<span class="chip">${(m.google_apps || {})[k] ? '✓' : '○'} ${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>
         <div class="acts" style="margin-top:12px"><button class="btn ${gOn(m) ? 'soft' : 'go'}" type="button" id="gAppsBtn">${gOn(m) ? 'Reconnect' : 'Connect Google apps'}</button></div></div>
-      <div class="tile gl"><h3>Yaad <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Loading…</div></div></div>
+      <div class="tile gl"><h3>Memory <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Loading…</div></div></div>
       <div class="tile gl"><h3>Server</h3><div class="feat" id="feat"><span class="empty">…</span></div></div>
     </div>
     <div class="acts" style="margin-top:22px"><button class="btn soft" type="button" id="logoutBtn">Logout</button>
@@ -2239,7 +2238,7 @@ async function startCall() {
     if (typeof ev.data !== 'string') return play(ev.data);
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.type === 'ready') { callUI('live', 'Live · speak now'); CALL.ping = setInterval(() => ws.readyState === 1 && ws.send('{"type":"ping"}'), 15000); }
-    else if (m.type === 'user_text') caption('Aap', m.text);
+    else if (m.type === 'user_text') caption('You', m.text);
     else if (m.type === 'santosh_text') caption(AV, m.text);
     else if (m.type === 'interrupted') cutSpeech();
     else if (m.type === 'tool') callUI('live', (m.state === 'done' ? '✓ ' : '… ') + (m.label || 'kaam'));

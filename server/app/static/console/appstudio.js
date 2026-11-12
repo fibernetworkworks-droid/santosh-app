@@ -214,7 +214,7 @@
     let main;
     if (page === 'ideas') {
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">App ideas</h2><span class="tplall">${IDEAS.all ? Number(IDEAS.all).toLocaleString('en-IN') : '1 crore+'} ideas</span></div>
-        <p class="mut">Every idea says who the app is for, the one special thing it does, its scale and its market. Open one and Hoola starts its plan; nothing is built until you say Haan.</p>
+        <p class="mut">Every idea says who the app is for, the one special thing it does, its scale and its market. Open one and Hoola starts its plan; nothing is built until you approve it.</p>
         <div class="tplbar"><label class="find">${ico('search', 16)}<input id="asIdeaQ" type="search" placeholder="Search: kirana, gym, rider app, school, salon…" aria-label="Search app ideas" autocomplete="off" value="${esc(IDEAS.q)}"></label>
           <select id="asIdeaAud" aria-label="App for"><option value="">App for: anyone</option>${[['customer', 'Customers'], ['owner', 'The owner'], ['staff', 'Staff'], ['delivery', 'Delivery partners'], ['dealer', 'Dealers'], ['member', 'Members'], ['manager', 'Managers']].map(([k, n]) => `<option value="${k}"${IDEAS.aud === k ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
         <p class="mut sm" id="asIdeaCount" aria-live="polite">Loading ideas…</p>
@@ -236,7 +236,7 @@
           <div class="bar">
             <a class="b ghost" href="#/ideas">${ico('idea', 15)}Browse ideas</a>
             <span class="sp"></span>
-            <span class="mut sm mnote" id="asModeNote">${mode === 'plan' ? 'Plan: read the plan first, then say Haan' : 'Build: plan, then 3 looks'}</span>
+            <span class="mut sm mnote" id="asModeNote">${mode === 'plan' ? 'Plan: read the plan first, then approve it' : 'Build: plan, then 3 looks'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
@@ -244,7 +244,7 @@
         <div id="asAskWork" class="step wrap" role="status" aria-live="polite" style="max-width:780px;margin-top:10px" hidden></div>
         <div class="chips">${CHIPS.map(([t, d]) => `<button class="chip" type="button" data-fill="${esc(d)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/ideas">More ideas</a></div>
       </section>
-      ${plans.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${plans.slice(0, 4).map(appCard).join('')}</div></section>` : ''}
+      ${plans.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${plans.slice(0, 4).map(appCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your apps</h2>${APPS.length ? `<a class="more" href="#/apps">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${APPS.length ? `<div class="grid">${APPS.slice(0, 8).map(appCard).join('')}</div>` : '<div class="panel mut">No app yet. Write one line above.</div>'}</section>
       <section class="wrap"><div class="sec"><h2>Or start from</h2></div><div class="starts">
@@ -334,7 +334,7 @@
       try { v = await api('POST', '/api/apps', {...body, conversation_id: conv}); }
       catch (e) {
         if (!/ek sawaal|Pakka karne/i.test(e.message)) throw e;
-        const fd = await dialog('One quick question', `<p class="sm">${esc(e.message.replace(/^Pakka karne ke liye ek sawaal:\s*/i, ''))}</p>
+        const fd = await dialog('One quick question', `<p class="sm">${esc(e.message.replace(/^(Pakka karne ke liye ek sawaal|One question first|One question to confirm):\s*/i, ''))}</p>
           <label class="sm mut" for="asSure">Your answer (or leave empty to go with the first meaning)</label><input class="in" id="asSure" name="a" maxlength="300">`);
         if (!fd) { clearInterval(drawPending._t); PREFILL = S(body.brief); drawHome('home'); return; }
         const a = S(fd.get('a')).trim();
@@ -909,7 +909,7 @@
       THREAD.rows.push({id: 'local-' + Date.now(), role: 'user', text});
       THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.live = ''; drawMsgs();
       const hints = [`App Studio: this chat is only about app ${S(v.number)} "${name(v)}" (app id ${S(v.id)}). Work on THIS app with app_banao (app=${S(v.id)}; action=change for design changes) and its other tools; never start a new app unless I ask for one.`];
-      if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I say Haan.');
+      if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I approve it.');
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'as-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
       clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, 900);
     } catch (e) { THREAD.waiting = false; drawMsgs(); toast(e.message, true); }
@@ -950,7 +950,7 @@
   async function act(k, el) {
     if (!CUR) return;
     try {
-      if (k === 'plan') { await post('/plan', {drop: [...DROP]}, 'Haan sent. Drawing three looks…'); VIEW = 'looks'; return reload(); }
+      if (k === 'plan') { await post('/plan', {drop: [...DROP]}, 'Approved. Drawing three looks…'); VIEW = 'looks'; return reload(); }
       if (k === 'look') { await post('/look', {index: N(el.dataset.i)}, 'Designing every screen in this look…'); VIEW = 'screens'; return reload(); }
       if (k === 'approve') {
         if (!confirm('Design pakka?\n\nThis freezes the design for the real Android and iPhone app. You can still change it later; a change makes a new version to approve.')) return;
@@ -1009,7 +1009,7 @@
     if (!t) return;
     if (t.dataset.menu) { e.preventDefault(); return openMenu(t, t.dataset.menu); }
     if (t.dataset.mode) { store.set(MODE_KEY, t.dataset.mode); APP.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b === t)));
-      const n = $('#asModeNote'); if (n) n.textContent = t.dataset.mode === 'plan' ? 'Plan: read the plan first, then say Haan' : 'Build: plan, then 3 looks'; return; }
+      const n = $('#asModeNote'); if (n) n.textContent = t.dataset.mode === 'plan' ? 'Plan: read the plan first, then approve it' : 'Build: plan, then 3 looks'; return; }
     if (t.dataset.cmode) { store.set(MODE_KEY + '.chat', t.dataset.cmode); APP.querySelectorAll('[data-cmode]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); return; }
     if (t.dataset.fill) { const a = $('#asAsk'); if (a) { a.value = t.dataset.fill; a.focus(); } return; }
     if (t.dataset.ask) { const box = $('#asTh'); if (box) { box.value = t.dataset.ask; box.focus(); } return; }

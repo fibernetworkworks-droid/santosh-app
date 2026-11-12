@@ -11,7 +11,7 @@ function open({url, token, after, onEvent, onState, onAuth}) {
   (async () => {
     while (!ctl.signal.aborted) {
       try {
-        onState('', 'Jud raha hai…');
+        onState('', 'Connecting…');
         const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}after=${last}&live=1`, {
           headers: {Authorization: 'Bearer ' + token, 'Last-Event-ID': String(last)}, signal: ctl.signal, cache: 'no-store'});
         if (r.status === 401) { onAuth(); return; }
@@ -33,7 +33,7 @@ function open({url, token, after, onEvent, onState, onAuth}) {
         }
       } catch (e) { if (ctl.signal.aborted) return; }
       if (ctl.signal.aborted) return;
-      onState('bad', 'Dobara jud raha hai…'); retry = Math.min(retry + 1, 6);
+      onState('bad', 'Reconnecting…'); retry = Math.min(retry + 1, 6);
       await new Promise(r => setTimeout(r, 800 * 2 ** retry));
     }
   })();
