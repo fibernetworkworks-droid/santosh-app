@@ -118,6 +118,25 @@ R0's golden screenshots decide, side by side with the owner's Claude screenshots
 | artifact WebView pre-warmed | opens cold | keep one WebView warm while a chat is open |
 | first word in 0.25-0.6 s | NOT comparable: a Hoola turn picks tools, reads memory and runs a model through the server (Claude's figure is only their network + first token) | the app MEASURES it: tap -> first word, logged per turn and shown in Settings > Usage; the server work to make it faster is separate (not a design job) |
 
+## 3c. Artifacts (owner's "Claude Artifact System" page)
+
+Hoola already has the core of it (`server/app/artifacts.py`, `lib/ui/artifact_screen.dart`, `artifacts_screen.dart`):
+
+| Claude stage | Hoola today | R3 / R4 / R6 adds |
+|---|---|---|
+| 1 page made while the reply streams | the page is written by the model, one row per version (`ArtifactVersion`), progress events on the bus; console card shows the step, a live clock and Stop (v0.725) | the phone card gets the same: step, clock, Stop, then ready / not made with a reason and Try again |
+| 2 card in the chat -> full-screen page | `artifact` card in chat opens `ArtifactScreen` full screen | the new card (tile + title + "Page · v3"), same as the mock-up |
+| 3 web view kept warm (300-800 ms -> < 50 ms) | opens cold every time; the screen polls every 5 s | one warm WebView while a chat is open; live `artifact` events instead of the 5 s poll |
+| 4 handshake, size + safe area + theme sent in | page loads by signed URL (`/a/<id>/<v>?exp&sig`, HMAC, short expiry) | the app passes its size, safe area and LIGHT / DARK colour + font roles (`--hoola-*`, 3a layer 6) |
+| 5 sandbox: own domain, scripts only from 2 CDNs, no file access | CSP `sandbox` (opaque origin: no cookies, no Hoola API), scripts only from pinned CDNs, `connect-src 'none'`, no forms, no frames | kept. Owner decision: serve pages from a SEPARATE domain (e.g. a `hoolapages` domain) like Claude does - needs her DNS |
+| 5 runtime API in the page | `window.santosh.storage.get/set/all` (saved per page on the server) + `ask` (short answer from the brain); off on a shared link | kept, renamed `window.hoola` (old name kept as an alias) |
+| 6 page tells the app which edge is visible -> composer / nav hide while reading | not done | yes: hide the composer + tab bar while she scrolls down a page, show again at the top / bottom |
+| 7 page can send a message into the chat ("Ask Claude" button) | `ask` returns an answer inside the page only | `window.hoola.send(text)` posts it as HER message in the chat that made the page, only after a small confirm sheet (the page is data, never instructions) |
+| 8 comments on a page | console only (design canvas), not artifacts | later (not in this redesign) |
+| 9 sharing: public link / team / look when shared | public link (`/s/<token>`), unshare, versions menu, open in browser, delete | menu redone as a pop-over (Open in browser / Copy link / Versions / Share / Delete in red); team-only sharing = later |
+| gallery | artifacts list screen | the **Made** tab (pages + files + pictures + sites), filter by type, search; the chat header's file button = what this chat made, with "Download all" |
+| 110 typed blocks in chat | ~10 card kinds drawn on the phone (`any_card`, maps, file, approval, ask form, goal / plan, think, UPI, call receipt, photo) | R4: one card shell + typed bodies; first: question (choices), next-step offer, file / page, plan (to-do list), map, chart, image gallery |
+
 ## 4. Decisions only the owner can make (the plan assumes the first option)
 
 1. **Tabs:** Hoola / Work / Connect / Made, with Talk in the composer and Profile behind the drawer avatar - or keep 5
@@ -127,7 +146,8 @@ R0's golden screenshots decide, side by side with the owner's Claude screenshots
    the call screen.
 4. **Mera PC screens** (`pc_screen.dart`, `hoola_pc_screen.dart`) are FROZEN: they keep the old look until she lifts the
    freeze for a style-only change.
-5. **Sound cues** on calls / approvals: none (default), or short Hoola-made tones.
+5. **Pages on their own domain:** serve made pages from a separate domain (safer, like Claude) - needs a DNS record from her; until then the current sandbox stays.
+6. **Sound cues** on calls / approvals: none (default), or short Hoola-made tones.
 
 ## 5. Not verified / risks
 
