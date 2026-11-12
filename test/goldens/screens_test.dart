@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:santosh/call_session.dart';
 import 'package:santosh/state.dart';
 import 'package:santosh/main.dart';
 import 'package:santosh/ui/employees_screen.dart';
@@ -130,6 +131,16 @@ void _madeChat(Santosh app) {
   app.feed.add(any);
 }
 
+/// v0.865 R5: a call in progress (the fields the screen reads; no real call is started in a test).
+void _inCall(Santosh app) {
+  final c = app.voiceCall;
+  c.inCall = true;
+  c.act = CallAct.speaking;
+  c.startedAt = DateTime.now().subtract(const Duration(minutes: 2, seconds: 14));
+  c.heard = 'Did Shree Traders file their GSTR-1 yet?';
+  c.reply = 'Not yet. Their October bill is still missing from your 2B, so I have drafted a reminder for them.';
+}
+
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
     {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900)}) async {
   final app = await _app(prefs: prefs);
@@ -205,6 +216,13 @@ void main() {
         prep: (a) => _richChat(a, working: true)));
     testWidgets('36 new cards ($mode)', (t) => _shot(t, '36_new_cards_$mode', home, prefs: prefs, prep: _cardsChat));
     testWidgets('37 new made cards ($mode)', (t) => _shot(t, '37_new_made_$mode', home, prefs: prefs, prep: _madeChat));
+    testWidgets('38 new talk ($mode)', (t) => _shot(t, '38_new_talk_$mode', home, prefs: prefs,
+        prep: (a) => a.realtimeVoice = true, tab: find.bySemanticsLabel('Start a call')));
+    testWidgets('39 new talk in call ($mode)', (t) => _shot(t, '39_new_talk_call_$mode', home, prefs: prefs,
+        prep: (a) {
+          a.realtimeVoice = true;
+          _inCall(a);
+        }, tab: find.bySemanticsLabel('Start a call')));
     testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, writing: true)));
   }

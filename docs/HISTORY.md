@@ -3168,3 +3168,24 @@ NOT done here: Work (R6) and the chat card read the record when those screens ar
 - Tests: `server/tests/test_v0864_r4_cards.py` (3); CI pictures 36_new_cards / 37_new_made light + dark.
 
 NOT VERIFIED: the notification buttons on a real phone (Kotlin compiles on CI only); no phone has tapped one yet.
+
+## v0.865.0 R5 TALK (owner: "GO R5" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+- `lib/ui/talk/hoola_talk.dart` `HoolaTalk`: the live call in the new design, on the SAME `CallSession`
+  (app.voiceCall) - no engine change; leaving the screen never ends the call (screenOpen / voiceMode / autoCall kept).
+  - top: close (down chevron; the call keeps running), the avatar's name, "Live" (or "Real voice") + the call clock.
+  - the orb (`_OrbPainter`): disc in the accent (ink while she talks), grows with `inLevel` while she talks and with
+    `outLevel` while he speaks, breathes when idle, a turning arc while working / connecting; reduce motion = no
+    breathing / no turning, the level still shows. Tap while he speaks = `cutSpeech`.
+  - the last turn: her words (right, small) and his (serif); the status in plain words (Listening / Working on it /
+    Speaking · tap the circle to stop / hold lines / link wobble note).
+  - cards that came during the call: drawn with the R4 cards (`hoolaCardFor`), other kinds in the old dark frame;
+    chips to switch, remove, Back to call.
+  - controls: Show (photo / PDF / file into the call) · Type (writes into the call, `sendText`) · Mute (or Come back
+    while on hold) · End (red); before a call one "Start the call" pill.
+  - kept: lock-issue and hold banners, background tasks line, file note, browser thumb, page pill, "Recognised by voice".
+- `lib/ui/shell/hoola_shell.dart`: the voice button opens it when realtime voice is on; the turn-by-turn
+  `VoiceScreen` stays in the old frame until it is rebuilt.
+- CI pictures 38_new_talk / 39_new_talk_call, light and dark.
+
+NOT VERIFIED on a real call (the pictures set the call's fields; no live audio in a test).

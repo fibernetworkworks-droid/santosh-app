@@ -18,7 +18,7 @@ import '../calls_sheet.dart';
 import '../chat/hoola_chat.dart';
 import '../glass.dart';
 import '../hoola_theme.dart';
-import '../live_voice_screen.dart';
+import '../talk/hoola_talk.dart';
 import '../memory_page_screen.dart';
 import '../profile_screen.dart';
 import '../today_screen.dart';
@@ -55,11 +55,12 @@ class _HoolaShellState extends State<HoolaShell> {
     await Navigator.of(context).push(PageRouteBuilder<void>(
       transitionDuration: HoolaMotion.of(context, HoolaMotion.sheet),
       reverseTransitionDuration: HoolaMotion.of(context, HoolaMotion.page),
-      pageBuilder: (_, __, ___) => _OldLook(
-        child: ListenableBuilder(
-          listenable: app,
-          builder: (context, _) => app.realtimeVoice ? LiveVoiceScreen(app: app) : VoiceScreen(app: app),
-        ),
+      // v0.865 R5 the live call in the new design; the older turn-by-turn voice screen stays until it is rebuilt
+      pageBuilder: (_, __, ___) => ListenableBuilder(
+        listenable: app,
+        builder: (context, _) => app.realtimeVoice
+            ? HoolaTheme(appearance: app.appearance, child: HoolaTalk(app: app))
+            : _OldLook(child: VoiceScreen(app: app)),
       ),
       transitionsBuilder: (context, a, _, child) => HoolaMotion.reduced(context)
           ? FadeTransition(opacity: a, child: child)
