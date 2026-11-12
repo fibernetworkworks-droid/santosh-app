@@ -703,7 +703,7 @@ def call_list(tenant: str, limit: int = 0, assigned: str = "", at: datetime | No
                 why.append("was very interested last time")
             elif l.interest == "warm":
                 score += 25
-                why.append("pichhli baar interested the")
+                why.append("was interested last time")
             if l.purpose == "dues" and l.amount_paise:
                 score += 30 + min(20, l.amount_paise / 100 / 5000)
                 why.append(f"{_rs(l.amount_paise)} due" + (f", promised to pay on {l.promise_on}" if l.promise_on else ""))
@@ -840,7 +840,7 @@ def _fallback_script(st: dict, v: dict) -> dict[str, Any]:
 def make_script(tenant: str, lead: str, conv: str = "") -> dict[str, Any]:
     st = settings(tenant)
     lv = get_lead(tenant, lead)
-    hist = "; ".join(f"{h['at']}: {h['outcome_label']} - {h['summary']}" for h in lv["history"][:5] if h["outcome"]) or "pehli baar"
+    hist = "; ".join(f"{h['at']}: {h['outcome_label']} - {h['summary']}" for h in lv["history"][:5] if h["outcome"]) or "first time"
     lib = objection_library(tenant, lv["purpose"])
     extra = ""
     if st["record_calls"]:
@@ -1062,7 +1062,7 @@ def log_call(tenant: str, lead: str = "", call_id: str = "", outcome: str = "", 
             pass
     say = f"{v['name']}: {OUTCOMES[out][0]}."
     if v["next_nice"]:
-        say += f" Agli call {v['next_nice']} ({v['next_reason']})."
+        say += f" Next call {v['next_nice']} ({v['next_reason']})."
     if ask_time:
         say += " " + ask_time
     if draft.get("text"):

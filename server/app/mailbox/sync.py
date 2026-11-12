@@ -75,8 +75,8 @@ def watch_views(tenant: str) -> list[dict[str, Any]]:
 def set_watch_mode(tenant: str, mode: str, account: str | None = None) -> list[dict[str, Any]]:
     mode = (mode or "").strip().lower()
     if mode not in MODES:
-        raise MailError(f"watch_mode: {' / '.join(MODES)} mein se ek "
-                        f"(off = koi khabar nahi, vip = zaroori + apne log [default], all = sab)")
+        raise MailError(f"watch_mode: one of {' / '.join(MODES)} "
+                        f"(off = no news, vip = important + your own people [default], all = everything)")
     with session() as s:
         if account:
             targets = [_state_row(s, tenant, get_box(tenant, account).key)]
@@ -147,10 +147,10 @@ def rule_create(tenant: str, name: str, match: dict, actions: dict) -> dict[str,
     match = {k: v for k, v in (match or {}).items() if k in MATCH_KEYS and v not in (None, "", [], False)}
     actions = {k: v for k, v in (actions or {}).items() if k in ACTION_KEYS and v not in (None, "", [], False)}
     if not match:
-        raise MailError("Rule mein koi shart nahi hai. from / subject / has_attachment / bulk / unread mein se kuch dijiye.")
+        raise MailError("The rule has no condition. Give at least one of from / subject / has_attachment / bulk / unread.")
     if not actions:
-        raise MailError("Rule mein koi kaam nahi hai. label / archive / star / mark_read / important / mute / "
-                        "notify / forward_to mein se kuch dijiye.")
+        raise MailError("The rule has no action. Give at least one of label / archive / star / mark_read / important / mute / "
+                        "notify / forward_to.")
     m = {"from": _clean(match.get("from")), "subject": _clean(match.get("subject")),
          "has_attachment": bool(match.get("has_attachment")), "bulk": bool(match.get("bulk")),
          "unread": bool(match.get("unread"))}
@@ -166,7 +166,7 @@ def rule_create(tenant: str, name: str, match: dict, actions: dict) -> dict[str,
     if actions.get("forward_to"):
         a["forward_to"] = _clean(actions["forward_to"], 320)
     if a.get("mute") and (a.get("notify") or a.get("forward_to")):
-        raise MailError("Ek rule mute aur notify / forward saath nahi kar sakta.")
+        raise MailError("A rule cannot mute and notify / forward at the same time.")
     with session() as s:
         r = MailRule(tenant_id=tenant, name=_clean(name, 120) or "Rule", match=m, actions=a)
         s.add(r)
@@ -178,7 +178,7 @@ def rule_edit(tenant: str, rid: str, enabled: bool) -> dict[str, Any]:
     with session() as s:
         r = s.get(MailRule, rid)
         if r is None or r.tenant_id != tenant:
-            raise MailError("Woh rule nahi mila (ids email_rule list se).")
+            raise MailError("That rule was not found (take ids from email_rule list).")
         r.enabled = bool(enabled)
         return rule_view(r)
 
@@ -230,7 +230,7 @@ def rule_test(tenant: str, rid: str, account: str | None = None, limit: int = 15
     with session() as s:
         r = s.get(MailRule, rid)
         if r is None or r.tenant_id != tenant:
-            raise MailError("Woh rule nahi mila (ids email_rule list se).")
+            raise MailError("That rule was not found (take ids from email_rule list).")
         rule = dict(r.match or {})
         name = r.name
     box = get_box(tenant, account)
@@ -253,8 +253,8 @@ def search_save(tenant: str, name: str, match: dict) -> dict[str, Any]:
         if match.get(k):
             m[k] = True
     if not m:
-        raise MailError("Kya dhoondhna hai? from / subject / query (Gmail search) / has_attachment / bulk / unread "
-                        "mein se kuch dijiye.")
+        raise MailError("What should it look for? Give at least one of from / subject / query (Gmail search) / has_attachment / bulk / unread."
+                        "")
     with session() as s:
         r = MailRule(tenant_id=tenant, name=_clean(name, 120) or "Search", match=m, actions={}, kind="search")
         s.add(r)
@@ -273,10 +273,10 @@ def search_run(tenant: str, rid: str, account: str | None = None, limit: int = 1
     with session() as s:
         r = s.get(MailRule, rid)
         if r is None or r.tenant_id != tenant or (r.kind or "rule") != "search":
-            raise MailError("Woh saved search nahi mila (ids email_rule action='searches' se).")
+            raise MailError("That saved search was not found (take ids from email_rule action='searches').")
         m, name, enabled = dict(r.match or {}), r.name, bool(r.enabled)
     if not enabled:
-        raise MailError(f"'{name}' saved search roka hua hai (email_rule resume se chalu kijiye).")
+        raise MailError(f"The saved search '{name}' is paused (turn it on with email_rule resume).")
     limit = max(1, min(int(limit or 15), 50))
     box = get_box(tenant, account)
     q = m.get("query", "")
@@ -284,8 +284,8 @@ def search_run(tenant: str, rid: str, account: str | None = None, limit: int = 1
         items = box.list("search", bool(m.get("unread")), q, limit)
     else:
         if q and not any(k in m for k in ("from", "subject", "has_attachment", "bulk", "unread")):
-            raise MailError("Yeh saved search Gmail ke apne syntax mein hai; is mailbox par from / subject wale "
-                            "search hi chalte hain.")
+            raise MailError("This saved search uses Gmail's own syntax; on this mailbox only from / subject "
+                            "searches work.")
         items = [it for it in box.list("inbox", bool(m.get("unread")), None, limit * 3, None, True)
                  if matches(m, it)][:limit]
     return {"search": name, "account": box.address, "count": len(items),
@@ -332,8 +332,8 @@ def _forward_draft(tenant: str, conv: str, box: Box, ref: str, to_addr: str, ite
         orig = ms.read(tenant, ref, mark_seen=False)
     except (MailError, NotConnected):
         orig = {"from": "", "from_email": "", "to": "", "subject": item.get("subject", ""), "body": "", "date": ""}
-    body = "Aapke rule ke hisaab se aapko forward kar raha hoon.\n\n" + mime.forward_block(orig)
-    body += "\n(Is draft mein attachments nahi hain; original mail inbox mein hai.)"
+    body = "Forwarding this to you as your rule says.\n\n" + mime.forward_block(orig)
+    body += "\n(This draft has no attachments; the original mail is in the inbox.)"
     subj = orig.get("subject") or item.get("subject") or "(no subject)"
     subj = subj if subj.lower().startswith(("fwd:", "fw:")) else f"Fwd: {subj}"
     with session() as s:
@@ -371,9 +371,9 @@ def _read_quiet(tenant: str, ref: str) -> dict[str, Any]:
 def snooze_add(tenant: str, conv: str, email_ref: str, wake_at: datetime) -> dict[str, Any]:
     box, native = split_ref(tenant, email_ref)
     if wake_at < now() + SNOOZE_MIN - timedelta(seconds=30):
-        raise MailError("Snooze ka time aage ka hona chahiye (kam se kam 5 minute aage).")
+        raise MailError("The snooze time must be in the future (at least 5 minutes ahead).")
     if wake_at > now() + SNOOZE_MAX:
-        raise MailError("Snooze 30 din se aage nahi hota.")
+        raise MailError("A snooze cannot be longer than 30 days.")
     m = _read_quiet(tenant, email_ref)
     with session() as s:
         w = MailSnooze(tenant_id=tenant, conversation_id=conv or "", account=box.key, email_ref=email_ref[:300],
@@ -394,7 +394,7 @@ def snooze_add(tenant: str, conv: str, email_ref: str, wake_at: datetime) -> dic
                 pass
     except MailError as e:
         # v0.707 it said "snoozed" while the mail stayed in the inbox - said plainly now
-        view = {**view, "warning": f"Snooze yaad rakha, par mail inbox se hata nahi paaye ({e}). Time par yaad dilaunga."}
+        view = {**view, "warning": f"Snooze saved, but the mail could not be moved out of the inbox ({e}). I will remind you at the time."}
     return view
 
 
@@ -409,7 +409,7 @@ def _wake(tenant: str, w: MailSnooze) -> None:
             box.mark([native], False)
         except MailError as e:
             back = False
-            log.warning("snooze wake %s: inbox mein wapas nahi aayi: %s", w.id, e)
+            log.warning("snooze wake %s: did not come back to the inbox: %s", w.id, e)
     except (MailError, NotConnected) as e:
         back = False
         log.warning("snooze wake %s: mailbox nahi khula: %s", w.id, e)
@@ -422,9 +422,9 @@ def _wake(tenant: str, w: MailSnooze) -> None:
         bus.publish(w.conversation_id, "email_snooze", {"id": w.id, "status": "woken", "subject": w.subject,
                                                         "peer": w.peer, "email_ref": w.email_ref})
         from ..events import notify
-        notify(w.conversation_id, f"Snooze khatam: \"{w.subject}\" ({w.peer or 'mail'}) wapas inbox mein hai." if back else
-               f"Snooze khatam: \"{w.subject}\" ({w.peer or 'mail'}) - inbox mein wapas laa nahi paaye, Gmail mein "
-               "'All Mail' mein dekh lijiye.")
+        notify(w.conversation_id, f"Snooze over: \"{w.subject}\" ({w.peer or 'mail'}) is back in the inbox." if back else
+               f"Snooze over: \"{w.subject}\" ({w.peer or 'mail'}) - could not bring it back to the inbox; look in "
+               "'All Mail' in Gmail.")
 
 
 def snooze_list(tenant: str) -> list[dict[str, Any]]:
@@ -644,8 +644,8 @@ def sync_account(tenant: str, box: Box) -> int:
         if bulk_n:
             bus.publish(conv, "email_new", {"id": f"{box.key}~digest~{int(time.time())}", "account": box.address,
                                             "digest": True, "count": bulk_n,
-                                            "subject": f"{bulk_n} newsletter/promotion aaye",
-                                            "snippet": "Bolo 'newsletters dikhao' ya inbox khud dekhiye.",
+                                            "subject": f"{bulk_n} newsletters / promotions arrived",
+                                            "snippet": "Say 'show newsletters' or look in the inbox yourself.",
                                             "at": now().isoformat()})
     _save_recent(tenant, box.key, native_ids, recent)
     return announced
