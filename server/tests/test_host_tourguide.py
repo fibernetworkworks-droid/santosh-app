@@ -59,7 +59,7 @@ def test_rules():
     assert R.price_for(None, 5000, 10, 4)[0] == 5000 and R.price_for(None, None, 10, 4)[0] is None
     lines, warns = R.safety_lines("trek", "ek senior, asthma", 18, {"rain_chance_pct": 80, "max_c": 39})
     assert any("Asthma" in l for l in lines) and any("co-guide" in l for l in lines)
-    assert any("Baarish" in w and "taalna" in w for w in warns) and any("Garmi" in w for w in warns)
+    assert any("chance of rain" in w and "postponing" in w for w in warns) and any("Heat" in w for w in warns)
     sc = R.scrub("OTP 445566 card 4111 1111 1111 1111 aadhaar 2345 6789 0124 PAN ABCDE1234F")
     assert "445566" not in sc and "4111" not in sc and "2345 6789" not in sc and "ABCDE1234F" not in sc
     assert "998556" in R.gst_note("guide") and "5%" in R.gst_note("tour5")
@@ -235,7 +235,7 @@ def test_plan_safety_roll_script_review_travel_forget(tg, monkeypatch):
     bt = S.save_booking(T, tour="TP-02", day=on.isoformat(), start_time="23:00", guests=2, lead_name="Z", phone="9000000009",
                         special_needs="wheelchair")["booking"]
     sf = asyncio.run(S.weather_check(T, bt["number"]))
-    assert any("Baarish" in x for x in sf["warnings"]) and any("Wheelchair" in x for x in sf["lines"])
+    assert any("rain" in x for x in sf["warnings"]) and any("Wheelchair" in x for x in sf["lines"])
     far = asyncio.run(S.weather_check(T, b["number"]))
     assert "2 din" in far["say"] or "forecast" in far["say"] or not far["weather"]
     # roll call
