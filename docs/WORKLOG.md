@@ -3084,3 +3084,6 @@ Work Log:
 
 Stage Summary:
 - Site Engine drafts done; a draft has its own data (said plainly); App Engine branches left for after L14.
+
+Task ID: bahi-a3-0839
+Work: A3 GSTR-1 rebuilt over DRAFT v0.838.0, v0.839.0 ritual. Stage: ready.

@@ -2686,3 +2686,6 @@ AUTH403 'Maximum session allowed' was the real cause of the failed GST login; wb
 - Surfaces: `GET/POST /api/sites/{ref}/drafts`, `POST .../drafts/{id}/accept` (resolutions {item: site|draft}), `DELETE .../drafts/{id}`; `website` tool actions `draft_new` / `draft_list` (Accept is not the tool's); Studio: a Drafts tab (cards with what changed, conflicts as radio choices, Open / Accept / Discard, Start a draft), a "Draft · name" pill, and in a draft the Publish button becomes "Back to the website" + "Accept or discard".
 - Tests `test_v0837_draft.py` (5): copy + limits + never live, the conflict-named merge (nothing applied until settled; site-hero / draft-hero both ways), site-only + draft-only changes both survive and the design merge, tool + routes, a browser walk (start a draft, both sides change the hero, the radios, Accept).
 - NOT VERIFIED with a real model. Not built: App Engine branches (the plan puts them after L14's GitHub sync), a visual diff of a draft against the website, drafts of a website that is still being built.
+
+## v0.839.0 BAHI A3 (built as 0.838)
+GSTR-1 checked against the register, saved as a portal draft on her tap (plan hash); EVC filing walk gated by BAHI_FILING. GSTR-1A not built. NOT VERIFIED on a live portal.
