@@ -2854,3 +2854,9 @@ qwen3.8-max slug; qwen3.8-max-prime $4 / $12). `pc/brain.qwen_route()` = (url, k
 (QWEN_BASE_URL may point at OpenRouter too); else the server's OpenRouter key (`providers.key_of("openrouter")`) -> openrouter.ai with
 `pc_qwen_openrouter_model`; neither -> Sonnet + the note. On OpenRouter `pc_qwen_thinking` rides as `reasoning.enabled`, never Alibaba's
 enable_thinking. Price row for usage. 1 test. NOT VERIFIED: no live call (no key in the sandbox).
+
+
+## v0.853.0 QWEN ONLY OPENROUTER (owner: "DONT GO VIA ALIBABA CLOUD GO VIA A OPENROUTER")
+`pc/brain.qwen_route()` now has ONE route: openrouter.ai/api/v1 with the server's OpenRouter key and `pc_qwen_openrouter_model`
+(qwen/qwen3.8-max-0902). Removed: the Alibaba Model Studio path, the `qwen_api_key` / `qwen_base_url` / `pc_qwen_model` settings and the
+qwen3.8-max price row; `pc_qwen_thinking` only ever rides as OpenRouter `reasoning.enabled`. A test pins that the Alibaba settings stay gone.

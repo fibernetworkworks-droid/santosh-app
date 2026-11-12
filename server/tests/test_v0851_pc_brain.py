@@ -16,19 +16,19 @@ def _st(monkeypatch, **env):
 
 
 def test_choose_qwen_default_with_key(monkeypatch):
-    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="k", QWEN_BASE_URL="")
-    assert brain.choose() == ("qwen", "qwen3.8-max", "")
+    _st(monkeypatch, PC_MODEL="qwen", OPENROUTER_API_KEY="k")
+    assert brain.choose() == ("qwen", "qwen/qwen3.8-max-0902", "")
     assert brain.choose("sonnet")[:2] == ("sonnet", "claude-sonnet-5-5")   # a task can name its own
 
 
 def test_qwen_without_key_runs_on_sonnet_and_says_so(monkeypatch):
-    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="", OPENROUTER_API_KEY="", GLM_API_KEY="")
+    _st(monkeypatch, PC_MODEL="qwen", OPENROUTER_API_KEY="", GLM_API_KEY="")
     b, m, note = brain.choose()
-    assert (b, m) == ("sonnet", "claude-sonnet-5-5") and "QWEN_API_KEY" in note
+    assert (b, m) == ("sonnet", "claude-sonnet-5-5") and "OPENROUTER_API_KEY" in note
 
 
 def test_qwen_via_openrouter_with_the_servers_openrouter_key(monkeypatch):
-    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="", OPENROUTER_API_KEY="or-key")
+    _st(monkeypatch, PC_MODEL="qwen", OPENROUTER_API_KEY="or-key")
     assert brain.choose() == ("qwen", "qwen/qwen3.8-max-0902", "")
     url, key, model = brain.qwen_route()
     assert url == "https://openrouter.ai/api/v1/chat/completions" and key == "or-key"
@@ -48,8 +48,9 @@ def test_qwen_via_openrouter_with_the_servers_openrouter_key(monkeypatch):
 def test_defaults_on_the_server():
     from app.config import Settings
     f = Settings.model_fields
-    s = types.SimpleNamespace(**{k: f[k].default for k in ("pc_model", "pc_qwen_model", "pc_sonnet_model", "pc_max_tokens")})
-    assert s.pc_model == "qwen" and s.pc_qwen_model == "qwen3.8-max" and s.pc_sonnet_model == "claude-sonnet-5-5"
+    s = types.SimpleNamespace(**{k: f[k].default for k in ("pc_model", "pc_qwen_openrouter_model", "pc_sonnet_model", "pc_max_tokens")})
+    assert s.pc_model == "qwen" and s.pc_qwen_openrouter_model == "qwen/qwen3.8-max-0902" and s.pc_sonnet_model == "claude-sonnet-5-5"
+    assert "qwen_api_key" not in f and "qwen_base_url" not in f            # never Alibaba Cloud (owner)
     assert s.pc_max_tokens >= 4000
 
 
@@ -85,7 +86,7 @@ def test_tools_and_reply_shapes():
 
 
 def test_qwen_call_hits_her_endpoint_and_counts_tokens(monkeypatch):
-    _st(monkeypatch, QWEN_API_KEY="secret", QWEN_BASE_URL="https://example.test/v1")
+    _st(monkeypatch, OPENROUTER_API_KEY="secret")
     seen = {}
 
     async def post(url, key, body, timeout):
@@ -99,8 +100,8 @@ def test_qwen_call_hits_her_endpoint_and_counts_tokens(monkeypatch):
     op = types.SimpleNamespace(brain="qwen", brain_model="qwen3.8-max", step=1)
     rep = asyncio.run(brain.think(op, None, [{"role": "user", "content": "Task: x"}],
                                   {"system": "S", "tools": [], "max_tokens": 4000}, None))
-    assert seen["url"] == "https://example.test/v1/chat/completions" and seen["key"] == "secret"
-    assert seen["body"]["model"] == "qwen3.8-max" and "enable_thinking" not in seen["body"]
+    assert seen["url"] == "https://openrouter.ai/api/v1/chat/completions" and seen["key"] == "secret"
+    assert seen["body"]["model"] == "qwen3.8-max" and "enable_thinking" not in seen["body"] and "reasoning" not in seen["body"]
     assert rep.content == [{"type": "text", "text": "ho gaya"}]
     assert rec and rec[0][0] == "qwen3.8-max" and rec[0][1]["tok_in"] == 1000
 
