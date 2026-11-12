@@ -1,7 +1,7 @@
 """G0 of docs/LANGGRAPH_TURN_PLAN.md - the chat turn's think -> tools loop as an official LangGraph StateGraph.
 
-Behind `chat_graph` (default OFF). `santosh._steps` hands the whole turn here when the switch is on; when it is off
-nothing in this module runs.
+Behind `chat_graph` (G7: default ON). `santosh._steps` hands the whole turn here when the switch is on; when it is off
+(CHAT_GRAPH=false = the emergency rollback, or langgraph not installed) nothing in this module runs.
 
 THE GRAPH ONLY: no LangChain model or tool wrapper rides here. Every node calls the SAME step function the old
 while-loop calls (one copy of every step, so the two paths cannot drift):
@@ -103,6 +103,8 @@ from contextlib import asynccontextmanager
 from typing import Any, TypedDict
 
 log = logging.getLogger("santosh.turngraph")
+
+_WARNED_MISSING: list = []   # G7: the "langgraph missing" warning is said once per process
 
 try:   # the official library (MIT). Missing on a box = the old loop answers, said once in the log
     from langgraph.graph import END, START, StateGraph
@@ -1241,8 +1243,13 @@ async def run_steps(conversation_id: str, ctx, gender: str, history: list, setti
     _bad = str(conversation_id or "").strip() in ("", "default")
     if not AVAILABLE or _bad:
         STATS["fallback"] += 1
-        log.warning("chat_graph is on but %s - the old loop answers",
-                    "this turn has no conversation id of its own" if _bad else "langgraph is not installed")
+        if not AVAILABLE:   # G7: said ONCE, loudly (config.Settings usually forces the switch off before this point)
+            if not _WARNED_MISSING:
+                _WARNED_MISSING.append(1)
+                log.error("chat_graph is on but langgraph cannot be imported - every chat turn runs on the OLD loop "
+                          "(rollback path) until it is installed")
+        else:
+            log.warning("chat_graph is on but this turn has no conversation id of its own - the old loop answers")
         state = await S._steps_begin(conversation_id, ctx, history, settings, tenant_id, user_text)
         text = await S._steps_inner(conversation_id, ctx, gender, history, settings, tenant_id, state)
         return await S._steps_end(conversation_id, ctx, history, settings, tenant_id, user_text, state, text)

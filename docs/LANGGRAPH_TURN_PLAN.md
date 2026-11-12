@@ -95,3 +95,37 @@ START -> intake -> prepare -> model -> route
 
 Not verified by this plan: anything live. Each phase ships with its own tests and the old path stays the default
 until G7.
+
+## 6. Status after G7 (11 Nov 2026)
+
+- **On by default.** `chat_graph` defaults to True: every chat turn, wake turn, long-job round and call brain ask runs
+  on the turn graph (`agent/turngraph.py` + `turnrun` / `toolledger` / `turnfacts` / `turndeliver` / `turnchannel`).
+  The test suite runs on the graph path by default too (conftest pins nothing); tests of the old path set
+  `CHAT_GRAPH=false` themselves. The server log says which engine answers at startup (`chat turn engine: ...`) and
+  `/api/agent/stats` carries `turn_engine` (`graph` / `old-loop`).
+- **Rollback switch.** `CHAT_GRAPH=false` in the VPS `.env` + `pm2 restart santosh --update-env` brings back the old
+  while-loop exactly as it was before G0 (`santosh._steps_inner`, marked as the rollback path; every G1-G6 branch is
+  behind the same switch). Nothing from G0-G6 had run live when G7 flipped the default, so the old loop is kept.
+- **langgraph missing.** If `langgraph`, `langgraph-checkpoint-sqlite` or `aiosqlite` is not installed, `Settings`
+  forces `chat_graph` off (one loud ERROR line per process) and every turn runs on the old loop; `turngraph.run_steps`
+  has the same fallback as a second belt (also said once).
+- **app/aep.** The `POST /api/aep/turn` lane (`agent/aeptune.py`, v0.680 HOOLA ADOPT, broken on every real call) is
+  retired with its suite (`test_v0610_hoola_adopt.py`). Kept: `aep/graph.py` (used by `leads/scale.py`), the tracer +
+  vault sink (`/api/aep/runs`, `/api/aep/runs/{id}`, `/api/agent/stats`) and the rest of the package with its own
+  suites; `aep/agent.py`, `aep/hub.py` (`hoola_brain_factory`), `aep/middleware.py`, `aep/retrieve.py` and
+  `aep/audit.py` have no product caller any more and can go in the cleanup step.
+- **What remains (not done in G7):**
+  1. *Delete the old loop* once the graph has run live for a while: the `while` loop in `santosh._steps_inner` and the
+     old-loop branch of `santosh._steps`; the `chat_graph` checks and their `else` paths in `santosh.run_turn` /
+     `_run_turn` (the plain per-chat lock without tickets, Stop without `turnrun`), `turn_inbox` (the `RESUME_NOTE`
+     re-run), `goal._continuation` (a fresh turn per round), `kaam_followup` (`_recent_said` / `_answered_since`
+     timing), `voice` (the `LAST_OUTCOME` / `_late_result` path without a ticket, the spoken-claim regex without
+     facts); the `chat_graph` setting and its langgraph probe; tests that pin `CHAT_GRAPH=false`. A turn with no
+     conversation id of its own (`run_steps` fallback) needs a thread of its own first.
+  2. *Regex claim detection*: `draftcheck.all_claims` still FINDS the claim sentences; only the verdict comes from
+     the facts (G3).
+  3. *Approval cards* are still non-parking (the tool returns "card created"); the plan's `interrupt()` per card is
+     not built.
+  4. *Call direct tools*: the tools Gemini Live calls itself on a call (not through `santosh_kaam`) still run outside
+     the graph and its ledger.
+  5. *Live*: none of G0-G7 has been seen on a real turn on the VPS yet.

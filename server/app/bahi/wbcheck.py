@@ -162,8 +162,11 @@ def run(today: date | None = None) -> dict[str, Any]:
         if txn:
             step("logout", lambda: wb.logout(TENANT, user, state, txn))       # frees the session (the account allows only a few at once)
         eu, ep = wb.clean(st.whitebooks_sandbox_einv_username), wb.clean(st.whitebooks_sandbox_einv_password)
-        step("einv_auth", lambda: wb.einv_auth(TENANT, gstin, eu, ep), product="einv",
-             need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_einv_username", eu), ("whitebooks_sandbox_einv_password", ep)])
+        ea = step("einv_auth", lambda: wb.einv_auth(TENANT, gstin, eu, ep), product="einv",
+                  need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_einv_username", eu), ("whitebooks_sandbox_einv_password", ep)])
+        tok = (wb.data_of(ea) or {}).get("AuthToken", "") if ea and isinstance(wb.data_of(ea), dict) else ""
+        if tok:   # A5: a harmless read proves the auth-token header rides a real call; generate / cancel are never in a check
+            step("einv_gstin_details", lambda: wb.einv_gstin_details(TENANT, gstin, eu, tok, gstin), product="einv")
         wu, wp = wb.clean(st.whitebooks_sandbox_ewb_username), wb.clean(st.whitebooks_sandbox_ewb_password)
         step("ewb_auth", lambda: wb.ewb_auth(TENANT, gstin, wu, wp), product="ewb",
              need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_ewb_username", wu), ("whitebooks_sandbox_ewb_password", wp)])

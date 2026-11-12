@@ -3100,7 +3100,40 @@ Work Log:
 
 Stage Summary:
 - Round trip proven against a fake GitHub; real GitHub untested; one branch only.
-Task ID: v0.841.0 DESKTOP TEAM + HOOLA PC TEAM
+
+Task ID: bahi-a4-0841
+Work: A4 rebuilt over GITHUB DO TARAF v0.840.0, v0.841.0 ritual.
+
+---
+Task ID: L15-PROOF
+Agent: Claude
+Task: L15 of docs/LOVABLE_STUDIO_PLAN.md - the L0 card again + 3 proof apps, numbers before vs after.
+
+Work Log:
+- L0 had never been built: wrote quality/studiocard.py + studio_asks.py (30 asks, in-code scoring, calibration, interleaved live run with a budget, compare, CLI).
+- Added the coaching portal (roles + payment records) and the dispatch dashboard to the App Engine proof set with per-app server rule checks; ran the proof: 7/7, 8/8 traps, bad rule refused, median 7.4 s.
+- Version 0.842.0 (main had moved to 0.841.0).
+
+Stage Summary:
+- Free card passes; live card and owner walk still to do on her server.
+
+Task ID: bahi-a5-0843
+Work: A5 e-invoice + e-way bill rebuilt over PROOF v0.842.0, v0.843.0 ritual.
+
+Task ID: v0.844.0 LANGGRAPH G7
+Ask: GO G7 (graph default on).
+Built: chat_graph True, forced off without langgraph, turn_engine in stats, /api/aep/turn retired; full-suite on/off comparison, 1 graph-only red fixed; 7 tests.
+Deploy: vps-ops deploy + ~/apps/santosh-core/.venv/bin/pip install "langgraph>=1.2.20" "langgraph-checkpoint-sqlite>=3.1.3" (without it the old loop answers). Rollback: CHAT_GRAPH=false.
+
+Task ID: bahi-a6-0845
+Work: A6 bills in, checked, rebuilt over G7 v0.844.0, v0.845.0 ritual.
+Task ID: v0.846.0 DESKTOP TEAM + HOOLA PC TEAM
 Task: owner "NOW LETS WORK ON HOOLA DESTOP MERA PC -- FIRST CHECK", then the agent-desktop check, then "GO DESKTOP TEAM + HOOLA PC TEAM".
 Work Log: audit (213 PC tests green; agent-desktop v1.1.0 CLI flags + a real Linux run through axtree.py; found: PC loop on Haiku/GLM, no stop-by-words for PC jobs, restart loses PC tasks, no console Mera PC); built one task per PC (operator device_id, hub.find / devices), pc= on pc_do / hoola_pc_do, pc_team + pc_devices, kaamstop PC stop, vps-ops 1-4 Hoola PCs + pc_pair N-CODE, compose team profile; 16 tests; registry 629.
 Stage Summary: pushed to claude/pensive-faraday-vz5j9u. Next on her word: PC operator's own model (exempt from Haiku/GLM), restart notice for cut PC tasks, console Mera PC page, agent-desktop 1.2 (--stdin) in a new exe.
+
+---
+Task ID: v0.846.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM)
+Task: owner "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL".
+Work Log: listed all 61 commands of the real binary; captured v1.2.0 output shapes on a real Linux desktop; axtree.py full headless set + --stdin + states + surfaces; actions do_ax_*; 14 operator tools with safety; Hoola PC image exact mode; real-desktop walk; 16 tests; desktop 1.10.0 (extension / plugin ride it).
+Stage Summary: shipped with DESKTOP TEAM as v0.846.0. Needs build-desktop (new exe) and pc_deploy (new Hoola PC image) to reach her PCs.

@@ -185,6 +185,68 @@ def _rules_hold(r) -> bool:
     return any(x["name"] == "Rule check" for x in CL.owner_rows(r, "preview", "requests"))
 
 
+def _member(k: str, email: str) -> tuple[str, dict]:
+    from . import cloud as CL
+    out = CL.call(k, "signup", {"email": email, "password": "a-long-password", "name": email.split("@")[0]})
+    return out["token"], out["me"]
+
+
+def _denied(fn, *codes: int) -> bool:
+    from . import cloud as CL
+    try:
+        fn()
+    except CL.CloudError as e:
+        return e.code in codes
+    return False
+
+
+def _rules_portal(r) -> bool:
+    """v0.841 L15 coaching portal: a student sees ONLY her own payments, cannot confirm one, cannot post a notice; the office
+    (staff role) sees all, confirms, and posts notices; a visitor sees nothing."""
+    from . import cloud as CL
+    k = CL.key_of(r, "preview")
+    a, _ = _member(k, "stu-a@example.com")
+    b, _ = _member(k, "stu-b@example.com")
+    c, me = _member(k, "office@example.com")
+    CL.set_role(r, "preview", me["id"], "staff")
+    c = CL.call(k, "signin", {"email": "office@example.com", "password": "a-long-password"})["token"]      # a new role = sign in again
+    pay = {"for_month": "December", "amount": 2500, "upi_ref": "UPI123"}
+    row = CL.call(k, "create", {"list": "payments", "data": pay}, a)["row"]
+    ok = _denied(lambda: CL.call(k, "list", {"list": "payments"}), 401)
+    ok = ok and len(CL.call(k, "list", {"list": "payments"}, a)["rows"]) == 1
+    ok = ok and CL.call(k, "list", {"list": "payments"}, b)["rows"] == []
+    ok = ok and _denied(lambda: CL.call(k, "update", {"list": "payments", "id": row["id"], "data": {"status": "confirmed"}}, a), 403)
+    ok = ok and _denied(lambda: CL.call(k, "update", {"list": "payments", "id": row["id"], "data": {"status": "confirmed"}}, b), 403)
+    ok = ok and _denied(lambda: CL.call(k, "create", {"list": "notices", "data": {"title": "x"}}, a), 403)
+    ok = ok and any(x["id"] == row["id"] for x in CL.call(k, "list", {"list": "payments"}, c)["rows"])
+    ok = ok and CL.call(k, "update", {"list": "payments", "id": row["id"], "data": {"status": "confirmed"}}, c)["row"]["status"] == "confirmed"
+    ok = ok and bool(CL.call(k, "create", {"list": "notices", "data": {"title": "Holiday on Friday"}}, c)["row"])
+    ok = ok and len(CL.call(k, "list", {"list": "notices"}, b)["rows"]) >= 2        # a student reads the notices
+    return bool(ok)
+
+
+def _rules_dispatch(r) -> bool:
+    """v0.841 L15 dispatch desk: staff add and see all jobs; only the dispatcher assigns / marks delivered or deletes; a visitor sees nothing."""
+    from . import cloud as CL
+    k = CL.key_of(r, "preview")
+    a, _ = _member(k, "staff-a@example.com")
+    b, _ = _member(k, "staff-b@example.com")
+    d, me = _member(k, "dispatcher@example.com")
+    CL.set_role(r, "preview", me["id"], "admin")
+    d = CL.call(k, "signin", {"email": "dispatcher@example.com", "password": "a-long-password"})["token"]
+    row = CL.call(k, "create", {"list": "jobs", "data": {"customer": "Meena Stores", "area": "Civil Lines"}}, a)["row"]
+    ok = _denied(lambda: CL.call(k, "list", {"list": "jobs"}), 401)
+    ok = ok and any(x["id"] == row["id"] for x in CL.call(k, "list", {"list": "jobs"}, b)["rows"])
+    ok = ok and _denied(lambda: CL.call(k, "update", {"list": "jobs", "id": row["id"], "data": {"status": "delivered"}}, a), 403)
+    ok = ok and _denied(lambda: CL.call(k, "remove", {"list": "jobs", "id": row["id"]}, b), 403)
+    ok = ok and CL.call(k, "update", {"list": "jobs", "id": row["id"], "data": {"status": "on the way", "driver": "Ravi"}}, d)["row"]["driver"] == "Ravi"
+    ok = ok and CL.call(k, "remove", {"list": "jobs", "id": row["id"]}, d)["ok"]
+    return bool(ok)
+
+
+RULE_CHECKS = {"portal": _rules_portal, "dispatch": _rules_dispatch}
+
+
 def _apart(r) -> bool:
     """Preview and live are different data: live started empty (no sample, no preview row), got only its own visitor."""
     from . import cloud as CL
@@ -264,14 +326,14 @@ def run(browser: bool = True, keep: bool = False) -> dict[str, Any]:
                     row["preview"] = _walk(f"http://127.0.0.1:{port}/api/app-preview/{r.preview_token}/", ask["must"], ask.get("click"),
                                            fill, ask.get("after_fill", ""), sub)
                 if ask.get("cloud"):
-                    row["rules_hold"] = _rules_hold(r)
+                    row["rules_hold"] = RULE_CHECKS.get(ask["key"], _rules_hold)(r)
                 if row["built"]:
                     pub = AE.publish(TENANT, aid, r.version, confirm=True)
                     row["live"] = pub["live_url"]
                     if browser:
                         row["live_walk"] = _walk(f"http://127.0.0.1:{port}{pub['live_url']}", ask["must"][:1], None,
                                                  fill, ask.get("after_fill", ""), sub)
-                    if ask.get("cloud") and browser:
+                    if ask["key"] == "clinic" and browser:
                         row["datasets_apart"] = _apart(AE._load(TENANT, aid))
                 row["total_s"] = round(time.time() - t0, 1)
             except Exception as e:                     # noqa: BLE001 - the card says what broke

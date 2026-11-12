@@ -9,7 +9,10 @@ def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
     from . import connect as CN
+    from . import einv as EV
     from . import gstr1 as G1
+    from . import gstr3b as G3
+    from . import intake as IN
     from . import itc as IT
     from . import register as REG
     from . import rules as RU
@@ -130,5 +133,112 @@ def make_router(require_key, current_tenant):
     def _g1file(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _g1(G1.file_evc, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""), str(body.get("pan") or ""),
                    str(body.get("otp") or ""), str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    def _g3(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except G3.Gstr3bError as e:
+            raise HTTPException(400, str(e))
+
+    def _gp3(body):
+        return str(body.get("gstin") or ""), str(body.get("period") or "")
+
+    @r.post("/api/bahi/gstr3b/prepare", dependencies=[Depends(require_key)])
+    def _g3prep(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.prepare, tenant, *_gp3(body))
+
+    @r.post("/api/bahi/gstr3b/compare", dependencies=[Depends(require_key)])
+    def _g3cmp(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.compare_with_portal, tenant, *_gp3(body))
+
+    @r.post("/api/bahi/gstr3b/save", dependencies=[Depends(require_key)])
+    def _g3save(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.save_draft, tenant, *_gp3(body), str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/gstr3b/setoff", dependencies=[Depends(require_key)])
+    def _g3off(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.apply_setoff, tenant, *_gp3(body), str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/gstr3b/payment", dependencies=[Depends(require_key)])
+    def _g3pay(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.payment_plan, tenant, *_gp3(body))
+
+    @r.post("/api/bahi/gstr3b/evc-otp", dependencies=[Depends(require_key)])
+    def _g3otp(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.request_evc_otp, tenant, str(body.get("gstin") or ""), str(body.get("pan") or ""))
+
+    @r.post("/api/bahi/gstr3b/file", dependencies=[Depends(require_key)])
+    def _g3file(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.file_evc, tenant, *_gp3(body), str(body.get("pan") or ""), str(body.get("otp") or ""),
+                   str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    def _ev(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except EV.EinvError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/einv/status", dependencies=[Depends(require_key)])
+    def _evst(gstin: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.status, tenant, gstin)
+
+    @r.post("/api/bahi/einv/connect", dependencies=[Depends(require_key)])
+    def _evcon(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.connect, tenant, str(body.get("gstin") or ""), str(body.get("username") or ""), str(body.get("password") or ""),
+                   body.get("seller") if isinstance(body.get("seller"), dict) else {}, str(body.get("irp") or ""),
+                   str(body.get("ewb_username") or ""), str(body.get("ewb_password") or ""))
+
+    @r.get("/api/bahi/einv/list", dependencies=[Depends(require_key)])
+    def _evlist(gstin: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.listing, tenant, gstin)
+
+    @r.post("/api/bahi/einv/build", dependencies=[Depends(require_key)])
+    def _evbuild(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.build, tenant, str(body.get("gstin") or ""), str(body.get("doc_id") or ""), body.get("extra") if isinstance(body.get("extra"), dict) else {})
+
+    @r.post("/api/bahi/einv/generate", dependencies=[Depends(require_key)])
+    def _evgen(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.generate, tenant, str(body.get("gstin") or ""), str(body.get("doc_id") or ""),
+                   body.get("extra") if isinstance(body.get("extra"), dict) else {}, str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/einv/cancel", dependencies=[Depends(require_key)])
+    def _evcan(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.cancel, tenant, str(body.get("irn_id") or ""), str(body.get("reason") or ""), str(body.get("remark") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/einv/ewb", dependencies=[Depends(require_key)])
+    def _evewb(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.ewb_from_irn, tenant, str(body.get("irn_id") or ""), body.get("transport") if isinstance(body.get("transport"), dict) else {},
+                   body.get("confirm") is True)
+
+    @r.post("/api/bahi/einv/ewb-cancel", dependencies=[Depends(require_key)])
+    def _evewbc(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.ewb_cancel, tenant, str(body.get("irn_id") or ""), str(body.get("reason_code") or "2"), str(body.get("remark") or ""),
+                   body.get("confirm") is True)
+
+    def _in(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except IN.IntakeError as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/api/bahi/bills/intake", dependencies=[Depends(require_key)])
+    def _inake(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        g, ch = str(body.get("gstin") or ""), str(body.get("channel") or "upload")
+        if body.get("file_id"):
+            return _in(IN.intake_file, tenant, g, str(body["file_id"]), ch)
+        return _in(IN.intake_text, tenant, g, str(body.get("text") or ""), channel=ch)
+
+    @r.get("/api/bahi/bills", dependencies=[Depends(require_key)])
+    def _inlist(status: str = "draft", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"bills": IN.listing(tenant, status)}
+
+    @r.post("/api/bahi/bills/{bill_id}/confirm", dependencies=[Depends(require_key)])
+    def _inconf(bill_id: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        b = body or {}
+        return _in(IN.confirm, tenant, bill_id, b.get("overrides") if isinstance(b.get("overrides"), dict) else {}, b.get("accept_errors") is True)
+
+    @r.post("/api/bahi/bills/{bill_id}/reject", dependencies=[Depends(require_key)])
+    def _inrej(bill_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _in(IN.reject, tenant, bill_id)
 
     return r

@@ -1,12 +1,50 @@
+import importlib.util
+import logging
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_GRAPH_LIBS = ("langgraph.graph", "langgraph.checkpoint.sqlite", "aiosqlite")
+_GRAPH_OK: list = []      # G7: the probe below runs once per process (tests reset it)
+_GRAPH_WARNED: list = []
+
+
+def graph_libs_missing() -> list[str]:
+    """G7 (docs/LANGGRAPH_TURN_PLAN.md): the libraries the turn graph needs that this box does not have. find_spec only,
+    nothing is imported (langgraph / langgraph.checkpoint are namespace packages, so the probe executes no code)."""
+    if not _GRAPH_OK:
+        missing = []
+        for name in _GRAPH_LIBS:
+            try:
+                if importlib.util.find_spec(name) is None:
+                    missing.append(name)
+            except Exception:   # noqa: BLE001 - a broken parent package is as good as missing
+                missing.append(name)
+        _GRAPH_OK.append(missing)
+    return list(_GRAPH_OK[0])
 
 
 class Settings(BaseSettings):
     """All settings come from environment variables or a .env file (see .env.example)."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @model_validator(mode="after")
+    def _graph_needs_langgraph(self):
+        """G7: chat_graph is on by default, but a box without langgraph must keep answering - the switch is forced off
+        (every reader of settings.chat_graph then takes the old loop) and the log says so ONCE, loudly."""
+        if self.chat_graph:
+            missing = graph_libs_missing()
+            if missing:
+                self.chat_graph = False
+                if not _GRAPH_WARNED:
+                    _GRAPH_WARNED.append(1)
+                    logging.getLogger("santosh.config").error(
+                        "CHAT_GRAPH is on but %s is not installed - every chat turn runs on the OLD loop (rollback "
+                        "path). Install server/requirements.txt (langgraph, langgraph-checkpoint-sqlite) to use the "
+                        "turn graph.", ", ".join(missing))
+        return self
 
     # --- Santosh brain (Claude API) ---
     anthropic_api_key: str = ""
@@ -506,9 +544,13 @@ class Settings(BaseSettings):
     chat_every_message: bool = True        # parity gap 1 (v0.738): every message reaches the model - the research plan
                                            # gate never answers for it, stop words still stop the work at once but the
                                            # model writes the reply (the OTP / CAPTCHA hand-over stays before the model)
-    chat_graph: bool = False               # G0 (docs/LANGGRAPH_TURN_PLAN.md): the chat turn's think -> tools loop runs
+    chat_graph: bool = True                # G0 (docs/LANGGRAPH_TURN_PLAN.md): the chat turn's think -> tools loop runs
                                            # as an official LangGraph StateGraph (agent/turngraph.py) over the SAME step
-                                           # functions as the old loop, checkpointed per turn; off = the old loop only
+                                           # functions as the old loop, checkpointed per turn. G7: ON by default.
+                                           # CHAT_GRAPH=false in the VPS .env = the EMERGENCY ROLLBACK: the old
+                                           # while-loop (santosh._steps_inner) answers every turn exactly as before G0.
+                                           # langgraph (or its SQLite saver / aiosqlite) not installed = forced off
+                                           # here with one loud warning (Settings._graph_needs_langgraph)
     chat_graph_dir: str = "./data/turngraph"   # the graph's SQLite checkpoints (checkpoints.db)
     chat_graph_keep_finished: bool = False   # G1: keep a finished turn's checkpoints (tests / debugging); off =
                                            # deleted at END so the checkpoint file does not grow without limit

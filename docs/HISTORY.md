@@ -2699,7 +2699,35 @@ GSTR-1 checked against the register, saved as a portal draft on her tap (plan ha
 - Routes: GET/DELETE `/api/appengine/{ref}/github`, POST `.../github/link|push|pull`, GET `.../github/compare`, GET `/api/appengine/{ref}/export.zip`, POST `/api/appengine-import/zip` (raw body) and `/github`. Studio: a GitHub section on the Publish tab (link form, Compare with conflict radios, Pull, Push, Unlink) and a "Bring in a project" panel on the Apps home.
 - Tests `test_v0839_github_sync.py` (5) against `FakeGitHub`, a fake that speaks the Git Data API: the ROUND TRIP (push, a change on GitHub pulled back, push of a local change, the repo imported as app B with equal files, the ZIP export imported back), named conflicts + incoming rule breaks refused + locked files kept apart, ZIP safety + listing of refused files, the routes, a browser walk.
 - NOT VERIFIED against real GitHub (the fake follows the documented Git Data API). Not built: several branches, pull requests, webhooks (a pull is her tap), syncing data / Cloud rules, binary files (images are kept apart), resolving a conflict line by line.
-## v0.841.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
+
+## v0.841.0 BAHI A4 (built as 0.840)
+GSTR-3B prepared with A2 credit, least-cash set-off, portal compare, draft save + set-off on her confirm (plan hash), payment plan (no challan, no money), EVC filing gated by BAHI_FILING. NOT VERIFIED on a live portal.
+
+## v0.842.0 PROOF - L15 of the Lovable Studio plan: the Studio card and three proof apps (owner: "GO L15"; built on main at v0.841.0)
+
+- **The Studio card** (`quality/studiocard.py`, asks in `studio_asks.py`) - the L0 row of the plan, which had never been built, so there is no recorded baseline on the old Studio. 30 asks in an owner's words: 10 brochure + 8 shop / booking (Site Engine) + 8 portal / dashboard + 4 SaaS (App Engine). Each run is scored IN CODE as the hidden tenant `__studiocard__`: built, seconds to ready, rupees (the tenant's own meter), preview errors, gate failures (Site: launch blockers; App: the scans and rule tests), design failures (over 2 fails), the first screen's must-words, and for 3 asks a small exact edit that must land with NO model call (Rs 0) - its seconds recorded. The scorer is calibrated on 9 planted faults (each fails for its own reason). `python -m app.quality studio` = the free card (ask set valid, scorer calibrated; `--proof` adds the App Engine proof apps); `--live --budget-inr N` = the real run (site / app asks interleaved so a budget that runs out leaves both the same coverage, stops itself); `studio compare a.json b.json` = before / after metric by metric, the right way round. The live App Engine ask is a real Hoola turn (`santosh.run_turn`) with the `app_engine` tool, then the box build, the scans and a Chromium read of the first screen.
+- **Three proof apps** (the App Engine proof set is now 7): the clinic (appointment requests saved through Hoola Cloud, visitors cannot read them), a **coaching portal with roles and payments** (students sign up, read notices, RECORD a fee payment with its UPI reference and see only their own payments; the office - role staff - sees all, confirms or rejects, posts notices; payments are records the office confirms, NOT an online gateway), and a **dispatch dashboard** (staff add jobs and see all of them; only the dispatcher assigns a driver, marks delivered or deletes; live counts). Each is built in the box, walked in Chromium (sign-up through the sealed frame), and its rules played against the server (`proof._rules_portal` / `_rules_dispatch`: a second student reads nothing of the first's, cannot confirm; a visitor reads nothing). The proof card also plants a bad-rule app (L11).
+- **Numbers, before vs after** (measured in the build sandbox, App Engine proof card, Docker box, Chromium): L8 (v0.824) recorded 5/5 apps built, median 6.2 s, 8/8 planted bad writes refused, publish with only TypeScript + code checks. Now (v0.842): 7/7 apps built and PUBLISHED through the quick scan + rule tests + browser check, build median 7.4 s (portal 5.95 s, dispatch 6.04 s), 8/8 planted bad writes refused, the planted bad-rule app refused, 0 preview errors, phone overflow none on all seven. Sandbox timings; the slower median is the extra apps, not a regression claim.
+- **NOT VERIFIED**: no LIVE Studio card has run (a model, the box and Chromium on her server are needed; the card prints the assumed rupees until a run measures them: Rs 60 per site ask, Rs 90 per app ask, assumed); the owner has not walked the three apps; the Site Engine has no "before" row (its baseline would come from the first live card). Tests `test_v0841_studio_proof.py` (5).
+
+## v0.843.0 BAHI A5 (built as 0.842)
+e-invoice (IRN) + e-way bill on her confirm: attempt row first, duplicate / timeout adopted, 24 h cancel and 30-day limit, EWB by IRN. NOT VERIFIED on a live IRP.
+
+## v0.844.0 LANGGRAPH G7 (built as 0.806; their v0.806-v0.843 landed while the full suite ran - REBASE PROTOCOL, both kept) — the turn graph on by default (12 Nov 2026; owner: "GO G7")
+
+Phase G7 of `docs/LANGGRAPH_TURN_PLAN.md`, the last phase.
+- `config.chat_graph` default True. `Settings._graph_needs_langgraph` probes langgraph.graph / langgraph.checkpoint.sqlite / aiosqlite with find_spec (nothing imported) and forces the switch off with ONE loud ERROR when any is missing.
+- `turngraph.run_steps`: the langgraph-missing fallback logs once per process; the no-conversation-id fallback kept.
+- `santosh._steps_inner` unchanged, marked as the rollback path. Rollback = `CHAT_GRAPH=false` in the VPS .env + `pm2 restart santosh --update-env`.
+- `main.turn_engine()` + a startup log line; `/api/agent/stats` gains `turn_engine`.
+- Retired POST /api/aep/turn + `agent/aeptune.py` + `test_v0610_hoola_adopt.py` (it failed on every real call: an async brain handed to a sync _generate). /api/aep/runs and app/aep's tracer / vault sink / graph stay.
+- Red check: every red of the full branch run re-run in the same order with CHAT_GRAPH=false and with the default. One graph-only red (test_v0187_realtime::test_the_turns_own_reply_stops_the_duplicate tested the old loop's _answered_since timing; now pins CHAT_GRAPH=false). All others (~457: missing Playwright browser, appmaker/site look tests, stale version / stamp / Hinglish pins, order interference) fail identically with the graph off.
+- Tests: test_g7_turngraph.py (7), test_g0 asserts the default is on; 145 passed across g0-g7, routines, v0187, voice on the rebased tree.
+- NOT VERIFIED: no real turn has run on the graph on the VPS yet. Not built: approval cards that pause the graph; Gemini Live's directly-called tools through the graph. A later delete of the old loop is listed in the plan doc section 6.
+
+## v0.845.0 BAHI A6 (built as 0.844)
+Purchase bills read locally into a cross-checked DRAFT (acc_intake); register only on her tap. WhatsApp / mailbox hand-off not wired.
+## v0.846.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
 
 **The audit first (same day):** Mera PC worked end to end (213 PC tests green, desktop 1.9.0 live, agent-desktop
 v1.1.0 proven on a real Linux desktop through Hoola's own axtree.py: snapshot -> set_value -> click -> the app returned
@@ -2743,3 +2771,45 @@ registry / family / labels / voice route, prompt + vps-ops + compose shapes, ver
 PCs on her 8 GB VPS is an estimate; the phone / console show each PC's live card as before but have no "team" view; the
 PC operator still runs on whatever the Haiku / GLM switches choose (see the audit - not changed here); the Windows
 desktop exe and agent-desktop v1.2.0 upgrade are not part of this release.
+
+## v0.846.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM; owner: "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL")
+
+**Before:** Hoola wrapped 10 of agent-desktop's 61 commands (v1.1.0). set-value put the text ON THE COMMAND LINE (an
+Aadhaar / PAN from her ID locker was readable by any program listing processes on her PC), element states (checked,
+disabled ...) were thrown away, click surfaces printed as a broken Python repr ("{'id': 'w-1.1-org-gn"), and Hoola's
+own Linux PC had no exact mode.
+
+**Now (desktop 1.10.0, frozen-PC exception recorded in CLAUDE.md):**
+- `build-desktop.yml` pins agent-desktop **v1.2.0** (official archive, checksum-verified; same single agent-desktop.exe).
+- `axtree.py`: `_run(stdin=)` - set-value / type / clipboard-set send text over `--stdin`; snapshot rows carry
+  `states`; `_surfaces()` turns {id, type, title} into 'menu: File'; NEW get / is_state / act (check, uncheck, toggle,
+  expand, collapse, clear, scroll-to, right-click) / select / type_text / scroll / close_app (never --force) /
+  displays / window_shot (one window as JPEG) / surfaces / open_surface (start-menu, taskbar, tray, action centre,
+  quick settings) / notifications + dismiss / action (an expected app or title is REQUIRED so the wrong popup is
+  never touched) / clipboard get / set / clear / batch (2-8 SAFE steps: no text, keys, launch, close; waits clamped).
+  Left out on purpose: focus, double / triple click, hover, mouse-*, key-down / up (all need --headed = cursor / focus
+  moves; the pixel lane does physical input behind the same switch), mcp, session / trace / cursor overlay, skills.
+- `actions.py` do_ax_get ... do_ax_batch behind the same control switch (`_axcall`), close-app refuses Hoola Desktop /
+  Explorer / system tools.
+- `pc/operator.py`: 14 new tools for the model (ax_get, ax_is, ax_act, ax_select, ax_type, ax_scroll, ax_window_shot,
+  ax_displays, ax_system, ax_notifications, ax_notification, ax_clipboard, ax_close_app, ax_batch) in TOOLS and
+  HOOLA_TOOLS; `_ax_full`: ID-locker refs filled for ax_type / clipboard set, clipboard READS masked (pii), a
+  notification button that sends / pays / deletes needs a FRESH ask_approval (one yes = one press), "not delivered"
+  said plainly, a POLICY_DENIED / ACTION_NOT_SUPPORTED answer sends the model to the pixel lane (no retry loop), an
+  older desktop gets the upgrade line (AX_FULL); ax_window_shot rides as an IMAGE; prompt paragraph 'v0.842 the full
+  exact kit'.
+- Hoola PC (`desktop-linux/`): the SAME axtree.py (a test keeps the copies identical), Dockerfile installs the
+  checksum-verified Linux binary + at-spi2-core / libatk-adaptor, start.sh runs a real session bus + the AT-SPI bus,
+  agent.py routes every ax_* (AX_ACTIONS), agent 1.4.0.
+
+**Proof:** the real v1.2.0 binary on a real Linux desktop (Xvfb + openbox + AT-SPI) through Hoola's own axtree.py:
+set_value over stdin verified + read back, clear, type_text, is enabled, select '18%' (the app returned
+"Gupta & Sons|18%"), batch of 2, batch refuses typing, window JPEG, displays, surfaces, clipboard set / get / clear,
+readable surfaces after a click, a disabled OK seen in the snapshot states, close_app graceful; GTK4's checkbox has
+no accessibility action, so check / toggle were REFUSED honestly (ACTION_NOT_SUPPORTED) - the pixel lane covers such
+apps. Tests: NEW `test_v0842_agent_desktop_full.py` (16, a recording fake helper: no text on argv, states, surfaces,
+every refusal, batch safety, close never forces, server rules); the 15 PC suites + test_v0472 green with the upgrade.
+
+**NOT VERIFIED:** no real Windows PC has run v1.2.0 through Hoola (needs the new SantoshDesktop.exe from build-desktop);
+Windows notifications / Start menu / taskbar were not reachable here (Linux has no Start menu; no notification daemon
+in the test box); exact mode on the Hoola PC image is untested until `pc_deploy` rebuilds it on the VPS.

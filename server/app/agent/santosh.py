@@ -1985,7 +1985,11 @@ class _Turn:
 
 async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: list[dict], settings, tenant_id: str,
                        state: dict) -> str:
-    """The think -> tools -> think loop of one turn. Returns the final text shown to the user.
+    """THE ROLLBACK PATH (G7, docs/LANGGRAPH_TURN_PLAN.md): the old think -> tools -> think while-loop of one turn.
+    Since G7 every turn runs on the turn graph (agent/turngraph.py) and this loop answers only when CHAT_GRAPH=false
+    is set in the VPS .env (the emergency rollback), when langgraph is not installed, or for a turn with no
+    conversation id of its own. Kept byte-for-byte as it was until the graph has run live; a later step deletes it
+    (the list of what goes is in the plan's "Status after G7"). Returns the final text shown to the user.
     v0.187: while a kaam_plan goal is open, text never ends the turn — the goal nudge sends it back to work.
     G0: the loop body lives in `_turn_model` / `_turn_after_model` / `_turn_tools` (shared with the graph path)."""
     t = await _turn_prepare(conversation_id, ctx, gender, history, settings, tenant_id, state)
