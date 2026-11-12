@@ -57,18 +57,18 @@ def test_rules():
     ok = R.load_fit([{"name": "cement", "weight_kg": 50, "cbm": 0.04, "count": 160}], v)
     assert ok["fits"] and ok["weight_kg"] == 8000
     over = R.load_fit([{"name": "steel", "weight_kg": 10000}], v)
-    assert not over["fits"] and "zyada" in over["problems"][0]
+    assert not over["fits"] and "too much" in over["problems"][0]
     long = R.load_fit([{"name": "pipe", "weight_kg": 500, "dims": [7, 0.3, 0.3]}], v)
     assert not long["fits"] and "body" in long["problems"][0]
     nowt = R.load_fit([{"name": "boxes", "cbm": 2}], v)
-    assert not nowt["fits"] and "wazan" in nowt["problems"][0]
+    assert not nowt["fits"] and "weight" in nowt["problems"][0]
     sp = R.split_load([{"name": "bags", "weight_kg": 1000, "count": 12}], [{"reg": "A", "capacity_t": 9}, {"reg": "B", "capacity_t": 4}])
     assert sum(p["weight_kg"] for p in sp["plan"]) == 12000 and not sp["left"]
     est = R.trip_estimate(300, 5, 92, toll=1200)
     assert est["fuel_l"] == 60 and est["fuel_rs"] == 5520 and est["total_rs"] == 6720
     miss = R.trip_estimate(300, 5, None)
-    assert miss["total_rs"] is None and "aapka diesel rate" in miss["missing"]
-    assert "8 ghante" in R.drive_hours_note(10) and R.drive_hours_note(5) == ""
+    assert miss["total_rs"] is None and "your diesel rate" in miss["missing"]
+    assert "8 hours" in R.drive_hours_note(10) and R.drive_hours_note(5) == ""
 
 
 def test_vehicle_docs_and_reminders(fl, monkeypatch):
@@ -79,7 +79,7 @@ def test_vehicle_docs_and_reminders(fl, monkeypatch):
     out = S.save_vehicle(T, "mh30ab1234", type="truck", make="Tata", model="1612", capacity_t=9, capacity_cbm=40,
                          body={"l": 6, "w": 2.4, "h": 2.4}, tank_l=250, reg_date="2016-04-01", national=True, odo=150000)
     v = out["vehicle"]
-    assert out["new"] and v["reg"] == "MH 30 AB 1234" and "kaagazon ki expiry" in out["say"]
+    assert out["new"] and v["reg"] == "MH 30 AB 1234" and "expiry of these papers" in out["say"]
     kinds_ = {d["kind"] for d in v["docs"]}
     assert {"rc", "insurance", "fitness", "puc", "national_permit", "road_tax"} <= kinds_
     assert v["service"] and v["service"][0]["state"] == "unknown"
@@ -92,7 +92,7 @@ def test_vehicle_docs_and_reminders(fl, monkeypatch):
     S.save_doc(T, "1234", "insurance", (on + timedelta(days=12)).isoformat(), number="POL/1")
     S.save_doc(T, "1234", "puc", (on - timedelta(days=2)).isoformat())
     g = S.save_doc(T, "1234", "fitness", issued=(on - timedelta(days=10)).isoformat())
-    assert g["doc"]["guess"] and "andaaza" in g["say"]           # 2016 truck -> 12 months, suggestion only
+    assert g["doc"]["guess"] and "estimate" in g["say"]           # 2016 truck -> 12 months, suggestion only
     with pytest.raises(S.FleetError):
         S.save_doc(T, "1234", "puc", "31-02-2026")
     due = S.docs_due(T)
@@ -158,7 +158,7 @@ def test_service_tyres_breakdown_challan_and_spend_tap(fl, monkeypatch):
     # spend card: the tool path can never approve
     sp = S.spend_request(T, "1234", "service", "Engine oil + filter (Sai Motors)", 6500, vendor="Sai Motors", actor="staff:x")
     x = sp["spend"]
-    assert sp["status"] == "needs_tap" and x["number"] == "FS-0001" and "fleet_spend" in kinds(S) and "Hoola khud paise nahi" in sp["say"]
+    assert sp["status"] == "needs_tap" and x["number"] == "FS-0001" and "fleet_spend" in kinds(S) and "Hoola does not pay" in sp["say"]
     assert S.spend_request(T, "1234", "service", "Engine oil + filter (Sai Motors)", 6500)["existing"]
     with pytest.raises(S.FleetError):
         S.spend_request(T, "1234", "tyre", "2 naye tyre", None)        # no invented amount
@@ -176,7 +176,7 @@ def test_service_tyres_breakdown_challan_and_spend_tap(fl, monkeypatch):
     assert str(e.value) == "fingerprint_needed"
     monkeypatch.setattr(S, "_verify_fingerprint", lambda *a, **k: None)
     d = S.decide_spend(T, x["id"], True, x["hash"], by_tap=True)
-    assert d["spend"]["status"] == "approved" and "khud dijiye" in d["say"]
+    assert d["spend"]["status"] == "approved" and "pay the money yourself" in d["say"]
     assert S.decide_spend(T, x["id"], False, x["hash"], by_tap=True)["spend"]["status"] == "approved"   # decided once
     done = S.spend_done(T, x["id"], 6400, ref="UPI 1234")
     assert done["spend"]["status"] == "done"
@@ -190,7 +190,7 @@ def test_service_tyres_breakdown_challan_and_spend_tap(fl, monkeypatch):
     # breakdowns repeat
     for i in range(3):
         b = S.breakdown(T, "1234", "clutch plate", "Nagpur highway", hours=6, actor="staff:x")
-    assert b["repeat"] == 3 and "badi marammat" in b["say"] and S.vehicle_view(T, "1234")["status"] == "workshop"
+    assert b["repeat"] == 3 and "major repair" in b["say"] and S.vehicle_view(T, "1234")["status"] == "workshop"
     S.event_close(T, b["event"]["id"], 3200)
     assert S.vehicle_view(T, "1234")["status"] == "active"
     # challan -> spend card -> her tap -> paid
@@ -222,17 +222,17 @@ def test_trips_loads_and_estimates(fl, monkeypatch):
     a = S.assign_trip(T, "1", vehicle="1234", driver="Ramesh", driver_phone="98220 12345")["trip"]
     assert a["status"] == "assigned" and a["driver_phone"] == "9822012345"
     assert any("national permit" in w for w in a["checks"]["warn"])          # MH -> MP goods without NP
-    assert any("8 ghante" in w for w in a["checks"]["warn"])                 # 360 km at her 40 km/h
+    assert any("8 hours" in w for w in a["checks"]["warn"])                 # 360 km at her 40 km/h
     est = a["estimate"]
     assert est["fuel_l"] == 72 and est["fuel_rs"] == 6624 and est["total_rs"] == 8424
     # same truck same day = busy
     b = S.plan_trip(T, "Akola", "Amravati", on.isoformat(), items=[{"name": "x", "weight_kg": 100}], vehicle="1234", km=100)["trip"]
-    assert b["status"] == "planned" and any("doosri trip" in x for x in b["checks"]["block"])
+    assert b["status"] == "planned" and any("another trip" in x for x in b["checks"]["block"])
     # overload never assigned; split suggestion
     big = S.plan_trip(T, "Akola", "Pune", (on + timedelta(days=1)).isoformat(),
                       items=[{"name": "steel coils", "weight_kg": 1000, "count": 11}], vehicle="1234", km=550)
     bt = big["trip"]
-    assert bt["status"] == "planned" and any("zyada" in x for x in bt["checks"]["block"]) and bt["checks"]["split"]["plan"]
+    assert bt["status"] == "planned" and any("too much" in x for x in bt["checks"]["block"]) and bt["checks"]["split"]["plan"]
     # expired insurance blocks
     S.save_doc(T, "5678", "insurance", (on - timedelta(days=1)).isoformat())
     t3 = S.plan_trip(T, "Akola", "Washim", on.isoformat(), items=[{"name": "boxes", "weight_kg": 500}], vehicle="5678", km=80)["trip"]
@@ -271,7 +271,7 @@ def test_cost_idle_day_and_morning(fl):
         x.created_at = datetime.now(timezone.utc) - timedelta(days=10)
     assert [i["vehicle"] for i in S.idle(T)] == ["MH 30 EF 1111"]
     d = S.day(T)
-    assert "Khadi gaadiyan" in d["say"]
+    assert "Idle vehicles" in d["say"]
     S.EVENTS.clear()
     r = S.tick(datetime.now(timezone.utc))
     assert r["morning"] == 1 and "fleet_day" in kinds(S)

@@ -76,7 +76,7 @@ def test_order_bill_pay(thok):
     assert atta["rate"] == 1450 and atta["cgst"] == atta["sgst"] and atta["igst"] == 0     # bulk tier, intra-state
     assert o["checks"]["missing"] == ["kaju"] and o["checks"]["eway"]["needed"] is False
     assert o["taxable"] == 25 * 1450 + 5 * 2100 + 2 * 2000 and o["total"] == round(o["taxable"] * 1.05)
-    assert "haan" in r["say"] and o["status"] == "draft"
+    assert "approval" in r["say"] and o["status"] == "draft"
     b = S.bill(T, o["id"])
     v = b["order"]
     assert v["number"] == "IT/26-27/0001" and v["due_date"] == "2026-11-06" and b["file"]["name"].endswith(".pdf")
@@ -104,7 +104,7 @@ def test_order_bill_pay(thok):
     assert led["outstanding"] < 0 and led["avg_days_to_pay"] == 0
     # cheque: pending, then bounced -> Goa bill open again with Sec 138 dates
     c = S.receive(T, "Goa Mart", 15000, "cheque", cheque_no="123456", cheque_date="2026-10-25", bank="HDFC")
-    assert "mat daaliye" in c["say"] and S.party_view(T, "Goa Mart")["ledger"]["cheques_pending"] == 15000
+    assert "do not deposit" in c["say"] and S.party_view(T, "Goa Mart")["ledger"]["cheques_pending"] == 15000
     S.cheque(T, c["payment_id"], "cleared")
     assert S.get_order(T, g["id"])["paid"] == 15000
     bnc = S.cheque(T, c["payment_id"], "bounced", memo_date="2026-10-22")
@@ -126,7 +126,7 @@ def test_outstanding_purchase_reorder(thok, monkeypatch):
     assert row["party"] == "Gupta Kirana" and row["overdue"] == o["total"] and row["oldest_overdue_days"] == 36
     assert out["aging"]["31-60"] == o["total"]
     d = S.reminder_drafts(T)["drafts"]
-    assert d[0]["to"] == "9811111111" and "due date paar" in d[0]["text"] and "kaafi din" in d[0]["text"]
+    assert d[0]["to"] == "9811111111" and "past the due date" in d[0]["text"] and "quite a while" in d[0]["text"]
     rp = S.route_plan(T)
     assert rp["route"] == "Thu" and rp["visit"] == ["Gupta Kirana"]
     nxt = S.take_order(T, "Gupta", "cheeni 1 bag")["order"]
@@ -154,7 +154,7 @@ def test_outstanding_purchase_reorder(thok, monkeypatch):
     assert day["sales"] > 0 and any(x["name"] == "Fortune Oil 15L" for x in day["low_stock"])
     st = S.statement_file(T, "Gupta")
     assert st["file"]["name"].endswith(".xlsx") and st["balance"] == o["total"]
-    assert S.send_morning(T)["text"].startswith("Thok:")
+    assert S.send_morning(T)["text"].startswith("Wholesale:")
 
 
 def test_tools_api(thok):

@@ -51,7 +51,7 @@ def available() -> str:
     try:
         import playwright.sync_api  # noqa: F401
     except ImportError:
-        return "Testing ke liye server par Playwright + Chromium chahiye (deploy/setup_sites.sh)."
+        return "Testing needs Playwright + Chromium on the server (deploy/setup_sites.sh)."
     return ""
 
 
@@ -94,7 +94,7 @@ class Source:
     def url(self, path: str) -> str:
         if re.match(r"^https?://", path or "", re.I):
             if not self.own(urlparse(path).hostname or ""):
-                raise Blocked("Doosri website nahi kholi jaati: sirf aapki apni site.")
+                raise Blocked("Another website is not opened: only your own site.")
             return path
         return urljoin(self.origin + "/", (path or "/").lstrip("/") if not (path or "").startswith("?") else path)
 
@@ -102,7 +102,7 @@ class Source:
         req = route.request
         p = urlparse(req.url)
         if req.method not in ("GET", "HEAD"):
-            self.notes.append(f"form {req.method} {p.path} (preview: kahin bheja nahi gaya)")
+            self.notes.append(f"form {req.method} {p.path} (preview: not sent anywhere)")
             route.fulfill(status=200, body='{"ok":true}', headers={"Content-Type": "application/json"})
             return
         rel = p.path.lstrip("/")
@@ -148,7 +148,7 @@ class Source:
                 self.mixed.append(url[:160])
             own = self.own(host)
             if not own and not is_public(host):
-                self.notes.append(f"band: {host} (public internet par nahi)")
+                self.notes.append(f"blocked: {host} (not on the public internet)")
                 route.abort()
                 return
             if own and not is_public(host) and NET_FULFILL is None:
@@ -156,16 +156,16 @@ class Source:
                 return
             nav = req.is_navigation_request()
             if nav and not own and req.frame.parent_frame is None:
-                self.notes.append(f"site se bahar jaane ki koshish rok di: {host}")
+                self.notes.append(f"blocked an attempt to leave the site: {host}")
                 route.abort()
                 return
             if R.pay_host(host) and (nav or req.resource_type not in ("script", "stylesheet", "image", "font")):
-                self.notes.append(f"payment gateway ko request nahi: {host}")
+                self.notes.append(f"no request to a payment gateway: {host}")
                 route.abort()
                 return
             if req.method not in ("GET", "HEAD", "OPTIONS"):
                 if not own or not self.allow_writes:
-                    self.notes.append(f"{req.method} {p.path} roka (live site par form submit band hai)")
+                    self.notes.append(f"{req.method} {p.path} blocked (form submit is off on a live site)")
                     route.abort()
                     return
             if NET_FULFILL is not None and NET_FULFILL(route):
@@ -184,25 +184,25 @@ A11Y_JS = r"""() => {
   const out = [], warn = [];
   const name = el => (el.getAttribute('aria-label') || el.getAttribute('title') || el.innerText || el.value || el.getAttribute('alt') || '').trim();
   const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
-  if (!document.title.trim()) out.push({rule: '2.4.2', text: 'Page ka title nahi hai'});
-  if (!(document.documentElement.getAttribute('lang') || '').trim()) out.push({rule: '3.1.1', text: 'html lang nahi diya'});
-  document.querySelectorAll('img').forEach(i => { if (vis(i) && !i.hasAttribute('alt')) out.push({rule: '1.1.1', text: 'Photo bina alt text: ' + (i.getAttribute('src') || '').slice(-40)}); });
+  if (!document.title.trim()) out.push({rule: '2.4.2', text: 'The page has no title'});
+  if (!(document.documentElement.getAttribute('lang') || '').trim()) out.push({rule: '3.1.1', text: 'html lang is not set'});
+  document.querySelectorAll('img').forEach(i => { if (vis(i) && !i.hasAttribute('alt')) out.push({rule: '1.1.1', text: 'Image without alt text: ' + (i.getAttribute('src') || '').slice(-40)}); });
   document.querySelectorAll('input,select,textarea').forEach(i => {
     if (['hidden', 'submit', 'button', 'reset', 'image'].includes(i.type) || !vis(i)) return;
     const lab = (i.id && document.querySelector('label[for="' + CSS.escape(i.id) + '"]')) || i.closest('label');
     if (!lab && !i.getAttribute('aria-label') && !i.getAttribute('aria-labelledby') && !i.getAttribute('title'))
-      out.push({rule: '1.3.1', text: 'Form ka khana bina label: ' + (i.name || i.type)});
+      out.push({rule: '1.3.1', text: 'Form field without a label: ' + (i.name || i.type)});
   });
-  document.querySelectorAll('button,a[href],[role=button]').forEach(b => { if (vis(b) && !name(b) && !b.querySelector('img[alt]:not([alt=""]),svg title')) out.push({rule: '4.1.2', text: 'Button / link ka naam nahi (icon only?)'}); });
+  document.querySelectorAll('button,a[href],[role=button]').forEach(b => { if (vis(b) && !name(b) && !b.querySelector('img[alt]:not([alt=""]),svg title')) out.push({rule: '4.1.2', text: 'Button / link has no name (icon only?)'}); });
   const h1 = [...document.querySelectorAll('h1')].filter(vis).length;
-  if (h1 === 0) warn.push({rule: '1.3.1', text: 'Page par h1 heading nahi'});
-  if (h1 > 1) warn.push({rule: '1.3.1', text: h1 + ' h1 headings (ek rakhiye)'});
+  if (h1 === 0) warn.push({rule: '1.3.1', text: 'The page has no h1 heading'});
+  if (h1 > 1) warn.push({rule: '1.3.1', text: h1 + ' h1 headings (keep one)'});
   const ids = {}; document.querySelectorAll('[id]').forEach(e => { ids[e.id] = (ids[e.id] || 0) + 1; });
-  const dup = Object.keys(ids).filter(k => ids[k] > 1); if (dup.length) warn.push({rule: '4.1.1', text: 'Ek jaise id: ' + dup.slice(0, 3).join(', ')});
+  const dup = Object.keys(ids).filter(k => ids[k] > 1); if (dup.length) warn.push({rule: '4.1.1', text: 'Duplicate ids: ' + dup.slice(0, 3).join(', ')});
   let small = 0; document.querySelectorAll('a[href],button,input,select,[role=button]').forEach(e => {
     if (!vis(e) || e.disabled) return; const lb = ['checkbox', 'radio'].includes(e.type) && e.closest('label'); const r = (lb || e).getBoundingClientRect(); const inline = getComputedStyle(e).display === 'inline' && e.tagName === 'A' && e.closest('p,li');
     if (!inline && (r.width < 24 || r.height < 24)) small++; });
-  if (small) out.push({rule: '2.5.8', text: small + ' tap targets 24x24 px se chhote'});
+  if (small) out.push({rule: '2.5.8', text: small + ' tap targets smaller than 24x24 px'});
   const rgba = c => { const m = (c || '').match(/[\d.]+/g); if (!m || m.length < 3) return null; return {r: +m[0], g: +m[1], b: +m[2], a: m.length > 3 ? +m[3] : 1}; };
   const L = o => { const v = [o.r, o.g, o.b].map(x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
   const bgOf = el => { for (let e = el; e; e = e.parentElement) { const cs = getComputedStyle(e); if (cs.backgroundImage && cs.backgroundImage !== 'none') return null; const c = rgba(cs.backgroundColor); if (c && c.a > .9) return c; } return {r: 255, g: 255, b: 255, a: 1}; };
@@ -215,7 +215,7 @@ A11Y_JS = r"""() => {
     const fg = {r: f.r * f.a + bg.r * (1 - f.a), g: f.g * f.a + bg.g * (1 - f.a), b: f.b * f.a + bg.b * (1 - f.a)};
     const a = L(fg), b = L(bg), ratio = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
     const large = parseFloat(cs.fontSize) >= 24 || (parseFloat(cs.fontSize) >= 18.6 && +cs.fontWeight >= 700);
-    if (ratio < (large ? 3 : 4.5)) { bad++; out.push({rule: '1.4.3', text: 'Kam contrast (' + ratio.toFixed(1) + ':1): ' + el.textContent.trim().slice(0, 40)}); }
+    if (ratio < (large ? 3 : 4.5)) { bad++; out.push({rule: '1.4.3', text: 'Low contrast (' + ratio.toFixed(1) + ':1): ' + el.textContent.trim().slice(0, 40)}); }
   });
   return {issues: out, warnings: warn};
 }"""
@@ -224,10 +224,10 @@ OVERFLOW_JS = r"""() => { const vw = innerWidth, sw = document.scrollingElement.
   if (sw <= vw + 1) return {issues: []};
   const wide = [...document.querySelectorAll('body *')].filter(e => { const r = e.getBoundingClientRect(); return r.width && r.right > vw + 2; })
     .slice(0, 3).map(e => e.tagName.toLowerCase() + (e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : ''));
-  return {issues: [{rule: '1.4.10', text: vw + ' px par page side mein khisakta hai (' + sw + ' px): ' + wide.join(', ')}]}; }"""
+  return {issues: [{rule: '1.4.10', text: 'At ' + vw + ' px the page scrolls sideways (' + sw + ' px): ' + wide.join(', ')}]}; }"""
 
 IMAGES_JS = r"""() => ({issues: [...document.images].filter(i => i.complete && i.naturalWidth === 0 && i.getAttribute('src'))
-  .slice(0, 5).map(i => ({rule: 'img', text: 'Photo nahi khuli: ' + i.getAttribute('src').slice(-60)}))})"""
+  .slice(0, 5).map(i => ({rule: 'img', text: 'Image did not load: ' + i.getAttribute('src').slice(-60)}))})"""
 
 LINKS_JS = r"""() => [...document.querySelectorAll('a[href]')].map(a => a.href).filter(h => /^https?:/.test(h))"""
 
@@ -289,7 +289,7 @@ class _Case:
             k = m.group(1)
             if k.startswith("account."):
                 if not self.account:
-                    raise Blocked("Test account nahi juda: app mein QA > target > Test account bharo (asli password nahi).")
+                    raise Blocked("No test account added: in the app fill in QA > target > Test account (not a real password).")
                 return self.account.get(k.split(".", 1)[1], "")
             return _rand(k.split(".", 1)[1])
         return re.sub(r"\{(account\.(?:username|password)|rand\.(?:email|phone|name|text))\}", rep, v)
@@ -317,7 +317,7 @@ class _Case:
         try:
             lo.wait_for(state="visible" if visible else "attached", timeout=STEP_TIMEOUT_MS)
         except Exception:
-            raise StepFail(f"Nahi mila: {describe({'do': 'click', 'target': t})[7:]}", "element dikhna chahiye", "page par nahi mila")
+            raise StepFail(f"Not found: {describe({'do': 'click', 'target': t})[7:]}", "the element should be visible", "not found on the page")
         return lo
 
     def snap(self, name: str) -> str:
@@ -347,23 +347,23 @@ class _Case:
             issues = [{"rule": "console", "text": e} for e in errs[:5]]
         elif kind == "headers":
             if self.src.disk:
-                self.warnings.append("Preview mein headers asli nahi hote: live address par jaanchiye.")
+                self.warnings.append("Headers are not real in a preview: check on the live address.")
                 return
             h = {k.lower(): v for k, v in self.src.doc_headers.items()}
             if "strict-transport-security" not in h:
-                issues.append({"rule": "hsts", "text": "Strict-Transport-Security header nahi"})
+                issues.append({"rule": "hsts", "text": "No Strict-Transport-Security header"})
             if "x-content-type-options" not in h:
-                issues.append({"rule": "nosniff", "text": "X-Content-Type-Options: nosniff nahi"})
+                issues.append({"rule": "nosniff", "text": "No X-Content-Type-Options: nosniff"})
             csp = h.get("content-security-policy", "")
             if not csp:
-                self.warnings.append("Content-Security-Policy header nahi")
+                self.warnings.append("No Content-Security-Policy header")
             if "x-frame-options" not in h and "frame-ancestors" not in csp:
-                issues.append({"rule": "frame", "text": "Clickjacking se bachav nahi (X-Frame-Options / frame-ancestors)"})
+                issues.append({"rule": "frame", "text": "No protection against clickjacking (X-Frame-Options / frame-ancestors)"})
             for c in self.ctx.cookies():
                 if not c.get("secure"):
-                    issues.append({"rule": "cookie", "text": f"Cookie '{c['name']}' bina Secure"})
+                    issues.append({"rule": "cookie", "text": f"Cookie '{c['name']}' without Secure"})
             if self.src.mixed:
-                issues.append({"rule": "mixed", "text": f"HTTPS page par http:// cheezein: {self.src.mixed[0]}"})
+                issues.append({"rule": "mixed", "text": f"http:// items on an HTTPS page: {self.src.mixed[0]}"})
         elif kind == "links":
             hrefs = list(dict.fromkeys(h.split("#")[0] for h in page.evaluate(LINKS_JS)))
             own = [h for h in hrefs if self.src.own(urlparse(h).hostname or "")][:20]
@@ -376,13 +376,13 @@ class _Case:
                     except Exception:
                         st = 0
                     if not st or st >= 400:
-                        issues.append({"rule": "link", "text": f"Toota link ({st or 'nahi khula'}): {urlparse(h).path or '/'}"})
+                        issues.append({"rule": "link", "text": f"Broken link ({st or 'did not open'}): {urlparse(h).path or '/'}"})
             finally:
                 p2.close()
         if issues:
             msg = "; ".join(f"[{i['rule']}] {i['text']}" for i in issues[:4])
-            more = f" (+{len(issues) - 4} aur)" if len(issues) > 4 else ""
-            raise StepFail(f"Jaanch '{kind}' fail: {msg}{more}", f"{kind} mein koi dikkat nahi", msg)
+            more = f" (+{len(issues) - 4} more)" if len(issues) > 4 else ""
+            raise StepFail(f"Check '{kind}' failed: {msg}{more}", f"no problem in {kind}", msg)
 
     def step(self, s: dict[str, Any]) -> None:
         op, page = s["do"], self.page
@@ -391,9 +391,9 @@ class _Case:
             if resp is not None:
                 self.src.doc_headers = dict(resp.headers)
                 if resp.status >= 400:
-                    raise StepFail(f"Page {resp.status} de raha hai: {s['path']}", "page khule (200)", f"HTTP {resp.status}")
+                    raise StepFail(f"The page returns {resp.status}: {s['path']}", "the page opens (200)", f"HTTP {resp.status}")
             elif not page.url.startswith(self.src.origin):
-                raise StepFail(f"Page nahi khula: {s['path']}", "page khule", "kuch nahi aaya")
+                raise StepFail(f"The page did not open: {s['path']}", "the page opens", "nothing came back")
             return
         if op == "back":
             page.go_back(wait_until="load", timeout=NAV_TIMEOUT_MS)
@@ -427,21 +427,21 @@ class _Case:
             except Exception:
                 pass
             if op == "expect_text" and not seen:
-                raise StepFail(f"\"{s['text']}\" nahi dikha", f"\"{s['text']}\" dikhe", body or "page khaali")
+                raise StepFail(f"\"{s['text']}\" was not shown", f"\"{s['text']}\" is shown", body or "empty page")
             if op == "expect_no_text" and seen:
-                raise StepFail(f"\"{s['text']}\" dikh raha hai jo nahi dikhna chahiye", f"\"{s['text']}\" na dikhe", "dikh raha hai")
+                raise StepFail(f"\"{s['text']}\" is shown but should not be", f"\"{s['text']}\" is not shown", "it is shown")
             return
         if op == "expect_url":
             deadline = time.time() + STEP_TIMEOUT_MS / 1000
             while s["contains"] not in page.url and time.time() < deadline:
                 page.wait_for_timeout(200)
             if s["contains"] not in page.url:
-                raise StepFail("Galat page", f"address mein '{s['contains']}'", urlparse(page.url).path or "/")
+                raise StepFail("Wrong page", f"'{s['contains']}' in the address", urlparse(page.url).path or "/")
             return
         if op == "expect_title":
             t = page.title()
             if s["contains"].lower() not in t.lower() or (not s["contains"] and not t.strip()):
-                raise StepFail("Page title galat", f"title mein '{s['contains']}'" if s["contains"] else "title ho", t or "(khaali)")
+                raise StepFail("Wrong page title", f"'{s['contains']}' in the title" if s["contains"] else "a title is set", t or "(empty)")
             return
         t = s["target"]
         if op == "expect_hidden":
@@ -449,7 +449,7 @@ class _Case:
             try:
                 lo.wait_for(state="hidden", timeout=STEP_TIMEOUT_MS)
             except Exception:
-                raise StepFail("Cheez chhupi honi chahiye thi", "chhupa ho", "dikh raha hai")
+                raise StepFail("The item should have been hidden", "hidden", "it is shown")
             return
         lo = self.found(t)
         if op == "expect_visible":
@@ -457,22 +457,22 @@ class _Case:
         if op in ("expect_enabled", "expect_disabled"):
             en = lo.is_enabled()
             if (op == "expect_enabled") != en:
-                raise StepFail("Button / khana galat haal mein", "chalu ho" if op == "expect_enabled" else "band ho",
-                               "chalu hai" if en else "band hai")
+                raise StepFail("Button / field in the wrong state", "enabled" if op == "expect_enabled" else "disabled",
+                               "it is enabled" if en else "it is disabled")
             return
         if op in ("expect_invalid", "expect_valid"):
             bad = lo.evaluate("e => (e.checkValidity ? !e.checkValidity() : false) || e.getAttribute('aria-invalid') === 'true'")
             if (op == "expect_invalid") != bad:
-                raise StepFail("Galat input ko sahi maan liya" if op == "expect_invalid" else "Sahi input ko galat maana",
-                               "galat maana jaaye" if op == "expect_invalid" else "sahi maana jaaye", "sahi maana" if not bad else "galat maana")
+                raise StepFail("Wrong input was accepted" if op == "expect_invalid" else "Valid input was rejected",
+                               "marked as invalid" if op == "expect_invalid" else "accepted as valid", "accepted as valid" if not bad else "marked as invalid")
             return
         if op == "click":
             info = lo.evaluate(CLICK_JS)
             from ..operator.guard import DANGER_LINK, PAYMENT
             if PAYMENT.search(info["text"]) or R.pay_host(urlparse(urljoin(page.url, info["href"] or "")).hostname or ""):
-                raise Blocked(f"Payment wala button nahi dabaya: '{info['text'][:40]}' (paise kabhi nahi)")
+                raise Blocked(f"Payment button not pressed: '{info['text'][:40]}' (never money)")
             if not self.src.disk and not self.src.allow_writes and DANGER_LINK.search(info["text"]):
-                raise Blocked(f"Live site par '{info['text'][:40]}' nahi dabaya (delete / cancel / confirm)")
+                raise Blocked(f"'{info['text'][:40]}' not pressed on a live site (delete / cancel / confirm)")
             lo.click(timeout=STEP_TIMEOUT_MS)
             page.wait_for_timeout(250)
             return
@@ -480,12 +480,12 @@ class _Case:
             meta = lo.evaluate(FIELD_JS)
             words = " ".join(str(meta.get(k) or "") for k in ("name", "id", "ac", "ph", "aria", "label"))
             if meta.get("ac", "").startswith("cc-") or R.SECRET_WORDS.search(words) or "one-time-code" in meta.get("ac", ""):
-                raise Blocked("Card / CVV / OTP / UPI PIN ka khana Hoola kabhi nahi bharta.")
+                raise Blocked("Hoola never fills a card / CVV / OTP / UPI PIN field.")
             raw = s["value"]
             if meta.get("type") == "password" and raw != "{account.password}":
-                raise Blocked("Password khane mein sirf test account ka password jaata hai ({account.password}).")
+                raise Blocked("Only the test account's password goes into a password field ({account.password}).")
             if "{account.password}" in raw and meta.get("type") != "password":
-                raise Blocked("Test password sirf password wale khane mein.")
+                raise Blocked("The test password goes only into a password field.")
             val = self.value(raw)
             if op == "fill":
                 lo.fill(val, timeout=STEP_TIMEOUT_MS)
@@ -501,7 +501,7 @@ class _Case:
         if op == "hover":
             lo.hover(timeout=STEP_TIMEOUT_MS)
             return
-        raise StepFail(f"Step '{op}' samajh nahi aaya")
+        raise StepFail(f"Step '{op}' not understood")
 
 
 def _context(browser, src: Source, width: int):
@@ -543,7 +543,7 @@ def run_one(browser, src: Source, c: dict[str, Any], account: dict[str, str] | N
                            "expected": "", "actual": "", "console": [], "shot": "", "url": "", "warnings": [], "notes": []}
     steps = list(c.get("steps") or [])
     if not steps:
-        res.update(status="manual", message="Haath se jaanchna hai (steps chalane layak nahi)")
+        res.update(status="manual", message="To be checked by hand (the steps cannot be run)")
         return res
     inserted = 0
     if steps[0]["do"] != "goto":
@@ -559,7 +559,7 @@ def run_one(browser, src: Source, c: dict[str, Any], account: dict[str, str] | N
     try:
         for i, s in enumerate(steps):
             if time.time() - t0 > CASE_LIMIT_S:
-                raise StepFail("Case bahut der tak chala (90 sec)", "jaldi poora ho", "time khatam")
+                raise StepFail("The case ran too long (90 sec)", "finishes quickly", "time ran out")
             res["step"] = i
             run.step(s)
         res["step"] = -1
@@ -569,7 +569,7 @@ def run_one(browser, src: Source, c: dict[str, Any], account: dict[str, str] | N
         res.update(status="blocked", message=str(e))
     except Exception as e:                      # Playwright error, timeout...
         msg = str(e).split("\n")[0][:200]
-        res.update(status="fail", message=f"Step nahi chala: {msg}", expected=describe(steps[res['step']]) if res["step"] >= 0 else "",
+        res.update(status="fail", message=f"The step did not run: {msg}", expected=describe(steps[res['step']]) if res["step"] >= 0 else "",
                    actual=msg)
     try:
         res["url"] = page.url if page.url.startswith(src.origin) else ""
@@ -617,7 +617,7 @@ def discover(src: Source, max_pages: int = 12) -> dict[str, Any]:
                 try:
                     resp = page.goto(u, wait_until="load", timeout=NAV_TIMEOUT_MS)
                 except Exception as e:
-                    out["notes"].append(f"{urlparse(u).path}: nahi khula ({str(e).splitlines()[0][:80]})")
+                    out["notes"].append(f"{urlparse(u).path}: did not open ({str(e).splitlines()[0][:80]})")
                     continue
                 if resp is not None and resp.status >= 400:
                     out["notes"].append(f"{urlparse(u).path}: HTTP {resp.status}")

@@ -141,7 +141,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def shot(rid: str, name: str, tenant: str = Depends(current_tenant)):
         p = await asyncio.to_thread(S.shot_path, tenant, rid, name)
         if not p:
-            raise HTTPException(404, "screenshot nahi mila")
+            raise HTTPException(404, "screenshot not found")
         return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
     # ---- bugs

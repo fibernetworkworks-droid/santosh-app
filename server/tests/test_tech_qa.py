@@ -175,10 +175,10 @@ def test_discover_cases_run_bugs_retest_regression(qa, monkeypatch):
         {"title": "Shop page ka sneaky test", "type": "functional", "priority": "P3", "steps": [{"do": "eval", "js": "document.cookie"}],
          "steps_text": ["Shop kholo"], "expected": "Shop khule"}]}))
     g = S.generate(T, tid, text="Graahak contact form se message bhej sake. Shop page par products dikhne chahiye.")
-    assert g["added"] >= 15 and any("haath se jaanch" in n for n in g["notes"])
+    assert g["added"] >= 15 and any("check by hand" in n for n in g["notes"])
     cs = S.cases(T, tid)
     titles = [c["title"] for c in cs]
-    assert "Page / khulta hai" in titles and any("'Age' seema se upar (100)" in x for x in titles)
+    assert "Page / opens" in titles and any("'Age' above the limit (100)" in x for x in titles)
     assert any(c["type"] == "accessibility" for c in cs) and any(c["type"] == "security" for c in cs)
     sneaky = next(c for c in cs if c["title"] == "Shop page ka sneaky test")
     assert sneaky["auto"] is False and sneaky["source"] == "model"
@@ -194,10 +194,10 @@ def test_discover_cases_run_bugs_retest_regression(qa, monkeypatch):
     res = {x["case_id"]: x for x in r["run"]["results"]}
     assert res[pay["id"]]["status"] == "blocked" and "Payment" in res[pay["id"]]["message"]
     assert res[pw["id"]]["status"] == "blocked"
-    assert res[out_c["id"]]["status"] == "fail" and any("bahar" in n for n in res[out_c["id"]]["notes"])
+    assert res[out_c["id"]]["status"] == "fail" and any("leave the site" in n for n in res[out_c["id"]]["notes"])
     bs = S.bugs(T, tid)
     texts = " | ".join(b["title"] for b in bs)
-    assert "Toota link" in texts and "1.4.10" in texts and "1.1.1" in texts
+    assert "Broken link" in texts and "1.4.10" in texts and "1.1.1" in texts
     assert all(b["number"].startswith("B-") and b["steps"] and b["expected"] and b["actual"] for b in bs)
     shot_bug = next(b for b in bs if b["shot"])
     rid, name = shot_bug["shot"].split("/")
@@ -209,7 +209,7 @@ def test_discover_cases_run_bugs_retest_regression(qa, monkeypatch):
     r2 = S.run(T, tid, "failed")
     assert not r2["bugs"]["new"] and len(S.bugs(T, tid)) == n_bugs and all(b["seen"] == 2 for b in S.bugs(T, tid) if b["status"] == "open")
     # her developer fixes the site; she marks one fixed; retest -> verified + regression suite
-    link_bug = next(b for b in S.bugs(T, tid) if "Toota link" in b["title"])
+    link_bug = next(b for b in S.bugs(T, tid) if "Broken link" in b["title"])
     S.FAKE.pages = site_pages(broken=False)
     S.set_bug(T, link_bug["number"], "fixed", by="owner")
     rt = S.retest(T, link_bug["number"])
@@ -315,7 +315,7 @@ def test_hoola_site_and_app_from_disk(qa, tmp_path, monkeypatch):
     assert r["run"]["counts"]["fail"] == 0 and r["run"]["counts"]["pass"] >= 3, r["run"]["results"]
     full = S.run(T, t["target"]["id"])
     fails = [x for x in full["run"]["results"] if x["status"] == "fail"]
-    assert not any("Toota link" in x["message"] for x in fails), fails       # every internal link of the built site works
+    assert not any("Broken link" in x["message"] for x in fails), fails       # every internal link of the built site works
     # someone else's site id can't be added
     with pytest.raises(S.QaError):
         S.add_target(T, "site", ref="site_nope")
@@ -323,7 +323,7 @@ def test_hoola_site_and_app_from_disk(qa, tmp_path, monkeypatch):
     a = S.add_target(T, "app", ref=aid)["target"]
     g = S.generate(T, a["id"])
     cs = S.cases(T, a["id"])
-    assert any("tick ke bina aage nahi" in c["title"] for c in cs) and any(c["technique"] == "navigation" for c in cs)
+    assert any("cannot go on without the tick" in c["title"] for c in cs) and any(c["technique"] == "navigation" for c in cs)
     r = S.run(T, a["id"])
     assert r["run"]["counts"]["fail"] == 0, [x for x in r["run"]["results"] if x["status"] != "pass"]
     assert sid
@@ -336,7 +336,7 @@ def test_apk_checklist_marks_and_readiness(qa, tmp_path, monkeypatch):
     tid = out["target"]["id"]
     cs = S.cases(T, tid)
     assert len(cs) >= 15 and all(not c["auto"] for c in cs) and any("pre-launch" in c["title"] for c in cs)
-    with pytest.raises(S.QaError, match="haath"):
+    with pytest.raises(S.QaError, match="by hand"):
         S.run(T, tid)
     assert S.readiness(T, tid)["readiness"]["verdict"] == "not_ready"      # P1 checks not done yet
     bad = next(c for c in cs if "Back" in c["title"])
@@ -357,7 +357,7 @@ def test_github_issue_only_on_her_tap(qa, monkeypatch):
                    expected="Diwali offer dikhe")["case"]
     r = S.run(T, tid, case_ids=[c["id"]])
     b = r["bugs"]["new"][0]
-    with pytest.raises(S.QaError, match="GitHub juda"):
+    with pytest.raises(S.QaError, match="GitHub is not connected"):
         S.github_request(T, b["number"], "newtika/ingle-site")
     from app.bazar.security import vault
     from app.db import session

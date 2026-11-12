@@ -104,7 +104,7 @@ def test_lost_fraud_lock_imei_lines(env):
     lk = P.start(T, "pattern bhool gaya, lock tod do")
     assert lk["case"]["issue"] == "forgot_lock" and all("bypass" not in s["how"].lower() for s in lk["case"]["steps"])
     no = P.start(T, "IMEI change karna hai")
-    assert no["started"] is False and "kanoonan" in no["say"]
+    assert no["started"] is False and "crime" in no["say"]
 
 
 def test_customer_phone_makes_mshop_job(env):
