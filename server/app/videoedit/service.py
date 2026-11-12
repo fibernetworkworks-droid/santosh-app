@@ -190,7 +190,7 @@ def get(tenant: str, job_id: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(VideoJob, job_id)
         if row is None or row.tenant_id != tenant:
-            raise VideoError("Yeh video job nahi mila.")
+            raise VideoError("This video job was not found.")
         return view(row)
 
 
@@ -212,7 +212,7 @@ def _file(tenant: str, file_id: str):
     try:
         return ms._file_row(tenant, str(file_id))
     except Exception:
-        raise VideoError(f"File {file_id} nahi mili (pehle chat mein attach kijiye).")
+        raise VideoError(f"File {file_id} not found (attach it in the chat first).")
 
 
 def start(tenant: str, file_ids: list[str], brief: str, platform: str = "reel", length_s: int | None = None,
@@ -223,7 +223,7 @@ def start(tenant: str, file_ids: list[str], brief: str, platform: str = "reel", 
         raise VideoError(usage.blocked_text(tenant))
     ids = [str(x) for x in (file_ids or []) if str(x).strip()][:MAX_SOURCES]
     if not ids:
-        raise VideoError("Edit ke liye kam se kam ek video (ya photos) chahiye: chat mein attach kijiye.")
+        raise VideoError("An edit needs at least one video (or photos): attach it in the chat.")
     platform = platform if platform in PLATFORMS else "reel"
     pf = PLATFORMS[platform]
     srcs = []
@@ -232,10 +232,10 @@ def start(tenant: str, file_ids: list[str], brief: str, platform: str = "reel", 
         ext = Path(f.name).suffix.lower()
         kind = "video" if ext in VIDEO_EXT else "image" if ext in IMAGE_EXT else ""
         if not kind:
-            raise VideoError(f"{f.name}: sirf video ya photo edit hoti hai.")
+            raise VideoError(f"{f.name}: only a video or a photo can be edited.")
         srcs.append({"file_id": f.id, "name": f.name, "kind": kind, "key": f"src{i}{ext}"})
     if not any(s["kind"] == "video" for s in srcs) and len(srcs) < 2:
-        raise VideoError("Ek photo se video nahi banti: 2 ya zyada photos, ya ek video bhejiye.")
+        raise VideoError("One photo cannot make a video: send 2 or more photos, or one video.")
     opts: dict[str, Any] = {"platform": platform, "captions": bool(captions), "title": (title or "")[:120],
                             "length_s": int(min(max(5, length_s or pf["default"]), pf["max"], max_output_s()))}
     for key, fid, allowed in (("logo", logo_file_id, IMAGE_EXT), ("music", music_file_id, AUDIO_EXT | VIDEO_EXT)):
@@ -243,13 +243,13 @@ def start(tenant: str, file_ids: list[str], brief: str, platform: str = "reel", 
             f = _file(tenant, fid)
             ext = Path(f.name).suffix.lower()
             if ext not in allowed:
-                raise VideoError(f"{f.name}: {key} ke liye sahi file nahi hai.")
+                raise VideoError(f"{f.name}: not the right kind of file for {key}.")
             opts[key] = {"file_id": f.id, "name": f.name, "key": f"{key}{ext}"}
     _cleanup(tenant)
     with session() as s:
         row = VideoJob(tenant_id=tenant, conversation_id=conversation_id or "", brief=(brief or "")[:3000],
                        options=json.dumps(opts, ensure_ascii=False), sources=json.dumps(srcs, ensure_ascii=False),
-                       stage_note="Line mein hai", created_by=created_by)
+                       stage_note="In the queue", created_by=created_by)
         s.add(row)
         s.flush()
         s.expunge(row)
@@ -261,19 +261,19 @@ def start(tenant: str, file_ids: list[str], brief: str, platform: str = "reel", 
 def revise(tenant: str, job_id: str, instruction: str) -> dict[str, Any]:
     instruction = (instruction or "").strip()
     if not instruction:
-        raise VideoError("Kya badalna hai, woh likhiye (jaise: 'title bada karo', 'shuru ke 3 second hatao').")
+        raise VideoError("Write what to change (for example: 'make the title bigger', 'remove the first 3 seconds').")
     with session() as s:
         row = s.get(VideoJob, job_id)
         if row is None or row.tenant_id != tenant:
-            raise VideoError("Yeh video job nahi mila.")
+            raise VideoError("This video job was not found.")
         if row.status in ACTIVE:
-            raise VideoError("Abhi pichhla kaam chal raha hai; khatam hone par badlav bataiye.")
+            raise VideoError("The previous work is still running; tell me the change when it finishes.")
         if not row.timeline:
-            raise VideoError("Is job ka pehla version bana hi nahi; naya job shuru kijiye.")
+            raise VideoError("The first version of this job was never made; start a new job.")
         row.pending = instruction[:1500]
         row.status = "queued"
         row.error = ""
-        row.stage_note = "Badlav line mein"
+        row.stage_note = "Change in the queue"
         row.progress = 0
         row.updated_at = now()
         s.flush()
@@ -287,11 +287,11 @@ def cancel(tenant: str, job_id: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(VideoJob, job_id)
         if row is None or row.tenant_id != tenant:
-            raise VideoError("Yeh video job nahi mila.")
+            raise VideoError("This video job was not found.")
         active = row.status in ACTIVE
     if active:
         _cancel.add(job_id)
-        return view(_set(job_id, "cancelled", "Roka gaya", 0, pending=""))
+        return view(_set(job_id, "cancelled", "Stopped", 0, pending=""))
     return get(tenant, job_id)
 
 
@@ -326,8 +326,8 @@ def _safe_run(job_id: str) -> None:
     except Exception as e:                       # never leave a job "running" forever
         log.exception("video job %s", job_id)
         try:
-            row = _set(job_id, "failed", "Ruk gaya", 0, error=_plain_error(e))
-            _note(row, f"Video edit nahi ho paya: {row.error}")
+            row = _set(job_id, "failed", "Stopped", 0, error=_plain_error(e))
+            _note(row, f"The video could not be edited: {row.error}")
         except Exception:
             pass
 
@@ -337,7 +337,7 @@ def resume_pending() -> int:
     with session() as s:
         ids = [r.id for r in s.scalars(select(VideoJob).where(VideoJob.status.in_(ACTIVE))).all()]
     for i in ids:
-        _set(i, "queued", "Server restart ke baad phir shuru", 0)
+        _set(i, "queued", "Started again after a server restart", 0)
         submit(i)
     return len(ids)
 
@@ -347,9 +347,9 @@ def _plain_error(e: Exception) -> str:
     if isinstance(e, VideoError):
         return str(e)
     if isinstance(e, TimelineError):
-        return "Edit ka plan theek nahi bana: " + "; ".join(e.problems[:4])
+        return "The edit plan did not come out right: " + "; ".join(e.problems[:4])
     if isinstance(e, RenderError):
-        return "Video banate waqt ffmpeg ruk gaya (" + str(e).splitlines()[0][:160] + ")."
+        return "ffmpeg stopped while making the video (" + str(e).splitlines()[0][:160] + ")."
     if isinstance(e, VeditError):
         return str(e)[:300]
     return f"{type(e).__name__}: {str(e)[:200]}"
@@ -415,7 +415,7 @@ def _analyse(row: VideoJob, ws: Path) -> dict[str, Any]:
         if key in done:
             continue
         _check_cancel(row.id)
-        _set(row.id, note=f"Dekh raha hoon: {it['name']} ({n}/{len(srcs)})", progress=5 + 20 * (n - 1) // max(1, len(srcs)))
+        _set(row.id, note=f"Looking at: {it['name']} ({n}/{len(srcs)})", progress=5 + 20 * (n - 1) // max(1, len(srcs)))
         path = str(ws / key)
         info = vedit.probe(path)
         a: dict[str, Any] = {"kind": it["kind"], "duration": round(info.duration, 2), "width": info.width,
@@ -530,7 +530,7 @@ def _rules(row: VideoJob, ws: Path) -> tuple[str, str]:
             f"LOGO: {opts['logo']['key'] if opts.get('logo') else 'none'}   MUSIC: {opts['music']['key'] if opts.get('music') else 'none'}"]
     if opts.get("title"):
         head.append(f"TITLE / NAME TO SHOW: {opts['title']}")
-    head.append("OWNER'S BRIEF (her words): <<<" + (row.brief or "Achhi si video bana do") + ">>>")
+    head.append("OWNER'S BRIEF (her words): <<<" + (row.brief or "Make a good video") + ">>>")
     return system, "\n".join(head)
 
 
@@ -625,7 +625,7 @@ def _ask(row: VideoJob, ws: Path, system: str, prompt: str) -> tuple[dict[str, A
         except _Plan as e:
             problems = e.problems
             log.info("video plan try %s: %s", attempt + 1, problems[:4])
-    raise VideoError("Edit ka plan 3 baar mein bhi theek nahi bana: " + "; ".join(problems[:3]))
+    raise VideoError("The edit plan did not come out right even after 3 tries: " + "; ".join(problems[:3]))
 
 
 def _add_captions(row: VideoJob, ws: Path, tl: dict[str, Any], loaded, analysis: dict[str, Any]) -> dict[str, Any]:
@@ -656,10 +656,10 @@ def _render(row: VideoJob, ws: Path, tl: dict[str, Any], n: int):
 
     def progress(msg: str) -> None:
         state["k"] += 1
-        _set(row.id, note=f"Video ban rahi hai: {msg}", progress=min(85, 45 + state["k"] * 4))
+        _set(row.id, note=f"Making the video: {msg}", progress=min(85, 45 + state["k"] * 4))
     rep = vedit.render(tl, str(out), base_dir=str(ws), cache_dir=str(ws / ".vedit_cache"), progress=progress)
     if not rep.ok:
-        raise VideoError("Video bani par jaanch mein fail hui: " + "; ".join(c for c in rep.checks if c.startswith("FAIL")))
+        raise VideoError("The video was made but failed the check: " + "; ".join(c for c in rep.checks if c.startswith("FAIL")))
     return out, rep
 
 
@@ -745,24 +745,24 @@ def _run(row: VideoJob) -> dict[str, Any]:
     facts = _facts(row, analysis)
     change = row.pending.strip()
     if change and row.timeline:
-        _set(job, "planning", "Badlav kar raha hoon", 35)
+        _set(job, "planning", "Making the change", 35)
         prompt = (head + "\n\nSOURCES\n" + facts + "\n\nCURRENT TIMELINE (change only what the owner asks):\n" + row.timeline +
                   "\n\nOWNER WANTS THIS CHANGE (her words): <<<" + change + ">>>")
     else:
-        _set(job, "planning", "Edit plan bana raha hoon", 30)
+        _set(job, "planning", "Making the edit plan", 30)
         prompt = head + "\n\nSOURCES\n" + facts + "\n\nWrite the best edit for this brief."
     plan, tl, loaded = _ask(row, ws, system, prompt)
     for rnd in range(3):
         _check_cancel(job)
         full = _add_captions(row, ws, tl, loaded, analysis)
-        _set(job, "rendering", "Video ban rahi hai", 45, timeline=tl, plan={k: plan.get(k) for k in
+        _set(job, "rendering", "Making the video", 45, timeline=tl, plan={k: plan.get(k) for k in
              ("title", "post_caption", "hashtags", "thumbnail_time", "notes")})
         out, rep = _render(row, ws, full, n)
-        _set(job, "checking", "Khud dekh ke jaanch raha hoon", 88)
+        _set(job, "checking", "Checking it by watching it myself", 88)
         check = _look(row, ws, out, rep, plan, n)
         if check["ok"] or rnd == 2 or not check.get("fix"):
             break
-        _set(job, "planning", "Galti theek kar raha hoon: " + check["fix"][:120], 40)
+        _set(job, "planning", "Fixing a problem: " + check["fix"][:120], 40)
         fix = (head + "\n\nSOURCES\n" + facts + "\n\nCURRENT TIMELINE:\n" + json.dumps(tl, ensure_ascii=False) +
                "\n\nA SENIOR EDITOR LOOKED AT THE RESULT AND FOUND: " + "; ".join(check["problems"]) +
                "\nFIX: " + check["fix"])
@@ -772,11 +772,11 @@ def _run(row: VideoJob) -> dict[str, Any]:
             break
     v = _deliver(row, ws, out, rep, plan, check, n, change)
     versions.append(v)
-    done = _set(job, "done", "Taiyaar", 100, versions=versions, pending="", error="", timeline=tl,
+    done = _set(job, "done", "Ready", 100, versions=versions, pending="", error="", timeline=tl,
                 plan={k: plan.get(k) for k in ("title", "post_caption", "hashtags", "thumbnail_time", "notes")})
     tags = " ".join(str(h) for h in (plan.get("hashtags") or [])[:8])
     mb = v["size"] / 1024 / 1024
-    _note(done, (f"🎬 Video taiyaar: {plan.get('title') or 'Hoola video'} (v{n}, {v['duration']:.0f} s, {mb:.1f} MB). "
-                 + (str(plan.get("notes") or "")[:400]) + (f"\nPost ke liye: {plan.get('post_caption')}" if plan.get("post_caption") else "")
-                 + (f"\n{tags}" if tags else "") + "\nKuch badalna ho to bataiye."))
+    _note(done, (f"🎬 Video ready: {plan.get('title') or 'Hoola video'} (v{n}, {v['duration']:.0f} s, {mb:.1f} MB). "
+                 + (str(plan.get("notes") or "")[:400]) + (f"\nFor the post: {plan.get('post_caption')}" if plan.get("post_caption") else "")
+                 + (f"\n{tags}" if tags else "") + "\nTell me if you want anything changed."))
     return view(done)

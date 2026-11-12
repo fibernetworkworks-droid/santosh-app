@@ -35,7 +35,7 @@ def test_rules_safety_limits(env):
     assert r["accept"]["payment_request"] == "ask" and r["accept"]["app_file"] == "ask"   # never automatic
     assert r["share"]["phone"] is True and r["quiet"]["from"] == "23:00" and r["quiet"]["to"] == "08:00"
     assert r["vip"] == ["Mummy", "Swati"] and r["language"] == "marathi" and "junk" not in r
-    assert any("paise sirf mere tap se" in line for line in a["rules_summary"])
+    assert any("money only by my tap" in line for line in a["rules_summary"])
 
 
 def test_gendered_and_prompts(env):

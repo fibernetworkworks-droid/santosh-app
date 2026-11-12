@@ -97,7 +97,7 @@ def test_full_edit_then_change(env, brain, tmp_path):
     # a note in the chat for the agent + the owner
     from app.db import Message, session
     with session() as s:
-        notes = [m.display for m in s.query(Message).filter(Message.role == "assistant").all() if m.display and "Video taiyaar" in m.display]
+        notes = [m.display for m in s.query(Message).filter(Message.role == "assistant").all() if m.display and "Video ready" in m.display]
     assert notes and "Kuch badalna ho" in notes[-1]
     # a change in plain words -> v2, clips that didn't change come from the cache
     vs.revise("default", v["id"], "title bada karo")

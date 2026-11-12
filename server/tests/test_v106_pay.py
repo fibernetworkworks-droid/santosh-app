@@ -278,5 +278,5 @@ def test_unaccepted_order_auto_cancels_and_reminders(env):
     from app.avatar import service as av
     so = av.get("kunal")["rules"]["selling"]
     assert so["pay_before"] == "handover" and so["dispute_hours"] == 48
-    assert any(x.startswith("Paisa:") for x in av.get("kunal")["rules_summary"])
+    assert any(x.startswith("Money:") for x in av.get("kunal")["rules_summary"])
     assert av.clean_rules({"selling": {"dispute_hours": 99999, "pay_before": "never"}})["selling"]["dispute_hours"] == 720

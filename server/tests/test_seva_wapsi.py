@@ -84,10 +84,10 @@ def test_rules():
     assert R.refund_calc(p, "damaged", items2[:1], order, same_state=False)["gst"]["igst"] == f["gst"]["tax"]
     assert R.refund_calc(p, "size_fit", items2, order)["add"] == []
     whole = R.refund_calc({**p, "ship_back_on_full": True}, "size_fit", items2, order)
-    assert any("poora order" in a["what"] for a in whole["add"])
+    assert any("whole order" in a["what"] for a in whole["add"])
     # store credit is never forced; COD goes to the customer's own UPI
     m, notes = R.refund_mode({**p, "refund_mode": "store_credit"}, "size_fit", "", "upi")
-    assert m == "original" and "zabardasti" in notes[0]
+    assert m == "original" and "cannot be forced" in notes[0]
     assert R.refund_mode(p, "size_fit", "store_credit", "upi")[0] == "store_credit"
     assert R.refund_mode(p, "damaged", "", "cod")[0] == "upi"
     sig = R.signals([{"days_ago": 10, "reason": "size_fit"}, {"days_ago": 30, "reason": "changed_mind"}, {"days_ago": 50, "reason": "quality"}],
@@ -99,7 +99,7 @@ def test_rules():
 def test_full_flow_her_tap_only(wp):
     S = wp
     pol = setup(S)
-    assert "Wapas nahi" in " ".join(pol["understood"]) and pol["policy"]["window_days"]["clothes"] == 10
+    assert "Not returnable" in " ".join(pol["understood"]) and pol["policy"]["window_days"]["clothes"] == 10
     r = S.new_return(T, order_ref="ORD-551", customer={"name": "Sneha Patil", "phone": "+91 98765 43210", "address": "12 MG Rd",
                                                        "city": "Pune", "pincode": "411001"},
                      items=[{"name": "Blue cotton kurti", "qty": 1, "price": 1000, "gst_pct": 5, "hsn": "6204"}],
@@ -117,7 +117,7 @@ def test_full_flow_her_tap_only(wp):
     assert v["look"]["damage_seen"] is True and v["check"]["verdict"] == "approve"
     assert v["photos"][0]["taken_on"] == "2026-10-20" and any(s["kind"] == "old_photo" for s in v["signals"])
     d = S.decide(T, "R-0001", "approve")
-    assert d["return"]["status"] == "pickup_manual" and "Courier API nahi juda" in d["say"] and "manzoor" in d["message"]["text"]
+    assert d["return"]["status"] == "pickup_manual" and "No courier API is connected" in d["say"] and "approved" in d["message"]["text"]
     assert d["message"]["whatsapp"].startswith("https://wa.me/919876543210")
     S.set_awb(T, "R-0001", "SR12345678", "Delhivery")
     assert S.received(T, "R-0001")["qc_list"][0]["key"] == "same_item"
@@ -320,6 +320,6 @@ def test_morning_tick(wp, monkeypatch):
         st.morning_time = "09:00"
     out = S.tick(datetime(2026, 10, 23, 4, 0, tzinfo=timezone.utc))        # 9:30 IST
     assert out["mornings"] == 1
-    assert "naye return" in S.day(T)["say"]
+    assert "new returns" in S.day(T)["say"]
     assert S.tick(datetime(2026, 10, 23, 4, 30, tzinfo=timezone.utc))["mornings"] == 0
     assert "WAPSI" in S.prompt_block(T)

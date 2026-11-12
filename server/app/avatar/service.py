@@ -19,14 +19,14 @@ DEFAULT_NAME = "Santosh"
 APP_NAME = "Hoola"
 
 MALE_VOICES = {
-    "Puck": "Josh bhara, upbeat", "Achird": "Dostana, friendly", "Sadachbia": "Zinda-dil, lively",
-    "Umbriel": "Aaram se, easy-going", "Zubenelgenubi": "Casual", "Charon": "Samajhdar, informative",
-    "Iapetus": "Saaf, clear", "Algieba": "Smooth", "Orus": "Pakka, firm", "Fenrir": "Excited",
+    "Puck": "Upbeat", "Achird": "Friendly", "Sadachbia": "Lively",
+    "Umbriel": "Easy-going", "Zubenelgenubi": "Casual", "Charon": "Informative",
+    "Iapetus": "Clear", "Algieba": "Smooth", "Orus": "Firm", "Fenrir": "Excited",
 }
 FEMALE_VOICES = {
-    "Kore": "Pakki, confident", "Aoede": "Halki-phulki, breezy", "Leda": "Jawan, youthful", "Zephyr": "Chamakdar, bright",
-    "Sulafat": "Garam-joshi, warm", "Callirrhoe": "Aaram se, easy-going", "Despina": "Smooth", "Erinome": "Saaf, clear",
-    "Laomedeia": "Josh bhari, upbeat", "Vindemiatrix": "Narm, gentle", "Achernar": "Komal, soft", "Gacrux": "Samajhdar, mature",
+    "Kore": "Confident", "Aoede": "Breezy", "Leda": "Youthful", "Zephyr": "Bright",
+    "Sulafat": "Warm", "Callirrhoe": "Easy-going", "Despina": "Smooth", "Erinome": "Clear",
+    "Laomedeia": "Upbeat", "Vindemiatrix": "Gentle", "Achernar": "Soft", "Gacrux": "Mature",
 }
 DEFAULT_VOICE = {"m": "Puck", "f": "Kore"}
 
@@ -129,15 +129,15 @@ def _norm(s: str) -> str:
 def check_name(name: str) -> str:
     n = _norm(name)
     if not 2 <= len(n) <= 20:
-        raise AvatarError("Naam 2 se 20 akshar ka rakhiye.")
+        raise AvatarError("Keep the name between 2 and 20 letters.")
     if not all(ch.isalpha() or ch in " .'-" or unicodedata.category(ch) in ("Mn", "Mc") for ch in n):
-        raise AvatarError("Naam mein sirf akshar rakhiye (koi bhi bhasha), number ya chinh nahi.")
+        raise AvatarError("Use only letters in the name (any language), no numbers or symbols.")
     low = n.lower()
     words = set(re.split(r"[\s.'-]+", low))
     if low in _RESERVED or words & _RESERVED or any(r in low for r in _RESERVED if " " in r):
-        raise AvatarError("Yeh naam kisi bank, sarkari ya official jagah jaisa hai; koi doosra naam rakhiye.")
+        raise AvatarError("This name looks like a bank, a government body or an official place; choose another name.")
     if words & _BAD or any(b in low.replace(" ", "") for b in _BAD):
-        raise AvatarError("Koi achha sa naam rakhiye.")
+        raise AvatarError("Please choose a nice name.")
     return n
 
 
@@ -286,62 +286,62 @@ def clean_rules(r: dict[str, Any] | None) -> dict[str, Any]:
 
 def rules_summary(r: dict[str, Any], name: str = DEFAULT_NAME) -> list[str]:
     """The rules read back in plain English, for the owner to confirm."""
-    knock = {"anyone": "Koi bhi Hoola request bhej sakta hai", "id_or_qr": "Sirf jinke paas aapka Hoola ID ya QR hai",
-             "verified": "Sirf verified log", "nobody": "Abhi koi nahi (sab band)"}[r["knock"]]
-    words = {"auto": "seedha le lo", "ask": "pehle mujhse poochho", "never": "mana"}
-    label = {"message": "Message", "voice_note": "Voice note", "file": "File", "app_file": "APK / EXE (App Jaanch ke baad)",
+    knock = {"anyone": "Anyone can send a Hoola request", "id_or_qr": "Only people who have your Hoola ID or QR",
+             "verified": "Only verified people", "nobody": "Nobody for now (all off)"}[r["knock"]]
+    words = {"auto": "accept directly", "ask": "ask me first", "never": "refuse"}
+    label = {"message": "Message", "voice_note": "Voice note", "file": "File", "app_file": "APK / EXE (after the App Check)",
              "email": "Email", "link": "Website link", "presentation": "Presentation", "meeting": "Meeting request",
              "payment_request": "Payment request", "contact_card": "Contact card", "location": "Location"}
     share = [k for k, v in r["share"].items() if v]
-    sl = {"free_busy": "free/busy", "office_hours": "office ka samay", "business_info": "business ki jaankari",
+    sl = {"free_busy": "free/busy", "office_hours": "office hours", "business_info": "business information",
           "price_list": "price list", "phone": "phone number", "email_address": "email ID", "address": "pata"}
-    alone = {"fix_meetings": "khaali samay mein meeting fix karna", "answer_faq": "business ke aam sawaalon ka jawab",
-             "accept_files_from_vip": "VIP se file lena"}
-    lines = [f"Kaun request bhej sakta hai: {knock}."]
+    alone = {"fix_meetings": "fixing meetings in free time", "answer_faq": "answering common questions about the business",
+             "accept_files_from_vip": "taking files from VIPs"}
+    lines = [f"Who can send a request: {knock}."]
     if r["vip"]:
-        lines.append("VIP (hamesha pahunchenge): " + ", ".join(r["vip"]) + ".")
+        lines.append("VIPs (always get through): " + ", ".join(r["vip"]) + ".")
     if r["blocked_topics"]:
-        lines.append("Seedha mana: " + ", ".join(r["blocked_topics"]) + ".")
+        lines.append("Refuse outright: " + ", ".join(r["blocked_topics"]) + ".")
     lines += [f"{label[k]}: {words[r['accept'][k]]}." for k in ACCEPT_KINDS]
-    lines.append(f"{name} doosron ko bata sakta hai: " + (", ".join(sl[k] for k in share) if share else "kuch nahi") + ".")
+    lines.append(f"{name} can tell others: " + (", ".join(sl[k] for k in share) if share else "nothing") + ".")
     a = [alone[k] for k, v in r["decide_alone"].items() if v]
-    lines.append(f"{name} khud kar sakta hai: " + (", ".join(a) if a else "kuch nahi, sab mujhse poochhe") + ".")
+    lines.append(f"{name} can do alone: " + (", ".join(a) if a else "nothing, ask me about everything") + ".")
     q = r["quiet"]
     if q["on"]:
-        lines.append(f"Shaant samay {q['from']} se {q['to']}" + (" (VIP tab bhi pahunch sakte hain)." if q["vip_can_ring"] else "."))
-    lines.append(f"Mujhe {r['language'].capitalize()} mein batana.")
+        lines.append(f"Quiet hours {q['from']} to {q['to']}" + (" (VIPs can still get through)." if q["vip_can_ring"] else "."))
+    lines.append(f"Tell me in {r['language'].capitalize()}.")
     lr = r["learning"]
-    lines.append(("Mere kaam se seekhna: haan. " if lr["learn_from_my_work"] else "Mere kaam se seekhna: nahi. ") +
-                 {"never": "Seekhi baatein kabhi share nahi.", "ask": "Seekhi baatein share karne se pehle poochhna.",
-                  "groups": "Seekhi baatein (bina personal jaankari) mere groups mein share kar sakte ho."}[lr["share_lessons"]])
+    lines.append(("Learn from my work: yes. " if lr["learn_from_my_work"] else "Learn from my work: no. ") +
+                 {"never": "Never share what was learned.", "ask": "Ask before sharing what was learned.",
+                  "groups": "What was learned (without personal details) may be shared in my groups."}[lr["share_lessons"]])
     so = r.get("selling") or DEFAULT_RULES["selling"]
-    q = {"off": "har quote mujhse poochh kar", "trusted": f"bharose walon ko poore stock wala quote ₹{so['auto_quote_max']:,} tak khud",
-         "connected": f"sab jude logon ko poore stock wala quote ₹{so['auto_quote_max']:,} tak khud"}[so["auto_quote"]]
-    a = (f"stock ho to ₹{so['auto_accept_max']:,} tak ka order khud pakka (" +
-         ("sirf bharosemand graahak" if so.get("auto_accept_who", "trusted") == "trusted" else "sab jude graahak") + ")"
-         if so["auto_accept"] else "har order mere tap se pakka")
-    cat = {"off": "kisi ko nahi", "connected": "jude logon ko", "public": "sab ko"}[so["catalog"]]
-    lines.append(f"Bechna: {q}; {a}; daam ki list {cat}" + (" (stock ke saath)" if so["show_stock"] else "") +
-                 (f"; bharose wale: {', '.join(so['trusted'])}" if so["trusted"] else "") + ".")
+    q = {"off": "ask me for every quote", "trusted": f"to trusted people, a quote with everything in stock up to ₹{so['auto_quote_max']:,} alone",
+         "connected": f"to all connected people, a quote with everything in stock up to ₹{so['auto_quote_max']:,} alone"}[so["auto_quote"]]
+    a = (f"if in stock, confirm an order up to ₹{so['auto_accept_max']:,} alone (" +
+         ("only trusted customers" if so.get("auto_accept_who", "trusted") == "trusted" else "all connected customers") + ")"
+         if so["auto_accept"] else "every order is confirmed by my tap")
+    cat = {"off": "nobody", "connected": "connected people", "public": "everyone"}[so["catalog"]]
+    lines.append(f"Selling: {q}; {a}; price list for {cat}" + (" (with stock)" if so["show_stock"] else "") +
+                 (f"; trusted: {', '.join(so['trusted'])}" if so["trusted"] else "") + ".")
     so = DEFAULT_RULES["selling"] | so
-    lines.append("Paisa: " + ("saamaan dene se pehle (paid / khata / counter par)" if so["pay_before"] == "handover" else
-                              "saamaan dene se pehle zaroori nahi") +
-                 ("; counter par cash / UPI chalega" if so["counter_ok"] else "") +
-                 ("; chune hue graahakon ko khata (udhaar)" if so["khata"] else "; khata nahi") +
-                 f"; pakka hone ke {so['cancel_minutes']} minute tak free cancel; shikayat {so['dispute_hours']} ghante tak.")
+    lines.append("Money: " + ("before handing over the goods (paid / ledger / at the counter)" if so["pay_before"] == "handover" else
+                              "not required before handing over the goods") +
+                 ("; cash / UPI at the counter is fine" if so["counter_ok"] else "") +
+                 ("; ledger (credit) for chosen customers" if so["khata"] else "; no ledger") +
+                 f"; free cancel up to {so['cancel_minutes']} minutes after confirmation; complaints up to {so['dispute_hours']} hours.")
     do = DEFAULT_RULES["dosti"] | (r.get("dosti") or {})
     if do["on"]:
-        who = {"trusted": "sirf bharosemand dost", "connected": "sab jude log",
-               "chosen": "chune hue: " + (", ".join(do["chosen"]) or "abhi koi nahi")}[do["who"]]
-        lines.append(f"Dosti (khuli baat): {name} {who} ke avatar se khud kaam ki baat karega" +
-                     ("; apna kaam ka anubhav batayega" if do["share_work"] else "") +
-                     ("; skills share karega" if do["share_skills"] else "") +
-                     ("; skill video khud bhejega" if do["share_videos"] == "auto" else "; skill video mere tap se") +
-                     f"; din mein ek dost ko {do['daily_max']} jawab tak. Document / file hamesha mujhse poochh kar; "
-                     "dost ki skill mere haan se hi seekhega; personal baat kabhi nahi.")
+        who = {"trusted": "only trusted friends", "connected": "all connected people",
+               "chosen": "chosen: " + (", ".join(do["chosen"]) or "nobody yet")}[do["who"]]
+        lines.append(f"Friends (open talk): {name} talks about work alone with the avatars of {who}" +
+                     ("; shares its own work experience" if do["share_work"] else "") +
+                     ("; shares skills" if do["share_skills"] else "") +
+                     ("; sends skill videos alone" if do["share_videos"] == "auto" else "; skill videos by my tap") +
+                     f"; up to {do['daily_max']} replies a day to one friend. Documents / files always after asking me; "
+                     "learns a friend's skill only with my yes; never personal matters.")
     else:
-        lines.append(f"Dosti (khuli baat): band. {name} har message mujhse poochh kar.")
-    lines.append("Hamesha: paise sirf mere tap se, PIN / OTP / password kabhi kisi ko nahi.")
+        lines.append(f"Friends (open talk): off. {name} asks me about every message.")
+    lines.append("Always: money only by my tap, PIN / OTP / password never to anyone.")
     return lines
 
 
@@ -350,7 +350,7 @@ async def parse_rules(text: str, current: dict[str, Any] | None = None) -> dict[
     Returns a proposal; nothing is saved until the owner confirms."""
     text = (text or "").strip()[:3000]
     if not text:
-        raise AvatarError("Niyam likhiye ya boliye.")
+        raise AvatarError("Write or say the rules.")
     base = clean_rules(current)
     system = ("You convert a person's instructions for their AI avatar into a JSON settings object. Output ONLY JSON with "
               "the same keys and allowed values as the current settings. Change only what the instructions mention. "
@@ -375,7 +375,7 @@ async def parse_rules(text: str, current: dict[str, Any] | None = None) -> dict[
     except ValueError:
         proposal = {}
     if not isinstance(proposal, dict) or not proposal:
-        raise AvatarError("Niyam samajh nahi aaye; thoda aur saaf likhiye.")
+        raise AvatarError("Could not understand the rules; write them a little more clearly.")
     return clean_rules(proposal)
 
 
@@ -414,7 +414,7 @@ def save(tenant: str, name: str | None = None, gender: str | None = None, voice:
             a.name = check_name(name)
         if gender is not None:
             if gender not in ("m", "f"):
-                raise AvatarError("gender: m ya f")
+                raise AvatarError("gender: m or f")
             if gender != a.gender:
                 a.voice = ""
                 a.look = None                                  # a look belongs to one gender
@@ -422,11 +422,11 @@ def save(tenant: str, name: str | None = None, gender: str | None = None, voice:
         if voice is not None:
             pool = FEMALE_VOICES if a.gender == "f" else MALE_VOICES
             if voice and voice not in pool:
-                raise AvatarError("Yeh awaaz is avatar ke liye nahi hai.")
+                raise AvatarError("This voice is not for this avatar.")
             a.voice = voice
         if look is not None:
             if look and look not in look_ids(a.gender):
-                raise AvatarError("Yeh roop is avatar ke liye nahi hai.")
+                raise AvatarError("This look is not for this avatar.")
             a.look = look or None
         if rules is not None:
             a.rules = clean_rules(rules)

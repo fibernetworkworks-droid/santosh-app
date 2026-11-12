@@ -48,7 +48,7 @@ def test_mere_niyam_selling_rules_and_catalogue(env):
     rules = av.get("kunal")["rules"]["selling"]
     assert rules["auto_quote"] == "trusted" and rules["auto_quote_max"] == 40000 and rules["trusted"] == ["meghana"] or \
         rules["trusted"] == ["Meghana"]
-    assert r["place"] == "Counter 3" and any("Bechna" in x for x in av.get("kunal")["rules_summary"])
+    assert r["place"] == "Counter 3" and any("Selling" in x for x in av.get("kunal")["rules_summary"])
     # Mere Niyam keeps its fixed limits whatever is sent
     assert av.clean_rules({"selling": {"auto_quote": "everyone", "auto_quote_max": 10 ** 12}})["selling"]["auto_quote"] == "off"
     assert av.clean_rules({"selling": {"auto_quote_max": 10 ** 12}})["selling"]["auto_quote_max"] == av.SELL_MAX
