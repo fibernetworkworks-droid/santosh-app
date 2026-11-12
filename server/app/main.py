@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.863.0"   # v0.863.0 PC SAATH (fix 4 of the one-by-one PC clean-up; frozen-PC exception recorded): her own PC keeps her order work for 45 min after a task ends (Hoola's own PC / server browser refused, pc_do allowed), open_url reuses the tab where the site is already open (no second Swiggy tab), no 10 s page_text after every open, page_text / wait_for say they are slow on big sites
+APP_VERSION = "0.864.0"   # v0.864.0 PC MANAGER (owner: "put the manager back on Sonnet with its PC rules"; frozen-PC exception recorded): a chat / call turn about her PC (her PC named, a PC job running or just run, the pc tools admitted) runs on pc_manager_model Sonnet past SAB HAIKU and the GLM door, with the PC manager rules in its system prompt and the pc tools in view; every other turn unchanged
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

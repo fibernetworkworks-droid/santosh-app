@@ -107,7 +107,7 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
         where.working(conv) in ("pc", "hoolapc")
     if not named and name == "pc_do" and _her_pc_lately(ctx):
         t0 = str((args or {}).get("task") or "")
-        named = bool(where._WEBBY.search(t0) or _ORDERISH.search(t0))   # v0.863 her order follow-up, her PC
+        named = bool((where._WEBBY.search(t0) or _ORDERISH.search(t0)) and not where._DATA.search(t0))   # v0.863
     if adm is not None and "pc" not in adm.families and not named:
         STATS["pc_not_in_view"] += 1
         raise ToolError(f"{name} was not offered for this ask: she named no PC and the job needs no desktop software. "
@@ -121,7 +121,8 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
         hoola_pc = place == "hoolapc" or where._asked(conv, "hoolapc")
         if not her_pc and not hoola_pc:
             her_pc, hoola_pc = where.working(conv) == "pc", where.working(conv) == "hoolapc"
-        if name == "hoola_pc_do" and place != "hoolapc" and not where._asked(conv, "hoolapc") and _her_pc_lately(ctx):
+        if name == "hoola_pc_do" and place != "hoolapc" and not where._asked(conv, "hoolapc") and _her_pc_lately(ctx) \
+                and (where._WEBBY.search(task) or _ORDERISH.search(task)):
             STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1     # v0.863 PC SAATH: not after her task ENDED either
             raise ToolError("Her own PC did her work minutes ago (this order / site job lives there: her login, her "
                             "cart, her open tab). Use pc_do with her words. Hoola's own PC only when she names it in "

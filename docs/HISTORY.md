@@ -3136,3 +3136,33 @@ NO CONSISTANCY, NO MEMORY ... VERY DELAYED REPLY"). Three root causes, each fixe
 Tests: `test_v0863_pc_saath.py` (6); `test_v0185_pc_browser.py` (no digest) and `test_v0861_pc_steer_once.py` (a site not
 already open) updated. NOT VERIFIED on her PC. Not done yet: the 64-step task that scrolled the Swiggy home page instead of
 searching (stage 0/0 = no plan for it), and a payment option that is unavailable still ends the task instead of asking her.
+
+
+## v0.864.0 PC MANAGER (the root cause of "no single PC task is smooth")
+
+Owner, 12 Nov: "NO SINGLE TASK IS SMOOTHLY PERFORMED IN PC ... 20 DAYS AGO EVERYTHING WAS ABSOLUTELY PERFECT ... FIND
+ROOT CAUSE", then "put the manager back on Sonnet with its PC rules".
+
+ROOT CAUSE (measured on the code, not guessed): `server/app/pc/operator.py` was byte-identical from 5 Nov to 10 Nov
+(1,754 lines) and `agent/pc_tools.py` from 30 Oct to 10 Nov, so the PC code did not cause the drop. Two things around
+it did:
+1. v0.631 SAB HAIKU (6 Nov): `claude_one_model` = Haiku rewrites EVERY Claude call at the SDK door. The PC loop had no
+   bypass until v0.851 (12 Nov), so from 6 Nov the screen reader / clicker was Haiku (or GLM-Flash through the GLM door
+   when it was on). The chat turn that RUNS the PC job is still Haiku.
+2. v0.732 parity Phase 2/3 (~9-10 Nov): a chat turn gets the small fixed prompt - ONE line about PCs ("her PC only when
+   she asks") instead of the ~40 lines of PC rules in prompts.py - and ~22 core tools, pc_do not among them.
+Her logs match a weak manager without rules: one order split into 3 PC tasks, steering every 15-20 s ("Step 3...",
+"Report the screen"), the job forgotten on a follow-up, the KFC order sent to Hoola's own PC. On 12 Nov the PC code
+then grew 108 KB -> 187 KB in one day (v0.836-v0.863: planner, checker, native toolset, Qwen default, steering,
+ask_user, team) with nothing walked on a real PC, which added waits and failure points on top.
+
+FIX: NEW `agent/pc_manager.py`: `wanted()` (her place pc / a PC job running or just run in this chat / the pc family
+admitted / her PC used in the last 45 min and her words about a site, an order or the computer; never when she named
+Hoola's PC, her phone or the server) and `RULES` (places never mix, ONE job = ONE pc_do task with the whole goal and the
+stop point, her new words into the running task once and never a check / re-push, a blocker = tell her the reason and
+ask, continue from the open tab / cart, money = her tap, say where it runs). `santosh` turn setup marks `pc_turn`,
+admits the pc family and appends RULES to the system prompt (small and full); `_turn_model` runs that turn on
+`pc_manager_model` (Sonnet) with usage.ONE_MODEL_BYPASS + glmdoor.CLAUDE_ONLY set around its model calls only (reset
+after, never leaking into tools). Every other turn keeps Haiku + the small prompt. Switch `pc_manager`; counter
+`santosh.PC_MANAGER`. Tests `test_v0864_pc_manager.py` (5). NOT VERIFIED on her PC; the 12 Nov PC layers (planner,
+checker) are still on - turning them off is the next step she decides.

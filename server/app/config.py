@@ -424,6 +424,8 @@ class Settings(BaseSettings):
     browser_llm: str = "auto"               # auto (Claude when its key is set, else OmniRoute/GLM) | claude | omniroute | glm
     browser_max_steps: int = 40
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
+    pc_manager: bool = True                 # v0.864 PC MANAGER: a chat / call turn about her PC runs on pc_manager_model with the PC rules
+    pc_manager_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for that turn
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     pc_team_max: int = 4                    # v0.836 DESKTOP TEAM: at most this many PCs work for one person at the same time (one agent per PC)
     # v0.851 PC BRAIN (owner: "QWEN 3.8 AND SONET 5.5 --- WILL START WITH QWEN"): the model that sees the screen in the PC loop

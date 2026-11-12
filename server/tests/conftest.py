@@ -50,6 +50,11 @@ def _full_voice_menu(monkeypatch):
     """v0.627 production declares the small call menu; the older suites (with or without `env`) pin the full one.
     test_v0627_chhota_menu switches the small one on for itself."""
     from app.config import get_settings
+    try:    # v0.863 'her PC worked lately' is per process: one test's PC task must not steer the next test's pick
+        from app.pc import operator as _pcop
+        _pcop.HER_PC_AT.clear()
+    except Exception:
+        pass
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
     monkeypatch.setenv("SITE_FULL_LOOKS", "false")    # v0.649 older site suites pin page-top looks; test_v0649 checks the whole site
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
