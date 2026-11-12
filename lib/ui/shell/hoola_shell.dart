@@ -15,13 +15,12 @@ import '../../state.dart';
 import '../bazar_screen.dart';
 import '../calls_sheet.dart';
 import '../chat/hoola_chat.dart';
-import '../employees_screen.dart';
 import '../glass.dart';
 import '../hoola_theme.dart';
 import '../talk/hoola_talk.dart';
+import 'hoola_settings.dart';
 import 'hoola_tabs.dart';
 import '../memory_page_screen.dart';
-import '../profile_screen.dart';
 import '../today_screen.dart';
 import '../voice_screen.dart';
 
@@ -97,7 +96,7 @@ class _HoolaShellState extends State<HoolaShell> {
                 _go(0);
                 await app.openChat(id);
               },
-              onTeam: () => _openOld(EmployeesScreen(app: app)),
+              onTeam: () => hoolaOpenNew(context, app, HoolaTeam(app: app)),
               onToday: () => _openOld(TodayScreen(app: app, onTab: (i) {
                 Navigator.of(context).maybePop();
                 _go(i == 1 ? 0 : i == 3 ? 2 : 1);
@@ -128,7 +127,8 @@ class _HoolaShellState extends State<HoolaShell> {
               },
               onSettings: () {
                 Navigator.of(context).maybePop();
-                _openOld(ProfileScreen(app: app, onReset: widget.onReset));
+                // v0.867 R7 Settings in the new design (every old Main row has a home there or in Your AI team)
+                hoolaOpenNew(context, app, HoolaSettings(app: app, onReset: widget.onReset));
               },
             ),
             body: SafeArea(

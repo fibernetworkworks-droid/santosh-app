@@ -15,6 +15,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:santosh/call_session.dart';
 import 'package:santosh/state.dart';
+import 'package:santosh/ui/hoola_theme.dart';
+import 'package:santosh/ui/shell/hoola_settings.dart';
 import 'package:santosh/ui/shell/hoola_tabs.dart';
 import 'package:santosh/main.dart';
 import 'package:santosh/ui/employees_screen.dart';
@@ -275,6 +277,11 @@ void main() {
     testWidgets('40 new work ($mode)', (t) => _shot(t, '40_new_work_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Work')));
     testWidgets('41 new connect ($mode)', (t) => _shot(t, '41_new_connect_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Connect')));
     testWidgets('42 new made ($mode)', (t) => _shot(t, '42_new_made_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Made')));
+    // v0.867 R7 Settings and Your AI team
+    testWidgets('43 new settings ($mode)', (t) => _shot(t, '43_new_settings_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: prefs));
+    testWidgets('44 new team ($mode)', (t) => _shot(t, '44_new_team_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaTeam(app: a)), prefs: prefs));
     testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, writing: true)));
   }

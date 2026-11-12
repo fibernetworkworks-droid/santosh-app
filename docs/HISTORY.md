@@ -3240,3 +3240,31 @@ The new shell's three other tabs are now in the new design. All three live in ON
 - the logos (the pictures show the letter fallback);
 - the share-out of a song or script;
 - picture loading with the key header.
+
+
+## v0.867.0 R7 SETTINGS + YOUR AI TEAM (owner: "GO R7"; docs/HOOLA_APP_REDESIGN_PLAN.md R7)
+
+The old Main / Profile page (1,676 lines, 129 rows) is split in two, both in the new design.
+
+**Settings** (`lib/ui/shell/hoola_settings.dart`, `HoolaSettings`) opens from the drawer's avatar. It starts with a header card (her avatar's face, name, account email) and then six groups:
+- **You and Hoola:** Your AI team, your name / city / morning briefing (`_ProfileEditor`, same `saveProfile` body as before), the avatar's look (LookPickerScreen), My rules, Hoola Network.
+- **Memory:** About me, What Hoola remembers (`_FactsScreen`: pinned and remembered, tap = pin, delete asks first), Learned tasks, What Hoola has learned.
+- **Look and voice:** new design switch, Appearance (Auto / Light / Dark), Language (sheet), answer by voice, the call voice (sheet, only when realtime voices exist), call voice engine, Voice ID, How you speak, Call quality.
+- **Phone and notifications:** work in the background, plus the battery / keep-alive / alarms / calendar fix rows only when needed; "Hey Santosh"; Hoola on the phone; Talk from outside; Hoola Screen.
+- **Privacy and safety:** ID Locker, fingerprint approval.
+- **Account:** AI spend (this month's rupees), each Google account (Remove asks first), Connect your systems, WhatsApp sending mode, Log out (asks first).
+
+**Your AI team** (`HoolaTeam`) is one searchable list. Its entries (`hoola_team_list.dart`) were GENERATED from the old page's own rows by parsing each ListTile (icon, title without the avatar-name prefix, line, and the screen it opens). That gives 83 desks + 26 tools in 12 groups: Hire and manage, Business and sales, Finance and accounts, Customer service, Software and IT, Logistics and travel, Property and construction, Legal and compliance, Education and research, Hospitality and events, Media and creative, Tools and apps. Search matches every word of the ask against title + line + group (`teamSections`, pure and tested).
+
+Desks and old pages open in their old frame (`hoolaOpenOld`) until R8. New screens open through `hoolaOpenNew`.
+
+**Shell changes:** the drawer avatar opens Settings (was the old ProfileScreen), and Work > Your AI team opens HoolaTeam.
+
+**Tests:** `test/hoola_settings_test.dart` (3):
+- every screen the old Main page opened (>100) is in Settings or the team list, exactly once;
+- every inline setting it held (22 call names: saveProfile, briefing, language, voice, look, background, battery / alarms / calendar, keep-alive, wake word on / off, Google disconnect, pin / forget, sign out, WhatsApp mode, new design, appearance, rules) is in Settings;
+- team search keeps group order and matches every word.
+
+Golden pictures 43 / 44 (settings / team, light + dark). The design ratchet is unchanged.
+
+**NOT VERIFIED on a real phone:** the wake-word switch and background status (Native calls), the look picker round trip, Google account removal. The ~100 desks keep their old look until R8; some titles are still Hinglish (R8 English pass).
