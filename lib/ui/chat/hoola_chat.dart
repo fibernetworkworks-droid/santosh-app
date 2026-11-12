@@ -26,6 +26,7 @@ import '../glass.dart' show santoshTheme;
 import '../hoola_theme.dart';
 import '../md_text.dart' show mdPlain;
 import '../shell/hoola_shell.dart' show HoolaComposer;
+import 'hoola_card.dart';
 import 'hoola_md.dart';
 
 class HoolaChat extends StatefulWidget {
@@ -265,6 +266,8 @@ class _HoolaChatState extends State<HoolaChat> {
           child: Text('${it.data['text'] ?? ''}', textAlign: TextAlign.center, style: HoolaType.small(c)),
         );
       default:
+        final mine = hoolaCardFor(context, app, it);   // v0.864 R4 the cards redrawn so far
+        if (mine != null) return mine;
         final card = feedCard(context, app, it);
         if (card == null) return const SizedBox.shrink();
         return _OldCard(child: card);

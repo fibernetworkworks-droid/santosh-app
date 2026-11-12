@@ -3143,3 +3143,28 @@ The server half of R3. Old phones ignore every new field.
 - `server/tests/test_v0863_r3s.py` (9).
 
 NOT done here: Work (R6) and the chat card read the record when those screens are rebuilt. NOT VERIFIED live.
+
+## v0.864.0 R4 THE CARDS (owner: "GO R4" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+- `lib/ui/chat/hoola_card.dart` (new look only, the chat's default branch asks it first):
+  - `HoolaCard` = the one shell: label line (desk + when), tile, title, status (dot + plain words: Needs your yes /
+    Working / Done / Did not work / quiet), body, buttons docked at the bottom on a hairline; surface + line + radius 18;
+    a card waiting for her gets the stronger edge. Parts: `HCFact` (label left, value on the right edge), `HCAmount`
+    (the amount as the hero line), `HCNote` (safety band), `hcMain` (filled pill) / `hcQuiet` (text button).
+  - `HCApproval` (kind `bazar`, the confirm card): payee, items, amount, PIN / demo / voice notes; Not now = reject;
+    Yes = for a card that moves no money her tap is the yes (`decideBazar` approve - the card IS the confirm card);
+    for money it opens the existing approval sheet (deliberate slide, fingerprint when the phone has a key) - the
+    server's 428 still guards it. After the answer: the result message and the open button (UPI / link).
+  - `HCFile` (pc_file: made PDF / from her PC, Open, Share link), `HCPage` (artifact: building bar / ready + version /
+    not made with the reason, Open), `HCAny` (the v0.555 default card's reading of a payload, new drawing).
+  - Every other kind keeps its old card in the dark frame (desk cards move in R8).
+- Approval notifications (`server/app/push.py` `quick_yes`): a pending `bazar_approval` whose payload says
+  money False, with no amount / payment method / PIN / demo / tier 3, gets `yes_card` in the FCM data; anything unsure
+  gets nothing. Phone: `SantoshPush` passes it to `Notify.message`, which adds "Not now" / "Yes, do it" actions
+  (`setAuthenticationRequired` on Android 12+ = the phone must be unlocked) -> NEW `CardActionReceiver` (broadcast,
+  goAsync) POSTs the same `/api/bazar/approvals/{id}` route with her key; the notification then says Done / Not done,
+  or "Open Hoola to approve this with your fingerprint" on a 428, or "Could not answer from here" on anything else.
+  Manifest gains the receiver (exported false).
+- Tests: `server/tests/test_v0864_r4_cards.py` (3); CI pictures 36_new_cards / 37_new_made light + dark.
+
+NOT VERIFIED: the notification buttons on a real phone (Kotlin compiles on CI only); no phone has tapped one yet.

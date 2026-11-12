@@ -103,6 +103,33 @@ void _richChat(Santosh app, {bool working = false, bool writing = false}) {
   }
 }
 
+/// v0.864 R4: the redrawn cards in a chat - an approval waiting for her yes, a payment, a made file, a page, a
+/// default card.
+void _cardsChat(Santosh app) {
+  final at = DateTime(2026, 11, 12, 15, 10).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Send the Diwali offer to my 40 regular customers', 'at': at}));
+  app.feed.add(FeedItem('bazar', {
+    'id': 'ap1', 'status': 'pending', 'money': false, 'title': 'Send the Diwali offer on WhatsApp',
+    'payee': '40 regular customers', 'voice_ok': true,
+  }));
+  app.feed.add(FeedItem('bazar', {
+    'id': 'ap2', 'status': 'pending', 'money': true, 'title': 'Pay Shree Traders for October', 'payee': 'Shree Traders',
+    'amount': '₹ 8,640', 'pay_method': 'UPI · HDFC', 'needs_pin': true,
+    'items': [{'name': 'Bill 4512', 'price': '₹ 8,640'}],
+  }));
+}
+
+void _madeChat(Santosh app) {
+  final at = DateTime(2026, 11, 12, 15, 10).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Make the October GST summary and an offer page', 'at': at}));
+  app.feed.add(FeedItem('pc_file', {'source': 'bazar', 'name': 'October_GST_summary.pdf', 'size': 248000, 'doc_id': 'd1'}));
+  app.feed.add(FeedItem('artifact', {'id': 'a1', 'status': 'ready', 'title': 'Diwali offer page', 'version': 2,
+    'summary': 'One page with the offer, the prices and a WhatsApp button'}));
+  final any = FeedItem('any_card', {'_kind': 'courier_parcel', 'title': 'Parcel to Pune', 'status': 'running', 'say': 'Picked up, on the way',
+    'awb': 'DL778812', 'step': 2, 'total': 4});
+  app.feed.add(any);
+}
+
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
     {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900)}) async {
   final app = await _app(prefs: prefs);
@@ -176,6 +203,8 @@ void main() {
     testWidgets('33 new chat ($mode)', (t) => _shot(t, '33_new_chat_$mode', home, prefs: prefs, prep: _richChat));
     testWidgets('34 new chat working ($mode)', (t) => _shot(t, '34_new_chat_working_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, working: true)));
+    testWidgets('36 new cards ($mode)', (t) => _shot(t, '36_new_cards_$mode', home, prefs: prefs, prep: _cardsChat));
+    testWidgets('37 new made cards ($mode)', (t) => _shot(t, '37_new_made_$mode', home, prefs: prefs, prep: _madeChat));
     testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, writing: true)));
   }

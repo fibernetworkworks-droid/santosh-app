@@ -574,6 +574,23 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
     return None
 
 
+def quick_yes(p: dict[str, Any]) -> bool:
+    """v0.864 R4 may this confirm card be answered from the notification? Only a pending card that SAYS it moves no
+    money (money is explicitly False), with no amount, no payment method, no PIN, not a demo and not tier 3. Anything
+    unsure = no buttons (she opens the app). The tap itself goes through the same route, which checks again."""
+    if not isinstance(p, dict) or not p.get("id"):
+        return False
+    if p.get("status") not in (None, "", "pending") or p.get("result"):
+        return False
+    if p.get("money") is not False:
+        return False
+    if str(p.get("amount") or "").strip() or str(p.get("pay_method") or "").strip():
+        return False
+    if p.get("needs_pin") or p.get("demo") or (p.get("tier") or 0) >= 3:
+        return False
+    return True
+
+
 def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, Any] | None:
     kind, p = ev["kind"], ev.get("payload") or {}
     data: dict[str, str] = {"kind": kind, "event_id": str(ev.get("id", "")), "at": str(ev.get("at", ""))}
@@ -592,6 +609,8 @@ def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, An
         if shown is None:
             return None
         data["title"], data["body"] = shown[0][:80], shown[1][:900]
+    if kind == "bazar_approval" and quick_yes(p):
+        data["yes_card"] = str(p["id"])   # v0.864 R4 Yes / Not now on the notification (never for money)
     if kind == "message" and p.get("role") == "assistant" and ev.get("conv") and token != "x":
         try:   # v0.863 R3s the notification carries the same turn result the chat list shows
             from .turnresult import brief

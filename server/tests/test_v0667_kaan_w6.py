@@ -376,4 +376,4 @@ def test_no_new_tables():
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.863.0"
+    assert APP_VERSION == "0.864.0"
