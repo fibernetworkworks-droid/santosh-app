@@ -16,15 +16,15 @@ STORY_KINDS = ("news", "feature", "explainer", "interview", "opinion", "video", 
 STATUSES = ("pitch", "reporting", "draft", "factcheck", "ready", "waiting", "published", "killed")
 SOURCE_KINDS = ("official", "eyewitness", "expert", "document", "insider", "whistleblower", "victim", "accused", "other")
 TERMS = ("on_record", "background", "deep_background", "off_record", "anonymous")
-TERMS_LABEL = {"on_record": "On record (naam ke saath)", "background": "Background (naam nahi, pad / jagah bata sakte)",
-               "deep_background": "Deep background (sirf jaankari, koi pehchaan nahi)",
-               "off_record": "Off record (chhapna nahi)", "anonymous": "Anonymous (naam kabhi nahi)"}
+TERMS_LABEL = {"on_record": "On record (with name)", "background": "Background (no name; post / place may be given)",
+               "deep_background": "Deep background (information only, no identity)",
+               "off_record": "Off record (not for publication)", "anonymous": "Anonymous (name never)"}
 CLAIM_KINDS = ("number", "quote", "allegation", "date", "name", "stat", "other")
 CLAIM_STATUS = ("unchecked", "supported", "attributed", "contradicted", "unclear", "cut")
 CORR_KINDS = ("correction", "clarification", "update", "retraction", "apology")
 CARD_KINDS = ("publish", "reply", "pitch", "correction", "grievance")
-CARD_TITLE = {"publish": "Story chhapna / daalna", "reply": "Jawab ka mauka (right of reply)", "pitch": "Story pitch",
-              "correction": "Sudhaar chhapna", "grievance": "Shikayat ka jawab"}
+CARD_TITLE = {"publish": "Publish / post the story", "reply": "Right of reply", "pitch": "Story pitch",
+              "correction": "Publish a correction", "grievance": "Reply to a complaint"}
 DEST = ("copy", "wordpress")
 IST = timezone(timedelta(hours=5, minutes=30))
 GRIEVANCE_DAYS = 15          # IT Rules 2021, publisher's grievance officer decides within 15 days
@@ -37,8 +37,8 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 4000) -> str:
     """Her / outside words: OTP / PIN / password values and card / Aadhaar-like numbers are never kept."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 
@@ -194,44 +194,44 @@ STING = r"\b(sting|hidden camera|chhupa camera|secret(ly)? record\w*|sting opera
 INNOCENT_WORDS = r"\b(aaropi|accused|allegedly|kathit|आरोपी|कथित)\b"
 
 NOTE = {
-    "victim_name": "BNS s.72: yaun apradh (s.64-71) ke peedit ka naam / pehchaan chhapna 2 saal tak ki saza. POCSO s.23 / JJ Act s.74: "
-                   "bachche ki pehchaan bilkul nahi.",
-    "victim_cues": "Yaun apradh ki khabar mein rishta / school / gaon / mohalla / photo se peedit pehchana ja sakta hai (BNS s.72 'any "
-                   "matter which may make known the identity'). Inhe hatayiye ya bahut aam kijiye.",
-    "minor_cues": "Bachche (18 se kam) se judi apradh ki khabar: POCSO s.23 / JJ Act 2015 s.74 - naam, ghar, school, photo, rishtedaar, "
-                  "kuch bhi jisse pehchaan ho, nahi.",
-    "court_sexual": "BNS s.73: aise case ki adalati kaarvayi court ki ijazat ke bina chhapna mana (HC / SC ka faisla chhod kar).",
-    "source_identity": "Story mein ek gupt source (background / anonymous / off record) ki pehchaan dikh rahi hai. Aapne vaada kiya tha.",
-    "off_record": "Off-record baat chhapne ke liye nahi thi (PCI norms: off-record ka samman).",
-    "quote_unknown": "Yeh quote kisi interview transcript, source note ya padhe hue page mein nahi mila. Hoola koi quote nahi gadhta.",
-    "allegation_unbacked": "Kisi par aarop (BNS s.356 maanhani): na 'aarop / police ke mutabik' jaisa attribution, na fact-sheet mein saboot. "
-                           "Satya + janhit, ya saaf attribution + doosre paksh ka jawab chahiye.",
-    "no_reply": "Aarop wali story: jis par aarop hai use jawab ka mauka (right of reply) dena PCI norms ki zaroorat hai. "
-                "Jawab ka card banayiye ya likhiye 'jawab nahi mila'.",
-    "presumed_guilt": "Sazaa se pehle 'hatyara / doshi / chor' jaise shabd = media trial (PCI norms). 'Aaropi' likhiye.",
-    "contempt": "Adalat / jaj par aisa likhna jo nyay prakriya ko prabhavit kare ya adalat ko badnaam kare: Contempt of Courts Act "
-                "1971 s.2(c). Kaarvayi ki sahi, nishpaksh report (s.4) theek hai; nateeje ka anumaan nahi.",
-    "sub_judice": "Case adalat mein chal raha hai: sirf jo court mein hua uski sahi report; doshi / nirdosh ka faisla khud mat sunayiye.",
-    "caste_religion": "Apradh / jhagde ki khabar mein jaati / dharm tabhi likhiye jab khabar ke liye zaroori ho (PCI norms).",
-    "hate": "Nafrat bhadkane wale shabd (BNS s.196 / s.353 jaisi dharayein, PCI norms). Hataiye.",
-    "suicide": "Aatmhatya ki khabar (PCI 2019, WHO aadhaar): tareeka, jagah ka vivaran, note ki baatein, sensational headline nahi; "
-               "madad ka number dijiye: Tele-MANAS 14416 / 1-800-891-4416.",
-    "suicide_method": "Aatmhatya ka tareeka likha hai: hataiye (PCI suicide-reporting guidelines).",
-    "election_silence": "Matdan khatam hone se 48 ghante pehle se election ki baat chhapna / dikhana mana (RP Act 1951 s.126; ECI ne digital "
-                        "/ social media par bhi lagu kiya).",
-    "exit_poll": "Exit / opinion poll ka nateeja RP Act s.126A ki band avadhi mein (pehle charan ke matdan shuru se aakhri charan khatam "
-                 "hone ke aadhe ghante baad tak) mana.",
-    "viral_unverified": "'Viral / forward / sutron ke mutabik' wali baat: pehle khud check kijiye, warna 'pushti nahi hui' likhiye.",
-    "ai_media": "AI se bana / badla photo-video: saaf label 'AI se bana' chahiye (IT Rules amendment 2026, G.S.R. 120(E)).",
-    "paid": "Paise lekar chhapi cheez par 'Sponsored / Vigyapan' label (PCI paid-news guidelines). Label ke bina nahi.",
-    "sting": "Sting / chhupa camera: PCI norms - sirf jab janhit ho aur koi aur raasta na ho; editor ki likhit manzoori rakhiye.",
-    "blanks": "Kuch [ ] khaali jagah bachi hai.",
-    "embargo": "Embargo abhi khatam nahi hua.",
-    "unchecked": "Fact sheet mein kuch daave abhi jaanche nahi gaye.",
-    "contradicted": "Fact sheet mein ek daava galat nikla, phir bhi copy mein hai.",
-    "headline_long": "Headline lambi hai (80 akshar se zyada).",
-    "avoid_word": "Aapki style sheet ka mana shabd.",
-    "no_byline": "Byline / dateline nahi hai.",
+    "victim_name": "BNS s.72: publishing the name / identity of a sexual-offence victim (s.64-71) is punishable with up to 2 years. POCSO s.23 / JJ Act s.74: "
+                   "a child's identity never.",
+    "victim_cues": "In a sexual-offence report, a relation / school / village / locality / photo can identify the victim (BNS s.72 'any "
+                   "matter which may make known the identity'). Remove these or make them very general.",
+    "minor_cues": "A crime report involving a child (under 18): POCSO s.23 / JJ Act 2015 s.74 - no name, home, school, photo, relative, "
+                  "or anything else that identifies the child.",
+    "court_sexual": "BNS s.73: court proceedings of such a case may not be published without the court's permission (except an HC / SC judgment).",
+    "source_identity": "The story shows the identity of a confidential source (background / anonymous / off record). You made a promise.",
+    "off_record": "Off-record material was not for publication (PCI norms: respect off-record).",
+    "quote_unknown": "This quote was not found in any interview transcript, source note or page that was read. Hoola never makes up a quote.",
+    "allegation_unbacked": "An allegation against someone (BNS s.356 defamation): no attribution such as 'alleged / according to the police', and no evidence in the fact sheet. "
+                           "It needs truth + public interest, or clear attribution + the other side's reply.",
+    "no_reply": "A story with an allegation: PCI norms require giving the accused party a right of reply. "
+                "Make the right-of-reply card or write 'no reply received'.",
+    "presumed_guilt": "Words like 'murderer / guilty / thief' before a conviction = media trial (PCI norms). Write 'the accused'.",
+    "contempt": "Writing about a court / judge in a way that prejudices the course of justice or scandalises the court: Contempt of Courts Act "
+                "1971 s.2(c). A fair and accurate report of proceedings (s.4) is fine; guessing the outcome is not.",
+    "sub_judice": "The case is before a court: report accurately only what happened in court; do not pronounce guilt / innocence yourself.",
+    "caste_religion": "In a report of a crime / clash, mention caste / religion only when the story needs it (PCI norms).",
+    "hate": "Words that incite hatred (sections such as BNS s.196 / s.353, PCI norms). Remove them.",
+    "suicide": "A suicide report (PCI 2019, based on WHO): no method, no details of the place, no contents of the note, no sensational headline; "
+               "give a helpline number: Tele-MANAS 14416 / 1-800-891-4416.",
+    "suicide_method": "The method of suicide is described: remove it (PCI suicide-reporting guidelines).",
+    "election_silence": "Publishing / showing election matter is barred from 48 hours before polling ends (RP Act 1951 s.126; the ECI applies it to digital "
+                        "/ social media too).",
+    "exit_poll": "Exit / opinion poll results are barred during the RP Act s.126A period (from the start of polling in the first phase until "
+                 "half an hour after the last phase ends).",
+    "viral_unverified": "A 'viral / forwarded / sources say' claim: check it yourself first, or write 'not verified'.",
+    "ai_media": "AI-generated / altered photo or video: a clear 'AI-generated' label is needed (IT Rules amendment 2026, G.S.R. 120(E)).",
+    "paid": "Paid content carries a 'Sponsored / Advertisement' label (PCI paid-news guidelines). Not without the label.",
+    "sting": "Sting / hidden camera: PCI norms - only in the public interest and when there is no other way; keep the editor's written approval.",
+    "blanks": "Some [ ] blanks are still left.",
+    "embargo": "The embargo is not over yet.",
+    "unchecked": "Some claims in the fact sheet have not been checked yet.",
+    "contradicted": "A claim in the fact sheet turned out wrong but is still in the copy.",
+    "headline_long": "The headline is long (over 80 characters).",
+    "avoid_word": "A word your style sheet bans.",
+    "no_byline": "No byline / dateline.",
 }
 
 
@@ -255,7 +255,7 @@ def check_copy(*, headline: str, body: str, kind: str = "news", protect: list[st
     for n in protect or []:
         n = (n or "").strip()
         if len(n) >= 3 and re.search(r"(?<![\wऀ-ॿ])" + re.escape(n.lower()) + r"(?![\wऀ-ॿ])", low):
-            add(block, "victim_name", "Bachaye jaane wala naam copy mein hai")
+            add(block, "victim_name", "A protected name is in the copy")
     if sexual:
         cues = sorted({m.group(0) for m in re.finditer(ID_CUES, low, re.I)})
         if cues:
@@ -304,7 +304,7 @@ def check_copy(*, headline: str, body: str, kind: str = "news", protect: list[st
         if re.search(SUICIDE_METHOD, low, re.I):
             add(warn, "suicide_method")
         if re.search(SUICIDE, (headline or "").lower(), re.I):
-            add(warn, "suicide", "headline mein")
+            add(warn, "suicide", "in the headline")
     if re.search(VIRAL, low, re.I):
         add(warn, "viral_unverified")
     if ai_media or re.search(AI_MEDIA, low, re.I):
@@ -330,7 +330,7 @@ def check_copy(*, headline: str, body: str, kind: str = "news", protect: list[st
             add(warn, "contradicted", c.get("text", "")[:120])
     unchecked = [c for c in cl if c.get("status") in ("unchecked", "unclear")]
     if unchecked:
-        add(warn, "unchecked", f"{len(unchecked)} daave")
+        add(warn, "unchecked", f"{len(unchecked)} claims")
     if len(headline or "") > 80:
         add(warn, "headline_long")
     for w in avoid or []:
@@ -348,8 +348,8 @@ def check_copy(*, headline: str, body: str, kind: str = "news", protect: list[st
         return out
     block, warn = uniq(block), uniq(warn)
     return {"block": block, "warn": warn, "ok": not block,
-            "say": ("Chhapne layak (chetavniyan dekh lijiye)." if not block and warn else
-                    "Koi laal jhanda nahi." if not block else f"{len(block)} cheez theek kiye bina nahi chhapega.")}
+            "say": ("Fit to publish (look at the warnings)." if not block and warn else
+                    "No red flags." if not block else f"{len(block)} things must be fixed before it can be published.")}
 
 
 # ---------------------------------------------------------------- election silence (RP Act s.126 / s.126A)
@@ -392,9 +392,9 @@ def election_state(e: dict, at: datetime) -> dict:
     nxt = [en - timedelta(hours=48) for _, en in phases if en - timedelta(hours=48) > at]
     say = []
     if silence:
-        say.append(f"{e.get('area') or 'Is ilaake'} mein chunav ki 48 ghante ki khamoshi chal rahi hai")
+        say.append(f"The 48-hour election silence period is on in {e.get('area') or 'this area'}")
     if ban:
-        say.append("exit poll band avadhi")
+        say.append("exit poll ban period")
     return {"silence": silence, "exit_poll_ban": ban, "next_silence": nxt[0].isoformat(" ", "minutes") if nxt else "",
             "say": "; ".join(say)}
 
@@ -416,20 +416,20 @@ def style_fix(text: str, rules: list[dict]) -> tuple[str, list[str]]:
 
 def reply_letter(*, outlet: str, reporter: str, party: str, allegations: list[str], questions: list[str], deadline: str,
                  contact: str) -> str:
-    al = "\n".join(f"{i}. {a}" for i, a in enumerate(allegations, 1)) or "1. [aarop likhiye]"
-    qs = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1)) or "1. Is par aapka paksh kya hai?"
-    return (f"Namaskar {party or '[naam]'} ji,\n\nMain {reporter or '[reporter]'}, {outlet or '[sansthan]'} se. Hum ek khabar par kaam kar "
-            f"rahe hain jismein aapke baare mein ye baatein aayi hain:\n{al}\n\nNishpaksh reporting ke liye hum aapka paksh bhi "
-            f"chhapna chahte hain. Kripya in sawalon ka jawab {deadline or '[tareekh]'} tak dein:\n{qs}\n\nAapka jawab (ya jawab na "
-            f"aana) khabar mein saaf likha jayega. Sampark: {contact or '[sampark]'}.\n\nDhanyavaad")
+    al = "\n".join(f"{i}. {a}" for i, a in enumerate(allegations, 1)) or "1. [write the allegation]"
+    qs = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1)) or "1. What is your response to this?"
+    return (f"Dear {party or '[name]'},\n\nI am {reporter or '[reporter]'} from {outlet or '[outlet]'}. We are working on a report "
+            f"in which the following has come up about you:\n{al}\n\nTo report fairly, we want to publish your side as well. "
+            f"Please answer these questions by {deadline or '[date]'}:\n{qs}\n\nYour reply (or the absence of one) "
+            f"will be stated clearly in the report. Contact: {contact or '[contact]'}.\n\nThank you")
 
 
 def correction_line(kind: str, wrong: str, right: str, when: date) -> str:
-    lab = {"correction": "Sudhaar", "clarification": "Spashtikaran", "update": "Update", "retraction": "Khabar wapas",
-           "apology": "Khed"}.get(kind, "Sudhaar")
+    lab = {"correction": "Correction", "clarification": "Clarification", "update": "Update", "retraction": "Retraction",
+           "apology": "Apology"}.get(kind, "Correction")
     d = when.strftime("%d-%m-%Y")
     if kind == "retraction":
-        return f"{lab} ({d}): Is khabar ko wapas liya gaya hai. Wajah: {right or wrong}"
+        return f"{lab} ({d}): This report has been withdrawn. Reason: {right or wrong}"
     if kind == "update":
         return f"{lab} ({d}): {right}"
-    return f"{lab} ({d}): Pehle likha tha \"{wrong}\". Sahi hai: {right}."
+    return f"{lab} ({d}): An earlier version said \"{wrong}\". The correct fact is: {right}."

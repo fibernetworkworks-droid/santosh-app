@@ -103,7 +103,7 @@ def cr(env, monkeypatch, tmp_path):
 def test_rules():
     from app.courier import rules as R
     w = R.weights(0.8, {"l": 40, "b": 30, "h": 20})
-    assert w["volumetric_kg"] == 4.8 and w["chargeable_kg"] == 5.0 and w["by"] == "volumetric" and any("Dabba bada" in n for n in w["notes"])
+    assert w["volumetric_kg"] == 4.8 and w["chargeable_kg"] == 5.0 and w["by"] == "volumetric" and any("The box is big" in n for n in w["notes"])
     assert R.weights(1.2, {"l": 10, "b": 10, "h": 10})["chargeable_kg"] == 1.5 and R.slab(0.5) == 0.5
     assert R.state_of("Undelivered - Customer not available") == "exception" and R.state_of("Delivered") == "delivered"
     assert R.state_of("Out For Delivery") == "out_for_delivery" and R.state_of("RTO Initiated") == "rto"
@@ -119,7 +119,7 @@ def test_rules():
     assert R.choose(opts, r, cod=True, kg=1)["best"]["courier"] == "Delhivery Surface"           # her COD rule
     assert R.choose(opts, {"prefer": "fastest"}, cod=False, kg=1)["best"]["courier"] == "Delhivery Surface"
     assert R.choose([{"courier": "X", "rate": None}], {}, False, 1)["best"]["rate"] is None      # never invented
-    assert R.goods_check("2 power bank aur patakhe")["prohibited"] == ["aag pakadne wali cheez"]
+    assert R.goods_check("2 power bank aur patakhe")["prohibited"] == ["flammable items"]
     assert R.goods_check("power bank 10000mAh")["restricted"]
     assert R.mask_phone("9876543210") == "98XXXXXX10" and R.pincode_ok("411001") and not R.pincode_ok("011001")
     h = R.remit_header(["Order ID", "AWB No", "COD Amount", "UTR", "Remittance Date"])
@@ -167,7 +167,7 @@ def test_parcel_quote_card_and_her_tap(cr):
     assert t["parcel"]["status"] == "in_transit" and t["parcel"]["raw"] == "Reached at destination hub" and t["parcel"]["edd"] == "2026-10-27"
     fake.track_status = "Kuch alag sa shabd"
     t = S.track(T, "P-0001")
-    assert t["parcel"]["status"] == "in_transit" and "jo courier ne likha" in t["say"]
+    assert t["parcel"]["status"] == "in_transit" and "what the courier wrote" in t["say"]
     fake.track_status = "Undelivered - Consignee not available"
     t = S.track(T, "P-0001")
     assert t["parcel"]["status"] == "exception" and t["parcel"]["ndr"]["reason"] == "not_available"
@@ -245,7 +245,7 @@ def test_customer_cod_manifest_and_return(cr, monkeypatch):
     fake.track_status = "Undelivered - address incomplete"
     S.track(T, p1["number"])
     fx = asyncio.run(COURIER_BIZ_HANDLERS["biz_parcel_fix"](cust, address="12 MG Road, near Camp temple", note="landmark diya"))
-    assert "dukaan" in fx["say"]
+    assert "shop" in fx["say"]
     assert S.cards(T)[0]["kind"] == "ndr" and S.cards(T)[0]["body"]["by"] == "customer"           # her card, nothing sent
     assert not any("/ndr/" in c[2] for c in fake.calls)
     # delivered COD -> remittance sheet
@@ -265,7 +265,7 @@ def test_customer_cod_manifest_and_return(cr, monkeypatch):
     d = S.decide(T, r["card"]["id"], True, r["card"]["hash"], by_tap=True)
     assert d["parcel"]["awb"] == "RV998877" and any(c[2].endswith("/orders/create/return") for c in fake.calls)
     # DPDP: forget a finished parcel
-    assert "mita" in S.forget(T, p1["number"])["say"] and S.parcel_view(T, p1["number"])["customer"]["phone"] == ""
+    assert "deleted" in S.forget(T, p1["number"])["say"] and S.parcel_view(T, p1["number"])["customer"]["phone"] == ""
 
 
 def test_wapsi_return_label(cr, monkeypatch):

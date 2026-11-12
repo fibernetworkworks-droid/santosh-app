@@ -38,11 +38,11 @@ _LOCK = threading.Lock()
 CATS = ("revenue", "other_income_direct", "other_income", "purchases", "direct_exp", "indirect_exp", "opening_stock", "closing_stock",
         "depreciation", "interest", "debtors", "cash", "bank", "other_ca", "fixed_assets", "investments", "creditors", "duties",
         "provisions", "other_cl", "bank_od", "secured_loans", "unsecured_loans", "capital", "reserves", "suspense")
-CAT_LABEL = {"revenue": "Bikri (sales)", "purchases": "Kharid", "direct_exp": "Seedhe kharche", "indirect_exp": "Office / chalane ke kharche",
-             "depreciation": "Depreciation", "interest": "Byaaj", "other_income": "Doosri kamai", "debtors": "Lene hain (debtors)",
-             "creditors": "Dene hain (creditors)", "closing_stock": "Stock", "cash": "Cash", "bank": "Bank", "bank_od": "OD / CC",
+CAT_LABEL = {"revenue": "Sales", "purchases": "Purchases", "direct_exp": "Direct expenses", "indirect_exp": "Office / running expenses",
+             "depreciation": "Depreciation", "interest": "Interest", "other_income": "Other income", "debtors": "Receivables (debtors)",
+             "creditors": "Payables (creditors)", "closing_stock": "Stock", "cash": "Cash", "bank": "Bank", "bank_od": "OD / CC",
              "secured_loans": "Loan (secured)", "unsecured_loans": "Loan (unsecured)", "capital": "Capital", "reserves": "Reserves",
-             "fixed_assets": "Fixed assets", "duties": "Tax dene hain", "other_ca": "Advance / deposit", "provisions": "Provisions"}
+             "fixed_assets": "Fixed assets", "duties": "Taxes payable", "other_ca": "Advance / deposit", "provisions": "Provisions"}
 
 
 class FinError(Exception):
@@ -255,7 +255,7 @@ def _rows(name: str, data: bytes) -> list[list]:
         try:
             wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         except Exception as e:
-            raise FinError(f"Excel nahi khula: {e}")
+            raise FinError(f"The Excel file did not open: {e}")
         return [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)][:50000]
     text = data.decode("utf-8-sig", errors="replace")
     try:
@@ -274,7 +274,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
     try:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
     except Exception as e:
-        raise FinError(f"File {file_id} nahi mili: {e}")
+        raise FinError(f"File {file_id} not found: {e}")
     return name, data
 
 
@@ -319,7 +319,7 @@ def parse_books(name: str, data: bytes, learned: dict[str, str] | None = None) -
                     hi = i + 1
             break
     if hi is None or "name" not in cols:
-        raise FinError("Trial balance / P&L ki table nahi mili ('Particulars' aur 'Debit / Credit' ya 'Closing Balance' column chahiye).")
+        raise FinError("No trial balance / P&L table found (it needs a 'Particulars' column and 'Debit / Credit' or 'Closing Balance').")
     out = []
     learned = learned or {}
     context = ""
@@ -373,7 +373,7 @@ def parse_books(name: str, data: bytes, learned: dict[str, str] | None = None) -
                 cat = words
         out.append({"name": nm, "group": grp or (context if not is_group else ""), "is_group": is_group, "dr": dr, "cr": cr, "category": cat})
     if not out:
-        raise FinError("File mein koi rakam nahi mili.")
+        raise FinError("No amounts found in the file.")
     return out
 
 
@@ -421,10 +421,10 @@ def import_books(tenant: str, label: str, start: str, end: str, file_id: str = "
     if file_id:
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise FinError("Tally ka trial balance / P&L file chahiye.")
+        raise FinError("A Tally trial balance / P&L file is needed.")
     sd, ed = _date(start), _date(end)
     if not sd or not ed or ed < sd:
-        raise FinError("Kis samay ka hai? start aur end date chahiye (jaise 2026-04-01 se 2026-09-30).")
+        raise FinError("Which period is it for? A start and end date are needed (like 2026-04-01 to 2026-09-30).")
     with _LOCK, session() as s:
         lines = parse_books(name, data, _ledger_rules(s, tenant))
         use = _pick(lines)
@@ -437,7 +437,7 @@ def import_books(tenant: str, label: str, start: str, end: str, file_id: str = "
     out = analyse(tenant, sid, publish=True)
     if unknown:
         out["unknown"] = unknown[:30]
-        out["say"] += f" {len(unknown)} ledger samajh nahi aaye ({', '.join(unknown[:5])}): bataiye kis head mein jaayein."
+        out["say"] += f" {len(unknown)} ledgers could not be placed ({', '.join(unknown[:5])}): tell me which head they go under."
     return out
 
 
@@ -445,10 +445,10 @@ def set_figures(tenant: str, label: str, start: str, end: str, figures: dict) ->
     """Figures read from a P&L / balance sheet photo or PDF (category -> amount)."""
     sd, ed = _date(start), _date(end)
     if not sd or not ed:
-        raise FinError("start / end date chahiye.")
+        raise FinError("A start / end date is needed.")
     b = {k: abs(R.clean_amount(v)) for k, v in (figures or {}).items() if k in CATS}
     if not b:
-        raise FinError("Figures chahiye, jaise {revenue, purchases, indirect_exp, debtors, creditors, bank, capital...}")
+        raise FinError("Figures are needed, like {revenue, purchases, indirect_exp, debtors, creditors, bank, capital...}")
     with session() as s:
         snap = FinSnapshot(tenant_id=tenant, label=(label or sd.isoformat())[:40], start=sd.isoformat(), end=ed.isoformat(),
                            balances=json.dumps(b), source="manual")
@@ -472,7 +472,7 @@ def map_ledger(tenant: str, ledger: str, category: str, snapshot: str = "") -> d
                         x["category"] = category
                 sn.ledgers = json.dumps(led, ensure_ascii=False)
                 sn.balances = json.dumps(_balances(led))
-    return {"say": f"'{ledger}' ab hamesha {CAT_LABEL.get(category, category)} mein jayega."}
+    return {"say": f"'{ledger}' will now always go under {CAT_LABEL.get(category, category)}."}
 
 
 def _snap(s, tenant: str, ref: str = "") -> FinSnapshot:
@@ -484,11 +484,11 @@ def _snap(s, tenant: str, ref: str = "") -> FinSnapshot:
                       .order_by(FinSnapshot.created_at.desc())).first()
         if r:
             return r
-        raise FinError(f"'{ref}' ka hisaab nahi mila.")
+        raise FinError(f"No accounts found for '{ref}'.")
     r = s.scalars(select(FinSnapshot).where(FinSnapshot.tenant_id == tenant).order_by(FinSnapshot.end.desc(),
                                                                                        FinSnapshot.created_at.desc())).first()
     if not r:
-        raise FinError("Abhi koi hisaab nahi: Tally se trial balance (Excel) bhejiye ya P&L ke aankde bataiye.")
+        raise FinError("No accounts yet: send a trial balance from Tally (Excel) or give the P&L figures.")
     return r
 
 
@@ -523,9 +523,9 @@ def analyse(tenant: str, snapshot: str = "", conv: str = "", publish: bool = Fal
         payroll_cost = _payroll_cost(s, tenant, sd, ed)
     insights = _insights(st, ratios, trend, payroll_cost, days)
     pl = st["pl"]
-    say = (f"{label}: bikri {_lakh(pl['revenue'])}, gross profit {_lakh(pl['gross_profit'])} "
-           f"({ratios['gross_margin'] if ratios['gross_margin'] is not None else '-'}%), kharche {_lakh(pl['opex'])}, "
-           f"tax se pehle munafa {_lakh(pl['profit_before_tax'])}. " + " ".join(i["text"] for i in insights[:3]))
+    say = (f"{label}: sales {_lakh(pl['revenue'])}, gross profit {_lakh(pl['gross_profit'])} "
+           f"({ratios['gross_margin'] if ratios['gross_margin'] is not None else '-'}%), expenses {_lakh(pl['opex'])}, "
+           f"profit before tax {_lakh(pl['profit_before_tax'])}. " + " ".join(i["text"] for i in insights[:3]))
     v = {"snapshot": {"id": sid, "label": label, "start": sd.isoformat(), "end": ed.isoformat(), "days": days},
          "pl": pl, "bs": st["bs"], "ratios": judged, "trend": trend, "insights": insights, "payroll_cost": payroll_cost, "say": say}
     if conv or publish:
@@ -558,27 +558,27 @@ def _insights(st: dict, r: dict, trend: dict, payroll_cost: float | None, days: 
     def add(level, text):
         out.append({"level": level, "text": text})
     if pl["profit_before_tax"] < 0:
-        add("bad", f"Nuksaan: {_lakh(-pl['profit_before_tax'])}. Kharche bikri se zyada.")
+        add("bad", f"Loss: {_lakh(-pl['profit_before_tax'])}. Expenses are higher than sales.")
     if r.get("current_ratio") is not None and r["current_ratio"] < 1:
-        add("bad", f"Current ratio {r['current_ratio']}: chhote samay ke dene, haath ke paise + lene se zyada (cash ki tangi).")
+        add("bad", f"Current ratio {r['current_ratio']}: short-term payables are more than cash in hand + receivables (cash is tight).")
     elif r.get("current_ratio") is not None and r["current_ratio"] < 1.33:
-        add("warn", f"Current ratio {r['current_ratio']} (bank 1.33 dekhte hain).")
+        add("warn", f"Current ratio {r['current_ratio']} (banks look for 1.33).")
     if r.get("debtor_days") and r["debtor_days"] > 60:
-        add("warn", f"Paisa {r['debtor_days']:.0f} din mein aata hai: vasooli tez karni padegi.")
+        add("warn", f"Money comes in after {r['debtor_days']:.0f} days: collections need to be faster.")
     if r.get("dscr") is not None and r["dscr"] < 1.25:
-        add("bad" if r["dscr"] < 1 else "warn", f"DSCR {r['dscr']}: kamai se loan ki kist mushkil se nikalti hai (bank 1.25+ chahte hain).")
+        add("bad" if r["dscr"] < 1 else "warn", f"DSCR {r['dscr']}: earnings barely cover the loan installments (banks want 1.25+).")
     if r.get("tol_tnw") is not None and r["tol_tnw"] > 3:
-        add("warn", f"TOL/TNW {r['tol_tnw']}: apne paise ke mukable udhaar zyada.")
+        add("warn", f"TOL/TNW {r['tol_tnw']}: borrowings are high against your own funds.")
     if trend.get("revenue") is not None:
-        add("info" if trend["revenue"] >= 0 else "warn", f"Bikri pichhle hisaab se {trend['revenue']:+.1f}%.")
+        add("info" if trend["revenue"] >= 0 else "warn", f"Sales {trend['revenue']:+.1f}% against the previous accounts.")
     if trend.get("opex") is not None and trend.get("revenue") is not None and trend["opex"] > trend["revenue"] + 10:
-        add("warn", f"Kharche {trend['opex']:+.1f}% badhe, bikri se tez.")
+        add("warn", f"Expenses changed {trend['opex']:+.1f}%, faster than sales.")
     if r.get("gross_margin") is not None and r["gross_margin"] < 10:
-        add("warn", f"Gross margin sirf {r['gross_margin']}%: daam ya kharid ka bhaav dekhiye.")
+        add("warn", f"Gross margin is only {r['gross_margin']}%: look at your selling price or purchase cost.")
     if payroll_cost and pl["revenue"]:
-        add("info", f"Salary ka kharcha (Hoola payroll) {_lakh(payroll_cost)} = bikri ka {payroll_cost * 100 / pl['revenue']:.1f}%.")
+        add("info", f"Salary cost (Hoola payroll) {_lakh(payroll_cost)} = {payroll_cost * 100 / pl['revenue']:.1f}% of sales.")
     if not out:
-        add("good", "Sab ratio theek seema mein hain.")
+        add("good", "All ratios are within a healthy range.")
     return out
 
 
@@ -613,7 +613,7 @@ def import_bank(tenant: str, file_id: str = "", data: bytes | None = None, name:
     if file_id:
         name, data = _load_file(tenant, file_id)
     if not data:
-        raise FinError("Bank statement (Excel / CSV) chahiye. PDF ho to bank se Excel / CSV download kariye.")
+        raise FinError("A bank statement (Excel / CSV) is needed. If you have a PDF, download the Excel / CSV from the bank.")
     rows = _rows(name, data)
     hi, cols = None, {}
     for i, r in enumerate(rows[:40]):
@@ -627,7 +627,7 @@ def import_bank(tenant: str, file_id: str = "", data: bytes | None = None, name:
             hi, cols = i, found
             break
     if hi is None:
-        raise FinError("Statement mein Date, Narration aur Debit / Credit (ya Amount) column nahi mile.")
+        raise FinError("The statement has no Date, Narration and Debit / Credit (or Amount) columns.")
     added, dups = 0, 0
     with _LOCK, session() as s:
         rules = _bank_rules(s, tenant)
@@ -658,7 +658,7 @@ def import_bank(tenant: str, file_id: str = "", data: bytes | None = None, name:
             added += 1
     out = cash(tenant)
     out["imported"], out["duplicates"] = added, dups
-    out["say"] = f"{added} entry li" + (f" ({dups} pehle se thi)" if dups else "") + ". " + out["say"]
+    out["say"] = f"{added} entries taken" + (f" ({dups} were already there)" if dups else "") + ". " + out["say"]
     return out
 
 
@@ -667,7 +667,7 @@ def set_category(tenant: str, pattern: str, category: str, txn_id: str = "") -> 
     pat = str(pattern or "").strip().lower()[:120]
     category = re.sub(r"[^a-z_]", "", str(category).lower().replace(" ", "_"))[:30]
     if not category:
-        raise FinError("Category chahiye (jaise rent, salary, raw_material...).")
+        raise FinError("A category is needed (like rent, salary, raw_material...).")
     with session() as s:
         if txn_id:
             t = s.get(FinTxn, txn_id)
@@ -683,7 +683,7 @@ def set_category(tenant: str, pattern: str, category: str, txn_id: str = "") -> 
                     n += 1
         else:
             n = 1
-    return {"updated": n, "say": f"'{pattern or 'yeh entry'}' ab {category} mein ({n} entry badli). Aage se yahi."}
+    return {"updated": n, "say": f"'{pattern or 'this entry'}' is now under {category} ({n} entries changed). The same from now on."}
 
 
 def cash(tenant: str, months: int = 3) -> dict[str, Any]:
@@ -696,7 +696,7 @@ def cash(tenant: str, months: int = 3) -> dict[str, Any]:
         rows = [(t.day, t.amount, t.category, t.balance, t.narration) for t in txns]
         open_items = [(i.kind, i.party, i.amount - i.paid, i.bill_date, i.credit_days) for i in items if i.amount - i.paid > 0.5]
     if not rows:
-        raise FinError("Bank statement abhi nahi mila: Excel / CSV bhejiye.")
+        raise FinError("No bank statement yet: send the Excel / CSV.")
     last_day = _date(rows[-1][0])
     by_month: dict[str, dict] = {}
     for d, amt, cat, _b, _n in rows:
@@ -745,15 +745,15 @@ def cash(tenant: str, months: int = 3) -> dict[str, Any]:
         weeks.append({"week_from": ws.isoformat(), "inflow": round(w_in), "outflow": round(w_out), "collect_due": round(col),
                       "pay_due": round(pay), "closing": round(run)})
     low = min(weeks, key=lambda x: x["closing"])
-    say = (f"Bank: aaj {_lakh(bal)}. Pichhle {len(use)} mahine ka average: aaya {_lakh(avg_in)}, gaya {_lakh(avg_out)} har mahine. ")
+    say = (f"Bank: {_lakh(bal)} today. Average of the last {len(use)} months: {_lakh(avg_in)} in, {_lakh(avg_out)} out each month. ")
     if runway is not None:
-        say += f"Is raftaar se paisa lagbhag {runway} mahine chalega. "
+        say += f"At this rate the money lasts about {runway} months. "
     else:
-        say += "Har mahine paisa badh raha hai. "
+        say += "The balance is growing every month. "
     if low["closing"] < 0:
-        say += f"Dhyaan: {low['week_from']} wale hafte tak bank minus mein ja sakta hai. "
+        say += f"Note: the bank balance may go negative by the week of {low['week_from']}. "
     if recurring:
-        say += "Har mahine ke pakke kharche: " + ", ".join(f"{x['category']} {_rs(x['monthly'])}" for x in recurring[:5]) + "."
+        say += "Fixed monthly expenses: " + ", ".join(f"{x['category']} {_rs(x['monthly'])}" for x in recurring[:5]) + "."
     return {"balance": round(bal), "avg_in": round(avg_in), "avg_out": round(avg_out), "burn": round(burn), "runway_months": runway,
             "months": {m: {"in": round(by_month[m]["in"]), "out": round(by_month[m]["out"]),
                            "cats": {c: round(v) for c, v in sorted(by_month[m]["cats"].items(), key=lambda kv: kv[1])}} for m in months_sorted[-12:]},
@@ -781,7 +781,7 @@ def add_item(tenant: str, kind: str, party: str, amount, bill: str = "", bill_da
     d = _date(bill_date) or today(tenant)
     amt = abs(R.clean_amount(amount))
     if not amt or not str(party).strip():
-        raise FinError("Party aur rakam chahiye.")
+        raise FinError("The party and the amount are needed.")
     with session() as s:
         it = FinItem(tenant_id=tenant, kind=kind, party=str(party).strip()[:160], phone=re.sub(r"[^\d+]", "", str(phone or ""))[:20],
                      bill=str(bill or "")[:40], bill_date=d.isoformat(), amount=amt, paid=abs(R.clean_amount(paid)) if paid else 0.0,
@@ -790,10 +790,10 @@ def add_item(tenant: str, kind: str, party: str, amount, bill: str = "", bill_da
         s.add(it)
         s.flush()
         iid = it.id
-    say = f"{'Lena' if kind == 'receivable' else 'Dena'}: {party} {_rs(amt)} ({d.isoformat()})."
+    say = f"{'Receivable' if kind == 'receivable' else 'Payable'}: {party} {_rs(amt)} ({d.isoformat()})."
     if kind == "payable" and msme:
         lim = R.msme_limit(agreed_days)
-        say += f" MSME supplier: {lim} din mein dena zaroori ({(d + timedelta(days=lim)).isoformat()} tak), warna kharcha tax mein nahi ghatega."
+        say += f" MSME supplier: must be paid within {lim} days (by {(d + timedelta(days=lim)).isoformat()}), or the expense is not deductible for tax."
     return {"id": iid, "say": say}
 
 
@@ -817,7 +817,7 @@ def import_items(tenant: str, kind: str, file_id: str = "", data: bytes | None =
             hi, cols = i, f
             break
     if hi is None:
-        raise FinError("Outstanding list mein Party aur Amount column chahiye.")
+        raise FinError("The outstanding list needs Party and Amount columns.")
     n = 0
     for r in rows[hi + 1:]:
         g = lambda k: r[cols[k]] if k in cols and cols[k] < len(r) else None  # noqa: E731
@@ -829,16 +829,16 @@ def import_items(tenant: str, kind: str, file_id: str = "", data: bytes | None =
             n += 1
         except FinError:
             continue
-    return {"saved": n, "say": f"{n} bill ki list li."}
+    return {"saved": n, "say": f"List of {n} bills taken."}
 
 
 def item_paid(tenant: str, item_id: str, amount=None) -> dict:
     with session() as s:
         it = s.get(FinItem, item_id)
         if not it or it.tenant_id != tenant:
-            raise FinError("Bill nahi mila.")
+            raise FinError("Bill not found.")
         it.paid = min(it.amount, it.paid + (abs(R.clean_amount(amount)) if amount else it.amount - it.paid))
-        return {"say": f"{it.party}: {_rs(it.paid)} aa gaya / de diya, baaki {_rs(it.amount - it.paid)}."}
+        return {"say": f"{it.party}: {_rs(it.paid)} received / paid, remaining {_rs(it.amount - it.paid)}."}
 
 
 def aging(tenant: str, kind: str = "receivable") -> dict[str, Any]:
@@ -862,22 +862,22 @@ def aging(tenant: str, kind: str = "receivable") -> dict[str, Any]:
                 row["msme_days_left"] = (last - on).days
                 if on > last:
                     row["msme_interest"] = R.msme_interest(left, (on - last).days)
-                    row["tax_risk"] = "Sec 37(2)(g): jab tak nahi dete, yeh kharcha tax mein nahi ghatega."
+                    row["tax_risk"] = "Sec 37(2)(g): until it is paid, this expense is not deductible for tax."
             rows.append(row)
     rows.sort(key=lambda x: -x["age"])
     buckets = {b: round(sum(x["pending"] for x in rows if x["bucket"] == b)) for b in ("0-30", "31-60", "61-90", "90+")}
     total = round(sum(x["pending"] for x in rows))
     if kind == "receivable":
-        say = f"Lene hain {_lakh(total)}: " + ", ".join(f"{b} din {_lakh(v)}" for b, v in buckets.items() if v) + "."
+        say = f"Receivables {_lakh(total)}: " + ", ".join(f"{b} days {_lakh(v)}" for b, v in buckets.items() if v) + "."
         big = [x for x in rows if x["overdue_days"] > 0][:3]
         if big:
-            say += " Sabse purane: " + ", ".join(f"{x['party']} {_rs(x['pending'])} ({x['age']} din)" for x in big) + "."
+            say += " Oldest: " + ", ".join(f"{x['party']} {_rs(x['pending'])} ({x['age']} days)" for x in big) + "."
     else:
         risk = [x for x in rows if x.get("msme") and x.get("msme_days_left", 99) <= 5]
-        say = f"Dene hain {_lakh(total)}."
+        say = f"Payables {_lakh(total)}."
         if risk:
-            say += " MSME supplier jinhe jaldi dena hai: " + ", ".join(
-                f"{x['party']} {_rs(x['pending'])} ({'beet gaya' if x['msme_days_left'] < 0 else str(x['msme_days_left']) + ' din'})" for x in risk[:5]) + "."
+            say += " MSME suppliers to be paid soon: " + ", ".join(
+                f"{x['party']} {_rs(x['pending'])} ({'overdue' if x['msme_days_left'] < 0 else str(x['msme_days_left']) + ' days'})" for x in risk[:5]) + "."
     return {"kind": kind, "items": rows, "buckets": buckets, "total": total, "say": say}
 
 
@@ -895,8 +895,8 @@ def reminder_drafts(tenant: str, min_overdue: int = 1) -> dict[str, Any]:
         bills = ", ".join(f"{x['bill'] or x['bill_date']} ({_rs(x['pending'])})" for x in xs[:8])
         tot = sum(x["pending"] for x in xs)
         out.append({"party": party, "to": xs[0]["phone"], "amount": round(tot),
-                    "text": f"Namaste {party} ji, {biz or 'hamare'} ke bill {bills} ka kul {_rs(tot)} baaki hai. Kripya jaldi bhej dijiye. Dhanyavaad."})
-    return {"drafts": out, "say": f"{len(out)} graahak ke liye yaad dilane ka message draft (aapki haan ke baad hi jayega)."}
+                    "text": f"Hello {party}, a total of {_rs(tot)} is pending on {biz or 'our'} bills {bills}. Please pay it soon. Thank you."})
+    return {"drafts": out, "say": f"Reminder message drafts for {len(out)} customers (they go only after your approval)."}
 
 
 # ---------------------------------------------------------------- loans, loan check, advance tax
@@ -905,7 +905,7 @@ def add_loan(tenant: str, name: str, outstanding, rate, emi=None, months_left: i
     e = abs(R.clean_amount(emi)) if emi else (R.emi(o, r, int(months_left or 60)))
     with session() as s:
         s.add(FinLoan(tenant_id=tenant, name=str(name)[:80], outstanding=o, rate=r, emi=e, months_left=int(months_left or 0)))
-    return {"say": f"Loan {name}: baaki {_lakh(o)}, {r:g}% par, kist {_rs(e)}."}
+    return {"say": f"Loan {name}: outstanding {_lakh(o)}, at {r:g}%, installment {_rs(e)}."}
 
 
 def loan_check(tenant: str, amount, rate, years: float, projected_turnover=None, snapshot: str = "") -> dict[str, Any]:
@@ -934,16 +934,16 @@ def loan_check(tenant: str, amount, rate, years: float, projected_turnover=None,
     pt = abs(R.clean_amount(projected_turnover)) if projected_turnover else (turnover * 1.1 if turnover else None)
     if pt:
         out["nayak"] = R.nayak_limit(pt)
-    verdict = "pata nahi"
+    verdict = "not known"
     if out.get("dscr_after") is not None:
-        verdict = "theek" if out["dscr_after"] >= 1.5 else "kheench ke" if out["dscr_after"] >= 1.25 else "mushkil"
+        verdict = "comfortable" if out["dscr_after"] >= 1.5 else "tight" if out["dscr_after"] >= 1.25 else "difficult"
     out["verdict"] = verdict
-    say = f"{_lakh(amt)} ka loan {rate}% par {years:g} saal: kist {_rs(new_emi)} har mahine."
+    say = f"A loan of {_lakh(amt)} at {rate}% for {years:g} years: installment {_rs(new_emi)} a month."
     if out.get("dscr_after") is not None:
-        say += f" Sab kiston ke baad DSCR {out['dscr_after']} ({verdict}; bank 1.25+ dekhte hain)."
+        say += f" DSCR after all installments {out['dscr_after']} ({verdict}; banks look for 1.25+)."
     if out.get("nayak"):
-        say += f" Working capital (CC / OD) {_lakh(out['nayak']['bank_limit'])} tak ban sakta hai (bikri ka 20%)."
-    say += " Yeh hisaab hai, salah nahi: final faisla bank aur aapka."
+        say += f" Working capital (CC / OD) of up to {_lakh(out['nayak']['bank_limit'])} may be possible (20% of sales)."
+    say += " This is a calculation, not advice: the final decision is the bank's and yours."
     out["say"] = say
     return out
 
@@ -957,21 +957,21 @@ def advance_tax(tenant: str, profit=None, snapshot: str = "") -> dict[str, Any]:
         entity = st.entity
         paid = float(_j(st.tax_paid, {}).get(fy, 0.0))
         est = profit
-        basis = "aapka andaza"
+        basis = "your estimate"
         if est in (None, ""):
             sn = _snap(s, tenant, snapshot)
             stt = R.statements(_j(sn.balances, {}))
             days = max(1, (_date(sn.end) - _date(sn.start)).days + 1)
             est = stt["pl"]["profit_before_tax"] * 365 / days
-            basis = f"{sn.label} ke munafe se poore saal ka andaza"
+            basis = f"full-year estimate from the profit of {sn.label}"
     t = R.tax_estimate(float(est), entity)
     plan = R.advance_tax_plan(t["tax"], fs, paid, on)
-    say = f"Saal {fy} ka munafa ~{_lakh(t['profit'])} ({basis}), tax ~{_lakh(t['tax'])} ({entity})."
+    say = f"Profit for {fy} ~{_lakh(t['profit'])} ({basis}), tax ~{_lakh(t['tax'])} ({entity})."
     if plan["needed"] and plan.get("next"):
-        say += f" Agli kist {plan['next']['due']} tak kul {plan['next']['cumulative_pct']}% = {_rs(plan['next']['cumulative'])}; ab tak {_rs(paid)} bhara, to {_rs(plan['pay_by_next'])} aur."
+        say += f" By the next installment on {plan['next']['due']}, {plan['next']['cumulative_pct']}% in all = {_rs(plan['next']['cumulative'])}; {_rs(paid)} paid so far, so {_rs(plan['pay_by_next'])} more."
     elif not plan["needed"]:
         say += " " + plan["note"]
-    say += " Challan aap khud bharengi (ITNS 280); CA se pakka karwa lijiye."
+    say += " You pay the challan yourself (ITNS 280); confirm with your CA."
     return {"fy": fy, "entity": entity, **t, "paid": paid, "plan": plan, "say": say}
 
 
@@ -1026,7 +1026,7 @@ def report(tenant: str, snapshot: str = "", conv: str = "") -> dict[str, Any]:
     files.append(chatfiles.store(tenant, f"MIS_{a['snapshot']['label'].replace(' ', '_')}.pdf", _pdf(biz, a, c, rec), "application/pdf"))
     for f in files:
         _publish(tenant, "pc_file", {**f, "source": "analyst", "title": f.get("name", "")}, conv)
-    return {"files": files, "analysis": a, "say": "MIS report (Excel + 1 page PDF) taiyaar. Bank / CA ko bhejna ho to pehle aapki haan."}
+    return {"files": files, "analysis": a, "say": "The MIS report (Excel + 1-page PDF) is ready. Sending it to the bank / CA needs your approval first."}
 
 
 def _pdf(biz: str, a: dict, c: dict | None, rec: dict) -> bytes:
@@ -1098,11 +1098,11 @@ def approve_share(tenant: str, snapshot: str, approve: bool, to: str = "") -> di
         biz = _st(s, tenant).business
         label = sn.label
     if not approve:
-        return {"say": "Theek, report bahar nahi jayegi."}
-    note = (f"Namaste, {biz or 'hamari firm'} ki {label} ki MIS report (P&L, balance sheet, ratios, cash, receivables) saath mein hai. "
-            f"Kuch poochna ho to bataiye. Dhanyavaad.")
+        return {"say": "All right, the report will not go out."}
+    note = (f"Hello, the MIS report of {biz or 'our firm'} for {label} (P&L, balance sheet, ratios, cash, receivables) is attached. "
+            f"Tell me if you have any questions. Thank you.")
     return {"approved": True, "draft": note, "to": to,
-            "say": "Haan mili: report aur note taiyaar. Email / WhatsApp se aap bhejengi (ya Hoola email draft bana dega, bhejne se pehle aap dekh lengi)."}
+            "say": "Approved: the report and note are ready. You send them by email / WhatsApp (or Hoola makes an email draft that you see before it goes)."}
 
 
 # ---------------------------------------------------------------- morning
@@ -1114,20 +1114,20 @@ def alerts(tenant: str) -> dict[str, Any]:
         for x in pay["items"]:
             if x.get("msme") and x.get("msme_days_left") is not None and x["msme_days_left"] <= 5:
                 if x["msme_days_left"] < 0:
-                    out.append(f"MSME {x['party']} ka {_rs(x['pending'])} {-x['msme_days_left']} din late: byaaj ~{_rs(x.get('msme_interest', 0))}, "
-                               "aur jab tak nahi dete kharcha tax mein nahi ghatega (Sec 37(2)(g)).")
+                    out.append(f"MSME {x['party']}: {_rs(x['pending'])} is {-x['msme_days_left']} days late: interest ~{_rs(x.get('msme_interest', 0))}, "
+                               "and until it is paid the expense is not deductible for tax (Sec 37(2)(g)).")
                 else:
-                    out.append(f"MSME {x['party']} ko {_rs(x['pending'])} {x['msme_last_day']} tak dena (Sec 37(2)(g)).")
+                    out.append(f"Pay MSME {x['party']} {_rs(x['pending'])} by {x['msme_last_day']} (Sec 37(2)(g)).")
         rec = aging(tenant, "receivable")
         old = [x for x in rec["items"] if x["overdue_days"] >= 30]
         if old:
-            out.append(f"{len(old)} graahak 30+ din se late: kul {_rs(sum(x['pending'] for x in old))}.")
+            out.append(f"{len(old)} customers are 30+ days late: total {_rs(sum(x['pending'] for x in old))}.")
     except FinError:
         pass
     fs = R.fy_start_of(on)
     for d in (date(fs, 6, 15), date(fs, 9, 15), date(fs, 12, 15), date(fs + 1, 3, 15)):
         if 0 <= (d - on).days <= 5:
-            out.append(f"Advance tax ki kist {d.strftime('%d %b')} ko.")
+            out.append(f"Advance tax installment due on {d.strftime('%d %b')}.")
     return {"alerts": out, "text": " ".join(out)}
 
 
@@ -1157,7 +1157,7 @@ def send_morning(tenant: str) -> dict[str, Any]:
         return a
     conv = home_conv(tenant)
     try:
-        notify(conv, "Paisa: " + a["text"])
+        notify(conv, "Money: " + a["text"])
     except Exception:
         pass
     _publish(tenant, "fin_alert", {"text": a["text"]}, conv)

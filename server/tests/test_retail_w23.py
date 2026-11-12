@@ -54,13 +54,13 @@ def test_trust_rule_hits_are_evidence():
     r = T.reviews([{"id": 1, "user": "u", "text": "Great!!", "rating": 5, "date": "2026-11-01", "verified": False}, {"id": 2, "user": "v", "text": "great", "rating": 5, "date": "2026-11-01"},
                    {"id": 3, "user": "w", "text": "ok", "rating": 4, "date": "2026-11-02", "verified": True, "incentivised": True, "disclosed": False}])
     why = {x["id"]: x["why"] for x in r["flagged"]}
-    assert "same text kai reviews mein" in why[1] and "verified buyer nahi" in why[1] and "inaam mila par bataya nahi" in why[3] and "moderator" in r["decider"]
+    assert "same text in several reviews" in why[1] and "not a verified buyer" in why[1] and "incentive received but not disclosed" in why[3] and "moderator" in r["decider"]
     o = T.override_rate([{"model": "m", "ai_decision": "a", "human_decision": "a"}, {"model": "m", "ai_decision": "a", "human_decision": "b"}], 30)
     assert o["models"][0]["override_pct"] == 50.0 and o["models"][0]["alert"]
     pf = T.price_fairness([{"product": "p", "segment": "ios", "price": 110}, {"product": "p", "segment": "android", "price": 100}, {"product": "q", "segment": "ios", "price": 5}], 5)
     assert pf["products"][0]["review"] and not pf["products"][1]["review"]
     pa = T.promise_audit([{"id": i, "promised_days": 3, "actual_days": a} for i, a in enumerate([3, 3, 4, 5, 3, 3, 3, 3, 3, 6])])
-    assert pa["on_time_pct"] == 70.0 and pa["p90_error_days"] == 3 and "wada" in pa["honest_promise_hint"]
+    assert pa["on_time_pct"] == 70.0 and pa["p90_error_days"] == 3 and "promise" in pa["honest_promise_hint"]
     for bad in (lambda: T.fraud_flags([]), lambda: T.reviews([]), lambda: T.seller_kyc({}), lambda: T.fraud_flags([{"customer": "a", "ts": "garbage"}])):
         with pytest.raises(ValueError):
             bad()
@@ -71,13 +71,13 @@ def test_trust_compliance_checks():
     k = T.seller_kyc({"name": "A Co", "gstin": "27AAPFU0939F1ZV", "pan": "AAPFU0939F", "bank_account_name": "A Co", "bank_ifsc": "HDFC0001234", "address": "x", "category": "c"})
     assert k["failed"] == [] and k["missing_documents"] == []
     bad = T.seller_kyc({"name": "A Co", "gstin": "27AAPFU0939F1ZV", "pan": "ZZZZZ9999Z", "bank_ifsc": "BAD"})
-    assert "PAN GSTIN mein" in bad["failed"] and "IFSC format" in bad["failed"] and "bank_account_name" in bad["missing_documents"] and "trust team" in bad["decider"]
+    assert "PAN inside GSTIN" in bad["failed"] and "IFSC format" in bad["failed"] and "bank_account_name" in bad["missing_documents"] and "trust team" in bad["decider"]
     lb = T.label_check({"name": "Soap", "mrp": "Rs 40"})
-    assert "net maatra" in lb["missing"] and lb["verify"] and len(lb["present"]) == 2
+    assert "net quantity" in lb["missing"] and lb["verify"] and len(lb["present"]) == 2
     dp = T.dark_patterns("Only 3 left! Hurry. No thanks, I don't want savings. Offer ends soon", {"timer_is_real": False})
     assert {h["pattern"].split(" ")[0] for h in dp["text_hits"]} >= {"urgency", "confirm-shaming", "timer"} and dp["checklist_failed"]
     g = T.grievance_clock([{"id": 1, "received": "2026-10-01", "acknowledged": "2026-10-01T10:00:00", "resolved": "2026-10-10"}, {"id": 2, "received": "2026-10-01"}], "2026-11-05")
-    assert [c["issues"] for c in g["complaints"]][0] == [] and "resolution deadline nikal gayi" in g["complaints"][1]["issues"] and g["late"] == 1 and g["open"] == 1
+    assert [c["issues"] for c in g["complaints"]][0] == [] and "resolution deadline passed" in g["complaints"][1]["issues"] and g["late"] == 1 and g["open"] == 1
 
 
 def test_tools_registered_guarded_and_routed():

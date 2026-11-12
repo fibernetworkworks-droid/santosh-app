@@ -81,7 +81,7 @@ def test_shipment_hs_docs_cost(cu):
     assert "customs_shipment" in kinds(S) and "HS" in v["next"]
     # HS: no model -> heading table, never final
     sg = S.hs_suggest(T, "Bluetooth speaker 10W")
-    assert sg["candidates"][0]["heading"] == "8518" and "andaaza" in sg["say"]
+    assert sg["candidates"][0]["heading"] == "8518" and "estimate" in sg["say"]
     # model suggestion validated (only 8 digits kept)
     S._model = lambda system, text: '{"candidates": [{"hs": "8518 22 00", "title": "Multiple loudspeakers", "why": "GIR 1"}, {"hs": "8518"}]}'
     sg = S.hs_suggest(T, "Bluetooth speaker 10W")
@@ -106,13 +106,13 @@ def test_shipment_hs_docs_cost(cu):
     assert c["landed_cost"] is None and "Exchange rate" in c["say"]
     S.update_shipment(T, "I-0001", fx=88.5)
     c = S.cost(T, "I-0001")
-    assert not c["complete"] and "rate chahiye" in c["say"] and c["missing"]
+    assert not c["complete"] and "need a rate" in c["say"] and c["missing"]
     S.set_lines(T, "I-0001", [{"no": 1, "bcd": 20, "igst": 18}])
     c = S.cost(T, "I-0001")
     av = round((6000 + 1200 + 67.5) * 88.5, 2)
     assert c["complete"] and abs(c["totals"]["av"] - av) < 0.05
     assert abs(c["totals"]["bcd"] - av * 0.2) < 0.05 and abs(c["totals"]["sws"] - av * 0.02) < 0.05
-    assert c["landed_cost"] == round(c["totals"]["av"] + c["totals"]["cost_duty"], 2) and "andaaza" in c["say"]
+    assert c["landed_cost"] == round(c["totals"]["av"] + c["totals"]["cost_duty"], 2) and "estimate" in c["say"]
     # documents
     for d in v["docs"]:
         if d["required"]:
@@ -145,7 +145,7 @@ def test_filing_only_on_her_tap(cu, monkeypatch):
     assert r["status"] == "card_sent", r
     f = r["filing"]
     assert f["status"] == "waiting" and f["number"] == "F-0001" and len(f["hash"]) == 64
-    assert "customs_filing" in kinds(S) and "haan" in r["say"].lower() and "file nahi karta" in r["say"]
+    assert "customs_filing" in kinds(S) and "approval" in r["say"].lower() and "does not file" in r["say"]
     assert S.request_filing(T, "I-0001")["filing"]["id"] == f["id"]          # same data = same card
     with pytest.raises(S.CustomsError):
         S.decide_filing(T, f["id"], True, f["hash"])                          # not a tap
@@ -160,7 +160,7 @@ def test_filing_only_on_her_tap(cu, monkeypatch):
     out = S.decide_filing(T, f2["id"], True, f2["hash"], by_tap=True)
     assert out["filing"]["status"] == "approved" and out["file"]["file_id"] == "f1"
     assert out["drafts"]["whatsapp"].startswith("https://wa.me/919822012345") and out["drafts"]["email"].startswith("mailto:cha@example.com")
-    assert out["icegate_steps"] and any("AAP" in s for s in out["icegate_steps"])
+    assert out["icegate_steps"] and any("YOU" in s for s in out["icegate_steps"])
     again = S.decide_filing(T, f2["id"], False, f2["hash"], by_tap=True)
     assert again["filing"]["status"] == "approved"                            # decided once
     # after BE is filed no new card

@@ -43,7 +43,7 @@ def test_rules():
     assert ck[0]["level"] == "stop"
     ck = R.checks("DE", ["72081000", "0910"], "DDP", "open", "EUR")
     texts = " ".join(c["text"] for c in ck)
-    assert "CBAM" in texts and "8 ank" in texts and "DDP" in texts and "ECGC" in texts
+    assert "CBAM" in texts and "8-digit" in texts and "DDP" in texts and "ECGC" in texts
     assert any("CETA" in c["text"] for c in R.checks("GB", ["09103030"], "FOB", "advance", "GBP"))
     assert "Insurance certificate" in R.doc_list("CIF", "lc", True)
 
@@ -54,12 +54,12 @@ def test_flow(nir):
     r = S.proforma(T, "Al Noor", LINES, incoterm="FOB", place="Mundra", fx=88.5, port_loading="Mundra", port_discharge="Jebel Ali")
     v = r["shipment"]
     assert v["number"] == "IE/PI2627/001" and v["total"] == 4200 and v["fob"] == 4200 and v["fob_inr"] == 4200 * 88.5
-    assert any("CEPA" in c["text"] for c in v["checks"]) and r["file"]["name"].endswith(".pdf") and "haan" in r["say"]
+    assert any("CEPA" in c["text"] for c in v["checks"]) and r["file"]["name"].endswith(".pdf") and "approval" in r["say"]
     d = S.pi_draft(T, v["id"])
     assert d["to"] == "buy@alnoor.ae" and "IE/PI2627/001" in d["text"]
     S.receive(T, v["id"], 1000, 82000, ref="IRM1")                         # advance before shipment
     c = S.confirm(T, v["id"])
-    assert c["shipment"]["number"] == "IE/2627/001" and len(c["files"]) == 2 and "Certificate of origin (DGFT eCoO, FTA wala)" in c["docs"]
+    assert c["shipment"]["number"] == "IE/2627/001" and len(c["files"]) == 2 and "Certificate of origin (DGFT eCoO, under the FTA)" in c["docs"]
     with pytest.raises(S.NiryatError):
         S.confirm(T, v["id"])
     sh = S.shipped(T, v["id"], "1234567", "2026-10-20", "MAEU123", fx=88.9)
@@ -87,7 +87,7 @@ def test_flow(nir):
     day = S.day(T)
     assert any("RCMC" in p for p in day["parts"]) and any("PI" in p for p in day["parts"])
     assert S.register_file(T)["file"]["name"].endswith(".xlsx")
-    assert S.send_morning(T)["text"].startswith("Niryat:")
+    assert S.send_morning(T)["text"].startswith("Export:")
 
 
 def test_lut_and_settings(nir):
