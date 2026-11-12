@@ -9,6 +9,7 @@ def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
     from . import connect as CN
+    from . import itc as IT
     from . import register as REG
     from . import rules as RU
     from . import service as SV
@@ -76,5 +77,33 @@ def make_router(require_key, current_tenant):
     @r.post("/api/bahi/supplier-check", dependencies=[Depends(require_key)])
     def _sup(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _run(CN.supplier_check, tenant, str(body.get("gstin") or ""), filing=bool(body.get("filing", True)))
+
+    def _it(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except IT.ItcError as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/api/bahi/itc/pull", dependencies=[Depends(require_key)])
+    def _ipull(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _it(IT.pull, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""))
+
+    @r.get("/api/bahi/itc/proposals", dependencies=[Depends(require_key)])
+    def _iprop(gstin: str, period: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _it(IT.propose, tenant, gstin, period)
+
+    @r.post("/api/bahi/itc/decide", dependencies=[Depends(require_key)])
+    def _idec(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        d = body.get("decisions") if isinstance(body.get("decisions"), dict) else {}
+        return _it(IT.decide, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""), d)
+
+    @r.get("/api/bahi/itc/preview", dependencies=[Depends(require_key)])
+    def _iprev(gstin: str, period: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _it(IT.preview, tenant, gstin, period)
+
+    @r.post("/api/bahi/itc/apply", dependencies=[Depends(require_key)])
+    def _iapply(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _it(IT.apply, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""), str(body.get("plan_hash") or ""),
+                   body.get("confirm") is True)
 
     return r

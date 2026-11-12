@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,33 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ Credit (ITC)
+  function itcTab() {
+    const c = OV.connections[0], live = c && c.status === 'connected';
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const per = (ITC && ITC.per) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Monthly credit check</h2>
+      <p class="ddk-fine first">Hoola reads your GSTR-2B for the month, matches it with your purchases and suggests accept / pending / reject with a reason. You decide. Nothing reaches the GST portal until you confirm the exact list.</p>
+      ${live ? '' : '<p class="ddk-note">Not connected right now - open Connection and get an OTP first.</p>'}
+      <div class="acd-row"><input id="acdItcG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdItcP" class="acd-in" type="month" value="${esc(per)}">
+        <button type="button" class="btn go ddk-mid" data-a="itcpull">Read 2B + suggest</button></div></section>`;
+    if (!ITC || !ITC.data) return head;
+    const d = ITC.data, o = {accept: 'Accept', pending: 'Pending', reject: 'Reject', '': '-'};
+    const rows = d.rows.map(r => `<tr class="${r.applied ? 'acd-gone' : ''}"><td>${esc(r.supplier)}<span class="acd-dir">${esc(r.ctin)}</span></td><td>${esc(r.number)}<span class="acd-dir">${esc(r.date)}</span></td><td>${inr(r.tax)}</td>
+      <td><b>${esc(o[r.proposal] || 'No action')}</b><span class="acd-dir">${esc(r.reason)}</span></td>
+      <td>${r.proposal === 'none' || r.applied ? (r.applied ? 'Sent' : '') : `<select data-i="${esc(r.id)}">${['', 'accept', 'pending', 'reject'].map(a => `<option value="${a}"${(r.decided || '') === a ? ' selected' : ''}>${o[a]}</option>`).join('')}</select>`}</td></tr>`).join('');
+    const g = d.groups;
+    const miss = d.missing_in_2b.map(m => `<li><b>${esc(m.supplier)}</b> ${esc(m.number)} · ${inr(m.tax)} <a href="${esc(m.nudge.wa_link)}" target="_blank" rel="noopener">Open WhatsApp draft</a></li>`).join('');
+    return head + `<section class="ddk-card acd-sec"><div class="acd-cardhd"><h2 class="ddk-h3">${d.rows.length} invoices in 2B</h2>
+        <span class="ddk-fine">${g.accept.count} accept · ${g.pending.count} pending · ${g.reject.count} reject</span></div>
+      <div class="ddk-tbl"><table><thead><tr><th>Supplier</th><th>Invoice</th><th>Tax</th><th>Hoola suggests</th><th>Your decision</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="acd-row"><button type="button" class="btn ddk-mid" data-a="itcsuggest">Use all suggestions</button><button type="button" class="btn ddk-mid" data-a="itcsave">Save my decisions</button>
+        <button type="button" class="btn go ddk-mid" data-a="itcpreview">Review what will be sent</button></div>
+      ${PV ? `<p class="ddk-note">${PV.will_send} decisions ready (${PV.counts.accept} accept, ${PV.counts.pending} pending, ${PV.counts.reject} reject). <button type="button" class="btn go ddk-mid" data-a="itcapply" data-h="${esc(PV.plan_hash)}">Confirm and send to the GST portal</button></p>` : ''}
+    </section>
+    ${d.missing_in_2b.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Bought, but not in 2B (${inr(d.itc_at_stake_missing)} credit waiting)</h2><ul class="acd-kv">${miss}</ul><p class="ddk-fine">Hoola only drafts the message - you pick the contact and send it.</p></section>` : ''}`;
   }
 
   // ------------------------------------------------------------------ Connection
@@ -191,6 +218,32 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('itc')) {
+        const g = val('acdItcG').toUpperCase(), p = val('acdItcP');
+        const key = {gstin: g, period: ITC?.per || p};
+        try {
+          if (a === 'itcpull') {
+            await api('POST', '/api/bahi/itc/pull', {gstin: g, period: p});
+            const data = await api('GET', `/api/bahi/itc/proposals?gstin=${encodeURIComponent(g)}&period=${encodeURIComponent(p)}`);
+            ITC = {per: p, g, data}; PV = null; draw(false); return;
+          }
+          if (a === 'itcsuggest') { EL.querySelectorAll('select[data-i]').forEach(s => { const r = ITC.data.rows.find(x => x.id === s.dataset.i); if (r && ['accept', 'pending', 'reject'].includes(r.proposal)) s.value = r.proposal; }); return; }
+          const chosen = {}; EL.querySelectorAll('select[data-i]').forEach(s => { if (s.value) chosen[s.dataset.i] = s.value; });
+          if (a === 'itcsave' || a === 'itcpreview') {
+            await api('POST', '/api/bahi/itc/decide', {gstin: ITC.g, period: ITC.per, decisions: chosen});
+            if (a === 'itcpreview') PV = await api('GET', `/api/bahi/itc/preview?gstin=${encodeURIComponent(ITC.g)}&period=${encodeURIComponent(ITC.per)}`);
+            ITC.data = await api('GET', `/api/bahi/itc/proposals?gstin=${encodeURIComponent(ITC.g)}&period=${encodeURIComponent(ITC.per)}`);
+            toast(a === 'itcsave' ? 'Decisions saved. Nothing was sent.' : 'Review the list, then confirm.'); draw(false); return;
+          }
+          if (a === 'itcapply') {
+            if (!confirm('Send these decisions to the GST portal now? This changes your IMS.')) return;
+            const r = await api('POST', '/api/bahi/itc/apply', {gstin: ITC.g, period: ITC.per, plan_hash: b.dataset.h, confirm: true});
+            toast(`Sent ${r.sent}. ${r.portal_status || ''} ${r.recompute === 'asked' ? '2B recompute asked.' : ''}`.trim());
+            PV = null; ITC.data = await api('GET', `/api/bahi/itc/proposals?gstin=${encodeURIComponent(ITC.g)}&period=${encodeURIComponent(ITC.per)}`); draw(false); return;
+          }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a === 'sync') {

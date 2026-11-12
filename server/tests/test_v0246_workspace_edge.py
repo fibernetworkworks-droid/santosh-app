@@ -7,8 +7,8 @@ CON = ROOT / "server" / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.834.0"
-    assert "0.834.0+833" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.836.0"
+    assert "0.836.0+835" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_no_width_bar_and_a_drag_edge():

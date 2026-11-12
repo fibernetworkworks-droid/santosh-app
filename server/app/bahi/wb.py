@@ -375,3 +375,38 @@ def ewb_auth(tenant: str, gstin: str, username: str, password: str, ip: str = ""
         q["irp"] = irp
     return call(tenant, "ewb", "GET", "/ewaybillapi/v1.03/authenticate", query=q,
                 headers={"ip_address": ip or _ip(), "gstin": gstin}, op="ewb/authenticate")
+
+
+# ------------------------------------------------------------------ A2: 2B + IMS (reads are harmless; ims_save changes her portal and only runs on her tap)
+def gstr2b_all(tenant: str, gstin: str, rtnprd: str, gst_username: str, state_cd: str, txn: str, filenum: int = 0, ip: str = "") -> dict[str, Any]:
+    q = {"gstin": gstin, "rtnprd": rtnprd}
+    if filenum:
+        q["filenum"] = filenum
+    return call(tenant, "gst", "GET", "/gstr2b/all", query=q, headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr2b/all")
+
+
+def ims_invoices(tenant: str, gstin: str, section: str, gst_username: str, state_cd: str, txn: str, status: str = "", ip: str = "") -> dict[str, Any]:
+    q = {"gstin": gstin, "section": section}
+    if status:
+        q["status"] = status
+    return call(tenant, "gst", "GET", "/ims/invoices", query=q, headers=_gst_headers(gst_username, state_cd, txn, ip), op="ims/invoices")
+
+
+def ims_save(tenant: str, gstin: str, ret_period: str, body: dict[str, Any], gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "PUT", "/ims/save", headers=h, body=body, op="ims/save")
+
+
+def ims_status(tenant: str, gstin: str, int_tran_id: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/ims/status", query={"gstin": gstin, "int_tran_id": int_tran_id},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="ims/status")
+
+
+def gen2b(tenant: str, gstin: str, ret_period: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
+    return call(tenant, "gst", "PUT", "/gstr2b/gen2b", headers=h, op="gstr2b/gen2b")
+
+
+def get2b(tenant: str, gstin: str, int_tran_id: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    return call(tenant, "gst", "GET", "/gstr2b/get2b", query={"gstin": gstin, "int_tran_id": int_tran_id},
+                headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr2b/get2b")
