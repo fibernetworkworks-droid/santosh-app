@@ -2956,3 +2956,13 @@ pc_do or pushed to Hoola's PC. Now only her words decide the place; the reading 
 aapke / your / tumhare = HER PC (`where._CALL_READ`, `_CALL_YOUR`). (2) Gemini answers "no-tool" asks itself and its
 voice prompt never said Hoola can work on her PC, so it said it could not; PERSONA_BRAIN + the santosh_kaam description
 now say her PC work goes to santosh_kaam and never to answer "I can't access your PC". 2 tests.
+
+v0.858.0 follow-up 3 (owner: "STILL VERY CONFUSE" + her pm2 log): the log showed (a) call TNAz9UMxDIgVx0BS: 3 turns,
+0/0 tools - Gemini answered her PC ask itself ("cannot access your PC"), Hoola's brain never heard it; (b) the 09:29 chat
+job ran with 32 tools + screenshots = `computer_operator`, Hoola's OWN server browser (the Swiggy ask named no PC, so
+v0.271 sent it to the server). Fixes in CODE, not prompt words: `Call._pc_rescue` (finish_turn) - a call turn whose words
+are a PC ask (chrome / browser / laptop / computer / Excel / Tally / PC...) that reached no santosh_kaam, with her PC
+online, is handed to the brain by the system itself + the voice is told to correct itself; `pick._her_account_site` -
+an ORDER on a site where she has her own account (Swiggy, Zomato, Amazon, Flipkart, IRCTC, Uber...) with her PC online
+and no place named is refused for Hoola's browser and Hoola ASKS 'Yeh aapke PC par karun?' (v0.271 kept: a PC only on
+her word); she names Hoola's browser = it runs there. 2 tests.

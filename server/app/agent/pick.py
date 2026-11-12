@@ -16,6 +16,7 @@ Three cases, all from real failures, and each refusal names the right tool so th
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from .tools import FAMILY_OF, ToolError
@@ -41,8 +42,44 @@ _DATA_WAY = ("data_fetch (keeps only the fields you need, saves a dataset on the
              "batches -> doc_studio data=<id> for the PDF / Excel")
 
 
+# v0.858 an ORDER / booking on a site where she has her own account (logged in on HER PC, her saved address and
+# payment) is pointless in Hoola's own server browser - it has no login. With her PC online and no place named, Hoola
+# ASKS which one (v0.271 kept: a PC only on her word) instead of silently ordering from its own browser.
+_ACCOUNT_SITE = re.compile(r"\b(?:swiggy|zomato|zepto|blinkit|instamart|bigbasket|amazon|flipkart|myntra|meesho|nykaa|"
+                           r"ajio|domino'?s|pizza\s*hut|kfc|mcdonald'?s|uber|ola|rapido|bookmyshow|makemytrip|"
+                           r"goibibo|irctc|jiomart|dunzo|tata\s*1mg|pharmeasy)\b", re.I)
+_ORDERISH = re.compile(r"\b(?:order|mangao|mangwa|mangva|kharid|buy|book|cart|checkout|deliver|bhejo|pay)", re.I)
+
+
+def _her_account_site(name: str, args: dict[str, Any], ctx) -> None:
+    if name == "computer_operator" and str(args.get("action") or "start") != "start":
+        return
+    task = " ".join(str(args.get(k) or "") for k in ("task", "start_url", "url"))
+    if not (_ACCOUNT_SITE.search(task) and _ORDERISH.search(task)):
+        return
+    from . import where
+    conv = getattr(ctx, "conversation_id", "") or ""
+    place = getattr(ctx, "place", "") or ""
+    if place in ("hoola", "server") or where._asked(conv, "hoola"):
+        return                                   # she asked for Hoola's own browser
+    try:
+        from ..pc import hub
+        online = hub.hub.is_online(getattr(ctx, "tenant_id", "") or "")
+    except Exception:
+        online = False
+    if not online:
+        return
+    STATS["asked_place"] = STATS.get("asked_place", 0) + 1
+    raise ToolError("This is an ORDER on a site where SHE has her own account (her login, saved address, payment) - "
+                    "your own server browser has none of that. Her PC is online. Do NOT run it here: ask her in ONE "
+                    "line 'Yeh aapke PC par karun? Wahan aap Swiggy / Amazon mein logged in hain.' On her yes use pc_do "
+                    "with the full task (and the browser she named). Only if she says Hoola's browser, use this tool.")
+
+
 def check(name: str, args: dict[str, Any], ctx) -> None:
     """Raise ToolError with the right tool when the pick is plainly wrong; return quietly otherwise."""
+    if name in ("computer_operator", "browse_web"):
+        _her_account_site(name, args or {}, ctx)
     if name not in _PC_TOOLS:
         return
     STATS["checked"] += 1

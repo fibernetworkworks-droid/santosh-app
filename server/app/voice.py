@@ -2870,6 +2870,48 @@ class Call:
         self.stats["backchannels"] += 1
         await self.send_audio(matched_clip(self, clips[i]))
 
+    _PC_ASK = re.compile(r"\b(?:chrome|crome|edge|firefox|browser|laptop|computer|desktop|notepad|excel|word|tally|"
+                         r"powerpoint|pc)\b|पीसी|कंप्यूटर|लैपटॉप|क्रोम", re.I)
+
+    def _pc_rescue(self, said: str) -> bool:
+        """v0.858 her call turn asked for work on HER PC but the voice model answered by itself (a live call log: 3 turns,
+        0 tools, 'I cannot access your PC'). Gemini decides what is 'talk', so a PC ask is never left to it: the system
+        hands her own words to santosh_kaam and tells the voice to correct itself. True = handed over."""
+        t = str(said or "").strip()
+        if len(t) < 4 or not get_settings().voice_brain or not self._PC_ASK.search(t):
+            return False
+        try:
+            from .agent import where
+            if where.place(t) in ("hoolapc", "hoola", "phone"):
+                return False
+            from . import kaamstop
+            if kaamstop.wants_stop(t):
+                return False
+            from .pc import hub
+            if not hub.hub.is_online(self.tenant):
+                return False
+        except Exception:
+            log.debug("pc rescue check failed", exc_info=True)
+            return False
+        self.stats["pc_rescues"] = self.stats.get("pc_rescues", 0) + 1
+        log.info("call %s pc rescue: the voice answered a PC ask itself, handing it to the brain", getattr(self, "call_id", "?"))
+        self.push("text", "(System: her PC request has been sent to Hoola's brain - Hoola CAN work on her PC. Say only "
+                          "'ek second, aapke PC par kar raha hoon'. If you said you cannot reach her PC, correct it now. "
+                          "Do NOT call santosh_kaam for it again.)")
+
+        async def go():
+            try:
+                r = await self._delegate(t)
+            except Exception:
+                log.exception("pc rescue delegate failed")
+                return
+            if isinstance(r, dict) and "result" in r:
+                self.push_news(f"(The PC request is answered: {str(r['result'])[:1200]}. Tell her in a line or two.)")
+        task = asyncio.create_task(go())
+        self._tools.add(task)
+        task.add_done_callback(self._tools.discard)
+        return True
+
     def _pcask_listen(self, said: str) -> bool:
         """v0.858 her PC task asked her a choice ('Kaunsa pizza?') and she ANSWERED it on the call: her own words go
         straight into that task (Gemini does not have to pass them on, and cannot shorten them). True = taken."""
@@ -2986,10 +3028,12 @@ class Call:
             from .db import now as _now
             self._appr_since = _now()             # the next card she can answer by voice is one that appears after this
         await self._otp_listen(final=True)
-        self._pcask_listen(self.user_buf)
+        answered_pc = self._pcask_listen(self.user_buf)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
         brain_saved = bool(getattr(self, "_brain_this_turn", False))   # wave 11: did THIS turn go to the brain?
         self._brain_this_turn = False
+        if user and not brain_saved and not interrupted and not answered_pc:
+            self._pc_rescue(user)
         if user:
             self._kaam_said = ""                  # v0.657 her next turn's words may go to the brain again
         name_prompt, self._name_prompt = self._name_prompt, False

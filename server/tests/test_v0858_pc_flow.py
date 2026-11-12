@@ -282,3 +282,43 @@ def test_call_voice_knows_it_can_work_on_her_pc():
     assert "NEVER say you cannot access or control her PC" in voice.PERSONA_BRAIN
     assert "HER PC" in voice.BRAIN_DELEGATE["description"]
     voice.PERSONA_BRAIN.format(context="x")      # still a valid template
+
+
+def test_call_pc_ask_the_voice_answered_itself_goes_to_the_brain(monkeypatch):
+    """Live call log: 3 turns, 0 tools, 'I cannot access your PC'. A PC ask is never left to the voice model."""
+    from app import voice
+    from app.pc import hub
+    monkeypatch.setattr(hub.hub, "is_online", lambda t, *a, **k: True)
+    monkeypatch.setattr(voice, "get_settings", lambda: types.SimpleNamespace(voice_brain=True))
+    sent, pushed = [], []
+
+    async def main():
+        async def delegate(req):
+            sent.append(req)
+            return {"result": "Chrome khol diya"}
+        call = types.SimpleNamespace(tenant="t", conv="c", stats={}, call_id="x", _tools=set(),
+                                     push=lambda k, t: pushed.append(t), push_news=lambda t: pushed.append(t),
+                                     _delegate=delegate, _PC_ASK=voice.Call._PC_ASK)
+        assert voice.Call._pc_rescue(call, "Mere PC pe Chrome kholo aur Swiggy se pizza order karo") is True
+        await asyncio.gather(*list(call._tools))
+        assert voice.Call._pc_rescue(call, "aaj mausam kaisa hai") is False      # not a PC ask
+        assert voice.Call._pc_rescue(call, "band karo") is False
+    asyncio.run(main())
+    assert sent == ["Mere PC pe Chrome kholo aur Swiggy se pizza order karo"]
+    assert any("Hoola CAN work on her PC" in p for p in pushed) and any("Chrome khol diya" in p for p in pushed)
+
+
+def test_chat_order_on_her_account_site_asks_before_hoolas_browser(monkeypatch):
+    from app.agent import pick
+    from app.agent.tools import ToolError
+    from app.pc import hub
+    ctx = types.SimpleNamespace(admit=None, place="", conversation_id="c_o", tenant_id="t_o")
+    monkeypatch.setattr(hub.hub, "is_online", lambda t, *a, **k: True)
+    with pytest.raises(ToolError, match="aapke PC par karun"):
+        pick.check("computer_operator", {"action": "start", "task": "Swiggy se pizza order karo"}, ctx)
+    pick.check("computer_operator", {"action": "start", "task": "IRCTC PNR status dekho"}, ctx)   # no order: fine
+    ctx.place = "hoola"                                                                              # she named it
+    pick.check("computer_operator", {"action": "start", "task": "Swiggy se pizza order karo"}, ctx)
+    monkeypatch.setattr(hub.hub, "is_online", lambda t, *a, **k: False)
+    ctx.place = ""
+    pick.check("browse_web", {"task": "Amazon pe order karo"}, ctx)                               # PC off: as before
