@@ -70,8 +70,8 @@ void _sampleChat(Santosh app) {
 }
 
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
-    {void Function(Santosh app)? prep, Finder? tab, Duration settle = const Duration(milliseconds: 900)}) async {
-  final app = await _app();
+    {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900)}) async {
+  final app = await _app(prefs: prefs);
   prep?.call(app);
   t.view.physicalSize = _logical * _ratio;
   t.view.devicePixelRatio = _ratio;
@@ -122,4 +122,18 @@ void main() {
   testWidgets('06 connect tab', (t) => _shot(t, '06_connect', home, tab: find.text('Connect')));
   testWidgets('07 main tab (profile)', (t) => _shot(t, '07_main', home, tab: find.text('Main')));
   testWidgets('08 AI employees', (t) => _shot(t, '08_employees', (a) => EmployeesScreen(app: a)));
+
+  // v0.861 R2: the new frame (Main > Try the new design), light and dark
+  void chats(Santosh a) => a.chatList = [
+        for (final t in ['October GST summary', 'Reply to WhatsApp leads', 'Diwali offer poster', 'Clinic website changes',
+          'Supplier bills not in GSTR-2B', 'Pune delivery route'])
+          {'id': t, 'title': t},
+        {'id': 'call1', 'title': 'Call with Santosh · 6:40 pm', 'kind': 'call'},
+      ];
+  for (final mode in ['light', 'dark']) {
+    final prefs = <String, Object>{'new_look': true, 'appearance': mode};
+    testWidgets('30 new home ($mode)', (t) => _shot(t, '30_new_home_$mode', home, prefs: prefs));
+    testWidgets('31 new drawer ($mode)', (t) => _shot(t, '31_new_drawer_$mode', home, prefs: prefs, prep: chats, tab: find.byTooltip('Open chats')));
+    testWidgets('32 new work tab ($mode)', (t) => _shot(t, '32_new_work_$mode', home, prefs: prefs, tab: find.text('Work')));
+  }
 }

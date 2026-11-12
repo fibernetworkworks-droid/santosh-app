@@ -3064,3 +3064,28 @@ use (plan section 1):
 
 Nothing on screen changes yet: today's screens keep Night Glass until R2-R8 move them. Icons: Flutter's own rounded /
 outlined Material icons (no new package). NOT VERIFIED until the CI run (Flutter does not run here).
+
+## v0.861.0 R2 THE SHELL (the Claude-style phone redesign, phase R2)
+
+Owner: "GO R2". `lib/ui/shell/hoola_shell.dart` (all from `hoola_theme.dart`):
+- `HoolaShell`: Scaffold wrapped in `HoolaTheme(appearance)`, tabs Hoola / Work / Connect / Made switched with a fade,
+  body padded above the floating bar, edge-swipe drawer, Talk opened as a slide-up route (reduced motion = fade).
+- `HoolaNav`: the floating pill bar (68 high, surface + hairline + float shadow), the selected tab on a `navOn` pill,
+  icon cross-fade, Hoola tab = the Hoola mark; Semantics per tab.
+- `HoolaHome`: hamburger + New chat, the mark, serif greeting by time of day + her first name, "Santosh is ready. N
+  things need you.", quick-start chips (the first = waiting approvals when any) that send as her message; a one-time
+  fade + rise (still under reduced motion).
+- `HoolaComposer`: + picks files (FilePicker, several) and uploads each at once through `attachChatFile` (the chat
+  paperclip's own upload) as removable chips with a spinner / error; the field grows to 6 lines; mic + the black voice
+  button (Talk) swap to a violet Send when there is text or a ready file; a failed send puts the words and files back.
+- `HoolaDrawer`: serif "Hoola", Recents (chat / call icons, the open chat on a sunk row), All chats, More (Calls sheet,
+  What Santosh remembers), avatar -> Settings, New chat pill (`connect(fresh: true)`).
+- `_CallPill`: while a call runs, "On a call with Santosh · Open" above the bar.
+- The Hoola tab shows the new home until the chat has a message, then the existing chat screen; Work = Today, Connect
+  = Connect, Made = artifacts, Settings = the old Main - each inside its own Night Glass frame (`_OldLook`) until
+  R3-R7 rebuild it.
+- Behind `Santosh.newLook` (pref `new_look`, default off): Main gains "Try the new design" + Appearance (System /
+  Light / Dark). `main.dart` Home returns `HoolaShell` when it is on (after the locked-screen and avatar-setup checks).
+- CI pictures: 30_new_home / 31_new_drawer / 32_new_work, light and dark.
+
+NOT VERIFIED until the CI run; not seen on a real phone.

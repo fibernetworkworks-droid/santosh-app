@@ -29,6 +29,7 @@ import 'ui/lock_safe.dart';
 import 'ui/phone_hoola.dart';
 import 'ui/video_shrink.dart';
 import 'ui/voice_screen.dart';
+import 'ui/shell/hoola_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -386,6 +387,9 @@ class _HomeState extends State<Home> {
         ),
       );
     }
+    // v0.861 R2: the Claude-style frame, when she turned on "Try the new design" (Main). Same app logic; only the
+    // frame, drawer, home and composer are new so far (docs/HOOLA_APP_REDESIGN_PLAN.md).
+    if (widget.app.newLook) return HoolaShell(app: widget.app, onReset: widget.onReset);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       extendBody: true,
