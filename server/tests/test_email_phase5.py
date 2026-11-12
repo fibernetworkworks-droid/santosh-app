@@ -246,7 +246,7 @@ def test_filter_create_list_delete(gb, bz):  # noqa: F811
     ctx = conv_ctx()
     out = run("email_filters", {"action": "create", "match": {"from": "hdfcbank"}, "do": {"label": "Bills"}},
               ctx)
-    assert out["created"] and "Gmail ke andar" in out["note"]
+    assert out["created"] and "inside Gmail" in out["note"]
     row = gb.filters[-1]
     assert row["criteria"] == {"from": "hdfcbank"}
     assert row["action"]["addLabelIds"] == ["Label_1"]           # existing label resolved, not created
@@ -263,7 +263,7 @@ def test_filter_create_needs_match_and_action(gb, bz):  # noqa: F811
     ctx = conv_ctx()
     with pytest.raises(ToolError, match="match do"):
         run("email_filters", {"action": "create", "do": {"archive": True}}, ctx)
-    with pytest.raises(ToolError, match="kya karega"):
+    with pytest.raises(ToolError, match="What should the filter do"):
         run("email_filters", {"action": "create", "match": {"from": "x@y.in"}}, ctx)
     with pytest.raises(ToolError, match="personal / social"):
         run("email_filters", {"action": "create", "match": {"from": "x@y.in"}, "do": {"category": "xyz"}}, ctx)
@@ -282,10 +282,10 @@ def test_filter_creates_missing_label_and_size_criteria(gb, bz):  # noqa: F811
 
 def test_filter_forward_needs_verified_address(gb, bz):  # noqa: F811
     ctx = conv_ctx()
-    with pytest.raises(ToolError, match="verified forwarding address"):
+    with pytest.raises(ToolError, match="verified Gmail forwarding address"):
         run("email_filters", {"action": "create", "match": {"from": "a@b.in"}, "do": {"forward": "nope@x.in"}}, ctx)
     run("email_forwarding", {"action": "add", "email": "new@x.in"}, ctx)      # pending — still refused
-    with pytest.raises(ToolError, match="verified forwarding address"):
+    with pytest.raises(ToolError, match="verified Gmail forwarding address"):
         run("email_filters", {"action": "create", "match": {"from": "a@b.in"}, "do": {"forward": "new@x.in"}}, ctx)
     next(r for r in gb.fwdbook if r["forwardingEmail"] == "new@x.in")["verificationStatus"] = "accepted"
     out = run("email_filters", {"action": "create", "match": {"from": "a@b.in"}, "do": {"forward": "new@x.in"}}, ctx)
@@ -300,7 +300,7 @@ def test_forwarding_add_list_remove(gb, bz):  # noqa: F811
     out = run("email_forwarding", {"action": "add", "email": "office@x.in"}, ctx)
     assert "verification" in out["note"] and gb.fwdbook[-1]["verificationStatus"] == "pending"
     out = run("email_forwarding", {"action": "add", "email": "dup@x.in"}, ctx)
-    assert "pehle se" in out["note"]
+    assert "already" in out["note"]
     out = run("email_forwarding", {"action": "remove", "email": "dup@x.in"}, ctx)
     assert out["removed"] == "dup@x.in" and all(r["forwardingEmail"] != "dup@x.in" for r in gb.fwdbook)
 
@@ -311,7 +311,7 @@ def test_alias_add_and_list(gb, bz):  # noqa: F811
     out = run("email_alias", {"action": "add", "email": "team@newtika.in", "name": "Team"}, ctx)
     assert out["status"] == "accepted" and gb.sendas[-1]["sendAsEmail"] == "team@newtika.in"
     out = run("email_alias", {"action": "add", "email": "hello@newtika.in"}, ctx)
-    assert "pehle se" in out["note"]
+    assert "already" in out["note"]
     lst = run("email_alias", {"action": "list"}, ctx)
     assert {a["email"] for a in lst["aliases"]} >= {"hello@newtika.in", "meghana@fnw.in"}
 
@@ -359,8 +359,8 @@ def test_language_set(gb, bz):  # noqa: F811
     out = run("email_accounts", {"language": "get"}, ctx)
     assert out["language"] == "en"
     out = run("email_accounts", {"language": "hi"}, ctx)
-    assert gb.lang["displayLanguage"] == "hi" and "Hoola aapki language" in out["note"]
-    with pytest.raises(ToolError, match="code do"):
+    assert gb.lang["displayLanguage"] == "hi" and "Hoola talks to you in your language" in out["note"]
+    with pytest.raises(ToolError, match="language code"):
         run("email_accounts", {"language": "hinglish!!"}, ctx)
 
 
@@ -454,7 +454,7 @@ def test_threads_read_and_non_gmail_honest(gb, bz, monkeypatch):  # noqa: F811
 
     import app.mailbox.accounts as ma
     monkeypatch.setattr(ma, "boxes", lambda tenant: [NonGmail()] if tenant == "default" else [])
-    with pytest.raises(MailError, match="Gmail par"):
+    with pytest.raises(MailError, match="on Gmail"):
         ms.threads_list("default", "in:inbox", 5, "mbx_imap")
 
 
@@ -491,7 +491,7 @@ def test_delete_forever_refused_off_gmail(bz, monkeypatch):  # noqa: F811
 
     import app.mailbox.accounts as ma
     monkeypatch.setattr(ma, "boxes", lambda tenant: [NonGmail()] if tenant == "default" else [])
-    with pytest.raises(MailError, match="sirf Gmail"):
+    with pytest.raises(MailError, match="only on Gmail"):
         ms.delete_forever("default", ["mbx_imap~9"])
 
 

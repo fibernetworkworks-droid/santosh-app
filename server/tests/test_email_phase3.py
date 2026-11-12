@@ -104,7 +104,7 @@ def test_vacation_get_and_set_behind_card(sbox, bz):  # noqa: F811
 
 def test_vacation_window_contacts_and_scope_guards(sbox, bz):  # noqa: F811
     ctx = Ctx("default", bz["conv"])
-    with pytest.raises(MailError, match="baad ka time"):
+    with pytest.raises(MailError, match="after start"):
         ms.vacation_set("default", "mbx_set", True, "msg", start="2027-01-25T18:00", end="2027-01-25T09:00")
     out = run("email_vacation", {"action": "set", "enable": True, "message": "Chhutti par hoon",
                                  "contacts_only": True}, ctx)

@@ -108,9 +108,9 @@ def svc(env, monkeypatch):
 
 def test_private_hosts_and_bad_strings_refused(env):
     from app.pgdb import service as S
-    for dsn, word in [("postgresql://u:p@localhost/db", "andar"), ("postgresql://u:p@10.1.2.3/db", "private"),
-                      ("postgresql://u:p@db.example.com/db?service=x", "service"), ("not a dsn", "samajh"),
-                      ("postgresql://:p@db.example.com/db", "User")]:
+    for dsn, word in [("postgresql://u:p@localhost/db", "inside"), ("postgresql://u:p@10.1.2.3/db", "private"),
+                      ("postgresql://u:p@db.example.com/db?service=x", "service"), ("not a dsn", "not understood"),
+                      ("postgresql://:p@db.example.com/db", "user")]:
         with pytest.raises(S.PgError) as e:
             S.add("default", "x", dsn)
         assert word in str(e.value)
