@@ -69,7 +69,7 @@ def test_a_reminder_missed_in_downtime_is_said_late_and_never_rings_at_night(env
     _chat("r1")
     _reminder("r1", 330)
     said, rang = _fire(monkeypatch, quiet=True)
-    assert said and "der se" in said[0] and "Dawai lena" in said[0]
+    assert said and "late" in said[0] and "Dawai lena" in said[0]
     assert rang == []
 
 

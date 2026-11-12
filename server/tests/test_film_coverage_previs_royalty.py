@@ -58,7 +58,7 @@ def test_coverage_flags_are_labelled_and_never_a_verdict():
     assert "Guard" in text and "only one line" in text                                                    # one-line, one-scene role
     assert "thought / feeling" in text and "scene 1" in text                                            # 'thinks' in an action line
     assert "target 600 s" in text                                                                   # runtime target far off
-    assert "pass" in c["kind_note"].lower() and "insaan" in c["kind_note"]
+    assert "pass" in c["kind_note"].lower() and "human" in c["kind_note"]
     for bad in ("recommend", "greenlight"):
         assert bad not in " ".join(f["text"].lower() for f in c["flags"])
 

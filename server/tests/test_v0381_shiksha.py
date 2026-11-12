@@ -218,12 +218,12 @@ def test_paper_gaps_and_official_pattern(sk):
     _fill_bank(S, n_mcq=5, n_short=0)
     out = P.make_paper(T, "Mathematics", "10", "CBSE")           # the official CBSE pattern from the library
     p = out["paper"]
-    assert p["max_marks"] == 80 and p["gaps"] and "andaaza" in p["blueprint"]["say"]
+    assert p["max_marks"] == 80 and p["gaps"] and "estimate" in p["blueprint"]["say"]
     with pytest.raises(P.PathyakramError, match="gaps"):
         P.approve_paper(T, p["number"])
     with pytest.raises(P.PathyakramError, match="pattern"):
         P.make_paper(T, "Science", "10", "CBSE")                 # no section counts on record: teacher gives them
-    with pytest.raises(P.PathyakramError, match="samajh"):
+    with pytest.raises(P.PathyakramError, match="not understood"):
         P.make_paper(T, "Mathematics", "10", sections=[{"name": "A", "qtype": "essayish", "count": 2, "marks_each": 5}])
 
 
@@ -282,7 +282,7 @@ def test_share_only_on_her_tap_and_form_quiz(sk, monkeypatch):
         made.update(title=title, questions=questions, quiz=quiz)
         return {"id": "f1", "title": title, "responder_link": "https://docs.google.com/forms/d/e/x/viewform", "edit_link": "e"}
     monkeypatch.setattr(F, "create", create)
-    with pytest.raises(P.PathyakramError, match="badal"):
+    with pytest.raises(P.PathyakramError, match="has changed"):
         P.decide_share(T, sh["id"], True, "wrong-hash", by_tap=True)
     sh2 = P.share_request(T, "paper", p["number"], "form")["share"]
     out = P.decide_share(T, sh2["id"], True, sh2["hash"], by_tap=True)

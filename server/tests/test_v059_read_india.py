@@ -78,8 +78,8 @@ def test_upi_qr_says_who_gets_the_money_and_warns(env):
     assert len(codes) == 1
     c = codes[0]
     assert c["kind"] == "upi" and c["payee_vpa"] == "refund.desk@ybl" and c["amount"] == 4999.0 and c["never_pays"]
-    assert c["risky"] and any("thagi" in w for w in c["warnings"]) and any("JAAYENGE" in w for w in c["warnings"])
-    assert "sirf JAATE" in c["say"]
+    assert c["risky"] and any("scam" in w for w in c["warnings"]) and any("GOES OUT" in w for w in c["warnings"])
+    assert "only SENDS" in c["say"]
     shop = qrread.describe("upi://pay?pa=ramstores@okaxis&pn=Ram%20Stores&mc=5411")
     assert shop["kind"] == "upi" and not shop["risky"] and shop["merchant"] and shop["amount"] is None
     auto = qrread.describe("upi://mandate?pa=x@ybl&pn=X&am=199&recur=MONTHLY")
@@ -303,7 +303,7 @@ def test_ifsc_and_pincode_offline():
     assert ifsc.valid("HDFC0000001") and ifsc.valid("SBIN0000001") and not ifsc.valid("HDFC000001") and not ifsc.valid("ZZZZ0000001")
     r = ifsc.lookup("hdfc0000001")
     assert r["valid"] and r["bank"] == "HDFC Bank"
-    assert "11 akshar" in ifsc.lookup("123")["say"]
+    assert "11 characters" in ifsc.lookup("123")["say"]
     assert pincode.valid("444101") and pincode.valid("411001") and not pincode.valid("000000") and not pincode.valid("100000")
     assert pincode.find_in("Khanapur Ves, Akot 444 101, Akola") == ["444101"]
 

@@ -107,12 +107,12 @@ def test_limit_warns_then_pauses_background_work_but_not_her_chat(env, monkeypat
     monkeypatch.setattr(santosh.llm, "choose", lambda h: "claude")
     c2 = _conv()
     out = asyncio.run(santosh.run_turn(c2, "subah ki report", actor="routine"))
-    assert "seema" in out and not calls
+    assert "limit" in out and not calls
     assert asyncio.run(santosh.run_turn(c2, "kaisi ho")) == "ok" and calls
     # website / video jobs are refused with the same plain words
     from app.operator import service as ops
     monkeypatch.setattr(ops, "available", lambda: True)
-    with pytest.raises(ops.OperatorJobError, match="seema"):
+    with pytest.raises(ops.OperatorJobError, match="limit"):
         ops.start("default", "MSEDCL ka bill download karo")
     # a higher limit lets them run again
     usage.set_limit("default", month_inr=5000)
@@ -129,7 +129,7 @@ def test_api_report_limit_and_owner_view(env):
         r = c.get("/api/usage?days=7").json()
         # >= : a background thread of another test may record its own (fake) model call into the same month
         assert {"video", "call"} <= {f["feature"] for f in r["features"]} and r["month"]["spent_inr"] > 0
-        assert r["daily"][-1]["inr"] > 0 and "Sabse zyada" in r["say"]
+        assert r["daily"][-1]["inr"] > 0 and "Biggest" in r["say"]
         lim = c.put("/api/usage/limit", json={"month_inr": 2000}).json()
         assert lim["month"]["limit_inr"] == pytest.approx(2000, rel=1e-3)
         assert c.get("/api/usage/all").json()["tenants"][0]["tenant"] == "default"

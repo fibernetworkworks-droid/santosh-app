@@ -115,7 +115,7 @@ def test_add_from_word_file_redline_original_untouched(ct):
     assert v["number"] == "C-0001" and v["our_label"] == "Vendor" and v["their_label"] == "Client"
     assert v["counterparty"] == "Acme Retail LLP" and v["start"] == "2026-04-01" and v["end"] == "2027-03-31"
     assert v["auto_renew"] and v["notice_days"] == 90 and v["notice_by"] == "2026-12-31" and v["high"] >= 4
-    assert "contracts_review" in kinds(S) and "vakil" in v["say"]
+    assert "contracts_review" in kinds(S) and "lawyer" in v["say"]
     # renewal register made from the contract's own dates
     obs = {o["kind"]: o for o in v["obligations"]}
     assert obs["renewal_notice"]["due"] == "2026-12-31" and obs["expiry"]["due"] == "2027-03-31"

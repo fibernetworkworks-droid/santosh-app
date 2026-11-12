@@ -169,7 +169,7 @@ def test_call_knows_who_is_talking_and_locks_the_owners_work(vid, monkeypatch):
             for ch in _chunks(steady(MAA_HZ, 2.0)):     # Maa talks
                 ws.send_bytes(ch)
             ev = read_events(ws, lambda e: e["type"] == "speaker")[-1]
-            assert ev == {"type": "speaker", "name": "Asha", "relation": "Maa", "owner": False, "level": "family"}
+            assert ev == {"type": "speaker", "name": "Asha", "relation": "Mother", "owner": False, "level": "family"}
             # Gemini is told quietly (context, no reply of its own)
             assert wait_until(lambda: fake.client_content)
             note = fake.client_content[-1].parts[0].text

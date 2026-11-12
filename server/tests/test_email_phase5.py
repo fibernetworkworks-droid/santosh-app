@@ -506,9 +506,9 @@ def test_new_settings_gated_on_old_mailbox(bz, monkeypatch):  # noqa: F811
     ctx = conv_ctx()
     for name, args in (("email_filters", {"action": "list"}), ("email_forwarding", {"action": "list"}),
                        ("email_alias", {"action": "list"})):
-        with pytest.raises(ToolError, match="dobara jodna"):
+        with pytest.raises(ToolError, match="reconnect this Gmail"):
             run(name, args, ctx)
     for args in ({"imap": "get"}, {"pop": "get"}, {"language": "get"}):
         out = run("email_accounts", args, ctx)                     # the v0.183 gate returns the honest note
-        assert out["scope_ok"] is False and "dobara jodna" in out["note"]
+        assert out["scope_ok"] is False and "reconnect this Gmail" in out["note"]
     assert not any(p.startswith("/settings/") for _, p in b.calls)   # nothing reached Gmail

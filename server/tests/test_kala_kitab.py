@@ -203,7 +203,7 @@ def test_permissions_isbn_checklist_similarity(kb, monkeypatch):
     assert p["kind"] == "lyrics" and len(p["excerpt"].split()) <= 12
     assert S.permissions_scan(T, b["number"])["added"] == 0            # deduped
     r = S.permission_save(T, b["number"], p["number"], status="public_domain", death_year=1990)
-    assert r["permission"]["status"] == "needed" and "60 saal" in r["say"]
+    assert r["permission"]["status"] == "needed" and "60 years" in r["say"]
     with pytest.raises(S.KitabError):
         S.permission_request(T, b["number"], p["number"])               # holder first
     S.permission_save(T, b["number"], p["number"], holder="Saregama (music publisher)", contact="rights@example.com",
@@ -276,7 +276,7 @@ def test_royalty_contract_platforms(kb):
     assert "5 years" in out["say"] and "India only" in out["say"]
     a = S.statement_add(T, b["number"], "Apr-Sep 2026", "paperback", units=1600, returns=100, price=250, stated=28000,
                         period_end="2026-09-30")
-    assert a["statement"]["expected"] == round(1500 * 250 * 0.075, 2) and a["diff"] == round(28000 - 28125, 2) and "kam" in a["say"]
+    assert a["statement"]["expected"] == round(1500 * 250 * 0.075, 2) and a["diff"] == round(28000 - 28125, 2) and "less" in a["say"]
     a2 = S.statement_add(T, b["number"], "Oct-Mar 2027", "paperback", units=1000, price=250, period_end="2027-03-31")
     assert a2["statement"]["expected"] == round(500 * 250 * 0.075 + 500 * 250 * 0.10, 2)   # crosses the 2000 slab
     e = S.statement_add(T, b["number"], "Apr-Sep 2026", "ebook", units=100, period_end="2026-09-30")

@@ -189,7 +189,7 @@ def test_a_card_is_drawn_and_the_tool_is_reachable_on_a_call(ro):
     from sqlalchemy import select
     with session() as s:
         cards = [e.payload for e in s.scalars(select(Event).where(Event.conversation_id == ro["conv"], Event.kind == "maps_places")).all()]
-    assert len(cards) == 1 and cards[0]["title"].startswith("Din ka rasta") and cards[0]["attribution"] == "Google"
+    assert len(cards) == 1 and cards[0]["title"].startswith("Day's route") and cards[0]["attribution"] == "Google"
     from app import voice
     from app.agent.tools import TOOLS, HANDLERS
     assert "maps_route_plan" in {t["name"] for t in TOOLS} and "maps_route_plan" in HANDLERS and "maps_route_plan" in voice.VOICE_TOOL_NAMES

@@ -88,7 +88,7 @@ def test_dead_job_restarts_once_then_fails_plainly(site_env, monkeypatch):
     stuck()                                                  # died again: no endless restarts
     assert S.recover_stuck() == 1 and len(started) == 1
     r = _site_row(v["id"])
-    assert r.status == "failed" and "Phir se chalao" in r.error
+    assert r.status == "failed" and "Run again" in r.error
     S.resume(T, v["id"])                                     # her resume still works
     assert started[-1] == (v["id"], "build")
     stuck(stop=True, recovered=1)                            # she had pressed Rokiye: stopped, not failed
