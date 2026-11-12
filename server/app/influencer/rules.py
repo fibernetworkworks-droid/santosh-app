@@ -24,13 +24,13 @@ FORMATS = {"reel": "Reel", "story": "Story", "post": "Post (photo)", "carousel":
            "community": "Community post", "other": "Doosra"}
 VIDEO_FORMATS = {"reel", "video", "short", "live", "story"}
 AUDIO_FORMATS = {"podcast", "live"}
-DEAL_KINDS = {"paid": "Paise wali deal", "barter": "Barter (saamaan / trip)", "affiliate": "Affiliate / commission",
-              "employee": "Brand ka employee / ambassador", "mixed": "Paise + saamaan"}
+DEAL_KINDS = {"paid": "Paid deal", "barter": "Barter (goods / trip)", "affiliate": "Affiliate / commission",
+              "employee": "Brand employee / ambassador", "mixed": "Money + goods"}
 STAGES = ["lead", "pitched", "negotiating", "contracted", "live", "done", "lost"]
-STAGE_LABEL = {"lead": "Nayi baat", "pitched": "Pitch gaya", "negotiating": "Baat chal rahi", "contracted": "Pakki",
-               "live": "Post ho rahe", "done": "Poori", "lost": "Nahi hui"}
-POST_STATUS = {"planned": "Planned", "draft": "Draft bana", "with_brand": "Brand ke paas", "approved": "Brand ki haan",
-               "live": "Post ho gaya", "missed": "Chhoot gaya"}
+STAGE_LABEL = {"lead": "New lead", "pitched": "Pitched", "negotiating": "Negotiating", "contracted": "Contracted",
+               "live": "Posting", "done": "Done", "lost": "Lost"}
+POST_STATUS = {"planned": "Planned", "draft": "Draft made", "with_brand": "With the brand", "approved": "Brand approved",
+               "live": "Posted", "missed": "Missed"}
 
 
 def digest(obj: Any) -> str:
@@ -40,7 +40,7 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 500) -> str:
     """Her / brand / creator words: secrets never kept (OTP / PIN / password values, card-like / Aadhaar-like numbers)."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|passcode|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
+    t = re.sub(r"\b(otp|pin|cvv|password|passcode|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
     t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
     return t.strip()[:n]
 
@@ -147,8 +147,8 @@ def fake_engagement(text: Any) -> bool:
     return bool(FAKE_WORDS.search(str(text or "")))
 
 
-FAKE_REFUSAL = ("Followers / likes / views kharidna, bots ya engagement pods: Hoola yeh kabhi nahi karta. Yeh platform ke niyam "
-                "todta hai, brand ko dhokha hai (CCPA misleading-ad / ASCI) aur account band ho sakta hai.")
+FAKE_REFUSAL = ("Buying followers / likes / views, bots or engagement pods: Hoola never does this. It breaks the platform rules, "
+                "deceives the brand (CCPA misleading-ad / ASCI) and can get the account shut down.")
 
 
 # ---------------------------------------------------------------- category gates
@@ -165,10 +165,10 @@ CATEGORIES = {
     "kids": r"\b(kids?|children|bachch?on|toy|school bag|baby)\b",
 }
 BLOCK_CATEGORIES = {
-    "gaming_money": "Real-money game / betting / satta ka promotion mana hai (Promotion and Regulation of Online Gaming Act 2025: "
-                    "online money games ke ad par saza).",
-    "tobacco_alcohol": "Tobacco / sharab (aur unke 'surrogate' brand) ka promotion mana: COTPA 2003 s.5, Cable TV rules aur ASCI. "
-                       "Hoola yeh deal nahi chalata.",
+    "gaming_money": "Promoting a real-money game / betting / satta is banned (Promotion and Regulation of Online Gaming Act 2025: "
+                    "advertising online money games is punishable).",
+    "tobacco_alcohol": "Promoting tobacco / alcohol (and their 'surrogate' brands) is banned: COTPA 2003 s.5, Cable TV rules and ASCI. "
+                       "Hoola does not run this deal.",
 }
 CRYPTO_DISCLAIMER = ("Crypto products and NFTs are unregulated and can be highly risky. There may be no regulatory recourse for any "
                      "loss from such transactions.")
@@ -240,63 +240,63 @@ def disclosure_check(caption: str, platform: str = "", fmt: str = "", deal_kind:
     label_any = _has(want, cap)
     label_first = _has(want, fl)
     if not cap.strip():
-        block.append("Caption / description khaali hai: pehle draft chahiye.")
+        block.append("The caption / description is empty: a draft is needed first.")
     elif not label_any:
         if _has(LABELS_WEAK, cap):
-            block.append("Sirf #collab / #partnership / #sp kaafi nahi: saaf '#ad' (ya #sponsored / #paid partnership) chahiye.")
+            block.append("#collab / #partnership / #sp alone is not enough: a clear '#ad' (or #sponsored / #paid partnership) is needed.")
         else:
-            block.append("Disclosure label nahi mila: pehli line mein '#ad' (ya #sponsored / #paidpartnership"
-                         + (" / #gifted" if kind == "barter" else "") + ") likhiye.")
+            block.append("No disclosure label found: write '#ad' (or #sponsored / #paidpartnership"
+                         + (" / #gifted" if kind == "barter" else "") + ") in the first line.")
     elif not label_first:
-        block.append("Label pehli line mein hona chahiye ('...more' ke neeche chhupa nahi): '#ad' ko caption ki shuruaat mein laiye.")
+        block.append("The label must be in the first line (not hidden under '...more'): move '#ad' to the start of the caption.")
     if label_any and _has(LABELS_WEAK, fl) and not label_first:
-        warn.append("Pehli line mein #collab hai par #ad neeche: #ad upar laiye.")
+        warn.append("The first line has #collab but #ad is lower down: move #ad up.")
     # platform tool (e.g. Instagram paid-partnership tag) is in ADDITION, ask her to tick
     if platform in ("instagram", "facebook", "youtube", "threads"):
-        check.append({"key": "platform_tag", "text": "Platform ka apna 'Paid partnership / Includes paid promotion' toggle on kiya",
+        check.append({"key": "platform_tag", "text": "Turned on the platform's own 'Paid partnership / Includes paid promotion' toggle",
                       "done": bool(ticks.get("platform_tag"))})
     # video / audio
     if fmt in VIDEO_FORMATS:
         win = video_window(duration_s)
-        check.append({"key": "overlay", "text": "Video par '#ad / Sponsored' likha hua (overlay) dikh raha hai"
-                      + (f" kam se kam {win:g} second" if win else ""), "done": bool(ticks.get("overlay"))})
-        check.append({"key": "spoken", "text": "Shuru ke 10 second mein bola: 'yeh ek paid partnership / ad hai'",
+        check.append({"key": "overlay", "text": "'#ad / Sponsored' is shown on the video (overlay)"
+                      + (f" for at least {win:g} seconds" if win else ""), "done": bool(ticks.get("overlay"))})
+        check.append({"key": "spoken", "text": "Said in the first 10 seconds: 'this is a paid partnership / ad'",
                       "done": bool(ticks.get("spoken"))})
         if fmt == "story":
-            check.append({"key": "every_frame", "text": "Har story frame par label (poori der tak)", "done": bool(ticks.get("every_frame"))})
+            check.append({"key": "every_frame", "text": "Label on every story frame (for its whole length)", "done": bool(ticks.get("every_frame"))})
     if fmt in AUDIO_FORMATS:
-        check.append({"key": "start_end", "text": "Live / podcast mein shuru AUR ant dono jagah bola ki yeh ad hai",
+        check.append({"key": "start_end", "text": "Said at both the start AND the end of the live / podcast that it is an ad",
                       "done": bool(ticks.get("start_end"))})
     # AI / virtual
     if virtual and not _has(AI_LABELS, cap):
-        block.append("Virtual / AI influencer: har post mein saaf likhiye ki yeh asli insaan nahi (sirf bio mein kaafi nahi).")
+        block.append("Virtual / AI influencer: say clearly in every post that this is not a real person (the bio alone is not enough).")
     if ai_media:
         if not _has(AI_LABELS, cap):
-            warn.append("AI se bani tasveer / awaaz / video: caption mein 'AI-generated' likhiye.")
-        check.append({"key": "ai_toggle", "text": "Upload karte waqt platform ka 'AI-generated' label on kiya (IT Rules 2026)",
+            warn.append("AI-made picture / voice / video: write 'AI-generated' in the caption.")
+        check.append({"key": "ai_toggle", "text": "Turned on the platform's 'AI-generated' label when uploading (IT Rules 2026)",
                       "done": bool(ticks.get("ai_toggle"))})
     # health
     if "health" in cats:
         if any(d in low for d in DISEASE_WORDS) and re.search(CURE_WORDS, low):
-            block.append("Bimari theek / jad se khatam karne ka daava: Drugs & Magic Remedies Act 1954 mein mana. Hata dijiye.")
+            block.append("A claim to cure / completely remove a disease is banned by the Drugs & Magic Remedies Act 1954. Remove it.")
         if not health_qual:
-            warn.append("Health / nutrition par salah: ASCI ke hisaab se creator ki qualification (doctor / dietitian / nutritionist "
-                        "certificate) honi chahiye aur post mein dikhni chahiye; warna sirf apna anubhav bataye, salah nahi.")
+            warn.append("Health / nutrition advice: under ASCI the creator's qualification (doctor / dietitian / nutritionist "
+                        "certificate) must exist and be shown in the post; otherwise share only your own experience, not advice.")
         elif health_qual.lower() not in low:
-            warn.append(f"Qualification ({health_qual}) post mein dikhaiye (CCPA health endorsement guidelines 2023).")
+            warn.append(f"Show the qualification ({health_qual}) in the post (CCPA health endorsement guidelines 2023).")
     # finance
     if "finance" in cats:
         if re.search(r"\b(guaranteed|assured|pakka munafa|paisa double|double your money|risk[- ]free)\b", low):
-            block.append("Pakka / guaranteed munafa ka daava mana hai (SEBI / ASCI).")
+            block.append("A claim of sure / guaranteed profit is banned (SEBI / ASCI).")
         if re.search(FIN_ADVICE, low) and not sebi_reg:
-            block.append("Share / fund khareedne-bechne ki salah sirf SEBI-registered (RA / IA) de sakte hain: creator ka SEBI "
-                         "registration number nahi hai, isliye salah wali line hataiye (sirf jaankari rakhiye).")
+            block.append("Only SEBI-registered people (RA / IA) can advise on buying / selling shares / funds: the creator has no SEBI "
+                         "registration number, so remove the advice line (keep only information).")
         if sebi_reg and sebi_reg.lower() not in low:
-            warn.append(f"SEBI registration number ({sebi_reg}) post mein dikhaiye.")
+            warn.append(f"Show the SEBI registration number ({sebi_reg}) in the post.")
     if "crypto" in cats and "unregulated" not in low:
-        block.append("Crypto / NFT ad mein ASCI ka disclaimer zaroori: '" + CRYPTO_DISCLAIMER + "'")
+        block.append("A crypto / NFT ad needs the ASCI disclaimer: '" + CRYPTO_DISCLAIMER + "'")
     if "kids" in cats and re.search(r"\b(only today|jaldi|abhi kharido|mummy se bolo|ask your parents)\b", low):
-        warn.append("Bachchon par dabaav ('mummy se bolo', 'abhi kharido') ASCI ke bachchon wale chapter ke khilaaf.")
+        warn.append("Pressure on children ('ask mummy', 'buy now') goes against the ASCI chapter on children.")
     # claims (brand must prove)
     try:
         from ..kalam.service import claims_of
@@ -304,10 +304,10 @@ def disclosure_check(caption: str, platform: str = "", fmt: str = "", deal_kind:
     except Exception:
         cl = []
     for c in cl[:6]:
-        warn.append(f"Daava: “{c['text'][:120]}” — brand se proof lein (ASCI: influencer ko bhi due diligence karni hai).")
+        warn.append(f"Claim: “{c['text'][:120]}” — get proof from the brand (ASCI: the influencer must also do due diligence).")
     for c in check:
         if not c["done"]:
-            warn.append("Tick baaki: " + c["text"])
+            warn.append("Tick pending: " + c["text"])
     ok = not block
     return {"ok": ok, "block": block, "warn": list(dict.fromkeys(warn)), "checklist": check, "label_first": label_first,
             "label_found": label_any, "categories": cats}
@@ -324,14 +324,14 @@ def gst_of(amount: float, registered: bool, her_state: str, brand_state: str, fo
     and claims refund)."""
     if not registered or amount <= 0:
         return {"rate": 0.0, "cgst": 0.0, "sgst": 0.0, "igst": 0.0, "total_tax": 0.0,
-                "note": "GST registered nahi: invoice par GST nahi (saal mein Rs 20 lakh se upar registration zaroori)."}
+                "note": "Not GST registered: no GST on the invoice (registration is needed above Rs 20 lakh a year)."}
     if foreign:
         if lut:
             return {"rate": 0.0, "cgst": 0.0, "sgst": 0.0, "igst": 0.0, "total_tax": 0.0, "export": True,
-                    "note": "Videshi brand, videshi mudra mein: export of services, LUT ke saath bina IGST (zero-rated)."}
+                    "note": "Foreign brand paying in foreign currency: export of services, with an LUT no IGST (zero-rated)."}
         tax = round(amount * GST_RATE / 100, 2)
         return {"rate": GST_RATE, "cgst": 0.0, "sgst": 0.0, "igst": tax, "total_tax": tax, "export": True,
-                "note": "Export par LUT nahi: IGST lagaya, baad mein refund. LUT (RFD-11) saal ki shuruaat mein bhar dijiye."}
+                "note": "No LUT on the export: IGST charged, refund later. File the LUT (RFD-11) at the start of the year."}
     tax = round(amount * GST_RATE / 100, 2)
     if her_state and brand_state and her_state != brand_state:
         return {"rate": GST_RATE, "cgst": 0.0, "sgst": 0.0, "igst": tax, "total_tax": tax, "note": f"IGST {GST_RATE:g}% (alag rajya)."}
@@ -351,19 +351,19 @@ def tds_note(fee: float, barter_value: float, fy_fees_from_brand: float, fy_bene
     if fee > 0:
         if fy_fees_from_brand + fee > TDS_PRO_LIMIT:
             out["fee_tds"] = round(fee * TDS_PRO_RATE / 100, 2)
-            out["lines"].append(f"Brand fee par TDS kaat sakta hai: {TDS_PRO_RATE:g}% (Income-tax Act 2025 s.393(1), purana 194J; "
-                                f"saal mein Rs {TDS_PRO_LIMIT:,.0f} se upar). Kuch brand ise contract (1% / 2%) maante hain: CA se pakka.")
+            out["lines"].append(f"The brand may deduct TDS on the fee: {TDS_PRO_RATE:g}% (Income-tax Act 2025 s.393(1), old 194J; "
+                                f"above Rs {TDS_PRO_LIMIT:,.0f} in the year). Some brands treat it as a contract (1% / 2%): confirm with your CA.")
         else:
-            out["lines"].append(f"Is brand se is saal fee Rs {TDS_PRO_LIMIT:,.0f} tak: aam taur par TDS nahi.")
+            out["lines"].append(f"Fees from this brand this year up to Rs {TDS_PRO_LIMIT:,.0f}: usually no TDS.")
     if barter_value > 0:
         tot = fy_benefits_from_brand + barter_value
         if tot > TDS_BEN_LIMIT:
             out["barter_tds"] = round(barter_value * TDS_BEN_RATE / 100, 2)
-            out["lines"].append(f"Barter / free saamaan Rs {tot:,.0f} (is saal is brand se) > Rs {TDS_BEN_LIMIT:,.0f}: brand ko "
-                                f"{TDS_BEN_RATE:g}% TDS dena hai saamaan dene se PEHLE (s.393(1) Sl. 8(iv), purana 194R). Saamaan "
-                                "creator ki income hai: ITR mein dikhega.")
+            out["lines"].append(f"Barter / free goods Rs {tot:,.0f} (this year from this brand) > Rs {TDS_BEN_LIMIT:,.0f}: the brand must "
+                                f"deduct {TDS_BEN_RATE:g}% TDS BEFORE giving the goods (s.393(1) Sl. 8(iv), old 194R). The goods "
+                                "are the creator's income: they show in the ITR.")
         else:
-            out["lines"].append("Barter saamaan bhi creator ki income hai (aur GST mein barter ka mool); Rs 20,000 tak TDS nahi.")
+            out["lines"].append("Barter goods are also the creator's income (and barter has a value in GST); no TDS up to Rs 20,000.")
     return out
 
 
@@ -479,15 +479,15 @@ def fake_signals(followers: int | None, avg_likes: float | None, avg_comments: f
     if followers and avg_likes is not None and followers > 0:
         er = (avg_likes + (avg_comments or 0)) / followers * 100
         if er > 25:
-            out.append(f"Likes+comments followers ka {er:.1f}%: bahut zyada, numbers ek baar check kijiye (screenshot / export).")
+            out.append(f"Likes + comments are {er:.1f}% of followers: very high, check the numbers once (screenshot / export).")
         elif er < 0.3 and followers >= 10000:
-            out.append(f"Likes+comments followers ka sirf {er:.2f}%: followers ka bada hissa shayad active nahi.")
+            out.append(f"Likes + comments are only {er:.2f}% of followers: a large share of followers is probably not active.")
     if avg_likes and avg_comments is not None and avg_likes >= 500 and avg_comments / avg_likes < 0.002:
-        out.append("Likes ke hisaab se comments bahut kam: comments / likes check kijiye.")
+        out.append("Very few comments compared with likes: check comments / likes.")
     hs = sorted([h for h in (history or []) if h.get("on") and h.get("followers")], key=lambda h: str(h["on"]))
     for a, b in zip(hs, hs[1:]):
         da, db = as_date(a["on"]), as_date(b["on"])
         if da and db and 0 < (db - da).days <= 7 and a["followers"] and b["followers"] / a["followers"] >= 1.2:
-            out.append(f"{a['on']} se {b['on']} ke beech followers {int((b['followers'] / a['followers'] - 1) * 100)}% badhe: "
-                       "viral post tha ya kuch aur? Brand poochh sakta hai.")
+            out.append(f"Between {a['on']} and {b['on']} followers grew {int((b['followers'] / a['followers'] - 1) * 100)}%: "
+                       "was it a viral post or something else? The brand may ask.")
     return out
