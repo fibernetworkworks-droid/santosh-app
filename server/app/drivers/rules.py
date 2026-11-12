@@ -38,13 +38,13 @@ LAW = {
     "days_row": 6,           # OSH Code: max 6 working days a week
 }
 LAW_NOTE = {
-    "day_h": "OSH Code 2020 s.25: din mein 8 ghante (driving + loading / checking + terminal par chhota intezaar).",
-    "week_h": "OSH Central Rules 2026 r.64: hafte mein 48 ghante.",
-    "spread_h": "Spread-over 12 ghante (purane MTW Act ka niyam; ab state ka niyam dekhiye).",
-    "rest_after_h": "5 ghante kaam ke baad kam se kam 30 minute aaraam (MTW Act; state niyam dekhiye).",
-    "between_h": "Do duty ke beech kam se kam 9 ghante lagaatar aaraam (MTW Act; state niyam dekhiye).",
-    "days_row": "Hafte mein 6 din se zyada kaam nahi; chhutti ka din kaam liya to agle 10 din mein chhutti (OSH Code).",
-    "ot": "8 ghante / din ya 48 / hafte se upar = overtime, double pagaar, driver ki marzi se (OSH Code s.27).",
+    "day_h": "OSH Code 2020 s.25: 8 hours a day (driving + loading / checking + short waits at the terminal).",
+    "week_h": "OSH Central Rules 2026 r.64: 48 hours a week.",
+    "spread_h": "Spread-over 12 hours (old MTW Act rule; now check the state rule).",
+    "rest_after_h": "At least 30 minutes rest after 5 hours of work (MTW Act; check the state rule).",
+    "between_h": "At least 9 hours continuous rest between two duties (MTW Act; check the state rule).",
+    "days_row": "No more than 6 working days a week; if a rest day is worked, give a day off within the next 10 days (OSH Code).",
+    "ot": "Over 8 hours / day or 48 / week = overtime, double pay, only with the driver's consent (OSH Code s.27).",
 }
 
 SOURCES = [
@@ -62,16 +62,16 @@ SOURCES = [
 ]
 
 NEVER = (
-    "Driver ko paise / advance Hoola kabhi nahi deta: yeh aapka ya payroll ka kaam hai.",
-    "Driver ko message Hoola khud nahi bhejta: draft aap bhejti hain, ya aapke tap se business WhatsApp / Hoola Network.",
-    "Licence ka poora number Hoola ke dimaag mein nahi jaata: Pehchaan Locker mein band, sirf aakhri 4 ank dikhte hain.",
-    "Licence khatam hone ke baad driver ko duty nahi: bina valid licence chalana MV Act s.3 / s.181 ka gunah hai.",
-    "Ek driver ki do duty ek saath, ya ek gaadi do driveron ko ek saath: kabhi nahi.",
+    "Hoola never pays money / advances to a driver: that is your or payroll's job.",
+    "Hoola never messages a driver by itself: you send the draft, or it goes by your tap over business WhatsApp / Hoola Network.",
+    "The full licence number never enters Hoola's memory: it is locked in the ID Locker; only the last 4 digits are shown.",
+    "No duty for a driver after the licence expires: driving without a valid licence is an offence under MV Act s.3 / s.181.",
+    "Never two duties for one driver at once, or one vehicle for two drivers at once.",
 )
 
 # ---------------------------------------------------------------- licence classes
 CLASSES = {
-    "mcwg": "Motorcycle with gear", "lmv": "LMV (car / jeep / chhota tempo)", "lmv_tr": "LMV transport",
+    "mcwg": "Motorcycle with gear", "lmv": "LMV (car / jeep / small tempo)", "lmv_tr": "LMV transport",
     "mgv": "Medium goods (MGV)", "hgv": "Heavy goods (HGV)", "htv": "Heavy transport (HTV / HPMV)",
     "mpv": "Medium passenger", "hpv": "Heavy passenger (bus)", "trans": "Transport (TRANS)", "erik": "E-rickshaw",
     "hazardous": "Hazardous goods endorsement",
@@ -113,14 +113,14 @@ def licence_ok_for(classes: list[str], gvw_kg: float | None, kind: str = "", haz
     cl = set(classes or [])
     out = []
     if not cl:
-        return ["Licence ki class darj nahi (LMV / HGV ...); check nahi ho paya."]
+        return ["Licence class not recorded (LMV / HGV ...); could not check."]
     if gvw_kg and gvw_kg > 7500 and not (cl & {"mgv", "hgv", "htv", "trans"}):
-        out.append(f"Gaadi {gvw_kg:g} kg (7,500 kg se bhaari): LMV licence kaafi nahi, MGV / HGV / transport class chahiye "
+        out.append(f"Vehicle {gvw_kg:g} kg (heavier than 7,500 kg): an LMV licence is not enough, MGV / HGV / transport class is needed "
                    "(Supreme Court, Rambha Devi, Nov 2024).")
     if kind in ("bus", "passenger") and gvw_kg and gvw_kg > 7500 and not (cl & {"hpv", "mpv", "trans"}):
-        out.append("Badi bus ke liye passenger / transport class chahiye.")
+        out.append("A large bus needs a passenger / transport class.")
     if hazardous and "hazardous" not in cl:
-        out.append("Khatarnak / hazardous maal: driver ki hazardous goods training (endorsement) zaroori (CMV Rules r.9).")
+        out.append("Hazardous goods: the driver needs hazardous goods training (endorsement) (CMV Rules r.9).")
     return out
 
 
@@ -212,22 +212,22 @@ def check_duty(duty: dict, others: list[dict], driver: dict, leave_days: set[dat
     brk = max(0, int(duty.get("break_min") or 0))
     work = round(max(0.0, spread - brk / 60), 2)
     if not driver.get("active", True):
-        block.append(f"{driver.get('name')} ab kaam par nahi (left).")
+        block.append(f"{driver.get('name')} no longer works here (left).")
     if d in leave_days:
-        block.append(f"{driver.get('name')} us din chhutti par hain.")
+        block.append(f"{driver.get('name')} is on leave that day.")
     exp = driver.get("dl_valid_to")
     if not exp:
-        warn.append("Licence ki aakhri taareekh darj nahi: check kijiye.")
+        warn.append("Licence expiry date not recorded: check it.")
     elif exp < b.date():
-        block.append(f"Licence {exp:%d-%m-%Y} ko khatam ho chuka: bina valid licence duty nahi (MV Act s.3 / s.181).")
+        block.append(f"Licence {exp:%d-%m-%Y} has expired: no duty without a valid licence (MV Act s.3 / s.181).")
     med = driver.get("medical_valid_to")
     if med and med < d:
-        law.append(f"Medical certificate {med:%d-%m-%Y} ko khatam (transport licence ke liye Form 1A).")
+        law.append(f"Medical certificate {med:%d-%m-%Y} expired (Form 1A for a transport licence).")
     if vehicle is not None:
         for p in licence_ok_for(driver.get("classes") or [], vehicle.get("gvw_kg"), vehicle.get("kind", ""), bool(duty.get("hazardous"))):
             (block if "7,500" in p or "hazardous" in p.lower() else warn).append(p)
     elif duty.get("hazardous") and "hazardous" not in (driver.get("classes") or []):
-        block.append("Khatarnak / hazardous maal: driver ki hazardous goods training (endorsement) zaroori (CMV Rules r.9).")
+        block.append("Hazardous goods: the driver needs hazardous goods training (endorsement) (CMV Rules r.9).")
     # overlaps
     spans = []
     for o in others:
@@ -236,11 +236,11 @@ def check_duty(duty: dict, others: list[dict], driver: dict, leave_days: set[dat
         oa, ob = span(o["day"], o["start"], o["end"])
         spans.append((oa, ob, o))
         if oa < b and a < ob:
-            block.append(f"Isi samay driver ki doosri duty hai ({o['day']:%d-%m} {o['start']}-{o['end']}).")
+            block.append(f"The driver has another duty at the same time ({o['day']:%d-%m} {o['start']}-{o['end']}).")
     for v in vehicle_busy or []:
         va, vb = span(v["day"], v["start"], v["end"])
         if va < b and a < vb:
-            block.append(f"Gaadi {v.get('vehicle')} isi samay {v.get('driver_name') or 'doosre driver'} ke paas hai.")
+            block.append(f"Vehicle {v.get('vehicle')} at the same time is with {v.get('driver_name') or 'another driver'}.")
     # the same day's other duties count together (split duty): one spread-over, one day's hours
     same = [x for x in spans if x[2]["day"] == d]
     day_a = min([a] + [x[0] for x in same])
@@ -248,11 +248,11 @@ def check_duty(duty: dict, others: list[dict], driver: dict, leave_days: set[dat
     day_spread = hours(day_a, day_b)
     day_work = round(work + sum(max(0.0, hours(x[0], x[1]) - int(x[2].get("break_min") or 0) / 60) for x in same), 2)
     if day_spread > lim["spread_h"]:
-        law.append(f"Duty {day_spread:g} ghante mein phaili (spread-over {lim['spread_h']:g} se zyada). {LAW_NOTE['spread_h']}")
+        law.append(f"Duty {day_spread:g} hours spread (more than the spread-over of {lim['spread_h']:g}). {LAW_NOTE['spread_h']}")
     if day_work > lim["day_h"]:
-        law.append(f"Us din kaam {day_work:g} ghante: {lim['day_h']:g} se upar {round(day_work - lim['day_h'], 2):g} ghante overtime. {LAW_NOTE['ot']}")
+        law.append(f"Work that day {day_work:g} hours: {round(day_work - lim['day_h'], 2):g} hours overtime over {lim['day_h']:g}. {LAW_NOTE['ot']}")
     if work > lim["rest_after_h"] and brk < LAW["rest_min"]:
-        warn.append(f"{lim['rest_after_h']:g} ghante ke baad {LAW['rest_min']} minute aaraam rakhiye (duty mein break likhiye).")
+        warn.append(f"After {lim['rest_after_h']:g} hours give {LAW['rest_min']} minutes rest (write the break in the duty).")
     # rest between duties on different days
     prev = [x for x in spans if x[1] <= a and x[2]["day"] != d]
     nxt = [x for x in spans if x[0] >= b and x[2]["day"] != d]
@@ -260,18 +260,18 @@ def check_duty(duty: dict, others: list[dict], driver: dict, leave_days: set[dat
         pe = max(x[1] for x in prev)
         gap = hours(pe, day_a)
         if gap < lim["between_h"]:
-            law.append(f"Pichhli duty ke baad sirf {gap:g} ghante aaraam (kam se kam {lim['between_h']:g}). {LAW_NOTE['between_h']}")
+            law.append(f"Only {gap:g} hours rest after the last duty (at least {lim['between_h']:g}). {LAW_NOTE['between_h']}")
     if nxt:
         ns = min(x[0] for x in nxt)
         gap = hours(day_b, ns)
         if gap < lim["between_h"]:
-            law.append(f"Is duty ke baad agli duty se pehle sirf {gap:g} ghante aaraam (kam se kam {lim['between_h']:g}).")
+            law.append(f"Only {gap:g} hours rest between this duty and the next (at least {lim['between_h']:g}).")
     # week (Mon-Sun) hours
     wk0 = d - timedelta(days=d.weekday())
     wk = [x for x in spans if wk0 <= x[2]["day"] < wk0 + timedelta(days=7)]
     week_h = round(work + sum(max(0.0, hours(x[0], x[1]) - int(x[2].get("break_min") or 0) / 60) for x in wk), 2)
     if week_h > lim["week_h"]:
-        law.append(f"Is hafte {week_h:g} ghante ho jayenge ({lim['week_h']:g} se zyada). {LAW_NOTE['week_h']}")
+        law.append(f"This week will reach {week_h:g} hours (more than {lim['week_h']:g}). {LAW_NOTE['week_h']}")
     # days in a row
     days = {x[2]["day"] for x in spans} | {d}
     run, k = 1, d - timedelta(days=1)
@@ -281,7 +281,7 @@ def check_duty(duty: dict, others: list[dict], driver: dict, leave_days: set[dat
     while k in days:
         run, k = run + 1, k + timedelta(days=1)
     if run > lim["days_row"]:
-        law.append(f"Lagaatar {run} din duty (bina chhutti). {LAW_NOTE['days_row']}")
+        law.append(f"{run} days of duty in a row (no day off). {LAW_NOTE['days_row']}")
     ot = round(max(0.0, day_work - lim["day_h"]), 2)
     return {"block": block, "law": law, "warn": warn, "work_h": work, "spread_h": spread, "day_h": day_work, "ot_h": ot, "week_h": week_h,
             "ok": not block and not law}
@@ -338,7 +338,7 @@ def parse_sheet(text: str) -> dict[str, Any]:
     if tl:
         out["tolls"] = _n(tl.group(1))
     ex = []
-    for word, label in (("parking", "Parking"), ("khana|food|meal|bhatta", "Khana / bhatta"), ("puncture|tyre|tayar", "Puncture / tyre"),
+    for word, label in (("parking", "Parking"), ("khana|food|meal|bhatta", "Food / allowance"), ("puncture|tyre|tayar", "Puncture / tyre"),
                         ("loading|hamali|unloading", "Loading / hamali"), ("police|challan", "Challan"), ("repair|mistri", "Repair")):
         m = re.search(rf"(?:{word})\w*\s*[:\-]?\s*(?:rs\.?|₹)?\s*{_NUM}", t)
         if m and _n(m.group(1)):
@@ -357,17 +357,17 @@ def check_trip(trip: dict, prev_end_km: float | None, kmpl_ref: float | None, he
     f: list[dict] = []
     s, e = trip.get("start_km"), trip.get("end_km")
     if s is None or e is None:
-        f.append({"kind": "km_missing", "level": "warn", "say": "Shuru / aakhri km nahi likha."})
+        f.append({"kind": "km_missing", "level": "warn", "say": "Start / end km not written."})
     else:
         if e < s:
-            f.append({"kind": "km_back", "level": "bad", "say": f"Aakhri km ({e:g}) shuru ({s:g}) se kam: galat likha hai."})
+            f.append({"kind": "km_back", "level": "bad", "say": f"End km ({e:g}) is less than start ({s:g}): written wrongly."})
         elif e - s > 1200:
-            f.append({"kind": "km_big", "level": "warn", "say": f"Ek trip mein {e - s:g} km: sahi hai? Meter dekhiye."})
+            f.append({"kind": "km_big", "level": "warn", "say": f"One trip of {e - s:g} km: is that right? Check the meter."})
         if prev_end_km is not None and abs(s - prev_end_km) > 1:
             gap = s - prev_end_km
             f.append({"kind": "km_gap", "level": "bad" if gap > 0 else "warn",
-                      "say": (f"Pichhli trip {prev_end_km:g} par khatam, yeh {s:g} se shuru: beech ke {gap:g} km kisi sheet mein nahi."
-                              if gap > 0 else f"Yeh trip {s:g} se shuru, pichhli {prev_end_km:g} par khatam thi: meter peeche kaise gaya?")})
+                      "say": (f"The last trip ended at {prev_end_km:g}, this one starts at {s:g}: the {gap:g} km in between are on no sheet."
+                              if gap > 0 else f"This trip starts at {s:g}, the last one ended at {prev_end_km:g}: how did the meter go back?")})
     km = (e - s) if (s is not None and e is not None and e >= s) else None
     fl = trip.get("fuel_l")
     if km and fl and kmpl_ref:
@@ -375,16 +375,16 @@ def check_trip(trip: dict, prev_end_km: float | None, kmpl_ref: float | None, he
         if kmpl and abs(kmpl - kmpl_ref) / kmpl_ref > tolerance:
             lo = kmpl < kmpl_ref
             f.append({"kind": "fuel_odd", "level": "warn",
-                      "say": (f"Is trip mein {kmpl:.1f} km / litre; is gaadi ka aam {kmpl_ref:.1f}. "
-                              + ("Fuel zyada laga: tank full kiya? leak / chori / lambi idling? Bill aur FASTag / GPS se milaiye."
-                                 if lo else "Fuel kam dikha: pichhli baar tank bhara tha? Bill milaiye."))})
+                      "say": (f"This trip: {kmpl:.1f} km / litre; this vehicle's usual is {kmpl_ref:.1f}. "
+                              + ("More fuel used: was the tank filled? leak / theft / long idling? Match with the bill and FASTag / GPS."
+                                 if lo else "Less fuel shown: was the tank filled last time? Match the bill."))})
     a, b = trip.get("start_time"), trip.get("end_time")
     if a and b and trip.get("day"):
         x, y = span(trip["day"], a, b)
         h = hours(x, y)
         lim = limits(her)
         if h > lim["day_h"]:
-            f.append({"kind": "overtime", "level": "info", "say": f"Trip {h:g} ghante: {h - lim['day_h']:g} ghante overtime (payroll ko jayega)."})
+            f.append({"kind": "overtime", "level": "info", "say": f"Trip {h:g} hours: {h - lim['day_h']:g} hours overtime (goes to payroll)."})
         if h > lim["spread_h"]:
             f.append({"kind": "spread", "level": "warn", "say": f"Trip {h:g} ghante lambi: {LAW_NOTE['spread_h']}"})
     return f
