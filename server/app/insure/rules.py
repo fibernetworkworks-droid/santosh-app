@@ -65,14 +65,14 @@ def premium_state(due: date | None, mode: str, ptype: str, on: date) -> dict:
     rev_end = add_months(due, 12 * revival_years(ptype))
     days = (due - on).days
     if days >= 0:
-        return {"state": "due", "days": days, "due": due.isoformat(), "grace_end": grace_end.isoformat(), "label": f"{days} din mein due"}
+        return {"state": "due", "days": days, "due": due.isoformat(), "grace_end": grace_end.isoformat(), "label": f"due in {days} days"}
     if on <= grace_end:
         return {"state": "grace", "days_left": (grace_end - on).days, "due": due.isoformat(), "grace_end": grace_end.isoformat(),
-                "label": f"Grace period: {(grace_end - on).days} din baaki"}
+                "label": f"Grace period: {(grace_end - on).days} days left"}
     if on <= rev_end:
         return {"state": "lapsed", "due": due.isoformat(), "revive_by": rev_end.isoformat(),
-                "label": f"Lapse: {rev_end.isoformat()} tak revive ho sakti hai"}
-    return {"state": "lapsed_final", "due": due.isoformat(), "label": "Revival ki muddat khatam"}
+                "label": f"Lapsed: can be revived until {rev_end.isoformat()}"}
+    return {"state": "lapsed_final", "due": due.isoformat(), "label": "Revival period has ended"}
 
 
 def age_on(dob: date | None, on: date) -> int | None:
@@ -99,7 +99,7 @@ def health_cover_need(members: int, metro: bool, eldest_age: int | None, existin
     if eldest_age and eldest_age >= 55:
         need *= 1.5
     return {"need": round(need), "existing": round(existing), "gap": round(max(0.0, need - existing)),
-            "tip": "Bade cover ke liye base + super top-up sasta padta hai."}
+            "tip": "For a large cover, a base plan plus a super top-up costs less."}
 
 
 def gst_on(ptype: str, group: bool = False) -> float:
@@ -116,29 +116,29 @@ def health_deduction(self_premium: float, parents_premium: float, self_senior: b
     s_cap = 50000 if self_senior else 25000
     p_cap = 50000 if parents_senior else 25000
     a, b = min(self_premium, s_cap), min(parents_premium, p_cap)
-    return {"self": round(a), "parents": round(b), "total": round(a + b), "note": "Sirf old regime mein; naye regime mein yeh chhoot nahi."}
+    return {"self": round(a), "parents": round(b), "total": round(a + b), "note": "Only in the old tax regime; there is no such deduction in the new regime."}
 
 
 PROPOSAL_DOCS = {
-    "common": ["PAN", "Aadhaar / address proof (KYC, CKYC number agar ho)", "Photo", "Bank details (NACH / auto-debit ke liye)",
-               "Nominee ka naam, rishta, janam tareekh", "Health / habit declaration: graahak khud sach bharega"],
-    "term": ["Income proof (ITR / salary slip) bade cover ke liye", "Medical test (umar aur cover ke hisaab se insurer batayega)"],
-    "health": ["Pehle se bimari ki poori jaankari (chhupane par claim ruk sakta hai)", "Pichhli policy (portability ho to)"],
-    "motor": ["RC", "Pichhli policy / NCB proof", "Driving licence"],
-    "savings": ["Need analysis (IRDAI ke hisaab se zaroori)", "Benefit illustration graahak ko dikhana"],
+    "common": ["PAN", "Aadhaar / address proof (KYC, CKYC number if available)", "Photo", "Bank details (for NACH / auto-debit)",
+               "Nominee's name, relationship, date of birth", "Health / habit declaration: the customer fills it in truthfully"],
+    "term": ["Income proof (ITR / salary slip) for a large cover", "Medical test (the insurer will say, based on age and cover)"],
+    "health": ["Full details of existing illnesses (hiding them can block a claim)", "Previous policy (if porting)"],
+    "motor": ["RC", "Previous policy / NCB proof", "Driving licence"],
+    "savings": ["Need analysis (required by IRDAI)", "Show the benefit illustration to the customer"],
 }
 
 CLAIM_DOCS = {
     "death": ["Claim form (nominee)", "Death certificate", "Policy document / number", "Nominee KYC + bank (cancelled cheque)",
-              "Hospital / medical record (bimari se) ya FIR + post-mortem (durghatna mein)"],
-    "health_cashless": ["Health card / policy number", "Hospital ka pre-authorisation form", "Patient ka ID", "Doctor ka note"],
-    "health_reimbursement": ["Claim form", "Discharge summary", "Asli bill + payment receipt", "Jaanch ki report", "Dawai ke bill + parchi",
+              "Hospital / medical record (for illness) or FIR + post-mortem (for an accident)"],
+    "health_cashless": ["Health card / policy number", "Hospital's pre-authorisation form", "Patient's ID", "Doctor's note"],
+    "health_reimbursement": ["Claim form", "Discharge summary", "Original bill + payment receipt", "Test reports", "Medicine bills + prescription",
                              "Bank details (cancelled cheque)", "KYC"],
-    "motor": ["Claim form", "RC + driving licence", "FIR (chori / teesre ka nuksaan)", "Gaadi ki photo", "Repair estimate / bill"],
-    "other": ["Claim form", "Policy number", "Nuksaan ke kaagaz / photo", "KYC + bank"],
+    "motor": ["Claim form", "RC + driving licence", "FIR (theft / third-party damage)", "Photo of the vehicle", "Repair estimate / bill"],
+    "other": ["Claim form", "Policy number", "Documents / photos of the damage", "KYC + bank"],
 }
 
-NEVER = ("Premium kabhi Hoola nahi leta / nahi bharta: graahak seedha insurer ko (insurer ka link / app / office).",
-         "Proposal form par graahak ki jagah sign ya health declaration Hoola nahi bharta.",
-         "'Guaranteed return' sirf tab, jab brochure mein guaranteed likha ho.",
-         "Free-look 30 din har graahak ko batana.")
+NEVER = ("Hoola never takes or pays a premium: the customer pays the insurer directly (insurer's link / app / office).",
+         "Hoola never signs the proposal form or fills in the health declaration in place of the customer.",
+         "'Guaranteed return' only when the brochure says guaranteed.",
+         "Tell every customer about the 30-day free-look period.")

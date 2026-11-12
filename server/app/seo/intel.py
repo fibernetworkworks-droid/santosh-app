@@ -253,7 +253,7 @@ def track(tenant: str, keywords: list[str], site: str = "") -> dict[str, Any]:
             if not k or k in have:
                 continue
             if len(have) >= MAX_TRACK:
-                raise IntelError(f"Ek website par {MAX_TRACK} keywords tak track hote hain.")
+                raise IntelError(f"Up to {MAX_TRACK} keywords can be tracked per website.")
             s.add(SeoTrack(tenant_id=tenant, site_id=sv["id"], keyword=k))
             have.add(k)
             added.append(k)
@@ -294,10 +294,10 @@ def pull_gsc(tenant: str, site: str = "", days: int = 7) -> dict[str, Any]:
     sv = _site(tenant, site)
     kws = tracked(tenant, sv["id"])
     if not kws:
-        return {"rows": 0, "say": "Abhi koi keyword track nahi ho raha."}
+        return {"rows": 0, "say": "No keyword is being tracked yet."}
     prop = sv["gsc_property"] or S._auto_property(tenant, sv["id"])
     if not prop:
-        raise IntelError("Search Console mein yeh website nahi mili (pehle Google jodiye aur website verify kijiye).")
+        raise IntelError("This website was not found in Search Console (connect Google first and verify the website).")
     end = S.today(tenant) - timedelta(days=3)
     start = end - timedelta(days=max(1, min(int(days), 90)) - 1)
     path = f"/sites/{quote(prop, safe='')}/searchAnalytics/query"
@@ -334,7 +334,7 @@ def check_serp(tenant: str, site: str = "", keywords: list[str] | None = None) -
     sv = _site(tenant, site)
     kws = [_norm_kw(k) for k in (keywords or tracked(tenant, sv["id"]))][:50]
     if not kws:
-        raise IntelError("Pehle keywords track kijiye.")
+        raise IntelError("Track some keywords first.")
     day, done, errs = date.today().isoformat(), [], []
     for k in kws:
         try:
@@ -443,7 +443,7 @@ def add_prompts(tenant: str, texts: list[str], site: str = "") -> dict[str, Any]
             if len(t) < 8 or t.lower() in have:
                 continue
             if len(have) >= MAX_PROMPTS:
-                raise IntelError(f"{MAX_PROMPTS} sawaal tak track hote hain.")
+                raise IntelError(f"Up to {MAX_PROMPTS} questions can be tracked.")
             s.add(SeoAiPrompt(tenant_id=tenant, site_id=sv["id"], prompt=t))
             have.add(t.lower())
             n += 1
@@ -454,7 +454,7 @@ def set_prompt(tenant: str, pid: str, active: bool | None = None, remove: bool =
     with session() as s:
         p = s.get(SeoAiPrompt, pid)
         if p is None or p.tenant_id != tenant:
-            raise IntelError("Yeh sawaal nahi mila.")
+            raise IntelError("This question was not found.")
         if remove:
             s.delete(p)
             return {"removed": True}
@@ -498,7 +498,7 @@ def _req(method: str, url: str, **kw: Any) -> dict[str, Any]:
     try:
         r = c.request(method, url, **kw)
     except httpx.HTTPError as e:
-        raise IntelError(f"{urlparse(url).hostname} se baat nahi hui ({type(e).__name__}).")
+        raise IntelError(f"Could not reach {urlparse(url).hostname} ({type(e).__name__}).")
     finally:
         if own:
             c.close()
@@ -584,17 +584,17 @@ def run_ai(tenant: str, site: str = "", engines: list[str] | None = None) -> dic
     sv = _site(tenant, site)
     ready = [e for e in (engines or ENGINES) if e in ENGINES and engines_ready().get(e)]
     if not ready:
-        raise IntelError("Server par koi AI engine key nahi lagi (OPENAI_API_KEY / GEMINI_API_KEY / PERPLEXITY_API_KEY).")
+        raise IntelError("No AI engine key is set on the server (OPENAI_API_KEY / GEMINI_API_KEY / PERPLEXITY_API_KEY).")
     ps = [p for p in prompts(tenant, site) if p["active"]]
     if not ps:
-        raise IntelError("Pehle kuch sawaal jodiye (ya 'Suggest questions' dabaiye).")
+        raise IntelError("Add some questions first (or press 'Suggest questions').")
     per = float(st.seo_ai_call_inr or 2)
     cap = settings(tenant, sv["id"])["ai_cap_inr"]
     spent = float(_month_spend(tenant, sv["id"]).get("ai_inr") or 0)
     need = per * len(ps) * len(ready)
     if spent + need > cap:
-        raise IntelError(f"Is run ka andaaza ₹{need:.0f} hai; is mahine ₹{spent:.0f} kharch ho chuke, seema ₹{cap:.0f}. "
-                         "Kam sawaal / engine chuniye ya seema badhaiye.")
+        raise IntelError(f"This run is estimated at ₹{need:.0f}; ₹{spent:.0f} has been spent this month, and the limit is ₹{cap:.0f}. "
+                         "Choose fewer questions / engines or raise the limit.")
     mine, comp = _brand_set(tenant, sv)
     stamp = now().strftime("%Y%m%d%H%M%S")
     done = errors = 0
@@ -616,7 +616,7 @@ def run_ai(tenant: str, site: str = "", engines: list[str] | None = None) -> dic
     _spend(tenant, sv["id"], "ai_inr", per * done, done)
     v = ai_view(tenant, site)
     return {**v, "answers": done, "errors": errors, "cost_inr": round(per * done, 2),
-            "say": f"{done} AI jawab padhe: aapka naam {v['summary']['mentioned_pct']}% jawabon mein, site {v['summary']['cited_pct']}% mein cite hui."}
+            "say": f"Read {done} AI answers: your name appears in {v['summary']['mentioned_pct']}% of answers, and your site is cited in {v['summary']['cited_pct']}%."}
 
 
 def ai_view(tenant: str, site: str = "") -> dict[str, Any]:
@@ -673,7 +673,7 @@ PLACES = "https://places.googleapis.com/v1/places:searchText"
 def _places(body: dict[str, Any], fields: str) -> list[dict[str, Any]]:
     st = get_settings()
     if not st.google_maps_api_key:
-        raise IntelError("Server par Google Maps key nahi lagi (GOOGLE_MAPS_API_KEY, Places API (New) on).")
+        raise IntelError("No Google Maps key is set on the server (GOOGLE_MAPS_API_KEY, Places API (New) on).")
     js = _req("POST", PLACES, headers={"X-Goog-Api-Key": st.google_maps_api_key, "X-Goog-FieldMask": fields}, json=body)
     return [p for p in js.get("places") or [] if isinstance(p, dict)]
 
@@ -691,7 +691,7 @@ def find_place(tenant: str, site: str = "", query: str = "") -> dict[str, Any]:
 def choose_place(tenant: str, place: dict[str, Any], site: str = "") -> dict[str, Any]:
     sv = _site(tenant, site)
     if not place.get("id") or place.get("lat") is None or place.get("lng") is None:
-        raise IntelError("Google Maps par apni dukaan chuniye.")
+        raise IntelError("Pick your shop on Google Maps.")
     with session() as s:
         r = _intel(s, tenant, sv["id"])
         cur = _j(r.settings, {})
@@ -712,14 +712,14 @@ def run_grid(tenant: str, keyword: str, site: str = "", size: int | None = None,
     cfg = settings(tenant, sv["id"])
     place = cfg.get("place") or {}
     if not place.get("id"):
-        raise IntelError("Pehle Google Maps par apni dukaan chuniye (Search intel > Maps grid).")
+        raise IntelError("First pick your shop on Google Maps (Search intel > Maps grid).")
     size = int(size or cfg["grid_size"])
     if size not in (3, 5, 7):
         raise IntelError("Grid 3, 5 ya 7.")
     km = float(km or cfg["spacing_km"])
     kw = str(keyword or "").strip()[:80]
     if not kw:
-        raise IntelError("Kis search ke liye? (jaise 'dentist near me', 'saree shop')")
+        raise IntelError("For which search? (for example 'dentist near me', 'saree shop')")
     pts = []
     radius = max(500.0, min(km * 1000.0, 50000.0))
     for la, ln in grid_points(float(place["lat"]), float(place["lng"]), size, km):
@@ -739,7 +739,7 @@ def run_grid(tenant: str, keyword: str, site: str = "", size: int | None = None,
         s.add(g)
         s.flush()
         out = _grid_view(g)
-    out["say"] = (f"'{kw}': {out['top3']} / {len(pts)} jagah aap Maps ke top 3 mein, {len(pts) - out['found']} jagah top 20 mein bhi nahi."
+    out["say"] = (f"'{kw}': you are in the top 3 on Maps at {out['top3']} of {len(pts)} spots, and not even in the top 20 at {len(pts) - out['found']} spots."
                   + (f" Beech mein sabse upar: {leaders[0]['name']}." if leaders and not leaders[0]["you"] else ""))
     return out
 
@@ -821,7 +821,7 @@ def keyword_research(tenant: str, seeds: list[str], site: str = "") -> dict[str,
     sv = _site(tenant, site)
     seeds = [str(x).strip() for x in seeds if str(x).strip()][:10] or [str(x) for x in sv["services"][:5]]
     if not seeds:
-        raise IntelError("Kuch shabd dijiye jinke baare mein log Google par dhoondhte hain.")
+        raise IntelError("Give some words that people search for on Google.")
     city = [sv["city"]] if sv["city"] else []
     try:
         r = gads.keyword_ideas(tenant, seeds, sv["url"] if sv["url"].startswith("https://") else "", city)
@@ -832,4 +832,4 @@ def keyword_research(tenant: str, seeds: list[str], site: str = "") -> dict[str,
         ideas = dfs.keyword_ideas(tenant, sv["id"], seeds)
         return {"source": "DataForSEO (your key, India)", "ideas": ideas, "spend": dfs.status(tenant, sv["id"])}
     except dfs.DfsError as e2:
-        raise IntelError(f"Keyword ideas ke liye Google Ads jodiye (Social Desk > Google ads, free) ya DataForSEO. ({why[:120]} / {str(e2)[:120]})")
+        raise IntelError(f"For keyword ideas, connect Google Ads (Social Desk > Google ads, free) or DataForSEO. ({why[:120]} / {str(e2)[:120]})")

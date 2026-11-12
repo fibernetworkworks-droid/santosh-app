@@ -48,31 +48,31 @@ SIMPLE_FIT: dict[str, set[str]] = {
 # ---------------------------------------------------------------- who the app is for
 AUD: dict[str, dict[str, Any]] = {
     "customer": {"label": "Customers", "hi": "graahak", "words": ["customer", "graahak", "grahak", "client", "public", "logon ke liye"],
-                 "line": "graahakon ke liye", "goals": "SIMPLE"},
+                 "line": "for customers", "goals": "SIMPLE"},
     "owner": {"label": "Owner's own app", "hi": "malik", "words": ["owner", "malik", "mere liye", "apne liye", "dukaan chalane",
                                                                        "business chalane", "hisaab", "dashboard"],
-              "line": "malik (aap) ke liye: business ek nazar mein", "goals": "ALL",
+              "line": "for the owner (you): the business at a glance", "goals": "ALL",
               "screens": ["dashboard_kpi", "report_view", "alert_center", "approval_inbox"],
               "tabs": ["dashboard_kpi", "orders", "report_view", "profile"]},
     "staff": {"label": "Staff app", "hi": "staff", "words": ["staff", "karmchari", "employee", "kaam karne wale", "worker", "team"],
-              "line": "staff / team ke liye", "goals": "ALL",
+              "line": "for staff / the team", "goals": "ALL",
               "screens": ["task_list", "task_detail", "attendance_punch", "checklist"],
               "tabs": ["task_list", "attendance_punch", "notifications", "profile"]},
-    "partner": {"label": "Delivery / service partner app", "hi": "partner", "line": "delivery boy / technician / partner ke liye",
+    "partner": {"label": "Delivery / service partner app", "hi": "partner", "line": "for delivery boys / technicians / partners",
                 "words": ["delivery boy", "rider", "technician", "partner", "mistri", "agent", "driver"],
                 "goals": {"shop", "food_order", "service_request", "catalogue", "khata", "booking"},
                 "screens": ["delivery_run", "route_nav", "proof_of_delivery", "payment_collect", "job_card", "photo_proof"],
                 "tabs": ["delivery_run", "route_nav", "payment_collect", "profile"]},
-    "dealer": {"label": "Dealer / B2B ordering app", "hi": "dealer", "line": "dealers / retailers / B2B kharidaron ke liye",
+    "dealer": {"label": "Dealer / B2B ordering app", "hi": "dealer", "line": "for dealers / retailers / B2B buyers",
                "words": ["dealer", "distributor", "retailer", "wholesale", "b2b", "thok", "stockist", "reseller"],
                "goals": {"shop", "catalogue", "khata"},
                "screens": ["quote_builder", "purchase_order", "invoice_view", "khata"],
                "tabs": ["home", "catalogue", "purchase_order", "khata", "profile"]},
-    "member": {"label": "Members / students / parents", "hi": "sadasya", "line": "sadasyon / students / parents ke liye",
+    "member": {"label": "Members / students / parents", "hi": "sadasya", "line": "for members / students / parents",
                "words": ["member", "sadasya", "student", "parent", "abhibhavak", "bachche", "society members"],
                "goals": {"learning", "membership", "community", "events"},
                "screens": ["progress", "member_card", "notifications", "class_attendance"]},
-    "manager": {"label": "Manager / supervisor app", "hi": "manager", "line": "managers / supervisors ke liye",
+    "manager": {"label": "Manager / supervisor app", "hi": "manager", "line": "for managers / supervisors",
                 "words": ["manager", "supervisor", "head", "incharge", "branch manager"], "goals": "COMPLEX",
                 "screens": ["dashboard_manager", "approval_inbox", "report_builder", "target_meter", "team_list"],
                 "tabs": ["dashboard_manager", "approval_inbox", "team_list", "profile"]},
@@ -86,248 +86,248 @@ ORDER_SIMPLE = {"shop", "food_order", "catalogue"}
 TWISTS: dict[str, dict[str, Any]] = {
     "whatsapp_first": {"label": "WhatsApp-first ordering", "hi": "WhatsApp se order", "goals": "SIMPLE", "auds": {C, D, O},
                        "words": ["whatsapp", "watsapp", "whats app"], "screens": ["support"], "caps": ["share_sheet", "deep_links"],
-                       "pitch": "har order / booking ek tap mein WhatsApp par dukaan tak, status bhi WhatsApp par"},
+                       "pitch": "every order / booking goes to the shop on WhatsApp in one tap, and the status comes on WhatsApp too"},
     "voice_hindi": {"label": "Speak in Hindi to search & order", "hi": "bolkar order", "goals": "ALL", "auds": {C, S, P, M},
                     "words": ["voice", "bolkar", "awaaz", "bol ke", "speak"], "screens": ["search"],
                     "caps": ["speech_to_text", "microphone", "translation"],
-                    "pitch": "padhna-likhna zaroori nahi: bolkar dhoondho aur order karo"},
+                    "pitch": "no reading or writing needed: speak to search and order"},
     "offline_first": {"label": "Works without internet", "hi": "bina internet", "goals": "ALL", "auds": {S, P, O, G, D},
                       "words": ["offline", "bina internet", "no internet", "network nahi", "gaon"], "screens": ["sync_status"],
                       "caps": ["offline_db", "background_sync"],
-                      "pitch": "network na ho tab bhi kaam chalta hai, net aate hi sab apne aap sync"},
+                      "pitch": "works even with no network, and syncs by itself when the internet is back"},
     "upi_direct": {"label": "UPI pay straight to the shop", "hi": "seedha UPI", "goals": MONEY_SIMPLE, "auds": {C, D, M},
                    "words": ["upi", "gpay", "phonepe", "paytm", "online payment"], "screens": ["payment"], "caps": ["upi_intent"],
-                   "pitch": "paisa seedha dukaan ki UPI ID par, koi beech ka commission nahi"},
+                   "pitch": "money goes straight to the shop's UPI ID, no middleman commission"},
     "loyalty_points": {"label": "Loyalty points & rewards", "hi": "points aur inaam", "goals": {"shop", "food_order", "booking",
                        "membership", "khata", "catalogue"}, "auds": {C, M, D}, "words": ["loyalty", "points", "reward", "inaam", "cashback"],
                        "screens": ["rewards", "offers"], "caps": ["push_fcm"],
-                       "pitch": "har khareed par points, purane graahak baar baar laut kar aate hain"},
+                       "pitch": "points on every purchase, so old customers keep coming back"},
     "daily_subscription": {"label": "Daily / weekly subscription", "hi": "roz ki subscription",
                            "goals": {"shop", "food_order", "membership", "service_request"}, "auds": {C, P, O},
                            "words": ["subscription", "roz", "daily", "har din", "monthly plan", "doodh", "tiffin", "newspaper"],
                            "screens": ["plans", "slot_picker"], "caps": ["local_reminders", "push_fcm"],
-                           "pitch": "roz / hafte ki delivery ek baar set karo, chhutti ke din pause karo"},
+                           "pitch": "set up daily / weekly delivery once, pause it on holidays"},
     "group_buy": {"label": "Society / group buying", "hi": "society group order", "goals": {"shop", "food_order", "catalogue"},
                   "auds": {C, O}, "words": ["society", "group", "bulk", "apartment", "mohalla"], "screens": ["offers", "cart"],
-                  "caps": ["share_sheet"], "pitch": "poori society ka ek saath order, kam delivery kharcha aur group daam"},
+                  "caps": ["share_sheet"], "pitch": "one order for the whole society, lower delivery cost and a group price"},
     "pickup_qr": {"label": "Order ahead, pick up with QR", "hi": "pehle order, QR se pickup",
                   "goals": {"shop", "food_order", "catalogue", "events"}, "auds": {C, S},
                   "words": ["pickup", "takeaway", "parcel", "counter", "qr"], "screens": ["pass", "order_track"], "caps": ["barcode"],
-                  "pitch": "line mein khade hone ki zaroorat nahi: pehle order, QR dikhao aur saamaan lo"},
+                  "pitch": "no need to stand in a line: order first, show the QR and collect"},
     "live_tracking": {"label": "Live order / visit tracking", "hi": "live tracking", "goals": {"shop", "food_order",
                       "service_request", "booking"}, "auds": {C, P, O}, "words": ["tracking", "track", "kahan tak", "live location"],
                       "screens": ["order_track", "route_nav"], "caps": ["maps", "push_fcm", "location_foreground"],
-                      "pitch": "graahak dekhta hai order / mistri kahan tak pahuncha, baar baar phone nahi"},
+                      "pitch": "the customer sees how far the order / technician has come, no repeated phone calls"},
     "phone_consult": {"label": "Book a phone / video consult", "hi": "phone par salah", "goals": {"booking", "service_request",
                       "learning"}, "auds": {C, O}, "words": ["consult", "salah", "tele", "online consultation", "video call"],
                       "screens": ["slot_picker", "booking_confirm"], "caps": ["call_dialer", "calendar"],
-                      "pitch": "ghar baithe samay chuno, tay samay par call / video link"},
+                      "pitch": "choose a time from home, with a call / video link at that time"},
     "queue_token": {"label": "Live queue token", "hi": "line ka token", "goals": {"booking", "service_request", "events"},
                     "auds": {C, S, O}, "words": ["token", "queue", "line", "waiting", "number aane par"],
                     "screens": ["pass", "checkin"], "caps": ["push_fcm"],
-                    "pitch": "ghar se token lo, number aane se 10 minute pehle alert"},
+                    "pitch": "take a token from home, with an alert 10 minutes before your number"},
     "home_visit": {"label": "At-home service", "hi": "ghar par seva", "goals": {"booking", "service_request"}, "auds": {C, P, S},
                    "words": ["ghar par", "home visit", "doorstep", "home service", "ghar aakar"], "screens": ["slot_picker", "request_service"],
-                   "caps": ["location_foreground", "maps"], "pitch": "seva ghar par: pata, samay aur kaam ek form mein"},
+                   "caps": ["location_foreground", "maps"], "pitch": "service at home: address, time and the job in one form"},
     "ar_try": {"label": "See it in your room (AR / 3D)", "hi": "ghar mein dekh kar", "goals": {"shop", "catalogue"}, "auds": {C, D},
                "words": ["ar", "3d", "try", "room mein", "virtual"], "screens": ["product_detail", "gallery"], "caps": ["ar", "three_d"],
-               "pitch": "saamaan ko apne kamre / apne upar 3D mein dekh kar kharido"},
+               "pitch": "see the item in 3D in your own room / on yourself before buying"},
     "catalogue_share": {"label": "Share products with price", "hi": "catalogue share", "goals": {"shop", "catalogue", "khata"},
                         "auds": {O, S, D}, "words": ["share", "catalogue bhejo", "photo bhejo", "price list"],
                         "screens": ["catalogue", "gallery"], "caps": ["share_sheet", "photo_picker"],
-                        "pitch": "har product photo + daam ke saath ek tap mein WhatsApp / status par"},
+                        "pitch": "share every product with photo + price on WhatsApp / status in one tap"},
     "barcode_billing": {"label": "Scan & bill counter", "hi": "barcode billing", "goals": {"shop", "khata", "pos_retail",
                         "inventory", "warehouse_wms", "restaurant_ops", "distribution"}, "auds": {O, S},
                         "words": ["barcode", "scan", "billing", "bill", "counter"], "screens": ["pos_billing", "scanner_code", "invoice_view"],
                         "caps": ["barcode", "bluetooth_printer", "printing"],
-                        "pitch": "scan karo, bill banao, Bluetooth printer se parchi nikaalo"},
+                        "pitch": "scan, make the bill, print a slip on a Bluetooth printer"},
     "udhaar_reminders": {"label": "Udhaar with gentle reminders", "hi": "udhaar yaad dilana", "goals": {"khata", "shop", "collections",
                          "distribution", "dairy_collection"}, "auds": {O, C, D, S}, "words": ["udhaar", "udhar", "credit", "baaki", "reminder"],
                          "screens": ["khata", "notifications"], "caps": ["push_fcm", "share_sheet"],
-                         "pitch": "kis par kitna baaki, aur mithi yaad-dihani apne aap"},
+                         "pitch": "who owes how much, with gentle reminders sent automatically"},
     "referral": {"label": "Refer & earn", "hi": "dost ko bulao", "goals": "SIMPLE", "auds": {C, M, D},
                  "words": ["refer", "referral", "dost", "invite"], "screens": ["rewards"], "caps": ["share_sheet", "deep_links"],
-                 "pitch": "graahak dost ko bulaye, dono ko inaam: free marketing"},
+                 "pitch": "a customer invites a friend and both get a reward: free marketing"},
     "photo_reviews": {"label": "Photo reviews from customers", "hi": "photo review", "goals": {"shop", "food_order", "booking",
                       "catalogue", "service_request", "events"}, "auds": {C}, "words": ["review", "rating", "feedback photo"],
                       "screens": ["gallery"], "caps": ["photo_picker", "in_app_review"],
-                      "pitch": "asli graahakon ki photo wali reviews: naye graahak ka bharosa"},
+                      "pitch": "reviews with photos from real customers: new customers trust you"},
     "urgent_sos": {"label": "Urgent / emergency request", "hi": "turant madad", "goals": {"service_request", "booking"},
                    "auds": {C, P, O}, "words": ["urgent", "emergency", "turant", "jaldi", "sos", "24x7"],
                    "screens": ["request_service", "job_status"], "caps": ["call_dialer", "location_foreground", "push_fcm"],
-                   "pitch": "ek button: location ke saath turant request, sabse paas wala partner"},
+                   "pitch": "one button: an instant request with location, to the nearest partner"},
     "many_languages": {"label": "Every Indian language", "hi": "har bhasha", "goals": "ALL", "auds": {C, S, P, M, D},
                        "words": ["bhasha", "language", "marathi", "tamil", "telugu", "bengali", "gujarati", "kannada"],
                        "screens": ["profile"], "caps": ["translation"],
-                       "pitch": "har user apni bhasha mein: Hindi, Marathi, Tamil, Bangla, Gujarati..."},
+                       "pitch": "every user in their own language: Hindi, Marathi, Tamil, Bengali, Gujarati..."},
     "parent_view": {"label": "Parents see progress", "hi": "parents ko report", "goals": {"learning", "community", "events",
                     "school_erp", "coaching_admin"}, "auds": {M, S, O}, "words": ["parent", "abhibhavak", "progress", "report card"],
                     "screens": ["progress", "class_attendance", "fees"], "caps": ["push_fcm"],
-                    "pitch": "parents ko roz ki haazri, marks aur fees ek jagah"},
+                    "pitch": "parents see daily attendance, marks and fees in one place"},
     "live_classes": {"label": "Class schedule with join links", "hi": "online class", "goals": {"learning", "membership",
                      "coaching_admin"}, "auds": {M, C, S}, "words": ["online class", "live class", "batch", "zoom", "meet"],
                      "screens": ["timetable", "lesson"], "caps": ["calendar", "local_reminders"],
-                     "pitch": "batch ka time-table, class se pehle alert aur join link"},
+                     "pitch": "the batch timetable, an alert before class and a join link"},
     "practice_quiz": {"label": "Daily practice & tests", "hi": "roz ka test", "goals": {"learning"}, "auds": {M, C},
                       "words": ["quiz", "test", "mock", "practice", "exam"], "screens": ["quiz", "progress"], "caps": ["offline_db"],
-                      "pitch": "roz ke chhote test, kamzor topic apne aap dobara"},
+                      "pitch": "short daily tests, with weak topics repeated automatically"},
     "certificates": {"label": "Certificates on the phone", "hi": "certificate", "goals": {"learning", "events", "community"},
                      "auds": {M, C}, "words": ["certificate", "praman patra", "completion"], "screens": ["pass", "progress"],
-                     "caps": ["share_sheet"], "pitch": "course / event poora hote hi certificate phone mein, share karo"},
+                     "caps": ["share_sheet"], "pitch": "a certificate on the phone as soon as the course / event is complete, ready to share"},
     "qr_checkin": {"label": "QR check-in / attendance", "hi": "QR haazri", "goals": {"membership", "learning", "events",
                    "community", "hrms", "school_erp", "coaching_admin", "gym_admin", "events_ops", "security_guard"},
                    "auds": {M, C, S, O}, "words": ["attendance", "haazri", "check in", "checkin", "entry"],
-                   "screens": ["checkin", "member_card"], "caps": ["barcode"], "pitch": "darwaze par QR scan: haazri apne aap"},
+                   "screens": ["checkin", "member_card"], "caps": ["barcode"], "pitch": "scan a QR at the door: attendance is marked automatically"},
     "donations": {"label": "Donations with receipts", "hi": "daan / chanda", "goals": {"community", "events"}, "auds": {C, M, O},
                   "words": ["donation", "daan", "chanda", "contribute"], "screens": ["donate"], "caps": ["upi_intent", "share_sheet"],
-                  "pitch": "UPI se daan, turant raseed, kahan kharch hua sab ko dikhe"},
+                  "pitch": "donate by UPI, get an instant receipt, and let everyone see where the money was spent"},
     "volunteer_roster": {"label": "Volunteer roster", "hi": "sevak duty", "goals": {"community", "events", "ngo_field", "events_ops"},
                          "auds": {M, S, O}, "words": ["volunteer", "sevak", "duty", "roster"], "screens": ["task_list", "calendar_team"],
-                         "caps": ["push_fcm"], "pitch": "kaun kab kya seva karega, yaad-dihani ke saath"},
+                         "caps": ["push_fcm"], "pitch": "who will do what and when, with reminders"},
     "festival_offers": {"label": "Festival offers & greetings", "hi": "tyohar offer", "goals": {"shop", "food_order", "catalogue",
                         "booking", "khata"}, "auds": {C, O}, "words": ["festival", "tyohar", "diwali", "sale", "offer"],
                         "screens": ["offers"], "caps": ["push_fcm"],
-                        "pitch": "har tyohar par apne aap offer aur badhai, graahak ko yaad rahe"},
+                        "pitch": "an offer and greeting go out automatically at every festival, so customers remember you"},
     "wholesale_tiers": {"label": "Wholesale price slabs & MOQ", "hi": "thok daam", "goals": {"shop", "catalogue", "khata",
                         "distribution"}, "auds": {D, O, S}, "words": ["wholesale", "thok", "moq", "slab", "bulk price"],
                         "screens": ["quote_builder", "purchase_order"], "caps": ["share_sheet"],
-                        "pitch": "zyada maal par kam daam ke slab, minimum order apne aap"},
+                        "pitch": "lower price slabs for larger quantities, and the minimum order is applied automatically"},
     "gst_bills": {"label": "GST bill on every sale", "hi": "GST bill", "goals": {"shop", "khata", "service_request", "catalogue",
                   "pos_retail", "distribution", "accounts_erp", "field_sales"}, "auds": {O, S, D},
                   "words": ["gst", "invoice", "bill", "tax invoice"], "screens": ["invoice", "invoice_view"],
-                  "caps": ["printing", "share_sheet"], "pitch": "har bikri ka GST bill PDF, WhatsApp par bhejo"},
+                  "caps": ["printing", "share_sheet"], "pitch": "a GST bill PDF for every sale, sent on WhatsApp"},
     "photo_proof": {"label": "Photo + GPS proof of work", "hi": "kaam ka saboot", "goals": "COMPLEX|service_request", "auds": {S, P, G},
                     "words": ["proof", "saboot", "photo proof", "geo tag", "gps"], "screens": ["photo_proof"],
-                    "caps": ["camera", "location_foreground"], "pitch": "har kaam ki photo + location, jhagda khatam"},
+                    "caps": ["camera", "location_foreground"], "pitch": "a photo + location for every job, no more disputes"},
     "e_signature": {"label": "Sign on the phone", "hi": "phone par sign", "goals": "COMPLEX|service_request", "auds": {S, P, C},
                     "words": ["signature", "sign", "hastakshar", "pod"], "screens": ["signature_pad"], "caps": ["signature"],
-                    "pitch": "graahak phone par hi sign kare: kaam / delivery pakki"},
+                    "pitch": "the customer signs on the phone: the job / delivery is confirmed"},
     "route_plan": {"label": "Best route for the day", "hi": "aaj ka route", "goals": {"shop", "food_order", "field_sales",
                    "distribution", "delivery_driver", "collections", "field_service", "field_force", "logistics_tms", "fleet",
                    "dairy_collection", "isp_ops"}, "auds": {P, S, G}, "words": ["route", "rasta", "beat", "visit plan"],
                    "screens": ["route_plan", "route_nav"], "caps": ["maps", "location_foreground"],
-                   "pitch": "din ke saare stop ek chhote raaste mein, petrol aur samay bache"},
+                   "pitch": "all stops of the day on one short route, saving petrol and time"},
     "doc_scan": {"label": "Scan papers into the app", "hi": "kaagaz scan", "goals": "COMPLEX|service_request", "auds": {S, P, O, C},
                  "words": ["scan", "document", "kaagaz", "papers", "upload"], "screens": ["doc_scan", "upload_queue"],
-                 "caps": ["doc_scanner", "camera"], "pitch": "kaagaz ki photo nahi, saaf PDF scan seedha record mein"},
+                 "caps": ["doc_scanner", "camera"], "pitch": "not a photo of the paper but a clean PDF scan, straight into the record"},
     "device_alerts": {"label": "Machine / sensor alerts", "hi": "machine alert", "goals": {"iot_monitor", "facility_mgmt",
                       "asset_utility", "agri_fpo", "dairy_collection", "isp_ops", "telecom_tower", "manufacturing_erp"},
                       "auds": {S, O, G}, "words": ["sensor", "iot", "machine", "alarm", "temperature", "device"],
                       "screens": ["device_list", "device_detail", "alert_center"], "caps": ["push_fcm", "bluetooth"],
-                      "pitch": "machine / sensor kuch galat dikhaye to turant alert sahi aadmi ko"},
+                      "pitch": "if a machine / sensor shows something wrong, an alert goes at once to the right person"},
     "targets": {"label": "Targets & leaderboard", "hi": "target meter", "goals": "ALL", "auds": {O, G, S},
                 "words": ["target", "lakshya", "leaderboard", "incentive", "performance"], "screens": ["target_meter", "dashboard_kpi"],
-                "caps": ["widgets"], "pitch": "aaj ka target, kitna hua, kaun aage: team mein josh"},
+                "caps": ["widgets"], "pitch": "today's target, how much is done, who is ahead: energy in the team"},
     "approvals": {"label": "Approvals on the phone", "hi": "phone par manzoori", "goals": "COMPLEX", "auds": {G, O},
                   "words": ["approval", "manzoori", "sanction", "approve"], "screens": ["approval_inbox", "approval_detail", "workflow_chain"],
-                  "caps": ["push_fcm", "biometrics"], "pitch": "kharcha / chhutti / discount ki manzoori ek tap mein, fingerprint ke saath"},
+                  "caps": ["push_fcm", "biometrics"], "pitch": "approve expenses / leave / discounts in one tap, with a fingerprint"},
     "shift_roster": {"label": "Shifts & attendance", "hi": "shift aur haazri", "goals": "COMPLEX", "auds": {S, G, O},
                      "words": ["shift", "roster", "duty", "attendance"], "screens": ["shift_roster", "attendance_punch", "leave_apply"],
-                     "caps": ["geofence", "location_foreground"], "pitch": "kaun kis shift mein, haazri location se, chhutti app se"},
+                     "caps": ["geofence", "location_foreground"], "pitch": "who is on which shift, attendance by location, leave through the app"},
     "team_chat": {"label": "Team chat & notices", "hi": "team chat", "goals": "COMPLEX", "auds": {S, G},
                   "words": ["chat", "message", "notice", "group"], "screens": ["chat_list", "chat_thread", "announcement"],
-                  "caps": ["push_fcm"], "pitch": "kaam ki baat kaam ke app mein, personal WhatsApp se alag"},
+                  "caps": ["push_fcm"], "pitch": "work talk in the work app, separate from personal WhatsApp"},
     "geofence": {"label": "Auto check-in by location", "hi": "location se haazri", "goals": {"hrms", "field_force",
                  "field_sales", "security_guard", "construction_pm", "facility_mgmt", "field_service"}, "auds": {S, G},
                  "words": ["geofence", "location attendance", "site par"], "screens": ["geofence", "attendance_punch"],
-                 "caps": ["geofence", "location_foreground"], "pitch": "site par pahunchte hi haazri, fake location nahi"},
+                 "caps": ["geofence", "location_foreground"], "pitch": "attendance as soon as you reach the site, no fake location"},
     "nfc_tags": {"label": "NFC tag patrol / asset tap", "hi": "NFC tag", "goals": {"security_guard", "asset_utility",
                  "facility_mgmt", "inventory", "warehouse_wms", "audit_inspection"}, "auds": {S, G},
                  "words": ["nfc", "tag", "patrol", "checkpoint"], "screens": ["nfc_read", "checklist"], "caps": ["nfc"],
-                 "pitch": "har checkpoint / machine par tag tap: round aur jaanch ka pakka record"},
+                 "pitch": "tap a tag at every checkpoint / machine: a firm record of rounds and checks"},
     "kanban": {"label": "Kanban board for work", "hi": "kaam ka board", "goals": {"project_mgmt", "construction_pm", "crm",
                "helpdesk", "field_service", "manufacturing_erp", "intranet", "real_estate_crm"}, "auds": {S, G, O},
                "words": ["kanban", "board", "stage", "pipeline"], "screens": ["kanban", "task_detail"], "caps": ["push_fcm"],
-               "pitch": "har kaam ek card: kis stage mein, kiske paas, kab tak"},
+               "pitch": "every job is a card: which stage, with whom, due when"},
     "help_center": {"label": "Self-help answers", "hi": "khud jawab", "goals": "ALL", "auds": {C, S, M, D},
                     "words": ["faq", "help", "sawal", "support", "madad"], "screens": ["knowledge_base", "support"], "caps": [],
-                    "pitch": "aam sawalon ke jawab app mein hi, phone kam aate hain"},
+                    "pitch": "answers to common questions inside the app, so fewer phone calls come"},
     "home_widget": {"label": "Home-screen widget", "hi": "widget", "goals": "ALL", "auds": {C, O, S, M, G},
                     "words": ["widget", "home screen"], "screens": ["home"], "caps": ["widgets"],
-                    "pitch": "agli booking / aaj ki bikri phone ki home screen par hi"},
+                    "pitch": "the next booking / today's sales right on the phone's home screen"},
     "voice_notes": {"label": "Voice notes instead of typing", "hi": "voice note", "goals": "COMPLEX|service_request",
                     "auds": {S, P, G}, "words": ["voice note", "bolkar report", "audio"], "screens": ["voice_note"],
-                    "caps": ["voice_notes", "microphone"], "pitch": "field se likhne ki jagah bolkar report"},
+                    "caps": ["voice_notes", "microphone"], "pitch": "speak a report from the field instead of typing"},
     "bt_printer": {"label": "Bluetooth receipt printer", "hi": "parchi printer", "goals": {"shop", "khata", "food_order",
                    "pos_retail", "collections", "dairy_collection", "restaurant_ops", "distribution"}, "auds": {O, S, P},
                    "words": ["printer", "parchi", "receipt", "thermal"], "screens": ["invoice_view"], "caps": ["bluetooth_printer", "printing"],
-                   "pitch": "chhote Bluetooth printer se turant raseed"},
+                   "pitch": "an instant receipt from a small Bluetooth printer"},
     "portfolio": {"label": "Portfolio gallery", "hi": "kaam ki gallery", "goals": {"catalogue", "booking", "events",
                   "service_request"}, "auds": {C, D}, "words": ["portfolio", "gallery", "photos", "kaam dikhana"],
-                  "screens": ["gallery"], "caps": ["photo_picker"], "pitch": "pichhle kaam ki photos: graahak dekh kar hi booking kare"},
+                  "screens": ["gallery"], "caps": ["photo_picker"], "pitch": "photos of past work: customers book after seeing them"},
     "polls": {"label": "Polls & feedback", "hi": "rai", "goals": {"community", "membership", "events", "learning", "intranet",
               "society_mgmt", "school_erp"}, "auds": {M, C, S}, "words": ["poll", "survey", "rai", "vote", "feedback"],
-              "screens": ["poll_survey"], "caps": ["push_fcm"], "pitch": "faisle se pehle sab ki rai, ek tap mein"},
+              "screens": ["poll_survey"], "caps": ["push_fcm"], "pitch": "everyone's opinion before a decision, in one tap"},
     "nearby_branches": {"label": "Nearest branch finder", "hi": "paas ki branch", "goals": {"shop", "booking", "service_request",
                         "catalogue", "food_order", "membership"}, "auds": {C}, "words": ["nearby", "paas", "branch", "store locator"],
                         "screens": ["nearby", "store_info"], "caps": ["maps", "location_foreground"],
-                        "pitch": "sabse paas ki branch, khulne ka samay aur rasta"},
+                        "pitch": "the nearest branch, its opening hours and the way there"},
     "lite_2g": {"label": "Lite app for slow phones / 2G", "hi": "halka app", "goals": "ALL", "auds": {C, S, P, M, D},
                 "words": ["lite", "slow", "2g", "sasta phone", "kam data"], "screens": ["home"], "caps": ["offline_db"],
-                "pitch": "purane / saste phone aur kam data par bhi tez"},
+                "pitch": "fast even on old / cheap phones and low data"},
     "senior_friendly": {"label": "Big text, simple for elders", "hi": "buzurgon ke liye aasaan", "goals": "SIMPLE", "auds": {C, M},
                         "words": ["senior", "buzurg", "elderly", "bade akshar", "dadi", "nana"], "screens": ["support"],
                         "caps": ["speech_to_text", "accessibility"],
-                        "pitch": "bade akshar, kam button, ek tap call: buzurg bhi khud chala lein"},
+                        "pitch": "big text, few buttons, one-tap call: even elders can use it themselves"},
     "stock_alerts": {"label": "Low-stock alerts & reorder", "hi": "stock khatam alert", "goals": {"shop", "khata", "inventory",
                      "pos_retail", "warehouse_wms", "distribution", "procurement", "restaurant_ops", "manufacturing_erp"},
                      "auds": {O, S, G}, "words": ["stock", "maal khatam", "reorder", "inventory"],
                      "screens": ["inventory_list", "stock_item", "purchase_order"], "caps": ["push_fcm", "barcode"],
-                     "pitch": "maal khatam hone se pehle alert aur supplier ko order ka draft"},
+                     "pitch": "an alert before stock runs out, and a draft order to the supplier"},
     "customer_portal": {"label": "Customer portal on the same app", "hi": "graahak ka hissa", "goals": "COMPLEX",
                         "auds": {O, G}, "words": ["customer portal", "client login", "graahak bhi dekhe"],
                         "screens": ["ticket_list", "invoice_view", "notifications"], "caps": ["push_fcm"],
-                        "pitch": "graahak apna status / bill / ticket khud dekhe, staff ko phone kam"},
+                        "pitch": "customers see their own status / bill / ticket, so staff get fewer calls"},
 }
 
 SCALE: dict[str, dict[str, Any]] = {
     "solo": {"label": "One shop / one place", "hi": "ek dukaan", "words": ["meri dukaan", "ek dukaan", "akela", "single"],
-             "line": "ek dukaan / ek jagah", "screens": []},
+             "line": "one shop / one place", "screens": []},
     "multi_branch": {"label": "Many branches", "hi": "kai branch", "words": ["branch", "branches", "shakha", "outlets", "chain"],
-                     "line": "kai branches: branch chuno, har branch ka hisaab alag", "screens": ["store_info"]},
+                     "line": "many branches: choose a branch, each branch has its own accounts", "screens": ["store_info"]},
     "network": {"label": "Whole-city network / marketplace", "hi": "poore shahar ka network",
                 "words": ["marketplace", "aggregator", "saare", "network", "platform", "shahar ke", "city ke", "franchise"],
-                "line": "shahar ke kai vyapari ek app mein (marketplace / franchise)", "screens": ["search", "nearby"]},
+                "line": "many traders of a city in one app (marketplace / franchise)", "screens": ["search", "nearby"]},
 }
 MARKET: dict[str, dict[str, Any]] = {
     "town": {"label": "Town / village, Hindi-first", "hi": "chhota shahar", "words": ["gaon", "village", "town", "kasba", "tier 3",
-             "chhota shahar", "rural"], "line": "chhote shahar / gaon: Hindi pehle, UPI + cash, kam data", "lang": "hindi"},
+             "chhota shahar", "rural"], "line": "small town / village: Hindi first, UPI + cash, low data", "lang": "hindi"},
     "metro": {"label": "Big city, Hinglish", "hi": "bada shahar", "words": ["metro", "mumbai", "delhi", "bangalore", "pune",
-              "hyderabad", "chennai", "kolkata", "bada shahar", "city"], "line": "bade shahar: Hinglish, tez delivery, card / UPI",
+              "hyderabad", "chennai", "kolkata", "bada shahar", "city"], "line": "big city: Hinglish, fast delivery, card / UPI",
               "lang": "hinglish"},
     "bharat": {"label": "All-India, every language", "hi": "poora Bharat", "words": ["india", "bharat", "all india", "desh bhar",
-               "pan india"], "line": "poora Bharat: har bhasha, har state ke niyam", "lang": "multi"},
+               "pan india"], "line": "all of India: every language, every state's rules", "lang": "multi"},
     "global": {"label": "NRI / export buyers", "hi": "videsh / NRI", "words": ["nri", "export", "videsh", "abroad", "usa",
-               "uk", "dubai", "international", "global"], "line": "videsh ke graahak / NRI: English, rupee + dollar daam",
+               "uk", "dubai", "international", "global"], "line": "customers abroad / NRIs: English, prices in rupees + dollars",
                "lang": "english"},
 }
 GLOBAL_GOALS = {"shop", "catalogue", "booking", "learning", "events", "community", "membership"}
 
 EARN: dict[str, dict[str, Any]] = {
-    "direct_sales": {"label": "Sells its own goods / services", "hi": "apni bikri", "line": "kamai: apni bikri badhti hai, koi commission nahi"},
-    "subscription": {"label": "Monthly subscription / plan", "hi": "mahine ka plan", "line": "kamai: har mahine pakki aamdani (plan)"},
-    "membership_fee": {"label": "Membership fee", "hi": "sadasyata shulk", "line": "kamai: sadasyata shulk + renewal yaad-dihani"},
-    "commission": {"label": "Commission from vendors", "hi": "commission", "line": "kamai: har order par vyapari se chhota commission"},
-    "saves_cost": {"label": "Saves staff time & leakage", "hi": "kharcha bachao", "line": "faayda: staff ka samay aur chori / galti bachti hai"},
-    "saas": {"label": "Sell it to others in the same trade", "hi": "doosron ko becho", "line": "kamai: yahi app apne jaise doosre vyapariyon ko mahine ke kiraye par"},
+    "direct_sales": {"label": "Sells its own goods / services", "hi": "apni bikri", "line": "earning: your own sales grow, no commission"},
+    "subscription": {"label": "Monthly subscription / plan", "hi": "mahine ka plan", "line": "earning: steady income every month (plan)"},
+    "membership_fee": {"label": "Membership fee", "hi": "sadasyata shulk", "line": "earning: membership fee + renewal reminders"},
+    "commission": {"label": "Commission from vendors", "hi": "commission", "line": "earning: a small commission from the trader on every order"},
+    "saves_cost": {"label": "Saves staff time & leakage", "hi": "kharcha bachao", "line": "benefit: saves staff time and prevents theft / mistakes"},
+    "saas": {"label": "Sell it to others in the same trade", "hi": "doosron ko becho", "line": "earning: rent this same app by the month to other traders like you"},
 }
 
 TIER: dict[str, dict[str, Any]] = {
     # customer-facing apps: how it is positioned
     "budget": {"label": "Budget / value for money", "hi": "sasta-tikau", "words": ["sasta", "budget", "cheap", "kam daam", "affordable"],
-               "line": "sasta-tikau: COD / UPI, chhote pack, offers aage", "who": "public", "styles": ["bold_blocks", "desi_festive", "playful_pop"]},
+               "line": "budget and durable: COD / UPI, small packs, offers up front", "who": "public", "styles": ["bold_blocks", "desi_festive", "playful_pop"]},
     "mid": {"label": "Everyday mid range", "hi": "aam", "words": ["normal", "regular", "everyday", "middle class"],
-            "line": "aam graahak: saaf, bharosemand, jaldi", "who": "public", "styles": ["clean_commerce", "soft_pastel", "fresh_organic"]},
+            "line": "everyday customer: clean, reliable, fast", "who": "public", "styles": ["clean_commerce", "soft_pastel", "fresh_organic"]},
     "premium": {"label": "Premium / luxury", "hi": "premium", "words": ["premium", "luxury", "high end", "branded", "shaahi", "royal"],
-                "line": "premium: badi photos, kam shor, personal service", "who": "public",
+                "line": "premium: large photos, less clutter, personal service", "who": "public",
                 "styles": ["luxury_noir", "editorial_image", "aurora_glass"]},
     # internal apps: how big the team is (decides org levels / roles)
     "small_team": {"label": "Small team (up to 10)", "hi": "chhoti team", "words": ["chhoti team", "2 log", "5 log", "small team"],
-                   "line": "chhoti team (10 tak): kam roles, sab ek jagah", "who": "team", "levels": 2},
+                   "line": "small team (up to 10): few roles, everything in one place", "who": "team", "levels": 2},
     "mid_team": {"label": "Growing team (10-100)", "hi": "badhti team", "words": ["20 log", "50 log", "team leader", "supervisor"],
-                 "line": "badhti team (10-100): team leader, branch, manzoori", "who": "team", "levels": 3},
+                 "line": "growing team (10-100): team leader, branch, approvals", "who": "team", "levels": 3},
     "big_team": {"label": "Large organisation (100+)", "hi": "badi sanstha", "words": ["100 log", "500", "company", "sanstha", "zones",
-                 "region", "head office"], "line": "badi sanstha (100+): zone > region > branch, poori manzoori chain",
+                 "region", "head office"], "line": "large organisation (100+): zone > region > branch, a full approval chain",
                  "who": "team", "levels": 5},
 }
 PUBLIC_AUD = {"customer", "member", "dealer"}
@@ -447,21 +447,21 @@ def valid(parts: dict[str, str]) -> str:
     fid, g, a, tw, sc, mk, ti, er = (parts.get(k, "") for k in KEYS)
     fg = _field_goals()
     if fid not in fg:
-        return "business type nahi mila"
+        return "business type not found"
     if g not in fg[fid]:
-        return f"{T.GOALS.get(g, {}).get('label', g)} is business ke liye theek nahi baithta"
+        return f"{T.GOALS.get(g, {}).get('label', g)} does not suit this business"
     if a not in audiences(g):
-        return "is app ke liye yeh user theek nahi"
+        return "this user does not suit this app"
     if tw not in twists(g, a):
-        return "yeh khaasiyat is app / user par theek nahi baithti"
+        return "this feature does not suit this app / user"
     if sc not in SCALE:
-        return "scale galat"
+        return "wrong scale"
     if mk not in markets(g, a):
-        return "market galat"
+        return "wrong market"
     if ti not in tiers(a):
-        return "tier galat"
+        return "wrong tier"
     if er not in earns(g, a, sc):
-        return "kamai ka tareeka is idea par theek nahi"
+        return "this way of earning does not suit this idea"
     return ""
 
 
@@ -553,19 +553,19 @@ def idea(parts_or_id: Any) -> dict[str, Any]:
     ti = TIER[parts["tier"]]
     screens = _screens_for(parts)
     all_screens = list(dict.fromkeys(list(g["screens"]) + screens))
-    pitch = (f"{f['en']} ({f['hi']}) ke liye {g['label']} app, {a['line']}: {tw['pitch']}. "
+    pitch = (f"{g['label']} app for {f['en']} ({f['hi']}), {a['line']}: {tw['pitch']}. "
              f"{sc['line'].capitalize()}. {mk['line'].capitalize()}. {ti['line'].capitalize()}. {er['line'].capitalize()}.")
     qs = []
     if parts["twist"] in ("upi_direct", "donations") or (g.get("money") and parts["aud"] in ("customer", "dealer", "member")):
-        qs.append("Paise kis UPI ID par aayenge? (sirf UPI ID, PIN kabhi nahi)")
+        qs.append("Which UPI ID will the money come to? (UPI ID only, never a PIN)")
     if parts["scale"] == "multi_branch":
-        qs.append("Kitni branches hain, aur unke naam / shahar?")
+        qs.append("How many branches are there, and what are their names / cities?")
     if parts["scale"] == "network":
-        qs.append("Shuru mein kitne vyapari / dukaan judenge, aur commission kitna?")
+        qs.append("How many traders / shops will join at the start, and how much commission?")
     if parts["twist"] == "daily_subscription":
-        qs.append("Subscription mein kya-kya (doodh / tiffin / ...) aur kis samay delivery?")
+        qs.append("What does the subscription include (milk / tiffin / ...) and at what time is delivery?")
     if parts["market"] == "global":
-        qs.append("Videsh mein kahan bhejte ho, aur daam rupee ya dollar mein?")
+        qs.append("Where do you ship abroad, and are prices in rupees or dollars?")
     return {"id": make_id(parts), **parts, "name": _name(f, parts), "pitch": pitch,
             "field_label": f["en"], "field_hi": f["hi"], "industry": f["industry"],
             "goal_label": g["label"], "complex": bool(g.get("complex")),
@@ -610,9 +610,9 @@ def understand(text: str, field: str = "", goal: str = "") -> dict[str, Any]:
     fid = field if field in _field_goals() else (u.get("field") or "")
     if u.get("product") and field not in _field_goals():     # v0.138 a product app (music, OTT ...): no shop ideas
         return {"idea": None, "alternatives": [], "ask": "", "count": 0, "product": u["product"],
-                "say": f"Yeh ek {u.get('field_label')} hai: iska plan seedha app_banao se banega."}
+                "say": f"This is a {u.get('field_label')}: its plan will be made straight from app_banao."}
     if not fid or fid not in _field_goals():
-        return {"idea": None, "alternatives": [], "ask": u.get("ask") or "App kis kaam / dukaan ke liye hai?", "count": 0}
+        return {"idea": None, "alternatives": [], "ask": u.get("ask") or "What work / shop is the app for?", "count": 0}
     fg = _field_goals()[fid]
     g = goal if goal in fg else (u.get("goal") if u.get("goal") in fg else fg[0])
     said_aud = [a for a in _hits(AUD, text) if a in audiences(g)]
