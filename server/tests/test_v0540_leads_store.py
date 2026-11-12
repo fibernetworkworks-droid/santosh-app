@@ -65,7 +65,7 @@ def test_no_row_without_provenance(env):
 
 
 def test_row_without_any_key_is_refused(env):
-    with pytest.raises(S.LeadsError, match="bina key"):
+    with pytest.raises(S.LeadsError, match="without a key"):
         S.add_row("t1", {"city": "Pune"}, "HER_DATA", "x.csv")
 
 
@@ -160,7 +160,7 @@ def test_unbuilt_lanes_refused_by_name(env):
     # v0.544.0: VENDOR is BUILT too (config-gated like SCRAPE is opt-in gated) - the plan section 4 ladder is
     # COMPLETE, so the by-name refusal witness is an UNKNOWN lane name; VENDOR's refusal is the CONFIG gate
     p = S.plan("t1", "ask", ["BOGUS"], "x")
-    assert p["ok"] is False and any("koi lane hi nahi" in w for w in p["why"])
+    assert p["ok"] is False and any("is not a lane at all" in w for w in p["why"])
     p = S.plan("t1", "ask", ["VENDOR"], "x")
     assert p["ok"] is False and p["refused_lanes"] == ["VENDOR"]      # the config gate, the exact fix named
     assert any("LEADS_VENDOR_NAME" in w for w in p["why"])
@@ -181,7 +181,7 @@ def test_vague_ask_gets_the_one_question(env):
     p = S.plan("t1", "", ["HER_DATA"], "")
     assert p["ok"] is False and p["need"] == R.ONE_QUESTION
     p = S.plan("t1", "sellers", ["REGISTRY"], "")                          # registry needs a place
-    assert p["ok"] is False and "Kaunsa business" in p["need"]
+    assert p["ok"] is False and "Which kind of business" in p["need"]
 
 
 # ---------------------------------------------------------------- export / opt-out / hand-off / forget

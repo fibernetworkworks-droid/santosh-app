@@ -63,7 +63,7 @@ def test_rules_catalogue_and_dates():
     for k in ("fssai", "fssai_d1", "consent", "env_statement", "fire", "llp11", "tcs_deposit", "ptrc_month", "contract_licence"):
         assert not ap[k]["applies"], k
     assert ap["tds_140"]["source"]["url"].startswith("https://studycafe.in") and not ap["tds_140"]["verify"]
-    assert ap["aoc4"]["source"]["title"] == "[citation chahiye]" and ap["aoc4"]["verify"]       # never an invented citation
+    assert ap["aoc4"]["source"]["title"] == "[citation needed]" and ap["aoc4"]["verify"]       # never an invented citation
     # TDS: 7th of next month, March deductions -> 30 April
     e = R.BY_KEY["tds_deposit"]
     got = {p: due for p, due, _ in R.instances(e, f, date(2027, 4, 1), date(2027, 5, 5))}
@@ -77,14 +77,14 @@ def test_rules_catalogue_and_dates():
     # licence from HER date: 120 days before for FSSAI
     fl = R.clean_facts({**FACTS, "food_kind": "trader", "licences": {"fssai": "2027-03-31"}})
     assert R.instances(R.BY_KEY["fssai"], fl, date(2026, 10, 1), date(2027, 1, 31)) == [
-        ("exp:2027-03-31", date(2026, 12, 1), "valid 31 Mar 2027 tak; 120 din pehle apply")]
+        ("exp:2027-03-31", date(2026, 12, 1), "valid until 31 Mar 2027; apply 120 days before")]
     assert R.instances(R.BY_KEY["fssai"], f, date(2026, 10, 1), date(2027, 1, 31))[0][1] is None    # no date -> she tells
     assert R.penalty(R.BY_KEY["tds_140"], 10)["amount"] == 2000
     assert R.penalty(R.BY_KEY["fssai_d1"], 5)["amount"] == 500
     assert R.penalty(R.BY_KEY["tds_140"], 0)["amount"] is None
     assert R.penalty(R.BY_KEY["gst"], 3, "2026-09:gstr3b", f)["amount"] is not None
     assert any("TDS" in x for x in R.questions({"entity": "pvt_ltd", "state": "27", "employees": 3}))
-    assert "CA / CS / vakil" in R.CHECK_LINE
+    assert "CA / CS / lawyer" in R.CHECK_LINE
 
 
 def test_build_calendar_states_and_penalty(co):
@@ -145,7 +145,7 @@ def test_done_needs_evidence_or_her_word(co):
     with pytest.raises(S.CompError):
         S.add_custom(T, "x", actor="staff:abc")
     nd = S.nudge(T, c["number"])
-    assert "wa.me" in nd["whatsapp"] and "aap bhejiye" in nd["say"]
+    assert "wa.me" in nd["whatsapp"] and "you send it" in nd["say"]
 
 
 def test_filing_card_only_her_tap(co):
@@ -153,7 +153,7 @@ def test_filing_card_only_her_tap(co):
     setup(S)
     q2 = by_key(S)["tds_140"][0]
     card = S.filing_request(T, q2["number"])
-    assert card["status"] == "waiting" and "compliance_filing" in kinds(S) and "aap khud" in card["say"]
+    assert card["status"] == "waiting" and "compliance_filing" in kinds(S) and "yourself" in card["say"]
     with pytest.raises(S.CompError):
         S.decide_filing(T, card["id"], True, card["hash"])                   # a tool / the model can't approve
     with pytest.raises(S.CompError):
@@ -164,7 +164,7 @@ def test_filing_card_only_her_tap(co):
     assert S.filings(T, "stale")[0]["id"] == card["id"]
     card2 = S.filing_request(T, q2["number"])
     out = S.decide_filing(T, card2["id"], True, card2["hash"], by_tap=True)
-    assert out["status"] == "approved" and "login" in out["say"]
+    assert out["status"] == "approved" and "log in" in out["say"]
     assert S.item(T, q2["number"])["status"] == "file_ok"
     assert S.decide_filing(T, card2["id"], False, card2["hash"], by_tap=True)["filing"]["status"] == "approved"   # decided once
     with pytest.raises(S.CompError):
@@ -181,7 +181,7 @@ def test_certificate_sign_off(co):
         S.cert_request(T, "2026-10")                                         # who signs?
     S.save_settings(T, None, signatory="Meghana Ingle", firm="Newtika Pvt Ltd")
     draft = S.certificate(T, "2026-10")
-    assert draft["counts"]["total"] > 0 and draft["counts"]["open"] > 0 and "Apvaad" in draft["text"]
+    assert draft["counts"]["total"] > 0 and draft["counts"]["open"] > 0 and "Exceptions" in draft["text"]
     assert any(x["carry"] is False for x in draft["items"])
     card = S.cert_request(T, "2026-10")
     assert card["status"] == "waiting" and "compliance_cert" in kinds(S)
@@ -249,7 +249,7 @@ def test_tools(co):
     S = co
     ctx = conv_ctx()
     r = asyncio.run(CT.compliance(ctx, "facts", entity="proprietor", state="27", employees=4, tan=True, sectors=["shop"]))
-    assert "TDS jama (challan)" in r["applies"]
+    assert "TDS deposit (challan)" in r["applies"]
     staff = Ctx(T, ctx.conversation_id, actor="staff:s1")
     with pytest.raises(ToolError):
         asyncio.run(CT.compliance(staff, "facts", employees=40))

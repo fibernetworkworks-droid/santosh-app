@@ -40,8 +40,8 @@ class GridError(ValueError):
 def cell_km(zoom: int) -> float:
     z = int(zoom)
     if z not in CELL_KM_BY_ZOOM:
-        raise GridError(f"Zoom {z} grid mein nahi hai - ladder: {ZOOMS} (cell size {CELL_KM_BY_ZOOM}). "
-                        f"Inhi par chaliye.")
+        raise GridError(f"Zoom {z} is not on the grid - ladder: {ZOOMS} (cell size {CELL_KM_BY_ZOOM}). "
+                        f"Use one of these.")
     return CELL_KM_BY_ZOOM[z]
 
 
@@ -55,9 +55,9 @@ def bbox_cells(center: dict, sweep_km: float, zoom: int = ZOOM_DEFAULT,
     lat0, lng0 = float(center["lat"]), float(center["lng"])
     n = int(math.ceil(sweep_km / ck))                 # half-span in cells: -n..n covers +-sweep
     if (2 * n + 1) ** 2 > max_cells:
-        raise GridError(f"Yeh sweep zoom {zoom} par {(2 * n + 1) ** 2} cells banata hai - ek run ka ceiling "
-                        f"{max_cells} hai. Sweep ghataiye, zoom badliye (thik cells), ya sheher ke tukdon "
-                        f"mein chalaiye. (Plan-time refuse - chupke se truncate nahi.)")
+        raise GridError(f"This sweep makes {(2 * n + 1) ** 2} cells at zoom {zoom} - the ceiling for one run is "
+                        f"{max_cells}. Reduce the sweep, change the zoom (finer cells), or run the city "
+                        f"in parts. (Refused at plan time - never a silent truncate.)")
     step_lat = ck / 111.0
     step_lng = ck / max(0.2, math.cos(math.radians(lat0))) / 111.0
     cells: list[dict] = []
@@ -78,17 +78,17 @@ def choose_zoom(yields: list[int], zoom: int) -> dict:
     idx = ZOOMS.index(z) if z in ZOOMS else ZOOMS.index(ZOOM_DEFAULT)
     if m >= SATURATED and idx < len(ZOOMS) - 1:
         return {"zoom": ZOOMS[idx + 1], "median_yield": m, "step": "finer",
-                "why": f"cells dense hain (median {m:g} rows/cell >= {SATURATED}) - agla run zoom "
-                       f"{ZOOMS[idx + 1]} par thik cells lega"}
+                "why": f"the cells are dense (median {m:g} rows/cell >= {SATURATED}) - the next run takes finer cells at zoom "
+                       f"{ZOOMS[idx + 1]}"}
     if m <= SPARSE and idx > 0:
         return {"zoom": ZOOMS[idx - 1], "median_yield": m, "step": "coarser",
-                "why": f"cells khaali hain (median {m:g} rows/cell <= {SPARSE}) - agla run zoom "
-                       f"{ZOOMS[idx - 1]} par bade cells lega"}
+                "why": f"the cells are sparse (median {m:g} rows/cell <= {SPARSE}) - the next run takes bigger cells at zoom "
+                       f"{ZOOMS[idx - 1]}"}
     if m >= SATURATED:
         return {"zoom": z, "median_yield": m, "step": "finest",
-                "why": f"median {m:g} rows/cell, par zoom {z} pehle se sabse thik hai - aur thik nahi ho sakta"}
+                "why": f"median {m:g} rows/cell, but zoom {z} is already the finest - it cannot go finer"}
     if m <= SPARSE:
         return {"zoom": z, "median_yield": m, "step": "coarsest",
-                "why": f"median {m:g} rows/cell, par zoom {z} pehle se sabse bada hai"}
+                "why": f"median {m:g} rows/cell, but zoom {z} is already the coarsest"}
     return {"zoom": z, "median_yield": m, "step": "stay",
-            "why": f"median {m:g} rows/cell - zoom {z} sahi baitha hai"}
+            "why": f"median {m:g} rows/cell - zoom {z} fits well"}

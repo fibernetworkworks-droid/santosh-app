@@ -170,11 +170,11 @@ def preflight(tenant: str) -> None:
     c = caps()
     spent = store.spent_since(tenant, day_start_utc())
     if spent + c["reserve_inr"] > c["day_inr"]:
-        raise ResearchCapped(f"Aaj ka research budget khatam: Rs {spent:.0f} kharch ho chuka hai, seema Rs {c['day_inr']:.0f} hai "
-                             f"(RESEARCH_DAILY_INR se badal sakte hain). Kal phir, ya seema badhaiye.")
+        raise ResearchCapped(f"Today's research budget is used up: Rs {spent:.0f} has been spent, the ceiling is Rs {c['day_inr']:.0f} "
+                             f"(it can be changed with RESEARCH_DAILY_INR). Try again tomorrow, or raise the ceiling.")
 
 
-def format_line(b: dict, hi: bool = True) -> str:
+def format_line(b: dict, hi: bool = False) -> str:
     """The cost as one honest line. An unpriced part is said, not hidden."""
     web = ("web price abhi pata nahi" if hi else "web price not known") if not b.get("web_price_known") else \
           (f"web Rs {b['web_inr']:.1f}" if not hi else f"web Rs {b['web_inr']:.1f}")

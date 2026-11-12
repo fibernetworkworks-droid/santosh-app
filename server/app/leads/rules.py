@@ -35,9 +35,9 @@ SCRAPE_RULE_TEXT = (
 
 # the refusal when the lane is asked for while the tenant's opt-in is OFF (the default state - which no session
 # may flip silently; the flip is HER act, recorded in lead_scrape_optins with the walls quoted)
-SCRAPE_OFF = ("SCRAPE lane aapke tenant ke liye OFF hai - per-tenant opt-in, default band. CLAUDE.md ka amended "
-              "rule: 'opt-in per tenant and OFF by default'. Aapki haan se on hota hai: leads_run "
-              "action=scrape_optin on=true (ya POST /api/leads/scrape-optin).")
+SCRAPE_OFF = ("The SCRAPE lane is OFF for your tenant - per-tenant opt-in, off by default. The amended CLAUDE.md "
+              "rule: 'opt-in per tenant and OFF by default'. It turns on only with your approval: leads_run "
+              "action=scrape_optin on=true (or POST /api/leads/scrape-optin).")
 
 STATUSES = ("PLANNED", "RUNNING", "PAUSED", "DONE", "REFUSED", "ABORTED")
 
@@ -55,11 +55,11 @@ OUTREACH_KINDS = ("campaign_list", "campaign_sent", "email_sent")
 OUTREACH_DESKS = ("campaign", "email")
 
 # P5's hand-off card: the FIRST tap returns this card and creates NOTHING; the second tap (confirm=true) builds.
-HANDOFF_CONFIRM = ("Yeh sirf CONFIRM CARD hai - abhi kuch nahi bana. List banwani hai to wahi kaam phir se, "
-                   "confirm=true ke saath.")
+HANDOFF_CONFIRM = ("This is only the CONFIRM CARD - nothing has been made yet. To have the list made, run the same action again "
+                   "with confirm=true.")
 
 # the one-question rule (v0.371 law): a vague ask gets ONE question, everything else has a house default.
-ONE_QUESTION = "Kaunsa business dhandhe ka hai, aur kis sheher / area mein? (jaise: dentists, Pune)"
+ONE_QUESTION = "Which kind of business, and in which city / area? (for example: dentists, Pune)"
 
 STORE_BOUNDARY = (
     "Business-listing FACTS only: name, category, address, phone, website, rating, review COUNT, hours, "
@@ -69,17 +69,17 @@ STORE_BOUNDARY = (
 )
 
 NEVER = (
-    "Yeh engine kabhi kisi ko message / email / call nahi bhejta - outreach sirf aapke tap par, campaign / email "
-    "desk se (official routes).",
-    "Koi OTP / PIN / CVV / card / password nahi, koi login-walled page nahi, koi consumer (vyakti) list nahi - "
-    "sirf dhandhe ke businesses ka public data.",
-    "Har row ke saath uska source: source_lane, source_url, fetched_at. Bina provenance ki row store nahi hoti, "
-    "export nahi hoti.",
-    "Cap plan-time par hi refuse karta hai (per-run " + "5,000 rows, per-day 20,000 rows by default) - run ke "
-    "beech nahi, chupke se truncate nahi.",
-    "Social-platform scraping (LinkedIn waghera), review-text hoarding, photos, popular times: NOT BUILT.",
-    "Koi bulk CAPTCHA solver, koi residential-proxy minting, koi SMTP probe: NOT BUILT (block hua to run ruk "
-    "jaata hai aur batata hai - Hoola muscle nahi karta).",
+    "This engine never sends anyone a message / email / call - outreach happens only on your tap, from the campaign / email "
+    "desk (official routes).",
+    "No OTP / PIN / CVV / card / password, no login-walled page, no consumer (individual) list - "
+    "only the public data of businesses.",
+    "Every row carries its source: source_lane, source_url, fetched_at. A row without provenance is not stored "
+    "and not exported.",
+    "The cap refuses at plan time itself (per-run " + "5,000 rows, per-day 20,000 rows by default) - not in the middle of "
+    "a run, and never a silent truncate.",
+    "Social-platform scraping (LinkedIn and the like), review-text hoarding, photos, popular times: NOT BUILT.",
+    "No bulk CAPTCHA solver, no residential-proxy minting, no SMTP probe: NOT BUILT (if it is blocked, the run stops "
+    "and says so - Hoola does not force its way through).",
 )
 
 # the walls quoted at flip time (the note column of lead_scrape_optins keeps them, so the permission slip
@@ -87,8 +87,8 @@ NEVER = (
 # (JustDial/TradeIndia-style) stay unbuilt behind robots.txt until a later phase names them.
 SCRAPE_WALLS = (
     SCRAPE_RULE_TEXT,
-    "P3 Google Maps PUBLIC listings only - JustDial/TradeIndia-style directories aur koi bhi doosra host abhi "
-    "built nahi (aage, robots.txt ke neeche).",
+    "P3 Google Maps PUBLIC listings only - JustDial/TradeIndia-style directories and any other host are not "
+    "built yet (later, under robots.txt).",
     " ".join(STORE_BOUNDARY),            # STORE_BOUNDARY is a 1-tuple (the card joins it the same way)
     NEVER[0],
     NEVER[5],

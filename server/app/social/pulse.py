@@ -65,16 +65,16 @@ def set_settings(tenant: str, paused: bool | None = None, quiet: list[int] | Non
         try:
             a, b = int(quiet[0]), int(quiet[1])
         except (TypeError, ValueError, IndexError):
-            raise SocialError("quiet: [shuru ghanta, khatam ghanta], jaise [23, 7]")
+            raise SocialError("quiet: [start hour, end hour], for example [23, 7]")
         if not (0 <= a <= 23 and 0 <= b <= 23):
-            raise SocialError("Ghanta 0 se 23 ke beech.")
+            raise SocialError("The hour must be between 0 and 23.")
         cur["quiet"] = [a, b]
     if yt_kids is not None:
         cur["yt_kids"] = bool(yt_kids)
     if yt_playlist is not None:
         pl = str(yt_playlist).strip()
         if pl and not (pl.startswith("PL") and 10 <= len(pl) <= 64 and pl.replace("-", "").replace("_", "").isalnum()):
-            raise SocialError("Playlist ka ID 'PL' se shuru hota hai (YouTube Studio > Playlist > link ke 'list=' ke baad).")
+            raise SocialError("A playlist ID starts with 'PL' (YouTube Studio > Playlist > after 'list=' in the link).")
         cur["yt_playlist"] = pl
     back = 0
     with session() as s:

@@ -139,7 +139,7 @@ def test_rank_emails_role_over_named_over_personal():
 
 def test_best_email_single_candidate_needs_no_model():
     out = asyncio.run(E.best_email(["only@medplus.in"], "Medplus"))
-    assert out == {"email": "only@medplus.in", "reason": "ek hi candidate mila", "pick": "single"}
+    assert out == {"email": "only@medplus.in", "reason": "only one candidate was found", "pick": "single"}
 
 
 def test_best_email_ai_pick_is_validated_and_falls_back_to_rule(monkeypatch):

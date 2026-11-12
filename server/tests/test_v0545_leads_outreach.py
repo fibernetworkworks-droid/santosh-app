@@ -109,7 +109,7 @@ def test_outreach_log_readable_filterable_and_survives_forget(env):
     S.forget("t1", row_ids=[a["id"]])
     after = S.outreach_log("t1")
     gone = [e for e in after["events"] if e["contact_id"] == a["id"]]
-    assert gone and gone[0]["name"] == "(row miti hui)" and gone[0]["key_value"] == ""
+    assert gone and gone[0]["name"] == "(row erased)" and gone[0]["key_value"] == ""
 
 
 # ================================================================ the campaign desk: opt-out at SEND time

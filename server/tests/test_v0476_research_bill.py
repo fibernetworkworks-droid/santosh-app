@@ -289,9 +289,9 @@ def test_the_tool_refuses_a_new_run_when_the_days_room_is_gone(bg):
     bg["st"].research_daily_inr = 10.0
     r = store.create("t1", "c1", "Q", ["g"], {})
     store.finish(r, "done", {}, cost={"total_inr": 9.0})
-    with pytest.raises(ToolError, match="budget khatam"):
+    with pytest.raises(ToolError, match="budget is used up"):
         run_(research_run(_ctx(), question="Q?", sub_questions=["g"]))
-    with pytest.raises(ToolError, match="budget khatam"):
+    with pytest.raises(ToolError, match="budget is used up"):
         run_(research_run(_ctx(), question="Q?", sub_questions=["g"], mode="inline"))
     assert run_(research_run(_ctx("t2"), question="Q?", sub_questions=["g"]))["started"] is True       # another tenant
 

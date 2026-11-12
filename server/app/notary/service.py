@@ -84,10 +84,10 @@ def _date(v) -> date | None:
 def _clean(text, n: int = 600) -> str:
     """Outside / her words: OTP / PIN / passwords / card numbers never kept; Aadhaar / PAN only via the locker."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[ID locker mein]", t)
-    t = re.sub(r"\b[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]\b", "[PAN locker mein]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
+    t = re.sub(r"(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)", "[ID in the locker]", t)
+    t = re.sub(r"\b[A-Z]{3}[ABCFGHLJPT][A-Z]\d{4}[A-Z]\b", "[PAN in the locker]", t)
     return t.strip()[:n]
 
 
@@ -194,22 +194,22 @@ def save_settings(tenant: str, **kw) -> dict:
             v = str(kw[k]).strip()
             if k == "mode":
                 if v not in ("notary", "desk"):
-                    raise NotaryError("mode = notary ya desk")
+                    raise NotaryError("mode = notary or desk")
             elif k == "state":
                 v = R.state_code(v)
                 if not v:
-                    raise NotaryError("State samajh nahi aayi (jaise MH / Maharashtra).")
+                    raise NotaryError("Could not read the state (for example MH / Maharashtra).")
             elif k == "default_lang":
                 v = R.lang_of(v) or "en"
             elif k == "cop_valid_to":
                 d = _date(v)
                 if v and not d:
-                    raise NotaryError("Tareekh YYYY-MM-DD mein.")
+                    raise NotaryError("Give the date as YYYY-MM-DD.")
                 v = d.isoformat() if d else ""
             elif k == "phone" and v and not _phone(v):
-                raise NotaryError("Mobile 10 ank ka.")
+                raise NotaryError("The mobile number must have 10 digits.")
             elif k == "morning_time" and v and not re.fullmatch(r"\d{1,2}:\d{2}", v):
-                raise NotaryError("Samay HH:MM mein.")
+                raise NotaryError("Give the time as HH:MM.")
             setattr(r, k, v[:400] if k not in ("rules", "address") else v[:2000])
         if isinstance(kw.get("charges"), dict):
             ch = {}
@@ -229,16 +229,16 @@ def save_settings(tenant: str, **kw) -> dict:
                         caps[k] = x
             r.fee_caps = _d(caps)
         v = _set_view(r)
-    return v | {"say": "Niyam save ho gaye."}
+    return v | {"say": "Rules saved."}
 
 
 def set_stamp(tenant: str, state: str, key: str, amount=None, mode: str = "") -> dict:
     """Her own stamp rate for one document kind in one state (she reads it from her state's stamp schedule / IGR)."""
     st_code = R.state_code(state)
     if not st_code:
-        raise NotaryError("State samajh nahi aayi (jaise MH / Maharashtra).")
+        raise NotaryError("Could not read the state (for example MH / Maharashtra).")
     if key not in R.STAMP_KEYS:
-        raise NotaryError("Kaunsa document? " + ", ".join(R.STAMP_KEYS))
+        raise NotaryError("Which document? " + ", ".join(R.STAMP_KEYS))
     if mode and mode not in R.STAMP_MODES:
         raise NotaryError("mode = " + " / ".join(R.STAMP_MODES))
     with _LOCK, session() as s:
@@ -247,20 +247,20 @@ def set_stamp(tenant: str, state: str, key: str, amount=None, mode: str = "") ->
         tbl = rates.setdefault(st_code, {})
         if amount is None or str(amount).strip() == "":
             tbl.pop(key, None)
-            say = f"{R.STATES[st_code]} - {key}: rate hata di (ab khaali rahegi)."
+            say = f"{R.STATES[st_code]} - {key}: rate removed (it stays blank now)."
         else:
             x = R.num(amount)
             if x is None or x < 0:
-                raise NotaryError("Rakam samajh nahi aayi.")
+                raise NotaryError("Could not read the amount.")
             tbl[key] = {"amount": x, "mode": mode} if mode else x
-            say = f"{R.STATES[st_code]} - {key}: ₹{x:,.0f} (aapki table)."
+            say = f"{R.STATES[st_code]} - {key}: ₹{x:,.0f} (your table)."
         r.stamp_rates = _d(rates)
         return {"stamp_rates": rates, "say": say}
 
 
 def set_fee(tenant: str, act: str, amount) -> dict:
     if act not in R.ACTS:
-        raise NotaryError("Kaunsa notarial act? " + ", ".join(R.ACTS))
+        raise NotaryError("Which notarial act? " + ", ".join(R.ACTS))
     with _LOCK, session() as s:
         r = _st(s, tenant)
         chk = R.fee_check(act, amount, 1, _j(r.fee_caps, {}))
@@ -269,7 +269,7 @@ def set_fee(tenant: str, act: str, amount) -> dict:
         fees = _j(r.fees, {})
         fees[act] = chk["fee"]
         r.fees = _d(fees)
-        return {"fees": fees, "say": f"{R.ACTS[act]['label']}: ₹{chk['fee']:g} (aapki fee)."}
+        return {"fees": fees, "say": f"{R.ACTS[act]['label']}: ₹{chk['fee']:g} (your fee)."}
 
 
 # ---------------------------------------------------------------- parties + identity (Pehchaan Locker only)
@@ -286,7 +286,7 @@ def _party_clean(tenant: str, p: dict, label: str) -> dict:
     age = re.sub(r"\D", "", str(p.get("age") or ""))
     if age:
         if not (10 <= int(age) <= 120):
-            raise NotaryError("Umar sahi nahi lagti.")
+            raise NotaryError("The age does not look right.")
         out["age"] = age
     g = str(p.get("gender") or "").strip().lower()
     if g:
@@ -306,7 +306,7 @@ def _party_clean(tenant: str, p: dict, label: str) -> dict:
         m = idvault.REF.fullmatch(ref) or re.fullmatch(r"([a-z0-9]{6,16})", ref)
         rows = [r for r in idvault.list_(tenant) if m and r["ref"] == f"{{id:{m.group(1)}}}"]
         if not rows:
-            raise NotaryError("Yeh ID reference locker mein nahi mila.")
+            raise NotaryError("This ID reference was not found in the locker.")
         out.update({"id_ref": rows[0]["ref"], "id_kind": rows[0]["kind"], "id_masked": rows[0]["masked"]})
     elif raw:
         if kind not in _ID_KINDS:
@@ -427,7 +427,7 @@ def _doc(s, tenant: str, ref: str) -> NotaryDoc:
     if d is None or d.tenant_id != tenant:
         d = s.scalars(select(NotaryDoc).where(NotaryDoc.tenant_id == tenant, NotaryDoc.number == ref.upper())).first()
     if d is None:
-        raise NotaryError("Document nahi mila (ND-0001 jaisa number bataiye).")
+        raise NotaryError("Document not found (give a number like ND-0001).")
     return d
 
 
@@ -446,28 +446,28 @@ def _checks(d: NotaryDoc, mode: str) -> list[dict]:
     out = []
     blanks = _j(d.blanks, [])
     if blanks:
-        out.append({"level": "block", "text": "Khaali jagah: " + ", ".join(blanks[:8])})
+        out.append({"level": "block", "text": "Blanks: " + ", ".join(blanks[:8])})
     st = _j(d.stamp, {})
     if st.get("amount") is None and st.get("mode") != "none":
-        out.append({"level": "block", "text": f"Stamp rakam aapki {st.get('state_label') or 'state'} rate table mein nahi ({st.get('key')}): "
-                                              "Niyam > Stamp rate mein daaliye (state ki official schedule / IGR se)."})
+        out.append({"level": "block", "text": f"The stamp amount is not in your {st.get('state_label') or 'state'} rate table ({st.get('key')}): "
+                                              "add it under Rules > Stamp rate (from the state's official schedule / IGR)."})
     parties = _j(d.parties, [])
     if not parties or not parties[0].get("name"):
-        out.append({"level": "block", "text": "Document kis ke naam (party ka naam) chahiye."})
+        out.append({"level": "block", "text": "The document needs the party's name."})
     if parties and not any(p.get("id_ref") for p in parties):
-        out.append({"level": "warn", "text": "Party ki pehchaan (ID) record nahi: notarise karte waqt original ID dekhiye; number sirf locker mein."})
+        out.append({"level": "warn", "text": "The party's ID is not on record: check the original ID when you notarise; the number stays only in the locker."})
     if d.kind == "aff_name_change":
-        out.append({"level": "info", "text": "Naam badalne mein gazette / akhbaar ki zaroorat ho sakti hai: kis kaam ke liye, vakil se pakka karwaiye."})
+        out.append({"level": "info", "text": "A change of name may need a gazette / newspaper notice: depending on the purpose, have a lawyer confirm."})
     if d.kind in ("poa_general", "poa_special"):
-        out.append({"level": "info", "text": "Property bechne / registration wale power of attorney par sub-registrar aur vakil se pakka karwaiye "
-                                             "(registration / stamp alag ho sakta hai)."})
+        out.append({"level": "info", "text": "For a power of attorney to sell / register property, confirm with the sub-registrar and a lawyer "
+                                             "(registration / stamp may differ)."})
     if d.kind == "rent_summary":
-        out.append({"level": "info", "text": "Yeh sirf saaransh hai, agreement nahi. Agreement Rentdesk (Property manager) mein; Maharashtra mein "
-                                             "leave & licence ka registration zaroori hai (Rentdesk checklist)."})
+        out.append({"level": "info", "text": "This is only a summary, not the agreement. The agreement is in Rentdesk (Property manager); in Maharashtra "
+                                             "a leave & licence must be registered (Rentdesk checklist)."})
     if d.kind == "self_declaration":
-        out.append({"level": "info", "text": "Self-declaration aksar notary ke bina chalti hai; jis office ko deni hai unke niyam dekhiye."})
+        out.append({"level": "info", "text": "A self-declaration often works without a notary; check the rules of the office it goes to."})
     if d.edited:
-        out.append({"level": "info", "text": "Aapne text khud badla hai: template ke facts dobara nahi bhare jayenge."})
+        out.append({"level": "info", "text": "You edited the text yourself: the template facts will not be filled in again."})
     out.append({"level": "info", "text": R.NOT_ADVICE})
     return out
 
@@ -478,7 +478,7 @@ def _view(d: NotaryDoc, full: bool = False) -> dict:
          "lang_label": R.LANGS.get(d.lang, d.lang), "title": d.title, "status": d.status,
          "parties": [{k: p.get(k, "") for k in ("name", "relation", "relative", "age", "occupation", "address", "gender", "phone",
                                                  "id_ref", "id_kind", "id_masked")} for p in _j(d.parties, [])],
-         "blanks": _j(d.blanks, []), "stamp": st | {"amount_text": _rs(st.get("amount")) if st.get("mode") != "none" else "stamp nahi"},
+         "blanks": _j(d.blanks, []), "stamp": st | {"amount_text": _rs(st.get("amount")) if st.get("mode") != "none" else "no stamp"},
          "hash": d.card_hash, "files": _j(d.files, {}), "source": d.source, "edited": d.edited, "entry_id": d.entry_id,
          "forgotten": d.forgotten, "updated_at": d.updated_at.isoformat() if d.updated_at else ""}
     if full:
@@ -527,7 +527,7 @@ def draft(tenant: str, kind: str = "", lang: str = "", party: dict | None = None
         kind = guess_kind(words)
     kind = kind or "aff_general"
     if kind not in R.KINDS:
-        raise NotaryError("Kaunsa document? " + ", ".join(R.KINDS))
+        raise NotaryError("Which document? " + ", ".join(R.KINDS))
     party = dict(party or {})
     facts = dict(facts or {})
     if words:
@@ -544,7 +544,7 @@ def draft(tenant: str, kind: str = "", lang: str = "", party: dict | None = None
         if caught and not party.get("id_ref"):
             party["id_ref"] = caught[0].get("ref", "")
     if lang and not R.lang_of(lang):
-        raise NotaryError("Bhasha: English / Hindi / Marathi (doosri bhasha ke liye 'translate').")
+        raise NotaryError("Language: English / Hindi / Marathi (use 'translate' for another language).")
     # identity goes into the locker FIRST (its own session), the document keeps only the reference
     ps = [_party_clean(tenant, party, "document")] + [_party_clean(tenant, o, "document") for o in (others or [])[:5]]
     with _LOCK, session() as s:
@@ -568,11 +568,11 @@ def draft(tenant: str, kind: str = "", lang: str = "", party: dict | None = None
 
 
 def _say(v: dict) -> str:
-    s = f"{v['number']} {v['kind_label']} ({v['lang_label']}) ka draft taiyaar."
+    s = f"{v['number']} {v['kind_label']} ({v['lang_label']}): the draft is ready."
     if v["blanks"]:
-        s += " Khaali: " + ", ".join(v["blanks"][:6]) + "."
+        s += " Blank: " + ", ".join(v["blanks"][:6]) + "."
     if v["stamp"].get("amount") is None and v["stamp"].get("mode") != "none":
-        s += f" Stamp rakam aapki {v['stamp'].get('state_label') or ''} rate table mein nahi: [stamp ₹ ?]."
+        s += f" The stamp amount is not in your {v['stamp'].get('state_label') or ''} rate table: [stamp ₹ ?]."
     else:
         s += f" Stamp: {v['stamp']['amount_text']} ({v['stamp'].get('mode_label', '')})."
     return s + " " + R.NOT_ADVICE
@@ -583,7 +583,7 @@ def update(tenant: str, doc: str, party: dict | None = None, facts: dict | None 
     with session() as s:
         d = _doc(s, tenant, doc)
         if d.status in ("final", "executed"):
-            raise NotaryError(f"{d.number} final ho chuka: badalna ho to 'copy' banaiye.")
+            raise NotaryError(f"{d.number} is already final: to change it, make a 'copy'.")
         ps, number = _j(d.parties, []), d.number
     if party:
         cur = ps[0] if ps else {}
@@ -609,9 +609,9 @@ def update(tenant: str, doc: str, party: dict | None = None, facts: dict | None 
         if lang:
             lg = R.lang_of(lang)
             if not lg:
-                raise NotaryError("English / Hindi / Marathi; doosri bhasha ke liye translate.")
+                raise NotaryError("English / Hindi / Marathi; use translate for another language.")
             if d.edited and lg != d.lang:
-                raise NotaryError("Aapne text khud likha hai: doosri bhasha ke liye 'copy' (lang) ya 'translate'.")
+                raise NotaryError("You wrote the text yourself: for another language use 'copy' (lang) or 'translate'.")
             d.lang = lg
         if state:
             stamp = _j(d.stamp, {})
@@ -633,11 +633,11 @@ def edit_text(tenant: str, doc: str, text: str, conv: str = "") -> dict:
     """Her own wording replaces the template text (blanks still block printing)."""
     t = _clean(text, 30000)
     if len(t) < 20:
-        raise NotaryError("Pura text bhejiye.")
+        raise NotaryError("Send the full text.")
     with _LOCK, session() as s:
         d = _doc(s, tenant, doc)
         if d.status in ("final", "executed"):
-            raise NotaryError(f"{d.number} final ho chuka: 'copy' banaiye.")
+            raise NotaryError(f"{d.number} is already final: make a 'copy'.")
         _save_version(d, "her edit")
         d.text, d.edited = t, True
         _stale(d)
@@ -648,7 +648,7 @@ def edit_text(tenant: str, doc: str, text: str, conv: str = "") -> dict:
         d = s.get(NotaryDoc, did)
         d.files = _d(_j(d.files, {}) | files)
         v = _view(d, True)
-    return {"doc": v, "say": f"{v['number']}: aapka text rakh liya." + (" Khaali: " + ", ".join(v["blanks"]) if v["blanks"] else "")}
+    return {"doc": v, "say": f"{v['number']}: your text is saved." + (" Blank: " + ", ".join(v["blanks"]) if v["blanks"] else "")}
 
 
 def copy(tenant: str, doc: str, lang: str = "", conv: str = "") -> dict:
@@ -671,7 +671,7 @@ def from_rentdesk(tenant: str, tenancy: str, lang: str = "", conv: str = "") -> 
         t = RD.tenancy_view(tenant, tenancy)
         st = RD.settings(tenant)
     except Exception as e:
-        raise NotaryError(f"Rentdesk mein yeh tenancy nahi mili ({e}).")
+        raise NotaryError(f"This tenancy was not found in Rentdesk ({e}).")
     unit = t.get("unit_view") or {}
     landlord = unit.get("owner_name") or st.get("landlord_name") or ""
     facts = {"licensor": landlord, "licensee": t.get("tenant_name", ""), "premises": unit.get("address") or t.get("unit_label", ""),
@@ -695,9 +695,9 @@ def translate(tenant: str, doc: str, to: str, conv: str = "") -> dict:
     try:
         r = L.translate(tenant, text=text, to=to, register="formal", conv=conv)
     except Exception as e:
-        raise NotaryError(f"Translation nahi ho payi: {e}")
-    return {"translation": r.get("doc"), "say": (r.get("say") or "") + " Yeh sirf draft translation hai (certified nahi); "
-            "notary ke saamne translation verify karna (Rule 10(1)(j)) aapka kaam."}
+        raise NotaryError(f"The translation could not be done: {e}")
+    return {"translation": r.get("doc"), "say": (r.get("say") or "") + " This is only a draft translation (not certified); "
+            "verifying the translation before the notary (Rule 10(1)(j)) is your part."}
 
 
 def stamp_ref(tenant: str, doc: str, ref: str = "", mode: str = "", state: str = "") -> dict:
@@ -722,7 +722,7 @@ def stamp_ref(tenant: str, doc: str, ref: str = "", mode: str = "", state: str =
         if d.status == "waiting":
             _stale(d)
         d.checks = _d(_checks(d, _st(s, tenant).mode))
-        return {"doc": _view(d, True), "say": f"{d.number}: stamp {st.get('mode_label', st.get('mode'))} {st.get('ref', '')} likh liya."}
+        return {"doc": _view(d, True), "say": f"{d.number}: stamp {st.get('mode_label', st.get('mode'))} {st.get('ref', '')} recorded."}
 
 
 # ---------------------------------------------------------------- files
@@ -829,38 +829,38 @@ def print_request(tenant: str, doc: str, conv: str = "") -> dict:
     with _LOCK, session() as s:
         d = _doc(s, tenant, doc)
         if d.status in ("final", "executed"):
-            return {"doc": _view(d), "say": f"{d.number} pehle hi final hai."}
+            return {"doc": _view(d), "say": f"{d.number} is already final."}
         if d.forgotten:
-            raise NotaryError("Is document ki party details mita di gayi hain.")
+            raise NotaryError("The party details of this document have been erased.")
         _rebuild(s, d)                    # her stamp table as it is NOW
 
         blocks = [c["text"] for c in _j(d.checks, []) if c["level"] == "block"]
         if blocks:
             return {"doc": _view(d, True), "blocked": blocks,
-                    "say": f"{d.number} abhi final print nahi ho sakta: " + " | ".join(blocks)}
+                    "say": f"{d.number} cannot be final-printed yet: " + " | ".join(blocks)}
         d.card_hash = _hash(_show(d))
         d.status = "waiting"
         v = _view(d, True)
-    card = {"doc": v, "say": f"{v['number']} {v['kind_label']} ({v['lang_label']}) final print ke liye aapki haan chahiye. "
+    card = {"doc": v, "say": f"{v['number']} {v['kind_label']} ({v['lang_label']}) needs your approval for the final print. "
                              f"Stamp {v['stamp']['amount_text']}."}
     _publish(tenant, "notary_print", card, conv)
-    return card | {"say": card["say"] + " Card bheja hai: haan sirf aapke tap se."}
+    return card | {"say": card["say"] + " A card has been sent: approval only on your tap."}
 
 
 def decide_print(tenant: str, doc: str, yes: bool, card_hash: str = "", reason: str = "", by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise NotaryError("Final print ki haan sirf aapke tap se (app ka card).")
+        raise NotaryError("The final print is approved only on your tap (the card in the app).")
     with _LOCK, session() as s:
         d = _doc(s, tenant, doc)
         if d.status != "waiting":
-            return {"doc": _view(d), "say": f"{d.number} ka card ab baaki nahi ({d.status})."}
+            return {"doc": _view(d), "say": f"The card for {d.number} is no longer pending ({d.status})."}
         if not card_hash or card_hash != d.card_hash or _hash(_show(d)) != d.card_hash:
             _stale(d)
-            raise NotaryError("Document card ke baad badal gaya: naya card dekhiye.")
+            raise NotaryError("The document changed after the card was made: see the new card.")
         if not yes:
             d.status = "rejected"
             d.note = _clean(reason, 300)
-            return {"doc": _view(d), "say": f"{d.number} final nahi kiya."}
+            return {"doc": _view(d), "say": f"{d.number} was not made final."}
         name = f"{d.number}_{d.kind}_{d.lang}"
         pdf = _pdf(d.title, _blocks(d, False))
         docx = _docx(d, False)
@@ -875,9 +875,9 @@ def decide_print(tenant: str, doc: str, yes: bool, card_hash: str = "", reason: 
         d.updated_at = now()
         v = _view(d, True)
         mode = _st(s, tenant).mode
-    nxt = ("Party ke saamne sign + aapka notarisation; phir 'register mein chadhao' (fee ki receipt bhi)." if mode == "notary"
-           else "Party sign kare aur notary se notarise karwaye; phir 'notary ne kar diya' bataiye.")
-    return {"doc": v, "files": [fp, fw], "say": f"{v['number']} final print taiyaar (PDF + Word). {nxt}"}
+    nxt = ("The party signs before you + your notarisation; then 'enter in the register' (with the fee receipt)." if mode == "notary"
+           else "The party signs and gets it notarised by a notary; then tell Hoola 'the notary has done it'.")
+    return {"doc": v, "files": [fp, fw], "say": f"{v['number']}: the final print is ready (PDF + Word). {nxt}"}
 
 
 # ---------------------------------------------------------------- register (Form XV) + fee receipts
@@ -945,14 +945,14 @@ def notarise(tenant: str, doc: str = "", act: str = "", fee=None, executants: li
     with _LOCK, session() as s:
         st = _st(s, tenant)
         if st.mode != "notary":
-            raise NotaryError("Notarial register sirf notary rakhte hain. Desk mode mein 'notary ne kar diya' (executed) likhiye.")
+            raise NotaryError("Only a notary keeps the notarial register. In desk mode, record 'the notary has done it' (executed).")
         d = None
         if doc:
             d = _doc(s, tenant, doc)
             if d.status != "final":
-                raise NotaryError(f"{d.number} abhi final print nahi hua ({d.status}): pehle final print card par haan.")
+                raise NotaryError(f"{d.number} is not final-printed yet ({d.status}): approve the final print card first.")
             if d.entry_id:
-                raise NotaryError(f"{d.number} pehle hi register mein hai.")
+                raise NotaryError(f"{d.number} is already in the register.")
         act = act or (R.KINDS[d.kind]["act"] if d is not None else "") or "attest"
         if act not in R.ACTS:
             raise NotaryError("Notarial act? " + ", ".join(R.ACTS))
@@ -960,7 +960,7 @@ def notarise(tenant: str, doc: str = "", act: str = "", fee=None, executants: li
         fee = fee if fee not in (None, "") else fees.get(act)
         chk = R.fee_check(act, fee, pages, _j(st.fee_caps, {}))
         if chk["fee"] is None:
-            raise NotaryError("Fee kitni li? (Niyam > fees mein aapki rate daaliye, ya yahan bataiye.)")
+            raise NotaryError("What fee did you charge? (Add your rate under Rules > fees, or tell me here.)")
         if not chk["ok"]:
             raise NotaryError(chk["why"])
         if d is not None:
@@ -972,11 +972,11 @@ def notarise(tenant: str, doc: str = "", act: str = "", fee=None, executants: li
         else:
             ex = [{k: p.get(k, "") for k in ("name", "address", "id_kind", "id_masked", "id_ref")} for p in pre_ex]
         if not ex or not ex[0].get("name"):
-            raise NotaryError("Executant ka naam aur pura pata chahiye (Form XV column 4).")
+            raise NotaryError("The executant's name and full address are needed (Form XV column 4).")
         if not all(x.get("address") for x in ex):
-            raise NotaryError("Har executant ka pura pata chahiye (Form XV column 4).")
+            raise NotaryError("Every executant's full address is needed (Form XV column 4).")
         if not contents:
-            raise NotaryError("Document mein kya hai (contents) - ek line.")
+            raise NotaryError("What the document contains (contents) - one line.")
         ln = local_now(tenant)
         on = ln.date()
         n = _next(s, tenant, f"reg:{on.year}")
@@ -1003,7 +1003,7 @@ def notarise(tenant: str, doc: str = "", act: str = "", fee=None, executants: li
             s.get(NotaryReceipt, rcid).file_id = f.get("file_id", "")
         rv["file_id"] = f.get("file_id", "")
     say = f"Register serial {ev['serial']}: {ev['act_label']}, fee ₹{ev['fee']:g}" + (f", receipt {rv['number']} (total ₹{rv['total']:g})" if rv else "") + \
-          ". Fee aapne li hai; Hoola ne sirf likha."
+          ". You collected the fee; Hoola only recorded it."
     _publish(tenant, "notary_entry", {"entry": ev, "receipt": rv, "say": say}, conv)
     return {"entry": ev, "receipt": rv, "file": f, "say": say}
 
@@ -1012,11 +1012,11 @@ def correct_entry(tenant: str, serial: str, remarks: str, conv: str = "") -> dic
     """The register is never edited: a correction is a new line pointing at the old one."""
     r = _clean(remarks, 300)
     if len(r) < 5:
-        raise NotaryError("Kya galat tha / sahi kya hai, likhiye.")
+        raise NotaryError("Write what was wrong / what is correct.")
     with _LOCK, session() as s:
         old = s.scalars(select(NotaryEntry).where(NotaryEntry.tenant_id == tenant, NotaryEntry.serial == str(serial).strip())).first()
         if old is None:
-            raise NotaryError("Yeh serial register mein nahi.")
+            raise NotaryError("This serial is not in the register.")
         ln = local_now(tenant)
         on = ln.date()
         n = _next(s, tenant, f"reg:{on.year}")
@@ -1025,7 +1025,7 @@ def correct_entry(tenant: str, serial: str, remarks: str, conv: str = "") -> dic
                         stamp_text=old.stamp_text, fee=0.0, doc_id=old.doc_id, corrects=old.serial, remarks=r)
         s.add(e)
         s.flush()
-        return {"entry": _entry_view(e), "say": f"Serial {old.serial} ki correction nayi line {e.serial} mein likhi (purani line waisi hi)."}
+        return {"entry": _entry_view(e), "say": f"The correction to serial {old.serial} is written on new line {e.serial} (the old line is unchanged)."}
 
 
 def executed(tenant: str, doc: str, notary: str = "", on: str = "") -> dict:
@@ -1033,11 +1033,11 @@ def executed(tenant: str, doc: str, notary: str = "", on: str = "") -> dict:
     with _LOCK, session() as s:
         d = _doc(s, tenant, doc)
         if d.status != "final":
-            raise NotaryError(f"{d.number} abhi final nahi ({d.status}).")
+            raise NotaryError(f"{d.number} is not final yet ({d.status}).")
         d.status = "executed"
         d.note = _clean(f"Notarised by {notary} on {on or today(tenant).isoformat()}", 300)
         d.updated_at = now()
-        return {"doc": _view(d), "say": f"{d.number}: notarise ho gaya likh liya."}
+        return {"doc": _view(d), "say": f"{d.number}: recorded as notarised."}
 
 
 def receipt(tenant: str, payer: str, charges: dict, mode: str = "cash", ref: str = "", doc: str = "", conv: str = "") -> dict:
@@ -1046,28 +1046,28 @@ def receipt(tenant: str, payer: str, charges: dict, mode: str = "cash", ref: str
         st = _st(s, tenant)
         lines = _charge_lines(st, charges)
         if not lines:
-            raise NotaryError("Kis cheez ke kitne paise (typing / print / xerox / drafting)?")
+            raise NotaryError("How much money for what (typing / print / photocopy / drafting)?")
         d = _doc(s, tenant, doc) if doc else None
         rc = _make_receipt(s, tenant, payer or (_j(d.parties, [{}])[0].get("name", "") if d else ""), lines, mode, ref, today(tenant),
                            doc_id=d.id if d else "")
         if not rc.payer:
-            raise NotaryError("Kisse paise mile (naam)?")
+            raise NotaryError("Who paid (name)?")
         pdf = _receipt_pdf(st, rc)
         rid, rv = rc.id, _rc_view(rc)
     f = _store(tenant, f"Receipt_{rv['number'].replace('/', '-')}.pdf", pdf, "application/pdf", conv, f"Receipt {rv['number']}")
     with session() as s:
         s.get(NotaryReceipt, rid).file_id = f.get("file_id", "")
-    return {"receipt": rv | {"file_id": f.get("file_id", "")}, "say": f"Receipt {rv['number']}: ₹{rv['total']:g} (aapne liye; Hoola ne sirf likha)."}
+    return {"receipt": rv | {"file_id": f.get("file_id", "")}, "say": f"Receipt {rv['number']}: ₹{rv['total']:g} (you collected it; Hoola only recorded it)."}
 
 
 def void_receipt(tenant: str, number: str, reason: str = "") -> dict:
     with _LOCK, session() as s:
         r = s.scalars(select(NotaryReceipt).where(NotaryReceipt.tenant_id == tenant, NotaryReceipt.number == str(number).strip())).first()
         if r is None:
-            raise NotaryError("Receipt nahi mili.")
+            raise NotaryError("Receipt not found.")
         r.void = True
         r.ref = (r.ref + " | VOID: " + _clean(reason, 80)).strip(" |")[:60]
-        return {"receipt": _rc_view(r), "say": f"Receipt {r.number} radd likhi (record mein rahegi)."}
+        return {"receipt": _rc_view(r), "say": f"Receipt {r.number} marked void (it stays on record)."}
 
 
 def register(tenant: str, year: int | None = None) -> dict:
@@ -1103,14 +1103,14 @@ def register_file(tenant: str, year: int | None = None, conv: str = "") -> dict:
                          "VOID" if r["void"] else ""])
     counts = [["Notarial act", "Count"]] + [[k, v] for k, v in sorted(reg["counts"].items())] + [["Total", reg["total_acts"]]]
     about = [["Field", "Value"], ["Notary", st["notary_name"]], ["Reg. No.", st["reg_no"]], ["Area", st["area"]], ["Year", reg["year"]],
-             ["Note", "Form XV (Rule 11(2)); register ka title page: kitne pages, sign + date (Rule 11(4)). Annual return Form XIV, "
-                      "January ke pehle hafte (Rule 14). Hoola ka export sirf madad hai; register aapki zimmedari."]]
+             ["Note", "Form XV (Rule 11(2)); the register's title page: number of pages, sign + date (Rule 11(4)). Annual return Form XIV, "
+                      "in the first week of January (Rule 14). Hoola's export is only a help; the register is your responsibility."]]
     from .. import officegen
     data = officegen.make_xlsx(f"Notarial register {reg['year']}", {"Form XV": sheet, "Fee register": fee_rows, "Annual count": counts,
                                                                     "About": about})
     f = _store(tenant, f"Notarial_register_{reg['year']}.xlsx", data,
                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", conv, f"Notarial register {reg['year']}")
-    return {"file": f, "say": f"Register {reg['year']}: {reg['total_acts']} acts, fee ₹{reg['fees_total']:g}. Excel bhej diya."}
+    return {"file": f, "say": f"Register {reg['year']}: {reg['total_acts']} acts, fee ₹{reg['fees_total']:g}. Excel file sent."}
 
 
 # ---------------------------------------------------------------- apostille / MEA attestation
@@ -1138,7 +1138,7 @@ def apostille(tenant: str, doc_title: str, doc_type: str = "personal", country: 
             d = _doc(s, tenant, doc)
             did, t = d.id, t or f"{d.title} ({d.number})"
         if not t:
-            raise NotaryError("Kaunsa document (naam)?")
+            raise NotaryError("Which document (name)?")
         h = _hague(hague)
         n = _next(s, tenant, "ap")
         a = NotaryApostille(tenant_id=tenant, number=f"A-{n:03d}", party=_clean(party, 120), phone=_phone(phone), doc_title=t, doc_type=doc_type,
@@ -1147,7 +1147,7 @@ def apostille(tenant: str, doc_title: str, doc_type: str = "personal", country: 
         s.add(a)
         s.flush()
         v = _ap_view(a)
-    return {"apostille": v, "say": f"{v['number']}: {v['doc_title']} -> {v['country'] or '[desh]'}. Agla kadam: {v['next']}"}
+    return {"apostille": v, "say": f"{v['number']}: {v['doc_title']} -> {v['country'] or '[country]'}. Next step: {v['next']}"}
 
 
 def apostille_update(tenant: str, ap: str, step: str = "", done: bool = True, hague=None, note: str = "", status: str = "") -> dict:
@@ -1156,7 +1156,7 @@ def apostille_update(tenant: str, ap: str, step: str = "", done: bool = True, ha
         if a is None or a.tenant_id != tenant:
             a = s.scalars(select(NotaryApostille).where(NotaryApostille.tenant_id == tenant, NotaryApostille.number == str(ap).upper())).first()
         if a is None:
-            raise NotaryError("Apostille case nahi mila.")
+            raise NotaryError("Apostille case not found.")
         if hague is not None and _hague(hague):
             a.hague = _hague(hague)
             old = {x["key"]: x.get("done") for x in _j(a.steps, [])}
@@ -1168,7 +1168,7 @@ def apostille_update(tenant: str, ap: str, step: str = "", done: bool = True, ha
             steps = _j(a.steps, [])
             hit = [x for x in steps if x["key"] == step]
             if not hit:
-                raise NotaryError("Yeh step nahi: " + ", ".join(x["key"] for x in steps))
+                raise NotaryError("No such step: " + ", ".join(x["key"] for x in steps))
             hit[0]["done"] = today(tenant).isoformat() if done else ""
             a.steps = _d(steps)
         if note:
@@ -1179,7 +1179,7 @@ def apostille_update(tenant: str, ap: str, step: str = "", done: bool = True, ha
             a.status = "done"
         a.updated_at = now()
         v = _ap_view(a)
-    return {"apostille": v, "say": f"{v['number']}: " + (f"agla kadam: {v['next']}" if v["next"] else "sab kadam ho gaye.")}
+    return {"apostille": v, "say": f"{v['number']}: " + (f"next step: {v['next']}" if v["next"] else "all steps are done.")}
 
 
 def apostilles(tenant: str, status: str = "") -> list[dict]:
@@ -1215,10 +1215,10 @@ def forget(tenant: str, doc: str) -> dict:
     with _LOCK, session() as s:
         d = _doc(s, tenant, doc)
         if d.status == "waiting":
-            raise NotaryError("Pehle print card ka faisla kijiye.")
+            raise NotaryError("Decide the print card first.")
         refs = [p.get("id_ref") for p in _j(d.parties, []) if p.get("id_ref")]
         in_register = bool(d.entry_id)
-        d.parties = _d([{"name": "[mitaya]"}])
+        d.parties = _d([{"name": "[erased]"}])
         d.facts, d.text, d.versions, d.blanks = "{}", "", "[]", "[]"
         d.forgotten, d.card_hash = True, ""
         d.files = "{}"
@@ -1239,8 +1239,8 @@ def forget(tenant: str, doc: str) -> dict:
                 gone += 1
             except Exception:
                 pass
-    return {"say": f"{num}: party ki details mita di ({gone} locker ID bhi)." + (
-        " Register ki line kanoon ke hisaab se rahegi (Notaries Rules 1956, Rule 11)." if in_register else "")}
+    return {"say": f"{num}: the party's details were erased (and {gone} locker IDs)." + (
+        " The register line stays, as the law requires (Notaries Rules 1956, Rule 11)." if in_register else "")}
 
 
 def day(tenant: str) -> dict:
@@ -1262,21 +1262,21 @@ def day(tenant: str) -> dict:
     if cop and mode == "notary":
         left = (cop - on).days
         if left <= 210:
-            dates.append(f"Certificate of practice {cop.isoformat()} ko khatam" + (" ho gaya" if left < 0 else f" ({left} din)")
-                         + ": renewal Form XVI expiry se 6 mahine pehle (Rule 8B).")
+            dates.append(f"Certificate of practice " + ("expired" if left < 0 else "expires") + f" on {cop.isoformat()}" + ("" if left < 0 else f" ({left} days)")
+                         + ": renewal in Form XVI 6 months before expiry (Rule 8B).")
     if mode == "notary" and on.month == 1 and on.day <= 7:
-        dates.append("January ka pehla hafta: pichhle saal ka annual return Form XIV (Rule 14) - register ka 'Annual count' sheet dekhiye.")
+        dates.append("First week of January: last year's annual return in Form XIV (Rule 14) - see the register's 'Annual count' sheet.")
     parts = []
     if waiting:
-        parts.append(f"{len(waiting)} final print card aapki haan ke liye")
+        parts.append(f"{len(waiting)} final print cards waiting for your approval")
     if blanks:
-        parts.append(f"{len(blanks)} draft mein khaali jagah")
+        parts.append(f"{len(blanks)} drafts have blanks")
     if final_old:
-        parts.append(f"{len(final_old)} final document 7+ din se notarise nahi hue")
+        parts.append(f"{len(final_old)} final documents not notarised for 7+ days")
     if ap:
-        parts.append(f"{len(ap)} apostille case khule")
+        parts.append(f"{len(ap)} apostille cases open")
     parts += dates
-    say = ("Notary desk: " + "; ".join(parts) + ".") if parts else "Notary desk mein aaj sab theek."
+    say = ("Notary desk: " + "; ".join(parts) + ".") if parts else "All is fine at the notary desk today."
     return {"say": say, "waiting": waiting, "blanks": blanks, "final_old": final_old, "apostille": ap, "dates": dates,
             "today_entries": today_n, "mode": mode}
 
@@ -1311,13 +1311,13 @@ def tick(when: datetime | None = None) -> dict:
                     left = (cop - on).days
                     win = next((w for w in (0, 30, 90, 180, 210) if left <= w), None)
                     if win is not None and _once(s, tenant, f"cop:{cop.isoformat()}:{win}"):
-                        alerts.append(f"Certificate of practice {cop.isoformat()} ko khatam" + (" ho gaya" if left < 0 else f" ({left} din)")
-                                      + ": renewal Form XVI, expiry se 6 mahine pehle (Rule 8B, Notaries Rules 1956).")
+                        alerts.append(f"Certificate of practice " + ("expired" if left < 0 else "expires") + f" on {cop.isoformat()}" + ("" if left < 0 else f" ({left} days)")
+                                      + ": renewal in Form XVI, 6 months before expiry (Rule 8B, Notaries Rules 1956).")
                 if st.mode == "notary" and on.month == 1 and on.day <= 7 and _once(s, tenant, f"annual:{on.year}"):
                     cnt = len(s.scalars(select(NotaryEntry.id).where(NotaryEntry.tenant_id == tenant, NotaryEntry.year == on.year - 1,
                                                                     NotaryEntry.corrects == "")).all())
-                    alerts.append(f"Annual return (Form XIV, Rule 14): {on.year - 1} mein {cnt} notarial acts. January ke pehle hafte "
-                                  "mein online bhejna aapka kaam; register Excel ka 'Annual count' sheet madad karega.")
+                    alerts.append(f"Annual return (Form XIV, Rule 14): {cnt} notarial acts in {on.year - 1}. Sending it online in the first week of January "
+                                  "is your part; the 'Annual count' sheet of the register Excel will help.")
                 if st.last_morning != on.isoformat():
                     try:
                         hh, mm = (int(x) for x in (st.morning_time or "09:30").split(":"))
@@ -1331,7 +1331,7 @@ def tick(when: datetime | None = None) -> dict:
                 out["alerts"] += 1
             if morning:
                 d = day(tenant)
-                if d["say"] != "Notary desk mein aaj sab theek.":
+                if d["say"] != "All is fine at the notary desk today.":
                     _publish(tenant, "notary_day", {"say": d["say"], "waiting": len(d["waiting"]), "blanks": len(d["blanks"]),
                                                     "apostille": len(d["apostille"])})
                     out["morning"] += 1

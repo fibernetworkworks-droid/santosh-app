@@ -19,7 +19,7 @@ from datetime import date, timedelta
 from typing import Any
 
 SLOTS = ("morning", "evening", "full")
-SLOT_LABEL = {"morning": "Subah", "evening": "Shaam", "full": "Pura din"}
+SLOT_LABEL = {"morning": "Morning", "evening": "Evening", "full": "Full day"}
 DEFAULT_SLOTS = {"morning": {"from": "08:00", "to": "15:00"}, "evening": {"from": "18:00", "to": "23:30"},
                  "full": {"from": "08:00", "to": "23:30"}}
 DIETS = ("veg", "nonveg", "jain")
@@ -39,12 +39,12 @@ EVENT_WORDS = {
     "anniversary": ("anniversary", "saalgirah"),
     "other": (),
 }
-EVENT_LABEL = {"wedding": "Shaadi", "reception": "Reception", "engagement": "Sagai", "haldi_mehendi": "Haldi / Mehendi / Sangeet",
-               "birthday": "Birthday", "corporate": "Corporate", "religious": "Pooja / dharmik", "baby_shower": "Godh bharai",
+EVENT_LABEL = {"wedding": "Wedding", "reception": "Reception", "engagement": "Engagement", "haldi_mehendi": "Haldi / Mehendi / Sangeet",
+               "birthday": "Birthday", "corporate": "Corporate", "religious": "Pooja / religious", "baby_shower": "Baby shower",
                "anniversary": "Anniversary", "other": "Function"}
-DEFAULT_STAGES = [{"label": "Advance (booking pakki)", "pct": 25, "days_before": None},
-                  {"label": "Doosri kisht", "pct": 50, "days_before": 15},
-                  {"label": "Baaki (final count ke baad)", "pct": 25, "days_before": 1}]
+DEFAULT_STAGES = [{"label": "Advance (booking confirmed)", "pct": 25, "days_before": None},
+                  {"label": "Second installment", "pct": 50, "days_before": 15},
+                  {"label": "Balance (after the final count)", "pct": 25, "days_before": 1}]
 # starter policy (hers to change): refund % of what was paid, by days before the event
 DEFAULT_CANCEL = [{"days_before": 90, "refund_pct": 90}, {"days_before": 30, "refund_pct": 50}, {"days_before": 7, "refund_pct": 25},
                   {"days_before": 0, "refund_pct": 0}]
@@ -58,8 +58,8 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 500) -> str:
     """Client / her words: secrets never kept (OTP / PIN / password values, card-like and Aadhaar-like numbers)."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 
@@ -234,13 +234,13 @@ def split_amount(total: float, stages: list[dict]) -> list[float]:
 def check_stages(stages: list[dict]) -> list[str]:
     probs = []
     if not stages:
-        probs.append("Kam se kam ek kisht chahiye.")
+        probs.append("At least one installment is needed.")
     tot = sum(float(s.get("pct") or 0) for s in stages)
     if abs(tot - 100) > 0.01:
-        probs.append(f"Kishton ka jod 100% hona chahiye (abhi {tot:g}%).")
+        probs.append(f"The installments must add up to 100% (now {tot:g}%).")
     for s in stages:
         if not str(s.get("label") or "").strip():
-            probs.append("Har kisht ka naam chahiye.")
+            probs.append("Every installment needs a name.")
             break
     return probs
 
@@ -250,24 +250,24 @@ def check_cancel(policy: list[dict]) -> tuple[list[str], list[str]]:
     s.2(46)); consumer commissions have ordered refunds where halls kept the whole advance."""
     probs, notes = [], []
     if not policy:
-        probs.append("Cancellation policy khaali hai: likhiye kitne din pehle kitna wapas.")
+        probs.append("The cancellation policy is empty: write how much is refunded how many days before.")
     for p in policy:
         try:
             d, r = int(p.get("days_before")), float(p.get("refund_pct"))
         except (TypeError, ValueError):
-            probs.append("Har line mein days_before aur refund_pct number chahiye.")
+            probs.append("Every line needs days_before and refund_pct as numbers.")
             continue
         if d < 0 or not 0 <= r <= 100:
-            probs.append("days_before 0 ya zyada, refund_pct 0-100.")
+            probs.append("days_before must be 0 or more, refund_pct 0-100.")
     if not probs:
         far = [p for p in policy if int(p["days_before"]) >= 30 and float(p["refund_pct"]) == 0]
         if far:
-            notes.append("30+ din pehle cancel par bhi poora advance rakhna 'unfair contract' gina ja sakta hai (CPA 2019 s.2(46)); "
-                         "consumer commissions ne aise mamlon mein refund dilwaya hai. Apne kharche jitni katauti rakhiye.")
+            notes.append("Keeping the whole advance even for a cancellation 30+ days before can count as an 'unfair contract' (CPA 2019 s.2(46)); "
+                         "consumer commissions have ordered refunds in such cases. Deduct only as much as your costs.")
         tiers = sorted(policy, key=lambda p: -int(p["days_before"]))
         for a, b in zip(tiers, tiers[1:]):
             if float(b["refund_pct"]) > float(a["refund_pct"]):
-                notes.append("Paas aane par refund zyada ho raha hai: policy ulti lagti hai, dekh lijiye.")
+                notes.append("The refund grows as the event gets closer: the policy looks reversed, please check it.")
                 break
     return probs, notes
 
@@ -289,10 +289,10 @@ def policy_lines(policy: list[dict]) -> list[str]:
     for i, p in enumerate(tiers):
         d = int(p["days_before"])
         upper = int(tiers[i - 1]["days_before"]) - 1 if i else None
-        span = f"{d}+ din pehle" if upper is None else (f"{d}-{upper} din pehle" if d < upper else f"{d} din pehle")
+        span = f"{d}+ days before" if upper is None else (f"{d}-{upper} days before" if d < upper else f"{d} days before")
         if d == 0 and upper is not None:
-            span = f"{upper} din se kam" if upper > 0 else "usi din"
-        out.append(f"{span}: jama rakam ka {float(p['refund_pct']):g}% wapas")
+            span = f"less than {upper} days" if upper > 0 else "same day"
+        out.append(f"{span}: {float(p['refund_pct']):g}% of the amount paid is refunded")
     return out
 
 
@@ -304,11 +304,11 @@ def noise_note(hall_kind: str, slot_to: str, music_end: str = "22:00") -> str:
     late = slot_to > music_end
     if hall_kind in OPEN_AIR:
         if late:
-            return (f"Khuli jagah ({hall_kind}): loudspeaker / DJ {music_end} tak hi (Noise Rules 2000 Rule 5); uske baad sirf state "
-                    "ki tyohaar chhoot (saal mein 15 din tak, raat 12 tak) aur likhit permission ke saath. Client ko pehle bataiye.")
-        return f"Khuli jagah: loudspeaker ke liye likhit permission; {music_end} ke baad band (Noise Rules 2000 Rule 5)."
-    return ("Band hall: raat 10 ke baad ki rok mein band hall ki chhoot hai (Rule 5), par awaaz bahar na jaye; permission / "
-            "police ke local niyam dekh lijiye.")
+            return (f"Open-air venue ({hall_kind}): loudspeaker / DJ only until {music_end} (Noise Rules 2000 Rule 5); after that only under the state's "
+                    "festival relaxation (up to 15 days a year, until midnight) and with written permission. Tell the client in advance.")
+        return f"Open-air venue: written permission is needed for a loudspeaker; it stops after {music_end} (Noise Rules 2000 Rule 5)."
+    return ("Closed hall: the after-10 pm restriction exempts a closed hall (Rule 5), but the sound must not carry outside; check the permission / "
+            "local police rules.")
 
 
 def lock_date(event: date, lock_days: int) -> date:

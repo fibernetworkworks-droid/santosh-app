@@ -141,7 +141,7 @@ def test_indiamart_phone_dedups_across_lanes(env, monkeypatch):
 
 
 def test_indiamart_without_a_place_gets_the_one_question(env):
-    with pytest.raises(S.LeadsError, match="Kaunsa business"):
+    with pytest.raises(S.LeadsError, match="Which kind of business"):
         asyncio.run(S.run_indiamart("t1", "cement sellers", "cement"))
 
 
@@ -248,15 +248,15 @@ def test_places_mapscap_mid_details_only_stops_the_buying(env, monkeypatch):
 
 def test_places_unresolvable_area_leaves_no_run(env, monkeypatch):
     fake_maps(monkeypatch, env, [], [], resolve=None)
-    with pytest.raises(S.LeadsError, match="nahi mila"):
+    with pytest.raises(S.LeadsError, match="not found"):
         asyncio.run(S.run_places("t1", "ask", ["pharmacy"], "Nowhereville"))
     assert S.runs("t1") == []                                            # nothing ran, nothing is on the books
 
 
 def test_places_needs_kinds_and_a_key(env):
-    with pytest.raises(S.LeadsError, match="Kis tarah"):
+    with pytest.raises(S.LeadsError, match="What kind of place"):
         asyncio.run(S.run_places("t1", "ask", [], "Pune"))
-    with pytest.raises(S.LeadsError, match="Kahan"):
+    with pytest.raises(S.LeadsError, match="Where should it search"):
         asyncio.run(S.run_places("t1", "ask", ["pharmacy"], ""))
 
 

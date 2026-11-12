@@ -145,7 +145,7 @@ def test_short_uploads_as_approved_with_kids_answer_thumbnail_playlist(ytd):
     D.desk_view(T)                                              # mirror the channel
     pid = _yt_post(D, SP)
     with D.session() as s:
-        assert "bachchon" in " ".join(SP.problems(s.get(D.SocialPost, pid)))    # YouTube requires the made-for-kids answer
+        assert "made for kids" in " ".join(SP.problems(s.get(D.SocialPost, pid)))    # YouTube requires the made-for-kids answer
     PU.set_settings(T, yt_kids=False, yt_playlist="PLabcdefghij12")
     with pytest.raises(D.SocialError):
         PU.set_settings(T, yt_playlist="not a playlist")
@@ -186,13 +186,13 @@ def test_youtube_needs_a_video_and_daily_guard(ytd, monkeypatch):
         img = D.SocialPost(tenant_id=T, slot="2026-11-08T12:00", platforms="youtube", fmt="image", hook="x", caption="x", status="draft")
         s.add(img)
         s.flush()
-        assert "sirf video" in " ".join(SP.problems(img))
+        assert "only video" in " ".join(SP.problems(img))
     monkeypatch.setenv("YT_DAILY_UPLOADS", "1")
     from app.config import get_settings
     get_settings.cache_clear()
     assert SP.publish_post(T, _yt_post(D, SP), by_tap=True)["status"] == "published"
     r = SP.publish_post(T, _yt_post(D, SP), by_tap=True)
-    assert r["status"] == "failed" and "seema" in r["results"]["youtube"]["error"]
+    assert r["status"] == "failed" and "limit" in r["results"]["youtube"]["error"]
 
 
 def test_youtube_comments_in_social_inbox(ytd):

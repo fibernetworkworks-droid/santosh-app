@@ -144,7 +144,7 @@ def test_linkedin_problems_and_dead_token(pf):
         text = D.SocialPost(tenant_id=T, slot="2026-11-08T12:00", platforms="linkedin", fmt="image", caption="Only words today", status="draft")
         s.add_all([reel, text])
         s.flush()
-        assert "LinkedIn par abhi sirf text + photo" in " ".join(SP.problems(reel))
+        assert "LinkedIn takes only text + photo" in " ".join(SP.problems(reel))
         tid = text.id
     STATE["li_dead"] = True
     r = SP.publish_post(T, tid, by_tap=True)
