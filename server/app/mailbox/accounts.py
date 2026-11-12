@@ -44,7 +44,7 @@ def _post(url: str, data: dict) -> dict:
     try:
         r = c.post(url, data=data)
     except httpx.HTTPError as e:
-        raise MailError(f"Login server se baat nahi hui ({type(e).__name__})")
+        raise MailError(f"Could not reach the login server ({type(e).__name__})")
     finally:
         if _http is None:
             c.close()
@@ -52,13 +52,13 @@ def _post(url: str, data: dict) -> dict:
         if "invalid_grant" in r.text or r.status_code in (400, 401):
             # v0.707 an expired / revoked Google login reached the model as raw JSON ("Token nahi mila: {...}")
             raise NotConnected(RECONNECT)
-        raise MailError(f"Login server ne mana kiya ({r.status_code}). Thodi der baad dobara try karein.")
+        raise MailError(f"The login server refused ({r.status_code}). Try again in a while.")
     return r.json()
 
 
-RECONNECT = ("Is mailbox ka login expire ho gaya hai (Google ne band kar diya). Owner ko batao: App mein Profile > Email "
-             "(ya Profile > Google Drive) se 'dobara jodiye' dabayein, saare box tick karein. Tab tak is mailbox ka kaam "
-             "nahi hoga - dobara try mat karo.")
+RECONNECT = ("This mailbox's login has expired (Google ended it). Tell the owner: in the app, press 'reconnect' in Profile > Email "
+             "(or Profile > Google Drive) and tick all the boxes. Until then this mailbox's work "
+             "will not run - do not try again.")
 
 
 def _get(url: str, token: str) -> dict:
@@ -69,7 +69,7 @@ def _get(url: str, token: str) -> dict:
         if _http is None:
             c.close()
     if r.status_code != 200:
-        raise MailError(f"Profile nahi mila: {r.text[:200]}")
+        raise MailError(f"Profile not found: {r.text[:200]}")
     return r.json()
 
 
@@ -83,14 +83,14 @@ def _oauth_token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(MailAccount, account_id)
         if a is None:
-            raise NotConnected("Yeh mailbox ab Santosh se judi nahi hai.")
+            raise NotConnected("This mailbox is no longer connected to Santosh.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
         kind = a.kind
     if not refresh:
-        raise MailError("Mailbox ka login expire ho gaya. App mein Profile > Email se dobara jodiye.")
+        raise MailError("The mailbox login has expired. Reconnect it in the app under Profile > Email.")
     if kind == "gmail":
         tok = _post(GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id, "client_secret": st.google_oauth_client_secret,
                                    "refresh_token": refresh, "grant_type": "refresh_token"})
@@ -115,7 +115,7 @@ def _signin_token(tenant: str):
     def token(force: bool) -> str:
         creds = google_auth.credentials_for(tenant)
         if creds is None:
-            raise NotConnected("Google sign-in nahi mila.")
+            raise NotConnected("Google sign-in not found.")
         if force:
             google_auth.refresh(creds, tenant)     # GoogleReconnect -> its own clear line + reconnect card (v0.70)
             google_auth.save_token(tenant, creds)
@@ -172,15 +172,15 @@ def has_mail(tenant: str) -> bool:
 def get_box(tenant: str, which: str | None = None) -> Box:
     bs = boxes(tenant)
     if not bs:
-        raise NotConnected("Aapka email abhi Santosh se juda nahi hai. App mein Profile > Email mein Gmail, Outlook ya "
-                           "koi bhi email (app password se) jodiye.")
+        raise NotConnected("Your email is not connected to Santosh yet. In the app, under Profile > Email, connect Gmail, Outlook or "
+                           "any email (with an app password).")
     if not which:
         return bs[0]
     w = which.strip().lower()
     for b in bs:
         if b.key.lower() == w or b.address == w:
             return b
-    raise MailError(f"'{which}' mailbox nahi mili. Judi hui: {', '.join(b.address for b in bs)}")
+    raise MailError(f"Mailbox '{which}' not found. Connected: {', '.join(b.address for b in bs)}")
 
 
 def views(tenant: str) -> list[dict[str, Any]]:
@@ -217,7 +217,7 @@ def set_signature(tenant: str, key: str, signature: str) -> None:
             return
         a = s.get(MailAccount, key)
         if a is None or a.tenant_id != tenant:
-            raise MailError("Mailbox nahi mili")
+            raise MailError("Mailbox not found")
         a.signature = signature
 
 
@@ -225,7 +225,7 @@ def set_default(tenant: str, key: str) -> None:
     with session() as s:
         rows = s.scalars(select(MailAccount).where(MailAccount.tenant_id == tenant, MailAccount.kind != "_sig")).all()
         if key not in {a.id for a in rows}:
-            raise MailError("Sirf app mein judi mailbox ko default bana sakte hain.")
+            raise MailError("Only a mailbox connected in the app can be made the default.")
         for a in rows:
             a.is_default = a.id == key
 
@@ -266,7 +266,7 @@ def connect_imap(tenant: str, address: str, password: str, name: str = "", imap_
                  smtp_host: str = "", smtp_port: int = 0) -> dict[str, Any]:
     address = (address or "").strip().lower()
     if "@" not in address or not password:
-        raise MailError("Email address aur app password dono chahiye.")
+        raise MailError("Both the email address and the app password are needed.")
     from .imap import PROVIDERS
     if address.split("@")[-1] in PROVIDERS:   # Google/Yahoo/Zoho/iCloud show app passwords in groups of 4 with spaces
         password = password.replace(" ", "")
@@ -296,10 +296,10 @@ def start_link(tenant: str, provider: str, login_hint: str = "") -> str:
     if provider not in ("google", "microsoft"):
         raise MailError("provider must be google or microsoft")
     if not oauth_ready(provider):
-        raise MailError({"google": "Gmail jodne ke liye server par Google sign-in (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
-                                   "PUBLIC_BASE_URL, SECRET_KEY) set hona chahiye.",
-                         "microsoft": "Outlook jodne ke liye server par MS_OAUTH_CLIENT_ID/SECRET, PUBLIC_BASE_URL aur "
-                                      "SECRET_KEY set hona chahiye."}[provider])
+        raise MailError({"google": "To connect Gmail, Google sign-in must be set up on the server (GOOGLE_OAUTH_CLIENT_ID/SECRET, "
+                                   "PUBLIC_BASE_URL, SECRET_KEY).",
+                         "microsoft": "To connect Outlook, MS_OAUTH_CLIENT_ID/SECRET, PUBLIC_BASE_URL and "
+                                      "SECRET_KEY must be set on the server."}[provider])
     st = get_settings()
     state = "mail_" + secrets.token_urlsafe(24)
     with session() as s:
@@ -339,9 +339,9 @@ def settings_scope_ok(tenant: str, box: Box) -> bool:
 
 
 def settings_scope_message(address: str) -> str:
-    return (f"({address}) ne Gmail settings ki permission abhi nahi di hai — iske liye ek baar Profile > Email se is "
-            "Gmail ko dobara jodna hoga ('Jodiye' dabaiye, Google ke page par saare boxes tick rahiye). Mail, watcher, "
-            "rules — sab pehle jaisa chalega; sirf vacation / signature / alias / auto-forward is permission se chalte hain.")
+    return (f"({address}) has not yet given permission for Gmail settings — to fix this, reconnect this "
+            "Gmail once from Profile > Email (press 'Connect' and tick all the boxes on Google's page). Mail, watcher, "
+            "rules — everything works as before; only vacation / signature / alias / auto-forward need this permission.")
 
 
 def finish_link(code: str, state: str) -> dict[str, Any]:
@@ -349,7 +349,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(MailLinkState, state)
         if row is None or as_utc(row.created_at) < now() - timedelta(minutes=30):
-            raise MailError("Yeh link purana ho gaya. App se dobara 'Jodiye' dabaiye.")
+            raise MailError("This link is old. Press 'Connect' in the app again.")
         tenant, provider = row.tenant_id, row.provider
         s.delete(row)
     if provider == "google":
@@ -357,7 +357,7 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
                                    "client_secret": st.google_oauth_client_secret, "redirect_uri": acc._redirect_uri(),
                                    "grant_type": "authorization_code"})
         if GMAIL_SCOPE not in (tok.get("scope") or "").split():
-            raise MailError("Gmail ki permission nahi di gayi. Dobara jodte waqt 'Gmail padhna aur bhejna' allow kijiye.")
+            raise MailError("Gmail permission was not given. When you reconnect, allow 'read and send Gmail'.")
         info = _get("https://openidconnect.googleapis.com/v1/userinfo", tok["access_token"])
         address, name, kind = info.get("email", ""), info.get("name", ""), "gmail"
     else:
@@ -368,9 +368,9 @@ def finish_link(code: str, state: str) -> dict[str, Any]:
         address = info.get("mail") or info.get("userPrincipalName") or ""
         name, kind = info.get("displayName", ""), "outlook"
     if not address or "@" not in address:
-        raise MailError("Account se email address nahi mila.")
+        raise MailError("The email address was not found for the account.")
     if not tok.get("refresh_token"):
-        raise MailError("Login server ne refresh token nahi diya; dobara jodiye.")
+        raise MailError("The login server did not give a refresh token; reconnect.")
     view = _save(tenant, kind, address, name, access_token_enc=acc.encrypt(tok["access_token"]),
                  refresh_token_enc=acc.encrypt(tok["refresh_token"]), scopes=tok.get("scope", ""),
                  expiry=now() + timedelta(seconds=int(tok.get("expires_in", 3600))))
