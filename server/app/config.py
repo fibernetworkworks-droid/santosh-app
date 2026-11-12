@@ -436,8 +436,8 @@ class Settings(BaseSettings):
     pc_qwen_provider_sort: str = "latency"  # v0.856 OpenRouter provider.sort for the PC brain: latency | throughput | price | ""
     pc_max_tokens: int = 4000               # output room per PC step (was 1500: thinking could eat the action)
     pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane
-    pc_plan: bool = True                    # v0.859 D2: a job is split into checked stages before the PC works
-    pc_verify: bool = True                  # v0.859 D4: 'done' only after the screen is checked against her ask
+    pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works
+    pc_verify: bool = False                  # v0.859 D4: 'done' only after the screen is checked against her ask
     pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
     pc_plan_model: str = "claude-sonnet-5-5"   # v0.859 the planner (one call per PC job)
     pc_brain_timeout_s: float = 90.0

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.864.0"   # v0.864.0 PC MANAGER (owner: "put the manager back on Sonnet with its PC rules"; frozen-PC exception recorded): a chat / call turn about her PC (her PC named, a PC job running or just run, the pc tools admitted) runs on pc_manager_model Sonnet past SAB HAIKU and the GLM door, with the PC manager rules in its system prompt and the pc tools in view; every other turn unchanged
+APP_VERSION = "0.865.0"   # v0.865.0 PC SEEDHA (owner: "TURN OFF PLANNER AND CHECKER ALSO"; frozen-PC exception recorded): pc_plan and pc_verify default OFF - a PC task no longer waits for the Sonnet planner before its first step or for the Haiku screen check after each stage / before done (the v0.859 D2 / D4 layers); her own PC_PLAN / PC_VERIFY in the VPS .env still win
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

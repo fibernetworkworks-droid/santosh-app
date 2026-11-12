@@ -3166,3 +3166,12 @@ admits the pc family and appends RULES to the system prompt (small and full); `_
 after, never leaking into tools). Every other turn keeps Haiku + the small prompt. Switch `pc_manager`; counter
 `santosh.PC_MANAGER`. Tests `test_v0864_pc_manager.py` (5). NOT VERIFIED on her PC; the 12 Nov PC layers (planner,
 checker) are still on - turning them off is the next step she decides.
+
+
+## v0.865.0 PC SEEDHA (planner + checker off)
+
+Owner, after the root-cause report and v0.864 PC MANAGER: "TURN OFF PLANNER AND CHECKER ALSO". `config.py`:
+`pc_plan` True -> False (no Sonnet planner call before the first PC step, no stages, no per-stage screen check) and
+`pc_verify` True -> False (no Haiku screen check before 'done', no send-backs). The v0.859 D2 / D4 code stays and a
+`PC_PLAN=true` / `PC_VERIFY=true` line in the VPS .env turns them back on. No test change: tests/conftest.py already
+pinned both off for the older suites; the v0.859 suite sets them on for itself. NOT VERIFIED on her PC.
