@@ -46,7 +46,8 @@ IST = timezone(timedelta(hours=5, minutes=30))
 # USD per 1M tokens; live models also per minute of audio. Longest matching prefix wins.
 PRICES: dict[str, dict[str, float]] = {
     "claude-sonnet-5-5": {"in": 2.0, "out": 10.0, "cache_write": 2.5, "cache_read": 0.10},
-    "qwen3.8-max": {"in": 2.0, "out": 6.0, "cache_read": 0.25},   # v0.851 Alibaba Model Studio list price (secondary sources)
+    "qwen3.8-max": {"in": 2.0, "out": 6.0, "cache_read": 0.25},
+    "qwen/qwen3.8-max-0902": {"in": 2.0, "out": 6.0},   # v0.852 OpenRouter list price (read from its /models on 12 Nov 2026)   # v0.851 Alibaba Model Studio list price (secondary sources)
     "claude-sonnet-5": {"in": 2.0, "out": 10.0, "cache_write": 2.5, "cache_read": 0.20},
     "claude-opus-5-5": {"in": 4.0, "out": 20.0, "cache_write": 5.0, "cache_read": 0.20},
     "claude-opus-5": {"in": 5.0, "out": 25.0, "cache_write": 6.25, "cache_read": 0.50},

@@ -46,17 +46,43 @@ def norm(name: str) -> str:
     return ""
 
 
+OPENROUTER = "https://openrouter.ai/api/v1"
+
+
+def qwen_route() -> tuple[str, str, str] | None:
+    """v0.852 (url, key, model) for Qwen: Alibaba Model Studio when QWEN_API_KEY is set, else OpenRouter with the
+    OpenRouter key the server already has (qwen/qwen3.8-max-0902 there - reads screenshots, calls tools). None = no key."""
+    st = get_settings()
+    key = str(getattr(st, "qwen_api_key", "") or "").strip()
+    if key:
+        base = str(getattr(st, "qwen_base_url", "") or "").rstrip("/") or "https://dashscope-us.aliyuncs.com/compatible-mode/v1"
+        model = str(getattr(st, "pc_qwen_model", "") or "qwen3.8-max")
+        if "openrouter.ai" in base and "/" not in model:
+            model = str(getattr(st, "pc_qwen_openrouter_model", "") or "qwen/qwen3.8-max-0902")
+        return base + "/chat/completions", key, model
+    try:
+        from ..agent.providers import key_of
+        okey = key_of("openrouter")
+    except Exception:
+        okey = ""
+    if okey:
+        return (OPENROUTER + "/chat/completions", okey,
+                str(getattr(st, "pc_qwen_openrouter_model", "") or "qwen/qwen3.8-max-0902"))
+    return None
+
+
 def choose(want: str = "") -> tuple[str, str, str]:
-    """(brain, model, note). `want` = this task's pick ('' = the server's pc_model). A Qwen pick without its key runs
-    on Sonnet and says why in `note`."""
+    """(brain, model, note). `want` = this task's pick ('' = the server's pc_model). A Qwen pick with no key at all
+    (neither QWEN_API_KEY nor an OpenRouter key) runs on Sonnet and says why in `note`."""
     st = get_settings()
     brain = norm(want) or norm(getattr(st, "pc_model", "")) or "sonnet"
-    if brain == "qwen" and not str(getattr(st, "qwen_api_key", "") or "").strip():
+    route = qwen_route() if brain == "qwen" else None
+    if brain == "qwen" and route is None:
         STATS["fallback"] += 1
         return ("sonnet", str(getattr(st, "pc_sonnet_model", "") or "claude-sonnet-5-5"),
-                "Qwen key (QWEN_API_KEY) is not on the server, so this PC task ran on Sonnet 5.5.")
+                "No Qwen key (QWEN_API_KEY or OPENROUTER_API_KEY) is on the server, so this PC task ran on Sonnet 5.5.")
     if brain == "qwen":
-        return "qwen", str(getattr(st, "pc_qwen_model", "") or "qwen3.8-max"), ""
+        return "qwen", route[2], ""
     return "sonnet", str(getattr(st, "pc_sonnet_model", "") or "claude-sonnet-5-5"), ""
 
 
@@ -174,14 +200,19 @@ class QwenError(Exception):
 
 async def think_qwen(model: str, system: str, messages: list[dict], tools: list[dict], max_tokens: int) -> Reply:
     st = get_settings()
-    url = (str(getattr(st, "qwen_base_url", "") or "").rstrip("/") or
-           "https://dashscope-us.aliyuncs.com/compatible-mode/v1") + "/chat/completions"
+    route = qwen_route()
+    if route is None:
+        raise QwenError(401, "no Qwen key on the server (QWEN_API_KEY or OPENROUTER_API_KEY)")
+    url, key, _ = route
     body: dict[str, Any] = {"model": model, "messages": to_openai(system, messages), "tools": tools_openai(tools),
                             "max_tokens": max_tokens}
     think = str(getattr(st, "pc_qwen_thinking", "") or "").strip().lower()
     if think in ("on", "off"):
         body["enable_thinking"] = think == "on"
-    key = str(st.qwen_api_key)
+    if "openrouter.ai" in url:
+        body.pop("enable_thinking", None)      # an Alibaba field; OpenRouter has its own reasoning switch
+        if think in ("on", "off"):
+            body["reasoning"] = {"enabled": think == "on"}
     for attempt in range(3):
         try:
             data = await _post(url, key, body, float(getattr(st, "pc_brain_timeout_s", 90) or 90))

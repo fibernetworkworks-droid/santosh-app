@@ -16,15 +16,33 @@ def _st(monkeypatch, **env):
 
 
 def test_choose_qwen_default_with_key(monkeypatch):
-    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="k")
+    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="k", QWEN_BASE_URL="")
     assert brain.choose() == ("qwen", "qwen3.8-max", "")
     assert brain.choose("sonnet")[:2] == ("sonnet", "claude-sonnet-5-5")   # a task can name its own
 
 
 def test_qwen_without_key_runs_on_sonnet_and_says_so(monkeypatch):
-    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="")
+    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="", OPENROUTER_API_KEY="", GLM_API_KEY="")
     b, m, note = brain.choose()
     assert (b, m) == ("sonnet", "claude-sonnet-5-5") and "QWEN_API_KEY" in note
+
+
+def test_qwen_via_openrouter_with_the_servers_openrouter_key(monkeypatch):
+    _st(monkeypatch, PC_MODEL="qwen", QWEN_API_KEY="", OPENROUTER_API_KEY="or-key")
+    assert brain.choose() == ("qwen", "qwen/qwen3.8-max-0902", "")
+    url, key, model = brain.qwen_route()
+    assert url == "https://openrouter.ai/api/v1/chat/completions" and key == "or-key"
+    seen = {}
+
+    async def post(url, key, body, timeout):
+        seen.update(url=url, key=key, body=body)
+        return {"choices": [{"finish_reason": "stop", "message": {"content": "ok"}}]}
+    monkeypatch.setattr(brain, "_post", post)
+    monkeypatch.setenv("PC_QWEN_THINKING", "off"); get_settings.cache_clear()
+    op = types.SimpleNamespace(brain="qwen", brain_model="qwen/qwen3.8-max-0902", step=1)
+    asyncio.run(brain.think(op, None, [{"role": "user", "content": "x"}], {"system": "S", "tools": []}, None))
+    assert seen["key"] == "or-key" and seen["body"]["model"] == "qwen/qwen3.8-max-0902"
+    assert "enable_thinking" not in seen["body"] and seen["body"]["reasoning"] == {"enabled": False}
 
 
 def test_defaults_on_the_server():

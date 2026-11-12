@@ -2846,3 +2846,11 @@ and a reply with no tool call was reported as a finished task even when it was c
 - Tests `test_v0851_pc_brain.py` (10); PC suites 63 passed.
 - NOT VERIFIED: no live Qwen call (no key in this sandbox); Model Studio tool calling with images for qwen3.8-max and its default thinking behaviour are
   from docs / third parties only; the base URL depends on her Model Studio region (Singapore / Tokyo use a workspace host - set QWEN_BASE_URL).
+
+
+## v0.852.0 QWEN VIA OPENROUTER (owner: "CAN WE ACCESS QWEN VIA A OPENROUTER")
+OpenRouter's /models (read 12 Nov 2026) lists qwen/qwen3.8-max-0902 (text + image + video in, tools, $2 / $6 per 1M, 1M context; no plain
+qwen3.8-max slug; qwen3.8-max-prime $4 / $12). `pc/brain.qwen_route()` = (url, key, model): QWEN_API_KEY set -> Alibaba Model Studio
+(QWEN_BASE_URL may point at OpenRouter too); else the server's OpenRouter key (`providers.key_of("openrouter")`) -> openrouter.ai with
+`pc_qwen_openrouter_model`; neither -> Sonnet + the note. On OpenRouter `pc_qwen_thinking` rides as `reasoning.enabled`, never Alibaba's
+enable_thinking. Price row for usage. 1 test. NOT VERIFIED: no live call (no key in the sandbox).
