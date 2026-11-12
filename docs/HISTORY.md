@@ -2727,7 +2727,16 @@ Phase G7 of `docs/LANGGRAPH_TURN_PLAN.md`, the last phase.
 
 ## v0.845.0 BAHI A6 (built as 0.844)
 Purchase bills read locally into a cross-checked DRAFT (acc_intake); register only on her tap. WhatsApp / mailbox hand-off not wired.
-## v0.846.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
+
+## v0.846.0 BAHI A7
+Bank + UPI reconciliation, stored: statement import (CSV / Excel / MT940 / locked PDF), narration reading, proposed matches with reasons, confirmed on her tap, payers remembered, gateway settlements, stored month-end statement. NOT VERIFIED on real statements.
+
+## v0.847.0 BAHI A8
+Party master, ageing, MSME 15/45-day + Rule 37 watches, reminder drafts, TDS worksheet/register/quarter (rules file tds.json), 26AS match. Hoola pays, deducts and files nothing. s.393 item numbers not read.
+
+## v0.848.0 BAHI A9
+Tally voucher XML + JSON from the register, party ledgers in the file, her ledger names; the monthly CA pack ZIP with worksheets, evidence and open questions; close a month on the pack hash (locks it). Zoho / live Tally / CA login not built. NOT VERIFIED in a real Tally import.
+## v0.849.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
 
 **The audit first (same day):** Mera PC worked end to end (213 PC tests green, desktop 1.9.0 live, agent-desktop
 v1.1.0 proven on a real Linux desktop through Hoola's own axtree.py: snapshot -> set_value -> click -> the app returned
@@ -2772,7 +2781,7 @@ PCs on her 8 GB VPS is an estimate; the phone / console show each PC's live card
 PC operator still runs on whatever the Haiku / GLM switches choose (see the audit - not changed here); the Windows
 desktop exe and agent-desktop v1.2.0 upgrade are not part of this release.
 
-## v0.846.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM; owner: "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL")
+## v0.849.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM; owner: "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL")
 
 **Before:** Hoola wrapped 10 of agent-desktop's 61 commands (v1.1.0). set-value put the text ON THE COMMAND LINE (an
 Aadhaar / PAN from her ID locker was readable by any program listing processes on her PC), element states (checked,

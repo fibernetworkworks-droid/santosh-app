@@ -8,12 +8,15 @@ from typing import Any
 def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
+    from . import bank as BK
+    from . import book as BO
     from . import connect as CN
     from . import einv as EV
     from . import gstr1 as G1
     from . import gstr3b as G3
     from . import intake as IN
     from . import itc as IT
+    from . import payables as PY
     from . import register as REG
     from . import rules as RU
     from . import service as SV
@@ -240,5 +243,150 @@ def make_router(require_key, current_tenant):
     @r.post("/api/bahi/bills/{bill_id}/reject", dependencies=[Depends(require_key)])
     def _inrej(bill_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _in(IN.reject, tenant, bill_id)
+
+    def _bk(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except BK.BankError as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/api/bahi/bank/import", dependencies=[Depends(require_key)])
+    def _bkimp(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        acct = str(body.get("account") or "bank")[:40]
+        pw = str(body.get("password") or "")
+        if body.get("file_id"):
+            return _bk(BK.import_file, tenant, acct, str(body["file_id"]), pw)
+        return _bk(BK.import_text, tenant, acct, str(body.get("name") or "statement.csv"), str(body.get("text") or "").encode("utf-8"), pw)
+
+    @r.post("/api/bahi/bank/match", dependencies=[Depends(require_key)])
+    def _bkmatch(body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.match, tenant, str((body or {}).get("month") or ""))
+
+    @r.get("/api/bahi/bank/lines", dependencies=[Depends(require_key)])
+    def _bklines(status: str = "", month: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"lines": BK.lines(tenant, status, month)}
+
+    @r.post("/api/bahi/bank/confirm", dependencies=[Depends(require_key)])
+    def _bkconf(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        ids = body.get("ids") if isinstance(body.get("ids"), list) else []
+        return _bk(BK.confirm, tenant, [str(i) for i in ids][:500], float(body.get("min_confidence") or 0))
+
+    @r.post("/api/bahi/bank/unmatch", dependencies=[Depends(require_key)])
+    def _bkun(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.unmatch, tenant, str(body.get("id") or ""))
+
+    @r.post("/api/bahi/bank/categorise", dependencies=[Depends(require_key)])
+    def _bkcat(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.categorise, tenant, str(body.get("id") or ""), str(body.get("category") or ""), body.get("remember") is not False)
+
+    @r.post("/api/bahi/bank/settlements", dependencies=[Depends(require_key)])
+    def _bkset(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.attach_settlements, tenant, body.get("settlements") if isinstance(body.get("settlements"), list) else [])
+
+    @r.post("/api/bahi/bank/reconcile", dependencies=[Depends(require_key)])
+    def _bkrec(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.reconcile, tenant, str(body.get("month") or ""), str(body.get("account") or ""))
+
+    @r.get("/api/bahi/bank/reconcile", dependencies=[Depends(require_key)])
+    def _bkrecget(month: str, account: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.stored, tenant, month, account)
+
+    def _py(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except PY.PayError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/parties", dependencies=[Depends(require_key)])
+    def _pyparties(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"parties": PY.parties(tenant)}
+
+    @r.post("/api/bahi/parties", dependencies=[Depends(require_key)])
+    def _pysave(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.party_save, tenant, body, str(body.get("id") or ""))
+
+    @r.get("/api/bahi/ageing", dependencies=[Depends(require_key)])
+    def _pyage(direction: str = "out", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.ageing(tenant, "in" if direction == "in" else "out")
+
+    @r.get("/api/bahi/msme", dependencies=[Depends(require_key)])
+    def _pymsme(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.msme_watch(tenant)
+
+    @r.get("/api/bahi/rule37", dependencies=[Depends(require_key)])
+    def _pyr37(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.rule37_watch(tenant)
+
+    @r.get("/api/bahi/reminders", dependencies=[Depends(require_key)])
+    def _pyrem(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"reminders": PY.reminders(tenant)}
+
+    def _wk(body):
+        return (str(body.get("party_id") or ""), str(body.get("nature") or ""), float(body.get("amount") or 0), str(body.get("paid_on") or ""),
+                body.get("gst_separate") is True, float(body.get("gst_amount") or 0))
+
+    @r.post("/api/bahi/tds/worksheet", dependencies=[Depends(require_key)])
+    def _pyws(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.worksheet, tenant, *_wk(body))
+
+    @r.post("/api/bahi/tds/record", dependencies=[Depends(require_key)])
+    def _pyrec(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.record, tenant, *_wk(body), confirm=body.get("confirm") is True)
+
+    @r.post("/api/bahi/tds/deposit", dependencies=[Depends(require_key)])
+    def _pydep(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        ids = body.get("ids") if isinstance(body.get("ids"), list) else []
+        return _py(PY.deposit, tenant, [str(i) for i in ids][:200], str(body.get("challan") or ""), str(body.get("deposited_on") or ""))
+
+    @r.get("/api/bahi/tds/register", dependencies=[Depends(require_key)])
+    def _pyreg(fy: int = 0, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.register(tenant, fy or None)
+
+    @r.get("/api/bahi/tds/quarter", dependencies=[Depends(require_key)])
+    def _pyq(fy: int, q: int, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.quarter, tenant, fy, q)
+
+    @r.post("/api/bahi/tds/26as", dependencies=[Depends(require_key)])
+    def _py26(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.match_26as(tenant, int(body.get("fy") or 0), body.get("rows") if isinstance(body.get("rows"), list) else [])
+
+    def _bo(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except BO.BookError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/book/ledgers", dependencies=[Depends(require_key)])
+    def _boled(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"ledgers": BO.ledgers(tenant), "defaults": BO.DEFAULTS}
+
+    @r.post("/api/bahi/book/ledgers", dependencies=[Depends(require_key)])
+    def _boledset(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"ledgers": BO.set_ledgers(tenant, body)}
+
+    @r.get("/api/bahi/book/tally.xml", dependencies=[Depends(require_key)])
+    def _botally(gstin: str, month: str, tenant: str = Depends(current_tenant)):
+        from fastapi import Response
+        vs = _bo(BO.vouchers, tenant, gstin.strip().upper(), month)
+        return Response(content=BO.to_xml(vs), media_type="application/xml",
+                        headers={"Content-Disposition": f'attachment; filename="tally-{month}.xml"'})
+
+    @r.post("/api/bahi/pack/build", dependencies=[Depends(require_key)])
+    def _bopack(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bo(BO.build_pack, tenant, str(body.get("gstin") or ""), str(body.get("month") or ""))
+
+    @r.get("/api/bahi/pack", dependencies=[Depends(require_key)])
+    def _bopacks(month: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"packs": BO.packs(tenant, month)}
+
+    @r.get("/api/bahi/pack/{pack_id}/download", dependencies=[Depends(require_key)])
+    def _bodl(pack_id: str, tenant: str = Depends(current_tenant)):
+        from fastapi import Response
+        name, data = _bo(BO.pack_bytes, tenant, pack_id)
+        return Response(content=data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @r.post("/api/bahi/pack/{pack_id}/close", dependencies=[Depends(require_key)])
+    def _boclose(pack_id: str, body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bo(BO.close_month, tenant, pack_id, str(body.get("sha") or ""), body.get("confirm") is True)
 
     return r
