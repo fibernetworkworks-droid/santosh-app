@@ -108,7 +108,7 @@ def test_saved_search_save_run_and_delete(rbox):
     run("email_rule", {"action": "run", "rule_id": q["id"]}, ctx)
     assert rbox.list_calls[-1] == {"folder": "search", "search": "from:hdfcbank has:attachment",
                                    "unread": False, "limit": 15}
-    with pytest.raises(ToolError, match="saved search nahi mila"):
+    with pytest.raises(ToolError, match="saved search was not found"):
         run("email_rule", {"action": "run", "rule_id": "rule_none"}, ctx)
     # the watcher engine never sees a saved search
     from app.mailbox import sync
@@ -184,7 +184,7 @@ def test_alias_draft_needs_verified_and_scope(abox, bz):  # noqa: F811
     ctx = Ctx("default", bz["conv"])
     with pytest.raises(ToolError, match="not verified yet"):
         run("email_draft", {"to": "ramesh@vendor.in", "body": "Namaste", "from_alias": "hello@newtika.in"}, ctx)
-    with pytest.raises(ToolError, match="alias nahi hai"):
+    with pytest.raises(ToolError, match="not a send-as alias"):
         run("email_draft", {"to": "ramesh@vendor.in", "body": "Namaste", "from_alias": "nope@x.in"}, ctx)
     with pytest.raises(ToolError, match="dobara jod"):
         with session() as s:   # an old mailbox (mail scope only): the honest reconnect, before any card
@@ -256,7 +256,7 @@ def test_label_color_and_honest_star_note(lbox):
     assert lbox.patches[-1][1]["color"] == {"backgroundColor": "#16a765", "textColor": "#ffffff"}
     with pytest.raises(MailError, match="star.s color"):
         ms.label_op("default", "color", "Office", color="pink")
-    with pytest.raises(MailError, match="Rang in mein se hai"):
+    with pytest.raises(MailError, match="Color must be one of"):
         ms.label_op("default", "color", "Office", color="")
 
 

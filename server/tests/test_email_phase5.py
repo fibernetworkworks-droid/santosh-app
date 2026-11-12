@@ -246,7 +246,7 @@ def test_filter_create_list_delete(gb, bz):  # noqa: F811
     ctx = conv_ctx()
     out = run("email_filters", {"action": "create", "match": {"from": "hdfcbank"}, "do": {"label": "Bills"}},
               ctx)
-    assert out["created"] and "Gmail ke andar" in out["note"]
+    assert out["created"] and "inside Gmail" in out["note"]
     row = gb.filters[-1]
     assert row["criteria"] == {"from": "hdfcbank"}
     assert row["action"]["addLabelIds"] == ["Label_1"]           # existing label resolved, not created
@@ -285,7 +285,7 @@ def test_filter_forward_needs_verified_address(gb, bz):  # noqa: F811
     with pytest.raises(ToolError, match="verified Gmail forwarding address"):
         run("email_filters", {"action": "create", "match": {"from": "a@b.in"}, "do": {"forward": "nope@x.in"}}, ctx)
     run("email_forwarding", {"action": "add", "email": "new@x.in"}, ctx)      # pending — still refused
-    with pytest.raises(ToolError, match="verified forwarding address"):
+    with pytest.raises(ToolError, match="verified Gmail forwarding address"):
         run("email_filters", {"action": "create", "match": {"from": "a@b.in"}, "do": {"forward": "new@x.in"}}, ctx)
     next(r for r in gb.fwdbook if r["forwardingEmail"] == "new@x.in")["verificationStatus"] = "accepted"
     out = run("email_filters", {"action": "create", "match": {"from": "a@b.in"}, "do": {"forward": "new@x.in"}}, ctx)
@@ -359,8 +359,8 @@ def test_language_set(gb, bz):  # noqa: F811
     out = run("email_accounts", {"language": "get"}, ctx)
     assert out["language"] == "en"
     out = run("email_accounts", {"language": "hi"}, ctx)
-    assert gb.lang["displayLanguage"] == "hi" and "Hoola aapki language" in out["note"]
-    with pytest.raises(ToolError, match="code do"):
+    assert gb.lang["displayLanguage"] == "hi" and "Hoola talks to you in your language" in out["note"]
+    with pytest.raises(ToolError, match="language code"):
         run("email_accounts", {"language": "hinglish!!"}, ctx)
 
 

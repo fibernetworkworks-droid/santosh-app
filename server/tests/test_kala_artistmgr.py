@@ -89,7 +89,7 @@ def test_rules():
     plan = R.release_plan(date(2026, 12, 1), 21, t0)
     assert plan[0]["by"] == "2026-11-10" and plan[1]["by"] == "2026-11-24"
     assert R.release_plan(date(2026, 12, 1), None, t0)[0]["by"] == ""
-    assert R.clean("otp 445566 card 4111 1111 1111 1111") == "otp [removed] card [removed]"
+    assert R.clean("otp 445566 card 4111 1111 1111 1111") == "otp [hataya] card [hataya]"
     assert set(R.REGS) >= {"iprs", "isamra", "ppl", "isrc", "ipi"}
 
 

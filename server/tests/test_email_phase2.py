@@ -342,7 +342,7 @@ def test_snooze_add_wake_and_cancel(wbox, bz):  # noqa: F811
     assert sync.snooze_tick() == 1
     assert wbox.store["591"]["folder"] == "inbox" and wbox.store["591"]["unread"] is True
     assert [e for e in _events(bz["conv"], "email_snooze") if e["status"] == "woken"]
-    assert any("Snooze khatam" in n for n in _notices(bz["conv"]))
+    assert any("Snooze over" in n for n in _notices(bz["conv"]))
     wbox.add("592", _raw(("Swati", "swati@fnw.in"), "meghana@fnw.in", "Kal dekho", "cancel test"))
     out = run("email_snooze", {"action": "add", "email_id": "mbx_w~592", "hours": 3}, ctx)
     sid2 = out["id"]

@@ -152,7 +152,7 @@ def test_script_needs_her_tap(cc):
     assert S.approved(T)["version"] == 1 and S.draft(T)["version"] == 2 and S.draft(T)["faqs"] == 3
     c2 = S.submit(T)
     S.edit_script(T, faq_add=[{"q": "Sunday khula hai?", "a": "Nahi"}])         # changed after the card
-    with pytest.raises(S.CcError, match="badal"):
+    with pytest.raises(S.CcError, match="changed"):
         S.decide_script(T, c2["script_id"], True, c2["hash"])
     rej = S.decide_script(T, c2["script_id"], False)
     assert rej["status"] == "rejected" and S.approved(T)["version"] == 1

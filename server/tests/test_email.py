@@ -226,7 +226,7 @@ def test_send_with_attachment_signature_and_follow_up(box):
         w.due_at = now() - timedelta(minutes=1)
     from app.mailbox import service as ms
     assert ms.check_watches() == 1                                 # nobody replied: user is told
-    assert any("jawab nahi diya" in (n or "") for n in _notices(ctx.conversation_id))
+    assert any("has not replied" in (n or "") for n in _notices(ctx.conversation_id))
     _ = set_signature
 
 
@@ -319,7 +319,7 @@ def test_bulk_mail_from_excel_after_approval(bz, box, monkeypatch):  # noqa: F81
     assert "Rs 750" in sent["sita@example.in"] and "Raju" not in sent["sita@example.in"]
     assert all("," not in to for to in sent)                              # each person gets their own mail
     assert run("email_bulk_status", {"bulk_id": out["bulk_id"]}, ctx)["status"] == "done"
-    assert any("poora: 2 ko gaya" in (n or "") for n in _notices(bz["conv"]))
+    assert any("finished: 2 sent" in (n or "") for n in _notices(bz["conv"]))
 
 
 # ---------------- settings ----------------

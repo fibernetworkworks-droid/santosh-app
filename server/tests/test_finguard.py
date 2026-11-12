@@ -155,7 +155,7 @@ def test_each_family_catches_its_classic_wording():
 
 def test_no_pattern_is_never_called_safe():
     r = SC.check("Hi, are we still on for lunch at 1 tomorrow?")
-    assert r["verdict"] == "no-known-pattern" and "safe nahi" in r["note"]
+    assert r["verdict"] == "no-known-pattern" and "does not mean safe" in r["note"]
     with pytest.raises(ValueError):
         SC.check("hi")
 
