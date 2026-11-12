@@ -60,7 +60,7 @@ def test_the_card_says_what_it_will_do_in_her_language_and_labels_the_estimate(e
     assert "Haan, shuru karo" in txt and "andaza" in txt and "source aur date" in txt
     assert 4 <= len(p["sub_questions"]) <= 6 and p["est"]["assumed"] is True and p["est"]["minutes"] >= 10
     en = P.card_text(run(P.build(BIG, plan_env)))
-    assert "I need your Haan" in en and "an estimate" in en and "Haan, shuru karo" in en
+    assert "I need your Yes" in en and "an estimate" in en and "Yes, start" in en
 
 
 def test_the_plan_still_comes_when_the_model_does_not(env, monkeypatch):
