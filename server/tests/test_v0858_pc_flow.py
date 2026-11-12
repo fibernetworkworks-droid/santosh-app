@@ -58,8 +58,10 @@ def test_open_url_uses_the_browser_she_named(monkeypatch):
     names = [c[0] for c in calls]
     assert ("open_app", {"name": "Google Chrome"}) in calls
     assert "open_url" not in names                         # the desktop's 'first running browser' path is NOT used
-    assert names.index("open_app") < names.index("key")    # Chrome first, then the new tab
-    assert {"op": "key", "keys": "ctrl+t"} in [c[1] for c in calls]
+    assert names.index("open_app") < names.index("key")    # Chrome first, then the address
+    # a freshly opened Chrome already shows a blank New Tab: no second empty tab
+    assert {"op": "key", "keys": "ctrl+t"} not in [c[1] for c in calls]
+    assert {"op": "key", "keys": "delete"} in [c[1] for c in calls]   # inline autocomplete cleared before Enter
     assert "Google Chrome" in out and "Swiggy" in out
 
 
@@ -248,7 +250,8 @@ def test_call_answer_goes_straight_into_the_pc_task(monkeypatch):
     op.ask = {"id": "a", "question": "Kaunsa pizza?", "options": [], "at": 1}
     operator.OPS[op.id] = op
     pushed = []
-    call = types.SimpleNamespace(tenant="t_c", conv="c_c", stats={}, push=lambda k, t: pushed.append(t))
+    call = types.SimpleNamespace(tenant="t_c", conv="c_c", stats={}, push=lambda k, t: pushed.append(t),
+                                 _prev_turn_end=__import__("time").time())   # the question was spoken in an earlier turn
     try:
         assert voice.Call._pcask_listen(call, "Farmhouse wala lo") is True
         assert op.answer == "Farmhouse wala lo" and pushed and "already went to the PC task" in pushed[0]
@@ -298,7 +301,8 @@ def test_call_pc_ask_the_voice_answered_itself_goes_to_the_brain(monkeypatch):
             return {"result": "Chrome khol diya"}
         call = types.SimpleNamespace(tenant="t", conv="c", stats={}, call_id="x", _tools=set(),
                                      push=lambda k, t: pushed.append(t), push_news=lambda t: pushed.append(t),
-                                     _delegate=delegate, _PC_ASK=voice.Call._PC_ASK)
+                                     _delegate=delegate, _PC_ASK=voice.Call._PC_ASK, _PC_DO=voice.Call._PC_DO,
+                                     _ASKS_BACK=voice.Call._ASKS_BACK)
         assert voice.Call._pc_rescue(call, "Mere PC pe Chrome kholo aur Swiggy se pizza order karo") is True
         await asyncio.gather(*list(call._tools))
         assert voice.Call._pc_rescue(call, "aaj mausam kaisa hai") is False      # not a PC ask
@@ -345,7 +349,9 @@ def test_remembered_browser_and_open_window_win_over_the_default(monkeypatch):
     op.window = "WhatsApp - Microsoft Edge"                     # what the last screenshot showed in front
     op.browser, op.browser_src = "chrome", "default"
     asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
-    assert [c for c in calls if c[0] == "open_url"] and not [c for c in calls if c[0] == "open_app"]   # her open window
+    # she named none now and is USING Edge: a new tab in that Edge window, never a new Chrome / Edge window
+    assert not [c for c in calls if c[0] in ("open_app", "open_url")]
+    assert {"op": "key", "keys": "ctrl+t"} in [c[1] for c in calls]
 
 
 def test_default_chrome_missing_falls_back_to_her_browser(monkeypatch):
@@ -363,3 +369,49 @@ def test_default_chrome_missing_falls_back_to_her_browser(monkeypatch):
     op.browser, op.browser_src = "chrome", "default"
     asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
     assert "open_url" in calls
+
+
+def test_edge_title_with_zero_width_space_is_edge():
+    assert operator._browser_of("Swiggy - Personal - Microsoft\u200bEdge") == "edge"
+    assert operator._browser_of("Gmail - Google Chrome") == "chrome"
+    assert operator._browser_of("Notepad") == ""
+
+
+def test_browser_words_in_ordinary_speech_are_not_picks():
+    n = operator._named_browser
+    assert n("cutting edge design banao") == "" and n("Chrome extension install karo") == ""
+    assert n("OPEN THE CHROM BROWSER") == "chrome" and n("Edge mein kholo") == "edge"
+
+
+def test_answer_only_from_this_chat_and_not_a_question_back():
+    op = operator.Op(id="pcop_q", tenant="t_q", conv="c_q", task="pizza")
+    op.ask = {"id": "a", "question": "Kaunsa?", "options": ["Margherita - Rs 239", "Farmhouse - Rs 459"], "at": 1}
+    operator.OPS[op.id] = op
+    try:
+        assert operator.answer_from_chat("t_q", "other_chat", "Farmhouse") is None        # another chat: not hers
+        assert operator.answer_from_chat("t_q", "c_q", "kitna time lagega?") is None      # a question back
+        assert operator.answer_from_chat("t_q", "c_q", "ek minute") is None
+        assert operator.answer_from_chat("t_q", "c_q", "2") and op.answer == "2"
+    finally:
+        operator.OPS.pop(op.id, None)
+
+
+def test_haan_to_hoolas_pc_question_names_her_pc():
+    from app.agent import where
+    where.offer("c_y", "pc")
+    assert where.remember("c_y", "haan karo") == "pc"
+    assert where.remember("c_z", "haan") == ""                       # no question asked there
+
+
+def test_chrome_kholo_names_her_pc_when_online():
+    from app.agent import where
+    assert where.browser_ask("Chrome kholo aur Swiggy se pizza order karo")
+    assert not where.browser_ask("apne chrome mein dekho")            # Hoola's own browser
+    assert not where.browser_ask("cutting edge design")
+
+
+def test_finished_task_releases_the_chat():
+    from app.agent import where
+    where.touch("c_r", "pc")
+    where.release("c_r", "cancelled")
+    assert where.working("c_r") == "" and where.current("c_r") == ""

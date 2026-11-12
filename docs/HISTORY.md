@@ -2974,3 +2974,44 @@ open, that window is used; Chrome missing = her own browser as before (`browser_
 (2) A website call moved onto her PC while her task ran there was dropped as `pc_busy`; now it goes INTO that task
 (`tools.py` -> `operator.tell`), and the v0.858 order-site question never fires while her PC task runs or when she named
 her PC (the steer moves it). 3 tests.
+
+v0.858.0 follow-up 5 - DEEP AUDIT (owner: "AGAIN GO DEEP FIND THE FLAWS -- WE WANT IT TO WORK SMOOTHLY ACCROS ALL SURFACES
+IN REAL TIME PERFECT AND RELIBLE"). Three independent read-only reviews (chat routing / voice call / PC operator loop)
+found ~27 flaws; fixed:
+ROUTING (agent/where.py, pick.py, santosh.py, tools.py, pc_tools.py, operator_tools.py)
+- her 'haan' to Hoola's own 'Yeh aapke PC par karun?' never named her PC -> pc_do refused both ways = the wandering;
+  `where.offer` (set when pick asks) + `remember` turns a plain yes (`_YES`) into place pc.
+- 'Chrome kholo ...' named no place -> `where.browser_ask` + her PC online = place pc (santosh._run_turn).
+- a FINISHED / stopped task locked the chat on the PC for 45 min (unrelated asks pulled to the PC) -> `where.release`
+  in the operator's finally: done keeps only the short follow-up place, stopped / failed keeps nothing.
+- steer texts named 'Google Chrome' and overrode the browser she named -> 'her browser'; a moved tool call's wording
+  goes into the task as Hoola's note (`tell(hers=False)`, never 'HER NEW WORDS', never overrides her browser).
+- place state keyed by raw ids: call / side records lost the chat's place -> every key via `where._k` (chat_of).
+- hoola_pc_do follow-ups started a parallel / replacing task -> steer into the running Hoola-PC task (fresh=true for new).
+- a pc_do from another chat cancelled her running task -> replace=False there, PcBusy said plainly.
+- pick's order-site question fired while steer would move it / on Hoola's PC; Swiggy & co. added to the website words.
+PC OPERATOR (pc/operator.py)
+- Edge titles carry a zero-width space ('Microsoft​Edge'): no Edge window was EVER recognised -> `_title`/`_browser_of`.
+- the desktop's open_url REPLACES her current tab (ctrl+l) -> every open is a NEW tab: `_open_in_named` (focus an
+  existing window first - open_app on a running browser made another window; no second blank tab on a fresh browser;
+  ctrl+l + type + Delete (drops inline autocomplete) + Enter; title compared against the new tab's), and the Chrome
+  one-step path gets ctrl+t first; with no browser named now, the browser window she is using wins.
+- 'cutting edge', 'Chrome extension' switched the browser -> a pick needs a browser context word or the full name.
+- ask_user's wait ate the task's clock (answer at minute 9 -> 'Samay khatam') -> waited time added back, not a step.
+- 'ERROR' results were not errors (fast-type waited for nothing); a seen page title skips the second wait.
+- spoken update came BEFORE the action (a refused open was announced) -> after success only.
+- any chat's line answered the PC question; questions back ('kitna time?', 'ek minute') were taken as the choice ->
+  `pending_ask(conv)` + `_is_answer` (option number / option word / short reply; questions + filler go to the turn).
+- the question note went into a hidden side record; questions / results reached no later call -> note in her chat,
+  `_inject` to the call of the CHAT.
+VOICE (voice.py)
+- two PC updates / a second question within 2 min were dropped as duplicate news (shared wrapper words) -> news marks
+  its payload with «...» and only that counts (`_news_words`).
+- her answer was taken from words said BEFORE the question was spoken, and from interrupted fragments -> only a turn
+  after the question had a turn to be spoken (`_prev_turn_end`), never an interrupted one.
+- the rescue could send her ask twice (santosh_kaam's flag set after awaits) -> `_kaam_turn` set the moment the tool
+  call arrives; rescue needs a doing word, skips when the voice asked her back, steers a running PC task instead of a
+  new brain turn, and says her PC is offline instead of staying silent.
+- santosh_kaam with a pending PC question answers it directly (no second brain turn / note).
+Tests: test_v0858_pc_flow.py 26; test_v0193 report pin follows the release rule. Wider sweep 400 passed; 2 reds
+(test_v067 replay, test_v0442 persona) fail identically on the commit before. NOT VERIFIED on her PC / a real call.

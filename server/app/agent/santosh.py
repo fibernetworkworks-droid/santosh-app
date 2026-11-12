@@ -3253,6 +3253,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _hers = (getattr(ctx, "actor", "owner") or "owner") == "owner" and \
                 not str(user_text or "").lstrip().startswith(("[", "("))
             ctx.place = place or where.remember(conversation_id, user_text if _hers else "")
+            if not ctx.place and _hers and where.browser_ask(user_text):
+                # v0.858 'Chrome kholo ...' = a program on HER computer; with her PC online that is her PC
+                from ..pc import hub as _hub
+                if _hub.hub.is_online(tenant_id):
+                    ctx.place = where.set_place(conversation_id, "pc")
         except Exception:
             log.exception("place check failed")
         try:   # v0.223 PHASE A: her "haan aage badho" after a used-up budget reopens the SAME job (fresh budget)

@@ -68,20 +68,33 @@ PC_TOOLS.append({"name": "hoola_pc_do", "description": (
     "user_pc_pull bring one of her files into its VM (put that in the task when her file is the input: 'meri "
     "Excel Hoola ke PC pe kholo' = pull it first), user_pc_push hands a finished file back to her PC (she "
     "approves on the phone). "
-    "Her-PC jobs ('mere PC pe') stay with pc_do; quick web look-ups stay with browse_web. Chromium is Chrome here; "
+    "Her-PC jobs ('mere PC pe') stay with pc_do; quick web look-ups stay with browse_web. Chromium is the browser here (her own Chrome is on HER PC: pc_do); "
     "files live in /data. Same safety rules as pc_do for anything that leaves the VM (sends, submits, pays). "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting or paying, and never types passwords/OTPs. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW job while a Hoola PC task of this chat runs; her follow-ups go INTO the running task."}}, "required": ["task"]}})
 PC_LABELS.update({"hoola_pc_do": "Hoola ke apne PC par kaam kar raha hoon"})
 
 
-async def hoola_pc_do(ctx: Ctx, task, pc="", model="", _wait=None, **_):
+async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
     from ..pc import operator
     from ..pc.hub import HOOLA_PC_KIND
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Batayiye Hoola ke PC par kya karna hai")
+    # v0.858 a follow-up while Hoola's PC works on this chat's task goes INTO that task (it started a parallel task on
+    # another Hoola PC, or cancelled the running one and lost its progress)
+    live = [o for o in operator.running_all(ctx.tenant_id) if o.kind == operator.HOOLA_PC_KIND
+            and operator.same_chat(o.conv, ctx.conversation_id)]
+    if live and not fresh:
+        op = live[-1]
+        op.notes.append("[Hoola] " + task[:1000])
+        del op.notes[:-6]
+        out = op.live()
+        out.pop("timeline", None)
+        out.update(where="Hoola ka apna PC - the SAME task that is already running", steered=True,
+                   say="Her words went INTO the task already running on Hoola's PC. Tell her in one short line.")
+        return out
     try:
         r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, kind=HOOLA_PC_KIND, pc=str(pc or ""), brain=str(model or ""),
                                  wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
@@ -111,8 +124,9 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
     # lo') for THAT task: it goes into the running task, never a fresh task that throws the work away
     live = operator.live_for(ctx.tenant_id, ctx.conversation_id)
     if live is not None and operator.same_chat(live.conv, ctx.conversation_id) and live.kind != operator.HOOLA_PC_KIND and not fresh \
-            and (not pc or str(pc).lower() in (live.device_name or "").lower()):
-        operator.tell(ctx.tenant_id, ctx.conversation_id, task)
+            and (not pc or str(pc).lower() in (live.device_name or "").lower() or str(pc) == live.device_id
+                 or not live.device_name):
+        operator.tell(ctx.tenant_id, ctx.conversation_id, task, hers=False)
         out = live.live()
         out.pop("timeline", None)
         out.update(where="Aapka PC (HER computer) - the SAME task that is already running", steered=True,
@@ -120,9 +134,15 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
                         "no new task was started. Tell her in one short line that you passed it on. Use fresh=true "
                         "only for a completely different new job."))
         return out
+    other = [o for o in operator.running_all(ctx.tenant_id) if o.kind != operator.HOOLA_PC_KIND
+             and not operator.same_chat(o.conv, ctx.conversation_id)]
     try:
         r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, pc=str(pc or ""), brain=str(model or ""),
-                                 wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
+                                 wait=get_settings().pc_wait_seconds if _wait is None else float(_wait),
+                                 replace=bool(fresh) or not other)
+    except operator.PcBusy as e:
+        raise ToolError(f"Her PC is busy with another task from a different chat ('{e.op.task[:80]}'). Ask her whether to "
+                        "stop that one first (say which), or to wait; on her word call pc_do again with fresh=true.")
     except PermissionError as e:
         raise ToolError(str(e))
     except RuntimeError as e:
