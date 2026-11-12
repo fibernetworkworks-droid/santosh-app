@@ -36,7 +36,7 @@ def test_markers_and_english_chrome():
 
 def test_page_carries_a_fresh_stamp():
     html = (D / "appstudio.html").read_text()
-    assert "appstudio.js?v=0.834.0" in html and "appstudio.css?v=0.834.0" in html     # a changed file never sits in the cache
+    assert "appstudio.js?v=0.835.0" in html and "appstudio.css?v=0.835.0" in html     # a changed file never sits in the cache
 
 
 def test_server_lines_in_english(app_env):

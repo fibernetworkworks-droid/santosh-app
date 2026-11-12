@@ -110,3 +110,7 @@
 .ae-tbl select{height:30px;border:1px solid var(--hair);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
 .ae-loss{border:1px solid var(--bad);background:var(--bad-soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
 .ae-loss ul{margin:0;padding-left:18px}.ae-loss p{margin:0}
+/* v0.832 L11 SABOOT: the Checks list on the Publish tab */
+.ae-checks{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.ae-checks h3{font-size:15px}
+.ae-checks .ae-vers li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}

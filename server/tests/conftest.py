@@ -60,6 +60,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("HOOLA_LANGUAGE", "auto")      # v0.728 older suites pin Hinglish text; test_v0728 checks English
     monkeypatch.setenv("CHAT_ANSWER_ONLY", "false")   # parity Phase 5: older suites pin the stapled notes; test_parity5 checks on
     monkeypatch.setenv("CHAT_PLAIN_LOOP", "false")    # parity Phase 5b: older suites pin the after-answer checks; test_parity5b_plain_loop checks on
+    monkeypatch.setenv("APP_ENGINE_PUBLISH_CHECKS", "false")  # v0.832 older App Engine suites publish without the scans; test_v0832 turns them on
     monkeypatch.setenv("CHAT_WORK_IN_TURN", "false")  # PARITY Phase 4: older suites pin background crews / research + the 900 s turn; test_parity_p4 checks in-turn
     monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
     monkeypatch.setenv("CHAT_CORE_TOOLS", "false")    # Parity Phase 3: older suites pin the core families + old result text; test_v0733_clean_tools checks the core set
