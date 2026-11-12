@@ -3,49 +3,52 @@ name: se-hardening
 description: Server hardening - appsec checklist, blocked law codified
 when_to_use: server security, secure my server, hardening, firewall, ssh, vulnerabilities, hacked, security checklist
 ---
-GOAL: paragonie/awesome-appsec aur malware/persistence technique
-lists (generically) syllabus hain - attack-surface catalogs se seekho
-ki darwaze kahan hote hain, phir apne server ke darwaze band karo.
-Yahan exploits nahi likhe jaate; aisi checklist likhi jaati hai jo
-khud printed evidence ban jaaye.
+GOAL: paragonie/awesome-appsec and the malware/persistence technique
+lists (in general) are the syllabus - learn from attack-surface
+catalogs where the doors are, then close the doors of your own server.
+No exploits are written here; the aim is a checklist that itself
+becomes printed evidence.
 
-CHECKLIST - har line printed output se verify hoti hai, andaaz se
-nahi:
-1. PORTS KAM: listening ports ki poori list nikaalo; har extra port
-   band ya likhit justification ke saath. Sirf zaroori darwaze khule.
-2. UPDATES: OS aur package versions printed karo; stale security
-   patches sabse pehle - purana version khula taala hai.
-3. SECRETS DISK PE NAHI: plaintext secrets config/env files me zero;
-   secrets kisi skill file me bhi nahi; secret sirf runtime pe mile.
-4. LOGS EVIDENCE: har hardening change session_log me entry ke saath
-   - kya badla, kab, kyun. Bina log ke change hua hi nahi maano ge.
-5. SANITY: browser_check se basic sanity - app up, expected page aa
-   rahi hai, koi stray domain/console noise nahi.
-6. DEFAULTS: default creds, default paths, sample configs - sab
-   printed check karo; factory setting koi nahi bachega.
-Har change ke saath printed diff: pehle ka output, baad ka output,
-aur beech ka badlav - teeno saaf dikhen.
+CHECKLIST - every line is verified from printed output, not from a
+guess:
+1. FEWER PORTS: pull the full list of listening ports; every extra port
+   is closed or kept with a written justification. Only the necessary
+   doors stay open.
+2. UPDATES: print the OS and package versions; stale security patches
+   first - an old version is an open lock.
+3. NO SECRETS ON DISK: zero plaintext secrets in config/env files;
+   no secrets in any skill file either; a secret is available only at
+   runtime.
+4. LOGS AS EVIDENCE: every hardening change goes in session_log with an
+   entry - what changed, when, why. A change without a log is treated
+   as not made.
+5. SANITY: a basic sanity check with browser_check - the app is up, the
+   expected page appears, no stray domain/console noise.
+6. DEFAULTS: default creds, default paths, sample configs - check them
+   all in print; no factory setting is spared.
+With every change, a printed diff: the output before, the output after
+and the change in between - all three clearly visible.
 
-THE BLOCKED LAW (codified): BLOCKED_APPS - cmd/powershell/terminal/
-regedit/diskpart opens REFUSED; BLOCKED_KEYS - win+r, win+x,
-ctrl+shift+esc, win+l refused. Kyun? Kyunki malware persistence inhi
-rides hai: shell spawn, autorun/registry keys, scheduled tasks,
-disk-level chhedchhad. Ye law WEAKEN nahi hota, DOCUMENT hota hai -
-audit report me likho ki ye doors band kyun hain aur kaunsi attack
-family unpe sawaar hoti hai. Koi exception maange to ask_approval +
-reason + time window, sab printed. Law ko ghumane ki koshish khud ek
-finding hai aur wo log me jayegi.
+THE BLOCKED LAW (codified): BLOCKED_APPS - opening
+cmd/powershell/terminal/regedit/diskpart is REFUSED; BLOCKED_KEYS -
+win+r, win+x, ctrl+shift+esc, win+l are refused. Why? Because malware
+persistence rides on exactly these: shell spawn, autorun/registry keys,
+scheduled tasks, disk-level tampering. This law is not WEAKENED, it is
+DOCUMENTED - write in the audit report why these doors are closed and
+which attack family rides on them. If someone asks for an exception:
+ask_approval + a reason + a time window, all printed. An attempt to get
+around the law is itself a finding and goes into the log.
 
-AUDIT DOORS: cyber/it_admin/devops lanes se audit chalao - ports,
-updates, secrets, logs, blocked-law status. Order har baar wahi:
-current state printed → change → naya state printed → diff report.
-Production ke against live test sirf batayi hui window me,
-ask_approval ke baad; window ka start/end bhi printed. Har audit ka
-anjaam ek seedha table hai: item, status, fix, proof line - table
-se hi agla kaam nikalta hai, memory se nahi.
+AUDIT DOORS: run the audit through the cyber/it_admin/devops lanes -
+ports, updates, secrets, logs, blocked-law status. The order is always
+the same: current state printed -> change -> new state printed -> diff
+report. A live test against production only in a stated window, after
+ask_approval; the window's start/end is printed too. Every audit ends
+in one plain table: item, status, fix, proof line - the next job comes
+from the table, not from memory.
 
-NEVER: blocked app ko "bas is baar" whitelist karna; secrets ko
-skills/config files me likhna; inbound port bina approval khulwana;
-checklist likh ke bhool jaana - printed re-check fixe din baad phir
-se; production pe live test bina window bataye; bina printed output
-ke "hardened hai" bolna.
+NEVER: whitelist a blocked app "just this once"; write secrets in
+skills/config files; open an inbound port without approval; write a
+checklist and forget it - a printed re-check again after a few days; a
+live test on production without stating the window; say "it is
+hardened" without printed output.

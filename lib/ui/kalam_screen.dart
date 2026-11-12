@@ -669,7 +669,7 @@ class _RulesTab extends StatelessWidget {
           row('cta', 'What to ask readers to do at the end (call / order)', _s(st['cta'])),
           row('contact', 'Phone / WhatsApp', _s(st['contact'])),
           row('website', 'Website', _s(st['website'])),
-          row('address', 'Business ka pata (email footer)', _s(st['address']), lines: 3),
+          row('address', 'Business address (email footer)', _s(st['address']), lines: 3),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: st['ai_note'] == true,
@@ -686,7 +686,7 @@ class _RulesTab extends StatelessWidget {
             const Icon(Icons.public_rounded, color: C.accent),
             const SizedBox(width: 8),
             Expanded(child: Text('WordPress', style: display(16))),
-            Pill(wp['ready'] == true ? 'Juda hai' : 'Not connected', fg: wp['ready'] == true ? C.ok : C.faint),
+            Pill(wp['ready'] == true ? 'Connected' : 'Not connected', fg: wp['ready'] == true ? C.ok : C.faint),
           ]),
           if (wp['ready'] == true) Text('${wp['url']} · ${wp['user']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
@@ -1103,8 +1103,8 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
 
   static String _verdict(String v) => switch (v) {
         'backed' => 'your words',
-        'supported' => 'web: sahi',
-        'contradicted' => 'web: galat',
+        'supported' => 'web: supported',
+        'contradicted' => 'web: contradicted',
         'unclear' => 'not sure',
         _ => 'not checked',
       };

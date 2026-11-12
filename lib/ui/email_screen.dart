@@ -104,7 +104,7 @@ class _EmailScreenState extends State<EmailScreen> {
           const Text('Enter an "app password", not your login password. Gmail: myaccount.google.com/apppasswords · '
               'Yahoo / Zoho / Outlook: Security settings > App password.',
               style: TextStyle(color: C.muted, fontSize: 12)),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Bhejne wale name (optional)')),
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Sender name (optional)')),
           TextButton(onPressed: () => setD(() => advanced = !advanced),
               child: Text(advanced ? 'Hide server settings' : 'Server settings (for company email)')),
           if (advanced) ...[
@@ -310,7 +310,7 @@ class _EmailScreenState extends State<EmailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Email hataiye?'),
+        title: const Text('Remove this email?'),
         content: Text('${a['address']} will be removed from Hoola. Your mail is not affected.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
@@ -351,7 +351,7 @@ class _EmailScreenState extends State<EmailScreen> {
         Text(sig.isEmpty ? 'Signature: none' : 'Signature:\n$sig', style: const TextStyle(color: C.chip, fontSize: 12.5)),
         Wrap(spacing: 4, children: [
           TextButton(onPressed: () => _signature(a), child: const Text('Signature')),
-          if (a['default'] != true && a['removable'] == true) TextButton(onPressed: () => _makeDefault(a), child: const Text('Default banaiye')),
+          if (a['default'] != true && a['removable'] == true) TextButton(onPressed: () => _makeDefault(a), child: const Text('Make default')),
           if (a['removable'] == true) TextButton(onPressed: () => _remove(a), child: const Text('Hataiye', style: TextStyle(color: C.muted))),
         ]),
       ])),

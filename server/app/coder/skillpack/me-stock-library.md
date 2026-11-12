@@ -3,51 +3,53 @@ name: me-stock-library
 description: Stock library - free legal assets into photo lanes
 when_to_use: stock photos, free images, royalty free, music for video, b-roll, free assets, background music, icons
 ---
-GOAL: Hoola ko content chahiye - template me photo, film me b-roll,
-story me background track - aur internet pe sabse bada LEGAL goldmine
-pada hai: free stock. nebez/awesome-stock-resources syllabus hai -
-photos, videos, music, SFX, icons ka curated catalog, har source ka
-license saath me likha hai. Ye Hoola ki LEGAL asset library hai;
-pirated shortcut ka lane me koi jagah nahi.
+GOAL: Hoola needs content - photos in a template, b-roll in a film, a
+background track in a story - and the biggest LEGAL goldmine on the
+internet is free stock. nebez/awesome-stock-resources is the syllabus -
+a curated catalog of photos, videos, music, SFX and icons, with each
+source's license written beside it. This is Hoola's LEGAL asset library;
+a pirated shortcut has no place in the lane.
 
-LANE MAP: photo_banao photo side, photos_upload/photos_albums user
-library side, hoola_frames film side - stock library in sab ko FEED
-karti hai, inki jagah nahi leti. app/mediafind.py module lane catalog
-lookup me madadgar hai; video lanes (video_edit, video_studio) already
-encode karte hai, unhe clip dena hamara kaam hai.
+LANE MAP: photo_banao is the photo side, photos_upload/photos_albums the
+user-library side, hoola_frames the film side - the stock library FEEDS
+all of these, it does not replace them. The app/mediafind.py module lane
+helps with catalog lookup; the video lanes (video_edit, video_studio)
+already encode, our job is to hand them the clip.
 
-THE FLOW (har asset ke liye, order same):
-1. CATALOG PICK: need likho - subject, mood, orientation. Catalog me
-   matching source dhundo; photo, video, music, SFX sab alag-alag
-   source hote hai. 2-3 shortlist karo, pehla mila to ruk nahi jana.
-2. LICENSE PEHLE: asset khinchne se pehle uska license padho. CC0 =
-   free, attribution optional; CC-BY = creator + source line DENI
-   HI ZAROORI. Doubt ho to skip, agla source. Result memory_search/
-   remember me note - agli baar wahi sawal dobara na uthna pade.
-3. FETCH: direct URL mila to crawl_start/web_sources se lao; source
-   API deta hai to api_call. File tenant ke andar rahegi - bahar
-   koi upload nahi.
-4. PREP: photo_assist se crop/scale, photo_clean se background aur
-   noise theek - raw dump seedha template me nahi jata.
-5. USE: photo_banao me lagao; hoola_frames films me clip ya track
-   banao; album me tag ke saath rakho (subject + source).
-6. LEDGER: har asset ke saath license line saved - source, creator,
-   license, date, file path. Ye line printed output me aani hi
-   chahiye; printed hi evidence hai.
+THE FLOW (for every asset, the same order):
+1. CATALOG PICK: write the need - subject, mood, orientation. Find a
+   matching source in the catalog; photo, video, music and SFX are
+   separate sources. Shortlist 2-3, do not stop at the first one found.
+2. LICENSE FIRST: read the asset's license before pulling it. CC0 =
+   free, attribution optional; CC-BY = you MUST give the creator + source
+   line. If in doubt, skip, go to the next source. Note the result in
+   memory_search/remember - so the same question need not come up again
+   next time.
+3. FETCH: if you have a direct URL, bring it with crawl_start/web_sources;
+   if the source offers an API, api_call. The file stays inside the
+   tenant - no upload outside.
+4. PREP: crop/scale with photo_assist, fix background and noise with
+   photo_clean - a raw dump does not go straight into a template.
+5. USE: put it in photo_banao; make a clip or track in hoola_frames
+   films; keep it in an album with a tag (subject + source).
+6. LEDGER: a license line saved with every asset - source, creator,
+   license, date, file path. This line must appear in the printed
+   output; printed is evidence.
 
-THE LAWS: license check kisi bhi asset se PEHLE, download ke baad
-nahi; ask_approval publish ya paid stock se pehle - free tier hi
-default; user ki private photos bina poochhe stock albums me mix
-nahi - tenant ka data tenant me hi rahega.
+THE LAWS: the license check comes BEFORE any asset, not after the
+download; ask_approval before publishing or paid stock - the free tier
+is the default; the user's private photos are not mixed into stock
+albums without asking - the tenant's data stays in the tenant.
 
-COMMON TRAPS: watermark dikha to discard, source badlo - "crop karke
-chhupa denge" nahi. "Free trial" wale assets commercial template me
-kabhi nahi. Kuch sources scraping mana karte hai - unki ToS todna
-mana; wahan official API hi. Ek hi source pe atakna bhi galat -
-catalog bada hai, badlo.
+COMMON TRAPS: if a watermark shows, discard and change the source - "we
+will crop it out" is not allowed. "Free trial" assets never go into a
+commercial template. Some sources forbid scraping - breaking their ToS is
+not allowed; use the official API there. Sticking to a single source is
+also wrong - the catalog is big, switch.
 
-NEVER: watermarked ya pirated asset use karna; license note ke bina
-asset use karna; "free trial" wale assets commercial me lana; source
-ki ToS todna (bina permission scraping); CC-BY asset bina attribution
-chhapna; license check ke bina "free dikha to free hai" bolna; user
-ki private media bina poochhe stock album me mix karna.
+NEVER: use a watermarked or pirated asset; use an asset without a
+license note; bring "free trial" assets into commercial work; break a
+source's ToS (scraping without permission); publish a CC-BY asset
+without attribution; say "it looked free, so it is free" without a
+license check; mix the user's private media into a stock album without
+asking.

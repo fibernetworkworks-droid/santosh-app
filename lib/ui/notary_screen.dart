@@ -92,7 +92,7 @@ const _partyFields = [
   ('relation', 'Relation: so / do / wo / ho'),
   ('relative', 'Father / husband name'),
   ('age', 'Umar'),
-  ('occupation', 'Kaam / vyavsay'),
+  ('occupation', 'Occupation / business'),
   ('address', 'Full address'),
   ('gender', 'm / f'),
   ('phone', 'Mobile'),
@@ -171,7 +171,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
   }
 
   Future<void> _fromRentdesk() async {
-    final f = await _form(context, 'Rentdesk se rent summary', const [('tenancy', 'Tenancy no. (jaise T-0001)'), ('lang', 'en / hi / mr')]);
+    final f = await _form(context, 'Rent summary from the rent desk', const [('tenancy', 'Tenancy no. (e.g. T-0001)'), ('lang', 'en / hi / mr')]);
     if (f == null || (f['tenancy'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/notary/docs/from_rentdesk', f);
     final id = _s(_m(r?['doc'])['id']);
@@ -295,7 +295,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
                     label: 'Excel', icon: Icons.table_chart_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '/api/notary/register/file', {}))),
             const SizedBox(width: 8),
             if (mode == 'notary')
-              Expanded(child: GlassButton(label: 'Line jodo', icon: Icons.playlist_add_rounded, height: 40, onTap: _busy ? null : _addEntry)),
+              Expanded(child: GlassButton(label: 'Add line', icon: Icons.playlist_add_rounded, height: 40, onTap: _busy ? null : _addEntry)),
           ]),
         ]),
       ),
@@ -339,7 +339,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
     final type = await _pick(context, 'What kind of document?', {for (final e in _m(_kinds['doc_types']).entries) e.key: _s(e.value)});
     if (type == null || !mounted) return;
     final f = await _form(context, 'Apostille / attestation', const [
-      ('doc_title', 'Document (jaise Birth certificate)'),
+      ('doc_title', 'Document (e.g. Birth certificate)'),
       ('country', 'For which country'),
       ('hague', 'Hague member? yes / no / (blank = not known)'),
       ('party', 'Party name'),
@@ -401,7 +401,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
       ('phone', 'Office mobile'),
       ('state', 'State (MH / Maharashtra)'),
       ('default_lang', 'Default language: en / hi / mr'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
     ], ok: 'Save', initial: {for (final k in keys) k: _s(st[k])});
     if (f == null) return;
     await _run('PUT', '/api/notary/settings', f);
@@ -454,11 +454,11 @@ class _NotaryScreenState extends State<NotaryScreen> {
         for (final r in _m(e.value).entries)
           Text('• ${e.key} · ${r.key}: ${r.value is Map ? '₹${_s(_m(r.value)['amount'])} (${_s(_m(r.value)['mode'])})' : '₹${_s(r.value)}'}',
               style: const TextStyle(fontSize: 13)),
-      GlassButton(label: 'Stamp rate jodo / badlo', icon: Icons.approval_rounded, height: 40, onTap: _stampRate),
+      GlassButton(label: 'Add / change stamp rate', icon: Icons.approval_rounded, height: 40, onTap: _stampRate),
       const SizedBox(height: 12),
       const Caption('YOUR FEES'),
       for (final e in fees.entries) Text('• ${_s(_m(_m(st['acts'])[e.key])['label'])}: ₹${_s(e.value)}', style: const TextStyle(fontSize: 13)),
-      GlassButton(label: 'Fee jodo / badlo', icon: Icons.currency_rupee_rounded, height: 40, onTap: _fee),
+      GlassButton(label: 'Add / change fee', icon: Icons.currency_rupee_rounded, height: 40, onTap: _fee),
       Text(_s(st['fee_source']), style: const TextStyle(fontSize: 11, color: C.faint)),
       const SizedBox(height: 12),
       const Caption('HOOLA NEVER'),

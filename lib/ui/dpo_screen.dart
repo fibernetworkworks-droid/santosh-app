@@ -127,7 +127,7 @@ class _DpoScreenState extends State<DpoScreen> {
       ('link', 'Link to withdraw consent / make a request (https://)'),
       ('identifiers', 'How you will verify identity (e.g. registered mobile)'),
       ('reply_days', 'Days to reply (max 90)'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
       ('rules', 'Your rules'),
     ], ok: 'Save', initial: {for (final e in st.entries) if (e.value != null && e.value is! Map && e.value is! List) e.key: '${e.value}'});
     if (f == null) return;
@@ -138,7 +138,7 @@ class _DpoScreenState extends State<DpoScreen> {
 
   Future<void> _activity([Map<String, dynamic>? a]) async {
     final f = await _form(context, a == null ? 'New activity (processing)' : 'Change ${_s(a['number'])}', const [
-      ('name', 'Kaam name'),
+      ('name', 'Activity name'),
       ('people', 'Whose data (customers / staff / children)'),
       ('items', 'Which data (comma separated)'),
       ('purpose', 'For what purpose'),
@@ -269,7 +269,7 @@ class _DpoScreenState extends State<DpoScreen> {
     final f = await _form(context, 'Record consent', const [
       ('name', 'Naam'),
       ('phone', 'Mobile'),
-      ('activities', 'Kaam (PA-01, PA-02)'),
+      ('activities', 'Activities (PA-01, PA-02)'),
       ('how', 'How it was taken (form / WhatsApp / paper)'),
       ('proof', 'Evidence reference'),
       ('child', 'Is it a child? (yes / no)'),
@@ -305,7 +305,7 @@ class _DpoScreenState extends State<DpoScreen> {
           title: const Text('What is in the contract (DPA)'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              SwitchListTile(value: signed, title: const Text('DPA sign hai'), onChanged: (x) => set(() => signed = x)),
+              SwitchListTile(value: signed, title: const Text('DPA signed'), onChanged: (x) => set(() => signed = x)),
               for (final c in clauses)
                 CheckboxListTile(
                     dense: true,
@@ -389,7 +389,7 @@ class _DpoScreenState extends State<DpoScreen> {
                 if ((a['records'] ?? 0) > 0) Pill('${_s(a['records'])} record'),
               ]),
               Text('${_s(a['people'])} · ${_strs(a['items']).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-              Text('Kaam: ${_s(a['purpose'])}', style: const TextStyle(fontSize: 12.5)),
+              Text('Activity: ${_s(a['purpose'])}', style: const TextStyle(fontSize: 12.5)),
               Text(_s(a['basis_label']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
               Text('Rakhna: ${_s(a['retention'])}', style: const TextStyle(fontSize: 12)),
               if (_strs(a['processors']).isNotEmpty) Text('Processors: ${_strs(a['processors']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -520,7 +520,7 @@ class _DpoScreenState extends State<DpoScreen> {
   Widget _vendorTab() {
     final vs = _list(_d?['vendors']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Vendor jodo', icon: Icons.handshake_rounded, height: 46, onTap: _busy ? null : () => _vendor()),
+      GradientButton(label: 'Add vendor', icon: Icons.handshake_rounded, height: 46, onTap: _busy ? null : () => _vendor()),
       const SizedBox(height: 12),
       for (final v in vs)
         Padding(
@@ -537,7 +537,7 @@ class _DpoScreenState extends State<DpoScreen> {
                 ]),
                 Text('${_s(v['service'])} · ${_s(v['country'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 if (v['abroad'] == true) const Text('Data is outside India: get the country written into the contract.', style: TextStyle(fontSize: 12, color: C.warn)),
-                for (final m in _strs(v['missing']).take(4)) Text('• baaki: $m', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+                for (final m in _strs(v['missing']).take(4)) Text('• missing: $m', style: const TextStyle(fontSize: 11.5, color: C.faint)),
               ]),
             ),
           ),
@@ -556,7 +556,7 @@ class _DpoScreenState extends State<DpoScreen> {
           Text('Link: ${_s(st['link'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text('Reply: ${_s(st['reply_days'])} din (kanoon max 90)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text(_s(st['sdf_note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
-          for (final m in _strs(st['missing'])) Text('⚠ baaki: $m', style: const TextStyle(fontSize: 12, color: C.warn)),
+          for (final m in _strs(st['missing'])) Text('⚠ missing: $m', style: const TextStyle(fontSize: 12, color: C.warn)),
           const SizedBox(height: 8),
           GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
         ]),
@@ -922,7 +922,7 @@ class _DpoCardCardState extends State<DpoCardCard> {
         return [
           Text('Mobile ${_s(d['phone'])}', style: const TextStyle(fontSize: 12.5)),
           for (final t in _list(d['targets'])) Text('• ${_s(t['label'])}', style: const TextStyle(fontSize: 12.5)),
-          if (_strs(d['manual']).isNotEmpty) Text('Khud hataiye: ${_strs(d['manual']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          if (_strs(d['manual']).isNotEmpty) Text('Remove manually: ${_strs(d['manual']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.muted)),
           for (final w in _strs(d['warnings'])) Text('⚠ $w', style: const TextStyle(fontSize: 12, color: C.warn)),
           Text(_s(d['note']), style: const TextStyle(fontSize: 11.5, color: C.bad)),
         ];

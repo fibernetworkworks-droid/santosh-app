@@ -181,7 +181,7 @@ class _KitabScreenState extends State<KitabScreen> {
           ('name', 'Your name / pen name'), ('role', 'author | editor | publisher'), ('lang', 'Language: hi | mr | en'),
           ('rate_per', 'Rate per: word | page | hour | flat'), ('rate_amount', 'Rate (Rs)'), ('gstin', 'GSTIN (ho to)'),
           ('sac', 'SAC (from your CA)'), ('upi_id', 'UPI ID'), ('email', 'Email'), ('phone', 'Phone'), ('follow_days', 'Follow up after how many days'),
-          ('morning_time', 'Subah ka note (HH:MM)'), ('rules', 'Your rules'),
+          ('morning_time', 'Morning note (HH:MM)'), ('rules', 'Your rules'),
         ], initial: {
           'name': _s(st['name']), 'role': _s(st['role']), 'lang': _s(st['lang']), 'rate_per': _s(rate['per']),
           'rate_amount': _s(rate['amount']), 'gstin': _s(st['gstin']), 'sac': _s(st['sac']), 'upi_id': _s(st['upi_id']),
@@ -338,7 +338,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                   for (final x in _list(_m(b['style'])['characters'])) Text('• ${_s(x['name'])} ${_s(x['note'])}'),
                   for (final e in _m(_m(b['style'])['spellings']).entries) Text('• ${e.key} -> ${e.value}', style: const TextStyle(fontSize: 12.5)),
                   Wrap(spacing: 8, runSpacing: 6, children: [
-                    GlassButton(label: 'Naam jodo', height: 40, onTap: () async {
+                    GlassButton(label: 'Add name', height: 40, onTap: () async {
                       final f = await _form(context, 'Paatra / naam', const [('name', 'Name (correct spelling)'), ('note', 'Note')]);
                       if (f != null) await _run('PUT', '$_base/style', {'characters': [f]});
                     }),
@@ -346,8 +346,8 @@ class _KitabBookPageState extends State<KitabBookPage> {
                       final f = await _form(context, 'Which spelling is right?', const [('choose', 'The correct word (the rest will be changed to match)')]);
                       if (f != null) await _run('PUT', '$_base/style', f);
                     }),
-                    GlassButton(label: 'Purn viram: । / .', height: 40, onTap: () async {
-                      final f = await _form(context, 'Purn viram', const [('full_stop', 'danda (।) or period (.)')]);
+                    GlassButton(label: 'Full stop: । / .', height: 40, onTap: () async {
+                      final f = await _form(context, 'Full stop', const [('full_stop', 'danda (।) or period (.)')]);
                       if (f != null) await _run('PUT', '$_base/style', {'conventions': {'full_stop': f['full_stop']}});
                     }),
                   ]),
@@ -398,7 +398,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                       onChanged: (v) => _run('POST', '$_base/checklist', {'item': it['key'], 'status': v == true ? 'done' : 'todo'}),
                     ),
                   Wrap(spacing: 8, runSpacing: 6, children: [
-                    GlassButton(label: 'ISBN jodo', height: 40, onTap: () async {
+                    GlassButton(label: 'Add ISBN', height: 40, onTap: () async {
                       final f = await _form(context, 'ISBN (isbn.gov.in se)', const [('format', 'paperback | hardback | ebook | audiobook'), ('isbn', 'ISBN')]);
                       if (f != null) await _run('POST', '$_base/isbn', f);
                     }),
@@ -444,7 +444,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                   for (final r in _list(_roy?['statements']))
                     Text('${_s(r['period'])} ${_s(r['format'])}: ${_s(r['units'])} copies · due ${_s(r['expected'])} · statement ${_s(r['stated'])}'
                         '${r['diff'] != null && (r['diff'] as num).abs() >= 1 ? ' · farq ${_s(r['diff'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
-                  GlassButton(label: 'Statement jodo', height: 40, onTap: () async {
+                  GlassButton(label: 'Add statement', height: 40, onTap: () async {
                     final f = await _form(context, 'Royalty statement', const [
                       ('period', 'Avadhi (Apr-Sep 2026)'), ('period_end', 'Ant tareekh (YYYY-MM-DD)'), ('format', 'paperback | ebook ...'),
                       ('units', 'Copies sold'), ('returns', 'Returned'), ('price', 'MRP'), ('stated', 'Royalty in the statement'), ('tds', 'TDS deducted'),
@@ -591,7 +591,7 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
                               TextSpan(text: _s(s['from']).replaceAll(' ', '·'),
                                   style: const TextStyle(decoration: TextDecoration.lineThrough, color: C.bad)),
                               const TextSpan(text: '  →  '),
-                              TextSpan(text: _s(s['to']).isEmpty ? '(hatao)' : _s(s['to']).replaceAll(' ', '·'),
+                              TextSpan(text: _s(s['to']).isEmpty ? '(remove)' : _s(s['to']).replaceAll(' ', '·'),
                                   style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700)),
                             ])),
                           Text(_s(s['why']), style: const TextStyle(fontSize: 12, color: C.muted)),

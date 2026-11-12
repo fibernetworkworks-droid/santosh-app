@@ -260,7 +260,7 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
             ]),
           ]),
         ),
-      FilledButton.icon(onPressed: _busy ? null : _addSource, icon: const Icon(Icons.add_link), label: const Text('Product jodo')),
+      FilledButton.icon(onPressed: _busy ? null : _addSource, icon: const Icon(Icons.add_link), label: const Text('Add product')),
       const SizedBox(height: 12),
       Glass(
         child: Row(children: [
@@ -305,14 +305,14 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
         ListTile(dense: true, title: Text(_s(g['term'])), subtitle: Text(_s(g['avoid']).isEmpty ? _s(g['note']) : "not '${g['avoid']}'")),
       TextButton.icon(
           onPressed: () async {
-            final t = await _ask(context, 'Sahi shabd', hint: 'order');
+            final t = await _ask(context, 'Correct word', hint: 'order');
             if (t == null || !mounted) return;
             final a = await _ask(context, 'Do not write this instead (optional)', hint: 'booking');
             final g = [..._list(st['glossary']), {'term': t, 'avoid': a ?? ''}];
             await _run(() => widget.app.api!.call('PUT', '/api/docwriter/settings', body: {'glossary': g}));
           },
           icon: const Icon(Icons.add),
-          label: const Text('Shabd jodo')),
+          label: const Text('Add word')),
       const SizedBox(height: 8),
       for (final n in ((_d?['never'] as List?) ?? const [])) Text('• $n', style: const TextStyle(fontSize: 12, color: C.muted)),
     ]);
@@ -423,7 +423,7 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
             PopupMenuItem(value: 'revise', child: Text('Say a change')),
             PopupMenuItem(value: 'translate', child: Text('Translation')),
             PopupMenuItem(value: 'files', child: Text('Word + PDF + Markdown')),
-            PopupMenuItem(value: 'unpage', child: Text('Docs page hatao')),
+            PopupMenuItem(value: 'unpage', child: Text('Remove docs page')),
           ],
         ),
       ]),
@@ -468,7 +468,7 @@ class _DocwriterDocPageState extends State<DocwriterDocPage> {
                             if (t != null) await _run('PUT', '$_base/sections/${sec['id']}', body: {'body': t});
                           }),
                     ]),
-                    if (sec['stale'] == true) Text('Purana: ${sec['why']}', style: const TextStyle(color: C.warn, fontSize: 12)),
+                    if (sec['stale'] == true) Text('Outdated: ${sec['why']}', style: const TextStyle(color: C.warn, fontSize: 12)),
                     for (final sh in _list(sec['shots']))
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),

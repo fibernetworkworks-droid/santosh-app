@@ -212,7 +212,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
             maxLength: 20,
             textCapitalization: TextCapitalization.words,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-            decoration: const InputDecoration(border: InputBorder.none, counterText: '', hintText: 'Jaise Santosh'),
+            decoration: const InputDecoration(border: InputBorder.none, counterText: '', hintText: 'For example: Santosh'),
             onChanged: (_) => setState(() {}),
           ),
         ),
@@ -532,7 +532,7 @@ class _AvatarSetupScreenState extends State<AvatarSetupScreen> {
   }
 
   Widget _confirmPage() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('Namaste! Main $_n.', style: display(26)),
+        Text('Hello! I am $_n.', style: display(26)),
         const SizedBox(height: 6),
         Text(_gv('These are your rules. $_n will talk to other Hoolas according to them. You can change them any time in Profile > My Rules.'),
             style: const TextStyle(color: C.muted, fontSize: 13.5)),

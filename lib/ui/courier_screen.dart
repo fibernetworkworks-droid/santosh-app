@@ -321,7 +321,7 @@ class _CourierScreenState extends State<CourierScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('COD ka hisaab', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const Text('COD summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 6),
           Text('Still to arrive: ${_s(cod['pending_count'])} parcel · ${_rs(cod['pending_amount'])}'),
           Text('Received: ${_s(cod['remitted_count'])} parcels · ${_rs(cod['remitted_amount'])}', style: const TextStyle(color: C.muted)),
@@ -369,7 +369,7 @@ class _CourierScreenState extends State<CourierScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Pickup ka pata', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Pickup address', style: TextStyle(fontWeight: FontWeight.w800)),
           Text('${_s(st['business'])} · ${_s(wh['address'])} ${_s(wh['pincode'])}'.trim(), style: const TextStyle(color: C.muted)),
           const SizedBox(height: 8),
           GlassButton(
@@ -378,7 +378,7 @@ class _CourierScreenState extends State<CourierScreen> {
             onTap: () async {
               final f = await _form(context, 'Pickup / dukaan', const [
                 ('business', 'Business name'), ('gstin', 'GSTIN (for e-way bill)'), ('phone', 'Pickup phone'),
-                ('address', 'Pickup ka pata'), ('city', 'City'), ('state', 'State'), ('pincode', 'PIN'),
+                ('address', 'Pickup address'), ('city', 'City'), ('state', 'State'), ('pincode', 'PIN'),
                 ('remit_days', 'Within how many days COD should arrive (your estimate)'),
               ], init: {
                 'business': _s(st['business']), 'gstin': _s(st['gstin']), 'phone': _s(wh['phone']), 'address': _s(wh['address']),
@@ -784,7 +784,7 @@ class _CourierActionCardState extends State<CourierActionCard> {
         if (_m(b['fix']).isNotEmpty)
           Text([
             if (_s(_m(b['fix'])['date']).isNotEmpty) 'din ${_s(_m(b['fix'])['date'])}',
-            if (_s(_m(b['fix'])['address']).isNotEmpty) 'pata: ${_s(_m(b['fix'])['address'])}',
+            if (_s(_m(b['fix'])['address']).isNotEmpty) 'address: ${_s(_m(b['fix'])['address'])}',
             if (_s(_m(b['fix'])['note']).isNotEmpty) _s(_m(b['fix'])['note']),
           ].join(' · '), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         if (b['by'] == 'customer') const Text('The customer told us on WhatsApp', style: TextStyle(fontSize: 11.5, color: C.faint)),

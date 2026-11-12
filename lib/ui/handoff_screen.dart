@@ -522,8 +522,8 @@ class _HandoffScreenState extends State<HandoffScreen> {
         const SizedBox(height: 6),
         Wrap(spacing: 6, children: [
           if (status == 'reviewed') ...[
-            ActionChip(label: const Text('Approve kiya'), onPressed: () => _mark(rail, c, 'approved')),
-            ActionChip(label: const Text('Mana kiya'), onPressed: () => _mark(rail, c, rail == 'aa' ? 'rejected' : 'denied')),
+            ActionChip(label: const Text('Approved'), onPressed: () => _mark(rail, c, 'approved')),
+            ActionChip(label: const Text('Declined'), onPressed: () => _mark(rail, c, rail == 'aa' ? 'rejected' : 'denied')),
           ],
           if (status == 'approved') ActionChip(label: const Text('Revoked'), onPressed: () => _mark(rail, c, 'revoked')),
           ActionChip(
@@ -644,7 +644,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
           const SizedBox(height: 8),
           if (d['configured'] == true)
             GradientButton(
-                label: d['connected'] == true ? 'Link again (refresh the list)' : 'DigiLocker jodo',
+                label: d['connected'] == true ? 'Link again (refresh the list)' : 'Connect DigiLocker',
                 icon: Icons.link_rounded,
                 onTap: () async {
                   final r = await _guard(context, () => app.api!.digilockerStart());
@@ -669,7 +669,7 @@ class _HandoffScreenState extends State<HandoffScreen> {
                     await _guard(context, () => app.api!.digilockerOff());
                     _load();
                   },
-                  child: const Text('Judaav hatao')),
+                  child: const Text('Disconnect')),
             ),
         ]),
       ),
