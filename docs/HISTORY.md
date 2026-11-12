@@ -2966,3 +2966,11 @@ online, is handed to the brain by the system itself + the voice is told to corre
 an ORDER on a site where she has her own account (Swiggy, Zomato, Amazon, Flipkart, IRCTC, Uber...) with her PC online
 and no place named is refused for Hoola's browser and Hoola ASKS 'Yeh aapke PC par karun?' (v0.271 kept: a PC only on
 her word); she names Hoola's browser = it runs there. 2 tests.
+
+v0.858.0 follow-up 4 (owner: "IT USES ITS OWN BROWSER THEN SUDDENLY EDGE THEN SUDENLY CHROME"): two more gaps closed.
+(1) A PC task that names NO browser still took whatever browser RAN (Edge in the background): now `_browser_for` =
+her words > the browser she named in a recent PC task (PC memory) > Chrome; when she named none and a browser WINDOW is
+open, that window is used; Chrome missing = her own browser as before (`browser_src` said / remembered / default).
+(2) A website call moved onto her PC while her task ran there was dropped as `pc_busy`; now it goes INTO that task
+(`tools.py` -> `operator.tell`), and the v0.858 order-site question never fires while her PC task runs or when she named
+her PC (the steer moves it). 3 tests.

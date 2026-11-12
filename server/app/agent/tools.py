@@ -313,6 +313,13 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
         if name == "pc_do" and asked != "pc_do":
             # a moved call must never start a NEW PC job over the one still running there (start() cancels it)
             from ..pc import operator as _pcop
+            live = _pcop.live_for(ctx.tenant_id, getattr(ctx, "conversation_id", "") or "")
+            if live is not None and live.kind != _pcop.HOOLA_PC_KIND and \
+                    _pcop.same_chat(live.conv, getattr(ctx, "conversation_id", "") or ""):
+                # v0.858 her follow-up goes INTO the task running on her PC (was: dropped as 'busy')
+                _pcop.tell(ctx.tenant_id, ctx.conversation_id, str((args or {}).get("task") or ""))
+                return {"status": "told_running_task", "session_id": live.id, "where": "Aapka PC (HER computer)",
+                        "say": "Her words went into the task already running on HER PC. Tell her in one short line."}
             live = _pcop.running(ctx.tenant_id)
             if live is not None:
                 return {"status": "pc_busy", "session_id": live.id, "where": "Aapka PC (HER computer)",

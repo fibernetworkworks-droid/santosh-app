@@ -60,8 +60,8 @@ def _her_account_site(name: str, args: dict[str, Any], ctx) -> None:
     from . import where
     conv = getattr(ctx, "conversation_id", "") or ""
     place = getattr(ctx, "place", "") or ""
-    if place in ("hoola", "server") or where._asked(conv, "hoola"):
-        return                                   # she asked for Hoola's own browser
+    if place in ("hoola", "server", "pc") or where._asked(conv, "hoola") or where.working(conv) == "pc":
+        return                                   # she named a place, or her PC task runs: the steer moves it there
     try:
         from ..pc import hub
         online = hub.hub.is_online(getattr(ctx, "tenant_id", "") or "")

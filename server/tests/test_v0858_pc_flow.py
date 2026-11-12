@@ -53,7 +53,7 @@ def _fake_desktop(monkeypatch, front="Microsoft Edge"):
 def test_open_url_uses_the_browser_she_named(monkeypatch):
     calls, state = _fake_desktop(monkeypatch, front="Microsoft Edge")
     op = operator.Op(id="b1", tenant="default", conv="c", task="Chrome kholo aur Swiggy se pizza order karo")
-    op.browser = operator._named_browser(op.task)
+    op.browser, op.browser_src = operator._named_browser(op.task), "said"
     out = asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
     names = [c[0] for c in calls]
     assert ("open_app", {"name": "Google Chrome"}) in calls
@@ -322,3 +322,44 @@ def test_chat_order_on_her_account_site_asks_before_hoolas_browser(monkeypatch):
     monkeypatch.setattr(hub.hub, "is_online", lambda t, *a, **k: False)
     ctx.place = ""
     pick.check("browse_web", {"task": "Amazon pe order karo"}, ctx)                               # PC off: as before
+
+
+def test_no_browser_named_and_none_open_uses_chrome_not_background_edge(monkeypatch):
+    """Her Swiggy test: no window of any browser open, Edge running in the background -> the desktop took Edge."""
+    calls, _ = _fake_desktop(monkeypatch, front="Program Manager")
+    from app.pc import memory
+    monkeypatch.setattr(memory, "recall", lambda t: [])
+    op = operator.Op(id="d1", tenant="default", conv="c", task="Swiggy se pizza order karo")
+    op.browser, op.browser_src = operator._browser_for("default", op.task)
+    assert (op.browser, op.browser_src) == ("chrome", "default")
+    asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
+    assert ("open_app", {"name": "Google Chrome"}) in calls and not [c for c in calls if c[0] == "open_url"]
+
+
+def test_remembered_browser_and_open_window_win_over_the_default(monkeypatch):
+    from app.pc import memory
+    monkeypatch.setattr(memory, "recall", lambda t: [{"task": "Edge mein gmail kholo"}, {"task": "notepad kholo"}])
+    assert operator._browser_for("t", "swiggy kholo") == ("edge", "remembered")
+    calls, _ = _fake_desktop(monkeypatch, front="WhatsApp - Microsoft Edge")
+    op = operator.Op(id="d2", tenant="t", conv="c", task="swiggy kholo")
+    op.window = "WhatsApp - Microsoft Edge"                     # what the last screenshot showed in front
+    op.browser, op.browser_src = "chrome", "default"
+    asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
+    assert [c for c in calls if c[0] == "open_url"] and not [c for c in calls if c[0] == "open_app"]   # her open window
+
+
+def test_default_chrome_missing_falls_back_to_her_browser(monkeypatch):
+    calls, state = _fake_desktop(monkeypatch, front="Program Manager")
+
+    async def no_chrome(op, action, args=None, timeout=40, log=True):
+        if action == "open_app":
+            raise RuntimeError("not installed")
+        if action == "screen":
+            return {"image_b64": "QUJD", "width": 1, "height": 1, "active_window": "Program Manager", "windows": []}
+        calls.append((args or {}).get("op") or action)
+        return {"ok": True}
+    monkeypatch.setattr(operator, "_pc", no_chrome)
+    op = operator.Op(id="d3", tenant="t", conv="c", task="swiggy kholo")
+    op.browser, op.browser_src = "chrome", "default"
+    asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
+    assert "open_url" in calls

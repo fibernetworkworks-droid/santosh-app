@@ -567,6 +567,7 @@ class Op:
     brain_model: str = ""          # its model id (qwen3.8-max / claude-sonnet-5-5)
     brain_note: str = ""           # said once when the pick could not run (no Qwen key -> Sonnet)
     browser: str = ""              # v0.858 the browser she NAMED for this task ('chrome' / 'edge' / ...), '' = any
+    browser_src: str = ""          # said (her words now) | remembered (a recent task of hers) | default (Chrome)
     notes: list = field(default_factory=list)   # v0.858 her new words while it works: read before the next step
     ask: dict | None = None        # v0.858 a question waiting for her answer (ask_user): {id, question, options}
     answer: str = ""
@@ -1224,6 +1225,24 @@ def _named_browser(text: str) -> str:
     return found
 
 
+def _browser_for(tenant: str, task: str) -> tuple[str, str]:
+    """(browser, where it came from). Her words in this task win; else the browser she named in a recent PC task (her
+    memory of this PC); else Chrome - the desktop alone would take whatever browser happens to RUN, and Edge always runs
+    in the background on Windows (her Swiggy test: 'it opens Edge, not Chrome')."""
+    b = _named_browser(task)
+    if b:
+        return b, "said"
+    try:
+        from . import memory
+        for e in reversed(memory.recall(tenant)):
+            b = _named_browser(str(e.get("task") or ""))
+            if b:
+                return b, "remembered"
+    except Exception:
+        pass
+    return "chrome", "default"
+
+
 def _in_front(title: str, browser: str) -> bool:
     return bool(browser) and BROWSERS[browser][1] in str(title or "").lower()
 
@@ -1345,11 +1364,17 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         # v0.858 the browser SHE named, never the first one running. The desktop's own open_url tries Chrome first,
         # so Chrome already open = that one-step path; anything else (Chrome closed, Edge / Firefox / Brave named)
         # = bring THAT browser to the front and open a new tab there.
-        if op.browser and op.kind != HOOLA_PC_KIND and not (
-                op.browser == "chrome" and (any(_in_front(w, "chrome") for w in [op.window, *op.windows]) or
-                                            any(m.startswith(("open_app", "ax_launch")) and "chrome" in m.lower()
-                                                for m in op.mem))):
-            return await _open_in_named(op, url)
+        b = op.browser if op.kind != HOOLA_PC_KIND else ""
+        wins = [op.window, *op.windows]
+        if b and op.browser_src != "said" and any(_in_front(w, x) for w in wins for x in BROWSERS):
+            b = ""        # she did not name one now and a browser WINDOW is open: that is the one she is using
+        if b and not (b == "chrome" and (any(_in_front(w, "chrome") for w in wins) or
+                                         any(m.startswith(("open_app", "ax_launch")) and "chrome" in m.lower()
+                                             for m in op.mem))):
+            out = await _open_in_named(op, url)
+            if not (out.startswith("ERROR") and op.browser_src != "said"):
+                return out
+            op.browser = ""   # Chrome by default could not be opened (not installed?): her own browser as before
         try:
             r = await _pc(op, "open_url", {"url": url}, timeout=50)   # v0.184 desktop waits for the page to load
         except Exception as e:
@@ -1963,7 +1988,7 @@ def tell(tenant: str, conv: str, text: str) -> "Op | None":
     del op.notes[:-6]
     b = _named_browser(text)
     if b and op.kind != HOOLA_PC_KIND:
-        op.browser = b
+        op.browser, op.browser_src = b, "said"
     STATS["told"] = STATS.get("told", 0) + 1
     return op
 
@@ -1975,7 +2000,7 @@ def _take_notes(op: "Op", messages: list) -> None:
     content = messages[-1]["content"]
     if isinstance(content, str):
         content = messages[-1]["content"] = [{"type": "text", "text": content}]
-    extra = f" (She named {BROWSERS[op.browser][0]}: use only that browser.)" if op.browser else ""
+    extra = f" (She named {BROWSERS[op.browser][0]}: use only that browser.)" if op.browser and op.browser_src == "said" else ""
     content.append({"type": "text", "text": f"HER NEW WORDS (just now, while you work): \"{said}\". Follow them now; "
                                             f"where they differ from the task, her new words win.{extra}"})
 
@@ -2058,7 +2083,7 @@ async def _ask_user(op: "Op", a: dict[str, Any]) -> str:
     STATS["asked"] = STATS.get("asked", 0) + 1
     b = _named_browser(said)
     if b and op.kind != HOOLA_PC_KIND:
-        op.browser = b
+        op.browser, op.browser_src = b, "said"
     return f"HER ANSWER: \"{said}\". Do exactly that now (match it to the options on the page)."
 
 
@@ -2440,7 +2465,8 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
         old.task_obj.cancel()
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
-    op.browser = _named_browser(op.task) if ckind != HOOLA_PC_KIND else ""   # v0.858 the browser SHE named
+    if ckind != HOOLA_PC_KIND:              # v0.858 the browser SHE named, else the one she named lately, else Chrome
+        op.browser, op.browser_src = _browser_for(tenant, op.task)
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
     from . import brain as _brain
     op.brain, op.brain_model, op.brain_note = _brain.choose(brain)   # v0.851 PC BRAIN: her pick for this task, else pc_model
