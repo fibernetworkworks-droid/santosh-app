@@ -104,6 +104,20 @@ What the phone app (`lib/ui/md_text.dart`, 452 lines) has today, and what R3 / R
 Paragraph gap: 16 today (measured on Claude web, v0.274). The Android page says 8; the screenshots look nearer 12 -
 R0's golden screenshots decide, side by side with the owner's Claude screenshots.
 
+## 3b. Chat timing + connection (owner's "Chat Timing & Text Pipeline" page)
+
+| Claude (owner's page) | Hoola phone today | R3 adds |
+|---|---|---|
+| live stream of tokens (SSE) | Android `SantoshService` keeps the live event stream (`Native.start`), events numbered, resume from the last number after a drop (`lastEventId`) | kept |
+| stall -> reconnect after 15 s | reconnect with backoff 3 -> 6 -> 12 -> 30 s when the stream drops; a "typing" guard ends a dead turn after 75 s; self-check every 90 s | stall watch: no event for 15 s while a reply is streaming -> quiet reconnect + resume; "Reconnecting…" shown under the reply (not a banner) and gone when words flow again |
+| retry budget, then a clear failure | "Ask again" exists (`retryLastReply`) | after 3 failed reconnects: one plain line "Lost the connection - Retry" with the reply kept so far |
+| thinking mark between send and first word | typing dots / mood | the Hoola working mark (thinking state) under her message from the tap until the first word |
+| ~55 tokens / s, no flicker | `_Reveal` paces words (v0.283: 60-79 words / s, catch-up capped) | same pacing + soft tail fade; parse only the growing block (3a) |
+| message shown at once on tap | yes (local echo) | kept, with a "sending" tick that turns solid when the server has it |
+| connection reused (keep-alive) | REST calls go through `api.dart` | one shared HTTP client for every call (keep-alive), measured |
+| artifact WebView pre-warmed | opens cold | keep one WebView warm while a chat is open |
+| first word in 0.25-0.6 s | NOT comparable: a Hoola turn picks tools, reads memory and runs a model through the server (Claude's figure is only their network + first token) | the app MEASURES it: tap -> first word, logged per turn and shown in Settings > Usage; the server work to make it faster is separate (not a design job) |
+
 ## 4. Decisions only the owner can make (the plan assumes the first option)
 
 1. **Tabs:** Hoola / Work / Connect / Made, with Talk in the composer and Profile behind the drawer avatar - or keep 5
