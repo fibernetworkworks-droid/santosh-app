@@ -3041,3 +3041,17 @@ Work: API Setu 200-without-record handling + field-name report; v0.832.0 ritual.
 
 Task ID: bahi-a1-0833
 Work: A1 connect + supplier check, v0.833.0 ritual. Stage: ready for MERGE TO MAIN.
+---
+Task ID: L11-SABOOT
+Agent: Claude
+Task: L11 of docs/LOVABLE_STUDIO_PLAN.md - auto tests on rule changes, browser check before done, quick + deep scan, publish block.
+
+Work Log:
+- Read plan 5.6 / security section; designed saboot.py (rule tests on the real rule engine, browser check in real Chromium served in-process, quick scan on publish, deep scan on demand).
+- Wired publish_check (switch app_engine_publish_checks), tool actions tests / scan + proof lines after cloud_change and build, 3 routes, Publish tab Checks panel, proof card bad_rule_refused.
+- Kept her confirm_public yes as public_ack on the list (dropped when the rule stops being public).
+- Fixed on the way: sign-up rate limit hit by repeated checks (fresh address per call), empty-root wait, 401/403 console lines are rule answers.
+- Tests test_v0832_saboot.py 9; version 0.834.0 (built on main 0.833.0).
+
+Stage Summary:
+- Planted bad-rule app refused at publish with the reason named; fixed rule passes. Not verified on her VPS.

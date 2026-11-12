@@ -237,8 +237,40 @@
           <div class="ae-row"><button class="b pri" type="button" data-ae="publish" ${a.version === a.live_version ? 'disabled' : ''}>Publish version ${esc(a.version)}</button>
           ${a.live_version ? '<button class="b ghost" type="button" data-ae="unpublish">Take down</button>' : ''}</div>` : '<p class="mut">Nothing to publish yet.</p>'}
         <div id="aePubMsg" role="status" aria-live="polite">${ST.err ? `<div class="ae-probs">${esc(ST.err)}</div>` : ''}</div>
-        <p class="mut sm">Before it goes live Hoola checks the code again: TypeScript, the design rules and the safety rules. A problem stops it and says where.</p></div>`;
+        <p class="mut sm">Before it goes live Hoola checks the code again: TypeScript, the design rules and the safety rules. A problem stops it and says where.</p>
+        <section class="ae-checks"><div class="ae-row"><h3>Checks</h3><span class="sp"></span>
+          <button class="b ghost sm" type="button" data-ae="chk" data-ae-chk="tests">Test the rules</button>
+          <button class="b ghost sm" type="button" data-ae="chk" data-ae-chk="browser">Browser check</button>
+          <button class="b ghost sm" type="button" data-ae="chk" data-ae-chk="quick">Quick scan</button>
+          <button class="b ghost sm" type="button" data-ae="chk" data-ae-chk="deep">Deep scan</button></div>
+          <div id="aeChecks" class="mut sm">Loading the last results...</div></section></div>`;
+      drawChecks(el);
     }
+  }
+
+  /* ----- v0.832 L11 SABOOT: what Hoola proved before it says done ----- */
+  function checksHtml(o) {
+    const {esc} = k();
+    const row = (name, ok, say, stale) => `<li><b>${esc(name)}</b> <span class="pill ${ok === true ? 'ok' : ''}">${ok === true ? 'Passed' : ok === false ? 'FAILED' : 'Not run'}</span>${stale ? ' <span class="pill">out of date</span>' : ''}
+      <span class="mut sm">${esc(say)}</span></li>`;
+    const rt = o.rule_tests, br = o.browser, q = o.quick, d = o.deep;
+    const items = (x) => L(x && x.items).filter(i => i.level !== 'info').slice(0, 8).map(i => `<li class="sm"><b>${esc(i.level === 'fail' ? 'Stops going live' : 'Warning')}</b> ${esc(i.where)}: ${esc(i.say)}</li>`).join('');
+    return `<ul class="ae-vers">
+      ${row('Rule tests', rt ? rt.ok : null, rt ? (rt.ok ? `${rt.count} checks over ${rt.lists} list(s) behaved as the rules say.` : `${L(rt.failed).length} of ${rt.count} failed: ${L(rt.failed).slice(0, 2).map(f => `${f.list}: ${f.check}`).join('; ')}`) : 'Run when a rule changes.', rt && rt.stale)}
+      ${row('Browser check', br && br.ran ? br.ok : null, br ? (br.ran ? (br.ok ? 'Opened at phone and desktop size; the saved-data walk worked.' : L(br.problems).slice(0, 2).join('; ')) : S(br.why)) : 'Runs after a build of an app that saves data.')}
+      ${row('Quick scan', q ? q.ok : null, q ? `${q.fail} stop(s), ${q.warn} warning(s). Runs on every publish.` : 'Runs on every publish.')}
+      ${row('Deep scan', d ? d.ok : null, d ? `${d.fail} stop(s), ${d.warn} warning(s). Code checks only; no model reviews the code.` : 'Run it before a big launch.')}</ul>
+      ${q || d ? `<ul class="ae-vers">${items(d) || items(q)}</ul>` : ''}`;
+  }
+  async function drawChecks(el) {
+    const {esc, api} = k();
+    const box = document.getElementById('aeChecks');
+    if (!box) return;
+    try {
+      const o = await api('GET', `/api/appengine/${enc(ST.id)}/checks`);
+      if (document.getElementById('aeChecks') !== box) return;
+      box.className = ''; box.innerHTML = checksHtml(o);
+    } catch (e) { box.innerHTML = `<span class="mut">${esc(e.message)}</span>`; }
   }
 
   /* ----- v0.825 L9: the error bar, Select, the free style panel ----- */
@@ -424,6 +456,13 @@
       try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/cloud/changes`, {accept_data_loss: true, confirm: true}); toast(S(r.say)); }
       catch (e) { toast(e.message, true); }
       await drawView(); return;
+    }
+    if (what === 'chk') {
+      const box = document.getElementById('aeChecks'); const w = b.dataset.aeChk;
+      if (box) box.innerHTML = '<span class="mut">Checking... a browser check can take up to a minute.</span>';
+      b.disabled = true;
+      try { await k().api('POST', `/api/appengine/${enc(ST.id)}/checks/${enc(w)}`); } catch (e) { toast(e.message, true); }
+      b.disabled = false; drawChecks(); return;
     }
     if (what === 'dismiss') { try { await api('POST', `/api/appengine/${enc(ST.id)}/errors/${enc(b.dataset.aeFp)}/dismissed`); } catch (e) { toast(e.message, true); } readErrs(); return; }
     if (what === 'fixerr') {

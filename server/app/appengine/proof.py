@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import http.server
+import json
 import os
+import shutil
 import socketserver
 import threading
 import time
@@ -193,6 +195,36 @@ def _apart(r) -> bool:
             and not CL.members(r, "live"))
 
 
+def _bad_rule_refused() -> bool:
+    """v0.832 L11 SABOOT: an app whose rules let anyone on the internet read phone numbers (planted by hand, bypassing the
+    plan-time guard) must be REFUSED at publish with the reason named; once the rule is fixed the scan lets it through."""
+    from . import cloud as CL
+    from . import saboot as SB
+    try:
+        aid = _tool(action="create", name="Planted rule", brief="a check")["id"]
+        r = AE._load(TENANT, aid)
+        CL.apply_changes(r, [{"op": "add_list", "key": "visits", "label": "Visits", "fields": [
+            {"key": "name", "label": "Name", "type": "text"}, {"key": "phone", "label": "Phone", "type": "phone"}],
+            "rules": {"create": "member", "read": "own", "update": "own", "delete": "admin"}}])
+        v = 1
+        d = AE.ver_dir(r, v)
+        (d / "dist").mkdir(parents=True, exist_ok=True)
+        (d / "dist" / "index.html").write_text("<html><body><div id=root>x</div></body></html>")
+        shutil.copytree(AE.src_dir(r), d / "src", ignore=shutil.ignore_patterns("node_modules", "dist"), dirs_exist_ok=True)
+        (d / "build.json").write_text(json.dumps({"ok": True, "types_ok": True, "types": [], "version": v}))
+        AE._save(r.id, version=v, status="ready")
+        r = AE._load(TENANT, aid)
+        if [x for x in SB.quick(r, v)["items"] if x["level"] == "fail"]:
+            return False                                        # the good app must pass the scan
+        sch = CL.schema(r)
+        sch["lists"][0]["rules"]["read"] = "public"
+        CL._save_schema(r, sch)
+        q = SB.quick(r, v)
+        return (not q["ok"]) and any("phone" in x["say"] and "internet" in x["say"] for x in q["items"] if x["level"] == "fail")
+    except Exception:                                           # noqa: BLE001
+        return False
+
+
 def run(browser: bool = True, keep: bool = False) -> dict[str, Any]:
     from ..db import init_db
     init_db()
@@ -245,6 +277,7 @@ def run(browser: bool = True, keep: bool = False) -> dict[str, Any]:
             except Exception as e:                     # noqa: BLE001 - the card says what broke
                 row["error"] = f"{type(e).__name__}: {e}"[:400]
             rows.append(row)
+        bad_rule = _bad_rule_refused()
     finally:
         if srv:
             srv.shutdown()
@@ -269,5 +302,6 @@ def run(browser: bool = True, keep: bool = False) -> dict[str, Any]:
     secs = [x["build_s"] for x in rows if x.get("build_s")]
     return {"apps_ok": ok, "apps": len(rows), "traps_refused": traps["refused"], "traps": traps["total"],
             "traps_leaked": traps["leaked"], "build_s_median": sorted(secs)[len(secs) // 2] if secs else None,
+            "bad_rule_refused": bad_rule,                  # v0.832 L11: a planted public-read-of-personal-data app is refused at publish
             "browser": browser, "rows": rows,
-            "verdict": "PASS" if ok == len(rows) and traps["refused"] == traps["total"] else "FAIL"}
+            "verdict": "PASS" if ok == len(rows) and traps["refused"] == traps["total"] and bad_rule else "FAIL"}

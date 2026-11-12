@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse
     app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)
     app_engine_runner: str = "box"        # v0.814 "box" = Docker, no network (production); "local" = host node (dev / tests only)
+    app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
     studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)
     chat_turn_cost: bool = True           # v0.777 CHAT JAISA: each chat turn's rupees kept (turncost) for the Studio line

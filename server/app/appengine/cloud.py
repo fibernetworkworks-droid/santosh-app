@@ -259,6 +259,8 @@ def apply_changes(r, changes: list[dict[str, Any]], by: str = "hoola", accept_da
                 _destructive(sch, c, where, notes)
         # the plan-time flag: anyone on the internet reading personal fields
         for lst in sch["lists"]:
+            if lst["rules"]["read"] != "public":
+                lst.pop("public_ack", None)                # no longer public: her earlier yes no longer applies
             if lst.get("hidden") or lst["rules"]["read"] != "public":
                 continue
             was = next((x for x in old["lists"] if x["key"] == lst["key"]), None)
@@ -268,6 +270,7 @@ def apply_changes(r, changes: list[dict[str, Any]], by: str = "hoola", accept_da
                     raise CloudError(f"Not changed - '{lst['key']}' would let ANYONE on the internet read {', '.join(pers)} of every "
                                      "entry. Use read: own (each member sees their own) or admin; if she really wants it "
                                      "public, the change must say confirm_public: true.", 409, {"flag": "public_personal", "list": lst["key"]})
+                lst["public_ack"] = True                    # v0.832 her yes is kept; the publish scan looks for it
         sch["version"] = int(old.get("version") or 0) + 1
         sch["changed_at"] = now().isoformat()
         _save_schema(r, sch)
