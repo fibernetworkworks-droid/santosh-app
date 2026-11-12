@@ -1,0 +1,30 @@
+{
+ "base": "pk10-positron",
+ "rig": "pk10-research-bench",
+ "chapter": "Magnetic resonance and hyperfine",
+ "variants": [
+  {
+   "key": "polymer",
+   "title": "Positron lifetime in a polymer: ortho-positronium",
+   "sample": "Na-22 sandwiched in polyethylene (SIMULATED)",
+   "method": "fast-fast lifetime coincidence and angular correlation",
+   "unknown": "ortho-positronium lifetime, para-positronium narrow component",
+   "params": {
+    "typ": 1,
+    "t1": 0.125,
+    "t2": 0.4,
+    "i2": 0.5,
+    "i3": 0.22,
+    "t3": 2.6,
+    "pw": 0.6,
+    "pf": 0.15,
+    "cw": 4.5
+   },
+   "note": "Three components: para-positronium (0.125 ns), free positrons (0.4 ns) and ortho-positronium picked off in the free volume (a few ns). The far tail gives tau3; the Tao-Eldrup model turns it into a void radius. The narrow angular-correlation peak is para-positronium. Values quoted from memory - verify.",
+   "source": {
+    "title": "Y. C. Jean, Microchem. J. 42, 72 (1990): positron annihilation in polymers",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

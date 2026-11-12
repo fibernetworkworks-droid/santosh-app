@@ -1,0 +1,130 @@
+{
+ "base": "px10-moseley",
+ "rig": "px10-workstation",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "ka-rydberg",
+   "title": "Moseley's law from K-alpha lines: the Rydberg energy",
+   "sample": "Cu, Zn, Zr, Mo, Ag targets",
+   "method": "fluorescence lines",
+   "unknown": "Rydberg constant (energy)",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "edge-sigma",
+   "title": "Moseley's law from K absorption edges: the screening constant",
+   "sample": "Cu, Zn, Zr, Mo, Ag foils",
+   "method": "absorption edges",
+   "unknown": "Moseley screening constant",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "edge-rydberg",
+   "title": "Moseley's law from K absorption edges: the Rydberg energy",
+   "sample": "Cu, Zn, Zr, Mo, Ag foils",
+   "method": "absorption edges",
+   "unknown": "Rydberg constant (energy)",
+   "params": {
+    "method": 1,
+    "what": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "kedge-cu",
+   "title": "K absorption edge energy of copper",
+   "sample": "copper foil (Cu)",
+   "method": "absorption edges",
+   "unknown": "K-edge energy",
+   "params": {
+    "what": 2,
+    "k": 0,
+    "method": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "kedge-zn",
+   "title": "K absorption edge energy of zinc",
+   "sample": "zinc foil (Zn)",
+   "method": "absorption edges",
+   "unknown": "K-edge energy",
+   "params": {
+    "what": 2,
+    "k": 1,
+    "method": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "kedge-zr",
+   "title": "K absorption edge energy of zirconium",
+   "sample": "zirconium foil (Zr)",
+   "method": "absorption edges",
+   "unknown": "K-edge energy",
+   "params": {
+    "what": 2,
+    "k": 2,
+    "method": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "kedge-mo",
+   "title": "K absorption edge energy of molybdenum",
+   "sample": "molybdenum foil (Mo)",
+   "method": "absorption edges",
+   "unknown": "K-edge energy",
+   "params": {
+    "what": 2,
+    "k": 3,
+    "method": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "kedge-ag",
+   "title": "K absorption edge energy of silver",
+   "sample": "silver foil (Ag)",
+   "method": "absorption edges",
+   "unknown": "K-edge energy",
+   "params": {
+    "what": 2,
+    "k": 4,
+    "method": 1
+   },
+   "source": {
+    "title": "NIST X-ray Transition Energies Database (Deslattes et al., Rev. Mod. Phys. 75 (2003) 35)",
+    "note": "K-alpha1 and K-edge energies: from memory - verify; the spectra are SIMULATED DATA"
+   }
+  }
+ ]
+}

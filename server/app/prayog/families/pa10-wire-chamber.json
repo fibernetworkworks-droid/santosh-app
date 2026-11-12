@@ -1,0 +1,45 @@
+{
+ "base": "pa10-wire-chamber",
+ "rig": "pa10-workstation",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "drift",
+   "title": "Drift tube: drift velocity from the drift-time spectrum",
+   "sample": "Ar/CO2 gas",
+   "unknown": "drift velocity",
+   "params": {
+    "what": 1,
+    "n": 10000
+   },
+   "check": {
+    "params": {
+     "n": 40000
+    }
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "resolution",
+   "title": "Drift tubes: position resolution from three planes",
+   "sample": "Ar/CO2 gas",
+   "unknown": "position resolution",
+   "params": {
+    "what": 2,
+    "n": 10000
+   },
+   "check": {
+    "params": {
+     "n": 40000
+    }
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  }
+ ]
+}

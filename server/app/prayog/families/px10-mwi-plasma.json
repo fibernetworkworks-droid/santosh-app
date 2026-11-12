@@ -1,0 +1,33 @@
+{
+ "base": "px10-mwi-plasma",
+ "rig": "px10-workstation",
+ "chapter": "Plasma diagnostics",
+ "variants": [
+  {
+   "key": "low-power",
+   "title": "Microwave interferometry of an argon discharge at low power",
+   "sample": "argon discharge, low power",
+   "unknown": "line-integrated electron density",
+   "params": {
+    "NL": 2e+17
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "high-power",
+   "title": "Microwave interferometry of an argon discharge at high power",
+   "sample": "argon discharge, high power",
+   "unknown": "line-integrated electron density",
+   "params": {
+    "NL": 8e+17
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  }
+ ]
+}

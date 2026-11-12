@@ -1,0 +1,48 @@
+{
+ "base": "pa10-radio-drift",
+ "rig": "pa10-workstation",
+ "chapter": "Radio astronomy and astrophysics data",
+ "variants": [
+  {
+   "key": "yfactor",
+   "title": "Radio telescope: system temperature by the Y-factor method",
+   "sample": "absorber at 290 K and cold sky",
+   "unknown": "system temperature (Y-factor)",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "casa",
+   "title": "Radio telescope: flux density of Cas A from a drift scan",
+   "sample": "Cas A",
+   "unknown": "source flux density",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "cyga",
+   "title": "Radio telescope: flux density of Cyg A from a drift scan",
+   "sample": "Cyg A",
+   "unknown": "source flux density",
+   "params": {
+    "what": 2,
+    "S": 1600.0,
+    "sdec": 40.7
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  }
+ ]
+}

@@ -1,0 +1,109 @@
+{
+ "base": "pl10-diode-laser",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "slope",
+   "title": "780 nm diode laser: slope efficiency",
+   "sample": "780 nm diode laser",
+   "unknown": "the slope efficiency",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "current-tuning",
+   "title": "780 nm diode laser: wavelength against current",
+   "sample": "780 nm diode laser",
+   "unknown": "the current tuning rate",
+   "params": {
+    "q": 2.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "temperature-tuning",
+   "title": "780 nm diode laser: wavelength against temperature",
+   "sample": "780 nm diode laser",
+   "unknown": "the temperature tuning rate",
+   "params": {
+    "q": 3.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "red-650",
+   "title": "650 nm diode laser: threshold current",
+   "sample": "650 nm diode laser",
+   "unknown": "the threshold current",
+   "params": {
+    "Ith": 22.0,
+    "eta": 0.65,
+    "lam0": 650.0,
+    "dlI": 0.004,
+    "dlT": 0.2,
+    "Iop": 45.0,
+    "Imax": 70.0,
+    "q": 0.0
+   },
+   "note": "Illustrative values typical of a 650 nm red laser diode.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "red-650-slope",
+   "title": "650 nm diode laser: slope efficiency",
+   "sample": "650 nm diode laser",
+   "unknown": "the slope efficiency",
+   "params": {
+    "Ith": 22.0,
+    "eta": 0.65,
+    "lam0": 650.0,
+    "dlI": 0.004,
+    "dlT": 0.2,
+    "Iop": 45.0,
+    "Imax": 70.0,
+    "q": 1.0
+   },
+   "note": "Illustrative values typical of a 650 nm red laser diode.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "red-650-tuning",
+   "title": "650 nm diode laser: wavelength against temperature",
+   "sample": "650 nm diode laser",
+   "unknown": "the temperature tuning rate",
+   "params": {
+    "Ith": 22.0,
+    "eta": 0.65,
+    "lam0": 650.0,
+    "dlI": 0.004,
+    "dlT": 0.2,
+    "Iop": 45.0,
+    "Imax": 70.0,
+    "q": 3.0
+   },
+   "note": "Illustrative values typical of a 650 nm red laser diode.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

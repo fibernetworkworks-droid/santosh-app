@@ -1,0 +1,54 @@
+{
+ "base": "pk10-vsm",
+ "rig": "pk10-research-bench",
+ "chapter": "Magnetism and magneto-optics",
+ "variants": [
+  {
+   "key": "thin-film",
+   "title": "VSM of a ferromagnetic oxide thin film: Curie temperature",
+   "sample": "La0.7Sr0.3MnO3-type oxide film on a substrate, Tc near 360 K (SIMULATED)",
+   "method": "M-H loop at 300 K and M-T in 0.5 T from 300 to 380 K",
+   "unknown": "Curie temperature, coercive field, saturation moment",
+   "params": {
+    "typ": 4,
+    "T0": 300.0,
+    "Bm": 0.5,
+    "Bf": 0.5,
+    "Tc": 360.0,
+    "Bc": 0.002,
+    "Bw": 0.001,
+    "ms0": 5e-06,
+    "chi": -1e-07,
+    "lcm": 1e-06,
+    "Thi": 400.0
+   },
+   "note": "A thin film carries a tiny moment on a large diamagnetic substrate (the negative background). Near Tc the mean-field m^2 against T is a line whose intercept is Tc. Tc about 360 K for LSMO quoted from memory - verify; the moment and background are illustrative.",
+   "source": {
+    "title": "A. Urushibara et al., Phys. Rev. B 51, 14103 (1995): La1-xSrxMnO3",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "para-salt",
+   "title": "VSM of a paramagnetic salt: Curie law",
+   "sample": "Copper sulphate pentahydrate powder, S = 1/2 (SIMULATED)",
+   "method": "M-H at 2 K and M-T in 10 mT",
+   "unknown": "Curie constant, effective moment",
+   "params": {
+    "typ": 0,
+    "g": 2.2,
+    "J": 0.5,
+    "nmol": 0.0001,
+    "T0": 2.0,
+    "Bm": 5.0,
+    "Bf": 0.01,
+    "lcm": 1e-08
+   },
+   "note": "Cu2+ has one unpaired electron (S = 1/2); its powder-average g near 2.2 gives mu_eff = g sqrt(S(S + 1)) = 1.9 muB. g quoted from memory - verify.",
+   "source": {
+    "title": "Abragam and Bleaney (1970): Cu2+ g-values",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

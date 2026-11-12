@@ -1,0 +1,47 @@
+{
+ "base": "pl10-optical-pumping",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "nuclear-spin",
+   "title": "Optical pumping: the nuclear spin of 85Rb",
+   "sample": "Natural Rb vapour cell",
+   "unknown": "the nuclear spin of 85Rb from its gF",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "D. A. Steck, Rubidium 85 / 87 D Line Data",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "earth-field",
+   "title": "Optical pumping: the Earth's horizontal magnetic field",
+   "sample": "Natural Rb vapour cell",
+   "unknown": "the horizontal Earth's field along the coil axis",
+   "params": {
+    "q": 2.0
+   },
+   "note": "The field value is this laboratory's illustrative site value.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "pumping-time",
+   "title": "Optical pumping: the pumping time",
+   "sample": "Natural Rb vapour cell",
+   "unknown": "the optical pumping time",
+   "params": {
+    "q": 3.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

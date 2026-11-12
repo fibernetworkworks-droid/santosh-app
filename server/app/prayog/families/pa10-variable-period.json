@@ -1,0 +1,105 @@
+{
+ "base": "pa10-variable-period",
+ "rig": "pa10-workstation",
+ "chapter": "Radio astronomy and astrophysics data",
+ "variants": [
+  {
+   "key": "ceph-pdm",
+   "title": "Cepheid period by phase dispersion minimisation",
+   "sample": "Cepheid",
+   "unknown": "period",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   },
+   "method": "phase dispersion minimisation"
+  },
+  {
+   "key": "ceph-amp",
+   "title": "Cepheid amplitude from a Fourier fit",
+   "sample": "Cepheid",
+   "unknown": "amplitude",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   },
+   "method": "Lomb-Scargle periodogram"
+  },
+  {
+   "key": "ceph-dist",
+   "title": "Cepheid distance from the period-luminosity relation",
+   "sample": "Cepheid",
+   "unknown": "distance (period-luminosity)",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   },
+   "method": "Lomb-Scargle periodogram"
+  },
+  {
+   "key": "rrl",
+   "title": "RR Lyrae period by the Lomb-Scargle periodogram",
+   "sample": "RR Lyrae",
+   "unknown": "period",
+   "params": {
+    "kind": 1,
+    "P": 0.5667,
+    "A": 1.0,
+    "mag": 13.5
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   },
+   "method": "Lomb-Scargle periodogram"
+  },
+  {
+   "key": "rrl-amp",
+   "title": "RR Lyrae amplitude from a Fourier fit",
+   "sample": "RR Lyrae",
+   "unknown": "amplitude",
+   "params": {
+    "kind": 1,
+    "P": 0.5667,
+    "A": 1.0,
+    "mag": 13.5,
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   },
+   "method": "Lomb-Scargle periodogram"
+  },
+  {
+   "key": "eb",
+   "title": "Eclipsing binary period by phase dispersion minimisation",
+   "sample": "eclipsing binary",
+   "unknown": "period",
+   "params": {
+    "kind": 2,
+    "P": 2.867,
+    "A": 1.2,
+    "mag": 11.0,
+    "method": 1,
+    "nbin": 40,
+    "fmin": 0.25
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   },
+   "method": "phase dispersion minimisation",
+   "note": "Two eclipses per orbit: a Lomb-Scargle search would find half the period, so PDM is used; the search starts at 0.25 cycles per day so the double period is outside it."
+  }
+ ]
+}

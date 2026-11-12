@@ -1,0 +1,59 @@
+{
+ "base": "pk10-solar-eqe",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "perovskite",
+   "title": "EQE and dark I-V of a perovskite solar cell",
+   "sample": "MAPbI3 perovskite cell, 500 nm absorber, band gap about 1.6 eV (SIMULATED)",
+   "method": "monochromator EQE 300-850 nm and dark forward I-V",
+   "unknown": "EQE spectrum, absorption edge, ideality factor",
+   "params": {
+    "Eg": 1.6,
+    "pw": 0.5,
+    "a0": 10000000.0,
+    "W": 5e-07,
+    "nid": 1.7,
+    "I0": 1e-15,
+    "Rs": 1.0,
+    "Rsh": 100000000.0,
+    "l0": 300,
+    "l1": 850,
+    "Va": 0.6,
+    "Vb": 1.2
+   },
+   "note": "A direct-gap absorber: a steep edge near 775 nm. The ideality factor near 1.7 points to trap-assisted recombination. Band gap from memory - verify; diode values illustrative.",
+   "source": {
+    "title": "M. A. Green, A. Ho-Baillie and H. J. Snaith, Nature Photonics 8, 506 (2014)",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "cdte",
+   "title": "EQE and dark I-V of a thin-film CdTe solar cell",
+   "sample": "CdS/CdTe thin-film cell, 3 um absorber, band gap about 1.5 eV (SIMULATED)",
+   "method": "monochromator EQE 300-900 nm and dark forward I-V",
+   "unknown": "EQE spectrum, absorption edge, ideality factor",
+   "params": {
+    "Eg": 1.5,
+    "pw": 0.5,
+    "a0": 10000000.0,
+    "W": 3e-06,
+    "nid": 1.9,
+    "I0": 1e-12,
+    "Rs": 1.0,
+    "Rsh": 100000000.0,
+    "l0": 300,
+    "l1": 900,
+    "Va": 0.4,
+    "Vb": 1.0
+   },
+   "note": "A direct gap near 1.5 eV cuts the EQE off near 830 nm; the CdS window would also cut the blue (not modelled). Band gap from memory - verify; diode values illustrative.",
+   "source": {
+    "title": "Schroder, ch. 9; CdTe band gap quoted from memory - verify",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

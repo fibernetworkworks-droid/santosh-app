@@ -1,0 +1,20 @@
+{
+ "base": "pa10-rel-dynamics",
+ "rig": "pa10-workstation",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "em",
+   "title": "Relativistic dynamics of beta electrons: e/m",
+   "sample": "Sr-90 beta source",
+   "unknown": "e/m of the electron",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  }
+ ]
+}

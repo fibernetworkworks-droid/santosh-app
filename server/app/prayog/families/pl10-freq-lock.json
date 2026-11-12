@@ -1,0 +1,48 @@
+{
+ "base": "pl10-freq-lock",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "dither",
+   "title": "Laser lock with a dither and lock-in: lock bandwidth",
+   "sample": "Rb saturated absorption line, dither / lock-in lock",
+   "unknown": "the lock bandwidth",
+   "params": {
+    "m": 1.0,
+    "q": 0.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "side-noise",
+   "title": "Side-of-fringe lock: residual frequency noise",
+   "sample": "Rb saturated absorption line, side-of-fringe lock",
+   "unknown": "the residual rms frequency noise in 100 kHz",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "dither-noise",
+   "title": "Dither / lock-in lock: residual frequency noise",
+   "sample": "Rb saturated absorption line, dither / lock-in lock",
+   "unknown": "the residual rms frequency noise in 100 kHz",
+   "params": {
+    "m": 1.0,
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

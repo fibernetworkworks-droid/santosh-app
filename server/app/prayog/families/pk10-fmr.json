@@ -1,0 +1,26 @@
+{
+ "base": "pk10-fmr",
+ "rig": "pk10-research-bench",
+ "chapter": "Magnetic resonance and hyperfine",
+ "variants": [
+  {
+   "key": "permalloy",
+   "title": "FMR of a permalloy film: Kittel fit for Ms and damping",
+   "sample": "Ni80Fe20 permalloy film, 50 nm, field in plane (SIMULATED)",
+   "method": "field-swept FMR at 4, 8, 12, 16 GHz",
+   "unknown": "Kittel relation fit, saturation magnetisation, damping",
+   "params": {
+    "typ": 1,
+    "g": 2.1,
+    "Ms": 1.0,
+    "alpha": 0.008,
+    "dB0": 0.0003
+   },
+   "note": "In-plane film: f = (g muB/h) sqrt(B(B + mu0 Ms)), so resonance comes at low field; f^2/B against B gives mu0 Ms, and the width against f gives alpha about 0.008. Values quoted from memory - verify.",
+   "source": {
+    "title": "C. Kittel, Phys. Rev. 73, 155 (1948); permalloy values from memory - verify",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

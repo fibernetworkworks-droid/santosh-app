@@ -1,0 +1,69 @@
+{
+ "base": "pl10-z-scan",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "dye-n2",
+   "title": "Z-scan of a dye solution: nonlinear refraction",
+   "sample": "Dye solution in a 1 mm cell",
+   "unknown": "the nonlinear refractive index n2 (negative)",
+   "params": {
+    "n2": -1.5e-18,
+    "beta": 1e-11,
+    "q": 0.0
+   },
+   "source": {
+    "title": "Illustrative sample constants",
+    "note": "the dye's n2 and two-photon coefficient are illustrative, not those of a named compound"
+   }
+  },
+  {
+   "key": "dye-beta",
+   "title": "Z-scan of a dye solution: two-photon absorption",
+   "sample": "Dye solution in a 1 mm cell",
+   "unknown": "the two-photon absorption coefficient",
+   "params": {
+    "n2": -1.5e-18,
+    "beta": 1e-11,
+    "q": 1.0
+   },
+   "source": {
+    "title": "Illustrative sample constants",
+    "note": "the dye's n2 and two-photon coefficient are illustrative, not those of a named compound"
+   }
+  },
+  {
+   "key": "colloid-n2",
+   "title": "Z-scan of a nanoparticle colloid: nonlinear refraction",
+   "sample": "Metal nanoparticle colloid in a 1 mm cell",
+   "unknown": "the nonlinear refractive index n2",
+   "params": {
+    "n2": -4e-18,
+    "beta": 4e-11,
+    "alpha": 50.0,
+    "q": 0.0
+   },
+   "source": {
+    "title": "Illustrative sample constants",
+    "note": "the colloid's n2 and nonlinear absorption are illustrative, not those of a named colloid"
+   }
+  },
+  {
+   "key": "colloid-beta",
+   "title": "Z-scan of a nanoparticle colloid: nonlinear absorption",
+   "sample": "Metal nanoparticle colloid in a 1 mm cell",
+   "unknown": "the nonlinear absorption coefficient",
+   "params": {
+    "n2": -4e-18,
+    "beta": 4e-11,
+    "alpha": 50.0,
+    "q": 1.0
+   },
+   "source": {
+    "title": "Illustrative sample constants",
+    "note": "the colloid's n2 and nonlinear absorption are illustrative, not those of a named colloid"
+   }
+  }
+ ]
+}

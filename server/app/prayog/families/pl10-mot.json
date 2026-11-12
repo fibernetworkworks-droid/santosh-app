@@ -1,0 +1,33 @@
+{
+ "base": "pl10-mot",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "temperature",
+   "title": "Magneto-optical trap: cloud temperature by time of flight",
+   "sample": "Rubidium-87 atoms",
+   "unknown": "the cloud temperature",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "capture",
+   "title": "Magneto-optical trap: capture velocity from the loading curve",
+   "sample": "Rubidium-87 atoms",
+   "unknown": "the capture velocity",
+   "params": {
+    "q": 2.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

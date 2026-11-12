@@ -1,0 +1,136 @@
+{
+ "base": "pa10-schrodinger",
+ "rig": "pa10-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "ho2",
+   "title": "Numerov shooting: second excited state of the harmonic oscillator",
+   "sample": "harmonic oscillator V = x^2/2",
+   "unknown": "eigenvalues",
+   "params": {
+    "k": 2
+   },
+   "source": {
+    "title": "Exact: E_k = k + 1/2",
+    "note": "in units of hbar omega"
+   },
+   "method": "shooting method"
+  },
+  {
+   "key": "dw0",
+   "title": "Numerov shooting: ground state of a double well",
+   "sample": "double well V = 4 ((x/1.5)^2 - 1)^2",
+   "unknown": "eigenvalues",
+   "params": {
+    "pot": 1,
+    "L": 5.0
+   },
+   "source": {
+    "title": "Reference: finite differences on 1500 and 3000 points, Richardson-extrapolated",
+    "note": "an independent method; model units hbar = m = 1"
+   },
+   "method": "shooting method"
+  },
+  {
+   "key": "dw1",
+   "title": "Numerov shooting: first excited state of a double well",
+   "sample": "double well V = 4 ((x/1.5)^2 - 1)^2",
+   "unknown": "eigenvalues",
+   "params": {
+    "pot": 1,
+    "L": 5.0,
+    "k": 1
+   },
+   "source": {
+    "title": "Reference: finite differences on 1500 and 3000 points, Richardson-extrapolated",
+    "note": "an independent method; model units hbar = m = 1"
+   },
+   "method": "shooting method"
+  },
+  {
+   "key": "h1s",
+   "title": "Numerov shooting: hydrogen 1s energy",
+   "sample": "hydrogen radial",
+   "unknown": "eigenvalues",
+   "params": {
+    "pot": 2,
+    "n": 1600
+   },
+   "source": {
+    "title": "Exact: E_n = -13.6057 eV / n^2 (Hartree 27.211386 eV, CODATA 2018)",
+    "note": "from memory - verify"
+   },
+   "method": "shooting method",
+   "check": {
+    "params": {
+     "n": 6400
+    }
+   }
+  },
+  {
+   "key": "h2s",
+   "title": "Numerov shooting: hydrogen 2s energy",
+   "sample": "hydrogen radial",
+   "unknown": "eigenvalues",
+   "params": {
+    "pot": 2,
+    "k": 1,
+    "n": 1600
+   },
+   "source": {
+    "title": "Exact: E_n = -13.6057 eV / n^2 (Hartree 27.211386 eV, CODATA 2018)",
+    "note": "from memory - verify"
+   },
+   "method": "shooting method",
+   "check": {
+    "params": {
+     "n": 6400
+    }
+   }
+  },
+  {
+   "key": "h2p",
+   "title": "Numerov shooting: hydrogen 2p energy",
+   "sample": "hydrogen radial",
+   "unknown": "eigenvalues",
+   "params": {
+    "pot": 2,
+    "l": 1,
+    "n": 1600
+   },
+   "source": {
+    "title": "Exact: E_n = -13.6057 eV / n^2 (Hartree 27.211386 eV, CODATA 2018)",
+    "note": "from memory - verify"
+   },
+   "method": "shooting method",
+   "check": {
+    "params": {
+     "n": 6400
+    }
+   }
+  },
+  {
+   "key": "split",
+   "title": "Split-step Fourier: tunnelling time in a double well",
+   "sample": "double well V = 4 ((x/1.5)^2 - 1)^2",
+   "unknown": "tunnelling time",
+   "params": {
+    "pot": 1,
+    "L": 5.0,
+    "method": 1,
+    "n": 4
+   },
+   "source": {
+    "title": "Reference: pi hbar / (E1 - E0) from the finite-difference eigenvalues",
+    "note": "an independent method; model units hbar = m = 1"
+   },
+   "method": "split-step Fourier",
+   "check": {
+    "params": {
+     "n": 32
+    }
+   }
+  }
+ ]
+}

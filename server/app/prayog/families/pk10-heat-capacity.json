@@ -1,0 +1,51 @@
+{
+ "base": "pk10-heat-capacity",
+ "rig": "pk10-research-bench",
+ "chapter": "Low temperature and superconductivity",
+ "variants": [
+  {
+   "key": "niobium",
+   "title": "Heat capacity by relaxation: niobium through its transition",
+   "sample": "Niobium, a superconductor with Tc 9.25 K (SIMULATED)",
+   "method": "thermal relaxation from 2 to 15.75 K",
+   "unknown": "Sommerfeld coefficient, the jump at Tc",
+   "params": {
+    "typ": 1,
+    "gam": 0.00779,
+    "ThD": 275.0,
+    "Tc": 9.25,
+    "Tlo": 2.0,
+    "Thi": 15.75,
+    "dT": 0.5,
+    "nmol": 0.0001
+   },
+   "note": "Above Tc the normal-state C/T against T^2 gives gamma; below Tc the electronic part falls exponentially (here a gamma Tc exp(-b Tc/T), the phenomenological form of Corak et al. 1956 with a = 9.17, b = 1.5, quoted from memory - verify) and the jump at Tc is the transition anomaly. gamma = 7.79 mJ/(mol K^2), ThD = 275 K and Tc from Kittel's tables.",
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, Tables 6.3 and 10.1: niobium",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "magnetic-insulator",
+   "title": "Heat capacity by relaxation: a Schottky anomaly in an insulator",
+   "sample": "Magnetic insulator with a two-level crystal-field doublet (SIMULATED)",
+   "method": "thermal relaxation from 0.5 to 12 K",
+   "unknown": "Schottky gap, lattice Debye term",
+   "params": {
+    "typ": 2,
+    "ThD": 300.0,
+    "D": 4.0,
+    "fr": 1.0,
+    "Tlo": 0.5,
+    "Thi": 12.0,
+    "dT": 0.5,
+    "nmol": 0.0001
+   },
+   "note": "No conduction electrons: the lattice gives beta T^3 and a split ground doublet the Schottky peak R (D/T)^2 e^(D/T)/(1 + e^(D/T))^2, largest near 0.42 D. A least-squares fit of both terms gives the gap D in kelvin. The gap and Debye temperature are illustrative.",
+   "source": {
+    "title": "Kittel, ch. 14: the Schottky anomaly of a two-level system",
+    "note": "the sample's gap and Debye temperature are illustrative"
+   }
+  }
+ ]
+}

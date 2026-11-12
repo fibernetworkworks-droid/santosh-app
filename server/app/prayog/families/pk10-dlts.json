@@ -1,0 +1,26 @@
+{
+ "base": "pk10-dlts",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "gaas-el2",
+   "title": "DLTS of the EL2 level in GaAs",
+   "sample": "Schottky diode on n-GaAs with the EL2 deep donor (SIMULATED)",
+   "method": "double-boxcar DLTS at four rate windows",
+   "unknown": "trap activation energy, capture cross-section, trap density",
+   "params": {
+    "Ea": 0.82,
+    "sig": 1e-17,
+    "gam": 2.3e+24,
+    "NT": 2e+20,
+    "ND": 1e+22
+   },
+   "note": "EL2 is the native mid-gap donor of GaAs, near Ec - 0.82 eV; it emits at room temperature and above, so the peaks lie near 350-400 K. gamma for GaAs electrons 2.3e20 cm^-2 s^-1 K^-2 and the EL2 energy are quoted from memory - verify.",
+   "source": {
+    "title": "G. M. Martin, A. Mitonneau and A. Mircea, Electron. Lett. 13, 191 (1977): EL2",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

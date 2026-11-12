@@ -1,0 +1,49 @@
+{
+ "base": "px10-profilometry",
+ "rig": "px10-workstation",
+ "chapter": "Thin films and vacuum",
+ "variants": [
+  {
+   "key": "metal-roughness",
+   "title": "Stylus profilometry of a metal film: roughness Rq",
+   "sample": "aluminium film step on silicon",
+   "unknown": "roughness",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "polymer-step",
+   "title": "Stylus profilometry of a polymer film: step height",
+   "sample": "polymer film step (PMMA) on silicon",
+   "unknown": "step height",
+   "params": {
+    "h": 480.0,
+    "rq": 3.5
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "polymer-roughness",
+   "title": "Stylus profilometry of a polymer film: roughness Rq",
+   "sample": "polymer film step (PMMA) on silicon",
+   "unknown": "roughness",
+   "params": {
+    "what": 1,
+    "h": 480.0,
+    "rq": 3.5
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  }
+ ]
+}

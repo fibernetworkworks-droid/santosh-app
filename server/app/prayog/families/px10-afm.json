@@ -1,0 +1,73 @@
+{
+ "base": "px10-afm",
+ "rig": "px10-workstation",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "polymer-adhesion",
+   "title": "AFM force curve on a polymer film: adhesion force",
+   "sample": "polymer film (PMMA-type)",
+   "method": "force-distance curve",
+   "unknown": "adhesion force",
+   "params": {
+    "what": 1,
+    "Fad": 6.0,
+    "n": 1024
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "polymer-roughness",
+   "title": "Tapping-mode AFM of a polymer film: roughness Rq",
+   "sample": "polymer film (PMMA-type)",
+   "method": "tapping mode",
+   "unknown": "roughness",
+   "params": {
+    "what": 2,
+    "rq": 2.5,
+    "n": 1024
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "grating-step",
+   "title": "Contact-mode AFM of a grating standard: step height",
+   "sample": "grating standard (SiO2 steps on Si)",
+   "method": "contact mode",
+   "unknown": "step height",
+   "params": {
+    "what": 3,
+    "h": 20.0,
+    "rq": 0.5,
+    "n": 1024
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "flake-step",
+   "title": "Tapping-mode AFM of a 2D flake: step height",
+   "sample": "2D material flake (MoS2 monolayer) on SiO2",
+   "method": "tapping mode",
+   "unknown": "step height",
+   "params": {
+    "what": 3,
+    "h": 0.65,
+    "rq": 0.1,
+    "n": 1024
+   },
+   "source": {
+    "title": "MoS2 monolayer about 0.65 nm",
+    "note": "from memory - verify; the line scans are SIMULATED DATA"
+   }
+  }
+ ]
+}

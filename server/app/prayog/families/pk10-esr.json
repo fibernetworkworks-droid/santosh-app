@@ -1,0 +1,45 @@
+{
+ "base": "pk10-esr",
+ "rig": "pk10-research-bench",
+ "chapter": "Magnetic resonance and hyperfine",
+ "variants": [
+  {
+   "key": "mn-mgo",
+   "title": "ESR hyperfine sextet of Mn2+ in MgO",
+   "sample": "MgO crystal doped with Mn2+ (S = 5/2, I = 5/2) (SIMULATED)",
+   "method": "field-modulated derivative detection at 9.5 GHz",
+   "unknown": "hyperfine constant, g-factor, line width",
+   "params": {
+    "typ": 1,
+    "g": 2.0014,
+    "A": 8.67,
+    "I": 2.5,
+    "dBpp": 0.12
+   },
+   "note": "Six hyperfine lines; second-order terms make the spacing uneven, but the outermost pair is exactly 5A apart. g = 2.0014 and |A| = 8.67 mT quoted from memory - verify; the fine-structure lines of the cubic site are not modelled.",
+   "source": {
+    "title": "Abragam and Bleaney, Electron Paramagnetic Resonance of Transition Ions (1970)",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "organic-radical",
+   "title": "ESR of an irradiated organic radical: proton doublet",
+   "sample": "X-irradiated malonic acid, the CH(COOH)2 radical (SIMULATED)",
+   "method": "field-modulated derivative detection at 9.5 GHz",
+   "unknown": "hyperfine constant, g-factor, line width",
+   "params": {
+    "typ": 2,
+    "g": 2.0034,
+    "A": 2.1,
+    "I": 0.5,
+    "dBpp": 0.25
+   },
+   "note": "One alpha proton (I = 1/2) splits the line into a doublet; its spacing is the isotropic part of the proton coupling (about 2.1 mT in powder - verify). g and A quoted from memory - verify.",
+   "source": {
+    "title": "H. M. McConnell, C. Heller, T. Cole and R. W. Fessenden, J. Am. Chem. Soc. 82, 766 (1960)",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

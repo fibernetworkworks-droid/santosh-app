@@ -1,0 +1,24 @@
+{
+ "base": "pk10-qhe",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "graphene",
+   "title": "Quantum Hall effect in graphene: half-integer plateaus",
+   "sample": "Graphene Hall bar on hBN, n = 2e15 per m^2 (SIMULATED)",
+   "method": "B sweep to 9 T at 1.5 K and 300 mK",
+   "unknown": "Hall plateaus h/(nu e^2) with nu = 2, 6, 10; density; mobility",
+   "params": {
+    "gr": 1,
+    "n": 2000000000000000.0,
+    "mu": 2.0
+   },
+   "note": "Graphene's fourfold-degenerate Landau levels include one at zero energy shared by electrons and holes, so the plateaus fall at nu = 4(k + 1/2) = 2, 6, 10: the first at h/(2e^2) = 12906 ohm. Density and mobility are illustrative.",
+   "source": {
+    "title": "K. S. Novoselov et al., Nature 438, 197 (2005); Y. Zhang et al., Nature 438, 201 (2005)",
+    "note": "the density and mobility are illustrative"
+   }
+  }
+ ]
+}

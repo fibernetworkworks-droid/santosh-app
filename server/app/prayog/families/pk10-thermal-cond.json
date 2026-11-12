@@ -1,0 +1,48 @@
+{
+ "base": "pk10-thermal-cond",
+ "rig": "pk10-research-bench",
+ "chapter": "Low temperature and superconductivity",
+ "variants": [
+  {
+   "key": "stainless",
+   "title": "Thermal conductivity at low T: 304 stainless steel",
+   "sample": "304 stainless steel rod, a disordered alloy (SIMULATED)",
+   "method": "steady-state heat flow from 1 to 20 K",
+   "unknown": "thermal conductivity against T, kappa at 4.2 K",
+   "params": {
+    "typ": 1,
+    "c1": 0.06,
+    "c2": 1.1,
+    "P": 2e-07
+   },
+   "note": "An alloy conducts poorly and almost linearly in T (no phonon peak, no Wiedemann-Franz electrons dominating): that is why cryostat supports are stainless. The power law kappa = 0.06 T^1.1 W/(m K) is an order-of-magnitude stand-in for the NIST curve, from memory - verify.",
+   "source": {
+    "title": "NIST cryogenic material properties: 304 stainless steel",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "sapphire",
+   "title": "Thermal conductivity at low T: a sapphire crystal (phonon peak)",
+   "sample": "Sapphire (Al2O3) single-crystal rod, 1 mm boundary length (SIMULATED)",
+   "method": "steady-state heat flow from 1 to 60 K",
+   "unknown": "thermal conductivity against T, the phonon peak, the boundary mean free path",
+   "params": {
+    "typ": 2,
+    "Thi": 60.0,
+    "dT": 2.0,
+    "Tlo": 1.0,
+    "ell": 0.001,
+    "vs": 6000.0,
+    "U": 1e-06,
+    "ThD": 1000.0,
+    "P": 1e-05
+   },
+   "note": "At the lowest temperatures phonons cross the crystal without scattering, so kappa = (2 pi^2 kB^4 ell/(15 hbar^3 v^2)) T^3 (Casimir) and kappa/T^3 gives the boundary length ell; higher up Umklapp scattering cuts it off, so kappa peaks. The sound velocity, Debye temperature and Umklapp strength are illustrative, from memory - verify.",
+   "source": {
+    "title": "R. Berman, Thermal Conduction in Solids (Oxford, 1976): Casimir boundary scattering",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

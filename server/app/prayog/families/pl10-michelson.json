@@ -1,0 +1,46 @@
+{
+ "base": "pl10-michelson",
+ "rig": "pl10-laser-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "led-coherence",
+   "title": "Michelson white-light scan: coherence length of an LED",
+   "sample": "Red LED (625 nm)",
+   "unknown": "the coherence length",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "sodium-width",
+   "title": "Michelson interferometer: line width of a sodium lamp",
+   "sample": "Sodium lamp (D1 and D2)",
+   "unknown": "the line width from the fading of the beats",
+   "params": {
+    "q": 2.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "led-width",
+   "title": "Michelson white-light scan: spectral width of an LED",
+   "sample": "Red LED (625 nm)",
+   "unknown": "the source line width from the coherence length",
+   "params": {
+    "q": 3.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

@@ -1,0 +1,34 @@
+{
+ "base": "pl10-hom",
+ "rig": "pl10-laser-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "coherence",
+   "title": "Hong-Ou-Mandel dip: the photons' coherence length",
+   "sample": "SPDC photon pairs through 5 nm filters",
+   "unknown": "the photon coherence length",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "distinguishable",
+   "title": "Hong-Ou-Mandel dip with partly distinguishable photons",
+   "sample": "SPDC photon pairs, polarisations 30 degrees apart",
+   "unknown": "the dip visibility",
+   "params": {
+    "th": 30.0,
+    "q": 0.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

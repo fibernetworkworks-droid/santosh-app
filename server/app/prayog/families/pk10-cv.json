@@ -1,0 +1,40 @@
+{
+ "base": "pk10-cv",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "pn",
+   "title": "C-V of a one-sided p+-n junction: built-in potential",
+   "sample": "Abrupt p+-n silicon junction, NA 1e19, ND 1e16 per cm^3 (SIMULATED)",
+   "method": "high-frequency C-V, reverse bias",
+   "unknown": "built-in potential, doping of the lightly doped side, profile",
+   "params": {
+    "typ": 1,
+    "NA": 1e+25,
+    "ND": 1e+22
+   },
+   "note": "The depletion layer lies almost all on the lightly doped n side, so 1/C^2 gives ND, and the intercept gives Vbi, which must equal (kT/q) ln(NA ND/ni^2). ni of silicon 1.0e10 per cm^3 at 300 K - from memory - verify.",
+   "source": {
+    "title": "Sze and Ng, Physics of Semiconductor Devices, ch. 2",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "mos",
+   "title": "C-V of a MOS capacitor: flat-band voltage",
+   "sample": "Al / 10 nm SiO2 / p-Si MOS capacitor, NA 1e17 per cm^3 (SIMULATED)",
+   "method": "high-frequency C-V from accumulation to inversion",
+   "unknown": "oxide capacitance, flat-band voltage, substrate doping",
+   "params": {
+    "typ": 2,
+    "NA": 1e+23
+   },
+   "note": "Accumulation gives Cox; the depletion branch's 1/C^2 line reaches 1/Cox^2 at the flat-band voltage VFB = phi_ms - Qox/Cox; inversion levels off at Cmin. phi_ms and the oxide charge are illustrative.",
+   "source": {
+    "title": "Schroder, Semiconductor Material and Device Characterization, ch. 6",
+    "note": "phi_ms and Qox are illustrative"
+   }
+  }
+ ]
+}

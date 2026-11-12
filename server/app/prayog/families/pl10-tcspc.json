@@ -1,0 +1,71 @@
+{
+ "base": "pl10-tcspc",
+ "rig": "pl10-laser-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "qd-fast",
+   "title": "TCSPC of quantum dots: the fast decay component",
+   "sample": "Quantum dots in toluene (two decay components)",
+   "unknown": "the fast lifetime component",
+   "params": {
+    "a2": 0.15,
+    "t1": 3.0,
+    "t2": 25.0,
+    "span": 120.0,
+    "bw": 2.0,
+    "irf": 0.2,
+    "tz": 8.0,
+    "Np": 500000.0,
+    "q": 1.0
+   },
+   "note": "Two-exponential least-squares fit; the components are illustrative.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "qd-slow",
+   "title": "TCSPC of quantum dots: the slow decay component",
+   "sample": "Quantum dots in toluene (two decay components)",
+   "unknown": "the slow lifetime component",
+   "params": {
+    "a2": 0.15,
+    "t1": 3.0,
+    "t2": 25.0,
+    "span": 120.0,
+    "bw": 2.0,
+    "irf": 0.2,
+    "tz": 8.0,
+    "Np": 500000.0,
+    "q": 2.0
+   },
+   "note": "Two-exponential least-squares fit; the components are illustrative.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "ruby",
+   "title": "Photon counting of ruby fluorescence: the R-line lifetime (ms)",
+   "sample": "Ruby rod (Cr3+ in Al2O3)",
+   "unknown": "the R-line fluorescence lifetime",
+   "params": {
+    "t1": 3.0,
+    "irf": 0.0,
+    "tz": 1.0,
+    "span": 20.0,
+    "bw": 0.25,
+    "ms": 1.0,
+    "q": 0.0
+   },
+   "note": "Times in milliseconds: the counter runs in multichannel-scaling mode after each laser pulse. Ruby lifetime about 3 ms - from memory - verify.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

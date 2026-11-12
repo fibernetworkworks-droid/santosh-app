@@ -1,0 +1,49 @@
+{
+ "base": "pk10-sdh",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "graphene",
+   "title": "Shubnikov-de Haas oscillations in graphene",
+   "sample": "Graphene, n = 1e16 per m^2, cyclotron mass about 0.02 m_e (SIMULATED)",
+   "method": "R_xx against 1/B at 1.5 K, amplitude against T at 2 T",
+   "unknown": "carrier density from the period, effective mass, quantum lifetime",
+   "params": {
+    "typ": 1,
+    "n": 1e+16,
+    "ms": 0.02,
+    "tq": 5e-14,
+    "Bhi": 12.0,
+    "nper": 6.0,
+    "Bf": 6.0
+   },
+   "note": "Fourfold degeneracy: n = 4 e F/h. The cyclotron mass of massless Dirac carriers is hbar kF/vF (about 0.02 m_e at this density). Density, mass and lifetime are illustrative.",
+   "source": {
+    "title": "K. S. Novoselov et al., Nature 438, 197 (2005)",
+    "note": "the density, mass and lifetime are illustrative"
+   }
+  },
+  {
+   "key": "bismuth",
+   "title": "Shubnikov-de Haas oscillations in bismuth",
+   "sample": "Bismuth single crystal, field along the trigonal axis (hole pocket) (SIMULATED)",
+   "method": "R_xx against 1/B at 1.5 K, amplitude against T at 3 T",
+   "unknown": "oscillation frequency (Fermi-surface area), cyclotron mass",
+   "params": {
+    "typ": 2,
+    "F": 6.3,
+    "ms": 0.064,
+    "tq": 5e-13,
+    "Bhi": 6.0,
+    "nper": 6.0,
+    "Bf": 3.0
+   },
+   "note": "A 3D semimetal: F is the extremal cross-section of the hole pocket, A = 2 pi e F/hbar, not a sheet density; only the fundamental of one pocket is modelled. The mass comes from the temperature dependence. F about 6.3 T and m* about 0.064 m_e are quoted from memory - verify.",
+   "source": {
+    "title": "D. Shoenberg, Magnetic Oscillations in Metals (Cambridge, 1984): bismuth",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

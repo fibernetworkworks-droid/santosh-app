@@ -1,0 +1,47 @@
+{
+ "base": "pa10-cherenkov",
+ "rig": "pa10-workstation",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "water-yield",
+   "title": "Cherenkov detector: light yield of a water radiator",
+   "sample": "water radiator, 10 cm",
+   "unknown": "light yield at beta = 1",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "acrylic",
+   "title": "Cherenkov detector: threshold velocity of an acrylic radiator",
+   "sample": "acrylic (PMMA) radiator, 10 cm",
+   "unknown": "threshold velocity",
+   "params": {
+    "nidx": 1.49
+   },
+   "source": {
+    "title": "Refractive index of PMMA about 1.49 (visible)",
+    "note": "from memory - verify; used as the hidden value of the SIMULATED DATA"
+   }
+  },
+  {
+   "key": "acrylic-yield",
+   "title": "Cherenkov detector: light yield of an acrylic radiator",
+   "sample": "acrylic (PMMA) radiator, 10 cm",
+   "unknown": "light yield at beta = 1",
+   "params": {
+    "nidx": 1.49,
+    "what": 1
+   },
+   "source": {
+    "title": "Refractive index of PMMA about 1.49 (visible)",
+    "note": "from memory - verify; used as the hidden value of the SIMULATED DATA"
+   }
+  }
+ ]
+}

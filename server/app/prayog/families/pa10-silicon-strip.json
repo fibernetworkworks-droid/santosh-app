@@ -1,0 +1,68 @@
+{
+ "base": "pa10-silicon-strip",
+ "rig": "pa10-workstation",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "sr90-sn",
+   "title": "Silicon strip, Sr-90 electrons: signal-to-noise ratio",
+   "sample": "Sr-90 beta source",
+   "unknown": "signal-to-noise",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "sr90-vdep",
+   "title": "Silicon strip: full-depletion voltage from charge against bias",
+   "sample": "Sr-90 beta source",
+   "unknown": "depletion voltage",
+   "params": {
+    "what": 2,
+    "n": 10000
+   },
+   "check": {
+    "params": {
+     "n": 40000
+    }
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "cosmic",
+   "title": "Silicon strip, cosmic muons: Landau most probable value",
+   "sample": "cosmic muons",
+   "unknown": "Landau most-probable value",
+   "params": {
+    "mpv": 23000.0,
+    "wd": 1500.0
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "cosmic-sn",
+   "title": "Silicon strip, cosmic muons: signal-to-noise ratio",
+   "sample": "cosmic muons",
+   "unknown": "signal-to-noise",
+   "params": {
+    "mpv": 23000.0,
+    "wd": 1500.0,
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  }
+ ]
+}

@@ -1,0 +1,132 @@
+{
+ "base": "px10-film-stress",
+ "rig": "px10-workstation",
+ "chapter": "Thin films and vacuum",
+ "variants": [
+  {
+   "key": "metal-laser-thermal",
+   "title": "Film stress, laser deflection curvature: thermal stress vs T of a metal film",
+   "sample": "sputtered aluminium film on Si(100)",
+   "method": "laser deflection curvature",
+   "unknown": "thermal stress vs T",
+   "params": {
+    "method": 0,
+    "what": 1
+   },
+   "source": {
+    "title": "Si(100) M = 180.5 GPa; Al E 70 GPa, nu 0.35, alpha 23.1e-6; Si alpha 2.6e-6; SiO2 E 72 GPa, nu 0.17, alpha 0.55e-6 /K",
+    "note": "from memory - verify (Brantley 1973; CRC); the stresses are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "metal-prof-residual",
+   "title": "Film stress, profilometer curvature: residual stress of a metal film",
+   "sample": "sputtered aluminium film on Si(100)",
+   "method": "profilometer curvature",
+   "unknown": "residual stress",
+   "params": {
+    "method": 1,
+    "what": 0,
+    "n": 800
+   },
+   "source": {
+    "title": "Si(100) M = 180.5 GPa; Al E 70 GPa, nu 0.35, alpha 23.1e-6; Si alpha 2.6e-6; SiO2 E 72 GPa, nu 0.17, alpha 0.55e-6 /K",
+    "note": "from memory - verify (Brantley 1973; CRC); the stresses are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "metal-prof-thermal",
+   "title": "Film stress, profilometer curvature: thermal stress vs T of a metal film",
+   "sample": "sputtered aluminium film on Si(100)",
+   "method": "profilometer curvature",
+   "unknown": "thermal stress vs T",
+   "params": {
+    "method": 1,
+    "what": 1,
+    "n": 800
+   },
+   "source": {
+    "title": "Si(100) M = 180.5 GPa; Al E 70 GPa, nu 0.35, alpha 23.1e-6; Si alpha 2.6e-6; SiO2 E 72 GPa, nu 0.17, alpha 0.55e-6 /K",
+    "note": "from memory - verify (Brantley 1973; CRC); the stresses are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "oxide-laser-residual",
+   "title": "Film stress, laser deflection curvature: residual stress of an oxide film",
+   "sample": "PECVD oxide film (SiO2) on Si(100)",
+   "method": "laser deflection curvature",
+   "unknown": "residual stress",
+   "params": {
+    "sig": -300.0,
+    "tf": 1.0,
+    "Mf": 86.7,
+    "daf": -2.05e-06,
+    "method": 0,
+    "what": 0
+   },
+   "source": {
+    "title": "Si(100) M = 180.5 GPa; Al E 70 GPa, nu 0.35, alpha 23.1e-6; Si alpha 2.6e-6; SiO2 E 72 GPa, nu 0.17, alpha 0.55e-6 /K",
+    "note": "from memory - verify (Brantley 1973; CRC); the stresses are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "oxide-laser-thermal",
+   "title": "Film stress, laser deflection curvature: thermal stress vs T of an oxide film",
+   "sample": "PECVD oxide film (SiO2) on Si(100)",
+   "method": "laser deflection curvature",
+   "unknown": "thermal stress vs T",
+   "params": {
+    "sig": -300.0,
+    "tf": 1.0,
+    "Mf": 86.7,
+    "daf": -2.05e-06,
+    "method": 0,
+    "what": 1
+   },
+   "source": {
+    "title": "Si(100) M = 180.5 GPa; Al E 70 GPa, nu 0.35, alpha 23.1e-6; Si alpha 2.6e-6; SiO2 E 72 GPa, nu 0.17, alpha 0.55e-6 /K",
+    "note": "from memory - verify (Brantley 1973; CRC); the stresses are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "oxide-prof-residual",
+   "title": "Film stress, profilometer curvature: residual stress of an oxide film",
+   "sample": "PECVD oxide film (SiO2) on Si(100)",
+   "method": "profilometer curvature",
+   "unknown": "residual stress",
+   "params": {
+    "sig": -300.0,
+    "tf": 1.0,
+    "Mf": 86.7,
+    "daf": -2.05e-06,
+    "method": 1,
+    "what": 0,
+    "n": 800
+   },
+   "source": {
+    "title": "Si(100) M = 180.5 GPa; Al E 70 GPa, nu 0.35, alpha 23.1e-6; Si alpha 2.6e-6; SiO2 E 72 GPa, nu 0.17, alpha 0.55e-6 /K",
+    "note": "from memory - verify (Brantley 1973; CRC); the stresses are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "oxide-prof-thermal",
+   "title": "Film stress, profilometer curvature: thermal stress vs T of an oxide film",
+   "sample": "PECVD oxide film (SiO2) on Si(100)",
+   "method": "profilometer curvature",
+   "unknown": "thermal stress vs T",
+   "params": {
+    "sig": -300.0,
+    "tf": 1.0,
+    "Mf": 86.7,
+    "daf": -2.05e-06,
+    "method": 1,
+    "what": 1,
+    "n": 800
+   },
+   "source": {
+    "title": "Si(100) M = 180.5 GPa; Al E 70 GPa, nu 0.35, alpha 23.1e-6; Si alpha 2.6e-6; SiO2 E 72 GPa, nu 0.17, alpha 0.55e-6 /K",
+    "note": "from memory - verify (Brantley 1973; CRC); the stresses are illustrative SIMULATED values"
+   }
+  }
+ ]
+}

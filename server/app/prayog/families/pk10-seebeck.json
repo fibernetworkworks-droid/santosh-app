@@ -1,0 +1,24 @@
+{
+ "base": "pk10-seebeck",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "doped-si",
+   "title": "Seebeck coefficient of doped n-type silicon",
+   "sample": "Phosphorus-doped silicon, about 1e19 per cm^3 (SIMULATED)",
+   "method": "differential steady-state and quasi-static slope at 300 K",
+   "unknown": "Seebeck coefficient, power factor",
+   "params": {
+    "S": -0.00025,
+    "rho": 1e-05,
+    "Voff": -1.4
+   },
+   "note": "Electrons: a negative coefficient. Degenerately doped silicon has a power factor of a few mW/(m K^2) but a high thermal conductivity, so ZT stays small. S and rho illustrative of that doping - verify.",
+   "source": {
+    "title": "L. Weber and E. Gmelin, Appl. Phys. A 53, 136 (1991): transport in doped silicon",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

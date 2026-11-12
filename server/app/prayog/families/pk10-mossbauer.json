@@ -1,0 +1,60 @@
+{
+ "base": "pk10-mossbauer",
+ "rig": "pk10-research-bench",
+ "chapter": "Magnetic resonance and hyperfine",
+ "variants": [
+  {
+   "key": "stainless",
+   "title": "Moessbauer spectrum of austenitic stainless steel",
+   "sample": "Austenitic (paramagnetic) stainless steel foil (SIMULATED)",
+   "method": "constant-acceleration drive, +-4 mm/s",
+   "unknown": "isomer shift",
+   "params": {
+    "typ": 1,
+    "dIS": -0.09,
+    "B": 0.0
+   },
+   "note": "Austenitic steel is not magnetic at room temperature and its cubic site has no field gradient: a single line, whose shift against alpha-iron is the isomer shift (about -0.09 mm/s, quoted from memory - verify).",
+   "source": {
+    "title": "Greenwood and Gibb, Moessbauer Spectroscopy (1971)",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "hematite",
+   "title": "Moessbauer spectrum of hematite",
+   "sample": "Alpha-Fe2O3 hematite powder at room temperature (SIMULATED)",
+   "method": "constant-acceleration drive, +-10 mm/s",
+   "unknown": "hyperfine field, isomer shift, quadrupole shift",
+   "params": {
+    "typ": 0,
+    "B": 51.7,
+    "dIS": 0.37,
+    "eps": -0.1
+   },
+   "note": "Fe3+ in an antiferromagnet: a larger field than iron metal (51.7 T), a positive isomer shift (0.37 mm/s) and a quadrupole shift that moves the outer lines against the inner four (2 eps = -0.2 mm/s). All three quoted from memory - verify.",
+   "source": {
+    "title": "Greenwood and Gibb, Moessbauer Spectroscopy (1971): hematite",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "nitroprusside",
+   "title": "Moessbauer spectrum of sodium nitroprusside",
+   "sample": "Sodium nitroprusside, Na2[Fe(CN)5NO].2H2O, the standard (SIMULATED)",
+   "method": "constant-acceleration drive, +-4 mm/s",
+   "unknown": "quadrupole splitting, isomer shift",
+   "params": {
+    "typ": 2,
+    "dIS": -0.257,
+    "QS": 1.712,
+    "B": 0.0
+   },
+   "note": "Low-spin Fe(II) in a strongly distorted site: no magnetic splitting but a large field gradient, so a doublet 1.712 mm/s apart centred at -0.257 mm/s against alpha-iron; it is a common velocity-calibration standard. Values quoted from memory - verify.",
+   "source": {
+    "title": "Greenwood and Gibb, Moessbauer Spectroscopy (1971): sodium nitroprusside",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

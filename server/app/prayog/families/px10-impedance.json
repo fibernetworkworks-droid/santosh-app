@@ -1,0 +1,127 @@
+{
+ "base": "px10-impedance",
+ "rig": "px10-workstation",
+ "chapter": "Thin films and vacuum",
+ "variants": [
+  {
+   "key": "pellet-rgb",
+   "title": "Impedance of an ionic pellet: grain-boundary resistance",
+   "sample": "ionic-conductor pellet (YSZ-type)",
+   "unknown": "grain-boundary resistance",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "pellet-tau-bulk",
+   "title": "Impedance of an ionic pellet: bulk relaxation time",
+   "sample": "ionic-conductor pellet (YSZ-type)",
+   "unknown": "dielectric relaxation time (bulk)",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "pellet-tau-gb",
+   "title": "Impedance of an ionic pellet: grain-boundary relaxation time",
+   "sample": "ionic-conductor pellet (YSZ-type)",
+   "unknown": "dielectric relaxation time (grain boundary)",
+   "params": {
+    "what": 4
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "pellet-ea",
+   "title": "Impedance of an ionic pellet: activation energy (five temperatures)",
+   "sample": "ionic-conductor pellet (YSZ-type)",
+   "unknown": "activation energy",
+   "params": {
+    "what": 3
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "capacitor-tau",
+   "title": "Impedance of a ceramic capacitor: dielectric relaxation time",
+   "sample": "ceramic capacitor (leaky dielectric)",
+   "unknown": "dielectric relaxation time",
+   "params": {
+    "what": 2,
+    "arcs": 1,
+    "Rb": 20000000.0,
+    "Cb": 1e-09,
+    "Ea": 1.2
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "capacitor-ea",
+   "title": "Impedance of a ceramic capacitor: activation energy of leakage",
+   "sample": "ceramic capacitor (leaky dielectric)",
+   "unknown": "activation energy",
+   "params": {
+    "what": 3,
+    "arcs": 1,
+    "Rb": 20000000.0,
+    "Cb": 1e-09,
+    "Ea": 1.2
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "polymer-tau",
+   "title": "Impedance of a polymer film: dielectric relaxation time",
+   "sample": "polymer film between electrodes",
+   "unknown": "dielectric relaxation time",
+   "params": {
+    "what": 2,
+    "arcs": 1,
+    "Rb": 500000000.0,
+    "Cb": 2e-10,
+    "Ea": 0.8
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "polymer-ea",
+   "title": "Impedance of a polymer film: activation energy",
+   "sample": "polymer film between electrodes",
+   "unknown": "activation energy",
+   "params": {
+    "what": 3,
+    "arcs": 1,
+    "Rb": 500000000.0,
+    "Cb": 2e-10,
+    "Ea": 0.8
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  }
+ ]
+}

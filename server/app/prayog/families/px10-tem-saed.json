@@ -1,0 +1,80 @@
+{
+ "base": "px10-tem-saed",
+ "rig": "px10-workstation",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "al-111",
+   "title": "SAED of a polycrystalline aluminium film: the 111 ring",
+   "sample": "polycrystalline Al film",
+   "method": "selected area electron diffraction",
+   "unknown": "d-spacing (111)",
+   "params": {
+    "what": 1,
+    "k": 1
+   },
+   "source": {
+    "title": "Gold a = 0.40782 nm, aluminium a = 0.40495 nm (fcc)",
+    "note": "from memory - verify against ICDD 04-0784 / 04-0787"
+   }
+  },
+  {
+   "key": "al-200",
+   "title": "SAED of a polycrystalline aluminium film: the 200 ring",
+   "sample": "polycrystalline Al film",
+   "method": "selected area electron diffraction",
+   "unknown": "d-spacing (200)",
+   "params": {
+    "what": 1,
+    "k": 2
+   },
+   "source": {
+    "title": "Gold a = 0.40782 nm, aluminium a = 0.40495 nm (fcc)",
+    "note": "from memory - verify against ICDD 04-0784 / 04-0787"
+   }
+  },
+  {
+   "key": "al-220",
+   "title": "SAED of a polycrystalline aluminium film: the 220 ring",
+   "sample": "polycrystalline Al film",
+   "method": "selected area electron diffraction",
+   "unknown": "d-spacing (220)",
+   "params": {
+    "what": 1,
+    "k": 3
+   },
+   "source": {
+    "title": "Gold a = 0.40782 nm, aluminium a = 0.40495 nm (fcc)",
+    "note": "from memory - verify against ICDD 04-0784 / 04-0787"
+   }
+  },
+  {
+   "key": "flake-100",
+   "title": "SAED of a single-crystal MoS2 flake: the 100 spot spacing",
+   "sample": "single crystal flake (MoS2)",
+   "method": "selected area electron diffraction",
+   "unknown": "d-spacing (100)",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "MoS2 a = 0.3160 nm",
+    "note": "from memory - verify; the flake pattern is SIMULATED DATA"
+   }
+  },
+  {
+   "key": "au-particles",
+   "title": "Bright-field TEM: size of gold nanoparticles",
+   "sample": "gold nanoparticles",
+   "method": "bright-field imaging",
+   "unknown": "particle size",
+   "params": {
+    "what": 3
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  }
+ ]
+}

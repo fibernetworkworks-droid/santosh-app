@@ -1,0 +1,115 @@
+{
+ "base": "px10-ebeam-qcm",
+ "rig": "px10-workstation",
+ "chapter": "Thin films and vacuum",
+ "variants": [
+  {
+   "key": "ti-thickness",
+   "title": "E-beam evaporated titanium: film thickness after the run",
+   "sample": "titanium",
+   "method": "quartz crystal monitor",
+   "unknown": "film thickness",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Ti 4.506, fused SiO2 2.20, rutile TiO2 4.23 g/cm3; AT quartz 2648 kg/m3, 2.947e10 Pa",
+    "note": "from memory - verify; the rates are an illustrative SIMULATED source model"
+   }
+  },
+  {
+   "key": "ti-rate-low",
+   "title": "E-beam evaporated titanium: deposition rate at 1.0 kW",
+   "sample": "titanium",
+   "method": "quartz crystal monitor",
+   "unknown": "deposition rate vs beam power",
+   "params": {
+    "k": 0
+   },
+   "source": {
+    "title": "Ti 4.506, fused SiO2 2.20, rutile TiO2 4.23 g/cm3; AT quartz 2648 kg/m3, 2.947e10 Pa",
+    "note": "from memory - verify; the rates are an illustrative SIMULATED source model"
+   }
+  },
+  {
+   "key": "ti-rate-high",
+   "title": "E-beam evaporated titanium: deposition rate at 3.0 kW",
+   "sample": "titanium",
+   "method": "quartz crystal monitor",
+   "unknown": "deposition rate vs beam power",
+   "params": {
+    "k": 4
+   },
+   "source": {
+    "title": "Ti 4.506, fused SiO2 2.20, rutile TiO2 4.23 g/cm3; AT quartz 2648 kg/m3, 2.947e10 Pa",
+    "note": "from memory - verify; the rates are an illustrative SIMULATED source model"
+   }
+  },
+  {
+   "key": "sio2-rate",
+   "title": "E-beam evaporated SiO2: deposition rate at 2.0 kW",
+   "sample": "SiO2 granules",
+   "method": "quartz crystal monitor",
+   "unknown": "deposition rate vs beam power",
+   "params": {
+    "rho": 2200.0,
+    "r0": 3.0,
+    "Pa": 3.0
+   },
+   "source": {
+    "title": "Ti 4.506, fused SiO2 2.20, rutile TiO2 4.23 g/cm3; AT quartz 2648 kg/m3, 2.947e10 Pa",
+    "note": "from memory - verify; the rates are an illustrative SIMULATED source model"
+   }
+  },
+  {
+   "key": "sio2-thickness",
+   "title": "E-beam evaporated SiO2: film thickness after the run",
+   "sample": "SiO2 granules",
+   "method": "quartz crystal monitor",
+   "unknown": "film thickness",
+   "params": {
+    "what": 1,
+    "rho": 2200.0,
+    "r0": 3.0,
+    "Pa": 3.0
+   },
+   "source": {
+    "title": "Ti 4.506, fused SiO2 2.20, rutile TiO2 4.23 g/cm3; AT quartz 2648 kg/m3, 2.947e10 Pa",
+    "note": "from memory - verify; the rates are an illustrative SIMULATED source model"
+   }
+  },
+  {
+   "key": "tio2-rate",
+   "title": "E-beam evaporated TiO2: deposition rate at 2.0 kW",
+   "sample": "TiO2 granules",
+   "method": "quartz crystal monitor",
+   "unknown": "deposition rate vs beam power",
+   "params": {
+    "rho": 4230.0,
+    "r0": 2.5,
+    "Pa": 3.2
+   },
+   "source": {
+    "title": "Ti 4.506, fused SiO2 2.20, rutile TiO2 4.23 g/cm3; AT quartz 2648 kg/m3, 2.947e10 Pa",
+    "note": "from memory - verify; the rates are an illustrative SIMULATED source model"
+   }
+  },
+  {
+   "key": "tio2-thickness",
+   "title": "E-beam evaporated TiO2: film thickness after the run",
+   "sample": "TiO2 granules",
+   "method": "quartz crystal monitor",
+   "unknown": "film thickness",
+   "params": {
+    "what": 1,
+    "rho": 4230.0,
+    "r0": 2.5,
+    "Pa": 3.2
+   },
+   "source": {
+    "title": "Ti 4.506, fused SiO2 2.20, rutile TiO2 4.23 g/cm3; AT quartz 2648 kg/m3, 2.947e10 Pa",
+    "note": "from memory - verify; the rates are an illustrative SIMULATED source model"
+   }
+  }
+ ]
+}

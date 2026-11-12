@@ -1,0 +1,55 @@
+{
+ "base": "pk10-sc-tc",
+ "rig": "pk10-research-bench",
+ "chapter": "Low temperature and superconductivity",
+ "variants": [
+  {
+   "key": "niobium-film",
+   "title": "Superconducting Tc by four-probe: a niobium film",
+   "sample": "Niobium film on sapphire, Tc near 9.2 K (SIMULATED)",
+   "method": "four-probe R against T, zero field and 0.2 T",
+   "unknown": "Tc, transition width, residual resistance ratio",
+   "params": {
+    "Tc0": 9.25,
+    "Bc0": 0.4,
+    "w": 0.02,
+    "Rres": 0.002,
+    "a": 2e-05,
+    "B1": 0.2,
+    "R300": 0.03,
+    "lo": 3.0,
+    "hi": 5.0,
+    "dT": 0.25
+   },
+   "note": "A clean elemental film: a sharp transition (width under 0.1 K) and a field of 0.2 T already lowers Tc by about 2 K, because Bc2 of niobium is only about 0.4 T. Tc of bulk niobium 9.25 K (Kittel); the film's Bc2, width and resistances are illustrative.",
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, Table 10.1: Nb Tc = 9.25 K",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "lead",
+   "title": "Superconducting Tc by four-probe: a lead wire",
+   "sample": "Lead wire, a type-I superconductor, Tc 7.19 K (SIMULATED)",
+   "method": "four-probe R against T, zero field and 40 mT",
+   "unknown": "Tc, transition width, residual resistance ratio",
+   "params": {
+    "Tc0": 7.19,
+    "Bc0": 0.0803,
+    "w": 0.01,
+    "Rres": 1e-05,
+    "a": 2e-05,
+    "B1": 0.04,
+    "R300": 0.004,
+    "lo": 3.0,
+    "hi": 5.0,
+    "dT": 0.25
+   },
+   "note": "A type-I superconductor: its critical field is the thermodynamic Bc = 80.3 mT at 0 K, so 40 mT moves Tc to Tc0 sqrt(1/2). The very large residual resistance ratio shows a pure metal. Tc and Bc are Kittel's table values; the resistances are illustrative.",
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, Table 10.1: Pb Tc = 7.19 K, Bc = 803 G",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

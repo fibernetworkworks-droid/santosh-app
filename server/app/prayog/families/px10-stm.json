@@ -1,0 +1,68 @@
+{
+ "base": "px10-stm",
+ "rig": "px10-workstation",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "hopg-lattice",
+   "title": "STM of HOPG: surface lattice spacing",
+   "sample": "HOPG (graphite)",
+   "method": "constant current imaging",
+   "unknown": "atomic lattice spacing",
+   "params": {
+    "a": 0.246
+   },
+   "source": {
+    "title": "Au(111) 0.2884 nm, HOPG 0.246 nm, Au(111) surface state about -0.487 eV",
+    "note": "from memory - verify; barrier heights are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "au-barrier",
+   "title": "STM I(z) spectroscopy on Au(111): apparent barrier height",
+   "sample": "gold (111)",
+   "method": "I-z spectroscopy",
+   "unknown": "tunnel barrier height",
+   "params": {
+    "what": 1,
+    "phi": 4.5,
+    "n": 100
+   },
+   "source": {
+    "title": "Au(111) 0.2884 nm, HOPG 0.246 nm, Au(111) surface state about -0.487 eV",
+    "note": "from memory - verify; barrier heights are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "hopg-barrier",
+   "title": "STM I(z) spectroscopy on HOPG: apparent barrier height",
+   "sample": "HOPG (graphite)",
+   "method": "I-z spectroscopy",
+   "unknown": "tunnel barrier height",
+   "params": {
+    "what": 1,
+    "phi": 4.0,
+    "n": 100
+   },
+   "source": {
+    "title": "Au(111) 0.2884 nm, HOPG 0.246 nm, Au(111) surface state about -0.487 eV",
+    "note": "from memory - verify; barrier heights are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "au-surface-state",
+   "title": "STM dI/dV on Au(111): onset of the surface state",
+   "sample": "gold (111)",
+   "method": "I-V spectroscopy",
+   "unknown": "local density of states (surface-state onset)",
+   "params": {
+    "what": 2,
+    "n": 200
+   },
+   "source": {
+    "title": "Au(111) 0.2884 nm, HOPG 0.246 nm, Au(111) surface state about -0.487 eV",
+    "note": "from memory - verify; barrier heights are illustrative SIMULATED values"
+   }
+  }
+ ]
+}

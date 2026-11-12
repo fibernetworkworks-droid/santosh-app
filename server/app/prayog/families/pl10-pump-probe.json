@@ -1,0 +1,56 @@
+{
+ "base": "pl10-pump-probe",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "spectrum",
+   "title": "Pump-probe: the transient bleach spectrum of a semiconductor film",
+   "sample": "Semiconductor film",
+   "unknown": "the bleach peak of the transient spectrum",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "dye",
+   "title": "Pump-probe transient absorption of a dye solution: relaxation time",
+   "sample": "Dye solution",
+   "unknown": "the relaxation time of the bleach",
+   "params": {
+    "tc": 6.0,
+    "lb": 530.0,
+    "wb": 35.0,
+    "A": 25.0,
+    "q": 0.0
+   },
+   "note": "Illustrative dye values.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "dye-spectrum",
+   "title": "Pump-probe: the transient bleach spectrum of a dye solution",
+   "sample": "Dye solution",
+   "unknown": "the bleach peak of the transient spectrum",
+   "params": {
+    "tc": 6.0,
+    "lb": 530.0,
+    "wb": 35.0,
+    "A": 25.0,
+    "q": 1.0
+   },
+   "note": "Illustrative dye values.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

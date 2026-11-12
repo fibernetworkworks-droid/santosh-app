@@ -1,0 +1,47 @@
+{
+ "base": "pk10-hall-mob",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "oxide-film",
+   "title": "Hall and van der Pauw: a doped ZnO thin film",
+   "sample": "Al-doped ZnO film, 200 nm, degenerate n-type (SIMULATED)",
+   "method": "Hall bar and van der Pauw, 20 to 400 K",
+   "unknown": "sheet density, mobility against T, scattering mechanism",
+   "params": {
+    "ns": 2e+19,
+    "muL": 0.004,
+    "al": 1.5,
+    "muI": 0.003,
+    "I": 0.001,
+    "B1": 1.0
+   },
+   "note": "A degenerate oxide: the density does not change with T and grain-boundary / impurity scattering keeps the mobility low (tens of cm^2/V s). The mobility terms are illustrative.",
+   "source": {
+    "title": "Schroder, Semiconductor Material and Device Characterization, ch. 8",
+    "note": "the film's mobility terms are illustrative"
+   }
+  },
+  {
+   "key": "flake-2d",
+   "title": "Hall and van der Pauw: a monolayer MoS2 flake",
+   "sample": "Monolayer MoS2 flake on SiO2, n about 1e17 per m^2 (SIMULATED)",
+   "method": "Hall bar and van der Pauw, 20 to 400 K",
+   "unknown": "sheet density, mobility against T, phonon exponent",
+   "params": {
+    "ns": 1e+17,
+    "muL": 0.006,
+    "al": 1.7,
+    "muI": 0.02,
+    "I": 1e-07,
+    "B1": 1.0
+   },
+   "note": "A two-dimensional channel: tens of cm^2/V s at room temperature, phonon-limited with an exponent near 1.7 above about 100 K. Values illustrative, of the order reported for monolayer MoS2 - verify.",
+   "source": {
+    "title": "B. Radisavljevic and A. Kis, Nature Materials 12, 815 (2013)",
+    "note": "order of magnitude only - verify"
+   }
+  }
+ ]
+}

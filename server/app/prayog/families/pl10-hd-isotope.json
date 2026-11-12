@@ -1,0 +1,19 @@
+{
+ "base": "pl10-hd-isotope",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "mass-ratio",
+   "title": "H/D isotope shift: the deuteron to proton mass ratio",
+   "sample": "Hydrogen, deuterium and helium lamps",
+   "unknown": "the deuteron / proton mass ratio",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "CODATA 2018: md/mp = 1.99900750139"
+   }
+  }
+ ]
+}

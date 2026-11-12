@@ -1,0 +1,20 @@
+{
+ "base": "pl10-chsh",
+ "rig": "pl10-laser-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "visibility",
+   "title": "Entangled photons: polarisation correlation visibility",
+   "sample": "Type-I SPDC pair source",
+   "unknown": "the polarisation correlation visibility",
+   "params": {
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

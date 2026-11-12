@@ -1,0 +1,54 @@
+{
+ "base": "pl10-eraser",
+ "rig": "pl10-laser-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "marked",
+   "title": "Single-photon interference with partial which-path information",
+   "sample": "Attenuated laser",
+   "unknown": "the fringe visibility with the paths marked",
+   "params": {
+    "psi": 60.0,
+    "q": 1.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "heralded",
+   "title": "Quantum eraser with heralded single photons",
+   "sample": "Heralded photons from SPDC",
+   "unknown": "the fringe visibility with the eraser",
+   "params": {
+    "Rc": 600.0,
+    "t": 60.0,
+    "q": 0.0
+   },
+   "note": "Counts are coincidences with the herald photon.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "heralded-marked",
+   "title": "Heralded single photons with which-path information",
+   "sample": "Heralded photons from SPDC",
+   "unknown": "the fringe visibility with the paths marked",
+   "params": {
+    "Rc": 600.0,
+    "t": 60.0,
+    "psi": 60.0,
+    "q": 1.0
+   },
+   "note": "Counts are coincidences with the herald photon.",
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

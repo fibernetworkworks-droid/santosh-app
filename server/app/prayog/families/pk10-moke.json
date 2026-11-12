@@ -1,0 +1,51 @@
+{
+ "base": "pk10-moke",
+ "rig": "pk10-research-bench",
+ "chapter": "Magnetism and magneto-optics",
+ "variants": [
+  {
+   "key": "permalloy",
+   "title": "MOKE loop of a soft permalloy film",
+   "sample": "Ni80Fe20 permalloy film, 20 nm (SIMULATED)",
+   "method": "longitudinal and polar MOKE, remanence against angle",
+   "unknown": "coercive field, Kerr rotation, anisotropy axis",
+   "params": {
+    "typ": 1,
+    "Bc": 0.1,
+    "Bw": 0.04,
+    "Bmax": 2.0,
+    "thK": 0.08,
+    "phE": 0.0,
+    "thP": 1.2,
+    "Bs": 1000.0
+   },
+   "note": "A very soft film: the loop closes within a fraction of a millitesla and the induced uniaxial anisotropy is weak. Values illustrative, of the order reported - verify.",
+   "source": {
+    "title": "Z. Q. Qiu and S. D. Bader, Rev. Sci. Instrum. 71, 1243 (2000)",
+    "note": "values illustrative - verify"
+   }
+  },
+  {
+   "key": "fe-mgo",
+   "title": "MOKE of an epitaxial Fe film on MgO(001): fourfold anisotropy",
+   "sample": "Epitaxial Fe(001) film on MgO(001), 10 nm (SIMULATED)",
+   "method": "longitudinal and polar MOKE, remanence against angle",
+   "unknown": "coercive field, Kerr rotation, fourfold easy axes",
+   "params": {
+    "typ": 2,
+    "Bc": 0.8,
+    "Bw": 0.15,
+    "Bmax": 5.0,
+    "thK": 0.3,
+    "phE": 0.0,
+    "thP": 2.5,
+    "Bs": 2150.0
+   },
+   "note": "Cubic iron: easy axes along [100] and [010], 90 degrees apart, so the remanence against angle has fourfold symmetry. mu0 Ms of iron 2.15 T quoted from memory - verify; the coercive field is illustrative.",
+   "source": {
+    "title": "Kittel, ch. 11: magnetocrystalline anisotropy of iron",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

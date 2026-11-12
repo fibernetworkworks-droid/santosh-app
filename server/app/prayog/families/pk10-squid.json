@@ -1,0 +1,49 @@
+{
+ "base": "pk10-squid",
+ "rig": "pk10-research-bench",
+ "chapter": "Low temperature and superconductivity",
+ "variants": [
+  {
+   "key": "nanoparticles",
+   "title": "SQUID magnetometry: blocking of magnetite nanoparticles",
+   "sample": "Magnetite nanoparticles, 10 nm, dilute in a matrix (SIMULATED)",
+   "method": "M-H loop at 5 K and ZFC-FC M-T in 0.1 mT",
+   "unknown": "moment against field, blocking temperature",
+   "params": {
+    "typ": 1,
+    "T0": 5.0,
+    "Bm": 1.0,
+    "Bf": 0.0001,
+    "lcm": 1e-10,
+    "Tlo": 2.0,
+    "Thi": 300.0
+   },
+   "note": "Monodisperse single-domain particles (Bean-Livingston): ZFC and FC agree above the blocking temperature TB = KV/(kB ln(tm/tau0)) and part below it; the FC curve freezes at its value at TB, so TB = (m T at high temperature)/(FC plateau). Ms = 480 kA/m and K = 16 kJ/m^3 are magnetite-like values quoted from memory - verify; the size and number are illustrative.",
+   "source": {
+    "title": "C. P. Bean and J. D. Livingston, J. Appl. Phys. 30, 120S (1959); magnetite Ms and K quoted from memory - verify",
+    "note": "quoted from memory - verify"
+   }
+  },
+  {
+   "key": "superconductor",
+   "title": "SQUID magnetometry: Meissner signal of a niobium sphere",
+   "sample": "Niobium sphere of 1 mm^3, Tc 9.25 K (SIMULATED)",
+   "method": "M-H at 2 K and ZFC-FC M-T in 1 mT",
+   "unknown": "diamagnetic moment against field, Tc from the ZFC shielding",
+   "params": {
+    "typ": 2,
+    "T0": 2.0,
+    "Bm": 0.3,
+    "Bf": 0.001,
+    "Tc": 9.25,
+    "lcm": 1e-08,
+    "Tlo": 2.0
+   },
+   "note": "Zero-field cooled, the sphere shields its whole volume (m = -3/2 V B/mu0, demagnetising factor of a sphere); field cooled it expels only part of the flux. The shielding fraction 1 - (T/Tc)^4 is an illustrative two-fluid form; the ZFC moment against T^4 is a line that reaches zero at Tc. Tc of niobium 9.25 K (Kittel).",
+   "source": {
+    "title": "C. Kittel, Introduction to Solid State Physics, Table 10.1: Nb Tc = 9.25 K",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

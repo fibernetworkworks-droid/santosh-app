@@ -1,0 +1,79 @@
+{
+ "base": "px10-spin-coating",
+ "rig": "px10-workstation",
+ "chapter": "Thin films and vacuum",
+ "variants": [
+  {
+   "key": "polymer-exponent",
+   "title": "Spin coating a polymer: the exponent of h against spin speed",
+   "sample": "PMMA solution in anisole",
+   "unknown": "thickness vs speed (exponent)",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "polymer-uniformity",
+   "title": "Spin coating a polymer: radial uniformity",
+   "sample": "PMMA solution in anisole",
+   "unknown": "uniformity",
+   "params": {
+    "what": 2,
+    "n": 17
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "solgel-thickness",
+   "title": "Spin coating a sol-gel precursor: thickness at 3000 rpm",
+   "sample": "TiO2 sol-gel precursor",
+   "unknown": "thickness vs speed",
+   "params": {
+    "K": 180.0
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "solgel-exponent",
+   "title": "Spin coating a sol-gel precursor: exponent of h against speed",
+   "sample": "TiO2 sol-gel precursor",
+   "unknown": "thickness vs speed (exponent)",
+   "params": {
+    "what": 1,
+    "K": 180.0
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  },
+  {
+   "key": "solgel-uniformity",
+   "title": "Spin coating a sol-gel precursor: radial uniformity",
+   "sample": "TiO2 sol-gel precursor",
+   "unknown": "uniformity",
+   "params": {
+    "what": 2,
+    "H0": 10.0,
+    "a": 0.5,
+    "eta": 0.01,
+    "tf": 0.3,
+    "n": 17
+   },
+   "source": {
+    "title": "Unsourced / illustrative sample values",
+    "note": "the hidden value is chosen for the lab (SIMULATED DATA), not looked up"
+   }
+  }
+ ]
+}

@@ -1,0 +1,24 @@
+{
+ "base": "pk10-haynes",
+ "rig": "pk10-research-bench",
+ "chapter": "Quantum transport",
+ "variants": [
+  {
+   "key": "p-si",
+   "title": "Haynes-Shockley in p-type silicon: electron drift mobility",
+   "sample": "p-type silicon bar, minority electrons (SIMULATED)",
+   "method": "pulsed laser injection, collector at 3 to 8 mm, 10 to 30 V/cm",
+   "unknown": "electron drift mobility, diffusion coefficient, lifetime",
+   "params": {
+    "mu": 0.135,
+    "tau": 2e-05,
+    "E0": 6000.0
+   },
+   "note": "Minority electrons in silicon drift more slowly than holes in germanium and recombine faster, so a stronger field (60 V/cm) keeps the recombination correction to the slope below 0.1 %. Electron mobility 1350 cm^2/V s (Sze) from memory - verify; the lifetime is illustrative.",
+   "source": {
+    "title": "Sze and Ng, Physics of Semiconductor Devices: Si electron mobility",
+    "note": "quoted from memory - verify"
+   }
+  }
+ ]
+}

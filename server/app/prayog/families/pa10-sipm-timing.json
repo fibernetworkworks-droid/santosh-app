@@ -1,0 +1,79 @@
+{
+ "base": "pa10-sipm-timing",
+ "rig": "pa10-workstation",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "lyso-le",
+   "title": "SiPM timing, LYSO: leading-edge discrimination with walk correction",
+   "sample": "LYSO with SiPM",
+   "unknown": "coincidence time resolution",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   },
+   "method": "leading-edge discrimination"
+  },
+  {
+   "key": "plastic",
+   "title": "SiPM timing, plastic scintillator: constant fraction",
+   "sample": "plastic with SiPM",
+   "unknown": "coincidence time resolution",
+   "params": {
+    "sig": 0.05,
+    "tr": 0.6
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "a faster rise and a smaller jitter than LYSO, illustrative values for a fast plastic"
+   },
+   "method": "constant-fraction discrimination"
+  },
+  {
+   "key": "plastic-le",
+   "title": "SiPM timing, plastic scintillator: leading edge with walk correction",
+   "sample": "plastic with SiPM",
+   "unknown": "coincidence time resolution",
+   "params": {
+    "sig": 0.05,
+    "tr": 0.6,
+    "method": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "a faster rise and a smaller jitter than LYSO, illustrative values for a fast plastic"
+   },
+   "method": "leading-edge discrimination"
+  },
+  {
+   "key": "lyso-pe",
+   "title": "SiPM photoelectron spectrum, LYSO at low light",
+   "sample": "LYSO with SiPM",
+   "unknown": "mean photoelectrons from the photoelectron spectrum",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "plastic-pe",
+   "title": "SiPM photoelectron spectrum, plastic at low light",
+   "sample": "plastic with SiPM",
+   "unknown": "mean photoelectrons from the photoelectron spectrum",
+   "params": {
+    "what": 1,
+    "mu": 2.2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  }
+ ]
+}

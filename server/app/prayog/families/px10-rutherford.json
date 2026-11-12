@@ -1,0 +1,38 @@
+{
+ "base": "px10-rutherford",
+ "rig": "px10-workstation",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "al-exponent",
+   "title": "Rutherford scattering off aluminium foil: the angular law",
+   "sample": "aluminium foil, 10 um",
+   "method": "angular distribution",
+   "unknown": "angular dependence (1/sin^4)",
+   "params": {
+    "Z": 13,
+    "nt": 6.02e+23
+   },
+   "source": {
+    "title": "Gold 19.32 g/cm3, 196.967 g/mol; aluminium 2.699 g/cm3, 26.982 g/mol; Am-241 alpha 5.486 MeV",
+    "note": "from memory - verify (CRC Handbook, NNDC); counts are SIMULATED DATA"
+   }
+  },
+  {
+   "key": "al-charge",
+   "title": "Rutherford scattering: nuclear charge of aluminium against gold",
+   "sample": "aluminium foil, 10 um, against gold 2 um",
+   "method": "foil comparison",
+   "unknown": "nuclear charge dependence",
+   "params": {
+    "what": 1,
+    "Z": 13,
+    "nt": 6.02e+23
+   },
+   "source": {
+    "title": "Gold 19.32 g/cm3, 196.967 g/mol; aluminium 2.699 g/cm3, 26.982 g/mol; Am-241 alpha 5.486 MeV",
+    "note": "from memory - verify (CRC Handbook, NNDC); counts are SIMULATED DATA"
+   }
+  }
+ ]
+}

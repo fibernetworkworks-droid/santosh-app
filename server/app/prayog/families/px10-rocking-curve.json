@@ -1,0 +1,36 @@
+{
+ "base": "px10-rocking-curve",
+ "rig": "px10-workstation",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "film-mosaic",
+   "title": "Rocking curve of an epitaxial film: mosaic spread",
+   "sample": "Si(0.8)Ge(0.2)-type film on Si(001)",
+   "method": "omega rocking curve",
+   "unknown": "mosaic spread",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Si lattice 0.5431020 nm, Cu K-alpha1 0.1540562 nm",
+    "note": "from memory - verify; the film's strain and mosaic are illustrative SIMULATED values"
+   }
+  },
+  {
+   "key": "silicon-width",
+   "title": "Rocking curve of a silicon single crystal: peak width",
+   "sample": "silicon single crystal, (001) wafer",
+   "method": "omega rocking curve",
+   "unknown": "rocking-curve width (mosaic-free reference)",
+   "params": {
+    "what": 2,
+    "sub": 1
+   },
+   "source": {
+    "title": "Si lattice 0.5431020 nm, Cu K-alpha1 0.1540562 nm",
+    "note": "from memory - verify; the film's strain and mosaic are illustrative SIMULATED values"
+   }
+  }
+ ]
+}

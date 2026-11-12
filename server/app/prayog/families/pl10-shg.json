@@ -1,0 +1,50 @@
+{
+ "base": "pl10-shg",
+ "rig": "pl10-laser-bench",
+ "chapter": "Laser spectroscopy and atomic physics",
+ "variants": [
+  {
+   "key": "kdp",
+   "title": "Second harmonic generation: phase-matching angle in KDP",
+   "sample": "KDP crystal cut at 41 degrees",
+   "unknown": "the type-I phase-matching angle of KDP at 1064 nm",
+   "params": {
+    "cry": 0.0,
+    "thc": 41.0,
+    "q": 1.0
+   },
+   "source": {
+    "title": "KDP Sellmeier equation (Zernike 1964 form)",
+    "note": "from memory - verify"
+   }
+  },
+  {
+   "key": "power-law",
+   "title": "Second harmonic generation: green power against infrared power",
+   "sample": "BBO crystal",
+   "unknown": "the exponent of the SHG power law",
+   "params": {
+    "q": 0.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  },
+  {
+   "key": "kdp-power-law",
+   "title": "Second harmonic generation in KDP: green power against infrared power",
+   "sample": "KDP crystal cut at 41 degrees",
+   "unknown": "the exponent of the SHG power law",
+   "params": {
+    "cry": 0.0,
+    "thc": 41.0,
+    "q": 0.0
+   },
+   "source": {
+    "title": "Hoola Prayogshala kernel pack phd_laser_w10",
+    "note": "SIMULATED DATA from the simulation code; illustrative apparatus values"
+   }
+  }
+ ]
+}

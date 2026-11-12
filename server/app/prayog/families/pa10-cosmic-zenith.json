@@ -1,0 +1,91 @@
+{
+ "base": "pa10-cosmic-zenith",
+ "rig": "pa10-workstation",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "i0",
+   "title": "Cosmic-ray telescope: vertical muon intensity",
+   "sample": "scintillator paddles, 30 cm x 30 cm, 1 m apart",
+   "unknown": "vertical intensity I0",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "flux",
+   "title": "Cosmic-ray telescope: muon flux through a horizontal surface",
+   "sample": "scintillator paddles, 30 cm x 30 cm, 1 m apart",
+   "unknown": "flux J = 2 pi I0 / (n + 2)",
+   "params": {
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "gm",
+   "title": "Cosmic-ray telescope with GM tubes: zenith exponent",
+   "sample": "GM tube arrays, 0.02 m2 each, 0.6 m apart",
+   "unknown": "cos^n zenith law exponent",
+   "params": {
+    "A": 0.02,
+    "D": 0.6,
+    "eff": 0.9
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "gm-flux",
+   "title": "Cosmic-ray telescope with GM tubes: muon flux",
+   "sample": "GM tube arrays, 0.02 m2 each, 0.6 m apart",
+   "unknown": "flux J",
+   "params": {
+    "A": 0.02,
+    "D": 0.6,
+    "eff": 0.9,
+    "what": 2
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  },
+  {
+   "key": "lead",
+   "title": "Cosmic-ray telescope with a lead absorber: zenith exponent",
+   "sample": "scintillator paddles under 10 cm of lead",
+   "unknown": "cos^n zenith law exponent (hard component)",
+   "params": {
+    "I0": 60.0
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "the lead removes the soft (electron and low-energy muon) component; the hidden intensity 60 m^-2 s^-1 sr^-1 under the lead is illustrative, not a measured attenuation"
+   }
+  },
+  {
+   "key": "lead-i0",
+   "title": "Cosmic-ray telescope with a lead absorber: vertical intensity",
+   "sample": "scintillator paddles under 10 cm of lead",
+   "unknown": "vertical intensity of the hard component",
+   "params": {
+    "I0": 60.0,
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "the hidden intensity under the lead is illustrative, not a measured attenuation"
+   }
+  }
+ ]
+}

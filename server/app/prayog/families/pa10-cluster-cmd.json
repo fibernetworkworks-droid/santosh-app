@@ -1,0 +1,20 @@
+{
+ "base": "pa10-cluster-cmd",
+ "rig": "pa10-workstation",
+ "chapter": "Radio astronomy and astrophysics data",
+ "variants": [
+  {
+   "key": "age",
+   "title": "Colour-magnitude diagram of an open cluster: turn-off age",
+   "sample": "open cluster member list (simulated)",
+   "unknown": "turn-off age estimate",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "SIMULATED DATA",
+    "note": "generated from a hidden, illustrative value with seeded noise; the analysis is real, the measurement is not"
+   }
+  }
+ ]
+}
