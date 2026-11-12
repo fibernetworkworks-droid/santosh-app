@@ -92,7 +92,7 @@ def test_land_flow(cst):
     assert p["area_source"] == "7/12 sheet 2024"
     with pytest.raises(L.CstError) as ex:                                  # the name law
         L.item_add(T, "Sunshine Plot", "title", [["7/12", "received"]], by="")
-    assert "naam" in str(ex.value).lower()
+    assert "name" in str(ex.value).lower()
     L.item_add(T, "Sunshine Plot", "title", [["7/12", "received"], ["Index II", "pending"]],
                by="Adv. R. Kulkarni")
     L.item_add(T, "Sunshine Plot", "record", [["7/12", 2000.0, "2024-03-01"],
@@ -128,7 +128,7 @@ def test_plan_schedule_and_risks(cst):
     v = P.variance(T, "Tower A")
     a1 = next(x for x in v["activities"] if x["code"] == "A1")
     assert a1["slip_days"] == 5 and a1["state"] == "LATE"
-    assert "critical" in v["said"].lower() and "NAHI" in v["said"]
+    assert "critical" in v["said"].lower() and "does NOT" in v["said"]
     with pytest.raises(P.CstError):
         P.risk_add(T, "Tower A", [["crane strike", 9, 3, "SM", ""]])       # P must be 1-5, HER marks
     P.risk_add(T, "Tower A", [["crane strike", 2, 4, "SM", "2026-11-20"],
@@ -172,7 +172,7 @@ def test_ehs_flow(cst):
     E.camp_add(T, "Site 9", [["Block A", 50, 44]])
     with pytest.raises(E.CstError) as ex:                                  # the name law
         E.camp_check(T, "Site 9", [["drinking water", "ok"]], by="")
-    assert "naam" in str(ex.value).lower()
+    assert "name" in str(ex.value).lower()
     ck = E.camp_check(T, "Site 9", [["drinking water", "ok"]], by="Welfare Officer S. Pawar")
     assert ck["by"] == "Welfare Officer S. Pawar"
 
@@ -213,7 +213,7 @@ def test_fm_flow(cst):
     w = F.wo_add(T, "Green Residency", "Lobby A", "seepage on wall", "high")
     with pytest.raises(F.CstError) as ex:                                  # the name law
         F.wo_update(T, w["id"], "done", by="")
-    assert "naam" in str(ex.value).lower()
+    assert "name" in str(ex.value).lower()
     assert F.wo_update(T, w["id"], "done", by="J. Kamble")["status"] == "done"
     F.ppm_add(T, "Green Residency", [["DG set", "oil change", 30, "2026-09-20"],
                                      ["lift 1", "monthly check", 30, "2026-11-01"]])
@@ -298,9 +298,9 @@ def test_ext_quality_customer(env):
     C.afs_doc(T, "Sunshine", "A-402", [["AFS signed", "done"]], by="Legal S. Iyer")
     h = C.handover_unit(T, "Sunshine", "A-402", [["maintenance", 24000.0, 24000.0],
                                                  ["club deposit", 10000.0, 0.0]], snags_ref="PUNCH-7")
-    assert h["balance"] == 10000.0 and "aapka" in h["said"]
+    assert h["balance"] == 10000.0 and "decision is yours" in h["said"]
     ip = C.investor_pack(T, "Sunshine", [["Q1", 100.0, 90.0]], [["plinth done", "yes"]])
-    assert ip["variance"] == -10.0 and "khaali" in ip["said"]
+    assert ip["variance"] == -10.0 and "sign line is empty" in ip["said"]
 
 
 # ---------------------------------------------------------------- wiring + pins

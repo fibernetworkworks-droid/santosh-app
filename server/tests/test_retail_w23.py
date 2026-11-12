@@ -33,7 +33,7 @@ def test_growth_numbers():
     assert c["counts"] == {"A": 1, "B": 1, "C": 1} and c["range_review_candidates"] == ["c"]
     s = G.scheme({"min_qty": 10, "per_unit": 2, "cap": 100}, [{"retailer": "r", "qty": 20, "value": 500}, {"retailer": "q", "qty": 3, "value": 50}], [{"retailer": "r", "amount": 50}])
     r = {x["retailer"]: x for x in s["retailers"]}
-    assert r["r"]["accrual"] == 40 and r["r"]["status"] == "dispute" and r["q"]["accrual"] == 0 and "finance" in s["decider"]
+    assert r["r"]["accrual"] == 40 and r["r"]["status"] == "dispute" and r["q"]["accrual"] == 0 and "Finance" in s["decider"]
     cr = G.credit_exposure([{"retailer": "A", "outstanding": 150, "limit": 100, "oldest_days": 45, "avg_monthly_purchase": 100}])["retailers"][0]
     assert cr["suggested_limit"] == 150.0 and set(cr["flags"]) >= {"over the limit"} and "caste" in G.credit_exposure([{"retailer": "A"}])["basis"]
     b = G.beat_route({"lat": 0, "lng": 0}, [{"name": "far", "lat": 0, "lng": 2}, {"name": "near", "lat": 0, "lng": 1}])

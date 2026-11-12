@@ -219,7 +219,7 @@ def test_rera_project_update_forms_escrow(cst, env):
     fp = R.form_pack(T, pid, "Form 4", "engineer's completion certificate", period="phase 1",
                      data=[{"item": "floors done", "value": "8 of 12", "source": "site diary"}],
                      prepared_for="Er. Kulkarni")
-    assert fp["rows"] == 1 and "khaali" in fp["say"]
+    assert fp["rows"] == 1 and "empty" in fp["say"]
     with pytest.raises(Exception) as ex:
         R.form_pack(T, pid, "Form 3", "quarterly", data=[{"item": "x", "value": "1", "source": "y"}], prepared_for="")
     assert "professional" in str(ex.value)
@@ -255,7 +255,7 @@ def test_contracts_obligations_variations_claims(cst, env):
     assert v["amount"] == 40050 and "client" in v["say"]
     with pytest.raises(Exception) as ex:
         K.variation_mark(T, v["variation_id"], "approved", approved_by="")
-    assert "naam" in str(ex.value).lower()
+    assert "name" in str(ex.value).lower()
     K.variation_mark(T, v["variation_id"], "approved", approved_by="Shivneri LLP (client)")
     cl = K.claim_paper(T, cid, "owner-held site 22 days", event_on="2026-09-01", noticed_on="2026-09-12",
                        matrix=[{"event": "site handover late", "clause": "cl 4.2 GCC", "effect": "EOT + cost",
@@ -302,7 +302,7 @@ def test_drawqa_rules_checks_review_pack(cst, env):
     from app.construction import drawqa as D
     w = D.dwg_add(T, "Shivneri Heights", "A-05", rev="2", kind="plan", scale_as_noted="1:100", source="Architect drop")
     wid = w["drawing_id"]
-    assert "document-level" in w["say"].lower() and "model" in w["say"].lower()
+    assert "document level" in w["say"].lower() and "model" in w["say"].lower()
     with pytest.raises(Exception) as ex:
         D.rule_add(T, "front_setback", "Front setback min", 3.0, "m", clause="", source="")
     assert "Clause" in str(ex.value) or "clause" in str(ex.value)
@@ -319,7 +319,7 @@ def test_drawqa_rules_checks_review_pack(cst, env):
         D.check(T, wid, "height_limit", declared=15)
     assert "rule_add" in str(ex.value)                              # no rule, no check, no guess
     rp = D.review_pack(T, wid)
-    assert rp["breaches"] == 2 and rp["file"]["name"].endswith(".pdf") and "khaali" in rp["say"]
+    assert rp["breaches"] == 2 and rp["file"]["name"].endswith(".pdf") and "sign line is empty" in rp["say"]
     D.dwg_mark(T, wid, "returned", note="setback note to architect")
     d = D.day(T)
     assert d["drawings"] == 1 and d["checks"] == 3 and d["breaches"] == 2
@@ -334,7 +334,7 @@ def test_ehs_permits_and_toolbox(cst, env):
     assert "SAFETY OFFICER" in p["say"]
     with pytest.raises(Exception) as ex:
         Q.permit_issue(T, pid, issued_by="")
-    assert "naam" in str(ex.value)
+    assert "name" in str(ex.value)
     i = Q.permit_issue(T, pid, issued_by="Smt. Jadhav (Safety Officer)")
     assert "ISSUED" in i["say"] and "Jadhav" in i["say"]
     tb = Q.toolbox_log(T, "Tower B", "height work - full body harness", attendees=18, gang="Dooley")

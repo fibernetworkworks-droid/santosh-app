@@ -54,9 +54,9 @@ def test_tenants_kept_apart_and_live_merged(qdir):
 def test_grade_rules():
     assert cq.grade(cq.compact(_stats("a")))["grade"] == "good"
     g = cq.grade(cq.compact(_stats("b", end="error")))
-    assert g["grade"] == "bad" and any("tooti" in p for p in g["problems"])
+    assert g["grade"] == "bad" and any("broke midway" in p for p in g["problems"])
     g = cq.grade(cq.compact(_stats("c", lat=[3000, 3200, 2900])))
-    assert g["grade"] == "bad" and any("der se" in p for p in g["problems"])
+    assert g["grade"] == "bad" and any("late" in p for p in g["problems"])
     g = cq.grade(cq.compact(_stats("d", goaway_forced=1)))
     assert g["grade"] == "ok"
     g = cq.grade({**cq.compact(_stats("e")), "rating": False})

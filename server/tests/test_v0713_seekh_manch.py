@@ -323,7 +323,7 @@ def test_save_video_and_hint(env):
     assert rows[0]["watch_out"] and "OTP" in rows[0]["watch_out"][0]
     # hint() finds it on a matching ask (word overlap: semantic off in tests demands >= 0.55)
     text, ids = pr.hint("default", "GST return bharne ka tareeka wala kaam")
-    assert text and rows[0]["id"] in ids and "dhyan" in text
+    assert text and rows[0]["id"] in ids and "watch out" in text
 
 
 def test_save_video_masks_digits_and_rejects_empty(env):

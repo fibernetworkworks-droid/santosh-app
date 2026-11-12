@@ -94,7 +94,7 @@ def test_draft_check_create_paused_start_needs_confirm(M, tmp_path):
     _link(M)
     d = M.new_draft(T, "whatsapp", text="Asha Store Akola: saree sale. WhatsApp par message kijiye.", headline="Saree sale",
                     cities=["Akola"], daily=400, days=3)
-    assert d["page_id"] == "5551112223" and any("photo" in p for p in d["problems"])
+    assert d["page_id"] == "5551112223" and any("picture" in p for p in d["problems"])
     with pytest.raises(M.MetaAdsError):
         M.create(T, d["id"])                                     # problems block Create
     d = M.set_draft(T, d["id"], image_asset=_asset(tmp_path))

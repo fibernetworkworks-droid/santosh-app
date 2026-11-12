@@ -98,7 +98,7 @@ def test_voicecheck_names_affective_as_the_cause(env, monkeypatch):
     assert res["steps"][0]["ok"] is True and res["steps"][0]["without_affective"] is True
     assert seen[0].enable_affective_dialog is True and seen[1].enable_affective_dialog is None
     assert voice._AFFECTIVE["ok"] is False
-    assert "enable_affective_dialog" in res["say"] and "poori call setup" in res["say"]
+    assert "enable_affective_dialog" in res["say"] and "full call setup" in res["say"]
 
 
 def test_voicecheck_total_failure_says_model_or_key(env, monkeypatch):

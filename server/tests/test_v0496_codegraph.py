@@ -202,7 +202,7 @@ def test_file_and_size_caps(tmp_path):
 
 def test_github_404_and_private_message(lane):
     cg, _, _ = lane
-    with pytest.raises(cg.GraphError, match="Developer Sahayak"):
+    with pytest.raises(cg.GraphError, match="Developer Assistant"):
         cg.build("t1", "ghost/ghost")
 
 
@@ -252,7 +252,7 @@ def test_kill_switch(lane):
     mp.setenv("GRAPHIFY_ENABLED", "false")
     from app.config import get_settings
     get_settings.cache_clear()
-    with pytest.raises(cg.GraphError, match="band"):
+    with pytest.raises(cg.GraphError, match="switched off"):
         cg.build("t1", "foo/bar")
 
 
