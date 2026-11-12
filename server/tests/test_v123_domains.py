@@ -167,7 +167,7 @@ def test_ideas_and_prices_need_her_account_and_show_renewal(dom_env):
     ideas = DM.suggest(T, v["id"])
     names = [x["domain"] for x in ideas["ideas"]]
     assert names and names[0] == "sharmasweets.in" and "sharmasweets.com" not in names
-    assert "₹" in ideas["say"] and "saal" in ideas["say"]
+    assert "₹" in ideas["say"] and "/year" in ideas["say"]
     assert DM.ideas("SBI Sweets") == [] and DM.ideas("Jio Mobile Point") == []    # look-alike names refused
 
 
@@ -203,7 +203,7 @@ def test_buy_only_on_her_tap_kyc_and_reminders(dom_env):
     DM.tick()
     DM.tick()
     ren = [e for e in _events("site_domain") if e.get("kind") == "domain_reminder" and "renew" in e["say"]]
-    assert len(ren) == 1 and ("20 din" in ren[0]["say"] or "19 din" in ren[0]["say"])
+    assert len(ren) == 1 and ("20 days" in ren[0]["say"] or "19 days" in ren[0]["say"])
 
 
 def test_cloudflare_registration_polls_price_change_and_ceiling(dom_env, monkeypatch):
@@ -227,7 +227,7 @@ def test_cloudflare_registration_polls_price_change_and_ceiling(dom_env, monkeyp
     assert [d for d in DM.domains(T) if d["domain"] == "sharmasweetsakot.com" and d["status"] == "registered"]
     monkeypatch.setenv("SITES_DOMAIN_MONTH_INR", "1500")         # this month already ~1,056 spent
     get_settings.cache_clear()
-    with pytest.raises(DM.DomainError, match="seema"):
+    with pytest.raises(DM.DomainError, match="limit"):
         DM.buy_request(T, v["id"], "sharmasweetsonline.com")
     with pytest.raises(DM.DomainError):
         DM.buy_request(T, v["id"], "sharmasweets.com")           # taken

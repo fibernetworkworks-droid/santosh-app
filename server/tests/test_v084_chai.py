@@ -138,8 +138,8 @@ def test_plan_from_menu_history_weather_and_stock_orders(env):
     sups = {o["supplier"]: o for o in p["orders"]}
     assert set(sups) == {"Gopal doodhwala", "Blinkit"}
     assert sups["Gopal doodhwala"]["wa_link"].startswith("https://wa.me/919822011111?text=")
-    assert "14 litre doodh" in sups["Gopal doodhwala"]["text"] and sups["Gopal doodhwala"]["status"] == "pending"
-    assert any("baarish" in r for r in p["reasons"]) and _events("chai_plan")
+    assert "14 litres of milk" in sups["Gopal doodhwala"]["text"] and sups["Gopal doodhwala"]["status"] == "pending"
+    assert any("rain" in r for r in p["reasons"]) and _events("chai_plan")
     # a new plan replaces the unanswered cards
     p2 = C.plan_tomorrow(T, conv=conv)
     assert p2["cups"] == 200 and len(p2["orders"]) == 2

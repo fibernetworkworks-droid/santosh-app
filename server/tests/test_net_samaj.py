@@ -72,7 +72,7 @@ def test_samaj_join_post_alerts_and_checks(env, brain):
     assert sam.alert_match("swati", "fraud_apk", sha)["community"] == "Maharashtra ISPs"
     sam.post("default", c["cid"], "alert", {"type": "fraud_link", "value": "https://bsnl-bill-pay.top/x"})
     lc = share._link_check("https://pay.bsnl-bill-pay.top/login", "swati")
-    assert lc["verdict"] == "danger" and "Hoola Samaj" in lc["notes"][0]
+    assert lc["verdict"] == "danger" and "Hoola community" in lc["notes"][0]
     sam.post("default", c["cid"], "question", {"text": "Syrotech GPON par ONT baar baar drop ho raha hai, kya karein?"})
     q = sam.detail("swati", c["cid"], "question")["items"][0]
     assert q["author"] == "Meghana's Santosh"

@@ -231,7 +231,7 @@ def test_whatsapp_and_linkedin_routes(pf):
         st = parse_qs(urlparse(url).query)["s"][0]
         page = c.get(f"/api/social/whatsapp/start?s={st}")
         assert page.status_code == 200 and "Continue with Facebook" in page.text
-        assert "purana" in c.get("/api/social/whatsapp/start?s=nope").text
+        assert "expired" in c.get("/api/social/whatsapp/start?s=nope").text
         assert c.get("/api/social/whatsapp/es.js").headers["content-type"].startswith("application/javascript")
         assert c.post("/api/social/whatsapp/finish", json={"state": "bad", "code": "WACODE"}).status_code == 400
         ok = c.post("/api/social/whatsapp/finish", json={"state": st, "code": "WACODE", "waba_id": "209876543210987", "phone_number_id": "109876543210987"})

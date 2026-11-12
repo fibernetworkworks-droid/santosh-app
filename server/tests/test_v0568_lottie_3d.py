@@ -58,7 +58,7 @@ def test_her_lottie_file_is_checked_before_it_is_kept(tmp_path):
     doc, notes = LT.check(json.dumps(good).encode())
     assert "$bm_rt" not in json.dumps(doc) and "x" not in doc["layers"][0]["ks"]["o"]
     assert any("expressions were removed" in n for n in notes)
-    for bad, why in ((b"not json", "JSON"), (json.dumps({"v": "5"}).encode(), "zaroori"),
+    for bad, why in ((b"not json", "JSON"), (json.dumps({"v": "5"}).encode(), "missing"),
                      (json.dumps({**LT.builtin("dots"), "assets": [{"id": "i", "p": "https://x.example/a.png", "u": ""}]}).encode(), "server"),
                      (b"{" + b" " * 1_600_000 + b"}", "1.5 MB")):
         with pytest.raises(LT.LottieError) as e:

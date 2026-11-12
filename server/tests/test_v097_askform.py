@@ -92,4 +92,4 @@ def test_cancel_and_live_call_route(env, monkeypatch):
         assert r.json()["went_to"] == "call" and "Akola" in told[0][1]
         v2 = askform.create("default", conv, "Aur", [{"label": "A"}, {"label": "B"}, {"label": "C"}])
         assert c.post(f"/api/forms/{v2['id']}/cancel").json()["status"] == "cancelled"
-        assert "band kiya" in told[-1][1]
+        assert "Form closed" in told[-1][1]

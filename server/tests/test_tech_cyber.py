@@ -335,7 +335,7 @@ def test_incident_note_and_cert_in(cy):
     v2 = S.get_incident(T, v["id"])
     assert v2["dpdp"] and "72" in v2["dpdp"]["say"] and v2["timeline"][-1]["at"] >= v2["timeline"][0]["at"]
     title, text = S.note_text(T, v["id"])
-    assert "Newtika Pvt Ltd" in text and "## CERT-In" in text and "Root ka password badla" in text and "## Seekh" in text
+    assert "Newtika Pvt Ltd" in text and "## CERT-In" in text and "Root ka password badla" in text and "## Lessons" in text
     from app import chatfiles
     stored = []
     import app.chatfiles as cf

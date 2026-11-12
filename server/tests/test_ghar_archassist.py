@@ -152,7 +152,7 @@ def test_submission_gate(ar):
     S = ar
     S.save_project(T, "Shop block", area="600", road_width_m=9)
     sub = S.submission_request(T, "P-001", "building_permission")
-    assert sub["blockers"] and any("CoA" in b for b in sub["blockers"]) and any("Area statement" in b for b in sub["blockers"])
+    assert sub["blockers"] and any("CoA" in b for b in sub["blockers"]) and any("area statement" in b for b in sub["blockers"])
     with pytest.raises(S.ArchError):
         S.decide_submission(T, sub["id"], True, sub["hash"], by_tap=True)       # blockers stay
     S.save_settings(T, coa_no="CA/2010/1111")
