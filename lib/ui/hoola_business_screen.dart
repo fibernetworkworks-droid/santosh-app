@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'hoola_cards.dart';
 
 const _cats = {
@@ -179,16 +180,10 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
   @override
   Widget build(BuildContext context) {
     final b = _biz;
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Hoola Business'),
-          backgroundColor: Colors.transparent,
-          bottom: const TabBar(tabs: [Tab(text: 'Dhoondhiye'), Tab(text: 'My business')]),
-        ),
-        body: Aurora(
-          child: TabBarView(children: [
+    return DeskTabsScaffold(
+          title: 'Hoola Business',
+          tabs: ['Dhoondhiye', 'My business'],
+          pages: () => [
             RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -258,9 +253,7 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
                 ],
               ]),
             ),
-          ]),
-        ),
-      ),
-    );
+          ],
+        );
   }
 }

@@ -11,6 +11,7 @@ import '../native.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -101,31 +102,18 @@ class _BrandScreenState extends State<BrandScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: Text('${app.aName} · Brand designer'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Make'),
-              Tab(text: 'Designs'),
-              Tab(text: 'Brand kit'),
-              Tab(text: 'Festival'),
-            ]),
-          ),
-          body: Aurora(
-            child: _d == null
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(children: [
-                    _MakeTab(app: app, d: _d!, onDone: _load),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Brand designer',
+          tabs: ['Make', 'Designs', 'Brand kit', 'Festival'],
+          loading: _d == null,
+          onRefresh: _load,
+          pages: () => [
+            _MakeTab(app: app, d: _d!, onDone: _load),
                     _DesignsTab(app: app, designs: _list(_d!['designs']), onChanged: _load),
                     _KitTab(app: app, kit: _map(_d!['kit']), onChanged: _load),
                     _FestTab(app: app, fests: _list(_d!['festivals']), onDone: _load),
-                  ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 // ---------------------------------------------------------------- Banao

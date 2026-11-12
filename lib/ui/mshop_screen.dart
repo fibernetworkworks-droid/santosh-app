@@ -12,6 +12,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 double? _num(String t) => double.tryParse(t.trim().replaceAll(',', '').replaceAll('₹', '').trim());
@@ -76,38 +77,24 @@ class MShopScreen extends StatelessWidget {
   final Santosh app;
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: const Text('Mobile shop assistant'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Today'),
-              Tab(text: 'Repair'),
-              Tab(text: 'Recharge'),
-              Tab(text: 'Warranty'),
-              Tab(text: 'Rules'),
-            ]),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Mobile shop',
+          tabs: ['Today', 'Repair', 'Recharge', 'Warranty', 'Rules'],
+          fab: FloatingActionButton.extended(
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.add_rounded),
             label: const Text('New repair', style: TextStyle(fontWeight: FontWeight.w800)),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MShopNewJobPage(app: app))),
           ),
-          body: Aurora(
-            child: TabBarView(children: [
-              _TodayTab(app: app),
+          pages: () => [
+            _TodayTab(app: app),
               _JobsTab(app: app),
               _RechargeTab(app: app),
               _WarrantyTab(app: app),
               _RulesTab(app: app),
-            ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 class MShopJobTile extends StatelessWidget {

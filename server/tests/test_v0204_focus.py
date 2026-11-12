@@ -186,4 +186,4 @@ def test_ensure_focus_table_idempotent(env):
 # ---------------- 3. the release pin ----------------
 
 def test_version(env):
-    assert APP_VERSION == "0.869.0"
+    assert APP_VERSION == "0.870.0"

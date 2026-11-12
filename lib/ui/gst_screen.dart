@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -86,29 +87,16 @@ class GstScreen extends StatelessWidget {
   const GstScreen({super.key, required this.app});
   final Santosh app;
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: const Text('GST sahayak'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
-              Tab(text: 'Clients'),
-              Tab(text: 'Returns'),
-              Tab(text: 'Notice'),
-            ]),
-          ),
-          body: Aurora(
-            child: TabBarView(children: [
-              _TodayTab(app: app),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'GST',
+          tabs: ['Aaj', 'Clients', 'Returns', 'Notice'],
+          pages: () => [
+            _TodayTab(app: app),
               _ClientsTab(app: app),
               _ReturnsTab(app: app),
               _NoticesTab(app: app),
-            ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 // ---------------------------------------------------------------- Aaj

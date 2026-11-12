@@ -12,6 +12,7 @@ import '../state.dart';
 import 'attach.dart';
 import 'employees_screen.dart' show MetaAdsScreen;
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 double _d(dynamic v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
@@ -123,31 +124,18 @@ class _AdsScreenState extends State<AdsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: Text('${app.aName} · Performance marketer'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Hisaab'),
-              Tab(text: 'Change'),
-              Tab(text: 'Copy'),
-              Tab(text: 'Niyam'),
-            ]),
-          ),
-          body: Aurora(
-            child: _d0 == null
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(children: [
-                    _ReportTab(app: app, d: _d0!, busy: _busy, onImport: _import, run: _run),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Performance marketer',
+          tabs: ['Hisaab', 'Change', 'Copy', 'Niyam'],
+          loading: _d0 == null,
+          onRefresh: _load,
+          pages: () => [
+            _ReportTab(app: app, d: _d0!, busy: _busy, onImport: _import, run: _run),
                     _ChangesTab(app: app, changes: _list(_d0!['changes']), run: _run, onChanged: _load),
                     _CopyTab(app: app, tests: _list(_d0!['tests']), onChanged: _load),
                     _RulesTab(app: app, st: _map(_d0!['settings']), onChanged: _load),
-                  ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 // ---------------------------------------------------------------- Hisaab

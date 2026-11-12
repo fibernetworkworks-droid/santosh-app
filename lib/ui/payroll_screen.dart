@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'gst_screen.dart' show rs;
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -67,24 +68,13 @@ class PayrollScreen extends StatelessWidget {
   const PayrollScreen({super.key, required this.app});
   final Santosh app;
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: const Text('Payroll officer'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Today'),
-              Tab(text: 'Log'),
-              Tab(text: 'Salary'),
-              Tab(text: 'Rules'),
-            ]),
-          ),
-          body: Aurora(
-            child: TabBarView(children: [_TodayTab(app: app), _PeopleTab(app: app), _RunsTab(app: app), _RulesTab(app: app)]),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Payroll officer',
+          tabs: ['Today', 'Log', 'Salary', 'Rules'],
+          pages: () => [
+            _TodayTab(app: app), _PeopleTab(app: app), _RunsTab(app: app), _RulesTab(app: app),
+          ],
+        );
 }
 
 class _TodayTab extends StatefulWidget {

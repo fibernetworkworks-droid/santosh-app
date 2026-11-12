@@ -3328,3 +3328,21 @@ The second desk family moves onto DeskScaffold. These are the 25 desks drawn as 
 **Left for later waves:** the ~90 old screens with other layouts (DefaultTabController / TabBar desks such as deal, darzi, kalam, gst, telecall, office; single-page desks; the Notebook) - they already draw flat through the desk frame.
 
 **NOT VERIFIED on a real phone.**
+
+
+## v0.870.0 R8 DESKS wave 3 - the swipe-tab desks (owner: "GO R8 WAVE 3")
+
+The 21 desks that drew their own `DefaultTabController` + `TabBar` (Buy and sell, Tailor, Mobile shop, Content writer,
+GST, Telecaller, Office manager, Tea stall, Financial analyst, Payroll officer, Brand designer, Performance marketer,
+Hoola Network, Friends, Consents / papers / outside agents, AI employee, Typist and translator, App designer, Website,
+Hoola Business) now stand in `DeskTabsScaffold` (lib/ui/desk/desk_kit.dart): header (English title, the desk's own
+actions, Refresh when the desk has a reload), `DeskTabBar` (pill tabs in the new design, underline tabs in Night Glass,
+labels through `deskWord`), pages you still swipe between (same TabBarView), one pull over every page for list desks
+(`pullAll`), and the first-load state `DeskLoading` (spinner -> after 12 s "Still loading" + Try again; a desk error =
+"Could not load" + the error + Try again). The Notebook keeps its own TabController and uses `DeskTabBar(controller:)`.
+DeskScaffold's loading now uses the same `DeskLoading`. Converted by a script that parses the build by bracket matching
+and refuses what it does not recognise (2 by hand: Employee, Hoola Network). Titles: "${app.aName} ·" prefixes
+dropped, "sahayak" names replaced (Tailor, GST, Tea stall). New deskWord entries: Galla -> Cash box, Kharcha ->
+Spending, Dhoondhiye -> Find. Tests: desk_kit_test (no TabBar / DefaultTabController outside the kit, >= 20 desks,
+English titles; widget test of the frame: pill tabs, tap + swipe, error + Try again, no blur); CI picture
+47_desk_tabs. NOT VERIFIED on a real phone. Still to move: single-page desks and other layouts (~70 screens).

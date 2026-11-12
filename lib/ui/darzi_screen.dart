@@ -11,6 +11,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 double? _num(String t) => double.tryParse(t.trim().replaceAll(',', '').replaceAll('₹', '').replaceAll('Rs', '').trim());
@@ -85,38 +86,24 @@ class DarziScreen extends StatelessWidget {
   final Santosh app;
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: const Text('Darzi sahayak'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Today'),
-              Tab(text: 'Orders'),
-              Tab(text: 'Customer'),
-              Tab(text: 'Price'),
-              Tab(text: 'Rules'),
-            ]),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Tailor',
+          tabs: ['Today', 'Orders', 'Customer', 'Price', 'Rules'],
+          fab: FloatingActionButton.extended(
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.add_rounded),
             label: const Text('New order', style: TextStyle(fontWeight: FontWeight.w800)),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DarziNewOrderPage(app: app))),
           ),
-          body: Aurora(
-            child: TabBarView(children: [
-              _TodayTab(app: app),
+          pages: () => [
+            _TodayTab(app: app),
               _OrdersTab(app: app),
               _CustomersTab(app: app),
               _PricesTab(app: app),
               _RulesTab(app: app),
-            ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 // ---------------------------------------------------------------- one order in a list

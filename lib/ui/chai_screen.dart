@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 double? _num(String t) => double.tryParse(t.trim().replaceAll(',', '').replaceAll('₹', '').trim());
@@ -46,24 +47,16 @@ class ChaiScreen extends StatelessWidget {
   final Santosh app;
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: const Text('Chai stall sahayak'),
-            bottom: const TabBar(tabs: [Tab(text: 'Today'), Tab(text: 'Tomorrow'), Tab(text: 'Galla'), Tab(text: 'Menu')]),
-          ),
-          body: Aurora(
-            child: TabBarView(children: [
-              _TodayTab(app: app),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Tea stall',
+          tabs: ['Today', 'Tomorrow', 'Galla', 'Menu'],
+          pages: () => [
+            _TodayTab(app: app),
               _TomorrowTab(app: app),
               _GallaTab(app: app),
               _MenuTab(app: app),
-            ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 Future<void> _addCash(BuildContext context, Santosh app) async {

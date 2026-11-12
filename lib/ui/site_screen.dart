@@ -13,6 +13,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'site_blog.dart';
 import 'site_dash.dart';
 import 'site_hosting.dart';
@@ -421,22 +422,18 @@ class _SiteScreenState extends State<SiteScreen> {
   Widget build(BuildContext context) {
     final sites = _list(_d?['sites']);
     final lib = _map(_d?['library']);
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('${app.aName} · Website'),
-          bottom: const TabBar(tabs: [Tab(text: 'My websites'), Tab(text: 'Ideas (1 lakh)')]),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
+    return DeskTabsScaffold(
+          title: 'Website',
+          tabs: ['My websites', 'Ideas (1 lakh)'],
+          fab: FloatingActionButton.extended(
           backgroundColor: C.accent,
           foregroundColor: C.onAccent,
           onPressed: () => _newSite(context),
           icon: const Icon(Icons.add_rounded),
           label: const Text('New website'),
         ),
-        body: TabBarView(children: [
-          RefreshIndicator(
+          pages: () => [
+            RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
               if (_d == null) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())),
@@ -462,9 +459,8 @@ class _SiteScreenState extends State<SiteScreen> {
             ]),
           ),
           SiteIdeas(app: app, counts: lib, onPick: (brief) => _newSite(context, brief: brief)),
-        ]),
-      ),
-    );
+          ],
+        );
   }
 
   Future<void> _newSite(BuildContext context, {String brief = ''}) async {

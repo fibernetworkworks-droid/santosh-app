@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../state.dart';
 import '../voice_recorder.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'notebook_viewers.dart';
 
 Color nbColor(Object? hex) {
@@ -503,17 +504,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> with Single
             ],
           ),
         ],
-        bottom: TabBar(
-          controller: _tabs,
-          indicatorColor: C.accent,
-          labelColor: C.accent,
-          unselectedLabelColor: C.muted,
-          tabs: [
-            Tab(text: 'Sources ($on/${srcs.length})'),
-            const Tab(text: 'Chat'),
-            const Tab(text: 'Studio'),
-          ],
-        ),
+        bottom: DeskTabBar(controller: _tabs, tabs: ['Sources ($on/${srcs.length})', 'Chat', 'Studio']),
       ),
       body: Aurora(
         child: d == null

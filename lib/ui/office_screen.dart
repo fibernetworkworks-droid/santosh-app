@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 double? _num(String t) => double.tryParse(t.trim().replaceAll(',', '').replaceAll('₹', '').replaceAll('Rs', '').trim());
@@ -109,29 +110,15 @@ class _OfficeScreenState extends State<OfficeScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 8,
-        initialIndex: widget.tab,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: Text('${app.aName} · Office manager'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
-              Tab(text: 'Goods'),
-              Tab(text: 'Repair'),
-              Tab(text: 'Renewal'),
-              Tab(text: 'Team'),
-              Tab(text: 'Kharcha'),
-              Tab(text: 'Note'),
-              Tab(text: 'Niyam'),
-            ]),
-          ),
-          body: Aurora(
-            child: _d == null
-                ? Center(child: _err != null ? Padding(padding: const EdgeInsets.all(24), child: Text(_err!, style: const TextStyle(color: C.bad))) : const CircularProgressIndicator())
-                : TabBarView(children: [
-                    _wrap(_today()),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Office manager',
+          tabs: ['Aaj', 'Goods', 'Repair', 'Renewal', 'Team', 'Kharcha', 'Note', 'Niyam'],
+          initialIndex: widget.tab,
+          loading: _d == null,
+          error: _err,
+          onRefresh: _load,
+          pages: () => [
+            _wrap(_today()),
                     _wrap(_stock()),
                     _wrap(_tickets()),
                     _wrap(_renewals()),
@@ -139,10 +126,8 @@ class _OfficeScreenState extends State<OfficeScreen> {
                     _wrap(_money()),
                     _NoteTab(app: app),
                     _wrap(_rules()),
-                  ]),
-          ),
-        ),
-      );
+          ],
+        );
 
   Widget _wrap(List<Widget> children) => RefreshIndicator(
         onRefresh: _load,

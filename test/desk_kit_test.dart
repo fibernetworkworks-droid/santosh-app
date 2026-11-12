@@ -109,4 +109,60 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);   // the old look is unchanged when the switch is off
     await t.pumpWidget(const SizedBox());
   });
+
+  test('wave 3: every swipe-tab desk stands in DeskTabsScaffold, no TabBar of its own, English titles', () {
+    final files = [for (final f in Directory('lib/ui').listSync().whereType<File>()) if (f.path.endsWith('.dart')) f];
+    final desks = [for (final f in files) if (f.readAsStringSync().contains('DeskTabsScaffold(')) f];
+    expect(desks.length, greaterThanOrEqualTo(20));   // + the Notebook on DeskTabBar
+    for (final f in desks) {
+      final s = f.readAsStringSync();
+      expect(s.contains("import 'desk/desk_kit.dart';"), isTrue, reason: f.path);
+      final i = s.indexOf('DeskTabsScaffold(');
+      final title = RegExp(r"title: (.*),\n").firstMatch(s.substring(i))?.group(1) ?? '';
+      expect(title.toLowerCase().contains('sahayak'), isFalse, reason: '${f.path} title $title');
+      expect(title.contains('aName} ·'), isFalse, reason: '${f.path} title $title');
+    }
+    // nothing outside the kit draws a TabBar or a DefaultTabController of its own any more
+    final left = [
+      for (final f in files)
+        if (RegExp(r"\bTabBar\(|DefaultTabController\(").hasMatch(f.readAsStringSync())) f.path
+    ];
+    expect(left, isEmpty);
+    expect(deskWord('Galla'), 'Cash box');
+    expect(deskWord('Kharcha'), 'Spending');
+  });
+
+  testWidgets('swipe-tab frame: English pill tabs, swipe, error shows Could not load + Try again', (t) async {
+    NightGlass.flat.value = true;
+    var tries = 0;
+    String? err = 'Server did not answer';
+    late StateSetter set;
+    await t.pumpWidget(host(StatefulBuilder(builder: (context, s) {
+      set = s;
+      return DeskTabsScaffold(
+        title: 'Office manager',
+        tabs: const ['Aaj', 'Kharcha', 'Niyam'],
+        error: err,
+        onRefresh: () async => tries++,
+        pages: () => const [Center(child: Text('page today')), Center(child: Text('page money')), Center(child: Text('page rules'))],
+      );
+    })));
+    expect(find.text('Could not load'), findsOneWidget);
+    expect(find.text('Server did not answer'), findsOneWidget);
+    await t.tap(find.text('Try again'));
+    await t.pump();
+    expect(tries, 1);
+    set(() => err = null);
+    await t.pumpAndSettle();
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Spending'), findsOneWidget);
+    expect(find.text('page today'), findsOneWidget);
+    await t.tap(find.text('Rules'));
+    await t.pumpAndSettle();
+    expect(find.text('page rules'), findsOneWidget);
+    await t.fling(find.text('page rules'), const Offset(400, 0), 1000);
+    await t.pumpAndSettle();
+    expect(find.text('page money'), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
 }

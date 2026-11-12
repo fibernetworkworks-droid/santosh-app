@@ -12,6 +12,7 @@ import '../native.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -89,33 +90,19 @@ class _KalamScreenState extends State<KalamScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 5,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            title: Text('${app.aName} · Content writer'),
-            bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Write'),
-              Tab(text: 'Article'),
-              Tab(text: 'Ideas'),
-              Tab(text: 'Voice'),
-              Tab(text: 'Niyam'),
-            ]),
-          ),
-          body: Aurora(
-            child: _d == null
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(children: [
-                    _WriteTab(app: app, onDone: _load),
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Content writer',
+          tabs: ['Write', 'Article', 'Ideas', 'Voice', 'Niyam'],
+          loading: _d == null,
+          onRefresh: _load,
+          pages: () => [
+            _WriteTab(app: app, onDone: _load),
                     _PiecesTab(app: app, pieces: _list(_d!['pieces']), onChanged: _load),
                     _IdeasTab(app: app, onDone: _load),
                     _VoiceTab(app: app, st: _map(_d!['settings']), onChanged: _load),
                     _RulesTab(app: app, st: _map(_d!['settings']), onChanged: _load),
-                  ]),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 // ---------------------------------------------------------------- Likho

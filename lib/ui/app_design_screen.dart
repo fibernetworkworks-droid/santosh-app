@@ -11,6 +11,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'app_money.dart';
 import 'app_logic.dart';
 import 'app_safety.dart';
@@ -364,22 +365,18 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
   Widget build(BuildContext context) {
     final apps = _list(_d?['apps']);
     final lib = _map(_d?['library']);
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('${app.aName} · App designer'),
-          bottom: const TabBar(isScrollable: true, tabs: [Tab(text: 'My apps'), Tab(text: '1 crore ideas'), Tab(text: 'Briefs (1 lakh)')]),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
+    return DeskTabsScaffold(
+          title: 'App designer',
+          tabs: ['My apps', '1 crore ideas', 'Briefs (1 lakh)'],
+          fab: FloatingActionButton.extended(
           backgroundColor: C.accent,
           foregroundColor: C.onAccent,
           onPressed: () => _newApp(context),
           icon: const Icon(Icons.add_rounded),
           label: const Text('New app'),
         ),
-        body: TabBarView(children: [
-          RefreshIndicator(
+          pages: () => [
+            RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 100), children: [
               if (_d == null) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())),
@@ -406,9 +403,8 @@ class _AppDesignScreenState extends State<AppDesignScreen> {
           ),
           AppIdeaFinder(app: app, onStart: (id, words) => _startIdea(context, id, words)),
           _AppIdeas(app: app, counts: lib, onPick: (brief) => _newApp(context, brief: brief)),
-        ]),
-      ),
-    );
+          ],
+        );
   }
 
   Future<void> _startIdea(BuildContext context, String id, String words) async {

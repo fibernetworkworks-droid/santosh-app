@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'booking_screen.dart';
 import 'market_screen.dart';
 
@@ -1453,39 +1454,21 @@ class _DealsScreenState extends State<DealsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 10,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Buying and selling'),
-            backgroundColor: Colors.transparent,
-            bottom: TabBar(isScrollable: true, tabs: [
-              Tab(text: 'Purchase${_buy.isEmpty ? '' : ' (${_buy.length})'}'),
-              Tab(text: 'Sales${_sell.isEmpty ? '' : ' (${_sell.length})'}'),
-              Tab(text: 'Packing${_picks.isEmpty ? '' : ' (${_picks.length})'}'),
-              const Tab(text: 'Booking'),
-              const Tab(text: 'Comparison'),
-              const Tab(text: 'Standing'),
-              const Tab(text: 'Offers'),
-              const Tab(text: 'Stock'),
-              const Tab(text: 'Credit'),
-              const Tab(text: 'Rules'),
-            ]),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
+  Widget build(BuildContext context) => DeskTabsScaffold(
+          title: 'Buy and sell',
+          tabs: ['Purchase${_buy.isEmpty ? '' : ' (${_buy.length})'}', 'Sales${_sell.isEmpty ? '' : ' (${_sell.length})'}', 'Packing${_picks.isEmpty ? '' : ' (${_picks.length})'}', 'Booking', 'Comparison', 'Standing', 'Offers', 'Stock', 'Credit', 'Rules'],
+          loading: _loading,
+          onRefresh: _load,
+          pullAll: true,
+          fab: FloatingActionButton.extended(
             onPressed: _newList,
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.playlist_add_rounded),
             label: const Text('New list'),
           ),
-          body: Aurora(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: TabBarView(children: [
-                      _dealList(_buy, 'Send a list to a shop or wholesaler: "New list". Their Hoola will send a quote, and the order goes only when you say yes.'),
+          pages: () => [
+            _dealList(_buy, 'Send a list to a shop or wholesaler: "New list". Their Hoola will send a quote, and the order goes only when you say yes.'),
                       _dealList(_sell, 'When someone sends your Hoola a list, the quote will be ready here.'),
                       ListView(padding: const EdgeInsets.all(16), children: [
                         if (_picks.isEmpty)
@@ -1510,11 +1493,8 @@ class _DealsScreenState extends State<DealsScreen> {
                       _stockTab(),
                       _khataTab(),
                       _rulesTab(),
-                    ]),
-                  ),
-          ),
-        ),
-      );
+          ],
+        );
 }
 
 

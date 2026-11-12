@@ -253,6 +253,12 @@ void main() {
     await _shot(t, '45_desk_frame', (a) => const _SampleDesk());
   });
   testWidgets('46 desk frame (old look)', (t) => _shot(t, '46_desk_frame_old', (a) => const _SampleDesk()));
+  // v0.870 R8 wave 3: a swipe-tab desk (DeskTabsScaffold + pill DeskTabBar), flat in the new design
+  testWidgets('47 swipe-tab desk (new design)', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '47_desk_tabs', (a) => const _SampleTabsDesk());
+  });
 
   // v0.861 R2: the new frame (Main > Try the new design), light and dark
   void chats(Santosh a) => a.chatList = [
@@ -343,5 +349,26 @@ class _SampleDesk extends StatelessWidget {
               ),
             ),
         ]),
+      );
+}
+
+class _SampleTabsDesk extends StatelessWidget {
+  const _SampleTabsDesk();
+  @override
+  Widget build(BuildContext context) => DeskTabsScaffold(
+        title: 'Office manager',
+        tabs: const ['Aaj', 'Goods', 'Repair', 'Renewal', 'Team', 'Kharcha', 'Niyam'],
+        onRefresh: () async {},
+        fab: FloatingActionButton.extended(onPressed: () {}, icon: const Icon(Icons.add_rounded), label: const Text('New task')),
+        pages: () => [
+          for (var i = 0; i < 7; i++)
+            ListView(padding: const EdgeInsets.all(16), children: const [
+              Glass(child: Text('2 printer cartridges are low. The AMC for the AC ends on 30 Nov - renew or not?',
+                  style: TextStyle(fontSize: 14.5, height: 1.4))),
+              SizedBox(height: 12),
+              Caption('NEEDS YOU'),
+              Glass(child: Text('Spend Rs 4,200 on chairs: waiting for your yes.', style: TextStyle(fontSize: 14))),
+            ]),
+        ],
       );
 }
