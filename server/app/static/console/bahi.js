@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,24 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ Bills in, checked
+  function blTab() {
+    const c = OV.connections[0];
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Bills in, checked</h2>
+      <p class="ddk-fine first">Paste the text of a purchase bill (or give the id of a file you sent in chat). Hoola reads it, checks the numbers, the supplier's GSTIN and whether it is already in your books, and makes a <b>draft</b>. It enters your register only when you confirm.</p>
+      <div class="acd-row"><input id="acdBG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdBF" class="acd-in" placeholder="File id from chat (optional)"></div>
+      <textarea id="acdBT" class="acd-in" rows="5" style="width:100%;height:auto;padding:10px" placeholder="Paste the bill text here"></textarea>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="blread">Read + check</button><button type="button" class="btn ddk-mid" data-a="blrefresh">Show drafts</button></div></section>`;
+    if (!BL) return head;
+    const F = [['supplier_gstin', 'Supplier GSTIN'], ['number', 'Invoice no.'], ['date', 'Date (YYYY-MM-DD)'], ['taxable', 'Taxable'], ['cgst', 'CGST'], ['sgst', 'SGST'], ['igst', 'IGST'], ['total', 'Total']];
+    const cards = BL.map(b => `<section class="ddk-card acd-sec"><div class="acd-cardhd"><h3 class="ddk-h3">${esc(b.fields.party_name || 'Bill')} · ${esc(b.fields.number || 'no number')}</h3>
+        <span class="ddk-pill ${b.state === 'ready' ? 'ok' : 'warn'}">${b.state === 'ready' ? 'looks right' : 'needs you'} · ${Math.round(b.confidence * 100)}%</span></div>
+      <ul class="acd-kv">${b.checks.map(x => `<li><span>${esc(x.text)}</span><span class="ddk-pill ${x.level === 'error' ? 'warn' : 'mute'}">${esc(x.level)}</span></li>`).join('') || '<li><span>Every check passed.</span></li>'}</ul>
+      <div class="acd-row">${F.map(([k, l]) => `<input class="acd-in" data-b="${esc(b.id)}" data-k="${k}" title="${l}" placeholder="${l}" value="${esc(b.fields[k] || '')}">`).join('')}</div>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="blconfirm" data-i="${esc(b.id)}">Add to my register</button><button type="button" class="btn ddk-mid" data-a="blreject" data-i="${esc(b.id)}">Throw away</button></div></section>`).join('');
+    return head + (cards || '<p class="ddk-quiet">No drafts waiting.</p>');
   }
 
   // ------------------------------------------------------------------ e-Invoice + e-way bill
@@ -289,6 +307,27 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('bl')) {
+        try {
+          const refresh = async () => { BL = (await api('GET', '/api/bahi/bills?status=draft')).bills; draw(false); };
+          if (a === 'blrefresh') { await refresh(); return; }
+          if (a === 'blread') {
+            const fid = val('acdBF');
+            await api('POST', '/api/bahi/bills/intake', fid ? {gstin: val('acdBG').toUpperCase(), file_id: fid} : {gstin: val('acdBG').toUpperCase(), text: val('acdBT')});
+            await refresh(); return;
+          }
+          if (a === 'blreject') { await api('POST', `/api/bahi/bills/${encodeURIComponent(b.dataset.i)}/reject`, {}); await refresh(); return; }
+          if (a === 'blconfirm') {
+            const ov = {}; EL.querySelectorAll(`input[data-b="${b.dataset.i}"]`).forEach(i => { ov[i.dataset.k] = i.value; });
+            try { await api('POST', `/api/bahi/bills/${encodeURIComponent(b.dataset.i)}/confirm`, {overrides: ov}); toast('Added to your register.'); await refresh(); return; }
+            catch (e) {
+              if (!/^Fix first/.test(e.message) || !confirm(e.message + '\n\nAdd it anyway? This is recorded as accepted by you.')) throw e;
+              await api('POST', `/api/bahi/bills/${encodeURIComponent(b.dataset.i)}/confirm`, {overrides: ov, accept_errors: true}); toast('Added, with the problems recorded.'); await refresh(); return;
+            }
+          }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a.startsWith('ei')) {

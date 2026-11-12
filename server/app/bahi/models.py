@@ -160,7 +160,25 @@ class AccIrn(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
-TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn)
+class AccIntake(Base):
+    """A purchase bill that came in as a photo / PDF / text and was read (A6). Always a DRAFT until her tap; nothing enters the register silently."""
+    __tablename__ = "acc_intake"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("an"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    gstin: Mapped[str] = mapped_column(String(15), default="", index=True)          # HER GSTIN the bill is for
+    channel: Mapped[str] = mapped_column(String(16), default="upload")             # upload | whatsapp | email | chat | pc
+    file_id: Mapped[str] = mapped_column(String(60), default="")
+    text_hash: Mapped[str] = mapped_column(String(40), default="", index=True)
+    fields: Mapped[str] = mapped_column(Text, default="{}")
+    checks: Mapped[str] = mapped_column(Text, default="[]")
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    ocr_conf: Mapped[float] = mapped_column(Float, default=100.0)
+    status: Mapped[str] = mapped_column(String(12), default="draft")               # draft | confirmed | rejected
+    doc_id: Mapped[str] = mapped_column(String(40), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn, AccIntake)
 
 
 _READY: set[int] = set()

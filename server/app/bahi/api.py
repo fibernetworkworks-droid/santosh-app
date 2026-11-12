@@ -12,6 +12,7 @@ def make_router(require_key, current_tenant):
     from . import einv as EV
     from . import gstr1 as G1
     from . import gstr3b as G3
+    from . import intake as IN
     from . import itc as IT
     from . import register as REG
     from . import rules as RU
@@ -213,5 +214,31 @@ def make_router(require_key, current_tenant):
     def _evewbc(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _ev(EV.ewb_cancel, tenant, str(body.get("irn_id") or ""), str(body.get("reason_code") or "2"), str(body.get("remark") or ""),
                    body.get("confirm") is True)
+
+    def _in(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except IN.IntakeError as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/api/bahi/bills/intake", dependencies=[Depends(require_key)])
+    def _inake(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        g, ch = str(body.get("gstin") or ""), str(body.get("channel") or "upload")
+        if body.get("file_id"):
+            return _in(IN.intake_file, tenant, g, str(body["file_id"]), ch)
+        return _in(IN.intake_text, tenant, g, str(body.get("text") or ""), channel=ch)
+
+    @r.get("/api/bahi/bills", dependencies=[Depends(require_key)])
+    def _inlist(status: str = "draft", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"bills": IN.listing(tenant, status)}
+
+    @r.post("/api/bahi/bills/{bill_id}/confirm", dependencies=[Depends(require_key)])
+    def _inconf(bill_id: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        b = body or {}
+        return _in(IN.confirm, tenant, bill_id, b.get("overrides") if isinstance(b.get("overrides"), dict) else {}, b.get("accept_errors") is True)
+
+    @r.post("/api/bahi/bills/{bill_id}/reject", dependencies=[Depends(require_key)])
+    def _inrej(bill_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _in(IN.reject, tenant, bill_id)
 
     return r

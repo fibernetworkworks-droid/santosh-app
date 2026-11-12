@@ -2724,3 +2724,6 @@ Phase G7 of `docs/LANGGRAPH_TURN_PLAN.md`, the last phase.
 - Red check: every red of the full branch run re-run in the same order with CHAT_GRAPH=false and with the default. One graph-only red (test_v0187_realtime::test_the_turns_own_reply_stops_the_duplicate tested the old loop's _answered_since timing; now pins CHAT_GRAPH=false). All others (~457: missing Playwright browser, appmaker/site look tests, stale version / stamp / Hinglish pins, order interference) fail identically with the graph off.
 - Tests: test_g7_turngraph.py (7), test_g0 asserts the default is on; 145 passed across g0-g7, routines, v0187, voice on the rebased tree.
 - NOT VERIFIED: no real turn has run on the graph on the VPS yet. Not built: approval cards that pause the graph; Gemini Live's directly-called tools through the graph. A later delete of the old loop is listed in the plan doc section 6.
+
+## v0.845.0 BAHI A6 (built as 0.844)
+Purchase bills read locally into a cross-checked DRAFT (acc_intake); register only on her tap. WhatsApp / mailbox hand-off not wired.
