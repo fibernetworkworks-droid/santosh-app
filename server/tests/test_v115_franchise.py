@@ -40,7 +40,7 @@ def test_rules():
     assert R.tds_on_fee(40000, 20000, True)["tds"] == 6000.0           # crosses: whole year so far
     assert R.tds_on_fee(60000, 20000, True)["tds"] == 2000.0
     assert R.tds_on_fee(60000, 20000, False)["tds"] == 0
-    assert R.flags({"food": 36.0, "staff": 15.0}, R.TARGETS) == ["Raw material / food cost 36.0% (lakshya 32%)"]
+    assert R.flags({"food": 36.0, "staff": 15.0}, R.TARGETS) == ["Raw material / food cost 36.0% (target 32%)"]
     assert R.break_even(100000, 50) == 200000
     assert R.licence_status("fssai", date(2026, 11, 10), DAY)["state"] == "late_window"
     assert R.licence_status("fssai", date(2027, 1, 30), DAY)["state"] == "renew_now"

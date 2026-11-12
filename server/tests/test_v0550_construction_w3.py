@@ -197,7 +197,7 @@ def test_bim_clash_bcf_and_ids(cst):
     assert "assigned" in mark["say"]
     with pytest.raises(Exception) as ex:
         B.clash_mark(T, cid, "resolved", "")
-    assert "naam" in str(ex.value)
+    assert "name" in str(ex.value)
     bcf = B.bcf_export(T, r2["model_id"])
     assert bcf["topics"] == 1 and bcf["file"]["name"].endswith(".bcf")
     with pytest.raises(Exception):
@@ -356,7 +356,7 @@ def test_survey_volume_deviation_carpet(cst):
         S.deviations(T, "Shivneri", "Scan 2", [[0, 0, 10.0]], 25.0)
     with pytest.raises(Exception) as ex:
         S.carpet_new(T, "Shivneri", "A-402", "")
-    assert "Wall policy" in str(ex.value)
+    assert "wall policy" in str(ex.value)
     cp = S.carpet_new(T, "Shivneri", "A-402", "internal walls included at 100 mm", 30.0, "agreement page 4")
     S.carpet_room(T, cp["carpet_id"], "Living", 4.0, 3.5)
     S.carpet_room(T, cp["carpet_id"], "Bed 1", 3.6, 3.2)
@@ -504,10 +504,10 @@ def test_incident_flow(cst):
                    due="2026-11-10")
     with pytest.raises(Exception) as ex:
         Q.incident_close(T, inc["incident_id"], "wet surface + missing drainage slope", "")
-    assert "NAAM" in str(ex.value)                      # no findings without the safety head's name
+    assert "NAME" in str(ex.value)                      # no findings without the safety head's name
     with pytest.raises(Exception) as ex:
         Q.incident_close(T, inc["incident_id"], "", "Meera (safety head)")
-    assert "Root cause" in str(ex.value)
+    assert "root cause" in str(ex.value)
     with pytest.raises(Exception) as ex:
         Q.incident_close(T, inc["incident_id"], "wet surface", "Meera (safety head)")
     assert "corrective action" in str(ex.value)          # open actions block the close

@@ -151,7 +151,7 @@ def test_checker_refuses_what_would_break(droid_env):
                     "functions": [{"name": "f", "params": ["a"], "body": "return a + b", "tests": []},
                                   {"name": "g", "params": ["a"], "body": "return a * 2", "tests": [{"args": [2], "expect": 5}]}]}, sch)
     e = "\n".join(bad["errors"])
-    assert "'price'" in e and "ghoom" in e and "nope" in e and "'Z'" in e and "on:" in e and "'b'" in e
+    assert "'price'" in e and "in a loop" in e and "nope" in e and "'Z'" in e and "on:" in e and "'b'" in e
     del BE
 
 

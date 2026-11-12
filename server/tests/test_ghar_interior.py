@@ -60,7 +60,7 @@ def test_rules_measure_and_titles():
     half = R.room_areas(12, None, None)
     assert half["floor_sqft"] is None and set(half["missing"]) == {"chaudai", "unchai"}
     assert R.qty_from_area("wall", a, "sqft") == (429, "") and R.qty_from_area("floor", half, "sqft")[0] is None
-    assert "ikai" in R.qty_from_area("floor", a, "nos")[1]
+    assert "unit" in R.qty_from_area("floor", a, "nos")[1]
     assert R.kind_of("sliding wardrobe") == "wardrobe" and R.kind_of("gypsum false ceiling") == "false_ceiling"
     assert R.kind_of("modular kitchen tandem") == "kitchen" and R.style_of("Japandi vibe chahiye") == "japandi"
     assert R.title_problem("Ingle Architects") and not R.title_problem("Ingle Architects", "CA/2015/12345")
@@ -69,7 +69,7 @@ def test_rules_measure_and_titles():
     assert sum(R.split_amount(100001, R.DEFAULT_STAGES)) == 100001
     assert R.gst_split(1000, 18, True) == {"cgst": 90.0, "sgst": 90.0, "igst": 0.0, "tax": 180.0}
     assert R.gst_split(1000, 18, False)["igst"] == 180.0
-    assert R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [hataya] card [hataya]"
+    assert R.clean("OTP 123456 card 4111 1111 1111 1111") == "OTP [removed] card [removed]"
     tasks = [{"room": "Hall", "kind": "false_ceiling", "start": "2026-11-01", "end": "2026-11-10"},
              {"room": "Hall", "kind": "flooring", "start": "2026-11-05", "end": "2026-11-08"}]
     assert R.sequence_problems(tasks)
@@ -105,7 +105,7 @@ def test_boq_blanks_quote_gst_and_her_tap(it):
              {"room": "Master bedroom", "name": "Study table walnut", "unit": "nos", "qty": 1}]  # no rate anywhere = blank
     b = S.boq_set(T, p["id"], lines)["boq"]
     by = {x["name"]: x for x in b["lines"]}
-    assert by["False ceiling gypsum"]["qty"] == 137.5 and by["False ceiling gypsum"]["qty_src"].startswith("naap")
+    assert by["False ceiling gypsum"]["qty"] == 137.5 and by["False ceiling gypsum"]["qty_src"].startswith("measurements")
     assert by["Painting Royale 2 coats"]["qty"] == 429
     assert by["Study table walnut"]["rate"] is None and by["Study table walnut"]["blanks"] == ["rate"]
     assert len(b["blanks"]) == 1
@@ -193,7 +193,7 @@ def test_vendor_order_needs_her_tap_and_fingerprint(it, monkeypatch):
     line = [x for x in S.boq(T, p["id"])["lines"] if x["rate_code"] == "WD1"][0]
     with pytest.raises(S.InteriorError) as e:
         S.order_request(T, p["id"], "Raju", [{"line": line["id"]}])          # vendor's rate not given = refused
-    assert "vendor ka rate" in str(e.value)
+    assert "vendor's rate" in str(e.value)
     o = S.order_request(T, p["id"], "Raju", [{"line": line["id"], "rate": 1700}], start="2026-11-02", finish="2026-11-20")
     assert o["status"] == "needs_tap" and o["order"]["amount"] == 56 * 1700
     assert any("margin" in c for c in o["order"]["checks"])                 # vendor costs more than the client rate
@@ -277,10 +277,10 @@ def test_concept_schedule_snags_handover_forget_and_tick(it, monkeypatch):
     S.vendor_save(T, "Raju Carpenter", "carpenter", "9000011111")
     S.task_add(T, p["id"], "False ceiling", "false_ceiling", "Master bedroom", "", "2026-11-02", "2026-11-10")
     t2 = S.task_add(T, p["id"], "Wardrobe fitting", "wardrobe", "Master bedroom", "Raju", "2026-11-05", "2026-11-12")
-    assert t2["checks"] and any("pehle shuru" in x for x in t2["checks"])
+    assert t2["checks"] and any("starts before" in x for x in t2["checks"])
     p2 = S.project_save(T, "Other flat", client="X")["project"]
     clash = S.task_add(T, p2["id"], "Wardrobe", "wardrobe", "Bed", "Raju", "2026-11-10", "2026-11-11")
-    assert any("Vendor usi samay" in x for x in clash["checks"])
+    assert any("busy at the same time" in x for x in clash["checks"])
     sn = S.snag_add(T, p["id"], "Shutter alignment", "Master bedroom", "Raju", data=_jpeg_with_gps())["snag"]
     path = S.snag_file(T, sn["id"], sn["photos"][0]["id"])
     from PIL import Image

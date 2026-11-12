@@ -288,7 +288,7 @@ def test_tool_guide_run_batch_and_watermark(tool_env):
 
 
 def test_tool_refuses_bad_steps_and_non_photo_logo_before_touching_files(tool_env):
-    with pytest.raises(T.ToolError, match="nahi hai"):
+    with pytest.raises(T.ToolError, match="There is no op"):
         run(T.video_kit(tool_env.ctx, "run", file_ids=["land"], steps=[{"op": "explode"}]))
     with pytest.raises(T.ToolError, match="deepfake"):
         run(T.video_kit(tool_env.ctx, "run", file_ids=["land"], steps=[{"op": "remove_watermark"}]))

@@ -569,7 +569,7 @@ def test_owner_env_mailbox_over_imap(env, monkeypatch):
     arch = run("email_check", {"folder": "archive"}, ctx)["emails"][0]
     assert arch["id"].startswith("env~7@") and mi.split_id(arch["id"].split("~", 1)[1]) == ("[Gmail]/All Mail", "7")
     # a non-owner never sees the server's mailbox
-    with pytest.raises(ToolError, match="juda nahi"):
+    with pytest.raises(ToolError, match="not connected"):
         run("email_check", {}, Ctx("usr_other", "c2"))
     # wrong password gives a clear message
     monkeypatch.setenv("EMAIL_PASSWORD", "wrong")

@@ -408,7 +408,7 @@ def test_new_answer_alerts(fake):
     fake.answer(fid, {"Naam": "Asha"}, "2026-10-19T10:00:00Z", email="asha@x.in")
     fake.answer(fid, {"Naam": "Ravi"}, "2026-10-19T10:05:00Z")
     assert fs.alerts_tick() == 1
-    assert any("Form 'Admission' par 2 naye jawab" in (n or "") and "asha@x.in" in n for n in _notices(ctx.conversation_id))
+    assert any("Form 'Admission': 2 new responses" in (n or "") and "asha@x.in" in n for n in _notices(ctx.conversation_id))
     assert fs.alerts_tick() == 0                                               # told once
     assert run("form_alerts", {}, ctx)["watching"][0]["seen"] == 3
     run("form_alerts", {"form": fid, "on": False}, ctx)

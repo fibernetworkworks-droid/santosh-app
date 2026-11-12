@@ -185,7 +185,7 @@ def test_names_are_never_mixed_in_what_hoola_reads():
     descs = {t["name"]: t["description"] for t in tools.TOOLS}
     assert "[Mera PC]" not in " ".join(descs.values())
     assert "HER PC" in descs["pc_do"] and "NOT her PC" in descs["browse_web"] and "NOT her PC" in descs["computer_operator"]
-    assert tools.TOOL_LABELS["pc_do"].startswith("Aapke PC") and tools.TOOL_LABELS["browse_web"].startswith("Apne browser")
+    assert tools.TOOL_LABELS["pc_do"].startswith("Aapke PC") and tools.TOOL_LABELS["browse_web"].startswith("Viewing a website")
     from app.agent.prompts import SYSTEM
     assert "teen jagah" in SYSTEM and "aapka PC" in SYSTEM
 

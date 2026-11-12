@@ -129,7 +129,7 @@ def test_pmax_crops_photos_and_builds_one_asset_group(g2):
     from app.social import publish as SP
     D, G = g2
     d = G.new_draft(T, kind="pmax")
-    assert any("photo" in p for p in d["problems"]) and any("Logo" in p for p in d["problems"])
+    assert any("picture" in p for p in d["problems"]) and any("logo" in p for p in d["problems"])
     logo = SP.add_asset(T, Y._png(), "logo.png")
     pic = SP.add_asset(T, _photo(), "shop.jpg")
     v = G.set_draft(T, d["id"], logo_asset=logo["id"], images=[pic["id"]],

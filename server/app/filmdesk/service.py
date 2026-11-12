@@ -580,7 +580,7 @@ def person_add(tenant: str, name: str, role: str = "actor", phone: str = "", ema
     if phone and not p:
         raise FilmError("The mobile number must have 10 digits.")
     from ..photogen import problem
-    famous = bool(public_figure) or bool(problem(f"photo of {name}").startswith("Asli, jaane-maane"))
+    famous = bool(public_figure) or bool(problem(f"photo of {name}").startswith(("Asli, jaane-maane", "Hoola does not make pictures of real, well-known")))
     with _LOCK, session() as s:
         st = _st(s, tenant)
         st.person_seq += 1

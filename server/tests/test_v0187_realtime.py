@@ -165,12 +165,12 @@ def test_ephemeral_publish_stores_nothing_and_pushes_nowhere(env, monkeypatch):
 def test_say_line_rules_are_true_or_silent():
     from app.agent.say import line_for
     assert line_for("Email padha", "email_check", {"error": "x"}) == ""          # errors are the chip's job
-    assert line_for("Email padha", "email_check", {"items": [1, 2, 3]}) == "3 mails mile"
-    assert line_for("Web search", "web_search", {"count": 5}) == "5 results mile"
+    assert line_for("Email padha", "email_check", {"items": [1, 2, 3]}) == "3 mails found"
+    assert line_for("Web search", "web_search", {"count": 5}) == "5 results found"
     v = line_for("Video", "video_edit", {"url": "https://drive.google.com/file.mp4?x=1&token=y"})
-    assert v == "Video taiyar — drive.google.com" and "token" not in v           # query string never shown
+    assert v == "Video ready — drive.google.com" and "token" not in v           # query string never shown
     assert line_for("Kuch", "misc", {"note": "no facts here"}) == ""             # no guess, no line
-    assert line_for("Poster", "photo_banao", {"ok": True}) == "Poster ho gaya"
+    assert line_for("Poster", "photo_banao", {"ok": True}) == "Poster done"
 
 
 def test_feed_say_accumulates_and_kinds_say(env, monkeypatch):
