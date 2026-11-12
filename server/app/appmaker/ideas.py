@@ -325,7 +325,7 @@ TIER: dict[str, dict[str, Any]] = {
     "small_team": {"label": "Small team (up to 10)", "hi": "chhoti team", "words": ["chhoti team", "2 log", "5 log", "small team"],
                    "line": "small team (up to 10): few roles, everything in one place", "who": "team", "levels": 2},
     "mid_team": {"label": "Growing team (10-100)", "hi": "badhti team", "words": ["20 log", "50 log", "team leader", "supervisor"],
-                 "line": "badhti team (10-100): team leader, branch, manzoori", "who": "team", "levels": 3},
+                 "line": "growing team (10-100): team leader, branch, approvals", "who": "team", "levels": 3},
     "big_team": {"label": "Large organisation (100+)", "hi": "badi sanstha", "words": ["100 log", "500", "company", "sanstha", "zones",
                  "region", "head office"], "line": "large organisation (100+): zone > region > branch, full approval chain",
                  "who": "team", "levels": 5},

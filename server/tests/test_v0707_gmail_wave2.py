@@ -19,13 +19,13 @@ def test_settings_google_never_grants_say_so_not_reconnect():
         return httpx.Response(403, text='{"error":{"message":"Request had insufficient authentication scopes."}}')
     with pytest.raises(MailError) as e:
         _box(h)._req("POST", "/settings/forwardingAddresses", json={})
-    assert "Workspace" in str(e.value) and "dobara jodiye" not in str(e.value)
+    assert "Workspace" in str(e.value) and "reconnect it" not in str(e.value).lower()
     with pytest.raises(MailError) as e:
         _box(h)._req("DELETE", "/messages/abc")
     assert "Trash" in str(e.value)
     with pytest.raises(MailError) as e:
         _box(h)._req("GET", "/messages")
-    assert "dobara jodiye" in str(e.value)          # an ordinary missing scope still says reconnect
+    assert "reconnect" in str(e.value).lower()          # an ordinary missing scope still says reconnect
 
 
 def test_expired_login_is_not_connected(monkeypatch):
@@ -37,7 +37,7 @@ def test_expired_login_is_not_connected(monkeypatch):
     monkeypatch.setattr(A, "_http", C())
     with pytest.raises(NotConnected) as e:
         A._post("https://x", {})
-    assert "dobara jodiye" in str(e.value) and "invalid_grant" not in str(e.value)
+    assert "reconnect" in str(e.value).lower() and "invalid_grant" not in str(e.value)
 
 
 def test_ids_for_pages_and_caps():
