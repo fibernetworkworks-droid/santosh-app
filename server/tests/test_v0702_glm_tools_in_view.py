@@ -43,4 +43,4 @@ def test_tool_search_result_loads_the_tool_for_glm():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.849.0"
+    assert APP_VERSION == "0.850.0"

@@ -1,0 +1,16 @@
+{
+  "name": "annual",
+  "about": "Dates that come once a year or twice a year, for the calendar. A row marked unverified is shown as a warning and its date is never used to compute a penalty.",
+  "rows": [
+    {"id": "itc_cliff", "what": "Last day to take credit on LAST financial year's purchase invoices (and debit notes) in GSTR-3B", "month": 11, "day": 30, "fy_offset": 1,
+     "basis": "secondary-confirmed", "source": "section 16(4) CGST Act via docs/research/accounts/03_rules_and_calendar.md and bahi/rules/limits.json itc_last_date", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "the credit is lost for good"},
+    {"id": "advance_tax_1", "what": "Advance tax instalment 1 (15% of the year's tax)", "month": 6, "day": 15, "basis": "secondary-confirmed", "source": "docs/research/accounts/03_rules_and_calendar.md s7", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "interest for the shortfall"},
+    {"id": "advance_tax_2", "what": "Advance tax instalment 2 (45% cumulative)", "month": 9, "day": 15, "basis": "secondary-confirmed", "source": "docs/research/accounts/03_rules_and_calendar.md s7", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "interest for the shortfall"},
+    {"id": "advance_tax_3", "what": "Advance tax instalment 3 (75% cumulative)", "month": 12, "day": 15, "basis": "secondary-confirmed", "source": "docs/research/accounts/03_rules_and_calendar.md s7", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "interest for the shortfall"},
+    {"id": "advance_tax_4", "what": "Advance tax instalment 4 (100%)", "month": 3, "day": 15, "basis": "secondary-confirmed", "source": "docs/research/accounts/03_rules_and_calendar.md s7", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "interest for the shortfall"},
+    {"id": "msme1_h1", "what": "MSME-1 half-yearly return on payments overdue to micro and small suppliers (April to September)", "month": 10, "day": 31, "basis": "secondary-confirmed", "source": "docs/research/accounts/03_rules_and_calendar.md s7", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "ROC late fee"},
+    {"id": "msme1_h2", "what": "MSME-1 half-yearly return (October to March)", "month": 4, "day": 30, "basis": "secondary-confirmed", "source": "docs/research/accounts/03_rules_and_calendar.md s7", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "ROC late fee"},
+    {"id": "gstr9", "what": "GSTR-9 annual return (and 9C where it applies)", "month": 12, "day": 31, "fy_offset": 1, "basis": "unverified", "source": "remembered; the extended dates differ by year - read the GSTN advisory", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "late fee per day"},
+    {"id": "dir3", "what": "DIR-3 KYC for directors (companies only)", "month": 9, "day": 30, "basis": "unverified", "source": "remembered; read the MCA notice", "checked_on": "2026-11-12", "review_by": "2027-03-31", "if_missed": "DIN deactivated and a fee"}
+  ]
+}

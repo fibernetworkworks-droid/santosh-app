@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null, PY = null, CA = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null, PY = null, CA = null, ME = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['py', 'Pay + TDS'], ['ca', 'CA pack'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['py', 'Pay + TDS'], ['ca', 'CA pack'], ['me', 'Month-end'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'py' ? pyTab() : TAB === 'ca' ? caTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'py' ? pyTab() : TAB === 'ca' ? caTab() : TAB === 'me' ? meTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,30 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ Month-end
+  function meTab() {
+    const c = OV.connections[0];
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const mo = (ME && ME.month) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Month-end and year-end</h2>
+      <p class="ddk-fine first">A checklist ticked only from what Hoola really holds, the month's numbers, today's cash line, the dates ahead and the things worth a second look. Nothing here sends, files or pays.</p>
+      <div class="acd-row"><input id="acdMG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc((ME && ME.g) || (c ? c.gstin : ''))}"><input id="acdMM" class="acd-in" type="month" value="${esc(mo)}">
+        <button type="button" class="btn go ddk-mid" data-a="meload">Show</button><input id="acdMF" class="acd-in" placeholder="Year for GSTR-9, e.g. 2025-26" style="max-width:210px"><button type="button" class="btn ddk-mid" data-a="meg9">Compare GSTR-9 with the portal</button></div></section>`;
+    if (!ME || !ME.ck) return head;
+    const ICON = {done: '✓', todo: '○', info: 'i', na: '–'};
+    const ck = ME.ck.items.map(i => `<li><span><b>${ICON[i.state] || ''}</b> ${esc(i.title)}<br><small>${esc(i.why)}${i.due ? ' · due ' + esc(i.due) + (i.days_left != null ? ` (${i.days_left} days)` : '') : ''}</small></span>${i.tab && i.state === 'todo' ? `<button type="button" class="btn ddk-mid" data-a="metab" data-t="${esc(i.tab)}">Open</button>` : ''}</li>`).join('');
+    const m = ME.mis, dl = ME.daily;
+    const cal = ME.cal.items.map(x => `<li><span><b>${esc(x.date)}</b> · ${esc(x.what)}${x.warning_only ? ' <small>(date not confirmed)</small>' : ''}</span><span class="ddk-pill ${x.days_left < 0 ? 'warn' : x.days_left <= 7 ? 'warn' : 'mute'}">${x.days_left < 0 ? 'passed' : x.days_left + ' days'}</span></li>`).join('');
+    const sw = ME.sweep.flags.length ? `<ul class="acd-kv">${ME.sweep.flags.map(f => `<li><span>${esc(f.text)}</span><button type="button" class="btn ddk-mid" data-a="metab" data-t="${esc(f.fix)}">Open</button></li>`).join('')}</ul>` : '<p class="ddk-quiet">Nothing looks odd.</p>';
+    const g9 = ME.g9 ? `<section class="ddk-card acd-sec"><h3 class="ddk-h3">GSTR-9 ${esc(ME.g9.fy)} against the portal</h3>${ME.g9.compared ? `<ul class="acd-kv">${ME.g9.rows.map(r => `<li><span>${esc(r.head.toUpperCase())}: your register ${inr(r.register)} · portal ${inr(r.portal)}</span><span class="ddk-pill ${Math.abs(r.diff) > 1 ? 'warn' : 'ok'}">${Math.abs(r.diff) > 1 ? 'differs' : 'same'}</span></li>`).join('')}</ul>` : ''}<p class="ddk-fine">${esc(ME.g9.note)}</p></section>` : '';
+    return head + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">${esc(ME.month)} · ${ME.ck.done} of ${ME.ck.total} done</h3><ul class="acd-kv">${ck}</ul>${ME.ck.ready_to_close ? '<p class="ddk-note">Everything is done. Build the CA pack and close the month.</p>' : ''}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">The month in numbers</h3><div class="ddk-nums"><div><b>${inr(m.sales_taxable)}</b><span>sales (before tax)</span></div><div><b>${inr(m.purchases_taxable)}</b><span>purchases (before tax)</span></div><div><b>${inr(m.net_cash)}</b><span>net cash in the bank</span></div></div>
+        <ul class="acd-kv"><li><span>Owed to you</span><b>${inr(m.receivables)} (${inr(m.receivables_overdue)} overdue)</b></li><li><span>You owe</span><b>${inr(m.payables)} (${inr(m.payables_overdue)} overdue)</b></li></ul><p class="ddk-fine">${esc(m.margin_note)}</p></section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Today's cash line</h3><p>${esc(dl.text)}</p><p class="ddk-fine">${esc(dl.note)}</p></section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Dates ahead</h3><ul class="acd-kv">${cal}</ul>${ME.cal.itc_cliff.itc_cliff_for ? `<p class="ddk-note">Credit cliff: ${esc(ME.cal.itc_cliff.itc_cliff_for)} - ${ME.cal.itc_cliff.purchase_bills} bills, up to ${inr(ME.cal.itc_cliff.credit_in_those_bills)} of credit. ${esc(ME.cal.itc_cliff.note)}</p>` : ''}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Worth a second look</h3>${sw}<p class="ddk-fine">Not checked: ${ME.sweep.not_checked.map(esc).join('; ')}.</p></section>${g9}`;
   }
 
   // ------------------------------------------------------------------ Your book + the CA pack
@@ -371,6 +395,20 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('me')) {
+        try {
+          const g = val('acdMG').toUpperCase(), month = val('acdMM');
+          if (a === 'metab') { TAB = b.dataset.t; draw(false); return; }
+          if (a === 'meload') {
+            const q = u => api('GET', u);
+            const [ck, mis, daily, cal, sweep] = await Promise.all([q(`/api/bahi/close/checklist?gstin=${encodeURIComponent(g)}&month=${encodeURIComponent(month)}`), q(`/api/bahi/close/mis?gstin=${encodeURIComponent(g)}&month=${encodeURIComponent(month)}`),
+              q('/api/bahi/close/daily'), q(`/api/bahi/close/calendar?gstin=${encodeURIComponent(g)}`), q('/api/bahi/close/sweep')]);
+            ME = {...(ME || {}), g, month, ck, mis, daily, cal, sweep}; draw(false); return;
+          }
+          if (a === 'meg9') { const g9 = await api('POST', '/api/bahi/close/gstr9', {gstin: g, fy: val('acdMF')}); ME = {...(ME || {}), g, month, g9}; draw(false); return; }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a.startsWith('ca')) {

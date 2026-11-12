@@ -2736,7 +2736,10 @@ Party master, ageing, MSME 15/45-day + Rule 37 watches, reminder drafts, TDS wor
 
 ## v0.848.0 BAHI A9
 Tally voucher XML + JSON from the register, party ledgers in the file, her ledger names; the monthly CA pack ZIP with worksheets, evidence and open questions; close a month on the pack hash (locks it). Zoho / live Tally / CA login not built. NOT VERIFIED in a real Tally import.
-## v0.849.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
+
+## v0.849.0 BAHI A10
+Month-end checklist ticked only from records, MIS + daily cash line, one calendar with yearly dates (annual.json), accuracy sweep, GSTR-9 comparison. Nothing sent or filed. NOT VERIFIED: GSTR-9 reads.
+## v0.850.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
 
 **The audit first (same day):** Mera PC worked end to end (213 PC tests green, desktop 1.9.0 live, agent-desktop
 v1.1.0 proven on a real Linux desktop through Hoola's own axtree.py: snapshot -> set_value -> click -> the app returned
@@ -2781,7 +2784,7 @@ PCs on her 8 GB VPS is an estimate; the phone / console show each PC's live card
 PC operator still runs on whatever the Haiku / GLM switches choose (see the audit - not changed here); the Windows
 desktop exe and agent-desktop v1.2.0 upgrade are not part of this release.
 
-## v0.849.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM; owner: "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL")
+## v0.850.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM; owner: "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL")
 
 **Before:** Hoola wrapped 10 of agent-desktop's 61 commands (v1.1.0). set-value put the text ON THE COMMAND LINE (an
 Aadhaar / PAN from her ID locker was readable by any program listing processes on her PC), element states (checked,
