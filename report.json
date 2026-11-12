@@ -1,0 +1,398 @@
+{
+ "v": 1,
+ "screens": {
+  "home": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/home.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Cart",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Fresh today Free delivery above \u20b9499 Ord",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Categories",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Profile",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "categories": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/categories.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Open cart",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Home",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Cart",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Profile",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "product": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/product.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Atta 5 kg Staples \u20b9265",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Toor dal 1 kg Staples \u20b9158",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Amul butter 500 g Dairy \u20b9285",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Open cart",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "cart": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/cart.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Shop now",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Place order",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Home",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Categories",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "orders": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/orders.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Open cart",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "profile": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/profile.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Sign in",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Open cart",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Home",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Categories",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "dashboard": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/dashboard.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Unlock",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Rate this app",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Add to calendar",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Pick from contacts",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "support": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/support.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Open cart",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "seller_info": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/seller_info.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "privacy": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/privacy.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "delete_account": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/delete_account.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Yes, delete my account",
+     "ok": true,
+     "changed": false
+    }
+   ]
+  },
+  "hoola_login": {
+   "opened": true,
+   "crash": null,
+   "a11y": [
+    {
+     "kind": "unlabelled",
+     "text": "a tappable CheckBox has no label for TalkBack",
+     "bounds": "[16,428][64,476]"
+    }
+   ],
+   "shot": "screens/hoola_login.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "item at 40,452",
+     "ok": true,
+     "changed": false
+    },
+    {
+     "label": "I agree to the privacy notice",
+     "ok": true,
+     "changed": false
+    },
+    {
+     "label": "I already have an account",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Create account",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "hoola_account": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/hoola_account.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    },
+    {
+     "label": "Sign in",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  },
+  "hoola_inbox": {
+   "opened": true,
+   "crash": null,
+   "a11y": [],
+   "shot": "screens/hoola_inbox.png",
+   "taps": [
+    {
+     "label": "Menu",
+     "ok": true,
+     "changed": true
+    }
+   ]
+  }
+ },
+ "perf": {
+  "cold_ms": 419,
+  "cold_all": [
+   470,
+   411,
+   419
+  ],
+  "jank_pct": 18.18,
+  "frames": 44,
+  "apk_mb": 1.89
+ },
+ "budget": {
+  "cold_ms": "ok",
+  "apk_mb": "ok",
+  "jank_pct": "ok"
+ },
+ "limits": {
+  "cold_ms": 1500,
+  "apk_mb": 15.0,
+  "jank_pct": 25.0
+ },
+ "opened": 14,
+ "total": 14,
+ "crashed": [],
+ "a11y_count": 1,
+ "flows": {
+  "tapped": 46,
+  "moved": 43,
+  "dead": [
+   {
+    "screen": "delete_account",
+    "label": "Yes, delete my account"
+   },
+   {
+    "screen": "hoola_login",
+    "label": "item at 40,452"
+   },
+   {
+    "screen": "hoola_login",
+    "label": "I agree to the privacy notice"
+   }
+  ],
+  "crashed": []
+ },
+ "passed": true
+}
