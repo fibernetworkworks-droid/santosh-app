@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -367,24 +368,18 @@ class _InfluencerScreenState extends State<InfluencerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Creators', 'Deals', 'Calendar', 'Check', 'Rules'];
-    final body = switch (_tab) { 0 => _aaj(), 1 => _creators(), 2 => _deals(), 3 => _calendar(), 4 => _jaanch(), _ => _niyam() };
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(title: const Text('Influencer manager'), backgroundColor: Colors.transparent, elevation: 0),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        Expanded(child: _d == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(onRefresh: _load, child: body)),
-      ]),
+
+        final body = switch (_tab) { 0 => _aaj(), 1 => _creators(), 2 => _deals(), 3 => _calendar(), 4 => _jaanch(), _ => _niyam() };
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Influencer manager',
+      tabs: const ['Today', 'Creators', 'Deals', 'Calendar', 'Check', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => body,
     );
   }
 }

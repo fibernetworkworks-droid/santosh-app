@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -320,28 +321,21 @@ class _DocwriterScreenState extends State<DocwriterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Docs', 'Sources', 'Niyam'];
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Docs sahayak'), actions: [
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
-      ]),
-      floatingActionButton: FloatingActionButton.extended(onPressed: _busy ? null : _newDoc, icon: const Icon(Icons.edit_note), label: const Text('New doc')),
-      body: _d == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(padding: const EdgeInsets.fromLTRB(14, 6, 14, 90), children: [
-                Wrap(spacing: 6, children: [
-                  for (var i = 0; i < tabs.length; i++)
-                    ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-                ]),
-                if (_busy) const LinearProgressIndicator(),
-                const SizedBox(height: 10),
-                [_today(), _docs(), _sourcesTab(), _rules()][_tab],
-              ]),
-            ),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Docs assistant',
+      tabs: const ['Today', 'Docs', 'Sources', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      fab: FloatingActionButton.extended(onPressed: _busy ? null : _newDoc, icon: const Icon(Icons.edit_note), label: const Text('New doc')),
+      body: () => ListView(
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 90), children: [[_today(), _docs(), _sourcesTab(), _rules()][_tab]]),
     );
   }
+
 }
 
 class DocwriterDocPage extends StatefulWidget {

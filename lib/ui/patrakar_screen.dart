@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -413,26 +414,16 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Stories', 'Source', 'Shikayat', 'Niyam'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Patrakar Sahayak'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_aaj, _stories, _sources, _shikayat, _niyam][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Patrakar Sahayak',
+      tabs: const ['Today', 'Stories', 'Source', 'Shikayat', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_aaj, _stories, _sources, _shikayat, _niyam][_tab](),
     );
   }
 }

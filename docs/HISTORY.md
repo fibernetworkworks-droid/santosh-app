@@ -3268,3 +3268,41 @@ Desks and old pages open in their old frame (`hoolaOpenOld`) until R8. New scree
 Golden pictures 43 / 44 (settings / team, light + dark). The design ratchet is unchanged.
 
 **NOT VERIFIED on a real phone:** the wake-word switch and background status (Native calls), the look picker round trip, Google account removal. The ~100 desks keep their old look until R8; some titles are still Hinglish (R8 English pass).
+
+
+## v0.868.0 R8 DESKS wave 1 (owner: "GO R8"; docs/HOOLA_APP_REDESIGN_PLAN.md R8)
+
+There are 149 desk screens (~105,000 lines). Rewriting them one by one is the plan's waves, so this release does three things that move all of them at once, plus wave 1.
+
+**1. THE DESK KIT** (`lib/ui/desk/desk_kit.dart`). `DeskScaffold(title, tabs, tab, onTab, loading, busy, onRefresh, body, actions, fab)` gives every desk:
+- a header with Refresh;
+- pill tabs in English (`deskWord`: Aaj -> Today, Niyam -> Rules, Jaanch -> Check, ...);
+- a thin busy line;
+- a first load that turns into "Still loading" + Try again after 12 s. Most desks only snacked a failed load and spun forever;
+- pull to refresh, and the desk's own main button.
+
+It draws in the new design's dark roles while the new design is on, and keeps the Night Glass chips when it is off.
+
+**2. WAVE 1.** The 30 desks that all drew the same chip-row layout now stand in DeskScaffold:
+- **Moved by a script that refuses anything it does not recognise (26):** archassist, banquet, compliance, contracts, cosec, courier, dpo, editdesk, eventplan, filmdesk, fleet, graphic, influencer, interior, kitab, notary, patrakar, photoassist, pidesk, podcast, rentdesk, shaadi, society, tourguide, vakil, wapsi.
+- **Moved by hand (4):** docwriter (its New doc button), frontoffice, seva, sitesup.
+
+Their Hinglish tab labels are now English. Four inner detail pages (ArchProjectPage, ContractPage, CosecEntityPage, ShaadiWeddingPage) still draw their own chip row: wave 2, named in the test.
+
+**3. THE DESK FRAME (every old screen).** `glass.dart` NightGlass.flat is a ValueNotifier set from main.dart whenever the new design is on (guarded so it never flips mid-build; the root MaterialApp rebuilds on it). While it is on:
+- Aurora is a flat page (its controller is created in initState and held still - creating it first in dispose crashed);
+- Glass is a flat card on the surface colour with a hairline and corner <= 16, with no blur and no shadow;
+- GradientButton is the new solid pill;
+- GlassButton is an outline pill;
+- Pill and Caption use the new chip type;
+- `santoshTheme()` = `_deskTheme`: new dark bg / surface, the interface sans, filled inputs, dialogs / sheets / snack / dividers.
+
+So all ~150 old screens lose the drifting aurora and the blur at once (the plan's R9 item), and look of a piece with the new tabs. With the new design off, Night Glass is unchanged (tested). GlassButton labels now ellipsize instead of overflowing on a narrow phone (found by the new picture).
+
+**4. English names in Your AI team.** "Theka sahayak (contractor)" -> "Contractor's assistant", Thok / Niryat / Bima / Darzi / Chai / Shikayat / Dosti / Godown / Prayogshala and others likewise.
+
+**Tests:**
+- `test/desk_kit_test.dart` (4): wave 1 shape + English tabs + no leftover chip rows outside the named inner pages; deskWord; tabs / busy / Still loading -> Try again / refresh; flat Glass + Aurora have no blur when on and keep it when off.
+- Pictures 45 / 46: a sample desk built from the same old parts, in the new and the old look.
+
+**NOT VERIFIED on a real phone:** the flat frame on the remaining ~119 desks (each still has its own layout inside), and their colours. Inside the cards the desks still use Night Glass text colours, which read on the new dark surface. Light appearance does not reach the old desks; they stay dark until their wave rebuilds them on HoolaColors.

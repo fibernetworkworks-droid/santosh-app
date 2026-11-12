@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -244,29 +245,18 @@ class _SitesupScreenState extends State<SitesupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = const ['Today', 'Sites', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Site supervisor'), actions: [
-        IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
-      ]),
-      body: _d == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(children: [
-                  for (var i = 0; i < tabs.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-                    ),
-                ]),
-              ),
-              Expanded(child: RefreshIndicator(onRefresh: _load, child: [_aaj, _sites, _niyam][_tab]())),
-            ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Site supervisor',
+      tabs: const ['Today', 'Sites', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      onRefresh: _load,
+      body: () => [_aaj, _sites, _niyam][_tab](),
     );
   }
+
 }
 
 /// One site: plan vs done, hazri, material, safety, quality, snags, DPR.

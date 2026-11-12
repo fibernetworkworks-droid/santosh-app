@@ -261,4 +261,4 @@ def test_delegate_stats_shape(swarm):
 
 def test_version_stamp(swarm):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.867.0"
+    assert APP_VERSION == "0.868.0"

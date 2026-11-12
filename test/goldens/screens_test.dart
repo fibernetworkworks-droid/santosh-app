@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:santosh/call_session.dart';
 import 'package:santosh/state.dart';
+import 'package:santosh/ui/desk/desk_kit.dart';
 import 'package:santosh/ui/hoola_theme.dart';
 import 'package:santosh/ui/shell/hoola_settings.dart';
 import 'package:santosh/ui/shell/hoola_tabs.dart';
@@ -245,6 +246,14 @@ void main() {
   testWidgets('07 main tab (profile)', (t) => _shot(t, '07_main', home, tab: find.text('Main')));
   testWidgets('08 AI employees', (t) => _shot(t, '08_employees', (a) => EmployeesScreen(app: a)));
 
+  // v0.868 R8: a desk in the shared frame, drawn with the same old widgets every desk uses, flat in the new design
+  testWidgets('45 desk frame (new design)', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '45_desk_frame', (a) => const _SampleDesk());
+  });
+  testWidgets('46 desk frame (old look)', (t) => _shot(t, '46_desk_frame_old', (a) => const _SampleDesk()));
+
   // v0.861 R2: the new frame (Main > Try the new design), light and dark
   void chats(Santosh a) => a.chatList = [
         for (final t in ['October GST summary', 'Reply to WhatsApp leads', 'Diwali offer poster', 'Clinic website changes',
@@ -285,4 +294,54 @@ void main() {
     testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, writing: true)));
   }
+}
+
+/// v0.868 R8: a desk the way the 30 wave-1 desks are built - DeskScaffold outside, the old Glass parts inside.
+class _SampleDesk extends StatelessWidget {
+  const _SampleDesk();
+  @override
+  Widget build(BuildContext context) => DeskScaffold(
+        title: 'Notary desk',
+        tabs: const ['Aaj', 'Documents', 'Register', 'Apostille', 'Niyam'],
+        tab: 0,
+        onTab: (_) {},
+        loading: false,
+        busy: false,
+        onRefresh: () async {},
+        body: () => ListView(padding: const EdgeInsets.all(16), children: [
+          const Glass(child: Text('3 documents wait for your yes before the final print. One affidavit has 2 blanks.',
+              style: TextStyle(fontSize: 14.5, height: 1.4))),
+          const SizedBox(height: 12),
+          GradientButton(label: 'New document', icon: Icons.note_add_rounded, height: 46, onTap: () {}),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: GlassButton(label: 'Spoken / written', icon: Icons.record_voice_over_rounded, height: 42, onTap: () {})),
+            const SizedBox(width: 8),
+            Expanded(child: GlassButton(label: 'From Rentdesk', icon: Icons.home_work_rounded, height: 42, onTap: () {})),
+          ]),
+          const SizedBox(height: 16),
+          const Caption('FINAL PRINT: YOUR YES PENDING'),
+          for (final (n, who, st) in const [
+            ('N-0142 · Affidavit', 'Ramesh Patil · English · Stamp Rs 100', 'Draft'),
+            ('N-0141 · Power of attorney', 'Sunita Deshmukh · Marathi · Stamp Rs 500', 'Final'),
+            ('N-0139 · Rent agreement', 'Shree Traders · English · Stamp Rs 1,000', 'Notarised'),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Glass(
+                padding: const EdgeInsets.all(12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    const Icon(Icons.gavel_rounded, color: C.accent, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(n, style: const TextStyle(fontWeight: FontWeight.w700))),
+                    Pill(st, fg: st == 'Draft' ? C.warn : C.ok),
+                  ]),
+                  const SizedBox(height: 2),
+                  Text(who, style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                ]),
+              ),
+            ),
+        ]),
+      );
 }

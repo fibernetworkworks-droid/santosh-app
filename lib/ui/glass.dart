@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'avatar_look.dart';
+import 'hoola_theme.dart';
 
 /// v0.164.3 blur perf guard: the chat list flips this on while it scrolls fast, and the
 /// Aurora drift freezes for a moment. The drifting blobs are the costliest pixels on a
@@ -13,6 +14,16 @@ import 'avatar_look.dart';
 /// nobody can see them move mid-flick anyway. The chat clears it a beat after the
 /// scrolling stops (chat_screen.dart owns the timing), so the night sky glides on.
 final ValueNotifier<bool> auroraPaused = ValueNotifier(false);
+
+/// v0.868 R8 THE DESK FRAME (docs/HOOLA_APP_REDESIGN_PLAN.md R8): while the new design is on, every screen still built
+/// on Night Glass (the ~150 desks, Today, the plugin list...) is drawn FLAT in the new design's dark roles: no drifting
+/// aurora, no blur, cards on the surface colour with a hairline, pill buttons, the interface sans. Set from the app
+/// (main.dart) - one switch, so a desk and every screen it opens follow it. Off = the old Night Glass, unchanged.
+class NightGlass {
+  static final ValueNotifier<bool> flat = ValueNotifier(false);
+  static bool get on => flat.value;
+  static const HoolaColors c = HoolaColors.darkSet;
+}
 
 /// Santosh "Night Glass": deep indigo night, frosted glass, saffron action colour, violet for you.
 class C {
@@ -51,7 +62,45 @@ TextStyle display(double size, {FontWeight w = FontWeight.w700, Color color = C.
 TextStyle replyText({double size = 16, Color color = C.ink}) =>
     GoogleFonts.literata(fontSize: size, fontWeight: FontWeight.w400, color: color, height: 1.5);
 
-ThemeData santoshTheme() {
+ThemeData santoshTheme() => NightGlass.on ? _deskTheme(_nightTheme()) : _nightTheme();
+
+/// The desk frame's theme: the Night Glass theme with the new design's dark surfaces and the interface sans.
+ThemeData _deskTheme(ThemeData base) {
+  const c = NightGlass.c;
+  final text = base.textTheme.apply(fontFamily: HoolaFont.sans, bodyColor: c.ink, displayColor: c.ink);
+  return base.copyWith(
+    scaffoldBackgroundColor: c.bg,
+    canvasColor: c.bg,
+    textTheme: text,
+    colorScheme: base.colorScheme.copyWith(surface: c.surface, onSurface: c.ink, outline: c.lineStrong),
+    appBarTheme: AppBarTheme(
+        backgroundColor: c.bg,
+        surfaceTintColor: c.bg,
+        elevation: 0,
+        foregroundColor: c.ink,
+        titleTextStyle: TextStyle(fontFamily: HoolaFont.sans, fontSize: 18, fontWeight: FontWeight.w600, color: c.ink)),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: c.sunk,
+      labelStyle: TextStyle(color: c.ink2),
+      hintStyle: TextStyle(color: c.ink3),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(HoolaRadius.tile), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(HoolaRadius.tile), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(HoolaRadius.tile), borderSide: BorderSide(color: c.accent, width: 1.5)),
+    ),
+    dialogTheme: DialogTheme(
+        backgroundColor: c.raised, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HoolaRadius.dialog))),
+    bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: c.surface,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(HoolaRadius.sheet)))),
+    snackBarTheme: base.snackBarTheme.copyWith(backgroundColor: c.raised, contentTextStyle: TextStyle(color: c.ink)),
+    dividerTheme: DividerThemeData(color: c.line, thickness: 1, space: 1),
+    splashFactory: InkRipple.splashFactory,
+  );
+}
+
+ThemeData _nightTheme() {
   final scheme = ColorScheme.fromSeed(seedColor: C.accent, brightness: Brightness.dark).copyWith(
     primary: C.accent, onPrimary: C.onAccent, secondary: C.violet, surface: const Color(0xFF17122F), onSurface: C.ink,
   );
@@ -110,10 +159,12 @@ class _AuroraState extends State<Aurora> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     auroraPaused.addListener(_onPaused);
+    NightGlass.flat.addListener(_onPaused);
+    _onPaused();   // creates the controller now (never first in dispose) and holds it still while the desk frame is flat
   }
 
   void _onPaused() {
-    if (auroraPaused.value) {
+    if (auroraPaused.value || NightGlass.on) {
       _t.stop();   // ticker sleeps: no ticks, no repaints, zero GPU work while the list flies
     } else if (!_t.isAnimating) {
       _t.repeat();   // resumes from the value it froze at — the drift never jumps
@@ -123,6 +174,7 @@ class _AuroraState extends State<Aurora> with SingleTickerProviderStateMixin {
   @override
   void dispose() {
     auroraPaused.removeListener(_onPaused);
+    NightGlass.flat.removeListener(_onPaused);
     _t.dispose();
     super.dispose();
   }
@@ -139,7 +191,9 @@ class _AuroraState extends State<Aurora> with SingleTickerProviderStateMixin {
       );
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
+  Widget build(BuildContext context) => NightGlass.on
+      ? ColoredBox(color: NightGlass.c.bg, child: widget.child)   // R8 desk frame: a calm flat page, no drift
+      : DecoratedBox(
         decoration: const BoxDecoration(color: C.bgTop),
         child: Stack(children: [
           Positioned.fill(
@@ -183,6 +237,20 @@ class Glass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (NightGlass.on) {
+      // R8 desk frame: a flat card on the surface colour, a hairline, the new corner sizes; no blur, no shadow
+      const c = NightGlass.c;
+      return Container(
+        margin: margin,
+        padding: padding,
+        decoration: BoxDecoration(
+          color: tint == null ? c.surface : Color.alphaBlend(tint!.withOpacity(.10), c.surface),
+          borderRadius: BorderRadius.circular(radius > HoolaRadius.cardLg ? HoolaRadius.card : radius),
+          border: Border.all(color: border ?? c.line),
+        ),
+        child: child,
+      );
+    }
     final body = Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -250,7 +318,7 @@ class GradientButton extends StatelessWidget {
   final double height;
 
   @override
-  Widget build(BuildContext context) => Opacity(
+  Widget build(BuildContext context) => NightGlass.on ? _flat() : Opacity(
         opacity: onTap == null ? .5 : 1,
         child: Press(
           onTap: onTap,
@@ -268,6 +336,27 @@ class GradientButton extends StatelessWidget {
           ),
         ),
       );
+
+  /// R8 desk frame: the new design's main button - a solid pill in the ink colour.
+  Widget _flat() {
+    const c = NightGlass.c;
+    return Opacity(
+      opacity: onTap == null ? .45 : 1,
+      child: Press(
+        onTap: onTap,
+        child: Container(
+          height: height < HoolaSpace.touchMain ? HoolaSpace.touch : HoolaSpace.touchMain,
+          decoration: BoxDecoration(color: c.pill, borderRadius: BorderRadius.circular(HoolaRadius.pill)),
+          child: Center(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(label, style: TextStyle(fontFamily: HoolaFont.sans, fontSize: 16, fontWeight: FontWeight.w600, color: c.onPill)),
+              if (icon != null) ...[const SizedBox(width: 8), Icon(icon, color: c.onPill, size: 18)],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Secondary glass button.
@@ -284,11 +373,18 @@ class GlassButton extends StatelessWidget {
         child: Container(
           height: height,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(color: const Color(0x17FFFFFF), borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0x29FFFFFF))),
+          decoration: NightGlass.on
+              ? BoxDecoration(borderRadius: BorderRadius.circular(HoolaRadius.pill), border: Border.all(color: NightGlass.c.lineStrong))
+              : BoxDecoration(color: const Color(0x17FFFFFF), borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0x29FFFFFF))),
           child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
             if (icon != null) ...[Icon(icon, color: color, size: 18), const SizedBox(width: 8)],
-            Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 14)),
+            // a long label on a narrow phone shrinks with "…" instead of overflowing the button (R8)
+            Flexible(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: NightGlass.on ? FontWeight.w600 : FontWeight.w700, color: color, fontSize: 14))),
           ]),
         ),
       );
@@ -303,7 +399,9 @@ class Pill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-        child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: fg, letterSpacing: .5)),
+        child: NightGlass.on   // R8: the new chip type - 12 / 600, no tracking
+            ? Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg))
+            : Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: fg, letterSpacing: .5)),
       );
 }
 
@@ -346,7 +444,9 @@ class Caption extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-        child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.faint, letterSpacing: .9)),
+        child: NightGlass.on
+            ? Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: NightGlass.c.ink2))
+            : Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.faint, letterSpacing: .9)),
       );
 }
 

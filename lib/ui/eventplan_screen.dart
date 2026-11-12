@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -277,26 +278,16 @@ class _EventplanScreenState extends State<EventplanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Events', 'Vendors', 'Rules'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Event Sahayak'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: Column(children: [
-        SizedBox(
-          height: 46,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i))),
-          ]),
-        ),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(onRefresh: _load, child: [_aaj, _events, _vendors, _niyam][_tab]()),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Event Sahayak',
+      tabs: const ['Today', 'Events', 'Vendors', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: false,
+      onRefresh: _load,
+      body: () => [_aaj, _events, _vendors, _niyam][_tab](),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:io' show File;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'device.dart';
@@ -56,6 +57,8 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    widget.app.addListener(_syncLook);
+    _syncLook();
     WidgetsBinding.instance.addObserver(this);
     HoolaTv.app = widget.app;
     LockSafe.app = widget.app;   // keep-alive steps per phone maker   // the TV player opens from links and phone actions too
@@ -191,8 +194,21 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     }, onError: (_) {});
   }
 
+  /// v0.868 R8 the desk frame follows the new-design switch (lib/ui/glass.dart NightGlass).
+  void _syncLook() {
+    final on = widget.app.newLook;
+    if (NightGlass.flat.value == on) return;
+    // never flip the root theme in the middle of a frame build: wait for the frame to finish
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => NightGlass.flat.value = widget.app.newLook);
+    } else {
+      NightGlass.flat.value = on;
+    }
+  }
+
   @override
   void dispose() {
+    widget.app.removeListener(_syncLook);
     _linkSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -221,7 +237,9 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+      valueListenable: NightGlass.flat,
+      builder: (context, _, __) => MaterialApp(
         navigatorKey: navKey,
         title: 'Hoola',
         debugShowCheckedModeBanner: false,
@@ -229,7 +247,7 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         home: _setup
             ? SetupScreen(app: widget.app, onDone: () => setState(() => _setup = false))
             : Home(app: widget.app, onReset: () => setState(() => _setup = true)),
-      );
+      ));
 }
 
 class Home extends StatefulWidget {

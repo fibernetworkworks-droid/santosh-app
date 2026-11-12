@@ -13,6 +13,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'attach.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -337,32 +338,16 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Units', 'Kirayedar', 'Yes', 'Repair', 'Niyam'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text('${widget.app.aName} · Property manager'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) {
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Property manager',
+      tabs: const ['Today', 'Units', 'Tenants', 'Yes', 'Repair', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) {
                     0 => _today(),
                     1 => _unitsTab(),
                     2 => _tenanciesTab(),
@@ -370,9 +355,6 @@ class _RentdeskScreenState extends State<RentdeskScreen> {
                     4 => _repairTab(),
                     _ => _rulesTab(),
                   },
-                ),
-        ),
-      ]),
     );
   }
 }

@@ -192,5 +192,5 @@ def test_version():
     from pathlib import Path
 
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.867.0"
-    assert "0.867.0+866" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.868.0"
+    assert "0.868.0+867" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
