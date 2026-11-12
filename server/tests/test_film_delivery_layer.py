@@ -100,9 +100,9 @@ def test_service_deliverables_flow(fd, monkeypatch):
     monkeypatch.setattr(S, "today", lambda tenant: TODAY)
     num = _film(S)
     r = S.deliverable_op(T, num, "starter", kind="ott", buyer="Platform A", due="2026-12-15")
-    assert r["total"] == 11 and "11 item jude" in r["say"] and all(x["buyer"] == "Platform A" for x in r["deliverables"])
+    assert r["total"] == 11 and "11 items added" in r["say"] and all(x["buyer"] == "Platform A" for x in r["deliverables"])
     again = S.deliverable_op(T, num, "starter", kind="ott")                                             # nothing doubles up
-    assert again["total"] == 11 and "0 item jude" in again["say"]
+    assert again["total"] == 11 and "0 items added" in again["say"]
     S.deliverable_op(T, num, "starter", kind="festival")                                                # overlap by name is skipped, the rest join
     assert S.deliverables_view(T, num)["total"] > 11
     one = S.deliverables_view(T, num)["deliverables"][0]
@@ -131,15 +131,15 @@ def test_service_ai_voice_follows_the_consent_register(fd, monkeypatch):
     assert ritu["number"] == "P-001"
     S.localise_op(T, num, "add", language="tamil", kind="dub", dub_mode="ai_voice", voice_person="P-001", due="2026-12-01")
     v = S.localisation_view(T, num)
-    assert v["ai_voice_blocked"] == 1 and "ijazat" in v["localisation"][0]["voice_check"]               # no consent recorded yet
+    assert v["ai_voice_blocked"] == 1 and "consent is not recorded" in v["localisation"][0]["voice_check"]               # no consent recorded yet
     S.consent_record(T, "P-001", "signed_form", _file(), ["ai_likeness"], until="2027-12-31")           # likeness only, not voice
-    assert "awaaz" in S.localisation_view(T, num)["localisation"][0]["voice_check"]
+    assert "AI voice" in S.localisation_view(T, num)["localisation"][0]["voice_check"]
     S.consent_record(T, "P-001", "video", _file("haan.jpg"), ["ai_voice"], until="2027-12-31")
     v = S.localisation_view(T, num)
     assert v["ai_voice_blocked"] == 0 and not v["flags"]
     S.consent_withdraw(T, "P-001", "wapas")                                                              # withdrawal after the fact is caught
     v = S.localisation_view(T, num)
-    assert v["ai_voice_blocked"] == 1 and any("wapas" in f for f in v["flags"])
+    assert v["ai_voice_blocked"] == 1 and any("withdrawn consent" in f for f in v["flags"])
     S.localise_op(T, num, "add", language="telugu", kind="dub", dub_mode="ai_voice", voice_person="P-077")
     assert any("person not found in the register" in f for f in S.localisation_view(T, num)["flags"])
     star = S.person_add(T, "Virat Kohli", "actor")["person"]

@@ -61,7 +61,7 @@ def test_no_drive_box_ticked_says_exactly_that(g):
     _signin("openid email https://www.googleapis.com/auth/gmail.modify")
     with pytest.raises(ToolError) as e:
         _run("drive_find", query="invoice")
-    assert "tick" in str(e.value) and "Google Drive jodiye" in str(e.value)
+    assert "tick" in str(e.value) and "Link Google Drive" in str(e.value)
     st = _run("google_status")
     assert st["signin"]["allowed"]["drive"] is False and st["signin"]["allowed"]["gmail"] is True
     assert not st["ok"] and "tick" in st["say"]
@@ -112,5 +112,5 @@ def test_status_api_and_tool_wiring(g):
     from app.main import app
     from app.voice import VOICE_TOOL_NAMES
     r = TestClient(app).get("/api/google/status?live=false").json()
-    assert r["server_ready"] and r["signin"] is None and "Google Drive jodiye" in r["say"]
+    assert r["server_ready"] and r["signin"] is None and "Link Google Drive" in r["say"]
     assert "google_status" in VOICE_TOOL_NAMES

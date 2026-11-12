@@ -57,7 +57,7 @@ def test_schedule_groups_by_place_and_day_before_night():
     stall_day = [d for d in sch["days"] if d["part"] == "day" and "CHAI STALL" in d["places"]]
     assert len(stall_day) == 1                                                  # both daylight stall scenes land on one day
     assert {s["n"] for s in stall_day[0]["scenes"]} >= {1, 6}
-    assert sch["assumptions"]["assumed"] is True and "andaaz" in sch["assumptions"]["note"]
+    assert sch["assumptions"]["assumed"] is True and "estimates" in sch["assumptions"]["note"]
     assert sch["shoot_days"] == len(sch["days"]) and sch["night_days"] == parts.count("night")
     assert all(d["hours"] <= sch["assumptions"]["day_hours"] for d in sch["days"] if len(d["scenes"]) > 1)
 

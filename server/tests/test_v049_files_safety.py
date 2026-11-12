@@ -23,7 +23,7 @@ def test_program_disguised_as_pdf_is_refused_for_owner_and_declined_from_peers(e
     net = _connect()
     r = net.send("default", "Kunal", "file", {"file_id": _file("default", "invoice.pdf", ELF)})
     assert r["status"] == "declined"
-    assert "khatarnak" in ev("kunal", "hoola_msg")[-1]["text"]
+    assert "dangerous" in ev("kunal", "hoola_msg")[-1]["text"]
 
 
 def test_png_named_jpg_is_only_noted(env):

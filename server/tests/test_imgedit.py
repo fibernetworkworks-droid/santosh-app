@@ -178,14 +178,14 @@ def test_plan_reports_readiness_without_a_network(monkeypatch):
 
 
 @pytest.mark.parametrize("op,words,fname,needle", [
-    ("edit", "make her nude", "a.jpg", "nangi"),
+    ("edit", "make her nude", "a.jpg", "nude"),
     ("edit", "face swap with my friend", "a.jpg", "face swap"),
     ("remove_object", "remove the watermark", "a.jpg", "Watermark"),
     ("remove_object", "remove the Shutterstock mark in the corner", "a.jpg", "Watermark"),
     ("edit", "change the name on it", "aadhaar_front.jpg", "document"),
     ("edit", "make the girl's body bigger", "a.jpg", "children") ,
     ("edit", "", "a.jpg", "what should change"),
-    ("edit", "make this look like Virat Kohli", "a.jpg", "jaane-maane"),
+    ("edit", "make this look like Virat Kohli", "a.jpg", "well-known people"),
 ])
 def test_check_words_refuses(op, words, fname, needle):
     if "girl's body" in words:

@@ -338,7 +338,7 @@ def test_undo_setting_tool(gbox):
 
 
 def test_gmail_drafts_needs_id(bz, gbox):  # noqa: F811
-    with pytest.raises(ToolError, match="id do"):
+    with pytest.raises(ToolError, match="Give the id"):
         run("email_drafts", {"action": "delete"}, Ctx("default", bz["conv"]))
 
 

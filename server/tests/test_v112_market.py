@@ -202,7 +202,7 @@ def test_standing_order_signed_once_checked_every_run(env):
         assert res.status_code == 200, res.text
         assert res.json()["status"] == "active"
     m = md.mandates("default")[0]
-    assert m["next_run"] and "Somvar" in m["when"]
+    assert m["next_run"] and "Monday" in m["when"]
     # run 1: no base prices yet -> her own tap (sets the base)
     out = md.run_now("default", mid)
     bid = out["deal"]["id"]

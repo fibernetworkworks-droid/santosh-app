@@ -302,7 +302,7 @@ def test_call_receipt_lists_real_steps_and_what_was_decided(env, monkeypatch):
     r = asyncio.run(callreceipt.make(conv, "call1", turns, did, 185, "Santosh"))
     assert r["done"] == ["Reminder lagaya"] and r["failed"] == ["Email bhej raha hoon"]
     assert r["running"] == ["Bijli ka bill PDF nikalo"] and r["decisions"] == ["Kal subah 7 baje reminder"]
-    assert "Call ka hisaab (3 min)" in r["text"] and "Google" not in r["text"]
+    assert "Call summary (3 min)" in r["text"] and "Google" not in r["text"]
     with session() as s:
         ev = s.scalars(select(Event).where(Event.conversation_id == conv, Event.kind == "call_receipt")).all()
         msgs = s.scalars(select(Message).where(Message.conversation_id == conv)).all()

@@ -94,7 +94,7 @@ def test_metrics_use_the_median_so_one_outlier_cannot_lie():
 
 def test_metrics_say_so_when_there_are_no_dates():
     m = T.delivery_metrics([{"title": "x"}])
-    assert m["lead_time_din"] is None and "samay nahi" in m["note"]
+    assert m["lead_time_din"] is None and "no dates" in m["note"]
 
 
 # ---------------------------------------------------------------- RAID, readiness, chase

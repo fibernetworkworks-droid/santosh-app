@@ -130,10 +130,10 @@ def test_the_human_record_collects_her_acts_and_warns_when_it_is_thin(st):  # no
     _asset(st, "mine", "ui", "upload", cost=0)
     S.add_task("default", st["sid"], "Make the coin sound softer", source="her")
     rec = P.human_record("default", st["sid"])
-    # 3 of mine + "Project shuru" from create(), which IS her act and is correctly logged by="her"
+    # 3 of mine + "Project started" from create(), which IS her act and is correctly logged by="her"
     assert rec["counts"]["decisions"] == 4 and rec["counts"]["uploaded"] == 1
     assert sum(1 for d in rec["decisions_she_made"] if "jump feels better" in (d["text"] or "")) == 3
-    assert any("Project shuru" in (d["text"] or "") for d in rec["decisions_she_made"])
+    assert any("Project started" in (d["text"] or "") for d in rec["decisions_she_made"])
     assert rec["counts"]["her_tasks"] >= 1 and rec["counts"]["total_acts"] >= 5
     assert rec["thin_warning"] == "", "with real acts recorded the warning must go"
     assert any(d["why"] == "tested both" for d in rec["decisions_she_made"])

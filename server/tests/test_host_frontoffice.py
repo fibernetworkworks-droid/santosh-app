@@ -152,7 +152,7 @@ def test_checkin_checkout_bill_only_on_her_tap(fo, monkeypatch):
     g = ci["booking"]["guest_full"]
     assert g["ids"]["aadhaar"]["masked"].endswith("0124") and "234567890124" not in str(ci) and "2345 6789" not in str(ci)
     from app import idvault
-    assert any(x["kind"] == "aadhaar" and "mehmaan" in x["person"] for x in idvault.list_(T))
+    assert any(x["kind"] == "aadhaar" and "guest" in x["person"] for x in idvault.list_(T))
     # extras: restaurant 5% (not specified premises), laundry 18%
     S.add_charge(T, b["number"], "restaurant", 500, text="Dinner")
     S.add_charge(T, b["number"], "laundry", 200)
