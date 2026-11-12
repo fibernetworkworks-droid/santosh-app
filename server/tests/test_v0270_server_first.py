@@ -201,4 +201,4 @@ def test_her_words_still_load_the_pc(text):
 def test_the_guide_says_server_first_and_ask_before_a_pc():
     from app.agent import prompts
     slim = prompts.system_text(["core"])
-    assert "EVERY job runs on the SERVER" in slim and "Yeh aapke PC pe karun?" in slim
+    assert "EVERY job runs on the SERVER" in slim and "Shall I do this on your PC?" in slim

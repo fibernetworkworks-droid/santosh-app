@@ -73,7 +73,7 @@ def test_supplies_learn_reorder_point_and_make_a_spend_card(env):
     assert "from your own app" in got["say"]
     assert O.items(T, "toner")[0]["on_order"] >= 15 and not O.items(T, "toner")[0]["low"]
     r = O.restock(T, "toner", sp["lines"][0]["qty"], price=2200)
-    assert "zyada" in r["price_note"] and r["on_order"] == 0
+    assert "higher" in r["price_note"] and r["on_order"] == 0
     assert _events("office_spend")
 
 

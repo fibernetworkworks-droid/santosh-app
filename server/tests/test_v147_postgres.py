@@ -21,7 +21,7 @@ def test_sql_checks():
     assert C.check_read("  SELECT * FROM orders WHERE note = 'a;b' LIMIT 5 ")
     assert C.check_read("with t as (select 1) select * from t")
     assert C.check_read("EXPLAIN ANALYZE SELECT 1")
-    for bad, word in [("delete from orders", "write"), ("select 1; drop table x", "ek hi"),
+    for bad, word in [("delete from orders", "write"), ("select 1; drop table x", "only one"),
                       ("with d as (delete from x returning *) select * from d", "WITH"),
                       ("select * into newt from orders", "INTO"), ("select pg_terminate_backend(12)", "pg_terminate"),
                       ("select pg_read_file('/etc/passwd')", "pg_read_file"), ("select set_config('a','b',false)", "set_config"),
@@ -34,7 +34,7 @@ def test_sql_checks():
     assert C.check_read("select 'pg_read_file(x) delete from' as s")
     w = C.write_check("update orders set paid = true; delete from carts")
     assert w["kind"] == "data" and len(w["statements"]) == 2
-    assert any("bina WHERE" in d for d in w["danger"])
+    assert any("without WHERE" in d for d in w["danger"])
     w = C.write_check("create index on orders(phone); alter table orders drop column note")
     assert w["kind"] == "schema" and any("DROP" in d for d in w["danger"])
     for bad in ("alter system set work_mem = '1GB'", "copy t from '/etc/passwd'", "copy t to program 'sh'",

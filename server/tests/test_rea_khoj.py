@@ -218,7 +218,7 @@ def test_routing_method_source_clip(rea):
     out = run("rea_khoj", {"action": "method", "file_id": fid, "class_name": "com.example.notes.Main",
                            "method_name": "onCreate"}, ctx)
     # REA returned a 9000-char source; the tool MUST clip it before it lands in the model's turn
-    assert len(out["source"]) <= 6100 and out["source"].startswith("x") and "aur chars" in out["source"]
+    assert len(out["source"]) <= 6100 and out["source"].startswith("x") and "more chars" in out["source"]
     assert out["representation"] == "java" and out["class"] == "com.example.notes.Main" and out["method"] == "onCreate"
 
 

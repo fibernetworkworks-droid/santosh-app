@@ -77,7 +77,7 @@ def test_units_people_tenancy_and_ledger(rd, monkeypatch):
     assert u["number"] == "U-001" and u["inventory"][0] == {"item": "fan", "qty": 2}
     assert p["ids"]["aadhaar"].endswith("0124") and "2345 6789" not in str(p) and "234567890124" not in str(p)   # only masked kept
     from app import idvault
-    assert any(x["kind"] == "aadhaar" and x["person"].startswith("kirayedar") for x in idvault.list_(T))
+    assert any(x["kind"] == "aadhaar" and x["person"].startswith("tenant") for x in idvault.list_(T))
     with pytest.raises(S.RentError):
         S.save_person(T, name="X", phone="123")
     assert t["status"] == "draft" and t["kind"] == "leave_licence" and t["end"]
@@ -260,7 +260,7 @@ def test_inspection_photos_settlement_forget(rd, monkeypatch):
     f = S.forget(T, p["number"])
     assert "erased" in f["say"]
     from app import idvault
-    assert not any(x["person"].startswith("kirayedar") for x in idvault.list_(T))
+    assert not any(x["person"].startswith("tenant") for x in idvault.list_(T))
     assert S.people(T) == [] and S.statement(T, t["number"])["paid"] > 0       # amounts kept
 
 

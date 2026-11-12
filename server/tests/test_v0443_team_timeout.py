@@ -51,8 +51,8 @@ def test_inline_timeout_keeps_the_finished_agents_work(env, monkeypatch):
     by = {a["name"]: a for a in out["agents"]}
     assert by["quick"]["ok"] is True and "7 dukaanein" in by["quick"]["deliverable"]      # kept (was lost)
     assert by["slowpoke"]["ok"] is False and by["slowpoke"].get("timed_out") is True
-    assert "time out" in by["slowpoke"]["deliverable"]
-    assert "SACH" in out["note"]          # at least one agent delivered -> the merge note, not "koi kuch nahi"
+    assert "timed out" in by["slowpoke"]["deliverable"]
+    assert "ONLY this is true" in out["note"]          # at least one agent delivered -> the merge note, not "koi kuch nahi"
 
 
 def test_run_crew_timeout_marks_only_the_running_agents(env, monkeypatch):

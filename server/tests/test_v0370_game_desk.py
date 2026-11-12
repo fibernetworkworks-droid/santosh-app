@@ -158,7 +158,7 @@ def test_failed_change_keeps_the_last_good_version(gd, monkeypatch):
     svc.change("default", v["id"], "add a shield")
     svc.run_job(v["id"])
     v = svc.get("default", v["id"])
-    assert v["status"] == "done" and v["version"] == 1 and v["play_url"] == good_url and "purana version" in v["error"]
+    assert v["status"] == "done" and v["version"] == 1 and v["play_url"] == good_url and "old version" in v["error"]
     assert [h["ok"] for h in v["history"]] == [True, False]
 
 

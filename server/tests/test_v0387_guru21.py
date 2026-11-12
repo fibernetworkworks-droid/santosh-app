@@ -118,7 +118,7 @@ def test_grounded_doubt_cites_her_book_with_page(g10, monkeypatch):
     assert d["sources"] == [{"n": 1, "title": "NCERT Maths Class 10", "page": 12, "link": ""}]
     G.hint(T, sid)
     steps = G.hint(T, sid)
-    assert "[5]" not in steps["text"] and "Kitaab se: [1] NCERT Maths Class 10, page 12" in steps["text"]
+    assert "[5]" not in steps["text"] and "From the book: [1] NCERT Maths Class 10, page 12" in steps["text"]
     G.save_settings(T, grounded=False)
     sid2 = G.start(T, kid, "doubt", "Mathematics")["number"]
     seen.clear()

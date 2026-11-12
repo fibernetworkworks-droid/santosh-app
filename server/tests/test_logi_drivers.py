@@ -36,7 +36,7 @@ def test_rules_pure():
     from app.drivers import rules as R
     p = R.parse_sheet("start 45210 end 45480, diesel 40 L Rs 3800, toll 450, khana 200. Pune se Nashik tak")
     assert p["start_km"] == 45210 and p["end_km"] == 45480 and p["fuel_l"] == 40 and p["fuel_amount"] == 3800 and p["tolls"] == 450
-    assert p["route"] == "Pune - Nashik" and p["expenses"] == [{"what": "Khana / bhatta", "amount": 200.0}]
+    assert p["route"] == "Pune - Nashik" and p["expenses"] == [{"what": "Food / allowance", "amount": 200.0}]
     q = R.parse_sheet("km 12,300 - 12,560 subah 6 baje se shaam 7 baje tak tel 30 litre 2900")
     assert (q["start_km"], q["end_km"], q["start_time"], q["end_time"]) == (12300, 12560, "06:00", "19:00")
     assert R.parse_sheet("aaj trip theek rahi") == {}                       # nothing invented
@@ -54,17 +54,17 @@ def test_rules_pure():
     assert c["work_h"] == 10.5 and c["ot_h"] == 2.5 and not c["block"] and any("overtime" in x for x in c["law"])
     assert c["spread_h"] == 11
     c = R.check_duty({"day": d, "start": "06:00", "end": "13:00"}, [{"day": d - timedelta(days=1), "start": "14:00", "end": "23:00"}], drv, set())
-    assert any("7 ghante aaraam" in x for x in c["law"]) and any("30 minute" in x for x in c["warn"])
+    assert any("Only 7 hours rest" in x for x in c["law"]) and any("30 minute" in x for x in c["warn"])
     c = R.check_duty({"day": d, "start": "08:00", "end": "12:00"}, [{"day": d, "start": "11:00", "end": "15:00"}], drv, set())
     assert c["block"]
     c = R.check_duty({"day": d, "start": "08:00", "end": "12:00"}, [], {**drv, "dl_valid_to": date(2026, 10, 1)}, set())
     assert any("s.181" in x for x in c["block"])
     six = [{"day": d - timedelta(days=i), "start": "08:00", "end": "14:00"} for i in range(1, 7)]
     c = R.check_duty({"day": d, "start": "08:00", "end": "14:00"}, six, drv, set())
-    assert any("Lagaatar 7 din" in x for x in c["law"])
+    assert any("7 days of duty in a row" in x for x in c["law"])
     wk = [{"day": date(2026, 10, 26) + timedelta(days=i), "start": "06:00", "end": "16:00", "break_min": 30} for i in range(5)]
     c = R.check_duty({"day": date(2026, 10, 31), "start": "06:00", "end": "11:00"}, wk, drv, set())
-    assert any("hafte" in x for x in c["law"]) and c["week_h"] > 48
+    assert any("48 hours a week" in x for x in c["law"]) and c["week_h"] > 48
     f = R.check_trip({"start_km": 100, "end_km": 300, "fuel_l": 40}, 90, 10.0)
     assert {x["kind"] for x in f} == {"km_gap", "fuel_odd"}
     assert R.check_trip({"start_km": 500, "end_km": 400}, None, None)[0]["kind"] == "km_back"
@@ -104,7 +104,7 @@ def test_drivers_locker_duties_and_plan(dv):
     long = S.save_duty(T, "Suresh", "27-10-2026", "06:00", "18:00", vehicle="MH12CD5678", break_min=30)
     assert long["saved"] is False and "overtime" in long["say"]
     staff = S.save_duty(T, "Suresh", "27-10-2026", "06:00", "18:00", vehicle="MH12CD5678", break_min=30, force=True, reason="shaadi ki booking", actor="staff:x")
-    assert staff["saved"] is False and "sirf owner" in staff["say"]
+    assert staff["saved"] is False and "Only the owner" in staff["say"]
     with pytest.raises(S.DriversError):
         S.save_duty(T, "Suresh", "27-10-2026", "06:00", "18:00", vehicle="MH12CD5678", force=True, reason="")
     ok = S.save_duty(T, "Suresh", "27-10-2026", "06:00", "18:00", vehicle="MH12CD5678", break_min=30, force=True, reason="shaadi ki booking")
@@ -120,7 +120,7 @@ def test_drivers_locker_duties_and_plan(dv):
     names = {c["name"]: c for c in p["plan"][1]["drivers"]}
     assert names["Anil More"]["can"] is False and names["Suresh Jadhav"]["can"] is False
     assert p["plan"][0]["best"]["name"] == "Ramesh Patil"                  # fewer hours this week
-    assert p["plan"][1]["best"] is None and "koi driver niyam mein nahi" in p["say"]   # the only HGV driver is already on the car
+    assert p["plan"][1]["best"] is None and "no driver within the rules" in p["say"]   # the only HGV driver is already on the car
 
 
 def test_trip_sheets(dv, monkeypatch):
@@ -137,7 +137,7 @@ def test_trip_sheets(dv, monkeypatch):
     t4 = S.add_trip(T, "Ramesh", "21-10-2026", "MH12AB1234", text="km 11350 - 11550 diesel 100 litre, toll 450, khana 200")
     fk = {f["kind"] for f in t4["flags"]}
     assert "km_gap" in fk and "fuel_odd" in fk and "150" in t4["say"] and t4["spent"] == 650
-    assert "Hoola nahi deta" in t4["say"] and t4["duty_id"]
+    assert "Hoola does not pay" in t4["say"] and t4["duty_id"]
     # missing sheet: 22 Oct duty has none
     ms = S.missing_sheets(T)
     assert [x["day"] for x in ms] == ["2026-10-22"]
@@ -229,7 +229,7 @@ def test_tick_reminders_once(dv, monkeypatch):
     assert out["reminders"] >= 2 and "drivers_alert" in kinds(S) and "drivers_day" in kinds(S)
     alert = next(p for k, p in S.EVENTS if k == "drivers_alert")
     says = " ".join(i["say"] for i in alert["items"])
-    assert "Driving licence 05-11-2026" in says and "khatam ho gaya" in says                  # licence 13 days, medical expired
+    assert "Driving licence 05-11-2026" in says and "has expired" in says                  # licence 13 days, medical expired
     assert any(i["doc"] == "police" for i in alert["items"])                                # 24 months after 1 Sep 2024
     assert all(i["message"]["status"] == "draft" for i in alert["items"])
     n = len(S.EVENTS)
@@ -263,7 +263,7 @@ def test_attendance_and_payroll(dv):
     assert f["file"]["name"].endswith(".xlsx") and "pc_file" in kinds(S)
     P.save_employee(T, "Ramesh Patil", gross=18000)
     res = S.to_payroll(T, "2026-10")
-    assert res["saved"] == 1 and any("Kiran" in m for m in res["missing"]) and "aapki haan" in res["say"]
+    assert res["saved"] == 1 and any("Kiran" in m for m in res["missing"]) and "your approval" in res["say"]
 
 
 def test_tools_and_api(dv):

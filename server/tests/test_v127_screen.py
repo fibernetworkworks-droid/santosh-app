@@ -31,7 +31,7 @@ def test_token_signed_expiring_and_revocable(env):
         screen.tenant_of(tok)
         raise AssertionError("revoked link still works")
     except screen.ScreenError as e:
-        assert "band" in str(e)
+        assert "turned off" in str(e)
     assert screen.tenant_of(screen.make_token("default")[0]) == "default"
     assert screen.make_token("default", 9999)[1] <= time.time() + screen.MAX_DAYS * 86400 + 5
 
@@ -65,7 +65,7 @@ def test_api_link_page_board_and_revoke(env):
     bus.publish(conv, "work", {"id": "w1", "phase": "start", "label": "Poster bana raha"})
     with TestClient(main.app) as c:
         ln = c.get("/api/screen/link").json()
-        assert ln["path"].startswith("/screen/") and "dekhne" in ln["say"]
+        assert ln["path"].startswith("/screen/") and "view-only" in ln["say"]
         pg = c.get(ln["path"])
         assert pg.status_code == 200 and "Hoola Screen" in pg.text
         assert "default-src 'none'" in pg.headers["content-security-policy"]
