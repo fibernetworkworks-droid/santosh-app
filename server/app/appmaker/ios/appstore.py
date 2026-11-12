@@ -104,7 +104,7 @@ def listing(tenant: str, ref: str, regen: bool = False, edit: dict[str, Any] | N
             if isinstance(v, str) and v.strip():
                 v = _keywords(v) if k == "keywords" else v.strip()
                 if len(v) > LIMITS[k]:
-                    raise AppStoreError(f"{k}: App Store {LIMITS[k]} akshar tak leta hai ({len(v)} hain).")
+                    raise AppStoreError(f"{k}: the App Store takes up to {LIMITS[k]} characters (this has {len(v)}).")
                 cur[k] = v
         cur["edited"] = True
     elif regen or not cur.get("name"):
@@ -207,13 +207,13 @@ def _store_json(r: AppProject, ist: dict[str, Any], st: dict[str, Any]) -> dict[
 def _ready_for_push(r: AppProject) -> tuple[dict[str, Any], dict[str, Any]]:
     ist, st = IO.state(r), state(r)
     if not (ist.get("testflight") or {}).get("build"):
-        raise AppStoreError("Pehle iPhone app TestFlight par bhejiye: App Store usi build ko leta hai.")
+        raise AppStoreError("Send the iPhone app to TestFlight first: the App Store takes that same build.")
     if not (st.get("listing") or {}).get("name"):
-        raise AppStoreError("Pehle App Store listing banaiye.")
+        raise AppStoreError("Make the App Store listing first.")
     if not IO.ready()["ready"]:
         raise AppStoreError(IO.ready()["why"])
     if not (AS._settings().public_base_url or "").startswith("https://"):
-        raise AppStoreError("Server ka public https address (PUBLIC_BASE_URL) chahiye: privacy / support links usi par hain.")
+        raise AppStoreError("The server's public https address (PUBLIC_BASE_URL) is needed: the privacy / support links are on it.")
     return ist, st
 
 
@@ -223,14 +223,14 @@ def _run(r: AppProject, kind: str) -> dict[str, Any]:
     work = IO._dir(r)
     src = work / "project"
     if not (src / "project.yml").exists():
-        raise AppStoreError("iPhone project nahi mila: 'iPhone app banao' dobara kahiye.")
+        raise AppStoreError("The iPhone project was not found: say 'build the iPhone app' again.")
     sj = _store_json(r, ist, st)
     (src / "hoola_qa" / "store.json").write_text(json.dumps({**sj, "bundle_id": ist.get("bundle_id") or IO.bundle_id(r)}, ensure_ascii=False, indent=1))
     key = r.id.replace("_", "-")[:60].lower()
     res = IO._mac(src, key, kind, lambda stage: _put(r, stage=stage))
     asc = res.get("asc") or {}
     if not asc:
-        raise AppStoreError("Mac se App Store ka jawab nahi aaya (builds repo mein v0.338 wala hoola-ios.yml lagaiye).")
+        raise AppStoreError("No App Store reply came from the Mac (use the v0.338 hoola-ios.yml in the builds repo).")
     return asc
 
 
@@ -261,7 +261,7 @@ def push(tenant: str, ref: str) -> dict[str, Any]:
     if state(r).get("status") in ("pushing", "submitting"):
         return view(r)
     _ready_for_push(r)
-    _put(r, status="pushing", error="", now="App Store Connect par listing, screenshots aur build bhej raha hoon")
+    _put(r, status="pushing", error="", now="Sending the listing, screenshots and build to App Store Connect")
     _bg(r, lambda: _push_now(r))
     return view(_load(tenant, ref))
 
@@ -277,18 +277,18 @@ def _push_now(r: AppProject) -> None:
         return
     _put(r, status="ready", pushed=now().isoformat(), now="", error="", version=asc.get("version_string"),
          screenshots=asc.get("screenshots"), asc_state=asc.get("state"))
-    AN._note(r, f"App Store par taiyaar: {r.name} v{asc.get('version_string')} - listing, {asc.get('screenshots')} screenshots aur build lag gaye. "
-                "Review ke liye 'Review ke liye bhejo' aapka tap hai.")
+    AN._note(r, f"Ready on the App Store: {r.name} v{asc.get('version_string')} - the listing, {asc.get('screenshots')} screenshots and the build are in place. "
+                "Sending it for review is your tap ('Submit for review').")
 
 
 def submit(tenant: str, ref: str, her_tap: bool = False) -> dict[str, Any]:
     """Submit for Review: ONLY her tap in the app (the tool never calls this)."""
     if not her_tap:
-        raise AppStoreError("App Store review ke liye bhejna sirf aapke tap se hota hai (app ka button).")
+        raise AppStoreError("Sending to App Store review happens only by your tap (the button in the app).")
     r = _load(tenant, ref)
     st = state(r)
     if not st.get("pushed"):
-        raise AppStoreError("Pehle listing + screenshots App Store par bhejiye.")
+        raise AppStoreError("Send the listing + screenshots to the App Store first.")
     from .. import gates as GT                       # v0.455 SURAKSHA GATE: a failing security check blocks the submit
     try:
         GT.must_pass(r, "ios")
@@ -296,7 +296,7 @@ def submit(tenant: str, ref: str, her_tap: bool = False) -> dict[str, Any]:
         raise AppStoreError(str(e)) from e
     if st.get("status") in ("pushing", "submitting"):
         return view(r)
-    _put(r, status="submitting", error="", now="Apple review ke liye bhej raha hoon")
+    _put(r, status="submitting", error="", now="Sending for Apple review")
     _bg(r, lambda: _submit_now(r))
     return view(_load(tenant, ref))
 
@@ -313,29 +313,29 @@ def _submit_now(r: AppProject) -> None:
         return
     subs = list(st.get("submissions") or []) + [{"version": asc.get("version_string"), "at": now().isoformat(), "id": asc.get("submission")}]
     _put(r, status="in_review", submitted=now().isoformat(), now="", error="", submissions=subs[-10:])
-    AN._note(r, f"{r.name} v{asc.get('version_string')} Apple review mein bhej di. Apple aam taur par 1-2 din leta hai; jawab App Store "
-                "Connect aur aapke email par aayega. Approve hone ke baad release ka button bhi aapka hai.")
+    AN._note(r, f"{r.name} v{asc.get('version_string')} has been sent for Apple review. Apple usually takes 1-2 days; the answer comes in App Store "
+                "Connect and to your email. After approval the release button is also yours.")
 
 
 def why_line(err: str) -> str:
     """Apple's refusal -> the step SHE takes (never a raw log)."""
     e = err or ""
     if "MISSING_SECRET" in e:
-        return "Builds repo ke Secrets mein App Store Connect key nahi mili: " + e.split("MISSING_SECRET", 1)[1].strip() + "."
+        return "The App Store Connect key was not found in the builds repo's Secrets: " + e.split("MISSING_SECRET", 1)[1].strip() + "."
     if "NO_APP_RECORD" in e:
-        return "App Store Connect mein yeh app abhi bani nahi: My Apps > + > New App, bundle ID wahi jo card par hai."
+        return "This app does not exist in App Store Connect yet: My Apps > + > New App, with the same bundle ID as on the card."
     if "NO_BUILD" in e:
-        return "Yeh build App Store Connect mein nahi mila: pehle 'TestFlight par bhejo' kijiye."
+        return "This build was not found in App Store Connect: first do 'Send to TestFlight'."
     if "BUILD_PROCESSING" in e:
-        return "Apple abhi build process kar raha hai (10-30 minute). Thodi der baad dobara bhejiye."
+        return "Apple is still processing the build (10-30 minutes). Send again in a little while."
     if "2064x2752" in e:                                             # v0.364 the iPad set
-        return "iPad screenshot ka size App Store ke 13-inch iPad slot se match nahi hua; builds repo ka naya hoola-ios.yml lagaiye."
+        return "The iPad screenshot size did not match the App Store's 13-inch iPad slot; use the new hoola-ios.yml in the builds repo."
     if "1320x2868" in e:
-        return "Screenshot ka size App Store ke 6.9-inch slot se match nahi hua; builds repo ka naya hoola-ios.yml lagaiye."
+        return "The screenshot size did not match the App Store's 6.9-inch slot; use the new hoola-ios.yml in the builds repo."
     if re.search(r"401|NOT_AUTHORIZED|authentication", e, re.I):
-        return "App Store Connect key kaam nahi kar rahi (Key ID / Issuer ID / .p8 check kijiye; Admin ya App Manager access chahiye)."
+        return "The App Store Connect key is not working (check Key ID / Issuer ID / .p8; Admin or App Manager access is needed)."
     if re.search(r"STATE_ERROR|ENTITY_ERROR|missing|required", e, re.I):
-        return "App Store Connect ne kuch adhoora bataya: " + AS._tidy(e, 220) + " (App Information / Age Rating / App Privacy bhara hai?)"
+        return "App Store Connect says something is incomplete: " + AS._tidy(e, 220) + " (are App Information / Age Rating / App Privacy filled in?)"
     return "App Store Connect: " + AS._tidy(e, 260)
 
 

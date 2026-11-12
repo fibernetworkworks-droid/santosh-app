@@ -43,7 +43,7 @@ BINS = (50, 100, 200, 400, 800, 1500, 3000, 6000, 10 ** 9)
 BIN_LABELS = ("<50ms", "50-100ms", "100-200ms", "200-400ms", "400-800ms", "0.8-1.5s", "1.5-3s", "3-6s", ">6s")
 
 # what a cost row may be. Only `model` carries real rupees today - the rest are counted and said.
-KINDS = {"model": "Hoola ka dimaag (build / logic / jaanch)", "push": "notifications", "sms": "SMS",
+KINDS = {"model": "Hoola's AI (build / logic / checks)", "push": "notifications", "sms": "SMS",
          "connect": "connector calls", "storage": "files + data"}
 PRICED = ("model",)
 
@@ -239,9 +239,9 @@ def cost(r: AppProject, days: int = 30) -> dict[str, Any]:
     unpriced = sorted(k for k, b in by.items() if not b["priced"] and b["count"])
     return {"days": days, "inr": total, "by_kind": sorted(by.values(), key=lambda x: -x["inr"]),
             "not_priced": [KINDS[k] for k in unpriced],
-            "says": (f"Pichhle {days} din mein is app par Rs {total:.2f}"
-                     + (f" (aur {', '.join(KINDS[k] for k in unpriced)} ka daam abhi set nahi hai)" if unpriced else "")
-                     if (total or unpriced) else f"Pichhle {days} din mein koi kharcha nahi")}
+            "says": (f"Rs {total:.2f} spent on this app in the last {days} days"
+                     + (f" (and {', '.join(KINDS[k] for k in unpriced)} has no price set yet)" if unpriced else "")
+                     if (total or unpriced) else f"No cost in the last {days} days")}
 
 
 # ---------------------------------------------------------------- the one card she reads
@@ -254,7 +254,7 @@ def dashboard(r: AppProject, days: int = 14) -> dict[str, Any]:
     try:
         use = ME.usage(r)
     except Exception:                                               # noqa: BLE001
-        gaps.append("storage / rows padha nahi ja saka")
+        gaps.append("storage / rows could not be read")
     tr = traffic(r, days)
     cs = cost(r, 30)
     try:
@@ -269,9 +269,9 @@ def dashboard(r: AppProject, days: int = 14) -> dict[str, Any]:
     except Exception:                                               # noqa: BLE001
         pass
     if not tr["calls"]:
-        gaps.append("abhi tak app se koi call nahi aayi (koi use hi nahi kar raha, ya build purani hai)")
+        gaps.append("no call has come from the app yet (nobody is using it, or the build is old)")
     if not cs["inr"] and not cs["not_priced"]:
-        gaps.append("kharche ka koi hisaab nahi bana")
+        gaps.append("no cost has been recorded")
     return {"app": r.id, "name": r.name, "days": days,
             "people": {"accounts": int(use.get("accounts") or 0), "rows": int(use.get("rows") or 0),
                        "orders": orders, "writes_today": int(use.get("writes_today") or 0)},
@@ -285,11 +285,11 @@ def _says(tr: dict[str, Any], cs: dict[str, Any], field: dict[str, Any], use: di
     if tr["calls"]:
         bits.append(f"{tr['calls']} calls, {tr['error_percent']}% fail, p95 {tr.get('p95') or '?'}")
     else:
-        bits.append("abhi koi call nahi")
+        bits.append("no calls yet")
     if int(use.get("accounts") or 0):
-        bits.append(f"{use['accounts']} log")
+        bits.append(f"{use['accounts']} people")
     if cs["inr"]:
-        bits.append(f"Rs {cs['inr']:.2f} (30 din)")
+        bits.append(f"Rs {cs['inr']:.2f} (30 days)")
     if field.get("crashes") or field.get("anrs"):
         bits.append(f"{field.get('crashes', 0)} crash" + (f" + {field['anrs']} ANR" if field.get("anrs") else ""))
     return "; ".join(bits) + "."
@@ -319,22 +319,22 @@ def rules(r: AppProject, days: int = 14) -> list[dict[str, Any]]:
     # 1. failures. 5% of a real number of calls is a real problem; below 20 calls it is noise.
     if n24 >= 20 and e24 / n24 >= 0.05:
         out.append({"key": "errors", "level": "bad",
-                    "say": f"Aapki app ki {round(100 * e24 / n24)}% calls fail ho rahi hain (pichhle 24 ghante, "
-                           f"{e24}/{n24}). Server ya app ki koi dikkat hai - 'app ki jaanch chalao' kahiye."})
+                    "say": f"About {round(100 * e24 / n24)}% of your app's calls are failing (last 24 hours, "
+                           f"{e24}/{n24}). Something is wrong with the server or the app - say 'run the app check'."})
     # 2. slower than it was. Twice her own average, not a number from a book.
     if n24 >= 20 and nb >= 50 and avgb > 0 and avg24 >= 2 * avgb and avg24 >= 400:
         out.append({"key": "slow", "level": "warn",
-                    "say": f"App pehle se dhimi ho gayi hai: ab {round(avg24)}ms, pehle {round(avgb)}ms "
-                           f"(pichhle {days} din ka average). Data badh gaya ho sakta hai."})
+                    "say": f"The app has become slower than before: now {round(avg24)}ms, earlier {round(avgb)}ms "
+                           f"(average of the last {days} days). The data may have grown."})
     # 3. crashes / ANRs from real phones
     try:
         from . import quality as QA
         fh = QA.field_health(r, 2)
         if fh.get("open"):
             out.append({"key": "crash", "level": "bad",
-                        "say": f"Asli phones se {fh.get('crashes', 0)} crash"
-                               + (f" aur {fh['anrs']} ANR (app jam)" if fh.get("anrs") else "")
-                               + " aaye hain. 'crash theek karo' kahiye."})
+                        "say": f"{fh.get('crashes', 0)} crash(es)"
+                               + (f" and {fh['anrs']} ANR (app freeze)" if fh.get("anrs") else "")
+                               + " came from real phones. Say 'fix the crash'."})
     except Exception:                                               # noqa: BLE001
         pass
     # 4. the storage / rows ceiling (v0.390's own numbers, said here too)
@@ -344,8 +344,8 @@ def rules(r: AppProject, days: int = 14) -> list[dict[str, Any]]:
         near = [k for k, v in (u.get("percent") or {}).items() if v >= 90]
         if near:
             out.append({"key": "limits", "level": "warn",
-                        "say": f"App ki jagah bhar rahi hai ({', '.join(near)} 90% se upar). Purana data hata dijiye "
-                               "ya limit badha dijiye."})
+                        "say": f"The app's space is filling up ({', '.join(near)} above 90%). Delete old data "
+                               "or raise the limit."})
     except Exception:                                               # noqa: BLE001
         pass
     # 5. cost: this month against the three months before it, her own numbers
@@ -353,8 +353,8 @@ def rules(r: AppProject, days: int = 14) -> list[dict[str, Any]]:
     older = cost(r, 120)["inr"] - cs30
     if cs30 >= 100 and older > 0 and cs30 >= 2 * (older / 3):
         out.append({"key": "cost", "level": "warn",
-                    "say": f"Is mahine is app par Rs {cs30:.0f} lage - pichhle mahinon se lagbhag dugna. "
-                           "'app ka hisaab dikhao' kahiye."})
+                    "say": f"This app cost Rs {cs30:.0f} this month - about double the earlier months. "
+                           "Say 'show the app's costs'."})
     return out
 
 
@@ -394,8 +394,8 @@ def watch(r: AppProject) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- what the next big job will cost
-BIG_JOBS = {"build": "nayi build (Android)", "ios": "nayi build (iPhone)", "logic": "dimaag ka draft",
-            "naksha": "naksha (poora plan)", "jaanch": "jaanch ki kahaniyan", "design": "design dobara"}
+BIG_JOBS = {"build": "new build (Android)", "ios": "new build (iPhone)", "logic": "logic draft",
+            "naksha": "plan (the whole app)", "jaanch": "test stories", "design": "design again"}
 
 
 def estimate(r: AppProject, job: str = "build") -> dict[str, Any]:
@@ -413,9 +413,9 @@ def estimate(r: AppProject, job: str = "build") -> dict[str, Any]:
         mid = round(statistics.median(runs), 2)
         return {"job": job, "label": BIG_JOBS[job], "inr": mid, "from_runs": len(runs), "measured": True,
                 "month_so_far": month, "month_after": round(month + mid, 2),
-                "says": f"{BIG_JOBS[job]} par pichhli {len(runs)} baar lagbhag Rs {mid:.2f} lage. "
-                        f"Is mahine ab tak Rs {month:.2f}; iske baad lagbhag Rs {month + mid:.2f}."}
+                "says": f"{BIG_JOBS[job]} cost about Rs {mid:.2f} over the last {len(runs)} runs. "
+                        f"This month so far Rs {month:.2f}; after this about Rs {month + mid:.2f}."}
     return {"job": job, "label": BIG_JOBS[job], "inr": None, "from_runs": len(runs), "measured": False,
             "month_so_far": month, "month_after": None,
-            "says": f"{BIG_JOBS[job]} ka kharcha abhi naapa nahi gaya (" + (f"sirf {len(runs)} baar chala"
-                    if runs else "ek baar bhi nahi chala") + f"). Is mahine ab tak Rs {month:.2f}."}
+            "says": f"The cost of {BIG_JOBS[job]} has not been measured yet (" + (f"it ran only {len(runs)} time(s)"
+                    if runs else "it has never run") + f"). This month so far Rs {month:.2f}."}

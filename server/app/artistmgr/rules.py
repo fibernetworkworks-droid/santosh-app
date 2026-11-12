@@ -38,54 +38,54 @@ BLOCKING = ("hold", "confirmed")
 REGS = {
     "iprs": {"label": "IPRS membership + works registered",
              "who": "lyricist / composer / music publisher",
-             "why": "Gaane ke bol aur dhun (musical + literary work) ki public performance / broadcast royalty. IPRS registered copyright society hai.",
-             "how": "iprs.org par membership; har gaana (work) writer splits ke saath register karein."},
+             "why": "Public performance / broadcast royalty for a song's lyrics and tune (musical + literary work). IPRS is the registered copyright society.",
+             "how": "Membership at iprs.org; register every song (work) with its writer splits."},
     "isamra": {"label": "ISAMRA (singers + musicians) membership",
                "who": "singer / musician (performer)",
-               "why": "Performer ki royalty (Copyright Act s.38A): recording ke commercial use par. ISAMRA (pehle ISRA) singers aur musicians ka registered society hai.",
-               "how": "ISAMRA par membership + apne gaane / performances list karein."},
+               "why": "Performer's royalty (Copyright Act s.38A): on commercial use of a recording. ISAMRA (earlier ISRA) is the registered society of singers and musicians.",
+               "how": "Membership at ISAMRA + list your songs / performances."},
     "ppl": {"label": "PPL (sound recording owner)",
-            "who": "jo master recording ka owner / label hai",
-            "why": "Sound recording ki public performance royalty. PPL 11 Jun 2026 se registered copyright society (s.33(3)).",
-            "how": "Agar artist khud apne masters ka owner hai to PPL membership; label ke paas masters hon to label karta hai."},
+            "who": "whoever owns the master recording / the label",
+            "why": "Public performance royalty for the sound recording. PPL is a registered copyright society from 11 Jun 2026 (s.33(3)).",
+            "how": "If the artist owns their own masters, PPL membership; if a label holds the masters, the label does it."},
     "isrc": {"label": "ISRC registrant code",
-             "who": "jo recording release karta hai (artist-label / label)",
-             "why": "Har recording ka ek pakka ISRC (IN-XXX-YY-NNNNN). Ek recording = ek code, kabhi dobara use nahi.",
-             "how": "India ki ISRC agency IMI (isrc@indianmi.org) se registrant code, ya distributor se ISRC lein."},
+             "who": "whoever releases the recording (artist-label / label)",
+             "why": "Every recording has one fixed ISRC (IN-XXX-YY-NNNNN). One recording = one code, never reused.",
+             "how": "Get a registrant code from IMI, India's ISRC agency (isrc@indianmi.org), or take ISRCs from the distributor."},
     "ipi": {"label": "IPI name number",
             "who": "lyricist / composer",
-            "why": "Duniya bhar mein writer ki pehchaan (CISAC); IPRS member banne par milta hai.",
-            "how": "IPRS membership ke saath."},
+            "why": "The writer's identity worldwide (CISAC); given when you become an IPRS member.",
+            "how": "Comes with IPRS membership."},
     "distributor": {"label": "Distributor account (Spotify / JioSaavn / YouTube Music ...)",
                     "who": "artist / label",
-                    "why": "Streaming par release + royalty statement. Terms (share, payout, lead time) jo aap batayein wahi.",
-                    "how": "Aapka chuna hua distributor; uske terms Niyam mein likhiye."},
-    "content_id": {"label": "YouTube Content ID (distributor ke through)",
+                    "why": "Release on streaming + royalty statements. The terms (share, payout, lead time) are whatever you tell me.",
+                    "how": "The distributor you chose; write its terms in Rules."},
+    "content_id": {"label": "YouTube Content ID (through the distributor)",
                    "who": "recording owner",
-                   "why": "Doosron ke video mein aapka gaana chale to claim / earning.",
-                   "how": "Distributor ka Content ID option (sirf apne masters par)."},
+                   "why": "Claim / earnings when your song plays in other people's videos.",
+                   "how": "The distributor's Content ID option (only on your own masters)."},
     "copyright": {"label": "Copyright registration (optional)",
                   "who": "work / sound recording owner",
-                  "why": "Copyright bina registration ke bhi hota hai; registration court mein saboot ke kaam aata hai.",
+                  "why": "Copyright exists even without registration; registration serves as evidence in court.",
                   "how": "copyright.gov.in e-filing (Form XIV)."},
-    "pan_gst": {"label": "PAN + GST (agar turnover limit ke upar)",
+    "pan_gst": {"label": "PAN + GST (if above the turnover limit)",
                 "who": "artist / agency",
-                "why": "TDS credit 26AS mein PAN par; GST registration services ke liye Rs 20 lakh (special states Rs 10 lakh) ke upar.",
-                "how": "Apna CA."},
+                "why": "TDS credit shows in 26AS against the PAN; GST registration for services above Rs 20 lakh (special states Rs 10 lakh).",
+                "how": "Your CA."},
 }
 REG_STATUS = ("none", "applied", "done", "na")
 
 # The organiser's side of a live show (listed in contract / checklist; she never files them).
 ORGANISER_DUTIES = [
-    "Police / local permission for the event (state Police Act / Collector) - organiser ki zimmedaari.",
-    "Music licences for the event: IPRS (gaane ke bol + dhun) aur sound recordings ke liye PPL / jo society / owner repertoire rakhta ho - organiser / venue.",
-    "Noise Rules 2000 (Rule 5): khuli jagah par loudspeaker raat 10 se subah 6 tak nahi (state 15 tyohaar ke din midnight tak de sakta hai).",
-    "Stage, sound, light, power backup rider ke hisaab se; security aur crowd control.",
-    "Artist ka travel, stay, local transport, khana: contract mein jo tay ho.",
+    "Police / local permission for the event (state Police Act / Collector) - the organiser's responsibility.",
+    "Music licences for the event: IPRS (lyrics + tune) and, for sound recordings, PPL / whichever society / owner holds the repertoire - organiser / venue.",
+    "Noise Rules 2000 (Rule 5): no loudspeaker in the open from 10 pm to 6 am (the state can allow up to midnight on 15 festival days).",
+    "Stage, sound, light, power backup as per the rider; security and crowd control.",
+    "Artist's travel, stay, local transport, food: as agreed in the contract.",
 ]
 
-PERFORMER_CLAUSE = ("Artist ke live performance ki audio / video recording, live streaming ya broadcast sirf artist ki likhit ijazat "
-                    "se (Copyright Act 1957 s.38A). Ijazat milne par bhi artist ka naam dikhana hoga (s.38B moral rights).")
+PERFORMER_CLAUSE = ("Audio / video recording, live streaming or broadcast of the artist's live performance only with the artist's written permission "
+                    "(Copyright Act 1957 s.38A). Even with permission, the artist must be credited (s.38B moral rights).")
 
 
 def digest(obj: Any) -> str:
@@ -95,8 +95,8 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 500) -> str:
     """Promoter / her words: secrets never kept (OTP / PIN / password values, card-like and Aadhaar-like numbers)."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 
@@ -334,12 +334,12 @@ def split_problems(rows: list[dict], field: str = "split_pct") -> list[str]:
         return []
     probs = []
     if any(float(v) < 0 for v in vals):
-        probs.append("Hissa minus nahi ho sakta.")
+        probs.append("A share cannot be negative.")
     tot = round(sum(float(v) for v in vals), 2)
     if len(vals) != len(rows):
-        probs.append("Har member / writer ka hissa likhiye (kuch khaali hain).")
+        probs.append("Give every member's / writer's share (some are blank).")
     elif abs(tot - 100) > 0.01:
-        probs.append(f"Hisse milkar {tot:g}% hain, 100% hone chahiye.")
+        probs.append(f"Shares add up to {tot:g}%; they must total 100%.")
     return probs
 
 
@@ -372,21 +372,21 @@ def settlement(fee: float | None, received: float, tds: float, commission_pct: f
 
 def tds_note(event_type: str, fee: float | None) -> str:
     if event_type == "recording":
-        return ("Film / ad ke liye recording: Income-tax Rules mein 'film artist' (singer, music director, lyricist...) professional "
-                "hain -> s.393(1) professional fees 10% (saal mein Rs 50,000 se upar). Apne CA se pakka karein.")
-    return ("Live show ki payment par promoter TDS kaat sakta hai: ITAT Delhi (C.J. International Hotels, 10 Mar 2016) ne live "
-            "performance ko contract (purana 194C, ab s.393(1) contract: 1% individual / 2% firm, ek payment Rs 30,000 ya saal mein "
-            "Rs 1 lakh se upar) mana; kuch promoter professional 10% kaatte hain. Jo kata uska Form 16A maangiye. Apne CA se pakka karein.")
+        return ("Recording for a film / ad: under the Income-tax Rules a 'film artist' (singer, music director, lyricist...) is a professional "
+                "-> s.393(1) professional fees 10% (above Rs 50,000 in a year). Confirm with your CA.")
+    return ("The promoter may deduct TDS on a live show payment: ITAT Delhi (C.J. International Hotels, 10 Mar 2016) treated a live "
+            "performance as a contract (old 194C, now s.393(1) contract: 1% individual / 2% firm, above Rs 30,000 in one payment or "
+            "Rs 1 lakh in a year); some promoters deduct the professional 10%. Ask for Form 16A for whatever was deducted. Confirm with your CA.")
 
 
 def gst_note(issuer_gstin: str, art_form: str, fee: float | None, brand: bool = False) -> tuple[float, str]:
     """(gst %, note). No GSTIN = no GST on the invoice. Folk / classical performance up to Rs 1.5 lakh per performance is exempt
     (Notfn 12/2017-CT(R) entry 13(b)), not for a brand ambassador. Else 18%. Her CA confirms."""
     if not issuer_gstin:
-        return 0.0, "Invoice dene wale ka GSTIN nahi: GST nahi lagaya (Rs 20 lakh se upar turnover par registration zaroori)."
+        return 0.0, "The invoicing party has no GSTIN: no GST charged (registration is required above Rs 20 lakh turnover)."
     if art_form in ("folk", "classical") and not brand and fee is not None and fee <= 150000:
-        return 0.0, "Folk / classical performance Rs 1.5 lakh tak: GST chhoot (Notfn 12/2017-CT(R) entry 13(b)). CA se pakka karein."
-    return 18.0, "Performance / artist service par GST 18%. CA se pakka karein."
+        return 0.0, "Folk / classical performance up to Rs 1.5 lakh: GST exempt (Notfn 12/2017-CT(R) entry 13(b)). Confirm with your CA."
+    return 18.0, "GST 18% on performance / artist services. Confirm with your CA."
 
 
 def gst_lines(base: float, pct: float, same_state: bool) -> dict:
@@ -404,13 +404,13 @@ def release_plan(release_day: date, lead_days: int | None, today: date) -> list[
     """Steps with dates. Distributor lead time only from HER distributor terms (unknown = said, never guessed)."""
     steps = []
     if lead_days is not None:
-        steps.append({"key": "deliver", "what": f"Distributor ko audio + artwork + metadata (aapke terms: {lead_days} din pehle)",
+        steps.append({"key": "deliver", "what": f"Audio + artwork + metadata to the distributor (your terms: {lead_days} days before)",
                       "by": (release_day - timedelta(days=lead_days)).isoformat()})
     else:
-        steps.append({"key": "deliver", "what": "Distributor ko delivery: unka lead time Niyam mein likhiye (pata nahi)", "by": ""})
-    steps.append({"key": "pitch", "what": "Spotify for Artists pitch (release se kam se kam 7 din pehle; ek waqt ek gaana)",
+        steps.append({"key": "deliver", "what": "Delivery to the distributor: write its lead time in Rules (not known)", "by": ""})
+    steps.append({"key": "pitch", "what": "Spotify for Artists pitch (at least 7 days before release; one song at a time)",
                   "by": (release_day - timedelta(days=7)).isoformat()})
-    steps.append({"key": "iprs", "what": "IPRS mein gaana (work) writer splits ke saath register", "by": release_day.isoformat()})
+    steps.append({"key": "iprs", "what": "Register the song (work) with IPRS with its writer splits", "by": release_day.isoformat()})
     steps.append({"key": "release", "what": "Release", "by": release_day.isoformat()})
     for s in steps:
         s["late"] = bool(s["by"]) and s["by"] < today.isoformat()
@@ -421,15 +421,15 @@ def track_problems(t: dict) -> list[str]:
     p = []
     nm = t.get("title") or "?"
     if not t.get("isrc"):
-        p.append(f"'{nm}': ISRC nahi (IMI registrant code ya distributor se).")
+        p.append(f"'{nm}': no ISRC (from an IMI registrant code or the distributor).")
     elif not isrc(t["isrc"]):
-        p.append(f"'{nm}': ISRC '{t['isrc']}' ka roop galat (IN-XXX-YY-NNNNN).")
+        p.append(f"'{nm}': ISRC '{t['isrc']}' has the wrong format (IN-XXX-YY-NNNNN).")
     ws = t.get("writers") or []
     if not ws:
-        p.append(f"'{nm}': lyricist / composer ke naam aur hisse nahi.")
+        p.append(f"'{nm}': names and shares of lyricist / composer are missing.")
     else:
         p += [f"'{nm}': {x}" for x in split_problems(ws, "share")]
         for w in ws:
             if w.get("ipi") and not ipi_ok(w["ipi"]):
-                p.append(f"'{nm}': {w.get('name', '?')} ka IPI {w['ipi']} 9-11 ank ka hona chahiye.")
+                p.append(f"'{nm}': {w.get('name', '?')}: IPI {w['ipi']} must have 9-11 digits.")
     return p

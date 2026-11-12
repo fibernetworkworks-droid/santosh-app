@@ -85,7 +85,7 @@ def test_a_module_may_not_need_one_that_comes_later(droid_env):
     s = _spec()
     s["modules"][0]["needs"] = ["followup"]           # the first needs the second
     got = AR.check(s)
-    assert any("baad mein aata hai" in e or "iske baad" in e for e in got["errors"]), got["errors"]
+    assert any("comes after" in e for e in got["errors"]), got["errors"]
 
 
 def test_only_a_question_that_changes_the_build_survives(droid_env):
@@ -94,7 +94,7 @@ def test_only_a_question_that_changes_the_build_survives(droid_env):
     asks = [q["ask"] for q in got["spec"]["questions"]]
     assert "Delivery sirf Pune mein?" in asks
     assert not any("rang" in a for a in asks), "a question that changes nothing is not a question"
-    assert any("hata diya" in w for w in got["warnings"])
+    assert any("question dropped" in w for w in got["warnings"])
 
 
 def test_a_private_field_stays_private_through_the_build(droid_env):
@@ -163,7 +163,7 @@ def test_building_a_module_really_changes_the_app(droid_env):
     assert "complaints" in after, "the list the naksha promised is not in her app"
     assert AR.card(_app(aid))["modules"][0]["state"] == "built"
     assert AR.changelog(_app(aid))[0]["module"] == "complaints"
-    assert "ban gaya" in AR.changelog(_app(aid))[0]["said"]
+    assert "built" in AR.changelog(_app(aid))[0]["said"]
 
 
 def test_a_built_module_is_proved_by_its_own_stories(droid_env):
@@ -176,7 +176,7 @@ def test_a_built_module_is_proved_by_its_own_stories(droid_env):
     got = AR.build(_app(aid), "complaints")           # run_tests on
     assert got["proof"]["ran"] is True, got["proof"]
     assert got["proof"]["pass"] >= 1 and got["proof"]["fail"] == 0, got["proof"]
-    assert "kahaniyan pass" in got["says"]
+    assert "stories passed" in got["says"]
     assert got["ok"] is True
 
 
@@ -245,7 +245,7 @@ def test_the_routes_and_the_tool_are_reachable(droid_env):
 
     ctx = Ctx(tenant_id=T, conversation_id=conv)
     card = asyncio.run(dispatch("app_dekho", {"what": "naksha", "app": aid}, ctx))
-    assert card["has"] is False and "naksha" in card["says"]
+    assert card["has"] is False and "plan" in card["says"]
     with pytest.raises(ToolError):              # approving a module is HER tap, never the tool's
         asyncio.run(dispatch("app_banao", {"action": "naksha_ok", "app": aid, "module": "x"}, ctx))
 

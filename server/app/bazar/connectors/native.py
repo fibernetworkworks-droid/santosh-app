@@ -31,7 +31,7 @@ def _when(args: dict[str, Any], key: str = "when") -> dt.datetime:
     raw = str(args.get(key) or "")
     d = parse_when(raw)
     if d is None:
-        raise ToolError("When should I remind you? For example 'kal subah 7 baje' or 'at 6:30 pm'.")
+        raise ToolError("When should I remind you? For example 'tomorrow 7 am' or 'at 6:30 pm'.")
     return d
 
 
@@ -67,7 +67,7 @@ class NativeExecutor:
 
     SPECS: dict[str, list[ToolSpec]] = {
         "reminders": [
-            ToolSpec("set_reminder", "Set a reminder or alarm. 'when' accepts ISO time or phrases like 'kal subah 7 baje'.",
+            ToolSpec("set_reminder", "Set a reminder or alarm. 'when' accepts ISO time or phrases like 'tomorrow 7 am' / 'kal subah 7 baje'.",
                      {**S(text=STR, when=STR, repeat={"type": "string", "enum": ["", "daily", "weekly", "monthly", "yearly"]},
                           kind={"type": "string", "enum": ["reminder", "alarm"]}), "required": ["text", "when"]}, 1),
             ToolSpec("list_reminders", "List upcoming reminders.", S(days=NUM), 0),
@@ -426,8 +426,8 @@ class NativeExecutor:
 
     # ---------------- greetings / WhatsApp ----------------
     def _messages(self, a, ctx) -> list[dict[str, str]]:
-        lang = str(a.get("language") or ctx.user.language or "hi")
-        tpl = GREETINGS.get(lang, GREETINGS["hi"])
+        lang = str(a.get("language") or ctx.user.language or "en")
+        tpl = GREETINGS.get(lang, GREETINGS["en"])
         cs = ctx.session.scalars(select(Contact).where(Contact.user_id == ctx.user.id)).all()
         names = [n.lower() for n in (a.get("names") or [])]
         if names:

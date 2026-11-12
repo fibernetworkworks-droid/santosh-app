@@ -35,7 +35,7 @@ STATE_TTL = 15 * 60
 MAC = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 PRIVATE_IP = re.compile(r"^(10|192\.168|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){1,3}$")
 HINT = {"ir": "This phone may not have an IR blaster, or it wasn't pointed at the AC.",
-        "bt_hid": "The TV isn't connected to Hoola's Bluetooth remote: say 'TV ko Bluetooth se jodo' (bluetooth action=tv_pair).",
+        "bt_hid": "The TV isn't connected to Hoola's Bluetooth remote: say 'connect the TV by Bluetooth' (bluetooth action=tv_pair).",
         "phone_media": "No music app or speaker responded."}
 
 
@@ -152,7 +152,7 @@ def add_device(tenant: str, kind: str, name: str, room: str = "", brand: str = "
             out["setup"] = {"try_protocols": [{"protocol": p, "label": ir.PROTOCOLS[p]["label"]} for p in ir.try_order(d.brand)],
                             "how": "Point the phone at the AC and tap Test for each remote type until the AC beeps."}
         if kind == "tv":
-            out["setup"] = {"how": "Tap 'Remote test / jodiye': Hoola connects to a TV already paired with the phone, or makes "
+            out["setup"] = {"how": "Tap 'Remote test / connect': Hoola connects to a TV already paired with the phone, or makes "
                                    "the phone visible so the TV can add it (TV > Bluetooth > Add accessory > this phone's "
                                    "name). For YouTube/Netflix keep the phone on the same Wi-Fi as the TV."}
         return out
@@ -183,7 +183,7 @@ def ir_confirm(tenant: str, did: str, protocol: str) -> dict[str, Any]:
             raise ToolError("Not an IR device")
         d.protocol = protocol
         d.state = {**(d.state or {}), "ac": ir.AcState(True, "cool", ir.DEFAULT_TEMP_C, "auto").to_dict()}  # the test turned it on
-        return {**_dev_out(d), "message": f"{d.name} is ready. Try: '{d.name} 24 pe karo' or '{d.name} band karo'."}
+        return {**_dev_out(d), "message": f"{d.name} is ready. Try: 'set {d.name} to 24' or 'turn off {d.name}'."}
 
 
 def tv_test(tenant: str, did: str) -> dict[str, Any]:
@@ -218,7 +218,7 @@ def command_result(tenant: str, cid: str, ok: bool, error: str = "") -> dict[str
             conv = t.conversation_id if t else ""
         out = {"id": c.id, "status": c.status, "hint": hint}
     if conv:
-        notify(conv, f"Ghar ka device nahi chala: {(error or 'phone ne mana kiya')[:120]}. {hint}".strip())
+        notify(conv, f"Home device did not work: {(error or 'the phone refused')[:120]}. {hint}".strip())
     return out
 
 
@@ -242,7 +242,7 @@ def link_start(tenant: str, provider: str) -> dict[str, Any]:
     if provider == "lg_thinq":
         return {"provider": provider, "name": PROVIDERS[provider], "url": authorize_url(provider, st, ""), "token_in_app": True,
                 "how": "Open this page, sign in to LG, create a personal access token with device permissions, "
-                       "then paste it in Santosh › Ghar › LG ThinQ. Never paste it in chat."}
+                       "then paste it in Hoola › Home › LG ThinQ. Never paste it in chat."}
     state = secrets.token_urlsafe(24)
     with session() as s:
         _user(s, tenant)
@@ -264,11 +264,11 @@ def link_finish(provider: str, state: str, code: str) -> tuple[str, list[str]]:
     with session() as s:
         row = s.get(KVState, f"dev_state:{state}") if state else None
         if row is None:
-            raise ToolError("This sign-in link has expired. Start again from Santosh › Ghar.")
+            raise ToolError("This sign-in link has expired. Start again from Hoola › Home.")
         data = json.loads(row.value or "{}")
         s.delete(row)
     if data.get("provider") != provider or float(data.get("exp", 0)) < time.time():
-        raise ToolError("This sign-in link has expired. Start again from Santosh › Ghar.")
+        raise ToolError("This sign-in link has expired. Start again from Hoola › Home.")
     uid = data["uid"]
     st = get_settings()
     tok = exchange_code(provider, st, code, transport=cloud_transport(st))

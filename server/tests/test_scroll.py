@@ -33,9 +33,9 @@ def test_week_report(env):
     r = scroll.report("default", 7, today=TODAY)
     assert r["has_data"] and [a["app"] for a in r["apps"]] == ["Instagram", "YouTube"]      # unknown apps dropped
     assert r["total_min"] == sum(60 + i * 10 + 20 for i in range(7)) == 770
-    assert r["avg_text"] == "1 ghanta 50 min" and r["reels_est"] == 770 * 2
+    assert r["avg_text"] == "1 hour 50 min" and r["reels_est"] == 770 * 2
     assert r["trend_pct"] == 120                         # 110/day vs 50/day
-    assert r["late_days"] == 2 and r["late_min"] == 60 and r["peak_hour"] == 21 and r["peak_text"] == "raat 9 baje"
+    assert r["late_days"] == 2 and r["late_min"] == 60 and r["peak_hour"] == 21 and r["peak_text"] == "9 at night"
     assert r["longest"] == {"app": "Instagram", "min": 45.0, "date": "2026-10-20"}
     assert r["today_min"] == 140 and r["over_budget"] is True
     text = " ".join(r["insights"])
@@ -148,7 +148,7 @@ def test_youtube_shorts_vs_long_videos(taste):
     assert yt["shorts_pct"] == 7 and yt["shorts_min"] == 7.0 and r["youtube_split"] is True
     assert r["short_form_min"] == 37.0 and r["reels_est"] == 74
     assert r["today_min"] == 37.0 and r["over_budget"] is False    # long YouTube videos don't count against the limit
-    assert any("Shorts the, baaki lambe videos" in t for t in r["insights"])
+    assert any("were Shorts, the rest long videos" in t for t in r["insights"])
     no_hist = scroll.report("other", 7, today=TODAY)
     assert no_hist["youtube_split"] is False
 

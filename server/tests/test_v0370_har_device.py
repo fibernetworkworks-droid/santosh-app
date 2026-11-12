@@ -40,6 +40,6 @@ def test_check_lines():
     from app.appmaker.android import service as AN
     from app.appmaker.ios import service as IS
     a = AN.qa_line({"ran": True, "opened": 5, "total": 5, "tablet": {"opened": 2, "total": 3, "crashed": ["cart"]}})
-    assert "Tablet par 2/3 screens (1 crash: cart)" in a
+    assert "on a tablet 2/3 screens (1 crash: cart)" in a
     i = IS.qa_line({"ran": True, "opened": 5, "total": 5, "ipad": {"opened": 5, "total": 5, "crashed": []}})
     assert "iPad par 5/5 screens" in i and "crash" not in i.split("iPad")[1]

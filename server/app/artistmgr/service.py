@@ -52,10 +52,10 @@ log = logging.getLogger("santosh.artistmgr")
 _LOCK = threading.RLock()
 MONEY_CARDS = ("payout",)
 CARD_KINDS = ("reply", "contract", "confirm", "invoice", "pay", "payout", "message", "release")
-CARD_TITLE = {"reply": "Promoter ko jawab", "contract": "Contract + rider promoter ko", "confirm": "Hold ko pakka gig",
-              "invoice": "Invoice promoter ko", "pay": "Paise maangna", "payout": "Artist ko payout statement",
+CARD_TITLE = {"reply": "Reply to promoter", "contract": "Contract + rider to promoter", "confirm": "Confirm the hold as a gig",
+              "invoice": "Invoice to promoter", "pay": "Payment request", "payout": "Payout statement to artist",
               "message": "Message", "release": "Release metadata final"}
-STATUS = {"enquiry": "Enquiry", "hold": "Hold (kachcha)", "confirmed": "Pakka", "done": "Ho gaya", "cancelled": "Radd"}
+STATUS = {"enquiry": "Enquiry", "hold": "Hold (tentative)", "confirmed": "Confirmed", "done": "Done", "cancelled": "Cancelled"}
 ROYALTY_SOURCES = ("iprs", "isamra", "ppl", "distributor", "youtube", "sync", "other")
 
 
@@ -131,7 +131,7 @@ def _pct(v, name: str, hi: float = 100) -> float | None:
     if n is None:
         return None
     if not 0 <= n <= hi:
-        raise ArtistError(f"{name} 0 se {hi:g}% ke beech.")
+        raise ArtistError(f"{name} must be between 0 and {hi:g}%.")
     return n
 
 
@@ -177,7 +177,7 @@ def actor_name(tenant: str, actor: str) -> str:
 
 def _need_owner(actor: str) -> None:
     if not is_owner(actor):
-        raise ArtistError("Sirf owner.")
+        raise ArtistError("Owner only.")
 
 
 def _st(s, tenant: str) -> ArtistmgrSettings:
@@ -248,7 +248,7 @@ def _hhmm_or_err(v, what: str) -> str:
         return ""
     t = R.hhmm(v)
     if not t:
-        raise ArtistError(f"{what} '{v}' samajh nahi aaya (jaise 20:30 ya 8:30 pm).")
+        raise ArtistError(f"Could not read {what} '{v}' (for example 20:30 or 8:30 pm).")
     return t
 
 
@@ -282,7 +282,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
         if "gstin" in kw:
             g = str(kw["gstin"] or "").strip().upper()
             if g and not R.gstin_ok(g):
-                raise ArtistError(f"GSTIN '{g}' sahi nahi lagta.")
+                raise ArtistError(f"GSTIN '{g}' does not look right.")
             st.gstin = g
         for k in ("agency", "address", "email", "terms", "rules"):
             if k in kw:
@@ -290,12 +290,12 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
         if "phone" in kw:
             p = R.phone(kw["phone"])
             if kw["phone"] and not p:
-                raise ArtistError("10 ank ka mobile number.")
+                raise ArtistError("Enter a 10-digit mobile number.")
             st.phone = p
         if "upi_id" in kw:
             u = str(kw["upi_id"] or "").strip()
             if u and not re.fullmatch(r"[\w.\-]{2,64}@[A-Za-z][\w]{1,40}", u):
-                raise ArtistError(f"UPI ID '{u}' sahi nahi lagta (naam@bank).")
+                raise ArtistError(f"UPI ID '{u}' does not look right (name@bank).")
             st.upi_id = u
         if "commission_pct" in kw:
             st.commission_pct = _pct(kw["commission_pct"], "Commission", 50)
@@ -311,7 +311,7 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
                 if n is None:
                     n = dflt
                 if not lo <= n <= hi:
-                    raise ArtistError(f"{k} {lo} se {hi} ke beech.")
+                    raise ArtistError(f"{k} must be between {lo} and {hi}.")
                 setattr(st, k, int(n))
         if "morning_time" in kw:
             st.morning_time = R.hhmm(kw["morning_time"]) or "09:00"
@@ -325,12 +325,12 @@ def save_settings(tenant: str, actor: str = "owner", **kw: Any) -> dict:
                             "lead_days": int(ld) if ld is not None and 0 <= ld <= 120 else None,
                             "payout": R.clean(d.get("payout"), 120), "notes": R.clean(d.get("notes"), 300)})
                 if ld is None:
-                    notes.append(f"{out[-1]['name']}: lead time (kitne din pehle delivery) nahi bataya; release plan mein 'pata nahi' rahega.")
+                    notes.append(f"{out[-1]['name']}: no lead time given (how many days before release it needs delivery); the release plan will say 'not known'.")
             st.distributors = _dump(out[:12])
         v = _settings_view(st)
-    say = "Niyam save." + (" " + " ".join(notes) if notes else "")
+    say = "Rules saved." + (" " + " ".join(notes) if notes else "")
     if v["commission_pct"] is None:
-        say += " Aapka commission % abhi nahi likha: settlement mein commission ki line khaali rahegi."
+        say += " Your commission % is not set yet: the commission line in the settlement will stay blank."
     return {"settings": v, "say": say}
 
 
@@ -363,7 +363,7 @@ def _artist(s, tenant: str, ref: str) -> ArtistmgrArtist:
         rows = s.scalars(select(ArtistmgrArtist).where(ArtistmgrArtist.tenant_id == tenant, ArtistmgrArtist.active.is_(True))).all()
         if len(rows) == 1:
             return rows[0]
-        raise ArtistError("Kaunsa artist? (naam bataiye)")
+        raise ArtistError("Which artist? (give the name)")
     a = s.get(ArtistmgrArtist, ref)
     if a is not None and a.tenant_id == tenant:
         return a
@@ -375,7 +375,7 @@ def _artist(s, tenant: str, ref: str) -> ArtistmgrArtist:
     hits = [a for a in rows if k and k in R.key_of(a.name)]
     if len(hits) == 1:
         return hits[0]
-    raise ArtistError(f"Artist '{ref}' nahi mila.")
+    raise ArtistError(f"Artist '{ref}' not found.")
 
 
 def _clean_members(members: Any) -> list[dict]:
@@ -410,7 +410,7 @@ def artist_save(tenant: str, name: str = "", kind: str = "", genre: str = "", ph
                 a = None
         if a is None:
             if not str(name or "").strip():
-                raise ArtistError("Artist / band ka naam.")
+                raise ArtistError("Artist / band name is needed.")
             a = ArtistmgrArtist(tenant_id=tenant, name=R.clean(name, 120))
             s.add(a)
         if name:
@@ -428,12 +428,12 @@ def artist_save(tenant: str, name: str = "", kind: str = "", genre: str = "", ph
         if phone:
             p = R.phone(phone)
             if not p:
-                raise ArtistError("10 ank ka mobile number.")
+                raise ArtistError("Enter a 10-digit mobile number.")
             a.phone = p
         if gstin:
             g = gstin.strip().upper()
             if not R.gstin_ok(g):
-                raise ArtistError(f"GSTIN '{g}' sahi nahi lagta.")
+                raise ArtistError(f"GSTIN '{g}' does not look right.")
             a.gstin = g
         if upi_id:
             a.upi_id = upi_id.strip()[:80]
@@ -459,7 +459,7 @@ def artist_save(tenant: str, name: str = "", kind: str = "", genre: str = "", ph
             a.active = bool(active)
         s.flush()
         v = _artist_view(a, True)
-    return {"artist": v, "say": f"{v['name']} roster mein save."}
+    return {"artist": v, "say": f"{v['name']} saved to the roster."}
 
 
 def artists(tenant: str, all_: bool = False) -> list[dict]:
@@ -488,14 +488,14 @@ def reg_set(tenant: str, artist: str, key: str, status: str, ref: str = "", note
     _need_owner(actor)
     key = (key or "").lower().strip()
     if key not in R.REGS:
-        raise ArtistError(f"'{key}' nahi pehchana: {', '.join(R.REGS)}.")
+        raise ArtistError(f"'{key}' is not recognized. Use one of: {', '.join(R.REGS)}.")
     status = (status or "").lower().strip()
     if status not in R.REG_STATUS:
         raise ArtistError("status none | applied | done | na.")
     if key == "ipi" and ref and not R.ipi_ok(ref):
-        raise ArtistError("IPI number 9-11 ank ka hota hai.")
+        raise ArtistError("An IPI number has 9-11 digits.")
     if key == "isrc" and ref and not re.fullmatch(r"[A-Z0-9]{3}", ref.strip().upper()):
-        raise ArtistError("ISRC registrant code 3 akshar / ank ka hota hai (jaise K40).")
+        raise ArtistError("An ISRC registrant code has 3 letters / digits (for example K40).")
     with _LOCK, session() as s:
         a = _artist(s, tenant, artist)
         regs = _j(a.regs, {})
@@ -511,17 +511,17 @@ def block_days(tenant: str, artist: str, day_from: str, day_to: str = "", note: 
     _need_owner(actor)
     a0, b0 = _date(day_from, tenant), _date(day_to or day_from, tenant)
     if not a0 or not b0 or b0 < a0:
-        raise ArtistError("Kis din se kis din tak?")
+        raise ArtistError("From which day to which day?")
     with _LOCK, session() as s:
         a = _artist(s, tenant, artist)
         hits = [g for g in _active_gigs(s, tenant, a.id) if a0.isoformat() <= g.day <= b0.isoformat()]
         if hits:
-            raise ArtistError("In dinon par pehle se gig hai: " + ", ".join(f"{g.number} ({g.day})" for g in hits))
+            raise ArtistError("These days already have a gig: " + ", ".join(f"{g.number} ({g.day})" for g in hits))
         b = ArtistmgrBlock(tenant_id=tenant, artist_id=a.id, day_from=a0.isoformat(), day_to=b0.isoformat(), note=R.clean(note, 200))
         s.add(b)
         s.flush()
         bid, nm = b.id, a.name
-    return {"block": bid, "say": f"{nm}: {a0} se {b0} tak koi gig nahi lagega."}
+    return {"block": bid, "say": f"{nm}: no gig will be booked from {a0} to {b0}."}
 
 
 def unblock(tenant: str, block_id: str, actor: str = "owner") -> dict:
@@ -529,9 +529,9 @@ def unblock(tenant: str, block_id: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         b = s.get(ArtistmgrBlock, block_id)
         if b is None or b.tenant_id != tenant:
-            raise ArtistError("Block nahi mila.")
+            raise ArtistError("Block not found.")
         b.active = False
-    return {"say": "Woh din khul gaye."}
+    return {"say": "Those days are open again."}
 
 
 # ---------------------------------------------------------------- gigs: the double-booking test
@@ -542,7 +542,7 @@ def _expire_holds(s, tenant: str) -> list[ArtistmgrGig]:
         hu = _aware(g.hold_until)
         if hu and hu <= n:
             g.status, g.hold_until = "enquiry", None
-            _log(g, "Hold ka samay khatam: date chhoot gayi")
+            _log(g, "Hold expired: the date was released")
             out.append(g)
     return out
 
@@ -580,7 +580,7 @@ def _clashes(s, tenant: str, artist_id: str, day: str, start: str, end: str, set
     out = []
     for b in s.scalars(select(ArtistmgrBlock).where(ArtistmgrBlock.artist_id == artist_id, ArtistmgrBlock.active.is_(True))).all():
         if b.day_from <= d.isoformat() <= b.day_to:
-            out.append({"kind": "block", "say": f"Aapne {b.day_from} se {b.day_to} tak band rakha hai" + (f" ({b.note})" if b.note else "")})
+            out.append({"kind": "block", "say": f"You have blocked {b.day_from} to {b.day_to}" + (f" ({b.note})" if b.note else "")})
     a = s.get(ArtistmgrArtist, artist_id)
     mine = _member_keys(a)
     others = []
@@ -600,9 +600,9 @@ def _clashes(s, tenant: str, artist_id: str, day: str, start: str, end: str, set
             continue
         gap = R.gap_needed(city, g.city, st.same_city_gap, st.travel_gap)
         if R.clashes(me, w, gap):
-            when = f"{g.day} {g.start or 'pura din'}" + (f"-{g.end}" if g.end else "") + (f" {g.city}" if g.city else "")
+            when = f"{g.day} {g.start or 'all day'}" + (f"-{g.end}" if g.end else "") + (f" {g.city}" if g.city else "")
             if via:
-                say = f"{', '.join(via[1])} ({via[0].name} ke saath) {g.number} mein busy: {when}"
+                say = f"{', '.join(via[1])} (with {via[0].name}) busy on {g.number}: {when}"
             else:
                 say = f"{STATUS[g.status]} gig {g.number} ({g.event or g.promoter or 'show'}): {when}"
             out.append({"kind": "gig", "gig": g.number, "status": g.status, "via_member": bool(via), "gap_min": gap, "say": say})
@@ -610,7 +610,7 @@ def _clashes(s, tenant: str, artist_id: str, day: str, start: str, end: str, set
 
 
 def _clash_text(c: list[dict]) -> str:
-    return "Yeh time khaali nahi (double booking nahi hogi): " + "; ".join(x["say"] for x in c) + "."
+    return "This time is not free (no double booking): " + "; ".join(x["say"] for x in c) + "."
 
 
 # ---------------------------------------------------------------- gigs
@@ -669,15 +669,15 @@ def _gig_blanks(g: ArtistmgrGig) -> list[str]:
     if not g.day:
         out.append("tareekh")
     if not g.start:
-        out.append("set ka time")
+        out.append("set time")
     if g.fee is None:
         out.append("fee")
     if not g.city:
         out.append("shehar")
     if not g.promoter:
-        out.append("promoter ka naam")
+        out.append("promoter's name")
     if not g.phone:
-        out.append("promoter ka phone")
+        out.append("promoter's phone")
     return out
 
 
@@ -687,7 +687,7 @@ def _gig(s, tenant: str, ref: str) -> ArtistmgrGig:
     if g is None and ref:
         g = s.scalars(select(ArtistmgrGig).where(ArtistmgrGig.tenant_id == tenant, ArtistmgrGig.number == ref.upper())).first()
     if g is None or g.tenant_id != tenant:
-        raise ArtistError(f"Gig '{ref}' nahi mila.")
+        raise ArtistError(f"Gig '{ref}' not found.")
     return g
 
 
@@ -714,26 +714,26 @@ def gig_save(tenant: str, gig: str = "", artist: str = "", offer_text: str = "",
         if gig:
             g = _gig(s, tenant, gig)
             if g.status in ("done", "cancelled"):
-                raise ArtistError(f"{g.number} {STATUS[g.status]}: ab badla nahi ja sakta.")
+                raise ArtistError(f"{g.number} {STATUS[g.status]}: it can no longer be changed.")
         else:
             a = _artist(s, tenant, artist or kw.get("artist") or "")
             st.gig_seq += 1
             g = ArtistmgrGig(tenant_id=tenant, number=f"G-{st.gig_seq:04d}", artist_id=a.id, conv=conv,
                              offer_text=R.clean(offer_text, 3000))
             s.add(g)
-            _log(g, "Offer aaya" if offer_text else "Gig bana", actor_name(tenant, actor))
+            _log(g, "Offer received" if offer_text else "Gig created", actor_name(tenant, actor))
         if gig and (artist or kw.get("artist")):
             a = _artist(s, tenant, artist or kw.get("artist"))
             if a.id != g.artist_id and g.status == "confirmed" and not is_owner(actor):
-                raise ArtistError("Pakke gig ka artist sirf owner badal sakti hain.")
+                raise ArtistError("Only the owner can change the artist of a confirmed gig.")
             g.artist_id = a.id
         old = (g.artist_id, g.day, g.start, g.end, g.set_minutes, g.city)
         if "day" in kw and kw["day"] not in (None, ""):
             d = _date(kw["day"], tenant)
             if d is None:
-                raise ArtistError(f"Tareekh '{kw['day']}' samajh nahi aayi.")
+                raise ArtistError(f"Could not read the date '{kw['day']}'.")
             if d < today(tenant):
-                raise ArtistError("Yeh tareekh beet chuki hai.")
+                raise ArtistError("This date has already passed.")
             g.day = d.isoformat()
         if "start" in kw:
             g.start = _hhmm_or_err(kw["start"], "Start time")
@@ -742,26 +742,26 @@ def gig_save(tenant: str, gig: str = "", artist: str = "", offer_text: str = "",
         if "set_minutes" in kw and kw["set_minutes"] not in (None, ""):
             n = _num(kw["set_minutes"])
             if n is None or not 10 <= n <= 720:
-                raise ArtistError("Set 10 se 720 minute ka.")
+                raise ArtistError("Set length must be 10 to 720 minutes.")
             g.set_minutes = int(n)
         if "fee" in kw and kw["fee"] not in (None, ""):
             f = _num(kw["fee"])
             if f is None or f <= 0:
-                raise ArtistError("Fee ek sahi rakam honi chahiye.")
+                raise ArtistError("Fee must be a valid amount.")
             if g.status == "confirmed" and g.fee is not None and abs(f - g.fee) > 0.5 and not is_owner(actor):
-                raise ArtistError("Pakke gig ki fee sirf owner badal sakti hain.")
+                raise ArtistError("Only the owner can change the fee of a confirmed gig.")
             g.fee = f
         if "advance_pct" in kw and kw["advance_pct"] not in (None, ""):
             g.advance_pct = _pct(kw["advance_pct"], "Advance")
         if "phone" in kw and kw["phone"]:
             p = R.phone(kw["phone"])
             if not p:
-                raise ArtistError("Promoter ka 10 ank ka mobile number.")
+                raise ArtistError("Enter the promoter's 10-digit mobile number.")
             g.phone = p
         if "promoter_gstin" in kw and kw["promoter_gstin"]:
             pg = str(kw["promoter_gstin"]).strip().upper()
             if not R.gstin_ok(pg):
-                raise ArtistError(f"Promoter GSTIN '{pg}' sahi nahi lagta.")
+                raise ArtistError(f"Promoter GSTIN '{pg}' does not look right.")
             g.promoter_gstin = pg
         if "event_type" in kw and kw["event_type"]:
             et = str(kw["event_type"]).lower()
@@ -778,18 +778,18 @@ def gig_save(tenant: str, gig: str = "", artist: str = "", offer_text: str = "",
             c = _clashes(s, tenant, g.artist_id, g.day, g.start, g.end, g.set_minutes, g.city, g.id)
             if c:
                 raise ArtistError(_clash_text(c))
-            _log(g, f"Time / jagah badli: {g.day} {g.start}", actor_name(tenant, actor))
+            _log(g, f"Time / place changed: {g.day} {g.start}", actor_name(tenant, actor))
         a = s.get(ArtistmgrArtist, g.artist_id)
         if a and a.min_fee and g.fee is not None and g.fee < a.min_fee:
-            notes.append(f"Fee {_rs(g.fee)} {a.name} ki aapki minimum fee {_rs(a.min_fee)} se kam hai.")
+            notes.append(f"Fee {_rs(g.fee)} is below your minimum fee {_rs(a.min_fee)} for {a.name}.")
         c = _clashes(s, tenant, g.artist_id, g.day, g.start, g.end, g.set_minutes, g.city, g.id) if g.day else []
         v = _gig_view(s, g)
         cv = g.conv
     if c and v["status"] not in R.BLOCKING:
-        notes.append(_clash_text(c) + " Hold / pakka nahi ho payega.")
+        notes.append(_clash_text(c) + " It cannot be put on hold or confirmed.")
     if v["blanks"]:
-        notes.append("Abhi nahi pata: " + ", ".join(v["blanks"]) + " (main andaaza nahi lagaunga).")
-    say = f"{v['number']} ({v['artist']}): {v['day'] or 'tareekh?'} {v['start']} {v['city']}, fee {v['fee_text']}. " + " ".join(notes)
+        notes.append("Not known yet: " + ", ".join(v["blanks"]) + " (I will not guess).")
+    say = f"{v['number']} ({v['artist']}): {v['day'] or 'date?'} {v['start']} {v['city']}, fee {v['fee_text']}. " + " ".join(notes)
     if not gig:
         _publish(tenant, "artistmgr_gig", {"gig": v, "say": say}, cv or conv)
     return {"gig": v, "clashes": c, "say": say.strip()}
@@ -800,33 +800,33 @@ def hold(tenant: str, gig: str, hours=None, actor: str = "owner", conv: str = ""
         g = _gig(s, tenant, gig)
         st = _st(s, tenant)
         if g.status not in ("enquiry", "hold"):
-            raise ArtistError(f"{g.number} {STATUS[g.status]} hai.")
+            raise ArtistError(f"{g.number} is {STATUS[g.status]}.")
         if not g.day:
-            raise ArtistError("Pehle tareekh.")
+            raise ArtistError("Set the date first.")
         c = _clashes(s, tenant, g.artist_id, g.day, g.start, g.end, g.set_minutes, g.city, g.id)
         if c:
             raise ArtistError(_clash_text(c))
         h = int(_num(hours) or st.hold_hours)
         if h <= 0:
-            raise ArtistError("Hold ke ghante.")
+            raise ArtistError("Give the hold hours.")
         if not is_owner(actor):
             h = min(h, st.hold_hours)
         g.status, g.hold_until = "hold", clock() + timedelta(hours=h)
-        _log(g, f"Hold {h} ghante", actor_name(tenant, actor))
+        _log(g, f"Hold {h} hours", actor_name(tenant, actor))
         v = _gig_view(s, g)
-    return {"gig": v, "say": f"{v['number']} {h} ghante ke liye hold (is beech koi aur gig is time nahi lagega)."}
+    return {"gig": v, "say": f"{v['number']} is on hold for {h} hours (no other gig can take this time meanwhile)."}
 
 
 def release(tenant: str, gig: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         g = _gig(s, tenant, gig)
         if g.status == "confirmed":
-            raise ArtistError("Pakka gig chhodna = cancel (sirf owner, wajah ke saath).")
+            raise ArtistError("Releasing a confirmed gig means cancelling it (owner only, with a reason).")
         if g.status == "hold":
             g.status, g.hold_until = "enquiry", None
             _log(g, "Hold chhoda", actor_name(tenant, actor))
         v = _gig_view(s, g)
-    return {"gig": v, "say": f"{v['number']} ka hold chhoda."}
+    return {"gig": v, "say": f"Hold on {v['number']} released."}
 
 
 def paid(tenant: str, gig: str, amount, mode: str = "upi", ref: str = "", day: str = "", actor: str = "owner") -> dict:
@@ -834,7 +834,7 @@ def paid(tenant: str, gig: str, amount, mode: str = "upi", ref: str = "", day: s
     _need_owner(actor)
     n = _num(amount)
     if n is None or n <= 0:
-        raise ArtistError("Kitne paise aaye?")
+        raise ArtistError("How much money came in?")
     mode = (mode or "upi").lower()
     if mode not in ("upi", "cash", "bank", "cheque"):
         raise ArtistError("mode upi | cash | bank | cheque.")
@@ -844,35 +844,35 @@ def paid(tenant: str, gig: str, amount, mode: str = "upi", ref: str = "", day: s
         d = _date(day, tenant) or today(tenant)
         rows.append({"id": secrets.token_hex(4), "amount": round(n, 2), "mode": mode, "ref": R.clean(ref, 40)[-6:], "day": d.isoformat()})
         g.payments = _dump(rows)
-        _log(g, f"Paise mile {_rs(n)} ({mode})", "Owner")
+        _log(g, f"Payment received {_rs(n)} ({mode})", "Owner")
         m = _money(s, g)
         num = g.number
-    warn = " Ek din mein ek vyakti se Rs 2 lakh ya zyada cash: Income-tax Act 2025 s.221 (purana 269ST) dekhiye." if mode == "cash" and n >= 200000 else ""
+    warn = " Rs 2 lakh or more in cash from one person in a day: see Income-tax Act 2025 s.221 (old 269ST)." if mode == "cash" and n >= 200000 else ""
     left = m["due_from_promoter"]
-    return {"money": m, "say": f"{num}: {_rs(n)} mile. " + (f"Baaki {_rs(left)}." if left and left > 0.5 else "Poori fee aa gayi.") + warn}
+    return {"money": m, "say": f"{num}: {_rs(n)} received. " + (f"{_rs(left)} still due." if left and left > 0.5 else "The full fee has come in.") + warn}
 
 
 def set_tds(tenant: str, gig: str, amount, actor: str = "owner") -> dict:
     _need_owner(actor)
     n = _num(amount)
     if n is None or n < 0:
-        raise ArtistError("TDS kitna kata?")
+        raise ArtistError("How much TDS was deducted?")
     with _LOCK, session() as s:
         g = _gig(s, tenant, gig)
         if g.fee is not None and n > g.fee:
-            raise ArtistError("TDS fee se zyada nahi ho sakta.")
+            raise ArtistError("TDS cannot be more than the fee.")
         g.tds = round(n, 2)
         _log(g, f"Promoter ne TDS kata {_rs(n)}", "Owner")
         m = _money(s, g)
         num = g.number
-    return {"money": m, "say": f"{num}: TDS {_rs(n)} likha. Promoter se Form 16A maangiye (artist ke PAN par 26AS mein dikhega)."}
+    return {"money": m, "say": f"{num}: TDS {_rs(n)} recorded. Ask the promoter for Form 16A (it will show in 26AS against the artist's PAN)."}
 
 
 def expense(tenant: str, gig: str, what: str, amount, paid_by: str = "manager", actor: str = "owner") -> dict:
     _need_owner(actor)
     n = _num(amount)
     if n is None or n <= 0 or not str(what or "").strip():
-        raise ArtistError("Kya kharcha aur kitna?")
+        raise ArtistError("What expense, and how much?")
     pb = (paid_by or "manager").lower()
     if pb not in ("manager", "artist", "promoter"):
         raise ArtistError("paid_by manager | artist | promoter.")
@@ -883,7 +883,7 @@ def expense(tenant: str, gig: str, what: str, amount, paid_by: str = "manager", 
         g.expenses = _dump(ex[:60])
         m = _money(s, g)
         num = g.number
-    return {"money": m, "say": f"{num}: kharcha {what} {_rs(n)} ({pb})."}
+    return {"money": m, "say": f"{num}: expense {what} {_rs(n)} ({pb})."}
 
 
 def done(tenant: str, gig: str, actor: str = "owner") -> dict:
@@ -891,25 +891,25 @@ def done(tenant: str, gig: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         g = _gig(s, tenant, gig)
         if g.status != "confirmed":
-            raise ArtistError("Sirf pakka gig 'ho gaya' ho sakta hai.")
+            raise ArtistError("Only a confirmed gig can be marked done.")
         g.status = "done"
-        _log(g, "Show ho gaya", "Owner")
+        _log(g, "Show done", "Owner")
         m = _money(s, g)
         num = g.number
-    say = f"{num} ho gaya."
+    say = f"{num} is done."
     if not m["fully_paid"]:
-        say += f" Promoter se abhi {_rs(m['due_from_promoter'])} baaki (TDS ke baad)."
+        say += f" The promoter still owes {_rs(m['due_from_promoter'])} (after TDS)."
     return {"money": m, "say": say}
 
 
 def cancel(tenant: str, gig: str, reason: str = "", by: str = "promoter", actor: str = "owner") -> dict:
     _need_owner(actor)
     if not str(reason or "").strip():
-        raise ArtistError("Cancel ki wajah likhiye.")
+        raise ArtistError("Give the reason for cancelling.")
     with _LOCK, session() as s:
         g = _gig(s, tenant, gig)
         if g.status in ("done", "cancelled"):
-            raise ArtistError(f"{g.number} pehle hi {STATUS[g.status]}.")
+            raise ArtistError(f"{g.number} is already {STATUS[g.status]}.")
         was = g.status
         g.status, g.hold_until = "cancelled", None
         g.cancel = _dump({"by": by, "reason": R.clean(reason, 300), "was": was, "paid": _paid(g), "on": today(tenant).isoformat()})
@@ -917,9 +917,9 @@ def cancel(tenant: str, gig: str, reason: str = "", by: str = "promoter", actor:
         for c in s.scalars(select(ArtistmgrCard).where(ArtistmgrCard.ref_id == g.id, ArtistmgrCard.status == "waiting")).all():
             c.status = "stale"
         num, pd = g.number, _paid(g)
-    say = f"{num} radd; artist ka woh time ab khaali."
+    say = f"{num} cancelled; that time is free for the artist again."
     if pd:
-        say += f" {_rs(pd)} aaya tha: contract ki cancellation shart ke hisaab se kitna lautana / rakhna hai, aap tay kijiye."
+        say += f" {_rs(pd)} had come in: how much to return or keep under the contract's cancellation clause is your decision."
     return {"say": say}
 
 
@@ -928,10 +928,10 @@ def travel_link(tenant: str, gig: str, origin: str = "", actor: str = "owner", c
     with session() as s:
         g = _gig(s, tenant, gig)
         if g.travel_trip:
-            return {"say": f"{g.number} ki trip pehle se: {g.travel_trip}.", "trip": g.travel_trip}
+            return {"say": f"{g.number} already has a trip: {g.travel_trip}.", "trip": g.travel_trip}
         a = s.get(ArtistmgrArtist, g.artist_id)
         if not g.city or not g.day:
-            raise ArtistError("Pehle gig ka shehar aur tareekh.")
+            raise ArtistError("Set the gig's city and date first.")
         names = [{"name": m["name"]} for m in _j(a.members, [])] if a else []
         if a and not names:
             names = [{"name": a.name}]
@@ -943,13 +943,13 @@ def travel_link(tenant: str, gig: str, origin: str = "", actor: str = "owner", c
         from ..travel import service as T
         out = T.new_trip(tenant, travellers=names, actor=actor, conv=conv, **args)
     except Exception as e:
-        raise ArtistError(f"Travel Sahayak trip nahi bana paya: {e}")
+        raise ArtistError(f"Travel Assistant could not create the trip: {e}")
     num = (out.get("trip") or {}).get("number", "")
     with _LOCK, session() as s:
         g = _gig(s, tenant, gig)
         g.travel_trip = num
         _log(g, f"Travel trip {num}", actor_name(tenant, actor))
-    return {"trip": num, "say": f"{num} trip bani (gig se ek din pehle se ek din baad). Ticket booking Travel mein aapki haan se."}
+    return {"trip": num, "say": f"Trip {num} created (from one day before the gig to one day after). Tickets are booked in Travel only with your approval."}
 
 
 def forget(tenant: str, gig: str, actor: str = "owner") -> dict:
@@ -958,16 +958,16 @@ def forget(tenant: str, gig: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         g = _gig(s, tenant, gig)
         if g.status not in ("done", "cancelled"):
-            raise ArtistError("Gig poora / radd hone ke baad hi.")
+            raise ArtistError("Only after the gig is done or cancelled.")
         g.phone, g.email, g.offer_text, g.notes = "", "", "", ""
-        g.promoter = "Promoter (hataya)" if g.promoter else ""
+        g.promoter = "Promoter (removed)" if g.promoter else ""
         g.forgotten = True
         for c in s.scalars(select(ArtistmgrCard).where(ArtistmgrCard.ref_id == g.id)).all():
             c.show = _dump({"gig": g.number, "hataya": True})
             c.result = "{}"
-        _log(g, "Promoter ki details hata di (DPDP)", "Owner")
+        _log(g, "Promoter's details removed (DPDP)", "Owner")
         num = g.number
-    return {"say": f"{num}: promoter ki personal details hata di; hisaab ke number rahe."}
+    return {"say": f"{num}: promoter's personal details removed; the accounting figures are kept."}
 
 
 def forget_artist(tenant: str, artist: str, actor: str = "owner") -> dict:
@@ -975,12 +975,12 @@ def forget_artist(tenant: str, artist: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         a = _artist(s, tenant, artist)
         if _active_gigs(s, tenant, a.id):
-            raise ArtistError("Iske aage ke gig abhi baaki hain.")
+            raise ArtistError("This artist still has upcoming gigs.")
         a.phone, a.email, a.upi_id, a.notes, a.gstin = "", "", "", "", ""
         a.members = _dump([{**m, "phone": ""} for m in _j(a.members, [])])
         a.active, a.forgotten = False, True
         nm = a.name
-    return {"say": f"{nm}: contact details hata di (DPDP); purane gig / royalty ke number rahe."}
+    return {"say": f"{nm}: contact details removed (DPDP); the figures of past gigs / royalties are kept."}
 
 
 def gigs(tenant: str, status: str = "", artist: str = "", day_from: str = "") -> list[dict]:
@@ -1008,17 +1008,17 @@ def check(tenant: str, artist: str, day: str, start: str = "", end: str = "", ci
         a = _artist(s, tenant, artist)
         d = _date(day, tenant)
         if d is None:
-            raise ArtistError("Kaunsi tareekh?")
+            raise ArtistError("Which date?")
         c = _clashes(s, tenant, a.id, d.isoformat(), R.hhmm(start), R.hhmm(end), _num(set_minutes), city)
         nm = a.name
     return {"artist": nm, "day": d.isoformat(), "free": not c, "clashes": c,
-            "say": f"{nm} {d} ko {'khaali hai' if not c else 'khaali nahi'}." + ("" if not c else " " + _clash_text(c))}
+            "say": f"{nm} is {'free' if not c else 'not free'} on {d}." + ("" if not c else " " + _clash_text(c))}
 
 
 def calendar(tenant: str, month: str = "", artist: str = "") -> dict:
     m = month or today(tenant).strftime("%Y-%m")
     if not re.fullmatch(r"20\d\d-\d\d", m):
-        raise ArtistError("Mahina YYYY-MM.")
+        raise ArtistError("Month as YYYY-MM.")
     with _LOCK, session() as s:
         _expire_holds(s, tenant)
         q = select(ArtistmgrGig).where(ArtistmgrGig.tenant_id == tenant, ArtistmgrGig.day.like(f"{m}-%"),
@@ -1070,7 +1070,7 @@ def _rel(s, tenant: str, ref: str) -> ArtistmgrRelease:
     if r is None and ref:
         r = s.scalars(select(ArtistmgrRelease).where(ArtistmgrRelease.tenant_id == tenant, ArtistmgrRelease.number == ref.upper())).first()
     if r is None or r.tenant_id != tenant:
-        raise ArtistError(f"Release '{ref}' nahi mila.")
+        raise ArtistError(f"Release '{ref}' not found.")
     return r
 
 
@@ -1085,7 +1085,7 @@ def _clean_tracks(tracks: Any) -> list[dict]:
         code = R.isrc(t.get("isrc")) if t.get("isrc") else ""
         raw = str(t.get("isrc") or "").strip()
         if code and code in seen:
-            raise ArtistError(f"ISRC {R.isrc_pretty(code)} do gaanon par: har recording ka apna code hota hai.")
+            raise ArtistError(f"ISRC {R.isrc_pretty(code)} is on two tracks: every recording has its own code.")
         if code:
             seen.add(code)
         ws = []
@@ -1111,7 +1111,7 @@ def release_save(tenant: str, artist: str = "", title: str = "", kind: str = "",
         else:
             a = _artist(s, tenant, artist)
             if not str(title or "").strip():
-                raise ArtistError("Release ka naam.")
+                raise ArtistError("Release name is needed.")
             st.rel_seq += 1
             r = ArtistmgrRelease(tenant_id=tenant, number=f"R-{st.rel_seq:03d}", artist_id=a.id)
             s.add(r)
@@ -1123,14 +1123,14 @@ def release_save(tenant: str, artist: str = "", title: str = "", kind: str = "",
         if day:
             d = _date(day, tenant)
             if d is None:
-                raise ArtistError(f"Release date '{day}' samajh nahi aayi.")
+                raise ArtistError(f"Could not read the release date '{day}'.")
             r.day = d.isoformat()
         if distributor:
             names = {R.key_of(x["name"]): x["name"] for x in _distributors(st)}
             r.distributor = names.get(R.key_of(distributor), R.clean(distributor, 80))
         if upc:
             if not R.upc_ok(upc):
-                raise ArtistError(f"UPC / EAN '{upc}' ka check digit galat (12 ya 13 ank).")
+                raise ArtistError(f"UPC / EAN '{upc}' has a wrong check digit (12 or 13 digits).")
             r.upc = re.sub(r"\D", "", upc)
         if tracks is not None:
             r.tracks = _dump(_clean_tracks(tracks))
@@ -1146,9 +1146,9 @@ def release_save(tenant: str, artist: str = "", title: str = "", kind: str = "",
             changed = True
         s.flush()
         v = _rel_view(s, r)
-    say = f"{v['number']} {v['title']}: {len(v['problems'])} baatein baaki." if v["problems"] else f"{v['number']} {v['title']}: sab bhara hai."
+    say = f"{v['number']} {v['title']}: {len(v['problems'])} things pending." if v["problems"] else f"{v['number']} {v['title']}: everything is filled in."
     if changed and before:
-        say += " Metadata badla: final dobara aapki haan se."
+        say += " Metadata changed: making it final again needs your approval."
     return {"release": v, "say": say}
 
 
@@ -1167,22 +1167,22 @@ def _rel_view(s, r: ArtistmgrRelease) -> dict:
             p["late"] = False
     probs = []
     if not tracks:
-        probs.append("Koi gaana (track) nahi.")
+        probs.append("No track yet.")
     for tr in tracks:
         probs += R.track_problems(tr)
     if not r.day:
-        probs.append("Release date nahi.")
+        probs.append("No release date.")
     if not r.distributor:
-        probs.append("Distributor nahi chuna.")
+        probs.append("No distributor chosen.")
     elif lead is None:
-        probs.append(f"{r.distributor} ka lead time aapke Niyam mein nahi.")
+        probs.append(f"Lead time for {r.distributor} is not in your Rules.")
     if not r.artwork:
-        probs.append("Artwork (cover) taiyaar nahi bataya.")
+        probs.append("Artwork (cover) is not marked ready.")
     if r.kind != "single" and not r.upc:
-        probs.append("EP / album ka UPC nahi (distributor deta hai).")
+        probs.append("No UPC for the EP / album (the distributor gives it).")
     for p in plan:
         if p["late"] and not p["done"] and p["key"] != "release":
-            probs.append(f"Der: {p['what']} ({p['by']}).")
+            probs.append(f"Late: {p['what']} ({p['by']}).")
     return {**_rel_brief(r), "artist": a.name if a else "", "upc": r.upc, "label": r.label, "tracks": tracks, "artwork": r.artwork,
             "notes": r.notes, "plan": plan, "problems": probs, "final": r.status in ("final", "delivered", "live"),
             "isrc_pretty": [R.isrc_pretty(R.isrc(x.get("isrc"))) for x in tracks if R.isrc(x.get("isrc"))]}
@@ -1209,7 +1209,7 @@ def release_step(tenant: str, release: str, step: str, actor: str = "owner") -> 
     with _LOCK, session() as s:
         r = _rel(s, tenant, release)
         if step in ("deliver", "release") and r.status == "plan":
-            raise ArtistError("Pehle metadata final (aapki haan ka card), phir delivery.")
+            raise ArtistError("First make the metadata final (your approval card), then delivery.")
         dn = _j(r.done, {})
         dn[step] = today(tenant).isoformat()
         r.done = _dump(dn)
@@ -1218,7 +1218,7 @@ def release_step(tenant: str, release: str, step: str, actor: str = "owner") -> 
         if step == "release":
             r.status = "live"
         v = _rel_view(s, r)
-    return {"release": v, "say": f"{v['number']}: '{step}' ho gaya likha."}
+    return {"release": v, "say": f"{v['number']}: '{step}' marked done."}
 
 
 # ---------------------------------------------------------------- royalties + ledger
@@ -1231,7 +1231,7 @@ def royalty_add(tenant: str, artist: str, source: str, amount, period: str = "",
         raise ArtistError(f"source: {', '.join(ROYALTY_SOURCES)}.")
     n = _num(amount)
     if n is None or n == 0:
-        raise ArtistError("Statement mein kitni rakam hai?")
+        raise ArtistError("What is the amount in the statement?")
     with _LOCK, session() as s:
         a = _artist(s, tenant, artist)
         rid = _rel(s, tenant, release).id if release else ""
@@ -1239,13 +1239,13 @@ def royalty_add(tenant: str, artist: str, source: str, amount, period: str = "",
                                                        ArtistmgrRoyalty.period == R.clean(period, 20),
                                                        ArtistmgrRoyalty.amount == round(n, 2))).first()
         if dup is not None and (ref == "" or dup.ref == R.clean(ref, 80)):
-            raise ArtistError("Yahi line pehle se likhi hai (same source, period, rakam).")
+            raise ArtistError("This line is already recorded (same source, period, amount).")
         y = ArtistmgrRoyalty(tenant_id=tenant, artist_id=a.id, source=src, period=R.clean(period, 20), amount=round(n, 2),
                              release_id=rid, ref=R.clean(ref, 80))
         s.add(y)
         s.flush()
         nm = a.name
-    return {"say": f"{nm}: {src.upper()} {period} {_rs(n)} likha (aapke statement se)."}
+    return {"say": f"{nm}: {src.upper()} {period} {_rs(n)} recorded (from your statement)."}
 
 
 def _ledger(s, a: ArtistmgrArtist) -> dict:
@@ -1297,13 +1297,13 @@ def _show(s, tenant: str, kind: str, ref: str, inp: dict) -> dict:
     if kind in ("reply", "contract", "confirm", "invoice", "pay") or (kind == "message" and inp.get("gig")):
         g = s.get(ArtistmgrGig, ref)
         if g is None:
-            raise ArtistError("Gig nahi mila.")
+            raise ArtistError("Gig not found.")
         base = _gig_base(s, g)
         m = _money(s, g)
         if kind == "reply":
-            text = inp.get("text") or (f"Namaste {g.promoter or ''} ji, {base['artist']} {base['day']} {base['city']} ke liye available hain. "
-                                       f"Fee {_rs(g.fee)}, advance {m['advance_pct']:g}% ({_rs(m['advance'])}) booking par, baaki "
-                                       f"{m['balance_due'] or 'show se pehle'} tak. Travel / stay / rider alag se. Pakka karne ke liye bataiye.")
+            text = inp.get("text") or (f"Hello {g.promoter or ''}, {base['artist']} is available for {base['day']} {base['city']}. "
+                                       f"Fee {_rs(g.fee)}, advance {m['advance_pct']:g}% ({_rs(m['advance'])}) on booking, balance by "
+                                       f"{m['balance_due'] or 'before the show'}. Travel / stay / rider are separate. Let us know to confirm.")
             return {**base, "fee": g.fee, "fee_text": _rs(g.fee), "text": R.clean(text, 1500), "_in": inp}
         if kind == "contract":
             a = s.get(ArtistmgrArtist, g.artist_id)
@@ -1326,7 +1326,7 @@ def _show(s, tenant: str, kind: str, ref: str, inp: dict) -> dict:
     if kind == "payout":
         a = s.get(ArtistmgrArtist, ref)
         if a is None:
-            raise ArtistError("Artist nahi mila.")
+            raise ArtistError("Artist not found.")
         led = _ledger(s, a)
         lines = [x for x in led["lines"] if x["ready"] and x["id"] in set(inp.get("ids") or [])]
         total = round(sum(x["net"] for x in lines), 2)
@@ -1338,18 +1338,18 @@ def _show(s, tenant: str, kind: str, ref: str, inp: dict) -> dict:
     if kind == "message":
         a = s.get(ArtistmgrArtist, ref)
         if a is None:
-            raise ArtistError("Artist nahi mila.")
+            raise ArtistError("Artist not found.")
         return {"artist": a.name, "to": inp.get("to", "artist"), "to_phone": inp.get("to_phone") or a.phone, "text": R.clean(inp.get("text"), 1500),
                 "_in": inp}
     if kind == "release":
         r = s.get(ArtistmgrRelease, ref)
         if r is None:
-            raise ArtistError("Release nahi mila.")
+            raise ArtistError("Release not found.")
         v = _rel_view(s, r)
         return {"release": v["number"], "title": v["title"], "artist": v["artist"], "kind": v["kind"], "day": v["day"],
                 "distributor": v["distributor"], "upc": v["upc"], "label": v["label"], "tracks": v["tracks"], "problems": v["problems"],
                 "_in": inp}
-    raise ArtistError(f"card '{kind}' nahi pehchana.")
+    raise ArtistError(f"Card type '{kind}' is not recognized.")
 
 
 def _blockers(kind: str, sh: dict) -> list[str]:
@@ -1359,23 +1359,23 @@ def _blockers(kind: str, sh: dict) -> list[str]:
     if kind in ("contract", "confirm", "invoice") and not sh.get("day"):
         b.append("tareekh")
     if kind == "contract" and not sh.get("start"):
-        b.append("set ka time")
+        b.append("set time")
     if kind in ("reply", "contract", "invoice", "pay") and not sh.get("promoter"):
-        b.append("promoter ka naam")
+        b.append("promoter's name")
     if kind in ("message", "reply") and not str(sh.get("text") or "").strip():
-        b.append("message ka text")
+        b.append("message text")
     if kind in ("message",) and not R.phone(sh.get("to_phone")):
         b.append("phone number")
     if kind == "pay" and not sh.get("amount"):
         b.append("rakam")
     if kind == "pay" and not sh.get("upi"):
-        b.append("aapka UPI ID (Niyam)")
+        b.append("your UPI ID (Rules)")
     if kind == "payout" and not sh.get("lines"):
-        b.append("payout ke liye taiyaar line")
+        b.append("a line ready for payout")
     if kind == "release" and sh.get("problems"):
         b += sh["problems"]
     if re.search(r"\[(?:daam|\s*\?\s*)\]", json.dumps(sh, ensure_ascii=False)):
-        b.append("khaali jagah [?]")
+        b.append("blanks [?]")
     return b
 
 
@@ -1385,14 +1385,14 @@ def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner"
         show = _show(s, tenant, kind, ref, inp)
         bl = _blockers(kind, show)
         if bl:
-            raise ArtistError(f"{CARD_TITLE[kind]} abhi nahi: pehle " + "; ".join(bl) + ".")
+            raise ArtistError(f"{CARD_TITLE[kind]} is not possible yet. Needed first: " + "; ".join(bl) + ".")
         h = R.digest(show)
         old = s.scalars(select(ArtistmgrCard).where(ArtistmgrCard.tenant_id == tenant, ArtistmgrCard.kind == kind,
                                                     ArtistmgrCard.ref_id == ref, ArtistmgrCard.status == "waiting")).all()
         for o in old:
             if o.hash == h:
                 return {"card": _card_view(o), "status": "needs_tap", "existing": True,
-                        "say": "Yahi card pehle se aapki haan ka intezaar kar raha hai."}
+                        "say": "This same card is already waiting for your approval."}
             o.status = "stale"
         g = s.get(ArtistmgrGig, ref)
         c = ArtistmgrCard(tenant_id=tenant, ref_id=ref, kind=kind, show=_dump(show), hash=h, asked_by=actor_name(tenant, actor),
@@ -1402,7 +1402,7 @@ def _make_card(tenant: str, kind: str, ref: str, inp: dict, actor: str = "owner"
         v = _card_view(c)
         cv = c.conv
     tag = v["show"].get("gig") or v["show"].get("release") or v["show"].get("artist") or ""
-    say = f"{CARD_TITLE[kind]}: {tag} aapki haan ka card bheja hai."
+    say = f"{CARD_TITLE[kind]}: {tag} approval card sent to you."
     _publish(tenant, "artistmgr_card", {"card": v, "say": say}, cv)
     return {"card": v, "status": "needs_tap", "say": say}
 
@@ -1411,7 +1411,7 @@ def card_view(tenant: str, card_id: str) -> dict:
     with session() as s:
         c = s.get(ArtistmgrCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise ArtistError("Card nahi mila.")
+            raise ArtistError("Card not found.")
         return _card_view(c)
 
 
@@ -1428,7 +1428,7 @@ def card_challenge(tenant: str, card_id: str) -> dict:
     from .. import approvekey as ak
     c = card_view(tenant, card_id)
     if c["status"] != "waiting" or c["kind"] not in MONEY_CARDS:
-        raise ArtistError("Yeh card ab baaki nahi hai.")
+        raise ArtistError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|artistmgr|{card_id}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1458,14 +1458,14 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
     """ONLY from the app's API (her tap). The card's hash must still match the state NOW; the payout card needs her fingerprint
     once a phone key is active."""
     if not by_tap:
-        raise ArtistError("Yeh sirf aapke tap se (app ka card).")
+        raise ArtistError("This happens only by your tap (the card in the app).")
     with _LOCK, session() as s:
         _expire_holds(s, tenant)
         c = s.get(ArtistmgrCard, card_id)
         if c is None or c.tenant_id != tenant:
-            raise ArtistError("Card nahi mila.")
+            raise ArtistError("Card not found.")
         if c.status != "waiting":
-            return {"card": _card_view(c), "say": f"Yeh card pehle hi '{c.status}' hai."}
+            return {"card": _card_view(c), "say": f"This card is already '{c.status}'."}
         inp = _j(c.show, {}).get("_in", {})
         try:
             now_hash = R.digest(_show(s, tenant, c.kind, c.ref_id, inp))
@@ -1475,7 +1475,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
         if now_hash != ch:
             c.status = "stale"
     if not card_hash or card_hash != ch or now_hash != ch:
-        raise ArtistError("Card ke baad kuch badal gaya; naya card dekhiye.")
+        raise ArtistError("Something changed after the card was made; see the new card.")
     if yes and kind in MONEY_CARDS:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1485,7 +1485,7 @@ def decide(tenant: str, card_id: str, yes: bool, card_hash: str = "", reason: st
             c = s.get(ArtistmgrCard, card_id)
             c.status, c.reason, c.decided_at = "rejected", R.clean(reason, 300), now()
             v = _card_view(c)
-        return {"card": v, "say": f"{CARD_TITLE[kind]}: nahi."}
+        return {"card": v, "say": f"{CARD_TITLE[kind]}: declined."}
     fn = {"reply": _do_reply, "contract": _do_contract, "confirm": _do_confirm, "invoice": _do_invoice, "pay": _do_pay,
           "payout": _do_payout, "message": _do_message, "release": _do_release}[kind]
     out = fn(tenant, card_id, conv)
@@ -1508,8 +1508,8 @@ def _do_reply(tenant: str, card_id: str, conv: str) -> dict:
     sh, gid = _card_ctx(card_id)
     with _LOCK, session() as s:
         g = s.get(ArtistmgrGig, gid)
-        _log(g, "Promoter ko jawab aapki haan se", "Owner")
-    return {"draft": _draft(sh.get("phone", ""), sh.get("text", "")), "say": f"{sh.get('gig')}: jawab ka draft taiyaar, aap bhejiye."}
+        _log(g, "Reply to promoter, with your approval", "Owner")
+    return {"draft": _draft(sh.get("phone", ""), sh.get("text", "")), "say": f"{sh.get('gig')}: the reply draft is ready, you send it."}
 
 
 def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
@@ -1518,13 +1518,13 @@ def _do_contract(tenant: str, card_id: str, conv: str) -> dict:
     with _LOCK, session() as s:
         g = s.get(ArtistmgrGig, gid)
         g.contract_ok = R.digest(sh)
-        _log(g, "Contract + rider aapki haan se final", "Owner")
+        _log(g, "Contract + rider made final, with your approval", "Owner")
         num, phone, prom = g.number, g.phone, g.promoter
     f = _store(tenant, f"{num}_performance_agreement.pdf", pdf, "application/pdf", conv, f"{num} contract + rider")
-    text = (f"Namaste {prom} ji, {sh.get('artist')} ke {sh.get('day')} {sh.get('city')} show ({num}) ka performance agreement aur rider "
-            f"PDF mein bhej rahe hain: fee {sh.get('fee_text')}, advance {sh.get('advance_text')}. Padh kar sign karke bhej dijiye.")
+    text = (f"Hello {prom}, here are the performance agreement and rider for {sh.get('artist')}'s {sh.get('day')} {sh.get('city')} show ({num}) "
+            f"as a PDF: fee {sh.get('fee_text')}, advance {sh.get('advance_text')}. Please read, sign and send it back.")
     return {"draft": _draft(phone, text, file_id=f.get("file_id", "")), "file_id": f.get("file_id", ""),
-            "say": f"{num} contract PDF final; draft taiyaar, aap bhejiye (PDF saath lagaiye)."}
+            "say": f"{num} contract PDF is final; the draft is ready, you send it (attach the PDF)."}
 
 
 def _do_confirm(tenant: str, card_id: str, conv: str) -> dict:
@@ -1534,18 +1534,18 @@ def _do_confirm(tenant: str, card_id: str, conv: str) -> dict:
         g = s.get(ArtistmgrGig, c.ref_id)
         cl = _clashes(s, tenant, g.artist_id, g.day, g.start, g.end, g.set_minutes, g.city, g.id)
         if g.status not in ("enquiry", "hold"):
-            problem = f"{g.number} ab {STATUS.get(g.status, g.status)} hai."
+            problem = f"{g.number} is now {STATUS.get(g.status, g.status)}."
         elif cl:
             problem = _clash_text(cl)
         if problem:
             c.status = "stale"
         else:
             g.status, g.hold_until = "confirmed", None
-            _log(g, "Pakka gig (aapki haan)", "Owner")
+            _log(g, "Gig confirmed (your approval)", "Owner")
         num = g.number
     if problem:
         raise ArtistError(problem)
-    return {"say": f"{num} pakka: artist ka yeh time ab band. Contract / advance ka card chahiye to bataiye."}
+    return {"say": f"{num} is confirmed: this time is now blocked for the artist. Tell me if you want a contract / advance card."}
 
 
 def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
@@ -1563,27 +1563,27 @@ def _do_invoice(tenant: str, card_id: str, conv: str) -> dict:
     tot = (sh.get("invoice") or {}).get("total")
     due = round((tot or 0) - (sh.get("paid") or 0), 2)
     upi = _upi(tenant, due, f"{inv}")
-    text = f"Namaste {prom} ji, {num} show ka invoice {inv}: kul {_rs(tot)}" + (f", baaki {_rs(due)}" if due > 0 else "") + ". PDF saath hai."
+    text = f"Hello {prom}, invoice {inv} for show {num}: total {_rs(tot)}" + (f", balance due {_rs(due)}" if due > 0 else "") + ". The PDF is attached."
     if upi:
         text += f" UPI: {upi}"
     return {"draft": _draft(phone, text, file_id=f.get("file_id", ""), upi=upi), "file_id": f.get("file_id", ""),
-            "say": f"Invoice {inv} bana; draft taiyaar, aap bhejiye."}
+            "say": f"Invoice {inv} created; the draft is ready, you send it."}
 
 
 def _do_pay(tenant: str, card_id: str, conv: str) -> dict:
     sh, gid = _card_ctx(card_id)
     upi = _upi(tenant, sh.get("amount"), f"{sh.get('gig')} {sh.get('label', '')}")
-    text = (f"Namaste {sh.get('promoter')} ji, {sh.get('artist')} {sh.get('day')} show ({sh.get('gig')}) ka {sh.get('label') or 'payment'}: "
-            f"{sh.get('amount_text')}. UPI se: {upi}")
+    text = (f"Hello {sh.get('promoter')}, {sh.get('label') or 'payment'} for {sh.get('artist')}'s {sh.get('day')} show ({sh.get('gig')}): "
+            f"{sh.get('amount_text')}. Pay by UPI: {upi}")
     with _LOCK, session() as s:
         g = s.get(ArtistmgrGig, gid)
-        _log(g, f"Paise maange {sh.get('amount_text')}", "Owner")
-    return {"draft": _draft(sh.get("phone", ""), text, upi=upi), "say": "Payment maangne ka draft taiyaar (UPI aapke ID ka), aap bhejiye."}
+        _log(g, f"Payment requested {sh.get('amount_text')}", "Owner")
+    return {"draft": _draft(sh.get("phone", ""), text, upi=upi), "say": "The payment request draft is ready (UPI to your ID), you send it."}
 
 
 def _do_message(tenant: str, card_id: str, conv: str) -> dict:
     sh, _ = _card_ctx(card_id)
-    return {"draft": _draft(sh.get("to_phone", ""), sh.get("text", "")), "say": "Message draft taiyaar, aap bhejiye."}
+    return {"draft": _draft(sh.get("to_phone", ""), sh.get("text", "")), "say": "The message draft is ready, you send it."}
 
 
 def _do_release(tenant: str, card_id: str, conv: str) -> dict:
@@ -1604,7 +1604,7 @@ def _do_release(tenant: str, card_id: str, conv: str) -> dict:
         num = r.number
     f = _store(tenant, f"{num}_metadata.csv", buf.getvalue().encode("utf-8"), "text/csv", conv, f"{num} release metadata")
     return {"file_id": f.get("file_id", ""),
-            "say": f"{num} metadata final. Ab aap {sh.get('distributor')} par khud upload kijiye; ho jaye to 'deliver ho gaya' bataiye."}
+            "say": f"{num} metadata is final. Now upload it yourself on {sh.get('distributor')}; when it is done, tell me it is delivered."}
 
 
 def _do_payout(tenant: str, card_id: str, conv: str) -> dict:
@@ -1631,11 +1631,11 @@ def _do_payout(tenant: str, card_id: str, conv: str) -> dict:
     drafts = []
     for x in sh.get("splits") or []:
         ph = x.get("phone") or (sh.get("phone") if len(sh.get("splits") or []) == 1 else "")
-        text = (f"Namaste {x['name']} ji, {sh.get('artist')} payout {pnum}: aapka hissa {_rs(x['amount'])}"
-                + (f" ({x['split_pct']:g}%)" if x.get("split_pct") is not None else "") + ". Statement PDF saath hai.")
+        text = (f"Hello {x['name']}, {sh.get('artist')} payout {pnum}: your share {_rs(x['amount'])}"
+                + (f" ({x['split_pct']:g}%)" if x.get("split_pct") is not None else "") + ". The statement PDF is attached.")
         drafts.append({"name": x["name"], **_draft(ph, text)})
     return {"drafts": drafts, "file_id": f.get("file_id", ""), "payout": pnum,
-            "say": f"{pnum}: statement {sh.get('total_text')} final. Paise aap khud bhejiye; bhejne ke baad 'payout bhej diya' bataiye."}
+            "say": f"{pnum}: statement {sh.get('total_text')} is final. You send the money yourself; after sending, tell me the payout is sent."}
 
 
 def payout_paid(tenant: str, payout: str, ref: str = "", actor: str = "owner") -> dict:
@@ -1645,10 +1645,10 @@ def payout_paid(tenant: str, payout: str, ref: str = "", actor: str = "owner") -
         if p is None:
             p = s.scalars(select(ArtistmgrPayout).where(ArtistmgrPayout.tenant_id == tenant, ArtistmgrPayout.number == str(payout).upper())).first()
         if p is None or p.tenant_id != tenant:
-            raise ArtistError("Payout nahi mila.")
+            raise ArtistError("Payout not found.")
         p.status, p.paid_ref = "paid", R.clean(ref, 40)[-8:]
         num = p.number
-    return {"say": f"{num}: aapne paise bhej diye, likha."}
+    return {"say": f"{num}: recorded that you sent the money."}
 
 
 def payouts(tenant: str, artist: str = "") -> list[dict]:
@@ -1685,7 +1685,7 @@ def confirm_request(tenant: str, gig: str, actor: str = "owner", conv: str = "")
         _expire_holds(s, tenant)
         g = _gig(s, tenant, gig)
         if g.status not in ("enquiry", "hold"):
-            raise ArtistError(f"{g.number} {STATUS[g.status]} hai.")
+            raise ArtistError(f"{g.number} is {STATUS[g.status]}.")
         c = _clashes(s, tenant, g.artist_id, g.day, g.start, g.end, g.set_minutes, g.city, g.id)
         if c:
             raise ArtistError(_clash_text(c))
@@ -1697,7 +1697,7 @@ def invoice_request(tenant: str, gig: str, actor: str = "owner", conv: str = "")
     with session() as s:
         g = _gig(s, tenant, gig)
         if g.status not in ("confirmed", "done"):
-            raise ArtistError("Invoice sirf pakke / ho chuke gig ka.")
+            raise ArtistError("An invoice is only for a confirmed or completed gig.")
         gid = g.id
     return _make_card(tenant, "invoice", gid, {}, actor, conv)
 
@@ -1706,7 +1706,7 @@ def pay_request(tenant: str, gig: str, stage: str = "", amount=None, actor: str 
     with session() as s:
         g = _gig(s, tenant, gig)
         if g.status not in ("hold", "confirmed", "done"):
-            raise ArtistError("Paise sirf hold / pakke gig ke liye maange jaate hain.")
+            raise ArtistError("Money is requested only for a gig on hold or confirmed.")
         m = _money(s, g)
         st = (stage or "").lower()
         n = _num(amount)
@@ -1714,20 +1714,20 @@ def pay_request(tenant: str, gig: str, stage: str = "", amount=None, actor: str 
             if st in ("advance", "booking"):
                 n, label = m["advance"], "advance"
             elif st in ("balance", "baaki", ""):
-                n, label = m["due_from_promoter"], "baaki payment"
+                n, label = m["due_from_promoter"], "balance payment"
             else:
-                raise ArtistError("stage advance | balance, ya rakam.")
+                raise ArtistError("Give stage advance | balance, or an amount.")
         else:
             label = st or "payment"
         if n is None or n <= 0:
-            raise ArtistError("Maangne ko kuch baaki nahi (ya fee nahi pata).")
+            raise ArtistError("Nothing is left to request (or the fee is not known).")
         gid = g.id
     return _make_card(tenant, "pay", gid, {"amount": round(n, 2), "label": label}, actor, conv)
 
 
 def message_request(tenant: str, text: str, gig: str = "", artist: str = "", to: str = "", actor: str = "owner", conv: str = "") -> dict:
     if not str(text or "").strip():
-        raise ArtistError("Message mein kya likhna hai?")
+        raise ArtistError("What should the message say?")
     to = (to or "").strip()
     with session() as s:
         if gig:
@@ -1769,8 +1769,8 @@ def payout_request(tenant: str, artist: str, actor: str = "owner", conv: str = "
         waiting = [x["what"] for x in led["lines"] if not x["ready"]]
         aid = a.id
     if not ids:
-        raise ArtistError("Payout ke liye kuch taiyaar nahi (gig ki poori fee aani chahiye, ya royalty line likhi ho)."
-                          + (f" Baaki: {', '.join(waiting)}." if waiting else ""))
+        raise ArtistError("Nothing is ready for payout (the gig's full fee must have come in, or a royalty line must be recorded)."
+                          + (f" Pending: {', '.join(waiting)}." if waiting else ""))
     return _make_card(tenant, "payout", aid, {"ids": ids}, actor, conv)
 
 
@@ -1902,7 +1902,7 @@ def payout_pdf(tenant: str, payout_id: str) -> bytes:
     with session() as s:
         p = s.get(ArtistmgrPayout, payout_id)
         if p is None or p.tenant_id != tenant:
-            raise ArtistError("Payout nahi mila.")
+            raise ArtistError("Payout not found.")
         st = _st(s, tenant)
         a = s.get(ArtistmgrArtist, p.artist_id)
         rows = [["Item", "Gross", "TDS", "Commission", "Expenses", "Net"]]
@@ -1936,11 +1936,11 @@ def day(tenant: str) -> dict:
         for g in rows:
             m = _money(s, g)
             if g.status == "confirmed" and m["balance_due"] and m["balance_due"] <= t.isoformat() and not m["fully_paid"]:
-                bal.append(f"{g.number}: {_rs(m['due_from_promoter'])} baaki ({m['balance_due']} tak tha)")
+                bal.append(f"{g.number}: {_rs(m['due_from_promoter'])} due (was due by {m['balance_due']})")
             if g.status == "confirmed" and g.day and g.day < t.isoformat():
-                unsettled.append(f"{g.number} ({g.day}) ho gaya? 'done' bataiye")
+                unsettled.append(f"{g.number} ({g.day}) done? Tell me 'done'")
             if g.status == "done" and not m["fully_paid"]:
-                unsettled.append(f"{g.number}: promoter se {_rs(m['due_from_promoter'])} baaki")
+                unsettled.append(f"{g.number}: the promoter owes {_rs(m['due_from_promoter'])}")
         rel = []
         for r in s.scalars(select(ArtistmgrRelease).where(ArtistmgrRelease.tenant_id == tenant, ArtistmgrRelease.status != "live")).all():
             for p in _rel_view(s, r)["plan"]:
@@ -1955,22 +1955,22 @@ def day(tenant: str) -> dict:
         no_comm = st.commission_pct is None
     parts = []
     if today_g:
-        parts.append("Aaj: " + ", ".join(f"{g['number']} {g['artist']} {g['start']} {g['city']}" for g in today_g))
+        parts.append("Today: " + ", ".join(f"{g['number']} {g['artist']} {g['start']} {g['city']}" for g in today_g))
     if tom_g:
-        parts.append("Kal: " + ", ".join(f"{g['number']} {g['artist']} {g['city']}" for g in tom_g) + " (rider / travel pakka?)")
+        parts.append("Tomorrow: " + ", ".join(f"{g['number']} {g['artist']} {g['city']}" for g in tom_g) + " (rider / travel confirmed?)")
     if holds:
-        parts.append("Hold 24 ghante mein khatam: " + ", ".join(g["number"] for g in holds))
+        parts.append("Holds ending within 24 hours: " + ", ".join(g["number"] for g in holds))
     if expired:
-        parts.append("Hold khatam ho gaye: " + ", ".join(g.number for g in expired))
+        parts.append("Holds expired: " + ", ".join(g.number for g in expired))
     if bal:
-        parts.append("Baaki payment: " + "; ".join(bal))
+        parts.append("Payments due: " + "; ".join(bal))
     if unsettled:
         parts.append("; ".join(unsettled[:6]))
     if rel:
         parts.append("Release: " + "; ".join(rel[:6]))
     if waiting:
-        parts.append(f"{waiting} card aapki haan ka intezaar")
-    say = ". ".join(parts) + "." if parts else "Artist kaam aaj sab theek."
+        parts.append(f"{waiting} card(s) waiting for your approval")
+    say = ". ".join(parts) + "." if parts else "All artist work is in order today."
     return {"today": today_g, "tomorrow": tom_g, "holds": holds, "balances": bal, "unsettled": unsettled, "releases": rel,
             "waiting": waiting, "regs_missing": missing, "no_commission": no_comm, "say": say}
 
@@ -2009,12 +2009,12 @@ def tick(now_: datetime | None = None) -> dict:
                     hu = _aware(g.hold_until)
                     if hu and hu <= n:
                         g.status, g.hold_until = "enquiry", None
-                        _log(g, "Hold ka samay khatam")
+                        _log(g, "Hold expired")
                         out["expired"] += 1
-                        alerts.append({"kind": "hold_expired", "gig": g.number, "say": f"{g.number} ka hold khatam; {g.day} ka time ab khaali."})
+                        alerts.append({"kind": "hold_expired", "gig": g.number, "say": f"Hold on {g.number} expired; the {g.day} slot is free again."})
                     elif hu and hu <= n + timedelta(hours=12) and _once(s, tenant, f"hold12:{g.id}:{hu.isoformat()}"):
                         alerts.append({"kind": "hold_soon", "gig": g.number,
-                                       "say": f"{g.number} ka hold {hu.astimezone(_tz(tenant)).strftime('%d-%m %H:%M')} par khatam: pakka karne ka card banau?"})
+                                       "say": f"Hold on {g.number} ends at {hu.astimezone(_tz(tenant)).strftime('%d-%m %H:%M')}: shall I make the card to confirm it?"})
                 for g in s.scalars(select(ArtistmgrGig).where(ArtistmgrGig.tenant_id == tenant, ArtistmgrGig.status == "confirmed")).all():
                     d = _date(g.day)
                     if d is None:
@@ -2022,14 +2022,14 @@ def tick(now_: datetime | None = None) -> dict:
                     m = _money(s, g)
                     if d == on + timedelta(days=1) and _once(s, tenant, f"eve:{g.id}"):
                         alerts.append({"kind": "tomorrow", "gig": g.number,
-                                       "say": f"Kal {g.number} {g.city} {g.start}: rider, sound check aur travel pakka?"
-                                              + ("" if g.travel_trip or g.travel_by == "promoter" else " Travel abhi nahi juda.")})
+                                       "say": f"Tomorrow {g.number} {g.city} {g.start}: are the rider, sound check and travel confirmed?"
+                                              + ("" if g.travel_trip or g.travel_by == "promoter" else " Travel is not linked yet.")})
                     if m["balance_due"] and m["balance_due"] <= on.isoformat() and not m["fully_paid"] and \
                             _once(s, tenant, f"bal:{g.id}:{m['balance_due']}"):
                         alerts.append({"kind": "balance", "gig": g.number,
-                                       "say": f"{g.number}: {_rs(m['due_from_promoter'])} baaki ka samay; maangne ka card banau?"})
+                                       "say": f"{g.number}: {_rs(m['due_from_promoter'])} is due now; shall I make the card to request it?"})
                     if d < on and _once(s, tenant, f"over:{g.id}"):
-                        alerts.append({"kind": "over", "gig": g.number, "say": f"{g.number} ({g.day}) ho gaya? 'done' bataiye, phir settlement."})
+                        alerts.append({"kind": "over", "gig": g.number, "say": f"{g.number} ({g.day}) done? Tell me 'done', then settlement."})
                 for r in s.scalars(select(ArtistmgrRelease).where(ArtistmgrRelease.tenant_id == tenant, ArtistmgrRelease.status != "live")).all():
                     for p in _rel_view(s, r)["plan"]:
                         if p["by"] and not p["done"] and p["by"] <= (on + timedelta(days=3)).isoformat() and \
@@ -2051,7 +2051,7 @@ def tick(now_: datetime | None = None) -> dict:
                         st.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Artist kaam aaj sab theek.":
+                if d["say"] != "All artist work is in order today.":
                     _publish(tenant, "artistmgr_day", {"say": d["say"], "today": len(d["today"]), "tomorrow": len(d["tomorrow"]),
                                                        "waiting": d["waiting"]})
                     out["morning"] += 1

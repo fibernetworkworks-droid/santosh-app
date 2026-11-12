@@ -102,8 +102,8 @@ def test_list_has_a_reason_each_and_compliance(env, fake_ai):
     _rewind(_at(11))
     cl = S.call_list(T, at=_at(11))
     names = [r["name"] for r in cl["now"]]
-    assert names[0] == "Ramesh" and "pehle ghante" in cl["now"][0]["why"]        # fresh enquiry first (speed-to-lead)
-    assert "Seema" in names and "₹12,000 baaki" in next(r for r in cl["now"] if r["name"] == "Seema")["why"]
+    assert names[0] == "Ramesh" and "first hour" in cl["now"][0]["why"]        # fresh enquiry first (speed-to-lead)
+    assert "Seema" in names and "₹12,000 due" in next(r for r in cl["now"] if r["name"] == "Seema")["why"]
     assert "Galat" not in names and [b["name"] for b in cl["blocked"]] == ["Cold Wala"]
     assert "TRAI" in cl["blocked"][0]["risk"]
     S.save_settings(T, registered=True)                                       # registered 140 line: may call
@@ -125,7 +125,7 @@ def test_script_is_personal_and_has_no_false_promises(env, fake_ai):
     out = S.make_script(T, "Ramesh")
     sc = out["script"]
     assert "Ramesh" in sc["opener"] and sc["objections"][0]["if"] == "price zyada hai"
-    assert "guaranteed" not in sc["value"].lower() and "jhoota vaada" in sc["warning"]
+    assert "guaranteed" not in sc["value"].lower() and "false promises" in sc["warning"]
     assert sc["wa_link"].startswith("https://wa.me/919876543210")
     assert S.get_lead(T, "Ramesh")["script"]["opener"]
 
@@ -135,7 +135,7 @@ def test_a_person_calls_hoola_logs_and_learns(env, fake_ai):
     S.save_settings(T, business="Greenview Homes", caller_name="Asha", start_hour="09:00", end_hour="21:00")
     S.add_lead(T, "Ramesh", "9876543210", "website", need="2BHK")
     st = S.start_call(T, "Ramesh")
-    assert st["tel"] == "tel:9876543210" and "khud" in st["say"]
+    assert st["tel"] == "tel:9876543210" and "yourself" in st["say"]
     with session() as s:                                                       # she was away 3 minutes on the call
         c = s.get(S.TeleCall, st["call_id"])
         c.started_at = now() - timedelta(minutes=3)
@@ -154,7 +154,7 @@ def test_a_person_calls_hoola_logs_and_learns(env, fake_ai):
     S.add_lead(T, "Mohan", "9876500010", "enquiry")
     S.log_call(T, "Mohan", outcome="no_answer")
     r2 = S.log_call(T, "Mohan", outcome="no_answer")
-    assert "2 baar phone nahi uthaya" in r2["say"] and r2["whatsapp"]["text"]
+    assert "No answer twice" in r2["say"] and r2["whatsapp"]["text"]
     m = S.get_lead(T, "Mohan")
     assert m["attempts"] == 2 and m["next_at"]
     # 'call mat karna' -> never listed again

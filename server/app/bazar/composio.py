@@ -74,8 +74,8 @@ WRITE_WORDS = {"SEND", "POST", "CREATE", "UPDATE", "DELETE", "REMOVE", "ARCHIVE"
 
 
 KEY_SCHEMES = ("API_KEY", "BEARER_TOKEN", "BASIC")   # v0.296 she types her own key; Newtika needs no credentials
-SETUP_TEXT = ("{name} ka login Composio khud nahi deta (API-key / company app). Newtika ko ek baar Composio dashboard > "
-              "Auth Configs mein {name} jodna hoga; uske baad sab users ke liye 'Jodiye' chalega.")
+SETUP_TEXT = ("Composio does not provide the login for {name} itself (API-key / company app). Newtika has to add {name} once in Composio dashboard > "
+              "Auth Configs; after that 'Connect' will work for all users.")
 
 
 class ComposioError(Exception):
@@ -619,9 +619,9 @@ def take_call(s, user_id: str) -> None:
     """Counts one call; refuses when her month or the whole app's month is full."""
     st = core_settings()
     if st.composio_user_monthly_calls and used(s, user_id) >= st.composio_user_monthly_calls:
-        raise CapReached(f"Is mahine ke {st.composio_user_monthly_calls} app-calls poore ho gaye; agle mahine phir chalega.")
+        raise CapReached(f"This month's {st.composio_user_monthly_calls} app calls are used up; it will work again next month.")
     if st.composio_monthly_calls and used(s) >= st.composio_monthly_calls:
-        raise CapReached("Hoola ke sab users ki is mahine ki app-calls ki seema poori ho gayi; agle mahine phir chalega.")
+        raise CapReached("The app-call limit for all Hoola users this month is used up; it will work again next month.")
     row = s.scalars(select(ComposioUsage).where(ComposioUsage.user_id == user_id, ComposioUsage.month == _month())).first()
     if row is None:
         s.add(ComposioUsage(user_id=user_id, month=_month(), calls=1))
@@ -655,7 +655,7 @@ def start_link(s, user_id: str, toolkit: str) -> dict[str, Any]:
     """Her own sign-in page for this app. The callback carries a signed (user, app) state; the account id Composio
     returns is sealed in her pending Connection, never shown to the model."""
     if toolkit not in toolkits():
-        raise ComposioError(f"'{toolkit}' Hoola ki app list mein nahi hai.")
+        raise ComposioError(f"'{toolkit}' is not in Hoola's app list.")
     from .config import get_settings
     cb = f"{get_settings().public_base_url}/bazar/composio/callback?st={_state(user_id, toolkit)}"
     res = client().link(toolkit, composio_user(user_id), cb)
@@ -671,18 +671,18 @@ def connect_key(s, user_id: str, toolkit: str, values: dict[str, Any]) -> dict[s
     """v0.296 her own key for a key app, typed in the Hoola app (never in chat), goes straight to Composio, which checks
     it with the app before saving. Hoola keeps only the account id (sealed), never the key."""
     if mode(toolkit) != "key":
-        raise ComposioError("Is app mein key nahi, sign-in hota hai: 'Jodiye' dabaiye.")
+        raise ComposioError("This app uses sign-in, not a key: tap 'Connect'.")
     fields = {f["name"]: f for f in key_fields(toolkit)}
     clean: dict[str, str] = {}
     for k, v in (values or {}).items():
         if k in fields and isinstance(v, (str, int)) and str(v).strip():
             val = str(v).strip()
             if len(val) > 4000:
-                raise ComposioError(f"{fields[k]['label']} bahut lamba hai.")
+                raise ComposioError(f"{fields[k]['label']} is too long.")
             clean[k] = val
     missing = [f["label"] for f in fields.values() if f["required"] and f["name"] not in clean]
     if missing:
-        raise ComposioError("Yeh bhi chahiye: " + ", ".join(missing))
+        raise ComposioError("Also needed: " + ", ".join(missing))
     scheme = catalog()[toolkit]["key_scheme"]
     cl = client()
     try:
@@ -692,11 +692,11 @@ def connect_key(s, user_id: str, toolkit: str, values: dict[str, Any]) -> dict[s
                                            "state": {"authScheme": scheme, "val": {"status": "ACTIVE", **clean}}}})
     except ComposioError as e:
         if "Validation" in str(e) or e.status in (400, 422):
-            raise ComposioError(f"{toolkits()[toolkit][0]} ne yeh key nahi maani. Sahi key dobara daaliye.", e.status)
+            raise ComposioError(f"{toolkits()[toolkit][0]} did not accept this key. Enter the correct key again.", e.status)
         raise
     ca = str(res.get("id") or (res.get("connected_account") or {}).get("id") or "")
     if not ca:
-        raise ComposioError("Composio ne account nahi banaya; thodi der baad try kijiye.")
+        raise ComposioError("Composio did not create the account; try again in a little while.")
     for c in _rows(s, user_id, toolkit):
         c.status = "replaced"
     st = _status_of(res) or "ACTIVE"
@@ -710,7 +710,7 @@ def finish_link(s, state: str) -> tuple[str, str, bool]:
     """Her browser came back. (user_id, app name, linked?) - linked only when Composio says ACTIVE."""
     got = read_state(state)
     if not got:
-        raise ComposioError("Yeh link purana ya galat hai. Hoola se dobara 'jodo' boliye.")
+        raise ComposioError("This link is old or wrong. Ask Hoola to connect again.")
     user_id, toolkit = got
     conn, _ = account(s, user_id, toolkit)
     return user_id, toolkits().get(toolkit, (toolkit, ""))[0], conn is not None
@@ -766,7 +766,7 @@ def check() -> dict[str, Any]:
     """v0.294 the self-check she runs on the VPS (python -m app.bazar.composio check): no secrets in the output."""
     out: dict[str, Any] = {"key_set": configured()}
     if not configured():
-        out["fix"] = "COMPOSIO_API_KEY ~/apps/santosh-core/.env mein nahi hai."
+        out["fix"] = "COMPOSIO_API_KEY is not in ~/apps/santosh-core/.env."
         return out
     try:
         res = client()._req("GET", "/toolkits", params={"limit": 1})
@@ -775,8 +775,8 @@ def check() -> dict[str, Any]:
     except ComposioError as e:
         out["key_works"] = False
         out["error"] = str(e)
-        out["fix"] = ("Key galat / purani hai: platform.composio.dev > project > Settings > API Keys se project key "
-                      "copy karke .env mein dobara daaliye." if e.status in (401, 403) else "Composio tak pahunch nahi.")
+        out["fix"] = ("The key is wrong / old: copy the project key from platform.composio.dev > project > Settings > API Keys "
+                      "and put it in .env again." if e.status in (401, 403) else "Composio could not be reached.")
         return out
     cat = catalog(force=True)
     conf = configured_apps(force=True)

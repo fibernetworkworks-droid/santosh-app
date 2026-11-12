@@ -56,12 +56,12 @@ ESC = {"n": "\n", "t": "\t", '"': '"', "'": "'", "\\": "\\"}
 
 def tokens(src: str) -> list[tuple[str, Any, int]]:
     if len(src) > MAX_SOURCE:
-        raise LogicError(f"Logic bahut lambi hai ({len(src)} akshar, seema {MAX_SOURCE}).")
+        raise LogicError(f"The logic is too long ({len(src)} characters, limit {MAX_SOURCE}).")
     out, i, line = [], 0, 1
     while i < len(src):
         m = TOKEN.match(src, i)
         if not m:
-            raise LogicError(f"Line {line}: '{src[i]}' samajh nahi aaya.")
+            raise LogicError(f"Line {line}: '{src[i]}' was not understood.")
         k = m.lastgroup
         v = m.group(k)
         if k == "nl":
@@ -108,7 +108,7 @@ class Parser:
         k, v, ln = self.next()
         if k != kind or (val is not None and v != val):
             got = "end" if k == "eof" else repr(v)
-            raise LogicError(f"Line {ln}: {val or kind} chahiye tha, {got} mila.")
+            raise LogicError(f"Line {ln}: expected {val or kind}, got {got}.")
         return v
 
     # expressions (newlines inside are allowed: an expression never ends at a newline inside brackets)
@@ -190,7 +190,7 @@ class Parser:
                 self.next()
                 k, v, ln = self.next()
                 if k not in ("name", "kw"):
-                    raise LogicError(f"Line {ln}: '.' ke baad naam chahiye.")
+                    raise LogicError(f"Line {ln}: a name is needed after '.'.")
                 a = ("get", a, ("lit", v))
             elif self.at("op", "[", skip_nl=False):
                 self.next()
@@ -250,7 +250,7 @@ class Parser:
                 while True:
                     kk, kv, kl = self.next()
                     if kk not in ("name", "str", "kw"):
-                        raise LogicError(f"Line {kl}: map ki chaabi naam / text honi chahiye.")
+                        raise LogicError(f"Line {kl}: a map key must be a name / text.")
                     self.want("op", ":")
                     pairs.append((str(kv), self.expr()))
                     if self.at("op", ","):
@@ -262,7 +262,7 @@ class Parser:
             self.want("op", "}")
             return ("map", pairs)
         got = "end" if k == "eof" else repr(v)
-        raise LogicError(f"Line {ln}: yahan {got} nahi aa sakta.")
+        raise LogicError(f"Line {ln}: {got} cannot come here.")
 
     # statements (function bodies)
     def block(self, top: bool = False):
@@ -278,7 +278,7 @@ class Parser:
                 self.next()
                 break
             if self.at("eof"):
-                raise LogicError("'}' band karna reh gaya.")
+                raise LogicError("'}' was not closed.")
             body.append(self.stmt())
         return ("block", body)
 
@@ -340,11 +340,11 @@ class Parser:
 def parse_expr(src: str):
     p = Parser(str(src or ""))
     if p.at("eof"):
-        raise LogicError("Formula khaali hai.")
+        raise LogicError("The formula is empty.")
     e = p.expr()
     if not p.at("eof"):
         _k, v, ln = p.peek()
-        raise LogicError(f"Line {ln}: formula ke baad {v!r} bacha hai.")
+        raise LogicError(f"Line {ln}: {v!r} is left over after the formula.")
     return e
 
 
@@ -486,7 +486,7 @@ def num(v: Any, what: str = "number") -> float:
     try:
         return float(str(v).replace(",", "").replace("₹", "").strip())
     except ValueError:
-        raise LogicError(f"'{str(v)[:30]}' {what} nahi hai.")
+        raise LogicError(f"'{str(v)[:30]}' is not a {what}.")
 
 
 def text(v: Any) -> str:
@@ -525,7 +525,7 @@ def _date(v: Any) -> date | None:
             return (d.astimezone(IST) if d.tzinfo else d).date()
         return datetime.strptime(s[:10], "%Y-%m-%d").date()
     except ValueError:
-        raise LogicError(f"'{s[:30]}' tareekh nahi hai (YYYY-MM-DD).")
+        raise LogicError(f"'{s[:30]}' is not a date (YYYY-MM-DD).")
 
 
 def _dt(v: Any) -> datetime | None:
@@ -536,7 +536,7 @@ def _dt(v: Any) -> datetime | None:
     try:
         d = datetime.fromisoformat(s.replace("Z", "+00:00")) if len(s) > 10 else datetime.strptime(s[:10], "%Y-%m-%d")
     except ValueError:
-        raise LogicError(f"'{s[:30]}' samay nahi hai.")
+        raise LogicError(f"'{s[:30]}' is not a time.")
     return d if d.tzinfo else d.replace(tzinfo=IST)
 
 
@@ -570,9 +570,9 @@ def _cmp(op: str, a: Any, b: Any) -> bool:
 def _check_num(v: Any) -> Any:
     if isinstance(v, float):
         if math.isnan(v) or math.isinf(v):
-            raise LogicError("Hisaab galat (0 se bhaag ya bahut bada number).")
+            raise LogicError("Wrong calculation (division by 0 or a number too large).")
     if isinstance(v, (int, float)) and abs(v) > MAX_NUM:
-        raise LogicError("Number bahut bada ho gaya.")
+        raise LogicError("The number became too large.")
     return v
 
 
@@ -713,11 +713,11 @@ def _count(items, field=None, value=None):
 def _matches(s, pattern):
     pat = text(pattern)
     if len(pat) > 120 or re.search(r"\(\?|\\\d|(\+|\*|\})\s*(\+|\*|\{)", pat):   # no backrefs / nested quantifiers
-        raise LogicError("Yeh pattern bahut ulajh hai.")
+        raise LogicError("This pattern is too complex.")
     try:
         return re.fullmatch(pat, text(s)[:500]) is not None
     except re.error:
-        raise LogicError("Pattern galat hai.")
+        raise LogicError("The pattern is not valid.")
 
 
 def _first(items, field=None, value=None):
@@ -790,9 +790,9 @@ class Run:
     def tick(self):
         self.steps -= 1
         if self.steps <= 0:
-            raise LogicError("Logic ne bahut kadam liye (loop band kiya).")
+            raise LogicError("The logic took too many steps (loop stopped).")
         if self.steps % 256 == 0 and time.monotonic() > self.deadline:
-            raise LogicError("Logic ka samay khatam (loop band kiya).")
+            raise LogicError("The logic ran out of time (loop stopped).")
 
     def value(self, node, scope: dict[str, Any]):
         self.tick()
@@ -806,7 +806,7 @@ class Run:
             if k in self.env:
                 v = self.env[k]
                 return v() if callable(v) and not isinstance(v, LazyRow) else v
-            raise LogicError(f"'{k}' naam ka field / cheez nahi mili.")
+            raise LogicError(f"No field / value named '{k}' was found.")
         if op == "get":
             base = self.value(node[1], scope)
             key = self.value(node[2], scope)
@@ -819,12 +819,12 @@ class Run:
                 if isinstance(pa, list) or isinstance(pb, list):
                     out = _list(a) + _list(b)
                     if len(out) > MAX_LIST:
-                        raise LogicError("List bahut lambi ho gayi.")
+                        raise LogicError("The list became too long.")
                     return out
                 if isinstance(pa, str) and not _numeric(pa) or isinstance(pb, str) and not _numeric(pb):
                     s = text(a) + text(b)
                     if len(s) > MAX_TEXT:
-                        raise LogicError("Text bahut lamba ho gaya.")
+                        raise LogicError("The text became too long.")
                     return s
                 return _check_num(num(a) + num(b))
             if o == "-":
@@ -834,12 +834,12 @@ class Run:
             if o == "/":
                 d = num(b)
                 if d == 0:
-                    raise LogicError("0 se bhaag nahi ho sakta.")
+                    raise LogicError("Cannot divide by 0.")
                 return _check_num(num(a) / d)
             if o == "%":
                 d = num(b)
                 if d == 0:
-                    raise LogicError("0 se bhaag nahi ho sakta.")
+                    raise LogicError("Cannot divide by 0.")
                 return _check_num(num(a) % d)
         if op == "neg":
             return -num(self.value(node[1], scope))
@@ -860,13 +860,13 @@ class Run:
             return a in [plain(x) for x in _list(b)]
         if op == "list":
             if len(node[1]) > MAX_LIST:
-                raise LogicError("List bahut lambi hai.")
+                raise LogicError("The list is too long.")
             return [self.value(x, scope) for x in node[1]]
         if op == "map":
             return {k: self.value(v, scope) for k, v in node[1]}
         if op == "call":
             return self.call(node[1], node[2], scope)
-        raise LogicError("Yeh logic samajh nahi aaya.")
+        raise LogicError("This logic was not understood.")
 
     def _get(self, base, key):
         if isinstance(base, list):
@@ -879,25 +879,25 @@ class Run:
             return base.get(text(key))
         if base is None or base == "":
             return None
-        raise LogicError(f"'{text(base)[:30]}' ke andar '{text(key)}' nahi hota.")
+        raise LogicError(f"'{text(base)[:30]}' has no '{text(key)}'.")
 
     def call(self, name: str, arg_nodes: list, scope: dict[str, Any]):
         if name == "if":
             if len(arg_nodes) not in (2, 3):
-                raise LogicError("if(sharat, haan, nahi) - 2 ya 3 cheezein.")
+                raise LogicError("if(condition, yes, no) - 2 or 3 values.")
             if truthy(self.value(arg_nodes[0], scope)):
                 return self.value(arg_nodes[1], scope)
             return self.value(arg_nodes[2], scope) if len(arg_nodes) == 3 else None
         if name == "fail":
-            msg = text(self.value(arg_nodes[0], scope)) if arg_nodes else "Yeh sahi nahi hai."
+            msg = text(self.value(arg_nodes[0], scope)) if arg_nodes else "This is not valid."
             raise Fail(msg[:300])
         args = [self.value(a, scope) for a in arg_nodes]
         if name in self.functions:
             params, body = self.functions[name]
             if len(args) > len(params):
-                raise LogicError(f"{name}() mein {len(params)} cheezein jaati hain.")
+                raise LogicError(f"{name}() takes {len(params)} values.")
             if self.depth >= MAX_DEPTH:
-                raise LogicError("Functions ek doosre ko bahut gehre bula rahe hain.")
+                raise LogicError("Functions are calling each other too deeply.")
             self.depth += 1
             try:
                 return self.run_body(body, {p: (args[i] if i < len(args) else None) for i, p in enumerate(params)})
@@ -905,19 +905,19 @@ class Run:
                 self.depth -= 1
         fn = BUILTINS.get(name)
         if fn is None:
-            raise LogicError(f"'{name}()' naam ka kaam nahi hai.")
+            raise LogicError(f"There is no function named '{name}()'.")
         try:
             out = fn(*args)
         except (LogicError, Fail):
             raise
         except TypeError:
-            raise LogicError(f"{name}() mein cheezein galat ginti mein hain.")
+            raise LogicError(f"{name}() has the wrong number of values.")
         except (ValueError, OverflowError, ArithmeticError) as e:
             raise LogicError(f"{name}(): {str(e)[:80]}")
         if isinstance(out, list) and len(out) > MAX_LIST:
-            raise LogicError("List bahut lambi ho gayi.")
+            raise LogicError("The list became too long.")
         if isinstance(out, str) and len(out) > MAX_TEXT:
-            raise LogicError("Text bahut lamba ho gaya.")
+            raise LogicError("The text became too long.")
         return _check_num(out) if isinstance(out, (int, float)) else out
 
     # statements
@@ -927,7 +927,7 @@ class Run:
         except _Return as r:
             return r.v
         except (_Break, _Continue):
-            raise LogicError("break / continue sirf for ke andar.")
+            raise LogicError("break / continue only inside a for.")
         return None
 
     def exec(self, node, scope: dict[str, Any]):
@@ -938,12 +938,12 @@ class Run:
                 self.exec(s, scope)
         elif op == "let" or op == "set":
             if op == "set" and node[1] not in scope:
-                raise LogicError(f"Line {node[3]}: '{node[1]}' pehle 'let {node[1]} = ...' se banaiye.")
+                raise LogicError(f"Line {node[3]}: '{node[1]}' must first be made with 'let {node[1]} = ...'.")
             if node[1] in RESERVED and op == "let":
-                raise LogicError(f"Line {node[3]}: '{node[1]}' naam pehle se kaam mein hai.")
+                raise LogicError(f"Line {node[3]}: '{node[1]}' is a name already in use.")
             v = self.value(node[2], scope)
             if isinstance(v, str) and len(v) > MAX_TEXT:
-                raise LogicError("Text bahut lamba ho gaya.")
+                raise LogicError("The text became too long.")
             scope[node[1]] = v
         elif op == "if":
             if truthy(self.value(node[1], scope)):
@@ -954,7 +954,7 @@ class Run:
             seq = self.value(node[2], scope)
             items = list(seq.keys()) if isinstance(seq, dict) else _list(seq)
             if len(items) > MAX_LIST:
-                raise LogicError("Itni lambi list par loop nahi chalega.")
+                raise LogicError("A loop cannot run over a list this long.")
             for it in items:
                 scope[node[1]] = it
                 try:
@@ -972,7 +972,7 @@ class Run:
         elif op == "expr":
             self.value(node[1], scope)
         else:
-            raise LogicError("Yeh statement samajh nahi aaya.")
+            raise LogicError("This statement was not understood.")
 
 
 def _numeric(s: str) -> bool:
@@ -993,7 +993,7 @@ def evaluate(src_or_ast, env: dict[str, Any] | None = None, functions: dict[str,
 def call_function(functions: dict[str, tuple[list[str], Any]], name: str, args: list[Any],
                   env: dict[str, Any] | None = None, steps: int = MAX_STEPS) -> Any:
     if name not in functions:
-        raise LogicError(f"Function '{name}' nahi mila.")
+        raise LogicError(f"Function '{name}' not found.")
     params, body = functions[name]
     run = Run(env, functions, steps)
     run.depth = 1

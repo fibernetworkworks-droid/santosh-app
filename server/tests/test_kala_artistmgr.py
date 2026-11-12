@@ -89,7 +89,7 @@ def test_rules():
     plan = R.release_plan(date(2026, 12, 1), 21, t0)
     assert plan[0]["by"] == "2026-11-10" and plan[1]["by"] == "2026-11-24"
     assert R.release_plan(date(2026, 12, 1), None, t0)[0]["by"] == ""
-    assert R.clean("otp 445566 card 4111 1111 1111 1111") == "otp [hataya] card [hataya]"
+    assert R.clean("otp 445566 card 4111 1111 1111 1111") == "otp [removed] card [removed]"
     assert set(R.REGS) >= {"iprs", "isamra", "ppl", "isrc", "ipi"}
 
 
@@ -104,7 +104,7 @@ def test_roster_regs_and_settings(am):
     with pytest.raises(S.ArtistError):
         S.artist_save(T, "Solo", actor="staff:s1")
     out = S.save_settings(T, distributors=[{"name": "DistroX"}])
-    assert "lead time" in out["say"] and "commission % abhi nahi" in out["say"]
+    assert "lead time" in out["say"] and "commission % is not set yet" in out["say"]
     _roster(S)
     v = S.artist_view(T, "mehfil")
     assert v["name"] == "Mehfil Band" and len(v["members"]) == 3 and v["rider"]["tech"][0] == "4 vocal mics"
@@ -129,7 +129,7 @@ def test_double_booking_refused_in_code(am):
     S.hold(T, g1["number"])
     # same artist, same city, 1 hour after the end (< her 120 min gap) -> refused, even as a hold, even for her
     g2 = S.offer(T, artist="Mehfil Band", day="2026-11-20", start="22:00", city="Pune", fee=90000, promoter="Club X")["gig"]
-    assert "khaali nahi" in S.offer(T, artist="Mehfil Band", day="2026-11-20", start="21:30", city="Pune", fee=1)["say"]
+    assert "not free" in S.offer(T, artist="Mehfil Band", day="2026-11-20", start="21:30", city="Pune", fee=1)["say"]
     with pytest.raises(S.ArtistError) as e:
         S.hold(T, g2["number"])
     assert "G-0001" in str(e.value) and "double booking" in str(e.value)
@@ -189,7 +189,7 @@ def test_cards_only_by_her_tap_and_money(am):
     assert "wa.me/919811100044" in out["draft"]["wa"] and S.STORED[-1][0].endswith("_performance_agreement.pdf")
     assert S.STORED[-1][1].startswith(b"%PDF")
     cf = S.confirm_request(T, g["number"])
-    assert S.decide(T, cf["card"]["id"], True, cf["card"]["hash"], by_tap=True)["say"].startswith(g["number"] + " pakka")
+    assert S.decide(T, cf["card"]["id"], True, cf["card"]["hash"], by_tap=True)["say"].startswith(g["number"] + " is confirmed")
     assert S.gig_view(T, g["number"])["status"] == "confirmed"
     with pytest.raises(S.ArtistError):
         S.gig_save(T, g["number"], fee=50000, actor="staff:s1")              # staff can't change a confirmed fee
@@ -235,7 +235,7 @@ def test_cards_only_by_her_tap_and_money(am):
     # DPDP forget after the gig
     S.forget(T, g["number"])
     v = S.gig_view(T, g["number"])
-    assert v["phone"] == "" and v["promoter"] == "Promoter (hataya)" and v["money"]["received"] == 99000
+    assert v["phone"] == "" and v["promoter"] == "Promoter (removed)" and v["money"]["received"] == 99000
 
 
 def test_gst_on_invoice_and_cancel(am):
@@ -248,7 +248,7 @@ def test_gst_on_invoice_and_cancel(am):
     c = S.confirm_request(T, g["number"])
     S.decide(T, c["card"]["id"], True, c["card"]["hash"], by_tap=True)
     inv = S.invoice_request(T, g["number"])["card"]["show"]["invoice"]
-    assert inv["gst_pct"] == 0 and "chhoot" in inv["gst_note"]                 # classical <= 1.5 lakh
+    assert inv["gst_pct"] == 0 and "exempt" in inv["gst_note"]                 # classical <= 1.5 lakh
     S.gig_save(T, g["number"], fee=160000)
     inv = S.invoice_request(T, g["number"])["card"]["show"]["invoice"]
     assert inv["gst_pct"] == 18 and inv["cgst"] == 14400 and inv["total"] == 188800
@@ -256,7 +256,7 @@ def test_gst_on_invoice_and_cancel(am):
         S.cancel(T, g["number"], "")
     S.paid(T, g["number"], 50000)
     out = S.cancel(T, g["number"], "Organiser ne event radd kiya")
-    assert "aap tay kijiye" in out["say"]
+    assert "is your decision" in out["say"]
     assert S.check(T, "Pt. Raag", "2026-11-28", "18:30", city="Nashik")["free"]
     assert not S.cards(T, "waiting") or all(x["ref_id"] != S.gig_view(T, g["number"])["id"] for x in S.cards(T, "waiting"))
 
@@ -288,7 +288,7 @@ def test_release_plan_and_final_metadata(am):
     S.release_step(T, r["number"], "deliver")
     assert S.release_view(T, r["number"])["status"] == "delivered"
     r2 = S.release_save(T, release=r["number"], day="2026-12-18")
-    assert "final dobara" in r2["say"] and r2["release"]["status"] == "plan"
+    assert "final again" in r2["say"] and r2["release"]["status"] == "plan"
 
 
 def test_tick_and_morning(am):

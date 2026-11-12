@@ -70,9 +70,9 @@ CAPS: dict[str, dict[str, Any]] = {
                               alt="fgs_location", words=("background location", "live tracking", "track staff", "24 ghante location")),
     "fgs_location": _c("Trip tracking with a visible notification", "trip tracking (notification ke saath)", "declaration", "review",
                        ["FOREGROUND_SERVICE", "FOREGROUND_SERVICE_LOCATION", "POST_NOTIFICATIONS"], ["UIBackgroundModes: location"],
-                       "Foreground service type location (started by the user: 'Duty shuru')",
+                       "Foreground service type location (started by the user: 'Start duty')",
                        "Core Location background updates with the blue indicator",
-                       "Play foreground-service declaration; starts only on the user's tap, stops at 'Duty khatam'.",
+                       "Play foreground-service declaration; starts only on the user's tap, stops at 'End duty'.",
                        words=("trip tracking", "duty tracking")),
     "geofence": _c("Geofence (inside office / site)", "ghera", "disclosure", "ok",
                    ["ACCESS_FINE_LOCATION"], ["NSLocationWhenInUseUsageDescription"],
@@ -301,9 +301,9 @@ for _cid, _cap in CAPS.items():
 BUILT_LABEL = {"yes": "Built", "partial": "Partly", "no": "Not yet"}
 
 PLAY_ORDER = {"ok": 0, "disclosure": 1, "declaration": 2, "restricted": 3, "hoola_never": 4}
-PLAY_LABEL = {"ok": "Theek", "disclosure": "Pehle batana + haan", "declaration": "Play form + review", "restricted": "Play nahi deta",
-              "hoola_never": "Hoola nahi karta"}
-IOS_LABEL = {"ok": "Theek", "entitlement": "Apple capability", "review": "App Review ko batana", "not_possible": "iPhone par nahi"}
+PLAY_LABEL = {"ok": "OK", "disclosure": "Disclosure + consent first", "declaration": "Play form + review", "restricted": "Play does not allow",
+              "hoola_never": "Hoola does not do this"}
+IOS_LABEL = {"ok": "OK", "entitlement": "Apple capability", "review": "Tell App Review", "not_possible": "Not on iPhone"}
 
 # screen types -> what they need on the phone
 SCREEN_CAPS: dict[str, list[str]] = {
@@ -370,12 +370,12 @@ def check(ids: list[str]) -> dict[str, Any]:
         rows.append(row)
         if c["play"] in ("restricted", "hoola_never"):
             alt = CAPS.get(c["alt"]) if c["alt"] else None
-            problems.append({"id": cid, "text": f"{c['label']}: {c['note']}" + (f" Iski jagah: {alt['label']}." if alt else ""),
+            problems.append({"id": cid, "text": f"{c['label']}: {c['note']}" + (f" Use instead: {alt['label']}." if alt else ""),
                              "alt": c["alt"]})
         elif c["play"] == "declaration":
             notes.append({"id": cid, "text": f"{c['label']}: {c['note']}"})
         if c["ios"] == "not_possible" and c["play"] not in ("restricted", "hoola_never"):
-            notes.append({"id": cid, "text": f"{c['label']}: iPhone par yeh nahi hota; Android par hi milega."})
+            notes.append({"id": cid, "text": f"{c['label']}: not possible on iPhone; it will be on Android only."})
     rows.sort(key=lambda r: (PLAY_ORDER[r["play"]], r["id"]))
     return {"caps": rows, "problems": problems, "notes": notes,
             "permissions": sorted({p.split(" ")[0] for r in rows if r["play"] not in ("restricted", "hoola_never") for p in r["android"]}),

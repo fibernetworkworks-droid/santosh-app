@@ -165,7 +165,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return await run(S.travel_link, tenant, gid, _s(b.get("origin")))
         if what == "forget":
             return await run(S.forget, tenant, gid)
-        raise HTTPException(404, "Nahi pehchana.")
+        raise HTTPException(404, "Not recognized.")
 
     # ---- releases + royalties + payouts
     @r.get("/releases")

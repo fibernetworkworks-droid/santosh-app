@@ -30,7 +30,7 @@ APPS = ("Instagram", "YouTube", "Facebook", "Snapchat", "Moj", "Josh", "ShareCha
 LATE = set(range(23, 24)) | set(range(0, 5))       # 11 pm - 5 am
 SECONDS_PER_REEL = 30                               # rough average, only for an "about N reels" estimate
 MAX_IMPORT = 80 * 1024 * 1024
-AI_LABEL = "Hoola AI ka andaaza · galti ho sakti hai"
+AI_LABEL = "Hoola AI's estimate · may be wrong"
 
 
 class ScrollError(Exception):
@@ -92,13 +92,13 @@ def _hm(mins: float) -> str:
     m = int(round(mins))
     if m < 60:
         return f"{m} min"
-    unit = "ghanta" if m // 60 == 1 else "ghante"
+    unit = "hour" if m // 60 == 1 else "hours"
     return f"{m // 60} {unit} {m % 60} min" if m % 60 else f"{m // 60} {unit}"
 
 
 def _hour_label(h: int) -> str:
-    part = "subah" if 5 <= h < 12 else "dopahar" if 12 <= h < 16 else "shaam" if 16 <= h < 20 else "raat"
-    return f"{part} {h % 12 or 12} baje"
+    part = "in the morning" if 5 <= h < 12 else "in the afternoon" if 12 <= h < 16 else "in the evening" if 16 <= h < 20 else "at night"
+    return f"{h % 12 or 12} {part}"
 
 
 def _days(tenant: str, start: date, end: date) -> dict[str, dict]:
@@ -178,38 +178,38 @@ def report(tenant: str, days: int = 7, today: date | None = None) -> dict:
 def insights(r: dict) -> list[str]:
     """Plain Hinglish observations from the numbers (rules, no AI): honest, never preachy."""
     if not r["has_data"]:
-        return ["Abhi data nahi hai. Usage Access chalu kijiye, phir Hoola aapki reel ki aadat dikhayega."]
-    out = [f"Pichhle {r['period_days']} din mein {r['total_text']} reels / shorts apps pe: roz ~{r['avg_text']} "
-           f"(lagbhag {r['reels_est']:,} reels, andaazan)."]
+        return ["No data yet. Turn on Usage Access, then Hoola will show your reel habits."]
+    out = [f"{r['total_text']} on reels / shorts apps in the last {r['period_days']} days: ~{r['avg_text']} a day "
+           f"(about {r['reels_est']:,} reels, an estimate)."]
     if r["trend_pct"] is not None and abs(r["trend_pct"]) >= 10:
-        out.append(f"Pichhle hafte se {abs(r['trend_pct'])}% {'zyada' if r['trend_pct'] > 0 else 'kam'}."
-                   + (" Badhiya!" if r["trend_pct"] < 0 else ""))
+        out.append(f"{abs(r['trend_pct'])}% {'more' if r['trend_pct'] > 0 else 'less'} than last week."
+                   + (" Well done." if r["trend_pct"] < 0 else ""))
     if r["apps"]:
         a = r["apps"][0]
         if a["share"] >= 50 and len(r["apps"]) > 1:
-            out.append(f"Sabse zyada {a['app']}: {a['share']}% time wahi gaya.")
+            out.append(f"Mostly {a['app']}: {a['share']}% of the time went there.")
         if a["sessions"]:
             per = a["min"] / a["sessions"]
-            out.append(f"{a['app']} {a['sessions']} baar khola, har baar ~{_hm(per)}.")
+            out.append(f"{a['app']} opened {a['sessions']} times, ~{_hm(per)} each time.")
     yt = next((a for a in r["apps"] if a["app"] == "YouTube"), None)
     if yt and yt["min"] >= 5:
         if "shorts_min" in yt:
-            out.append(f"YouTube ke {_hm(yt['min'])} mein se ~{_hm(yt['shorts_min'])} Shorts the, baaki lambe videos "
-                       f"(aapki YouTube history ke hisaab se andaaza).")
+            out.append(f"Of {_hm(yt['min'])} on YouTube, ~{_hm(yt['shorts_min'])} were Shorts, the rest long videos "
+                       f"(an estimate from your YouTube history).")
         else:
-            out.append("YouTube mein Shorts aur lambe videos saath gine gaye hain. YouTube history daalein to alag dikhega.")
+            out.append("On YouTube, Shorts and long videos are counted together. Add your YouTube history to see them apart.")
     if r["longest"]["min"] >= 30:
-        out.append(f"Sabse lambi sitting: {_hm(r['longest']['min'])} {r['longest']['app']} pe ({r['longest']['date']}).")
+        out.append(f"Longest sitting: {_hm(r['longest']['min'])} on {r['longest']['app']} ({r['longest']['date']}).")
     if r["late_days"] >= 2 or r["late_min"] >= 60:
-        out.append(f"Raat 11 ke baad {r['late_days']} din scroll kiya ({_hm(r['late_min'])}). Neend pe asar padta hai: "
-                   "Hoola raat 10:30 baje yaad dila sakta hai.")
+        out.append(f"Scrolled after 11 pm on {r['late_days']} days ({_hm(r['late_min'])}). It affects sleep: "
+                   "Hoola can remind you at 10:30 pm.")
     if r["peak_text"]:
-        out.append(f"Sabse zyada scroll {r['peak_text']} ke aas-paas hota hai.")
+        out.append(f"Most scrolling happens around {r['peak_text']}.")
     if r["budget_min"]:
         if r["over_budget"]:
-            out.append(f"Aaj {_hm(r['today_min'])} ho gaye: aapki roz ki limit {_hm(r['budget_min'])} se zyada.")
+            out.append(f"{_hm(r['today_min'])} today: over your daily limit of {_hm(r['budget_min'])}.")
         else:
-            out.append(f"Aaj {_hm(r['today_min'])} / {_hm(r['budget_min'])} limit.")
+            out.append(f"Today {_hm(r['today_min'])} / {_hm(r['budget_min'])} limit.")
     return out
 
 
@@ -314,7 +314,7 @@ def parse_upload(name: str, data: bytes) -> list[dict]:
         try:
             z = zipfile.ZipFile(io.BytesIO(data))
         except zipfile.BadZipFile:
-            raise ScrollError("Zip file khul nahi rahi.")
+            raise ScrollError("The zip file cannot be opened.")
         total = 0
         for info in z.infolist():
             n = info.filename.lower()
@@ -322,7 +322,7 @@ def parse_upload(name: str, data: bytes) -> list[dict]:
                     n.endswith(".json") and any(n.rsplit("/", 1)[-1].startswith(k) for k in IG_KINDS)):
                 total += info.file_size
                 if total > 300 * 1024 * 1024:
-                    raise ScrollError("Export bahut bada hai: sirf history wala hissa download kijiye.")
+                    raise ScrollError("The export is too large: download only the history part.")
                 files.append((info.filename, z.read(info)))
     else:
         files.append((name, data))
@@ -393,7 +393,7 @@ def shorts_split(tenant: str, items: list[dict]) -> dict:
         dur = _durations(tenant, uniq)
     except Exception as e:
         log.info("youtube durations unavailable: %s", e)
-        return {"checked": 0, "note": "YouTube se video ki lambai nahi mil payi (server par YOUTUBE_API_KEY chahiye)."}
+        return {"checked": 0, "note": "Could not get video lengths from YouTube (YOUTUBE_API_KEY is needed on the server)."}
     short_n = long_n = 0
     short_s = long_s = 0
     for vid in ids:
@@ -415,13 +415,13 @@ def shorts_split(tenant: str, items: list[dict]) -> dict:
 
 def import_history(tenant: str, name: str, data: bytes) -> dict:
     if not data:
-        raise ScrollError("File khaali hai.")
+        raise ScrollError("The file is empty.")
     if len(data) > MAX_IMPORT:
-        raise ScrollError("File 80 MB se badi hai: export mein sirf history chuniye.")
+        raise ScrollError("The file is larger than 80 MB: choose only history in the export.")
     items = parse_upload(name or "history", data)
     if not items:
-        raise ScrollError("Isme history nahi mili. Instagram: 'Download your information' > format JSON. "
-                          "YouTube: Google Takeout > sirf 'YouTube > history'.")
+        raise ScrollError("No history was found in this. Instagram: 'Download your information' > format JSON. "
+                          "YouTube: Google Takeout > only 'YouTube > history'.")
     keep = []
     for source in ("instagram", "youtube"):        # the last 90 days of each history
         mine = [i for i in items if i["source"] == source]
@@ -475,7 +475,7 @@ def import_history(tenant: str, name: str, data: bytes) -> dict:
             row.data = json.dumps(clean, ensure_ascii=False)
             row.created_at = now()
         out[source] = clean
-    return {"imported": out, "note": "History ka sirf saar rakha hai (topics, creators, waqt). Poori list save nahi hui."}
+    return {"imported": out, "note": "Only a summary of the history is kept (topics, creators, time). The full list is not saved."}
 
 
 def forget(tenant: str) -> dict:

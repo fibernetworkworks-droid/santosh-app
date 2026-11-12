@@ -142,10 +142,10 @@ def _save(r: AppProject, fn) -> None:
 # ---------------------------------------------------------------- secrets (sealed, never returned)
 def set_secret(r: AppProject, name: str, value: str) -> dict[str, Any]:
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,39}", str(name or "")):
-        raise ConnError("Secret ka naam: chhote akshar / ank / _ .", 400)
+        raise ConnError("Secret name: lowercase letters / digits / _ only.", 400)
     v = str(value or "")
     if not v.strip() or len(v) > 8000:
-        raise ConnError("Secret khaali ya bahut lamba.", 400)
+        raise ConnError("The secret is empty or too long.", 400)
     from ..bazar.security import vault
     ensure_tables()
     with session() as s:
@@ -195,7 +195,7 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
     """An action as she (or a pack) declared it -> the checked shape, or ConnError naming the problem."""
     key = str(a.get("key") or "").strip()
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,39}", key):
-        raise ConnError("Action key: chhote akshar / ank / _ .", 400)
+        raise ConnError("Action key: lowercase letters / digits / _ only.", 400)
     if str(a.get("kind") or "") == "composio":
         return _clean_composio(a, key, sch)
     method = str(a.get("method") or "POST").upper()
@@ -204,9 +204,9 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
     url = str(a.get("url") or "").strip()
     u = urlparse(url.replace("{{", "").replace("}}", ""))
     if u.scheme != "https" or not _host_ok((u.hostname or "").lower()) or u.username or u.password or u.port not in (None, 443):
-        raise ConnError("Address sirf https://<public host>/... (koi user:password / port nahi).", 400)
+        raise ConnError("The address must be https://<public host>/... (no user:password / port).", 400)
     if PH.search(urlparse(url).netloc or ""):
-        raise ConnError("Host mein {{...}} nahi chalega - host pakka likhiye.", 400)
+        raise ConnError("{{...}} is not allowed in the host - write the host in full.", 400)
     colls, coll, trig, status, when = _when(a, sch)
     auth = dict(a.get("auth") or {"type": "none"})
     if auth.get("type") not in AUTH_TYPES:
@@ -214,19 +214,19 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
     if auth.get("type") in ("login_token", "oauth_refresh"):
         tu = urlparse(str(auth.get("url") or ""))
         if tu.scheme != "https" or not _host_ok((tu.hostname or "").lower()):
-            raise ConnError("Token address bhi https public host ho.", 400)
+            raise ConnError("The token address must also be an https public host.", 400)
     mp = {str(k): str(v) for k, v in (a.get("map") or {}).items()}
     if mp and coll == QUEUE_COLL:
-        raise ConnError("Queue token mein jawab nahi likha jaata (map khaali rakhiye).", 400)
+        raise ConnError("A queue token does not write a reply back (leave the map empty).", 400)
     if mp:
         if not coll:
-            raise ConnError("Jawab kis list mein jaaye? (coll)", 400)
+            raise ConnError("Which list should the reply go to? (coll)", 400)
         own = {f["key"] for f in colls[coll]["fields"]}
         bad = [k for k in mp if k not in own]
         if bad:
-            raise ConnError(f"Yeh fields list mein nahi: {', '.join(bad)} (pehle list mein field jodiye).", 400)
+            raise ConnError(f"These fields are not in the list: {', '.join(bad)} (add the field to the list first).", 400)
         if any(not re.fullmatch(r"\$(\.[A-Za-z0-9_\-]+|\[\d+\])*", v) for v in mp.values()):
-            raise ConnError("Map path jaise $.data.awb ya $.items[0].id.", 400)
+            raise ConnError("A map path looks like $.data.awb or $.items[0].id.", 400)
     body_type = str(a.get("body_type") or "json")
     if body_type not in ("json", "form", "none"):
         raise ConnError("Body: json | form | none.", 400)
@@ -238,9 +238,9 @@ def _clean(a: dict[str, Any], sch: dict[str, Any]) -> dict[str, Any]:
            "per_min": max(1, min(600, int(a.get("per_min") or 30))), "idem": str(a.get("idem") or "")[:60],
            "pack": str(a.get("pack") or "")[:30], "note": str(a.get("note") or "")[:300], **when}
     if NO_AADHAAR.search(json.dumps({k: out[k] for k in ("url", "headers", "query", "body", "map")}, default=str)):
-        raise ConnError("Aadhaar wala connector Hoola nahi chalata - licensed provider se PAN / doosre document se KYC kijiye.", 400)
+        raise ConnError("Hoola does not run Aadhaar connectors - do KYC with PAN / another document through a licensed provider.", 400)
     if len(json.dumps(out, default=str)) > 30000:
-        raise ConnError("Action bahut bada.", 400)
+        raise ConnError("The action is too large.", 400)
     return out
 
 
@@ -253,31 +253,31 @@ def _when(a: dict[str, Any], sch: dict[str, Any]) -> tuple[dict[str, Any], str, 
         raise ConnError("Trigger: " + " | ".join(TRIGGERS) + ".", 400)
     if trig == "queue" or coll == QUEUE_COLL:           # v0.459 the clinic queue: only 'your turn is near'
         if trig != "queue" or coll not in ("", QUEUE_COLL):
-            raise ConnError("Queue ke liye trigger 'queue' aur list '_queue'.", 400)
+            raise ConnError("A queue needs trigger 'queue' and list '_queue'.", 400)
         return colls, QUEUE_COLL, trig, "", {}
     if coll and coll not in colls:
-        raise ConnError(f"List '{coll}' app mein nahi.", 400)
+        raise ConnError(f"List '{coll}' is not in the app.", 400)
     if trig in ("create", "status", "remind") and not coll:
-        raise ConnError("Automatic action ke liye list chahiye.", 400)
+        raise ConnError("An automatic action needs a list.", 400)
     status = str(a.get("status") or "")
     if trig == "status":
         opts = next((f.get("options") or [] for f in colls[coll]["fields"] if f["key"] == "status"), [])
         if status not in opts:
-            raise ConnError("Status list ke options mein se chuniye.", 400)
+            raise ConnError("Choose the status from the list's options.", 400)
     when: dict[str, Any] = {}
     if trig == "remind":                                # v0.459 a reminder before a booking's date (+ time)
         own = {f["key"]: f for f in colls[coll]["fields"]}
         df, tf = str(a.get("date_field") or "date"), str(a.get("time_field") or "")
         if df not in own:
-            raise ConnError(f"Reminder ke liye tareekh wala field chahiye ('{df}' list mein nahi).", 400)
+            raise ConnError(f"A reminder needs a date field ('{df}' is not in the list).", 400)
         if tf and tf not in own:
-            raise ConnError(f"Samay wala field '{tf}' list mein nahi.", 400)
+            raise ConnError(f"Time field '{tf}' is not in the list.", 400)
         try:
             before = int(a.get("before_min") or 120)
         except (TypeError, ValueError):
-            raise ConnError("Kitne minute pehle? (ank)", 400)
+            raise ConnError("How many minutes before? (a number)", 400)
         if not 5 <= before <= 7 * 24 * 60:
-            raise ConnError("Reminder 5 minute se 7 din pehle tak.", 400)
+            raise ConnError("A reminder can be from 5 minutes to 7 days before.", 400)
         when = {"date_field": df, "time_field": tf, "before_min": before}
     return colls, coll, trig, status, when
 
@@ -288,10 +288,10 @@ def _clean_composio(a: dict[str, Any], key: str, sch: dict[str, Any]) -> dict[st
     toolkit = str(a.get("toolkit") or "").strip().lower()
     tool = str(a.get("tool") or "").strip().upper()
     if not re.fullmatch(r"[a-z][a-z0-9_]{1,59}", toolkit) or not TOOL_RE.fullmatch(tool) or not tool.startswith(toolkit.upper() + "_"):
-        raise ConnError("Composio: toolkit (jaise slack) + us app ka tool (jaise SLACK_SEND_MESSAGE).", 400)
+        raise ConnError("Composio: toolkit (for example slack) + that app's tool (for example SLACK_SEND_MESSAGE).", 400)
     args = a.get("args") if isinstance(a.get("args"), dict) else {}
     if any(m.group(1) == "secret" for m in PH.finditer(json.dumps(args, default=str))):
-        raise ConnError("Composio arguments mein {{secret...}} nahi - app ka sign-in Composio ke paas hai.", 400)
+        raise ConnError("No {{secret...}} in Composio arguments - Composio holds the app's sign-in.", 400)
     colls, coll, trig, status, when = _when(a, sch)
     out = {"key": key, "kind": "composio", "label": str(a.get("label") or key)[:80], "toolkit": toolkit, "tool": tool, "args": args,
            "method": "POST", "url": "https://backend.composio.dev/" + tool.lower(), "headers": {}, "query": {}, "body": None,
@@ -299,9 +299,9 @@ def _clean_composio(a: dict[str, Any], key: str, sch: dict[str, Any]) -> dict[st
            "staff": bool(a.get("staff")), "retries": 0, "per_min": max(1, min(120, int(a.get("per_min") or 20))), "idem": "",
            "pack": str(a.get("pack") or "")[:30], "note": str(a.get("note") or "")[:300], **when}
     if NO_AADHAAR.search(json.dumps(args, default=str)):
-        raise ConnError("Aadhaar wala connector Hoola nahi chalata.", 400)
+        raise ConnError("Hoola does not run Aadhaar connectors.", 400)
     if len(json.dumps(out, default=str)) > 30000:
-        raise ConnError("Action bahut bada.", 400)
+        raise ConnError("The action is too large.", 400)
     return out
 
 
@@ -333,7 +333,7 @@ def save_action(r: AppProject, a: dict[str, Any]) -> dict[str, Any]:
     def fn(c):
         acts = [x for x in c.get("actions") or [] if x.get("key") != act["key"]]
         if len(acts) >= MAX_ACTIONS:
-            raise ConnError(f"Ek app mein {MAX_ACTIONS} se zyada actions nahi.", 400)
+            raise ConnError(f"An app cannot have more than {MAX_ACTIONS} actions.", 400)
         old = next((x for x in c.get("actions") or [] if x.get("key") == act["key"]), {})
         act["approved"] = old.get("approved") if (old.get("approved") or {}).get("hash") == _hash(act) else None
         c["actions"] = acts + [act]
@@ -343,14 +343,14 @@ def save_action(r: AppProject, a: dict[str, Any]) -> dict[str, Any]:
 
 def approve(r: AppProject, key: str, her_tap: bool = False) -> dict[str, Any]:
     if not her_tap:
-        raise ConnError("Connector sirf aapke tap se chalu hota hai.", 403)
+        raise ConnError("A connector is switched on only by your tap.", 403)
 
     def fn(c):
         for x in c.get("actions") or []:
             if x.get("key") == key:
                 x["approved"] = {"hash": _hash(x), "at": now().isoformat()}
                 return
-        raise ConnError("Action nahi mila.", 404)
+        raise ConnError("Action not found.", 404)
     _save(r, fn)
     return status(r)
 
@@ -363,7 +363,7 @@ def remove_action(r: AppProject, key: str) -> dict[str, Any]:
 def _action(r: AppProject, key: str) -> dict[str, Any]:
     a = next((x for x in _cfg(r).get("actions") or [] if x.get("key") == key), None)
     if a is None:
-        raise ConnError("Action nahi mila.", 404)
+        raise ConnError("Action not found.", 404)
     return a
 
 
@@ -426,11 +426,11 @@ def _guard_host(host: str) -> None:
     try:
         infos = (_RESOLVE or socket.getaddrinfo)(host, 443)
     except socket.gaierror:
-        raise ConnError(f"{host} ka pata nahi mila (DNS).", 502)
+        raise ConnError(f"Could not find the address of {host} (DNS).", 502)
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
-            raise ConnError(f"{host} ek private address par hai - Hoola wahan nahi jaata.", 400)
+            raise ConnError(f"{host} is on a private address - Hoola does not go there.", 400)
 
 
 def _http(method: str, url: str, **kw) -> httpx.Response:
@@ -441,7 +441,7 @@ def _http(method: str, url: str, **kw) -> httpx.Response:
             for ch in resp.iter_bytes():
                 size += len(ch)
                 if size > MAX_BODY:
-                    raise ConnError("Jawab 1 MB se bada.", 502)
+                    raise ConnError("The reply is larger than 1 MB.", 502)
                 chunks.append(ch)
             return httpx.Response(resp.status_code, headers=resp.headers, content=b"".join(chunks))
 
@@ -490,7 +490,7 @@ def _token(r: AppProject, auth: dict[str, Any], sec: dict[str, str]) -> str:
         if d.get("refresh_token") and d["refresh_token"] != sec.get(rt_name):   # QuickBooks rotates it: keep the new one
             set_secret(r, rt_name, d["refresh_token"])
     if not tok:
-        raise ConnError(f"Token nahi mila ({resp.status_code}) - chaabi / refresh token dobara dekhiye.", 401)
+        raise ConnError(f"No token received ({resp.status_code}) - check the key / refresh token again.", 401)
     _TOKENS[ck] = (tok, time.time() + ttl)
     return tok
 
@@ -519,7 +519,7 @@ def _row_ctx(r: AppProject, row_id: str) -> tuple[dict[str, Any], str]:
     with session() as s:
         x = s.get(W.SiteAppRow, row_id)
         if x is None or x.site_id != _site(r):
-            raise ConnError("Entry nahi mili.", 404)
+            raise ConnError("Entry not found.", 404)
         d = _j(x.data, {})
         coll = x.coll
     d = {k: v for k, v in d.items() if not str(k).startswith("_")}
@@ -533,12 +533,12 @@ def _call(r: AppProject, a: dict[str, Any], row_id: str, run_id: str) -> tuple[i
     sec = _secrets_of(r)
     row, coll = _row_ctx(r, row_id)
     if a.get("coll") and row_id and coll != a["coll"]:
-        raise ConnError("Yeh entry is action ki list ki nahi.", 400)
+        raise ConnError("This entry is not from this action's list.", 400)
     ctx = {"row": row, "app": {"name": r.name or "", "id": r.id}, "facts": _facts(r), "run": {"id": run_id}, "secret": sec}
     used: set[str] = set()
     url = _fill(a["url"], ctx, used)
     if (urlparse(url).hostname or "").lower() != (urlparse(a["url"].replace("{{", "").replace("}}", "")).hostname or "").lower():
-        raise ConnError("Host badal gaya - action approve hua host par hi chalega.", 400)
+        raise ConnError("The host has changed - the action runs only on the approved host.", 400)
     headers = {k: str(_fill(v, ctx, used)) for k, v in (a.get("headers") or {}).items()}
     query = _fill(a.get("query") or {}, ctx, used)
     auth = a.get("auth") or {"type": "none"}
@@ -583,16 +583,16 @@ def _call_composio(r: AppProject, a: dict[str, Any], row_id: str, run_id: str) -
     from ..bazar import composio as cmp
     row, coll = _row_ctx(r, row_id)
     if a.get("coll") and row_id and coll != a["coll"]:
-        raise ConnError("Yeh entry is action ki list ki nahi.", 400)
+        raise ConnError("This entry is not from this action's list.", 400)
     args = _fill(a.get("args") or {}, {"row": row, "app": {"name": r.name or "", "id": r.id}, "facts": _facts(r), "run": {"id": run_id}}, set())
     client = _COMPOSIO or cmp.client()
     if _COMPOSIO is None and not cmp.configured():
-        raise ConnError("Composio apps abhi server par chalu nahi hain.", 409)
+        raise ConnError("Composio apps are not switched on on the server yet.", 409)
     user = cmp.composio_user(r.tenant_id)
     with session() as s:
         _, ca = cmp.account(s, user, a["toolkit"], check=_COMPOSIO is None)
         if not ca and cmp.mode(a["toolkit"]) != "no_auth":
-            raise ConnError(f"{a['toolkit']} aapke Hoola mein juda nahi (Connect > Apps).", 409)
+            raise ConnError(f"{a['toolkit']} is not connected in your Hoola (Connect > Apps).", 409)
         try:
             cmp.take_call(s, user)
         except cmp.CapReached as e:
@@ -637,7 +637,7 @@ def run(r: AppProject, key: str, row_id: str = "", trigger: str = "manual", wait
     a = _action(r, key)
     if not _approved(a):
         STATS["refused"] += 1
-        raise ConnError("Yeh action abhi approve nahi hua (ya badla hai) - pehle aapka tap.", 409)
+        raise ConnError("This action is not approved yet (or has changed) - your tap is needed first.", 409)
     ensure_tables()
     rid = new_id("crun")
     with session() as s:
@@ -666,9 +666,9 @@ def _do(r: AppProject, rid: str) -> dict[str, Any]:
     try:
         a = _action(r, key)
         if not _approved(a):
-            raise ConnError("Action approve nahi.", 409)
+            raise ConnError("The action is not approved.", 409)
         if not _rate_ok(f"{r.id}|{key}", int(a.get("per_min") or 30)) or not _rate_ok(f"{r.id}|*", APP_PER_MIN):
-            raise ConnError("Is minute mein bahut baar chala - thodi der baad.", 429)
+            raise ConnError("It ran too many times this minute - try again in a little while.", 429)
         safe_retry = a["method"] in ("GET",) or bool(a.get("idem"))
         tries, code, data, note, wrote = 0, 0, None, "", []
         while True:
@@ -681,10 +681,10 @@ def _do(r: AppProject, rid: str) -> dict[str, Any]:
                     continue
                 st = "failed" if safe_retry else "ambiguous"
                 STATS["ambiguous" if st == "ambiguous" else "failed"] += 1
-                _finish(rid, st, 0, tries, "samay par jawab nahi" + ("" if safe_retry else " - shayad ho gaya ho; Hoola dobara nahi bhejega"))
+                _finish(rid, st, 0, tries, "no reply in time" + ("" if safe_retry else " - it may have gone through; Hoola will not send it again"))
                 return {"run": rid, "status": st}
             except httpx.HTTPError as e:
-                _finish(rid, "failed", 0, tries, f"nahi pahunch paaye ({type(e).__name__})")
+                _finish(rid, "failed", 0, tries, f"could not reach it ({type(e).__name__})")
                 STATS["failed"] += 1
                 return {"run": rid, "status": "failed"}
             if (code == 429 or code >= 500) and tries <= int(a.get("retries") or 0) and (safe_retry or code == 429):
@@ -694,7 +694,7 @@ def _do(r: AppProject, rid: str) -> dict[str, Any]:
         if 200 <= code < 300:
             wrote = _write_back(r, a, row_id, data)
             STATS["ok"] += 1
-            _finish(rid, "ok", code, tries, note + (f"; likha: {', '.join(wrote)}" if wrote else ""))
+            _finish(rid, "ok", code, tries, note + (f"; wrote: {', '.join(wrote)}" if wrote else ""))
             return {"run": rid, "status": "ok", "code": code, "wrote": wrote}
         STATS["failed"] += 1
         sec = _secrets_of(r)
@@ -739,10 +739,10 @@ def fire(r: AppProject, coll: str, row_id: str, event: str, status_: str = "") -
 def staff_run(r: AppProject, w: W.Who, key: str, row_id: str) -> dict[str, Any]:
     """A staff button in the app: only for actions she allowed staff to run, on a row of that action's list."""
     if not w.staff or w.m is None:
-        raise ConnError("Sirf staff.", 403)
+        raise ConnError("Staff only.", 403)
     a = _action(r, key)
     if not a.get("staff") or a.get("trigger") != "manual":
-        raise ConnError("Yeh action app se nahi chalta.", 403)
+        raise ConnError("This action cannot be run from the app.", 403)
     W.rate(f"conn-staff:{r.id}:{w.m.id}", 20, 60)
     got = run(r, key, row_id, "staff", wait=True)
     return {"status": got.get("status"), "wrote": got.get("wrote", [])}
@@ -761,7 +761,7 @@ def tick(force: bool = False) -> int:
                                                    AppConnRun.created >= now() - timedelta(hours=6)).limit(50)).all()
         todo = [(x.id, x.app_id) for x in stuck]
         for x in s.scalars(select(AppConnRun).where(AppConnRun.status == "running", AppConnRun.created <= now() - timedelta(minutes=10))).all():
-            x.status, x.note = "ambiguous", "server beech mein ruka - shayad ho gaya ho; Hoola dobara nahi bhejega"
+            x.status, x.note = "ambiguous", "the server stopped midway - it may have gone through; Hoola will not send it again"
     n = 0
     for rid, app_id in todo:
         with session() as s:
@@ -854,21 +854,21 @@ def save_hook(r: AppProject, h: dict[str, Any]) -> dict[str, Any]:
     sch = BE.schema(r)
     key = str(h.get("key") or "").strip()
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,39}", key):
-        raise ConnError("Hook key: chhote akshar / ank / _ .", 400)
+        raise ConnError("Hook key: lowercase letters / digits / _ only.", 400)
     coll = str(h.get("coll") or "")
     c = next((x for x in sch["collections"] if x["key"] == coll), None)
     if c is None:
-        raise ConnError("List chahiye.", 400)
+        raise ConnError("A list is needed.", 400)
     own = {f["key"] for f in c["fields"]}
     match = {str(k): str(v) for k, v in (h.get("match") or {}).items()}
     sets = {str(k): str(v) for k, v in (h.get("set") or {}).items()}
     if len(match) != 1 or not set(match) <= own or not sets or not set(sets) <= own:
-        raise ConnError("match = ek field (jaise awb), set = fields jo list mein hain.", 400)
+        raise ConnError("match = one field (for example awb), set = fields that are in the list.", 400)
     sig = dict(h.get("sig") or {"type": "hmac_hex", "header": "x-signature"})
     if sig.get("type") not in ("hmac_hex", "hmac_b64", "token"):
         raise ConnError("Signature: hmac_hex | hmac_b64 | token.", 400)
     if NO_AADHAAR.search(json.dumps({"m": match, "s": sets})):
-        raise ConnError("Aadhaar wala hook nahi.", 400)
+        raise ConnError("No Aadhaar hooks.", 400)
     secret = _secrets.token_urlsafe(24)
     hook = {"key": key, "coll": coll, "match": match, "set": sets, "sig": {"type": sig["type"], "header": str(sig.get("header") or "x-signature")[:60].lower()},
             "secret_name": f"hook_{key}"}
@@ -878,13 +878,13 @@ def save_hook(r: AppProject, h: dict[str, Any]) -> dict[str, Any]:
         cf["hooks"] = [x for x in cf.get("hooks") or [] if x.get("key") != key] + [hook]
     _save(r, fn)
     return {**status(r), "new_secret": None if h.get("secret") else secret,
-            "say": "Yeh secret sirf abhi dikh raha hai - apni service mein daaliye (Hoola dobara nahi dikhayega)."}
+            "say": "This secret is shown only now - put it in your service (Hoola will not show it again)."}
 
 
 def hook(r: AppProject, key: str, headers: dict[str, str], raw: bytes) -> dict[str, Any]:
     h = next((x for x in _cfg(r).get("hooks") or [] if x.get("key") == key), None)
     if h is None:
-        raise ConnError("Hook nahi mila.", 404)
+        raise ConnError("Hook not found.", 404)
     sec = _secrets_of(r).get(h["secret_name"], "")
     got = {k.lower(): v for k, v in headers.items()}.get(h["sig"]["header"], "")
     t = h["sig"]["type"]
@@ -896,12 +896,12 @@ def hook(r: AppProject, key: str, headers: dict[str, str], raw: bytes) -> dict[s
         ok = bool(sec) and hmac.compare_digest(got.removeprefix("sha256="), want)
     if not ok:
         STATS["hooks_bad"] += 1
-        raise ConnError("Signature galat.", 401)
+        raise ConnError("Wrong signature.", 401)
     STATS["hooks"] += 1
     try:
         data = json.loads(raw.decode("utf-8") or "{}")
     except (ValueError, UnicodeDecodeError):
-        raise ConnError("JSON nahi.", 400)
+        raise ConnError("Not JSON.", 400)
     (mk, mpath), = h["match"].items()
     want_v = _path(data, mpath)
     if want_v in (None, ""):
@@ -944,14 +944,14 @@ def apply_pack(r: AppProject, pack: str, settings: dict[str, Any], secrets: dict
     """A ready pack: her secrets (sealed) + the actions it drafts (each still waits for her approval tap)."""
     from . import connect_packs as P
     if pack not in P.PACKS:
-        raise ConnError("Pack nahi mila.", 404)
+        raise ConnError("Pack not found.", 404)
     for name, v in (secrets or {}).items():
         if name in P.PACKS[pack]["secrets"] and str(v or "").strip():
             set_secret(r, name, str(v))
     try:
         acts = P.actions_for(pack, settings or {})
     except ValueError:
-        raise ConnError("Pack nahi mila.", 404)
+        raise ConnError("Pack not found.", 404)
     made, problems = [], []
     for a in acts:
         try:

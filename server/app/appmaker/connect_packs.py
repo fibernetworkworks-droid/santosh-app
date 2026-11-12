@@ -22,7 +22,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-NOT_VERIFIED = "Provider ke docs se banaya; abhi kisi live account ne jawab nahi diya - pehle ek test entry par chala kar dekhiye."
+NOT_VERIFIED = "Built from the provider's docs; no live account has answered yet - try it on one test entry first."
 
 PACKS: dict[str, dict[str, Any]] = {
     "shiprocket": {
@@ -30,106 +30,106 @@ PACKS: dict[str, dict[str, Any]] = {
         "secrets": ["shiprocket_email", "shiprocket_password"],
         "settings": {"coll": "orders", "pickup_location": "Primary", "weight_kg": "0.5", "length_cm": "10", "breadth_cm": "10", "height_cm": "5"},
         "needs_fields": ["city", "pincode", "state", "awb", "tracking"],
-        "note": "Shiprocket > Settings > API mein ek API user banaiye (alag email) - wahi email / password yahan.",
+        "note": "In Shiprocket > Settings > API create an API user (a separate email) - that email / password go here.",
     },
     "delhivery": {
         "label": "Delhivery (courier)", "group": "Courier", "secrets": ["delhivery_token"],
         "settings": {"coll": "orders", "pickup_location": "", "weight_g": "500"},
         "needs_fields": ["city", "pincode", "state", "awb", "tracking"],
-        "note": "Delhivery One > Settings > API token. pickup_location = aapke Delhivery warehouse ka naam (exact).",
+        "note": "Delhivery One > Settings > API token. pickup_location = the exact name of your Delhivery warehouse.",
     },
     "msg91": {
         "label": "MSG91 SMS (DLT template)", "group": "SMS", "secrets": ["msg91_authkey"],
         "settings": {"coll": "orders", "status": "Out for delivery", "template_id": ""},
-        "note": "DLT par approve template MSG91 mein jodiye; template_id woh MSG91 wala id. var1 = naam, var2 = order number.",
+        "note": "Add the DLT-approved template in MSG91; template_id is the MSG91 id. var1 = name, var2 = order number.",
     },
     "fast2sms": {
         "label": "Fast2SMS (DLT route)", "group": "SMS", "secrets": ["fast2sms_key"],
         "settings": {"coll": "orders", "status": "Out for delivery", "sender_id": "", "message_id": ""},
-        "note": "DLT route: sender_id (6 akshar) + Fast2SMS par approve message id. Variables: naam | order.",
+        "note": "DLT route: sender_id (6 letters) + the message id approved on Fast2SMS. Variables: name | order.",
     },
     "whatsapp": {
         "label": "WhatsApp Business template", "group": "WhatsApp", "secrets": ["wa_token"],
         "settings": {"coll": "orders", "status": "Out for delivery", "phone_number_id": "", "template": "", "lang": "en"},
-        "note": "Meta Business > WhatsApp > API: phone number ID + permanent token; template aapka APPROVED UTILITY template "
-                "(body mein {{1}} = naam). Sirf official Cloud API.",
+        "note": "Meta Business > WhatsApp > API: phone number ID + permanent token; template = your APPROVED UTILITY template "
+                "({{1}} in the body = name). Official Cloud API only.",
     },
     "brevo": {
         "label": "Brevo e-mail", "group": "Email", "secrets": ["brevo_key"],
         "settings": {"coll": "orders", "from_email": "", "from_name": "", "subject": "Your order is confirmed"},
         "needs_fields": ["email"],
-        "note": "Brevo > SMTP & API > API key; from_email Brevo mein verified sender ho.",
+        "note": "Brevo > SMTP & API > API key; from_email must be a verified sender in Brevo.",
     },
     "resend": {
         "label": "Resend e-mail", "group": "Email", "secrets": ["resend_key"],
         "settings": {"coll": "orders", "from_email": "", "subject": "Your order is confirmed"},
         "needs_fields": ["email"],
-        "note": "Resend > API Keys; from_email aapke verified domain ka.",
+        "note": "Resend > API Keys; from_email on your verified domain.",
     },
     "google_sheets": {
         "label": "Google Sheets (add a row)", "group": "Google", "secrets": ["google_sa"],
         "settings": {"coll": "orders", "sheet_id": "", "range": "Sheet1!A1"},
-        "note": "Google Cloud > service account > JSON key (poora JSON secret mein). Sheet ko service account ke email se Share (Editor) kijiye.",
+        "note": "Google Cloud > service account > JSON key (the whole JSON in the secret). Share the Sheet (Editor) with the service account's email.",
     },
     "google_calendar": {
         "label": "Google Calendar (add an event)", "group": "Google", "secrets": ["google_sa"],
         "settings": {"coll": "bookings", "calendar_id": "", "minutes": "60"},
         "needs_fields": ["date", "time"],
-        "note": "Calendar ko service account ke email se share kijiye ('Make changes to events'); calendar_id calendar settings mein.",
+        "note": "Share the calendar with the service account's email ('Make changes to events'); calendar_id is in the calendar settings.",
     },
     "zoho_books": {
         "label": "Zoho Books (add customer)", "group": "Accounts", "secrets": ["client_id", "client_secret", "refresh_token"],
         "settings": {"coll": "orders", "organization_id": "", "dc": "in"},
-        "note": "api-console.zoho.in > Self Client > scope ZohoBooks.contacts.CREATE se refresh token. organization_id Books settings mein.",
+        "note": "api-console.zoho.in > Self Client > refresh token with scope ZohoBooks.contacts.CREATE. organization_id is in Books settings.",
     },
     "quickbooks": {
         "label": "QuickBooks (sales receipt)", "group": "Accounts", "secrets": ["client_id", "client_secret", "refresh_token"],
         "settings": {"coll": "orders", "realm_id": "", "item_id": "1", "sandbox": "no"},
-        "note": "developer.intuit.com app ki keys + OAuth playground se refresh token; QuickBooks har baar naya refresh token deta hai - Hoola use band rakhta hai.",
+        "note": "Keys of your developer.intuit.com app + a refresh token from the OAuth playground; QuickBooks gives a new refresh token every time - Hoola keeps it sealed.",
     },
     "sms_reminder": {
         "label": "SMS reminder before a booking (MSG91, DLT)", "group": "SMS", "secrets": ["msg91_authkey"],
         "settings": {"coll": "appointments", "date_field": "date", "time_field": "time", "before_min": "120", "template_id": ""},
         "needs_fields": ["name", "phone", "date"],
-        "note": "v0.459: DLT par approve reminder template (var1 = naam, var2 = tareekh, var3 = samay) MSG91 mein jodiye. "
-                "Har booking ko EK baar, us samay se itne minute pehle; cancel hui booking ko kabhi nahi.",
+        "note": "v0.459: add the DLT-approved reminder template (var1 = name, var2 = date, var3 = time) in MSG91. "
+                "Each booking gets it ONCE, that many minutes before its time; a cancelled booking never.",
     },
     "wa_reminder": {
         "label": "WhatsApp reminder before a booking (approved template)", "group": "WhatsApp", "secrets": ["wa_token"],
         "settings": {"coll": "appointments", "date_field": "date", "time_field": "time", "before_min": "120",
                      "phone_number_id": "", "template": "", "lang": "en"},
         "needs_fields": ["name", "phone", "date"],
-        "note": "v0.459: aapka APPROVED UTILITY template, body {{1}} = naam, {{2}} = tareekh, {{3}} = samay. Sirf official Cloud API.",
+        "note": "v0.459: your APPROVED UTILITY template, body {{1}} = name, {{2}} = date, {{3}} = time. Official Cloud API only.",
     },
     "sms_queue": {
         "label": "SMS when a queue turn is near (MSG91, DLT)", "group": "SMS", "secrets": ["msg91_authkey"],
         "settings": {"template_id": ""},
-        "note": "v0.459 clinic queue: jab token ke aage itne hi log bachen (queue settings > 'kitne pehle'), EK SMS. "
-                "DLT template: var1 = naam, var2 = token number.",
+        "note": "v0.459 clinic queue: when only that many people are left ahead of the token (queue settings > 'how many before'), ONE SMS. "
+                "DLT template: var1 = name, var2 = token number.",
     },
     "hubspot": {
         "label": "HubSpot (add a contact)", "group": "CRM", "secrets": ["hubspot_token"],
         "settings": {"coll": "enquiries"},
         "needs_fields": ["name", "email"],
-        "note": "HubSpot > Settings > Integrations > Private apps: scope crm.objects.contacts.write; access token yahan.",
+        "note": "HubSpot > Settings > Integrations > Private apps: scope crm.objects.contacts.write; the access token goes here.",
     },
     "composio": {
         "label": "An app you connected in Hoola (Composio: Slack, Notion, Jira...)", "group": "Apps", "secrets": [],
         "settings": {"coll": "enquiries", "trigger": "create", "toolkit": "slack", "tool": "SLACK_SEND_MESSAGE",
                      "args": '{"channel": "#leads", "text": "New: {{row.name}} {{row.phone}}"}'},
-        "note": "Pehle Hoola > Connect > Apps mein woh app jodiye. Yeh action AAPKE us account se chalta hai; arguments mein "
-                "{{row.field}} bhar sakte hain. Approve karne tak kuch nahi chalta.",
+        "note": "First connect that app in Hoola > Connect > Apps. This action runs from YOUR account there; arguments can use "
+                "{{row.field}}. Nothing runs until you approve.",
     },
     "tally": {
         "label": "Tally", "group": "Accounts", "secrets": [], "settings": {},
-        "note": "Tally aapke PC par chalta hai, internet se nahi pahunchta. Mahine ka Tally XML export (App > Hisaab) use kijiye - Tally > Import.",
+        "note": "Tally runs on your PC and cannot be reached from the internet. Use the month's Tally XML export (App > Accounts) - Tally > Import.",
         "no_actions": True,
     },
     "kyc": {
         "label": "KYC (licensed provider, no Aadhaar)", "group": "KYC", "secrets": ["kyc_key"],
         "settings": {"coll": "", "url": "", "header": "x-api-key", "pan_field": "pan"},
         "needs_fields": ["pan", "kyc_status"],
-        "note": "Apne licensed KYC provider (PAN / GST / bank account check) ka documented https URL. Aadhaar wala koi bhi connector Hoola nahi chalata.",
+        "note": "The documented https URL of your licensed KYC provider (PAN / GST / bank account check). Hoola runs no Aadhaar connector of any kind.",
     },
 }
 
@@ -169,7 +169,7 @@ def actions_for(pack: str, st: dict[str, Any]) -> list[dict[str, Any]]:
                                                                     "selling_price": "{{row.total}}"}],
                       "payment_method": "Prepaid", "sub_total": "{{row.total}}", "length": g("length_cm"), "breadth": g("breadth_cm"),
                       "height": g("height_cm"), "weight": g("weight_kg")},
-             "map": {}, "pack": pack, "note": "Shipment banata hai; phir 'AWB lo' chalaiye."},
+             "map": {}, "pack": pack, "note": "Creates the shipment; then run the AWB step."},
             {"key": "sr_track", "label": "Shiprocket: track", "method": "GET", "coll": coll, "trigger": "manual", "staff": True,
              "url": "https://apiv2.shiprocket.in/v1/external/courier/track/awb/{{row.awb}}", "auth": auth, "retries": 2,
              "map": {"tracking": "$.tracking_data.shipment_track[0].current_status"}, "pack": pack},
@@ -215,13 +215,13 @@ def actions_for(pack: str, st: dict[str, Any]) -> list[dict[str, Any]]:
                  "url": "https://api.brevo.com/v3/smtp/email", "auth": {"type": "header", "name": "api-key", "secret": "brevo_key"},
                  "body": {"sender": {"email": g("from_email"), "name": g("from_name") or "{{app.name}}"}, "to": [{"email": "{{row.email}}",
                           "name": "{{row.name}}"}], "subject": g("subject"),
-                          "htmlContent": "<p>Namaste {{row.name}},</p><p>Order {{row.id}} mil gaya. Total Rs {{row.total}}.</p><p>{{app.name}}</p>"},
+                          "htmlContent": "<p>Hello {{row.name}},</p><p>We have received order {{row.id}}. Total Rs {{row.total}}.</p><p>{{app.name}}</p>"},
                  "pack": pack}]
     if pack == "resend":
         return [{"key": "resend_mail", "label": "E-mail (Resend) on a new order", "method": "POST", "coll": coll, "trigger": "create",
                  "url": "https://api.resend.com/emails", "auth": {"type": "bearer", "secret": "resend_key"}, "idem": "Idempotency-Key",
                  "body": {"from": g("from_email"), "to": ["{{row.email}}"], "subject": g("subject"),
-                          "html": "<p>Namaste {{row.name}},</p><p>Order {{row.id}} mil gaya. Total Rs {{row.total}}.</p>"}, "pack": pack}]
+                          "html": "<p>Hello {{row.name}},</p><p>We have received order {{row.id}}. Total Rs {{row.total}}.</p>"}, "pack": pack}]
     if pack == "google_sheets":
         sid = re.sub(r"[^A-Za-z0-9_\-]", "", g("sheet_id"))
         rng = re.sub(r"[^A-Za-z0-9_!:\- ]", "", g("range") or "Sheet1!A1").replace(" ", "%20")
@@ -238,7 +238,7 @@ def actions_for(pack: str, st: dict[str, Any]) -> list[dict[str, Any]]:
                  "body": {"summary": "{{row.service}} - {{row.name}}", "description": "Hoola booking {{row.id}}, phone {{row.phone}}",
                           "start": {"dateTime": "{{row.date}}T{{row.time}}:00", "timeZone": "Asia/Kolkata"},
                           "end": {"dateTime": "{{row.date}}T{{row.time}}:00", "timeZone": "Asia/Kolkata"}}, "pack": pack,
-                 "note": f"Event ki lambai Calendar mein badaliye ({g('minutes')} min)."}]
+                 "note": f"Change the event's length in Calendar ({g('minutes')} min)."}]
     if pack == "zoho_books":
         dc = {"in": "in", "com": "com", "eu": "eu"}.get(g("dc"), "in")
         org = re.sub(r"\D", "", g("organization_id"))

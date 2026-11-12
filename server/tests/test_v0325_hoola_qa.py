@@ -136,7 +136,7 @@ def test_build_device_check_fix_loop_and_views(droid_env, tmp_path):
     assert c.get(f"/api/apps/{aid}/android/qa/nosuchscreen").status_code == 404
     from app.db import Message, session
     with session() as s:
-        ready = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "Android app taiyaar" in str(m.content)]
+        ready = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "Android app ready" in str(m.content)]
     assert ready and "Device check: 3/3" in ready[-1]
     # a build machine without an emulator: said plainly
     RN.set_runner(FakeBuild())
@@ -178,8 +178,8 @@ def test_crash_reports_grouped_noted_and_fixed(droid_env):
     assert len(cr) == 1 and cr[0]["count"] == 2 and cr[0]["screens"] == ["cart"] and len(cr[0]["devices"]) == 2
     assert cr[0]["exception"].startswith("java.lang.IndexOutOfBoundsException")
     with session() as s:
-        notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "band ho gayi" in str(m.content)]
-    assert len(notes) == 1 and "crash theek karo" in notes[0]
+        notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "crashed on a user's phone" in str(m.content)]
+    assert len(notes) == 1 and "fix the crash" in notes[0]
     # tools: she reads them and says "crash theek karo": the cart screen is rewritten with the crash in the ask
     owner = Ctx(tenant_id=T, conversation_id=conv)
     seen = asyncio.run(dispatch("app_dekho", {"what": "crashes", "app": aid}, owner))
@@ -195,7 +195,7 @@ def test_crash_reports_grouped_noted_and_fixed(droid_env):
     assert BE.crashes(BE.by_key_or_ref(T, aid))[0]["status"] == "back"
     with session() as s:
         notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "band ho gayi" in str(m.content)]
-    assert len(notes) == 2 and "fix wali build" in notes[-1]
+    assert len(notes) == 2 and "build with the fix" in notes[-1]
     # a crash inside Hoola's own kit (no app screen in it) is not hers to fix
     kit_trace = "java.lang.IllegalStateException: boom\n\tat hoola.kit.Db.sync(Backend.kt:300)"
     k = c.post(f"/api/app-api/{key}/crash", json={"trace": kit_trace, "screen": ""}).json()

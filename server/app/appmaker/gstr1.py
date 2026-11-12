@@ -57,10 +57,10 @@ def build(r: AppProject, month: str) -> dict[str, Any]:
     from . import hisaab as HS
     month = month or HS.default_month()
     if not HS.MONTH.match(month):
-        raise HS.HisaabError("Mahina YYYY-MM (jaise 2026-10).")
+        raise HS.HisaabError("Month as YYYY-MM (for example 2026-10).")
     g = G.settings(r)
     if not g.get("gstin"):
-        raise HS.HisaabError("GSTR-1 ke liye pehle GSTIN daaliye (GST invoices).", 409)
+        raise HS.HisaabError("For GSTR-1, add your GSTIN first (GST invoices).", 409)
     sch = BE.schema(r)
     colls = {c["key"]: c for c in sch["collections"]}
     with session() as s:
