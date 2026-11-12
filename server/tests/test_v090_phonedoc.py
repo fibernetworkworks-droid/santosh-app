@@ -57,7 +57,7 @@ def test_case_end_to_end_ordered_by_phone_check_learns(env):
     assert ids[-1] == "factory_reset" and c["steps"][-1]["careful"]       # data loss always last
     heavy = next(s for s in c["steps"] if s["id"] == "heavy_app")
     assert heavy["pkg"] == "com.instagram.android" and "Instagram" in heavy["title"]
-    assert "Storage is 96%" in r["say"] and "Step 1/" in r["say"]
+    assert "Storage 96% full" in r["say"] and "Step 1/" in r["say"]
     r = P.step(T, c["id"], result="nahi")
     assert r["case"]["step_no"] == 2 and r["case"]["status"] == "open"
     r = P.step(T, c["id"], result="fixed")

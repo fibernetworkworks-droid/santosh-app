@@ -94,7 +94,7 @@ def test_shipment_hs_docs_cost(cu):
     assert hc["shipment"]["lines"][0]["hs_confirmed"] and {"bis", "wpc"} <= {x["id"] for x in hc["check"]["regulators"]}
     # learned: same description next time comes first
     sg = S.hs_suggest(T, "Bluetooth speaker 10W with lithium battery, retail box")
-    assert sg["candidates"][0]["source"] == "aapka" and sg["candidates"][0]["hs"] == "85182200"
+    assert sg["candidates"][0]["source"] == "yours" and sg["candidates"][0]["hs"] == "85182200"
     with pytest.raises(S.CustomsError):
         S.hs_confirm(T, "I-0001", 1, "8518")
     v = S.shipment_view(T, "I-0001")
@@ -103,7 +103,7 @@ def test_shipment_hs_docs_cost(cu):
     assert v["docs_missing"] > 0
     # cost: no fx -> asks; rates missing -> says so; with her rates -> numbers
     c = S.cost(T, "I-0001")
-    assert c["landed_cost"] is None and "Exchange rate" in c["say"]
+    assert c["landed_cost"] is None and "exchange rate" in c["say"]
     S.update_shipment(T, "I-0001", fx=88.5)
     c = S.cost(T, "I-0001")
     assert not c["complete"] and "need a rate" in c["say"] and c["missing"]

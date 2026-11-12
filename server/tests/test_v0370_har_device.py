@@ -42,4 +42,4 @@ def test_check_lines():
     a = AN.qa_line({"ran": True, "opened": 5, "total": 5, "tablet": {"opened": 2, "total": 3, "crashed": ["cart"]}})
     assert "on a tablet 2/3 screens (1 crash: cart)" in a
     i = IS.qa_line({"ran": True, "opened": 5, "total": 5, "ipad": {"opened": 5, "total": 5, "crashed": []}})
-    assert "iPad par 5/5 screens" in i and "crash" not in i.split("iPad")[1]
+    assert "on iPad 5/5 screens" in i and "crash" not in i.split("iPad")[1]

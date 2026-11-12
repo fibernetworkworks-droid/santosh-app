@@ -200,7 +200,7 @@ def test_demand_draft_letter_and_owner_only_send(cst, env):
     with pytest.raises(Exception):
         C.demand_send(T, did, "customer:x")         # the card law: send is owner-only
     r = C.demand_send(T, did, "owner", on="2026-11-05")
-    assert "BHEJ" in r["say"].upper()
+    assert "SENT" in r["say"].upper()
     assert C.demands(T)[0]["status"] == "sent"
     C.receipt(T, demand_id=did, amount=480000, mode="neft", day="2026-11-12")
     assert C.demands(T)[0]["status"] == "part"
@@ -224,7 +224,7 @@ def test_handover_and_dlp_clock(cst):
         C.dlp_sent(T, t["ticket_id"], "customer:x")
     assert "Record" in C.dlp_sent(T, t["ticket_id"], "owner", day="2026-11-21")["say"]
     assert C.dlp_list(T)[0]["status"] == "vendor_sent"
-    assert "band" in C.dlp_close(T, t["ticket_id"], day="2026-11-25")["say"]
+    assert "closed" in C.dlp_close(T, t["ticket_id"], day="2026-11-25")["say"]
     late = C.dlp_open(T, "Sunrise heights", "B-101", issue="Paint peel", dlp_months=12,
                       possession_on="2024-11-01")     # window khatam
     assert "OVER" in late["say"]
@@ -245,7 +245,7 @@ def test_itp_holds_and_ncr(cst):
     n = Q.ncr(T, "Slab A", "Footing concrete", defect="Cover blocks missing at raft", spec="drawing R-2 / IS 456 cover",
               severity="major")
     assert n["ncr_id"] and "QA" in n["say"]
-    assert "band" in Q.ncr_close(T, n["ncr_id"], action="Rework + recheck")["say"]
+    assert "closed" in Q.ncr_close(T, n["ncr_id"], action="Rework + recheck")["say"]
     day = Q.day(T)
     assert day["open_ncrs"] == 0
 
@@ -385,7 +385,7 @@ def test_wage_calc_trail_math(cst, env):
     assert r["gross"] == 16000 + (800 / 8) * 1.5 * 8 * 10
     assert r["net"] == r["gross"] - 3000
     assert r["trail"]["ot_rule"].startswith("1.5 x")
-    assert "aapke tap" in r["say"]
+    assert "on your tap" in r["say"]
 
 
 # ---------------------------------------------------------------- the tool layer
@@ -411,7 +411,7 @@ def test_const_store_tool_end_to_end(env):
     assert r["items"][0]["on_hand"] == 2000
     with pytest.raises(Exception) as ex:
         asyncio.run(STORE_HANDLERS["const_store"](ctx, "grn", item="", qty=5))
-    assert "Item" in str(ex.value)
+    assert "item" in str(ex.value)
 
 
 def test_tier_c_refusal_rides_the_tools(env):

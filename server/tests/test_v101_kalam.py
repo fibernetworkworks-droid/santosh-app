@@ -132,7 +132,7 @@ def test_revise_edit_learn_check_and_publish_page(env, fake_ai):
     req = K.publish_request(T, p["id"], "page")
     assert req["status"] == "waiting"
     card = _events("kalam_publish")[-1]
-    assert card["where_label"].startswith("Hoola") and card["hash"]
+    assert "Hoola" in card["where_label"] and card["hash"]
     with pytest.raises(K.KalamError):
         K.decide_publish(T, p["id"], True, card_hash="old")
     done = K.decide_publish(T, p["id"], True, card_hash=card["hash"])

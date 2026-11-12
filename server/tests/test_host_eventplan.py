@@ -233,7 +233,7 @@ def test_guests_rsvp_invites_show_report_invoice_forget_tick(ep, monkeypatch):
     with pytest.raises(S.EventError):
         S.decide_message(T, m["message"]["id"], True, m["message"]["hash"])
     d = S.decide_message(T, m["message"]["id"], True, m["message"]["hash"], by_tap=True)
-    assert len(d["links"]) == 2 and "Rahul Sharma ji" in d["links"][0]["text"] + d["links"][1]["text"]
+    assert len(d["links"]) == 2 and "Hello Rahul Sharma," in d["links"][0]["text"] + d["links"][1]["text"]
     assert S.guests(T, e["id"])["summary"]["invited"] == 2
     with pytest.raises(S.EventError):
         S.message_request(T, e["id"], "invite")                               # everyone with a phone already invited

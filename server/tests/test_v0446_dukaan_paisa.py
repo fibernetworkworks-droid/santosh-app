@@ -191,7 +191,7 @@ def test_the_shop_page_and_console_carry_it():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1] / "app"
     js = (root / "site" / "assets" / "hoola-shop.js").read_text()
-    for k in ("'online'", "/coupon", "/review", "reviewBox", "starsOn", "Abhi pay karein"):
+    for k in ("'online'", "/coupon", "/review", "reviewBox", "starsOn", "Pay now "):
         assert k in js, k
     con = (root / "static" / "console" / "build.js").read_text()
     assert "payBox" in con and "/payments/connect" in con and "data-refund" in con and "/coupons" in con

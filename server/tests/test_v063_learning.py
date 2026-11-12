@@ -57,7 +57,7 @@ def test_breaker_rules():
     b = Breaker()
     assert b.before("list_show", {"list_name": "a"}) is None
     assert b.before("list_show", {"list_name": "a"}) is None
-    assert "same kaam" in b.before("list_show", {"list_name": "a"})        # 3rd identical: steered
+    assert "same input" in b.before("list_show", {"list_name": "a"})        # 3rd identical: steered
     assert b.before("list_show", {"list_name": "b"}) is None                # different input is fine
     b.after("list_show", True)
     for i in range(3):
@@ -65,7 +65,7 @@ def test_breaker_rules():
         b.after("email_read", False)
     b.before("list_show", {"list_name": "c"})
     b.after("list_show", True)                                             # something else worked in between
-    assert "fail ho raha" in b.before("email_read", {"id": 9})            # constrained: the failing tool is taken away
+    assert "keeps failing" in b.before("email_read", {"id": 9})            # constrained: the failing tool is taken away
     b2 = Breaker()
     for i in range(4):
         b2.before(f"t{i}", {})
@@ -85,7 +85,7 @@ def test_same_call_is_not_run_a_third_time(env):
     out = run(run_turn(cid, "kirana list dikhao"))
     assert out == "List khaali hai."
     third = last_results(m)[0]
-    assert third["is_error"] and "same kaam" in third["content"]
+    assert third["is_error"] and "same input" in third["content"]
 
 
 def test_stuck_turn_stops_and_says_so(env):

@@ -228,7 +228,7 @@ def test_caps_and_banned_words(ga, monkeypatch):
     d = G.new_draft(T, "AbCdEfGhIjK", daily=5000)
     assert any("daily budget" in p for p in d["problems"])
     d = G.set_draft(T, d["id"], daily=200, headlines=["Satta matka khelo", "Paisa double"])
-    assert any("satta" in p.lower() or "jua" in p.lower() for p in d["problems"])
+    assert any("gambling" in p.lower() for p in d["problems"])
     d = G.set_draft(T, d["id"], headlines=["Best SIP mutual fund tips"])
     assert any("SEBI" in p for p in d["problems"])
 

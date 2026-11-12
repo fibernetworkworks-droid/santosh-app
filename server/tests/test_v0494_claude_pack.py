@@ -210,7 +210,7 @@ def test_mcp_builder_reference_files_readable_and_note_honest(desk):
     assert len(bp["content"]) > 1000
     big = skills_store.read_file(T, "mcp-builder", "reference/node_mcp_server_v2.md")
     assert big["content"]                                                       # the longest guide still opens
-    assert "code likha hai, abhi chalaya nahi" in r["body"]                    # never claims a test it did not run
+    assert "the code is written, not run yet" in r["body"]                    # never claims a test it did not run
     assert "bazar_find" in r["body"] and "scrape_page" in r["body"]
 
 
