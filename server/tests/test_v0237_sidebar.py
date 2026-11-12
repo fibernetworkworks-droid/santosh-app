@@ -29,5 +29,5 @@ def test_untitled_not_naya(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.842.0"
-    assert "0.842.0+841" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.843.0"
+    assert "0.843.0+842" in (ROOT / "pubspec.yaml").read_text()

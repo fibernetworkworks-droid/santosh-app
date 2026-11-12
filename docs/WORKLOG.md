@@ -3116,3 +3116,6 @@ Work Log:
 
 Stage Summary:
 - Free card passes; live card and owner walk still to do on her server.
+
+Task ID: bahi-a5-0843
+Work: A5 e-invoice + e-way bill rebuilt over PROOF v0.842.0, v0.843.0 ritual.

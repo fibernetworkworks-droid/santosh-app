@@ -382,8 +382,8 @@ def ledger_balance(tenant: str, gstin: str, retperiod: str, gst_username: str, s
                 headers=_gst_headers(gst_username, state_cd, txn, ip), op="ledgers/bal")
 
 
-def einv_auth(tenant: str, gstin: str, username: str, password: str, ip: str = "") -> dict[str, Any]:
-    return call(tenant, "einv", "GET", "/einvoice/authenticate",
+def einv_auth(tenant: str, gstin: str, username: str, password: str, ip: str = "", irp: str = "") -> dict[str, Any]:
+    return call(tenant, "einv", "GET", "/einvoice/authenticate", query={"irp": irp} if irp else None,
                 headers={"username": username, "password": password, "ip_address": ip or _ip(), "gstin": gstin}, op="einv/authenticate")
 
 
@@ -497,3 +497,42 @@ def gstr3b_retoffset(tenant, gstin, rp, body, user, state, txn, ip=""):
 def gstr3b_evcfile(tenant, gstin, rp, pan, evcotp, content, user, state, txn, ip=""):
     return _g3(tenant, "/gstr3b/retevcfile", "gstr3b/retevcfile", gstin, rp, user, state, txn, method="POST", body={"content": content},
                query={"pan": pan, "evcotp": evcotp}, ip=ip)
+
+
+# ------------------------------------------------------------------ A5: e-invoice (IRP) + e-way bill. Every call carries the IRP session token in the `auth-token` header.
+def _einv_h(gstin: str, username: str, token: str, ip: str = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {"ip_address": ip or _ip(), "gstin": gstin, "username": username, "auth-token": token, **(extra or {})}
+
+
+def einv_generate(tenant, gstin, username, token, payload, irp="", ip=""):
+    return call(tenant, "einv", "POST", "/einvoice/type/GENERATE/version/V1_03", query={"irp": irp} if irp else None,
+                headers=_einv_h(gstin, username, token, ip), body=payload, op="einv/generate")
+
+
+def einv_cancel(tenant, gstin, username, token, irn, reason, remark, irp="", ip=""):
+    return call(tenant, "einv", "POST", "/einvoice/type/CANCEL/version/V1_03", query={"irp": irp} if irp else None,
+                headers=_einv_h(gstin, username, token, ip), body={"Irn": irn, "CnlRsn": reason, "CnlRem": remark[:100]}, op="einv/cancel")
+
+
+def einv_by_doc(tenant, gstin, username, token, doc_type, doc_no, doc_date_dmy, irp="", ip=""):
+    q = {"param1": doc_type}
+    if irp:
+        q["irp"] = irp
+    return call(tenant, "einv", "GET", "/einvoice/type/GETIRNBYDOCDETAILS/version/V1_03", query=q,
+                headers=_einv_h(gstin, username, token, ip, {"docnum": doc_no, "docdate": doc_date_dmy}), op="einv/getirnbydoc")
+
+
+def einv_gstin_details(tenant, gstin, username, token, party_gstin, irp="", ip=""):
+    q = {"param1": party_gstin} | ({"irp": irp} if irp else {})
+    return call(tenant, "einv", "GET", "/einvoice/type/GSTNDETAILS/version/V1_03", query=q, headers=_einv_h(gstin, username, token, ip), op="einv/gstndetails")
+
+
+def einv_ewb_by_irn(tenant, gstin, username, token, body, irp="", ip=""):
+    return call(tenant, "einv", "POST", "/einvoice/type/GENERATE_EWAYBILL/version/V1_03", query={"irp": irp} if irp else None,
+                headers=_einv_h(gstin, username, token, ip), body=body, op="einv/generate_ewb")
+
+
+def ewb_cancel(tenant, gstin, username, ewb_no, reason_code, remark, ip=""):
+    """Cancel an e-way bill (within 24 h of generation). Path from the spec's `.../ewayapi/canewb` - NOT VERIFIED."""
+    return call(tenant, "ewb", "POST", "/ewaybillapi/v1.03/ewayapi/canewb", headers={"ip_address": ip or _ip(), "gstin": gstin, "username": username},
+                body={"ewbNo": int(ewb_no), "cancelRsnCode": int(reason_code), "cancelRmrk": remark[:50]}, op="ewb/cancel")

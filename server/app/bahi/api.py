@@ -9,6 +9,7 @@ def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
     from . import connect as CN
+    from . import einv as EV
     from . import gstr1 as G1
     from . import gstr3b as G3
     from . import itc as IT
@@ -169,5 +170,48 @@ def make_router(require_key, current_tenant):
     def _g3file(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _g3(G3.file_evc, tenant, *_gp3(body), str(body.get("pan") or ""), str(body.get("otp") or ""),
                    str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    def _ev(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except EV.EinvError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/einv/status", dependencies=[Depends(require_key)])
+    def _evst(gstin: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.status, tenant, gstin)
+
+    @r.post("/api/bahi/einv/connect", dependencies=[Depends(require_key)])
+    def _evcon(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.connect, tenant, str(body.get("gstin") or ""), str(body.get("username") or ""), str(body.get("password") or ""),
+                   body.get("seller") if isinstance(body.get("seller"), dict) else {}, str(body.get("irp") or ""),
+                   str(body.get("ewb_username") or ""), str(body.get("ewb_password") or ""))
+
+    @r.get("/api/bahi/einv/list", dependencies=[Depends(require_key)])
+    def _evlist(gstin: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.listing, tenant, gstin)
+
+    @r.post("/api/bahi/einv/build", dependencies=[Depends(require_key)])
+    def _evbuild(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.build, tenant, str(body.get("gstin") or ""), str(body.get("doc_id") or ""), body.get("extra") if isinstance(body.get("extra"), dict) else {})
+
+    @r.post("/api/bahi/einv/generate", dependencies=[Depends(require_key)])
+    def _evgen(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.generate, tenant, str(body.get("gstin") or ""), str(body.get("doc_id") or ""),
+                   body.get("extra") if isinstance(body.get("extra"), dict) else {}, str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/einv/cancel", dependencies=[Depends(require_key)])
+    def _evcan(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.cancel, tenant, str(body.get("irn_id") or ""), str(body.get("reason") or ""), str(body.get("remark") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/einv/ewb", dependencies=[Depends(require_key)])
+    def _evewb(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.ewb_from_irn, tenant, str(body.get("irn_id") or ""), body.get("transport") if isinstance(body.get("transport"), dict) else {},
+                   body.get("confirm") is True)
+
+    @r.post("/api/bahi/einv/ewb-cancel", dependencies=[Depends(require_key)])
+    def _evewbc(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _ev(EV.ewb_cancel, tenant, str(body.get("irn_id") or ""), str(body.get("reason_code") or "2"), str(body.get("remark") or ""),
+                   body.get("confirm") is True)
 
     return r

@@ -288,7 +288,7 @@ def test_routes_overview_and_no_secret_ever(env, monkeypatch):
     assert "sec-456" not in body and "cid-123" not in body and "dev@example.com" not in body
     o = ov.json()
     assert o["whitebooks"]["products"]["gst"] is True and o["whitebooks"]["env"] == "sandbox" and o["filing"] is False
-    assert o["employee"]["key"] == "accounts" and [p["state"] for p in o["phases"]][:6] == ["built", "built", "built", "built", "built", "next"]
+    assert o["employee"]["key"] == "accounts" and [p["state"] for p in o["phases"]][:7] == ["built", "built", "built", "built", "built", "built", "next"]
     assert c.get("/api/bahi/register", params={"period": "2026-10", "direction": "in"}).json()["rows"][0]["direction"] == "in"
     assert c.post("/api/bahi/periods/2026-13x/lock", json={"on": True}).status_code == 400
     assert c.post("/api/bahi/periods/2026-10/lock", json={"on": True}).json()["state"] == "locked"
@@ -317,7 +317,7 @@ def test_console_wiring_and_css():
     assert '<section class="view" id="v-accountsdesk"' in html and "/static/console/bahi.js?v=" in html
     assert "accounts: 'accountsdesk'" in emp and "if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));" in v2
     assert "/api/bahi/overview" in js and "/api/bahi/sync" in js and "esc(" in js
-    assert "client_secret" not in js and "type=\"password\"" not in js     # the desk never asks for a key or a password
+    assert "client_secret" not in js and js.count('type="password"') == 1     # no WhiteBooks key ever; the ONE password box is her e-invoice portal login (A5), sealed on arrival
     blk = css[css.index("/* v0.807 BAHI"):]
     nxt = re.search(r"/\* (v0\.\d{3}|=+ )", blk[10:])   # only this block - later sessions append their own after it
     blk = blk[:10 + nxt.start()] if nxt else blk

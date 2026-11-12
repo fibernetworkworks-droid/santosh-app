@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,29 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ e-Invoice + e-way bill
+  function eiTab() {
+    const c = OV.connections[0];
+    const g = (EI && EI.g) || (c ? c.gstin : '');
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">e-Invoice (IRN) and e-way bill</h2>
+      <p class="ddk-fine first">Hoola builds the e-invoice from a sales bill, shows you exactly what is missing, and asks the government portal for the IRN only when you confirm. A mistake can be cancelled only within 24 hours. Your portal password is kept sealed and shown nowhere.</p>
+      <div class="acd-row"><input id="acdEG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(g)}"><button type="button" class="btn go ddk-mid" data-a="eilist">Show my invoices</button></div></section>`;
+    const conn = EI && EI.st && EI.st.connected ? `<p class="ddk-fine">Connected as <b>${esc(EI.st.username)}</b>.</p>` : `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Connect your e-invoice login</h3>
+      <div class="acd-row"><input id="acdEU" class="acd-in" placeholder="e-invoice portal username" autocomplete="off"><input id="acdEP" class="acd-in" type="password" placeholder="e-invoice portal password" autocomplete="off"></div>
+      <div class="acd-row"><input id="acdEN" class="acd-in" placeholder="Your business legal name"><input id="acdEA" class="acd-in" placeholder="Address line"><input id="acdEL" class="acd-in" placeholder="City"><input id="acdEZ" class="acd-in" placeholder="Pincode" maxlength="6"></div>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="eiconn">Connect</button></div></section>`;
+    if (!EI || !EI.data) return head + (EI && EI.st ? conn : '');
+    const d = EI.data;
+    const irn = d.irns.map(r => `<li><span><b>${esc(r.doc_no)}</b> ${esc(r.status)}${r.irn ? ' · IRN ' + esc(r.irn.slice(0, 12)) + '…' : ''}${r.ewb_no ? ' · e-way bill ' + esc(r.ewb_no) : ''}${r.error ? ' - ' + esc(r.error) : ''}</span>
+      <span>${r.status === 'generated' && !r.ewb_no ? `<button type="button" class="btn ddk-mid" data-a="eiewb" data-i="${esc(r.id)}">e-way bill</button>` : ''}
+      ${r.status === 'generated' && r.cancel_hours_left ? `<button type="button" class="btn ddk-mid" data-a="eicancel" data-i="${esc(r.id)}">Cancel (${r.cancel_hours_left}h left)</button>` : ''}</span></li>`).join('');
+    const w = d.watch.map(x => `<li><span><b>${esc(x.number)}</b> ${esc(x.date)} · ${esc(x.party || '')} · ${inr(x.total)}${x.days_left != null ? ` · <b>${x.days_left} days left</b> for the IRN` : ''}</span><button type="button" class="btn go ddk-mid" data-a="eibuild" data-d="${esc(x.doc_id)}">Check + make IRN</button></li>`).join('');
+    const pv = EI.pv ? (EI.pv.ready ? `<p class="ddk-note">Ready: ${esc(EI.pv.doc.type)} ${esc(EI.pv.doc.number)} to ${esc(EI.pv.doc.party)}, total ${inr(EI.pv.doc.total)}. <button type="button" class="btn go ddk-mid" data-a="eigen" data-d="${esc(EI.pv.doc.id)}" data-h="${esc(EI.pv.plan_hash)}">Confirm - ask the portal for the IRN</button></p>`
+      : `<div class="ddk-note">Needed first: ${EI.pv.missing.map(esc).join('; ')}.<div class="acd-row"><input id="acdXH" class="acd-in" placeholder="HSN code"><input id="acdXA" class="acd-in" placeholder="Customer address"><input id="acdXL" class="acd-in" placeholder="Customer city"><input id="acdXP" class="acd-in" placeholder="Customer pincode" maxlength="6"><button type="button" class="btn ddk-mid" data-a="eibuild" data-d="${esc(EI.pv.doc.id)}" data-x="1">Check again</button></div></div>`) : '';
+    return head + conn + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Waiting for an IRN (${d.watch.length})</h3>${w ? `<ul class="acd-kv">${w}</ul>` : '<p class="ddk-quiet">Nothing waiting.</p>'}${pv}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Issued</h3>${irn ? `<ul class="acd-kv">${irn}</ul>` : '<p class="ddk-quiet">None yet.</p>'}</section>`;
   }
 
   // ------------------------------------------------------------------ GSTR-3B
@@ -266,6 +289,37 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('ei')) {
+        const g = val('acdEG').toUpperCase() || (EI && EI.g) || '';
+        try {
+          const reload = async () => { EI = {...(EI || {}), g, st: await api('GET', `/api/bahi/einv/status?gstin=${encodeURIComponent(g)}`), data: await api('GET', `/api/bahi/einv/list?gstin=${encodeURIComponent(g)}`)}; draw(false); };
+          if (a === 'eilist') { EI = {g, pv: null}; await reload(); return; }
+          if (a === 'eiconn') {
+            await api('POST', '/api/bahi/einv/connect', {gstin: g, username: val('acdEU'), password: val('acdEP'),
+              seller: {LglNm: val('acdEN'), Addr1: val('acdEA'), Loc: val('acdEL'), Pin: val('acdEZ')}});
+            toast('Connected.'); await reload(); return;
+          }
+          const extra = b.dataset.x ? {hsn: val('acdXH'), buyer_addr1: val('acdXA'), buyer_loc: val('acdXL'), buyer_pin: val('acdXP')} : {};
+          if (a === 'eibuild') { EI.pv = await api('POST', '/api/bahi/einv/build', {gstin: g, doc_id: b.dataset.d, extra}); EI.extra = extra; draw(false); return; }
+          if (a === 'eigen') {
+            if (!confirm('Ask the government portal for the IRN now? It can be cancelled only within 24 hours.')) return;
+            const r = await api('POST', '/api/bahi/einv/generate', {gstin: g, doc_id: b.dataset.d, extra: EI.extra || {}, plan_hash: b.dataset.h, confirm: true});
+            toast(r.adopted ? 'The portal had already issued it - adopted.' : 'IRN issued.'); EI.pv = null; await reload(); return;
+          }
+          if (a === 'eicancel') {
+            if (!confirm('Cancel this IRN? This is permanent.')) return;
+            await api('POST', '/api/bahi/einv/cancel', {irn_id: b.dataset.i, reason: '2', remark: 'Data entry mistake', confirm: true}); toast('IRN cancelled.'); await reload(); return;
+          }
+          if (a === 'eiewb') {
+            const dist = prompt('Distance in km?'); if (!dist) return;
+            const veh = prompt('Vehicle number (or leave empty and give the transporter GSTIN next)') || '';
+            const tr = veh ? '' : (prompt('Transporter GSTIN') || '');
+            await api('POST', '/api/bahi/einv/ewb', {irn_id: b.dataset.i, transport: {distance: dist, vehicle_no: veh, transporter_gstin: tr}, confirm: true});
+            toast('e-way bill made.'); await reload(); return;
+          }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a.startsWith('g3')) {

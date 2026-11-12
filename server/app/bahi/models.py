@@ -88,6 +88,8 @@ class AccGstConn(Base):
     einv_password_enc: Mapped[str] = mapped_column(Text, default="")
     einv_token: Mapped[str] = mapped_column(Text, default="")
     einv_token_at: Mapped[str] = mapped_column(String(25), default="")
+    einv_seller: Mapped[str] = mapped_column(Text, default="{}")                    # seller name / address / pin for INV-01 (not secret)
+    einv_irp: Mapped[str] = mapped_column(String(8), default="")
     ewb_username: Mapped[str] = mapped_column(String(60), default="")
     ewb_password_enc: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -134,7 +136,31 @@ class AccTwoB(Base):
     ext: Mapped[str] = mapped_column(Text, default="{}")                            # supplier period, POS, invoice type - for the IMS body
 
 
-TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB)
+class AccIrn(Base):
+    """One e-invoice attempt for one document (A5). The row is written BEFORE the call and the raw reply is stored the moment it arrives, so a
+    timeout or a restart can never lose or double-issue an IRN."""
+    __tablename__ = "acc_irn"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ai"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    gstin: Mapped[str] = mapped_column(String(15), default="", index=True)
+    doc_id: Mapped[str] = mapped_column(String(40), default="", index=True)          # acc_docs.id
+    doc_type: Mapped[str] = mapped_column(String(3), default="INV")                 # INV | CRN | DBN
+    doc_no: Mapped[str] = mapped_column(String(16), default="")
+    doc_date: Mapped[str] = mapped_column(String(10), default="")
+    status: Mapped[str] = mapped_column(String(12), default="pending")             # pending | generated | cancelled | failed | unknown
+    irn: Mapped[str] = mapped_column(String(70), default="", index=True)
+    ack_no: Mapped[str] = mapped_column(String(30), default="")
+    ack_dt: Mapped[str] = mapped_column(String(25), default="")
+    irp: Mapped[str] = mapped_column(String(8), default="")
+    ewb_no: Mapped[str] = mapped_column(String(20), default="")
+    ewb_dt: Mapped[str] = mapped_column(String(25), default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    raw: Mapped[str] = mapped_column(Text, default="")                              # the reply as received (no secrets in it)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn)
 
 
 _READY: set[int] = set()
