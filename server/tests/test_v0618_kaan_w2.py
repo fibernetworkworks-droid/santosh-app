@@ -304,4 +304,4 @@ def test_live_module_purity_and_laziness():
 
 def test_version_pin_v0618():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.843.0"
+    assert APP_VERSION == "0.844.0"

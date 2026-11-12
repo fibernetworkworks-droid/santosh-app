@@ -3119,3 +3119,8 @@ Stage Summary:
 
 Task ID: bahi-a5-0843
 Work: A5 e-invoice + e-way bill rebuilt over PROOF v0.842.0, v0.843.0 ritual.
+
+Task ID: v0.844.0 LANGGRAPH G7
+Ask: GO G7 (graph default on).
+Built: chat_graph True, forced off without langgraph, turn_engine in stats, /api/aep/turn retired; full-suite on/off comparison, 1 graph-only red fixed; 7 tests.
+Deploy: vps-ops deploy + ~/apps/santosh-core/.venv/bin/pip install "langgraph>=1.2.20" "langgraph-checkpoint-sqlite>=3.1.3" (without it the old loop answers). Rollback: CHAT_GRAPH=false.

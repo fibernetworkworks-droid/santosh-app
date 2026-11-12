@@ -2712,3 +2712,15 @@ GSTR-3B prepared with A2 credit, least-cash set-off, portal compare, draft save 
 
 ## v0.843.0 BAHI A5 (built as 0.842)
 e-invoice (IRN) + e-way bill on her confirm: attempt row first, duplicate / timeout adopted, 24 h cancel and 30-day limit, EWB by IRN. NOT VERIFIED on a live IRP.
+
+## v0.844.0 LANGGRAPH G7 (built as 0.806; their v0.806-v0.843 landed while the full suite ran - REBASE PROTOCOL, both kept) — the turn graph on by default (12 Nov 2026; owner: "GO G7")
+
+Phase G7 of `docs/LANGGRAPH_TURN_PLAN.md`, the last phase.
+- `config.chat_graph` default True. `Settings._graph_needs_langgraph` probes langgraph.graph / langgraph.checkpoint.sqlite / aiosqlite with find_spec (nothing imported) and forces the switch off with ONE loud ERROR when any is missing.
+- `turngraph.run_steps`: the langgraph-missing fallback logs once per process; the no-conversation-id fallback kept.
+- `santosh._steps_inner` unchanged, marked as the rollback path. Rollback = `CHAT_GRAPH=false` in the VPS .env + `pm2 restart santosh --update-env`.
+- `main.turn_engine()` + a startup log line; `/api/agent/stats` gains `turn_engine`.
+- Retired POST /api/aep/turn + `agent/aeptune.py` + `test_v0610_hoola_adopt.py` (it failed on every real call: an async brain handed to a sync _generate). /api/aep/runs and app/aep's tracer / vault sink / graph stay.
+- Red check: every red of the full branch run re-run in the same order with CHAT_GRAPH=false and with the default. One graph-only red (test_v0187_realtime::test_the_turns_own_reply_stops_the_duplicate tested the old loop's _answered_since timing; now pins CHAT_GRAPH=false). All others (~457: missing Playwright browser, appmaker/site look tests, stale version / stamp / Hinglish pins, order interference) fail identically with the graph off.
+- Tests: test_g7_turngraph.py (7), test_g0 asserts the default is on; 145 passed across g0-g7, routines, v0187, voice on the rebased tree.
+- NOT VERIFIED: no real turn has run on the graph on the VPS yet. Not built: approval cards that pause the graph; Gemini Live's directly-called tools through the graph. A later delete of the old loop is listed in the plan doc section 6.

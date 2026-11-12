@@ -291,4 +291,4 @@ def test_w3_modules_purity_and_laziness():
 
 def test_version_pin_v0637():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.843.0"
+    assert APP_VERSION == "0.844.0"
