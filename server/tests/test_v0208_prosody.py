@@ -129,7 +129,7 @@ def test_rider_needs_two_real_thinking_pauses():
 
 
 def test_rider_is_a_small_clean_line():
-    assert "jaldi mat kaato" in voiceaffect.PAUSE_RIDER
+    assert "do not cut in early" in voiceaffect.PAUSE_RIDER
     assert "{" not in voiceaffect.PAUSE_RIDER and "}" not in voiceaffect.PAUSE_RIDER   # the format() contract
     assert len(voiceaffect.PAUSE_RIDER) < 300
 
@@ -180,7 +180,7 @@ def test_affect_watch_confirms_low_and_attaches_the_rider():
                   _pros(pitch=190.0, level=-24.0, pauses=[700, 900]), BASE)
     _run(c)
     assert len(c.notes) == 1
-    assert "naram" in c.notes[0] and "jaldi mat kaato" in c.notes[0]   # the note + her-pauses rider
+    assert "soft" in c.notes[0] and "do not cut in early" in c.notes[0]   # the note + her-pauses rider
     assert c.stats["affect_notes"] == 1 and c.stats["affect_confirmed"] == 1
     assert c.stats["affect_pauses_rider"] == 1
 
@@ -195,7 +195,7 @@ def test_affect_watch_kill_switch_returns_to_words_only(monkeypatch):
     monkeypatch.setattr(voice, "get_settings", lambda: SimpleNamespace(voice_prosody=False))
     c = _FakeCall("haan suno, order double ho gaya is mahine!", _pros(pitch=165.0), BASE)
     _run(c)
-    assert len(c.notes) == 1 and "garmi" in c.notes[0]     # the v0.202 words-only note, exactly as before
+    assert len(c.notes) == 1 and "warmth" in c.notes[0]     # the v0.202 words-only note, exactly as before
     assert c.meter.peeks == 0 and "affect_vetoed" not in c.stats
 
 

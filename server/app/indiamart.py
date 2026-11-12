@@ -66,11 +66,11 @@ def _parse(text: str, ctype: str) -> dict[str, Any]:
                 continue
             if isinstance(msg, dict) and ("result" in msg or "error" in msg):
                 return msg
-        raise IndiaMartError("IndiaMART ka jawab samajh nahi aaya.")
+        raise IndiaMartError("Could not read IndiaMART's answer.")
     try:
         return json.loads(text)
     except ValueError:
-        raise IndiaMartError("IndiaMART ka jawab samajh nahi aaya.")
+        raise IndiaMartError("Could not read IndiaMART's answer.")
 
 
 async def _rpc(method: str, params: dict[str, Any], timeout: float = 40.0) -> dict[str, Any]:
@@ -83,10 +83,10 @@ async def _rpc(method: str, params: dict[str, Any], timeout: float = 40.0) -> di
             r = await c.post(_url(), json=body, headers=headers)
     except httpx.HTTPError as e:
         STATS["errors"] += 1
-        raise IndiaMartError("IndiaMART abhi jawab nahi de raha (network). Thodi der mein phir try karte hain.") from e
+        raise IndiaMartError("IndiaMART is not answering right now (network). Let's try again in a little while.") from e
     if r.status_code >= 400:
         STATS["errors"] += 1
-        raise IndiaMartError(f"IndiaMART ne mana kiya (HTTP {r.status_code}). Thodi der mein phir try karte hain.")
+        raise IndiaMartError(f"IndiaMART refused (HTTP {r.status_code}). Let's try again in a little while.")
     msg = _parse(r.text, r.headers.get("content-type", ""))
     if msg.get("error"):
         STATS["errors"] += 1
@@ -100,7 +100,7 @@ async def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
     res = await _rpc("tools/call", {"name": name, "arguments": args})
     if res.get("isError"):
         txt = " ".join(c.get("text", "") for c in res.get("content") or [] if isinstance(c, dict))
-        raise IndiaMartError("IndiaMART: " + (txt.strip() or "search nahi ho saka")[:200])
+        raise IndiaMartError("IndiaMART: " + (txt.strip() or "the search could not be done")[:200])
     sc = res.get("structuredContent")
     if isinstance(sc, dict):
         return sc
@@ -309,7 +309,7 @@ def _args(search_term: str, query: str, city: str, brand: str, specifications: A
 async def search(search_term: str, query: str = "", city: str = "", brand: str = "", specifications: Any = None,
                  min_price: Any = None, max_price: Any = None, biztype: str = "") -> dict[str, Any]:
     if not _s(search_term):
-        raise IndiaMartError("Kaunsa product dhoondhna hai? Naam bataiye (jaise 'cement', 'LED bulb').")
+        raise IndiaMartError("Which product should I search for? Give its name (for example 'cement', 'LED bulb').")
     a = _args(search_term, query, city, brand, specifications, min_price, max_price, biztype)
     key = "s:" + json.dumps({k: v for k, v in a.items() if k != "query"}, sort_keys=True, ensure_ascii=False).lower()
     hit = _cache_get(key, SEARCH_TTL)
@@ -348,13 +348,13 @@ async def search_cities(search_term: str, cities: list[str], **kw: Any) -> list[
 async def detail(displayid: str) -> dict[str, Any]:
     pid = re.sub(r"\D", "", str(displayid or ""))[:20]
     if not pid:
-        raise IndiaMartError("Product id chahiye (IndiaMART search ke result se).")
+        raise IndiaMartError("A product id is needed (from the IndiaMART search result).")
     hit = _cache_get("d:" + pid, DETAIL_TTL)
     if hit is not None:
         return hit
     raw = (await call_tool("get_product_detail", {"displayid": pid})).get("product") or {}
     if not raw:
-        raise IndiaMartError("Is product ki details IndiaMART par nahi mili.")
+        raise IndiaMartError("Details of this product were not found on IndiaMART.")
     price = raw.get("price") if isinstance(raw.get("price"), dict) else {}
     moq = raw.get("moq") if isinstance(raw.get("moq"), dict) else {}
     co = raw.get("company") if isinstance(raw.get("company"), dict) else {}

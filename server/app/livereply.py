@@ -354,14 +354,14 @@ def prepare_retry(conversation_id: str) -> tuple[str, str]:
     message (text shown, extra context) to run again."""
     from .agent.santosh import _locks
     if _locks[conversation_id].locked():
-        raise RetryError(409, "Hoola abhi kaam kar raha hai. Pehle Rokiye, phir Dobara.")
+        raise RetryError(409, "Hoola is working right now. Stop it first, then ask again.")
     with session() as s:
         users = s.scalars(select(Message).where(Message.conversation_id == conversation_id, Message.role == "user",
                                                 Message.in_history.is_(True), Message.display.is_not(None))
                           .order_by(Message.id.desc()).limit(20)).all()
         last = next((m for m in users if isinstance(m.content, str)), None)
         if last is None:
-            raise RetryError(404, "Dobara karne ke liye koi sawaal nahi mila.")
+            raise RetryError(404, "No question was found to ask again.")
         text, content = last.display or "", last.content
         for m in s.scalars(select(Message).where(Message.conversation_id == conversation_id, Message.id >= last.id,
                                                  Message.in_history.is_(True))).all():

@@ -107,7 +107,7 @@ def _parallel_sources(res: dict) -> tuple[list[dict], list[str]]:
     rows = (data or {}).get("results") if isinstance(data, dict) else None
     notes = []
     if isinstance(data, dict) and (data.get("errors") or data.get("warnings")):
-        notes.append("kuch pages poore nahi padhe gaye")
+        notes.append("some pages could not be read in full")
     out, seen = [], set()
     for r in rows or []:
         if not isinstance(r, dict):
@@ -185,7 +185,7 @@ async def search_any(query: str) -> dict:
         p = await parallel_search(query)
     except WebError as e2:
         if first:
-            raise WebError(f"{first} Backup search (Parallel) bhi nahi chala: {e2}")
+            raise WebError(f"{first} The backup search (Parallel) did not work either: {e2}")
         return r
     return {"query": query, "answer": "", "sources": [{"title": s["title"], "url": s["url"]} for s in p["sources"]],
             "excerpts": p["sources"], "via": "parallel", "say": p["say"]}

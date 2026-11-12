@@ -46,11 +46,11 @@ def _parse(text: str, ctype: str) -> dict[str, Any]:
                 continue
             if isinstance(msg, dict) and ("result" in msg or "error" in msg):
                 return msg
-        raise MospiError("MoSPI ka jawab samajh nahi aaya.")
+        raise MospiError("Could not read MoSPI's answer.")
     try:
         return json.loads(text)
     except ValueError:
-        raise MospiError("MoSPI ka jawab samajh nahi aaya.")
+        raise MospiError("Could not read MoSPI's answer.")
 
 
 def _why(e: BaseException) -> str:
@@ -87,7 +87,7 @@ async def _rpc(name: str, args: dict[str, Any], timeout: float = 45.0) -> dict[s
             log.warning("MoSPI %s attempt %d failed: %s", name, attempt, why)
             if attempt == 2:
                 STATS["errors"] += 1
-                raise MospiError(f"MoSPI ka server abhi nahi mila ({why}). Thodi der mein phir dekhte hain.") from e
+                raise MospiError(f"MoSPI's server could not be reached right now ({why}). Let's look again in a little while.") from e
             STATS["retries"] += 1
             await asyncio.sleep(1.5)
     assert r is not None
@@ -95,7 +95,7 @@ async def _rpc(name: str, args: dict[str, Any], timeout: float = 45.0) -> dict[s
         STATS["errors"] += 1
         LAST_ERROR.update(at=time.time(), tool=name, why=f"HTTP {r.status_code}", body=r.text[:200])
         log.warning("MoSPI %s refused: HTTP %s %s", name, r.status_code, r.text[:200].replace("\n", " "))
-        raise MospiError(f"MoSPI ne mana kiya (HTTP {r.status_code}).")
+        raise MospiError(f"MoSPI refused (HTTP {r.status_code}).")
     msg = _parse(r.text, r.headers.get("content-type", ""))
     if msg.get("error"):
         STATS["errors"] += 1
@@ -122,7 +122,7 @@ async def call(action: str, **args: Any) -> Any:
         raise MospiError("action = datasets | indicators | metadata | data")
     a = {} if tool == "list_datasets" else _clean(args)
     if tool != "list_datasets" and not a.get("dataset"):
-        raise MospiError("dataset chahiye (jaise CPI, IIP, NAS, PLFS) - pehle action=datasets.")
+        raise MospiError("a dataset is needed (for example CPI, IIP, NAS, PLFS) - run action=datasets first.")
     if tool == "get_data" and isinstance(a.get("filters"), dict):
         a["filters"].setdefault("limit", "50")
     key = tool + ":" + json.dumps({k: v for k, v in a.items() if k != "user_query"}, sort_keys=True, ensure_ascii=False)
@@ -133,7 +133,7 @@ async def call(action: str, **args: Any) -> Any:
     res = await _rpc(tool, a)
     texts = [c.get("text", "") for c in res.get("content") or [] if isinstance(c, dict) and c.get("type") == "text"]
     if res.get("isError"):
-        raise MospiError("MoSPI: " + (" ".join(texts).strip() or "is query ka data nahi mila")[:400])
+        raise MospiError("MoSPI: " + (" ".join(texts).strip() or "no data was found for this query")[:400])
     out: Any = res.get("structuredContent")
     if out is None:
         for t in texts:

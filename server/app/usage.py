@@ -79,10 +79,10 @@ PRICES: dict[str, dict[str, float]] = {
 }
 STATS = {"recorded": 0, "flushes": 0, "paused": 0, "warned": 0, "unknown_models": 0}
 BACKGROUND = {"routine", "employee", "website", "video", "motion", "studio", "network", "draft_check"}
-FEATURE_LABEL = {"chat": "Chat", "call": "Voice call", "routine": "Routines", "employee": "Team / graahak", "website":
-                 "Website jobs", "pc": "PC par kaam", "video": "Video editor", "motion": "Motion reels", "studio":
+FEATURE_LABEL = {"chat": "Chat", "call": "Voice call", "routine": "Routines", "employee": "Team / customers", "website":
+                 "Website jobs", "pc": "Work on the PC", "video": "Video editor", "motion": "Motion reels", "studio":
                  "Video Studio", "create": "Create Studio", "network": "Hoola Network", "lekhak": "Typist / translator", "reels": "Reels",
-                 "notebook": "Notebook", "voiceid": "Awaaz Pehchaan", "research": "Research", "other": "Baaki"}
+                 "notebook": "Notebook", "voiceid": "Voice ID", "research": "Research", "other": "Other"}
 
 _CTX: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_usage", default=None)
 # v0.476 R5: a RUN-scoped meter. Whatever work binds one (a research run) sees the USD of exactly its own model calls - a concurrent chat of the
@@ -586,9 +586,9 @@ def allowed(tenant: str, feature: str) -> bool:
 def blocked_text(tenant: str) -> str:
     st = state(tenant)
     inr = usd_inr()
-    return (f"Is mahine ka AI kharcha seema tak pahunch gaya (₹{st['spent_usd'] * inr:,.0f} / ₹{st['limit_usd'] * inr:,.0f}), "
-            "isliye background kaam (routine, website / video jobs, team ke kaam) agle mahine tak ruke hain. Aapki apni chat "
-            "aur call chalti rahegi. Seema badhani ho to Profile > Kharcha.")
+    return (f"This month's AI spend has reached the limit (₹{st['spent_usd'] * inr:,.0f} / ₹{st['limit_usd'] * inr:,.0f}), "
+            "so background work (routines, website / video jobs, team tasks) is paused until next month. Your own chat "
+            "and calls keep working. To raise the limit, go to Profile > AI spend.")
 
 
 def _after(tenant: str) -> None:
@@ -609,8 +609,8 @@ def _after(tenant: str) -> None:
             say = blocked_text(tenant)
         elif st["warn"] and not st["over"] and b.warned != m:
             b.warned = m
-            say = (f"Is mahine ka AI kharcha {st['pct']:.0f}% ho gaya (₹{st['spent_usd'] * inr:,.0f} / "
-                   f"₹{st['limit_usd'] * inr:,.0f}). Poora hone par background kaam ruk jayenge; Profile > Kharcha mein dekhiye.")
+            say = (f"This month's AI spend has reached {st['pct']:.0f}% (₹{st['spent_usd'] * inr:,.0f} / "
+                   f"₹{st['limit_usd'] * inr:,.0f}). When it is used up, background work will pause; see Profile > AI spend.")
     if say:
         STATS["warned"] += 1
         try:
@@ -677,10 +677,10 @@ def report(tenant: str, days: int = 30) -> dict[str, Any]:
                       "estimate": not price_of(k)[1]} for k, v in by_model.items()), key=lambda x: -x["usd"])
     daily = [{"day": (today - timedelta(days=i)).isoformat(),
               "inr": round(by_day.get((today - timedelta(days=i)).isoformat(), 0.0) * inr, 2)} for i in range(days - 1, -1, -1)]
-    say = (f"Is mahine ab tak ₹{st['spent_usd'] * inr:,.0f}"
-           + (f" / seema ₹{st['limit_usd'] * inr:,.0f} ({st['pct']:.0f}%)" if st["limit_usd"] else "")
-           + f"; isi raftaar se mahine ke ant tak ~₹{projected * inr:,.0f}."
-           + (f" Sabse zyada: {feats[0]['label']} ({feats[0]['share']:.0f}%)." if feats else ""))
+    say = (f"This month so far: ₹{st['spent_usd'] * inr:,.0f}"
+           + (f" / limit ₹{st['limit_usd'] * inr:,.0f} ({st['pct']:.0f}%)" if st["limit_usd"] else "")
+           + f"; at this pace about ₹{projected * inr:,.0f} by the end of the month."
+           + (f" Biggest: {feats[0]['label']} ({feats[0]['share']:.0f}%)." if feats else ""))
     try:   # v0.161 her thumbs on replies in the same window
         from .livereply import feedback_counts
         thumbs = feedback_counts(tenant, datetime.combine(today - timedelta(days=days - 1), datetime.min.time(), IST)
@@ -692,7 +692,7 @@ def report(tenant: str, days: int = 30) -> dict[str, Any]:
             "month": {**st, "spent_inr": round(st["spent_usd"] * inr, 2), "limit_inr": round(st["limit_usd"] * inr, 2),
                       "projected_usd": round(projected, 4), "projected_inr": round(projected * inr, 2)},
             "features": feats, "models": models, "daily": daily, "say": say, "replies": thumbs,
-            "note": "Andaaza: official price list (22 Oct 2026) se; asli bill provider ke dashboard par."}
+            "note": "Estimate: from the official price list (22 Oct 2026); the real bill is on the provider's dashboard."}
 
 
 def all_tenants(days: int = 30) -> list[dict[str, Any]]:

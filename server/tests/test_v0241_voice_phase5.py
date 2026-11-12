@@ -41,7 +41,7 @@ def test_p99_dead_air_talk_over_repeats_rolled_up(qdir, monkeypatch):
     assert q["targets"]["reply_start_ms_p99"] == cq.P99_ALERT_MS
     assert "1%" in q["say"]
     g = cq.grade(cq.load("t1")[0])
-    assert any("bolte hue" in p for p in g["problems"]) and any("dobara boli" in p for p in g["problems"])
+    assert any("talked over you" in p for p in g["problems"]) and any("said the same thing again" in p for p in g["problems"])
 
 
 def test_alert_once_a_day(qdir, monkeypatch):

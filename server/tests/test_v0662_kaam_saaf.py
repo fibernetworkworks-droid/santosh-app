@@ -77,7 +77,7 @@ def test_an_on_time_reminder_is_unchanged(env, monkeypatch):
     _chat("r2")
     _reminder("r2", 1)
     said, rang = _fire(monkeypatch, quiet=True)
-    assert said == ["Yaad dila raha hoon: Dawai lena"] and len(rang) == 1
+    assert said == ["Reminder: Dawai lena"] and len(rang) == 1
 
 
 # ---------------------------------------------------------------- 11 stop during preparation
@@ -129,7 +129,7 @@ def test_a_dead_google_sign_in_backs_off_and_tells_her_once(env, monkeypatch):
     with pytest.raises(google_auth.GoogleReconnect):
         google_auth.refresh(Creds(), T, "me@x.in")       # her own chat ask always tries again
     assert calls == [1, 1]
-    assert len(told) == 1 and "Google" in told[0] and "naye mail" in told[0]
+    assert len(told) == 1 and "Google" in told[0] and "new mail" in told[0]
 
     class NewCreds(Creds):
         refresh_token = "rt-2"                             # she signed in again: a new token is tried at once

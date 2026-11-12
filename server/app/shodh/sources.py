@@ -165,7 +165,7 @@ def semantic_scholar(q: str, year_from: int = 0, limit: int = 20, email: str = "
         r = c.get("https://api.semanticscholar.org/graph/v1/paper/search", params=params,
                   headers={"x-api-key": key} if key else None)
     if r.status_code == 429:
-        raise SourceError("Semantic Scholar abhi busy (rate limit); thodi der baad ya apni API key ke saath")
+        raise SourceError("Semantic Scholar is busy right now (rate limit); try again in a while or with your own API key")
     if r.status_code >= 400:
         raise SourceError(f"Semantic Scholar {r.status_code}")
     out = []
@@ -204,7 +204,7 @@ def search(q: str, sources: list[str] | None = None, year_from: int = 0, limit: 
     got, errors = [], {}
     for name in sources or ("openalex", "crossref", "arxiv"):
         if name not in fns:
-            errors[name] = "yeh source nahi jaanta"
+            errors[name] = "unknown source"
             continue
         try:
             kw = {"key": s2_key} if name == "semantic_scholar" else {}

@@ -49,7 +49,7 @@ def _busy(conv: str) -> bool:
 
 def _not_busy(conv: str) -> None:
     if _busy(conv):
-        raise ChatError(409, "Hoola is chat mein abhi kaam kar raha hai. Pehle Rokiye, phir karein.")
+        raise ChatError(409, "Hoola is working in this chat right now. Stop it first, then try again.")
 
 
 # ------------------------------------------------------------------ list / patch / delete
@@ -63,7 +63,7 @@ def plain(text: str) -> str:
 def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: str = "",
               hide_empty: bool = False) -> list[dict[str, Any]]:
     """Her chats in one query: pinned first, then newest activity. Title = hers / auto, else her first message.
-    v0.235 `hide_empty` (the console): a chat she never wrote in ("Naya chat") is not listed at all; it shows up
+    v0.235 `hide_empty` (the console): a chat she never wrote in ("New chat") is not listed at all; it shows up
     with her first message. Pinned or renamed chats always stay."""
     first = (select(Message.display).where(Message.conversation_id == Conversation.id, Message.role == "user",
                                            Message.display.is_not(None), Message.display != "")
@@ -87,7 +87,7 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
     with session() as s:
         for c, first_text, n in s.execute(q).all():
             title = (c.title or plain(first_text).strip().replace("\n", " ")[:80]
-                     or ("Untitled chat" if n else "Naya chat"))   # v0.237 a chat with words but no readable title
+                     or ("Untitled chat" if n else "New chat"))   # v0.237 a chat with words but no readable title
             when = _utc(c.last_at or c.created_at)
             out.append({"id": c.id, "title": title, "auto_title": bool(c.title), "pinned": bool(c.pinned),
                         "archived": bool(c.archived), "messages": int(n or 0), "empty": not n,
@@ -99,7 +99,7 @@ def chat_list(tenant: str, archived: bool = False, limit: int = 200, project: st
 def _own(s, tenant: str, conv: str) -> Conversation:
     c = s.get(Conversation, conv)
     if c is None or c.tenant_id != tenant or c.deleted:
-        raise ChatError(404, "Chat nahi mila.")
+        raise ChatError(404, "Chat not found.")
     return c
 
 
@@ -196,7 +196,7 @@ def _title(s, conv: str) -> str:
         return c.title
     m = s.scalars(select(Message.display).where(Message.conversation_id == conv, Message.role == "user",
                                                 Message.display.is_not(None)).order_by(Message.id).limit(1)).first()
-    return (m or "Naya chat").strip().replace("\n", " ")[:80]
+    return (m or "New chat").strip().replace("\n", " ")[:80]
 
 
 def _event_of(s, m: Message) -> int:
@@ -336,7 +336,7 @@ def _user_event(s, conv: str, event_id: int) -> Event:
     e = s.get(Event, event_id)
     p = (e.payload if e is not None and isinstance(e.payload, dict) else {}) or {}
     if e is None or e.conversation_id != conv or e.kind != "message" or p.get("role") != "user":
-        raise ChatError(404, "Yeh aapka message nahi mila.")
+        raise ChatError(404, "This message of yours was not found.")
     return e
 
 
@@ -345,10 +345,10 @@ def edit(conv: str, event_id: int, text: str) -> dict[str, Any]:
     publishes the new message (then `started`) and runs the turn."""
     text = (text or "").strip()
     if not text:
-        raise ChatError(400, "Khaali message nahi bhej sakte.")
+        raise ChatError(400, "An empty message cannot be sent.")
     _not_busy(conv)
     if is_hidden(conv, event_id):
-        raise ChatError(409, "Yeh message abhi dikh rahe version mein nahi hai.")
+        raise ChatError(409, "This message is not in the version shown right now.")
     with session() as s:
         e = _user_event(s, conv, event_id)
         g = next((g for g in _groups(s, conv) if g.kind == "edit"
@@ -390,12 +390,12 @@ def retry(conv: str) -> tuple[str, str]:
         u = next((e for e in users if isinstance(e.payload, dict) and e.payload.get("role") == "user"
                   and not any(lo <= e.id < hi for lo, hi in hidden)), None)
         if u is None:
-            raise ChatError(404, "Dobara karne ke liye koi sawaal nahi mila.")
+            raise ChatError(404, "No question was found to ask again.")
         row = s.scalars(select(Message).where(Message.conversation_id == conv, Message.role == "user",
                                               Message.in_history.is_(True), Message.created_at >= u.created_at)
                         .order_by(Message.id)).first()
         if row is None or not isinstance(row.content, str):
-            raise ChatError(404, "Dobara karne ke liye koi sawaal nahi mila.")
+            raise ChatError(404, "No question was found to ask again.")
         text, content = row.display or "", row.content
         g = next((g for g in _groups(s, conv) if g.kind == "retry" and g.anchor_event_id == u.id), None)
         if g is None:
@@ -417,9 +417,9 @@ def switch(conv: str, group: int, index: int) -> dict[str, Any]:
     with session() as s:
         g = s.get(ChatBranch, group)
         if g is None or g.conversation_id != conv:
-            raise ChatError(404, "Yeh version nahi mila.")
+            raise ChatError(404, "This version was not found.")
         if not 0 <= index < len(g.versions or []):
-            raise ChatError(400, "Aisa koi version nahi hai.")
+            raise ChatError(400, "There is no such version.")
         if index == g.active:
             return {"group": g.id, "active": index, "count": len(g.versions)}
         _close_and_hide(s, g)

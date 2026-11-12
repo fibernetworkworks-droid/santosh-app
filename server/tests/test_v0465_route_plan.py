@@ -75,7 +75,7 @@ def test_parse_reads_zero_omitted_indexes_and_local_times():
 
 def test_a_skipped_stop_is_reported_with_googles_reason_never_dropped():
     p = mapsopt.parse_response(RESP, STOPS, VEH)
-    assert p["skipped"] == [{"stop": "Far Clinic", "why": ["gaadi ke kaam ke samay mein nahi aata"]}]
+    assert p["skipped"] == [{"stop": "Far Clinic", "why": ["it does not fit within the vehicle's working time"]}]
 
 
 def test_an_unknown_reason_code_is_passed_through_and_a_missing_stop_flags_incomplete():
@@ -179,7 +179,7 @@ def test_missing_credentials_say_what_is_needed_and_cost_nothing(env, monkeypatc
     get_settings.cache_clear()
     with pytest.raises(ToolError) as e:
         asyncio.run(maps_tools.maps_route_plan(Ctx(tenant_id="default", conversation_id="c"), STOPS))
-    assert "ROUTE_OPT_PROJECT" in str(e.value) and "nahi chalti" in str(e.value)
+    assert "ROUTE_OPT_PROJECT" in str(e.value) and "does not work" in str(e.value)
     assert mapsbill.usage("default")["by_sku"].get(mapsbill.SKU_OPT) in (None, "0")
 
 

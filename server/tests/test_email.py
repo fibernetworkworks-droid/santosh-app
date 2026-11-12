@@ -574,5 +574,5 @@ def test_owner_env_mailbox_over_imap(env, monkeypatch):
     # wrong password gives a clear message
     monkeypatch.setenv("EMAIL_PASSWORD", "wrong")
     get_settings.cache_clear()
-    with pytest.raises(ToolError, match="App password"):
+    with pytest.raises(ToolError, match="app password"):
         run("email_check", {}, ctx)

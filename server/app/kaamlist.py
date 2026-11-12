@@ -25,9 +25,9 @@ from .db import session
 
 log = logging.getLogger("santosh.kaamlist")
 STATS: dict[str, int] = {"lists": 0, "briefs": 0}
-OUTCOME = {"done": "ho gaya", "partial": "adhoora", "stuck": "atak gaya", "stopped": "roka gaya"}
-STATE = {"working": "chal raha hai", "waiting": "aapka jawab chahiye", "done": "ho gaya", "failed": "dikkat aayi",
-         "stopped": "band"}
+OUTCOME = {"done": "done", "partial": "partly done", "stuck": "stuck", "stopped": "stopped"}
+STATE = {"working": "running", "waiting": "needs your answer", "done": "done", "failed": "ran into a problem",
+         "stopped": "stopped"}
 
 
 def _utc(d: datetime | None) -> datetime:
@@ -96,7 +96,7 @@ def listing(tenant: str, days: int = 7) -> dict[str, Any]:
         row = {"source": "job", "kind": j["kind"], "label": j["label"], "title": j["title"] or j["label"],
                "started_at": j.get("started_at") or j["updated_at"],
                "state": j["state"], "stuck": stuck,
-               "say": (f"atka hai ({j['minutes_since_change']} min se)" if stuck else STATE.get(j["state"], j["state"])),
+               "say": (f"stuck (for {j['minutes_since_change']} min)" if stuck else STATE.get(j["state"], j["state"])),
                "detail": j["stage"] or j["detail"],
                "pct": j["pct"], "link": j["link"], "conversation_id": j["conversation_id"], "at": j["updated_at"]}
         (running if j["state"] == "working" else waiting if j["state"] == "waiting" else done).append(row)
@@ -114,16 +114,16 @@ def listing(tenant: str, days: int = 7) -> dict[str, Any]:
         if any(timedelta(seconds=-60) <= (j - rat) <= timedelta(seconds=(r.seconds or 0) + 180)
                for j in jobs_by_conv.get(getattr(r, "conversation_id", "") or "", [])):
             continue          # v0.662 this turn STARTED a tracked job - the job's own row tells its true state (no "ho gaya" twice)
-        done.append({"source": "task", "kind": "task", "label": "Kaam", "title": _clip(r.request, 160) or "Kaam",
+        done.append({"source": "task", "kind": "task", "label": "Task", "title": _clip(r.request, 160) or "Task",
                      "state": "done" if r.outcome == "done" else ("failed" if r.outcome == "stuck" else r.outcome),
-                     "say": OUTCOME.get(r.outcome, r.outcome), "detail": _clip(r.left, 160) and f"baaki: {_clip(r.left, 150)}",
+                     "say": OUTCOME.get(r.outcome, r.outcome), "detail": _clip(r.left, 160) and f"pending: {_clip(r.left, 150)}",
                      "pct": -1, "link": "", "conversation_id": getattr(r, "conversation_id", "") or "",
                      "at": _utc(r.created_at).isoformat()})
     try:   # v0.662 the cards that wait for HER tap are her waiting work too (they were missing from this list)
         from .events import waiting_cards
         for c in waiting_cards(tenant, 20, max_age_h=days * 24):
             waiting.append({"source": "card", "kind": c["kind"], "label": "Card", "title": c["title"], "state": "waiting",
-                            "stuck": False, "say": f"aapki haan chahiye ({c['age_h']} ghante se)", "detail": "",
+                            "stuck": False, "say": f"needs your OK (for {c['age_h']} h)", "detail": "",
                             "pct": -1, "link": "", "conversation_id": c.get("conversation_id", ""),
                             "at": c.get("at", "")})
     except Exception:
@@ -153,7 +153,7 @@ def brief(tenant: str, conversation_id: str, days: int = 7, n: int = 10, max_cha
                 continue
             line = f"{_when(r.created_at, tenant)} · {_clip(r.request, 100)} → {OUTCOME.get(r.outcome, r.outcome)}"
             if r.left:
-                line += f"; baaki: {_clip(r.left, 70)}"
+                line += f"; pending: {_clip(r.left, 70)}"
             items.append((_utc(r.created_at), line))
         for j in _jobs(tenant, since):
             if j["state"] not in ("done", "failed", "stopped") or not visible(j["conversation_id"], allowed):
@@ -168,5 +168,5 @@ def brief(tenant: str, conversation_id: str, days: int = 7, n: int = 10, max_cha
     items.sort(key=lambda x: x[0], reverse=True)
     body = "\n".join("- " + t for _, t in items[:n])[:max_chars]
     STATS["briefs"] += 1
-    return ("IS HAFTE KA KIYA HUA KAAM (newest first; for 'kal / pichhle hafte jo kaam diya tha' - answer from here, "
+    return ("IS HAFTE KA KIYA HUA KAAM (work done this week, newest first; for 'the work I gave yesterday / last week' - answer from here, "
             "kaam_status / yaad_khojo only for older or deeper detail):\n" + body)

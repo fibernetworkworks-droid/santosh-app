@@ -51,7 +51,7 @@ def _creds():
             return service_account.Credentials.from_service_account_info(json.loads(st.google_sa_json), scopes=SCOPES)
         return service_account.Credentials.from_service_account_file(st.google_sa_file, scopes=SCOPES)
     except Exception as e:
-        raise DriveError(f"Service account key padhne mein dikkat: {e}")
+        raise DriveError(f"Problem reading the service account key: {e}")
 
 
 def _svc(name, version, tenant_id: str | None = None):
@@ -65,7 +65,7 @@ def _svc(name, version, tenant_id: str | None = None):
         except Exception as e:
             log.warning("per-user google creds failed (%s); falling back to service account: %s", tenant_id, e)
     if creds is None and tenant_id and tenant_id != get_settings().tenant_id:
-        raise DriveError("Aapka Google Drive abhi connect nahi hai. App mein 'Sign in with Google' se jodiye.")
+        raise DriveError("Your Google Drive is not connected yet. Connect it with 'Sign in with Google' in the app.")
     return build(name, version, credentials=creds or _creds(), cache_discovery=False)
 
 
@@ -109,7 +109,7 @@ def _read_file(file_id: str, tenant_id=None):
         raise DriveError(_explain(e))
     mime = meta["mimeType"]
     if mime == GSHEET:
-        return {"name": meta["name"], "type": "sheet", "note": "Yeh ek Google Sheet hai; sheet_read se iske cells padhiye.",
+        return {"name": meta["name"], "type": "sheet", "note": "This is a Google Sheet; read its cells with sheet_read.",
                 "id": file_id, "link": meta.get("webViewLink", "")}
     buf = io.BytesIO()
     try:
@@ -119,7 +119,7 @@ def _read_file(file_id: str, tenant_id=None):
             req = svc.files().get_media(fileId=file_id, supportsAllDrives=True)
         else:
             return {"name": meta["name"], "type": mime, "link": meta.get("webViewLink", ""),
-                    "note": "Yeh file text nahi hai (PDF/image/other); link se kholiye ya phone par bhejne ko kahiye."}
+                    "note": "This file is not text (PDF/image/other); open it from the link or ask to have it sent to the phone."}
         dl = MediaIoBaseDownload(buf, req)
         done = False
         while not done:
@@ -179,7 +179,7 @@ def _doc_create(title: str, content: str, tenant_id=None):
     except Exception as e:
         raise DriveError(_explain(e))
     return {"id": doc_id, "title": title, "link": link,
-            "note": "" if (_folder(tenant_id) or (tenant_id and tenant_id != get_settings().tenant_id)) else "Tip: naya doc service account ke Drive mein bana; use dekhne ke liye folder share rakhiye (GOOGLE_DRIVE_FOLDER_ID)."}
+            "note": "" if (_folder(tenant_id) or (tenant_id and tenant_id != get_settings().tenant_id)) else "Tip: the new doc was made in the service account's Drive; keep a folder shared to see it (GOOGLE_DRIVE_FOLDER_ID)."}
 
 
 def _explain(e) -> str:
@@ -190,12 +190,12 @@ def _explain(e) -> str:
     if "invalid_grant" in msg or type(e).__name__ == "RefreshError":
         return reconnect_message("", msg)
     if "403" in msg or "permission" in msg.lower() or "insufficient" in msg.lower():
-        return ("Santosh ke paas is file/folder ki permission nahi hai. Drive mein woh folder ya file service account ki "
-                "email ko 'Editor' banakar share kijiye.")
+        return ("Hoola does not have permission for this file/folder. In Drive, share that folder or file with the service account's "
+                "email as 'Editor'.")
     if "404" in msg or "notFound" in msg.lower():
-        return "Yeh file nahi mili. id sahi hai? Aur kya woh Santosh ke saath share hai?"
+        return "This file was not found. Is the id correct? And is it shared with Hoola?"
     if "has not been used" in msg or "disabled" in msg.lower() or "SERVICE_DISABLED" in msg:
-        return "Google Cloud project mein Drive/Sheets/Docs API enable nahi hai. Console mein teenon API enable kijiye."
+        return "The Drive/Sheets/Docs APIs are not enabled in the Google Cloud project. Enable all three APIs in the Console."
     return f"Google Drive error: {msg[:200]}"
 
 

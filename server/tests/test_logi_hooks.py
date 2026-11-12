@@ -90,7 +90,7 @@ def test_wiring(env):
     from app import approvekey
     with pytest.raises(approvekey.ApproveError) as e:      # courier is a known kind: an unknown card, not an unknown kind
         approvekey.card_digest("courier", "nope", "default")
-    assert "baaki nahi" in str(e.value)
+    assert "no longer pending" in str(e.value)
 
 
 def test_push_render():

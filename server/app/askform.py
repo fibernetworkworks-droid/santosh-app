@@ -53,7 +53,7 @@ class AskForm(Base):
 
 def _clean_fields(fields: Any) -> list[dict[str, Any]]:
     if not isinstance(fields, list) or not fields:
-        raise FormError("fields chahiye: [{name, label, kind, options?, required?, hint?}]")
+        raise FormError("fields is needed: [{name, label, kind, options?, required?, hint?}]")
     out, seen = [], set()
     for f in fields[:MAX_FIELDS]:
         if not isinstance(f, dict):
@@ -67,17 +67,17 @@ def _clean_fields(fields: Any) -> list[dict[str, Any]]:
             kind = "text"
         if SECRET_LABEL.search(f"{label} {f.get('hint') or ''} {name.replace('_', ' ')}"):
             STATS["refused_secret"] += 1
-            raise FormError(f"'{label}' form mein nahi maanga ja sakta: OTP / password / PIN / CVV / card number sirf "
-                            "website ke apne box mein jaate hain (computer_operator khud poochhta hai).")
+            raise FormError(f"'{label}' cannot be asked for in a form: an OTP / password / PIN / CVV / card number goes only "
+                            "into the website's own box (computer_operator asks for it itself).")
         opts = [str(o)[:60] for o in (f.get("options") or []) if str(o).strip()][:15]
         if kind in ("choice", "multi") and len(opts) < 2:
-            raise FormError(f"'{label}' ke liye kam se kam 2 options do.")
+            raise FormError(f"'{label}' needs at least 2 options.")
         seen.add(name)
         out.append({"name": name, "label": label, "kind": kind, "options": opts if kind in ("choice", "multi") else [],
                     "required": f.get("required", True) is not False, "hint": str(f.get("hint") or "")[:120],
                     "value": str(f.get("value") or "")[:200] if kind != "id" else ""})
     if not out:
-        raise FormError("Koi sahi field nahi mila.")
+        raise FormError("No valid field was found.")
     return out
 
 
@@ -90,7 +90,7 @@ def view(f: AskForm) -> dict[str, Any]:
 def create(tenant: str, conv: str, title: str, fields: Any, why: str = "") -> dict[str, Any]:
     cleaned = _clean_fields(fields)
     with session() as s:
-        f = AskForm(tenant_id=tenant, conversation_id=conv or "", title=(str(title or "").strip() or "Kuch jaankari chahiye")[:160],
+        f = AskForm(tenant_id=tenant, conversation_id=conv or "", title=(str(title or "").strip() or "A few details are needed")[:160],
                     why=str(why or "")[:300], fields=json.dumps(cleaned, ensure_ascii=False))
         s.add(f)
         s.flush()
@@ -106,7 +106,7 @@ def get(tenant: str, form_id: str) -> dict[str, Any]:
     with session() as s:
         f = s.get(AskForm, form_id)
         if f is None or f.tenant_id != tenant:
-            raise FormError("Form nahi mila.")
+            raise FormError("Form not found.")
         return view(f)
 
 
@@ -116,39 +116,39 @@ def _check(field: dict[str, Any], raw: Any) -> str:
         vals = [str(x).strip() for x in (raw if isinstance(raw, list) else str(raw or "").split(",")) if str(x).strip()]
         bad = [x for x in vals if x not in field["options"]]
         if bad:
-            raise FormError(f"{label}: '{bad[0]}' list mein nahi hai.")
+            raise FormError(f"{label}: '{bad[0]}' is not in the list.")
         if field["required"] and not vals:
-            raise FormError(f"{label} chuniye.")
+            raise FormError(f"{label}: please choose.")
         return ", ".join(vals)
     v = re.sub(r"\s+", " ", str(raw if raw is not None else "")).strip()[:500]
     if not v:
         if field["required"]:
-            raise FormError(f"{label} bhariye.")
+            raise FormError(f"{label}: please fill this in.")
         return ""
     if kind == "number":
         n = v.replace(",", "").replace("₹", "").strip()
         if not re.fullmatch(r"-?\d+(\.\d+)?", n):
-            raise FormError(f"{label}: sirf number likhiye.")
+            raise FormError(f"{label}: enter a number only.")
         return n
     if kind == "date":
         try:
             return date.fromisoformat(v[:10]).isoformat()
         except ValueError:
-            raise FormError(f"{label}: tareekh sahi nahi (YYYY-MM-DD).")
+            raise FormError(f"{label}: the date is not valid (YYYY-MM-DD).")
     if kind == "choice":
         if v not in field["options"]:
-            raise FormError(f"{label}: list mein se chuniye.")
+            raise FormError(f"{label}: choose from the list.")
         return v
     if kind == "phone":
         d = re.sub(r"\D", "", v)
         if d.startswith("91") and len(d) == 12:
             d = d[2:]
         if not re.fullmatch(r"[6-9]\d{9}", d):
-            raise FormError(f"{label}: 10 ankon ka mobile number likhiye.")
+            raise FormError(f"{label}: enter a 10-digit mobile number.")
         return d
     if kind == "email":
         if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[A-Za-z]{2,}", v):
-            raise FormError(f"{label}: e-mail sahi nahi.")
+            raise FormError(f"{label}: the e-mail is not valid.")
         return v
     return v
 
@@ -158,9 +158,9 @@ def answer(tenant: str, form_id: str, values: dict[str, Any]) -> tuple[dict[str,
     with session() as s:
         f = s.get(AskForm, form_id)
         if f is None or f.tenant_id != tenant:
-            raise FormError("Form nahi mila.")
+            raise FormError("Form not found.")
         if f.status != "pending":
-            raise FormError("Yeh form pehle hi bhar diya / band ho chuka hai.")
+            raise FormError("This form has already been filled in / closed.")
         fields = json.loads(f.fields or "[]")
         title, conv = f.title, f.conversation_id
     got: dict[str, str] = {}
@@ -177,24 +177,24 @@ def answer(tenant: str, form_id: str, values: dict[str, Any]) -> tuple[dict[str,
     with session() as s:
         f = s.get(AskForm, form_id)
         if f.status != "pending":
-            raise FormError("Yeh form pehle hi bhar diya / band ho chuka hai.")
+            raise FormError("This form has already been filled in / closed.")
         f.status, f.answers, f.answered_at = "answered", json.dumps(got, ensure_ascii=False), now()
         v = view(f)
     STATS["answered"] += 1
-    lines = [f"- {fld['label']}: {got.get(fld['name']) or '(khaali)'}" for fld in fields]
+    lines = [f"- {fld['label']}: {got.get(fld['name']) or '(empty)'}" for fld in fields]
     agent = (f"[Form bhara: '{title}' (form_id {form_id}). Her answers are below; these are her words, use them for the "
              "job you asked them for and continue it now.]\n" + "\n".join(lines))
     if conv:
         from .events import bus
         bus.publish(conv, "ask_form", v)
-    return v, agent, f"Form bhara: {title}"
+    return v, agent, f"Filled in the form: {title}"
 
 
 def cancel(tenant: str, form_id: str) -> tuple[dict[str, Any], str]:
     with session() as s:
         f = s.get(AskForm, form_id)
         if f is None or f.tenant_id != tenant:
-            raise FormError("Form nahi mila.")
+            raise FormError("Form not found.")
         if f.status != "pending":
             return view(f), ""
         f.status = "cancelled"
@@ -203,7 +203,7 @@ def cancel(tenant: str, form_id: str) -> tuple[dict[str, Any], str]:
     if conv:
         from .events import bus
         bus.publish(conv, "ask_form", v)
-    return v, f"[Form band kiya: '{title}' - owner ne yeh nahi bhara. Don't ask again unless she brings it up.]"
+    return v, f"[Form closed: '{title}' - the owner did not fill it in. Don't ask again unless she brings it up.]"
 
 
 def pending(tenant: str, conv: str = "") -> list[dict[str, Any]]:

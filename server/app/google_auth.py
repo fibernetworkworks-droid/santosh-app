@@ -39,14 +39,14 @@ class GoogleReconnect(Exception):
 
 def reconnect_message(email: str, err: str) -> str:
     e = (err or "").lower()
-    why = ("Google ne login wapas le liya / expire kar diya" if "invalid_grant" in e or "expired" in e or "revoked" in e
-           else "Google ne login refresh nahi kiya")
-    msg = (f"Aapke Google account ({email or 'Google'}) ka login Hoola ke paas ab nahi chal raha ({why}). Isliye Google Drive, "
-           "Gmail, Calendar, Sheets abhi nahi khul rahe. Theek karne ke liye: app mein Profile > Google Drive > "
-           "'Google Drive jodiye' dabaiye aur Google ke page par saare boxes (Drive bhi) tick kijiye.")
+    why = ("Google revoked / expired the sign-in" if "invalid_grant" in e or "expired" in e or "revoked" in e
+           else "Google did not refresh the sign-in")
+    msg = (f"The sign-in of your Google account ({email or 'Google'}) no longer works for Hoola ({why}). So Google Drive, "
+           "Gmail, Calendar and Sheets cannot be opened right now. To fix it: in the app go to Profile > Google Drive > "
+           "tap 'Connect Google Drive' and tick every box (Drive too) on Google's page.")
     if "invalid_grant" in e:
-        msg += (" Agar yeh har 7 din mein hota hai: Google Cloud Console > OAuth consent screen par app abhi 'Testing' mein hai; "
-                "'Publish app' (In production) kijiye, tab login 7 din mein expire nahi hoga.")
+        msg += (" If this happens every 7 days: in Google Cloud Console > OAuth consent screen the app is still in 'Testing'; "
+                "choose 'Publish app' (In production), then the sign-in will not expire every 7 days.")
     return msg
 
 
@@ -88,7 +88,7 @@ def _note_dead(tenant_id: str, tok: str, msg: str) -> None:
         from .events import bus, notify
         conv = convs.notice_chat(tenant_id)   # v0.714
         if conv:
-            notify(conv, msg + " Tab tak naye mail aur meeting ki khabar nahi aa payegi.")
+            notify(conv, msg + " Until then, news of new mail and meetings cannot come through.")
             bus.publish(conv, "google_reconnect", {"text": msg})
     except Exception:
         log.exception("google reconnect notice failed")

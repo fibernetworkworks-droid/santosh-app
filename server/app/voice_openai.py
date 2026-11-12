@@ -598,7 +598,7 @@ class OpenAICall(v.Call):
                     if limit in done:
                         self.stats["session_moves"] = self.stats.get("session_moves", 0) + 1
                     elif not self.closed.is_set() and loop.time() - started < 30:
-                        err = RuntimeError("OpenAI ne session turant band kar diya")
+                        err = RuntimeError("OpenAI closed the session at once")
                 except asyncio.CancelledError:
                     raise
                 except Exception as e:
@@ -616,7 +616,7 @@ class OpenAICall(v.Call):
                 self.first_error = self.first_error or str(err)
                 if failures >= 3:
                     self._end_reason = getattr(self, "_end_reason", "") or "error"
-                    await self.send_json({"type": "error", "message": f"Voice connection toot gaya: {self.first_error}"})
+                    await self.send_json({"type": "error", "message": f"The voice connection dropped: {self.first_error}"})
                     break
                 await self.send_json({"type": "status", "state": "reconnecting"})
                 await asyncio.sleep(min(0.5 * failures, 3))

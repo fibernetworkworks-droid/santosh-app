@@ -50,14 +50,14 @@ def configured() -> bool:
 def _hosts():
     st = get_settings()
     if not configured():
-        raise MailError("Email set nahi hai. Server ke .env mein EMAIL_ADDRESS aur EMAIL_PASSWORD daaliye.")
+        raise MailError("Email is not set up. Add EMAIL_ADDRESS and EMAIL_PASSWORD to the server's .env.")
     domain = st.email_address.split("@")[-1].lower()
     imap_d, smtp_d, smtp_port_d = PROVIDERS.get(domain, ("", "", 587))
     imap = st.email_imap_host or imap_d
     smtp = st.email_smtp_host or smtp_d
     smtp_port = st.email_smtp_port or smtp_port_d
     if not imap or not smtp:
-        raise MailError(f"'{domain}' ke liye server address nahi mila. .env mein EMAIL_IMAP_HOST aur EMAIL_SMTP_HOST set kijiye.")
+        raise MailError(f"No server address found for '{domain}'. Set EMAIL_IMAP_HOST and EMAIL_SMTP_HOST in .env.")
     return imap, st.email_imap_port, smtp, smtp_port
 
 
@@ -126,9 +126,9 @@ def _imap_login() -> imaplib.IMAP4_SSL:
         M.login(st.email_address, st.email_password)
         return M
     except imaplib.IMAP4.error as e:
-        raise MailError(f"Email login fail hua: {e}. App password sahi hai? (Gmail: myaccount.google.com/apppasswords)")
+        raise MailError(f"Email login failed: {e}. Is the app password correct? (Gmail: myaccount.google.com/apppasswords)")
     except OSError as e:
-        raise MailError(f"Email server se connect nahi hua: {e}")
+        raise MailError(f"Could not connect to the email server: {e}")
 
 
 def _fetch(limit: int, unread_only: bool, search: str | None, mailbox: str):
@@ -168,7 +168,7 @@ def _read_one(uid: str, mailbox: str, mark_seen: bool):
         M.select(mailbox, readonly=not mark_seen)
         typ, md = M.uid("fetch", uid.encode(), "(RFC822)")
         if typ != "OK" or not md or not md[0]:
-            raise MailError("Yeh email nahi mila (shayad hata di gayi).")
+            raise MailError("This email was not found (it may have been deleted).")
         msg = email.message_from_bytes(md[0][1])
         if mark_seen:
             try:
@@ -225,9 +225,9 @@ def _send(to_addr: str, subject: str, body: str, cc: str, in_reply_to: str | Non
             server.login(st.email_address, st.email_password)
             server.send_message(msg, from_addr=st.email_address, to_addrs=rcpt)
     except smtplib.SMTPAuthenticationError as e:
-        raise MailError(f"Email login fail hua (app password check kijiye): {e}")
+        raise MailError(f"Email login failed (check the app password): {e}")
     except (smtplib.SMTPException, OSError) as e:
-        raise MailError(f"Email bhejne mein dikkat: {e}")
+        raise MailError(f"Problem sending the email: {e}")
     return msg["Message-ID"]
 
 

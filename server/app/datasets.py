@@ -38,7 +38,7 @@ def _root(tenant: str) -> Path:
 def _path(tenant: str, ds: str) -> Path:
     ds = str(ds or "").strip()
     if not _ID.match(ds):
-        raise DataError("dataset id galat hai (ds_xxxxxxxxxx).")
+        raise DataError("the dataset id is not valid (ds_xxxxxxxxxx).")
     return _root(tenant) / f"{ds}.json"
 
 
@@ -62,7 +62,7 @@ def find_items(data: Any, items_path: str = "") -> list:
     if items_path:
         got = _get(data, items_path)
         if not isinstance(got, list):
-            raise DataError(f"items_path '{items_path}' par list nahi mili.")
+            raise DataError(f"items_path '{items_path}' did not give a list.")
         return got
     if isinstance(data, list):
         return data
@@ -130,7 +130,7 @@ def pick(items: list, fields: list[str] | str | None = None) -> list[dict]:
 # ---------------------------------------------------------------- store
 def save(tenant: str, rows: list[dict], name: str = "", source: str = "", meta: dict | None = None) -> dict:
     if not rows:
-        raise DataError("Koi row nahi mili; kuch save nahi hua.")
+        raise DataError("No rows were found; nothing was saved.")
     rows = rows[:MAX_ROWS]
     ds = "ds_" + secrets.token_hex(5)
     cols: list[str] = []
@@ -148,7 +148,7 @@ def save(tenant: str, rows: list[dict], name: str = "", source: str = "", meta: 
 def load(tenant: str, ds: str) -> dict:
     p = _path(tenant, ds)
     if not p.exists():
-        raise DataError(f"Dataset {ds} nahi mila (14 din baad hat jata hai). Dobara data_fetch kijiye.")
+        raise DataError(f"Dataset {ds} was not found (a dataset is removed after 14 days). Run data_fetch again.")
     return json.loads(p.read_text())
 
 
@@ -229,4 +229,4 @@ def as_text(rows: list[dict], limit: int = 5500) -> str:
             parts.append(f"{k}: {s[:240]}")
         lines.append(" | ".join(parts))
     out = "\n".join(lines)
-    return out if len(out) <= limit else out[:limit] + "\n…(aur rows: data_read se offset badhakar padhiye)"
+    return out if len(out) <= limit else out[:limit] + "\n…(more rows: read them with data_read and a higher offset)"

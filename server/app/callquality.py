@@ -42,8 +42,8 @@ NUM_KEYS = ("turns", "interruptions", "tools", "silent_tools", "acks", "false_st
             # v0.265 real voice: delivery cues sent, replies that opened with a thinking sound
             "delivery_cues", "filler_starts", "oa_replies", "breaths", "delivery_leaks", "early_cuts", "held_for_her", "finish_waited")
 
-END_WORDS = {"hung_up": "aapne kaata", "dropped": "line toot gayi", "error": "connection error",
-             "stall": "Gemini chup ho gaya", "server_restart": "server update", "hold_timeout": "hold bahut lamba"}
+END_WORDS = {"hung_up": "you hung up", "dropped": "the line dropped", "error": "connection error",
+             "stall": "Gemini went silent", "server_restart": "server update", "hold_timeout": "on hold too long"}
 
 # good reply start for a phone call: under ~1.2 s feels like a person, past ~2.5 s feels broken
 LAT_GOOD_MS, LAT_BAD_MS = 1200, 2500
@@ -161,36 +161,36 @@ def grade(c: dict[str, Any]) -> dict[str, Any]:
     turns = c.get("turns") or 0
     end = c.get("end") or ""
     if end in ("error", "stall"):
-        bad.append(f"call beech mein tooti ({END_WORDS[end]})")
+        bad.append(f"the call broke midway ({END_WORDS[end]})")
     elif end == "dropped" and (c.get("seconds") or 0) > 5:
-        meh.append("call bina 'kaato' ke khatam hui (line toot gayi)")
+        meh.append("the call ended without a hang-up (the line dropped)")
     if p90 is not None:
         if p90 > LAT_BAD_MS:
-            bad.append(f"jawab der se shuru hua (p90 {int(p90)} ms)")
+            bad.append(f"replies started late (p90 {int(p90)} ms)")
         elif p90 > LAT_GOOD_MS * 1.6:
-            meh.append(f"jawab thoda der se (p90 {int(p90)} ms)")
+            meh.append(f"replies a little late (p90 {int(p90)} ms)")
     if c.get("stall_reconnects"):
-        bad.append(f"Gemini chup ho gaya, {c['stall_reconnects']} baar dobara jodna pada")
+        bad.append(f"Gemini went silent, had to reconnect {c['stall_reconnects']} times")
     elif c.get("stall_nudges"):
-        meh.append("ek baar chup hua, yaad dilana pada")
+        meh.append("went silent once, needed a nudge")
     if c.get("goaway_forced"):
-        meh.append(f"{c['goaway_forced']} baar connection-badli mein baat kati")
+        meh.append(f"speech was cut {c['goaway_forced']} times during a connection change")
     if c.get("dropped_replies"):
-        meh.append("hold mein jawab chhoda gaya")
+        meh.append("a reply was dropped during hold")
     if turns and (c.get("lang_drifts") or 0) / turns > .1:
-        meh.append("bhasha beech mein badli")
+        meh.append("the language changed midway")
     if turns and (c.get("asked_again") or 0) / turns > .25:
-        meh.append("baar baar dobara poochha")
+        meh.append("asked to repeat again and again")
     if c.get("false_stops") and c["false_stops"] >= 3:
-        meh.append("shor se baar baar ruka")
+        meh.append("kept stopping because of noise")
     if (c.get("talk_over") or 0) >= 2:
-        meh.append(f"{c['talk_over']} baar aapke bolte hue bol pada")
+        meh.append(f"talked over you {c['talk_over']} times")
     if (c.get("repeats") or 0) >= 2:
-        meh.append(f"{c['repeats']} baar ek hi baat dobara boli")
+        meh.append(f"said the same thing again {c['repeats']} times")
     if lat and dead_air_s(lat) >= 20:
-        meh.append(f"kul {int(dead_air_s(lat))} second khamoshi mein intezaar")
+        meh.append(f"{int(dead_air_s(lat))} seconds of waiting in silence in total")
     if c.get("rating") is False:
-        bad.append("aapne 👎 diya")
+        bad.append("you gave a 👎")
     level = "bad" if bad else ("ok" if meh else "good")
     return {"grade": level, "problems": bad + meh}
 
@@ -257,16 +257,16 @@ def _roll(cs: list[dict]) -> dict[str, Any]:
 
 def _say(r: dict[str, Any]) -> str:
     if not r["calls"]:
-        return "Abhi koi call record nahi hui. Ek-do call kijiye, phir yahan numbers aayenge."
-    parts = [f"{r['calls']} calls mein {r['grades']['good']} achhi, {r['grades']['ok']} theek, {r['grades']['bad']} kharab."]
+        return "No call has been recorded yet. Make a call or two and the numbers will show here."
+    parts = [f"Of {r['calls']} calls, {r['grades']['good']} good, {r['grades']['ok']} OK, {r['grades']['bad']} bad."]
     if r["reply_start_ms_p50"] is not None:
-        parts.append(f"Jawab aam taur par {int(r['reply_start_ms_p50'])} ms mein shuru hota hai.")
+        parts.append(f"A reply usually starts in {int(r['reply_start_ms_p50'])} ms.")
     if r["broken_calls"]:
-        parts.append(f"{r['broken_calls']} call beech mein tooti.")
+        parts.append(f"{r['broken_calls']} calls broke midway.")
     if r.get("reply_start_ms_p99") is not None and r["reply_start_ms_p99"] > P99_ALERT_MS:
-        parts.append(f"Sabse dheema 1% jawab {round(r['reply_start_ms_p99'] / 1000, 1)} second mein - yeh sudharna hai.")
+        parts.append(f"The slowest 1% of replies take {round(r['reply_start_ms_p99'] / 1000, 1)} seconds - this needs fixing.")
     if r["goaway"]:
-        parts.append(f"Connection {r['goaway']} baar badla, {r['goaway_graceful']} baar baat kate bina.")
+        parts.append(f"The connection changed {r['goaway']} times, {r['goaway_graceful']} of them without cutting speech.")
     return " ".join(parts)
 
 
@@ -311,9 +311,9 @@ def alert_state(tenant: str, live: list[dict[str, Any]] | None = None) -> dict[s
     broken = sum(1 for c in cs[-10:] if c.get("end") in ("error", "stall"))
     why = []
     if p99 is not None and p99 > P99_ALERT_MS:
-        why.append(f"sabse dheema 1% jawab {round(p99 / 1000, 1)} second mein shuru hua (had {P99_ALERT_MS // 1000} s)")
+        why.append(f"the slowest 1% of replies started in {round(p99 / 1000, 1)} seconds (limit {P99_ALERT_MS // 1000} s)")
     if broken >= 3:
-        why.append(f"pichhli 10 mein se {broken} call beech mein tooti")
+        why.append(f"{broken} of the last 10 calls broke midway")
     try:
         last = float(json.loads(_alert_file(tenant).read_text(encoding="utf-8")).get("at") or 0)
     except Exception:
@@ -328,7 +328,7 @@ def maybe_alert(tenant: str) -> bool:
     a = alert_state(tenant)
     if not a["on"] or (a["last_sent"] and time.time() - a["last_sent"] < ALERT_EVERY_S):
         return False
-    text = "Call ki jaanch: " + "; ".join(a["why"]) + ". Profile > Call ki jaanch mein dekhiye."
+    text = "Call quality: " + "; ".join(a["why"]) + ". See Profile > Call quality."
     try:
         from .events import bus
         from .net.service import home_conv
@@ -344,60 +344,60 @@ def maybe_alert(tenant: str) -> bool:
 
 # ---- the ear test + real-phone checklist (she plays each one on her own phone, then marks it) ----
 EAR_TESTS: list[dict[str, str]] = [
-    {"id": "hello_speed", "kind": "ear", "title": "Pehli awaaz kitni jaldi",
-     "do": "Call shuru kijiye aur 'Hello, kaise ho?' boliye.",
-     "good": "Ek second ke andar jawab, ek chhoti line, robot jaisa nahi."},
-    {"id": "long_story", "kind": "ear", "title": "Lambi baat beech mein na kaate",
-     "do": "Ek lambi baat boliye (20-30 second) beech mein ruk ruk ke.",
-     "good": "Woh beech mein jawab nahi deta; bas kabhi 'haan...' / 'achha...' bolta hai; aapke khatam karne par jawab."},
-    {"id": "interrupt", "kind": "ear", "title": "Beech mein rokna",
-     "do": "Jab woh lamba bol raha ho tab 'ruko ruko' boliye.",
-     "good": "Turant ruk jaata hai aur aapki sunta hai; aapke shabd khote nahi."},
-    {"id": "list_pace", "kind": "ear", "title": "List aaram se",
-     "do": "Kahiye 'aaj ke 3 kaam batao' (ya koi list).",
-     "good": "Ek ek karke, saans le ke; jaldi-jaldi ek saans mein nahi."},
-    {"id": "feeling_low", "kind": "ear", "title": "Udaas baat par awaaz",
-     "do": "Kahiye 'aaj din bahut kharab gaya'.",
-     "good": "Dheemi, narm awaaz; 'wah!' jaisi khushi nahi."},
-    {"id": "feeling_glad", "kind": "ear", "title": "Khushi par awaaz",
-     "do": "Kahiye 'mera order aa gaya, bahut khush hoon!'",
-     "good": "Awaaz mein khushi; ek normal line, over-acting nahi."},
-    {"id": "tool_wait", "kind": "ear", "title": "Kaam karte waqt chup na rahe",
-     "do": "Kahiye 'aaj ka mausam batao' ya koi search.",
-     "good": "Turant 'ek second' jaisa kuch, phir sahi jawab; lambi khamoshi nahi."},
-    {"id": "job_news", "kind": "ear", "title": "Kaam ki khabar sahi waqt",
-     "do": "Call mein ek lamba kaam dijiye (jaise ek document banana), phir baat karte rahiye.",
-     "good": "Kaam hone par aapke rukne pe EK baar batata hai; aapki baat beech mein nahi kaat-ta, do baar nahi batata."},
-    {"id": "hinglish", "kind": "ear", "title": "Bhasha pakki",
-     "do": "Poori call Hinglish mein kijiye, ek-do English shabd daal ke.",
-     "good": "Woh poori call Hinglish mein rehta hai; achanak English / doosri bhasha nahi."},
-    {"id": "yes_approve", "kind": "ear", "title": "Bol kar haan",
-     "do": "Ek kaam dijiye jisme card aaye (jaise PC par kuch kholna), phir 'haan karo' boliye.",
-     "good": "Card bina tap ke aage badhta hai; paise wala card kabhi bol kar nahi."},
-    {"id": "net_switch", "kind": "phone", "title": "Wi-Fi se mobile data",
-     "do": "Call ke beech Wi-Fi band kar dijiye.",
-     "good": "Kuch second 'jud raha hoon', phir wahi baat aage; call khatam nahi hoti."},
-    {"id": "gsm_call", "kind": "phone", "title": "Beech mein phone call",
-     "do": "Hoola call ke beech kisi se apne number par call karwaiye, uthaiye, phir kaatiye.",
-     "good": "Phone call ke waqt Hoola chup (hold); kaatne par wapas wahi baat."},
-    {"id": "whatsapp_call", "kind": "phone", "title": "WhatsApp call aaye",
-     "do": "Hoola call ke beech WhatsApp call aane dijiye.",
-     "good": "Hoola chup ho jaata hai, awaaz nahi lena; baad mein wapas."},
-    {"id": "headset", "kind": "phone", "title": "Earphone / Bluetooth lagana",
-     "do": "Call ke beech earphone ya Bluetooth headset lagaiye aur nikaliye.",
-     "good": "Awaaz turant headset mein jaati hai, nikalne par speaker par; call chalti rehti hai."},
-    {"id": "song", "kind": "phone", "title": "Gaana chalte waqt",
-     "do": "Call mein 'Spotify pe koi gaana lagao' kahiye, phir baat kijiye.",
-     "good": "Gaana chalta hai, call bhi; woh gaane ke bol ko aapki baat nahi samajhta."},
+    {"id": "hello_speed", "kind": "ear", "title": "How fast the first word comes",
+     "do": "Start a call and say 'Hello, how are you?'",
+     "good": "A reply within a second, one short line, not robotic."},
+    {"id": "long_story", "kind": "ear", "title": "No cutting in on a long sentence",
+     "do": "Say something long (20-30 seconds), pausing now and then.",
+     "good": "It does not answer midway; at most a 'yes...' / 'okay...' now and then; the reply comes when you finish."},
+    {"id": "interrupt", "kind": "ear", "title": "Interrupting",
+     "do": "While it is giving a long answer, say 'wait, wait'.",
+     "good": "It stops at once and listens to you; your words are not lost."},
+    {"id": "list_pace", "kind": "ear", "title": "Lists at an easy pace",
+     "do": "Say 'tell me today's 3 tasks' (or ask for any list).",
+     "good": "One by one, with a breath between; not rushed out in one breath."},
+    {"id": "feeling_low", "kind": "ear", "title": "Voice on sad news",
+     "do": "Say 'today was a really bad day'.",
+     "good": "A slow, soft voice; no 'wow!' kind of cheer."},
+    {"id": "feeling_glad", "kind": "ear", "title": "Voice on good news",
+     "do": "Say 'my order has arrived, I am so happy!'",
+     "good": "Joy in the voice; one normal line, no over-acting."},
+    {"id": "tool_wait", "kind": "ear", "title": "No silence while it works",
+     "do": "Say 'what is the weather today' or ask for any search.",
+     "good": "Something like 'one second' at once, then the right answer; no long silence."},
+    {"id": "job_news", "kind": "ear", "title": "Task news at the right moment",
+     "do": "Give a long task on the call (such as making a document), then keep talking.",
+     "good": "When the task is done it tells you ONCE, when you pause; it does not cut into your speech or tell you twice."},
+    {"id": "hinglish", "kind": "ear", "title": "Language stays put",
+     "do": "Hold the whole call in one language, with a word or two of another mixed in.",
+     "good": "It stays in that language for the whole call; no sudden switch to another language."},
+    {"id": "yes_approve", "kind": "ear", "title": "Approving by voice",
+     "do": "Give a task that brings up a card (such as opening something on the PC), then say 'yes, go ahead'.",
+     "good": "The card moves ahead without a tap; a money card never goes ahead by voice."},
+    {"id": "net_switch", "kind": "phone", "title": "Wi-Fi to mobile data",
+     "do": "Turn Wi-Fi off in the middle of a call.",
+     "good": "A few seconds of 'reconnecting', then the same conversation continues; the call does not end."},
+    {"id": "gsm_call", "kind": "phone", "title": "A phone call in the middle",
+     "do": "During a Hoola call, have someone ring your number; pick up, then hang up.",
+     "good": "Hoola stays quiet (hold) during the phone call; after you hang up, the same conversation resumes."},
+    {"id": "whatsapp_call", "kind": "phone", "title": "A WhatsApp call comes in",
+     "do": "Let a WhatsApp call come in during a Hoola call.",
+     "good": "Hoola goes quiet and does not take the audio; it comes back afterwards."},
+    {"id": "headset", "kind": "phone", "title": "Plugging in earphones / Bluetooth",
+     "do": "During a call, connect earphones or a Bluetooth headset, then disconnect them.",
+     "good": "The sound moves to the headset at once, and back to the speaker when removed; the call keeps going."},
+    {"id": "song", "kind": "phone", "title": "While a song plays",
+     "do": "On the call say 'play a song on Spotify', then talk.",
+     "good": "The song plays and so does the call; it does not take the lyrics for your words."},
     {"id": "lock_screen", "kind": "phone", "title": "Screen lock",
-     "do": "Call ke beech phone lock kar dijiye, 1 minute baat kijiye.",
-     "good": "Call chalti rehti hai, dono taraf awaaz."},
-    {"id": "long_call", "kind": "phone", "title": "15 minute ki call",
-     "do": "15 minute se lambi call kijiye (connection beech mein badalta hai).",
-     "good": "Koi kat-ti hui line nahi; pehle ki baat yaad rehti hai."},
-    {"id": "server_restart", "kind": "phone", "title": "Call katne ke baad yaad",
-     "do": "Call ke beech net band karke 1 minute baad nayi call kijiye.",
-     "good": "Nayi call 'wahi kaam pe chalte hain' se shuru; naya hello nahi."},
+     "do": "Lock the phone during a call and talk for 1 minute.",
+     "good": "The call keeps going, with sound both ways."},
+    {"id": "long_call", "kind": "phone", "title": "A 15-minute call",
+     "do": "Make a call longer than 15 minutes (the connection changes midway).",
+     "good": "No broken line; it remembers what was said before."},
+    {"id": "server_restart", "kind": "phone", "title": "Memory after a dropped call",
+     "do": "Turn the internet off during a call, then make a new call after 1 minute.",
+     "good": "The new call starts with 'let's carry on with that task'; no fresh hello."},
 ]
 RESULTS = ("pass", "fail", "skip")
 

@@ -428,7 +428,7 @@ def _mask_digits(text: Any) -> str:
 def _salvage(sk: dict[str, Any]) -> dict[str, Any]:
     """The honest partial: laws enforced deterministically, unproven steps moved to gotchas, digits masked."""
     out: dict[str, Any] = {
-        "title": (re.sub(r"\s+", " ", str(sk.get("title") or "")).strip() or "Video se seekha kaam")[:TITLE_MAX],
+        "title": (re.sub(r"\s+", " ", str(sk.get("title") or "")).strip() or "Task learned from a video")[:TITLE_MAX],
         "kind": sk.get("kind") if sk.get("kind") in ("website_work", "other_work") else "other_work",
         "site": _mask_digits(sk.get("site"))[:120] if sk.get("site") else "",
         "start_url": str(sk.get("start_url") or "")[:500],
@@ -515,7 +515,7 @@ def _operator_home(tenant: str) -> Path:
 
 
 def _recipe_name(title: str) -> str:
-    return re.sub(r"\s+", " ", str(title or "")).strip()[:60] or "Video seekh"
+    return re.sub(r"\s+", " ", str(title or "")).strip()[:60] or "Video lesson"
 
 
 def _save_recipe_draft(tenant: str, sk: dict[str, Any], source: str) -> dict[str, Any]:

@@ -37,7 +37,7 @@ def test_tool_sends_a_card_and_refuses_secret_fields(env):
     card = _events(conv, "ask_form")[-1]
     assert card["status"] == "pending" and card["fields"][0]["value"] == "Meghana" and card["fields"][2]["options"] == ["SL", "3A", "2A"]
     for bad in ("OTP", "Login password", "Card number", "UPI PIN", "CVV"):
-        with pytest.raises(ToolError, match="form mein nahi"):
+        with pytest.raises(ToolError, match="cannot be asked for in a form"):
             asyncio.run(dispatch("ask_form", {"title": "x", "fields": [{"label": bad}]}, ctx))
     # a postal PIN code is fine
     asyncio.run(dispatch("ask_form", {"title": "Pata", "fields": [{"label": "PIN code", "kind": "number"},
@@ -70,7 +70,7 @@ def test_answers_are_checked_and_ids_go_to_the_locker(env, monkeypatch):
         again = c.post(f"/api/forms/{v['id']}/answer", json={"values": {}})
         assert again.status_code == 400
     conv_id, shown, context = ran[0]
-    assert conv_id == conv and shown == "Form bhara: Train ticket"
+    assert conv_id == conv and shown == "Filled in the form: Train ticket"
     assert "- Class: 3A" in context and "- Mobile: 9876543210" in context
     assert "2345 6789 0124" not in context and "234567890124" not in context        # the model never sees the number
     assert "{id:" in context or "[ID:" in context

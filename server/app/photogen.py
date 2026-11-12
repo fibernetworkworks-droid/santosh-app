@@ -24,7 +24,7 @@ ASPECT_WORDS = {"square": "1:1", "insta": "4:5", "instagram": "4:5", "post": "4:
                 "thumbnail": "16:9", "banner": "16:9"}
 # rough cost per picture in rupees (USD at 88), for the line the tool says; real cost is counted from usage
 COST_INR = {"fast": 3, "best": 12}
-LABEL = "AI se bana · Hoola"
+LABEL = "AI-generated · Hoola"
 MAX_INPUTS = 3
 _GOOD: dict[str, str] = {}          # quality -> model that worked in this process
 _LOCK = threading.Lock()
@@ -65,25 +65,25 @@ def problem(prompt: str, edit: bool = False, consent: bool = False) -> str:
     """'' when OK, else the plain reason Hoola won't make it."""
     t = " ".join((prompt or "").split())
     if not t:
-        return "Kya banana hai, ek line mein bataiye."
+        return "Tell me in one line what to make."
     if _NSFW.search(t):
-        return "Aisi (nangi / sexual) tasveer Hoola nahi banata."
+        return "Hoola does not make this kind of picture (nude / sexual)."
     if (_FAKE_DOC.search(t) and (_MAKE_WORDS.search(t) or _REAL_LOOK.search(t) or edit)) or \
             (_WEAK_DOC.search(t) and (_REAL_LOOK.search(t) or re.search(r"\b(fake|nakli|duplicate|forge)\b", t, re.I))):
-        return ("ID card, certificate, marksheet, note, bill, stamp, signature jaisi cheez ki tasveer Hoola nahi banata "
-                "ya badalta: woh nakli kaagaz ban sakta hai. Poster / greeting / product photo bataiye.")
+        return ("Hoola does not make or change a picture of something like an ID card, certificate, marksheet, banknote, bill, stamp "
+                "or signature: it could become a forged document. Ask for a poster / greeting / product photo.")
     if _SWAP.search(t):
-        return "Kisi ka chehra doosre par lagana (face swap / deepfake) Hoola nahi karta."
+        return "Hoola does not put one person's face on another (face swap / deepfake)."
     if _PERSON.search(t):
-        return ("Asli, jaane-maane logon (neta, actor, khiladi) ki tasveer Hoola nahi banata. Apni ya apne logon ki photo "
-                "badalni ho to woh photo bhejiye.")
+        return ("Hoola does not make pictures of real, well-known people (politicians, actors, sportspeople). To change a photo of "
+                "yourself or your own people, send that photo.")
     try:
         from .brand.rules import protected
         hit = protected(t)
     except Exception:
         hit = []
     if hit:
-        return f"{hit[0]} wali tasveer Hoola nahi banata (Emblems Act / sarkari chinh)."
+        return f"Hoola does not make a picture with {hit[0]} (Emblems Act / government emblems)."
     return ""
 
 
@@ -118,7 +118,7 @@ def prepare_input(data: bytes) -> bytes:
         im = ImageOps.exif_transpose(im)
         im.load()
     except Exception:
-        raise PhotoError("Yeh file photo nahi lagti; JPG / PNG / WEBP photo bhejiye.")
+        raise PhotoError("This file does not look like a photo; send a JPG / PNG / WEBP photo.")
     if im.mode not in ("RGB", "L"):
         bg = Image.new("RGB", im.size, (255, 255, 255))
         rgba = im.convert("RGBA")
@@ -166,7 +166,7 @@ def _client():
     from .config import get_settings
     st = get_settings()
     if not st.gemini_api_key:
-        raise PhotoError("Photo banane ke liye server par GEMINI_API_KEY chahiye (VPS .env).")
+        raise PhotoError("Making pictures needs GEMINI_API_KEY on the server (VPS .env).")
     from google import genai
     return genai.Client(api_key=st.gemini_api_key)
 
@@ -226,7 +226,7 @@ def generate(prompt: str, images: list[bytes] | None = None, aspect: str = "1:1"
                     continue                            # model refused the aspect setting: once more without it
                 if _skippable(e):
                     break                               # next model
-                raise PhotoError(f"Photo nahi ban payi: {last[:160]}")
+                raise PhotoError(f"The picture could not be made: {last[:160]}")
             data, said = _pull(r)
             if data:
                 with _LOCK:
@@ -234,12 +234,12 @@ def generate(prompt: str, images: list[bytes] | None = None, aspect: str = "1:1"
                 return data, model
             fb = getattr(r, "prompt_feedback", None)
             if fb is not None and getattr(fb, "block_reason", None):
-                raise Refused("Google ne yeh tasveer banane se mana kiya (safety). Doosre shabdon mein bataiye.")
+                raise Refused("Google refused to make this picture (safety). Describe it in other words.")
             if said:
-                raise PhotoError("Model ne tasveer nahi di, sirf yeh kaha: " + said.strip()[:200])
-            last = "khaali jawab"
+                raise PhotoError("The model gave no picture, it only said: " + said.strip()[:200])
+            last = "empty answer"
             break
-    raise PhotoError("Abhi koi photo model chal nahi raha (" + (last[:120] or "pata nahi") + "). Thodi der baad try kijiye.")
+    raise PhotoError("No picture model is working right now (" + (last[:120] or "unknown") + "). Try again in a little while.")
 
 
 def make(prompt: str, images: list[bytes] | None = None, aspect: str = "", quality: str = "fast",

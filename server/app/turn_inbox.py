@@ -128,10 +128,10 @@ def seen(tenant: str, conversation_id: str, client_id: str, hours: float = 6) ->
 
 CURRENT: contextvars.ContextVar = contextvars.ContextVar("turn_inbox_current", default=None)
 
-RESUME_NOTE = ("[Server restart: yeh kaam beech mein ruk gaya tha aur ab dobara chal raha hai. Upar is kaam ke jo kadam "
-               "ho chuke hain (tool ke natije) unhe dekho - jo ho chuka (bheja hua mail / message, order, card, file) use "
-               "DOBARA mat karo; jis kadam ka natija nahi dikhta uski haalat pehle tools se check karo. Sirf baaki kaam "
-               "karo, phir use saaf batao kya pehle ho chuka tha aur kya ab hua.]")
+RESUME_NOTE = ("[Server restart: this job was cut off midway and is now running again. Look at the steps of this job that are "
+               "already done above (the tool results) - whatever is done (a sent mail / message, an order, a card, a file), do "
+               "NOT do it AGAIN; for a step whose result is not visible, check its state with tools first. Do only the remaining "
+               "work, then tell the user clearly what was already done before and what was done now.]")
 
 
 # G1 (docs/LANGGRAPH_TURN_PLAN.md, chat_graph only): the inbox row a graph turn belongs to, so its checkpoint thread id

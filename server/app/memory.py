@@ -29,7 +29,7 @@ log = logging.getLogger("santosh.memory")
 
 CAPS = {"fact": 6, "chat": 6, "work": 4, "graph": 4, "page": 3, "diary": 5}   # per-store share of one answer
 LABELS = {"fact": "saved fact", "chat": "past chat / call / job", "work": "work note (Coder memory)",
-          "graph": "knowledge graph", "page": "Mere baare mein",
+          "graph": "knowledge graph", "page": "About me",
           "diary": "work diary (jobs, website jobs, files, calls)"}
 DIARY_SEARCH_DAYS = 30   # parity Phase 7: the diary left the chat turn, so its search looks further back than its 7 days
 

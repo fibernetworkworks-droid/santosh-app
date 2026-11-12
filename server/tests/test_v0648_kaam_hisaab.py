@@ -60,7 +60,7 @@ def test_listing_groups_running_waiting_and_done(env):
     salon = next(x for x in d["done"] if x["title"] == "Salon site")
     assert salon["from_call"] is True and salon["conversation_id"] == rec
     mail = next(x for x in d["done"] if x["title"] == "Sharma ji ko mail bhejo")
-    assert mail["from_call"] is False and mail["say"] == "ho gaya"
+    assert mail["from_call"] is False and mail["say"] == "done"
 
 
 def test_call_brief_knows_this_weeks_work_in_its_scope(env):
@@ -74,7 +74,7 @@ def test_call_brief_knows_this_weeks_work_in_its_scope(env):
     _run("work", "client X quote")                                      # another Session: fenced out
     b = kaamlist.brief(T, rec)
     assert "IS HAFTE KA KIYA HUA KAAM" in b
-    assert "GST report banao" in b and "baaki: March ka data" in b and "Mithai site" in b
+    assert "GST report banao" in b and "pending: March ka data" in b and "Mithai site" in b
     assert "client X" not in b
 
 

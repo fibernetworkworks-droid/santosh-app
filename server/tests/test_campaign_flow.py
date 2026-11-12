@@ -130,14 +130,14 @@ def test_full_campaign(env):
         notes = s.scalars(select(Message.display).where(Message.conversation_id == conv,
                                                         Message.in_history.is_(False))).all()
         assert any("approve" in x for x in notes)
-        assert any("poora ho gaya" in x for x in notes)
+        assert any("is complete" in x for x in notes)
         kinds = set(s.scalars(select(Event.kind).where(Event.conversation_id == conv)).all())
         assert {"message", "step", "campaign", "typing"} <= kinds
 
     # next turn: worker notices are handed to Santosh as context
     asyncio.run(run_turn(conv, "Kaisa raha?"))
     sent_to_claude = json.dumps(claude.calls[-2], ensure_ascii=False)
-    assert "[Santosh worker update]" in sent_to_claude and "poora ho gaya" in sent_to_claude
+    assert "[Santosh worker update]" in sent_to_claude and "is complete" in sent_to_claude
 
 
 def test_daily_limit_and_ready_gate(env, monkeypatch):

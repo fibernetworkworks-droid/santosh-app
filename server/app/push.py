@@ -107,7 +107,7 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
             return (f"{name}: needs you", f"Long task is blocked: {title} — {str(p.get('reason') or 'your answer is needed')[:200]}")
         if st == "done":
             rep = p.get("report") if isinstance(p.get("report"), dict) else {}
-            extra = (" · " + str(rep.get("aapka"))[:120]) if rep.get("aapka") and "Kuch nahi" not in str(rep.get("aapka")) else ""
+            extra = (" · " + str(rep.get("aapka"))[:120]) if rep.get("aapka") and not any(w in str(rep.get("aapka")) for w in ("Kuch nahi", "Nothing")) else ""
             return (f"{name}: task complete", f"Long task done: {title}{extra}")
         if st == "working" and p.get("milestone"):   # v0.228 a real milestone, at most a few per job (never every step)
             stage = str(p.get("stage") or "")[:100]
@@ -689,7 +689,7 @@ def _heard_on_call(conv: str, kind: str) -> bool:
 # the app (she wrote in the last 20 minutes).
 URGENT_KINDS = {"operator_ask", "bazar_approval", "studio_approval", "ask_form", "employee_ask", "site_down",
                 "cyber_incident", "dpo_breach", "google_reconnect"}
-_OWN_REMINDER = re.compile(r"^Yaad dila ra(?:ha|hi) hoon:")
+_OWN_REMINDER = re.compile(r"^(?:Yaad dila ra(?:ha|hi) hoon|Reminder):")
 _AWAKE: dict[str, float] = {}
 _HELD: dict[str, list[dict[str, Any]]] = {}
 NIGHT_SEND_MAX = 3

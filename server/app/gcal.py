@@ -51,9 +51,9 @@ def _primary(client):
         principal = client.principal()
         cals = principal.calendars()
     except Exception as e:
-        raise CalError(f"Calendar se connect nahi hua: {e}. App password aur 2-step verification check kijiye.")
+        raise CalError(f"Could not connect to the calendar: {e}. Check the app password and 2-step verification.")
     if not cals:
-        raise CalError("Koi calendar nahi mila is account mein.")
+        raise CalError("No calendar was found in this account.")
     addr = get_settings().email_address.lower()
     for c in cals:
         try:
@@ -109,7 +109,7 @@ def _agenda(start_local: datetime, end_local: datetime, keep_raw: bool = False):
     except TypeError:   # older caldav signature
         found = cal.date_search(start, end)
     except Exception as e:
-        raise CalError(f"Calendar padhne mein dikkat: {e}")
+        raise CalError(f"Problem reading the calendar: {e}")
     views = []
     for ev in found:
         try:
@@ -159,7 +159,7 @@ def _create(title, start_local, end_local, location, description, attendees):
     try:
         cal.save_event(ic.to_ical().decode())
     except Exception as e:
-        raise CalError(f"Event banane mein dikkat (CalDAV): {e}")
+        raise CalError(f"Problem creating the event (CalDAV): {e}")
     return {"id": uid, "title": title, "start": _fmt(start_local, tz), "end": _fmt(end_local, tz),
             "location": location or "", "attendees": attendees or []}
 
@@ -170,7 +170,7 @@ def _cancel(uid: str):
     try:
         ev = cal.event_by_uid(uid)
     except Exception:
-        raise CalError("Yeh event nahi mila (shayad pehle hi hata diya).")
+        raise CalError("This event was not found (it may already have been deleted).")
     title = ""
     try:
         title = str(ev.icalendar_component.get("summary") or "")
@@ -179,7 +179,7 @@ def _cancel(uid: str):
     try:
         ev.delete()
     except Exception as e:
-        raise CalError(f"Event hatane mein dikkat: {e}")
+        raise CalError(f"Problem deleting the event: {e}")
     return {"cancelled": uid, "title": title}
 
 

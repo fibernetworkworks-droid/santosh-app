@@ -48,9 +48,9 @@ def test_notes_are_spoken_shaped():
     for st, note in voiceaffect.NOTE.items():
         assert note and "{" not in note and "}" not in note          # the format() contract
         assert len(note) < 400                                       # a note, not a lecture
-    assert "pause" in voiceaffect.NOTE["low"] and "naram" in voiceaffect.NOTE["low"]
-    assert "garmi" in voiceaffect.NOTE["glad"]
-    assert "shaant" in voiceaffect.NOTE["tense"]
+    assert "pause" in voiceaffect.NOTE["low"] and "soft" in voiceaffect.NOTE["low"]
+    assert "warmth" in voiceaffect.NOTE["glad"]
+    assert "calm" in voiceaffect.NOTE["tense"]
 
 
 # ---------------- the call wiring: one note, debounced ----------------
@@ -73,7 +73,7 @@ class _FakeCall:
 def test_affect_watch_sends_one_note(monkeypatch):
     c = _FakeCall("mummy hospital mein hai, bahut pareshan hoon")
     asyncio.get_event_loop_policy().new_event_loop().run_until_complete(voice.Call._affect_watch(c))
-    assert len(c.notes) == 1 and "naram" in c.notes[0]
+    assert len(c.notes) == 1 and "soft" in c.notes[0]
     assert c.stats["affect_notes"] == 1 and c._affect_last == "low"
 
 
@@ -92,7 +92,7 @@ def test_affect_watch_new_state_fires(monkeypatch):
     c3 = _FakeCall("par suno, order double ho gaya!")
     c3._affect_last, c3._affect_at = c._affect_last, c._affect_at - 40   # 40 s gap, changed state
     asyncio.get_event_loop_policy().new_event_loop().run_until_complete(voice.Call._affect_watch(c3))
-    assert len(c3.notes) == 1 and "garmi" in c3.notes[0]
+    assert len(c3.notes) == 1 and "warmth" in c3.notes[0]
 
 
 def test_affect_watch_skips_other_mouths(monkeypatch):

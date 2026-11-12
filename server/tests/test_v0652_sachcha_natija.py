@@ -115,7 +115,7 @@ def test_a_stuck_job_never_reads_as_running(env):
     assert "STUCK (40 min with no progress" in blk and "do not say 'in progress'" in blk
     assert "stuck" in kaamwatch.status(T)["say"]
     row = kaamlist.listing(T)["running"][0]
-    assert row["stuck"] is True and row["say"].startswith("atka hai")
+    assert row["stuck"] is True and row["say"].startswith("stuck")
 
 
 def test_a_dead_job_is_said_once(env, monkeypatch):

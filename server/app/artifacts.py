@@ -55,7 +55,7 @@ Make something genuinely useful and beautiful, not a template:
   spacing, subtle shadows/radii, smooth but quick transitions. Support dark mode with @media (prefers-color-scheme: dark).
 - India-ready: ₹ with Indian grouping (₹1,25,000 via toLocaleString('en-IN')), dates as 19 Oct 2026, km, °C.
   Write UI text in the user's language/script as asked (Hindi/Marathi in Devanagari with
-  "Noto Sans Devanagari" from Google Fonts; Hinglish in Latin script). Default: simple English + Hinglish labels.
+  "Noto Sans Devanagari" from Google Fonts; Hinglish in Latin script). Default: simple English.
 - Self-contained: inline CSS/JS. You MAY load libraries only from cdnjs.cloudflare.com, cdn.jsdelivr.net, unpkg.com
   (pin exact versions, e.g. https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js) and fonts from
   Google Fonts. The page has NO network access otherwise: never fetch() APIs; embed all data in the page. No external
@@ -318,7 +318,7 @@ def stop(tenant: str, aid: str) -> bool:
 def start_build(aid: str, request: str, data: str = "") -> asyncio.Task:
     old = _building.get(aid)
     if old and not old.done():
-        raise RuntimeError("Is page ka ek version abhi ban raha hai; thoda ruk kar boliye.")
+        raise RuntimeError("A version of this page is being built right now; ask again in a moment.")
     t = asyncio.get_running_loop().create_task(_build(aid, request, data))
     _building[aid] = t
     t.add_done_callback(lambda _t: _building.pop(aid, None) if _building.get(aid) is _t else None)
@@ -330,7 +330,7 @@ async def make(tenant: str, conversation_id: str, request: str, artifact_id: str
     """Create a new page or a new version of one. Waits up to `wait` seconds, then returns while it keeps building."""
     request = (request or "").strip()
     if len(request) < 3:
-        raise ValueError("Batayiye kya banana hai")
+        raise ValueError("Tell me what to make")
     if artifact_id:
         a = get(tenant, artifact_id)
         if a is None:
@@ -567,7 +567,7 @@ window.addEventListener('error',function(e){E(e.message,e.lineno)});window.addEv
 function call(op,a){var b=B();if(!b){if(op==='storage.get')return Promise.resolve(M.hasOwnProperty(a.key)?M[a.key]:null);
 if(op==='storage.set'){if(a.value===null||a.value===undefined)delete M[a.key];else M[a.key]=a.value;return Promise.resolve(true)}
 if(op==='storage.all')return Promise.resolve(JSON.parse(JSON.stringify(M)));
-return Promise.reject(new Error('Santosh app mein kholiye'))}
+return Promise.reject(new Error('Open this in the Hoola app'))}
 return new Promise(function(res,rej){var id='c'+(++n);P[id]=[res,rej];b.postMessage(JSON.stringify({id:id,op:op,args:a||{}}))})}
 window.__santoshReply=function(id,ok,v){var p=P[id];if(!p)return;delete P[id];ok?p[0](v):p[1](new Error(String(v)))};
 try{Object.defineProperty(window,'localStorage',{get:function(){var s={getItem:function(k){return M.hasOwnProperty(k)?String(M[k]):null},setItem:function(k,v){M[k]=String(v);call('storage.set',{key:k,value:String(v)})},removeItem:function(k){delete M[k];call('storage.set',{key:k,value:null})},clear:function(){M={}},key:function(i){return Object.keys(M)[i]||null}};Object.defineProperty(s,'length',{get:function(){return Object.keys(M).length}});return s}})}catch(e){}
@@ -691,7 +691,7 @@ async def ask(tenant: str, aid: str, question: str) -> str:
         raise ValueError("empty question")
     hits = [t for t in _ask_log.get(tenant, []) if t > time.time() - 3600]
     if len(hits) >= 60:
-        raise ValueError("Bahut saare sawaal; thodi der baad poochiye")
+        raise ValueError("Too many questions; ask again in a little while")
     _ask_log[tenant] = hits + [time.time()]
     system = (f"You are Santosh, answering a question asked from inside the user's page '{a.title}' ({a.summary}). "
               "Answer briefly and concretely (max 120 words), in the language of the question. Plain text only.")
