@@ -148,7 +148,7 @@ def set_creds(tenant: str, provider: str, values: dict[str, Any]) -> dict[str, A
         raise CcError("Provider: plivo, exotel ya fake.")
     clean = {k: str(values.get(k) or "").strip()[:200] for k in keys if str(values.get(k) or "").strip()}
     if provider == "plivo" and not (clean.get("auth_id") and clean.get("auth_token")):
-        raise CcError("Plivo ke liye Auth ID aur Auth Token dono chahiye (Plivo console > Overview).")
+        raise CcError("Plivo needs both the Auth ID and the Auth Token (Plivo console > Overview).")
     with session() as s:
         r = _row(s, tenant)
         r.provider = provider
@@ -208,16 +208,16 @@ def _urls(tenant: str, r: CcSettings) -> dict[str, str]:
 
 
 SETUP = {
-    "plivo": ["Plivo par India-registered business ka account + KYC (GST / CIN / Udyam ke saath).",
-              "Ek Indian number kirayi par lijiye (landline series = service calls ke liye).",
-              "Plivo > Voice > Applications > nayi Application: Answer URL = upar wala 'answer' (POST), Hangup URL = 'hangup'.",
-              "Number ko us Application se jodiye. Auth ID + Auth Token yahan daaliye (sirf app mein).",
-              "Hoola ka server India mein hona chahiye (Plivo media anchoring: dono taraf India)."],
-    "exotel": ["Exotel App Bazaar mein flow: Voicebot applet (URL = 'stream_url_endpoint' se dynamic, ya 'stream' + Basic Auth).",
-               "Voicebot ke baad Passthru applet: URL = 'after' (200 = insaan ko jodna hai, 302 = nahi).",
-               "Passthru ke 200 raste par Connect applet (dynamic URL = 'connect'), 302 raste par Hangup.",
-               "IP whitelisting ke liye Exotel support (hello@exotel.com) se Hoola server ka IP do."],
-    "fake": ["Test line: koi asli call nahi; script aazmane ke liye."],
+    "plivo": ["An account on Plivo for an India-registered business + KYC (with GST / CIN / Udyam).",
+              "Rent an Indian number (landline series = for service calls).",
+              "Plivo > Voice > Applications > new Application: Answer URL = the 'answer' above (POST), Hangup URL = 'hangup'.",
+              "Link the number to that Application. Enter the Auth ID + Auth Token here (in the app only).",
+              "Hoola's server must be in India (Plivo media anchoring: India on both sides)."],
+    "exotel": ["In the Exotel App Bazaar flow: Voicebot applet (URL = dynamic from 'stream_url_endpoint', or 'stream' + Basic Auth).",
+               "After the Voicebot, a Passthru applet: URL = 'after' (200 = connect a person, 302 = do not).",
+               "On the Passthru 200 path a Connect applet (dynamic URL = 'connect'), on the 302 path Hangup.",
+               "For IP whitelisting, give Hoola's server IP to Exotel support (hello@exotel.com)."],
+    "fake": ["Test line: no real call; for trying the script."],
 }
 
 
@@ -237,7 +237,7 @@ def settings(tenant: str) -> dict[str, Any]:
     v["not_used"] = R.NOT_PRIMARY
     v["open_now"] = is_open(tenant)
     if not v["urls"]:
-        v["problems"] = ["Server par PUBLIC_BASE_URL set nahi hai: provider ko webhook ka pata nahi diya ja sakta."]
+        v["problems"] = ["PUBLIC_BASE_URL is not set on the server: the provider cannot be given the webhook address."]
     return v
 
 
@@ -263,7 +263,7 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
         if "number" in kw:
             n = R.phone_e164(kw["number"])
             if kw["number"] and not n:
-                raise CcError("Number 10 ankon ka Indian number ho (jaise 020 4567 8901).")
+                raise CcError("The number must be a 10-digit Indian number (such as 020 4567 8901).")
             r.number = n
         for k, n in (("agent_name", 40), ("voice", 30)):
             if k in kw:
@@ -274,7 +274,7 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
                 days = sorted({int(d) for d in (h.get("days") or [0, 1, 2, 3, 4, 5]) if 0 <= int(d) <= 6})
                 o, c = _hm(h.get("open") or "10:00"), _hm(h.get("close") or "19:00")
                 if o >= c:
-                    raise CcError("Band hone ka samay khulne ke baad ho.")
+                    raise CcError("The closing time must be after the opening time.")
                 r.hours = json.dumps({"open": o, "close": c, "days": days})
             else:
                 r.hours = ""
@@ -299,7 +299,7 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
             for x in (kw["handover"] or [])[:6]:
                 ph = R.phone_e164((x or {}).get("phone"))
                 if not ph:
-                    raise CcError(f"'{(x or {}).get('name', '')}' ka number sahi nahi.")
+                    raise CcError(f"The number for '{(x or {}).get('name', '')}' is not valid.")
                 out.append({"name": str(x.get("name") or "")[:40], "phone": ph, "role": str(x.get("role") or "")[:30]})
             r.handover = json.dumps(out)
     return settings(tenant)
@@ -314,7 +314,7 @@ def set_line(tenant: str, on: bool) -> dict[str, Any]:
             prov, num, cset = r.provider, r.number, bool(r.creds)
         problems = []
         if sc is None:
-            problems.append("Pehle script banaiye aur app mein 'Haan, yahi script chalao' dabaiye.")
+            problems.append("First create a script and press 'Yes, use this script' in the app.")
         if prov != "fake" and not num:
             problems.append("Provider ka number daaliye.")
         if prov == "plivo" and not (cset or creds(tenant).get("auth_token")):
@@ -323,7 +323,7 @@ def set_line(tenant: str, on: bool) -> dict[str, Any]:
             raise CcError(" ".join(problems))
     with session() as s:
         _row(s, tenant).line_on = bool(on)
-    return settings(tenant) | {"say": "AI line chalu: ab calls Hoola uthayega." if on else "AI line band: calls ab seedhe aapke number par."}
+    return settings(tenant) | {"say": "AI line is on: Hoola will now answer calls." if on else "AI line is off: calls now go straight to your number."}
 
 
 # ---------------------------------------------------------------- the script
@@ -423,9 +423,9 @@ def make_script(tenant: str, words_: str, file_text: str = "") -> dict[str, Any]
     """Draft (or redraft) from her words. Nothing runs on the line until she approves the version in the app."""
     words_ = (words_ or "").strip()
     if len(words_) + len(file_text) < 10:
-        raise CcError("Business ke baare mein thoda bataiye: kya karte ho, timing, aam sawal aur unke jawab.")
+        raise CcError("Tell me a little about the business: what you do, timings, common questions and their answers.")
     if R.secret_in(words_ + " " + file_text) in ("otp_pin", "password", "card", "cvv"):
-        raise CcError("Script mein PIN / OTP / password / card jaisi cheez nahi daalni.")
+        raise CcError("Do not put anything like a PIN / OTP / password / card in the script.")
     base = _base_content(tenant)
     got = _json_of(_llm(DRAFT_SYSTEM, f"Current script (keep what still holds): {json.dumps(base, ensure_ascii=False)[:6000]}\n\n"
                                       f"Her words:\n{words_[:6000]}\n\nHer FAQ file:\n{file_text[:12000]}"))
@@ -446,9 +446,9 @@ def make_script(tenant: str, words_: str, file_text: str = "") -> dict[str, Any]
             can["appointments"] = True
         content["can"] = can
     out = _save_draft(tenant, content, "drafted from her words")
-    return out | {"say": f"Script v{out['version']} ka draft taiyaar ({out['faqs']} sawal). "
-                         + (f"{len(out['blanks'])} jawab khaali hain, bhariye. " if out["blanks"] else "")
-                         + "Line par tabhi chalega jab aap app mein Haan karengi."}
+    return out | {"say": f"Draft of script v{out['version']} is ready ({out['faqs']} questions). "
+                         + (f"{len(out['blanks'])} answers are empty, please fill them. " if out["blanks"] else "")
+                         + "It goes live on the line only when you press Yes in the app."}
 
 
 def edit_script(tenant: str, faq_add: list[dict[str, Any]] | None = None, faq_remove: list[str] | None = None,
@@ -462,7 +462,7 @@ def edit_script(tenant: str, faq_add: list[dict[str, Any]] | None = None, faq_re
         if not q:
             continue
         if R.secret_in(str(f.get("a") or "")) in ("otp_pin", "password", "card", "cvv"):
-            raise CcError("Jawab mein PIN / OTP / password nahi.")
+            raise CcError("No PIN / OTP / password in an answer.")
         faqs = [x for x in faqs if R.norm(x.get("q", "")) != R.norm(q)]
         faqs.append({"q": q, "a": str(f.get("a") or "[blank]"), "words": list(f.get("words") or [])})
     content["faqs"] = faqs
@@ -472,18 +472,18 @@ def edit_script(tenant: str, faq_add: list[dict[str, Any]] | None = None, faq_re
     if "can" in fields and isinstance(fields["can"], dict):
         content["can"] = dict(content.get("can") or {}) | {k: bool(v) for k, v in fields["can"].items() if k in R.ACTIONS}
     out = _save_draft(tenant, content, "edited")
-    return out | {"say": f"Draft v{out['version']} badla. Line par chalane ke liye app mein Haan chahiye."}
+    return out | {"say": f"Draft v{out['version']} changed. Your Yes in the app is needed to put it on the line."}
 
 
 def submit(tenant: str, conv: str = "") -> dict[str, Any]:
     """Send her the approval card. The tool can only do this; the approval itself is her tap in the app."""
     d = draft(tenant)
     if d is None:
-        raise CcError("Koi draft nahi. Pehle script banaiye.")
+        raise CcError("There is no draft. Create a script first.")
     if d["blanks"]:
-        raise CcError("Yeh jawab abhi khaali hain: " + "; ".join(d["blanks"][:6]) + ". Pehle bhariye.")
+        raise CcError("These answers are still empty: " + "; ".join(d["blanks"][:6]) + ". Fill them first.")
     if not d["content"].get("business"):
-        raise CcError("Business ka naam script mein chahiye.")
+        raise CcError("The business name is needed in the script.")
     old = approved(tenant)
     changes = _diff(old["content"] if old else {}, d["content"])
     with session() as s:
@@ -492,20 +492,20 @@ def submit(tenant: str, conv: str = "") -> dict[str, Any]:
     card = {"script_id": d["id"], "version": d["version"], "hash": d["hash"], "business": d["content"].get("business"),
             "faqs": [{"q": f["q"], "a": f["a"]} for f in d["content"].get("faqs", [])][:40], "can": d["content"].get("can"),
             "never": d["content"].get("never", []), "changes": changes, "status": "waiting",
-            "say": f"Call centre script v{d['version']}: {len(d['content'].get('faqs', []))} sawal. Line par sirf yahi bolega."}
+            "say": f"Call centre script v{d['version']}: {len(d['content'].get('faqs', []))} questions. This is all the line will say."}
     publish(tenant, "callcentre_script", card, conv)
-    return card | {"next": "Card bheja. Wait for her tap in the app; never say the script is live before that."}
+    return card | {"next": "Card sent. Wait for the user's tap in the app; never say the script is live before that."}
 
 
 def _diff(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     oq = {R.norm(f["q"]): f["a"] for f in old.get("faqs") or []}
     nq = {R.norm(f["q"]): (f["q"], f["a"]) for f in new.get("faqs") or []}
-    out = [f"Naya: {q}" for k, (q, _) in nq.items() if k not in oq]
-    out += [f"Badla: {q}" for k, (q, a) in nq.items() if k in oq and oq[k] != a]
-    out += [f"Hataya: {k}" for k in oq if k not in nq]
+    out = [f"New: {q}" for k, (q, _) in nq.items() if k not in oq]
+    out += [f"Changed: {q}" for k, (q, a) in nq.items() if k in oq and oq[k] != a]
+    out += [f"Removed: {k}" for k in oq if k not in nq]
     if (old.get("can") or {}) != (new.get("can") or {}):
-        out.append("Line kya kar sakti hai: badla")
-    return out[:30] or ["Pehla script"]
+        out.append("What the line can do: changed")
+    return out[:30] or ["First script"]
 
 
 def decide_script(tenant: str, script_id: str, yes: bool, hash_: str = "", note_: str = "") -> dict[str, Any]:
@@ -514,15 +514,15 @@ def decide_script(tenant: str, script_id: str, yes: bool, hash_: str = "", note_
     with session() as s:
         r = s.get(CcScript, script_id)
         if r is None or r.tenant_id != tenant:
-            raise CcError("Script nahi mila.")
+            raise CcError("Script not found.")
         if r.status not in ("waiting", "draft"):
             raise CcError(f"Yeh version '{r.status}' hai.")
         if yes:
             content = _j(r.content, {})
             if not hash_ or hash_ != r.hash or r.hash != R.script_hash(content):
-                raise CcError("Card ke baad script badal gaya. Naya card dekhiye.")
+                raise CcError("The script changed after the card. Look at the new card.")
             if R.blanks(content):
-                raise CcError("Khaali jawab bhare bina line par nahi chal sakta.")
+                raise CcError("It cannot go on the line with empty answers.")
             for o in s.scalars(select(CcScript).where(CcScript.tenant_id == tenant, CcScript.status == "approved")).all():
                 o.status = "retired"
             r.status, r.approved_at, r.note = "approved", now(), (note_ or "her haan")[:500]
@@ -530,8 +530,8 @@ def decide_script(tenant: str, script_id: str, yes: bool, hash_: str = "", note_
             r.status, r.note = "rejected", (note_ or "her mana")[:500]
         v = _script_view(r)
     publish(tenant, "callcentre_script", {"script_id": v["id"], "version": v["version"], "status": v["status"],
-                                          "say": f"Script v{v['version']} " + ("ab line par chal raha hai." if yes else "rok diya.")})
-    return v | {"say": f"Script v{v['version']} " + ("chalu. Ab line isi se jawab degi." if yes else "mana. Purana script hi chalega.")}
+                                          "say": f"Script v{v['version']} " + ("is now live on the line." if yes else "stopped.")})
+    return v | {"say": f"Script v{v['version']} " + ("is on. The line will now answer from it." if yes else "declined. The old script stays.")}
 
 
 # ---------------------------------------------------------------- callers (language + repeat callers)
@@ -564,7 +564,7 @@ def forget_caller(tenant: str, number: str) -> dict[str, Any]:
     """DPDP erasure for one caller: their memory, messages and call transcripts go (counts stay)."""
     k = R.phone_key(number)
     if len(k) != 10:
-        raise CcError("Poora 10 ankon ka number chahiye.")
+        raise CcError("A full 10-digit number is needed.")
     with session() as s:
         s.execute(delete(CcCaller).where(CcCaller.tenant_id == tenant, CcCaller.key == k))
         msgs = s.scalars(select(CcMessage).where(CcMessage.tenant_id == tenant)).all()
@@ -576,9 +576,9 @@ def forget_caller(tenant: str, number: str) -> dict[str, Any]:
         n_c = 0
         for c in s.scalars(select(CcCall).where(CcCall.tenant_id == tenant)).all():
             if R.phone_key(c.caller) == k:
-                c.caller, c.caller_name, c.transcript, c.summary = "", "", "[]", "(caller ke kehne par mitaya)"
+                c.caller, c.caller_name, c.transcript, c.summary = "", "", "[]", "(deleted at the caller's request)"
                 n_c += 1
-    return {"forgot": True, "messages": n_m, "calls": n_c, "say": f"Is number ki yaad mita di ({n_c} calls, {n_m} messages)."}
+    return {"forgot": True, "messages": n_m, "calls": n_c, "say": f"Memory of this number deleted ({n_c} calls, {n_m} messages)."}
 
 
 # ---------------------------------------------------------------- the incoming call (provider webhook)
@@ -675,7 +675,7 @@ def incoming(tenant: str, info: dict[str, str], tries: int = 0) -> dict[str, Any
             _end("transferred")
             return out | {"action": "dial", "dial": first, "text": R.CONNECTING[R.lang3(lang)]}
         _end("closed")
-        _missed(tenant, cid, caller, "missed", "AI line band thi, call aayi thi")
+        _missed(tenant, cid, caller, "missed", "The AI line was off; a call came in")
         return out | {"action": "say", "text": R.BUSY[R.lang3(lang)]}
     if not is_open(tenant) and after == "closed":
         _end("closed")
@@ -726,7 +726,7 @@ def hung_up(tenant: str, provider_call: str, seconds: float | None = None) -> No
             caller, cid = c.caller, c.id
         else:
             return
-    _missed(tenant, cid, caller, "missed", "Caller line par intezaar karte karte kat gaya")
+    _missed(tenant, cid, caller, "missed", "The caller hung up while waiting on the line")
 
 
 # ---------------------------------------------------------------- what the AI line may do (customer-safe, one caller only)
@@ -768,7 +768,7 @@ def faq_answer(cc: CallCtx, question: str = "", **_) -> dict[str, Any]:
 def take_message(cc: CallCtx, message: str = "", name: str = "", callback_at: str = "", **_) -> dict[str, Any]:
     msg = str(message or "").strip()
     if len(msg) < 3:
-        raise CcError("Message kya hai? Caller se poochho.")
+        raise CcError("What is the message? Ask the caller.")
     if R.secret_in(msg) in ("otp_pin", "password", "card", "cvv", "aadhaar", "bank_account"):
         msg = R.mask_text(msg) + " (gupt number hataya)"
     when = ""
@@ -789,7 +789,7 @@ def take_message(cc: CallCtx, message: str = "", name: str = "", callback_at: st
             c.caller_name = str(name)[:80]
     cc.messages.append(view["id"])
     publish(cc.tenant, "callcentre_message", view | {"say": f"Call se message: {view['name'] or R.mask_phone(cc.caller)}: {view['text'][:140]}"})
-    return {"saved": True, "say": "Message team ko de diya; tell the caller someone from the team will call back"
+    return {"saved": True, "say": "Message given to the team; tell the caller someone from the team will call back"
                                   + (f" around {when}" if when else "") + ". Do not promise an exact time otherwise."}
 
 
@@ -806,7 +806,7 @@ def book_appointment(cc: CallCtx, when: str = "", name: str = "", note_: str = "
     if not cc.can.get("appointments"):
         return {"not_allowed": True, "do": "Appointments are not in her script: take_message instead."}
     if not str(name or "").strip():
-        raise CcError("Caller ka naam poochho, phir book karo.")
+        raise CcError("Ask the caller's name, then book.")
     from ..employee import inbox
     try:
         a = inbox.book(cc.tenant, str(when), name=str(name)[:80], phone=R.digits(cc.caller), note=R.mask_text(note or note_)[:300],
@@ -846,7 +846,7 @@ def register_complaint(cc: CallCtx, text: str = "", **_) -> dict[str, Any]:
         return {"not_allowed": True, "do": "take_message instead."}
     text = R.mask_text(str(text or "").strip())[:2000]
     if len(text) < 5:
-        raise CcError("Shikayat kya hai, caller se poochho.")
+        raise CcError("What is the complaint? Ask the caller.")
     from ..employee.inbox import _ensure_business
     from ..net.business import Business, Ticket, ticket_view
     _ensure_business(cc.tenant)
@@ -1161,7 +1161,7 @@ def call(tenant: str, call_id: str) -> dict[str, Any]:
     with session() as s:
         c = s.get(CcCall, call_id)
         if c is None or c.tenant_id != tenant:
-            raise CcError("Call nahi mili.")
+            raise CcError("Call not found.")
         return _call_view(c, full=True)
 
 
@@ -1177,10 +1177,10 @@ def message_done(tenant: str, msg_id: str, note_: str = "") -> dict[str, Any]:
     with session() as s:
         m = s.get(CcMessage, msg_id)
         if m is None or m.tenant_id != tenant:
-            raise CcError("Message nahi mila.")
+            raise CcError("Message not found.")
         m.status, m.note = "done", str(note_ or "")[:500]
         v = _msg_view(m)
-    return v | {"say": "Ho gaya mark kiya."}
+    return v | {"say": "Marked as done."}
 
 
 def unanswered(tenant: str, days: int = 30) -> list[dict[str, Any]]:
@@ -1234,9 +1234,9 @@ def day(tenant: str) -> dict[str, Any]:
     rep = report(tenant, 1)
     problems = list(st.get("problems") or [])
     if sc is None:
-        problems.append("Koi approved script nahi: line AI se nahi chalegi.")
+        problems.append("There is no approved script: the line will not run on AI.")
     if not st["handover"]:
-        problems.append("Insaan ko jodne ke liye koi number nahi (Niyam > hand-over).")
+        problems.append("There is no number to connect a person (Rules > hand-over).")
     return {"settings": st, "script": sc, "draft": d, "report": rep, "messages": messages(tenant), "calls": calls(tenant, 20),
             "live": _live_count(tenant), "problems": problems,
             "say": ("Line chalu" if st["line_on"] else "Line band") + f" · {rep['say']}"}
