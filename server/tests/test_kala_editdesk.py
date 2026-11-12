@@ -79,7 +79,7 @@ def test_rules():
     ok, w = R.licence_problems({"licence_type": "royalty_free", "source": "Artlist", "licence_ref": "AL-77", "expires": "2026-10-30"}, True, t0)
     assert not ok and w
     bad, _ = R.licence_problems({"licence_type": "royalty_free", "licence_ref": "x", "expires": "2026-01-01"}, True, t0)
-    assert any("khatam" in x for x in bad)
+    assert any("expired" in x for x in bad)
     bad, _ = R.licence_problems({"licence_type": "royalty_free", "licence_ref": "x", "source": "youtube se download kiya"}, True, t0)
     assert bad
     assert R.gst_split("27", "27", 18, 1000) == {"pct": 18, "cgst": 90.0, "sgst": 90.0, "igst": 0.0, "tax": 180.0, "kind": "intra"}

@@ -71,7 +71,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
     S = sh
     with pytest.raises(S.ShaadiError) as e:
         S.wedding_new(T, bride="A", groom="B", age_bride=16)
-    assert "baal vivah" in str(e.value)
+    assert "child marriage" in str(e.value)
     w = _wedding(S)
     names = [f["name"] for f in w["functions"]]
     assert names[0] == "Sakharpuda" and "Lagna" in names and "Kelvan" in names        # community starter list
@@ -93,7 +93,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
     S.fn_set(T, w["id"], "mehendi", date_="2026-12-12", start="4 pm")
     # checklist counted back from the first function (10 Dec)
     cl = S.checklist(T, w["id"])["items"]
-    venue = [c for c in cl if "Venue" in c["what"]][0]
+    venue = [c for c in cl if "venue" in c["what"].lower()][0]
     assert venue["due"] == (date(2026, 12, 10) - timedelta(days=210)).isoformat() and venue["state"] == "late"
     reg = [c for c in cl if "registration" in c["what"]][0]
     assert reg["due"] == (date(2026, 12, 14) + timedelta(days=30)).isoformat()      # after the LAST function
@@ -104,7 +104,7 @@ def test_wedding_functions_muhurat_panchang_checklist_timeline(sh):
         S.timeline_set(T, w["id"], "haldi", starter=True)
     S.vendor_add(T, w["id"], "DJ Bunty", "dj", "9811111111", ["reception"], quote=35000)
     tl = S.timeline_set(T, w["id"], "reception", starter=True)
-    assert tl["function"]["timeline"][0]["time"] == "15:00" and any("raat 10" in x for x in tl["warnings"])
+    assert tl["function"]["timeline"][0]["time"] == "15:00" and any("10 pm" in x for x in tl["warnings"])
     tl = S.timeline_set(T, w["id"], "lagna", starter=True)
     assert any(r["who"] == "pandit" and r["time"].startswith("12:35") for r in tl["function"]["timeline"])
     plan = S.day_plan(T, w["id"])

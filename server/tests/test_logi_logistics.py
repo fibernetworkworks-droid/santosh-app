@@ -72,7 +72,7 @@ def test_rules():
     cap = R.liability_cap(5000, 300000)
     assert cap["cap"] == 50000 and R.liability_cap(5000, 20000)["cap"] == 20000
     t = R.customer_text("dispatch", {"name": "Ramesh Sharma", "business": "Ingle Traders"})
-    assert "Ramesh" in t and "[gaadi no.]" in t and "[pahunchne ka samay]" in t       # unknowns are blanks, never guessed
+    assert "Ramesh" in t and "[vehicle no.]" in t and "[arrival time]" in t       # unknowns are blanks, never guessed
     assert R.uqc("bori") == "BAG" and R.uqc("KGS") == "KGS"
 
 

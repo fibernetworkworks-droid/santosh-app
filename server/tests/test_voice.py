@@ -362,7 +362,7 @@ def test_voice_does_not_spin_when_gemini_hangs_up_at_once(env, monkeypatch):
         with c.websocket_connect(f"/api/voice/ws?conv={conv}") as ws:
             events = read_events(ws, lambda e: e["type"] == "error", limit=20)
     kinds = [e["type"] for e in events]
-    assert "status" in kinds and kinds[-1] == "error" and "toot gaya" in events[-1]["message"]
+    assert "status" in kinds and kinds[-1] == "error" and "dropped" in events[-1]["message"]
     assert len(configs) == 3
 
 

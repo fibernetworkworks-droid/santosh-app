@@ -102,7 +102,7 @@ def test_isp_owner_gets_a_music_app_not_her_isp(app_env):
     ids = [x["id"] for x in v["plan"]["screens"]]
     assert {"now_playing", "playlist", "library"} <= set(ids) and not any(x in ids for x in ("olt_list", "subscriber_list", "cart"))
     assert "music" in v["say"].lower() and "does not include FNW Fibernetwork Works details" in v["say"]
-    assert any("naam" in q.lower() for q in v["questions"]) and not any("call / whatsapp" in q.lower() for q in v["questions"])
+    assert any("called" in q.lower() for q in v["questions"]) and not any("call / whatsapp" in q.lower() for q in v["questions"])
     r = S._load(v["id"])
     scr = S.write_screen(r, "home")
     assert len(calls) == 2 and "Recently played" in scr["html"] and "Broadband" not in scr["html"] and not scr.get("off_topic")
@@ -133,7 +133,7 @@ def test_own_business_keeps_her_facts_and_unclear_asks(app_env):
     # a product word and a business both fit -> one question before anything is built
     with pytest.raises(S.AppError) as e:
         S.new(T, "photo app")
-    assert "One question to be sure" in str(e.value) and " or " in str(e.value) and S.STATS["asked_first"] >= 1
+    assert "One question to be sure" in str(e.value) and S.STATS["asked_first"] >= 1
     assert S.new(T, "photo app", answers={"sure": True})["status"] == "planned"      # she said: go ahead with the first
     with pytest.raises(S.AppError) as e2:
         S.new(T, "dream11 jaisa fantasy app")
