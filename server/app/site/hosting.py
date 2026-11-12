@@ -314,6 +314,8 @@ def _hosts_of(r: Site, include_pending: bool = True) -> list[SiteHost]:
 def blockers(r: Site) -> list[str]:
     chk = _j(r.checks, {})
     out = [b["text"] for b in chk.get("blocking", [])]
+    if getattr(r, "draft_of", ""):                 # v0.837 L13 a draft is never put live; accept it into the website first
+        out.append("this is a draft; accept it into the website (Drafts tab), then put the website live")
     blanks = (chk.get("scores") or {}).get("blanks", 0)
     if blanks:
         out.append(f"{blanks} jagah [blank] baaki hai - preview mein Hoola ki sample value dikh rahi hai (phone / daam / naam jo pata nahi tha); asli bata dijiye, phir live")

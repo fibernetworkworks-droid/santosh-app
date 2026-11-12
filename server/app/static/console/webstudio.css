@@ -642,3 +642,8 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .sthumb{display:block;width:100%;height:auto;aspect-ratio:120/76;border-radius:9px;border:1px solid var(--line)}
 @media (prefers-reduced-motion:no-preference){.scard{transition:border-color .15s,transform .15s}.scard:hover{transform:translateY(-2px)}#wsStarters{animation:wsSIn .24s ease-out}@keyframes wsSIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
 #wsStarters[hidden]{display:none}
+
+/* v0.837 L13 DRAFT */
+.dflist{margin:6px 0;padding-left:18px;font-size:13.5px;line-height:1.6}
+.dfconf{display:flex;flex-direction:column;gap:6px;margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.dfc{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px}.dfc legend{font-weight:600;padding:0 0 2px}

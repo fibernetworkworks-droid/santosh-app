@@ -41,7 +41,10 @@ SITE_TOOLS = [
         "action=change only for new sections, layout changes or many parts at once. "
         "action=restore_version + site + version = put the WORKING site back to that version's code and design (v0.808: it "
         "becomes a new version, undoable; enquiries / orders / data are never touched) - for 'v3 wapas lao', 'pehle jaisa "
-        "karo'; action=rollback is only for her LIVE address. "
+        "karo'; action=rollback is only for her LIVE address. v0.837 DRAFTS: for a big or risky change ('naya design try "
+        "karo', 'pehle alag se dekhna hai'), action=draft_new + site + name makes a DRAFT copy with its own preview link "
+        "- the website is not touched; change the draft by passing the DRAFT's id as site; action=draft_list shows them. "
+        "Merging a draft into the website (Accept) is HER tap in the Studio, never yours; a draft has its own data. "
         "action=change: site + instruction (her words: 'hero mein meri photo', 'rang halka', 'price list hatao', 'Hindi "
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
@@ -100,7 +103,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "restore_version", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -238,6 +241,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 "say": "Build started. Each section shows in the live preview as soon as it is made."}
     if action == "change":
         return S.change(t, site, str(a.get("instruction") or ""), conv)
+    if action in ("draft_new", "draft_list"):     # v0.837 L13 DRAFT: a copy to try a big change in; Accept is her tap
+        from ..site import drafts as DF
+        try:
+            return DF.create(t, site, str(a.get("name") or "")) if action == "draft_new" else DF.listing(t, site)
+        except DF.DraftError as e:
+            raise S.SiteError(str(e))
     if action == "restore_version":              # v0.808 WAPAS: any version, before launch too
         from ..site import wapas as WP
         try:
