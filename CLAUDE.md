@@ -57,6 +57,13 @@ or upgrade any of these until the owner EXPLICITLY asks in chat:
 - `lib/ui/pc_screen.dart` (phone Mera PC screen)
 - PC tests: `server/tests/test_pc_bridge.py`, `test_pc_operator.py`, `test_v0911_pc_clicks.py`,
   `test_v0166_pc_full_hands.py`, `test_appcheck.py`
+- HOOLA PC (frozen 12 Nov 2026, owner: "NOW CHECK IS MERA PC AND HOOLA PC IS FREEZ"): `desktop-linux/` (Hoola's own
+  cloud PC image: agent.py, axtree.py, Dockerfile, docker-compose.yml, start.sh), `server/app/pc/brain.py` (Qwen / Sonnet
+  PC brain), the PC-place rules in `server/app/agent/pick.py` (pc_do vs hoola_pc_do), the vps-ops `pc_*` jobs in
+  `.github/workflows/vps-ops.yml`, and the later PC tests (`test_v0173_pc_memory.py`, `test_v01854_pc_is_error.py`,
+  `test_v0185_pc_browser.py`, `test_v0193_harness3.py`, `test_v0193_hoola_pc.py`, `test_v0200_pc_kinds.py`,
+  `test_v0202_pc_bridge.py`, `test_v0836_desktop_team.py`, `test_v0842_agent_desktop_full.py`, `test_v0851_pc_brain.py`,
+  `test_v0854_pc_confusion.py`). Frozen state = v0.855.0, commit d0667900, desktop 1.10.0.
 
 Rules: READING these files is fine; CHANGING them is not. New work must not ride on PC files — if an
 unrelated change would touch or break anything above, STOP and ask the developer first instead of
