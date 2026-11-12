@@ -354,7 +354,9 @@ def test_remembered_browser_and_open_window_win_over_the_default(monkeypatch):
     assert {"op": "key", "keys": "ctrl+t"} in [c[1] for c in calls]
 
 
-def test_default_chrome_missing_falls_back_to_her_browser(monkeypatch):
+def test_default_chrome_missing_never_falls_back_to_the_default_browser(monkeypatch):
+    # v0.862: the desktop's own open_url hands a link to Windows = her DEFAULT browser (Edge); on her PC it is never
+    # used - the model gets the error and brings her browser forward itself
     calls, state = _fake_desktop(monkeypatch, front="Program Manager")
 
     async def no_chrome(op, action, args=None, timeout=40, log=True):
@@ -367,8 +369,8 @@ def test_default_chrome_missing_falls_back_to_her_browser(monkeypatch):
     monkeypatch.setattr(operator, "_pc", no_chrome)
     op = operator.Op(id="d3", tenant="t", conv="c", task="swiggy kholo")
     op.browser, op.browser_src = "chrome", "default"
-    asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
-    assert "open_url" in calls
+    out = asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
+    assert "open_url" not in calls and out.startswith("ERROR")
 
 
 def test_edge_title_with_zero_width_space_is_edge():

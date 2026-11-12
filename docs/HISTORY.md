@@ -3088,3 +3088,25 @@ steps; the start answer says the same. Her own new words (a new ask) still go st
 
 Still open from the same log (next fixes): one job became 3 separate tasks (cart / address / pay), and 'Cash on
 Delivery not available' ended the task as partial instead of asking her how to pay.
+
+
+## v0.862.0 PC CHROME HI - never Edge first (fix 3 of the one-by-one PC clean-up)
+
+Her report before the next test: "1) every time it first opens Edge, then understands the task needs Chrome; 2) no
+real-time conversation, just a late reply; 3) every process is very slow".
+
+1) ROOT CAUSE, read in code (operator open_url + desktop control.open_url): on her PC open_url went through
+`_open_in_named` only when Chrome was not already seen; and when that path failed (a cold Chrome taking more than the
+6 s it was given to come forward) and her browser was only 'remembered' / 'default', it FELL BACK to the desktop's own
+open_url. That one opens in the browser it found running (tasklist, cached 30 s) and, with none, calls
+os.startfile = Windows' DEFAULT browser = Edge. Fix: on her PC every site goes through `_open_in_named` (focus her
+browser / new tab / address bar), there is no fallback, a cold browser gets 15 s, and the error tells the model to
+bring her browser forward and never to use another browser or another way. Hoola's own PC keeps the desktop path.
+The v0.858 test that pinned the fallback is rewritten to the new rule.
+
+3) Her v0.859 log split each turn: the model's think 1.5-3.5 s, the actions after it 1-11 s - the time is in the
+actions on her PC, not the model. Each action now logs `pc act <task> <name> <seconds>` so the next log names the
+slow one.
+
+2) Not changed here beyond the steering wait (back to pc_wait_seconds 12 s, was 30 s in v0.861, which made a
+follow-up's reply later). Which surface she means (chat vs call) is asked.

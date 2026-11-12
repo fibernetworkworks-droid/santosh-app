@@ -143,7 +143,7 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
             operator.tell(ctx.tenant_id, ctx.conversation_id, task, hers=False)
             live.hoola_key, live.hoola_at = key, time.time()
             log.info("pc_do steered into running %s (chat %s)", live.id, ctx.conversation_id)
-        wait = max(get_settings().pc_wait_seconds, 30) if _wait is None else float(_wait)
+        wait = get_settings().pc_wait_seconds if _wait is None else float(_wait)   # v0.862 her reply never waits longer
         if wait > 0 and not live.done_event.is_set():
             try:
                 await asyncio.wait_for(asyncio.shield(live.done_event.wait()), wait)

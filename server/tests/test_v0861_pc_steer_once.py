@@ -42,3 +42,26 @@ def test_round_without_her_words_is_rate_limited():
         assert len(op.notes) == 1 and not r["steered"]
     finally:
         operator.OPS.pop(op.id, None)
+
+
+def test_open_url_on_her_pc_never_uses_the_desktop_default_browser_path(monkeypatch):
+    """v0.862 her report: 'every time it first opens Edge'. Chrome window up or not, the link goes through her named
+    browser (focus / new tab / address bar), never the desktop's open_url (which can hand it to Windows = Edge)."""
+    seen = []
+
+    async def fake_pc(op, action, args=None, timeout=40, log=True):
+        seen.append((args or {}).get("op") or action)
+        if action == "screen":
+            return {"image_b64": "QUJD", "width": 1, "height": 1, "active_window": "Swiggy - Google Chrome",
+                    "windows": ["Swiggy - Google Chrome", "New tab - Microsoft Edge"]}
+        return {"ok": True}
+    monkeypatch.setattr(operator, "_pc", fake_pc)
+    monkeypatch.setattr(asyncio, "sleep", lambda *_a, **_k: asyncio.sleep.__wrapped__(0) if False else _noop())
+    op = operator.Op(id="pcop_e", tenant="t", conv="c", task="swiggy")
+    op.browser, op.browser_src = "chrome", "remembered"
+    asyncio.run(operator._do(op, "open_url", {"url": "swiggy.com"}))
+    assert "open_url" not in seen and "key" in seen
+
+
+async def _noop():
+    return None

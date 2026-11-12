@@ -1347,14 +1347,16 @@ async def _open_in_named(op: "Op", url: str, b: str) -> str:
             except Exception as e:
                 return _desktop_says(e, "open_app") or f"ERROR: could not open {app}: {e}"
             fresh = True
-            for _ in range(12):             # up to ~6 s for its window to come to the front
+            for _ in range(30):             # v0.862 up to ~15 s: a cold Chrome start on her PC took longer than 6 s
                 await asyncio.sleep(0.5)
                 title = await _front_title(op)
                 if _in_front(title, b):
                     break
             else:
-                return (f"ERROR: {app} did not come to the front (active window: '{title[:80]}'). Bring it forward "
-                        "with focus_window and open the site again - do not switch to another browser.")
+                log.info("pc task %s: %s did not come to the front in 15 s (front: %s)", op.id, app, title[:80])
+                return (f"ERROR: {app} did not come to the front yet (active window: '{title[:80]}'). Take a screenshot; "
+                        f"if {app} is open, bring it forward with focus_window and open the site again. Never use "
+                        "another browser and never open the link any other way.")
     blank = re.match(r"^\s*(new tab|नया टैब|start page|speed dial)\b", _title(title))
     if not (fresh and blank):
         await _pc(op, "control", {"op": "key", "keys": "ctrl+t"})   # a NEW tab: her open page stays as it was
@@ -1461,19 +1463,12 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         # RUNNING browser - background Edge - and REPLACED her open tab with ctrl+l); the desktop path stays only for
         # Hoola's own PC and as the fallback when that browser cannot be opened and she did not name it.
         b = _pick_browser(op) if op.kind != HOOLA_PC_KIND else ""
-        chrome_up = any(_in_front(w, "chrome") for w in [op.window, *op.windows]) or \
-            any(m.startswith(("open_app", "ax_launch")) and "chrome" in m.lower() for m in op.mem)
-        if b == "chrome" and chrome_up:
-            # the desktop's own one-step path picks Chrome first when Chrome runs (fast, pastes, waits for the page);
-            # a NEW tab first, so the page she has open is never replaced (the desktop types into the current tab)
-            try:
-                await _pc(op, "control", {"op": "key", "keys": "ctrl+t"}, log=False) if _in_front(op.window, "chrome") else None
-            except Exception:
-                pass
-        elif b:
-            out = await _open_in_named(op, url, b)
-            if not (out.startswith("ERROR") and op.browser_src != "said"):
-                return out
+        if b:
+            # v0.862 ALWAYS her browser, never the desktop's own open_url on her PC: that one opens a link in the
+            # browser it found RUNNING 30 s ago, and with none found it hands the link to Windows = her DEFAULT
+            # browser (Edge). Her 12 Nov runs: a cold Chrome took longer than 6 s to come forward, the step fell
+            # back to it, and Edge opened first every time. An error now goes back to the model instead.
+            return await _open_in_named(op, url, b)
         try:
             r = await _pc(op, "open_url", {"url": url}, timeout=50)   # v0.184 desktop waits for the page to load
         except Exception as e:
@@ -2780,11 +2775,14 @@ async def _run(op: Op) -> None:
                     results.append({"type": "tool_result", "tool_use_id": u["id"], "content": await _ax_window_blocks(op, a)})
                     moved = "screenshot"
                     continue
+                t_act = time.monotonic()
                 try:
                     msg = await _do(op, name, a)
                     is_err = msg.startswith("REFUSED")
                 except Exception as e:
                     msg, is_err = f"ERROR: {e}", True
+                log.info("pc act %s %s %.1fs%s", op.id, name, time.monotonic() - t_act,   # v0.862 which action is slow
+                         " ERROR" if is_err or msg.startswith("ERROR") else "")
                 if not is_err and not msg.startswith("ERROR"):
                     _speak(op, name)               # v0.858 a live call hears a milestone only once it really happened
                 if name in MOVES_SCREEN:

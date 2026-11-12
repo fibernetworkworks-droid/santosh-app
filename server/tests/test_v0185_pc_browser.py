@@ -26,6 +26,7 @@ class FakePC:
         self.old = False          # simulates a desktop older than 1.4.0
         self.verify = None        # when set, control type replies {"ok": True, "verify": {...}}
         self.url_result = None    # when set, open_url replies with this exact dict
+        self.front = "New Tab - Google Chrome"   # v0.862 the front window; Enter in the address bar loads a page
 
     async def __call__(self, op, action, args=None, timeout=40, log=True):
         args = dict(args or {})
@@ -33,8 +34,8 @@ class FakePC:
         if self.old and action in ("open_url", "window", "page_text", "tabs", "switch_tab", "downloads"):
             raise RuntimeError("Unknown action " + action)
         if action == "screen":
-            return {"image_b64": JPEG, "width": 1280, "height": 720, "active_window": "IRCTC - Google Chrome",
-                    "windows": ["IRCTC - Google Chrome"], "monitor": args.get("monitor", "primary")}
+            return {"image_b64": JPEG, "width": 1280, "height": 720, "active_window": self.front,
+                    "windows": [self.front], "monitor": args.get("monitor", "primary")}
         if action == "open_url":
             if self.url_result is not None:
                 return self.url_result
@@ -52,6 +53,8 @@ class FakePC:
                     "files": [{"name": "ticket.pdf", "size_text": "120 KB", "partial": False},
                               {"name": "song.zip.crdownload", "size_text": "3 MB", "partial": True}]}
         if action == "control":
+            if args.get("op") == "key" and args.get("keys") == "enter":
+                self.front = "IRCTC | Train Ticket Booking - Google Chrome"
             if args.get("op") == "type" and self.verify is not None:
                 return {"ok": True, "verify": self.verify}
             return {"ok": True}
@@ -268,15 +271,18 @@ def test_open_url_reports_tab_title_and_page_digest(op, monkeypatch):
     _wire_claude(monkeypatch, claude)
     run(operator.start("default", bz["conv"], "Chrome mein IRCTC kholo", wait=5))
     body = " ".join(str(b.get("content", "")) for b in _tool_results(claude))
-    assert "opened https://www.irctc.co.in in Chrome (new tab)" in body
+    # v0.862 her browser's own address bar (new tab), never the desktop open_url that could fall to Edge
+    assert "opened https://www.irctc.co.in in Google Chrome (new tab)" in body
     assert "page title now: IRCTC | Train Ticket Booking" in body
+    assert not any(a == "open_url" for a, _k in pc.calls)
     assert "Page text starts with: Book train tickets online" in body
     # the digest call rode along automatically and was not logged as a step
     assert any(a == "page_text" for a, _k in pc.calls)
 
 
 def test_open_url_old_desktop_stays_plain(op, monkeypatch):
-    """Desktop < 1.4.0: open_url returns only {'opened': url} — the result stays a single clean line."""
+    """v0.862: on her PC a site opens through her browser's address bar, so the answer is one clean line
+    whatever the desktop version (the desktop open_url is no longer used there)."""
     operator, pc, bz = op
     claude = FakeClaude([
         [tu(1, "open_url", url="https://example.com")],
@@ -285,7 +291,7 @@ def test_open_url_old_desktop_stays_plain(op, monkeypatch):
     _wire_claude(monkeypatch, claude)
     run(operator.start("default", bz["conv"], "example kholo", wait=5))
     body = " ".join(str(b.get("content", "")) for b in _tool_results(claude))
-    assert "opened https://example.com in her browser" in body
+    assert "opened https://example.com in Google Chrome (new tab)" in body
 
 
 def test_old_desktop_browser_tools_get_the_upgrade_note(op, monkeypatch):
@@ -333,4 +339,4 @@ def test_desktop_version_moves_with_every_release():
 
 def test_app_version_is_0185():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.861.0"
+    assert APP_VERSION == "0.862.0"
