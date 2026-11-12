@@ -13,18 +13,18 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 
-DISCLAIMER = ("Yeh jaanch-jaankari hai (signals, not verdicts), kanooni salah nahi. Har tathya ke saath uska source likha hai; "
-              "faisla karne se pehle vakil / CA / police se pakka karwaiye.")
+DISCLAIMER = ("This is checking information (signals, not verdicts), not legal advice. Each fact has its source written beside it; "
+              "before you decide, confirm with a lawyer / CA / the police.")
 
 NEVER = [
-    "Kisi aam insaan (private individual) ka pata, ghar, office, phone, location dhoondhna, peecha karna ya nigrani",
-    "Kisi insaan ki social-media profiling, 'woh online kya karta hai'",
-    "Pati / patni / rishta / shaadi se pehle ki jaanch (pre-matrimonial), affair / loyalty check",
-    "Phone CDR / call record / SIM details, bank statement / account details nikalwana (yeh sirf police / court order se)",
-    "GPS tracker, spyware, chupke se recording, kisi ke phone / account mein ghusna",
-    "Pretexting: jhooth bolkar (bank / police / courier banke) jaankari nikalwana",
-    "Employee / candidate background check bina unke signed consent ke; consent ke baad bhi sirf role se judi jaanch",
-    "Report kisi aur ko bhejna bina aapke app tap ke",
+    "Finding the address, home, office, phone or location of a private individual, or following or watching them",
+    "Social-media profiling of a person, 'what they do online'",
+    "Checks on a husband / wife / relationship / before a wedding (pre-matrimonial), affair / loyalty checks",
+    "Obtaining phone CDR / call records / SIM details, bank statements / account details (only by police / court order)",
+    "GPS trackers, spyware, secret recording, breaking into someone's phone / account",
+    "Pretexting: getting information by lying (posing as a bank / police / courier)",
+    "Employee / candidate background checks without their signed consent; even with consent, only checks related to the role",
+    "Sending a report to anyone without your tap in the app",
 ]
 
 # ---------------------------------------------------------------- refusal in code
@@ -34,38 +34,38 @@ _REFUSE: list[tuple[str, str, str]] = [
                r"live\s*location|location\s*(nikal|batao|pata|track|trace|find)|kahan\s*hai\s*(woh|wo|vo)|"
                r"(kahan|kaha)\s*(kaam|naukri)\s*kar(ta|ti|te)|workplace\s+of|where\s+(does\s+)?(he|she)\s+(live|work|stay)s?|"
                r"(ghar|पता|ठिकाना)\s*(dhundh|dhoondh|ढूंढ|खोज)|कहाँ\s*रह)",
-     "Kisi insaan ka ghar / pata / location / workplace dhoondhna is desk ka kaam nahi (privacy, Puttaswamy 2017; BNS s.78 stalking). "
-     "Agar kisi ne dhokha diya hai to uski pehchaan aur pata police dhoondhegi: hum aapke saboot se police / 1930 complaint bana dete hain."),
+     "Finding a person's home / address / location / workplace is not this desk's work (privacy, Puttaswamy 2017; BNS s.78 stalking). "
+     "If someone has cheated you, the police will trace their identity and address: we can make a police / 1930 complaint from your evidence."),
     ("track", r"\b(track|trace|tail|follow|stalk|surveil|spy|monitor)(ing|ed)?\s+(him|her|them|this\s+person|that\s+person|my\s+(wife|husband|partner|employee))|"
               r"peecha\s*kar|pichha\s*kar|nigrani|nigraani|jasoosi|jaasoosi|surveillance|gps\s*tracker|tracker\s*(laga|lagao|lagana)|"
               r"spy\s*app|spyware|phone\s*(hack|tap)|chupke\s*se\s*(record|dekh)|निगरानी|जासूसी|पीछा",
-     "Kisi insaan ka peecha / nigrani / GPS tracker / spy app is desk mein kabhi nahi (BNS s.78 stalking, IT Act s.66E / s.72). "
-     "Business ki jaanch public sarkari registry se ho sakti hai; dhokhe ke liye saboot ki file + police complaint."),
+     "Following / watching a person, GPS trackers and spy apps are never part of this desk (BNS s.78 stalking, IT Act s.66E / s.72). "
+     "A business can be checked from public government registries; for fraud, use an evidence file + a police complaint."),
     ("records", r"\b(cdr|call\s*detail|call\s*record|call\s*history|sim\s*(details|owner|kiske\s*naam)|tower\s*location|"
                 r"kisne\s*call\s*kiya|number\s*kiske\s*naam|bank\s*(statement|record|details|account\s*details)\s*(nikal|nikaal|chahiye|of|uska|uski)|"
                 r"(uska|uski|unka)\s*bank\s*(statement|record|details|balance)\s*(nikal|chahiye|dekh)|whatsapp\s*(chat|message)s?\s*(nikal|padh)|email\s*hack|password\s*(nikal|crack))",
-     "Phone CDR, SIM, bank records ya kisi aur ke chats / email sirf police / court ke kanooni order se milte hain; Hoola nikalne ki "
+     "Phone CDR, SIM, bank records or someone else's chats / email can be obtained only through a legal order of the police / court; Hoola does not even try to get them. "
      "koshish bhi nahi karta. Police complaint mein 'records mangwaiye' likh sakte hain."),
     ("social", r"(instagram|facebook|insta|twitter|x\.com|linkedin|snapchat|social\s*media)\s*(profile|account|se|pe|par)?\s*"
                r"(dekh|check|nikal|pata|stalk|profil|scan|search)|social[- ]media\s*profil|online\s*kya\s*kar(ta|ti)|"
                r"(uske|uski)\s*(posts|photos|dost|friends)|profile\s*(him|her|this\s+person)",
-     "Kisi insaan ki social-media profiling is desk mein nahi hoti. Business ke liye public registry, court mentions aur news (business "
-     "naam se) dekh sakte hain."),
+     "Social-media profiling of a person is not done in this desk. For a business you can look at public registries, court mentions and news (by the business "
+     "name)."),
     ("relation", r"\b(wife|husband|spouse|girlfriend|boyfriend|fianc[eé]e?|affair|extramarital|loyalty\s*(test|check)|cheating\s+on)\b|"
                  r"\b(pati|patni|biwi|ghar\s*wali|gharwali|mangetar|premi|premika)\b|pre[- ]?matrimonial|shaadi\s*se\s*pehle|"
                  r"rishte?\s*(ki|ke)\s*(jaanch|check)|(ladke|ladki)\s*(ka|ki)\s*(background|jaanch|check)|"
                  r"पति|पत्नी|रिश्ते\s*की\s*जांच|शादी\s*से\s*पहले",
-     "Pati / patni / rishta / shaadi se pehle ki jaanch is desk mein nahi hoti (privacy). Parivarik maamle mein vakil se baat kijiye; "
-     "kanooni raasta court / family court hai."),
+     "Checks on a husband / wife / relationship / before a wedding are not done in this desk (privacy). For a family matter, talk to a lawyer; "
+     "the legal route is the court / family court."),
     ("pretext", r"(ban\s*ke|banke|bankar|ban\s*kar)\s*(baat|call|phone|pooch)|pretend(ing)?\s+to\s+be|pose\s+as|posing\s+as|"
                 r"jhoo?th\s*bol\s*(ke|kar)|fake\s*(call|caller|identity)\s*(karke|kar|se)|police\s*(ban|banke)|"
                 r"impersonat",
-     "Jhooth bolkar / kisi aur ki pehchaan banakar jaankari nikalna (pretexting) kabhi nahi: yeh dhokha hai (BNS impersonation / "
-     "cheating). Seedha, apne naam se likhit request ya kanooni raasta."),
+     "Getting information by lying / posing as someone else (pretexting) is never done: it is cheating (BNS impersonation / "
+     "cheating). Use a direct written request in your own name, or the legal route."),
     ("person_bg", r"(background\s*(check|verification|jaanch)|bgv|pura\s*record|criminal\s*record|police\s*record)\s*(of|ka|ki|nikal|chahiye)?\s*"
                   r"(neighbou?r|padosi|tenant\s*ke\s*ghar|kisi\s*insaan|this\s*person|us\s*aadmi|us\s*aurat|uska|uski)",
-     "Kisi insaan ka background check sirf us insaan ke signed consent se, sirf naukri / kiraye jaise kaam se juda (DPDP Act 2023). "
-     "Employee / candidate ke liye 'employee_verify' case kholiye aur unka signed consent jodiye; police verification police se hota hai."),
+     "A background check on a person only with that person's signed consent, and only for something like a job / tenancy (DPDP Act 2023). "
+     "For an employee / candidate, open an 'employee_verify' case and attach their signed consent; police verification is done by the police."),
 ]
 _REFUSE_RE = [(k, re.compile(p, re.I), m) for k, p, m in _REFUSE]
 
@@ -77,7 +77,7 @@ def guard(*texts: Any) -> dict | None:
         return None
     for k, rx, msg in _REFUSE_RE:
         if rx.search(t):
-            return {"category": k, "say": msg + " (Yeh desk sirf business ki jaanch, aapke kaagaz ki jaanch aur saboot ki file ke liye hai.)"}
+            return {"category": k, "say": msg + " (This desk is only for checking a business, checking your paper, and an evidence file.)"}
     return None
 
 
@@ -129,31 +129,31 @@ def check_identifier(kind: str, value: str, today: date | None = None) -> dict:
         info = gstin_info(v)
         out["valid"] = bool(info.get("valid"))
         if out["valid"]:
-            out["facts"] += [f"GSTIN ka check digit sahi, state code {v[:2]} = {info.get('state')}",
-                             f"PAN wala hissa {v[2:12]}: entity type {info.get('kind')}"]
+            out["facts"] += [f"The GSTIN check digit is valid, state code {v[:2]} = {info.get('state')}",
+                             f"PAN part {v[2:12]}: entity type {info.get('kind')}"]
             out["state"] = info.get("state")
             if v[5] == "P":
-                out["flags"].append("Proprietor (vyakti) ka PAN-based GSTIN: report mein PAN masked rahega.")
+                out["flags"].append("A proprietor's (individual's) PAN-based GSTIN: the PAN will be masked in the report.")
         else:
-            out["flags"].append("GSTIN ka format / check digit galat: yeh number kisi asli registration ka nahi ho sakta (ya galat likha gaya).")
+            out["flags"].append("The GSTIN has a wrong format / check digit: this number cannot belong to a real registration (or it was written wrongly).")
         out["official"] = {"label": "GST portal 'Search Taxpayer' (services.gst.gov.in)", "url": "https://services.gst.gov.in/services/searchtp"}
     elif kind == "cin":
         m = _CIN.match(v)
         if m:
             yr = int(m.group(4))
             out["valid"] = m.group(5) in CIN_TYPES and 1850 <= yr <= today.year
-            out["facts"] += [f"Listed: {'haan (L)' if m.group(1) == 'L' else 'nahi (U)'}", f"Industry (NIC) code {m.group(2)}",
+            out["facts"] += [f"Listed: {'yes (L)' if m.group(1) == 'L' else 'no (U)'}", f"Industry (NIC) code {m.group(2)}",
                              f"State code {m.group(3)}", f"Registration saal {yr}", f"Type {m.group(5)} = {CIN_TYPES.get(m.group(5), '?')}"]
             if yr > today.year - 1:
-                out["flags"].append(f"Company bahut nayi hai ({yr}): track record kam.")
+                out["flags"].append(f"The company is very new ({yr}): little track record.")
             if not out["valid"]:
-                out["flags"].append("CIN ka type / saal theek nahi lag raha.")
+                out["flags"].append("The CIN type / year does not look right.")
         else:
-            out["flags"].append("CIN 21 characters ka hota hai (jaise U12345MH2020PTC123456): format galat.")
+            out["flags"].append("A CIN has 21 characters (like U12345MH2020PTC123456): the format is wrong.")
         out["official"] = {"label": "MCA 'Master Data' (mca.gov.in)", "url": "https://www.mca.gov.in/content/mca/global/en/mca/master-data/MDS.html"}
     elif kind == "llpin":
         out["valid"] = bool(_LLPIN.match(v))
-        out["flags"] += [] if out["valid"] else ["LLPIN 'AAA-1234' jaisa hota hai: format galat."]
+        out["flags"] += [] if out["valid"] else ["An LLPIN looks like 'AAA-1234': the format is wrong."]
         out["official"] = {"label": "MCA 'Master Data' (mca.gov.in)", "url": "https://www.mca.gov.in/content/mca/global/en/mca/master-data/MDS.html"}
     elif kind == "udyam":
         m = _UDYAM.match(v)
@@ -161,15 +161,15 @@ def check_identifier(kind: str, value: str, today: date | None = None) -> dict:
         if m:
             out["facts"].append(f"Udyam state {m.group(1)}, district code {m.group(2)}")
         else:
-            out["flags"].append("Udyam number 'UDYAM-XX-00-0000000' jaisa hota hai: format galat.")
+            out["flags"].append("A Udyam number looks like 'UDYAM-XX-00-0000000': the format is wrong.")
         out["official"] = {"label": "Udyam 'Verify Udyam Registration Number' (udyamregistration.gov.in)",
                            "url": "https://udyamregistration.gov.in/Udyam_Verify.aspx"}
     elif kind == "fssai":
         out["valid"] = bool(_FSSAI.match(v))
         if out["valid"]:
-            out["facts"].append("14 ankon ka FSSAI number (format sahi)")
+            out["facts"].append("A 14-digit FSSAI number (format is valid)")
         else:
-            out["flags"].append("FSSAI licence / registration number 14 ankon ka hota hai.")
+            out["flags"].append("An FSSAI licence / registration number has 14 digits.")
         out["official"] = {"label": "FoSCoS 'FBO search' (foscos.fssai.gov.in)", "url": "https://foscos.fssai.gov.in/"}
     elif kind == "pan":
         m = _PAN.match(v)
@@ -177,20 +177,20 @@ def check_identifier(kind: str, value: str, today: date | None = None) -> dict:
         if m:
             out["facts"].append(f"PAN entity type: {PAN_KIND.get(m.group(1), '?')}")
             if m.group(1) == "P":
-                out["flags"].append("Yeh kisi vyakti ka PAN hai (personal data): report mein masked rahega; Pehchaan Locker mein rakhiye.")
+                out["flags"].append("This is an individual's PAN (personal data): it will be masked in the report; keep it in the ID Locker.")
                 out["value"] = v[:2] + "XXX" + v[5:6] + "XXX" + v[-1]
                 out["personal"] = True
         else:
-            out["flags"].append("PAN format galat (AAAAA9999A).")
-        out["official"] = {"label": "Income-tax 'Verify Your PAN' (incometax.gov.in, login ke baad)",
+            out["flags"].append("The PAN format is wrong (AAAAA9999A).")
+        out["official"] = {"label": "Income-tax 'Verify Your PAN' (incometax.gov.in, after login)",
                            "url": "https://www.incometax.gov.in/iec/foportal/"}
     elif kind == "iec":
         out["valid"] = bool(_IEC.match(v))
         out["official"] = {"label": "DGFT 'IEC view' (dgft.gov.in)", "url": "https://www.dgft.gov.in/"}
     else:
         out["kind"] = "unknown"
-        out["flags"].append("Yeh number kis cheez ka hai pehchaan nahi paye (GSTIN / CIN / LLPIN / Udyam / FSSAI / PAN / IEC).")
-    out["note"] = "Format sahi hona = number sahi bana hai; business asli / chalu hai yeh official page se pakka hota hai."
+        out["flags"].append("Could not tell what kind of number this is (GSTIN / CIN / LLPIN / Udyam / FSSAI / PAN / IEC).")
+    out["note"] = "A valid format only means the number is well formed; whether the business is real / active is confirmed from the official page."
     if kind == "gstin" and v[:2] not in STATE_CODES:
         out["valid"] = False
     return out
@@ -210,16 +210,16 @@ def is_official(url: str) -> bool:
 
 
 STATUS_FLAGS = [
-    (r"strike\s*off|struck\s*off|strike\s*-\s*off", "Company 'Strike Off' dikh rahi hai (MCA): band company se lena-dena mat kijiye."),
-    (r"under\s*(process\s*of\s*)?striking\s*off", "Strike-off ki process chal rahi hai."),
-    (r"under\s*liquidation|liquidated|liquidator", "Liquidation / band hone ki baat page par hai."),
-    (r"\bcirp\b|insolvency|resolution\s*professional|\bnclt\b", "Insolvency (NCLT / IBC) ki baat page par hai."),
-    (r"\bdormant\b", "Company 'Dormant' (kaam nahi kar rahi) dikh rahi hai."),
-    (r"amalgamated|dissolved", "Company dusri mein mil gayi / dissolve ho gayi lagti hai."),
-    (r"\bcancel+ed\b|registration\s*cancel", "Registration 'Cancelled' dikh raha hai (GST / licence)."),
-    (r"\bsuspended\b", "Registration 'Suspended' dikh raha hai."),
-    (r"\binactive\b|\bexpired\b", "Status 'Inactive / Expired' dikh raha hai."),
-    (r"active\s*non[- ]?compliant|\bACTIVE\s*NON", "MCA par 'Active Non-Compliant' (filing baaki)."),
+    (r"strike\s*off|struck\s*off|strike\s*-\s*off", "The company shows as 'Strike Off' (MCA): do not deal with a closed company."),
+    (r"under\s*(process\s*of\s*)?striking\s*off", "A strike-off process is under way."),
+    (r"under\s*liquidation|liquidated|liquidator", "The page mentions liquidation / closure."),
+    (r"\bcirp\b|insolvency|resolution\s*professional|\bnclt\b", "The page mentions insolvency (NCLT / IBC)."),
+    (r"\bdormant\b", "The company shows as 'Dormant' (not operating)."),
+    (r"amalgamated|dissolved", "The company seems to have merged into another / been dissolved."),
+    (r"\bcancel+ed\b|registration\s*cancel", "The registration shows as 'Cancelled' (GST / licence)."),
+    (r"\bsuspended\b", "The registration shows as 'Suspended'."),
+    (r"\binactive\b|\bexpired\b", "The status shows as 'Inactive / Expired'."),
+    (r"active\s*non[- ]?compliant|\bACTIVE\s*NON", "'Active Non-Compliant' on MCA (filings pending)."),
 ]
 ADVERSE = [r"\bfraud\b", r"\bcheat(ing|ed)?\b", r"\barrest(ed)?\b", r"\braid(s|ed)?\b", r"\bED\b", r"\bCBI\b", r"\bFIR\b",
            r"gst\s*evasion|fake\s*invoic|bogus\s*bill", r"\bdefault(ed|er)?\b", r"\bponzi\b", r"\bscam\b", r"\bban(ned)?\b",
@@ -272,7 +272,7 @@ def court_bits(text: str) -> dict:
               if re.search(rf"\b{w}\b", t, re.I)]
     kinds = []
     for p, label in ((r"\b138\b.*N\.?\s*I\.?\s*Act|N\.?\s*I\.?\s*Act.*\b138\b|cheque\s*bounce", "cheque bounce (NI Act s.138)"),
-                     (r"recovery|money\s*suit|summary\s*suit", "paisa vasooli ka case"), (r"insolvency|\bIBC\b|\bCP\s*\(IB\)", "IBC / NCLT"),
+                     (r"recovery|money\s*suit|summary\s*suit", "money recovery case"), (r"insolvency|\bIBC\b|\bCP\s*\(IB\)", "IBC / NCLT"),
                      (r"arbitration", "arbitration"), (r"consumer|e-?jagriti|NCDRC|DCDRC", "consumer forum")):
         if re.search(p, t, re.I):
             kinds.append(label)
@@ -307,50 +307,50 @@ def pdf_signals(meta: dict, claimed: str = "") -> list[dict]:
     tool = f"{meta.get('producer') or ''} {meta.get('creator') or ''}".lower()
     hit = next((t for t in EDIT_TOOLS if t in tool and t not in ("word", "edit", "libreoffice")), "")
     if hit:
-        sig.append({"level": "warn", "signal": f"PDF '{hit}' jaise editing tool se bani / badli ({(meta.get('producer') or meta.get('creator') or '')[:60]})",
-                    "why": "Sarkari / bank / company ke asli PDF aam taur par unke system se bante hain; edit tool ka naam dikhe to dhyaan se dekhiye."})
+        sig.append({"level": "warn", "signal": f"The PDF was made / changed by an editing tool like '{hit}' ({(meta.get('producer') or meta.get('creator') or '')[:60]})",
+                    "why": "Genuine PDFs from the government / a bank / a company are usually made by their own system; if an editing tool's name shows, look carefully."})
     elif any(t in tool for t in ("word", "libreoffice")):
-        sig.append({"level": "info", "signal": "PDF Word / LibreOffice se bani hai", "why": "Kai chhote business aise hi bill banate hain; akele isse kuch saabit nahi."})
+        sig.append({"level": "info", "signal": "The PDF was made with Word / LibreOffice", "why": "Many small businesses make bills this way; this alone proves nothing."})
     c, m = _when(meta.get("created")), _when(meta.get("modified"))
     if c and m and (m - c) > timedelta(minutes=2):
-        sig.append({"level": "warn", "signal": f"Banane ({c:%d-%m-%Y %H:%M}) ke baad badli gayi ({m:%d-%m-%Y %H:%M})",
-                    "why": "Modify date create date se baad ki hai: file ko baad mein dobara save / edit kiya gaya."})
+        sig.append({"level": "warn", "signal": f"Changed ({m:%d-%m-%Y %H:%M}) after it was made ({c:%d-%m-%Y %H:%M})",
+                    "why": "The modify date is after the create date: the file was saved / edited again later."})
     eofs = int(meta.get("eof_count") or 0)
     sigs = meta.get("signatures") or []
     if eofs > 1 and not sigs:
-        sig.append({"level": "warn", "signal": f"PDF par {eofs - 1} baar baad mein badlaav jode gaye (incremental save)",
-                    "why": "Bina signature wale PDF mein baad ke updates = kisi ne kuch joda / badla ho sakta hai."})
+        sig.append({"level": "warn", "signal": f"{eofs - 1} later changes were added to the PDF (incremental save)",
+                    "why": "Later updates in an unsigned PDF = someone may have added / changed something."})
     for s in sigs:
         if s.get("intact") is False or s.get("crypto_ok") is False:
-            sig.append({"level": "strong", "signal": "Digital signature ke baad PDF badli gayi",
-                        "why": "Signature toot gaya: sign hone ke baad content badla hai. Asli copy issuer se mangwaiye."})
+            sig.append({"level": "strong", "signal": "The PDF was changed after the digital signature",
+                        "why": "The signature is broken: the content changed after signing. Ask the issuer for the original copy."})
         elif s.get("intact") and not s.get("whole_file"):
-            sig.append({"level": "warn", "signal": "Signature poori file ko cover nahi karta", "why": "Sign ke baad pages / form jode gaye."})
+            sig.append({"level": "warn", "signal": "The signature does not cover the whole file", "why": "Pages / form fields were added after signing."})
         elif s.get("intact"):
             sig.append({"level": "ok", "signal": f"Digital signature intact ({(s.get('signer') or '')[:60]})",
-                        "why": "Sign ke baad file nahi badli. Signer par bharosa (CCA root) yahan check nahi hota."})
+                        "why": "The file did not change after signing. Trust in the signer (CCA root) is not checked here."})
     fonts = meta.get("fonts") or []
     pages = max(1, int(meta.get("pages") or 1))
     if len(fonts) >= 6 + 2 * pages:
-        sig.append({"level": "info", "signal": f"{len(fonts)} alag fonts", "why": "Bahut saare fonts kabhi-kabhi copy-paste / edit ki nishani hote hain."})
+        sig.append({"level": "info", "signal": f"{len(fonts)} different fonts", "why": "Many fonts can sometimes be a sign of copy-paste / editing."})
     fams = {}
     for f in fonts:
         base = re.sub(r"^[A-Z]{6}\+", "", str(f))
         fams.setdefault(re.split(r"[-,]", base)[0].lower(), set()).add(str(f))
     dup = [k for k, v in fams.items() if len(v) > 2]
     if dup:
-        sig.append({"level": "info", "signal": f"Ek hi font ke kai alag subsets ({', '.join(dup[:3])})",
-                    "why": "Ek font ke alag-alag embedded hisse kabhi-kabhi baad mein jodi gayi line ki nishani hote hain."})
+        sig.append({"level": "info", "signal": f"Several different subsets of the same font ({', '.join(dup[:3])})",
+                    "why": "Different embedded parts of one font can sometimes be a sign of a line added later."})
     cd = _when(claimed)
     if cd and c:
         if c.date() > cd.date() + timedelta(days=30):
-            sig.append({"level": "warn", "signal": f"File {c:%d-%m-%Y} ko bani; kaagaz par tareekh {cd:%d-%m-%Y}",
-                        "why": "File kaagaz ki tareekh ke kaafi baad bani. Scan / dobara print bhi ho sakta hai: issuer se poochhiye."})
+            sig.append({"level": "warn", "signal": f"The file was made on {c:%d-%m-%Y}; the date on the paper is {cd:%d-%m-%Y}",
+                        "why": "The file was made well after the date on the paper. It could be a scan / reprint: ask the issuer."})
         elif c.date() < cd.date() - timedelta(days=1):
-            sig.append({"level": "warn", "signal": f"File {c:%d-%m-%Y} ko bani, kaagaz ki tareekh {cd:%d-%m-%Y} se PEHLE",
-                        "why": "Kaagaz apni tareekh se pehle kaise ban gaya? Dhyaan se dekhiye."})
+            sig.append({"level": "warn", "signal": f"The file was made on {c:%d-%m-%Y}, BEFORE the date on the paper {cd:%d-%m-%Y}",
+                        "why": "How was the paper made before its own date? Look carefully."})
     if meta.get("pages") and not meta.get("text_chars"):
-        sig.append({"level": "info", "signal": "PDF mein text nahi, sirf tasveer (scan)", "why": "Scan copy mein edit pakadna mushkil: asli ya digital copy mangwaiye."})
+        sig.append({"level": "info", "signal": "The PDF has no text, only an image (a scan)", "why": "Edits are hard to catch in a scan: ask for the original or a digital copy."})
     return sig
 
 
@@ -358,23 +358,23 @@ def image_signals(exif: dict, claimed: str = "") -> list[dict]:
     """exif: has_exif, software, original, modified, make, model."""
     sig: list[dict] = []
     if not exif.get("has_exif"):
-        sig.append({"level": "info", "signal": "Photo mein EXIF (camera / tareekh) nahi hai",
-                    "why": "WhatsApp / screenshot / social media EXIF hata dete hain: isse kuch saabit nahi hota."})
+        sig.append({"level": "info", "signal": "The photo has no EXIF (camera / date)",
+                    "why": "WhatsApp / screenshots / social media remove EXIF: this proves nothing."})
         return sig
     sw = str(exif.get("software") or "").lower()
     hit = next((t for t in EDIT_TOOLS if t in sw and t not in ("word", "libreoffice")), "")
     if hit:
-        sig.append({"level": "warn", "signal": f"Photo editing software ka naam: {exif.get('software')}", "why": "Photo ko edit / dobara save kiya gaya."})
+        sig.append({"level": "warn", "signal": f"Photo editing software name: {exif.get('software')}", "why": "The photo was edited / saved again."})
     o, m = _when(exif.get("original")), _when(exif.get("modified"))
     if o and m and (m - o) > timedelta(minutes=5):
-        sig.append({"level": "info", "signal": f"Photo {o:%d-%m-%Y %H:%M} ko li, {m:%d-%m-%Y %H:%M} ko badli", "why": "Baad mein save / edit hua."})
+        sig.append({"level": "info", "signal": f"The photo was taken on {o:%d-%m-%Y %H:%M} and changed on {m:%d-%m-%Y %H:%M}", "why": "It was saved / edited later."})
     cd = _when(claimed)
     if cd and o and abs((o.date() - cd.date()).days) > 1:
-        sig.append({"level": "warn", "signal": f"Photo ki camera tareekh {o:%d-%m-%Y}, bataayi gayi tareekh {cd:%d-%m-%Y}",
-                    "why": "Camera ki ghadi galat bhi ho sakti hai; par yeh fark dhyaan dene layak hai."})
+        sig.append({"level": "warn", "signal": f"The photo's camera date is {o:%d-%m-%Y}, the stated date is {cd:%d-%m-%Y}",
+                    "why": "The camera's clock may be wrong; but this difference is worth noticing."})
     if o and not cd:
-        sig.append({"level": "info", "signal": f"Photo li gayi: {o:%d-%m-%Y %H:%M} ({exif.get('make') or ''} {exif.get('model') or ''})".strip(),
-                    "why": "Camera ki apni ghadi ke hisaab se."})
+        sig.append({"level": "info", "signal": f"Photo taken: {o:%d-%m-%Y %H:%M} ({exif.get('make') or ''} {exif.get('model') or ''})".strip(),
+                    "why": "According to the camera's own clock."})
     return sig
 
 
@@ -382,7 +382,7 @@ def einvoice_signals(inv: dict, expect: dict) -> list[dict]:
     """The IRP QR's own data vs what the printed bill says (her numbers). A mismatch is a strong signal."""
     sig = []
     pairs = (("seller_gstin", "gstin", "GSTIN"), ("doc_no", "doc_no", "Bill number"), ("total", "total", "Total"),
-             ("doc_date", "doc_date", "Tareekh"))
+             ("doc_date", "doc_date", "Date"))
     for qk, ek, label in pairs:
         e = expect.get(ek)
         q = inv.get(qk)
@@ -390,13 +390,13 @@ def einvoice_signals(inv: dict, expect: dict) -> list[dict]:
             continue
         same = (abs(_num(q) - _num(e)) < 1.0) if qk == "total" and _num(q) is not None and _num(e) is not None else (
             _norm(q) == _norm(e))
-        sig.append({"level": "ok" if same else "strong", "signal": f"{label}: QR mein '{q}', kaagaz par '{e}'",
-                    "why": "QR IRP (sarkari e-invoice system) ka hai; printed hissa badla jaye to QR se mel nahi khata." if not same else "Mel khata hai."})
+        sig.append({"level": "ok" if same else "strong", "signal": f"{label}: QR has '{q}', the paper has '{e}'",
+                    "why": "The QR is from the IRP (the government e-invoice system); if the printed part is changed, it will not match the QR." if not same else "It matches."})
     for k in ("seller_gstin_valid", "buyer_gstin_valid"):
         if inv.get(k) is False:
-            sig.append({"level": "warn", "signal": f"QR ke {k.split('_')[0]} GSTIN ka check digit galat", "why": "Asli IRP QR mein aisa nahi hona chahiye."})
-    sig.append({"level": "info", "signal": "IRP ka digital signature yahan verify nahi hua",
-                "why": "Pakka karne ke liye e-invoice portal ka 'Verify Signed QR' (einvoice1.gst.gov.in) istemaal kijiye."})
+            sig.append({"level": "warn", "signal": f"The QR's {k.split('_')[0]} GSTIN has a wrong check digit", "why": "A genuine IRP QR should not have this."})
+    sig.append({"level": "info", "signal": "The IRP's digital signature was not verified here",
+                "why": "To confirm, use the e-invoice portal's 'Verify Signed QR' (einvoice1.gst.gov.in)."})
     return sig
 
 
@@ -418,10 +418,10 @@ def summary_level(signals: list[dict]) -> str:
     return "none"
 
 
-LEVEL_SAY = {"strong": "Mazboot signal: kaagaz mein badlaav ki nishani hai. Asli copy issuer se mangwaiye.",
-             "several": "Kai signals: dhyaan se jaanchiye, issuer se pakka kijiye.",
-             "some": "Ek signal mila: akele isse kuch saabit nahi; issuer se pakka kar lijiye.",
-             "none": "Koi khaas signal nahi mila. Iska matlab yeh nahi ki kaagaz asli hai; sirf itna ki is jaanch mein kuch nahi dikha."}
+LEVEL_SAY = {"strong": "Strong signal: there are signs the paper was altered. Ask the issuer for the original copy.",
+             "several": "Several signals: check carefully and confirm with the issuer.",
+             "some": "One signal found: this alone proves nothing; confirm with the issuer.",
+             "none": "No notable signal found. This does not mean the paper is genuine; only that this check showed nothing."}
 
 
 # ---------------------------------------------------------------- chat exports -> timeline
@@ -502,64 +502,64 @@ def chain_hash(prev: str, entry: dict) -> str:
 # ---------------------------------------------------------------- complaints
 COMPLAINT_TO = {
     "cyber": {"label": "Cyber crime (NCRP / 1930)", "how": [
-        "Paisa gaya ho to TURANT 1930 par call kijiye (jitni jaldi, utna paisa rokne ka mauka).",
-        "cybercrime.gov.in par 'Report Cyber Crime' -> financial fraud: neeche ka text aur saboot (screenshots, UTR) upload kijiye.",
-        "Complaint / acknowledgement number Hoola ko bataiye; file mein jud jayega."]},
+        "If money has gone, call 1930 AT ONCE (the sooner, the better the chance to stop the money).",
+        "On cybercrime.gov.in choose 'Report Cyber Crime' -> financial fraud: upload the text below and the evidence (screenshots, UTR).",
+        "Tell Hoola the complaint / acknowledgement number; it will be added to the file."]},
     "police": {"label": "Police station (likhit complaint / FIR)", "how": [
-        "Neeche ka text print karke thane mein dijiye; receiving (stamp + tareekh) zaroor lijiye.",
-        "Cognizable maamle mein FIR darj karna police ka kaam hai (BNSS 2023 s.173; purana CrPC s.154); kai rajyon mein e-FIR bhi hai.",
-        "Saboot ki pen-drive / prints ke saath index (SHA-256) dijiye."]},
+        "Print the text below and hand it in at the police station; be sure to get a receiving copy (stamp + date).",
+        "In a cognizable case, registering an FIR is the police's duty (BNSS 2023 s.173; earlier CrPC s.154); many states also have e-FIR.",
+        "Give the index (SHA-256) along with a pen drive / prints of the evidence."]},
     "bank": {"label": "Bank (unauthorised transaction)", "how": [
-        "Bank ko turant (3 working days ke andar) likhit / app se report kijiye: RBI ke 6 Jul 2017 circular mein jaldi report par grahak "
-        "ki liability zero / seemit hoti hai.",
-        "Complaint number lijiye; 30 din mein hal na ho to RBI Integrated Ombudsman (cms.rbi.org.in)."]},
+        "Report to the bank at once (within 3 working days) in writing / through the app: under the RBI circular of 6 Jul 2017, prompt reporting makes the customer's "
+        "liability zero / limited.",
+        "Get a complaint number; if it is not resolved in 30 days, go to the RBI Integrated Ombudsman (cms.rbi.org.in)."]},
 }
-OFFENCE_LINE = "Kaunsi dhara lagegi: [dhara police / vakil tay karenge]"
+OFFENCE_LINE = "Which section applies: [the police / a lawyer will decide the section]"
 
 
 def complaint_text(to: str, me: dict, case: dict, timeline: list[dict], evidence: list[dict], money: dict) -> str:
-    who = me.get("firm") or me.get("name") or "[aapka naam / firm]"
+    who = me.get("firm") or me.get("name") or "[your name / firm]"
     lines = []
     if to == "bank":
-        lines.append("Seva mein, Branch Manager / Grievance Cell, [bank ka naam]")
+        lines.append("To the Branch Manager / Grievance Cell, [bank name]")
     elif to == "police":
-        lines.append("Seva mein, Thana Prabhari (SHO), [thane ka naam], [shahar]")
+        lines.append("To the Station House Officer (SHO), [police station name], [city]")
     else:
         lines.append("National Cyber Crime Reporting Portal (cybercrime.gov.in) / 1930")
-    lines += ["", f"Vishay: {case.get('title') or 'Dhokhadhadi ki shikayat'}", "",
-              f"Main {who} ({me.get('address') or '[pata]'}, {me.get('phone') or '[phone]'}) yeh shikayat de rahi hoon.", ""]
+    lines += ["", f"Subject: {case.get('title') or 'Complaint about fraud'}", "",
+              f"I, {who} ({me.get('address') or '[address]'}, {me.get('phone') or '[phone]'}), am making this complaint.", ""]
     if money.get("lost"):
-        lines.append(f"Kul nuksaan: Rs {money['lost']:,.2f} (" + ", ".join(money.get("refs") or ["[UTR / reference]"]) + ")")
+        lines.append(f"Total loss: Rs {money['lost']:,.2f} (" + ", ".join(money.get("refs") or ["[UTR / reference]"]) + ")")
     if case.get("suspect"):
-        lines.append("Saamne wale ki jo pehchaan dhokhe mein istemaal hui (jaise maine dekhi): " + case["suspect"])
-    lines += ["", "Ghatna kram (timeline):"]
+        lines.append("The identity of the other party used in the fraud (as I saw it): " + case["suspect"])
+    lines += ["", "Sequence of events (timeline):"]
     for i, e in enumerate(timeline[:40], 1):
         lines.append(f"{i}. {e.get('at', '')[:16].replace('T', ' ')} - {e.get('what', '')}")
-    lines += ["", "Saboot (har file ka SHA-256 hash, taaki pata chale file badli nahi):"]
+    lines += ["", "Evidence (the SHA-256 hash of each file, so it is clear the file has not changed):"]
     for i, e in enumerate(evidence[:40], 1):
         lines.append(f"{i}. {e.get('name')} - SHA-256 {e.get('sha256')}")
-    lines += ["", OFFENCE_LINE, "", "Nivedan hai ki maamla darj karke uchit karyavahi ki jaye.", "",
-              f"{who}", "Tareekh: [tareekh]", "Hastakshar: [hastakshar]"]
+    lines += ["", OFFENCE_LINE, "", "I request that the matter be registered and appropriate action taken.", "",
+              f"{who}", "Date: [date]", "Signature: [signature]"]
     return "\n".join(lines)
 
 
 def bsa63_draft(case: dict, evidence: list[dict], me: dict) -> str:
     """Part A style details of a s.63(4) BSA certificate (the electronic record + hash). Part B (expert) is not Hoola's."""
-    lines = ["DRAFT - Bharatiya Sakshya Adhiniyam 2023, s.63(4) certificate ke Part A ke liye jaankari (vakil se format pakka karwaiye)",
-             f"Case: {case.get('number')} {case.get('title') or ''}", f"Dene wali: {me.get('name') or '[naam]'} ({me.get('firm') or ''})",
-             "Device / source: [jis phone / computer se record nikala]", "Hash algorithm: SHA-256", ""]
+    lines = ["DRAFT - details for Part A of the certificate under the Bharatiya Sakshya Adhiniyam 2023, s.63(4) (confirm the format with a lawyer)",
+             f"Case: {case.get('number')} {case.get('title') or ''}", f"Given by: {me.get('name') or '[name]'} ({me.get('firm') or ''})",
+             "Device / source: [the phone / computer the record was taken from]", "Hash algorithm: SHA-256", ""]
     for i, e in enumerate(evidence, 1):
-        lines.append(f"{i}. {e.get('name')} | {e.get('size')} bytes | SHA-256 {e.get('sha256')} | Hoola ko mila {e.get('received_at', '')[:16]}")
-    lines += ["", "Part B (expert certificate) kisi computer / cyber forensics jaankar se: Hoola yeh nahi deta.",
-              "Hastakshar: [hastakshar]   Tareekh: [tareekh]   Sthan: [sthan]"]
+        lines.append(f"{i}. {e.get('name')} | {e.get('size')} bytes | SHA-256 {e.get('sha256')} | Received by Hoola {e.get('received_at', '')[:16]}")
+    lines += ["", "Part B (expert certificate) comes from a computer / cyber forensics expert: Hoola does not provide it.",
+              "Signature: [signature]   Date: [date]   Place: [place]"]
     return "\n".join(lines)
 
 
-CONSENT_TEXT = ("Main {candidate} apni marzi se {firm} ko apne diye hue documents (pehchaan, padhai, pichli naukri, pata) ki jaanch "
-                "karne ki ijaazat deti / deta hoon, sirf is naukri ({role}) ke liye. Yeh jaanch: {checks}. Mujhe bataya gaya hai ki "
-                "data kab tak rakha jayega ({days} din) aur main consent wapas le sakti / sakta hoon. Hastakshar: ________ Tareekh: ________")
-EMPLOY_CHECKS = {"identity": "pehchaan ke documents (jo candidate ne diye)", "education": "padhai ke certificate (sanstha se pushti)",
-                 "employment": "pichli naukri (candidate ke bataye employer se pushti)", "address": "pata (candidate ke diye document se)"}
+CONSENT_TEXT = ("I, {candidate}, of my own free will allow {firm} to verify the documents I have given (identity, education, previous employment, address) "
+                "only for this job ({role}). The checks are: {checks}. I have been told that "
+                "the data will be kept for ({days} days) and that I can withdraw my consent. Signature: ________ Date: ________")
+EMPLOY_CHECKS = {"identity": "identity documents (given by the candidate)", "education": "education certificates (confirmed with the institution)",
+                 "employment": "previous employment (confirmed with the employer the candidate named)", "address": "address (from a document the candidate gave)"}
 
 SOURCES = [
     "verdictum.in 1 Aug 2026: HC v State of Rajasthan, 2026 INSC 778 - private investigation 'an area sans regulation', copy to Law "
