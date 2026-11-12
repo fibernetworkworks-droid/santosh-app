@@ -106,7 +106,35 @@ class AccWbCall(Base):
     ms: Mapped[int] = mapped_column(Integer, default=0)
 
 
-TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall)
+class AccTwoB(Base):
+    """One invoice / note in her GSTR-2B as GSTN sent it (A2), with HER IMS decision. Replaced per (gstin, period) on a new pull."""
+    __tablename__ = "acc_2b"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("a2"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    gstin: Mapped[str] = mapped_column(String(15), default="", index=True)
+    period: Mapped[str] = mapped_column(String(6), default="", index=True)          # MMYYYY as GSTN uses it
+    section: Mapped[str] = mapped_column(String(8), default="b2b")                 # b2b | b2ba | cdnr | cdnra | ecom
+    ctin: Mapped[str] = mapped_column(String(15), default="", index=True)
+    trdnm: Mapped[str] = mapped_column(String(160), default="")
+    inum: Mapped[str] = mapped_column(String(60), default="")
+    doc_type: Mapped[str] = mapped_column(String(4), default="")                    # R invoice | C credit note | D debit note
+    dt: Mapped[str] = mapped_column(String(10), default="")                         # YYYY-MM-DD
+    val: Mapped[float] = mapped_column(Float, default=0.0)
+    txval: Mapped[float] = mapped_column(Float, default=0.0)
+    igst: Mapped[float] = mapped_column(Float, default=0.0)
+    cgst: Mapped[float] = mapped_column(Float, default=0.0)
+    sgst: Mapped[float] = mapped_column(Float, default=0.0)
+    cess: Mapped[float] = mapped_column(Float, default=0.0)
+    rev: Mapped[bool] = mapped_column(Boolean, default=False)
+    itcavl: Mapped[bool] = mapped_column(Boolean, default=True)
+    rsn: Mapped[str] = mapped_column(String(60), default="")
+    action: Mapped[str] = mapped_column(String(8), default="")                      # her decision: accept | reject | pending | ""
+    reason: Mapped[str] = mapped_column(Text, default="")                           # why Hoola proposed it
+    applied_at: Mapped[str] = mapped_column(String(25), default="")                 # when the decision reached the portal
+    ext: Mapped[str] = mapped_column(Text, default="{}")                            # supplier period, POS, invoice type - for the IMS body
+
+
+TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB)
 
 
 _READY: set[int] = set()

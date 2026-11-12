@@ -2647,3 +2647,6 @@ Her live `apisetu_check` (relay, corrected Client ID `com.ainewtika`) returned H
 
 ## v0.833.0 BAHI A1
 Connect her GSTIN through WhiteBooks (OTP walk, refresh, disconnect) and supplier checks with no OTP (API Setu, WhiteBooks search, filing track). OTP never stored or returned. Console Connection tab. 6 tests. NOT VERIFIED on production.
+
+## v0.834.0 BAHI A2
+Monthly credit loop: GSTR-2B pull via the A1 session, match with the purchase register, proposals with reasons, supplier nudge drafts, her decisions to IMS only on confirm + plan hash, 2B recompute. Console Credit (ITC) tab. 5 tests. NOT VERIFIED on a live portal.

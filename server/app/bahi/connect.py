@@ -143,6 +143,17 @@ def disconnect(tenant: str, gstin: str) -> dict[str, Any]:
             "message": "Forgotten here. To cut access at the source too, open the GST portal > My Profile > Manage API Access and switch it off."}
 
 
+def session_for(tenant: str, gstin: str) -> tuple[str, str, str]:
+    """(gst_username, state_cd, txn) of a LIVE connection, else a plain ConnectError - A2+ calls use this and never see a token."""
+    g = _check(gstin)
+    ensure_tables()
+    with session() as s:
+        r = _row(s, tenant, g)
+        if r is None or r.status != "connected" or not r.txn or not r.enabled_until or r.enabled_until <= _iso():
+            raise ConnectError("Not connected right now - open Connection, tap 'Send me an OTP' and type the OTP first.")
+        return r.gst_username, r.state_cd or g[:2], r.txn
+
+
 # ------------------------------------------------------------------ supplier checks (no OTP)
 def _fy(today: datetime | None = None) -> list[str]:
     t = today or datetime.now()

@@ -140,6 +140,11 @@ def run(today: date | None = None) -> dict[str, Any]:
             step("refresh", lambda: wb.refresh(TENANT, user, state, txn))
             per = f"{today.month:02d}{today.year}"
             step("ledger_balance", lambda: wb.ledger_balance(TENANT, ggstin, per, user, state, txn))
+            # A2 reads (harmless): the shapes of 2B and IMS are pinned here; the IMS write is NOT in a check because it changes the portal
+            prev = date(today.year - 1, 12, 1) if today.month == 1 else date(today.year, today.month - 1, 1)
+            rp = f"{prev.month:02d}{prev.year}"
+            step("gstr2b_all", lambda: wb.gstr2b_all(TENANT, ggstin, rp, user, state, txn))
+            step("ims_invoices", lambda: wb.ims_invoices(TENANT, ggstin, "b2b", user, state, txn))
         eu, ep = wb.clean(st.whitebooks_sandbox_einv_username), wb.clean(st.whitebooks_sandbox_einv_password)
         step("einv_auth", lambda: wb.einv_auth(TENANT, gstin, eu, ep), product="einv",
              need=[("whitebooks_sandbox_gstin", gstin), ("whitebooks_sandbox_einv_username", eu), ("whitebooks_sandbox_einv_password", ep)])
