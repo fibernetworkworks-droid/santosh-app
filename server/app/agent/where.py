@@ -107,8 +107,28 @@ def _hit(text: str, pats: list[re.Pattern]) -> bool:
     return False
 
 
+_CALL_READ = re.compile(r"\n\((?:Call ne samjha|The call (?:heard|understood)):", re.I)
+# the voice model speaks TO her, so its 'aapka / aapke / your PC' is HER PC, never Hoola's
+_CALL_YOUR = re.compile(r"\b(?:aapk[aei]|aap\s+k[aei]|your|tumhar[aei]|tumhare|apn[aei])\b", re.I)
+
+
 def place(text: str) -> str:
-    """Where she wants it: 'pc' | 'hoolapc' | 'hoola' | 'phone' | '' (none named, or two different places)."""
+    """Where she wants it: 'pc' | 'hoolapc' | 'hoola' | 'phone' | '' (none named, or two different places).
+    v0.858 a call ask = her words + '(Call ne samjha: <the voice model's reading>)'. Only HER words decide; the reading
+    counts only when her words name no place, and its 'aapke PC' (Gemini talking to her) means HER PC."""
+    raw = str(text or "")
+    m = _CALL_READ.search(raw)
+    if m:
+        mine = _place(raw[:m.start()])
+        if mine:
+            return mine
+        read = _CALL_YOUR.sub("mere", raw[m.end():])
+        read = re.sub(r"(?:आपके|आपका|आपकी|तुम्हारे|अपने)", "मेरे", read)
+        return _place(read)
+    return _place(raw)
+
+
+def _place(text: str) -> str:
     t = _FEATURE.sub(" ", str(text or ""))[:2000]
     if not t.strip():
         return ""

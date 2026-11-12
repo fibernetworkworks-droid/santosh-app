@@ -266,3 +266,19 @@ def test_call_brain_ask_answers_with_her_words_only():
         assert op.answer == "Margherita"
     finally:
         operator.OPS.pop(op.id, None)
+
+
+def test_call_reading_never_turns_her_pc_into_hoolas():
+    """A call ask = her words + '(Call ne samjha: ...)'. Gemini talks TO her, so its 'aapke PC' is HER PC."""
+    from app.agent import where
+    assert where.place("mere PC pe Chrome kholo\n(Call ne samjha: aapke PC par Chrome kholna)") == "pc"
+    assert where.place("Chrome kholo aur pizza mangao\n(Call ne samjha: aapke PC par Chrome kholna)") == "pc"
+    assert where.place("Hoola ke PC par kholo\n(Call ne samjha: aapke PC par)") == "hoolapc"   # her words win
+    assert where.place("aapke PC pe kholo") == "hoolapc"                                        # chat unchanged
+
+
+def test_call_voice_knows_it_can_work_on_her_pc():
+    from app import voice
+    assert "NEVER say you cannot access or control her PC" in voice.PERSONA_BRAIN
+    assert "HER PC" in voice.BRAIN_DELEGATE["description"]
+    voice.PERSONA_BRAIN.format(context="x")      # still a valid template

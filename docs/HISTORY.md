@@ -2948,3 +2948,11 @@ spoken answer is now caught from her own words at the end of her turn (`Call._pc
 spoken-OTP pattern) instead of depending on Gemini passing it on; a call-brain ask answers with her words only (the
 '(Call ne samjha: ...)' tail dropped); the first answer counts (`ask["answered"]`), a later line becomes a note.
 Follow-ups on the call steer the running task through `same_chat` (call record / side record -> its chat). 2 tests.
+
+v0.858.0 follow-up 2 (owner: "now voice call saying i dont have ability to access your pc"): two causes. (1) A call
+ask reaches the brain as her words + "(Call ne samjha: <Gemini's reading>)"; Gemini speaks TO her, so its reading says
+"aapke PC", and `where.place` read "aapke PC" as HOOLA's own PC (the v0.194 possessive rule) - the job was refused for
+pc_do or pushed to Hoola's PC. Now only her words decide the place; the reading counts only when hers name none, and its
+aapke / your / tumhare = HER PC (`where._CALL_READ`, `_CALL_YOUR`). (2) Gemini answers "no-tool" asks itself and its
+voice prompt never said Hoola can work on her PC, so it said it could not; PERSONA_BRAIN + the santosh_kaam description
+now say her PC work goes to santosh_kaam and never to answer "I can't access your PC". 2 tests.
