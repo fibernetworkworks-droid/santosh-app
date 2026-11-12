@@ -2891,3 +2891,21 @@ Phase G9 of `docs/LANGGRAPH_TURN_PLAN.md` (section 8).
 - Tests: test_g9_turngraph.py 11 (also with DEV_TRUTH=false and GRAPH_CARD_PARK=false); 66 passed / 4 skipped across g7-g9, routines and the Hoola Code suites on the rebased tree; two studio reds (v0259 dropdown pin, v0351 order interference) fail the same on main.
 - Not built: claim words still regex; CI still running = 'tests pass' unknown; a studio background job's later failure not fed back; other card kinds (desk, ask_forms, operator, pg_write) still do not park.
 - NOT VERIFIED live: no real Hoola Code round judged, no real studio tap resumed a parked run.
+
+
+## v0.857.0 PC SPEED (owner: "TASK DOING PROCESS IS VERY VERY EXTREEM SLOW IT SHOULD BE IN REAL TIME" -> "GO PC SPEED" -> "ALL 100 % PC WORK FROM APPS TO BROWSER TO SETTINGS")
+
+Her first working PC task (after the AIHubMix quota and the OpenRouter key's $10 cap were fixed) ran far too slowly. Every PC
+step = screenshot from her PC -> one model call -> one action. The changes, server only (desktop 1.10.0 untouched):
+- Qwen thinking OFF by default (`pc_qwen_thinking` "off"; it reasoned before every click) and OpenRouter `provider.sort`
+  "latency" (`pc_qwen_provider_sort`) so the fastest-answering Qwen host serves each step.
+- KEEP_IMAGES 3 -> 2: less to read on every step.
+- The biggest structural one: a keyboard step (type / key) sent in the SAME turn as open_app / ax_launch / focus_window /
+  open_url / switch_tab now runs once that target is really the active window (`_target_of` turns the step into words -
+  app name, window title, tab, site host minus www/com and every browser name; `_opened_in_front` checks fresh screens for
+  up to ~2.4 s). No match = held exactly as before; clicks after a screen move still always wait for the next screenshot.
+  'Open Notepad and write the email' / 'open the site and press the shortcut' save a whole model round.
+- SPEED prompt rule: as few turns as possible, a whole text in ONE type, done in the same turn as the last keyboard step,
+  page_* / ax_* tools first (no screenshot round).
+- Log `pc step N screen Ns` beside `pc brain ... step N s` so the next slow run shows where the time goes.
+Tests test_v0856_pc_speed.py (9). NOT VERIFIED: no timing from her PC yet.
