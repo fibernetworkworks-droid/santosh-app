@@ -73,3 +73,42 @@ the input bar while reading; the page can send a message back into the chat ("As
 artifact_screen: warm slot, hide composer on scroll, a bridge for an in-page "Ask Hoola".
 
 Not verified: these pages mix measured probes with estimates ("estimated", "reconstructed from smali").
+
+## Addendum 2 - "Design Structure" + "Animation & Transition System" pages
+
+The phone mock-ups in these pages are REDRAWN from class names and strings, not screenshots - layout ideas only.
+
+**Navigation:** 3 bottom tabs (Chats / Projects / Code); Settings = profile header + ONE short grouped list (Account,
+Appearance, Notifications, Privacy, Accessibility, Help). -> Hoola's Main tab (~130 rows) becomes Profile: header +
+~6 groups; desks live in Employees, connectors in Connect. 5 tabs stay (Today / Chat / Talk / Connect / Profile).
+
+**Third type set (UI chrome, not chat):** display 22 / 700, heading 18 / 600, title 15 / 600, body 14 / 400, body small
+13 / 400, label 11 / 500, code 12 mono, serif 14. FINAL D1 SCALE for Hoola (all three pages reconciled):
+display 22 / 700 · heading 18 / 600 · title 15 / 600 · body 14 / 400 · reply 16 Literata (approved v0.249) ·
+small 13 / 400 · label 12 / 500 (Hoola keeps a 12 floor: Devanagari names, budget phones) · code 12 mono.
+Weights 400 / 500 / 600 / 700 only - no 800 / 900 (778 uses today).
+
+**Chat parts:** composer = "+" attach, one rounded field with a placeholder, round send button; long-press a message
+-> sheet with Copy / Retry / Share; approval card = one title line, one question, three buttons (allow once / always /
+deny). Hoola keeps its words ("Haan" stays on money / sends; "always" only where a standing permission exists).
+
+**Working mark:** three states of one mark - shimmer (idle), thinking, writing - enters with a small spring pop.
+Hoola already has its own 3D thinking mark (v0.716, console); the phone gets the same three states.
+
+**One icon set:** one icon font for every glyph. Hoola mixes Material icons with ~375 emoji -> Material Symbols
+(rounded) only; emoji only inside content she wrote.
+
+**Named content fades:** loading -> loaded -> error is a crossfade; empty state fades / scales in; sheet scrim 0 -> 0.5;
+tooltip and nav-icon crossfades; headline crossfade when a title changes.
+
+**Motion system:** springs (damping + stiffness) for enter ("SpringUp", slight overshoot) and exit ("shrinking away");
+sheets snap to anchors with fling decay; catch-up when the stream runs ahead (min / max chars per second, eased ramp).
+Hoola's phone `_Reveal` already paces words (v0.283) - add the eased catch-up limits.
+
+**Reduce motion (system setting):** every transition becomes a plain fade, springs take 0 ms, animations show their
+first frame, the voice orb stops rippling, hero videos are skipped. Hoola: read MediaQuery.disableAnimations once in
+glass.dart and let every animation helper obey it.
+
+**Gestures:** left-edge swipe opens the drawer, swipe a card to dismiss, full-width swipe back, hold-to-send.
+
+**Empty-state copy:** short and plain ("No projects yet", "No files yet", "Get started").
