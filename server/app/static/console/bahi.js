@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,32 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ GSTR-3B
+  function g3Tab() {
+    const c = OV.connections[0], live = c && c.status === 'connected';
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const per = (G3 && G3.per) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">GSTR-3B and payment</h2>
+      <p class="ddk-fine first">Hoola counts your tax and your credit (from the 2B you pulled and the decisions you made), uses credit first so you pay the least cash, and adds interest and late fee if any. You confirm each step on the portal. Hoola never creates the challan or moves money - you pay at your bank. ${OV.filing ? '' : 'Filing from Hoola is switched off on this server; file the saved draft on the GST portal.'}</p>
+      <div class="acd-row"><input id="acdG3G" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdG3P" class="acd-in" type="month" value="${esc(per)}">
+        <button type="button" class="btn go ddk-mid" data-a="g3prep">Prepare</button></div></section>`;
+    if (!G3 || !G3.data) return head;
+    const d = G3.data, s = d.summary, ct = d.cash_to_pay;
+    const ck = d.checks.length ? `<ul class="acd-kv">${d.checks.map(x => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">Nothing to fix.</p>';
+    const cmp = G3.cmp ? (G3.cmp.compared ? `<ul class="acd-kv">${G3.cmp.rows.map(r => `<li><span>${esc(r.head.toUpperCase())}: Hoola ${inr(r.hoola)} · portal ${inr(r.portal)}${r.cause ? ' - ' + esc(r.cause) : ''}</span><span class="ddk-pill ${Math.abs(r.diff) > 1 ? 'warn' : 'ok'}">${Math.abs(r.diff) > 1 ? 'differs' : 'same'}</span></li>`).join('')}</ul>` : `<p class="ddk-note">${esc(G3.cmp.note)}</p>`) : '';
+    const pay = G3.pay ? `<p class="ddk-note">Pay at your bank: <b>${inr(G3.pay.pay_at_bank)}</b>. ${esc(G3.pay.how)}</p>` : '';
+    return head + `<section class="ddk-card acd-sec"><h2 class="ddk-h3">${esc(d.period)}</h2>
+      <div class="ddk-nums"><div><b>${inr(s.liability)}</b><span>tax to pay in all</span></div><div><b>${inr(s.itc)}</b><span>credit used</span></div><div><b>${inr(ct.total)}</b><span>cash (tax + interest + fee)</span></div></div>
+      ${ck}${cmp}${pay}
+      <div class="acd-row">${live ? `<button type="button" class="btn ddk-mid" data-a="g3cmp">Compare with the portal</button>
+        <button type="button" class="btn go ddk-mid" data-a="g3save" data-h="${esc(d.plan_hash)}">Save draft on the portal</button>
+        <button type="button" class="btn go ddk-mid" data-a="g3off" data-h="${esc(d.plan_hash)}">Use my credit (set-off)</button>
+        <button type="button" class="btn ddk-mid" data-a="g3pay">What do I pay at the bank?</button>` : '<span class="ddk-fine">Connect first (Connection tab).</span>'}</div>
+      ${OV.filing ? `<div class="acd-row"><input id="acdG3Pan" class="acd-in" placeholder="Signatory PAN" maxlength="10"><button type="button" class="btn ddk-mid" data-a="g3otp">Send EVC OTP</button>
+        <input id="acdG3Otp" class="acd-in" placeholder="OTP" inputmode="numeric" maxlength="8" autocomplete="one-time-code"><button type="button" class="btn go ddk-mid" data-a="g3file" data-h="${esc(d.plan_hash)}">File GSTR-3B</button></div>` : ''}
+    </section>`;
   }
 
   // ------------------------------------------------------------------ GSTR-1
@@ -240,6 +266,23 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('g3')) {
+        const g = val('acdG3G').toUpperCase(), p = val('acdG3P');
+        try {
+          if (a === 'g3prep') { const data = await api('POST', '/api/bahi/gstr3b/prepare', {gstin: g, period: p}); G3 = {per: p, g, data}; draw(false); return; }
+          const k = {gstin: G3.g, period: G3.per};
+          if (a === 'g3cmp') { G3.cmp = await api('POST', '/api/bahi/gstr3b/compare', k); draw(false); return; }
+          if (a === 'g3pay') { G3.pay = await api('POST', '/api/bahi/gstr3b/payment', k); draw(false); return; }
+          if (a === 'g3save') { if (!confirm('Put this GSTR-3B on your GST portal as a draft? It is not filed.')) return;
+            await api('POST', '/api/bahi/gstr3b/save', {...k, plan_hash: b.dataset.h, confirm: true}); toast('Draft saved on the portal. Not filed.'); return; }
+          if (a === 'g3off') { if (!confirm('Use your credit against this liability on the portal? This cannot be undone.')) return;
+            const r = await api('POST', '/api/bahi/gstr3b/setoff', {...k, plan_hash: b.dataset.h, confirm: true}); toast(`Credit used. Cash still to pay: ${inr(r.cash_still_to_pay)}.`); return; }
+          if (a === 'g3otp') { const r = await api('POST', '/api/bahi/gstr3b/evc-otp', {gstin: G3.g, pan: val('acdG3Pan')}); toast(r.message); return; }
+          if (a === 'g3file') { if (!confirm('File GSTR-3B now? Filing is final.')) return;
+            const r = await api('POST', '/api/bahi/gstr3b/file', {...k, pan: val('acdG3Pan'), otp: val('acdG3Otp'), plan_hash: b.dataset.h, confirm: true}); toast(`Filed. ${r.portal_status || ''} ${r.next}`.trim()); return; }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a.startsWith('g1')) {
