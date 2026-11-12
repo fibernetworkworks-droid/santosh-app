@@ -9,31 +9,33 @@ import 'package:santosh/ui/glass.dart';
 void main() {
   tearDown(() => NightGlass.flat.value = false);
 
-  test('wave 1: 30 desks stand in DeskScaffold, no old chip row left, English tab labels', () {
+  test('waves 1 + 2: 57 desks + 4 inner pages stand in DeskScaffold, no old chip row left, English labels', () {
     final desks = [
       for (final f in Directory('lib/ui').listSync().whereType<File>())
         if (f.path.endsWith('.dart') && f.readAsStringSync().contains('return DeskScaffold(')) f
     ];
-    expect(desks.length, greaterThanOrEqualTo(30));
+    expect(desks.length, greaterThanOrEqualTo(57));
+    final frames = desks.fold<int>(0, (n, f) => n + 'return DeskScaffold('.allMatches(f.readAsStringSync()).length);
+    expect(frames, greaterThanOrEqualTo(61));
     for (final f in desks) {
       final s = f.readAsStringSync();
       expect(s.contains("import 'desk/desk_kit.dart';"), isTrue, reason: f.path);
-      final i = s.indexOf('return DeskScaffold(');
-      final frame = s.substring(i, s.indexOf('\n    );', i));
-      final tabs = RegExp(r"tabs: const \[(.*?)\]", dotAll: true).firstMatch(frame)?.group(1) ?? '';
-      expect(tabs, isNotEmpty, reason: f.path);
-      for (final w in ["'Aaj'", "'Niyam'", "'Jaanch'"]) {
-        expect(tabs.contains(w), isFalse, reason: '${f.path} still shows $w');
+      for (final m in 'return DeskScaffold('.allMatches(s)) {
+        final frame = s.substring(m.start, s.indexOf('\n    );', m.start));
+        final tabs = RegExp(r"tabs: const \[(.*?)\]", dotAll: true).firstMatch(frame)?.group(1) ?? '';
+        expect(tabs, isNotEmpty, reason: f.path);
+        for (final w in ["'Aaj'", "'Niyam'", "'Jaanch'"]) {
+          expect(tabs.contains(w), isFalse, reason: '${f.path} still shows $w');
+        }
+        final title = RegExp(r"title: (.*),\n").firstMatch(frame)?.group(1) ?? '';
+        expect(title.toLowerCase().contains('sahayak'), isFalse, reason: '${f.path} title $title');
       }
     }
-    // no desk's main page still draws the old chip row; inner detail pages with their own tabs are wave 2
-    const innerPagesWave2 = {'archassist_screen.dart', 'contracts_screen.dart', 'cosec_screen.dart', 'shaadi_screen.dart'};
+    // no screen still draws either of the two old desk chip rows of its own
+    final old = RegExp(r"ChoiceChip\(label: Text\(tabs\[i\]\)|for \(final \(i, t\) in const \[\(0, |for \(final \(i, t\) in tabs\.indexed\)");
     final left = [
       for (final f in Directory('lib/ui').listSync().whereType<File>())
-        if (f.path.endsWith('.dart') &&
-            f.readAsStringSync().contains('ChoiceChip(label: Text(tabs[i])') &&
-            !innerPagesWave2.contains(f.uri.pathSegments.last))
-          f.path
+        if (f.path.endsWith('.dart') && old.hasMatch(f.readAsStringSync())) f.path
     ];
     expect(left, isEmpty);
   });
@@ -80,6 +82,20 @@ void main() {
     await t.tap(find.byTooltip('Refresh'));
     await t.pump();
     expect(refreshed, 2);
+  });
+
+  testWidgets('an inner page with nothing to reload shows no Refresh and no pull', (t) async {
+    await t.pumpWidget(host(DeskScaffold(
+      title: 'Asha (Class 8)',
+      tabs: const ['Study', 'Practice'],
+      tab: 0,
+      onTab: (_) {},
+      loading: false,
+      body: () => ListView(children: const [Text('study')]),
+    )));
+    expect(find.byTooltip('Refresh'), findsNothing);
+    expect(find.byType(RefreshIndicator), findsNothing);
+    expect(find.text('study'), findsOneWidget);
   });
 
   testWidgets('with the new design on, Night Glass draws flat: no blur, no drifting aurora', (t) async {

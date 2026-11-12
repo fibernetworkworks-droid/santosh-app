@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -511,28 +512,26 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Call Centre Sahayak')),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Script'), (2, 'Calls'), (3, 'Rules')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _script(), _calls(), _rules()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Call centre',
+      tabs: const ['Today', 'Script', 'Calls', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        [_today(), _script(), _calls(), _rules()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'At the start of every call, the caller is told this is an AI assistant. The line speaks only from the script you approved;'
                   'everything else goes to a message or a person. OTP / PIN / card are never taken. Money is never handled on the line.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+    );
+  }
 }
 
 /// One call: summary, outcome, masked transcript, flags.

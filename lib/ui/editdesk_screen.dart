@@ -266,7 +266,7 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: 'Edit desk',
+      title: 'Video editor desk',
       tabs: const ['Today', 'Projects', 'Licence', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),

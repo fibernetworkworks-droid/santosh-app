@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -201,28 +202,26 @@ class _DaftarScreenState extends State<DaftarScreen> {
       ]);
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('School office')),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              if (_s(_d?['say']).isNotEmpty) Glass(child: Text(_s(_d?['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
-              const SizedBox(height: 10),
-              Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Attendance'), (1, 'Marks'), (2, 'Timetable'), (3, 'Report card')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_hazri(), _marks(), _timetable(), _report()][_tab],
-              const SizedBox(height: 14),
-              const Text('Hoola\'s marks are suggestions: they are final only after the teacher\'s sign-off. Anything to a guardian goes only with your tap.',
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'School office',
+      tabs: const ['Attendance', 'Marks', 'Timetable', 'Report card'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        if (_s(_d?['say']).isNotEmpty) Glass(child: Text(_s(_d?['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
+        const SizedBox(height: 10),
+        [_hazri(), _marks(), _timetable(), _report()][_tab],
+        const SizedBox(height: 14),
+        const Text('Hoola\'s marks are suggestions: they are final only after the teacher\'s sign-off. Anything to a guardian goes only with your tap.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+    );
+  }
 }
 
 /// Absence alerts / a report card for guardians: ONLY her tap here prepares the drafts she sends herself.

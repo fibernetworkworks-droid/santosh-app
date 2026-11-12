@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 import 'gst_screen.dart' show rs;
 
@@ -172,29 +173,26 @@ class _ThekaScreenState extends State<ThekaScreen> {
       ]);
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Theka sahayak'), actions: [
-          IconButton(icon: const Icon(Icons.table_view_rounded), tooltip: 'Register Excel', onPressed: _busy ? null : () => _run(() => widget.app.api!.thekaRegister())),
-        ]),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Tender'), (2, 'Kaam')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _tenders(), _projects()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: "Contractor's assistant",
+      tabs: const ['Today', 'Tender', 'Work'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        [_today(), _tenders(), _projects()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'You submit the bid on the portal with your own DSC. Measurements are written exactly as taken. Bills and letters go to the department only with your yes. Hoola does not pay or receive money.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+      actions: [IconButton(icon: const Icon(Icons.table_view_rounded), tooltip: 'Register Excel', onPressed: _busy ? null : () => _run(() => widget.app.api!.thekaRegister()))],
+    );
+  }
 }
 
 /// One work: BOQ progress, naap, RA bills, diary, EOT.

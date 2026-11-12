@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 import 'gst_screen.dart' show rs;
 
@@ -369,33 +370,31 @@ class _ThokScreenState extends State<ThokScreen> {
       ]);
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Thok sahayak')),
-        floatingActionButton: FloatingActionButton.extended(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Wholesale assistant',
+      tabs: const ['Today', 'Udhaar', 'Party', 'Stock'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _day == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+        [_today(), _udhaar(), _partiesTab(), _stock()][_tab],
+        const SizedBox(height: 14),
+        const Text(
+                  'The bill is made with your approval, and you send the messages. Hoola does not take or send money. You / your CA make the e-way bill and IRN on the portal.'
+                  'Cash of Rs 2 lakh or more from one party in one day is not allowed.',
+                  style: TextStyle(color: C.faint, fontSize: 11.5)),
+      ]),
+      fab: FloatingActionButton.extended(
           onPressed: _busy ? null : _newOrder,
           icon: const Icon(Icons.add_shopping_cart_rounded),
           label: const Text('Order'),
         ),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
-              Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Udhaar'), (2, 'Party'), (3, 'Stock')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_day == null) const Center(child: CircularProgressIndicator()) else [_today(), _udhaar(), _partiesTab(), _stock()][_tab],
-              const SizedBox(height: 14),
-              const Text(
-                  'The bill is made with your approval, and you send the messages. Hoola does not take or send money. You / your CA make the e-way bill and IRN on the portal.'
-                  'Cash of Rs 2 lakh or more from one party in one day is not allowed.',
-                  style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+    );
+  }
 }
 
 /// Chat card (`thok_order`): the priced draft with its checks; her Haan makes the bill.

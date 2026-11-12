@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -149,23 +150,19 @@ class _NiryatScreenState extends State<NiryatScreen> {
   Widget build(BuildContext context) {
     final d = _day ?? const {};
     final r = Map<String, dynamic>.from((d['realisation'] as Map?) ?? const {});
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Niryat sahayak'), actions: [
-        IconButton(icon: const Icon(Icons.table_view_rounded), tooltip: 'Export register', onPressed: _busy ? null : () => _run(() => widget.app.api!.niryatRegister())),
-      ]),
-      floatingActionButton: FloatingActionButton.extended(onPressed: _busy ? null : _newPi, icon: const Icon(Icons.description_rounded), label: const Text('PI')),
-      body: Aurora(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
-            Wrap(spacing: 6, children: [
-              for (final (i, t) in const [(0, 'Today'), (1, 'Shipments'), (2, 'Buyers')])
-                ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-            ]),
-            const SizedBox(height: 10),
-            if (_busy) const LinearProgressIndicator(),
-            if (_day == null) const Center(child: CircularProgressIndicator()),
-            if (_day != null && _tab == 0) ...[
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Export assistant',
+      tabs: const ['Today', 'Shipments', 'Buyers'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _day == null,
+      busy: _busy,
+      onRefresh: _load,
+      actions: [IconButton(icon: const Icon(Icons.table_view_rounded), tooltip: 'Export register', onPressed: _busy ? null : () => _run(() => widget.app.api!.niryatRegister()))],
+      fab: FloatingActionButton.extended(onPressed: _busy ? null : _newPi, icon: const Icon(Icons.description_rounded), label: const Text('PI')),
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+            if (_tab == 0) ...[
               Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
               const SizedBox(height: 8),
               for (final x in _list(r['shipments']))
@@ -190,13 +187,13 @@ class _NiryatScreenState extends State<NiryatScreen> {
                 ),
               GlassButton(label: 'Firm / IEC / LUT', icon: Icons.business_rounded, onTap: _busy ? null : _settings),
             ],
-            if (_day != null && _tab == 1)
+            if (_tab == 1)
               for (final x in _ships)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: NiryatCard(key: ValueKey('ns${x['id']}${x['status']}'), v: {'shipment_id': x['id']}, app: widget.app, shipment: x, onDone: _load),
                 ),
-            if (_day != null && _tab == 2) ...[
+            if (_tab == 2) ...[
               GlassButton(label: 'New buyer', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newBuyer),
               const SizedBox(height: 8),
               for (final b in _buyers)
@@ -217,11 +214,11 @@ class _NiryatScreenState extends State<NiryatScreen> {
                 'The PI and invoice go to the buyer with your approval. The shipping bill (CHA / ICEGATE), certificate of origin (DGFT), e-BRC and forward contract are done by you / the bank.'
                 'Money must come in within 9 months of shipment (12 for a rupee invoice).',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
-          ]),
-        ),
-      ),
+          
+      ]),
     );
   }
+
 }
 
 /// A shipment card (chat `niryat_pi`, and each row in Shipments): checks, then her taps for each step.

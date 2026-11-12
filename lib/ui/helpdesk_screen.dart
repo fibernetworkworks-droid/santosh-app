@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -369,28 +370,26 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('IT Helpdesk Sahayak')),
-        floatingActionButton: _tab <= 1 ? FloatingActionButton.extended(onPressed: _busy ? null : _newTicket, icon: const Icon(Icons.support_agent_rounded), label: const Text('Report a problem')) : null,
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Tickets'), (2, 'Devices'), (3, 'Suraksha'), (4, 'Niyam')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _tickets(), _devices(), _security(), _rules()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'IT Helpdesk',
+      tabs: const ['Today', 'Tickets', 'Devices', 'Suraksha', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+        [_today(), _tickets(), _devices(), _security(), _rules()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'Hoola guides you step by step; changing system settings / installing / resetting happens only after your yes. Never share passwords / OTPs. You send messages to the technician; Hoola does not pay money.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+      fab: _tab <= 1 ? FloatingActionButton.extended(onPressed: _busy ? null : _newTicket, icon: const Icon(Icons.support_agent_rounded), label: const Text('Report a problem')) : null,
+    );
+  }
 }
 
 class _IncidentTile extends StatelessWidget {

@@ -399,7 +399,7 @@ class _BanquetScreenState extends State<BanquetScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: 'Banquet Sahayak',
+      title: 'Banquet sales',
       tabs: const ['Today', 'Enquiry', 'Calendar', 'Booking', 'Venue', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),

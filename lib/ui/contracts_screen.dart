@@ -809,35 +809,16 @@ class _ContractPageState extends State<ContractPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Summary', 'Risk', 'Clauses', 'Register'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text(_s(_c?['number']).isEmpty ? 'Contract' : '${_s(_c?['number'])} · ${_s(_c?['title'])}'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _c == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) { 0 => _summary(), 1 => _risksTab(), 2 => _clausesTab(), _ => _registerTab() },
-                ),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: _s(_c?['number']).isEmpty ? 'Contract' : '${_s(_c?['number'])} · ${_s(_c?['title'])}',
+      tabs: const ['Summary', 'Risk', 'Clauses', 'Register'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _c == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) { 0 => _summary(), 1 => _risksTab(), 2 => _clausesTab(), _ => _registerTab() },
     );
   }
 }

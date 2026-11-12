@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -450,28 +451,26 @@ class _DevopsScreenState extends State<DevopsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('DevOps Assistant')),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Builds'), (2, 'Deploy'), (3, 'Logs'), (4, 'Scripts'), (5, 'Niyam')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _builds(), _deploy(), _logs(), _scripts(), _rules()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'DevOps',
+      tabs: const ['Today', 'Builds', 'Deploy', 'Logs', 'Scripts', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+        [_today(), _builds(), _deploy(), _logs(), _scripts(), _rules()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'Hoola reads builds and logs and writes scripts; it never runs a command / script itself and never logs in to your server. '
                   'Production deploys only with your tap.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+    );
+  }
 }
 
 // ---------------------------------------------------------------- pieces

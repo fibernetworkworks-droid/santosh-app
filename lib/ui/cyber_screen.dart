@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -468,28 +469,26 @@ class _CyberScreenState extends State<CyberScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Cyber Security Assistant')),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Alerts'), (2, 'Check'), (3, 'Domain'), (4, 'Incident'), (5, 'Niyam')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _alertsTab(), _checks(), _domains(), _incidents(), _rulesTab()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Cyber security',
+      tabs: const ['Today', 'Alerts', 'Check', 'Domain', 'Incident', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
+        [_today(), _alertsTab(), _checks(), _domains(), _incidents(), _rulesTab()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'Hoola looks only at your own systems and scans no one else. Block / disable user / wipe only with your tap (fingerprint for wipe). '
                   'Never give passwords / OTPs / API keys in the chat.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+    );
+  }
 }
 
 String _kindLabel(String k) => switch (k) {

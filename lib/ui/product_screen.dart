@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -432,38 +433,20 @@ class _ProductScreenState extends State<ProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Backlog', 'Roadmap', 'Specs', 'Release', 'Rules'];
-    final body = [_today, _backlog, _roadmap, _specs, _releases, _rules][_tab]();
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text('Product sahayak'),
-        actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _busy ? null : _load)],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (final (i, t) in tabs.indexed)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _d == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [body]),
-                ),
-        ),
-      ]),
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Product manager',
+      tabs: const ['Today', 'Backlog', 'Roadmap', 'Specs', 'Release', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [[_today, _backlog, _roadmap, _specs, _releases, _rules][_tab]()]),
     );
   }
+
 }
 
 /// One opportunity: evidence, her scores, Kano, roadmap place, spec.

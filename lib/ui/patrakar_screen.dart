@@ -416,7 +416,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: 'Patrakar Sahayak',
+      title: 'Journalist',
       tabs: const ['Today', 'Stories', 'Source', 'Shikayat', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -252,20 +253,20 @@ class _ShodhProjectPageState extends State<ShodhProjectPage> {
       ]);
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: Text('$_ref · ${_s(widget.project['title'])}')),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-            Wrap(spacing: 6, children: [
-              for (final (i, t) in const [(0, 'Papers'), (1, 'Matrix'), (2, 'References')])
-                ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-            ]),
-            const SizedBox(height: 10),
-            if (_busy) const LinearProgressIndicator(),
-            [_searchTab(), _matrixTab(), _refsTab()][_tab],
-            const SizedBox(height: 14),
-            const Text(_note, style: TextStyle(color: C.faint, fontSize: 11.5)),
-          ]),
-        ),
-      );
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: '$_ref · ${_s(widget.project['title'])}',
+      tabs: const ['Papers', 'Matrix', 'References'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: false,
+      busy: _busy,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        [_searchTab(), _matrixTab(), _refsTab()][_tab],
+        const SizedBox(height: 14),
+        const Text(_note, style: TextStyle(color: C.faint, fontSize: 11.5)),
+      ]),
+    );
+  }
 }

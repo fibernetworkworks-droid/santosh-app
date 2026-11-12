@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 import 'gst_screen.dart' show rs;
 
@@ -260,28 +261,26 @@ class _FranchiseScreenState extends State<FranchiseScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Franchise sahayak')),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Outlets'), (2, 'Royalty'), (3, 'Licence + audit')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_day == null) const Center(child: CircularProgressIndicator()) else [_today(), _outlets(), _royalty(), _licAudit()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Franchise assistant',
+      tabs: const ['Today', 'Outlets', 'Royalty', 'Licence + audit'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _day == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        [_today(), _outlets(), _royalty(), _licAudit()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'The report to the franchisor goes with your yes. You pay royalty from the bank. You / a consultant fill in the licence form. '
                   'Confirm the meaning of agreement terms with a lawyer / CA.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+    );
+  }
 }
 
 /// Chat card (`fr_statement`) and row: approve (her Haan) -> message for the franchisor; Bhara gaya. `fr_day` shows text.

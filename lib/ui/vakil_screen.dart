@@ -401,7 +401,7 @@ class _VakilScreenState extends State<VakilScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: "${widget.app.aName} · Lawyer's junior",
+      title: "Lawyer's junior",
       tabs: const ['Today', 'Matters', 'Limitation', 'eCourts', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),

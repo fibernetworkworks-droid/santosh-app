@@ -3306,3 +3306,25 @@ So all ~150 old screens lose the drifting aurora and the blur at once (the plan'
 - Pictures 45 / 46: a sample desk built from the same old parts, in the new and the old look.
 
 **NOT VERIFIED on a real phone:** the flat frame on the remaining ~119 desks (each still has its own layout inside), and their colours. Inside the cards the desks still use Night Glass text colours, which read on the new dark surface. Light appearance does not reach the old desks; they stay dark until their wave rebuilds them on HoolaColors.
+
+
+## v0.869.0 R8 DESKS wave 2 (owner: "GO R8 WAVE 2"; docs/HOOLA_APP_REDESIGN_PLAN.md R8)
+
+The second desk family moves onto DeskScaffold. These are the 25 desks drawn as Aurora + RefreshIndicator + ListView, with a Wrap of chips from `const [(0, 'Aaj'), ...]`, a busy bar, an `if (_d == null) spinner else [..][_tab]` line and a footer note.
+
+**Moved by a second script (19)**, which keeps the content above / below the tab content and the footer note inside the desk's list, and refuses what it does not recognise: after-sales, call centre, customs, cyber, school office (daftar), DevOps, Hoola Code (devsahayak), drivers, feedback, franchise, IT helpdesk, IT admin, legal research, logistics, QA, community (samudaay), curriculum (shiksha), contractor (theka), wholesale (thok), warehouse, and the inner pages tutor (guru) and research (shodh), which have no refresh.
+
+**By hand (8):**
+- insurance (the stats header + birthdays above the tabs) and export (niryat; per-tab blocks, PI button). The script's splitter broke on a `...[` spread inside an `if`, so these two were restored from the backup and rewritten.
+- NOC (its Add an alarm button only on Today), artist manager, product manager.
+- The 4 inner detail pages wave 1 left: company (cosec), contract, architecture project (by the wave-1 script), wedding (by hand).
+
+**Kit:** `onRefresh` is optional. With null there is no Refresh button and no pull, for inner pages with nothing to reload.
+
+**English:** every desk header is now English, with no "Sahayak" left: Contractor's assistant, Wholesale assistant, Export assistant, Warehouse, Journalist, Wedding planner and so on. The avatar-name prefix on headers is dropped.
+
+**Totals:** 57 desks + 4 inner pages = 61 DeskScaffold frames. No screen still draws either old chip row (`ChoiceChip(label: Text(tabs[i]))`, `for (final (i, t) in const [(0, ...`, `tabs.indexed`) - held by `test/desk_kit_test.dart` (5 tests now, incl. no "sahayak" titles and the no-refresh inner page).
+
+**Left for later waves:** the ~90 old screens with other layouts (DefaultTabController / TabBar desks such as deal, darzi, kalam, gst, telecall, office; single-page desks; the Notebook) - they already draw flat through the desk frame.
+
+**NOT VERIFIED on a real phone.**

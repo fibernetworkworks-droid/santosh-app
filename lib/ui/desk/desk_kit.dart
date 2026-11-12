@@ -45,7 +45,7 @@ class DeskScaffold extends StatefulWidget {
     required this.tab,
     required this.onTab,
     required this.loading,
-    required this.onRefresh,
+    this.onRefresh,
     required this.body,
     this.busy = false,
     this.actions = const [],
@@ -56,7 +56,7 @@ class DeskScaffold extends StatefulWidget {
   final int tab;
   final ValueChanged<int> onTab;
   final bool loading, busy;
-  final Future<void> Function() onRefresh;
+  final Future<void> Function()? onRefresh;   // null = an inner page with nothing to reload
   final Widget Function() body;
   final List<Widget> actions;
   final Widget? fab;   // the desk's own main button (e.g. New doc), if it has one
@@ -97,7 +97,7 @@ class _DeskScaffoldState extends State<DeskScaffold> {
   Future<void> _retry() async {
     setState(() => _isSlow = false);
     _watchLoading();
-    await widget.onRefresh();
+    await widget.onRefresh?.call();
   }
 
   @override
@@ -120,7 +120,8 @@ class _DeskScaffoldState extends State<DeskScaffold> {
             style: flat ? TextStyle(fontFamily: HoolaFont.sans, fontSize: 18, fontWeight: FontWeight.w600, color: ink) : null),
         actions: [
           ...widget.actions,
-          IconButton(tooltip: 'Refresh', onPressed: widget.onRefresh, icon: const Icon(Icons.refresh_rounded)),
+          if (widget.onRefresh != null)
+            IconButton(tooltip: 'Refresh', onPressed: widget.onRefresh, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
       body: Column(children: [
@@ -143,7 +144,7 @@ class _DeskScaffoldState extends State<DeskScaffold> {
                             Text('This desk is taking longer than usual. Check the internet and try again.',
                                 textAlign: TextAlign.center, style: TextStyle(color: soft, fontSize: 13)),
                             const SizedBox(height: 16),
-                            OutlinedButton(
+                            if (widget.onRefresh != null) OutlinedButton(
                               onPressed: _retry,
                               style: OutlinedButton.styleFrom(
                                   foregroundColor: ink,
@@ -156,7 +157,9 @@ class _DeskScaffoldState extends State<DeskScaffold> {
                         )
                       : SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: flat ? c.ink3 : C.accent)),
                 )
-              : RefreshIndicator(color: flat ? c.accent : C.accent, onRefresh: widget.onRefresh, child: widget.body()),
+              : widget.onRefresh == null
+                  ? widget.body()
+                  : RefreshIndicator(color: flat ? c.accent : C.accent, onRefresh: widget.onRefresh!, child: widget.body()),
         ),
       ]),
     );

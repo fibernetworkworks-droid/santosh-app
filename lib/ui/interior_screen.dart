@@ -344,7 +344,7 @@ class _InteriorScreenState extends State<InteriorScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: 'Interior Sahayak',
+      title: 'Interior designer',
       tabs: const ['Today', 'Projects', 'Rate card', 'Vendors', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),

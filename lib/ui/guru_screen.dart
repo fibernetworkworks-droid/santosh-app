@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -360,22 +361,22 @@ class _GuruLearnerPageState extends State<GuruLearnerPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(widget.learner['name']))),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-            Wrap(spacing: 6, children: [
-              for (final (i, t) in const [(0, 'Study'), (1, 'Practice'), (2, 'Language'), (3, 'Progress')])
-                ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-            ]),
-            const SizedBox(height: 10),
-            if (_busy) const LinearProgressIndicator(),
-            [_padhai(), _practiceTab(), _bhasha(), _pragati()][_tab],
-            const SizedBox(height: 14),
-            const Text(_disclaimer, style: TextStyle(color: C.faint, fontSize: 11.5)),
-          ]),
-        ),
-      );
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: _s(widget.learner['name']),
+      tabs: const ['Study', 'Practice', 'Language', 'Progress'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: false,
+      busy: _busy,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        [_padhai(), _practiceTab(), _bhasha(), _pragati()][_tab],
+        const SizedBox(height: 14),
+        const Text(_disclaimer, style: TextStyle(color: C.faint, fontSize: 11.5)),
+      ]),
+    );
+  }
 }
 
 /// The weekly report for the guardian: ONLY her tap here prepares the WhatsApp / email draft she sends herself.

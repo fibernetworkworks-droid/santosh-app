@@ -515,33 +515,16 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Information', 'Log', 'Filings', 'Meetings'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(_e?['name']).isEmpty ? 'Company' : _s(_e?['name'])), actions: [
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-      ]),
-      body: Column(children: [
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            for (var i = 0; i < tabs.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(label: Text(tabs[i]), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ),
-          ]),
-        ),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
-        Expanded(
-          child: _e == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) { 0 => _master(), 1 => _people(), 2 => _filingsTab(), _ => _meetingsTab() },
-                ),
-        ),
-      ]),
+    // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: _s(_e?['name']).isEmpty ? 'Company' : _s(_e?['name']),
+      tabs: const ['Information', 'Log', 'Filings', 'Meetings'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _e == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => switch (_tab) { 0 => _master(), 1 => _people(), 2 => _filingsTab(), _ => _meetingsTab() },
     );
   }
 }

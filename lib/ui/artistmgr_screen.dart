@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -338,32 +339,18 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Gigs', 'Artists', 'Release', 'Rules'];
-    return Scaffold(
-      appBar: AppBar(title: Text('${widget.app.aName} · Artist manager')),
-      body: _d == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                child: Row(children: [
-                  for (final (i, t) in tabs.indexed)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-                    ),
-                ]),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _load,
-                  child: switch (_tab) { 0 => _aaj(), 1 => _gigs(), 2 => _artists(), 3 => _releases(), _ => _niyam() },
-                ),
-              ),
-            ]),
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Artist manager',
+      tabs: const ['Today', 'Gigs', 'Artists', 'Release', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      onRefresh: _load,
+      body: () => switch (_tab) { 0 => _aaj(), 1 => _gigs(), 2 => _artists(), 3 => _releases(), _ => _niyam() },
     );
   }
+
 }
 
 /// One gig: when / where, money (fee, advance, paid, TDS, commission, net), rider, cards, and her actions.

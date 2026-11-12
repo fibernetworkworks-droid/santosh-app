@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 import 'gst_screen.dart' show rs;
 
@@ -298,18 +299,21 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
   Widget build(BuildContext context) {
     final b = Map<String, dynamic>.from((_sum?['book'] as Map?) ?? const {});
     final bd = _list(_sum?['birthdays']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Insurance assistant'), actions: [
-        IconButton(
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Insurance assistant',
+      tabs: const ['Premium', 'Customer', 'Claim'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _sum == null,
+      busy: _busy,
+      onRefresh: _load,
+      actions: [IconButton(
           icon: const Icon(Icons.table_view_rounded),
           tooltip: 'Policy book Excel',
           onPressed: _busy ? null : () => _run(() => widget.app.api!.insBookFile()),
-        ),
-      ]),
-      body: Aurora(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        )],
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Glass(
               child: Row(children: [
                 _stat('active policies', '${b['inforce'] ?? 0}'),
@@ -331,23 +335,17 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
                 ),
             ],
             const SizedBox(height: 12),
-            Wrap(spacing: 6, children: [
-              for (final (i, t) in const [(0, 'Premium'), (1, 'Customer'), (2, 'Claim')])
-                ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-            ]),
-            const SizedBox(height: 10),
-            if (_sum == null) const Center(child: CircularProgressIndicator()),
-            if (_sum != null) [_renewals(), _clientsTab(), _claimsTab()][_tab],
+            [_renewals(), _clientsTab(), _claimsTab()][_tab],
             const SizedBox(height: 14),
             const Text(
                 'The customer pays the premium directly to the insurer; Hoola does not take money. The customer signs the proposal and fills in health details themselves. '
                 'Advice goes to the customer only after your yes. Free-look 30 days.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
-          ]),
-        ),
-      ),
+          
+      ]),
     );
   }
+
 }
 
 /// One client: needs (life / health gap), policies.

@@ -268,7 +268,7 @@ class _PhotoassistScreenState extends State<PhotoassistScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: 'Photo Sahayak',
+      title: "Photographer's assistant",
       tabs: const ['Today', 'Shoots', 'Studio', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),

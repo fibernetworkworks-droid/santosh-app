@@ -528,7 +528,7 @@ class _SevaScreenState extends State<SevaScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: 'Service assistant',
+      title: 'Customer support',
       tabs: const ['Today', 'Complaint', 'Knowledge', 'Reply', 'Rules', 'Account'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),

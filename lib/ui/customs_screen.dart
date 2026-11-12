@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -242,30 +243,28 @@ class _CustomsScreenState extends State<CustomsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Customs Sahayak')),
-        floatingActionButton: _tab <= 1
-            ? FloatingActionButton.extended(onPressed: _busy ? null : _new, icon: const Icon(Icons.local_shipping_rounded), label: const Text('New import'))
-            : null,
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Shipments'), (2, 'HS check'), (3, 'Rules')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _shipments(), _hsTab(), _rules()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Import & customs',
+      tabs: const ['Today', 'Shipments', 'HS check', 'Rules'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+        [_today(), _shipments(), _hsTab(), _rules()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'Bill of Entry data goes to your CHA only after your yes. Hoola does not file on ICEGATE, does not pay duty, and does not apply duty rates by itself.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+      fab: _tab <= 1
+            ? FloatingActionButton.extended(onPressed: _busy ? null : _new, icon: const Icon(Icons.local_shipping_rounded), label: const Text('New import'))
+            : null,
+    );
+  }
 }
 
 class _HsCandidate extends StatelessWidget {

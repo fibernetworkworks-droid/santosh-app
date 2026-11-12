@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../state.dart';
+import 'desk/desk_kit.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -393,29 +394,27 @@ class _SamudaayScreenState extends State<SamudaayScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Community Sahayak')),
-        body: Aurora(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Groups'), (2, 'Log'), (3, 'FAQ'), (4, 'Report')])
-                  ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
-              ]),
-              const SizedBox(height: 10),
-              if (_busy) const LinearProgressIndicator(),
-              if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _groups(), _register(), _faq(), _reportTab()][_tab],
-              const SizedBox(height: 14),
-              const Text(
+  Widget build(BuildContext context) {
+    // v0.869 R8 wave 2: the shared desk frame (lib/ui/desk/desk_kit.dart)
+    return DeskScaffold(
+      title: 'Community manager',
+      tabs: const ['Today', 'Groups', 'Log', 'FAQ', 'Report'],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      loading: _d == null,
+      busy: _busy,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+        [_today(), _groups(), _register(), _faq(), _reportTab()][_tab],
+        const SizedBox(height: 14),
+        const Text(
                   'Removing someone, ban / mute, deleting a post and announcements to everyone - only with your "Yes", and the reason stays in the log. '
                   'Hoola answers only from your FAQ; for other questions it asks you. Messages are deleted after 90 days. '
                   'Personal WhatsApp groups are not automated.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
-            ]),
-          ),
-        ),
-      );
+      ]),
+    );
+  }
 }
 
 class _Head extends StatelessWidget {

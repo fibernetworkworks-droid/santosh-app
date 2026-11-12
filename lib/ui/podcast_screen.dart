@@ -413,7 +413,7 @@ class _PodcastScreenState extends State<PodcastScreen> {
   Widget build(BuildContext context) {
     // v0.868 R8 wave 1: the shared desk frame (lib/ui/desk/desk_kit.dart)
     return DeskScaffold(
-      title: 'Podcast Sahayak',
+      title: 'Podcast producer',
       tabs: const ['Today', 'Episode', 'Guest', 'Sponsor', 'Music', 'Numbers', 'Rules'],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
