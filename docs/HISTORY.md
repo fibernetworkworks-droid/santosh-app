@@ -2727,3 +2727,6 @@ Phase G7 of `docs/LANGGRAPH_TURN_PLAN.md`, the last phase.
 
 ## v0.845.0 BAHI A6 (built as 0.844)
 Purchase bills read locally into a cross-checked DRAFT (acc_intake); register only on her tap. WhatsApp / mailbox hand-off not wired.
+
+## v0.846.0 BAHI A7
+Bank + UPI reconciliation, stored: statement import (CSV / Excel / MT940 / locked PDF), narration reading, proposed matches with reasons, confirmed on her tap, payers remembered, gateway settlements, stored month-end statement. NOT VERIFIED on real statements.

@@ -8,6 +8,7 @@ from typing import Any
 def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
+    from . import bank as BK
     from . import connect as CN
     from . import einv as EV
     from . import gstr1 as G1
@@ -240,5 +241,52 @@ def make_router(require_key, current_tenant):
     @r.post("/api/bahi/bills/{bill_id}/reject", dependencies=[Depends(require_key)])
     def _inrej(bill_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _in(IN.reject, tenant, bill_id)
+
+    def _bk(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except BK.BankError as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/api/bahi/bank/import", dependencies=[Depends(require_key)])
+    def _bkimp(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        acct = str(body.get("account") or "bank")[:40]
+        pw = str(body.get("password") or "")
+        if body.get("file_id"):
+            return _bk(BK.import_file, tenant, acct, str(body["file_id"]), pw)
+        return _bk(BK.import_text, tenant, acct, str(body.get("name") or "statement.csv"), str(body.get("text") or "").encode("utf-8"), pw)
+
+    @r.post("/api/bahi/bank/match", dependencies=[Depends(require_key)])
+    def _bkmatch(body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.match, tenant, str((body or {}).get("month") or ""))
+
+    @r.get("/api/bahi/bank/lines", dependencies=[Depends(require_key)])
+    def _bklines(status: str = "", month: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"lines": BK.lines(tenant, status, month)}
+
+    @r.post("/api/bahi/bank/confirm", dependencies=[Depends(require_key)])
+    def _bkconf(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        ids = body.get("ids") if isinstance(body.get("ids"), list) else []
+        return _bk(BK.confirm, tenant, [str(i) for i in ids][:500], float(body.get("min_confidence") or 0))
+
+    @r.post("/api/bahi/bank/unmatch", dependencies=[Depends(require_key)])
+    def _bkun(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.unmatch, tenant, str(body.get("id") or ""))
+
+    @r.post("/api/bahi/bank/categorise", dependencies=[Depends(require_key)])
+    def _bkcat(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.categorise, tenant, str(body.get("id") or ""), str(body.get("category") or ""), body.get("remember") is not False)
+
+    @r.post("/api/bahi/bank/settlements", dependencies=[Depends(require_key)])
+    def _bkset(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.attach_settlements, tenant, body.get("settlements") if isinstance(body.get("settlements"), list) else [])
+
+    @r.post("/api/bahi/bank/reconcile", dependencies=[Depends(require_key)])
+    def _bkrec(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.reconcile, tenant, str(body.get("month") or ""), str(body.get("account") or ""))
+
+    @r.get("/api/bahi/bank/reconcile", dependencies=[Depends(require_key)])
+    def _bkrecget(month: str, account: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bk(BK.stored, tenant, month, account)
 
     return r

@@ -178,7 +178,59 @@ class AccIntake(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
-TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn, AccIntake)
+class AccBankLine(Base):
+    """One line of a bank statement she imported (A7). Stored once: a re-import of the same statement adds nothing."""
+    __tablename__ = "acc_bank_lines"
+    __table_args__ = (UniqueConstraint("tenant_id", "line_hash", name="uq_acc_bank_line"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ab"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    account: Mapped[str] = mapped_column(String(40), default="")                    # her label, e.g. "HDFC current 0123" (never the full number)
+    line_hash: Mapped[str] = mapped_column(String(40), default="")
+    date: Mapped[str] = mapped_column(String(10), default="", index=True)           # YYYY-MM-DD
+    narration: Mapped[str] = mapped_column(String(200), default="")
+    debit: Mapped[float] = mapped_column(Float, default=0.0)
+    credit: Mapped[float] = mapped_column(Float, default=0.0)
+    balance: Mapped[float] = mapped_column(Float, default=0.0)
+    mode: Mapped[str] = mapped_column(String(8), default="other")                   # upi | neft | imps | rtgs | cheque | card | cash | other
+    ref: Mapped[str] = mapped_column(String(40), default="", index=True)            # UTR / RRN / cheque no read from the narration
+    payer: Mapped[str] = mapped_column(String(80), default="")
+    vpa: Mapped[str] = mapped_column(String(60), default="", index=True)
+    status: Mapped[str] = mapped_column(String(10), default="open")                 # open | proposed | matched | ignored
+    match_doc_id: Mapped[str] = mapped_column(String(40), default="")
+    match_kind: Mapped[str] = mapped_column(String(16), default="")
+    match_reason: Mapped[str] = mapped_column(Text, default="")
+    match_conf: Mapped[float] = mapped_column(Float, default=0.0)
+    category: Mapped[str] = mapped_column(String(40), default="")
+    settlement: Mapped[str] = mapped_column(Text, default="")                       # JSON: gateway settlement split, when this credit is one
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class AccBankLearn(Base):
+    """What she confirmed once, remembered: a payer's UPI id -> who they are; a narration word -> a category."""
+    __tablename__ = "acc_bank_learn"
+    __table_args__ = (UniqueConstraint("tenant_id", "kind", "key", name="uq_acc_bank_learn"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("al"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[str] = mapped_column(String(8), default="vpa")                    # vpa | word
+    key: Mapped[str] = mapped_column(String(80), default="")
+    party_name: Mapped[str] = mapped_column(String(160), default="")
+    party_gstin: Mapped[str] = mapped_column(String(15), default="")
+    category: Mapped[str] = mapped_column(String(40), default="")
+
+
+class AccBankRecon(Base):
+    """A stored month-end bank reconciliation statement."""
+    __tablename__ = "acc_bank_recon"
+    __table_args__ = (UniqueConstraint("tenant_id", "account", "month", name="uq_acc_bank_recon"),)
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ar"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    account: Mapped[str] = mapped_column(String(40), default="")
+    month: Mapped[str] = mapped_column(String(7), default="")
+    body: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn, AccIntake, AccBankLine, AccBankLearn, AccBankRecon)
 
 
 _READY: set[int] = set()

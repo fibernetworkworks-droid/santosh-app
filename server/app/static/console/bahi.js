@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,25 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ Bank + UPI
+  function bkTab() {
+    const cur = new Date(); const mo = (BK && BK.month) || `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Bank and UPI</h2>
+      <p class="ddk-fine first">Give Hoola a bank statement (CSV, Excel, MT940, or a PDF - for a locked PDF type its password, used once and not kept). Each line is read and matched to a sale or purchase with a reason. You confirm the matches. Hoola never touches your bank.</p>
+      <div class="acd-row"><input id="acdKA" class="acd-in" placeholder="Account name, e.g. HDFC current" value="${esc((BK && BK.account) || '')}"><input id="acdKF" class="acd-in" placeholder="File id from chat (optional)"><input id="acdKP" class="acd-in" type="text" placeholder="PDF password (if locked)" autocomplete="off"></div>
+      <textarea id="acdKT" class="acd-in" rows="4" style="width:100%;height:auto;padding:10px" placeholder="Or paste the statement CSV here"></textarea>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="kimp">Import</button><input id="acdKM" class="acd-in" type="month" value="${esc(mo)}"><button type="button" class="btn ddk-mid" data-a="kmatch">Match</button><button type="button" class="btn ddk-mid" data-a="krecon">Month-end statement</button></div>
+      ${BK && BK.msg ? `<p class="ddk-note">${esc(BK.msg)}</p>` : ''}</section>`;
+    if (!BK || !BK.lines) return head;
+    const prop = BK.lines.filter(l => l.status === 'proposed'), open = BK.lines.filter(l => l.status === 'open');
+    const pr = prop.map(l => `<li><span>${esc(l.date)} · ${inr(l.credit || l.debit)} ${l.credit ? 'in' : 'out'} · ${esc(l.narration.slice(0, 50))}<br><small>${esc(l.match.reason)} → ${esc(l.match.doc)} · ${Math.round(l.match.confidence * 100)}%</small></span><span><input type="checkbox" data-k="${esc(l.id)}" ${l.match.confidence >= 0.85 ? 'checked' : ''}></span></li>`).join('');
+    const op = open.slice(0, 60).map(l => `<li><span>${esc(l.date)} · ${inr(l.credit || l.debit)} ${l.credit ? 'in' : 'out'} · ${esc(l.narration.slice(0, 60))}</span><span class="ddk-pill mute">${esc(l.category || 'uncategorised')}</span></li>`).join('');
+    const rc = BK.recon ? `<section class="ddk-card acd-sec"><h3 class="ddk-h3">${esc(BK.recon.month)} reconciliation</h3><ul class="acd-kv"><li><span>Lines</span><b>${BK.recon.lines}</b></li><li><span>Matched</span><b>${BK.recon.matched.count} · ${inr(BK.recon.matched.amount)}</b></li>
+      <li><span>In the bank only</span><b>${BK.recon.bank_only.length}</b></li><li><span>In your books only</span><b>${BK.recon.books_only.length}</b></li><li><span>Balance check</span><b>${esc(BK.recon.balance_check)}</b></li></ul><p class="ddk-fine">${esc(BK.recon.note)}</p></section>` : '';
+    return head + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Suggested matches (${prop.length})</h3>${pr ? `<ul class="acd-kv">${pr}</ul><div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="kconfirm">Confirm ticked</button></div>` : '<p class="ddk-quiet">None waiting.</p>'}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Not matched (${open.length})</h3>${op ? `<ul class="acd-kv">${op}</ul>` : '<p class="ddk-quiet">Nothing left over.</p>'}</section>${rc}`;
   }
 
   // ------------------------------------------------------------------ Bills in, checked
@@ -307,6 +326,24 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('k') && ['kimp', 'kmatch', 'kconfirm', 'krecon'].includes(a)) {
+        try {
+          const month = val('acdKM'), account = val('acdKA');
+          const reload = async (msg) => { BK = {...(BK || {}), month, account, msg, lines: (await api('GET', `/api/bahi/bank/lines?month=${encodeURIComponent(month)}`)).lines}; draw(false); };
+          if (a === 'kimp') {
+            const fid = val('acdKF'), pw = val('acdKP');
+            const r = await api('POST', '/api/bahi/bank/import', fid ? {account, file_id: fid, password: pw} : {account, text: val('acdKT'), name: 'statement.csv', password: pw});
+            await reload(`Read ${r.read} lines, ${r.added} new${r.already_there ? `, ${r.already_there} already there` : ''}.`); return;
+          }
+          if (a === 'kmatch') { const r = await api('POST', '/api/bahi/bank/match', {month}); await reload(`${r.proposed} matches suggested.`); return; }
+          if (a === 'kconfirm') {
+            const ids = [...EL.querySelectorAll('input[data-k]:checked')].map(i => i.dataset.k);
+            const r = await api('POST', '/api/bahi/bank/confirm', {ids}); await reload(`${r.matched} matches confirmed.`); return;
+          }
+          if (a === 'krecon') { BK = BK || {}; BK.recon = await api('POST', '/api/bahi/bank/reconcile', {month, account: ''}); await reload('Reconciliation stored.'); return; }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a.startsWith('bl')) {

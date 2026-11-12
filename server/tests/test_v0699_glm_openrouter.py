@@ -80,4 +80,4 @@ def test_openrouter_refusing_reasoning_is_asked_again_plain(orr):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.845.0"
+    assert APP_VERSION == "0.846.0"

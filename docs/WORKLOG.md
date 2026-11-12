@@ -3127,3 +3127,6 @@ Deploy: vps-ops deploy + ~/apps/santosh-core/.venv/bin/pip install "langgraph>=1
 
 Task ID: bahi-a6-0845
 Work: A6 bills in, checked, rebuilt over G7 v0.844.0, v0.845.0 ritual.
+
+Task ID: bahi-a7-0846
+Work: A7 bank + UPI reconciliation, v0.846.0 ritual.
