@@ -2942,3 +2942,9 @@ Tests: NEW `test_v0858_pc_flow.py` (11). `test_v0166_pc_full_hands.py`'s fake de
 (the 'Chrome already open' one-step case). PC sweeps 150+ green; `test_v067_operator::test_replay...` and
 `test_v0475::test_console_stamps` red on the commit before too. NOT VERIFIED on her PC: the ctrl+t path, the ask on a
 real call.
+
+v0.858.0 follow-up (owner: "IS IT SAME FOR VOICE CALL"): on a call the PC task's question is asked out loud, and her
+spoken answer is now caught from her own words at the end of her turn (`Call._pcask_listen` in `finish_turn`, the
+spoken-OTP pattern) instead of depending on Gemini passing it on; a call-brain ask answers with her words only (the
+'(Call ne samjha: ...)' tail dropped); the first answer counts (`ask["answered"]`), a later line becomes a note.
+Follow-ups on the call steer the running task through `same_chat` (call record / side record -> its chat). 2 tests.

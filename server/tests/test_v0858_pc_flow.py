@@ -239,3 +239,30 @@ def test_prompt_says_ask_her_choices_and_keep_her_browser():
     assert "SHE DECIDES THE CHOICES" in operator.SYSTEM and "ask_user" in operator.SYSTEM
     assert "THE BROWSER SHE NAMED" in operator.SYSTEM
     assert any(t["name"] == "ask_user" for t in operator.TOOLS)
+
+
+def test_call_answer_goes_straight_into_the_pc_task(monkeypatch):
+    """On a call her spoken answer is caught from her own words (like a spoken OTP), Gemini need not pass it on."""
+    from app import voice
+    op = operator.Op(id="pcop_c", tenant="t_c", conv="c_c", task="pizza")
+    op.ask = {"id": "a", "question": "Kaunsa pizza?", "options": [], "at": 1}
+    operator.OPS[op.id] = op
+    pushed = []
+    call = types.SimpleNamespace(tenant="t_c", conv="c_c", stats={}, push=lambda k, t: pushed.append(t))
+    try:
+        assert voice.Call._pcask_listen(call, "Farmhouse wala lo") is True
+        assert op.answer == "Farmhouse wala lo" and pushed and "already went to the PC task" in pushed[0]
+        assert voice.Call._pcask_listen(call, "aur kuch") is False          # nothing waiting any more
+    finally:
+        operator.OPS.pop(op.id, None)
+
+
+def test_call_brain_ask_answers_with_her_words_only():
+    op = operator.Op(id="pcop_b", tenant="t_b", conv="c_b", task="pizza")
+    op.ask = {"id": "a", "question": "?", "options": [], "at": 1}
+    operator.OPS[op.id] = op
+    try:
+        assert operator.answer_from_chat("t_b", "c_b", "Margherita\n(Call ne samjha: margherita pizza)")
+        assert op.answer == "Margherita"
+    finally:
+        operator.OPS.pop(op.id, None)

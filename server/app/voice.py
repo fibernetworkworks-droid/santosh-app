@@ -2868,6 +2868,28 @@ class Call:
         self.stats["backchannels"] += 1
         await self.send_audio(matched_clip(self, clips[i]))
 
+    def _pcask_listen(self, said: str) -> bool:
+        """v0.858 her PC task asked her a choice ('Kaunsa pizza?') and she ANSWERED it on the call: her own words go
+        straight into that task (Gemini does not have to pass them on, and cannot shorten them). True = taken."""
+        t = str(said or "").strip()
+        if len(t) < 2:
+            return False
+        try:
+            from .pc import operator as pcop
+            op = pcop.pending_ask(self.tenant)
+            if op is None or (op.ask or {}).get("at", 0) > time.time() - 0.5:
+                return False              # nothing asked (or asked this very instant: her words were for before)
+            got = pcop.answer_from_chat(self.tenant, self.conv, t)
+        except Exception:
+            log.debug("pc ask listen failed", exc_info=True)
+            return False
+        if not got:
+            return False
+        self.stats["pc_answers"] = self.stats.get("pc_answers", 0) + 1
+        self.push("text", f"(System: her answer \"{t[:120]}\" already went to the PC task, it is doing that now. Say only "
+                          "a short 'theek hai, wahi kar raha hoon'. Do NOT call santosh_kaam or pc_do for it.)")
+        return True
+
     async def _otp_listen(self, piece: str = "", final: bool = False) -> None:
         """v0.83 a website job is waiting for an OTP and she SAYS it on the call: the system catches the digits from
         her own words and types them into that page box itself (Gemini doesn't have to call a tool, and never needs
@@ -2962,6 +2984,7 @@ class Call:
             from .db import now as _now
             self._appr_since = _now()             # the next card she can answer by voice is one that appears after this
         await self._otp_listen(final=True)
+        self._pcask_listen(self.user_buf)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
         brain_saved = bool(getattr(self, "_brain_this_turn", False))   # wave 11: did THIS turn go to the brain?
         self._brain_this_turn = False

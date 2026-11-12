@@ -1957,8 +1957,7 @@ def tell(tenant: str, conv: str, text: str) -> "Op | None":
     text = str(text or "").strip()
     if op is None or not text:
         return None
-    if op.ask is not None:
-        give_answer(tenant, text)
+    if op.ask is not None and not op.ask.get("answered") and give_answer(tenant, text):
         return op
     op.notes.append(text[:1000])
     del op.notes[:-6]
@@ -1982,7 +1981,8 @@ def _take_notes(op: "Op", messages: list) -> None:
 
 
 def pending_ask(tenant: str) -> "Op | None":
-    waiting = [o for o in OPS.values() if o.tenant == tenant and o.ask is not None and o.status == "running"]
+    waiting = [o for o in OPS.values() if o.tenant == tenant and o.ask is not None and o.status == "running"
+               and not o.ask.get("answered")]
     return max(waiting, key=lambda o: o.ask.get("at", 0)) if waiting else None
 
 
@@ -1991,6 +1991,7 @@ def give_answer(tenant: str, text: str) -> bool:
     if op is None:
         return False
     op.answer = str(text or "").strip()[:500]
+    op.ask["answered"] = True           # her first answer counts; a later line is a new note, not a second answer
     loop = _loop
     if loop is not None and loop.is_running():
         loop.call_soon_threadsafe(op.answer_event.set)
@@ -2001,7 +2002,7 @@ def give_answer(tenant: str, text: str) -> bool:
 
 def answer_from_chat(tenant: str, conv: str, text: str) -> dict | None:
     """Her chat line answers the question her running PC task asked. None = no question waiting."""
-    t = str(text or "").strip()
+    t = re.split(r"\n\((?:Call ne|The call)", str(text or ""), maxsplit=1)[0].strip()   # a call brain ask: her words only
     if not t or t.startswith(("[", "(")) or pending_ask(tenant) is None:
         return None
     try:
@@ -2038,8 +2039,8 @@ async def _ask_user(op: "Op", a: dict[str, Any]) -> str:
         from ..voice import inject
         spoken = q + (" Options: " + "; ".join(opts[:6]) if opts else "")
         inject(op.conv, f"(Her PC task needs her choice NOW. Ask her out loud, warmly, in one or two short lines: "
-                        f"{spoken}. When she answers, call santosh_kaam with her exact words - they go straight to the "
-                        "PC task. Do not choose for her.)")
+                        f"{spoken}. Her spoken answer goes to the PC task by itself (and if you pass it on with "
+                        "santosh_kaam, it reaches the task too). Do not choose for her.)")
     except Exception:
         pass
     try:
