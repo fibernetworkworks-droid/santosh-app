@@ -130,7 +130,7 @@ class _ThokScreenState extends State<ThokScreen> {
       ('gstin', 'GSTIN (if any)'),
       ('kind', 'customer / supplier'),
       ('credit_limit', 'Credit limit (Rs)'),
-      ('credit_days', 'Udhaar din'),
+      ('credit_days', 'Credit days'),
       ('route', 'Route / beat (e.g. Mon)'),
     ]);
     if (f == null) return;
@@ -370,7 +370,7 @@ class _ThokScreenState extends State<ThokScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Thok sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Wholesale assistant')),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _busy ? null : _newOrder,
           icon: const Icon(Icons.add_shopping_cart_rounded),
@@ -381,7 +381,7 @@ class _ThokScreenState extends State<ThokScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Today'), (1, 'Udhaar'), (2, 'Party'), (3, 'Stock')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Credit'), (2, 'Party'), (3, 'Stock')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),

@@ -13,8 +13,8 @@ IconData _vIcon(String v) => switch (v) {
     };
 
 const _factLabels = {
-  'app_name': 'App', 'package': 'Package', 'version': 'Version', 'signed_by': 'Sign kiya', 'company': 'Company',
-  'product': 'Product', 'description': 'Kaam', 'built_with': 'Made', 'architecture': 'PC type', 'files_inside': 'Files inside',
+  'app_name': 'App', 'package': 'Package', 'version': 'Version', 'signed_by': 'Signed by', 'company': 'Company',
+  'product': 'Product', 'description': 'What it does', 'built_with': 'Made', 'architecture': 'PC type', 'files_inside': 'Files inside',
 };
 
 /// Chat card: App Jaanch verdict for an APK / EXE / file (never run, only read).

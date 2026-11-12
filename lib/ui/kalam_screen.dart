@@ -100,7 +100,7 @@ class _KalamScreenState extends State<KalamScreen> {
               Tab(text: 'Article'),
               Tab(text: 'Ideas'),
               Tab(text: 'Voice'),
-              Tab(text: 'Niyam'),
+              Tab(text: 'Rules'),
             ]),
           ),
           body: Aurora(
@@ -143,14 +143,14 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
     for (final k in ['maker', 'generic_name', 'net_quantity', 'mrp', 'made_on', 'origin', 'care', 'fssai', 'best_before']) k: TextEditingController(),
   };
   static const _prodLabels = {
-    'maker': 'Banane / pack / import wale name + address',
+    'maker': 'Maker / packer / importer name + address',
     'generic_name': 'Common name (e.g. "Shrikhand")',
     'net_quantity': 'Net quantity (500 g, 1 L, 2 pcs)',
     'mrp': 'MRP (all taxes included)',
     'made_on': 'Month / year of manufacture',
     'origin': 'Country of origin',
-    'care': 'Consumer care (naam, phone, email)',
-    'fssai': 'FSSAI licence no. (khane ki cheez)',
+    'care': 'Consumer care (name, phone, email)',
+    'fssai': 'FSSAI licence no. (food items)',
     'best_before': 'Best before / use by',
   };
 
@@ -241,7 +241,7 @@ class _WriteTabState extends State<_WriteTab> with AutomaticKeepAliveClientMixin
               contentPadding: EdgeInsets.zero,
               value: _paid,
               title: const Text('Paid / sponsored post'),
-              subtitle: const Text('Pehli line #Ad (ASCI niyam)'),
+              subtitle: const Text('First line #Ad (ASCI rule)'),
               onChanged: (v) => setState(() => _paid = v),
             ),
           const SizedBox(height: 6),
@@ -292,7 +292,7 @@ class _PiecesTabState extends State<_PiecesTab> {
       onRefresh: widget.onChanged,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
         Wrap(spacing: 6, runSpacing: 4, children: [
-          ChoiceChip(label: const Text('Sab'), selected: _status.isEmpty, onSelected: (_) => setState(() => _status = '')),
+          ChoiceChip(label: const Text('All'), selected: _status.isEmpty, onSelected: (_) => setState(() => _status = '')),
           for (final e in _statusLabel.entries) ChoiceChip(label: Text(e.value), selected: _status == e.key, onSelected: (_) => setState(() => _status = e.key)),
         ]),
         const SizedBox(height: 8),
@@ -309,7 +309,7 @@ class _PiecesTabState extends State<_PiecesTab> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_s(p['title']), style: display(14.5), maxLines: 2, overflow: TextOverflow.ellipsis),
-                      Text('${p['number']} · ${p['kind_label']} · ${p['words']} shabd', style: const TextStyle(color: C.muted, fontSize: 12)),
+                      Text('${p['number']} · ${p['kind_label']} · ${p['words']} words', style: const TextStyle(color: C.muted, fontSize: 12)),
                     ]),
                   ),
                   Pill(_statusLabel[_s(p['status'])] ?? _s(p['status']), fg: _statusCol(_s(p['status']))),
@@ -480,7 +480,7 @@ class _VoiceTab extends StatelessWidget {
           TextField(controller: f, minLines: 1, maxLines: 4, decoration: const InputDecoration(labelText: 'For example: 100 Mbps plan Rs 499 a month')),
           TextField(controller: src, decoration: const InputDecoration(labelText: 'From where (rate card, certificate...)')),
         ]),
-        actions: [FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo'))],
+        actions: [FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Add'))],
       ),
     );
     if (ok != true) return;
@@ -535,7 +535,7 @@ class _VoiceTab extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text('Your writing voice', style: display(16))),
-            Pill('${st['samples'] ?? 0} namune', fg: C.accent2),
+            Pill('${st['samples'] ?? 0} samples', fg: C.accent2),
           ]),
           const SizedBox(height: 6),
           if (_s(v['summary']).isNotEmpty) Text(_s(v['summary']), style: const TextStyle(color: C.chip)),
@@ -543,7 +543,7 @@ class _VoiceTab extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                  [if (_s(v['person']).isNotEmpty) 'Sambodhan: ${v['person']}', if (_s(v['sentences']).isNotEmpty) 'Vaakya: ${v['sentences']}', if (_s(v['emoji']).isNotEmpty) 'Emoji: ${v['emoji']}']
+                  [if (_s(v['person']).isNotEmpty) 'Form of address: ${v['person']}', if (_s(v['sentences']).isNotEmpty) 'Sentences: ${v['sentences']}', if (_s(v['emoji']).isNotEmpty) 'Emoji: ${v['emoji']}']
                       .join(' · '),
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ),
@@ -623,7 +623,7 @@ class _RulesTab extends StatelessWidget {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Jodo')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Connect')),
         ],
       ),
     );
@@ -669,7 +669,7 @@ class _RulesTab extends StatelessWidget {
           row('cta', 'What to ask readers to do at the end (call / order)', _s(st['cta'])),
           row('contact', 'Phone / WhatsApp', _s(st['contact'])),
           row('website', 'Website', _s(st['website'])),
-          row('address', 'Business ka pata (email footer)', _s(st['address']), lines: 3),
+          row('address', 'Business address (email footer)', _s(st['address']), lines: 3),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: st['ai_note'] == true,
@@ -686,17 +686,17 @@ class _RulesTab extends StatelessWidget {
             const Icon(Icons.public_rounded, color: C.accent),
             const SizedBox(width: 8),
             Expanded(child: Text('WordPress', style: display(16))),
-            Pill(wp['ready'] == true ? 'Juda hai' : 'Not connected', fg: wp['ready'] == true ? C.ok : C.faint),
+            Pill(wp['ready'] == true ? 'Connected' : 'Not connected', fg: wp['ready'] == true ? C.ok : C.faint),
           ]),
           if (wp['ready'] == true) Text('${wp['url']} · ${wp['user']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GlassButton(label: wp['ready'] == true ? 'Badlo' : 'Jodo', icon: Icons.link_rounded, onTap: () => _wordpress(context))),
+            Expanded(child: GlassButton(label: wp['ready'] == true ? 'Change' : 'Connect', icon: Icons.link_rounded, onTap: () => _wordpress(context))),
             if (wp['ready'] == true) ...[
               const SizedBox(width: 8),
               Expanded(
                 child: GlassButton(
-                  label: 'Hatao',
+                  label: 'Remove',
                   color: C.bad,
                   onTap: () async {
                     await app.api!.kalamWordpressOff();
@@ -775,7 +775,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
       builder: (d) => AlertDialog(
         title: const Text('What should change?'),
         content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'For example: make it shorter, friendlier language, put the offer at the top')),
-        actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Badlo'))],
+        actions: [FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Change'))],
       ),
     );
     if (ok == true && c.text.trim().isNotEmpty) {
@@ -841,7 +841,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
               Text('Where to publish?', style: display(17)),
               const SizedBox(height: 8),
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final d in const [('wordpress', 'My WordPress site'), ('email', 'Email'), ('page', 'Hoola page (link)'), ('copy', 'Main khud daalungi')])
+                for (final d in const [('wordpress', 'My WordPress site'), ('email', 'Email'), ('page', 'Hoola page (link)'), ('copy', 'I\'ll post it myself')])
                   ChoiceChip(label: Text(d.$2), selected: dest == d.$1, onSelected: (_) => set(() => dest = d.$1)),
               ]),
               const SizedBox(height: 10),
@@ -993,7 +993,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
                     : Row(children: [
                         Expanded(child: GlassButton(label: 'Check', icon: Icons.fact_check_rounded, height: 46, onTap: () => _do('check', () => app.api!.kalamDo(widget.id, 'check', {'conversation_id': app.conversationId ?? ''})))),
                         const SizedBox(width: 8),
-                        Expanded(child: GlassButton(label: 'Badlo', icon: Icons.auto_fix_high_rounded, height: 46, onTap: _revise)),
+                        Expanded(child: GlassButton(label: 'Change', icon: Icons.auto_fix_high_rounded, height: 46, onTap: _revise)),
                         const SizedBox(width: 8),
                         Expanded(child: GradientButton(label: 'Publish', icon: Icons.send_rounded, height: 46, onTap: p['status'] == 'waiting' ? null : _publish)),
                       ]),
@@ -1013,7 +1013,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
           Pill(_statusLabel[_s(p['status'])] ?? _s(p['status']), fg: _statusCol(_s(p['status']))),
         ]),
         const SizedBox(height: 4),
-        Text('${p['words']} shabd${(p['target_words'] ?? 0) != 0 ? ' (lakshya ${p['target_words']})' : ''}${_s(p['keyword']).isNotEmpty ? ' · keyword: ${p['keyword']}' : ''}',
+        Text('${p['words']} words${(p['target_words'] ?? 0) != 0 ? ' (target ${p['target_words']})' : ''}${_s(p['keyword']).isNotEmpty ? ' · keyword: ${p['keyword']}' : ''}',
             style: const TextStyle(color: C.muted, fontSize: 12.5)),
         for (final k in const ['subject', 'preheader', 'meta_title', 'meta_description', 'slug', 'button'])
           if (_s(m[k]).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text('$k: ${m[k]}', style: const TextStyle(color: C.chip, fontSize: 12.5))),
@@ -1038,7 +1038,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
             },
           ),
           if (p['status'] != 'published') ActionChip(avatar: const Icon(Icons.edit_rounded, size: 16), label: const Text('Write it myself'), onPressed: _edit),
-          ActionChip(avatar: const Icon(Icons.transform_rounded, size: 16), label: const Text('Roop badlo'), onPressed: _repurpose),
+          ActionChip(avatar: const Icon(Icons.transform_rounded, size: 16), label: const Text('Repurpose'), onPressed: _repurpose),
         ]),
       ]),
     );
@@ -1103,8 +1103,8 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
 
   static String _verdict(String v) => switch (v) {
         'backed' => 'your words',
-        'supported' => 'web: sahi',
-        'contradicted' => 'web: galat',
+        'supported' => 'web: correct',
+        'contradicted' => 'web: wrong',
         'unclear' => 'not sure',
         _ => 'not checked',
       };
@@ -1233,7 +1233,7 @@ class _KalamPublishCardState extends State<KalamPublishCard> {
           _busy
               ? const Center(child: CircularProgressIndicator())
               : Row(children: [
-                  Expanded(child: GlassButton(label: 'Mana', color: C.bad, height: 44, onTap: () => _decide(false))),
+                  Expanded(child: GlassButton(label: 'No', color: C.bad, height: 44, onTap: () => _decide(false))),
                   const SizedBox(width: 8),
                   if (copy) ...[
                     Expanded(

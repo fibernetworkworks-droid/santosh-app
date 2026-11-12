@@ -116,7 +116,7 @@ class _CompareCardState extends State<CompareCard> {
           Expanded(
               child: Text('Comparison · ${_s(v['title']).isEmpty ? '${_l(v['items']).length} item' : _s(v['title'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Pill({'open': 'waiting', 'ready': 'choose', 'chosen': 'chosen', 'closed': 'band'}[st] ?? st,
+          Pill({'open': 'waiting', 'ready': 'choose', 'chosen': 'chosen', 'closed': 'closed'}[st] ?? st,
               fg: st == 'ready' ? C.accent : C.muted),
         ]),
         if (_s(v['say']).isNotEmpty) ...[
@@ -151,7 +151,7 @@ class _CompareCardState extends State<CompareCard> {
                 if (r['verified'] == true) const Pill('verified', fg: C.ok),
                 Pill(_s(r['tier']), fg: tierColor[_s(r['tier'])] ?? C.chip),
                 if (_d(r['more_by']) > 0) Pill('${_inr(r['more_by'])} more', fg: C.muted),
-                if (r['credit_days'] != null) Pill('${_s(r['credit_days'])} din udhaar', fg: C.violet),
+                if (r['credit_days'] != null) Pill('${_s(r['credit_days'])} days credit', fg: C.violet),
                 if (r['fill_rate'] != null) Pill('gave ${(_d(r['fill_rate']) * 100).round()}% first', fg: C.teal),
               ]),
               if ((r['short'] as List?)?.isNotEmpty == true || (r['missing'] as List?)?.isNotEmpty == true)
@@ -341,7 +341,7 @@ class _MandateCardState extends State<MandateCard> {
           Expanded(
               child: Text('Standing order ${_s(v['number'])} · ${_s(v['with'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Pill({'draft': 'your approval pending', 'active': 'active', 'paused': 'paused', 'ended': 'band'}[st] ?? st,
+          Pill({'draft': 'your approval pending', 'active': 'active', 'paused': 'paused', 'ended': 'ended'}[st] ?? st,
               fg: st == 'active' ? C.ok : (st == 'draft' ? C.warn : C.muted)),
         ]),
         if (_s(v['say']).isNotEmpty) ...[
@@ -435,7 +435,7 @@ class _StandingTabState extends State<StandingTab> {
                       onSelected: (x) => set(() => x ? days.add(e.key) : days.remove(e.key))),
               ]),
               TextField(controller: at, decoration: const InputDecoration(labelText: 'Time (HH:MM)')),
-              TextField(controller: cap, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Har order max ₹')),
+              TextField(controller: cap, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Max per order ₹')),
               const SizedBox(height: 8),
               Text('Allowed price rise: ${tol.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12.5)),
               Wrap(spacing: 6, children: [
@@ -628,7 +628,7 @@ class _OffersTabState extends State<OffersTab> {
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: title, decoration: const InputDecoration(labelText: 'Title', hintText: 'Diwali offer')),
-            TextField(controller: text, minLines: 1, maxLines: 4, decoration: const InputDecoration(labelText: 'Do line')),
+            TextField(controller: text, minLines: 1, maxLines: 4, decoration: const InputDecoration(labelText: 'Two lines')),
             TextField(
                 controller: items,
                 minLines: 2,
@@ -696,7 +696,7 @@ class _OffersTabState extends State<OffersTab> {
                     await _guard(context, () => widget.app.api!.netPromoAct('optout', {'to': _s(o['peer'])}));
                     _load();
                   },
-                  child: const Text('Band')),
+                  child: const Text('Stop')),
             ]),
           const SizedBox(height: 8),
           if (!_loading && _inbox.isEmpty)

@@ -362,7 +362,7 @@ class _ContractsScreenState extends State<ContractsScreen> {
     final f = await _form(context, 'Stamp rate (from your state\'s schedule / your CA)', const [
       ('kind', 'Contract type (service / nda / lease ... or any)'),
       ('state', 'State'),
-      ('mode', 'fixed (Rs) ya pct (%)'),
+      ('mode', 'fixed (Rs) or pct (%)'),
       ('rate', 'Rate'),
       ('min', 'Minimum (Rs, if any)'),
       ('max', 'Maximum (Rs, if any)'),
@@ -801,7 +801,7 @@ class _ContractPageState extends State<ContractPage> {
           leading: Icon(o['status'] == 'open' ? Icons.radio_button_unchecked_rounded : Icons.check_circle_rounded,
               color: o['status'] == 'open' ? C.warn : C.ok),
           title: Text(_s(o['what']), style: const TextStyle(fontSize: 13.5)),
-          subtitle: Text('${_s(o['number'])} · ${_s(o['due'])} · ${_s(o['who'])}${o['every_months'] == null ? '' : ' · har ${_s(o['every_months'])} months'}'),
+          subtitle: Text('${_s(o['number'])} · ${_s(o['due'])} · ${_s(o['who'])}${o['every_months'] == null ? '' : ' · every ${_s(o['every_months'])} months'}'),
           trailing: o['status'] == 'open'
               ? IconButton(
                   icon: const Icon(Icons.check_rounded),

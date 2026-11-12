@@ -93,7 +93,7 @@ class _AppMoneyPanelState extends State<AppMoneyPanel> {
       if (_s(_hisaab['say']).isNotEmpty) Text(_s(_hisaab['say']), style: const TextStyle(color: C.ink, fontSize: 13)),
       if (_owe.isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Udhaar pending (${_owe.length})', style: display(13.5)),
+        Text('Credit pending (${_owe.length})', style: display(13.5)),
         for (final c in _owe.take(30))
           Padding(
             padding: const EdgeInsets.only(top: 6),

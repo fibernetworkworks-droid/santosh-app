@@ -36,7 +36,7 @@ List<PriceRow> quoteRows(Map<String, dynamic> e, {String language = ''}) {
     rows.add(PriceRow(Icons.music_note_rounded, SC.violet, 'Music', 'Google Lyria · ${moodLabel['${e['music']}'] ?? e['music']}',
         sInt(e['music_inr'])));
   }
-  rows.add(const PriceRow(Icons.mic_rounded, C.ok, 'Voice, captions, AI check', 'Hoola ki awaaz · jodna', 0, free: true));
+  rows.add(const PriceRow(Icons.mic_rounded, C.ok, 'Voice, captions, AI check', 'Hoola\'s voice · stitching', 0, free: true));
   return rows;
 }
 
@@ -203,7 +203,7 @@ class _GenerateSheetState extends State<_GenerateSheet> {
               '${_partial ? '' : '${widget.v['seconds'] ?? 0} sec'}'
           .toUpperCase(), style: body(11.5, w: FontWeight.w700, color: C.faint)),
       const SizedBox(height: 4),
-      Text('Video banane ka kharcha', style: sora(20)),
+      Text('Cost of making the video', style: sora(20)),
       const SizedBox(height: 16),
       SSegment<String>(
         height: 54,
@@ -332,7 +332,7 @@ class _StudioApprovalCardState extends State<StudioApprovalCard> {
       case 'music':
         return [PriceRow(Icons.music_note_rounded, SC.violet, 'Music', 'Google Lyria · ${moodLabel['${v['mood']}'] ?? v['mood'] ?? ''}', sInt(v['inr']))];
       case 'character':
-        return [PriceRow(Icons.person_rounded, SC.violet, 'Character ki photo', '${v['name'] ?? ''}', sInt(v['inr']))];
+        return [PriceRow(Icons.person_rounded, SC.violet, 'Character photo', '${v['name'] ?? ''}', sInt(v['inr']))];
     }
     if (v['video_inr'] == null) {
       return [PriceRow(Icons.videocam_rounded, SC.teal, '${v['shots'] ?? 0} shot · ${qualityShort['${v['quality']}'] ?? ''}',
@@ -377,7 +377,7 @@ class _StudioApprovalCardState extends State<StudioApprovalCard> {
         if (pending) ...[
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: SButton(label: 'Mana', primary: false, height: 48, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: SButton(label: 'No', primary: false, height: 48, onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 10),
             Expanded(flex: 2, child: SButton(label: 'Yes, make it', height: 48, busy: _busy, onTap: () => _decide(true))),
           ]),

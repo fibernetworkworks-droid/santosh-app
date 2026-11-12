@@ -173,7 +173,7 @@ class _InteriorScreenState extends State<InteriorScreen> {
       for (final p in _list(w['payments'])) Padding(padding: const EdgeInsets.only(bottom: 10),
           child: InteriorPaymentCard(app: widget.app, data: {'stage': p}, onDone: _load)),
       if (_strs(day['starting']).isNotEmpty) ...[const Caption('STARTS TODAY / TOMORROW'), for (final x in _strs(day['starting'])) Text('• $x')],
-      if (_strs(day['late']).isNotEmpty) ...[const SizedBox(height: 8), const Caption('DER SE'),
+      if (_strs(day['late']).isNotEmpty) ...[const SizedBox(height: 8), const Caption('LATE'),
         for (final x in _strs(day['late'])) Text('• $x', style: const TextStyle(color: C.warn))],
     ]);
   }
@@ -290,7 +290,7 @@ class _InteriorScreenState extends State<InteriorScreen> {
         Text('${_s(st['title'])}${_s(st['gstin']).isEmpty ? '' : ' · GSTIN ${_s(st['gstin'])}'}', style: const TextStyle(color: C.muted)),
         Text('Design fee: ${_s(st['fee_mode'])} ${_s(st['fee_value'])} · GST on works ${_s(st['gst_works'])}% · design ${_s(st['gst_design'])}%',
             style: const TextStyle(fontSize: 12.5)),
-        Text('UPI: ${_s(st['upi_id']).isEmpty ? '(Employee profile se)' : _s(st['upi_id'])}', style: const TextStyle(fontSize: 12.5)),
+        Text('UPI: ${_s(st['upi_id']).isEmpty ? '(from the Employee profile)' : _s(st['upi_id'])}', style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
         GlassButton(label: 'Edit', icon: Icons.edit_rounded, height: 40, onTap: () async {
           final f = await _form(context, 'Rules', const [
@@ -344,7 +344,7 @@ class _InteriorScreenState extends State<InteriorScreen> {
     const tabs = ['Today', 'Projects', 'Rate card', 'Vendors', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Interior Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Interior Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(

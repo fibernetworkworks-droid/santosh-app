@@ -26,7 +26,7 @@ void _snack(BuildContext c, String t) {
 const _bigFields = {'text', 'blurb', 'letter', 'synopsis', 'guidelines', 'notes', 'rules', 'hook', 'bio'};
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -106,7 +106,7 @@ class _KitabScreenState extends State<KitabScreen> {
 
   Future<void> _newBook() async {
     final f = await _form(context, 'New book', const [
-      ('title', 'Naam (title)'), ('author', 'Lekhak'), ('lang', 'Language: hi | mr | en'), ('kind', 'fiction | nonfiction | poetry | academic | children | translation'),
+      ('title', 'Name (title)'), ('author', 'Author'), ('lang', 'Language: hi | mr | en'), ('kind', 'fiction | nonfiction | poetry | academic | children | translation'),
       ('genre', 'Genre'), ('deadline', 'Deadline (YYYY-MM-DD)'), ('client', 'Client name (if you are editing someone else\'s book)'),
     ]);
     if (f == null || !mounted) return;
@@ -132,7 +132,7 @@ class _KitabScreenState extends State<KitabScreen> {
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_s(b['number'])} · ${_s(b['title'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                Text('${_s(b['chapters'])} chapter · ${_s(b['words'])} shabd · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
+                Text('${_s(b['chapters'])} chapters · ${_s(b['words'])} words · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
                     '${b['mine'] == false ? ' · client' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 if ((b['open_suggestions'] ?? 0) != 0)
                   Text('${_s(b['open_suggestions'])} suggestions waiting for your review', style: const TextStyle(fontSize: 12, color: C.accent)),
@@ -176,12 +176,12 @@ class _KitabScreenState extends State<KitabScreen> {
         Text('Follow-up: after ${_s(st['follow_days'])} days · morning note at ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted)),
       ])),
       const SizedBox(height: 10),
-      GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: () async {
-        final f = await _form(context, 'Niyam', const [
+      GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: () async {
+        final f = await _form(context, 'Rules', const [
           ('name', 'Your name / pen name'), ('role', 'author | editor | publisher'), ('lang', 'Language: hi | mr | en'),
-          ('rate_per', 'Rate per: word | page | hour | flat'), ('rate_amount', 'Rate (Rs)'), ('gstin', 'GSTIN (ho to)'),
+          ('rate_per', 'Rate per: word | page | hour | flat'), ('rate_amount', 'Rate (Rs)'), ('gstin', 'GSTIN (if any)'),
           ('sac', 'SAC (from your CA)'), ('upi_id', 'UPI ID'), ('email', 'Email'), ('phone', 'Phone'), ('follow_days', 'Follow up after how many days'),
-          ('morning_time', 'Subah ka note (HH:MM)'), ('rules', 'Your rules'),
+          ('morning_time', 'Morning note (HH:MM)'), ('rules', 'Your rules'),
         ], initial: {
           'name': _s(st['name']), 'role': _s(st['role']), 'lang': _s(st['lang']), 'rate_per': _s(rate['per']),
           'rate_amount': _s(rate['amount']), 'gstin': _s(st['gstin']), 'sac': _s(st['sac']), 'upi_id': _s(st['upi_id']),
@@ -209,10 +209,10 @@ class _KitabScreenState extends State<KitabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Kitaabein', 'Niyam'];
+    const tabs = ['Today', 'Books', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Kitab Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Book Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(
@@ -312,7 +312,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_card != null) Padding(padding: const EdgeInsets.only(bottom: 12),
                     child: KitabCardCard(app: widget.app, data: {'card': _card}, onDone: _load)),
-                Text('${_s(b['words'])} shabd · ${_s(b['lang'])} · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
+                Text('${_s(b['words'])} words · ${_s(b['lang'])} · ${_statusLabel[_s(b['status'])] ?? _s(b['status'])}'
                     '${_s(b['deadline']).isEmpty ? '' : ' · deadline ${_s(b['deadline'])}'}', style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 10),
                 _section('CHAPTER', [
@@ -320,7 +320,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text('${_s(c['n'])}. ${_s(c['title'])}'),
-                      subtitle: Text('${_s(c['words'])} shabd · ${_s(c['status'])}'),
+                      subtitle: Text('${_s(c['words'])} words · ${_s(c['status'])}'),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => KitabChapterPage(app: widget.app, id: _s(c['id']))))
@@ -329,7 +329,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                   Wrap(spacing: 8, runSpacing: 6, children: [
                     GlassButton(label: 'Add the manuscript', icon: Icons.upload_file_rounded, height: 40, onTap: _busy ? null : _import),
                     GlassButton(label: 'New chapter', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : () async {
-                      final f = await _form(context, 'New chapter', const [('title', 'Naam'), ('text', 'Text')]);
+                      final f = await _form(context, 'New chapter', const [('title', 'Name'), ('text', 'Text')]);
                       if (f != null) await _run('POST', '$_base/chapters', f);
                     }),
                   ]),
@@ -338,16 +338,16 @@ class _KitabBookPageState extends State<KitabBookPage> {
                   for (final x in _list(_m(b['style'])['characters'])) Text('• ${_s(x['name'])} ${_s(x['note'])}'),
                   for (final e in _m(_m(b['style'])['spellings']).entries) Text('• ${e.key} -> ${e.value}', style: const TextStyle(fontSize: 12.5)),
                   Wrap(spacing: 8, runSpacing: 6, children: [
-                    GlassButton(label: 'Naam jodo', height: 40, onTap: () async {
-                      final f = await _form(context, 'Paatra / naam', const [('name', 'Name (correct spelling)'), ('note', 'Note')]);
+                    GlassButton(label: 'Add name', height: 40, onTap: () async {
+                      final f = await _form(context, 'Character / name', const [('name', 'Name (correct spelling)'), ('note', 'Note')]);
                       if (f != null) await _run('PUT', '$_base/style', {'characters': [f]});
                     }),
                     GlassButton(label: 'Fix the spelling', height: 40, onTap: () async {
                       final f = await _form(context, 'Which spelling is right?', const [('choose', 'The correct word (the rest will be changed to match)')]);
                       if (f != null) await _run('PUT', '$_base/style', f);
                     }),
-                    GlassButton(label: 'Purn viram: । / .', height: 40, onTap: () async {
-                      final f = await _form(context, 'Purn viram', const [('full_stop', 'danda (।) or period (.)')]);
+                    GlassButton(label: 'Full stop: । / .', height: 40, onTap: () async {
+                      final f = await _form(context, 'Full stop', const [('full_stop', 'danda (।) or period (.)')]);
                       if (f != null) await _run('PUT', '$_base/style', {'conventions': {'full_stop': f['full_stop']}});
                     }),
                   ]),
@@ -363,7 +363,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                         onSelected: (v) async {
                           if (v == 'edit') {
                             final f = await _form(context, _s(p['number']), const [
-                              ('source', 'Kiski rachna'), ('holder', 'Who holds the rights'), ('contact', 'Email / contact'),
+                              ('source', 'Whose work'), ('holder', 'Who holds the rights'), ('contact', 'Email / contact'),
                               ('death_year', 'Year of the author\'s death (for public domain)'), ('credit', 'Credit line'),
                               ('status', 'needed | asked | granted | refused | fair_dealing | public_domain | own | removed'),
                             ], initial: {'source': _s(p['source']), 'holder': _s(p['holder']), 'contact': _s(p['contact']),
@@ -385,7 +385,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                   GlassButton(label: 'Search the manuscript', icon: Icons.search_rounded, height: 40,
                       onTap: _busy ? null : () => _run('POST', '$_base/permissions/scan')),
                 ]),
-                _section('ISBN AUR CHECKLIST', [
+                _section('ISBN AND CHECKLIST', [
                   for (final e in _m(b['isbns']).entries) Text('${e.key}: ${e.value}'),
                   for (final it in _list(b['checklist']))
                     CheckboxListTile(
@@ -398,8 +398,8 @@ class _KitabBookPageState extends State<KitabBookPage> {
                       onChanged: (v) => _run('POST', '$_base/checklist', {'item': it['key'], 'status': v == true ? 'done' : 'todo'}),
                     ),
                   Wrap(spacing: 8, runSpacing: 6, children: [
-                    GlassButton(label: 'ISBN jodo', height: 40, onTap: () async {
-                      final f = await _form(context, 'ISBN (isbn.gov.in se)', const [('format', 'paperback | hardback | ebook | audiobook'), ('isbn', 'ISBN')]);
+                    GlassButton(label: 'Add ISBN', height: 40, onTap: () async {
+                      final f = await _form(context, 'ISBN (from isbn.gov.in)', const [('format', 'paperback | hardback | ebook | audiobook'), ('isbn', 'ISBN')]);
                       if (f != null) await _run('POST', '$_base/isbn', f);
                     }),
                     GlassButton(label: 'Verso page', height: 40, onTap: () async {
@@ -408,7 +408,7 @@ class _KitabBookPageState extends State<KitabBookPage> {
                       showDialog(context: context, builder: (d) => AlertDialog(
                             title: const Text('Copyright / verso page'),
                             content: SingleChildScrollView(child: SelectableText(_strs(r['lines']).join('\n\n'))),
-                            actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))]));
+                            actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))]));
                     }),
                   ]),
                 ]),
@@ -443,10 +443,10 @@ class _KitabBookPageState extends State<KitabBookPage> {
                   Text(_s(_roy?['say'])),
                   for (final r in _list(_roy?['statements']))
                     Text('${_s(r['period'])} ${_s(r['format'])}: ${_s(r['units'])} copies · due ${_s(r['expected'])} · statement ${_s(r['stated'])}'
-                        '${r['diff'] != null && (r['diff'] as num).abs() >= 1 ? ' · farq ${_s(r['diff'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
-                  GlassButton(label: 'Statement jodo', height: 40, onTap: () async {
+                        '${r['diff'] != null && (r['diff'] as num).abs() >= 1 ? ' · difference ${_s(r['diff'])}' : ''}', style: const TextStyle(fontSize: 12.5)),
+                  GlassButton(label: 'Add statement', height: 40, onTap: () async {
                     final f = await _form(context, 'Royalty statement', const [
-                      ('period', 'Avadhi (Apr-Sep 2026)'), ('period_end', 'Ant tareekh (YYYY-MM-DD)'), ('format', 'paperback | ebook ...'),
+                      ('period', 'Period (Apr-Sep 2026)'), ('period_end', 'End date (YYYY-MM-DD)'), ('format', 'paperback | ebook ...'),
                       ('units', 'Copies sold'), ('returns', 'Returned'), ('price', 'MRP'), ('stated', 'Royalty in the statement'), ('tds', 'TDS deducted'),
                     ]);
                     if (f == null) return;
@@ -545,7 +545,7 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
-                Text('${_s(c['words'])} shabd · ausat vakya ${_s(_m(c['stats'])['avg_sentence'])} shabd', style: const TextStyle(color: C.muted)),
+                Text('${_s(c['words'])} words · average sentence ${_s(_m(c['stats'])['avg_sentence'])} words', style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   for (final e in _passLabel.entries)
@@ -591,7 +591,7 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
                               TextSpan(text: _s(s['from']).replaceAll(' ', '·'),
                                   style: const TextStyle(decoration: TextDecoration.lineThrough, color: C.bad)),
                               const TextSpan(text: '  →  '),
-                              TextSpan(text: _s(s['to']).isEmpty ? '(hatao)' : _s(s['to']).replaceAll(' ', '·'),
+                              TextSpan(text: _s(s['to']).isEmpty ? '(remove)' : _s(s['to']).replaceAll(' ', '·'),
                                   style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700)),
                             ])),
                           Text(_s(s['why']), style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -600,7 +600,7 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
                     ),
                   Wrap(spacing: 8, runSpacing: 6, children: [
                     GradientButton(label: 'Accept chosen (${_picked.length})', height: 44, onTap: _busy || _picked.isEmpty ? null : () => _decide(true)),
-                    GlassButton(label: 'Hatao', height: 44, onTap: _busy || _picked.isEmpty ? null : () => _decide(false)),
+                    GlassButton(label: 'Remove', height: 44, onTap: _busy || _picked.isEmpty ? null : () => _decide(false)),
                     GlassButton(label: 'Remove + do not show again', height: 44,
                         onTap: _busy || _picked.isEmpty ? null : () => _decide(false, remember: true)),
                   ]),
@@ -610,7 +610,7 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
                 Glass(child: SelectableText(_s(c['text']), style: const TextStyle(fontSize: 14, height: 1.5))),
                 const SizedBox(height: 10),
                 for (final (i, v) in _list(c['versions']).indexed)
-                  Text('Version ${i + 1}: ${_s(v['why'])} (${_s(v['words'])} shabd)', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+                  Text('Version ${i + 1}: ${_s(v['why'])} (${_s(v['words'])} words)', style: const TextStyle(fontSize: 11.5, color: C.faint)),
               ]),
             ),
     );

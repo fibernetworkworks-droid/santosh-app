@@ -290,7 +290,7 @@ class AppBoardCard extends StatelessWidget {
           const SizedBox(height: 8),
           AppScreenGrid(app: app, v: v, compact: true),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: () => app.api!.appAct(id, 'stop'), child: const Text('Rokiye')),
+            TextButton(onPressed: () => app.api!.appAct(id, 'stop'), child: const Text('Stop')),
             TextButton(onPressed: () => _openPreview(context, app, v), child: const Text('Prototype')),
             GlassButton(label: 'Board', height: 36, onTap: open),
           ]),
@@ -311,7 +311,7 @@ class AppBoardCard extends StatelessWidget {
           ]),
         ],
         if (st == 'failed' || st == 'stopped')
-          Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => app.api!.appAct(id, 'resume'), child: const Text('Aage badhao'))),
+          Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => app.api!.appAct(id, 'resume'), child: const Text('Continue'))),
       ]),
     );
   }
@@ -518,7 +518,7 @@ class _AppIdeaFinderState extends State<AppIdeaFinder> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (best) const Text('SABSE SAHI IDEA', style: TextStyle(color: C.accent, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1)),
+          if (best) const Text('BEST IDEA', style: TextStyle(color: C.accent, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1)),
           Text(_s(it['name']), style: display(15)),
           const SizedBox(height: 4),
           Text(_s(it['special']).isEmpty ? _s(it['pitch']) : _s(it['special']), style: const TextStyle(color: C.chip, fontSize: 13)),
@@ -616,7 +616,7 @@ class _AppIdeasState extends State<_AppIdeas> {
               suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward_rounded), onPressed: _load))),
       const SizedBox(height: 8),
       Wrap(spacing: 6, runSpacing: 6, children: [
-        ChoiceChip(label: const Text('Sab'), selected: _industry.isEmpty, onSelected: (_) { _industry = ''; _load(); }),
+        ChoiceChip(label: const Text('All'), selected: _industry.isEmpty, onSelected: (_) { _industry = ''; _load(); }),
         for (final i in inds)
           ChoiceChip(label: Text('${i['label']}'), selected: _industry == i['id'], onSelected: (_) { _industry = _s(i['id']); _q.clear(); _load(); }),
       ]),
@@ -626,7 +626,7 @@ class _AppIdeasState extends State<_AppIdeas> {
           contentPadding: EdgeInsets.zero,
           title: Text(_s(f['en']), style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${f['hi']} · ${f['goal_label']}', style: const TextStyle(color: C.muted)),
-          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki app'), child: const Text('Start')),
+          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} app'), child: const Text('Start')),
         ),
     ]);
   }
@@ -725,7 +725,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             }
           }, itemBuilder: (_) => const [
             PopupMenuItem(value: 'link', child: Text('Open the prototype in the browser')),
-            PopupMenuItem(value: 'delete', child: Text('Hatao')),
+            PopupMenuItem(value: 'delete', child: Text('Remove')),
           ]),
         ],
       ),
@@ -753,10 +753,10 @@ class _AppDesignPageState extends State<AppDesignPage> {
             SiteStages(v: v),
             if (st != 'planned' && st != 'looks') ...[const SizedBox(height: 10), AppScreenGrid(app: app, v: v)],
             if (st == 'designing' || st == 'checking')
-              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('stop'), child: const Text('Rokiye'))),
+              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('stop'), child: const Text('Stop'))),
             if (st == 'failed' || st == 'stopped') ...[
               if (_s(v['error']).isNotEmpty) Text(_s(v['error']), style: const TextStyle(color: C.bad, fontSize: 12.5)),
-              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('resume'), child: const Text('Aage badhao'))),
+              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('resume'), child: const Text('Continue'))),
             ],
           ])),
           const SizedBox(height: 10),
@@ -765,7 +765,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Plan: ${_list(plan['screens']).length + _list(plan['code_screens']).length} screens', style: display(16)),
               const SizedBox(height: 4),
-              Text('Neeche tabs: ${(plan['tabs'] as List? ?? const []).join(' · ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              Text('Bottom tabs: ${(plan['tabs'] as List? ?? const []).join(' · ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
               Text('Route: ${(plan['flow'] as List? ?? const []).join(' → ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 8),
               const Text('Remove the tick from any screen you do not want:', style: TextStyle(color: C.faint, fontSize: 12)),
@@ -798,7 +798,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
           if (overview.isNotEmpty) ...[
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text('Sab screens', style: display(15)),
+                Text('All screens', style: display(15)),
                 const Spacer(),
                 SegmentedButton<String>(
                   segments: [
@@ -813,7 +813,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
               ]),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: () => _openShot(context, app, widget.id, _s(overview[_plat] ?? overview['android']), 'Sab screens'),
+                onTap: () => _openShot(context, app, widget.id, _s(overview[_plat] ?? overview['android']), 'All screens'),
                 child: ClipRRect(borderRadius: BorderRadius.circular(12),
                     child: Image.network(app.api!.absolute('/api/apps/${widget.id}/shots/${overview[_plat] ?? overview['android']}'),
                         headers: app.api!.authHeaders,
@@ -910,7 +910,7 @@ class _AppDesignPageState extends State<AppDesignPage> {
               TextField(controller: _change, minLines: 1, maxLines: 4,
                   decoration: const InputDecoration(hintText: 'remove the coupon from the cart, lighter colour, an offers tab, add a booking screen…')),
               const SizedBox(height: 8),
-              Align(alignment: Alignment.centerRight, child: GlassButton(label: 'Badlo', color: C.accent, onTap: _busy ? null : () async {
+              Align(alignment: Alignment.centerRight, child: GlassButton(label: 'Change', color: C.accent, onTap: _busy ? null : () async {
                 final t = _change.text.trim();
                 if (t.isEmpty) return;
                 await _act('change', {'instruction': t});
@@ -946,8 +946,8 @@ class AppDesignSystemCard extends StatelessWidget {
 
   static const _quick = [
     ('Side bar', 'use side bar (drawer) navigation, and keep the bottom tabs too'),
-    ('Floating bar', 'neeche floating pill navigation bar do'),
-    ('Bottom bar', 'normal bottom navigation bar do'),
+    ('Floating bar', 'use a floating pill navigation bar at the bottom'),
+    ('Bottom bar', 'use a normal bottom navigation bar'),
     ('Speed-dial FAB', 'tapping the plus button opens 3 actions (speed dial FAB)'),
     ('Glass cards', 'make the cards glass-like (frosted)'),
     ('Dark mode', 'make the app dark mode'),
@@ -1035,7 +1035,7 @@ class AppBlueprintCard extends StatelessWidget {
     ('Company SSO', 'also allow login through the company Microsoft / Google login (SSO)'),
     ('Offline', 'work without internet too, and sync later'),
   ];
-  static const _actLabel = {'read': 'Viewed', 'create': 'Made', 'update': 'Changed', 'delete': 'Hataye', 'approve': 'Approved', 'export': 'Export'};
+  static const _actLabel = {'read': 'Viewed', 'create': 'Made', 'update': 'Changed', 'delete': 'Deleted', 'approve': 'Approved', 'export': 'Export'};
   static const _scopeLabel = {'none': '-', 'own': 'own', 'unit': 'unit', 'parent': 'parent', 'all': 'all'};
 
   Color _playCol(String p) => switch (p) { 'ok' => C.ok, 'disclosure' => C.teal, 'declaration' => C.warn, _ => C.bad };
@@ -1073,7 +1073,7 @@ class AppBlueprintCard extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Inner structure${_s(b['archetype']).isEmpty ? '' : ' · ${b['archetype']}'}', style: display(15)),
       const SizedBox(height: 4),
-      Text('${data['tables'] ?? 0} tables · ${data['relations'] ?? 0} rishte · ${roles.length} roles · '
+      Text('${data['tables'] ?? 0} tables · ${data['relations'] ?? 0} relations · ${roles.length} roles · '
           '${(b['levels'] as List? ?? const []).length} levels${b['offline'] == true ? ' · offline too' : ''}',
           style: const TextStyle(color: C.muted, fontSize: 12.5)),
       head('Organisation levels'),
@@ -1101,7 +1101,7 @@ class AppBlueprintCard extends StatelessWidget {
       chips(_list(b['login']).map((m) => chip(_s(m['label']), C.accent))),
       for (final w in (b['login_warnings'] as List? ?? const []))
         Padding(padding: const EdgeInsets.only(top: 3), child: Text('ℹ $w', style: const TextStyle(color: C.faint, fontSize: 11.5))),
-      head('Phone ki suvidhayein (Play / App Store)'),
+      head('Phone features (Play / App Store)'),
       chips(_list(b['caps']).map((c) => chip('${c['label']} · ${c['play_label']}', _playCol(_s(c['play']))))),
       for (final p in _list(b['cap_problems']))
         Padding(padding: const EdgeInsets.only(top: 4), child: Text('⛔ ${p['text']}', style: const TextStyle(color: C.bad, fontSize: 12))),
@@ -1203,7 +1203,7 @@ class _AppPreviewState extends State<AppPreview> {
               child: Text(_plat == 'android' ? 'iPhone look' : 'Android look')),
           IconButton(tooltip: 'Light / dark', icon: const Icon(Icons.dark_mode_outlined),
               onPressed: () => _web.runJavaScript("window.HoolaProto && window.HoolaProto.mode('toggle')")),
-          IconButton(tooltip: 'Sab screens', icon: const Icon(Icons.grid_view_rounded),
+          IconButton(tooltip: 'All screens', icon: const Icon(Icons.grid_view_rounded),
               onPressed: () => _web.loadRequest(Uri.parse('${_base}all.html'))),
           IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.loadRequest(Uri.parse('$_base?p=$_plat'))),
         ]),
@@ -1245,7 +1245,7 @@ class AppArtCard extends StatelessWidget {
           Padding(padding: const EdgeInsets.only(top: 4), child: Text(_s(art['idea']), style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12.5))),
         line('Identity', _s(art['signature'])),
         line('Layout', _s(art['layout'])),
-        line('Shuruaat', _s(art['hero'])),
+        line('Opening', _s(art['hero'])),
         line('Motion', _s(art['motion'])),
         if (art['three_d'] == true) line('3D', (art['scenes'] as List? ?? const []).join(', ').isEmpty ? 'yes' : (art['scenes'] as List).join(', ')),
         if (scores.isNotEmpty) ...[

@@ -319,7 +319,7 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
                   title: const Text('Learning'), subtitle: const Text('Asks you before every change outside Hoola')),
               RadioListTile<String>(
                   value: 'saathi', groupValue: trust, onChanged: (v) => setSheet(() => trust = v ?? 'seekh'),
-                  title: const Text('Saathi'), subtitle: const Text('Small, undoable changes; tells you the same day')),
+                  title: const Text('Partner'), subtitle: const Text('Small, undoable changes; tells you the same day')),
               const SizedBox(height: 8),
               GradientButton(label: 'Start work', icon: Icons.play_arrow_rounded, onTap: () => Navigator.pop(c, true)),
             ]),

@@ -527,7 +527,7 @@ class _FrontofficeReportViewState extends State<FrontofficeReportView> {
   late Map<String, dynamic> _r = widget.initial;
 
   Future<void> _pick() async {
-    final f = await _form(context, 'Report from', const [('start', 'Se (DD-MM-YYYY)'), ('end', 'Until (DD-MM-YYYY)')]);
+    final f = await _form(context, 'Report from', const [('start', 'From (DD-MM-YYYY)'), ('end', 'Until (DD-MM-YYYY)')]);
     if (f == null) return;
     try {
       final r = _m(await widget.app.api!.call('GET', '/api/frontoffice/report', query: {'start': f['start'] ?? '', 'end': f['end'] ?? ''}));
@@ -678,7 +678,7 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
   Future<void> _discount() async {
     final f = await _form(context, 'Discount / free (card for your approval)', const [
       ('amount', 'Discount ₹'),
-      ('pct', 'ya %'),
+      ('pct', 'or %'),
       ('complimentary', 'Fully free? (write yes)'),
       ('reason', 'Reason'),
     ], ok: 'Make card');
@@ -828,7 +828,7 @@ class FrontofficeFormCTile extends StatelessWidget {
           ),
           actions: [
             TextButton(onPressed: () => Native.openExternal(url: _s(r['portal'])), child: const Text('Open e-FRRO')),
-            TextButton(onPressed: () => Navigator.pop(d), child: const Text('Band')),
+            TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close')),
           ],
         ),
       );
@@ -1031,7 +1031,7 @@ class _FrontofficeMessageCardState extends State<FrontofficeMessageCard> {
         if (st == 'draft')
           Wrap(spacing: 8, runSpacing: 6, children: [
             GradientButton(label: 'From your own WhatsApp', icon: Icons.send_rounded, height: 40, onTap: _busy ? null : () => _send('self')),
-            GlassButton(label: 'Business number se', height: 40, onTap: _busy ? null : () => _send('business')),
+            GlassButton(label: 'From the business number', height: 40, onTap: _busy ? null : () => _send('business')),
             GlassButton(label: 'Edit', height: 40, onTap: _busy ? null : _edit),
             GlassButton(
                 label: 'Remove',

@@ -33,7 +33,7 @@ Color _stColor(String st) => switch (st) {
     };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}, Set<String> multi = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}, Set<String> multi = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -142,18 +142,18 @@ class _CosecScreenState extends State<CosecScreen> {
 
   Future<void> _newEntity() async {
     final f = await _form(context, 'New company / LLP', const [
-      ('name', 'Naam'),
-      ('kind', 'Kism: private / opc / public / listed / section8 / llp'),
+      ('name', 'Name'),
+      ('kind', 'Type: private / opc / public / listed / section8 / llp'),
       ('cin', 'CIN (company)'),
       ('llpin', 'LLPIN (LLP)'),
       ('incorporated_on', 'Incorporation date (YYYY-MM-DD)'),
-      ('paid_up', 'Paid-up capital (jaise 25 lakh)'),
+      ('paid_up', 'Paid-up capital (e.g. 25 lakh)'),
       ('turnover', 'Last year\'s turnover (e.g. 3 crore)'),
       ('registered_office', 'Registered office'),
       ('auditor_name', 'Auditor (firm)'),
       ('auditor_frn', 'Auditor FRN'),
       ('auditor_term_to_agm', 'Auditor term until the AGM of which FY (e.g. 2029-30)'),
-      ('last_agm', 'Pichhla AGM (YYYY-MM-DD)'),
+      ('last_agm', 'Last AGM (YYYY-MM-DD)'),
     ], ok: 'Make');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/cosec/entities', f);
@@ -226,14 +226,14 @@ class _CosecScreenState extends State<CosecScreen> {
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
     const keys = ['firm', 'cs_name', 'membership_no', 'email', 'phone', 'windows', 'morning_time', 'rules'];
-    final f = await _form(context, 'Niyam', const [
+    final f = await _form(context, 'Rules', const [
       ('firm', 'Your firm / company'),
       ('cs_name', 'CS name'),
       ('membership_no', 'Membership no. (ACS / FCS)'),
       ('email', 'Email'),
       ('phone', 'Mobile'),
       ('windows', 'Days to remind (e.g. 30,15,7,1,0)'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
       ('rules', 'Your rules'),
     ], ok: 'Save', initial: {for (final k in keys) k: _s(st[k])}, multi: const {'rules'});
     if (f == null) return;
@@ -249,7 +249,7 @@ class _CosecScreenState extends State<CosecScreen> {
           Text('${_s(st['cs_name'])} ${_s(st['membership_no'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           Text('Reminders: ${_s(st['windows'])} days before · morning ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
+          GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
@@ -260,7 +260,7 @@ class _CosecScreenState extends State<CosecScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Companies', 'Filings', 'Niyam'];
+    final tabs = ['Today', 'Companies', 'Filings', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -336,7 +336,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
     final e = _m(_e);
     final aud = _m(e['auditor']);
     final f = await _form(context, 'Company details', const [
-      ('name', 'Naam'),
+      ('name', 'Name'),
       ('cin', 'CIN'),
       ('llpin', 'LLPIN'),
       ('roc', 'ROC'),
@@ -347,8 +347,8 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
       ('email', 'Company email'),
       ('auditor_name', 'Auditor'),
       ('auditor_frn', 'Auditor FRN'),
-      ('auditor_term_to_agm', 'Auditor term (FY, jaise 2029-30)'),
-      ('last_agm', 'Pichhla AGM'),
+      ('auditor_term_to_agm', 'Auditor term (FY, e.g. 2029-30)'),
+      ('last_agm', 'Last AGM'),
     ], ok: 'Save', initial: {
       for (final k in ['name', 'cin', 'llpin', 'roc', 'incorporated_on', 'registered_office', 'email', 'last_agm']) k: _s(e[k]),
       'paid_up': _s(e['paid_up']),
@@ -365,10 +365,10 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
 
   Future<void> _addPerson(String role) async {
     final f = await _form(context, switch (role) { 'member' => 'Member', 'kmp' => 'KMP', 'partner' => 'Designated partner', _ => 'Director' }, [
-      ('name', 'Naam'),
-      if (role != 'member') ('din', role == 'partner' ? 'DPIN / DIN (8 ank)' : 'DIN (8 ank)'),
+      ('name', 'Name'),
+      if (role != 'member') ('din', role == 'partner' ? 'DPIN / DIN (8 digits)' : 'DIN (8 digits)'),
       ('designation', 'Position (designation)'),
-      ('appointed_on', 'Kab se (YYYY-MM-DD)'),
+      ('appointed_on', 'From (YYYY-MM-DD)'),
       if (role == 'director') ('kyc_on', 'Last DIR-3 KYC date (YYYY-MM-DD)'),
       if (role == 'member') ('shares', 'Shares'),
       ('email', 'Email'),
@@ -383,9 +383,9 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
       ('words', 'For example: new director, resignation, share allotment, office shift, bank loan'),
       ('on', 'When (YYYY-MM-DD)'),
       ('name', 'Who (name)'),
-      ('din', 'DIN (director ho to)'),
+      ('din', 'DIN (if a director)'),
       ('shares', 'Shares (allotment / transfer)'),
-      ('to', 'Kisko (transfer)'),
+      ('to', 'To whom (transfer)'),
       ('address', 'New address (office shift)'),
       ('holder', 'Bank / charge holder'),
       ('amount', 'Amount (charge)'),
@@ -410,9 +410,9 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
   Future<void> _newMeeting() async {
     final f = await _form(context, 'New meeting', const [
       ('kind', 'Which: board / agm / egm / committee'),
-      ('on', 'Tareekh (YYYY-MM-DD)'),
+      ('on', 'Date (YYYY-MM-DD)'),
       ('time', 'Time (e.g. 11:00)'),
-      ('place', 'Jagah'),
+      ('place', 'Place'),
       ('mode', 'physical / vc / hybrid'),
       ('fy', 'AGM: accounts of which FY (e.g. 2025-26)'),
       ('agenda', 'Agenda (one item per line; blank = starter)'),
@@ -435,10 +435,10 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
           if (_s(e['registered_office']).isNotEmpty) Text(_s(e['registered_office']), style: const TextStyle(fontSize: 12.5)),
           Text('Auditor: ${_s(aud['name']).isEmpty ? '—' : _s(aud['name'])}${_s(aud['term_to_agm']).isNotEmpty ? ' (term until AGM ${_s(aud['term_to_agm'])})' : ''}',
               style: const TextStyle(fontSize: 12.5)),
-          Text('Pichhla AGM: ${_s(e['last_agm']).isEmpty ? '—' : _s(e['last_agm'])}', style: const TextStyle(fontSize: 12.5)),
+          Text('Last AGM: ${_s(e['last_agm']).isEmpty ? '—' : _s(e['last_agm'])}', style: const TextStyle(fontSize: 12.5)),
           if (_s(sc['why']).isNotEmpty) Text(_s(sc['why']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _editMaster),
+          GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 40, onTap: _busy ? null : _editMaster),
         ]),
       ),
       const SizedBox(height: 8),
@@ -481,7 +481,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
         );
     return ListView(padding: const EdgeInsets.all(16), children: [
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: llp ? 'Partner jodo' : 'Director jodo', icon: Icons.person_add_rounded, height: 40,
+        GlassButton(label: llp ? 'Add partner' : 'Add director', icon: Icons.person_add_rounded, height: 40,
             onTap: _busy ? null : () => _addPerson(llp ? 'partner' : 'director')),
         if (!llp) GlassButton(label: 'KMP', icon: Icons.badge_rounded, height: 40, onTap: _busy ? null : () => _addPerson('kmp')),
         if (!llp) GlassButton(label: 'Member', icon: Icons.group_add_rounded, height: 40, onTap: _busy ? null : () => _addPerson('member')),
@@ -494,7 +494,7 @@ class _CosecEntityPageState extends State<CosecEntityPage> {
       if (_list(e['charges']).isNotEmpty) ...[
         const Caption('CHARGES'),
         for (final c in _list(e['charges']))
-          Text('• ${_s(c['holder'])} ${_s(c['amount'])} · ${_s(c['created_on'])}${_s(c['satisfied_on']).isNotEmpty ? ' · chuka ${_s(c['satisfied_on'])}' : ''}',
+          Text('• ${_s(c['holder'])} ${_s(c['amount'])} · ${_s(c['created_on'])}${_s(c['satisfied_on']).isNotEmpty ? ' · satisfied ${_s(c['satisfied_on'])}' : ''}',
               style: const TextStyle(fontSize: 13)),
       ],
       const SizedBox(height: 8),
@@ -655,8 +655,8 @@ class _CosecFilingCardState extends State<CosecFilingCard> {
         if (_s(f['entity']).isNotEmpty) Text(_s(f['entity']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         Text(_s(f['label']), style: const TextStyle(fontSize: 12.5)),
         Text(
-            'Aakhri tareekh ${_s(f['due']).isEmpty ? '—' : _s(f['due'])}${f['est'] == true ? ' (andaaza)' : ''}'
-            '${left is num && st != 'filed' && st != 'not_needed' ? (left < 0 ? ' · ${-left} din der' : ' · $left din') : ''}',
+            'Due date ${_s(f['due']).isEmpty ? '—' : _s(f['due'])}${f['est'] == true ? ' (estimate)' : ''}'
+            '${left is num && st != 'filed' && st != 'not_needed' ? (left < 0 ? ' · ${-left} days late' : ' · $left days') : ''}',
             style: TextStyle(fontSize: 12.5, color: f['late'] == true ? C.bad : C.muted)),
         Text(_s(f['basis']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
         if (fee.isNotEmpty) Text(_s(fee['text']), style: const TextStyle(fontSize: 12, color: C.warn)),
@@ -737,7 +737,7 @@ class _CosecMeetingCardState extends State<CosecMeetingCard> {
   }
 
   Future<void> _notice() async {
-    final f = await _form(context, 'Notice', const [('send_on', 'Kab bhejoge (YYYY-MM-DD, khaali = aaj)'), ('mode', 'email / hand / post / courier')]);
+    final f = await _form(context, 'Notice', const [('send_on', 'Send date (YYYY-MM-DD, blank = today)'), ('mode', 'email / hand / post / courier')]);
     if (f == null) return;
     final short = await showDialog<bool>(
         context: context,

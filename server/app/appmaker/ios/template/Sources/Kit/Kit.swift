@@ -170,11 +170,11 @@ enum Words {
     static var freeDelivery: String { t("Free delivery", "मुफ़्त डिलीवरी", "Free delivery") }
     static var shopClosed: String { t("Shop is closed now - your order will be seen when it opens", "दुकान अभी बंद है - खुलते ही ऑर्डर देखा जाएगा", "Dukaan abhi band hai - khulte hi order dekha jayega") }
     static var areaOnly: String { t("Delivery only to some PIN codes - please put your PIN code in the address.", "डिलीवरी कुछ पिन कोड पर ही - पते में पिन कोड लिखें।", "Delivery kuch PIN codes par hi - address mein PIN code likhein.") }
-    static var myKhata: String { t("My khata", "मेरा खाता", "Mera khata") }   // v0.359 KHATA
+    static var myKhata: String { t("My ledger", "मेरा खाता", "Mera khata") }   // v0.359 KHATA
     static var due: String { t("To pay", "बाकी", "Baaki") }
     static var advance: String { t("Advance", "एडवांस", "Advance") }
     static var allClear: String { t("All clear", "सब चुकता", "Sab chukta") }
-    static var khataDues: String { t("Udhaar", "उधार", "Udhaar") }
+    static var khataDues: String { t("Credit due", "उधार", "Udhaar") }
     static var received: String { t("Received", "मिला", "Mila") }
     static var onCredit: String { t("On credit", "उधार पर", "Udhaar par") }
     static var giveCredit: String { t("On credit", "उधार दें", "Udhaar do") }

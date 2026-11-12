@@ -204,7 +204,7 @@ class _ProductScreenState extends State<ProductScreen> {
             child: Row(children: [
               Expanded(
                   child: Text('${k['north_star'] == true ? '★ ' : ''}${k['name']}: ${_num(k['latest'])} ${_s(k['unit'])}'
-                      '${k['target'] != null ? ' (lakshya ${_num(k['target'])})' : ''}',
+                      '${k['target'] != null ? ' (target ${_num(k['target'])})' : ''}',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
               IconButton(
                 icon: const Icon(Icons.add_rounded),
@@ -377,7 +377,7 @@ class _ProductScreenState extends State<ProductScreen> {
             ('now', 'Current capacity (person-months)'),
             ('next', 'Next capacity'),
             ('later', 'Later capacity'),
-            ('scoring', 'rice ya ice'),
+            ('scoring', 'rice or ice'),
             ('ns', 'North star number (for example: people who order every week)'),
             ('ns_target', 'North star goal'),
           ], initial: {
@@ -404,7 +404,7 @@ class _ProductScreenState extends State<ProductScreen> {
         label: 'Add KPI',
         icon: Icons.insights_rounded,
         onTap: () async {
-          final f = await _form(context, 'KPI', const [('name', 'Name'), ('unit', 'Unit (%, people, ₹)'), ('target', 'Goal'), ('better', 'up ya down')]);
+          final f = await _form(context, 'KPI', const [('name', 'Name'), ('unit', 'Unit (%, people, ₹)'), ('target', 'Goal'), ('better', 'up or down')]);
           if (f == null || f['name'] == null) return;
           await _run('POST', '/api/product/kpis', {...f, if (f['target'] != null) 'target': double.tryParse(f['target']!)});
         },
@@ -438,7 +438,7 @@ class _ProductScreenState extends State<ProductScreen> {
       backgroundColor: C.bgTop,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('Product sahayak'),
+        title: const Text('Product assistant'),
         actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _busy ? null : _load)],
       ),
       body: Column(children: [
@@ -515,7 +515,7 @@ class _ProductOppPageState extends State<ProductOppPage> {
       ('reach', 'Reach: how many people, in 3 months'),
       ('impact', 'Impact: 3 / 2 / 1 / 0.5 / 0.25'),
       ('confidence', 'Confidence: 100 / 80 / 50'),
-      ('effort', 'Effort: "2 hafte" / "1 mahina"'),
+      ('effort', 'Effort: "2 weeks" / "1 month"'),
     ], initial: {
       if (o['reach'] != null) 'reach': _num(o['reach']),
       if (o['impact'] != null) 'impact': _num(o['impact']),

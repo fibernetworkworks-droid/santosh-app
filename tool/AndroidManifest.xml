@@ -298,7 +298,7 @@
         <service
             android:name=".HoolaPayListener"
             android:exported="true"
-            android:label="Hoola Galla (UPI payment alerts)"
+            android:label="Hoola Till (UPI payment alerts)"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />

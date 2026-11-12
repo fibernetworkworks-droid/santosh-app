@@ -120,7 +120,7 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
                   color: C.panel,
                   child: ListTile(
                     title: Text(_t(p['title']), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('${_t(p['date'])} · ${{'published': 'Live', 'scheduled': 'Time par', 'hidden': 'Chhupa'}[_t(p['status'])] ?? _t(p['status'])}'
+                    subtitle: Text('${_t(p['date'])} · ${{'published': 'Live', 'scheduled': 'Scheduled', 'hidden': 'Hidden'}[_t(p['status'])] ?? _t(p['status'])}'
                         '${_t(p['category']).isEmpty ? '' : ' · ${_t(p['category'])}'}',
                         style: const TextStyle(fontSize: 12, color: C.muted)),
                     onTap: live && prev.isNotEmpty ? () => launchUrl(Uri.parse('$prev/blog/$slug/')) : null,
@@ -132,7 +132,7 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
                             'delete': 'Delete this post for good? It cannot be brought back.',
                           }[a]!),
                       itemBuilder: (_) => [
-                        if (live) const PopupMenuItem(value: 'hide', child: Text('Hatao (chhupao)')),
+                        if (live) const PopupMenuItem(value: 'hide', child: Text('Remove (hide)')),
                         if (!live) const PopupMenuItem(value: 'show', child: Text('Put back')),
                         const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: C.bad))),
                       ],

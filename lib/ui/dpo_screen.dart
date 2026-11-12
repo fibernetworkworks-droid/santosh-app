@@ -29,7 +29,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   const multi = {'text', 'body', 'notes', 'nature', 'extent', 'impact', 'measures', 'safety', 'cause', 'findings', 'remedial',
     'details', 'consequences', 'people_report', 'affected', 'items', 'processors', 'purpose', 'rules'};
@@ -127,7 +127,7 @@ class _DpoScreenState extends State<DpoScreen> {
       ('link', 'Link to withdraw consent / make a request (https://)'),
       ('identifiers', 'How you will verify identity (e.g. registered mobile)'),
       ('reply_days', 'Days to reply (max 90)'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
       ('rules', 'Your rules'),
     ], ok: 'Save', initial: {for (final e in st.entries) if (e.value != null && e.value is! Map && e.value is! List) e.key: '${e.value}'});
     if (f == null) return;
@@ -138,7 +138,7 @@ class _DpoScreenState extends State<DpoScreen> {
 
   Future<void> _activity([Map<String, dynamic>? a]) async {
     final f = await _form(context, a == null ? 'New activity (processing)' : 'Change ${_s(a['number'])}', const [
-      ('name', 'Kaam name'),
+      ('name', 'Activity name'),
       ('people', 'Whose data (customers / staff / children)'),
       ('items', 'Which data (comma separated)'),
       ('purpose', 'For what purpose'),
@@ -238,9 +238,9 @@ class _DpoScreenState extends State<DpoScreen> {
   Future<void> _newRequest() async {
     final f = await _form(context, 'New request (data principal)', const [
       ('text', 'Their words (e.g. "delete my data")'),
-      ('name', 'Naam'),
+      ('name', 'Name'),
       ('phone', 'Registered mobile'),
-      ('email', 'Email (ho to)'),
+      ('email', 'Email (if any)'),
       ('via', 'How it came (WhatsApp / email / shop)'),
       ('received', 'When received (YYYY-MM-DD, blank = today)'),
     ], ok: 'Save');
@@ -267,9 +267,9 @@ class _DpoScreenState extends State<DpoScreen> {
 
   Future<void> _newConsent() async {
     final f = await _form(context, 'Record consent', const [
-      ('name', 'Naam'),
+      ('name', 'Name'),
       ('phone', 'Mobile'),
-      ('activities', 'Kaam (PA-01, PA-02)'),
+      ('activities', 'Activities (PA-01, PA-02)'),
       ('how', 'How it was taken (form / WhatsApp / paper)'),
       ('proof', 'Evidence reference'),
       ('child', 'Is it a child? (yes / no)'),
@@ -284,13 +284,13 @@ class _DpoScreenState extends State<DpoScreen> {
   Future<void> _vendor([Map<String, dynamic>? v]) async {
     final clauses = _list(_law['dpa']);
     final f = await _form(context, v == null ? 'New vendor (processor)' : _s(v['name']), const [
-      ('name', 'Naam'),
+      ('name', 'Name'),
       ('service', 'What it does'),
       ('items', 'Which data goes there'),
       ('country', 'Data is in which country'),
-      ('dpa_on', 'Contract (DPA) kab sign (YYYY-MM-DD)'),
-      ('review_on', 'Review kab (YYYY-MM-DD)'),
-    ], ok: 'Aage', initial: v == null
+      ('dpa_on', 'Contract (DPA) signed on (YYYY-MM-DD)'),
+      ('review_on', 'Review on (YYYY-MM-DD)'),
+    ], ok: 'Next', initial: v == null
         ? const {}
         : {'name': _s(v['name']), 'service': _s(v['service']), 'items': _strs(v['items']).join(', '), 'country': _s(v['country']),
             'dpa_on': _s(v['dpa_on']), 'review_on': _s(v['review_on'])});
@@ -305,7 +305,7 @@ class _DpoScreenState extends State<DpoScreen> {
           title: const Text('What is in the contract (DPA)'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              SwitchListTile(value: signed, title: const Text('DPA sign hai'), onChanged: (x) => set(() => signed = x)),
+              SwitchListTile(value: signed, title: const Text('DPA signed'), onChanged: (x) => set(() => signed = x)),
               for (final c in clauses)
                 CheckboxListTile(
                     dense: true,
@@ -351,7 +351,7 @@ class _DpoScreenState extends State<DpoScreen> {
       const SizedBox(height: 12),
       if (_list(day['cards']).isNotEmpty) ...[const Caption('NEEDS YOUR YES'), _cardsList(_list(day['cards']))],
       if (_list(day['breaches']).isNotEmpty) ...[
-        const Caption('KHULE BREACH'),
+        const Caption('OPEN BREACHES'),
         for (final b in _list(day['breaches'])) DpoBreachCard(app: widget.app, data: {'breach': b}),
       ],
       if (_list(day['requests']).isNotEmpty) ...[
@@ -369,7 +369,7 @@ class _DpoScreenState extends State<DpoScreen> {
       Row(children: [
         Expanded(
             child: GradientButton(
-                label: 'Modules se bharo', icon: Icons.auto_fix_high_rounded, height: 46, onTap: _busy ? null : () => _run('POST', '/api/dpo/scan'))),
+                label: 'Fill from modules', icon: Icons.auto_fix_high_rounded, height: 46, onTap: _busy ? null : () => _run('POST', '/api/dpo/scan'))),
         const SizedBox(width: 8),
         Expanded(child: GlassButton(label: 'New activity', icon: Icons.add_rounded, onTap: _busy ? null : () => _activity())),
       ]),
@@ -385,13 +385,13 @@ class _DpoScreenState extends State<DpoScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(child: Text('${_s(a['number'])} · ${_s(a['name'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-                if (a['children'] == true) const Pill('bachche', fg: C.bad),
+                if (a['children'] == true) const Pill('children', fg: C.bad),
                 if ((a['records'] ?? 0) > 0) Pill('${_s(a['records'])} record'),
               ]),
               Text('${_s(a['people'])} · ${_strs(a['items']).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-              Text('Kaam: ${_s(a['purpose'])}', style: const TextStyle(fontSize: 12.5)),
+              Text('Purpose: ${_s(a['purpose'])}', style: const TextStyle(fontSize: 12.5)),
               Text(_s(a['basis_label']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
-              Text('Rakhna: ${_s(a['retention'])}', style: const TextStyle(fontSize: 12)),
+              Text('Retention: ${_s(a['retention'])}', style: const TextStyle(fontSize: 12)),
               if (_strs(a['processors']).isNotEmpty) Text('Processors: ${_strs(a['processors']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.muted)),
               if (_s(_m(a['dpia'])['level']).isNotEmpty) Text('DPIA: ${_s(_m(a['dpia'])['level'])}', style: const TextStyle(fontSize: 12, color: C.teal)),
               for (final c in _strs(a['checks'])) Text('⚠ $c', style: const TextStyle(fontSize: 12, color: C.warn)),
@@ -401,7 +401,7 @@ class _DpoScreenState extends State<DpoScreen> {
                   TextButton(
                       onPressed: _busy ? null : () => _run('PATCH', '/api/dpo/activities/${_s(a['id'])}', {'confirmed': true}),
                       child: const Text('Correct')),
-                TextButton(onPressed: _busy ? null : () => _activity(a), child: const Text('Badlo')),
+                TextButton(onPressed: _busy ? null : () => _activity(a), child: const Text('Change')),
                 TextButton(onPressed: _busy ? null : () => _dpia(a), child: const Text('DPIA')),
               ]),
             ]),
@@ -487,7 +487,7 @@ class _DpoScreenState extends State<DpoScreen> {
             contentPadding: EdgeInsets.zero,
             leading: Icon(c['status'] == 'active' ? Icons.check_circle_rounded : Icons.remove_circle_rounded,
                 color: c['status'] == 'active' ? C.ok : C.faint),
-            title: Text('${_s(c['name'])} ${_s(c['phone'])}${c['child'] == true ? ' · bachcha' : ''}'),
+            title: Text('${_s(c['name'])} ${_s(c['phone'])}${c['child'] == true ? ' · child' : ''}'),
             subtitle: Text('${_s(c['how'])} · ${_s(c['given_at']).split('T').first}${_s(c['withdrawn_at']).isEmpty ? '' : ' · withdrawn'}'),
             trailing: c['status'] == 'active'
                 ? TextButton(
@@ -520,7 +520,7 @@ class _DpoScreenState extends State<DpoScreen> {
   Widget _vendorTab() {
     final vs = _list(_d?['vendors']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Vendor jodo', icon: Icons.handshake_rounded, height: 46, onTap: _busy ? null : () => _vendor()),
+      GradientButton(label: 'Add vendor', icon: Icons.handshake_rounded, height: 46, onTap: _busy ? null : () => _vendor()),
       const SizedBox(height: 12),
       for (final v in vs)
         Padding(
@@ -537,7 +537,7 @@ class _DpoScreenState extends State<DpoScreen> {
                 ]),
                 Text('${_s(v['service'])} · ${_s(v['country'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                 if (v['abroad'] == true) const Text('Data is outside India: get the country written into the contract.', style: TextStyle(fontSize: 12, color: C.warn)),
-                for (final m in _strs(v['missing']).take(4)) Text('• baaki: $m', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+                for (final m in _strs(v['missing']).take(4)) Text('• pending: $m', style: const TextStyle(fontSize: 11.5, color: C.faint)),
               ]),
             ),
           ),
@@ -554,11 +554,11 @@ class _DpoScreenState extends State<DpoScreen> {
           Text('Contact: ${[st['contact_name'], st['contact_email'], st['contact_phone']].where((x) => _s(x).isNotEmpty).join(', ')}',
               style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text('Link: ${_s(st['link'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          Text('Reply: ${_s(st['reply_days'])} din (kanoon max 90)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          Text('Reply: ${_s(st['reply_days'])} days (legal max 90)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           Text(_s(st['sdf_note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
-          for (final m in _strs(st['missing'])) Text('⚠ baaki: $m', style: const TextStyle(fontSize: 12, color: C.warn)),
+          for (final m in _strs(st['missing'])) Text('⚠ pending: $m', style: const TextStyle(fontSize: 12, color: C.warn)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
+          GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
         ]),
       ),
       const SizedBox(height: 12),
@@ -585,7 +585,7 @@ class _DpoScreenState extends State<DpoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Register', 'Notice', 'Request', 'Breach', 'Vendor', 'Niyam'];
+    final tabs = ['Today', 'Register', 'Notice', 'Request', 'Breach', 'Vendor', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -713,12 +713,12 @@ class _DpoRequestPageState extends State<DpoRequestPage> {
                 GlassButton(label: 'Reply card', icon: Icons.reply_rounded, onTap: _busy ? null : _reply),
                 if (r['kind'] == 'erasure' || r['kind'] == 'withdraw')
                   GlassButton(
-                      label: 'Mitaane ka card',
+                      label: 'Erasure card',
                       icon: Icons.delete_forever_rounded,
                       color: C.bad,
                       onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/erase', {})),
                 GlassButton(label: 'Sent', icon: Icons.done_all_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/sent', {'how': 'app'})),
-                GlassButton(label: 'Band', icon: Icons.close_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/close', {})),
+                GlassButton(label: 'Close', icon: Icons.close_rounded, onTap: _busy ? null : () => _run('POST', '/api/dpo/requests/${widget.id}/close', {})),
               ]),
               const SizedBox(height: 12),
               for (final c in _cards) ...[DpoCardCard(app: widget.app, data: {'card': c}, onDone: _load), const SizedBox(height: 8)],
@@ -783,7 +783,7 @@ class _DpoBreachPageState extends State<DpoBreachPage> {
       ('consequences', 'Impact on people'),
       ('measures', 'What we did'),
       ('safety', 'What people should do themselves'),
-      ('cause', 'Wajah'),
+      ('cause', 'Reason'),
       ('findings', 'Who did it: what is known'),
       ('remedial', 'Steps so it does not happen again'),
       ('details', 'Latest full details'),
@@ -812,7 +812,7 @@ class _DpoBreachPageState extends State<DpoBreachPage> {
               DpoBreachCard(app: widget.app, data: {'breach': b}),
               const SizedBox(height: 8),
               GlassButton(label: 'Fill in the details', icon: Icons.edit_note_rounded, onTap: _busy ? null : _facts),
-              for (final (k, title) in const [('initial', 'Board: pehli soochna'), ('report', 'Board: 72 ghante report'), ('people', 'Informing people')]) ...[
+              for (final (k, title) in const [('initial', 'Board: first notice'), ('report', 'Board: 72-hour report'), ('people', 'Informing people')]) ...[
                 const SizedBox(height: 12),
                 Caption(title.toUpperCase()),
                 Container(
@@ -915,23 +915,23 @@ class _DpoCardCardState extends State<DpoCardCard> {
         return [Text('${_s(d['lang_label'])} · v${_s(d['version'])}', style: const TextStyle(fontSize: 12.5)), box(_s(d['text']))];
       case 'reply':
         return [
-          Text('Kisko: ${_s(d['to'])} ${_s(d['phone'])} ${_s(d['email'])} · due ${_s(d['due_on'])}', style: const TextStyle(fontSize: 12.5)),
+          Text('To: ${_s(d['to'])} ${_s(d['phone'])} ${_s(d['email'])} · due ${_s(d['due_on'])}', style: const TextStyle(fontSize: 12.5)),
           box(_s(d['text'])),
         ];
       case 'erase':
         return [
           Text('Mobile ${_s(d['phone'])}', style: const TextStyle(fontSize: 12.5)),
           for (final t in _list(d['targets'])) Text('• ${_s(t['label'])}', style: const TextStyle(fontSize: 12.5)),
-          if (_strs(d['manual']).isNotEmpty) Text('Khud hataiye: ${_strs(d['manual']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          if (_strs(d['manual']).isNotEmpty) Text('Remove yourself: ${_strs(d['manual']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.muted)),
           for (final w in _strs(d['warnings'])) Text('⚠ $w', style: const TextStyle(fontSize: 12, color: C.warn)),
           Text(_s(d['note']), style: const TextStyle(fontSize: 11.5, color: C.bad)),
         ];
       default:
         return [
-          if (_s(d['hours_left']).isNotEmpty) Text('72 ghante: ${_s(d['report_due'])} (${_s(d['hours_left'])} ghante)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+          if (_s(d['hours_left']).isNotEmpty) Text('72 hours: ${_s(d['report_due'])} (${_s(d['hours_left'])} hours)', style: const TextStyle(fontSize: 12.5, color: C.warn)),
           box(_s(d['text'])),
           Text(_s(d['where']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
-          if ((d['affected'] ?? 0) is num && (d['affected'] ?? 0) > 0) Text('${_s(d['affected'])} log', style: const TextStyle(fontSize: 12)),
+          if ((d['affected'] ?? 0) is num && (d['affected'] ?? 0) > 0) Text('${_s(d['affected'])} people', style: const TextStyle(fontSize: 12)),
         ];
     }
   }
@@ -1061,13 +1061,13 @@ class DpoBreachCard extends StatelessWidget {
             Expanded(child: Text('${_s(b['number'])} · ${_s(b['title'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
             Pill(_s(b['status'])),
           ]),
-          Text('Found out: ${_s(b['aware_at'])} · report ${_s(b['report_due'])}${b['hours_left'] == null ? '' : ' (${_s(b['hours_left'])} ghante)'}',
+          Text('Found out: ${_s(b['aware_at'])} · report ${_s(b['report_due'])}${b['hours_left'] == null ? '' : ' (${_s(b['hours_left'])} hours)'}',
               style: const TextStyle(fontSize: 12.5, color: C.warn)),
           Text(
               [
-                'Board pehli: ${_s(b['initial_at']).isEmpty ? 'baaki' : _s(b['initial_at'])}',
+                'Board first notice: ${_s(b['initial_at']).isEmpty ? 'baaki' : _s(b['initial_at'])}',
                 'report: ${_s(b['report_at']).isEmpty ? 'baaki' : _s(b['report_at'])}',
-                'log: ${_s(b['people_at']).isEmpty ? 'baaki' : _s(b['people_at'])}',
+                'people: ${_s(b['people_at']).isEmpty ? 'baaki' : _s(b['people_at'])}',
               ].join(' · '),
               style: const TextStyle(fontSize: 12, color: C.muted)),
           if (_s(ci['incident']).isNotEmpty) Text('CERT-In: IT Helpdesk incident (${_s(ci['due'])})', style: const TextStyle(fontSize: 12, color: C.teal)),

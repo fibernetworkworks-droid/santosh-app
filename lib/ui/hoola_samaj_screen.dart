@@ -75,7 +75,7 @@ class _HoolaLearnedScreenState extends State<HoolaLearnedScreen> {
                             ]),
                           ),
                           IconButton(
-                            tooltip: 'Bhool jao',
+                            tooltip: 'Forget',
                             icon: const Icon(Icons.delete_outline_rounded, color: C.muted),
                             onPressed: () => _do(() => app.api!.netLessonAct(l['id'] as String, 'forget')),
                           ),
@@ -155,7 +155,7 @@ class _SamajListViewState extends State<SamajListView> {
         builder: (ctx, set) => AlertDialog(
           title: const Text('New Community'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (jaise Maharashtra ISPs)')),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Name (e.g. Maharashtra ISPs)')),
             TextField(controller: topic, decoration: const InputDecoration(labelText: 'Topic / area')),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -166,7 +166,7 @@ class _SamajListViewState extends State<SamajListView> {
           ]),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Banaiye')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Create')),
           ],
         ),
       ),
@@ -208,7 +208,7 @@ class _SamajListViewState extends State<SamajListView> {
           const SizedBox(height: 12),
           TextField(
             controller: _q,
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Samaj dhoondhiye (ISP, kirana, Akola…)'),
+            decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Find a community (ISP, grocery, Akola…)'),
             onSubmitted: (_) => _load(),
           ),
           for (final c in _dir.where((d) => d['joined'] != true))
@@ -216,7 +216,7 @@ class _SamajListViewState extends State<SamajListView> {
               contentPadding: EdgeInsets.zero,
               leading: Text(c['emoji'] as String? ?? '🌐', style: const TextStyle(fontSize: 24)),
               title: Text(c['name'] as String? ?? ''),
-              subtitle: Text('${c['members']} avatars · ${c['topic'] ?? ''}${c['visibility'] == 'approval' ? ' · manzoori se' : ''}'),
+              subtitle: Text('${c['members']} avatars · ${c['topic'] ?? ''}${c['visibility'] == 'approval' ? ' · by approval' : ''}'),
               trailing: TextButton(
                 onPressed: () async {
                   try {
@@ -364,7 +364,7 @@ class _HoolaSamajScreenState extends State<HoolaSamajScreen> {
           SizedBox(
             height: 44,
             child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-              for (final f in const {'': 'Sab', 'question': 'Question', 'answer': 'Reply', 'card': 'Information', 'skill': 'Skills', 'alert': 'Chetavni'}.entries)
+              for (final f in const {'': 'All', 'question': 'Question', 'answer': 'Reply', 'card': 'Information', 'skill': 'Skills', 'alert': 'Warning'}.entries)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: ChoiceChip(
@@ -423,15 +423,15 @@ class _HoolaSamajScreenState extends State<HoolaSamajScreen> {
                           if (i['kind'] == 'skill' && i['status'] == 'available')
                             TextButton(onPressed: () => _item(i, {'action': 'install'}, 'Skill installed ✓'), child: const Text('Install')),
                           if (i['mine'] != true)
-                            TextButton(onPressed: () => _item(i, {'action': 'rate', 'helpful': true}, 'Dhanyavaad'), child: Text('👍 ${i['helpful'] ?? 0}')),
+                            TextButton(onPressed: () => _item(i, {'action': 'rate', 'helpful': true}, 'Thank you'), child: Text('👍 ${i['helpful'] ?? 0}')),
                           if (i['mine'] != true)
-                            TextButton(onPressed: () => _item(i, {'action': 'report'}, 'Report kiya'), child: const Text('Report', style: TextStyle(color: C.bad))),
+                            TextButton(onPressed: () => _item(i, {'action': 'report'}, 'Reported'), child: const Text('Report', style: TextStyle(color: C.bad))),
                           if (mod && i['status'] == 'waiting')
                             TextButton(onPressed: () => _item(i, {'action': 'moderate', 'mod_action': 'approve'}, 'Approved'), child: const Text('Approved')),
                           if (mod && i['status'] == 'available' && i['kind'] == 'skill')
                             TextButton(onPressed: () => _item(i, {'action': 'moderate', 'mod_action': 'recall'}, 'Withdrawn'), child: const Text('Recall')),
                           if (mod && i['status'] != 'removed')
-                            TextButton(onPressed: () => _item(i, {'action': 'moderate', 'mod_action': 'remove'}, 'Removed'), child: const Text('Hataiye')),
+                            TextButton(onPressed: () => _item(i, {'action': 'moderate', 'mod_action': 'remove'}, 'Removed'), child: const Text('Remove')),
                           if (mod && i['status'] == 'hidden')
                             TextButton(onPressed: () => _item(i, {'action': 'moderate', 'mod_action': 'restore'}, 'Shown again'), child: const Text('Restore')),
                         ]),
@@ -449,7 +449,7 @@ class _HoolaSamajScreenState extends State<HoolaSamajScreen> {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: Column(children: [
                   Row(children: [
-                    for (final k in const {'question': 'Question', 'card': 'Information', 'alert': 'Chetavni'}.entries)
+                    for (final k in const {'question': 'Question', 'card': 'Information', 'alert': 'Warning'}.entries)
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: ChoiceChip(
@@ -499,7 +499,7 @@ class _HoolaSamajScreenState extends State<HoolaSamajScreen> {
         'answer' => '💬 Answer',
         'card' => '📘 Information',
         'skill' => '🧩 Skill',
-        'alert' => '⚠️ Chetavni',
+        'alert' => '⚠️ Warning',
         _ => k,
       };
 }

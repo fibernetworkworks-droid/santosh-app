@@ -95,7 +95,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
         SizedBox(
           height: 42,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            _chip(_proven ? '✓ Proven only (A/B)' : 'Sab tiers', _proven, () {
+            _chip(_proven ? '✓ Proven only (A/B)' : 'All tiers', _proven, () {
               setState(() => _proven = !_proven);
               _search();
             }),
@@ -109,7 +109,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
         SizedBox(
           height: 42,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            _chip('Sab fields', _field.isEmpty, () {
+            _chip('All fields', _field.isEmpty, () {
               setState(() => _field = '');
               _search();
             }),
@@ -218,7 +218,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
           const SizedBox(height: 10),
           _box('How to use with Hoola', a['how_to_use'] as String? ?? '', C.teal),
           if (a['licence_note'] != null) _box('Licence', a['licence_note'] as String, C.warn),
-          if (a['caution'] != null) _box('Savdhaan', a['caution'] as String, C.bad),
+          if (a['caution'] != null) _box('Caution', a['caution'] as String, C.bad),
           const SizedBox(height: 12),
           if ((a['link'] as String? ?? '').startsWith('http'))
             FilledButton.icon(

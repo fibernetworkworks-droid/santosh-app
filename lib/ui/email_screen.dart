@@ -104,12 +104,12 @@ class _EmailScreenState extends State<EmailScreen> {
           const Text('Enter an "app password", not your login password. Gmail: myaccount.google.com/apppasswords · '
               'Yahoo / Zoho / Outlook: Security settings > App password.',
               style: TextStyle(color: C.muted, fontSize: 12)),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Bhejne wale name (optional)')),
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Sender name (optional)')),
           TextButton(onPressed: () => setD(() => advanced = !advanced),
               child: Text(advanced ? 'Hide server settings' : 'Server settings (for company email)')),
           if (advanced) ...[
-            TextField(controller: imapHost, decoration: const InputDecoration(labelText: 'IMAP host (jaise imap.company.in)')),
-            TextField(controller: smtpHost, decoration: const InputDecoration(labelText: 'SMTP host (jaise smtp.company.in)')),
+            TextField(controller: imapHost, decoration: const InputDecoration(labelText: 'IMAP host (e.g. imap.company.in)')),
+            TextField(controller: smtpHost, decoration: const InputDecoration(labelText: 'SMTP host (e.g. smtp.company.in)')),
             TextField(controller: smtpPort, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'SMTP port (587 or 465)')),
           ],
         ])),
@@ -218,7 +218,7 @@ class _EmailScreenState extends State<EmailScreen> {
         ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Banaiye')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
         ],
       )),
     );
@@ -256,11 +256,11 @@ class _EmailScreenState extends State<EmailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: Text('Rule "${r['name']}" hatayein?'),
+        title: Text('Remove the rule "${r['name']}"?'),
         content: const Text('Only the rule will be removed; mail is not affected.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hataiye')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
         ],
       ),
     );
@@ -287,9 +287,9 @@ class _EmailScreenState extends State<EmailScreen> {
       if (a['archive'] == true) 'archive',
       if (a['star'] == true) 'star',
       if (a['mark_read'] == true) 'marked as read',
-      if (a['mute'] == true) 'shant',
+      if (a['mute'] == true) 'quiet',
       if (a['notify'] == true) 'news',
-      if (a['forward_to'] != null) '${a['forward_to']} ko draft',
+      if (a['forward_to'] != null) 'draft to ${a['forward_to']}',
     ];
     return '${parts.join(' + ')} → ${acts.join(', ')}';
   }
@@ -310,11 +310,11 @@ class _EmailScreenState extends State<EmailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Email hataiye?'),
+        title: const Text('Remove this email?'),
         content: Text('${a['address']} will be removed from Hoola. Your mail is not affected.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hataiye')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
         ],
       ),
     );
@@ -343,7 +343,7 @@ class _EmailScreenState extends State<EmailScreen> {
             Text(a['address'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
             Text(_kind(a['kind'] as String? ?? '') + (a['default'] == true ? ' · default' : ''), style: const TextStyle(color: C.muted, fontSize: 12.5)),
           ])),
-          if (bad) const Pill('LOGIN FAIL', fg: C.bad) else const Pill('JUDA', fg: C.ok),
+          if (bad) const Pill('LOGIN FAIL', fg: C.bad) else const Pill('CONNECTED', fg: C.ok),
         ]),
         if (bad && (a['error'] as String? ?? '').isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 6), child: Text(a['error'] as String, style: const TextStyle(color: C.bad, fontSize: 12))),
@@ -351,8 +351,8 @@ class _EmailScreenState extends State<EmailScreen> {
         Text(sig.isEmpty ? 'Signature: none' : 'Signature:\n$sig', style: const TextStyle(color: C.chip, fontSize: 12.5)),
         Wrap(spacing: 4, children: [
           TextButton(onPressed: () => _signature(a), child: const Text('Signature')),
-          if (a['default'] != true && a['removable'] == true) TextButton(onPressed: () => _makeDefault(a), child: const Text('Default banaiye')),
-          if (a['removable'] == true) TextButton(onPressed: () => _remove(a), child: const Text('Hataiye', style: TextStyle(color: C.muted))),
+          if (a['default'] != true && a['removable'] == true) TextButton(onPressed: () => _makeDefault(a), child: const Text('Make default')),
+          if (a['removable'] == true) TextButton(onPressed: () => _remove(a), child: const Text('Remove', style: TextStyle(color: C.muted))),
         ]),
       ])),
     );

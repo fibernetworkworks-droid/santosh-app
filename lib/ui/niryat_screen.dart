@@ -150,7 +150,7 @@ class _NiryatScreenState extends State<NiryatScreen> {
     final d = _day ?? const {};
     final r = Map<String, dynamic>.from((d['realisation'] as Map?) ?? const {});
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Niryat sahayak'), actions: [
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Export assistant'), actions: [
         IconButton(icon: const Icon(Icons.table_view_rounded), tooltip: 'Export register', onPressed: _busy ? null : () => _run(() => widget.app.api!.niryatRegister())),
       ]),
       floatingActionButton: FloatingActionButton.extended(onPressed: _busy ? null : _newPi, icon: const Icon(Icons.description_rounded), label: const Text('PI')),

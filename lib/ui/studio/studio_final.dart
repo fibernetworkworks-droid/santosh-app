@@ -170,7 +170,7 @@ class _FinalScreenState extends State<FinalScreen> {
                       const SizedBox(width: 8),
                       _shareTile('yt', Icons.smart_display_rounded, 'YouTube', 'com.google.android.youtube'),
                       const SizedBox(width: 8),
-                      _shareTile('more', Icons.share_rounded, 'Aur', ''),
+                      _shareTile('more', Icons.share_rounded, 'More', ''),
                     ]),
                   ),
                   Padding(
@@ -179,7 +179,7 @@ class _FinalScreenState extends State<FinalScreen> {
                       Expanded(child: SButton(label: 'Save to gallery', icon: Icons.download_rounded, busy: _busy == 'save', onTap: _save)),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: SButton(label: 'Link · 10 din', icon: Icons.link_rounded, primary: false, onTap: () {
+                        child: SButton(label: 'Link · 10 days', icon: Icons.link_rounded, primary: false, onTap: () {
                           Clipboard.setData(ClipboardData(text: app.api!.absolute('${o['url']}')));
                           studioSnack(context, 'Link copied (works for 10 days)');
                         }),

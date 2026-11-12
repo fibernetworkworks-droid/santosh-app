@@ -29,7 +29,7 @@ void _snack(BuildContext c, String t) {
 const _bigFields = {'text', 'notes', 'body', 'pitch', 'transcript', 'answer', 'response', 'rules', 'questions', 'allegations'};
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -95,7 +95,7 @@ Widget _flags(Map<String, dynamic> chk) {
 
 const _statusLabel = {
   'pitch': 'Pitch', 'reporting': 'Reporting', 'draft': 'Draft', 'factcheck': 'Fact check', 'ready': 'Ready',
-  'waiting': 'Waiting for your yes', 'published': 'Chhapi', 'killed': 'Band',
+  'waiting': 'Waiting for your yes', 'published': 'Published', 'killed': 'Killed',
 };
 
 class PatrakarScreen extends StatefulWidget {
@@ -208,7 +208,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
     final shown = _filter.isEmpty ? all : all.where((x) => _s(x['status']) == _filter).toList();
     return ListView(padding: const EdgeInsets.all(16), children: [
       Wrap(spacing: 6, runSpacing: 6, children: [
-        ChoiceChip(label: const Text('Sab'), selected: _filter.isEmpty, onSelected: (_) => setState(() => _filter = '')),
+        ChoiceChip(label: const Text('All'), selected: _filter.isEmpty, onSelected: (_) => setState(() => _filter = '')),
         for (final e in _statusLabel.entries)
           ChoiceChip(label: Text(e.value), selected: _filter == e.key, onSelected: (_) => setState(() => _filter = e.key)),
       ]),
@@ -238,7 +238,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
               if (_s(id[k]).isNotEmpty) Text('$k: ${_s(id[k])}'),
             if (id.isEmpty) const Text('The identity has been removed.'),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Band'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close'))],
         );
       },
     );
@@ -286,9 +286,9 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
         ),
       GradientButton(label: 'New source', icon: Icons.person_add_alt_1_rounded, onTap: () async {
         final f = await _form(context, 'New source (sealed)', const [
-          ('name', 'Naam'), ('phone', 'Phone'), ('contact', 'How to contact'), ('beat', 'Beat'),
-          ('kind', 'Kism: official / eyewitness / expert / document / insider / whistleblower'),
-          ('terms', 'Shart: on_record / background / deep_background / off_record / anonymous'), ('notes', 'Private note'),
+          ('name', 'Name'), ('phone', 'Phone'), ('contact', 'How to contact'), ('beat', 'Beat'),
+          ('kind', 'Type: official / eyewitness / expert / document / insider / whistleblower'),
+          ('terms', 'Terms: on_record / background / deep_background / off_record / anonymous'), ('notes', 'Private note'),
         ]);
         if (f == null) return;
         await _run('POST', '/api/patrakar/sources', f);
@@ -323,8 +323,8 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
           ]),
         ),
       GradientButton(label: 'Record a complaint', icon: Icons.report_rounded, onTap: () async {
-        final f = await _form(context, 'Shikayat', const [
-          ('text', 'Shikayat (paste)'), ('who', 'Kisne ki'), ('contact', 'Their email / WhatsApp'), ('story', 'Story (ST-0001)'),
+        final f = await _form(context, 'Complaint', const [
+          ('text', 'Complaint (paste)'), ('who', 'Who made it'), ('contact', 'Their email / WhatsApp'), ('story', 'Story (ST-0001)'),
           ('received', 'When received (YYYY-MM-DD)'),
         ]);
         if (f == null) return;
@@ -358,7 +358,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(label: 'Organisation / byline', icon: Icons.badge_rounded, height: 40, onTap: () async {
           final f = await _form(context, 'Organisation', const [
-            ('outlet', 'Portal / channel / akhbaar'), ('kind', 'portal / youtube / stringer / print / freelance'), ('reporter', 'Byline naam'),
+            ('outlet', 'Portal / channel / newspaper'), ('kind', 'portal / youtube / stringer / print / freelance'), ('reporter', 'Byline name'),
             ('place', 'Dateline (city)'), ('contact', 'Contact (on letters)'), ('gro_name', 'Grievance officer'),
             ('gro_contact', 'Grievance officer contact'), ('reply_days', 'Days to reply (1-14)'), ('morning_time', 'Morning note (HH:MM)'),
           ], initial: {for (final k in keys) k: _s(st[k])});
@@ -369,7 +369,7 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
           await _run('PUT', '/api/patrakar/settings', body);
         }),
         GlassButton(label: 'Style sheet', icon: Icons.spellcheck_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Style (each line: wrong = right)', const [('text', 'chor = aaropi')], initial: {'text': style});
+          final f = await _form(context, 'Style (each line: wrong = right)', const [('text', 'thief = the accused')], initial: {'text': style});
           if (f == null) return;
           final rows = <Map<String, String>>[];
           for (final l in _lines(f['text'])) {
@@ -378,8 +378,8 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
           }
           await _run('PUT', '/api/patrakar/settings', {'style': rows});
         }),
-        GlassButton(label: 'Mana shabd', icon: Icons.block_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Never write (comma separated)', const [('text', 'shabd')],
+        GlassButton(label: 'Banned words', icon: Icons.block_rounded, height: 40, onTap: () async {
+          final f = await _form(context, 'Never write (comma separated)', const [('text', 'words')],
               initial: {'text': _strs(st['avoid']).join(', ')});
           if (f == null) return;
           await _run('PUT', '/api/patrakar/settings', {'avoid': f['text'] ?? ''});
@@ -413,10 +413,10 @@ class _PatrakarScreenState extends State<PatrakarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Stories', 'Source', 'Shikayat', 'Niyam'];
+    const tabs = ['Today', 'Stories', 'Source', 'Complaints', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Patrakar Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Journalist Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(
@@ -540,8 +540,8 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
               PopupMenuItem(value: 'source', child: Text('Confirmed by the source')),
               PopupMenuItem(value: 'mine', child: Text('I confirmed it')),
               PopupMenuItem(value: 'attributed', child: Text('Allegation / attribution only')),
-              PopupMenuItem(value: 'contradicted', child: Text('Galat nikla')),
-              PopupMenuItem(value: 'cut', child: Text('Copy se hataya')),
+              PopupMenuItem(value: 'contradicted', child: Text('Turned out wrong')),
+              PopupMenuItem(value: 'cut', child: Text('Removed from copy')),
             ],
           ),
         ]),
@@ -560,13 +560,13 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
           title: const Text('Where to publish?'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 6, children: [
-              ChoiceChip(label: const Text('Copy (main daalungi)'), selected: dest == 'copy', onSelected: (_) => set(() => dest = 'copy')),
+              ChoiceChip(label: const Text('Copy (I\'ll post it)'), selected: dest == 'copy', onSelected: (_) => set(() => dest = 'copy')),
               ChoiceChip(label: const Text('WordPress'), selected: dest == 'wordpress', onSelected: (_) => set(() => dest = 'wordpress')),
             ]),
             if (dest == 'wordpress')
               Wrap(spacing: 6, children: [
                 ChoiceChip(label: const Text('Draft'), selected: mode == 'draft', onSelected: (_) => set(() => mode = 'draft')),
-                ChoiceChip(label: const Text('Seedha chhapo'), selected: mode == 'publish', onSelected: (_) => set(() => mode = 'publish')),
+                ChoiceChip(label: const Text('Publish directly'), selected: mode == 'publish', onSelected: (_) => set(() => mode = 'publish')),
               ]),
             const SizedBox(height: 6),
             const Text('A card will be made; publishing only with your yes.', style: TextStyle(fontSize: 12, color: C.muted)),
@@ -601,12 +601,12 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
   Widget _interviewTile(Map<String, dynamic> i) => Glass(
         margin: const EdgeInsets.only(bottom: 8),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${_s(i['who'])} · ${_s(i['terms'])}${i['consent'] == true ? ' · ijazat' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text('${_s(i['who'])} · ${_s(i['terms'])}${i['consent'] == true ? ' · consent' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
           Text(_s(i['transcript']), maxLines: 5, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
           for (final q in _strs(i['quotes'])) Text('“$q”', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
           TextButton(
               onPressed: () async {
-                final f = await _form(context, 'Quote (hu-ba-hu shabd)', const [('text', 'Quote')]);
+                final f = await _form(context, 'Quote (exact words)', const [('text', 'Quote')]);
                 if (f == null) return;
                 await _run('POST', '/api/patrakar/interviews/${_s(i['id'])}/quote', f);
               },
@@ -647,7 +647,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
             Wrap(spacing: 6, runSpacing: 6, children: [
               Pill(_statusLabel[_s(v['status'])] ?? _s(v['status'])),
               if (_s(v['deadline']).isNotEmpty) Pill('deadline ${_s(v['deadline'])}'),
-              if (protected > 0) Pill('$protected naam bachaye', fg: C.ok),
+              if (protected > 0) Pill('$protected names protected', fg: C.ok),
             ]),
             if (_s(v['pitch']).isNotEmpty) Text(_s(v['pitch']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
             if (_s(pub['url']).isNotEmpty)
@@ -662,7 +662,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
         Wrap(spacing: 8, runSpacing: 8, children: [
           GlassButton(label: 'Save', icon: Icons.save_rounded, height: 40,
               onTap: _busy ? null : () => _run('PATCH', _p, {'headline': _head.text, 'body': _body.text})),
-          GlassButton(label: 'Hoola draft likhe', icon: Icons.edit_note_rounded, height: 40, onTap: _busy ? null : () async {
+          GlassButton(label: 'Let Hoola write a draft', icon: Icons.edit_note_rounded, height: 40, onTap: _busy ? null : () async {
             final f = await _form(context, 'What kind of draft?', const [('ask', 'For example: 300 words, straight news')]);
             if (f == null) return;
             await _run('POST', '$_p/write', f);
@@ -690,7 +690,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
                 if (f == null) return;
                 await _run('POST', '$_p/interviews', {...f, 'consent': (f['consent'] ?? '').toLowerCase().startsWith('h')});
               },
-              child: const Text('Jodo')),
+              child: const Text('Add')),
         ]),
         for (final i in _list(v['interviews'])) _interviewTile(i),
         const SizedBox(height: 10),
@@ -707,7 +707,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
             await _run('POST', '$_p/reply', {...f, 'allegations': _lines(f['allegations']), 'questions': _lines(f['questions'])});
           }),
           GlassButton(label: 'Send pitch', icon: Icons.send_rounded, height: 40, onTap: () async {
-            final f = await _form(context, 'Editor ko pitch',
+            final f = await _form(context, 'Pitch to editor',
                 const [('to', 'Editor'), ('phone', 'WhatsApp'), ('email', 'Email'), ('text', 'Pitch (blank = Hoola writes it)')]);
             if (f == null) return;
             await _run('POST', '$_p/pitch', f);
@@ -717,7 +717,7 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
             GlassButton(label: 'Correction', icon: Icons.edit_rounded, height: 40, onTap: () async {
               final f = await _form(context, 'Correction', const [
                 ('wrong', 'What was written before'), ('right', 'What is correct'),
-                ('kind', 'correction / clarification / update / retraction / apology'), ('why', 'Wajah'),
+                ('kind', 'correction / clarification / update / retraction / apology'), ('why', 'Reason'),
               ]);
               if (f == null) return;
               await _run('POST', '$_p/correction', f);
@@ -812,7 +812,7 @@ class _PatrakarCardCardState extends State<PatrakarCardCard> {
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         if (kind == 'publish')
-          Text('${_s(sh['dest'])} · ${_s(sh['mode'])} · ${_s(sh['words'])} shabd · ${_s(sh['byline'])}',
+          Text('${_s(sh['dest'])} · ${_s(sh['mode'])} · ${_s(sh['words'])} words · ${_s(sh['byline'])}',
               style: const TextStyle(fontSize: 12, color: C.muted)),
         if (kind == 'reply') Text('${_s(sh['party'])} · reply by ${_s(sh['deadline'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 6),

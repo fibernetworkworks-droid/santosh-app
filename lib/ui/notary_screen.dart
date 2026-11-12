@@ -39,7 +39,7 @@ String _stLabel(String st) => switch (st) {
     };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}, Set<String> long = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}, Set<String> long = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -91,8 +91,8 @@ const _partyFields = [
   ('name', 'Party name'),
   ('relation', 'Relation: so / do / wo / ho'),
   ('relative', 'Father / husband name'),
-  ('age', 'Umar'),
-  ('occupation', 'Kaam / vyavsay'),
+  ('age', 'Age'),
+  ('occupation', 'Occupation'),
   ('address', 'Full address'),
   ('gender', 'm / f'),
   ('phone', 'Mobile'),
@@ -146,7 +146,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
     if (kind == null || !mounted) return;
     final lang = await _pick(context, 'Language', const {'en': 'English', 'hi': 'हिन्दी', 'mr': 'मराठी'});
     if (lang == null || !mounted) return;
-    final party = await _form(context, 'Party (who will sign)', _partyFields, ok: 'Aage');
+    final party = await _form(context, 'Party (who will sign)', _partyFields, ok: 'Next');
     if (party == null || !mounted) return;
     final fields = _list(_m(kinds[kind])['fields']);
     final facts = await _form(
@@ -171,7 +171,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
   }
 
   Future<void> _fromRentdesk() async {
-    final f = await _form(context, 'Rentdesk se rent summary', const [('tenancy', 'Tenancy no. (jaise T-0001)'), ('lang', 'en / hi / mr')]);
+    final f = await _form(context, 'Rent summary from Rentdesk', const [('tenancy', 'Tenancy no. (e.g. T-0001)'), ('lang', 'en / hi / mr')]);
     if (f == null || (f['tenancy'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/notary/docs/from_rentdesk', f);
     final id = _s(_m(r?['doc'])['id']);
@@ -188,7 +188,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
       Row(children: [
         Expanded(child: GlassButton(label: 'Spoken / written', icon: Icons.record_voice_over_rounded, height: 42, onTap: _busy ? null : _fromWords)),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'Rentdesk se', icon: Icons.home_work_rounded, height: 42, onTap: _busy ? null : _fromRentdesk)),
+        Expanded(child: GlassButton(label: 'From Rentdesk', icon: Icons.home_work_rounded, height: 42, onTap: _busy ? null : _fromRentdesk)),
       ]),
       const SizedBox(height: 12),
       for (final (key, title) in const [
@@ -232,7 +232,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
                       ].where((x) => x.isNotEmpty).join(' · '),
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   if (_strs(d['blanks']).isNotEmpty)
-                    Text('Khaali: ${_strs(d['blanks']).take(3).join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
+                    Text('Blank: ${_strs(d['blanks']).take(3).join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
                 ]),
               ),
             ),
@@ -247,7 +247,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
       ('address', 'Executant\'s full address'),
       ('id_number', 'Aadhaar / PAN (straight to the locker)'),
       ('contents', 'What the document contains'),
-      ('stamp_text', 'Stamp (jaise ₹500 e-SBTR no.)'),
+      ('stamp_text', 'Stamp (e.g. ₹500 e-SBTR no.)'),
       ('fee', 'Notarial fee (₹)'),
       ('pages', 'Pages (true copy)'),
       ('typing', 'Typing charge (₹)'),
@@ -295,7 +295,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
                     label: 'Excel', icon: Icons.table_chart_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '/api/notary/register/file', {}))),
             const SizedBox(width: 8),
             if (mode == 'notary')
-              Expanded(child: GlassButton(label: 'Line jodo', icon: Icons.playlist_add_rounded, height: 40, onTap: _busy ? null : _addEntry)),
+              Expanded(child: GlassButton(label: 'Add line', icon: Icons.playlist_add_rounded, height: 40, onTap: _busy ? null : _addEntry)),
           ]),
         ]),
       ),
@@ -339,7 +339,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
     final type = await _pick(context, 'What kind of document?', {for (final e in _m(_kinds['doc_types']).entries) e.key: _s(e.value)});
     if (type == null || !mounted) return;
     final f = await _form(context, 'Apostille / attestation', const [
-      ('doc_title', 'Document (jaise Birth certificate)'),
+      ('doc_title', 'Document (e.g. Birth certificate)'),
       ('country', 'For which country'),
       ('hague', 'Hague member? yes / no / (blank = not known)'),
       ('party', 'Party name'),
@@ -389,19 +389,19 @@ class _NotaryScreenState extends State<NotaryScreen> {
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
     const keys = ['mode', 'office', 'notary_name', 'reg_no', 'area', 'appointed_by', 'cop_valid_to', 'address', 'phone', 'state', 'default_lang', 'morning_time'];
-    final f = await _form(context, 'Niyam', const [
+    final f = await _form(context, 'Rules', const [
       ('mode', 'notary (I am a notary) / desk (typing / documentation centre)'),
       ('office', 'Office / desk name'),
       ('notary_name', 'Notary name'),
       ('reg_no', 'Registration no. (on the seal)'),
       ('area', 'Area of practice'),
-      ('appointed_by', 'Kisne appoint kiya (Central / State Govt)'),
+      ('appointed_by', 'Appointed by (Central / State Govt)'),
       ('cop_valid_to', 'Certificate of practice valid till (YYYY-MM-DD)'),
       ('address', 'Office address'),
       ('phone', 'Office mobile'),
       ('state', 'State (MH / Maharashtra)'),
       ('default_lang', 'Default language: en / hi / mr'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
     ], ok: 'Save', initial: {for (final k in keys) k: _s(st[k])});
     if (f == null) return;
     await _run('PUT', '/api/notary/settings', f);
@@ -409,7 +409,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
 
   Future<void> _stampRate() async {
     final st = _m(_d?['settings']);
-    final key = await _pick(context, 'Kis document ka stamp?', {for (final k in _strs(st['stamp_keys'])) k: k});
+    final key = await _pick(context, 'Stamp for which document?', {for (final k in _strs(st['stamp_keys'])) k: k});
     if (key == null || !mounted) return;
     final f = await _form(context, 'Stamp rate: $key', const [
       ('state', 'State (MH / DL / ...)'),
@@ -423,7 +423,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
   Future<void> _fee() async {
     final st = _m(_d?['settings']);
     final acts = _m(st['acts']);
-    final act = await _pick(context, 'Kis act ki fee?', {for (final e in acts.entries) e.key: '${_s(_m(e.value)['label'])}${_m(e.value)['cap'] == null ? '' : ' (max ₹${_s(_m(e.value)['cap'])})'}'});
+    final act = await _pick(context, 'Fee for which act?', {for (final e in acts.entries) e.key: '${_s(_m(e.value)['label'])}${_m(e.value)['cap'] == null ? '' : ' (max ₹${_s(_m(e.value)['cap'])})'}'});
     if (act == null || !mounted) return;
     final f = await _form(context, 'Your fee', const [('amount', 'Fee ₹')], ok: 'Save');
     if (f == null) return;
@@ -444,7 +444,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
           if (_s(st['cop_valid_to']).isNotEmpty)
             Text('Certificate of practice: valid until ${_s(st['cop_valid_to'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
+          GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
@@ -454,11 +454,11 @@ class _NotaryScreenState extends State<NotaryScreen> {
         for (final r in _m(e.value).entries)
           Text('• ${e.key} · ${r.key}: ${r.value is Map ? '₹${_s(_m(r.value)['amount'])} (${_s(_m(r.value)['mode'])})' : '₹${_s(r.value)}'}',
               style: const TextStyle(fontSize: 13)),
-      GlassButton(label: 'Stamp rate jodo / badlo', icon: Icons.approval_rounded, height: 40, onTap: _stampRate),
+      GlassButton(label: 'Add / change stamp rate', icon: Icons.approval_rounded, height: 40, onTap: _stampRate),
       const SizedBox(height: 12),
       const Caption('YOUR FEES'),
       for (final e in fees.entries) Text('• ${_s(_m(_m(st['acts'])[e.key])['label'])}: ₹${_s(e.value)}', style: const TextStyle(fontSize: 13)),
-      GlassButton(label: 'Fee jodo / badlo', icon: Icons.currency_rupee_rounded, height: 40, onTap: _fee),
+      GlassButton(label: 'Add / change fee', icon: Icons.currency_rupee_rounded, height: 40, onTap: _fee),
       Text(_s(st['fee_source']), style: const TextStyle(fontSize: 11, color: C.faint)),
       const SizedBox(height: 12),
       const Caption('HOOLA NEVER'),
@@ -471,7 +471,7 @@ class _NotaryScreenState extends State<NotaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Documents', 'Register', 'Apostille', 'Niyam'];
+    final tabs = ['Today', 'Documents', 'Register', 'Apostille', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -547,7 +547,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
   Future<void> _editFacts() async {
     final fields = _list(_d?['fields']);
     final facts = _m(_d?['facts']);
-    final f = await _form(context, 'Facts badlo', [for (final x in fields) (_s(x['key']), _s(x['label']))],
+    final f = await _form(context, 'Change facts', [for (final x in fields) (_s(x['key']), _s(x['label']))],
         ok: 'Save', initial: {for (final x in fields) _s(x['key']): facts[x['key']] is List ? _strs(facts[x['key']]).join('\n') : _s(facts[x['key']])},
         long: const {'statements', 'powers', 'matter', 'act'});
     if (f == null) return;
@@ -557,7 +557,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
   Future<void> _editParty() async {
     final ps = _list(_d?['parties']);
     final p = ps.isNotEmpty ? ps.first : <String, dynamic>{};
-    final f = await _form(context, 'Party badlo', _partyFields, ok: 'Save', initial: {for (final (k, _) in _partyFields) k: k == 'id_number' ? '' : _s(p[k])});
+    final f = await _form(context, 'Change party', _partyFields, ok: 'Save', initial: {for (final (k, _) in _partyFields) k: k == 'id_number' ? '' : _s(p[k])});
     if (f == null) return;
     await _run('PATCH', '/api/notary/docs/$_id', {'party': f});
   }
@@ -569,10 +569,10 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
   }
 
   Future<void> _stamp() async {
-    final f = await _form(context, 'Stamp (party / aapne kharida)', const [
+    final f = await _form(context, 'Stamp (bought by the party / by you)', const [
       ('ref', 'e-Stamp UIN / e-SBTR / franking / stamp paper no.'),
       ('mode', 'e_stamp / esbtr / franking / paper / none'),
-      ('state', 'State (badalni ho to)'),
+      ('state', 'State (if it needs changing)'),
     ], ok: 'Save');
     if (f == null) return;
     await _run('POST', '/api/notary/docs/$_id/stamp', f);
@@ -612,7 +612,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
       ('typing', 'Typing / drafting ₹'),
       ('xerox', 'Xerox / print ₹'),
       ('mode', 'cash / upi'),
-      ('ref', 'UPI ref (ho to)'),
+      ('ref', 'UPI ref (if any)'),
     ], ok: 'Write in register');
     if (f == null) return;
     await _run('POST', '/api/notary/register', {
@@ -668,7 +668,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
                   GlassButton(label: 'Stamp no.', icon: Icons.approval_rounded, height: 40, onTap: _busy ? null : _stamp),
                 ]),
                 const SizedBox(height: 10),
-                GradientButton(label: 'Final print ka card', icon: Icons.print_rounded, height: 46, onTap: _busy ? null : _print),
+                GradientButton(label: 'Final print card', icon: Icons.print_rounded, height: 46, onTap: _busy ? null : _print),
               ],
               if (_card != null || st == 'waiting') ...[
                 const SizedBox(height: 10),
@@ -684,7 +684,7 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
                     onTap: _busy
                         ? null
                         : () async {
-                            final f = await _form(context, 'Kis notary ne?', const [('notary', 'Notary name'), ('on', 'Tareekh')]);
+                            final f = await _form(context, 'Which notary?', const [('notary', 'Notary name'), ('on', 'Date')]);
                             if (f != null) await _run('POST', '/api/notary/docs/$_id/executed', f);
                           }),
               ],
@@ -794,7 +794,7 @@ class NotaryDocCard extends StatelessWidget {
           ]),
           Text(_s(data['say']), style: const TextStyle(fontSize: 12.5, height: 1.35)),
           if (_strs(d['blanks']).isNotEmpty)
-            Text('Khaali: ${_strs(d['blanks']).take(5).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+            Text('Blank: ${_strs(d['blanks']).take(5).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         ]),
       ),
     );

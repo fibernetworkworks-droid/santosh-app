@@ -625,7 +625,7 @@ class _McpScreenState extends State<McpScreen> {
       final go = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('${e['name']}: savdhani'),
+          title: Text('${e['name']}: caution'),
           content: Text([...(r['reasons'] as List? ?? []).map((x) => '• $x'), '',
             'Hoola will run it in a locked container and ask for your yes before every write or send action.'].join('\n')),
           actions: [
@@ -860,7 +860,7 @@ class _McpScreenState extends State<McpScreen> {
             if (e['one_tap'] == true) const Pill('One tap', fg: C.ok),
             if (e['trusted'] == true) const Pill('Trusted', fg: C.teal),
             if (e['keys'] != null) Pill('Key: ${(e['keys'] as List).join(', ')}', fg: C.warn),
-            if (e['caution'] != null) const Pill('Savdhani', fg: C.warn),
+            if (e['caution'] != null) const Pill('Caution', fg: C.warn),
           ]),
           if (e['install'] != null) ...[
             const SizedBox(height: 6),

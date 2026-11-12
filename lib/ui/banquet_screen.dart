@@ -399,7 +399,7 @@ class _BanquetScreenState extends State<BanquetScreen> {
     const tabs = ['Today', 'Enquiry', 'Calendar', 'Booking', 'Venue', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Banquet Sahayak'),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Banquet Assistant'),
           actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
       body: Column(children: [
         SizedBox(
@@ -504,7 +504,7 @@ class _BanquetBookingPageState extends State<BanquetBookingPage> {
           const SizedBox(height: 8),
           const Caption('INSTALMENTS'),
           for (final r in _list(b['stages']))
-            Text('${r['paid'] == true ? '✓' : '•'} ${_s(r['label'])} ${_rs(r['amount'])} · ${_s(r['due'])}${r['requested'] == true ? ' · maanga' : ''}'),
+            Text('${r['paid'] == true ? '✓' : '•'} ${_s(r['label'])} ${_rs(r['amount'])} · ${_s(r['due'])}${r['requested'] == true ? ' · requested' : ''}'),
           const SizedBox(height: 8),
           const Caption('REFUND POLICY'),
           for (final x in _strs(b['cancel_lines'])) Text('• $x', style: const TextStyle(fontSize: 12.5)),

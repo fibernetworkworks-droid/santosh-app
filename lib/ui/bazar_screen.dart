@@ -454,9 +454,9 @@ class _BazarScreenState extends State<BazarScreen> {
                 const Text('0 = your tap for every expense. Within the limit, only orders to shops/billers you approved earlier go through by themselves.'
                     'Money to a person always goes only with your tap and UPI PIN.', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 Row(children: [
-                  Expanded(child: TextField(controller: _order, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ek order ₹ (max 5000)'))),
+                  Expanded(child: TextField(controller: _order, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'One order ₹ (max 5000)'))),
                   const SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _day, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ek din ₹'))),
+                  Expanded(child: TextField(controller: _day, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'One day ₹'))),
                 ]),
                 TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile number (for shop bills)')),
                 TextField(controller: _pin, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Pincode (nearby shops)')),

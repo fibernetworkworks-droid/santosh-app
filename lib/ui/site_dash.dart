@@ -160,7 +160,7 @@ class _SiteDashPageState extends State<SiteDashPage> {
           Wrap(spacing: 8, children: [
             for (final n in const [7, 30, 90, 365])
               ChoiceChip(
-                label: Text(n == 365 ? '1 year' : '$n din'),
+                label: Text(n == 365 ? '1 year' : '$n days'),
                 selected: _days == n,
                 onSelected: (_) {
                   setState(() => _days = n);

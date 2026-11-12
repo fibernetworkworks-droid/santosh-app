@@ -53,7 +53,7 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text('$label banayein?'),
+        title: Text('Create $label?'),
         content: const Text('A new app on the same app data: its own plan, design and build; accounts and orders stay the same.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
@@ -91,7 +91,7 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          title: Text('${_s(p['name'])} ko hatayein?'),
+          title: Text('Remove ${_s(p['name'])}?'),
           content: const Text('Their sign-in will stop and their open jobs will go back to everyone.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
@@ -117,7 +117,7 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
       Row(children: [
         const Icon(Icons.apps_rounded, color: C.muted, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('App parivaar (${faces.length}${waiting > 0 ? ' · $waiting ruke' : ''})', style: display(15))),
+        Expanded(child: Text('App family (${faces.length}${waiting > 0 ? ' · $waiting waiting' : ''})', style: display(15))),
         IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
       const Text('More apps on this same data: delivery partner, partner shop (restaurant / seller), staff. Partners apply from their own app; '
@@ -155,7 +155,7 @@ class _AppFamilyPanelState extends State<AppFamilyPanel> {
             if (p['state'] == 'waiting')
               TextButton(onPressed: _busy ? null : () => _decide(p, 'refuse'), child: const Text('No')),
             if (p['state'] == 'approved')
-              TextButton(onPressed: _busy ? null : () => _decide(p, 'remove'), child: const Text('Hatao')),
+              TextButton(onPressed: _busy ? null : () => _decide(p, 'remove'), child: const Text('Remove')),
           ]),
         ),
     ]);

@@ -299,7 +299,7 @@ class _QaScreenState extends State<QaScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('QA Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('QA Assistant')),
         floatingActionButton: _tab <= 1
             ? FloatingActionButton.extended(onPressed: _busy ? null : _addTarget, icon: const Icon(Icons.bug_report_rounded), label: const Text('Test'))
             : null,

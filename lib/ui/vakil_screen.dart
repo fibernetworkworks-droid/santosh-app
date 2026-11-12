@@ -218,7 +218,7 @@ class _VakilScreenState extends State<VakilScreen> {
       if (_list(day['limitation']).isNotEmpty) ...[
         const Caption('LIMITATION NEARING (ESTIMATE)'),
         for (final r in _list(day['limitation']))
-          Text('• ${_s(r['matter'])} ${_s(r['label'])}: ${_s(r['last_date'])} (${_s(r['days_left'])} din)',
+          Text('• ${_s(r['matter'])} ${_s(r['label'])}: ${_s(r['last_date'])} (${_s(r['days_left'])} days)',
               style: TextStyle(fontSize: 13, color: (r['days_left'] is num && (r['days_left'] as num) <= 3) ? C.bad : C.ink)),
         const SizedBox(height: 8),
       ],

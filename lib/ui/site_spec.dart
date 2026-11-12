@@ -44,7 +44,7 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
                   decoration: const InputDecoration(hintText: 'For example: add an alumni page too, let teachers mark attendance')),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(c), child: const Text('Keep it')),
-                TextButton(onPressed: () => Navigator.pop(c, ctl.text.trim()), child: const Text('Badlo')),
+                TextButton(onPressed: () => Navigator.pop(c, ctl.text.trim()), child: const Text('Change')),
               ],
             ));
     if (w == null || w.isEmpty) return;
@@ -65,7 +65,7 @@ class _SiteSpecCardState extends State<SiteSpecCard> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-              title: Text('${_t(v['name'])} banayein?'),
+              title: Text('Create ${_t(v['name'])}?'),
               content: Text('These parts will be made: ${keep.join(', ')}'),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Not now')),

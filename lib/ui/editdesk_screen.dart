@@ -416,7 +416,7 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
                   if (f != null) await _run('PATCH', _base, f);
                 }),
                 const SizedBox(height: 12),
-                const Caption('DELIVERABLES (HAR PLATFORM)'),
+                const Caption('DELIVERABLES (EVERY PLATFORM)'),
                 for (final d in _list(p['deliverables'])) _deliverable(d),
                 GlassButton(label: 'Add platform', icon: Icons.add_rounded, height: 38, onTap: () async {
                   final f = await _form(context, 'Platform', const [('platform', 'reel / short / status / youtube / square / portrait')]);
@@ -455,7 +455,7 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
                   }),
                   GradientButton(label: 'Run the change round', icon: Icons.autorenew_rounded, height: 40,
                       onTap: _busy ? null : () => _run('POST', '$_base/revise', {})),
-                  GlassButton(label: 'Free round do', height: 40, onTap: _busy ? null : () => _run('POST', '$_base/revise', {'free': true})),
+                  GlassButton(label: 'Give a free round', height: 40, onTap: _busy ? null : () => _run('POST', '$_base/revise', {'free': true})),
                 ]),
                 const SizedBox(height: 12),
                 const Caption('LICENCE'),
@@ -497,7 +497,7 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
             style: const TextStyle(fontWeight: FontWeight.w700)),
         for (final q in _list(p['quotes'])) Text('Quote ${_s(q['number'])} · ${_s(q['total_text'])} · ${_s(q['status'])}', style: const TextStyle(fontSize: 12.5)),
         for (final i in _list(p['invoices']))
-          Text('${_s(i['number'])} (${_s(i['kind'])}) ${_rs(i['total'])} · ${_s(i['status'])} · mile ${_rs(i['received'])}', style: const TextStyle(fontSize: 12.5)),
+          Text('${_s(i['number'])} (${_s(i['kind'])}) ${_rs(i['total'])} · ${_s(i['status'])} · received ${_rs(i['received'])}', style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
           GlassButton(label: 'Make quote', icon: Icons.request_quote_rounded, height: 38, onTap: () async {

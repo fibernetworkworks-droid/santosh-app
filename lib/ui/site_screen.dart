@@ -215,7 +215,7 @@ class SiteBoardCard extends StatelessWidget {
           SiteBoard(v: v, compact: true),
           const SizedBox(height: 6),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: () => app.api!.siteAct(id, 'stop'), child: const Text('Rokiye')),
+            TextButton(onPressed: () => app.api!.siteAct(id, 'stop'), child: const Text('Stop')),
             TextButton(onPressed: () => _openUrl(context, app, _s(v['preview'])), child: const Text('Live preview')),
             GlassButton(label: 'Board', height: 36, onTap: open),
           ]),
@@ -230,7 +230,7 @@ class SiteBoardCard extends StatelessWidget {
           ]),
         ],
         if (st == 'failed' || st == 'stopped')
-          Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => app.api!.siteAct(id, 'resume'), child: const Text('Aage badhao'))),
+          Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => app.api!.siteAct(id, 'resume'), child: const Text('Continue'))),
       ]),
     );
   }
@@ -363,7 +363,7 @@ class _SiteLeadCardState extends State<SiteLeadCard> {
               Expanded(child: GlassButton(label: 'Confirmed', icon: Icons.check_rounded, color: C.ok, height: 40,
                   onTap: _busy ? null : () => _decide(true))),
               const SizedBox(width: 8),
-              TextButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Mana')),
+              TextButton(onPressed: _busy ? null : () => _decide(false), child: const Text('No')),
             ]),
           ),
         if (_done.isNotEmpty)
@@ -543,7 +543,7 @@ class _SiteIdeasState extends State<SiteIdeas> {
               suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward_rounded), onPressed: _load))),
       const SizedBox(height: 8),
       Wrap(spacing: 6, runSpacing: 6, children: [
-        ChoiceChip(label: const Text('Sab'), selected: _industry.isEmpty, onSelected: (_) { _industry = ''; _load(); }),
+        ChoiceChip(label: const Text('All'), selected: _industry.isEmpty, onSelected: (_) { _industry = ''; _load(); }),
         for (final i in inds)
           ChoiceChip(label: Text('${i['label']}'), selected: _industry == i['id'], onSelected: (_) { _industry = _s(i['id']); _q.clear(); _load(); }),
       ]),
@@ -553,7 +553,7 @@ class _SiteIdeasState extends State<SiteIdeas> {
           contentPadding: EdgeInsets.zero,
           title: Text(_s(f['en']), style: const TextStyle(fontWeight: FontWeight.w700)),
           subtitle: Text('${f['hi']}', style: const TextStyle(color: C.muted)),
-          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} ki website'), child: const Text('Start')),
+          trailing: TextButton(onPressed: () => widget.onPick('${f['en']} website'), child: const Text('Start')),
         ),
     ]);
   }
@@ -673,7 +673,7 @@ class _SitePageState extends State<SitePage> {
             }
           }, itemBuilder: (_) => const [
             PopupMenuItem(value: 'export', child: Text('Make ZIP (for any hosting)')),
-            PopupMenuItem(value: 'delete', child: Text('Hatao')),
+            PopupMenuItem(value: 'delete', child: Text('Remove')),
           ]),
         ],
       ),
@@ -690,10 +690,10 @@ class _SitePageState extends State<SitePage> {
             const SizedBox(height: 10),
             SiteBoard(v: v),
             if (st == 'building' || st == 'checking')
-              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('stop'), child: const Text('Rokiye'))),
+              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('stop'), child: const Text('Stop'))),
             if (st == 'failed' || st == 'stopped') ...[
               if (_s(v['error']).isNotEmpty) Text(_s(v['error']), style: const TextStyle(color: C.bad, fontSize: 12.5)),
-              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('resume'), child: const Text('Aage badhao'))),
+              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _act('resume'), child: const Text('Continue'))),
             ],
           ])),
           const SizedBox(height: 10),
@@ -757,7 +757,7 @@ class _SitePageState extends State<SitePage> {
               Row(children: [
                 TextButton.icon(onPressed: _photo, icon: const Icon(Icons.add_a_photo_rounded), label: const Text('Photo')),
                 const Spacer(),
-                GlassButton(label: 'Badlo', color: C.accent, onTap: _busy ? null : () async {
+                GlassButton(label: 'Change', color: C.accent, onTap: _busy ? null : () async {
                   final t = _change.text.trim();
                   if (t.isEmpty) return;
                   await _act('change', {'instruction': t});

@@ -22,7 +22,7 @@ void _snack(BuildContext c, String t) {
 
 Color _prioColor(String p) => switch (p) { 'P1' => C.bad, 'P2' => C.warn, 'P3' => C.accentSoft, _ => C.chip };
 
-Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Aage'}) async {
+Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields, {String ok = 'Next'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController()};
   final res = await showDialog<bool>(
     context: context,
@@ -98,10 +98,10 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
   Future<void> _newTicket() async {
     final f = await _form(context, 'New IT problem', const [
       ('text', 'What is the problem (in your own words)'),
-      ('person', 'Kisko (naam)'),
+      ('person', 'For whom (name)'),
       ('asset', 'Which device (tag / name, if any)'),
       ('error', 'Error on screen (as written)'),
-      ('since', 'Kab se'),
+      ('since', 'Since when'),
     ], ok: 'Save');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/helpdesk/tickets', f);
@@ -131,7 +131,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
                 [
                   if (_s(t['person']).isNotEmpty) _s(t['person']),
                   if (t['asset'] is Map) _s(_m(t['asset'])['name']),
-                  if (_s(t['raised_by']).isNotEmpty) 'darj: ${_s(t['raised_by'])}',
+                  if (_s(t['raised_by']).isNotEmpty) 'raised by: ${_s(t['raised_by'])}',
                 ].join(' · '),
                 style: const TextStyle(color: C.muted, fontSize: 12)),
             if (cur.isNotEmpty) Text('Now: ${_s(cur['title'])}', style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
@@ -151,7 +151,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
         Padding(padding: const EdgeInsets.only(bottom: 8), child: HelpdeskChangeCard(app: widget.app, data: {'change': c}, onDone: _load)),
       for (final i in _list(d['incidents']).where((i) => _s(i['report_due']).isNotEmpty && _s(i['reported_at']).isEmpty))
         Padding(padding: const EdgeInsets.only(bottom: 8), child: _IncidentTile(app: widget.app, i: i, onDone: _load)),
-      if (_list(d['open']).isNotEmpty) Text('Khule ticket', style: display(15)),
+      if (_list(d['open']).isNotEmpty) Text('Open tickets', style: display(15)),
       const SizedBox(height: 6),
       for (final t in _list(d['open'])) _ticketTile(t),
       for (final e in _list(d['expiring']))
@@ -159,7 +159,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
       for (final r in _list(d['repeat']))
         Text('• ${_s(r['name'])}: broke ${r['count_90d']} times in 90 days (${_s(r['top_label'])})', style: const TextStyle(fontSize: 12.5, color: C.warn)),
       for (final w in _list(d['old_windows']))
-        Text('• ${_s(w['name'])}: ${_s(w['os'])} (purana Windows)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Text('• ${_s(w['name'])}: ${_s(w['os'])} (old Windows)', style: const TextStyle(fontSize: 12.5, color: C.muted)),
     ]);
   }
 
@@ -186,13 +186,13 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
 
   Future<void> _addAsset([Map<String, dynamic>? a]) async {
     final f = await _form(context, a == null ? 'New device' : _s(a['name']), [
-      if (a == null) ('name', 'Naam (Accounts PC / Reception printer)'),
-      if (a == null) ('kind', 'Kism: pc / laptop / printer / router / ups / cctv / projector / scanner / server'),
+      if (a == null) ('name', 'Name (Accounts PC / Reception printer)'),
+      if (a == null) ('kind', 'Type: pc / laptop / printer / router / ups / cctv / projector / scanner / server'),
       ('brand', 'Brand'),
       ('model', 'Model'),
       ('serial', 'Serial no'),
       ('user', 'Who runs it'),
-      ('os', 'Windows version (PC ho to)'),
+      ('os', 'Windows version (if a PC)'),
       ('bought', 'When bought (dd-mm-yyyy)'),
       ('warranty_until', 'Warranty valid until'),
       ('amc_until', 'AMC valid until'),
@@ -208,9 +208,9 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
 
   Future<void> _addVendor() async {
     final f = await _form(context, 'Vendor / technician', const [
-      ('name', 'Naam'),
-      ('kind', 'Kism: amc / it / isp / printer / cctv / tally_partner / electrician / software'),
-      ('phone', 'Phone (10 ank)'),
+      ('name', 'Name'),
+      ('kind', 'Type: amc / it / isp / printer / cctv / tally_partner / electrician / software'),
+      ('phone', 'Phone (10 digits)'),
       ('email', 'Email'),
       ('amc_until', 'AMC valid until'),
       ('sla_hours', 'Promised response time in hours'),
@@ -284,7 +284,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Copy the text and paste it here. Do not open the link; Hoola does not open it either.', style: TextStyle(fontSize: 12, color: C.muted)),
               TextField(controller: sender, decoration: const InputDecoration(labelText: 'Sender (email / number)')),
-              TextField(controller: text, maxLines: 5, decoration: const InputDecoration(labelText: 'Mail / message ka text')),
+              TextField(controller: text, maxLines: 5, decoration: const InputDecoration(labelText: 'Mail / message text')),
               const SizedBox(height: 6),
               for (final e in labels.entries)
                 CheckboxListTile(
@@ -311,7 +311,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
         builder: (d) => AlertDialog(
           title: const Text('Check'),
           content: SingleChildScrollView(child: HelpdeskAlertCard(app: widget.app, data: {'kind': 'security', ...r, 'incident': r['incident']})),
-          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
         ),
       );
     }
@@ -331,7 +331,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
     final st = _m(_d?['settings']);
     final f = await _form(context, 'Office details', [
       ('office_name', 'Office name (${_s(st['office_name'])})'),
-      ('entity', 'Roop: company / llp / partnership / proprietor / trust / society / govt / individual (${_s(st['entity'])})'),
+      ('entity', 'Entity: company / llp / partnership / proprietor / trust / society / govt / individual (${_s(st['entity'])})'),
       ('contact_name', 'Contact person'),
       ('contact_phone', 'Phone'),
       ('contact_email', 'Email'),
@@ -349,35 +349,35 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_s(st['office_name']).isEmpty ? 'No office name given' : _s(st['office_name']), style: const TextStyle(fontWeight: FontWeight.w800)),
-          Text('Roop: ${_s(st['entity_label'])} · subah ka note ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          Text('Entity: ${_s(st['entity_label'])} · morning note ${_s(st['morning_time'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (_s(st['it_person']).isNotEmpty) Text('Admin: ${_s(st['it_person'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
       ),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
+        GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _busy ? null : _settings),
         GlassButton(label: 'IT register Excel', icon: Icons.table_view_rounded, onTap: _busy ? null : () => _run('POST', '/api/helpdesk/register')),
       ]),
       const SizedBox(height: 10),
       Text('Response / fix time', style: display(14)),
       for (final p in const ['P1', 'P2', 'P3', 'P4'])
-        Text('$p: response ${_m(sla[p])['respond_h']} hours, fix ${_m(sla[p])['resolve_h']} ghante', style: const TextStyle(fontSize: 12.5)),
+        Text('$p: response ${_m(sla[p])['respond_h']} hours, fix ${_m(sla[p])['resolve_h']} hours', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 10),
       Text('Playbooks', style: display(14)),
-      for (final p in _list(_d?['playbooks'])) Text('• ${_s(p['label'])} (${p['steps']} step, aage: ${_s(p['escalate'])})', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+      for (final p in _list(_d?['playbooks'])) Text('• ${_s(p['label'])} (${p['steps']} steps, then: ${_s(p['escalate'])})', style: const TextStyle(fontSize: 12.5, color: C.muted)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('IT Helpdesk Sahayak')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('IT Helpdesk Assistant')),
         floatingActionButton: _tab <= 1 ? FloatingActionButton.extended(onPressed: _busy ? null : _newTicket, icon: const Icon(Icons.support_agent_rounded), label: const Text('Report a problem')) : null,
         body: Aurora(
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Tickets'), (2, 'Devices'), (3, 'Suraksha'), (4, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Tickets'), (2, 'Devices'), (3, 'Security'), (4, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -501,7 +501,7 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                           [
                             if (_s(t['person']).isNotEmpty) _s(t['person']),
                             if (t['asset'] is Map) '${_s(_m(t['asset'])['tag'])} ${_s(_m(t['asset'])['name'])}',
-                            'darj: ${_s(t['raised_by'])}',
+                            'raised by: ${_s(t['raised_by'])}',
                           ].join(' · '),
                           style: const TextStyle(color: C.muted, fontSize: 12)),
                       for (final e in _m(t['details']).entries.where((e) => e.value is String && _s(e.value).isNotEmpty))
@@ -535,7 +535,7 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                     Wrap(spacing: 8, runSpacing: 8, children: [
                       GlassButton(label: 'Send to the technician', icon: Icons.engineering_rounded, onTap: _busy ? null : () => _act('escalate')),
                       GlassButton(
-                          label: 'Technician ne kiya',
+                          label: 'Technician did it',
                           icon: Icons.build_circle_rounded,
                           onTap: _busy
                               ? null
@@ -544,12 +544,12 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                                   if (f != null) await _act('tech', {'note': f['note'] ?? '', 'fixed': true, if (f['cost'] != null) 'cost': double.tryParse(f['cost']!)});
                                 }),
                       GlassButton(
-                          label: 'Detail jodo',
+                          label: 'Add details',
                           icon: Icons.note_add_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Detail', const [('error', 'Error ka text'), ('since', 'Kab se'), ('location', 'Where'), ('tried', 'What was tried')]);
+                                  final f = await _form(context, 'Detail', const [('error', 'Error text'), ('since', 'Since when'), ('location', 'Where'), ('tried', 'What was tried')]);
                                   if (f == null || f.isEmpty) return;
                                   setState(() => _busy = true);
                                   await _call(context, widget.app, 'PATCH', '/api/helpdesk/tickets/${widget.id}', f);
@@ -569,7 +569,7 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                   ],
                   const SizedBox(height: 12),
                   if (((t['escalate_when'] as List?) ?? const []).isNotEmpty) ...[
-                    Text('Technician kab', style: display(14)),
+                    Text('Technician visit', style: display(14)),
                     for (final x in (t['escalate_when'] as List)) Text('• $x', style: const TextStyle(fontSize: 12.5, color: C.muted)),
                   ],
                   const SizedBox(height: 10),
@@ -711,13 +711,13 @@ class _HelpdeskChangeCardState extends State<HelpdeskChangeCard> {
           Row(children: [
             Expanded(child: GradientButton(label: 'Yes, do it', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'No', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else
           Text(
               switch (_status) {
                 'approved' => 'Approved: now do the step and tell us whether it worked.',
-                'rejected' => 'Mana kiya.',
+                'rejected' => 'Declined.',
                 'done' => 'Done.',
                 'failed' => 'Done, but it did not fix it.',
                 _ => _status,
@@ -789,7 +789,7 @@ class HelpdeskAlertCard extends StatelessWidget {
           Icon(security ? Icons.gpp_maybe_rounded : Icons.alarm_rounded, color: security ? C.warn : C.bad),
           const SizedBox(width: 8),
           Expanded(
-              child: Text(security ? 'Security check${_s(data['number']).isNotEmpty ? ' · ${_s(data['number'])}' : ''}' : 'IT yaad dilana',
+              child: Text(security ? 'Security check${_s(data['number']).isNotEmpty ? ' · ${_s(data['number'])}' : ''}' : 'IT reminder',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 6),

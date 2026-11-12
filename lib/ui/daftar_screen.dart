@@ -168,7 +168,7 @@ class _DaftarScreenState extends State<DaftarScreen> {
           child: DataTable(
             columnSpacing: 12,
             columns: [
-              const DataColumn(label: Text('Din')),
+              const DataColumn(label: Text('Day')),
               for (var p = 0; p < ((_map(c.value).values.isEmpty ? const [] : _map(c.value).values.first as List).length); p++)
                 DataColumn(label: Text('${p + 1}')),
             ],

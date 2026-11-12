@@ -33,7 +33,7 @@ class MapsPlacesCard extends StatelessWidget {
       if (p['distance_km'] != null) '${p['distance_km']} km',
       if (p['rating'] != null)
         '★ ${p['rating']}${p['reviews'] != null ? ' (${p['reviews']})' : ''}',
-      if (open == true) 'Khula hai' else if (open == false) 'Off',
+      if (open == true) 'Open' else if (open == false) 'Closed',
       if (status.isNotEmpty && status != 'OPERATIONAL') status.replaceAll('_', ' ').toLowerCase(),
     ].where((x) => x.isNotEmpty).join(' · ');
   }

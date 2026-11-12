@@ -152,7 +152,7 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     _row('You speak', lang == null ? 'App setting (nothing learned yet)' : '${lang['name']}'),
                     if (lang != null && lang['mix'] != null)
-                      _row('English mix', '${(((lang['mix'] as num?) ?? 0) * 100).round()}% shabd'),
+                      _row('English mix', '${(((lang['mix'] as num?) ?? 0) * 100).round()}% words'),
                     if (lang != null)
                       Align(
                         alignment: Alignment.centerRight,

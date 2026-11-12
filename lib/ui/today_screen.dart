@@ -41,7 +41,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
   String _greet() {
     final h = DateTime.now().hour;
-    final part = h < 5 ? 'Shubh ratri' : h < 12 ? 'Suprabhat' : h < 17 ? 'Namaste' : h < 21 ? 'Shubh sandhya' : 'Shubh ratri';
+    final part = h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
     final name = ((widget.app.account?['name'] as String?) ?? '').split(' ').first;
     return name.isEmpty ? part : '$part, $name';
   }

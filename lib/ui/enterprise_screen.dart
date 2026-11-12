@@ -150,7 +150,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
         content: const Text('Past jobs and papers stay as they are. Only the way in will be removed.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Hataiye')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Remove')),
         ],
       ),
     );
@@ -237,7 +237,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           else ...[
             FilledButton(onPressed: _busy ? null : () => _verify(key), child: const Text('Check')),
             OutlinedButton(onPressed: _busy ? null : () => _openForm(key), child: const Text('Change')),
-            OutlinedButton(onPressed: _busy ? null : () => _forget(key), child: const Text('Hataiye')),
+            OutlinedButton(onPressed: _busy ? null : () => _forget(key), child: const Text('Remove')),
           ],
         ]),
       );
@@ -248,7 +248,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           TextField(
             controller: _addr,
             autocorrect: false,
-            decoration: const InputDecoration(labelText: 'API ka address', hintText: 'https://…'),
+            decoration: const InputDecoration(labelText: 'API address', hintText: 'https://…'),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -257,7 +257,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             value: _kind,
-            decoration: const InputDecoration(labelText: 'Key kaisi hai'),
+            decoration: const InputDecoration(labelText: 'Kind of key'),
             items: [for (final e in _kinds.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
             onChanged: (v) => setState(() => _kind = v ?? 'bearer'),
           ),
@@ -299,7 +299,7 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
           ),
           const SizedBox(height: 12),
           Wrap(spacing: 8, children: [
-            FilledButton(onPressed: _busy ? null : () => _save(key), child: Text(_busy ? 'Ruk jaiye…' : 'Save and check')),
+            FilledButton(onPressed: _busy ? null : () => _save(key), child: Text(_busy ? 'Please wait…' : 'Save and check')),
             OutlinedButton(onPressed: _busy ? null : () => setState(() => _open = null), child: const Text('Keep it')),
           ]),
         ]),

@@ -979,7 +979,7 @@ class _WarrantyTabState extends State<_WarrantyTab> {
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
         Row(children: [
           Expanded(
-            child: TextField(controller: _q, decoration: const InputDecoration(hintText: 'IMEI, phone number ya job no.'), onSubmitted: (_) => _find()),
+            child: TextField(controller: _q, decoration: const InputDecoration(hintText: 'IMEI, phone number or job no.'), onSubmitted: (_) => _find()),
           ),
           IconButton(onPressed: _find, icon: const Icon(Icons.search_rounded, color: C.accent)),
         ]),

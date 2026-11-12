@@ -30,7 +30,7 @@ String _verdictLabel(String v) =>
 Color _flagColor(String l) => switch (l) { 'bad' => C.bad, 'warn' => C.warn, _ => C.muted };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Set<String> long = const {'text', 'what', 'lessons', 'impact', 'done'}, Set<String> secret = const {}}) async {
+    {String ok = 'Next', Set<String> long = const {'text', 'what', 'lessons', 'impact', 'done'}, Set<String> secret = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController()};
   final res = await showDialog<bool>(
     context: context,
@@ -210,9 +210,9 @@ class _CyberScreenState extends State<CyberScreen> {
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Alert chipkao', icon: Icons.content_paste_rounded, height: 46, onTap: _busy ? null : _paste)),
+        Expanded(child: GradientButton(label: 'Paste an alert', icon: Icons.content_paste_rounded, height: 46, onTap: _busy ? null : _paste)),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'File do', icon: Icons.upload_file_rounded, height: 46, onTap: _busy ? null : _upload)),
+        Expanded(child: GlassButton(label: 'Add a file', icon: Icons.upload_file_rounded, height: 46, onTap: _busy ? null : _upload)),
       ]),
       const SizedBox(height: 10),
       for (final a in _list(d['waiting'])) Padding(padding: const EdgeInsets.only(bottom: 8), child: CyberActionCard(app: widget.app, data: {'action': a}, onDone: _load)),
@@ -236,9 +236,9 @@ class _CyberScreenState extends State<CyberScreen> {
     final shown = all.where((a) => _level == 'all' || a['level'] == _level).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Wrap(spacing: 6, runSpacing: 6, children: [
-        for (final (k, t) in const [('matters', 'Important'), ('watch', 'Keep watching'), ('all', 'Sab')])
+        for (final (k, t) in const [('matters', 'Important'), ('watch', 'Keep watching'), ('all', 'All')])
           ChoiceChip(label: Text(t), selected: _level == k, onSelected: (_) => setState(() => _level = k)),
-        GlassButton(label: 'Chipkao', icon: Icons.content_paste_rounded, height: 36, onTap: _busy ? null : _paste),
+        GlassButton(label: 'Paste', icon: Icons.content_paste_rounded, height: 36, onTap: _busy ? null : _paste),
         GlassButton(label: 'File', icon: Icons.upload_file_rounded, height: 36, onTap: _busy ? null : _upload),
         GlassButton(label: 'Hoola logins', icon: Icons.phonelink_lock_rounded, height: 36, onTap: _busy ? null : () => _run('POST', '/api/cyber/intake', {'include_hoola': true})),
       ]),
@@ -318,18 +318,18 @@ class _CyberScreenState extends State<CyberScreen> {
 
   // ---------------- domains + software
   Future<void> _addDomain() async {
-    final f = await _form(context, 'Your domain', const [('domain', 'jaise ainewtika.com')], ok: 'Jodo');
+    final f = await _form(context, 'Your domain', const [('domain', 'e.g. ainewtika.com')], ok: 'Add');
     if (f == null || (f['domain'] ?? '').isEmpty) return;
     await _run('POST', '/api/cyber/domains', f);
   }
 
   Future<void> _addSoftware() async {
     final f = await _form(context, 'Software / device', const [
-      ('product', 'Naam (Tally Prime / Windows 10 / TP-Link Archer C6)'),
+      ('product', 'Name (Tally Prime / Windows 10 / TP-Link Archer C6)'),
       ('vendor', 'Company (optional)'),
       ('version', 'Version'),
       ('where', 'Where (PC / server name)'),
-    ], ok: 'Jodo');
+    ], ok: 'Add');
     if (f == null || (f['product'] ?? '').isEmpty) return;
     await _run('POST', '/api/cyber/software', f);
   }
@@ -360,7 +360,7 @@ class _CyberScreenState extends State<CyberScreen> {
 
   Widget _domains() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Domain jodo', icon: Icons.language_rounded, onTap: _busy ? null : _addDomain),
+          GlassButton(label: 'Add domain', icon: Icons.language_rounded, onTap: _busy ? null : _addDomain),
           GlassButton(label: 'Check for an email leak', icon: Icons.person_search_rounded, onTap: _busy ? null : () => _run('POST', '/api/cyber/breach', {})),
         ]),
         const SizedBox(height: 10),
@@ -368,7 +368,7 @@ class _CyberScreenState extends State<CyberScreen> {
         const SizedBox(height: 12),
         Text('Software and devices', style: display(15)),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Jodo', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _addSoftware),
+          GlassButton(label: 'Add', icon: Icons.add_rounded, height: 40, onTap: _busy ? null : _addSoftware),
           GlassButton(label: 'Take from IT Helpdesk', icon: Icons.devices_other_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '/api/cyber/software/sync')),
           GlassButton(label: 'Check new threats', icon: Icons.refresh_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '/api/cyber/advisories/refresh')),
         ]),
@@ -425,7 +425,7 @@ class _CyberScreenState extends State<CyberScreen> {
   Future<void> _key(String provider, String label) async {
     final needsZone = provider == 'cloudflare';
     final f = await _form(context, label, [('token', 'Key / token (only here, never in the chat)'), if (needsZone) ('extra', 'Zone ID (32 characters)')],
-        ok: 'Jodo', secret: const {'token'});
+        ok: 'Add', secret: const {'token'});
     if (f == null || (f['token'] ?? '').isEmpty) return;
     await _run('PUT', '/api/cyber/keys/$provider', f);
   }
@@ -434,9 +434,9 @@ class _CyberScreenState extends State<CyberScreen> {
     final st = _m(_d?['settings']);
     final keys = _m(st['keys']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      GlassButton(label: 'Niyam badlo', icon: Icons.tune_rounded, onTap: _busy ? null : _settings),
+      GlassButton(label: 'Change rules', icon: Icons.tune_rounded, onTap: _busy ? null : _settings),
       const SizedBox(height: 8),
-      for (final (k, label) in const [('own_ips', 'Own IPs'), ('vip_names', 'VIP naam'), ('crown_hosts', 'Important systems'), ('work_emails', 'Office email')])
+      for (final (k, label) in const [('own_ips', 'Own IPs'), ('vip_names', 'VIP names'), ('crown_hosts', 'Important systems'), ('work_emails', 'Office email')])
         Text('$label: ${((st[k] as List?) ?? const []).join(', ')}', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 12),
       Text('Keys (on the server only, locked)', style: display(14)),
@@ -446,15 +446,15 @@ class _CyberScreenState extends State<CyberScreen> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(_m(e.value)['set'] == true ? Icons.check_circle_rounded : Icons.key_rounded, color: _m(e.value)['set'] == true ? C.ok : C.muted),
           title: Text(_s(_m(e.value)['label'])),
-          subtitle: Text(_m(e.value)['set'] == true ? 'Judi ${_s(_m(e.value)['hint'])}' : _s(_m(e.value)['note']), style: const TextStyle(color: C.muted, fontSize: 12)),
+          subtitle: Text(_m(e.value)['set'] == true ? 'Connected ${_s(_m(e.value)['hint'])}' : _s(_m(e.value)['note']), style: const TextStyle(color: C.muted, fontSize: 12)),
           trailing: _m(e.value)['set'] == true
               ? IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: _busy ? null : () => _run('DELETE', '/api/cyber/keys/${e.key}'))
-              : TextButton(onPressed: _busy ? null : () => _key(e.key, _s(_m(e.value)['label'])), child: const Text('Jodo')),
+              : TextButton(onPressed: _busy ? null : () => _key(e.key, _s(_m(e.value)['label'])), child: const Text('Add')),
         ),
       const Text('The free Google Safe Browsing and VirusTotal keys are not for business use: for business use Google Web Risk (100,000 checks / month free) '
           'and VirusTotal premium.', style: TextStyle(fontSize: 11.5, color: C.faint)),
       const SizedBox(height: 12),
-      Text('Aapne sikhaya (normal)', style: display(14)),
+      Text('You taught it (normal)', style: display(14)),
       for (final r in _list(_d?['rules']).where((r) => r['active'] == true))
         ListTile(
           dense: true,
@@ -475,7 +475,7 @@ class _CyberScreenState extends State<CyberScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Alerts'), (2, 'Check'), (3, 'Domain'), (4, 'Incident'), (5, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Alerts'), (2, 'Check'), (3, 'Domain'), (4, 'Incident'), (5, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -494,9 +494,9 @@ class _CyberScreenState extends State<CyberScreen> {
 
 String _kindLabel(String k) => switch (k) {
       'block_ip' => 'IP block',
-      'unblock_ip' => 'IP block hatao',
-      'disable_user' => 'User band',
-      'reset_sessions' => 'Sab jagah sign-out',
+      'unblock_ip' => 'Remove IP block',
+      'disable_user' => 'Disable user',
+      'reset_sessions' => 'Sign out everywhere',
       'quarantine' => 'Quarantine',
       'isolate_pc' => 'Isolate the PC',
       'wipe_device' => 'Wipe the device',
@@ -527,7 +527,7 @@ class CyberDomainTile extends StatelessWidget {
             const SizedBox(width: 6),
             Pill(d['verified'] == true ? 'Yours (verified)' : 'Not verified'),
           ]),
-          if (tls['days_left'] != null) Text('SSL: ${tls['days_left']} din bache (${_s(tls['not_after'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
+          if (tls['days_left'] != null) Text('SSL: ${tls['days_left']} days left (${_s(tls['not_after'])})', style: const TextStyle(fontSize: 12, color: C.muted)),
           _flags(_list(d['flags'])),
           if (d['verified'] != true) ...[
             const SizedBox(height: 6),
@@ -608,7 +608,7 @@ class _CyberIncidentPageState extends State<CyberIncidentPage> {
                   Glass(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_s(i['title']), style: display(16)),
-                      Text('${_s(i['kind'])} · found out ${_s(i['detected_local'])} · ${open ? 'khula' : 'band'}', style: const TextStyle(color: C.muted, fontSize: 12)),
+                      Text('${_s(i['kind'])} · found out ${_s(i['detected_local'])} · ${open ? 'open' : 'closed'}', style: const TextStyle(color: C.muted, fontSize: 12)),
                       if (_s(i['systems']).isNotEmpty) Text('Systems: ${_s(i['systems'])}', style: const TextStyle(fontSize: 12.5)),
                       const SizedBox(height: 6),
                       for (final (k, label) in const [('what', 'What happened'), ('impact', 'Impact'), ('done', 'What was done'), ('lessons', 'Lessons')])
@@ -619,7 +619,7 @@ class _CyberIncidentPageState extends State<CyberIncidentPage> {
                   Glass(
                     border: _s(i['cert_in_due']).isNotEmpty && _s(i['cert_in_reported']).isEmpty ? C.bad : null,
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('CERT-In (6 ghante)', style: display(14)),
+                      Text('CERT-In (6 hours)', style: display(14)),
                       Text(_s(ci['why']).isEmpty ? 'The CERT-In check has not been done yet.' : _s(ci['why']), style: const TextStyle(fontSize: 12.5)),
                       if (_s(i['cert_in_due']).isNotEmpty) Text('Deadline: ${_s(i['cert_in_due'])}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
                       if (_s(i['cert_in_reported']).isNotEmpty) const Text('Report sent.', style: TextStyle(color: C.ok, fontSize: 12.5)),
@@ -674,7 +674,7 @@ class _CyberIncidentPageState extends State<CyberIncidentPage> {
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'What was changed so this does not happen again?', const [('lessons', 'Seekh')], ok: 'Close');
+                                  final f = await _form(context, 'What was changed so this does not happen again?', const [('lessons', 'Lessons')], ok: 'Close');
                                   if (f != null) await _do('POST', '/api/cyber/incidents/${widget.id}/close', f);
                                 }),
                   ]),
@@ -779,7 +779,7 @@ class _CyberActionCardState extends State<CyberActionCard> {
           Icon(wipe ? Icons.phonelink_erase_rounded : Icons.gpp_maybe_rounded, color: wipe ? C.bad : C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('Needs your yes · ${_s(_a['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(_s(_a['via']) == 'cloudflare' ? 'Cloudflare se' : 'Console steps'),
+          Pill(_s(_a['via']) == 'cloudflare' ? 'From Cloudflare' : 'Console steps'),
         ]),
         const SizedBox(height: 6),
         Text('${_s(_a['label'])}: ${_s(_a['target'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -795,7 +795,7 @@ class _CyberActionCardState extends State<CyberActionCard> {
                 child: GradientButton(
                     label: wipe ? 'Yes, wipe' : 'Yes, do it', icon: wipe ? Icons.fingerprint_rounded : Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'No', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else if (st == 'approved')
           Wrap(spacing: 8, children: [
@@ -827,7 +827,7 @@ class CyberAlertsCard extends StatelessWidget {
           Row(children: [
             Icon(Icons.shield_rounded, color: m.isNotEmpty ? C.bad : C.accent),
             const SizedBox(width: 8),
-            Expanded(child: Text(m.isNotEmpty ? '${m.length} important security alerts' : 'Suraksha alerts', style: const TextStyle(fontWeight: FontWeight.w800))),
+            Expanded(child: Text(m.isNotEmpty ? '${m.length} important security alerts' : 'Security alerts', style: const TextStyle(fontWeight: FontWeight.w800))),
             if (data['noise'] != null) Pill('${data['noise']} noise'),
           ]),
           const SizedBox(height: 6),
@@ -924,7 +924,7 @@ class CyberAdvisoryCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(_s(data['say']), style: const TextStyle(fontSize: 12.5)),
             for (final a in _list(data['advisories']).take(4))
-              Text('• ${_s(a['ref'])} ${_s(a['software'])}${a['exploited'] == true ? ' (hamle ho rahe)' : ''}',
+              Text('• ${_s(a['ref'])} ${_s(a['software'])}${a['exploited'] == true ? ' (being exploited)' : ''}',
                   style: TextStyle(fontSize: 12, color: a['exploited'] == true ? C.bad : C.ink)),
           ]),
         ),

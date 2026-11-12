@@ -136,7 +136,7 @@ class _ReelScreenState extends State<ReelScreen> {
         }
         final r = await api.reelSave(_id);
         setState(() => _r = r);
-        _snack('${r['say'] ?? 'Save ho gayi'}');
+        _snack('${r['say'] ?? 'Saved'}');
       });
 
   // 2 remind
@@ -158,7 +158,7 @@ class _ReelScreenState extends State<ReelScreen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Kab yaad dilaun?', style: display(18)),
+            Text('When should I remind you?', style: display(18)),
             const SizedBox(height: 12),
             for (final o in options)
               ListTile(
@@ -230,7 +230,7 @@ class _ReelScreenState extends State<ReelScreen> {
                 ),
               for (final p in products) ...[
                 const SizedBox(height: 6),
-                Text('${p['name']} dhoondhiye', style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                Text('Find ${p['name']}', style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   for (final l in List<Map<String, dynamic>>.from((p['links'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map))))
@@ -325,7 +325,7 @@ class _ReelScreenState extends State<ReelScreen> {
   static const _verdict = {
     'sach': ('Looks right', C.ok, Icons.verified_rounded),
     'galat': ('Looks wrong', C.bad, Icons.dangerous_rounded),
-    'adhoora': ('Aadha sach / bhramak', C.warn, Icons.error_outline_rounded),
+    'adhoora': ('Half true / misleading', C.warn, Icons.error_outline_rounded),
     'pata_nahi': ('Not sure', C.muted, Icons.help_outline_rounded),
   };
 
@@ -406,7 +406,7 @@ class _ReelScreenState extends State<ReelScreen> {
             Row(children: [
               const Icon(Icons.auto_awesome_rounded, size: 13, color: C.faint),
               const SizedBox(width: 5),
-              Expanded(child: Text('${r['ai_label'] ?? 'AI se bana'}', style: const TextStyle(color: C.faint, fontSize: 11))),
+              Expanded(child: Text('${r['ai_label'] ?? 'Made with AI'}', style: const TextStyle(color: C.faint, fontSize: 11))),
             ]),
             if (r['needs_video'] == true) ...[
               const SizedBox(height: 12),
@@ -451,8 +451,8 @@ class _ReelScreenState extends State<ReelScreen> {
               children: [
                 _action('save', Icons.bookmark_add_rounded, r['saved'] == true ? 'Saved' : 'Save', C.accent, _save, on: r['saved'] == true),
                 _action('remind', Icons.alarm_add_rounded, 'Remind me', C.teal, _remind),
-                _action('shop', Icons.shopping_bag_rounded, 'Khareedo', C.accentSoft, _shop),
-                _action('family', Icons.family_restroom_rounded, 'Family ko', C.violet, _family),
+                _action('shop', Icons.shopping_bag_rounded, 'Buy', C.accentSoft, _shop),
+                _action('family', Icons.family_restroom_rounded, 'To family', C.violet, _family),
                 _action('check', Icons.fact_check_rounded, 'Is this true?', C.ok, _sach),
               ],
             ),
@@ -479,7 +479,7 @@ class _ReelScreenState extends State<ReelScreen> {
                   ),
               ]),
             if ((r['places'] as List? ?? const []).isNotEmpty)
-              _section('JAGAH', [
+              _section('PLACE', [
                 for (final p in (r['places'] as List))
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -492,7 +492,7 @@ class _ReelScreenState extends State<ReelScreen> {
                   ),
               ]),
             if ((r['events'] as List? ?? const []).isNotEmpty)
-              _section('TAREEKH / OFFER', [
+              _section('DATE / OFFER', [
                 for (final e in (r['events'] as List)) _bullet('${(e as Map)['what']}${'${e['when']}'.isEmpty ? '' : ' · ${e['when']}'}'),
               ]),
             if ((r['song'] as String? ?? '').isNotEmpty) _section('SONG', [_bullet('${r['song']}')]),

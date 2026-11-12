@@ -32,9 +32,9 @@ class Starter {
 const starters = [
   Starter('Diwali offer reel', '20 sec · shop', Color(0xFF3A1D0E), Icons.local_fire_department_rounded,
       'My shop\'s Diwali offer reel: lamps, rangoli, happy customers, and at the end the offer and the shop name.', 20, 'ad', '9:16'),
-  Starter('Product ad', '15 sec · photo se', Color(0xFF10283A), Icons.inventory_2_rounded,
+  Starter('Product ad', '15 sec · from a photo', Color(0xFF10283A), Icons.inventory_2_rounded,
       'A 15 second ad for my product: the product turns in shining light, shown being used, name at the end.', 15, 'ad', '9:16'),
-  Starter('Shaadi invite', '30 sec · Hindi', Color(0xFF3B1230), Icons.favorite_rounded,
+  Starter('Wedding invite', '30 sec · Hindi', Color(0xFF3B1230), Icons.favorite_rounded,
       'Wedding video invite: a mandap decorated with flowers, the names of the bride and groom, date and place, a loving message.', 30, 'indian_wedding', '9:16'),
   Starter('Good morning', '10 sec · chai', Color(0xFF2F2A10), Icons.wb_sunny_rounded,
       'Good morning greeting: morning sunlight, a cup of hot tea, birds, a sweet good wish.', 10, 'reel', '9:16'),

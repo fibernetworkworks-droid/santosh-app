@@ -220,15 +220,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const AvatarFace(size: 40, ring: true),
               title: Text('My Hoola: ${app.aName}', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('Naam, ${app.aFemale ? 'mahila' : 'purush'}, roop, awaaz'),
+              subtitle: Text('Name, ${app.aFemale ? 'female' : 'male'}, look, voice'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AvatarSetupScreen(app: app))),
             ),
             ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.palette_outlined, color: C.accent2),
-                title: Text('${app.aName} ka roop', style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text(app.aFemale ? '100 roop, duniya bhar se' : '100 voices, from all over the world, or the original Santosh'),
+                title: Text('${app.aName}\'s look', style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(app.aFemale ? '100 looks, from all over the world' : '100 voices, from all over the world, or the original Santosh'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
                   final id = await Navigator.of(context).push<String>(
@@ -289,7 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.engineering_rounded, color: C.accent),
-              title: const Text('Theka sahayak (contractor)', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Contractor assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Tender dates, BOQ, measurements, RA bills and deductions, petty contractors, site diary, EOT: ${app.aName} does it, bills go out with your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ThekaScreen(app: app))),
@@ -297,7 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.storefront_rounded, color: C.accent),
-              title: const Text('Franchise sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Franchise assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Sales and profit of each outlet, royalty statements, licences, agreement dates, SOP audits: ${app.aName} does it, reports go out with your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FranchiseScreen(app: app))),
@@ -305,7 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.public_rounded, color: C.accent),
-              title: const Text('Niryat sahayak (export)', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Export assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Buyers, PI, invoice + packing list, papers, when money comes after the shipping bill, RoDTEP: ${app.aName} does it, sending needs your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NiryatScreen(app: app))),
@@ -313,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.warehouse_rounded, color: C.accent),
-              title: const Text('Thok sahayak (wholesale)', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Wholesale assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('GST bills from orders, credit and recovery, cheques, supplier bills, what to order: ${app.aName} does it, bills go out with your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ThokScreen(app: app))),
@@ -321,7 +321,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.travel_explore_rounded, color: C.accent),
-              title: const Text('SEO sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('SEO assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Website checks, speed, Google Search Console, page plans, Google profile posts + review replies: ${app.aName} does it, you publish'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeoScreen(app: app))),
@@ -337,7 +337,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.diversity_3_rounded, color: C.accent),
-              title: Text('${app.aName} ki Dosti', style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text('${app.aName}\'s Friends', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Talk work with friends\' avatars by itself, share your experience and skills; documents with your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DostiScreen(app: app))),
@@ -361,7 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.health_and_safety_rounded, color: C.accent),
-              title: const Text('Bima sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Insurance assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Policy book, premium reminders, cover gaps, quote comparison, claims: ${app.aName} does it, the customer pays the insurer directly'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InsuranceScreen(app: app))),
@@ -465,7 +465,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.report_problem_rounded, color: C.accent),
-              title: Text('${app.aName} · Shikayat sahayak', style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text('${app.aName} · Complaints assistant', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Record complaints, evidence, deadlines, compensation with your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShikayatScreen(app: app))),
@@ -481,7 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.reviews_rounded, color: C.accent),
-              title: const Text('Feedback sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Feedback assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Reviews, surveys, what to fix first'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FeedbackScreen(app: app))),
@@ -497,7 +497,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.groups_2_rounded, color: C.accent),
-              title: const Text('Community sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Community assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Welcome in the group, FAQ answers, scam / abuse alerts'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SamudaayScreen(app: app))),
@@ -545,7 +545,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.shield_rounded, color: C.accent),
-              title: Text('${app.aName} · Cyber suraksha', style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text('${app.aName} · Cyber safety', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Filter alert noise, suspicious mails / links, threats to your domain, incident notes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CyberScreen(app: app))),
@@ -578,7 +578,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.route_rounded, color: C.accent),
               title: Text('${app.aName} · Product manager', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Feedback se roadmap, specs, release notes'),
+              subtitle: const Text('Roadmap from feedback, specs, release notes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductScreen(app: app))),
             ),
@@ -601,7 +601,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.warehouse_rounded, color: C.accent),
-              title: Text('${app.aName} · Godown', style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text('${app.aName} · Warehouse', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Bin-wise stock, goods received, pick lists, counts; changes with your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WarehouseScreen(app: app))),
@@ -650,7 +650,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.house_rounded, color: C.accent),
               title: Text('${app.aName} · Property manager', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Kirayedar, kiraya, deposit, agreement, repair, move-out'),
+              subtitle: const Text('Tenants, rent, deposit, agreement, repair, move-out'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RentdeskScreen(app: app))),
             ),
@@ -682,7 +682,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.apartment_rounded, color: C.accent),
               title: Text('${app.aName} · Society manager', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Flats, maintenance bill, baaki, shikayat, AGM / notice, vendor, gate'),
+              subtitle: const Text('Flats, maintenance bills, dues, complaints, AGM / notice, vendor, gate'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocietyScreen(app: app))),
             ),
@@ -706,7 +706,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.school_rounded, color: C.accent),
               title: Text('${app.aName} · Curriculum & exam designer', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Question bank, board pattern ka paper + answer key, year / lesson plan, rubric'),
+              subtitle: const Text('Question bank, board-pattern paper + answer key, year / lesson plan, rubric'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShikshaScreen(app: app))),
             ),
@@ -737,7 +737,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.biotech_rounded, color: C.accent),
-              title: Text('${app.aName} · Prayogshala (3D labs)', style: const TextStyle(fontWeight: FontWeight.w700)),
+              title: Text('${app.aName} · Lab (3D labs)', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Real practicals in 3D: pendulum, lens, Ohm, meter bridge… knobs, meters, table'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrayogScreen(app: app))),
@@ -802,7 +802,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.celebration_rounded, color: C.accent),
               title: Text('${app.aName} · Event planner', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Event file, vendor quotes, budget, booking, mehmaan + RSVP, run of show, report'),
+              subtitle: const Text('Event file, vendor quotes, budget, booking, guests + RSVP, run of show, report'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EventplanScreen(app: app))),
             ),
@@ -810,7 +810,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.favorite_rounded, color: C.accent),
               title: Text('${app.aName} · Wedding planner', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Functions, muhurat (panditji ka), mehmaan + RSVP, rooms, vendors, budget, shagun'),
+              subtitle: const Text('Functions, muhurat (from the priest), guests + RSVP, rooms, vendors, budget, gift money'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ShaadiScreen(app: app))),
             ),
@@ -834,7 +834,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.celebration_rounded, color: C.accent),
               title: Text('${app.aName} · Banquet sales', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Enquiry, khaali tareekh, hold, menu, quote, advance, BEO, bill'),
+              subtitle: const Text('Enquiry, free dates, hold, menu, quote, advance, BEO, bill'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BanquetScreen(app: app))),
             ),
@@ -945,7 +945,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.receipt_long_rounded, color: C.accent),
-              title: const Text('GST sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('GST assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Check every client\'s bills, GSTR-1 / 3B, 2B matching, due dates, notices: ${app.aName} does it, filing with your yes'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GstScreen(app: app))),
@@ -953,7 +953,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.account_balance_wallet_rounded, color: C.accent),
-              title: const Text('AI ka kharcha', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('AI cost', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(app.usage == null
                   ? 'Chat, call, website, video: what costs how much, and the monthly limit'
                   : 'This month ₹${((app.usage!['spent_inr'] as num?) ?? 0).round()}'
@@ -980,7 +980,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.phone_iphone_rounded, color: C.accent),
-              title: const Text('Mobile dukaan sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Mobile shop assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Repair jobs + photos, warranty, ready-for-pickup messages, recharge register: ${app.aName} will handle it'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MShopScreen(app: app))),
@@ -988,7 +988,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.local_cafe_rounded, color: C.accent),
-              title: const Text('Chai stall sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Chai stall assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Daily UPI sales, the best hour, tomorrow\'s milk-sugar order: ${app.aName} will handle it'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChaiScreen(app: app))),
@@ -996,7 +996,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.content_cut_rounded, color: C.accent),
-              title: const Text('Darzi sahayak', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Tailoring assistant', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text('Tailoring orders, each customer\'s measurements, trial / delivery, prices: ${app.aName} will handle it'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DarziScreen(app: app))),
@@ -1052,7 +1052,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.record_voice_over_rounded, color: C.accentSoft),
-              title: const Text('Call ki awaaz', style: TextStyle(fontWeight: FontWeight.w700)),
+              title: const Text('Call voice', style: TextStyle(fontWeight: FontWeight.w700)),
               subtitle: const Text('Gemini voice or Real voice (OpenAI) - and this month\'s cost'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VoiceEngineScreen(app: app))),
@@ -1140,7 +1140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.dns_rounded, color: C.accent),
-          title: const Text('Hoola ka PC', style: TextStyle(fontWeight: FontWeight.w700)),
+          title: const Text('Hoola\'s PC', style: TextStyle(fontWeight: FontWeight.w700)),
           subtitle: const Text('HOOLA\'s own computer (separate section): in its own container, always on — Chrome, files, software'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HoolaPcScreen(app: app))),
@@ -1273,7 +1273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.home_rounded, color: C.accentSoft),
           title: const Text('Home', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: const Text('AC, TV, speaker phone se · Samsung / LG / Bosch appliances'),
+          subtitle: const Text('AC, TV, speaker from the phone · Samsung / LG / Bosch appliances'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HomeDevicesScreen(app: app))),
         ),
@@ -1294,13 +1294,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: 18),
       Glass(
         child: Column(children: [
-          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Naam')),
+          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name')),
           TextField(controller: _city, decoration: const InputDecoration(labelText: 'City (for the weather)')),
           const SizedBox(height: 8),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Daily morning briefing'),
-            subtitle: Text(_briefing == null ? 'Band' : 'Every day at $_briefing: weather, reminders, lists'),
+            subtitle: Text(_briefing == null ? 'Off' : 'Every day at $_briefing: weather, reminders, lists'),
             value: _briefing != null,
             onChanged: (on) => on ? _pickBriefing() : setState(() => _briefing = null),
           ),
@@ -1392,7 +1392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: IconButton(
-                tooltip: f['pinned'] == true ? 'Pin hatao' : 'Always remembered (pin)',
+                tooltip: f['pinned'] == true ? 'Unpin' : 'Always remembered (pin)',
                 icon: Icon(f['pinned'] == true ? Icons.push_pin_rounded : Icons.push_pin_outlined,
                     color: f['pinned'] == true ? C.accent : C.faint, size: 20),
                 onPressed: () async {
@@ -1410,7 +1410,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? const Text('Hoola remembered this from conversations', style: TextStyle(color: C.faint, fontSize: 11))
                   : null,
               trailing: IconButton(
-                tooltip: 'Bhool jao',
+                tooltip: 'Forget',
                 icon: const Icon(Icons.delete_outline, color: C.muted),
                 onPressed: () async {
                   await app.api!.forget((f['id'] as num).toInt());
@@ -1572,7 +1572,7 @@ class _AccountCard extends StatelessWidget {
             leading: const Icon(Icons.check_circle_rounded, color: C.ok),
             title: Text('${c['provider'] == 'google' ? 'Google' : c['provider']}  ·  ${c['account'] ?? ''}'),
             subtitle: const Text('Gmail · Calendar · Drive · Docs · Sheets', style: TextStyle(fontSize: 11.5, color: C.muted)),
-            trailing: TextButton(onPressed: () => app.disconnectProvider(c['provider'] as String), child: const Text('Hatao')),
+            trailing: TextButton(onPressed: () => app.disconnectProvider(c['provider'] as String), child: const Text('Remove')),
           ),
       ]),
     );

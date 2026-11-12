@@ -149,7 +149,7 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
       ('title', 'Name'),
       ('logline', 'A one- or two-line story (logline)'),
       ('format', 'Type: short / reel / ad / music_video / web_episode / feature / documentary'),
-      ('language', 'Bhasha (Hindi / Marathi / English / Hinglish)'),
+      ('language', 'Language (Hindi / Marathi / English / Hinglish)'),
       ('targets', 'Where it will be shown: youtube, instagram, ott, festival, theatrical, tv'),
       ('budget_inr', 'Budget for AI shots ₹ (optional)'),
     ], ok: 'Make');
@@ -284,7 +284,7 @@ class _FilmdeskScreenState extends State<FilmdeskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Today', 'Filmein', 'Permission', 'Rules'];
+    const tabs = ['Today', 'Films', 'Permission', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Film desk'),
@@ -581,7 +581,7 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
           final f = await _form(context, 'Message (a card will be made, you send it)', const [
             ('msg_kind', 'consent_request / rights_request / festival / distributor / custom'),
             ('person', 'Register number (P-001) or blank'),
-            ('phone', 'Ya mobile'),
+            ('phone', 'Or mobile'),
             ('text', 'Text (for custom)'),
             ('terms', 'Terms / fees when asking for permission'),
           ], ok: 'Make card');
