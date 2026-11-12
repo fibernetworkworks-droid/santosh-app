@@ -21,8 +21,8 @@ QS_TOOLS = [
         "(% of the contract). action=pv: amount, workable_pct, base_index, current_index. A working paper is never a certificate. "
         "Wave 4 #40: action=cost_plan: project, rows [head, planned, estimate] -> variance; action=ve_option: "
         "project, rows [option, saving(FED), risk_note]. #89: action=gst_row: project, ref (bill/RA), rows "
-        "[taxable, rate_pct, rcm], source (ya india pack row) -> tax arithmetic; action=gst_sum: ref, itc, "
-        "itc_source -> net. Return CA hi file karega (tier C)."),
+        "[taxable, rate_pct, rcm], source (or india pack row) -> tax arithmetic; action=gst_sum: ref, itc, "
+        "itc_source -> net. Only the CA files the return (tier C)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["takeoff", "bbs", "recompute", "rate", "boq", "abstract", "budget",
                                                "retention", "pv", "cost_plan", "ve_option",
@@ -45,7 +45,7 @@ QS_TOOLS = [
          "what": {"type": "string", "enum": ["day", "takeoffs", "rates", "boq", "abstract", "budget"]},
          "project": {"type": "string"}}, "required": ["what"]}},
 ]
-QS_LABELS = {"const_qs": "Naap aur rate ka hisaab kar raha hoon", "const_qs_dekho": "QS desk dekh raha hoon"}
+QS_LABELS = {"const_qs": "Calculating measurements and rates", "const_qs_dekho": "Viewing the QS desk"}
 
 
 def _s(v: Any) -> str:
@@ -96,7 +96,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                              _s(a.get("itc_source")))
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -140,7 +140,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                 "actual": r.actual} for r in rows]}
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def const_qs(ctx: Ctx, action, **a: Any):

@@ -7,7 +7,7 @@ from .tools import Ctx, ToolError
 
 ID_TOOLS = [
     {"name": "id_locker", "description": (
-        "Pehchaan Locker: the owner's and her family's identity numbers (Aadhaar, PAN, voter ID, DL, passport, ration "
+        "ID Locker: the owner's and her family's identity numbers (Aadhaar, PAN, voter ID, DL, passport, ration "
         "card, ABHA, UAN, GSTIN, vehicle...). Accept them like a Seva Kendra does: never refuse or lecture. Numbers she "
         "types in chat are saved automatically; in a voice call use action=save with person ('self', 'maa', 'papa', "
         "'pati', 'patni', 'beta', 'beti', 'bhai', 'behen' or a name), kind and the number she said. action=list shows "
@@ -21,7 +21,7 @@ ID_TOOLS = [
                                              "vehicle", "other"]},
          "number": {"type": "string"}, "note": {"type": "string"}}, "required": ["action"]}},
 ]
-ID_LABELS = {"id_locker": "Pehchaan Locker dekh raha hoon"}
+ID_LABELS = {"id_locker": "Checking the ID Locker"}
 
 
 async def id_locker(ctx: Ctx, action, person="self", kind="aadhaar", number="", note="", **_):
@@ -38,8 +38,8 @@ async def id_locker(ctx: Ctx, action, person="self", kind="aadhaar", number="", 
         except idvault.VaultError as e:
             raise ToolError(str(e))
         return {k: r[k] for k in ("ref", "person_label", "kind_label", "masked")} | {
-            "say": f"{r['person_label']}'s {r['kind_label']} ({r['masked']}) was saved in the Pehchaan Locker."}
-    raise ToolError("action: list ya save")
+            "say": f"{r['person_label']}'s {r['kind_label']} ({r['masked']}) was saved in the ID Locker."}
+    raise ToolError("action: list or save")
 
 
 ID_HANDLERS = {"id_locker": id_locker}

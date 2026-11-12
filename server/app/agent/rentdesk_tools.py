@@ -11,7 +11,7 @@ from .tools import Ctx, ToolError
 RENTDESK_TOOLS = [
     {"name": "rentdesk", "description": (
         "Property manager's coworker (rented flats / houses / rooms / PG beds / shops / offices). action=settings (owner): business, "
-        "landlord_name, landlord_address, landlord_phone, pan (goes to her Pehchaan Locker), receipt_full_pan, state (MH...), city, "
+        "landlord_name, landlord_address, landlord_phone, pan (goes to her ID Locker), receipt_full_pan, state (MH...), city, "
         "upi_id, upi_name, gstin, agency, remind_before, grace_days, renewal_windows, minor_repair_limit, mirror_dues, morning_time, rules. "
         "action=unit: unit (existing) or label (new: 'Flat 302'), building, kind flat|house|room|pg_bed|shop|office|godown, use, address, "
         "city, pin, area_sqft (HER number), furnished, inventory ['2 fan', ...], owner_name/owner_phone (agency), rent_ask, deposit_ask, "
@@ -33,7 +33,7 @@ RENTDESK_TOOLS = [
         "missing, note}], meters {electricity: n}, keys, close. action=settlement: tenancy (start). action=deduct: settlement, what, "
         "amount (HER number), reason, remove. action=settle: settlement -> deduction CARD. action=refund_done (owner): settlement, amount, "
         "ref. action=settlement_file: settlement. action=forget (owner): person (DPDP, after the tenancy ended). action=register (Excel). "
-        "action=from_deal (owner): deal (Property Sahayak D-0001 rent deal), start -> a DRAFT tenancy from that deal (nothing billed / sent)."),
+        "action=from_deal (owner): deal (Property Assistant D-0001 rent deal), start -> a DRAFT tenancy from that deal (nothing billed / sent)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["settings", "unit", "person", "tenancy", "update", "activate", "check", "agreement",
                                                "received", "receipt", "charge", "waive", "pay_link", "message", "rent_change", "notice",
@@ -78,7 +78,7 @@ RENTDESK_TOOLS = [
          "tenancy": {"type": "string"}, "status": {"type": "string"}, "q": {"type": "string"}},
          "required": ["what"]}},
 ]
-RENTDESK_LABELS = {"rentdesk": "Kiraye ka kaam kar raha hoon", "rentdesk_dekho": "Kiraye ka hisaab dekh raha hoon"}
+RENTDESK_LABELS = {"rentdesk": "Working on rent", "rentdesk_dekho": "Checking rent accounts"}
 
 OWNER_ONLY = ("settings", "activate", "received", "charge", "waive", "refund_done", "forget", "unit", "person", "tenancy", "update", "from_deal")
 STAFF_OK = ("check", "agreement", "receipt", "pay_link", "message", "rent_change", "notice", "tenant_notice", "repair", "assign",
@@ -267,4 +267,4 @@ RENTDESK_BIZ_TOOLS = [
      "input_schema": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}},
 ]
 RENTDESK_BIZ_HANDLERS = {"biz_rent_status": biz_rent_status, "biz_rent_repair": biz_rent_repair}
-RENTDESK_BIZ_LABELS = {"biz_rent_status": "Kiraye ka hisaab dekh raha hoon", "biz_rent_repair": "Repair ki baat likh raha hoon"}
+RENTDESK_BIZ_LABELS = {"biz_rent_status": "Checking the rent accounts", "biz_rent_repair": "Noting the repair request"}

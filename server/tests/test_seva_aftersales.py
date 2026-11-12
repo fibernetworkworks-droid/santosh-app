@@ -43,7 +43,7 @@ def test_rules():
     assert R.ptype_of("Kent RO purifier") == "ro" and R.ptype_of("Voltas split AC") == "ac" and R.ptype_of("Luminous tubular battery") == "inverter"
     assert R.ptype_of("Honda Activa") == "two_wheeler" and R.ptype_of("xyz") == "other"
     nd = R.next_due("ac", date(2026, 4, 5), None)                    # +6 months = 5 Oct -> snapped to 1 Sep (post-monsoon)
-    assert nd["due"] == date(2026, 9, 1) and "garmi" in nd["why"]
+    assert nd["due"] == date(2026, 9, 1) and "summer" in nd["why"]
     nd = R.next_due("two_wheeler", date(2026, 10, 1), None, reading=12000, per_day=60, last_reading_on=date(2026, 10, 1))
     assert nd["due"] == date(2026, 10, 1) + __import__("datetime").timedelta(days=50) and "km" in nd["why"]
     assert R.next_due("ro", None, date(2026, 3, 10), {"ro": {"months": 3}})["due"] == date(2026, 6, 10)
@@ -80,7 +80,7 @@ def test_base_due_and_reminders(S):
     r = S.remind(T, 15)
     assert len(r["messages"]) == 2 and all(m["category"] == "UTILITY" for m in r["messages"])                # RO + AC, not the opted-out one
     m1 = next(m for m in r["messages"] if m["phone"] == "9822000001")
-    assert "wa.me/919822000001" in m1["wa_link"] and "Shree Sales" in m1["text"] and r["skipped"] and "mana" in r["say"]
+    assert "wa.me/919822000001" in m1["wa_link"] and "Shree Sales" in m1["text"] and r["skipped"] and "opted out" in r["say"]
     assert S.remind(T, 15)["messages"] == []                                                # no duplicate draft
     amc = S.remind(T, kind="amc")
     assert amc["messages"][0]["category"] == "MARKETING" and "marketing" in amc["say"]
@@ -92,11 +92,11 @@ def test_slots_booking_and_visit(S):
     assert sl["slots"] and all(x["tech"] == "Sunil" for x in sl["slots"])             # RO skill + Kothrud area
     first = S.book(T, "KT1001", "2026-10-23 10:00", "Sunil", problem="paani kam, pin 1234 hai")
     v1 = first["visit"]
-    assert v1["number"] == "V-0001" and "[hataya]" in v1["problem"] and first["message"]["category"] == "UTILITY"
+    assert v1["number"] == "V-0001" and "[removed]" in v1["problem"] and first["message"]["category"] == "UTILITY"
     assert "V-0001" in first["message"]["text"] and "Sunil" in first["message"]["text"]
-    with pytest.raises(S.AsError, match="do visit"):
+    with pytest.raises(S.AsError, match="two visits"):
         S.book(T, "LM3003", "2026-10-23 10:30", "Sunil")                                  # double booking never
-    with pytest.raises(S.AsError, match="aane-jaane"):
+    with pytest.raises(S.AsError, match="travel time"):
         S.book(T, "LM3003", "2026-10-23 11:00", "Sunil")                                  # Baner after Kothrud: no travel time
     ok = S.book(T, "LM3003", "2026-10-23 11:00", "Sunil", force=True)
     assert ok["warnings"]
@@ -118,7 +118,7 @@ def test_slots_booking_and_visit(S):
     assert S.get_unit(T, "KT1001")["next_due"] == "2027-02-23" and done["missing"]
     # AC: AMC non-comprehensive -> labour free, part charged from her list (no price -> needs her total)
     av = auto["visit"]["id"]
-    d2 = S.complete(T, av, {"Filter saaf": "ok", "Gas pressure check": "not_ok"}, {"gas_psi": 60}, [{"name": "Gas top-up"}], done_at="2026-10-23 16:00")
+    d2 = S.complete(T, av, {"Filter cleaned": "ok", "Gas pressure check": "not_ok"}, {"gas_psi": 60}, [{"name": "Gas top-up"}], done_at="2026-10-23 16:00")
     assert d2["charge"]["status"] == "needs_price" and d2["charge"]["lines"][0]["amount"] == 0
     with pytest.raises(S.AsError, match="tap"):
         S.decide_charge(T, av, True, 1500)                                                # the tool path can never approve
@@ -126,7 +126,7 @@ def test_slots_booking_and_visit(S):
         S.decide_charge(T, av, True, None, by_tap=True)
     ap = S.decide_charge(T, av, True, 1500, by_tap=True)
     assert ap["charge"]["status"] == "approved" and ap["charge"]["total"] == 1500
-    assert "baaki" in S.mark_paid(T, av, 1000)["say"]
+    assert "remaining" in S.mark_paid(T, av, 1000)["say"]
     # photo + signature + report
     from PIL import Image
     buf = io.BytesIO()
@@ -181,7 +181,7 @@ def test_amc_claims_and_send(S):
     assert sent["status"] == "sent" and sent["via"] == "template"
     with pytest.raises(S.AsError):
         asyncio.run(S.send_message(T, msg["id"], "template", by_tap=True))               # once
-    with pytest.raises(S.AsError, match="kabhi message"):
+    with pytest.raises(S.AsError, match="never messaged"):
         rm = S.remind(T, 15)["messages"][0]
         asyncio.run(S.send_message(T, rm["id"], "business", by_tap=True))                # no 24 h window
     assert S.message_mark(T, rm["id"], "sent")["status"] == "sent"

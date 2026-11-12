@@ -230,7 +230,7 @@ def test_message_after_the_job_ended_runs_normally(gz, monkeypatch):  # noqa: F8
 
 def test_quick_lane_says_it_reaches_the_job():
     from app.agent import quick
-    assert "jod raha hoon" in quick.QUEUE_STEER and "next step" in quick.QUEUE_STEER
+    assert "adding this to the running job" in quick.QUEUE_STEER and "next step" in quick.QUEUE_STEER
     assert "{queue_line}" in quick.SYSTEM
 
 

@@ -24,7 +24,7 @@ RECALL_TOOLS = [
          "when": {"type": "string", "description": "aaj | kal | parso | is hafte | pichhle hafte | YYYY-MM-DD"},
          "query": {"type": "string"}}, "required": ["when"]}},
 ]
-RECALL_LABELS = {"haal_ki_chats": "Pichhli chats dekh raha hoon"}
+RECALL_LABELS = {"haal_ki_chats": "Checking recent chats"}
 
 
 def window(when: str, tz) -> tuple[datetime, datetime, str]:
@@ -38,14 +38,14 @@ def window(when: str, tz) -> tuple[datetime, datetime, str]:
         return d, d + timedelta(days=1), d.strftime("%d %b")
     if any(k in w for k in ("pichhle hafte", "pichle hafte", "last week", "pichhla hafta")):
         start = day0 - timedelta(days=day0.weekday() + 7)
-        return start, start + timedelta(days=7), "pichhle hafte"
+        return start, start + timedelta(days=7), "last week"
     if any(k in w for k in ("is hafte", "this week", "hafte")):
-        return day0 - timedelta(days=day0.weekday()), now, "is hafte"
+        return day0 - timedelta(days=day0.weekday()), now, "this week"
     if any(k in w for k in ("parso", "parson", "day before")):
-        return day0 - timedelta(days=2), day0 - timedelta(days=1), "parso"
+        return day0 - timedelta(days=2), day0 - timedelta(days=1), "the day before yesterday"
     if any(k in w for k in ("kal", "yesterday", "कल")):
-        return day0 - timedelta(days=1), day0, "kal"
-    return day0, now, "aaj"
+        return day0 - timedelta(days=1), day0, "yesterday"
+    return day0, now, "today"
 
 
 def find(tenant: str, conversation_id: str, when: str, query: str = "", limit: int = 6) -> dict[str, Any]:

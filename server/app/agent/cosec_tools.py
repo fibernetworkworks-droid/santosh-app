@@ -12,7 +12,7 @@ COSEC_TOOLS = [
     {"name": "cosec", "description": (
         "Company secretary's desk for her client companies / LLPs. Dates only from her words (incorporation, AGM, board meeting, "
         "appointment, allotment): never invent a date, fee or section; computed due dates are 'andaaza' when the AGM is not held yet. "
-        "Directors: DIN only (Aadhaar / PAN never here; only a Pehchaan Locker {id:...} reference). "
+        "Directors: DIN only (Aadhaar / PAN never here; only an ID Locker {id:...} reference). "
         "action=settings*: firm, cs_name, membership_no (ACS/FCS), email, phone, windows ('30,15,7,1,0'), morning_time. "
         "action=entity: name (new) or entity (number / name / CIN to update), kind private|opc|public|listed|section8|llp, cin, llpin, "
         "roc, incorporated_on, paid_up, turnover (small company is worked out: <= Rs 10 crore / Rs 100 crore, private only), "
@@ -67,7 +67,7 @@ COSEC_TOOLS = [
          "entity": {"type": "string"}, "meeting": {"type": "string"}, "status": {"type": "string"}, "within_days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-COSEC_LABELS = {"cosec": "Company secretary ka kaam kar raha hoon", "cosec_dekho": "Company ki file dekh raha hoon"}
+COSEC_LABELS = {"cosec": "Doing company secretary work", "cosec_dekho": "Viewing the company file"}
 
 _OWNER_ONLY = ("settings", "filed", "skip", "forget")
 
@@ -149,7 +149,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, en)
     except (S.CosecError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -183,7 +183,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "events": {k: v["label"] for k, v in R.EVENTS.items()}}
     except (S.CosecError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def cosec(ctx: Ctx, action, **a: Any):

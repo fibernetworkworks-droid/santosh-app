@@ -84,12 +84,12 @@ YOUTUBE_TOOLS = [
                       "required": ["file_id", "title"]}},
 ]
 
-YOUTUBE_LABELS = {"youtube_search": "YouTube par dhoondh raha hoon", "youtube_play": "YouTube video laga raha hoon", "youtube_video": "Video dekh raha hoon",
-                  "youtube_watch": "Video dekh kar samajh raha hoon", "youtube_channel": "Channel dekh raha hoon",
-                  "youtube_comments": "Comments padh raha hoon", "youtube_my_channel": "Aapka channel dekh raha hoon",
-                  "youtube_my_videos": "Aapke videos dekh raha hoon", "youtube_analytics": "Channel ke numbers dekh raha hoon",
-                  "youtube_playlist": "Playlist sambhal raha hoon", "youtube_reply": "Jawab ki manzoori le raha hoon",
-                  "youtube_update_video": "Video badalne ki manzoori le raha hoon", "youtube_upload": "Upload ki manzoori le raha hoon"}
+YOUTUBE_LABELS = {"youtube_search": "Searching YouTube", "youtube_play": "Playing the YouTube video", "youtube_video": "Checking the video",
+                  "youtube_watch": "Watching the video to understand it", "youtube_channel": "Checking the channel",
+                  "youtube_comments": "Reading comments", "youtube_my_channel": "Checking your channel",
+                  "youtube_my_videos": "Checking your videos", "youtube_analytics": "Checking channel numbers",
+                  "youtube_playlist": "Managing the playlist", "youtube_reply": "Asking approval for the reply",
+                  "youtube_update_video": "Asking approval to update the video", "youtube_upload": "Asking approval to upload"}
 
 
 async def _t(fn, *a, **kw):
@@ -216,7 +216,7 @@ async def youtube_playlist(ctx: Ctx, action, title="", privacy="private", playli
         return {"playlists": await _t(ys.playlists, ctx.tenant_id)}
     if action == "create":
         if not title:
-            raise ToolError("Playlist ka naam do.")
+            raise ToolError("Give the playlist a name.")
         return await _t(ys.playlist_create, ctx.tenant_id, str(title), privacy or "private")
     if action == "add":
         return await _t(ys.playlist_add, ctx.tenant_id, str(playlist), [str(v) for v in videos or []])

@@ -454,7 +454,7 @@ def test_crawl_results_pagination_and_url_pick(monkeypatch):
     assert out["total_pages"] == 7 and out["count"] == 3
     assert [p["title"] for p in out["pages"]] == ["T0", "T1", "T2"]
     out2 = _run(cj.crawl_results(CTX, row["id"], offset=6, limit=3))
-    assert out2["count"] == 1 and "offset aage badhayein" not in out2["note"]
+    assert out2["count"] == 1 and "raise the offset" not in out2["note"]
     one = _run(cj.crawl_results(CTX, row["id"], url=f"{BASE}/p3"))
     assert one["count"] == 1 and len(one["pages"][0]["markdown"]) > 8_000, "url= mode serves the full page"
     listing = _run(cj.crawl_results(CTX, row["id"], offset=3, limit=1))

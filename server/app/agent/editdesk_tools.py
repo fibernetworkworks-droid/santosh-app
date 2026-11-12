@@ -56,7 +56,7 @@ EDITDESK_TOOLS = [
          "project": {"type": "string"}, "status": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-EDITDESK_LABELS = {"edit_desk": "Edit desk ka kaam kar raha hoon", "edit_desk_dekho": "Edit desk dekh raha hoon"}
+EDITDESK_LABELS = {"edit_desk": "Working on the edit desk", "edit_desk_dekho": "Checking the edit desk"}
 
 _SET_KEYS = ("studio", "gstin", "gst_on", "gst_pct", "upi_id", "phone", "email", "address", "rounds", "extra_round_fee",
              "advance_pct", "rate_card", "hold_final_unpaid", "terms", "rules")

@@ -35,7 +35,7 @@ BIMARISK_TOOLS = [
          "decisions": {"type": "array", "items": {"type": "object"}}, "max_gap": {"type": "number"}, "min_group": {"type": "number"}, "z": {"type": "number"}, "min_n": {"type": "number"}},
          "required": ["action"]}},
 ]
-BIMARISK_LABELS = {"bima_risk": "Bima Risk se jaanch kar raha hoon"}
+BIMARISK_LABELS = {"bima_risk": "Running checks with Bima Risk"}
 
 
 def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:

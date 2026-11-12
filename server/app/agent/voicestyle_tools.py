@@ -23,7 +23,7 @@ SEEKHA_TOOLS = [
          "id": {"type": "integer"}, "part": {"type": "string", "enum": ["all", "profile", "fixes", "words", "language"]}},
          "required": ["action"]}},
 ]
-SEEKHA_LABELS = {"hoola_seekha": "Aapke bolne ka tareeka dekh raha hoon"}
+SEEKHA_LABELS = {"hoola_seekha": "Learning how you speak"}
 
 
 def _owner(ctx: Ctx) -> bool:

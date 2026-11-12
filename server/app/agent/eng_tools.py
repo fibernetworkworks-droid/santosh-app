@@ -51,7 +51,7 @@ ENG_TOOLS.append(
      "input_schema": {"type": "object", "properties": {
          "kind": {"type": "string", "enum": ["fit", "stack", "bolt", "weld", "beam", "pipe", "joint", "fatigue", "column", "gear"]},
          "args": {"type": "object"}}, "required": ["kind", "args"]}})
-ENG_LABELS = {"cad_part": "CAD part bana raha hoon", "eng_calc": "Engineering hisaab laga raha hoon"}
+ENG_LABELS = {"cad_part": "Building a CAD part", "eng_calc": "Running engineering calculations"}
 
 
 async def eng_calc(ctx: Ctx, kind, args=None, **_):

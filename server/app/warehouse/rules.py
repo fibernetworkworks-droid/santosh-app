@@ -12,15 +12,15 @@ from datetime import date, timedelta
 from typing import Any
 
 NEVER = (
-    "Count ke baad stock badalna (adjustment / write-off) sirf aapke tap se: Hoola sirf card banata hai.",
-    "Paisa kabhi nahi: na supplier ko, na kisi debit note ka bhugtan; GST ITC reverse karna aapke CA ka kaam.",
-    "Count sheet par system ki maatra nahi dikhti (blind count), taaki ginti sach ho.",
-    "Expired maal pick list mein kabhi nahi jaata; quarantine bin mein rakhne ka sujhaav milta hai.",
-    "Daam stock list (Hoola Deals) / Thok ki cost se padhe jaate hain; yahan dobara nahi likhe jaate.",
+    "Stock changes after a count (adjustment / write-off) happen only on your tap: Hoola only makes the card.",
+    "Never money: no payment to a supplier or against a debit note; reversing GST ITC is your CA's job.",
+    "The count sheet does not show the system quantity (blind count), so the count stays honest.",
+    "Expired stock never goes into a pick list; Hoola suggests moving it to the quarantine bin.",
+    "Prices are read from the stock list (Hoola Deals) / the wholesale cost; they are not entered again here.",
 )
 
-BIN_KINDS = {"pick": "Pick bin", "bulk": "Bulk / reserve", "receiving": "Receiving (aaya maal)", "dispatch": "Dispatch",
-             "quarantine": "Quarantine (rok)", "damage": "Toota / kharab"}
+BIN_KINDS = {"pick": "Pick bin", "bulk": "Bulk / reserve", "receiving": "Receiving (goods in)", "dispatch": "Dispatch",
+             "quarantine": "Quarantine (hold)", "damage": "Damaged"}
 PICKABLE = ("pick", "bulk", "receiving")
 TRACK = ("none", "batch", "serial")
 COUNT_DAYS = {"A": 30, "B": 90, "C": 180}          # her design: A monthly, B quarterly, C half-yearly (editable)
@@ -29,15 +29,15 @@ TOLERANCE = {"A": {"units": 1, "pct": 0.5}, "B": {"units": 2, "pct": 1.0}, "C": 
 NEAR_EXPIRY_DAYS = 30
 SLOW_DAYS = 60
 DEAD_DAYS = 180
-REASONS = {"damaged": "Toota / kharab", "expired": "Expiry nikal gayi", "lost": "Gum / nahi mila", "theft": "Chori",
-           "count": "Ginti mein farak", "found": "Zyada mila", "sample": "Free sample / gift", "other": "Aur"}
+REASONS = {"damaged": "Damaged", "expired": "Expired", "lost": "Lost / not found", "theft": "Theft",
+           "count": "Count difference", "found": "Found extra", "sample": "Free sample / gift", "other": "Other"}
 
-ITC_NOTE = ("GST: jo maal kam hua / toota / expire hua / chori hua / likh diya (write-off) ya sample-gift mein gaya, us par liya ITC "
-            "wapas karna hota hai - CGST Act Section 17(5)(h). Kitna aur kab, apne CA se GSTR-3B ke liye poochhiye.")
-RECORDS_NOTE = ("Rule 56 (CGST Rules): stock register mein opening, aamad, supply, kam / chori / nasht / write-off / sample, aur closing "
-                "dikhna chahiye; har godown GST registration mein 'additional place of business' ho. Section 36: record 72 mahine.")
-FOOD_NOTE = ("Khaane ka maal: FSSAI storage licence / registration (1 Apr 2026 se nayi turnover seema), FEFO, saaf-safai, pest control; "
-             "cold storage ho to taapmaan ka register.")
+ITC_NOTE = ("GST: ITC taken on stock that was short / damaged / expired / stolen / written off or given as a sample or gift has "
+            "to be reversed - CGST Act Section 17(5)(h). Ask your CA how much and when, for GSTR-3B.")
+RECORDS_NOTE = ("Rule 56 (CGST Rules): the stock register must show opening, receipts, supply, lost / stolen / destroyed / written off / sample, and closing "
+                "stock; every warehouse must be an 'additional place of business' in the GST registration. Section 36: keep records for 72 months.")
+FOOD_NOTE = ("Food stock: FSSAI storage licence / registration (new turnover limits from 1 Apr 2026), FEFO, cleanliness, pest control; "
+             "a temperature register for cold storage.")
 
 
 # ---------------------------------------------------------------- small helpers
@@ -181,21 +181,21 @@ def putaway_plan(qty: float, bins: list[dict[str, Any]], sku_id: str, batch: str
         score, why = 0.0, []
         if mine is not None:
             score += 50
-            why.append("yahi SKU pehle se")
+            why.append("same SKU already here")
             if batch and batch in (mine or []):
                 score += 10
-                why.append("yahi batch")
+                why.append("same batch")
         elif not b.get("skus"):
             score += 20
-            why.append("khaali bin")
+            why.append("empty bin")
         if others:
             score -= 25 * len(others)
-            why.append("doosra maal bhi hai")
+            why.append("also holds other stock")
         near = 1.0 - float(b.get("rank", 0)) / total
         if fast:
             score += 15 * near
             if near > 0.6:
-                why.append("dispatch ke paas (tez bikta hai)")
+                why.append("near dispatch (fast seller)")
         else:
             score += 8 * (1.0 - near)
         if b.get("kind") == "pick" and fast:
@@ -211,10 +211,10 @@ def putaway_plan(qty: float, bins: list[dict[str, Any]], sku_id: str, batch: str
         put = left if free is None else min(left, free)
         if put <= 0:
             continue
-        out.append({"bin": b["code"], "qty": r3(put), "why": ", ".join(why) or "jagah hai", "score": round(score, 1)})
+        out.append({"bin": b["code"], "qty": r3(put), "why": ", ".join(why) or "has room", "score": round(score, 1)})
         left = r3(left - put)
     if left > 0:
-        out.append({"bin": "", "qty": r3(left), "why": "kisi bin mein jagah nahi: naya bin / capacity badhaiye", "score": 0})
+        out.append({"bin": "", "qty": r3(left), "why": "no bin has room: add a bin / raise capacity", "score": 0})
     return out
 
 

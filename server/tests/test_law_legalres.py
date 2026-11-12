@@ -84,8 +84,8 @@ def test_rules_mapping_and_grounding():
     m = R.map_old("IPC", "420")
     assert m["new_act"] == "BNS" and m["new"] == "318(4)" and m["sure"]
     assert R.map_old("CRPC", "438")["new"] == "482" and R.map_old("IEA", "65B")["new"] == "63"
-    assert not R.map_old("IPC", "326")["sure"] and "andaaza" in R.map_old("IPC", "326")["label"]
-    assert R.map_old("IPC", "377")["label"] == "hata diya gaya"
+    assert not R.map_old("IPC", "326")["sure"] and "estimate" in R.map_old("IPC", "326")["label"]
+    assert R.map_old("IPC", "377")["label"] == "removed"
     assert [x["old"] for x in R.map_new("BNS", "103(1)")] == ["302"]
     refs = R.find_refs("धारा ३०२ आईपीसी aur CrPC ki dhara 438, plus Evidence Act 65B and 420 IPC")
     assert {(r["act"], r["sec"]) for r in refs} >= {("IPC", "302"), ("CRPC", "438"), ("IEA", "65B"), ("IPC", "420")}
@@ -116,11 +116,11 @@ def test_research_end_to_end_grounded(lr, monkeypatch):
     texts = [p["text"] for p in memo["points"]]
     assert len(memo["points"]) == 3                                         # bad quote + no-source point dropped
     assert "318(4)" in texts[0] and not memo["points"][0]["flagged"]
-    assert "(2019) 5 SCC 999" not in texts[1] and "[citation chahiye]" in texts[1]
-    assert "999" not in texts[2] and "[citation chahiye]" in texts[2]
+    assert "(2019) 5 SCC 999" not in texts[1] and "[citation needed]" in texts[1]
+    assert "999" not in texts[2] and "[citation needed]" in texts[2]
     assert "AIR 2001 SC 55" not in memo["short"] and "318(4)" in memo["short"]
     whys = " ".join(memo["flags"])
-    assert "hubahu" in whys and "padhe gaye source" in whys
+    assert "word for word" in whys and "source that was read" in whys
     assert {r["old"]: r["new"] for r in memo["mapping"]} == {"420": "318(4)"}
     assert memo["attribution"].startswith("Judgments / search: powered by IKanoon") and memo["ik_used"]
     assert R_disclaimer_in(out["say"])
@@ -139,7 +139,7 @@ def test_research_end_to_end_grounded(lr, monkeypatch):
     f = S.memo_file(T, "LR-0001")
     assert f["file"]["file_id"]
     _, text = S.memo_text(T, "LR-0001")
-    assert "Source [2] mein" in text and "| IPC 420 | BNS 318(4) |" in text and "legal advice nahi" in text
+    assert "In source [2]" in text and "| IPC 420 | BNS 318(4) |" in text and "not legal advice" in text
 
 
 def R_disclaimer_in(say):
@@ -157,7 +157,7 @@ def test_nahi_mila_cap_and_no_model(lr, monkeypatch):
     monkeypatch.setattr(S, "_gyaan", lambda t, q: [])
     monkeypatch.setattr(S, "_model_json", lambda s, p: pytest.fail("no model call without sources"))
     out = asyncio.run(S.research(T, "Kya mandir trust ke liye koi naya rule 2026 mein aaya?", use_ik=False))
-    assert out["memo"]["status"] == "nahi_mila" and out["memo"]["points"] == [] and "nahi mila" in out["memo"]["short"]
+    assert out["memo"]["status"] == "nahi_mila" and out["memo"]["points"] == [] and "do not give a clear answer" in out["memo"]["short"]
     with pytest.raises(S.LegalresError):
         S.share_request(T, out["matter"]["number"], "Adv. Joshi")              # nothing found = nothing to send
     # daily cap: search costs Rs 0.50, cap Rs 0.30 -> no IK call at all
@@ -171,7 +171,7 @@ def test_nahi_mila_cap_and_no_model(lr, monkeypatch):
     monkeypatch.setattr(S, "_gyaan", lambda t, q: [{"title": "Notes", "url": "", "ref": "f2", "text": BNS_PAGE}])
     out3 = asyncio.run(S.research(T, "cheating punishment BNS 318", use_web=False, use_ik=False))
     m3 = out3["memo"]
-    assert m3["status"] == "found" and not m3["model"] and "Model nahi chala" in m3["short"]
+    assert m3["status"] == "found" and not m3["model"] and "The model did not run" in m3["short"]
     from app.legalres import rules as R
     assert all(R.quote_ok(p["quote"], R.norm(BNS_PAGE)) for p in m3["points"])
     with pytest.raises(S.LegalresError):
@@ -201,7 +201,7 @@ def test_share_only_on_her_tap(lr, monkeypatch):
     done = S.decide_share(T, card3["share"]["id"], True, card3["share"]["hash"], by_tap=True)
     assert done["share"]["status"] == "shared" and done["file"]["file_id"] and done["links"]["whatsapp"].startswith("https://wa.me/919876543210")
     again = S.decide_share(T, card3["share"]["id"], True, card3["share"]["hash"], by_tap=True)
-    assert "pehle hi" in again["say"]
+    assert "already" in again["say"]
     no = S.share_request(T, "LR-0001", "Client", "", "email")
     assert S.decide_share(T, no["share"]["id"], False, no["share"]["hash"], by_tap=True)["share"]["status"] == "rejected"
 
@@ -262,7 +262,7 @@ def test_api_key_sealed_matters_forget(lr, monkeypatch):
     assert c.post("/api/legalres/matters/LR-0001/memo/file", json={}).json()["file"]["file_id"]
     assert c.post("/api/legalres/matters/LR-0001/forget").status_code == 400     # must be closed first
     assert c.patch("/api/legalres/matters/LR-0001", json={"status": "closed"}).json()["matter"]["status"] == "closed"
-    assert "mita" in c.post("/api/legalres/matters/LR-0001/forget").json()["say"]
+    assert "deleted" in c.post("/api/legalres/matters/LR-0001/forget").json()["say"]
     assert c.get("/api/legalres/matters/LR-0001").status_code == 400
     assert S.authorities(T) == []
     assert c.delete("/api/legalres/key").json()["ik_joined"] is False

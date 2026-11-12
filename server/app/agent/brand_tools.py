@@ -43,7 +43,7 @@ BRAND_TOOLS = [
          "design": {"type": "string"}, "status": {"type": "string"}, "q": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
-BRAND_LABELS = {"brand": "Poster bana raha hoon", "brand_dekho": "Brand kit dekh raha hoon"}
+BRAND_LABELS = {"brand": "Making a poster", "brand_dekho": "Viewing the brand kit"}
 _OWNER_ONLY = {"kit", "logo", "delete"}
 
 

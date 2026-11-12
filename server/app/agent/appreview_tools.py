@@ -41,7 +41,7 @@ APPREVIEW_TOOLS = [
          "review": {"type": "string"}, "key": {"type": "string"}},
          "required": ["what"]}},
 ]
-APPREVIEW_LABELS = {"app_review": "App ki code / policy jaanch kar raha hoon", "app_review_dekho": "App review dekh raha hoon"}
+APPREVIEW_LABELS = {"app_review": "Reviewing app code and policy", "app_review_dekho": "Viewing the app review"}
 
 _OWNER_ONLY = {"mark", "handoff", "settings"}
 _TOKEN = re.compile(r"\b(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]{10,}")
@@ -103,7 +103,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_settings(t, **{k: a[k] for k in ("stack", "kids", "ios", "developer") if k in a})
     except (S.ReviewError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -146,7 +146,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                               "checking .git / .env on someone else's website (only on a verified domain)", "accepting a token in chat"]}
     except (S.ReviewError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def app_review(ctx: Ctx, action, **a: Any):

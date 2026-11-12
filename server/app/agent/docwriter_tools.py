@@ -51,7 +51,7 @@ DOCWRITER_TOOLS = [
          "product": {"type": "string"}, "doc": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
-DOCWRITER_LABELS = {"docs_writer": "Docs likh raha hoon", "docs_writer_dekho": "Docs dekh raha hoon"}
+DOCWRITER_LABELS = {"docs_writer": "Writing docs", "docs_writer_dekho": "Checking docs"}
 
 TOKEN_RX = re.compile(r"(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})")
 
@@ -80,7 +80,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action in OWNER_ONLY and not _owner(ctx):
         raise ToolError("Only the owner can do this.")
     if TOKEN_RX.search(" ".join(_s(v) for v in a.values())):
-        raise ToolError("No tokens in chat: add it in the app under Docs Sahayak > Sources. Rotate this token on GitHub.")
+        raise ToolError("No tokens in chat: add it in the app under Docs Assistant > Sources. Rotate this token on GitHub.")
     p, d = _s(a.get("product")), _s(a.get("doc"))
     try:
         if action == "add_product":
@@ -123,7 +123,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.glossary_add(t, _s(a.get("term")), _s(a.get("avoid")), _s(a.get("note")))
     except (S.DocError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -149,7 +149,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "steps": list(R.STEP_DO), "sources": R.SOURCES}
     except (S.DocError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def docs_writer(ctx: Ctx, action, **a: Any):

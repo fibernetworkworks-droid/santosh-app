@@ -47,7 +47,7 @@ FRANCHISE_TOOLS = [
          "outlet": {"type": "string"}, "month": {"type": "string"}, "brand": {"type": "string"}},
          "required": ["what"]}},
 ]
-FRANCHISE_LABELS = {"franchise": "Franchise ka kaam kar raha hoon", "franchise_dekho": "Outlets ka hisaab dekh raha hoon"}
+FRANCHISE_LABELS = {"franchise": "Working on the franchise", "franchise_dekho": "Checking outlet accounts"}
 
 
 def _s(v: Any) -> str:
@@ -97,7 +97,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.pnl_file(t, _s(a.get("month")), conv)
     except (S.FrError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -128,7 +128,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "licences": {k: v[0] for k, v in R.LICENCES.items()}}
     except (S.FrError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def franchise(ctx: Ctx, action, **a: Any):

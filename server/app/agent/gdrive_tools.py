@@ -31,9 +31,9 @@ GDRIVE_TOOLS = [
                       "required": ["title"]}},
 ]
 
-GDRIVE_LABELS = {"drive_find": "Drive mein dhoondh raha hoon", "drive_read_file": "File padh raha hoon",
-                 "sheet_read": "Sheet padh raha hoon", "sheet_append": "Sheet mein row daal raha hoon",
-                 "doc_create": "Doc bana raha hoon"}
+GDRIVE_LABELS = {"drive_find": "Searching Drive", "drive_read_file": "Reading the file",
+                 "sheet_read": "Reading the sheet", "sheet_append": "Adding a row to the sheet",
+                 "doc_create": "Creating a Google Doc"}
 
 
 def _require(ctx: Ctx):

@@ -26,7 +26,7 @@ DEVOPS_TOOLS = [
         "say it is deployed or approved). action=rollback: repo, to (commit; empty = previous good deploy), note -> card only. "
         "action=repo_add (owner): repo owner/name, deploy_workflow (file name), environment, rollback_workflow. action=repo_remove "
         "(owner). action=settings (owner): team, morning_time, rules (her deploy rules, one per line). action=forget_logs (owner). "
-        "Never ask for / repeat a token, password or key: GitHub token and collector setup are done in the app (DevOps > Niyam)."),
+        "Never ask for / repeat a token, password or key: GitHub token and collector setup are done in the app (DevOps > Rules)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["sync", "diagnose", "explain_log", "logs", "cluster", "script", "check_script", "checklist",
                                                "tick", "endpoint_add", "endpoint_remove", "watch", "deploy", "rollback", "repo_add",
@@ -52,7 +52,7 @@ DEVOPS_TOOLS = [
          "days": {"type": "integer"}, "source": {"type": "string"}},
          "required": ["what"]}},
 ]
-DEVOPS_LABELS = {"devops": "DevOps ka kaam kar raha hoon", "devops_dekho": "Builds, logs aur deploys dekh raha hoon"}
+DEVOPS_LABELS = {"devops": "Working on DevOps", "devops_dekho": "Checking builds, logs and deploys"}
 
 _OWNER_ONLY = {"repo_add", "repo_remove", "settings", "forget_logs"}
 
@@ -121,7 +121,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget_logs(t, int(a.get("older_days") or 0))
     except (S.DevopsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("Unknown action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -175,7 +175,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "ci_kinds": R.CI_LABEL, "log_kinds": R.LOG_LABEL, "sources": R.SOURCES}
     except (S.DevopsError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("Unknown what")
 
 
 async def devops(ctx: Ctx, action, **a: Any):

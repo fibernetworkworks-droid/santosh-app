@@ -21,7 +21,7 @@ LIFE_TOOLS = [
         "ALWAYS in_minutes=X (the server counts from the exact current time - never work out the clock yourself). "
         "A clock time or a date ('kal 9 baje', '5 tareekh') -> when, in the user's LOCAL time."),
      "input_schema": {"type": "object", "properties": {
-         "text": {"type": "string", "description": "What to remind, short, in the user's language, e.g. 'Dawai lena (BP)'"},
+         "text": {"type": "string", "description": "What to remind, short, in clear simple English, e.g. 'Take BP medicine'"},
          "in_minutes": {"type": "number", "description": "Minutes from NOW, e.g. 2 for 'do minute baad', 90 for 'dedh ghante baad'"},
          "when": {"type": "string", "description": "Only for a clock time / date: local date-time ISO, e.g. 2026-10-18T09:00"},
          "repeat": {"type": "string", "enum": list(life.REPEATS), "description": "none, daily, weekdays, weekly or monthly"}},
@@ -82,7 +82,7 @@ LIFE_TOOLS = [
         "The instruction is what you will be told to do each time, so write it as a complete task for yourself. "
         "For a simple fixed-text nudge use create_reminder instead."),
      "input_schema": {"type": "object", "properties": {
-         "title": {"type": "string", "description": "Short name the user sees, e.g. 'Subah ka mausam'"},
+         "title": {"type": "string", "description": "Short name the user sees, e.g. 'Morning weather'"},
          "instruction": {"type": "string", "description": "Full task for yourself, e.g. 'Check Pune weather for today and tell the user in 2 lines whether to carry an umbrella.'"},
          "first_run": {"type": "string", "description": "Local date-time ISO of the first run, e.g. 2026-10-19T07:00"},
          "repeat": {"type": "string", "enum": ["none", "hourly", "daily", "weekdays", "weekly", "monthly"]}},
@@ -96,14 +96,14 @@ LIFE_TOOLS = [
 ]
 
 LIFE_LABELS = {
-    "create_reminder": "Reminder laga raha hoon", "list_reminders": "Reminders dekh raha hoon",
-    "cancel_reminder": "Reminder hata raha hoon", "set_phone_alarm": "Phone par alarm laga raha hoon",
-    "set_phone_timer": "Timer shuru kar raha hoon", "add_calendar_event": "Calendar mein daal raha hoon",
-    "remember": "Yaad rakh raha hoon", "forget": "Bhool raha hoon", "list_add": "List mein daal raha hoon",
-    "list_show": "List dekh raha hoon", "list_done": "List update kar raha hoon",
-    "set_profile": "Aapki jaankari save kar raha hoon",
-    "create_routine": "Apna roz ka kaam set kar raha hoon", "list_routines": "Apne kaam dekh raha hoon",
-    "cancel_routine": "Kaam band kar raha hoon", "get_weather": "Mausam dekh raha hoon",
+    "create_reminder": "Setting a reminder", "list_reminders": "Checking reminders",
+    "cancel_reminder": "Removing the reminder", "set_phone_alarm": "Setting an alarm on the phone",
+    "set_phone_timer": "Starting a timer", "add_calendar_event": "Adding to the calendar",
+    "remember": "Remembering this", "forget": "Forgetting this", "list_add": "Adding to the list",
+    "list_show": "Checking the list", "list_done": "Updating the list",
+    "set_profile": "Saving your details",
+    "create_routine": "Setting up your daily routine", "list_routines": "Checking my routines",
+    "cancel_routine": "Stopping the routine task", "get_weather": "Checking the weather",
 }
 
 SENSITIVE = ("password", "passcode", "otp", "pin ", "cvv", "card number")   # ID numbers go to the Pehchaan Locker (v0.75)

@@ -24,7 +24,7 @@ DARZI_TOOLS = [
         "(28/10, 2026-10-28, '5 din', kal), trial_on, advance (rupees received), notes, photos (file_ids of fabric / "
         "design / the order-book photo). The system checks it against HER rules and earlier work first: if it returns "
         "saved=false with problems, tell her the problems and the earliest date, and only call again with force=true "
-        "after she agrees. Prices not in her list become a price card for her Haan (never promise those prices to the "
+        "after she agrees. Prices not in her list become a price card for her Yes (never promise those prices to the "
         "customer before she approves). "
         "action=measure: customer / name / phone, garment, values ({chest: 34, waist: 30} or her words 'L 15 chest 34 "
         "kamar 30 bahi 11 1/2'), person, note (fitting / style), unit. Old measurements are kept; big changes come back "
@@ -69,7 +69,7 @@ DARZI_TOOLS = [
          "trial_on": {"type": "string"}},
          "required": ["what"]}},
 ]
-DARZI_LABELS = {"darzi": "Darzi ka kaam kar raha hoon", "darzi_dekho": "Darzi ka register dekh raha hoon"}
+DARZI_LABELS = {"darzi": "Working on tailoring orders", "darzi_dekho": "Checking the tailoring register"}
 _OWNER_ONLY = {"rules"}
 
 
@@ -113,7 +113,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "rules":
             keys = ("shop_name", "unit", "pieces_per_day", "closed_days", "rush_percent", "min_days", "prices", "rules",
                     "ready_template", "morning_time", "remeasure_months")
-            return {"rules": D.save_settings(ctx.tenant_id, **{k: a[k] for k in keys if k in a}), "say": "Niyam save."}
+            return {"rules": D.save_settings(ctx.tenant_id, **{k: a[k] for k in keys if k in a}), "say": "Rules saved."}
     except D.DarziError as e:
         raise ToolError(str(e))
     raise ToolError("action = new_order | measure | status | update | pay | deliver | cancel | slip | ready_message | rules")

@@ -95,7 +95,7 @@ def test_voice_call_end_to_end(env, monkeypatch):
     kinds = [e["type"] for e in events]
     assert kinds[0] == "ready" and events[0]["voice"] == "Achird"
     assert {"type": "user_text", "text": "Kal subah saat baje ka alarm laga do"} in events
-    assert {"type": "tool", "label": "Phone par alarm laga raha hoon", "state": "done"} in events
+    assert {"type": "tool", "label": "Setting an alarm on the phone", "state": "done"} in events
     assert len(got_audio) == 2 and fake.audio_in and fake.audio_in[0] == b"\x00\x01" * 320
     assert any("call just connected" in x for x in fake.texts), "greeting sent as live text"
     assert sum("call just connected" in x for x in fake.texts) == 1

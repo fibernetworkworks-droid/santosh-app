@@ -54,7 +54,7 @@ INSURE_TOOLS = [
          "parents_premium": {"type": "number"}, "self_senior": {"type": "boolean"}, "parents_senior": {"type": "boolean"}},
          "required": ["what"]}},
 ]
-INSURE_LABELS = {"bima": "Bima ka kaam kar raha hoon", "bima_dekho": "Policy book dekh raha hoon"}
+INSURE_LABELS = {"bima": "Doing insurance work", "bima_dekho": "Viewing the policy book"}
 
 
 def _s(v: Any) -> str:

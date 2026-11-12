@@ -67,7 +67,7 @@ WEBFETCH_TOOLS = [
          "max_chars": {"type": "integer", "description": "Longest text to return (default 10000, max 24000)"}},
          "required": ["url"]}},
 ]
-WEBFETCH_LABELS = {"web_fetch": "Website padh raha hoon"}
+WEBFETCH_LABELS = {"web_fetch": "Reading the web page"}
 
 
 def _robots_or_guard(msg: str) -> bool:
@@ -233,7 +233,7 @@ CORE_DESC: dict[str, str] = {
     "ask_form": (
         "Send her ONE form card when a job needs 3 or more details from her (a booking: name, date, time, people). "
         "Up to 12 fields; pre-fill value with what you already know. Field kinds: text, number, date, choice, multi, "
-        "phone, email, id (ID numbers go to her Pehchaan Locker and you get an {id:...} reference). Never for OTP, "
+        "phone, email, id (ID numbers go to her ID Locker and you get an {id:...} reference). Never for OTP, "
         "passwords, PIN, CVV or card numbers. For one or two details just ask in a line. Her answers arrive as her "
         "next message. Example: {\"title\": \"Train booking\", \"fields\": [{\"label\": \"From\"}, {\"label\": "
         "\"To\"}, {\"label\": \"Date\", \"kind\": \"date\"}]}"),

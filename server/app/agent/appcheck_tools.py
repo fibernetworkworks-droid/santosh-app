@@ -20,7 +20,7 @@ APPCHECK_TOOLS = [
          "file_id": {"type": "string"}, "email_id": {"type": "string"}, "attachment_id": {"type": "string"},
          "drive": {"type": "string", "description": "Drive file name, id or link"}}}},
 ]
-APPCHECK_LABELS = {"app_check": "App ki jaanch kar raha hoon"}
+APPCHECK_LABELS = {"app_check": "Checking the app"}
 
 
 async def app_check(ctx: Ctx, file_id="", email_id="", attachment_id="", drive="", **_) -> dict[str, Any]:

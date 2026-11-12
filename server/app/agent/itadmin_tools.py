@@ -57,7 +57,7 @@ ITADMIN_TOOLS = [
          "required": ["action"]}},
     {"name": "it_admin_dekho", "description": (
         "Read the office IT admin registers (nothing changes). what=day (renewals in 30 days, free seats in rupees, changes waiting for "
-        "her haan, approved changes still to do, checklists due, review due, questions staff keep asking) | licences (kind) | renewals "
+        "her yes, approved changes still to do, checklists due, review due, questions staff keep asking) | licences (kind) | renewals "
         "(days) | devices (IT Helpdesk register) | people (status) | person (person: access, devices, checklists) | access (person, "
         "system) | checklists | changes (status) | reviews | guides | guide (guide: steps, versions) | gaps (questions no guide answered) "
         "| connections (Google Workspace / Microsoft 365 status, permissions needed) | settings | rules."),
@@ -68,7 +68,7 @@ ITADMIN_TOOLS = [
          "system": {"type": "string"}, "guide": {"type": "string"}},
          "required": ["what"]}},
 ]
-ITADMIN_LABELS = {"it_admin": "IT admin ka kaam kar raha hoon", "it_admin_dekho": "Licence, log aur access dekh raha hoon"}
+ITADMIN_LABELS = {"it_admin": "Doing IT admin work", "it_admin_dekho": "Checking licences, logs and access"}
 
 _OWNER_ONLY = {"renewed", "licence_remove", "change_done", "review_item", "review_close", "guide_publish", "sync", "forget_person", "settings"}
 

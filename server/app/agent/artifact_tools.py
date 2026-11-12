@@ -41,7 +41,7 @@ ARTIFACT_TOOLS = [
         "POLISH path - a separate builder writes a studio-quality page (takes 20-90 seconds, rebuilds the whole page "
         "every change). Use it only when the user asks for a polished / studio-quality / professional page; for "
         "everything you can write yourself use `artifact`. Build an interactive page the user opens full screen in the Santosh app and can share: a calculator (EMI, GST, "
-        "profit, loan), a tracker or hisaab book (milk, udhar, expenses, attendance, habits, study), a checklist or "
+        "profit, loan), a tracker or account book (milk, credit, expenses, attendance, habits, study), a checklist or "
         "planner, a chart or mini dashboard from their numbers, a quiz or flashcards, a poster/menu/price list/visiting "
         "card, a mini landing page, a simple game, a formatted document or plan. Use it whenever the user wants "
         "something to USE, KEEP, SEE or SHARE rather than just an answer ('make me a calculator', 'show a chart', "
@@ -60,8 +60,8 @@ ARTIFACT_TOOLS = [
      "input_schema": {"type": "object", "properties": {}}},
 ]
 
-ARTIFACT_LABELS = {"artifact": "Page likh raha hoon", "artifact_make": "Page bana raha hoon",
-                   "artifact_list": "Aapke pages dekh raha hoon"}
+ARTIFACT_LABELS = {"artifact": "Writing the page", "artifact_make": "Building the page",
+                   "artifact_list": "Looking at your pages"}
 
 
 async def artifact_make(ctx: Ctx, request, artifact_id=None, data=None, _wait=None, **_):

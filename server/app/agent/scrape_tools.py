@@ -580,7 +580,7 @@ async def scrape_extract(ctx: Ctx, url, selector, fields=None, attr=None, adapti
     except Exception as e:
         raise ToolError(f"Fetch failed: {str(e)[:300]}")
     if page.status >= 400:
-        raise ToolError(f"Site ne {page.status} bheja ({page.reason})")
+        raise ToolError(f"The site returned {page.status} ({page.reason})")
     hits = await asyncio.to_thread(_pick, page, selector, bool(adaptive), str(identifier or "items"), bool(adaptive))
     if len(hits) == 1 and similar:
         try:
@@ -756,7 +756,7 @@ async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_select
         except Exception:
             pass
     if page.status >= 400:
-        raise ToolError(f"Site ne {page.status} bheja ({page.reason})")
+        raise ToolError(f"The site returned {page.status} ({page.reason})")
     fmt = str(format or "markdown").lower()
     if css:
         hits = _pick(page, css)
@@ -980,7 +980,7 @@ async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50,
     except Exception as e:
         raise ToolError(f"Fetch failed: {str(e)[:300]}")
     if page.status >= 400:
-        raise ToolError(f"Site ne {page.status} bheja ({getattr(page, 'reason', '')})")
+        raise ToolError(f"The site returned {page.status} ({getattr(page, 'reason', '')})")
     try:
         text = page.markdown()
     except Exception:
@@ -1208,15 +1208,15 @@ SCRAPE_TOOLS = [
          "required": ["url"]}},
 ]
 
-SCRAPE_LABELS = {"scrape_page": "Website turant khol kar padh raha hoon",
-                 "scrape_tables": "Page ki table nikaal raha hoon",
-                 "scrape_extract": "Website se data nikaal raha hoon",
-                 "scrape_many": "Kayi pages se data nikaal raha hoon",
-                 "scrape_site": "Poori site padh kar map bana raha hoon",
-                 "scrape_stealth": "Website advanced mode mein khol raha hoon",
-                 "scrape": "Website khol raha hoon (auto mode)",
-                 "scrape_map": "Site ka url-naksha bana raha hoon",
-                 "scrape_extract_json": "Page padh kar JSON data bana raha hoon"}
+SCRAPE_LABELS = {"scrape_page": "Opening and reading the website quickly",
+                 "scrape_tables": "Extracting tables from the page",
+                 "scrape_extract": "Extracting data from the website",
+                 "scrape_many": "Extracting data from several pages",
+                 "scrape_site": "Reading the whole site and mapping it",
+                 "scrape_stealth": "Opening the website in advanced mode",
+                 "scrape": "Opening the website (auto mode)",
+                 "scrape_map": "Mapping the site's URLs",
+                 "scrape_extract_json": "Reading the page and building JSON data"}
 
 SCRAPE_HANDLERS = {"scrape_page": scrape_page, "scrape_extract": scrape_extract, "scrape_many": scrape_many,
                    "scrape_site": scrape_site, "scrape_stealth": scrape_stealth, "scrape": scrape,
