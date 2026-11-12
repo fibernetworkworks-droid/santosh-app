@@ -16,14 +16,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:santosh/state.dart';
-import 'package:santosh/ui/bazar_screen.dart';
-import 'package:santosh/ui/chat_screen.dart';
+import 'package:santosh/main.dart';
 import 'package:santosh/ui/employees_screen.dart';
 import 'package:santosh/ui/glass.dart';
-import 'package:santosh/ui/profile_screen.dart';
 import 'package:santosh/ui/setup_screen.dart';
-import 'package:santosh/ui/today_screen.dart';
-import 'package:santosh/ui/voice_screen.dart';
 
 /// The phone the pictures are taken on: 390 x 844 logical pixels (a common Android size), at 2x.
 const _logical = Size(390, 844);
@@ -99,7 +95,7 @@ void _sampleChat(Santosh app) {
 }
 
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
-    {void Function(Santosh app)? prep, Duration settle = const Duration(milliseconds: 900)}) async {
+    {void Function(Santosh app)? prep, Finder? tab, Duration settle = const Duration(milliseconds: 900)}) async {
   final app = await _app();
   prep?.call(app);
   t.view.physicalSize = _logical * _ratio;
@@ -117,6 +113,13 @@ Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) scr
     await Future<void>.delayed(const Duration(milliseconds: 400));
   });
   await t.pump(settle);
+  if (tab != null) {
+    // the real app shell: the tab is opened the way she opens it, by tapping the tab bar
+    await t.tap(tab.last);
+    await t.pump(settle);
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await t.pump(settle);
+  }
   await t.pump(const Duration(milliseconds: 100));
   await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/$name.png'));
 
@@ -133,13 +136,14 @@ void main() {
     await _loadIconFont();
   });
 
+  // the app shell exactly as the phone shows it after setup: Aurora, tab bar, the tab's own screen
+  Widget home(Santosh a) => Home(app: a, onReset: () {});
   testWidgets('01 setup (first open)', (t) => _shot(t, '01_setup', (a) => SetupScreen(app: a)));
-  testWidgets('02 today tab', (t) => _shot(t, '02_today', (a) => Scaffold(body: SafeArea(child: TodayScreen(app: a)))));
-  testWidgets('03 chat tab, empty', (t) => _shot(t, '03_chat_empty', (a) => Scaffold(body: SafeArea(child: ChatScreen(app: a)))));
-  testWidgets('04 chat tab, a reply', (t) =>
-      _shot(t, '04_chat_reply', (a) => Scaffold(body: SafeArea(child: ChatScreen(app: a))), prep: _sampleChat));
-  testWidgets('05 talk (voice)', (t) => _shot(t, '05_talk', (a) => VoiceScreen(app: a)));
-  testWidgets('06 connect tab', (t) => _shot(t, '06_connect', (a) => BazarScreen(app: a)));
-  testWidgets('07 main tab (profile)', (t) => _shot(t, '07_main', (a) => ProfileScreen(app: a, onReset: () {})));
+  testWidgets('02 today tab', (t) => _shot(t, '02_today', home));
+  testWidgets('03 chat tab, empty', (t) => _shot(t, '03_chat_empty', home, tab: find.text('Chat')));
+  testWidgets('04 chat tab, a reply', (t) => _shot(t, '04_chat_reply', home, prep: _sampleChat, tab: find.text('Chat')));
+  testWidgets('05 talk (voice)', (t) => _shot(t, '05_talk', home, tab: find.bySemanticsLabel('Talk — live voice')));
+  testWidgets('06 connect tab', (t) => _shot(t, '06_connect', home, tab: find.text('Connect')));
+  testWidgets('07 main tab (profile)', (t) => _shot(t, '07_main', home, tab: find.text('Main')));
   testWidgets('08 AI employees', (t) => _shot(t, '08_employees', (a) => EmployeesScreen(app: a)));
 }

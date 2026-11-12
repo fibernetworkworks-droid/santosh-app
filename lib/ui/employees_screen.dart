@@ -56,7 +56,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    // v0.859: after the first frame - a load that fails at once (no server yet) shows its message through the
+    // ScaffoldMessenger, which may not be read while initState runs (found by the R0 screen pictures)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
