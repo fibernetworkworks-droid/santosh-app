@@ -4,21 +4,22 @@
 //   a drawer (her recent chats + calls, All chats, what Santosh remembers, her avatar -> Settings, New chat)
 //   the pill composer (+ · "Type or hold to talk" · mic · the black voice button that opens Talk)
 //
-// Behind Santosh.newLook (Main > "Try the new design") until R3-R7 rebuild the screens inside it: today the tabs
-// still show the old screens (Night Glass) in their own frame; only the frame, the drawer, the home and the composer
-// are new. Every colour / size / movement comes from hoola_theme.dart.
+// Behind Santosh.newLook (Main > "Try the new design") until R7-R8 rebuild the rest: since R6 every tab is in the new
+// design (Hoola = R3 chat, Work / Connect / Made = hoola_tabs.dart); old pages (Today, AI team, the full plugin list,
+// Settings) open in their own Night Glass frame until their phase. Every colour / size / movement comes from hoola_theme.dart.
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state.dart';
-import '../artifacts_screen.dart';
 import '../bazar_screen.dart';
 import '../calls_sheet.dart';
 import '../chat/hoola_chat.dart';
+import '../employees_screen.dart';
 import '../glass.dart';
 import '../hoola_theme.dart';
 import '../talk/hoola_talk.dart';
+import 'hoola_tabs.dart';
 import '../memory_page_screen.dart';
 import '../profile_screen.dart';
 import '../today_screen.dart';
@@ -89,9 +90,21 @@ class _HoolaShellState extends State<HoolaShell> {
           final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
           final pages = <Widget>[
             _HoolaTab(app: app, onTalk: _openTalk, onMenu: () => _scaffold.currentState?.openDrawer()),
-            _OldLook(child: TodayScreen(app: app, onTab: (i) => _go(i == 1 ? 0 : i == 3 ? 2 : 1))),
-            _OldLook(child: BazarScreen(app: app, embedded: true)),
-            _OldLook(child: ArtifactsScreen(app: app)),
+            // v0.866 R6 the three tabs in the new design; the old pages stay one tap away from each
+            HoolaWork(
+              app: app,
+              onOpenChat: (id) async {
+                _go(0);
+                await app.openChat(id);
+              },
+              onTeam: () => _openOld(EmployeesScreen(app: app)),
+              onToday: () => _openOld(TodayScreen(app: app, onTab: (i) {
+                Navigator.of(context).maybePop();
+                _go(i == 1 ? 0 : i == 3 ? 2 : 1);
+              })),
+            ),
+            HoolaConnect(app: app, onMore: () => _openOld(BazarScreen(app: app))),
+            HoolaMade(app: app),
           ];
           return Scaffold(
             key: _scaffold,

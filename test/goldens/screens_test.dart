@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:santosh/call_session.dart';
 import 'package:santosh/state.dart';
+import 'package:santosh/ui/shell/hoola_tabs.dart';
 import 'package:santosh/main.dart';
 import 'package:santosh/ui/employees_screen.dart';
 import 'package:santosh/ui/glass.dart';
@@ -141,6 +142,53 @@ void _inCall(Santosh app) {
   c.reply = 'Not yet. Their October bill is still missing from your 2B, so I have drafted a reminder for them.';
 }
 
+/// v0.866 R6: what the Work, Connect and Made tabs read (the tests have no server).
+void _tabsData(Santosh app) {
+  final now = DateTime.now().toUtc();
+  String ago(int m) => now.subtract(Duration(minutes: m)).toIso8601String();
+  HoolaTabsDebug.kaam = {
+    'waiting': [
+      {'title': 'Pick one of three website looks', 'state': 'waiting', 'conversation_id': 'w1', 'at': ago(20)},
+    ],
+    'running': [
+      {'title': 'October GST summary for your CA', 'state': 'working', 'conversation_id': 'w2', 'at': ago(4),
+       'detail': 'Matching 48 purchase bills with GSTR-2B'},
+    ],
+    'done': [
+      {'title': 'Diwali offer poster', 'state': 'done', 'conversation_id': 'w3', 'at': ago(90)},
+      {'title': 'Reminder mails to 12 customers', 'state': 'done', 'conversation_id': 'w4', 'at': ago(60 * 26)},
+      {'title': 'Book a cab to Nagpur airport', 'state': 'stuck', 'conversation_id': 'w5', 'at': ago(60 * 30), 'from_call': true},
+    ],
+  };
+  app.chatList = [
+    {'id': 'w6', 'title': 'Send the price list to Shree Traders', 'updated_at': ago(8),
+     'result': {'status': 'needs_you', 'line': 'Approve the email to Shree Traders'}},
+  ];
+  final t = now.millisecondsSinceEpoch ~/ 1000;
+  HoolaTabsDebug.pages = [
+    {'id': 'a1', 'title': 'Monthly sales dashboard', 'summary': 'Sales by week', 'updated_at': ago(50), 'status': 'ready'},
+    {'id': 'a2', 'title': 'Shop opening checklist', 'updated_at': ago(60 * 30), 'status': 'ready'},
+  ];
+  HoolaTabsDebug.creations = [
+    {'id': 'c1', 'kind': 'song', 'title': 'Diwali jingle', 'mime': 'audio/mpeg', 'created': t - 600},
+    {'id': 'c2', 'kind': 'script', 'title': 'Reel script: new sweets', 'mime': 'text/markdown', 'created': t - 7200},
+    {'id': 'c3', 'kind': 'voice', 'title': 'Shop welcome voice-over', 'mime': 'audio/mpeg', 'created': t - 90000},
+  ];
+  HoolaTabsDebug.catalog = {
+    'packs': [
+      {'id': 'gmail', 'name': 'Gmail', 'status': 'ready', 'does': 'Read, draft and send your mail'},
+      {'id': 'gcal', 'name': 'Google Calendar', 'status': 'ready', 'does': 'Your meetings and reminders'},
+      {'id': 'upi', 'name': 'UPI payments', 'status': 'core', 'does': 'Payment cards you approve'},
+      {'id': 'maps', 'name': 'Maps', 'status': 'core', 'does': 'Places, routes and travel time'},
+      {'id': 'notion', 'name': 'Notion', 'status': 'needs_link', 'does': 'Your pages and databases'},
+    ],
+  };
+  HoolaTabsDebug.apps = [
+    {'pack_id': 'swiggy', 'name': 'Swiggy', 'status': 'needs_link', 'does': 'Food orders and tracking'},
+    {'pack_id': 'indiamart', 'name': 'IndiaMART', 'status': 'ready', 'no_login': true, 'does': 'Supplier prices city by city'},
+  ];
+}
+
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
     {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900)}) async {
   final app = await _app(prefs: prefs);
@@ -223,6 +271,10 @@ void main() {
           a.realtimeVoice = true;
           _inCall(a);
         }, tab: find.bySemanticsLabel('Start a call')));
+    // v0.866 R6 the three tabs in the new design, with a week of her work, things made and connections
+    testWidgets('40 new work ($mode)', (t) => _shot(t, '40_new_work_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Work')));
+    testWidgets('41 new connect ($mode)', (t) => _shot(t, '41_new_connect_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Connect')));
+    testWidgets('42 new made ($mode)', (t) => _shot(t, '42_new_made_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Made')));
     testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, writing: true)));
   }

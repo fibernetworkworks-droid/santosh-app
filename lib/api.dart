@@ -1935,6 +1935,23 @@ class Api {
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 12)));
     return res.statusCode == 200 && res.bodyBytes.isNotEmpty ? res.bodyBytes : null;
   }
+  /// v0.866 R6 the Made tab: what the Create studio made (pictures, songs, voice-overs, scripts). Older servers: [].
+  Future<List<Map<String, dynamic>>> createItems() async {
+    try {
+      return List<Map<String, dynamic>>.from(((await _send('GET', '/api/create/items'))['items'] as List? ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map)));
+    } on ApiException catch (e) {
+      if (e.status == 404) return [];
+      rethrow;
+    }
+  }
+  /// The address of one creation's file (needs [authHeaders]).
+  String createItemUrl(String id) => _u('/api/create/items/${Uri.encodeComponent(id)}').toString();
+  Future<List<int>?> createItemBytes(String id) async {
+    final req = http.Request('GET', _u('/api/create/items/${Uri.encodeComponent(id)}'))..headers.addAll(_headers);
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 60)));
+    return res.statusCode == 200 ? res.bodyBytes : null;
+  }
   /// The user's artifacts. Older servers have none: returns an empty list.
   Future<List<Map<String, dynamic>>> artifacts() async {
     try {

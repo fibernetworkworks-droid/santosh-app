@@ -3189,3 +3189,54 @@ NOT VERIFIED: the notification buttons on a real phone (Kotlin compiles on CI on
 - CI pictures 38_new_talk / 39_new_talk_call, light and dark.
 
 NOT VERIFIED on a real call (the pictures set the call's fields; no live audio in a test).
+
+
+## v0.866.0 R6 WORK + MADE + CONNECT (owner: "GO R6"; docs/HOOLA_APP_REDESIGN_PLAN.md R6)
+
+The new shell's three other tabs are now in the new design. All three live in ONE new file,
+`lib/ui/shell/hoola_tabs.dart`, and read APIs that already exist. Nothing on the server changed.
+
+**Shared parts** (they will be reused in R7 / R8):
+- `HoolaTabHeader` (big title + sub line), `HoolaSection` (label + count + dot).
+- `HoolaRow` (tile, title, one line, right side, min 60 px, semantics label) and `HoolaGroup` (rows on one card with hairlines).
+- `HoolaSearch` (the pill search field), `HoolaChips` (filter chips), `HoolaEmpty` (empty / failed + Try again).
+- `hoolaWhen` gives "Today 14:05" / "Yesterday 09:12" / "12 Nov 18:40".
+
+**Work** (`HoolaWork`):
+- **Needs you / In progress / Done this week**, built by the pure `workSections(kaam, chatList)` from:
+  - GET /api/kaam/list;
+  - every chat whose R3s turn result (`chatList[].result`) is needs_you / working / queued.
+- A chat already in the kaam list is never shown twice.
+- A stuck job reads "Stuck - no progress for a while"; a stuck task reads "Did not finish".
+- State words come from the phone in English (`workStateWord`). The server's Hinglish `say` is never shown.
+- A tap opens that chat on the Hoola tab.
+- It refreshes quietly every 30 s while open, and on pull.
+- "Your AI team" (EmployeesScreen) and "Today" (the old TodayScreen) open in their old frame until R7 / R8.
+
+**Made** (`HoolaMade`):
+- `madeItems(pages, creations)` merges two lists, newest first:
+  - pages from GET /api/artifacts;
+  - Create studio items from GET /api/create/items (new `Api.createItems`, `createItemUrl`, `createItemBytes`). The kinds are picture / audio / video / document / other.
+- Search box plus type chips (only the types she has).
+- A page opens full screen (`openArtifact`). A picture opens large in a pinch-zoom viewer (Image.network with the key header). Anything else is downloaded to the temp folder and handed to her phone's share sheet.
+- It refreshes on a live artifact event.
+
+**Connect** (`HoolaConnect`):
+- `connectSections(catalog, apps)` builds three groups, each app listed once:
+  - **Connected**: apps with status ready;
+  - **Add a connection**: needs_link, with a Connect button using the same `app.linkApp`;
+  - **Ready to use**: built in, first 6 plus "Show all".
+- Press-and-hold on a connected app asks first (a sheet: Remove / Keep it), then `bazarUnlink`. A no-login app (IndiaMART) has nothing to remove.
+- "All plugins and settings" opens the old BazarScreen. Spend limits, address and shops stay there until R7.
+
+**Shell:** the tabs Work / Connect / Made are now these screens. TodayScreen / BazarScreen / ArtifactsScreen are no longer tabs; they are reached from the rows above.
+
+**Tests:**
+- `test/hoola_tabs_test.dart` (4): sections, no duplicates, newest first, kinds.
+- Golden pictures 40 / 41 / 42 (work / connect / made, light + dark), seeded through `HoolaTabsDebug` because the tests have no server.
+- The design ratchet is unchanged (no raw colours, no small text, no heavy weights in the new file).
+
+**NOT VERIFIED** on a real phone against the live server:
+- the logos (the pictures show the letter fallback);
+- the share-out of a song or script;
+- picture loading with the key header.
