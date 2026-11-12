@@ -2699,3 +2699,6 @@ GSTR-1 checked against the register, saved as a portal draft on her tap (plan ha
 - Routes: GET/DELETE `/api/appengine/{ref}/github`, POST `.../github/link|push|pull`, GET `.../github/compare`, GET `/api/appengine/{ref}/export.zip`, POST `/api/appengine-import/zip` (raw body) and `/github`. Studio: a GitHub section on the Publish tab (link form, Compare with conflict radios, Pull, Push, Unlink) and a "Bring in a project" panel on the Apps home.
 - Tests `test_v0839_github_sync.py` (5) against `FakeGitHub`, a fake that speaks the Git Data API: the ROUND TRIP (push, a change on GitHub pulled back, push of a local change, the repo imported as app B with equal files, the ZIP export imported back), named conflicts + incoming rule breaks refused + locked files kept apart, ZIP safety + listing of refused files, the routes, a browser walk.
 - NOT VERIFIED against real GitHub (the fake follows the documented Git Data API). Not built: several branches, pull requests, webhooks (a pull is her tap), syncing data / Cloud rules, binary files (images are kept apart), resolving a conflict line by line.
+
+## v0.841.0 BAHI A4 (built as 0.840)
+GSTR-3B prepared with A2 credit, least-cash set-off, portal compare, draft save + set-off on her confirm (plan hash), payment plan (no challan, no money), EVC filing gated by BAHI_FILING. NOT VERIFIED on a live portal.

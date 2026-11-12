@@ -10,6 +10,7 @@ def make_router(require_key, current_tenant):
 
     from . import connect as CN
     from . import gstr1 as G1
+    from . import gstr3b as G3
     from . import itc as IT
     from . import register as REG
     from . import rules as RU
@@ -130,5 +131,43 @@ def make_router(require_key, current_tenant):
     def _g1file(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _g1(G1.file_evc, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""), str(body.get("pan") or ""),
                    str(body.get("otp") or ""), str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    def _g3(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except G3.Gstr3bError as e:
+            raise HTTPException(400, str(e))
+
+    def _gp3(body):
+        return str(body.get("gstin") or ""), str(body.get("period") or "")
+
+    @r.post("/api/bahi/gstr3b/prepare", dependencies=[Depends(require_key)])
+    def _g3prep(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.prepare, tenant, *_gp3(body))
+
+    @r.post("/api/bahi/gstr3b/compare", dependencies=[Depends(require_key)])
+    def _g3cmp(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.compare_with_portal, tenant, *_gp3(body))
+
+    @r.post("/api/bahi/gstr3b/save", dependencies=[Depends(require_key)])
+    def _g3save(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.save_draft, tenant, *_gp3(body), str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/gstr3b/setoff", dependencies=[Depends(require_key)])
+    def _g3off(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.apply_setoff, tenant, *_gp3(body), str(body.get("plan_hash") or ""), body.get("confirm") is True)
+
+    @r.post("/api/bahi/gstr3b/payment", dependencies=[Depends(require_key)])
+    def _g3pay(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.payment_plan, tenant, *_gp3(body))
+
+    @r.post("/api/bahi/gstr3b/evc-otp", dependencies=[Depends(require_key)])
+    def _g3otp(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.request_evc_otp, tenant, str(body.get("gstin") or ""), str(body.get("pan") or ""))
+
+    @r.post("/api/bahi/gstr3b/file", dependencies=[Depends(require_key)])
+    def _g3file(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g3(G3.file_evc, tenant, *_gp3(body), str(body.get("pan") or ""), str(body.get("otp") or ""),
+                   str(body.get("plan_hash") or ""), body.get("confirm") is True)
 
     return r

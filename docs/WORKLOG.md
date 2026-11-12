@@ -3100,3 +3100,6 @@ Work Log:
 
 Stage Summary:
 - Round trip proven against a fake GitHub; real GitHub untested; one branch only.
+
+Task ID: bahi-a4-0841
+Work: A4 rebuilt over GITHUB DO TARAF v0.840.0, v0.841.0 ritual.
