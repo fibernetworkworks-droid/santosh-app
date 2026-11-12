@@ -119,7 +119,7 @@ def _j(s: str, default):
 def _hired(tenant: str) -> None:
     from ..employee import hire
     if not hire.is_hired(tenant, KEY):
-        raise S.SeoError("SEO Specialist abhi hired nahi hai. Employees mein jaakar hire kijiye.")
+        raise S.SeoError("The SEO Specialist is not hired yet. Go to Employees and hire it.")
 
 
 def _event(tenant: str, sid: str, kind: str, level: str, text: str, data: dict | None = None) -> None:
@@ -149,7 +149,7 @@ def onboard(tenant: str, url: str, name: str = "", city: str = "", services: lis
     ensure_tables()
     url = (url or "").strip()
     if not url:
-        raise S.SeoError("Website ka address chahiye.")
+        raise S.SeoError("The website address is needed.")
     existing = [x for x in S.sites(tenant) if x["url"].rstrip("/") == url.rstrip("/") or
                 urlparse(x["url"]).hostname == urlparse(url if "://" in url else "https://" + url).hostname]
     sid = S.save_site(tenant, url, name, existing[0]["id"] if existing else "", services or None, city=city or None)["site"]["id"]
@@ -166,8 +166,8 @@ def onboard(tenant: str, url: str, name: str = "", city: str = "", services: lis
     _event(tenant, sid, "note", "info", "Hired and onboarded. First full check started.")
     if background:
         threading.Thread(target=first_run, args=(tenant, sid), kwargs={"ask": ask}, daemon=True).start()
-        return {"site": sid, "state": "first_run", "say": "Shuru kar diya: poori website, speed aur Google ke numbers dekh raha hoon. "
-                "Baseline aur 90 din ka plan 10-15 minute mein desk par."}
+        return {"site": sid, "state": "first_run", "say": "Started: I am looking at the whole website, its speed and the Google numbers. "
+                "The baseline and the 90-day plan will be on the desk in 10-15 minutes."}
     return first_run(tenant, sid, ask=ask)
 
 
@@ -273,18 +273,18 @@ def _ga4(tenant: str, method: str, url: str, body: dict | None = None) -> dict:
             try:
                 r = c.request(method, url, headers=h, json=body, timeout=60)
             except httpx.HTTPError as e:
-                raise S.SeoError(f"Google Analytics se baat nahi hui ({type(e).__name__}).")
+                raise S.SeoError(f"Could not reach Google Analytics ({type(e).__name__}).")
             if r.status_code == 401 and not force:
                 continue
             if r.status_code == 403:
-                raise S.SeoError("Is Google account ko Analytics dekhne ki permission nahi.")
+                raise S.SeoError("This Google account does not have permission to view Analytics.")
             if r.status_code >= 400:
                 raise S.SeoError(f"Google Analytics: {r.text[:200]}")
             return r.json()
     finally:
         if own:
             c.close()
-    raise S.SeoError("Google Analytics login nahi chala.")
+    raise S.SeoError("Google Analytics sign-in did not work.")
 
 
 def ga4_properties(tenant: str) -> list[dict[str, str]]:
@@ -317,7 +317,7 @@ def _ga4_property(tenant: str, sid: str) -> str:
         if pick:
             break
     if not pick:
-        raise S.SeoError("Google Analytics mein is website ka property nahi mila.")
+        raise S.SeoError("No property for this website was found in Google Analytics.")
     with session() as s:
         d = s.get(SeoDesk, sid)
         if d:
@@ -489,7 +489,7 @@ def set_item(tenant: str, item_id: str, status: str) -> dict[str, Any]:
     with session() as s:
         it = s.get(SeoRoadmapItem, item_id)
         if it is None or it.tenant_id != tenant:
-            raise S.SeoError("Yeh kaam nahi mila.")
+            raise S.SeoError("This task was not found.")
         it.status = status
         return {"id": it.id, "status": it.status}
 
@@ -612,9 +612,9 @@ def watch(tenant: str, sid: str) -> dict[str, Any]:
         state["sitemap"] = ss < 400 and "<loc>" in xml
     except S.SeoError:
         state["sitemap"] = False
-    checks = [("up", False, "Website khul nahi rahi (HTTP {status}).", "Website phir khul gayi."),
-              ("robots_block", True, "robots.txt ab poori site ko Google se rok raha hai (Disallow: /).", "robots.txt ab Google ko rok nahi raha."),
-              ("noindex", True, "Home page par noindex lag gaya: Google ise hata dega.", "Home page se noindex hat gaya.")]
+    checks = [("up", False, "The website is not opening (HTTP {status}).", "The website is open again."),
+              ("robots_block", True, "robots.txt now blocks the whole site from Google (Disallow: /).", "robots.txt no longer blocks Google."),
+              ("noindex", True, "The home page now has noindex: Google will drop it.", "The home page no longer has noindex.")]
     alerts = []
     for key, bad_value, bad_text, ok_text in checks:
         now_bad = state.get(key) == bad_value
@@ -633,8 +633,8 @@ def watch(tenant: str, sid: str) -> dict[str, Any]:
             _event(tenant, sid, "alert", "bad", text, {"check": rule})
             S._publish(tenant, "seo_alert", {"site": sid, "text": text})
     if prev.get("sitemap") and not state["sitemap"]:
-        alerts.append("sitemap.xml ab nahi mil raha.")
-        _event(tenant, sid, "alert", "warn", "sitemap.xml ab nahi mil raha.", {"check": "sitemap"})
+        alerts.append("sitemap.xml can no longer be found.")
+        _event(tenant, sid, "alert", "warn", "sitemap.xml can no longer be found.", {"check": "sitemap"})
     with session() as s:
         d = s.get(SeoDesk, sid)
         if d:

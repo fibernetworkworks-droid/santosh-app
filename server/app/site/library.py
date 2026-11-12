@@ -149,10 +149,10 @@ def phrases() -> list[dict[str, str]]:
         goal = f["goal"]
         gw = T.GOALS[goal]["words"][0]
         out += [
-            {"text": f"{a1} ki website", "field": fid, "goal": goal},
-            {"text": f"{a2} ke liye website banao", "field": fid, "goal": goal},
+            {"text": f"{a1} website", "field": fid, "goal": goal},
+            {"text": f"Build a website for {a2}", "field": fid, "goal": goal},
             {"text": f"{f['en'].lower()} website with {gw}", "field": fid, "goal": goal},
-            {"text": f"online {a1} page chahiye", "field": fid, "goal": goal},
+            {"text": f"I need an online {a1} page", "field": fid, "goal": goal},
             {"text": f"{f['hi']} की वेबसाइट", "field": fid, "goal": goal},
         ]
     return out
