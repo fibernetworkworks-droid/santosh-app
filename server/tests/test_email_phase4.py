@@ -186,7 +186,7 @@ def test_alias_draft_needs_verified_and_scope(abox, bz):  # noqa: F811
         run("email_draft", {"to": "ramesh@vendor.in", "body": "Namaste", "from_alias": "hello@newtika.in"}, ctx)
     with pytest.raises(ToolError, match="not a send-as alias"):
         run("email_draft", {"to": "ramesh@vendor.in", "body": "Namaste", "from_alias": "nope@x.in"}, ctx)
-    with pytest.raises(ToolError, match="dobara jod"):
+    with pytest.raises(ToolError, match="reconnect this Gmail"):
         with session() as s:   # an old mailbox (mail scope only): the honest reconnect, before any card
             s.get(MailAccount, "mbx_alias").scopes = "https://www.googleapis.com/auth/gmail.modify"
         run("email_draft", {"to": "ramesh@vendor.in", "body": "Namaste", "from_alias": "hello@newtika.in"}, ctx)

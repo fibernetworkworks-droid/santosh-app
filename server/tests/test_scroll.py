@@ -39,7 +39,7 @@ def test_week_report(env):
     assert r["longest"] == {"app": "Instagram", "min": 45.0, "date": "2026-10-20"}
     assert r["today_min"] == 140 and r["over_budget"] is True
     text = " ".join(r["insights"])
-    assert "120% zyada" in text and "Raat 11 ke baad 2 din" in text and "limit" in text and "Instagram" in text
+    assert "120% more" in text and "after 11 pm on 2 days" in text and "limit" in text and "Instagram" in text
     empty = scroll.report("nobody", 7, today=TODAY)
     assert not empty["has_data"] and "Usage Access" in empty["insights"][0]
 

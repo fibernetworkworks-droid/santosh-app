@@ -79,7 +79,7 @@ def test_the_switch_and_the_box_are_two_separate_doors(monkeypatch):
     from app.devlab import box
     monkeypatch.setattr(box, "docker", lambda: "")
     on = LAB.ready(T)
-    assert on["ok"] is False and "docker is not installed" in on["why"]      # the honest reason, not the switch
+    assert on["ok"] is False and "docker is not on this machine" in on["why"]      # the honest reason, not the switch
 
 
 def test_a_shut_lab_gives_the_loop_no_tools_and_changes_nothing(dev, monkeypatch):  # noqa: F811

@@ -30,7 +30,7 @@ def test_a_crashed_turn_is_recorded_stuck_not_left_to_an_old_done(env, monkeypat
     monkeypatch.setattr(santosh, "_steps", boom)
     asyncio.run(santosh.run_turn("c1", "Sharma ji ko 20 mail bhejo", T))
     oc = santosh.LAST_OUTCOME["c1"]
-    assert oc["outcome"] == "stuck" and "galti" in oc["left"] and time.time() - oc["at"] < 30
+    assert oc["outcome"] == "stuck" and "error" in oc["left"] and time.time() - oc["at"] < 30
     with session() as s:
         r = s.query(TaskRun).filter_by(conversation_id="c1").one()
         assert r.outcome == "stuck" and "Sharma ji" in r.request      # it is in the work diary / Kaam list now

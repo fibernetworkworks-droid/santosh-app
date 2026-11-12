@@ -57,7 +57,7 @@ def test_a_real_crash_still_stops_after_one_restart(site_env, monkeypatch):
     calls = _record(S, monkeypatch)
     S.recover_stuck()
     r = S._load(sid)
-    assert calls == [] and r.status == "failed" and "Phir se chalao" in r.error
+    assert calls == [] and r.status == "failed" and "Run again" in r.error
 
 
 def test_a_site_map_job_starts_again_after_a_restart(site_env, monkeypatch):

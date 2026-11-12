@@ -66,7 +66,7 @@ def test_alert_for_broken_calls(qdir):
     for i in range(3):
         cq.record(_stats(f"b{i}", end="stall"))
     a = cq.alert_state("t1")
-    assert a["on"] and any("tooti" in w for w in a["why"])
+    assert a["on"] and any("broke midway" in w for w in a["why"])
     assert not cq.alert_state("t2")["on"]
 
 

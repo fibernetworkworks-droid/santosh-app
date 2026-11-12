@@ -249,7 +249,7 @@ def test_read_find_edit_and_arrange(gsl):
     run("slides_add", {"presentation": "FNW Q3 review", "position": 2,
                        "slides": [{"layout": "section", "title": "Part 2"}]}, ctx)
     assert [s["title"] for s in run("slides_read", {"presentation": "FNW Q3 review"}, ctx)["slides"]][1] == "Part 2"
-    with pytest.raises(ToolError, match="Slide 9 nahi hai"):
+    with pytest.raises(ToolError, match="There is no slide 9"):
         run("slides_edit", {"presentation": "FNW Q3 review", "slide": 9, "title": "x"}, ctx)
 
 
@@ -275,7 +275,7 @@ def test_delete_and_share_need_the_tap(bz, gsl):  # noqa: F811
     assert gsl.perms == []
     bz["svc"].decide("default", _events(bz["conv"], "bazar_approval")[-1]["id"], "approve")
     assert gsl.perms == [{"type": "user", "role": "commenter", "emailAddress": "swati@fnw.in"}]
-    with pytest.raises(ToolError, match="Saari slides"):
+    with pytest.raises(ToolError, match="Cannot remove all the slides"):
         run("slides_delete", {"presentation": "FNW Q3 review", "slides": [1, 2]}, ctx)
 
 

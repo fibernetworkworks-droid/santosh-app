@@ -239,7 +239,7 @@ def test_upload_preflight_print_order_handover_invoice(gd):
     S.client_approved(T, "G-0001", 1, "Client: 'ok final'")
     with pytest.raises(S.GraphicError) as e:                          # print order refused while the file fails preflight
         S.vendor_request(T, "G-0001")
-    assert "Bleed" in str(e.value)
+    assert "bleed" in str(e.value)
     S.feedback(T, "G-0001", "printer ne bleed maanga")
     up2 = S.proof_upload(T, "G-0001", data=_png(1122, 673, "CMYK"), name="card.tif")
     assert up2["preflight"]["ok"] and up2["version"]["round"] == 1
@@ -338,7 +338,7 @@ def test_discount_fingerprint_tm_and_forget(gd, monkeypatch):
     S.forget_client(T, "C-001")
     cv = S.client_view(T, "C-001")
     assert cv["phone"] == "" and cv["forgotten"] and cv["jobs"][0]["number"] == "G-0001"
-    assert S.job_view(T, "G-0001")["brief"].startswith("[hataya")
+    assert S.job_view(T, "G-0001")["brief"].startswith("[removed")
 
 
 def test_tick_tools_and_api(gd):
