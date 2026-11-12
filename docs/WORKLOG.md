@@ -3103,3 +3103,16 @@ Stage Summary:
 
 Task ID: bahi-a4-0841
 Work: A4 rebuilt over GITHUB DO TARAF v0.840.0, v0.841.0 ritual.
+
+---
+Task ID: L15-PROOF
+Agent: Claude
+Task: L15 of docs/LOVABLE_STUDIO_PLAN.md - the L0 card again + 3 proof apps, numbers before vs after.
+
+Work Log:
+- L0 had never been built: wrote quality/studiocard.py + studio_asks.py (30 asks, in-code scoring, calibration, interleaved live run with a budget, compare, CLI).
+- Added the coaching portal (roles + payment records) and the dispatch dashboard to the App Engine proof set with per-app server rule checks; ran the proof: 7/7, 8/8 traps, bad rule refused, median 7.4 s.
+- Version 0.842.0 (main had moved to 0.841.0).
+
+Stage Summary:
+- Free card passes; live card and owner walk still to do on her server.
