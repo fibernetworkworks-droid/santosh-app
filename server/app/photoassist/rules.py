@@ -35,31 +35,31 @@ KIND_WORDS = [
 MINOR_KINDS = ("newborn", "kids", "birthday")
 
 SHOT_LISTS: dict[str, list[tuple[str, bool]]] = {
-    "wedding": [("Dulhan taiyaar hote hue (details: lehenga, gehne, mehendi)", True), ("Dulha taiyaar / sehra", True),
-                ("Baraat aagman", True), ("Jaimala / varmala", True), ("Pheras / mandap ki rasmein", True),
-                ("Kanyadaan / sindoor / mangalsutra", True), ("Family group photos (list client se lijiye)", True),
+    "wedding": [("Bride getting ready (details: lehenga, jewellery, mehendi)", True), ("Groom getting ready / sehra", True),
+                ("Baraat arrival", True), ("Jaimala / varmala", True), ("Pheras / mandap rituals", True),
+                ("Kanyadaan / sindoor / mangalsutra", True), ("Family group photos (get the list from the client)", True),
                 ("Couple portraits", True), ("Vidaai", False), ("Decor, stage, venue wide shots", False),
-                ("Mehmaan candid", False)],
-    "pre_wedding": [("Location ke wide shots", True), ("Couple close portraits", True), ("Walking / candid moments", True),
-                    ("Outfit change ke baad set", False), ("Golden hour shots", False)],
+                ("Guest candids", False)],
+    "pre_wedding": [("Location wide shots", True), ("Couple close portraits", True), ("Walking / candid moments", True),
+                    ("Set after the outfit change", False), ("Golden hour shots", False)],
     "engagement": [("Ring exchange", True), ("Couple portraits", True), ("Family group", True), ("Decor", False)],
-    "event": [("Venue / setup wide", True), ("Mukhya mehmaan aagman", True), ("Stage / speech", True), ("Crowd candid", False),
+    "event": [("Venue / setup wide", True), ("Chief guest arrival", True), ("Stage / speech", True), ("Crowd candid", False),
               ("Branding / banners", False)],
     "birthday": [("Cake cutting", True), ("Birthday person portraits", True), ("Family group", True), ("Decor", False),
                  ("Games / candid", False)],
-    "corporate": [("Headshots (list naamon ki)", True), ("Team group photo", True), ("Office / workspace", False),
+    "corporate": [("Headshots (list of names)", True), ("Team group photo", True), ("Office / workspace", False),
                   ("Event stage / awards", False)],
-    "product": [("Har product white background (front / back / side)", True), ("Detail / texture close-up", True),
+    "product": [("Each product on a white background (front / back / side)", True), ("Detail / texture close-up", True),
                 ("Lifestyle / in-use shot", False), ("Size / scale shot", False), ("Packaging", False)],
     "food": [("Hero dish top-angle", True), ("45 degree angle", True), ("Ingredients / process", False), ("Ambience", False)],
     "fashion": [("Full look front / back", True), ("Detail close-up", True), ("Movement shots", False), ("Portrait", False)],
-    "portrait": [("Close-up", True), ("Half body", True), ("Full body", False), ("Alag background / outfit", False)],
+    "portrait": [("Close-up", True), ("Half body", True), ("Full body", False), ("Different background / outfit", False)],
     "maternity": [("Couple portraits", True), ("Bump silhouette", True), ("Family", False)],
-    "newborn": [("Baby close-ups (soye hue, safe pose)", True), ("Parents ke saath", True), ("Details: haath, pair", False)],
-    "kids": [("Candid khelte hue", True), ("Portrait", True), ("Family", False)],
-    "real_estate": [("Har kamre ka wide (corner se)", True), ("Kitchen / bathroom", True), ("Building exterior", True),
+    "newborn": [("Baby close-ups (sleeping, safe pose)", True), ("With the parents", True), ("Details: hands, feet", False)],
+    "kids": [("Candids while playing", True), ("Portrait", True), ("Family", False)],
+    "real_estate": [("A wide shot of every room (from the corner)", True), ("Kitchen / bathroom", True), ("Building exterior", True),
                     ("Amenities", False), ("Twilight exterior", False)],
-    "other": [("Mukhya shots (client se list lijiye)", True)],
+    "other": [("Main shots (get the list from the client)", True)],
 }
 
 GEAR_KINDS = ("camera", "lens", "flash", "light", "drone", "battery", "card", "stand", "gimbal", "mic", "laptop", "other")
@@ -69,8 +69,8 @@ GEAR_NEED: dict[str, list[str]] = {
     "corporate": ["flash", "light", "stand"], "product": ["light", "stand"], "food": ["light", "stand"],
     "fashion": ["light", "stand"], "portrait": ["light"], "newborn": ["light"], "maternity": ["light"], "real_estate": ["stand"],
 }
-GEAR_EXTRA_LINES = ["Spare batteries charged", "Memory cards khaali / format kiye (purani shoot ka backup pehle)", "Lens saaf",
-                    "Second body ya backup camera", "Card reader / laptop backup"]
+GEAR_EXTRA_LINES = ["Spare batteries charged", "Memory cards empty / formatted (back up the old shoot first)", "Lenses clean",
+                    "Second body or backup camera", "Card reader / laptop backup"]
 
 PLACE_KINDS = ("private", "venue", "public", "monument", "studio", "other")
 MONUMENT_WORDS = r"\b(qila|quila|fort|mahal|maqbara|tomb|monument|asi|heritage|haveli|stepwell|baoli|vav|minar|taj mahal)\b|किला|महल"
@@ -199,58 +199,58 @@ def shoot_checks(kind: str, location: str, place: str, drone: bool, commercial_u
     out: list[dict] = []
     loc = str(location or "").lower()
     if place == "monument":
-        out.append({"level": "warn", "key": "asi", "say": "ASI / state ki suraksheet monument par professional shoot (pre-wedding bhi) "
-                    "ke liye pehle permission chahiye (ASI ka SAHMAT portal / us circle ka office; fee aur din unki list se)."})
+        out.append({"level": "warn", "key": "asi", "say": "A professional shoot (pre-wedding too) at an ASI / state-protected monument "
+                    "needs permission first (the ASI SAHMAT portal / that circle's office; fees and days as per their list)."})
     if place in ("venue", "private"):
-        out.append({"level": "note", "key": "venue_ok", "say": "Venue / ghar ke maalik ki shoot permission (aur portfolio / commercial "
-                    "use ho to property release) le lijiye."})
+        out.append({"level": "note", "key": "venue_ok", "say": "Get shoot permission from the venue / house owner (and a property release if the "
+                    "images are for portfolio / commercial use)."})
     if place == "public":
-        out.append({"level": "note", "key": "public", "say": "Public jagah: tripod / bade setup ke liye local permission (nagar nigam / "
-                    "police) lag sakti hai; bheed ke chehre commercial use mein ho to unki model release chahiye."})
+        out.append({"level": "note", "key": "public", "say": "Public place: a tripod / large setup may need local permission (municipal corporation / "
+                    "police); if faces in a crowd are used commercially, their model release is needed."})
     if re.search(RAIL_WORDS, loc, re.I):
-        out.append({"level": "warn", "key": "rail", "say": "Railway / metro parisar mein shoot ke liye rail / metro prashasan ki permission chahiye."})
+        out.append({"level": "warn", "key": "rail", "say": "A shoot inside a railway / metro premises needs the rail / metro authority's permission."})
     if drone:
         d = drone_ok or {}
         if not d.get("uin"):
-            out.append({"level": "warn", "key": "drone_uin", "say": "Drone (250 g se upar): Digital Sky par UIN registration chahiye; "
-                        "gear mein drone ka UIN likh dijiye."})
+            out.append({"level": "warn", "key": "drone_uin", "say": "Drone (over 250 g): UIN registration on Digital Sky is needed; "
+                        "write the drone's UIN in the gear list."})
         if not d.get("rpc"):
-            out.append({"level": "warn", "key": "drone_rpc", "say": "Paise lekar (commercial) drone udane ke liye Remote Pilot Certificate "
-                        "(DGCA-authorised RPTO se) chahiye; nano (250 g tak) ko chhod kar. Niyam mein RPC number aur tareekh daaliye."})
+            out.append({"level": "warn", "key": "drone_rpc", "say": "A Remote Pilot Certificate "
+                        "(from a DGCA-authorised RPTO) is needed to fly a drone for money (commercial), except nano (up to 250 g). Enter the RPC number and date in the rules."})
         if not d.get("insured"):
-            out.append({"level": "warn", "key": "drone_ins", "say": "Drone ka third-party insurance (250 g se upar) zaroori hai: gear mein "
-                        "insurance ki aakhri tareekh daaliye."})
-        out.append({"level": "note", "key": "drone_zone", "say": "Udaan se pehle Digital Sky ke airspace map par zone dekhiye: green "
-                    "(120 m / 400 ft tak) theek; yellow = permission; red = mana. Bheed ke upar mat udaiye."})
+            out.append({"level": "warn", "key": "drone_ins", "say": "Third-party drone insurance (over 250 g) is required: "
+                        "enter the insurance expiry date in the gear list."})
+        out.append({"level": "note", "key": "drone_zone", "say": "Before flying, check the zone on the Digital Sky airspace map: green "
+                    "(up to 120 m / 400 ft) is fine; yellow = permission needed; red = not allowed. Do not fly over crowds."})
         if re.search(AIRPORT_WORDS, loc, re.I):
-            out.append({"level": "warn", "key": "drone_airport", "say": "Jagah airport / defence ke paas lagti hai: yellow / red zone ho sakta "
-                        "hai, permission ke bina drone nahi."})
+            out.append({"level": "warn", "key": "drone_airport", "say": "The place seems to be near an airport / defence site: it may be a yellow / red zone, "
+                        "so no drone without permission."})
         if place == "monument":
-            out.append({"level": "warn", "key": "drone_asi", "say": "Monument par drone: aviation (Digital Sky) ke saath ASI ki alag permission."})
+            out.append({"level": "warn", "key": "drone_asi", "say": "Drone at a monument: separate ASI permission in addition to aviation (Digital Sky)."})
     if minors or kind in MINOR_KINDS:
-        out.append({"level": "warn", "key": "minor", "say": "Bachchon ki photo: maa-baap / guardian ki likhit consent (DPDP Act s.9) aur "
-                    "portfolio / social media par lagane ki alag haan zaroori; bina haan ke bachche ki photo public mat kijiye."})
+        out.append({"level": "warn", "key": "minor", "say": "Photos of children: written consent of a parent / guardian (DPDP Act s.9) and a separate yes to "
+                    "use in the portfolio / social media are required; do not publish a child's photo without it."})
     if commercial_use:
-        out.append({"level": "warn", "key": "release", "say": "Photo ad / product / stock mein jayegi: har pehchaan-yogya vyakti ki model "
-                    "release aur private jagah ki property release pehle."})
+        out.append({"level": "warn", "key": "release", "say": "The photo will go into an ad / product / stock use: a model release from every identifiable person and "
+                    "a property release for private places are needed first."})
     if kind == "newborn":
-        out.append({"level": "note", "key": "newborn_safe", "say": "Newborn: sirf surakshit pose, garam kamra, maa-baap paas; props par "
-                    "bachche ko akela nahi."})
+        out.append({"level": "note", "key": "newborn_safe", "say": "Newborn: safe poses only, a warm room, parents close; never leave the baby alone on "
+                    "props."})
     return out
 
 
 # ---- releases --------------------------------------------------------------------------------------------------------------
 RELEASE_KINDS = ("model", "minor", "property")
 USES = ("client_personal", "portfolio", "social_media", "advertising", "stock", "print_exhibition")
-USE_LABEL = {"client_personal": "client ka niji upyog", "portfolio": "photographer ka portfolio / website",
-             "social_media": "photographer ka social media", "advertising": "ad / brand promotion", "stock": "stock agency",
+USE_LABEL = {"client_personal": "the client's personal use", "portfolio": "the photographer's portfolio / website",
+             "social_media": "the photographer's social media", "advertising": "ad / brand promotion", "stock": "stock agency",
              "print_exhibition": "print / exhibition"}
 
 
 def release_text(kind: str, studio: str, person: str, guardian: str, place: str, uses: list[str], shoot_line: str,
                  lang: str = "en") -> str:
     """Plain release / consent text she gets signed (paper or her phone). Not legal advice: her lawyer can change it."""
-    use_txt = ", ".join(USE_LABEL.get(u, u) for u in uses) or "[upyog likhiye]"
+    use_txt = ", ".join(USE_LABEL.get(u, u) for u in uses) or "[write the uses]"
     who = studio or "[photographer / studio]"
     if lang == "hi":
         if kind == "property":
@@ -274,27 +274,27 @@ def release_text(kind: str, studio: str, person: str, guardian: str, place: str,
 
 
 # ---- money -------------------------------------------------------------------------------------------------------------------
-DEFAULT_STAGES = [{"label": "Advance (booking par)", "pct": 30, "when": "booking"},
-                  {"label": "Shoot se pehle", "pct": 40, "when": "before", "days_before": 7},
-                  {"label": "Delivery par", "pct": 30, "when": "delivery"}]
+DEFAULT_STAGES = [{"label": "Advance (at booking)", "pct": 30, "when": "booking"},
+                  {"label": "Before the shoot", "pct": 40, "when": "before", "days_before": 7},
+                  {"label": "On delivery", "pct": 30, "when": "delivery"}]
 DEFAULT_CANCEL = [{"days_before": 60, "refund_pct": 75}, {"days_before": 30, "refund_pct": 50}, {"days_before": 7, "refund_pct": 25},
                   {"days_before": 0, "refund_pct": 0}]
 SAC = {"wedding": "998383", "pre_wedding": "998383", "engagement": "998383", "event": "998383", "birthday": "998383",
        "corporate": "998383", "product": "998382", "food": "998382", "fashion": "998382", "portrait": "998381", "maternity": "998381",
        "newborn": "998381", "kids": "998381", "real_estate": "998387", "other": "998387"}
-COPYRIGHT_KEEP = ("Photos / videos ka copyright photographer ({studio}) ke paas rahega. Client ko apne niji upyog (print, family, apne "
-                  "social media par credit ke saath) ka licence milta hai; commercial / ad upyog ke liye alag likhit anumati. "
-                  "(Copyright Act 1957 s.17(b): likhit samjhaute ke bina, paise dekar khinchwai photo ka pehla maalik client hota hai, "
-                  "isliye yeh line zaroori hai.)")
-COPYRIGHT_CLIENT = ("Photos / videos ka copyright client ka hoga (Copyright Act 1957 s.17(b)). Photographer ({studio}) unhe apne portfolio "
-                    "mein sirf client ki alag likhit haan se dikha sakta hai.")
+COPYRIGHT_KEEP = ("The copyright of the photos / videos stays with the photographer ({studio}). The client gets a licence for personal use (print, family, own "
+                  "social media with credit); commercial / ad use needs separate written permission. "
+                  "(Copyright Act 1957 s.17(b): without a written agreement, the client who pays for the photo is its first owner, "
+                  "so this line is needed.)")
+COPYRIGHT_CLIENT = ("The copyright of the photos / videos will be the client's (Copyright Act 1957 s.17(b)). The photographer ({studio}) may show them in their portfolio "
+                    "only with the client's separate written approval.")
 
 
 def policy_lines(policy: list[dict]) -> list[str]:
     out = []
     for p in sorted(policy, key=lambda x: -int(x.get("days_before") or 0)):
         d, r = int(p.get("days_before") or 0), int(p.get("refund_pct") or 0)
-        out.append(f"Shoot se {d}+ din pehle radd: jama ka {r}% wapas" if d else f"Shoot se kam din pehle: jama ka {r}% wapas")
+        out.append(f"Cancelled {d}+ days before the shoot: {r}% of the amount paid is refunded" if d else f"Cancelled later than that: {r}% of the amount paid is refunded")
     return out
 
 
@@ -308,8 +308,8 @@ def refund_pct(policy: list[dict], days_before: int) -> int:
 def unfair_policy(policy: list[dict]) -> str:
     for p in policy:
         if int(p.get("days_before") or 0) >= 30 and int(p.get("refund_pct") or 0) == 0:
-            return ("Dhyaan: 30+ din pehle radd hone par bhi poora advance rakhna consumer commission mein 'unfair contract' (CPA 2019 "
-                    "s.2(46)) mana ja sakta hai; kuch wapas dene ki line rakhiye.")
+            return ("Note: keeping the full advance even on a cancellation 30+ days ahead can be treated as an 'unfair contract' (CPA 2019 "
+                    "s.2(46)) by a consumer commission; keep a line that refunds something.")
     return ""
 
 
@@ -329,11 +329,11 @@ def tds_note(client_kind: str, kind: str, amount: float) -> str:
     if client_kind != "business":
         return ""
     if kind in ("product", "food", "fashion"):
-        return ("Business client ad / product shoot ke liye TDS kaat sakta hai: Income-tax Act 2025 s.393(1) - contract kaam (purana 194C) "
-                "1% (individual / HUF) ya 2% (doosre), ek baar mein Rs 30,000 se upar ya saal mein Rs 1 lakh se upar; agar woh ise "
-                "professional / advertising fee maane to 10% Rs 50,000 se upar. Form 16A / 26AS mein milan kijiye.")
-    return ("Business client TDS kaat sakta hai: s.393(1) contract kaam (purana 194C) 1% / 2%, ek baar Rs 30,000 ya saal Rs 1 lakh se upar. "
-            "Form 16A / 26AS mein milan kijiye; CA se pakka kijiye.")
+        return ("A business client may deduct TDS on an ad / product shoot: Income-tax Act 2025 s.393(1) - contract work (old 194C) "
+                "1% (individual / HUF) or 2% (others), above Rs 30,000 in one payment or Rs 1 lakh in a year; if they treat it as a "
+                "professional / advertising fee, 10% above Rs 50,000. Match it with Form 16A / 26AS.")
+    return ("A business client may deduct TDS: s.393(1) contract work (old 194C) 1% / 2%, above Rs 30,000 once or Rs 1 lakh in a year. "
+            "Match it with Form 16A / 26AS; confirm with your CA.")
 
 
 def fy(d: date) -> str:
