@@ -55,13 +55,13 @@ ALIASES = {"instagram": "insta_post", "insta": "insta_post", "post": "insta_post
 
 KINDS = {
     "poster": "Poster / post (offer, launch, news)",
-    "festival": "Tyohar ki badhai",
-    "offer": "Offer / sale / daam",
+    "festival": "Festival greeting",
+    "offer": "Offer / sale / price",
     "event": "Event / workshop / camp",
-    "hiring": "Naukri / hiring",
+    "hiring": "Job / hiring",
     "product": "Product photo post",
-    "quote": "Vichar / tip / review card",
-    "announcement": "Suchna (band / naya time / naya pata)",
+    "quote": "Quote / tip / review card",
+    "announcement": "Notice (closed / new hours / new address)",
 }
 LAYOUTS = ("hero", "photo", "split", "minimal", "festival", "offer")
 KIND_LAYOUT = {"poster": "hero", "festival": "festival", "offer": "offer", "event": "hero", "hiring": "minimal",
@@ -103,7 +103,7 @@ FESTIVALS = [
      "greet": {"hi": "जन्माष्टमी की शुभकामनाएँ", "mr": "गोकुळाष्टमीच्या शुभेच्छा", "en": "Happy Janmashtami"}}),
     (("independence", "republic"), {"key": "national", "motif": "waves", "colors": ["#EA580C", "#FFFFFF", "#15803D"],
      "greet": {"hi": "हार्दिक शुभकामनाएँ", "mr": "हार्दिक शुभेच्छा", "en": "Warm wishes"},
-     "note": "Rashtriya Dhwaj / Ashoka Chakra / Rajya chinh vyapar ke poster mein nahi (Emblems Act 1950): sirf rang ki lehrein."}),
+     "note": "The national flag / Ashoka Chakra / state emblem are not allowed in a business poster (Emblems Act 1950): only colour waves."}),
     (("guru nanak", "gurpurab"), {"key": "gurpurab", "motif": "sparkle", "colors": ["#1E3A8A", "#F59E0B", "#FEF3C7"],
      "greet": {"hi": "गुरु पर्व की लख-लख बधाइयाँ", "mr": "गुरुपर्वाच्या शुभेच्छा", "en": "Happy Gurpurab"}}),
     (("chhath",), {"key": "chhath", "motif": "diya", "colors": ["#9A3412", "#F59E0B", "#FDE68A"],
@@ -134,10 +134,10 @@ PROTECTED = [
      "Ashoka Chakra / Rajya chinh"),
     (r"\b(mahatma gandhi|gandhi ?ji|bapu|nehru|indira gandhi|shivaji maharaj|chhatrapati shivaji|prime minister|pradhan ?mantri|"
      r"modi ?ji|narendra modi|rashtrapati|president of india|राष्ट्रपति|प्रधानमंत्री|महात्मा गांधी)\b",
-     "Gandhi / Nehru / Indira Gandhi / Shivaji Maharaj / Pradhan Mantri / Rashtrapati ka naam ya photo"),
+     "Name or photo of Gandhi / Nehru / Indira Gandhi / Shivaji Maharaj / the Prime Minister / the President"),
     (r"\b(government of india|bharat sarkar|govt\.? of india|bharat sarkar ki|bhaarat sarkaar|bhaarat sarkar|"
-     r"maharashtra shasan|sarkari yojana ka logo|भारत सरकार)\b", "Sarkar ka naam / chinh (sarkari jud-ne ka bhram)"),
-    (r"\b(olympic|olympics|unesco|united nations|who approved|red cross|interpol)\b", "UN / WHO / Olympic / Red Cross jaisa naam"),
+     r"maharashtra shasan|sarkari yojana ka logo|भारत सरकार)\b", "Government name / emblem (suggests a government link)"),
+    (r"\b(olympic|olympics|unesco|united nations|who approved|red cross|interpol)\b", "A name like UN / WHO / Olympic / Red Cross"),
 ]
 LOGO_WORDS = r"\b(logo|chinh|nishan)\b"
 
