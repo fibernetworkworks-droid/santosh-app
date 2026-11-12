@@ -9,21 +9,21 @@ import re
 from datetime import date
 from typing import Any
 
-NOT_ADVICE = "Draft / jaankari hai, kanooni salah nahi: vakil se pakka karwaiye."
+NOT_ADVICE = "Draft / information only, not legal advice: have a lawyer confirm it."
 NEVER = [
-    "Notarise / sign / seal / stamp karna sirf aapka kaam: Hoola sirf kaagaz taiyaar karta hai.",
-    "Stamp ki rakam sirf aapki state rate table se; table mein nahi to khaali [stamp ₹ ?] - kabhi andaaza nahi.",
-    "Aadhaar / PAN / ID number kabhi document ke record mein nahi: sirf Pehchaan Locker ka {id:...} reference aur masked number.",
-    "Paise Hoola nahi leta / bhejta: fee aap leti hain, Hoola sirf receipt aur register likhta hai.",
-    "Final print sirf aapke tap se (card + hash); badla hua document = naya card.",
-    "e-Stamp / GRAS / franking aur MEA apostille aap ya party khud official portal / agency par karte hain.",
+    "Notarising, signing, sealing and stamping are your job: Hoola only prepares the paper.",
+    "The stamp amount comes only from your state rate table; if it is not in the table it stays blank [stamp ₹ ?] - never a guess.",
+    "Aadhaar / PAN / ID numbers are never stored in the document record: only the ID Locker {id:...} reference and a masked number.",
+    "Hoola never takes or sends money: you collect the fee, Hoola only writes the receipt and the register.",
+    "Final print only with your tap (card + hash); a changed document needs a new card.",
+    "e-Stamp / GRAS / franking and MEA apostille are done by you or the party on the official portal / agency.",
 ]
 
 LANGS = {"en": "English", "hi": "हिन्दी", "mr": "मराठी"}
 
 # ---------------------------------------------------------------- Rule 10(1) Notaries Rules 1956 (2014 table, as published by DoLA)
 FEE_SOURCE = ("Notaries Rules 1956 Rule 10(1) as published by the Department of Legal Affairs "
-              "(legalaffairs.gov.in/sites/default/files/notaries-rules-1956.pdf, read 23 Oct 2026); naya notification aaye to Niyam mein badliye.")
+              "(legalaffairs.gov.in/sites/default/files/notaries-rules-1956.pdf, read 23 Oct 2026); if a new notification comes, update it under Rules.")
 ACTS: dict[str, dict[str, Any]] = {
     "affidavit": {"label": "Affidavit / oath (Rule 10(1)(g))", "cap": 35.0},
     "attest": {"label": "Verify / authenticate / attest an instrument (Rule 10(1)(e))", "cap": 35.0},
@@ -43,50 +43,50 @@ FORM_XV = ["Serial No.", "Date", "Name of notarial act", "Name of executant / pe
 # ---------------------------------------------------------------- document kinds
 # stamp: key looked up in HER rate table; act: the notarial act it usually needs; fields: (key, label, required)
 KINDS: dict[str, dict[str, Any]] = {
-    "aff_name_change": {"label": "Affidavit - naam badalna", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
-                        "fields": [("old_name", "Purana naam (documents mein)", True), ("new_name", "Naya naam", True),
-                                   ("reason", "Kyun (shaadi / galti / apni marzi...)", True), ("documents", "Kin documents mein purana naam", False)]},
-    "aff_address": {"label": "Affidavit - pata (address proof)", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
-                    "fields": [("since", "Kab se rehte hain", True), ("purpose", "Kis kaam ke liye", True),
-                               ("previous_address", "Pichhla pata", False)]},
+    "aff_name_change": {"label": "Affidavit - change of name", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
+                        "fields": [("old_name", "Old name (as in documents)", True), ("new_name", "New name", True),
+                                   ("reason", "Why (marriage / mistake / own choice...)", True), ("documents", "Documents that carry the old name", False)]},
+    "aff_address": {"label": "Affidavit - address (address proof)", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
+                    "fields": [("since", "Living there since", True), ("purpose", "Purpose", True),
+                               ("previous_address", "Previous address", False)]},
     "aff_gap_year": {"label": "Affidavit - gap year", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
-                     "fields": [("from_year", "Gap kab se (saal / mahina)", True), ("to_year", "Gap kab tak", True),
-                                ("activity", "Us dauran kya kiya", True), ("purpose", "Kis college / sanstha ke liye", True)]},
-    "aff_income": {"label": "Affidavit - aay (income)", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
-                   "fields": [("annual_income", "Saalana aay (₹)", True), ("source", "Aay ka zariya", True),
-                              ("year", "Kis saal ki aay (FY)", True), ("purpose", "Kis kaam ke liye", True)]},
-    "aff_lost_document": {"label": "Affidavit - document kho gaya", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
-                          "fields": [("document", "Kaunsa document", True), ("issuer", "Kisne diya tha", True),
-                                     ("lost_on", "Kab khoya", True), ("lost_place", "Kahan khoya", True),
-                                     ("police_ref", "Police / lost report no.", True), ("doc_ref", "Document ka number (ho to)", False)]},
+                     "fields": [("from_year", "Gap from (year / month)", True), ("to_year", "Gap until", True),
+                                ("activity", "What you did during that time", True), ("purpose", "For which college / institution", True)]},
+    "aff_income": {"label": "Affidavit - income", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
+                   "fields": [("annual_income", "Annual income (₹)", True), ("source", "Source of income", True),
+                              ("year", "Income for which year (FY)", True), ("purpose", "Purpose", True)]},
+    "aff_lost_document": {"label": "Affidavit - document lost", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
+                          "fields": [("document", "Which document", True), ("issuer", "Issued by", True),
+                                     ("lost_on", "Lost on", True), ("lost_place", "Lost at", True),
+                                     ("police_ref", "Police / lost report no.", True), ("doc_ref", "Document number (if any)", False)]},
     "aff_general": {"label": "Affidavit - general", "stamp": "affidavit", "act": "affidavit", "group": "affidavit",
-                    "fields": [("statements", "Kya bayaan hai (har line ek baat)", True), ("purpose", "Kis kaam ke liye", False)]},
+                    "fields": [("statements", "Statements (one point per line)", True), ("purpose", "Purpose", False)]},
     "declaration": {"label": "Declaration", "stamp": "declaration", "act": "attest", "group": "declaration",
-                    "fields": [("statements", "Kya ghoshna hai (har line ek baat)", True), ("purpose", "Kis kaam ke liye", True)]},
-    "self_declaration": {"label": "Self-declaration (swa-ghoshna)", "stamp": "self_declaration", "act": "", "group": "declaration",
-                         "fields": [("statements", "Kya ghoshna hai (har line ek baat)", True), ("purpose", "Kis kaam ke liye", True)]},
+                    "fields": [("statements", "What is declared (one point per line)", True), ("purpose", "Purpose", True)]},
+    "self_declaration": {"label": "Self-declaration", "stamp": "self_declaration", "act": "", "group": "declaration",
+                         "fields": [("statements", "What is declared (one point per line)", True), ("purpose", "Purpose", True)]},
     "rent_summary": {"label": "Rent / leave & licence summary", "stamp": "rent_summary", "act": "attest", "group": "rent",
-                     "fields": [("licensor", "Maalik (licensor)", True), ("licensee", "Kirayedar (licensee)", True),
-                                ("premises", "Jagah ka pata", True), ("start", "Kab se", True), ("months", "Kitne mahine", True),
-                                ("fee", "Mahine ka kiraya / fee (₹)", True), ("deposit", "Deposit (₹)", True),
-                                ("agreement_kind", "Agreement kaisa (leave & licence / rent)", False)]},
+                     "fields": [("licensor", "Owner (licensor)", True), ("licensee", "Tenant (licensee)", True),
+                                ("premises", "Address of the premises", True), ("start", "From", True), ("months", "Number of months", True),
+                                ("fee", "Monthly rent / fee (₹)", True), ("deposit", "Deposit (₹)", True),
+                                ("agreement_kind", "Type of agreement (leave & licence / rent)", False)]},
     "poa_general": {"label": "Power of attorney - general", "stamp": "poa_general", "act": "attest", "group": "poa",
-                    "fields": [("attorney_name", "Attorney ka naam", True), ("attorney_relation", "Attorney ka rishta / pita ka naam", False),
-                               ("attorney_address", "Attorney ka pata", True), ("powers", "Kaun se kaam (har line ek)", True),
-                               ("property", "Kis property / account ke liye (ho to)", False)]},
-    "poa_special": {"label": "Power of attorney - special (ek kaam)", "stamp": "poa_special", "act": "attest", "group": "poa",
-                    "fields": [("attorney_name", "Attorney ka naam", True), ("attorney_relation", "Attorney ka rishta / pita ka naam", False),
-                               ("attorney_address", "Attorney ka pata", True), ("act", "Sirf kaunsa ek kaam", True),
-                               ("valid_till", "Kab tak (ho to)", False)]},
+                    "fields": [("attorney_name", "Attorney's name", True), ("attorney_relation", "Attorney's relation / father's name", False),
+                               ("attorney_address", "Attorney's address", True), ("powers", "Powers granted (one per line)", True),
+                               ("property", "For which property / account (if any)", False)]},
+    "poa_special": {"label": "Power of attorney - special (one act)", "stamp": "poa_special", "act": "attest", "group": "poa",
+                    "fields": [("attorney_name", "Attorney's name", True), ("attorney_relation", "Attorney's relation / father's name", False),
+                               ("attorney_address", "Attorney's address", True), ("act", "The one act allowed", True),
+                               ("valid_till", "Valid until (if any)", False)]},
     "indemnity": {"label": "Indemnity bond", "stamp": "indemnity", "act": "attest", "group": "indemnity",
-                  "fields": [("indemnified", "Kisko indemnity (bank / society / company)", True),
-                             ("matter", "Kis baat ke liye (duplicate certificate, payment...)", True), ("amount", "Rakam (₹, ho to)", False)]},
-    "noc": {"label": "NOC (anapatti)", "stamp": "noc", "act": "attest", "group": "noc",
-            "fields": [("to_whom", "Kisko NOC", True), ("subject", "Kis cheez / jagah ke baare mein", True),
-                       ("purpose", "Kis kaam ke liye", True)]},
+                  "fields": [("indemnified", "Indemnified party (bank / society / company)", True),
+                             ("matter", "What it is for (duplicate certificate, payment...)", True), ("amount", "Amount (₹, if any)", False)]},
+    "noc": {"label": "NOC (no objection)", "stamp": "noc", "act": "attest", "group": "noc",
+            "fields": [("to_whom", "NOC given to", True), ("subject", "What / which place it is about", True),
+                       ("purpose", "Purpose", True)]},
 }
-PARTY_FIELDS = [("name", "Naam", True), ("relation", "S/o, D/o, W/o (so / do / wo)", True), ("relative", "Pita / pati ka naam", True),
-                ("age", "Umar", True), ("occupation", "Kaam / vyavsay", False), ("address", "Pura pata", True),
+PARTY_FIELDS = [("name", "Name", True), ("relation", "S/o, D/o, W/o (so / do / wo)", True), ("relative", "Father's / husband's name", True),
+                ("age", "Age", True), ("occupation", "Occupation", False), ("address", "Full address", True),
                 ("gender", "m / f", False), ("phone", "Mobile", False)]
 
 TITLES = {
@@ -423,7 +423,7 @@ STATES = {"MH": "Maharashtra", "DL": "Delhi", "UP": "Uttar Pradesh", "KA": "Karn
           "HP": "Himachal Pradesh", "JK": "Jammu and Kashmir", "CH": "Chandigarh", "UK": "Uttarakhand", "JH": "Jharkhand"}
 STAMP_KEYS = sorted({v["stamp"] for v in KINDS.values()})
 STAMP_MODES = {"e_stamp": "e-Stamp (SHCIL)", "esbtr": "e-SBTR / GRAS (Maharashtra)", "franking": "Franking (bank)",
-               "paper": "Physical stamp paper (licensed vendor)", "kaveri": "Kaveri Online (Karnataka)", "none": "Stamp nahi (plain paper)"}
+               "paper": "Physical stamp paper (licensed vendor)", "kaveri": "Kaveri Online (Karnataka)", "none": "No stamp (plain paper)"}
 STAMP_SOURCE = ("sansalegal.com 'How to buy e-stamp certificates online in India' (9 Aug 2026): SHCIL ~25 states / UTs incl. Delhi, UP, "
                 "Punjab, Assam, HP, J&K, Chandigarh, Ladakh; Maharashtra e-SBTR, Karnataka Kaveri; verify by UIN / QR on shcilestamp.com; "
                 "document usually executed within 6 months of purchase (state rules differ).")
@@ -460,23 +460,23 @@ def stamp_steps(stamp: dict, parties: list[str], doc_label: str) -> list[str]:
     mode = stamp.get("mode")
     amt = stamp.get("amount")
     a = f"₹{amt:,.0f}" if isinstance(amt, (int, float)) else "[stamp ₹ ?]"
-    names = " / ".join(p for p in parties if p) or "[party ka naam]"
+    names = " / ".join(p for p in parties if p) or "[party name]"
     if mode == "none":
-        return ["Aapki table ke hisaab se is document par stamp nahi: plain paper par print hoga (aapki table galat ho to badliye)."]
+        return ["Per your table this document needs no stamp: it will print on plain paper (change your table if it is wrong)."]
     if mode == "e_stamp":
-        return ["shcilestamp.com par login (ya authorised collection centre / bank) -> state chuniye.",
-                f"Document type: {doc_label}; first party: {names}; stamp duty {a} (aapki rate table se).",
-                "Party ke naam document ke naam se bilkul milne chahiye.",
-                "Payment party / aap khud kariye -> certificate download / print.", "Certificate ka UIN shcilestamp.com par 'Verify e-Stamp' se jaanchiye.",
-                "UIN / certificate no. Hoola ko bataiye (register ke 'stamp affixed' column ke liye)."]
+        return ["Log in at shcilestamp.com (or go to an authorised collection centre / bank) -> choose the state.",
+                f"Document type: {doc_label}; first party: {names}; stamp duty {a} (from your rate table).",
+                "The party's name must match the document exactly.",
+                "You or the party pay -> download / print the certificate.", "Check the certificate's UIN with 'Verify e-Stamp' on shcilestamp.com.",
+                "Tell Hoola the UIN / certificate no. (for the register's 'stamp affixed' column)."]
     if mode == "esbtr":
-        return ["Maharashtra: SHCIL nahi; state ki official e-payment (GRAS / e-SBTR) ya authorised bank / vendor se.",
-                f"Rakam {a} (aapki rate table se); party ke naam document ke naam se mile.", "Payment aap / party khud; challan / e-SBTR no. Hoola ko bataiye."]
+        return ["Maharashtra: not SHCIL; use the state's official e-payment (GRAS / e-SBTR) or an authorised bank / vendor.",
+                f"Amount {a} (from your rate table); the party's name must match the document.", "You or the party pay; tell Hoola the challan / e-SBTR no."]
     if mode == "kaveri":
-        return ["Karnataka: Kaveri Online Services ki official site se.", f"Rakam {a}; payment aap / party khud; reference no. bataiye."]
+        return ["Karnataka: use the official Kaveri Online Services site.", f"Amount {a}; you or the party pay; tell Hoola the reference no."]
     if mode == "franking":
-        return ["Authorised bank / franking centre par document frank karwaiye.", f"Rakam {a}; franking no. bataiye."]
-    return ["Licensed stamp vendor se stamp paper (vendor register entry ke saath).", f"Rakam {a}; stamp paper ka serial no. bataiye."]
+        return ["Get the document franked at an authorised bank / franking centre.", f"Amount {a}; tell Hoola the franking no."]
+    return ["Buy stamp paper from a licensed stamp vendor (with the vendor register entry).", f"Amount {a}; tell Hoola the stamp paper serial no."]
 
 
 # ---------------------------------------------------------------- notarial fees
@@ -490,13 +490,13 @@ def fee_check(act: str, fee, pages: int = 1, caps: dict | None = None) -> dict[s
     if act == "true_copy" and not (caps and act in caps):
         cap = max(a["min"], a["per_page"] * max(1, int(pages or 1)))
     if x is None:
-        return {"ok": False, "fee": None, "cap": cap, "why": "Fee kitni li? (aapki rate)"}
+        return {"ok": False, "fee": None, "cap": cap, "why": "What fee did you charge? (your rate)"}
     if x < 0:
-        return {"ok": False, "fee": x, "cap": cap, "why": "Fee minus nahi ho sakti."}
+        return {"ok": False, "fee": x, "cap": cap, "why": "The fee cannot be negative."}
     if cap is not None and x > cap + 0.001:
         return {"ok": False, "fee": x, "cap": cap,
-                "why": f"Rule 10(1) mein '{a['label']}' ke liye zyada se zyada ₹{cap:g} (2014 table). Zyada fee nahi likhi ja sakti; "
-                       "naya notification ho to Niyam > fee caps badliye."}
+                "why": f"Under Rule 10(1) the maximum for '{a['label']}' is ₹{cap:g} (2014 table). A higher fee cannot be written; "
+                       "if there is a new notification, update Rules > fee caps."}
     return {"ok": True, "fee": x, "cap": cap, "why": ""}
 
 
@@ -511,34 +511,34 @@ APOSTILLE_SOURCE = ("mea.gov.in/apostille-menu (read 23 Oct 2026): India in the 
                     "first authenticated by the State / UT designated authority (Regional Authentication Centre) or a Chamber of "
                     "Commerce; MEA fee Rs 50 per apostille sticker, attestation free; outsourced agency Rs 84 per document + Rs 3 per "
                     "page; MEA does not take documents directly from individuals and never legalises photocopies.")
-DOC_TYPES = {"personal": "Personal (janm / mrityu / vivah certificate)", "educational": "Shaikshik (degree / marksheet / certificate)",
-             "commercial": "Commercial (company / export kaagaz)", "affidavit": "Affidavit (notarised)", "poa": "Power of attorney (notarised)",
-             "other": "Doosra"}
+DOC_TYPES = {"personal": "Personal (birth / death / marriage certificate)", "educational": "Educational (degree / marksheet / certificate)",
+             "commercial": "Commercial (company / export papers)", "affidavit": "Affidavit (notarised)", "poa": "Power of attorney (notarised)",
+             "other": "Other"}
 
 
 def apostille_steps(doc_type: str, hague: bool | None, country: str) -> list[dict[str, Any]]:
-    c = country or "[desh]"
+    c = country or "[country]"
     steps: list[tuple[str, str]] = []
     if doc_type in ("affidavit", "poa"):
-        steps.append(("notarise", "Document notary ke saamne execute / notarise (aapka kaam) - notary ka seal aur register entry."))
+        steps.append(("notarise", "Execute / notarise the document before the notary (your job) - the notary's seal and register entry."))
     if doc_type == "commercial":
-        steps.append(("first_auth", "Chamber of Commerce se pehla attestation (MEA unhi ke designated signatory ke sign maanta hai)."))
+        steps.append(("first_auth", "First attestation by the Chamber of Commerce (MEA accepts the signature of its designated signatory)."))
     elif doc_type == "educational":
-        steps.append(("first_auth", "State / UT ki designated authority (Regional Authentication Centre) se authentication - education "
-                                    "documents ke liye state ka tay vibhag; original document saath."))
+        steps.append(("first_auth", "Authentication by the State / UT designated authority (Regional Authentication Centre) - for education "
+                                    "documents, the department the state has set; bring the original document."))
     else:
-        steps.append(("first_auth", "State / UT ki designated authority (Regional Authentication Centre / Home / GAD) se authentication."))
+        steps.append(("first_auth", "Authentication by the State / UT designated authority (Regional Authentication Centre / Home / GAD)."))
     if hague is None:
-        steps.append(("check_hague", f"{c} Hague Apostille Convention ka member hai? MEA ki list dekhiye (mea.gov.in/apostille-menu) - "
-                                     "member = apostille, nahi = attestation + embassy."))
+        steps.append(("check_hague", f"{c} a member of the Hague Apostille Convention? Check the MEA list (mea.gov.in/apostille-menu) - "
+                                     "member = apostille, not a member = attestation + embassy."))
     if hague is not False:
-        steps.append(("mea", "MEA apostille: MEA ke outsourced agency (BLS / Superb / IVS / Alhind - MEA site par current list) ke through; "
-                             "original ya true copy + photocopy + passport photocopy; MEA fee Rs 50 / sticker + agency Rs 84 / document + Rs 3 / "
-                             "page (MEA site par check karein). e-Sanad: kuch documents online (MEA e-Sanad)."))
+        steps.append(("mea", "MEA apostille: through an MEA outsourced agency (BLS / Superb / IVS / Alhind - current list on the MEA site); "
+                             "original or true copy + photocopy + passport photocopy; MEA fee Rs 50 / sticker + agency Rs 84 / document + Rs 3 / "
+                             "page (check on the MEA site). e-Sanad: some documents online (MEA e-Sanad)."))
     if hague is not True:
-        steps.append(("mea_attest", "Non-Hague desh: MEA attestation (MEA charge nahi; agency ka charge) ..."))
-        steps.append(("embassy", f"... phir {c} ki embassy / consulate se legalisation (unki fee / niyam unki site par)."))
-    steps.append(("collect", "Agency se document wapas lekar party ko dena; receipt / tracking no. likhiye."))
+        steps.append(("mea_attest", "Non-Hague country: MEA attestation (no MEA charge; the agency charges) ..."))
+        steps.append(("embassy", f"... then legalisation by the embassy / consulate of {c} (their fee / rules are on their site)."))
+    steps.append(("collect", "Collect the document back from the agency and hand it to the party; note the receipt / tracking no."))
     return [{"key": k, "text": t, "done": ""} for k, t in steps]
 
 
