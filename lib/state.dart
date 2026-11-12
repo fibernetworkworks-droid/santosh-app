@@ -1244,6 +1244,28 @@ class Santosh extends ChangeNotifier {
     return null;
   }
 
+  /// v0.862 R3 good / not right on a reply: 'up' | 'down' | 'none' (tapping the same one again clears it).
+  /// Kept on the message so the button stays lit; returns an error text or null.
+  Future<String?> rateReply(FeedItem it, String value) async {
+    final id = conversationId;
+    final turn = '${it.data['turn'] ?? ''}';
+    if (id == null || api == null || turn.isEmpty) return 'This reply cannot be rated';
+    final was = it.data['fb'];
+    it.data['fb'] = value == 'none' ? null : value;
+    notifyListeners();
+    try {
+      await api!.replyFeedback(id, turn, value);
+      return null;
+    } catch (e) {
+      it.data['fb'] = was;
+      notifyListeners();
+      return '$e';
+    }
+  }
+
+  /// v0.862 R3 read a reply aloud with the phone's voice (the same cleaning as spoken replies).
+  Future<void> readAloud(String text) => _speak(text);
+
   Future<void> openChat(String id, {bool remember = true}) async {
     if (id == conversationId || api == null) return;
     conversationId = id;

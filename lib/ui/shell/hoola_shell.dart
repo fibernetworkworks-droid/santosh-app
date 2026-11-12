@@ -15,7 +15,7 @@ import '../../state.dart';
 import '../artifacts_screen.dart';
 import '../bazar_screen.dart';
 import '../calls_sheet.dart';
-import '../chat_screen.dart';
+import '../chat/hoola_chat.dart';
 import '../glass.dart';
 import '../hoola_theme.dart';
 import '../live_voice_screen.dart';
@@ -204,7 +204,7 @@ class HoolaNav extends StatelessWidget {
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       if (_items[i].$1 == null)
-                        Image.asset(_mark, width: 24, height: 24)
+                        SizedBox(width: 24, height: 24, child: Transform.scale(scale: 1.7, child: Image.asset(_mark)))
                       else
                         AnimatedSwitcher(
                           duration: HoolaMotion.of(context, HoolaMotion.menu),
@@ -256,7 +256,7 @@ class _CallPill extends StatelessWidget {
 }
 
 // ------------------------------------------------------------------------------------------------ the Hoola tab
-/// Home (greeting + quick starts + composer) until the first message; then the chat (old screen until R3).
+/// Home (greeting + quick starts + composer) until the first message; then the chat (v0.862 R3: the new chat).
 class _HoolaTab extends StatelessWidget {
   const _HoolaTab({required this.app, required this.onTalk, required this.onMenu});
   final Santosh app;
@@ -271,7 +271,7 @@ class _HoolaTab extends StatelessWidget {
         builder: (context, _) => AnimatedSwitcher(
           duration: HoolaMotion.of(context, HoolaMotion.fade),
           child: _hasChat
-              ? KeyedSubtree(key: const ValueKey('chat'), child: _OldLook(child: ChatScreen(app: app, onVoice: onTalk)))
+              ? KeyedSubtree(key: const ValueKey('chat'), child: HoolaChat(app: app, onTalk: onTalk, onMenu: onMenu))
               : KeyedSubtree(key: const ValueKey('home'), child: HoolaHome(app: app, onTalk: onTalk, onMenu: onMenu)),
         ),
       );
@@ -322,7 +322,7 @@ class _HoolaHomeState extends State<HoolaHome> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(children: [
             const SizedBox(height: 96),
-            _Appear(child: Image.asset(_mark, width: 64, height: 64)),
+            _Appear(child: SizedBox(width: 64, height: 64, child: Transform.scale(scale: 1.5, child: Image.asset(_mark)))),
             const SizedBox(height: 18),
             _Appear(delay: 60, child: Text(_greeting(), textAlign: TextAlign.center, style: HoolaType.hero(c))),
             const SizedBox(height: 10),
@@ -412,16 +412,23 @@ class _Appear extends StatelessWidget {
 // ------------------------------------------------------------------------------------------------ the composer
 /// + · the field · mic · the voice button (or Send once she types).
 class HoolaComposer extends StatefulWidget {
-  const HoolaComposer({super.key, required this.app, required this.onTalk, this.hint = 'Type or hold to talk'});
+  const HoolaComposer({super.key, required this.app, required this.onTalk, this.hint = 'Type or hold to talk',
+      this.controller, this.focus, this.working = false, this.onStop});
   final Santosh app;
   final VoidCallback onTalk;
   final String hint;
+  /// v0.862 R3 the chat hands in its own box (Quote / Edit put text in it) and focus.
+  final TextEditingController? controller;
+  final FocusNode? focus;
+  /// v0.862 R3 Santosh is working on this chat: the voice buttons become Stop until she types.
+  final bool working;
+  final VoidCallback? onStop;
   @override
   State<HoolaComposer> createState() => _HoolaComposerState();
 }
 
 class _HoolaComposerState extends State<HoolaComposer> {
-  final _text = TextEditingController();
+  late final TextEditingController _text = widget.controller ?? TextEditingController();
   bool _typing = false;
   /// Files added with +: name, the server's file id once uploaded (null while uploading), upload error.
   final List<({String name, String? id, String? error})> _files = [];
@@ -429,15 +436,16 @@ class _HoolaComposerState extends State<HoolaComposer> {
   @override
   void initState() {
     super.initState();
+    _typing = _text.text.trim().isNotEmpty;
     _text.addListener(() {
       final t = _text.text.trim().isNotEmpty;
-      if (t != _typing) setState(() => _typing = t);
+      if (t != _typing && mounted) setState(() => _typing = t);
     });
   }
 
   @override
   void dispose() {
-    _text.dispose();
+    if (widget.controller == null) _text.dispose();
     super.dispose();
   }
 
@@ -545,6 +553,7 @@ class _HoolaComposerState extends State<HoolaComposer> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: TextField(
                 controller: _text,
+                focusNode: widget.focus,
                 minLines: 1,
                 maxLines: 6,
                 textInputAction: TextInputAction.newline,
@@ -567,6 +576,8 @@ class _HoolaComposerState extends State<HoolaComposer> {
             transitionBuilder: (child, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: child)),
             child: (_typing || _ready.isNotEmpty)
                 ? KeyedSubtree(key: const ValueKey('send'), child: round('Send', Icons.arrow_upward_rounded, _send, filled: true, bg: c.accent))
+                : (widget.working && widget.onStop != null)
+                ? KeyedSubtree(key: const ValueKey('stop'), child: round('Stop', Icons.stop_rounded, widget.onStop!, filled: true))
                 : Row(key: const ValueKey('talk'), mainAxisSize: MainAxisSize.min, children: [
                     round('Talk to ${widget.app.aName}', Icons.mic_none_rounded, widget.onTalk),
                     const SizedBox(width: 4),

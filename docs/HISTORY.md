@@ -3089,3 +3089,33 @@ Owner: "GO R2". `lib/ui/shell/hoola_shell.dart` (all from `hoola_theme.dart`):
 - CI pictures: 30_new_home / 31_new_drawer / 32_new_work, light and dark.
 
 NOT VERIFIED until the CI run; not seen on a real phone.
+
+## v0.862.0 R3 THE CHAT (owner: "GO R3" on docs/HOOLA_APP_REDESIGN_PLAN.md)
+
+The conversation rebuilt in the new design (R1 tokens, R2 shell), still behind Main > "Try the new design".
+
+- `lib/ui/chat/hoola_chat.dart` `HoolaChat` (the Hoola tab shows it once the chat has a message):
+  - her message = quiet bubble on the right (sunk role, 16 sans, corner 20 / 6), her files as small tiles above it;
+  - Santosh's reply = no bubble, full width, Literata 17 (`hoola_md.dart`); a reply that arrives while the chat is
+    open appears at reading speed (34 ms a word, 10 s cap) unless it already streamed in; reduce motion = at once;
+  - working mark: the Hoola mark breathing + the real step (`currentStep`) + a clock, until the first word;
+  - Stop: the composer's voice buttons become Stop while Santosh works (`stopWork`);
+  - steps: the running step live, then one line "Used N steps ›" -> Steps sheet (timeline, an icon per kind of step
+    read from its words - `stepIcon` - until R3s sends the kind);
+  - thinking: "Thinking · 4s" live, "Thought for 6s ›" after, opens to the text;
+  - under the newest reply: Copy · Read aloud · Share (text file via `Native.shareFile`) · Good · Not right (the
+    console's `/feedback` route, new `Api.replyFeedback` + `Santosh.rateReply`, lit while chosen) · Ask again;
+  - long-press: Copy · Quote in my reply (into the composer) · Edit (hers) · Ask again (newest reply) · Read aloud ·
+    Select text; day heads Today / Yesterday / 12 Nov; "Show earlier messages"; a round newest button with the
+    count of what arrived while scrolled up; "Reconnecting…" under the top bar while the stream is down.
+  - cards (approvals, drafts, payments, plans ...) are still `feedCard` from the old chat, in a dark frame, until R4.
+- `lib/ui/chat/hoola_md.dart` `HoolaMd` + `HoolaCodeBlock`: the same parser (`mdBlocks` / `mdInline`, which gained
+  an optional `codeStyle`), new drawing: headings 22 / 18 / 16 serif 600, inline code JetBrains Mono on the code
+  role, code block = header (language, Copy, Expand to a full-screen sheet) + body that scrolls sideways, tables in
+  a bordered box with a tinted header that scrolls sideways, quotes with a rule, the newest 3 plain words of a
+  streaming block drawn lighter (the soft tail; never when a mark is open).
+- `HoolaComposer` takes the chat's controller / focus and `working` + `onStop`.
+- CI pictures 33_new_chat / 34_new_chat_working / 35_new_chat_writing, light and dark.
+
+NOT built in R3 (next): R3s server step `kind` + one turn-result record, the 15 s stall watch, images inside
+replies, the warm artifact WebView. NOT VERIFIED on a real phone.

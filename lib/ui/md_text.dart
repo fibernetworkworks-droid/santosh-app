@@ -176,7 +176,7 @@ final _wordRe = RegExp(r'[A-Za-z0-9\u0900-\u097F]', unicode: true);
 bool _word(String c) => _wordRe.hasMatch(c);
 
 /// Inline marks of one block -> spans. [streaming]: an open mark styles the rest instead of showing.
-List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const Color(0xFFA78BFA)}) {
+List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const Color(0xFFA78BFA), TextStyle? codeStyle}) {
   final spans = <InlineSpan>[];
   final buf = StringBuffer();
   void flush() {
@@ -186,7 +186,8 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
     }
   }
 
-  const code = TextStyle(fontFamily: 'monospace', fontSize: 14, backgroundColor: Color(0x26FFFFFF));
+  // v0.862 R3: the new chat passes its own inline-code look (JetBrains Mono on the code colour role)
+  final code = codeStyle ?? const TextStyle(fontFamily: 'monospace', fontSize: 14, backgroundColor: Color(0x26FFFFFF));
   var i = 0;
   final n = s.length;
   while (i < n) {
@@ -216,12 +217,12 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
           : const TextStyle(fontWeight: FontWeight.w600);   // v0.249 Claude's bold is 600, not 800
       if (j > i + 2) {
         flush();
-        spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2, j), link: link)));
+        spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2, j), link: link, codeStyle: codeStyle)));
         next = j + 2;
       } else if (j < 0 && streaming) {
         flush();
         if (i + 2 < n) {
-          spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2), streaming: true, link: link)));
+          spans.add(TextSpan(style: style, children: mdInline(s.substring(i + 2), streaming: true, link: link, codeStyle: codeStyle)));
         }
         next = n;
       }
@@ -250,7 +251,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
       if (found > i + 1) {
         flush();
         spans.add(TextSpan(style: const TextStyle(fontStyle: FontStyle.italic),
-            children: mdInline(s.substring(i + 1, found), streaming: false, link: link)));
+            children: mdInline(s.substring(i + 1, found), streaming: false, link: link, codeStyle: codeStyle)));
         i = found + 1;
         continue;
       }

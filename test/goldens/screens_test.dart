@@ -69,6 +69,39 @@ void _sampleChat(Santosh app) {
   }));
 }
 
+/// v0.862 R3: a chat with what the new chat draws - steps, a reply with a heading, list, code and a table, and her
+/// next ask being worked on (the working mark) or answered word by word (the soft tail).
+void _richChat(Santosh app, {bool working = false, bool writing = false}) {
+  final at = DateTime(2026, 11, 12, 15, 10).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Which supplier bills are missing from GSTR-2B this month?', 'at': at}));
+  final steps = FeedItem('steps', {});
+  steps.steps.addAll([
+    {'label': 'Searching your Gmail for bills', 'state': 'done'},
+    {'label': 'Reading 38 bills', 'state': 'done'},
+    {'label': 'Checking each bill against GSTR-2B', 'state': 'done'},
+  ]);
+  app.feed.add(steps);
+  app.feed.add(FeedItem('think', {'text': 'Two bills are in her mail but not in 2B.', 'done': true, 'secs': 6}));
+  app.feed.add(FeedItem('message', {
+    'role': 'assistant',
+    'turn': 't1',
+    'text': '## Two bills are missing\n\n'
+        'Both suppliers have **not filed** their GSTR-1 yet, so the credit is not in your `GSTR-2B`.\n\n'
+        '| Supplier | Bill | GST |\n|---|---|---|\n| Shree Traders | 4512 | Rs 8,640 |\n| Patil Steel | 0981 | Rs 12,150 |\n\n'
+        '1. Ask them to file before the 11th\n2. Keep the credit on hold till then\n\n'
+        '```text\nGSTIN 27AAGCB1286Q1ZL  Shree Traders\n```',
+    'at': at,
+  }));
+  if (working || writing) {
+    app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Draft a polite reminder to both of them', 'at': at}));
+    app.typing = true;
+    app.currentStep = 'Writing the reminder';
+  }
+  if (writing) {
+    app.feed.add(FeedItem('stream', {'turn': 't2', 'text': 'Dear Shree Traders, our October books show your bill 4512 is not yet in', 'seg': 0}));
+  }
+}
+
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
     {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900)}) async {
   final app = await _app(prefs: prefs);
@@ -135,5 +168,11 @@ void main() {
     testWidgets('30 new home ($mode)', (t) => _shot(t, '30_new_home_$mode', home, prefs: prefs));
     testWidgets('31 new drawer ($mode)', (t) => _shot(t, '31_new_drawer_$mode', home, prefs: prefs, prep: chats, tab: find.byTooltip('Open chats')));
     testWidgets('32 new work tab ($mode)', (t) => _shot(t, '32_new_work_$mode', home, prefs: prefs, tab: find.text('Work')));
+    // v0.862 R3 the new chat
+    testWidgets('33 new chat ($mode)', (t) => _shot(t, '33_new_chat_$mode', home, prefs: prefs, prep: _richChat));
+    testWidgets('34 new chat working ($mode)', (t) => _shot(t, '34_new_chat_working_$mode', home, prefs: prefs,
+        prep: (a) => _richChat(a, working: true)));
+    testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
+        prep: (a) => _richChat(a, writing: true)));
   }
 }
