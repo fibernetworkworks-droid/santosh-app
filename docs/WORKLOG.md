@@ -3084,3 +3084,19 @@ Work Log:
 
 Stage Summary:
 - Site Engine drafts done; a draft has its own data (said plainly); App Engine branches left for after L14.
+
+Task ID: bahi-a3-0839
+Work: A3 GSTR-1 rebuilt over DRAFT v0.838.0, v0.839.0 ritual. Stage: ready.
+
+---
+Task ID: L14-GITHUB
+Agent: Claude
+Task: L14 of docs/LOVABLE_STUDIO_PLAN.md - two-way GitHub sync for App Engine (one branch), import from ZIP / another builder's export, round-trip test.
+
+Work Log:
+- appengine/gitsync.py (link / push / pull three-way with named conflicts / import ZIP + repo / ZIP export), routes, Studio GitHub section + Import panel.
+- FakeGitHub (Git Data API) in tests/test_v0839_github_sync.py; fixed on the way: README handled as GitHub's own file, zip-slip names dropped not tidied, a top folder called src is not a wrapper.
+- Version 0.840.0 (main had moved to 0.839.0).
+
+Stage Summary:
+- Round trip proven against a fake GitHub; real GitHub untested; one branch only.

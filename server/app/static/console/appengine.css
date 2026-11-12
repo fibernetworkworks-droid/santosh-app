@@ -111,6 +111,9 @@
 .ae-loss{border:1px solid var(--bad);background:var(--bad-soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
 .ae-loss ul{margin:0;padding-left:18px}.ae-loss p{margin:0}
 /* v0.832 L11 SABOOT: the Checks list on the Publish tab */
-.ae-checks{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
-.ae-checks h3{font-size:15px}
+.ae-checks,.ae-gitsec{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.ae-checks h3,.ae-gitsec h3{font-size:15px}
 .ae-checks .ae-vers li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+/* v0.839 L14 GITHUB DO TARAF */
+.ae-imp{display:flex;flex-direction:column;gap:10px}.ae-imp h3{margin:0;font-size:15px}.ae-imp input[name=repo]{flex:1;min-width:0}
+.ae-imp .dflist{margin:6px 0;padding-left:18px;font-size:13px;line-height:1.6}
