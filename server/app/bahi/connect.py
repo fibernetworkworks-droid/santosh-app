@@ -136,6 +136,11 @@ def disconnect(tenant: str, gstin: str) -> dict[str, Any]:
     with session() as s:
         r = _row(s, tenant, g)
         if r is not None:
+            if r.txn and r.status == "connected":                      # end the session at the GSP too (they allow only a few open at once)
+                try:
+                    wb.logout(tenant, r.gst_username, r.state_cd or g[:2], r.txn)
+                except wb.WbError:
+                    pass
             r.txn, r.status, r.enabled_until = "", "new", ""
             REG._event(s, tenant, "disconnected", g, actor="owner")
             s.commit()

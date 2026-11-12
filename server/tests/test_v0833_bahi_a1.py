@@ -38,6 +38,8 @@ def _walk(req):
         return _ok(header={"txn": "TXN-2"})
     if p.endswith("/authentication/refreshtoken"):
         return _ok(header={"txn": "TXN-3"})
+    if p.endswith("/authentication/logout"):
+        return _ok()
     return httpx.Response(404)
 
 
@@ -58,7 +60,9 @@ def test_connect_walk_never_stores_or_returns_otp_or_txn(a1):
     assert connect.refresh("t1", G)["status"] == "connected"
     assert connect.status("t1")[0]["status"] == "connected"
     assert connect.status("other") == []
+    n = len(seen)
     d = connect.disconnect("t1", G)
+    assert seen[n].url.path.endswith("/authentication/logout") and seen[n].headers["txn"] == "TXN-3"
     assert d["status"] == "new" and "Manage API Access" in d["message"]
 
 

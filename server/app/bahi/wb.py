@@ -224,6 +224,24 @@ def _message_of(env_: dict[str, Any], code: str) -> str:
     return "WhiteBooks refused the request."
 
 
+def _note_of(env_: dict[str, Any]) -> str:
+    """WhiteBooks' own words from a refusal: every short scalar in the envelope and its error block (codes, descriptions) - the reply
+    holds no keys or taxpayer data on a refusal. Used when our plain message is generic."""
+    bits: list[str] = []
+    def walk(d: Any, pre: str, depth: int) -> None:
+        if not isinstance(d, dict) or depth > 2:
+            return
+        for k, v in list(d.items())[:12]:
+            if k == "data":
+                continue
+            if isinstance(v, (str, int, float)) and str(v).strip():
+                bits.append(f"{pre}{k}={str(v)[:120]}")
+            elif isinstance(v, dict):
+                walk(v, f"{pre}{k}.", depth + 1)
+    walk(env_, "", 0)
+    return "; ".join(bits)[:400]
+
+
 def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, Any] | None = None,
          headers: dict[str, Any] | None = None, body: Any = None, op: str = "", auth: bool = True) -> dict[str, Any]:
     """One WhiteBooks call. Returns the reply envelope (`status_cd == "1"`) or raises WbError. `auth=False` only for the root ping."""
@@ -265,7 +283,7 @@ def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, 
             ok = True
             return env_
         code = _code_of(env_)
-        raise WbError(code, _message_of(env_, code), product=product, op=op, detail=str(env_.get("status_desc") or "")[:300])
+        raise WbError(code, _message_of(env_, code), product=product, op=op, detail=_note_of(env_))
     except httpx.HTTPError as e:
         code = "network"
         raise WbError("network", product=product, op=op, detail=type(e).__name__)
@@ -410,3 +428,9 @@ def gen2b(tenant: str, gstin: str, ret_period: str, gst_username: str, state_cd:
 def get2b(tenant: str, gstin: str, int_tran_id: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
     return call(tenant, "gst", "GET", "/gstr2b/get2b", query={"gstin": gstin, "int_tran_id": int_tran_id},
                 headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr2b/get2b")
+
+
+def logout(tenant: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    """End the GST session at WhiteBooks. A GSP account allows only a few open sessions per user (AUTH403 'Maximum session allowed'),
+    so every walk that opens one must close it."""
+    return call(tenant, "gst", "GET", "/authentication/logout", headers=_gst_headers(gst_username, state_cd, txn, ip), op="auth/logout")
