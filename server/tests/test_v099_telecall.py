@@ -154,7 +154,7 @@ def test_a_person_calls_hoola_logs_and_learns(env, fake_ai):
     S.add_lead(T, "Mohan", "9876500010", "enquiry")
     S.log_call(T, "Mohan", outcome="no_answer")
     r2 = S.log_call(T, "Mohan", outcome="no_answer")
-    assert "2 baar phone nahi uthaya" in r2["say"] and r2["whatsapp"]["text"]
+    assert "Did not answer twice" in r2["say"] and r2["whatsapp"]["text"]
     m = S.get_lead(T, "Mohan")
     assert m["attempts"] == 2 and m["next_at"]
     # 'call mat karna' -> never listed again

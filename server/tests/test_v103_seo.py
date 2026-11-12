@@ -174,7 +174,7 @@ def test_drafts_haan(seo):
     assert "shukriya" in S.review_reply(T, "great", 5)["text"]
     assert {d["status"] for d in S.drafts(T)} == {"ready"}
     ok = S.approve_draft(T, rr["draft_id"], "Edited reply")
-    assert ok["text"] == "Edited reply" and "khud publish nahi" in ok["say"]
+    assert ok["text"] == "Edited reply" and "does not publish it" in ok["say"]
     with pytest.raises(S.SeoError):
         S.content_brief(T, " ")
     assert S.send_morning(T)["text"].startswith("SEO:")

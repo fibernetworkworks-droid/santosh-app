@@ -346,7 +346,7 @@ def test_crux_and_lcp_parts_shapes(seo):
         {"part": "loadtime", "label": "Main picture download", "ms": 200},
         {"part": "renderdelay", "label": "Shown late (render delay)", "ms": 50}]
     assert S.lcp_parts({}) == []
-    assert "LCP mein sabse zyada samay" in S.pagespeed(T)["say"]
+    assert "Most of the LCP time" in S.pagespeed(T)["say"]
 
 
 def test_schema_kinds_and_tools(seo):

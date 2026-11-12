@@ -141,7 +141,7 @@ def test_join_read_mask_and_health(svc, pg):
     q = S.query("default", "", "select count(*) as n, sum(amount) from orders")
     assert q["rows"][0][0] == 500
     note = S.query("default", "", "select note from orders where id = 1")
-    assert "instruction nahi" in note["note"]
+    assert "is an instruction" in note["note"]
     # the read-only lock holds even if the checks were bypassed
     with pytest.raises(S.PgError):
         S._run_read("default", "", lambda conn: conn.execute("delete from orders"))
