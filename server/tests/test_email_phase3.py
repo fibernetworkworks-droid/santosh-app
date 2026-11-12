@@ -115,14 +115,14 @@ def test_vacation_window_contacts_and_scope_guards(sbox, bz):  # noqa: F811
     with session() as s:
         s.get(MailAccount, "mbx_set").scopes = "https://www.googleapis.com/auth/gmail.modify"
     got = run("email_vacation", {"action": "get"}, conv_ctx())
-    assert got["scope_ok"] is False and "dobara jod" in got["note"]
+    assert got["scope_ok"] is False and "reconnect" in got["note"]
     before = len(sbox.calls)
     blocked = run("email_vacation", {"action": "set", "enable": True, "message": "x"}, conv_ctx())
-    assert blocked["scope_ok"] is False and "dobara jod" in blocked["note"]
+    assert blocked["scope_ok"] is False and "reconnect" in blocked["note"]
     assert len(sbox.calls) == before and sbox.vac["enableAutoReply"] is False
-    with pytest.raises(MailError, match="dobara jod"):
+    with pytest.raises(MailError, match="reconnect"):
         ms.signature_push("default", "mbx_set", "sig")
-    with pytest.raises(MailError, match="dobara jod"):
+    with pytest.raises(MailError, match="reconnect"):
         ms.auto_forwarding_set("default", "mbx_set", True, "ca@newtika.in")
 
 
@@ -207,7 +207,7 @@ def test_oauth_link_asks_settings_scope_and_finish_stores_it(env, monkeypatch):
         with session() as s:                                          # an old token keeps working for MAIL...
             s.get(MailAccount, bs[0].key).scopes = ma.GMAIL_SCOPE
         assert ma.settings_scope_ok("default", bs[0]) is False        # ...but settings need the one-time reconnect
-        assert "dobara jod" in ma.settings_scope_message("me@gmail.com")
+        assert "reconnect" in ma.settings_scope_message("me@gmail.com")
     finally:
         ma.set_http(None)
         get_settings.cache_clear()

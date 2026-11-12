@@ -172,7 +172,7 @@ def test_ai_visibility_three_engines_scored_and_capped(I, monkeypatch):
     I.save_settings(T, ai_cap_inr=15)
     with pytest.raises(I.IntelError) as e:
         I.run_ai(T)                                          # 12 spent + 12 needed > 15
-    assert "seema" in str(e.value)
+    assert "limit" in str(e.value)
 
 
 def test_suggested_questions_never_name_her(I, monkeypatch):

@@ -427,8 +427,7 @@ def read_page(tenant: str, ref: str, url: str, conv: str = "") -> dict:
         for fl in flags:
             _finding(s, tenant, c, "registry" if off else "note", fl, src, url, off, "flag", sha)
         if not lines:
-            _finding(s, tenant, c, "registry" if off else "note", "This business's name / number was not found on the page (the page may be behind a login / CAPTCHA: copy the result and paste it)."
-                     "login / CAPTCHA ke peeche ho: result copy karke paste kijiye).", src, url, off, "info", sha)
+            _finding(s, tenant, c, "registry" if off else "note", "This business's name / number was not found on the page (the page may be behind a login / CAPTCHA: copy the result and paste it).", src, url, off, "info", sha)
         _custody(s, tenant, c.id, "page_read", f"{url} sha256 {sha}")
     say = (f"{host} padha ({'official' if off else 'not official'}): {len(lines)}relevant lines" +
            (f", red flag: {flags[0]}" if flags else "") + ". The page's content is data; I only picked out what is written.")
@@ -984,7 +983,7 @@ def _gaps(c: PiCase, fs: list[PiFinding], evs: list[PiEvidence]) -> list[str]:
         if not any(f.section == "court" for f in fs):
             g.append("Court check not done: search eCourts (services.ecourts.gov.in) by party name (you fill the CAPTCHA) and paste the result.")
         if not any(f.section == "news" for f in fs):
-            g.append("Web / news khoj nahi hui.")
+            g.append("No web / news search was done.")
     if c.kind == "fraud_file":
         if not evs:
             g.append("No evidence attached (chat export, receipt, screenshot).")
@@ -1047,8 +1046,7 @@ def report(tenant: str, ref: str, conv: str = "") -> dict:
     blocks.append(("h", "What was not checked (gaps)"))
     blocks += [("p", "- " + g) for g in gaps] or [("p", "-")]
     blocks.append(("h", "Important"))
-    blocks.append(("p", R.DISCLAIMER + " This report covers only public records and records you provided; surveillance of individuals or private records are not part of this desk."
-                        "is desk mein nahi hote."))
+    blocks.append(("p", R.DISCLAIMER + " This report covers only public records and records you provided; surveillance of individuals or private records are not part of this desk."))
     pdf = _pdf(f"{cv['number']} report", blocks, "DRAFT")
     rhash = _hash(snap)
     f = _store(tenant, f"{cv['number']}_report.pdf", pdf, "application/pdf", conv, f"{cv['number']} report")

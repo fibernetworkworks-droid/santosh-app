@@ -164,12 +164,12 @@ def test_chunk_guards_empty_oversize_cap(live_env, monkeypatch):
     assert "khaali" in str(e.value)
     with pytest.raises(Exception) as e2:
         LV.chunk("default", sid, pcm(CHUNK_S))                          # pcm(3.2) >> 64 bytes cap
-    assert "MB tak" in str(e2.value)
+    assert "limit is" in str(e2.value)
     monkeypatch.setattr(LV, "MAX_CHUNK_BYTES", 5 * 1024 * 1024)
     LV.chunk("default", sid, pcm(1.6))                                  # n_chunks 0 -> 1
     with pytest.raises(Exception) as e3:
         LV.chunk("default", sid, pcm(1.6))                              # MAX_CHUNKS 1 crossed
-    assert "cap" in str(e3.value)
+    assert "limit" in str(e3.value)
 
 
 def test_stop_is_idempotent(live_env, monkeypatch):
@@ -189,7 +189,7 @@ def test_silence_session_is_honest(live_env, monkeypatch):
     LV.chunk("default", sid, pcm(CHUNK_S))
     out = LV.stop("default", sid)
     row = KS.get_transcript("default", out["transcript_id"])
-    assert row["status"] == "empty" and "khamoshi" in row["note"]
+    assert row["status"] == "empty" and "silence" in row["note"]
 
 
 def test_finalize_batch_clean_pass(live_env, monkeypatch):

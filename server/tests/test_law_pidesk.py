@@ -132,7 +132,7 @@ def test_refusals(pi):
     from app.pidesk.service import PiRefused
     with pytest.raises(PiRefused) as e:
         S.new_case(T, "due_diligence", "Mere pati ka pata karo", subject_name="Suresh")
-    assert "Pati" in str(e.value) or "pati" in str(e.value).lower()
+    assert "husband" in str(e.value).lower()
     with pytest.raises(PiRefused):
         S.new_case(T, "due_diligence", "Ramesh ka background", subject_name="Ramesh", subject_kind="person")
     with pytest.raises(PiRefused):
@@ -201,7 +201,7 @@ def test_due_diligence_report_share(pi, monkeypatch):
     ok = S.decide_share(T, sh3["id"], True, sh3["hash"], by_tap=True)
     assert ok["share"]["status"] == "shared" and "email" in ok["links"]
     again = S.decide_share(T, sh3["id"], True, sh3["hash"], by_tap=True)
-    assert "pehle hi" in again["say"]
+    assert "already" in again["say"]
     log = S.custody(T, ref)
     assert any(x["action"] == "shared" for x in log) and S.verify_chain(T, ref)["ok"]
     # tampering with the custody log is detected
@@ -251,7 +251,7 @@ def test_fraud_file_pack_complaint(pi):
     tl = S.timeline(T, ref)
     assert tl["timeline"][0]["at"] <= tl["timeline"][-1]["at"] and all("482910" not in x["what"] for x in tl["timeline"])
     comp = S.complaint(T, ref, "cyber")
-    assert e["evidence"]["sha256"] in comp["text"] and "[dhara police / vakil tay karenge]" in comp["text"]
+    assert e["evidence"]["sha256"] in comp["text"] and "[the police / a lawyer will decide the section]" in comp["text"]
     assert comp["links"]["call_1930"] == "tel:1930" and comp["file"]["file_id"]
     pk = S.pack(T, ref)
     from pathlib import Path
@@ -305,7 +305,7 @@ def test_employee_verify_needs_consent(pi):
     k = S.consent(T, ref, "", "20-10-2026", ["employment"], 90, _data=("consent.jpg", _photo(original="2026:10:20 10:00:00")))
     assert k["consent"]["checks"] == ["employment"] and k["consent"]["signed_on"] == "2026-10-20"
     rr = S.reference_request(T, ref, "employment", "HR, ABC Ltd", "hr@abc.example")
-    assert "likhit ijaazat" in rr["text"] and rr["link"].startswith("mailto:")
+    assert "written permission" in rr["text"] and rr["link"].startswith("mailto:")
     with pytest.raises(PiError):
         S.reference_request(T, ref, "education", "XYZ College")          # not in her consent
     r = S.doc_check(T, ref, _data=("relieving.pdf", _pdf(producer="Microsoft Word")))
