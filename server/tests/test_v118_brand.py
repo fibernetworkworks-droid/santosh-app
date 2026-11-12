@@ -87,7 +87,7 @@ def test_rules_colours_sizes_festivals_emblems():
 def test_kit_from_logo_and_her_colours(setup):
     B, _w, _c = setup
     r = B.set_logo(T, logo_png(), name="logo.png")
-    assert r["palette"] and r["kit"]["logo"] and "rang mile" in r["say"]
+    assert r["palette"] and r["kit"]["logo"] and "colours were found" in r["say"]
     assert B.R._dist(r["kit"]["colors"]["primary"], "#0D47A1") < 60 or B.R._dist(r["kit"]["colors"]["primary"], "#FFC107") < 60
     k = B.save_kit(T, colors={"primary": "laal"}, contact={"phone": "89565 55723", "website": "ainewtika.com"},
                    rule="Logo hamesha upar left")

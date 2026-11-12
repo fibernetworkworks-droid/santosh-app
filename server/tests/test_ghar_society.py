@@ -67,7 +67,7 @@ def test_rules():
     assert tot == 4380 and rows[0]["days"] == 365
     assert R.interest_on([{"number": "B1", "due_date": date(2026, 1, 1), "unpaid": 100}], 0, date(2027, 1, 1))[0] == 0
     big = [{"head": "service", "amount": 800_000}, {"head": "tax", "amount": 200_000, "agent": True}]
-    assert R.gst_lines(big, 10_000_000, False)[0] == 0 and "dono shart" in R.gst_lines(big, 10_000_000, False)[1]
+    assert R.gst_lines(big, 10_000_000, False)[0] == 0 and "both conditions" in R.gst_lines(big, 10_000_000, False)[1]
     assert R.gst_lines(big, 300_000_000, True)[0] == 144_000
     assert R.gst_lines([{"head": "service", "amount": 700_000}], 300_000_000, True) == (0, "")
     assert R.quorum("agm", 250) == 20 and R.quorum("agm", 24) == 16 and R.quorum("committee", 0, 7) == 4

@@ -137,7 +137,7 @@ def test_fake_kyc_with_otp_ask_and_bad_link_is_critical():
     r = SC.check("Dear customer your SBI KYC will expire today. Update now http://sbi-kyc-update.xyz/login and share OTP received immediately")
     assert r["verdict"] == "critical-pattern" and {"fake_kyc", "otp_share"} <= {f["id"] for f in r["families"]}
     assert r["links"][0]["verdict"] == "high-risk" and r["pressure_words"] and r["secrets_mentioned"] == ["otp"]
-    assert any("OTP" in x for x in r["always"]) and "kabhi paise nahi bhejta" in r["note"]
+    assert any("OTP" in x for x in r["always"]) and "never sends money" in r["note"]
 
 
 def test_each_family_catches_its_classic_wording():

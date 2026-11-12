@@ -137,7 +137,7 @@ def test_script_needs_her_tap(cc):
         S.set_line(T, True)                                          # no approved script yet
     d = S.make_script(T, "Sharma Clinic. Q: Timing kya hai?\nA: 10 se 7\nQ: Address kya hai?\nA: [blank]")
     assert d["status"] == "draft" and d["blanks"] == ["Address kya hai?"]
-    with pytest.raises(S.CcError, match="khaali"):
+    with pytest.raises(S.CcError, match="empty"):
         S.submit(T)
     S.edit_script(T, business="Sharma Clinic", faq_add=[{"q": "Address kya hai?", "a": "Station road, Akot"}])
     card = S.submit(T)

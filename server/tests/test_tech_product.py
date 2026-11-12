@@ -50,7 +50,7 @@ def test_rules():
     from app.product import rules as R
     assert R.rice(500, 2, 80, "2 mahine")["score"] == 400.0
     m = R.rice(500, None, 0.8, None)
-    assert m["score"] is None and m["missing"] == ["impact", "effort"] and "andaaza" in m["ask"]
+    assert m["score"] is None and m["missing"] == ["impact", "effort"] and "estimate" in m["ask"]
     assert R.effort_months("2 hafte") == pytest.approx(0.462, abs=0.01) and R.effort_months("10 din") == pytest.approx(0.461, abs=0.01)
     assert R.impact_of("bada") == 2.0 and R.impact_of(1.7) == 2.0 and R.confidence_of("50%") == 0.5
     assert "moonshot" in R.rice(10, 1, 30, 1)["notes"][0]
@@ -89,7 +89,7 @@ def test_harvest_feedback_seva_telecall(pm, monkeypatch):
     ev = next(e for e in full["evidence"] if e["source"] == "feedback")
     assert ev["count"] >= 3 and ev["key"] == "feedback:delivery:neg"
     assert all("9876543210" not in q for q in ev["quotes"])          # customer phone never kept
-    assert full["score"] is None and "andaaza" in full["ask"]         # no invented numbers
+    assert full["score"] is None and "estimate" in full["ask"]         # no invented numbers
     assert full["reach"] is None
     # again: refreshed, never doubled
     h2 = S.harvest(T, 30)

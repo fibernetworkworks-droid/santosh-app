@@ -138,7 +138,7 @@ def test_speed_gsc(seo, monkeypatch):
     site(S)
     ps = S.pagespeed(T)
     assert ps["grades"] == {"lcp": "poor", "inp": "good", "cls": "ni"} and ps["cls"] == .15 and ps["lab_score"] == 42
-    assert ps["fixes"] == [{"title": "Properly size images", "save_ms": 2100}] and "kharab" in ps["say"]
+    assert ps["fixes"] == [{"title": "Properly size images", "save_ms": 2100}] and "poor" in ps["say"]
     with pytest.raises(S.SeoError):
         S.performance(T)
     with session() as s:
@@ -170,8 +170,8 @@ def test_drafts_haan(seo):
     g = S.gbp_post(T, "Free dental check-up camp this Sunday", "first 50 patients")
     assert "9822000000" in g["text"]
     rr = S.review_reply(T, "waited 2 hours", 1, "Ravi Kumar")
-    assert "Ravi ji" in rr["text"] and "9822000000" in rr["text"]
-    assert "shukriya" in S.review_reply(T, "great", 5)["text"]
+    assert "Ravi" in rr["text"] and "9822000000" in rr["text"]
+    assert "thank you" in S.review_reply(T, "great", 5)["text"]
     assert {d["status"] for d in S.drafts(T)} == {"ready"}
     ok = S.approve_draft(T, rr["draft_id"], "Edited reply")
     assert ok["text"] == "Edited reply" and "does not publish it" in ok["say"]

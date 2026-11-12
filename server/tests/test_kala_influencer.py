@@ -76,7 +76,7 @@ def test_rules():
     assert ok["ok"] and ok["label_first"]
     assert not R.disclosure_check("Loving it #collab", "instagram", "post")["ok"]                       # weak label only
     buried = R.disclosure_check("Mera naya face wash\nbahut accha\n#ad", "instagram", "post")
-    assert not buried["ok"] and "pehli line" in buried["block"][0]
+    assert not buried["ok"] and "first line" in buried["block"][0]
     gift = R.disclosure_check("#gifted thank you brand", "instagram", "post", "barter")
     assert gift["ok"]
     vid = R.disclosure_check("#ad reel", "instagram", "reel", duration_s=30)

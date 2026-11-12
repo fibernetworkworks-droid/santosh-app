@@ -258,7 +258,7 @@ def test_hoola_app_docs_sync_and_her_edits(dw, monkeypatch):
     d2 = S.get(T, d["id"])
     home, cart2 = d2["section_list"]
     assert "Shop kholo" in home["body"] and not home["stale"]
-    assert cart2["stale"] and "aapne khud likha" in cart2["why"] and "Order karo" in cart2["body"]
+    assert cart2["stale"] and "you wrote this yourself" in cart2["why"] and "Order karo" in cart2["body"]
     assert S.tick(datetime.now(timezone.utc) + timedelta(hours=3))["synced"] == 0          # same version: nothing to do
     assert S.day(T)["stale"]
 

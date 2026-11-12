@@ -89,7 +89,7 @@ def test_rules():
     plan = R.release_plan(date(2026, 12, 1), 21, t0)
     assert plan[0]["by"] == "2026-11-10" and plan[1]["by"] == "2026-11-24"
     assert R.release_plan(date(2026, 12, 1), None, t0)[0]["by"] == ""
-    assert R.clean("otp 445566 card 4111 1111 1111 1111") == "otp [hataya] card [hataya]"
+    assert R.clean("otp 445566 card 4111 1111 1111 1111") == "otp [removed] card [removed]"
     assert set(R.REGS) >= {"iprs", "isamra", "ppl", "isrc", "ipi"}
 
 
@@ -248,7 +248,7 @@ def test_gst_on_invoice_and_cancel(am):
     c = S.confirm_request(T, g["number"])
     S.decide(T, c["card"]["id"], True, c["card"]["hash"], by_tap=True)
     inv = S.invoice_request(T, g["number"])["card"]["show"]["invoice"]
-    assert inv["gst_pct"] == 0 and "chhoot" in inv["gst_note"]                 # classical <= 1.5 lakh
+    assert inv["gst_pct"] == 0 and "exempt" in inv["gst_note"]                 # classical <= 1.5 lakh
     S.gig_save(T, g["number"], fee=160000)
     inv = S.invoice_request(T, g["number"])["card"]["show"]["invoice"]
     assert inv["gst_pct"] == 18 and inv["cgst"] == 14400 and inv["total"] == 188800

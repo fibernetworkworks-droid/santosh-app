@@ -92,7 +92,7 @@ def test_saved_search_save_run_and_delete(rbox):
     out = run("email_rule", {"action": "create", "kind": "search", "name": "Bank mails",
                              "match": {"from": "hdfcbank"}}, ctx)
     assert out["kind"] == "search" and out["actions"] == {}
-    with pytest.raises(ToolError, match="Kya dhoondhna hai"):
+    with pytest.raises(ToolError, match="What should it look for"):
         run("email_rule", {"action": "create", "kind": "search", "name": "khaali", "match": {}}, ctx)
     lst = run("email_rule", {"action": "searches"}, ctx)
     assert [s["name"] for s in lst["searches"]] == ["Bank mails"]
@@ -127,7 +127,7 @@ def test_saved_search_gmail_syntax_on_non_gmail(env, monkeypatch):
     ctx = Ctx("default", conv_ctx().conversation_id)
     out = run("email_rule", {"action": "create", "kind": "search", "name": "Q", "match": {"query": "from:bank"}}, ctx)
     from app.mailbox import sync
-    with pytest.raises(MailError, match="Gmail ke apne syntax"):
+    with pytest.raises(MailError, match="Gmail.s own syntax"):
         sync.search_run("default", out["id"])
 
 
@@ -182,7 +182,7 @@ def abox(bz, monkeypatch):  # noqa: F811
 
 def test_alias_draft_needs_verified_and_scope(abox, bz):  # noqa: F811
     ctx = Ctx("default", bz["conv"])
-    with pytest.raises(ToolError, match="verify nahi hua"):
+    with pytest.raises(ToolError, match="not verified yet"):
         run("email_draft", {"to": "ramesh@vendor.in", "body": "Namaste", "from_alias": "hello@newtika.in"}, ctx)
     with pytest.raises(ToolError, match="alias nahi hai"):
         run("email_draft", {"to": "ramesh@vendor.in", "body": "Namaste", "from_alias": "nope@x.in"}, ctx)
@@ -254,7 +254,7 @@ def test_label_color_and_honest_star_note(lbox):
     out = ms.label_op("default", "color", "Office", color="green")
     assert out["colored"] == "Office" and out["color"] == "green"
     assert lbox.patches[-1][1]["color"] == {"backgroundColor": "#16a765", "textColor": "#ffffff"}
-    with pytest.raises(MailError, match="Star ka rang"):
+    with pytest.raises(MailError, match="star.s color"):
         ms.label_op("default", "color", "Office", color="pink")
     with pytest.raises(MailError, match="Rang in mein se hai"):
         ms.label_op("default", "color", "Office", color="")

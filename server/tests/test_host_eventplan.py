@@ -71,7 +71,7 @@ def test_rules():
     assert cues[1]["time"] == "19:00" and cues[1]["mins"] == 120 and "music" in cues[1]["av"] and bad == ["kuch bhi"]
     probs = R.cue_problems(cues + [{"time": "22:15", "mins": 30, "what": "DJ night", "who": "DJ", "av": ["music"]}])
     assert any("Noise Rules" in x for x in probs)
-    assert any("takraav" in x for x in R.cue_problems([{"time": "18:00", "mins": 30, "what": "a", "who": "x", "av": []},
+    assert any("clash" in x for x in R.cue_problems([{"time": "18:00", "mins": 30, "what": "a", "who": "x", "av": []},
                                                        {"time": "18:15", "mins": 5, "what": "b", "who": "y", "av": []}]))
     assert R.rsvp_of("haan aa rahe hain +2") == ("yes", 2) and R.rsvp_of("nahi aa payenge")[0] == "no"
     assert R.rsvp_of("shayad aayenge")[0] == "maybe"

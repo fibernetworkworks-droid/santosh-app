@@ -259,7 +259,7 @@ def test_rule_tool_create_list_pause_delete(bz):  # noqa: F811
                              "actions": {"label": "Bills", "archive": True}}, ctx)
     assert out["name"] == "Bank" and out["match"]["from"] == "hdfcbank"
     rid = out["id"]
-    with pytest.raises(ToolError, match="shart"):
+    with pytest.raises(ToolError, match="no condition"):
         run("email_rule", {"action": "create", "name": "Khaali", "match": {}, "actions": {"archive": True}}, ctx)
     with pytest.raises(ToolError, match="kaam"):
         run("email_rule", {"action": "create", "name": "Bin kaam", "match": {"from": "x"}}, ctx)
@@ -310,7 +310,7 @@ def test_rule_notify_makes_a_card_and_forward_makes_draft_not_send(wbox, bz):  #
     assert len(evs) == 1 and evs[0]["from_email"] == "swati@fnw.in"     # notify action: card aaya
     drafts = _events(bz["conv"], "email_draft")
     assert len(drafts) == 1 and drafts[0]["to"] == "boss@fnw.in" and drafts[0]["subject"].startswith("Fwd:")
-    assert "Swati" in drafts[0]["body"] and "attachments nahi hain" in drafts[0]["body"]
+    assert "Swati" in drafts[0]["body"] and "no attachments" in drafts[0]["body"]
     with session() as s:
         from app.db import EmailDraft
         d = s.get(EmailDraft, drafts[0]["id"])
