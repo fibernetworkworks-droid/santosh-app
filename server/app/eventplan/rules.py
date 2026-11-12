@@ -42,7 +42,7 @@ def kind_of(text: str) -> str:
 # sac = usual code for the line when billed by her as part of the event (her CA confirms); pure = usually passed through at actual
 HEADS: dict[str, dict[str, Any]] = {
     "venue":        {"label": "Venue / hall", "words": ["venue", "hall", "banquet", "lawn", "auditorium", "ground", "resort", "hotel"]},
-    "catering":     {"label": "Catering / khana", "words": ["catering", "caterer", "khana", "food", "buffet", "lunch", "dinner", "snacks",
+    "catering":     {"label": "Catering / food", "words": ["catering", "caterer", "khana", "food", "buffet", "lunch", "dinner", "snacks",
                                                            "high tea", "plate", "menu", "cake", "mocktail"]},
     "decor":        {"label": "Decor / stage", "words": ["decor", "decoration", "stage", "backdrop", "flower", "phool", "balloon",
                                                         "theme", "entry gate", "photobooth", "centerpiece"]},
@@ -61,7 +61,7 @@ HEADS: dict[str, dict[str, Any]] = {
     "permissions":  {"label": "Permission / licence fees", "words": ["permission", "licence", "license", "noc", "ppl", "iprs", "fee"]},
     "staff":        {"label": "Staff / volunteers / security", "words": ["staff", "bouncer", "security", "volunteer", "hostess",
                                                                          "usher", "manpower", "helper"]},
-    "misc":         {"label": "Doosra kharcha", "words": []},
+    "misc":         {"label": "Other expenses", "words": []},
 }
 
 
@@ -78,31 +78,31 @@ def head_of(text: str) -> str:
 # ---------------------------------------------------------------- permissions (starters; her city decides)
 # lead = days before the event to apply by (starter). why = plain words. who = usual office.
 PERMITS: dict[str, dict[str, Any]] = {
-    "venue_noc":   {"label": "Venue ka booking letter / NOC", "lead": 30, "who": "venue",
-                    "why": "Police / fire / loudspeaker sab venue ki chitthi maangte hain."},
-    "police":      {"label": "Police permission (public event / bheed)", "lead": 15, "who": "local police station / commissioner office",
-                    "why": "Khuli jagah, public / ticketed event ya badi bheed par police ki likhit anumati."},
+    "venue_noc":   {"label": "Venue booking letter / NOC", "lead": 30, "who": "venue",
+                    "why": "Police / fire / loudspeaker offices all ask for the venue's letter."},
+    "police":      {"label": "Police permission (public event / crowd)", "lead": 15, "who": "local police station / commissioner office",
+                    "why": "Written police permission for an open space, a public / ticketed event or a big crowd."},
     "loudspeaker": {"label": "Loudspeaker / sound permission", "lead": 15, "who": "police / district authority",
-                    "why": "Noise Pollution (Regulation and Control) Rules 2000: loudspeaker likhit anumati se; raat 10 se subah 6 band "
-                           "(state saal mein 15 din tak raat 12 baje tak chhoot de sakta hai)."},
+                    "why": "Noise Pollution (Regulation and Control) Rules 2000: loudspeaker only with written permission; off from 10 pm to 6 am "
+                           "(the state may allow up to midnight on up to 15 days a year)."},
     "fire":        {"label": "Fire NOC (pandal / temporary structure)", "lead": 15, "who": "fire brigade / municipal fire dept",
-                    "why": "Pandal, temporary structure ya badi bheed par fire safety ki NOC aur extinguishers."},
+                    "why": "Fire safety NOC and extinguishers for a pandal, temporary structure or big crowd."},
     "structure":   {"label": "Stage / truss stability certificate", "lead": 7, "who": "structural engineer / vendor",
-                    "why": "Bada stage, truss ya LED wall: vendor se stability / load certificate lijiye."},
-    "fssai":       {"label": "Caterer ka FSSAI registration / licence", "lead": 10, "who": "caterer (FSSAI)",
-                    "why": "Khana dene wale caterer ka FSSAI number contract aur bill par ho."},
-    "music":       {"label": "Music licence (PPL / IPRS)", "lead": 10, "who": "PPL (recordings) + IPRS (songs ke shabd / dhun)",
-                    "why": "Recorded gaane bajane par recordings aur gaane dono ke rights; venue ka licence pehle se hai to uski copy lijiye."},
-    "liquor":      {"label": "Sharab ka one-day / occasional licence", "lead": 10, "who": "state excise department",
-                    "why": "Event mein sharab: state excise ka occasional licence (rajya ke niyam alag)."},
-    "fireworks":   {"label": "Aatishbaazi / pyro permission", "lead": 15, "who": "police / district magistrate",
-                    "why": "Aatishbaazi ya cold pyro par likhit anumati aur samay ki pabandi."},
+                    "why": "For a big stage, truss or LED wall: get a stability / load certificate from the vendor."},
+    "fssai":       {"label": "Caterer's FSSAI registration / licence", "lead": 10, "who": "caterer (FSSAI)",
+                    "why": "The FSSAI number of the caterer should be on the contract and the bill."},
+    "music":       {"label": "Music licence (PPL / IPRS)", "lead": 10, "who": "PPL (recordings) + IPRS (song lyrics / music)",
+                    "why": "Playing recorded songs needs rights for both the recordings and the songs; if the venue already has a licence, take a copy."},
+    "liquor":      {"label": "One-day / occasional liquor licence", "lead": 10, "who": "state excise department",
+                    "why": "Liquor at the event: occasional licence from state excise (rules differ by state)."},
+    "fireworks":   {"label": "Fireworks / pyro permission", "lead": 15, "who": "police / district magistrate",
+                    "why": "Written permission and time limits for fireworks or cold pyro."},
     "drone":       {"label": "Drone (DigitalSky / zone check)", "lead": 7, "who": "DGCA DigitalSky",
                     "why": "Drone shoot: registered drone, remote pilot certificate, zone green / yellow check."},
     "traffic":     {"label": "Traffic / parking permission", "lead": 10, "who": "traffic police",
-                    "why": "Sadak par gaadiyan / rally / badi parking ke liye traffic police."},
+                    "why": "Traffic police permission for vehicles on the road / a rally / big parking."},
     "tickets":     {"label": "Ticketed event: GST + local entertainment rules", "lead": 15, "who": "CA / municipal body",
-                    "why": "Ticket bechne par GST aur kuch shaharon mein local entertainment / amusement niyam: CA se poochhiye."},
+                    "why": "Selling tickets brings GST and, in some cities, local entertainment / amusement rules: ask your CA."},
 }
 
 
@@ -139,23 +139,23 @@ def permits_for(ev: dict) -> list[str]:
 # ---------------------------------------------------------------- task plan counted back from the event day
 # (days before the event, task, head / area). Negative = after the event.
 TASKS: list[tuple[int, str, str]] = [
-    (60, "Venue pakka (date block + booking letter)", "venue"),
-    (45, "Vendors ke quote lo (catering, decor, sound, photo)", "vendors"),
-    (40, "Client ko quotation", "client"),
-    (30, "Invite / save-the-date bhejo", "guests"),
-    (30, "Vendors book karo (advance aapki haan se)", "vendors"),
-    (21, "Permissions ki arzi (police / sound / fire / music)", "permits"),
+    (60, "Confirm the venue (block the date + booking letter)", "venue"),
+    (45, "Get vendor quotes (catering, decor, sound, photo)", "vendors"),
+    (40, "Quotation to the client", "client"),
+    (30, "Send invites / save-the-date", "guests"),
+    (30, "Book vendors (advance only with your approval)", "vendors"),
+    (21, "Apply for permissions (police / sound / fire / music)", "permits"),
     (14, "RSVP follow-up", "guests"),
-    (10, "Run-of-show ka pehla draft", "show"),
-    (7, "Final headcount caterer ko", "vendors"),
-    (5, "Printing / branding final", "vendors"),
-    (3, "Run-of-show sab vendors ko", "show"),
-    (2, "Vendor arrival + setup time pakka", "vendors"),
+    (10, "First draft of the run-of-show", "show"),
+    (7, "Final headcount to the caterer", "vendors"),
+    (5, "Finalise printing / branding", "vendors"),
+    (3, "Run-of-show to all vendors", "show"),
+    (2, "Confirm vendor arrival + setup time", "vendors"),
     (1, "Setup + rehearsal / sound check", "show"),
     (0, "Event day: cue sheet + emergency numbers", "show"),
-    (-1, "Venue khaali / saaman wapas", "venue"),
+    (-1, "Vacate the venue / return equipment", "venue"),
     (-2, "Post-event report", "report"),
-    (-3, "Client ko invoice (aapki haan se)", "client"),
+    (-3, "Invoice to the client (only with your approval)", "client"),
 ]
 
 # conferences / exhibitions need more time; birthdays less
@@ -242,16 +242,16 @@ def cue_problems(cues: list[dict], sound_till: str = "22:00") -> list[str]:
         start = minutes(c["time"])
         end = start + int(c.get("mins") or 0)
         if not c.get("who"):
-            out.append(f"{c['time']} '{c['what']}': kaun karega likha nahi.")
+            out.append(f"{c['time']} '{c['what']}': who will do it is not written.")
         if set(c.get("av") or []) & set(SOUND):
             if (start >= lim or end > lim) and start >= 6 * 60 - 1:
-                out.append(f"{c['time']} '{c['what']}': sound {sound_till} ke baad (Noise Rules 2000) - anumati / chhoot ke bina nahi.")
+                out.append(f"{c['time']} '{c['what']}': sound after {sound_till} (Noise Rules 2000) - not allowed without permission / exemption.")
             elif start < 6 * 60:
-                out.append(f"{c['time']} '{c['what']}': sound raat 10 se subah 6 ke beech (Noise Rules 2000).")
+                out.append(f"{c['time']} '{c['what']}': sound between 10 pm and 6 am (Noise Rules 2000).")
         if i + 1 < len(cues) and c.get("mins"):
             nxt = minutes(cues[i + 1]["time"])
             if end > nxt:
-                out.append(f"{c['time']} '{c['what']}' {c['mins']} min ka hai par agla cue {cues[i + 1]['time']} par: takraav.")
+                out.append(f"{c['time']} '{c['what']}' lasts {c['mins']} min but the next cue is at {cues[i + 1]['time']}: clash.")
     return out
 
 
@@ -318,8 +318,8 @@ def digest(obj: Any) -> str:
 def clean(text: Any, n: int = 500) -> str:
     """Her / client / vendor words: secrets never kept (OTP / PIN / password values, card-like and Aadhaar-like numbers)."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){12,19}\b", "[removed]", t)
     return t.strip()[:n]
 
 

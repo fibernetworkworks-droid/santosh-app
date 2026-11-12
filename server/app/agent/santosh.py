@@ -683,7 +683,7 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
         log.exception("hard check failed")
         return []
     finally:
-        bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch liya", "state": "done",
+        bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Answer checked", "state": "done",
                                               "id": "hard-check"})
 
 
@@ -2510,8 +2510,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                     state["calls"].append({"tool": b["name"], "ok": False, "error": "cut off (time limit)",
                                            "args": args_in, "key": _key(b["name"], args_in)})
                     bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
-                                                          "id": b["id"], "detail": "samay khatam, beech mein roka"})
-                    _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Samay khatam, roka gaya")
+                                                          "id": b["id"], "detail": "time ran out, stopped midway"})
+                    _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Time ran out, stopped")
                 except Exception:   # noqa: BLE001
                     log.debug("cut-off step card failed", exc_info=True)
                 raise
@@ -2520,8 +2520,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
                                        "key": _key(b["name"], args_in)})
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"],
-                                                      "detail": "roka gaya"})
-                _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Roka gaya")
+                                                      "detail": "stopped"})
+                _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Stopped")
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                         "content": "Stopped by the owner while this step was running; it may have partly happened."}
             except ToolAmbiguous as e:   # G1 graph resume: started before a restart, outcome unknown - never re-run
@@ -2664,7 +2664,7 @@ async def _turn_tools(t: "_Turn", blocks: list):
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, True)})
             bus.publish(conversation_id, "work", {"id": "breaker", "tool": "", "scene": "work", "phase": "stopped",
-                                                  "label": "Atak gaya, roka gaya", "data": {}})
+                                                  "label": "Stuck, stopped", "data": {}})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
             return final_text
         if (settings.agent_goal and not state.get("goal") and not state.get("extended")
@@ -2930,7 +2930,7 @@ async def _pakka_rest(state: dict, final_text: str, settings, ran_tools: bool, c
     if v["done"]:
         state.pop("left", None)
         return ""
-    state["left"] = v["missing"] or "kuch hissa baaki"
+    state["left"] = v["missing"] or "some part is left"
     if v["next"]:
         state["kept_going"] = state.get("kept_going", 0) + 1
         pakka.STATS["kept_going"] += 1
@@ -3028,7 +3028,7 @@ def stop(conversation_id: str) -> None:
         except Exception:
             log.exception("graph run stop failed")
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
-                                          "label": "Roka gaya", "data": {}})
+                                          "label": "Stopped", "data": {}})
     try:
         from . import goal as _goal
         _goal.mark_stopped(conversation_id)
@@ -3464,7 +3464,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 except Exception:
                     log.exception("parking the cut long job failed")
             final_text = TIMEOUT_GOAL if (_parked or (goal_on and who == "goal")) else gendered(TIMEOUT_TEXT, _gender)
-            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
+            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "stopped at the time limit", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)
             if live is not None:

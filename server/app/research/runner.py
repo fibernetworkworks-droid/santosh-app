@@ -89,7 +89,7 @@ def stop(tenant: str, run_id: str) -> str:
     store.set_status(run_id, "stopped", "owner ne roka")
     _RUNNING.discard(run_id)
     STATS["stopped"] += 1
-    _publish(v["conv"], run_id, v["question"], "stopped", "owner ne rok diya")
+    _publish(v["conv"], run_id, v["question"], "stopped", "stopped by the owner")
     return "stopped"
 
 
