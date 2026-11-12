@@ -117,7 +117,7 @@ def _find(s, tenant: str, ref: str) -> AppProject:
         if r is None:
             r = s.scalars(q.where(AppProject.name.ilike(f"%{ref}%")).order_by(AppProject.updated_at.desc())).first()
     if r is None:
-        raise AppError("Yeh app nahi mili." if ref else "Abhi koi app nahi hai. 'meri dukaan ki app banao' kahiye.")
+        raise AppError("This app was not found." if ref else "There is no app yet. Say 'build an app for my shop'.")
     return r
 
 
@@ -194,22 +194,22 @@ def whose_app(tenant: str, brief: str, fid: str) -> dict[str, Any]:
     F = L.fields()
     out = {"own": False, "why": "", "her_name": her_name, "avoid": []}
     if OTHER_RE.search(t):
-        out["why"] = "kisi aur ke liye"
+        out["why"] = "for someone else"
     elif her_name and len(her_name) >= 3 and her_name.lower() in t:
-        out.update(own=True, why="aapka naam")
+        out.update(own=True, why="your own name")
     elif OWN_RE.search(t):
         out.update(own=True, why="aapne 'mera / meri' kaha")
     elif PR.pid_of(fid):
         out["why"] = "alag product app"
     elif not about:
-        out.update(own=True, why="koi aur business pata nahi")
+        out.update(own=True, why="no other business known")
     else:
         mine = SL.match(about, top=3) if about else []
         ind = (F.get(fid) or {}).get("industry")
         if any(F[m["id"]]["industry"] == ind for m in mine if m["id"] in F):
-            out.update(own=True, why="aapka hi kaam")
+            out.update(own=True, why="your own work")
         else:
-            out["why"] = "aapke business se alag kaam"
+            out["why"] = "work different from your business"
     if not out["own"] and about:
         mine = SL.match(about, top=2)
         words = [her_name] if len(her_name) >= 3 else []
@@ -280,11 +280,11 @@ def missing_questions(facts: dict[str, Any], br: dict[str, Any]) -> list[str]:
             q.append(x)
         return q[:3]
     if not facts.get("name"):
-        q.append("App kis naam se hogi (business / dukaan ka naam)?")
+        q.append("What will the app be called (business / shop name)?")
     if not (facts.get("phone") or facts.get("whatsapp")):
-        q.append("Customer kis number par call / WhatsApp karein?")
+        q.append("Which number should customers call / WhatsApp?")
     if br.get("money") and not facts.get("upi_id"):
-        q.append("Payment kis UPI ID par aayega? (sirf UPI ID, PIN kabhi nahi)")
+        q.append("Which UPI ID will payments come to? (UPI ID only, never a PIN)")
     for x in br.get("questions", []):
         if len(q) >= 3:
             break
@@ -319,7 +319,7 @@ def _board(r: AppProject, plan: dict[str, Any] | None = None, states: dict[str, 
     th.update(shots or {})
     labels = plan.get("labels") or {}
     groups = [("Tabs", [s for s in plan.get("screens", []) if s in plan.get("tabs", [])]),
-              ("Baaki screens", [s for s in plan.get("screens", []) if s not in plan.get("tabs", [])]),
+              ("Other screens", [s for s in plan.get("screens", []) if s not in plan.get("tabs", [])]),
               ("Code se (kanoon + system)", list(plan.get("code_screens", [])))]
     pages, total, done = [], 0, 0
     for title, ids in groups:
@@ -436,30 +436,30 @@ def _say(v: dict[str, Any]) -> str:
             bp_line = BP.missing_line(v.get("plan", {}).get("blueprint") or {})
         idea_line = (v.get("plan", {}).get("idea") or {}).get("name") or ""
         sc = v.get("plan", {}).get("scope") or {}
-        kind = (f"Yeh ek {sc['product_label']} hai" + (f" ({sc['like']} jaisa kaam, par apna naam aur apna design)" if sc.get("like") else "")
+        kind = (f"This is a {sc['product_label']}" + (f" (works like {sc['like']}, but with its own name and design)" if sc.get("like") else "")
                 + ". " if sc.get("product_label") else "")
-        mine = (f"Isme {sc['not_for']} ki details nahi daali (yeh alag app hai). " if sc.get("not_for") else "")
-        return (f"{v['name'] or 'App'} ka plan taiyaar: {n} screens. " + kind + mine + (f"Idea: {idea_line}. " if idea_line else "")
+        mine = (f"It does not include {sc['not_for']} details (that is a different app). " if sc.get("not_for") else "")
+        return (f"Plan ready for {v['name'] or 'the app'}: {n} screens. " + kind + mine + (f"Idea: {idea_line}. " if idea_line else "")
                 + (bp_line + " " if bp_line else "")
-                + (f"Pehle {len(v.get('questions', []))} sawaal, phir " if v.get("questions") else "")
+                + (f"First {len(v.get('questions', []))} questions, then " if v.get("questions") else "")
                 + "'Haan' par Home screen ke 3 looks banaunga.")
     if st == "looks":
-        return "3 looks taiyaar hain: ek chuniye (ya 'pehle wala, doosre ke rang')."
+        return "3 looks are ready: pick one (or say 'the first one, in the second one's colours')."
     if st == "designing":
-        return f"Screens ban rahi hain: {v['board'].get('now') or ''} ({v['board'].get('pct', 0)}%)."
+        return f"Screens are being made: {v['board'].get('now') or ''} ({v['board'].get('pct', 0)}%)."
     if st == "checking":
         return "Jaanch: Android + iPhone par har screen (chhota phone, contrast, buttons, links)."
     if st == "ready":
         c = v.get("checks") or {}
-        return (f"App design v{v['version']} taiyaar: {v['board'].get('total', 0)} screens, Android aur iPhone dono. "
-                f"Tap karke chalaiye: {v.get('preview')}" + (f" ({c.get('blanks')} jagah aapki jaankari baaki)" if c.get("blanks") else "")
-                + ". Pasand ho to 'Design pakka' dabaiye.")
+        return (f"App design v{v['version']} ready: {v['board'].get('total', 0)} screens, for both Android and iPhone. "
+                f"Tap to try it: {v.get('preview')}" + (f" ({c.get('blanks')} places still need your information)" if c.get("blanks") else "")
+                + ". If you like it, press 'Approve design'.")
     if st == "approved":
         return f"Design approved (v{v['version']}). The real Android and iPhone apps are built from this design."
     if st == "failed":
-        return f"App design mein dikkat: {v.get('error')}"
+        return f"Problem with the app design: {v.get('error')}"
     if st == "stopped":
-        return "App ka kaam rok diya. 'aage badhao' kahiye to wahin se shuru."
+        return "The app work was stopped. Say 'continue' to start again from where it stopped."
     return ""
 
 
@@ -475,7 +475,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         answers: dict[str, Any] | None = None, idea: str = "", quiet: bool = False) -> dict[str, Any]:
     brief = _tidy(brief, 2000)
     if not brief and not field and not idea:
-        raise AppError("Kis kaam ki app? Do-teen shabd kaafi hain, jaise 'kirana dukaan ki app, ghar pe delivery'.")
+        raise AppError("What kind of app? Two or three words are enough, like 'grocery shop app, home delivery'.")
     from ..site import guard
     bad = guard.brief_problem(brief + " " + name)
     if bad:
@@ -488,7 +488,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         try:   # v0.136 a precise idea from the 1 crore list: business, goal, user, the special thing, scale, market
             picked = I.idea(idea)
         except KeyError:
-            raise AppError("Yeh idea number theek nahi. 'app ideas' se dobara chuniye.")
+            raise AppError("This idea number is not valid. Pick again from 'app ideas'.")
         field, goal = picked["field"], picked["goal"]
     u = L.understand(brief or field) if (brief or not picked) else {}
     fid = field if field in L.fields() else u.get("field") or ""
@@ -500,7 +500,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
             if u2.get("field") and not u2.get("product"):
                 u, fid = {**u2, "ask": ""}, u2["field"]
     if not fid:
-        raise AppError(u.get("ask") or "App kis kaam ke liye hai?")
+        raise AppError(u.get("ask") or "What is the app for?")
     if u.get("product") and not picked:
         g = u["goal"]          # a product app (music, OTT, rides ...): what she described decides, nothing else
     elif goal in T.GOALS and (picked or _goal_fits(goal, brief, fid, u)):
@@ -512,7 +512,7 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
     if not picked and not field and brief and u.get("ask") and g not in T.COMPLEX_GOALS and not (answers or {}).get("sure"):
         # two different apps fit her words: one question first, never a silent guess (it used to build the wrong app)
         STATS["asked_first"] += 1
-        raise AppError("Pakka karne ke liye ek sawaal: " + u["ask"] + " Bata dijiye, phir usi ka plan banaunga.")
+        raise AppError("One question to be sure: " + u["ask"] + " Tell me, and I will make the plan for that.")
     near = {}
     if not picked and brief and not PR.pid_of(fid):
         try:   # her words named something specific (who it's for / the special thing / scale / premium): that idea
@@ -631,7 +631,7 @@ def approve_plan(tenant: str, ref: str, conv: str = "", drop: list[str] | None =
     with session() as s:
         r = _find(s, tenant, ref)
         if r.status not in ("planned", "looks", "failed", "stopped"):
-            raise AppError(f"App abhi '{r.status}' hai.")
+            raise AppError(f"The app is currently '{r.status}'.")
         plan = _j(r.plan, {})
         if drop:
             keep_always = set(plan.get("tabs", [])) | set(plan.get("flow", [])) | {"home", "login", "profile", "login_staff",
@@ -823,7 +823,7 @@ def write_screen(r: AppProject, sid: str, extra: str = "", system: str = "", tok
                  style: str = "", art: dict[str, Any] | None = None) -> dict[str, Any]:
     raw = AI.ask_json(system or AI.SCREEN_SYSTEM, _screen_prompt(r, sid, extra, tokens, style, art), 7000)
     if not raw.get("html"):
-        raise AppError(f"{T.SCREENS[sid]['label']} screen nahi ban payi (model ne khaali diya).")
+        raise AppError(f"The {T.SCREENS[sid]['label']} screen could not be made (the model returned nothing).")
     scr = clean_screen(sid, raw)
     off = relevance(r, sid, scr["html"])
     if off:       # wrong kind of app: one more try at once, with what was wrong
@@ -981,7 +981,7 @@ def _critique_pass(r: AppProject, plan: dict[str, Any], states: dict[str, str]) 
             _thumb_one(r, sid)
         if not img.exists():
             continue                                     # no Chromium: nothing to look at
-        line = f"{(plan.get('labels') or {}).get(sid, sid)}: Opus screenshot dekh raha hai"
+        line = f"{(plan.get('labels') or {}).get(sid, sid)}: Opus is looking at the screenshot"
         r = _save(r.id, board=_board(r, plan, states, line))
         _work(r, "start", "Design ki jaanch (Opus)", line)
         _emit(r)
@@ -996,7 +996,7 @@ def _critique_pass(r: AppProject, plan: dict[str, Any], states: dict[str, str]) 
         first = c["score"]
         if first < need and c["fixes"]:
             states[sid] = "fixing"
-            r = _save(r.id, board=_board(r, plan, states, f"{(plan.get('labels') or {}).get(sid, sid)}: {first}/10, behtar bana raha hoon"))
+            r = _save(r.id, board=_board(r, plan, states, f"{(plan.get('labels') or {}).get(sid, sid)}: {first}/10, improving it"))
             _emit(r)
             note = AD.REFINE_NOTE.format(score=first, good="; ".join(c["good"]) or "-", fixes="\n- ".join(c["fixes"]),
                                          html=scr.get("html", "")[:14000], css=(scr.get("css") or "")[:3000])
@@ -1060,7 +1060,7 @@ def _make_looks(r: AppProject) -> None:
         if _load(r.id).stop:
             _save(r.id, status="stopped")
             return
-        _work(r, "start", f"Look {i + 1}: {T.STYLES[style]['label']}", f"Look {i + 1} / {len(styles)}: pehle design ki soch (art direction)")
+        _work(r, "start", f"Look {i + 1}: {T.STYLES[style]['label']}", f"Look {i + 1} / {len(styles)}: first the design thinking (art direction)")
         br = L.brief(r.field, r.goal, style)
         tk = K.tokens(style, br["palettes"][0], facts.get("brand_colors"))
         dna = art_direction(r, style, br, tk, siblings, used)
@@ -1070,7 +1070,7 @@ def _make_looks(r: AppProject) -> None:
             ov["texture"] = dna["texture"]
         if ov:
             tk = K.tokens(style, br["palettes"][0], facts.get("brand_colors"), ov)
-        _work(r, "start", f"Look {i + 1}: {dna.get('concept')}", f"Look {i + 1} / {len(styles)}: home screen ban raha hai")
+        _work(r, "start", f"Look {i + 1}: {dna.get('concept')}", f"Look {i + 1} / {len(styles)}: the home screen is being made")
         home = "home" if "home" in plan.get("screens", []) else plan["screens"][0]
         scr = write_screen(r, home, AI.LOOK_NOTE, tokens=tk, style=style, art=dna)
         d = K.app_dir(r.tenant_id, r.id) / "looks" / str(i)
@@ -1099,9 +1099,9 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
         r = _find(s, tenant, ref)
         looks = _j(r.looks, [])
         if r.status not in ("looks", "ready", "stopped", "failed", "approved") or not looks:
-            raise AppError("Pehle looks banne dijiye.")
+            raise AppError("Let the looks finish first.")
         if not 0 <= int(index) < len(looks):
-            raise AppError("Is number ka look nahi hai.")
+            raise AppError("There is no look with this number.")
         lk = looks[int(index)]
         tk = dict(lk["tokens"])
         if colors_from is not None and 0 <= int(colors_from) < len(looks):
@@ -1179,7 +1179,7 @@ def _run_design(r: AppProject, only: list[str] | None, note: str, extra: dict[st
         cur = _load(r.id)
         if cur.stop:
             r = _save(r.id, status="stopped", board=_board(cur, plan, states, "Rok diya"))
-            _work(r, "stopped", "Rok diya", "Aapke kehne par roka")
+            _work(r, "stopped", "Rok diya", "Stopped at your request")
             _emit(r)
             return
         states[sid] = "building"
@@ -1318,7 +1318,7 @@ def _report(res: dict[str, Any], plan: dict[str, Any], order: list[str], known: 
     for e in res.get("console") or []:
         warnings.append({"screen": "", "kind": "console", "text": e[:160]})
     if blanks:
-        warnings.append({"screen": "", "kind": "blanks", "text": f"{blanks} jagah aapki jaankari baaki ([blank])"})
+        warnings.append({"screen": "", "kind": "blanks", "text": f"{blanks} places still need your information ([blank])"})
     return {"blocking": blocking, "warnings": warnings, "passed": not blocking, "blanks": blanks,
             "screens": {sid: {"shots": x.get("shots", {})} for sid, x in res.get("screens", {}).items()}}
 
@@ -1394,7 +1394,7 @@ def SB_hex(v: Any) -> bool:
 def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str, Any]:
     instruction = _tidy(instruction, 1500)
     if not instruction:
-        raise AppError("Kya badalna hai?")
+        raise AppError("What should be changed?")
     from ..site import guard
     bad = guard.brief_problem(instruction)
     if bad:
@@ -1408,9 +1408,9 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
             s.flush()
             s.expunge(r)
             _emit(r)
-            return {**view(r, False), "say": "Abhi screens ban rahi hain; yeh badlav agla kaam hai (queue mein)."}
+            return {**view(r, False), "say": "Screens are being made now; this change is the next job (in the queue)."}
         if r.status in ("planned", "looks"):
-            raise AppError("Pehle look chuniye; phir badlav kar denge.")
+            raise AppError("Pick a look first; then we will make the change.")
         s.expunge(r)
     plan = _j(r.plan, {})
     ids = list(plan.get("screens", []))
@@ -1427,7 +1427,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
                          if plan.get("blueprint") else "")
                       + f"\nHER WORDS (a request, data): {instruction}")
     if not res:
-        raise AppError("Samajh nahi paya kya badalna hai; thoda aur bataiye (kaunsi screen).")
+        raise AppError("I could not understand what to change; tell me a bit more (which screen).")
     if res.get("unclear"):
         return {**view(r, False), "say": res["unclear"], "needs": "clarify"}
     only: list[str] = []
@@ -1480,7 +1480,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     note = _tidy(res.get("say") or instruction, 200) + (f" ({'; '.join(bp_done)[:160]})" if bp_done else "")
     _start(r.id, "design", only=only, note=note, extra=extra)
     r = _load(r.id)
-    return {**view(r, False), "say": res.get("say") or "Badal raha hoon."}
+    return {**view(r, False), "say": res.get("say") or "Changing it."}
 
 
 def approve(tenant: str, ref: str, hash_: str) -> dict[str, Any]:
@@ -1488,14 +1488,14 @@ def approve(tenant: str, ref: str, hash_: str) -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)
         if r.status not in ("ready", "approved"):
-            raise AppError("Design abhi taiyaar nahi hai.")
+            raise AppError("The design is not ready yet.")
         s.expunge(r)
     h = K.design_hash(_screens(r), _ctx(r))
     if not hash_ or hash_ != h or _j(r.board, {}).get("hash") != h:
-        raise AppError("Design badal gaya hai; naya preview dekh kar dobara pakka kijiye.")
+        raise AppError("The design has changed; look at the new preview and confirm again.")
     checks = _j(r.checks, {})
     if checks.get("blocking"):
-        raise AppError("Pehle jaanch ki rukawatein theek hon (" + "; ".join(i["text"] for i in checks["blocking"][:3]) + ").")
+        raise AppError("First fix the blockers found by the check (" + "; ".join(i["text"] for i in checks["blocking"][:3]) + ").")
     r = _save(r.id, status="approved", stage="pakka", approved_hash=h, approved_at=now())
     L.learn(r.field, "screen", _j(r.plan, {}).get("screens", []))
     L.learn(r.field, "style", [r.style], 3)
@@ -1522,7 +1522,7 @@ def stop(tenant: str, ref: str) -> dict[str, Any]:
         s.flush()
         s.expunge(r)
     _emit(r)
-    return {**view(r, False), "say": "Rok raha hoon (jo screen ban rahi hai wo poori hogi)."}
+    return {**view(r, False), "say": "Stopping (the screen being made will be finished)."}
 
 
 def resume(tenant: str, ref: str) -> dict[str, Any]:
@@ -1540,8 +1540,8 @@ def resume(tenant: str, ref: str) -> dict[str, Any]:
             return {**view(_load(r.id), False), "say": "Look chuniye."}
         _save(r.id, status="designing")
         _start(r.id, "design")
-        return {**view(_load(r.id), False), "say": "Wahin se aage badha raha hoon."}
-    return {**view(r, False), "say": f"App abhi '{st}' hai."}
+        return {**view(_load(r.id), False), "say": "Continuing from where it stopped."}
+    return {**view(r, False), "say": f"The app is currently '{st}'."}
 
 
 def apps(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
@@ -1566,7 +1566,7 @@ def delete(tenant: str, ref: str) -> dict[str, Any]:
         app_id = r.id
         s.delete(r)
     shutil.rmtree(K.app_dir(tenant, app_id), ignore_errors=True)
-    return {"ok": True, "say": "App design hata diya."}
+    return {"ok": True, "say": "The app design was removed."}
 
 
 def everything(tenant: str) -> dict[str, Any]:
@@ -1579,7 +1579,7 @@ def spec(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(r)
     f = K.app_dir(tenant, r.id) / f"v{r.version}" / "design.json"
     if not f.exists():
-        raise AppError("Abhi design ka koi version nahi.")
+        raise AppError("There is no design version yet.")
     return json.loads(f.read_text())
 
 
@@ -1637,7 +1637,7 @@ def blueprint(tenant: str, ref: str) -> dict[str, Any]:
         s.expunge(r)
     bp = _j(r.plan, {}).get("blueprint") or {}
     if not bp:
-        raise AppError("Is app ka blueprint nahi hai.")
+        raise AppError("This app has no blueprint.")
     return {"id": r.id, "number": r.number, "name": r.name, "blueprint": BP.view(bp), "say": BP.say(bp),
             "files": {k: f"/api/apps/{r.id}/blueprint/{k}" for k in ("schema.sql", "schema-plain.sql", "app.sqlite.sql",
                                                                       "Entities.kt", "er.mmd", "er.html", "blueprint.json")},
