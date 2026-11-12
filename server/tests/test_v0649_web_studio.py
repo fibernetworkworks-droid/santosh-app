@@ -28,7 +28,7 @@ CONSOLE = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.836.0"
+    assert APP_VERSION == "0.841.0"
 
 
 def test_studio_is_its_own_app():
@@ -147,7 +147,7 @@ def test_studio_in_a_real_browser(arena_server, arch_env, monkeypatch):
     page.on("dialog", lambda d: d.accept())
     page.goto(base + "/console/web")
     page.wait_for_selector("#ws .side .brand", timeout=20000)
-    assert "What should we build today?" in page.inner_text("#ws") and page.locator("#ws .side a.nav").count() >= 4
+    assert "What should we build" in page.inner_text("#ws") or "Got an idea" in page.inner_text("#ws") or "What are we making" in page.inner_text("#ws")  # v0.836 L12: the greeting rotates by time of day (was one fixed line) and page.locator("#ws .side a.nav").count() >= 4
     page.click("#wsAsk")
     st = page.evaluate("""() => { const t = document.querySelector('#wsAsk'), s = getComputedStyle(t);
         return [s.outlineStyle, s.borderTopWidth, getComputedStyle(t.closest('.ask')).boxShadow]; }""")

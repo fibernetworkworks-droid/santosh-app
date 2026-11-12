@@ -44,6 +44,9 @@ class Site(Base):
     conv: Mapped[str] = mapped_column(String(64), default="")
     cost_usd: Mapped[float] = mapped_column(default=0.0)
     recovered: Mapped[int | None] = mapped_column(Integer, nullable=True)  # v0.223 auto-restarts after a dead job
+    draft_of: Mapped[str | None] = mapped_column(String(40), nullable=True, default="")   # v0.837 L13: the site this is a DRAFT of ("" = a real site)
+    draft_name: Mapped[str | None] = mapped_column(String(80), nullable=True, default="")
+    draft_base: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0)     # the parent's version the draft was started from
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 

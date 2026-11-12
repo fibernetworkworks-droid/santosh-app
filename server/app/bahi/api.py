@@ -9,6 +9,7 @@ def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
     from . import connect as CN
+    from . import gstr1 as G1
     from . import itc as IT
     from . import register as REG
     from . import rules as RU
@@ -105,5 +106,29 @@ def make_router(require_key, current_tenant):
     def _iapply(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _it(IT.apply, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""), str(body.get("plan_hash") or ""),
                    body.get("confirm") is True)
+
+    def _g1(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except G1.Gstr1Error as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/api/bahi/gstr1/prepare", dependencies=[Depends(require_key)])
+    def _g1prep(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g1(G1.prepare, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""))
+
+    @r.post("/api/bahi/gstr1/save", dependencies=[Depends(require_key)])
+    def _g1save(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g1(G1.save_draft, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""), str(body.get("plan_hash") or ""),
+                   body.get("confirm") is True)
+
+    @r.post("/api/bahi/gstr1/evc-otp", dependencies=[Depends(require_key)])
+    def _g1otp(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g1(G1.request_evc_otp, tenant, str(body.get("gstin") or ""), str(body.get("pan") or ""))
+
+    @r.post("/api/bahi/gstr1/file", dependencies=[Depends(require_key)])
+    def _g1file(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _g1(G1.file_evc, tenant, str(body.get("gstin") or ""), str(body.get("period") or ""), str(body.get("pan") or ""),
+                   str(body.get("otp") or ""), str(body.get("plan_hash") or ""), body.get("confirm") is True)
 
     return r

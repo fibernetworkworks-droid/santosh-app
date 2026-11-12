@@ -3060,7 +3060,47 @@ Stage Summary:
 - Planted bad-rule app refused at publish with the reason named; fixed rule passes. Not verified on her VPS.
 
 ---
-Task ID: v0.836.0 DESKTOP TEAM + HOOLA PC TEAM
+Task ID: L12-GHAR
+Agent: Claude
+Task: L12 of docs/LOVABLE_STUDIO_PLAN.md - home redesign (greeting, typewriter, chips, starters with thumbnails), real steps in "Setting the stage".
+
+Work Log:
+- Read plan 3.1 / 3.2; added site/starters.py (24 starters, 3 per chip) + GET /api/site-starters; greeting/typewriter/chips/starter cards in webstudio.js + css.
+- Ticket on POST /api/sites -> architect.build_now writes stages to the activity log; GET /api/sites/stage/<ticket>; pending screen polls it.
+- Tests test_v0835_ghar.py 3 (browser walk incl. reduced motion and held-call server steps); updated test_v0649 greeting pin; version 0.836.0 (main had moved to 0.835.0).
+
+Stage Summary:
+- Home and wait screen done; starters are drawn looks, not built sites; composer re-dock animation not built.
+
+---
+Task ID: L13-DRAFT
+Agent: Claude
+Task: L13 of docs/LOVABLE_STUDIO_PLAN.md - E6 drafts on the Site Engine; conflict-named merge test.
+
+Work Log:
+- site/drafts.py (copy of the working files as a hidden Site row, three-way merge by section against the wapas snapshot, named conflicts, accept = one new version); Site columns draft_of / draft_name / draft_base; list hides drafts; hosting refuses to launch one.
+- Routes, website tool actions draft_new / draft_list, Studio Drafts tab + draft banner.
+- Tests test_v0837_draft.py 5; version 0.838.0 (main had moved to 0.837.0).
+
+Stage Summary:
+- Site Engine drafts done; a draft has its own data (said plainly); App Engine branches left for after L14.
+
+Task ID: bahi-a3-0839
+Work: A3 GSTR-1 rebuilt over DRAFT v0.838.0, v0.839.0 ritual. Stage: ready.
+
+---
+Task ID: L14-GITHUB
+Agent: Claude
+Task: L14 of docs/LOVABLE_STUDIO_PLAN.md - two-way GitHub sync for App Engine (one branch), import from ZIP / another builder's export, round-trip test.
+
+Work Log:
+- appengine/gitsync.py (link / push / pull three-way with named conflicts / import ZIP + repo / ZIP export), routes, Studio GitHub section + Import panel.
+- FakeGitHub (Git Data API) in tests/test_v0839_github_sync.py; fixed on the way: README handled as GitHub's own file, zip-slip names dropped not tidied, a top folder called src is not a wrapper.
+- Version 0.840.0 (main had moved to 0.839.0).
+
+Stage Summary:
+- Round trip proven against a fake GitHub; real GitHub untested; one branch only.
+Task ID: v0.841.0 DESKTOP TEAM + HOOLA PC TEAM
 Task: owner "NOW LETS WORK ON HOOLA DESTOP MERA PC -- FIRST CHECK", then the agent-desktop check, then "GO DESKTOP TEAM + HOOLA PC TEAM".
 Work Log: audit (213 PC tests green; agent-desktop v1.1.0 CLI flags + a real Linux run through axtree.py; found: PC loop on Haiku/GLM, no stop-by-words for PC jobs, restart loses PC tasks, no console Mera PC); built one task per PC (operator device_id, hub.find / devices), pc= on pc_do / hoola_pc_do, pc_team + pc_devices, kaamstop PC stop, vps-ops 1-4 Hoola PCs + pc_pair N-CODE, compose team profile; 16 tests; registry 629.
 Stage Summary: pushed to claude/pensive-faraday-vz5j9u. Next on her word: PC operator's own model (exempt from Haiku/GLM), restart notice for cut PC tasks, console Mera PC page, agent-desktop 1.2 (--stdin) in a new exe.

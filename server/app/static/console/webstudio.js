@@ -267,11 +267,11 @@
         ${st.length ? `<div class="grid">${st.map(siteCard).join('')}</div>` : `<div class="panel mut">Nothing starred yet. Open the ${ico('more', 14)} menu on any website and choose Add to starred.</div>`}</section>`;
     } else {
       main = `<div class="aura" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
-      <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1>What should we build today?</h1>
+      <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1 id="wsGreet">${esc(greetLine(''))}</h1>
         <p class="mut">Describe your business in one line. Hoola writes every page, shows you three complete designs, and builds the one you pick, right in front of you. Nothing goes live until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="wsAsk" class="sr">Describe your website</label>
-          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="A website for Sharma Sweets in Akola: menu, Diwali gift boxes and a WhatsApp order button">${esc(PREFILL)}</textarea>
+          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="Ask Hoola to build a website for my clinic..." data-type-ph>${esc(PREFILL)}</textarea>
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
@@ -284,8 +284,10 @@
         </form>
         <div id="wsAskWork" class="step wrap" role="status" aria-live="polite" style="max-width:780px;margin-top:10px" hidden></div>
         <div id="wsSrc" class="wrap" style="max-width:780px"></div>
-        <div class="chips">${TYPES.slice(0, 7).map(([t]) => `<button class="chip" type="button" data-type="${esc(t)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">More templates</a></div>
+        <div class="chips" role="group" aria-label="What are you making?">${CHIPS.map(t => `<button class="chip" type="button" data-chip="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">Ideas</a></div>
       </section>
+      <section class="wrap" id="wsStarters" hidden><div class="sec"><h2 id="wsStartersH">Starting points</h2><span class="mut sm">Pick one, change any word, then send. Thumbnails show the look each one is built in.</span></div>
+        <div class="sgrid" id="wsStartGrid"></div></section>
       ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length ? `<a class="more" href="#/sites">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : '<div class="panel mut">No website yet. Write one line above.</div>'}</section>
@@ -298,8 +300,84 @@
     }
     APP.innerHTML = `<div class="home">${sidebar(page)}<main class="hmain">${main}</main></div>`;
     PREFILL = '';
+    if (page === 'home') homeLife();
     if (page === 'templates') loadTpl(true);
     document.title = 'Hoola Web Studio';
+  }
+
+
+  /* ================= v0.835 GHAR + SHURUAAT (L12): greeting, typewriter, chips, real starters ================= */
+  const CHIPS = ['Website', 'Online store', 'Dashboard', 'Booking site', 'Portal', 'Landing page', 'Blog', 'Internal tool'];
+  const ENDS = ['a website for my clinic...', 'a dashboard to track my sales...', 'an online store that takes UPI...', 'a portal where parents see marks...',
+    'a booking page for my salon...', 'a landing page for my new course...', 'a tool my staff use to log visits...'];
+  const GREETS = {
+    morning: ['Good morning{n}. What should we build?', 'Morning{n}. Got an idea to start the day?', 'Good morning{n}. What are we making today?'],
+    afternoon: ['Good afternoon{n}. What should we build?', 'Afternoon{n}. Got an idea?', 'Hello{n}. What are we making today?'],
+    evening: ['Good evening{n}. What should we build?', 'Evening{n}. Got an idea?', 'Hello{n}. What shall we make tonight?'],
+  };
+  const HOME = {name: null, starters: null, kind: '', pick: Math.floor(Math.random() * 3)};
+  function greetLine(name) {
+    const h = new Date().getHours(), part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+    const first = S(name).trim().split(/\s+/)[0];
+    return GREETS[part][HOME.pick % GREETS[part].length].replace('{n}', first ? ', ' + first : '');
+  }
+  function typewriter(ta) {
+    clearTimeout(typewriter._t);
+    if (!ta || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const base = 'Ask Hoola to build ';
+    let i = Math.floor(Math.random() * ENDS.length), n = 0, del = false;
+    const step = () => {
+      if (!ta.isConnected) return;
+      if (ta.value || document.activeElement === ta) { ta.placeholder = base + ENDS[i]; typewriter._t = setTimeout(step, 1500); return; }
+      const t = ENDS[i];
+      if (!del) {
+        n++; ta.placeholder = base + t.slice(0, n);
+        if (n >= t.length) { del = true; typewriter._t = setTimeout(step, 1600); return; }
+        typewriter._t = setTimeout(step, 45);
+      } else {
+        n = Math.max(0, n - 2); ta.placeholder = base + t.slice(0, n);
+        if (n === 0) { del = false; i = (i + 1) % ENDS.length; typewriter._t = setTimeout(step, 400); return; }
+        typewriter._t = setTimeout(step, 22);
+      }
+    };
+    step();
+  }
+  function thumb(x) {
+    const c = x.palette, A = `fill="${c.accent}"`, I = `fill="${c.ink}" opacity=".78"`, So = `fill="${c.soft}"`;
+    const bar = `<rect x="6" y="6" width="108" height="7" rx="3" ${So}/><circle cx="12" cy="9.5" r="2" ${A}/><rect x="84" y="8" width="10" height="3" rx="1.5" ${I} opacity=".35"/><rect x="98" y="8" width="10" height="3" rx="1.5" ${I} opacity=".35"/>`;
+    const L = {
+      hero: `<rect x="26" y="26" width="68" height="8" rx="3" ${I}/><rect x="36" y="38" width="48" height="4" rx="2" ${I} opacity=".4"/><rect x="48" y="48" width="24" height="9" rx="4.5" ${A}/><rect x="12" y="62" width="30" height="8" rx="3" ${So}/><rect x="45" y="62" width="30" height="8" rx="3" ${So}/><rect x="78" y="62" width="30" height="8" rx="3" ${So}/>`,
+      split: `<rect x="10" y="22" width="50" height="8" rx="3" ${I}/><rect x="10" y="34" width="40" height="4" rx="2" ${I} opacity=".4"/><rect x="10" y="41" width="34" height="4" rx="2" ${I} opacity=".4"/><rect x="10" y="52" width="22" height="9" rx="4.5" ${A}/><rect x="68" y="20" width="42" height="46" rx="5" ${So}/><circle cx="89" cy="43" r="9" ${A} opacity=".55"/>`,
+      grid: [0, 1, 2, 3, 4, 5].map(k => `<rect x="${10 + (k % 3) * 35}" y="${20 + Math.floor(k / 3) * 28}" width="31" height="20" rx="4" ${k === 0 ? A : So}${k === 0 ? ' opacity=".7"' : ''}/><rect x="${10 + (k % 3) * 35}" y="${43 + Math.floor(k / 3) * 28}" width="20" height="3" rx="1.5" ${I} opacity=".5"/>`).join(''),
+      list: [0, 1, 2, 3].map(k => `<rect x="10" y="${20 + k * 13}" width="100" height="10" rx="3" ${So}/><rect x="14" y="${23.5 + k * 13}" width="${34 + (k * 9) % 22}" height="3" rx="1.5" ${I} opacity=".6"/><rect x="92" y="${23 + k * 13}" width="14" height="4" rx="2" ${A}/>`).join(''),
+      board: [0, 1, 2].map(k => `<rect x="${10 + k * 36}" y="20" width="32" height="50" rx="4" ${So}/><rect x="${13 + k * 36}" y="25" width="26" height="9" rx="2.5" ${k === 0 ? A : I} opacity="${k === 0 ? 0.8 : 0.45}"/><rect x="${13 + k * 36}" y="38" width="26" height="9" rx="2.5" ${I} opacity=".3"/>${k < 2 ? `<rect x="${13 + k * 36}" y="51" width="26" height="9" rx="2.5" ${I} opacity=".3"/>` : ''}`).join(''),
+      chart: `<rect x="10" y="20" width="30" height="14" rx="3" ${So}/><rect x="45" y="20" width="30" height="14" rx="3" ${So}/><rect x="80" y="20" width="30" height="14" rx="3" ${So}/><polyline points="12,66 30,56 48,60 66,46 84,50 108,38" fill="none" stroke="${c.accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="10" y="40" width="100" height="1" ${I} opacity=".15"/>`,
+      form: `<rect x="30" y="20" width="60" height="6" rx="2" ${I}/><rect x="30" y="31" width="60" height="9" rx="3" ${So}/><rect x="30" y="44" width="60" height="9" rx="3" ${So}/><rect x="30" y="57" width="34" height="10" rx="5" ${A}/>`,
+      feed: `<rect x="10" y="20" width="62" height="7" rx="2.5" ${I}/><rect x="10" y="31" width="62" height="3.5" rx="1.75" ${I} opacity=".4"/><rect x="10" y="38" width="50" height="3.5" rx="1.75" ${I} opacity=".4"/><rect x="10" y="48" width="62" height="7" rx="2.5" ${I}/><rect x="10" y="59" width="62" height="3.5" rx="1.75" ${I} opacity=".4"/><rect x="80" y="20" width="30" height="42" rx="4" ${So}/><rect x="83" y="24" width="24" height="16" rx="3" ${A} opacity=".6"/>`,
+    }[x.layout] || '';
+    return `<svg viewBox="0 0 120 76" class="sthumb" role="img" aria-label="${esc(x.title)} preview" style="background:${c.bg}"><rect width="120" height="76" fill="${c.bg}"/>${bar}${L}</svg>`;
+  }
+  function drawStarters() {
+    const box = $('#wsStarters'), grid = $('#wsStartGrid'); if (!box || !grid || !HOME.starters) return;
+    const list = HOME.starters.filter(x => !HOME.kind || x.kind === HOME.kind);
+    box.hidden = !HOME.kind;
+    $('#wsStartersH').textContent = HOME.kind ? `${HOME.kind} starting points` : 'Starting points';
+    grid.innerHTML = list.map(x => `<button class="scard" type="button" data-starter="${esc(x.id)}">${thumb(x)}<b>${esc(x.title)}</b><span class="mut sm">${esc(x.line)}</span></button>`).join('');
+    APP.querySelectorAll('[data-chip]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.chip === HOME.kind)));
+  }
+  async function homeLife() {
+    const ta = $('#wsAsk'); typewriter(ta);
+    const g = $('#wsGreet');
+    if (HOME.name === null) { try { const m = await api('GET', '/api/console/me'); HOME.name = S(m.owner); } catch (e) { HOME.name = ''; } }
+    if (g && g.isConnected) g.textContent = greetLine(HOME.name);
+    if (!HOME.starters) { try { HOME.starters = L((await api('GET', '/api/site-starters')).starters); } catch (e) { HOME.starters = []; } }
+    drawStarters();
+  }
+  function chooseStarter(id) {
+    const x = L(HOME.starters).find(y => y.id === id); if (!x) return;
+    const t = $('#wsAsk'); if (!t) return;
+    t.value = x.prompt; t.dispatchEvent(new Event('input', {bubbles: true})); t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+    t.scrollIntoView({block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   }
 
   function tplCard(r) {
@@ -371,9 +449,9 @@
   /* v0.707 SEEDHA WORKSPACE: the moment she sends, the page moves to the workspace (her words in the chat, a live work
      card with the real clock, the plan / site area filling in) - it never sits on the home under a small note while
      the server writes the plan. When the server answers, the real plan / website opens in the same place. */
-  function drawPending(plan, text) {
+  function drawPending(plan, text, ticket = '') {
     const steps = plan ? ['Reading your words', 'Choosing the pages, users and data', 'Writing the plan document']
-      : ['Reading your words', 'Naming the website', 'Starting three complete looks'];
+      : ['Reading your idea.', 'Planning the pages and what each one holds.', 'Choosing colours and fonts, and setting up the website.'];
     const t0 = nowS();
     APP.innerHTML = `<div class="wsp wsp-in" data-pending="${plan ? 'plan' : 'build'}">
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
@@ -382,7 +460,7 @@
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola">
           <div class="msgs" id="wsPendMsgs" aria-live="polite"><div class="me">${esc(text)}</div>
-            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Starting your website'}</b><span id="wsPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
+            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Setting the stage'}</b><span id="wsPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
               <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
               <ol class="acts" id="wsPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
               <div class="wfoot"><span class="ell">${plan ? 'About a minute. Nothing is built until you say so.' : 'About a minute, then the three looks appear here.'}</span></div></div></div>
@@ -396,9 +474,26 @@
         </section></div></div>`;
     document.title = `${plan ? 'New plan' : 'New website'} · Hoola Web Studio`;
     startTick();
-    // the steps move on the real clock while the one server call runs (labels only; the server answer decides)
-    let k = 0;
     clearInterval(drawPending._t);
+    if (ticket) {          // v0.835 L12: the steps are the server's own (what the call is really doing), never client-timed labels
+      let seq = 0;
+      drawPending._t = setInterval(async () => {
+        const ol = $('#wsPendSteps'); if (!ol) return clearInterval(drawPending._t);
+        let r; const me = ++seq;
+        try { r = await api('GET', `/api/sites/stage/${enc(ticket)}`); } catch (e) { return; }
+        if (me !== seq || !$('#wsPendSteps') || !L(r.steps).length) return;
+        CLOCK = Number(r.now) - Date.now() / 1000;
+        ol.innerHTML = L(r.steps).map(x => {
+          const run = x.state === 'run', end = x.end || r.now;
+          return `<li class="${run ? 'run' : x.state === 'error' ? 'bad' : 'ok'}">${run ? '<span class="spin" aria-hidden="true"></span>' : tick}<div class="sl"><span class="ell">${esc(S(x.label))}</span></div><span class="tm">${esc(dur(end - x.at))}</span></li>`;
+        }).join('');
+        const cur = L(r.steps).filter(x => x.state === 'run').pop() || L(r.steps).pop();
+        const nw = $('#wsPendNow'); if (nw && cur) nw.textContent = S(cur.label);
+      }, 1200);
+      return;
+    }
+    // plan mode only: the steps move on the real clock while the one server call runs (labels only; the server answer decides)
+    let k = 0;
     drawPending._t = setInterval(() => {
       const ol = $('#wsPendSteps'); if (!ol) return clearInterval(drawPending._t);
       if (k >= steps.length - 1) return;
@@ -479,7 +574,7 @@
     });
   }
 
-  async function startFromAsk(text, design = null) {
+  async function startFromAsk(text, design = null, ticket = '') {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const conv = await newConv('');
     try {
@@ -490,7 +585,7 @@
         go('#/plan/' + enc(S(c.id)));
         return;
       }
-      const body = {brief: text, conversation_id: conv, deep: true};   // v0.708 a system ask is planned deep first
+      const body = {brief: text, conversation_id: conv, deep: true, ticket};   // v0.708 a system ask is planned deep first
       if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.686 the template's library card
       TPLSEL = null;
       if (design) body.design = design;                // v0.784 her picks on the question card = look 1
@@ -620,15 +715,16 @@
     loadErrors();                                        // v0.802 GALTI PAKDO
   }
 
-  const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
+  const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['drafts', 'Drafts'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
   function drawShell() {
     const v = CUR, mode = chatMode();
     APP.innerHTML = `<div class="wsp">
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
-        <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
+        <span class="pname">${esc(name(v))}</span>${v.draft_of ? pill('Draft · ' + S(v.draft_name), 'v') : ''}<button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
         <span class="tsave">Every change is saved as a version</span>
         <button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>
-        <button class="b dark" type="button" data-view="publish"><span>Publish</span></button></header>
+        ${v.draft_of ? `<a class="b" href="#/site/${enc(S(v.draft_of))}">Back to the website</a><button class="b dark" type="button" data-view="drafts"><span>Accept or discard</span></button>`
+          : '<button class="b dark" type="button" data-view="publish"><span>Publish</span></button>'}</header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this website">
           <div class="msgs" id="wsMsgs" aria-live="polite"></div>
@@ -732,7 +828,7 @@
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
-    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish, details: detailsView, plans: planView}[VIEW] || preview;
+    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, drafts: draftsView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
     if (WORKING(CUR)) startPoll();
@@ -1363,6 +1459,49 @@
       ${bm.length ? `<h3 class="vh">Bookmarks</h3>${bm.map(row).join('')}<h3 class="vh">All versions</h3>` : ''}
       ${vs.length ? vs.map(row).join('') : '<p class="mut">No versions yet.</p>'}
       ${vs.some(x => !x.restorable) ? '<p class="mut sm">Versions made before this update kept only their built pages, so they cannot be restored here.</p>' : ''}</div>`;
+  }
+
+
+  /* ================= v0.837 DRAFT (L13, E6): try a big change in a copy; Accept merges by section, conflicts named ================= */
+  const DFT = {list: null, open: ''};
+  async function draftsView(pane, v) {
+    const parent = S(v.draft_of) || v.id;
+    pane.innerHTML = viewsBar() + '<div class="empty">Loading drafts…</div>';
+    let r; try { r = await api('GET', `/api/sites/${enc(parent)}/drafts`); } catch (e) { pane.innerHTML = viewsBar() + `<div class="empty">${esc(e.message)}</div>`; return; }
+    if (VIEW !== 'drafts' || CUR?.id !== v.id) return;
+    DFT.list = L(r.drafts);
+    const card = d => {
+      const me = d.id === v.id, ch = L(d.changed), cf = L(d.conflicts);
+      return `<section class="cardp ${me ? 'acc' : ''}" data-draft="${esc(d.id)}"><h3>${esc(d.name)} ${me ? pill('you are here', 'v') : ''}</h3>
+        <p class="mut sm">Started from v${esc(d.base)}${d.site_moved ? ' · the website has changed since' : ''} · ${ch.length} part${ch.length === 1 ? '' : 's'} changed${cf.length ? ` · ${cf.length} conflict${cf.length === 1 ? '' : 's'}` : ''}</p>
+        ${ch.length ? `<ul class="dflist">${ch.slice(0, 12).map(x => `<li>${esc(x.say)} <span class="mut sm">${esc(x.what)}</span></li>`).join('')}${ch.length > 12 ? `<li class="mut sm">and ${ch.length - 12} more</li>` : ''}</ul>` : '<p class="mut sm">Nothing changed in this draft yet.</p>'}
+        ${cf.length ? `<div class="dfconf"><b>Both changed - you choose:</b>${cf.map(c => `<fieldset class="dfc" data-item="${esc(c.item)}"><legend>${esc(c.say)}</legend>
+          <label><input type="radio" name="c-${esc(d.id)}-${esc(c.item)}" value="site" checked> Keep the website's</label>
+          <label><input type="radio" name="c-${esc(d.id)}-${esc(c.item)}" value="draft"> Use the draft's</label></fieldset>`).join('')}</div>` : ''}
+        <div class="inl">${me ? '' : `<a class="b" href="#/site/${enc(d.id)}">Open the draft</a>`}
+          <button class="b pri" type="button" data-act="dft-accept" data-did="${esc(d.id)}">Accept into the website…</button>
+          <button class="b ghost" type="button" data-act="dft-discard" data-did="${esc(d.id)}">Discard</button></div></section>`;
+    };
+    pane.innerHTML = viewsBar() + `<div class="main" style="max-width:860px"><h2 style="font-size:18px">Drafts</h2>
+      <p class="mut">A draft is a copy of the website where you can try a big change. Your website is not touched until you accept. Accepting merges section by section; if you and the draft both changed the same part, it is named and you choose. A draft has its own data: nothing visitors sent is copied in, and accepting never moves data.</p>
+      ${DFT.list.length ? DFT.list.map(card).join('') : '<p class="mut">No drafts yet.</p>'}
+      ${v.draft_of ? '' : `<form class="inl" data-form="dft-new" style="margin-top:14px"><input class="in" name="name" maxlength="60" placeholder="Name this draft, e.g. New look for Diwali" aria-label="Draft name" required><button class="b pri" type="submit" ${DFT.list.length >= Number(r.max) ? 'disabled' : ''}>Start a draft</button></form>
+        ${DFT.list.length >= Number(r.max) ? `<p class="mut sm">There are already ${esc(r.max)} drafts; accept or discard one first.</p>` : ''}`}</div>`;
+  }
+  async function draftAct(act, did, card) {
+    const parent = S(CUR.draft_of) || CUR.id;
+    if (act === 'dft-discard') {
+      if (!confirm('Discard this draft? Its changes are deleted. Your website is not touched.')) return;
+      try { const r = await api('DELETE', `/api/sites/${enc(parent)}/drafts/${enc(did)}`); toast(S(r.say)); }
+      catch (er) { return toast(er.message, true); }
+      if (CUR.id === did) { go('#/site/' + enc(parent) + '/drafts'); return; }
+      return drawPane();
+    }
+    const res = {}; (card || document).querySelectorAll('.dfc').forEach(f => { res[f.dataset.item] = f.querySelector('input:checked')?.value || 'site'; });
+    if (!confirm('Merge this draft into the website? It becomes one new version of the website (undo it from History). No data is moved.')) return;
+    try { const r = await api('POST', `/api/sites/${enc(parent)}/drafts/${enc(did)}/accept`, {confirm: true, resolutions: res}); toast(S(r.say).slice(0, 200)); }
+    catch (er) { return toast(er.message, true); }
+    go('#/site/' + enc(parent));
   }
 
   async function publish(pane, v) {
@@ -2062,6 +2201,8 @@
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
     if (d.cmode) { setChatMode(d.cmode); return; }
+    if (d.chip) { HOME.kind = HOME.kind === d.chip ? '' : d.chip; drawStarters(); return; }
+    if (d.starter) { chooseStarter(d.starter); return; }
     if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
       const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     if (d.src) { if (d.src === 'focus') { drawSource(''); $('#wsAsk')?.focus(); } else { drawSource(d.src); $('#wsSrc input')?.focus(); } return; }
@@ -2119,6 +2260,7 @@
       return;
     }
     if (act === 'edit-done') { EDIT = false; YW.strokes = []; YW.notes = []; await reload(); return; }
+    if (act === 'dft-accept' || act === 'dft-discard') return draftAct(act, d.did, b.closest('[data-draft]'));   // v0.837 L13
     if (act === 'ver-restore') return restoreVer(Number(d.ver));     // v0.808 WAPAS
     if (act === 'ver-bm') return bookmarkVer(Number(d.ver));
     if (act === 'ver-diff') return diffVer(Number(d.ver));
@@ -2251,6 +2393,12 @@
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
     }
+    if (kind === 'dft-new') {                             // v0.837 L13 start a draft
+      const nm = S(f.querySelector('[name=name]')?.value).trim(); if (!nm) return;
+      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/drafts`, {name: nm}); toast(S(r.say).slice(0, 160)); go('#/site/' + enc(S(r.id))); }
+      catch (er) { toast(er.message, true); }
+      return;
+    }
     if (kind === 'instr') {
       try { await api('PUT', `/api/sites/${enc(CUR.id)}/instructions`, {text: S($('#wsInstr')?.value)}); toast('Instructions saved. Hoola reads them on every message about this site.'); }
       catch (er) { toast(er.message, true); }
@@ -2276,8 +2424,9 @@
           if (got === null) { PREFILL = t; drawHome('home'); return; }
           design = got.design;
         }
-        drawPending(plan, t);                       // v0.707: straight into the workspace, the work shows there
-        try { await startFromAsk(t, design); }
+        const ticket = plan ? '' : 'st-' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+        drawPending(plan, t, ticket);               // v0.707: straight into the workspace, the work shows there
+        try { await startFromAsk(t, design, ticket); }
         catch (er) {
           clearInterval(drawPending._t);
           PREFILL = t; drawHome('home');            // back home with her words still in the box and the reason under it

@@ -236,4 +236,4 @@ def test_exports_purity_and_gyaan_laziness():
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.836.0"
+    assert APP_VERSION == "0.841.0"

@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,28 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ GSTR-1
+  function g1Tab() {
+    const c = OV.connections[0], live = c && c.status === 'connected';
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const per = (G1 && G1.per) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">GSTR-1 for the month</h2>
+      <p class="ddk-fine first">Hoola builds the return from your bills, then checks it against every record you keep: invoices it would miss, a customer GSTIN that is wrong, a rate that is not a slab on that date. Saving puts a <b>draft</b> on the GST portal - it is not filed. ${OV.filing ? 'Filing uses your EVC OTP.' : 'Filing from Hoola is switched off on this server; file the saved draft on the GST portal.'}</p>
+      <div class="acd-row"><input id="acdG1G" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}"><input id="acdG1P" class="acd-in" type="month" value="${esc(per)}">
+        <button type="button" class="btn go ddk-mid" data-a="g1prep">Build + check</button></div></section>`;
+    if (!G1 || !G1.data) return head;
+    const d = G1.data, s = d.summary || {};
+    const ck = d.checks.length ? `<ul class="acd-kv">${d.checks.map(x => `<li><span>${esc(x.text)}</span><span class="ddk-pill ${x.kind === 'engine' ? 'mute' : 'warn'}">${esc(x.kind.replace('_', ' '))}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">Nothing to fix.</p>';
+    return head + `<section class="ddk-card acd-sec"><h2 class="ddk-h3">${esc(d.period)} · ${s.b2b_invoices || 0} B2B invoices, ${s.b2cs_rows || 0} B2C lines</h2>
+      <div class="ddk-nums"><div><b>${inr(s.txval)}</b><span>taxable value</span></div><div><b>${inr(s.tax)}</b><span>tax</span></div><div><b>${d.checks.length}</b><span>things to look at</span></div></div>
+      ${ck}
+      <div class="acd-row">${live ? `<button type="button" class="btn go ddk-mid" data-a="g1save" data-h="${esc(d.plan_hash)}">Save as draft on the GST portal</button>` : '<span class="ddk-fine">Connect first (Connection tab) to save a draft.</span>'}</div>
+      ${G1.saved ? `<p class="ddk-note">Draft saved (reference ${esc(G1.saved.reference || '-')}). ${esc(G1.saved.validate_hsn || '')}</p>` : ''}
+      ${OV.filing && G1.saved ? `<div class="acd-row"><input id="acdG1Pan" class="acd-in" placeholder="Signatory PAN" maxlength="10"><button type="button" class="btn ddk-mid" data-a="g1otp">Send EVC OTP</button>
+        <input id="acdG1Otp" class="acd-in" placeholder="OTP" inputmode="numeric" maxlength="8" autocomplete="one-time-code"><button type="button" class="btn go ddk-mid" data-a="g1file" data-h="${esc(d.plan_hash)}">File GSTR-1</button></div>` : ''}
+    </section>`;
   }
 
   // ------------------------------------------------------------------ Credit (ITC)
@@ -218,6 +240,24 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('g1')) {
+        const g = val('acdG1G').toUpperCase(), p = val('acdG1P');
+        try {
+          if (a === 'g1prep') { const data = await api('POST', '/api/bahi/gstr1/prepare', {gstin: g, period: p}); G1 = {per: p, g, data}; draw(false); return; }
+          if (a === 'g1save') {
+            if (!confirm('Put this GSTR-1 on your GST portal as a draft? It is not filed.')) return;
+            G1.saved = await api('POST', '/api/bahi/gstr1/save', {gstin: G1.g, period: G1.per, plan_hash: b.dataset.h, confirm: true});
+            toast('Draft saved on the portal. Not filed.'); draw(false); return;
+          }
+          if (a === 'g1otp') { const r = await api('POST', '/api/bahi/gstr1/evc-otp', {gstin: G1.g, pan: val('acdG1Pan')}); toast(r.message); return; }
+          if (a === 'g1file') {
+            if (!confirm('File GSTR-1 now? Filing is final.')) return;
+            const r = await api('POST', '/api/bahi/gstr1/file', {gstin: G1.g, period: G1.per, pan: val('acdG1Pan'), otp: val('acdG1Otp'), plan_hash: b.dataset.h, confirm: true});
+            toast(`Filed. ${r.portal_status || ''} ${r.next}`.trim()); return;
+          }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a.startsWith('itc')) {
