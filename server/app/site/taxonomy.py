@@ -695,7 +695,7 @@ INDUSTRIES: dict[str, dict[str, Any]] = {
              "sections": ["hero", "services_grid", "products_grid", "gallery_masonry", "reviews", "booking_slots"],
              "trust": ["trained staff", "vet registration (if vet)", "care"], "cta": "booking",
              "moods": ["bright", "candy", "warm"], "photos": ["happy pets (owners' consent)", "facility", "products"],
-             "questions": ["Grooming, boarding, vet, pet shop?", "Rates?", "Timings / home service?"],
+             "questions": ["Grooming, boarding, vet, pet shop?", "Rates?", "Opening hours / home service?"],
              "legal": ["vet"], "styles": ["playful_bright", "warm_local", "organic_natural"]},
     "kids": {"label": "Kids & childcare", "goal": "admissions", "pages": ["home", "about", "courses", "gallery", "contact"],
              "sections": ["hero", "intro_story", "courses_list", "gallery_masonry", "faq", "cta_band"],

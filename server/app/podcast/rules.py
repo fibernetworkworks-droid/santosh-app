@@ -314,7 +314,7 @@ def read_disclosure(script: str) -> dict:
     return {"ok": start and end, "start": start, "end": end, "why": "; ".join(why)}
 
 
-def add_disclosure(script: str, brand: str, lang: str = "hinglish") -> str:
+def add_disclosure(script: str, brand: str, lang: str = "en") -> str:
     """Wraps her script with an opening and closing disclosure (her words stay as they are)."""
     s = str(script or "").strip()
     lead = {"hi": f"यह एपिसोड {brand} द्वारा प्रायोजित है (#Ad).", "mr": f"हा भाग {brand} प्रायोजित आहे (#Ad).",

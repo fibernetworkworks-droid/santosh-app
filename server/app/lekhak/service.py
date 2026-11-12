@@ -537,7 +537,7 @@ a formal letter in {lang}. Rules:
 - Copy every number, date, amount, ID token like {{id:abc}}, name and e-mail EXACTLY as she said it.
 - Formal register for offices: Hindi = shuddh but simple (निवेदन है कि..., कृपया...), Marathi = विनंती अर्ज style (never the
   informal स.न.वि.वि. / कळावे, लोभ असावा of family letters), English = plain
-  Indian formal. Short clear paragraphs (2-4). No flattery, no repetition, no English words in Hindi/Marathi where a common
+  formal. Short clear paragraphs (2-4). No flattery, no repetition, no English words in Hindi/Marathi where a common
   office word exists (but keep words offices really use: बिल, मीटर, अकाउंट, KYC).
 - Subject: one line. Salutation and closing must suit the language and the sender's gender ({gender}).
 - Her own rules: {rules}
