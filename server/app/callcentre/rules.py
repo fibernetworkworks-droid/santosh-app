@@ -177,10 +177,10 @@ def handover_reason(caller_text: str) -> str:
     return ""
 
 
-REASON_SAY = {"asked_human": "caller ne insaan se baat maangi", "angry": "caller naraz tha",
-              "out_of_script": "sawal script mein nahi tha", "low_confidence": "baat theek se samajh nahi aayi",
-              "dtmf": "caller ne 0 dabaya", "secret": "caller koi gupt number bata raha tha",
-              "ai_down": "AI line chal nahi payi", "time_up": "call ka samay poora"}
+REASON_SAY = {"asked_human": "the caller asked for a person", "angry": "the caller was upset",
+              "out_of_script": "the question was not in the script", "low_confidence": "could not understand clearly",
+              "dtmf": "the caller pressed 0", "secret": "the caller was saying a secret number",
+              "ai_down": "the AI line did not work", "time_up": "call time was up"}
 
 PROMISE = re.compile(r"(guarantee|pakka discount|free mein|muft|refund (de|mil) (denge|jayega)|100 ?%|"
                      r"zaroor mil jayega|promise|vaada|वादा|गारंटी|मुफ्त|फ्री में)", re.I)
@@ -203,7 +203,7 @@ def unscripted(reply: str, allowed_text: str) -> list[str]:
     bad = [n for n in sorted(numbers_in(reply)) if n not in have]
     out = [f"number {n}" for n in bad[:5]]
     if PROMISE.search(reply or "") and not PROMISE.search(allowed_text or ""):
-        out.append("vaada / guarantee")
+        out.append("promise / guarantee")
     return out
 
 

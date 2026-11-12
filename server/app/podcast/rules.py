@@ -31,8 +31,8 @@ APPLE_CATEGORIES = ("Arts", "Business", "Comedy", "Education", "Fiction", "Gover
                     "Kids & Family", "Leisure", "Music", "News", "Religion & Spirituality", "Science", "Society & Culture",
                     "Sports", "Technology", "True Crime", "TV & Film")
 LICENCE_OK = ("own", "commissioned", "cc0", "cc_by", "royalty_free", "paid")
-LICENCE_LABEL = {"own": "Apna banaya", "commissioned": "Bana ke liya (likhit)", "cc0": "CC0 (free)", "cc_by": "CC BY (naam dena zaroori)",
-                 "royalty_free": "Royalty-free licence", "paid": "Kharida hua licence", "unknown": "Pata nahi (licence nahi)"}
+LICENCE_LABEL = {"own": "Made by me", "commissioned": "Commissioned (in writing)", "cc0": "CC0 (free)", "cc_by": "CC BY (credit required)",
+                 "royalty_free": "Royalty-free licence", "paid": "Purchased licence", "unknown": "Unknown (no licence)"}
 PLATFORM_WORDS = {"spotify": ("spotify",), "apple": ("apple", "itunes"), "youtube": ("youtube", "yt"), "jiosaavn": ("jiosaavn", "saavn"),
                   "amazon": ("amazon", "audible"), "gaana": ("gaana",), "hoola": ("hoola",), "other": ()}
 CONSENT_WORDS = ("consent", "agree", "i agree", "permission", "ijazat", "izazat", "anumati", "manzoor", "haan record", "record kar sakte",
@@ -256,14 +256,14 @@ def fix_chapters(raw: Any, segs: list[dict], duration: float, gap: int = SPOTIFY
 def chapter_problems(ch: list[dict], duration: float) -> list[str]:
     p = []
     if len(ch) < 3:
-        p.append("Kam se kam 3 chapter chahiye (Spotify / YouTube).")
+        p.append("At least 3 chapters are needed (Spotify / YouTube).")
     if ch and ch[0]["start"] != 0:
-        p.append("Pehla chapter 00:00 par hona chahiye.")
+        p.append("The first chapter must start at 00:00.")
     for a, b in zip(ch, ch[1:]):
         if b["start"] - a["start"] < SPOTIFY_CHAPTER_GAP:
-            p.append(f"'{a['title']}' 30 sec se chhota hai (Spotify).")
+            p.append(f"'{a['title']}' is shorter than 30 sec (Spotify).")
     if ch and duration and duration - ch[-1]["start"] < YOUTUBE_CHAPTER_GAP:
-        p.append("Aakhri chapter 10 sec se chhota (YouTube).")
+        p.append("The last chapter is shorter than 10 sec (YouTube).")
     return p
 
 
@@ -305,22 +305,22 @@ def read_disclosure(script: str) -> dict:
     s = str(script or "").strip()
     sents = [x.strip() for x in re.split(r"(?<=[.!?।])\s+|\n+", s) if x.strip()]
     if not sents:
-        return {"ok": False, "start": False, "end": False, "why": "Script khaali hai."}
+        return {"ok": False, "start": False, "end": False, "why": "The script is empty."}
     start = _has_label(" ".join(sents[:1]) if len(sents) > 1 else s[:120])
     end = _has_label(" ".join(sents[-1:]) if len(sents) > 1 else s[-120:])
-    why = [] if start else ["shuru mein '#Ad / sponsored' nahi"]
+    why = [] if start else ["no '#Ad / sponsored' at the start"]
     if not end:
-        why.append("aakhir mein '#Ad / sponsored' nahi")
+        why.append("no '#Ad / sponsored' at the end")
     return {"ok": start and end, "start": start, "end": end, "why": "; ".join(why)}
 
 
-def add_disclosure(script: str, brand: str, lang: str = "hinglish") -> str:
+def add_disclosure(script: str, brand: str, lang: str = "en") -> str:
     """Wraps her script with an opening and closing disclosure (her words stay as they are)."""
     s = str(script or "").strip()
     lead = {"hi": f"यह एपिसोड {brand} द्वारा प्रायोजित है (#Ad).", "mr": f"हा भाग {brand} प्रायोजित आहे (#Ad).",
-            "en": f"This part is sponsored by {brand} (#Ad)."}.get(lang, f"Yeh hissa {brand} ki taraf se sponsored hai (#Ad).")
+            "en": f"This part is sponsored by {brand} (#Ad)."}.get(lang, f"This part is sponsored by {brand} (#Ad).")
     tail = {"hi": "यह एक विज्ञापन था (#Ad).", "mr": "ही जाहिरात होती (#Ad).", "en": "That was a paid advertisement (#Ad)."
-            }.get(lang, "Yeh ek paid advertisement tha (#Ad).")
+            }.get(lang, "That was a paid advertisement (#Ad).")
     d = read_disclosure(s)
     if not d["start"]:
         s = lead + " " + s
@@ -355,28 +355,28 @@ def risky_claims(script: str) -> list[str]:
 # ---------------------------------------------------------------- loudness / artwork
 def loudness_verdict(lufs: float | None, tp: float | None, target: float = LUFS_TARGET) -> dict:
     if lufs is None:
-        return {"ok": None, "say": "Loudness naap nahi paya (ffmpeg nahi?)."}
+        return {"ok": None, "say": "Could not measure loudness (is ffmpeg missing?)."}
     probs = []
     if abs(lufs - target) > LUFS_TOL:
-        probs.append(f"Awaaz {lufs:.1f} LUFS hai; Apple {target:.0f} ±1 LUFS maangta hai ({'dheemi' if lufs < target else 'tez'}).")
+        probs.append(f"The audio is {lufs:.1f} LUFS; Apple wants {target:.0f} ±1 LUFS ({'too quiet' if lufs < target else 'too loud'}).")
     if tp is not None and tp > TRUE_PEAK_MAX:
-        probs.append(f"True peak {tp:.1f} dBTP hai; -1 dBTP se upar nahi hona chahiye (phatne ka dar).")
+        probs.append(f"True peak is {tp:.1f} dBTP; it must not go above -1 dBTP (risk of clipping).")
     return {"ok": not probs, "problems": probs,
-            "say": "Awaaz sahi level par hai (Apple -16 LUFS ±1, peak -1 dBTP ke andar)." if not probs else " ".join(probs)}
+            "say": "The audio level is right (Apple -16 LUFS ±1, peak within -1 dBTP)." if not probs else " ".join(probs)}
 
 
 def artwork_problems(w: int, h: int, fmt: str, mode: str) -> list[str]:
     p = []
     if w != h:
-        p.append(f"Square nahi hai ({w}x{h}).")
+        p.append(f"Not square ({w}x{h}).")
     if min(w, h) < ART_MIN:
-        p.append(f"Chhoti hai: kam se kam {ART_MIN}x{ART_MIN} chahiye (Apple).")
+        p.append(f"Too small: at least {ART_MIN}x{ART_MIN} is needed (Apple).")
     if max(w, h) > ART_MAX:
-        p.append(f"Badi hai: {ART_MAX}x{ART_MAX} tak (Apple).")
+        p.append(f"Too large: up to {ART_MAX}x{ART_MAX} (Apple).")
     if fmt.upper() not in ("JPEG", "PNG"):
-        p.append("Sirf JPG ya PNG.")
+        p.append("Only JPG or PNG.")
     if mode not in ("RGB",):
-        p.append(f"Colour {mode} hai; RGB chahiye (CMYK nahi).")
+        p.append(f"The colour mode is {mode}; RGB is needed (not CMYK).")
     return p
 
 
