@@ -2073,7 +2073,10 @@ class Call:
 
     @staticmethod
     def _news_words(text: str) -> set:
-        t = re.sub(r"\[[^\]]{0,400}\]|\(|\)", " ", str(text).lower())
+        # v0.858 a note may mark its own news with «...»: only that part counts for 'same news' (two PC updates or
+        # two different PC questions share their fixed wrapper words and were dropped as duplicates)
+        inner = re.findall(r"«([^»]{0,2000})»", str(text))
+        t = re.sub(r"\[[^\]]{0,400}\]|\(|\)", " ", (" ".join(inner) if inner else str(text)).lower())
         return {w for w in re.findall(r"[a-z0-9\u0900-\u097f]{4,}", t)}
 
     _news_sent_at = 0.0
@@ -2436,6 +2439,8 @@ class Call:
                             continue   # already running or done: never run a tool twice (a payment, a reminder...)
                         if fid:
                             self._seen_calls.add(fid)
+                        if fc.name == "santosh_kaam":
+                            self._kaam_turn = True   # v0.858 set at once: the PC rescue never sends this ask twice
                         t = asyncio.create_task(self.run_tool(session, fc))
                         self._tools.add(t)
                         t.add_done_callback(self._tools.discard)
@@ -2870,16 +2875,24 @@ class Call:
         self.stats["backchannels"] += 1
         await self.send_audio(matched_clip(self, clips[i]))
 
-    _PC_ASK = re.compile(r"\b(?:chrome|crome|edge|firefox|browser|laptop|computer|desktop|notepad|excel|word|tally|"
+    _PC_ASK = re.compile(r"\b(?:chrome|crome|edge|firefox|browser|laptop|computer|desktop|notepad|excel|tally|"
                          r"powerpoint|pc)\b|पीसी|कंप्यूटर|लैपटॉप|क्रोम", re.I)
+    # a PC ASK needs a doing word too: 'computer science kya hai' / 'laptop lena chahiye?' are talk, not a PC job
+    _PC_DO = re.compile(r"\b(?:khol|kholo|kholiye|open|chala|chalao|start|band|order|mangao|mangwa|book|kar|karo|kardo|"
+                        r"kariye|type|likh|likho|bhej|bhejo|dikha|dikhao|search|dhoondh|dhundh|install|download|save|print|"
+                        r"login|chalu|close|play|run|launch|do)\b|खोल|करो|चलाओ|भेजो|लिखो", re.I)
+    _ASKS_BACK = re.compile(r"\?\s*$")
 
-    def _pc_rescue(self, said: str) -> bool:
+    def _pc_rescue(self, said: str, reply: str = "") -> bool:
         """v0.858 her call turn asked for work on HER PC but the voice model answered by itself (a live call log: 3 turns,
         0 tools, 'I cannot access your PC'). Gemini decides what is 'talk', so a PC ask is never left to it: the system
-        hands her own words to santosh_kaam and tells the voice to correct itself. True = handed over."""
+        hands her own words on and tells the voice to correct itself. A task already running on her PC gets her words
+        as a note (no new brain turn); her PC off = the voice says so. True = handed over."""
         t = str(said or "").strip()
-        if len(t) < 4 or not get_settings().voice_brain or not self._PC_ASK.search(t):
+        if len(t) < 4 or not get_settings().voice_brain or not self._PC_ASK.search(t) or not self._PC_DO.search(t):
             return False
+        if self._ASKS_BACK.search(str(reply or "")):
+            return False                     # the voice asked her something back: her next words decide
         try:
             from .agent import where
             if where.place(t) in ("hoolapc", "hoola", "phone"):
@@ -2888,8 +2901,19 @@ class Call:
             if kaamstop.wants_stop(t):
                 return False
             from .pc import hub
+            from .pc import operator as pcop
             if not hub.hub.is_online(self.tenant):
+                self.push("text", "(System: her PC is not connected right now - Santosh Desktop is closed or offline. "
+                                  "Tell her that in one line and ask her to open Santosh Desktop; never say Hoola "
+                                  "cannot work on a PC.)")
                 return False
+            live = pcop.live_for(self.tenant, self.conv)
+            if live is not None and pcop.same_chat(live.conv, self.conv):
+                pcop.tell(self.tenant, self.conv, t)
+                self.stats["pc_told"] = self.stats.get("pc_told", 0) + 1
+                self.push("text", "(System: her words went into the task already running on her PC. Say only "
+                                  "'theek hai, wahi kar raha hoon'.)")
+                return True
         except Exception:
             log.debug("pc rescue check failed", exc_info=True)
             return False
@@ -2906,7 +2930,7 @@ class Call:
                 log.exception("pc rescue delegate failed")
                 return
             if isinstance(r, dict) and "result" in r:
-                self.push_news(f"(The PC request is answered: {str(r['result'])[:1200]}. Tell her in a line or two.)")
+                self.push_news(f"(The PC request is answered: «{str(r['result'])[:1200]}». Tell her in a line or two.)")
         task = asyncio.create_task(go())
         self._tools.add(task)
         task.add_done_callback(self._tools.discard)
@@ -2914,15 +2938,20 @@ class Call:
 
     def _pcask_listen(self, said: str) -> bool:
         """v0.858 her PC task asked her a choice ('Kaunsa pizza?') and she ANSWERED it on the call: her own words go
-        straight into that task (Gemini does not have to pass them on, and cannot shorten them). True = taken."""
+        straight into that task (Gemini does not have to pass them on, and cannot shorten them). Only a turn that
+        STARTED after the question had a turn to be spoken counts (words she was saying before it are not her answer).
+        True = taken."""
         t = str(said or "").strip()
-        if len(t) < 2:
+        if len(t) < 1:
             return False
         try:
             from .pc import operator as pcop
-            op = pcop.pending_ask(self.tenant)
-            if op is None or (op.ask or {}).get("at", 0) > time.time() - 0.5:
-                return False              # nothing asked (or asked this very instant: her words were for before)
+            op = pcop.pending_ask(self.tenant, self.conv)
+            if op is None:
+                return False
+            prev_end = float(getattr(self, "_prev_turn_end", 0.0) or 0.0)
+            if (op.ask or {}).get("at", 0) >= prev_end:
+                return False              # asked during THIS turn: Gemini has not spoken the question to her yet
             got = pcop.answer_from_chat(self.tenant, self.conv, t)
         except Exception:
             log.debug("pc ask listen failed", exc_info=True)
@@ -3028,12 +3057,14 @@ class Call:
             from .db import now as _now
             self._appr_since = _now()             # the next card she can answer by voice is one that appears after this
         await self._otp_listen(final=True)
-        answered_pc = self._pcask_listen(self.user_buf)
+        answered_pc = False if interrupted else self._pcask_listen(self.user_buf)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
         brain_saved = bool(getattr(self, "_brain_this_turn", False))   # wave 11: did THIS turn go to the brain?
         self._brain_this_turn = False
-        if user and not brain_saved and not interrupted and not answered_pc:
-            self._pc_rescue(user)
+        kaam_turn, self._kaam_turn = bool(getattr(self, "_kaam_turn", False)), False
+        if user and not brain_saved and not kaam_turn and not interrupted and not answered_pc:
+            self._pc_rescue(user, reply)
+        self._prev_turn_end = time.time()
         if user:
             self._kaam_said = ""                  # v0.657 her next turn's words may go to the brain again
         name_prompt, self._name_prompt = self._name_prompt, False
@@ -3621,6 +3652,14 @@ class Call:
                 self.stats["kaam_split_asks"] = self.stats.get("kaam_split_asks", 0) + 1
             elif said:
                 self._kaam_said = said.strip()
+            try:   # v0.858 her PC task is waiting on her choice: her words answer it (no brain turn, no second note)
+                from .pc import operator as _pcop
+                _ans = _pcop.answer_from_chat(self.tenant, self.conv, said or req)
+            except Exception:
+                _ans = None
+            if _ans:
+                self.stats["pc_answers"] = self.stats.get("pc_answers", 0) + 1
+                return {"result": _ans["say"]}
             if get_settings().voice_brain and said and said.strip() != req.strip():
                 # v0.630 the brain gets HER words (the voice model may shorten or translate them)
                 req = said + (f"\n(Call ne samjha: {req})" if req.strip() else "")

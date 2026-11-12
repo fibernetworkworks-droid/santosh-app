@@ -27,8 +27,8 @@ jobs:
           flutter-version: "3.24.5"
           cache: true
       - run: flutter pub get
-      - name: Unit tests (fonts bundled, markdown)
-        run: flutter test test/fonts_test.dart test/md_text_test.dart
+      - name: Unit tests (fonts bundled, markdown, design rules)
+        run: flutter test test/fonts_test.dart test/md_text_test.dart test/design_rules_test.dart
       - name: Take the screen pictures
         run: |
           set -o pipefail

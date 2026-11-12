@@ -7,8 +7,6 @@
 // These are screenshots, not yet a pass / fail comparison: the screens are about to change on purpose. Each screen
 // is its own test, so one screen that cannot render on a test machine never hides the others' pictures.
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,34 +19,11 @@ import 'package:santosh/ui/employees_screen.dart';
 import 'package:santosh/ui/glass.dart';
 import 'package:santosh/ui/setup_screen.dart';
 
+import 'golden_fonts.dart';
+
 /// The phone the pictures are taken on: 390 x 844 logical pixels (a common Android size), at 2x.
 const _logical = Size(390, 844);
 const _ratio = 2.0;
-
-/// Real icon glyphs instead of test boxes: the Material Icons font ships inside the Flutter SDK cache.
-Future<void> _loadIconFont() async {
-  final tried = <String>[];
-  final roots = <String>[
-    if (Platform.environment['FLUTTER_ROOT'] != null) '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts',
-  ];
-  // flutter_tester lives in <sdk>/bin/cache/artifacts/engine/<platform>/ - walk up to "artifacts"
-  var dir = File(Platform.resolvedExecutable).parent;
-  for (var i = 0; i < 6; i++) {
-    if (dir.path.endsWith('artifacts')) roots.add(dir.path);
-    dir = dir.parent;
-  }
-  for (final r in roots) {
-    final f = File('$r/material_fonts/MaterialIcons-Regular.otf');
-    tried.add(f.path);
-    if (f.existsSync()) {
-      final loader = FontLoader('MaterialIcons')..addFont(Future.value(ByteData.sublistView(f.readAsBytesSync())));
-      await loader.load();
-      return;
-    }
-  }
-  // ignore: avoid_print
-  print('R0: Material Icons font not found (icons show as boxes). Looked in: $tried');
-}
 
 /// Plugins the screens may call while they open. On a test machine none of them exist; they answer "nothing".
 void _quietPlugins() {
@@ -133,7 +108,8 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     GoogleFonts.config.allowRuntimeFetching = false;   // every font comes from assets/fonts (R0)
     _quietPlugins();
-    await _loadIconFont();
+    await loadIconFont();
+    await loadHoolaFamilies();
   });
 
   // the app shell exactly as the phone shows it after setup: Aurora, tab bar, the tab's own screen

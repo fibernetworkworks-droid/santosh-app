@@ -83,6 +83,12 @@ class Santosh extends ChangeNotifier {
   /// calls in a Hinglish product; the server's learned language (voicelang) still wins after her first calls.
   String get voiceLang => _prefs.getString('vlang') ?? 'hi-IN';
   bool get speakReplies => _prefs.getBool('speak') ?? true;
+  /// v0.860 R1 Light / Dark / System for the redesigned screens (lib/ui/hoola_theme.dart). Default: follow the phone.
+  String get appearance => _prefs.getString('appearance') ?? 'system';
+  Future<void> setAppearance(String v) async {
+    await _prefs.setString('appearance', const {'system', 'light', 'dark'}.contains(v) ? v : 'system');
+    notifyListeners();
+  }
   bool get configured => apiKey.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.
   bool get background => _prefs.getBool('bg') ?? true;

@@ -331,7 +331,9 @@ async def test_report_words_for_hoolapc(bz, monkeypatch):  # noqa: F811
     operator._report(op)
     assert "Hoola ke apne PC par poora nahi ho paya" in sent["notify"]
     assert "HOOLA'S OWN PC" in sent["inject"]
-    assert where.working("c1") == "hoolapc"   # a webby task keeps its place on the Hoola PC
+    # v0.858 a FINISHED task no longer locks the chat for 45 min (unrelated asks were pulled to the PC); the place
+    # she named stays for her short follow-ups
+    assert where.current("c1") == "hoolapc"
     where.forget("c1")
 
 

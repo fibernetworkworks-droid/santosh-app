@@ -155,7 +155,7 @@ async def _to_pc(ctx: Ctx, a: dict[str, Any], chk: dict[str, Any]) -> dict[str, 
     site = chk.get("site") or ""
     task = str(a.get("task") or "").strip()
     url = str(a.get("start_url") or "").strip()
-    pc_task = (task + (f" Website: {url}" if url else "") + " Use Google Chrome on this PC. When the site sends an OTP, "
+    pc_task = (task + (f" Website: {url}" if url else "") + " Use her browser on this PC. When the site sends an OTP, "
                "click the OTP box and use ask_otp. Download files to the normal Downloads folder and say the file name.")
     why = chk.get("why") or ""
     asked = chk.get("ok", True)    # v0.93 True = she asked for her PC; False = the site refuses Hoola's server

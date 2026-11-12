@@ -60,8 +60,9 @@ def _her_account_site(name: str, args: dict[str, Any], ctx) -> None:
     from . import where
     conv = getattr(ctx, "conversation_id", "") or ""
     place = getattr(ctx, "place", "") or ""
-    if place in ("hoola", "server", "pc") or where._asked(conv, "hoola") or where.working(conv) == "pc":
-        return                                   # she named a place, or her PC task runs: the steer moves it there
+    if place in ("hoola", "server", "pc", "hoolapc") or where._asked(conv, "hoola") or \
+            where.working(conv) in ("pc", "hoolapc"):
+        return                                   # she named a place, or a PC task runs: the steer moves it there
     try:
         from ..pc import hub
         online = hub.hub.is_online(getattr(ctx, "tenant_id", "") or "")
@@ -70,6 +71,7 @@ def _her_account_site(name: str, args: dict[str, Any], ctx) -> None:
     if not online:
         return
     STATS["asked_place"] = STATS.get("asked_place", 0) + 1
+    where.offer(conv, "pc")          # her plain 'haan' to this question now names her PC (where.remember)
     raise ToolError("This is an ORDER on a site where SHE has her own account (her login, saved address, payment) - "
                     "your own server browser has none of that. Her PC is online. Do NOT run it here: ask her in ONE "
                     "line 'Yeh aapke PC par karun? Wahan aap Swiggy / Amazon mein logged in hain.' On her yes use pc_do "

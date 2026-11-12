@@ -86,8 +86,39 @@ def _form_job(task: str) -> bool:
     return bool(_WEBBY.search(t)) and not _DATA.search(t)
 
 
+def _k(conv: str) -> str:
+    """v0.858 one place per CHAT: a call record / side record shares its chat's place (keys were raw ids, so 'mere PC
+    pe' said on a call was forgotten by the call's second ask and by the chat after hang-up)."""
+    if not conv:
+        return conv
+    try:
+        from . import callconv as _cc   # noqa: F401  (only for type checkers)
+    except Exception:
+        pass
+    try:
+        from .. import callconv
+        c = callconv.chat_of(conv)
+        return callconv.chat_of(c) if c != conv else c
+    except Exception:
+        return conv
+
+
+_OFFER: dict[str, tuple[str, float]] = {}   # v0.858 chat -> (place Hoola offered, when) - 'Yeh aapke PC par karun?'
+OFFER_S = 10 * 60
+_YES = re.compile(r"^\s*(?:haan|haa|han|ha|hanji|haanji|ji|ji\s+haan|yes|yeah|yep|ok|okay|theek(?:\s+hai)?|thik(?:\s+hai)?|"
+                  r"sure|kar\s+do|karo|kardo|chalo|bilkul|ha\s+karo|haan\s+karo|go|go\s+ahead|done|zaroor)"
+                  r"(?:\s+(?:ji|please|plz|na|bhai|karo|kar\s+do|wahi|wahan|par|pe|pc\s+(?:par|pe)|wahan\s+karo))*[\s.!]*$", re.I)
+
+
+def offer(conv: str, where: str) -> None:
+    """Hoola just asked her 'Yeh aapke PC par karun?' - a plain yes in the next minutes names that place."""
+    if conv and where in ("pc", "hoolapc", "hoola"):
+        _OFFER[_k(conv)] = (where, time.time())
+
+
 def _asked(conv: str, where: str) -> bool:
     """She herself named this place for the work (now, or a moment ago)."""
+    conv = _k(conv)
     old = _PLACE.get(conv)
     return bool(old and old[0] == where and time.time() - old[1] <= KEEP_S)
 
@@ -95,7 +126,8 @@ def _asked(conv: str, where: str) -> bool:
 # names of features, not places: "computer operator" is Hoola's own browser, "PC operator" is her PC (kept)
 _FEATURE = re.compile(r"\bcomputer\s+operator\b", re.I)
 _WEBBY = re.compile(r"https?://|www\.|\.(?:com|in|org|net|gov|co)\b|\b(?:chrome|browser|website|site|portal|web\s*page|"
-                    r"online|login|irctc|uidai|aadhaar|digilocker|amazon|flipkart|google)\b", re.I)
+                    r"online|login|irctc|uidai|aadhaar|digilocker|amazon|flipkart|google|swiggy|zomato|zepto|blinkit|instamart|"
+                    r"bigbasket|myntra|meesho|nykaa|ajio|uber|ola|bookmyshow|makemytrip|jiomart)\b", re.I)
 
 
 def _hit(text: str, pats: list[re.Pattern]) -> bool:
@@ -110,6 +142,26 @@ def _hit(text: str, pats: list[re.Pattern]) -> bool:
 _CALL_READ = re.compile(r"\n\((?:Call ne samjha|The call (?:heard|understood)):", re.I)
 # the voice model speaks TO her, so its 'aapka / aapke / your PC' is HER PC, never Hoola's
 _CALL_YOUR = re.compile(r"\b(?:aapk[aei]|aap\s+k[aei]|your|tumhar[aei]|tumhare|apn[aei])\b", re.I)
+
+
+_OPEN_BROWSER = re.compile(r"\b(?:chrome?|crome|google\s+chrome|microsoft\s+edge|edge|firefox|brave)\b[^.?!\n]{0,24}?"
+                           r"\b(?:khol|kholo|kholiye|open|chala|chalao|start|launch|me|mein|main|pe|par|se)\b|"
+                           r"\b(?:open|khol(?:o|iye)?|launch|start)\s+(?:the\s+)?(?:chrome?|crome|google\s+chrome|edge|"
+                           r"microsoft\s+edge|firefox|brave)\b|क्रोम", re.I)
+
+
+def browser_ask(text: str) -> bool:
+    """v0.858 'Chrome kholo aur Swiggy se order karo' names no place by the old rules, yet a browser by NAME is a
+    program on HER computer (Hoola's own browser has no name she would say). With her PC online this is her PC."""
+    t = _CALL_READ.split(str(text or ""), maxsplit=1)[0]
+    return bool(_OPEN_BROWSER.search(t)) and not _hit(t, _HOOLA) and not _hit(t, _HOOLAPC)
+
+
+def set_place(conv: str, where: str) -> str:
+    conv = _k(conv)
+    _PLACE[conv] = (where, time.time())
+    _WHY[conv] = "named"
+    return where
 
 
 def place(text: str) -> str:
@@ -141,8 +193,12 @@ def _place(text: str) -> str:
 def remember(conv: str, text: str) -> str:
     """The place for this message: named now, kept from her last request for a short follow-up, else the place where
     website work is already running in this chat (so a job never jumps to another browser half way)."""
+    conv = _k(conv)
     p = place(text)
     now = time.time()
+    off = _OFFER.pop(conv, None)
+    if not p and off and now - off[1] <= OFFER_S and _YES.match(str(text or "")):
+        p = off[0]                    # v0.858 her 'haan' to Hoola's own 'aapke PC par karun?' names her PC
     if p:
         STATS["named"] += 1
         _PLACE[conv] = (p, now)
@@ -168,6 +224,7 @@ def remember(conv: str, text: str) -> str:
 
 
 def current(conv: str) -> str:
+    conv = _k(conv)
     old = _PLACE.get(conv)
     if old and time.time() - old[1] <= KEEP_S:
         return old[0]
@@ -176,6 +233,7 @@ def current(conv: str) -> str:
 
 def working(conv: str) -> str:
     """Where website work is running in this chat right now (pc | hoola), '' when none lately."""
+    conv = _k(conv)
     w = _WORK.get(conv)
     if _her_pc_busy(conv) and (not w or w[0] != "pc"):
         return "pc"                   # v0.858 her PC task is RUNNING in this chat: the chat stays on her PC
@@ -206,6 +264,7 @@ def touch(conv: str, where: str) -> None:
     cloud PC never sticks - and its lock is never EXTENDED by the running job (her PC / Hoola's browser still are)."""
     if not conv or where not in ("pc", "hoola", "hoolapc"):
         return
+    conv = _k(conv)
     if where == "hoolapc" and not (_asked(conv, "hoolapc") or (_WORK.get(conv) or ("",))[0] == "hoolapc"):
         STATS["not_stuck"] += 1
         return
@@ -233,8 +292,23 @@ def worked(conv: str, name: str, args: dict[str, Any], out: Any = None) -> None:
         touch(conv, w)
 
 
+def release(conv: str, status: str = "done") -> None:
+    """v0.858 a PC task ENDED: the 45-minute 'work is running there' lock goes (it sent unrelated asks to the PC long
+    after the order was done). A finished task keeps only the short follow-up place (KEEP_S, short messages); a
+    stopped / failed one keeps nothing."""
+    if not conv:
+        return
+    conv = _k(conv)
+    w = _WORK.pop(conv, None)
+    if w and status in ("done", "partial"):
+        _PLACE[conv] = (w[0], time.time())
+    elif status in ("cancelled", "failed"):
+        _PLACE.pop(conv, None)
+
+
 def forget(conv: str = "") -> None:
     if conv:
+        conv = _k(conv)
         _PLACE.pop(conv, None)
         _WORK.pop(conv, None)
         _WHY.pop(conv, None)
@@ -280,14 +354,14 @@ def steer(name: str, args: dict[str, Any], where: str) -> tuple[str, dict[str, A
         if name == "browse_web":
             url = _url(args.get("start_url"))
             task = (str(args.get("task") or "").strip() + (f" Website: {url}." if url else "") +
-                    " Do it in Google Chrome on this PC (her own browser).")
+                    " Do it on this PC in her browser.")
             STATS["steered"] += 1
-            return "pc_do", {"task": task}, "She asked for HER PC, so this runs in Chrome on her PC (not your server browser)."
+            return "pc_do", {"task": task}, "She asked for HER PC, so this runs in her browser on her PC (not your server browser)."
         if name == "open_on_phone":
             url = _url(args.get("url"))
             STATS["steered"] += 1
-            return "pc_do", {"task": f"Open {url} in Google Chrome on this PC and leave it open for her."}, \
-                "She asked for HER PC, so the link opens in Chrome on her PC (not on her phone)."
+            return "pc_do", {"task": f"Open {url} on this PC in her browser and leave it open for her."}, \
+                "She asked for HER PC, so the link opens in her browser on her PC (not on her phone)."
         if name == "computer_operator" and str(args.get("action") or "") == "start" and args.get("where") != "pc":
             args["where"] = "pc"
             STATS["steered"] += 1
