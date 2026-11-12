@@ -135,8 +135,28 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       </section></div>
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">Your GSTIN</h2>
         ${OV.connections.length ? `<ul class="acd-kv">${OV.connections.map(c => `<li><span><code>${esc(c.gstin)}</code></span><span class="ddk-pill ${c.status === 'connected' ? 'ok' : 'mute'}">${esc(c.status)}</span></li>`).join('')}</ul>` : ''}
-        <p class="ddk-fine first">Connecting your GSTIN comes in the next step (A1): you switch on API access on the GST portal once, Hoola asks the portal to send you an OTP, you type it here. Your portal password is never asked for. You can see and cancel Hoola's access on the portal any time.</p></section>`;
+        ${connectForm()}
+        <h3 class="ddk-h3" style="margin-top:18px">Check a supplier</h3>
+        <p class="ddk-fine first">No OTP needed. Active or cancelled, and whether they filed.</p>
+        <div class="acd-row"><input id="acdSup" class="acd-in" placeholder="Supplier GSTIN" maxlength="15" autocomplete="off"><button type="button" class="btn ddk-mid" data-a="supcheck">Check</button></div>
+        <div id="acdSupOut" class="ddk-fine" aria-live="polite"></div>
+      </section>`;
   }
+
+  function connectForm() {
+    const c = OV.connections[0];
+    const live = c && c.status === 'connected';
+    const sent = c && c.status === 'otp_sent';
+    return `<p class="ddk-fine first">${live ? 'Connected until ' + esc(new Date(c.enabled_until).toLocaleString('en-IN')) + '.' : 'Turn on API access once on the GST portal (My Profile → Manage API Access), then Hoola asks the portal to send you an OTP. Your portal password is never asked for, and nothing is filed from here.'}</p>
+      <div class="acd-row">
+        <input id="acdGstin" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc(c ? c.gstin : '')}" autocomplete="off">
+        <input id="acdUser" class="acd-in" placeholder="GST portal username" value="${esc(c ? c.gst_username : '')}" autocomplete="off">
+        ${sent ? `<input id="acdOtp" class="acd-in" placeholder="OTP" inputmode="numeric" maxlength="8" autocomplete="one-time-code"><button type="button" class="btn ddk-mid" data-a="cverify">Connect</button>` : ''}
+        <button type="button" class="btn ddk-mid" data-a="cstart">${sent ? 'Send OTP again' : live ? 'New OTP' : 'Send me an OTP'}</button>
+        ${live ? '<button type="button" class="btn ddk-mid" data-a="crefresh">Refresh</button><button type="button" class="btn ddk-mid" data-a="cdisc">Disconnect</button>' : ''}
+      </div>`;
+  }
+  const val = id => (EL.querySelector('#' + id)?.value || '').trim();
 
   // ------------------------------------------------------------------ Plan
   function plan() {
@@ -153,6 +173,26 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       if (a === 'hub') { open?.('hire'); return; }
       if (a === 'tab') { TAB = b.dataset.t; draw(false); if (TAB === 'register') loadRegister(); return; }
       if (a === 'hire') { try { await api('POST', '/api/employees/accounts/hire', {trust: 'seekh'}); toast('Hired. Its desk stays here.'); } catch (e) { toast(e.message, true); } load(false); return; }
+      if (a === 'cstart' || a === 'cverify' || a === 'crefresh' || a === 'cdisc') {
+        const g = val('acdGstin').toUpperCase();
+        try {
+          const r = a === 'cstart' ? await api('POST', '/api/bahi/connect/start', {gstin: g, gst_username: val('acdUser')})
+            : a === 'cverify' ? await api('POST', '/api/bahi/connect/verify', {gstin: g, otp: val('acdOtp')})
+            : a === 'crefresh' ? await api('POST', '/api/bahi/connect/refresh', {gstin: g})
+            : await api('POST', '/api/bahi/connect/disconnect', {gstin: g});
+          toast(r.message || (a === 'cverify' ? 'Connected.' : 'Done.'));
+        } catch (e) { toast(e.message, true); }
+        await load(false); return;
+      }
+      if (a === 'supcheck') {
+        const out = EL.querySelector('#acdSupOut'); out.textContent = 'Checking...';
+        try {
+          const r = await api('POST', '/api/bahi/supplier-check', {gstin: val('acdSup').toUpperCase()});
+          const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
+          out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
+        } catch (e) { out.textContent = e.message; }
+        return;
+      }
       if (a === 'sync') {
         BUSY = true; draw(false);
         try { const r = await api('POST', '/api/bahi/sync', {}); toast(`Register: ${r.added} added, ${r.changed} changed${r.held_locked ? `, ${r.held_locked} held (locked month)` : ''}${Object.keys(r.errors).length ? ' - some sources could not be read' : ''}.`, !!Object.keys(r.errors).length); }

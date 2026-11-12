@@ -794,6 +794,9 @@ def publish_check(r: AppProject, v: int) -> list[str]:
                 continue
     if probs:
         bl.append("the code check found: " + RL.say(probs, 4))
+    if getattr(RN._settings(), "app_engine_publish_checks", True):      # v0.832 SABOOT: the scans + rule tests + browser check must not FAIL
+        from . import saboot as SB
+        bl += SB.blockers(r, v)
     return bl
 
 

@@ -11,7 +11,7 @@ from typing import Any
 
 from .tools import Ctx, ToolError
 
-READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows"}
+READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests"}
 CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change"}
 
 APPENGINE_TOOLS = [
@@ -45,7 +45,11 @@ APPENGINE_TOOLS = [
         "is never readable by anyone on the internet unless she said so (then confirm_public: true). The app uses it ONLY "
         "via src/lib/hoola.ts: hoola.db.collection(\"list\").list() / create / update / remove, hoola.auth.signUp / "
         "signIn / signOut / me / onChange; every rule is checked on the server. action=cloud_rows {list} reads the PREVIEW "
-        "(sample) data only - her visitors' live data is never read by you."),
+        "(sample) data only - her visitors' live data is never read by you. PROOF BEFORE 'DONE': after you change a rule "
+        "the rules are played against the real rule engine and the answer says if they held; after a build of an app "
+        "that saves data a real browser walks it at phone and desktop size - read those lines, and never say it is done "
+        "while one says FAILED. action=tests plays the rules now; action=scan (what=quick|deep) lists what would block "
+        "going live: personal data readable by anyone, secrets in the code, failing rules or browser walk."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES)},
          "app": {"type": "string", "description": "the app id or number (default: the app this Studio chat is about)"},
@@ -120,7 +124,17 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
     if action == "tokens":
         return AE.set_tokens(t, a, kw.get("values") or {}, kw.get("palette") or "")
     if action == "build":
-        return AE.wait_build(t, a)
+        res = AE.wait_build(t, a)
+        return _prove(t, a, res)
+    if action in ("scan", "tests"):
+        from ..appengine import saboot as SB
+        r = AE._load(t, a)
+        if action == "tests":
+            rt = SB.rule_tests(r)
+            return {**{k: rt[k] for k in ("ok", "count", "failed", "lists")}, "say": SB.say_rule_tests(rt)}
+        if not int(r.version or 0):
+            raise ToolError("Build the app first; a scan reads a built version.")
+        return SB.deep(r, int(r.version)) if str(kw.get("what") or "quick") == "deep" else SB.quick(r, int(r.version))
     if action in ("cloud", "cloud_rows", "cloud_change"):
         from ..appengine import cloud as CL
         r = AE._load(t, a)
@@ -130,7 +144,13 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
                 return {k: o[k] for k in ("schema", "audit", "pending", "datasets", "not_built")}
             if action == "cloud_rows":
                 return {"dataset": "preview", "rows": CL.owner_rows(r, "preview", kw.get("list") or "", 50)}
-            return CL.apply_changes(r, kw.get("changes") or [], "hoola")
+            out = CL.apply_changes(r, kw.get("changes") or [], "hoola")
+            if any(str(c.get("op")) in ("add_list", "rules") for c in (kw.get("changes") or []) if isinstance(c, dict)):
+                from ..appengine import saboot as SB     # v0.832 a rule changed: play the rules against the real engine before 'done'
+                rt = SB.rule_tests(r)
+                out["rule_tests"] = {k: rt[k] for k in ("ok", "count", "failed", "lists")}
+                out["say"] = (out.get("say") or "") + " " + SB.say_rule_tests(rt) + ("" if rt["ok"] else " Do NOT say this is done.")
+            return out
         except CL.CloudError as e:
             if action == "cloud_change" and isinstance(e.data, dict) and e.data.get("destructive"):
                 CL.queue_pending(r, e.data["destructive"])
@@ -139,6 +159,25 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
             raise ToolError(str(e))
     raise ToolError(f"Unknown action '{action}'.")
 
+
+
+def _prove(t: str, a: str, res: dict) -> dict:
+    """v0.832 SABOOT: after a good build of an app that saves data, the browser walks it before 'done' is said."""
+    from ..appengine import cloud as CL, saboot as SB, service as AE
+    try:
+        if res.get("built") is False:
+            return res
+        r = AE._load(t, a)
+        if not int(r.version or 0) or not CL.schema(r).get("lists"):
+            return res
+        b = SB.browser_check(r)
+        res = dict(res)
+        res["browser_check"] = {k: b.get(k) for k in ("ran", "ok", "problems", "why")}
+        res["say"] = (res.get("say") or "") + " " + SB.say_browser(b) + ("" if b.get("ok") or not b.get("ran") else " Fix this before you say it is done.")
+    except Exception as e:                                  # noqa: BLE001  a proof that cannot run must not break the build answer
+        res = dict(res)
+        res["browser_check"] = {"ran": False, "why": str(e)[:200]}
+    return res
 
 async def app_engine(ctx: Ctx, action: str, app: str = "", **kw: Any) -> dict:
     from ..appengine import service as AE

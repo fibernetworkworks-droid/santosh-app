@@ -3035,3 +3035,23 @@ Task ID: v0.831.0 HOOLA CLOUD (L10)
 Task: owner "GO L10" on docs/LOVABLE_STUDIO_PLAN.md.
 Work Log: appengine/cloud.py (schema, additive one-run migrations, data-loss card, rule audit, typed lists, preview vs live, public API on site/webapp.py), sealed app frame + shell.js + hoola.ts RPC, tool cloud / cloud_change / cloud_rows, 8 Studio routes + Cloud tab, proof clinic app on Cloud; 6 tests incl. a browser walk; v0.824 / v0.826 tests moved to __app/.
 Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild). Next: L11 SABOOT (auto tests + browser check before done, scans, publish block) on her GO.
+
+Task ID: api-setu-shape-0832
+Work: API Setu 200-without-record handling + field-name report; v0.832.0 ritual. Stage: ready for MERGE TO MAIN.
+
+Task ID: bahi-a1-0833
+Work: A1 connect + supplier check, v0.833.0 ritual. Stage: ready for MERGE TO MAIN.
+---
+Task ID: L11-SABOOT
+Agent: Claude
+Task: L11 of docs/LOVABLE_STUDIO_PLAN.md - auto tests on rule changes, browser check before done, quick + deep scan, publish block.
+
+Work Log:
+- Read plan 5.6 / security section; designed saboot.py (rule tests on the real rule engine, browser check in real Chromium served in-process, quick scan on publish, deep scan on demand).
+- Wired publish_check (switch app_engine_publish_checks), tool actions tests / scan + proof lines after cloud_change and build, 3 routes, Publish tab Checks panel, proof card bad_rule_refused.
+- Kept her confirm_public yes as public_ack on the list (dropped when the rule stops being public).
+- Fixed on the way: sign-up rate limit hit by repeated checks (fresh address per call), empty-root wait, 401/403 console lines are rule answers.
+- Tests test_v0832_saboot.py 9; version 0.834.0 (built on main 0.833.0).
+
+Stage Summary:
+- Planted bad-rule app refused at publish with the reason named; fixed rule passes. Not verified on her VPS.

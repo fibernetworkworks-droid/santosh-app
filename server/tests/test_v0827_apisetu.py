@@ -147,3 +147,27 @@ def test_v0828_wb_check_explains_an_unknown_gst_username(capsys, monkeypatch):
     assert wbcheck.main() == 1
     out = capsys.readouterr().out
     assert "does not know the name" in out and "gst_username and the GSTIN it" in out
+
+
+def test_v0832_a_wrapped_or_gstn_shaped_record_is_read(asenv):
+    apisetu, plug, _ = asenv
+    plug(lambda req: httpx.Response(200, json={"status": True, "data": REC}))
+    assert apisetu.taxpayer("33AAACC1206D1ZN")["legal_name"] == "SAMPLE TRADERS PRIVATE LIMITED"
+    native = {"gstin": "33AAACC1206D1ZN", "lgnm": "NATIVE NAME LTD", "sts": "Active", "rgdt": "05/09/2018", "nba": ["Retail Business"]}
+    plug(lambda req: httpx.Response(200, json={"result": [native]}))
+    r = apisetu.taxpayer("33AAACC1206D1ZN")
+    assert r["legal_name"] == "NATIVE NAME LTD" and r["active"] and r["registered_on"] == "2018-09-05"
+    assert r["activities"] == ["Retail Business"]
+
+
+def test_v0832_a_200_without_a_record_names_the_fields_never_the_values(asenv, capsys):
+    apisetu, plug, _ = asenv
+    plug(lambda req: httpx.Response(200, json={"status": False, "message": "No records found", "data": {"secretish": "VALUE-XYZ"}}))
+    with pytest.raises(apisetu.ApiSetuError) as e:
+        apisetu.taxpayer("33AAACC1206D1ZN")
+    assert e.value.code == "no_record" and "status" in e.value.message and "data.secretish" in e.value.message
+    assert "VALUE-XYZ" not in e.value.message and "No records found" in e.value.message
+    from app.bahi import apisetucheck
+    assert apisetucheck.main([]) == 0
+    out = capsys.readouterr().out
+    assert "PASS" in out and "the keys work" in out.lower() and "APISETU_TEST_GSTIN" in out
