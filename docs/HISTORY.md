@@ -2669,3 +2669,6 @@ NOT VERIFIED on her VPS or with a real model-built app (the browser walk was run
 
 ## v0.836.0 WB REFUSAL WORDS
 wb.call refusals carry WhiteBooks' own envelope fields as detail; wb_check tries several months / IMS section spellings.
+
+## v0.837.0 WB LOGOUT
+AUTH403 'Maximum session allowed' was the real cause of the failed GST login; logout added to wb_check and Disconnect.

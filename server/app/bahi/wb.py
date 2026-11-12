@@ -428,3 +428,9 @@ def gen2b(tenant: str, gstin: str, ret_period: str, gst_username: str, state_cd:
 def get2b(tenant: str, gstin: str, int_tran_id: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
     return call(tenant, "gst", "GET", "/gstr2b/get2b", query={"gstin": gstin, "int_tran_id": int_tran_id},
                 headers=_gst_headers(gst_username, state_cd, txn, ip), op="gstr2b/get2b")
+
+
+def logout(tenant: str, gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
+    """End the GST session at WhiteBooks. A GSP account allows only a few open sessions per user (AUTH403 'Maximum session allowed'),
+    so every walk that opens one must close it."""
+    return call(tenant, "gst", "GET", "/authentication/logout", headers=_gst_headers(gst_username, state_cd, txn, ip), op="auth/logout")
