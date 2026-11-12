@@ -102,7 +102,7 @@ def test_isp_owner_gets_a_music_app_not_her_isp(app_env):
     ids = [x["id"] for x in v["plan"]["screens"]]
     assert {"now_playing", "playlist", "library"} <= set(ids) and not any(x in ids for x in ("olt_list", "subscriber_list", "cart"))
     assert "music" in v["say"].lower() and "Details of FNW Fibernetwork Works are not included" in v["say"]
-    assert any("naam" in q.lower() for q in v["questions"]) and not any("call / whatsapp" in q.lower() for q in v["questions"])
+    assert any("called" in q.lower() for q in v["questions"]) and not any("call / whatsapp" in q.lower() for q in v["questions"])
     r = S._load(v["id"])
     scr = S.write_screen(r, "home")
     assert len(calls) == 2 and "Recently played" in scr["html"] and "Broadband" not in scr["html"] and not scr.get("off_topic")
