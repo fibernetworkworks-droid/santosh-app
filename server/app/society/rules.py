@@ -11,13 +11,13 @@ import re
 from datetime import date, timedelta
 
 NEVER = (
-    "Bill, notice / circular, member ko message, kharcha ya penalty: sirf aapke tap se (card + hash).",
-    "Paise kabhi khud nahi lena / dena: UPI link society ke apne UPI ID par, 'mila' aap darj karti hain.",
-    "Rate, rakam, construction cost, taarikh kabhi gadhna nahi: aapke numbers, warna khaali.",
-    "Maharashtra mein: non-occupancy charges service charges ke 10% se zyada nahi, vyaaj 12% saalana simple se zyada nahi.",
-    "Members ka data sirf society ke kaam ke liye (DPDP): phone kisi aur member ko nahi, flat chhodne ke baad bhool jao.",
-    "Aadhaar / PAN sirf Pehchaan Locker reference se; OTP / PIN / password kabhi nahi.",
-    "Agreement / legal raay nahi: bye-laws aur Registrar ka faisla hi maana jayega.",
+    "A bill, notice / circular, message to a member, expense or penalty: only with your tap (card + hash).",
+    "Never take or give money on its own: the UPI link goes to the society's own UPI ID, and you mark 'received' yourself.",
+    "Never invent a rate, amount, construction cost or date: use your numbers, otherwise leave it blank.",
+    "In Maharashtra: non-occupancy charges are at most 10% of service charges, and interest at most 12% a year simple.",
+    "Member data only for society work (DPDP): never give a phone number to another member, and forget it after the member leaves the flat.",
+    "Aadhaar / PAN only through an ID Locker reference; never an OTP / PIN / password.",
+    "No agreement / legal opinion: only the bye-laws and the Registrar's decision count.",
 )
 
 SOURCES = (
@@ -59,18 +59,18 @@ STATES = {
         "law": "Maharashtra Co-operative Societies Act 1960 (Chapter XIII-B) + Rules 2026 (Chapter XI-B)",
     },
 }
-DEFAULT_STATE = {"law": "Aapke state ka co-operative / Apartment Ownership Act aur aapke bye-laws (numbers aapke)"}
+DEFAULT_STATE = {"law": "Your state's co-operative / Apartment Ownership Act and your bye-laws (the numbers are yours)"}
 
 # head basis: how a head is split per flat
 BASES = {
-    "per_flat": "Har flat barabar",
+    "per_flat": "Equal for every flat",
     "per_sqft": "Carpet area (sq ft) x rate",
-    "per_tap": "Nal / water inlet x rate",
-    "lift": "Lift wale flats barabar",
-    "parking": "Parking slot x rate (kind ke hisaab)",
-    "fund_pct": "Construction cost ka % saal ka (mahine ka 1/12)",
-    "area_share": "Kul rakam carpet area ke anupaat mein",
-    "per_member": "Har member barabar (education fund jaisa)",
+    "per_tap": "Tap / water inlet x rate",
+    "lift": "Equal for flats with a lift",
+    "parking": "Parking slot x rate (by kind)",
+    "fund_pct": "% of construction cost a year (1/12 per month)",
+    "area_share": "Total amount in proportion to carpet area",
+    "per_member": "Equal for every member (like the education fund)",
 }
 DEFAULT_HEADS = (
     {"key": "service", "label": "Service charges", "basis": "per_flat", "service": True},
@@ -183,26 +183,26 @@ def check_heads(heads: list[dict], state: str, noc_pct: float, interest_pct: flo
     block, warn = [], []
     cap = sr.get("noc_cap_pct")
     if cap is not None and noc_pct > cap:
-        block.append(f"Non-occupancy charges {noc_pct:g}%: {sr['law']} mein service charges ke {cap:g}% se zyada nahi.")
+        block.append(f"Non-occupancy charges {noc_pct:g}%: {sr['law']} allows at most {cap:g}% of service charges.")
     icap = sr.get("interest_cap_pct")
     if icap is not None and interest_pct > icap:
-        block.append(f"Vyaaj {interest_pct:g}%: {icap:g}% saalana simple se zyada nahi (Rules 2026).")
+        block.append(f"Interest {interest_pct:g}%: at most {icap:g}% a year simple (Rules 2026).")
     for h in heads:
         if h.get("basis") not in BASES:
-            block.append(f"{h.get('label') or h.get('key')}: basis '{h.get('basis')}' samajh nahi aaya.")
+            block.append(f"{h.get('label') or h.get('key')}: basis '{h.get('basis')}' is not understood.")
         rate = h.get("rate")
         if rate in (None, "") and h.get("basis") not in ("fund_pct",):
-            warn.append(f"{h.get('label')}: rate nahi diya (yeh line bill mein nahi aayegi).")
+            warn.append(f"{h.get('label')}: no rate given (this line will not appear in the bill).")
         if h.get("fund") == "sinking" and sr.get("sinking_min_pct") is not None:
             if rate not in (None, "") and float(rate) < sr["sinking_min_pct"]:
-                block.append(f"Sinking fund {float(rate):g}%: kam se kam {sr['sinking_min_pct']}% saal ka (construction cost ka).")
+                block.append(f"Sinking fund {float(rate):g}%: at least {sr['sinking_min_pct']}% a year (of construction cost).")
         if h.get("fund") == "repair" and sr.get("repair_min_pct") is not None:
             if rate not in (None, "") and float(rate) < sr["repair_min_pct"]:
-                block.append(f"Repair fund {float(rate):g}%: kam se kam {sr['repair_min_pct']}% saal ka.")
+                block.append(f"Repair fund {float(rate):g}%: at least {sr['repair_min_pct']}% a year.")
         if h.get("key") == "education" and sr.get("education_per_month") and rate not in (None, ""):
             if paise(rate) < sr["education_per_month"]:
-                warn.append(f"Education fund {rs(paise(rate))}: Maharashtra mein kam se kam {rs(sr['education_per_month'])} "
-                            "har member har mahine (ya sarkari rate).")
+                warn.append(f"Education fund {rs(paise(rate))}: Maharashtra requires at least {rs(sr['education_per_month'])} "
+                            "per member per month (or the government rate).")
     return block, warn
 
 
@@ -222,12 +222,12 @@ def bill_lines(flat: dict, heads: list[dict], totals: dict, noc_pct: float) -> t
             amt = paise(rate)
         elif basis == "per_sqft":
             if not flat.get("carpet_sqft"):
-                probs.append(f"{label}: carpet area nahi pata.")
+                probs.append(f"{label}: carpet area not known.")
                 continue
             amt = int(round(float(flat["carpet_sqft"]) * paise(rate)))
         elif basis == "per_tap":
             if flat.get("taps") in (None, ""):
-                probs.append(f"{label}: nal / inlet ki ginti nahi pata.")
+                probs.append(f"{label}: number of taps / inlets not known.")
                 continue
             amt = int(flat["taps"]) * paise(rate)
         elif basis == "lift":
@@ -240,20 +240,20 @@ def bill_lines(flat: dict, heads: list[dict], totals: dict, noc_pct: float) -> t
             for p in flat.get("parking") or []:
                 r = rates.get(p.get("kind") or "car")
                 if r in (None, ""):
-                    probs.append(f"{label}: '{p.get('kind')}' slot ka rate nahi diya.")
+                    probs.append(f"{label}: no rate given for the '{p.get('kind')}' slot.")
                     continue
                 amt += paise(r)
             if not amt:
                 continue
         elif basis == "fund_pct":
             if not flat.get("cost"):
-                probs.append(f"{label}: is flat ki construction cost (architect certificate) nahi pata.")
+                probs.append(f"{label}: the construction cost of this flat (architect certificate) is not known.")
                 continue
             amt = int(round(flat["cost"] * float(rate) / 100 / 12))
         elif basis == "area_share":
             tot = totals.get("carpet_total") or 0
             if not tot or not flat.get("carpet_sqft"):
-                probs.append(f"{label}: carpet area nahi pata (anupaat ke liye).")
+                probs.append(f"{label}: carpet area not known (needed for the proportion).")
                 continue
             amt = int(round(paise(rate) * float(flat["carpet_sqft"]) / tot))
         if amt is None or amt <= 0:
@@ -271,7 +271,7 @@ def bill_lines(flat: dict, heads: list[dict], totals: dict, noc_pct: float) -> t
             lines.append({"head": "noc", "label": f"Non-occupancy charges ({noc_pct:g}% of service charges)",
                           "amount": int(round(service_sum * noc_pct / 100)), "basis": "noc"})
         else:
-            probs.append("Non-occupancy: service charges ka rate nahi, isliye nahi lagaya.")
+            probs.append("Non-occupancy: no service charge rate, so it was not applied.")
     return lines, probs
 
 
@@ -304,12 +304,12 @@ def gst_lines(lines: list[dict], yearly_turnover: int, gst_on: bool, rate: float
     if base <= GST_MONTH_LIMIT:
         return 0, ""
     if yearly_turnover <= GST_TURNOVER and not gst_on:
-        return 0, ("Is flat ka mahina Rs 7,500 se zyada, par society ka turnover Rs 20 lakh se kam: GST nahi (dono shart chahiye). "
-                   "CA se pakka kijiye.")
+        return 0, ("This flat pays more than Rs 7,500 a month, but the society's turnover is under Rs 20 lakh: no GST (both conditions are needed). "
+                   "Confirm with your CA.")
     if not gst_on:
-        return 0, ("Mahina Rs 7,500 se zyada aur turnover Rs 20 lakh se upar: GST 18% POORI rakam par lag sakta hai "
-                   "(Circular 109/28/2019). GSTIN darj nahi, isliye bill mein nahi lagaya: CA se baat kijiye.")
-    return int(round(base * rate / 100)), f"GST {rate:g}% (mahina Rs 7,500 se zyada: poori rakam par)."
+        return 0, ("More than Rs 7,500 a month and turnover above Rs 20 lakh: GST 18% may apply on the WHOLE amount "
+                   "(Circular 109/28/2019). No GSTIN is entered, so it was not added to the bill: talk to your CA.")
+    return int(round(base * rate / 100)), f"GST {rate:g}% (more than Rs 7,500 a month: on the whole amount)."
 
 
 def repair_limit(state: str, members: int) -> int | None:
@@ -326,8 +326,8 @@ def tds_note(fy_total: int, this: int, vendor_kind: str = "other") -> str:
     """Sec 393(1) contract TDS: > Rs 30,000 one payment or > Rs 1 lakh in the FY."""
     if this > 3_000_000 or fy_total + this > 10_000_000:
         rate = "1% (individual / HUF)" if vendor_kind == "individual" else "1% / 2%"
-        return (f"TDS {rate} kaatna pad sakta hai (Sec 393(1): ek payment Rs 30,000 se upar ya saal mein Rs 1 lakh se upar); "
-                "society ka TAN aur 26Q CA dekhein.")
+        return (f"TDS {rate} may have to be deducted (Sec 393(1): one payment above Rs 30,000 or above Rs 1 lakh in the year); "
+                "the CA should check the society's TAN and 26Q.")
     return ""
 
 
@@ -354,28 +354,28 @@ def notice_check(kind: str, notice_on: date, meeting_on: date, state: str) -> li
     cd = clear_days(notice_on, meeting_on)
     need = {"agm": sr.get("agm_notice_min"), "sgm": sr.get("sgm_notice_min"), "committee": sr.get("committee_notice_min")}.get(kind)
     if need and cd < need:
-        probs.append(f"{kind.upper()} ke liye kam se kam {need} clear din ka notice; abhi {cd} din (meeting {meeting_on:%d-%m-%Y}).")
+        probs.append(f"{kind.upper()} needs at least {need} clear days' notice; now {cd} days (meeting {meeting_on:%d-%m-%Y}).")
     mx = sr.get("agm_notice_max") if kind == "agm" else None
     if mx and cd > mx:
-        probs.append(f"AGM notice {mx} din se pehle nahi (abhi {cd} din).")
+        probs.append(f"AGM notice cannot be given more than {mx} days ahead (now {cd} days).")
     if kind == "agm" and sr.get("agm_by"):
         m, d = sr["agm_by"]
         fy_end_year = meeting_on.year if meeting_on.month > 3 else meeting_on.year - 1
         last = date(fy_end_year, m, d)
         if meeting_on > last and meeting_on.month <= 12 and meeting_on.month > 3:
-            probs.append(f"AGM {last:%d-%m-%Y} tak honi chahiye (s.75); deri ke liye Registrar ka order hi chalega.")
+            probs.append(f"The AGM must be held by {last:%d-%m-%Y} (s.75); only a Registrar's order allows a delay.")
     return probs
 
 
 AGM_AGENDA = (
-    "Pichhli general body meeting ke minutes padhkar pakke karna",
-    "Managing committee ki saal bhar ki report",
-    "Audit kiye hue hisaab (Income & Expenditure, Balance Sheet) aur auditor ki report par vichaar",
-    "Audit memo ka rectification report ('O' Form) par vichaar",
-    "Agle saal ke liye statutory auditor ki niyukti (Registrar ke panel se) aur fees",
-    "Agle saal ka budget",
-    "Sinking / repair fund aur bade repair",
-    "Adhyaksh ki anumati se doosre vishay",
+    "Read and confirm the minutes of the last general body meeting",
+    "The managing committee's report for the year",
+    "Consider the audited accounts (Income & Expenditure, Balance Sheet) and the auditor's report",
+    "Consider the audit memo rectification report ('O' Form)",
+    "Appoint the statutory auditor for next year (from the Registrar's panel) and fix the fees",
+    "Next year's budget",
+    "Sinking / repair fund and major repairs",
+    "Other matters with the Chairman's permission",
 )
 
 

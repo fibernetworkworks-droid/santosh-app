@@ -155,7 +155,7 @@ def test_extractor_update_retires_only_a_fact_it_was_shown(env, monkeypatch):
         assert "Riya is her daughter; class 5 at DPS" in facts
     assert saved and saved[0]["replaced"]
     say = [p["say"] for k, p in events if k == "memory_saved"][0]
-    assert "purana hataya" in say and "Bhosari" in say
+    assert "old one removed" in say and "Bhosari" in say
 
 
 def test_plain_string_facts_still_parse(env):
