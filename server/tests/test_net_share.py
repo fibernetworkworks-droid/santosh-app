@@ -44,7 +44,7 @@ def test_app_files_and_tricks_are_stopped(env, ai, monkeypatch):
     av.save("kunal", rules={"accept": {"file": "auto"}, "quiet": {"on": False}})
     r = net.send("default", "Kunal", "file", {"file_id": _file("default", "bill.pdf.exe", b"MZ" + b"\0" * 64)})
     assert r["status"] == "declined"
-    assert "khatarnak" in ev("kunal", "hoola_msg")[-1]["text"]
+    assert "dangerous" in ev("kunal", "hoola_msg")[-1]["text"]
     from app.appcheck import service as acs
     monkeypatch.setattr(acs, "check", lambda t, c, src: {"verdict": "clear", "flags": [], "id": "chk_1"})
     r = net.send("default", "Kunal", "file", {"file_id": _file("default", "fnw-app.apk", b"PK\x03\x04apk")})
@@ -113,7 +113,7 @@ def test_payment_request_is_only_a_card(env, ai):
     assert k["amount"] == 1200
     net.decide("kunal", k["id"], "accept")
     pay = ev("kunal", "hoola_msg")[-1]
-    assert pay["effect"]["pay_link"].startswith("upi://pay?pa=meghana%40okicici") and "PIN sirf UPI app" in pay["text"]
+    assert pay["effect"]["pay_link"].startswith("upi://pay?pa=meghana%40okicici") and "only you enter the PIN" in pay["text"]
     r = net.send("default", "Kunal", "payment_request", {"amount": 500, "upi_id": "meghana@okicici"})
     assert r["status"] == "pending"                          # never automatic, whatever the rules say
 

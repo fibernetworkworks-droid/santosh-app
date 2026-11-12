@@ -171,7 +171,7 @@ def test_a_check_is_given_no_network_and_no_powers():
 def test_the_box_says_why_when_docker_is_missing(monkeypatch):
     monkeypatch.setattr(box, "docker", lambda: "")
     av = box.available()
-    assert av["ok"] is False and "docker is not installed" in av["why"]
+    assert av["ok"] is False and "docker is not on this machine" in av["why"]
     assert service.check("a/b")["stage"] == "box"                  # and a run stops there, with that reason
     assert box.run_in("img", "/tmp", "true")["rc"] == 127 and box.images() == [] and box.has_image("x") is False
 
@@ -324,13 +324,13 @@ def test_a_stale_image_is_named_and_rebuilt_not_used_quietly(monkeypatch):
     av = box.available()
     assert av["ok"] is True and av["base_built"] is True
     assert av["base_stale"] is True and av["base_rev"] == "1" and av["base_rev_wanted"] == box.BASE_REV
-    assert "purani" in av["why"] and "--rebuild" in av["why"]
+    assert "old" in av["why"] and "--rebuild" in av["why"]
     assert f'LABEL hoola.devlab.rev="{box.BASE_REV}"' in box.DOCKERFILE_TEXT
     built = []
     monkeypatch.setattr(box, "build_base", lambda nocache=False: built.append(nocache) or {"ok": False, "why": "x"})
     lines = service.selftest()
     assert built == [True]                                        # a stale image is rebuilt from scratch, not reused
-    assert any("PURANI" in ln for ln in lines)
+    assert any("OLD" in ln for ln in lines)
 
 
 def test_the_selftest_proves_an_install_survives_the_commit():

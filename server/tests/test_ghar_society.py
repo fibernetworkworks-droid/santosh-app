@@ -272,7 +272,7 @@ def test_complaints_contracts_staff_visitors_tick(so):
         S.complaint_update(T, c["complaint"]["id"], "closed", actor="staff:9")
     S.complaint_update(T, c["complaint"]["id"], "resolved", "motor badla")
     st = S.staff_save(T, "Ramesh", "guard", "SecureCo", phone="9000011111")
-    assert st["staff"]["recheck_due"] and "Police" in st["say"]
+    assert st["staff"]["recheck_due"] and "police" in st["say"]
     v = S.visit_in(T, "Courier boy", "A-102", "parcel", "9876501234", "MH12AB1234", "delivery", actor="staff:9")
     assert v["visit"]["phone"] == "XXXXXX1234"
     assert len(S.visits(T, inside_only=True)) == 1

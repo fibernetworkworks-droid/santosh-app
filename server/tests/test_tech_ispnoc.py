@@ -87,7 +87,7 @@ def test_rules_parse_optics_commands():
     assert not sc["verified"] and "no shutdown" in sc["rollback"][2]
     assert R.command_problems(["show onu info", "onu reboot 3"]) == []
     assert R.command_problems(["erase startup-config", "username admin password x"]) and R.command_problems(["copy tftp flash"])
-    assert R.scrub("telnet password is admin@123") == "telnet password is [hataya]" and not R.has_secret("Key Road Akot")
+    assert R.scrub("telnet password is admin@123") == "telnet password is [removed]" and not R.has_secret("Key Road Akot")
     base = datetime(2026, 10, 23, 10, 0, tzinfo=IST)
     assert R.parse_when("2 ghante", base, IST) == base + timedelta(hours=2)
     assert R.parse_when("shaam 6 baje", base, IST).hour == 18 and R.parse_when("kal 11 baje", base, IST).day == 24

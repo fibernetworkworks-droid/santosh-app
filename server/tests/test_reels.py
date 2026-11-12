@@ -106,7 +106,7 @@ def test_five_actions_over_the_api(reels):
         assert c.post(f"/api/reels/{rid}/shop", json={"items": ["butter"]}).json()["added"] == []
         # 4 family message (the owner sends it from the share sheet)
         t = c.get(f"/api/reels/{rid}/share").json()["text"]
-        assert "Paneer butter masala" in t and "AI se" in t and "youtube.com/shorts/AbCdEf12345" in t
+        assert "Paneer butter masala" in t and "with AI, may be wrong" in t and "youtube.com/shorts/AbCdEf12345" in t
         # 5 ye sach hai?
         chk = c.post(f"/api/reels/{rid}/check").json()
         assert chk["overall"] == "galat" and chk["checks"][0]["sources"][0]["url"] == "https://who.int"

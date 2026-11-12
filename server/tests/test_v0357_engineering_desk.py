@@ -125,7 +125,7 @@ def test_daily_cap(eng, monkeypatch):
     eng["replies"].append(GOOD)
     p = eng["svc"].start("default", "", "L bracket")
     eng["svc"].run_job(p["id"])
-    with pytest.raises(eng["svc"].EngError, match="Aaj ke 1"):
+    with pytest.raises(eng["svc"].EngError, match="Today's 1"):
         eng["svc"].start("default", "", "another part")
 
 
@@ -155,7 +155,7 @@ def test_v0361_lockdown_holds_without_a_network_namespace(env, monkeypatch, tmp_
     code = (f"import cadquery as cq\nx = cq.exporters.os.system('touch {marker}')\n"     # bypasses guard on purpose
             "result = cq.Workplane('XY').box(1, 1, 1)\n")
     r = sandbox.run(tmp_path / "a", code)
-    assert r["ok"] is False and "band" in r["errors"][0] and not marker.exists()
+    assert r["ok"] is False and "blocked" in r["errors"][0] and not marker.exists()
     code2 = "import cadquery as cq\nimport math\nresult = cq.Workplane('XY').box(10, 10, 10)\n"
     r2 = sandbox.run(tmp_path / "b", code2)
     assert r2["ok"] and (tmp_path / "b" / "part.step").exists()                         # the runner's own export still works
@@ -241,7 +241,7 @@ def test_v0362_her_step_file_and_sketch_reach_the_design(eng, tmp_path):
 
 def test_v0362_fake_step_and_wrong_types_are_refused(eng):
     eng["hire"].hire("default", "cad")
-    with pytest.raises(eng["svc"].EngError, match="asli STEP"):
+    with pytest.raises(eng["svc"].EngError, match="real STEP"):
         eng["svc"].start("default", "", "bracket", files=[("x.step", b"hello")])
     with pytest.raises(eng["svc"].EngError, match="step / .stp / .stl"):
         eng["svc"].start("default", "", "bracket", files=[("x.exe", b"MZ")])

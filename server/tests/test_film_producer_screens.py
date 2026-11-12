@@ -52,7 +52,7 @@ def test_the_rules_are_drawn_not_dropped():
     assert "hint" in JS and "heuristic" in JS and "hint · " in DART                                  # heuristics are labelled as hints
     assert "Contract clause (required)" in JS and "Contract clause (required)" in DART            # royalty terms insist on a source
     assert "reader" not in JS.lower().replace("a reader's verdict", "")                              # no verdict anywhere on screen
-    assert "rate nahi di" in JS and "no rate given" in DART                                          # a missing rate is shown, never filled
+    assert "no rate given" in JS and "no rate given" in DART                                          # a missing rate is shown, never filled
     assert "Nothing is sent or paid" in JS
     for tab in ("coverage", "previs", "schedule", "money", "sales", "delivery"):
         assert f"async {tab}()" in JS

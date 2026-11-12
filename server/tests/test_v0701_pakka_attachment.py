@@ -99,7 +99,7 @@ def test_missing_upload_is_said_at_draft_time(box):
     from app.mailbox import service as ms
     f = _upload("Gone.pdf", b"%PDF")
     Path(f.stored_path).unlink()
-    with pytest.raises(ms.MailError, match="ab server par nahi"):
+    with pytest.raises(ms.MailError, match="no longer on the server"):
         ms.describe_attachments("default", [{"file_id": f.id}])
 
 
