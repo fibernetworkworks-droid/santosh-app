@@ -847,14 +847,29 @@ def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) ->
                      "main_title": next((p["title"] for p in spec.get("pages") or [] if p["slug"] == main), "")}}
 
 
-def build_now(tenant: str, words: str, conv: str = "") -> dict[str, Any]:
+def _stager(tenant: str, ticket: str):
+    """v0.835 L12: the home -> workspace wait shows REAL server steps. The Studio sends a ticket with her ask; each stage of
+    this call is written under it (the same activity log the build uses) and GET /api/sites/stage/<ticket> reads it."""
+    t = re.sub(r"[^a-z0-9-]", "", str(ticket or "").lower())[:40]
+    if len(t) < 8:
+        return lambda *a, **k: None, lambda *a, **k: None
+    from . import activity as AC
+    sid = "stage-" + t
+    return (lambda label, note="": AC.step(tenant, sid, label, note)), (lambda label="", state="done": AC.end(tenant, sid, label, state=state))
+
+
+def build_now(tenant: str, words: str, conv: str = "", ticket: str = "") -> dict[str, Any]:
     """v0.711 Build mode for EVERY ask (v0.708: web app / portal asks only): her Build tap IS the yes, so the same deep plan is drawn (quietly)
     and built at once - the site gets the plan's structure instead of the library's marketing page set."""
     from . import service as S
+    st, fin = _stager(tenant, ticket)
+    st("Reading your idea.")
     try:
+        st("Planning the pages and what each one holds.")
         c = draft(tenant, words, conv, quiet=True)
     except ArchError as e:
         if e.code == 400:                        # her words were refused (guard / too short): say it, build nothing
+            fin("Could not start", "error")
             raise
         log.warning("build mode: architect plan failed, plain site path: %s", e)
         v = S.new(tenant, words, conv)
@@ -863,8 +878,10 @@ def build_now(tenant: str, words: str, conv: str = "") -> dict[str, Any]:
         log.exception("build mode: architect plan crashed, plain site path")
         v = S.new(tenant, words, conv)
         return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
+    st("Choosing colours and fonts, and setting up the website.")
     got = approve(tenant, c["id"], c["hash"], None, conv)
     v = S.view(S._load(got["site"]))
+    fin("The workspace is ready.")
     return {**v, "spec": c["id"], "spec_number": c["number"], "say": got["say"]}
 
 

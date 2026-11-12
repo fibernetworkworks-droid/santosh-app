@@ -3058,3 +3058,16 @@ Work Log:
 
 Stage Summary:
 - Planted bad-rule app refused at publish with the reason named; fixed rule passes. Not verified on her VPS.
+
+---
+Task ID: L12-GHAR
+Agent: Claude
+Task: L12 of docs/LOVABLE_STUDIO_PLAN.md - home redesign (greeting, typewriter, chips, starters with thumbnails), real steps in "Setting the stage".
+
+Work Log:
+- Read plan 3.1 / 3.2; added site/starters.py (24 starters, 3 per chip) + GET /api/site-starters; greeting/typewriter/chips/starter cards in webstudio.js + css.
+- Ticket on POST /api/sites -> architect.build_now writes stages to the activity log; GET /api/sites/stage/<ticket>; pending screen polls it.
+- Tests test_v0835_ghar.py 3 (browser walk incl. reduced motion and held-call server steps); updated test_v0649 greeting pin; version 0.836.0 (main had moved to 0.835.0).
+
+Stage Summary:
+- Home and wait screen done; starters are drawn looks, not built sites; composer re-dock animation not built.
