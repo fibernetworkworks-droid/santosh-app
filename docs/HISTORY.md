@@ -2736,3 +2736,6 @@ Party master, ageing, MSME 15/45-day + Rule 37 watches, reminder drafts, TDS wor
 
 ## v0.848.0 BAHI A9
 Tally voucher XML + JSON from the register, party ledgers in the file, her ledger names; the monthly CA pack ZIP with worksheets, evidence and open questions; close a month on the pack hash (locks it). Zoho / live Tally / CA login not built. NOT VERIFIED in a real Tally import.
+
+## v0.849.0 BAHI A10
+Month-end checklist ticked only from records, MIS + daily cash line, one calendar with yearly dates (annual.json), accuracy sweep, GSTR-9 comparison. Nothing sent or filed. NOT VERIFIED: GSTR-9 reads.

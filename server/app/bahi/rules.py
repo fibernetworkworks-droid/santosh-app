@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 DIR = Path(__file__).resolve().parent / "rules"
-NAMES = ("gst_rates", "due_dates", "limits", "forms_map", "tds")
+NAMES = ("gst_rates", "due_dates", "limits", "forms_map", "tds", "annual")
 BASES = ("primary", "primary-listing", "provider-spec", "secondary-confirmed", "unverified")
 NEEDED = ("id", "basis", "source", "checked_on", "review_by")
 

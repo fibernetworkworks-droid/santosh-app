@@ -24,7 +24,8 @@ PHASES = [
     {"id": "A7", "name": "Bank + UPI reconciliation", "what": "A bank statement (CSV, Excel, MT940, or a PDF you unlock) is stored and each line matched to a sale or purchase with a reason, on your confirm; UPI payers are remembered; the month ends in a stored reconciliation. No bank API, no cheque register", "state": "built"},
     {"id": "A8", "name": "Payables, receivables, TDS", "what": "Party master, ageing, MSME 15 / 45-day and Rule 37 watches, collection reminders you send, a TDS worksheet + register + quarter data; you deduct, deposit and file (no deductor API). Section 393 item numbers not read", "state": "built"},
     {"id": "A9", "name": "Your book + the CA pack", "what": "Tally vouchers (sales, purchases, notes, receipts, payments with GST ledgers) and one monthly ZIP for your CA with the worksheets, evidence and open questions; you close the month on its hash. Zoho Books, live Tally and a CA login are not built", "state": "built"},
-    {"id": "A10", "name": "Month-end + year-end", "what": "Close checklist, MIS, GSTR-9 draft, deadline watchers", "state": "next"},
+    {"id": "A10", "name": "Month-end + year-end", "what": "A month-end checklist ticked only from real records, MIS and a daily cash line (text), one calendar with the yearly dates, an accuracy sweep, and a GSTR-9 comparison with the portal's own figures. Payroll and accruals are not tracked; nothing is sent or filed", "state": "built"},
+    {"id": "A11", "name": "CA practice mode", "what": "Many client GSTINs under one CA, a portfolio view, a CA login that can close a month - waits on the owner's decision about the CA agreement", "state": "planned"},
 ]
 
 

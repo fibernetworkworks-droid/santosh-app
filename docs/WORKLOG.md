@@ -3136,3 +3136,6 @@ Work: A8 payables, receivables, TDS, v0.847.0 ritual.
 
 Task ID: bahi-a9-0848
 Work: A9 Tally vouchers + CA pack, v0.848.0 ritual.
+
+Task ID: bahi-a10-0849
+Work: A10 month-end + year-end, v0.849.0 ritual.

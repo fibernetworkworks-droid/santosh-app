@@ -536,3 +536,12 @@ def ewb_cancel(tenant, gstin, username, ewb_no, reason_code, remark, ip=""):
     """Cancel an e-way bill (within 24 h of generation). Path from the spec's `.../ewayapi/canewb` - NOT VERIFIED."""
     return call(tenant, "ewb", "POST", "/ewaybillapi/v1.03/ewayapi/canewb", headers={"ip_address": ip or _ip(), "gstin": gstin, "username": username},
                 body={"ewbNo": int(ewb_no), "cancelRsnCode": int(reason_code), "cancelRmrk": remark[:50]}, op="ewb/cancel")
+
+
+# ------------------------------------------------------------------ A10: the annual return's auto-calculated figures (reads only; NOT VERIFIED - paths and parameters from the spec's names)
+def gstr9_autocal(tenant, gstin, fy, user, state, txn, ip=""):
+    return call(tenant, "gst", "GET", "/gstr9/getautocal", query={"gstin": gstin, "fy": fy}, headers=_gst_headers(user, state, txn, ip), op="gstr9/getautocal")
+
+
+def gstr9_8a(tenant, gstin, fy, user, state, txn, ip=""):
+    return call(tenant, "gst", "GET", "/gstr9/get8adetails", query={"gstin": gstin, "fy": fy}, headers=_gst_headers(user, state, txn, ip), op="gstr9/get8adetails")

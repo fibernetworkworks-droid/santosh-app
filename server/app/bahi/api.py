@@ -10,6 +10,7 @@ def make_router(require_key, current_tenant):
 
     from . import bank as BK
     from . import book as BO
+    from . import closing as CL
     from . import connect as CN
     from . import einv as EV
     from . import gstr1 as G1
@@ -388,5 +389,38 @@ def make_router(require_key, current_tenant):
     @r.post("/api/bahi/pack/{pack_id}/close", dependencies=[Depends(require_key)])
     def _boclose(pack_id: str, body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _bo(BO.close_month, tenant, pack_id, str(body.get("sha") or ""), body.get("confirm") is True)
+
+    def _cl(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except CL.CloseError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/close/checklist", dependencies=[Depends(require_key)])
+    def _clck(gstin: str, month: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _cl(CL.checklist, tenant, gstin, month)
+
+    @r.get("/api/bahi/close/mis", dependencies=[Depends(require_key)])
+    def _clmis(gstin: str, month: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _cl(CL.mis, tenant, gstin, month)
+
+    @r.get("/api/bahi/close/daily", dependencies=[Depends(require_key)])
+    def _cldaily(day: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        try:
+            return CL.daily_line(tenant, day)
+        except ValueError:
+            raise HTTPException(400, "Day as YYYY-MM-DD.")
+
+    @r.get("/api/bahi/close/calendar", dependencies=[Depends(require_key)])
+    def _clcal(gstin: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return CL.calendar(tenant, gstin)
+
+    @r.get("/api/bahi/close/sweep", dependencies=[Depends(require_key)])
+    def _clsweep(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return CL.sweep(tenant)
+
+    @r.post("/api/bahi/close/gstr9", dependencies=[Depends(require_key)])
+    def _clg9(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _cl(CL.gstr9_compare, tenant, str(body.get("gstin") or ""), str(body.get("fy") or ""))
 
     return r
