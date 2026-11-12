@@ -2730,3 +2730,6 @@ Purchase bills read locally into a cross-checked DRAFT (acc_intake); register on
 
 ## v0.846.0 BAHI A7
 Bank + UPI reconciliation, stored: statement import (CSV / Excel / MT940 / locked PDF), narration reading, proposed matches with reasons, confirmed on her tap, payers remembered, gateway settlements, stored month-end statement. NOT VERIFIED on real statements.
+
+## v0.847.0 BAHI A8
+Party master, ageing, MSME 15/45-day + Rule 37 watches, reminder drafts, TDS worksheet/register/quarter (rules file tds.json), 26AS match. Hoola pays, deducts and files nothing. s.393 item numbers not read.

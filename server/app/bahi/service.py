@@ -22,8 +22,8 @@ PHASES = [
     {"id": "A5", "name": "e-invoice + e-way bill", "what": "IRN and e-way bill from a Hoola sales invoice on your confirm: nothing lost or doubled, 24-hour cancel window and the 30-day limit watched. Standalone e-way bills, Part-B updates, extend and consolidate not built", "state": "built"},
     {"id": "A6", "name": "Bills in, checked", "what": "A bill photo / PDF / pasted text is read into a checked DRAFT purchase (arithmetic, supplier GSTIN status, addressed to you, duplicates); it enters your register only on your tap. The WhatsApp / email / PC-folder hand-off is not wired yet", "state": "built"},
     {"id": "A7", "name": "Bank + UPI reconciliation", "what": "A bank statement (CSV, Excel, MT940, or a PDF you unlock) is stored and each line matched to a sale or purchase with a reason, on your confirm; UPI payers are remembered; the month ends in a stored reconciliation. No bank API, no cheque register", "state": "built"},
-    {"id": "A8", "name": "Payables, receivables, TDS", "what": "MSME 15 / 45 days, Rule 37, TDS on payments", "state": "next"},
-    {"id": "A9", "name": "Your book + the CA pack", "what": "Tally / Zoho export, the monthly pack for your CA", "state": "planned"},
+    {"id": "A8", "name": "Payables, receivables, TDS", "what": "Party master, ageing, MSME 15 / 45-day and Rule 37 watches, collection reminders you send, a TDS worksheet + register + quarter data; you deduct, deposit and file (no deductor API). Section 393 item numbers not read", "state": "built"},
+    {"id": "A9", "name": "Your book + the CA pack", "what": "Tally / Zoho export, the monthly pack for your CA", "state": "next"},
     {"id": "A10", "name": "Month-end + year-end", "what": "Close checklist, MIS, GSTR-9 draft, deadline watchers", "state": "planned"},
 ]
 

@@ -288,7 +288,7 @@ def test_routes_overview_and_no_secret_ever(env, monkeypatch):
     assert "sec-456" not in body and "cid-123" not in body and "dev@example.com" not in body
     o = ov.json()
     assert o["whitebooks"]["products"]["gst"] is True and o["whitebooks"]["env"] == "sandbox" and o["filing"] is False
-    assert o["employee"]["key"] == "accounts" and [p["state"] for p in o["phases"]][:9] == ["built"] * 8 + ["next"]
+    assert o["employee"]["key"] == "accounts" and [p["state"] for p in o["phases"]][:10] == ["built"] * 9 + ["next"]
     assert c.get("/api/bahi/register", params={"period": "2026-10", "direction": "in"}).json()["rows"][0]["direction"] == "in"
     assert c.post("/api/bahi/periods/2026-13x/lock", json={"on": True}).status_code == 400
     assert c.post("/api/bahi/periods/2026-10/lock", json={"on": True}).json()["state"] == "locked"

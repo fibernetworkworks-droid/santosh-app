@@ -15,6 +15,7 @@ def make_router(require_key, current_tenant):
     from . import gstr3b as G3
     from . import intake as IN
     from . import itc as IT
+    from . import payables as PY
     from . import register as REG
     from . import rules as RU
     from . import service as SV
@@ -288,5 +289,64 @@ def make_router(require_key, current_tenant):
     @r.get("/api/bahi/bank/reconcile", dependencies=[Depends(require_key)])
     def _bkrecget(month: str, account: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return _bk(BK.stored, tenant, month, account)
+
+    def _py(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except PY.PayError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/parties", dependencies=[Depends(require_key)])
+    def _pyparties(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"parties": PY.parties(tenant)}
+
+    @r.post("/api/bahi/parties", dependencies=[Depends(require_key)])
+    def _pysave(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.party_save, tenant, body, str(body.get("id") or ""))
+
+    @r.get("/api/bahi/ageing", dependencies=[Depends(require_key)])
+    def _pyage(direction: str = "out", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.ageing(tenant, "in" if direction == "in" else "out")
+
+    @r.get("/api/bahi/msme", dependencies=[Depends(require_key)])
+    def _pymsme(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.msme_watch(tenant)
+
+    @r.get("/api/bahi/rule37", dependencies=[Depends(require_key)])
+    def _pyr37(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.rule37_watch(tenant)
+
+    @r.get("/api/bahi/reminders", dependencies=[Depends(require_key)])
+    def _pyrem(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"reminders": PY.reminders(tenant)}
+
+    def _wk(body):
+        return (str(body.get("party_id") or ""), str(body.get("nature") or ""), float(body.get("amount") or 0), str(body.get("paid_on") or ""),
+                body.get("gst_separate") is True, float(body.get("gst_amount") or 0))
+
+    @r.post("/api/bahi/tds/worksheet", dependencies=[Depends(require_key)])
+    def _pyws(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.worksheet, tenant, *_wk(body))
+
+    @r.post("/api/bahi/tds/record", dependencies=[Depends(require_key)])
+    def _pyrec(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.record, tenant, *_wk(body), confirm=body.get("confirm") is True)
+
+    @r.post("/api/bahi/tds/deposit", dependencies=[Depends(require_key)])
+    def _pydep(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        ids = body.get("ids") if isinstance(body.get("ids"), list) else []
+        return _py(PY.deposit, tenant, [str(i) for i in ids][:200], str(body.get("challan") or ""), str(body.get("deposited_on") or ""))
+
+    @r.get("/api/bahi/tds/register", dependencies=[Depends(require_key)])
+    def _pyreg(fy: int = 0, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.register(tenant, fy or None)
+
+    @r.get("/api/bahi/tds/quarter", dependencies=[Depends(require_key)])
+    def _pyq(fy: int, q: int, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _py(PY.quarter, tenant, fy, q)
+
+    @r.post("/api/bahi/tds/26as", dependencies=[Depends(require_key)])
+    def _py26(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return PY.match_26as(tenant, int(body.get("fy") or 0), body.get("rows") if isinstance(body.get("rows"), list) else [])
 
     return r

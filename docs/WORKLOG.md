@@ -3130,3 +3130,6 @@ Work: A6 bills in, checked, rebuilt over G7 v0.844.0, v0.845.0 ritual.
 
 Task ID: bahi-a7-0846
 Work: A7 bank + UPI reconciliation, v0.846.0 ritual.
+
+Task ID: bahi-a8-0847
+Work: A8 payables, receivables, TDS, v0.847.0 ritual.

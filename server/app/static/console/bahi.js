@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null, PY = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['py', 'Pay + TDS'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'py' ? pyTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -116,6 +116,27 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         <ul class="acd-rl">${f.unverified.map(r => `<li><b>${esc(r.what)}</b><small>${esc(r.file)} · checked ${esc(r.checked_on)} · ${esc(r.source)}</small></li>`).join('')}</ul></section>` : ''}
       ${f.stale.length ? `<section class="ddk-card acd-sec"><h2 class="ddk-h3">Due for a re-check (${f.stale.length})</h2><ul class="acd-rl">${f.stale.map(r => `<li><b>${esc(r.what)}</b><small>review by ${esc(r.review_by)}</small></li>`).join('')}</ul></section>` : ''}
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
+  }
+
+  // ------------------------------------------------------------------ Payables, receivables, TDS
+  function pyTab() {
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Who owes whom, and TDS</h2>
+      <p class="ddk-fine first">Ageing from your register (a bill is settled once a bank line you confirmed is matched to it), the 15 / 45-day rule for small suppliers, the 180-day credit rule, reminder drafts you send yourself, and a TDS worksheet. Hoola pays, deducts and files nothing.</p>
+      <div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="pyload">Refresh</button></div></section>`;
+    if (!PY) return head;
+    const ag = (x, t) => `<section class="ddk-card acd-sec"><h3 class="ddk-h3">${esc(t)} · ${inr(x.totals.all)}</h3>${x.parties.length ? `<div class="ddk-tbl"><table><thead><tr><th>Party</th><th>Not due</th><th>1-30</th><th>31-60</th><th>61-90</th><th>90+</th><th>Total</th></tr></thead><tbody>${x.parties.map(p => `<tr><td>${esc(p.party)}</td><td>${inr(p['not_due'])}</td><td>${inr(p['1-30'])}</td><td>${inr(p['31-60'])}</td><td>${inr(p['61-90'])}</td><td>${inr(p['90+'])}</td><td><b>${inr(p.total)}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="ddk-quiet">Nothing outstanding.</p>'}</section>`;
+    const ms = PY.msme.rows.length ? `<ul class="acd-kv">${PY.msme.rows.map(r => `<li><span>${esc(r.party)} · ${esc(r.number)} · ${inr(r.amount)} · due ${esc(r.due_on)} (${r.days_left} days)${r.fy_end_risk ? ' · pay before 31 March' : ''}</span><span class="ddk-pill ${r.state === 'ok' ? 'ok' : 'warn'}">${esc(r.state.replace('_', ' '))}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">No micro / small supplier bills waiting. Mark a supplier micro or small in the party list to watch it.</p>';
+    const r37 = PY.r37.rows.length ? `<ul class="acd-kv">${PY.r37.rows.map(r => `<li><span>${esc(r.party)} · ${esc(r.number)} · credit ${inr(r.credit_at_stake)} · ${r.age_days} days old</span><span class="ddk-pill ${r.state === 'reverse_credit' ? 'warn' : 'mute'}">${r.state === 'reverse_credit' ? 'reverse credit' : r.days_left + ' days left'}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">No bill is near 180 days unpaid.</p>';
+    const rm = PY.rem.length ? `<ul class="acd-kv">${PY.rem.map(r => `<li><span><b>${esc(r.party)}</b> · ${inr(r.overdue)} overdue<br><small>${esc(r.text)}</small></span><a href="${esc(r.wa_link)}" target="_blank" rel="noopener">Open WhatsApp draft</a></li>`).join('')}</ul>` : '<p class="ddk-quiet">No overdue sale to remind about.</p>';
+    const ws = PY.ws ? `<div class="ddk-note"><b>${esc(PY.ws.party)}</b> · ${esc(PY.ws.what)}<br>${PY.ws.applies ? `TDS <b>${inr(PY.ws.tds)}</b> at ${PY.ws.rate}% on ${inr(PY.ws.base)} (section ${esc(PY.ws.section)}); pay the party ${inr(PY.ws.net_to_pay)}; deposit by ${esc(PY.ws.due_on)}.` : 'No TDS on this payment.'}<br>${PY.ws.notes.map(esc).join(' ')}<br><small>${esc(PY.ws.verify)}</small>
+      ${PY.ws.applies ? `<div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="pyrec">I deducted it - record</button></div>` : ''}</div>` : '';
+    const reg = PY.reg.rows.length ? `<ul class="acd-kv">${PY.reg.rows.map(r => `<li><span>${esc(r.paid_on)} · ${esc(r.party)} · s.${esc(r.section)} · ${inr(r.tds)} · due ${esc(r.due_on)}${r.interest_estimate ? ' · interest about ' + inr(r.interest_estimate) : ''}</span><span class="ddk-pill ${r.state.startsWith('deposited') && r.state !== 'deposited_late' ? 'ok' : 'warn'}">${esc(r.state.replace('_', ' '))}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">No deduction recorded this year.</p>';
+    return head + ag(PY.ar, 'Owed to you') + ag(PY.ap, 'You owe') + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Small suppliers (15 / 45 days)</h3>${ms}<p class="ddk-fine">${esc(PY.msme.note)}</p></section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">180-day credit rule</h3>${r37}</section><section class="ddk-card acd-sec"><h3 class="ddk-h3">Reminders to send</h3>${rm}</section>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">TDS on a payment</h3><div class="acd-row"><select id="acdTP" class="acd-in">${PY.parties.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select>
+        <select id="acdTN" class="acd-in"><option value="contractor">Contractor</option><option value="professional">Professional fees</option><option value="technical">Technical services</option><option value="commission">Commission</option><option value="rent">Rent (building)</option><option value="rent_plant">Rent (machinery)</option><option value="interest">Interest</option></select>
+        <input id="acdTA" class="acd-in" placeholder="Amount paid" inputmode="decimal"><input id="acdTD" class="acd-in" type="date" value="${new Date().toISOString().slice(0, 10)}"><button type="button" class="btn go ddk-mid" data-a="pyws">Work it out</button></div>${ws}
+        <h4 class="ddk-h3" style="margin-top:14px">This year's deductions (to deposit ${inr(PY.reg.to_deposit)})</h4>${reg}</section>`;
   }
 
   // ------------------------------------------------------------------ Bank + UPI
@@ -326,6 +347,19 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
           const f = r.filing ? ` Filing ${esc(r.filing.fy)}: ${r.filing.returns.length ? r.filing.returns.slice(0, 6).map(x => esc(x.form + ' ' + x.period + ' ' + x.status)).join(', ') : 'nothing listed'}.` : '';
           out.innerHTML = `<b>${esc(r.status)}</b> ${esc(r.legal_name)} <small>(${esc(r.source || 'no source')})</small>.${f} ${r.notes.map(esc).join(' ')}`;
         } catch (e) { out.textContent = e.message; }
+        return;
+      }
+      if (a.startsWith('py')) {
+        try {
+          const load = async () => { const g = u => api('GET', u);
+            const [ar, ap, msme, r37, rem, parties, reg] = await Promise.all([g('/api/bahi/ageing?direction=out'), g('/api/bahi/ageing?direction=in'), g('/api/bahi/msme'), g('/api/bahi/rule37'), g('/api/bahi/reminders'), g('/api/bahi/parties'), g('/api/bahi/tds/register')]);
+            PY = {...(PY || {}), ar, ap, msme, r37, rem: rem.reminders, parties: parties.parties, reg}; draw(false); };
+          if (a === 'pyload') { await load(); return; }
+          const body = () => ({party_id: val('acdTP'), nature: val('acdTN'), amount: parseFloat(val('acdTA')) || 0, paid_on: val('acdTD')});
+          if (a === 'pyws') { const ws = await api('POST', '/api/bahi/tds/worksheet', body()); PY = {...PY, ws, wsBody: body()}; draw(false); return; }
+          if (a === 'pyrec') { if (!confirm('Record that you deducted this TDS? It goes into the TDS register.')) return;
+            await api('POST', '/api/bahi/tds/record', {...PY.wsBody, confirm: true}); toast('Recorded.'); PY.ws = null; await load(); return; }
+        } catch (e) { toast(e.message, true); }
         return;
       }
       if (a.startsWith('k') && ['kimp', 'kmatch', 'kconfirm', 'krecon'].includes(a)) {

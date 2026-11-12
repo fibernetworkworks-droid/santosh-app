@@ -230,7 +230,48 @@ class AccBankRecon(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
-TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn, AccIntake, AccBankLine, AccBankLearn, AccBankRecon)
+class AccParty(Base):
+    """One party master (A8): customers and suppliers once, with what the watches need - PAN status, Udyam class, agreed days, bank details."""
+    __tablename__ = "acc_parties"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ap"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(160), default="")
+    gstin: Mapped[str] = mapped_column(String(15), default="", index=True)
+    pan: Mapped[str] = mapped_column(String(10), default="")
+    pan_ok: Mapped[bool] = mapped_column(Boolean, default=True)                     # her statement that the PAN is valid / linked; false -> the higher TDS rate
+    constitution: Mapped[str] = mapped_column(String(12), default="other")         # individual | huf | company | firm | other
+    udyam: Mapped[str] = mapped_column(String(30), default="")
+    msme_class: Mapped[str] = mapped_column(String(8), default="")                 # micro | small | medium | "" (not MSME / unknown)
+    agreed_days: Mapped[int] = mapped_column(Integer, default=0)                   # payment days agreed IN WRITING (0 = none agreed)
+    no_reminders: Mapped[bool] = mapped_column(Boolean, default=False)             # STOP: no collection reminder is drafted
+    bank_enc: Mapped[str] = mapped_column(Text, default="")                        # sealed account + IFSC
+    bank_mask: Mapped[str] = mapped_column(String(40), default="")
+    bank_history: Mapped[str] = mapped_column(Text, default="[]")                  # when the bank detail changed - a classic fraud sign
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class AccTds(Base):
+    """A TDS deduction she recorded (A8). The register behind the challan and the quarterly Form 140 data."""
+    __tablename__ = "acc_tds"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("at"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    party_id: Mapped[str] = mapped_column(String(40), default="", index=True)
+    party_name: Mapped[str] = mapped_column(String(160), default="")
+    pan: Mapped[str] = mapped_column(String(10), default="")
+    rule_id: Mapped[str] = mapped_column(String(16), default="")
+    section: Mapped[str] = mapped_column(String(16), default="")                    # the old section shown to her
+    paid_on: Mapped[str] = mapped_column(String(10), default="", index=True)
+    base: Mapped[float] = mapped_column(Float, default=0.0)
+    rate: Mapped[float] = mapped_column(Float, default=0.0)
+    tds: Mapped[float] = mapped_column(Float, default=0.0)
+    due_on: Mapped[str] = mapped_column(String(10), default="")
+    deposited_on: Mapped[str] = mapped_column(String(10), default="")
+    challan: Mapped[str] = mapped_column(String(40), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn, AccIntake, AccBankLine, AccBankLearn, AccBankRecon, AccParty, AccTds)
 
 
 _READY: set[int] = set()
