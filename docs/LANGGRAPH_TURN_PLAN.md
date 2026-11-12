@@ -191,3 +191,50 @@ already ended).
 NOT VERIFIED live: no real card tap has resumed a parked run on the VPS, and no real call has re-issued a direct
 tool through the ledger. Everything above is tested with a scripted brain, the real bazar demo pack and real rows
 (`tests/test_g8_turngraph.py`).
+
+## 8. Status after G9 (12 Nov 2026)
+
+Built (owner: "GO BOTH"), each behind a switch:
+
+- **Hoola Code's honest "done" + its end notice told once** (`dev_truth`, default on; `devsahayak/truth.py`). Hoola
+  Code has its own engine and never runs on the turn graph, so G3 / G5 are reused by SHAPE, not by node. Why a
+  devsahayak-side fact builder instead of `turnfacts.step_facts` / `verdicts`: those read a chat tool_use + its
+  tool_result + its G1 ledger row and judge a claim through `draftcheck.family_of` (send / book / pay tools); a coding
+  round has none of them. Its facts are read from the task row in turnfacts' fact shape ({id, tool, step, effect,
+  ledger, object, error}, effect did / failed / ambiguous / stopped): every test-like command the session ran in the
+  box with its exit code (the structured `steps`; the LAST run decides; a timeout is ambiguous), the local lab check
+  (`proof`), the files changed, the push (`head_sha` + `branch`), the PR object (`pr_number` / `pr_url`), CI's state
+  (`ci`: success / failure / still running), her Stop. The model's `explain` / `test_plan` are only searched for WHAT
+  is claimed (tests pass / PR ready / pushed / fixed; plans, questions and hedges such as "should pass" are not
+  claims; `pr_open` itself claims "the PR is ready"), and each claim gets G3's verdict words from the facts only (true
+  / failed / unknown / stopped / none). The task card carries `truth` {confirmed, claims, line}; `tell_end` says "The
+  pull request is open, but not everything is confirmed. Not confirmed: 'tests pass' - the last test run failed (exit
+  code 1)." (end `needs_you`) instead of "ready" when a claim is not backed. The notice goes through
+  `turndeliver.once(key, "push", ...)` with the key `devsahayak:<task>:r<rounds>.<ci_round>.<self_round>:<status>:<head
+  sha>` (kind `dev`; turndeliver needed no change - its record takes any key): a repeat call, a run resumed by
+  `_resume_cut_runs` that ends in the same state, a restart between intent and sent - none tells it again; a new round
+  / CI fix round / own-review round / push is a new key, told once. Off = tell_end and task_view exactly as before.
+- **Video Studio / Create price cards park the turn graph** (under the existing `graph_card_park`). `turnpark.card_of`
+  knows the studio card (`waiting_owner` "sa..." + a rupee price; the result now also names its `project`),
+  `still_waiting` reads the approval from the project's JSON (tenant from the run - `turngraph._note_card` now puts
+  the run's tenant on the card - or from the park row; project from the result or the tenant's list), and
+  `studio.service.decide` / `expire_asks` call `turnpark.answered("studio", id, ...)` AFTER the action ran: declined
+  (Not now: nothing made, nothing spent), done (she approved; for the background jobs - keyframes, character paint,
+  music, paint-then-generate - the result text says the work is being made and is NOT ready yet, so the resumed model
+  never claims it finished), failed (the error), expired. The one chat line the card's code writes itself (the flux
+  character photo "ban gayi") is suppressed only when `answered()` returns True. Her tap still runs the action exactly
+  as before; nothing is auto-approved; the money ceiling and fingerprint are untouched.
+
+Found: **Hoola Interactive and Hoola Vocal make no approval cards** (grep of `app/interactive/` and `app/vocal/`: no
+approval / pending / card publish; only consent flags on a face / voice). **Hoola Cinema has no chat tool**: its
+confirm step is `confirm=true` in the body of the page's own Create button (`cinema/api.py`), nothing waits for a tap
+after a chat tool call - so nothing to park; skipped.
+
+Not built: the claim words are still found by regex (as in G3); CI that is still running leaves "tests pass"
+`unknown` until the next round end (the CI watcher's own card is unchanged); a studio background job that later fails
+is not fed back into the resumed job (its own card + note say it, as before); the other card kinds listed in section 7
+(desk `CARD_KINDS`, ask_forms, operator asks, pg_write) still do not park.
+
+NOT VERIFIED live: no real Hoola Code round has been judged on the VPS, and no real studio price card tap has resumed
+a parked run. Tested with a scripted brain, real DevTask rows and the real studio approval JSON
+(`tests/test_g9_turngraph.py`, 11 tests).

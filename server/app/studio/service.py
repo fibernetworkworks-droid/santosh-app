@@ -742,9 +742,24 @@ async def _ask(tenant: str, st: Studio, project: str, req: dict) -> dict:
     _publish(tenant, p, "studio_approval", req)
     _publish(tenant, p)
     what = _what(req)
-    return {"waiting_owner": aid, "usd": req["usd"], "inr": req["inr"],
+    return {"waiting_owner": aid, "usd": req["usd"], "inr": req["inr"], "project": project,
             "say": f"{what} banane mein lagbhag ₹{req['inr']} (${req['usd']:.2f}) lagenge. Card par Haan dabayengi tabhi banega.",
             "note_for_you": "Nothing is spent until she taps Haan on the card. Don't call generate again for this."}
+
+
+def _park(approval_id: str, answer: str, result: str) -> bool:
+    """G9 (agent/turnpark.py): a graph run parked on this price card resumes with her answer AFTER the action ran.
+    True = that run tells it, so this card's own chat line is not written. False (no park, switch off) = as before."""
+    try:
+        from ..agent import turnpark
+        return turnpark.answered("studio", approval_id, answer, result)
+    except Exception:   # noqa: BLE001 - a park that cannot be answered never breaks her tap
+        log.exception("studio card park answer failed")
+        return False
+
+
+_STARTED = ("She approved the price; {what} is being made now in the background (a few minutes). It is NOT ready "
+            "yet - it arrives as its own card + note. Do not call generate again for it.")
 
 
 async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
@@ -762,6 +777,7 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
         p = await st.update(project, lambda q: q["approvals"][approval_id].update(status="rejected"))
         _publish(tenant, p, "studio_approval", p["approvals"][approval_id])
         _publish(tenant, p)
+        _park(approval_id, "declined", "Not now - nothing was made and nothing was spent.")
         return p["approvals"][approval_id]
     left = float(_st().studio_month_usd or 0) - month_spent(tenant)
     if a["usd"] > left + 1e-9:
@@ -773,36 +789,45 @@ async def decide(tenant: str, approval_id: str, yes: bool) -> dict:
         q["budget_usd"] = max(q["budget_usd"], round(need + 1e-6, 4))     # her tap is the budget for this run
     p = await st.update(project, ok)
     _publish(tenant, p, "studio_approval", p["approvals"][approval_id])
+    what = _what(a)
+    started = _STARTED.format(what=what)
     try:
         if a["kind"] == "character" and a.get("models") == ["nano-banana-pro"]:
             _bg(tenant, project, _paint_character(tenant, st, project, a))
+            _park(approval_id, "done", started)
             return st.load(project)["approvals"][approval_id]
         if a["kind"] == "character":
             r = await st.character_generate(project, a["name"], a["description"], "flux-dev")
             await st.update(project, lambda q: q["characters"][a["name"]].update(
                 kind=a.get("char_kind") or "person", voice=_voice_name(a.get("voice") or "", a["description"])))
             _changed(tenant, project)
-            _note(tenant, p, f"Character '{a['name']}' ki photo ban gayi.")
+            if not _park(approval_id, "done", f"Character '{a['name']}' photo is made."):
+                _note(tenant, p, f"Character '{a['name']}' ki photo ban gayi.")
             return {**p["approvals"][approval_id], "result": r}
         if a["kind"] == "keyframes":
             _bg(tenant, project, _do_keyframes(tenant, st, project, a["shot_ids"]))
+            _park(approval_id, "done", started)
             return st.load(project)["approvals"][approval_id]
         if a["kind"] == "music":
             _bg(tenant, project, _do_music(tenant, st, project, a.get("mood") or "upbeat", float(a.get("seconds") or 60),
                                            float(a.get("volume") or 0.25)))
+            _park(approval_id, "done", started)
             return st.load(project)["approvals"][approval_id]
         if a.get("music"):              # v0.159 the music she picked comes in the same tap
             _bg(tenant, project, _do_music(tenant, st, project, a["music"],
                                            float(sum(x["duration"] for x in p["shots"]) + 3), 0.25))
         if a.get("paint_ids"):
             _bg(tenant, project, _paint_then_generate(tenant, st, project, a))
+            _park(approval_id, "done", started)
             return st.load(project)["approvals"][approval_id]
         await _run_generate(tenant, st, project, a["quality"], a["shot_ids"] or None, a["variants"], a.get("model"),
                             _cap(a) + 1e-6, a)
     except (StudioError, StudioJobError) as e:
         p = await st.update(project, lambda q: q["approvals"][approval_id].update(status="failed", error=str(e)[:300]))
         _publish(tenant, p)
+        _park(approval_id, "failed", str(e)[:300])
         raise StudioJobError(str(e)) from None
+    _park(approval_id, "done", started)
     return st.load(project)["approvals"][approval_id]
 
 
@@ -838,6 +863,7 @@ async def expire_asks(ttl_h: int = 24) -> int:
                 for aid in stale:
                     p2 = await st.update(proj, lambda q, _aid=aid: q["approvals"][_aid].update(status="expired"))
                     _publish(tenant, p2, "studio_approval", p2["approvals"][aid])
+                    _park(aid, "expired", "the price card expired - nothing was made or spent")
                     n += 1
         except Exception:  # noqa: BLE001
             log.exception("studio expire %s", tenant)
