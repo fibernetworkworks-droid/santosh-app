@@ -3194,3 +3194,15 @@ turn in chat / call and the PC loop) now runs on Sonnet billed to the server's O
 Tests: `test_v0866_sonnet_openrouter.py` (3). NOT VERIFIED: no live OpenRouter Sonnet call from here (no key in the
 sandbox); tools are only the cached system prompt - tool definitions are not cached on this path, so a PC step may cost a
 little more per token than the direct API with caching. Prices are OpenRouter's (Sonnet 5.5 $2 / M input as listed).
+
+
+## v0.867.0 PC SASTA - a cheap PC worker with a strong helper (owner: "go more deep find a very low cost api solution for desktop work handling end to end and smoothly", then "GO QWEN 27B")
+
+Research (12 Nov 2026, OpenRouter's live list + aggregator leaderboards, NOT the benchmark authors): per PC step (~8k tokens in, 300 out) Sonnet 5.5 ~Rs 1.8, Qwen 3.8 Max ~Rs 1.5, Qwen 3.8 27B ~Rs 0.15-0.2, Haiku 5.5 ~Rs 0.08, DeepSeek V4.1 Flash ~Rs 0.12-0.24 (a general model, no computer-use claim; V4 Pro / Pro-latest are text only). Reported OSWorld-Verified: Qwen3.8-27B 0.843 (llm-stats), a Qwen UI-Agent 27B 79.5 (Simular), UI-TARS-2 47.5. UI-TARS 1.5 7B has no tool calling on OpenRouter.
+
+Built (all behind settings, Sonnet / Qwen Max one `model=` pick away):
+- `pc/brain.py`: brain `qwen27` = `pc_cheap_model` (qwen/qwen3.8-27b) over the existing OpenAI-shaped OpenRouter path (thinking off, provider sort latency); `pc_model` default qwen27; no OpenRouter key = Sonnet and said.
+- NEW `pc/rescue.py`: RESCUE (`observe` after every turn: same action x3, screen hash unchanged after 2 actions, 2 error turns; passive actions - scroll / wait / reads - never count; `rescue_active` gives the next `pc_rescue_steps` (3) steps to Sonnet via OpenRouter, max `pc_rescue_max` (4) per task, then the cheap worker returns; the turn's result carries a note naming what failed); PLAYBOOK (10 rules, only the cheap worker); SPEND (`charge` a flat estimate per step by brain, `over_budget` daily Rs `pc_daily_inr` 300 per person, `step_cap` `pc_step_cap` 40).
+- `pc/operator.py`: playbook appended to the system prompt, over_budget checked before each step, observe note added to the turn's result, steps_max capped at start; Op fields rescue_left / rescues / sigs / shots / err_run.
+- Tests `test_v0867_pc_sasta.py` (16). Log lines: `pc brain qwen27 qwen/qwen3.8-27b step N ... (rescue)`, `pc rescue <id> step N #k -> <model> for 3 steps | <why>`.
+NOT VERIFIED: no live Qwen 27B PC step; the spend cap is an estimate held in memory (a restart resets it); the 40-step cap also applies to browser tasks (they had 64).
