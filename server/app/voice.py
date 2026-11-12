@@ -3464,8 +3464,13 @@ class Call:
         if told:
             self._told_mark = max(r["i"] for r in told)
         facts, graph = [], bool(fresh)
+        direct = getattr(self, "_did_facts", None) or {}
         for d in new:
             run = runs.get(d.get("n"))
+            if d.get("tool") != "santosh_kaam" and isinstance(direct.get(d.get("n")), dict):
+                graph = True                # G8: a direct tool with its real fact (a card is not 'done')
+                facts.append(dict(direct[d.get("n")]))
+                continue
             if d.get("tool") == "santosh_kaam" and isinstance(run, dict):
                 graph = True
                 if run.get("key"):
@@ -3566,7 +3571,12 @@ class Call:
             return {"error": f"Unknown tool {name}"}
         # a call can't wait minutes: these three answer after a short wait and the rest arrives later
         extra = {"pc_do": {"_wait": 8}, "hoola_pc_do": {"_wait": 8}, "artifact_make": {"_wait": 0}, "browse_web": {"_wait": 10}}.get(name, {})
-        result = await asyncio.wait_for(dispatch(name, {**args, **extra}, self.ctx), timeout=max(5, get_settings().voice_tool_timeout_s))
+        from .agent import calltools as _ct
+        if _ct.on():     # G8: through santosh._run_tool with the call's ledger + the tool's real G3 fact
+            result = await asyncio.wait_for(_ct.run(self, name, {**args, **extra}),
+                                            timeout=max(5, get_settings().voice_tool_timeout_s))
+        else:
+            result = await asyncio.wait_for(dispatch(name, {**args, **extra}, self.ctx), timeout=max(5, get_settings().voice_tool_timeout_s))
         if name == "haan_karo" and isinstance(result, dict) and result.get("status") == "approved":
             self.stats["voice_approvals"] = self.stats.get("voice_approvals", 0) + 1   # v0.199 bol-kar-haan tool
         return {"result": result}
@@ -3697,6 +3707,16 @@ class Call:
                          (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error",
                          "n": self._did_n})
         del self.did[:-60]
+        if isinstance(slot.get("fact"), dict) and name != "santosh_kaam":
+            # G8: a direct tool's real G3 effect (did / card / read / failed / ambiguous) - the spoken-claim check and
+            # the receipt in the chat after hang-up read it
+            self.did[-1]["effect"] = str(slot["fact"].get("effect") or "")
+            facts = getattr(self, "_did_facts", None)
+            if facts is None:
+                facts = self._did_facts = {}
+            facts[self._did_n] = dict(slot["fact"])
+            for k in [k for k in facts if k <= self._did_n - 60]:
+                facts.pop(k, None)
         if slot.get("run") is not None:     # G6: this did entry is that graph run (its facts back or refute a claim)
             runs = getattr(self, "_did_runs", None)
             if runs is None:
@@ -4455,7 +4475,14 @@ class Call:
             self._record_usage()
         except Exception:
             log.exception("call usage failed")
-        if get_settings().call_receipt and (self.turns_log or self.did):
+        _rc_ok = True
+        try:   # G8: the receipt is told once (its G5 record), with each direct tool's real effect
+            from .agent import calltools as _ct
+            if _ct.on() and get_settings().call_receipt and (self.turns_log or self.did):
+                _rc_ok = _ct.receipt_once(self)
+        except Exception:
+            log.debug("call receipt record failed", exc_info=True)
+        if _rc_ok and get_settings().call_receipt and (self.turns_log or self.did):
             from . import callreceipt   # v0.91 the chat gets a short card of what came out of this call
             rt = asyncio.create_task(callreceipt.make(self.conv, self.call_id, list(self.turns_log), list(self.did),
                                                       self.stats["ended"] - self.stats["started"], self.name))

@@ -483,6 +483,11 @@ def _cancel_pending(ctx: Ctx, draft_id: str) -> None:
         d.status = "cancelled"
         conv = d.conversation_id
     bus.publish(conv, "email_sent", {"id": draft_id, "status": "cancelled"})
+    try:   # G8: a park on the replaced card closes quietly (the new card is the one she taps)
+        from . import turnpark
+        turnpark.answered("email", draft_id, "replaced", "replaced by a new draft")
+    except Exception:
+        pass
 
 async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, reply_to_id=None, reply_all=False,
                       attachments=None, send_at=None, follow_up_days=None, account=None, markdown=False,

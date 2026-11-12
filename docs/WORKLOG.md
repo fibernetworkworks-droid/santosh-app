@@ -3156,3 +3156,8 @@ Task ID: v0.851.0 PC BRAIN
 Owner ask: "FOR PC WE CURRENTLY CHOOSE 2 MODELS QWEN 3.8 AND SONET 5.5 --- WILL TEST IT FIRST ON THIS --- WILL START WITH QWEN"
 Done: server/app/pc/brain.py (Qwen via Model Studio OpenAI-compatible / Sonnet exempt from Haiku+GLM rewrite), operator wiring, model= on pc_do / hoola_pc_do,
 false-done on a cut-off step fixed, 10 tests, PC suites 63 green. Not verified live (needs QWEN_API_KEY on the VPS).
+
+Task ID: v0.854.0 LANGGRAPH G8
+Ask: GO G8.
+Built: cards park the graph (interrupt / Command resume, told once) + call direct tools on the ledger with G3 facts; 18 tests.
+Deploy:

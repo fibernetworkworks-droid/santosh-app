@@ -79,6 +79,10 @@ def _steps(did: list[dict]) -> tuple[list[str], list[str], list[str]]:
             continue
         if d.get("ok") is None:
             running.append(label)
+        elif d.get("ok") and d.get("effect") == "card":   # G8: a card waits for her tap - not done
+            running.append(f"{raw} (waiting for your tap)")
+        elif d.get("ok") and d.get("effect") == "ambiguous":
+            running.append(f"{raw} (may or may not have gone through - please check)")
         elif d.get("ok"):
             done.append(label)
         else:

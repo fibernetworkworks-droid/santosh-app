@@ -1197,6 +1197,15 @@ def _alias_verified(tenant: str, box: Box, alias: str) -> None:
                         "aaya confirmation click kijiye.")
 
 
+def _park_answer(draft_id: str, answer: str, text: str) -> None:
+    """G8: a graph run parked on this draft card continues the job with what her Send really did."""
+    try:
+        from ..agent import turnpark
+        turnpark.answered("email", draft_id, answer, text)
+    except Exception:
+        log.exception("email card park answer failed")
+
+
 def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, from_worker: bool = False) -> dict[str, Any]:
     """The user tapped Bhejo (or a scheduled time came). Sends now, or schedules if send_at is still ahead."""
     with session() as s:
@@ -1221,6 +1230,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
             view, conv = draft_view(d), d.conversation_id
     if scheduled:
         bus.publish(conv, "email_sent", view)
+        _park_answer(draft_id, "done", f"scheduled: it will be sent at {send_at.isoformat()}")
         return {"status": "scheduled", "send_at": send_at.isoformat()}
     undo = 0 if from_worker else get_undo_seconds(tenant)
     if undo > 0:
@@ -1231,6 +1241,7 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
             s.flush()
             view, conv = draft_view(d), d.conversation_id
         bus.publish(conv, "email_sent", view)
+        _park_answer(draft_id, "done", f"approved: it goes in {undo} seconds unless she cancels it")
         return {"status": "undo_window", "undo_seconds": undo, "send_at": view["send_at"],
                 "note": f"Email {undo} second mein jayega. Rokna ho to abhi cancel kijiye."}
     with session() as s:
@@ -1261,6 +1272,8 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
             d.status, d.error = "failed", str(e)
             view = draft_view(d)
         bus.publish(conv, "email_sent", view)
+        if not from_worker:
+            _park_answer(draft_id, "failed", f"the send failed: {e}")
         raise
     with session() as s:
         d = s.get(EmailDraft, draft_id)
@@ -1269,6 +1282,8 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         d.account = box.key
         view = draft_view(d)
     bus.publish(conv, "email_sent", view)
+    if not from_worker:
+        _park_answer(draft_id, "done", f"sent to {to_addr} (subject '{subject}')")
     people = mime.addr_list(to_addr) + mime.addr_list(cc) + mime.addr_list(bcc)
     # v0.545.0 P5: the leads outreach ledger's email side - if a recipient's address is a leads-store row's
     # email, the send lands in lead_outreach (kind=email_sent, desk=email). The ledger never breaks the send.

@@ -562,6 +562,16 @@ class Settings(BaseSettings):
     chat_graph_keep_finished: bool = False   # G1: keep a finished turn's checkpoints (tests / debugging); off =
                                            # deleted at END so the checkpoint file does not grow without limit
     chat_graph_ledger_keep_h: float = 24.0   # G1: tool-ledger rows of turns that never finished are dropped after this
+    graph_card_park: bool = True           # G8: an approval card (bazar confirm card / email draft) PARKS the turn graph
+                                           # with LangGraph interrupt(); her tap runs the action exactly as before, then
+                                           # resumes the SAME job with the real result (agent/turnpark.py). Off = the
+                                           # card ends the turn as before G8 (her tap's own line, no resume)
+    graph_card_park_ttl_h: float = 26.0    # G8: a parked card nobody tapped closes its park after this (the card itself
+                                           # stays as it is; a bazar card's own 24 h expiry usually closes it first)
+    graph_call_tools: bool = True          # G8: the tools Gemini Live calls itself on a call run through santosh._run_tool
+                                           # with a tool ledger on the call's chat (a re-issued send is never re-run) and
+                                           # their real G3 effect on the call record (agent/calltools.py). Off = as G7
+    graph_call_tools_window_m: float = 30.0   # G8: how long a call's finished send is remembered as already done
     chat_plain_loop: bool = True           # parity Phase 5b (the loop): the model's answer ends the turn. Kept checks
                                            # run BEFORE the answer is shown and a corrected answer REPLACES the draft
                                            # in place (one reply): a false ACTION claim (sent / paid / booked /

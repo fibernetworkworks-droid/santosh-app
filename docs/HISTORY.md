@@ -2860,3 +2860,14 @@ enable_thinking. Price row for usage. 1 test. NOT VERIFIED: no live call (no key
 `pc/brain.qwen_route()` now has ONE route: openrouter.ai/api/v1 with the server's OpenRouter key and `pc_qwen_openrouter_model`
 (qwen/qwen3.8-max-0902). Removed: the Alibaba Model Studio path, the `qwen_api_key` / `qwen_base_url` / `pc_qwen_model` settings and the
 qwen3.8-max price row; `pc_qwen_thinking` only ever rides as OpenRouter `reasoning.enabled`. A test pins that the Alibaba settings stay gone.
+
+## v0.854.0 LANGGRAPH G8 (built as 0.846; their v0.846-v0.853 (PC BRAIN, QWEN and others) landed while it was built - REBASE PROTOCOL, both kept) — approval cards park the graph + call tools on the ledger (12 Nov 2026; owner: "GO G8")
+
+Phase G8 of `docs/LANGGRAPH_TURN_PLAN.md` (section 7 has the full design).
+- NEW `agent/turnpark.py`: table `turn_card_parks` (registered in db.init_db + ensure_table), `answered(kind, id, answer, result)` claimed once, `resume_due` runs one `approved:card` turn that resumes the parked thread with `Command(resume=...)`, `sweep` in worker `card_park_jobs` (15 s), TTL `graph_card_park_ttl_h` 26 h, declined tool + arguments refused in that thread.
+- Hooks: bazar.decide + expire_approvals, mailbox.send_draft (sent / scheduled / undo window / failed), the cancel route, email_tools._cancel_pending (replaced); the card's own chat line is not written when a park took the answer. turn_inbox marks `waiting_tap`.
+- NEW `agent/calltools.py`: call direct tools through `santosh._run_tool(dispatch_fn=...)`, ledger on `<chat>:call` within `graph_call_tools_window_m` 30 min, G3 facts per did entry, `receipt_once` via a G5 record `call:<id>:receipt`; callreceipt lists cards as waiting and ambiguous steps as to check.
+- Switches: `GRAPH_CARD_PARK=false` / `GRAPH_CALL_TOOLS=false` turn each off alone; `CHAT_GRAPH=false` turns the whole graph off.
+- Tests: test_g8_turngraph.py; 132 passed across g0-g8, routines, v0187 on the rebased tree; the reds in email / v0554 / v0662 / v0442 / human_voice fail the same on main.
+- Not built: parking for the other card kinds (desk CARD_KINDS, ask_forms, operator asks, studio price cards, pg_write); a scheduled / undo-window email's later worker failure is not fed back.
+- NOT VERIFIED live: no real tap has resumed a parked run, no real call has re-issued a direct tool through the ledger.
