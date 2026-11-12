@@ -265,7 +265,7 @@ def test_customer_cod_manifest_and_return(cr, monkeypatch):
     d = S.decide(T, r["card"]["id"], True, r["card"]["hash"], by_tap=True)
     assert d["parcel"]["awb"] == "RV998877" and any(c[2].endswith("/orders/create/return") for c in fake.calls)
     # DPDP: forget a finished parcel
-    assert "mita" in S.forget(T, p1["number"])["say"] and S.parcel_view(T, p1["number"])["customer"]["phone"] == ""
+    assert "deleted" in S.forget(T, p1["number"])["say"] and S.parcel_view(T, p1["number"])["customer"]["phone"] == ""
 
 
 def test_wapsi_return_label(cr, monkeypatch):
