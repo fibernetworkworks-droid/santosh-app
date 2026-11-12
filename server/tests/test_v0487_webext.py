@@ -179,7 +179,7 @@ def test_lane_touches_no_pc_settings():
 def test_manifest_is_mv3_hoola():
     m = json.loads((EXT / "manifest.json").read_text(encoding="utf-8-sig"))
     assert m["manifest_version"] == 3 and m["name"] == "Hoola"
-    assert m["version"] == "1.9.0"                         # the extension version rides the desktop
+    assert m["version"] == "1.10.0"                         # the extension version rides the desktop
     assert m["background"] == {"service_worker": "background.js"}
     assert set(m["permissions"]) == {"storage", "contextMenus", "scripting", "activeTab", "tabCapture", "offscreen"}   # W5: the tab audio rides kaan live captions
     assert "https://hoola.ainewtika.com/*" in m["host_permissions"]
@@ -463,8 +463,8 @@ def test_versions():
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
     assert "version: 0.841.0+840" in pubspec
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.9.0"           # desktop unchanged by W5 (server + extension files only)
+    assert santosh_desktop.__version__ == "1.10.0"           # desktop unchanged by W5 (server + extension files only)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))
-    assert meta["Version"] == "1.9.0"                       # the plugin version rides the desktop
+    assert meta["Version"] == "1.10.0"                       # the plugin version rides the desktop
     man = json.loads((EXT / "manifest.json").read_text(encoding="utf-8-sig"))
-    assert man["version"] == "1.9.0"                        # the extension rides the desktop (W5 = permissions only)
+    assert man["version"] == "1.10.0"                        # the extension rides the desktop (W5 = permissions only)

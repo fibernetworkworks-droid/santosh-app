@@ -279,7 +279,7 @@ def test_registry_607_enum_18(w5_env):
 
 def test_extension_source_pins():
     manifest = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["version"] == "1.9.0"                   # the extension version rides the desktop (house coupling law)
+    assert manifest["version"] == "1.10.0"                   # the extension version rides the desktop (house coupling law)
     assert "tabCapture" in manifest["permissions"] and "offscreen" in manifest["permissions"]   # the W5 ears
     bg = (EXT / "background.js").read_text(encoding="utf-8")
     assert "captions-start" in bg and "captions-stop" in bg and "captions-halt" in bg

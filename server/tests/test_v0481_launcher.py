@@ -150,7 +150,7 @@ def test_do_app_paths_is_control_gated():
 
 def test_desktop_version_bumped():
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.9.0"
+    assert santosh_desktop.__version__ == "1.10.0"
 
 
 # ---------------------------------------------------------------- the server side (FakePC, v0185 style)

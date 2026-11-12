@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import subprocess
 import sys
 import time
@@ -326,6 +327,82 @@ class Actions:
             raise ActionError(str(e))
         self.log(f"AX wait: {'text' if text else 'window'} ({out.get('waited', 0)}s)")
         return out
+
+    # ---------------- v1.10.0 AGENT-DESKTOP FULL: the rest of the headless commands --------
+    # Same gate as every ax_* (the 'Hoola ko PC chalane dein' switch + helper present), same log lines. Values
+    # that Hoola WRITES never come back (only lengths); values it READS (get / clipboard) are capped.
+    def _axcall(self, fn, log: str, *a, **k) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = fn(*a, **k)
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(log.format(**{k2: str(v)[:40] for k2, v in (out or {}).items() if not isinstance(v, (list, dict))}))
+        return out
+
+    def do_ax_get(self, ref: str = "", property: str = "text", **_) -> dict[str, Any]:
+        return self._axcall(axtree.get, "AX padha: {property}", str(ref or ""), str(property or "text"))
+
+    def do_ax_is(self, ref: str = "", state: str = "visible", **_) -> dict[str, Any]:
+        return self._axcall(axtree.is_state, "AX check: {state} = {value}", str(ref or ""), str(state or "visible"))
+
+    def do_ax_act(self, op: str = "", ref: str = "", **_) -> dict[str, Any]:
+        return self._axcall(axtree.act, "AX {op} ({delivery})", str(op or ""), str(ref or ""))
+
+    def do_ax_select(self, ref: str = "", value: str = "", **_) -> dict[str, Any]:
+        return self._axcall(axtree.select, "AX chuna: {selected}", str(ref or ""), str(value or ""))
+
+    def do_ax_type(self, ref: str = "", text: str = "", interval_ms: int = 0, **_) -> dict[str, Any]:
+        """Keyboard-style typing BY REF over a pipe; only the length comes back (the text never leaves the PC)."""
+        return self._axcall(axtree.type_text, "AX type ({length} akshar)", str(ref or ""), str(text or "")[:4000],
+                            int(interval_ms or 0))
+
+    def do_ax_scroll(self, ref: str = "", direction: str = "down", amount: int = 3, **_) -> dict[str, Any]:
+        return self._axcall(axtree.scroll, "AX scroll {scrolled}", str(ref or ""), str(direction or "down"), int(amount or 3))
+
+    def do_ax_close_app(self, app: str = "", **_) -> dict[str, Any]:
+        from .control import BLOCKED_APP_WORDS
+        if re.search(r"(santosh|hoola)\s*desktop|explorer\.exe|^explorer$", str(app or ""), re.I) or \
+                BLOCKED_APP_WORDS.search(str(app or "")):
+            raise ActionError("Yeh app Hoola band nahi karta (Hoola Desktop / Windows Explorer / system tools).")
+        return self._axcall(axtree.close_app, "AX band kiya: {app}", str(app or ""))
+
+    def do_ax_displays(self, **_) -> dict[str, Any]:
+        return self._axcall(axtree.displays, "AX screens: {count}")
+
+    def do_ax_window_shot(self, app: str = "", window_id: str = "", **_) -> dict[str, Any]:
+        return self._axcall(axtree.window_shot, "AX window ki photo: {app}", str(app or ""), str(window_id or ""))
+
+    def do_ax_surfaces(self, app: str = "", **_) -> dict[str, Any]:
+        return self._axcall(axtree.surfaces, "AX surfaces: {count}", str(app or ""))
+
+    def do_ax_open_surface(self, surface: str = "", **_) -> dict[str, Any]:
+        return self._axcall(axtree.open_surface, "AX khola: {opened}", str(surface or ""))
+
+    def do_ax_notifications(self, app: str = "", text: str = "", limit: int = 10, **_) -> dict[str, Any]:
+        return self._axcall(axtree.notifications, "AX notifications: {count}", str(app or ""), str(text or ""), int(limit or 10))
+
+    def do_ax_notification_dismiss(self, index: int = 1, expected_app: str = "", expected_title: str = "", **_) -> dict[str, Any]:
+        return self._axcall(axtree.dismiss_notification, "AX notification hatayi: {dismissed}", int(index or 1),
+                            str(expected_app or ""), str(expected_title or ""))
+
+    def do_ax_notification_action(self, index: int = 1, action: str = "", expected_app: str = "", expected_title: str = "",
+                                  **_) -> dict[str, Any]:
+        return self._axcall(axtree.notification_action, "AX notification button: {action}", int(index or 1),
+                            str(action or ""), str(expected_app or ""), str(expected_title or ""))
+
+    def do_ax_clipboard(self, op: str = "get", text: str = "", **_) -> dict[str, Any]:
+        op = str(op or "get").lower()
+        if op == "get":
+            return self._axcall(axtree.clipboard_get, "AX clipboard padha")
+        if op == "set":
+            return self._axcall(axtree.clipboard_set, "AX clipboard mein rakha ({length} akshar)", str(text or ""))
+        if op == "clear":
+            return self._axcall(axtree.clipboard_clear, "AX clipboard saaf")
+        raise ActionError("op must be get / set / clear")
+
+    def do_ax_batch(self, steps: list | None = None, **_) -> dict[str, Any]:
+        return self._axcall(axtree.batch, "AX batch: {completed} steps", list(steps or []))
 
     # ---------------- v1.7.0 WIN+R LAUNCHER (HKCU App Paths - user-level alias, no admin) --------
     # W2a of the Platforms plan: 'Win+R se hoola' - Windows ka apna App Paths alias, isliye Start menu

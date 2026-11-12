@@ -328,7 +328,7 @@ def test_page_text_degrades_quietly_off_windows():
 
 def test_desktop_version_moves_with_every_release():
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.9.0"   # v0.471: the conscious-bump guard moves with each desktop release
+    assert santosh_desktop.__version__ == "1.10.0"   # v0.471: the conscious-bump guard moves with each desktop release
 
 
 def test_app_version_is_0185():

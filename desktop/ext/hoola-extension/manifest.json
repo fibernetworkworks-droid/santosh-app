@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Hoola",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Jis page par padh rahi hain use Hoola ko bhejiye - sawaal ke saath. Jawab Hoola ki conversation mein. W5: live captions bhi - tab ka audio Hoola ke kaan door par.",
   "default_locale": "en",
   "icons": {

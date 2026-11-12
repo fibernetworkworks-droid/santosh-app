@@ -392,6 +392,6 @@ def test_versions(opc):
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
     assert "version: 0.841.0+840" in pubspec
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.9.0"          # desktop changed this release (do_pt_run)
+    assert santosh_desktop.__version__ == "1.10.0"          # desktop changed this release (do_pt_run)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))
-    assert meta["Version"] == "1.9.0"                      # plugin version rides the desktop
+    assert meta["Version"] == "1.10.0"                      # plugin version rides the desktop

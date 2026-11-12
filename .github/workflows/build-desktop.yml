@@ -70,12 +70,12 @@ jobs:
         working-directory: desktop
         shell: bash
         run: |
-          # vercel-labs/agent-desktop v1.1.0 (Apache-2.0): the accessibility-tree helper that powers ax_*.
+          # vercel-labs/agent-desktop v1.2.0 (Apache-2.0): the accessibility-tree helper that powers ax_*.
           # Downloaded at BUILD time from the official release, checksum-verified, and shipped BESIDE
           # SantoshDesktop.exe (axtree.py looks for it there). Never bundled into the exe payload itself.
-          AD=agent-desktop-v1.1.0-x86_64-pc-windows-msvc.tar.gz
-          curl -sSL -o "$AD" "https://github.com/vercel-labs/agent-desktop/releases/download/v1.1.0/$AD"
-          curl -sSL -o checksums.txt https://github.com/vercel-labs/agent-desktop/releases/download/v1.1.0/checksums.txt
+          AD=agent-desktop-v1.2.0-x86_64-pc-windows-msvc.tar.gz
+          curl -sSL -o "$AD" "https://github.com/vercel-labs/agent-desktop/releases/download/v1.2.0/$AD"
+          curl -sSL -o checksums.txt https://github.com/vercel-labs/agent-desktop/releases/download/v1.2.0/checksums.txt
           grep "$AD" checksums.txt | sha256sum -c -
           tar xzf "$AD" -C dist
           rm -rf "$AD" checksums.txt

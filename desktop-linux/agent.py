@@ -42,7 +42,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.3.1"
+VERSION = "1.4.0"   # v0.842 exact mode (agent-desktop over AT-SPI) on Hoola's own PC
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -200,6 +200,93 @@ def _cdp_eval(t: dict[str, Any], expr: str, timeout: float = 15) -> Any:
     return asyncio.run(go())
 
 
+# ---------------- v0.842 exact mode (agent-desktop over AT-SPI) ----------------
+# axtree.py is the SAME file the Windows Hoola Desktop ships (a test keeps the two copies identical). No control
+# switch here: this is Hoola's own VM. A missing helper / accessibility bus = a clear error, pixel mode goes on.
+AX_ACTIONS = {"ax_status", "ax_apps", "ax_snapshot", "ax_text", "ax_find", "ax_click", "ax_set_value", "ax_press",
+              "ax_launch", "ax_wait", "ax_get", "ax_is", "ax_act", "ax_select", "ax_type", "ax_scroll", "ax_displays",
+              "ax_window_shot", "ax_surfaces", "ax_open_surface", "ax_notifications", "ax_notification_dismiss",
+              "ax_notification_action", "ax_clipboard", "ax_close_app", "ax_batch"}
+
+
+def _ax_handle(action: str, a: dict[str, Any]) -> dict[str, Any]:
+    import axtree as X
+    if not X.available():
+        raise ActionError("Exact mode needs the agent-desktop helper in this Hoola PC image (rebuild with vps-ops "
+                          "pc_deploy). Pixel mode still works.")
+    s = lambda k, n=80: str(a.get(k) or "")[:n]   # noqa: E731
+    try:
+        if action == "ax_status":
+            return X.status()
+        if action == "ax_apps":
+            out = X.list_apps()
+            out.update(X.windows())
+            return out
+        if action == "ax_snapshot":
+            return X.snapshot(s("app", 60), s("window_id", 80), bool(a.get("skeleton")), s("root", 48), s("surface", 20),
+                              int(a.get("timeout_ms") or 6000))
+        if action == "ax_text":
+            return X.read(s("app", 60), s("surface", 20), max_chars=int(a.get("max_chars") or 6000))
+        if action == "ax_find":
+            return X.find(s("app", 60), s("role", 24), s("name"), s("text"), bool(a.get("exact")))
+        if action == "ax_click":
+            return X.click(s("ref", 48))
+        if action == "ax_set_value":
+            return X.set_value(s("ref", 48), str(a.get("text") or "")[:4000])
+        if action == "ax_press":
+            keys = s("keys", 40).lower().replace(" ", "")
+            if keys in ("super+l", "win+l", "ctrl+alt+delete", "ctrl+alt+backspace"):
+                raise ActionError("that shortcut is not allowed")
+            return X.press(keys, s("app", 60))
+        if action == "ax_launch":
+            return X.launch(s("name", 200))
+        if action == "ax_wait":
+            return X.wait(s("app", 60), s("text"), s("window"), int(a.get("seconds") or 10))
+        if action == "ax_get":
+            return X.get(s("ref", 48), s("property", 16) or "text")
+        if action == "ax_is":
+            return X.is_state(s("ref", 48), s("state", 16) or "visible")
+        if action == "ax_act":
+            return X.act(s("op", 16), s("ref", 48))
+        if action == "ax_select":
+            return X.select(s("ref", 48), s("value", 200))
+        if action == "ax_type":
+            return X.type_text(s("ref", 48), str(a.get("text") or "")[:4000], int(a.get("interval_ms") or 0))
+        if action == "ax_scroll":
+            return X.scroll(s("ref", 48), s("direction", 8) or "down", int(a.get("amount") or 3))
+        if action == "ax_displays":
+            return X.displays()
+        if action == "ax_window_shot":
+            return X.window_shot(s("app", 60), s("window_id", 80))
+        if action == "ax_surfaces":
+            return X.surfaces(s("app", 60))
+        if action == "ax_open_surface":
+            return X.open_surface(s("surface", 24))
+        if action == "ax_notifications":
+            return X.notifications(s("app", 60), s("text"), int(a.get("limit") or 10))
+        if action == "ax_notification_dismiss":
+            return X.dismiss_notification(int(a.get("index") or 1), s("expected_app", 60), s("expected_title", 120))
+        if action == "ax_notification_action":
+            return X.notification_action(int(a.get("index") or 1), s("action", 40), s("expected_app", 60),
+                                         s("expected_title", 120))
+        if action == "ax_clipboard":
+            op = s("op", 8) or "get"
+            if op == "set":
+                return X.clipboard_set(str(a.get("text") or ""))
+            return X.clipboard_clear() if op == "clear" else X.clipboard_get()
+        if action == "ax_close_app":
+            if "agent" in s("app", 60).lower():
+                raise ActionError("Hoola never closes its own agent")
+            return X.close_app(s("app", 60))
+        if action == "ax_batch":
+            return X.batch(list(a.get("steps") or []))
+    except X.AxError as e:
+        raise ActionError(str(e))
+    except X.AxUnavailable as e:
+        raise ActionError(str(e))
+    raise ActionError(f"Unknown action {action}")
+
+
 # ---------------- the actions ----------------
 class Actions:
     def __init__(self) -> None:
@@ -214,6 +301,8 @@ class Actions:
                 "tally": {}, "indexed": 0, "inbox": str(DOWNLOADS), "paused": False, "control": True}
 
     def handle(self, action: str, args: dict[str, Any]) -> dict[str, Any]:
+        if action in AX_ACTIONS:                  # v0.842 exact mode: the same ax_* the Windows PC answers
+            return _ax_handle(action, args or {})
         fn = getattr(self, "do_" + action, None)
         if fn is None:
             raise ActionError(f"Unknown action {action}")
