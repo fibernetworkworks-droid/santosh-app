@@ -207,6 +207,6 @@ def test_tools_and_api(env):
         assert cl.get("/api/net/connections").json()["connections"][0]["status"] == "active"
         inv = cl.post("/api/net/invite").json()
         page = cl.get(f"/c/{inv['code']}")
-        assert page.status_code == 200 and "Meghana's Santosh" in page.text and "santosh://connect" in page.text
+        assert page.status_code == 200 and "Meghana&#x27;s Santosh" in page.text and "santosh://connect" in page.text
         assert "purana" in cl.get("/c/nope").text
         assert cl.put("/api/net/me", json={"handle": "SBI"}).status_code == 400
