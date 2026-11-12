@@ -2974,3 +2974,27 @@ open, that window is used; Chrome missing = her own browser as before (`browser_
 (2) A website call moved onto her PC while her task ran there was dropped as `pc_busy`; now it goes INTO that task
 (`tools.py` -> `operator.tell`), and the v0.858 order-site question never fires while her PC task runs or when she named
 her PC (the steer moves it). 3 tests.
+
+## v0.859.0 R0 EYES FIRST (the Claude-style phone redesign, phase R0)
+
+Owner: "GO R0" on `docs/HOOLA_APP_REDESIGN_PLAN.md` (the plan made after her Claude APK research files + 24 Claude
+screenshots, and the design canvas of the 10 basic Hoola screens). Built as 0.858; their PC FLOW took 0.858.0 -
+REBASE PROTOCOL, both kept.
+
+- **Fonts bundled.** `assets/fonts/` = 20 static TTFs (Manrope 400-800, Sora 400-800 = today's look; Literata 400/500/600
+  + italic, Schibsted Grotesk 400-700, JetBrains Mono 400/500 = the redesign), 2.0 MB, written by
+  `tool/fetch_fonts.py` from Google Fonts with the names google_fonts looks for (`<Family>-<Variant>.ttf`), so
+  `GoogleFonts.*` finds them in the asset bundle before any download: no text flicker on first open, works offline,
+  and test machines render real glyphs. pubspec gains `- assets/fonts/`; OFL notice in THIRD_PARTY_NOTICES.md.
+- **Screen pictures on CI.** `test/goldens/screens_test.dart` pumps 8 main screens (setup, Today, Chat empty, Chat with a
+  fixed sample reply incl. heading / list / inline code / bold / table, Talk, Connect, Main, AI employees) at 390 x 844
+  x2 with real fonts + the SDK's Material Icons, plugins answered by quiet mocks, each screen its own test so one that
+  cannot render never hides the others; `.github/workflows/app-screens.yml` runs it on every app change and uploads
+  **hoola-screens** (each PNG + `screens-all.png` contact sheet from `tool/contact_sheet.py` + the log) and lists the
+  pictures / failures in the run summary. Pictures only, no pass / fail comparison yet - the screens are about to
+  change on purpose. The workflow also runs `test/fonts_test.dart` + the existing `md_text_test.dart` (never run on
+  CI before).
+- No server behaviour changed (version pins only).
+
+NOT VERIFIED: Flutter cannot run here - the first run of app-screens on CI is the first time these tests execute;
+screens with no server behind them show their empty / first-open states (the chat sample is the exception).

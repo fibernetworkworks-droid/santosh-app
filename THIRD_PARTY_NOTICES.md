@@ -249,3 +249,12 @@ Read at commit 6b779c0 (10 Nov 2026). **No upstream code is included.** v0.828.0
 (`server/app/devsahayak/memory.py`) is Hoola's own Python built from its design: an observer that turns a session's work
 into typed observations + a summary, a budget-fitted index at the start of the next session, and the three-step
 search -> timeline -> details retrieval. (Hoola's chat memory, `server/app/coder/`, v0.485, followed the same design.)
+
+## Bundled fonts (phone app, v0.859 R0) - SIL Open Font License 1.1
+
+`assets/fonts/` holds static TTF files of Manrope, Sora, Literata, Schibsted Grotesk and JetBrains Mono, downloaded
+unchanged from Google Fonts by `tool/fetch_fonts.py`. All five are licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org): free to bundle and redistribute inside an app; the fonts themselves are not sold alone
+and their reserved names are not used for changed versions. Copyright stays with their authors (Manrope: Mikhail
+Sharanda; Sora: Barbara Ugalde / Sora Project; Literata: TypeTogether; Schibsted Grotesk: Schibsted / Bakken & Baeck;
+JetBrains Mono: JetBrains).

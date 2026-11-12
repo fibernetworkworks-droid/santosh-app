@@ -1,4 +1,4 @@
-version: 0.858.0+857
+version: 0.859.0+858
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
@@ -57,3 +57,4 @@ flutter:
     - assets/images/
     - assets/santosh3d/
     - assets/avatars/
+    - assets/fonts/          # v0.859 R0: the app's fonts bundled (tool/fetch_fonts.py) - no download, works offline

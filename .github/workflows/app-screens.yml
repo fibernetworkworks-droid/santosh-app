@@ -1,0 +1,61 @@
+name: App screens (pictures of the phone app)
+
+# R0 of docs/HOOLA_APP_REDESIGN_PLAN.md: Flutter cannot run where the app is written, so CI takes a picture of every
+# main screen on each change to the app and attaches them to the run ("hoola-screens"). Separate from the APK build
+# so a screen that cannot render on a test machine never stops an APK.
+on:
+  push:
+    paths:
+      - "lib/**"
+      - "test/**"
+      - "assets/**"
+      - "pubspec.yaml"
+      - ".github/workflows/app-screens.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screens:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.24.5"
+          cache: true
+      - run: flutter pub get
+      - name: Unit tests (fonts bundled, markdown)
+        run: flutter test test/fonts_test.dart test/md_text_test.dart
+      - name: Take the screen pictures
+        run: |
+          set -o pipefail
+          flutter test --update-goldens test/goldens/ 2>&1 | tee screens.log || true
+          n=$(ls test/goldens/shots/*.png 2>/dev/null | wc -l)
+          echo "::notice::$n screen pictures made"
+          grep -E "^\s*[0-9]+:[0-9]+ .*(\+|-|~)[0-9]+.*: .*\[E\]" screens.log | sed 's/^/::warning::/' | head -20 || true
+          {
+            echo "## Hoola app screens"
+            echo ""
+            echo "$n pictures - download **hoola-screens** below."
+            echo ""
+            for f in test/goldens/shots/*.png; do [ -f "$f" ] && echo "- $(basename "$f")"; done
+            echo ""
+            echo "### Screens that did not render"
+            grep -E "\[E\]" screens.log | sed 's/^/- /' | head -20 || true
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: One contact sheet of every picture
+        run: |
+          pip install --quiet pillow
+          python3 tool/contact_sheet.py test/goldens/shots screens-all.png || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hoola-screens
+          path: |
+            test/goldens/shots/*.png
+            screens-all.png
+            screens.log
+          if-no-files-found: warn
