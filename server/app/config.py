@@ -215,6 +215,7 @@ class Settings(BaseSettings):
     dev_agent_max: int = 10                 # agents per round
     dev_agent_parallel: int = 4             # read / run agents asked in one reply that run at the same time
     # v0.814 THE AGENCY (owner: "GO 1 2 3"): 35 more agents in devsahayak/ecc/agency_*.py + the reality check before done
+    dev_truth: bool = True                  # G9: a round's "done" judged from facts (exit codes, push, PR, CI) + its end notice told once
     dev_reality_check: bool = True          # an independent reality-checker agent looks once before a round may finish
     dev_reality_min_lines: int = 30         # ... only for a change of at least this many added lines
     game_agency_experts: bool = True        # the Game Developer's crew roles carry The Agency's expert notes (gamedesk/agency.py)

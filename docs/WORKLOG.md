@@ -3161,3 +3161,8 @@ Task ID: v0.854.0 LANGGRAPH G8
 Ask: GO G8.
 Built: cards park the graph (interrupt / Command resume, told once) + call direct tools on the ledger with G3 facts; 18 tests.
 Deploy:
+
+Task ID: v0.856.0 LANGGRAPH G9
+Ask: GO BOTH (after G8).
+Built: Hoola Code honest done + told once; studio price cards park the graph; 11 tests.
+Deploy:

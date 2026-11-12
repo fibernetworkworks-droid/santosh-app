@@ -79,7 +79,7 @@ class TurnCardPark(Base):
     conversation_id: Mapped[str] = mapped_column(String(64), index=True, default="")
     tenant_id: Mapped[str] = mapped_column(String(64), default="")
     inbox_id: Mapped[str] = mapped_column(String(40), default="")
-    card_kind: Mapped[str] = mapped_column(String(20), default="")          # bazar | email
+    card_kind: Mapped[str] = mapped_column(String(20), default="")          # bazar | email | studio (G9)
     card_id: Mapped[str] = mapped_column(String(64), index=True, default="")
     tool_use_id: Mapped[str] = mapped_column(String(120), default="")
     tool: Mapped[str] = mapped_column(String(120), default="")
@@ -138,7 +138,39 @@ def card_of(tool: str, out: Any) -> dict | None:
             and str(out.get("status") or "") == "pending_approval":
         subj = str(out.get("subject") or "email")
         return {"kind": "email", "id": str(out["draft_id"])[:64], "title": ("Email: " + subj)[:200]}
+    aid = out.get("waiting_owner")
+    if isinstance(aid, str) and aid.startswith("sa") and "inr" in out:      # G9: a Video Studio / Create price card
+        c = {"kind": "studio", "id": aid[:64], "title": f"Video Studio price card (Rs {out.get('inr')})"[:200]}
+        if out.get("project"):
+            c["project"] = str(out["project"])[:120]
+        return c
     return None
+
+
+def _studio_pending(card: dict) -> bool:
+    """G9: a studio price card lives in its project's JSON (data/studio/<tenant>/projects), not in a table: the tenant
+    comes from the run (turngraph._note_card) or the park row, the project from the tool result or the tenant's list."""
+    from ..studio import service as ss
+    aid = str(card.get("id") or "")
+    tenant = str(card.get("tenant") or "")
+    if not tenant:
+        ensure_table()
+        with session() as s:
+            r = s.scalars(select(TurnCardPark).where(TurnCardPark.card_kind == "studio", TurnCardPark.card_id == aid)
+                          .limit(1)).first()
+            tenant = r.tenant_id if r is not None else ""
+    if not tenant or not aid:
+        return False
+    st = ss.studio_sync(tenant)
+    names = [card["project"]] if card.get("project") else [p["project"] for p in ss.listing(tenant, hidden=True)]
+    for name in names:
+        try:
+            a = (st.load(name).get("approvals") or {}).get(aid)
+        except Exception:   # noqa: BLE001 - a project that cannot be read holds no waiting card
+            continue
+        if a is not None:
+            return str(a.get("status") or "") == "pending"
+    return False
 
 
 def still_waiting(card: dict) -> bool:
@@ -154,6 +186,8 @@ def still_waiting(card: dict) -> bool:
             with session() as s:
                 d = s.get(EmailDraft, card.get("id"))
                 return d is not None and d.status == "pending"
+        if card.get("kind") == "studio":
+            return _studio_pending(card)
     except Exception:   # noqa: BLE001
         log.exception("card state check failed")
     return False

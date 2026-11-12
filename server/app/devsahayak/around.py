@@ -486,6 +486,8 @@ def tell_end(tenant: str, tid: str) -> dict[str, Any] | None:
     """A background run just ended: ONE event that says so, so her phone can tell her (done / needs her). The task card
     in the chat is one card per task, so this only refreshes it. Nothing is said for a run she stopped herself."""
     S = _S()
+    from . import truth as TR
+    honest = TR.on()                    # G9: the end is judged by what happened, and told once per round outcome
     with session() as s:
         t = s.get(DevTask, tid)
         if t is None or t.tenant_id != tenant:
@@ -493,6 +495,8 @@ def tell_end(tenant: str, tid: str) -> dict[str, Any] | None:
         v = S.task_view(t)
         q = S._question(t)
         conv = t.conv
+        if honest:
+            s.expunge(t)
     if v["status"] in ALREADY_TOLD:
         return None
     if q:
@@ -501,9 +505,21 @@ def tell_end(tenant: str, tid: str) -> dict[str, Any] | None:
         end, line = END_SAY[v["status"]]
         if v["status"] == "failed" and v.get("error"):
             line = "It stopped: " + str(v["error"])[:160]
+        tr = v.get("truth") if honest else None
+        if tr and not tr.get("confirmed") and v["status"] == "pr_open":
+            end = "needs_you"           # a "ready" the facts do not back is never said as ready
+            line = ("The pull request is open, but not everything is confirmed. " + str(tr.get("line") or ""))[:400]
     else:
         return None
     say = f"{v.get('number') or 'Hoola Code'}: {line}"
     v["say"] = say
-    S._publish(tenant, "devsahayak_task", {"task": v, "say": say, "end": end}, conv)
+    if not honest:
+        S._publish(tenant, "devsahayak_task", {"task": v, "say": say, "end": end}, conv)
+        return {"end": end, "say": say}
+
+    def send() -> bool:
+        S._publish(tenant, "devsahayak_task", {"task": v, "say": say, "end": end}, conv)
+        return True
+    if TR.tell_once(t, conv, send) is None:
+        return None                     # this round's end was already told (a resume, a repeat, a restart)
     return {"end": end, "say": say}

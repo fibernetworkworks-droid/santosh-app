@@ -2882,3 +2882,12 @@ is_online(tenant) = a personal PC online; a device id not online = None (was the
 taken as is (pc_team), a name for pc_do is looked up among HER PCs only and a Hoola PC name is refused naming hoola_pc_do, no
 personal PC + Hoola PC online = PC_OFFLINE_HOOLA_ON -> pc_do tells the model to ASK her before hoola_pc_do; pick.check refuses the
 wrong PC tool for the place she named. Tests test_v0854_pc_confusion.py (7). NOT VERIFIED with two real PCs online.
+
+## v0.856.0 LANGGRAPH G9 (built as 0.855; nothing took a number while it was built - REBASE PROTOCOL, both kept) — Hoola Code truth + told once, studio price cards park the graph (12 Nov 2026; owner: "GO BOTH")
+
+Phase G9 of `docs/LANGGRAPH_TURN_PLAN.md` (section 8).
+- NEW `devsahayak/truth.py`: facts from the task row in the G3 shape; claims read from explain / test_plan (hedges like 'should pass' are not claims); `task_view` gains `truth`; `around.tell_end` says 'not everything is confirmed' + needs_you when a claim has no fact, and is told once via `turndeliver.once` (no turndeliver change). Switch `dev_truth`.
+- `agent/turnpark.py` kind `studio` (`card_of`: waiting_owner `sa...` + rupee price; `still_waiting` reads the project JSON); `turngraph._note_card` puts the run's tenant on the card; `studio.service._ask` returns `project`; `studio.decide` / `expire_asks` call `turnpark.answered`.
+- Tests: test_g9_turngraph.py 11 (also with DEV_TRUTH=false and GRAPH_CARD_PARK=false); 66 passed / 4 skipped across g7-g9, routines and the Hoola Code suites on the rebased tree; two studio reds (v0259 dropdown pin, v0351 order interference) fail the same on main.
+- Not built: claim words still regex; CI still running = 'tests pass' unknown; a studio background job's later failure not fed back; other card kinds (desk, ask_forms, operator, pg_write) still do not park.
+- NOT VERIFIED live: no real Hoola Code round judged, no real studio tap resumed a parked run.

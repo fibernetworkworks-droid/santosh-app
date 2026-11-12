@@ -556,6 +556,13 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "running": t.id in _RUNNING, "stopping": t.id in _STOP,
          "at": t.created_at.isoformat() if t.created_at else "",
          "updated": t.updated_at.isoformat() if t.updated_at else ""}
+    try:                                # G9: the card says what the facts back, never only the model's words
+        from . import truth as TR
+        if TR.on():
+            tr = TR.judge(t)
+            v["truth"] = {k: tr[k] for k in ("confirmed", "claims", "line")}
+    except Exception:
+        log.debug("dev truth failed", exc_info=True)
     if full:
         v["text"] = t.text
         v["found"] = _j(t.found, {})

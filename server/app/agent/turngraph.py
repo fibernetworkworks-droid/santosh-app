@@ -1140,7 +1140,8 @@ def _note_card(live: _Live, b: dict, ahash: str, out) -> None:
         c = turnpark.card_of(b.get("name") or "", out)
         if c is None or any(x.get("kind") == c["kind"] and x.get("id") == c["id"] for x in live.cards):
             return
-        live.cards.append({**c, "tool": b.get("name") or "", "tool_use_id": b.get("id") or "", "args_hash": ahash})
+        live.cards.append({**c, "tool": b.get("name") or "", "tool_use_id": b.get("id") or "", "args_hash": ahash,
+                           "tenant": live.tenant_id})
     except Exception:   # noqa: BLE001
         log.debug("card note failed", exc_info=True)
 
