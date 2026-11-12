@@ -226,7 +226,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
 def _client(s, tenant: str, ref: str) -> InsClient:
     ref = str(ref or "").strip()
     if not ref:
-        raise InsError("Kaun sa graahak? Naam ya phone bataiye.")
+        raise InsError("Which customer? Give a name or phone.")
     c = s.get(InsClient, ref)
     if c and c.tenant_id == tenant:
         return c
@@ -240,8 +240,8 @@ def _client(s, tenant: str, ref: str) -> InsClient:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise InsError("Is naam ke kai graahak: " + ", ".join(f"{h.name} ({h.phone[-4:]})" for h in hits[:5]) + ". Phone bataiye.")
-    raise InsError(f"Graahak '{ref}' nahi mila.")
+        raise InsError("Several customers have this name: " + ", ".join(f"{h.name} ({h.phone[-4:]})" for h in hits[:5]) + ". Give the phone.")
+    raise InsError(f"Customer '{ref}' not found.")
 
 
 def _client_view(c: InsClient, on: date) -> dict:
@@ -259,7 +259,7 @@ def save_client(tenant: str, name: str = "", client: str = "", phone: str = "", 
         new = c is None
         if new:
             if not str(name).strip():
-                raise InsError("Graahak ka naam chahiye.")
+                raise InsError("The customer's name is required.")
             c = InsClient(tenant_id=tenant)
             s.add(c)
         if name:
@@ -269,7 +269,7 @@ def save_client(tenant: str, name: str = "", client: str = "", phone: str = "", 
         if dob:
             d = _date(dob)
             if not d:
-                raise InsError(f"Janam tareekh samajh nahi aayi: {dob}")
+                raise InsError(f"Could not understand the date of birth: {dob}")
             c.dob = d.isoformat()
         if gender:
             g = str(gender).strip().lower()
@@ -292,7 +292,7 @@ def save_client(tenant: str, name: str = "", client: str = "", phone: str = "", 
             c.notes = str(notes)[:2000]
         s.flush()
         v = _client_view(c, today(tenant))
-    return {"client": v, "say": f"{'Naya graahak' if new else 'Update'}: {v['name']}" + (f", {v['age']} saal" if v["age"] else "") + "."}
+    return {"client": v, "say": f"{'New customer' if new else 'Update'}: {v['name']}" + (f", {v['age']} years" if v["age"] else "") + "."}
 
 
 def clients(tenant: str) -> list[dict]:
@@ -341,7 +341,7 @@ def save_policy(tenant: str, client: str, insurer: str = "", plan: str = "", pty
             if not p or p.tenant_id != tenant:
                 p = s.scalars(select(InsPolicy).where(InsPolicy.tenant_id == tenant, InsPolicy.number == policy)).first()
             if not p:
-                raise InsError("Policy nahi mili.")
+                raise InsError("Policy not found.")
             c = s.get(InsClient, p.client_id)
             new = False
         else:
@@ -384,7 +384,7 @@ def save_policy(tenant: str, client: str, insurer: str = "", plan: str = "", pty
             p.status = status
         sd = _date(start)
         if start and not sd:
-            raise InsError(f"Start date samajh nahi aayi: {start}")
+            raise InsError(f"Could not understand the start date: {start}")
         if sd:
             p.start = sd.isoformat()
         nd = _date(next_due)
@@ -398,7 +398,7 @@ def save_policy(tenant: str, client: str, insurer: str = "", plan: str = "", pty
         v = _pview(p, c, on)
     warn = []
     if not v["nominee"]:
-        warn.append("Nominee nahi likha: graahak se nominee karwaiye (claim mein zaroori).")
+        warn.append("No nominee is recorded: ask the customer to name one (needed for a claim).")
     if v["premium_state"]["state"] in ("grace", "lapsed"):
         warn.append(v["premium_state"]["label"] + ".")
     say = f"{'Policy jodi' if new else 'Update'}: {v['client']} - {v['insurer']} {v['plan']} ({v['type_label']}), premium {_rs(v['premium'])} {v['mode']}, cover {_lakh(v['cover'])}."
@@ -428,16 +428,16 @@ def premium_paid(tenant: str, policy: str, paid_on: str = "", by: str = "owner")
     with _LOCK, session() as s:
         p = s.get(InsPolicy, policy) or s.scalars(select(InsPolicy).where(InsPolicy.tenant_id == tenant, InsPolicy.number == policy)).first()
         if not p or p.tenant_id != tenant:
-            raise InsError("Policy nahi mili.")
+            raise InsError("Policy not found.")
         k = R.MODES.get(p.mode, 12)
         due = _date(p.next_due)
         if not due or k == 0:
-            raise InsError("Is policy ka koi premium due nahi.")
+            raise InsError("This policy has no premium due.")
         p.next_due = R.add_months(due, k).isoformat()
         if p.status == "lapsed":
             p.status = "inforce"
         pd = _date(paid_on) or on
-        _plog(p, f"Premium {due.isoformat()} ka bhara gaya {pd.isoformat()} (graahak ne insurer ko)", by)
+        _plog(p, f"Premium due {due.isoformat()} was paid on {pd.isoformat()} (by the customer to the insurer)", by)
         c = s.get(InsClient, p.client_id)
         v = _pview(p, c, on)
     return {"policy": v, "say": f"{v['client']} ka premium note: agla {v['next_due']}. Commission ~{_rs(v['premium'] * v['commission_pct'] / 100)}."}
@@ -470,7 +470,7 @@ def import_policies(tenant: str, file_id: str = "", data: bytes | None = None, n
             hi, cols = i, f
             break
     if hi is None:
-        raise InsError("List mein naam aur policy number ka column chahiye.")
+        raise InsError("The list needs a name column and a policy number column.")
     added, updated, errs = 0, 0, []
     for r in rows[hi + 1:]:
         g = lambda k: r[cols[k]] if k in cols and cols[k] < len(r) else None  # noqa: E731
@@ -493,7 +493,7 @@ def import_policies(tenant: str, file_id: str = "", data: bytes | None = None, n
                 added += 1
         except InsError as e:
             errs.append(f"{num}: {e}")
-    return {"added": added, "updated": updated, "errors": errs[:30], "say": f"{added} nayi policy, {updated} update." + (f" {len(errs)} mein dikkat." if errs else "")}
+    return {"added": added, "updated": updated, "errors": errs[:30], "say": f"{added} new policies, {updated} updated." + (f" {len(errs)} had problems." if errs else "")}
 
 
 # ---------------------------------------------------------------- renewals
@@ -508,9 +508,9 @@ def renewals(tenant: str, days: int | None = None) -> dict:
     lapsed = [p for p in pol if p["premium_state"]["state"] == "lapsed"]
     total = sum(p["premium"] for p in due + grace)
     comm = sum(p["premium"] * p["commission_pct"] / 100 for p in due + grace)
-    say = (f"Agle {days} din mein {len(due)} premium ({_rs(sum(p['premium'] for p in due))}); grace mein {len(grace)}"
-           + (f" (sabse jaldi khatam: {min(grace, key=lambda x: x['premium_state']['days_left'])['client']})" if grace else "")
-           + f"; lapse {len(lapsed)}. Commission milne wala ~{_rs(comm)}.")
+    say = (f"Next {days} days: {len(due)} premiums ({_rs(sum(p['premium'] for p in due))}); {len(grace)} in grace"
+           + (f" (ends soonest: {min(grace, key=lambda x: x['premium_state']['days_left'])['client']})" if grace else "")
+           + f"; lapsed {len(lapsed)}. Commission expected ~{_rs(comm)}.")
     return {"due": due, "grace": grace, "lapsed": lapsed, "premium_total": round(total), "commission": round(comm), "say": say}
 
 
@@ -519,7 +519,7 @@ def reminder_drafts(tenant: str, days: int | None = None) -> dict:
     r = renewals(tenant, days)
     with session() as s:
         st = _st(s, tenant)
-        agent = st.agent_name or "aapka insurance advisor"
+        agent = st.agent_name or "your insurance advisor"
         ok = {c.id: c.whatsapp_ok for c in s.scalars(select(InsClient).where(InsClient.tenant_id == tenant)).all()}
     out = []
     for p in r["due"] + r["grace"] + r["lapsed"]:
@@ -528,27 +528,27 @@ def reminder_drafts(tenant: str, days: int | None = None) -> dict:
         ps = p["premium_state"]
         first = p["client"].split()[0] if p["client"] else ""
         if ps["state"] == "due":
-            body = f"{p['insurer']} policy {p['number']} ({p['plan']}) ka {_rs(p['premium'])} premium {ps['due']} ko due hai."
+            body = f"The {_rs(p['premium'])} premium for {p['insurer']} policy {p['number']} ({p['plan']}) is due on {ps['due']}."
         elif ps["state"] == "grace":
-            body = (f"{p['insurer']} policy {p['number']} ka {_rs(p['premium'])} premium {ps['due']} ko due tha; grace period "
-                    f"{ps['grace_end']} ko khatam hoga, uske baad policy lapse ho jayegi.")
+            body = (f"The {_rs(p['premium'])} premium for {p['insurer']} policy {p['number']} was due on {ps['due']}; the grace period "
+                    f"ends on {ps['grace_end']}, after which the policy will lapse.")
         else:
-            body = (f"{p['insurer']} policy {p['number']} lapse ho gayi hai. {ps['revive_by']} tak revive ho sakti hai (baaki premium + byaaj, "
-                    "kabhi health declaration). Cover wapas chalu karne mein madad karun?")
-        pay = f" Bharne ke liye: {p['pay_link']}" if p["pay_link"] else f" {p['insurer']} ki app / website / branch se bhar sakte hain."
+            body = (f"{p['insurer']} policy {p['number']} has lapsed. It can be revived until {ps['revive_by']} (pending premium + interest, "
+                    "sometimes a health declaration). Shall I help restart the cover?")
+        pay = f" To pay: {p['pay_link']}" if p["pay_link"] else f" You can pay through the {p['insurer']} app / website / branch."
         out.append({"policy_id": p["id"], "client": p["client"], "to": p["phone"], "state": ps["state"],
-                    "text": f"Namaste {first} ji, {body}{pay} Koi sawaal ho to bataiye. - {agent}"})
-    return {"drafts": out, "say": f"{len(out)} graahak ke liye yaad dilane ka message draft (aap bhejengi; paisa graahak seedha insurer ko dega)."}
+                    "text": f"Hello {first}, {body}{pay} Let me know if you have any questions. - {agent}"})
+    return {"drafts": out, "say": f"Reminder message drafts for {len(out)} customers (you send them; the customer pays the insurer directly)."}
 
 
 def mark_reminded(tenant: str, policy: str) -> dict:
     with session() as s:
         p = s.get(InsPolicy, policy)
         if not p or p.tenant_id != tenant:
-            raise InsError("Policy nahi mili.")
+            raise InsError("Policy not found.")
         p.reminded_for = p.next_due
-        _plog(p, f"Yaad dilaya (due {p.next_due})", "owner")
-    return {"say": "Note kiya."}
+        _plog(p, f"Reminded (due {p.next_due})", "owner")
+    return {"say": "Noted."}
 
 
 def mark_lapsed(tenant: str) -> int:
@@ -560,7 +560,7 @@ def mark_lapsed(tenant: str) -> int:
             st = R.premium_state(_date(p.next_due), p.mode, p.ptype, on)
             if st["state"] in ("lapsed", "lapsed_final"):
                 p.status = "lapsed"
-                _plog(p, f"Grace khatam: lapse (due {p.next_due})")
+                _plog(p, f"Grace ended: lapsed (due {p.next_due})")
                 n += 1
     return n
 
@@ -582,18 +582,18 @@ def needs(tenant: str, client: str) -> dict:
     health = R.health_cover_need(members, cv["metro"], max([a for a in ages if a is not None], default=None), health_existing)
     gaps = []
     if life and life["gap"] > 0:
-        gaps.append(f"Term life cover kam: chahiye ~{_lakh(life['need'])}, hai {_lakh(life_existing)} (gap {_lakh(life['gap'])}).")
+        gaps.append(f"Term life cover is short: needs ~{_lakh(life['need'])}, has {_lakh(life_existing)} (gap {_lakh(life['gap'])}).")
     if not cv["income"]:
-        gaps.append("Saal ki kamai pata nahi: life cover ka hisaab ke liye bataiye.")
+        gaps.append("Yearly income is not known: tell me to work out the life cover.")
     if health["gap"] > 0:
-        gaps.append(f"Health cover kam: {members} log ke liye ~{_lakh(health['need'])} chahiye, hai {_lakh(health_existing)}.")
+        gaps.append(f"Health cover is short: for {members} people it needs ~{_lakh(health['need'])}, has {_lakh(health_existing)}.")
     if not any(p["type"] == "pa" for p in pols) and cv["income"]:
-        gaps.append("Personal accident cover nahi (kamane wale ke liye sasta aur zaroori).")
+        gaps.append("No personal accident cover (cheap and important for the earning member).")
     no_nominee = [p["number"] for p in pols if not p["nominee"]]
     if no_nominee:
-        gaps.append(f"Nominee nahi: {', '.join(no_nominee)}.")
+        gaps.append(f"No nominee: {', '.join(no_nominee)}.")
     return {"client": cv, "life": life, "health": health, "policies": len(pols), "gaps": gaps,
-            "say": f"{cv['name']}: " + (" ".join(gaps) if gaps else "cover theek lagta hai.") + " (Andaza rule of thumb se: final faisla graahak ka.)"}
+            "say": f"{cv['name']}: " + (" ".join(gaps) if gaps else "cover looks fine.") + " (An estimate by rule of thumb: the final decision is the customer's.)"}
 
 
 def recommend(tenant: str, client: str, options: list[dict], note: str = "", conv: str = "") -> dict:
@@ -610,7 +610,7 @@ def recommend(tenant: str, client: str, options: list[dict], note: str = "", con
                      "per_lakh": round(prem / (cov / 1e5), 2), "csr": o.get("csr"), "features": str(o.get("features", ""))[:300],
                      "gst_pct": R.gst_on(pt), "guaranteed": bool(o.get("guaranteed"))})
     if not rows:
-        raise InsError("Kam se kam ek option chahiye (insurer, plan, premium, cover).")
+        raise InsError("At least one option is needed (insurer, plan, premium, cover).")
     rows.sort(key=lambda r: (r["per_lakh"], -(float(r["csr"] or 0))))
     savings_plan = any(r["type"] in R.SAVINGS for r in rows)
     with session() as s:
@@ -620,11 +620,11 @@ def recommend(tenant: str, client: str, options: list[dict], note: str = "", con
         s.add(a)
         s.flush()
         aid = a.id
-    say = (f"{n['client']['name']} ke liye {len(rows)} option: sabse sasta per lakh cover {rows[0]['insurer']} {rows[0]['plan']} "
+    say = (f"{len(rows)} options for {n['client']['name']}: cheapest per lakh of cover is {rows[0]['insurer']} {rows[0]['plan']} "
            f"({_rs(rows[0]['per_lakh'])} / lakh).")
     if savings_plan:
-        say += " Savings plan hai: IRDAI ke hisaab se need analysis record ho gaya; benefit illustration graahak ko dikhaiye."
-    say += " Graahak ko bhejne se pehle aapki haan."
+        say += " This is a savings plan: the need analysis is recorded as IRDAI requires; show the benefit illustration to the customer."
+    say += " Your approval comes before anything is sent to the customer."
     _publish(tenant, "ins_advice", {"advice_id": aid, "client": n["client"]["name"]}, conv)
     return {"advice_id": aid, "options": rows, "needs": n, "say": say}
 
@@ -633,7 +633,7 @@ def approve_advice(tenant: str, advice_id: str, approve: bool = True) -> dict:
     with session() as s:
         a = s.get(InsAdvice, advice_id)
         if not a or a.tenant_id != tenant:
-            raise InsError("Salah ka record nahi mila.")
+            raise InsError("Advice record not found.")
         if not approve:
             a.status = "ready"
             return {"say": "Roka."}
@@ -645,10 +645,10 @@ def approve_advice(tenant: str, advice_id: str, approve: bool = True) -> dict:
     lines = [f"{i}. {r['insurer']} {r['plan']}: cover {_lakh(r['cover'])}, premium {_rs(r['premium'])}"
              + (f", claim settlement {r['csr']}%" if r.get("csr") else "") + (f" ({r['features']})" if r["features"] else "")
              for i, r in enumerate(rows[:4], 1)]
-    text = (f"Namaste {c.name.split()[0]} ji, aapki zaroorat ke hisaab se: " + " ".join(needs_.get("gaps", [])[:2]) + "\n" + "\n".join(lines)
-            + "\nIndividual life / health premium par ab GST nahi lagta. Policy milne ke 30 din tak (free-look) pasand na aaye to wapas kar "
-            "sakte hain. Proposal form aur health ki jaankari aap khud sach-sach bhariyega. - " + (st.agent_name or "aapka advisor"))
-    return {"draft": text, "to": c.phone, "say": "Haan mili: graahak ke liye message draft taiyaar (aap bhejengi)."}
+    text = (f"Hello {c.name.split()[0]}, based on your needs: " + " ".join(needs_.get("gaps", [])[:2]) + "\n" + "\n".join(lines)
+            + "\nThere is no GST on individual life / health premiums now. If you do not like the policy within 30 days of getting it (free-look), you can return it. "
+            "Please fill in the proposal form and health details yourself, truthfully. - " + (st.agent_name or "your advisor"))
+    return {"draft": text, "to": c.phone, "say": "Approved: message draft ready for the customer (you send it)."}
 
 
 def proposal_checklist(ptype: str, age: int | None = None, cover: float = 0.0) -> dict:
@@ -662,9 +662,9 @@ def proposal_checklist(ptype: str, age: int | None = None, cover: float = 0.0) -
         docs = R.PROPOSAL_DOCS["common"][:3] + R.PROPOSAL_DOCS["motor"]
     if t in R.SAVINGS:
         docs += R.PROPOSAL_DOCS["savings"]
-    tips = [f"Free-look {R.FREE_LOOK_DAYS} din: policy pasand na aaye to wapas.", "Customer Information Sheet (CIS) graahak ko dena."]
+    tips = [f"Free-look {R.FREE_LOOK_DAYS} days: return the policy if you do not like it.", "Give the Customer Information Sheet (CIS) to the customer."]
     if age and age >= 45 and t in ("term", "health"):
-        tips.append("45+ umar: medical test lag sakta hai; pehle se bimari zaroor batayein.")
+        tips.append("Age 45+: a medical test may be needed; declare any existing illness.")
     return {"type": t, "documents": docs, "tips": tips, "never": list(R.NEVER)}
 
 
@@ -675,21 +675,21 @@ def start_claim(tenant: str, policy: str, kind: str, event_on: str = "", amount=
     with _LOCK, session() as s:
         p = s.get(InsPolicy, policy) or s.scalars(select(InsPolicy).where(InsPolicy.tenant_id == tenant, InsPolicy.number == policy)).first()
         if not p or p.tenant_id != tenant:
-            raise InsError("Policy nahi mili.")
+            raise InsError("Policy not found.")
         cl = InsClaim(tenant_id=tenant, policy_id=p.id, kind=k, event_on=(_date(event_on) or today(tenant)).isoformat(),
                       amount=_f(amount) if amount else 0.0, docs=json.dumps({d: False for d in R.CLAIM_DOCS[k]}, ensure_ascii=False))
         s.add(cl)
-        _plog(p, f"Claim shuru ({k})", by)
+        _plog(p, f"Claim started ({k})", by)
         s.flush()
         cid = cl.id
         c = s.get(InsClient, p.client_id)
         insurer, num = p.insurer, p.number
-    t = {"death": "Bina jaanch 15 din, jaanch ho to 45 din mein settle; der par byaaj (bank rate + 2%).",
-         "health_cashless": "Cashless approval 1 ghante mein, discharge 3 ghante mein (IRDAI).",
-         "health_reimbursement": "Saare kaagaz jama hone ke 15 din mein settle hona chahiye.",
-         "motor": "Surveyor jaanch karega; gaadi repair se pehle insurer ko batayein.", "other": "Insurer ko turant batayein."}[k]
+    t = {"death": "Settled in 15 days without an investigation, 45 days with one; late payment carries interest (bank rate + 2%).",
+         "health_cashless": "Cashless approval within 1 hour, discharge within 3 hours (IRDAI).",
+         "health_reimbursement": "Should be settled within 15 days of all documents being submitted.",
+         "motor": "A surveyor will inspect; tell the insurer before repairing the vehicle.", "other": "Tell the insurer at once."}[k]
     return {"claim_id": cid, "documents": R.CLAIM_DOCS[k],
-            "say": f"{c.name} ka {insurer} claim ({num}) shuru. Insurer ko turant batayein. Kaagaz: {', '.join(R.CLAIM_DOCS[k])}. {t}"}
+            "say": f"{c.name}'s {insurer} claim ({num}) started. Tell the insurer at once. Documents: {', '.join(R.CLAIM_DOCS[k])}. {t}"}
 
 
 def update_claim(tenant: str, claim_id: str, have: list[str] | None = None, status: str = "", insurer_ref: str = "", filed_on: str = "",
@@ -697,7 +697,7 @@ def update_claim(tenant: str, claim_id: str, have: list[str] | None = None, stat
     with session() as s:
         cl = s.get(InsClaim, claim_id)
         if not cl or cl.tenant_id != tenant:
-            raise InsError("Claim nahi mila.")
+            raise InsError("Claim not found.")
         docs = _j(cl.docs, {})
         for h in have or []:
             for d in docs:
@@ -720,7 +720,7 @@ def update_claim(tenant: str, claim_id: str, have: list[str] | None = None, stat
         cl.log = json.dumps(lg[-50:], ensure_ascii=False)
         missing = [d for d, ok in docs.items() if not ok]
         st = cl.status
-    return {"missing": missing, "status": st, "say": ("Baaki kaagaz: " + ", ".join(missing)) if missing else "Saare kaagaz poore."}
+    return {"missing": missing, "status": st, "say": ("Pending documents: " + ", ".join(missing)) if missing else "All documents are complete."}
 
 
 def claims(tenant: str, open_only: bool = True) -> list[dict]:
@@ -740,7 +740,7 @@ def claims(tenant: str, open_only: bool = True) -> list[dict]:
             out.append({"id": cl.id, "kind": cl.kind, "client": cs[p.client_id].name if p and p.client_id in cs else "", "insurer": p.insurer if p else "",
                         "policy": p.number if p else "", "status": cl.status, "filed_on": cl.filed_on, "insurer_ref": cl.insurer_ref,
                         "missing": [d for d, ok in _j(cl.docs, {}).items() if not ok], "overdue": overdue,
-                        "escalate": ("Insurer ke grievance cell, phir Bima Bharosa (IRDAI) aur Insurance Ombudsman." if overdue else "")})
+                        "escalate": ("The insurer's grievance cell, then Bima Bharosa (IRDAI) and the Insurance Ombudsman." if overdue else "")})
         return out
 
 
@@ -749,7 +749,7 @@ def birthdays(tenant: str, days: int = 7) -> dict:
     on = today(tenant)
     out = []
     with session() as s:
-        agent = _st(s, tenant).agent_name or "aapka advisor"
+        agent = _st(s, tenant).agent_name or "your advisor"
         for c in s.scalars(select(InsClient).where(InsClient.tenant_id == tenant)).all():
             d = _date(c.dob)
             if not d:
@@ -762,7 +762,7 @@ def birthdays(tenant: str, days: int = 7) -> dict:
                 nxt = nxt.replace(year=on.year + 1)
             if (nxt - on).days <= days and c.whatsapp_ok:
                 out.append({"client": c.name, "to": c.phone, "on": nxt.isoformat(),
-                            "text": f"Janamdin ki bahut shubhkamnayein {c.name.split()[0]} ji! Aap aur parivaar swasth aur surakshit rahein. - {agent}"})
+                            "text": f"Happy birthday {c.name.split()[0]}! Wishing you and your family good health and safety. - {agent}"})
     return {"birthdays": out}
 
 
@@ -778,7 +778,7 @@ def book(tenant: str) -> dict:
     return {"policies": len(pol), "inforce": len(infor), "lapsed": len(lapsed), "yearly_premium": round(yearly),
             "yearly_commission": round(sum(p["premium"] * (12 / R.MODES[p["mode"]] if R.MODES.get(p["mode"]) else 0) * p["commission_pct"] / 100 for p in infor)),
             "by_type": by_type, "persistency_pct": persist,
-            "say": f"{len(infor)} chalu policy, saal ka premium {_lakh(yearly)}, lapse {len(lapsed)}" + (f", persistency {persist}%." if persist is not None else ".")}
+            "say": f"{len(infor)} active policies, yearly premium {_lakh(yearly)}, lapsed {len(lapsed)}" + (f", persistency {persist}%." if persist is not None else ".")}
 
 
 def book_file(tenant: str, conv: str = "") -> dict:
@@ -827,11 +827,11 @@ def send_morning(tenant: str) -> dict:
     cl = [c for c in claims(tenant) if c["overdue"] or c["missing"]]
     parts = []
     if r["due"] or r["grace"]:
-        parts.append(f"{len(r['due'])} premium is hafte due, {len(r['grace'])} grace mein")
+        parts.append(f"{len(r['due'])} premiums due this week, {len(r['grace'])} in grace")
     if b:
-        parts.append("Aaj janamdin: " + ", ".join(x["client"] for x in b))
+        parts.append("Birthday today: " + ", ".join(x["client"] for x in b))
     if cl:
-        parts.append(f"{len(cl)} claim mein kaam baaki")
+        parts.append(f"{len(cl)} claims with work pending")
     if not parts:
         return {"text": ""}
     text = "Bima: " + "; ".join(parts) + "."
