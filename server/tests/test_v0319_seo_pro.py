@@ -329,7 +329,7 @@ def test_hourly_watch_alerts_home_drift_once(seo):
     assert desk.watch(T, sid)["alerts"] == []
     base.STATE["home"] = base.HOME.replace("<title>Sharma Dental</title>", "")
     a = desk.watch(T, sid)["alerts"]
-    assert len(a) == 1 and "Title hat gaya" in a[0]
+    assert len(a) == 1 and "Title removed" in a[0]
     assert desk.watch(T, sid)["alerts"] == []                                  # one alert, not one an hour
 
 

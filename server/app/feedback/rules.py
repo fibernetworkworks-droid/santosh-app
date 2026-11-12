@@ -26,12 +26,12 @@ import unicodedata
 from typing import Any
 
 NEVER = (
-    "Kisi review ko hatana, chhupana ya sirf achhe reviews dikhana (IS 19000:2022, Google policy).",
-    "Sirf khush graahakon se review maangna (review gating) - survey ke baad review ka link sabko ek jaisa.",
-    "Review badalne / hatane ke badle discount, cashback ya gift.",
-    "Apne ya staff ke naam se review likhna / likhwana, paise de kar review.",
-    "Public review ka jawab owner ki haan ke bina daalna.",
-    "Graahak ka phone, address, order number public jawab mein likhna.",
+    "Never remove or hide a review, or show only the good reviews (IS 19000:2022, Google policy).",
+    "Never ask only happy customers for a review (review gating) - after a survey, the review link is the same for everyone.",
+    "Never offer a discount, cashback or gift to change or remove a review.",
+    "Never write or arrange a review in your own or a staff member's name, or pay for a review.",
+    "Never post a reply to a public review without the owner's approval.",
+    "Never write a customer's phone number, address or order number in a public reply.",
 )
 
 LANGS = {"hi": "Hindi", "mr": "Marathi", "en": "English", "hinglish": "Hinglish"}
@@ -89,56 +89,56 @@ BUT = r"(?:\bbut\b|\blekin\b|\blekhin\b|\bmagar\b|\bhowever\b|\bthough\b|\baltho
 
 # aspect id -> (label, words, fixability 0..1, urgent)
 ASPECTS: dict[str, tuple[str, tuple[str, ...], float, bool]] = {
-    "food_safety": ("Khane mein baal / keeda / bimari", ("hair in", "baal tha", "baal mila", "insect", "cockroach", "keeda", "kida", "worm",
+    "food_safety": ("Hair / insect / illness from food", ("hair in", "baal tha", "baal mila", "insect", "cockroach", "keeda", "kida", "worm",
                     "food poisoning", "vomit", "ulti", "stomach upset", "pet kharab", "expired", "fungus", "rotten", "sada hua", "बाल",
                     "कीड़ा", "उल्टी", "एक्सपायर", "allergy", "hospital"), 1.0, True),
-    "safety": ("Suraksha / badsalooki", ("harass", "harassment", "misbehave", "misbehaved", "threat", "unsafe", "abuse", "abused",
+    "safety": ("Safety / misbehaviour", ("harass", "harassment", "misbehave", "misbehaved", "threat", "unsafe", "abuse", "abused",
                "chhed", "gaali", "injury", "chot lagi", "current laga", "shock laga", "fire", "धमकी", "गाली"), 1.0, True),
-    "fraud": ("Dhokha / nakli maal", ("fraud", "cheat", "cheated", "scam", "dhokha", "thagi", "fake product", "duplicate product",
+    "fraud": ("Fraud / fake goods", ("fraud", "cheat", "cheated", "scam", "dhokha", "thagi", "fake product", "duplicate product",
               "nakli", "chuna lagaya", "fasavnuk", "धोखा", "नकली", "फसवणूक"), 1.0, True),
-    "taste": ("Swaad / khana", ("khana", "khaana", "food", "jevan", "jevan", "खाना", "जेवण", "taste", "tasty", "tasteless", "swad", "swaad", "flavour", "flavor", "bland", "spicy", "teekha", "tikha",
+    "taste": ("Taste / food", ("khana", "khaana", "food", "jevan", "jevan", "खाना", "जेवण", "taste", "tasty", "tasteless", "swad", "swaad", "flavour", "flavor", "bland", "spicy", "teekha", "tikha",
               "namak", "salty", "oily", "delicious", "swadisht", "chav", "chavishta", "स्वाद", "चव", "स्वादिष्ट", "चविष्ट"), 0.8, False),
-    "freshness": ("Taazgi", ("fresh", "stale", "baasi", "basi", "shila", "not fresh", "thanda khana", "food was cold", "बासी", "शिळे"), 0.9, False),
-    "quantity": ("Matra / quantity", ("quantity", "portion", "matra", "small portion", "kam diya", "less quantity", "too less",
+    "freshness": ("Freshness", ("fresh", "stale", "baasi", "basi", "shila", "not fresh", "thanda khana", "food was cold", "बासी", "शिळे"), 0.9, False),
+    "quantity": ("Quantity", ("quantity", "portion", "matra", "small portion", "kam diya", "less quantity", "too less",
                  "मात्रा"), 0.8, False),
-    "price": ("Daam", ("price", "pricing", "expensive", "costly", "overpriced", "mehenga", "mehnga", "mahanga", "rate", "cheap",
+    "price": ("Price", ("price", "pricing", "expensive", "costly", "overpriced", "mehenga", "mehnga", "mahanga", "rate", "cheap",
               "sasta", "value for money", "paisa vasool", "paisa wasool", "affordable", "reasonable", "mahag", "महंगा", "महाग",
               "किंमत", "दाम"), 0.5, False),
-    "billing": ("Bill / zyada paise", ("bill", "billing", "overcharged", "overcharge", "extra charge", "charged extra", "charged twice",
+    "billing": ("Billing / overcharge", ("bill", "billing", "overcharged", "overcharge", "extra charge", "charged extra", "charged twice",
                 "double charge", "receipt", "invoice", "zyada paise", "jyada paise", "mrp se zyada", "बिल"), 0.9, False),
-    "staff": ("Staff / seva", ("staff", "service", "waiter", "rude", "behaviour", "behavior", "attitude", "polite", "friendly", "courteous",
+    "staff": ("Staff / service", ("staff", "service", "waiter", "rude", "behaviour", "behavior", "attitude", "polite", "friendly", "courteous",
               "badtameez", "tameez", "manager", "employee", "receptionist", "owner was", "vagnuk", "वागणूक", "व्यवहार", "स्टाफ",
               "बदतमीज"), 1.0, False),
-    "wait": ("Intezaar / der", ("wait", "waiting", "waited", "slow service", "late", "der", "delay", "queue", "line mein",
+    "wait": ("Waiting / delay", ("wait", "waiting", "waited", "slow service", "late", "der", "delay", "queue", "line mein",
              "intezaar", "intezar", "time laga", "ghanta", "hour", "ushir", "उशीर", "देर", "इंतजार"), 0.9, False),
     "delivery": ("Delivery", ("delivery", "delivered", "courier", "rider", "delivery boy", "shipping", "dispatch", "parcel",
                  "not delivered", "deliver", "पार्सल", "डिलीवरी"), 0.8, False),
-    "packaging": ("Packing", ("packing", "packaging", "packed", "spill", "spilled", "leak", "leaking", "seal", "dabba", "box was",
+    "packaging": ("Packaging", ("packing", "packaging", "packed", "spill", "spilled", "leak", "leaking", "seal", "dabba", "box was",
                   "पैकिंग"), 1.0, False),
     "quality": ("Quality", ("quality", "material", "durable", "fabric", "kapda", "build quality", "finishing", "stitching",
                 "गुणवत्ता", "क्वालिटी"), 0.6, False),
-    "defect": ("Kharab / toota maal", ("broken", "damaged", "defective", "not working", "kaam nahi karta", "chalu nahi", "toota",
+    "defect": ("Defective / broken goods", ("broken", "damaged", "defective", "not working", "kaam nahi karta", "chalu nahi", "toota",
                "tuta", "crack", "faulty", "dead on arrival", "tutla", "टूटा", "तुटलेले"), 0.6, False),
-    "wrong_item": ("Galat / kam saamaan", ("wrong item", "wrong product", "wrong order", "galat item", "galat saman", "galat saamaan",
+    "wrong_item": ("Wrong / missing items", ("wrong item", "wrong product", "wrong order", "galat item", "galat saman", "galat saamaan",
                    "missing", "item missing", "nahi mila", "not received", "different product", "chukicha", "गलत"), 0.9, False),
     "fit": ("Size / fitting", ("size", "fitting", "fit", "tight", "loose", "chhota", "bada size", "साइज"), 0.6, False),
     "refund": ("Refund / return", ("refund", "return", "replacement", "exchange", "paisa wapas", "paise wapas", "money back",
                "cancel", "cancelled", "रिफंड", "वापस"), 0.8, False),
-    "clean": ("Safai", ("clean", "cleanliness", "dirty", "hygiene", "hygienic", "unhygienic", "ganda", "gandi", "saaf", "safai",
+    "clean": ("Cleanliness", ("clean", "cleanliness", "dirty", "hygiene", "hygienic", "unhygienic", "ganda", "gandi", "saaf", "safai",
               "washroom", "toilet", "smell", "badbu", "ghan", "swachh", "साफ", "सफाई", "गंदा", "घाण", "स्वच्छ"), 1.0, False),
-    "ambience": ("Mahaul / baithne ki jagah", ("ambience", "ambiance", "music", "seating", "decor", "crowd", "noise", "noisy",
+    "ambience": ("Ambience / seating", ("ambience", "ambiance", "music", "seating", "decor", "crowd", "noise", "noisy",
                  "mahaul", "atmosphere", "a/c", "ac", "garmi", "pankha", "fan", "माहौल"), 0.6, False),
-    "location": ("Jagah / parking", ("parking", "location", "address", "hard to find", "road", "jagah", "dhundhna", "पार्किंग"),
+    "location": ("Location / parking", ("parking", "location", "address", "hard to find", "road", "jagah", "dhundhna", "पार्किंग"),
                  0.2, False),
     "app": ("App / website / payment", ("app", "website", "online order", "payment", "upi", "login", "crash", "crashes", "otp",
             "ऐप"), 0.5, False),
-    "response": ("Jawab / sampark", ("no response", "not responding", "no reply", "call nahi uthaya", "phone nahi uthaya",
+    "response": ("Response / contact", ("no response", "not responding", "no reply", "call nahi uthaya", "phone nahi uthaya",
                  "koi jawab nahi", "customer care", "support", "whatsapp", "callback", "contact", "जवाब"), 1.0, False),
-    "knowledge": ("Jaankari / salah", ("explained", "knowledge", "knowledgeable", "expert", "samjhaya", "advice", "treatment",
+    "knowledge": ("Knowledge / advice", ("explained", "knowledge", "knowledgeable", "expert", "samjhaya", "advice", "treatment",
                   "diagnosis", "doctor", "teacher", "समझाया"), 0.7, False),
-    "hours": ("Samay / band tha", ("closed", "timing", "timings", "dukaan band", "shop band", "band milta", "band mila", "open late", "hours", "time pe nahi",
+    "hours": ("Timings / closed", ("closed", "timing", "timings", "dukaan band", "shop band", "band milta", "band mila", "open late", "hours", "time pe nahi",
               "बंद"), 0.9, False),
-    "availability": ("Stock / mil nahi raha", ("out of stock", "not available", "stock", "available", "khatam", "nahi tha",
+    "availability": ("Stock / not available", ("out of stock", "not available", "stock", "available", "khatam", "nahi tha",
                      "उपलब्ध"), 0.7, False),
     "booking": ("Booking / appointment", ("appointment", "booking", "booked", "slot", "reservation", "अपॉइंटमेंट"), 0.8, False),
 }
@@ -159,7 +159,7 @@ hote all got get one time place really just will also our very much bhi hua hui 
 SOURCE_PUBLIC = {"google", "play", "amazon", "flipkart", "zomato", "swiggy", "justdial", "facebook", "practo", "tripadvisor", "meesho"}
 SOURCE_LABEL = {"google": "Google review", "play": "Play Store", "amazon": "Amazon", "flipkart": "Flipkart", "zomato": "Zomato",
                 "swiggy": "Swiggy", "meesho": "Meesho", "survey": "Hoola survey", "gforms": "Google Form", "typeform": "Typeform",
-                "surveymonkey": "SurveyMonkey", "whatsapp": "WhatsApp", "call": "Call note", "text": "Likha / chipkaya",
+                "surveymonkey": "SurveyMonkey", "whatsapp": "WhatsApp", "call": "Call note", "text": "Written / pasted",
                 "csv": "Sheet", "justdial": "Justdial", "practo": "Practo", "facebook": "Facebook"}
 
 
@@ -385,7 +385,7 @@ def nps(scores: list[int]) -> dict[str, Any]:
     moe = 1.96 * math.sqrt(max(0.0, (p + d - (p - d) ** 2)) / n) * 100
     return {"n": n, "nps": val, "promoters_pct": round(p * 100), "passives_pct": round((1 - p - d) * 100), "detractors_pct": round(d * 100),
             "margin": round(moe), "low_n": n < 30,
-            "say": f"NPS {val:+d} ({n} jawab" + (f", +/-{round(moe)} ka farak ho sakta hai" if n < 100 else "") + ")"}
+            "say": f"NPS {val:+d} ({n} responses" + (f", may be off by +/-{round(moe)}" if n < 100 else "") + ")"}
 
 
 def csat(stars: list[float]) -> dict[str, Any]:

@@ -23,33 +23,33 @@ THIRD_SCHEDULE = [                           # Rule 8(1) + Third Schedule: 3 yea
     ("Social media intermediary, 2 crore+ registered users in India", "social", 20_000_000),
 ]
 PENALTIES = [                                # Schedule to the Act (maximum)
-    ("Security safeguards na lena (s.8(5))", "₹250 crore tak"),
-    ("Board / logon ko breach na batana (s.8(6))", "₹200 crore tak"),
-    ("Bachchon ke data ke niyam todna (s.9)", "₹200 crore tak"),
-    ("Significant Data Fiduciary ke extra niyam (s.10)", "₹150 crore tak"),
-    ("Data principal ke apne kartavya todna (s.15)", "₹10,000 tak"),
-    ("Baaki koi bhi niyam", "₹50 crore tak"),
+    ("Failing to keep security safeguards (s.8(5))", "up to ₹250 crore"),
+    ("Not telling the Board / people about a breach (s.8(6))", "up to ₹200 crore"),
+    ("Breaking the rules on children's data (s.9)", "up to ₹200 crore"),
+    ("Breaking the extra rules for a Significant Data Fiduciary (s.10)", "up to ₹150 crore"),
+    ("Breaching a data principal's own duties (s.15)", "up to ₹10,000"),
+    ("Any other rule", "up to ₹50 crore"),
 ]
 
-DISCLAIMER = "Yeh draft / jaankari hai, kanooni salah nahi. Vakil / CA / CS se pakka karwaiye."
+DISCLAIMER = "This is a draft / information, not legal advice. Have a lawyer / CA / CS confirm it."
 
 # ---------------------------------------------------------------- legal basis (s.6 consent / s.7 certain legitimate uses)
 BASES = {
-    "consent": "Consent (s.6): saaf, apni marzi se, kisi khaas kaam ke liye; kabhi bhi wapas le sakte hain",
-    "voluntary": "Legitimate use (s.7(a)): unhone khud kisi khaas kaam ke liye diya aur mana nahi kiya",
-    "employment": "Legitimate use (s.7(i)): naukri / staff ke kaam ke liye",
-    "law": "Legitimate use (s.7): kisi kanoon / court order ki zaroorat (kaunsa kanoon: likhiye)",
-    "emergency": "Legitimate use (s.7): medical emergency / aapda (sirf jab sach mein ho)",
+    "consent": "Consent (s.6): clear, freely given, for a specific purpose; can be withdrawn at any time",
+    "voluntary": "Legitimate use (s.7(a)): they gave it themselves for a specific purpose and did not object",
+    "employment": "Legitimate use (s.7(i)): for employment / staff work",
+    "law": "Legitimate use (s.7): required by a law / court order (write which law)",
+    "emergency": "Legitimate use (s.7): medical emergency / disaster (only when it is genuinely so)",
 }
 
 # ---------------------------------------------------------------- request kinds (rights of the data principal)
 KINDS = {
-    "access": ("Jaankari maangi (s.11)", "kaunsa data, kis kaam ke liye, kisko diya"),
-    "correction": ("Sudhaar / poora karna (s.12)", "galat ya adhoora data theek karna"),
-    "erasure": ("Mitaana (s.12)", "data hatana, jab tak kisi kanoon ke liye rakhna zaroori na ho"),
-    "withdraw": ("Consent wapas (s.6(4))", "aage se processing band; pehle ka kaam valid rehta hai"),
-    "grievance": ("Shikayat (s.13)", "unki dikkat ka jawab; jawab se khush nahi to Board ke paas jaa sakte hain"),
-    "nominee": ("Nominee (s.14)", "maut / asamarthata mein unki jagah kaun adhikaar use karega"),
+    "access": ("Access to information (s.11)", "what data, for what purpose, given to whom"),
+    "correction": ("Correction / completion (s.12)", "correcting wrong or incomplete data"),
+    "erasure": ("Erasure (s.12)", "erasing data, unless it must be kept under a law"),
+    "withdraw": ("Withdrawing consent (s.6(4))", "processing stops from then on; earlier work stays valid"),
+    "grievance": ("Grievance (s.13)", "a reply to their problem; if not satisfied with the reply they can go to the Board"),
+    "nominee": ("Nominee (s.14)", "who will exercise the rights on their behalf in case of death / incapacity"),
 }
 KIND_WORDS = [
     ("erasure", r"\b(delete|erase|mita|mitao|mitaa|hata do|hatao|remove my|forget me|bhool ja|data hatana|नष्ट|मिटा|हटा|काढून)"),
@@ -72,86 +72,86 @@ def kind_of(text: str) -> str:
 # ---------------------------------------------------------------- Hoola modules -> records of processing (pre-fill)
 # tables: (table, tenant column) used only to see if she uses the module and how many records. All "andaaza": she edits.
 ROPA_CATALOG: list[dict] = [
-    {"key": "telecall", "label": "Telecaller: leads aur call log", "tables": ["tele_leads", "tele_calls"], "people": "graahak / leads",
-     "items": ["naam", "mobile", "zaroorat / interest", "call ke notes", "agla call"], "purpose": "graahak ko call karna aur follow-up",
-     "basis": "consent", "retention": "band lead: 1 saal (aapka niyam)", "days": 365, "processors": ["Hoola (Newtika Pvt Ltd) server"],
+    {"key": "telecall", "label": "Telecaller: leads and call log", "tables": ["tele_leads", "tele_calls"], "people": "customers / leads",
+     "items": ["name", "mobile", "need / interest", "call notes", "next call"], "purpose": "calling customers and follow-up",
+     "basis": "consent", "retention": "closed lead: 1 year (your rule)", "days": 365, "processors": ["Hoola (Newtika Pvt Ltd) server"],
      "eraser": "telecall"},
-    {"key": "whatsapp", "label": "Business WhatsApp inbox", "tables": ["employee_contacts", "employee_messages"], "people": "graahak",
-     "items": ["WhatsApp number", "naam", "messages"], "purpose": "graahak ke sawaal ka jawab, booking, baaki", "basis": "voluntary",
-     "retention": "aapka niyam", "days": None, "processors": ["Meta (WhatsApp Cloud API)", "Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "appointments", "label": "Appointments", "tables": ["employee_appointments"], "people": "graahak", "items": ["naam", "mobile", "samay"],
-     "purpose": "appointment book karna aur yaad dilana", "basis": "voluntary", "retention": "aapka niyam", "days": 365,
+    {"key": "whatsapp", "label": "Business WhatsApp inbox", "tables": ["employee_contacts", "employee_messages"], "people": "customers",
+     "items": ["WhatsApp number", "name", "messages"], "purpose": "replying to customer questions, booking, pending items", "basis": "voluntary",
+     "retention": "your rule", "days": None, "processors": ["Meta (WhatsApp Cloud API)", "Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "appointments", "label": "Appointments", "tables": ["employee_appointments"], "people": "customers", "items": ["name", "mobile", "time"],
+     "purpose": "booking appointments and sending reminders", "basis": "voluntary", "retention": "your rule", "days": 365,
      "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "dues", "label": "Baaki / udhaar", "tables": ["employee_dues"], "people": "graahak", "items": ["naam", "mobile", "rakam", "taarikh"],
-     "purpose": "baaki paisa yaad dilana", "basis": "voluntary", "retention": "accounts ke kanoon ke hisaab se (CA se poochhiye)", "days": None,
+    {"key": "dues", "label": "Pending / credit", "tables": ["employee_dues"], "people": "customers", "items": ["name", "mobile", "amount", "date"],
+     "purpose": "reminding about pending payments", "basis": "voluntary", "retention": "as required by accounting law (ask your CA)", "days": None,
      "processors": ["Hoola (Newtika Pvt Ltd) server"], "law_hold": True},
     {"key": "payroll", "label": "Payroll: staff salary", "tables": ["pay_employees", "pay_runs"], "people": "staff",
-     "items": ["naam", "PAN (chhupa)", "bank account (chhupa)", "UAN / ESIC", "salary", "hazri"], "purpose": "salary, PF / ESIC / TDS",
-     "basis": "employment", "retention": "labour / PF / income-tax kanoon ke hisaab se (CA se poochhiye)", "days": None,
-     "processors": ["Hoola (Newtika Pvt Ltd) server", "aapka bank (salary file)"], "law_hold": True, "financial": True},
-    {"key": "team", "label": "Team (Hoola Employee)", "tables": ["employee_team"], "people": "staff", "items": ["naam", "mobile", "Hoola ID"],
-     "purpose": "kaam baantna", "basis": "employment", "retention": "naukri ke baad: aapka niyam", "days": None,
+     "items": ["name", "PAN (hidden)", "bank account (hidden)", "UAN / ESIC", "salary", "attendance"], "purpose": "salary, PF / ESIC / TDS",
+     "basis": "employment", "retention": "as required by labour / PF / income-tax law (ask your CA)", "days": None,
+     "processors": ["Hoola (Newtika Pvt Ltd) server", "your bank (salary file)"], "law_hold": True, "financial": True},
+    {"key": "team", "label": "Team (Hoola Employee)", "tables": ["employee_team"], "people": "staff", "items": ["name", "mobile", "Hoola ID"],
+     "purpose": "assigning work", "basis": "employment", "retention": "after employment ends: your rule", "days": None,
      "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "darzi", "label": "Darzi: graahak aur naap", "tables": ["darzi_customers", "darzi_orders"], "people": "graahak",
-     "items": ["naam", "mobile", "naap (body measurements)", "order"], "purpose": "silai ka order", "basis": "voluntary",
-     "retention": "aapka niyam", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "darzi", "label": "Tailor: customers and measurements", "tables": ["darzi_customers", "darzi_orders"], "people": "customers",
+     "items": ["name", "mobile", "body measurements", "order"], "purpose": "tailoring order", "basis": "voluntary",
+     "retention": "your rule", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
     {"key": "mshop", "label": "Mobile dukaan: repair + recharge", "tables": ["mshop_customers", "mshop_jobs", "mshop_recharges"],
-     "people": "graahak", "items": ["naam", "mobile", "IMEI", "phone ki photo", "recharge number"], "purpose": "repair, warranty, recharge",
-     "basis": "voluntary", "retention": "warranty khatam hone tak + aapka niyam", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "insure", "label": "Bima: client aur policy", "tables": ["ins_clients", "ins_policies"], "people": "graahak / parivaar",
-     "items": ["naam", "mobile", "janam taarikh", "parivaar", "aamdani", "policy", "health ki baatein"], "purpose": "renewal, salah, claim",
-     "basis": "consent", "retention": "IRDAI / insurer ke niyam ke hisaab se", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"],
+     "people": "customers", "items": ["name", "mobile", "IMEI", "phone photo", "recharge number"], "purpose": "repair, warranty, recharge",
+     "basis": "voluntary", "retention": "until the warranty ends + your rule", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "insure", "label": "Insurance: clients and policies", "tables": ["ins_clients", "ins_policies"], "people": "customers / family",
+     "items": ["name", "mobile", "date of birth", "family", "income", "policy", "health details"], "purpose": "renewal, advice, claim",
+     "basis": "consent", "retention": "as required by IRDAI / the insurer's rules", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"],
      "law_hold": True, "health": True},
     {"key": "rentdesk", "label": "Property manager: kirayedar", "tables": ["rentdesk_people", "rentdesk_tenancies"], "people": "kirayedar",
-     "items": ["naam", "mobile", "ID (locker mein)", "kiraya", "deposit", "inspection photos"], "purpose": "kiraya, agreement, deposit",
-     "basis": "voluntary", "retention": "deposit wapas hone ke baad: aapka niyam", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+     "items": ["name", "mobile", "ID (in the locker)", "rent", "deposit", "inspection photos"], "purpose": "rent, agreement, deposit",
+     "basis": "voluntary", "retention": "after the deposit is returned: your rule", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
     {"key": "society", "label": "Housing society: members", "tables": ["society_flats", "society_visits"], "people": "members / visitors",
-     "items": ["naam", "mobile", "flat", "nominee", "bill / baaki", "visitor ka naam"], "purpose": "society chalana, bill, gate register",
-     "basis": "voluntary", "retention": "visitors: aapke din; members: society kanoon", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "seva", "label": "Customer support tickets", "tables": ["seva_tickets"], "people": "graahak", "items": ["naam", "mobile", "shikayat ka text"],
-     "purpose": "support aur shikayat", "basis": "voluntary", "retention": "aapka niyam", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "shikayat", "label": "Complaints (Shikayat)", "tables": ["shikayat_cases"], "people": "graahak", "items": ["naam", "mobile", "shikayat", "saboot photo"],
-     "purpose": "shikayat suljhana", "basis": "voluntary", "retention": "aapka niyam", "days": 1095, "processors": ["Hoola (Newtika Pvt Ltd) server"],
-     "eraser": "shikayat"},
-    {"key": "wapsi", "label": "Returns / refunds", "tables": ["wapsi_returns"], "people": "graahak", "items": ["naam", "mobile", "pata", "UPI ID", "photos"],
-     "purpose": "return aur refund", "basis": "voluntary", "retention": "GST ke liye amount; personal: aapka niyam", "days": None,
-     "processors": ["Hoola (Newtika Pvt Ltd) server", "courier (Shiprocket / Delhivery, agar use karti hain)"], "eraser": "wapsi"},
-    {"key": "courier", "label": "Courier parcels", "tables": ["courier_parcels"], "people": "graahak", "items": ["naam", "mobile", "pata"],
-     "purpose": "parcel bhejna", "basis": "voluntary", "retention": "delivery ke baad: aapka niyam", "days": 365,
+     "items": ["name", "mobile", "flat", "nominee", "bill / pending", "visitor name"], "purpose": "running the society, bills, gate register",
+     "basis": "voluntary", "retention": "visitors: your days; members: society law", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "seva", "label": "Customer support tickets", "tables": ["seva_tickets"], "people": "customers", "items": ["name", "mobile", "complaint text"],
+     "purpose": "support and complaints", "basis": "voluntary", "retention": "your rule", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "complaint", "label": "Complaints", "tables": ["shikayat_cases"], "people": "customers", "items": ["name", "mobile", "complaint", "proof photo"],
+     "purpose": "resolving complaints", "basis": "voluntary", "retention": "your rule", "days": 1095, "processors": ["Hoola (Newtika Pvt Ltd) server"],
+     "eraser": "complaint"},
+    {"key": "wapsi", "label": "Returns / refunds", "tables": ["wapsi_returns"], "people": "customers", "items": ["name", "mobile", "address", "UPI ID", "photos"],
+     "purpose": "returns and refunds", "basis": "voluntary", "retention": "amount for GST; personal: your rule", "days": None,
+     "processors": ["Hoola (Newtika Pvt Ltd) server", "courier (Shiprocket / Delhivery, if you use them)"], "eraser": "wapsi"},
+    {"key": "courier", "label": "Courier parcels", "tables": ["courier_parcels"], "people": "customers", "items": ["name", "mobile", "address"],
+     "purpose": "sending parcels", "basis": "voluntary", "retention": "after delivery: your rule", "days": 365,
      "processors": ["courier company", "Hoola (Newtika Pvt Ltd) server"], "eraser": "courier"},
-    {"key": "feedback", "label": "Feedback / reviews", "tables": ["feedback_items"], "people": "graahak", "items": ["naam", "review ka text", "rating"],
-     "purpose": "seva behtar karna", "basis": "voluntary", "retention": "aapka niyam", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "community", "label": "Community groups", "tables": ["samudaay_members"], "people": "group members", "items": ["naam", "username", "messages"],
-     "purpose": "group chalana", "basis": "voluntary", "retention": "90 din messages", "days": 90, "processors": ["Telegram", "Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "feedback", "label": "Feedback / reviews", "tables": ["feedback_items"], "people": "customers", "items": ["name", "review text", "rating"],
+     "purpose": "improving service", "basis": "voluntary", "retention": "your rule", "days": 730, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "community", "label": "Community groups", "tables": ["samudaay_members"], "people": "group members", "items": ["name", "username", "messages"],
+     "purpose": "running the group", "basis": "voluntary", "retention": "90 din messages", "days": 90, "processors": ["Telegram", "Hoola (Newtika Pvt Ltd) server"]},
     {"key": "callcentre", "label": "Call centre line", "tables": ["callcentre_callers", "callcentre_calls"], "people": "callers",
-     "items": ["number", "call ka likha hua saar (masked)"], "purpose": "phone par sawaal ka jawab", "basis": "consent",
-     "retention": "aapka niyam", "days": 365, "processors": ["Plivo / Exotel (phone line)", "Google (Gemini voice)", "Hoola (Newtika Pvt Ltd) server"],
+     "items": ["number", "written summary of the call (masked)"], "purpose": "answering the question on the phone", "basis": "consent",
+     "retention": "your rule", "days": 365, "processors": ["Plivo / Exotel (phone line)", "Google (Gemini voice)", "Hoola (Newtika Pvt Ltd) server"],
      "eraser": "callcentre"},
     {"key": "propagent", "label": "Property leads + owners", "tables": ["propagent_leads", "propagent_listings"], "people": "kharidaar / malik",
-     "items": ["naam", "mobile", "budget", "property ka pata"], "purpose": "property dikhana / deal", "basis": "consent",
-     "retention": "deal band hone ke baad: aapka niyam", "days": 365, "processors": ["Hoola (Newtika Pvt Ltd) server"], "eraser": "propagent"},
-    {"key": "drivers", "label": "Drivers", "tables": ["drivers_drivers"], "people": "staff (driver)", "items": ["naam", "mobile", "licence (locker mein)", "duty"],
-     "purpose": "duty aur trip", "basis": "employment", "retention": "naukri ke baad: aapka niyam", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "thok", "label": "Wholesale parties", "tables": ["thok_parties"], "people": "graahak (business)", "items": ["naam", "mobile", "GSTIN", "baaki"],
-     "purpose": "bill aur udhaar", "basis": "voluntary", "retention": "GST: 72 mahine (CA se pakka)", "days": None,
+     "items": ["name", "mobile", "budget", "property address"], "purpose": "showing property / deals", "basis": "consent",
+     "retention": "after the deal closes: your rule", "days": 365, "processors": ["Hoola (Newtika Pvt Ltd) server"], "eraser": "propagent"},
+    {"key": "drivers", "label": "Drivers", "tables": ["drivers_drivers"], "people": "staff (driver)", "items": ["name", "mobile", "licence (in the locker)", "duty"],
+     "purpose": "duty and trips", "basis": "employment", "retention": "after employment ends: your rule", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "thok", "label": "Wholesale parties", "tables": ["thok_parties"], "people": "customers (business)", "items": ["name", "mobile", "GSTIN", "pending"],
+     "purpose": "bills and credit", "basis": "voluntary", "retention": "GST: 72 months (confirm with your CA)", "days": None,
      "processors": ["Hoola (Newtika Pvt Ltd) server"], "law_hold": True, "financial": True},
-    {"key": "aftersales", "label": "After-sales graahak", "tables": ["aftersales_customers"], "people": "graahak", "items": ["naam", "mobile", "pata", "machine"],
-     "purpose": "service yaad dilana, visit", "basis": "voluntary", "retention": "warranty / AMC ke baad: aapka niyam", "days": None,
+    {"key": "aftersales", "label": "After-sales customers", "tables": ["aftersales_customers"], "people": "customers", "items": ["name", "mobile", "address", "machine"],
+     "purpose": "service reminders, visits", "basis": "voluntary", "retention": "after the warranty / AMC ends: your rule", "days": None,
      "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "galla", "label": "Galla (UPI alerts)", "tables": ["galla_entries"], "people": "graahak", "items": ["bhejne wale ka pehla naam", "rakam"],
-     "purpose": "rozana bikri ginna", "basis": "voluntary", "retention": "aapka niyam", "days": 365, "processors": ["Hoola (Newtika Pvt Ltd) server"],
+    {"key": "galla", "label": "Till (UPI alerts)", "tables": ["galla_entries"], "people": "customers", "items": ["the sender's first name", "amount"],
+     "purpose": "counting daily sales", "basis": "voluntary", "retention": "your rule", "days": 365, "processors": ["Hoola (Newtika Pvt Ltd) server"],
      "financial": True},
-    {"key": "idvault", "label": "Pehchaan Locker (Aadhaar / PAN)", "tables": ["id_vault"], "people": "aap / parivaar / graahak",
-     "items": ["Aadhaar / PAN / ID number (encrypted)"], "purpose": "form bharna", "basis": "consent", "retention": "jab tak aap rakhein",
+    {"key": "idvault", "label": "Pehchaan Locker (Aadhaar / PAN)", "tables": ["id_vault"], "people": "you / family / customer",
+     "items": ["Aadhaar / PAN / ID number (encrypted)"], "purpose": "filling in forms", "basis": "consent", "retention": "as long as you keep it",
      "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server (encrypted)"]},
-    {"key": "voiceid", "label": "Awaaz Pehchaan (voice fingerprint)", "tables": ["voice_members"], "people": "parivaar",
-     "items": ["awaaz ka encrypted fingerprint (audio nahi)"], "purpose": "kaun bol raha hai pehchanna", "basis": "consent",
-     "retention": "jab tak aap rakhein", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "travel", "label": "Travel: yatri", "tables": ["travel_trips"], "people": "graahak / parivaar", "items": ["naam", "umar", "ID (locker mein)"],
-     "purpose": "ticket / hotel booking", "basis": "voluntary", "retention": "safar ke baad: aapka niyam", "days": 365,
+    {"key": "voiceid", "label": "Voice ID (voice fingerprint)", "tables": ["voice_members"], "people": "family",
+     "items": ["encrypted fingerprint of the voice (not the audio)"], "purpose": "recognising who is speaking", "basis": "consent",
+     "retention": "as long as you keep it", "days": None, "processors": ["Hoola (Newtika Pvt Ltd) server"]},
+    {"key": "travel", "label": "Travel: travellers", "tables": ["travel_trips"], "people": "customers / family", "items": ["name", "age", "ID (in the locker)"],
+     "purpose": "ticket / hotel booking", "basis": "voluntary", "retention": "after the trip: your rule", "days": 365,
      "processors": ["IRCTC / airline / hotel site", "Hoola (Newtika Pvt Ltd) server"]},
-    {"key": "sitesup", "label": "Site labour register", "tables": ["sitesup_labour"], "people": "majdoor", "items": ["naam", "hazri", "ghante"],
-     "purpose": "hazri aur wage register", "basis": "employment", "retention": "labour kanoon ke hisaab se", "days": None,
+    {"key": "sitesup", "label": "Site labour register", "tables": ["sitesup_labour"], "people": "labourers", "items": ["name", "attendance", "hours"],
+     "purpose": "attendance and wage register", "basis": "employment", "retention": "as required by labour law", "days": None,
      "processors": ["Hoola (Newtika Pvt Ltd) server"], "law_hold": True},
 ]
 CATALOG = {c["key"]: c for c in ROPA_CATALOG}
@@ -159,44 +159,44 @@ CATALOG = {c["key"]: c for c in ROPA_CATALOG}
 # modules where Hoola can find a person by phone (table, phone column, id column, eraser key)
 FINDERS = [
     ("telecall", "Telecaller lead", "tele_leads", "phone", "id", "telecall"),
-    ("shikayat", "Shikayat", "shikayat_cases", "phone", "id", "shikayat"),
+    ("complaint", "Shikayat", "shikayat_cases", "phone", "id", "complaint"),
     ("callcentre", "Call centre caller", "callcentre_callers", "key", "id", "callcentre"),
     ("wapsi", "Return", "wapsi_returns", "phone", "id", "wapsi"),
     ("courier", "Parcel", "courier_parcels", "phone", "id", "courier"),
     ("propagent", "Property lead", "propagent_leads", "phone", "id", "propagent"),
-    ("darzi", "Darzi graahak", "darzi_customers", "phone", "id", ""),
-    ("mshop", "Mobile dukaan graahak", "mshop_customers", "phone", "id", ""),
+    ("darzi", "Tailor customers", "darzi_customers", "phone", "id", ""),
+    ("mshop", "Mobile shop customers", "mshop_customers", "phone", "id", ""),
     ("insure", "Bima client", "ins_clients", "phone", "id", ""),
-    ("aftersales", "After-sales graahak", "aftersales_customers", "phone", "id", ""),
+    ("aftersales", "After-sales customers", "aftersales_customers", "phone", "id", ""),
     ("thok", "Wholesale party", "thok_parties", "phone", "id", ""),
 ]
 
 # ---------------------------------------------------------------- DPIA + processor (DPA) checklists
 DPIA_QUESTIONS = [
-    ("purpose", "Kaam saaf likha hai aur sirf utna data lete hain jitna zaroori (data minimisation)?", False),
-    ("children", "Isme bachchon (18 se kam) ka data hai?", True),
-    ("health_fin", "Health, paisa / bank, ID number, awaaz / chehra jaisa jokhim wala data?", True),
-    ("scale", "Bahut zyada logon ka data (hazaaron) ya roz badhta hua?", True),
+    ("purpose", "Is the purpose clearly written, and do we collect only the data that is needed (data minimisation)?", False),
+    ("children", "Does it include data of children (under 18)?", True),
+    ("health_fin", "Risky data such as health, money / bank, ID numbers, voice / face?", True),
+    ("scale", "Data of a very large number of people (thousands) or growing daily?", True),
     ("new_tech", "Naya tareeka: AI faisla, profiling, location tracking, camera?", True),
-    ("abroad", "Data India ke bahar jaata hai (kisi vendor ke server par)?", True),
-    ("sharing", "Kisi teesre (vendor / partner) ko data jaata hai?", True),
-    ("security", "Encryption / masking, access control, backup aur 1 saal ke logs hain (Rule 6)?", False),
-    ("consent_ok", "Notice dikhaya aur consent ka record hai (ya s.7 ka saaf aadhaar)?", False),
-    ("erase_ok", "Kaam poora hone par mitaane ka schedule hai?", False),
+    ("abroad", "Does data go outside India (to a vendor's server)?", True),
+    ("sharing", "Does data go to a third party (vendor / partner)?", True),
+    ("security", "Are there encryption / masking, access control, backup and 1 year of logs (Rule 6)?", False),
+    ("consent_ok", "Has a notice been shown and is there a consent record (or a clear basis under s.7)?", False),
+    ("erase_ok", "Is there a schedule to erase it when the purpose is done?", False),
 ]
 
 DPA_CLAUSES = [
-    ("instructions", "Vendor sirf aapke likhe kaam ke liye data use karega (aapke kehne par hi)"),
+    ("instructions", "The vendor will use the data only for the work you describe (and only on your instructions)"),
     ("security", "Suraksha: encryption / masking, access control, logs, backup (Rule 6 jaisa)"),
-    ("breach", "Breach ka pata chalte hi turant aapko batayega (aapko 72 ghante mein Board ko report deni hai)"),
-    ("subprocessor", "Aapki likhit ijazat ke bina aage kisi aur ko nahi dega"),
+    ("breach", "Will tell you immediately on discovering a breach (you must report to the Board within 72 hours)"),
+    ("subprocessor", "Will not pass it on to anyone else without your written permission"),
     ("staff", "Uske staff par confidentiality"),
-    ("erase", "Kaam khatam / contract khatam par data wapas ya mita kar likhit confirm"),
-    ("help_rights", "Logon ki maang (access / sudhaar / mitaana) mein madad karega"),
-    ("location", "Data kahan rakha jaata hai (desh) likha ho; India ke bahar ho to sarkar ki rok wali list dekhiye"),
-    ("audit", "Aap jaanch / audit report maang sakti hain"),
-    ("logs", "Processing ke logs kam se kam 1 saal (Rule 8(3))"),
-    ("liability", "Galti par zimmedari / muavza (aapke vakil ke shabdon mein)"),
+    ("erase", "When the work / contract ends, return or erase the data and confirm in writing"),
+    ("help_rights", "Will help with people's requests (access / correction / erasure)"),
+    ("location", "States where the data is kept (country); if outside India, check the government's restricted list"),
+    ("audit", "You can ask for an inspection / audit report"),
+    ("logs", "Keep processing logs for at least 1 year (Rule 8(3))"),
+    ("liability", "Liability / compensation for mistakes (in your lawyer's words)"),
 ]
 
 CHILD_RISK_WORDS = re.compile(r"\b(ad|ads|advert|target|marketing|promotion|track|tracking|location|profil|behaviou?r|monitor)", re.I)
@@ -208,14 +208,14 @@ def dpia_score(answers: dict) -> tuple[int, str, list[str]]:
     for key, q, risky in DPIA_QUESTIONS:
         v = answers.get(key)
         if v is None:
-            notes.append(f"Jawab baaki: {q}")
+            notes.append(f"Unanswered: {q}")
             continue
         if risky and bool(v):
             score += 2
-            notes.append(f"Jokhim: {q}")
+            notes.append(f"Risk: {q}")
         if not risky and not bool(v):
             score += 2
-            notes.append(f"Kami: {q}")
+            notes.append(f"Gap: {q}")
     level = "high" if score >= 9 else ("medium" if score >= 5 else "low")
     return score, level, notes
 
@@ -224,11 +224,11 @@ def child_flags(activity: dict) -> list[str]:
     out = []
     if not activity.get("children"):
         return out
-    out.append("Bachchon ka data: processing se PEHLE maa-baap ki verifiable consent (s.9(1), Rule 10). Hoola sirf kaise verify kiya "
-               "uska tareeka aur reference rakhega, unka ID number nahi.")
+    out.append("Children's data: verifiable parental consent BEFORE processing (s.9(1), Rule 10). Hoola will keep only how it was verified, "
+               "its method and reference, not their ID number.")
     txt = " ".join([activity.get("purpose") or "", " ".join(activity.get("items") or [])])
     if CHILD_RISK_WORDS.search(txt):
-        out.append("Bachchon ki tracking, behaviour monitoring ya un par targeted ads mana hain (s.9(3)): yeh kaam hata dijiye.")
+        out.append("Tracking children, monitoring their behaviour or targeting ads at them is prohibited (s.9(3)): remove this activity.")
     return out
 
 
@@ -275,8 +275,8 @@ def due_rights(received: date, own_days: int = 0) -> date:
 def phase_notes(today: date) -> list[str]:
     out = []
     if today < MAIN_DUTIES_FROM:
-        out.append(f"Notice, consent, rights, breach, retention, bachchon ke niyam {MAIN_DUTIES_FROM.strftime('%d-%m-%Y')} se lagu "
-                   "(Rules 3, 5-16). Abhi se taiyaari achhi hai; Board ke niyam 13-11-2025 se lagu hain.")
+        out.append(f"Notice, consent, rights, breach, retention, the rules on children {MAIN_DUTIES_FROM.strftime('%d-%m-%Y')} apply from "
+                   "(Rules 3, 5-16). It is good to prepare now; the Board's rules apply from 13-11-2025.")
     if today < CONSENT_MANAGER_FROM:
         out.append(f"Consent manager (Rule 4) {CONSENT_MANAGER_FROM.strftime('%d-%m-%Y')} se.")
     return out
@@ -373,25 +373,25 @@ def breach_people_text(b: dict, org: str, contact: str) -> str:
     """Rule 7(1): concise, plain, without delay: (a) what / extent / when, (b) likely consequences, (c) our measures,
     (d) what she can do, (e) business contact."""
     return "\n".join([
-        f"{org or BLANK} se zaroori soochna: aapke data se judi ek suraksha ghatna (data breach).",
-        f"Kya hua: {b.get('nature') or BLANK}. Kitna: {b.get('extent') or BLANK}. Kab: {b.get('when') or BLANK}.",
-        f"Aap par asar ho sakta hai: {b.get('consequences') or BLANK}.",
-        f"Humne kya kiya / kar rahe hain: {b.get('measures') or BLANK}.",
-        f"Aap kya kar sakte hain: {b.get('safety') or BLANK}. Hum kabhi OTP / PIN / password nahi maangte.",
-        f"Sawaal ke liye: {contact or BLANK}.",
+        f"{org or BLANK} - important notice: a security incident (data breach) involving your data.",
+        f"What happened: {b.get('nature') or BLANK}. How much: {b.get('extent') or BLANK}. When: {b.get('when') or BLANK}.",
+        f"This may affect you: {b.get('consequences') or BLANK}.",
+        f"What we have done / are doing: {b.get('measures') or BLANK}.",
+        f"What you can do: {b.get('safety') or BLANK}. We never ask for an OTP / PIN / password.",
+        f"For questions: {contact or BLANK}.",
     ])
 
 
 def breach_initial_text(b: dict, org: str) -> str:
     """Rule 7(2)(a): without delay to the Board: description incl. nature, extent, timing, location and likely impact."""
     return "\n".join([
-        f"Personal data breach: pehli soochna (Rule 7(2)(a)) - {org or BLANK}",
-        f"Pata chala: {b.get('aware_text') or BLANK}",
-        f"Prakriti (nature): {b.get('nature') or BLANK}",
-        f"Vistaar (extent: kitne log / records, kaunsa data): {b.get('extent') or BLANK}",
-        f"Samay (timing): {b.get('when') or BLANK}",
-        f"Jagah (location / system): {b.get('location') or BLANK}",
-        f"Sambhavit asar (likely impact): {b.get('impact') or BLANK}",
+        f"Personal data breach: first notice (Rule 7(2)(a)) - {org or BLANK}",
+        f"Became aware: {b.get('aware_text') or BLANK}",
+        f"Nature: {b.get('nature') or BLANK}",
+        f"Extent (how many people / records, which data): {b.get('extent') or BLANK}",
+        f"Timing: {b.get('when') or BLANK}",
+        f"Location / system: {b.get('location') or BLANK}",
+        f"Likely impact: {b.get('impact') or BLANK}",
     ])
 
 
@@ -399,13 +399,13 @@ def breach_report_text(b: dict, org: str) -> str:
     """Rule 7(2)(b): within 72 h: (i) updated details, (ii) broad facts / reasons, (iii) mitigation, (iv) findings on who caused it,
     (v) remedial steps against recurrence, (vi) report on intimations given to affected people."""
     return "\n".join([
-        f"Personal data breach: 72 ghante ki report (Rule 7(2)(b)) - {org or BLANK}",
-        f"(i) Taaza aur poori jaankari: {b.get('details') or b.get('nature') or BLANK}",
-        f"(ii) Ghatna, haalaat aur wajah: {b.get('cause') or BLANK}",
-        f"(iii) Jokhim kam karne ke kadam (kiye / prastaavit): {b.get('measures') or BLANK}",
-        f"(iv) Kisne kiya, uske baare mein jo mila: {b.get('findings') or BLANK}",
-        f"(v) Dobara na ho, uske liye sudhaar: {b.get('remedial') or BLANK}",
-        f"(vi) Prabhavit logon ko soochna ki report: {b.get('people_report') or BLANK}",
+        f"Personal data breach: 72-hour report (Rule 7(2)(b)) - {org or BLANK}",
+        f"(i) Updated and full details: {b.get('details') or b.get('nature') or BLANK}",
+        f"(ii) The incident, circumstances and cause: {b.get('cause') or BLANK}",
+        f"(iii) Steps to reduce the risk (taken / proposed): {b.get('measures') or BLANK}",
+        f"(iv) Findings about who caused it: {b.get('findings') or BLANK}",
+        f"(v) Corrections to prevent recurrence: {b.get('remedial') or BLANK}",
+        f"(vi) Report on the notices given to affected people: {b.get('people_report') or BLANK}",
     ])
 
 
@@ -414,24 +414,24 @@ BREACH_FIELDS = ("nature", "extent", "when", "location", "impact", "consequences
 
 # ---------------------------------------------------------------- reply drafts to a request
 def reply_text(kind: str, name: str, org: str, number: str, body: str, contact: str) -> str:
-    head = f"Namaste {name or ''},".replace(" ,", ",")
-    k = KINDS.get(kind, ("Aapki maang", ""))[0]
+    head = f"Hello {name or ''},".replace(" ,", ",")
+    k = KINDS.get(kind, ("Your request", ""))[0]
     return "\n".join([
         head,
-        f"Aapki maang {number} ({k}) {org or BLANK} ko mili.",
+        f"Your request {number} ({k}) {org or BLANK} has been received.",
         body or BLANK,
-        "Hamare jawab se santusht na hon to aap Data Protection Board of India mein shikayat kar sakte hain.",
+        "If you are not satisfied with our reply, you can complain to the Data Protection Board of India.",
         f"Sampark: {contact or BLANK}",
     ])
 
 
 NEVER = [
-    "Kanooni salah nahi: har draft vakil / CA / CS se pakka karwaiye.",
-    "Notice publish, logon ko jawab, data mitaana, Board / logon ko breach soochna: sirf aapke app tap se (card + hash).",
-    "Pehchaan ke liye Aadhaar / PAN number nahi: sirf tareeka aur reference (ID aaye to Pehchaan Locker mein).",
-    "Section / taarikh / jurmana khud se nahi banata: jo source padha wahi; baaki [____].",
-    "Kisi ka data kisi aur ko nahi; logs mein number chhupe.",
-    "Hoola kisi portal par khud file nahi karta; Board / CERT-In ko aap apne channel se bhejti hain.",
+    "Not legal advice: have a lawyer / CA / CS confirm every draft.",
+    "Publishing a notice, replying to people, erasing data, informing the Board / people of a breach: only with your tap in the app (card + hash).",
+    "No Aadhaar / PAN number for identification: only the method and a reference (any ID goes into the ID Locker).",
+    "Hoola never makes up a section / date / penalty: only what it read from the source; the rest is [____].",
+    "No one's data goes to anyone else; numbers are hidden in logs.",
+    "Hoola does not file on any portal itself; you send to the Board / CERT-In through your own channel.",
 ]
 
 SOURCES = [
