@@ -470,7 +470,7 @@
     } catch (e) {
       if (W.id !== id) return;
       document.title = 'Hoola Game Dev';
-      APP.innerHTML = `<div class="gdv-pad"><div class="gdv-panel"><p class="gdv-bad">${esc(e.status === 404 || /nahi mila/i.test(e.message) ? 'This game was not found. It may have been deleted.' : e.message)}</p><a class="gdv-b" href="#/">Back to Game Dev</a></div></div>`;
+      APP.innerHTML = `<div class="gdv-pad"><div class="gdv-panel"><p class="gdv-bad">${esc(e.status === 404 || /nahi mila|not found/i.test(e.message) ? 'This game was not found. It may have been deleted.' : e.message)}</p><a class="gdv-b" href="#/">Back to Game Dev</a></div></div>`;
       W.id = ''; return;
     }
     if (W.id !== id) return;
@@ -693,7 +693,7 @@
       let g;
       try { g = await api('GET', `/api/game/${enc(id)}`); }
       catch (e) {
-        if (e.status === 404 || /nahi mila/i.test(e.message)) { if (W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; } return; }
+        if (e.status === 404 || /nahi mila|not found/i.test(e.message)) { if (W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; } return; }
         return startPoll();
       }
       if (W.id !== id) return;
@@ -716,7 +716,7 @@
     let g;
     try { g = await api('GET', `/api/game/${enc(id)}`); }
     catch (e) {
-      if ((e.status === 404 || /nahi mila/i.test(e.message)) && W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; return; }
+      if ((e.status === 404 || /nahi mila|not found/i.test(e.message)) && W.id === id) { stopAll(); W.id = ''; toast('This game was deleted.'); location.hash = '#/'; return; }
       toast(e.message, true); return;
     }
     if (W.id !== id) return;

@@ -334,7 +334,7 @@
       try { v = await api('POST', '/api/apps', {...body, conversation_id: conv}); }
       catch (e) {
         if (!/ek sawaal|Pakka karne/i.test(e.message)) throw e;
-        const fd = await dialog('One quick question', `<p class="sm">${esc(e.message.replace(/^(Pakka karne ke liye ek sawaal|One question first|One question to confirm):\s*/i, ''))}</p>
+        const fd = await dialog('One quick question', `<p class="sm">${esc(e.message.replace(/^(Pakka karne ke liye ek sawaal|One question first|One question to confirm|One question to be sure):\s*/i, ''))}</p>
           <label class="sm mut" for="asSure">Your answer (or leave empty to go with the first meaning)</label><input class="in" id="asSure" name="a" maxlength="300">`);
         if (!fd) { clearInterval(drawPending._t); PREFILL = S(body.brief); drawHome('home'); return; }
         const a = S(fd.get('a')).trim();
