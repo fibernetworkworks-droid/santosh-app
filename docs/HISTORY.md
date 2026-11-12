@@ -2689,3 +2689,6 @@ AUTH403 'Maximum session allowed' was the real cause of the failed GST login; wb
 
 ## v0.839.0 BAHI A3 (built as 0.838)
 GSTR-1 checked against the register, saved as a portal draft on her tap (plan hash); EVC filing walk gated by BAHI_FILING. GSTR-1A not built. NOT VERIFIED on a live portal.
+
+## v0.840.0 BAHI A4
+GSTR-3B prepared with A2 credit, least-cash set-off, portal compare, draft save + set-off on her confirm (plan hash), payment plan (no challan, no money), EVC filing gated by BAHI_FILING. NOT VERIFIED on a live portal.

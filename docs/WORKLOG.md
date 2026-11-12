@@ -3087,3 +3087,6 @@ Stage Summary:
 
 Task ID: bahi-a3-0839
 Work: A3 GSTR-1 rebuilt over DRAFT v0.838.0, v0.839.0 ritual. Stage: ready.
+
+Task ID: bahi-a4-0840
+Work: A4 GSTR-3B + payment plan, v0.840.0 ritual. Stage: ready.

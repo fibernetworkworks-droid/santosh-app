@@ -461,3 +461,39 @@ def otp_for_evc(tenant: str, gstin: str, pan: str, form_type: str, gst_username:
 def gstr1_evcfile(tenant: str, gstin: str, ret_period: str, pan: str, evcotp: str, content: dict[str, Any], gst_username: str, state_cd: str, txn: str, ip: str = "") -> dict[str, Any]:
     h = _gst_headers(gst_username, state_cd, txn, ip) | {"gstin": gstin, "ret_period": ret_period}
     return call(tenant, "gst", "POST", "/gstr1/retevcfile", query={"pan": pan, "evcotp": evcotp}, headers=h, body={"content": content}, op="gstr1/retevcfile")
+
+
+# ------------------------------------------------------------------ A4: GSTR-3B (save and offset change her portal ledgers; the EVC file call is gated by BAHI_FILING)
+def _g3(tenant, path, op, gstin, rp, user, state, txn, method="GET", body=None, query=None, ip=""):
+    h = _gst_headers(user, state, txn, ip)
+    if method != "GET":
+        h = h | {"gstin": gstin, "ret_period": rp}
+        q = query
+    else:
+        q = {"gstin": gstin, "retperiod": rp} | (query or {})
+    return call(tenant, "gst", method, path, query=q, headers=h, body=body, op=op)
+
+
+def gstr3b_autoliab(tenant, gstin, rp, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/autoliab", "gstr3b/autoliab", gstin, rp, user, state, txn, ip=ip)
+
+
+def gstr3b_retsum(tenant, gstin, rp, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retsum", "gstr3b/retsum", gstin, rp, user, state, txn, ip=ip)
+
+
+def gstr3b_syscalcintrst(tenant, gstin, rp, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/syscalcintrst", "gstr3b/syscalcintrst", gstin, rp, user, state, txn, ip=ip)
+
+
+def gstr3b_retsave(tenant, gstin, rp, body, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retsave", "gstr3b/retsave", gstin, rp, user, state, txn, method="PUT", body=body, ip=ip)
+
+
+def gstr3b_retoffset(tenant, gstin, rp, body, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retoffset", "gstr3b/retoffset", gstin, rp, user, state, txn, method="PUT", body=body, ip=ip)
+
+
+def gstr3b_evcfile(tenant, gstin, rp, pan, evcotp, content, user, state, txn, ip=""):
+    return _g3(tenant, "/gstr3b/retevcfile", "gstr3b/retevcfile", gstin, rp, user, state, txn, method="POST", body={"content": content},
+               query={"pan": pan, "evcotp": evcotp}, ip=ip)
