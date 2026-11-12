@@ -5,6 +5,11 @@
 # The agent pairs once and stores its token in the volume - later restarts need nothing.
 #
 # The vps-ops workflow jobs (pc_deploy / pc_pair / pc_logs) do all of this on the VPS.
+#
+# v0.836 HOOLA PC TEAM: more Hoola PCs = more agents working at the same time (one agent per PC).
+#   docker compose --profile team up -d        -> Hoola PC + Hoola PC 2 (each pairs once, its own volume)
+#   vps-ops pc_deploy with lines = 1..4         -> the same, any team size; pc_pair lines = 2-CODE pairs PC 2
+# Each PC may use up to 2.5 GB of RAM: an 8 GB server fits about 2.
 services:
   hoola-pc:
     build: .
@@ -19,5 +24,18 @@ services:
       HOOLA_PC_NAME: Hoola PC
     volumes:
       - hoola-pc-data:/data
+  hoola-pc-2:
+    profiles: ["team"]
+    build: .
+    image: hoola-pc:latest
+    container_name: hoola-pc-2
+    restart: unless-stopped
+    mem_limit: 2500m
+    environment:
+      HOOLA_SERVER: https://hoola.ainewtika.com
+      HOOLA_PC_NAME: Hoola PC 2
+    volumes:
+      - hoola-pc-2-data:/data
 volumes:
   hoola-pc-data:
+  hoola-pc-2-data:

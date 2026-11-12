@@ -272,7 +272,7 @@ def test_importing_mcp_server_loads_no_engine(w5_env):
 
 def test_registry_607_enum_18(w5_env):
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 627                                   # +1 app_engine (v0.824); +1 seekh_video (v0.713 SEEKH MANCH); W5 adds doors, not tools (609 = 608 + 1 kala + 607 + 1 duniya, v0.667 DUNIYA MANCH)
+    assert len(TOOLS) == 629                                   # +1 app_engine (v0.824); +1 seekh_video (v0.713 SEEKH MANCH); W5 adds doors, not tools (609 = 608 + 1 kala + 607 + 1 duniya, v0.667 DUNIYA MANCH)
     assert len(_ACTIONS) == 18 and "export" in _ACTIONS and "to_gyaan" in _ACTIONS
     assert KAAN_TOOLS[0]["input_schema"]["properties"]["action"]["enum"] == _ACTIONS
 
@@ -301,4 +301,4 @@ def test_status_function_doors(w5_env):
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.835.0"
+    assert APP_VERSION == "0.836.0"

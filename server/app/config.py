@@ -386,6 +386,7 @@ class Settings(BaseSettings):
     browser_max_steps: int = 40
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
+    pc_team_max: int = 4                    # v0.836 DESKTOP TEAM: at most this many PCs work for one person at the same time (one agent per PC)
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
     chat_artifact_direct: bool = True       # parity Phase 6: the chat model writes pages itself (tool `artifact`: create /
                                             # update old->new / rewrite, a version per change, streamed into the panel);

@@ -2666,3 +2666,48 @@ Surfaces: tool `app_engine` actions `tests` and `scan` (what=quick|deep) (reads;
 Tests `test_v0832_saboot.py` (9): rules on the real engine + planted engine bug, the tool after a rule change, planted bad-rule app refused at publish (fix passes, her yes kept and dropped), secrets in code + built files, the browser walk at both sizes (and a planted crash), the tool's browser proof, deep scan + routes, the Publish tab in a real browser, the story.
 
 NOT VERIFIED on her VPS or with a real model-built app (the browser walk was run on small hand-made apps and the proof apps here). Not built: Vitest tests inside the app (Vitest is not in the vetted package set; the rule tests run on the server engine instead, which is where rules are enforced), a model-based deep review, an advisory feed, scans of files / functions (not built yet).
+
+## v0.836.0 DESKTOP TEAM + HOOLA PC TEAM (12 Nov 2026; owner: "CAN HOOLA DEPLOY MULTIAGENT FOR DESKTOP WORK" -> "GO DESKTOP TEAM + HOOLA PC TEAM --- PERFECT, SYSTEMATIC, SMOOTH AND ADVANCE")
+
+**The audit first (same day):** Mera PC worked end to end (213 PC tests green, desktop 1.9.0 live, agent-desktop
+v1.1.0 proven on a real Linux desktop through Hoola's own axtree.py: snapshot -> set_value -> click -> the app returned
+the typed text). But desktop work was ONE task per PERSON: `operator.start` cancelled any running task on ANY of her
+PCs ("one operator per person"), the hub picked "the last connected" PC (two Windows PCs = always the same one), she
+could not name a PC, sub-agents are barred from pc_do, and "band karo" / "cancel" never reached a running PC task
+(kaamstop's native stop had no branch for the `browser` kind PC jobs use, so the row said stopped while the PC kept
+clicking).
+
+**What changed (frozen-PC exception recorded in CLAUDE.md):**
+- `pc/operator.py`: Op gains `device_id` / `device_name` / `team`; `_pc` sends every step to THAT device (kind still
+  rides for the old fakes); `start(pc=, team=, replace=)` - `_choose` = the PC she named (hub.find), else for Hoola PC
+  a FREE one of Hoola's own PCs, else her personal PC (never the cloud PC by accident). One task per PC: a new task on
+  the same PC replaces the old (old pc_do behaviour) unless replace=False -> `PcBusy` (pc_team never interrupts her
+  work). `busy(tenant, device)`, `running(tenant, device="")` (newest), `running_all`, `stop_all`. Live card / report
+  carry the PC name ("Aapka PC · Office PC").
+- `pc/hub.py`: `devices(tenant)`, `find(tenant, name, kind)` (exact name / device id, then every content word of a
+  short name; ambiguous = None, never a guess), and `_pick(device_id, kind)` stays on that device or returns None (a
+  task never jumps to another PC mid-way).
+- `agent/pc_tools.py`: `pc=` on pc_do / hoola_pc_do (PC_NOT_FOUND names what is online); NEW `pc_devices` (every PC,
+  her / Hoola's, busy + what it is doing) and `pc_team` (1-6 parts, cap `pc_team_max` 4; every part gets its OWN PC
+  before anything starts; 'hoola' = a different free Hoola PC per part; same PC twice / unknown name / control off /
+  busy are skipped WITH reasons; one `pcteam_` id; waits pc_wait_seconds then each unfinished PC reports on its own).
+  Family `pc` (admitted only when she names a PC, as before); labels; voice reaches them via santosh_kaam.
+- `kaamstop.py`: running PC tasks are listed even without a watch row (`_pc_tasks`), and the native stop for
+  `browser:pcop_*` calls `operator.stop` - "excel wala band karo" stops that PC, "sab band karo" stops all.
+- `prompts.py`: a DESKTOP TEAM paragraph (pc= names, pc_devices, pc_team for separate screen parts, research stays on
+  the server, never two parts per PC, never interrupt a busy PC).
+- HOOLA PC TEAM: vps-ops `pc_deploy` lines = 1..4 Hoola PCs (anything else = 1 = the old single PC); PC 1 keeps
+  `hoola-pc` + `hoola-pc-data` + its pairing, PC i = `hoola-pc-i` + `hoola-pc-i-data` named "Hoola PC i"; a free-RAM
+  warning (each PC may use 2.5 GB; 8 GB fits ~2). `pc_pair` lines = CODE (PC 1) or N-CODE (PC N); `pc_logs` shows all.
+  `desktop-linux/docker-compose.yml` gains hoola-pc-2 under the `team` profile.
+- Registry 627 -> 629 (pins swept); config `pc_team_max` 4.
+
+**Tests:** NEW `test_v0836_desktop_team.py` (16): hub find / devices / device-pinned pick, two PCs at once, replace vs
+PcBusy, unknown PC + free Hoola PC pick, control off refused, every step on its own device, pc_team on 4 PCs with one
+team id, never interrupts + explains, cap / empty / nothing-online, pc_devices busy state, named + "sab" stop, stop_all,
+registry / family / labels / voice route, prompt + vps-ops + compose shapes, version. The 15 PC suites (213) stay green.
+
+**NOT VERIFIED (said plainly):** no real Windows PC and no second paired Hoola PC has run a team job; RAM for 2+ Hoola
+PCs on her 8 GB VPS is an estimate; the phone / console show each PC's live card as before but have no "team" view; the
+PC operator still runs on whatever the Haiku / GLM switches choose (see the audit - not changed here); the Windows
+desktop exe and agent-desktop v1.2.0 upgrade are not part of this release.

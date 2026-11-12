@@ -233,7 +233,7 @@ def test_registry_580_and_schemas(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho",
               "const_survey", "const_survey_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 627, "626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). + 1 web_clone (v0.694.0 WEB CLONE)" "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
+    assert len(TOOLS) == 629, "626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). + 1 web_clone (v0.694.0 WEB CLONE)" "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
     by_name = {t["name"]: t for t in TOOLS}
     for n in ("const_bim", "const_survey", "const_predesign"):
         assert by_name[n]["input_schema"]["properties"]["action"]["enum"], n
@@ -345,6 +345,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.835.0"
-    assert 'APP_VERSION = "0.835.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.835.0+834" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.836.0"
+    assert 'APP_VERSION = "0.836.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.836.0+835" in (REPO / "pubspec.yaml").read_text()

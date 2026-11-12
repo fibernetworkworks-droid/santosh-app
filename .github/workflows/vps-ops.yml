@@ -271,19 +271,31 @@ jobs:
                 echo 'echo "== after restart"; health || true'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               pc_deploy)
+                # v0.836 HOOLA PC TEAM: lines = how many Hoola PCs to run (1-4; anything else = 1, the old single PC).
+                # PC 1 keeps its old container / volume / pairing (hoola-pc, hoola-pc-data); PC i is hoola-pc-i with its
+                # own volume and name "Hoola PC i", so each one pairs once (pc_pair with lines = i-CODE) and remembers it.
+                case "$LINES_IN" in 1|2|3|4) PCS=$LINES_IN ;; *) PCS=1 ;; esac
                 echo 'set -e'
+                echo "PCS=$PCS"
                 echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
                 echo 'git log --oneline -1'
                 echo 'cd $REPO/desktop-linux'
                 echo 'docker build -t hoola-pc:latest .'
-                echo 'docker rm -f hoola-pc 2>/dev/null || true'
-                echo 'docker run -d --name hoola-pc --restart unless-stopped --memory 2500m --shm-size 256m \
-                  -v hoola-pc-data:/data -e HOOLA_SERVER=https://hoola.ainewtika.com -e HOOLA_PC_NAME="Hoola PC" hoola-pc:latest'
-                echo 'sleep 4; echo "== container"; docker ps --filter name=hoola-pc --format "{{.Names}} {{.Status}}"'
+                echo 'echo "== free memory before (each Hoola PC may use up to 2.5 GB)"; free -m | head -2'
+                echo 'AVAIL=$(free -m | awk "/Mem:/ {print \$7}"); NEED=$(( (PCS - 1) * 2500 + 500 ))'
+                echo 'if [ "$PCS" -gt 1 ] && [ "${AVAIL:-0}" -lt "$NEED" ]; then echo "::warning::only ${AVAIL} MB free for $PCS Hoola PCs (about ${NEED} MB wanted) - pages may be slow; a bigger server is the real fix"; fi'
+                echo 'for i in $(seq 1 4); do'
+                echo '  if [ "$i" -eq 1 ]; then C=hoola-pc; V=hoola-pc-data; NM="Hoola PC"; else C=hoola-pc-$i; V=hoola-pc-$i-data; NM="Hoola PC $i"; fi'
+                echo '  docker rm -f "$C" 2>/dev/null || true'
+                echo '  [ "$i" -le "$PCS" ] || { echo "$C stopped (not in this team size; its volume and pairing are kept)"; continue; }'
+                echo '  docker run -d --name "$C" --restart unless-stopped --memory 2500m --shm-size 256m \'
+                echo '    -v "$V":/data -e HOOLA_SERVER=https://hoola.ainewtika.com -e HOOLA_PC_NAME="$NM" hoola-pc:latest'
+                echo 'done'
+                echo 'sleep 5; echo "== containers"; docker ps --filter name=hoola-pc --format "{{.Names}} {{.Status}}"'
                 echo 'echo "== chrome? (v1.2.0: real Google Chrome, not Debian chromium)"; docker exec hoola-pc which google-chrome || echo "NO google-chrome - agent falls back to chromium"'
-                echo 'echo "== logs"; docker logs --tail 15 hoola-pc 2>&1'
-                echo 'echo "== mem"; docker stats --no-stream --format "{{.Name}} {{.MemUsage}}" hoola-pc 2>/dev/null || true'
-                echo 'echo "If the log says waiting for pair code: run the pc_pair job with the 6-digit code from her app (Mera PC screen). Server path = the same public URL every desktop uses (the 172.18.0.1 bridge is firewall-dropped on this VPS - v0.195 lesson)."' ;;
+                echo 'for c in $(docker ps --filter name=hoola-pc --format "{{.Names}}"); do echo "== logs $c"; docker logs --tail 8 "$c" 2>&1; done'
+                echo 'echo "== mem"; docker stats --no-stream --format "{{.Name}} {{.MemUsage}}" $(docker ps --filter name=hoola-pc -q) 2>/dev/null || true'
+                echo 'echo "A PC whose log says waiting for pair code: run pc_pair with lines = the 6-digit code from her app (PC 1) or N-CODE for PC N (e.g. 2-123456). Server path = the same public URL every desktop uses (the 172.18.0.1 bridge is firewall-dropped on this VPS - v0.195 lesson)."' ;;
               pc_chrome_selftest)
                 # v1.2.0: proves the browser stack end to end without touching the agent loop -
                 # opens example.com through the agent's own open_url (Chrome boot + CDP + page load),
@@ -321,16 +333,21 @@ jobs:
                 echo 'PY'
                 echo 'docker exec hoola-pc sh -c "rm -f /tmp/hoola_pc_shot.png; scrot -o /tmp/hoola_pc_shot.png && echo screenshot ok"' ;;
               pc_pair)
-                PC_CODE="$LINES_IN"   # validated HERE on the runner: job.sh runs on the VPS where LINES_IN is empty
-                case "$PC_CODE" in ''|*[!0-9]*) echo "::error::pc_pair needs the 6-digit code in the lines field" >&2; exit 1 ;; esac
+                # validated HERE on the runner: job.sh runs on the VPS where LINES_IN is empty.
+                # v0.836 HOOLA PC TEAM: "123456" pairs Hoola PC 1 (hoola-pc); "2-123456" pairs Hoola PC 2 (hoola-pc-2) ...
+                PC_IN="$LINES_IN"; PC_NO=1
+                case "$PC_IN" in [1-4]-*) PC_NO="${PC_IN%%-*}"; PC_IN="${PC_IN#*-}" ;; esac
+                PC_CODE="$PC_IN"
+                case "$PC_CODE" in ''|*[!0-9]*) echo "::error::pc_pair needs the 6-digit code in the lines field (N-CODE for Hoola PC N)" >&2; exit 1 ;; esac
                 [ "${#PC_CODE}" -ne 6 ] && { echo "::error::code must be exactly 6 digits, got: $PC_CODE" >&2; exit 1; }
+                if [ "$PC_NO" -eq 1 ]; then PC_C=hoola-pc; else PC_C=hoola-pc-$PC_NO; fi
                 echo 'set -e'
-                echo "docker exec hoola-pc sh -c 'echo $PC_CODE > /data/pair_code'"
+                echo "docker exec $PC_C sh -c 'echo $PC_CODE > /data/pair_code'"
                 echo 'sleep 6'
-                echo 'docker logs --tail 10 hoola-pc 2>&1'
-                echo 'echo "== paired? (look for PAIRED / connected above)"' ;;
+                echo "docker logs --tail 10 $PC_C 2>&1"
+                echo "echo \"== $PC_C paired? (look for PAIRED / connected above)\"" ;;
               pc_logs)
-                echo "docker logs --tail $N hoola-pc 2>&1" ;;
+                echo "for c in \$(docker ps -a --filter name=hoola-pc --format '{{.Names}}'); do echo \"== \$c\"; docker logs --tail $N \"\$c\" 2>&1; done" ;;
               web)
                 # v0.208.1 incident: the droplet resize reboot left nginx (host systemd service,
                 # NOT a pm2 process) down - the API behind it was healthy but the app + website

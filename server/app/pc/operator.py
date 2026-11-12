@@ -448,6 +448,9 @@ class Op:
     monitor: str = "primary"       # v0.166 which screen the operator works on (model can switch with screenshot)
     mem: list[str] = field(default_factory=list)   # v0.173 what this run did to the PC (open_app/open_url/...)
     kind: str = ""                 # v0.193 "" = her Windows PC; "hoola_pc" = Hoola's own cloud computer
+    device_id: str = ""            # v0.836 DESKTOP TEAM: the ONE PC this task drives (one task per PC, not per person)
+    device_name: str = ""          # her name for that PC ('Office PC', 'Hoola PC 2') - shown on its live card
+    team: str = ""                 # v0.836 the pc_team run this task belongs to ('' = a single pc_do)
     frame: bytes = b""
     frame_seq: int = 0
     timeline: list = field(default_factory=list)
@@ -465,6 +468,7 @@ class Op:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
                "steps_max": self.steps_max, "thinking": self.thinking,
                "url": self.window, "title": self.window, "seq": self.frame_seq, "source": "pc",
+               "pc": self.device_name, "device_id": self.device_id, "team": self.team,
                "summary": self.summary if self.status not in ("running",) else "", "timeline": self.timeline[-30:]}
         if self.pending and self.status == "needs_confirm":
             out["pending"] = {"id": self.pending["id"], "label": self.pending["what"]}
@@ -505,8 +509,10 @@ def _work(op: Op, name: str) -> None:
 def _event(op: Op) -> None:
     try:
         own = op.kind == HOOLA_PC_KIND
+        site = ("Hoola ka PC" if own else "Aapka PC") + (f" · {op.device_name}" if op.device_name else "")
         bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc",
-                                         "site": "Hoola ka PC" if own else "Aapka PC",
+                                         "site": site, "pc": op.device_name, "device_id": op.device_id,
+                                         "team": op.team,
                                          "place": "hoolapc" if own else "pc",
                                          "task": op.task[:300], "url": op.window, "summary": op.summary[:600],
                                          "step": op.step, "steps_max": op.steps_max, "action": op.action[:200],
@@ -517,6 +523,9 @@ def _event(op: Op) -> None:
 
 async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 40, log: bool = True) -> dict[str, Any]:
     from .hub import hub
+    if op.device_id:   # v0.836 every step goes to THIS task's own PC, never the 'last connected' one
+        return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log, device_id=op.device_id,
+                              kind=(op.kind or None))
     return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log,
                           kind=(op.kind or None))
 
@@ -1666,7 +1675,7 @@ async def _run(op: Op) -> None:
 
 def _report(op: Op) -> None:
     own = op.kind == HOOLA_PC_KIND
-    pc_name = "Hoola ke apne PC" if own else "Aapke PC"
+    pc_name = ("Hoola ke apne PC" if own else "Aapke PC") + (f" ({op.device_name})" if op.device_name else "")
     text = {"done": op.summary or f"{pc_name} par kaam ho gaya.",
             "partial": f"{pc_name} par poora nahi ho paya. {op.summary}",
             "cancelled": f"{pc_name} ka kaam rok diya gaya."}.get(op.status, f"{pc_name} par kaam ruk gaya. {op.summary or op.reason}")
@@ -1698,28 +1707,69 @@ def _cleanup() -> None:
             OPS.pop(sid, None)
 
 
-async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "") -> dict[str, Any]:
+class PcBusy(RuntimeError):
+    """v0.836 the PC she named is already doing another task (one task per PC; a second agent would fight it for
+    the mouse). Carries the running task so the caller can say which one."""
+
+    def __init__(self, op: "Op"):
+        super().__init__(f"PC_BUSY: {op.device_name or 'this PC'} is busy with session {op.id}")
+        self.op = op
+
+
+def _choose(tenant: str, kind: str, pc: str):
+    """The PC this task runs on: the one she named, else (Hoola PC) a FREE one of Hoola's own PCs, else the
+    legacy pick (her PC alone never notices). Raises RuntimeError PC_OFFLINE / HOOLA_PC_OFFLINE / PC_NOT_FOUND."""
+    from .hub import hub
+    if pc:
+        conn = hub.find(tenant, pc, kind=kind or None)
+        if conn is None:
+            names = ", ".join(d["name"] for d in hub.devices(tenant)) or "none"
+            raise RuntimeError(f"PC_NOT_FOUND: no online PC matches '{pc[:60]}' (online now: {names})")
+        return conn
+    if kind:
+        if not hub.is_online(tenant, kind=kind):
+            if kind == HOOLA_PC_KIND:   # v0.194 her PC may be fine while the Hoola PC is down: a clear, separate line
+                raise RuntimeError("HOOLA_PC_OFFLINE: Hoola ka apna PC abhi online nahi hai. Thodi der baad koshish kijiye.")
+            raise RuntimeError("PC_OFFLINE")
+        mine = [c for c in hub.online(tenant) if (c.info or {}).get("kind") == kind]
+        free = [c for c in mine if busy(tenant, str(getattr(c, "device_id", "") or "")) is None]
+        return (free or mine)[0]
+    if not hub.is_online(tenant):
+        raise RuntimeError("PC_OFFLINE")
+    personal = [c for c in hub.online(tenant) if (c.info or {}).get("kind") != HOOLA_PC_KIND]
+    return personal[-1] if personal else hub._pick(tenant)
+
+
+def busy(tenant: str, device_id: str) -> "Op | None":
+    """v0.836 the task running on THAT PC right now (None = the PC is free)."""
+    for o in OPS.values():
+        if o.tenant == tenant and o.device_id == device_id and o.task_obj and not o.task_obj.done():
+            return o
+    return None
+
+
+async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "", pc: str = "",
+                team: str = "", replace: bool = True) -> dict[str, Any]:
+    """Start one PC task. v0.836 DESKTOP TEAM: one task per PC (not per person) - her office PC, her home PC and
+    Hoola's own PCs can each work at the same time. A new task on a BUSY PC replaces the old one (the old
+    pc_do behaviour) unless replace=False, which raises PcBusy instead (pc_team never cancels her running work)."""
     global _loop
     _loop = asyncio.get_running_loop()
     _cleanup()
-    from .hub import hub
-    if kind:
-        online = hub.is_online(tenant, kind=kind)
-    else:
-        online = hub.is_online(tenant)
-    if not online:
-        if kind == HOOLA_PC_KIND:   # v0.194 her PC may be fine while the Hoola PC is down: a clear, separate line
-            raise RuntimeError("HOOLA_PC_OFFLINE: Hoola ka apna PC abhi online nahi hai. Thodi der baad koshish kijiye.")
-        raise RuntimeError("PC_OFFLINE")
-    conn = hub._pick(tenant, kind=kind or None)
-    if conn is not None and not (conn.info or {}).get("control"):
+    conn = _choose(tenant, kind, str(pc or "").strip())
+    ckind = HOOLA_PC_KIND if (conn.info or {}).get("kind") == HOOLA_PC_KIND else ""
+    if ckind != HOOLA_PC_KIND and not (conn.info or {}).get("control"):
         raise PermissionError("PC chalane ki permission band hai. PC par Santosh Desktop > Settings > "
                               "'Santosh ko PC chalane dein' on kijiye, phir dobara boliye.")
-    for o in OPS.values():          # one operator per person
-        if o.tenant == tenant and o.task_obj and not o.task_obj.done():
-            o.status = "cancelled"
-            o.task_obj.cancel()
-    op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=kind or "")
+    dev = str(getattr(conn, "device_id", "") or "")
+    old = busy(tenant, dev) if dev else None
+    if old is not None:
+        if not replace:
+            raise PcBusy(old)
+        old.status = "cancelled"          # one operator per PC: two agents on one screen would fight for the mouse
+        old.task_obj.cancel()
+    op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
+            device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
     OPS[op.id] = op
     _event(op)
@@ -1734,12 +1784,23 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     return op.live()
 
 
-def running(tenant: str) -> "Op | None":
-    """v0.104 the job running on her PC right now (a new pc_do would cancel it)."""
-    for o in OPS.values():
-        if o.tenant == tenant and o.task_obj and not o.task_obj.done():
-            return o
-    return None
+def running(tenant: str, device_id: str = "") -> "Op | None":
+    """v0.104 the job running on her PC right now (a new pc_do would cancel it). v0.836: on that one PC when a
+    device is given; else the newest running task on any of her PCs."""
+    live = [o for o in OPS.values() if o.tenant == tenant and o.task_obj and not o.task_obj.done()
+            and (not device_id or o.device_id == device_id)]
+    return max(live, key=lambda o: o.created) if live else None
+
+
+def running_all(tenant: str) -> "list[Op]":
+    """v0.836 every PC task working for her right now (one per PC)."""
+    return sorted((o for o in OPS.values() if o.tenant == tenant and o.task_obj and not o.task_obj.done()),
+                  key=lambda o: o.created)
+
+
+def stop_all(tenant: str) -> int:
+    """v0.836 'band karo' for the whole desktop team: every running PC task of hers stops."""
+    return sum(1 for o in running_all(tenant) if stop(tenant, o.id))
 
 
 def stop(tenant: str, sid: str) -> bool:

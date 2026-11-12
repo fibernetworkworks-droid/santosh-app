@@ -47,7 +47,7 @@ PC_TOOLS.append({"name": "pc_do", "description": (
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Santosh "
     "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "pc": {"type": "string", "description": "Which PC, by her name for it ('office', 'ghar laptop', 'Hoola PC 2'). Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
 PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or result of a pc_do task (session_id).",
                  "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
 PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": "Aapke PC ka kaam dekh raha hoon"})
@@ -71,20 +71,22 @@ PC_TOOLS.append({"name": "hoola_pc_do", "description": (
     "files live in /data. Same safety rules as pc_do for anything that leaves the VM (sends, submits, pays). "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting or paying, and never types passwords/OTPs. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
 PC_LABELS.update({"hoola_pc_do": "Hoola ke apne PC par kaam kar raha hoon"})
 
 
-async def hoola_pc_do(ctx: Ctx, task, _wait=None, **_):
+async def hoola_pc_do(ctx: Ctx, task, pc="", _wait=None, **_):
     from ..pc import operator
     from ..pc.hub import HOOLA_PC_KIND
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Batayiye Hoola ke PC par kya karna hai")
     try:
-        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, kind=HOOLA_PC_KIND,
+        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, kind=HOOLA_PC_KIND, pc=str(pc or ""),
                                  wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
     except RuntimeError as e:
+        if "PC_NOT_FOUND" in str(e):
+            raise ToolError(str(e).split(": ", 1)[-1] + ". Ask her which PC, or call pc_devices.")
         if "HOOLA_PC_OFFLINE" in str(e):
             raise ToolError("Hoola ka apna PC abhi online nahi hai. Thodi der baad boliye.")
         if "PC_OFFLINE" in str(e):
@@ -99,16 +101,19 @@ async def hoola_pc_do(ctx: Ctx, task, _wait=None, **_):
     return r
 
 
-async def pc_do(ctx: Ctx, task, _wait=None, **_):
+async def pc_do(ctx: Ctx, task, pc="", _wait=None, **_):
     from ..pc import operator
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Batayiye PC par kya karna hai")
     try:
-        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
+        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, pc=str(pc or ""),
+                                 wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
     except PermissionError as e:
         raise ToolError(str(e))
     except RuntimeError as e:
+        if "PC_NOT_FOUND" in str(e):
+            raise ToolError(str(e).split(": ", 1)[-1] + ". Ask her which PC, or call pc_devices.")
         if "PC_OFFLINE" in str(e):
             raise ToolError("Aapka PC offline hai. PC on karke Santosh Desktop kholiye (ya Santosh app > Mera PC se jodiye).")
         raise ToolError(str(e))
@@ -137,3 +142,138 @@ async def pc_task_result(ctx: Ctx, session_id, **_):
 
 
 PC_HANDLERS.update({"pc_do": pc_do, "pc_task_result": pc_task_result, "hoola_pc_do": hoola_pc_do})
+
+
+# ---- v0.836 DESKTOP TEAM + HOOLA PC TEAM: one agent per PC, several PCs at once ----
+PC_TOOLS.append({"name": "pc_devices", "description": (
+    "[HER PCs + HOOLA'S OWN PCs] Every computer online for her right now: its name, whether it is HER PC or one of "
+    "Hoola's own cloud PCs, whether Hoola may drive it, and the task it is doing now (one task per PC). Call it "
+    "before pc_team, or when she names a PC you do not know."),
+    "input_schema": {"type": "object", "properties": {}}})
+PC_TOOLS.append({"name": "pc_team", "description": (
+    "[DESKTOP TEAM - several PCs at the SAME time] Run 2 or more screen jobs in parallel, ONE agent per PC: e.g. her "
+    "office PC exports the Tally ledger while her home PC fills the Excel sheet, or two of Hoola's own PCs each check "
+    "a different website. Use ONLY when the job really has separate screen parts on DIFFERENT computers (she named "
+    "them, or the parts need desktop software and Hoola has several PCs). One PC never gets two parts (they would "
+    "fight for the mouse) - give it one task that does both. Do the research / writing / data parts yourself on the "
+    "server (crew_run / agent tools), and put only the on-screen parts here. pc = her name for the PC, or 'hoola' for "
+    "any free Hoola PC; pc_devices lists them. A PC already busy is NOT interrupted: that part comes back 'busy'. "
+    "Every PC shows its own live card; send / submit / pay / delete still waits for her tap on each. Results that "
+    "are not ready inside the wait are posted to the chat one by one as each PC finishes."),
+    "input_schema": {"type": "object", "properties": {
+        "tasks": {"type": "array", "minItems": 1, "maxItems": 6, "items": {"type": "object", "properties": {
+            "pc": {"type": "string", "description": "Her name for the PC, or 'hoola' / 'Hoola PC 2' for Hoola's own"},
+            "task": {"type": "string", "description": "The full goal for THIS PC, every detail it needs"}},
+            "required": ["pc", "task"]}},
+        "goal": {"type": "string", "description": "One line: the whole job these parts belong to"}},
+        "required": ["tasks"]}})
+PC_LABELS.update({"pc_devices": "Checking which PCs are online", "pc_team": "Starting the desktop team"})
+
+_HOOLA_WORDS = {"hoola", "hoola pc", "hoola ka pc", "hoola ka apna pc", "hoola's pc", "cloud", "cloud pc", "any hoola pc"}
+
+
+def _team_max() -> int:
+    try:
+        return max(1, min(int(getattr(get_settings(), "pc_team_max", 4) or 4), 6))
+    except Exception:
+        return 4
+
+
+async def pc_devices(ctx: Ctx, **_):
+    from ..pc import operator
+    from ..pc.hub import hub
+    out = []
+    for d in hub.devices(ctx.tenant_id):
+        o = operator.busy(ctx.tenant_id, d["device_id"])
+        out.append({**d, "busy": bool(o), "doing": (o.task[:120] if o else ""), "session_id": (o.id if o else "")})
+    return {"pcs": out, "count": len(out), "team_max": _team_max(),
+            "say": ("No PC is online. Her PC: open Hoola Desktop on it. Hoola's own PCs: the owner runs vps-ops pc_deploy."
+                    if not out else "One task per PC. Use these names in pc_do / hoola_pc_do / pc_team.")}
+
+
+async def pc_team(ctx: Ctx, tasks=None, goal="", _wait=None, **_):
+    from ..pc import operator
+    from ..pc.hub import HOOLA_PC_KIND, hub
+    import secrets
+    parts = [t for t in (tasks or []) if isinstance(t, dict) and len(str(t.get("task") or "").strip()) >= 3]
+    if not parts:
+        raise ToolError("Give each PC its task: tasks=[{pc, task}, ...]")
+    cap = _team_max()
+    if len(parts) > cap:
+        raise ToolError(f"At most {cap} PCs work at once (pc_team_max). Merge parts or run the rest after.")
+    tenant = ctx.tenant_id
+    # 1. every part gets its OWN PC before anything starts (no half-started team on a bad name)
+    taken: set[str] = set()
+    plan: list[tuple[dict, object]] = []
+    problems = []
+    for t in parts:
+        want = " ".join(str(t.get("pc") or "").lower().split())
+        conn = None
+        if want in _HOOLA_WORDS:
+            hoola = [c for c in hub.online(tenant) if (c.info or {}).get("kind") == HOOLA_PC_KIND
+                     and c.device_id not in taken]
+            free = [c for c in hoola if operator.busy(tenant, c.device_id) is None]
+            conn = (free or [None])[0]
+            if conn is None:
+                problems.append(f"'{t.get('pc') or 'hoola'}': no free Hoola PC left" +
+                                (" (all busy)" if hoola else " (none online)"))
+                continue
+        else:
+            conn = hub.find(tenant, want)
+            if conn is None:
+                problems.append(f"'{t.get('pc')}': no online PC by that name")
+                continue
+            if conn.device_id in taken:
+                problems.append(f"'{t.get('pc')}': that PC already has a part - give it ONE task that does both")
+                continue
+            if (conn.info or {}).get("kind") != HOOLA_PC_KIND and not (conn.info or {}).get("control"):
+                problems.append(f"'{t.get('pc')}': Hoola may not drive this PC (switch 'Hoola ko PC chalane dein' on there)")
+                continue
+        taken.add(conn.device_id)
+        plan.append((t, conn))
+    if problems and not plan:
+        names = ", ".join(d["name"] for d in hub.devices(tenant)) or "none"
+        raise ToolError("Desktop team could not start: " + "; ".join(problems) + f". Online PCs: {names}.")
+    team = "pcteam_" + secrets.token_hex(5)
+    head = f"[Team job: {str(goal).strip()[:300]}] " if str(goal or "").strip() else ""
+
+    async def one(t, conn):
+        try:
+            r = await operator.start(tenant, ctx.conversation_id, head + str(t["task"]).strip(), wait=0,
+                                     pc=conn.device_id, team=team, replace=False)
+            return {"pc": str((conn.info or {}).get("name") or "PC"), "session_id": r["session_id"], "status": r["status"]}
+        except operator.PcBusy as e:
+            return {"pc": str((conn.info or {}).get("name") or "PC"), "status": "busy", "session_id": e.op.id,
+                    "doing": e.op.task[:120], "say": "This PC is busy with another task; it was NOT interrupted."}
+        except PermissionError as e:
+            return {"pc": str((conn.info or {}).get("name") or "PC"), "status": "not_allowed", "error": str(e)[:200]}
+        except Exception as e:
+            return {"pc": str((conn.info or {}).get("name") or "PC"), "status": "failed", "error": str(e)[:200]}
+
+    started = list(await asyncio.gather(*(one(t, c) for t, c in plan)))
+    ops = [operator.get(tenant, r["session_id"]) for r in started if r.get("status") not in ("busy", "not_allowed", "failed")]
+    ops = [o for o in ops if o is not None]
+    wait = get_settings().pc_wait_seconds if _wait is None else float(_wait)
+    if ops and wait > 0:
+        try:
+            await asyncio.wait_for(asyncio.gather(*(asyncio.shield(o.done_event.wait()) for o in ops)), wait)
+        except asyncio.TimeoutError:
+            pass
+    for r in started:
+        o = operator.get(tenant, r.get("session_id", ""))
+        if o is not None and o.team == team:
+            if not o.done_event.is_set():
+                o.reported = True         # this PC's result arrives as its own note when it finishes
+            r.update({"status": o.status, "step": o.step, "summary": o.summary if o.done_event.is_set() else ""})
+    running = sum(1 for r in started if r.get("status") in ("running", "needs_confirm"))
+    return {"team": team, "goal": str(goal or "")[:300], "parts": started, "skipped": problems,
+            "running": running,
+            "say": ("Each PC shows its own live card. " +
+                    (f"{running} PC(s) still working: each one's result is posted to the chat when it finishes "
+                     "(or check one with pc_task_result). Tell her in one line which PC is doing what. "
+                     if running else "Every part has finished: merge their results into ONE answer for her. ") +
+                    ("Some parts could not start - say which and why. " if problems or any(
+                        r.get("status") in ("busy", "not_allowed", "failed") for r in started) else ""))}
+
+
+PC_HANDLERS.update({"pc_devices": pc_devices, "pc_team": pc_team})

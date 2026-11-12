@@ -80,6 +80,10 @@ class Hub:
         conns = self.online(tenant_id)
         if not conns:
             return None
+        if device_id is not None and kind:
+            # v0.836 DESKTOP TEAM: a task already on one PC stays on THAT PC; if it went offline the step fails
+            # (PcOffline) instead of jumping to another of her PCs half way through
+            return next((c for c in conns if c.device_id == device_id), None)
         if kind:
             for c in conns:
                 if (c.info or {}).get("kind") == kind:
@@ -93,6 +97,33 @@ class Hub:
 
     def has_kind(self, tenant_id: str, kind: str) -> bool:
         return self.is_online(tenant_id, kind=kind)
+
+    # v0.836 DESKTOP TEAM: every online PC by name, and a PC found from the words she used for it
+    def devices(self, tenant_id: str) -> list[dict[str, Any]]:
+        out = []
+        for c in self.online(tenant_id):
+            i = c.info or {}
+            out.append({"device_id": c.device_id, "name": str(i.get("name") or "PC"),
+                        "kind": "hoola_pc" if i.get("kind") == HOOLA_PC_KIND else "her_pc",
+                        "control": bool(i.get("control")) or i.get("kind") == HOOLA_PC_KIND,
+                        "paused": bool(i.get("paused")), "os": str(i.get("os") or "")})
+        return out
+
+    def find(self, tenant_id: str, name: str, kind: str | None = None) -> Conn | None:
+        """The online PC she meant by `name` ('office', 'ghar wala laptop', 'Hoola PC 2', or a device id).
+        Exact name / id first, then every word of a short name inside the PC's name. None = no such PC online."""
+        want = " ".join(str(name or "").lower().split())
+        if not want:
+            return None
+        conns = [c for c in self.online(tenant_id)
+                 if kind is None or ((c.info or {}).get("kind") == HOOLA_PC_KIND) == (kind == HOOLA_PC_KIND)]
+        for c in conns:
+            if want in (c.device_id.lower(), str((c.info or {}).get("name") or "").lower().strip()):
+                return c
+        stop = {"pc", "computer", "laptop", "wala", "wali", "mera", "meri", "my", "the", "on", "par", "pe", "ka", "ki", "ke"}
+        words = [w for w in want.replace("-", " ").split() if w not in stop] or want.split()
+        hits = [c for c in conns if all(w in str((c.info or {}).get("name") or "").lower() for w in words)]
+        return hits[0] if len(hits) == 1 else None
 
     # v0.200 MERA PC = USER PERSONAL PC FEATURE: the phone's Mera-PC screen buttons (search / send /
     # pull) always mean the USER'S OWN paired computer, never Hoola's own cloud PC. A desktop that

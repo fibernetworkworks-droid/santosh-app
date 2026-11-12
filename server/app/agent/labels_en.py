@@ -476,6 +476,8 @@ LABELS_EN = {
     'payroll': 'Working on salaries',
     'payroll_dekho': 'Checking the payroll register',
     'pc_do': 'Working on your PC',
+    'pc_devices': 'Checking which PCs are online',
+    'pc_team': 'Starting the desktop team',
     'pc_list': 'Checking a PC folder',
     'pc_print': 'Preparing a print',
     'pc_read': 'Reading a file',

@@ -3058,3 +3058,9 @@ Work Log:
 
 Stage Summary:
 - Planted bad-rule app refused at publish with the reason named; fixed rule passes. Not verified on her VPS.
+
+---
+Task ID: v0.836.0 DESKTOP TEAM + HOOLA PC TEAM
+Task: owner "NOW LETS WORK ON HOOLA DESTOP MERA PC -- FIRST CHECK", then the agent-desktop check, then "GO DESKTOP TEAM + HOOLA PC TEAM".
+Work Log: audit (213 PC tests green; agent-desktop v1.1.0 CLI flags + a real Linux run through axtree.py; found: PC loop on Haiku/GLM, no stop-by-words for PC jobs, restart loses PC tasks, no console Mera PC); built one task per PC (operator device_id, hub.find / devices), pc= on pc_do / hoola_pc_do, pc_team + pc_devices, kaamstop PC stop, vps-ops 1-4 Hoola PCs + pc_pair N-CODE, compose team profile; 16 tests; registry 629.
+Stage Summary: pushed to claude/pensive-faraday-vz5j9u. Next on her word: PC operator's own model (exempt from Haiku/GLM), restart notice for cut PC tasks, console Mera PC page, agent-desktop 1.2 (--stdin) in a new exe.
