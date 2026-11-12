@@ -3050,3 +3050,22 @@ Tests: test_v0858_pc_flow.py 26; test_v0193 report pin follows the release rule.
 - NOT VERIFIED: no live call with the toolset (the VPS anthropic SDK version and API version header may matter - the
   fallback covers a refusal), no real PC run, no card numbers yet. Cost: + one planner call per job, + one Haiku check
   per stage / done.
+
+
+## v0.860.0 PC KA HISAAB - every PC task explains itself in the log (fix 1 of the one-by-one PC clean-up)
+
+Owner, after her v0.859 pizza test: "VERY BAD WORKFLOW AND PERFORMANCE - EVERY THING IS MESSY - LETS START WITH
+LITTLE FIXES ONE BY ONE". Her grep (11:08-11:12) showed one run reaching step 69 and then two more runs each starting
+again at step 0 within 3 minutes - but no line said WHY a task started, was replaced, or ended, and the planner /
+checker of v0.859 wrote nothing on success. Nothing can be fixed one by one without seeing it, so fix 1 is the trail:
+
+- `pc task start <id> chat=... pc=... brain=... browser=<name>(said|remembered|default) budget=N steps/M min | task`
+- `pc task <old> REPLACED at step N by a new task (old chat, new chat) | old | new` (warning)
+- `pc_do new task (chat, fresh=, running elsewhere=, running here=)` / `pc_do steered into running <id>`
+- `pc plan <id> N stages: a > b > c`, `pc check <id> ok=True|False | what | why`
+- `pc task <id> asks her: ... | options`, `got her answer: ...`, `told (her words|Hoola, from chat ...)`
+- `pc task end <id> status=... steps=N Ns stage=k/n asks=yes|no | reason or summary`
+
+No behaviour changed. Files: `server/app/pc/operator.py`, `server/app/agent/pc_tools.py` (frozen-PC exception
+recorded). Tests: `test_v0860_pc_log.py` (2) + the PC suites (104) green.
+Read a run with: pm2 logs santosh --lines 2000 --nostream | grep -E "pc task|pc_do|pc plan|pc check" | tail -60

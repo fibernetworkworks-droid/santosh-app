@@ -2089,6 +2089,7 @@ def tell(tenant: str, conv: str, text: str, hers: bool = True) -> "Op | None":
     if b and op.kind != HOOLA_PC_KIND and (hers or op.browser_src != "said"):
         op.browser, op.browser_src = b, ("said" if hers else "remembered")
     STATS["told"] = STATS.get("told", 0) + 1
+    log.info("pc task %s told (%s, from chat %s): %s", op.id, "her words" if hers else "Hoola", conv, text[:160])
     return op
 
 
@@ -2191,6 +2192,7 @@ async def _ask_user(op: "Op", a: dict[str, Any]) -> str:
     q = str(a.get("question") or "").strip()[:300] or "Aage kya karun?"
     opts = [str(o).strip()[:120] for o in (a.get("options") or []) if str(o).strip()][:8]
     op.ask = {"id": "pcask_" + secrets.token_hex(6), "question": q, "options": opts, "at": time.time()}
+    log.info("pc task %s asks her: %s | options: %s", op.id, q[:160], ", ".join(str(o)[:40] for o in opts[:6]))
     op.answer, op.answer_event = "", asyncio.Event()
     op.action = "Aapse pooch raha hoon"
     _event(op)
@@ -2217,6 +2219,7 @@ async def _ask_user(op: "Op", a: dict[str, Any]) -> str:
     except asyncio.TimeoutError:
         pass
     said, op.answer, op.ask = op.answer, "", None
+    log.info("pc task %s got her answer: %s", op.id, str(said)[:120])
     op.action = "Aage badh raha hoon"
     _event(op)
     if op.status == "cancelled":
@@ -2521,6 +2524,7 @@ async def _make_plan(op: "Op") -> list[dict]:
     if len(stages) < 2:
         return []
     STATS["plans"] = STATS.get("plans", 0) + 1
+    log.info("pc plan %s %d stages: %s", op.id, len(stages), " > ".join(s_["goal"][:50] for s_ in stages))
     return stages
 
 
@@ -2555,6 +2559,7 @@ async def _check_screen(op: "Op", what: str, claim: str = "") -> tuple[bool, str
     if "ok" not in got:
         return True, ""
     STATS["checks"] = STATS.get("checks", 0) + 1
+    log.info("pc check %s ok=%s | %s | %s", op.id, bool(got.get("ok")), what[:80], str(got.get("why") or "")[:160])
     return bool(got.get("ok")), str(got.get("why") or "")[:300]
 
 
@@ -2828,6 +2833,9 @@ async def _run(op: Op) -> None:
             memory.remember(op.tenant, op.task, op.mem[-14:], op.status, op.summary, op.window)
         except Exception:
             log.exception("pc memory save failed")
+        log.info("pc task end %s status=%s steps=%d %ds stage=%s/%s asks=%s | %s", op.id, op.status, op.step,
+                 int(time.time() - op.created), op.stage, len(op.plan or []), "yes" if op.answer else "no",
+                 (op.reason or op.summary or "")[:200])
         op.action = {"done": "Ho gaya", "partial": "Poora nahi hua", "failed": "Ruk gaya", "cancelled": "Aapne rok diya"}.get(op.status, op.action)
         _work(op, "_end")
         try:   # v0.858 the task ENDED: its 'work is running there' lock goes (it pulled unrelated asks to the PC)
@@ -2940,6 +2948,8 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     if old is not None:
         if not replace:
             raise PcBusy(old)
+        log.warning("pc task %s REPLACED at step %d by a new task (old chat %s, new chat %s) | old: %s | new: %s",
+                    old.id, old.step, old.conv, conv, old.task[:120], task.strip()[:120])
         old.status = "cancelled"          # one operator per PC: two agents on one screen would fight for the mouse
         old.task_obj.cancel()
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
@@ -2950,6 +2960,9 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     from . import brain as _brain
     op.brain, op.brain_model, op.brain_note = _brain.choose(brain)   # v0.851 PC BRAIN: her pick for this task, else pc_model
     OPS[op.id] = op
+    log.info("pc task start %s chat=%s pc=%s brain=%s browser=%s(%s) budget=%d steps/%d min | %s", op.id, conv,
+             op.device_name or dev or "-", op.brain_model or op.brain, op.browser or "-", op.browser_src or "-",
+             op.steps_max, op.minutes, op.task[:200])
     _event(op)
     op.task_obj = asyncio.create_task(_run(op))
     if wait > 0:

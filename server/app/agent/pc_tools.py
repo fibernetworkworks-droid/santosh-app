@@ -1,6 +1,8 @@
 """Mera PC tools: the user's office/home computer through Santosh Desktop (files, printing, TallyPrime)."""
 from __future__ import annotations
 
+import logging
+
 import asyncio
 
 from ..bazar import service
@@ -20,6 +22,8 @@ PC_TOOLS = [{"name": api, "description": "[HER PC - say 'aapka PC'] " + SCHEMAS[
 PC_LABELS = {"pc_status": "PC dekh raha hoon", "pc_search": "PC par file dhoondh raha hoon", "pc_list": "PC ka folder dekh raha hoon",
              "pc_read": "File padh raha hoon", "pc_send_to_phone": "File phone par bhej raha hoon",
              "pc_print": "Print taiyar kar raha hoon", "tally_report": "Tally dekh raha hoon", "tally_entry": "Tally entry taiyar kar raha hoon"}
+
+log = logging.getLogger("santosh.pcop")
 
 
 def _handler(api: str):
@@ -127,6 +131,7 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
             and (not pc or str(pc).lower() in (live.device_name or "").lower() or str(pc) == live.device_id
                  or not live.device_name):
         operator.tell(ctx.tenant_id, ctx.conversation_id, task, hers=False)
+        log.info("pc_do steered into running %s (chat %s)", live.id, ctx.conversation_id)
         out = live.live()
         out.pop("timeline", None)
         out.update(where="Aapka PC (HER computer) - the SAME task that is already running", steered=True,
@@ -136,6 +141,8 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
         return out
     other = [o for o in operator.running_all(ctx.tenant_id) if o.kind != operator.HOOLA_PC_KIND
              and not operator.same_chat(o.conv, ctx.conversation_id)]
+    log.info("pc_do new task (chat %s, fresh=%s, running elsewhere=%s, running here=%s)", ctx.conversation_id,
+             bool(fresh), [o.id for o in other], live.id if live is not None else "-")
     try:
         r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, pc=str(pc or ""), brain=str(model or ""),
                                  wait=get_settings().pc_wait_seconds if _wait is None else float(_wait),
