@@ -339,8 +339,8 @@ def test_the_health_cap_does_not_assert_what_we_could_not_verify():
     """The ABDM/NHA documents could not be read from a primary source, and the vendor sources contradict each
     other on CERT-In vs STQC. So the cap says the requirement is unverified instead of stating it as fact."""
     cap = R.ROLES["health_int"]["cap"]
-    assert "NAHI hai" in cap or "nahi" in cap
-    assert "jaancha" in cap
+    assert "NOT checked" in cap or "not" in cap
+    assert "checked" in cap
     assert "CERT-In empanelled security audit pehle paas karna padta hai" not in cap
 
 
@@ -567,7 +567,7 @@ def test_a_deploy_needs_a_connected_org_and_the_production_word(env):
     from app.enterprise import run as RUN
     with pytest.raises(RUN.RunError) as e:
         RUN.deploy_validate("t1", "crm_arch", [{"type": "Flow", "name": "F", "body": "<Flow/>"}])
-    assert "juda" in str(e.value)
+    assert "connected" in str(e.value)
     RUN.set_endpoint("t1", "crm_arch", "salesforce", "https://x.my.salesforce.com", "TOK", env="production")
     with pytest.raises(RUN.RunError) as e2:
         RUN.deploy_go("t1", "crm_arch", "0Af000000000001", "owner", "")

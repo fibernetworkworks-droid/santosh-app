@@ -138,7 +138,7 @@ def test_a_wrong_key_is_told_apart_from_a_missing_permission(env, monkeypatch):
     RUN.set_endpoint("t1", "erp", "sap", "https://e.example.com/odata", SECRET)
     bad = RUN.verify("t1", "erp", "sap")
     assert bad["theek"] is False and "401" in json.dumps(bad)
-    assert "Key dobara" in bad["aage"]
+    assert "Enter the key again" in bad["aage"]
 
     def forbidden(m, u, h):
         if h.get("X-CSRF-Token") == "Fetch":
@@ -218,7 +218,7 @@ def test_a_good_check_is_recorded_and_a_bad_one_is_not(env, monkeypatch):
 def test_verify_on_a_system_that_is_not_joined_says_so(env):
     with pytest.raises(RUN.RunError) as e:
         RUN.verify("t1", "erp", "sap")
-    assert "juda" in str(e.value)
+    assert "connected" in str(e.value)
 
 
 def test_production_says_the_extra_word_is_still_needed(env, monkeypatch):

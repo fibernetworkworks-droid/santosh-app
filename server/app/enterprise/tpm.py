@@ -51,12 +51,12 @@ def _day(v: Any) -> date | None:
 
 def _rows(rows: Any, what: str) -> list[dict[str, Any]]:
     if not isinstance(rows, list) or not rows:
-        raise TpmError(f"{what} ke liye rows chahiye.")
+        raise TpmError(f"Rows are needed for {what}.")
     if len(rows) > MAX_ROWS:
-        raise TpmError(f"{MAX_ROWS} se zyada rows nahi - chhota kijiye.")
+        raise TpmError(f"No more than {MAX_ROWS} rows - make it smaller.")
     out = [r for r in rows if isinstance(r, dict)]
     if not out:
-        raise TpmError("Har row ek object honi chahiye.")
+        raise TpmError("Every row must be an object.")
     return out
 
 
@@ -72,7 +72,7 @@ def critical_path(rows: list[dict[str, Any]]) -> dict[str, Any]:
     for r in items:
         rid = _s(r.get("id") or r.get("key") or r.get("ref"))
         if not rid:
-            raise TpmError("Har row mein id chahiye.")
+            raise TpmError("Every row needs an id.")
         by_id[rid] = {"id": rid, "title": _s(r.get("title") or r.get("summary"))[:200],
                       "days": max(0.0, _num(r.get("days") or r.get("estimate"), 0)),
                       "deps": [d for d in (r.get("depends_on") or r.get("deps") or []) if _s(d)],
@@ -111,8 +111,8 @@ def critical_path(rows: list[dict[str, Any]]) -> dict[str, Any]:
             walk(k, [])
     if cycles:
         loop = cycles[0]
-        raise TpmError("Dependency mein chakkar hai (" + " -> ".join(loop) + "). Pehle ise todiye; "
-                       "warna koi bhi tareekh sach nahi hogi.")
+        raise TpmError("The dependencies have a loop (" + " -> ".join(loop) + "). Break it first; "
+                       "otherwise no date will be true.")
     end = max(best, key=lambda k: best[k][0]) if best else ""
     length, path = best.get(end, (0.0, []))
     blockers = [{"id": i, "title": by_id[i]["title"], "days": by_id[i]["days"], "owner": by_id[i]["owner"],
@@ -121,8 +121,8 @@ def critical_path(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"din": round(length, 2), "raasta": path, "kaam": blockers,
             "sabse_lamba": {"id": end, "title": by_id.get(end, {}).get("title", "")} if end else {},
             "jo_nahi_mile": missing,
-            "note": ("Yeh sabse lamba raasta hai - ise chhota kiye bina release jaldi nahi hogi."
-                     if path else "Koi dependency nahi mili.")}
+            "note": ("This is the longest path - the release will not come sooner unless it gets shorter."
+                     if path else "No dependencies found.")}
 
 
 # ---------------------------------------------------------------- 2. who is over-committed
@@ -136,7 +136,7 @@ def capacity(rows: list[dict[str, Any]], days_available: float = 10.0,
     for r in items:
         if _s(r.get("status")).lower() in ("done", "closed", "shipped", "resolved", "dropped"):
             continue
-        o = _s(r.get("owner")) or "(kisi ka nahi)"
+        o = _s(r.get("owner")) or "(no owner)"
         load[o] = load.get(o, 0.0) + max(0.0, _num(r.get("days") or r.get("estimate"), 0))
         count[o] = count.get(o, 0) + 1
     out = []
@@ -146,9 +146,9 @@ def capacity(rows: list[dict[str, Any]], days_available: float = 10.0,
                     "zyada": round(d - cap, 2) if d > cap else 0.0,
                     "bhara": round((d / cap * 100) if cap else 0, 1)})
     over = [x for x in out if x["zyada"] > 0]
-    return {"log": out, "zyada_bhare": over, "bina_maalik": round(load.get("(kisi ka nahi)", 0.0), 2),
-            "note": (f"{len(over)} logon ke paas waqt se zyada kaam hai." if over
-                     else "Kisi ke paas waqt se zyada kaam nahi.")}
+    return {"log": out, "zyada_bhare": over, "bina_maalik": round(load.get("(no owner)", 0.0), 2),
+            "note": (f"{len(over)} people have more work than time." if over
+                     else "Nobody has more work than time.")}
 
 
 # ---------------------------------------------------------------- 3. are we getting faster
@@ -179,8 +179,8 @@ def delivery_metrics(rows: list[dict[str, Any]], committed: int = 0) -> dict[str
     return {"poore_hue": done_n, "lead_time_din": med(lead), "cycle_time_din": med(cycle),
             "baad_mein_mile_bugs": escaped,
             "vaada_vs_hua": say_do,
-            "note": ("Beech ka number (median) diya hai - ek lamba ticket poori tasveer na badle."
-                     if lead or cycle else "Tareekhen nahi theen, isliye samay nahi nikala ja saka.")}
+            "note": ("The middle number (median) is given - so one long ticket does not change the whole picture."
+                     if lead or cycle else "There were no dates, so the time could not be worked out.")}
 
 
 # ---------------------------------------------------------------- 4. what is rotting
@@ -207,8 +207,8 @@ def raid_sweep(rows: list[dict[str, Any]], today: str = "", stale_days: int = 14
     return {"tareekh_nikli": sorted(overdue, key=lambda x: -x["kitne_din"]),
             "koi_khabar_nahi": sorted(stale, key=lambda x: -x["chup"]),
             "bina_maalik": unowned, "bade": high,
-            "note": ("Sabse pehle tareekh nikli hui cheezein." if overdue else
-                     "Koi tareekh nikli hui cheez nahi.")}
+            "note": ("Overdue items first." if overdue else
+                     "Nothing is overdue.")}
 
 
 # ---------------------------------------------------------------- 5. can we ship
@@ -225,8 +225,8 @@ def release_readiness(gates: list[dict[str, Any]]) -> dict[str, Any]:
         (passed if ok else (failed if blocking else warn)).append(row)
     go = not failed
     return {"ja_sakte_hain": go, "paas": passed, "ruke_hue": failed, "chetavni": warn,
-            "note": ("Sab zaroori gate paas - ja sakte hain." if go else
-                     f"{len(failed)} zaroori gate ruke hue hain: " + ", ".join(x["gate"] for x in failed))}
+            "note": ("All required gates pass - good to go." if go else
+                     f"{len(failed)} required gates are blocked: " + ", ".join(x["gate"] for x in failed))}
 
 
 # ---------------------------------------------------------------- 6. who owes me an update
@@ -251,5 +251,5 @@ def chase(rows: list[dict[str, Any]], today: str = "", quiet_days: int = 3) -> d
     return {"kisse_poochna_hai": [{"owner": o, "cheezein": v} for o, v in
                                   sorted(owed.items(), key=lambda kv: -len(kv[1]))],
             "bina_maalik": never,
-            "note": ("Hoola khud se koi status nahi likhta - jo unhone kaha wahi likha jaata hai."
-                     if owed or never else "Sabne haal hi mein update diya hai.")}
+            "note": ("Hoola never writes a status on its own - only what they said is written."
+                     if owed or never else "Everyone has given an update recently.")}

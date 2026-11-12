@@ -45,7 +45,7 @@ def test_finished_work_stops_delaying_the_release():
 
 def test_a_dependency_loop_is_reported_never_silently_broken():
     """A loop is a real planning bug. Returning a number here would be worse than refusing."""
-    with pytest.raises(T.TpmError, match="chakkar"):
+    with pytest.raises(T.TpmError, match="loop"):
         T.critical_path([{"id": "X", "days": 1, "depends_on": ["Y"]},
                          {"id": "Y", "days": 1, "depends_on": ["X"]}])
 
@@ -131,7 +131,7 @@ def test_chase_finds_who_has_gone_quiet_and_never_invents_their_status():
     owed = {x["owner"]: len(x["cheezein"]) for x in c["kisse_poochna_hai"]}
     assert owed == {"Ravi": 1}                                   # Asha spoke yesterday
     assert [x["id"] for x in c["bina_maalik"]] == ["3"]
-    assert "khud se koi status nahi likhta" in c["note"]
+    assert "never writes a status on its own" in c["note"]
 
 
 # ---------------------------------------------------------------- the sums belong to tpm alone
