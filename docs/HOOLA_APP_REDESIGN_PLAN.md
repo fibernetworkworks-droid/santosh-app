@@ -84,6 +84,26 @@ log out) reached from the drawer. The ~100 desk rows that sat on Main move into 
 Rough size: R0-R3 are the big ones (the chat is 2,791 lines today); R8 is the longest by volume. Nothing on the server
 changes except R3s.
 
+## 3a. The text pipeline (owner's "How Claude Formats Text" page, layer by layer)
+
+What the phone app (`lib/ui/md_text.dart`, 452 lines) has today, and what R3 / R3s add:
+
+| Claude layer | Hoola phone today | R3 / R3s adds |
+|---|---|---|
+| 1 model sends plain Markdown | same (the server streams Markdown text) | nothing |
+| 2 Markdown -> blocks + inline marks | own parser: paragraphs (soft breaks reflow, v0.284), headings, bullet / numbered lists with nesting, quotes, code fences, tables, rules, bold / italic / strike / inline code / links | links to chats / files open in-app (kept); images inside replies |
+| 3 styles per mark | bold, italic, strike, link colour, inline code = generic `monospace` on a white overlay; headings 22 / 20 / 17 | JetBrains Mono everywhere; inline code = tinted chip in the code colour role; bold 600; link = accent + underline; headings 22 / 18 / 16 (Literata); list indent 16 per level; table cell padding 8, header semibold, full-width box that scrolls |
+| 3 code blocks | dark box, monospace, scrolls sideways; no header, no copy | header row with the language + Copy + Expand (full-screen sheet), light syntax colours from theme roles, corner 12, padding 12 |
+| 4 one theme every text inherits | sizes / colours set by hand per screen (29 sizes) | `hoola_theme.dart` TextTheme: display 22/700, heading 18/600, H2 16/600, H3 14/600, body 15/400, small 13/400, code 12-14 mono, reply 17 Literata |
+| 5 rich system strings (code / colour / link inside a sentence) | plain strings | `HoolaRich` helper: a string with `{code:..}`, `{link:settings|..}`, `{accent:..}` parts, for help lines, setup steps, notices |
+| 6 same tokens inside web views (artifacts) | artifacts / pages keep their own CSS | the app passes its colour + font roles (light / dark) into every Hoola artifact / page WebView as CSS variables (`--hoola-*`), so a page made in chat matches the app |
+| 7 server-formatted lines (errors, model name, counts, limits) | server lines arrive as plain text inside the reply | R3s: a `notice` event `{text, role: info|warn|danger|code, link}` drawn by the app in that role - never mixed into the model's Markdown |
+| streaming: half-written marks | an open `**` / `` ` `` / `~~` already styles what follows (no stray stars); a table header waits for its separator | kept; plus the soft tail fade on the newest words and capped catch-up; an unclosed mark at the very end shows as text (no crash) |
+| speed | re-parses the whole reply on every update | parse only the last (growing) block while streaming; finished blocks cached |
+
+Paragraph gap: 16 today (measured on Claude web, v0.274). The Android page says 8; the screenshots look nearer 12 -
+R0's golden screenshots decide, side by side with the owner's Claude screenshots.
+
 ## 4. Decisions only the owner can make (the plan assumes the first option)
 
 1. **Tabs:** Hoola / Work / Connect / Made, with Talk in the composer and Profile behind the drawer avatar - or keep 5
