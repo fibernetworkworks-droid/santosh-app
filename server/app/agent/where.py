@@ -157,12 +157,27 @@ def current(conv: str) -> str:
 def working(conv: str) -> str:
     """Where website work is running in this chat right now (pc | hoola), '' when none lately."""
     w = _WORK.get(conv)
+    if _her_pc_busy(conv) and (not w or w[0] != "pc"):
+        return "pc"                   # v0.858 her PC task is RUNNING in this chat: the chat stays on her PC
     if not w:
         return ""
     if time.time() - w[1] > (HOOLAPC_KEEP_S if w[0] == "hoolapc" else WORK_KEEP_S):
         _WORK.pop(conv, None)
         return ""
     return w[0]
+
+
+def _her_pc_busy(conv: str) -> bool:
+    """v0.858 a task on HER own PC is still running for this chat (any kind of task - Notepad, Swiggy, Tally).
+    Before, only a website-form task kept the chat on her PC, so 'Chrome kholo' mid-task could go to Hoola's PC."""
+    if not conv:
+        return False
+    try:
+        from ..pc import operator as pcop
+        return any(pcop.same_chat(o.conv, conv) and o.kind != pcop.HOOLA_PC_KIND and o.status in ("running", "needs_confirm")
+                   for o in list(pcop.OPS.values()) if o.task_obj and not o.task_obj.done())
+    except Exception:
+        return False
 
 
 def touch(conv: str, where: str) -> None:

@@ -178,6 +178,17 @@ How to work:
     prefer switch_tab over opening it again.
   - YAAD at the end of this prompt is your memory of recent finished tasks on this PC: what is done there is done -
     build on it, don't repeat it.
+- THE BROWSER SHE NAMED (v0.858): if her task or her new words name a browser ('Chrome mein', 'Edge mein'), work
+  ONLY in that browser: open_url already opens the site in it. Never switch to another browser on your own, even if
+  another one is already open; never move the job to a different computer.
+- SHE DECIDES THE CHOICES (v0.858) - work like a person helping her, not a robot: when the task leaves a choice open
+  (which pizza / dish / product, size, quantity, variant, add-ons, delivery address, time slot, seat, plan) do NOT
+  pick for her. Open the list, read the real options with page_text, then ask_user with a short question and the
+  best 3-6 options WITH their price, e.g. 'Swiggy par Domino's ka menu khul gaya. Kaunsa pizza chahiye?' and
+  options ['Margherita - Rs 239', 'Farmhouse - Rs 459', ...]. Continue with what she answers. Ask once per real
+  choice; if she already said it in the task, do not ask again.
+- HER NEW WORDS: a user message 'HER NEW WORDS' arrives while you work = she just said it in chat or on the call.
+  Follow it now; where it differs from the task, her new words win.
 - Read what is on the screen and report it accurately; never invent numbers.
 - When the task is done, call done with a short answer in the user's language (Hinglish by default) with the key facts.
   If you cannot finish, call done(success=false) with what you did and what is left.
@@ -443,6 +454,13 @@ TOOLS = [
     {"name": "ask_approval", "description": "Ask the user to approve a step that sends/submits/saves over/deletes/pays/"
                                             "installs/changes settings. Describe exactly what will happen.",
      "input_schema": {"type": "object", "properties": {"what": {"type": "string"}}, "required": ["what"]}},
+    {"name": "ask_user", "description": "Ask HER a question and wait for her answer (chat or the live call): which item "
+                                        "/ size / variant / address / time she wants, or anything only she can decide. "
+                                        "Read the real choices from the page first (page_text) and pass the best 3-6 as "
+                                        "options with their price. Never for passwords / OTPs / card numbers.",
+     "input_schema": {"type": "object", "properties": {"question": {"type": "string"},
+                                                       "options": {"type": "array", "items": {"type": "string"}}},
+                      "required": ["question"]}},
     {"name": "ask_otp", "description": "The site sent an OTP to her phone: CLICK the OTP box first, then call this. She tells "
                                        "it on her phone (chat, call, or the SMS 'Allow' sheet) and the system types it into "
                                        "the focused box. Not for bank / card / payment OTPs.",
@@ -526,6 +544,7 @@ class Op:
     steps_max: int = MAX_STEPS     # v0.184 browser tasks run with a bigger budget (set at start from the task)
     minutes: int = TASK_MINUTES
     window: str = ""
+    windows: list = field(default_factory=list)   # v0.858 the open windows of the last screen (titles)
     monitor: str = "primary"       # v0.166 which screen the operator works on (model can switch with screenshot)
     mem: list[str] = field(default_factory=list)   # v0.173 what this run did to the PC (open_app/open_url/...)
     kind: str = ""                 # v0.193 "" = her Windows PC; "hoola_pc" = Hoola's own cloud computer
@@ -547,6 +566,12 @@ class Op:
     brain: str = ""                # v0.851 PC BRAIN: "qwen" | "sonnet" - the model that sees the screen this task
     brain_model: str = ""          # its model id (qwen3.8-max / claude-sonnet-5-5)
     brain_note: str = ""           # said once when the pick could not run (no Qwen key -> Sonnet)
+    browser: str = ""              # v0.858 the browser she NAMED for this task ('chrome' / 'edge' / ...), '' = any
+    notes: list = field(default_factory=list)   # v0.858 her new words while it works: read before the next step
+    ask: dict | None = None        # v0.858 a question waiting for her answer (ask_user): {id, question, options}
+    answer: str = ""
+    answer_event: asyncio.Event = field(default_factory=asyncio.Event)
+    told_at: float = 0.0           # v0.858 the last spoken PC update on her live call
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -801,6 +826,8 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return "aapki manzoori ka intezaar…"
     if name == "ask_otp":
         return "OTP ka intezaar…"
+    if name == "ask_user":
+        return "aapse pooch raha hoon…"
     if name == "done":
         return "nateeja taiyaar kar raha hoon"
     return name
@@ -988,6 +1015,7 @@ async def _shot(op: Op, monitor: str = "") -> list[dict]:
         op.frame, op.frame_seq = base64.b64decode(img), op.frame_seq + 1
     op.monitor = s.get("monitor", mon) or mon
     op.window = s.get("active_window", "") or op.window
+    op.windows = [str(w) for w in (s.get("windows") or [])][:30]
     wins = ", ".join((s.get("windows") or [])[:12])
     where = "ALL monitors stitched" if op.monitor == "all" else "main monitor"
     return [{"type": "text", "text": f"Screen {s.get('width')}x{s.get('height')} ({where}). Active window: {op.window or '-'}. "
@@ -1171,6 +1199,91 @@ async def _ax_full(op: Op, name: str, a: dict[str, Any]) -> str:
     return f"ERROR: unknown {name}"
 
 
+# v0.858 THE BROWSER SHE NAMED: the desktop's open_url uses the FIRST running browser (chrome, msedge, brave, firefox),
+# so Edge's always-on background process won whenever Chrome was not open ('Chrome mein Swiggy' opened Edge). Her
+# word now decides: the named browser is opened / brought to the front, and the site goes into a new tab THERE.
+BROWSERS = {   # her word -> (what open_app types, the words its window title ends with)
+    "chrome": ("Google Chrome", "google chrome"),
+    "edge": ("Microsoft Edge", "microsoft edge"),
+    "firefox": ("Firefox", "mozilla firefox"),
+    "brave": ("Brave", "brave"),
+}
+_BROWSER_WORD = re.compile(r"\b(?:(chrome?|crome|krome|google\s+chrome)|((?:microsoft\s+)?edge)|(fire\s?fox)|(brave))\b", re.I)
+
+
+def _named_browser(text: str) -> str:
+    """The browser her words name ('' when none). The LAST one named wins ('edge nahi, chrome mein kholo')."""
+    found = ""
+    for m in _BROWSER_WORD.finditer(str(text or "")):
+        if re.search(r"\b(nahi|nahin|mat|not|no|instead of|ke bajaye|ki jagah)\s*$", str(text)[max(0, m.start() - 14):m.start()], re.I):
+            continue                    # 'not edge' / 'edge ki jagah' is a refusal, not a pick
+        if re.match(r"\s*(?:(?:mein|me|main|par|pe|wala|browser|use|se)\s+)*(nahi|nahin|mat|not|no)\b",
+                    str(text)[m.end():m.end() + 24], re.I):
+            continue                    # 'edge nahi'
+        found = ("chrome", "edge", "firefox", "brave")[[i for i in range(4) if m.group(i + 1)][0]]
+    return found
+
+
+def _in_front(title: str, browser: str) -> bool:
+    return bool(browser) and BROWSERS[browser][1] in str(title or "").lower()
+
+
+async def _front_title(op: "Op") -> str:
+    try:
+        r = await _pc(op, "screen", {"max_width": 320, "monitor": op.monitor}, timeout=20, log=False)
+    except Exception:
+        return op.window
+    t = str((r or {}).get("active_window") or "")
+    if t:
+        op.window = t
+    return t
+
+
+async def _open_in_named(op: "Op", url: str) -> str:
+    """Open url in the browser she named: bring THAT browser to the front, new tab, type the address, Enter."""
+    b = op.browser
+    app, _word = BROWSERS[b]
+    title = await _front_title(op)
+    if not _in_front(title, b):
+        try:
+            await _pc(op, "open_app", {"name": app}, timeout=40)
+        except Exception as e:
+            return _desktop_says(e, "open_app") or f"ERROR: could not open {app}: {e}"
+        for _ in range(12):             # up to ~6 s for its window to come to the front
+            await asyncio.sleep(0.5)
+            title = await _front_title(op)
+            if _in_front(title, b):
+                break
+        else:
+            return (f"ERROR: {app} did not come to the front (active window: '{title[:80]}'). She asked for {app}: "
+                    "look at the screen and bring it forward with focus_window, never use another browser.")
+    before = title
+    await _pc(op, "control", {"op": "key", "keys": "ctrl+t"})
+    await asyncio.sleep(0.3)
+    await _pc(op, "control", {"op": "type", "text": url}, timeout=30)
+    await _pc(op, "control", {"op": "key", "keys": "enter"})
+    loaded = ""
+    for _ in range(16):                 # up to ~8 s for the page title
+        await asyncio.sleep(0.5)
+        t = await _front_title(op)
+        if t and t != before and "new tab" not in t.lower():
+            loaded = t
+            break
+    out = f"opened {url} in {app} (new tab)"
+    if loaded:
+        out += f"; page title now: {loaded}"
+        try:
+            pt = await _pc(op, "page_text", {"max_chars": 800}, timeout=20, log=False)
+            digest = (pt.get("text") or "").strip()[:600]
+            if digest:
+                out += "\nPage text starts with: " + digest
+        except Exception:
+            pass
+    else:
+        out += " (still loading - look at the next screenshot)"
+    return out
+
+
 async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
     """Run one tool; returns text for the model."""
     if name == "click":
@@ -1229,6 +1342,14 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         from urllib.parse import urlparse
         if urlparse(url).scheme.lower() not in ("http", "https") or not urlparse(url).netloc:
             return "REFUSED: only http(s) websites open here."
+        # v0.858 the browser SHE named, never the first one running. The desktop's own open_url tries Chrome first,
+        # so Chrome already open = that one-step path; anything else (Chrome closed, Edge / Firefox / Brave named)
+        # = bring THAT browser to the front and open a new tab there.
+        if op.browser and op.kind != HOOLA_PC_KIND and not (
+                op.browser == "chrome" and (any(_in_front(w, "chrome") for w in [op.window, *op.windows]) or
+                                            any(m.startswith(("open_app", "ax_launch")) and "chrome" in m.lower()
+                                                for m in op.mem))):
+            return await _open_in_named(op, url)
         try:
             r = await _pc(op, "open_url", {"url": url}, timeout=50)   # v0.184 desktop waits for the page to load
         except Exception as e:
@@ -1794,6 +1915,168 @@ async def _ask_otp(op: Op, a: dict[str, Any]) -> str:
     return msg
 
 
+
+# ---------------------------------------------------------------- v0.858 SHE TALKS TO THE RUNNING TASK
+# Before: every word she said while her PC worked ('Chrome kholo', 'Margherita') was a NEW chat turn, so pc_do started
+# a NEW task (replacing the running one) or the chat moved the job to Hoola's own PC / its browser - three browsers on
+# two computers. Now her words go INTO the task that is running (a note read before its next step), and a question the
+# task asked (ask_user) is answered by her next chat line or what she says on the call.
+ASK_WAIT_S = 600
+SPEAK_EVERY_S = 12
+_SPEAK_ON = {"open_app", "open_url", "switch_tab", "page_fill_form", "ax_launch", "focus_window", "ask_approval", "done"}
+
+
+def chat_of(conv: str) -> str:
+    """The chat behind a conversation (a call record or a call's side record -> the chat it came from)."""
+    try:
+        from .. import callconv
+        c = callconv.chat_of(conv)
+        return callconv.chat_of(c) if c != conv else c
+    except Exception:
+        return conv
+
+
+def same_chat(a: str, b: str) -> bool:
+    return bool(a and b) and (a == b or chat_of(a) == chat_of(b))
+
+
+def live_for(tenant: str, conv: str = "") -> "Op | None":
+    """Her running PC task for this chat (or the call made from it; her own PC first), else her newest PC task."""
+    live = running_all(tenant)
+    if not live:
+        return None
+    mine = [o for o in live if conv and same_chat(o.conv, conv)]
+    pick = mine or live
+    hers = [o for o in pick if o.kind != HOOLA_PC_KIND]
+    return (hers or pick)[-1]
+
+
+def tell(tenant: str, conv: str, text: str) -> "Op | None":
+    """Her new words for the running task. Returns the task that got them (None = nothing running)."""
+    op = live_for(tenant, conv)
+    text = str(text or "").strip()
+    if op is None or not text:
+        return None
+    if op.ask is not None:
+        give_answer(tenant, text)
+        return op
+    op.notes.append(text[:1000])
+    del op.notes[:-6]
+    b = _named_browser(text)
+    if b and op.kind != HOOLA_PC_KIND:
+        op.browser = b
+    STATS["told"] = STATS.get("told", 0) + 1
+    return op
+
+
+def _take_notes(op: "Op", messages: list) -> None:
+    if not op.notes or not messages or messages[-1].get("role") != "user":
+        return
+    said, op.notes = " | ".join(op.notes), []
+    content = messages[-1]["content"]
+    if isinstance(content, str):
+        content = messages[-1]["content"] = [{"type": "text", "text": content}]
+    extra = f" (She named {BROWSERS[op.browser][0]}: use only that browser.)" if op.browser else ""
+    content.append({"type": "text", "text": f"HER NEW WORDS (just now, while you work): \"{said}\". Follow them now; "
+                                            f"where they differ from the task, her new words win.{extra}"})
+
+
+def pending_ask(tenant: str) -> "Op | None":
+    waiting = [o for o in OPS.values() if o.tenant == tenant and o.ask is not None and o.status == "running"]
+    return max(waiting, key=lambda o: o.ask.get("at", 0)) if waiting else None
+
+
+def give_answer(tenant: str, text: str) -> bool:
+    op = pending_ask(tenant)
+    if op is None:
+        return False
+    op.answer = str(text or "").strip()[:500]
+    loop = _loop
+    if loop is not None and loop.is_running():
+        loop.call_soon_threadsafe(op.answer_event.set)
+    else:
+        op.answer_event.set()
+    return True
+
+
+def answer_from_chat(tenant: str, conv: str, text: str) -> dict | None:
+    """Her chat line answers the question her running PC task asked. None = no question waiting."""
+    t = str(text or "").strip()
+    if not t or t.startswith(("[", "(")) or pending_ask(tenant) is None:
+        return None
+    try:
+        from .. import kaamstop
+        if kaamstop.wants_stop(t):
+            return None                 # 'band karo' stops the task, it is not her answer
+    except Exception:
+        pass
+    if not give_answer(tenant, t):
+        return None
+    return {"ok": True, "say": f"Theek hai, \"{t[:80]}\" - PC par wahi kar raha hoon."}
+
+
+def _option_line(opts: list) -> str:
+    return "\n".join(f"{i}. {o}" for i, o in enumerate(opts, 1))
+
+
+async def _ask_user(op: "Op", a: dict[str, Any]) -> str:
+    q = str(a.get("question") or "").strip()[:300] or "Aage kya karun?"
+    opts = [str(o).strip()[:120] for o in (a.get("options") or []) if str(o).strip()][:8]
+    op.ask = {"id": "pcask_" + secrets.token_hex(6), "question": q, "options": opts, "at": time.time()}
+    op.answer, op.answer_event = "", asyncio.Event()
+    op.action = "Aapse pooch raha hoon"
+    _event(op)
+    note = q + ("\n" + _option_line(opts) if opts else "") + "\n\nBas likh dijiye ya call par bol dijiye."
+    try:
+        from ..agent.santosh import _save
+        _save(op.conv, "assistant", [{"type": "text", "text": note}], display=note)
+        bus.publish(op.conv, "message", {"role": "assistant", "text": note, "source": "pc"})
+        bus.publish(op.conv, "pc_ask", {**op.ask, "task_id": op.id})
+    except Exception:
+        log.exception("pc ask note")
+    try:
+        from ..voice import inject
+        spoken = q + (" Options: " + "; ".join(opts[:6]) if opts else "")
+        inject(op.conv, f"(Her PC task needs her choice NOW. Ask her out loud, warmly, in one or two short lines: "
+                        f"{spoken}. When she answers, call santosh_kaam with her exact words - they go straight to the "
+                        "PC task. Do not choose for her.)")
+    except Exception:
+        pass
+    try:
+        await asyncio.wait_for(op.answer_event.wait(), ASK_WAIT_S)
+    except asyncio.TimeoutError:
+        pass
+    said, op.answer, op.ask = op.answer, "", None
+    op.action = "Aage badh raha hoon"
+    _event(op)
+    if op.status == "cancelled":
+        return "cancelled"
+    if not said:
+        return ("No answer from her in 10 minutes. Finish with done(success=false) saying exactly what choice is "
+                "waiting for her (with the options), so she can say it later.")
+    STATS["asked"] = STATS.get("asked", 0) + 1
+    b = _named_browser(said)
+    if b and op.kind != HOOLA_PC_KIND:
+        op.browser = b
+    return f"HER ANSWER: \"{said}\". Do exactly that now (match it to the options on the page)."
+
+
+def _speak(op: "Op", name: str) -> None:
+    """A short spoken update on her live call at the real milestones (never every click; at most every 12 s)."""
+    if name not in _SPEAK_ON or name == "done":
+        return
+    now = time.time()
+    if now - op.told_at < SPEAK_EVERY_S:
+        return
+    op.told_at = now
+    try:
+        from ..voice import inject
+        inject(op.conv, f"(PC update - say it in a few natural words only when she is not speaking, never repeat "
+                        f"an old update: {op.action}.)")
+    except Exception:
+        pass
+
+
 def _otp_card(op: Op, req: PcOtp) -> None:
     try:
         bus.publish(op.conv, "operator_ask", {**req.public(), "task_id": op.id})
@@ -1885,6 +2168,7 @@ async def _run(op: Op) -> None:
         deadline = time.time() + op.minutes * 60
         while op.step < op.steps_max and time.time() < deadline and op.status == "running":
             _trim_images(messages)
+            _take_notes(op, messages)              # v0.858 her new words (chat / call) reach THIS task, not a new one
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
             _event(op)
             from . import brain as _brain   # v0.851 PC BRAIN: Qwen 3.8 Max or Sonnet 5.5, chosen for the PC loop alone
@@ -1930,6 +2214,7 @@ async def _run(op: Op) -> None:
                 op.step += 1
                 # v0.178 the card / chat line says what a person would say ("Chrome khol raha hoon"), not tool-speak
                 op.action = _say(name, a)
+                _speak(op, name)                   # v0.858 a live call hears the milestones as they happen
                 op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time())})
                 del op.timeline[:-60]
                 if name in ("open_app", "open_url", "window", "focus_window", "screenshot"):
@@ -1945,6 +2230,13 @@ async def _run(op: Op) -> None:
                     finished = True
                     results.append({"type": "tool_result", "tool_use_id": u["id"], "content": "ok"})
                     break
+                if name == "ask_user":
+                    msg = await _ask_user(op, a)
+                    if op.status == "cancelled":
+                        finished = True
+                        break
+                    results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg})
+                    continue
                 if name == "ask_otp":
                     msg = await _ask_otp(op, a)
                     if op.status == "cancelled":
@@ -2147,6 +2439,7 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
         old.task_obj.cancel()
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
+    op.browser = _named_browser(op.task) if ckind != HOOLA_PC_KIND else ""   # v0.858 the browser SHE named
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
     from . import brain as _brain
     op.brain, op.brain_model, op.brain_note = _brain.choose(brain)   # v0.851 PC BRAIN: her pick for this task, else pc_model

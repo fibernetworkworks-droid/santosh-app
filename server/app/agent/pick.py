@@ -65,6 +65,11 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
         hoola_pc = place == "hoolapc" or where._asked(conv, "hoolapc")
         if not her_pc and not hoola_pc:
             her_pc, hoola_pc = where.working(conv) == "pc", where.working(conv) == "hoolapc"
+        if name == "hoola_pc_do" and place != "hoolapc" and where._her_pc_busy(conv):
+            STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1     # v0.858 never wander to Hoola's PC mid-task
+            raise ToolError("Her task is RUNNING on HER OWN PC in this chat right now. Her follow-up belongs to that "
+                            "task: call pc_do with her words (it goes into the running task). Hoola's own PC only "
+                            "when she names it in this message ('Hoola ke PC par').")
         if name == "pc_do" and hoola_pc and not her_pc:
             STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1
             raise ToolError("She asked for HOOLA'S OWN PC (your cloud computer), not hers: use hoola_pc_do, not pc_do.")

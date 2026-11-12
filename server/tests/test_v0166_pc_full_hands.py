@@ -32,7 +32,7 @@ class FakePC:
             raise RuntimeError("Unknown action " + action)
         if action == "screen":
             return {"image_b64": JPEG, "width": 1280, "height": 720, "active_window": "Excel - Book1",
-                    "windows": ["Excel - Book1"], "monitor": args.get("monitor", "primary")}
+                    "windows": ["Excel - Book1", "New Tab - Google Chrome"], "monitor": args.get("monitor", "primary")}
         if action == "open_url":
             return {"opened": args["url"]}
         if action == "window":

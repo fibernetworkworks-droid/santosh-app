@@ -46,8 +46,9 @@ PC_TOOLS.append({"name": "pc_do", "description": (
     "your own browser (browse_web / computer_operator), not here. "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Santosh "
-    "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which of HER PCs, by her name for it ('office', 'ghar laptop'). Never a Hoola PC (that is hoola_pc_do). Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
+    "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step). While her PC task runs, her "
+    "follow-ups go here too (pc_do again): they steer THAT task - never hoola_pc_do / browse_web for them."),
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which of HER PCs, by her name for it ('office', 'ghar laptop'). Never a Hoola PC (that is hoola_pc_do). Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW, different job while a PC task is running. Leave out for her follow-ups ('Chrome mein karo', 'yeh wala lo'): they go INTO the running task."}}, "required": ["task"]}})
 PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or result of a pc_do task (session_id).",
                  "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
 PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": "Aapke PC ka kaam dekh raha hoon"})
@@ -101,11 +102,24 @@ async def hoola_pc_do(ctx: Ctx, task, pc="", model="", _wait=None, **_):
     return r
 
 
-async def pc_do(ctx: Ctx, task, pc="", model="", _wait=None, **_):
+async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
     from ..pc import operator
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Batayiye PC par kya karna hai")
+    # v0.858 a pc_do while her PC task in THIS chat is still running = her follow-up ('Chrome mein karo', 'Margherita
+    # lo') for THAT task: it goes into the running task, never a fresh task that throws the work away
+    live = operator.live_for(ctx.tenant_id, ctx.conversation_id)
+    if live is not None and operator.same_chat(live.conv, ctx.conversation_id) and live.kind != operator.HOOLA_PC_KIND and not fresh \
+            and (not pc or str(pc).lower() in (live.device_name or "").lower()):
+        operator.tell(ctx.tenant_id, ctx.conversation_id, task)
+        out = live.live()
+        out.pop("timeline", None)
+        out.update(where="Aapka PC (HER computer) - the SAME task that is already running", steered=True,
+                   say=("Her words went INTO the PC task that is already running (it reads them before its next step); "
+                        "no new task was started. Tell her in one short line that you passed it on. Use fresh=true "
+                        "only for a completely different new job."))
+        return out
     try:
         r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, pc=str(pc or ""), brain=str(model or ""),
                                  wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))

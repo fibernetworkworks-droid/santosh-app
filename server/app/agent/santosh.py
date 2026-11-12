@@ -3191,6 +3191,19 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save_pre(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
+        try:   # v0.858 her running PC task asked her a question (which pizza?): this line IS her answer, straight in
+            from ..pc import operator as _pcop
+            _pa = _pcop.answer_from_chat(tenant_id, conversation_id, user_text)
+        except Exception:
+            log.exception("pc ask answer failed")
+            _pa = None
+        if _pa:
+            if save_user:
+                _save_pre(conversation_id, "user", user_text, display=user_text)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": _pa["say"]}], display=_pa["say"])
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": _pa["say"], "source": "pc"})
+            bus.publish(conversation_id, "typing", {"on": False})
+            return _pa["say"]
         _every = bool(getattr(settings, "chat_every_message", False))
         if not voice and save_user and not _every and not str(user_text or "").lstrip().startswith(("[", "(")):
             try:   # v0.472 R1 PLAN PEHLE: a big research ask shows its plan and waits for her Haan; her Haan starts it

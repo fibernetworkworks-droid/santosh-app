@@ -2909,3 +2909,36 @@ step = screenshot from her PC -> one model call -> one action. The changes, serv
   page_* / ax_* tools first (no screenshot round).
 - Log `pc step N screen Ns` beside `pc brain ... step N s` so the next slow run shows where the time goes.
 Tests test_v0856_pc_speed.py (9). NOT VERIFIED: no timing from her PC yet.
+
+
+## v0.858.0 PC FLOW — the browser she names, her words into the running task, she picks the pizza (owner's Swiggy test, frozen-PC exception)
+
+Her test: "Chrome kholo aur Swiggy se pizza order karo" on her PC. Three problems, three root causes:
+
+1. **Edge instead of Chrome.** The desktop's `open_url` (desktop/santosh_desktop/control.py, frozen exe) focuses the FIRST
+   RUNNING browser in the order chrome, msedge, brave, firefox. Chrome was closed; Edge always runs in the background, so
+   it won. The open_url tool had no browser choice. Fix (server only, no exe rebuild): `operator._named_browser` reads the
+   browser she names in the task or in her later words (negations like 'edge nahi' / 'not edge' skipped, the last one
+   wins); `_open_in_named` brings THAT browser forward (open_app, polls the active window up to ~6 s), ctrl+t, types the
+   address, Enter, waits for the title and returns the first page words. Chrome already open (a window, or opened earlier
+   in this task) keeps the desktop's one-step path, because the desktop tries Chrome first.
+2. **Wandering between three browsers on two computers.** Every word she said mid-task was a NEW chat turn: pc_do
+   started a fresh task (replace=True threw the running one away), and `where.worked` held the chat on her PC only for
+   website-form tasks, so the model could go to hoola_pc_do / browse_web. Fix: `operator.tell` puts her words into the
+   running task as a note (`_take_notes` adds 'HER NEW WORDS' to the next step's message; a browser she names switches
+   `op.browser`); `pc_do` during her running task in the same chat (or the call made from it, `same_chat` through
+   callconv) steers it instead of starting a new one, unless `fresh=true`; `where.working` = "pc" while her PC task runs;
+   `pick.check` refuses hoola_pc_do then unless she names Hoola's PC in that message.
+3. **No question before choosing.** The PC loop had only ask_approval / ask_otp. NEW `ask_user` tool (question + options,
+   read from the page with prices): a chat note with numbered options, a `pc_ask` event, a call inject asking her out
+   loud, waits up to 10 min (`ASK_WAIT_S`). Her next chat line answers it before the model (`operator.answer_from_chat`
+   in `santosh._run_turn`, stop words excluded), and on a call the voice model passes her words through santosh_kaam,
+   which reaches the same hook. Prompt rules: SHE DECIDES THE CHOICES (item, size, add-ons, address, slot), THE BROWSER
+   SHE NAMED, HER NEW WORDS win.
+4. **Real-time voice.** `_speak` hands the live call a short update at the milestones (open_app / open_url / switch_tab /
+   form fill / approvals), at most every 12 s, through the existing `voice.inject` (waits for a pause).
+
+Tests: NEW `test_v0858_pc_flow.py` (11). `test_v0166_pc_full_hands.py`'s fake desktop now lists a Chrome window
+(the 'Chrome already open' one-step case). PC sweeps 150+ green; `test_v067_operator::test_replay...` and
+`test_v0475::test_console_stamps` red on the commit before too. NOT VERIFIED on her PC: the ctrl+t path, the ask on a
+real call.
