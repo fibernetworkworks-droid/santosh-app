@@ -193,7 +193,8 @@ void _tabsData(Santosh app) {
 }
 
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
-    {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900)}) async {
+    {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900),
+    bool a11y = false, double text = 1.0}) async {
   final app = await _app(prefs: prefs);
   prep?.call(app);
   t.view.physicalSize = _logical * _ratio;
@@ -203,6 +204,8 @@ Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) scr
   await t.pumpWidget(MaterialApp(
     debugShowCheckedModeBanner: false,
     theme: santoshTheme(),
+    // R9: text size as the phone's font setting makes it (200 % = the largest Android offers)
+    builder: (c, child) => MediaQuery(data: MediaQuery.of(c).copyWith(textScaler: TextScaler.linear(text)), child: child!),
     home: screen(app),
   ));
   // fonts and pictures load for real (outside the fake clock), then a few frames settle the layout
@@ -220,10 +223,21 @@ Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) scr
   }
   await t.pump(const Duration(milliseconds: 100));
   await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/$name.png'));
+  if (a11y) {
+    // R9 TalkBack + touch: every tap target is big enough (48 dp) and has a name a screen reader can say.
+    // Text contrast is proven on the colours themselves (test/design_rules_test.dart: every text pair >= 4.5:1);
+    // Flutter's textContrastGuideline samples PIXELS and, with real anti-aliased fonts, read the tab bar's border
+    // and a fading-in greeting as the text colour (near-black ink measured as #9F9F9E) - a false alarm, not a gate.
+    final h = t.ensureSemantics();
+    await expectLater(t, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(t, meetsGuideline(labeledTapTargetGuideline));
+    h.dispose();
+  }
 
   // leave nothing running: the screen goes, and its timers run out with it
   await t.pumpWidget(const SizedBox.shrink());
-  await t.pump(const Duration(seconds: 15));
+  app.dispose();
+  await t.pump(const Duration(seconds: 25));   // the shell's own delayed checks (20 s update offer) run out
 }
 
 void main() {
@@ -250,14 +264,14 @@ void main() {
   testWidgets('45 desk frame (new design)', (t) async {
     NightGlass.flat.value = true;
     addTearDown(() => NightGlass.flat.value = false);
-    await _shot(t, '45_desk_frame', (a) => const _SampleDesk());
+    await _shot(t, '45_desk_frame', (a) => const _SampleDesk(), a11y: true);
   });
   testWidgets('46 desk frame (old look)', (t) => _shot(t, '46_desk_frame_old', (a) => const _SampleDesk()));
   // v0.870 R8 wave 3: a swipe-tab desk (DeskTabsScaffold + pill DeskTabBar), flat in the new design
   testWidgets('47 swipe-tab desk (new design)', (t) async {
     NightGlass.flat.value = true;
     addTearDown(() => NightGlass.flat.value = false);
-    await _shot(t, '47_desk_tabs', (a) => const _SampleTabsDesk());
+    await _shot(t, '47_desk_tabs', (a) => const _SampleTabsDesk(), a11y: true);
   });
   // v0.871 R8 wave 4: a one-page desk (DeskPage), flat in the new design
   testWidgets('48 one-page desk (new design)', (t) async {
@@ -287,14 +301,14 @@ void main() {
       ];
   for (final mode in ['light', 'dark']) {
     final prefs = <String, Object>{'new_look': true, 'appearance': mode};
-    testWidgets('30 new home ($mode)', (t) => _shot(t, '30_new_home_$mode', home, prefs: prefs));
+    testWidgets('30 new home ($mode)', (t) => _shot(t, '30_new_home_$mode', home, prefs: prefs, a11y: true));
     testWidgets('31 new drawer ($mode)', (t) => _shot(t, '31_new_drawer_$mode', home, prefs: prefs, prep: chats, tab: find.byTooltip('Open chats')));
-    testWidgets('32 new work tab ($mode)', (t) => _shot(t, '32_new_work_$mode', home, prefs: prefs, tab: find.text('Work')));
+    testWidgets('32 new work tab ($mode)', (t) => _shot(t, '32_new_work_$mode', home, prefs: prefs, a11y: true, tab: find.text('Work')));
     // v0.862 R3 the new chat
-    testWidgets('33 new chat ($mode)', (t) => _shot(t, '33_new_chat_$mode', home, prefs: prefs, prep: _richChat));
+    testWidgets('33 new chat ($mode)', (t) => _shot(t, '33_new_chat_$mode', home, prefs: prefs, prep: _richChat, a11y: true));
     testWidgets('34 new chat working ($mode)', (t) => _shot(t, '34_new_chat_working_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, working: true)));
-    testWidgets('36 new cards ($mode)', (t) => _shot(t, '36_new_cards_$mode', home, prefs: prefs, prep: _cardsChat));
+    testWidgets('36 new cards ($mode)', (t) => _shot(t, '36_new_cards_$mode', home, prefs: prefs, prep: _cardsChat, a11y: true));
     testWidgets('37 new made cards ($mode)', (t) => _shot(t, '37_new_made_$mode', home, prefs: prefs, prep: _madeChat));
     testWidgets('38 new talk ($mode)', (t) => _shot(t, '38_new_talk_$mode', home, prefs: prefs,
         prep: (a) => a.realtimeVoice = true, tab: find.bySemanticsLabel('Start a call')));
@@ -304,17 +318,31 @@ void main() {
           _inCall(a);
         }, tab: find.bySemanticsLabel('Start a call')));
     // v0.866 R6 the three tabs in the new design, with a week of her work, things made and connections
-    testWidgets('40 new work ($mode)', (t) => _shot(t, '40_new_work_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Work')));
-    testWidgets('41 new connect ($mode)', (t) => _shot(t, '41_new_connect_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Connect')));
-    testWidgets('42 new made ($mode)', (t) => _shot(t, '42_new_made_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Made')));
+    testWidgets('40 new work ($mode)', (t) => _shot(t, '40_new_work_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Work'), a11y: true));
+    testWidgets('41 new connect ($mode)', (t) => _shot(t, '41_new_connect_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Connect'), a11y: true));
+    testWidgets('42 new made ($mode)', (t) => _shot(t, '42_new_made_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Made'), a11y: true));
     // v0.867 R7 Settings and Your AI team
     testWidgets('43 new settings ($mode)', (t) => _shot(t, '43_new_settings_$mode',
-        (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: prefs));
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: prefs, a11y: true));
     testWidgets('44 new team ($mode)', (t) => _shot(t, '44_new_team_$mode',
-        (a) => HoolaTheme(appearance: a.appearance, child: HoolaTeam(app: a)), prefs: prefs));
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaTeam(app: a)), prefs: prefs, a11y: true));
     testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, writing: true)));
   }
+
+  // R9: the new screens with the phone's text at 200 % (an overflow fails the test), dark
+  final big = <String, Object>{'new_look': true, 'appearance': 'dark'};
+  testWidgets('50 home at 200 % text', (t) => _shot(t, '50_text200_home', home, prefs: big, text: 2));
+  testWidgets('51 chat at 200 % text', (t) => _shot(t, '51_text200_chat', home, prefs: big, prep: _richChat, text: 2));
+  testWidgets('52 work at 200 % text', (t) => _shot(t, '52_text200_work', home, prefs: big, prep: _tabsData, tab: find.text('Work'), text: 2));
+  testWidgets('53 settings at 200 % text', (t) => _shot(t, '53_text200_settings',
+      (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: big, text: 2));
+  testWidgets('54 desk at 200 % text', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '54_text200_desk', (a) => const _SampleTabsDesk(), text: 2);
+  });
+
 }
 
 /// v0.868 R8: a desk the way the 30 wave-1 desks are built - DeskScaffold outside, the old Glass parts inside.

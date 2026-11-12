@@ -680,7 +680,9 @@ class _ThinkingState extends State<_Thinking> {
         InkWell(
           onTap: _done && text.isNotEmpty ? () => setState(() => _open = !_open) : null,
           borderRadius: HoolaRadius.r(HoolaRadius.chip),
-          child: Padding(
+          child: Container(
+            constraints: const BoxConstraints(minHeight: HoolaSpace.touch),   // R9: a 48 dp tap target
+            alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.psychology_outlined, size: 17, color: c.ink3),
@@ -730,7 +732,9 @@ class _StepsLine extends StatelessWidget {
         child: InkWell(
           onTap: () => _sheet(context, steps),
           borderRadius: HoolaRadius.r(HoolaRadius.pill),
-          child: Padding(
+          child: Container(
+            constraints: const BoxConstraints(minHeight: HoolaSpace.touch),   // R9: a 48 dp tap target
+            alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (running.isNotEmpty)

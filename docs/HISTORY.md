@@ -3367,3 +3367,31 @@ viewers (browser_live, chat_attach, photo_card, hoola_media, video_editor, brand
 headers), avatar setup, employee inbox, the notebook / app designer / site detail pages with their own app bars.
 Tests: desk_kit_test (>= 120 files / 175 frames, English titles, PC screens untouched; widget test of the frame); CI
 picture 48_desk_page. NOT VERIFIED on a real phone.
+
+
+## v0.872.0 R9 PROOF + POLISH (owner: "GO R9")
+
+The plan's last phase. What was proven, what was fixed, and what still needs a real phone.
+
+- PICTURES PASS: the screen-picture suite (test/goldens/screens_test.dart) had 32 of its tests fail on every run with
+  "A Timer is still pending". Two causes: (1) a REAL leak - `Santosh.dispose()` never cancelled `_healTimer` (the 90 s
+  self-check), `_replayGuard`, `_typingGuard` or `_workHide`; it now does; (2) the tests never disposed the app and
+  stopped 5 s before the shell's 20 s update-offer delay. All 47 pass now.
+- ACCESSIBILITY GATE: 22 new-design screens (home, work, chat, cards, the three tabs, settings, team, desk frames,
+  light + dark) run Flutter's `androidTapTargetGuideline` (48 dp) and `labeledTapTargetGuideline` (every tap target has
+  a name TalkBack can say). Found and fixed: `HoolaSpace.touch` was 44 (the iOS figure) -> 48; pill tabs and filter
+  chips (DeskScaffold, DeskTabBar, HoolaChips) now take the tap on the full 48 dp row while the pill still draws 36;
+  the chat's "Thought for" / "Used N steps" rows, the composer field, the call pill, the quick starts and GlassButton in
+  the new design reach 48. `textContrastGuideline` was tried and dropped: it samples pixels and, with real
+  anti-aliased fonts, read the tab bar's border and a fading-in greeting as the text colour (near-black ink measured
+  #9F9F9E). Contrast stays proven on the colours themselves (design_rules_test: every text pair >= 4.5:1).
+- 200 % TEXT: pictures 50-54 (home, chat, work, settings, a desk) at the largest Android font size; any overflow fails.
+  Found: the tab bar had a fixed 68 px height and overflowed 1-2 px at normal size, 32 px at 200 %; it now grows (labels
+  capped at 1.6x so four tabs fit). Quick starts wrap to two lines instead of being cut.
+- CI: app-screens.yml runs the desk / tabs / settings unit tests too, and a new step FAILS the job when any picture
+  test fails (pictures still upload).
+- glass.dart: NOT deleted - ~220 old screens still build on its widgets (drawn flat by the R8 desk frame). A ratchet in
+  design_rules_test keeps the number of files that use it at or below 222 and forbids blur anywhere outside it.
+- NOT DONE, said plainly: 60 fps on a budget phone was not measured (no phone here; the blur and moving aurora are
+  already gone in the new design); TalkBack was not walked by hand on a phone; sounds were not added (her decision);
+  ~23 special-layout screens (bottom bars, full-screen viewers, black editors) keep their own frame.

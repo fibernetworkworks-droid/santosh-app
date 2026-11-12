@@ -66,4 +66,21 @@ void main() {
     }
     expect(grew, isEmpty, reason: grew.join('\n'));
   });
+
+  // R9: glass.dart (Night Glass) cannot be deleted yet - ~220 old screens still build on its widgets, which the new
+  // design draws flat (NightGlass.flat). This ratchet makes sure it only shrinks: a new file never builds on it, and
+  // the baseline below is lowered as screens move to lib/ui/hoola_theme.dart. Nothing anywhere blurs any more.
+  test('ratchet: fewer files build on glass.dart, and nothing blurs', () {
+    const baseline = 222;   // v0.872.0
+    final users = [
+      for (final f in Directory('lib').listSync(recursive: true).whereType<File>())
+        if (f.path.endsWith('.dart') && f.readAsStringSync().contains("glass.dart'")) f.path
+    ];
+    expect(users.length, lessThanOrEqualTo(baseline), reason: 'a new file builds on glass.dart: use hoola_theme.dart');
+    final blur = [
+      for (final f in Directory('lib').listSync(recursive: true).whereType<File>())
+        if (f.path.endsWith('.dart') && !f.path.endsWith('glass.dart') && RegExp(r'BackdropFilter|ImageFilter\.blur').hasMatch(f.readAsStringSync())) f.path
+    ];
+    expect(blur, isEmpty, reason: 'blur costs frames on a budget phone');
+  });
 }

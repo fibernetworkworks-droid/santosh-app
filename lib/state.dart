@@ -2827,8 +2827,14 @@ class Santosh extends ChangeNotifier {
 
   @override
   void dispose() {
+    // R9: every timer the app object starts stops with it (the 90 s self-check, the replay / typing guards and the
+    // work row's hide timer kept running after dispose)
     _retryTimer?.cancel();
     _moodTimer?.cancel();
+    _healTimer?.cancel();
+    _replayGuard?.cancel();
+    _typingGuard?.cancel();
+    _workHide?.cancel();
     _replies.close();
     _sub?.cancel();
     super.dispose();

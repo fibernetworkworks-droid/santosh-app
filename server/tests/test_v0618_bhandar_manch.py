@@ -353,4 +353,4 @@ def test_registry_606_and_enum_pin():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.871.0"
+    assert APP_VERSION == "0.872.0"

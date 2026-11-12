@@ -126,7 +126,7 @@ class _DeskTabs extends StatelessWidget {
       height: 48,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         children: [
           for (var i = 0; i < tabs.length; i++)
             Padding(
@@ -141,7 +141,9 @@ class _DeskTabs extends StatelessWidget {
                           HapticFeedback.selectionClick();
                           onTab(i);
                         },
-                        child: AnimatedContainer(
+                        // R9: the whole 48 dp row takes the tap; the pill drawn inside stays 36
+                        child: Center(child: AnimatedContainer(
+                          height: 36,
                           duration: HoolaMotion.of(context, HoolaMotion.menu),
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           alignment: Alignment.center,
@@ -156,7 +158,7 @@ class _DeskTabs extends StatelessWidget {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: i == tab ? c.onPill : c.ink2)),
-                        ),
+                        )),
                       ),
                     )
                   : ChoiceChip(label: Text(deskWord(tabs[i])), selected: tab == i, onSelected: (_) => onTab(i)),
@@ -252,7 +254,7 @@ class DeskTabBar extends StatelessWidget implements PreferredSizeWidget {
   final TabController? controller;
 
   @override
-  Size get preferredSize => const Size.fromHeight(48);
+  Size get preferredSize => const Size.fromHeight(52);
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +264,7 @@ class DeskTabBar extends StatelessWidget implements PreferredSizeWidget {
     }
     const c = NightGlass.c;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
       child: TabBar(
         controller: controller,
         isScrollable: true,
@@ -270,6 +272,7 @@ class DeskTabBar extends StatelessWidget implements PreferredSizeWidget {
         dividerHeight: 0,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(color: c.pill, borderRadius: BorderRadius.circular(HoolaRadius.pill)),
+        indicatorPadding: const EdgeInsets.symmetric(vertical: 6),   // R9: a 36 pill inside a 48 dp tap target
         labelColor: c.onPill,
         unselectedLabelColor: c.ink2,
         labelPadding: const EdgeInsets.symmetric(horizontal: 14),
@@ -278,7 +281,7 @@ class DeskTabBar extends StatelessWidget implements PreferredSizeWidget {
         splashBorderRadius: BorderRadius.circular(HoolaRadius.pill),
         overlayColor: WidgetStatePropertyAll(c.ink.withOpacity(0.06)),
         onTap: (_) => HapticFeedback.selectionClick(),
-        tabs: [for (final l in labels) SizedBox(height: 36, child: l)],
+        tabs: [for (final l in labels) SizedBox(height: HoolaSpace.touch, child: l)],
       ),
     );
   }

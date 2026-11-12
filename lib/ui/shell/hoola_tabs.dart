@@ -236,7 +236,7 @@ class HoolaChips extends StatelessWidget {
       height: 48,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: HoolaSpace.gutter, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: HoolaSpace.gutter),
         children: [
           for (final (k, label) in items)
             Padding(
@@ -250,7 +250,9 @@ class HoolaChips extends StatelessWidget {
                     HapticFeedback.selectionClick();
                     onPick(k);
                   },
-                  child: AnimatedContainer(
+                  // R9: the whole 48 dp row height takes the tap; the pill drawn inside stays 36
+                  child: Center(child: AnimatedContainer(
+                    height: 36,
                     duration: HoolaMotion.of(context, HoolaMotion.menu),
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     alignment: Alignment.center,
@@ -262,7 +264,7 @@ class HoolaChips extends StatelessWidget {
                     child: Text(label,
                         style: HoolaType.label(c).copyWith(
                             fontSize: 13, color: k == picked ? c.onPill : c.ink2, fontWeight: FontWeight.w500)),
-                  ),
+                  )),
                 ),
               ),
             ),

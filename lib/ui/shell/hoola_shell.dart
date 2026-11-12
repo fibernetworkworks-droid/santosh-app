@@ -187,10 +187,13 @@ class HoolaNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    return Padding(
+    // R9: the bar grows with the phone's text size (labels capped at 1.6x so four tabs still fit), never overflows
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.6,
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
       child: Container(
-        height: 68,
+        constraints: const BoxConstraints(minHeight: 68),
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
           color: c.nav,
@@ -216,7 +219,8 @@ class HoolaNav extends StatelessWidget {
                       color: tab == i ? c.navOn : Colors.transparent,
                       borderRadius: HoolaRadius.r(HoolaRadius.pill),
                     ),
-                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
                       if (_items[i].$1 == null)
                         SizedBox(width: 24, height: 24, child: Transform.scale(scale: 1.7, child: Image.asset(_mark)))
                       else
@@ -227,6 +231,8 @@ class HoolaNav extends StatelessWidget {
                         ),
                       const SizedBox(height: 3),
                       Text(_items[i].$3,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: HoolaType.label(c).copyWith(
                               color: tab == i ? c.ink : c.ink2, fontWeight: tab == i ? FontWeight.w600 : FontWeight.w500)),
                     ]),
@@ -235,6 +241,7 @@ class HoolaNav extends StatelessWidget {
               ),
             ),
         ]),
+      ),
       ),
     );
   }
@@ -254,7 +261,7 @@ class _CallPill extends StatelessWidget {
       child: GestureDetector(
         onTap: onOpen,
         child: Container(
-          height: 44,
+          height: HoolaSpace.touch,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(color: c.pill, borderRadius: HoolaRadius.r(HoolaRadius.pill), boxShadow: HoolaShadow.float(c)),
           child: Row(children: [
@@ -387,15 +394,16 @@ class _StartChip extends StatelessWidget {
         customBorder: RoundedRectangleBorder(borderRadius: HoolaRadius.r(HoolaRadius.pill)),
         onTap: onTap,
         child: Container(
-          height: HoolaSpace.touch,
-          padding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+          // R9: at least 48 dp; with big phone text the words wrap to a second line instead of being cut
+          constraints: const BoxConstraints(minHeight: HoolaSpace.touch),
+          padding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (dot)
               Container(width: 8, height: 8, decoration: BoxDecoration(color: c.warn, shape: BoxShape.circle))
             else
               Icon(icon, size: 18, color: c.ink2),
             const SizedBox(width: 10),
-            Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c))),
+            Flexible(child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.body(c))),
             const SizedBox(width: 6),
             Icon(Icons.chevron_right_rounded, size: 18, color: c.ink3),
           ]),
@@ -580,7 +588,8 @@ class _HoolaComposerState extends State<HoolaComposer> {
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                  constraints: const BoxConstraints(minHeight: HoolaSpace.touch),   // R9: a 48 dp tap target
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),

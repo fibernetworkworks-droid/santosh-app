@@ -265,8 +265,8 @@ class HoolaRadius {
 
 class HoolaSpace {
   static const double s4 = 4, s8 = 8, s12 = 12, s16 = 16, s20 = 20, s24 = 24, s32 = 32;
-  /// Minimum touch target; main buttons are 48.
-  static const double touch = 44, touchMain = 48;
+  /// Minimum touch target (R9: 48 dp, Android's accessibility guideline - was 44, the iOS figure); main buttons 48.
+  static const double touch = 48, touchMain = 48;
   /// Side gutter of a phone screen.
   static const double gutter = 16;
 }

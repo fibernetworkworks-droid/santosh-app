@@ -371,7 +371,7 @@ class GlassButton extends StatelessWidget {
   Widget build(BuildContext context) => Press(
         onTap: onTap,
         child: Container(
-          height: height,
+          height: NightGlass.on && height < HoolaSpace.touch ? HoolaSpace.touch : height,   // R9: 48 dp tap target
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: NightGlass.on
               ? BoxDecoration(borderRadius: BorderRadius.circular(HoolaRadius.pill), border: Border.all(color: NightGlass.c.lineStrong))

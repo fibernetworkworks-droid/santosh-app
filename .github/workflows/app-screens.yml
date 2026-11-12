@@ -28,7 +28,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Unit tests (fonts bundled, markdown, design rules)
-        run: flutter test test/fonts_test.dart test/md_text_test.dart test/design_rules_test.dart
+        run: flutter test test/fonts_test.dart test/md_text_test.dart test/design_rules_test.dart test/desk_kit_test.dart test/hoola_tabs_test.dart test/hoola_settings_test.dart
       - name: Take the screen pictures
         run: |
           set -o pipefail
@@ -46,7 +46,16 @@ jobs:
             echo "### Screens that did not render"
             grep -E "\[E\]" screens.log | sed 's/^/- /' | head -20 || true
           } >> "$GITHUB_STEP_SUMMARY"
+      # R9: every picture renders, the new screens pass the 48 dp tap-target + spoken-name checks, and the
+      # 200 % text pictures do not overflow - a failure here fails the job (the pictures still upload)
+      - name: Every screen rendered and passed its checks
+        run: |
+          if grep -qE "\[E\]" screens.log; then
+            grep -E "\[E\]" screens.log | sed 's/^/::error::/' | head -20
+            exit 1
+          fi
       - name: One contact sheet of every picture
+        if: always()
         run: |
           pip install --quiet pillow
           python3 tool/contact_sheet.py test/goldens/shots screens-all.png || true
