@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 
 class NotebookIn(BaseModel):
-    title: str = "Nayi notebook"
+    title: str = "New notebook"
     emoji: str = ""
 
 
@@ -74,7 +74,7 @@ class MakeIn(BaseModel):
 class AudioIn(BaseModel):
     style: str = "deep_dive"
     length: str = "default"
-    language: str = "hinglish"
+    language: str = "en"
     focus: str = ""
     conversation_id: str = ""
 
@@ -325,7 +325,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     def nb_file(oid: str, name: str, request: Request, exp: int = 0, sig: str = ""):
         p = studio.file_for(oid, name, exp, sig)
         if p is None:
-            raise HTTPException(404, "Link purana ho gaya ya galat hai.")
+            raise HTTPException(404, "The link has expired or is wrong.")
         media = mimetypes.guess_type(name)[0] or "application/octet-stream"
         if name.endswith(".srt"):
             media = "text/plain; charset=utf-8"

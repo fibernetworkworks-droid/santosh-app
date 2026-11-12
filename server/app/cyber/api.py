@@ -33,7 +33,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return "", None
         data = await f.read(MAX_UPLOAD + 1)
         if len(data) > MAX_UPLOAD:
-            raise HTTPException(413, "File 25 MB se badi hai.")
+            raise HTTPException(413, "The file is larger than 25 MB.")
         return f.filename or "file", data
 
     @r.get("")
@@ -149,7 +149,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         def go():
             d = next((x for x in S.domains(tenant) if x["id"] == did), None)
             if not d:
-                raise S.CyberError("Domain nahi mila.")
+                raise S.CyberError("Domain not found.")
             return S.breach(tenant, d["domain"])
         return await run(go)
 

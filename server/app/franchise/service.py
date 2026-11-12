@@ -259,15 +259,15 @@ def save_settings(tenant: str, **kw: Any) -> dict:
 def _agr(s, tenant: str, ref: str) -> FrAgreement:
     rows = s.scalars(select(FrAgreement).where(FrAgreement.tenant_id == tenant)).all()
     if not rows:
-        raise FrError("Pehle brand ka agreement jodiye (brand, royalty %, marketing %).")
+        raise FrError("First add the brand's agreement (brand, royalty %, marketing %).")
     if not ref:
         if len(rows) == 1:
             return rows[0]
-        raise FrError("Kaun sa brand? " + ", ".join(r.brand for r in rows))
+        raise FrError("Which brand? " + ", ".join(r.brand for r in rows))
     for r in rows:
         if r.id == ref or r.brand.lower() == ref.lower() or ref.lower() in r.brand.lower():
             return r
-    raise FrError(f"Brand '{ref}' nahi mila.")
+    raise FrError(f"Brand '{ref}' was not found.")
 
 
 def _agr_view(a: FrAgreement) -> dict:
@@ -281,7 +281,7 @@ def _agr_view(a: FrAgreement) -> dict:
 
 def save_agreement(tenant: str, brand: str, **kw: Any) -> dict:
     if not str(brand).strip():
-        raise FrError("Brand ka naam chahiye.")
+        raise FrError("The brand's name is needed.")
     with _LOCK, session() as s:
         a = next((r for r in s.scalars(select(FrAgreement).where(FrAgreement.tenant_id == tenant)).all()
                   if r.brand.lower() == str(brand).strip().lower()), None)
@@ -293,7 +293,7 @@ def save_agreement(tenant: str, brand: str, **kw: Any) -> dict:
             if kw.get(k) not in (None, ""):
                 v = _num(kw[k])
                 if not 0 <= v <= 30:
-                    raise FrError(f"{k} 0-30% ke beech.")
+                    raise FrError(f"{k} must be between 0 and 30%.")
                 setattr(a, k, v)
         for k in ("tech_fee", "min_guarantee"):
             if kw.get(k) not in (None, ""):
@@ -313,16 +313,16 @@ def save_agreement(tenant: str, brand: str, **kw: Any) -> dict:
         if kw.get("start"):
             d = _date(kw["start"])
             if not d:
-                raise FrError("Agreement shuru hone ki tareekh samajh nahi aayi.")
+                raise FrError("Could not understand the agreement's start date.")
             a.start = d.isoformat()
         if isinstance(kw.get("checklist"), list):
             a.checklist = json.dumps([str(x).strip()[:120] for x in kw["checklist"] if str(x).strip()][:60], ensure_ascii=False)
         s.flush()
         v = _agr_view(a)
-    say = f"{'Naya brand' if new else 'Update'}: {v['brand']} - royalty {v['royalty_pct']:g}%" + (f", marketing {v['marketing_pct']:g}%" if v["marketing_pct"] else "") \
-        + (f", min {_rs(v['min_guarantee'])}/mahina" if v["min_guarantee"] else "") + (" (videshi franchisor: GST reverse charge)" if v["foreign"] else "") + "."
+    say = f"{'New brand' if new else 'Update'}: {v['brand']} - royalty {v['royalty_pct']:g}%" + (f", marketing {v['marketing_pct']:g}%" if v["marketing_pct"] else "") \
+        + (f", min {_rs(v['min_guarantee'])}/month" if v["min_guarantee"] else "") + (" (foreign franchisor: GST reverse charge)" if v["foreign"] else "") + "."
     if v["dates"].get("notice_by"):
-        say += f" Renewal notice {v['dates']['notice_by']} tak."
+        say += f" Renewal notice by {v['dates']['notice_by']}."
     return {"agreement": v, "say": say}
 
 
@@ -334,24 +334,24 @@ def agreements(tenant: str) -> list[dict]:
 def _outlet(s, tenant: str, ref: str) -> FrOutlet:
     rows = s.scalars(select(FrOutlet).where(FrOutlet.tenant_id == tenant)).all()
     if not rows:
-        raise FrError("Pehle outlet jodiye.")
+        raise FrError("Add an outlet first.")
     if not ref:
         if len(rows) == 1:
             return rows[0]
-        raise FrError("Kaun sa outlet? " + ", ".join(r.name for r in rows))
+        raise FrError("Which outlet? " + ", ".join(r.name for r in rows))
     for r in rows:
         if r.id == ref or r.name.lower() == ref.lower():
             return r
     hits = [r for r in rows if ref.lower() in r.name.lower() or ref.lower() == r.city.lower()]
     if len(hits) == 1:
         return hits[0]
-    raise FrError(f"Outlet '{ref}' nahi mila." if not hits else "Kai outlet: " + ", ".join(h.name for h in hits))
+    raise FrError(f"Outlet '{ref}' was not found." if not hits else "Several outlets match: " + ", ".join(h.name for h in hits))
 
 
 def save_outlet(tenant: str, name: str, brand: str = "", city: str = "", opened_on: str = "", rent=None, lease_end: str = "",
                 escalation_pct=None, escalation_on: str = "", targets: dict | None = None, manager_phone: str = "") -> dict:
     if not str(name).strip():
-        raise FrError("Outlet ka naam chahiye.")
+        raise FrError("The outlet's name is needed.")
     with _LOCK, session() as s:
         o = next((r for r in s.scalars(select(FrOutlet).where(FrOutlet.tenant_id == tenant)).all() if r.name.lower() == name.strip().lower()), None)
         new = o is None
@@ -367,7 +367,7 @@ def save_outlet(tenant: str, name: str, brand: str = "", city: str = "", opened_
             if v:
                 d = _date(v)
                 if not d:
-                    raise FrError(f"Tareekh samajh nahi aayi: {v}")
+                    raise FrError(f"Could not understand the date: {v}")
                 setattr(o, k, d.isoformat())
         if rent not in (None, ""):
             o.rent = _num(rent)
@@ -382,9 +382,9 @@ def save_outlet(tenant: str, name: str, brand: str = "", city: str = "", opened_
         s.flush()
         v = {"id": o.id, "name": o.name, "city": o.city, "agreement_id": o.agreement_id, "rent": o.rent, "lease_end": o.lease_end,
              "targets": {**R.TARGETS, **_j(o.targets, {})}}
-    say = f"{'Naya outlet' if new else 'Update'}: {v['name']}" + (f", kiraya {_rs(v['rent'])}" if v["rent"] else "") + "."
+    say = f"{'New outlet' if new else 'Update'}: {v['name']}" + (f", rent {_rs(v['rent'])}" if v["rent"] else "") + "."
     if v["rent"] and v["rent"] > R.TDS_RENT["month_threshold"]:
-        say += f" Kiraya Rs 50,000/mahina se upar: TDS {R.TDS_RENT['rate']:g}% (Sec 393(1)) kaatna pad sakta hai."
+        say += f" Rent is above Rs 50,000/month: TDS of {R.TDS_RENT['rate']:g}% (Sec 393(1)) may have to be deducted."
     return {"outlet": v, "say": say}
 
 
@@ -402,11 +402,11 @@ def add_sale(tenant: str, outlet: str, net=None, day: str = "", gross=None, disc
     on = today(tenant)
     d = _date(day, on - timedelta(days=0))
     if d > on:
-        raise FrError("Aage ki tareekh ki sale nahi.")
+        raise FrError("No sales for a future date.")
     g, disc = _num(gross), _num(discount)
     n = _num(net) if net not in (None, "") else (g - disc)
     if n <= 0 and g <= 0:
-        raise FrError("Sale ki rakam bataiye.")
+        raise FrError("Give the sale amount.")
     if not g:
         g = n + disc
     with _LOCK, session() as s:
@@ -420,9 +420,9 @@ def add_sale(tenant: str, outlet: str, net=None, day: str = "", gross=None, disc
             row.channels = json.dumps({str(k)[:20]: _num(v) for k, v in channels.items()})
         oid, oname = o.id, o.name
     cmp = _same_day_last_week(tenant, oid, d)
-    say = f"{oname} {d.strftime('%d %b')}: {_rs(n)}" + (f", {int(_num(orders))} bill (ausat {_rs(n / _num(orders))})" if _num(orders) else "")
+    say = f"{oname} {d.strftime('%d %b')}: {_rs(n)}" + (f", {int(_num(orders))} bill(s) (average {_rs(n / _num(orders))})" if _num(orders) else "")
     if cmp is not None:
-        say += f"; pichhle hafte isi din se {'+' if cmp >= 0 else ''}{cmp}%."
+        say += f"; {'+' if cmp >= 0 else ''}{cmp}% against the same day last week."
     return {"say": say + ("" if say.endswith(".") else "."), "vs_last_week": cmp}
 
 
@@ -459,7 +459,7 @@ def import_sales(tenant: str, outlet: str = "", data: bytes | None = None, name:
             hi, cols = i, f
             break
     if hi is None:
-        raise FrError("File mein tareekh aur sale (net / gross / total) ka column chahiye.")
+        raise FrError("The file needs a date column and a sale column (net / gross / total).")
     n, errs = 0, []
     for r in rows[hi + 1:]:
         g = lambda k: r[cols[k]] if k in cols and cols[k] < len(r) else None  # noqa: E731
@@ -472,7 +472,7 @@ def import_sales(tenant: str, outlet: str = "", data: bytes | None = None, name:
             n += 1
         except FrError as e:
             errs.append(f"{d}: {e}")
-    return {"days": n, "errors": errs[:20], "say": f"{n} din ki sale chadhi." + (f" {len(errs)} line mein dikkat." if errs else "")}
+    return {"days": n, "errors": errs[:20], "say": f"Sales for {n} day(s) entered." + (f" {len(errs)} line(s) had a problem." if errs else "")}
 
 
 _KIND_WORDS = {"food": ("food", "raw", "maal", "kirana", "material", "cogs", "sabzi", "doodh", "milk", "inventory"),
@@ -496,13 +496,13 @@ def add_cost(tenant: str, outlet: str, kind: str, amount, month: str = "", note:
     k = cost_kind(kind)
     amt = _num(amount)
     if amt <= 0:
-        raise FrError("Kharche ki rakam bataiye.")
+        raise FrError("Give the expense amount.")
     m = _month(month, today(tenant))
     with session() as s:
         o = _outlet(s, tenant, outlet)
         s.add(FrCost(tenant_id=tenant, outlet_id=o.id, month=m, kind=k, amount=round(amt, 2), note=str(note)[:200]))
         oname = o.name
-    return {"say": f"{oname} {m}: {R.COST_KINDS[k]} {_rs(amt)} likha."}
+    return {"say": f"{oname} {m}: {R.COST_KINDS[k]} {_rs(amt)} recorded."}
 
 
 # ---------------------------------------------------------------- royalty statement (her Haan to send)
@@ -520,7 +520,7 @@ def statement(tenant: str, brand: str = "", month: str = "", conv: str = "") -> 
         a = _agr(s, tenant, brand)
         outs = s.scalars(select(FrOutlet).where(FrOutlet.agreement_id == a.id)).all()
         if not outs:
-            raise FrError(f"{a.brand} ka koi outlet nahi.")
+            raise FrError(f"{a.brand} has no outlet.")
         lines, tot = [], {"base": 0.0, "royalty": 0.0, "min_topup": 0.0, "marketing": 0.0, "tech": 0.0}
         for o in outs:
             sm = _sales_month(s, o.id, m)
@@ -546,7 +546,7 @@ def statement(tenant: str, brand: str = "", month: str = "", conv: str = "") -> 
                 "payable": payable, "due": (date.fromisoformat(m + "-01").replace(day=1) + timedelta(days=32)).replace(day=min(a.due_day or 10, 28)).isoformat()}
         row = s.scalars(select(FrStatement).where(FrStatement.agreement_id == a.id, FrStatement.month == m)).first()
         if row and row.status == "paid":
-            raise FrError(f"{m} ka statement bhara ja chuka hai.")
+            raise FrError(f"The statement for {m} has already been paid.")
         if row is None:
             row = FrStatement(tenant_id=tenant, agreement_id=a.id, month=m)
             s.add(row)
@@ -556,8 +556,8 @@ def statement(tenant: str, brand: str = "", month: str = "", conv: str = "") -> 
     f = statement_file(tenant, sid, conv)
     say = (f"{a.brand} {m}: sale {_rs(tot['base'])} ({a.base}), royalty {_rs(tot['royalty'])}" + (f" (min guarantee top-up {_rs(tot['min_topup'])})" if tot["min_topup"] else "")
            + (f", marketing {_rs(tot['marketing'])}" if tot["marketing"] else "") + (f", tech {_rs(tot['tech'])}" if tot["tech"] else "")
-           + f". {g['say']}" + (f" TDS {_rs(tds['tds'])} kaatiye (Sec 393(1), 10%)." if tds["tds"] else "")
-           + f" Dena {_rs(payable)} {data['due']} tak. Franchisor ko report bhejne se pehle aapki haan.")
+           + f". {g['say']}" + (f" Deduct TDS of {_rs(tds['tds'])} (Sec 393(1), 10%)." if tds["tds"] else "")
+           + f" Payable: {_rs(payable)} by {data['due']}. The report goes to the franchisor only with your approval.")
     _publish(tenant, "fr_statement", {"statement_id": sid, "brand": a.brand, "month": m, "payable": payable}, conv)
     return {"statement_id": sid, "statement": data, "file": f["file"], "say": say}
 
@@ -568,7 +568,7 @@ def statement_file(tenant: str, sid: str, conv: str = "") -> dict:
     with session() as s:
         row = s.get(FrStatement, sid)
         if not row or row.tenant_id != tenant:
-            raise FrError("Statement nahi mila.")
+            raise FrError("Statement not found.")
         d = _j(row.data, {})
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -594,9 +594,9 @@ def approve_statement(tenant: str, sid: str) -> dict:
     with session() as s:
         row = s.get(FrStatement, sid)
         if not row or row.tenant_id != tenant:
-            raise FrError("Statement nahi mila.")
+            raise FrError("Statement not found.")
         if row.status == "paid":
-            raise FrError("Pehle se bhara.")
+            raise FrError("Already paid.")
         row.status = "approved"
         d = _j(row.data, {})
         a = s.get(FrAgreement, row.agreement_id)
@@ -605,21 +605,21 @@ def approve_statement(tenant: str, sid: str) -> dict:
     text = (f"Dear {d['brand']} team,\nPlease find attached the sales and royalty statement for {d['month']}: royalty base Rs {d['base']:,.0f}, "
             f"royalty Rs {d['royalty']:,.0f}, marketing Rs {d['marketing']:,.0f}, net payable Rs {d['payable']:,.0f}"
             + (f" after TDS of Rs {d['tds']['tds']:,.0f}" if d["tds"]["tds"] else "") + f". Payment will be made by {d['due']}.\nRegards,\n{firm}")
-    return {"to": to, "text": text, "say": "Haan mili: franchisor ke liye message taiyaar (Excel saath lagaakar aap bhejiye). Payment aap bank se karengi."}
+    return {"to": to, "text": text, "say": "Approved: the message for the franchisor is ready (attach the Excel and send it yourself). You make the payment from your bank."}
 
 
 def mark_paid(tenant: str, sid: str, on: str = "") -> dict:
     with session() as s:
         row = s.get(FrStatement, sid)
         if not row or row.tenant_id != tenant:
-            raise FrError("Statement nahi mila.")
+            raise FrError("Statement not found.")
         row.status, row.paid_on = "paid", (_date(on, today(tenant))).isoformat()
         d = _j(row.data, {})
-    say = f"{d['brand']} {d['month']} ka {_rs(d['payable'])} bhara, note kiya."
+    say = f"{d['brand']} {d['month']}: {_rs(d['payable'])} paid, noted."
     if d["tds"]["tds"]:
-        say += " TDS agle mahine ki 7 tareekh tak jama kariye aur 26Q mein dikhaiye."
+        say += " Deposit the TDS by the 7th of next month and show it in 26Q."
     if d["gst"]["how"] == "rcm":
-        say += " RCM ka IGST is mahine ke 3B mein cash se."
+        say += " Pay the IGST under RCM in cash in this month's 3B."
     return {"say": say}
 
 
@@ -660,14 +660,14 @@ def pnl(tenant: str, outlet: str, month: str = "") -> dict:
     fixed = sum(v for k, v in costs.items() if k not in ("food", "aggregator", "royalty")) + a.tech_fee
     be = R.break_even(fixed, var_pct)
     missing = [R.COST_KINDS[k] for k in ("food", "staff") if k not in costs]
-    say = (f"{name} {m}: sale {_rs(sm['net'])} ({sm['days']} din), kharcha {_rs(total_cost)}, {'munafa' if profit >= 0 else 'ghaata'} {_rs(abs(profit))}"
+    say = (f"{name} {m}: sale {_rs(sm['net'])} ({sm['days']} days), costs {_rs(total_cost)}, {'profit' if profit >= 0 else 'loss'} {_rs(abs(profit))}"
            + (f" ({profit * 100 / sm['net']:.1f}%)" if sm["net"] else "") + ".")
     if fl:
-        say += " Zyada: " + ", ".join(fl) + "."
+        say += " High: " + ", ".join(fl) + "."
     if be:
-        say += f" Break-even ~{_rs(be)}/mahina."
+        say += f" Break-even ~{_rs(be)}/month."
     if missing:
-        say += " Kharcha nahi likha: " + ", ".join(missing) + "."
+        say += " Costs not recorded: " + ", ".join(missing) + "."
     return {"outlet": name, "month": m, "sales": sm, "costs": {k: round(v, 2) for k, v in costs.items()}, "ratios": rt, "targets": targets,
             "profit": profit, "flags": fl, "break_even": be, "say": say}
 
@@ -685,10 +685,10 @@ def compare(tenant: str, month: str = "") -> dict:
     rows.sort(key=lambda r: -(r["margin_pct"] or -999))
     say = ""
     if rows:
-        say = f"Sabse achha: {rows[0]['outlet']} ({rows[0]['margin_pct']}%)."
+        say = f"Best: {rows[0]['outlet']} ({rows[0]['margin_pct']}%)."
         if len(rows) > 1:
-            say += f" Sabse kamzor: {rows[-1]['outlet']} ({rows[-1]['margin_pct']}%)" + (f" - {', '.join(rows[-1]['flags'][:2])}" if rows[-1]["flags"] else "") + "."
-    return {"outlets": rows, "say": say or "Abhi data nahi."}
+            say += f" Weakest: {rows[-1]['outlet']} ({rows[-1]['margin_pct']}%)" + (f" - {', '.join(rows[-1]['flags'][:2])}" if rows[-1]["flags"] else "") + "."
+    return {"outlets": rows, "say": say or "No data yet."}
 
 
 def pnl_file(tenant: str, month: str = "", conv: str = "") -> dict:
@@ -710,7 +710,7 @@ def pnl_file(tenant: str, month: str = "", conv: str = "") -> dict:
     wb.save(bio)
     f = chatfiles.store(tenant, "Outlet_PnL.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "franchise", "title": "Outlet P&L"}, conv)
-    return {"file": f, "say": "Har outlet ka P&L Excel mein."}
+    return {"file": f, "say": "Every outlet's P&L is in the Excel file."}
 
 
 # ---------------------------------------------------------------- licences, agreement dates
@@ -718,7 +718,7 @@ def save_licence(tenant: str, outlet: str, kind: str, valid_to: str, number: str
     k = kind if kind in R.LICENCES else next((c for c, (label, _) in R.LICENCES.items() if kind.lower() in label.lower()), "other")
     d = _date(valid_to)
     if not d:
-        raise FrError("Licence kab tak valid hai (tareekh)?")
+        raise FrError("Until when is the licence valid (date)?")
     with session() as s:
         o = _outlet(s, tenant, outlet)
         row = s.scalars(select(FrLicence).where(FrLicence.outlet_id == o.id, FrLicence.kind == k)).first() or \
@@ -741,7 +741,7 @@ def licences(tenant: str) -> dict:
                         "number": l2.number, "valid_to": l2.valid_to, **st})
     out.sort(key=lambda x: x["days"])
     due = [x for x in out if x["state"] != "ok"]
-    return {"licences": out, "due": due, "say": (f"{len(due)} licence par dhyaan: " + "; ".join(f"{x['outlet']} {x['text']}" for x in due[:4])) if due else "Saare licence theek."}
+    return {"licences": out, "due": due, "say": (f"{len(due)} licence(s) need attention: " + "; ".join(f"{x['outlet']} {x['text']}" for x in due[:4])) if due else "All licences are fine."}
 
 
 def dates_watch(tenant: str) -> list[dict]:
@@ -749,14 +749,14 @@ def dates_watch(tenant: str) -> list[dict]:
     out = []
     for a in agreements(tenant):
         d = a["dates"]
-        for k, label in (("notice_by", "renewal notice"), ("end", "agreement khatam"), ("lock_in_till", "lock-in khatam")):
+        for k, label in (("notice_by", "renewal notice"), ("end", "agreement ends"), ("lock_in_till", "lock-in ends")):
             if d.get(k):
                 dd = date.fromisoformat(d[k])
                 if 0 <= (dd - on).days <= 120:
                     out.append({"what": f"{a['brand']}: {label}", "on": d[k], "days": (dd - on).days})
     with session() as s:
         for o in s.scalars(select(FrOutlet).where(FrOutlet.tenant_id == tenant)).all():
-            for k, label in (("lease_end", "lease khatam"), ("escalation_on", f"kiraya {o.escalation_pct:g}% badhega")):
+            for k, label in (("lease_end", "lease ends"), ("escalation_on", f"rent goes up {o.escalation_pct:g}%")):
                 v = getattr(o, k)
                 if v:
                     dd = date.fromisoformat(v)
@@ -778,11 +778,11 @@ def audit(tenant: str, outlet: str, failed: list[str] | None = None, items: list
             res = [{"item": str(x.get("item", ""))[:120], "ok": bool(x.get("ok")), "note": str(x.get("note", ""))[:200]} for x in items if isinstance(x, dict)]
         else:
             if not checklist:
-                raise FrError("Brand ka SOP checklist nahi jodha (agreement mein checklist).")
+                raise FrError("The brand's SOP checklist is not added (checklist in the agreement).")
             bad = [f.lower() for f in failed or []]
             res = [{"item": c, "ok": not any(b in c.lower() for b in bad), "note": ""} for c in checklist]
         if not res:
-            raise FrError("Checklist khaali.")
+            raise FrError("The checklist is empty.")
         score = round(sum(1 for x in res if x["ok"]) * 100 / len(res), 1)
         s.add(FrAudit(tenant_id=tenant, outlet_id=o.id, day=d.isoformat(), kind=kind[:12], items=json.dumps(res, ensure_ascii=False), score=score,
                       note=str(note)[:500]))
@@ -795,10 +795,10 @@ def audit(tenant: str, outlet: str, failed: list[str] | None = None, items: list
         oname, phone = o.name, o.manager_phone
     repeat = [k for k, v in misses.items() if v >= 3]
     failed_now = [x["item"] for x in res if not x["ok"]]
-    say = f"{oname} {kind} audit: {score:g}%." + (f" Chooke: {', '.join(failed_now)}." if failed_now else " Sab theek.")
+    say = f"{oname} {kind} audit: {score:g}%." + (f" Missed: {', '.join(failed_now)}." if failed_now else " All good.")
     if repeat:
-        say += f" Baar-baar chook (30 din mein 3+): {', '.join(repeat)} - manager se baat kariye."
-    draft = {"to": phone, "text": f"{oname} audit {d.strftime('%d %b')}: {score:g}%. Theek kariye: {', '.join(failed_now)}."} if failed_now and phone else None
+        say += f" Missed again and again (3+ in 30 days): {', '.join(repeat)} - talk to the manager."
+    draft = {"to": phone, "text": f"{oname} audit {d.strftime('%d %b')}: {score:g}%. Please fix: {', '.join(failed_now)}."} if failed_now and phone else None
     return {"score": score, "failed": failed_now, "repeat": repeat, "draft": draft, "say": say}
 
 
@@ -814,24 +814,24 @@ def day(tenant: str) -> dict:
         due_st = [x for x in s.scalars(select(FrStatement).where(FrStatement.tenant_id == tenant, FrStatement.status != "paid")).all()]
     missing = [x["outlet"] for x in sales if x["net"] is None]
     if sales and any(x["net"] is not None for x in sales):
-        parts.append("Kal: " + ", ".join(f"{x['outlet']} {_rs(x['net'])}" + (f" ({'+' if x['vs_last_week'] >= 0 else ''}{x['vs_last_week']}%)" if x["vs_last_week"] is not None else "")
+        parts.append("Yesterday: " + ", ".join(f"{x['outlet']} {_rs(x['net'])}" + (f" ({'+' if x['vs_last_week'] >= 0 else ''}{x['vs_last_week']}%)" if x["vs_last_week"] is not None else "")
                                          for x in sales if x["net"] is not None))
     if missing:
-        parts.append("Kal ki sale nahi aayi: " + ", ".join(missing))
+        parts.append("Yesterday's sales did not come in: " + ", ".join(missing))
     lic = licences(tenant)["due"]
     if lic:
-        parts.append(f"{len(lic)} licence par dhyaan")
+        parts.append(f"{len(lic)} licence(s) need attention")
     for st in due_st:
         d = _j(st.data, {})
         dd = _date(d.get("due"))
         if dd and (dd - on).days <= 3:
-            parts.append(f"{d.get('brand')} royalty {_rs(d.get('payable'))} {d.get('due')} tak")
+            parts.append(f"{d.get('brand')} royalty {_rs(d.get('payable'))} due by {d.get('due')}")
     if on.day <= 3 and agreements(tenant):
-        parts.append("Pichhle mahine ka royalty statement banana hai")
+        parts.append("Last month's royalty statement has to be made")
     watch = dates_watch(tenant)
     if watch:
         parts.append(f"{watch[0]['what']} {watch[0]['on']}")
-    return {"sales": sales, "licences": lic, "watch": watch, "say": ("; ".join(parts) + ".") if parts else "Franchise: sab theek."}
+    return {"sales": sales, "licences": lic, "watch": watch, "say": ("; ".join(parts) + ".") if parts else "Franchise: all good."}
 
 
 def due_mornings() -> list[str]:

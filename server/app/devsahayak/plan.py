@@ -62,38 +62,38 @@ def assess(kind: str, text: str, files: list[str] | None = None, issue_txt: str 
     why: list[str] = []
     tier = "small"
     if kind == "explain":
-        return {"tier": "trivial", "why": ["samjhane ka kaam: koi badlav nahi"], "parts": parts, "trigger": trigger}
+        return {"tier": "trivial", "why": ["an explain task: no change"], "parts": parts, "trigger": trigger}
     if kind == "docs":
         tier = "trivial" if len(named) == 1 or parts <= 1 else "small"
-        why.append("docs ka kaam")
+        why.append("a docs task")
     elif kind == "fix":
         tier = "small" if (errory or named) and parts <= 2 else "standard"
-        why.append("error / file saaf bataya hai" if errory or named else "bug kahan hai yeh khud dhoondhna hai")
+        why.append("the error / file is stated clearly" if errory or named else "have to find where the bug is")
     elif kind == "tests":
         tier = "small" if named else "standard"
-        why.append("jin files ke test chahiye woh bataai hain" if named else "kis code ke test chahiye yeh dhoondhna hai")
+        why.append("the files that need tests are named" if named else "have to find which code needs tests")
     else:                                   # write
         small_ask = parts <= 1 and not trigger and not wide and (named or bool(SMALLISH.search(text)))
         tier = "small" if small_ask else "standard"
-        why.append("ek chhota naya tukda" if small_ask else "naya code likhna hai")
+        why.append("one small new piece" if small_ask else "new code has to be written")
     if parts >= 3 and _rank(tier) < _rank("standard"):
         tier = "standard"
-        why.append(f"{parts} cheezein ek saath maangi hain")
+        why.append(f"{parts} things asked for at once")
     elif parts >= 3:
-        why.append(f"{parts} cheezein ek saath maangi hain")
+        why.append(f"{parts} things asked for at once")
     if trigger and _rank(tier) < _rank("standard"):     # ECC's tie-breaker
         tier = "standard"
     if trigger:
-        why.append("login / paisa / API jaisa hissa chhuta hai, isliye kam se kam 'standard'")
+        why.append("it touches a part like login / money / API, so at least 'standard'")
     if wide and kind != "docs":
         tier = "large"
-        why.append("poore system / refactor jaisi baat hai")
+        why.append("it is about the whole system / a refactor")
     if parts >= 4:
         tier = "large"
-        why.append("bahut hisse hain")
+        why.append("it has many parts")
     if vague and _rank(tier) < _rank("standard"):
         tier = "standard"                               # a vague ask is NOT made 'large': v0.371 POOCHH LO already
-        why.append("kaam khula hai")                    # answers it with ONE question instead of guessing
+        why.append("the task is open-ended")                    # answers it with ONE question instead of guessing
     if kind == "docs" and _rank(tier) > _rank("small"):
         tier = "small"                                  # docs never becomes a cross-cutting change
     return {"tier": tier, "why": why[:4], "parts": parts, "trigger": trigger, "wide": wide, "vague": vague,
@@ -134,9 +134,9 @@ def card_say(number: str, plan: dict[str, Any], tier: str, waiting: bool) -> str
     """One human line for the chat (the detail lives on the card, per v0.240 CHHOTA JAWAB)."""
     n_f, n_s = len(plan.get("files") or []), len(plan.get("steps") or [])
     q = (plan.get("questions") or [])
-    head = f"{number}: plan taiyaar - {n_f} file, {n_s} kadam"
+    head = f"{number}: plan ready - {n_f} file(s), {n_s} step(s)"
     if q:
-        return f"{head}. Ek baat poochhni hai: {q[0]}"
+        return f"{head}. One thing to ask: {q[0]}"
     if waiting:
-        return f"{head}. Yeh kaam bada hai, isliye shuru karne se pehle aapki haan chahiye (card dekhiye)."
-    return f"{head}. Isi plan par kaam shuru kar raha hoon."
+        return f"{head}. This task is big, so your approval is needed before starting (see the card)."
+    return f"{head}. Starting work on this plan."

@@ -97,7 +97,7 @@ def test_web_and_youtube_sources(ai):
         assert "transcript" in kinds["youtube"]["note"].lower()       # no Gemini key in tests: title only, says so
     finally:
         ingest.set_http(None)
-    with pytest.raises(ingest.SourceError, match="andar ke network"):
+    with pytest.raises(ingest.SourceError, match="internal network"):
         ingest._public("http://127.0.0.1/admin")
 
 
@@ -146,7 +146,7 @@ def test_audio_overview(ai, monkeypatch):
     assert "Ravi:" in spoken[0] and "Priya:" in spoken[0]
     card = _events(ctx.conversation_id, "notebook_output")[-1]
     assert card["status"] == "ready" and card["files"]
-    assert any("taiyaar hai" in (n or "") for n in _notices(ctx.conversation_id))
+    assert any("is ready" in (n or "") for n in _notices(ctx.conversation_id))
 
 
 def test_audio_needs_gemini_key(ai):

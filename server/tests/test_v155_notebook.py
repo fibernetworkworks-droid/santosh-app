@@ -127,7 +127,7 @@ def test_sources_on_off_guide_view_rename(ai):
     ns.set_enabled("default", nid, [ns._sources(nid)[1].id], True, only=True)
     assert [s.enabled for s in ns._sources(nid)] == [False, True, False]
     ns.set_enabled("default", nid, [], True, only=True)                                   # nothing ticked
-    with pytest.raises(ns.NotebookError, match="tick"):
+    with pytest.raises(ns.NotebookError, match="Tick"):
         asyncio.run(ns.ask("default", nid, "x"))
     ns.set_enabled("default", nid, None, True)
     g = asyncio.run(ns.source_guide("default", nid, "1"))
@@ -138,7 +138,7 @@ def test_sources_on_off_guide_view_rename(ai):
     assert ns.rename_source("default", nid, "2", "Hiring")["sources"][1]["title"] == "Hiring"
     gg = asyncio.run(ns.notebook_guide("default", nid))
     assert gg["questions"] and asyncio.run(ns.notebook_guide("default", nid)) == gg        # kept until sources change
-    with pytest.raises(ns.NotebookError, match="dobara padha"):
+    with pytest.raises(ns.NotebookError, match="cannot be read again"):
         ns.refresh_source("default", nid, "1")                                            # text sources can't be re-read
 
 
@@ -177,7 +177,7 @@ def test_chat_history_config_and_notes(ai):
     asyncio.run(ns.ask("default", nid, "MTTR samjhao"))
     sysmsg = ai.prompts[-1][0]
     assert "LEARNING GUIDE" in sysmsg and "Marathi" in sysmsg and "short" in sysmsg
-    with pytest.raises(ns.NotebookError, match="Custom goal"):
+    with pytest.raises(ns.NotebookError, match="custom goal"):
         ns.set_config("default", nid, goal="custom")
     ns.set_config("default", nid, goal="custom", custom="GST exam ka teacher", language="auto")
     asyncio.run(ns.ask("default", nid, "x?"))
@@ -211,7 +211,7 @@ def test_text_studio_items(ai):
     rp = _made(studio.start("default", "", nid, "report", {"type": "study_guide", "language": "hi"})["id"])
     assert {"report.md", "report.docx", "report.pdf"} <= set(rp.files) and "Hindi" in ai.prompts[-1][1]
     assert (ns.out_dir("default", nid, rp.id) / "report.pdf").read_bytes()[:4] == b"%PDF"
-    with pytest.raises(ns.NotebookError, match="Custom report"):
+    with pytest.raises(ns.NotebookError, match="custom report"):
         studio.start("default", "", nid, "report", {"type": "custom"})
     cu = _made(studio.start("default", "", nid, "report", {"type": "custom", "prompt": "Board memo for directors"})["id"])
     assert "Board memo for directors" in ai.prompts[-1][1] and cu.data["type"] == "custom"
@@ -248,7 +248,7 @@ def test_slides_pdf_pptx_and_revise(ai):
     out = asyncio.run(studio.revise_slides("default", nid, o.id, [{"n": 2, "instruction": "title badlo"}]))
     assert out["data"]["slides"][1]["title"] == "Naya title" and out["data"]["revised"] == [2]
     assert (d / "slide-02.png").read_bytes() != before and out["status"] == "ready"
-    with pytest.raises(ns.NotebookError, match="Slide number"):
+    with pytest.raises(ns.NotebookError, match="slide number"):
         asyncio.run(studio.revise_slides("default", nid, o.id, [{"n": 9, "instruction": "x"}]))
 
 
@@ -269,7 +269,7 @@ def test_video_overview_real_ffmpeg(ai, monkeypatch):
     monkeypatch.setattr(media, "tts_chunk", lambda text, voices=None, voice="": said.append((text, voice)) or b"\x00\x08" * 24000)
     monkeypatch.setattr(studio, "_picture", _picture)
     nid = _nb(conv_ctx())
-    with pytest.raises(ns.NotebookError, match="Custom style"):
+    with pytest.raises(ns.NotebookError, match="custom style"):
         studio.start("default", "", nid, "video", {"style": "custom"})
     o = _made(studio.start("default", "", nid, "video", {"format": "brief", "style": "whiteboard", "voice": "male", "language": "hinglish"})["id"])
     d = ns.out_dir("default", nid, o.id)

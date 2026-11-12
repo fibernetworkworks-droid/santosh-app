@@ -157,7 +157,7 @@ def test_the_check_cap_and_grep_before_any_check(monkeypatch):
     lab.LS = LS
     assert lab.run({})["stage"] == "cap"
     lab.ws["last_log"] = ""
-    assert "Pehle run_check chalaiye" in lab.grep("x")
+    assert "Run run_check first" in lab.grep("x")
 
 
 # ---------------------------------------------------------------- the local proof replaces a CI round
@@ -200,7 +200,7 @@ def test_the_local_proof_replaces_the_pushed_red_commit(dev, monkeypatch):  # no
     v = S.start(T, "fix", "Khaali cart par ZeroDivisionError")
     t = S.get_task(T, v["number"])
     assert t["proof"]["state"] == "proven_local" and t["proof"]["local"] is True
-    assert "Lab mein saabit hua" in v["say"] and lab.closed is True
+    assert "Proven in the lab" in v["say"] and lab.closed is True
     commits = [c for c in S.FAKE.commits.values() if "by Hoola" in str(c.get("message"))]
     assert len(commits) == 1                              # ONE clean commit: no deliberate red commit on her branch
     assert any("Proven in the lab" in (p.get("body") or "") for p in S.FAKE.pr_patch)
@@ -218,7 +218,7 @@ def test_a_test_that_passes_without_the_fix_is_said_plainly(dev, monkeypatch):  
     _armed(S, monkeypatch, proof={"state": "not_proven_local", "cmd": "python3 -m pytest -q", "source": "CI",
                                   "red": {"ok": True, "seconds": 1.0}, "green": {"ok": True, "seconds": 1.1}})
     v = S.start(T, "fix", "Khaali cart par ZeroDivisionError")
-    assert "saabit nahi karta" in v["say"]
+    assert "does not prove the bug" in v["say"]
     assert "NOT proven" in S._lab_note(S.get_task(T, v["number"])["proof"])
 
 

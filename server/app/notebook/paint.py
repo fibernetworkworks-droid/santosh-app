@@ -31,7 +31,7 @@ log = logging.getLogger("santosh.notebook.paint")
 PRO_CHAIN = ["gemini-3-pro-image", "gemini-nano-banana-2.1", "gemini-3-pro-image-preview", "gemini-3.1-flash-image"]
 FRAME_CHAIN = ["gemini-nano-banana-2.1", "gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-3-pro-image-preview"]
 CHECK_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3-flash-preview", "gemini-2.5-flash"]
-AI_LABEL = "AI se bana · Hoola"
+AI_LABEL = "Made with AI · Hoola"
 _GOOD: dict[str, str] = {}          # chain name -> model that worked last (tried first next time)
 _LOCK = threading.Lock()
 
@@ -116,7 +116,7 @@ def paint(prompt: str, aspect: str, kind: str = "page", refs: list[bytes] | None
                 return data, model
             last = "no image returned"
             break
-    raise PaintError(f"Design model ne tasveer nahi di: {last[:160]}")
+    raise PaintError(f"The design model gave no picture: {last[:160]}")
 
 
 # ---------------------------------------------------------------- reading the page back

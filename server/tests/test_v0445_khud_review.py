@@ -63,7 +63,7 @@ def test_a_problem_in_its_own_pr_goes_back_for_a_fix_and_the_pr_stays_a_draft(se
     S._ci_step(T, v["id"])                                   # second read is clean -> ready for review
     t = S.get_task(T, v["number"])
     assert t["status"] == "pr_open" and fake.prs[1]["draft"] is False and fake.ready == [1]
-    assert any("koi problem nahi mili" in s for s in _says(S))
+    assert any("found no problems" in s for s in _says(S))
     assert not fake.merges                                   # merge is still only her tap
 
 
@@ -99,7 +99,7 @@ def test_it_stops_after_the_rounds_and_names_what_is_still_open(selfdev, monkeyp
     S._ci_step(T, v["id"])                                   # no round left -> handed over, said plainly
     t = S.get_task(T, v["number"])
     assert t["status"] == "pr_open" and fake.prs[1]["draft"] is False
-    assert any("khuli hai" in s and "Debug print" in s for s in _says(S))
+    assert any("still open" in s and "Debug print" in s for s in _says(S))
 
 
 def test_a_repo_without_ci_still_gets_the_own_review(dev, monkeypatch):  # noqa: F811
@@ -116,7 +116,7 @@ def test_a_repo_without_ci_still_gets_the_own_review(dev, monkeypatch):  # noqa:
     v = S.start(T, "fix", "Checkout crash")                  # deploy.yml only = no CI at all
     # no CI to wait for: the own review ran inside the push itself, so the card she gets is already the handover
     assert v["status"] == "pr_open" and len(seen) == 1       # (this fake has no GraphQL to flip its draft flag)
-    assert any("CI nahi hai" in s and "koi problem nahi mili" in s for s in _says(S))
+    assert any("has no CI" in s and "found no problems" in s for s in _says(S))
 
 
 def test_the_gate_never_blocks_a_pr_it_could_not_read(selfdev, monkeypatch):

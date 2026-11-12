@@ -56,7 +56,7 @@ def test_red_then_fix_then_green_then_ready(cidev, monkeypatch):
     fake = S.FAKE
     v = S.start(T, "fix", "Checkout crash ho raha hai", conv="c1")
     assert v["status"] == "ci_running" and fake.prs[1]["draft"] is True               # a DRAFT first
-    assert "PASS hone par hi" in v["say"]
+    assert "only when it PASSES" in v["say"]
     head1 = fake.prs[1]["head"]["sha"]
     _run(fake, head1, "failure")
     fixed = {"explain": "test galat tha", "files": [{"path": "tests/test_calc.py", "why": "fix", "edits": [
@@ -71,7 +71,7 @@ def test_red_then_fix_then_green_then_ready(cidev, monkeypatch):
     S._ci_step(T, v["id"])                                                           # green -> ready for review
     t = S.get_task(T, v["number"])
     assert t["status"] == "pr_open" and fake.prs[1]["draft"] is False and fake.ready == [1]
-    assert any("CI PASS (1 fix round ke baad)" in s for s in _says(S))
+    assert any("CI PASSED (after 1 fix round(s))" in s for s in _says(S))
     assert not fake.merges                                                           # never merged by itself
 
 
@@ -89,7 +89,7 @@ def test_it_stops_after_the_rounds_and_tells_her(cidev, monkeypatch):
     S._ci_step(T, v["id"])                                                           # rounds used up
     t = S.get_task(T, v["number"])
     assert t["status"] == "checks_failed" and fake.prs[1]["draft"] is True
-    assert any("1 baar theek karne ke baad bhi CI fail" in s for s in _says(S))
+    assert any("1 fix round(s) done and CI still fails" in s for s in _says(S))
 
 
 def test_no_ci_result_means_ready_with_a_note(cidev):
@@ -100,7 +100,7 @@ def test_no_ci_result_means_ready_with_a_note(cidev):
     S._ci_step(T, v["id"], now() + timedelta(minutes=16))
     t = S.get_task(T, v["number"])
     assert t["status"] == "pr_open" and S.FAKE.prs[1]["draft"] is False
-    assert any("koi CI nahi chala" in s for s in _says(S))
+    assert any("no CI ran on this PR" in s for s in _says(S))
 
 
 def test_the_tick_drives_the_loop(cidev):
@@ -120,7 +120,7 @@ def test_a_repo_without_ci_is_reviewed_by_hoola_itself_before_the_handover(dev, 
     monkeypatch.setattr(S, "model_json", lambda *a, **k: FIX_ANSWER)
     v = S.start(T, "fix", "Checkout crash")                                         # deploy.yml only = no CI
     # v0.443: the draft is opened, Hoola's own review runs inside the push, and the card is already the handover
-    assert v["status"] == "pr_open" and "review ke liye taiyaar" in v["say"]
+    assert v["status"] == "pr_open" and "ready for review" in v["say"]
     # (this fake has no GraphQL, so its own draft flag never flips; the cidev tests cover the real mark-ready)
 
 

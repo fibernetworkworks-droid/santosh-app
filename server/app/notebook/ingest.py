@@ -31,15 +31,15 @@ def _clip(text: str) -> tuple[str, bool]:
 def _public(url: str) -> None:
     u = urlparse(url)
     if u.scheme not in ("http", "https") or not u.hostname:
-        raise SourceError("Sirf http / https link chalega.")
+        raise SourceError("Only http / https links work.")
     try:
         infos = socket.getaddrinfo(u.hostname, u.port or (443 if u.scheme == "https" else 80))
     except socket.gaierror:
-        raise SourceError(f"'{u.hostname}' website nahi mili.")
+        raise SourceError(f"'{u.hostname}' website was not found.")
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
-            raise SourceError("Yeh link andar ke network ka hai; sirf public websites jod sakte hain.")
+            raise SourceError("This link is on an internal network; only public websites can be added.")
 
 
 _http: httpx.Client | None = None     # tests inject a mock transport
@@ -61,9 +61,9 @@ def _get(url: str) -> httpx.Response:
                 url = str(httpx.URL(url).join(r.headers["location"]))
                 continue
             return r
-        raise SourceError("Link bahut baar redirect hua.")
+        raise SourceError("The link redirected too many times.")
     except httpx.HTTPError as e:
-        raise SourceError(f"Website nahi khuli ({type(e).__name__}).")
+        raise SourceError(f"The website did not open ({type(e).__name__}).")
     finally:
         if _http is None:
             c.close()
@@ -95,27 +95,27 @@ def from_web(url: str) -> dict[str, Any]:
                 notes = notes_for_notebook(f"https://www.youtube.com/watch?v={vid}")
                 text, _ = _clip(head + "\n\n" + notes)
                 return {"kind": "youtube", "title": title, "origin": url, "text": text,
-                        "note": "Video ke notes Google Gemini ne video dekh kar banaye (timestamps ke saath)."}
+                        "note": "The video's notes were made by Google Gemini from watching the video (with timestamps)."}
             except Exception as e:
                 why = str(e)[:120]
         else:
-            why = "server par GEMINI_API_KEY nahi hai"
+            why = "the server has no GEMINI_API_KEY"
         return {"kind": "youtube", "title": title, "origin": url, "text": head,
-                "note": f"Video ka content nahi mila ({why}); sirf title / channel juda. Transcript ya notes text ke roop "
-                        "mein jodiye to poora fayda milega."}
+                "note": f"The video's content was not found ({why}); only the title / channel were added. Add the transcript or notes as "
+                        "text to get the full benefit."}
     r = _get(url)
     if r.status_code >= 400:
-        raise SourceError(f"Website ne mana kiya ({r.status_code}).")
+        raise SourceError(f"The website refused ({r.status_code}).")
     if len(r.content) > MAX_FETCH:
-        raise SourceError("Yeh page / file bahut badi hai.")
+        raise SourceError("This page / file is too big.")
     ctype = r.headers.get("content-type", "").split(";")[0].strip().lower()
     name = urlparse(url).path.rsplit("/", 1)[-1] or urlparse(url).hostname or "page"
     if ctype == "application/pdf" or name.lower().endswith((".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".txt")):
         out = mime.attachment_text(name, ctype, r.content, limit=MAX_CHARS, max_pages=400)
         if not out.get("text"):
-            raise SourceError(out.get("note") or "Is file se text nahi mila.")
+            raise SourceError(out.get("note") or "No text was found in this file.")
         text, cut = _clip(out["text"])
-        return {"kind": "web", "title": name, "origin": url, "text": text, "note": "(kaafi lamba tha, shuru ka hissa juda)" if cut else ""}
+        return {"kind": "web", "title": name, "origin": url, "text": text, "note": "(it was quite long; the first part was added)" if cut else ""}
     html = r.text
     tm = re.search(r"(?is)<title[^>]*>(.*?)</title>", html)
     title = mime.dec(re.sub(r"\s+", " ", tm.group(1)).strip()) if tm else (urlparse(url).hostname or url)
@@ -124,8 +124,8 @@ def from_web(url: str) -> dict[str, Any]:
     body = re.sub(r"(?is)<(nav|footer|header|aside|form|noscript|svg)[^>]*>.*?</\1>", " ", html)
     text, cut = _clip(mime.html_to_text(body))
     if len(text) < 200:
-        raise SourceError("Is page par padhne layak text nahi mila (shayad login ya app wala page hai).")
-    return {"kind": "web", "title": title, "origin": url, "text": text, "note": "(kaafi lamba tha, shuru ka hissa juda)" if cut else ""}
+        raise SourceError("No readable text was found on this page (it may be a login or app page).")
+    return {"kind": "web", "title": title, "origin": url, "text": text, "note": "(it was quite long; the first part was added)" if cut else ""}
 
 
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".heic", ".gif", ".bmp")
@@ -169,25 +169,25 @@ def from_image(name: str, mtype: str, data: bytes, kind: str, origin: str) -> di
                             "Write out ALL text in this image exactly (keep its language and script), then describe any "
                             "chart / table / diagram / photo in detail with every number and label.")
         if len(seen) > len(text):
-            text, how = seen, "Gemini ne photo padhi"
+            text, how = seen, "Gemini read the photo"
     if not text.strip():
-        raise SourceError(f"{name}: photo se kuch padha nahi gaya (OCR / Gemini dono nahi).")
+        raise SourceError(f"{name}: nothing could be read from the photo (neither OCR nor Gemini).")
     clip, cut = _clip(text)
-    return {"kind": "image", "title": name, "origin": origin, "text": clip, "note": how + (" (lamba tha, shuru ka hissa)" if cut else "")}
+    return {"kind": "image", "title": name, "origin": origin, "text": clip, "note": how + (" (it was long; the first part)" if cut else "")}
 
 
 def from_audio(name: str, mtype: str, data: bytes, origin: str) -> dict[str, Any]:
     """Audio file / her phone recording: Gemini writes a timestamped transcript (speaker turns), in the spoken language."""
     if len(data) > MAX_MEDIA:
-        raise SourceError(f"{name}: audio 19 MB se bada hai. Chhota hissa bhejiye.")
+        raise SourceError(f"{name}: the audio is larger than 19 MB. Send a smaller part.")
     text = _gemini_read(data, mtype or "audio/mpeg",
                         "Transcribe this audio word for word with [mm:ss] timestamps at each new speaker or every ~30 "
                         "seconds, as 'Speaker 1:', 'Speaker 2:'. Keep the spoken language and script (Hindi / Marathi in "
                         "Devanagari, English in Latin, Hinglish as spoken). Numbers as digits.")
     if not text:
-        raise SourceError("Audio se text nahi bana (server par GEMINI_API_KEY chahiye, ya audio saaf nahi).")
+        raise SourceError("No text could be made from the audio (the server needs GEMINI_API_KEY, or the audio is not clear).")
     clip, _ = _clip(text)
-    return {"kind": "audio", "title": name, "origin": origin, "text": clip, "note": "Gemini ne sun kar likha (timestamps ke saath)."}
+    return {"kind": "audio", "title": name, "origin": origin, "text": clip, "note": "Gemini listened and wrote it down (with timestamps)."}
 
 
 def from_bytes(name: str, mtype: str, data: bytes, kind: str, origin: str) -> dict[str, Any]:
@@ -216,9 +216,9 @@ def from_bytes(name: str, mtype: str, data: bytes, kind: str, origin: str) -> di
             if seen:
                 out = {"text": seen}
     if not (out.get("text") or "").strip():
-        raise SourceError(out.get("note") or f"{name} se text nahi mila.")
+        raise SourceError(out.get("note") or f"{name}: no text was found.")
     text, cut = _clip(out["text"])
-    return {"kind": kind, "title": name, "origin": origin, "text": text, "note": "(kaafi lamba tha, shuru ka hissa juda)" if cut else ""}
+    return {"kind": kind, "title": name, "origin": origin, "text": text, "note": "(it was quite long; the first part was added)" if cut else ""}
 
 
 def from_source(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
@@ -256,12 +256,12 @@ def from_source(tenant: str, src: dict[str, Any]) -> dict[str, Any]:
             name, emime, data, _c, _f = dsv.fetch(tenant, dsv.make_ref(c, f["id"]))
             return from_bytes(name, emime, data, "drive", f.get("webViewLink", "") or name)
         return {"kind": "drive", "title": f.get("name", "Drive file"), "origin": f.get("webViewLink", ""), "text": text,
-                "note": "(kaafi lamba tha, shuru ka hissa juda)" if cut else ""}
+                "note": "(it was quite long; the first part was added)" if cut else ""}
     if src.get("sheet"):
         from ..sheets import service as ssv
         out = ssv.read(tenant, str(src["sheet"]), src.get("tab"), None, 300, 0)
         lines = [" | ".join(out["columns"])] + [" | ".join(str(r.get(c, "")) for c in out["columns"]) for r in out["rows"]]
         text, _ = _clip("\n".join(lines))
         return {"kind": "sheet", "title": f"{out['title']} · {out['tab']}", "origin": out.get("link", ""), "text": text,
-                "note": "" if out["total_rows"] <= 300 else f"(pehli 300 rows; kul {out['total_rows']})"}
-    raise SourceError("source: {text}, {url}, {file_id}, {email_id[, attachment_id]}, {drive} ya {sheet} do.")
+                "note": "" if out["total_rows"] <= 300 else f"(first 300 rows; total {out['total_rows']})"}
+    raise SourceError("source: {text}, {url}, {file_id}, {email_id[, attachment_id]}, {drive} or {sheet}.")

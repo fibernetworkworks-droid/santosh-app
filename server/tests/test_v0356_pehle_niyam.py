@@ -78,7 +78,7 @@ def test_rules_come_first_and_a_folder_rule_is_read_before_an_edit_there(rdev, m
     assert "### Project rules" in body and "`AGENTS.md`" in body and "`app/AGENTS.md`" in body and "docstring kept" in body
     t = S.get_task(T, v["number"])
     assert t["found"]["rules"][:1] == ["AGENTS.md"] and "app/AGENTS.md" in t["found"]["rules"]
-    assert "folder ke niyam padhe: app/AGENTS.md" in t["found"]["loop"]["trail"]
+    assert "read the folder's rules: app/AGENTS.md" in t["found"]["loop"]["trail"]
 
 
 def test_an_edit_in_a_rules_folder_waits_until_the_rules_are_read(rdev, monkeypatch):
