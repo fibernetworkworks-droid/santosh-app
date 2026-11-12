@@ -55,6 +55,7 @@ def _full_voice_menu(monkeypatch):
         _pcop.HER_PC_AT.clear()
     except Exception:
         pass
+    monkeypatch.setenv("PC_VIA_OPENROUTER", "false")  # v0.866 older PC suites pin the Anthropic Sonnet path; test_v0866 turns it on
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
     monkeypatch.setenv("SITE_FULL_LOOKS", "false")    # v0.649 older site suites pin page-top looks; test_v0649 checks the whole site
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on

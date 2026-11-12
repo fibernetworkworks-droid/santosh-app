@@ -3175,3 +3175,22 @@ Owner, after the root-cause report and v0.864 PC MANAGER: "TURN OFF PLANNER AND 
 `pc_verify` True -> False (no Haiku screen check before 'done', no send-backs). The v0.859 D2 / D4 code stays and a
 `PC_PLAN=true` / `PC_VERIFY=true` line in the VPS .env turns them back on. No test change: tests/conftest.py already
 pinned both off for the older suites; the v0.859 suite sets them on for itself. NOT VERIFIED on her PC.
+
+
+## v0.866.0 SONNET VIA OPENROUTER
+
+Owner, after "RS 3000 IS GONE IN TESTING": "I HAVE CREDIT IN OPENROUTER USE SONET VIA THAT". Her PC work (the manager
+turn in chat / call and the PC loop) now runs on Sonnet billed to the server's OpenRouter key
+(`providers.key_of('openrouter')`). OpenRouter's id read live from openrouter.ai/api/v1/models:
+`anthropic/claude-sonnet-5.5` (vision + tools).
+- PC loop: `pc/brain.choose` returns brain `sonnet-or` when `pc_via_openrouter` is on and the key exists; `think` sends it
+  over the same OpenAI-shaped path Qwen uses (`think_qwen`), with the system message marked `cache_control` ephemeral
+  (OpenRouter passes Anthropic prompt caching through) and without the Qwen-only reasoning / provider-sort fields.
+  Claude's native computer toolset (v0.859 D1) needs the Anthropic API, so it now runs only on brain `sonnet`.
+- Manager: a PC turn (`pc_manager.wanted`) with the key runs on brain `glm` with `llm.MODEL_NOW` =
+  `openrouter:anthropic/claude-sonnet-5.5` - the path her console model pick already uses; no key = v0.864's Anthropic
+  Sonnet path.
+- `pc_via_openrouter` default on; `pc_openrouter_sonnet` names the model. conftest pins it off for the older suites.
+Tests: `test_v0866_sonnet_openrouter.py` (3). NOT VERIFIED: no live OpenRouter Sonnet call from here (no key in the
+sandbox); tools are only the cached system prompt - tool definitions are not cached on this path, so a PC step may cost a
+little more per token than the direct API with caching. Prices are OpenRouter's (Sonnet 5.5 $2 / M input as listed).

@@ -2205,7 +2205,22 @@ async def _turn_model(t: "_Turn"):
             _EFFORT_NOW.set("")
             _THINK_NOW.set(False)
         _pc_model = ""
-        if state.get("pc_turn") and _claude_ready():
+        _or_key = ""
+        if state.get("pc_turn") and getattr(settings, "pc_via_openrouter", True):
+            try:
+                from . import providers as _pv_pc
+                _or_key = _pv_pc.key_of("openrouter")
+            except Exception:
+                _or_key = ""
+        if state.get("pc_turn") and _or_key:
+            # v0.866 SONNET VIA OPENROUTER: the same Sonnet manager, billed to her OpenRouter credit (the OpenAI-shaped
+            # brain path with an 'openrouter:' model, the way her console model pick already runs)
+            brain = "glm"
+            llm.MODEL_NOW.set("openrouter:" + str(getattr(settings, "pc_openrouter_sonnet", "")
+                                                   or "anthropic/claude-sonnet-5.5"))
+            _MODEL_NOW.set("")
+            PC_MANAGER["turns"] += 1
+        if state.get("pc_turn") and not _or_key and _claude_ready():
             # v0.864 PC MANAGER: the brain running her PC job = Sonnet (past SAB HAIKU and the GLM door), this turn only
             brain = "claude"
             _pc_model = str(getattr(settings, "pc_manager_model", "") or "claude-sonnet-5-5")

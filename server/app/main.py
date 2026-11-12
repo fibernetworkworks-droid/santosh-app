@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.865.0"   # v0.865.0 PC SEEDHA (owner: "TURN OFF PLANNER AND CHECKER ALSO"; frozen-PC exception recorded): pc_plan and pc_verify default OFF - a PC task no longer waits for the Sonnet planner before its first step or for the Haiku screen check after each stage / before done (the v0.859 D2 / D4 layers); her own PC_PLAN / PC_VERIFY in the VPS .env still win
+APP_VERSION = "0.866.0"   # v0.866.0 SONNET VIA OPENROUTER (owner: "I HAVE CREDIT IN OPENROUTER USE SONET VIA THAT"; frozen-PC exception recorded): her PC work runs on Sonnet billed to the OpenRouter key - the PC loop as brain "sonnet-or" (anthropic/claude-sonnet-5.5 over the OpenAI-shaped Qwen path, system prompt cached with cache_control) and the PC manager turn on the "openrouter:" model pick; no OpenRouter key or PC_VIA_OPENROUTER=false = the Anthropic path as before
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

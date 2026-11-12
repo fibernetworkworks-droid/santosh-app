@@ -2476,7 +2476,7 @@ def _tools_for(op: "Op") -> list[dict]:
 
 def _native_on(op: "Op") -> bool:
     st = get_settings()
-    return bool(getattr(st, "pc_native_tools", True)) and not NATIVE_STATE["off"] and op.brain != "qwen"
+    return bool(getattr(st, "pc_native_tools", True)) and not NATIVE_STATE["off"] and op.brain == "sonnet"
 
 
 def _native_refused(e: Exception) -> bool:

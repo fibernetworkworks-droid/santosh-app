@@ -77,6 +77,10 @@ def choose(want: str = "") -> tuple[str, str, str]:
                 "No OpenRouter key (OPENROUTER_API_KEY) is on the server, so this PC task ran on Sonnet 5.5 instead of Qwen.")
     if brain == "qwen":
         return "qwen", route[2], ""
+    if getattr(st, "pc_via_openrouter", True) and qwen_route() is not None:
+        # v0.866 SONNET VIA OPENROUTER (owner: "I HAVE CREDIT IN OPENROUTER USE SONET VIA THAT"): the same Sonnet, billed
+        # to her OpenRouter credit, over the OpenAI-shaped path the Qwen brain already uses
+        return "sonnet-or", str(getattr(st, "pc_openrouter_sonnet", "") or "anthropic/claude-sonnet-5.5"), ""
     return "sonnet", str(getattr(st, "pc_sonnet_model", "") or "claude-sonnet-5-5"), ""
 
 
@@ -198,12 +202,17 @@ async def think_qwen(model: str, system: str, messages: list[dict], tools: list[
     if route is None:
         raise QwenError(401, "no OpenRouter key on the server (OPENROUTER_API_KEY)")
     url, key, _ = route
-    body: dict[str, Any] = {"model": model, "messages": to_openai(system, messages), "tools": tools_openai(tools),
-                            "max_tokens": max_tokens}
-    think = str(getattr(st, "pc_qwen_thinking", "") or "").strip().lower()
+    msgs = to_openai(system, messages)
+    claude = str(model).startswith("anthropic/")
+    if claude and msgs and msgs[0].get("role") == "system":
+        # v0.866 OpenRouter passes Anthropic prompt caching through cache_control: the long PC rules are read cheap
+        msgs[0] = {"role": "system", "content": [{"type": "text", "text": str(msgs[0]["content"]),
+                                                   "cache_control": {"type": "ephemeral"}}]}
+    body: dict[str, Any] = {"model": model, "messages": msgs, "tools": tools_openai(tools), "max_tokens": max_tokens}
+    think = "" if claude else str(getattr(st, "pc_qwen_thinking", "") or "").strip().lower()
     if think in ("on", "off"):
         body["reasoning"] = {"enabled": think == "on"}   # OpenRouter's own reasoning switch
-    sort = str(getattr(st, "pc_qwen_provider_sort", "") or "").strip().lower()
+    sort = "" if claude else str(getattr(st, "pc_qwen_provider_sort", "") or "").strip().lower()
     if sort in ("latency", "throughput", "price"):
         body["provider"] = {"sort": sort}   # v0.856 PC SPEED: OpenRouter picks the fastest-answering Qwen host
     for attempt in range(3):
@@ -240,8 +249,8 @@ async def think(op, client, messages: list[dict], params: dict, retry) -> Reply:
     own retries + history sanitising)."""
     brain, model = getattr(op, "brain", "") or "sonnet", getattr(op, "brain_model", "") or params.get("model")
     t0 = time.monotonic()
-    if brain == "qwen":
-        STATS["qwen"] += 1
+    if brain in ("qwen", "sonnet-or"):
+        STATS["qwen" if brain == "qwen" else "sonnet"] += 1
         rep = await think_qwen(model, params.get("system", ""), messages, params.get("tools") or [],
                                int(params.get("max_tokens") or 4000))
     else:
