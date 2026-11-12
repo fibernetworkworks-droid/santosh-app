@@ -101,7 +101,8 @@ def test_qwen_call_hits_her_endpoint_and_counts_tokens(monkeypatch):
     rep = asyncio.run(brain.think(op, None, [{"role": "user", "content": "Task: x"}],
                                   {"system": "S", "tools": [], "max_tokens": 4000}, None))
     assert seen["url"] == "https://openrouter.ai/api/v1/chat/completions" and seen["key"] == "secret"
-    assert seen["body"]["model"] == "qwen3.8-max" and "enable_thinking" not in seen["body"] and "reasoning" not in seen["body"]
+    assert seen["body"]["model"] == "qwen3.8-max" and "enable_thinking" not in seen["body"]
+    assert seen["body"]["reasoning"] == {"enabled": False}   # v0.857 PC SPEED: thinking off by default
     assert rep.content == [{"type": "text", "text": "ho gaya"}]
     assert rec and rec[0][0] == "qwen3.8-max" and rec[0][1]["tok_in"] == 1000
 
