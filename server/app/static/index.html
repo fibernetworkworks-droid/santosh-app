@@ -108,14 +108,14 @@ form input[type=text] { flex: 1; min-width: 0; height: 46px; border: none; outli
   <main id="feed" aria-live="polite">
     <div class="hero">
       <img src="/static/santosh-happy.png" alt="">
-      <p>Apni leads ki file (CSV ya Excel) attach kijiye aur boliye kya bhejna hai. Baaki kaam Santosh karega.</p>
+      <p>Attach your leads file (CSV or Excel) and say what to send. Santosh does the rest.</p>
     </div>
     <div class="typing glass" id="typing" aria-label="Santosh is typing"><i></i><i></i><i></i></div>
   </main>
 
   <div class="quick" id="quick">
-    <button class="glass" type="button" data-q="Diwali offer ka WhatsApp campaign chalana hai">WhatsApp campaign</button>
-    <button class="glass" type="button" data-q="Mere pichhle campaign ki report do">Campaign report</button>
+    <button class="glass" type="button" data-q="I want to run a WhatsApp campaign for the Diwali offer">WhatsApp campaign</button>
+    <button class="glass" type="button" data-q="Give me the report of my last campaign">Campaign report</button>
   </div>
 
   <form class="glass" id="composer">
@@ -124,7 +124,7 @@ form input[type=text] { flex: 1; min-width: 0; height: 46px; border: none; outli
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A3596" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11-9.2 9.2a6 6 0 0 1-8.5-8.5l8.6-8.6a4 4 0 0 1 5.7 5.7L9.4 17.4a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
     </button>
     <label for="text" class="sr">Message Santosh</label>
-    <input type="text" id="text" placeholder="Santosh se boliye…" autocomplete="off">
+    <input type="text" id="text" placeholder="Talk to Santosh…" autocomplete="off">
     <button class="send" type="submit" id="sendbtn" aria-label="Send">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
     </button>
@@ -178,7 +178,7 @@ form input[type=text] { flex: 1; min-width: 0; height: 46px; border: none; outli
       b.onclick = async () => { b.disabled = true; try { renderCampaign(await api(`/api/campaigns/${v.id}/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })); } catch (e) { showBanner(e.message); } b.disabled = false; };
       acts.append(b); };
     if (v.status === 'ready') act('Haan, bhej do', 'primary', 'send');
-    if (v.status === 'awaiting_approval' && !v.auto_send) act('Approve hote hi bhej dena', 'ghost', 'send');
+    if (v.status === 'awaiting_approval' && !v.auto_send) act('Send as soon as approved', 'ghost', 'send');
     if (['sending', 'awaiting_approval', 'ready', 'waiting_limit'].includes(v.status)) act('Rokiye', 'ghost', 'pause');
     if (v.status === 'paused') act('Phir se chalao', 'primary', 'resume');
     if (acts.childElementCount) c.append(acts);
@@ -203,7 +203,7 @@ form input[type=text] { flex: 1; min-width: 0; height: 46px; border: none; outli
     } else if (ev.kind === 'campaign') {
       renderCampaign(p);
     } else if (ev.kind === 'upload') {
-      add(el('div', 'chip glass', `${p.filename} · ${p.valid} sahi number${p.invalid ? ` · ${p.invalid} galat` : ''}`));
+      add(el('div', 'chip glass', `${p.filename} · ${p.valid} valid number${p.valid === 1 ? '' : 's'}${p.invalid ? ` · ${p.invalid} invalid` : ''}`));
     }
   }
 
@@ -228,7 +228,7 @@ form input[type=text] { flex: 1; min-width: 0; height: 46px; border: none; outli
     text = text.trim(); if (!text) return;
     document.getElementById('text').value = '';
     try { await api(`/api/conversations/${conv}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }); }
-    catch (e) { showBanner('Message nahi gaya: ' + e.message); }
+    catch (e) { showBanner('Message not sent: ' + e.message); }
   }
 
   document.getElementById('composer').addEventListener('submit', (e) => { e.preventDefault(); send(document.getElementById('text').value); });
@@ -239,7 +239,7 @@ form input[type=text] { flex: 1; min-width: 0; height: 46px; border: none; outli
     const fd = new FormData(); fd.append('file', f); fd.append('conversation_id', conv);
     try {
       const r = await api('/api/leads/upload', { method: 'POST', body: fd });
-      await send(`Maine file upload ki hai: ${f.name} (list id: ${r.list_id}, ${r.valid} sahi number).`);
+      await send(`I uploaded a file: ${f.name} (list id: ${r.list_id}, ${r.valid} valid numbers).`);
     } catch (err) { showBanner('File upload nahi hui: ' + err.message); }
     e.target.value = '';
   };
@@ -251,12 +251,12 @@ form input[type=text] { flex: 1; min-width: 0; height: 46px; border: none; outli
   fetch('/healthz').then(r => r.json()).then(h => {
     const m = document.getElementById('mode');
     m.textContent = h.dry_run ? 'TEST MODE' : 'LIVE'; m.className = 'pill ' + (h.dry_run ? 'test' : 'live');
-    if (!h.brain_configured) showBanner('Santosh ka dimaag abhi connect nahi hai: server par ANTHROPIC_API_KEY set kijiye.');
+    if (!h.brain_configured) showBanner('Santosh\'s brain is not connected yet: set ANTHROPIC_API_KEY on the server.');
   }).catch(() => {});
 
   start(false).catch(async (e) => {
     if (String(e.message).includes('not found')) { store.del('santosh_conv'); conv = null; return start(true); }
-    showBanner(e.message.includes('API key') ? 'API key chahiye: page ko ?key=AAPKI_KEY ke saath kholiye.' : 'Server se connect nahi ho paya: ' + e.message);
+    showBanner(e.message.includes('API key') ? 'An API key is needed: open the page with ?key=YOUR_KEY.' : 'Could not connect to the server: ' + e.message);
   });
 })();
 </script>

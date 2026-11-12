@@ -610,7 +610,7 @@ function flushStepBuf() {
 // v0.279 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
 const ATT = window.HoolaAttach ? HoolaAttach({api, esc, toast, token: () => TOKEN,
   itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN ? (PN.open(item), true) : false}) : null;
-const FILE_ONLY = 'Ye file dekho';   // the words a files-only message carries to Hoola
+const FILE_ONLY = 'Look at this file';   // the words a files-only message carries to Hoola
 function userBubble(text, files, eid, cid, at) {
   const d = document.createElement('div'); d.className = 'mu';
   const tiles = files?.length && ATT ? ATT.sent(files) : null;   // v0.279 her files sit above the bubble, like Claude
@@ -988,7 +988,7 @@ function workEvent(p) {
   if (p.id && p.data) STEPS_DATA.set(String(p.id), p.data);   // v0.171 the step's facts join its args in the chip
   $('#stageCap').textContent = err ? (p.phase === 'stopped' ? 'Stopped: ' : 'Problem: ') + (p.error || p.label || '') : (p.label || p.tool || 'Working');
   const site = p.data && (p.data.site || p.data.url) ? ' · ' + String(p.data.site || p.data.url).slice(0, 60) : '';
-  $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · done' : p.phase === 'waiting' ? ' · needs your Haan' : '');
+  $('#stageWhere').textContent = (WHERE[p.scene] || 'Hoola server') + site + (p.phase === 'done' ? ' · done' : p.phase === 'waiting' ? ' · needs your approval' : '');
   $('#nowline').classList.toggle('err', err);
   // Detailed activity opens only when the user requests it.
 }
@@ -1082,9 +1082,9 @@ function slider(label, onDone) {
   w.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finish().catch(() => {}); } });
   return w;
 }
-function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'}) {
+function decisionRow(el, {yes, no, yesLabel = 'Slide to approve', noLabel = 'Mana'}) {
   if (HUMAN) {   // v0.743 plain English on every approval, and the promise said once
-    if (yesLabel === 'Slide for Haan') yesLabel = 'Slide to approve';
+    if (yesLabel === 'Slide to approve') yesLabel = 'Slide to approve';
     if (noLabel === 'Mana') noLabel = 'Not now';
     el.insertAdjacentHTML('beforeend', '<p class="hxnote">Nothing happens until you approve.</p>');
   }
@@ -1095,7 +1095,7 @@ function decisionRow(el, {yes, no, yesLabel = 'Slide for Haan', noLabel = 'Mana'
   const row = document.createElement('div'); row.className = 'decrow'; row.append(s, a);   // v0.222 slider + Mana on one row
   el.classList.add('ask'); el.append(row);
 }
-const fingerprintMsg = 'This card moves money: Haan needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
+const fingerprintMsg = 'This card moves money: approval needs your phone’s fingerprint. Open this card in the Hoola app to approve.';
 
 // v0.228 the four-part final report of a long job: what was done / what was made / what is left / her part
 function goalReport(r) {
@@ -1285,7 +1285,7 @@ function renderCard(kind, p, at, live) {
       const ps = Array.isArray(p.places) ? p.places : [];
       const bits = x => [x.type, x.distance_km != null ? x.distance_km + ' km' : '',
                          x.rating != null ? '\u2605 ' + x.rating + (x.reviews ? ' (' + x.reviews + ')' : '') : '',
-                         x.open_now === true ? 'Khula hai' : x.open_now === false ? 'Band hai' : '',
+                         x.open_now === true ? 'Open' : x.open_now === false ? 'Closed' : '',
                          x.status && x.status !== 'OPERATIONAL' ? x.status.replace(/_/g, ' ').toLowerCase() : '']
                         .filter(Boolean).join(' \u00b7 ');
       el.innerHTML = head(p.title || 'Jagahein', ps.length ? String(ps.length) : '', 'v') +
@@ -1312,7 +1312,7 @@ function renderCard(kind, p, at, live) {
         + (p.amount ? `<div class="big">${esc(p.amount)}</div>` : '') + (p.payee ? `<div class="faint" style="font-size:13px">${esc(p.payee)}</div>` : '')
         + (p.items || []).map(i => `<div class="ln"><span>${esc(i.name)}</span><b>${esc(i.price)}</b></div>`).join('')
         + ((p.disclosures || []).length ? `<div class="kvg">${p.disclosures.map(i => `<span>${esc(i.label)}<b>${esc(i.value)}</b></span>`).join('')}</div>` : '')
-        + (p.voice_ok && !p.money ? `<p class="faint" style="font-size:12.5px">You can also approve by voice or in chat — say "haan karo" or "approve".</p>` : '');
+        + (p.voice_ok && !p.money ? `<p class="faint" style="font-size:12.5px">You can also approve by voice or in chat — say "yes, do it" or "approve".</p>` : '');
       if (p.status && p.status !== 'pending') { decided(el, p.status === 'approved', p.status === 'approved' ? '✓ Approved' : '✕ ' + p.status); break; }
       decisionRow(el, {
         yes: async () => { try { await api('POST', `/api/bazar/approvals/${encodeURIComponent(p.id)}`, {decision: 'approve'}); decided(el, true, '✓ Approved'); }
@@ -1337,7 +1337,7 @@ function renderCard(kind, p, at, live) {
       if (p.status && p.status !== 'pending') { decided(el, true, '✓ Answered'); break; }
       if (k === 'captcha') api('GET', `/api/operator/requests/${encodeURIComponent(p.id)}/captcha`, undefined, {raw: true}).then(r => r.blob()).then(b => { const i = el.querySelector('img.cap'); if (i) { i.src = URL.createObjectURL(b); i.hidden = false; } }).catch(() => {});
       if (k === 'payment') break;
-      decisionRow(el, {yesLabel: typed ? 'Fill the page' : 'Slide for Haan',
+      decisionRow(el, {yesLabel: typed ? 'Fill the page' : 'Slide to approve',
         yes: async () => { const inp = el.querySelector('input.fld'); const answer = inp ? inp.value.trim() || (k === 'captcha' ? p.suggested_answer || '' : '') : '';
           if (typed && !answer) { toast('Type the answer first.', true); throw new Error('empty'); }
           await api('POST', `/api/operator/requests/${encodeURIComponent(p.id)}`, {status: 'approved', answer}); if (inp) inp.value = ''; decided(el, true, typed ? '✓ Filled in the box (••••)' : '✓ Approved'); },
@@ -1912,7 +1912,7 @@ const KEYS = [
   {k: 'Ctrl+K', g: 'Search', label: 'Search all chats', fn: () => CH?.openSearch()},
   {k: 'Alt+ArrowDown', g: 'Chat', label: 'Agli chat', fn: () => chatStep(1)},
   {k: 'Alt+ArrowUp', g: 'Chat', label: 'Pichhli chat', fn: () => chatStep(-1)},
-  {k: 'Ctrl+Shift+O', g: 'Chat', label: 'Nayi chat', fn: () => $('#newChat').click()},
+  {k: 'Ctrl+Shift+O', g: 'Chat', label: 'New chat', fn: () => $('#newChat').click()},
   {k: '/', g: 'Composer', label: 'Focus the message box', when: e => !typingIn(e), fn: () => { go('chat'); msg.focus(); }},
   {k: '?', g: 'Saamaany', label: 'Yahin shorcut list', when: e => !typingIn(e), fn: () => openKeys()},
   {k: 'Escape', g: 'Saamaany', label: 'Close · Stop', fn: escLayer},
@@ -2002,7 +2002,7 @@ $('#files').addEventListener('click', e => {
   const v = e.target.closest('[data-view]');
   if (v && ATT) ATT.view(FILES, +v.dataset.view);
 });
-$('#micBtn').title = 'Bolo karke likhiye (dictation)';
+$('#micBtn').title = 'Dictate by speaking';
 $('#toolsBtn').addEventListener('click', () => go('kaam'));
 
 /* v0.173 dictation in the composer: mic button speaks hi-IN into the box (Chrome / Android); the live call
@@ -2140,7 +2140,7 @@ async function drawToday() {
     <div class="kpi gl"><b>${Object.values(d.lists).reduce((n, l) => n + l.length, 0)}</b><span>items in lists</span></div><div class="kpi gl"><b class="hid">${esc(ME?.handle || '')}</b><span>your Hoola ID</span></div></div>
     <div class="grid2">
       <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">No reminders.</div>'}</div>
-      <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">No lists yet. Ask in chat, for example: "doodh shopping list mein daalo".</div>'}</div>
+      <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">No lists yet. Ask in chat, for example: "add milk to the shopping list".</div>'}</div>
       <div class="tile gl" id="todayWork"><h3>Work</h3><div class="empty">Loading…</div></div>
       <div class="tile gl"><h3>Your approval is required <span class="tag warn">${d.pending.length}</span></h3>${d.pending.length ? d.pending.map(q => `<div class="ln"><span>${esc(q.title)}</span><b>${q.money ? '📱 phone' : 'console'}</b></div>`).join('') + '<button class="btn soft" type="button" id="toQueue">Open cards</button>' : '<div class="empty">Nothing yet.</div>'}</div>
     </div>`;
@@ -2239,7 +2239,7 @@ async function startCall() {
     if (typeof ev.data !== 'string') return play(ev.data);
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.type === 'ready') { callUI('live', 'Live · speak now'); CALL.ping = setInterval(() => ws.readyState === 1 && ws.send('{"type":"ping"}'), 15000); }
-    else if (m.type === 'user_text') caption('Aap', m.text);
+    else if (m.type === 'user_text') caption('You', m.text);
     else if (m.type === 'santosh_text') caption(AV, m.text);
     else if (m.type === 'interrupted') cutSpeech();
     else if (m.type === 'tool') callUI('live', (m.state === 'done' ? '✓ ' : '… ') + (m.label || 'kaam'));

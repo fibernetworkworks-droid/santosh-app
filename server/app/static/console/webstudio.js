@@ -233,7 +233,7 @@
   }
   function specCard(x) {
     return `<a class="card" href="#/plan/${enc(S(x.id))}"><span class="shot" aria-hidden="true"><i></i><i></i><b></b></span>
-      <span class="meta"><span style="display:flex;align-items:center;gap:8px;min-width:0"><b>${esc(S(x.name) || 'New plan')}</b>${pill('Plan · your Haan', 'v')}</span>
+      <span class="meta"><span style="display:flex;align-items:center;gap:8px;min-width:0"><b>${esc(S(x.name) || 'New plan')}</b>${pill('Plan · your approval', 'v')}</span>
       <span class="mut sm ell">${esc(S(x.words))}</span></span></a>`;
   }
 
@@ -1224,7 +1224,7 @@
     const cols = L(M(a.app).collections);
     if (!cols.length) {
       pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><h2>No lists yet</h2><p class="mut">Orders, enquiries, members, bookings: ask for the ones you need and Hoola adds logins and the lists, with rules worked out by the server.</p>
-        <div class="inl">${studioBtn('Add lists and logins', 'Is website mein logins aur ek list jodo: ', true)}</div>${a.error ? `<p class="mut sm">${esc(a.error)}</p>` : ''}</div></div>`;
+        <div class="inl">${studioBtn('Add lists and logins', 'Add logins and a list to this website: ', true)}</div>${a.error ? `<p class="mut sm">${esc(a.error)}</p>` : ''}</div></div>`;
       return;
     }
     pane.innerHTML = viewsBar() + `<div class="split"><nav class="subnav" aria-label="Lists"><div class="h">Data</div>${cols.map((c, i) => `<button type="button" data-coll="${esc(S(c.key))}" ${i ? '' : 'aria-current="page"'}>${esc(S(c.label))}${M(a.counts)[c.key] != null ? `<span class="sp"></span><span class="mut sm">${esc(S(M(a.counts)[c.key]))}</span>` : ''}</button>`).join('')}
@@ -1255,15 +1255,15 @@
   }
 
   function integrations(pane, v) {
-    const langs = L(v.languages), items = [['cart', 'Shop and cart', 'Prices and stock checked by the server, COD, pickup, coupons, GST invoices.', 'Is website mein shop chalu karo'],
-      ['card', 'Online payments', 'UPI QR to your UPI ID, or your own Razorpay / Cashfree / PhonePe. Paid only when the gateway confirms.', 'Is website par online payment jodo'],
-      ['cal', 'Booking slots', 'Real time slots with limits; you confirm each booking.', 'Is website mein booking slot lagao'],
-      ['blog', 'Blog', 'Hoola drafts posts, you say Haan to publish. RSS and scheduling.', 'Is website par blog chalu karo'],
-      ['globe', 'Languages', `Now: ${langs.join(', ') || 'en'}. Up to 4 more Indian languages with a switch in the menu.`, 'Is website mein Hindi version bhi jodo'],
-      ['chat', 'Visitor chat', 'Visitors message your team from the site; your reply goes only on your tap.', 'Is website par visitor chat chalu karo'],
+    const langs = L(v.languages), items = [['cart', 'Shop and cart', 'Prices and stock checked by the server, COD, pickup, coupons, GST invoices.', 'Turn on a shop in this website'],
+      ['card', 'Online payments', 'UPI QR to your UPI ID, or your own Razorpay / Cashfree / PhonePe. Paid only when the gateway confirms.', 'Add online payment to this website'],
+      ['cal', 'Booking slots', 'Real time slots with limits; you confirm each booking.', 'Add booking slots to this website'],
+      ['blog', 'Blog', 'Hoola drafts posts, you say Yes to publish. RSS and scheduling.', 'Turn on a blog on this website'],
+      ['globe', 'Languages', `Now: ${langs.join(', ') || 'en'}. Up to 4 more Indian languages with a switch in the menu.`, 'Add a Hindi version to this website too'],
+      ['chat', 'Visitor chat', 'Visitors message your team from the site; your reply goes only on your tap.', 'Turn on visitor chat on this website'],
       ['pin', 'Map and directions', 'Loads only when the visitor taps, so the page stays fast.', 'Is website ke contact page par map lagao'],
-      ['spark', 'Rich pieces', 'Quiz, configurator, comparison table, animation, 3D hero.', 'Is website mein ek quiz jodo: '],
-      ['link', 'Your other apps', 'New orders to Google Sheets, HubSpot or Slack through your own account.', 'Is website ke naye orders meri Google Sheet mein bhejo']];
+      ['spark', 'Rich pieces', 'Quiz, configurator, comparison table, animation, 3D hero.', 'Add a quiz to this website: '],
+      ['link', 'Your other apps', 'New orders to Google Sheets, HubSpot or Slack through your own account.', 'Send this website\'s new orders to my Google Sheet']];
     pane.innerHTML = viewsBar() + `<div class="main"><p class="mut">Each one is asked in this website's chat on the left, so Hoola plans it first. Money never moves without your tap.</p>
       <div class="cards">${items.map(([k, t, d, ask]) => `<section class="cardp"><div style="display:flex;align-items:center;gap:10px"><span class="si">${ico(k)}</span><b style="font-size:14.5px">${esc(t)}</b></div>
         <p class="mut sm">${esc(d)}</p><div class="inl" style="margin-top:auto">${studioBtn('Add', ask, false)}</div></section>`).join('')}</div></div>`;
@@ -1304,8 +1304,8 @@
       <form class="cardp" data-form="instr"><h3>Instructions for Hoola</h3><p class="mut sm">Your standing brief for this website: who it is for, tone, colours, words to use or avoid, what must never change. Hoola reads it on every message about this site, in every mode.</p>
         <textarea id="wsInstr" class="in" rows="7" maxlength="10000" placeholder="Example: For families in Nagpur. Warm and simple English. Never change the phone number or the Book now button."></textarea>
         <div class="inl"><span class="mut sm" id="wsInstrN">0 / 10,000</span><span class="sp"></span><button class="b pri" type="submit">Save instructions</button></div></form>
-      <section class="cardp"><h3>SEO and Google</h3><p class="mut">Page titles, descriptions, sitemap and Search Console are set by Hoola on every build.</p><div class="inl">${studioBtn('Check SEO now', 'Is website ka SEO check karo', false)}</div></section>
-      <section class="cardp"><h3>Team</h3><p class="mut">Writers draft, editors review, publishers put live.</p><div class="inl">${studioBtn('Invite a team member', 'Is website ke CMS mein ek team member jodo: ', false)}</div></section>
+      <section class="cardp"><h3>SEO and Google</h3><p class="mut">Page titles, descriptions, sitemap and Search Console are set by Hoola on every build.</p><div class="inl">${studioBtn('Check SEO now', 'Check the SEO of this website', false)}</div></section>
+      <section class="cardp"><h3>Team</h3><p class="mut">Writers draft, editors review, publishers put live.</p><div class="inl">${studioBtn('Invite a team member', 'Add a team member to this website\'s CMS: ', false)}</div></section>
       <section class="cardp danger"><h3>Take the site down</h3><p class="mut">The site stops answering; your pages, data and versions are kept.</p><div class="inl"><button class="b bad" type="button" data-act="takedown">Take down…</button></div></section></div>`;
     loadInstr();
   }
@@ -1377,7 +1377,7 @@
       ${dnsCard(host)}
       <section class="cardp"><h3>Connect your domain</h3><p class="mut sm">Hoola gives you the exact records to add, checks them from three places, then sets up HTTPS.</p>
         <form data-form="domain" class="inl"><input class="in" id="wsDom" aria-label="Your domain" placeholder="yourname.in" autocomplete="off" style="flex:1 1 200px"><button class="b" type="submit">Connect</button></form>
-        <div class="inl">${studioBtn('Find a domain to buy', 'Is website ke liye achha domain dhoondho', false)}</div></section>
+        <div class="inl">${studioBtn('Find a domain to buy', 'Find a good domain for this website', false)}</div></section>
       ${moves ? `<section class="cardp"><div style="display:flex;align-items:center;gap:8px"><h3 class="sp">Old site addresses</h3>${pill(moves.approved ? 'Approved' : `${rows.length} found`, moves.approved ? 'ok' : 'warn')}</div>
         <p class="mut sm">Links and Google results from your old site (${esc(S(moves.from_host))}) open the matching new page (301). Untick any you don't want.</p>
         <form data-form="moves" data-hash="${esc(S(moves.hash))}">${rows.slice(0, 200).map(r => `<label class="mv"><input type="checkbox" name="keep" value="${esc(S(r.old))}" ${r.guess ? '' : 'checked'}><code>${esc(S(r.old))}</code><span aria-hidden="true">→</span><code>${esc(S(r.new))}</code>${pill(S(r.how), r.guess ? 'warn' : '')}</label>`).join('') || '<p class="mut">Every old address already exists on the new site.</p>'}
@@ -1413,7 +1413,7 @@
       const blk = L(card.blockers);
       out.innerHTML = `<div class="launch"><p class="sm">${esc(S(card.say))}</p>${blk.length ? blk.map(b => `<p class="li bad">${esc(S(b))}</p>`).join('')
         : `<div style="display:flex;flex-wrap:wrap;gap:6px">${L(card.hosts).map(h => `<code>${esc(S(h))}</code>`).join(' ')}</div>
-          <div class="inl" style="justify-content:flex-end"><button class="b pri" type="button" data-act="golive" data-hash="${esc(S(card.hash))}">Haan, live karo</button></div>`}</div>`;
+          <div class="inl" style="justify-content:flex-end"><button class="b pri" type="button" data-act="golive" data-hash="${esc(S(card.hash))}">Yes, go live</button></div>`}</div>`;
     } catch (e) { out.innerHTML = `<p class="li bad">${esc(e.message)}</p>`; }
   }
 
@@ -2058,8 +2058,8 @@
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
     if (d.cmode) { setChatMode(d.cmode); return; }
-    if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
-      const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
+    if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `Build a website for ${d.type}: `; go('#/'); return; }
+      const t = $('#wsAsk'); if (t) { t.value = `Build a website for ${d.type}: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     if (d.src) { if (d.src === 'focus') { drawSource(''); $('#wsAsk')?.focus(); } else { drawSource(d.src); $('#wsSrc input')?.focus(); } return; }
     if (d.live === 'follow' || d.live === 'code') {        // v0.664 live build toggles
       if (d.live === 'follow') { LIVE.follow = !LIVE.follow; b.setAttribute('aria-pressed', String(LIVE.follow)); if (LIVE.follow) followPage(); }

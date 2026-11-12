@@ -63,15 +63,15 @@ $('#sKind').innerHTML = SIMK.map((k, i) => `<button type="button" data-v="${k}" 
   [...b.parentElement.children].forEach(x => x.setAttribute('aria-pressed', x === b)); sim[{sWho:'who',sKind:'kind',sTopic:'topic',sTime:'time'}[id]] = b.dataset.v; decide(); }));
 function decide() {
   const vip = sim.who === 'family', quiet = sim.time === 'night', k = sim.kind; let act, why, color;
-  if (sim.who === 'stranger') { act = 'Connect request only'; why = 'Aap jude nahi ho. Unhe aapka Hoola ID ya QR chahiye, aur sirf aapki Haan se judenge. Tab tak koi message andar nahi aata.'; color = 'var(--faint)'; }
-  else if (sim.topic && !vip) { act = 'Mana (declined)'; why = `'${sim.topic}' wali baatein aapne mana ki hain. Unki Hoola ko vinamrata se mana kar diya.`; color = 'var(--bad)'; }
-  else if (ACCEPT[k] === 'never' && !(vip && (k === 'message' || k === 'voice_note'))) { act = 'Mana (declined)'; why = 'Aapke niyam mein yeh mana hai.'; color = 'var(--bad)'; }
-  else if (LOCKED.has(k)) { act = 'Aapse poochhega'; why = 'Paise aur app files hamesha aapse poochh kar. Yeh niyam badla nahi ja sakta.'; color = 'var(--saffron)'; }
-  else if (k === 'file' && vip) { act = 'Seedha le liya'; why = 'VIP ki file: aapke niyam kehte hain le lo. Phir bhi pehle quarantine mein jaanchi gayi.'; color = 'var(--ok)'; }
-  else if (ACCEPT[k] === 'auto') { act = 'Seedha le liya'; why = 'Aapke niyam: seedha le lo.'; color = 'var(--ok)'; }
-  else { act = 'Aapse poochhega'; why = 'Card aayega: Haan, Mana, Baad mein ya Tum sambhalo.'; color = 'var(--saffron)'; }
-  if (vip && sim.topic && sim.who !== 'stranger' && act !== 'Mana (declined)') why += ' (VIP hai, isliye mana kiye vishay ka niyam nahi laga.)';
-  const q = sim.who !== 'stranger' && quiet && act !== 'Mana (declined)' ? (vip ? 'Quiet hours, par VIP ring kar sakte hain: abhi bataya.' : 'Quiet hours (10 pm to 8 am): chupchaap rakha, subah 8 baje batayega.') : '';
+  if (sim.who === 'stranger') { act = 'Connect request only'; why = 'You are not connected. They need your Hoola ID or QR, and you connect only with your approval. Until then no message comes in.'; color = 'var(--faint)'; }
+  else if (sim.topic && !vip) { act = 'Declined'; why = `You have declined '${sim.topic}' topics. Their Hoola was politely turned down.`; color = 'var(--bad)'; }
+  else if (ACCEPT[k] === 'never' && !(vip && (k === 'message' || k === 'voice_note'))) { act = 'Declined'; why = 'Your rules decline this.'; color = 'var(--bad)'; }
+  else if (LOCKED.has(k)) { act = 'Will ask you'; why = 'Money and app files always ask you first. This rule cannot be changed.'; color = 'var(--saffron)'; }
+  else if (k === 'file' && vip) { act = 'Accepted directly'; why = 'File from a VIP: your rules say accept. It was still checked in quarantine first.'; color = 'var(--ok)'; }
+  else if (ACCEPT[k] === 'auto') { act = 'Accepted directly'; why = 'Your rules: accept directly.'; color = 'var(--ok)'; }
+  else { act = 'Will ask you'; why = 'A card will come: Yes, No, Later or You handle it.'; color = 'var(--saffron)'; }
+  if (vip && sim.topic && sim.who !== 'stranger' && act !== 'Declined') why += ' (This is a VIP, so the declined-topic rule did not apply.)';
+  const q = sim.who !== 'stranger' && quiet && act !== 'Declined' ? (vip ? 'Quiet hours, but a VIP can ring through: told you now.' : 'Quiet hours (10 pm to 8 am): held quietly, will tell you at 8 am.') : '';
   const v = $('#verdict'); v.querySelector('.act').textContent = act; v.querySelector('.act').style.color = color; v.querySelector('.why').textContent = why; v.querySelector('.quiet').textContent = q;
   if (window.gsap && !reduce) gsap.fromTo(v, {y:8, opacity:.4}, {y:0, opacity:1, duration:.35, ease:'power2.out'});
 }
@@ -91,7 +91,7 @@ const TRAVEL = [
   ['Location','Off by default; never without your rule','M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11 M12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4'],
   ['Presentation','A deck or page, previewed first','M3 4h18v12H3z M12 16v4 M8 20h8 M7 12l3-3 2 2 4-4']];
 $('#tgrid').innerHTML = TRAVEL.map(t => `<div class="tv"><svg viewBox="0 0 24 24" fill="none" stroke="#FFB15C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${t[2]}"/></svg><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join('');
-const PSTOPS = [[60,'Sent','by the owner\'s tap'],[255,'Fetched once','into quarantine'],[450,'Real type','a "photo" that is a program is refused'],[645,'App & link checks','App Jaanch · fraud check'],[840,'Seen by your Hoola','gist + reply ideas'],[1040,'Your Haan','then it is yours']];
+const PSTOPS = [[60,'Sent','by the owner\'s tap'],[255,'Fetched once','into quarantine'],[450,'Real type','a "photo" that is a program is refused'],[645,'App & link checks','App Jaanch · fraud check'],[840,'Seen by your Hoola','gist + reply ideas'],[1040,'Your approval','then it is yours']];
 (function(){ const g = $('#pstops'); PSTOPS.forEach(([x, a, b], i) => { const s = svgEl('g', {class:'pst'}, g);
   svgEl('circle', {cx:x, cy:110, r:14, fill:'#0B0A1A', stroke: i === 5 ? '#34D399' : '#FFB15C', 'stroke-width':4}, s);
   const t1 = svgEl('text', {x:x, y:i % 2 ? 176 : 58, 'text-anchor':'middle', fill:'#F4F2FF', 'font-size':17}, s); t1.textContent = a;
@@ -140,7 +140,7 @@ function sortQuotes(done) { const rows = $$('#cmprows .r'), h = rows[0].offsetHe
   put(r1, 122, A, '#FFB15C'); put(r2, 205, B, '#C9BDFF'); })();
 
 /* ---------- timeline ---------- */
-const TL = [['v0.27','Mere Niyam','your rules for every knock'],['v0.28','Hoola ID & QR','an address for every avatar'],['v0.29','Knock & share','files, links, cards between avatars'],['v0.30','Tum sambhalo','six turns on its own, plus translation'],['v0.31','Mandali','groups with a hub'],['v0.32','Samaj & learning','communities, skills, privacy filter'],['v0.33','Chains & counters','tickets that pass to the technician'],['v0.34','Federation','avatars on other servers, A2A card'],['v0.43','Seeing avatars','real media, gist and reply ideas'],['v0.102','Hoola Deals','lists, code-built quotes, one state machine'],['v0.105','Selling rules','stock, price lists, pick lists to packers'],['v0.106','Money in a deal','locked payment card, receipts, khata, disputes'],['v0.112','Buying smarter','compare, trust tiers, standing orders, offers'],['v0.113','Bookings','slots as quotes, job card, warranty'],['v0.116','Beyond Hoola','A2A 1.0, AA, ABDM, DigiLocker, ONDC']];
+const TL = [['v0.27','My Rules','your rules for every knock'],['v0.28','Hoola ID & QR','an address for every avatar'],['v0.29','Knock & share','files, links, cards between avatars'],['v0.30','You handle it','six turns on its own, plus translation'],['v0.31','Mandali','groups with a hub'],['v0.32','Samaj & learning','communities, skills, privacy filter'],['v0.33','Chains & counters','tickets that pass to the technician'],['v0.34','Federation','avatars on other servers, A2A card'],['v0.43','Seeing avatars','real media, gist and reply ideas'],['v0.102','Hoola Deals','lists, code-built quotes, one state machine'],['v0.105','Selling rules','stock, price lists, pick lists to packers'],['v0.106','Money in a deal','locked payment card, receipts, ledger, disputes'],['v0.112','Buying smarter','compare, trust tiers, standing orders, offers'],['v0.113','Bookings','slots as quotes, job card, warranty'],['v0.116','Beyond Hoola','A2A 1.0, AA, ABDM, DigiLocker, ONDC']];
 $('#tl').insertAdjacentHTML('beforeend', TL.map(t => `<div class="mile"><b>${t[0]}</b>${esc(t[1])}<span> · ${esc(t[2])}</span></div>`).join(''));
 
 /* ---------- night sky ---------- */

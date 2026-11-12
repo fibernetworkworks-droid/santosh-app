@@ -134,7 +134,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
       const tile = (i, t, d, p, ok = true) => `<button class="hi-flow" data-a="go" data-p="${p}"><span class="hi-ftop"><span class="ic">${ic(i)}</span>${ok ? `<span class="arr">${ic('arrow')}</span>` : '<span class="hi-chip">Not connected yet</span>'}</span><h3>${t}</h3><span class="hi-mut hi-sm">${d}</span></button>`;
       return `<div class="hi-wrap"><section class="hi-hero"><span class="hi-eye"><i></i>Hoola Vocal</span><h1>What should Hoola say?</h1>
         <form class="hi-ask" data-f="quick"><label class="hi-sm hi-mut" for="hvQuick">Type the words</label>
-          <textarea id="hvQuick" rows="2" maxlength="5000" placeholder="e.g. Namaste! Sharma Traders mein aapka swagat hai. Aaj hum subah nau baje se khule hain."></textarea>
+          <textarea id="hvQuick" rows="2" maxlength="5000" placeholder="e.g. Welcome to Sharma Traders. We are open from nine this morning."></textarea>
           <div class="hi-askrow">${pick('hvQVoice', 'Voice', voiceOpts(UI.voice), 'user')}${pick('hvQLang', 'Language', opts(langs(), UI.lang), 'lang')}
             <span class="hi-fill"></span><button class="hi-btn lg"${c.tts ? '' : ' disabled'}>${ic('play')}Speak it</button></div></form></section>
         <div class="hi-strap ${ec}"><i></i><span class="hi-fill">${esc(et)}</span><button class="hi-link" data-a="go" data-p="settings" data-arg="Engines">See engines</button></div>
@@ -339,7 +339,7 @@ window.HoolaVocal = function ({api, esc, toast, upload, back, go: consoleGo}) {
             <div class="hi-card hi-grid"><h3>Planned request</h3><pre>POST /v1/vocal/speech
 Authorization: Bearer &lt;your key&gt;
 
-{"text": "Namaste!", "voice": "hv_Kore", "language": "hi"}</pre></div></div>`}</div>`;
+{"text": "Hello!", "voice": "hv_Kore", "language": "hi"}</pre></div></div>`}</div>`;
     }
   };
 

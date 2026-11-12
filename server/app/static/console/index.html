@@ -33,7 +33,7 @@
     </div>
     <form class="lcard gl" id="lform" autocomplete="on">
       <div class="brand"><img src="/static/hoola-mark.png" alt="">Hoola Console</div>
-      <p class="muted" style="margin-top:-6px">Login karke apni Hoola se miliye.</p>
+      <p class="muted" style="margin-top:-6px">Log in to meet your Hoola.</p>
       <button type="button" class="gbtn" id="gbtn">
         <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.3 5.7c4.3-3.9 7-9.8 7-17z"/><path fill="#FBBC05" d="M10.5 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.9-4.6l-7.9-6.2A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
         Continue with Google
@@ -47,7 +47,7 @@
         <div class="field" style="margin-top:10px"><label for="okey">Server API key</label><input id="okey" type="password" autocomplete="off" placeholder="API_KEY (server .env)"></div>
         <button type="button" class="btn soft" id="kbtn" style="margin-top:8px">Key se login</button>
       </details>
-      <p class="faint" style="font-size:12.5px;text-align:center">Console password pehli baar Google se login karke Main › Console mein banta hai.</p>
+      <p class="faint" style="font-size:12.5px;text-align:center">Your console password is created the first time you log in with Google, under Me › Console.</p>
     </form>
   </div>
 </section>
@@ -71,7 +71,7 @@
       <button class="ib mob" id="menu" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <button class="model" id="model" aria-label="Your avatar"><span class="av"><img class="aimg" src="/static/santosh-head.png" alt=""></span><span class="nm2 aname">Santosh</span><span class="faint" style="font-size:12px;font-weight:700" id="ttl"></span></button>
       <span class="sp"></span>
-      <span class="conn" id="conn" role="status"><i></i><span>Jud raha hai…</span></span>
+      <span class="conn" id="conn" role="status"><i></i><span>Connecting…</span></span>
       <button class="btn soft stopb" id="stopBtn" hidden>■ Rokiye</button>
       <button class="livebtn stbtn" id="studioBtn" type="button" hidden aria-label="Build studio"><i></i><span>Studio</span></button>
       <button class="livebtn" id="liveBtn" aria-label="Show live work"><i></i><span id="liveTxt">Live</span></button>
@@ -79,19 +79,19 @@
     <div class="views">
       <section class="view" id="v-chat" aria-label="Chat">
         <div class="landing" id="landing">
-          <div class="hi"><span class="av"><img class="aimg" src="/static/santosh-head.png" alt=""></span><h1 id="greet">Namaste</h1></div>
+          <div class="hi"><span class="av"><img class="aimg" src="/static/santosh-head.png" alt=""></span><h1 id="greet">Hello</h1></div>
           <div class="slot" id="slotLand"></div>
           <div class="cats" id="cats" role="group" aria-label="Ideas"></div>
           <div class="sugs" id="sugs"></div>
         </div>
         <div class="thread" id="thread" hidden tabindex="-1"><div class="col" id="col"></div></div>
-        <div class="dock" id="dock" hidden><button type="button" class="jump" id="jump" hidden aria-label="Neeche jao, naya jawab">↓ Neeche jao</button><div class="slot" id="slotDock"></div><p class="disclaim"><span class="aname">Santosh</span> bhi galti kar sakta hai. Bhejna, paisa, sign aur delete hamesha aapki Haan se.</p></div>
+        <div class="dock" id="dock" hidden><button type="button" class="jump" id="jump" hidden aria-label="Jump to the new answer">↓ Jump down</button><div class="slot" id="slotDock"></div><p class="disclaim"><span class="aname">Santosh</span> can make mistakes too. Sending, money, signing and deleting always need your approval.</p></div>
       </section>
-      <section class="view" id="v-aaj" aria-label="Aaj" hidden><div class="pad" id="aaj"></div></section>
-      <section class="view" id="v-kaam" aria-label="Kaam" hidden><div class="pad" id="kaam"></div></section>
+      <section class="view" id="v-aaj" aria-label="Today" hidden><div class="pad" id="aaj"></div></section>
+      <section class="view" id="v-kaam" aria-label="Work" hidden><div class="pad" id="kaam"></div></section>
       <section class="view" id="v-baat" aria-label="Baat" hidden></section>
       <section class="view" id="v-main" aria-label="Main" hidden><div class="pad" id="mainp"></div></section>
-      <section class="view" id="v-bana" aria-label="Banaya hua" hidden><div class="pad" id="bana"></div></section>
+      <section class="view" id="v-bana" aria-label="Made" hidden><div class="pad" id="bana"></div></section>
       <section class="view" id="v-project" aria-label="Folder" hidden><div class="pad" id="project"></div></section>
     </div>
   </main>
@@ -101,20 +101,20 @@
       <div class="lhd"><h3>Live kaam</h3><span class="tag ok" id="liveTag">khaali</span><button class="ib" id="liveClose" aria-label="Close live work">✕</button></div>
       <div class="nowline" id="nowline"><b id="stageCap">Taiyaar</b><span id="stageWhere">Hoola server</span></div>
       <div class="lsec">Kadam</div>
-      <div class="lsteps" id="lsteps"><div class="empty">Koi kaam nahi chal raha.</div></div>
-      <div class="lsec">Aapki Haan chahiye <span class="tag warn" id="qcount">0</span></div>
-      <div class="queue" id="queue"><div class="empty">Abhi kuch nahi.</div></div>
+      <div class="lsteps" id="lsteps"><div class="empty">No work running.</div></div>
+      <div class="lsec">Needs your approval <span class="tag warn" id="qcount">0</span></div>
+      <div class="queue" id="queue"><div class="empty">Nothing yet.</div></div>
     </div>
   </aside>
   <aside class="studio" id="studio" aria-label="Build studio"></aside>
-  <aside class="panel" id="panel" aria-label="Kaam ka panel"></aside>
+  <aside class="panel" id="panel" aria-label="Work panel"></aside>
 
   <nav class="tabbar gl" id="tabbar" aria-label="Tabs"></nav>
 </div>
 
 <form class="box" id="composer" autocomplete="off">
   <div class="files" id="files"></div>
-  <textarea id="msg" rows="1" placeholder="Kuch bhi kahiye… bill ka photo, GST, reel, website" aria-label="Message"></textarea>
+  <textarea id="msg" rows="1" placeholder="Ask anything… a bill photo, GST, a reel, a website" aria-label="Message"></textarea>
   <div class="row">
     <button type="button" class="ib" id="attach" aria-label="Attach files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5 5 0 0 1-7-7L14 5.5a3.3 3.3 0 0 1 4.7 4.7L10.2 18.7a1.7 1.7 0 0 1-2.4-2.4L15.5 8.6"/></svg></button>
     <input type="file" id="fileIn" multiple hidden>
@@ -125,7 +125,7 @@
   </div>
 </form>
 <div class="toast" id="toast" role="status" hidden></div>
-<noscript><p style="padding:40px;text-align:center">Hoola Console ke liye JavaScript chahiye.</p></noscript>
+<noscript><p style="padding:40px;text-align:center">Hoola Console needs JavaScript.</p></noscript>
 <script src="/static/console/kaam.js?v=0.164.0"></script>
 <script src="/static/console/vendor/qrcode.js?v=1.4.4"></script>
 <script src="/static/console/build.js?v=0.164.0"></script>

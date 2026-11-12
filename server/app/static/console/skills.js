@@ -16,7 +16,7 @@ window.HoolaSkills = function ({api, esc, toast}) {
         api('GET', '/api/coder/skills/packs'),
         api('GET', '/api/coder/skills/shares')]);
       SKILLS = a.skills || []; PACKS = b.packs || []; SHARES = c;
-    } catch (e) { toast(e.message || 'Skills nahi khule', true); SKILLS = []; }
+    } catch (e) { toast(e.message || 'Skills did not open', true); SKILLS = []; }
   }
 
   /* ------------------------------------------------------------ the three tabs */
@@ -70,7 +70,7 @@ window.HoolaSkills = function ({api, esc, toast}) {
     const q = Q.trim().toLowerCase();
     const list = SKILLS.filter(s => !q || (s.name + ' ' + s.description).toLowerCase().includes(q));
     return head + (list.length ? list.map(row).join('')
-      : `<p style="color:var(--mut);padding:18px 4px">${SKILLS.length ? 'Kuch match nahi hua.' : 'Abhi koi skill nahi seekhi gayi — Santosh khud likhegi (skill_manage), ya aap Import karein.'}</p>`)
+      : `<p style="color:var(--mut);padding:18px 4px">${SKILLS.length ? 'Nothing matched.' : 'No skill has been learned yet - Santosh will write them (skill_manage), or you can Import.'}</p>`)
       + `<div id="skedit"></div>`;
   }
 
@@ -83,20 +83,20 @@ window.HoolaSkills = function ({api, esc, toast}) {
           <button class="btn go" data-sk="install" data-n="${esc(p.name)}">Install</button>
           <div data-body="${esc(p.name)}" hidden style="margin-top:10px"></div>
         </div>`).join('')
-        : `<p style="color:var(--mut);padding:18px 4px">The shelf is empty — pehla pack aapke Shares tab se publish hoga.</p>`);
+        : `<p style="color:var(--mut);padding:18px 4px">The shelf is empty - the first pack will be published from your Shares tab.</p>`);
   }
 
   function shares() {
     if (!SHARES) return '<p style="color:var(--mut)">…</p>';
     const pend = SHARES.pending || [], done = SHARES.decided || [];
-    return `<p style="color:var(--mut);font-size:13px;margin:6px 0">The curator nominates a skill only when the telemetry proves it was followed (${(SHARES.min_reads) || 3}+ reads) — aapke tap ke bina kuch bahar nahi jaata.</p>`
+    return `<p style="color:var(--mut);font-size:13px;margin:6px 0">The curator nominates a skill only when the telemetry proves it was followed (${(SHARES.min_reads) || 3}+ reads) - nothing goes out without your tap.</p>`
       + (pend.length ? pend.map(r => `<div style="border:1px solid var(--hair);border-radius:14px;padding:14px 16px;margin:10px 0;background:var(--glass2)">
           <b>${esc(r.name)}</b> ${tag('warn', 'waiting for you')}
           <div style="color:var(--mut);font-size:13px;margin:4px 0">${esc(r.note || '')}</div>
           <button class="btn go" data-sk="approve" data-n="${esc(r.name)}">Publish to the shelf</button>
           <button class="btn soft" data-sk="reject" data-n="${esc(r.name)}">Reject</button>
         </div>`).join('')
-        : `<p style="color:var(--mut);padding:14px 4px">Koi nomination pending nahi.</p>`)
+        : `<p style="color:var(--mut);padding:14px 4px">No nomination pending.</p>`)
       + (done.length ? `<h3 style="margin:18px 0 4px;font-size:14px">Decided</h3>` + done.map(r =>
         `<div style="padding:8px 2px;border-bottom:1px solid var(--hair);font-size:14px">${esc(r.name)} ${r.status === 'published' ? tag('ok', 'published') : tag('', 'rejected')}</div>`).join('') : '');
   }
@@ -105,9 +105,9 @@ window.HoolaSkills = function ({api, esc, toast}) {
   function draw(el) {
     el.innerHTML = `<div style="max-width:860px;margin:0 auto">
       <h2 style="margin:8px 0 0">Learned Skills</h2>
-      <p style="color:var(--mut);margin:4px 0 10px;font-size:14px">What your Hoola knows how to do — jo kaam woh baar-baar karti hai, uska apna how-to. Injected when an ask matches; parked skills stay but never ride.</p>
+      <p style="color:var(--mut);margin:4px 0 10px;font-size:14px">What your Hoola knows how to do - its own how-to for the work it does again and again. Injected when an ask matches; parked skills stay but never ride.</p>
       <div style="display:flex;gap:6px;margin:6px 0 10px;border-bottom:1px solid var(--hair)">
-        ${[['mine', 'Meri skills'], ['bazaar', 'Pack bazaar'], ['shares', `Shares${SHARES && SHARES.pending && SHARES.pending.length ? ' (' + SHARES.pending.length + ')' : ''}`]]
+        ${[['mine', 'My skills'], ['bazaar', 'Pack bazaar'], ['shares', `Shares${SHARES && SHARES.pending && SHARES.pending.length ? ' (' + SHARES.pending.length + ')' : ''}`]]
           .map(([k, n]) => `<button class="btn ${TAB === k ? 'go' : 'soft'}" data-tab="${k}" style="border-radius:12px 12px 0 0">${n}</button>`).join('')}
       </div>
       <div id="sktab">${TAB === 'mine' ? mine() : TAB === 'bazaar' ? bazaar() : shares()}</div>
@@ -127,7 +127,7 @@ window.HoolaSkills = function ({api, esc, toast}) {
         : await api('POST', '/api/coder/skills', {operations: [{action: 'read', name}]});
       const body = fromPack ? full.body : (full.results && full.results[0] && full.results[0].body);
       box.innerHTML = `<pre style="white-space:pre-wrap;background:var(--bg);border:1px solid var(--hair);border-radius:10px;padding:12px;font-size:13px;color:var(--ink)">${esc(body || '')}</pre>`;
-    } catch (e) { box.textContent = e.message || 'Nahi khula'; }
+    } catch (e) { box.textContent = e.message || 'Did not open'; }
   }
 
   function wire(el) {
@@ -139,10 +139,10 @@ window.HoolaSkills = function ({api, esc, toast}) {
       try {
         if (k === 'read') return void showBody(el, n, false);
         if (k === 'packread') return void showBody(el, n, true);
-        if (k === 'toggle') { await api('POST', '/api/coder/skills/enabled', {name: n, enabled: t.dataset.on === '1'}); toast('Theek hai'); await reload(); draw(el); return; }
-        if (k === 'del') { if (!confirm(`Delete skill "${n}"? Yeh wapas nahi aayega.`)) return; await api('POST', '/api/coder/skills', {operations: [{action: 'read', name: n}]}); await api('POST', '/api/coder/skills', {operations: [{action: 'delete', name: n}]}); toast('Delete ho gaya'); await reload(); draw(el); return; }
-        if (k === 'install') { const r = await api('POST', '/api/coder/skills/packs/install', {name: n}); if (r.error) throw new Error(r.error); toast('Install ho gaya'); await reload(); draw(el); return; }
-        if (k === 'approve' || k === 'reject') { const r = await api('POST', '/api/coder/skills/shares/decide', {name: n, approve: k === 'approve'}); if (r.error) throw new Error(r.error); toast(k === 'approve' ? 'Shelf par publish ho gaya' : 'Reject ho gaya'); await reload(); draw(el); return; }
+        if (k === 'toggle') { await api('POST', '/api/coder/skills/enabled', {name: n, enabled: t.dataset.on === '1'}); toast('OK'); await reload(); draw(el); return; }
+        if (k === 'del') { if (!confirm(`Delete skill "${n}"? This cannot be undone.`)) return; await api('POST', '/api/coder/skills', {operations: [{action: 'read', name: n}]}); await api('POST', '/api/coder/skills', {operations: [{action: 'delete', name: n}]}); toast('Deleted'); await reload(); draw(el); return; }
+        if (k === 'install') { const r = await api('POST', '/api/coder/skills/packs/install', {name: n}); if (r.error) throw new Error(r.error); toast('Installed'); await reload(); draw(el); return; }
+        if (k === 'approve' || k === 'reject') { const r = await api('POST', '/api/coder/skills/shares/decide', {name: n, approve: k === 'approve'}); if (r.error) throw new Error(r.error); toast(k === 'approve' ? 'Published to the shelf' : 'Rejected'); await reload(); draw(el); return; }
         if (k === 'new') { el.querySelector('#skedit').innerHTML = editor(null); el.querySelector('#skedit [data-f=name]').focus(); return; }
         if (k === 'edit') { const s = SKILLS.find(x => x.name === n); const r = await api('POST', '/api/coder/skills', {operations: [{action: 'read', name: n}]}); el.querySelector('#skedit').innerHTML = editor({...s, ...(r.results && r.results[0])}); return; }
         if (k === 'cancel') { el.querySelector('#skedit').innerHTML = ''; return; }
@@ -155,8 +155,8 @@ window.HoolaSkills = function ({api, esc, toast}) {
           try {
             if (t.dataset.n) await api('POST', '/api/coder/skills', {operations: [{action: 'update', name: t.dataset.n, description: desc, body}]});
             else await api('POST', '/api/coder/skills', {operations: [{action: 'create', name, description: desc, body}]});
-            toast('Skill save ho gayi'); el.querySelector('#skedit').innerHTML = ''; await reload(); draw(el);
-          } catch (e) { err.textContent = e.message || 'Save nahi hua'; }
+            toast('Skill saved'); el.querySelector('#skedit').innerHTML = ''; await reload(); draw(el);
+          } catch (e) { err.textContent = e.message || 'Not saved'; }
           return;
         }
         if (k === 'import') {
@@ -164,7 +164,7 @@ window.HoolaSkills = function ({api, esc, toast}) {
           if (!txt) return;
           let items;
           try { items = txt.trim().startsWith('[') ? JSON.parse(txt) : txt.split(/\n(?=---\s*\nname:)/).map(s => s.trim()).filter(Boolean); }
-          catch (e) { return toast('JSON samajh nahi aaya', true); }
+          catch (e) { return toast('Could not read the JSON', true); }
           const r = await api('POST', '/api/coder/skills/import', {items});
           if (r.error) throw new Error(r.error);
           toast(`Import: ${r.created.length} bane, ${r.skipped.length} already the`); await reload(); draw(el);
@@ -177,7 +177,7 @@ window.HoolaSkills = function ({api, esc, toast}) {
           a.download = 'hoola-skills.json'; a.click(); URL.revokeObjectURL(a.href);
           return;
         }
-      } catch (e) { toast(e.message || 'Kuch gadbad', true); }
+      } catch (e) { toast(e.message || 'Something went wrong', true); }
     };
   }
 

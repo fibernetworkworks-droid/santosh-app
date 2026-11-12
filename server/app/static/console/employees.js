@@ -1675,7 +1675,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
           ${x.words ? `<p class="em-small">${esc(x.words)}</p>` : ''}
           ${r.why ? `<p class="${x.status === 'failed' ? 'badc' : 'muted'} em-small">${esc(r.why)}</p>` : ''}
           ${(r.trouble || []).slice(0, 3).map(t => `<div class="badc em-small">${esc(t)}</div>`).join('')}
-          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-sc="approve" data-n="${esc(x.id)}">Haan, game mein daalo</button>` : ''}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-sc="approve" data-n="${esc(x.id)}">Yes, add to the game</button>` : ''}
             ${x.status !== 'rejected' ? `<button class="btn soft gs-mini" type="button" data-sc="reject" data-n="${esc(x.id)}">Drop it</button>` : ''}</div></section>`; }).join('')
         || '<p class="muted em-small">No scenes yet.</p>'}
       <p class="muted em-small">Not built: ${esc(d.not_built || '')}</p>`;
@@ -1683,13 +1683,13 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     el.querySelector('#scBack').addEventListener('click', () => { GS_SCN = false; gsBoard(el, id); });
     el.querySelector('#scGo').addEventListener('click', e => {
       const words = el.querySelector('#scW').value.trim();
-      if (words.length < 8) { toast('Scene ek line mein likhiye.', true); return; }
+      if (words.length < 8) { toast('Write the scene in one line.', true); return; }
       e.target.disabled = true; e.target.textContent = 'Making it and loading it…';
       go(() => api('POST', `/api/gamedesk/scenes/${q}`, {words, name: el.querySelector('#scN').value.trim()}));
     });
     el.querySelectorAll('[data-sc]').forEach(b => b.addEventListener('click', () => go(
       () => api('POST', `/api/gamedesk/scenes/${q}/${encodeURIComponent(b.dataset.n)}/${b.dataset.sc}`),
-      b.dataset.sc === 'approve' ? 'Agli build mein dikhega.' : '')));
+      b.dataset.sc === 'approve' ? 'It will show in the next build.' : '')));
   }
 
   // ---------------------------------------------------------------- v0.416 platforms: downloads, store kit, itch.io
@@ -2877,7 +2877,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <div class="kpi gl"><b>${num(st.with_email)}</b><span>with email</span></div>
         <div class="kpi gl"><b>${num(st.opted_out)}</b><span>opted out</span></div>
         <div class="kpi gl"><b>${num(u.rows_kept)}</b><span>kept today (cap ${num(u.per_day)})</span></div></div>
-      <div class="tile gl"><div class="em-h"><h3>The lanes</h3><span class="muted em-small">Run one by asking in the chat, e.g. “IndiaMART pe Akola ke plumbers laao” or “Places se Pune mein dentist dhoondo”.</span></div>
+      <div class="tile gl"><div class="em-h"><h3>The lanes</h3><span class="muted em-small">Run one by asking in the chat, e.g. “Find plumbers in Akola on IndiaMART” or “Find dentists in Pune on Places”.</span></div>
         <div class="kpis em-kpis">${laneTiles}</div>
         <p class="muted em-small">Store: ${esc((o.store_backend || {}).backend || 'sqlite')} · ${esc(o.one_question || '')}</p></div>
       <div class="grid2">
@@ -2913,7 +2913,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         const r = await api('GET', `/api/leads/rows?q=${encodeURIComponent(LROWS.q)}&city=${encodeURIComponent(LROWS.city)}&lane=${encodeURIComponent(LROWS.lane)}&limit=25`);
         rowsOut.innerHTML = (r.rows || []).length ? `<p class="muted em-small">${num(r.total)} match · showing ${num((r.rows || []).length)}</p>
           <table class="em-tbl"><thead><tr><th>Business</th><th>Phone</th><th>City</th><th>Source</th><th></th></tr></thead><tbody>${r.rows.map(w => `<tr>
-            <td><b>${esc(w.name || '(naam nahi)')}</b>${w.opt_out ? ' <span class="tag warn">opted out</span>' : ''}<br><small class="muted">${esc(w.category || '')}</small></td>
+            <td><b>${esc(w.name || '(no name)')}</b>${w.opt_out ? ' <span class="tag warn">opted out</span>' : ''}<br><small class="muted">${esc(w.category || '')}</small></td>
             <td>${esc(w.phone || '–')}</td><td>${esc(w.city || '–')}</td>
             <td><small class="muted">${esc(w.source_lane || '')}${w.source_url ? `<br>${esc(String(w.source_url).slice(0, 60))}` : ''}</small></td>
             <td>${w.opt_out ? '' : `<button class="btn soft" type="button" data-lopt="${esc(w.id)}">Opt out</button>`}</td></tr>`).join('')}</tbody></table>`

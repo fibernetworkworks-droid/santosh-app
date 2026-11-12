@@ -149,7 +149,7 @@ def _shop(page, seen: dict[str, Any]) -> str:
     except Exception:
         return "Add to cart did not put the product in the cart"
     page.locator(".hs-cart-b").click()
-    page.get_by_role("button", name=re.compile("Aage badhein")).click()
+    page.locator(".hs-shop-in .btn-primary").click()
     form = page.locator("form.hs-checkout")
     form.wait_for(timeout=4000)
     form.locator("[name=name]").fill("Hoola Check")

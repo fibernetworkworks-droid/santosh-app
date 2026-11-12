@@ -53,7 +53,7 @@ window.HoolaFilmDesk = function ({api, esc, toast}) {
 
   async function draw() {
     const head = `<div class="vh"><h2>Film Desk</h2><span class="muted">Counts from your script, sums from your own rates. Nothing is sent or paid from here.</span></div>`;
-    if (!FILMS.length) { EL.innerHTML = head + `<div class="card"><p>No film yet. Tell Hoola in chat: <i>"Ek short film shuru karo: …"</i> and it shows up here.</p></div>`; return; }
+    if (!FILMS.length) { EL.innerHTML = head + `<div class="card"><p>No film yet. Tell Hoola in chat: <i>"Start a short film: …"</i> and it shows up here.</p></div>`; return; }
     const sel = `<select id="fdFilm" style="${IN}">${FILMS.map(f => `<option value="${esc(f.number)}" ${f.number === REF ? 'selected' : ''}>${esc(f.number)} · ${esc(f.title)}</option>`).join('')}</select>`;
     const tabs = TABS.map(([k, n]) => `<button class="btn ${k === TAB ? 'go' : 'soft'}" data-fdtab="${k}">${esc(n)}</button>`).join(' ');
     EL.innerHTML = head + `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0">${sel}</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px">${tabs}</div><div id="fdBody"><div class="empty">Loading…</div></div>`;
@@ -126,7 +126,7 @@ window.HoolaFilmDesk = function ({api, esc, toast}) {
       const [b, w, r] = await Promise.all([api('GET', U('schedule?what=plan_budget')).catch(() => null), api('GET', U('waterfall')).catch(() => null), get('royalties')]);
       const bud = b && b.lines
         ? stats([['Subtotal', inr(b.subtotal_inr)], ['Contingency', b.contingency_inr == null ? '–' : inr(b.contingency_inr)], ['At least', inr(b.total_inr)]])
-          + table(['Head', 'Qty', 'Rate', 'Amount'], b.lines.map(l => [esc(l.head || l.key), l.qty, l.rate_inr == null ? 'rate nahi di' : inr(l.rate_inr), l.amount_inr == null ? '–' : inr(l.amount_inr)])) + note(b.note)
+          + table(['Head', 'Qty', 'Rate', 'Amount'], b.lines.map(l => [esc(l.head || l.key), l.qty, l.rate_inr == null ? 'no rate given' : inr(l.rate_inr), l.amount_inr == null ? '–' : inr(l.amount_inr)])) + note(b.note)
         : note('Make a schedule first, then give your rates in chat ("budget plan: crew 8000/day …"). Only your numbers are used.');
       const wf = w && w.tiers ? stats([['Gross', inr(w.gross_inr)], ['Ties to gross', w.ties_to_gross ? 'yes' : 'NO']])
         + table(['Tier', 'Name', 'Amount', 'Left'], w.tiers.map(t => [esc(t.tier), esc(t.name), inr(t.amount_inr), inr(t.left_inr)])) : note('No waterfall calculated yet (chat: "waterfall: gross 5 lakh …").');

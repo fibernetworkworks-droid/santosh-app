@@ -56,8 +56,8 @@ window.HoolaBuild = function (C) {
 
   /* ---------------- words ---------------- */
   const ST = {
-    site: {draft: 'Starting', planned: 'Plan: needs your Haan', looks: 'Pick a look', building: 'Building', checking: 'Checking', ready: 'Ready', failed: 'Problem', stopped: 'Stopped'},
-    app: {draft: 'Starting', planned: 'Plan: needs your Haan', looks: 'Pick a look', designing: 'Designing screens', checking: 'Checking', ready: 'Design ready', approved: 'Design approved', failed: 'Problem', stopped: 'Stopped'},
+    site: {draft: 'Starting', planned: 'Plan: needs your approval', looks: 'Pick a look', building: 'Building', checking: 'Checking', ready: 'Ready', failed: 'Problem', stopped: 'Stopped'},
+    app: {draft: 'Starting', planned: 'Plan: needs your approval', looks: 'Pick a look', designing: 'Designing screens', checking: 'Checking', ready: 'Design ready', approved: 'Design approved', failed: 'Problem', stopped: 'Stopped'},
     an: {writing: 'Writing Kotlin', building: 'Compiling', fixing: 'Fixing errors', ready: 'APK ready', zip: 'Project ZIP', failed: 'Problem'}};
   const TILE = {todo: ['to do', 'todo'], writing: ['writing', 'run'], written: ['written', 'ok'], compiling: ['compiling', 'run'], fixing: ['fixing', 'fix'], done: ['✓', 'ok'], code: ['simple version', 'fix']};
   const making = o => S(o.v?.status) === 'looks' && !L(o.v?.looks).length;      // the 3 looks are still being made
@@ -374,7 +374,7 @@ window.HoolaBuild = function (C) {
     switch (o.tab) {
       case 'plan': return planPane(o);
       case 'looks': return looksPane(o);
-      case 'board': return `<section class="bbox"><h4>Board: pages and their parts</h4>${progress(o)}${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bchips">${L(p.sections).map(s => chip(s.label, s.state)).join('')}</div></div>`).join('') || '<div class="stempty">Plan pakka hote hi hisse yahan dikhenge.</div>'}</section>`;
+      case 'board': return `<section class="bbox"><h4>Board: pages and their parts</h4>${progress(o)}${L(b.pages).map(p => `<div class="bpg"><b>${esc(p.title)}</b><div class="bchips">${L(p.sections).map(s => chip(s.label, s.state)).join('')}</div></div>`).join('') || '<div class="stempty">The parts will show here once the plan is confirmed.</div>'}</section>`;
       case 'kadam': return kadamPane(o);
       case 'jaanch': return sitePane(o);
       case 'data': return `<div class="stdata"><div class="stempty">${spin()} Loading the app…</div></div>`;
@@ -724,8 +724,8 @@ window.HoolaBuild = function (C) {
         case 'theme': await themeDialog(o); break;
         case 'plat': o.plat = b.dataset.p; draw(); break;
         case 'zoom': zoom(b.dataset.full, b.dataset.cap); break;
-        case 'say-domain': C.say(`${title(o)} website ke liye achha domain dhoondho`); break;
-        case 'say-live': C.say(`${title(o)} website live karne ki taiyaari karo (domain, hosting, DNS)`); break;
+        case 'say-domain': C.say(`Find a good domain for the ${title(o)} website`); break;
+        case 'say-live': C.say(`Get the ${title(o)} website ready to go live (domain, hosting, DNS)`); break;
       }
     } finally { if (b.tagName === 'BUTTON' && b.isConnected) b.disabled = false; }
   }
@@ -1738,7 +1738,7 @@ window.HoolaBuild = function (C) {
     const prev = S(b.preview).replace(/\/$/, '');
     box.innerHTML = `<form class="stapp" data-f="write" autocomplete="off"><b>Write a new post</b>
         <label><span>What should it be about? Your own facts, offers and experience (Hoola never makes them up)</span>
-        <textarea name="brief" rows="3" placeholder="Diwali par mithai kaise chunein - hamari kaju katli roz subah banti hai, 1985 se Akot mein"></textarea></label>
+        <textarea name="brief" rows="3" placeholder="How to choose sweets for Diwali - our kaju katli is made fresh every morning, since 1985 in Akot"></textarea></label>
         <div class="acts"><button class="btn go" type="submit">Write draft</button><span class="stnote">Written in your voice by the Content writer; facts are checked before it goes up.</span></div></form>
       ${waiting.length ? `<section class="stcol"><h4>Drafts <span>${waiting.length}</span></h4>${waiting.map(d => `<div class="stblog-d" data-id="${esc(S(d.id))}">
         <div class="stblog-row"><b>${esc(S(d.title) || 'Untitled')}</b><small>${esc(S(d.number))} · ${N(d.words)} words · ${esc(S(d.status))}</small></div>
@@ -2096,7 +2096,7 @@ window.HoolaBuild = function (C) {
     });
     const ph = box.querySelector('[data-x=phone]');
     if (ph) ph.addEventListener('click', async e => {
-      if (!confirm('Plan an Android / iPhone app on the same data as this website? Nothing is built until you say Haan on its plan card.')) return;
+      if (!confirm('Plan an Android / iPhone app on the same data as this website? Nothing is built until you say Yes on its plan card.')) return;
       e.target.disabled = true;
       try { const r = await api('POST', base(o) + '/phone-app', {conversation_id: C.conv() || ''}); toast(S(r?.say) || 'Phone app plan ready.'); }
       catch (er) { toast(er.message, true); e.target.disabled = false; }

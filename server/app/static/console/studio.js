@@ -364,13 +364,13 @@ ${SPRITE}`;
   const STARTERS = [['Diwali sale reel','video','abstract','A 15-second Diwali sale reel for my shop, diyas and fairy lights, warm gold light, 9:16'],
     ['Chai brand poster','image','product','A premium poster of a clay kulhad of masala chai on a wooden table, steam rising, warm morning light, space for a headline'],
     ['Monsoon road trip','video','film','A car on a wet ghat road in the monsoon, mist over green hills, cinematic drone shot'],
-    ['Founder intro voice-over','voice','voice','Namaste! Main hoon aapki Newtika team ki founder. Hum chhote business ke liye AI banate hain.'],
+    ['Founder intro voice-over','voice','voice','Hello! I am the founder of your Newtika team. We build AI for small businesses.'],
     ['Saree lookbook','image','portrait','A fashion lookbook photo of a woman in a deep red Banarasi silk saree at a heritage haveli courtyard, soft daylight'],
     ['Lo-fi study beat','music','music','A calm lo-fi study beat with soft keys, rain sounds and a slow tabla groove'],
     ['Temple at dawn','image','world','A South Indian temple gopuram at dawn, mist, golden rim light, birds in the sky, ultra detailed'],
     ['Street food promo','video','product','Close-up of pav bhaji being made on a big tawa at a Mumbai street stall at night, sizzling butter, bokeh lights'],
     ['Festive jingle','music','music','A 30-second festive jingle for a sweet shop, shehnai and dhol, joyful'],
-    ['Hinglish podcast intro','voice','voice','Hello doston, welcome back to Business Ki Baat, jahan hum chhote business ki badi kahaniyan sunte hain!']];
+    ['Podcast intro','voice','voice','Hello friends, welcome back to Business Talk, where we tell the big stories of small businesses!']];
   const ALLTOOLS = [['video','Video generator','Words to video with the best model per shot','film','new'],['image','Image generator','Posters, product shots, characters','portrait',''],
     ['music','Music studio','Whole songs, instrumentals and jingles','music','new'],['voice','Voice studio','Voice-overs in 22 voices, Indian languages','voice',''],
     ['dubbing','Dubbing','Your video in another language','portrait','new'],['editor','Video editor','Your clips, edited by your words','film',''],
@@ -382,7 +382,7 @@ ${SPRITE}`;
     image: 'A premium poster of a clay kulhad of masala chai on a wooden table, steam rising, warm morning light…',
     video: 'Steam rising from a kulhad of chai on a rainy Mumbai balcony, slow dolly in, warm evening light…',
     music: 'A happy Bollywood-style jingle for my sweet shop, dhol and shehnai, 30 seconds…',
-    voice: 'Namaste! Is Diwali, Newtika Chai laaya hai ek khaas offer…'};
+    voice: 'Hello! This Diwali, Newtika Chai brings you a special offer…'};
   // v0.320 the ask box carries the few settings that matter for the chosen mode and what it costs, before she sends.
   // [key, state object, choices, menu title, label]; read lazily (the tools' state objects are declared further down)
   const hsList = m => ({
@@ -392,7 +392,7 @@ ${SPRITE}`;
     video: [['aspect', VID, ['9:16', '16:9', '1:1'], 'Shape', v => v], ['seconds', VID, [4, 5, 6, 8, 10, 12, 15], 'Length', v => v + ' s']],
     music: [['lang', MU, CYC.lang, 'Language', v => v]],
     voice: [['lang', VO, LANGS, 'Language', v => v]]}[m] || []);
-  const hsPrice = m => ({director: 'Storyboard free', image: '~' + inr(imgCost()), video: 'Price before it starts', music: '~₹7', voice: 'Paise a line'}[m] || '');
+  const hsPrice = m => ({director: 'Storyboard free', image: '~' + inr(imgCost()), video: 'Price before it starts', music: '~₹7', voice: 'Paid per line'}[m] || '');
   const hsHTML = () => { const m = AGENTS[homeAgent][0];
     return hsList(m).map(([k, o, , , f], i) => `<button type="button" class="dd hs" data-hs="${i}">${i === 0 ? I('grid', 'width:15px;height:15px') : ''}<span>${esc(f(o[k]))}</span>${I('down', 'width:14px;height:14px')}</button>`).join('')
       + `<span class="hsp num">${esc(hsPrice(m))}</span>`; };
@@ -823,7 +823,7 @@ ${SPRITE}`;
     const extra = [a.keyframes ? `<tr><td>Opening pictures × ${a.keyframes}</td><td></td><td></td><td class="num">${money(a.keyframes_inr)}</td></tr>` : '', a.music ? `<tr><td>Music (${esc(a.music)})</td><td></td><td></td><td class="num">${money(a.music_inr)}</td></tr>` : ''].join('');
     return `<div class="appr"><div class="aph"><b class="num">${inr(a.inr)}</b><small>${esc(what)}</small></div>
       ${rows || extra ? `<table class="aprows">${rows}${extra}</table>` : ''}
-      <small class="apn">Nothing is spent until you tap Haan. You are never charged more than ${inr(a.inr)}.</small>
+      <small class="apn">Nothing is spent until you tap Yes. You are never charged more than ${inr(a.inr)}.</small>
       <div class="apb"><button class="btn sec" data-no="${esc(a.id)}">Na</button><button class="btn pri" data-yes="${esc(a.id)}">Haan, make it · ${inr(a.inr)}</button></div></div>`;
   }
   // v0.325 what state a clip / film is in, in one word
@@ -912,7 +912,7 @@ ${SPRITE}`;
       await api('POST', '/api/studio/projects', {name, brief, aspect: VID.aspect, seconds: VID.seconds, language: VID.language,
         quality: preview ? 'draft' : quality, model: VID.model, resolution: VID.res, auto: VID.auto,
         then: preview ? 'preview' : 'generate', variants: preview ? 1 : VID.takes, compare: !preview && VID.compare.length > 1 ? VID.compare : null});
-      toast(preview ? 'Writing the shot plan, then your free preview starts on the tile.' : 'Writing the shot plan (about a minute). The price card appears on the tile; nothing is spent until you tap Haan.');
+      toast(preview ? 'Writing the shot plan, then your free preview starts on the tile.' : 'Writing the shot plan (about a minute). The price card appears on the tile; nothing is spent until you tap Yes.');
     } catch (e) { toast(e.status === 428 ? fp : e.message, true); }
     VID.busy = ''; await load('studio', true); redraw('video', drawVideos);
   }
@@ -929,7 +929,7 @@ ${SPRITE}`;
       lb.hidden = false; $('[data-lbclose]', lb).focus(); return;
     }
     if (p.planning) { toast('Hoola is still writing the shot plan. The price card appears on this tile in a moment.'); return; }
-    if ((p.approvals || []).length) { R.querySelector(`[data-proj="${CSS.escape(name)}"] .appr`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'}); toast('Check the price card under the picture, then tap Haan to make it.'); return; }
+    if ((p.approvals || []).length) { R.querySelector(`[data-proj="${CSS.escape(name)}"] .appr`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'}); toast('Check the price card under the picture, then tap Yes to make it.'); return; }
     if (p.working || (p.painting || []).length) { toast('Your clip is being made. It plays here when it is ready.'); return; }
     if (p.error) { toast(p.error, true); return; }
     DIR.project = name; DIR.view = null; go('director');
@@ -984,7 +984,7 @@ ${SPRITE}`;
   <div class="dhero"><span class="tag hot">Director agent</span><h1>Brief in, finished film out</h1>
     <form class="compose" id="dirForm" style="width:min(760px,100%)"><label for="dirq" class="sr">Your film brief</label><textarea id="dirq" rows="3" placeholder="A 45-second Diwali ad for Newtika Chai: a family comes home, Dadi makes chai, ends on our logo">${esc(DIR.brief)}</textarea>
       <div class="crow"><button type="button" class="dd" data-dcyc="aspect">${I('grid', 'width:15px;height:15px')}<span>${DIR.aspect}</span></button><button type="button" class="dd" data-dcyc="seconds"><span>${DIR.seconds} s</span></button><button type="button" class="dd" data-dcyc="language"><span>${DIR.language}</span></button><button type="button" class="dd" data-dcyc="music">${I('music', 'width:15px;height:15px')}<span>${DIR.music || 'No music'}</span></button><button type="button" class="dd" data-dnewmodel>${I('spark', 'width:15px;height:15px')}<span>${esc(mOf(DIR.model)?.name || 'Hoola Auto')}</span>${I('down', 'width:14px;height:14px')}</button><button type="button" class="dd" data-dnewres><span>${DIR.res}</span>${I('down', 'width:14px;height:14px')}</button><span class="sp"></span><button class="send" aria-label="Plan the film">${I('send')}</button></div></form>
-    <p class="mut" style="max-width:560px">Hoola writes the storyboard for free. Pictures, shots and music each show their price first; nothing is spent until you tap Haan.</p></div>
+    <p class="mut" style="max-width:560px">Hoola writes the storyboard for free. Pictures, shots and music each show their price first; nothing is spent until you tap Yes.</p></div>
   ${DIR.busy ? `<div class="box"><b>${esc(DIR.busy)}…</b><div class="bar"><i class="indet"></i></div></div>` : ''}
   <section><div class="sec-h"><h2>Your films</h2><div class="fbar"><label class="fsearch">${I('search', 'width:15px;height:15px')}<span class="sr">Search your films</span><input id="fq" type="search" placeholder="Search films" value="${esc(DIR.fq || '')}"></label><button type="button" class="dd" data-fsort><span>${{new: 'Recent first', az: 'Name A–Z', step: 'Furthest along'}[DIR.fsort || 'new']}</span>${I('down', 'width:14px;height:14px')}</button></div></div><div class="films" id="films"></div></section></div>`;
     const st = stepState(p), cur = STEPS.find(([k]) => !st[k])?.[0] || 'done';
@@ -1098,7 +1098,7 @@ ${SPRITE}`;
     el.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
       const P = DIR.project ? `/api/studio/projects/${encodeURIComponent(DIR.project)}` : '';
-      const act = async (label, fn) => { b.disabled = true; try { const r = await fn(); if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Haan above to start`); else if (label) toast(label); } catch (er) { toast(er.status === 428 ? fp : er.message, true); } await dirLoad(); if (VIEW === 'director') go('director'); };
+      const act = async (label, fn) => { b.disabled = true; try { const r = await fn(); if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Yes above to start`); else if (label) toast(label); } catch (er) { toast(er.status === 428 ? fp : er.message, true); } await dirLoad(); if (VIEW === 'director') go('director'); };
       const resItems = m => resSort(m ? m.resolutions : ['480p', '720p', '1080p', '2k', '4k']).map(r => ({v: r, label: r, sub: m ? money(rateAt(m, r)) + ' per second' : ({'480p': 'Drafts', '720p': 'Quick and cheap', '1080p': 'HD, for posting', '2k': 'Premium', '4k': 'Premium 4K'})[r]}));
       if (b.hasAttribute('data-dnewmodel')) { await models(); picker({current: DIR.model, seconds: DIR.seconds, res: DIR.res, title: 'Choose the model for this film',
         onPick: k => { DIR.model = k; DIR.brief = $('#dirq')?.value || DIR.brief; go('director'); }}); return; }
@@ -1330,7 +1330,7 @@ ${SPRITE}`;
       ...(VO.g !== 'female' ? Object.entries(vs.male).map(([n, d]) => [n, n, 'Male · ' + d, 'portrait']) : [])];
     return `<div class="gen"><div class="panel"><div class="pbody">
     <div class="box"><h3>Script <span class="dim num" style="font-size:12.5px;font-weight:400" id="voCount">${VO.text.length} / 5000</span></h3>
-      <textarea id="voq" rows="6" maxlength="5000" placeholder="Is Diwali, apne ghar ko roshan kijiye. Newtika chai ke saath, har shaam khaas.">${esc(VO.text)}</textarea></div>
+      <textarea id="voq" rows="6" maxlength="5000" placeholder="This Diwali, light up your home. With Newtika chai, every evening is special.">${esc(VO.text)}</textarea></div>
     <div class="lbl">Language</div><div class="chips">${['Hindi', 'Hinglish', 'English', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi'].map(l => `<button class="chip" aria-pressed="${l === VO.lang}" data-volang="${l}">${l}</button>`).join('')}</div>
     <div class="lbl">Voice</div><div class="seg"><button aria-pressed="${VO.g === 'all'}" data-vog="all">All</button><button aria-pressed="${VO.g === 'female'}" data-vog="female">Female</button><button aria-pressed="${VO.g === 'male'}" data-vog="male">Male</button></div>
     <div class="vlist">${list.map(([k, n, d, a]) => `<button class="opt" role="radio" aria-checked="${k === VO.voice}" data-vo="${esc(k)}"><span class="thumb">${k === 'mine' ? art(a, 'vo' + k) : initTile(n)}</span><div><b>${esc(n)}</b><small>${esc(d)}</small></div></button>`).join('')}</div>
@@ -1541,7 +1541,7 @@ ${SPRITE}`;
   function drawShowcase(o) {
     const el = $('#scbox'); if (!el) return;
     if (!o) { el.innerHTML = '<p class="mut">Could not read the showcase just now.</p>'; return; }
-    const head = `<div class="sch"><h3>Showcase: real Hoola-made pictures and clips</h3><p class="mut">They replace the drawn pictures on Studio home, Templates, the Image styles and the guides, for everyone who uses Create. Made once with your own engines; each step shows its price card first and nothing is made until you tap Haan.</p></div>`;
+    const head = `<div class="sch"><h3>Showcase: real Hoola-made pictures and clips</h3><p class="mut">They replace the drawn pictures on Studio home, Templates, the Image styles and the guides, for everyone who uses Create. Made once with your own engines; each step shows its price card first and nothing is made until you tap Yes.</p></div>`;
     if (!o.set_up) { el.innerHTML = head + `<div><button class="btn pri" data-sc="setup">${I('spark', 'width:15px;height:15px')}Set up the showcase (free)</button></div>`; return; }
     const pend = (o.approvals || []).map(approvalRow).join(''), pp = Math.round(o.pictures_made / o.slots * 100), cp = Math.round(o.clips_made / o.clips * 100);
     el.innerHTML = head + `<div class="scrow"><div><b>Pictures</b><small class="num">${o.pictures_made} of ${o.slots} made · about ${inr(o.picture_inr)} each</small><span class="bar"><i style="width:${pp}%"></i></span></div>
@@ -1579,7 +1579,7 @@ ${SPRITE}`;
     el.addEventListener('click', async e => { const b = e.target.closest('button'); if (!b || !b.closest('#scbox')) return;
       if (b.dataset.sc) { b.disabled = true;
         try { const r = await api('POST', '/api/studio/showcase/' + b.dataset.sc);
-          if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Haan on the card below to start`); else if (b.dataset.sc === 'setup') toast('Showcase film set up. Nothing was made or charged.'); }
+          if (r?.waiting_owner) toast(`Price ${inr(r.inr)}: tap Yes on the card below to start`); else if (b.dataset.sc === 'setup') toast('Showcase film set up. Nothing was made or charged.'); }
         catch (er) { toast(er.message, true); } await sc(); return; }
       if (b.dataset.yes || b.dataset.no) { b.disabled = true; await decide(b.dataset.yes || b.dataset.no, !!b.dataset.yes); await sc(); }
     });
@@ -1622,7 +1622,7 @@ ${SPRITE}`;
           <div class="bkbtns"><button class="btn sec" data-bklogo>${I('upload', 'width:15px;height:15px')}${k.logo ? 'Replace logo' : 'Upload logo'}</button><label class="bkchk"><input type="checkbox" id="bkclean"> Remove a plain background</label></div></div></div></section>
       <section class="box"><h3>Name and words</h3>
         <label class="fld">Business name<input id="bkname" maxlength="120" value="${esc(d.name)}" placeholder="Newtika Chai"></label>
-        <label class="fld">Tagline<input id="bktag" maxlength="160" value="${esc(d.tagline)}" placeholder="Har shaam khaas"></label>
+        <label class="fld">Tagline<input id="bktag" maxlength="160" value="${esc(d.tagline)}" placeholder="Special every evening"></label>
         <label class="fld">Tone<input id="bktone" maxlength="200" value="${esc(d.tone)}" placeholder="Warm, simple Hinglish"></label>
         <div class="prow2"><label class="fld">Phone<input id="bkphone" maxlength="40" inputmode="tel" value="${esc(d.phone)}" placeholder="98xxxxxx10"></label><label class="fld">Website<input id="bkweb" maxlength="140" value="${esc(d.website)}" placeholder="newtika.in"></label></div></section>
       <section class="box"><h3>Colours</h3><div class="bkcols">${BK_ROLES.map(([r, n]) => `<label class="bkcol"><input type="color" id="bkc-${r}" value="${esc((c[r] || '#888888').toLowerCase())}" aria-label="${n}"><span><b>${n}</b><small class="num" id="bkh-${r}">${esc((c[r] || '').toUpperCase())}</small></span></label>`).join('')}</div></section>

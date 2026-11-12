@@ -193,7 +193,7 @@ def test_a_customer_buys_in_a_real_browser(shop_server):
     assert "₹1,800" in pg.inner_text(".hs-cart") and "₹600" in pg.inner_text(".hs-cart")
     if shots:
         pg.screenshot(path=f"{shots}/shop-cart.png")
-    pg.click(".hs-shop-in .btn-primary")                                       # Aage badhein
+    pg.click(".hs-shop-in .btn-primary")                                       # Continue
     for k, v in BUYER.items():
         pg.fill(f'.hs-checkout [name="{k}"]', v)
     pg.click('.hs-checkout button[type="submit"]')

@@ -379,7 +379,7 @@ window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
         <div class="hi-cols"><form class="hi-card hi-grid" data-f="brain"><h3>${b.id ? 'Edit' : 'New'} brain</h3><input type="hidden" id="hiBrId" value="${esc(b.id || '')}">
             <label class="hi-f">Name<input id="hiBrName" value="${esc(b.name || '')}" maxlength="40" required placeholder="Shop helper"></label>
             <label class="hi-f">What it knows<textarea id="hiBrKnows" rows="5" maxlength="4000" required placeholder="Your timings, products, prices, address, delivery rules.">${esc(b.knows || '')}</textarea></label>
-            <label class="hi-f">First line it says<input id="hiBrOpen" value="${esc(b.opening || '')}" maxlength="160" placeholder="Namaste! Aapka swagat hai."></label>
+            <label class="hi-f">First line it says<input id="hiBrOpen" value="${esc(b.opening || '')}" maxlength="160" placeholder="Hello! You are welcome here."></label>
             <label class="hi-f">Pages it may read (one per line)<textarea id="hiBrLinks" rows="2">${esc((b.links || []).join('\n'))}</textarea></label>
             <label class="hi-f">Language<select id="hiBrLang">${opts(langs(), b.lang || 'hi')}</select></label>
             <div class="hi-row"><button class="hi-btn">Save</button>${b.id ? `<button type="button" class="hi-btn q" data-a="brain" data-id="">New</button>` : ''}</div>
@@ -395,7 +395,7 @@ window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
       const card = (i, n, d, ok, a) => `<button class="hi-flow" ${ok ? a : 'disabled'}><span class="hi-ftop"><span class="ic">${ic(i)}</span>${ok ? '<span class="hi-chip ok">Ready</span>' : '<span class="hi-chip">Not connected yet</span>'}</span><h3>${n}</h3><span class="hi-mut hi-sm">${d}</span></button>`;
       return `<div class="hi-wrap">${head('Apps', 'Small tools that each do one job.')}
         ${t === 'Batch' ? `<form class="hi-card hi-grid" data-f="batch"><div class="hi-sh"><h3>Batch</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-val="">Close</button></div>
-            <label class="hi-f">Scripts - leave an empty line between two videos (up to ${D.limits?.batch || 20})<textarea id="hiBatch" rows="8" required placeholder="Aaj ka cement rate teen sau assi rupaye hai.&#10;&#10;Kal dukaan band rahegi."></textarea></label>
+            <label class="hi-f">Scripts - leave an empty line between two videos (up to ${D.limits?.batch || 20})<textarea id="hiBatch" rows="8" required placeholder="Today's cement rate is three hundred and eighty rupees.&#10;&#10;The shop will be closed tomorrow."></textarea></label>
             <div class="hi-row"><label class="hi-pick"><select id="hiBLang" aria-label="Language">${opts(langs(), 'hi')}</select></label><label class="hi-pick"><select id="hiBAv" aria-label="Avatar">${avOpts('')}</select></label><button class="hi-btn">Make the drafts</button></div>
             <p class="hi-sm hi-mut">Each script becomes one draft, cut into scenes at sentence ends. Your words are not rewritten.</p></form>` : ''}
         ${t === 'Names' ? `<form class="hi-card hi-grid" data-f="names"><div class="hi-sh"><h3>One video, many names</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-val="">Close</button></div>
