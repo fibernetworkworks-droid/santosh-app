@@ -592,6 +592,11 @@ class Op:
     told_at: float = 0.0           # v0.858 the last spoken PC update on her live call
     hoola_key: str = ""            # v0.861 the ask whose words Hoola last passed into this task
     hoola_at: float = 0.0          # v0.861 when Hoola last passed words in (a repeat inside one ask is dropped)
+    rescue_left: int = 0           # v0.867 PC SASTA steps still to run on the strong helper (the cheap worker was stuck)
+    rescues: int = 0
+    sigs: list = field(default_factory=list)    # last turns' action signatures (stuck detector)
+    shots: list = field(default_factory=list)   # last screens' hashes
+    err_run: int = 0               # turns in a row that ended in an error
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -2631,9 +2636,16 @@ async def _run(op: Op) -> None:
     from ..agent.santosh import get_client
     client = get_client()
     from ..avatar.service import personalise, persona
+    from . import rescue as _rescue
     system = personalise(SYSTEM, *persona(op.tenant))
     if op.kind == HOOLA_PC_KIND:   # v0.194 the coworker VM: install/run are free, her-PC wording adjusted
         system += HOOLA_PC_ADDENDUM
+    try:   # v0.867 PC SASTA: the cheap worker reads the fixed desktop playbook
+        from . import rescue as _rescue
+        if _rescue.playbook_on(op):
+            system += "\n" + _rescue.PLAYBOOK
+    except Exception:
+        log.exception("pc playbook failed")
     try:
         from .. import idvault
         ids = idvault.summary_for_model(op.tenant)
@@ -2660,6 +2672,10 @@ async def _run(op: Op) -> None:
         messages.append({"role": "user", "content": [{"type": "text", "text": head}, *first]})
         deadline = time.time() + op.minutes * 60
         while op.step < op.steps_max and time.time() < deadline and op.status == "running":
+            _over = _rescue.over_budget(op)        # v0.867 today's PC allowance (an estimate) is used up
+            if _over:
+                op.status, op.summary = "partial", _over
+                break
             _trim_images(messages)
             _take_notes(op, messages)              # v0.858 her new words (chat / call) reach THIS task, not a new one
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
@@ -2839,6 +2855,10 @@ async def _run(op: Op) -> None:
             prev = results[-1]["content"]
             prev_text = prev if isinstance(prev, str) else " ".join(
                 b.get("text", "") for b in prev if isinstance(b, dict) and b.get("type") == "text")
+            try:   # v0.867 PC SASTA: the cheap worker is stuck -> the next steps run on the strong helper (one note)
+                prev_text += _rescue.observe(op, uses, results, shot)
+            except Exception:
+                log.exception("pc rescue check failed")
             if results[-1].get("is_error"):
                 # v0.185.4 the round-end screenshot may NOT ride inside an is_error tool_result: the API 400s the
                 # NEXT model call ('all content must be type `text` if `is_error` is true') and the whole task
@@ -2994,6 +3014,11 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     if ckind != HOOLA_PC_KIND:              # v0.858 the browser SHE named, else the one she named lately, else Chrome
         op.browser, op.browser_src = _browser_for(tenant, op.task)
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
+    try:   # v0.867 a hard step cap per PC task (PC_STEP_CAP, 0 = off)
+        from . import rescue as _rs
+        op.steps_max = _rs.step_cap(op.steps_max)
+    except Exception:
+        pass
     from . import brain as _brain
     op.brain, op.brain_model, op.brain_note = _brain.choose(brain)   # v0.851 PC BRAIN: her pick for this task, else pc_model
     OPS[op.id] = op

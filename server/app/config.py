@@ -431,7 +431,14 @@ class Settings(BaseSettings):
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     pc_team_max: int = 4                    # v0.836 DESKTOP TEAM: at most this many PCs work for one person at the same time (one agent per PC)
     # v0.851 PC BRAIN (owner: "QWEN 3.8 AND SONET 5.5 --- WILL START WITH QWEN"): the model that sees the screen in the PC loop
-    pc_model: str = "qwen"                  # "qwen" | "sonnet" (a task can name its own); qwen = OpenRouter only, no OpenRouter key = sonnet, said
+    pc_model: str = "qwen27"                # v0.867 "qwen27" (cheap worker) | "qwen" (Max) | "sonnet"; OpenRouter only, no OpenRouter key = sonnet, said
+    pc_cheap_model: str = "qwen/qwen3.8-27b"   # v0.867 PC SASTA the cheap worker on OpenRouter (~Rs 0.2 a step vs ~Rs 1.8 on Sonnet)
+    pc_rescue: bool = True                  # v0.867 stuck (same action x3 / screen unchanged / errors) = a few steps on Sonnet, then back
+    pc_rescue_steps: int = 3
+    pc_rescue_max: int = 4                  # rescues per task
+    pc_playbook: bool = True                # v0.867 the fixed desktop playbook in the cheap worker's prompt
+    pc_step_cap: int = 64                   # v0.867 hard step cap per PC task (= the browser budget, so by default it changes nothing; lower it with PC_STEP_CAP; 0 = off)
+    pc_daily_inr: int = 300                 # v0.867 daily PC allowance per person, an ESTIMATE (0 = no cap); PC_DAILY_INR in .env
     pc_qwen_openrouter_model: str = "qwen/qwen3.8-max-0902"   # v0.853 Qwen ONLY via OpenRouter on the server's OpenRouter key (never Alibaba Cloud)
     pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop
     pc_qwen_thinking: str = "off"           # v0.856 PC SPEED: off by default (it thought before EVERY click); "on" / "" = default

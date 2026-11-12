@@ -26,8 +26,8 @@ from ..config import get_settings
 
 log = logging.getLogger("santosh.pc")
 
-BRAINS = ("qwen", "sonnet")
-STATS: dict[str, int] = {"qwen": 0, "sonnet": 0, "fallback": 0, "qwen_errors": 0}
+BRAINS = ("qwen27", "qwen", "sonnet")
+STATS: dict[str, int] = {"qwen27": 0, "qwen": 0, "sonnet": 0, "fallback": 0, "qwen_errors": 0}
 
 
 @dataclass
@@ -39,6 +39,8 @@ class Reply:
 
 def norm(name: str) -> str:
     n = str(name or "").strip().lower()
+    if n in ("qwen27", "qwen-27b", "qwen3.8-27b", "cheap", "sasta"):
+        return "qwen27"      # v0.867 PC SASTA: the cheap worker
     if n.startswith("qwen"):
         return "qwen"
     if n.startswith(("sonnet", "claude")):
@@ -70,11 +72,14 @@ def choose(want: str = "") -> tuple[str, str, str]:
     (no OpenRouter key) runs on Sonnet and says why in `note`."""
     st = get_settings()
     brain = norm(want) or norm(getattr(st, "pc_model", "")) or "sonnet"
-    route = qwen_route() if brain == "qwen" else None
-    if brain == "qwen" and route is None:
+    route = qwen_route() if brain in ("qwen", "qwen27") else None
+    if brain in ("qwen", "qwen27") and route is None:
         STATS["fallback"] += 1
         return ("sonnet", str(getattr(st, "pc_sonnet_model", "") or "claude-sonnet-5-5"),
                 "No OpenRouter key (OPENROUTER_API_KEY) is on the server, so this PC task ran on Sonnet 5.5 instead of Qwen.")
+    if brain == "qwen27":
+        # v0.867 PC SASTA (owner: "GO QWEN 27B"): the cheap worker, ~a tenth of Sonnet; rescue.py brings Sonnet in when it is stuck
+        return "qwen27", str(getattr(st, "pc_cheap_model", "") or "qwen/qwen3.8-27b"), ""
     if brain == "qwen":
         return "qwen", route[2], ""
     if getattr(st, "pc_via_openrouter", True) and qwen_route() is not None:
@@ -248,9 +253,20 @@ async def think(op, client, messages: list[dict], params: dict, retry) -> Reply:
     """One step of the PC loop on the brain this task runs on. `retry` = operator._think_retry (the Claude path's
     own retries + history sanitising)."""
     brain, model = getattr(op, "brain", "") or "sonnet", getattr(op, "brain_model", "") or params.get("model")
+    helped = False
+    if brain == "qwen27":
+        from . import rescue
+        r_ = rescue.rescue_active(op)       # v0.867 stuck: a few steps on the strong model, then back to the cheap one
+        if r_:
+            brain, model, helped = r_[0], r_[1], True
+    try:
+        from . import rescue as _rs
+        _rs.charge(op, brain)               # v0.867 the daily rupee estimate
+    except Exception:
+        pass
     t0 = time.monotonic()
-    if brain in ("qwen", "sonnet-or"):
-        STATS["qwen" if brain == "qwen" else "sonnet"] += 1
+    if brain in ("qwen", "qwen27", "sonnet-or"):
+        STATS[brain if brain in ("qwen", "qwen27") else "sonnet"] += 1
         rep = await think_qwen(model, params.get("system", ""), messages, params.get("tools") or [],
                                int(params.get("max_tokens") or 4000))
     else:
@@ -265,5 +281,6 @@ async def think(op, client, messages: list[dict], params: dict, retry) -> Reply:
             usage.ONE_MODEL_BYPASS.reset(a)
         rep = Reply(content=[x.model_dump(exclude_none=True) if hasattr(x, "model_dump") else x for x in resp.content],
                     stop=str(getattr(resp, "stop_reason", "") or ""), model=str(getattr(resp, "model", "") or model))
-    log.info("pc brain %s %s step %d %.1fs stop=%s", brain, model, getattr(op, "step", 0), time.monotonic() - t0, rep.stop)
+    log.info("pc brain %s %s step %d %.1fs stop=%s%s", brain, model, getattr(op, "step", 0), time.monotonic() - t0, rep.stop,
+             " (rescue)" if helped else "")
     return rep

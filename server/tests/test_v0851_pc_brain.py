@@ -49,7 +49,7 @@ def test_defaults_on_the_server():
     from app.config import Settings
     f = Settings.model_fields
     s = types.SimpleNamespace(**{k: f[k].default for k in ("pc_model", "pc_qwen_openrouter_model", "pc_sonnet_model", "pc_max_tokens")})
-    assert s.pc_model == "qwen" and s.pc_qwen_openrouter_model == "qwen/qwen3.8-max-0902" and s.pc_sonnet_model == "claude-sonnet-5-5"
+    assert s.pc_model == "qwen27" and s.pc_qwen_openrouter_model == "qwen/qwen3.8-max-0902" and s.pc_sonnet_model == "claude-sonnet-5-5"
     assert "qwen_api_key" not in f and "qwen_base_url" not in f            # never Alibaba Cloud (owner)
     assert s.pc_max_tokens >= 4000
 
