@@ -64,7 +64,7 @@ def test_hint_ladder_one_rung_at_a_time_and_code_check(tutor, monkeypatch):
     st = G.hint(T, sid, attempt="2x = 26?")
     assert st["rung"] == "step" and "1. " in st["text"] and st["check_question"]
     a = G.hint(T, sid)
-    assert a["rung"] == "answer" and "x = 7" in a["text"] and "code se jaancha" in a["text"]
+    assert a["rung"] == "answer" and "x = 7" in a["text"] and "checked by code" in a["text"]
     assert G.hint(T, sid)["done"]
 
 
@@ -76,7 +76,7 @@ def test_code_disagrees_is_said_plainly(tutor, monkeypatch):
     G.doubt(T, sid, "2x + 6 = 20")
     for _ in range(3):
         last = G.hint(T, sid)
-    assert last["rung"] == "answer" and "alag jawab" in last["text"] and "8" in last["text"]
+    assert last["rung"] == "answer" and "different answer" in last["text"] and "8" in last["text"]
 
 
 def test_exam_mode_and_graded_work_never_get_the_answer(tutor, monkeypatch):

@@ -139,7 +139,7 @@ def test_the_chat_prompt_speaks_in_her_forms(env):
         sp = prompts.system_prompt(True, "", T)
     finally:
         av.persona = real
-    assert "yaad dila dungi" in sp and "yaad dila dunga" not in sp
+    assert "I will remind you tomorrow at 8 am" in sp and "yaad dila dunga" not in sp
 
 
 # ---------------------------------------------------------------- 43 nights

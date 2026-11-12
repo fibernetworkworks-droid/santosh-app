@@ -95,7 +95,7 @@ def test_rules_parsing_and_limitation():
     assert not R.limitation("cheque_138", "2026-10-01")["ok"] and "advocate" in R.limitation("slp", "2026-10-01")["ask"]
     assert not R.limitation("something_else", "2026-10-01")["ok"]
     mine = R.limitation("cheque_138", "2026-10-01", n=1, unit="m", today=DAY)
-    assert mine["ok"] and mine["last_date"] == "2026-11-02" and mine["source"] == "aapka bataya"   # 1 Nov is Sunday
+    assert mine["ok"] and mine["last_date"] == "2026-11-02" and mine["source"] == "given by you"   # 1 Nov is Sunday
     over = R.limitation("review", "2026-10-01", n=45, unit="d", today=DAY)
     assert "using yours" in over["steps"][0]
     late = R.limitation("appeal_other_civil", "2026-10-01", cc_applied="2026-11-05", cc_ready="2026-11-10", today=DAY)

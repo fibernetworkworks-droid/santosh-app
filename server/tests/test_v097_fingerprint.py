@@ -121,7 +121,7 @@ def test_a_second_phone_waits_a_day_unless_the_first_one_agrees(bz):
     mine, thief, new = Phone("mine"), Phone("thief"), Phone("new-phone")
     ak.register("default", mine.device_id, mine.pub, "Mera phone")
     r = ak.register("default", thief.device_id, thief.pub, "Unknown")
-    assert r["status"] == "pending" and "24 ghante" in r["say"]
+    assert r["status"] == "pending" and "24 hours" in r["say"]
     a1 = _money_card(bz)
     ch = ak.challenge("default", "bazar", a1)
     with pytest.raises(ak.ApproveError):

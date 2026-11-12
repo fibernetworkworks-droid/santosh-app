@@ -98,7 +98,7 @@ def test_full_edit_then_change(env, brain, tmp_path):
     from app.db import Message, session
     with session() as s:
         notes = [m.display for m in s.query(Message).filter(Message.role == "assistant").all() if m.display and "Video ready" in m.display]
-    assert notes and "Kuch badalna ho" in notes[-1]
+    assert notes and "anything changed" in notes[-1]
     # a change in plain words -> v2, clips that didn't change come from the cache
     vs.revise("default", v["id"], "title bada karo")
     d2 = vs.run_job(v["id"])
@@ -119,7 +119,7 @@ def test_plan_too_long_is_refused_and_errors_are_plain(env, brain, tmp_path, mon
     assert "at most 5 s" in str(e.value)
     vs._safe_run(v["id"])
     got = vs.get("default", v["id"])
-    assert got["status"] == "failed" and "3 baar" in got["error"]
+    assert got["status"] == "failed" and "3 tries" in got["error"]
 
 
 def test_start_checks_files_and_options(env, tmp_path):

@@ -115,7 +115,7 @@ def test_planned_site_shows_the_andaaza(site_env):
               answers={"phone": "9876543210"})
     g = S.get(T, v["id"])
     assert g["estimate"] and g["estimate"]["inr"] > 0
-    assert "Andaaza" in S._say(g)
+    assert "Estimate" in S._say(g)
 
 
 # ---------------------------------------------------------------- 3. sections several at a time

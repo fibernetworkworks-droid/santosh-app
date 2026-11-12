@@ -275,7 +275,7 @@ def test_meeting_alert_once_and_briefing(g):
     run("calendar_agenda", {}, ctx)                       # remembers which chat to nudge
     assert cs.alerts_tick() == 1
     assert cs.alerts_tick() == 0                          # only once
-    assert any("minute mein: Client call" in (n or "") and "meet.google.com/zzz" in n for n in _notices(ctx.conversation_id))
+    assert any("minutes: Client call" in (n or "") and "meet.google.com/zzz" in n for n in _notices(ctx.conversation_id))
     text = asyncio.run(compose_briefing("default"))
     if soon.date() == datetime.now(IST).date():
         assert "On your calendar today:" in text and "Client call" in text
@@ -354,5 +354,5 @@ def test_owner_caldav_route(bz, monkeypatch):  # noqa: F811
     assert not dav.events[1].deleted
     bz["svc"].decide("default", _events(bz["conv"], "bazar_approval")[-1]["id"], "approve")
     assert dav.events[1].deleted
-    with pytest.raises(ToolError, match="no longer connected"):                   # not for other users
+    with pytest.raises(ToolError, match="not connected to Hoola yet"):                   # not for other users
         run("calendar_agenda", {}, Ctx("usr_other", "c"))

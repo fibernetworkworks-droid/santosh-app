@@ -111,7 +111,7 @@ def test_catalog_status_no_device_until_added(bz):
     st = {p["pack_id"]: p["status"] for p in svc.catalog("default")["packs"] if p["executor"] == "device"}
     assert st == {"bluetooth-speaker": "ready", "smart-tv-remote": "no_device", "ac-ir-remote": "no_device",
                   "samsung-smartthings": "no_device", "lg-thinq": "no_device", "bosch-home-connect": "no_device"}
-    with pytest.raises(ToolError, match="Ghar"):
+    with pytest.raises(ToolError, match="Home"):
         svc.run("default", conv, "ac-ir-remote", "set_ac", {"temp_c": 24})
     d = devices.add_device("default", "ac", "Bedroom AC", brand="LG")
     assert [p["protocol"] for p in d["setup"]["try_protocols"]] == ["lg2_ac", "lg_ac"]
@@ -272,5 +272,5 @@ def test_owner_isolation(bz, monkeypatch):
     assert c.post(f"/api/bazar/devices/commands/{cid}/result", json={"ok": True}, headers=owner).json()["status"] == "done"
     # Kunal's chat can't reach the owner's AC
     kt = accounts.tenant_of_user("usr_kunal")
-    with pytest.raises(ToolError, match="Ghar"):
+    with pytest.raises(ToolError, match="Home"):
         bz["svc"].run(kt, bz["conv"], "ac-ir-remote", "set_ac", {"temp_c": 24})

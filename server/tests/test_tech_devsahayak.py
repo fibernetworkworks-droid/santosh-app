@@ -427,7 +427,7 @@ def test_merge_and_deploy_only_on_tap(dev, monkeypatch):
     a3 = S.merge_request(T, repo=REPO, pr_number=1)
     d = S.decide(T, a3["id"], True, a3["hash"], by_tap=True)
     assert d["status"] == "done" and fake.merges[-1]["sha"] == head and fake.merges[-1]["merge_method"] == "squash"
-    assert S.get_task(T, v["number"])["status"] == "merged" and "Deploy" in d["say"]
+    assert S.get_task(T, v["number"])["status"] == "merged" and "deploy" in d["say"]
     # merge queue -> plain message
     fake.prs[2] = dict(fake.prs[1], number=2, merged=False, state="open", head={"ref": "x", "sha": head})
     fake.rules = [{"type": "merge_queue"}]
@@ -454,7 +454,7 @@ def test_merge_and_deploy_only_on_tap(dev, monkeypatch):
     assert go["status"] == "running" and fake.dispatches[-1] == ("deploy.yml", {"ref": "main", "inputs": {"env": "prod"}})
     assert go["force_reason"].startswith("hotfix")
     S.tick()
-    assert S.actions(T, "deploy")[0]["status"] == "done" and "safal" in S.EVENTS[-1][1]["say"]
+    assert S.actions(T, "deploy")[0]["status"] == "done" and "succeeded" in S.EVENTS[-1][1]["say"]
 
 
 def test_tick_tells_ci_once(dev, monkeypatch):

@@ -149,7 +149,7 @@ def test_events_registers(cs):
     assert any(p["name"] == "Anil Rao" and p["din"] == "11112222" for p in v["directors"])
     late = S.event(T, "Akot", "allotment", "2026-09-01", details={"allottees": [{"name": "Ramesh Patil", "shares": 1000}, {"name": "Sunita Patil", "shares": "500"}]})
     f = late["filings"][0]
-    assert f["form"] == "PAS-3" and f["due"] == "2026-10-01" and f["late"] and "nikal chuki" in late["say"]
+    assert f["form"] == "PAS-3" and f["due"] == "2026-10-01" and f["late"] and "has already passed" in late["say"]
     S.event(T, "Akot", "transfer", "2026-10-05", details={"from": "Ramesh Patil", "to": "Kavita Joshi", "shares": 200})
     mem = {p["name"]: p for p in S.entity_view(T, "Akot")["members"]}
     assert mem["Ramesh Patil"]["shares"] == 800 and mem["Kavita Joshi"]["shares"] == 200 and mem["Kavita Joshi"]["folio"]
@@ -217,7 +217,7 @@ def test_meeting_notice_minutes_by_tap(cs):
     assert w["card"]["blockers"]                                                     # [Discussion ...] still blank
     with pytest.raises(S.CosecError):
         S.decide_minutes(T, m["id"], True, w["minutes_hash"], by_tap=True)
-    text = d["minutes"].replace("[Discussion: kya baat hui]", "Discussed and approved.")
+    text = d["minutes"].replace("[Discussion: what was discussed]", "Discussed and approved.")
     S.minutes_edit(T, m["id"], text)
     w = S.minutes_request(T, m["id"])
     assert not w["card"]["blockers"] and "cosec_minutes" in kinds(S)

@@ -251,7 +251,7 @@ def test_fraud_file_pack_complaint(pi):
     tl = S.timeline(T, ref)
     assert tl["timeline"][0]["at"] <= tl["timeline"][-1]["at"] and all("482910" not in x["what"] for x in tl["timeline"])
     comp = S.complaint(T, ref, "cyber")
-    assert e["evidence"]["sha256"] in comp["text"] and "[the police / a lawyer will decide the section]" in comp["text"]
+    assert e["evidence"]["sha256"] in comp["text"] and "[to be decided by the police / lawyer]" in comp["text"]
     assert comp["links"]["call_1930"] == "tel:1930" and comp["file"]["file_id"]
     pk = S.pack(T, ref)
     from pathlib import Path
