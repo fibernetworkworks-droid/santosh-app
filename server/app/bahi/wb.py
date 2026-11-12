@@ -224,6 +224,24 @@ def _message_of(env_: dict[str, Any], code: str) -> str:
     return "WhiteBooks refused the request."
 
 
+def _note_of(env_: dict[str, Any]) -> str:
+    """WhiteBooks' own words from a refusal: every short scalar in the envelope and its error block (codes, descriptions) - the reply
+    holds no keys or taxpayer data on a refusal. Used when our plain message is generic."""
+    bits: list[str] = []
+    def walk(d: Any, pre: str, depth: int) -> None:
+        if not isinstance(d, dict) or depth > 2:
+            return
+        for k, v in list(d.items())[:12]:
+            if k == "data":
+                continue
+            if isinstance(v, (str, int, float)) and str(v).strip():
+                bits.append(f"{pre}{k}={str(v)[:120]}")
+            elif isinstance(v, dict):
+                walk(v, f"{pre}{k}.", depth + 1)
+    walk(env_, "", 0)
+    return "; ".join(bits)[:400]
+
+
 def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, Any] | None = None,
          headers: dict[str, Any] | None = None, body: Any = None, op: str = "", auth: bool = True) -> dict[str, Any]:
     """One WhiteBooks call. Returns the reply envelope (`status_cd == "1"`) or raises WbError. `auth=False` only for the root ping."""
@@ -265,7 +283,7 @@ def call(tenant: str, product: str, method: str, path: str, *, query: dict[str, 
             ok = True
             return env_
         code = _code_of(env_)
-        raise WbError(code, _message_of(env_, code), product=product, op=op, detail=str(env_.get("status_desc") or "")[:300])
+        raise WbError(code, _message_of(env_, code), product=product, op=op, detail=_note_of(env_))
     except httpx.HTTPError as e:
         code = "network"
         raise WbError("network", product=product, op=op, detail=type(e).__name__)

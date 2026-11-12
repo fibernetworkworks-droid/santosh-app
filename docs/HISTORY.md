@@ -2666,3 +2666,6 @@ Surfaces: tool `app_engine` actions `tests` and `scan` (what=quick|deep) (reads;
 Tests `test_v0832_saboot.py` (9): rules on the real engine + planted engine bug, the tool after a rule change, planted bad-rule app refused at publish (fix passes, her yes kept and dropped), secrets in code + built files, the browser walk at both sizes (and a planted crash), the tool's browser proof, deep scan + routes, the Publish tab in a real browser, the story.
 
 NOT VERIFIED on her VPS or with a real model-built app (the browser walk was run on small hand-made apps and the proof apps here). Not built: Vitest tests inside the app (Vitest is not in the vetted package set; the rule tests run on the server engine instead, which is where rules are enforced), a model-based deep review, an advisory feed, scans of files / functions (not built yet).
+
+## v0.836.0 WB REFUSAL WORDS
+wb.call refusals carry WhiteBooks' own envelope fields as detail; wb_check tries several months / IMS section spellings.
