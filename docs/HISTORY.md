@@ -3015,3 +3015,38 @@ VOICE (voice.py)
 - santosh_kaam with a pending PC question answers it directly (no second brain turn / note).
 Tests: test_v0858_pc_flow.py 26; test_v0193 report pin follows the release rule. Wider sweep 400 passed; 2 reds
 (test_v067 replay, test_v0442 persona) fail identically on the commit before. NOT VERIFIED on her PC / a real call.
+
+
+## v0.859.0 DESKTOP AI D0 + D1 + D2 + D4 (owner: "GO D0 D1 D2 D4" on docs/DESKTOP_AI_PLAN.md)
+
+- **D0 THE PC CARD** (`server/app/quality/pccard_tasks.py`, `pccard.py`, `pccard_api.py`): 40 Windows tasks in her world
+  (apps 6, browser 10, office 5 - skippable without Office, settings 6, files 5, web forms 3, shopping 5 that MUST stop at
+  the approval card), each with a CODE check (title / windows / page / answer / status, all / any). Runs through the real
+  operator (`start(..., replace=False)`, a busy PC is never taken over) only on a PC whose name contains "test" or with
+  `confirm_not_her_pc`; an approval stop is checked then `stop()`ed - nothing is bought; questions answered from the
+  task's own `answer` at most twice; one run at a time; results saved like the other cards (success %, median seconds /
+  steps, false-done, asks, per group). Owner routes GET /api/quality/pccard, POST .../run, POST .../stop. Rupees not
+  measured (no per-task meter); file checks read the screen, not the disk (a desktop file check is D3).
+- **D1 CLAUDE'S OWN COMPUTER TOOLSET** (`pc/operator.py`): on the Claude PC brain the pixel lane is
+  `computer_toolset_20260801` (Sonnet / Opus 5.5 are trained on it); the clashing custom tools (click, type, key, scroll,
+  drag, screenshot, wait) are dropped and Hoola's exact tools ride beside it. Members map onto the desktop's existing
+  actions (`_from_native`; xdotool key names -> desktop names; triple click = double + one; key repeat; scroll up/down)
+  - no exe change; middle click / hold key / mouse down-up / held modifiers are refused with a reason. ZOOM = a
+  full-resolution capture cropped on the server to the region and scaled to the usual size, then the model's
+  screenshot scale is restored (a full-size capture changes the desktop's click scale). Results of toolset calls carry
+  `toolset_name`. If the API refuses the toolset (400 before any toolset call), this process falls back to the custom
+  tools and says so in the log. Qwen keeps the custom tools. Switch `pc_native_tools`.
+- **D2 PLAN + STAGE CHECKS**: `pc_plan_model` (Sonnet) splits a job into 2-7 stages with a visible "done when", a stage
+  that ASKS her for any open choice, and an approval stage before any send / order / payment; the plan rides the first
+  message; `stage_done(stage, evidence)` is checked on a fresh screenshot + page text by `pc_check_model` (Haiku); not
+  confirmed = "NOT YET" with the reason, twice = move on (never a loop); stage progress on the live card and the call.
+  Short jobs get no plan. Switch `pc_plan`.
+- **D4 VERIFY BEFORE DONE**: `done(success=true)` is checked on the screen against her ask (+ the last stage); not ok =
+  "NOT VERIFIED: <what is missing>" back to the model (max 2), then accepted; a checker that cannot run never blocks.
+  Switch `pc_verify`.
+- Tests: `test_v0859_desktop_ai.py` 8, `test_v0859_pc_card.py` 21; conftest pins PC_PLAN / PC_VERIFY / PC_NATIVE_TOOLS
+  off for the older PC suites (their fake model client would get the planner / checker calls). PC sweep 187 passed,
+  1 red pre-existing (test_v067 replay).
+- NOT VERIFIED: no live call with the toolset (the VPS anthropic SDK version and API version header may matter - the
+  fallback covers a refusal), no real PC run, no card numbers yet. Cost: + one planner call per job, + one Haiku check
+  per stage / done.

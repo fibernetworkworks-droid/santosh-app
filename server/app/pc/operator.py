@@ -466,6 +466,11 @@ TOOLS = [
                                        "the focused box. Not for bank / card / payment OTPs.",
      "input_schema": {"type": "object", "properties": {"reason": {"type": "string", "description": "which site sent it, e.g. 'myAadhaar'"},
                                                        "digits": {"type": "integer"}}, "required": ["reason"]}},
+    {"name": "stage_done", "description": "Only when the task came with a PLAN: say that stage N is complete. A checker "
+                                          "looks at the screen against that stage's 'done when' before you move on.",
+     "input_schema": {"type": "object", "properties": {"stage": {"type": "integer"},
+                                                       "evidence": {"type": "string", "description": "what on the screen shows it is done"}},
+                      "required": ["stage"]}},
     {
         "name": "done", "description": "Finish: the answer / what was done (short, key facts). success=false if not finished.",
         "input_schema": {"type": "object", "properties": {"answer": {"type": "string"}, "success": {"type": "boolean"}},
@@ -567,6 +572,13 @@ class Op:
     brain_model: str = ""          # its model id (qwen3.8-max / claude-sonnet-5-5)
     brain_note: str = ""           # said once when the pick could not run (no Qwen key -> Sonnet)
     browser: str = ""              # v0.858 the browser she NAMED for this task ('chrome' / 'edge' / ...), '' = any
+    native: bool = False           # v0.859 D1 this task drives the pixel lane with Claude's own computer toolset
+    shot_w: int = 0                # width of the last screenshot the model saw (zoom maps from it)
+    plan: list = field(default_factory=list)   # v0.859 D2 [{goal, done_when, ask}] - the stages of this job
+    stage: int = 0                 # index of the stage being worked on
+    stage_fails: dict = field(default_factory=dict)
+    verify_rejects: int = 0        # v0.859 D4 times 'done' was sent back by the checker
+    verified: str = ""             # what the final check said
     opened_title: str = ""         # v0.858 the page title _open_in_named already saw (no second wait for it)
     waited: float = 0.0            # v0.858 seconds spent waiting for HER answer (given back to the task's clock)
     browser_src: str = ""          # said (her words now) | remembered (a recent task of hers) | default (Chrome)
@@ -1021,6 +1033,10 @@ async def _shot(op: Op, monitor: str = "") -> list[dict]:
     op.monitor = s.get("monitor", mon) or mon
     op.window = s.get("active_window", "") or op.window
     op.windows = [str(w) for w in (s.get("windows") or [])][:30]
+    try:
+        op.shot_w = int(s.get("width") or op.shot_w or 0)
+    except (TypeError, ValueError):
+        pass
     wins = ", ".join((s.get("windows") or [])[:12])
     where = "ALL monitors stitched" if op.monitor == "all" else "main monitor"
     return [{"type": "text", "text": f"Screen {s.get('width')}x{s.get('height')} ({where}). Active window: {op.window or '-'}. "
@@ -1373,9 +1389,15 @@ async def _open_in_named(op: "Op", url: str, b: str) -> str:
 async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
     """Run one tool; returns text for the model."""
     if name == "click":
-        op_name = "double_click" if a.get("double") else ("right_click" if a.get("button") == "right" else "click")
+        op_name = "double_click" if a.get("double") or a.get("triple") else ("right_click" if a.get("button") == "right" else "click")
         await _pc(op, "control", {"op": op_name, "x": a.get("x"), "y": a.get("y")})
+        if a.get("triple"):                 # v0.859 triple click = double + one more (select a whole line / paragraph)
+            await _pc(op, "control", {"op": "click", "x": a.get("x"), "y": a.get("y")})
+            op_name = "triple_click"
         return f"{op_name} done"
+    if name == "mouse_move":
+        await _pc(op, "control", {"op": "move", "x": a.get("x"), "y": a.get("y")})
+        return "moved"
     if name == "type":
         text = str(a.get("text", ""))[:4000]
         from .. import idvault
@@ -1398,8 +1420,13 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         parts = tuple(p.strip().lower() for p in re.split(r"[+ ]+", keys) if p.strip())
         if parts in BLOCKED_KEYS:
             return "REFUSED: that shortcut is not allowed (Run dialog / system tools). Use open_app instead."
-        await _pc(op, "control", {"op": "key", "keys": keys})
-        return f"pressed {keys}"
+        try:
+            times = max(1, min(int(a.get("repeat") or 1), 30))
+        except (TypeError, ValueError):
+            times = 1
+        for _ in range(times):
+            await _pc(op, "control", {"op": "key", "keys": keys})
+        return f"pressed {keys}" + (f" x{times}" if times > 1 else "")
     if name == "scroll":
         await _pc(op, "control", {"op": "scroll", "x": a.get("x"), "y": a.get("y"), "amount": int(a.get("amount") or -5)})
         return "scrolled"
@@ -2278,6 +2305,287 @@ def decide(tenant: str, sid: str, pending_id: str, approve: bool) -> bool:
     return True
 
 
+# ---------------------------------------------------------------- v0.859 D1 CLAUDE'S OWN COMPUTER TOOLSET
+# Sonnet / Opus 5.5 are trained on Anthropic's computer toolset (zoom, triple_click, key repeat...): clicks land better
+# than with 58 home-made tools described in words. The pixel lane uses it on the Claude brain; Hoola's own exact
+# tools (open_app / open_url / page_* / ax_* / ask_* / done) ride beside it. Qwen keeps the custom tools. The toolset's
+# actions are mapped onto what the desktop app already does - no new desktop release. Refused by the API = this
+# process falls back to the custom tools, once, said in the log.
+NATIVE_TYPE = "computer_toolset_20260801"
+NATIVE_DROP = {"click", "type", "key", "scroll", "drag", "screenshot", "wait"}   # same names as toolset members
+NATIVE_STATE: dict[str, Any] = {"off": ""}
+NATIVE_NOTE = """
+COMPUTER TOOLS: pixel actions use the computer tools - left_click, double_click, triple_click, right_click, type,
+key (with repeat), scroll, left_click_drag, mouse_move, wait, screenshot and ZOOM. Coordinates are pixels on the latest
+screenshot. ZOOM into a region before clicking small text, tiny buttons, dense lists or menus, and to read small
+numbers exactly. Not available on this PC: middle_click, hold_key, left_mouse_down/up and clicks with held modifier
+keys - use a keyboard shortcut instead. Everything else (open_app, open_url, page_*, ax_*, ask_user, ask_approval,
+ask_otp, stage_done, done) works as described."""
+
+_XKEY = {"return": "enter", "kp_enter": "enter", "escape": "esc", "backspace": "backspace", "page_down": "pagedown",
+         "page_up": "pageup", "next": "pagedown", "prior": "pageup", "super": "win", "super_l": "win", "meta": "win",
+         "cmd": "win", "control": "ctrl", "control_l": "ctrl", "ctrl_l": "ctrl", "alt_l": "alt", "shift_l": "shift",
+         "delete": "delete", "del": "delete", "insert": "insert", "home": "home", "end": "end", "tab": "tab",
+         "space": "space", "up": "up", "down": "down", "left": "left", "right": "right", "menu": "apps"}
+
+
+def _xkey(text: str) -> str:
+    """xdotool-style key names ('Return', 'ctrl+Page_Down', 'alt+Tab') -> the desktop's names ('enter', 'ctrl+pagedown')."""
+    parts = [p for p in re.split(r"\s*\+\s*", str(text or "").strip()) if p]
+    return "+".join(_XKEY.get(p.lower(), p.lower()) for p in parts)
+
+
+def _xy(c: Any) -> tuple[Any, Any]:
+    if isinstance(c, (list, tuple)) and len(c) >= 2:
+        return c[0], c[1]
+    return None, None
+
+
+def _from_native(name: str, inp: dict[str, Any]) -> tuple[str, dict[str, Any]] | tuple[None, str]:
+    """A toolset member -> (Hoola tool, args), or (None, the reason it cannot run here)."""
+    inp = inp or {}
+    mods = str(inp.get("text") or "").strip() if name in ("left_click", "right_click", "double_click", "triple_click",
+                                                          "middle_click", "left_click_drag", "scroll") else ""
+    if mods:
+        return None, (f"Clicks / scrolls with held keys ('{mods}') are not supported on this PC. Use a keyboard "
+                      "shortcut (key) instead, or click without the modifier.")
+    x, y = _xy(inp.get("coordinate"))
+    if name in ("left_click", "double_click", "triple_click", "right_click"):
+        if x is None:
+            return None, "Give the coordinate to click (this PC does not click at the bare cursor position)."
+        a = {"x": x, "y": y}
+        if name == "double_click":
+            a["double"] = True
+        elif name == "triple_click":
+            a["triple"] = True
+        elif name == "right_click":
+            a["button"] = "right"
+        return "click", a
+    if name == "left_click_drag":
+        sx, sy = _xy(inp.get("start_coordinate"))
+        if sx is None or x is None:
+            return None, "left_click_drag needs start_coordinate and coordinate."
+        return "drag", {"x": sx, "y": sy, "to_x": x, "to_y": y}
+    if name == "mouse_move":
+        if x is None:
+            return None, "mouse_move needs a coordinate."
+        return "mouse_move", {"x": x, "y": y}
+    if name == "type":
+        return "type", {"text": str(inp.get("text") or "")}
+    if name == "key":
+        return "key", {"keys": _xkey(str(inp.get("text") or "")), "repeat": inp.get("repeat") or 1}
+    if name == "scroll":
+        d = str(inp.get("scroll_direction") or "down").lower()
+        try:
+            n = max(1, min(int(inp.get("scroll_amount") or 3), 30))
+        except (TypeError, ValueError):
+            n = 3
+        if d not in ("up", "down"):
+            return None, "Sideways scrolling is not supported here: use shift+scroll via keys (shift + arrow keys) or a scrollbar drag."
+        a = {"amount": n if d == "up" else -n}
+        if x is not None:
+            a.update(x=x, y=y)
+        return "scroll", a
+    if name == "wait":
+        return "wait", {"seconds": inp.get("duration") or 2}
+    if name == "screenshot":
+        return "screenshot", {}
+    if name == "cursor_position":
+        return None, "The cursor position is not tracked on this PC; read the screenshot instead."
+    return None, f"'{name}' is not available on this PC (middle_click, hold_key and mouse down/up are not). Use another way."
+
+
+async def _zoom(op: "Op", region: Any) -> list[dict]:
+    """The toolset's zoom: the region of the last screenshot at FULL screen resolution, scaled to the usual size.
+    Coordinates stay in the full screenshot's space. The desktop's click scale is reset right after (a full-size
+    capture changes it)."""
+    import io
+    from PIL import Image
+    try:
+        x0, y0, x1, y1 = [float(v) for v in list(region)[:4]]
+    except Exception:
+        return [{"type": "text", "text": "zoom needs region [x0, y0, x1, y1] on the screenshot."}]
+    if x1 <= x0 or y1 <= y0:
+        return [{"type": "text", "text": "zoom region is empty: give top-left and bottom-right corners."}]
+    shot_w = op.shot_w or SHOT_WIDTH
+    try:
+        big = await _pc(op, "screen", {"max_width": 10000, "monitor": op.monitor}, timeout=30)
+        img = Image.open(io.BytesIO(base64.b64decode(big.get("image_b64", ""))))
+        k = img.size[0] / float(shot_w)
+        box = (max(0, int(x0 * k)), max(0, int(y0 * k)), min(img.size[0], int(x1 * k)), min(img.size[1], int(y1 * k)))
+        crop = img.crop(box)
+        f = min(SHOT_WIDTH / max(1, crop.size[0]), 900 / max(1, crop.size[1]), 4.0)
+        crop = crop.resize((max(1, int(crop.size[0] * f)), max(1, int(crop.size[1] * f))))
+        buf = io.BytesIO()
+        crop.convert("RGB").save(buf, "JPEG", quality=85)
+        data = base64.b64encode(buf.getvalue()).decode()
+    except Exception as e:
+        return [{"type": "text", "text": f"zoom failed on this PC ({type(e).__name__}); use the screenshot."}]
+    finally:
+        try:
+            await _shot(op)                 # back to the model's screenshot scale: the next click maps right
+        except Exception:
+            pass
+    STATS["zooms"] = STATS.get("zooms", 0) + 1
+    return [{"type": "text", "text": f"Zoomed region {[int(x0), int(y0), int(x1), int(y1)]} (coordinates stay in the "
+                                     "full screenshot's space)."},
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": data}}]
+
+
+def _tools_for(op: "Op") -> list[dict]:
+    base = HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS
+    if not op.native:
+        return base
+    return [{"type": NATIVE_TYPE}] + [t for t in base if t.get("name") not in NATIVE_DROP]
+
+
+def _native_on(op: "Op") -> bool:
+    st = get_settings()
+    return bool(getattr(st, "pc_native_tools", True)) and not NATIVE_STATE["off"] and op.brain != "qwen"
+
+
+def _native_refused(e: Exception) -> bool:
+    code = getattr(e, "status_code", 0) or 0
+    msg = str(e).lower()
+    return code == 400 and ("toolset" in msg or "computer" in msg or "tools" in msg)
+
+
+# ---------------------------------------------------------------- v0.859 D2 PLAN + D4 CHECK
+_PLAN_SYSTEM = """You plan a job a person will do on a Windows PC (mouse + keyboard), for a careful assistant.
+Split the job into 2-7 STAGES in order. Each stage: a short goal, and 'done_when' = what is VISIBLY on the screen when
+that stage is complete (a page / window title, a field showing a value, a list open, a confirmation message). When the
+job leaves a choice open that only the user can make (which item / dish / product, size, quantity, add-ons, address,
+time slot, seat, plan), put a stage whose goal is to show her the real options and ASK her (set "ask" to the question).
+Any final send / submit / order / payment is a stage that ASKS FOR APPROVAL - never one that does it. Keep the browser
+she named. Answer ONLY JSON: {"stages": [{"goal": "...", "done_when": "...", "ask": ""}]}"""
+
+_CHECK_SYSTEM = """You check whether a step of a computer task is REALLY complete by looking at the CURRENT screen
+(screenshot + page text). Be strict but fair: judge only what is visible. Answer ONLY JSON:
+{"ok": true|false, "why": "one short sentence - what you see, and what is missing if not ok"}"""
+
+
+def _plan_worthy(task: str) -> bool:
+    t = str(task or "")
+    return len(t.split()) >= 6 or bool(re.search(r"\b(aur|and|phir|then|order|book|fill|bhar|download|send|bhej)\b", t, re.I))
+
+
+def _loose_json(text: str) -> dict:
+    t = str(text or "").strip()
+    m = re.search(r"\{.*\}", t, re.S)
+    try:
+        return json.loads(m.group(0) if m else t)
+    except Exception:
+        return {}
+
+
+async def _claude_json(model: str, system: str, content: list, max_tokens: int = 700, timeout: float = 25) -> dict:
+    """One small Claude call (planner / checker) on the model named, never the Haiku / GLM rewrite."""
+    from ..agent.santosh import get_client
+    from .. import usage, glmdoor
+    client = get_client()
+    if client is None:
+        return {}
+    a = usage.ONE_MODEL_BYPASS.set(True)
+    b = glmdoor.CLAUDE_ONLY.set(True)
+    try:
+        resp = await asyncio.wait_for(client.messages.create(model=model, max_tokens=max_tokens, system=system,
+                                                             messages=[{"role": "user", "content": content}]), timeout)
+    finally:
+        glmdoor.CLAUDE_ONLY.reset(b)
+        usage.ONE_MODEL_BYPASS.reset(a)
+    text = " ".join(getattr(x, "text", "") or "" for x in (resp.content or []))
+    return _loose_json(text)
+
+
+async def _make_plan(op: "Op") -> list[dict]:
+    st = get_settings()
+    if not getattr(st, "pc_plan", True) or not _plan_worthy(op.task):
+        return []
+    try:
+        mem = ""
+        try:
+            from . import memory
+            mem = memory.prompt_block(op.tenant)[:1500]
+        except Exception:
+            pass
+        got = await _claude_json(str(getattr(st, "pc_plan_model", "") or "claude-sonnet-5-5"), _PLAN_SYSTEM,
+                                 [{"type": "text", "text": f"Job: {op.task}\nScreen now: {op.window or '-'}\n{mem}"}])
+    except Exception as e:
+        log.info("pc plan skipped: %s", e)
+        return []
+    stages = []
+    for s_ in (got.get("stages") or [])[:7]:
+        if isinstance(s_, dict) and str(s_.get("goal") or "").strip():
+            stages.append({"goal": str(s_["goal"]).strip()[:200], "done_when": str(s_.get("done_when") or "").strip()[:240],
+                           "ask": str(s_.get("ask") or "").strip()[:200]})
+    if len(stages) < 2:
+        return []
+    STATS["plans"] = STATS.get("plans", 0) + 1
+    return stages
+
+
+def _plan_text(op: "Op") -> str:
+    lines = [f"{i + 1}. {s_['goal']} - done when: {s_['done_when'] or 'visible on screen'}" +
+             (f" (ASK HER: {s_['ask']})" if s_.get("ask") else "") for i, s_ in enumerate(op.plan)]
+    return ("PLAN - work on ONE stage at a time, in order. When a stage's 'done when' is visibly true, call "
+            "stage_done(stage=N, evidence=...) - a checker looks at the screen before you move on. A stage marked ASK "
+            "HER = read the real options, then ask_user.\n" + "\n".join(lines))
+
+
+async def _check_screen(op: "Op", what: str, claim: str = "") -> tuple[bool, str]:
+    """Look at the CURRENT screen (fresh screenshot + page text) and say whether `what` is really true. Fails open:
+    a checker that cannot run never blocks the task."""
+    st = get_settings()
+    try:
+        blocks = await _shot(op)
+        img = [b for b in blocks if b.get("type") == "image"]
+        page = ""
+        try:
+            pt = await _pc(op, "page_text", {"max_chars": 1500}, timeout=15, log=False)
+            page = (pt.get("text") or "").strip()[:1500]
+        except Exception:
+            pass
+        text = (f"CHECK: {what}\nThe assistant says: {claim or '-'}\nActive window: {op.window or '-'}\n"
+                f"Page text (may be empty): {page or '-'}")
+        got = await _claude_json(str(getattr(st, "pc_check_model", "") or "claude-haiku-5-5"), _CHECK_SYSTEM,
+                                 [{"type": "text", "text": text}, *img], max_tokens=250, timeout=20)
+    except Exception as e:
+        log.info("pc check skipped: %s", e)
+        return True, ""
+    if "ok" not in got:
+        return True, ""
+    STATS["checks"] = STATS.get("checks", 0) + 1
+    return bool(got.get("ok")), str(got.get("why") or "")[:300]
+
+
+
+async def _stage_done(op: "Op", a: dict[str, Any]) -> str:
+    """v0.859 D2 the model says stage N is complete: a checker looks at the screen first. Twice not confirmed = move
+    on anyway (never a loop), said so."""
+    if not op.plan:
+        return "There is no plan for this task - just carry on and call done at the end."
+    try:
+        n = int(a.get("stage") or (op.stage + 1)) - 1
+    except (TypeError, ValueError):
+        n = op.stage
+    n = max(0, min(n, len(op.plan) - 1))
+    s_ = op.plan[n]
+    ok, why = await _check_screen(op, f"Stage {n + 1}: {s_['goal']}. Done when: {s_['done_when']}", str(a.get("evidence") or ""))
+    if not ok:
+        op.stage_fails[n] = op.stage_fails.get(n, 0) + 1
+        if op.stage_fails[n] < 2:
+            return f"NOT YET (checker): {why} Finish stage {n + 1}, then call stage_done again."
+        why = "not confirmed twice - moving on; " + why
+    op.stage = n + 1
+    nxt = op.plan[op.stage] if op.stage < len(op.plan) else None
+    op.action = f"Kadam {min(op.stage + 1, len(op.plan))}/{len(op.plan)}: " + (nxt["goal"][:60] if nxt else "aakhri jaanch")
+    _event(op)
+    _inject(op, f"(PC update - say it in a few natural words only when she is not speaking: «{op.action}».)")
+    return (f"CHECKED: stage {n + 1} done ({why or 'ok'}). " +
+            (f"Next - stage {op.stage + 1}: {nxt['goal']} (done when: {nxt['done_when']})" +
+             (f" - ASK HER: {nxt['ask']}" if nxt.get("ask") else "") if nxt else "All stages done: finish with done."))
+
+
 async def _run(op: Op) -> None:
     st = get_settings()
     from .. import usage
@@ -2306,7 +2614,13 @@ async def _run(op: Op) -> None:
     messages: list[dict] = []
     try:
         first = await _shot_retry(op)          # v0.185.4 one busy capture at task start must not kill the task
-        messages.append({"role": "user", "content": [{"type": "text", "text": f"Task: {op.task}"}, *first]})
+        op.native = _native_on(op)             # v0.859 D1 Claude's own computer toolset on the Claude brain
+        op.plan = await _make_plan(op)         # v0.859 D2 checked stages (a short job gets none)
+        if op.plan:
+            op.action = f"Plan: {len(op.plan)} kadam"
+            _event(op)
+        head = f"Task: {op.task}" + ("\n\n" + _plan_text(op) if op.plan else "")
+        messages.append({"role": "user", "content": [{"type": "text", "text": head}, *first]})
         deadline = time.time() + op.minutes * 60
         while op.step < op.steps_max and time.time() < deadline and op.status == "running":
             _trim_images(messages)
@@ -2314,10 +2628,23 @@ async def _run(op: Op) -> None:
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
             _event(op)
             from . import brain as _brain   # v0.851 PC BRAIN: Qwen 3.8 Max or Sonnet 5.5, chosen for the PC loop alone
-            resp = await _brain.think(op, client, messages, dict(
-                model=op.brain_model or st.anthropic_model, max_tokens=int(getattr(st, "pc_max_tokens", 4000) or 4000),
-                system=system, tools=(HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS), messages=messages),
-                _think_retry)
+
+            def _params() -> dict:
+                return dict(model=op.brain_model or st.anthropic_model,
+                            max_tokens=int(getattr(st, "pc_max_tokens", 4000) or 4000),
+                            system=system + (NATIVE_NOTE if op.native else ""), tools=_tools_for(op), messages=messages)
+            try:
+                resp = await _brain.think(op, client, messages, _params(), _think_retry)
+            except Exception as e:
+                native_used = any(isinstance(b, dict) and b.get("toolset_name") for m in messages
+                                  if m.get("role") == "assistant" and isinstance(m.get("content"), list) for b in m["content"])
+                if not (op.native and not native_used and _native_refused(e)):
+                    raise
+                # v0.859 the API refused the computer toolset: this process uses the custom tools from now on
+                NATIVE_STATE["off"] = str(e)[:200]
+                log.warning("pc native toolset refused, custom tools from now on: %s", e)
+                op.native = False
+                resp = await _brain.think(op, client, messages, _params(), _think_retry)
             op.thinking = False
             content = resp.content
             messages.append({"role": "assistant", "content": content})
@@ -2336,8 +2663,20 @@ async def _run(op: Op) -> None:
             finished = False
             moved = ""                      # a screen-changing action already ran in this turn
             opened = ""                     # v0.856 the app an open_app / ax_launch of THIS turn opened
+            native_ids = {u["id"] for u in uses if u.get("toolset_name") == "computer"}
             for u in uses:
                 name, a = u["name"], u.get("input") or {}
+                if u["id"] in native_ids:      # v0.859 D1 a computer-toolset member -> Hoola's own action
+                    if name == "zoom":
+                        results.append({"type": "tool_result", "tool_use_id": u["id"],
+                                        "content": await _zoom(op, a.get("region"))})
+                        continue
+                    mapped = _from_native(name, a)
+                    if mapped[0] is None:
+                        results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True,
+                                        "content": str(mapped[1])})
+                        continue
+                    name, a = mapped
                 if moved and name in KEYBOARD and opened and moved in FAST_AFTER \
                         and await _opened_in_front(op, opened):
                     # v0.856 PC SPEED (every app, website, tab, window and Settings page - not only Notepad): the
@@ -2365,6 +2704,24 @@ async def _run(op: Op) -> None:
                         (f"monitor={a.get('monitor')}" if name == "screenshot" and a.get("monitor") else "")
                     op.mem.append(f"{name} {arg or ''}".strip()[:120])
                 _work(op, name)
+                if name == "stage_done":
+                    results.append({"type": "tool_result", "tool_use_id": u["id"], "content": await _stage_done(op, a)})
+                    op.step = max(0, op.step - 1)         # a check is not a step of the budget
+                    continue
+                if name == "done" and a.get("success", True) and getattr(st, "pc_verify", True) and op.verify_rejects < 2:
+                    # v0.859 D4 'done' only after the screen is checked against her ask (and the plan's last stage)
+                    last = op.plan[-1] if op.plan else {}
+                    ok, why = await _check_screen(op, f"The whole task is finished as she asked: {op.task}" +
+                                                  (f" (final stage: {last.get('goal')} - done when {last.get('done_when')})"
+                                                   if last else ""), str(a.get("answer") or text))
+                    op.verified = why
+                    if not ok:
+                        op.verify_rejects += 1
+                        STATS["verify_rejects"] = STATS.get("verify_rejects", 0) + 1
+                        results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True,
+                                        "content": f"NOT VERIFIED - the checker looked at the screen: {why} Fix what is "
+                                                   "missing and call done again, or done(success=false) saying what is left."})
+                        continue
                 if name == "done":
                     op.summary = str(a.get("answer") or text or "Ho gaya.")[:4000]
                     op.status = "done" if a.get("success", True) else "partial"
@@ -2428,6 +2785,9 @@ async def _run(op: Op) -> None:
                     opened = _target_of(name, a) if name in FAST_AFTER and not is_err and \
                         not msg.startswith("ERROR") else ""
                 results.append({"type": "tool_result", "tool_use_id": u["id"], "content": msg, **({"is_error": True} if is_err else {})})
+            for r_ in results:
+                if r_.get("tool_use_id") in native_ids:
+                    r_["toolset_name"] = "computer"   # the toolset's results carry its name back
             if finished or op.status != "running":
                 break
             last = moved or (uses[-1]["name"] if uses else "")
