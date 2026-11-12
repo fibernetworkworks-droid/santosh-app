@@ -18,12 +18,12 @@ DESC = (70, 160)
 THIN_WORDS = 250
 STRIKING = (4.0, 20.0)          # positions where a little work moves a page to the top 3
 
-NEVER = ("Backlink kharidna / link exchange scheme nahi (Google spam policy).",
-         "Nakli review, review ke badle discount, ya sirf khush graahak se review maangna (review gating) nahi.",
-         "Keyword stuffing, chhupa text, cloaking, doorway pages nahi.",
-         "Hazaron AI pages ek saath chhaapna (scaled content abuse) nahi; har page asli kaam ka ho.",
-         "Google search results scrape nahi: sirf Search Console / PageSpeed ke official API aur aapki apni website.",
-         "Website / Google profile par badlav sirf aapki haan se; Hoola khud publish nahi karta.")
+NEVER = ("No buying backlinks or link exchange schemes (Google spam policy).",
+         "No fake reviews, no discount in exchange for reviews, and no asking only happy customers for reviews (review gating).",
+         "No keyword stuffing, hidden text, cloaking or doorway pages.",
+         "No publishing thousands of AI pages at once (scaled content abuse); every page must have real value.",
+         "No scraping of Google search results: only the official Search Console / PageSpeed APIs and your own website.",
+         "Changes to the website / Google profile only with your approval; Hoola does not publish on its own.")
 
 
 def cwv_grade(metric: str, value) -> str:
@@ -64,11 +64,11 @@ def opportunity(row: dict) -> dict | None:
     if STRIKING[0] <= pos <= STRIKING[1]:
         gain = round(imp * (ctr_expected(3) - ctr))
         return {"kind": "striking", "gain": max(gain, 0),
-                "do": f"'{row['query']}' par position {pos:.1f}: page mein yeh shabd heading / pehle paragraph mein, FAQ, aur andar ke links se mazboot karein."}
+                "do": f"'{row['query']}' is at position {pos:.1f}: strengthen this word on the page in the heading / first paragraph, the FAQ and internal links."}
     if pos < STRIKING[0] and ctr < exp * 0.6:
         gain = round(imp * (exp - ctr))
         return {"kind": "low_ctr", "gain": max(gain, 0),
-                "do": f"'{row['query']}' top {pos:.0f} mein hai par click kam ({ctr * 100:.1f}%): title aur description behtar likhein."}
+                "do": f"'{row['query']}' is in the top {pos:.0f} but gets few clicks ({ctr * 100:.1f}%): write a better title and description."}
     return None
 
 
@@ -82,7 +82,7 @@ def cannibal(rows: list[dict]) -> list[dict]:
     for q, rs in by.items():
         pages = {r["page"] for r in rs}
         if len(pages) > 1:
-            out.append({"query": q, "pages": sorted(pages), "do": "Ek hi shabd par do page lad rahe hain: ek ko mukhya banaiye, doosre se link / merge kijiye."})
+            out.append({"query": q, "pages": sorted(pages), "do": "Two pages are competing for the same word: make one the main page and link / merge the other into it."})
     return out
 
 
@@ -94,62 +94,62 @@ def page_issues(p: dict, city: str = "") -> list[dict]:
         out.append({"code": code, "level": level, "text": text, "fix": fix})
 
     if p.get("status", 200) >= 400:
-        add("broken", "bad", f"Page khulta nahi (HTTP {p['status']}).", "Link theek karein ya 301 redirect lagaiye.")
+        add("broken", "bad", f"The page does not open (HTTP {p['status']}).", "Fix the link or add a 301 redirect.")
         return out
     if p.get("noindex"):
-        add("noindex", "bad", "Page par noindex laga hai: Google ise nahi dikhayega.", "Agar page dikhna chahiye to meta robots se noindex hataiye.")
+        add("noindex", "bad", "The page has noindex: Google will not show it.", "If the page should be shown, remove noindex from the meta robots tag.")
     t = p.get("title", "")
     if not t:
-        add("title_missing", "bad", "Title nahi hai.", "Har page ka alag title: '<kaam> in <shehar> | <naam>'.")
+        add("title_missing", "bad", "There is no title.", "Give every page its own title: '<service> in <city> | <name>'.")
     elif len(t) < TITLE[0]:
-        add("title_short", "warn", f"Title chhota hai ({len(t)} akshar).", "Kaam + shehar + brand jodiye (30-60 akshar).")
+        add("title_short", "warn", f"The title is short ({len(t)} characters).", "Add service + city + brand (30-60 characters).")
     elif len(t) > TITLE[1]:
-        add("title_long", "warn", f"Title lamba hai ({len(t)} akshar): Google kaat dega.", "60 akshar tak rakhiye; zaroori shabd pehle.")
+        add("title_long", "warn", f"The title is long ({len(t)} characters): Google will cut it off.", "Keep it within 60 characters; put the important words first.")
     d = p.get("description", "")
     if not d:
-        add("desc_missing", "warn", "Meta description nahi.", "70-160 akshar: kya milta hai, kahan, aur ek call to action.")
+        add("desc_missing", "warn", "There is no meta description.", "70-160 characters: what you get, where, and one call to action.")
     elif len(d) < DESC[0] or len(d) > DESC[1]:
-        add("desc_len", "info", f"Description {len(d)} akshar ka hai.", "70-160 akshar rakhiye.")
+        add("desc_len", "info", f"Description {len(d)} characters long.", "Keep it to 70-160 characters.")
     h1 = p.get("h1", [])
     if not h1:
-        add("h1_missing", "warn", "H1 heading nahi.", "Page ke upar ek H1: page kis baare mein hai.")
+        add("h1_missing", "warn", "There is no H1 heading.", "Put one H1 at the top of the page saying what the page is about.")
     elif len(h1) > 1:
-        add("h1_many", "info", f"{len(h1)} H1 headings.", "Ek mukhya H1 rakhiye, baaki H2.")
+        add("h1_many", "info", f"{len(h1)} H1 headings.", "Keep one main H1; make the rest H2.")
     if p.get("words", 0) < THIN_WORDS and not p.get("is_contact"):
-        add("thin", "warn", f"Page par kam likha hai ({p.get('words', 0)} shabd).", "Graahak ke sawaal, daam, photo, FAQ jodiye: asli kaam ki jaankari.")
+        add("thin", "warn", f"The page has little text ({p.get('words', 0)} words).", "Add customer questions, prices, photos and an FAQ: real information about your work.")
     miss = p.get("img_no_alt", 0)
     if miss:
-        add("img_alt", "info", f"{miss} photo bina alt text.", "Har photo ka chhota alt: kya dikh raha hai.")
+        add("img_alt", "info", f"{miss} photos have no alt text.", "Give every photo a short alt text saying what it shows.")
     if not p.get("viewport"):
-        add("viewport", "bad", "Mobile viewport tag nahi: phone par page chhota dikhega.", '<meta name="viewport" content="width=device-width, initial-scale=1">')
+        add("viewport", "bad", "No mobile viewport tag: the page will look tiny on a phone.", '<meta name="viewport" content="width=device-width, initial-scale=1">')
     if not p.get("https"):
-        add("http", "bad", "Page https par nahi.", "SSL lagaiye aur http se https 301 redirect.")
+        add("http", "bad", "The page is not on https.", "Install SSL and add a 301 redirect from http to https.")
     if p.get("canonical_other"):
-        add("canonical", "info", f"Canonical doosre URL ki taraf: {p['canonical_other']}", "Sahi ho to theek; galti se ho to apna URL rakhiye.")
+        add("canonical", "info", f"The canonical points to a different URL: {p['canonical_other']}", "If it is intended, fine; if it is a mistake, use your own URL.")
     if not p.get("lang"):
-        add("lang", "info", "<html lang> nahi.", 'Hindi page: lang="hi", Marathi: "mr", English: "en-IN".')
+        add("lang", "info", "There is no <html lang>.", 'Hindi page: lang="hi", Marathi: "mr", English: "en-IN".')
     if city and p.get("is_home") and city.lower() not in (t + " " + " ".join(h1) + " " + d).lower():
-        add("city", "warn", f"Home page ke title / H1 / description mein shehar '{city}' nahi.", "Local graahak ke liye shehar ka naam title aur H1 mein.")
+        add("city", "warn", f"The city '{city}' is not in the home page title / H1 / description.", "For local customers, put the city name in the title and H1.")
     if p.get("is_home") and not p.get("schema_local"):
-        add("schema", "warn", "LocalBusiness schema (JSON-LD) nahi.", "Hoola ka banaya JSON-LD home page ke <head> mein lagaiye.")
+        add("schema", "warn", "No LocalBusiness schema (JSON-LD).", "Add the JSON-LD Hoola made to the <head> of the home page.")
     if p.get("bytes", 0) > 3_000_000:
-        add("heavy", "warn", f"Page bahut bhaari ({p['bytes'] // 1_000_000} MB).", "Photo WebP mein, chhoti size.")
+        add("heavy", "warn", f"The page is very heavy ({p['bytes'] // 1_000_000} MB).", "Use WebP photos at a smaller size.")
     return out
 
 
 def site_issues(pages: list[dict], robots: str, sitemap_ok: bool) -> list[dict]:
     out = []
     if re.search(r"^\s*disallow:\s*/\s*$", robots or "", re.I | re.M) and re.search(r"user-agent:\s*\*", robots or "", re.I):
-        out.append({"code": "robots_block", "level": "bad", "text": "robots.txt poori site ko Google se rok raha hai (Disallow: /).",
-                    "fix": "Disallow: / hataiye (sirf admin / cart jaise folder rokiye)."})
+        out.append({"code": "robots_block", "level": "bad", "text": "robots.txt blocks the whole site from Google (Disallow: /).",
+                    "fix": "Remove Disallow: / (block only folders such as admin / cart)."})
     if not sitemap_ok:
-        out.append({"code": "sitemap", "level": "warn", "text": "sitemap.xml nahi mila.", "fix": "Sitemap banaiye aur Search Console mein jama kijiye."})
+        out.append({"code": "sitemap", "level": "warn", "text": "sitemap.xml was not found.", "fix": "Create a sitemap and submit it in Search Console."})
     seen: dict[str, str] = {}
     for p in pages:
         t = (p.get("title") or "").strip().lower()
         if t and t in seen and p.get("status", 200) < 400:
-            out.append({"code": "dup_title", "level": "warn", "text": f"Do page ka ek hi title: {p['url']} aur {seen[t]}",
-                        "fix": "Har page ka alag title."})
+            out.append({"code": "dup_title", "level": "warn", "text": f"Two pages have the same title: {p['url']} and {seen[t]}",
+                        "fix": "Give every page its own title."})
         elif t:
             seen[t] = p["url"]
     return out
@@ -175,36 +175,36 @@ def link_issues(pages: list[dict], sitemap_urls: set[str] | None = None, home: s
         srcs = sorted(inlinks.get(b, set()))
         if srcs:
             out.append({"code": "broken_link", "level": "bad", "url": srcs[0],
-                        "text": f"{len(srcs)} page se tuta link: {b} khulta nahi.",
-                        "fix": f"{', '.join(srcs[:3])} par link badliye, ya {b} ka 301 redirect lagaiye."})
+                        "text": f"Broken link from {len(srcs)} pages: {b} does not open.",
+                        "fix": f"Change the link on {', '.join(srcs[:3])}, or add a 301 redirect for {b}."})
     for src, final in sorted(redirected.items()):
         srcs = sorted(inlinks.get(src, set()))
         if srcs:
             out.append({"code": "redirect_link", "level": "info", "url": srcs[0],
-                        "text": f"Andar ka link redirect se hokar jaata hai: {src} -> {final}",
-                        "fix": f"Link seedha {final} par rakhiye."})
+                        "text": f"An internal link goes through a redirect: {src} -> {final}",
+                        "fix": f"Link straight to {final}."})
     for u in sorted(sitemap_urls or set()):
         k = norm(u)
         if k in by_url and k != norm(home) and not inlinks.get(k) and by_url[k].get("status", 200) < 400:
             out.append({"code": "orphan", "level": "warn", "url": u,
-                        "text": "Akela page: sitemap mein hai par site ka koi page iska link nahi deta.",
-                        "fix": "Kisi milte-julte page ya menu se link dijiye, taaki log aur Google pahunch sakein."})
+                        "text": "Orphan page: it is in the sitemap but no page on the site links to it.",
+                        "fix": "Link to it from a related page or the menu so that people and Google can reach it."})
     for p in pages:
         d = p.get("depth")
         if d is not None and d > 3 and p.get("status", 200) < 400:
-            out.append({"code": "deep", "level": "info", "url": p["url"], "text": f"Page home se {d} click door hai.",
-                        "fix": "Home ke paas wale page se link dijiye (3 click ya kam)."})
+            out.append({"code": "deep", "level": "info", "url": p["url"], "text": f"The page is {d} clicks away from home.",
+                        "fix": "Link to it from a page close to the home page (3 clicks or fewer)."})
         if p.get("mixed"):
             out.append({"code": "mixed", "level": "warn", "url": p["url"],
-                        "text": f"https page par {p['mixed']} photo / script http:// se aa rahe hain.",
-                        "fix": "Inhe https:// se lagaiye (browser inhe rok dete hain ya warning dete hain)."})
+                        "text": f"An https page loads {p['mixed']} photos / scripts over http://.",
+                        "fix": "Load them over https:// (browsers block them or show a warning)."})
     seen: dict[str, str] = {}
     for p in pages:
         dsc = (p.get("description") or "").strip().lower()
         if dsc and p.get("status", 200) < 400:
             if dsc in seen:
                 out.append({"code": "dup_desc", "level": "info", "url": p["url"],
-                            "text": f"Meta description {seen[dsc]} jaisi hi hai.", "fix": "Har page ki alag description likhiye."})
+                            "text": f"Meta description is the same as {seen[dsc]}.", "fix": "Write a different description for every page."})
             else:
                 seen[dsc] = p["url"]
     return out
@@ -242,9 +242,9 @@ def title_suggestion(service: str, city: str, brand: str) -> str:
     return s if len(s) <= TITLE[1] else f"{service} {city}".strip()[:TITLE[1]]
 
 
-GBP_CHECKLIST = ["Sahi primary category (sabse kareeb wali) + 2-4 secondary", "Naam bilkul board jaisa (keyword mat bharo: Google suspend karta hai)",
-                 "Address / service area aur pin sahi; website par wahi NAP (naam, address, phone)", "Har din ke ghante + tyohaar ke special hours",
-                 "Kam se kam 10 asli photo (dukaan bahar / andar, kaam, team), har mahine nayi",
-                 "Products / services daam ke saath", "Har hafte ek post (offer, naya kaam, event)",
-                 "Har review ka jawab 48 ghante mein (naam lekar, shukriya, dikkat ho to offline baat)",
-                 "Graahak se review maangne ka seedha link (sabse maangiye, sirf khush walon se nahi)", "Q&A mein aam sawaal khud likhiye aur jawab dijiye"]
+GBP_CHECKLIST = ["Correct primary category (the closest one) + 2-4 secondary", "Name exactly as on the signboard (do not stuff keywords: Google suspends for it)",
+                 "Address / service area and pin correct; the same NAP (name, address, phone) on the website", "Opening hours for every day + special hours for festivals",
+                 "At least 10 real photos (shop outside / inside, work, team), new ones every month",
+                 "Products / services with prices", "One post every week (offer, new work, event)",
+                 "Reply to every review within 48 hours (use the name, say thanks, take problems offline)",
+                 "A direct link for asking customers for reviews (ask everyone, not only the happy ones)", "Write the common questions in Q&A yourself and answer them"]

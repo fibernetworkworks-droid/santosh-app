@@ -192,7 +192,7 @@ def write_check(sql: str) -> dict:
             if rx.search(bare) and why not in danger:
                 danger.append(why)
         if w in ("update", "delete") and not re.search(r"\bwhere\b", bare, re.I):
-            danger.append(f"{w.upper()} bina WHERE: poori table ki har row par lagega.")
+            danger.append(f"{w.upper()} without WHERE: it will apply to every row of the table.")
     ddl = any(k in ("create", "alter", "drop", "truncate", "comment", "grant", "revoke", "reindex", "cluster", "vacuum",
                     "analyze", "refresh") for k in kinds)
     if any(k in ("vacuum",) for k in kinds) and len(parts) > 1:

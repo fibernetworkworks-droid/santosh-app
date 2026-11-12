@@ -89,7 +89,7 @@ def find(tenant: str, query: str = "", limit: int = 15) -> dict[str, Any]:
 def resolve(tenant: str, deck: str) -> tuple[SlidesClient, dict[str, Any]]:
     text = str(deck or "").strip()
     if not text:
-        raise SlidesError("Kaunsi presentation? Naam, link ya id dijiye.")
+        raise SlidesError("Which presentation? Give the name, link or id.")
     cs = clients(tenant) or [get_client(tenant)]
     pid = id_from(text)
     if not pid:
@@ -109,9 +109,9 @@ def resolve(tenant: str, deck: str) -> tuple[SlidesClient, dict[str, Any]]:
             exact = [x for x in found if x[1]["title"].lower() == text.lower()]
             pick = exact or found
             if not pick:
-                raise SlidesError(f"'{text}' naam ki presentation nahi mili. slides_find se dekhiye ya link dijiye.")
+                raise SlidesError(f"No presentation named '{text}' was found. Check with slides_find or give the link.")
             if len({f["id"] for _, f in pick}) > 1:
-                raise SlidesError("Is naam ki kai presentations hain: " + "; ".join(
+                raise SlidesError("There are several presentations with this name: " + "; ".join(
                     f"{f['title']} (id {f['id']}, {f['modified']})" for _, f in pick[:6]) + ". User se poochiye kaunsi.")
             cs = [pick[0][0]] + [c for c in cs if c is not pick[0][0]]
             pid = pick[0][1]["id"]
@@ -123,7 +123,7 @@ def resolve(tenant: str, deck: str) -> tuple[SlidesClient, dict[str, Any]]:
             return c, p
         except SlidesError as e:
             last = e
-    raise last or SlidesError("Presentation nahi khuli")
+    raise last or SlidesError("The presentation could not be opened")
 
 
 def link_of(pid: str) -> str:
@@ -257,7 +257,7 @@ def slide_requests(spec: dict, index: int | None, accent: dict | None) -> tuple[
     if layout == "image":
         url = str(spec.get("image_url") or "")
         if not url.startswith("https://"):
-            raise SlidesError("image layout ke liye public https image_url chahiye.")
+            raise SlidesError("The image layout needs a public https image_url.")
         reqs.append({"createImage": {"objectId": _oid("img"), "url": url, "elementProperties": {
             "pageObjectId": sid, "size": {"width": {"magnitude": 520 * EMU, "unit": "EMU"},
                                          "height": {"magnitude": 290 * EMU, "unit": "EMU"}},
@@ -289,7 +289,7 @@ def _check_specs(slides: list) -> list[dict]:
     if not slides:
         raise SlidesError("Slides do: har slide {layout, title, bullets / subtitle / rows, notes}.")
     if len(slides) > MAX_SLIDES:
-        raise SlidesError(f"Ek baar mein {MAX_SLIDES} slides tak.")
+        raise SlidesError(f"At most {MAX_SLIDES} slides at a time.")
     return [s if isinstance(s, dict) else {"layout": "bullets", "title": str(s)} for s in slides]
 
 
@@ -332,7 +332,7 @@ def add_slides(tenant: str, deck: str, slides: list[dict], position: int | None 
 def _slide_at(p: dict, n: int) -> dict:
     sl = p.get("slides", [])
     if not 1 <= int(n) <= len(sl):
-        raise SlidesError(f"Slide {n} nahi hai (is deck mein {len(sl)} slides hain).")
+        raise SlidesError(f"There is no slide {n} (this deck has {len(sl)} slides).")
     return sl[int(n) - 1]
 
 
@@ -352,7 +352,7 @@ def edit_slide(tenant: str, deck: str, n: int, title: str | None = None, body: l
         if new is None:
             continue
         if el is None:
-            raise SlidesError(f"Slide {n} par {'title' if el is title_el else 'body'} box nahi hai; slides_add se nayi slide banaiye.")
+            raise SlidesError(f"Slide {n} has no {'title' if el is title_el else 'body'} box; create a new slide with slides_add.")
         if _shape_text(el):
             reqs.append({"deleteText": {"objectId": el["objectId"], "textRange": {"type": "ALL"}}})
         if isinstance(new, list):
@@ -368,14 +368,14 @@ def edit_slide(tenant: str, deck: str, n: int, title: str | None = None, body: l
                 reqs.append({"deleteText": {"objectId": nid, "textRange": {"type": "ALL"}}})
             reqs += _text(nid, notes)
     if not reqs:
-        raise SlidesError("Kya badalna hai? title, body ya notes do.")
+        raise SlidesError("What should change? Give a title, body or notes.")
     c.batch(p["presentationId"], reqs)
     return {"title": p.get("title", ""), "slide": int(n), "link": link_of(p["presentationId"])}
 
 
 def replace_text(tenant: str, deck: str, find: str, replace: str, match_case: bool = False) -> dict[str, Any]:
     if not find:
-        raise SlidesError("Kya dhoondh kar badalna hai?")
+        raise SlidesError("What should be found and replaced?")
     c, p = resolve(tenant, deck)
     res = c.batch(p["presentationId"], [{"replaceAllText": {"containsText": {"text": find, "matchCase": bool(match_case)},
                                                             "replaceText": str(replace)}}])
@@ -409,7 +409,7 @@ def plan_delete(tenant: str, deck: str, numbers: list[int]) -> dict[str, Any]:
     if not nums:
         raise SlidesError("Kaunsi slides hatani hain? numbers do.")
     if len(nums) >= len(p.get("slides", [])):
-        raise SlidesError("Saari slides nahi hata sakte; kam se kam ek rehni chahiye.")
+        raise SlidesError("Cannot remove all the slides; at least one must remain.")
     picked = [(_slide_at(p, x), x) for x in nums]
     return {"client": c, "pid": p["presentationId"], "title": p.get("title", ""),
             "ids": [s["objectId"] for s, _ in picked],
@@ -435,7 +435,7 @@ def export(tenant: str, deck: str, fmt: str = "pdf") -> tuple[str, bytes, dict]:
         except Exception:
             pass
         if data is None:
-            raise SlidesError(f"{first} Iske liye Profile > Google Drive bhi jodiye (doosron ki banayi decks export karne ke liye).")
+            raise SlidesError(f"{first} For this, also connect Profile > Google Drive (to export decks made by others).")
     safe = re.sub(r"[^\w\- ]+", "", p.get("title", "")).strip() or "presentation"
     return safe + EXPORT[fmt][1], data, p
 
@@ -461,7 +461,7 @@ def pending(tenant: str, pid: str) -> dict | None:
 def run_pending(tenant: str, pend_id: str) -> dict[str, Any]:
     p = pending(tenant, pend_id)
     if p is None or p["status"] != "pending":
-        raise SlidesError("Yeh badlav ab baaki nahi hai.")
+        raise SlidesError("This change is no longer pending.")
     pl = p["payload"]
     c = get_client(tenant, pl["account"])
     try:
@@ -469,13 +469,13 @@ def run_pending(tenant: str, pend_id: str) -> dict[str, Any]:
             current = {s["objectId"] for s in c.get(pl["pid"]).get("slides", [])}
             gone = [i for i in pl["ids"] if i not in current]
             if gone:
-                raise SlidesError("Card banne ke baad deck badal gaya; slides dobara chun kar boliye.")
+                raise SlidesError("The deck changed after the card was made; pick the slides again and ask again.")
             c.batch(pl["pid"], [{"deleteObject": {"objectId": i}} for i in pl["ids"]])
-            msg = f"{p['summary']['title']}: {len(pl['ids'])} slides hata di. (Version history se wapas la sakte hain.)"
+            msg = f"{p['summary']['title']}: {len(pl['ids'])} slides removed. (You can restore them from the version history.)"
         elif p["action"] == "share":
             for e in pl["emails"]:
                 c.share(pl["pid"], e, pl["role"])
-            msg = f"{p['summary']['title']} share kar di: {', '.join(pl['emails'])}."
+            msg = f"{p['summary']['title']} shared with: {', '.join(pl['emails'])}."
         else:
             raise SlidesError("unknown action")
     except SlidesError:

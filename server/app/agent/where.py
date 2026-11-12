@@ -40,10 +40,10 @@ _PLACE: dict[str, tuple[str, float]] = {}
 _WORK: dict[str, tuple[str, float]] = {}      # conv -> (place where website work is really running, last touch)
 _WHY: dict[str, str] = {}                    # conv -> named | follow | work (for the line the model gets)
 
-PC_WORDS = "Aapka PC (Santosh Desktop: Chrome / apps on HER own computer)"
-HOOLA_WORDS = "Hoola ka apna browser (on Hoola's server - not her PC, not her phone)"
+PC_WORDS = "Your PC (Santosh Desktop: Chrome / apps on HER own computer)"
+HOOLA_WORDS = "Hoola's own browser (on Hoola's server - not her PC, not her phone)"
 # v0.194 the third computer: Hoola's OWN cloud PC (the coworker VM, Linux + Chromium + install software)
-HOOLAPC_WORDS = "Hoola ka apna cloud PC (the Linux computer owned by Hoola: Chromium, apt/pip installs, shell)"
+HOOLAPC_WORDS = "Hoola's own cloud PC (the Linux computer owned by Hoola: Chromium, apt/pip installs, shell)"
 
 _NOUN = r"(?:pc|p\.c\.|computer|kompyuter|compyuter|laptop|desktop|पीसी|कंप्यूटर|कम्प्यूटर|लैपटॉप|डेस्कटॉप)"
 _PC = [
