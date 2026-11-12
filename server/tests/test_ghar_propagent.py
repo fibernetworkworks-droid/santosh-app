@@ -85,7 +85,7 @@ def test_rules():
     chk = R.listing_checks({**L, "new_project": True, "photos": [], "description": "Guaranteed return, RERA approved"},
                            {"state": "MH", "rera_agent_no": ""})
     joined = " ".join(chk["block"])
-    assert "owner's consent" in joined and "P5" in joined and "QR" in joined and "A5" in joined and "Carpet" in joined
+    assert "owner's consent" in joined and "P5" in joined and "QR" in joined and "A5" in joined and "carpet" in joined
     assert any("guaranteed" in x for x in chk["warn"]) and any("RERA approved" in x for x in chk["warn"])
     route, known = R.visit_order([{"where": "A"}, {"where": "C"}, {"where": "B"}], lambda a, b: {"AB": 1, "AC": 5, "BC": 1}.get(
         "".join(sorted(a + b)), 9))
