@@ -72,7 +72,9 @@ class Hub:
     def is_online(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> bool:
         if kind:
             return any((c.info or {}).get("kind") == kind for c in self.online(tenant_id))
-        return any(device_id in (None, c.device_id) for c in self.online(tenant_id))
+        if device_id is None:   # v0.854 no PC named = HER PC: Hoola's own cloud PC being online does not count
+            return any(self._is_personal(c) for c in self.online(tenant_id))
+        return any(device_id == c.device_id for c in self.online(tenant_id))
 
     def _pick(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> Conn | None:
         """v0.194 a tenant can have SEVERAL PCs (her Windows PC + Hoola's own cloud PC): pick by kind first,
@@ -93,7 +95,11 @@ class Hub:
             for c in conns:
                 if c.device_id == device_id:
                     return c
-        return conns[-1]
+            return None
+        # v0.854 PC CONFUSION: no device, no kind = a job for HER PC (file save, search, open...). Never the
+        # 'last connected' PC when that is Hoola's own cloud PC - her file must not land in Hoola's VM.
+        personal = [c for c in conns if self._is_personal(c)]
+        return personal[-1] if personal else None
 
     def has_kind(self, tenant_id: str, kind: str) -> bool:
         return self.is_online(tenant_id, kind=kind)

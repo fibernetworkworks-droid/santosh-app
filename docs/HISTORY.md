@@ -2860,3 +2860,15 @@ enable_thinking. Price row for usage. 1 test. NOT VERIFIED: no live call (no key
 `pc/brain.qwen_route()` now has ONE route: openrouter.ai/api/v1 with the server's OpenRouter key and `pc_qwen_openrouter_model`
 (qwen/qwen3.8-max-0902). Removed: the Alibaba Model Studio path, the `qwen_api_key` / `qwen_base_url` / `pc_qwen_model` settings and the
 qwen3.8-max price row; `pc_qwen_thinking` only ever rides as OpenRouter `reasoning.enabled`. A test pins that the Alibaba settings stay gone.
+
+
+## v0.854.0 PC CONFUSION (owner: "FIRST CHECK DOES IT CONFUSE BETWEEN HOOLA ON PC AND A USER PC" -> "GO FIX PC CONFUSION")
+Found by reading the routing: (1) her PC off + Hoola's cloud PC on -> a pc_do job ran on Hoola's PC (operator._choose fell back
+to hub._pick = the last-connected PC); (2) every caller with no PC named (email attachment / Drive / Photos save to her PC,
+docdesk search / recent / list / send / open, desk_tools open_file, the PC connector) took the LAST CONNECTED PC, which could be
+Hoola's VM; (3) agent/pick.py allowed pc_do on a 'Hoola ka PC' ask and hoola_pc_do on a 'mere PC' ask; (4) pc_do took a Hoola PC
+name (its description even said 'Hoola PC 2'). Fixed: hub._pick with no device + no kind = her personal PCs only (None if none);
+is_online(tenant) = a personal PC online; a device id not online = None (was the last PC); operator._choose: an exact device id is
+taken as is (pc_team), a name for pc_do is looked up among HER PCs only and a Hoola PC name is refused naming hoola_pc_do, no
+personal PC + Hoola PC online = PC_OFFLINE_HOOLA_ON -> pc_do tells the model to ASK her before hoola_pc_do; pick.check refuses the
+wrong PC tool for the place she named. Tests test_v0854_pc_confusion.py (7). NOT VERIFIED with two real PCs online.

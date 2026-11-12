@@ -47,7 +47,7 @@ PC_TOOLS.append({"name": "pc_do", "description": (
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Santosh "
     "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('office', 'ghar laptop', 'Hoola PC 2'). Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which of HER PCs, by her name for it ('office', 'ghar laptop'). Never a Hoola PC (that is hoola_pc_do). Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
 PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or result of a pc_do task (session_id).",
                  "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
 PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": "Aapke PC ka kaam dekh raha hoon"})
@@ -114,6 +114,10 @@ async def pc_do(ctx: Ctx, task, pc="", model="", _wait=None, **_):
     except RuntimeError as e:
         if "PC_NOT_FOUND" in str(e):
             raise ToolError(str(e).split(": ", 1)[-1] + ". Ask her which PC, or call pc_devices.")
+        if "PC_OFFLINE_HOOLA_ON" in str(e):
+            raise ToolError("Her PC is offline (Santosh Desktop is not connected). Hoola's OWN cloud PC is online, but do "
+                            "NOT move her job there by yourself: tell her her PC is off and ASK in one line whether to do "
+                            "it on Hoola's own PC instead; only on her yes call hoola_pc_do.")
         if "PC_OFFLINE" in str(e):
             raise ToolError("Aapka PC offline hai. PC on karke Santosh Desktop kholiye (ya Santosh app > Mera PC se jodiye).")
         raise ToolError(str(e))

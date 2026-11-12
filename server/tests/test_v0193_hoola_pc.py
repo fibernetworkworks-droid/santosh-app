@@ -91,8 +91,8 @@ async def test_hub_no_kind_keeps_legacy_last_connected(two_pcs):
             await asyncio.sleep(0.01)
 
     t = asyncio.create_task(responder())
-    r = await h.call("t1", "status", {})   # legacy path: no kind -> conns[-1]
-    assert r["got"] == "dev-hp"            # her PC alone = same behaviour as before (one conn)
+    r = await h.call("t1", "status", {})   # no kind = HER PC (v0.854 PC CONFUSION: never Hoola's PC by itself)
+    assert r["got"] == "dev-her"
     t.cancel()
 
 
@@ -100,7 +100,7 @@ def test_hub_pick_and_is_online(two_pcs):
     h, her, hpc = two_pcs
     assert h._pick("t1", kind=KIND) is hpc
     assert h._pick("t1", kind="nope") is None
-    assert h._pick("t1") is hpc                    # legacy: last connected
+    assert h._pick("t1") is her                    # v0.854: no kind = her PC, even when Hoola's PC connected last
     assert h._pick("t1", device_id="dev-her") is her
     assert h.is_online("t1", kind=KIND) is True
     assert h.is_online("t1", kind="nope") is False

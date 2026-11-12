@@ -2031,8 +2031,16 @@ def _choose(tenant: str, kind: str, pc: str):
     legacy pick (her PC alone never notices). Raises RuntimeError PC_OFFLINE / HOOLA_PC_OFFLINE / PC_NOT_FOUND."""
     from .hub import hub
     if pc:
-        conn = hub.find(tenant, pc, kind=kind or None)
+        # v0.854 PC CONFUSION: an exact device id (pc_team pins each part) is taken as it is; a NAME for her PC
+        # job (kind "") is looked for among HER PCs only - a Hoola PC name there is refused, never silently used
+        exact = next((c for c in hub.online(tenant) if c.device_id == pc), None)
+        if exact is not None and (not kind or (exact.info or {}).get("kind") == kind):
+            return exact
+        conn = hub.find(tenant, pc, kind=kind or "her")
         if conn is None:
+            if not kind and hub.find(tenant, pc, kind=HOOLA_PC_KIND) is not None:
+                raise RuntimeError(f"PC_NOT_FOUND: '{pc[:60]}' is Hoola's own cloud PC, not hers - use hoola_pc_do "
+                                   "for Hoola's PC (pc_do is only for HER computers)")
             names = ", ".join(d["name"] for d in hub.devices(tenant)) or "none"
             raise RuntimeError(f"PC_NOT_FOUND: no online PC matches '{pc[:60]}' (online now: {names})")
         return conn
@@ -2044,10 +2052,13 @@ def _choose(tenant: str, kind: str, pc: str):
         mine = [c for c in hub.online(tenant) if (c.info or {}).get("kind") == kind]
         free = [c for c in mine if busy(tenant, str(getattr(c, "device_id", "") or "")) is None]
         return (free or mine)[0]
-    if not hub.is_online(tenant):
-        raise RuntimeError("PC_OFFLINE")
     personal = [c for c in hub.online(tenant) if (c.info or {}).get("kind") != HOOLA_PC_KIND]
-    return personal[-1] if personal else hub._pick(tenant)
+    if not personal:
+        # v0.854 PC CONFUSION: her PC is off - say so; NEVER run her job on Hoola's own PC by itself
+        if hub.has_kind(tenant, HOOLA_PC_KIND):
+            raise RuntimeError("PC_OFFLINE_HOOLA_ON")
+        raise RuntimeError("PC_OFFLINE")
+    return personal[-1]
 
 
 def busy(tenant: str, device_id: str) -> "Op | None":

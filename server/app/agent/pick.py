@@ -60,6 +60,17 @@ def check(name: str, args: dict[str, Any], ctx) -> None:
                         "If she really wants a PC, call tool_search with 'pc' first.")
     if name in ("hoola_pc_do", "pc_do"):
         task = str((args or {}).get("task") or "")
+        # v0.854 PC CONFUSION: the right PC tool for the place she named - 'mere PC' = pc_do, 'Hoola ka PC' = hoola_pc_do
+        her_pc = place == "pc" or where._asked(conv, "pc")
+        hoola_pc = place == "hoolapc" or where._asked(conv, "hoolapc")
+        if not her_pc and not hoola_pc:
+            her_pc, hoola_pc = where.working(conv) == "pc", where.working(conv) == "hoolapc"
+        if name == "pc_do" and hoola_pc and not her_pc:
+            STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1
+            raise ToolError("She asked for HOOLA'S OWN PC (your cloud computer), not hers: use hoola_pc_do, not pc_do.")
+        if name == "hoola_pc_do" and her_pc and not hoola_pc:
+            STATS["wrong_pc"] = STATS.get("wrong_pc", 0) + 1
+            raise ToolError("She asked for HER OWN PC ('mere PC'), not Hoola's cloud PC: use pc_do, not hoola_pc_do.")
         if _appfile().search(task) and place not in ("pc", "hoolapc"):
             # stricter than data: only HER word in THIS ask (not an old PC lock in the chat) sends a program file to a PC
             STATS["file_to_pc"] += 1
