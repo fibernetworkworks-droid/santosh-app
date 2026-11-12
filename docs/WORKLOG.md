@@ -3035,3 +3035,6 @@ Task ID: v0.831.0 HOOLA CLOUD (L10)
 Task: owner "GO L10" on docs/LOVABLE_STUDIO_PLAN.md.
 Work Log: appengine/cloud.py (schema, additive one-run migrations, data-loss card, rule audit, typed lists, preview vs live, public API on site/webapp.py), sealed app frame + shell.js + hoola.ts RPC, tool cloud / cloud_change / cloud_rows, 8 Studio routes + Cloud tab, proof clinic app on Cloud; 6 tests incl. a browser walk; v0.824 / v0.826 tests moved to __app/.
 Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild). Next: L11 SABOOT (auto tests + browser check before done, scans, publish block) on her GO.
+
+Task ID: api-setu-shape-0832
+Work: API Setu 200-without-record handling + field-name report; v0.832.0 ritual. Stage: ready for MERGE TO MAIN.

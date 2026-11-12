@@ -70,7 +70,7 @@ def run(arg: str = "") -> dict[str, Any]:
     try:
         raw = apisetu.taxpayer(res["gstin"], raw=True)
     except apisetu.ApiSetuError as e:
-        keys_ok = e.code == "record_not_found"      # a 404 for this taxpayer = the keys got through
+        keys_ok = e.code in ("record_not_found", "no_record")   # API Setu answered about this taxpayer = the keys got through
         res.update(result="PASS" if keys_ok else "FAIL", code=e.code, status=e.status, line=e.message, keys_accepted=keys_ok)
         return res
     rec = apisetu._plain(raw)
@@ -97,8 +97,8 @@ def main(argv: list[str]) -> int:
             print(f"    {k:20} {rec.get(k) or '-'}")
         print(f"    {'activities':20} {', '.join(rec.get('activities') or []) or '-'}")
         print(f"  reply shape saved to {r['shape_saved']}")
-    if r["result"] == "PASS" and r.get("code") == "record_not_found":
-        print("  (the keys work; GSTN just has no taxpayer with this GSTIN - set APISETU_TEST_GSTIN to a real one to see a record)")
+    if r["result"] == "PASS" and r.get("code") in ("record_not_found", "no_record"):
+        print("  (the keys work; GSTN just has no taxpayer with this GSTIN - set APISETU_TEST_GSTIN to a real, registered GSTIN - e.g. your own - and run apisetu_check again to see a record)")
     return 0 if r["result"] == "PASS" else (0 if r["result"] == "SKIP" else 1)
 
 

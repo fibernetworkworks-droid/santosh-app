@@ -2641,3 +2641,6 @@ Saved data, sign-in and server-checked rules for the Web Studio's React apps (Ap
 - Not connected yet (said on the Cloud tab and in hoola.ts): files, server functions (DIMAAG), live updates, payments,
   AI from the app, phone OTP / Google sign-in, a password-reset email.
 - Sign-in on a live app is per browser (the shell's storage); an app on its own domain is not built.
+
+## v0.832.0 API SETU REPLY SHAPE
+Her live `apisetu_check` (relay, corrected Client ID `com.ainewtika`) returned HTTP 200 with no top-level `gstin`. `bahi/apisetu.py`: `record_in` finds the record bare, wrapped (data / result / response / list) or with GSTN short names; `shape_keys` lists field names only; a 200 with no record raises `no_record` listing those names. `apisetucheck`: `no_record` = keys accepted, hint to set `APISETU_TEST_GSTIN` to a real registered GSTIN. 2 tests. NOT VERIFIED: the real reply shape.

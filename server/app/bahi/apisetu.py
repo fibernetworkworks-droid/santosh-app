@@ -76,17 +76,64 @@ def _iso(d: str) -> str:
 
 
 def _plain(data: dict[str, Any]) -> dict[str, Any]:
-    status = str(data.get("status") or "")
-    return {"gstin": str(data.get("gstin") or ""), "legal_name": str(data.get("legalName") or ""),
-            "constitution": str(data.get("constitution") or ""), "status": status,
+    """The spec's names, or GSTN's own short names (lgnm / sts / rgdt...) when API Setu passes those through."""
+    def g(*names):
+        for n in names:
+            v = data.get(n)
+            if v not in (None, "", []):
+                return v
+        return ""
+    status = str(g("status", "sts"))
+    acts = g("natureBusinessActivities", "nba") or []
+    return {"gstin": str(g("gstin")), "legal_name": str(g("legalName", "lgnm")),
+            "trade_name": str(g("tradeName", "tradeNam")),
+            "constitution": str(g("constitution", "ctb")), "status": status,
             "active": status.strip().lower() == "active",
-            "registered_on": _iso(str(data.get("registrationDate") or "")),
-            "cancelled_on": _iso(str(data.get("cancellationDate") or "")),
-            "taxpayer_type": str(data.get("taxPayerType") or ""),
-            "centre_jurisdiction": str(data.get("centerJurisdiction") or ""),
-            "state_jurisdiction": str(data.get("stateJurisdiction") or ""),
-            "activities": [str(a) for a in (data.get("natureBusinessActivities") or []) if a],
+            "registered_on": _iso(str(g("registrationDate", "rgdt"))),
+            "cancelled_on": _iso(str(g("cancellationDate", "cxdt"))),
+            "taxpayer_type": str(g("taxPayerType", "dty")),
+            "centre_jurisdiction": str(g("centerJurisdiction", "ctj")),
+            "state_jurisdiction": str(g("stateJurisdiction", "stj")),
+            "activities": [str(a) for a in (acts if isinstance(acts, list) else [acts]) if a],
             "source": "API Setu (GSTN)"}
+
+
+_REC_KEYS = ("gstin", "legalName", "lgnm", "tradeName", "tradeNam")
+_WRAPS = ("data", "result", "results", "response", "taxpayer", "taxpayerDetails", "payload", "_list")
+
+
+def record_in(data, depth: int = 0) -> dict:
+    """The taxpayer record, whether bare (the spec) or wrapped one level or two in data / result / response / a list."""
+    if isinstance(data, list):
+        return record_in(data[0], depth + 1) if data and depth < 3 else {}
+    if not isinstance(data, dict):
+        return {}
+    if any(data.get(k) for k in _REC_KEYS):
+        return data
+    if depth >= 3:
+        return {}
+    for k in _WRAPS:
+        if k in data:
+            got = record_in(data[k], depth + 1)
+            if got:
+                return got
+    return {}
+
+
+def shape_keys(data, prefix: str = "", depth: int = 0) -> list[str]:
+    """Field names of a reply (nested as a.b) - never values."""
+    out: list[str] = []
+    if isinstance(data, list):
+        return shape_keys(data[0], prefix + "[]", depth) if data else [prefix + "[]"] if prefix else []
+    if not isinstance(data, dict):
+        return []
+    for k, v in list(data.items())[:20]:
+        name = f"{prefix}.{k}" if prefix else str(k)
+        if isinstance(v, (dict, list)) and depth < 2 and v:
+            out += shape_keys(v, name, depth + 1)
+        else:
+            out.append(name)
+    return out[:30]
 
 
 def taxpayer(gstin: str, *, raw: bool = False) -> dict[str, Any]:
@@ -116,11 +163,18 @@ def taxpayer(gstin: str, *, raw: bool = False) -> dict[str, Any]:
     except ValueError:
         data = {}
     if not isinstance(data, dict):
-        data = {}
-    if r.status_code == 200 and data.get("gstin"):
-        return data if raw else _plain(data)
-    code = str(data.get("error") or "").strip()
-    said = str(data.get("errorDescription") or "").strip()
+        data = {"_list": data} if isinstance(data, list) else {}
+    rec = record_in(data)
+    if r.status_code == 200 and rec:
+        return rec if raw else _plain(rec)
+    code = str(data.get("error") or data.get("errorCode") or data.get("code") or "").strip()
+    said = str(data.get("errorDescription") or data.get("message") or data.get("msg") or "").strip()
+    if r.status_code == 200:
+        # v0.832 her live check: HTTP 200 with no record in the spec's shape - say what came back by its field names only
+        code = code or "no_record"
+        fields = ", ".join(shape_keys(data)) or "an empty body"
+        raise ApiSetuError(code, f"API Setu accepted the keys (HTTP 200) but sent no taxpayer record for this GSTIN - the reply "
+                                 f"held: {fields}" + (f" [API Setu said: {said[:160]}]" if said else ""), 200)
     if r.status_code == 404 and not code:
         code = "record_not_found" if data else "no_such_path"
     if r.status_code >= 500:
