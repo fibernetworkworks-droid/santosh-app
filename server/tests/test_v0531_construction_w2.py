@@ -112,7 +112,7 @@ def test_is1200_library_trails():
             bad()
     with pytest.raises(ValueError) as ex:
         M.compute("painting", {"length": 1, "height": 1})
-    assert "library mein nahi" in str(ex.value)                   # absent formula refuses, never improvises
+    assert "not in the library" in str(ex.value)                   # absent formula refuses, never improvises
     assert set(M.TRAIL_KEYS) == {"qty", "unit", "formula", "inputs", "is_ref"}
 
 
@@ -215,7 +215,7 @@ def test_rera_project_update_forms_escrow(cst, env):
                       start_on="2026-01-15", complete_on="2028-06-30", escrow_acct="HDFC 5010...")
     pid = p["rera_project_id"]
     u = R.update_draft(T, pid, "2026-Q4", pct_complete=34.0, units_booked=41, units_delivered=12)
-    assert "34" in u["say"] and "nahi nikalta" in u["say"]         # her number, never computed
+    assert "34" in u["say"] and "never derive" in u["say"]         # her number, never computed
     fp = R.form_pack(T, pid, "Form 4", "engineer's completion certificate", period="phase 1",
                      data=[{"item": "floors done", "value": "8 of 12", "source": "site diary"}],
                      prepared_for="Er. Kulkarni")
@@ -283,7 +283,7 @@ def test_tender_watch_bid_sheet_packs_vendors(cst, env):
     assert "bid | no_bid" in str(ex.value)
     b = Td.bid_sheet(T, tid, "bid", reasons=[{"factor": "margin >= 12%", "note": "QS rate se dekha"},
                                              {"factor": "EMD float ok", "note": "cash flow"}])
-    assert b["factors"] == 2 and "aapki" in b["say"]
+    assert b["factors"] == 2 and "yours" in b["say"]
     pq = Td.pack(T, tid, "prequal", rows=[{"item": "similar works", "value": "3 school blocks", "source": "work orders"}])
     with pytest.raises(Exception):
         Td.pack(T, tid, "prequal", rows=[{"item": "turnover", "value": "12 Cr"}])   # no source, no row
@@ -389,7 +389,7 @@ def test_approvals_and_rera_tools_end_to_end(env):
     assert pk["file"]["name"].endswith(".pdf") and isinstance(pk["gaps"], list)
     with pytest.raises(Exception) as ex:
         asyncio.run(APPROVALS_HANDLERS["const_approvals"](ctx, "file", project="", authority="", purpose=""))
-    assert "bataiye" in str(ex.value)
+    assert "Give the project" in str(ex.value)
     p = asyncio.run(RERA_HANDLERS["const_rera"](ctx, "project", name="Shivneri Heights", maha_rera="P51700049999"))
     with pytest.raises(Exception) as ex:
         asyncio.run(RERA_HANDLERS["const_rera"](ctx, "escrow_withdraw", rera_project=p["rera_project_id"],

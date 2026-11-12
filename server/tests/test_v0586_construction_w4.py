@@ -148,11 +148,11 @@ def test_plan_money_and_plant(cst):
     assert P.plant_add(T, "Tower A", [["TC-1", "tower crane", "hired"]])["rows"] == 1
     P.plant_book(T, "Tower A", "TC-1", "2026-11-10", "2026-11-15", "Tower A")
     clash = P.plant_book(T, "Tower A", "TC-1", "2026-11-14", "2026-11-20", "Tower B")
-    assert len(clash["double_booked_with"]) == 1 and "SAVADHAN" in clash["said"]
+    assert len(clash["double_booked_with"]) == 1 and "CAUTION" in clash["said"]
     u = P.plant_util(T, "Tower A", "TC-1", working_days=30)
     assert u["booked_days"] == 13 and u["utilisation_pct"] == 43.3
     d = P.dashboard(T, "Tower A")
-    assert d["evm_cum"]["cpi"] == 0.75 and "nahi nikalta" in d["said"]
+    assert d["evm_cum"]["cpi"] == 0.75 and "no new number" in d["said"]
 
 
 # ---------------------------------------------------------------- const_ehs

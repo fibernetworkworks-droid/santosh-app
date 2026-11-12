@@ -17,7 +17,7 @@ def wo_add(tenant: str, project: str, location: str, issue: str, priority: str =
            conv: str = "") -> dict:
     """#102: one work order (open)."""
     if not location or not issue:
-        raise CstError("Location aur issue dono batao.")
+        raise CstError("Give both the location and the issue.")
     with session() as s:
         it = M.CfmItem(tenant_id=tenant, project=project, kind="wo", name=issue[:160],
                        data=_dump({"location": location[:160], "priority": priority[:12]}))
@@ -26,19 +26,19 @@ def wo_add(tenant: str, project: str, location: str, issue: str, priority: str =
         wid = it.id
     publish(tenant, "const_fm", {"kind": "wo", "project": project, "wo": wid}, conv)
     return {"ok": True, "id": wid, "status": "open",
-            "said": f"Work order {wid} khula ({location}, {priority})."}
+            "said": f"Work order {wid} opened ({location}, {priority})."}
 
 
 def wo_update(tenant: str, wo: str, status: str, by: str) -> dict:
     """Status change WITHOUT the doer's name refuses (the clash_mark law)."""
     if not by:
-        raise CstError("WO ki status ke saath US KA NAAM jo kar raha hai.")
+        raise CstError("The WO status needs the NAME of the person doing it.")
     if status not in ("open", "in_progress", "done", "cancelled"):
         raise CstError("status open | in_progress | done | cancelled.")
     with session() as s:
         it = s.get(M.CfmItem, wo)
         if not it or it.tenant_id != tenant:
-            raise CstError("Work order nahi mila.")
+            raise CstError("Work order not found.")
         it.status = status
         d = _j(it.data, {})
         d["last_by"] = by
@@ -49,7 +49,7 @@ def wo_update(tenant: str, wo: str, status: str, by: str) -> dict:
 def ppm_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
     """#103: rows [asset, task, freq_days, last_done] - next due = last + freq (arithmetic)."""
     if not rows:
-        raise CstError("PPM rows chahiye [asset, task, freq_days, last_done].")
+        raise CstError("PPM rows are needed [asset, task, freq_days, last_done].")
     made = 0
     with session() as s:
         for r in rows:
@@ -57,13 +57,13 @@ def ppm_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
                 continue
             freq = _num(r[2])
             if freq <= 0:
-                raise CstError(f"Row '{r[0]}': freq_days 0 se bada do.")
+                raise CstError(f"Row '{r[0]}': give freq_days greater than 0.")
             s.add(M.CfmItem(tenant_id=tenant, project=project, kind="ppm", name=str(r[0])[:120],
                             data=_dump({"task": str(r[1])[:160], "freq_days": freq,
                                         "last_done": str(r[3])[:10] if len(r) > 3 else ""})))
             made += 1
     publish(tenant, "const_fm", {"kind": "ppm", "project": project, "rows": made}, conv)
-    return {"ok": True, "rows": made, "said": f"{made} PPM task(s) - agla due last + frequency se."}
+    return {"ok": True, "rows": made, "said": f"{made} PPM task(s) - next due = last + frequency."}
 
 
 def ppm_due(tenant: str, project: str = "") -> dict:
@@ -96,13 +96,13 @@ def ppm_due(tenant: str, project: str = "") -> dict:
                                 ("due soon" if (nxt - t0).days <= 7 else "ok"))})
     n_over = sum(1 for o in out if o.get("verdict") == "OVERDUE")
     return {"ok": True, "rows": out, "overdue": n_over,
-            "said": f"{n_over} PPM overdue - vendor ko kaunsa dena hai, FM tay karega."}
+            "said": f"{n_over} PPM overdue - the FM decides which goes to the vendor."}
 
 
 def comp_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
     """#105: compliance calendar rows [system(lift|fire|stp|wtp|other), cert_no, agency, last, due]."""
     if not rows:
-        raise CstError("Compliance rows chahiye [system, cert_no, agency, last, due].")
+        raise CstError("Compliance rows are needed [system, cert_no, agency, last, due].")
     made = 0
     with session() as s:
         for r in rows:
@@ -114,7 +114,7 @@ def comp_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
             made += 1
     publish(tenant, "const_fm", {"kind": "compliance", "project": project, "rows": made}, conv)
     return {"ok": True, "rows": made,
-            "said": f"{made} compliance row(s) - certificate agency deti hai, Hoola calendar rakhta hai."}
+            "said": f"{made} compliance row(s) - the agency gives the certificate, Hoola keeps the calendar."}
 
 
 def comp_due(tenant: str, project: str = "") -> dict:
@@ -135,14 +135,14 @@ def comp_due(tenant: str, project: str = "") -> dict:
                     "due": due, "verdict": "OVERDUE" if due < t0.isoformat() else "in date"})
     n_over = sum(1 for o in out if o.get("verdict") == "OVERDUE")
     return {"ok": True, "rows": out, "overdue": n_over,
-            "said": (f"{n_over} renewal(s) overdue - inspection book karwana aapka/fm ka kaam."
-                     if n_over else "Sab renewals in date.")}
+            "said": (f"{n_over} renewal(s) overdue - getting the inspection booked is your/the FM's job."
+                     if n_over else "All renewals are in date.")}
 
 
 def roster_add(tenant: str, project: str, rows: list) -> dict:
     """#106: rows [post, weekday, shift, person] - person khaali = khali post."""
     if not rows:
-        raise CstError("Roster rows chahiye [post, weekday, shift, person].")
+        raise CstError("Roster rows are needed [post, weekday, shift, person].")
     made = 0
     with session() as s:
         for r in rows:
@@ -152,7 +152,7 @@ def roster_add(tenant: str, project: str, rows: list) -> dict:
                             data=_dump({"weekday": str(r[1])[:12], "shift": str(r[2])[:24],
                                         "person": str(r[3])[:80] if len(r) > 3 else ""})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} roster row(s) likhi."}
+    return {"ok": True, "rows": made, "said": f"{made} roster row(s) written."}
 
 
 def roster_gap(tenant: str, project: str) -> dict:
@@ -163,7 +163,7 @@ def roster_gap(tenant: str, project: str) -> dict:
                                                  M.CfmItem.kind == "roster")).all()
     gaps = [{"post": r.name, **_j(r.data, {})} for r in rows if not (_j(r.data, {}).get("person"))]
     return {"ok": True, "posts": len(rows), "gaps": gaps,
-            "said": f"{len(gaps)} khali post(s) - bharne ka arrangement aapka."}
+            "said": f"{len(gaps)} vacant post(s) - arranging cover is yours."}
 
 
 def audit_add(tenant: str, project: str, rows: list) -> dict:
@@ -176,14 +176,14 @@ def audit_add(tenant: str, project: str, rows: list) -> dict:
                 continue
             cyc = _num(r[3])
             if cyc <= 0:
-                raise CstError(f"Row '{r[0]}': cycle_yrs aapke municipal circular se do (0 nahi).")
+                raise CstError(f"Row '{r[0]}': give cycle_yrs from your municipal circular (not 0).")
             s.add(M.CfmItem(tenant_id=tenant, project=project, kind="audit", name=str(r[0])[:120],
                             data=_dump({"audit_type": str(r[1])[:60], "last": str(r[2])[:10],
                                         "cycle_yrs": cyc,
                                         "agency": str(r[4])[:120] if len(r) > 4 else ""})))
             made += 1
     return {"ok": True, "rows": made,
-            "said": "Audit cycle AAPKE circular se fed hai - certificate registered engineer / agency ki hai (tier C)."}
+            "said": "The audit cycle is fed from YOUR circular - the certificate is the registered engineer's / agency's (tier C)."}
 
 
 def audit_due(tenant: str, project: str = "") -> dict:
@@ -209,7 +209,7 @@ def audit_due(tenant: str, project: str = "") -> dict:
                     "verdict": "OVERDUE" if nxt < t0 else "in date"})
     n_over = sum(1 for o in out if o.get("verdict") == "OVERDUE")
     return {"ok": True, "rows": out, "overdue": n_over,
-            "said": (f"{n_over} audit(s) overdue - structural engineer book karo (certificate unka)."
+            "said": (f"{n_over} audit(s) overdue - book the structural engineer (the certificate is theirs)."
                      if n_over else "Audits in date.")}
 
 
@@ -224,7 +224,7 @@ def asset_add(tenant: str, project: str, rows: list) -> dict:
                             data=_dump({"space": str(r[1])[:80], "dept": str(r[2])[:80] if len(r) > 2 else "",
                                         "warranty_till": str(r[3])[:10] if len(r) > 3 else ""})))
             made += 1
-    return {"ok": True, "rows": made, "said": f"{made} asset/space row(s) likhi."}
+    return {"ok": True, "rows": made, "said": f"{made} asset/space row(s) written."}
 
 
 def dekho(tenant: str, what: str, project: str = "") -> dict:

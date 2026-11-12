@@ -115,7 +115,7 @@ def test_search_limits_and_unknown_city(g2):
     d = G.new_draft(T, kind="search")
     v = G.set_draft(T, d["id"], headlines=["Only one headline that is far too long for google search"], keywords=[])
     probs = " ".join(v["problems"])
-    assert "3 se 15 headlines" in probs and "30 akshar" in probs and "keywords" in probs
+    assert "3 to 15 headlines" in probs and "30 characters" in probs and "keywords" in probs
     G.set_draft(T, d["id"], headlines=["Sharma Dental", "Implants Akola", "Braces Akola"], keywords=["implants"],
                 cities=["Atlantis"])
     with pytest.raises(G.GAdsError) as e:

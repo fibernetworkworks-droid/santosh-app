@@ -99,7 +99,7 @@ def test_stale_pack_refuses_the_hisaab(cst, monkeypatch):
                                                "refresh_by": "2025-06-01"})
     with pytest.raises(Exception) as ex:
         SP.tax_rows("maharashtra")
-    assert "purana" in str(ex.value)
+    assert "out of date" in str(ex.value)
 
 
 # ---------------------------------------------------------------- C3 store (#61)
@@ -117,10 +117,10 @@ def test_store_grn_issue_reconcile(cst):
     row = rec["items"][0]
     assert row["received"] == 200 and row["issued"] == 40 and row["waste"] == 2 and row["on_hand"] == 158
     assert row["wastage_pct"] == 1.0
-    assert "DOBARA MANGWAO" not in rec["say"]          # 158 above the reorder level 50
+    assert "REORDER" not in rec["say"]          # 158 above the reorder level 50
     S.issue(T, "Cement OPC 53", 120, day="2026-11-03")  # now 38 < 50 -> alert
     rec = S.reconcile(T)
-    assert "DOBARA MANGWAO" in rec["say"]
+    assert "REORDER" in rec["say"]
     lots = {x["item"]: x for x in S.lots(T)}
     assert lots["Cement OPC 53"]["balance"] == 38
 
@@ -129,7 +129,7 @@ def test_store_grn_issue_reconcile(cst):
 def test_labour_muster_and_licence_calendar(cst):
     from app.construction import labour as L
     r = L.muster(T, "Slab A", day="2026-11-04", contractor="Ramesh", trade="mason", present=12, absent=2, ot_hours=3)
-    assert "aaye 12" in r["say"] and "gayab 2" in r["say"]
+    assert "present 12" in r["say"] and "absent 2" in r["say"]
     with pytest.raises(Exception):
         L.muster(T, "Slab A")                      # hazari chahiye
     with pytest.raises(Exception):
@@ -148,9 +148,9 @@ def test_wage_audit_carries_the_source_and_the_trail(cst):
     r = L.wage_audit(T, "Slab A", day="2026-11-04", trade="mason", workers=10, ot_hours=8)
     assert r["gross"] == 9000 + (900 / 8) * 1.5 * 8
     assert r["trail"]["rate_row_id"] and "agreement" in r["trail"]["source"]
-    assert "aapke tap" in r["say"]
+    assert "your tap" in r["say"]
     r2 = L.wage_paid(T, "Slab A", day="2026-11-04", trade="mason", amount=9900, workers=10)
-    assert "wages diye gaye" in r2["say"]
+    assert "wages paid" in r2["say"]
     assert isinstance(L.day(T)["open_muster"], list)
 
 
@@ -191,7 +191,7 @@ def test_demand_draft_letter_and_owner_only_send(cst, env):
     r = C.demand(T, "Sunrise heights", "A-302", customer="Mrs Kulkarni", milestone="Plinth", amount=500000,
                  due="2026-11-15", interest_pct=1.25)
     did = r["demand_id"]
-    assert "DRAFT" in r["say"] and "aapki haan" in r["say"]
+    assert "DRAFT" in r["say"] and "your approval" in r["say"]
     pdf = C.demand_letter(T, did)
     assert pdf[:5] == b"%PDF-" and b"%%EOF" in pdf and len(pdf) > 400
     from tests.test_life import conv_ctx
@@ -219,7 +219,7 @@ def test_handover_and_dlp_clock(cst):
     t = C.dlp_open(T, "Sunrise heights", "A-302", issue="Bathroom leakage", trade="plumbing",
                    vendor="Vishwas plumbing", dlp_months=12, possession_on="2026-11-20")
     assert t["dlp_until"].startswith("2027-11-20")
-    assert "window khuli" in t["say"]
+    assert "window is open" in t["say"]
     with pytest.raises(Exception):
         C.dlp_sent(T, t["ticket_id"], "customer:x")
     assert "Record" in C.dlp_sent(T, t["ticket_id"], "owner", day="2026-11-21")["say"]
@@ -227,7 +227,7 @@ def test_handover_and_dlp_clock(cst):
     assert "band" in C.dlp_close(T, t["ticket_id"], day="2026-11-25")["say"]
     late = C.dlp_open(T, "Sunrise heights", "B-101", issue="Paint peel", dlp_months=12,
                       possession_on="2024-11-01")     # window khatam
-    assert "KHATAM" in late["say"]
+    assert "OVER" in late["say"]
 
 
 # ---------------------------------------------------------------- C6 quality (#75, #76, #78) + cube draft
@@ -255,7 +255,7 @@ def test_test_lot_human_verdict(cst):
     r = Q.test_lot(T, "Cement OPC 53", lot_no="L-2291", vendor="Ultra", test="28-day compressive",
                    lab="NABL Pune lab", result="54.2, 53.8, 54.6 N/mm2", tested_on="2026-11-04",
                    retest_due="2027-05-04", report_ref="R-77")
-    assert "Verdict QC engineer" in r["say"]
+    assert "QC engineer gives the verdict" in r["say"]
     with pytest.raises(Exception):
         Q.test_lot(T, "Cement OPC 53", verdict="maybe")
     v = Q.lot_verdict(T, r["lot_id"], "pass", by="QC engineer")

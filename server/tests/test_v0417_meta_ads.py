@@ -136,7 +136,7 @@ def test_money_ads_refused_and_cap(M):
     d = M.new_draft(T, "website", text="Guaranteed returns on your mutual fund investment", link="https://asha.in",
                     daily=99999)
     probs = " ".join(d["problems"])
-    assert "Hoola aisa ad nahi banata" in probs and "SEBI" in probs and "seema" in probs
+    assert "Hoola does not make such ads" in probs and "SEBI" in probs and "Hoola's limit" in probs
 
 
 def test_failed_half_build_is_named(M, tmp_path, monkeypatch):

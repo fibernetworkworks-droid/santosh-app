@@ -26,11 +26,11 @@ _LOCK = threading.Lock()
 EVENTS: list | None = None
 
 MODES = ("train", "flight", "bus", "hotel", "cab", "other")
-STATUS_LABEL = {"draft": "Kaccha", "planned": "Plan taiyaar", "quoted": "Quote gaya", "booking": "Booking chal rahi",
-                "booked": "Book ho gaya", "done": "Poora", "cancelled": "Radd"}
-BOOKING_LABEL = {"waiting": "Aapki haan baaki", "approved": "Haan mili", "rejected": "Mana kiya", "working": "Hoola site par",
-                 "waiting_payment": "Payment aapko karni hai", "booked": "Book ho gaya", "failed": "Nahi hua",
-                 "cancelled": "Radd", "self": "Aap khud book karengi"}
+STATUS_LABEL = {"draft": "Draft", "planned": "Plan ready", "quoted": "Quote sent", "booking": "Booking in progress",
+                "booked": "Booked", "done": "Completed", "cancelled": "Cancelled"}
+BOOKING_LABEL = {"waiting": "Waiting for your approval", "approved": "Approved", "rejected": "Declined", "working": "Hoola is on the site",
+                 "waiting_payment": "You need to pay", "booked": "Booked", "failed": "Failed",
+                 "cancelled": "Cancelled", "self": "You book it yourself"}
 
 
 class TravelError(Exception):
@@ -89,7 +89,7 @@ def _date(v) -> str:
             return datetime.strptime(s, f).date().isoformat()
         except ValueError:
             continue
-    raise TravelError(f"Date samajh nahi aayi: '{s}' (DD-MM-YYYY likhiye).")
+    raise TravelError(f"Could not read the date: '{s}' (write it as DD-MM-YYYY).")
 
 
 def _hhmm(v) -> str:
@@ -98,7 +98,7 @@ def _hhmm(v) -> str:
         return ""
     m = re.fullmatch(r"([01]?\d|2[0-3])[:.]([0-5]\d)", s)
     if not m:
-        raise TravelError(f"Samay '{s}' samajh nahi aaya (HH:MM, jaise 06:45).")
+        raise TravelError(f"Could not read the time '{s}' (HH:MM, for example 06:45).")
     return f"{int(m.group(1)):02d}:{m.group(2)}"
 
 
@@ -109,13 +109,13 @@ def _paise(v) -> int | None:
         return int(round(float(v) * 100))
     p = R.paise_of(_s(v) if re.search(r"₹|rs|inr", _s(v), re.I) else "₹" + _s(v))
     if p is None:
-        raise TravelError(f"Rakam '{v}' samajh nahi aayi.")
+        raise TravelError(f"Could not read the amount '{v}'.")
     return p
 
 
 def inr(paise: int | None) -> str:
     if paise is None:
-        return "pata nahi"
+        return "not known"
     from ..india.money import inr as f
     return f(paise / 100)
 
@@ -134,7 +134,7 @@ def _clean(tenant: str, text: str, limit: int = 2000) -> str:
         text, _ = idvault.capture(tenant, text)
     except Exception:
         log.exception("travel id capture failed")
-    text = re.sub(r"\b(\d{4})[ -]?(\d{4})[ -]?(\d{4})[ -]?(\d{4})\b", "[card number hataya]", text)
+    text = re.sub(r"\b(\d{4})[ -]?(\d{4})[ -]?(\d{4})[ -]?(\d{4})\b", "[card number removed]", text)
     return text[:limit]
 
 
@@ -168,7 +168,7 @@ def _find(s, tenant: str, ref: str) -> TravelTrip:
         t = s.scalars(select(TravelTrip).where(TravelTrip.tenant_id == tenant, TravelTrip.status.notin_(("done", "cancelled")))
                       .order_by(TravelTrip.updated_at.desc())).first()
     if t is None or t.tenant_id != tenant:
-        raise TravelError("Yeh trip nahi mili (number jaise T-0001 bataiye).")
+        raise TravelError("Trip not found (give its number, like T-0001).")
     return t
 
 
@@ -202,7 +202,7 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
         st = _st(s, tenant)
         if "mode" in kw:
             if kw["mode"] not in ("own", "agency"):
-                raise TravelError("mode = own (apne / ghar ke trip) ya agency (graahakon ke trip).")
+                raise TravelError("mode = own (your own / family trips) or agency (customers' trips).")
             st.mode = kw["mode"]
         for k in ("agency_name", "contact", "home_city", "state", "gstin", "terms", "rules"):
             if k in kw:
@@ -210,18 +210,18 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
         if "markup_pct" in kw:
             v = float(kw["markup_pct"] or 0)
             if not 0 <= v <= 100:
-                raise TravelError("Markup 0-100% ke beech.")
+                raise TravelError("Markup must be between 0 and 100%.")
             st.markup_pct = v
         if "markup_flat" in kw:
             st.markup_flat_paise = _paise(kw["markup_flat"]) or 0
         if "gst_pct" in kw:
             v = float(kw["gst_pct"] or 0)
             if v not in (0, 5, 18):
-                raise TravelError("GST % = 0, 5 ya 18 (apne CA se pakka karein).")
+                raise TravelError("GST % = 0, 5 or 18 (confirm with your CA).")
             st.gst_pct = v
         if "morning_time" in kw:
             st.morning_time = _hhmm(kw["morning_time"]) or "08:30"
-        return {"settings": _settings_view(st), "say": "Niyam save."}
+        return {"settings": _settings_view(st), "say": "Rules saved."}
 
 
 def partner_set(tenant: str, provider: str, key: str, secret: str, env: str = "test") -> dict[str, Any]:
@@ -230,20 +230,20 @@ def partner_set(tenant: str, provider: str, key: str, secret: str, env: str = "t
     a = A.get(provider)
     creds = {"key": _s(key), "secret": _s(secret), "env": env if env in ("test", "prod") else "test"}
     if not creds["key"] or not creds["secret"]:
-        raise TravelError("Key aur secret dono chahiye.")
+        raise TravelError("Both the key and the secret are needed.")
     try:
         ok = a.verify(creds)
     except A.PartnerError as e:
         raise TravelError(str(e))
     if not ok:
-        raise TravelError("Partner ne key nahi maani.")
+        raise TravelError("The partner did not accept the key.")
     from ..bazar.security import vault
     with session() as s:
         st = _st(s, tenant)
         p = _j(st.partner, {})
         p[a.name] = {"key": vault().seal(creds["key"]), "secret": vault().seal(creds["secret"]), "env": creds["env"]}
         st.partner = _dump(p)
-    return {"provider": a.name, "joined": True, "say": f"{a.label} jud gaya (sirf daam dekhne ke liye)."}
+    return {"provider": a.name, "joined": True, "say": f"{a.label} connected (only to look up prices)."}
 
 
 def partner_forget(tenant: str, provider: str) -> dict[str, Any]:
@@ -252,7 +252,7 @@ def partner_forget(tenant: str, provider: str) -> dict[str, Any]:
         p = _j(st.partner, {})
         p.pop((provider or "").lower(), None)
         st.partner = _dump(p)
-    return {"say": "Partner key hata di."}
+    return {"say": "Partner key removed."}
 
 
 def _creds(tenant: str, provider: str) -> dict[str, str]:
@@ -260,7 +260,7 @@ def _creds(tenant: str, provider: str) -> dict[str, str]:
     with session() as s:
         p = _j(_st(s, tenant).partner, {}).get(provider)
     if not p:
-        raise TravelError("Is partner ki key app mein nahi judi (Yatra > Niyam > Partner).")
+        raise TravelError("This partner's key is not connected in the app (Travel > Rules > Partner).")
     return {"key": vault().open(p["key"]), "secret": vault().open(p["secret"]), "env": p.get("env", "test")}
 
 
@@ -268,14 +268,14 @@ def _creds(tenant: str, provider: str) -> dict[str, str]:
 def _traveller(tenant: str, t: dict[str, Any]) -> dict[str, Any]:
     name = re.sub(r"\s+", " ", _s(t.get("name")))[:80]
     if not name:
-        raise TravelError("Yatri ka naam chahiye.")
+        raise TravelError("The traveller's name is needed.")
     age = t.get("age")
     try:
         age = int(age) if age not in (None, "") else None
     except (TypeError, ValueError):
-        raise TravelError(f"{name}: umar number mein likhiye.")
+        raise TravelError(f"{name}: write the age as a number.")
     if age is not None and not 0 <= age <= 120:
-        raise TravelError(f"{name}: umar sahi nahi.")
+        raise TravelError(f"{name}: the age is not valid.")
     out = {"name": name, "age": age, "gender": _s(t.get("gender"))[:10], "berth": _s(t.get("berth"))[:20],
            "id_kind": _s(t.get("id_kind")).lower()[:12], "id_ref": "", "id_masked": "", "passport_expiry": ""}
     ref = _s(t.get("id_ref"))
@@ -293,10 +293,10 @@ def _traveller(tenant: str, t: dict[str, Any]) -> dict[str, Any]:
     elif ref:
         m = idvault.REF.fullmatch(ref)
         if not m:
-            raise TravelError("ID sirf Pehchaan Locker ke reference {id:...} se.")
+            raise TravelError("IDs only as an ID Locker reference {id:...}.")
         rec = next((r for r in idvault.list_(tenant) if r["ref"] == ref), None)
         if rec is None:
-            raise TravelError("Yeh ID reference locker mein nahi mila.")
+            raise TravelError("This ID reference was not found in the locker.")
         out["id_kind"], out["id_ref"], out["id_masked"] = rec["kind"], rec["ref"], rec["masked"]
     if t.get("passport_expiry"):
         out["passport_expiry"] = _date(t.get("passport_expiry"))
@@ -412,13 +412,13 @@ def new_trip(tenant: str, text: str = "", title: str = "", origin: str = "", des
     text = _clean(tenant, text)
     destination = _s(destination)[:200]
     if not destination and not text:
-        raise TravelError("Kahan jaana hai aur kab? (jagah, dates, kitne log)")
+        raise TravelError("Where to, and when? (place, dates, how many people)")
     sd, ed = _date(start_date), _date(end_date)
     if sd and ed and ed < sd:
-        raise TravelError("Wapsi ki date jaane ki date se pehle hai.")
+        raise TravelError("The return date is before the departure date.")
     phone = re.sub(r"\D", "", _s(client_phone))[-10:]
     if client_phone and len(phone) != 10:
-        raise TravelError("Graahak ka 10 ank ka mobile number.")
+        raise TravelError("Give the customer's 10-digit mobile number.")
     trav = [_traveller(tenant, x) for x in (travellers or [])][:20]
     prefs_c = _clean(tenant, prefs, 1000) or text[:1000]
     with _LOCK, session() as s:
@@ -430,20 +430,20 @@ def new_trip(tenant: str, text: str = "", title: str = "", origin: str = "", des
                        destination=destination, start_date=sd, end_date=ed or sd, travellers=_dump(trav),
                        budget_paise=_paise(budget), prefs=prefs_c, kind=_s(kind)[:40],
                        conv=conv, country=(_s(country).lower() or R.country_of(f"{destination} {text}")))
-        t.title = _s(title)[:200] or (f"{t.origin + ' se ' if t.origin else ''}{destination or text[:60]}"
+        t.title = _s(title)[:200] or (f"{t.origin + ' to ' if t.origin else ''}{destination or text[:60]}"
                                       + (f" ({t.client_name})" if t.client_name else ""))
-        _log(t, "Trip bani", actor)
+        _log(t, "Trip created", actor)
         s.add(t)
         s.flush()
         v = _trip_view(s, t)
-    say = [f"{v['number']} bani: {v['title']}" + (f", {sd} se {ed or sd}" if sd else " (dates abhi baaki)") + "."]
+    say = [f"{v['number']} created: {v['title']}" + (f", {sd} to {ed or sd}" if sd else " (dates still pending)") + "."]
     if not trav:
-        say.append("Yatriyon ke naam aur umar bataiye (ID number locker mein jayega, yahan sirf reference).")
+        say.append("Give the travellers' names and ages (an ID number goes into the locker; only a reference is kept here).")
     if v["visa"]:
         say.append(v["visa"].get("say", ""))
     for h in _holidays(tenant, _plain(v)):
         say.append(h["say"])
-    say.append("Ab: itinerary banaun, ya aapke dekhe hue train / flight / hotel ke daam paste karke tulna karun?")
+    say.append("Next: shall I make the itinerary, or compare the train / flight / hotel prices you have seen (paste them)?")
     _publish(tenant, "travel_trip", {"trip": _plain(v), "say": " ".join(x for x in say if x)}, conv)
     return {"trip": v, "say": " ".join(x for x in say if x)}
 
@@ -485,13 +485,13 @@ def update_trip(tenant: str, ref: str, actor: str = "owner", **kw) -> dict[str, 
         if kw.get("client_phone") is not None:
             p = re.sub(r"\D", "", _s(kw["client_phone"]))[-10:]
             if p and len(p) != 10:
-                raise TravelError("10 ank ka mobile.")
+                raise TravelError("Give a 10-digit mobile number.")
             t.client_phone = p
         for k in ("start_date", "end_date"):
             if kw.get(k):
                 setattr(t, k, _date(kw[k]))
         if t.start_date and t.end_date and t.end_date < t.start_date:
-            raise TravelError("Wapsi ki date jaane se pehle hai.")
+            raise TravelError("The return date is before the departure date.")
         if kw.get("country") is not None:
             t.country = _s(kw["country"]).lower()[:40]
         if kw.get("prefs") is not None:
@@ -504,8 +504,8 @@ def update_trip(tenant: str, ref: str, actor: str = "owner", **kw) -> dict[str, 
             if kw["status"] not in STATUS_LABEL:
                 raise TravelError("status = " + " | ".join(STATUS_LABEL))
             t.status = kw["status"]
-        _log(t, "Trip badli", actor)
-        return {"trip": _trip_view(s, t), "say": "Trip update."}
+        _log(t, "Trip updated", actor)
+        return {"trip": _trip_view(s, t), "say": "Trip updated."}
 
 
 def traveller(tenant: str, ref: str, op: str = "add", actor: str = "owner", **kw) -> dict[str, Any]:
@@ -524,12 +524,12 @@ def traveller(tenant: str, ref: str, op: str = "add", actor: str = "owner", **kw
                         old[k] = v
             else:
                 if len(trav) >= 20:
-                    raise TravelError("Ek trip mein 20 yatri tak.")
+                    raise TravelError("Up to 20 travellers per trip.")
                 trav.append(new)
         t.travellers = _dump(trav)
-        _log(t, f"Yatri {op}: {name}", actor)
+        _log(t, f"Traveller {op}: {name}", actor)
         v = _trip_view(s, t)
-    say = f"Yatri: {', '.join(x['name'] + (' (' + str(x['age']) + ')' if x.get('age') is not None else '') for x in v['travellers'])}."
+    say = f"Travellers: {', '.join(x['name'] + (' (' + str(x['age']) + ')' if x.get('age') is not None else '') for x in v['travellers'])}."
     pp = [p for p in v["passport"] if p.get("ok") is False]
     if pp:
         say += " " + " ".join(f"{p['name']}: {p['say']}" for p in pp)
@@ -540,10 +540,10 @@ def cancel_trip(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         t = _find(s, tenant, ref)
         t.status = "cancelled"
-        _log(t, "Trip radd", "owner")
+        _log(t, "Trip cancelled", "owner")
         for b in s.scalars(select(TravelBooking).where(TravelBooking.trip_id == t.id, TravelBooking.status == "waiting")).all():
             b.status = "cancelled"
-        return {"trip": _trip_view(s, t, full=False), "say": f"{t.number} radd. Jo ticket book ho chuke hain unhe site par khud cancel karein."}
+        return {"trip": _trip_view(s, t, full=False), "say": f"{t.number} cancelled. Cancel any tickets that are already booked yourself on the site."}
 
 
 def forget_trip(tenant: str, ref: str) -> dict[str, Any]:
@@ -551,11 +551,11 @@ def forget_trip(tenant: str, ref: str) -> dict[str, Any]:
     with session() as s:
         t = _find(s, tenant, ref)
         if t.status not in ("done", "cancelled"):
-            raise TravelError("Pehle trip 'done' ya 'radd' kijiye, phir details mitaiye.")
+            raise TravelError("Mark the trip done or cancelled first, then erase the details.")
         t.client_name, t.client_phone, t.client_email = "(mitaya)", "", ""
         t.travellers, t.prefs, t.notes, t.docs = "[]", "", "", "{}"
-        _log(t, "Yatri / graahak ki details mitayi (DPDP)", "owner")
-        return {"say": f"{t.number}: yatriyon aur graahak ki details mita di. Locker ke ID unke apne hain: Pehchaan Locker se hataiye."}
+        _log(t, "Traveller / customer details erased (DPDP)", "owner")
+        return {"say": f"{t.number}: the travellers' and the customer's details are erased. IDs in the locker are their own: remove them from the ID Locker."}
 
 
 # ----------------------------------------------------------------------------- itinerary
@@ -583,7 +583,7 @@ _PHONE = re.compile(r"(?:\+?91[\s-]?)?\b[6-9]\d{4}[\s-]?\d{5}\b")
 
 def _facts_only(text: str, brief: str) -> str:
     text = _s(text)
-    for rx, rep in ((_MONEY, "[daam?]"), (_CLOCK, "[samay?]"), (_PHONE, "[number?]")):
+    for rx, rep in ((_MONEY, "[price?]"), (_CLOCK, "[time?]"), (_PHONE, "[number?]")):
         text = rx.sub(lambda m: m.group(0) if m.group(0).lower() in brief.lower() else rep, text)
     return text[:400]
 
@@ -612,10 +612,10 @@ def plan_itinerary(tenant: str, ref: str, ask: str = "", actor: str = "owner", c
     source = "ai" if plan else "template"
     if not plan:
         for i in range(days):
-            title = ("Pahunchna: " + (t.origin + " se " if t.origin else "") + dest) if i == 0 else \
-                    ("Wapsi" if i == days - 1 and days > 1 else "Ghoomna")
+            title = ("Journey: " + (t.origin + " to " if t.origin else "") + dest) if i == 0 else \
+                    ("Return" if i == days - 1 and days > 1 else "Sightseeing")
             plan.append({"day": i + 1, "date": _day_date(start, i), "title": title,
-                         "items": [{"place": dest, "what": "[jagah likhiye]", "note": "", "time": "", "map": R.maps_link(dest)}]})
+                         "items": [{"place": dest, "what": "[add places]", "note": "", "time": "", "map": R.maps_link(dest)}]})
     for o in opts:                       # her chosen transport: its own (given) times on that day
         for d in plan:
             if d["date"] and d["date"] == o.day and o.mode in ("train", "flight", "bus"):
@@ -627,10 +627,10 @@ def plan_itinerary(tenant: str, ref: str, ask: str = "", actor: str = "owner", c
         t.itinerary = _dump({"days": plan, "tips": tips, "source": source})
         if t.status == "draft":
             t.status = "planned"
-        _log(t, "Itinerary bani" + (" (AI sujhav)" if source == "ai" else " (khaka)"), actor)
+        _log(t, "Itinerary created" + (" (AI suggestion)" if source == "ai" else " (outline)"), actor)
         v = _trip_view(s, t)
-    say = (f"{v['number']}: {len(plan)} din ka plan taiyaar" + (" (AI ka sujhav: jagah ke khulne ka samay aur daam khud check karein)."
-                                                               if source == "ai" else "; har din ki jagah aap bataiye ya 'plan banao' dobara."))
+    say = (f"{v['number']}: {len(plan)}-day plan ready" + (" (AI suggestion: check opening times and prices yourself)."
+                                                               if source == "ai" else "; tell me the places for each day, or ask for the plan again."))
     _publish(tenant, "travel_trip", {"trip": _trip_card(v), "say": say}, conv)
     return {"trip": v, "itinerary": v["itinerary"], "say": say}
 
@@ -684,7 +684,7 @@ def add_options(tenant: str, ref: str, text: str = "", options: list | None = No
     for o in parsed:
         o["raw"] = _clean(tenant, o.get("raw"), 300)
     if not parsed:
-        raise TravelError("Koi option nahi mila: har option ek line mein (naam, samay, daam) paste kijiye.")
+        raise TravelError("No option found: paste each option on one line (name, time, price).")
     with session() as s:
         t = _find(s, tenant, ref)
         rows = []
@@ -695,10 +695,10 @@ def add_options(tenant: str, ref: str, text: str = "", options: list | None = No
                 o["day"] = day
             rows.append(_save_option(s, tenant, t, o, "her" if options else "pasted"))
         s.flush()
-        _log(t, f"{len(rows)} option jode", actor)
+        _log(t, f"{len(rows)} options added", actor)
         added = [_opt_view(r) for r in rows]
     unpriced = [a["name"] for a in added if a["price_paise"] is None]
-    say = f"{len(added)} option jode." + (f" In ka daam nahi mila: {', '.join(unpriced[:4])} (bataiye to jod dun)." if unpriced else "")
+    say = f"{len(added)} options added." + (f" No price found for: {', '.join(unpriced[:4])} (tell me and I will add it)." if unpriced else "")
     return {"options": added, "say": say}
 
 
@@ -715,13 +715,13 @@ def partner_search(tenant: str, ref: str, provider: str = "amadeus", origin_code
     except A.PartnerError as e:
         raise TravelError(str(e))
     if not found:
-        return {"options": [], "say": "Partner ne is din ke liye koi option nahi diya."}
+        return {"options": [], "say": "The partner returned no options for this day."}
     with session() as s:
         t = _find(s, tenant, ref)
         rows = [_save_option(s, tenant, t, {**o, "day": day}, f"partner:{provider}") for o in found]
         s.flush()
         added = [_opt_view(r) for r in rows]
-    return {"options": added, "say": f"{provider.title()} se {len(added)} flight mile (daam unke hain, booking ke waqt badal sakte hain)."}
+    return {"options": added, "say": f"{provider.title()}: {len(added)} flights found (prices are theirs and can change at booking time)."}
 
 
 def compare(tenant: str, ref: str, mode: str = "") -> dict[str, Any]:
@@ -742,17 +742,17 @@ def compare(tenant: str, ref: str, mode: str = "") -> dict[str, Any]:
         c = next((x for x in r if x["id"] == tb["cheapest"]), None)
         bits = [f"{m}: {len(r)} option"]
         if c:
-            bits.append(f"sabse sasta {c['name']} {inr(c['total_paise'])}" + (f" ({nights} raat)" if m == "hotel" and c.get("per_night") else ""))
+            bits.append(f"cheapest {c['name']} {inr(c['total_paise'])}" + (f" ({nights} nights)" if m == "hotel" and c.get("per_night") else ""))
         f = next((x for x in r if x["id"] == tb["fastest"]), None)
         if f and f is not c:
-            bits.append(f"sabse tez {f['name']} ({f['duration']})")
+            bits.append(f"fastest {f['name']} ({f['duration']})")
         b = next((x for x in r if x["id"] == tb["best_rated"]), None)
         if b and b is not c:
-            bits.append(f"sabse achhi rating {b['name']} ({b['rating']})")
+            bits.append(f"best rated {b['name']} ({b['rating']})")
         say.append(", ".join(bits))
     if budget:
         say.append(f"Budget {inr(budget)}.")
-    return {"compare": table, "nights": nights, "say": ". ".join(say) or "Tulna ke liye pehle options jodiye.",
+    return {"compare": table, "nights": nights, "say": ". ".join(say) or "Add options first to compare.",
             "links": {m: R.search_links(m) for m in table}}
 
 
@@ -761,14 +761,14 @@ def choose(tenant: str, ref: str, option: str, on: bool = True, actor: str = "ow
         t = _find(s, tenant, ref)
         o = s.get(TravelOption, option)
         if o is None or o.trip_id != t.id:
-            raise TravelError("Yeh option is trip mein nahi.")
+            raise TravelError("This option is not in this trip.")
         if on:                           # one choice per mode + leg
             for x in s.scalars(select(TravelOption).where(TravelOption.trip_id == t.id, TravelOption.mode == o.mode,
                                                           TravelOption.leg == o.leg)).all():
                 x.chosen = False
         o.chosen = bool(on)
-        _log(t, f"{'Chuna' if on else 'Hataya'}: {o.name}", actor)
-        return {"option": _opt_view(o), "say": f"{o.name} {'chun liya' if on else 'hata diya'}."}
+        _log(t, f"{'Chosen' if on else 'Removed'}: {o.name}", actor)
+        return {"option": _opt_view(o), "say": f"{o.name} {'chosen' if on else 'removed'}."}
 
 
 def remove_option(tenant: str, ref: str, option: str) -> dict[str, Any]:
@@ -776,9 +776,9 @@ def remove_option(tenant: str, ref: str, option: str) -> dict[str, Any]:
         t = _find(s, tenant, ref)
         o = s.get(TravelOption, option)
         if o is None or o.trip_id != t.id:
-            raise TravelError("Yeh option is trip mein nahi.")
+            raise TravelError("This option is not in this trip.")
         s.delete(o)
-    return {"say": "Option hata diya."}
+    return {"say": "Option removed."}
 
 
 def train_info(day: str, cls: str = "SL", depart: str = "", quota: str = "GN") -> dict[str, Any]:
@@ -788,15 +788,15 @@ def train_info(day: str, cls: str = "SL", depart: str = "", quota: str = "GN") -
     out = {"day": d.isoformat(), "class": cls, "class_label": R.CLASSES.get(cls, ""), "arp_open": R.arp_open(d).isoformat(timespec="minutes"),
            "tatkal": R.tatkal_open(d, cls), "links": R.search_links("train"), "id_proofs": R.TRAIN_ID,
            "quotas": R.QUOTAS, "sources": R.SOURCES[:4]}
-    say = [f"{d:%d %b} ki train ki general booking {R.arp_open(d):%d %b} subah 8 baje khulti hai (pehle 15 minute sirf Aadhaar-verified "
+    say = [f"{d:%d %b} train: general booking opens on {R.arp_open(d):%d %b} at 8 am (first 15 minutes only for Aadhaar-verified "
            "IRCTC users)."]
     if R.norm_quota(quota) in ("TQ", "PT"):
         say.append(out["tatkal"]["say"])
     if depart:
         ch = R.chart_time(datetime.combine(d, time.fromisoformat(_hhmm(depart))))
         out["chart"] = ch.isoformat(timespec="minutes")
-        say.append(f"Pehla chart lagbhag {ch:%d %b %H:%M} par; final chart chhootne se 30 minute pehle.")
-    say.append("Kiraya aur seat IRCTC / RailOne par hi dikhenge. " + R.DISCLAIM)
+        say.append(f"First chart at about {ch:%d %b %H:%M}; final chart 30 minutes before departure.")
+    say.append("Fares and seats are shown only on IRCTC / RailOne. " + R.DISCLAIM)
     out["say"] = " ".join(say)
     return out
 
@@ -811,7 +811,7 @@ def doc_mark(tenant: str, ref: str, item: str, have: bool = True, file_id: str =
         t.docs = _dump(d)
         v = _trip_view(s, t)
     miss = v["docs_missing"]
-    return {"docs": v["docs"], "say": ("Sab zaroori kaagaz taiyaar." if not miss else "Abhi baaki: " + "; ".join(miss[:6]))}
+    return {"docs": v["docs"], "say": ("All required documents are ready." if not miss else "Still pending: " + "; ".join(miss[:6]))}
 
 
 def pack_mark(tenant: str, ref: str, item: str, done: bool = True) -> dict[str, Any]:
@@ -822,7 +822,7 @@ def pack_mark(tenant: str, ref: str, item: str, done: bool = True) -> dict[str, 
         t.packing = _dump(p)
         v = _trip_view(s, t)
     left = [x["item"] for x in v["packing"] if not x["done"]]
-    return {"packing": v["packing"], "say": f"Packing: {len(left)} cheezein baaki."}
+    return {"packing": v["packing"], "say": f"Packing: {len(left)} items left."}
 
 
 # ----------------------------------------------------------------------------- booking (her tap)
@@ -842,18 +842,18 @@ def _booking_card(s, b: TravelBooking) -> dict[str, Any]:
                 notes.append(R.tatkal_open(date.fromisoformat(o.day), o.cls)["say"])
             except ValueError:
                 pass
-        notes.append("IRCTC login, OTP / CAPTCHA aapke phone par aayenge; har yatri ka original photo ID saath.")
+        notes.append("The IRCTC login, OTP / CAPTCHA come to your phone; every traveller carries an original photo ID.")
     if o.refundable is False:
-        notes.append("Yeh option non-refundable hai.")
-    return {"booking": b.id, "number": b.number, "trip": t.number, "trip_id": t.id, "title": f"Book karein: {o.name}",
+        notes.append("This option is non-refundable.")
+    return {"booking": b.id, "number": b.number, "trip": t.number, "trip_id": t.id, "title": f"Book: {o.name}",
             "mode": o.mode, "name": o.name, "code": o.code, "from": o.from_place, "to": o.to_place, "day": o.day, "until": o.until,
             "depart": o.depart, "arrive": o.arrive, "cls": o.cls, "cls_label": R.CLASSES.get(o.cls, ""), "quota": o.quota,
             "quota_label": R.QUOTAS.get(o.quota, ""),
             "travellers": [{"name": x["name"], "age": x.get("age"), "berth": x.get("berth", ""), "id": x.get("id_masked", "")} for x in trav],
-            "price": inr(o.price_paise) if o.price_paise is not None else "daam site par dikhega",
+            "price": inr(o.price_paise) if o.price_paise is not None else "price shown on the site",
             "price_paise": o.price_paise, "site": site, "site_name": sname,
-            "route": (f"Hoola ka browser {sname} par sab bharega aur PAYMENT par rukega: pay aap khud karengi." if site else
-                      "Is option ki site Hoola nahi chalata: aap link se khud book kijiye, phir PNR / booking number bataiye."),
+            "route": (f"Hoola's browser fills everything on {sname} and stops at PAYMENT: you pay yourself." if site else
+                      "Hoola does not operate this option's site: book it yourself from the link, then give the PNR / booking number."),
             "link": o.link or (R.search_links(o.mode)[0]["url"] if R.search_links(o.mode) else ""),
             "notes": notes, "client": t.client_name if t.for_client else ""}
 
@@ -863,13 +863,13 @@ def booking_request(tenant: str, ref: str, option: str, actor: str = "owner", co
         t = _find(s, tenant, ref)
         o = s.get(TravelOption, option)
         if o is None or o.trip_id != t.id:
-            raise TravelError("Yeh option is trip mein nahi.")
+            raise TravelError("This option is not in this trip.")
         if o.mode in ("train", "flight", "bus") and not _j(t.travellers, []):
-            raise TravelError("Pehle yatriyon ke naam aur umar jodiye.")
+            raise TravelError("Add the travellers' names and ages first.")
         old = s.scalars(select(TravelBooking).where(TravelBooking.option_id == o.id,
                                                     TravelBooking.status.in_(("waiting", "working", "waiting_payment", "booked")))).first()
         if old is not None and old.status != "waiting":
-            return {"booking": _booking_view(old), "say": f"{old.number} pehle se {BOOKING_LABEL[old.status]}."}
+            return {"booking": _booking_view(old), "say": f"{old.number} already exists: {BOOKING_LABEL[old.status]}."}
         if old is None:
             st = _st(s, tenant)
             st.booking_seq += 1
@@ -884,7 +884,7 @@ def booking_request(tenant: str, ref: str, option: str, actor: str = "owner", co
         t.status = "booking" if t.status in ("draft", "planned", "quoted") else t.status
         _log(t, f"Booking card {old.number}: {o.name}", actor)
         v = _booking_view(old)
-    say = f"{v['number']}: '{card['name']}' ki booking ka card bheja hai: aapke tap ke baad hi shuru hogi, pay aap karengi."
+    say = f"{v['number']}: booking card sent for '{card['name']}'. It starts only after your tap, and you make the payment."
     _publish(tenant, "travel_booking", {**v, "say": say}, conv)
     return {"booking": v, "say": say, "status": "needs_tap"}
 
@@ -893,40 +893,40 @@ def decide_booking(tenant: str, bid: str, yes: bool, hash: str = "", note: str =
                    conv: str = "") -> dict[str, Any]:
     """ONLY from her tap in the app (API passes by_tap=True)."""
     if not by_tap:
-        raise TravelError("Booking ki haan sirf aap app mein card par tap karke deti hain.")
+        raise TravelError("Only you can approve a booking, by tapping the card in the app.")
     note = _clean(tenant, note, 300)
     with _LOCK, session() as s:
         b = s.get(TravelBooking, bid)
         if b is None or b.tenant_id != tenant:
-            raise TravelError("Card nahi mila.")
+            raise TravelError("Card not found.")
         if b.status != "waiting":
-            return {"booking": _booking_view(b), "say": f"Is card par faisla ho chuka ({BOOKING_LABEL.get(b.status, b.status)})."}
+            return {"booking": _booking_view(b), "say": f"This card has already been decided ({BOOKING_LABEL.get(b.status, b.status)})."}
         now_card = _booking_card(s, b)
         if not hash or hash != b.hash or _hash(now_card) != b.hash:
-            raise TravelError("Card badal gaya hai: naya card dekhkar faisla kijiye.")
+            raise TravelError("The card has changed: look at the new card and decide.")
         b.decided_at, b.note = now(), note
         t = s.get(TravelTrip, b.trip_id)
         if not yes:
             b.status = "rejected"
-            _log(t, f"{b.number}: owner ne mana kiya", "owner")
-            return {"booking": _booking_view(b), "say": "Theek hai, yeh booking nahi karenge."}
+            _log(t, f"{b.number}: owner declined", "owner")
+            return {"booking": _booking_view(b), "say": "OK, this booking will not be made."}
         card, conv = now_card, conv or b.conv or t.conv
         b.status = "approved"
-        _log(t, f"{b.number}: owner ki haan", "owner")
+        _log(t, f"{b.number}: owner approved", "owner")
     if not card.get("site"):
         with session() as s:
             b = s.get(TravelBooking, bid)
             b.status = "self"
             v = _booking_view(b)
-        return {"booking": v, "say": f"Haan mili. Yeh aap khud book kijiye: {card.get('link')}. Phir PNR / booking number bataiye."}
+        return {"booking": v, "say": f"Approved. Book this yourself: {card.get('link')}. Then give the PNR / booking number."}
     what = _order_text(tenant, card)
     try:
         from ..shop import service as shop
         o = shop.order(tenant, what, conv, site=card["site"], budget=card["price"] if card.get("price_paise") is not None else "",
                        when=card.get("day", ""), notes="; ".join(card.get("notes") or []), created_by="owner")
-        status, oid, say = "working", o.get("id", ""), (o.get("say") or "") + " Payment ka card aapko aayega."
+        status, oid, say = "working", o.get("id", ""), (o.get("say") or "") + " The payment card will come to you."
     except Exception as e:
-        status, oid, say = "failed", "", f"Booking shuru nahi ho payi: {e}. Link se khud kar lijiye: {card.get('link')}"
+        status, oid, say = "failed", "", f"The booking could not start: {e}. Book it yourself from the link: {card.get('link')}"
     with session() as s:
         b = s.get(TravelBooking, bid)
         b.status, b.shop_order_id = status, _s(oid)
@@ -981,9 +981,9 @@ def booking_done(tenant: str, bid: str, pnr: str = "", paid: Any = None, failed:
     with session() as s:
         b = s.get(TravelBooking, bid)
         if b is None or b.tenant_id != tenant:
-            raise TravelError("Booking nahi mili.")
+            raise TravelError("Booking not found.")
         if b.status in ("waiting", "rejected", "cancelled"):
-            raise TravelError("Is booking par aapki haan nahi hai.")
+            raise TravelError("This booking does not have your approval.")
         t = s.get(TravelTrip, b.trip_id)
         if failed:
             b.status = "failed"
@@ -998,7 +998,7 @@ def booking_done(tenant: str, bid: str, pnr: str = "", paid: Any = None, failed:
         if chosen and all(o.id in done for o in chosen):
             t.status = "booked"
         v = _booking_view(b)
-    say = f"{v['number']} {'book ho gaya' if v['status'] == 'booked' else 'nahi hua'}" + (f", PNR {v['pnr']}" if v["pnr"] else "") + "."
+    say = f"{v['number']} {'is booked' if v['status'] == 'booked' else 'failed'}" + (f", PNR {v['pnr']}" if v["pnr"] else "") + "."
     return {"booking": v, "say": say}
 
 
@@ -1008,7 +1008,7 @@ def _quote_card(s, tenant: str, t: TravelTrip) -> dict[str, Any]:
     opts = s.scalars(select(TravelOption).where(TravelOption.trip_id == t.id, TravelOption.chosen.is_(True))
                      .order_by(TravelOption.created_at)).all()
     if not opts:
-        raise TravelError("Quote ke liye pehle options chuniye (train / hotel ...).")
+        raise TravelError("Choose options first for the quote (train / hotel ...).")
     nights = max(1, _days(t) - 1)
     lines, missing = [], []
     n = max(1, len(_j(t.travellers, [])))
@@ -1018,10 +1018,10 @@ def _quote_card(s, tenant: str, t: TravelTrip) -> dict[str, Any]:
             continue
         amt = o.price_paise * (nights if (o.mode == "hotel" and o.per_night) else 1)
         lines.append({"what": f"{o.mode.title()}: {o.name} {o.code}".strip(), "detail": " ".join(x for x in (
-            o.day, f"{o.depart}-{o.arrive}" if o.depart else "", R.CLASSES.get(o.cls, ""), f"{nights} raat" if o.mode == "hotel" and o.per_night else "") if x),
+            o.day, f"{o.depart}-{o.arrive}" if o.depart else "", R.CLASSES.get(o.cls, ""), f"{nights} nights" if o.mode == "hotel" and o.per_night else "") if x),
             "amount_paise": amt, "amount": inr(amt)})
     if missing:
-        raise TravelError("In ka daam nahi pata, quote nahi banega: " + ", ".join(missing) + ". Daam bataiye ('daam' ke saath option update).")
+        raise TravelError("No price is known for these, so no quote can be made: " + ", ".join(missing) + ". Give the price (update the option with its price).")
     cost = sum(x["amount_paise"] for x in lines)
     markup = int(round(cost * st.markup_pct / 100)) + st.markup_flat_paise
     gst = int(round(markup * st.gst_pct / 100)) if st.gst_pct else 0
@@ -1033,7 +1033,7 @@ def _quote_card(s, tenant: str, t: TravelTrip) -> dict[str, Any]:
             "gst": inr(gst) if gst else "", "gst_pct": st.gst_pct, "total": inr(total), "total_paise": total,
             "per_person": inr(total // n) if n > 1 else "", "agency": st.agency_name, "contact": st.contact, "gstin": st.gstin,
             "terms": st.terms, "days": [d.get("title", "") for d in (itin.get("days") or [])][:15] if isinstance(itin, dict) else [],
-            "note": "Daam aaj ke hain; booking ke waqt site par badal sakte hain."}
+            "note": "Prices are as of today; they can change on the site at booking time."}
 
 
 def quote_request(tenant: str, ref: str, actor: str = "owner", conv: str = "") -> dict[str, Any]:
@@ -1051,23 +1051,23 @@ def quote_request(tenant: str, ref: str, actor: str = "owner", conv: str = "") -
         s.flush()
         _log(t, f"Quote card {q.number}: {card['total']}", actor)
         v = _quote_view(q)
-    say = (f"{v['number']}: kul {card['total']} (kharcha {card['cost']} + aapka charge {card['service_charge']}"
-           + (f" + GST {card['gst']}" if card["gst"] else "") + "). Card bheja: aapke tap ke baad hi PDF aur graahak ka message banega.")
+    say = (f"{v['number']}: total {card['total']} (cost {card['cost']} + your charge {card['service_charge']}"
+           + (f" + GST {card['gst']}" if card["gst"] else "") + "). Card sent: the PDF and the customer's message are made only after your tap.")
     _publish(tenant, "travel_quote", {**v, "say": say}, conv)
     return {"quote": v, "say": say, "status": "needs_tap"}
 
 
 def decide_quote(tenant: str, qid: str, yes: bool, hash: str = "", by_tap: bool = False, conv: str = "") -> dict[str, Any]:
     if not by_tap:
-        raise TravelError("Quote bhejne ki haan sirf aap app mein tap karke deti hain.")
+        raise TravelError("Only you can approve sending a quote, by tapping in the app.")
     with _LOCK, session() as s:
         q = s.get(TravelQuote, qid)
         if q is None or q.tenant_id != tenant:
-            raise TravelError("Card nahi mila.")
+            raise TravelError("Card not found.")
         if q.status == "stale":
-            raise TravelError("Yeh purana quote card hai: naya card dekhiye.")
+            raise TravelError("This is an old quote card: look at the new card.")
         if q.status != "waiting":
-            return {"quote": _quote_view(q), "say": f"Is card par faisla ho chuka ({q.status})."}
+            return {"quote": _quote_view(q), "say": f"This card has already been decided ({q.status})."}
         t = s.get(TravelTrip, q.trip_id)
         try:
             fresh = _quote_card(s, tenant, t)
@@ -1076,11 +1076,11 @@ def decide_quote(tenant: str, qid: str, yes: bool, hash: str = "", by_tap: bool 
             fresh = {}
         if not hash or hash != q.hash or _hash(fresh) != q.hash:
             q.status = "stale" if fresh and _hash(fresh) != q.hash else q.status
-            raise TravelError("Daam / options badal gaye hain: naya quote card banaiye.")
+            raise TravelError("Prices / options have changed: make a new quote card.")
         q.decided_at = now()
         if not yes:
             q.status = "rejected"
-            return {"quote": _quote_view(q), "say": "Theek hai, yeh quote nahi jayega."}
+            return {"quote": _quote_view(q), "say": "OK, this quote will not be sent."}
         q.status = "approved"
         if t.status in ("draft", "planned"):
             t.status = "quoted"
@@ -1093,16 +1093,16 @@ def decide_quote(tenant: str, qid: str, yes: bool, hash: str = "", by_tap: bool 
         q.file_id = _s(f.get("file_id") or f.get("id"))
         v = _quote_view(q)
     _publish(tenant, "pc_file", {**f, "source": "travel", "title": f"Quote {card['number']}"}, conv)
-    msg = (f"Namaste {card['client'] or ''}, aapki yatra ({card['dates']}) ka quote: kul {card['total']}"
-           + (f" ({card['per_person']} prati vyakti)" if card["per_person"] else "") + ". PDF saath hai. Daam booking ke waqt badal "
-           "sakte hain. " + (card["agency"] or "")).strip()
+    msg = (f"Hello {card['client'] or ''}, here is the quote for your trip ({card['dates']}): total {card['total']}"
+           + (f" ({card['per_person']} per person)" if card["per_person"] else "") + ". The PDF is attached. Prices can change at booking "
+           "time. " + (card["agency"] or "")).strip()
     import urllib.parse
     drafts = {"text": msg}
     if card.get("phone"):
         drafts["whatsapp"] = f"https://wa.me/91{card['phone']}?text=" + urllib.parse.quote(msg)
     if card.get("email"):
         drafts["email"] = f"mailto:{card['email']}?subject=" + urllib.parse.quote(f"Travel quote {card['number']}") + "&body=" + urllib.parse.quote(msg)
-    say = f"{v['number']} ka PDF taiyaar. Graahak ko message aap khud bhejiye (draft taiyaar hai)."
+    say = f"{v['number']}: the PDF is ready. Send the message to the customer yourself (the draft is ready)."
     return {"quote": v, "file": f, "drafts": drafts, "say": say}
 
 
@@ -1205,10 +1205,10 @@ def day(tenant: str, ln: datetime | None = None) -> dict[str, Any]:
         nwait = len(waiting)
     bits = []
     for u in sorted(upcoming, key=lambda x: x["in_days"]):
-        when = "aaj" if u["in_days"] == 0 else ("kal" if u["in_days"] == 1 else f"{u['in_days']} din mein")
-        bits.append(f"{u['number']} {u['title']} {when}" + (f" (kaagaz baaki: {', '.join(u['docs_missing'][:3])})" if u["docs_missing"] else ""))
+        when = "today" if u["in_days"] == 0 else ("tomorrow" if u["in_days"] == 1 else f"{u['in_days']} days away")
+        bits.append(f"{u['number']} {u['title']} {when}" + (f" (documents pending: {', '.join(u['docs_missing'][:3])})" if u["docs_missing"] else ""))
     if nwait:
-        bits.append(f"{nwait} booking card aapki haan ka intezaar kar rahe hain")
+        bits.append(f"{nwait} booking cards are waiting for your approval")
     return {"upcoming": upcoming, "waiting_cards": nwait, "say": ("; ".join(bits) + ".") if bits else ""}
 
 
@@ -1229,20 +1229,20 @@ def _due(tenant: str, t: TravelTrip, opts: list[TravelOption], booked: set[str],
         if o.mode == "train" and o.id not in booked:
             op = R.arp_open(d)
             if op - timedelta(minutes=30) <= ln < op + timedelta(hours=2):
-                out.append((f"arp:{o.id}", f"{t.number}: {o.name} ({d:%d %b}) ki booking {op:%H:%M} baje khul rahi hai. "
-                                           "Booking card ke liye 'book karo' boliye."))
+                out.append((f"arp:{o.id}", f"{t.number}: booking for {o.name} ({d:%d %b}) opens at {op:%H:%M}. "
+                                           "Say 'book it' for the booking card."))
             if o.quota in ("TQ", "PT"):
                 tk = datetime.fromisoformat(R.tatkal_open(d, o.cls)["at"])
                 if tk - timedelta(minutes=30) <= ln < tk + timedelta(hours=1):
-                    out.append((f"tatkal:{o.id}", f"{t.number}: Tatkal {tk:%H:%M} baje khulega ({o.name}). Aadhaar wala phone paas rakhiye."))
+                    out.append((f"tatkal:{o.id}", f"{t.number}: Tatkal opens at {tk:%H:%M} ({o.name}). Keep the phone linked to Aadhaar with you."))
         if o.mode == "train" and o.id in booked and dep:
             ch = R.chart_time(dep)
             if ch <= ln < dep:
-                out.append((f"chart:{o.id}", f"{t.number}: {o.name} ka chart lag gaya hoga: PNR status IRCTC / RailOne par dekhiye."))
+                out.append((f"chart:{o.id}", f"{t.number}: the chart for {o.name} should be out by now: check the PNR status on IRCTC / RailOne."))
         if o.mode == "flight" and dep:
             w = R.web_checkin(dep, bool(t.country))
             if datetime.fromisoformat(w["opens"]) <= ln < datetime.fromisoformat(w["closes"]):
-                out.append((f"checkin:{o.id}", f"{t.number}: {o.name} ka web check-in khul gaya hoga. " + w["say"]))
+                out.append((f"checkin:{o.id}", f"{t.number}: web check-in for {o.name} should be open by now. " + w["say"]))
     try:
         sd = date.fromisoformat(t.start_date)
     except ValueError:
@@ -1257,8 +1257,8 @@ def _due(tenant: str, t: TravelTrip, opts: list[TravelOption], booked: set[str],
         with session() as s:
             v = _trip_view(s, s.get(TravelTrip, t.id))
         miss = v["docs_missing"]
-        out.append(("eve", f"{t.number} kal hai." + (f" Kaagaz baaki: {'; '.join(miss[:5])}." if miss else " Kaagaz sab taiyaar.")
-                    + f" Packing: {sum(1 for p in v['packing'] if not p['done'])} cheezein baaki."))
+        out.append(("eve", f"{t.number} is tomorrow." + (f" Documents pending: {'; '.join(miss[:5])}." if miss else " All documents are ready.")
+                    + f" Packing: {sum(1 for p in v['packing'] if not p['done'])} items left."))
     return out
 
 
@@ -1305,7 +1305,7 @@ def tick(now_: datetime | None = None) -> dict[str, int]:
                 with session() as s:
                     _st(s, tenant).last_morning = ln.date().isoformat()
                 if d["say"]:
-                    _publish(tenant, "travel_day", {**d, "say": "Yatra: " + d["say"]})
+                    _publish(tenant, "travel_day", {**d, "say": "Travel: " + d["say"]})
                     sent += 1
         except Exception:
             log.exception("travel tick failed for %s", tenant)

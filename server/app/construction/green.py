@@ -41,9 +41,9 @@ def _rule(tenant: str, rule_id: str) -> CgrEcbcRule:
 def meter_add(tenant: str, site: str, meter: str, kwh: float, day: str = "", note: str = "") -> dict:
     """One meter reading, as fed (the bill / meter photo is the source of truth)."""
     if not str(site or "").strip() or not str(meter or "").strip():
-        raise CstError("Site aur meter bataiye.")
+        raise CstError("Give the site and the meter.")
     if _num(kwh) <= 0:
-        raise CstError("kWh bataiye (> 0) - jaisa meter / bill bola.")
+        raise CstError("Give the kWh (> 0) - as the meter / bill says.")
     with _LOCK, session() as s:
         x = CgrMeter(tenant_id=tenant, site=site.strip()[:160], meter=meter.strip()[:60],
                      day=(_date(day) or today(tenant)).isoformat(), kwh=_num(kwh), note=note[:200])
@@ -51,7 +51,7 @@ def meter_add(tenant: str, site: str, meter: str, kwh: float, day: str = "", not
         s.flush()
         mid = x.id
     return {"meter_id": mid,
-            "say": f"Reading: {meter.strip()} = {_num(kwh):g} kWh ({x.day}). Benchmark isi data se."}
+            "say": f"Reading: {meter.strip()} = {_num(kwh):g} kWh ({x.day}). The benchmark is made from this data."}
 
 
 def tariff_add(tenant: str, name: str, rows: list, source: str) -> dict:
@@ -65,26 +65,26 @@ def tariff_add(tenant: str, name: str, rows: list, source: str) -> dict:
                       "rate": _num(r.get("rate")), "fixed_rs": _num(r.get("fixed_rs"))})
     clean.sort(key=lambda r: r["from_kwh"])
     if not clean or not str(source or "").strip():
-        raise CstError("Slab rows (from_kwh, to_kwh, rate) aur bill ka SOURCE bataiye - tariff guess "
-                       "nahi hota.")
+        raise CstError("Give the slab rows (from_kwh, to_kwh, rate) and the SOURCE of the bill - a tariff is "
+                       "never guessed.")
     with _LOCK, session() as s:
         x = CgrTariff(tenant_id=tenant, name=name.strip()[:80], rows=_dump(clean), source=source.strip()[:160])
         s.add(x)
         s.flush()
         tid = x.id
     return {"tariff_id": tid, "slabs": len(clean),
-            "say": f"Tariff '{name.strip()}': {len(clean)} slabs ({source.strip()[:50]}). Bill isi se."}
+            "say": f"Tariff '{name.strip()}': {len(clean)} slabs ({source.strip()[:50]}). The bill is calculated from this."}
 
 
 def bill(tenant: str, name: str, kwh_month: float) -> dict:
     """The bill arithmetic: kwh walked through HER slab rows, slab by slab, + fixed charges."""
     if _num(kwh_month) <= 0:
-        raise CstError("Month ke units bataiye (> 0).")
+        raise CstError("Give the month's units (> 0).")
     with session() as s:
         t = s.scalars(select(CgrTariff).where(CgrTariff.tenant_id == tenant,
                                               CgrTariff.name == name)).first()
     if not t:
-        raise CstError(f"Tariff '{name}' nahi hai - tariff_add se apne bill ki slabs jodo.")
+        raise CstError(f"Tariff '{name}' does not exist - add the slabs from your bill with tariff_add.")
     slabs = _j(t.rows, [])
     left, total, walk = _num(kwh_month), 0.0, []
     for sl in slabs:
@@ -101,10 +101,10 @@ def bill(tenant: str, name: str, kwh_month: float) -> dict:
         left -= take
     if left > 1e-9 and walk:
         return {"total_rs": total, "walk": walk,
-                "warn": f"{left:g} units kisi slab se cover nahi hue - tariff ki slabs check karo."}
+                "warn": f"{left:g} units are not covered by any slab - check the tariff's slabs."}
     return {"total_rs": round(total, 2), "walk": walk,
             "say": f"Bill ({name}): {_num(kwh_month):g} units -> Rs {total:,.0f} "
-                   f"({len(walk)} slabs, {t.source[:40]}). HISAB hai - bill DISCOM ka hoga."}
+                   f"({len(walk)} slabs, {t.source[:40]}). This is a CALCULATION - the bill is the DISCOM's."}
 
 
 def benchmark(tenant: str, site: str, builtup_m2: float, benchmark_kwh_m2_mo: float = 0.0,
@@ -112,27 +112,27 @@ def benchmark(tenant: str, site: str, builtup_m2: float, benchmark_kwh_m2_mo: fl
     """Energy performance intensity: sum of the site's kWh / built-up -> kWh/m2/month - vs HER
     sourced benchmark (ECBC / CII / her historical). The audit stays with the certified auditor."""
     if _num(builtup_m2) <= 0:
-        raise CstError("Built-up area bataiye (> 0).")
+        raise CstError("Give the built-up area (> 0).")
     with session() as s:
         rows = s.scalars(select(CgrMeter).where(CgrMeter.tenant_id == tenant,
                                                 CgrMeter.site == site)).all()
     if not rows:
-        raise CstError(f"'{site}' ke meter readings nahi - pehle meter_add se data jodo.")
+        raise CstError(f"'{site}' has no meter readings - add data with meter_add first.")
     total = sum(r.kwh for r in rows)
     months = len({r.day[:7] for r in rows}) or 1
     epi = round(total / months / _num(builtup_m2), 2)
     out = {"kwh_total": round(total, 1), "months": months, "epi_kwh_m2_mo": epi}
     if _num(benchmark_kwh_m2_mo) > 0:
         if not str(benchmark_source or "").strip():
-            raise CstError("Benchmark ka SOURCE bataiye (ECBC table / apna purana data) - bina source "
-                           "ka benchmark comparison nahi hota.")
+            raise CstError("Give the SOURCE of the benchmark (ECBC table / your own past data) - without a source "
+                           "there is no benchmark comparison.")
         out |= {"benchmark": _num(benchmark_kwh_m2_mo), "benchmark_source": benchmark_source.strip()[:160],
                 "vs_benchmark_pct": round((epi - _num(benchmark_kwh_m2_mo)) / _num(benchmark_kwh_m2_mo) * 100.0, 1)}
     say = (f"EPI ({site}): {epi:,.2f} kWh/m2/month ({total:,.0f} kWh / {months} month / "
            f"{_num(builtup_m2):g} m2). "
-           + (f"Benchmark {_num(benchmark_kwh_m2_mo):g} se "
+           + (f"vs benchmark {_num(benchmark_kwh_m2_mo):g}: "
               f"{out['vs_benchmark_pct']:+.1f}% (source: {benchmark_source.strip()[:40]}). " if "benchmark" in out else "")
-           + "Yeh record + hisaab hai - energy audit certified auditor ka.")
+           + "This is a record + a calculation - the energy audit is the certified auditor's.")
     return {**out, "say": say}
 
 
@@ -144,14 +144,14 @@ def rule_add(tenant: str, family: str, rule_id: str, text: str, value, unit: str
     if family not in fams:
         raise CstError(f"family: {' | '.join(fams)}")
     if not str(rule_id or "").strip() or not str(text or "").strip():
-        raise CstError("Rule id aur text bataiye.")
+        raise CstError("Give the rule id and the text.")
     if _num(value) <= 0:
-        raise CstError("Value bataiye (> 0).")
+        raise CstError("Give the value (> 0).")
     if direction not in ("min", "max"):
         raise CstError("direction: min | max")
     if not str(clause or "").strip() or not str(source or "").strip():
-        raise CstError("Clause aur source dono chahiye (jaise 'ECBC 2017 Table 3.2', 'ECBC user guide "
-                       "PDF p.24') - bina clause ka rule code nahi hota.")
+        raise CstError("Both the clause and the source are needed (for example 'ECBC 2017 Table 3.2', 'ECBC user guide "
+                       "PDF p.24') - a rule without a clause is not code.")
     with _LOCK, session() as s:
         x = CgrEcbcRule(tenant_id=tenant, family=family, rule_id=rule_id.strip()[:60], text=text.strip()[:300],
                         value=_num(value), direction=direction, unit=unit.strip()[:20],
@@ -161,8 +161,8 @@ def rule_add(tenant: str, family: str, rule_id: str, text: str, value, unit: str
         s.flush()
         rid = x.id
     return {"rule_id": rid,
-            "say": f"Rule juda: {rule_id} = {_num(value):g} {unit} ({direction}) - {clause.strip()[:60]} "
-                   f"({source.strip()[:50]}). Checks isi against honge; verdict assessor ka."}
+            "say": f"Rule added: {rule_id} = {_num(value):g} {unit} ({direction}) - {clause.strip()[:60]} "
+                   f"({source.strip()[:50]}). Checks run against this; the verdict is the assessor's."}
 
 
 def check(tenant: str, project: str, rule_id: str, declared, note: str = "") -> dict:
@@ -170,8 +170,8 @@ def check(tenant: str, project: str, rule_id: str, declared, note: str = "") -> 
     physicist own the outcome (tier B)."""
     r = _rule(tenant, rule_id)
     if r is None:
-        raise CstError(f"Rule '{rule_id}' nahi hai - rule_add se clause + source ke saath jodo. Bina "
-                       "rule ke check nahi hota (guess code nahi hota).")
+        raise CstError(f"Rule '{rule_id}' does not exist - add it with rule_add, with clause + source. Without "
+                       "a rule there is no check (a guess is not code).")
     val = _num(declared)
     if r.direction == "min":
         verdict = "ok" if val >= r.value else "breach"
@@ -190,7 +190,7 @@ def check(tenant: str, project: str, rule_id: str, declared, note: str = "") -> 
             "margin": margin,
             "say": f"{rule_id}: declared {val:g} vs limit {r.value:g} {r.unit} ({r.direction}) -> "
                    f"{'WITHIN' if verdict == 'ok' else 'BREACH'} (arithmetic). Rule: {r.clause} "
-                   f"({r.source[:50]}). Faisla assessor ka - Hoola ka number."}
+                   f"({r.source[:50]}). The decision is the assessor's - the number is Hoola's."}
 
 
 def daylight(tenant: str, project: str, room: str, glazing_m2: float, floor_m2: float,
@@ -198,14 +198,14 @@ def daylight(tenant: str, project: str, room: str, glazing_m2: float, floor_m2: 
     """Daylight route (#113): window-to-floor ratio = glazing / floor - vs her sourced rule row when
     given. 'Results explained, not certified' - the building physicist owns the analysis."""
     if _num(glazing_m2) <= 0 or _num(floor_m2) <= 0:
-        raise CstError("Glazing area aur floor area bataiye (sab > 0).")
+        raise CstError("Give the glazing area and the floor area (all > 0).")
     wfr = round(_num(glazing_m2) / _num(floor_m2) * 100.0, 2)
     out = {"wfr_pct": wfr, "glazing_m2": _num(glazing_m2), "floor_m2": _num(floor_m2),
            "formula": f"{_num(glazing_m2):g} / {_num(floor_m2):g} x 100"}
     if rule_id:
         r = _rule(tenant, rule_id)
         if not r:
-            raise CstError(f"Rule '{rule_id}' nahi hai - rule_add se sourced row jodo.")
+            raise CstError(f"Rule '{rule_id}' does not exist - add a sourced row with rule_add.")
         verdict = "ok" if (wfr <= r.value if r.direction == "max" else wfr >= r.value) else "breach"
         out |= {"rule": rule_id, "limit": r.value, "direction": r.direction, "verdict": verdict}
     cid = None
@@ -220,7 +220,7 @@ def daylight(tenant: str, project: str, room: str, glazing_m2: float, floor_m2: 
     say = (f"Daylight ({room}): WFR {wfr:.2f}% ({out['formula']}). "
            + (f"Rule {rule_id}: {'WITHIN' if out.get('verdict') == 'ok' else 'BREACH'} vs "
               f"{r.value:g}% ({r.direction}) - {r.clause[:40]}. " if rule_id else "")
-           + "Explained, not certified - thermal comfort / DF analysis building physicist ki.")
+           + "Explained, not certified - thermal comfort / DF analysis is the building physicist's.")
     return {"check_id": cid, **out, "say": say}
 
 
@@ -233,16 +233,16 @@ def model_inputs(tenant: str, project: str, rows: list) -> dict:
         if not isinstance(r, dict) or not str(r.get("param", "")).strip():
             continue
         if not str(r.get("source", "")).strip():
-            raise CstError(f"Param '{r.get('param')}' ka SOURCE bataiye - assumption bina source ke "
-                           "register mein nahi ghusta.")
+            raise CstError(f"Param '{r.get('param')}' needs a SOURCE - an assumption without a source does not "
+                           "go into the register.")
         clean.append({"param": str(r.get("param"))[:80], "value": str(r.get("value"))[:60],
                       "unit": str(r.get("unit", ""))[:20], "source": str(r.get("source"))[:160]})
     if not clean:
-        raise CstError("Input rows bhejo [{param, value, unit, source}].")
+        raise CstError("Send input rows [{param, value, unit, source}].")
     return {"rows": clean,
-            "say": f"Model input register: {len(clean)} parameters, sab source ke saath. EnergyPlus "
-                   "YAHAN nahi chalta - yeh input set modeller ke liye hai; results bhi wahi explain "
-                   "karega (not certified here)."}
+            "say": f"Model input register: {len(clean)} parameters, all with a source. EnergyPlus "
+                   "does NOT run here - this input set is for the modeller, who also explains the "
+                   "results (not certified here)."}
 
 
 # ---------------------------------------------------------------- #114 embodied carbon
@@ -251,10 +251,10 @@ def carbon_add(tenant: str, project: str, material: str, qty: float, unit: str, 
     """One embodied-carbon row (#114): qty x EPD factor - the factor's source is REQUIRED (an EPD or
     an LCA database, named). No remembered factors."""
     if not str(material or "").strip() or _num(qty) <= 0 or _num(factor_kgco2e) <= 0:
-        raise CstError("Material, qty aur factor bataiye (sab > 0).")
+        raise CstError("Give the material, qty and factor (all > 0).")
     if not str(factor_source or "").strip():
-        raise CstError("Factor ka SOURCE bataiye (EPD no / LCA database + row) - bina source ka factor "
-                       "carbon number nahi banta.")
+        raise CstError("Give the SOURCE of the factor (EPD no / LCA database + row) - a factor without a source "
+                       "does not make a carbon number.")
     kg = round(_num(qty) * _num(factor_kgco2e), 1)
     with _LOCK, session() as s:
         x = CgrCarbon(tenant_id=tenant, project=project.strip()[:160], material=material.strip()[:120],
@@ -266,7 +266,7 @@ def carbon_add(tenant: str, project: str, material: str, qty: float, unit: str, 
     return {"row_id": cid, "kgco2e": kg,
             "say": f"Carbon row: {material.strip()} {_num(qty):g} {unit} x {_num(factor_kgco2e):g} "
                    f"kgCO2e = {kg:,.0f} kgCO2e (factor: {factor_source.strip()[:40]}). "
-                   "Hot-spot list isi se."}
+                   "The hot-spot list is made from this."}
 
 
 def carbon_hotspots(tenant: str, project: str) -> dict:
@@ -276,7 +276,7 @@ def carbon_hotspots(tenant: str, project: str) -> dict:
         rows = s.scalars(select(CgrCarbon).where(CgrCarbon.tenant_id == tenant,
                                                  CgrCarbon.project == project)).all()
     if not rows:
-        raise CstError(f"'{project}' ke carbon rows nahi - carbon_add se jodo (factor sources ke saath).")
+        raise CstError(f"'{project}' has no carbon rows - add them with carbon_add (with factor sources).")
     total = sum(r.kgco2e for r in rows) or 1.0
     ranked = sorted(({"material": r.material, "kgco2e": r.kgco2e,
                       "share_pct": round(r.kgco2e / total * 100.0, 1),
@@ -284,21 +284,21 @@ def carbon_hotspots(tenant: str, project: str) -> dict:
                     key=lambda r: -r["kgco2e"])
     return {"total_kgco2e": round(total, 1), "rows": ranked,
             "say": f"Embodied carbon ({project}): {total:,.0f} kgCO2e total, top hot-spot "
-                   f"'{ranked[0]['material']}' ({ranked[0]['share_pct']}%). Yeh hot-spot list hai - "
-                   "LCA assessment assessor karta hai."}
+                   f"'{ranked[0]['material']}' ({ranked[0]['share_pct']}%). This is a hot-spot list - "
+                   "the LCA assessment is done by the assessor."}
 
 
 # ---------------------------------------------------------------- #115 water / rainwater
 def water_demand(tenant: str, project: str, name: str, occupants: float, state: str = "india") -> dict:
     """Demand (#115): occupants x CPHEEO per-capita (the national pack row) -> KLD, cited."""
     if _num(occupants) <= 0:
-        raise CstError("Occupants bataiye (> 0).")
+        raise CstError("Give the occupants (> 0).")
     r = SP.rule_cited(state, "cpheeo_lpcd")
     kld = round(_num(occupants) * float(r["value"]) / 1000.0, 2)
     return {"kld": kld, "occupants": _num(occupants), "lpcd": float(r["value"]),
             "is_ref": f"{r['clause']} ({r['source'][:60]})",
-            "say": f"Water demand ({name}): {kld:,.2f} KLD ({r['clause'][:60]}). STP sizing aur plumbing "
-                   "design consultant ka - yeh demand ka hisaab hai."}
+            "say": f"Water demand ({name}): {kld:,.2f} KLD ({r['clause'][:60]}). STP sizing and plumbing "
+                   "design are the consultant's - this is the demand calculation."}
 
 
 def rwh(tenant: str, project: str, name: str, roof_m2: float, runoff_coeff: float, rainfall_mm: float,
@@ -306,20 +306,20 @@ def rwh(tenant: str, project: str, name: str, roof_m2: float, runoff_coeff: floa
     """Rainwater harvest potential (#115): roof x runoff coefficient x rainfall / 1000 -> m3/yr.
     The coefficient and the IMD station are HERS, recorded with the number."""
     if _num(roof_m2) <= 0 or _num(rainfall_mm) <= 0:
-        raise CstError("Roof area aur annual rainfall bataiye (sab > 0).")
+        raise CstError("Give the roof area and the annual rainfall (all > 0).")
     if not 0.0 < _num(runoff_coeff) <= 1.0:
-        raise CstError("Runoff coefficient 0-1 ke beech bataiye (jaise concrete ~0.9, tile ~0.8 - "
-                       "aapki value, aapka source).")
+        raise CstError("Give a runoff coefficient between 0 and 1 (for example concrete ~0.9, tile ~0.8 - "
+                       "your value, your source).")
     if not str(rain_source or "").strip():
-        raise CstError("Rainfall ka SOURCE bataiye (IMD station / year) - bina source ki barish "
-                       "harvest nahi banati.")
+        raise CstError("Give the SOURCE of the rainfall (IMD station / year) - rainfall without a source "
+                       "does not make a harvest figure.")
     m3 = round(_num(roof_m2) * _num(runoff_coeff) * _num(rainfall_mm) / 1000.0, 1)
     return {"harvest_m3_yr": m3, "roof_m2": _num(roof_m2), "runoff_coeff": _num(runoff_coeff),
             "rainfall_mm": _num(rainfall_mm), "rain_source": rain_source.strip()[:160],
             "formula": "roof x runoff_coeff x mm / 1000",
             "say": f"RWH ({name}): ~{m3:,.0f} m3/yr (roof {_num(roof_m2):g} x coeff {_num(runoff_coeff):g} "
-                   f"x {_num(rainfall_mm):g} mm - {rain_source.strip()[:40]}). Recharge / storage ka "
-                   "design consultant ka."}
+                   f"x {_num(rainfall_mm):g} mm - {rain_source.strip()[:40]}). Recharge / storage "
+                   "design is the consultant's."}
 
 
 # ---------------------------------------------------------------- #110 green-rating credits
@@ -330,10 +330,10 @@ def credit_add(tenant: str, project: str, rating: str, credit: str, points_avail
     if rating not in ("IGBC", "GRIHA", "LEED"):
         raise CstError("rating: IGBC | GRIHA | LEED")
     if not str(credit or "").strip() or _num(points_available) <= 0:
-        raise CstError("Credit ka naam aur available points bataiye.")
+        raise CstError("Give the credit name and the available points.")
     if _num(points_claimed) > _num(points_available):
         raise CstError(f"Claimed ({_num(points_claimed):g}) > available ({_num(points_available):g}) - "
-                       "credit ke points check karo.")
+                       "check the credit's points.")
     if status not in ("planned", "claimed", "denied"):
         raise CstError("status: planned | claimed | denied")
     with _LOCK, session() as s:
@@ -357,7 +357,7 @@ def credits_score(tenant: str, project: str) -> dict:
         rows = s.scalars(select(CgrCredit).where(CgrCredit.tenant_id == tenant,
                                                  CgrCredit.project == project)).all()
     if not rows:
-        raise CstError(f"'{project}' ke credit rows nahi - credit_add se jodo.")
+        raise CstError(f"'{project}' has no credit rows - add them with credit_add.")
     by: dict[str, dict] = {}
     for r in rows:
         b = by.setdefault(r.rating, {"claimed": 0.0, "available": 0.0, "rows": 0, "no_evidence": 0})
@@ -370,7 +370,7 @@ def credits_score(tenant: str, project: str) -> dict:
     return {"ratings": by,
             "say": (f"Credit score ({project}): "
                     + "; ".join(f"{k} {v['claimed']:g}/{v['available']:g} ({v['pct']}%)" for k, v in by.items())
-                    + ". Sum AAPKI claimed rows ka hai - rating assessor decide karta hai.")}
+                    + ". The sum is of YOUR claimed rows - the assessor decides the rating.")}
 
 
 # ---------------------------------------------------------------- #116 commissioning
@@ -378,12 +378,12 @@ def cx_add(tenant: str, project: str, system: str, test: str, steps: list, seaso
     """A commissioning item (#116): the functional test SCRIPT steps as data; the sign-off is the Cx
     authority's (tier C)."""
     if not str(system or "").strip() or not str(test or "").strip():
-        raise CstError("System aur test bataiye (jaise 'Chilled water loop', 'Flow > design x 1.1').")
+        raise CstError("Give the system and the test (for example 'Chilled water loop', 'Flow > design x 1.1').")
     if season not in ("first", "seasonal"):
         raise CstError("season: first | seasonal")
     clean = [str(s_).strip()[:200] for s_ in (steps or []) if str(s_).strip()]
     if not clean:
-        raise CstError("Test ke steps bhejo (list) - script bina steps ke script nahi hoti.")
+        raise CstError("Send the test steps (list) - a script without steps is not a script.")
     with _LOCK, session() as s:
         x = CgrCx(tenant_id=tenant, project=project.strip()[:160], system=system.strip()[:120],
                   test=test.strip()[:200], steps=_dump(clean), season=season)
@@ -392,7 +392,7 @@ def cx_add(tenant: str, project: str, system: str, test: str, steps: list, seaso
         cid = x.id
     return {"cx_id": cid, "steps": len(clean),
             "say": f"Cx item: {system.strip()} - '{test.strip()}' ({len(clean)} steps, {season}). "
-                   "Sign-off Cx authority ka - Hoola script aur log rakhta hai."}
+                   "Sign-off is the Cx authority's - Hoola keeps the script and the log."}
 
 
 def cx_issue(tenant: str, cx_id: str, severity: str, note: str) -> dict:
@@ -400,11 +400,11 @@ def cx_issue(tenant: str, cx_id: str, severity: str, note: str) -> dict:
     if severity not in ("minor", "major", "critical"):
         raise CstError("severity: minor | major | critical")
     if not str(note or "").strip():
-        raise CstError("Issue ka note bataiye.")
+        raise CstError("Give the issue note.")
     with _LOCK, session() as s:
         x = s.get(CgrCx, cx_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Cx item nahi mila.")
+            raise CstError("Cx item not found.")
         iss = CgrCxIssue(tenant_id=tenant, cx_id=cx_id, severity=severity, note=note.strip()[:300])
         s.add(iss)
         s.flush()
@@ -420,10 +420,10 @@ def cx_status(tenant: str, cx_id: str, status: str) -> dict:
     with _LOCK, session() as s:
         x = s.get(CgrCx, cx_id)
         if not x or x.tenant_id != tenant:
-            raise CstError("Cx item nahi mila.")
+            raise CstError("Cx item not found.")
         x.status = status
         sysname = x.system
-    return {"say": f"{sysname}: Cx status -> {status} (test insaan ne chalaya, record rakha)."}
+    return {"say": f"{sysname}: Cx status -> {status} (a person ran the test; the record is kept)."}
 
 
 # ---------------------------------------------------------------- #117 T&C records
@@ -432,9 +432,9 @@ def tc_add(tenant: str, project: str, system: str, cert_no: str, agency: str, te
     """A T&C record (#117): the certificate as the agency reported it, as-installed vs design with the
     tolerance arithmetic - ok / exceeds is a number; acceptance is the T&C engineer's."""
     if not str(system or "").strip() or _num(design) <= 0:
-        raise CstError("System aur design value bataiye (> 0).")
+        raise CstError("Give the system and the design value (> 0).")
     if _num(tolerance_pct) <= 0:
-        raise CstError("Tolerance % bataiye (spec / agency limit se).")
+        raise CstError("Give the tolerance % (from the spec / agency limit).")
     dev = round(abs(_num(as_installed) - _num(design)) / _num(design) * 100.0, 2)
     verdict = "ok" if dev <= _num(tolerance_pct) else "exceeds"
     with _LOCK, session() as s:
@@ -451,7 +451,7 @@ def tc_add(tenant: str, project: str, system: str, cert_no: str, agency: str, te
                    f"{_num(design):g} {unit} -> {dev:.2f}% deviation vs tolerance {_num(tolerance_pct):g}% "
                    f"-> {'WITHIN (arithmetic)' if verdict == 'ok' else 'EXCEEDS (arithmetic)'}. "
                    "Certificate " + (f"{cert_no.strip()} ({agency.strip()[:30]})" if cert_no else "-")
-                   + ". Acceptance T&C engineer ki."}
+                   + ". Acceptance is the T&C engineer's."}
 
 
 # ---------------------------------------------------------------- #118 M&V
@@ -472,15 +472,15 @@ def mv_add(tenant: str, project: str, option: str, baseline: list, report: list,
     """An M&V job (#118): baseline + reporting rows [{driver, kwh}] and HER IPMVP option letter.
     Savings sirf baseline model ke baad."""
     if option not in ("A", "B", "C", "D"):
-        raise CstError("IPMVP option: A | B | C | D - aapka option, Hoola ka nahi.")
+        raise CstError("IPMVP option: A | B | C | D - your option, not Hoola's.")
     bl = [{"driver": _num(r.get("driver")), "kwh": _num(r.get("kwh"))}
           for r in (baseline or []) if isinstance(r, dict) and _num(r.get("kwh")) > 0]
     rp = [{"driver": _num(r.get("driver")), "kwh": _num(r.get("kwh"))}
           for r in (report or []) if isinstance(r, dict) and _num(r.get("kwh")) > 0]
     if len(bl) < 3:
-        raise CstError("Baseline ke kam se kam 3 rows chahiye (driver + kwh) - model usi par banta hai.")
+        raise CstError("At least 3 baseline rows are needed (driver + kwh) - the model is built on them.")
     if not rp:
-        raise CstError("Reporting period ki rows bhejo [{driver, kwh}].")
+        raise CstError("Send the reporting-period rows [{driver, kwh}].")
     with _LOCK, session() as s:
         x = CgrMv(tenant_id=tenant, project=project.strip()[:160], option=option,
                   baseline=_dump(bl), report=_dump(rp), note=note.strip()[:200])
@@ -488,8 +488,8 @@ def mv_add(tenant: str, project: str, option: str, baseline: list, report: list,
         s.flush()
         mid = x.id
     return {"mv_id": mid, "baseline_rows": len(bl), "report_rows": len(rp),
-            "say": f"M&V job ({project}, Option {option}) khuli. Savings mv_savings se - baseline model "
-                   "least-squares se, sab printed."}
+            "say": f"M&V job ({project}, Option {option}) opened. Savings come from mv_savings - the baseline model "
+                   "is by least squares, everything printed."}
 
 
 def mv_savings(tenant: str, mv_id: str) -> dict:
@@ -499,15 +499,15 @@ def mv_savings(tenant: str, mv_id: str) -> dict:
     with session() as s:
         m = s.get(CgrMv, mv_id)
         if not m or m.tenant_id != tenant:
-            raise CstError("M&V job nahi mili.")
+            raise CstError("M&V job not found.")
     bl, rp = _j(m.baseline, []), _j(m.report, [])
     xs = [r["driver"] for r in bl]
     ys = [r["kwh"] for r in bl]
     a, b, r2 = _ols(xs, ys)
     if b <= 0 or r2 < 0.5:
-        warn = (f"Model weak (b={b:.4g}, r2={r2:.3f}) - driver ka relationship baseline mein clear "
-                "nahi. IPMVP ke hisaab se routine ya data dobara dekho; Hoola number dikhata hai, "
-                "model ki pasandigi physicist verify karega.")
+        warn = (f"Model weak (b={b:.4g}, r2={r2:.3f}) - the driver's relationship is not clear in the "
+                "baseline. Per IPMVP, look at the routine or the data again; Hoola shows the number, "
+                "the physicist verifies whether the model is acceptable.")
     else:
         warn = ""
     per = []
@@ -528,7 +528,7 @@ def mv_savings(tenant: str, mv_id: str) -> dict:
             "say": (f"M&V savings (Option {m.option}): baseline model kwh = {a:.1f} + {b:.4g} x driver "
                     f"(r2 {r2:.3f}); {len(per)} periods, total savings {total:,.0f} kWh. "
                     + (warn + " " if warn else "")
-                    + "Savings verified - routine IPMVP ki, option AAPKA; audit certified auditor ka.")}
+                    + "Savings verified - the routine is IPMVP's, the option is YOURS; the audit is the certified auditor's.")}
 
 
 def day(tenant: str) -> dict:
@@ -544,5 +544,5 @@ def day(tenant: str) -> dict:
     return {"meters": len(meters), "cx_issues_open": len(issues), "tc_exceeds": exceeds,
             "credits_without_evidence": no_evidence,
             "say": f"Performance desk: {len(meters)} readings, {len(issues)} open Cx issues, {exceeds} "
-                   f"T&C rows tolerance se bahar, {no_evidence} credits bina evidence. Har verdict "
-                   "arithmetic hai - har certification insaan ki."}
+                   f"T&C rows outside tolerance, {no_evidence} credits without evidence. Every verdict "
+                   "is arithmetic - every certification is a person's."}

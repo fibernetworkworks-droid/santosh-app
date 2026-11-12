@@ -957,9 +957,9 @@ def _goods_line(goods: list, packages: int, kind: str) -> str:
         return f"{packages} {kind or 'packet'}"
     if goods:
         g = goods[0]
-        more = f" aur {len(goods) - 1} aur" if len(goods) > 1 else ""
+        more = f" and {len(goods) - 1} more" if len(goods) > 1 else ""
         return f"{g['name']}{(' ' + format(g['qty'], 'g') + ' ' + g['unit']) if g.get('qty') else ''}{more}"
-    return "aapka maal"
+    return "your goods"
 
 
 def edit_message(tenant: str, msg_id: str, text: str) -> dict:
@@ -972,7 +972,7 @@ def edit_message(tenant: str, msg_id: str, text: str) -> dict:
             raise LogiError("This contains something like an OTP / PIN / card.")
         m.text = _s(text)[:1500]
         m.hash = _hash(m.id, m.phone, m.text)
-        return {"message": _mv(m), "say": "Draft badla."}
+        return {"message": _mv(m), "say": "Draft updated."}
 
 
 def message_sent(tenant: str, msg_id: str) -> dict:
@@ -1522,7 +1522,7 @@ def documents(tenant: str, ref: str, which: list | str | None = None, conv: str 
             title = f"Packing list {num}"
         elif k == "invoice":
             if not thok:
-                notes.append("A tax invoice is made by Thok Sahayak (the bill goes with your yes); this shipment is not linked to any Thok bill.")
+                notes.append("A tax invoice is made by the Wholesale Assistant (the bill goes with your yes); this shipment is not linked to any Thok bill.")
                 continue
             from ..thok import service as TS
             r = TS.invoice_file(tenant, thok, conv)

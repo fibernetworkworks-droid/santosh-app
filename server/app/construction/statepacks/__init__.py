@@ -32,22 +32,22 @@ class PackError(Exception):
 def _validate(pack: dict) -> dict:
     for k in REQUIRED:
         if k not in pack:
-            raise PackError(f"pack adhoora hai: '{k}' nahi mila")
+            raise PackError(f"the pack is incomplete: '{k}' is missing")
     if not isinstance(pack.get("rows"), list) or not pack["rows"]:
-        raise PackError("pack mein rows nahi")
+        raise PackError("the pack has no rows")
     seen: set[str] = set()
     for r in pack["rows"]:
         for k in ("rule_id", "value", "clause", "source", "checked_on"):
             if k not in r:
-                raise PackError(f"row mein '{k}' nahi: {r.get('rule_id', '?')}")
+                raise PackError(f"row is missing '{k}': {r.get('rule_id', '?')}")
         if r["rule_id"] in seen:
             raise PackError(f"duplicate rule_id: {r['rule_id']}")
         seen.add(r["rule_id"])
     try:
         if date.fromisoformat(pack["refresh_by"]) < date.fromisoformat(pack["checked_on"]):
-            raise PackError("refresh_by checked_on se pehle nahi ho sakta")
+            raise PackError("refresh_by cannot be before checked_on")
     except ValueError as ex:
-        raise PackError(f"tareekh galat: {ex}") from None
+        raise PackError(f"invalid date: {ex}") from None
     return pack
 
 
@@ -55,12 +55,12 @@ def load(state: str) -> dict:
     """Load + validate one state pack by name ('maharashtra'). Raises PackError with an honest message."""
     p = _DIR / f"{(state or '').strip().lower()}.json"
     if not p.exists():
-        raise PackError(f"'{state}' ka rule pack abhi nahi hai. Jo states hain: "
+        raise PackError(f"'{state}' has no rule pack yet. States available: "
                         + ", ".join(sorted(x.stem for x in _DIR.glob('*.json'))))
     try:
         pack = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as ex:
-        raise PackError(f"pack padhne mein dikkat: {ex}") from None
+        raise PackError(f"could not read the pack: {ex}") from None
     return _validate(pack)
 
 
@@ -90,8 +90,8 @@ def _fresh(state: str) -> dict:
     """load + the staleness refusal, shared by every reader - a stale pack makes the desk say so."""
     pack = load(state)
     if stale(pack):
-        raise PackError(f"{pack.get('state')} ka rule pack purana hai (refresh_by {pack.get('refresh_by')}) - "
-                        "pehle pack verify karke refresh karo, phir hisaab.")
+        raise PackError(f"{pack.get('state')} rule pack is out of date (refresh_by {pack.get('refresh_by')}) - "
+                        "verify and refresh the pack first, then calculate.")
     return pack
 
 
@@ -126,8 +126,8 @@ def rule_cited(state: str, rule_id: str) -> dict:
     number without its clause."""
     r = rule_row(state, rule_id)
     if r is None:
-        raise PackError(f"rule '{rule_id}' na state pack mein hai na national pack mein - bina clause ka "
-                        "number nahi chalta. Rule ke clause + source ke saath add karo.")
+        raise PackError(f"rule '{rule_id}' is in neither the state pack nor the national pack - a number without a clause "
+                        "is not accepted. Add the rule with its clause + source.")
     return {"rule_id": rule_id, "value": r.get("value"), "clause": r.get("clause"), "source": r.get("source"),
             "checked_on": r.get("checked_on")}
 

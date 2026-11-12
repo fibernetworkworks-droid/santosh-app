@@ -42,7 +42,7 @@ class Amadeus:
         r = c.post(f"{base}/v1/security/oauth2/token", data={"grant_type": "client_credentials",
                                                              "client_id": creds.get("key", ""), "client_secret": creds.get("secret", "")})
         if r.status_code != 200:
-            raise PartnerError("Amadeus ne key nahi maani (key / secret dobara app mein daaliye).")
+            raise PartnerError("Amadeus did not accept the key (enter the key / secret in the app again).")
         return str(r.json().get("access_token") or "")
 
     def verify(self, creds: dict[str, str]) -> bool:
@@ -54,14 +54,14 @@ class Amadeus:
         base = self.HOSTS.get(creds.get("env") or "test", self.HOSTS["test"])
         orig, dest, day = (q.get("origin_code") or "").upper(), (q.get("dest_code") or "").upper(), q.get("day") or ""
         if not (len(orig) == 3 and len(dest) == 3 and len(day) == 10):
-            raise PartnerError("Flight dhoondhne ke liye airport code (jaise BOM, DEL) aur date (YYYY-MM-DD) chahiye.")
+            raise PartnerError("A flight search needs airport codes (like BOM, DEL) and a date (YYYY-MM-DD).")
         with _client() as c:
             tok = self._token(c, base, creds)
             r = c.get(f"{base}/v2/shopping/flight-offers", headers={"Authorization": f"Bearer {tok}"},
                       params={"originLocationCode": orig, "destinationLocationCode": dest, "departureDate": day,
                               "adults": max(1, int(q.get("adults") or 1)), "currencyCode": "INR", "max": 10, "nonStop": "false"})
             if r.status_code != 200:
-                raise PartnerError(f"Amadeus se jawab nahi aaya ({r.status_code}).")
+                raise PartnerError(f"No reply came from Amadeus ({r.status_code}).")
             data = r.json()
         carriers = ((data.get("dictionaries") or {}).get("carriers") or {})
         out = []
@@ -93,5 +93,5 @@ ADAPTERS: dict[str, Any] = {"amadeus": Amadeus()}
 def get(name: str):
     a = ADAPTERS.get((name or "").lower())
     if a is None:
-        raise PartnerError("Yeh partner abhi Hoola mein nahi hai. Abhi: " + ", ".join(ADAPTERS))
+        raise PartnerError("This partner is not in Hoola yet. Available now: " + ", ".join(ADAPTERS))
     return a

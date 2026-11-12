@@ -51,7 +51,7 @@ def add_text(tenant: str, source: str, ref: str, title: str, text: str, kind: st
     if source not in SOURCES:
         raise GyaanError(f"source must be one of {', '.join(SOURCES)}")
     text = (text or "").replace("\x00", "")[:MAX_DOC_CHARS]
-    title = (title or ref or "Bina naam").strip()[:200]
+    title = (title or ref or "Untitled").strip()[:200]
     masked, found = norm.mask(text)
     if not masked.strip():
         return {"status": "empty", "doc_id": "", "chunks": 0}
@@ -93,13 +93,13 @@ def add_bytes(tenant: str, name: str, data: bytes, source: str = "file", ref: st
               meta: dict[str, Any] | None = None) -> dict[str, Any]:
     from .extract import text_of
     if not data:
-        raise GyaanError("File khaali hai.")
+        raise GyaanError("The file is empty.")
     if len(data) > 60 * 1024 * 1024:
-        raise GyaanError("60 MB se badi file Gyaan mein nahi jaati.")
+        raise GyaanError("A file over 60 MB does not go into Knowledge.")
     from .. import filecheck
     rt = filecheck.real_type(name or "file", data)
     if rt.get("danger"):
-        raise GyaanError(f"Yeh file khatarnak lag rahi hai ({rt.get('note')}); Gyaan mein nahi li.")
+        raise GyaanError(f"This file looks dangerous ({rt.get('note')}); it was not added to Knowledge.")
     r = text_of(name, data, tenant, mime)
     if not r["text"].strip():
         return {"status": "empty", "doc_id": "", "chunks": 0, "title": name, "note": r["note"]}
@@ -153,9 +153,9 @@ def add_drive_folder(tenant: str, folder: str) -> dict[str, Any]:
     try:
         c, f = ds.resolve(tenant, folder, folder=True)
     except Exception as e:
-        raise GyaanError(f"Drive folder nahi mila: {e}")
+        raise GyaanError(f"Drive folder not found: {e}")
     if f.get("mimeType") != FOLDER:
-        raise GyaanError(f"'{f.get('name')}' folder nahi, file hai. Folder ka naam ya link dijiye.")
+        raise GyaanError(f"'{f.get('name')}' is a file, not a folder. Give the folder's name or link.")
     ref = ds.make_ref(c, f["id"])
     wid = "w" + hashlib.sha1(ref.encode()).hexdigest()[:10]
     with store.db(tenant, write=True) as db:
@@ -386,7 +386,7 @@ def sync_web(tenant: str, watch_id: str = "") -> dict[str, Any]:
                 db.execute("UPDATE watch SET synced=?, error=? WHERE id=?", (store.now(), str(e)[:300], w["id"]))
     total["errors"] = total["errors"][:10]
     if total["errors"] and not (total["added"] or total["updated"] or total["same"]):
-        total["say"] = "Page nahi khula: " + total["errors"][0]
+        total["say"] = "Could not open the page: " + total["errors"][0]
     return total
 
 
@@ -500,7 +500,7 @@ def forget(tenant: str, doc: str) -> dict[str, Any]:
     with store.db(tenant, write=True) as db:
         r = db.execute("SELECT title FROM docs WHERE id=?", (doc,)).fetchone()
         if not r:
-            raise GyaanError("Yeh cheez Gyaan mein nahi hai.")
+            raise GyaanError("This item is not in Knowledge.")
         n = store.delete_doc(db, doc)
         store.bump(db)
     from . import search
