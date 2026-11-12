@@ -42,8 +42,8 @@ COMMUNITIES: dict[str, dict[str, Any]] = {
     "muslim": {"label": "Muslim", "law": "muslim", "fns": ["mangni", "manjha", "mehendi", "nikah", "walima"]},
     "christian": {"label": "Christian", "law": "christian", "fns": ["engagement", "bridal_shower", "church_wedding", "reception"]},
     "parsi": {"label": "Parsi", "law": "parsi", "fns": ["adarni", "madhavsaro", "lagan", "reception"]},
-    "interfaith": {"label": "Alag dharm / court marriage", "law": "sma", "fns": ["engagement", "mehendi", "court_marriage", "reception"]},
-    "other": {"label": "Doosra", "law": "", "fns": ["engagement", "mehendi", "sangeet", "shaadi", "reception"]},
+    "interfaith": {"label": "Different religions / court marriage", "law": "sma", "fns": ["engagement", "mehendi", "court_marriage", "reception"]},
+    "other": {"label": "Other", "law": "", "fns": ["engagement", "mehendi", "sangeet", "shaadi", "reception"]},
 }
 _COMM_WORDS = {
     "marathi": ["marathi", "maharashtrian", "मराठी"], "gujarati": ["gujarati", "gujju", "ગુજરાતી"], "punjabi": ["punjabi", "पंजाबी"],
@@ -60,10 +60,10 @@ RITUAL_FNS = {"shaadi", "lagna", "anand_karaj", "biye", "muhurtham", "pelli", "k
 
 VENDOR_KINDS = {
     "venue": "Venue / hall / lawn", "decor": "Decor / tent", "caterer": "Caterer", "photographer": "Photo / video",
-    "mehendi": "Mehendi artist", "dj": "DJ / sound", "band": "Band / dhol", "pandit": "Pandit / qazi / priest",
-    "makeup": "Makeup / hair", "transport": "Gaadi / bus", "invites": "Card / invites", "choreographer": "Choreographer",
-    "anchor": "Anchor / emcee", "lights": "Lights / generator", "florist": "Phool", "hotel": "Hotel / rooms", "gifts": "Gift / return gifts",
-    "attire": "Kapde / designer", "jeweller": "Gehne", "security": "Security", "other": "Doosra",
+    "mehendi": "Mehendi artist", "dj": "DJ / sound", "band": "Band / drums (dhol)", "pandit": "Pandit / qazi / priest",
+    "makeup": "Makeup / hair", "transport": "Cars / bus", "invites": "Card / invites", "choreographer": "Choreographer",
+    "anchor": "Anchor / emcee", "lights": "Lights / generator", "florist": "Flowers", "hotel": "Hotel / rooms", "gifts": "Gift / return gifts",
+    "attire": "Clothes / designer", "jeweller": "Jewellery", "security": "Security", "other": "Other",
 }
 _VENDOR_WORDS = {
     "venue": ["venue", "hall", "lawn", "banquet", "mandap", "farmhouse", "resort"], "decor": ["decor", "tent", "mandap decor", "sajawat"],
@@ -81,70 +81,70 @@ HEADS = ["venue", "decor", "caterer", "photographer", "mehendi", "dj", "band", "
 
 # checklist: (days before the FIRST function; negative = after the wedding day), what, kind
 CHECKLIST = [
-    (240, "Budget aur mehmaan ki ginti tay (dono taraf)", "plan"),
-    (210, "Venue / hall dekhna aur book karna (date block)", "venue"),
-    (180, "Pandit / qazi / priest se muhurat aur date pakki karwana (Hoola muhurat nahi batata)", "ritual"),
-    (165, "Caterer, photographer, decor ke quote lena", "vendors"),
-    (150, "Caterer, photographer, decor book (advance aapki haan se)", "vendors"),
-    (120, "Kapde / gehne, makeup artist, mehendi artist book", "vendors"),
-    (100, "Mehmaan list dono taraf se pakki (phone ke saath)", "guests"),
-    (90, "Card / e-invite design (Brand Sahayak) aur text", "invites"),
-    (75, "Bahar se aane walon ke rooms block karna", "rooms"),
-    (60, "Invite bhejna (aapke tap se) aur RSVP shuru", "invites"),
-    (60, "Bahar se aane walon ki train / flight (IRCTC 60 din pehle khulta hai)", "travel"),
-    (45, "DJ / band, transport, return gifts book", "vendors"),
+    (240, "Fix the budget and guest count (both sides)", "plan"),
+    (210, "Visit and book the venue / hall (block the date)", "venue"),
+    (180, "Confirm the auspicious time and date with the pandit / qazi / priest (Hoola does not give muhurat)", "ritual"),
+    (165, "Get quotes from the caterer, photographer, decorator", "vendors"),
+    (150, "Book the caterer, photographer, decorator (advance only with your approval)", "vendors"),
+    (120, "Book clothes / jewellery, makeup artist, mehendi artist", "vendors"),
+    (100, "Finalise the guest list from both sides (with phone numbers)", "guests"),
+    (90, "Card / e-invite design (Brand Assistant) and text", "invites"),
+    (75, "Block rooms for guests coming from outside", "rooms"),
+    (60, "Send the invites (with your tap) and start RSVPs", "invites"),
+    (60, "Trains / flights for guests coming from outside (IRCTC opens 60 days ahead)", "travel"),
+    (45, "Book DJ / band, transport, return gifts", "vendors"),
     (30, "Makeup / mehendi trial, menu tasting", "vendors"),
-    (30, "Loudspeaker / police permission (raat 10 baje ke baad shor nahi) aur venue ka fire NOC dekhna", "permits"),
-    (21, "RSVP follow-up, room allocation pakka", "guests"),
-    (14, "Caterer ko final headcount, plate count", "vendors"),
-    (10, "Function-wise timeline vendors ko dena", "timeline"),
-    (7, "Saare vendors se confirm, baaki payment schedule", "vendors"),
-    (3, "Mehmaan ke liye arrival / room / gaadi list", "rooms"),
-    (1, "Emergency kit, nakad lifafe, contact list", "plan"),
-    (-7, "Shagun / gift register poora karna; dahej rules ki list par dulha-dulhan ke sign", "gifts"),
-    (-14, "Vendors ka baaki hisaab, photos / video delivery date", "vendors"),
-    (-30, "Shaadi registration (Maharashtra: 90 din ke andar)", "registration"),
+    (30, "Loudspeaker / police permission (no noise after 10 pm) and check the venue's fire NOC", "permits"),
+    (21, "RSVP follow-up, confirm room allocation", "guests"),
+    (14, "Give the caterer the final headcount and plate count", "vendors"),
+    (10, "Give vendors the timeline for each function", "timeline"),
+    (7, "Confirm with all vendors, schedule the remaining payments", "vendors"),
+    (3, "Arrival / room / vehicle list for guests", "rooms"),
+    (1, "Emergency kit, cash envelopes, contact list", "plan"),
+    (-7, "Complete the shagun / gift register; groom and bride sign the no-dowry list", "gifts"),
+    (-14, "Settle remaining vendor accounts, photos / video delivery date", "vendors"),
+    (-30, "Wedding registration (Maharashtra: within 90 days)", "registration"),
 ]
 EXTRA_CHECKLIST = {
-    "christian": [(35, "Church mein banns / notice (parish ke niyam)", "ritual")],
-    "muslim": [(30, "Qazi aur nikahnama, gawah (witnesses) tay", "ritual")],
-    "sikh": [(60, "Gurdwara mein Anand Karaj ki date book", "ritual")],
-    "interfaith": [(45, "Special Marriage Act notice Marriage Officer ko (30 din ka notice period)", "registration")],
-    "punjabi": [(20, "Chooda ki taiyaari (mama ki taraf)", "ritual")],
-    "parsi": [(45, "Agiary / priest ki booking", "ritual")],
+    "christian": [(35, "Banns / notice at the church (parish rules)", "ritual")],
+    "muslim": [(30, "Fix the qazi, the nikahnama and the witnesses", "ritual")],
+    "sikh": [(60, "Book the Anand Karaj date at the gurdwara", "ritual")],
+    "interfaith": [(45, "Special Marriage Act notice to the Marriage Officer (30-day notice period)", "registration")],
+    "punjabi": [(20, "Chooda preparation (maternal uncle's side)", "ritual")],
+    "parsi": [(45, "Agiary / priest booking", "ritual")],
 }
 
 # starter timeline per function (offsets in minutes from her start time); ritual rows only as "pandit ke samay par"
 TIMELINE = {
-    "default": [(-180, "Decor / sound set-up shuru", "decor"), (-60, "Vendors pahunche, sound check", "dj"),
-                (0, "Mehmaan aana shuru", ""), (60, "Mukhya karyakram", ""), (120, "Khana", "caterer"), (240, "Samaapt / vidaai", "")],
-    "mehendi": [(-120, "Baithne ki vyavastha, gaddi / cushions", "decor"), (0, "Mehendi artist shuru (dulhan pehle)", "mehendi"),
-                (90, "Mehmaan ki mehendi, music", "dj"), (150, "Khana", "caterer")],
-    "sangeet": [(-240, "Stage, lights, sound", "decor"), (-60, "Rehearsal / sound check", "dj"), (0, "Mehmaan aana", ""),
-                (45, "Performances", "choreographer"), (150, "Khana", "caterer"), (210, "DJ (raat 10 baje tak)", "dj")],
-    "haldi": [(-90, "Phool / genda decor", "decor"), (0, "Haldi ki rasm (ghar ke rivaaj)", ""), (60, "Snaan, nashta", "caterer")],
-    "reception": [(-240, "Stage decor, lights", "decor"), (-30, "Photographer taiyaar", "photographer"), (0, "Mehmaan aana", ""),
-                  (30, "Dulha-dulhan stage par", ""), (60, "Khana shuru", "caterer"), (210, "Samaapt", "")],
+    "default": [(-180, "Decor / sound set-up begins", "decor"), (-60, "Vendors arrive, sound check", "dj"),
+                (0, "Guests start arriving", ""), (60, "Main event", ""), (120, "Food", "caterer"), (240, "End / farewell (vidaai)", "")],
+    "mehendi": [(-120, "Seating arrangement, mattresses / cushions", "decor"), (0, "Mehendi artist starts (bride first)", "mehendi"),
+                (90, "Guests' mehendi, music", "dj"), (150, "Food", "caterer")],
+    "sangeet": [(-240, "Stage, lights, sound", "decor"), (-60, "Rehearsal / sound check", "dj"), (0, "Guests arrive", ""),
+                (45, "Performances", "choreographer"), (150, "Food", "caterer"), (210, "DJ (until 10 pm)", "dj")],
+    "haldi": [(-90, "Flower / marigold decor", "decor"), (0, "Haldi ritual (as per family custom)", ""), (60, "Bath, breakfast", "caterer")],
+    "reception": [(-240, "Stage decor, lights", "decor"), (-30, "Photographer ready", "photographer"), (0, "Guests arrive", ""),
+                  (30, "Groom and bride on stage", ""), (60, "Food service starts", "caterer"), (210, "End", "")],
 }
 
 # registration checklist by law (CHECKLIST ONLY: registrar / vakil decides)
 REGISTRATION = {
     "hma": {"law": "Hindu Marriage Act 1955 s.8 + state rules (Hindu, Sikh, Jain, Buddhist)",
-            "items": ["Dono ki umr ka saboot (dulha 21+, dulhan 18+)", "Dono ka pata saboot", "Dono ki photos",
-                      "Shaadi ki card / invite", "Shaadi ki photo (rasm ki)", "Pandit / purohit ka naam-pata (kahin kahin certificate)",
-                      "Teen gawah unke ID ke saath", "Talaq ka decree / pati-patni ki death certificate (agar lagu)"]},
+            "items": ["Proof of age of both (groom 21+, bride 18+)", "Address proof of both", "Photos of both",
+                      "The wedding card / invite", "A photo of the wedding (the ceremony)", "Name and address of the pandit / purohit (a certificate in some places)",
+                      "Three witnesses with their IDs", "Divorce decree / death certificate of a spouse (if applicable)"]},
     "muslim": {"law": "Nikahnama + state ki registration (e.g. Maharashtra 1998 Act)",
-               "items": ["Nikahnama (Urdu ho to anuvaad)", "Umr ka saboot", "Pata saboot", "Photos", "Gawah unke ID ke saath"]},
+               "items": ["Nikahnama (a translation if it is in Urdu)", "Proof of age", "Address proof", "Photos", "Witnesses with their IDs"]},
     "christian": {"law": "Indian Christian Marriage Act 1872 (church register / Marriage Registrar)",
-                  "items": ["Church ka marriage certificate / register entry", "Umr ka saboot", "Photos", "Gawah"]},
-    "parsi": {"law": "Parsi Marriage and Divorce Act 1936", "items": ["Priest ka certificate", "Umr ka saboot", "Do gawah", "Photos"]},
+                  "items": ["The church's marriage certificate / register entry", "Proof of age", "Photos", "Gawah"]},
+    "parsi": {"law": "Parsi Marriage and Divorce Act 1936", "items": ["Priest's certificate", "Proof of age", "Two witnesses", "Photos"]},
     "sma": {"law": "Special Marriage Act 1954 (alag dharm / court marriage)",
-            "items": ["Marriage Officer ko notice (ek ke 30 din se rehne ki jagah wale district mein)", "30 din ka notice period (aapatti ka samay)",
-                      "Dulha 21+, dulhan 18+ ka saboot", "Pata saboot", "Teen gawah unke ID ke saath", "Photos",
-                      "Talaq / death certificate (agar lagu)"]},
+            "items": ["Notice to the Marriage Officer (in the district where one party has lived for 30 days)", "30-day notice period (time for objections)",
+                      "Proof that the groom is 21+ and the bride 18+", "Address proof", "Three witnesses with their IDs", "Photos",
+                      "Divorce / death certificate (if applicable)"]},
 }
-STATE_NOTES = {"MH": "Maharashtra: Maharashtra Regulation of Marriage Bureaus and Registration of Marriages Act 1998 - 90 din ke andar "
-                     "registration; online igrmaharashtra.gov.in; dono aur teen gawah originals ke saath."}
+STATE_NOTES = {"MH": "Maharashtra: Maharashtra Regulation of Marriage Bureaus and Registration of Marriages Act 1998 - registration within 90 days;"
+                     "online igrmaharashtra.gov.in; both parties and three witnesses with originals."}
 
 NOISE_START = 22 * 60      # 10 pm (Noise Pollution (Regulation and Control) Rules 2000, rule 5)
 NOISE_END = 6 * 60
@@ -246,8 +246,8 @@ def noise_problem(start: int | None, end: int | None, loud: bool) -> str:
     if e <= start:
         e += 24 * 60
     if e > NOISE_START or start < NOISE_END:
-        return ("DJ / band / loudspeaker raat 10 se subah 6 baje ke beech nahi (Noise Pollution Rules 2000). "
-                "Band hall ho to alag niyam; police / district permission dekhiye.")
+        return ("No DJ / band / loudspeaker between 10 pm and 6 am (Noise Pollution Rules 2000). "
+                "A closed hall has different rules; check police / district permission.")
     return ""
 
 
@@ -255,9 +255,9 @@ def age_problem(age_bride: Any, age_groom: Any) -> str:
     """Prohibition of Child Marriage Act 2006: bride 18+, groom 21+. Hoola never plans a child marriage."""
     try:
         if age_bride not in (None, "") and int(age_bride) < 18:
-            return "Dulhan 18 saal se kam hai: yeh baal vivah hai (Prohibition of Child Marriage Act 2006). Hoola yeh shaadi plan nahi karega."
+            return "The bride is under 18: this is a child marriage (Prohibition of Child Marriage Act 2006). Hoola will not plan this wedding."
         if age_groom not in (None, "") and int(age_groom) < 21:
-            return "Dulha 21 saal se kam hai: yeh baal vivah hai (Prohibition of Child Marriage Act 2006). Hoola yeh shaadi plan nahi karega."
+            return "The groom is under 21: this is a child marriage (Prohibition of Child Marriage Act 2006). Hoola will not plan this wedding."
     except (TypeError, ValueError):
         return ""
     return ""
@@ -268,6 +268,6 @@ DOWRY_WORDS = re.compile(r"\b(dahej|dowry|daheja|tilak ki rakam|var dakshina)\b"
 
 def dowry_problem(text: str) -> str:
     if DOWRY_WORDS.search(text or ""):
-        return ("Dahej maangna / dena apradh hai (Dowry Prohibition Act 1961). Hoola iska hisaab ya message nahi banayega. "
-                "Shagun / tohfe register mein likhe ja sakte hain.")
+        return ("Asking for or giving dowry is an offence (Dowry Prohibition Act 1961). Hoola will not keep accounts or write messages for it. "
+                "Shagun / gifts can be written in the register.")
     return ""
