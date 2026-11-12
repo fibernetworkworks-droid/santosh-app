@@ -190,13 +190,13 @@ def add_face(tenant: str, ref: str, kind: str, words: str = "", conv: str = "") 
     from . import service as AS
     kind = str(kind or "").strip().lower()
     if kind not in KINDS:
-        raise FamilyError("Kaunsi app? rider (delivery partner), vendor (partner shop), staff ya customer.")
+        raise FamilyError("Which app? rider (delivery partner), vendor (partner shop), staff or customer.")
     p = home(BE.by_key_or_ref(tenant, ref))
     if face_info(p):
-        raise FamilyError("Yeh app khud kisi aur app ka hissa hai; main app chuniye.")
+        raise FamilyError("This app is itself part of another app; choose the main app.")
     for f in faces(p)[1:]:
         if f["kind"] == kind:
-            return {**f, "existing": True, "say": f"{KINDS[kind]['label']} pehle se hai: app {f['number']} ({f['status']})."}
+            return {**f, "existing": True, "say": f"{KINDS[kind]['label']} already exists: app {f['number']} ({f['status']})."}
     if kind in PARTNER_KINDS:
         problem = _partner_problem(p, kind)
         if problem:
@@ -224,8 +224,8 @@ def add_face(tenant: str, ref: str, kind: str, words: str = "", conv: str = "") 
     AS._emit(x, push=True)
     v = AS.view(x)
     v["face"] = {"of": p.id, "of_number": p.number, "kind": kind, "label": KINDS[kind]["label"]}
-    v["say"] = (f"{KINDS[kind]['label']} ka plan taiyaar: app {x.number} ({name}). Data, accounts aur orders app {p.number} "
-                "wale hi rahenge - kuch copy nahi hota. Plan dekh kar Haan kahiye, phir looks aur design.")
+    v["say"] = (f"The plan for the {KINDS[kind]['label']} is ready: app {x.number} ({name}). Data, accounts and orders stay those of app {p.number} "
+                "- nothing is copied. Review the plan and say Yes; looks and design come next.")
     return v
 
 
@@ -292,7 +292,7 @@ def save_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
     fam: dict[str, Any] = {}
     jobs = str(body.get("jobs") or cur["jobs"])
     if jobs and jobs not in colls:
-        raise FamilyError("Yeh list app mein nahi hai.")
+        raise FamilyError("This list is not in the app.")
     fam["jobs"] = jobs
     opts = _options(colls[jobs]) if jobs else []
     moved = jobs != cur["jobs"]                                # another list: its own status words, not the old list's
@@ -304,22 +304,22 @@ def save_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
         for k in keys:
             vals = src.get(k, fresh[(kind, k)] if moved else cur[kind][k])
             if not isinstance(vals, list):
-                raise FamilyError(f"{kind}.{k}: status ki list chahiye.")
+                raise FamilyError(f"{kind}.{k}: a list of statuses is needed.")
             bad = [v for v in vals if v not in opts]
             if bad:
-                raise FamilyError(f"Yeh status list mein nahi: {', '.join(map(str, bad[:3]))}. Status: {', '.join(opts)}.")
+                raise FamilyError(f"These statuses are not in the list: {', '.join(map(str, bad[:3]))}. Statuses: {', '.join(opts)}.")
             part[k] = [str(v) for v in vals][:12]
         if kind == "rider":
             part["max"] = max(1, min(int(src.get("max") or cur["rider"]["max"]), 20))
             if set(part["offer"]) & set(part["steps"]):
-                raise FamilyError("Ek status 'naye kaam' aur 'rider ke kadam' dono mein nahi ho sakta.")
+                raise FamilyError("A status cannot be in both 'new jobs' and 'rider steps'.")
         if kind == "vendor":
             link = str(src.get("link") or ("" if moved else cur["vendor"]["link"]) or "")
             if not link and jobs:
                 tos = [f.get("to") for f in colls[jobs].get("fields") or [] if f.get("type") == "ref" and f.get("to") in colls]
                 link = tos[0] if tos else ""
             if link and (link not in colls or not _refs(colls.get(jobs) or {}, link)):
-                raise FamilyError(f"'{jobs}' list mein '{link}' ka link (ref) field nahi hai; pehle woh field jodiye.")
+                raise FamilyError(f"The '{jobs}' list has no link (ref) field to '{link}'; add that field first.")
             part["link"] = link
         fam[kind] = part
     BE.patch_backend(r, set_={"family": fam})
@@ -329,12 +329,12 @@ def save_settings(r: AppProject, body: dict[str, Any]) -> dict[str, Any]:
 def _partner_problem(r: AppProject, kind: str) -> str:
     st = settings(r)
     if not st["jobs"]:
-        return "Is app mein order / kaam ki koi list nahi jisme status ho; partner app ke liye pehle woh chahiye."
+        return "This app has no order / job list with a status; a partner app needs that first."
     if not st["statuses"]:
-        return f"'{st['jobs']}' list mein status nahi hai."
+        return f"The '{st['jobs']}' list has no status."
     if kind == "vendor" and not (st["vendor"]["link"] and st["vendor"]["ref"]):
-        return (f"Partner shop app ke liye '{st['jobs']}' list mein dukaan / restaurant ka link (ref) field chahiye "
-                "(jaise orders -> restaurants). App ke data mein 'restaurants' list aur order mein uska link jodiye, phir.")
+        return (f"For a partner shop app the '{st['jobs']}' list needs a link (ref) field to the shop / restaurant "
+                "(for example orders -> restaurants). Add a 'restaurants' list to the app's data and a link to it in the order, then try again.")
     return ""
 
 
@@ -384,11 +384,11 @@ def request(r: AppProject, w: W.Who, kind: str) -> dict[str, Any]:
     """'Partner banna hai': an application from the rider / shop app. Only she (or an app admin) can approve it."""
     r = home(r)
     if w.m is None:
-        raise FamilyError("Pehle login kijiye.", 401)
+        raise FamilyError("Log in first.", 401)
     if kind not in PARTNER_KINDS:
-        raise FamilyError("Yeh app partner app nahi hai.", 400)
+        raise FamilyError("This app is not a partner app.", 400)
     if (w.m.role or "") in ("staff", "admin"):
-        raise FamilyError("Staff account partner nahi ban sakta; alag account banaiye.", 409)
+        raise FamilyError("A staff account cannot become a partner; create a separate account.", 409)
     ensure_table()
     W.rate(f"ptr-req:{_site(r)}:{w.m.id}", 5, 3600)
     with session() as s:
@@ -408,8 +408,8 @@ def request(r: AppProject, w: W.Who, kind: str) -> dict[str, Any]:
         STATS["requests"] += 1
         try:
             from .android.service import _note
-            _note(r, f"{r.name or 'Aapki app'} ({r.number}): {p.name} ne {KINDS[kind]['label']} ke liye arzi di. "
-                     "App ke Parivaar box ya web admin mein Haan / Na kijiye.")
+            _note(r, f"{r.name or 'Your app'} ({r.number}): {p.name} applied for the {KINDS[kind]['label']}. "
+                     "Say Yes / No in the app's Family box or the web admin.")
         except Exception:
             log.debug("partner note", exc_info=True)
     return me(r, w, kind)
@@ -453,9 +453,9 @@ def _set_role(site: str, member: str, role: str, logout: bool) -> None:
     with session() as s:
         m = s.get(W.SiteAppMember, member)
         if m is None or m.site_id != site:
-            raise FamilyError("Yeh account nahi mila.", 404)
+            raise FamilyError("This account was not found.", 404)
         if m.role in ("staff", "admin") and role == "partner":
-            raise FamilyError("Staff / admin account partner nahi ban sakta.", 409)
+            raise FamilyError("A staff / admin account cannot become a partner.", 409)
         m.role = role
         if logout:
             m.gen = (m.gen or 0) + 1                  # removed partner: every token of that account stops at once
@@ -469,7 +469,7 @@ def decide(r: AppProject, pid: str, ok: bool, link_row: str = "") -> dict[str, A
     with session() as s:
         p = s.get(AppPartner, pid)
         if p is None or p.site_id != _site(r):
-            raise FamilyError("Yeh arzi nahi mili.", 404)
+            raise FamilyError("This application was not found.", 404)
         kind, member = p.kind, p.member
     if ok and kind == "vendor":
         link = st["vendor"]["link"]
@@ -478,7 +478,7 @@ def decide(r: AppProject, pid: str, ok: bool, link_row: str = "") -> dict[str, A
         with session() as s:
             x = s.get(W.SiteAppRow, str(link_row or ""))
             if x is None or x.site_id != _site(r) or x.coll != link:
-                raise FamilyError(f"Kaunsi dukaan? '{link}' list ki ek entry chuniye.", 400)
+                raise FamilyError(f"Which shop? Choose an entry from the '{link}' list.", 400)
             taken = s.scalars(select(AppPartner).where(AppPartner.site_id == _site(r), AppPartner.kind == "vendor",
                                                        AppPartner.link_row == link_row, AppPartner.active == 1,
                                                        AppPartner.id != pid)).first()
@@ -504,7 +504,7 @@ def remove(r: AppProject, pid: str) -> dict[str, Any]:
     with session() as s:
         p = s.get(AppPartner, pid)
         if p is None or p.site_id != _site(r):
-            raise FamilyError("Yeh partner nahi mila.", 404)
+            raise FamilyError("This partner was not found.", 404)
         p.active, p.decided_at = -2, now()
         member = p.member
         others = s.scalars(select(AppPartner).where(AppPartner.site_id == _site(r), AppPartner.member == member,
@@ -671,12 +671,12 @@ def _load_row(r: AppProject, coll: str, row_id: str) -> W.SiteAppRow:
     with session() as s:
         x = s.get(W.SiteAppRow, row_id)
         if x is None or x.site_id != _site(r) or x.coll != coll:
-            raise FamilyError("Yeh entry nahi mili.", 404)
+            raise FamilyError("This entry was not found.", 404)
         s.expunge(x)
     return x
 
 
-def _deny(msg: str = "Yeh aapke kaam ka hissa nahi.") -> None:
+def _deny(msg: str = "This is not part of your work.") -> None:
     STATS["denied"] += 1
     raise FamilyError(msg, 403)
 
@@ -690,7 +690,7 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
         return None
     p = partner(r, w)
     if p is None:
-        _deny("Aapka partner account abhi approve nahi hua.")
+        _deny("Your partner account has not been approved yet.")
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
     st = settings(r)
     x = _load_row(r, coll, row_id)
@@ -716,7 +716,7 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
         allowed = {"status"} | {k for k, f in types.items() if f.get("type") in PROOF_TYPES and not f.get("admin_only")}
     elif p.kind == "vendor" and coll == st["jobs"]:
         if d.get("_to"):                                       # with a rider now: the shop's part is over
-            _deny("Yeh order ab rider ke paas hai; badlaav business se karwaiye.")
+            _deny("This order is with the rider now; ask the business to make changes.")
         steps = st["vendor"]["steps"]
         allowed = {"status"}
     elif p.kind == "vendor" and how == "full":
@@ -724,11 +724,11 @@ def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who
         allowed = {k for k, f in types.items() if not f.get("admin_only") and k not in refs and k != "status"}
     bad = [k for k in body if k not in allowed]
     if bad:
-        _deny(f"Yeh badal nahi sakte: {', '.join(bad[:3])}.")
+        _deny(f"You cannot change these: {', '.join(bad[:3])}.")
     if "status" in body:
         to = str(body["status"] or "")
         if to not in steps or _done(str(d.get("status") or "")):
-            _deny(f"Status '{to}' aapke kadmon mein nahi" + (f" ({', '.join(steps)})." if steps else "."))
+            _deny(f"Status '{to}' is not among your steps" + (f" ({', '.join(steps)})." if steps else "."))
         STATS["steps"] += 1
     if not body:
         return _one(r, coll, row_id, w)
@@ -754,7 +754,7 @@ def take(r: AppProject, w: W.Who, row_id: str) -> dict[str, Any]:
     from . import locks as LK
     p = partner(r, w)
     if p is None or p.kind != "rider":
-        _deny("Sirf approved delivery partner kaam le sakta hai.")
+        _deny("Only an approved delivery partner can take a job.")
     st = settings(r)
     with LK.hold(f"take:{_site(r)}:{row_id}"):
         x = _load_row(r, st["jobs"], row_id)
@@ -763,11 +763,11 @@ def take(r: AppProject, w: W.Who, row_id: str) -> dict[str, Any]:
             return _one(r, st["jobs"], row_id, w)
         if d.get("_to") or str(d.get("status") or "") not in st["rider"]["offer"]:
             STATS["take_lost"] += 1
-            raise FamilyError("Yeh kaam ab khula nahi (kisi aur ne le liya ya status badal gaya).", 409)
+            raise FamilyError("This job is no longer open (someone else took it or the status changed).", 409)
         held = sum(1 for y in _scan(r, st["jobs"], f'%"_to": "{w.m.id}"%')
                    if _j(y.data, {}).get("_to") == w.m.id and not _done(str(_j(y.data, {}).get("status") or "")))
         if held >= st["rider"]["max"]:
-            raise FamilyError(f"Aapke paas pehle se {held} kaam hain (seema {st['rider']['max']}); ek poora kijiye.", 409)
+            raise FamilyError(f"You already hold {held} jobs (limit {st['rider']['max']}); finish one first.", 409)
         name = _first(w.m.name or w.m.email.split("@")[0])
         BE._merge(row_id, {"_to": w.m.id, "_to_name": name, "_to_at": now().isoformat(), "_ev": now().isoformat(),
                            "_by": w.m.id, "_by_kind": "rider"})
@@ -888,7 +888,7 @@ def jobs(r: AppProject, w: W.Who, app_key: str = "") -> dict[str, Any]:
 def step(r: AppProject, w: W.Who, row_id: str, status: str) -> dict[str, Any]:
     st = settings(r)
     if not st["jobs"]:
-        raise FamilyError("Is app mein kaam ki list nahi.", 404)
+        raise FamilyError("This app has no job list.", 404)
     return update(r, st["jobs"], row_id, {"status": status}, w) or {}
 
 
@@ -936,11 +936,11 @@ def on_status(r: AppProject, row_id: str, status: str) -> None:
 # ---------------------------------------------------------------- the web admin (staff / admins of the app)
 def _staff(w: W.Who, admin: bool = False) -> None:
     if w.m is None and not w.owner:
-        raise FamilyError("Pehle login kijiye.", 401)
+        raise FamilyError("Log in first.", 401)
     if not w.staff:
-        raise FamilyError("Yeh sirf staff ke liye hai.", 403)
+        raise FamilyError("This is for staff only.", 403)
     if admin and not (w.owner or (w.m and w.m.role == "admin")):
-        raise FamilyError("Yeh sirf admin kar sakta hai.", 403)
+        raise FamilyError("Only an admin can do this.", 403)
 
 
 def admin_overview(r: AppProject, w: W.Who) -> dict[str, Any]:
@@ -966,18 +966,18 @@ def admin_role(r: AppProject, w: W.Who, member: str, role: str) -> dict[str, Any
     """An app admin makes an account member / staff (only she makes an admin, from Hoola)."""
     _staff(w, admin=True)
     if role not in ("member", "staff") and not w.owner:
-        raise FamilyError("Admin sirf member / staff bana sakta hai; naya admin maalkin Hoola se banati hain.", 403)
+        raise FamilyError("An admin can only create members / staff; a new admin is created by the owner from Hoola.", 403)
     if w.m is not None and member == w.m.id:
-        raise FamilyError("Apna role khud nahi badal sakte.", 409)
+        raise FamilyError("You cannot change your own role.", 409)
     r = home(r)
     with session() as s:
         m = s.get(W.SiteAppMember, member)
         if m is None or m.site_id != _site(r):
-            raise FamilyError("Yeh account nahi mila.", 404)
+            raise FamilyError("This account was not found.", 404)
         if m.role == "admin" and not w.owner:
-            raise FamilyError("Admin ka role sirf maalkin badal sakti hain.", 403)
+            raise FamilyError("Only the owner can change an admin's role.", 403)
         if m.role == "partner":
-            raise FamilyError("Partner ko pehle Partners se hataiye.", 409)
+            raise FamilyError("Remove the partner under Partners first.", 409)
     return W.set_role(_site(r), member, role)
 
 
@@ -1037,7 +1037,7 @@ def view(r: AppProject) -> dict[str, Any]:
             "settings": st, "partners": partners(r)[:300],
             "problems": {k: _partner_problem(r, k) for k in PARTNER_KINDS},
             "admin_url": f"{base}/app-admin/{key}" if key else "",
-            "admin_note": "" if key else "Web admin pehli Android build ke baad khulta hai (app ki chaabi wahin banti hai)."}
+            "admin_note": "" if key else "The web admin opens after the first Android build (the app's key is created there)."}
 
 
 def prompt_line(seed_backend: dict[str, Any]) -> str:

@@ -223,7 +223,7 @@ def _state_at(r: AppProject, at: datetime | None, name: str = "") -> tuple[dict[
     if name:
         base = next((p for p in files if p.name == name), None)
         if base is None:
-            raise W.AppError("Yeh backup nahi mila.", 404)
+            raise W.AppError("This backup was not found.", 404)
         snap = _read(base)
         rows = {x["id"]: x for x in snap["rows"]}
         return rows, snap
@@ -237,7 +237,7 @@ def _state_at(r: AppProject, at: datetime | None, name: str = "") -> tuple[dict[
         if dt <= at:
             cands.append(p)
     if not cands:
-        raise W.AppError("Us samay se pehle ka koi backup nahi; usse pehle ka data wapas nahi aa sakta.", 404)
+        raise W.AppError("There is no backup from before that time; data from before it cannot be brought back.", 404)
     snap = _read(cands[-1])
     rows = {x["id"]: x for x in snap["rows"]}
     ensure_table()
@@ -315,8 +315,8 @@ def restore(r: AppProject, at: str = "", name: str = "", members: bool = False, 
         log.debug("restore audit", exc_info=True)
     return {"restored_to": when.isoformat() if when else snap.get("at"), "came_back": n_add, "removed": n_del, "changed": n_chg,
             "safety": safety["name"],
-            "say": f"Data wapas aa gaya ({n_add} wapas, {n_del} hate, {n_chg} badle). Isse pehle ki copy '{safety['name']}' "
-                   "rakhi hai - galti ho to usi par wapas ja sakte hain."}
+            "say": f"The data is restored ({n_add} brought back, {n_del} removed, {n_chg} changed). A copy from before this, '{safety['name']}', "
+                   "was kept - if this was a mistake you can go back to it."}
 
 
 def _parse_at(at: str) -> datetime:
@@ -324,7 +324,7 @@ def _parse_at(at: str) -> datetime:
     try:
         d = datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError:
-        raise W.AppError("Samay YYYY-MM-DDTHH:MM (IST) mein dijiye.")
+        raise W.AppError("Give the time as YYYY-MM-DDTHH:MM (IST).")
     if d.tzinfo is None:
         d = d.replace(tzinfo=timezone(timedelta(hours=5, minutes=30)))     # her clock
     return d.astimezone(timezone.utc)

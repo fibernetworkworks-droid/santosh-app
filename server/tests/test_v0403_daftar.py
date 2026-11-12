@@ -43,7 +43,7 @@ def test_attendance_and_monthly_pct(office):
     m = D.attendance(T, "10-A")
     riya = next(x for x in m["learners"] if x["name"] == "Riya")
     assert riya["pct"] == 100.0 and m["school_days"] == 1
-    with pytest.raises(D.DaftarError, match="Aage"):
+    with pytest.raises(D.DaftarError, match="future date"):
         D.mark_attendance(T, "10-A", day="2099-01-01")
 
 
@@ -57,7 +57,7 @@ def test_absent_alerts_only_by_her_tap(office):
         D.decide_share(T, sh["id"], True, sh["hash"], by_tap=False)
     out = D.decide_share(T, sh["id"], True, sh["hash"], by_tap=True)
     assert out["drafts"][0]["link"].startswith("https://wa.me/919876500001") and "Riya" in out["drafts"][0]["link"].replace("%20", " ")
-    assert D.decide_share(T, sh["id"], True, sh["hash"], by_tap=True)["say"].endswith("'shared' hai.")
+    assert D.decide_share(T, sh["id"], True, sh["hash"], by_tap=True)["say"].endswith("is already 'shared'.")
 
 
 def test_grade_sheet_unsigned_and_report_card(office):
@@ -70,7 +70,7 @@ def test_grade_sheet_unsigned_and_report_card(office):
     assert out["stats"]["unmatched"] == ["99"] and out["stats"]["no_consent"] == [kids[2]] and "UNSIGNED" in out["say"]
     rc = D.report_card(T, kids[0])
     assert rc["subjects"] == [] and rc["unsigned_left"] == 1                   # nothing signed yet
-    with pytest.raises(D.DaftarError, match="sign-off"):
+    with pytest.raises(D.DaftarError, match="signed-off"):
         D.report_card_file(T, kids[0])
     ids = [m["id"] for m in D.unsigned(T, "10-A")["marks"]]
     S.sign_off(T, ids)
@@ -100,7 +100,7 @@ def test_omr_read_is_for_the_teacher_to_confirm(office, monkeypatch):
     monkeypatch.setattr(ms, "_file_row", lambda tenant, fid: type("F", (), {"stored_path": __file__})())
     monkeypatch.setattr(D, "_model_json", lambda *a, **k: {"roll": "1", "answers": ["B", "", "D"], "unclear": [2]})
     r = D.omr_read(T, "f1", 4)
-    assert r["answers"] == ["B", "", "D", ""] and r["unclear"] == [2, 4] and "save nahi" in r["say"]
+    assert r["answers"] == ["B", "", "D", ""] and r["unclear"] == [2, 4] and "nothing has been saved" in r["say"]
     assert D.unsigned(T)["marks"] == []                     # nothing saved
 
 
@@ -130,7 +130,7 @@ def test_grade_code_in_the_sandbox(office):
     r = D.grade_code(T, kids[0], "Lab 1", code, tests, max_marks=8)
     assert r["passed"] == 3 and r["marks"] == 6 and "NameError" in r["details"][3]["why"]
     bad = D.grade_code(T, kids[0], "Lab 2", "def add(a, b) return", tests[:1], max_marks=5)
-    assert bad["passed"] == 0 and "chala hi nahi" in bad["details"][0]["why"]
+    assert bad["passed"] == 0 and "did not run at all" in bad["details"][0]["why"]
     evil = D.grade_code(T, kids[0], "Lab 3", "import os\nos.system('id')\ndef add(a,b): return a+b", tests[:1], max_marks=5)
     assert evil["passed"] == 0                               # the sandbox refuses; nothing runs outside
     with pytest.raises(D.DaftarError, match="consent"):
@@ -148,7 +148,7 @@ def test_grade_rubric_is_a_capped_suggestion(office, monkeypatch):
     monkeypatch.setattr(D, "_model_json", lambda *a, **k: {"criteria": [{"name": "Content", "level": "A", "points": 99, "evidence": "x"},
                                                                        {"name": "Language", "level": "C", "points": 2}], "comment": "ok"})
     r = D.grade_rubric(T, kids[0], "Essay 1", "My essay text", rb)
-    assert r["marks"] == 7 and r["criteria"][0]["points"] == 5 and "SUJHAAV" in r["say"]
+    assert r["marks"] == 7 and r["criteria"][0]["points"] == 5 and "SUGGESTION" in r["say"]
 
 
 def test_timetable_has_no_clashes(office):
@@ -167,7 +167,7 @@ def test_timetable_has_no_clashes(office):
             a, b = grid["9-A"][d][p], grid["10-A"][d][p]
             assert not (a and b and a.split(" / ")[1] == b.split(" / ")[1])    # no teacher in two rooms
     assert "Mrs Rao" in r["teachers"]
-    with pytest.raises(D.DaftarError, match="hafte"):
+    with pytest.raises(D.DaftarError, match="week"):
         D.timetable(T, [{"class": "9-A", "subject": "Maths", "teacher": "X", "per_week": 50}], periods=6)
 
 

@@ -229,8 +229,8 @@ def sync_workflows(repo: str, force: bool = False) -> dict[str, Any]:
             SYNC["updated"].append(name)
         except BuildUnavailable as e:
             msg = str(e)
-            SYNC["error"] = ("GitHub token workflow files nahi likh sakta (fine-grained token mein 'Workflows: Read and write' "
-                             "dijiye, ya " + name + " khud copy kijiye)") if (" 403 " in msg or " 404 " in msg) else msg[:200]
+            SYNC["error"] = ("The GitHub token cannot write workflow files (give the fine-grained token 'Workflows: Read and write', "
+                             "or copy " + name + " yourself)") if (" 403 " in msg or " 404 " in msg) else msg[:200]
             log.info("workflow sync %s: %s", name, msg)
             break
     return SYNC

@@ -320,13 +320,13 @@ def check_refs(r: AppProject, coll: str, data: dict[str, Any], w: W.Who, only: s
             continue
         row = _raw(r, v)
         if row is None or row.coll != f["to"]:
-            _fail(f"{f['label']}: yeh entry nahi mili.")
+            _fail(f"{f['label']}: this entry was not found.")
         try:
             tc = W.coll(sch, f["to"])
         except W.AppError:
-            _fail(f"{f['label']}: yeh list nahi hai.")
+            _fail(f"{f['label']}: this list does not exist.")
         if not w.owner and not W._can_read(tc, w, row):
-            _fail(f"{f['label']}: is entry ko aap nahi chun sakte.", 403)
+            _fail(f"{f['label']}: you cannot choose this entry.", 403)
 
 
 # ---------------------------------------------------------------- workflow
@@ -385,13 +385,13 @@ def _transition(r: AppProject, c: dict[str, Any], coll: str, row: dict[str, Any]
     wf = c["wf"][coll]
     cur = str(row.get(wf["field"]) or wf["initial"])
     if to not in wf["states"]:
-        _fail(f"'{to}' is kaam ki state nahi hai.")
+        _fail(f"'{to}' is not a state of this workflow.")
     cands = [t for t in wf["transitions"] if t["to"] == to and ("*" in t["from"] or cur in t["from"])]
     if not cands:
-        _fail(f"'{cur}' se seedha '{to}' nahi ja sakte.")
+        _fail(f"It cannot go straight from '{cur}' to '{to}'.")
     mine = [t for t in cands if _allowed(t, w, row)]
     if not mine:
-        _fail(f"'{to}' karne ki ijaazat aapko nahi hai.", 403)
+        _fail(f"You are not allowed to move this to '{to}'.", 403)
     for t in mine:
         missing = [k for k in t.get("require") or [] if L.plain(prospective.get(k)) in (None, "")]
         if missing:
@@ -410,8 +410,8 @@ def _transition(r: AppProject, c: dict[str, Any], coll: str, row: dict[str, Any]
     if missing:
         sch = _schema(r)
         labels = {f["key"]: f["label"] for f in W.coll(sch, coll)["fields"]}
-        _fail(f"'{t['label']}' se pehle bhariye: {', '.join(labels.get(k, k) for k in missing)}.")
-    _fail(f"Abhi '{t['label']}' ki sharat poori nahi hai.")
+        _fail(f"Before '{t['label']}', fill in: {', '.join(labels.get(k, k) for k in missing)}.")
+    _fail(f"The condition for '{t['label']}' is not met yet.")
 
 
 # ---------------------------------------------------------------- the hooks backend.py calls
@@ -503,7 +503,7 @@ def before_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w
     if want is not None or body:
         raw = _raw(r, row_id)
         if raw is not None and not w.owner and not W._can_read(cc, w, raw):
-            _fail("Yeh entry nahi mili.", 404)
+            _fail("This entry was not found.", 404)
     try:
         part = W._clean(cc, body, w, partial=True)
     except W.AppError:
@@ -560,9 +560,9 @@ def before_delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, 
         if not kids:
             continue
         if rel["on_delete"] == "restrict":
-            _fail(f"Iske saath {len(kids)} {rel['label']} jude hain; pehle unhe hataiye.", 409)
+            _fail(f"{len(kids)} {rel['label']} are linked to this; delete them first.", 409)
         if len(kids) > MAX_CASCADE:
-            _fail(f"Iske saath {len(kids)}+ {rel['label']} jude hain - ek baar mein itne nahi hata sakte.", 409)
+            _fail(f"{len(kids)}+ {rel['label']} are linked to this - that many cannot be deleted at once.", 409)
     return d
 
 
@@ -720,7 +720,7 @@ def run_actions(r: AppProject, c: dict[str, Any], coll: str, d: dict[str, Any], 
     done: list[str] = []
     for a in acts:
         if not _spend():
-            audit(r, "budget", coll=coll, row=d.get("id", ""), what=f"{why}: automatic kaam ki seema poori")
+            audit(r, "budget", coll=coll, row=d.get("id", ""), what=f"{why}: the limit for automatic actions was reached")
             break
         STATS["actions"] += 1
         try:
@@ -768,7 +768,7 @@ def _act(r, c, coll: str, d: dict[str, Any], old, w, a: dict[str, Any], why: str
         if a["assign"] == "least_busy":
             staff = BE._staff_of(site(r))
             if not staff:
-                return "assign: koi staff nahi"
+                return "assign: no staff"
             load_ = BE._load(r)
             pick = min(staff, key=lambda mid: (load_.get(mid, 0), mid))
             BE.owner_assign(r, coll, rid, pick)
@@ -861,7 +861,7 @@ def notify(r: AppProject, to: str, title: str, body: str, d: dict[str, Any]) -> 
     if to == "owner":
         try:
             from ..android.service import _note
-            _note(r, f"{r.name or 'Aapki app'} ({r.number}): {title}" + (f" - {body}" if body else ""))
+            _note(r, f"{r.name or 'Your app'} ({r.number}): {title}" + (f" - {body}" if body else ""))
         except Exception:                           # noqa: BLE001
             log.debug("owner note", exc_info=True)
         return
@@ -902,7 +902,7 @@ def pending_for_row(r: AppProject, row_id: str) -> dict[str, Any] | None:
 
 def request_approval(r: AppProject, c: dict[str, Any], coll: str, row: dict[str, Any], t: dict[str, Any], w: W.Who) -> dict[str, Any]:
     if pending_for_row(r, row["id"]):
-        _fail("Is entry ki ek manzoori pehle se ruki hai; uska faisla hone dijiye.", 409)
+        _fail("An approval for this entry is already pending; let it be decided first.", 409)
     wf = c["wf"][coll]
     data = {"coll": coll, "row": row["id"], "field": wf["field"], "from": str(row.get(wf["field"]) or wf["initial"]),
             "to": t["to"], "label": t["label"], "steps": t["approval"]["steps"], "maker_checker": t["approval"]["maker_checker"],
@@ -917,15 +917,15 @@ def request_approval(r: AppProject, c: dict[str, Any], coll: str, row: dict[str,
     audit(r, "approval_asked", coll=coll, row=row["id"], by=_by(w), what=f"{data['from']} -> {t['to']} ({t['label']})")
     _ask_next(r, {**data, "id": aid})
     return {"id": aid, "to": t["to"], "label": t["label"], "step": 1, "of": len(data["steps"]),
-            "say": f"'{t['label']}' ke liye manzoori maangi gayi ({data['steps'][0]['label']})."}
+            "say": f"Approval requested for '{t['label']}' ({data['steps'][0]['label']})."}
 
 
 def _ask_next(r: AppProject, a: dict[str, Any]) -> None:
     step = a["steps"][a["at_step"]]
-    title = f"Manzoori chahiye: {a['label']}"
+    title = f"Approval needed: {a['label']}"
     body = f"{a['title']} ({a['from']} -> {a['to']})"
     if step["who"] == "owner":
-        notify(r, "owner", title, body + " - Hoola mein manzoor / mana kijiye.", {})
+        notify(r, "owner", title, body + " - approve or reject it in Hoola.", {})
     else:
         notify(r, "admins" if step["who"] == "admin" else "staff", title, body, {"id": a["row"]})
 
@@ -962,19 +962,19 @@ def approvals(r: AppProject, w: W.Who, everything: bool = False) -> list[dict[st
 
 def decide(r: AppProject, appr_id: str, decision: str, note: str, w: W.Who) -> dict[str, Any]:
     if decision not in ("approve", "reject"):
-        _fail("Faisla: approve ya reject.", 400)
+        _fail("Decision: approve or reject.", 400)
     from .. import locks as LK
     with LK.hold(f"appr:{appr_id}"):                 # v0.390 two approvers in two worker processes: one decides first
         x = _raw(r, appr_id)
         if x is None or x.coll != APPROVAL:
-            _fail("Yeh manzoori nahi mili.", 404)
+            _fail("This approval was not found.", 404)
         a = _j(x.data, {})
         if a.get("status") != "pending":
-            _fail("Is par faisla ho chuka hai.", 409)
+            _fail("This has already been decided.", 409)
         if not can_decide(a, w):
             if a.get("maker_checker") and w.id and w.id == a.get("maker"):
-                _fail("Jisne maanga, woh khud manzoor nahi kar sakta (maker-checker).", 403)
-            _fail("Is step ka faisla aapke haath mein nahi.", 403)
+                _fail("The person who asked cannot approve it themselves (maker-checker).", 403)
+            _fail("This step is not yours to decide.", 403)
         a["decisions"].append({"step": a["at_step"] + 1, "decision": decision, "by": _by(w), "by_id": w.id,
                                "note": str(note or "")[:300], "at": now().isoformat()})
         row = load(r, a["row"], a["coll"])
@@ -993,20 +993,20 @@ def decide(r: AppProject, appr_id: str, decision: str, note: str, w: W.Who) -> d
     audit(r, f"approval_{decision}", coll=a["coll"], row=a["row"], by=_by(w),
           what=f"{a['label']} step {len(a['decisions'])}: {decision}" + (f" ({note[:80]})" if note else ""))
     if a["status"] == "approved":
-        system_move(r, a["coll"], a["row"], a["to"], f"manzoor: {a['label']}", _by(w))
+        system_move(r, a["coll"], a["row"], a["to"], f"approved: {a['label']}", _by(w))
     elif a["status"] == "pending":
         _ask_next(r, a)
     if a["status"] in ("approved", "rejected") and a.get("maker"):
         try:
             from .. import turant as TU
-            TU.later(r, [a["maker"]], f"{a['label']}: {'manzoor' if a['status'] == 'approved' else 'mana'}",
+            TU.later(r, [a["maker"]], f"{a['label']}: {'approved' if a['status'] == 'approved' else 'rejected'}",
                      a.get("title", "")[:80], a["row"])
         except Exception:                           # noqa: BLE001
             log.debug("tell maker", exc_info=True)
     return {"id": appr_id, "status": a["status"], "step": a["at_step"] + 1, "of": len(a["steps"]),
-            "say": {"approved": "Manzoor - entry aage badh gayi.", "rejected": "Mana kar diya.",
-                    "pending": f"Step manzoor; ab {a['steps'][a['at_step']]['label']} ki baari.",
-                    "cancelled": "Entry beech mein badal gayi; yeh manzoori band."}[a["status"]]}
+            "say": {"approved": "Approved - the entry moved ahead.", "rejected": "Rejected.",
+                    "pending": f"Step approved; next is {a['steps'][a['at_step']]['label']}.",
+                    "cancelled": "The entry changed in between; this approval is closed."}[a["status"]]}
 
 
 # ---------------------------------------------------------------- what the app sees on each row
@@ -1074,12 +1074,12 @@ def related(r: AppProject, coll: str, row_id: str, rel_name: str, w: W.Who) -> d
     c = compiled(r)
     rel = next((x for x in (c or {}).get("rel_to", {}).get(coll, []) if x["name"] == rel_name), None)
     if rel is None:
-        _fail("Yeh judi list nahi hai.", 404)
+        _fail("This linked list does not exist.", 404)
     parent = _raw(r, row_id)
     sch = _schema(r)
     pc, kc = W.coll(sch, coll), W.coll(sch, rel["from"])
     if parent is None or parent.coll != coll or not W._can_read(pc, w, parent):
-        _fail("Yeh entry nahi mili.", 404)
+        _fail("This entry was not found.", 404)
     from .. import refs as RF                         # v0.390 indexed, not a scan
     got = RF.child_rows(site(r), rel["from"], rel["field"], row_id, MAX_CHILDREN)
     rows = [W.row_view(kc, x, w) for x in got if str(_j(x.data, {}).get(rel["field"]) or "") == row_id and W._can_read(kc, w, x)]
@@ -1092,20 +1092,20 @@ def call_public(r: AppProject, name: str, args: list[Any], w: W.Who) -> dict[str
     c = compiled(r)
     f = next((x for x in (c or {}).get("spec", {}).get("functions", []) if x["name"] == name and x.get("callable")), None)
     if f is None:
-        _fail("Yeh kaam app mein nahi hai.", 404)
+        _fail("This function is not in the app.", 404)
     W.rate(f"fn|{site(r)}|{w.id or 'anon'}", 60, 60)
     try:
         return {"result": L.call_function(c["fns"], name, [a for a in (args or [])][:8], steps=20_000)}
     except L.Fail as e:
         _fail(str(e))
     except L.LogicError as e:
-        _fail(f"Hisaab nahi ho saka: {e}")
+        _fail(f"Could not calculate: {e}")
 
 
 # ---------------------------------------------------------------- audit
 def _by(w: W.Who | None) -> str:
     if w is None:
-        return "Hoola (apne aap)"
+        return "Hoola (automatic)"
     if w.owner:
         return "Owner"
     return (w.m.name or w.m.email.split("@")[0]) if w.m else "visitor"
@@ -1113,7 +1113,7 @@ def _by(w: W.Who | None) -> str:
 
 def audit(r: AppProject, kind: str, coll: str = "", row: str = "", by: str = "", what: str = "") -> None:
     try:
-        d = {"kind": kind, "coll": coll, "row": row, "by": by or "Hoola (apne aap)", "what": str(what)[:400], "at": now().isoformat()}
+        d = {"kind": kind, "coll": coll, "row": row, "by": by or "Hoola (automatic)", "what": str(what)[:400], "at": now().isoformat()}
         with session() as s:
             s.add(W.SiteAppRow(id=new_id("aud"), site_id=site(r), coll=AUDIT, owner="", data=json.dumps(d, ensure_ascii=False)))
     except Exception:                               # noqa: BLE001
@@ -1181,7 +1181,7 @@ def run_schedule(r: AppProject, name: str, force: bool = False) -> dict[str, Any
     c = compiled(r)
     sd = next((x for x in (c or {}).get("spec", {}).get("schedules", []) if x["name"] == name), None)
     if sd is None:
-        _fail("Yeh samay wala kaam nahi mila.", 404)
+        _fail("This scheduled job was not found.", 404)
     where = _safe_parse(sd.get("where"))
     with session() as s:
         got = s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == site(r), W.SiteAppRow.coll == sd["coll"])
@@ -1205,11 +1205,11 @@ def run_schedule(r: AppProject, name: str, force: bool = False) -> dict[str, Any
             break
         acted += 1
         with _guard():
-            run_actions(r, c, sd["coll"], d, None, None, sd["do"], f"samay: {sd['label']}")
+            run_actions(r, c, sd["coll"], d, None, None, sd["do"], f"schedule: {sd['label']}")
         if sd.get("once_per_row"):
             store(r, x.id, {mark: now().isoformat()})
     STATS["scheduled"] += 1
-    audit(r, "schedule", coll=sd["coll"], what=f"{sd['label']}: {acted} entries" + (" (haath se)" if force else ""))
+    audit(r, "schedule", coll=sd["coll"], what=f"{sd['label']}: {acted} entries" + (" (manual)" if force else ""))
     return {"name": name, "matched": hit, "acted": acted}
 
 
@@ -1244,7 +1244,7 @@ def sla_check(r: AppProject) -> int:
                 if t_now - since < timedelta(hours=sla["hours"]):
                     continue
                 store(r, x.id, {"_sla": ((d.get("_sla") or []) + [key])[-10:]})
-                notify(r, sla["notify"], f"Der ho rahi hai: {label_of(r, coll, d)[:60]}", sla["message"], d)
+                notify(r, sla["notify"], f"Running late: {label_of(r, coll, d)[:60]}", sla["message"], d)
                 audit(r, "sla", coll=coll, row=x.id, what=sla["message"])
                 STATS["sla"] += 1
                 n += 1
@@ -1339,7 +1339,7 @@ def document_pdf(r: AppProject, coll: str, row_id: str, w: W.Who) -> tuple[bytes
     sp = spec_of(r)
     d = next((x for x in (sp or {}).get("documents", []) if x["coll"] == coll), None)
     if d is None:
-        raise W.AppError("Is list ka koi document nahi.", 404)
+        raise W.AppError("This list has no document.", 404)
     raw = _raw(r, row_id)
     sch = _schema(r)
     cc = W.coll(sch, coll)
@@ -1353,7 +1353,7 @@ def document_pdf(r: AppProject, coll: str, row_id: str, w: W.Who) -> tuple[bytes
         except (L.LogicError, L.Fail):
             ok = False
         if not ok:
-            raise W.AppError("Yeh document abhi nahi ban sakta (shart poori nahi).", 409)
+            raise W.AppError("This document cannot be made yet (the condition is not met).", 409)
     title = _tmpl(r, c, coll, row, None, w, d["title"])
     lines = [_tmpl(r, c, coll, row, None, w, x) for x in d["lines"]]
     return _pdf(r, title, lines, d.get("signer") or "", row_id), title

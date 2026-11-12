@@ -165,7 +165,7 @@ def test_spec_checker_refuses_bad_gates_and_documents():
                          {"coll": "courses", "lines": ["{{nope_field}} done"]}]}
     out = SP.check(bad, sch)
     errs = json.dumps(out.get("errors") if isinstance(out, dict) else out, ensure_ascii=False)
-    assert "apna hi pass" in errs and "via" in errs and "match" in errs and "plan" in errs and "lines chahiye" in errs
+    assert "its own pass" in errs and "via" in errs and "match" in errs and "plan" in errs and "lines are needed" in errs
 
 
 def test_lessons_only_with_an_active_membership_and_the_video_follows(lms):

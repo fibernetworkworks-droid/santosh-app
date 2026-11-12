@@ -140,7 +140,7 @@ def test_a_story_is_really_played_and_a_broken_one_really_fails(droid_env):
     bad[0]["steps"][2]["expect_count"] = 7
     rep2 = QA.run(r, call=call, scenarios=QA.check({"scenarios": bad}, sch)["scenarios"])
     assert rep2["fail"] == 1 and rep2["pass"] == 0, rep2["stories"]
-    assert "7 rows aani thi, 1 aayi" in json.dumps(rep2["stories"], ensure_ascii=False)
+    assert "expected 7 rows, got 1" in json.dumps(rep2["stories"], ensure_ascii=False)
 
 
 def test_a_refusal_that_does_not_happen_is_a_failure(droid_env):
@@ -163,13 +163,13 @@ def test_a_refusal_that_does_not_happen_is_a_failure(droid_env):
                         {"do": "read", "who": "c2", "list": own, "expect_count": 0}]}]
     rep = QA.run(r, call=call, scenarios=QA.check({"scenarios": story}, sch)["scenarios"])
     assert rep["pass"] == 1 and rep["fail"] == 0, rep["stories"]
-    assert any(s["why"].startswith("mana kiya") for s in rep["stories"][0]["steps"] if s["must"] == "refused")
+    assert any(s["why"].startswith("refused") for s in rep["stories"][0]["steps"] if s["must"] == "refused")
 
     # and if we ask for a refusal that will NOT happen, the runner says FAIL, not pass
     story[0]["steps"][1]["must"] = "refused"                 # her own create will succeed
     rep2 = QA.run(r, call=call, scenarios=QA.check({"scenarios": story}, sch)["scenarios"])
     assert rep2["fail"] == 1
-    assert "yeh mana hona tha, par ho gaya" in json.dumps(rep2["stories"], ensure_ascii=False)
+    assert "this should have been refused, but it went through" in json.dumps(rep2["stories"], ensure_ascii=False)
 
 
 def test_a_step_that_could_not_run_is_never_counted_as_a_pass(droid_env):
@@ -185,7 +185,7 @@ def test_a_step_that_could_not_run_is_never_counted_as_a_pass(droid_env):
     story = QA.check({"scenarios": [{"story": "anything", "steps": [{"do": "signup", "who": "c1"}]}]}, sch)["scenarios"]
     rep = QA.run(r, call=dead, scenarios=story)
     assert rep["pass"] == 0 and rep["fail"] == 0 and rep["not_run"] == 1
-    assert "chal hi nahi payi" in rep["says"]
+    assert "could not run at all" in rep["says"]
 
 
 # ---------------------------------------------------------------- rules through the real engine
@@ -217,7 +217,7 @@ def test_every_rule_is_run_through_the_real_engine_both_ways(droid_env):
         {"kind": "rule", "coll": coll, "n": 0, "ok": {field: "a"}, "bad": {field: "b"}}]}))
     out2 = QA.rules_run(_app(aid))
     assert out2["fail"] == 1, out2["rows"]
-    assert "rokta hi nahi" in json.dumps(out2["rows"], ensure_ascii=False)
+    assert "stops nobody" in json.dumps(out2["rows"], ensure_ascii=False)
 
 
 # ---------------------------------------------------------------- ANR is not a crash
@@ -336,7 +336,7 @@ def test_a_bad_version_is_stopped_without_her_and_rolled_back_with_her(droid_env
     out = RO.rollback(T, aid, her_tap=True)
     assert out["rollout"]["version_code"] == 11 and out["rollout"]["rolled_back_from"] == 12
     assert '"versionCodes": ["11"]' in sent[-1] and '"status": "completed"' in sent[-1]
-    assert "Play kisi phone se version hata nahi sakta" in RO.view(T, aid)["says"] or True
+    assert "Play cannot remove a version from a phone" in RO.view(T, aid)["says"] or True
 
 
 # ---------------------------------------------------------------- the card says what was NOT checked
@@ -345,8 +345,8 @@ def test_the_card_names_what_has_never_been_run(droid_env):
     aid, _conv, _key, _be = _built(droid_env)
     card = QA.card(_app(aid))
     assert card["scenarios"] == 0
-    assert "koi scenario test nahi hai" in card["not_checked"]
-    assert "load test kabhi nahi chalaya" in card["not_checked"]
+    assert "there are no scenario tests" in card["not_checked"]
+    assert "a load test has never been run" in card["not_checked"]
     assert QA.gate(_app(aid))["ran"] is False
 
 

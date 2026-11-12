@@ -52,7 +52,7 @@ def set_langs(tenant: str, ref: str, langs: list[str]) -> dict[str, Any]:
     """Her choice of the app's languages (applies from the next build)."""
     want = [x for x in dict.fromkeys(str(l).strip().lower() for l in langs) if x in LANGS][:MAX_LANGS]
     if not want:
-        raise AS.AppError("Bhasha chuniye: " + ", ".join(f"{k} ({v})" for k, v in LANGS.items()))
+        raise AS.AppError("Choose a language: " + ", ".join(f"{k} ({v})" for k, v in LANGS.items()))
     with session() as s:
         r = AS._find(s, tenant, ref)
         plan = AS._j(r.plan, {})

@@ -52,7 +52,7 @@ def build(r: AppProject, month: str = "") -> dict[str, Any]:
     from . import gst as G
     month = month or default_month()
     if not MONTH.match(month):
-        raise HisaabError("Mahina YYYY-MM (jaise 2026-10).")
+        raise HisaabError("Month as YYYY-MM (for example 2026-10).")
     sch = BE.schema(r)
     order = sch.get("order") or ""
     colls = {c["key"]: c for c in sch["collections"]}
@@ -120,7 +120,7 @@ def build(r: AppProject, month: str = "") -> dict[str, Any]:
     say = (f"{month}: {tot['orders']} orders, sales Rs {tot['sales']:,.0f}"
            + (f", GST Rs {tot['gst']:,.2f} on {len(inv)} invoices" if inv else "")
            + (f", credit notes Rs {tot['credit']:,.0f}" if cns else "")
-           + (f", udhaar diya Rs {tot['udhaar_given']:,.0f} / mila Rs {tot['udhaar_paid']:,.0f}" if khata else "") + ".")
+           + (f", credit given Rs {tot['udhaar_given']:,.0f} / received Rs {tot['udhaar_paid']:,.0f}" if khata else "") + ".")
     STATS["reports"] += 1
     return {"month": month, "summary": tot, "say": say, "counts": {"sales": len(sales), "invoices": len(inv), "credit_notes": len(cns),
                                                                    "khata": len(khata)},

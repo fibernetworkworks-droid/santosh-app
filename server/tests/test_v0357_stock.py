@@ -46,7 +46,7 @@ def test_stock_rules(droid_env):
     order(1)                                                 # 3 -> 2 (= low): warn
     order(1)                                                 # 2 -> 1: no second warning
     with session() as s:
-        notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "stock kam" in str(m.content)]
+        notes = [m.content for m in s.query(Message).filter(Message.conversation_id == conv).all() if "low stock" in str(m.content)]
     assert len(notes) == 1 and p1["name"] in notes[0]
     # a cancelled order puts its quantity back, once
     c.post(f"{api}/c/orders/{o1['id']}", json={"status": "Cancelled"}, headers=hr)

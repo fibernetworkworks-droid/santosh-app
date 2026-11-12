@@ -275,7 +275,7 @@ def test_schedule_slots_and_sla(droid_env, monkeypatch):
     from app.db import session
     old = (datetime.now(timezone.utc) - timedelta(hours=30)).isoformat()
     LE.store(_app(aid), i["id"], {"_wf_at": old})
-    assert LE.sla_check(_app(aid)) == 1 and any("Der ho rahi" in p for p in pushes)
+    assert LE.sla_check(_app(aid)) == 1 and any("Running late" in p for p in pushes)
     assert LE.sla_check(_app(aid)) == 0                                          # told once per waiting spell
     del AppProject, session
 
