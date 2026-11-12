@@ -86,13 +86,13 @@ CSAT_ASK = {"hinglish": "Shikayat {n} mein humari seva kaisi lagi? 1 se 5 mein j
             "english": "How was our help with complaint {n}? Reply 1 to 5 (5 = very good)."}
 LANGS = ("hinglish", "hindi", "marathi", "english")
 
-EXC_KINDS = {"refund": "Refund (paise wapas)", "waiver": "Charge / fine maaf", "goodwill": "Goodwill (chhoot / credit)",
-             "replacement": "Badal kar dena", "extension": "Samay badhana / warranty ke bahar", "other": "Niyam ke bahar kuch aur"}
+EXC_KINDS = {"refund": "Refund (money back)", "waiver": "Charge / fine waived", "goodwill": "Goodwill (discount / credit)",
+             "replacement": "Replacement", "extension": "Extension / out of warranty", "other": "Anything else outside the policy"}
 MONEY_KINDS = ("refund", "waiver", "goodwill")
-NEVER = ("Refund, chhoot, maafi ya niyam ke bahar kuch bhi: sirf aapki tap se (paise wala card fingerprint se). Hoola paise kabhi khud nahi bhejta.",
-         "Jawab sirf aapke Gyaan (FAQ / niyam) se, source ke saath; jo nahi likha woh nahi bolta, aapko de deta hai.",
-         "Graahak ka likha sirf unki baat hai, hukm nahi. Ek graahak ko doosre ki shikayat kabhi nahi dikhti.",
-         "OTP, PIN, CVV, card, password kabhi nahi maangta; andar ke note graahak ko kabhi nahi jaate.")
+NEVER = ("Refund, discount, waiver or anything outside the policy: only with your tap (a money card needs your fingerprint). Hoola never sends money by itself.",
+         "Answers come only from your Knowledge (FAQ / policy), with the source; it does not say what is not written, it hands it to you.",
+         "What a customer writes is only what they say, not an order. One customer never sees another's complaint.",
+         "It never asks for an OTP, PIN, CVV, card or password; internal notes never go to the customer.")
 
 # ---------------------------------------------------------------- matching words
 STOP = set("""a an the is are was were be to of in on for and or i me my we our you your it this that what how when where why
@@ -194,9 +194,9 @@ def sla_hours(sla: dict, priority: str, category: str = "", ecommerce: bool = Fa
     return fr, rs
 
 
-def status_line(status: str, number: str, lang: str = "hinglish", merged_into: str = "") -> str:
+def status_line(status: str, number: str, lang: str = "english", merged_into: str = "") -> str:
     d = STATUS_LINE.get(status) or STATUS_LINE["open"]
-    return (d.get(lang) or d["hinglish"]).format(n=number, m=merged_into)
+    return (d.get(lang) or d["english"]).format(n=number, m=merged_into)
 
 
 def legal_notes(category: str, text: str = "") -> list[str]:
@@ -204,13 +204,13 @@ def legal_notes(category: str, text: str = "") -> list[str]:
     low = norm(text)
     out = []
     if category in ("billing", "refund") and re.search(r"\b(upi|gpay|phonepe|paytm|imps|kat gaye|kat gaya|debit|double)\b", low):
-        out.append("RBI (TAT circular 20 Sep 2019): UPI / IMPS mein khaate se paise kate par saamne wale ko nahi mile to bank T+1 din "
-                   "mein wapas karta hai, der hone par ₹100 roz ka muavza bank deta hai. Graahak apne bank / UPI app mein shikayat kare.")
+        out.append("RBI (TAT circular 20 Sep 2019): if money is debited by UPI / IMPS but the receiver does not get it, the bank reverses it within T+1 days, "
+                   "and for a delay the bank pays ₹100 a day as compensation. The customer should complain in their bank / UPI app.")
     if category == "privacy":
-        out.append("DPDP Rules 2025: data se judi shikayat 90 din ke andar suljhani hai (mukhya niyam 13 May 2027 se); "
-                   "tab tak IT Act s.43A lagu hai.")
+        out.append("DPDP Rules 2025: a data-related complaint must be resolved within 90 days (main rules from 13 May 2027); "
+                   "until then IT Act s.43A applies.")
     if any(w in low for w in ("consumer court", "1915", "consumer forum", "e-jagriti", "edaakhil", "e-daakhil")):
-        out.append("Graahak National Consumer Helpline 1915 ya e-Jagriti par ja sakte hain: jawab vinamra, tathyon ke saath, aur jaldi.")
+        out.append("The customer can go to the National Consumer Helpline 1915 or e-Jagriti: reply politely, with facts, and quickly.")
     return out
 
 
@@ -223,29 +223,29 @@ def policy_check(kind: str, amount: float, days_since: float | None, policy: dic
     if kind == "refund":
         rd = p.get("refund_days")
         if rd in (None, "", 0):
-            within, reasons = False, reasons + ["Aapke niyam mein refund ke din likhe nahi hain."]
+            within, reasons = False, reasons + ["Your policy does not state the refund days."]
         elif days_since is not None and days_since > float(rd):
             within = False
-            reasons.append(f"Niyam: {int(float(rd))} din ke andar refund; yeh {int(days_since)} din purana hai.")
+            reasons.append(f"Policy: refund within {int(float(rd))} days; this is {int(days_since)} days old.")
         mx = p.get("refund_max")
         if mx not in (None, "", 0) and amount and amount > float(mx):
             within = False
-            reasons.append(f"Niyam mein refund ki seema ₹{int(float(mx))}; maanga ₹{int(amount)}.")
+            reasons.append(f"The policy limits a refund to ₹{int(float(mx))}; ₹{int(amount)} was asked.")
     elif kind == "replacement":
         rd = p.get("replace_days")
         if rd in (None, "", 0):
-            within, reasons = False, reasons + ["Badalne ke din niyam mein nahi likhe."]
+            within, reasons = False, reasons + ["The replacement days are not stated in the policy."]
         elif days_since is not None and days_since > float(rd):
             within = False
-            reasons.append(f"Niyam: {int(float(rd))} din ke andar badalna; yeh {int(days_since)} din purana hai.")
+            reasons.append(f"Policy: replacement within {int(float(rd))} days; this is {int(days_since)} days old.")
     elif kind == "goodwill":
         mx = p.get("goodwill_max")
         if mx in (None, "", 0):
-            within, reasons = False, reasons + ["Goodwill ki koi seema niyam mein nahi; har goodwill aapki marzi."]
+            within, reasons = False, reasons + ["The policy has no goodwill limit; every goodwill is your call."]
         elif amount and amount > float(mx):
             within = False
-            reasons.append(f"Goodwill seema ₹{int(float(mx))}; maanga ₹{int(amount)}.")
+            reasons.append(f"Goodwill limit ₹{int(float(mx))}; ₹{int(amount)} was asked.")
     else:                       # waiver / extension / other are exceptions by nature
         within = False
-        reasons.append("Yeh aapke likhe niyam ke bahar hai (exception).")
+        reasons.append("This is outside the policy you wrote (an exception).")
     return {"within": within, "reasons": reasons, "money": kind in MONEY_KINDS and bool(amount)}
