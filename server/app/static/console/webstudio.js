@@ -715,15 +715,16 @@
     loadErrors();                                        // v0.802 GALTI PAKDO
   }
 
-  const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
+  const VIEWS = [['preview', 'Preview'], ['code', 'Code'], ['drafts', 'Drafts'], ['cloud', 'Cloud'], ['integrations', 'Integrations'], ['health', 'Health'], ['settings', 'Settings']];
   function drawShell() {
     const v = CUR, mode = chatMode();
     APP.innerHTML = `<div class="wsp">
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
-        <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
+        <span class="pname">${esc(name(v))}</span>${v.draft_of ? pill('Draft · ' + S(v.draft_name), 'v') : ''}<button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
         <span class="tsave">Every change is saved as a version</span>
         <button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>
-        <button class="b dark" type="button" data-view="publish"><span>Publish</span></button></header>
+        ${v.draft_of ? `<a class="b" href="#/site/${enc(S(v.draft_of))}">Back to the website</a><button class="b dark" type="button" data-view="drafts"><span>Accept or discard</span></button>`
+          : '<button class="b dark" type="button" data-view="publish"><span>Publish</span></button>'}</header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this website">
           <div class="msgs" id="wsMsgs" aria-live="polite"></div>
@@ -827,7 +828,7 @@
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
-    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish, details: detailsView, plans: planView}[VIEW] || preview;
+    const fn = {preview, code, cloud, integrations, health, settings, history: historyView, drafts: draftsView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
     if (WORKING(CUR)) startPoll();
@@ -1458,6 +1459,49 @@
       ${bm.length ? `<h3 class="vh">Bookmarks</h3>${bm.map(row).join('')}<h3 class="vh">All versions</h3>` : ''}
       ${vs.length ? vs.map(row).join('') : '<p class="mut">No versions yet.</p>'}
       ${vs.some(x => !x.restorable) ? '<p class="mut sm">Versions made before this update kept only their built pages, so they cannot be restored here.</p>' : ''}</div>`;
+  }
+
+
+  /* ================= v0.837 DRAFT (L13, E6): try a big change in a copy; Accept merges by section, conflicts named ================= */
+  const DFT = {list: null, open: ''};
+  async function draftsView(pane, v) {
+    const parent = S(v.draft_of) || v.id;
+    pane.innerHTML = viewsBar() + '<div class="empty">Loading drafts…</div>';
+    let r; try { r = await api('GET', `/api/sites/${enc(parent)}/drafts`); } catch (e) { pane.innerHTML = viewsBar() + `<div class="empty">${esc(e.message)}</div>`; return; }
+    if (VIEW !== 'drafts' || CUR?.id !== v.id) return;
+    DFT.list = L(r.drafts);
+    const card = d => {
+      const me = d.id === v.id, ch = L(d.changed), cf = L(d.conflicts);
+      return `<section class="cardp ${me ? 'acc' : ''}" data-draft="${esc(d.id)}"><h3>${esc(d.name)} ${me ? pill('you are here', 'v') : ''}</h3>
+        <p class="mut sm">Started from v${esc(d.base)}${d.site_moved ? ' · the website has changed since' : ''} · ${ch.length} part${ch.length === 1 ? '' : 's'} changed${cf.length ? ` · ${cf.length} conflict${cf.length === 1 ? '' : 's'}` : ''}</p>
+        ${ch.length ? `<ul class="dflist">${ch.slice(0, 12).map(x => `<li>${esc(x.say)} <span class="mut sm">${esc(x.what)}</span></li>`).join('')}${ch.length > 12 ? `<li class="mut sm">and ${ch.length - 12} more</li>` : ''}</ul>` : '<p class="mut sm">Nothing changed in this draft yet.</p>'}
+        ${cf.length ? `<div class="dfconf"><b>Both changed - you choose:</b>${cf.map(c => `<fieldset class="dfc" data-item="${esc(c.item)}"><legend>${esc(c.say)}</legend>
+          <label><input type="radio" name="c-${esc(d.id)}-${esc(c.item)}" value="site" checked> Keep the website's</label>
+          <label><input type="radio" name="c-${esc(d.id)}-${esc(c.item)}" value="draft"> Use the draft's</label></fieldset>`).join('')}</div>` : ''}
+        <div class="inl">${me ? '' : `<a class="b" href="#/site/${enc(d.id)}">Open the draft</a>`}
+          <button class="b pri" type="button" data-act="dft-accept" data-did="${esc(d.id)}">Accept into the website…</button>
+          <button class="b ghost" type="button" data-act="dft-discard" data-did="${esc(d.id)}">Discard</button></div></section>`;
+    };
+    pane.innerHTML = viewsBar() + `<div class="main" style="max-width:860px"><h2 style="font-size:18px">Drafts</h2>
+      <p class="mut">A draft is a copy of the website where you can try a big change. Your website is not touched until you accept. Accepting merges section by section; if you and the draft both changed the same part, it is named and you choose. A draft has its own data: nothing visitors sent is copied in, and accepting never moves data.</p>
+      ${DFT.list.length ? DFT.list.map(card).join('') : '<p class="mut">No drafts yet.</p>'}
+      ${v.draft_of ? '' : `<form class="inl" data-form="dft-new" style="margin-top:14px"><input class="in" name="name" maxlength="60" placeholder="Name this draft, e.g. New look for Diwali" aria-label="Draft name" required><button class="b pri" type="submit" ${DFT.list.length >= Number(r.max) ? 'disabled' : ''}>Start a draft</button></form>
+        ${DFT.list.length >= Number(r.max) ? `<p class="mut sm">There are already ${esc(r.max)} drafts; accept or discard one first.</p>` : ''}`}</div>`;
+  }
+  async function draftAct(act, did, card) {
+    const parent = S(CUR.draft_of) || CUR.id;
+    if (act === 'dft-discard') {
+      if (!confirm('Discard this draft? Its changes are deleted. Your website is not touched.')) return;
+      try { const r = await api('DELETE', `/api/sites/${enc(parent)}/drafts/${enc(did)}`); toast(S(r.say)); }
+      catch (er) { return toast(er.message, true); }
+      if (CUR.id === did) { go('#/site/' + enc(parent) + '/drafts'); return; }
+      return drawPane();
+    }
+    const res = {}; (card || document).querySelectorAll('.dfc').forEach(f => { res[f.dataset.item] = f.querySelector('input:checked')?.value || 'site'; });
+    if (!confirm('Merge this draft into the website? It becomes one new version of the website (undo it from History). No data is moved.')) return;
+    try { const r = await api('POST', `/api/sites/${enc(parent)}/drafts/${enc(did)}/accept`, {confirm: true, resolutions: res}); toast(S(r.say).slice(0, 200)); }
+    catch (er) { return toast(er.message, true); }
+    go('#/site/' + enc(parent));
   }
 
   async function publish(pane, v) {
@@ -2216,6 +2260,7 @@
       return;
     }
     if (act === 'edit-done') { EDIT = false; YW.strokes = []; YW.notes = []; await reload(); return; }
+    if (act === 'dft-accept' || act === 'dft-discard') return draftAct(act, d.did, b.closest('[data-draft]'));   // v0.837 L13
     if (act === 'ver-restore') return restoreVer(Number(d.ver));     // v0.808 WAPAS
     if (act === 'ver-bm') return bookmarkVer(Number(d.ver));
     if (act === 'ver-diff') return diffVer(Number(d.ver));
@@ -2347,6 +2392,12 @@
       }
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
+    }
+    if (kind === 'dft-new') {                             // v0.837 L13 start a draft
+      const nm = S(f.querySelector('[name=name]')?.value).trim(); if (!nm) return;
+      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/drafts`, {name: nm}); toast(S(r.say).slice(0, 160)); go('#/site/' + enc(S(r.id))); }
+      catch (er) { toast(er.message, true); }
+      return;
     }
     if (kind === 'instr') {
       try { await api('PUT', `/api/sites/${enc(CUR.id)}/instructions`, {text: S($('#wsInstr')?.value)}); toast('Instructions saved. Hoola reads them on every message about this site.'); }

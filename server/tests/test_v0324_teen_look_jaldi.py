@@ -68,5 +68,5 @@ def test_in_ctx_carries_the_usage_scope_into_a_thread():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.836.0"
-    assert "0.836.0+835" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.838.0"
+    assert "0.838.0+837" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

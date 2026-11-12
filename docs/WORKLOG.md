@@ -3071,3 +3071,16 @@ Work Log:
 
 Stage Summary:
 - Home and wait screen done; starters are drawn looks, not built sites; composer re-dock animation not built.
+
+---
+Task ID: L13-DRAFT
+Agent: Claude
+Task: L13 of docs/LOVABLE_STUDIO_PLAN.md - E6 drafts on the Site Engine; conflict-named merge test.
+
+Work Log:
+- site/drafts.py (copy of the working files as a hidden Site row, three-way merge by section against the wapas snapshot, named conflicts, accept = one new version); Site columns draft_of / draft_name / draft_base; list hides drafts; hosting refuses to launch one.
+- Routes, website tool actions draft_new / draft_list, Studio Drafts tab + draft banner.
+- Tests test_v0837_draft.py 5; version 0.838.0 (main had moved to 0.837.0).
+
+Stage Summary:
+- Site Engine drafts done; a draft has its own data (said plainly); App Engine branches left for after L14.

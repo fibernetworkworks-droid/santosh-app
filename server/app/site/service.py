@@ -27,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from ..db import now, session
 from . import ai as AI
@@ -323,7 +323,8 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
          "preview": preview_url(r), "scores": _j(r.scores, {}), "error": r.error, "queued": len(_j(r.queued, [])),
          "client": r.client, "updated_at": r.updated_at.isoformat() if r.updated_at else "",
          "activity": ACT.read(r.tenant_id, r.id),
-         "name_by": _j(r.facts, {}).get("name_by", "")}             # v0.671 hoola = a name Hoola made up
+         "name_by": _j(r.facts, {}).get("name_by", ""),             # v0.671 hoola = a name Hoola made up
+         "draft_of": r.draft_of or "", "draft_name": r.draft_name or "", "draft_base": int(r.draft_base or 0)}   # v0.837 L13
     if full:
         plan = _j(r.plan, {})
         checks = _j(r.checks, {})
@@ -3077,7 +3078,8 @@ def save_version(site_id: str, note: str = "", quick: list[str] | None = None) -
 # ---------------------------------------------------------------- reading
 def sites(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     with session() as s:
-        rows = s.scalars(select(Site).where(Site.tenant_id == tenant).order_by(Site.updated_at.desc()).limit(limit)).all()
+        rows = s.scalars(select(Site).where(Site.tenant_id == tenant, or_(Site.draft_of == "", Site.draft_of.is_(None)))   # v0.837 a draft is not a site of its own
+                         .order_by(Site.updated_at.desc()).limit(limit)).all()
         return [view(r, False) for r in rows]
 
 
