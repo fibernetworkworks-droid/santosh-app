@@ -299,4 +299,4 @@ def test_config_defaults():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.832.0"
+    assert APP_VERSION == "0.833.0"

@@ -15,8 +15,8 @@ from .models import AccGstConn, ensure_tables
 
 PHASES = [
     {"id": "A0", "name": "Foundation", "what": "One register of every document, rules as data, period locks, the WhiteBooks pipe checked on sandbox", "state": "built"},
-    {"id": "A1", "name": "Connect your GSTIN", "what": "Enable API access + your OTP, supplier GSTIN and filing checks", "state": "next"},
-    {"id": "A2", "name": "Monthly credit (ITC) loop", "what": "IMS accept / reject / pending with reasons, recompute 2B", "state": "planned"},
+    {"id": "A1", "name": "Connect your GSTIN", "what": "Enable API access + your OTP, supplier GSTIN and filing checks", "state": "built"},
+    {"id": "A2", "name": "Monthly credit (ITC) loop", "what": "IMS accept / reject / pending with reasons, recompute 2B", "state": "next"},
     {"id": "A3", "name": "GSTR-1 / 1A", "what": "Checked before the lock, filed on your EVC OTP", "state": "planned"},
     {"id": "A4", "name": "GSTR-3B + challan", "what": "Matched with the portal's own figures; you pay the challan at your bank", "state": "planned"},
     {"id": "A5", "name": "e-invoice + e-way bill", "what": "IRN and e-way bills from any Hoola invoice, 30-day window watched", "state": "planned"},
@@ -29,11 +29,8 @@ PHASES = [
 
 
 def _conns(tenant: str) -> list[dict[str, Any]]:
-    ensure_tables()
-    with session() as s:
-        rows = s.scalars(select(AccGstConn).where(AccGstConn.tenant_id == tenant)).all()
-        return [{"gstin": r.gstin, "state_cd": r.state_cd, "status": r.status, "enabled_until": r.enabled_until,
-                 "einvoice": bool(r.einv_username), "ewaybill": bool(r.ewb_username)} for r in rows]   # never a password / token
+    from . import connect as CN
+    return CN.status(tenant)       # never a password / token / txn
 
 
 def _scheme_and_flags(tenant: str) -> tuple[str, bool, bool]:

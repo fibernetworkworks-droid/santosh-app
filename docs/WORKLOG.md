@@ -3038,3 +3038,6 @@ Stage Summary: pushed. Server deploy (no new pip; the image needs no rebuild). N
 
 Task ID: api-setu-shape-0832
 Work: API Setu 200-without-record handling + field-name report; v0.832.0 ritual. Stage: ready for MERGE TO MAIN.
+
+Task ID: bahi-a1-0833
+Work: A1 connect + supplier check, v0.833.0 ritual. Stage: ready for MERGE TO MAIN.

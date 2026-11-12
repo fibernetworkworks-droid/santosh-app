@@ -8,6 +8,7 @@ from typing import Any
 def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
+    from . import connect as CN
     from . import register as REG
     from . import rules as RU
     from . import service as SV
@@ -45,5 +46,35 @@ def make_router(require_key, current_tenant):
                                 by="owner", note=str(b.get("note") or ""))
         except REG.RegisterError as e:
             raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/connect", dependencies=[Depends(require_key)])
+    def _conn(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"connections": CN.status(tenant)}
+
+    def _run(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except CN.ConnectError as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/api/bahi/connect/start", dependencies=[Depends(require_key)])
+    def _cstart(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _run(CN.start, tenant, str(body.get("gstin") or ""), str(body.get("gst_username") or ""))
+
+    @r.post("/api/bahi/connect/verify", dependencies=[Depends(require_key)])
+    def _cverify(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _run(CN.verify, tenant, str(body.get("gstin") or ""), str(body.get("otp") or ""))
+
+    @r.post("/api/bahi/connect/refresh", dependencies=[Depends(require_key)])
+    def _crefresh(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _run(CN.refresh, tenant, str(body.get("gstin") or ""))
+
+    @r.post("/api/bahi/connect/disconnect", dependencies=[Depends(require_key)])
+    def _cdisc(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _run(CN.disconnect, tenant, str(body.get("gstin") or ""))
+
+    @r.post("/api/bahi/supplier-check", dependencies=[Depends(require_key)])
+    def _sup(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _run(CN.supplier_check, tenant, str(body.get("gstin") or ""), filing=bool(body.get("filing", True)))
 
     return r

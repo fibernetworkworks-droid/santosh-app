@@ -116,7 +116,15 @@ def run(today: date | None = None) -> dict[str, Any]:
     ggstin = (wb.clean(st.whitebooks_sandbox_gst_gstin).upper() if wb.env() == "sandbox" else "") or gstin
     gneed = [("whitebooks_sandbox_gst_gstin", ggstin)]
     step("public_search", lambda: wb.public_search(TENANT, ggstin), need=gneed)
-    step("rettrack", lambda: wb.rettrack(TENANT, ggstin, _fy(today)), need=gneed)
+    def _ret():
+        err = None
+        for fy in (_fy(today), _fy(date(today.year - 1, today.month, 1))):     # this FY may have no data yet - try last year too
+            try:
+                return wb.rettrack(TENANT, ggstin, fy, "R1")
+            except wb.WbError as e:
+                err = e
+        raise err
+    step("rettrack", _ret, need=gneed)
     if wb.env() != "sandbox":
         steps.append({"step": "taxpayer_calls", "result": "SKIP", "line": "production: a check never makes taxpayer calls or asks for an OTP"})
     else:
