@@ -127,12 +127,12 @@ def set_rules(tenant: str, **kw) -> dict[str, Any]:
         if kw.get("visit_fee") is not None:
             v = dl._num(kw["visit_fee"], 0, 1e6)
             if v is None:
-                raise E("visit_fee galat")
+                raise E("wrong visit_fee")
             r.visit_fee = dl._r2(v)
         if kw.get("visit_gst") is not None:
             g = dl._num(kw["visit_gst"], 0, 40)
             if g is None or g not in dl.GST_RATES:
-                raise E("visit_gst galat")
+                raise E("wrong visit_gst")
             r.visit_gst = g
         if isinstance(kw.get("visit_adjust"), bool):
             r.visit_adjust = kw["visit_adjust"]
@@ -149,7 +149,7 @@ def set_rules(tenant: str, **kw) -> dict[str, Any]:
                     raise E(f"closed_on: {x} (YYYY-MM-DD)")
             r.closed_on = sorted(set(out))
         if _hm(r.close_at) <= _hm(r.open_at):
-            raise E("band hone ka samay khulne ke baad ho")
+            raise E("the closing time must be after the opening time")
         r.updated_at = now()
     return rules_view(tenant)
 
@@ -242,7 +242,7 @@ def say_slot(tenant: str, iso: str) -> str:
     loc = _utc(t).astimezone(_tz(tenant))
     day = loc.date()
     today = now().astimezone(_tz(tenant)).date()
-    d = "aaj" if day == today else ("kal" if day == today + timedelta(days=1) else loc.strftime("%d/%m"))
+    d = "today" if day == today else ("tomorrow" if day == today + timedelta(days=1) else loc.strftime("%d/%m"))
     h = loc.hour % 12 or 12
     return f"{d} {h}:{loc.minute:02d} {'am' if loc.hour < 12 else 'pm'}"
 
@@ -255,7 +255,7 @@ def check_service(raw: Any) -> dict[str, Any] | None:
         raise _dl().DealError("service: {what, at, when}")
     what = policy.quote(raw.get("what"), 300)
     if not what:
-        raise _dl().DealError("Kya kaam karwana hai? (service.what)")
+        raise _dl().DealError("What work do you need done? (service.what)")
     at = raw.get("at") if raw.get("at") in ("home", "visit", "") else ""
     return {"what": what, "at": at, "when": policy.quote(raw.get("when"), 120), "area": policy.quote(raw.get("area"), 160)}
 
@@ -311,12 +311,12 @@ def quote_extra(tenant: str, d, base: dict[str, Any], slots: Any = None, estimat
     if slots:
         pick = [s for s in (slots if isinstance(slots, list) else [slots]) if slot_free(tenant, str(s), d.id)]
         if not pick:
-            raise dl.DealError("Yeh samay khaali nahi (ya aapke ghanton ke bahar).")
+            raise dl.DealError("This time is not free (or it is outside your hours).")
         sl = [_dl()._when(s).astimezone(timezone.utc).replace(microsecond=0).isoformat() for s in pick][:8]
     else:
         sl = free_slots(tenant, exclude=d.id)
     if not sl:
-        raise dl.DealError("Agle dinon mein koi khaali samay nahi. Niyam mein ghante / din badhaiye.")
+        raise dl.DealError("No free time in the coming days. Add hours / days in the rules.")
     est = {}
     if estimate:
         lo, hi = dl._num((estimate or {}).get("min"), 0, dl.MAX_TOTAL), dl._num((estimate or {}).get("max"), 0, dl.MAX_TOTAL)
@@ -337,25 +337,25 @@ def check_extra(body: dict[str, Any]) -> dict[str, Any]:
     E = dl.DealError
     raw = body.get("slots")
     if not isinstance(raw, list) or not raw or len(raw) > 8:
-        raise E("slots galat")
+        raise E("wrong slots")
     out = []
     for x in raw:
         t = dl._when(x)
         if t is None or t < now() - timedelta(minutes=1) or t > now() + timedelta(days=60):
-            raise E("slot galat (beet chuka / bahut aage)")
+            raise E("wrong slot (already past / too far ahead)")
         iso = _utc(t).astimezone(timezone.utc).replace(microsecond=0).isoformat()
         if iso in out:
-            raise E("slot dohraya")
+            raise E("slot repeated")
         out.append(iso)
     mins = dl._num(body.get("slot_minutes"), 5, 1440)
     if mins is None:
-        raise E("slot_minutes galat")
+        raise E("wrong slot_minutes")
     est = body.get("estimate") if isinstance(body.get("estimate"), dict) else {}
     e2 = {}
     if est:
         lo, hi = dl._num(est.get("min"), 0, dl.MAX_TOTAL), dl._num(est.get("max"), 0, dl.MAX_TOTAL)
         if lo is None or hi is None or hi < lo:
-            raise E("estimate galat")
+            raise E("wrong estimate")
         e2 = {"min": dl._r2(lo), "max": dl._r2(hi)}
     svc = body["service"]
     wd = dl._num(svc.get("warranty_days"), 0, 3650)
@@ -376,14 +376,14 @@ def confirm_part(d, slot: str, address: str) -> dict[str, Any]:
     t = dl._when(slot) if slot else None
     iso = _utc(t).astimezone(timezone.utc).replace(microsecond=0).isoformat() if t else ""
     if iso not in slots:
-        raise dl.DealError("Inme se ek samay chuniye: " + ", ".join(say_slot(d.tenant_id, s) for s in slots))
+        raise dl.DealError("Choose one of these times: " + ", ".join(say_slot(d.tenant_id, s) for s in slots))
     out = {"slot": iso}
     if q["service"].get("at") == "their_place":
         addr = policy.quote(address, 300)
         if not addr:
-            raise dl.DealError("Kaam aapke ghar / jagah par hoga: pata likhiye (sirf booking par hi unhe jaata hai).")
+            raise dl.DealError("The work will be at your home / place: write the address (it goes to them only when you book).")
         if policy.secret_found(addr):
-            raise dl.DealError("Pate mein mana ki gayi jaankari hai.")
+            raise dl.DealError("The address contains information that is not allowed.")
         out["address"] = addr
     return out
 
@@ -396,15 +396,15 @@ def on_confirm(tenant: str, d, raw: dict[str, Any]) -> dict[str, Any]:
         return {}
     iso = str(raw.get("slot") or "")
     if iso not in (q.get("slots") or []):
-        raise dl.DealError("yeh samay quote mein nahi tha")
+        raise dl.DealError("this time was not in the quote")
     if not slot_free(tenant, iso, d.id):
         STATS["slot_taken"] += 1
-        raise dl.DealError("yeh samay ab khaali nahi; naya quote maangiye")
+        raise dl.DealError("this time is no longer free; ask for a new quote")
     out = {"slot": iso}
     if q["service"].get("at") == "their_place":
         addr = policy.quote(raw.get("address"), 300)
         if not addr:
-            raise dl.DealError("pata nahi aaya")
+            raise dl.DealError("the address did not come")
         out["address"] = addr
     return out
 
@@ -433,14 +433,14 @@ def tick() -> int:
             key = None
             if d.role == "buyer":
                 if timedelta(hours=1) < left <= timedelta(hours=2) and not tm.get("rem_2h"):
-                    key, say = "rem_2h", f"Yaad dila doon: {dl._say_who(d.peer)} {say_slot(d.tenant_id, _slot_of(d))} ko ({d.number})."
+                    key, say = "rem_2h", f"Reminder: {dl._say_who(d.peer)}, {say_slot(d.tenant_id, _slot_of(d))} ({d.number})."
                 elif timedelta(hours=2) < left <= timedelta(hours=24) and not tm.get("rem_1d"):
-                    key, say = "rem_1d", f"Kal / aaj: {dl._say_who(d.peer)} ke saath {say_slot(d.tenant_id, _slot_of(d))} ({d.number})."
+                    key, say = "rem_1d", f"Coming up: {dl._say_who(d.peer)}, {say_slot(d.tenant_id, _slot_of(d))} ({d.number})."
             else:
                 if timedelta(0) < left <= timedelta(hours=12) and not tm.get("rem_job"):
-                    key, say = "rem_job", (f"Aaj ka kaam {d.number}: {((d.quote or {}).get('service') or {}).get('what', '')} "
+                    key, say = "rem_job", (f"Today's job {d.number}: {((d.quote or {}).get('service') or {}).get('what', '')} "
                                            f"{say_slot(d.tenant_id, _slot_of(d))}" +
-                                           (f", pata: {(d.ask or {}).get('address')}" if (d.ask or {}).get("address") else ""))
+                                           (f", address: {(d.ask or {}).get('address')}" if (d.ask or {}).get("address") else ""))
             if key:
                 tm[key] = 1
                 with session() as s:

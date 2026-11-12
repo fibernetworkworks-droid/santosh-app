@@ -89,7 +89,7 @@ async def setup() -> dict[str, Any]:
 
 def _one_card(p: dict) -> None:
     if any(a.get("status") == "pending" for a in (p.get("approvals") or {}).values()):
-        raise ShowcaseError("A price card is already waiting for your Haan below.")
+        raise ShowcaseError("A price card is already waiting for your Yes below.")
 
 
 async def ask_pictures() -> dict[str, Any]:

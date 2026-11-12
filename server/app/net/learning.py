@@ -72,34 +72,34 @@ def validate_skill(skill: Any) -> dict[str, Any]:
         try:
             skill = json.loads(skill)
         except ValueError:
-            raise NetError("Skill JSON format mein honi chahiye: {name, when, steps:[{tool, do}]}.")
+            raise NetError("A skill must be in JSON format: {name, when, steps:[{tool, do}]}.")
     if not isinstance(skill, dict):
-        raise NetError("Skill ka format galat hai.")
+        raise NetError("The skill's format is wrong.")
     name = str(skill.get("name") or "").strip()[:120]
     when = str(skill.get("when") or "").strip()[:400]
     steps = skill.get("steps")
     if not name or not when or not isinstance(steps, list) or not 1 <= len(steps) <= 12:
-        raise NetError("Skill mein name, when aur 1 se 12 steps chahiye.")
+        raise NetError("A skill needs name, when and 1 to 12 steps.")
     clean = []
     for i, st in enumerate(steps, 1):
         if not isinstance(st, dict):
-            raise NetError(f"Step {i} ka format galat hai.")
+            raise NetError(f"Step {i} has a wrong format.")
         tool = str(st.get("tool") or "").strip()
         do = str(st.get("do") or "").strip()[:400]
         if tool not in SKILL_TOOLS:
-            raise NetError(f"Step {i}: '{tool}' tool skills mein allowed nahi hai (sirf padhne / draft / reminder jaise "
-                           "surakshit tools; paise, bhejna, mitana kabhi nahi).")
+            raise NetError(f"Step {i}: '{tool}' tool is not allowed in skills (only safe tools like reading / drafting / reminders; "
+                           "never money, sending or deleting).")
         args = st.get("args") if isinstance(st.get("args"), dict) else {}
         blob = do + " " + json.dumps(args, ensure_ascii=False)
         if _INJECT.search(blob) or policy.secret_found(blob):
-            raise NetError(f"Step {i} mein mana ki gayi baat hai (niyam todne, bina poochhe karne, PIN / OTP jaisi).")
+            raise NetError(f"Step {i} contains something that is not allowed (breaking rules, acting without asking, things like PIN / OTP).")
         if _URL.search(blob):
-            raise NetError(f"Step {i} mein website / link nahi ho sakta (skills data bahar nahi bhej sakti).")
+            raise NetError(f"Step {i} cannot contain a website / link (skills cannot send data outside).")
         clean.append({"tool": tool, "do": do, "args": {str(k)[:40]: (v if isinstance(v, (int, float, bool)) else str(v)[:300])
                                                         for k, v in list(args.items())[:10]}})
     for text in (name, when, str(skill.get("notes") or "")):
         if _INJECT.search(text) or policy.secret_found(text) or _URL.search(text):
-            raise NetError("Skill ke naam / when / notes mein mana ki gayi baat hai.")
+            raise NetError("The skill's name / when / notes contain something that is not allowed.")
     return {"name": name, "when": when, "steps": clean, "notes": str(skill.get("notes") or "")[:600]}
 
 
@@ -112,12 +112,12 @@ def _rules(tenant: str) -> dict[str, Any]:
 def learn(tenant: str, text: str, topic: str = "", source: str = "work") -> dict[str, Any]:
     r = _rules(tenant)
     if not (r.get("learning") or {}).get("learn_from_my_work", True) and source == "work":
-        raise NetError("Mere Niyam mein 'kaam se seekhna' band hai.")
+        raise NetError("'Learning from work' is off in My Rules.")
     text = re.sub(r"\s+", " ", (text or "").strip())[:1000]
     if len(text) < 8:
-        raise NetError("Kya seekha? Thoda saaf likhiye.")
+        raise NetError("What was learned? Write it a little more clearly.")
     if policy.secret_found(text):
-        raise NetError("Seekh mein PIN / OTP / password jaisi cheez nahi rakhi ja sakti.")
+        raise NetError("A learning cannot hold things like a PIN / OTP / password.")
     with session() as s:
         dup = s.scalars(select(Lesson).where(Lesson.tenant_id == tenant, Lesson.text == text, Lesson.status == "active")).first()
         if dup:
@@ -136,7 +136,7 @@ def _lesson(tenant: str, lid: str) -> Lesson:
     with session() as s:
         les = s.get(Lesson, lid)
         if les is None or les.tenant_id != tenant:
-            raise NetError("Yeh seekh nahi mili.")
+            raise NetError("This learning was not found.")
         s.expunge(les)
         return les
 
@@ -161,7 +161,7 @@ def offer_share(tenant: str, lid: str, auto: bool = False) -> dict[str, Any]:
     if auto:
         return share(tenant, lid, [t["cid"] for t in targets])
     tell(tenant, "hoola_lesson", lesson_view(_lesson(tenant, lid)) | {"communities": [{"cid": t["cid"], "name": t["name"]} for t in targets]},
-         f"Maine yeh seekha: \"{les.text[:200]}\". Samaj ke saath (bina personal jaankari) share karun? lesson_id={lid}")
+         f"I learned this: \"{les.text[:200]}\". Share it with the community (without personal information)? lesson_id={lid}")
     return {"status": "proposed"}
 
 
@@ -193,7 +193,7 @@ def decline_share(tenant: str, lid: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(Lesson, lid)
         if row is None or row.tenant_id != tenant:
-            raise NetError("Yeh seekh nahi mili.")
+            raise NetError("This learning was not found.")
         row.share_status = "declined"
     return {"status": "declined"}
 
@@ -202,7 +202,7 @@ def forget(tenant: str, lid: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(Lesson, lid)
         if row is None or row.tenant_id != tenant:
-            raise NetError("Yeh seekh nahi mili.")
+            raise NetError("This learning was not found.")
         row.status = "forgotten"
     return {"status": "forgotten"}
 
@@ -230,13 +230,13 @@ def install(tenant: str, ref: str, cid: str, skill: dict[str, Any]) -> dict[str,
 
 def set_skill(tenant: str, sid: str, status: str) -> dict[str, Any]:
     if status not in ("active", "off"):
-        raise NetError("status: active ya off")
+        raise NetError("status: active or off")
     with session() as s:
         row = s.get(InstalledSkill, sid)
         if row is None or row.tenant_id != tenant:
-            raise NetError("Yeh skill nahi mili.")
+            raise NetError("This skill was not found.")
         if row.status == "recalled":
-            raise NetError("Yeh skill Samaj ne wapas le li hai (recall).")
+            raise NetError("The community has withdrawn this skill (recall).")
         row.status = status
     return {"status": status}
 
@@ -250,8 +250,8 @@ def recall(tenant: str, cid: str, ref: str) -> int:
             row.status = "recalled"
             n += 1
             tenant, name = row.tenant_id, row.name
-            tell(tenant, "hoola_msg", {"kind": "skill_recall", "fyi": True, "from": "Hoola Samaj",
-                                       "text": f"Skill '{name}' Samaj ne wapas le li; maine use karna band kar diya."})
+            tell(tenant, "hoola_msg", {"kind": "skill_recall", "fyi": True, "from": "Hoola Community",
+                                       "text": f"Skill '{name}' was withdrawn by the community; I have stopped using it."})
     return n
 
 

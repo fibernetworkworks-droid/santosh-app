@@ -131,7 +131,7 @@ def test_free_talk_runs_by_itself_shares_experience_and_stops_loops(env, ai, mon
     for _ in range(6):
         dosti.tick()
     paused = [e for e in ev("default", "hoola_dosti") + ev("kunal", "hoola_dosti") if e.get("card") == "paused"]
-    assert paused and "baar aapas mein" in paused[0]["why"]
+    assert paused and "back-and-forth" in paused[0]["why"]
     th = {x["thread_id"]: x for x in dosti.threads("default")}
     assert th[tid_d]["paused"] or any(x["paused"] for x in dosti.threads("kunal"))
     dosti.pause("default", tid_d, False)
@@ -163,20 +163,20 @@ def test_documents_go_only_on_her_tap(env, ai):
     out = asyncio.run(dispatch("hoola_dosti", {"action": "doc_requests"}, Ctx("default", net.home_conv("default"))))
     assert out["doc_requests"][0]["status"] == "waiting"
     assert dosti.doc_answer("default", ask["id"], "send", gst)["status"] == "needs_tap"
-    with pytest.raises(dosti.DostiError, match="pehchaan"):
+    with pytest.raises(dosti.DostiError, match="dentity document"):
         dosti.doc_answer("default", ask["id"], "send", aad, by_tap=True)
     res = dosti.doc_answer("default", ask["id"], "send", gst, by_tap=True)
     assert res["status"] == "sent" and res["send"]["status"] in ("pending", "auto")
     k = ev("kunal", "hoola_knock")[-1]
     assert k["name"] == "FNW GST certificate.pdf"
-    with pytest.raises(dosti.DostiError, match="jawab ho chuka"):
+    with pytest.raises(dosti.DostiError, match="already been answered"):
         dosti.doc_answer("default", ask["id"], "decline", by_tap=True)
     # a document asked inside free talk becomes the same card; a no goes back politely
     dosti.ask_doc("kunal", "@meghana.fnw", "rate list")
     a2 = [x for x in dosti.doc_asks("default") if x["what"] == "rate list"][0]
     assert dosti.doc_answer("default", a2["id"], "decline", by_tap=True)["status"] == "declined"
     assert [x for x in dosti.doc_asks("kunal") if x["what"] == "rate list"][0]["status"] == "declined"
-    with pytest.raises(dosti.DostiError, match="pehchaan"):
+    with pytest.raises(dosti.DostiError, match="dentity document"):
         dosti.ask_doc("kunal", "@meghana.fnw", "Aapka Aadhaar card")
     # the brain spotting a document request in a chat makes the card too
     t = dosti.talk("kunal", "@meghana.fnw", "Kya mujhe aapka GST certificate mil sakta hai?")
@@ -219,7 +219,7 @@ def test_skills_from_friends_only_on_her_yes_and_skill_video(env, ai, monkeypatc
     dosti.sync("default")
     e = dosti.experiences("default")[0]
     assert dosti.make_video("default", e["id"])["status"] == "rendering" and made["kind"] == "explainer"
-    assert "SSL" in made["data"]["tagline"] and made["data"]["cta"]["extra"] == "AI se bana"
+    assert "SSL" in made["data"]["tagline"] and made["data"]["cta"]["extra"] == "Made with AI"
     import tempfile
     from pathlib import Path
     mp4 = Path(tempfile.mkdtemp()) / "v.mp4"
@@ -228,7 +228,7 @@ def test_skills_from_friends_only_on_her_yes_and_skill_video(env, ai, monkeypatc
     monkeypatch.setattr(motion, "file_path", lambda vid, what: mp4)
     r = dosti.send_video("default", e["id"], "@kunal.raj")
     assert r["status"] == "needs_approval"                          # share_videos = ask (default)
-    assert ev("default", "hoola_outbox")[-1]["reason"] == "skill video bhejna"
+    assert ev("default", "hoola_outbox")[-1]["reason"] == "sending a skill video"
 
 
 def test_tool_owner_only_and_api(env, ai):

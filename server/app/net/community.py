@@ -23,7 +23,7 @@ from .service import EXTRA_KINDS, NOLINK_KINDS, NetError, _post, tell
 
 KINDS = {"question", "answer", "card", "skill", "alert"}
 ALERT_TYPES = {"fraud_apk": "Fraud app (APK / EXE)", "scam_number": "Fraud phone number", "fraud_link": "Fraud website",
-               "outage": "Service band / outage", "other": "Chetavni"}
+               "outage": "Service down / outage", "other": "Warning"}
 MAX_MEMBERS = 5000
 REPORTS_TO_HIDE = 3
 
@@ -100,7 +100,7 @@ def _crow(tenant: str, cid: str) -> Community:
                     c = x
                     break
         if c is None:
-            raise NetError("Yeh Samaj nahi mila.")
+            raise NetError("This community was not found.")
         s.expunge(c)
         return c
 
@@ -138,9 +138,9 @@ def _hub_role(cid: str, addr: str) -> str:
 def create(tenant: str, name: str, topic: str = "", description: str = "", visibility: str = "open", emoji: str = "") -> dict[str, Any]:
     name = re.sub(r"\s+", " ", (name or "").strip())[:100]
     if len(name) < 3:
-        raise NetError("Samaj ka naam bataiye.")
+        raise NetError("Give the community a name.")
     if policy.secret_found(name + " " + description):
-        raise NetError("Naam / jaankari mein mana ki gayi cheez hai.")
+        raise NetError("The name / details contain something that is not allowed.")
     cid = "sam_" + secrets.token_hex(8)
     me = _me(tenant)
     with session() as s:
@@ -171,30 +171,30 @@ def join(tenant: str, cid: str, hub: str = "") -> dict[str, Any]:
     if not hub:
         d = next((x for x in directory(tenant) if x["cid"] == cid), None)
         if d is None:
-            raise NetError("Yeh Samaj nahi mila.")
+            raise NetError("This community was not found.")
         hub = d["hub"]
     if hub == _me(tenant):
-        raise NetError("Yeh aapka apna Samaj hai.")
+        raise NetError("This is your own community.")
     with session() as s:
         c = s.scalars(select(Community).where(Community.tenant_id == tenant, Community.cid == cid)).first()
         if c and c.status == "active":
             return view(c)
         if c and c.status == "banned":
-            raise NetError("Aap is Samaj mein nahi aa sakte.")
+            raise NetError("You cannot join this community.")
         if c is None:
             c = Community(tenant_id=tenant, cid=cid, hub=hub, name="Samaj")
             s.add(c)
         c.status = "pending"
     r = _post(tenant, hub, "sam_join", {"cid": cid}, "tk_" + cid)
     if not r.get("ok"):
-        raise NetError(r.get("reason") or "Join nahi ho paya.")
+        raise NetError(r.get("reason") or "Could not join.")
     return view(_crow(tenant, cid)) | {"status": r.get("status")}
 
 
 def leave(tenant: str, cid: str) -> dict[str, Any]:
     c = _crow(tenant, cid)
     if c.role == "owner":
-        raise NetError("Samaj banane wale use chhod nahi sakte.")
+        raise NetError("The person who created a community cannot leave it.")
     with session() as s:
         s.get(Community, c.id).status = "left"
     _post(tenant, c.hub, "sam_leave", {"cid": c.cid}, "tk_" + c.cid)
@@ -222,19 +222,19 @@ def my_communities(tenant: str) -> list[dict[str, Any]]:
 def _check(kind: str, data: dict[str, Any]) -> dict[str, Any]:
     from .privacy import scrub
     if kind not in KINDS:
-        raise NetError("Samaj mein: question, answer, card, skill ya alert.")
+        raise NetError("In a community: question, answer, card, skill or alert.")
     out: dict[str, Any] = {"kind": kind}
     if policy.secret_found(policy.all_text(data)):
-        raise NetError("Samaj mein PIN / OTP / password / card / Aadhaar jaisi jaankari nahi.")
+        raise NetError("No information like a PIN / OTP / password / card / Aadhaar in a community.")
     text, _ = scrub(str(data.get("text") or ""), keep_money=kind in ("card", "answer"))
     title, _ = scrub(str(data.get("title") or ""), keep_money=True)
     out["text"], out["title"] = text[:3000], title[:200]
     if kind == "answer":
         out["parent"] = str(data.get("parent") or "")
         if not out["parent"] or not text:
-            raise NetError("Jawab kis sawaal ka hai, aur kya jawab hai?")
+            raise NetError("Which question is the answer for, and what is the answer?")
     elif kind in ("question", "card") and len(text) < 5:
-        raise NetError("Kuch likhiye.")
+        raise NetError("Write something.")
     if kind == "card":
         src = str(data.get("source") or "")[:500]
         out["data"] = {"source": src} if src else {}
@@ -249,27 +249,27 @@ def _check(kind: str, data: dict[str, Any]) -> dict[str, Any]:
             raise NetError("Alert type: " + ", ".join(ALERT_TYPES))
         val = str(data.get("value") or "").strip()[:300]
         if t == "fraud_apk" and not re.fullmatch(r"[0-9a-f]{64}", val.lower()):
-            raise NetError("Fraud app alert ke liye file ka SHA-256 (App Jaanch se) chahiye.")
+            raise NetError("A fraud app alert needs the file's SHA-256 (from App Check).")
         if t == "scam_number":
             val = re.sub(r"[^\d+]", "", val)
             if len(re.sub(r"\D", "", val)) < 6:
-                raise NetError("Number dijiye.")
+                raise NetError("Give the number.")
         if t == "fraud_link":
             from urllib.parse import urlparse
             val = (urlparse(val if "://" in val else "https://" + val).hostname or "").lower()
             if not val:
-                raise NetError("Website ka domain dijiye.")
+                raise NetError("Give the website's domain.")
         out["data"] = {"type": t, "value": val.lower() if t != "scam_number" else val}
         out["title"] = out["title"] or ALERT_TYPES[t]
     if policy.secret_found(out["text"] + " " + out["title"]):
-        raise NetError("Samaj mein PIN / OTP / password / card / Aadhaar jaisi jaankari nahi.")
+        raise NetError("No information like a PIN / OTP / password / card / Aadhaar in a community.")
     return out
 
 
 def post(tenant: str, cid: str, kind: str, data: dict[str, Any]) -> dict[str, Any]:
     c = _crow(tenant, cid)
     if c.status != "active":
-        raise NetError("Aap is Samaj mein active nahi hain (shayad approval baaki hai).")
+        raise NetError("You are not active in this community (approval may be pending).")
     item = _check(kind, data)
     if c.role == "owner":
         it = _hub_accept(tenant, c.cid, _me(tenant), item)
@@ -283,7 +283,7 @@ def post(tenant: str, cid: str, kind: str, data: dict[str, Any]) -> dict[str, An
             row = s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant, CommunityItem.item_id == iid)).first()
             if row is not None:
                 s.delete(row)
-        raise NetError(r.get("reason") or "Post nahi hua.")
+        raise NetError(r.get("reason") or "Could not post.")
     with session() as s:
         row = s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant, CommunityItem.item_id == iid)).first()
         if row is not None:
@@ -314,13 +314,13 @@ def _store(tenant: str, cid: str, it: dict[str, Any]) -> CommunityItem:
 def _hub_accept(hub_tenant: str, cid: str, author: str, item: dict[str, Any], item_id: str = "") -> dict[str, Any]:
     role = _hub_role(cid, author)
     if not role:
-        raise NetError("Aap is Samaj ke member nahi hain.")
+        raise NetError("You are not a member of this community.")
     since = now() - timedelta(days=1)
     with session() as s:
         n = s.query(CommunityItem).filter(CommunityItem.tenant_id == hub_tenant, CommunityItem.cid == cid,
                                           CommunityItem.author == author, CommunityItem.created_at >= since).count()
     if n >= 30:
-        raise NetError("Aaj Samaj mein bahut post ho chuke.")
+        raise NetError("Too many posts in the community today.")
     status = "waiting" if item["kind"] == "skill" and role == "member" else "available"
     if not re.fullmatch(r"sitem_[0-9a-f]{12}", item_id or "") or _hub_item(hub_tenant, item_id):
         item_id = new_id("sitem")
@@ -335,7 +335,7 @@ def _hub_accept(hub_tenant: str, cid: str, author: str, item: dict[str, Any], it
                 t = idn.tenant_of(m.address)
                 if t:
                     tell(t, "hoola_samaj", {"cid": cid, "event": "review", "item": it,
-                                            "text": f"Nayi skill '{it['title']}' moderator ki manzoori ka intezaar kar rahi hai."})
+                                            "text": f"New skill '{it['title']}' is waiting for a moderator's approval."})
     return it
 
 
@@ -353,7 +353,7 @@ def _fanout(hub_tenant: str, cid: str, it: dict[str, Any], skip: str = "") -> No
 def rate(tenant: str, item: str, helpful: bool) -> dict[str, Any]:
     it, c = _my_item(tenant, item)
     if it.author == _me(tenant):
-        raise NetError("Apni post ko rating nahi de sakte.")
+        raise NetError("You cannot rate your own post.")
     with session() as s:
         s.get(CommunityItem, it.id).mine_rated = True
     if c.role == "owner":
@@ -374,7 +374,7 @@ def moderate(tenant: str, cid: str, action: str, item: str = "", who: str = "") 
     """approve / remove / recall an item, approve / ban a member, make_mod."""
     c = _crow(tenant, cid)
     if c.role not in ("owner", "mod"):
-        raise NetError("Yeh sirf moderator kar sakte hain.")
+        raise NetError("Only moderators can do this.")
     body = {"cid": c.cid, "action": action}
     if item:
         it, _ = _my_item(tenant, item)
@@ -392,7 +392,7 @@ def _my_item(tenant: str, ref: str) -> tuple[CommunityItem, Community]:
         it = s.scalars(select(CommunityItem).where(CommunityItem.tenant_id == tenant,
                                                    (CommunityItem.id == ref) | (CommunityItem.item_id == ref))).first()
         if it is None:
-            raise NetError("Yeh post nahi mili.")
+            raise NetError("This post was not found.")
         s.expunge(it)
     return it, _crow(tenant, it.cid)
 
@@ -456,7 +456,7 @@ def _hub_report(hub_tenant: str, cid: str, item_id: str, by: str) -> dict[str, A
     for m in _hub_members(cid):
         if m.role in ("owner", "mod") and idn.tenant_of(m.address):
             tell(idn.tenant_of(m.address), "hoola_samaj", {"cid": cid, "event": "report", "item": _item_dict(it),
-                                                           "text": f"'{it.title or it.text[:40]}' par report aayi ({it.reports})."})
+                                                           "text": f"'{it.title or it.text[:40]}' was reported ({it.reports})."})
     return {"status": "reported"}
 
 
@@ -469,11 +469,11 @@ def _item_dict(it: CommunityItem) -> dict[str, Any]:
 def _hub_mod(hub_tenant: str, body: dict[str, Any], by: str) -> dict[str, Any]:
     cid, action = body["cid"], body.get("action")
     if _hub_role(cid, by) not in ("owner", "mod"):
-        return {"ok": False, "status": "refused", "reason": "moderator nahi"}
+        return {"ok": False, "status": "refused", "reason": "not a moderator"}
     if action in ("approve", "remove", "recall", "restore"):
         it = _hub_item(hub_tenant, str(body.get("item_id") or ""))
         if it is None:
-            return {"ok": False, "status": "refused", "reason": "post nahi mili"}
+            return {"ok": False, "status": "refused", "reason": "post not found"}
         was = it.status
         new = {"approve": "available", "remove": "removed", "recall": "recalled", "restore": "available"}[action]
         with session() as s:
@@ -495,10 +495,10 @@ def _hub_mod(hub_tenant: str, body: dict[str, Any], by: str) -> dict[str, Any]:
                 try:
                     addr = resolve(hub_tenant, who)
                 except NetError:
-                    return {"ok": False, "status": "refused", "reason": "member nahi mila"}
+                    return {"ok": False, "status": "refused", "reason": "member not found"}
                 m = s.scalars(select(CommunityMember).where(CommunityMember.cid == cid, CommunityMember.address == addr)).first()
                 if m is None:
-                    return {"ok": False, "status": "refused", "reason": "member nahi mila"}
+                    return {"ok": False, "status": "refused", "reason": "member not found"}
             if m.role == "owner":
                 return {"ok": False, "status": "refused", "reason": "owner"}
             if action == "approve_member":
@@ -611,9 +611,9 @@ def _show(tenant: str, cid: str, it: dict[str, Any]) -> None:
     payload = {"cid": cid, "community": c.name, "item": it, "quiet": quiet, "event": "item", "for_me": mine_q}
     note = ""
     if it["kind"] == "alert":
-        note = f"Samaj '{c.name}' se chetavni: {it.get('title')}: {it.get('text', '')[:200]} (jaankari)."
+        note = f"Warning from community '{c.name}': {it.get('title')}: {it.get('text', '')[:200]} (information)."
     elif mine_q:
-        note = f"Aapke sawaal ka Samaj '{c.name}' mein jawab aaya: \"{it.get('text', '')[:300]}\" (jaankari)."
+        note = f"Your question got an answer in community '{c.name}': \"{it.get('text', '')[:300]}\" (information)."
     tell(tenant, "hoola_samaj", payload, note)
 
 
@@ -643,13 +643,13 @@ def _maybe_answer(tenant: str, c: Community, it: dict[str, Any], rules: dict[str
         try:
             post(tenant, c.cid, "answer", {"parent": it["item_id"], "text": ans})
             tell(tenant, "hoola_samaj", {"cid": c.cid, "community": c.name, "event": "answered", "fyi": True, "quiet": True,
-                                         "text": f"Samaj '{c.name}' mein ek sawaal ka jawab maine aapki seekh se diya (bina personal jaankari)."})
+                                         "text": f"In community '{c.name}', I answered a question from what you have taught me (no personal information)."})
         except NetError:
             pass
         return
     tell(tenant, "hoola_samaj", {"cid": c.cid, "community": c.name, "event": "can_answer", "item": it, "draft": ans,
                                  "removed": removed},
-         f"Samaj '{c.name}' mein sawaal aaya jiska jawab meri seekh mein hai. Draft: \"{ans[:200]}\". Owner haan kahe to bhejun.")
+         f"Community '{c.name}' has a question that my learning can answer. Draft: \"{ans[:200]}\". I send it only if the owner says yes.")
 
 
 def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules: dict[str, Any]) -> dict[str, Any]:
@@ -660,18 +660,18 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
         with session() as s:
             c = s.scalars(select(Community).where(Community.tenant_id == tenant, Community.cid == cid, Community.role == "owner")).first()
             if c is None:
-                return {"ok": False, "status": "refused", "reason": "Samaj nahi mila"}
+                return {"ok": False, "status": "refused", "reason": "community not found"}
             vis, name = c.visibility, c.name
         if kind == "sam_join":
             if policy.too_many(tenant, sender):
-                return {"ok": False, "status": "refused", "reason": "bahut requests"}
+                return {"ok": False, "status": "refused", "reason": "too many requests"}
             with session() as s:
                 m = s.scalars(select(CommunityMember).where(CommunityMember.cid == cid, CommunityMember.address == sender)).first()
                 n = s.query(CommunityMember).filter(CommunityMember.cid == cid, CommunityMember.status == "active").count()
                 if m is not None and m.status == "banned":
-                    return {"ok": False, "status": "refused", "reason": "Is Samaj mein nahi aa sakte."}
+                    return {"ok": False, "status": "refused", "reason": "You cannot join this community."}
                 if n >= MAX_MEMBERS:
-                    return {"ok": False, "status": "refused", "reason": "Samaj bhar gaya hai."}
+                    return {"ok": False, "status": "refused", "reason": "The community is full."}
                 if m is None:
                     m = CommunityMember(cid=cid, address=sender)
                     s.add(m)
@@ -681,10 +681,10 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
                 _welcome(tenant, cid, sender)
             else:
                 tell(tenant, "hoola_samaj", {"cid": cid, "community": name, "event": "join_request", "from": idn.label(card),
-                                             "address": sender}, f"{idn.label(card)} Samaj '{name}' mein aana chahte hain.")
+                                             "address": sender}, f"{idn.label(card)} wants to join community '{name}'.")
             return {"ok": True, "status": st}
         if not _hub_role(cid, sender):
-            return {"ok": False, "status": "refused", "reason": "Aap is Samaj ke member nahi hain."}
+            return {"ok": False, "status": "refused", "reason": "You are not a member of this community."}
         if kind == "sam_leave":
             with session() as s:
                 m = s.scalars(select(CommunityMember).where(CommunityMember.cid == cid, CommunityMember.address == sender)).first()
@@ -707,7 +707,7 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
     with session() as s:
         c = s.scalars(select(Community).where(Community.tenant_id == tenant, Community.cid == cid)).first()
         if c is None or c.hub != sender:
-            return {"ok": False, "status": "refused", "reason": "Samaj nahi"}
+            return {"ok": False, "status": "refused", "reason": "no such community"}
         if kind == "sam_welcome":
             c.name, c.topic = str(body.get("name") or c.name)[:100], str(body.get("topic") or "")[:120]
             c.description, c.emoji = str(body.get("description") or "")[:1000], str(body.get("emoji") or "🌐")[:8]
@@ -723,7 +723,7 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
                     except NetError:
                         continue
         tell(tenant, "hoola_samaj", {"cid": cid, "community": name, "event": "joined", "fyi": True},
-             f"Samaj '{name}' mein aa gaye.")
+             f"Joined community '{name}'.")
         return {"ok": True, "status": "active"}
     if kind == "sam_item":
         it = body.get("item") or {}
@@ -783,9 +783,9 @@ def _valid_item(it: Any) -> tuple[bool, dict[str, Any]]:
 def install_skill(tenant: str, item: str) -> dict[str, Any]:
     it, c = _my_item(tenant, item)
     if it.kind != "skill":
-        raise NetError("Yeh skill nahi hai.")
+        raise NetError("This is not a skill.")
     if it.status != "available":
-        raise NetError("Yeh skill abhi install nahi ho sakti (manzoori / jaanch baaki, ya wapas le li gayi).")
+        raise NetError("This skill cannot be installed yet (approval / check pending, or it was withdrawn).")
     from .learning import install
     return install(tenant, it.item_id, c.cid, (it.data or {}).get("skill") or {})
 

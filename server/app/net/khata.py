@@ -117,7 +117,7 @@ def _peer(tenant: str, who: str) -> str:
         raise KhataError(str(e)) from e
     l = _link(tenant, p)
     if l is None or l.status != "active":
-        raise KhataError(f"{who} se Hoola connection nahi hai.")
+        raise KhataError(f"{who} has no Hoola connection with you.")
     return p
 
 
@@ -183,9 +183,9 @@ def open_account(tenant: str, who: str, limit: Any, days: Any = 15, status: str 
     try:
         lim, dys = float(limit), int(days or 15)
     except (TypeError, ValueError) as e:
-        raise KhataError("Seema (rupaye) aur din number mein likhiye.") from e
+        raise KhataError("Write the limit (rupees) and the days as numbers.") from e
     if not (0 <= lim <= MAX_LIMIT) or not (1 <= dys <= 365):
-        raise KhataError("Seema 0 se 50 lakh tak, din 1 se 365 tak.")
+        raise KhataError("The limit is 0 to 50 lakh, the days 1 to 365.")
     with session() as s:
         a = s.scalars(select(KhataAccount).where(KhataAccount.tenant_id == tenant, KhataAccount.peer == peer)).first()
         if a is None:
@@ -233,23 +233,23 @@ def request(tenant: str, who: str, amount: Any = None) -> dict[str, Any]:
     peer = _peer(tenant, who)
     bal = balance(tenant, peer, "seller")
     if bal <= 0:
-        raise KhataError(f"{_who(peer)} ka khata saaf hai.")
+        raise KhataError(f"{_who(peer)}'s credit account is clear.")
     pe = dealpay.payee(tenant)
     if not pe:
-        raise KhataError("Pehle apna UPI ID daaliye (Khareed aur bikri > Niyam).")
+        raise KhataError("Add your UPI ID first (Buying and selling > Rules).")
     try:
         amt = bal if amount in (None, "", 0) else _r2(float(amount))
     except (TypeError, ValueError) as e:
-        raise KhataError("Rakam number mein.") from e
+        raise KhataError("The amount must be a number.") from e
     if not (0 < amt <= bal + 0.01):
-        raise KhataError(f"Rakam {bal:,.2f} tak (itna baaki hai).")
+        raise KhataError(f"Amount up to {bal:,.2f} (that is what is due).")
     ref = new_id("kr")[:20]
     r = _post(tenant, peer, "khata_pay", {"ref": ref, "amount": amt, "upi_id": pe["upi_id"], "name": pe["name"],
                                           "balance": bal, "business_verified": pe["business_verified"]}, new_id("tk"))
     if not r.get("ok"):
-        raise KhataError(f"{_who(peer)} tak nahi pahuncha: {r.get('reason') or r.get('status')}")
+        raise KhataError(f"{_who(peer)} could not be reached: {r.get('reason') or r.get('status')}")
     STATS["reminders"] += 1
-    return {"status": "requested", "amount": amt, "say": f"{_who(peer)} ko khata ke Rs {amt:,.2f} ka payment card bheja."}
+    return {"status": "requested", "amount": amt, "say": f"{_who(peer)}: payment card sent for Rs {amt:,.2f} on the credit account."}
 
 
 def received(tenant: str, who: str, amount: Any, mode: str = "upi", utr: str = "") -> dict[str, Any]:
@@ -261,14 +261,14 @@ def received(tenant: str, who: str, amount: Any, mode: str = "upi", utr: str = "
     try:
         amt = _r2(float(amount))
     except (TypeError, ValueError) as e:
-        raise KhataError("Rakam number mein.") from e
+        raise KhataError("The amount must be a number.") from e
     if not (0 < amt <= max(bal, 0) + 0.01):
-        raise KhataError(f"Khata mein Rs {bal:,.2f} baaki hai; isse zyada jama nahi.")
+        raise KhataError(f"The credit account has Rs {bal:,.2f} due; more than that cannot be recorded.")
     if mode not in ("upi", "cash", "bank"):
         raise KhataError("mode: upi, cash, bank")
     utr = re.sub(r"\s", "", str(utr or ""))
     if utr and not UTR_RE.match(utr):
-        raise KhataError("UTR / reference 10-22 akshar / ank ka hota hai.")
+        raise KhataError("A UTR / reference is 10-22 letters / numbers.")
     with session() as s:
         r = s.get(dl.DealRules, tenant) or dl.DealRules(tenant_id=tenant)
         s.add(r)
@@ -281,7 +281,7 @@ def received(tenant: str, who: str, amount: Any, mode: str = "upi", utr: str = "
     sent = _post(tenant, peer, "khata_receipt", {"receipt": no, "amount": amt, "mode": mode, "utr_tail": utr[-6:],
                                                   "balance": left}, new_id("tk"))
     return {"status": "received", "receipt": no, "balance": left, "sent": bool(sent.get("ok")),
-            "say": f"Khata mein Rs {amt:,.2f} jama ({no}). Baaki Rs {left:,.2f}."}
+            "say": f"Credit account: Rs {amt:,.2f} received ({no}). Still due Rs {left:,.2f}."}
 
 
 # ---------------------------------------------------------------- buyer: the payment card for a khata balance
@@ -291,7 +291,7 @@ def pay_link(tenant: str, who: str) -> dict[str, Any]:
     peer = _peer(tenant, who)
     rq = _card(tenant, peer)
     if not rq:
-        raise KhataError("Is dukaan ka koi khata payment card nahi hai.")
+        raise KhataError("This shop has no credit account payment card.")
     with session() as s:
         pin = s.scalars(select(PayeePin).where(PayeePin.tenant_id == tenant, PayeePin.peer == peer)).first()
         pinned = pin.upi_id if pin else ""
@@ -303,7 +303,7 @@ def pay_link(tenant: str, who: str) -> dict[str, Any]:
         out |= {"status": "payee_changed", "was": pinned}
         return out
     out |= {"status": "ok", "url": f"upi://pay?pa={q(rq['upi_id'])}&pn={q(rq['name'])}&am={rq['amount']:.2f}&cu=INR"
-                                   f"&tn={q('Khata')}&tr={q(rq['ref'])}"}
+                                   f"&tn={q('Credit account')}&tr={q(rq['ref'])}"}
     return out
 
 
@@ -313,7 +313,7 @@ def trust_payee(tenant: str, who: str) -> dict[str, Any]:
     peer = _peer(tenant, who)
     rq = _card(tenant, peer)
     if not rq:
-        raise KhataError("Is dukaan ka koi khata payment card nahi hai.")
+        raise KhataError("This shop has no credit account payment card.")
     with session() as s:
         p = s.scalars(select(PayeePin).where(PayeePin.tenant_id == tenant, PayeePin.peer == peer)).first()
         if p is None:
@@ -328,14 +328,14 @@ def claim_paid(tenant: str, who: str, utr: str = "") -> dict[str, Any]:
     peer = _peer(tenant, who)
     rq = _card(tenant, peer)
     if not rq:
-        raise KhataError("Is dukaan ka koi khata payment card nahi hai.")
+        raise KhataError("This shop has no credit account payment card.")
     utr = re.sub(r"\s", "", str(utr or ""))
     if utr and not UTR_RE.match(utr):
-        raise KhataError("UTR / UPI reference 12 ank ka hota hai.")
+        raise KhataError("A UTR / UPI reference is 12 numbers.")
     r = _post(tenant, peer, "khata_paid", {"ref": rq["ref"], "amount": rq["amount"], "utr": utr}, new_id("tk"))
     if not r.get("ok"):
-        raise KhataError(r.get("reason") or "nahi pahuncha")
-    return {"status": "claimed", "say": "Dukaan ko bata diya; unke 'paisa mila' kehne par rasid aayegi."}
+        raise KhataError(r.get("reason") or "did not get through")
+    return {"status": "claimed", "say": "The shop has been told; the receipt comes when they say 'Money received'."}
 
 
 # ---------------------------------------------------------------- receiving
@@ -344,42 +344,42 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules_
     kind, raw, peer = env["kind"], env.get("body") or {}, env["from"]
     if policy.secret_found(policy.all_text(raw)):
         STATS["refused"] += 1
-        return {"ok": False, "status": "refused", "reason": "mana ki gayi jaankari"}
+        return {"ok": False, "status": "refused", "reason": "information that is not allowed"}
     who = idn.label(card)
     try:
         amt = _r2(float(raw.get("amount")))
     except (TypeError, ValueError):
-        return {"ok": False, "status": "refused", "reason": "rakam galat"}
+        return {"ok": False, "status": "refused", "reason": "wrong amount"}
     if not (0 < amt <= MAX_LIMIT):
-        return {"ok": False, "status": "refused", "reason": "rakam galat"}
+        return {"ok": False, "status": "refused", "reason": "wrong amount"}
     if kind == "khata_pay":                     # buyer side: only up to what MY mirror says I owe them
         from .share import VPA_RE
         mine = balance(tenant, peer, "buyer")
         vpa = str(raw.get("upi_id") or "")
         if amt > mine + 0.01 or not VPA_RE.match(vpa):
             STATS["refused"] += 1
-            return {"ok": False, "status": "refused", "reason": f"hamare hisaab se khata Rs {mine:,.2f} hai"}
+            return {"ok": False, "status": "refused", "reason": f"by our record the credit account is Rs {mine:,.2f}"}
         _set_card(tenant, peer, {"ref": policy.clean_name(raw.get("ref"), 30), "amount": amt, "upi_id": vpa,
                                  "name": policy.clean_name(raw.get("name"), 80)})
         tell(tenant, "hoola_khata", account_view(tenant, peer, "buyer") | {"card": "pay", "amount": amt, "upi_id": vpa,
-                                                                            "say": f"{who}: khata ke Rs {amt:,.2f} (aapke hisaab se Rs {mine:,.2f} baaki). 'Pay' se aapka UPI app khulega."},
-             f"{who} ne khata ka payment card bheja: Rs {amt:,.2f}. Paisa sirf owner apne UPI app se bhejegi.")
+                                                                            "say": f"{who}: credit account, Rs {amt:,.2f} (by your record Rs {mine:,.2f} is due). 'Pay' opens your UPI app."},
+             f"{who} sent a credit account payment card: Rs {amt:,.2f}. Only the owner sends the money from their own UPI app.")
         return {"ok": True, "status": "shown"}
     if kind == "khata_paid":                    # seller side: a claim; she confirms with 'received'
         from .dealpay import galla_hint
         tell(tenant, "hoola_khata", account_view(tenant, peer, "seller") | {"card": "money", "amount": amt,
-                                                                             "say": f"{who} keh rahe hain khata ke Rs {amt:,.2f} bhej diye" + (f" (UTR {raw.get('utr')})" if raw.get("utr") else "") + ". Bank / UPI mein dekh kar 'Paisa mila' dabaiye." + galla_hint(tenant, amt)},
-             f"{who} ka kehna: khata ke Rs {amt:,.2f} bheje. Yeh sirf unka kehna hai; owner dekh kar hi 'paisa mila' kahe.")
+                                                                             "say": f"{who} says they sent Rs {amt:,.2f} for the credit account" + (f" (UTR {raw.get('utr')})" if raw.get("utr") else "") + ". Check your bank / UPI and then press 'Money received'." + galla_hint(tenant, amt)},
+             f"{who}'s claim: sent Rs {amt:,.2f} for the credit account. This is only their claim; the owner says 'money received' only after checking.")
         return {"ok": True, "status": "claimed"}
     if kind == "khata_receipt":                 # buyer side: the mirror gets the payment
         mine = balance(tenant, peer, "buyer")
         if amt > mine + 0.01:
-            return {"ok": False, "status": "refused", "reason": "rasid khata se zyada"}
+            return {"ok": False, "status": "refused", "reason": "receipt is more than the credit account"}
         no = policy.clean_name(raw.get("receipt"), 20)
         add(tenant, peer, "payment", amt, no, side="buyer", note=str(raw.get("mode") or "")[:8])
         _set_card(tenant, peer, None)
         tell(tenant, "hoola_khata", account_view(tenant, peer, "buyer") | {"card": "receipt", "amount": amt,
-                                                                            "say": f"{who} ne khata ke Rs {amt:,.2f} ki rasid di ({no}). Baaki Rs {balance(tenant, peer, 'buyer'):,.2f}."})
+                                                                            "say": f"{who} gave a receipt for Rs {amt:,.2f} on the credit account ({no}). Still due Rs {balance(tenant, peer, 'buyer'):,.2f}."})
         return {"ok": True, "status": "received"}
     return {"ok": False, "status": "refused", "reason": "unknown"}
 
@@ -403,8 +403,8 @@ def tick() -> int:
                 row.reminded = due
             late = due < date.today().isoformat()
             tell(a.tenant_id, "hoola_khata", account_view(a.tenant_id, a.peer, "seller") | {"card": "due",
-                 "say": f"{_who(a.peer)} ka khata Rs {bal:,.2f} {'ki taareekh ' + due + ' nikal gayi' if late else due + ' tak dena hai'}. "
-                        "Payment card bhejun?"})
+                 "say": f"{_who(a.peer)}'s credit account: Rs {bal:,.2f} {'was due on ' + due + ' (overdue)' if late else due + ' is the due date'}. "
+                        "Send a payment card?"})
             n += 1
         except Exception:
             continue

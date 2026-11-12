@@ -59,14 +59,14 @@ class YouTubeClient:
 
     def _req(self, method: str, url: str, auth: bool = False, **kw) -> Any:
         if auth and not self._token:
-            raise NotConnected("Iske liye apna YouTube channel jodiye: Profile > YouTube > 'YouTube jodiye'.")
+            raise NotConnected("Link your YouTube channel for this: Profile > YouTube > 'Link your YouTube channel'.")
         c = self._client or httpx.Client(timeout=60)
         params = dict(kw.pop("params", None) or {})
         headers = dict(kw.pop("headers", None) or {})
         use_token = auth or (not self.api_key and self._token is not None)
         if not use_token:
             if not self.api_key:
-                raise NotConnected("YouTube ke liye server par YOUTUBE_API_KEY chahiye, ya Profile > YouTube se Google account jodiye.")
+                raise NotConnected("YouTube needs YOUTUBE_API_KEY on the server, or link a Google account from Profile > YouTube.")
             params["key"] = self.api_key
         try:
             for attempt in (0, 1):
@@ -78,7 +78,7 @@ class YouTubeClient:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise YTError(f"YouTube se baat nahi ho payi ({type(e).__name__})")
+            raise YTError(f"Could not reach YouTube ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
@@ -91,15 +91,15 @@ class YouTubeClient:
             except Exception:
                 pass
             if reason in ("quotaExceeded", "dailyLimitExceeded"):
-                raise YTError("Aaj ka YouTube API quota khatam ho gaya; kal phir koshish kijiye.")
+                raise YTError("Today's YouTube API quota is used up; try again tomorrow.")
             if "has not been used" in msg or reason == "accessNotConfigured":
-                raise YTError("Google Cloud project mein YouTube Data API (ya Analytics API) enable nahi hai.")
+                raise YTError("The YouTube Data API (or Analytics API) is not enabled in the Google Cloud project.")
             if reason in ("commentsDisabled",):
-                raise YTError("Is video par comments band hain.")
+                raise YTError("Comments are turned off on this video.")
             if r.status_code == 404 or reason in ("videoNotFound", "channelNotFound"):
-                raise YTError("Yeh video / channel nahi mila.")
+                raise YTError("This video / channel was not found.")
             if r.status_code == 403:
-                raise YTError(f"YouTube ne mana kiya: {msg}")
+                raise YTError(f"YouTube refused: {msg}")
             raise YTError(f"YouTube: {msg}")
         return r.json() if r.content else {}
 
@@ -122,13 +122,13 @@ class YouTubeClient:
                               headers={"X-Upload-Content-Type": mime, "X-Upload-Content-Length": str(len(data))})
         loc = start.headers.get("location")
         if not loc:
-            raise YTError("YouTube ne upload shuru nahi kiya.")
+            raise YTError("YouTube did not start the upload.")
         r = self._req_raw("PUT", loc, content=data, headers={"Content-Type": mime})
         return r.json()
 
     def _req_raw(self, method: str, url: str, **kw) -> httpx.Response:
         if not self._token:
-            raise NotConnected("Upload ke liye apna YouTube channel jodiye.")
+            raise NotConnected("Link your YouTube channel to upload.")
         c = self._client or httpx.Client(timeout=600)
         headers = dict(kw.pop("headers", None) or {})
         try:
@@ -138,7 +138,7 @@ class YouTubeClient:
                     continue
                 break
         except httpx.HTTPError as e:
-            raise YTError(f"Upload mein dikkat ({type(e).__name__})")
+            raise YTError(f"Upload problem ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()

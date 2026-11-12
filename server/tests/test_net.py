@@ -43,11 +43,11 @@ def test_ids_handles_and_lookalikes(env):
     _people()
     a = idn.my_card("default")
     assert a["address"].startswith("hl_") and a["handle"] == "meghana.fnw" and a["avatar_name"] == "Santosh"
-    assert idn.label(idn.my_card("kunal")) == "Kunal ki Meera"
+    assert idn.label(idn.my_card("kunal")) == "Kunal's Meera"
     for bad in ("sbi.help", "ab", "UPPER CASE", "meghana.fnvv", "kunal.ra j"):
         with pytest.raises(idn.IdError):
             idn.set_handle("kunal", bad)
-    with pytest.raises(idn.IdError, match="kisi aur"):
+    with pytest.raises(idn.IdError, match="someone else"):
         idn.set_handle("kunal", "meghana.fnw")
     env_ = idn.sign("default", {"id": "x", "to": "y", "body": {"text": "hi"}})
     assert idn.verify(env_, a["public_key"])
@@ -63,8 +63,8 @@ def test_connect_flow(env):
     out = net.connect("default", "@kunal.raj", relation="business", note="FNW se Meghana")
     assert out["status"] == "requested"
     req = ev("kunal", "hoola_connect")[-1]
-    assert req["status"] == "incoming" and req["label"] == "Meghana ka Santosh" and req["note"] == "FNW se Meghana"
-    with pytest.raises(net.NetError, match="juda nahi"):
+    assert req["status"] == "incoming" and req["label"] == "Meghana's Santosh" and req["note"] == "FNW se Meghana"
+    with pytest.raises(net.NetError, match="not connected"):
         net.send("default", "@kunal.raj", "message", {"text": "hello"})
     net.answer_connect("kunal", req["id"], "accept")
     assert net.connections("default")[0]["status"] == "active" and net.connections("kunal")[0]["status"] == "active"
@@ -76,14 +76,14 @@ def test_connect_flow(env):
 def test_message_knock_decide_reply(env):
     net = _connect()
     out = net.send("default", "Kunal", "message", {"text": "Kal FNW pitch par baat ho sakti hai?"})
-    assert out["status"] == "pending" and out["to"] == "Kunal ki Meera"
+    assert out["status"] == "pending" and out["to"] == "Kunal's Meera"
     knock = ev("kunal", "hoola_knock")[-1]
-    assert knock["from"] == "Meghana ka Santosh" and "Kal FNW" in knock["body"]["text"] and knock["status"] == "pending"
+    assert knock["from"] == "Meghana's Santosh" and "Kal FNW" in knock["body"]["text"] and knock["status"] == "pending"
     assert net.inbox("kunal")[0]["id"] == knock["id"]
     net.decide("kunal", knock["id"], "accept", note="Haan, kal 5 baje")
     got = ev("default", "hoola_msg")[-1]
-    assert "le liya" in got["text"] and "kal 5 baje" in got["text"]
-    with pytest.raises(net.NetError, match="faisla"):
+    assert "has taken" in got["text"] and "kal 5 baje" in got["text"]
+    with pytest.raises(net.NetError, match="already been decided"):
         net.decide("kunal", knock["id"], "accept")
     net.reply("kunal", knock["thread_id"], "Slides bhi le aana")
     assert ev("default", "hoola_msg")[-1]["text"].endswith("Slides bhi le aana")
@@ -140,7 +140,7 @@ def test_meeting_with_slots_and_auto_fix(env, monkeypatch):
     assert len(k["slot_labels"]) == 2
     net.decide("kunal", k["id"], "accept", slot=1)
     m = ev("default", "hoola_msg")[-1]
-    assert m["kind"] == "meeting_ok" and "pakki" in m["text"] and m["event"]["where"] == "reminder"
+    assert m["kind"] == "meeting_ok" and "meeting confirmed" in m["text"] and m["event"]["where"] == "reminder"
     from app.db import Reminder, session
     with session() as s:
         assert {x.tenant_id for x in s.query(Reminder).all()} == {"default", "kunal"}
@@ -151,7 +151,7 @@ def test_meeting_with_slots_and_auto_fix(env, monkeypatch):
     monkeypatch.setattr(cs, "agenda", lambda *a, **k: {"events": []})
     r = net.send("default", "Kunal", "meeting", {"title": "Follow-up", "slots": [when], "minutes": 20})
     assert r["status"] == "auto"
-    assert "khud fix kar di" in ev("kunal", "hoola_msg")[-1]["text"]
+    assert "fixed the meeting myself" in ev("kunal", "hoola_msg")[-1]["text"]
     assert ev("default", "hoola_msg")[-1]["kind"] == "meeting_ok"
 
 
@@ -181,7 +181,7 @@ def test_invite_qr_and_phone(env):
     assert inv["qr_png_b64"] and "connect?c=" in inv["deep_link"]
     net.connect("kunal", invite_code=inv["code"])
     assert net.connections("default", "incoming")[0]["via"] == "qr"
-    with pytest.raises(net.NetError, match="purana"):
+    with pytest.raises(net.NetError, match="too old"):
         net.connect("kunal", invite_code=inv["code"])
     with pytest.raises(net.NetError, match="number"):
         net.resolve("kunal", "9876543210")
@@ -207,6 +207,6 @@ def test_tools_and_api(env):
         assert cl.get("/api/net/connections").json()["connections"][0]["status"] == "active"
         inv = cl.post("/api/net/invite").json()
         page = cl.get(f"/c/{inv['code']}")
-        assert page.status_code == 200 and "Meghana ka Santosh" in page.text and "santosh://connect" in page.text
+        assert page.status_code == 200 and "Meghana&#x27;s Santosh" in page.text and "santosh://connect" in page.text
         assert "purana" in cl.get("/c/nope").text
         assert cl.put("/api/net/me", json={"handle": "SBI"}).status_code == 400

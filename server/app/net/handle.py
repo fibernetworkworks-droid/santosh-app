@@ -45,7 +45,7 @@ RULES = (
     "back, don't end every message with a question. Think before answering: what do they want, what does your owner "
     "want (GOAL), what is the next useful step. Say you are {owner}'s AI avatar if sincerely asked.\n"
     "- You may MAKE something to send if it clearly helps the goal: a short document (note, quotation from ALLOWED_INFO, "
-    "agenda, summary) or a simple picture (greeting, poster). It is NOT sent until your owner taps 'Bhejo'.\n"
+    "agenda, summary) or a simple picture (greeting, poster). It is NOT sent until your owner taps 'Send'.\n"
     "- If the goal is reached, finish. If you cannot do it within these rules, hand back to the owner.\n"
     "Output JSON: {{\"action\": \"reply\" | \"done\" | \"ask_owner\", \"text\": what to say to the other avatar (for reply / "
     "done, may be empty for ask_owner), \"meeting_slot\": ISO time if a meeting was agreed (only from FREE_SLOTS), "
@@ -122,17 +122,17 @@ def _think(tenant: str, thread: Thread, goal: str, latest: str, meeting_minutes:
     except Exception:
         out = {}
     if out.get("action") not in ("reply", "done", "ask_owner"):
-        out = {"action": "ask_owner", "summary": "Main iska jawab pakka nahi kar paya; aap dekh lijiye."}
+        out = {"action": "ask_owner", "summary": "I could not settle the reply to this; please take a look."}
     text = str(out.get("text") or "")
     if policy.secret_found(text):
-        out = {"action": "ask_owner", "summary": "Jawab mein mana ki gayi jaankari aa rahi thi, isliye maine nahi bheja."}
+        out = {"action": "ask_owner", "summary": "The reply was going to carry information that is not allowed, so I did not send it."}
     slot = out.get("meeting_slot")
     if slot:
         free = set(_free_slots(tenant, c["rules"], meeting_minutes))
         if str(slot) not in free:
             out["meeting_slot"] = None
             if out["action"] == "done":
-                out = {"action": "ask_owner", "summary": "Unka bataya samay aapke khaali samay mein nahi tha."}
+                out = {"action": "ask_owner", "summary": "The time they gave was not in your free time."}
     return out
 
 
@@ -166,20 +166,20 @@ def _act(tenant: str, thread: Thread, out: dict[str, Any], meeting: dict[str, An
     if out["action"] == "ask_owner" or thread.turns + 1 > MAX_TURNS:
         _set_mode(tenant, thread.id, "relay")
         tell(tenant, "hoola_msg", {"thread_id": thread.id, "from": who, "kind": "handback", "text":
-             (summary or "Yeh baat ab aap tay kijiye.") + f" (baat-cheet: {_transcript(tenant, thread.id, 4)[-300:]})"},
-             f"{who} ke saath baat mein aapki zaroorat hai: {summary}. thread_id={thread.id}")
+             (summary or "You need to decide this now.") + f" (conversation: {_transcript(tenant, thread.id, 4)[-300:]})"},
+             f"{who}: you are needed in this conversation: {summary}. thread_id={thread.id}")
         return "handback"
     if out.get("meeting_slot"):
         title = (meeting or {}).get("title") or "Meeting"
         mins = _mins((meeting or {}).get("minutes"))
-        ev = _add_to_calendar(tenant, title, str(out["meeting_slot"]), mins, f"Hoola ne fix ki: {who}")
+        ev = _add_to_calendar(tenant, title, str(out["meeting_slot"]), mins, f"Fixed by Hoola: {who}")
         reply(tenant, thread.id, str(out.get("text") or ""), kind="meeting_ok",
               extra={"slot": out["meeting_slot"], "title": title, "minutes": mins, "note": str(out.get("text") or "")[:500],
                      "by_avatar": True})
         _bump(thread.id, "done")
         tell(tenant, "hoola_msg", {"thread_id": thread.id, "from": who, "kind": "handled", "fyi": True, "event": ev,
-                                   "text": summary or f"{who} ke saath meeting fix ho gayi."},
-             f"Maine {who} ke saath meeting fix ki: {out['meeting_slot']}.")
+                                   "text": summary or f"{who}: meeting fixed."},
+             f"I fixed a meeting with {who}: {out['meeting_slot']}.")
         return "done"
     text = str(out.get("text") or "").strip()
     if text:
@@ -189,8 +189,8 @@ def _act(tenant: str, thread: Thread, out: dict[str, Any], meeting: dict[str, An
     if out["action"] == "done":
         _bump(thread.id, "done")
         tell(tenant, "hoola_msg", {"thread_id": thread.id, "from": who, "kind": "handled", "fyi": True,
-                                   "text": summary or f"{who} se baat poori ho gayi."},
-             f"{who} se baat poori: {summary}")
+                                   "text": summary or f"{who}: conversation finished."},
+             f"{who}: conversation finished: {summary}")
         return "done"
     _bump(thread.id)
     return "replying"
@@ -204,11 +204,11 @@ def make_file(tenant: str, kind: str, title: str, content: str) -> dict[str, Any
     from .service import NetError
     title = (title or ("Hoola picture" if kind == "image" else "Hoola note")).strip()[:120]
     if policy.secret_found(title + "\n" + (content or "")):
-        raise NetError("Isme mana ki gayi jaankari (OTP / PIN / card / Aadhaar) thi, isliye nahi banaya.")
+        raise NetError("This had information that is not allowed (OTP / PIN / card / Aadhaar), so it was not made.")
     if kind == "image":
         data = media.make_image(content or title)
         if not data:
-            raise NetError("Abhi tasveer nahi ban payi (image model / Gemini key nahi mila).")
+            raise NetError("The picture could not be made right now (no image model / Gemini key found).")
         ext = ".png" if data[:4] == b"\x89PNG" else ".jpg"
     else:
         data, ext = media.make_pdf(title, content or title), ".pdf"
@@ -223,10 +223,10 @@ def _make_and_queue(tenant: str, thread: Thread, spec: dict[str, Any]) -> None:
         f = make_file(tenant, kind, str(spec.get("title") or ""), str(spec.get("content") or ""))
     except (NetError, Exception) as e:
         tell(tenant, "hoola_msg", {"thread_id": thread.id, "kind": "handled", "fyi": True,
-                                   "text": f"Main {('tasveer' if kind == 'image' else 'document')} bhejna chahta tha par: {e}"})
+                                   "text": f"I wanted to send a {('picture' if kind == 'image' else 'document')}, but: {e}"})
         return
     queue_for_tap(tenant, thread.peer, "file", {"file_id": f["file_id"], "text": str(spec.get("title") or "")[:200],
-                                                "made_by_avatar": True}, "maine banaya hai, bhejne se pehle dekh lijiye",
+                                                "made_by_avatar": True}, "I made this; look at it before sending",
                   thread.id)
 
 
@@ -253,9 +253,9 @@ def maybe_handle(tenant: str, m, rules: dict[str, Any], link, card: dict[str, An
     _bump(m.thread_id, "done")
     who = idn.label(card)
     tell(tenant, "hoola_msg", {"thread_id": m.thread_id, "from": who, "kind": "handled", "fyi": True,
-                               "text": f"{who} ne poocha: \"{policy.quote(policy.body_text(m.body), 200)}\". Maine aapki di "
-                                       f"hui jaankari se bataya: \"{policy.quote(out['text'], 300)}\""},
-         f"{who} ka sawaal aapki di hui jaankari se maine khud jawab diya.")
+                               "text": f"{who} asked: \"{policy.quote(policy.body_text(m.body), 200)}\". From the information "
+                                       f"you gave me I answered: \"{policy.quote(out['text'], 300)}\""},
+         f"{who}'s question: I answered it myself from the information you gave me.")
     return True
 
 
@@ -263,7 +263,7 @@ def take_over(tenant: str, m, note: str = "") -> dict[str, Any]:
     """The owner tapped 'Tum sambhalo' on a request."""
     from .service import NetError
     if m.kind not in CONVERSATIONAL:
-        raise NetError("Files, payment aur aisi cheezein aapko hi tay karni hongi; Hoola inhe khud nahi leta.")
+        raise NetError("Files, payments and things like that are yours to decide; Hoola does not take them by itself.")
     with session() as s:
         row = s.get(NetMsg, m.id)
         row.status = "handled"
@@ -293,13 +293,13 @@ def continue_thread(tenant: str, m, who: str) -> bool:
     if m.kind in ("meeting_ok", "meeting_no", "declined"):
         from .service import tell
         _bump(t.id, "done" if m.kind == "meeting_ok" else "declined")
-        text = {"meeting_ok": f"{who} ke saath meeting pakki.", "meeting_no": f"{who}: meeting nahi ho payegi.",
-                "declined": f"{who} ne mana kiya."}[m.kind]
+        text = {"meeting_ok": f"{who}: meeting confirmed.", "meeting_no": f"{who}: the meeting cannot happen.",
+                "declined": f"{who} declined."}[m.kind]
         tell(tenant, "hoola_msg", {"thread_id": t.id, "from": who, "kind": "handled", "fyi": m.kind != "declined",
                                    "text": text}, text)
         return True
     if t.turns >= MAX_TURNS:
-        _act(tenant, t, {"action": "ask_owner", "summary": f"{MAX_TURNS} baar baat ho gayi, ab aap dekh lijiye."})
+        _act(tenant, t, {"action": "ask_owner", "summary": f"{MAX_TURNS} replies have gone back and forth; please take a look now."})
         return True
     meeting = None
     with session() as s:

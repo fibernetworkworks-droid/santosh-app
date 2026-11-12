@@ -176,7 +176,7 @@ def test_worker_lock_second_render_refused(hf, monkeypatch):
     try:
         with pytest.raises(frames.FramesError) as ei:
             frames.run("t1", "render", html=GOOD_HTML)
-        assert "Ek render" in str(ei.value) or "chal raha" in str(ei.value)
+        assert "A render" in str(ei.value) or "running" in str(ei.value)
     finally:
         frames._render_lock.release()
 
@@ -220,7 +220,7 @@ def test_render_ok_delivers_file_card(hf):
 def test_check_and_snapshot_and_timeline_actions(hf):
     ctx = conv_ctx()
     chk = run("hoola_frames", {"action": "check", "html": GOOD_HTML}, ctx)
-    assert chk["ok"] is True and "taiyaar" in chk["note"]
+    assert chk["ok"] is True and "ready" in chk["note"]
     snap = run("hoola_frames", {"action": "snapshot", "html": GOOD_HTML, "times": [1.0, 2.0]}, ctx)
     assert len(snap["pngs"]) == 2 and snap["pngs"][0].endswith(".png")
     tl = run("hoola_frames", {"action": "timeline", "html": GOOD_HTML}, ctx)

@@ -73,7 +73,7 @@ def _safe(name: str) -> str:
 # ---------------------------------------------------------------- sender side
 def _share(tenant: str, peer: str, name: str, data: bytes, mime: str = "") -> dict[str, Any]:
     if len(data) > MAX_MB * 1024 * 1024:
-        raise NetError(f"File {MAX_MB} MB se badi hai; Drive link bhejiye.")
+        raise NetError(f"The file is larger than {MAX_MB} MB; send a Drive link.")
     sid = "sh_" + secrets.token_urlsafe(18)
     path = _dir("out") / sid
     path.write_bytes(data)
@@ -107,8 +107,8 @@ def _file_bytes(tenant: str, body: dict[str, Any]) -> tuple[str, str, bytes]:
                                                "pdf" if body.get("_presentation") else None)
             return name, mt, data
         except Exception as e:
-            raise NetError(f"Drive file nahi mili: {str(e)[:150]}")
-    raise NetError("Kaunsi file? file_id (phone / PC file), email attachment ya Drive file dijiye.")
+            raise NetError(f"Drive file not found: {str(e)[:150]}")
+    raise NetError("Which file? Give a file_id (phone / PC file), an email attachment or a Drive file.")
 
 
 def _caption(body: dict[str, Any]) -> dict[str, Any]:
@@ -123,14 +123,14 @@ def prep_file(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
 def prep_presentation(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     name, mt, data = _file_bytes(tenant, dict(body, _presentation=True))
     if not name.lower().endswith((".pdf", ".pptx", ".ppt", ".key", ".odp")):
-        raise NetError("Presentation PDF ya PowerPoint (.pptx) honi chahiye.")
+        raise NetError("A presentation must be a PDF or PowerPoint (.pptx).")
     return _caption(body) | _share(tenant, body.get("_peer", ""), name, data, mt)
 
 
 def prep_voice(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     out = _caption(body)
     if not out["text"] and not body.get("file_id"):
-        raise NetError("Voice note mein kya kehna hai?")
+        raise NetError("What should the voice note say?")
     if body.get("file_id"):
         name, mt, data = _file_bytes(tenant, body)
         out |= _share(tenant, body.get("_peer", ""), name, data, mt)
@@ -140,7 +140,7 @@ def prep_voice(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
 def prep_email(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     from ..mailbox import service as ms
     if not body.get("email_id"):
-        raise NetError("Kaunsa email? (email_id)")
+        raise NetError("Which email? (email_id)")
     try:
         m = ms.read(tenant, str(body["email_id"]), mark_seen=False)
     except ms.MailError as e:
@@ -149,7 +149,7 @@ def prep_email(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
                             "from_email": str(m.get("from_email") or "")[:200], "date": str(m.get("date") or "")[:60],
                             "email_text": str(m.get("body") or "")[:15000]}
     if policy.secret_found(out["email_text"] + " " + out["subject"]):
-        raise NetError("Is email mein OTP / PIN / password jaisi jaankari hai; Hoola ise aage nahi bhejta.")
+        raise NetError("This email has information like an OTP / PIN / password; Hoola does not forward it.")
     if body.get("attachment_id") not in (None, ""):
         name, mt, data = _file_bytes(tenant, body)
         out |= _share(tenant, body.get("_peer", ""), name, data, mt)
@@ -162,7 +162,7 @@ def prep_link(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
         url = "https://" + url if url and "." in url else ""
     u = urlparse(url)
     if not u.hostname or u.scheme not in ("http", "https"):
-        raise NetError("Website ka poora link dijiye (https://...).")
+        raise NetError("Give the full website link (https://...).")
     return _caption(body) | {"url": url[:2000]}
 
 
@@ -170,12 +170,12 @@ def prep_payment(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     try:
         amount = round(float(body.get("amount")), 2)
     except (TypeError, ValueError):
-        raise NetError("Kitne rupaye? (amount)")
+        raise NetError("How many rupees? (amount)")
     if not 1 <= amount <= 200000:
-        raise NetError("Payment request ₹1 se ₹2,00,000 tak.")
+        raise NetError("A payment request is ₹1 to ₹2,00,000.")
     vpa = str(body.get("upi_id") or "").strip()
     if not VPA_RE.match(vpa):
-        raise NetError("Aapka UPI ID chahiye (jaise naam@okicici), taaki saamne wale ka UPI app aapko pay kar sake.")
+        raise NetError("Your UPI ID is needed (like name@okicici), so that the other person's UPI app can pay you.")
     return _caption(body) | {"amount": amount, "upi_id": vpa, "upi_note": str(body.get("upi_note") or body.get("text") or "")[:80]}
 
 
@@ -183,14 +183,14 @@ def prep_contact(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     name = str(body.get("name") or "").strip()[:80]
     phone = re.sub(r"[^\d+]", "", str(body.get("phone") or ""))[:16]
     if not name or len(re.sub(r"\D", "", phone)) < 10:
-        raise NetError("Contact ka naam aur phone number dijiye.")
+        raise NetError("Give the contact's name and phone number.")
     return _caption(body) | {"name": name, "phone": phone, "email": str(body.get("email") or "")[:120]}
 
 
 def prep_location(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     place = str(body.get("place") or "").strip()[:200]
     if not place:
-        raise NetError("Kaunsi jagah? (place, ya 'lat,lng')")
+        raise NetError("Which place? (place, or 'lat,lng')")
     return _caption(body) | {"place": place, "maps_url": "https://www.google.com/maps/search/?api=1&query=" + quote(place)}
 
 
@@ -199,7 +199,7 @@ def fetch_share(share_id: str, peer: str) -> tuple[str, str, bytes, str]:
     with session() as s:
         sh = s.get(NetShare, share_id)
         if sh is None or sh.peer != peer or idn_aware(sh.expires_at) < now() or sh.fetched >= 3:
-            raise NetError("File ab uplabdh nahi hai.")
+            raise NetError("The file is no longer available.")
         sh.fetched += 1
         return sh.name, sh.mime, Path(sh.path).read_bytes(), sh.sha256
 
@@ -217,7 +217,7 @@ def _get_bytes(sender: str, me_addr: str, body: dict[str, Any]) -> tuple[str, st
         from . import federation
         name, mime, data, sha = federation.fetch_share(sender, str(body["share_id"]), me_addr)
     if hashlib.sha256(data).hexdigest() != body.get("sha256", sha):
-        raise NetError("File raste mein badal gayi (hash match nahi hua).")
+        raise NetError("The file changed on the way (the hash did not match).")
     return name, mime, data
 
 
@@ -242,7 +242,7 @@ def _check_file(tenant: str, name: str, mime: str, data: bytes) -> dict[str, Any
     scan: dict[str, Any] = {"verdict": "clear", "notes": []}
     low = name.lower()
     if an_double(name):
-        return {"verdict": "danger", "notes": ["naam document jaisa par asal mein program (do extension)"]}
+        return {"verdict": "danger", "notes": ["the name looks like a document but it is really a program (double extension)"]}
     if policy.rule_key("file", {"name": name}) == "app_file":
         try:
             from ..appcheck import service as acs
@@ -252,7 +252,7 @@ def _check_file(tenant: str, name: str, mime: str, data: bytes) -> dict[str, Any
             scan = {"verdict": r.get("verdict", "unknown"), "notes": [x["text"] for x in r.get("flags") or []][:5],
                     "app_check_id": r.get("id")}
         except Exception as e:
-            scan = {"verdict": "unknown", "notes": [f"App Jaanch nahi ho payi ({str(e)[:80]})"]}
+            scan = {"verdict": "unknown", "notes": [f"App Check could not run ({str(e)[:80]})"]}
         return scan
     from .. import filecheck
     rt = filecheck.real_type(name, data)          # what the bytes really are (Magika), not what the name says
@@ -264,7 +264,7 @@ def _check_file(tenant: str, name: str, mime: str, data: bytes) -> dict[str, Any
     if rt["label"]:
         scan["real_type"] = rt["label"]
     if re.search(r"\.(pdf|docx?|xlsx?|pptx?|csv|txt|jpe?g|png|webp|mp3|m4a|ogg|opus|wav|mp4|zip)$", low) is None:
-        scan["notes"].append("anjaan tarah ki file")
+        scan["notes"].append("unknown kind of file")
         scan["verdict"] = "caution"
     try:
         from ..docread import read_text
@@ -289,16 +289,16 @@ def _link_check(url: str, tenant: str = "") -> dict[str, Any]:
     host = (u.hostname or "").lower()
     v = "clear"
     if u.scheme == "http":
-        notes.append("https nahi hai (connection surakshit nahi)")
+        notes.append("not https (the connection is not secure)")
         v = "caution"
     if host.startswith("xn--") or ".xn--" in host:
-        notes.append("domain mein chhupe hue akshar (punycode)")
+        notes.append("hidden characters in the domain (punycode)")
         v = "danger"
     if re.fullmatch(r"[\d.]+", host):
-        notes.append("domain ki jagah IP address")
+        notes.append("an IP address in place of a domain")
         v = "danger"
     if host in {"bit.ly", "tinyurl.com", "t.ly", "is.gd", "cutt.ly", "rb.gy", "shorturl.at", "goo.su"}:
-        notes.append("chhota (short) link: asli website chhupi hai")
+        notes.append("short link: the real website is hidden")
         v = "caution" if v == "clear" else v
     words = re.sub(r"[.\-_]", " ", host)
     if BRAND.search(words) and not re.search(r"(^|\.)(sbi\.co\.in|onlinesbi\.sbi|hdfcbank\.com|icicibank\.com|axisbank\.com|"
@@ -306,13 +306,13 @@ def _link_check(url: str, tenant: str = "") -> dict[str, Any]:
                                              r"uidai\.gov\.in|incometax\.gov\.in|india\.gov\.in|npci\.org\.in|"
                                              r"pay\.google\.com|bhimupi\.org\.in|indiapost\.gov\.in|epfindia\.gov\.in|"
                                              r"parivahan\.gov\.in|rbi\.org\.in)$", host):
-        notes.append("bank / sarkari naam wala par official domain nahi")
+        notes.append("uses a bank / government name but is not the official domain")
         v = "danger"
     if LURE.search(words) and v != "danger":
-        notes.append("KYC / reward / challan jaisa lalach wala naam")
+        notes.append("a tempting name like KYC / reward / challan")
         v = "caution"
     if re.search(r"\.(apk|exe|scr|bat|msi)(\?|$)", u.path.lower()):
-        notes.append("link seedha app / program download karta hai")
+        notes.append("the link downloads an app / program directly")
         v = "danger"
     if tenant:
         try:
@@ -321,7 +321,7 @@ def _link_check(url: str, tenant: str = "") -> dict[str, Any]:
         except Exception:
             hit = None
         if hit:
-            notes.insert(0, f"Hoola Samaj '{hit['community']}' ne is website ko fraud bataya hai")
+            notes.insert(0, f"Hoola community '{hit['community']}' has reported this website as fraud")
             v = "danger"
     preview = {"title": "", "text": ""}
     if v != "danger":
@@ -330,7 +330,7 @@ def _link_check(url: str, tenant: str = "") -> dict[str, Any]:
             got = from_web(url)
             preview = {"title": got.get("title", ""), "text": (got.get("text") or "")[:8000]}
         except Exception:
-            notes.append("page khul nahi paya")
+            notes.append("the page could not be opened")
     return {"verdict": v, "notes": notes, "host": host} | preview
 
 

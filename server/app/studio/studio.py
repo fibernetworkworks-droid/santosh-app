@@ -154,7 +154,7 @@ class Studio:
             return p
 
     # ------------------------------------------------------------------ projects
-    def create(self, name: str, aspect: str = "9:16", style: str = "cinematic", language: str = "Hindi",
+    def create(self, name: str, aspect: str = "9:16", style: str = "cinematic", language: str = "English",
                budget_usd: float = 10.0, font: str | None = None, brief: str = "") -> dict:
         if self.pdir(name).joinpath("project.json").exists():
             raise StudioError(f"Project '{name}' already exists")
@@ -785,7 +785,7 @@ class Studio:
         def fn(q):
             for jid in live:
                 if q["jobs"][jid]["state"] in ("queued", "submitted", "running", "retrying"):
-                    q["jobs"][jid].update(state="cancelled", finished=now(), handle=None, error="rok diya")
+                    q["jobs"][jid].update(state="cancelled", finished=now(), handle=None, error="stopped")
         await self.update(project, fn)
         self._changed(project)
         return {"cancelled": len(live)}

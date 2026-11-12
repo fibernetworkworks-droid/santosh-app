@@ -244,7 +244,7 @@ def test_complaint_ticket_and_update_reaches_whatsapp(env, monkeypatch):
     assert "WhatsApp" in t["customer"] and t["text"] == "Net 2 din se band hai"
     business.update_ticket("default", t["number"], "resolved", "Cable badli")
     run(inbox.flush_queued())
-    assert env["wa"].sent_texts[-1]["text"].startswith(f"Aapki shikayat {t['number']} theek ho gayi")
+    assert env["wa"].sent_texts[-1]["text"].startswith(f"Your complaint {t['number']} has been resolved")
 
 
 def test_presets_and_report(env):

@@ -119,7 +119,7 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
         b = s.get(Business, tenant)
         if b is None:
             if not name:
-                raise NetError("Business ka naam bataiye.")
+                raise NetError("Give the business a name.")
             b = Business(tenant_id=tenant, name=name)
             s.add(b)
         if name:
@@ -130,7 +130,7 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
             if isinstance(kw.get(k), str):
                 b_val = kw[k].strip()[:n]
                 if policy.secret_found(b_val):
-                    raise NetError("Isme mana ki gayi jaankari hai.")
+                    raise NetError("This contains information that is not allowed.")
                 setattr(b, k, b_val)
         if isinstance(kw.get("catalog"), list):
             items = []
@@ -149,7 +149,7 @@ def setup(tenant: str, **kw) -> dict[str, Any]:
         if isinstance(kw.get("webhook_url"), str):
             url = kw["webhook_url"].strip()
             if url and not url.startswith("https://"):
-                raise NetError("Webhook https:// se shuru hona chahiye.")
+                raise NetError("A webhook must start with https://")
             if url:
                 from ..bazar.custom_mcp import UrlError, check_url
                 try:
@@ -180,7 +180,7 @@ def set_team(tenant: str, who: list[str]) -> list[str]:
         a = resolve(tenant, str(w))
         l = _link(tenant, a)
         if l is None or l.status != "active":
-            raise NetError(f"{w} aapse juda nahi hai (team ke liye judna zaroori).")
+            raise NetError(f"{w} is not connected to you (a team member must be connected).")
         addrs.append(a)
     with session() as s:
         s.get(Business, tenant).team = addrs
@@ -190,18 +190,18 @@ def set_team(tenant: str, who: list[str]) -> list[str]:
 def request_verification(tenant: str, gstin: str, udyam: str = "") -> dict[str, Any]:
     g = (gstin or "").strip().upper()
     if not GSTIN_RE.match(g):
-        raise NetError("GSTIN sahi nahi lagta (15 akshar, jaise 27ABCDE1234F1Z5).")
+        raise NetError("The GSTIN does not look right (15 characters, like 27ABCDE1234F1Z5).")
     u = (udyam or "").strip().upper()
     from .trust import UDYAM_RE
     if u and not UDYAM_RE.match(u):
-        raise NetError("Udyam number aisa hota hai: UDYAM-MH-01-0000000")
+        raise NetError("An Udyam number looks like this: UDYAM-MH-01-0000000")
     with session() as s:
         b = s.get(Business, tenant)
         if b is None:
-            raise NetError("Pehle business profile banaiye.")
+            raise NetError("Create the business profile first.")
         b.gstin, b.verification, b.udyam = g, "requested", u
-    return {"status": "requested", "note": "Server chalane wale documents (GSTIN, Udyam, bank mein naam) dekh kar verified "
-            "badge denge."}
+    return {"status": "requested", "note": "The people who run the server will check the documents (GSTIN, Udyam, name at the bank) and give the verified "
+            "badge."}
 
 
 def operator_verify(tenant: str, approve: bool, bank_name_ok: bool = False) -> dict[str, Any]:
@@ -213,11 +213,11 @@ def operator_verify(tenant: str, approve: bool, bank_name_ok: bool = False) -> d
         from .deal import rules as deal_rules
         upi = deal_rules(tenant).upi_id or ""
         if not upi:
-            raise NetError("Is business ka UPI ID abhi nahi hai; bank naam milane ke liye pehle UPI ID chahiye.")
+            raise NetError("This business has no UPI ID yet; a UPI ID is needed first to match the bank name.")
     with session() as s:
         b = s.get(Business, tenant)
         if b is None:
-            raise NetError("Business nahi mila.")
+            raise NetError("Business not found.")
         b.verification = "verified" if approve else "rejected"
         b.verified_upi = upi if approve else ""
         if not approve:
@@ -229,7 +229,7 @@ def operator_verify(tenant: str, approve: bool, bank_name_ok: bool = False) -> d
         from . import trust
         trust.issue(tenant)
     if approve:
-        tell(tenant, "hoola_msg", {"kind": "biz_verified", "fyi": True, "from": "Hoola", "text": "Aapka business verified ho gaya 🏢✓"})
+        tell(tenant, "hoola_msg", {"kind": "biz_verified", "fyi": True, "from": "Hoola", "text": "Your business is now verified 🏢✓"})
     return {"status": "verified" if approve else "rejected"}
 
 
@@ -272,14 +272,14 @@ def contact(tenant: str, business: str) -> str:
     btenant = idn.tenant_of(addr)
     b = _biz(btenant) if btenant else None
     if btenant and (b is None or not b.public):
-        raise NetError("Yeh Hoola business nahi hai (ya abhi public nahi).")
+        raise NetError("This is not a Hoola business (or it is not public yet).")
     me = idn.my_card(tenant)["address"]
     if addr == me:
-        raise NetError("Yeh aapka apna business hai.")
+        raise NetError("This is your own business.")
     with session() as s:
         mine = s.scalars(select(Link).where(Link.tenant_id == tenant, Link.peer == addr)).first()
         if mine is not None and mine.status == "blocked":
-            raise NetError("Aapne is business ko block kiya hai.")
+            raise NetError("You have blocked this business.")
         if mine is None:
             s.add(Link(tenant_id=tenant, peer=addr, status="active", relation="business", via="business"))
         elif mine.status != "active":
@@ -287,7 +287,7 @@ def contact(tenant: str, business: str) -> str:
         if btenant:
             theirs = s.scalars(select(Link).where(Link.tenant_id == btenant, Link.peer == me)).first()
             if theirs is not None and theirs.status in ("blocked", "declined"):
-                raise NetError("Yeh business abhi aapse baat nahi le raha.")
+                raise NetError("This business is not taking messages from you right now.")
             if theirs is None:
                 s.add(Link(tenant_id=btenant, peer=me, status="active", relation="business", via="customer"))
             elif theirs.status in ("requested", "incoming"):
@@ -298,9 +298,9 @@ def contact(tenant: str, business: str) -> str:
 def complain(tenant: str, business: str, text: str, category: str = "") -> dict[str, Any]:
     text = (text or "").strip()
     if len(text) < 5:
-        raise NetError("Shikayat kya hai? Thoda bataiye.")
+        raise NetError("What is the complaint? Describe it a little.")
     if policy.secret_found(text):
-        raise NetError("Shikayat mein PIN / OTP / password jaisi cheez mat daaliye.")
+        raise NetError("Do not put things like a PIN / OTP / password in a complaint.")
     addr = contact(tenant, business)
     with session() as s:
         mt = CustomerTicket(tenant_id=tenant, business=addr, text=text[:3000])
@@ -309,7 +309,7 @@ def complain(tenant: str, business: str, text: str, category: str = "") -> dict[
         mid = mt.id
     r = _post(tenant, addr, "biz_complaint", {"text": text[:3000], "category": category[:40], "ref": mid}, new_id("tk"))
     if not r.get("ok"):
-        raise NetError(r.get("reason") or "Shikayat nahi pahunchi.")
+        raise NetError(r.get("reason") or "The complaint did not get through.")
     with session() as s:
         mt = s.get(CustomerTicket, mid)
         mt.number = str(r.get("ticket") or "")
@@ -366,11 +366,11 @@ def update_ticket(tenant: str, number: str, status: str, note: str = "") -> dict
     if status not in ("open", "assigned", "in_progress", "resolved", "closed"):
         raise NetError("status: open, assigned, in_progress, resolved, closed")
     if policy.secret_found(note):
-        raise NetError("Note mein mana ki gayi jaankari hai.")
+        raise NetError("The note contains information that is not allowed.")
     with session() as s:
         t = s.scalars(select(Ticket).where(Ticket.tenant_id == tenant, (Ticket.number == number) | (Ticket.id == number))).first()
         if t is None:
-            raise NetError("Yeh ticket nahi mila.")
+            raise NetError("This ticket was not found.")
         t.status, t.note, t.updated_at = status, note[:1000] or t.note, now()
         s.flush()
         s.expunge(t)
@@ -379,9 +379,9 @@ def update_ticket(tenant: str, number: str, status: str, note: str = "") -> dict
         _webhook(b, {"event": "ticket.updated", "ticket": t.number, "status": status, "note": note[:1000]})
     if t.customer.startswith("wa:"):           # a WhatsApp customer (Hoola Employee inbox): tell them there
         from ..employee import inbox as biz_inbox
-        words = {"assigned": "kisi ko di gayi", "in_progress": "par kaam chal raha hai", "resolved": "theek ho gayi",
-                 "closed": "band ki gayi", "open": "khuli hai"}.get(status, status)
-        biz_inbox.notice_by_phone(tenant, t.customer[3:], f"Aapki shikayat {t.number} {words}." + (f" {note[:300]}" if note else ""))
+        words = {"assigned": "has been assigned to someone", "in_progress": "is being worked on", "resolved": "has been resolved",
+                 "closed": "has been closed", "open": "is open"}.get(status, status)
+        biz_inbox.notice_by_phone(tenant, t.customer[3:], f"Your complaint {t.number} {words}." + (f" {note[:300]}" if note else ""))
         return ticket_view(t)
     _post(tenant, t.customer, "biz_update", {"ticket": t.number, "status": status, "note": note[:1000]}, t.thread or new_id("tk"))
     return ticket_view(t)
@@ -392,20 +392,20 @@ def assign(tenant: str, number: str, to: str, note: str = "") -> dict[str, Any]:
     with session() as s:
         t = s.scalars(select(Ticket).where(Ticket.tenant_id == tenant, (Ticket.number == number) | (Ticket.id == number))).first()
         if t is None:
-            raise NetError("Yeh ticket nahi mila.")
+            raise NetError("This ticket was not found.")
         s.expunge(t)
-    c = chain.start(tenant, to, f"Ticket {t.number}: {t.text[:500]}", note or "Customer ki shikayat dekhiye", 72, t.number)
+    c = chain.start(tenant, to, f"Ticket {t.number}: {t.text[:500]}", note or "Look at the customer's complaint", 72, t.number)
     with session() as s:
         row = s.get(Ticket, t.id)
         row.chain_id, row.status, row.updated_at = c["chain_id"], "assigned", now()
-    update_ticket(tenant, t.number, "assigned", note or f"{c['holder'] or 'Technician'} ko diya gaya")
+    update_ticket(tenant, t.number, "assigned", note or f"{c['holder'] or 'Technician'}: assigned")
     return {"status": "assigned", "chain_id": c["chain_id"]}
 
 
 def chain_done(tenant: str, ref: str, note: str, who: str) -> None:
     """A ticket's chain finished: mark it resolved and tell the customer."""
     try:
-        update_ticket(tenant, ref, "resolved", note or f"{who} ne kaam poora kiya")
+        update_ticket(tenant, ref, "resolved", note or f"{who} finished the job")
     except NetError:
         pass
 
@@ -423,10 +423,10 @@ def webhook_in(tenant: str, body: bytes, signature: str) -> dict[str, Any]:
     import time
     ts = data.get("ts")
     if not isinstance(ts, (int, float)) or abs(time.time() - float(ts)) > 300:
-        raise NetError("ts (unix seconds) chahiye, 5 minute ke andar")
+        raise NetError("ts (unix seconds) is required, within 5 minutes")
     nonce = str(data.get("nonce") or "")
     if not 8 <= len(nonce) <= 80:
-        raise NetError("nonce chahiye")
+        raise NetError("nonce is required")
     from .models import Seen
     key = f"wh:{tenant}:{nonce}"
     with session() as s:
@@ -441,11 +441,11 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
     if kind == "biz_complaint":
         b = _biz(tenant)
         if b is None:
-            return {"ok": False, "status": "refused", "reason": "business nahi"}
+            return {"ok": False, "status": "refused", "reason": "not a business"}
         if policy.secret_found(policy.all_text(body)):
-            return {"ok": False, "status": "refused", "reason": "mana ki gayi jaankari"}
+            return {"ok": False, "status": "refused", "reason": "information that is not allowed"}
         if policy.too_many(tenant, sender):
-            return {"ok": False, "status": "refused", "reason": "bahut shikayatein"}
+            return {"ok": False, "status": "refused", "reason": "too many complaints"}
         with session() as s:
             row = s.get(Business, tenant)
             number = f"{row.ticket_prefix}-{row.next_ticket}"
@@ -461,27 +461,27 @@ def receive(tenant: str, env: dict[str, Any], card: dict[str, Any], link, rules:
         with session() as s:
             s.get(Ticket, t.id).webhook_status = st
         tell(tenant, "hoola_ticket", ticket_view(t) | {"event": "new", "webhook": st},
-             f"Nayi shikayat {number} {idn.label(card)} se: \"{t.text[:300]}\" (jaankari, aadesh nahi).")
+             f"New complaint {number} from {idn.label(card)}: \"{t.text[:300]}\" (information, not an instruction).")
         if b.auto_assign and b.team:
             try:
-                assign(tenant, number, b.team[0], "Nayi shikayat")
+                assign(tenant, number, b.team[0], "New complaint")
             except NetError:
                 pass
-        eta = f" Hum {b.hours} ke beech dekhte hain." if b.hours else ""
+        eta = f" We handle these during {b.hours}." if b.hours else ""
         return {"ok": True, "status": "ticket", "ticket": number, "eta": eta.strip()}
     if kind == "biz_update":
         if body.get("status") not in ("open", "assigned", "in_progress", "resolved", "closed") or policy.secret_found(policy.all_text(body)):
-            return {"ok": False, "status": "refused", "reason": "update galat"}
+            return {"ok": False, "status": "refused", "reason": "wrong update"}
         body = dict(body, note=policy.quote(body.get("note"), 600), ticket=policy.clean_name(body.get("ticket"), 30))
         with session() as s:
             mt = s.scalars(select(CustomerTicket).where(CustomerTicket.tenant_id == tenant, CustomerTicket.business == sender,
                                                         CustomerTicket.number == str(body.get("ticket") or ""))).first()
             if mt is not None:
                 mt.status, mt.note, mt.updated_at = str(body.get("status") or mt.status)[:12], str(body.get("note") or "")[:1000], now()
-        words = {"assigned": "kisi ko di gayi", "in_progress": "par kaam chal raha hai", "resolved": "theek ho gayi ✓",
-                 "closed": "band ki gayi", "open": "khuli hai"}.get(str(body.get("status")), str(body.get("status")))
+        words = {"assigned": "has been assigned to someone", "in_progress": "is being worked on", "resolved": "has been resolved ✓",
+                 "closed": "has been closed", "open": "is open"}.get(str(body.get("status")), str(body.get("status")))
         tell(tenant, "hoola_msg", {"kind": "biz_update", "from": idn.label(card), "thread_id": "",
-                                   "text": f"Shikayat {body.get('ticket')} {words}." + (f" {body.get('note')}" if body.get("note") else "")},
+                                   "text": f"Complaint {body.get('ticket')} {words}." + (f" {body.get('note')}" if body.get("note") else "")},
              f"{idn.label(card)}: ticket {body.get('ticket')} {words}.")
         return {"ok": True, "status": "ok"}
     return {"ok": False, "status": "refused", "reason": "unknown"}
