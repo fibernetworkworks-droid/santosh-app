@@ -425,6 +425,15 @@ class Settings(BaseSettings):
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     pc_team_max: int = 4                    # v0.836 DESKTOP TEAM: at most this many PCs work for one person at the same time (one agent per PC)
+    # v0.851 PC BRAIN (owner: "QWEN 3.8 AND SONET 5.5 --- WILL START WITH QWEN"): the model that sees the screen in the PC loop
+    pc_model: str = "qwen"                  # "qwen" | "sonnet" (a task can name its own); qwen without QWEN_API_KEY runs on sonnet, said
+    pc_qwen_model: str = "qwen3.8-max"
+    pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop
+    qwen_api_key: str = ""                  # Alibaba Model Studio key - VPS .env only (QWEN_API_KEY)
+    qwen_base_url: str = "https://dashscope-us.aliyuncs.com/compatible-mode/v1"   # QWEN_BASE_URL (her region's compatible-mode URL)
+    pc_qwen_thinking: str = ""              # "" = Qwen's default, "on" / "off" = enable_thinking sent
+    pc_max_tokens: int = 4000               # output room per PC step (was 1500: thinking could eat the action)
+    pc_brain_timeout_s: float = 90.0
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
     chat_artifact_direct: bool = True       # parity Phase 6: the chat model writes pages itself (tool `artifact`: create /
                                             # update old->new / rewrite, a version per change, streamed into the panel);

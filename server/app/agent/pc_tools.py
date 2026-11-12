@@ -47,7 +47,7 @@ PC_TOOLS.append({"name": "pc_do", "description": (
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Santosh "
     "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "pc": {"type": "string", "description": "Which PC, by her name for it ('office', 'ghar laptop', 'Hoola PC 2'). Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('office', 'ghar laptop', 'Hoola PC 2'). Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
 PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or result of a pc_do task (session_id).",
                  "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
 PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": "Aapke PC ka kaam dekh raha hoon"})
@@ -71,18 +71,18 @@ PC_TOOLS.append({"name": "hoola_pc_do", "description": (
     "files live in /data. Same safety rules as pc_do for anything that leaves the VM (sends, submits, pays). "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting or paying, and never types passwords/OTPs. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}}, "required": ["task"]}})
 PC_LABELS.update({"hoola_pc_do": "Hoola ke apne PC par kaam kar raha hoon"})
 
 
-async def hoola_pc_do(ctx: Ctx, task, pc="", _wait=None, **_):
+async def hoola_pc_do(ctx: Ctx, task, pc="", model="", _wait=None, **_):
     from ..pc import operator
     from ..pc.hub import HOOLA_PC_KIND
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Batayiye Hoola ke PC par kya karna hai")
     try:
-        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, kind=HOOLA_PC_KIND, pc=str(pc or ""),
+        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, kind=HOOLA_PC_KIND, pc=str(pc or ""), brain=str(model or ""),
                                  wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
     except RuntimeError as e:
         if "PC_NOT_FOUND" in str(e):
@@ -101,13 +101,13 @@ async def hoola_pc_do(ctx: Ctx, task, pc="", _wait=None, **_):
     return r
 
 
-async def pc_do(ctx: Ctx, task, pc="", _wait=None, **_):
+async def pc_do(ctx: Ctx, task, pc="", model="", _wait=None, **_):
     from ..pc import operator
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Batayiye PC par kya karna hai")
     try:
-        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, pc=str(pc or ""),
+        r = await operator.start(ctx.tenant_id, ctx.conversation_id, task, pc=str(pc or ""), brain=str(model or ""),
                                  wait=get_settings().pc_wait_seconds if _wait is None else float(_wait))
     except PermissionError as e:
         raise ToolError(str(e))

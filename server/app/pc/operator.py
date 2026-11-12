@@ -543,12 +543,16 @@ class Op:
     done_event: asyncio.Event = field(default_factory=asyncio.Event)
     otp: PcOtp | None = None
     captcha_ok: bool = False   # v0.191 usne is task mein ek CAPTCHA manzoor ki: aage ki CAPTCHAs apne aap type
+    brain: str = ""                # v0.851 PC BRAIN: "qwen" | "sonnet" - the model that sees the screen this task
+    brain_model: str = ""          # its model id (qwen3.8-max / claude-sonnet-5-5)
+    brain_note: str = ""           # said once when the pick could not run (no Qwen key -> Sonnet)
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
                "steps_max": self.steps_max, "thinking": self.thinking,
                "url": self.window, "title": self.window, "seq": self.frame_seq, "source": "pc",
                "pc": self.device_name, "device_id": self.device_id, "team": self.team,
+               "brain": self.brain, "model": self.brain_model, **({"brain_note": self.brain_note} if self.brain_note else {}),
                "summary": self.summary if self.status not in ("running",) else "", "timeline": self.timeline[-30:]}
         if self.pending and self.status == "needs_confirm":
             out["pending"] = {"id": self.pending["id"], "label": self.pending["what"]}
@@ -1838,16 +1842,24 @@ async def _run(op: Op) -> None:
             _trim_images(messages)
             op.thinking = True                     # v0.178 the card shows 'Soch raha hoon…' while the vision call runs
             _event(op)
-            resp = await _think_retry(op, client, messages, dict(
-                model=st.anthropic_model, max_tokens=1500, system=system,
-                tools=(HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS), messages=messages))
+            from . import brain as _brain   # v0.851 PC BRAIN: Qwen 3.8 Max or Sonnet 5.5, chosen for the PC loop alone
+            resp = await _brain.think(op, client, messages, dict(
+                model=op.brain_model or st.anthropic_model, max_tokens=int(getattr(st, "pc_max_tokens", 4000) or 4000),
+                system=system, tools=(HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS), messages=messages),
+                _think_retry)
             op.thinking = False
-            content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else b for b in resp.content]
+            content = resp.content
             messages.append({"role": "assistant", "content": content})
             uses = [b for b in content if b.get("type") == "tool_use"]
             text = " ".join(b.get("text", "") for b in content if b.get("type") == "text").strip()
             if not uses:
-                op.summary, op.status = text or "Kaam khatam.", "done"
+                if resp.stop in ("max_tokens", "refusal") or not text:
+                    # v0.851 a cut-off or refused step is NOT 'done' (it used to be reported as a finished task)
+                    op.status = "partial"
+                    op.summary = text or ("The model stopped without an action (" + (resp.stop or "empty reply") +
+                                          f") at step {op.step}. Aakhri screen: {op.window}.")
+                else:
+                    op.summary, op.status = text, "done"
                 break
             results = []
             finished = False
@@ -1975,6 +1987,8 @@ def _report(op: Op) -> None:
     text = {"done": op.summary or f"{pc_name} par kaam ho gaya.",
             "partial": f"{pc_name} par poora nahi ho paya. {op.summary}",
             "cancelled": f"{pc_name} ka kaam rok diya gaya."}.get(op.status, f"{pc_name} par kaam ruk gaya. {op.summary or op.reason}")
+    if op.brain_note:
+        text = text.strip() + " (" + op.brain_note + ")"
     try:
         notify(op.conv, text.strip())
     except Exception:
@@ -2045,7 +2059,7 @@ def busy(tenant: str, device_id: str) -> "Op | None":
 
 
 async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "", pc: str = "",
-                team: str = "", replace: bool = True) -> dict[str, Any]:
+                team: str = "", replace: bool = True, brain: str = "") -> dict[str, Any]:
     """Start one PC task. v0.836 DESKTOP TEAM: one task per PC (not per person) - her office PC, her home PC and
     Hoola's own PCs can each work at the same time. A new task on a BUSY PC replaces the old one (the old
     pc_do behaviour) unless replace=False, which raises PcBusy instead (pc_team never cancels her running work)."""
@@ -2067,6 +2081,8 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
+    from . import brain as _brain
+    op.brain, op.brain_model, op.brain_note = _brain.choose(brain)   # v0.851 PC BRAIN: her pick for this task, else pc_model
     OPS[op.id] = op
     _event(op)
     op.task_obj = asyncio.create_task(_run(op))

@@ -63,6 +63,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("APP_ENGINE_PUBLISH_CHECKS", "false")  # v0.832 older App Engine suites publish without the scans; test_v0832 turns them on
     monkeypatch.setenv("CHAT_WORK_IN_TURN", "false")  # PARITY Phase 4: older suites pin background crews / research + the 900 s turn; test_parity_p4 checks in-turn
     monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
+    monkeypatch.setenv("PC_MODEL", "sonnet")          # v0.851 older PC suites pin the Claude loop; test_v0851_pc_brain checks Qwen
     monkeypatch.setenv("CHAT_CORE_TOOLS", "false")    # Parity Phase 3: older suites pin the core families + old result text; test_v0733_clean_tools checks the core set
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model

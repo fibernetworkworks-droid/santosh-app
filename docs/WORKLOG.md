@@ -3149,3 +3149,10 @@ Task ID: v0.850.0 AGENT-DESKTOP FULL (same release as DESKTOP TEAM)
 Task: owner "IS ALL THIS REPO FEATURE IS NOW IN HOOLA DESKTOP" -> "GO AGENT-DESKTOP FULL".
 Work Log: listed all 61 commands of the real binary; captured v1.2.0 output shapes on a real Linux desktop; axtree.py full headless set + --stdin + states + surfaces; actions do_ax_*; 14 operator tools with safety; Hoola PC image exact mode; real-desktop walk; 16 tests; desktop 1.10.0 (extension / plugin ride it).
 Stage Summary: shipped with DESKTOP TEAM as v0.850.0. Needs build-desktop (new exe) and pc_deploy (new Hoola PC image) to reach her PCs.
+
+
+---
+Task ID: v0.851.0 PC BRAIN
+Owner ask: "FOR PC WE CURRENTLY CHOOSE 2 MODELS QWEN 3.8 AND SONET 5.5 --- WILL TEST IT FIRST ON THIS --- WILL START WITH QWEN"
+Done: server/app/pc/brain.py (Qwen via Model Studio OpenAI-compatible / Sonnet exempt from Haiku+GLM rewrite), operator wiring, model= on pc_do / hoola_pc_do,
+false-done on a cut-off step fixed, 10 tests, PC suites 63 green. Not verified live (needs QWEN_API_KEY on the VPS).

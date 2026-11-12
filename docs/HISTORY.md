@@ -2825,3 +2825,24 @@ every refusal, batch safety, close never forces, server rules); the 15 PC suites
 **NOT VERIFIED:** no real Windows PC has run v1.2.0 through Hoola (needs the new SantoshDesktop.exe from build-desktop);
 Windows notifications / Start menu / taskbar were not reachable here (Linux has no Start menu; no notification daemon
 in the test box); exact mode on the Hoola PC image is untested until `pc_deploy` rebuilds it on the VPS.
+
+
+## v0.851.0 PC BRAIN — Qwen 3.8 Max or Sonnet 5.5 for the PC loop (owner: "FOR PC WE CURRENTLY CHOOSE 2 MODELS QWEN 3.8 AND SONET 5.5 --- WILL TEST IT FIRST ON THIS --- WILL START WITH QWEN")
+
+After the desktop-model research (OSWorld 2.1 offline: Opus 5.5 87.2, Sonnet 5.5 83.9; OSWorld-Verified: Qwen3.8-Max 86.1) the owner chose two models
+to test, Qwen first. Found while reading: the PC loop asked for Sonnet but `usage.one_model` (claude_one_model = Haiku) and the GLM door rewrote it,
+and a reply with no tool call was reported as a finished task even when it was cut off (max_tokens 1500) or refused.
+
+- NEW `server/app/pc/brain.py`: `choose(want)` -> (brain, model, note) from the task's pick or `pc_model`; Qwen without `QWEN_API_KEY` = Sonnet + a note
+  appended to the result. `think(op, client, messages, params, retry)`: Qwen = Anthropic blocks -> OpenAI chat (`to_openai`: system, image_url data URIs,
+  tool_use -> tool_calls, tool_result -> role=tool text + its screenshot in the following user message; `tools_openai`; `from_openai` maps tool_calls back,
+  bad JSON args = {}, finish length -> max_tokens, content_filter -> refusal), POST <QWEN_BASE_URL>/chat/completions (default dashscope-us compatible-mode),
+  2 retries on 408/429/5xx/network, tokens counted via usage.record (price qwen3.8-max $2/$6, cache read $0.25 - secondary sources). Sonnet = the old
+  `_think_retry` with `usage.ONE_MODEL_BYPASS` + `glmdoor.CLAUDE_ONLY` set for that call. Log `pc brain <brain> <model> step N <s> stop=`.
+- `pc/operator.py`: Op.brain / brain_model / brain_note (live card carries brain + model), start(brain=), `_run` calls brain.think, `pc_max_tokens` (4000),
+  no-action reply with stop max_tokens / refusal / no text = partial with an honest summary.
+- `agent/pc_tools.py`: pc_do / hoola_pc_do `model` enum qwen|sonnet. config: pc_model "qwen", pc_qwen_model, pc_sonnet_model, qwen_api_key, qwen_base_url,
+  pc_qwen_thinking ("" / on / off -> enable_thinking), pc_max_tokens, pc_brain_timeout_s. conftest pins PC_MODEL=sonnet for the older PC suites.
+- Tests `test_v0851_pc_brain.py` (10); PC suites 63 passed.
+- NOT VERIFIED: no live Qwen call (no key in this sandbox); Model Studio tool calling with images for qwen3.8-max and its default thinking behaviour are
+  from docs / third parties only; the base URL depends on her Model Studio region (Singapore / Tokyo use a workspace host - set QWEN_BASE_URL).
