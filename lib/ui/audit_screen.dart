@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'gst_screen.dart' show rs;
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -84,10 +85,10 @@ class _AuditScreenState extends State<AuditScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text("Auditor's assistant")),
-        body: Aurora(
-          child: RefreshIndicator(
+  Widget build(BuildContext context) => DeskPage(
+        title: "Auditor's assistant",
+        onRefresh: _load,
+        body: () => RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               GradientButton(label: 'New audit', icon: Icons.fact_check_rounded, onTap: _new),
@@ -122,7 +123,6 @@ class _AuditScreenState extends State<AuditScreen> {
               ),
             ]),
           ),
-        ),
       );
 }
 
@@ -248,12 +248,11 @@ class _AuditPageState extends State<AuditPage> {
     final caro = facts['caro'] as Map?;
     final open = _f.where((f) => f['status'] == 'open' || f['status'] == 'asked').toList();
     final closed = _f.where((f) => !(f['status'] == 'open' || f['status'] == 'asked')).toList();
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(e?['client']).isEmpty ? 'Audit' : _s(e?['client']))),
-      body: Aurora(
-        child: e == null
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+    return DeskPage(
+      title: _s(e?['client']).isEmpty ? 'Audit' : _s(e?['client']),
+      loading: e == null,
+      onRefresh: _load,
+      body: () => e == null ? const SizedBox.shrink() : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   Glass(
@@ -347,7 +346,6 @@ class _AuditPageState extends State<AuditPage> {
                       style: TextStyle(color: C.faint, fontSize: 11.5)),
                 ]),
               ),
-      ),
     );
   }
 }

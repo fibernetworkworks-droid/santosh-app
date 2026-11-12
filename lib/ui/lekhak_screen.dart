@@ -661,12 +661,11 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
   Widget build(BuildContext context) {
     final d = _d;
     final conv = widget.app.conversationId ?? '';
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(d == null ? '' : '${d['number']} · ${d['title']}')),
-      body: Aurora(
-        child: d == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
+    return DeskPage(
+      title: d == null ? '' : '${d['number']} · ${d['title']}',
+      loading: d == null,
+      onRefresh: _load,
+      body: () => d == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
                 Wrap(spacing: 8, children: [
                   Pill(_status[_s(d['status'])] ?? _s(d['status']), fg: _statusCol(_s(d['status']))),
                   Pill(_langs[d['lang']] ?? _s(d['lang'])),
@@ -765,7 +764,6 @@ class _LekhakDocPageState extends State<LekhakDocPage> {
                   ),
                 ],
               ]),
-      ),
     );
   }
 }

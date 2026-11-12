@@ -665,12 +665,11 @@ class _DpoRequestPageState extends State<DpoRequestPage> {
   @override
   Widget build(BuildContext context) {
     final r = _r;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(r == null ? 'Request' : '${_s(r['number'])} · ${_s(r['kind_label'])}')),
-      body: r == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: r == null ? 'Request' : '${_s(r['number'])} · ${_s(r['kind_label'])}',
+      loading: r == null,
+      onRefresh: _load,
+      body: () => r == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               DpoRequestCard(app: widget.app, data: {'request': r}),
               const SizedBox(height: 8),
               Glass(
@@ -785,12 +784,11 @@ class _DpoBreachPageState extends State<DpoBreachPage> {
   Widget build(BuildContext context) {
     final b = _b;
     final dr = _m(b?['drafts']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Breach' : '${_s(b['number'])} · ${_s(b['title'])}')),
-      body: b == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: b == null ? 'Breach' : '${_s(b['number'])} · ${_s(b['title'])}',
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               DpoBreachCard(app: widget.app, data: {'breach': b}),
               const SizedBox(height: 8),
               GlassButton(label: 'Fill in the details', icon: Icons.edit_note_rounded, onTap: _busy ? null : _facts),

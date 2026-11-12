@@ -603,12 +603,11 @@ class _SevaTicketPageState extends State<SevaTicketPage> {
   Widget build(BuildContext context) {
     final t = _t;
     final sla = _map(t?['sla']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(t?['number']).isEmpty ? 'Complaint' : _s(t?['number']))),
-      body: Aurora(
-        child: t == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: _s(t?['number']).isEmpty ? 'Complaint' : _s(t?['number']),
+      loading: t == null,
+      onRefresh: _load,
+      body: () => t == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
@@ -698,7 +697,6 @@ class _SevaTicketPageState extends State<SevaTicketPage> {
                         style: TextStyle(fontSize: 12.5, color: n['public'] == true ? C.teal : C.ink)),
                   ),
               ]),
-      ),
     );
   }
 }

@@ -431,12 +431,11 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
   Widget build(BuildContext context) {
     final m = _m;
     final memo = _map(m?['memo']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(m == null ? widget.ref : '${_s(m['number'])} · ${_s(m['title'])}')),
-      body: Aurora(
-        child: m == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: m == null ? widget.ref : '${_s(m['number'])} · ${_s(m['title'])}',
+      loading: m == null,
+      onRefresh: _load,
+      body: () => m == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 if (memo.isNotEmpty)
                   Glass(child: LegalresMemoView(memo: memo, onSave: (n) => _run(() => widget.app.api!.call('POST', '$_path/sources/$n/save', body: {})))),
                 const SizedBox(height: 10),
@@ -537,7 +536,6 @@ class _LegalresMatterPageState extends State<LegalresMatterPage> {
                 const SizedBox(height: 12),
                 const Text(_disclaimer, style: TextStyle(color: C.faint, fontSize: 11.5)),
               ]),
-      ),
     );
   }
 }

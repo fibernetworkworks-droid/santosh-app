@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// "Mera avatar ne kya seekha": private lessons (forget any), what was shared, installed skills (switch off any).
 class HoolaLearnedScreen extends StatefulWidget {
@@ -49,12 +50,11 @@ class _HoolaLearnedScreenState extends State<HoolaLearnedScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text('What ${app.aName} has learned'), backgroundColor: Colors.transparent),
-        body: Aurora(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
+  Widget build(BuildContext context) => DeskPage(
+        title: 'What ${app.aName} has learned',
+        loading: _loading,
+        onRefresh: _load,
+        body: () => RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.all(16), children: [
                     Text(app.g('${app.aName} learns from your work: what worked, what did not, the right way. This is yours alone; '
@@ -101,7 +101,6 @@ class _HoolaLearnedScreenState extends State<HoolaLearnedScreen> {
                       const Padding(padding: EdgeInsets.all(12), child: Text('No skills installed. You can install some from the Community.', style: TextStyle(color: C.faint))),
                   ]),
                 ),
-        ),
       );
 }
 
@@ -332,11 +331,9 @@ class _HoolaSamajScreenState extends State<HoolaSamajScreen> {
     final items = List<Map<String, dynamic>>.from((_c['items'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final pending = List<Map<String, dynamic>>.from((_c['pending_members'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final mod = _c['role'] == 'owner' || _c['role'] == 'mod';
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${_c['emoji'] ?? '🌐'} ${_c['name'] ?? 'Community'}'),
-        backgroundColor: Colors.transparent,
-        actions: [
+    return DeskPage(
+      title: '${_c['emoji'] ?? '🌐'} ${_c['name'] ?? 'Community'}',
+      actions: [
           PopupMenuButton<String>(
             onSelected: (v) async {
               try {
@@ -358,9 +355,7 @@ class _HoolaSamajScreenState extends State<HoolaSamajScreen> {
             ],
           ),
         ],
-      ),
-      body: Aurora(
-        child: Column(children: [
+body: () => Column(children: [
           SizedBox(
             height: 44,
             child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
@@ -490,7 +485,6 @@ class _HoolaSamajScreenState extends State<HoolaSamajScreen> {
               ),
             ),
         ]),
-      ),
     );
   }
 

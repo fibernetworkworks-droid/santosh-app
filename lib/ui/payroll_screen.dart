@@ -411,9 +411,9 @@ class PayRunPage extends StatelessWidget {
   final Santosh app;
   final String id;
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Salary')),
-        body: Aurora(child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [PayRunView(app: app, id: id)])),
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Salary',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [PayRunView(app: app, id: id)]),
       );
 }
 

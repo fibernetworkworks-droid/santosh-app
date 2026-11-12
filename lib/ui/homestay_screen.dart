@@ -14,6 +14,7 @@ import '../api.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
@@ -579,14 +580,10 @@ class _HomestayScreenState extends State<HomestayScreen> {
   @override
   Widget build(BuildContext context) {
     const tabs = ['Aaj', 'Calendar', 'Booking', 'Mehmaan', 'Hisaab', 'Niyam'];
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text('${widget.app.aName} · Homestay host'),
-        actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
-      ),
-      body: Column(children: [
+    return DeskPage(
+      title: 'Homestay host',
+      actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded))],
+      body: () => Column(children: [
         SizedBox(
           height: 44,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
@@ -757,12 +754,11 @@ class _HomestayBookingPageState extends State<HomestayBookingPage> {
   @override
   Widget build(BuildContext context) {
     final b = _b;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Booking' : _s(b['number']))),
-      body: b == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: b == null ? 'Booking' : _s(b['number']),
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(14), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

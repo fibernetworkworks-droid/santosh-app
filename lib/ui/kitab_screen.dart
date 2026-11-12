@@ -293,12 +293,11 @@ class _KitabBookPageState extends State<KitabBookPage> {
   @override
   Widget build(BuildContext context) {
     final b = _b;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Book' : '${_s(b['number'])} · ${_s(b['title'])}')),
-      body: b == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: b == null ? 'Book' : '${_s(b['number'])} · ${_s(b['title'])}',
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_card != null) Padding(padding: const EdgeInsets.only(bottom: 12),
@@ -523,17 +522,17 @@ class _KitabChapterPageState extends State<KitabChapterPage> {
     final c = _c;
     final sugs = _list(c?['suggestions']);
     final changes = sugs.where((s) => s['query'] != true).toList();
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(c == null ? 'Chapter' : '${_s(c['n'])}. ${_s(c['title'])}'), actions: [
+    return DeskPage(
+      title: c == null ? 'Chapter' : '${_s(c['n'])}. ${_s(c['title'])}',
+      loading: c == null,
+      onRefresh: _load,
+      actions: [
         IconButton(icon: const Icon(Icons.edit_note_rounded), tooltip: 'Write it myself', onPressed: c == null ? null : () async {
           final f = await _form(context, 'Your text', const [('text', 'Text')], initial: {'text': _s(c['text'])}, ok: 'Save');
           if (f != null) await _run('PUT', _base, {'text': f['text'] ?? ''});
         }),
-      ]),
-      body: c == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      ],
+body: () => c == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Text('${_s(c['words'])} shabd · ausat vakya ${_s(_m(c['stats'])['avg_sentence'])} shabd', style: const TextStyle(color: C.muted)),

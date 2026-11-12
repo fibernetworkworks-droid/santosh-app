@@ -4,6 +4,7 @@ import '../native.dart';
 import '../state.dart';
 import 'bluetooth_panel.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// Ghar: the user's home devices. Speaker / TV / AC run from this phone (Bluetooth, IR blaster, Wi-Fi);
 /// Samsung SmartThings, LG ThinQ and Bosch/Siemens Home Connect appliances come from the brand's own account.
@@ -442,10 +443,10 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
   @override
   Widget build(BuildContext context) {
     final remoteOn = _caps['remote_on'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Home',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -515,7 +516,6 @@ class _HomeDevicesScreenState extends State<HomeDevicesScreen> with WidgetsBindi
                 style: TextStyle(color: C.faint, fontSize: 11.5, height: 1.4)),
           ]),
         ),
-      ),
     );
   }
 }

@@ -3346,3 +3346,24 @@ dropped, "sahayak" names replaced (Tailor, GST, Tea stall). New deskWord entries
 Spending, Dhoondhiye -> Find. Tests: desk_kit_test (no TabBar / DefaultTabController outside the kit, >= 20 desks,
 English titles; widget test of the frame: pill tabs, tap + swipe, error + Try again, no blur); CI picture
 47_desk_tabs. NOT VERIFIED on a real phone. Still to move: single-page desks and other layouts (~70 screens).
+
+
+## v0.871.0 R8 DESKS wave 4 - one-page desks and detail pages (owner: "GO R8 WAVE 4")
+
+New `DeskPage` in lib/ui/desk/desk_kit.dart: the frame of a one-page desk or screen - English header (title, the
+screen's own actions, Refresh when it can reload), the first-load / error state `DeskLoading` (spinner -> after 12 s
+"Still loading" + Try again; an error = "Could not load" + the reason + Try again), and the page (it keeps its own pull
+to refresh). 181 frames in 122 files moved onto it by a script that parses each Scaffold by bracket matching and
+refuses anything it does not recognise (other Scaffold arguments such as bottomNavigationBar / extendBodyBehindAppBar,
+non-standard backgrounds, AppBars with bottom / leading options, multi-argument titles): the one-page desks (Google
+Drive / Sheets / Forms / Slides / Photos, Calendar, Email, YouTube, Employees desks, game desk pages, CAD /
+architecture desks, studios, ID locker, memory, call quality, voice ...) and the detail pages inside the desks moved in
+waves 1-3 (orders, bookings, visits, matters, tickets, shipments ...). A loading check `X == null` stays inside the page
+as `X == null ? SizedBox.shrink() : page` so Dart still knows the data is there. Titles: "band na ho" -> "Keep ...
+running", "Light ka hisaab" -> "Power budget", "Kaam" -> "Work", "Google ads" -> "Google Ads"; Public APIs by hand.
+The frozen PC screens (pc_screen.dart, hoola_pc_screen.dart) untouched (test). Left (~23, own layouts on purpose or
+for a later pass): screens with a bottom bar (appreview, kalam write, propagent, motiondesk), full-bleed / black
+viewers (browser_live, chat_attach, photo_card, hoola_media, video_editor, brand preview), bazar / shopping (image
+headers), avatar setup, employee inbox, the notebook / app designer / site detail pages with their own app bars.
+Tests: desk_kit_test (>= 120 files / 175 frames, English titles, PC screens untouched; widget test of the frame); CI
+picture 48_desk_page. NOT VERIFIED on a real phone.

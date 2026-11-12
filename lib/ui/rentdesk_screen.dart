@@ -619,12 +619,11 @@ class _RentdeskTenancyPageState extends State<RentdeskTenancyPage> {
   @override
   Widget build(BuildContext context) {
     final t = _t;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(t == null ? 'Tenancy' : '${_s(t['number'])} · ${_s(t['tenant_name'])}')),
-      body: t == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: t == null ? 'Tenancy' : '${_s(t['number'])} · ${_s(t['tenant_name'])}',
+      loading: t == null,
+      onRefresh: _load,
+      body: () => t == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(14), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

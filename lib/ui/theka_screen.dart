@@ -241,12 +241,11 @@ class _ThekaProjectPageState extends State<ThekaProjectPage> {
   @override
   Widget build(BuildContext context) {
     final p = _p;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(p?['name']).isEmpty ? 'Kaam' : _s(p?['name']))),
-      body: Aurora(
-        child: p == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: _s(p?['name']).isEmpty ? 'Work' : _s(p?['name']),
+      loading: p == null,
+      onRefresh: _load,
+      body: () => p == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('Kaam ${p['progress_pct']}% · bill ${rs(p['billed'])} · retention ${rs(p['retention_held'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -323,7 +322,6 @@ class _ThekaProjectPageState extends State<ThekaProjectPage> {
                 for (final m in _list(p['stock']))
                   Text('${_s(m['item'])}: received ${m['in']}, spent ${m['used']}, bacha ${m['balance']}', style: const TextStyle(fontSize: 12.5)),
               ]),
-      ),
     );
   }
 }

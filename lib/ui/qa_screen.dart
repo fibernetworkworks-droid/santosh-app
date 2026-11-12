@@ -489,10 +489,10 @@ class _QaTargetPageState extends State<QaTargetPage> {
   @override
   Widget build(BuildContext context) {
     final t = _t;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(t == null ? 'Target' : '${_s(t['number'])} · ${_s(t['name'])}')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: t == null ? 'Target' : '${_s(t['number'])} · ${_s(t['name'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: t == null
               ? const Center(child: CircularProgressIndicator())
@@ -580,7 +580,6 @@ class _QaTargetPageState extends State<QaTargetPage> {
                         child: const Text('Remove this target', style: TextStyle(color: C.bad))),
                 ]),
         ),
-      ),
     );
   }
 }
@@ -641,12 +640,11 @@ class _QaBugPageState extends State<QaBugPage> {
   Widget build(BuildContext context) {
     final b = _b;
     final api = widget.app.api!;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(b == null ? 'Bug' : _s(b['number']))),
-      body: Aurora(
-        child: b == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: b == null ? 'Bug' : _s(b['number']),
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 if (_busy) const LinearProgressIndicator(),
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -705,7 +703,6 @@ class _QaBugPageState extends State<QaBugPage> {
                 for (final l in _list(b['log']).reversed)
                   Text('${_s(l['at']).replaceFirst('T', ' ')} · ${_s(l['by'])}: ${_s(l['what'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
               ]),
-      ),
     );
   }
 }

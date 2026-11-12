@@ -698,12 +698,11 @@ class _SocietyFlatPageState extends State<SocietyFlatPage> {
   @override
   Widget build(BuildContext context) {
     final f = _f;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Flat ${_s(f?['unit'])}')),
-      body: f == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: 'Flat ${_s(f?['unit'])}',
+      loading: f == null,
+      onRefresh: _load,
+      body: () => f == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(_s(f['owner_name']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -822,12 +821,11 @@ class _SocietyMeetingPageState extends State<SocietyMeetingPage> {
   Widget build(BuildContext context) {
     final m = _m0;
     final st = _s(m?['status']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${_s(m?['number'])} · ${_s(m?['kind']).toUpperCase()}')),
-      body: m == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: '${_s(m?['number'])} · ${_s(m?['kind']).toUpperCase()}',
+      loading: m == null,
+      onRefresh: _load,
+      body: () => m == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${_s(m['day'])} ${_s(m['time'])} · ${_s(m['place'])}', style: const TextStyle(fontWeight: FontWeight.w800)),

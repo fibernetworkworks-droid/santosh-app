@@ -465,12 +465,11 @@ class _PodcastEpisodePageState extends State<PodcastEpisodePage> {
   @override
   Widget build(BuildContext context) {
     final e = _e;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(e == null ? widget.ref : '${_s(e['number'])} · ${_s(e['title'])}')),
-      body: e == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(onRefresh: _load, child: ListView(padding: const EdgeInsets.all(16), children: _body(e))),
+    return DeskPage(
+      title: e == null ? widget.ref : '${_s(e['number'])} · ${_s(e['title'])}',
+      loading: e == null,
+      onRefresh: _load,
+      body: () => e == null ? const SizedBox.shrink() : RefreshIndicator(onRefresh: _load, child: ListView(padding: const EdgeInsets.all(16), children: _body(e))),
     );
   }
 

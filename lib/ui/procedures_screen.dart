@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 class ProceduresScreen extends StatefulWidget {
   const ProceduresScreen({super.key, required this.app});
@@ -122,10 +123,10 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
   Widget build(BuildContext context) {
     final rows = _rows;
     final name = widget.app.aName;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Learned tasks')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Learned tasks',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             Glass(
@@ -158,7 +159,6 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
             for (final p in rows ?? const <Map<String, dynamic>>[]) _card(p),
           ]),
         ),
-      ),
     );
   }
 

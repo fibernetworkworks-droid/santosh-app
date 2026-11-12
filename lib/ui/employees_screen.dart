@@ -21,6 +21,7 @@ import 'daftar_screen.dart';
 import 'enterprise_screen.dart';
 import 'game_desk_screen.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'guru_screen.dart';
 import 'prayog_screen.dart';
 import 'shiksha_screen.dart';
@@ -193,10 +194,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Employees')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Employees',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('Hire an AI employee for one job. It gets its own desk and works 24/7; you stay in charge.',
@@ -210,7 +211,6 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -572,14 +572,13 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
           ),
       ]);
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('SEO Desk')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'SEO Desk',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
         ),
-      ),
     );
   }
 }
@@ -1370,14 +1369,13 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           ]),
       ]);
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Social Desk')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Social Desk',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: children),
         ),
-      ),
     );
   }
 }
@@ -1514,10 +1512,9 @@ class _SocialInboxScreenState extends State<SocialInboxScreen> {
     final d = _d;
     final counts = Map<String, dynamic>.from((d?['counts'] as Map?) ?? const {});
     final items = _list(d?['items']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Inbox')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Inbox',
+      body: () => RefreshIndicator(
           onRefresh: () async {
             try {
               await widget.app.api!.socialRun('inbox');
@@ -1547,7 +1544,6 @@ class _SocialInboxScreenState extends State<SocialInboxScreen> {
               for (final it in items) _item(it),
           ]),
         ),
-      ),
     );
   }
 }
@@ -1818,14 +1814,13 @@ class _YtAdsScreenState extends State<YtAdsScreen> {
         }
       }
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Google ads')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Google Ads',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
         ),
-      ),
     );
   }
 }
@@ -2095,14 +2090,13 @@ class _MetaAdsScreenState extends State<MetaAdsScreen> {
         }
       }
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Facebook & Instagram ads')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Facebook & Instagram ads',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
         ),
-      ),
     );
   }
 }
@@ -2333,14 +2327,13 @@ class _SearchIntelScreenState extends State<SearchIntelScreen> {
         ]),
       ]);
     }
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Search intel')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Search intel',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
         ),
-      ),
     );
   }
 

@@ -695,12 +695,11 @@ class _FrontofficeBookingPageState extends State<FrontofficeBookingPage> {
   @override
   Widget build(BuildContext context) {
     final b = _b;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(title: Text(b == null ? 'Booking' : '${_s(b['number'])} · ${_s(b['guest'])}'), backgroundColor: Colors.transparent),
-      body: b == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: b == null ? 'Booking' : '${_s(b['number'])} · ${_s(b['guest'])}',
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

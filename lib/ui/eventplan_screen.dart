@@ -477,11 +477,11 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
     final pm = _m(e['permits']);
     final sh = _m(e['show']);
     final vq = _list(e['vquotes']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${_s(e['number'])} · ${_s(e['name'])}'),
-          actions: [IconButton(icon: const Icon(Icons.edit_rounded), onPressed: _busy ? null : _edit)]),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(e['number'])} · ${_s(e['name'])}',
+      onRefresh: _load,
+      actions: [IconButton(icon: const Icon(Icons.edit_rounded), onPressed: _busy ? null : _edit)],
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

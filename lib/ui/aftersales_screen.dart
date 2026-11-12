@@ -703,12 +703,11 @@ class _AsUnitPageState extends State<AsUnitPage> {
     final u = _u;
     final c = _map(u?['customer']);
     final amc = _map(u?['amc']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(u == null ? 'Machine' : '${_s(u['label'])} · ${_s(c['name'])}')),
-      body: Aurora(
-        child: u == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: u == null ? 'Machine' : '${_s(u['label'])} · ${_s(c['name'])}',
+      loading: u == null,
+      onRefresh: _load,
+      body: () => u == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${_s(u['brand'])} ${_s(u['model'])} · Sr ${_s(u['serial']).isEmpty ? '-' : _s(u['serial'])}',
@@ -755,7 +754,6 @@ class _AsUnitPageState extends State<AsUnitPage> {
                   for (final c2 in _list(u['claims'])) Text('• ${_s(c2['number'])} ${_s(c2['part'])}: ${_s(c2['status'])}'),
                 ],
               ]),
-      ),
     );
   }
 }
@@ -1003,19 +1001,17 @@ class _AsVisitPageState extends State<AsVisitPage> {
   @override
   Widget build(BuildContext context) {
     final v = _v;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Visit' : '${_s(v['number'])} · ${_s(_map(v['customer'])['name'])}')),
-      body: Aurora(
-        child: v == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: v == null ? 'Visit' : '${_s(v['number'])} · ${_s(_map(v['customer'])['name'])}',
+      loading: v == null,
+      onRefresh: _load,
+      body: () => v == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Text('${_s(v['when'])} · ${_s(_map(v['tech'])['name'])} · ${_s(_map(v['unit'])['label'])} · ${_s(v['status'])}',
                     style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 8),
                 if (_busy) const LinearProgressIndicator(),
                 if (v['status'] == 'booked' || v['status'] == 'on_way') _open(v) else if (v['status'] == 'done') _closed(v) else Text('Visit ${_s(v['status'])}.'),
               ]),
-      ),
     );
   }
 }
@@ -1113,10 +1109,9 @@ class AsSettingsPage extends StatelessWidget {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('After-sales rules')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'After-sales rules',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_s(data['business']).isEmpty ? '(no shop name)' : _s(data['business']), style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -1182,7 +1177,6 @@ class AsSettingsPage extends StatelessWidget {
               },
             ),
         ]),
-      ),
     );
   }
 }
@@ -1214,10 +1208,9 @@ class _AsTemplatesPageState extends State<AsTemplatesPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('WhatsApp templates')),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'WhatsApp templates',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text(
                 'From a business number, after 24 hours only a Meta-approved template can go. Service / visit / report = UTILITY; '
                 'AMC renewal = MARKETING (only for those who agreed to offers).',
@@ -1253,7 +1246,6 @@ class _AsTemplatesPageState extends State<AsTemplatesPage> {
                 ),
               ),
           ]),
-        ),
       );
 }
 

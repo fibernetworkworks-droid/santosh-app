@@ -588,13 +588,12 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
   @override
   Widget build(BuildContext context) {
     final p = _p;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(p == null ? widget.ref : '${_s(p['number'])} · ${_s(p['title'])}'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: p == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: p == null ? widget.ref : '${_s(p['number'])} · ${_s(p['title'])}',
+      loading: p == null,
+      onRefresh: _load,
+      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      body: () => p == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Glass(

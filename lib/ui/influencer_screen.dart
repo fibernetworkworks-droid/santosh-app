@@ -488,12 +488,11 @@ class _InfluencerDealPageState extends State<InfluencerDealPage> {
   Widget build(BuildContext context) {
     final d = _d;
     final money = _m(d?['money']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(title: Text(widget.ref), backgroundColor: Colors.transparent, elevation: 0),
-      body: d == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: widget.ref,
+      loading: d == null,
+      onRefresh: _load,
+      body: () => d == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

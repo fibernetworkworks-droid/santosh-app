@@ -549,12 +549,11 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
   @override
   Widget build(BuildContext context) {
     final l = _l;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(l == null ? '' : _s(l['name']))),
-      body: Aurora(
-        child: l == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
+    return DeskPage(
+      title: l == null ? '' : _s(l['name']),
+      loading: l == null,
+      onRefresh: _load,
+      body: () => l == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   Pill(_s(l['stage']), fg: _stageCol(_s(l['stage']))),
                   Pill(_s(l['purpose_label'])),
@@ -634,7 +633,6 @@ class _TeleLeadPageState extends State<TeleLeadPage> {
                     subtitle: Text([_s(h['summary']), if (_s(h['next_nice']).isNotEmpty) 'Next: ${h['next_nice']}'].where((x) => x.isNotEmpty).join('\n')),
                   ),
               ]),
-      ),
     );
   }
 }

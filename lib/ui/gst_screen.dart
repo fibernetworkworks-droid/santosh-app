@@ -419,10 +419,9 @@ class _GstClientPageState extends State<GstClientPage> with _GstLive {
     final inn = _bills.where((b) => b['direction'] == 'in').toList();
     final bad = _bills.where((b) => (b['problems'] as List?)?.isNotEmpty == true).length;
     final quarterEnd = ['03', '06', '09', '12'].contains(_period.split('-').last);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(c['name']).isEmpty ? 'Client' : _s(c['name']))),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: _s(c['name']).isEmpty ? 'Client' : _s(c['name']),
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s(c['gstin'])} · ${_s(c['state_name'])} · $scheme', style: const TextStyle(color: C.muted)),
@@ -527,7 +526,6 @@ class _GstClientPageState extends State<GstClientPage> with _GstLive {
               ),
           ],
         ]),
-      ),
     );
   }
 }
@@ -610,10 +608,9 @@ class _GstReconPageState extends State<GstReconPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: Text('2B matching · ${_nicePeriod(widget.period)}')),
-        body: Aurora(
-          child: _r == null
+  Widget build(BuildContext context) => DeskPage(
+        title: '2B matching · ${_nicePeriod(widget.period)}',
+        body: () => _r == null
               ? Center(child: _err != null ? Padding(padding: const EdgeInsets.all(20), child: Text(_err!)) : const CircularProgressIndicator())
               : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   Glass(child: Text(_s(_r!['say']), style: const TextStyle(height: 1.35))),
@@ -630,7 +627,6 @@ class _GstReconPageState extends State<GstReconPage> {
                   const SizedBox(height: 8),
                   GradientButton(label: 'Apply in IMS on the portal', icon: Icons.computer_rounded, onTap: () => _save(apply: true)),
                 ]),
-        ),
       );
 }
 
@@ -698,9 +694,9 @@ class GstReturnPage extends StatelessWidget {
   final Santosh app;
   final String id;
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Return')),
-        body: Aurora(child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [GstReturnView(app: app, id: id)])),
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Return',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [GstReturnView(app: app, id: id)]),
       );
 }
 

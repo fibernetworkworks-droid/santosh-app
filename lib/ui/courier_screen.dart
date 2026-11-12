@@ -554,10 +554,10 @@ class _CourierParcelPageState extends State<CourierParcelPage> {
     final sv = _m(p['serviceable']);
     final pick = _m(_m(p['pick'])['best']);
     final nd = _m(p['ndr']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(title: Text('${_s(p['number'])} ${p['kind'] == 'reverse' ? '(return)' : ''}'), backgroundColor: Colors.transparent),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(p['number'])} ${p['kind'] == 'reverse' ? '(return)' : ''}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(

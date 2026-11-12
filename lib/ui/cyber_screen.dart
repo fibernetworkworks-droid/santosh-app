@@ -596,12 +596,11 @@ class _CyberIncidentPageState extends State<CyberIncidentPage> {
     final ci = _m(i?['cert_in']);
     final dp = _m(i?['dpdp']);
     final open = i != null && i['status'] == 'open';
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(i?['number']).isEmpty ? 'Incident' : _s(i?['number']))),
-      body: Aurora(
-        child: i == null
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+    return DeskPage(
+      title: _s(i?['number']).isEmpty ? 'Incident' : _s(i?['number']),
+      loading: i == null,
+      onRefresh: _load,
+      body: () => i == null ? const SizedBox.shrink() : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   Glass(
@@ -683,7 +682,6 @@ class _CyberIncidentPageState extends State<CyberIncidentPage> {
                     Text('${_s(t['at']).replaceAll('T', ' ')} · ${_s(t['by'])}: ${_s(t['what'])}', style: const TextStyle(fontSize: 12, height: 1.35)),
                 ]),
               ),
-      ),
     );
   }
 }

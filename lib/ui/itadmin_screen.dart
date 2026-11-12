@@ -522,12 +522,11 @@ class _ItadminPersonPageState extends State<ItadminPersonPage> {
   @override
   Widget build(BuildContext context) {
     final p = _p;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(p == null ? 'Person' : _s(p['name']))),
-      body: Aurora(
-        child: p == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: p == null ? 'Person' : _s(p['name']),
+      loading: p == null,
+      onRefresh: _load,
+      body: () => p == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${_s(p['number'])} · ${_s(p['name'])}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -603,7 +602,6 @@ class _ItadminPersonPageState extends State<ItadminPersonPage> {
                 for (final c in _list(p['checklists']))
                   Padding(padding: const EdgeInsets.only(bottom: 8), child: ItadminChecklistCard(app: widget.app, data: {'checklist': c, 'person': p['name']}, onDone: _load)),
               ]),
-      ),
     );
   }
 }
@@ -658,12 +656,11 @@ class _ItadminGuidePageState extends State<ItadminGuidePage> {
     final g = _g;
     final api = widget.app.api!;
     final base = api.baseUrl.endsWith('/') ? api.baseUrl.substring(0, api.baseUrl.length - 1) : api.baseUrl;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(g == null ? 'Guide' : _s(g['title']))),
-      body: Aurora(
-        child: g == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: g == null ? 'Guide' : _s(g['title']),
+      loading: g == null,
+      onRefresh: _load,
+      body: () => g == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
                 Row(children: [
                   Pill('${_s(g['number'])} · v${_s(g['version'])}'),
                   const SizedBox(width: 6),
@@ -723,7 +720,6 @@ class _ItadminGuidePageState extends State<ItadminGuidePage> {
                     trailing: TextButton(onPressed: () => _go('POST', '/api/itadmin/guides/${widget.id}/restore', {'version': v['version']}), child: const Text('Bring back')),
                   ),
               ]),
-      ),
     );
   }
 }

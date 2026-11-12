@@ -623,16 +623,17 @@ class _PatrakarStoryPageState extends State<PatrakarStoryPage> {
   Widget build(BuildContext context) {
     final v = _v;
     if (v == null) {
-      return Scaffold(backgroundColor: C.bgTop, appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref)),
-          body: const Center(child: CircularProgressIndicator()));
+      return DeskPage(
+        title: widget.ref,
+        body: () => const Center(child: CircularProgressIndicator()),
+      );
     }
     final pub = _m(v['published']);
     final protected = (v['protected_names'] is num) ? (v['protected_names'] as num).toInt() : 0;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: widget.ref,
+      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 6, runSpacing: 6, children: [

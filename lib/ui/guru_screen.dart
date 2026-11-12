@@ -51,10 +51,10 @@ class _GuruScreenState extends State<GuruScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Personal tutor')),
-        body: Aurora(
-          child: RefreshIndicator(
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Personal tutor',
+        onRefresh: _load,
+        body: () => RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               if (_s(_day['say']).isNotEmpty) Glass(child: Text(_s(_day['say']), style: const TextStyle(fontWeight: FontWeight.w700))),
@@ -87,7 +87,6 @@ class _GuruScreenState extends State<GuruScreen> {
               const Text(_disclaimer, style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
-        ),
       );
 }
 

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 Future<void> _open(String url) async {
   if (url.isEmpty) return;
@@ -125,10 +126,10 @@ class _PhotosScreenState extends State<PhotosScreen> {
   Widget build(BuildContext context) {
     final accounts = _list('accounts');
     final canLink = _st['can_link'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Google Photos'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Google Photos',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('You choose photos in Google Photos, and Hoola sends them to your phone, PC, Drive or email. '
@@ -172,7 +173,6 @@ class _PhotosScreenState extends State<PhotosScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

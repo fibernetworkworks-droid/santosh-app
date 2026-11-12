@@ -584,12 +584,11 @@ class _PideskCasePageState extends State<PideskCasePage> {
   @override
   Widget build(BuildContext context) {
     final c = _c;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text(c == null ? 'Case' : '${_s(c['number'])} · ${_s(c['title'])}'),
-        actions: [
+    return DeskPage(
+      title: c == null ? 'Case' : '${_s(c['number'])} · ${_s(c['title'])}',
+      loading: c == null,
+      onRefresh: _load,
+      actions: [
           PopupMenuButton<String>(
             onSelected: (v) async {
               if (v == 'close') await _run('POST', '$_base/close');
@@ -616,10 +615,7 @@ class _PideskCasePageState extends State<PideskCasePage> {
             ],
           ),
         ],
-      ),
-      body: c == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+body: () => c == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

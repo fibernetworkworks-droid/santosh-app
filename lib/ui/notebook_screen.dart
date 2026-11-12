@@ -241,17 +241,17 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
   @override
   Widget build(BuildContext context) {
     final l = _list;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hoola Notebook'), backgroundColor: Colors.transparent),
-      floatingActionButton: FloatingActionButton.extended(
+    return DeskPage(
+      title: 'Hoola Notebook',
+      onRefresh: _load,
+      fab: FloatingActionButton.extended(
         backgroundColor: C.accent,
         foregroundColor: C.onAccent,
         onPressed: _create,
         icon: const Icon(Icons.add_rounded),
         label: const Text('New notebook', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
-      body: Aurora(
-        child: RefreshIndicator(
+body: () => RefreshIndicator(
           onRefresh: _load,
           child: l == null
               ? ListView(children: [
@@ -316,7 +316,6 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
                       },
                     ),
         ),
-      ),
     );
   }
 }

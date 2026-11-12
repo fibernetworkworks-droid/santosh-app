@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../state.dart';
 import 'artifact_screen.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// Mere Artifacts: every app, tracker, chart and document Santosh has built for you.
 class ArtifactsScreen extends StatefulWidget {
@@ -120,10 +121,10 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('My Artifacts'), backgroundColor: Colors.transparent),
-        body: Aurora(
-          child: RefreshIndicator(
+  Widget build(BuildContext context) => DeskPage(
+        title: 'My Artifacts',
+        onRefresh: _load,
+        body: () => RefreshIndicator(
             onRefresh: _load,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -149,6 +150,5 @@ class _ArtifactsScreenState extends State<ArtifactsScreen> {
               ],
             ),
           ),
-        ),
       );
 }

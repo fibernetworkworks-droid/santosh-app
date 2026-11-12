@@ -387,10 +387,9 @@ class _InsClientPageState extends State<InsClientPage> {
   Widget build(BuildContext context) {
     final life = (_needs?['life'] as Map?) ?? const {};
     final health = (_needs?['health'] as Map?) ?? const {};
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(widget.client['name']))),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: _s(widget.client['name']),
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           if (_needs != null)
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -420,7 +419,6 @@ class _InsClientPageState extends State<InsClientPage> {
               ),
             ),
         ]),
-      ),
     );
   }
 }

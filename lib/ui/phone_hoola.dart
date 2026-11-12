@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.63 "Phone mein Hoola": Hoola as the phone's assistant, the floating bubble (Android's Bubbles API), the
 /// home-screen widget and in-app updates for the GitHub APK. Everything is switched on by the owner; nothing reads
@@ -109,10 +110,9 @@ class _PhoneHoolaScreenState extends State<PhoneHoolaScreen> with WidgetsBinding
     final github = (_ver['channel'] ?? 'github') == 'github';
     final latest = _latest;
     final available = latest?['available'] == true;
-    return Scaffold(
-      backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('$name on the phone')),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
+    return DeskPage(
+      title: '$name on the phone',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
         _card(
           icon: Icons.assistant_rounded,
           color: C.accent,

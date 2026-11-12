@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.92 Hoola Jaanch: every part of Hoola checked live (about 10 s), what is broken with its fix in plain words,
 /// and the last 14 days of real work (tasks, website jobs, crashes).
@@ -91,11 +92,12 @@ class _JaanchScreenState extends State<JaanchScreen> {
     final chat = Map<String, dynamic>.from((rep['chat'] as Map?) ?? const {});
     final web = Map<String, dynamic>.from((rep['website'] as Map?) ?? const {});
     final notDone = List<Map>.from((web['not_done'] as List?) ?? const []);
-    return Scaffold(
-      appBar: AppBar(title: Text('${widget.app.aName} Check'), actions: [
+    return DeskPage(
+      title: '${widget.app.aName} Check',
+      actions: [
         IconButton(onPressed: _busy ? null : _run, icon: const Icon(Icons.refresh_rounded)),
-      ]),
-      body: _busy && r == null
+      ],
+body: () => _busy && r == null
           ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
               CircularProgressIndicator(),
               SizedBox(height: 12),

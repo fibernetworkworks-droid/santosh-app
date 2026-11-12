@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.250 "Hoola ki yaad" (Claude's memory settings): the page Hoola keeps about her ("Mere baare mein") which she
 /// can read, correct or clear, a "naya likho" tap, and her two switches - "Khud yaad rakhna" (Hoola picks up facts and
@@ -120,11 +121,11 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
   @override
   Widget build(BuildContext context) {
     final api = widget.app.api!;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hoola\'s memory')),
-      body: !_loaded
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'Hoola\'s memory',
+      loading: !_loaded,
+      onRefresh: _load,
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('About me', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),

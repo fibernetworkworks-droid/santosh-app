@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'scroll_screen.dart';
 import 'tv_screen.dart' show HoolaTv;
 
@@ -363,16 +364,16 @@ class _ReelScreenState extends State<ReelScreen> {
   @override
   Widget build(BuildContext context) {
     final r = _r;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hoola Reels'), backgroundColor: Colors.transparent, actions: [
+    return DeskPage(
+      title: 'Hoola Reels',
+      actions: [
         IconButton(
           tooltip: 'Saved reels',
           icon: const Icon(Icons.collections_bookmark_rounded),
           onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SavedReelsScreen())),
         ),
-      ]),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+      ],
+body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
           if (_looking)
             Glass(
               radius: 20,
@@ -500,7 +501,6 @@ class _ReelScreenState extends State<ReelScreen> {
             GlassButton(label: 'Ask Hoola about this reel', icon: Icons.chat_bubble_rounded, onTap: _askInChat),
           ],
         ]),
-      ),
     );
   }
 }
@@ -557,16 +557,17 @@ class _SavedReelsScreenState extends State<SavedReelsScreen> {
   };
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Saved reels'), backgroundColor: Colors.transparent, actions: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Saved reels',
+        onRefresh: _load,
+        actions: [
           IconButton(
             tooltip: 'Scroll report',
             icon: const Icon(Icons.insights_rounded),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScrollScreen())),
           ),
-        ]),
-        body: Aurora(
-          child: RefreshIndicator(
+        ],
+body: () => RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
               const Text('A reel from any app: tap Share, then choose Hoola.', style: TextStyle(color: C.muted, fontSize: 13)),
@@ -636,6 +637,5 @@ class _SavedReelsScreenState extends State<SavedReelsScreen> {
                 ),
             ]),
           ),
-        ),
       );
 }

@@ -165,4 +165,49 @@ void main() {
     expect(find.text('page money'), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNothing);
   });
+
+  test('wave 4: one-page desks and detail pages stand in DeskPage, English titles, the frozen PC screens untouched', () {
+    final files = [for (final f in Directory('lib/ui').listSync().whereType<File>()) if (f.path.endsWith('.dart')) f];
+    var frames = 0, users = 0;
+    for (final f in files) {
+      final s = f.readAsStringSync();
+      final n = RegExp(r'\bDeskPage\(').allMatches(s).length;
+      if (n == 0) continue;
+      users++;
+      frames += n;
+      expect(s.contains("import 'desk/desk_kit.dart';"), isTrue, reason: f.path);
+      for (final m in RegExp(r'DeskPage\(\s*title: (.*),\n').allMatches(s)) {
+        final t = m.group(1)!;
+        for (final w in ['sahayak', 'band na ho', 'hisaab', "'Kaam'"]) {
+          expect(t.toLowerCase().contains(w.toLowerCase()), isFalse, reason: '${f.path} title $t');
+        }
+        expect(t.contains('aName} ·'), isFalse, reason: '${f.path} title $t');
+      }
+    }
+    expect(users, greaterThanOrEqualTo(120));
+    expect(frames, greaterThanOrEqualTo(175));
+    for (final frozen in ['lib/ui/pc_screen.dart', 'lib/ui/hoola_pc_screen.dart']) {
+      expect(File(frozen).readAsStringSync().contains('DeskPage('), isFalse, reason: '$frozen is frozen');
+    }
+  });
+
+  testWidgets('one-page frame: Refresh, error + Try again, then the page', (t) async {
+    NightGlass.flat.value = true;
+    var tries = 0;
+    String? err = 'No internet';
+    late StateSetter set;
+    await t.pumpWidget(host(StatefulBuilder(builder: (context, s) {
+      set = s;
+      return DeskPage(title: 'Google Drive', error: err, onRefresh: () async => tries++, body: () => const Center(child: Text('files here')));
+    })));
+    expect(find.text('Could not load'), findsOneWidget);
+    expect(find.byTooltip('Refresh'), findsOneWidget);
+    await t.tap(find.text('Try again'));
+    await t.pump();
+    expect(tries, 1);
+    set(() => err = null);
+    await t.pump();
+    expect(find.text('files here'), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
 }

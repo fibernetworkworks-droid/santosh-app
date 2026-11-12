@@ -6,6 +6,7 @@ import '../api.dart';
 import '../state.dart';
 import '../voice_recorder.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 const _modes = {
   'off': ('Off', 'Hoola does not recognise anyone by voice'),
@@ -266,10 +267,10 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
     final o = _o;
     final mode = o?['mode'] as String? ?? 'on';
     final ownerIn = o?['owner_enrolled'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Voice Recognition'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Voice Recognition',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -316,7 +317,6 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -389,10 +389,9 @@ class _EnrolPageState extends State<_EnrolPage> {
   @override
   Widget build(BuildContext context) {
     final secs = _rec.length.inMilliseconds / 1000;
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.self ? 'Your voice' : '${widget.name} \'s voice'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+    return DeskPage(
+      title: widget.self ? 'Your voice' : '${widget.name}\'s voice',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
           Text(widget.self ? 'Read this script yourself, in your normal voice:' : '${widget.name} should read this script themselves (with their own permission):',
               style: const TextStyle(color: C.muted)),
           const SizedBox(height: 10),
@@ -419,7 +418,6 @@ class _EnrolPageState extends State<_EnrolPage> {
             GlassButton(label: 'OK', icon: Icons.check_rounded, onTap: () => Navigator.pop(context, true)),
           ],
         ]),
-      ),
     );
   }
 }

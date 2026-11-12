@@ -574,16 +574,12 @@ class _VakilMatterPageState extends State<VakilMatterPage> {
   @override
   Widget build(BuildContext context) {
     final m = _m0;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text(m == null ? 'Matter' : '${_s(m['number'])} · ${_s(m['title'])}'),
-        actions: [IconButton(onPressed: _edit, icon: const Icon(Icons.edit_rounded))],
-      ),
-      body: m == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: m == null ? 'Matter' : '${_s(m['number'])} · ${_s(m['title'])}',
+      loading: m == null,
+      onRefresh: _load,
+      actions: [IconButton(onPressed: _edit, icon: const Icon(Icons.edit_rounded))],
+      body: () => m == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _t(dynamic v) => v == null ? '' : '$v';
 num _n(dynamic v) => v is num ? v : (num.tryParse('$v') ?? 0);
@@ -150,11 +151,13 @@ class _SiteDashPageState extends State<SiteDashPage> {
     final d = _d;
     final sr = _m(d?['series']);
     final app = _m(d?['app']);
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.name.isEmpty ? 'Website dashboard' : '${widget.name} · dashboard'), actions: [
+    return DeskPage(
+      title: widget.name.isEmpty ? 'Website dashboard' : '${widget.name} · dashboard',
+      onRefresh: _load,
+      actions: [
         IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load, tooltip: 'Retry'),
-      ]),
-      body: RefreshIndicator(
+      ],
+body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(14), children: [
           Wrap(spacing: 8, children: [

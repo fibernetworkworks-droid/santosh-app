@@ -523,10 +523,9 @@ class _WapsiReturnPageState extends State<WapsiReturnPage> {
     final refund = r['refund'] == null ? null : _m(r['refund']);
     final ph = _list(r['photos']);
     final verdict = _s(chk['verdict']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(title: Text('${_s(r['number'])} · ${_s(cust['name'])}'), backgroundColor: Colors.transparent),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: '${_s(r['number'])} · ${_s(cust['name'])}',
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [

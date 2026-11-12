@@ -1118,11 +1118,9 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
   Widget build(BuildContext context) {
     final posts = List<Map<String, dynamic>>.from((_g['posts'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final members = List<Map<String, dynamic>>.from((_g['members'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${_g['emoji'] ?? '👥'} ${_g['name'] ?? 'Groups'}'),
-        backgroundColor: Colors.transparent,
-        actions: [
+    return DeskPage(
+      title: '${_g['emoji'] ?? '👥'} ${_g['name'] ?? 'Groups'}',
+      actions: [
           IconButton(icon: const Icon(Icons.summarize_rounded), tooltip: 'What happened', onPressed: _digest),
           PopupMenuButton<String>(
             onSelected: (v) => v.startsWith('mute:') ? _act('mute', mute: v.substring(5)) : _act(v),
@@ -1134,9 +1132,7 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
             ],
           ),
         ],
-      ),
-      body: Aurora(
-        child: Column(children: [
+body: () => Column(children: [
           SizedBox(
             height: 40,
             child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
@@ -1196,7 +1192,6 @@ class _HoolaGroupScreenState extends State<HoolaGroupScreen> {
             ),
           ),
         ]),
-      ),
     );
   }
 }

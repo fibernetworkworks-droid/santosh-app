@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.47 Public APIs: 2,100+ free web APIs Hoola can use (github.com/public-apis/public-apis).
 /// Free ones work at once; for key APIs the owner saves their own key here (sealed on the server, the avatar never sees it).
@@ -203,10 +204,10 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text('Public APIs · ${_total == 0 ? '2,100+' : _total}'), backgroundColor: Colors.transparent),
-        body: Aurora(
-          child: Column(children: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Public APIs · ${_total == 0 ? '2,100+' : _total}',
+        onRefresh: _load,
+        body: () => Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
               child: TextField(
@@ -302,6 +303,5 @@ class _PublicApisScreenState extends State<PublicApisScreen> {
               ]),
             ),
           ]),
-        ),
       );
 }

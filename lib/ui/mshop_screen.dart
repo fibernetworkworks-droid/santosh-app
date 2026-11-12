@@ -394,9 +394,11 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
   @override
   Widget build(BuildContext context) {
     final j = _j;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(j == null ? 'Repair' : 'Job ${_s(j['number'])}')),
-      body: Aurora(child: j == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(onRefresh: reload, child: _body(j))),
+    return DeskPage(
+      title: j == null ? 'Repair' : 'Job ${_s(j['number'])}',
+      loading: j == null,
+      onRefresh: reload,
+      body: () => j == null ? const SizedBox.shrink() : RefreshIndicator(onRefresh: reload, child: _body(j)),
     );
   }
 
@@ -690,10 +692,9 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
     final probs = List<String>.from((ck?['problems'] as List?) ?? const []);
     final notes = List<String>.from((ck?['notes'] as List?) ?? const []);
     final legal = probs.any((p) => p.contains('kanoonan'));
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('New repair')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'New repair',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(children: [
               TextField(controller: _name, decoration: const InputDecoration(labelText: 'Customer name')),
@@ -782,7 +783,6 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
               child: GlassButton(label: 'I understand, save anyway', color: C.warn, onTap: _busy ? null : () => _save(force: true)),
             ),
         ]),
-      ),
     );
   }
 }

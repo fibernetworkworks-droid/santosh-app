@@ -394,8 +394,11 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
   @override
   Widget build(BuildContext context) {
     final v = _v;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Design' : '${v['number']} · ${v['title']}'), actions: [
+    return DeskPage(
+      title: v == null ? 'Design' : '${v['number']} · ${v['title']}',
+      loading: v == null,
+      onRefresh: _load,
+      actions: [
         if (v != null)
           PopupMenuButton<String>(
             onSelected: (a) async {
@@ -412,12 +415,8 @@ class _BrandDesignPageState extends State<BrandDesignPage> {
               const PopupMenuItem(value: 'delete', child: Text('Hatao')),
             ],
           ),
-      ]),
-      body: Aurora(
-        child: v == null
-            ? const Center(child: CircularProgressIndicator())
-            : _body(v),
-      ),
+      ],
+body: () => v == null ? const SizedBox.shrink() : _body(v),
     );
   }
 

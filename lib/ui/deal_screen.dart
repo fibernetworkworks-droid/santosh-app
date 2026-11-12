@@ -829,10 +829,9 @@ class _DealPageState extends State<DealPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Deal'), backgroundColor: Colors.transparent),
-        body: Aurora(
-          child: _d == null
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Deal',
+        body: () => _d == null
               ? Center(child: _err == null ? const CircularProgressIndicator() : Text(_err!, style: const TextStyle(color: C.bad)))
               : RefreshIndicator(
                   onRefresh: _load,
@@ -840,7 +839,6 @@ class _DealPageState extends State<DealPage> {
                     DealCard(key: ValueKey('dp${_d!['state']}${_d!['updated']}'), v: _d!, app: widget.app, full: true, onChanged: _load),
                   ]),
                 ),
-        ),
       );
 }
 

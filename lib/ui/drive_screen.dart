@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// Profile > Google Drive: connect Google Drive, see storage and recent files, and what to ask Santosh.
 class DriveScreen extends StatefulWidget {
@@ -147,10 +148,10 @@ class _DriveScreenState extends State<DriveScreen> {
     final recent = _list('recent');
     final canLink = _st['can_link'] == true;
     final hasOwn = accounts.any((a) => a['kind'] == 'google');
-    return Scaffold(
-      appBar: AppBar(title: const Text('Google Drive'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Google Drive',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Hoola finds and reads files in your Google Drive, sends them to your phone / PC / email, uploads,'
@@ -227,7 +228,6 @@ class _DriveScreenState extends State<DriveScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

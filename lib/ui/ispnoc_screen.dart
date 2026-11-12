@@ -736,12 +736,11 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
   @override
   Widget build(BuildContext context) {
     final f = _f;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(f == null ? 'Problem' : '${_s(f['number'])} · ${_s(f['title'])}')),
-      body: Aurora(
-        child: f == null
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+    return DeskPage(
+      title: f == null ? 'Problem' : '${_s(f['number'])} · ${_s(f['title'])}',
+      loading: f == null,
+      onRefresh: _load,
+      body: () => f == null ? const SizedBox.shrink() : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   IspnocFaultCard(app: widget.app, data: {'fault': f}, onDone: _load, full: true),
@@ -774,7 +773,6 @@ class _IspnocFaultPageState extends State<IspnocFaultPage> {
                   for (final l in _list(f['log'])) Text('${_s(l['by'])}: ${_s(l['text'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
                 ]),
               ),
-      ),
     );
   }
 }
@@ -1158,10 +1156,9 @@ class _IspnocReportPageState extends State<_IspnocReportPage> {
   @override
   Widget build(BuildContext context) {
     final r = _r;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Network report')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'Network report',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Wrap(spacing: 6, children: [
             for (final d in const [7, 30, 90])
               ChoiceChip(
@@ -1190,7 +1187,6 @@ class _IspnocReportPageState extends State<_IspnocReportPage> {
             for (final tip in _strs(r['tips'])) Text(tip, style: const TextStyle(fontSize: 12.5, color: C.accentSoft)),
           ],
         ]),
-      ),
     );
   }
 }
@@ -1229,10 +1225,9 @@ class _OpticsPageState extends State<_OpticsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Light ka hisaab (power budget)')),
-        body: Aurora(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Power budget',
+        body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Wrap(spacing: 6, children: [
               for (final c in const ['gpon_b+', 'gpon_c+', 'epon_px20', 'epon_px20+'])
                 ChoiceChip(label: Text(c), selected: _cls == c, onSelected: (_) => setState(() => _cls = c)),
@@ -1247,6 +1242,5 @@ class _OpticsPageState extends State<_OpticsPage> {
               Glass(child: Text(_s(_out!['say']), style: const TextStyle(fontSize: 13, height: 1.35))),
             ],
           ]),
-        ),
       );
 }

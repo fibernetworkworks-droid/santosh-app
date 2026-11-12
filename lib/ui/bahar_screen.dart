@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.616 BAHAR SE BAAT: talk to your own Hoola from WhatsApp, Telegram, Slack and Microsoft Teams.
 /// Only her: each channel shows a 6-digit pairing code; she sends "HOOLA <code>" from that app once, and from then
@@ -170,11 +171,11 @@ class _BaharScreenState extends State<BaharScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Talk from outside')),
-      body: !_loaded
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: 'Talk from outside',
+      loading: !_loaded,
+      onRefresh: _load,
+      body: () => RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 const Padding(

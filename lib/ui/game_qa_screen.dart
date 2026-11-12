@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
@@ -159,10 +160,10 @@ class _GameQaScreenState extends State<GameQaScreen> {
   @override
   Widget build(BuildContext context) {
     final bugs = _list(_d['bugs']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('QA')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'QA',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             if (!_loaded)
@@ -212,7 +213,6 @@ class _GameQaScreenState extends State<GameQaScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }

@@ -566,12 +566,11 @@ class _ComplianceItemPageState extends State<ComplianceItemPage> {
     final pen = _m(v['penalty']);
     final src = _m(v['source']);
     final open = st != 'done' && st != 'na';
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(v['number']).isEmpty ? 'Task' : _s(v['number']))),
-      body: _v == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: _s(v['number']).isEmpty ? 'Task' : _s(v['number']),
+      loading: _v == null,
+      onRefresh: _load,
+      body: () => _v == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [

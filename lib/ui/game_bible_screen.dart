@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
@@ -237,10 +238,10 @@ class _GameBibleScreenState extends State<GameBibleScreen> {
     final applied = _i(_v['applied']);
     final pal = _strs(((_v['data'] as Map?)?['style'] as Map?)?['palette']);
     final tpls = Map<String, dynamic>.from((_v['templates'] as Map?) ?? const {});
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Game Bible')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Game Bible',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             if (!_loaded)
@@ -280,7 +281,6 @@ class _GameBibleScreenState extends State<GameBibleScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }

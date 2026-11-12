@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _t(dynamic v) => v == null ? '' : '$v';
 List<dynamic> _l(dynamic v) => v is List ? v : const [];
@@ -89,9 +90,10 @@ class _SiteBlogPageState extends State<SiteBlogPage> {
     final posts = _l(b?['posts']);
     final max = (b?['max_extra'] is int) ? b!['max_extra'] as int : 4;
     final prev = _t(b?['preview']).replaceAll(RegExp(r'/$'), '');
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.name.isEmpty ? 'Blog and languages' : '${widget.name} · blog')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: widget.name.isEmpty ? 'Blog and languages' : '${widget.name} · blog',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(14), children: [
           if (_err.isNotEmpty) Text(_err, style: const TextStyle(color: C.bad)),

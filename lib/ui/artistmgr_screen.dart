@@ -402,9 +402,10 @@ class _ArtistmgrGigPageState extends State<ArtistmgrGigPage> {
     final money = _m(g['money']), rider = _m(g['rider']);
     final st = _s(g['status']);
     String rs(dynamic v) => v == null ? '[?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
-    return Scaffold(
-      appBar: AppBar(title: Text('${_s(g['number'])} · ${_s(g['artist'])}')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(g['number'])} · ${_s(g['artist'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -510,9 +511,10 @@ class _ArtistmgrArtistPageState extends State<ArtistmgrArtistPage> {
   Widget build(BuildContext context) {
     final a = _a;
     if (a == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    return Scaffold(
-      appBar: AppBar(title: Text(_s(a['name']))),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: _s(a['name']),
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -637,9 +639,10 @@ class _ArtistmgrReleasePageState extends State<ArtistmgrReleasePage> {
   Widget build(BuildContext context) {
     final r = _r;
     if (r == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    return Scaffold(
-      appBar: AppBar(title: Text('${_s(r['number'])} · ${_s(r['title'])}')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(r['number'])} · ${_s(r['title'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

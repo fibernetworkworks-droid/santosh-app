@@ -544,10 +544,10 @@ class _InteriorProjectPageState extends State<InteriorProjectPage> {
     final sch = _m(p['schedule']);
     final snags = _list(p['snags']);
     final brief = _m(p['brief']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${_s(p['number'])} · ${_s(p['name'])}')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(p['number'])} · ${_s(p['name'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

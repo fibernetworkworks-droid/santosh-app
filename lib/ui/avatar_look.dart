@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 final ValueNotifier<String> currentLook = ValueNotifier<String>('');
 
@@ -117,10 +118,9 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
     final shown = _region.isEmpty ? _all : _all.where((l) => l.region == _region).toList();
     final mine = _all.where((l) => l.id.isNotEmpty).length;
     final cur = _cur;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${widget.avatarName} look')),
-      body: Aurora(
-        child: SafeArea(
+    return DeskPage(
+      title: '${widget.avatarName} look',
+      body: () => SafeArea(
           child: Column(children: [
             // preview of the look in hand
             Padding(
@@ -190,7 +190,6 @@ class _LookPickerScreenState extends State<LookPickerScreen> {
             ),
           ]),
         ),
-      ),
     );
   }
 

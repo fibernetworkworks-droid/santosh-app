@@ -267,13 +267,14 @@ class _SiteLooksState extends State<SiteLooks> {
               width: 170,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 GestureDetector(
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => Scaffold(
-                      appBar: AppBar(title: Text(_s(lk['label']))),
-                      body: SingleChildScrollView(child: Column(children: [
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeskPage(
+                        title: _s(lk['label']),
+                        body: () => SingleChildScrollView(child: Column(children: [
                         SiteShot(app: widget.app, siteId: id, name: _s(_map(lk['shots'])['390']), height: 640, fit: BoxFit.contain),
                         const SizedBox(height: 10),
                         SiteShot(app: widget.app, siteId: id, name: _s(_map(lk['shots'])['1440']), height: 260, fit: BoxFit.contain),
-                      ]))))),
+                      ])),
+                      ))),
                   child: SiteShot(app: widget.app, siteId: id, name: _s(_map(lk['shots'])['390']), height: 210),
                 ),
                 const SizedBox(height: 4),
@@ -647,10 +648,10 @@ class _SitePageState extends State<SitePage> {
     final checks = _map(v['checks']);
     final shots = _map(v['shots']);
     final qs = (v['questions'] as List? ?? const []).map((e) => '$e').toList();
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${v['number']} · ${_s(v['name']).isEmpty ? v['field_label'] : v['name']}'),
-        actions: [
+    return DeskPage(
+      title: '${v['number']} · ${_s(v['name']).isEmpty ? v['field_label'] : v['name']}',
+      onRefresh: _load,
+      actions: [
           if (_s(v['preview']).isNotEmpty)
             IconButton(tooltip: 'Preview', icon: const Icon(Icons.open_in_new_rounded),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SitePreview(app: app, url: _s(v['preview']), title: _s(v['name']), siteId: widget.id, canEdit: const ['ready', 'failed', 'stopped'].contains(st))))),
@@ -672,8 +673,7 @@ class _SitePageState extends State<SitePage> {
             PopupMenuItem(value: 'delete', child: Text('Hatao')),
           ]),
         ],
-      ),
-      body: RefreshIndicator(
+body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 40), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1057,8 +1057,9 @@ class _SitePreviewState extends State<SitePreview> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(_edit ? 'Edit mode' : (widget.title.isEmpty ? 'Preview' : widget.title)), actions: [
+  Widget build(BuildContext context) => DeskPage(
+        title: _edit ? 'Edit mode' : (widget.title.isEmpty ? 'Preview' : widget.title),
+        actions: [
           if (_edit) ...[
             IconButton(tooltip: 'Undo', icon: const Icon(Icons.undo_rounded), onPressed: _undo),
             IconButton(tooltip: 'Colour', icon: const Icon(Icons.palette_rounded), onPressed: _colours),
@@ -1069,8 +1070,8 @@ class _SitePreviewState extends State<SitePreview> {
             IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.reload()),
             IconButton(icon: const Icon(Icons.open_in_browser_rounded), onPressed: () => _openUrl(context, widget.app, widget.url)),
           ],
-        ]),
-        body: Stack(children: [
+        ],
+body: () => Stack(children: [
           WebViewWidget(controller: _web),
           if (_progress < 100) LinearProgressIndicator(value: _progress / 100, minHeight: 2, color: C.teal),
         ]),
@@ -1096,9 +1097,9 @@ class _SiteLeadsPageState extends State<SiteLeadsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Website enquiries')),
-        body: ListView(children: [
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Website enquiries',
+        body: () => ListView(children: [
           for (final l in _leads)
             ListTile(
               title: Text(_s(l['name']).isEmpty ? _s(l['phone']) : _s(l['name'])),

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
@@ -146,13 +147,14 @@ class _TravelScreenState extends State<TravelScreen> {
   @override
   Widget build(BuildContext context) {
     final d = _d;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Travel Helper'), actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))]),
-      floatingActionButton: FloatingActionButton.extended(
+    return DeskPage(
+      title: 'Travel Helper',
+      loading: d == null,
+      onRefresh: _load,
+      actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
+      fab: FloatingActionButton.extended(
           onPressed: _newTrip, icon: const Icon(Icons.add_location_alt_rounded), label: const Text('New trip')),
-      body: d == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(children: [
+body: () => d == null ? const SizedBox.shrink() : Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                 child: SegmentedButton<int>(
@@ -375,11 +377,12 @@ class _TravelTripPageState extends State<TravelTripPage> {
   @override
   Widget build(BuildContext context) {
     final t = _t;
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.ref), actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))]),
-      body: t == null
-          ? const Center(child: CircularProgressIndicator())
-          : AbsorbPointer(
+    return DeskPage(
+      title: widget.ref,
+      loading: t == null,
+      onRefresh: _load,
+      actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
+      body: () => t == null ? const SizedBox.shrink() : AbsorbPointer(
               absorbing: _busy,
               child: ListView(padding: const EdgeInsets.fromLTRB(12, 8, 12, 40), children: [
                 _section('TRIP', [

@@ -11,6 +11,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -101,11 +102,11 @@ class _PrayogScreenState extends State<PrayogScreen> {
     for (final l in rows) {
       groups.putIfAbsent(_q.isEmpty ? _s(l['group']) : 'Results', () => []).add(l);
     }
-    return Scaffold(
-      appBar: AppBar(title: Text('${widget.app.aName} · Prayogshala')),
-      body: _labs == null && _err.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: 'Prayogshala',
+      loading: _labs == null && _err.isEmpty,
+      onRefresh: _load,
+      body: () => _labs == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               Text('Real practicals in 3D: turn the knobs, read the meters, fill the table. Every reading comes from simulation code '
                   'and is checked against the textbook formula.',
                   style: const TextStyle(color: C.muted, fontSize: 13.5)),
@@ -163,11 +164,11 @@ class _PrayogFamilyState extends State<_PrayogFamily> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(_s(widget.base['title']))),
-      body: _rows == null && _err.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: _s(widget.base['title']),
+      loading: _rows == null && _err.isEmpty,
+      onRefresh: _load,
+      body: () => _rows == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               if (_err.isNotEmpty) Text(_err, style: const TextStyle(color: C.bad)),
               for (final l in _rows ?? const <Map<String, dynamic>>[])
                 Card(
@@ -219,11 +220,12 @@ class _PrayogLabViewState extends State<PrayogLabView> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.title.isEmpty ? 'Prayogshala' : widget.title), actions: [
+  Widget build(BuildContext context) => DeskPage(
+        title: widget.title.isEmpty ? 'Prayogshala' : widget.title,
+        actions: [
           IconButton(tooltip: 'Reload', icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.reload()),
-        ]),
-        body: Stack(children: [
+        ],
+body: () => Stack(children: [
           WebViewWidget(controller: _web),
           if (_progress < 100) LinearProgressIndicator(value: _progress / 100, minHeight: 2, color: C.teal),
         ]),

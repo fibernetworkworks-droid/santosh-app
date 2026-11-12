@@ -631,16 +631,17 @@ class _SetupTabState extends State<_SetupTab> {
   Future<void> _editSheet() async {
     final c = TextEditingController(text: _sheet ?? '');
     final r = await Navigator.of(context).push<String>(MaterialPageRoute(
-      builder: (ctx) => Scaffold(
-        appBar: AppBar(title: const Text('Job sheet'), actions: [
+      builder: (ctx) => DeskPage(
+            title: 'Job sheet',
+            actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, ''), child: const Text('Self-made')),
           TextButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save')),
-        ]),
-        body: Padding(
+        ],
+body: () => Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(controller: c, maxLines: null, expands: true, style: const TextStyle(fontSize: 14, height: 1.4)),
         ),
-      ),
+          ),
     ));
     if (r == null) return;
     try {

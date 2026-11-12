@@ -71,10 +71,10 @@ class _ShodhScreenState extends State<ShodhScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Research assistant')),
-        body: Aurora(
-          child: RefreshIndicator(
+  Widget build(BuildContext context) => DeskPage(
+        title: 'Research assistant',
+        onRefresh: _load,
+        body: () => RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               GradientButton(label: 'New project', icon: Icons.add_rounded, height: 46, onTap: _new),
@@ -101,7 +101,6 @@ class _ShodhScreenState extends State<ShodhScreen> {
               const Text(_note, style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
-        ),
       );
 }
 

@@ -351,3 +351,52 @@ class DeskTabsScaffold extends StatelessWidget {
     );
   }
 }
+
+/// The frame of a one-page desk or screen (R8 wave 4): header (title, the screen's actions, Refresh when it can
+/// reload), the first-load / error state ([DeskLoading]) and the page. The page keeps its own pull to refresh.
+class DeskPage extends StatelessWidget {
+  const DeskPage({
+    super.key,
+    required this.title,
+    required this.body,
+    this.loading = false,
+    this.error,
+    this.onRefresh,
+    this.actions = const [],
+    this.fab,
+  });
+  final String title;
+  final Widget Function() body;
+  final bool loading;
+  final String? error;
+  final Future<void> Function()? onRefresh;
+  final List<Widget> actions;
+  final Widget? fab;
+
+  @override
+  Widget build(BuildContext context) {
+    final flat = NightGlass.on;
+    const c = NightGlass.c;
+    final ink = flat ? c.ink : C.ink;
+    final stuck = error != null && error!.isNotEmpty;
+    return Scaffold(
+      floatingActionButton: fab,
+      backgroundColor: flat ? c.bg : C.bgTop,
+      appBar: AppBar(
+        backgroundColor: flat ? c.bg : Colors.transparent,
+        surfaceTintColor: flat ? c.bg : Colors.transparent,
+        elevation: 0,
+        foregroundColor: ink,
+        title: Text(title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: flat ? TextStyle(fontFamily: HoolaFont.sans, fontSize: 18, fontWeight: FontWeight.w600, color: ink) : null),
+        actions: [
+          ...actions,
+          if (onRefresh != null) IconButton(tooltip: 'Refresh', onPressed: onRefresh, icon: const Icon(Icons.refresh_rounded)),
+        ],
+      ),
+      body: Aurora(child: loading || stuck ? DeskLoading(onRetry: onRefresh, error: error) : body()),
+    );
+  }
+}

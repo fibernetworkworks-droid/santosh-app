@@ -77,9 +77,9 @@ class AppShot extends StatelessWidget {
 }
 
 void _openShot(BuildContext context, Santosh app, String appId, String name, String title) {
-  Navigator.of(context).push(MaterialPageRoute(builder: (_) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: InteractiveViewer(maxScale: 4, child: Center(child: Image.network(app.api!.absolute('/api/apps/$appId/shots/$name'),
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeskPage(
+        title: title,
+        body: () => InteractiveViewer(maxScale: 4, child: Center(child: Image.network(app.api!.absolute('/api/apps/$appId/shots/$name'),
             headers: app.api!.authHeaders, fit: BoxFit.contain))),
       )));
 }
@@ -1150,7 +1150,10 @@ class _ErViewState extends State<_ErView> {
     ..loadRequest(Uri.parse(widget.url));
   @override
   Widget build(BuildContext context) =>
-      Scaffold(appBar: AppBar(title: const Text('Data model (ER)')), body: WebViewWidget(controller: _c));
+      DeskPage(
+        title: 'Data model (ER)',
+        body: () => WebViewWidget(controller: _c),
+      );
 }
 
 /// The tap-through prototype inside the app (Android / iPhone look switch).
@@ -1193,8 +1196,9 @@ class _AppPreviewState extends State<AppPreview> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.title.isEmpty ? 'Prototype' : widget.title), actions: [
+  Widget build(BuildContext context) => DeskPage(
+        title: widget.title.isEmpty ? 'Prototype' : widget.title,
+        actions: [
           TextButton(onPressed: () => _switch(_plat == 'android' ? 'ios' : 'android'),
               child: Text(_plat == 'android' ? 'iPhone look' : 'Android look')),
           IconButton(tooltip: 'Light / dark', icon: const Icon(Icons.dark_mode_outlined),
@@ -1202,8 +1206,8 @@ class _AppPreviewState extends State<AppPreview> {
           IconButton(tooltip: 'Sab screens', icon: const Icon(Icons.grid_view_rounded),
               onPressed: () => _web.loadRequest(Uri.parse('${_base}all.html'))),
           IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: () => _web.loadRequest(Uri.parse('$_base?p=$_plat'))),
-        ]),
-        body: Stack(children: [
+        ],
+body: () => Stack(children: [
           WebViewWidget(controller: _web),
           if (_progress < 100) LinearProgressIndicator(value: _progress / 100, minHeight: 2, color: C.teal),
         ]),

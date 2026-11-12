@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -226,10 +227,10 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('CAD Desk')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'CAD Desk',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('Describe a part with its sizes in mm. Hoola designs it, checks it and gives STEP, STL and a drawing. '
@@ -277,7 +278,6 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
             for (final p in _ps) _card(p),
           ]),
         ),
-      ),
     );
   }
 }

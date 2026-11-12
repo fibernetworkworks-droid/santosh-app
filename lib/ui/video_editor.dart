@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.65 Hoola Video Editor: the owner gives raw footage + a line of what she wants; Hoola watches it, plans the edit,
 /// renders it, looks at the result itself, fixes what it doesn't like and hands back a finished video. Changes are
@@ -434,17 +435,17 @@ class _VideoEditorScreenState extends State<VideoEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${app.aName} · Video Editor')),
-      floatingActionButton: FloatingActionButton.extended(
+    return DeskPage(
+      title: 'Video Editor',
+      onRefresh: _load,
+      fab: FloatingActionButton.extended(
         backgroundColor: C.accent,
         foregroundColor: C.onAccent,
         onPressed: _new,
         icon: const Icon(Icons.add_rounded),
         label: const Text('New video'),
       ),
-      body: RefreshIndicator(
+body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 96), children: [
           Glass(
@@ -562,10 +563,9 @@ class _NewVideoScreenState extends State<_NewVideoScreen> {
   Widget build(BuildContext context) {
     final max = ((_pf['max'] as num?) ?? 90).toDouble();
     if (_len > max) _len = max;
-    return Scaffold(
-      backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('New video')),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
+    return DeskPage(
+      title: 'New video',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
         const Text('1. Footage', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Wrap(spacing: 6, runSpacing: 6, children: [

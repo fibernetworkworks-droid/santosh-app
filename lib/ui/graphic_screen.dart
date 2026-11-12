@@ -456,16 +456,19 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
   Widget build(BuildContext context) {
     final j = _j;
     if (j == null) {
-      return Scaffold(backgroundColor: C.bgTop, appBar: AppBar(title: Text(widget.ref)), body: const Center(child: CircularProgressIndicator()));
+      return DeskPage(
+        title: widget.ref,
+        body: () => const Center(child: CircularProgressIndicator()),
+      );
     }
     final q = _m(j['quote']);
     final r = _m(j['rounds']);
     final tm = _m(j['tm']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${_s(j['number'])} · ${_s(j['title'])}'),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(j['number'])} · ${_s(j['title'])}',
+      onRefresh: _load,
+      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
@@ -493,10 +494,10 @@ class _AppReviewPageState extends State<AppReviewPage> {
     final shown = _area.isEmpty ? risks : risks.where((x) => _s(x['area_label']) == _area).toList();
     final cmp = _m(r['compare']);
     final facts = _m(r['facts']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(title: Text('${_s(r['number'])} · ${_s(r['title'])}'), backgroundColor: Colors.transparent),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(r['number'])} · ${_s(r['title'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(14), children: [
           Glass(

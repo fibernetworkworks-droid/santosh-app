@@ -469,12 +469,11 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
   Widget build(BuildContext context) {
     final p = _p;
     final draft = _s(p?['status']) == 'draft';
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref)),
-      body: Aurora(
-        child: p == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: widget.ref,
+      loading: p == null,
+      onRefresh: _load,
+      body: () => p == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_s(p['title']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
@@ -530,7 +529,6 @@ class _PathyakramPaperPageState extends State<PathyakramPaperPage> {
                     ),
                 ],
               ]),
-      ),
     );
   }
 }

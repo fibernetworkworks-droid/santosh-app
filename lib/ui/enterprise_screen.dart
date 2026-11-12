@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.396 CONNECT — "Apne system jodiye": where her own ERP / CRM address and key are actually entered.
 ///
@@ -171,9 +172,9 @@ class _EnterpriseScreenState extends State<EnterpriseScreen> {
   @override
   Widget build(BuildContext context) {
     final can = (_d?['jod_sakte_hain'] as List? ?? const []);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Connect your systems')),
-      body: _err != null
+    return DeskPage(
+      title: 'Connect your systems',
+      body: () => _err != null
           ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : _d == null
               ? const Center(child: CircularProgressIndicator())

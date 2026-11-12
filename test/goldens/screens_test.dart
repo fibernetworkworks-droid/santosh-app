@@ -259,6 +259,21 @@ void main() {
     addTearDown(() => NightGlass.flat.value = false);
     await _shot(t, '47_desk_tabs', (a) => const _SampleTabsDesk());
   });
+  // v0.871 R8 wave 4: a one-page desk (DeskPage), flat in the new design
+  testWidgets('48 one-page desk (new design)', (t) async {
+    NightGlass.flat.value = true;
+    addTearDown(() => NightGlass.flat.value = false);
+    await _shot(t, '48_desk_page', (a) => DeskPage(
+          title: 'Google Drive',
+          onRefresh: () async {},
+          body: () => ListView(padding: const EdgeInsets.all(16), children: const [
+            Caption('RECENT FILES'),
+            Glass(child: Text('Quotation_Shree_Traders.pdf · 2 days ago', style: TextStyle(fontSize: 14.5))),
+            SizedBox(height: 8),
+            Glass(child: Text('GST_October.xlsx · 5 days ago', style: TextStyle(fontSize: 14.5))),
+          ]),
+        ));
+  });
 
   // v0.861 R2: the new frame (Main > Try the new design), light and dark
   void chats(Santosh a) => a.chatList = [

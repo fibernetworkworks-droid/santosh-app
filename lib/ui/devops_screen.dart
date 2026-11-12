@@ -728,10 +728,9 @@ class DevopsScriptPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fs = _list(script['findings']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(script['name']))),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: _s(script['name']),
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             border: _levelColor(_s(script['verdict']) == 'ok' ? '' : _s(script['verdict'])),
             child: Text(_s(script['say']).isEmpty ? 'Safety check: ${_s(script['verdict'])}' : _s(script['say']),
@@ -765,7 +764,6 @@ class DevopsScriptPage extends StatelessWidget {
           const SizedBox(height: 10),
           const Text('Hoola never runs this. Read it, and run it yourself, first on a test server.', style: TextStyle(color: C.faint, fontSize: 11.5)),
         ]),
-      ),
     );
   }
 }

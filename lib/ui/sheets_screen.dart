@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 Future<void> _open(String url) async {
   if (url.isEmpty) return;
@@ -119,10 +120,10 @@ class _SheetsScreenState extends State<SheetsScreen> {
     final recent = _list('recent');
     final canLink = _st['can_link'] == true;
     final onlyService = accounts.isNotEmpty && accounts.every((a) => a['kind'] == 'service');
-    return Scaffold(
-      appBar: AppBar(title: const Text('Google Sheets'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Google Sheets',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Hoola finds your Google Sheets by name, reads them, does the right sums (total, filter, group), adds and changes rows,'
@@ -184,7 +185,6 @@ class _SheetsScreenState extends State<SheetsScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

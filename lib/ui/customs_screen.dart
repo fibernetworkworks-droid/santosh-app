@@ -543,10 +543,10 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
   @override
   Widget build(BuildContext context) {
     final v = _v;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Shipment' : '${_s(v['number'])} · ${_s(v['supplier'])}')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: v == null ? 'Shipment' : '${_s(v['number'])} · ${_s(v['supplier'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: v == null
               ? ListView(children: const [SizedBox(height: 120), Center(child: CircularProgressIndicator())])
@@ -600,7 +600,6 @@ class _CustomsShipmentPageState extends State<CustomsShipmentPage> {
                   _timeline(v),
                 ]),
         ),
-      ),
     );
   }
 }

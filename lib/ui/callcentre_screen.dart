@@ -564,12 +564,11 @@ class _CallCentreCallPageState extends State<CallCentreCallPage> {
   @override
   Widget build(BuildContext context) {
     final c = _c;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(c == null ? 'Call' : _s(c['caller_masked']))),
-      body: Aurora(
-        child: c == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: c == null ? 'Call' : _s(c['caller_masked']),
+      loading: c == null,
+      onRefresh: _load,
+      body: () => c == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
@@ -607,7 +606,6 @@ class _CallCentreCallPageState extends State<CallCentreCallPage> {
                       ),
                     ),
               ]),
-      ),
     );
   }
 }

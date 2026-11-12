@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key, required this.app});
@@ -83,10 +84,10 @@ class _ShopScreenState extends State<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     final name = widget.app.aName;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Place order')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Place order',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             Glass(
@@ -156,7 +157,6 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
           ]),
         ),
-      ),
     );
   }
 }

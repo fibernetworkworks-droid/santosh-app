@@ -12,6 +12,7 @@ import '../state.dart';
 import 'game_roles_screen.dart';
 import 'game_studio_screen.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -272,10 +273,10 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
     final h = Map<String, dynamic>.from((_d['health'] as Map?) ?? const {});
     final ready = h['ready'] == true;
     final games = _list(_d['games']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Game Desk')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Game Desk',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Text(ready ? 'Original games from your words, built in Godot ${_s(h['version'])} and played by Hoola before you see them.'
@@ -330,7 +331,6 @@ class _GameDeskScreenState extends State<GameDeskScreen> {
             for (final g in games) _card(g),
           ]),
         ),
-      ),
     );
   }
 }

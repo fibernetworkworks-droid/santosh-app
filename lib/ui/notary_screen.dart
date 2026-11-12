@@ -611,12 +611,11 @@ class _NotaryDocPageState extends State<NotaryDocPage> {
     final d = _d;
     final st = _s(d?['status']);
     final stamp = _m(d?['stamp']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(d == null ? 'Document' : '${_s(d['number'])} · ${_s(d['kind_label'])}')),
-      body: d == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: d == null ? 'Document' : '${_s(d['number'])} · ${_s(d['kind_label'])}',
+      loading: d == null,
+      onRefresh: _load,
+      body: () => d == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
               if (_busy) const LinearProgressIndicator(minHeight: 2),
               Row(children: [
                 Pill(_stLabel(st), fg: _stColor(st)),

@@ -529,12 +529,11 @@ class _TourguideBookingPageState extends State<TourguideBookingPage> {
   @override
   Widget build(BuildContext context) {
     final b = _b;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(b?['number']).isEmpty ? 'Booking' : _s(b?['number']))),
-      body: b == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: _s(b?['number']).isEmpty ? 'Booking' : _s(b?['number']),
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(14), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

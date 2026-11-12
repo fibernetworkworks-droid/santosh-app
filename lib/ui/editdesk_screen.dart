@@ -380,13 +380,12 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
   @override
   Widget build(BuildContext context) {
     final p = _p;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.ref),
-          actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)]),
-      body: p == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: widget.ref,
+      loading: p == null,
+      onRefresh: _load,
+      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      body: () => p == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Text(_s(p['title']), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),

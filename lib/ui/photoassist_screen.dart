@@ -402,10 +402,10 @@ class _PhotoassistShootPageState extends State<PhotoassistShootPage> {
     final shotList = _list(v['shot_list']);
     final gearList = _list(v['gear_list']);
     final editRows = _list(edits['rows']);
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${_s(v['number'])} · ${_s(v['kind_label'])}')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(v['number'])} · ${_s(v['kind_label'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

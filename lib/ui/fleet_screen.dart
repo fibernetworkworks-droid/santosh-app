@@ -533,12 +533,11 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
   @override
   Widget build(BuildContext context) {
     final v = _v;
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Vehicle' : _s(v['reg']))),
-      body: v == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+    return DeskPage(
+      title: v == null ? 'Vehicle' : _s(v['reg']),
+      loading: v == null,
+      onRefresh: _load,
+      body: () => v == null ? const SizedBox.shrink() : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (_busy) const LinearProgressIndicator(minHeight: 2),

@@ -479,13 +479,11 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
   @override
   Widget build(BuildContext context) {
     final o = _o;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(o == null ? 'Order' : 'Order ${_s(o['number'])}')),
-      body: Aurora(
-        child: o == null
+    return DeskPage(
+      title: o == null ? 'Order' : 'Order ${_s(o['number'])}',
+      body: () => o == null
             ? Center(child: _err != null ? Text(_err!, style: const TextStyle(color: C.bad)) : const CircularProgressIndicator())
             : RefreshIndicator(onRefresh: reload, child: _body(o)),
-      ),
     );
   }
 
@@ -761,10 +759,9 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
     final ck = _check;
     final probs = List<String>.from((ck?['problems'] as List?) ?? const []);
     final notes = List<String>.from((ck?['notes'] as List?) ?? const []);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('New order')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'New order',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(children: [
               TextField(controller: _name, enabled: widget.customer == null, decoration: const InputDecoration(labelText: 'Customer name')),
@@ -841,7 +838,6 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
               child: GlassButton(label: 'I understand, save anyway', color: C.warn, onTap: _busy ? null : () => _save(force: true)),
             ),
         ]),
-      ),
     );
   }
 }
@@ -991,12 +987,11 @@ class _DarziCustomerPageState extends State<DarziCustomerPage> with _Live {
   Widget build(BuildContext context) {
     final c = _c;
     final cust = Map<String, dynamic>.from((c?['customer'] as Map?) ?? const {});
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(cust['name']).isEmpty ? 'Customer' : _s(cust['name']))),
-      body: Aurora(
-        child: c == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: _s(cust['name']).isEmpty ? 'Customer' : _s(cust['name']),
+      loading: c == null,
+      onRefresh: reload,
+      body: () => c == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                 if (_s(cust['phone']).isNotEmpty) Text(_s(cust['phone']), style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 10),
                 Row(children: [
@@ -1048,7 +1043,6 @@ class _DarziCustomerPageState extends State<DarziCustomerPage> with _Live {
                 const SizedBox(height: 8),
                 for (final o in _list(c['orders'])) DarziOrderTile(o: o, app: app),
               ]),
-      ),
     );
   }
 }
@@ -1131,10 +1125,9 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
   Widget build(BuildContext context) {
     final fields = _list(_spec['fields']);
     final must = List<String>.from((_spec['must'] as List?) ?? const []);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Measurement: ${_s(widget.customer['name'])}')),
-      body: Aurora(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+    return DeskPage(
+      title: 'Measurement: ${_s(widget.customer['name'])}',
+      body: () => ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(children: [
               DropdownButtonFormField<String>(
@@ -1177,7 +1170,6 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
           const SizedBox(height: 14),
           GradientButton(label: 'Save measurements', icon: Icons.save_rounded, height: 50, onTap: _busy ? null : _save),
         ]),
-      ),
     );
   }
 }

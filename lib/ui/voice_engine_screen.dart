@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.816 TEEN AWAAZEIN: plus Grok Voice 3.0, GPT-Live-1 and Phonic 1 (from the server's `engines` list).
 /// v0.274 "Call ki awaaz": which engine speaks her calls - Gemini (the default voice) or Real voice (OpenAI: more
@@ -101,9 +102,9 @@ class _VoiceEngineScreenState extends State<VoiceEngineScreen> {
     final v = _v;
     final allowed = v?['allowed'] == true;
     final why = '${v?['why'] ?? ''}';
-    return Scaffold(
-      appBar: AppBar(title: const Text('Call voice')),
-      body: v == null
+    return DeskPage(
+      title: 'Call voice',
+      body: () => v == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
               onRefresh: _load,

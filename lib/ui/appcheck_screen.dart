@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 Color _vColor(String v) => switch (v) { 'danger' => C.bad, 'caution' => C.warn, 'clear' => C.ok, _ => C.faint };
 IconData _vIcon(String v) => switch (v) {
@@ -152,10 +153,10 @@ class _AppCheckScreenState extends State<AppCheckScreen> {
     final on = _st['enabled'] == true;
     final history = List<Map<String, dynamic>>.from((_st['history'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final last = _last;
-    return Scaffold(
-      appBar: AppBar(title: const Text('App Check'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'App Check',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Did someone send you an APK / EXE on WhatsApp, SMS or email? Check it here before installing. Hoola '
@@ -197,7 +198,6 @@ class _AppCheckScreenState extends State<AppCheckScreen> {
                 style: TextStyle(color: C.chip, fontSize: 12.5)),
           ]),
         ),
-      ),
     );
   }
 }

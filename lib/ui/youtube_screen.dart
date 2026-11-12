@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 Future<void> _open(String url) async {
   if (url.isEmpty) return;
@@ -142,10 +143,10 @@ class _YouTubeScreenState extends State<YouTubeScreen> {
   Widget build(BuildContext context) {
     final accounts = List<Map<String, dynamic>>.from((_st['accounts'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
     final canLink = _st['can_link'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('YouTube'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'YouTube',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Through YouTube\'s official routes: find videos, views / subscribers, comments, and a summary or answer from Google Gemini '
@@ -199,7 +200,6 @@ class _YouTubeScreenState extends State<YouTubeScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

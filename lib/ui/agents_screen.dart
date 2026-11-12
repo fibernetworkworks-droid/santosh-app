@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// Santosh Agent Army: 36,336 open-source AI agents worldwide, by field, tier and kind.
 class AgentsScreen extends StatefulWidget {
@@ -72,10 +73,9 @@ class _AgentsScreenState extends State<AgentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: C.bgTop, title: Text('Agent Army · ${_fmt(_total)}')),
-      body: Column(children: [
+    return DeskPage(
+      title: 'Agent Army · ${_fmt(_total)}',
+      body: () => Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
           child: TextField(

@@ -462,10 +462,10 @@ class _BanquetBookingPageState extends State<BanquetBookingPage> {
     final q = _m(b['quote']);
     final st = _s(b['status']);
     final open = st == 'draft' || st == 'hold';
-    return Scaffold(
-      backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${_s(b['number'])} · ${_s(b['client'])}')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: '${_s(b['number'])} · ${_s(b['client'])}',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

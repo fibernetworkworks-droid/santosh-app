@@ -774,9 +774,10 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
     final title = TextEditingController(text: _s(_p!['title']));
     final body = TextEditingController(text: _s(_p!['body']));
     final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      builder: (c) => Scaffold(
-        appBar: AppBar(title: const Text('Write it yourself'), actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save'))]),
-        body: Padding(
+      builder: (c) => DeskPage(
+            title: 'Write it yourself',
+            actions: [TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save'))],
+            body: () => Padding(
           padding: const EdgeInsets.all(14),
           child: Column(children: [
             TextField(controller: title, decoration: const InputDecoration(labelText: 'Title')),
@@ -784,7 +785,7 @@ class _KalamPiecePageState extends State<KalamPiecePage> {
             Expanded(child: TextField(controller: body, expands: true, maxLines: null, minLines: null, decoration: const InputDecoration(border: OutlineInputBorder()))),
           ]),
         ),
-      ),
+          ),
     ));
     if (ok == true) await _do('edit', () => app.api!.kalamEdit(widget.id, {'title': title.text, 'body': body.text}));
   }

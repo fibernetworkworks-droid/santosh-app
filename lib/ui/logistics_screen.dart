@@ -473,12 +473,11 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
   @override
   Widget build(BuildContext context) {
     final v = _v;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Shipment' : _s(v['number']))),
-      body: Aurora(
-        child: v == null
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+    return DeskPage(
+      title: v == null ? 'Shipment' : _s(v['number']),
+      loading: v == null,
+      onRefresh: _load,
+      body: () => v == null ? const SizedBox.shrink() : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   if (_busy) const LinearProgressIndicator(),
@@ -493,7 +492,6 @@ class _LogisticsShipmentPageState extends State<LogisticsShipmentPage> {
                   _timeline(v),
                 ]),
               ),
-      ),
     );
   }
 

@@ -478,12 +478,11 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
     final ch = _m(t?['change']);
     final esc = _m(t?['escalation']);
     final open = t != null && const ['new', 'working', 'waiting_haan', 'waiting_tech'].contains(t['status']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(t?['number']).isEmpty ? 'Ticket' : _s(t?['number']))),
-      body: Aurora(
-        child: t == null
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
+    return DeskPage(
+      title: _s(t?['number']).isEmpty ? 'Ticket' : _s(t?['number']),
+      loading: t == null,
+      onRefresh: _load,
+      body: () => t == null ? const SizedBox.shrink() : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                   Glass(
@@ -584,7 +583,6 @@ class _HelpdeskTicketPageState extends State<HelpdeskTicketPage> {
                         style: const TextStyle(fontSize: 11.5, color: C.faint)),
                 ]),
               ),
-      ),
     );
   }
 }

@@ -376,12 +376,11 @@ class _WarehouseBinPageState extends State<WarehouseBinPage> {
   @override
   Widget build(BuildContext context) {
     final b = _b;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Bin ${widget.code}')),
-      body: Aurora(
-        child: b == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: 'Bin ${widget.code}',
+      loading: b == null,
+      onRefresh: _load,
+      body: () => b == null ? const SizedBox.shrink() : ListView(padding: const EdgeInsets.all(16), children: [
                 Glass(
                   child: Text('${_s(b['kind_label'])} · ${b['capacity'] == null ? _q(b['used']) : '${_q(b['used'])}/${_q(b['capacity'])}'} units',
                       style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -397,7 +396,6 @@ class _WarehouseBinPageState extends State<WarehouseBinPage> {
                   Text('${_s(m['day'])} ${_s(m['kind'])} ${_s(m['name'])} ${_q(m['qty'])} ${_s(m['ref'])} · ${_s(m['by'])}',
                       style: const TextStyle(fontSize: 12, color: C.muted)),
               ]),
-      ),
     );
   }
 }

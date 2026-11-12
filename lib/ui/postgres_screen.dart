@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 class PgWriteCard extends StatefulWidget {
   const PgWriteCard({super.key, required this.v, required this.app});
@@ -230,11 +231,11 @@ class _PostgresScreenState extends State<PostgresScreen> {
     final dbs = ((_home?['databases'] as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     final writes = ((_home?['writes'] as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     final rules = ((_home?['rules'] as List?) ?? const []).map((e) => '$e').toList();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Postgres database')),
-      floatingActionButton:
-          FloatingActionButton.extended(onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Link database')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: 'Postgres database',
+      onRefresh: _load,
+      fab: FloatingActionButton.extended(onPressed: _add, icon: const Icon(Icons.add_rounded), label: const Text('Link database')),
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
           Glass(
@@ -386,9 +387,9 @@ class _PgTablesPageState extends State<_PgTablesPage> {
     final tables = ((_d?['tables'] as List?) ?? const []).whereType<Map>().toList();
     final cols = ((_res?['columns'] as List?) ?? const []).map((e) => '$e').toList();
     final rows = ((_res?['rows'] as List?) ?? const []).whereType<List>().toList();
-    return Scaffold(
-      appBar: AppBar(title: Text('${widget.conn['name']}')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: '${widget.conn['name']}',
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
         if (schemas.length > 1)
           Wrap(spacing: 6, runSpacing: 6, children: [
@@ -484,9 +485,9 @@ class _PgHealthPageState extends State<_PgHealthPage> {
     final checks = Map<String, dynamic>.from((_h?['checks'] as Map?) ?? const {});
     final tips = ((_h?['tips'] as List?) ?? const []).map((e) => '$e').toList();
     final conn = Map<String, dynamic>.from((checks['connections'] as Map?) ?? const {});
-    return Scaffold(
-      appBar: AppBar(title: Text('${widget.conn['name']} · health')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return DeskPage(
+      title: '${widget.conn['name']} · health',
+      body: () => ListView(padding: const EdgeInsets.all(16), children: [
         if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
         if (_h == null && _err == null) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
         if (_h != null) ...[

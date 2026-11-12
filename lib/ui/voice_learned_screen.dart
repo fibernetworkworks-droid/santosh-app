@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 /// v0.119 "<name> ne kya seekha": what Hoola learned from HER calls (language, pace, pauses, tone, her words, words it
 /// misheard before). Numbers and words only, never a recording. She can add, remove, switch off or forget everything.
@@ -124,9 +125,9 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
     final hint = List<String>.from(((p['hint'] as List?) ?? const []).map((e) => '$e'));
     final learn = p['learn'] != false;
     final why = '${p['silence_why'] ?? 'default'}';
-    return Scaffold(
-      appBar: AppBar(title: Text('What $name has learned')),
-      body: v == null
+    return DeskPage(
+      title: 'What $name has learned',
+      body: () => v == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
               onRefresh: _load,

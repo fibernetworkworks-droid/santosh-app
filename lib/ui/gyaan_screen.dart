@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../state.dart';
 import 'attach.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -306,16 +307,17 @@ class _GyaanScreenState extends State<GyaanScreen> {
     final by = _map(st?['by_source']);
     final docs = _list(st?['recent']);
     final watches = _list(st?['watches']);
-    return Scaffold(
-      appBar: AppBar(title: Text('${widget.app.aName}\'s knowledge'), actions: [
+    return DeskPage(
+      title: '${widget.app.aName}\'s knowledge',
+      actions: [
         IconButton(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded)),
-      ]),
-      floatingActionButton: FloatingActionButton.extended(
+      ],
+fab: FloatingActionButton.extended(
         onPressed: _busy ? null : _addFile,
         icon: const Icon(Icons.upload_file_rounded),
         label: const Text('Add file'),
       ),
-      body: st == null
+body: () => st == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
               onRefresh: _load,

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 Future<void> _open(String url) async {
   if (url.isEmpty) return;
@@ -133,10 +134,10 @@ class _FormsScreenState extends State<FormsScreen> {
     final recent = _list('recent');
     final watching = _list('watching');
     final canLink = _st['can_link'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Google Forms'), backgroundColor: Colors.transparent),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Google Forms',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             const Text('Hoola makes a Google Form or quiz from one line, changes questions, reads and explains responses, '
@@ -206,7 +207,6 @@ class _FormsScreenState extends State<FormsScreen> {
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
         ),
-      ),
     );
   }
 }

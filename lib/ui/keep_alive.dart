@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../native.dart';
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 import 'lock_safe.dart' show MakerSteps;
 
 /// v0.56 "Hoola band na ho": Xiaomi / Oppo / Realme / Vivo / Samsung... battery savers stop apps in the background.
@@ -182,10 +183,10 @@ class _KeepAliveScreenState extends State<KeepAliveScreen> with WidgetsBindingOb
     final counts = Map<String, dynamic>.from(r?['counts'] as Map? ?? const {});
     final kills = (counts['oem_kill'] as num? ?? 0) + (counts['recents_clear'] as num? ?? 0);
     final brand = r == null ? '' : HoolaKeepAlive._brandName(r);
-    return Scaffold(
-      backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${widget.app.aName} band na ho')),
-      body: RefreshIndicator(
+    return DeskPage(
+      title: 'Keep ${widget.app.aName} running',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
           Glass(

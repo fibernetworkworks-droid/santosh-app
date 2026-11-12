@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'glass.dart';
+import 'desk/desk_kit.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
@@ -154,10 +155,10 @@ class _GameWorldsScreenState extends State<GameWorldsScreen> {
   Widget build(BuildContext context) {
     final hired = _d['hired'] == true;
     final worlds = _list(_d['worlds']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Worlds')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Worlds',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('Islands, dungeons, cities and platform levels made from rules and a seed (free). Each is made twice to prove '
@@ -210,7 +211,6 @@ class _GameWorldsScreenState extends State<GameWorldsScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -345,10 +345,10 @@ class _GamePhysicsScreenState extends State<GamePhysicsScreen> {
   Widget build(BuildContext context) {
     final hired = _d['hired'] == true;
     final setups = _list(_d['setups']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Physics')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Physics',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('Hoola works out the settings from your numbers and proves them in Godot itself: falling, the range of a jump, a '
@@ -394,7 +394,6 @@ class _GamePhysicsScreenState extends State<GamePhysicsScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -557,10 +556,10 @@ class _PackPageState extends State<_PackPage> {
     final items = _list(_d[widget.listKey]);
     final presets = _map(_d['zone_presets']);
     final acts = _map(_d['actuators']);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.title)),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: widget.title,
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Text(widget.intro, style: const TextStyle(color: C.muted, fontSize: 13.5, height: 1.35)),
@@ -647,7 +646,6 @@ class _PackPageState extends State<_PackPage> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -814,10 +812,10 @@ class _GameRuntimeScreenState extends State<GameRuntimeScreen> {
   Widget build(BuildContext context) {
     final tests = _list(_rt['tests']);
     final last = tests.isEmpty ? <String, dynamic>{} : tests.last;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Runtime')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Runtime',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('HoolaRuntime goes into every build: a replay recorder and a test bot (used only when Hoola tests the game) '
@@ -884,7 +882,6 @@ class _GameRuntimeScreenState extends State<GameRuntimeScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -981,10 +978,10 @@ class _GameLiveopsScreenState extends State<GameLiveopsScreen> {
   Widget build(BuildContext context) {
     final patches = _list(_v['patches']);
     final last = patches.isEmpty ? <String, dynamic>{} : patches.last;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Live ops')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Live ops',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('A/B tests, live events, crashes and patches for the shipped game. New tests and events: web console or chat; '
@@ -1097,7 +1094,6 @@ class _GameLiveopsScreenState extends State<GameLiveopsScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
@@ -1164,10 +1160,10 @@ class _GameBigStudioScreenState extends State<GameBigStudioScreen> {
   Widget build(BuildContext context) {
     final ps = _list(_d['projects']);
     final p = ps.isEmpty ? <String, dynamic>{} : ps.firstWhere((x) => _s(x['id']) == _open, orElse: () => ps.first);
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Big studio')),
-      body: Aurora(
-        child: RefreshIndicator(
+    return DeskPage(
+      title: 'Big studio',
+      onRefresh: _load,
+      body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             const Text('Your Unity / Unreal / Godot project on your own machines. The Hoola Crew plugin in your editor takes the next task; '
@@ -1235,7 +1231,6 @@ class _GameBigStudioScreenState extends State<GameBigStudioScreen> {
             ],
           ]),
         ),
-      ),
     );
   }
 }
