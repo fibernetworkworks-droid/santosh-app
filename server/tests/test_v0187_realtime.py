@@ -309,6 +309,11 @@ def _never(sent):
 
 
 def test_the_turns_own_reply_stops_the_duplicate(fu, monkeypatch):
+    # the OLD loop's 'already told?' = reply timing + words (_answered_since). G7: the graph is the default and reads the
+    # G5 delivery record instead (test_g5_turngraph), so this test pins the rollback path it was written for
+    monkeypatch.setenv("CHAT_GRAPH", "false")
+    from app.config import get_settings
+    get_settings.cache_clear()
     from app.db import Message, session
     conv = fu["conv"]
     monkeypatch.setattr(kf, "_model_line", _never([]))

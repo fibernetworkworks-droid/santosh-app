@@ -119,9 +119,10 @@ def _both(monkeypatch, script, ask, extra=None):
     return old, new
 
 
-def test_switch_is_off_by_default(env):  # noqa: F811
+def test_switch_is_on_by_default(env):  # noqa: F811
+    # G7: the graph is the default turn engine (was off until G6); CHAT_GRAPH=false is the rollback (test_g7_turngraph)
     from app.config import Settings
-    assert Settings.model_fields["chat_graph"].default is False
+    assert Settings.model_fields["chat_graph"].default is True
     from app.agent import turngraph
     assert turngraph.AVAILABLE
 

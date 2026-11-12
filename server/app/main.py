@@ -77,10 +77,28 @@ def _mark_jobs_on_stop_signal() -> int:
     return n
 
 
+def turn_engine() -> str:
+    """G7 (docs/LANGGRAPH_TURN_PLAN.md): 'graph' = every chat turn on the LangGraph turn graph (the default);
+    'old-loop' = the old while-loop answers (CHAT_GRAPH=false rollback, or langgraph missing)."""
+    return "graph" if getattr(get_settings(), "chat_graph", False) else "old-loop"
+
+
+def _say_turn_engine() -> None:
+    try:
+        if turn_engine() == "graph":
+            log.info("chat turn engine: the turn graph (agent/turngraph.py); CHAT_GRAPH=false rolls back to the old loop")
+        else:
+            log.warning("chat turn engine: the OLD loop (santosh._steps_inner) - the rollback path. CHAT_GRAPH is off or "
+                        "langgraph is not installed; remove CHAT_GRAPH=false from .env to use the turn graph")
+    except Exception:   # noqa: BLE001 - a log line never stops the server
+        log.debug("turn engine line failed", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     _mark_jobs_on_stop_signal()   # v0.343 a deploy marks running website jobs at the signal, not at the (often aborted) end
+    _say_turn_engine()            # G7 which chat turn engine answers: the turn graph, or the old loop (rollback)
     _quiet_http_logs()
     from . import authcheck as _authcheck
     _authcheck.warn_if_open()  # v0.391 an empty API_KEY = a request with no login acts as the owner: say so loudly in the log
@@ -5923,6 +5941,7 @@ def agent_stats():
     from . import looplag
     from . import glmdoor
     return {"loop": dict(looplag.STATS), "worker": worker.health(), "sab_glm": glmdoor.status(),
+            "turn_engine": turn_engine(),   # G7: 'graph' (default) or 'old-loop' (the CHAT_GRAPH=false rollback)
             "breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
             "pakka": dict(pakka.STATS), "halts": dict(_s.HALTS), "scrubbed": scrub.STATS["scrubbed"],
             "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS),
@@ -5966,41 +5985,9 @@ def aep_run_tree(run_id: str, tenant: str = Depends(current_tenant)):
     return {"ok": True, "source": "vault", "run": obs}
 
 
-class AepTurnIn(BaseModel):
-    text: str = Field(min_length=1, max_length=8000)
-    brain: str = Field(default="auto", max_length=20)
-
-
-@app.post("/api/aep/turn/{conversation_id}", dependencies=[Depends(require_key)])
-async def aep_turn_route(conversation_id: str, body: AepTurnIn, tenant: str = Depends(current_tenant)):
-    """v0.680.0 HOOLA ADOPT: one real turn of HOOLA run ON the AEP - create_agent over the house
-    graph (P4), the production brain injected through hoola_brain_factory (P7), nudge+curator
-    riding every model call (P5), the P2 tracer attached, chat memory through the conversation's
-    thread. THE AUTH LAW the owner named: require_key + current_tenant - a signed-in product user
-    or the legacy owner key; anonymous callers refused the moment the server has a key; the
-    conversation must belong to the caller's tenant. The reply lands in the same conversation +
-    SSE feed like any other turn; the production loop (run_turn) is untouched - this lane is
-    opt-in per call, never a silent behavior change."""
-    _conv_or_404(conversation_id, tenant)
-    from . import usage
-    from .agent import aeptune
-    from .agent.santosh import _load_history, _save
-    usage.bind(tenant, "chat")
-    history = _load_history(conversation_id)   # BEFORE the user row lands - never doubled
-    _save(conversation_id, "user", body.text, display=body.text)   # the yaad law: a user row starts the exchange as a str
-    bus.publish(conversation_id, "message", {"role": "user", "text": body.text})
-    bus.publish(conversation_id, "typing", {"on": True})
-    try:
-        turn = await aeptune.aep_turn(conversation_id, body.text, tenant,
-                                      brain=body.brain, history=history)
-    except Exception as e:   # noqa: BLE001 - the lane fails loudly, typing always goes away
-        bus.publish(conversation_id, "typing", {"on": False})
-        raise HTTPException(502, f"aep turn failed: {e}")
-    bus.publish(conversation_id, "typing", {"on": False})
-    _save(conversation_id, "assistant", [{"type": "text", "text": turn.reply}], display=turn.reply)
-    bus.publish(conversation_id, "message", {"role": "assistant", "text": turn.reply, "source": "aep"})
-    return {"ok": True, "reply": turn.reply, "run_id": turn.run_id, "thread_id": turn.thread_id,
-            "ms": turn.ms, "middleware": turn.middleware, "tools": turn.tools}
+# G7 (docs/LANGGRAPH_TURN_PLAN.md): POST /api/aep/turn/{conversation_id} (v0.680 HOOLA ADOPT, agent/aeptune.py) is
+# retired - it failed on every real call (an async brain handed to a sync _generate) and the turn graph replaced it.
+# The run-tree explorer above (/api/aep/runs) and app/aep's tracer / vault sink / graph (leads/scale.py) stay.
 
 
 class ShopOrderIn(BaseModel):
