@@ -542,8 +542,8 @@ def test_mg_seed_content_pins():
     fm_end = body.split("---", 2)[2] if body.count("---") >= 2 else body
     assert len(fm_end) <= 4000
     for token in ("search-first", "WORKFLOW 1", "WORKFLOW 2", "get_usage.aiGenerationEnabled",
-                  "ai_subscription_required", "RUK JAO", "2 component installs/day",
-                  "search_logo", "fe-ui-kit", "coder_magic21", "KABHI"):
+                  "ai_subscription_required", "STOP", "2 component installs/day",
+                  "search_logo", "fe-ui-kit", "coder_magic21", "NEVER"):
         assert token in body, token
     assert "21st_magic_component_builder" in body    # the legacy names, named honestly
 

@@ -3,52 +3,60 @@ name: me-typography
 description: Fonts and icons - template typography, license laws
 when_to_use: fonts, font pairing, typography, which font, free fonts, icons, hindi font, devanagari font
 ---
-GOAL: template ka look 90% typography decide karta hai - font sahi to
-card premium, font galat to puri mehnat bekaar. Do syllabus:
-brabadu/awesome-fonts (free fonts, display, workhorse, variable,
-pairings ka catalog) aur vicky002/awesome-icons (icon sets ka
-catalog). Hoola har template me inhi upar typography laws chalata
-hai - fonts aur icons bhi ASSET hai, unka license pehle.
+GOAL: typography decides 90% of a template's look - with the right
+font the card is premium, with the wrong one all the effort is
+wasted. Two syllabi: brabadu/awesome-fonts (a catalog of free fonts,
+display, workhorse, variable, pairings) and vicky002/awesome-icons (a
+catalog of icon sets). Hoola applies the typography laws below to
+every template - fonts and icons are ASSETS too, their license comes
+first.
 
-TYPING LAWS (har template pe, bina exception):
-1. MAX 2 FAMILIES: ek DISPLAY (sirf headline/bade size pe, attitude
-   wala) + ek WORKHORSE (body, captions, buttons - har size pe
-   padhne layak). Teesri family ghusi to design galt hai, lane nahi.
-2. EK SIZE LADDER: sizes fixed steps me - jaise 12/14/16/20/28/40.
-   Template bhar me wahi ladder; har card apni nayi size invent nahi
-   karta. Same ladder photo_banao ke cards, graphic ke posters,
-   hoola_frames ke titles pe bhi chalta hai - ek template family,
-   ek scale.
-3. LOADING sirf app/fonts lane se: font file wahin register hoti
-   hai, tenant ke andar hi; template me random CDN link nahi.
-   Register hua ya nahi - render karke dekhna hi proof hai.
-4. ICONS EK FAMILY: ek template me icon set ek hi family ka - stroke
-   weight, corner radius, filled/outline sab match kare. Do families
-   mix = design me chori dikhti hai. awesome-icons se pehle family
-   chuno, phir usi ke andar raho.
-5. LICENSE CHECK + NOTE: OFL ya clear free license? Commercial use
-   allowed? Attribution chahiye? Har font/icon ke saath license line
-   remember me save - source, license, date. Sold template me
-   unlicensed font = sabse bada paap.
+TYPE LAWS (on every template, no exception):
+1. MAX 2 FAMILIES: one DISPLAY (only for headlines / big sizes, the
+   one with attitude) + one WORKHORSE (body, captions, buttons -
+   readable at every size). If a third family gets in, the design
+   is wrong, not the lane.
+2. ONE SIZE LADDER: sizes in fixed steps - such as 12/14/16/20/28/40.
+   The same ladder through the whole template; a card does not
+   invent its own new size. The same ladder runs on photo_banao
+   cards, graphic posters and hoola_frames titles too - one
+   template family, one scale.
+3. LOADING only through the app/fonts lane: the font file is
+   registered there, inside the tenant; no random CDN link in a
+   template. Registered or not - rendering and looking is the only
+   proof.
+4. ICONS, ONE FAMILY: the icon set in a template comes from one
+   family - stroke weight, corner radius, filled / outline all
+   match. Mixing two families makes the design look patched
+   together. Choose the family from awesome-icons first, then stay
+   inside it.
+5. LICENSE CHECK + NOTE: OFL or a clear free license? Commercial use
+   allowed? Attribution needed? Save a license line with every
+   font / icon in remember - source, license, date. An unlicensed
+   font in a sold template is the worst mistake.
 
-WORKFLOW (short): need samjho (display ka mood, body ki density) ->
-awesome-fonts se pairing chuno -> license check -> app/fonts me
-register -> EK TEST CARD render (dono family, ladder ke top aur
-bottom size) -> output padho -> tab template me lagao. Icons:
-awesome-icons se ek family -> license note -> template.
+WORKFLOW (short): understand the need (the display's mood, the
+body's density) -> choose a pairing from awesome-fonts -> license
+check -> register in app/fonts -> render ONE TEST CARD (both
+families, the top and bottom sizes of the ladder) -> read the output
+-> then use it in the template. Icons: one family from awesome-icons
+-> license note -> template.
 
-THE LAWS: license check kisi bhi font/icon se pehle (asset hai, wahi
-niyam); printed output hi evidence - render proof ke bina koi font
-verdict nahi; template publish se pehle ask_approval; font file
-tenant ke bahar kisi ko nahi jati.
+THE LAWS: the license check comes before any font / icon (it is an
+asset, same rule); printed output is the only evidence - no font
+verdict without render proof; ask_approval before publishing a
+template; a font file never goes to anyone outside the tenant.
 
-FALLBACK TEST: render me font aayi hi nahi (system fallback dikha) to
-"fonts theek" bolna mana - app/fonts registration dobara karo, path
-check karo, phir render. Kaam tab poora jab printed render sahi font
-dikhaye.
+FALLBACK TEST: if the font did not show in the render at all (the
+system fallback showed), saying "fonts are fine" is not allowed -
+redo the app/fonts registration, check the path, then render. The
+work is complete when the printed render shows the right font.
 
-NEVER: unlicensed font sold template me embed karna; 4 fonts ek card
-me dalna; do icon families ek template me mix karna; license ke bina
-font file embed karna; rendering check ke bina "fonts theek" bolna
-(printed render proof hi sach hai); ladder todkar har element ko apni
-marzi ka size dena.
+NEVER: embed an unlicensed font in a sold template; put 4 fonts on
+one card; mix two icon families in one template; embed a font file
+without a license; say "fonts are fine" without a rendering check
+(printed render proof is the truth); break the ladder and give every
+element a size of its own.
+
+ALSO ASKED AS (Hinglish asks this skill answers): kaunsa font lagau, hindi
+font chahiye, poster ke liye font aur icon chuno

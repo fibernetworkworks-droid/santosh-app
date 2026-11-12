@@ -2,7 +2,7 @@
 name: coauthor-docs
 description: A staged way to write a real document together with the user: proposals, specs, decision notes, reports, PRDs, letters. Ask what the reader must do, collect the raw material, agree an outline, draft one section at a time, then re-read it as the reader before it is called done.
 license: Hoola original, written by Newtika Pvt Ltd. Inspired by the general idea of a staged co-writing workflow; contains no text from any third-party skill.
-when_to_use: document likhna hai, proposal banao, spec likho, decision doc, report draft karo, PRD, RFC, ek saath likhein, draft ko behtar karo, letter ya note likhna, long document ka plan
+when_to_use: document likhna hai, proposal banao, spec likho, decision doc, report draft karo, PRD, RFC, ek saath likhein, draft ko behtar karo, letter ya note likhna, long document ka plan, write a document, write a proposal, draft a report, improve my draft
 ---
 
 # Co-authoring a document
@@ -29,7 +29,7 @@ Propose 4 to 8 section headings, each with one line saying what that section mus
 ## 4. Draft section by section
 - Write ONE section, show it, and ask what to change before the next. Keep a running document and change only the section she reacted to; do not rewrite the whole thing for a small edit.
 - Plain words, short sentences, the point of each paragraph in its first line. Numbers get their unit and their source.
-- If she says "ye nahi, aisa", change exactly that and keep the rest.
+- If she says "not this, like that", change exactly that and keep the rest.
 - When a section depends on a fact you do not have, leave the blank and list it at the end.
 
 ## 5. Read it as the reader

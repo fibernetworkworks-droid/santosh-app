@@ -124,7 +124,7 @@ def test_campaign_graph_pins_the_discipline():
                   "connected_components", "degree", "lookalike", "one-edge",
                   "get_campaign_status", "email_bulk_status", "sheet_append",
                   "approval card", "NEVER", "PII", "printed output",
-                  "networkx NAHI"):
+                  "NO networkx"):
         assert token in body, token
 
 
@@ -139,7 +139,7 @@ def test_campaign_graph_is_sandbox_honest():
         name, _, b = parse_skill(f.read_text(encoding="utf-8"))
         if name == "bd-campaign-graph":
             body = b
-    assert "networkx NAHI" in body
+    assert "NO networkx" in body
     assert "scipy" in body
     assert "pylab" in body
 

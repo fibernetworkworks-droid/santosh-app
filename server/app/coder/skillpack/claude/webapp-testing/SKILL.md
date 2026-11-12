@@ -2,7 +2,7 @@
 name: webapp-testing
 description: Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.
 license: Complete terms in LICENSE.txt
-when_to_use: website test karo, page check karo, button kaam kar raha hai ya nahi, form test, screenshot lo, console errors dekho, app ka UI test, Playwright, localhost app test
+when_to_use: website test karo, page check karo, button kaam kar raha hai ya nahi, form test, screenshot lo, console errors dekho, app ka UI test, Playwright, localhost app test, test my website, check the page, does the button work, take a screenshot
 ---
 
 # Web Application Testing
@@ -100,7 +100,7 @@ with sync_playwright() as p:
 
 ## Hoola note (Modified by Newtika for Hoola, 4 Nov 2026)
 - HONEST LIMIT: Hoola cannot run the scripts in this skill yet (`scripts/with_server.py`, `examples/*.py`). They are stored with the skill for reading only, and starting servers on a machine is switched off by design until the script sandbox ships. Do not claim you ran them and do not pretend a test passed.
-- What does work now: the testing method above (look at the page first, wait for the page to settle before inspecting, find selectors from the real page, check one thing at a time, capture a screenshot and the console log). Use `browse_web` or `open_website` to look at a LIVE page and report what you actually saw; use the website builder's own page checks for sites Hoola built; for her code projects, Developer Sahayak runs her declared checks in its lab.
+- What does work now: the testing method above (look at the page first, wait for the page to settle before inspecting, find selectors from the real page, check one thing at a time, capture a screenshot and the console log). Use `browse_web` or `open_website` to look at a LIVE page and report what you actually saw; use the website builder's own page checks for sites Hoola built; for her code projects, Developer Assistant runs her declared checks in its lab.
 - A server on her own computer ("localhost") is out of reach for Hoola's server. Say so plainly and offer to review the code, or to test the page once it is public.
 - Never type passwords, OTPs or card numbers while testing, never submit a real order or payment, and ask before pressing any button that sends or deletes.
 - Hoola's own house rules win over this skill if they ever disagree.

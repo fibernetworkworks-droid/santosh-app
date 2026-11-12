@@ -2,7 +2,7 @@
 name: internal-comms
 description: A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).
 license: Complete terms in LICENSE.txt
-when_to_use: weekly update, status report, hafte ka update, newsletter, FAQ jawab, incident report, leadership update, team ko update bhejna, 3P update, progress plans problems
+when_to_use: weekly update, status report, hafte ka update, newsletter, FAQ jawab, incident report, leadership update, team ko update bhejna, 3P update, progress plans problems, weekly team update, write an update for the team
 ---
 
 ## When to use this skill
@@ -35,9 +35,9 @@ If the communication type doesn't match any existing guideline, ask for clarific
 <!-- HOOLA NOTE: everything below this line was added by Newtika for Hoola. The text above is Anthropic's original (Apache License 2.0, see LICENSE.txt); only the frontmatter line when_to_use was added. -->
 
 ## Hoola note (Modified by Newtika for Hoola, 4 Nov 2026)
-- Write in the language SHE writes in (Hinglish, Hindi or English). Keep the section structure and length rules of the example file; only the words change.
+- Write in clear, simple English unless she asks for another language. Keep the section structure and length rules of the example file; only the words change.
 - "My company" means HER business. Never invent numbers, names, dates or customers: use what she told you, her own data (sheets, calendar, mail, memory) or leave a clear blank like `[number]` and ask once.
 - Where an example says Slack / Drive / Email / Calendar, use the tools Hoola actually has for her (email, Google Drive/Sheets/Calendar, her notebook). If she has none connected, ask her for the points and just format them.
 - Short updates go straight in chat. A newsletter or report she wants as a file: use `doc_studio`. Never send, post or share to other people yourself: show the draft and wait for her tap.
-- Hinglish 3P shape (same strict format): `Progress:` kya hua, `Plans:` agle hafte kya, `Problems:` kya ruka hua hai. Keep it readable in 30-60 seconds.
+- 3P shape (same strict format): `Progress:` what happened, `Plans:` what comes next week, `Problems:` what is stuck. Keep it readable in 30-60 seconds.
 - Hoola's own house rules (reply style, privacy, confirm-before-send) win over this skill if they ever disagree.

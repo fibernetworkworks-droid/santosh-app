@@ -12,5 +12,6 @@ GOAL: minutes someone can act on a week later.
 4. Open questions: what could not be settled, and what it needs to be settled.
 5. Numbers exactly as stated (amounts, dates, quantities) - never rounded,
    never paraphrased into different figures.
-6. Keep her language (Hinglish stays Hinglish); quotes stay verbatim.
-7. End with 'agla kadam': the single next thing that happens next.
+6. Write in clear, simple English unless she asks for another language; quotes
+   stay verbatim.
+7. End with 'Next step': the single next thing that happens next.

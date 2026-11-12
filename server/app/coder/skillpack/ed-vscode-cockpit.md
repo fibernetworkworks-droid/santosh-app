@@ -3,36 +3,43 @@ name: ed-vscode-cockpit
 description: VS Code cockpit - palette first, ax tree, never pixels
 when_to_use: vs code, vscode, editor, rename symbol, command palette, ide, extensions, problems panel
 ---
-GOAL: wo editor ke andar baithi hai, Hoola uske saath chalti hai -
-"drive Hoola from inside the IDE" ka matlab: VS Code pehle se hi
-semantically controllable hai (ax tree, Electron accessibility), to
-pixel-clicking ki zaroorat hi nahi. Awesome-vscode (viatsko; themes,
-extensions, keybindings ka curated catalog) syllabus hai - par lane
-hamesha Hoola ke operator ke semantic doors se chalti hai.
+GOAL: the user is working inside the editor and Hoola works alongside
+- "drive Hoola from inside the IDE" means: VS Code is already
+semantically controllable (ax tree, Electron accessibility), so there
+is no need for pixel-clicking at all. Awesome-vscode (viatsko; a
+curated catalog of themes, extensions and keybindings) is the syllabus
+- but the lane always runs through the operator's semantic doors.
 
-THE DOORS (sab operator ke asli tools, pixel lane aakhri me):
-1. COMMAND PALETTE pehle (key: Ctrl+Shift+P): VS Code ka har command
-   apne NAME se milta hai - "Format Document", "Git: Commit", "Run
-   Task". Naam se address = semantic; coordinates kabhi nahi.
-2. QUICK OPEN (Ctrl+P): file ka naam likho, khul gaya - user_pc_search
-   se pehle yahan dekho (editor ka apna index sabse tez hai).
-3. ax_find: element by role/name (role=button name=Save) - sidebar,
-   tabs, problems panel; screenshot sirf tab jab ax jawab na de.
-4. INTEGRATED TERMINAL (Ctrl+`): test/build/lint yahan se - command
-   type karo, output padho; lambi runs terminal me, chat me nahi.
-5. PROBLEMS panel: diagnostics yahan se padho (error/warning counts),
-   fix karne ke baad dobara padho - "theek ho gaya" printed evidence
-   se, andaaz se nahi.
+THE DOORS (all real operator tools, the pixel lane last):
+1. COMMAND PALETTE first (key: Ctrl+Shift+P): every VS Code command
+   is found by its NAME - "Format Document", "Git: Commit", "Run
+   Task". Addressing by name = semantic; never coordinates.
+2. QUICK OPEN (Ctrl+P): type the file name and it opens - look here
+   before user_pc_search (the editor's own index is the fastest).
+3. ax_find: an element by role / name (role=button name=Save) - the
+   sidebar, tabs, the problems panel; a screenshot only when ax
+   gives no answer.
+4. INTEGRATED TERMINAL (Ctrl+`): test / build / lint from here - type
+   the command, read the output; long runs go in the terminal, not
+   in chat.
+5. PROBLEMS panel: read diagnostics here (error / warning counts),
+   read again after fixing - "it is fixed" comes from printed
+   evidence, not from a guess.
 
-THE LAWS: ek turn ek editor action (screen move ho sakti hai; purana
-action stale hai); palette/quick-open jaise naam-wale doors pehle,
-click x,y sabse aakhri me; jo file khuli hai usi me kaam (naya tab
-kholne se pehle poochho); terminal commands ek-ek karke, output padh
-ke aage; extensions install / settings badalna = pehle ask_approval.
+THE LAWS: one turn, one editor action (the screen can move; the old
+action is stale); named doors such as the palette / quick open first,
+a click at x,y last of all; work in the file that is open (ask before
+opening a new tab); terminal commands one at a time, read the output
+before going on; installing extensions / changing settings =
+ask_approval first.
 
-NEVER: unsaved buffer close/discard karna bina poochhe (ask_approval -
-"save karke band karu?"); uski keybindings/settings bina batae
-badalna; auto-save band karna; pixel click jab ax door khula ho;
-editor ke bahar kisi ki screen chhoona (ye lane sirf editor hai);
-bina output padhe "test pass ho gaya" bolna - terminal ka printed
-output hi sach hai.
+NEVER: close / discard an unsaved buffer without asking (ask_approval
+- "shall I save and close?"); change the user's keybindings / settings
+without telling them; turn off auto-save; a pixel click when the ax
+door is open; touch anyone's screen outside the editor (this lane is
+the editor only); say "the tests passed" without reading the output -
+the terminal's printed output is the truth.
+
+ALSO ASKED AS (Hinglish asks this skill answers): vs code mein extension
+kaise lagaye, editor ke andar se kaam karao, file kholo aur symbol rename
+karo

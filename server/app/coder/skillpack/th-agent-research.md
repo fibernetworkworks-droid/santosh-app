@@ -3,45 +3,53 @@ name: th-agent-research
 description: Agent architecture research - read, probe, ledger, adopt
 when_to_use: agent architecture, ai research, cognitive architecture, world model, new agent idea, research paper
 ---
-GOAL: agent architecture ka naya idea? Awesome-AGI-CoCoSci
-(SHI-Yu-Zhe ka curated catalog - AGI x computational cognitive
+GOAL: a new idea for agent architecture? Read Awesome-AGI-CoCoSci
+first (SHI-Yu-Zhe's curated catalog - AGI x computational cognitive
 science: cognitive architectures, world models, agents, thought
-partners, Bayesian lens) pehle padho, phir Hoola pe probe karo.
-Research ka matlab: pattern catalog se, sach probe ke printed metrics
-se, decision ledger se - andaz se kabhi nahi.
+partners, the Bayesian lens), then probe it on Hoola. Research means:
+the pattern from the catalog, the truth from the probe's printed
+metrics, the decision from the ledger - never from a guess.
 
-THE VOCABULARY (catalog ki bhasha, Hoola ke real doors pe mapped):
+THE VOCABULARY (the catalog's language, mapped onto Hoola's real
+doors):
 - PERCEPTION = tool results, screenshots (pc operator), page reads.
 - MEMORY = dhara workflows + stores (cross-thread) + pc memory;
-  aep messages/history working memory hai.
-- REASONING = graph engine (aep.graph StateGraph - nodes,
-  add_conditional_edges, fan-out/join barrier, interrupt/Command
-  park-and-resume, MemorySaver/SqliteSaver checkpointers) + crew roles
-  (crewAI port).
-- ACTION = registry tools (abhi 605) - ek action = ek tool call.
+  aep messages / history are the working memory.
+- REASONING = the graph engine (aep.graph StateGraph - nodes,
+  add_conditional_edges, fan-out / join barrier, interrupt / Command
+  park-and-resume, MemorySaver / SqliteSaver checkpointers) + crew
+  roles (the crewAI port).
+- ACTION = registry tools (605 today) - one action = one tool call.
 
-THE PROBE (naye pattern ka imtihaan - chhota, fake tools, real shapes):
-1. Catalog se EK pattern uthao, source ke saath (paper/list ka naam).
-2. Mini-graph ya mini-crew banao aep.graph/crew pe - 2-3 nodes, ek
-   tricky conditional edge ya ek interrupt park-resume.
-3. Metrics PRINT karao (steps-to-goal, turns, failure mode) - score
-   printed output se quote hota hai, mental maths se kabhi nahi.
-4. PRODUCTION route tab hi jab probe score kare; warna park.
+THE PROBE (the test of a new pattern - small, fake tools, real
+shapes):
+1. Take ONE pattern from the catalog, with its source (the name of
+   the paper / list).
+2. Build a mini-graph or mini-crew on aep.graph / crew - 2-3 nodes,
+   one tricky conditional edge or one interrupt park-resume.
+3. Have the metrics PRINTED (steps-to-goal, turns, failure mode) - a
+   score is quoted from printed output, never from mental maths.
+4. The PRODUCTION route only when the probe scores; otherwise park.
 
-THE LEDGER (bd-eval-benchmarks ka bhai): har probe = ek row - date /
-pattern / source / setup / result / decision (adopt|park|kill).
-Negative result bhi likhta hai: park = "abhi nahi", kill = "kabhi
-nahi (yeh wajah)". Ledger hi research ki memory hai - bina uske har
-baar wahi baat dobara.
+THE LEDGER (the sibling of bd-eval-benchmarks): every probe = one
+row - date / pattern / source / setup / result / decision
+(adopt|park|kill). A negative result is written too: park = "not
+now", kill = "never (for this reason)". The ledger is the memory of
+the research - without it the same thing is done again every time.
 
-THE LAWS: ek probe ek pattern (confound nahi); bina source ka pattern
-entry hi nahi leta; bina probe ka adopt nahi; catalog syllabus hai,
-source of truth nahi - truth probe ke printed metrics se aati hai;
-synthetic data pe probe, kisi ke private data pe kabhi nahi.
+THE LAWS: one probe, one pattern (no confounds); a pattern with no
+source does not get an entry; no adopt without a probe; the catalog
+is the syllabus, not the source of truth - the truth comes from the
+probe's printed metrics; probe on synthetic data, never on anyone's
+private data.
 
-NEVER: paper/kaam ka naam invent karna (na mile to bolo "unverified -
-catalog mein nahi mila"); "research ho gayi" bolke bina probe adopt
-karna; production tools me bina ledger row ke architecture change;
-naya graph node bina interrupt/checkpoint ke soche bina dalna (crash
-ke baad resume dhara ka sabak hai); graph/crew ke bahar "research"
-naam ke naye tools banana - pehle jo engine hai wahi kaafi hai.
+NEVER: invent the name of a paper / work (if it is not found say
+"unverified - not found in the catalog"); say "research is done" and
+adopt without a probe; an architecture change in production tools
+without a ledger row; add a new graph node without thinking about
+interrupt / checkpoint (resume after a crash is the lesson of
+dhara); build new tools named "research" outside the graph / crew -
+the engine that exists is enough.
+
+ALSO ASKED AS (Hinglish asks this skill answers): agent architecture ka naya
+pattern research aur probe karo, naya agent idea try karna hai
