@@ -206,7 +206,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
             <li class="${lvl === 'seekh' ? 'on' : ''}"><i>1</i><span><b>${TRUST.seekh[0]}</b> · starts here: ${TRUST.seekh[1]}.</span></li>
             <li class="${lvl === 'saathi' ? 'on' : ''}"><i>2</i><span><b>${TRUST.saathi[0]}</b> · ${TRUST.saathi[1]}.</span></li>
             <li class="${lvl === 'bharosa' ? 'on' : ''}"><i>3</i><span><b>${TRUST.bharosa[0]}</b> · ${TRUST.bharosa[1]}.</span></li></ol>
-            <p class="ae-mut ae-small">Hoola suggests the next level after a run of your Haan; one correction drops it a level.</p></div>`
+            <p class="ae-mut ae-small">Hoola suggests the next level after a run of your approvals; one correction drops it a level.</p></div>`
           : '<p class="ae-soonnote ae-up">This employee is being built. Its full job list, what it needs and its limits appear here the day it is ready to hire.</p>'}
           <div class="ae-acts">${acts}</div>
         </div></div>`;

@@ -27,7 +27,7 @@ def test_switch_reaches_the_console(env, monkeypatch):
 
 def test_the_old_words_stay_when_off_and_the_new_ones_are_there():
     js = (CON / "v2.js").read_text()
-    for old in ("'Slide for Haan'", "'Mana'", "'Retry'", "'✅ What was done'", "Ask anything, attach a file"):
+    for old in ("'Slide to approve'", "'Mana'", "'Retry'", "'✅ What was done'", "Ask anything, attach a file"):
         assert old in js, old                                              # off = byte-for-byte the old console
     for new in ("Good afternoon", "waiting for your OK", "need${QUEUE.length === 1 ? 's' : ''} you", " of ${money(",
                 "'Ask again'", "Good answer", "Not right", "Slide to approve", "Not now",

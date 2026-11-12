@@ -189,7 +189,7 @@ window.HoolaBuild = function (C) {
     let body = '';
     if (s === 'planned' && v.mapping) body = nowLine('Planning the site map (big site)…', true);   // v0.315
     else if (s === 'planned') body = (v.size ? sizeLine(v) : '') + L(v.plan?.pages).slice(0, 8).map(p => `<div class="bln faint">• ${esc(p.title)}: ${esc(L(p.sections).join(', '))}</div>`).join('')
-      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
+      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Yes, make 3 looks', 'go')}</div>`;
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Preview in new tab</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
@@ -202,7 +202,7 @@ window.HoolaBuild = function (C) {
     const v = o.v, s = S(v.status), b = M(v.board), pv = previewPath(v.preview);
     let body = '';
     if (s === 'planned') body = `<div class="bln faint">${L(v.plan?.screens).length + L(v.plan?.code_screens).length} screens · bottom tabs: ${esc(L(v.plan?.tabs).join(' · '))}</div>`
-      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Haan, make 3 looks', 'go')}</div>`;
+      + `<div class="acts">${btn('studio', 'Review / answer')}${btn('plan', 'Yes, make 3 looks', 'go')}</div>`;
     else if (s === 'looks') body = lookThumbs(o) + `<div class="acts">${btn('studio', 'Pick in studio', 'go')}</div>`;
     else if (working(o)) body = nowLine(b.now, true) + progress(o) + miniScreens(o)
       + `<div class="acts">${btn('stop', 'Stop')}${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Prototype</a>` : ''}${btn('studio', 'Open studio', 'go')}</div>`;
@@ -425,7 +425,7 @@ window.HoolaBuild = function (C) {
         + (M(pl.scope).request ? `<div class="bln faint" style="font-style:italic">Aapne kaha: "${esc(pl.scope.request)}"</div>` : '');
     return `<section class="bbox"><h4>Plan</h4>${list || '<div class="stempty">Writing the plan…</div>'}</section>`
       + (qs.length ? `<section class="bbox"><h4>A few questions (answer what you know)</h4><form class="bqs" data-form="answers">${qs.map((q, i) => `<label>${esc(q)}<input name="${i}" autocomplete="off"></label>`).join('')}<div class="acts"><button class="btn soft" type="submit">Send answers</button></div></form></section>` : '')
-      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Haan, make 3 looks', 'go')}</div>` : '');
+      + (S(v.status) === 'planned' ? `<div class="acts">${btn('plan', 'Yes, make 3 looks', 'go')}</div>` : '');
   }
   function looksPane(o) {
     const looks = L(o.v?.looks);
@@ -450,7 +450,7 @@ window.HoolaBuild = function (C) {
       + ((phone || pc) ? `<section class="bbox"><h4>On phone and computer (real screenshots)</h4><div class="bshots">${pic(phone, 'Phone screenshot', 'ph')}${pic(pc, 'Computer screenshot', 'pc')}</div>
           ${vid ? `<video class="bvid" data-src="${esc(vid)}" controls muted playsinline preload="none" aria-label="Scroll video"></video>` : ''}</section>` : '')
       + (checksBlock(o, 'Checks (small phone, contrast, buttons, links)') || `<div class="stempty">${working(o) ? spin() + ' Checks run after the website is built.' : 'Checks have not run yet.'}</div>`)
-      + (S(v.status) === 'ready' ? `<section class="bbox next"><h4>Next: Domain → Hosting + DNS → Live</h4><p class="faint" style="font-size:13px">Buying a domain and going live need your Haan (the card comes in the chat).</p>
+      + (S(v.status) === 'ready' ? `<section class="bbox next"><h4>Next: Domain → Hosting + DNS → Live</h4><p class="faint" style="font-size:13px">Buying a domain and going live need your approval (the card comes in the chat).</p>
           <div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Open preview</a>` : ''}${btn('say-domain', 'Find a domain', 'go')}${btn('say-live', 'Prepare to go live')}</div></section>` : '');
   }
   function screensPane(o) {
@@ -2529,7 +2529,7 @@ window.HoolaBuild = function (C) {
       + mods.map(m => `<fieldset class="stmod"><legend><label><input type="checkbox" data-mod="${esc(S(m.key))}"${m.required || built ? ' disabled' : ''} checked> <b>${esc(S(m.title))}</b>${m.ready === false ? ' <span class="badc">needs a fix</span>' : ''}</label></legend>
           ${L(m.lines).slice(0, 14).map(x => `<div class="bln faint">• ${esc(S(x))}</div>`).join('')}</fieldset>`).join('')
       + L(c.questions).map(q => `<div class="warnc bln">? ${esc(S(q))}</div>`).join('')
-      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change anything</button><button class="btn go" type="button" data-sp="ok">Haan, build it</button></div>`);
+      + (built ? '' : `<div class="acts"><button class="btn soft" type="button" data-sp="data">Change anything</button><button class="btn go" type="button" data-sp="ok">Yes, build it</button></div>`);
     el.onclick = async e => {
       const b = e.target.closest('[data-sp]'); if (!b) return;
       const url = `/api/site-architect/${encodeURIComponent(S(c.id))}`;

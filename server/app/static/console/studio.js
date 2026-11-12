@@ -25,7 +25,7 @@ window.HoolaCreate = ctx => {
   const inr = n => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
   const when = t => { const d = new Date((t || 0) * 1000), s = (Date.now() - d) / 1000;
     return s < 60 ? 'Just now' : s < 3600 ? Math.floor(s / 60) + ' min ago' : s < 86400 ? Math.floor(s / 3600) + ' h ago' : d.toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); };
-  const fp = 'This card spends money: Haan needs your phone’s fingerprint. Approve it in the Hoola app.';
+  const fp = 'This card spends money: approval needs your phone’s fingerprint. Approve it in the Hoola app.';
 
   /* ---------------- decorative artwork (quick starts and templates only; her results are always her real files) ---------------- */
   function rng(seed) {   // v0.304 FNV-1a + a mix: neighbouring seeds ('q0', 'q1'...) used to land on the same palette
@@ -824,7 +824,7 @@ ${SPRITE}`;
     return `<div class="appr"><div class="aph"><b class="num">${inr(a.inr)}</b><small>${esc(what)}</small></div>
       ${rows || extra ? `<table class="aprows">${rows}${extra}</table>` : ''}
       <small class="apn">Nothing is spent until you tap Yes. You are never charged more than ${inr(a.inr)}.</small>
-      <div class="apb"><button class="btn sec" data-no="${esc(a.id)}">Na</button><button class="btn pri" data-yes="${esc(a.id)}">Haan, make it · ${inr(a.inr)}</button></div></div>`;
+      <div class="apb"><button class="btn sec" data-no="${esc(a.id)}">No</button><button class="btn pri" data-yes="${esc(a.id)}">Yes, make it · ${inr(a.inr)}</button></div></div>`;
   }
   // v0.325 what state a clip / film is in, in one word
   function projState(p) {
@@ -996,7 +996,7 @@ ${SPRITE}`;
   <div class="pipe" role="list">${STEPS.map(([k, t], i) => `<button role="listitem" class="${st[k] ? 'done' : ''}" ${k === cur ? 'aria-current="step"' : ''} data-step="${k}"><i>${st[k] ? '✓' : i + 1}</i>${t}</button>`).join('')}</div>
   <div class="nextc${['wait', 'done'].includes(nx.kind) ? ' quiet' : ''}"><div class="nxt"><small>${nx.kind === 'done' ? 'All steps done' : nx.kind === 'wait' ? 'Working' : 'Next step · ' + (NEXT_STEP[nx.kind] || '')}</small><b>${esc(nextLabel(nx))}</b><p>${NEXT_WHY[nx.kind] || ''}</p></div>
     ${nx.kind === 'done' ? '' : `<button class="create nxb" data-next="${esc(nx.kind || '')}" ${['wait', 'done'].includes(nx.kind) ? 'disabled' : ''}>${I('spark', 'width:17px;height:17px')}<span>${esc(nextLabel(nx))}</span>${nx.inr ? `<small class="num">${inr(nx.inr)}</small>` : nx.kind === 'plan' ? '<small>Free</small>' : ''}</button>`}</div>
-  ${(p.approvals || []).length ? `<section class="box"><h3>Waiting for your Haan</h3>${p.approvals.map(approvalRow).join('')}</section>` : ''}
+  ${(p.approvals || []).length ? `<section class="box"><h3>Waiting for your approval</h3>${p.approvals.map(approvalRow).join('')}</section>` : ''}
   ${p.progress && p.working ? `<div class="box"><div style="display:flex;justify-content:space-between"><b>Making ${p.progress.total} shot${p.progress.total === 1 ? '' : 's'} · ${esc(p.progress.quality || '')}</b><span class="num mut">${p.progress.pct}%${p.progress.eta_s ? ' · about ' + Math.ceil(p.progress.eta_s / 60) + ' min' : ''}</span></div><div class="bar"><i style="width:${p.progress.pct}%"></i></div></div>` : ''}
   ${(p.outputs || []).length ? `<section><div class="sec-h"><h2>Your film</h2></div><div class="outs">${p.outputs.slice().reverse().map(o => `<div class="out"><video controls playsinline preload="metadata" src="${esc(o.url)}"${o.thumb ? ` poster="${esc(o.thumb)}"` : ''}></video><small>${o.preview ? 'Preview' : 'Final'} · ${o.seconds || ''} s · ${o.mb} MB <a href="${esc(o.url)}" download="${esc(o.name || 'hoola-film.mp4')}">Download</a></small></div>`).join('')}</div></section>` : ''}
   <section id="castsec" ${DIR.castOpen || o.cast ? '' : 'hidden'} class="box"><h3>Add a character <button class="ib" data-castclose aria-label="Close">${I('x', 'width:15px;height:15px')}</button></h3>
@@ -1551,7 +1551,7 @@ ${SPRITE}`;
       ${(o.painting || []).length ? `<div class="box castwait"><div><b>Painting ${o.painting.length} picture${o.painting.length > 1 ? 's' : ''}…</b><small class="mut">About 20-40 seconds each, three at a time. This page updates by itself.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
       ${o.working ? `<div class="box castwait"><div><b>Making the clips…</b><small class="mut">A few minutes. This page updates by itself.</small><div class="bar"><i class="indet"></i></div></div></div>` : ''}
       ${o.pics_error ? `<p class="perr">${esc(o.pics_error)}</p>` : ''}${o.error && !o.working ? `<p class="perr">${esc(o.error)}</p>` : ''}
-      ${pend ? `<div class="scpend"><b>Waiting for your Haan</b>${pend}</div>` : ''}`;
+      ${pend ? `<div class="scpend"><b>Waiting for your approval</b>${pend}</div>` : ''}`;
   }
   function drawEngines(r) {
     const el = $('#engs'); if (!el) return;

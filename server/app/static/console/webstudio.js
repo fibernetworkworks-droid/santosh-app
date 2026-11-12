@@ -255,7 +255,7 @@
     } else if (page === 'sites') {
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">All websites</h2><button class="b" type="button" data-act="new">${ico('plus', 16)}New website</button></div>
         <label class="find">${ico('search', 16)}<input id="wsFind" type="search" placeholder="Search your websites" aria-label="Search your websites" autocomplete="off"></label>
-        ${SPECS.length ? `<div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${SPECS.map(specCard).join('')}</div>` : ''}
+        ${SPECS.length ? `<div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${SPECS.map(specCard).join('')}</div>` : ''}
         ${SITES.length ? `<div class="grid" id="wsAll">${SITES.map(siteCard).join('')}</div><p class="mut" id="wsNone" hidden>No website matches.</p>` : '<div class="panel mut">No website yet. Write one line on the Studio home.</div>'}</section>`;
     } else if (page === 'starred') {
       const st = SITES.filter(v => isStar(v.id));
@@ -282,7 +282,7 @@
         <div id="wsSrc" class="wrap" style="max-width:780px"></div>
         <div class="chips">${TYPES.slice(0, 7).map(([t]) => `<button class="chip" type="button" data-type="${esc(t)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">More templates</a></div>
       </section>
-      ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
+      ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length ? `<a class="more" href="#/sites">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : '<div class="panel mut">No website yet. Write one line above.</div>'}</section>
       <section class="wrap"><div class="sec"><h2>Or start from</h2></div><div class="starts">
@@ -1381,7 +1381,7 @@
       ${moves ? `<section class="cardp"><div style="display:flex;align-items:center;gap:8px"><h3 class="sp">Old site addresses</h3>${pill(moves.approved ? 'Approved' : `${rows.length} found`, moves.approved ? 'ok' : 'warn')}</div>
         <p class="mut sm">Links and Google results from your old site (${esc(S(moves.from_host))}) open the matching new page (301). Untick any you don't want.</p>
         <form data-form="moves" data-hash="${esc(S(moves.hash))}">${rows.slice(0, 200).map(r => `<label class="mv"><input type="checkbox" name="keep" value="${esc(S(r.old))}" ${r.guess ? '' : 'checked'}><code>${esc(S(r.old))}</code><span aria-hidden="true">→</span><code>${esc(S(r.new))}</code>${pill(S(r.how), r.guess ? 'warn' : '')}</label>`).join('') || '<p class="mut">Every old address already exists on the new site.</p>'}
-          ${rows.length ? `<div class="inl" style="justify-content:flex-end;margin-top:8px"><button class="b pri" type="submit">Haan, jod do</button></div>` : ''}</form></section>` : ''}
+          ${rows.length ? `<div class="inl" style="justify-content:flex-end;margin-top:8px"><button class="b pri" type="submit">Yes, add it</button></div>` : ''}</form></section>` : ''}
     </div></div>`;
   }
 
@@ -1399,7 +1399,7 @@
         ${todo.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">Change</th><th scope="col">Type</th><th scope="col">Name</th><th scope="col">Value</th></tr></thead><tbody>
           ${todo.map(c => `<tr><td>${esc({add: 'Add', update: 'Change', delete: 'Remove'}[S(c.op)] || S(c.op))}</td><td>${esc(S(c.type))}</td><td><code>${esc(S(c.name))}</code></td><td><code class="ell">${esc(S(c.content))}</code></td></tr>`).join('')}</tbody></table></div>` : '<p class="mut sm">Nothing to change: the records are already right.</p>'}
         ${L(p.risks).map(r => `<p class="li bad">${esc(S(r))}</p>`).join('')}${p.error ? `<p class="li bad">${esc(S(p.error))}</p>` : ''}
-        <div class="inl" style="justify-content:flex-end">${st === 'planned' && todo.length ? `<button class="b pri" type="button" data-act="dns-apply" data-plan="${esc(S(p.id))}" data-hash="${esc(S(p.hash))}">Haan, add them for me</button>` : ''}
+        <div class="inl" style="justify-content:flex-end">${st === 'planned' && todo.length ? `<button class="b pri" type="button" data-act="dns-apply" data-plan="${esc(S(p.id))}" data-hash="${esc(S(p.hash))}">Yes, add them for me</button>` : ''}
           ${st === 'applied' ? `<button class="b" type="button" data-act="dns-undo" data-plan="${esc(S(p.id))}">Undo</button>` : ''}
           ${st !== 'planned' ? `<button class="b" type="button" data-act="dns-check" data-plan="${esc(S(p.id))}">${st === 'manual' ? "I've added them · check" : 'Check now'}</button>` : ''}</div>
         <div data-dnsout></div></section>`;

@@ -2136,7 +2136,7 @@ async function drawToday() {
   let d = {reminders: [], lists: {}, pending: []}; try { d = {...d, ...(await api('GET', '/api/console/today') || {})}; d.reminders ||= []; d.lists ||= {}; d.pending ||= []; } catch (e) { box.innerHTML += `<p class="badc">${esc(e.message)}</p>`; return; }
   const date = new Date().toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
   box.innerHTML = `<div class="vh"><h2>Today · ${esc(date)}</h2></div>
-    <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>waiting for your Haan</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>upcoming reminders</span></div>
+    <div class="kpis"><div class="kpi gl"><b>${d.pending.length}</b><span>waiting for your approval</span></div><div class="kpi gl"><b>${d.reminders.length}</b><span>upcoming reminders</span></div>
     <div class="kpi gl"><b>${Object.values(d.lists).reduce((n, l) => n + l.length, 0)}</b><span>items in lists</span></div><div class="kpi gl"><b class="hid">${esc(ME?.handle || '')}</b><span>your Hoola ID</span></div></div>
     <div class="grid2">
       <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">No reminders.</div>'}</div>

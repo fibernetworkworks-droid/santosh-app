@@ -72,7 +72,7 @@ def test_console_chrome_speaks_english():
             code = re.sub(r'"(?:EMI calculator|Diwali poster) banao"', '""', code)   # example asks in her words
             assert not hinglish.search(code), f"{f}:{i}: {code[:160]}"
     js = _read("v2.js")
-    for label in ("Slide for Haan", "'Mana'", "Take back", "Find in this chat", "Search all chats", "Connect Google apps"):
+    for label in ("Slide to approve", "'Mana'", "Take back", "Find in this chat", "Search all chats", "Connect Google apps"):
         assert label in js, label
 
 
