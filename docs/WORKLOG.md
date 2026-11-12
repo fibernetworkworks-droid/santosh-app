@@ -3133,3 +3133,6 @@ Work: A7 bank + UPI reconciliation, v0.846.0 ritual.
 
 Task ID: bahi-a8-0847
 Work: A8 payables, receivables, TDS, v0.847.0 ritual.
+
+Task ID: bahi-a9-0848
+Work: A9 Tally vouchers + CA pack, v0.848.0 ritual.

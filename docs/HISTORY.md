@@ -2733,3 +2733,6 @@ Bank + UPI reconciliation, stored: statement import (CSV / Excel / MT940 / locke
 
 ## v0.847.0 BAHI A8
 Party master, ageing, MSME 15/45-day + Rule 37 watches, reminder drafts, TDS worksheet/register/quarter (rules file tds.json), 26AS match. Hoola pays, deducts and files nothing. s.393 item numbers not read.
+
+## v0.848.0 BAHI A9
+Tally voucher XML + JSON from the register, party ledgers in the file, her ledger names; the monthly CA pack ZIP with worksheets, evidence and open questions; close a month on the pack hash (locks it). Zoho / live Tally / CA login not built. NOT VERIFIED in a real Tally import.

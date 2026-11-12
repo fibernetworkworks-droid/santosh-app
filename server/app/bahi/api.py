@@ -9,6 +9,7 @@ def make_router(require_key, current_tenant):
     from fastapi import APIRouter, Depends, HTTPException
 
     from . import bank as BK
+    from . import book as BO
     from . import connect as CN
     from . import einv as EV
     from . import gstr1 as G1
@@ -348,5 +349,44 @@ def make_router(require_key, current_tenant):
     @r.post("/api/bahi/tds/26as", dependencies=[Depends(require_key)])
     def _py26(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return PY.match_26as(tenant, int(body.get("fy") or 0), body.get("rows") if isinstance(body.get("rows"), list) else [])
+
+    def _bo(fn, *a, **k):
+        try:
+            return fn(*a, **k)
+        except BO.BookError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/api/bahi/book/ledgers", dependencies=[Depends(require_key)])
+    def _boled(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"ledgers": BO.ledgers(tenant), "defaults": BO.DEFAULTS}
+
+    @r.post("/api/bahi/book/ledgers", dependencies=[Depends(require_key)])
+    def _boledset(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"ledgers": BO.set_ledgers(tenant, body)}
+
+    @r.get("/api/bahi/book/tally.xml", dependencies=[Depends(require_key)])
+    def _botally(gstin: str, month: str, tenant: str = Depends(current_tenant)):
+        from fastapi import Response
+        vs = _bo(BO.vouchers, tenant, gstin.strip().upper(), month)
+        return Response(content=BO.to_xml(vs), media_type="application/xml",
+                        headers={"Content-Disposition": f'attachment; filename="tally-{month}.xml"'})
+
+    @r.post("/api/bahi/pack/build", dependencies=[Depends(require_key)])
+    def _bopack(body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bo(BO.build_pack, tenant, str(body.get("gstin") or ""), str(body.get("month") or ""))
+
+    @r.get("/api/bahi/pack", dependencies=[Depends(require_key)])
+    def _bopacks(month: str = "", tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"packs": BO.packs(tenant, month)}
+
+    @r.get("/api/bahi/pack/{pack_id}/download", dependencies=[Depends(require_key)])
+    def _bodl(pack_id: str, tenant: str = Depends(current_tenant)):
+        from fastapi import Response
+        name, data = _bo(BO.pack_bytes, tenant, pack_id)
+        return Response(content=data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @r.post("/api/bahi/pack/{pack_id}/close", dependencies=[Depends(require_key)])
+    def _boclose(pack_id: str, body: dict, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return _bo(BO.close_month, tenant, pack_id, str(body.get("sha") or ""), body.get("confirm") is True)
 
     return r

@@ -7,7 +7,7 @@
    under text; styles reuse the Desk Room (`ddk-`) scale + a few `acd-` rules. */
 'use strict';
 window.HoolaBahi = function ({api, esc, toast, open, title}) {
-  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null, PY = null;
+  let EL = null, OV = null, TAB = 'overview', REG = null, F = {period: '', direction: '', source: ''}, BUSY = false, ITC = null, PV = null, G1 = null, G3 = null, EI = null, BL = null, BK = null, PY = null, CA = null;
   const inr = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
   const fdate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}); } catch (_) { return d; } };
   const mname = p => { try { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'}); } catch (_) { return p; } };
@@ -52,9 +52,9 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         </div>
         <div class="ddk-heroart">${art()}</div>
       </section>
-      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['py', 'Pay + TDS'], ['connection', 'Connection'], ['plan', 'Plan']]
+      <div class="ddk-tabs acd-tabs" role="tablist">${[['overview', 'Overview'], ['register', 'Register'], ['rules', 'Rules'], ['itc', 'Credit (ITC)'], ['g1', 'GSTR-1'], ['g3', 'GSTR-3B'], ['ei', 'e-Invoice'], ['bl', 'Bills'], ['bk', 'Bank'], ['py', 'Pay + TDS'], ['ca', 'CA pack'], ['connection', 'Connection'], ['plan', 'Plan']]
         .map(([k, n]) => `<button type="button" role="tab" data-a="tab" data-t="${k}" aria-selected="${TAB === k}">${n}</button>`).join('')}</div>
-      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'py' ? pyTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
+      <div class="acd-body">${TAB === 'register' ? register() : TAB === 'rules' ? rules() : TAB === 'itc' ? itcTab() : TAB === 'g1' ? g1Tab() : TAB === 'g3' ? g3Tab() : TAB === 'ei' ? eiTab() : TAB === 'bl' ? blTab() : TAB === 'bk' ? bkTab() : TAB === 'py' ? pyTab() : TAB === 'ca' ? caTab() : TAB === 'connection' ? connection() : TAB === 'plan' ? plan() : overview()}</div>
     </div>`;
   }
 
@@ -118,6 +118,27 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
       <section class="ddk-card acd-sec"><h2 class="ddk-h3">The rule files</h2><ul class="acd-rl">${f.files.map(x => `<li><b>${esc(x.name.replace('_', ' '))}</b><small>${x.rows} rows · ${esc(x.about)}</small></li>`).join('')}</ul></section>`;
   }
 
+  // ------------------------------------------------------------------ Your book + the CA pack
+  async function dl(url, name) {
+    const r = await api('GET', url, undefined, {raw: true}), b = await r.blob(), u = URL.createObjectURL(b), a = document.createElement('a');
+    a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 3000);
+  }
+  function caTab() {
+    const c = OV.connections[0];
+    const prev = new Date(); prev.setDate(1); prev.setMonth(prev.getMonth() - 1);
+    const mo = (CA && CA.month) || `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const L = (CA && CA.ledgers) || {};
+    const head = `<section class="ddk-card"><h2 class="ddk-h3">Your book and the CA pack</h2>
+      <p class="ddk-fine first">Hoola turns your register into Tally vouchers (sales, purchases, notes, and receipts / payments from the bank lines you confirmed) and puts the month into one ZIP for your CA: the vouchers, the worksheets, the evidence and a page of everything it was not sure about. Hoola files nothing. Closing a month locks it.</p>
+      <div class="acd-row"><input id="acdCG" class="acd-in" placeholder="Your GSTIN" maxlength="15" value="${esc((CA && CA.g) || (c ? c.gstin : ''))}"><input id="acdCM" class="acd-in" type="month" value="${esc(mo)}">
+        <button type="button" class="btn go ddk-mid" data-a="capack">Build the pack</button><button type="button" class="btn ddk-mid" data-a="catally">Tally file only</button><button type="button" class="btn ddk-mid" data-a="caled">My ledger names</button></div>
+      ${CA && CA.showLedgers ? `<p class="ddk-fine">Tally imports into ledgers that already exist in your company, so these must be your ledger names.</p><div class="acd-row">${Object.keys(L).map(k => `<label class="ddk-fine">${esc(k.replace('_', ' '))}<input class="acd-in" data-l="${esc(k)}" value="${esc(L[k])}"></label>`).join('')}</div><div class="acd-row"><button type="button" class="btn go ddk-mid" data-a="caledsave">Save ledger names</button></div>` : ''}</section>`;
+    if (!CA || !CA.packs) return head;
+    const pk = CA.packs.map(p => `<li><span><b>${esc(p.month)}</b> · ${p.counts.vouchers || 0} vouchers · ${p.counts.documents || 0} documents · ${p.open_questions} open question${p.open_questions === 1 ? '' : 's'}<br><small>${esc(p.sha.slice(0, 16))}…${p.closed_at ? ' · CLOSED ' + esc(p.closed_at.slice(0, 10)) : ''}</small></span>
+      <span><button type="button" class="btn ddk-mid" data-a="cadl" data-i="${esc(p.id)}" data-n="${esc(p.month)}">Download</button>${p.closed_at ? '' : `<button type="button" class="btn go ddk-mid" data-a="caclose" data-i="${esc(p.id)}" data-h="${esc(p.sha)}">Close this month</button>`}</span></li>`).join('');
+    return head + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Packs</h3>${pk ? `<ul class="acd-kv">${pk}</ul>` : '<p class="ddk-quiet">None built yet.</p>'}</section>`;
+  }
+
   // ------------------------------------------------------------------ Payables, receivables, TDS
   function pyTab() {
     const head = `<section class="ddk-card"><h2 class="ddk-h3">Who owes whom, and TDS</h2>
@@ -133,7 +154,10 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
     const reg = PY.reg.rows.length ? `<ul class="acd-kv">${PY.reg.rows.map(r => `<li><span>${esc(r.paid_on)} · ${esc(r.party)} · s.${esc(r.section)} · ${inr(r.tds)} · due ${esc(r.due_on)}${r.interest_estimate ? ' · interest about ' + inr(r.interest_estimate) : ''}</span><span class="ddk-pill ${r.state.startsWith('deposited') && r.state !== 'deposited_late' ? 'ok' : 'warn'}">${esc(r.state.replace('_', ' '))}</span></li>`).join('')}</ul>` : '<p class="ddk-quiet">No deduction recorded this year.</p>';
     return head + ag(PY.ar, 'Owed to you') + ag(PY.ap, 'You owe') + `<section class="ddk-card acd-sec"><h3 class="ddk-h3">Small suppliers (15 / 45 days)</h3>${ms}<p class="ddk-fine">${esc(PY.msme.note)}</p></section>
       <section class="ddk-card acd-sec"><h3 class="ddk-h3">180-day credit rule</h3>${r37}</section><section class="ddk-card acd-sec"><h3 class="ddk-h3">Reminders to send</h3>${rm}</section>
-      <section class="ddk-card acd-sec"><h3 class="ddk-h3">TDS on a payment</h3><div class="acd-row"><select id="acdTP" class="acd-in">${PY.parties.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select>
+      <section class="ddk-card acd-sec"><h3 class="ddk-h3">Add or update a party</h3><div class="acd-row"><input id="acdPN" class="acd-in" placeholder="Name"><input id="acdPG" class="acd-in" placeholder="GSTIN" maxlength="15"><input id="acdPP" class="acd-in" placeholder="PAN" maxlength="10">
+        <select id="acdPM" class="acd-in"><option value="">Not a small supplier</option><option value="micro">Micro</option><option value="small">Small</option><option value="medium">Medium</option></select><input id="acdPD" class="acd-in" placeholder="Days agreed in writing" inputmode="numeric">
+        <select id="acdPC" class="acd-in"><option value="other">Company / firm / other</option><option value="individual">Individual</option><option value="huf">HUF</option></select><button type="button" class="btn go ddk-mid" data-a="pyparty">Save party</button></div>
+        <p class="ddk-fine">${PY.parties.length} parties saved.</p></section><section class="ddk-card acd-sec"><h3 class="ddk-h3">TDS on a payment</h3><div class="acd-row"><select id="acdTP" class="acd-in">${PY.parties.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select>
         <select id="acdTN" class="acd-in"><option value="contractor">Contractor</option><option value="professional">Professional fees</option><option value="technical">Technical services</option><option value="commission">Commission</option><option value="rent">Rent (building)</option><option value="rent_plant">Rent (machinery)</option><option value="interest">Interest</option></select>
         <input id="acdTA" class="acd-in" placeholder="Amount paid" inputmode="decimal"><input id="acdTD" class="acd-in" type="date" value="${new Date().toISOString().slice(0, 10)}"><button type="button" class="btn go ddk-mid" data-a="pyws">Work it out</button></div>${ws}
         <h4 class="ddk-h3" style="margin-top:14px">This year's deductions (to deposit ${inr(PY.reg.to_deposit)})</h4>${reg}</section>`;
@@ -349,12 +373,27 @@ window.HoolaBahi = function ({api, esc, toast, open, title}) {
         } catch (e) { out.textContent = e.message; }
         return;
       }
+      if (a.startsWith('ca')) {
+        try {
+          const g = val('acdCG').toUpperCase(), month = val('acdCM');
+          const reload = async () => { CA = {...(CA || {}), g, month, packs: (await api('GET', '/api/bahi/pack?month=' + encodeURIComponent(month))).packs}; draw(false); };
+          if (a === 'capack') { await api('POST', '/api/bahi/pack/build', {gstin: g, month}); toast('Pack built.'); await reload(); return; }
+          if (a === 'catally') { await dl(`/api/bahi/book/tally.xml?gstin=${encodeURIComponent(g)}&month=${encodeURIComponent(month)}`, `tally-${month}.xml`); return; }
+          if (a === 'cadl') { await dl(`/api/bahi/pack/${encodeURIComponent(b.dataset.i)}/download`, `hoola-ca-pack-${b.dataset.n}.zip`); return; }
+          if (a === 'caled') { CA = {...(CA || {}), g, month, showLedgers: true, ledgers: (await api('GET', '/api/bahi/book/ledgers')).ledgers}; await reload(); return; }
+          if (a === 'caledsave') { const o = {}; EL.querySelectorAll('input[data-l]').forEach(i => { o[i.dataset.l] = i.value; }); CA.ledgers = (await api('POST', '/api/bahi/book/ledgers', o)).ledgers; toast('Saved.'); draw(false); return; }
+          if (a === 'caclose') { if (!confirm('Close this month? It locks in your register: later changes are held for you to approve.')) return;
+            await api('POST', `/api/bahi/pack/${encodeURIComponent(b.dataset.i)}/close`, {sha: b.dataset.h, confirm: true}); toast('Month closed.'); await reload(); return; }
+        } catch (e) { toast(e.message, true); }
+        return;
+      }
       if (a.startsWith('py')) {
         try {
           const load = async () => { const g = u => api('GET', u);
             const [ar, ap, msme, r37, rem, parties, reg] = await Promise.all([g('/api/bahi/ageing?direction=out'), g('/api/bahi/ageing?direction=in'), g('/api/bahi/msme'), g('/api/bahi/rule37'), g('/api/bahi/reminders'), g('/api/bahi/parties'), g('/api/bahi/tds/register')]);
             PY = {...(PY || {}), ar, ap, msme, r37, rem: rem.reminders, parties: parties.parties, reg}; draw(false); };
           if (a === 'pyload') { await load(); return; }
+          if (a === 'pyparty') { await api('POST', '/api/bahi/parties', {name: val('acdPN'), gstin: val('acdPG').toUpperCase(), pan: val('acdPP').toUpperCase(), msme_class: val('acdPM'), agreed_days: val('acdPD'), constitution: val('acdPC')}); toast('Party saved.'); await load(); return; }
           const body = () => ({party_id: val('acdTP'), nature: val('acdTN'), amount: parseFloat(val('acdTA')) || 0, paid_on: val('acdTD')});
           if (a === 'pyws') { const ws = await api('POST', '/api/bahi/tds/worksheet', body()); PY = {...PY, ws, wsBody: body()}; draw(false); return; }
           if (a === 'pyrec') { if (!confirm('Record that you deducted this TDS? It goes into the TDS register.')) return;

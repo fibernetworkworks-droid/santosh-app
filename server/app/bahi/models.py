@@ -271,7 +271,31 @@ class AccTds(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
-TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn, AccIntake, AccBankLine, AccBankLearn, AccBankRecon, AccParty, AccTds)
+class AccBookCfg(Base):
+    """Her ledger names for the book export (A9): Tally imports into ledgers that already exist in her company, so the names must be hers."""
+    __tablename__ = "acc_book_cfg"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("abk"))
+    tenant_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    ledgers: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class AccPack(Base):
+    """A monthly CA pack that was built (A9): its hash is what 'closed' refers to."""
+    __tablename__ = "acc_packs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("apk"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    gstin: Mapped[str] = mapped_column(String(15), default="")
+    month: Mapped[str] = mapped_column(String(7), default="", index=True)
+    sha: Mapped[str] = mapped_column(String(64), default="")
+    path: Mapped[str] = mapped_column(String(300), default="")
+    counts: Mapped[str] = mapped_column(Text, default="{}")
+    open_questions: Mapped[int] = mapped_column(Integer, default=0)
+    closed_at: Mapped[str] = mapped_column(String(25), default="")
+    closed_by: Mapped[str] = mapped_column(String(12), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (AccDoc, AccPeriod, AccEvent, AccGstConn, AccWbCall, AccTwoB, AccIrn, AccIntake, AccBankLine, AccBankLearn, AccBankRecon, AccParty, AccTds, AccBookCfg, AccPack)
 
 
 _READY: set[int] = set()

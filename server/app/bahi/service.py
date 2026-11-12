@@ -23,8 +23,8 @@ PHASES = [
     {"id": "A6", "name": "Bills in, checked", "what": "A bill photo / PDF / pasted text is read into a checked DRAFT purchase (arithmetic, supplier GSTIN status, addressed to you, duplicates); it enters your register only on your tap. The WhatsApp / email / PC-folder hand-off is not wired yet", "state": "built"},
     {"id": "A7", "name": "Bank + UPI reconciliation", "what": "A bank statement (CSV, Excel, MT940, or a PDF you unlock) is stored and each line matched to a sale or purchase with a reason, on your confirm; UPI payers are remembered; the month ends in a stored reconciliation. No bank API, no cheque register", "state": "built"},
     {"id": "A8", "name": "Payables, receivables, TDS", "what": "Party master, ageing, MSME 15 / 45-day and Rule 37 watches, collection reminders you send, a TDS worksheet + register + quarter data; you deduct, deposit and file (no deductor API). Section 393 item numbers not read", "state": "built"},
-    {"id": "A9", "name": "Your book + the CA pack", "what": "Tally / Zoho export, the monthly pack for your CA", "state": "next"},
-    {"id": "A10", "name": "Month-end + year-end", "what": "Close checklist, MIS, GSTR-9 draft, deadline watchers", "state": "planned"},
+    {"id": "A9", "name": "Your book + the CA pack", "what": "Tally vouchers (sales, purchases, notes, receipts, payments with GST ledgers) and one monthly ZIP for your CA with the worksheets, evidence and open questions; you close the month on its hash. Zoho Books, live Tally and a CA login are not built", "state": "built"},
+    {"id": "A10", "name": "Month-end + year-end", "what": "Close checklist, MIS, GSTR-9 draft, deadline watchers", "state": "next"},
 ]
 
 
