@@ -262,7 +262,7 @@ def test_pdf_tool_makes_a_new_file(env):
 # ---------------------------------------------------------------- India
 def test_money_words_and_format():
     from app.india import money as m
-    assert m.words(225000) == "do lakh pachchees hazaar"
+    assert m.words(225000, "hinglish") == "do lakh pachchees hazaar"
     assert m.words(1234567, "hi") == "बारह लाख चौंतीस हज़ार पाँच सौ सड़सठ"
     assert m.words(1500000000, "en") == "one hundred fifty crore"
     assert m.rupees_words(1234.05, "en") == "Rupees one thousand two hundred thirty-four and five paise only"

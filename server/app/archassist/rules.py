@@ -17,14 +17,14 @@ import re
 from typing import Any
 
 NEVER = [
-    "Koi drawing / transmittal client ya authority ko aapke tap ke bina issue nahi hota.",
-    "Koi invoice aapke tap ke bina number nahi paata, na bhejta hai.",
-    "Koi submission (BPMS / AutoDCR / NOC) aapke tap ke bina 'submit karo' nahi banta; portal par login / fee / OTP aap khud.",
-    "FSI / setback / parking ki jaanch sirf andaaza hai: rule book aur authority ka faisla hi final.",
-    "Plot ka area, rate, fee, tareekh khud se nahi banti: aapke number, warna khaali.",
-    "Hoola paise nahi leta, nahi bhejta; Aadhaar / PAN sirf Pehchaan Locker ke reference se.",
+    "No drawing / transmittal is issued to a client or authority without your tap.",
+    "No invoice gets a number or is sent without your tap.",
+    "No submission (BPMS / AutoDCR / NOC) becomes 'submit it' without your tap; you do the portal login / fee / OTP yourself.",
+    "The FSI / setback / parking check is only an estimate: the rule book and the authority's decision are final.",
+    "Plot area, rates, fees and dates are never made up: your numbers, otherwise blank.",
+    "Hoola does not take or send money; Aadhaar / PAN only by ID Locker reference.",
 ]
-CHECK_LINE = "Rule book (aur authority) se pakka kijiye: yeh andaaza hai, final nahi."
+CHECK_LINE = "Confirm with the rule book (and the authority): this is an estimate, not final."
 
 SQFT = 0.09290304
 UNITS = {"sqm": 1.0, "sq m": 1.0, "sq.m": 1.0, "m2": 1.0, "meter": 1.0, "sqft": SQFT, "sq ft": SQFT, "sq.ft": SQFT, "ft": SQFT,
@@ -41,16 +41,16 @@ RULESETS: dict[str, dict[str, Any]] = {
         "low_rise_m": 15.0, "side_low": 3.0, "side_div": 5.0, "side_cap": 12.0,
         "ancillary_pct": {"residential": 60, "commercial": 80},
         "open_space": {"min_plot": 4000.0, "pct": 10.0}, "amenity": {"min_plot": 20000.0, "pct": 5.0},
-        "notes": ["Ancillary FSI premium par (residential 60% / commercial 80% tak) - rule book check.",
-                  "Road widening / reservation dene par in-situ FSI / TDR - Reg dekhiye.",
-                  "TOD zone / metro ke paas alag FSI ho sakta hai."],
+        "notes": ["Ancillary FSI on premium (up to residential 60% / commercial 80%) - check the rule book.",
+                  "In-situ FSI / TDR for surrendering road widening / reservation land - see the Reg.",
+                  "A TOD zone / being near the metro may have a different FSI."],
     },
     "udcpr_congested": {
         "label": "UDCPR 2020 (Maharashtra, congested / gaothan)",
         "fsi": [(0, 9, 1.50, None, None), (9, None, 2.00, None, None)],
         "front": [], "low_rise_m": 15.0, "side_low": None, "side_div": 5.0, "side_cap": 12.0,
         "ancillary_pct": {"residential": 60, "commercial": 80}, "open_space": None, "amenity": None,
-        "notes": ["Congested area ke premium / TDR aur margins aapke shehar ki table se daaliye."],
+        "notes": ["Enter the congested-area premium / TDR and margins from your city's table."],
     },
     "dcpr_suburbs": {
         "label": "DCPR 2034 (Mumbai suburbs)",
@@ -58,34 +58,34 @@ RULESETS: dict[str, dict[str, Any]] = {
                 (27, None, 1.00, 0.50, 1.00)],
         "front": [], "low_rise_m": 15.0, "side_low": None, "side_div": None, "side_cap": None,
         "ancillary_pct": {}, "open_space": None, "amenity": None, "fungible_pct": 35.0,
-        "notes": ["Fungible compensatory area (Reg 31(3)) premium par - alag se.", "Margins DCPR Reg 41 se daaliye."],
+        "notes": ["Fungible compensatory area (Reg 31(3)) on premium - separately.", "Enter margins from DCPR Reg 41."],
     },
     "dcpr_island": {
         "label": "DCPR 2034 (Mumbai island city)",
         "fsi": [(0, None, 1.33, None, None)],
         "front": [], "low_rise_m": 15.0, "side_low": None, "side_div": None, "side_cap": None,
         "ancillary_pct": {}, "open_space": None, "amenity": None, "fungible_pct": 35.0,
-        "notes": ["Island city premium / TDR road width se: DCPR Reg 30 Table 12 ke number daaliye."],
+        "notes": ["Island city premium / TDR depends on road width: enter the numbers from DCPR Reg 30 Table 12."],
     },
-    "custom": {"label": "Apni table (aapke number)", "fsi": [], "front": [], "low_rise_m": 15.0, "side_low": None,
+    "custom": {"label": "Own table (your numbers)", "fsi": [], "front": [], "low_rise_m": 15.0, "side_low": None,
                "side_div": None, "side_cap": None, "ancillary_pct": {}, "open_space": None, "amenity": None, "notes": []},
 }
 
 # ---------------------------------------------------------------- plot / title papers (Maharashtra; editable list)
 PLOT_DOCS = [
-    ("seven_twelve", "7/12 utara (gaon / NA zameen)"), ("property_card", "Property card (city survey)"),
-    ("ferfar", "Ferfar / mutation entries"), ("title", "Title search report / title certificate (vakil)"),
+    ("seven_twelve", "7/12 extract (village / NA land)"), ("property_card", "Property card (city survey)"),
+    ("ferfar", "Ferfar / mutation entries"), ("title", "Title search report / title certificate (lawyer)"),
     ("deed", "Sale deed / conveyance / lease"), ("na_order", "NA order / sanad (non-agricultural)"),
     ("measurement", "Measurement / demarcation plan (TILR / city survey)"), ("zone", "Zone certificate / DP remarks"),
-    ("road_width", "Road width proof (DP / municipal)"), ("poa", "Power of attorney (agar owner khud nahi)"),
-    ("tax", "Property tax / bijli bill"), ("society_noc", "Society NOC (redevelopment ho to)"),
-    ("old_sanction", "Purana sanction / OC (alteration ho to)"),
+    ("road_width", "Road width proof (DP / municipal)"), ("poa", "Power of attorney (if the owner is not acting in person)"),
+    ("tax", "Property tax / electricity bill"), ("society_noc", "Society NOC (for redevelopment)"),
+    ("old_sanction", "Old sanction / OC (for an alteration)"),
 ]
 
 AUTHORITIES: dict[str, dict[str, Any]] = {
-    "maha_bpms": {"label": "Maha BPMS (Maharashtra UDCPR shehar / parishad)", "portal": "Maha BPMS",
-                  "steps": ["Architect login (CoA no.) par project banaiye", "Plot details + 7/12 / property card upload",
-                            "Drawings (DWG/PDF) upload, scrutiny fee bharna (aap khud)", "Scrutiny / site visit query ka jawab",
+    "maha_bpms": {"label": "Maha BPMS (Maharashtra UDCPR cities / councils)", "portal": "Maha BPMS",
+                  "steps": ["Create the project under the architect login (CoA no.)", "Plot details + 7/12 / property card upload",
+                            "Upload drawings (DWG/PDF), pay the scrutiny fee (you do this yourself)", "Reply to scrutiny / site visit queries",
                             "Building permission -> commencement certificate (CC)", "Plinth checking certificate",
                             "Completion + occupancy certificate (OC)"]},
     "mcgm_autodcr": {"label": "MCGM (Mumbai) online building permission (AutoDCR)", "portal": "MCGM EoDB / AutoDCR",
@@ -95,14 +95,14 @@ AUTHORITIES: dict[str, dict[str, Any]] = {
               "steps": ["Online proposal", "Scrutiny fee", "Building permission + CC", "Plinth checking", "OC"]},
     "midc_bpams": {"label": "MIDC BPAMS (industrial plot)", "portal": "MIDC BPAMS",
                    "steps": ["Online application", "Plan approval", "Fire NOC (MIDC fire)", "Commencement", "Completion / OC"]},
-    "custom": {"label": "Doosri authority", "portal": "", "steps": ["Aapki authority ke steps daaliye"]},
+    "custom": {"label": "Another authority", "portal": "", "steps": ["Enter your authority's steps"]},
 }
 STAGES = ["building_permission", "cc", "plinth", "oc"]
 STAGE_LABEL = {"building_permission": "Building permission / IOD", "cc": "Commencement certificate", "plinth": "Plinth checking",
                "oc": "Occupancy / completion", "noc_fire": "Fire NOC", "noc_tree": "Tree authority NOC", "noc_airport": "AAI height NOC",
                "noc_env": "Environment clearance (SEIAA)", "noc_heritage": "Heritage NOC", "noc_crz": "CRZ (MCZMA)",
                "noc_railway": "Railway NOC", "noc_highway": "Highway / NHAI NOC", "rera": "RERA project registration",
-               "structural": "Structural design + stability (licensed engineer)", "other": "Doosra"}
+               "structural": "Structural design + stability (licensed engineer)", "other": "Other"}
 
 
 def nocs(facts: dict[str, Any], height: float | None, bua: float | None) -> list[dict[str, str]]:
@@ -111,12 +111,12 @@ def nocs(facts: dict[str, Any], height: float | None, bua: float | None) -> list
     h, b = height or 0.0, bua or 0.0
     use = str(facts.get("use") or "residential")
     if h >= 15.0 or use in ("assembly", "commercial", "hospital", "school", "hotel", "mall", "industrial"):
-        out.append({"key": "noc_fire", "why": f"Height {h:g} m (15 m+ = high-rise, NBC 2016) ya use {use}: fire NOC / CFO approval."})
+        out.append({"key": "noc_fire", "why": f"Height {h:g} m (15 m+ = high-rise, NBC 2016) or use {use}: fire NOC / CFO approval."})
     if facts.get("trees"):
-        out.append({"key": "noc_tree", "why": "Plot par ped kaatne / hatane: Tree Authority permission (Maharashtra Trees Act 1975; "
-                                              "50+ saal purana = heritage tree)."})
+        out.append({"key": "noc_tree", "why": "Cutting / removing trees on the plot: Tree Authority permission (Maharashtra Trees Act 1975; "
+                                              "50+ years old = heritage tree)."})
     if facts.get("near_airport"):
-        out.append({"key": "noc_airport", "why": "Airport ke CCZM zone mein: AAI NOCAS height NOC (site ke coordinates + top elevation)."})
+        out.append({"key": "noc_airport", "why": "In an airport's CCZM zone: AAI NOCAS height NOC (site coordinates + top elevation)."})
     if b >= 20000.0:
         out.append({"key": "noc_env", "why": f"Total built-up {b:,.0f} sq m (20,000+): environment clearance (EIA 2006 item 8(a))."})
     if facts.get("heritage"):
@@ -124,13 +124,13 @@ def nocs(facts: dict[str, Any], height: float | None, bua: float | None) -> list
     if facts.get("coastal"):
         out.append({"key": "noc_crz", "why": "Coastal (CRZ) area: MCZMA clearance."})
     if facts.get("railway"):
-        out.append({"key": "noc_railway", "why": "Railway line ke paas: railway NOC."})
+        out.append({"key": "noc_railway", "why": "Near a railway line: railway NOC."})
     if facts.get("highway"):
-        out.append({"key": "noc_highway", "why": "National / state highway ke paas: highway authority NOC."})
+        out.append({"key": "noc_highway", "why": "Near a national / state highway: highway authority NOC."})
     if facts.get("promoter") and (b > 500 or int(facts.get("units") or 0) > 8):
-        out.append({"key": "rera", "why": "Bechne ke liye project, 500 sq m+ ya 8+ flat: RERA registration (Sec 3), har ad par RERA no."})
+        out.append({"key": "rera", "why": "A project for sale, 500 sq m+ or 8+ flats: RERA registration (Sec 3), RERA no. on every ad."})
     if h > 0 or b > 0:
-        out.append({"key": "structural", "why": "Structural design + stability certificate licensed structural engineer se."})
+        out.append({"key": "structural", "why": "Structural design + stability certificate from a licensed structural engineer."})
     return out
 
 
@@ -199,8 +199,8 @@ def area_statement(plot: dict[str, Any], proposal: dict[str, Any], rs: dict[str,
     gross = num(plot.get("area_sqm"))
     checks: list[dict[str, Any]] = []
     if not gross:
-        return {"ok": False, "checks": [_c("check", "Plot area", None, None, "Plot area (7/12 / property card ke hisaab se) chahiye.")],
-                "say": "Plot area chahiye - tabhi area statement banega.", "check_line": CHECK_LINE}
+        return {"ok": False, "checks": [_c("check", "Plot area", None, None, "Plot area (as per the 7/12 / property card) is needed.")],
+                "say": "Plot area is needed - only then can the area statement be made.", "check_line": CHECK_LINE}
     widen = num(plot.get("road_widening_sqm")) or 0.0
     reserve = num(plot.get("reservation_sqm")) or 0.0
     net = round(gross - widen - reserve, 3)
@@ -225,7 +225,7 @@ def area_statement(plot: dict[str, Any], proposal: dict[str, Any], rs: dict[str,
     lay["max_fsi"] = round(sum(known), 3) if basic is not None else None
     lay["max_area"] = round(base_area * lay["max_fsi"], 2) if lay["max_fsi"] is not None else None
     if premium is None or tdr is None:
-        checks.append(_c("check", "Premium / TDR", None, None, "Is rule set mein premium / TDR ka number nahi: apni table se daaliye."))
+        checks.append(_c("check", "Premium / TDR", None, None, "This rule set has no premium / TDR number: enter it from your own table."))
     # proposed built-up
     floors = proposal.get("floors") or []
     bua = sum((num(f.get("area_sqm") if isinstance(f, dict) else f) or 0.0) for f in floors)
@@ -235,29 +235,29 @@ def area_statement(plot: dict[str, Any], proposal: dict[str, Any], rs: dict[str,
     if bua and lay.get("basic_area") is not None:
         lay["consumed_fsi"] = round(bua / base_area, 3)
         if bua <= lay["basic_area"]:
-            checks.append(_c("ok", "FSI", lay["consumed_fsi"], basic, "Basic FSI ke andar."))
+            checks.append(_c("ok", "FSI", lay["consumed_fsi"], basic, "Within basic FSI."))
         elif lay["max_area"] is not None and bua <= lay["max_area"] + 0.01:
             need_p = round(min(bua - lay["basic_area"], lay.get("premium_area") or 0), 2)
             need_t = round(max(0.0, bua - lay["basic_area"] - (lay.get("premium_area") or 0)), 2)
             checks.append(_c("warn", "FSI", lay["consumed_fsi"], lay["max_fsi"],
-                             f"Basic se upar: premium ~{need_p:g} sq m" + (f" + TDR ~{need_t:g} sq m" if need_t else "") +
-                             " lagega (premium paise authority ko, aapke client se)."))
+                             f"Above basic: premium ~{need_p:g} sq m" + (f" + TDR ~{need_t:g} sq m" if need_t else "") +
+                             " will be needed (premium money goes to the authority, from your client)."))
         else:
             checks.append(_c("fail", "FSI", lay["consumed_fsi"], lay["max_fsi"],
-                             f"Proposed {bua:,.0f} sq m max {lay['max_area'] or 0:,.0f} se zyada (is table ke hisaab se)."))
+                             f"Proposed {bua:,.0f} sq m exceeds the max {lay['max_area'] or 0:,.0f} (as per this table)."))
         anc = (rs.get("ancillary_pct") or {}).get(str(proposal.get("use") or "residential"))
         if anc:
-            checks.append(_c("check", "Ancillary FSI", None, f"{anc}%", "Ancillary area premium par alag - rule book check."))
+            checks.append(_c("check", "Ancillary FSI", None, f"{anc}%", "Ancillary area on premium, separately - check the rule book."))
         if rs.get("fungible_pct") or rs.get("her_fungible_pct"):
             checks.append(_c("check", "Fungible", None, f"{rs.get('her_fungible_pct', rs.get('fungible_pct')):g}%",
-                             "Fungible compensatory area premium par (DCPR Reg 31(3))."))
+                             "Fungible compensatory area on premium (DCPR Reg 31(3))."))
     # height + margins
     h = num(proposal.get("height_m"))
     low = rs.get("low_rise_m") or 15.0
     if h:
         mh = rs.get("her_max_height")
         if mh is not None:
-            checks.append(_c("ok" if h <= mh else "fail", "Height", h, mh, "Aapki di hui height seema."))
+            checks.append(_c("ok" if h <= mh else "fail", "Height", h, mh, "The height limit you gave."))
         if h >= low:
             checks.append(_c("warn", "High-rise", h, f"< {low:g}", "15 m+ = high-rise (NBC 2016): fire NOC, refuge / lift / stair rules."))
     fb = band(rs.get("front") or [], road)
@@ -265,9 +265,9 @@ def area_statement(plot: dict[str, Any], proposal: dict[str, Any], rs: dict[str,
     fp = num(proposal.get("front_m"))
     if fp is not None:
         if front_need is None:
-            checks.append(_c("check", "Front margin", fp, None, "Front margin ki table daaliye."))
+            checks.append(_c("check", "Front margin", fp, None, "Enter the front margin table."))
         else:
-            checks.append(_c("ok" if fp >= front_need else "fail", "Front margin", fp, front_need, f"Road {road or '?'} m ke hisaab se."))
+            checks.append(_c("ok" if fp >= front_need else "fail", "Front margin", fp, front_need, f"For a road of {road or '?'} m."))
     side_need = rs.get("her_side")
     if side_need is None and h:
         if h < low and rs.get("side_low") is not None:
@@ -280,10 +280,10 @@ def area_statement(plot: dict[str, Any], proposal: dict[str, Any], rs: dict[str,
         if got is None:
             continue
         if need is None:
-            checks.append(_c("check", label, got, None, "Is height ke liye margin ki table daaliye."))
+            checks.append(_c("check", label, got, None, "Enter the margin table for this height."))
         else:
             checks.append(_c("ok" if got >= need else "fail", label, got, need,
-                             "H/5 (max 12 m) high-rise ke liye" if h and h >= low and rs.get("side_div") else "Starter table."))
+                             "H/5 (max 12 m) for a high-rise" if h and h >= low and rs.get("side_div") else "Starter table."))
     gc = rs.get("her_ground_coverage_pct")
     fp_area = num(proposal.get("footprint_sqm"))
     if gc is not None and fp_area:
@@ -306,27 +306,27 @@ def area_statement(plot: dict[str, Any], proposal: dict[str, Any], rs: dict[str,
     if ppu is not None and units:
         need = max(math.ceil(units * ppu), int(rs.get("her_parking_min") or 0))
         if got_p is not None:
-            checks.append(_c("ok" if got_p >= need else "fail", "Parking", got_p, need, f"{units} unit x {ppu:g} (aapka niyam)."))
+            checks.append(_c("ok" if got_p >= need else "fail", "Parking", got_p, need, f"{units} units x {ppu:g} (your rule)."))
         else:
-            checks.append(_c("check", "Parking", None, need, "Proposal mein kitni parking hai?"))
+            checks.append(_c("check", "Parking", None, need, "How much parking does the proposal have?"))
     elif units or got_p is not None:
-        checks.append(_c("check", "Parking", got_p, None, "Parking ki table (UDCPR Table 8 / DCPR Reg 44) se per-unit number daaliye."))
+        checks.append(_c("check", "Parking", got_p, None, "Enter the per-unit number from the parking table (UDCPR Table 8 / DCPR Reg 44)."))
     for n in missing:
-        checks.append(_c("check", n, None, None, f"{n} chahiye."))
+        checks.append(_c("check", n, None, None, f"{n} is needed."))
     fails = [c for c in checks if c["status"] == "fail"]
     warns = [c for c in checks if c["status"] in ("warn", "check")]
     say = (f"Area statement: net plot {net:,.2f} sq m" + (f", max FSI {lay['max_fsi']:g} = {lay['max_area']:,.0f} sq m" if lay.get("max_area") else "")
            + (f", proposed {bua:,.0f} sq m" if bua else "") + ". "
-           + (f"{len(fails)} jagah niyam se bahar. " if fails else "") + (f"{len(warns)} cheezein dekhni hain. " if warns else "")
+           + (f"{len(fails)} items are outside the rules. " if fails else "") + (f"{len(warns)} items need a look. " if warns else "")
            + CHECK_LINE)
     return {"ok": not fails, "statement": lay, "checks": checks, "ruleset": rs.get("label", ""), "starter": True,
             "notes": list(rs.get("notes") or []), "say": say, "check_line": CHECK_LINE}
 
 
 # ---------------------------------------------------------------- fee / GST / TDS
-FEE_STAGES = [("appointment", "Appointment / advance", 10.0), ("concept", "Concept design manzoor", 20.0),
+FEE_STAGES = [("appointment", "Appointment / advance", 10.0), ("concept", "Concept design approved", 20.0),
               ("approval", "Drawings for approval / sanction", 20.0), ("working", "Working drawings + tender", 25.0),
-              ("construction", "Construction ke dauraan + completion", 25.0)]
+              ("construction", "During construction + completion", 25.0)]
 GST_RATE = 18.0
 SAC = "998321"
 TDS_PCT = 10.0
@@ -346,26 +346,26 @@ def stage_amount(fee: dict[str, Any], pct: float) -> float | None:
 def gst_split(amount: float, her_gstin: str, client_gstin: str = "", client_state: str = "", rate: float = GST_RATE) -> dict[str, Any]:
     if not her_gstin:
         return {"taxable": round(amount, 2), "cgst": 0.0, "sgst": 0.0, "igst": 0.0, "total": round(amount, 2), "gst": False,
-                "note": "Aapka GSTIN nahi diya: bina GST ka bill (services ki seema Rs 20 lakh; pakka CA se)."}
+                "note": "Your GSTIN is not given: a bill without GST (the services threshold is Rs 20 lakh; confirm with your CA)."}
     mine = her_gstin[:2]
     theirs = (client_gstin[:2] if client_gstin else "") or (client_state or "")
     tax = round(amount * rate / 100, 2)
     if theirs and theirs != mine:
         return {"taxable": round(amount, 2), "cgst": 0.0, "sgst": 0.0, "igst": tax, "total": round(amount + tax, 2), "gst": True,
-                "note": f"Doosra state: IGST {rate:g}% (SAC {SAC})."}
+                "note": f"Another state: IGST {rate:g}% (SAC {SAC})."}
     half = round(tax / 2, 2)
     return {"taxable": round(amount, 2), "cgst": half, "sgst": round(tax - half, 2), "igst": 0.0, "total": round(amount + tax, 2),
-            "gst": True, "note": f"CGST + SGST {rate / 2:g}% each (SAC {SAC})" + ("" if theirs else "; client ka state pata nahi, same state maana.")}
+            "gst": True, "note": f"CGST + SGST {rate / 2:g}% each (SAC {SAC})" + ("" if theirs else "; the client's state is not known, assumed to be the same state.")}
 
 
 def tds_expected(fy_before: float, this_amount: float) -> dict[str, Any]:
     """Client deducts 10% under Sec 393(1) (Income-tax Act 2025; old 194J) once the FY total crosses Rs 50,000."""
     total = fy_before + this_amount
     if total <= TDS_LIMIT:
-        return {"tds": 0.0, "note": f"Is saal kul {total:,.0f} (Rs 50,000 tak TDS nahi)."}
+        return {"tds": 0.0, "note": f"Total this year {total:,.0f} (no TDS up to Rs 50,000)."}
     base = this_amount if fy_before > TDS_LIMIT else total
     return {"tds": round(base * TDS_PCT / 100, 2),
-            "note": "Client 10% TDS kaatega (Sec 393(1), Income-tax Act 2025) - fee par, GST par nahi; 26AS / Form 16A mein dekhiye."}
+            "note": "The client will deduct 10% TDS (Sec 393(1), Income-tax Act 2025) - on the fee, not on GST; check in 26AS / Form 16A."}
 
 
 def fy_of(d) -> str:

@@ -28,20 +28,20 @@ def materiality(pbt: float, revenue: float, assets: float = 0.0, equity: float =
     why = ""
     if not benchmark:
         if pbt > 0 and revenue and pbt >= 0.05 * revenue:
-            benchmark, why = "pbt", "munafa sthir aur revenue ka 5%+ hai: profit before tax"
+            benchmark, why = "pbt", "profit is stable and 5%+ of revenue: profit before tax"
         elif revenue > 0:
-            benchmark, why = "revenue", "munafa kam / ghata / asthir: revenue"
+            benchmark, why = "revenue", "profit is low / a loss / unstable: revenue"
         elif assets > 0:
-            benchmark, why = "assets", "revenue nahi: total assets"
+            benchmark, why = "assets", "no revenue: total assets"
         else:
-            raise ValueError("Materiality ke liye PBT, revenue ya assets chahiye.")
+            raise ValueError("Materiality needs PBT, revenue or assets.")
     base = abs(float(vals.get(benchmark) or 0))
     p = float(pct) if pct else BENCHMARKS[benchmark][0]
     om = round(base * p / 100)
     pm_pct = {"high": 50, "normal": 65, "low": 75}.get(risk, 65)
     return {"benchmark": benchmark, "benchmark_label": BENCHMARKS[benchmark][1], "base": round(base), "pct": p, "overall": om,
             "performance_pct": pm_pct, "performance": round(om * pm_pct / 100), "trivial": round(om * 0.05),
-            "why": why or "aapka chuna hua benchmark"}
+            "why": why or "the benchmark you chose"}
 
 
 # ---------------------------------------------------------------- analytical review (SA 520)
@@ -92,7 +92,7 @@ def benford(amounts: list[float], min_amount: float = 10.0) -> dict:
             firsts.append(int(s[0]))
     n = len(firsts)
     if n < 300:
-        return {"n": n, "ok": None, "note": "300 se kam entries: Benford test bharosemand nahi."}
+        return {"n": n, "ok": None, "note": "Fewer than 300 entries: the Benford test is not reliable."}
     c = Counter(firsts)
     rows = []
     mad = 0.0
@@ -120,7 +120,7 @@ def mus_select(items: list[tuple[str, float]], tolerable: float, confidence: int
     """Monetary-unit sampling: every item at or above the interval is taken; the rest by a random start + interval."""
     interval = mus_interval(tolerable, confidence)
     if interval <= 0:
-        raise ValueError("Tolerable misstatement chahiye.")
+        raise ValueError("Tolerable misstatement is needed.")
     rnd = random.Random(seed)
     start = rnd.uniform(0, interval)
     picked, key = [], []
@@ -184,7 +184,7 @@ def tax_audit(kind: str, turnover: float, cash_receipts_pct: float | None = None
     note = ""
     if fy_start == 2025:
         due = date(2026, 10, 21)
-        note = "CBDT Circular 07/2026 ne 30 Sep 2026 ko 21 Oct 2026 kiya."
+        note = "CBDT Circular 07/2026 moved 30 Sep 2026 to 21 Oct 2026."
     return {"required": need, "limit": limit, "form": form, "due": due.isoformat(), "note": note}
 
 
@@ -194,21 +194,21 @@ def caro(kind: str, paid_up_reserves: float, borrowings: float, revenue: float, 
     on = on or date.today()
     k = kind.lower()
     if k in ("bank", "insurance", "section8", "opc"):
-        return {"applies": False, "why": f"{k} ko CARO lagu nahi."}
+        return {"applies": False, "why": f"{k}: CARO does not apply."}
     if k not in ("private", "public"):
-        return {"applies": False, "why": "CARO sirf companies par."}
+        return {"applies": False, "why": "CARO applies only to companies."}
     cap, turn = (10e7, 100e7) if on >= date(2025, 12, 1) else (4e7, 40e7)
     pu = paid_up if paid_up is not None else paid_up_reserves
     if k == "private" and not is_holding_or_sub_of_public and pu < cap and revenue < turn:
         return {"applies": False, "why": f"Small company (paid-up < Rs {cap / 1e7:g} cr, turnover < Rs {turn / 1e7:g} cr)."}
     if k == "private" and not is_holding_or_sub_of_public and paid_up_reserves < 1e7 and borrowings < 1e7 and revenue < 1e8:
-        return {"applies": False, "why": "Chhoti private company (capital + reserves, udhaar < 1 cr, revenue < 10 cr)."}
-    return {"applies": True, "why": "CARO 2020 ke 21 clause par report."}
+        return {"applies": False, "why": "Small private company (capital + reserves and borrowings < 1 cr, revenue < 10 cr)."}
+    return {"applies": True, "why": "Report on the 21 clauses of CARO 2020."}
 
 
-AUDIT_TRAIL = ["Software mein audit trail (edit log) ka feature hai", "Saal bhar sab entries par chalu raha (migration se pehle bhi)",
-               "Band / tamper nahi hua (backdated / delete entries ki jaanch)", "Log 8 saal sambhal kar rakha (export, India server backup)",
-               "Cloud software ho to vendor ka SOC 2 / ISO report (SA 402)"]
+AUDIT_TRAIL = ["The software has an audit trail (edit log) feature", "It was on for all entries through the year (before migration too)",
+               "It was not disabled / tampered with (check backdated / deleted entries)", "The log is preserved for 8 years (export, backup on an India server)",
+               "If the software is on the cloud, the vendor's SOC 2 / ISO report (SA 402)"]
 
-GOING_CONCERN = [("net_worth_negative", "Net worth minus mein"), ("current_ratio_below_1", "Current ratio 1 se kam"),
-                 ("losses", "Lagaataar ghata"), ("loan_overdue", "Loan ki kist / byaaj late"), ("debtors_stuck", "Debtors 180+ din")]
+GOING_CONCERN = [("net_worth_negative", "Net worth is negative"), ("current_ratio_below_1", "Current ratio below 1"),
+                 ("losses", "Continuing losses"), ("loan_overdue", "Loan installments / interest overdue"), ("debtors_stuck", "Debtors over 180 days")]

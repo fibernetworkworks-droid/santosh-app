@@ -9,13 +9,13 @@ import re
 from datetime import date, timedelta
 
 NEVER = (
-    "Kirayedar ko koi message khud nahi bhejna: har message draft, sirf aapke tap se jaata hai.",
-    "Deposit se koi katauti, kiraya badhana / notice, ya repair ka kharcha: sirf aapki haan (app ka card) se.",
-    "Paise kabhi khud nahi lena / dena: UPI link aapke UPI ID par, 'mila' aap batati hain; Galla ki UPI sirf ishaara.",
-    "Stamp duty, registration fee, kiraya, deposit, area: sirf aapke number; Hoola gadhta nahi.",
-    "Aadhaar / PAN sirf Pehchaan Locker mein (masked reference); OTP / PIN / password kabhi nahi.",
-    "IGR / police / RERA / municipal portal scrape nahi: aap khud login karti hain (OTP / biometric aapka / kirayedar ka).",
-    "Agreement sirf draft hai (vakil se pakka karwaiye), kanooni salah nahi.",
+    "Hoola never sends a message to a tenant by itself: every message is a draft and goes only on your tap.",
+    "Any deduction from the deposit, a rent increase / notice, or a repair expense: only with your approval (the app's card).",
+    "Hoola never takes / gives money: the UPI link goes to your UPI ID, you say when it is 'received'; a UPI alert in the till is only a hint.",
+    "Stamp duty, registration fee, rent, deposit, area: only your numbers; Hoola does not invent them.",
+    "Aadhaar / PAN only in the ID Locker (masked reference); never an OTP / PIN / password.",
+    "No scraping of the IGR / police / RERA / municipal portals: you log in yourself (the OTP / biometric is yours / the tenant's).",
+    "The agreement is only a draft (have a lawyer confirm it), not legal advice.",
 )
 
 # (what, url, date checked / published)
@@ -59,13 +59,13 @@ STATE_NAMES = {"MH": "Maharashtra", "KA": "Karnataka", "DL": "Delhi", "GJ": "Guj
                "AP": "Andhra Pradesh", "TG": "Telangana", "WB": "West Bengal", "RJ": "Rajasthan", "MP": "Madhya Pradesh", "AS": "Assam",
                "GA": "Goa", "KL": "Kerala", "PB": "Punjab", "HR": "Haryana", "UK": "Uttarakhand", "OD": "Odisha", "BR": "Bihar"}
 
-UNIT_KINDS = {"flat": "Flat", "house": "Ghar", "room": "Room", "pg_bed": "PG / hostel bed", "shop": "Dukaan", "office": "Office",
-              "godown": "Godown", "other": "Doosra"}
+UNIT_KINDS = {"flat": "Flat", "house": "House", "room": "Room", "pg_bed": "PG / hostel bed", "shop": "Shop", "office": "Office",
+              "godown": "Warehouse", "other": "Other"}
 COMMERCIAL_KINDS = {"shop", "office", "godown"}
-CHARGE_KINDS = {"rent": "Kiraya", "deposit": "Deposit", "maintenance": "Maintenance", "electricity": "Bijli", "water": "Paani",
-                "late_fee": "Late fee", "repair": "Repair", "other": "Doosra"}
+CHARGE_KINDS = {"rent": "Rent", "deposit": "Deposit", "maintenance": "Maintenance", "electricity": "Electricity", "water": "Water",
+                "late_fee": "Late fee", "repair": "Repair", "other": "Other"}
 TRADES = {"plumber": "Plumber", "electrician": "Electrician", "carpenter": "Carpenter", "painter": "Painter", "appliance": "Appliance",
-          "pest": "Pest control", "cleaning": "Safai", "gas": "Gas", "internet": "Internet", "civil": "Civil / mistri", "other": "Doosra"}
+          "pest": "Pest control", "cleaning": "Cleaning", "gas": "Gas", "internet": "Internet", "civil": "Civil / mason", "other": "Other"}
 
 REPAIR_WORDS = {
     "plumber": ("nal", "tap", "leak", "pani tapak", "paani tapak", "pipe", "drain", "nali", "gutter", "flush", "toilet jam", "commode",
@@ -89,7 +89,7 @@ def is_mta(state: str) -> bool:
 
 
 def state_label(state: str) -> str:
-    return STATE_NAMES.get((state or "").upper(), state or "aapka rajya")
+    return STATE_NAMES.get((state or "").upper(), state or "your state")
 
 
 def default_kind(state: str) -> str:
@@ -183,10 +183,10 @@ def fy_of(d: date) -> str:
 def scrub(text: str, n: int = 2000) -> str:
     """Free text: OTP / PIN / password values, card-like runs, Aadhaar-like 12 digits and PAN are never kept."""
     t = str(text or "")
-    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [hataya]", t, flags=re.I)
-    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[hataya]", t)
-    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[ID hataya]", t)
-    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN hataya]", t)
+    t = re.sub(r"\b(otp|pin|cvv|password|upi pin|mpin)\b\s*(?:is|hai|:|=)?\s*\S+", lambda m: f"{m.group(1)} [removed]", t, flags=re.I)
+    t = re.sub(r"\b(?:\d[ -]?){13,19}\b", "[removed]", t)
+    t = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[ID removed]", t)
+    t = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN removed]", t)
     return t.strip()[:n]
 
 
@@ -212,105 +212,116 @@ def deposit_check(state: str, use: str, rent: float, deposit: float) -> list[str
     if is_mta(state):
         cap = 2 if use == "residential" else 6
         if months > cap:
-            out.append(f"Model Tenancy Act wale rajya ({state_label(state)}): deposit {cap} mahine tak ({months:.1f} mahine rakha hai). "
-                       "Apne rajya ka kanoon / vakil se pakka kijiye.")
+            out.append(f"Model Tenancy Act states ({state_label(state)}): deposit {cap} months at most ({months:.1f} months are held). "
+                       "Confirm with your state's law / a lawyer.")
     elif months > 10:
-        out.append(f"Deposit {months:.1f} mahine ke kiraye jitna: bahut zyada lagta hai, dobara dekhiye.")
+        out.append(f"Deposit equals {months:.1f} months of rent: that looks very high, check it again.")
     return out
 
 
 def tds_note(tenant_kind: str, rent: float, use: str) -> str:
     if rent <= 50000:
-        return "Kiraya Rs 50,000 mahina se kam: kirayedar par TDS nahi (dhara 393(1))."
+        return "Rent below Rs 50,000 a month: no TDS by the tenant (section 393(1))."
     if tenant_kind in ("company", "firm"):
-        return ("Kiraya Rs 50,000/mahina se zyada: company / firm kirayedar 10% TDS kaategi (Income-tax Act 2025 s.393(1) Table "
-                "2(ii).D(b), purana 194-I). Form 16A / 26AS mein milaan kijiye; CA se pakka.")
-    return ("Kiraya Rs 50,000/mahina se zyada: vyakti / HUF kirayedar 2% TDS saal ke aakhri mahine (ya ghar chhodte waqt) ek baar "
-            "kaatega (s.393(1) Table 2(i), Form 141; purana 194-IB). Aapka PAN dena hoga, warna 20%. CA se pakka.")
+        return ("Rent above Rs 50,000 a month: a company / firm tenant deducts 10% TDS (Income-tax Act 2025 s.393(1) Table "
+                "2(ii).D(b), earlier 194-I). Reconcile with Form 16A / 26AS; confirm with your CA.")
+    return ("Rent above Rs 50,000 a month: an individual / HUF tenant deducts 2% TDS once, in the last month of the year (or on moving out) "
+            "(s.393(1) Table 2(i), Form 141; earlier 194-IB). You must give your PAN, otherwise 20%. Confirm with your CA.")
 
 
 def gst_note(unit_kind: str, use: str, tenant_registered: bool, tenant_composition: bool, landlord_gstin: str,
              rent_per_person: float = 0.0) -> str:
     if unit_kind == "pg_bed":
         if rent_per_person and rent_per_person <= 20000:
-            return ("PG / hostel: Rs 20,000 per vyakti mahina tak aur 90+ din rehne par GST maaf (15 Jul 2024 se). Record rakhiye.")
-        return "PG / hostel Rs 20,000 per vyakti mahina se zyada: GST lag sakta hai; rate CA se pakka."
+            return ("PG / hostel: GST is exempt up to Rs 20,000 per person a month for a stay of 90+ days (from 15 Jul 2024). Keep records.")
+        return "PG / hostel above Rs 20,000 per person a month: GST may apply; confirm the rate with your CA."
     if use == "residential" and unit_kind not in COMMERCIAL_KINDS:
         if tenant_registered:
-            return ("Ghar GST-registered kirayedar ko (business ke liye): 18% GST kirayedar RCM mein bharta hai (proprietor apne rehne "
-                    "ke liye ho to nahi). CA se pakka.")
-        return "Rehne ke liye ghar vyakti ko: GST nahi."
+            return ("A home let to a GST-registered tenant (for business): the tenant pays 18% GST under RCM (not when a proprietor "
+                    "lives in it personally). Confirm with your CA.")
+        return "A home let to an individual to live in: no GST."
     if landlord_gstin:
-        return "Commercial kiraya, aap GST-registered: bill par 18% GST (forward charge). Tax invoice CA / GST Sahayak se."
+        return "Commercial rent, you are GST-registered: 18% GST on the bill (forward charge). Tax invoice from your CA / the GST Assistant."
     if tenant_registered and not tenant_composition:
-        return ("Commercial kiraya, aap unregistered, kirayedar registered: 18% GST kirayedar RCM mein bharega (10 Oct 2024 se). "
-                "Saal ka commercial kiraya Rs 20 lakh paar = registration dekhiye (CA).")
-    return "Commercial kiraya: saal ka kiraya Rs 20 lakh (kuch rajyon mein Rs 10 lakh) paar ho to GST registration dekhiye (CA)."
+        return ("Commercial rent, you are unregistered and the tenant is registered: the tenant pays 18% GST under RCM (from 10 Oct 2024). "
+                "If the year's commercial rent crosses Rs 20 lakh, look at registration (CA).")
+    return "Commercial rent: if the year's rent crosses Rs 20 lakh (Rs 10 lakh in some states), look at GST registration (CA)."
 
 
 def receipt_notes(annual_rent: float, mode: str, amount: float, pan_ready: bool) -> list[str]:
     out = []
     if annual_rent > 100000 and not pan_ready:
-        out.append("Saal ka kiraya Rs 1 lakh se zyada: HRA (Form 124) ke liye kirayedar ko aapka PAN chahiye; Niyam mein PAN locker "
-                   "se jodiye.")
+        out.append("Rent above Rs 1 lakh a year: the tenant needs your PAN for HRA (Form 124); link the PAN from the locker "
+                   "in the rules.")
     if mode == "cash" and amount > 5000:
-        out.append("Cash Rs 5,000 se zyada ki receipt par Re 1 revenue stamp lagaiye (sign uske upar).")
+        out.append("Put a Re 1 revenue stamp on a receipt for more than Rs 5,000 in cash (sign across it).")
     return out
 
 
 def checklist(state: str, kind: str, months: int, use: str) -> list[dict]:
     st = (state or "").upper()
     items = [
-        {"id": "kyc", "what": "Kirayedar ka photo ID (Aadhaar / PAN Pehchaan Locker mein, masked) + photo", "who": "aap"},
-        {"id": "agreement", "what": f"Likhit {AGREEMENT_KINDS.get(kind, 'agreement')} (Hoola ka draft vakil se padhwaiye)", "who": "aap"},
+        {"id": "kyc", "what": "The tenant's photo ID (Aadhaar / PAN in the ID Locker, masked) + photo", "who": "you"},
+        {"id": "agreement", "what": f"Written {AGREEMENT_KINDS.get(kind, 'agreement')} (have a lawyer read Hoola's draft)", "who": "you"},
     ]
     if st == "MH":
         items += [
-            {"id": "registration", "what": "IGR Maharashtra par online L&L registration (stamp duty + fee aap bharti hain; dono ka "
-                                           "Aadhaar e-KYC / biometric) - kanoon s.55: registration landlord ki zimmedari",
-             "who": "aap + kirayedar", "link": "https://igrmaharashtra.gov.in"},
-            {"id": "police", "what": "Police ko kirayedar ki jaankari: registered e-L&L hone par kayi jagah apne aap (Leave and Licence "
-                                     "2.0); warna police station / city police portal par form (BNS s.223)", "who": "aap"},
+            {"id": "registration", "what": "Online L&L registration on IGR Maharashtra (you pay the stamp duty + fee; both parties' "
+                                           "Aadhaar e-KYC / biometric) - the law, s.55: registration is the landlord's duty",
+             "who": "you + tenant", "link": "https://igrmaharashtra.gov.in"},
+            {"id": "police", "what": "Tenant details to the police: automatic in many places once the e-L&L is registered (Leave and Licence "
+                                     "2.0); otherwise a form at the police station / city police portal (BNS s.223)", "who": "you"},
         ]
     else:
-        items.append({"id": "registration", "what": ("11 mahine se lamba / 1 saal+ ka lease: Registration Act s.17 mein registration "
-                                                     "zaroori; stamp duty rajya ke hisaab se (aapke number)") if months >= 12 else
-                      "Stamp paper / e-stamp par agreement (stamp duty rajya ke hisaab se, aapke number)", "who": "aap"})
+        items.append({"id": "registration", "what": ("A lease longer than 11 months / of 1 year+: registration is required under Registration Act s.17; "
+                                                     "stamp duty as per the state (your numbers)") if months >= 12 else
+                      "Agreement on stamp paper / e-stamp (stamp duty as per the state, your numbers)", "who": "you"})
         if is_mta(st):
-            items.append({"id": "rent_authority", "what": "Model Tenancy Act: agreement 2 mahine ke andar Rent Authority ko batana",
-                          "who": "aap + kirayedar"})
-        items.append({"id": "police", "what": "Local police ke niyam se kirayedar verification (police station / state police portal)",
-                      "who": "aap"})
+            items.append({"id": "rent_authority", "what": "Model Tenancy Act: inform the Rent Authority of the agreement within 2 months",
+                          "who": "you + tenant"})
+        items.append({"id": "police", "what": "Tenant verification as per local police rules (police station / state police portal)",
+                      "who": "you"})
     items += [
-        {"id": "society", "what": "Society ko batana / NOC (society ke bye-laws ke hisaab se)" if use == "residential" else
-            "Building / mall ke niyam se intimation", "who": "aap"},
-        {"id": "move_in", "what": "Move-in inspection: har kamre ki photo, meter reading, chaabiyan", "who": "aap + kirayedar"},
-        {"id": "deposit_receipt", "what": "Deposit ki receipt", "who": "aap"},
+        {"id": "society", "what": "Inform the society / NOC (as per the society's bye-laws)" if use == "residential" else
+            "Intimation as per the building's / mall's rules", "who": "you"},
+        {"id": "move_in", "what": "Move-in inspection: photos of every room, meter readings, keys", "who": "you + tenant"},
+        {"id": "deposit_receipt", "what": "Deposit receipt", "who": "you"},
     ]
     return items
+
+
+# the standard items were named in Hinglish before the English pass: an inspection saved then still matches one made now
+_ITEM_WAS = {"deewar / paint": "walls / paint", "farsh / tiles": "floor / tiles", "pankhe / light": "fans / lights",
+             "khidki / jaali": "windows / mesh", "nal": "tap", "darwaza / lock": "door / lock", "nal / shower": "tap / shower",
+             "lock / chaabi": "lock / keys"}
+
+
+def _item_key(i: dict) -> str:
+    item = str(i.get("item", "")).lower()
+    return (i.get("room", ""), _ITEM_WAS.get(item, item)).__str__().lower()
 
 
 def compare_inspections(move_in: list[dict], move_out: list[dict]) -> list[dict]:
     """Items worse at move-out. No rupee amount: that is hers to say."""
     rank = {"good": 0, "fair": 1, "damaged": 2, "missing": 3}
-    before = {(i.get("room", ""), i.get("item", "")).__str__().lower(): i for i in move_in}
+    before = {_item_key(i): i for i in move_in}
     out = []
     for i in move_out:
-        k = (i.get("room", ""), i.get("item", "")).__str__().lower()
+        k = _item_key(i)
         b = before.get(k)
         now_r = rank.get(i.get("condition", ""), -1)
         was_r = rank.get(b.get("condition", ""), -1) if b else 0
         if now_r > max(was_r, 0) and now_r >= 1:
-            out.append({"room": i.get("room", ""), "item": i.get("item", ""), "was": (b or {}).get("condition", "darj nahi"),
+            out.append({"room": i.get("room", ""), "item": i.get("item", ""), "was": (b or {}).get("condition", "not recorded"),
                         "now": i.get("condition", ""), "note": i.get("note", ""), "photos": i.get("photos", []),
-                        "say": "Aam ghisaav (wear and tear) deposit se nahi katta; nuksaan ho to rakam aap likhiye."})
+                        "say": "Normal wear and tear is not deducted from the deposit; if there is damage, you enter the amount."})
     return out
 
 
 STANDARD_ITEMS = (
-    ("Hall", "Deewar / paint"), ("Hall", "Farsh / tiles"), ("Hall", "Pankhe / light"), ("Hall", "Khidki / jaali"),
-    ("Kitchen", "Platform / sink"), ("Kitchen", "Nal"), ("Bedroom", "Deewar / paint"), ("Bedroom", "Darwaza / lock"),
-    ("Bathroom", "Nal / shower"), ("Bathroom", "Geyser"), ("Bathroom", "Commode / basin"), ("Main door", "Lock / chaabi"),
+    ("Hall", "Walls / paint"), ("Hall", "Floor / tiles"), ("Hall", "Fans / lights"), ("Hall", "Windows / mesh"),
+    ("Kitchen", "Platform / sink"), ("Kitchen", "Tap"), ("Bedroom", "Walls / paint"), ("Bedroom", "Door / lock"),
+    ("Bathroom", "Tap / shower"), ("Bathroom", "Geyser"), ("Bathroom", "Commode / basin"), ("Main door", "Lock / keys"),
 )
 
 

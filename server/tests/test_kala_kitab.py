@@ -100,7 +100,7 @@ def test_passes_are_suggestions_only_her_tap_changes_text(kb, monkeypatch):
     cid = _ch(S, b["number"], 1)
     before = S.chapter_view(T, cid)["text"]
     out = S.run_pass(T, cid, "proof")
-    assert out["made"] >= 2 and "badla nahi" in out["say"]
+    assert out["made"] >= 2 and "has not been changed" in out["say"]
     assert S.chapter_view(T, cid)["text"] == before                     # nothing changed by the pass
     # the tool cannot apply: accept makes a card
     from app.agent.kitab_tools import KITAB_HANDLERS
@@ -163,7 +163,7 @@ def test_model_edits_guarded_and_rejections_remembered(kb, monkeypatch):
         S.accept_request(T, cid, kinds=["query"])                       # queries can't be "applied"
     # no model -> developmental falls back to honest counts
     monkeypatch.setattr(S, "_ai", lambda system, prompt, max_tokens=3000: "")
-    assert "Model abhi nahi chala" in S.run_pass(T, cid, "developmental")["letter"]
+    assert "The model did not run" in S.run_pass(T, cid, "developmental")["letter"]
 
 
 def test_style_sheet_tracked_word_and_hindi(kb):
@@ -273,7 +273,7 @@ def test_royalty_contract_platforms(kb):
     out = S.contract_save(T, b["number"], publisher="Kahani Press", rates=[{"format": "paperback", "basis": "mrp",
                           "slabs": [{"upto": 2000, "pct": 7.5}, {"pct": 10}]}, {"format": "ebook", "basis": "net", "slabs": [{"pct": 25}]}],
                           advance=10000, period_months=6)
-    assert "5 saal" in out["say"] and "sirf India" in out["say"]
+    assert "5 years" in out["say"] and "India only" in out["say"]
     a = S.statement_add(T, b["number"], "Apr-Sep 2026", "paperback", units=1600, returns=100, price=250, stated=28000,
                         period_end="2026-09-30")
     assert a["statement"]["expected"] == round(1500 * 250 * 0.075, 2) and a["diff"] == round(28000 - 28125, 2) and "kam" in a["say"]
@@ -317,7 +317,7 @@ def test_freelance_invoice_deliver_tick_forget_tools_api(kb):
         S.forget(T, b["number"])
     S.book_save(T, b["number"], status="done")
     S.forget(T, b["number"])
-    assert S.book_view(T, b["number"])["client"] == {"name": "Client (hataya)"}
+    assert S.book_view(T, b["number"])["client"] == {"name": "Client (removed)"}
     # tools: staff can't do owner-only; customers refused; reads work
     import asyncio
     from app.agent.kitab_tools import KITAB_HANDLERS, KITAB_TOOLS

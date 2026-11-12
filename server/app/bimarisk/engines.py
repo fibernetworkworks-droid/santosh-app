@@ -26,18 +26,18 @@ def _d(v: Any) -> dt.date:
             return dt.datetime.strptime(s, f).date()
         except ValueError:
             pass
-    raise ValueError(f"Tareekh samajh nahi aayi: '{v}' (2026-11-05).")
+    raise ValueError(f"Could not read the date: '{v}' (use 2026-11-05).")
 
 
 def _no_protected(names, what="rule"):
     bad = [n for n in names if any(p == str(n).lower() or str(n).lower().startswith(p + "_") for p in PROTECTED)]
     if bad:
-        raise ValueError(f"{what} protected attribute par nahi ban sakta: {', '.join(map(str, bad))}. Medical / age-band rule use karo.")
+        raise ValueError(f"{what} cannot be built on a protected attribute: {', '.join(map(str, bad))}. Use a medical / age-band rule.")
 
 
 def experience(rows: list[dict], group_by: str = "age_band", loss_ratio_alert: Any = 100, min_exposure: Any = 0) -> dict[str, Any]:
     if not rows:
-        raise ValueError("rows do: premium, paid, claims, exposure (policy-years) aur group column.")
+        raise ValueError("Give rows: premium, paid, claims, exposure (policy-years) and a group column.")
     _no_protected([group_by], "grouping")
     g: dict[str, dict] = defaultdict(lambda: {"premium": 0.0, "paid": 0.0, "claims": 0.0, "exposure": 0.0})
     for r in rows[:100000]:
@@ -58,7 +58,7 @@ def experience(rows: list[dict], group_by: str = "age_band", loss_ratio_alert: A
 
 def price_trend(obs: list[dict]) -> dict[str, Any]:
     if not obs:
-        raise ValueError("obs rows do: item, year, price.")
+        raise ValueError("Give obs rows: item, year, price.")
     by: dict[str, dict] = defaultdict(dict)
     for o in obs[:20000]:
         by[str(o.get("item"))][int(_f(o.get("year")))] = _f(o.get("price"))
@@ -76,7 +76,7 @@ def price_trend(obs: list[dict]) -> dict[str, Any]:
 def triangle(tri: list[list], tail: Any = 1.0) -> dict[str, Any]:
     """Cumulative run-off triangle, one row per origin period, rows shorter as periods are newer."""
     if len(tri or []) < 3:
-        raise ValueError("Kam se kam 3 origin rows (cumulative paid, nayi row chhoti).")
+        raise ValueError("At least 3 origin rows are needed (cumulative paid, newer rows shorter).")
     n = max(len(r) for r in tri)
     fac = []
     for j in range(n - 1):
@@ -99,7 +99,7 @@ def triangle(tri: list[list], tail: Any = 1.0) -> dict[str, Any]:
 def pricing_fairness(factors: list[dict], max_jump_pct: Any = 30, max_gap_pct: Any = 15) -> dict[str, Any]:
     """factors: [{factor, level, premium_relativity, cost_relativity}] relativities vs base 1.0"""
     if not factors:
-        raise ValueError("factors rows do: factor, level, premium_relativity, cost_relativity.")
+        raise ValueError("Give factors rows: factor, level, premium_relativity, cost_relativity.")
     _no_protected([f.get("factor") for f in factors], "rating factor")
     hits = []
     for f in factors[:2000]:
@@ -120,7 +120,7 @@ def pricing_fairness(factors: list[dict], max_jump_pct: Any = 30, max_gap_pct: A
 def uw_triage(proposals: list[dict], rules: list[dict]) -> dict[str, Any]:
     """rules: [{field, op (>,>=,<,<=,==,in), value, route (medical|refer), label, manual_ref, loading_pct}]; default auto_accept. A 'decline' route becomes refer."""
     if not proposals or not rules:
-        raise ValueError("proposals aur rules (field, op, value, route) do.")
+        raise ValueError("Give proposals and rules (field, op, value, route).")
     _no_protected([r.get("field") for r in rules])
     out = []
     for p in proposals[:5000]:
@@ -134,7 +134,7 @@ def uw_triage(proposals: list[dict], rules: list[dict]) -> dict[str, Any]:
                 ok = {">": lambda: _f(v) > _f(t), ">=": lambda: _f(v) >= _f(t), "<": lambda: _f(v) < _f(t), "<=": lambda: _f(v) <= _f(t),
                       "==": lambda: str(v).lower() == str(t).lower(), "in": lambda: str(v).lower() in [str(x).lower() for x in (t or [])]}[op]()
             except KeyError:
-                raise ValueError(f"op galat: {op}")
+                raise ValueError(f"invalid op: {op}")
             if ok:
                 rt = str(r.get("route", "refer")).lower()
                 hits.append({"label": r.get("label") or r.get("field"), "field": r["field"], "value": v, "route": "refer" if rt == "decline" else rt, "manual_ref": r.get("manual_ref", "[manual page]"),
@@ -146,7 +146,7 @@ def uw_triage(proposals: list[dict], rules: list[dict]) -> dict[str, Any]:
 
 def provider_outliers(claims: list[dict], ratio: Any = 1.5, min_peers: Any = 5) -> dict[str, Any]:
     if not claims:
-        raise ValueError("claims rows do: provider, procedure, amount (optional los).")
+        raise ValueError("Give claims rows: provider, procedure, amount (optional los).")
     peers: dict[str, list] = defaultdict(list)
     prov: dict[tuple, list] = defaultdict(list)
     for c in claims[:100000]:
@@ -167,7 +167,7 @@ def provider_outliers(claims: list[dict], ratio: Any = 1.5, min_peers: Any = 5) 
 
 def duplicates(claims: list[dict]) -> dict[str, Any]:
     if not claims:
-        raise ValueError("claims rows do: claim, member, hospital, admit, discharge, amount.")
+        raise ValueError("Give claims rows: claim, member, hospital, admit, discharge, amount.")
     by = defaultdict(list)
     for c in claims[:50000]:
         by[str(c.get("member"))].append(c)
@@ -191,7 +191,7 @@ def _hav(a, b) -> float:
 def geo_plausibility(stays: list[dict], max_home_km: Any = 300, max_kmph: Any = 90) -> dict[str, Any]:
     """stays: [{claim, member, home:[lat,lon], hospital:[lat,lon], admit}]"""
     if not stays:
-        raise ValueError("stays rows do: claim, member, home [lat,lon], hospital [lat,lon], admit.")
+        raise ValueError("Give stays rows: claim, member, home [lat,lon], hospital [lat,lon], admit.")
     far, fast = [], []
     for s in stays[:50000]:
         d = _hav(s["home"], s["hospital"])
@@ -212,7 +212,7 @@ def geo_plausibility(stays: list[dict], max_home_km: Any = 300, max_kmph: Any = 
 
 def cashless_misuse(cases: list[dict], upgrade_pct: Any = 25, short_stay_days: Any = 1) -> dict[str, Any]:
     if not cases:
-        raise ValueError("cases rows do: claim, approved, final, los_days, planned_procedure, final_procedure.")
+        raise ValueError("Give cases rows: claim, approved, final, los_days, planned_procedure, final_procedure.")
     out = []
     for c in cases[:50000]:
         ap, fi = _f(c.get("approved")), _f(c.get("final"))
@@ -230,7 +230,7 @@ def cashless_misuse(cases: list[dict], upgrade_pct: Any = 25, short_stay_days: A
 
 def case_builder(events: list[dict], evidence: list[dict] | None = None, questions: list[str] | None = None) -> dict[str, Any]:
     if not events:
-        raise ValueError("events rows do: date, text, source.")
+        raise ValueError("Give events rows: date, text, source.")
     ev = sorted(events[:1000], key=lambda e: _d(e.get("date")))
     return {"timeline": [{"date": e["date"], "text": e.get("text"), "source": e.get("source", "[source]")} for e in ev],
             "evidence_table": [{"item": x.get("item"), "supports": x.get("supports", "[what it shows]"), "source": x.get("source", "[source]"), "status": x.get("status", "unverified")} for x in (evidence or [])],
@@ -241,7 +241,7 @@ def case_builder(events: list[dict], evidence: list[dict] | None = None, questio
 def fraud_audit(decisions: list[dict], max_gap: Any = 1.25, min_group: Any = 30) -> dict[str, Any]:
     """decisions: [{flagged, confirmed (true/false/None), group, human_override}]"""
     if not decisions:
-        raise ValueError("decisions rows do: flagged, confirmed, group, human_override.")
+        raise ValueError("Give decisions rows: flagged, confirmed, group, human_override.")
     _no_protected([k for d in decisions[:20] for k in d if k not in ("flagged", "confirmed", "group", "human_override")], "column")
     g: dict[str, dict] = defaultdict(lambda: {"n": 0, "flagged": 0, "false_pos": 0, "reviewed": 0, "override": 0})
     for d in decisions[:200000]:
@@ -266,7 +266,7 @@ def fraud_audit(decisions: list[dict], max_gap: Any = 1.25, min_group: Any = 30)
 
 def scheme_anomalies(claims: list[dict], z: Any = 3, min_n: Any = 10) -> dict[str, Any]:
     if not claims:
-        raise ValueError("claims rows do: hospital, district, beneficiary_id, amount.")
+        raise ValueError("Give claims rows: hospital, district, beneficiary_id, amount.")
     ids = defaultdict(list)
     per: dict[str, list] = defaultdict(list)
     for c in claims[:200000]:

@@ -47,8 +47,8 @@ def _groups(n: int) -> list[tuple[int, int]]:
     return out
 
 
-def words(n: int, lang: str = "hinglish") -> str:
-    """Whole number in words: hinglish (default) | hi (Devanagari) | en (Indian English)."""
+def words(n: int, lang: str = "en") -> str:
+    """Whole number in words: en (Indian English, default) | hi (Devanagari) | hinglish."""
     n = int(n)
     if n < 0:
         return ("minus " if lang != "hi" else "ऋण ") + words(-n, lang)
@@ -70,7 +70,7 @@ def words(n: int, lang: str = "hinglish") -> str:
     return " ".join(parts)
 
 
-def rupees_words(amount: float, lang: str = "hinglish") -> str:
+def rupees_words(amount: float, lang: str = "en") -> str:
     """₹ amount in words with paise: 'do lakh pachchees hazaar rupaye aur pachaas paise'."""
     paise_total = round(float(amount) * 100)
     r, p = divmod(abs(paise_total), 100)
@@ -80,7 +80,7 @@ def rupees_words(amount: float, lang: str = "hinglish") -> str:
         return sign + s[0].upper() + s[1:]
     if lang == "hi":
         return sign + f"{words(r, 'hi')} रुपये" + (f" और {words(p, 'hi')} पैसे" if p else "")
-    return sign + f"{words(r)} rupaye" + (f" aur {words(p)} paise" if p else "")
+    return sign + f"{words(r, 'hinglish')} rupaye" + (f" aur {words(p, 'hinglish')} paise" if p else "")
 
 
 def inr(amount: float, paise: bool | None = None) -> str:
