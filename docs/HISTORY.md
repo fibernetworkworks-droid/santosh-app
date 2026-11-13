@@ -3664,3 +3664,21 @@ Tests: test_v0876_pc_steady.py 16 (unit + the real loop with a fake PC: thought 
 into a stolen window, an open page not reopened, carry, rescue on repeated aims); PC suites 242+ green; the one red
 (test_v0173 memory window) fails identically before this change. NOT VERIFIED on her real PC; the sweep's
 notification read depends on the agent-desktop helper on her PC.
+
+
+## v0.878.0 CREDIT ROKE NAHI — an OpenRouter credit hold no longer stops the work (owner: "SUDDENLY IN BETWEEN SAYING CREDIT LIMIT IS OVER AND STOP THE WORK --- FIX THIS FIRST")
+
+Her log: `pc task end ... status=failed ... QwenError: Qwen 402: This request would exceed your available credits given
+your current in-flight requests. Retry after in-flight requests settle, or add credits.` ROOT CAUSE: OpenRouter reserves
+the cost of prompt + max_tokens for every request in flight against the account balance. Hoola runs on OpenRouter end to
+end (chat on qwen3.8-27b, the PC manager turn, the PC worker with max_tokens 4000 and a long screenshot prompt, often
+several at once), so a low balance refused a step even though the step itself would have cost a fraction of the hold -
+and `think_qwen` treated 402 like any error: the task died as failed.
+
+Fix: `agent/llm.py` CREDIT_WAITS (3 / 6 / 10 s), `credit_402`, `credit_body` (half the max_tokens, floor 1200 for chat,
+800 for a PC step), CREDIT_LOW_LINE. `pc/brain.py think_qwen`: a 402 waits for the others to settle and asks again with
+less room (up to 3 times, not counted against the ordinary retries); still 402 = `CreditLow`. `pc/operator.py _run`:
+CreditLow ends the task PARTIAL (progress kept, summary says add credit at openrouter.ai and say 'continue'), logged as a
+warning, never 'failed'. The chat door's non-stream and stream paths do the same and the final error carries the line.
+Tests `test_v0878_credit_hold.py` (5). NOT VERIFIED on her server. If 402s keep coming, the balance itself is low:
+openrouter.ai > Settings > Credits.

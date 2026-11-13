@@ -472,6 +472,29 @@ class LLMError(RuntimeError):
 
 # a busy or briefly unreachable model is worth another try before the turn falls back to another brain
 TRANSIENT_STATUS = {408, 409, 425, 429, 500, 502, 503, 504, 529}
+
+
+# v0.878 CREDIT ROKE NAHI: OpenRouter holds the cost of prompt + max_tokens against the account's credit for every
+# request in flight; with a low balance it answers 402 "would exceed your available credits given your current
+# in-flight requests". That is not the end: the same request with a smaller max_tokens (and a few seconds for the
+# other requests to finish) usually goes through. A truly empty account still 402s and is said plainly.
+CREDIT_WAITS = (3.0, 6.0, 10.0)
+
+
+def credit_402(code: int, text: str = "") -> bool:
+    return int(code or 0) == 402
+
+
+def credit_body(body: dict, floor: int = 1200) -> dict | None:
+    """The same request asking for less output room, or None when it is already at the floor."""
+    cur = int(body.get("max_tokens") or 0)
+    if cur <= floor:
+        return None
+    return {**body, "max_tokens": max(floor, cur // 2)}
+
+
+CREDIT_LOW_LINE = ("OpenRouter credit is low: add credit at openrouter.ai (Settings > Credits), or raise the key's "
+                   "limit (Settings > Keys).")
 RETRY_DELAY = 0.6   # seconds; doubles each try (tests shorten it)
 
 
@@ -521,6 +544,22 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
                         _learn(reasoning_refused=True, reasoning_mandatory=False)
                     return r
                 last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
+            if credit_402(r.status_code):
+                for wait_s in CREDIT_WAITS:
+                    smaller = credit_body(body)
+                    if smaller is None and wait_s != CREDIT_WAITS[0]:
+                        break
+                    body = smaller or body
+                    log.warning("%s 402 credit hold: waiting %.0fs, asking again with max_tokens %s", label, wait_s,
+                                body.get("max_tokens"))
+                    await asyncio.sleep(wait_s)
+                    r = await _client().post(url, json=body, headers=headers, **_brain_timeout(label))
+                    if r.status_code < 400:
+                        return r
+                    if not credit_402(r.status_code):
+                        break
+                last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}"
+                                + (" | " + CREDIT_LOW_LINE if credit_402(r.status_code) else ""))
             if r.status_code not in TRANSIENT_STATUS:
                 raise last   # a wrong key or a bad request will not get better by asking again
             ra = r.headers.get("retry-after", "")
@@ -711,6 +750,8 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
     part of the answer text."""
     url, model, label, headers, body = _stream_body(brain, system, tools, messages, max_tokens)
     tries = 1 + max(0, get_settings().llm_retries)
+    credit_left = len(CREDIT_WAITS)
+    tries += credit_left            # a credit hold's retries do not use up the ordinary ones
     for i in range(tries):
         wait = min(RETRY_DELAY * (2 ** i), 5.0)
         text: list[str] = []
@@ -723,6 +764,17 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
                 if r.status_code >= 400:
                     detail = (await r.aread()).decode("utf-8", "replace")[:300]
                     err = LLMError(f"{label} error {r.status_code}: {detail}")
+                    if credit_402(r.status_code) and credit_left > 0:
+                        # v0.878 a credit hold: ask again with less output room once the others settle
+                        credit_left -= 1
+                        body = credit_body(body) or body
+                        w = CREDIT_WAITS[len(CREDIT_WAITS) - 1 - credit_left]
+                        log.warning("%s 402 credit hold: waiting %.0fs, asking again with max_tokens %s", label, w,
+                                    body.get("max_tokens"))
+                        await asyncio.sleep(w)
+                        continue
+                    if credit_402(r.status_code):
+                        raise LLMError(f"{label} error 402: {detail} | {CREDIT_LOW_LINE}")
                     if r.status_code not in TRANSIENT_STATUS or i + 1 >= tries:
                         raise err
                     log.warning("%s (try %d of %d); retrying in %.1fs", err, i + 1, tries, wait)

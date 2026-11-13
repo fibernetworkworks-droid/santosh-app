@@ -201,6 +201,10 @@ class QwenError(Exception):
         self.code = code
 
 
+class CreditLow(QwenError):
+    """v0.878 OpenRouter refused for credit even after waiting and asking for less room: the task stops cleanly."""
+
+
 async def think_qwen(model: str, system: str, messages: list[dict], tools: list[dict], max_tokens: int) -> Reply:
     st = get_settings()
     route = qwen_route()
@@ -220,20 +224,38 @@ async def think_qwen(model: str, system: str, messages: list[dict], tools: list[
     sort = "" if claude else str(getattr(st, "pc_qwen_provider_sort", "") or "").strip().lower()
     if sort in ("latency", "throughput", "price"):
         body["provider"] = {"sort": sort}   # v0.856 PC SPEED: OpenRouter picks the fastest-answering Qwen host
-    for attempt in range(3):
+    from ..agent import llm as _llm
+    credit_left = len(_llm.CREDIT_WAITS)
+    attempt = 0
+    while True:
         try:
             data = await _post(url, key, body, float(getattr(st, "pc_brain_timeout_s", 90) or 90))
             break
         except QwenError as e:
             STATS["qwen_errors"] += 1
-            if e.code in (408, 429, 500, 502, 503, 504) and attempt < 2:
+            if _llm.credit_402(e.code):
+                # v0.878 CREDIT ROKE NAHI: 402 = OpenRouter held too much credit for the requests in flight; wait for
+                # them and ask for less output room (a PC step needs ~300-800 tokens, not 4000)
+                if credit_left > 0:
+                    w = _llm.CREDIT_WAITS[len(_llm.CREDIT_WAITS) - credit_left]
+                    credit_left -= 1
+                    body = _llm.credit_body(body, floor=800) or body
+                    STATS["credit_holds"] = STATS.get("credit_holds", 0) + 1
+                    log.warning("pc brain 402 credit hold: waiting %.0fs, asking again with max_tokens %s", w,
+                                body.get("max_tokens"))
+                    await asyncio.sleep(w)
+                    continue
+                raise CreditLow(402, str(e)[:200]) from e
+            attempt += 1
+            if e.code in (408, 429, 500, 502, 503, 504) and attempt < 3:
                 await asyncio.sleep(2 + 2 * attempt)
                 continue
             raise
         except Exception:
             STATS["qwen_errors"] += 1
-            if attempt < 2:
-                await asyncio.sleep(2 + 2 * attempt)
+            attempt += 1
+            if attempt < 3:
+                await asyncio.sleep(2 * attempt)
                 continue
             raise
     u = data.get("usage") or {}

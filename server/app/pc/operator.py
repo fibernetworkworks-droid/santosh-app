@@ -2956,7 +2956,17 @@ async def _run(op: Op) -> None:
         op.status = "cancelled"
         raise
     except Exception as e:
-        log.exception("pc operator failed")
+        from . import brain as _b
+        if isinstance(e, _b.CreditLow) and op.status in ("running", "needs_confirm"):
+            # v0.878 CREDIT ROKE NAHI: out of OpenRouter credit is not a broken task - what was done stays done,
+            # she is told plainly what to do, and the same task can continue once credit is added
+            from ..agent import llm as _llm
+            log.warning("pc task %s stopped: OpenRouter credit low after waiting and retrying", op.id)
+            op.status, op.reason = "partial", "openrouter credit low (402)"
+            op.summary = (f"Stopped at step {op.step}: {_llm.CREDIT_LOW_LINE} "
+                          f"Done so far: {len(op.progress)} steps. Say 'continue' after adding credit.")[:600]
+        else:
+            log.exception("pc operator failed")
         if op.status in ("running", "needs_confirm"):
             op.status, op.reason = "failed", f"{type(e).__name__}: {e}"[:300]
             op.summary = op.summary or f"PC par kaam ruk gaya: {e}"[:600]
