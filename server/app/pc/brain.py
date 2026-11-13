@@ -205,7 +205,12 @@ class CreditLow(QwenError):
     """v0.878 OpenRouter refused for credit even after waiting and asking for less room: the task stops cleanly."""
 
 
-async def think_qwen(model: str, system: str, messages: list[dict], tools: list[dict], max_tokens: int) -> Reply:
+class BrainSlow(QwenError):
+    """v0.879 the AI did not answer a PC step in time, twice: the task stops cleanly instead of hanging for minutes."""
+
+
+async def think_qwen(model: str, system: str, messages: list[dict], tools: list[dict], max_tokens: int,
+                     on_slow=None) -> Reply:
     st = get_settings()
     route = qwen_route()
     if route is None:
@@ -251,8 +256,23 @@ async def think_qwen(model: str, system: str, messages: list[dict], tools: list[
                 await asyncio.sleep(2 + 2 * attempt)
                 continue
             raise
-        except Exception:
+        except Exception as e:
             STATS["qwen_errors"] += 1
+            import httpx
+            if isinstance(e, httpx.TimeoutException):
+                # v0.879 TEZ YA SAAF: a step the AI does not answer in time is said at once and tried ONCE more - never
+                # minutes of silence (her 02:59 Aadhaar step hung 3.5 min: 90 s x 3 quiet tries)
+                STATS["slow"] = STATS.get("slow", 0) + 1
+                attempt += 1
+                if attempt < 2:
+                    log.warning("pc brain step not answered in time; telling her and trying once more")
+                    if on_slow:
+                        try:
+                            on_slow()
+                        except Exception:
+                            pass
+                    continue
+                raise BrainSlow(504, "the AI did not answer this PC step in time (twice)") from e
             attempt += 1
             if attempt < 3:
                 await asyncio.sleep(2 * attempt)
@@ -269,6 +289,17 @@ async def think_qwen(model: str, system: str, messages: list[dict], tools: list[
     rep = from_openai(data)
     rep.model = rep.model or model
     return rep
+
+
+def _tell_slow(op) -> None:
+    """v0.879 one spoken line on her live call (and the card) when the AI is slow to answer a PC step."""
+    try:
+        op.action = "AI is slow to answer, trying again"
+        from . import operator as _op
+        _op._inject(op, "(PC update - say it in a few natural words: «AI thoda slow hai, dobara try kar raha hoon.»)")
+        _op._event(op)
+    except Exception:
+        pass
 
 
 async def think(op, client, messages: list[dict], params: dict, retry) -> Reply:
@@ -290,7 +321,7 @@ async def think(op, client, messages: list[dict], params: dict, retry) -> Reply:
     if brain in ("qwen", "qwen27", "sonnet-or"):
         STATS[brain if brain in ("qwen", "qwen27") else "sonnet"] += 1
         rep = await think_qwen(model, params.get("system", ""), messages, params.get("tools") or [],
-                               int(params.get("max_tokens") or 4000))
+                               int(params.get("max_tokens") or 1500), on_slow=lambda: _tell_slow(op))
     else:
         STATS["sonnet"] += 1
         from .. import usage, glmdoor

@@ -444,13 +444,13 @@ class Settings(BaseSettings):
     pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop
     pc_qwen_thinking: str = "off"           # v0.856 PC SPEED: off by default (it thought before EVERY click); "on" / "" = default
     pc_qwen_provider_sort: str = "latency"  # v0.856 OpenRouter provider.sort for the PC brain: latency | throughput | price | ""
-    pc_max_tokens: int = 4000               # output room per PC step (was 1500: thinking could eat the action)
+    pc_max_tokens: int = 1500               # v0.879 output room per PC step (4000 held too much OpenRouter credit per request; thinking is off)
     pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane
     pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works
     pc_verify: bool = False                  # v0.859 D4: 'done' only after the screen is checked against her ask
     pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
     pc_plan_model: str = "claude-sonnet-5-5"   # v0.859 the planner (one call per PC job)
-    pc_brain_timeout_s: float = 90.0
+    pc_brain_timeout_s: float = 35.0        # v0.879 one PC step waits 35 s for the AI, then says so and tries once more
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
     chat_artifact_direct: bool = True       # parity Phase 6: the chat model writes pages itself (tool `artifact`: create /
                                             # update old->new / rewrite, a version per change, streamed into the panel);

@@ -3682,3 +3682,21 @@ CreditLow ends the task PARTIAL (progress kept, summary says add credit at openr
 warning, never 'failed'. The chat door's non-stream and stream paths do the same and the final error carries the line.
 Tests `test_v0878_credit_hold.py` (5). NOT VERIFIED on her server. If 402s keep coming, the balance itself is low:
 openrouter.ai > Settings > Credits.
+
+
+## v0.879.0 EK KAAM EK BAAR - one call job at a time on her PC (owner: "FIX ALL" on the 13 Nov log review)
+
+From her 00:51-03:03 logs: (1) at 02:32 one call sent its asks into three chats (the v0.657 side records), and all
+three steered the same PC task at once (Amazon / Aadhaar / 'close Aadhaar, open Amazon') while every brain ran
+together - the OpenRouter in-flight credit budget ran out (402s); (2) at 02:59 the PC step after typing the Aadhaar
+number got no answer from the AI for 3.5 minutes with nothing said (90 s timeout x 3 silent tries); (3) every PC step
+held 4000 output tokens of credit.
+
+Fix: (A) `voice.Call._run_conv` - when the call record is busy and `_pc_in_use()` (a PC task of hers running, or her PC
+used in the last 10 min) the new ask waits for the first on the call record (stats `pc_queued`, log 'her PC is in use -
+this ask waits'); with no PC work the side record runs it at once as before. Stop words are still caught before the lock.
+(B) `pc/brain.py think_qwen` - an httpx timeout (`pc_brain_timeout_s` now 35 s) calls `on_slow` once (`_tell_slow`: a
+spoken line on her call + the card) and tries once more; a second timeout raises `BrainSlow` and `operator._run` ends the
+task partial ('the AI did not answer in time, twice ... say continue'). (C) `pc_max_tokens` 1500. Tests
+`test_v0879_one_job.py` (5); the v0851 default pin moved to >= 1500. NOT VERIFIED on her server. If her VPS .env sets
+PC_MAX_TOKENS or PC_BRAIN_TIMEOUT_S, that line wins over the new defaults.

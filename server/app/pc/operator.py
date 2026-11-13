@@ -2729,7 +2729,7 @@ async def _run(op: Op) -> None:
 
             def _params() -> dict:
                 return dict(model=op.brain_model or st.anthropic_model,
-                            max_tokens=int(getattr(st, "pc_max_tokens", 4000) or 4000),
+                            max_tokens=int(getattr(st, "pc_max_tokens", 1500) or 1500),
                             system=system + (NATIVE_NOTE if op.native else ""), tools=_tools_for(op), messages=messages)
             try:
                 resp = await _brain.think(op, client, messages, _params(), _think_retry)
@@ -2957,7 +2957,13 @@ async def _run(op: Op) -> None:
         raise
     except Exception as e:
         from . import brain as _b
-        if isinstance(e, _b.CreditLow) and op.status in ("running", "needs_confirm"):
+        if isinstance(e, _b.BrainSlow) and op.status in ("running", "needs_confirm"):
+            # v0.879 the AI did not answer twice: not finished (said plainly), never 'failed' after a silent hang
+            log.warning("pc task %s stopped: the AI did not answer a step in time (twice)", op.id)
+            op.status, op.reason = "partial", "ai slow (no answer twice)"
+            op.summary = (f"Stopped at step {op.step}: the AI did not answer in time, twice. "
+                          f"Done so far: {len(op.progress)} steps. Say 'continue' to try again.")[:600]
+        elif isinstance(e, _b.CreditLow) and op.status in ("running", "needs_confirm"):
             # v0.878 CREDIT ROKE NAHI: out of OpenRouter credit is not a broken task - what was done stays done,
             # she is told plainly what to do, and the same task can continue once credit is added
             from ..agent import llm as _llm

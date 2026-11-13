@@ -1758,6 +1758,17 @@ def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
     return n
 
 
+def _pc_in_use(tenant: str) -> bool:
+    """v0.879 a PC task of hers is running, or her PC worked for her in the last 10 minutes."""
+    if not tenant:
+        return False
+    try:
+        from .pc import operator as _pcop
+        return bool(_pcop.running_all(tenant)) or _pcop.her_pc_recent(tenant, 600)
+    except Exception:
+        return False
+
+
 class Call:
     CAN_PARK = True   # v0.617 HAMESHA JUDA: this engine can leave Gemini on a quiet call and come back (the other engine: no)
     parked = False    # class defaults: an engine that never parks still answers these
@@ -4273,6 +4284,13 @@ class Call:
         def take(k: str) -> str:
             return k
         if not busy(self.conv):
+            return take(self.conv)
+        if _pc_in_use(getattr(getattr(self, 'ctx', None), 'tenant_id', '')):
+            # v0.879 EK KAAM EK BAAR: while her PC is in use, a second ask waits for the first on the call record -
+            # never a side record that steers the SAME PC task in parallel (her 02:32 call: three chats sent Amazon /
+            # Aadhaar / 'close Aadhaar' into one task at once and every brain ran at the same moment = 402s)
+            self.stats["pc_queued"] = self.stats.get("pc_queued", 0) + 1
+            log.info("call %s: her PC is in use - this ask waits for the one before it", getattr(self, "call_id", ""))
             return take(self.conv)
         sides = getattr(self, "_sides", None)
         if sides is None:
