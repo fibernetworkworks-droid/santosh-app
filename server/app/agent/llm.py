@@ -137,11 +137,25 @@ async def openai_stream(brain: str, system: str, tools: list[dict], messages: li
     return out
 
 
+_LOOP_HTTP: "weakref.WeakKeyDictionary" = None  # type: ignore[assignment]
+
+
 def _client() -> httpx.AsyncClient:
-    global _http
-    if _http is None:
-        _http = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=15))
-    return _http
+    """v0.886 one client PER EVENT LOOP. A single shared client is tied to the loop that first used it; when that was a
+    loop that later closed (a connector call run through asyncio.run in a worker thread), every chat call after it failed
+    with 'Event loop is closed' (her 13 Nov 14:48 turn). set_http() (tests) still wins."""
+    global _LOOP_HTTP
+    if _http is not None:
+        return _http
+    import weakref
+    if _LOOP_HTTP is None:
+        _LOOP_HTTP = weakref.WeakKeyDictionary()
+    loop = asyncio.get_running_loop()
+    c = _LOOP_HTTP.get(loop)
+    if c is None or c.is_closed:
+        c = httpx.AsyncClient(timeout=httpx.Timeout(90, connect=15))
+        _LOOP_HTTP[loop] = c
+    return c
 
 
 def glm_ready() -> bool:

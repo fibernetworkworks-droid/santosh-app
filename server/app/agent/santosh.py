@@ -1018,6 +1018,8 @@ async def _claude_call_once(model: str, system: str, history: list[dict], settin
     history = _ts.fit_refs(history, tools, keep=deferred)   # a reference must resolve, or the whole call 400s
     kw = cache.shape(dict(model=model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
+    if not kw.get("tools"):
+        kw.pop("tools", None)        # v0.886 a call with no tools sends none (an empty list is not 'every tool')
     api = get_client().messages
     if think and THINK["ok"] and _loop_ok(history):
         kw["thinking"] = {"type": "adaptive"}       # v0.232 Claude decides how much to think; thoughts stream to Soch
