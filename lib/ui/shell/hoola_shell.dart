@@ -20,6 +20,7 @@ import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import '../talk/hoola_talk.dart';
 import 'hoola_settings.dart';
+import 'hoola_computer.dart';
 import 'hoola_tabs.dart';
 import '../memory_page_screen.dart';
 import '../today_screen.dart';
@@ -107,6 +108,7 @@ class _HoolaShellState extends State<HoolaShell> {
             ),
             HoolaConnect(app: app, onMore: () => _openOld(BazarScreen(app: app))),
             HoolaMade(app: app),
+            HoolaComputer(app: app),   // v0.890 Hoola Computer: Hoola PC + Your PC, their own chats
           ];
           return Scaffold(
             key: _scaffold,
@@ -233,12 +235,13 @@ class HoolaNav extends StatelessWidget {
     (Icons.work_outline_rounded, Icons.work_rounded, 'Work'),
     (Icons.power_outlined, Icons.power_rounded, 'Connect'),
     (Icons.layers_outlined, Icons.layers_rounded, 'Made'),
+    (Icons.computer_outlined, Icons.computer_rounded, 'Computer'),   // v0.890
   ];
 
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    // R9: the bar grows with the phone's text size (labels capped at 1.6x so four tabs still fit), never overflows
+    // R9: the bar grows with the phone's text size (labels capped at 1.6x so five tabs still fit), never overflows
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.6,
       child: Padding(

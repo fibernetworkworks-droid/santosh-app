@@ -4014,3 +4014,33 @@ Server unchanged (the account stream, /result and per-chat streams already exist
 (drawer spinner / dot / open chat never dotted; drafts kept per chat incl. the phone copy); screen pictures 35/35, design
 rules + tabs / settings / md / fonts / desk kit green; flutter analyze at the baseline 26. NOT VERIFIED on her phone (needs
 the server's CHAT_SESSIONS / CONSOLE_V2 on, which the web console already uses).
+
+## v0.890.0 HOOLA COMPUTER (13 Nov 2026)
+
+Owner: "LETS DEVELOP A SECTION FOR IT NAME HOOLA COMPUTER --- IN THIS 2 SECTION -- HOOLA PC, USER PC --- IF USER ENABLE
+IT -- USER WILL DOWNLOAD .EXE IN USER PC --- STEPS SHOWN IN THAT SECTION AND FOR HOOLA PC --- USER WILL LAND ON ITS
+WORKSPACE DIRECTLY --- IN BOTH SECTION CHAT IS DIFFERENT --- IT WILL NOT MIX WITH HOOLA PERSONAL CHAT, SESSION CHAT ---
+WHERE AS VOICE CALL REMAIN SAME FOR BOTH COMPUTERS -- PREPARE A PLAN FIRST ... SHOW THE DESIGN HERE FIRST" -> a design
+canvas of 8 screens (web home, Hoola PC workspace, Your PC setup, Your PC workspace; phone tab, workspace, setup, call)
+-> "GO". Memory: chats separate, facts shared (one Hoola who knows her).
+
+- Server `server/app/computer.py`: a computer chat = `Conversation(kind="computer", computer="hoola"|"mine")` (new
+  nullable column). `callconv.not_call()` now leaves out kind `computer` as well as `call`, so every chat list / search
+  list / "the chat she is in" (`convs.current`) skips them. `which_of` / `place_of` (cached per conv).
+  `agent/where.remember` returns the fixed place for a computer chat (`hoolapc` / `pc`) and records it as HER choice
+  (`_asked` true), so pick.py, the PC tools and the steer all follow; `where.note` gives the model a computer-chat line
+  (never switch computers by itself; a site refusing Hoola PC = suggest Your PC).
+- Her switch `computer_prefs.mine_on` (default: on when she already has a paired personal PC). Routes:
+  GET /api/computer (both computers: online, devices, last work, and `running` = the task running on that computer for
+  her from ANY chat or call, with `from` call|chat|computer), GET/POST /api/computer/{hoola|mine}/chats (an empty one is
+  reused; Your PC refuses with 409 while the switch is off), PUT /api/computer/mine, POST /api/computer/mine/pair (the
+  existing 6-digit pairing code + the desktop-latest .exe link). Messages ride the normal conversation routes.
+- Web `/console/computer` (`static/console/computer.html/.js/.css`, own sidebar, light + dark): home with the two
+  cards + the one-call strip, Hoola PC workspace straight in (its chats, live screen from /api/browser/<pcop>/frame,
+  Stop, its own chat + attach), Your PC setup (switch, download, code, waits and opens the workspace when the PC
+  connects), Add another PC / Turn off. Console sidebar row "Hoola Computer" first.
+- Phone (new design): 5th tab Computer (`lib/ui/shell/hoola_computer.dart`): cards, setup with Copy link + code,
+  workspace with live screen, chat list sheet, composer. The old-look shell is unchanged.
+- Tests `test_v0890_hoola_computer.py` (5). NOT VERIFIED: on her server / phone (Flutter compiles on CI first); the
+  phone screen has no file attach yet; the voice call keeps its own record (the computer workspace shows the call's
+  running task, the call's words stay in the call record).

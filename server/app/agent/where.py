@@ -194,6 +194,11 @@ def remember(conv: str, text: str) -> str:
     """The place for this message: named now, kept from her last request for a short follow-up, else the place where
     website work is already running in this chat (so a job never jumps to another browser half way)."""
     conv = _k(conv)
+    fixed = _computer_place(conv)
+    if fixed:                         # v0.890 HOOLA COMPUTER: a computer's own chat always works on that computer
+        _PLACE[conv] = (fixed, time.time())
+        _WHY[conv] = "computer"
+        return fixed
     p = place(text)
     now = time.time()
     off = _OFFER.pop(conv, None)
@@ -223,8 +228,19 @@ def remember(conv: str, text: str) -> str:
     return ""
 
 
+def _computer_place(conv: str) -> str:
+    try:
+        from ..computer import place_of
+        return place_of(conv)
+    except Exception:   # noqa: BLE001
+        return ""
+
+
 def current(conv: str) -> str:
     conv = _k(conv)
+    fixed = _computer_place(conv)
+    if fixed:
+        return fixed
     old = _PLACE.get(conv)
     if old and time.time() - old[1] <= KEEP_S:
         return old[0]
@@ -380,6 +396,15 @@ def steer(name: str, args: dict[str, Any], where: str) -> tuple[str, dict[str, A
 
 def note(where: str, conv: str = "") -> str:
     """The line the model gets with her message when a place holds for it."""
+    if conv and _WHY.get(conv) == "computer":   # v0.890 HOOLA COMPUTER
+        if where == "hoolapc":
+            return ("[Jagah: this is the HOOLA PC chat in the Hoola Computer section. Every computer / website task of "
+                    "this chat runs on Hoola PC (hoola_pc_do / pc_task_result) - never her PC (pc_do), never the server "
+                    "browser. If a site refuses Hoola PC (blank page / blocked), say so plainly and suggest 'Your PC' in "
+                    "Hoola Computer; never switch by yourself.]")
+        return ("[Jagah: this is the YOUR PC chat in the Hoola Computer section. Every computer / website task of this "
+                "chat runs on HER own PC (pc_do / pc_task_result) - never Hoola PC (hoola_pc_do), never the server "
+                "browser. If her PC is offline, tell her to open Hoola Desktop on it; never switch by yourself.]")
     if conv and _WHY.get(conv) == "work" and where in ("pc", "hoola", "hoolapc"):
         if where == "pc":
             return ("[Jagah: the website work in this chat is running in Chrome on HER PC. Keep every website step of it there "

@@ -32,8 +32,8 @@ _ORIGIN: dict[str, str] = {}
 
 
 def not_call():
-    """SQL filter: chats only (call records left out)."""
-    return or_(Conversation.kind.is_(None), Conversation.kind != "call")
+    """SQL filter: chats only (call records left out; v0.890 Hoola Computer chats too - they live in their own section)."""
+    return or_(Conversation.kind.is_(None), Conversation.kind.not_in(("call", "computer")))
 
 
 def _load(conv: str) -> None:

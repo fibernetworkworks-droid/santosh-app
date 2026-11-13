@@ -48,6 +48,8 @@ class Conversation(Base):
     call_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     call_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     call_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # v0.890 HOOLA COMPUTER: a chat that belongs to one computer (kind 'computer'): 'hoola' = Hoola PC, 'mine' = her PC
+    computer: Mapped[str | None] = mapped_column(String(12), nullable=True)
 
 
 class Message(Base):
@@ -769,6 +771,7 @@ def init_db(url: str | None = None):
     from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
+    from . import computer as _computer  # noqa: F401  v0.890 HOOLA COMPUTER (her PC switch)
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401
     from .voiceid import models as _voiceid_models  # noqa: F401
