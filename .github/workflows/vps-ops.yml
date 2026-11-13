@@ -17,6 +17,7 @@ on:
           - diagnose
           - logs
           - errors
+          - pclog
           - voicecheck
           - mospi_check
           - architect_check
@@ -171,6 +172,14 @@ jobs:
                 echo "pm2 logs santosh --lines $N --nostream --raw" ;;
               errors)
                 echo "pm2 logs santosh --lines $N --nostream --raw --err" ;;
+              pclog)
+                # v0.885 only the PC lines (task start / steps / end, the pool, Hoola PC proof, repeat jobs) + why the
+                # server restarted - the plain error tail is flooded by research / search lines. Reads only.
+                echo 'L=$HOME/.pm2/logs/santosh-error.log; echo "== PC lines"; tail -n 60000 $L | grep -aE "pc task|pc act|pc brain|pc think|pc rescue|pc step|hoola pc|hoola batch|pc_do|pcop_|pc op|asks her|got her answer" | cut -c1-400 | tail -n '"$N"
+                echo 'echo "== errors / tracebacks near PC work"; tail -n 60000 $L | grep -aE "Traceback|ERROR|Exception" | grep -avE "google_auth|santosh.cal|RESOURCE_EXHAUSTED" | cut -c1-300 | tail -n 40'
+                echo 'echo "== server starts (each = a restart)"; tail -n 60000 $L | grep -aE "Started server process|Shutting down" | tail -n 12'
+                echo 'echo "== pm2 restarts + memory"; pm2 jlist 2>/dev/null | python3 -c "import json,sys; [print(p[\"name\"], \"restarts\", p[\"pm2_env\"].get(\"restart_time\"), \"mem MB\", round(p[\"monit\"][\"memory\"]/1e6)) for p in json.load(sys.stdin)]"'
+                echo 'echo "== kernel out-of-memory kills (last)"; (journalctl -k --since "-6h" 2>/dev/null || dmesg 2>/dev/null) | grep -iE "out of memory|oom-kill|killed process" | tail -n 5' ;;
               mem)
                 # WHY does santosh die every 10-40 min? pm2's own restart log + memory ceiling + kernel OOM
                 echo 'echo "== pm2 describe (max_memory_restart / restarts)"; pm2 describe santosh | grep -Ei "max memory|restart|uptime|pid|status|memory" | head -20'
