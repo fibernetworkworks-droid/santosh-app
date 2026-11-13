@@ -149,6 +149,8 @@ def observe(op: Any, uses: list[dict], results: list[dict], shot: Any) -> str:
         why = "the screen did not change after two actions"
     elif op.err_run >= 2:
         why = "two turns in a row ended in an error"
+    elif int(getattr(op, "aim_repeats", 0) or 0) >= 2:      # v0.876 the same aim again (open the site again...)
+        why = "it kept redoing work that was already done"
     if not why:
         return ""
     if int(getattr(op, "rescues", 0) or 0) >= int(getattr(st, "pc_rescue_max", 4) or 4):
@@ -159,6 +161,7 @@ def observe(op: Any, uses: list[dict], results: list[dict], shot: Any) -> str:
     op.rescues = int(getattr(op, "rescues", 0) or 0) + 1
     op.rescue_left = max(1, int(getattr(st, "pc_rescue_steps", 3) or 3))
     op.sigs, op.shots, op.err_run = [], [], 0
+    op.aim_repeats = 0
     STATS["rescues"] += 1
     log.info("pc rescue %s step %d #%d -> %s for %d steps | %s", getattr(op, "id", "?"), getattr(op, "step", 0), op.rescues,
              route[1], op.rescue_left, why)

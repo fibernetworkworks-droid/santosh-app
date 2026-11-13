@@ -3630,3 +3630,37 @@ Hinglish and "say the reply IN THE CALL'S LANGUAGE (an English reply is never re
 Tests: test_v0876_call_language.py 7; test_v0728 English-call test now sets VOICE_LANGUAGE=en; test_v0630 filler pin moved
 to the Hinglish line. Pre-existing reds (stash-proven, untouched): test_human_voice x4, test_v0728 every_tool_label,
 test_v114 lock, test_v119 x2. NOT VERIFIED on a live call. Back to English calls: VOICE_LANGUAGE=en in the VPS .env.
+
+
+## v0.877.0 PC STEADY — consistent PC work, popups handled, thinking on screen (owner: "NOW LETS WORK ON 2 THINGS FOR DESKTOP WORK 1) WORK CONSITANCY 2) THINKING ON SCREEN" -> diagnosis -> "GO ALL THREE")
+
+Diagnosis (told to her in plain English first): the PC worker sees only the task sentence + the last 2 screenshots and
+keeps no list of what is done, so it restarts work; a replacing task starts from zero; a deep link always opened a new
+tab and "still loading" invited a second open; the stuck detector only knew the exact same action 3 times; popups and
+notifications were left to the model (the browser's own Allow-location bubble is not in page_elements); the address /
+text could be typed into a window that had just taken the front; the model's words each turn were thrown away, so her
+card only said "Soch raha hoon".
+
+Built (NEW `server/app/pc/steady.py`, hooks in `pc/operator.py`, one rule in `pc/rescue.py`):
+1. CONSISTENCY - `record` keeps PROGRESS (what worked, from tool results; failed results and reads never count),
+   `progress_block` rides every screen ("DONE - never redo", the task restated); `aim` (open page / app / typed text /
+   form) - the same aim again gets a NOTE, `aim_repeats >= 2` = stuck -> Sonnet rescue ("it kept redoing work");
+   `already_open`: open_url of a page this task opened while that site is in front is not reopened (new `reload`
+   flag on the tool); `carry_from`: a task that REPLACES a running one starts with its progress + opened pages; her
+   ask_user choice is a progress line.
+2. POPUPS - `screen_note` ("SCREEN UNCHANGED after click ...") when a real action moved nothing; `sweep` (only when
+   the screen did not change or the front changed by itself, plus every 5 steps) names a window that came to the front
+   on its own / new windows / NEW Windows notifications via the existing ax_notifications (DATA, told once, never
+   dismissed by code; a missing helper switches it off for the task); `focus_ok` - a `type` is refused (NOT RUN) when
+   the front window's app is not the one on the screenshot the model saw, unless this turn moved focus on purpose
+   (fast path / opener); `_open_in_named` re-checks the front before typing the address and refocuses once; the prompt
+   (`steady.PROMPT`) makes POPUPS FIRST (Esc / X / Not now / Block / Later; send / pay / delete still ask).
+3. THINKING ON SCREEN - the prompt asks for ONE short line a turn (what it sees, what it does next, Hinglish, <= 20
+   words); `note_thought` keeps it (masked, 160 chars) as op.thought / op.thoughts; it is the console working-row label
+   (`_work`), in the `browser` event + live() + timeline, on the phone's live PC card (`lib/ui/browser_live.dart`, 💭
+   line, C.chip colour), spoken at call milestones (`_speak`), logged `pc think`. `pc task end` logs progress /
+   repeats / popups.
+Tests: test_v0876_pc_steady.py 16 (unit + the real loop with a fake PC: thought kept, progress sent, typing refused
+into a stolen window, an open page not reopened, carry, rescue on repeated aims); PC suites 242+ green; the one red
+(test_v0173 memory window) fails identically before this change. NOT VERIFIED on her real PC; the sweep's
+notification read depends on the agent-desktop helper on her PC.

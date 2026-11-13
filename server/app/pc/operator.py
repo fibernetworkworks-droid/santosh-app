@@ -240,8 +240,10 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
     {"name": "open_url", "description": "Open a website in the browser she named. If that site is ALREADY open in a tab, "
                                          "that tab is used (no new tab; her cart / login stay as they are) - otherwise a "
-                                         "new tab. Only http(s) URLs.",
-     "input_schema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}},
+                                         "new tab. Only http(s) URLs. A page THIS task already opened and still in "
+                                         "front is not opened again (reload=true loads it fresh on purpose).",
+     "input_schema": {"type": "object", "properties": {"url": {"type": "string"},
+                                                       "reload": {"type": "boolean"}}, "required": ["url"]}},
     {"name": "page_text", "description": "Read the exact text of the page open in her browser (labels, prices, table "
                                           "cells, buttons, errors). SLOW on big shopping sites (Swiggy, Amazon: ~10 s) - "
                                           "there use the screenshot or page_elements (1-2 s) and call this only to read "
@@ -597,6 +599,22 @@ class Op:
     sigs: list = field(default_factory=list)    # last turns' action signatures (stuck detector)
     shots: list = field(default_factory=list)   # last screens' hashes
     err_run: int = 0               # turns in a row that ended in an error
+    # v0.876 PC STEADY (steady.py): what really worked, repeats, popups, the model's line for her
+    progress: list = field(default_factory=list)   # [{step, text, n}] done in this task (sent every turn)
+    aims: dict = field(default_factory=dict)       # aim -> step it first worked
+    aim_repeats: int = 0           # the same aim done again (twice = stuck for the rescue)
+    opened_urls: dict = field(default_factory=dict)  # page -> step this task opened it
+    carry: str = ""                # what a replaced task on this PC already did
+    thought: str = ""              # the model's one line of this turn ("Swiggy khul gaya, ab ...")
+    thought_fresh: bool = False
+    thoughts: list = field(default_factory=list)
+    last_hash: str = ""
+    unchanged: int = 0
+    seen_window: str = ""          # the active window on the screenshot the model last saw
+    toasts_seen: set = field(default_factory=set)
+    toasts_off: bool = False
+    swept_at: int = 0
+    popups: int = 0
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -604,7 +622,8 @@ class Op:
                "url": self.window, "title": self.window, "seq": self.frame_seq, "source": "pc",
                "pc": self.device_name, "device_id": self.device_id, "team": self.team,
                "brain": self.brain, "model": self.brain_model, **({"brain_note": self.brain_note} if self.brain_note else {}),
-               "summary": self.summary if self.status not in ("running",) else "", "timeline": self.timeline[-30:]}
+               "summary": self.summary if self.status not in ("running",) else "", "timeline": self.timeline[-30:],
+               "thought": self.thought, "thoughts": self.thoughts[-10:]}
         if self.pending and self.status == "needs_confirm":
             out["pending"] = {"id": self.pending["id"], "label": self.pending["what"]}
         return out
@@ -638,9 +657,11 @@ def _work(op: Op, name: str) -> None:
             _event(op)
             return
         from ..agent import quick
-        quick.note_step(op.conv, f"PC: {op.action[:100]}")
+        said = op.thought if op.thought_fresh and op.thought else op.action   # v0.876 her card reads its own line
+        quick.note_step(op.conv, f"PC: {said[:100]}")
         op._last_work = {"id": f"{op.id}:{op.step}", "tool": "pc_do", "scene": "pc", "phase": "start",
-                         "label": f"PC ({op.step}/{op.steps_max}): {op.action[:110]}", "data": {"step": op.step, "do": name}}
+                         "label": f"PC ({op.step}/{op.steps_max}): {said[:110]}",
+                         "data": {"step": op.step, "do": name, "action": op.action[:120], "thought": op.thought[:200]}}
         bus.publish(op.conv, "work", op._last_work)
         _event(op)   # v0.178 the PC card in the chat updates live on every step
     except Exception:
@@ -657,7 +678,8 @@ def _event(op: Op) -> None:
                                          "place": "hoolapc" if own else "pc",
                                          "task": op.task[:300], "url": op.window, "summary": op.summary[:600],
                                          "step": op.step, "steps_max": op.steps_max, "action": op.action[:200],
-                                         "thinking": op.thinking})   # v0.178 live step + soch state on the card
+                                         "thinking": op.thinking,
+                                         "thought": op.thought[:200]})   # v0.876 the model's own line, live
     except Exception:
         log.exception("pc op event failed")
 
@@ -1409,6 +1431,17 @@ async def _open_in_named(op: "Op", url: str, b: str) -> str:
         await _pc(op, "control", {"op": "key", "keys": "ctrl+t"})   # a NEW tab: her open page stays as it was
         await asyncio.sleep(0.35)
         title = await _front_title(op)
+    if title and not _in_front(title, b):     # v0.876 a popup / notification took the front: never type the address blind
+        win = next((w for w in op.windows if _in_front(w, b)), "")
+        if win:
+            try:
+                await _pc(op, "focus", {"title": win}, timeout=20)
+            except Exception:
+                pass
+            title = await _front_title(op)
+        if not _in_front(title, b):
+            return (f"ERROR: '{title[:80]}' took the front before the address was typed (a popup or notification?). "
+                    f"Look at the next screenshot, close what is in the way, then open the site again in {app}.")
     before = title
     await _pc(op, "control", {"op": "key", "keys": "ctrl+l"})
     await _pc(op, "control", {"op": "type", "text": url}, timeout=30)
@@ -1502,6 +1535,13 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         # v0.858 ALWAYS a new tab in the browser she named / is using (the desktop's own open_url took the first
         # RUNNING browser - background Edge - and REPLACED her open tab with ctrl+l); the desktop path stays only for
         # Hoola's own PC and as the fallback when that browser cannot be opened and she did not name it.
+        if not a.get("reload") and op.opened_urls:   # v0.876 PC STEADY: never re-open what this task already has open
+            from . import steady
+            if steady.norm_url(url) in op.opened_urls:
+                same = steady.already_open(op, url, await _front_title(op))
+                if same:
+                    log.info("pc task %s: open_url %s again - already open, not reopened", op.id, url[:80])
+                    return same
         b = _pick_browser(op) if op.kind != HOOLA_PC_KIND else ""
         if b:
             # v0.862 ALWAYS her browser, never the desktop's own open_url on her PC: that one opens a link in the
@@ -2281,7 +2321,8 @@ def _speak(op: "Op", name: str) -> None:
     op.told_at = now
     try:
         from ..voice import inject
-        _inject(op, f"(PC update - say it in a few natural words only when she is not speaking: «{op.action}».)")
+        said = op.thought if op.thought_fresh and op.thought else op.action   # v0.876 what it sees + does next
+        _inject(op, f"(PC update - say it in a few natural words only when she is not speaking: «{said}».)")
     except Exception:
         pass
 
@@ -2646,6 +2687,8 @@ async def _run(op: Op) -> None:
             system += "\n" + _rescue.PLAYBOOK
     except Exception:
         log.exception("pc playbook failed")
+    from . import steady   # v0.876 PC STEADY: one line for her each turn, progress, popups first
+    system += "\n" + steady.PROMPT
     try:
         from .. import idvault
         ids = idvault.summary_for_model(op.tenant)
@@ -2668,7 +2711,9 @@ async def _run(op: Op) -> None:
         if op.plan:
             op.action = f"Plan: {len(op.plan)} kadam"
             _event(op)
-        head = f"Task: {op.task}" + ("\n\n" + _plan_text(op) if op.plan else "")
+        head = f"Task: {op.task}" + ("\n\n" + _plan_text(op) if op.plan else "") + \
+            ("\n\n" + op.carry if op.carry else "")   # v0.876 a replaced task's work is not redone
+        op.seen_window = op.window
         messages.append({"role": "user", "content": [{"type": "text", "text": head}, *first]})
         deadline = time.time() + op.minutes * 60
         while op.step < op.steps_max and time.time() < deadline and op.status == "running":
@@ -2700,9 +2745,13 @@ async def _run(op: Op) -> None:
                 resp = await _brain.think(op, client, messages, _params(), _think_retry)
             op.thinking = False
             content = resp.content
+            before_title, before_windows = op.seen_window or op.window, list(op.windows)
             messages.append({"role": "assistant", "content": content})
             uses = [b for b in content if b.get("type") == "tool_use"]
             text = " ".join(b.get("text", "") for b in content if b.get("type") == "text").strip()
+            if uses and steady.note_thought(op, text):    # v0.876 THINKING ON SCREEN: its own line, live on her card
+                log.info("pc think %s step %d | %s", op.id, op.step, op.thought[:160])
+                _event(op)
             if not uses:
                 if resp.stop in ("max_tokens", "refusal") or not text:
                     # v0.851 a cut-off or refused step is NOT 'done' (it used to be reported as a finished task)
@@ -2716,6 +2765,7 @@ async def _run(op: Op) -> None:
             finished = False
             moved = ""                      # a screen-changing action already ran in this turn
             opened = ""                     # v0.856 the app an open_app / ax_launch of THIS turn opened
+            focused = False                 # v0.876 this turn already moved the front on purpose (fast path / opener)
             native_ids = {u["id"] for u in uses if u.get("toolset_name") == "computer"}
             for u in uses:
                 name, a = u["name"], u.get("input") or {}
@@ -2736,6 +2786,7 @@ async def _run(op: Op) -> None:
                     # keyboard step of the SAME turn runs once the thing it opened / switched to is really the active
                     # window (checked on fresh screens); otherwise it is held exactly as before. Clicks stay held.
                     moved = ""
+                    focused = True               # the fast path just confirmed the right window is in front
                     STATS["fast_type"] = STATS.get("fast_type", 0) + 1
                 if moved and (name in POINTING or moved in FOCUS_MOVERS):
                     # v0.91.1 never point at (or type into) a screen the model has not seen yet; v0.166 the same for
@@ -2745,10 +2796,25 @@ async def _run(op: Op) -> None:
                                     "content": f"NOT RUN: the screen may have changed after '{moved}'. Look at the new "
                                                "screenshot and send this again only if it is still needed."})
                     continue
+                if name == "type" and not moved and not focused and op.seen_window:
+                    # v0.876 a popup / notification may have taken the keyboard since the screen the model saw
+                    front = await _front_title(op)
+                    if not steady.focus_ok(op.seen_window, front):
+                        STATS["focus_held"] = STATS.get("focus_held", 0) + 1
+                        log.info("pc task %s: typing held - front is '%s', model saw '%s'", op.id, front[:60],
+                                 op.seen_window[:60])
+                        results.append({"type": "tool_result", "tool_use_id": u["id"], "is_error": True,
+                                        "content": f"NOT RUN: the window in front changed to '{front[:80]}' (you saw "
+                                                   f"'{op.seen_window[:60]}') - a popup or notification may have taken "
+                                                   "the keyboard. Look at the new screenshot, close it or focus the "
+                                                   "right window, then type again."})
+                        moved = "screenshot"       # everything after it in this turn waits for a fresh look
+                        continue
                 op.step += 1
                 # v0.178 the card / chat line says what a person would say ("Chrome khol raha hoon"), not tool-speak
                 op.action = _say(name, a)
-                op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time())})
+                op.timeline.append({"step": op.step, "action": op.action, "do": name, "url": op.window, "t": int(time.time()),
+                                    **({"thought": op.thought[:160]} if op.thought_fresh else {})})
                 del op.timeline[:-60]
                 if name in ("open_app", "open_url", "window", "focus_window", "screenshot"):
                     # v0.173 the next task's YAAD needs WHAT was opened, not the model's phrasing
@@ -2784,6 +2850,7 @@ async def _run(op: Op) -> None:
                 if name == "ask_user":
                     t_ask = time.time()
                     msg = await _ask_user(op, a)
+                    steady.record_answer(op, op.answer)  # v0.876 her choice is part of the progress
                     deadline += time.time() - t_ask      # v0.858 her thinking time never ends the task
                     op.step = max(0, op.step - 1)        # and a question is not a step of the budget
                     if op.status == "cancelled":
@@ -2836,6 +2903,12 @@ async def _run(op: Op) -> None:
                          " ERROR" if is_err or msg.startswith("ERROR") else "")
                 if not is_err and not msg.startswith("ERROR"):
                     _speak(op, name)               # v0.858 a live call hears a milestone only once it really happened
+                try:   # v0.876 PC STEADY: what really worked goes on the progress list; a repeated aim gets a note
+                    msg += steady.record(op, name, a, msg)
+                except Exception:
+                    log.exception("pc progress record failed")
+                if name in FOCUS_MOVERS:
+                    focused = True
                 if name in MOVES_SCREEN:
                     moved = name
                     opened = _target_of(name, a) if name in FAST_AFTER and not is_err and \
@@ -2855,6 +2928,15 @@ async def _run(op: Op) -> None:
             prev = results[-1]["content"]
             prev_text = prev if isinstance(prev, str) else " ".join(
                 b.get("text", "") for b in prev if isinstance(b, dict) and b.get("type") == "text")
+            op.seen_window = op.window
+            try:   # v0.876 PC STEADY: nothing moved? something on top? then what is already done
+                did = steady.acted(uses, results)
+                prev_text += steady.screen_note(op, shot, did)
+                prev_text += await steady.sweep(op, _pc, before_windows, before_title, did,
+                                                any(n in FOCUS_MOVERS for n in did))
+                prev_text += steady.progress_block(op)
+            except Exception:
+                log.exception("pc steady check failed")
             try:   # v0.867 PC SASTA: the cheap worker is stuck -> the next steps run on the strong helper (one note)
                 prev_text += _rescue.observe(op, uses, results, shot)
             except Exception:
@@ -2888,8 +2970,10 @@ async def _run(op: Op) -> None:
             memory.remember(op.tenant, op.task, op.mem[-14:], op.status, op.summary, op.window)
         except Exception:
             log.exception("pc memory save failed")
-        log.info("pc task end %s status=%s steps=%d %ds stage=%s/%s asks=%s | %s", op.id, op.status, op.step,
+        log.info("pc task end %s status=%s steps=%d %ds stage=%s/%s asks=%s progress=%d repeats=%d popups=%d | %s",
+                 op.id, op.status, op.step,
                  int(time.time() - op.created), op.stage, len(op.plan or []), "yes" if op.answer else "no",
+                 len(op.progress), op.aim_repeats, op.popups,
                  (op.reason or op.summary or "")[:200])
         op.action = {"done": "Ho gaya", "partial": "Poora nahi hua", "failed": "Ruk gaya", "cancelled": "Aapne rok diya"}.get(op.status, op.action)
         _work(op, "_end")
@@ -3009,8 +3093,18 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
                     old.id, old.step, old.conv, conv, old.task[:120], task.strip()[:120])
         old.status = "cancelled"          # one operator per PC: two agents on one screen would fight for the mouse
         old.task_obj.cancel()
+    carry = ""
+    if old is not None:
+        try:   # v0.876 PC STEADY: the replaced task's work is still on the screen - the new one must know it
+            from . import steady as _sd
+            carry = _sd.carry_from(old)
+        except Exception:
+            carry = ""
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
+    if carry:
+        op.carry = carry
+        op.opened_urls = dict(getattr(old, "opened_urls", {}) or {})
     if ckind != HOOLA_PC_KIND:              # v0.858 the browser SHE named, else the one she named lately, else Chrome
         op.browser, op.browser_src = _browser_for(tenant, op.task)
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step
