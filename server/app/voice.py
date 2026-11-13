@@ -311,6 +311,21 @@ PERSONA_LEAN = PERSONA_LEAN.replace("\n\nWhen to speak\n", "\n\n" + _VOICE_RULES
 
 BRAIN_NOTE = ("[Call: this answer will be SPOKEN on a call. 1-3 short spoken sentences, in clear simple English, no "
               "list / markdown / link / emoji. If there is work to do, do it with the tool, then say it in one line.]")
+BRAIN_NOTE_HI = ("[Call: this answer will be SPOKEN on a call. 1-3 short spoken sentences in spoken Hinglish (Hindi grammar, "
+                 "everyday English words, Roman script) - the call's language, whatever language your other rules say - no "
+                 "list / markdown / link / emoji. If there is work to do, do it with the tool, then say it in one line.]")
+
+
+def brain_note() -> str:
+    """v0.876 EK BHASHA CALL: the note on every call brain ask, in the CALL's language (it said English on a Hinglish
+    call, so the brain answered in English and the voice read it out - English in the middle of a Hinglish call)."""
+    from . import lang as _lang
+    return BRAIN_NOTE if _lang.call_english() else BRAIN_NOTE_HI
+
+
+def _answer_lang() -> str:
+    from . import lang as _lang
+    return "in clear simple English" if _lang.call_english() else "in spoken Hinglish"
 BRAIN_CONTEXT = "(Her memory, her work and all the information are with Hoola's brain (santosh_kaam) - ask it.)"
 
 # v0.630 HAIKU DIMAAG (owner: "SHIFT VOICE BRAIN ON HAIKU -- GEMINI FOR VOICE ONLY"): Gemini Live only HEARS and SPEAKS.
@@ -334,10 +349,10 @@ The one rule
 - Answer YOURSELF, at once, anything that needs no tool and none of her data: talk, greetings, general knowledge, explaining, advice, maths, translation, and follow-ups on what was just said on this call.
 - Call santosh_kaam with her EXACT words, in her language, for anything that needs a tool, her data or live information: email, reminders, calendar, messages, files, search, news, prices, weather, payments, bookings, her memory or past chats, any job.
 - HER PC: Hoola CAN work on her own computer (Santosh Desktop) - open apps, open Chrome / any browser, websites, order food, type, Excel, Tally, settings. "Mere PC pe ...", "laptop pe ...", "Chrome kholo ..." = santosh_kaam with her exact words. NEVER say you cannot access or control her PC; only santosh_kaam's reply can say her PC is off. Pass her words as she said them ("mere PC"), never turn them into "aapke PC". Never guess a fact about her, a time, a number or a result, and never say a thing is done before santosh_kaam says so.
-- While santosh_kaam works: say ONE short line ("one second, checking") and then stay silent. When its reply comes, say it in your natural voice, the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
+- While santosh_kaam works: say ONE short line in the call's language ("ek second, dekh raha hoon") and then stay silent. When its reply comes, say it in your natural voice, IN THE CALL'S LANGUAGE (an English reply is never read out in English), the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
 - If it says the work is still running, say one short line that it is being done and carry on; when a note arrives with the result, say it in a line or two.
 - Notes in brackets from the system are for you: say what they ask, briefly. Never read a bracket aloud.
-- Her mood: if she sounds upset, worried or rushed ("I told you three times", "it still isn't done", "hurry"), first own it in a few plain words ("Fair enough, it is late"), then be quick and concrete. Sad or worried: slower and gentle. Never cheerful over her frustration.
+- Her mood: if she sounds upset, worried or rushed ("I told you three times", "it still isn't done", "hurry"), first own it in a few plain words ("haan, der ho gayi"), then be quick and concrete. Sad or worried: slower and gentle. Never cheerful over her frustration.
 - Stopping or cancelling work ("stop", "cancel it", "roko", "band karo", "rehne do") ALWAYS goes to santosh_kaam with her exact words. Never say a job is cancelled yourself; say only what santosh_kaam's reply says was stopped.
 - A note saying a card's answer came ("Card ka jawab mil gaya" / card answered) means she already tapped it: never ask her to tap, approve or send that card again.
 
@@ -785,8 +800,8 @@ def persona_prompt(name: str = "Santosh", gender: str = "m") -> str:
         # her example lines use her own verb forms ("kar deti hoon", "dekhti hoon")
         p = "\n".join(ln if ln.startswith(("User: ", "- You are female")) else gendered(ln, "f") for ln in p.split("\n"))
     from . import lang as _lang   # v0.728 SAB ENGLISH: the call speaks simple Indian English
-    if _lang.english():
-        p = re.sub(r"- Spoken Hinglish the way people really talk:[^\n]*",
+    if _lang.call_english():   # v0.876 one rule for every persona (full / lean / brain), never half English
+        p = re.sub(r"- Spoken Hinglish (?:the way people really talk:|as people really talk)[^\n]*",
                    "- Speak simple, warm Indian English in short sentences, whatever language she speaks in; switch only "
                    "when she clearly asks you to speak another language. Your language is fixed by the LANGUAGE LOCK at "
                    "the top and the end; it changes only when a 'Language note' says so.", p, count=1)
@@ -856,7 +871,7 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     tz = life.tz_of(st.tenant_id)
     from . import lang as _lang   # v0.728 SAB ENGLISH: the call speaks Indian English when Hoola is set to English
     lang = _lang.call_lang(lang)
-    if _lang.english():
+    if _lang.call_english():
         langst = voicelang.LangState(lang)
     langst = langst or voicelang.LangState(lang)
     prompt = persona_prompt(name, gender).format(lang=langst.name, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
@@ -3071,7 +3086,7 @@ class Call:
         after, self._after_release = self._after_release, []
         if name_prompt and user and not reply and not interrupted:
             # v0.142 she called Hoola back with a question while it was told to stay quiet: it answers now
-            self.push("text", f"(She said it by taking your name: \"{user[-400:]}\". Now answer her briefly, in clear simple English.)")
+            self.push("text", f"(She said it by taking your name: \"{user[-400:]}\". Now answer her briefly, {_answer_lang()}.)")
         for t in after:
             self.push("text", t)
         if self._otp_said:                     # the OTP she said never lands in the chat history
@@ -3216,7 +3231,7 @@ class Call:
         # v0.441 PAKKA KAAM: the job is saved in the durable turn inbox BEFORE it starts (like a chat message), so a
         # server restart / deploy / crash mid-job re-runs it once by itself (turn_inbox.sweep) instead of losing it.
         brain = bool(get_settings().voice_brain)
-        note = BRAIN_NOTE if brain else ""
+        note = brain_note() if brain else ""
         run_conv = self.conv
         if brain:
             try:

@@ -322,7 +322,7 @@ class PhonicCall(_PerMinute):
     def _langs(self) -> tuple[str, list[str]]:
         from . import lang as _lang
         mine = (self.lang or "en").split("-")[0].lower()
-        if _lang.english():
+        if _lang.call_english():
             return "en", [x for x in {mine, "hi"} if x != "en" and x in PHONIC_LANGS]
         first = mine if mine in PHONIC_LANGS else "en"
         return first, ["en"] if first != "en" else ["hi"]

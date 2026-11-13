@@ -3607,3 +3607,26 @@ Her OpenRouter activity for 13 Nov: Claude Sonnet 5.5 $2.36, Qwen3.8 27B $0.132.
 - `agent/pc_manager.py` RULES: one ask = one pc_do task, never tiny tasks.
 - Tests `test_v0875_pc_manager_cost.py` (5); test_v0866 / test_v0874 pins moved to the Qwen manager.
 NOT VERIFIED: Qwen 27B as the manager on her server (tool choice, task writing); the cache saving is OpenRouter's, not measured here.
+
+
+## v0.876.0 EK BHASHA CALL — one language on a voice call (owner: "voice call is talking in english inbetween find root cause", then picked "Hinglish on calls")
+
+ROOT CAUSE, five pieces of one mistake (two opposite language rules on the same call):
+1. The language lock (top + end of the Gemini prompt) said English since v0.728 SAB ENGLISH (`lang.call_lang` -> en-IN).
+2. The call script in use kept "Spoken Hinglish ... match her mix": the v0.728 swap regex matched only the long PERSONA's
+   line ("the way people really talk:"), not PERSONA_LEAN's or PERSONA_BRAIN's ("as people really talk") - and the live
+   server runs PERSONA_BRAIN (voice_brain on).
+3. BRAIN_NOTE, attached to every call-brain ask, said "in clear simple English", and the brain's system prompt had the
+   English rule, so santosh_kaam answered in English and the voice read it out word for word.
+4. The filler / mood examples in PERSONA_BRAIN were English ("one second, checking", "Fair enough, it is late").
+5. The web console always opens a call with lang=en-IN (v2.js), the phone sends its app language.
+
+FIX: `voice_language` setting ("hinglish" default, "en" = English calls like v0.728). `lang.call_english()` decides the
+lock (`call_lang`: an en-IN / blank ask = the app's language, not hers -> hi-IN), every persona swap (one regex for all
+three scripts), the Phonic engine's languages, the call-brain note (`voice.brain_note()` -> BRAIN_NOTE_HI), the
+"answer her briefly" note, and `lang.apply` / `lang.quick` leave the brain's own "reply in the user's language" rule on a
+call turn (`lang.on_call()` = turnchannel CALL, i.e. VOICE_BRAIN_NOW or a call's ticket). PERSONA_BRAIN fillers in
+Hinglish and "say the reply IN THE CALL'S LANGUAGE (an English reply is never read out in English)". Chat stays English.
+Tests: test_v0876_call_language.py 7; test_v0728 English-call test now sets VOICE_LANGUAGE=en; test_v0630 filler pin moved
+to the Hinglish line. Pre-existing reds (stash-proven, untouched): test_human_voice x4, test_v0728 every_tool_label,
+test_v114 lock, test_v119 x2. NOT VERIFIED on a live call. Back to English calls: VOICE_LANGUAGE=en in the VPS .env.

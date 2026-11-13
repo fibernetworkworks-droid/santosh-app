@@ -59,7 +59,10 @@ def test_label_follows_the_setting(en, monkeypatch):
     assert lang.label("list_lead_lists") == "Contact lists dekh raha hoon"
 
 
-def test_a_call_is_locked_to_indian_english(en):
+def test_a_call_is_locked_to_indian_english(en, monkeypatch):
+    monkeypatch.setenv("VOICE_LANGUAGE", "en")      # v0.876: calls speak Hinglish unless VOICE_LANGUAGE=en
+    from app.config import get_settings
+    get_settings.cache_clear()
     from app import lang
     from app.voice import persona_prompt
     assert lang.call_lang("hi-IN") == "en-IN"
