@@ -3887,3 +3887,30 @@ Older red unchanged: test_v0173 finished_task (fails on the commit before too).
 
 NOT VERIFIED: nothing has run on her VPS yet (needs vps-ops deploy + pc_deploy); a second real user has not used a Hoola PC;
 encrypting a big Chrome profile takes seconds on each switch between users (not measured on her server).
+
+
+## v0.886.0 EK RANG - the logo in one solid colour (built as 0.874; their PC POOL / CHROME SAAF line took 0.874-0.885, both kept)
+
+Owner, 13 Nov 2026, with her logo: "THIS IS A APP LOGO -- CURRENTLY LOOKS STALE AND AI MAKE -- DO PERFECT LOGO WORK WITH
+GOOD BACKGROUND AND A ICON IS PROPERLY FILED WITH PERFECT ONE COLOUR".
+
+The logo is ONE vector drawing (`server/app/static/console/mark.js`) that every surface is built from, so it was redrawn
+there: same idea (a core, a needle through it, two pairs of orbit arcs), now one solid colour - no gradients, no gloss
+ridges, no core highlight, no blur. Geometry: the core at the exact centre (was 49.4 / 50.2 from the artwork), the needle
+a true 45 degree diagonal (3 wide each side at the core), the arcs full-bodied (widest 7.0 / 5.6 of 100, was 4.4 / 3.1)
+easing to rounded semicircle tips (the first pass had small hooks at the tips, seen by eye and fixed), every gap centred
+on the needle and the lower pair the 180 degree turn of the upper. `svg({color})` / `svg({mono})`; default fill follows
+the console theme through `--acc-rgb` (light #5B45E0, dark #9C88FF).
+
+Colour + background: Hoola violet #5B45E0 = the redesign's one accent (`lib/ui/hoola_theme.dart`). App icon = the WHITE
+mark on a solid violet tile: `tool/make_mark.js` now draws the master (mark 82% of the square) AND the Android adaptive
+foreground (white mark alone, needle tips at 0.33 of the canvas = inside the launcher's circle) directly - the old
+alpha-from-navy derivation in `tool/make_logo.py` is gone; it now checks both sources and builds the web sizes.
+`pubspec.yaml` adaptive background #090F32 -> #5B45E0. The console's light mark (`static/hoola-mark.png`) is the violet
+mark on transparent; the phone's thinking-mark layers are white and `lib/ui/hoola_mark.dart` tints them (theme violet,
+or a `color` the caller passes), alignment now the centre; v2.css transform-origin 50% 50%. The status-bar silhouette is
+regenerated from the new shapes. The thinking animation is unchanged (same four parts).
+
+Tests: test_v0462_logo (adaptive background pin -> violet), v0716 incl. the browser walk, v0720 green; flutter analyze
+unchanged (26). NOT VERIFIED: on a real phone launcher / home screen (checked in a rendered preview of circle / squircle /
+rounded-square masks and 16-96 px sizes).

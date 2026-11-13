@@ -1,4 +1,4 @@
-version: 0.885.0+884
+version: 0.886.0+885
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
@@ -41,13 +41,13 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
-  # v0.461 the owner's own logo. The adaptive foreground is the glow alone on transparent, scaled
-  # into the safe zone, and the navy is the background colour - an adaptive icon is masked to a
-  # circle at ~66%, so the full square would lose its outer orbit rings.
+  # v0.461 the owner's own logo; v0.874 EK RANG: one solid colour - the white mark on Hoola violet.
+  # The adaptive foreground is the white mark alone on transparent, inside the safe zone, and the
+  # violet is the background colour - an adaptive icon is masked to a circle at ~66%.
   android: true
   ios: false
   image_path: assets/images/hoola_logo.png
-  adaptive_icon_background: "#090F32"
+  adaptive_icon_background: "#5B45E0"
   adaptive_icon_foreground: assets/images/hoola_logo_fg.png
   min_sdk_android: 23
 

@@ -1,8 +1,10 @@
 // v0.716 NAYA ROOP: render the Hoola mark (server/app/static/console/mark.js, the ONE drawing) into the files that
-// cannot be SVG:
-//   assets/images/hoola_logo.png         1024 master on the logo's navy  -> tool/make_logo.py builds every size from it
+// cannot be SVG. v0.874 EK RANG: one solid colour - the app icon is the mark in WHITE on a Hoola violet tile (#5B45E0).
+//   assets/images/hoola_logo.png         1024 master: white mark on the violet tile -> tool/make_logo.py builds every size from it
+//   assets/images/hoola_logo_fg.png      1024 Android adaptive foreground: the white mark alone, inside the 66% safe circle
 //   server/app/static/hoola-mark.png      the LIGHT mark on transparent (console sidebar + sign-in, v0.720)
-//   assets/images/mark_{outer,inner,needle,core}.png   the four layers the phone's thinking mark animates
+//   assets/images/mark_{outer,inner,needle,core}.png   the four layers the phone's thinking mark animates (white; the
+//                                                      phone tints them with the theme's violet, lib/ui/hoola_mark.dart)
 //   tool/android/res/drawable/ic_stat_santosh.xml      the status-bar silhouette (Android keeps only the shape)
 // usage: node tool/make_mark.js   (from the repo root; uses the preinstalled Playwright Chromium)
 'use strict';
@@ -28,15 +30,19 @@ const MARK = fs.readFileSync(path.join(ROOT, 'server/app/static/console/mark.js'
     await p.locator('#x').screenshot({path: path.join(ROOT, file), omitBackground: bg === 'transparent'});
     console.log(file);
   };
-  // the master: the mark at 84% of the navy square
-  const full = await p.evaluate(() => HoolaMark.svg());
-  await shot(`<div style="box-sizing:border-box;padding:8%;width:100%;height:100%">${full}</div>`, '#090F32', 'assets/images/hoola_logo.png');
-  // v0.720 the LIGHT mark: the same drawing on transparent, no navy square, no ring - the console's sidebar / sign-in logo
-  await shot(`<div style="box-sizing:border-box;padding:2%;width:100%;height:100%">${full}</div>`, 'transparent', 'server/app/static/hoola-mark.png');
+  const VIOLET = await p.evaluate(() => HoolaMark.violet);
+  const white = await p.evaluate(() => HoolaMark.svg({color: '#FFFFFF'}));
+  const violet = await p.evaluate(() => HoolaMark.svg({color: HoolaMark.violet}));
+  // the master: the white mark on the violet tile, its needle tips at ~62% of the square
+  await shot(`<div style="box-sizing:border-box;padding:9%;width:100%;height:100%">${white}</div>`, VIOLET, 'assets/images/hoola_logo.png');
+  // the adaptive foreground: a launcher masks to a circle of ~66%, so the whole mark (needle tips included) sits inside it (needle tips at 0.33 of the canvas, the mask edge)
+  await shot(`<div style="box-sizing:border-box;padding:19%;width:100%;height:100%">${white}</div>`, 'transparent', 'assets/images/hoola_logo_fg.png');
+  // v0.720 the LIGHT mark: the violet mark on transparent, no tile, no ring - the console's sidebar / sign-in logo
+  await p.setViewportSize({width: 256, height: 256});
+  await p.evaluate(() => { const x = document.getElementById('x'); x.style.width = '256px'; x.style.height = '256px'; });
+  await shot(`<div style="box-sizing:border-box;padding:2%;width:100%;height:100%">${violet}</div>`, 'transparent', 'server/app/static/hoola-mark.png');
   for (const [k, parts] of [['outer', 'o'], ['inner', 'i'], ['needle', 'n'], ['core', 'c']]) {
-    const s = await p.evaluate(pp => HoolaMark.svg({parts: pp}), parts);
-    await p.setViewportSize({width: 256, height: 256});
-    await p.evaluate(() => { const x = document.getElementById('x'); x.style.width = '256px'; x.style.height = '256px'; });
+    const s = await p.evaluate(pp => HoolaMark.svg({parts: pp, color: '#FFFFFF'}), parts);
     await shot(s, 'transparent', `assets/images/mark_${k}.png`);
   }
   // the status-bar silhouette: same shapes, white, viewport 0..100 drawn in 24dp

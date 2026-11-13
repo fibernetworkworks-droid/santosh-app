@@ -208,5 +208,5 @@ def test_connectors_page_in_a_real_browser(arena_server):  # noqa: F811
 # ---------------------------------------------------------------- the version
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.885.0"
-    assert "0.885.0+884" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.886.0"
+    assert "0.886.0+885" in (ROOT / "pubspec.yaml").read_text()

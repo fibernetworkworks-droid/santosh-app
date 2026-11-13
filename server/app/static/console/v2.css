@@ -3116,7 +3116,7 @@ body.albon{overflow:hidden}
 .hm3{position:relative;display:inline-block;width:var(--s);height:var(--s);perspective:calc(var(--s) * 4);flex:none;vertical-align:middle}
 .hm3 svg{width:100%;height:100%;display:block;overflow:visible}
 .hm3 .hm3-tilt,.hm3 .hm3-turn,.hm3 .hm3-ly,.hm3 .hm3-spin,.hm3 .hm3-sig{position:absolute;inset:0;transform-style:preserve-3d}
-.hm3 .hm3-spin,.hm3 .hm3-sig,.hm3 .hm3-turn{transform-origin:49.4% 50.2%}
+.hm3 .hm3-spin,.hm3 .hm3-sig,.hm3 .hm3-turn{transform-origin:50% 50%}
 .hm3 .hm3-tilt{animation:hmTilt 6s ease-in-out infinite}
 @keyframes hmTilt{0%,100%{transform:rotateX(16deg) rotateY(-18deg)}50%{transform:rotateX(-12deg) rotateY(20deg)}}
 .hm3 .hm3-turn{animation:hmTurn 6s cubic-bezier(.7,0,.3,1) infinite}

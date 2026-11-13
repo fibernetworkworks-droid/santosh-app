@@ -4,15 +4,18 @@
 //   T3 the whole mark tilts in 3D, turns half way and rests;
 //   T1 the outer and inner arcs orbit in opposite directions;
 //   T2 the arcs breathe outward one after the other while the core floats in front and pulses.
+// v0.874 EK RANG: the mark is ONE solid colour - the layers are white shapes tinted here with Hoola violet
+// (#5B45E0 light, #9C88FF dark, the redesign's accent), or the colour a caller passes.
 // With the system's "remove animations" setting on, it is the still mark.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 class HoolaMark extends StatefulWidget {
-  const HoolaMark({super.key, this.size = 22, this.animate = true});
+  const HoolaMark({super.key, this.size = 22, this.animate = true, this.color});
   final double size;
   final bool animate;
+  final Color? color;
   @override
   State<HoolaMark> createState() => _HoolaMarkState();
 }
@@ -49,17 +52,22 @@ class _HoolaMarkState extends State<HoolaMark> with SingleTickerProviderStateMix
     return 2 * math.pi;
   }
 
-  Widget _layer(String name, {double angle = 0, double scale = 1, double opacity = 1, double z = 0}) {
+  Color _tint(BuildContext context) =>
+      widget.color ??
+      (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF9C88FF) : const Color(0xFF5B45E0));
+
+  Widget _layer(String name, Color tint, {double angle = 0, double scale = 1, double opacity = 1, double z = 0}) {
     final s = widget.size;
     return Transform(
-      alignment: const Alignment(-.012, .004),          // the core sits at 49.4 / 50.2 of the drawing
+      alignment: Alignment.center,                       // v0.874: the core sits at the exact centre
       transform: Matrix4.identity()
         ..translate(0.0, 0.0, z * s)
         ..rotateZ(angle)
         ..scale(scale, scale),
       child: Opacity(
         opacity: opacity.clamp(0.0, 1.0),
-        child: Image.asset('assets/images/mark_$name.png', width: s, height: s, filterQuality: FilterQuality.medium),
+        child: Image.asset('assets/images/mark_$name.png',
+            width: s, height: s, color: tint, colorBlendMode: BlendMode.srcIn, filterQuality: FilterQuality.medium),
       ),
     );
   }
@@ -67,6 +75,7 @@ class _HoolaMarkState extends State<HoolaMark> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final s = widget.size;
+    final tint = _tint(context);
     return SizedBox(
       width: s,
       height: s,
@@ -91,10 +100,10 @@ class _HoolaMarkState extends State<HoolaMark> with SingleTickerProviderStateMix
             alignment: Alignment.center,
             transform: tilt,
             child: Stack(children: [
-              _layer('outer', angle: turn + orbO, scale: .94 + .12 * bo, opacity: .6 + .4 * bo, z: -.08),
-              _layer('inner', angle: turn + orbI, scale: .94 + .12 * bi, opacity: .6 + .4 * bi, z: -.02),
-              _layer('needle', angle: turn, z: .05),
-              _layer('core', scale: core, z: .14),
+              _layer('outer', tint, angle: turn + orbO, scale: .94 + .12 * bo, opacity: .6 + .4 * bo, z: -.08),
+              _layer('inner', tint, angle: turn + orbI, scale: .94 + .12 * bi, opacity: .6 + .4 * bi, z: -.02),
+              _layer('needle', tint, angle: turn, z: .05),
+              _layer('core', tint, scale: core, z: .14),
             ]),
           );
         },
