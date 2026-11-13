@@ -4,7 +4,7 @@ FROM python:3.12-slim
 
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         xvfb scrot xdotool wmctrl openbox dbus-x11 x11-utils chromium fonts-indic fonts-noto-core \
-        procps curl ca-certificates gnupg at-spi2-core libatk-adaptor \
+        procps curl ca-certificates gnupg at-spi2-core libatk-adaptor tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # v1.2.0 Google Chrome stable (the real thing: H.264/AAC/MP3 codecs + Widevine, the exact
@@ -45,6 +45,8 @@ COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
 ENV DISPLAY=:1
+# v0.884 CHROME SAAF: an Indian computer - India time for every app (Chrome date fields, file times, logs)
+ENV TZ=Asia/Kolkata
 # /data holds: identity.json (pairing), chrome/ (profile - logged-in sessions survive),
 # Downloads/, installed.log. A volume keeps all of it across restarts.
 VOLUME ["/data"]

@@ -293,4 +293,4 @@ def test_prompt_and_vps_ops_team_shapes():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.883.0"
+    assert APP_VERSION == "0.884.0"

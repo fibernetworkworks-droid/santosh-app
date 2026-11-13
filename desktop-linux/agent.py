@@ -29,6 +29,7 @@ import io
 import json
 import os
 import platform
+import re
 import subprocess
 import threading
 import time
@@ -42,11 +43,33 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.4.0"   # v0.842 exact mode (agent-desktop over AT-SPI) on Hoola's own PC
+VERSION = "1.5.0"   # v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
 SHOT_DIR = Path("/tmp")
+
+# v0.884 CHROME SAAF (owner: "ON HOOLA PC CHROME NOT OPEN ALL WEBSITE CLEANLY IT STOPS IN BETWEEN"): her 13 Nov check -
+# the server is in India (Bengaluru) but the browser ran on UTC with no language (sites saw a foreign browser, date
+# fields off by 5.5 h), Chrome blocked portal pop-ups and asked about downloads, every open_url made a NEW tab that was
+# never closed, and a page got 12 s. Government / legacy portals need all of it the other way round.
+TZ_NAME = os.environ.get("TZ") or "Asia/Kolkata"
+LANG = "en-IN"
+ACCEPT_LANG = "en-IN,en-US;q=0.9,en;q=0.8,hi;q=0.7"
+TAB_CAP = 6                       # open tabs kept; older ones are closed (memory)
+OPEN_WAIT = 30                    # seconds a page gets by default (max 60)
+POLICY = {   # Chrome enterprise policy (Hoola's own VM): what portals need, nothing that reaches her
+    "DefaultPopupsSetting": 1,                 # portals open login / payment / print pages as pop-ups
+    "PromptForDownloadLocation": False,
+    "DownloadDirectory": str(DOWNLOADS),
+    "DefaultNotificationsSetting": 2,          # no 'allow notifications?' bubble over the page
+    "DefaultGeolocationSetting": 2,            # no 'know your location?' bubble either
+    "PasswordManagerEnabled": False,           # Hoola never keeps passwords
+    "TranslateEnabled": False,                 # no translate bar over Hindi / Marathi pages
+    "BackgroundModeEnabled": False,
+    "MetricsReportingEnabled": False,
+}
+POLICY_DIRS = ("/etc/opt/chrome/policies/managed", "/etc/chromium/policies/managed")
 
 for _d in (DATA, DOWNLOADS, PROFILE):
     _d.mkdir(parents=True, exist_ok=True)
@@ -125,19 +148,23 @@ def _browser_exe() -> str:
 def _chrome_up() -> None:
     global _chrome
     with _chrome_lock:
-        if _chrome is not None and _chrome.poll() is None:
-            try:
-                httpx.get(CDP + "/json/version", timeout=2)
-                return
-            except Exception:
-                pass
+        try:   # v0.884 a Chrome already answering (started by this agent or by a 'check' run) is used as it is
+            httpx.get(CDP + "/json/version", timeout=2)
+            return
+        except Exception:
+            pass
+        _write_policy()
         # --no-sandbox: the container runs as root - Chrome refuses to start without it
         # (Debian's chromium wrapper adds it silently for root, Google Chrome does not).
         flags = ["--remote-debugging-port=9222", f"--user-data-dir={PROFILE}", "--no-first-run",
                  "--no-default-browser-check", "--disable-session-crashed-bubble", "--start-maximized",
                  "--window-position=0,0", "--window-size=1280,760", "--disable-dev-shm-usage",
                  "--disable-crash-reporter", "--force-device-scale-factor=1", "--password-store=basic",
-                 "--no-sandbox"]
+                 "--no-sandbox",
+                 # v0.884 an Indian browser, and work never slowed in a tab that is not in front
+                 f"--lang={LANG}", f"--accept-lang={ACCEPT_LANG}", "--disable-popup-blocking",
+                 "--disable-background-timer-throttling", "--disable-renderer-backgrounding",
+                 "--disable-backgrounding-occluded-windows"]
         exe = _browser_exe()
         # v1.3.1: a recreated container has a NEW hostname, but the volume's profile carries the OLD
         # container's SingletonLock - Chrome refuses to boot on it ("The profile appears to be in use
@@ -152,7 +179,8 @@ def _chrome_up() -> None:
                 pass
         # stderr to a file, not DEVNULL (v1.3.0 lesson: a chrome that will not boot was INVISIBLE -
         # the selftest could only say 'CDP ready nahi hua'; now the real error is in /tmp/chrome_err.log)
-        _chrome = subprocess.Popen([exe, *flags], env={**os.environ, "DISPLAY": DISPLAY},
+        _chrome = subprocess.Popen([exe, *flags], env={**os.environ, "DISPLAY": DISPLAY, "TZ": TZ_NAME,
+                                                         "LANGUAGE": "en_IN:en"},
                                    stdout=subprocess.DEVNULL,
                                    stderr=open("/tmp/chrome_err.log", "ab"))
     for _ in range(90):          # up to ~45s for first paint (real Chrome on a big profile is slower
@@ -198,6 +226,132 @@ def _cdp_eval(t: dict[str, Any], expr: str, timeout: float = 15) -> Any:
         return None
 
     return asyncio.run(go())
+
+
+def _write_policy() -> None:
+    """v0.884 Chrome's own policy file (pop-ups allowed, downloads straight into /data/Downloads, no bubbles).
+    Read by Chrome when it starts; a failure only means the old behaviour."""
+    for d in POLICY_DIRS:
+        try:
+            Path(d).mkdir(parents=True, exist_ok=True)
+            (Path(d) / "hoola.json").write_text(json.dumps(POLICY, indent=1))
+        except OSError:
+            pass
+
+
+def _cdp_call(ws_url: str, method: str, params: dict[str, Any] | None = None, timeout: float = 15) -> Any:
+    """One CDP command on a page; returns its result (or raises ActionError)."""
+    import websockets
+
+    async def go() -> Any:
+        async with websockets.connect(ws_url, max_size=16 * 1024 * 1024, open_timeout=10) as ws:
+            await ws.send(json.dumps({"id": 1, "method": method, "params": params or {}}))
+            end = time.time() + timeout
+            while time.time() < end:
+                msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=max(1, end - time.time())))
+                if msg.get("id") == 1:
+                    if "error" in msg:
+                        raise ActionError(f"{method}: {msg['error'].get('message', '')}"[:200])
+                    return msg.get("result")
+        raise ActionError(f"{method}: no answer in {int(timeout)}s")
+
+    return asyncio.run(go())
+
+
+def _host(url: str) -> str:
+    from urllib.parse import urlparse
+    try:
+        h = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return ""
+    return h[4:] if h.startswith("www.") else h
+
+
+_ERR = re.compile(r"\b(?:NET::)?ERR_[A-Z_]+\b")
+_CERT = re.compile(r"NET::ERR_CERT|ERR_CERT_|ERR_SSL_|privacy error|connection is not private", re.I)
+_BLOCK = re.compile(r"access denied|you don.t have permission to access|request blocked|request rejected|"
+                    r"error 1020|\bforbidden\b|not authorized to access", re.I)
+_BOTCHECK = re.compile(r"just a moment|checking your browser|attention required|verify you are human|"
+                       r"are you a robot|ddos protection", re.I)
+_CRASH = re.compile(r"aw, snap|he's dead, jim|status_access_violation|sbox_fatal", re.I)
+
+STATE_JS = ("(() => ({ready: document.readyState, href: location.href, title: document.title, "
+            "text: (document.body ? document.body.innerText : '').slice(0, 1500)}))()")
+
+
+def _state(t: dict[str, Any] | None) -> dict[str, Any]:
+    if t is None:
+        return {"error": "gone"}
+    try:
+        v = _cdp_eval(t, STATE_JS, timeout=6)
+        return v if isinstance(v, dict) else {"error": "empty"}
+    except Exception as e:
+        return {"error": type(e).__name__}
+
+
+def classify(st: dict[str, Any]) -> str:
+    """'' = the page is fine; else one word for what stopped it (pure, tested): certificate / net:<ERR_...> /
+    blocked / bot_check / crashed / no_answer / slow."""
+    if not st or st.get("error"):
+        return "no_answer"
+    href = str(st.get("href") or "")
+    title = str(st.get("title") or "")
+    text = str(st.get("text") or "")
+    both = title + "\n" + text
+    if href.startswith("chrome-error://"):
+        if _CERT.search(both):
+            return "certificate"
+        m = _ERR.search(both)
+        return "net:" + (m.group(0).replace("NET::", "") if m else "ERR_FAILED")
+    if _CRASH.search(both[:600]):
+        return "crashed"
+    if _BOTCHECK.search(title) or (len(text) < 400 and _BOTCHECK.search(text)):
+        return "bot_check"
+    if _BLOCK.search(title) or (len(text) < 600 and _BLOCK.search(text)):
+        return "blocked"
+    if st.get("ready") != "complete":
+        return "slow"
+    return ""
+
+
+HINTS = {
+    "certificate": "The site's security certificate is broken or expired, so Chrome stopped on its warning page. "
+                   "Hoola does not click past security warnings: tell her plainly (old government portals often "
+                   "have this) and offer to do it on HER PC (pc_do), where she decides.",
+    "blocked": "The site REFUSES this cloud computer's internet address (some government / bank sites block cloud "
+               "servers). Retrying will not help. Tell her plainly and offer to do it on HER PC (pc_do) instead.",
+    "bot_check": "A 'checking your browser' page is showing. Take a screenshot; if it wants a tick / puzzle, ask her "
+                 "(ask_user). Do not open the site again.",
+    "crashed": "The tab crashed; it was reloaded once. If it is still blank, take a screenshot and open the page again.",
+    "no_answer": "The tab did not answer. Take a screenshot to see what is on screen.",
+    "slow": "The page is still loading. Use wait_for with a word you expect on it, or take a screenshot - do NOT open "
+            "it again (that restarts the load).",
+}
+
+
+def hint_for(problem: str) -> str:
+    if problem.startswith("net:"):
+        return (f"The site did not open ({problem[4:]}), tried twice. It may be down right now or it blocks cloud "
+                "servers. Tell her plainly and offer to do it on HER PC (pc_do) or later. Do not keep retrying.")
+    return HINTS.get(problem, "")
+
+
+def _trim_tabs(keep: str) -> int:
+    """v0.884 at most TAB_CAP tabs: every open_url used to make a new tab and none was ever closed."""
+    closed = 0
+    try:
+        ts = _targets()
+    except Exception:
+        return 0
+    extra = [t for t in ts if t.get("id") != keep]
+    while len(extra) + 1 > TAB_CAP:
+        t = extra.pop()                                   # /json lists the newest first: close from the end
+        try:
+            httpx.get(CDP + f"/json/close/{t['id']}", timeout=5)
+            closed += 1
+        except Exception:
+            break
+    return closed
 
 
 # ---------------- v0.842 exact mode (agent-desktop over AT-SPI) ----------------
@@ -426,42 +580,105 @@ class Actions:
         return {"window": _active_window() or t}
 
     # ---- browser intelligence over CDP ----
-    def do_open_url(self, url: str = "", **_) -> dict[str, Any]:
+    def do_open_url(self, url: str = "", wait: int = OPEN_WAIT, new_tab: bool = False, **_) -> dict[str, Any]:
+        """v0.884 open a site and SAY what happened: the same site's tab is reused (no endless tabs), a page gets up
+        to `wait` s (30, max 60), a timeout is retried once, a crashed tab reloaded once, and a page that did not
+        open comes back with problem + hint instead of a silent 'still loading'."""
         url = str(url or "").strip()
         if not url.lower().startswith(("http://", "https://")):
             url = "https://" + url
+        limit = max(5, min(int(wait or OPEN_WAIT), 60))
+        t0 = time.time()
         _chrome_up()
-        r = httpx.put(CDP + f"/json/new?{url}", timeout=10)   # PUT is required on newer Chromium
-        if r.status_code >= 400:
-            r = httpx.put(CDP + "/json/new", params={"url": url}, timeout=10)
-        t = r.json()
-        tid = t.get("id", "")
-        title = ""
-        loaded = False
-        end = time.time() + 12
-        while time.time() < end:
-            time.sleep(0.8)
+        host = _host(url)
+        tid = ""
+        if not new_tab and host:
             try:
-                cur = next((x for x in _targets() if x.get("id") == tid), None)
+                same = next((t for t in _targets() if _host(t.get("url") or "") == host), None)
             except Exception:
-                cur = None
-            if cur is None:
-                continue
-            title = cur.get("title") or ""
-            if title and not title.lower().startswith(("about:", "chrome://")):
-                time.sleep(0.6)
+                same = None
+            if same is not None:
                 try:
-                    cur = next((x for x in _targets() if x.get("id") == tid), None) or cur
+                    _cdp_call(same["webSocketDebuggerUrl"], "Page.navigate", {"url": url}, timeout=10)
+                    tid = same["id"]
                 except Exception:
-                    pass
-                title = cur.get("title") or title
-                loaded = True
-                break
+                    tid = ""
+        if not tid:
+            r = httpx.put(CDP + f"/json/new?{url}", timeout=10)   # PUT is required on newer Chromium
+            if r.status_code >= 400:
+                r = httpx.put(CDP + "/json/new", params={"url": url}, timeout=10)
+            tid = r.json().get("id", "")
+        _trim_tabs(tid)
+        notes = []
+        st, problem = self._settle(tid, t0 + limit)
+        if problem.startswith("net:") and time.time() - t0 < 75:
+            self._reload(tid)                   # one more try: old portals often time out once, then answer
+            st, problem = self._settle(tid, time.time() + min(limit, 30))
+            notes.append("retried once")
+        if problem == "bot_check":              # those pages usually clear themselves in a few seconds
+            st, problem = self._settle(tid, time.time() + 15, accept_bot=False)
+        if problem == "crashed":
+            self._reload(tid)
+            st, problem = self._settle(tid, time.time() + limit)
+            notes.append("crashed tab reloaded")
         try:
             httpx.get(CDP + f"/json/activate/{tid}", timeout=5)
         except Exception:
             pass
-        return {"opened": url, "in": "Chromium (Hoola PC)", "title": title, "loaded": loaded}
+        out = {"opened": url, "in": "Chrome (Hoola PC)", "title": str(st.get("title") or ""),
+               "url": str(st.get("href") or url), "loaded": not problem, "seconds": round(time.time() - t0, 1)}
+        if problem:
+            out["problem"] = problem
+            out["hint"] = hint_for(problem)
+        if notes:
+            out["note"] = "; ".join(notes)
+        return out
+
+    def _target(self, tid: str) -> dict[str, Any] | None:
+        try:
+            return next((x for x in _targets() if x.get("id") == tid), None)
+        except Exception:
+            return None
+
+    def _reload(self, tid: str) -> None:
+        t = self._target(tid)
+        if t is not None:
+            try:
+                _cdp_call(t["webSocketDebuggerUrl"], "Page.reload", {"ignoreCache": True}, timeout=10)
+            except Exception:
+                pass
+            time.sleep(0.5)
+
+    def _settle(self, tid: str, deadline: float, accept_bot: bool = True) -> tuple[dict[str, Any], str]:
+        """Poll the tab until it is complete, shows an error / block page, or the deadline passes."""
+        time.sleep(0.8)
+        while True:
+            st = _state(self._target(tid))
+            problem = classify(st)
+            href = str(st.get("href") or "")
+            final = problem in ("", "certificate", "blocked", "crashed") or problem.startswith("net:")
+            if final and not (problem == "" and href in ("", "about:blank")):
+                return st, problem
+            if problem == "bot_check" and accept_bot:
+                return st, problem
+            if time.time() >= deadline:
+                return st, problem
+            time.sleep(0.8)
+
+    def do_check(self, urls: list | str | None = None, **_) -> dict[str, Any]:
+        """v0.884 open each site in the real Chrome and say how it went (the 'does Chrome open everything' test)."""
+        if isinstance(urls, str):
+            urls = [u for u in re.split(r"[\s,]+", urls) if u]
+        rows = []
+        for u in list(urls or [])[:20]:
+            try:
+                r = self.do_open_url(u, wait=40)
+                rows.append({"url": u, "ok": r.get("loaded"), "problem": r.get("problem", ""),
+                             "title": str(r.get("title", ""))[:60], "seconds": r.get("seconds"),
+                             "note": r.get("note", "")})
+            except Exception as e:
+                rows.append({"url": u, "ok": False, "problem": f"{type(e).__name__}: {e}"[:120]})
+        return {"sites": rows, "tz": TZ_NAME, "lang": LANG, "version": VERSION}
 
     def do_page_text(self, max_chars: int = 6000, **_) -> dict[str, Any]:
         _chrome_up()
@@ -896,6 +1113,13 @@ class Bridge:
 
 
 def main() -> None:
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "check":   # v0.884: docker exec hoola-pc python /app/agent.py check <urls>
+        res = Actions().do_check(sys.argv[2:] or ["https://www.google.com"])
+        for r in res["sites"]:
+            print(f"{'OK  ' if r.get('ok') else 'FAIL'} {r.get('seconds', '-'):>5}s {r['url']}  "
+                  f"{r.get('problem') or ''} {r.get('note') or ''} | {r.get('title') or ''}", flush=True)
+        return
     print(f"Hoola PC agent {VERSION} -> {SERVER} (display {DISPLAY})", flush=True)
     asyncio.run(Bridge(Actions()).run_forever())
 

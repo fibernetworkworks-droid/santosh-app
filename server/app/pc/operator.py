@@ -80,6 +80,11 @@ Differences from her Windows PC:
   ('meri Excel Hoola ke PC pe kholo' = user_pc_search + user_pc_pull, then open it in LibreOffice here) or
   to deliver the result to her computer. If they answer PC_OFFLINE, her PC is not online: finish without it
   and say so plainly. Her PC is for FILES only from here - never try to control its screen from this VM.
+- PORTALS (v0.884): this Chrome is set up for government / legacy portals - India time and language, pop-ups
+  open as new tabs (use tabs / switch_tab to reach a login / print / payment window), downloads go straight to
+  /data/Downloads. open_url waits up to 30 s and reuses the site's tab; when it says PROBLEM, follow its hint:
+  'blocked' or a site that never opens = the site refuses cloud servers, tell her and offer HER PC (pc_do);
+  'slow' = wait_for a word, never open it again; 'certificate' = never click past the warning, tell her.
 """
 # v0.191 TAPGATE (samajhdaar card): card SIRF asli faisle par jaata hai. Kuch nahi badalne wali step auto-approve
 # (no card), CAPTCHA ek confirm ke baad apne aap type, aur paise/bhejna/delete/order jaise faisle par hi card.
@@ -1558,7 +1563,11 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         title = str(r.get("title") or "")
         out = f"opened {opened} in {where}"
         if title:
-            out += f"; page title now: {title}" + ("" if r.get("loaded") else " (still loading)")
+            out += f"; page title now: {title}" + ("" if r.get("loaded") or r.get("problem") else " (still loading)")
+        if r.get("problem"):   # v0.884 CHROME SAAF: Hoola's PC says WHY a page did not open (blocked / timeout / cert)
+            out += f"\nPROBLEM: {r.get('problem')} after {r.get('seconds', '?')}s. {r.get('hint') or ''}".rstrip()
+        if r.get("note"):
+            out += f" ({r.get('note')})"
         if r.get("loaded"):
             try:   # v0.184 the first words of the page ride along: wrong site / login wall / error is visible at once
                 pt = await _pc(op, "page_text", {"max_chars": 800}, timeout=20, log=False)

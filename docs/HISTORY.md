@@ -3792,3 +3792,36 @@ Her 13 Nov 08:28-08:40 calls (Swiggy pizza, Task Manager) showed v0.881 connect 
    ("Yeh window admin mode mein hai... aap khud kar dijiye"); prompt: open Task Manager with open_app, never drive admin windows.
 Also: the connect answer spoke "[Team job: ..." word for word - `pcconnect._short_task` speaks only the short goal.
 Tests: test_v0883_call_pc_seedha.py (8). NOT VERIFIED on her server or PC.
+
+
+## v0.884.0 CHROME SAAF — Hoola's own PC Chrome ready for government / legacy portals (13 Nov 2026)
+
+Owner, after asking to work on Hoola's own PC (every user will get one, for repeated manual work on gov / legacy portals,
+results reported back to the chat): "ON HOOLA PC CHROME NOT OPEN ALL WEBSITE CLEANLY IT STOPS IN BETWEEN IT IS ISSUE OF
+LOCATION OR A CHROMIUM NEED TO FIX THIS FIRST". Her check on the VPS: Hoola PC up 27 h, real Google Chrome present,
+IP 139.59.10.30 Bengaluru (DigitalOcean) = an INDIAN address; TZ empty + LANG C.UTF-8 (a UTC, language-less browser);
+curl from the container: google / incometax / gst / uidai / epf / aaplesarkar / mahadiscom answer in < 3 s,
+parivahan.gov.in never answers (25 s timeout) - it drops cloud servers. Server RAM is 16 GB (not 8).
+
+Fixed (desktop-linux agent 1.5.0, Dockerfile, operator):
+- India time (TZ Asia/Kolkata, tzdata) + Chrome --lang=en-IN / --accept-lang en-IN,en,hi.
+- Chrome managed policy written before Chrome starts (/etc/opt/chrome + /etc/chromium policies/managed/hoola.json):
+  pop-ups allowed, downloads to /data/Downloads without asking, notification / location / translate bubbles off,
+  password manager off. Background throttling off (a tab not in front keeps working).
+- open_url: the same site's tab is navigated instead of a new tab every time; at most 6 tabs (older closed);
+  waits up to `wait` s (30 default, max 60, was 12) on document.readyState; a net error is retried once; a crashed
+  tab reloaded once; a "checking your browser" page gets 15 s more; the result carries `problem`
+  (blocked / net:ERR_* / slow / bot_check / certificate / no_answer / crashed) + `hint`, which the operator puts in
+  front of the model as "PROBLEM: ...". HOOLA_PC_ADDENDUM gains the PORTALS rule.
+- A certificate warning is NEVER clicked past (an auto-pass for gov sites was dropped - the safety check refused
+  it); the model tells her and offers her own PC.
+- `docker exec hoola-pc python /app/agent.py check <urls>` opens each site in the real Chrome and prints OK / FAIL +
+  why; vps-ops pc_deploy runs it on six portals after every deploy.
+
+Tests: test_v0884_chrome_saaf.py (6) + a local walk in real headless Chromium (normal page, Access Denied, "Just a
+moment", refused port, slow page, tab reuse, tab cap). NOT VERIFIED on her VPS until pc_deploy rebuilds the image.
+NOT FIXED (cannot be, from code): a site that drops every cloud-server address (parivahan) - it needs her own PC or
+an Indian home-internet route.
+
+Next (her decisions, 13 Nov): every user gets a Hoola PC through a SHARED POOL (per-user Chrome profiles), HUMAN IN
+THE LOOP for submits; then repeat jobs over a sheet's rows, files back to the chat, a report back with proof.

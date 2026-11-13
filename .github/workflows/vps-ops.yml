@@ -295,6 +295,7 @@ jobs:
                 echo 'echo "== chrome? (v1.2.0: real Google Chrome, not Debian chromium)"; docker exec hoola-pc which google-chrome || echo "NO google-chrome - agent falls back to chromium"'
                 echo 'for c in $(docker ps --filter name=hoola-pc --format "{{.Names}}"); do echo "== logs $c"; docker logs --tail 8 "$c" 2>&1; done'
                 echo 'echo "== mem"; docker stats --no-stream --format "{{.Name}} {{.MemUsage}}" $(docker ps --filter name=hoola-pc -q) 2>/dev/null || true'
+                echo 'echo "== v0.884 does Chrome open the portals (OK / FAIL + why)"; docker exec hoola-pc sh -c "date; python /app/agent.py check https://www.google.com https://www.incometax.gov.in https://services.gst.gov.in https://parivahan.gov.in https://uidai.gov.in https://aaplesarkar.mahaonline.gov.in" || true'
                 echo 'echo "A PC whose log says waiting for pair code: run pc_pair with lines = the 6-digit code from her app (PC 1) or N-CODE for PC N (e.g. 2-123456). Server path = the same public URL every desktop uses (the 172.18.0.1 bridge is firewall-dropped on this VPS - v0.195 lesson)."' ;;
               pc_chrome_selftest)
                 # v1.2.0: proves the browser stack end to end without touching the agent loop -
