@@ -139,9 +139,9 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.891.0"
-    assert "0.891.0+890" in (ROOT / "pubspec.yaml").read_text()
-    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 20   # grows as main adds console files
+    assert APP_VERSION == "0.892.0"
+    assert "0.892.0+891" in (ROOT / "pubspec.yaml").read_text()
+    assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 35   # grows as main adds console files
 
 
 # ---------------------------------------------------------------- v0.253 the reading surface
@@ -165,7 +165,7 @@ def test_the_dark_theme_tokens_were_not_touched():
 
 def test_literata_is_loaded_with_its_optical_axis():
     html = (CON / "v2.html").read_text()
-    assert "Literata:opsz,wght@7..72,400;7..72,600" in html
+    assert "Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700" in html   # v0.892 variable: 360 / 530 in dark
     assert "Source+Serif+4" not in html                                  # the old family is gone, not left loading
     assert "Source Serif 4" not in _css()
     assert "GoogleFonts.sourceSerif4" not in (ROOT / "lib/ui/glass.dart").read_text()

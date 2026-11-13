@@ -5316,3 +5316,24 @@ html.human #app .landing .halo{display:none}
 /* v0.833 BAHI A1 - connect form + supplier check */
 #app .acd-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
 #app .acd-in{height:38px;padding:0 12px;border:1px solid var(--hair2);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;min-width:170px;flex:1 1 170px}
+
+
+/* ================= v0.892 CLAUDE KE AKSHAR (owner: "WHICH FONT IS USE BY CLAUDE AI" -> "GO ALL") =================
+   Read from claude.ai's own stylesheet: the reply is Anthropic Serif 16px / 1.5, weight 400 in light mode and 360 in
+   dark mode, bold 600 light / 530 dark, headings 530 dark (light letters on a dark page read bolder, so Claude thins
+   them). Anthropic's fonts are private; Hoola keeps Literata, now loaded as the variable font (any weight 300-700) so
+   360 / 530 are exact, with optical sizing on. Claude's "Chat font" choice too: Serif / Sans / System / Dyslexic -
+   only the reply changes, her own messages and the interface stay in the sans. */
+@font-face{font-family:'OpenDyslexic';src:url(/static/console/fonts/OpenDyslexic-Regular.otf) format('opentype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'OpenDyslexic';src:url(/static/console/fonts/OpenDyslexic-Bold.otf) format('opentype');font-weight:700;font-style:normal;font-display:swap}
+:root{--fchat:var(--fr);--rw:400;--rb:600}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--rw:360;--rb:530}}
+:root[data-theme="dark"]{--rw:360;--rb:530}
+:root[data-chatfont="sans"]{--fchat:var(--fd)}
+:root[data-chatfont="system"]{--fchat:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+:root[data-chatfont="dyslexic"]{--fchat:'OpenDyslexic','Comic Sans MS',var(--fr);--rw:400;--rb:700}
+#app .mh .txt,.mh .txt{font-family:var(--fchat);font-weight:var(--rw);font-optical-sizing:auto}
+#app .mh .txt :is(b,strong),#app .textmd :is(b,strong){font-weight:var(--rb)}
+#app .textmd .mdh,.textmd .mdh{font-family:var(--fchat);font-weight:var(--rb)}
+#app .fontseg{min-width:320px}
+@media(max-width:560px){#app .fontseg{min-width:0;width:100%}}

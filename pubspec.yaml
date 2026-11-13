@@ -1,4 +1,4 @@
-version: 0.891.0+890
+version: 0.892.0+891
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
@@ -78,6 +78,21 @@ flutter:
           weight: 500
         - asset: assets/fonts/Literata-SemiBold.ttf
           weight: 600
+    # v0.892 CLAUDE KE AKSHAR: Literata cut at Claude's dark-mode weights (reply 360, bold 530) from the variable
+    # Literata (OFL, opsz 12 like the static files) - dark replies read as light as Claude's
+    - family: Literata Dark
+      fonts:
+        - asset: assets/fonts/LiterataDark-Regular.ttf
+        - asset: assets/fonts/LiterataDark-Italic.ttf
+          style: italic
+        - asset: assets/fonts/LiterataDark-SemiBold.ttf
+          weight: 600
+    # v0.892 the Dyslexic-friendly chat font (OFL, assets/fonts/OpenDyslexic-OFL.txt)
+    - family: OpenDyslexic
+      fonts:
+        - asset: assets/fonts/OpenDyslexic-Regular.otf
+        - asset: assets/fonts/OpenDyslexic-Bold.otf
+          weight: 700
     - family: JetBrains Mono
       fonts:
         - asset: assets/fonts/JetBrainsMono-Regular.ttf

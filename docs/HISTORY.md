@@ -4074,3 +4074,35 @@ stay). CI app-screens runs the new phone tests.
 
 Tests: `server/tests/test_v0891_claude_likhai.py` (3), `test/reply_look_test.dart` (6). Goldens retaken.
 NOT VERIFIED: no live reply has been read with the new rules; not seen on her phone yet.
+
+
+## v0.892.0 CLAUDE KE AKSHAR - Claude's font sizes and dark-mode weights + a Chat font choice (owner: "WHICH FONT IS USE BY CLAUDE AI" -> "IS WE ARE USING SAME THIS" -> "GO ALL")
+
+READ FROM CLAUDE.AI'S OWN STYLESHEET (assets-proxy.anthropic.com/claude-ai/v2/assets/v1/c6a992d55-CGuUmOei.css, the
+file the live site loads; claude.ai itself answered 403 to a fetch): families Anthropic Serif / Anthropic Sans /
+Anthropic Mono (+ OpenDyslexic and a system font for the Chat font setting). `.font-claude-response-body` =
+--font-claude-response (Anthropic Serif) 1rem / 1.5 weight 400, and under `[data-theme=claude][data-mode=dark]` 360;
+body-bold 600 -> 530 dark; heading / subheading / title 530 dark; response small 14px, title 28px (opsz 28), code small
+Anthropic Mono 11px; UI base Anthropic Sans 14px / 1.4 weight 430 (400 dark). In-reply heading sizes and the user
+message size are set in the page markup, not the stylesheet - not confirmed.
+
+Anthropic's three fonts are their private typefaces - never copied. Hoola keeps Literata (replies), Schibsted
+Grotesk (interface + her messages), JetBrains Mono (code), all OFL.
+
+CONSOLE: v2.html loads Literata as the variable font (ital, opsz 7-72, wght 300-700); a v2.css block sets
+--rw / --rb (400 / 600 light, 360 / 530 dark, system or picked) on the reply, its bold and its headings, optical sizing
+on; Chat font = theme.js `hoola.chatfont` -> `data-chatfont` on <html> before first paint, --fchat (serif = Literata,
+sans = Schibsted Grotesk, system = system-ui, dyslexic = OpenDyslexic served from /static/console/fonts, 400 / 700);
+Appearance card row with four choices. Stamps 0.849.0 -> 0.892.0 (35).
+
+PHONE: `assets/fonts/LiterataDark-{Regular,SemiBold,Italic}.ttf` = the variable Literata (google/fonts, OFL, no
+reserved name) instanced with fontTools at wght 360 / 530 / 360 italic and opsz 12 (the same optical size the static
+Literata files use, measured by glyph widths); pubspec family `Literata Dark` + `OpenDyslexic` (.otf). `ChatFont` in
+hoola_theme.dart: reply + reply headings take ChatFont.family(c) (dark serif = Literata Dark), bold w600 (w700 for
+OpenDyslexic, which has only 400 / 700); Santosh.chatFont (pref chat_font) set before the first reply; Settings > Look
+and voice > Chat font sheet draws each choice in its own font. Goldens load the new families; the dark chat picture
+was checked by eye (thinner, wraps narrower).
+
+Tests: server/tests/test_v0892_claude_akshar.py (6), test/reply_look_test.dart +1, fonts_test + golden loader;
+test_v0249 / test_v0240 pins moved to the variable font link and the real stamp count (35).
+NOT VERIFIED: on her phone / her browser.

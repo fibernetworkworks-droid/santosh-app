@@ -14,6 +14,7 @@ import 'hoola.dart';
 import 'i18n.dart';
 import 'native.dart';
 import 'ui/avatar_look.dart' show currentLook, lookFits;
+import 'ui/hoola_theme.dart' show ChatFont;
 
 class FeedItem {
   FeedItem(this.kind, this.data);
@@ -67,6 +68,7 @@ const languages = <String, String>{
 class Santosh extends ChangeNotifier {
   Santosh._(this._prefs) {
     currentLook.value = aLook;                  // last known look, before the server answers
+    ChatFont.current = chatFont;                // v0.892 her chat font, before the first reply is drawn
   }
   final SharedPreferences _prefs;
 
@@ -93,6 +95,17 @@ class Santosh extends ChangeNotifier {
   String get appearance => _prefs.getString('appearance') ?? 'system';
   Future<void> setAppearance(String v) async {
     await _prefs.setString('appearance', const {'system', 'light', 'dark'}.contains(v) ? v : 'system');
+    notifyListeners();
+  }
+  /// v0.892 the chat font of Hoola's replies (like claude.ai's Settings > Chat font): serif / sans / system / dyslexic.
+  String get chatFont {
+    final v = _prefs.getString('chat_font') ?? 'serif';
+    return ChatFont.choices.contains(v) ? v : 'serif';
+  }
+  Future<void> setChatFont(String v) async {
+    final f = ChatFont.choices.contains(v) ? v : 'serif';
+    ChatFont.current = f;
+    await _prefs.setString('chat_font', f);
     notifyListeners();
   }
   bool get configured => apiKey.isNotEmpty;

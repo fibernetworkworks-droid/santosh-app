@@ -23,6 +23,30 @@ class HoolaFont {
   static const sans = 'Schibsted Grotesk';
   static const serif = 'Literata';
   static const mono = 'JetBrains Mono';
+
+  /// v0.892 Literata cut at Claude's dark-mode weights: 400 here = 360, 600 here = 530 (claude.ai's own stylesheet
+  /// thins its reply in dark mode, because light letters on a dark page read bolder than they are).
+  static const serifDark = 'Literata Dark';
+  static const dyslexic = 'OpenDyslexic';
+  static const system = 'Roboto';   // the phone's own font
+}
+
+/// v0.892 the chat font she picks in Settings, like claude.ai's "Chat font": serif (default) / sans / system /
+/// dyslexic. Only Hoola's replies follow it; her own words and the interface stay in the sans.
+class ChatFont {
+  static const choices = ['serif', 'sans', 'system', 'dyslexic'];
+  static const labels = {'serif': 'Serif', 'sans': 'Sans', 'system': 'System', 'dyslexic': 'Dyslexic'};
+  static String current = 'serif';
+
+  static String family(HoolaColors c) => switch (current) {
+        'sans' => HoolaFont.sans,
+        'system' => HoolaFont.system,
+        'dyslexic' => HoolaFont.dyslexic,
+        _ => c.dark ? HoolaFont.serifDark : HoolaFont.serif,
+      };
+
+  /// Bold inside a reply. The cut dark Literata maps 600 to its 530 file; OpenDyslexic has only a 700 cut.
+  static FontWeight bold() => current == 'dyslexic' ? FontWeight.w700 : FontWeight.w600;
 }
 
 // ------------------------------------------------------------------------------------------------ colours
@@ -226,15 +250,16 @@ class HoolaType {
   /// Hoola's reply: the serif at reading size (Claude's reply sits in a serif too; ours is Literata, v0.253).
   /// v0.888 16 / 1.5, the size the console measured against Claude's own reply (v0.253): Literata's tall x-height
   /// makes 16 read like Claude's 17, and 17 / 1.6 read a size too big on her phone.
+  /// v0.892 the family follows her chat font, and in dark mode the serif is the thinner cut (Claude: 360 / 530).
   static TextStyle reply(HoolaColors c) =>
-      TextStyle(fontFamily: HoolaFont.serif, fontSize: 16, fontWeight: FontWeight.w400, color: c.ink, height: 1.5);
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 16, fontWeight: FontWeight.w400, color: c.ink, height: 1.5);
   /// Headings INSIDE a reply (markdown # / ## / ###).
   static TextStyle replyH1(HoolaColors c) =>
-      TextStyle(fontFamily: HoolaFont.serif, fontSize: 20, fontWeight: FontWeight.w600, color: c.ink, height: 1.3);
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 20, fontWeight: ChatFont.bold(), color: c.ink, height: 1.3);
   static TextStyle replyH2(HoolaColors c) =>
-      TextStyle(fontFamily: HoolaFont.serif, fontSize: 18, fontWeight: FontWeight.w600, color: c.ink, height: 1.35);
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 18, fontWeight: ChatFont.bold(), color: c.ink, height: 1.35);
   static TextStyle replyH3(HoolaColors c) =>
-      TextStyle(fontFamily: HoolaFont.serif, fontSize: 16, fontWeight: FontWeight.w600, color: c.ink, height: 1.4);
+      TextStyle(fontFamily: ChatFont.family(c), fontSize: 16, fontWeight: ChatFont.bold(), color: c.ink, height: 1.4);
   /// Code (blocks 13, inline 14 to sit with 17 serif).
   static TextStyle code(HoolaColors c, {double size = 13}) =>
       TextStyle(fontFamily: HoolaFont.mono, fontSize: size, fontWeight: FontWeight.w400, color: c.codeInk, height: 1.5);

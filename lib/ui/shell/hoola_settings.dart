@@ -206,6 +206,55 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
     if (e != null && mounted) _say(context, e);
   }
 
+  /// v0.892 Chat font, like claude.ai's: each choice drawn in its own font so she sees what she picks.
+  Future<void> _pickChatFont() async {
+    final c = HoolaColors.of(context);
+    final was = ChatFont.current;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: c.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(HoolaRadius.sheet))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
+            child: Align(alignment: Alignment.centerLeft, child: Text('Chat font', style: HoolaType.heading(c))),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('How ${app.aName}\'s replies are written. Your messages stay as they are.', style: HoolaType.small(c)),
+            ),
+          ),
+          for (final f in ChatFont.choices)
+            Builder(builder: (_) {
+              ChatFont.current = f;              // draw each choice in its own font
+              final look = HoolaType.reply(c).copyWith(fontSize: 17);
+              ChatFont.current = was;
+              return ListTile(
+                title: Text(ChatFont.labels[f]!, style: look),
+                subtitle: Text(_fontNote[f]!, style: HoolaType.small(c)),
+                trailing: app.chatFont == f ? Icon(Icons.check_rounded, color: c.accent) : null,
+                onTap: () => Navigator.pop(ctx, f),
+              );
+            }),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (picked == null) return;
+    await app.setChatFont(picked);
+    if (mounted) setState(() {});
+  }
+
+  static const _fontNote = {
+    'serif': 'A book-like serif, the default',
+    'sans': 'The same font as the app',
+    'system': 'Your phone\'s own font',
+    'dyslexic': 'Easier to read with dyslexia',
+  };
+
   Future<void> _pickLanguage() async {
     final c = HoolaColors.of(context);
     final picked = await showModalBottomSheet<String>(
@@ -457,6 +506,13 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
                     onSelectionChanged: (v) => app.setAppearance(v.first),
                   ),
                 ]),
+              ),
+              HoolaRow(
+                title: 'Chat font',
+                sub: ChatFont.labels[app.chatFont] ?? 'Serif',
+                icon: Icons.text_fields_rounded,
+                trailing: _chev(c),
+                onTap: _pickChatFont,
               ),
               HoolaRow(
                 title: 'Language',
