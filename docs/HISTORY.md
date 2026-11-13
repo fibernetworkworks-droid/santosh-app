@@ -3728,3 +3728,18 @@ Fixes:
 Not changed on purpose: Qwen 3.8 27B's reasoning on call turns (OpenRouter makes some models refuse reasoning off;
 measure first with the new log line). Tests `test_v0880_tez_call.py` (5) + the v0638 default pin moved to 1.5.
 NOT VERIFIED on her server or a real call.
+
+
+## v0.881.0 PC JUDA HAI - "connect to my PC" on a call answered at once (owner: "IN VOICE CALL WHEN ASK HOOLA TO CONNECT TO PC IT TAKES HUGE TIME TO REPLY CHECK THE PERFECT ROOT CAUSE FIRST" -> "go")
+
+Root cause from her 13 Nov log: 00:52:21 "मेरे पीसी से कनेक्ट करो" -> 2.5 s memory wait -> the PC manager turn on Qwen ->
+00:52:37 a whole PC screen task ("Connect to this PC and take a look at the current screen") -> "still working" at 20 s;
+01:56:49 the same ask 13.6 s (queued behind the weather ask). Her PC is connected whenever Hoola Desktop is open, and the
+call already read the hub's online state (in `_pc_rescue`) but never answered with it.
+
+Fix: NEW `server/app/pcconnect.py` - `only_connect(text)` (strict: every word is a connect word, a PC word or filler in
+English / Hinglish / Devanagari; any site / doing word = a real job), `status_line(tenant)` from `hub.devices` (her PCs
+only: online, control off, paused, offline, plus the task running). `voice.Call._pc_connect_answer` runs in the
+santosh_kaam branch (before the brain) and in the PC rescue path; switch `voice_pc_connect_fast`. `agent/pc_manager.py`
+RULES: connect / "is it connected" is never a pc_do job; "connect + Amazon" = one task for the Amazon part. Tests
+`test_v0881_pc_juda.py` (18). NOT VERIFIED on her server or a real call.

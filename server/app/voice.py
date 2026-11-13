@@ -2909,6 +2909,27 @@ class Call:
                         r"login|chalu|close|play|run|launch|do)\b|खोल|करो|चलाओ|भेजो|लिखो", re.I)
     _ASKS_BACK = re.compile(r"\?\s*$")
 
+    def _pc_connect_answer(self, said: str) -> str:
+        """v0.881 PC JUDA HAI: her words ask ONLY to connect / whether her PC is connected -> the hub's own state as one
+        spoken line, at once (her 13 Nov calls: 13-20 s through the brain, once a whole PC screen task). '' = a real
+        job in her words, or the switch is off: the normal path runs."""
+        if not getattr(get_settings(), "voice_pc_connect_fast", True):
+            return ""
+        try:
+            from . import pcconnect
+            if not pcconnect.only_connect(said):
+                return ""
+            line = pcconnect.status_line(getattr(self, "tenant", ""),
+                                         hinglish=(get_settings().voice_language or "hinglish") != "en")
+        except Exception:
+            log.debug("pc connect answer failed", exc_info=True)
+            return ""
+        st = getattr(self, "stats", None)
+        if isinstance(st, dict):
+            st["pc_connect_fast"] = st.get("pc_connect_fast", 0) + 1
+        log.info("call %s pc connect answered at once (no brain turn): %s", getattr(self, "call_id", "?"), line[:120])
+        return line
+
     def _pc_rescue(self, said: str, reply: str = "") -> bool:
         """v0.858 her call turn asked for work on HER PC but the voice model answered by itself (a live call log: 3 turns,
         0 tools, 'I cannot access your PC'). Gemini decides what is 'talk', so a PC ask is never left to it: the system
@@ -2919,6 +2940,10 @@ class Call:
             return False
         if self._ASKS_BACK.search(str(reply or "")):
             return False                     # the voice asked her something back: her next words decide
+        _pcj = Call._pc_connect_answer(self, t)
+        if _pcj:                             # v0.881 'connect karo' alone: the status line, no brain turn
+            self.push("text", f"(System: her PC status, checked just now: «{_pcj}» Tell her exactly this in one line.)")
+            return True
         try:
             from .agent import where
             if where.place(t) in ("hoolapc", "hoola", "phone"):
@@ -3686,6 +3711,9 @@ class Call:
             if _ans:
                 self.stats["pc_answers"] = self.stats.get("pc_answers", 0) + 1
                 return {"result": _ans["say"]}
+            _pcj = Call._pc_connect_answer(self, said or req)
+            if _pcj:
+                return {"result": _pcj, "say": "Say exactly this, in one short line. No PC job was started."}
             if get_settings().voice_brain and said and said.strip() != req.strip():
                 # v0.630 the brain gets HER words (the voice model may shorten or translate them)
                 req = said + (f"\n(Call ne samjha: {req})" if req.strip() else "")

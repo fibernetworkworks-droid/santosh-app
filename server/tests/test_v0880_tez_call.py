@@ -71,4 +71,4 @@ def test_prefetch_and_glm_timing_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.880.0")
+    assert APP_VERSION.startswith("0.88")

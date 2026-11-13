@@ -791,6 +791,7 @@ class Settings(BaseSettings):
     voice_brain_memory_s: float = 1.5    # v0.638 a call brain turn waits at most this for diary / job state / coder memory (v0.880 2.5 -> 1.5)
     voice_brain_memory_warm_s: float = 0.6   # v0.880 TEZ CALL: the wait when this call already holds a copy of every slow part
     voice_brain_prefetch: bool = True        # v0.880 TEZ CALL: read the call brain's memory when the call connects
+    voice_pc_connect_fast: bool = True       # v0.881 PC JUDA HAI: "connect my PC" alone = the hub status line at once, no brain turn
     voice_brain_pc_wait_s: float = 4.0       # v0.880 TEZ CALL: a call's PC hand-off (pc_do) waits this, not pc_wait_seconds 12 s
     chat_memory_s: float = 6.0          # v0.704 a chat turn reads diary / job state / card news / coder memory in parallel, at most this long
     voice_brain_result_chars: int = 1500   # v0.636 an earlier exchange's tool result cut to this on a call brain turn (0 = keep)
