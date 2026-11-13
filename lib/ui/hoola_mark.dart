@@ -11,6 +11,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'hoola_theme.dart';
+
 class HoolaMark extends StatefulWidget {
   const HoolaMark({super.key, this.size = 22, this.animate = true, this.color});
   final double size;
@@ -52,9 +54,13 @@ class _HoolaMarkState extends State<HoolaMark> with SingleTickerProviderStateMix
     return 2 * math.pi;
   }
 
-  Color _tint(BuildContext context) =>
-      widget.color ??
-      (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF9C88FF) : const Color(0xFF5B45E0));
+  // the theme's accent (Hoola violet: #5B45E0 light, #9C88FF dark); on an old screen without the new theme, by
+  // brightness from the same two palettes - no raw colours here (design_rules_test)
+  Color _tint(BuildContext context) {
+    if (widget.color != null) return widget.color!;
+    final t = Theme.of(context);
+    return (t.extension<HoolaColors>() ?? (t.brightness == Brightness.dark ? HoolaColors.darkSet : HoolaColors.light)).accent;
+  }
 
   Widget _layer(String name, Color tint, {double angle = 0, double scale = 1, double opacity = 1, double z = 0}) {
     final s = widget.size;

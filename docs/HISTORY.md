@@ -3945,3 +3945,35 @@ Tests: test_v0462_logo (adaptive background pin -> Espresso), test_v0716 status 
 6 white fills), v0720 / v0254 green. test_v0240::test_version is red on the untouched commit too (console stamps carry
 0.849.0) - not this work. NOT VERIFIED on a real phone launcher (checked on rendered rounded-square / circle / squircle
 masks, the console light mark, the stacked phone layers, the status vector drawn from its own XML, favicon 32 / 192).
+
+
+## v0.888.0 SAAF CHAT - the new chat cleaned up from her phone screenshots
+
+Owner, with three screenshots of the new design on her phone: "DESIGN NEED LOT OF FIXES 1) CHECK THE TEXT TYPING PANEL IS
+NONUNIFROM AND NOT PROPERLY ALINED 2) TEXT REPLY LANDING AND FONT IS NOT MATCHING CLAUDE DESIGN WE DISCUSED 3) WHEN CHAT
+WORK IN PROGRESS HIDE THE BOTTOM NAVE PERECTLY".
+
+1. Composer (`lib/ui/shell/hoola_shell.dart` HoolaComposer): every control is a 48 dp tap area holding a 40 dp circle and a
+   22 dp icon. + and mic are bare icons; only the one main action (voice / Send / Stop) is filled. Before: + was a grey disc,
+   mic bare, voice a white disc, all 42 dp and end-aligned under a 48 dp field (3 dp low). The pill is 56 dp (4 dp
+   padding), radius pill, the field centres its text (TextAlignVertical.center), a long message grows upward with the
+   controls at its foot.
+2. Reply type (`lib/ui/hoola_theme.dart`): HoolaType.reply 17 / 1.6 -> 16 / 1.5 Literata, the size the console measured
+   against Claude's own reply in v0.253 (Literata's tall x-height makes 16 read like Claude's 17); reply H1 22 -> 20.
+   Landing: the server's ephemeral ack line ("Thinking, one minute...", `santosh.ACK_LINES`, payload `ack: true`) was drawn
+   as a full reply with Copy / Read aloud / Share / Ask again under it (her first screenshot). The new chat now draws it as
+   the working row (mark + "Thinking" + clock) and never as a reply; the newest-reply lookup skips it.
+3. Tab bar (`hoola_shell.dart` `_navHidden`, `_SlideAway`): on the Hoola tab with a chat open, while `app.typing`, the bar
+   slides down, fades and folds its height (280 ms, reduce motion = fade), the chat takes the room (AnimatedPadding to the
+   system inset), and it comes back when the turn ends. Hidden = no taps, no TalkBack.
+4. The Hoola mark inside the app: the tab bar, the home hero and the working row used `hoola_logo_fg.png`, which v0.886 made
+   a WHITE file (the adaptive icon foreground) - invisible on the light theme. They now use `HoolaMark` (the tinted layer
+   drawing). `mark.js` gains `needleMark` (tips at 22 on the diagonal) and the tight box 20..80 for the mark on its own: the
+   corner-to-corner needle with no tile around it read as a crossed-out sign. The app icon (full tile, square / round
+   needle) is byte-identical. The status-bar vector uses the mark-alone shape (viewport 60, translate -20).
+5. `lib/ui/hoola_mark.dart` takes its tint from the theme's accent (HoolaColors light / darkSet), not two raw colours - the
+   design-rules ratchet had been red since v0.886.
+
+Tests: screens_test new-design pictures 35/35 incl. the 48 dp tap-target + label gates, NEW picture 55 (the placeholder +
+the hidden bar, light + dark); design_rules_test green again; flutter analyze back to the baseline 26; test_v0716 status
+vector pin -> viewport 60 / translate -20; server logo tests green. NOT VERIFIED on her phone.

@@ -74,8 +74,9 @@ def test_a_made_file_is_one_card():
 
 def test_status_bar_icon_is_the_new_mark():
     v = _r("tool/android/res/drawable/ic_stat_santosh.xml")
-    # v0.887 Orbit: the tight box around the mark (needle tips included), the tile coordinates shifted into it
-    assert 'android:viewportWidth="86"' in v and 'android:translateX="-7"' in v
+    # v0.887 Orbit: the tight box around the mark (needle tips included), the tile coordinates shifted into it;
+    # v0.888 the mark alone (short needle) in a 60-unit box
+    assert 'android:viewportWidth="60"' in v and 'android:translateX="-20"' in v
     assert v.count('android:fillColor="#FFFFFFFF"') == 6
 
 
@@ -119,7 +120,7 @@ def test_soft_landing_and_mark_in_a_real_browser():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.887.0")
+    assert APP_VERSION.startswith("0.888.0")
 
 
 def test_v0717_file_card_is_one_row_like_the_approved_design():

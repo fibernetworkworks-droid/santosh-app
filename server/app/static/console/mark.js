@@ -15,8 +15,8 @@
    mark keeps Hoola violet (#5B45E0, the redesign's accent; the console follows --acc-rgb).
 
    HoolaMark.svg({mono, color, parts, shape, full}) - the still mark. mono = currentColor; color = any CSS colour;
-                            shape 'circle' = the needle stops inside a round launcher; full = the whole tile box
-                            (0..100) instead of the tight box around the mark.
+                            full = the app icon's tile box (0..100, needle to the corners); shape 'circle' = the
+                            needle stops inside a round launcher; neither = the mark alone (short needle, tight box).
    HoolaMark.think(px)    - the THINKING mark: four layers at different depths on one tilting stage (CSS in v2.css,
                             .hm3); reduced motion = the still mark.
    HoolaMark.paths        - the raw shapes, read by tool/make_mark.js to build every logo size and the
@@ -32,8 +32,11 @@ const NEEDLE = 5.0;                     // the needle's width at the core; it ta
 const CORE = 12.6 * K;
 // [radius, ring width, taper shift] on the mark's grid
 const RINGS = {o: [38, 7.2, 3.6], i: [25.5, 5.6, 2.6]};
-const TIP = {square: (22 - 22 / R2) + 2.5, circle: (50 - 50 / R2) + 2.5};   // just inside the tile's edge
-const BOX = '7 7 86 86';                // the tight box: needle tips included, symmetric about the centre
+// where the needle tips sit on the diagonal: just inside the tile's edge (square / round launcher), or - for the
+// mark on its own, with no tile around it - a short way past the outer ring (v0.888: a full-length needle with no
+// tile read as a crossed-out sign in the tab bar)
+const TIP = {square: (22 - 22 / R2) + 2.5, circle: (50 - 50 / R2) + 2.5, mark: 22};
+const BOX = '20 20 60 60';              // the mark alone: needle tips included, symmetric about the centre
 
 const f = n => n.toFixed(2);
 // one half of a ring: outer circle (centre) minus the inner circle shifted away from this half, kept on one side of
@@ -60,13 +63,13 @@ function needle(t) {
 const PATHS = {
   uo: half(...RINGS.o, 1), lo: half(...RINGS.o, -1),
   ui: half(...RINGS.i, 1), li: half(...RINGS.i, -1),
-  needle: needle(TIP.square), needleRound: needle(TIP.circle),
+  needle: needle(TIP.square), needleRound: needle(TIP.circle), needleMark: needle(TIP.mark),
   core: {cx: CX, cy: CY, r: +f(CORE)},
 };
 function svg(opts = {}) {
   const parts = opts.parts || 'oinc';
   const fill = opts.mono ? 'currentColor' : (opts.color || `rgb(var(--acc-rgb, 91 69 224))`);
-  const nd = opts.shape === 'circle' ? PATHS.needleRound : PATHS.needle;
+  const nd = opts.shape === 'circle' ? PATHS.needleRound : opts.full ? PATHS.needle : PATHS.needleMark;
   let g = '';
   if (parts.includes('o')) g += `<g class="hm-outer"><path d="${PATHS.uo}"/><path d="${PATHS.lo}"/></g>`;
   if (parts.includes('i')) g += `<g class="hm-inner"><path d="${PATHS.ui}"/><path d="${PATHS.li}"/></g>`;

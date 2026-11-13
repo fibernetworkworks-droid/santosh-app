@@ -224,11 +224,13 @@ class HoolaType {
   /// Button text.
   static TextStyle button(HoolaColors c, {Color? color}) => _sans(16, FontWeight.w600, color ?? c.ink, h: 1.2);
   /// Hoola's reply: the serif at reading size (Claude's reply sits in a serif too; ours is Literata, v0.253).
+  /// v0.888 16 / 1.5, the size the console measured against Claude's own reply (v0.253): Literata's tall x-height
+  /// makes 16 read like Claude's 17, and 17 / 1.6 read a size too big on her phone.
   static TextStyle reply(HoolaColors c) =>
-      TextStyle(fontFamily: HoolaFont.serif, fontSize: 17, fontWeight: FontWeight.w400, color: c.ink, height: 1.6);
+      TextStyle(fontFamily: HoolaFont.serif, fontSize: 16, fontWeight: FontWeight.w400, color: c.ink, height: 1.5);
   /// Headings INSIDE a reply (markdown # / ## / ###).
   static TextStyle replyH1(HoolaColors c) =>
-      TextStyle(fontFamily: HoolaFont.serif, fontSize: 22, fontWeight: FontWeight.w600, color: c.ink, height: 1.3);
+      TextStyle(fontFamily: HoolaFont.serif, fontSize: 20, fontWeight: FontWeight.w600, color: c.ink, height: 1.3);
   static TextStyle replyH2(HoolaColors c) =>
       TextStyle(fontFamily: HoolaFont.serif, fontSize: 18, fontWeight: FontWeight.w600, color: c.ink, height: 1.35);
   static TextStyle replyH3(HoolaColors c) =>

@@ -23,6 +23,7 @@ import '../../native.dart';
 import '../../state.dart';
 import '../chat_screen.dart' show feedCard;
 import '../glass.dart' show santoshTheme;
+import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import '../md_text.dart' show mdPlain;
 import '../shell/hoola_shell.dart' show HoolaComposer;
@@ -123,10 +124,20 @@ class _HoolaChatState extends State<HoolaChat> {
   FeedItem? get _lastReply {
     for (var i = app.feed.length - 1; i >= 0; i--) {
       final f = app.feed[i];
+      if (f.data['ack'] == true) continue;   // v0.888 the "Thinking, one minute..." placeholder is not a reply
       if (f.kind == 'message' && '${f.data['role']}' == 'assistant') return f;
       if (f.kind == 'message') return null;   // her message is newer than any reply
     }
     return null;
+  }
+
+  /// v0.888 the server's "Thinking, one minute..." line (an ephemeral placeholder until the real words come): it is
+  /// shown as the working row with its clock, never as a reply with Copy / Share / Ask again under it.
+  bool get _acked {
+    for (var i = app.feed.length - 1; i >= 0 && i >= app.feed.length - 4; i--) {
+      if (app.feed[i].data['ack'] == true) return true;
+    }
+    return false;
   }
 
   bool get _writing => app.feed.isNotEmpty && app.feed.last.kind == 'stream' && '${app.feed.last.data['text'] ?? ''}'.isNotEmpty;
@@ -177,7 +188,7 @@ class _HoolaChatState extends State<HoolaChat> {
 
   Widget _list(HoolaColors c) {
     final feed = app.feed;
-    final working = app.typing && !_writing ? 1 : 0;
+    final working = (app.typing || _acked) && !_writing ? 1 : 0;
     final older = app.hasOlder ? 1 : 0;
     final last = _lastReply;
     // which items start a new day
@@ -224,6 +235,7 @@ class _HoolaChatState extends State<HoolaChat> {
   Widget _item(FeedItem it, HoolaColors c, {bool fresh = false, bool actions = false}) {
     switch (it.kind) {
       case 'message':
+        if (it.data['ack'] == true) return const SizedBox.shrink();   // v0.888 drawn as the working row instead
         final me = it.data['role'] == 'user';
         final text = '${it.data['text'] ?? ''}';
         final files = (it.data['files'] as List?) ?? const [];
@@ -548,8 +560,7 @@ class _WorkingMark extends StatefulWidget {
   State<_WorkingMark> createState() => _WorkingMarkState();
 }
 
-class _WorkingMarkState extends State<_WorkingMark> with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+class _WorkingMarkState extends State<_WorkingMark> {
   final _t0 = DateTime.now();
   Timer? _tick;
 
@@ -562,20 +573,8 @@ class _WorkingMarkState extends State<_WorkingMark> with SingleTickerProviderSta
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (HoolaMotion.reduced(context)) {
-      _pulse.stop();
-      _pulse.value = 1;
-    } else if (!_pulse.isAnimating) {
-      _pulse.repeat(reverse: true);
-    }
-  }
-
-  @override
   void dispose() {
     _tick?.cancel();
-    _pulse.dispose();
     super.dispose();
   }
 
@@ -593,13 +592,7 @@ class _WorkingMarkState extends State<_WorkingMark> with SingleTickerProviderSta
         label: '${widget.name} is working: $label',
         excludeSemantics: true,
         child: Row(children: [
-          FadeTransition(
-            opacity: Tween<double>(begin: .45, end: 1).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-            child: ScaleTransition(
-              scale: Tween<double>(begin: .9, end: 1).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-              child: SizedBox(width: 26, height: 26, child: Transform.scale(scale: 1.7, child: Image.asset('assets/images/hoola_logo_fg.png'))),
-            ),
-          ),
+          const HoolaMark(size: 24),   // v0.888 the thinking mark (tinted, orbits; still under reduce motion)
           const SizedBox(width: 10),
           Expanded(
             child: AnimatedSwitcher(

@@ -326,6 +326,15 @@ void main() {
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: prefs, a11y: true));
     testWidgets('44 new team ($mode)', (t) => _shot(t, '44_new_team_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaTeam(app: a)), prefs: prefs, a11y: true));
+    // v0.888 her 13 Nov screenshot: the server's "Thinking, one minute..." placeholder must be the working row,
+    // never a reply with Copy / Share / Ask again, and the tab bar steps aside while Hoola works
+    testWidgets('55 new chat placeholder ($mode)', (t) => _shot(t, '55_new_chat_ack_$mode', home, prefs: prefs, a11y: true,
+        prep: (a) {
+          _richChat(a, working: true);
+          a.currentStep = '';
+          a.feed.add(FeedItem('message', {'role': 'assistant', 'text': 'Thinking, one minute…', 'ack': true,
+              'at': DateTime(2026, 11, 12, 15, 11).toIso8601String()}));
+        }));
     testWidgets('35 new chat writing ($mode)', (t) => _shot(t, '35_new_chat_writing_$mode', home, prefs: prefs,
         prep: (a) => _richChat(a, writing: true)));
   }

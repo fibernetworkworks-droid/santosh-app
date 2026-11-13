@@ -62,7 +62,7 @@ const MARK = fs.readFileSync(path.join(ROOT, 'server/app/static/console/mark.js'
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp" android:viewportWidth="${bw}" android:viewportHeight="${bw}">
   <group android:translateX="${-bx}" android:translateY="${-by}">
-${['uo', 'lo', 'ui', 'li', 'needle'].map(k => `    <path android:fillColor="#FFFFFFFF" android:pathData="${P[k]}"/>`).join('\n')}
+${['uo', 'lo', 'ui', 'li', 'needleMark'].map(k => `    <path android:fillColor="#FFFFFFFF" android:pathData="${P[k]}"/>`).join('\n')}
     <path android:fillColor="#FFFFFFFF" android:pathData="${circle}"/>
   </group>
 </vector>

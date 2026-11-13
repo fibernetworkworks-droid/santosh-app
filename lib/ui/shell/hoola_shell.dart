@@ -16,6 +16,7 @@ import '../bazar_screen.dart';
 import '../calls_sheet.dart';
 import '../chat/hoola_chat.dart';
 import '../glass.dart';
+import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import '../talk/hoola_talk.dart';
 import 'hoola_settings.dart';
@@ -25,7 +26,6 @@ import '../today_screen.dart';
 import '../voice_screen.dart';
 
 /// The Hoola mark (the owner's logo) as drawn in the app.
-const _mark = 'assets/images/hoola_logo_fg.png';
 
 class HoolaShell extends StatefulWidget {
   const HoolaShell({super.key, required this.app, required this.onReset});
@@ -41,6 +41,9 @@ class _HoolaShellState extends State<HoolaShell> {
   bool _talkOpen = false;
 
   Santosh get app => widget.app;
+
+  /// v0.888 the tab bar steps aside while Hoola is working in the open chat (the Hoola tab with a chat on it).
+  bool get _navHidden => _tab == 0 && app.typing && app.feed.any((f) => f.kind == 'message');
 
   void _go(int i) {
     if (i == _tab) return;
@@ -131,10 +134,23 @@ class _HoolaShellState extends State<HoolaShell> {
                 hoolaOpenNew(context, app, HoolaSettings(app: app, onReset: widget.onReset));
               },
             ),
+            // v0.888 while Hoola works in the chat the tab bar slides away and the chat takes the room (her ask:
+            // "when chat work in progress hide the bottom nav perfectly"); it comes back when the turn ends.
             body: SafeArea(
               bottom: false,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: keyboard ? 0 : 96),
+              child: ListenableBuilder(
+                listenable: Listenable.merge([app, app.voiceCall]),
+                builder: (context, child) {
+                  final hide = _navHidden;
+                  final pill = app.voiceCall.inCall ? HoolaSpace.touch + 8 : 0.0;
+                  final bottom = keyboard ? 0.0 : hide ? MediaQuery.viewPaddingOf(context).bottom + 6 + pill : 96.0;
+                  return AnimatedPadding(
+                    duration: HoolaMotion.of(context, HoolaMotion.page),
+                    curve: HoolaMotion.ease,
+                    padding: EdgeInsets.only(bottom: bottom),
+                    child: child,
+                  );
+                },
                 child: AnimatedSwitcher(
                   duration: HoolaMotion.of(context, HoolaMotion.fade),
                   switchInCurve: HoolaMotion.ease,
@@ -155,11 +171,46 @@ class _HoolaShellState extends State<HoolaShell> {
                               )
                             : const SizedBox.shrink(),
                       ),
-                      HoolaNav(tab: _tab, onTap: _go),
+                      ListenableBuilder(
+                        listenable: app,
+                        builder: (context, child) => _SlideAway(hidden: _navHidden, child: child!),
+                        child: HoolaNav(tab: _tab, onTap: _go),
+                      ),
                     ]),
                   ),
           );
         }),
+      );
+}
+
+/// v0.888 the tab bar sliding down and out of the way (and folding its height so the chat gets the room),
+/// then back up when the work ends. Reduce motion = a short fade.
+class _SlideAway extends StatelessWidget {
+  const _SlideAway({required this.hidden, required this.child});
+  final bool hidden;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(end: hidden ? 0 : 1),
+        duration: HoolaMotion.of(context, HoolaMotion.page),
+        curve: HoolaMotion.ease,
+        builder: (context, v, child) => IgnorePointer(
+          ignoring: hidden,
+          child: ExcludeSemantics(
+            excluding: hidden,
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.topCenter,
+                heightFactor: v,
+                child: Opacity(
+                  opacity: v.clamp(0.0, 1.0),
+                  child: Transform.translate(offset: Offset(0, (1 - v) * 28), child: child),
+                ),
+              ),
+            ),
+          ),
+        ),
+        child: child,
       );
 }
 
@@ -222,7 +273,7 @@ class HoolaNav extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
                       if (_items[i].$1 == null)
-                        SizedBox(width: 24, height: 24, child: Transform.scale(scale: 1.7, child: Image.asset(_mark)))
+                        const HoolaMark(size: 24, animate: false)   // v0.888 the tinted drawing (the app-icon file is white now)
                       else
                         AnimatedSwitcher(
                           duration: HoolaMotion.of(context, HoolaMotion.menu),
@@ -343,7 +394,7 @@ class _HoolaHomeState extends State<HoolaHome> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(children: [
             const SizedBox(height: 96),
-            _Appear(child: SizedBox(width: 64, height: 64, child: Transform.scale(scale: 1.5, child: Image.asset(_mark)))),
+            const _Appear(child: HoolaMark(size: 60, animate: false)),
             const SizedBox(height: 18),
             _Appear(delay: 60, child: Text(_greeting(), textAlign: TextAlign.center, style: HoolaType.hero(c))),
             const SizedBox(height: 10),
@@ -510,35 +561,48 @@ class _HoolaComposerState extends State<HoolaComposer> {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    Widget round(String tip, IconData icon, VoidCallback onTap, {bool filled = false, Color? bg}) => Semantics(
+    // v0.888 one control, one size: every button is a 48 dp tap area holding a 40 dp circle and a 22 dp icon, so +,
+    // mic, voice, Send and Stop sit on one line with the field (her report: the bar looked uneven - + was a grey
+    // disc, mic bare, voice a white disc, all 42 dp hanging 3 dp below the 48 dp field). Plain controls are bare
+    // icons; only the one main action (voice / Send / Stop) is filled, as in Claude.
+    Widget ctl(String tip, IconData icon, VoidCallback onTap, {bool filled = false, Color? bg}) => Semantics(
           button: true,
           label: tip,
           excludeSemantics: true,
-          child: Material(
-            color: filled ? (bg ?? c.pill) : Colors.transparent,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onTap,
-              child: SizedBox(width: 42, height: 42, child: Icon(icon, size: 21, color: filled ? c.onPill : c.ink2)),
+          child: SizedBox(
+            width: HoolaSpace.touch,
+            height: HoolaSpace.touch,
+            child: Center(
+              child: Material(
+                color: filled ? (bg ?? c.pill) : Colors.transparent,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: onTap,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Icon(icon, size: 22, color: filled ? (bg == c.accent ? c.onAccent : c.onPill) : c.ink2),
+                  ),
+                ),
+              ),
             ),
           ),
         );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 58),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: c.surface,
-          borderRadius: HoolaRadius.r(29),
+          borderRadius: HoolaRadius.r(HoolaRadius.pill),
           border: Border.all(color: c.line),
           boxShadow: HoolaShadow.float(c),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           if (_files.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 2, 6, 8),
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
               child: Wrap(spacing: 8, runSpacing: 8, children: [
                 for (var i = 0; i < _files.length; i++)
                   InputChip(
@@ -555,59 +619,46 @@ class _HoolaComposerState extends State<HoolaComposer> {
                   ),
               ]),
             ),
+          // end-aligned: on one line every control centres on the field (all 48 dp); a long message grows upward
+          // and the controls stay at its foot
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Semantics(
-            button: true,
-            label: 'Add a file or photo',
-            excludeSemantics: true,
-            child: Material(
-              color: c.sunk,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _add,
-                child: SizedBox(width: 42, height: 42, child: Icon(Icons.add_rounded, size: 22, color: c.ink)),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ctl('Add a file or photo', Icons.add_rounded, _add),
+            Expanded(
               child: TextField(
                 controller: _text,
                 focusNode: widget.focus,
                 minLines: 1,
                 maxLines: 6,
                 textInputAction: TextInputAction.newline,
+                textAlignVertical: TextAlignVertical.center,
                 style: HoolaType.bodyLarge(c),
                 cursorColor: c.accent,
                 decoration: InputDecoration(
                   hintText: widget.hint,
+                  hintMaxLines: 1,
                   filled: false,
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   isDense: true,
                   constraints: const BoxConstraints(minHeight: HoolaSpace.touch),   // R9: a 48 dp tap target
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  contentPadding: const EdgeInsets.fromLTRB(4, 12, 4, 12),
                 ),
               ),
             ),
-          ),
-          AnimatedSwitcher(
-            duration: HoolaMotion.of(context, HoolaMotion.menu),
-            transitionBuilder: (child, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: child)),
-            child: (_typing || _ready.isNotEmpty)
-                ? KeyedSubtree(key: const ValueKey('send'), child: round('Send', Icons.arrow_upward_rounded, _send, filled: true, bg: c.accent))
-                : (widget.working && widget.onStop != null)
-                ? KeyedSubtree(key: const ValueKey('stop'), child: round('Stop', Icons.stop_rounded, widget.onStop!, filled: true))
-                : Row(key: const ValueKey('talk'), mainAxisSize: MainAxisSize.min, children: [
-                    round('Talk to ${widget.app.aName}', Icons.mic_none_rounded, widget.onTalk),
-                    const SizedBox(width: 4),
-                    round('Start a call', Icons.graphic_eq_rounded, widget.onTalk, filled: true),
-                  ]),
-          ),
-        ]),
+            AnimatedSwitcher(
+              duration: HoolaMotion.of(context, HoolaMotion.menu),
+              transitionBuilder: (child, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: child)),
+              child: (_typing || _ready.isNotEmpty)
+                  ? KeyedSubtree(key: const ValueKey('send'), child: ctl('Send', Icons.arrow_upward_rounded, _send, filled: true, bg: c.accent))
+                  : (widget.working && widget.onStop != null)
+                  ? KeyedSubtree(key: const ValueKey('stop'), child: ctl('Stop', Icons.stop_rounded, widget.onStop!, filled: true))
+                  : Row(key: const ValueKey('talk'), mainAxisSize: MainAxisSize.min, children: [
+                      ctl('Talk to ${widget.app.aName}', Icons.mic_none_rounded, widget.onTalk),
+                      ctl('Start a call', Icons.graphic_eq_rounded, widget.onTalk, filled: true),
+                    ]),
+            ),
+          ]),
         ]),
       ),
     );
