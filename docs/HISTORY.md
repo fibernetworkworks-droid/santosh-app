@@ -3825,3 +3825,5 @@ an Indian home-internet route.
 
 Next (her decisions, 13 Nov): every user gets a Hoola PC through a SHARED POOL (per-user Chrome profiles), HUMAN IN
 THE LOOP for submits; then repeat jobs over a sheet's rows, files back to the chat, a report back with proof.
+
+- v0.884 follow-up (agent 1.5.1): her live check on the VPS - google / incometax / gst / uidai / aaplesarkar OK in 1-2 s; parivahan.gov.in came back "OK" after 40.6 s with NO title (the tab never left about:blank and a blank tab at the deadline counted as fine). Now `_settle` calls that `no_page` with the hint "the site refuses cloud servers, offer HER PC"; test added.

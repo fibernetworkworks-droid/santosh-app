@@ -47,13 +47,14 @@ def test_hints_never_click_past_a_certificate(tmp_path):
 def test_chrome_is_indian_and_portal_ready(tmp_path):
     a = _agent(tmp_path)
     assert a.TZ_NAME == "Asia/Kolkata" and a.LANG == "en-IN"
+    assert "HER PC" in a.hint_for("no_page")
     assert a.POLICY["DefaultPopupsSetting"] == 1 and a.POLICY["PromptForDownloadLocation"] is False
     assert a.POLICY["DownloadDirectory"].endswith("Downloads") and a.POLICY["PasswordManagerEnabled"] is False
     src = (ROOT / "desktop-linux" / "agent.py").read_text()
     for flag in ("--lang={LANG}", "--accept-lang={ACCEPT_LANG}", "--disable-popup-blocking",
                  "--disable-background-timer-throttling"):
         assert flag in src
-    assert '"TZ": TZ_NAME' in src and a.VERSION == "1.5.0"
+    assert '"TZ": TZ_NAME' in src and a.VERSION == "1.5.1"
     dk = (ROOT / "desktop-linux" / "Dockerfile").read_text()
     assert "ENV TZ=Asia/Kolkata" in dk and "tzdata" in dk
 
@@ -80,3 +81,13 @@ def test_operator_passes_the_problem_on():
     assert "PORTALS (v0.884)" in src and "never click past the warning" in src
     ops = (ROOT / ".github" / "workflows" / "vps-ops.yml").read_text()
     assert "python /app/agent.py check" in ops
+
+
+def test_blank_tab_at_deadline_is_no_page(tmp_path, monkeypatch):
+    a = _agent(tmp_path)
+    acts = a.Actions()
+    monkeypatch.setattr(acts, "_target", lambda tid: {"id": tid})
+    monkeypatch.setattr(a, "_state", lambda t: {"ready": "complete", "href": "about:blank", "title": "", "text": ""})
+    monkeypatch.setattr(a.time, "sleep", lambda s: None)
+    st, problem = acts._settle("x", a.time.time() + 0.05)
+    assert problem == "no_page"

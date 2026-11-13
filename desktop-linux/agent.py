@@ -43,7 +43,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.5.0"   # v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
+VERSION = "1.5.1"   # v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -323,6 +323,8 @@ HINTS = {
     "bot_check": "A 'checking your browser' page is showing. Take a screenshot; if it wants a tick / puzzle, ask her "
                  "(ask_user). Do not open the site again.",
     "crashed": "The tab crashed; it was reloaded once. If it is still blank, take a screenshot and open the page again.",
+    "no_page": "The site sent NOTHING (the tab stayed blank) - it most likely refuses cloud servers, as "
+               "parivahan.gov.in does. Retrying will not help. Tell her plainly and offer to do it on HER PC (pc_do).",
     "no_answer": "The tab did not answer. Take a screenshot to see what is on screen.",
     "slow": "The page is still loading. Use wait_for with a word you expect on it, or take a screenshot - do NOT open "
             "it again (that restarts the load).",
@@ -662,6 +664,8 @@ class Actions:
             if problem == "bot_check" and accept_bot:
                 return st, problem
             if time.time() >= deadline:
+                if problem == "" and href in ("", "about:blank"):
+                    problem = "no_page"         # v0.884.1 the site sent nothing at all (her parivahan.gov.in check)
                 return st, problem
             time.sleep(0.8)
 
