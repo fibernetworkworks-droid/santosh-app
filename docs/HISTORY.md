@@ -3914,3 +3914,34 @@ regenerated from the new shapes. The thinking animation is unchanged (same four 
 Tests: test_v0462_logo (adaptive background pin -> violet), v0716 incl. the browser walk, v0720 green; flutter analyze
 unchanged (26). NOT VERIFIED: on a real phone launcher / home screen (checked in a rendered preview of circle / squircle /
 rounded-square masks and 16-96 px sizes).
+
+
+## v0.887.0 ORBIT - the Hoola Orbit logo redrawn by hand, white on Espresso
+
+Owner, after v0.886 EK RANG went in: "SHOW THIS DESIGN IN MAN MADE PERFECT LOGO PROFESSION AND HUMAN NATIV" (the same
+orbit idea, drawn like a designer would), then "CHANGE BACKGROUND COLOUR -- SHOW PERFECT DARK COLOURS 10 LOGOS", then
+"INCRESCE THE CENTERLINE TILL END", and on option 2 "To the edge, bolder" on Espresso: "CHOOSE THIS".
+
+`server/app/static/console/mark.js` rewritten in TILE coordinates (0..100 = the whole app icon; the mark's grid placed at
+12..88, K = 0.76):
+- one centre (50 / 50), a true 45 degree needle;
+- both rings (R 38 / 25.5 on the mark grid) split into halves by ONE needle channel (CH 5.2, parallel to the needle) -
+  the ring ends are cut, never rounded off;
+- each half tapers by one rule: its inner edge is a circle shifted toward the opposite side (3.6 / 2.6), so a half is
+  thickest facing away from the cut;
+- the needle is a bold sharp diamond (5.0 wide at the core) whose tips stop just inside the tile edge: 8.94 on the
+  diagonal for the 22 % rounded square, 17.14 for a round launcher (`PATHS.needle` / `PATHS.needleRound`);
+- every shape is a plain SVG path (arcs + lines), so the Android status-bar vector uses the same data.
+`HoolaMark.svg({..., shape: 'circle', full})`: `full` = the whole tile box, otherwise the tight box `7 7 86 86`;
+`HoolaMark.tile` = Espresso #2A1C15, `HoolaMark.violet` stays for the in-app mark (console --acc-rgb, phone tint).
+
+`tool/make_mark.js`: the master = the full Espresso square with the white mark full bleed (launchers / iOS round the
+corners themselves); the adaptive foreground = the ROUND-needle mark on the launcher's visible 72 / 108 area (padding
+16.67 %, needle tips 28 % in from the canvas edge, inside the circle mask); light mark, phone layers on the tight box;
+status-bar vector viewport 86 with a -7 translate group. `tool/make_logo.py` BG -> Espresso. pubspec
+adaptive_icon_background "#2A1C15".
+
+Tests: test_v0462_logo (adaptive background pin -> Espresso), test_v0716 status vector pin (viewport 86, translate -7,
+6 white fills), v0720 / v0254 green. test_v0240::test_version is red on the untouched commit too (console stamps carry
+0.849.0) - not this work. NOT VERIFIED on a real phone launcher (checked on rendered rounded-square / circle / squircle
+masks, the console light mark, the stacked phone layers, the status vector drawn from its own XML, favicon 32 / 192).

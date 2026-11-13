@@ -64,7 +64,7 @@ def test_the_launcher_icon_is_the_logo_not_the_avatar():
     blk = y[y.index("flutter_launcher_icons:\n  #"):y.index("min_sdk_android")]
     assert "assets/images/hoola_logo.png" in blk and "assets/images/hoola_logo_fg.png" in blk
     assert "santosh_head" not in blk, "the app icon is the avatar's face again"
-    assert '"#5B45E0"' in blk, "the adaptive background must be the logo's own violet (v0.874)"
+    assert '"#2A1C15"' in blk, "the adaptive background must be the logo's own Espresso tile (v0.887)"
 
 
 def test_every_page_hoola_serves_carries_it():

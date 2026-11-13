@@ -1,4 +1,4 @@
-version: 0.886.0+885
+version: 0.887.0+886
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
@@ -47,7 +47,7 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: assets/images/hoola_logo.png
-  adaptive_icon_background: "#5B45E0"
+  adaptive_icon_background: "#2A1C15"
   adaptive_icon_foreground: assets/images/hoola_logo_fg.png
   min_sdk_android: 23
 
