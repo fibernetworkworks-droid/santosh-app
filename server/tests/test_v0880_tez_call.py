@@ -44,7 +44,7 @@ def _parts(monkeypatch, slow_s):
 
 
 def test_warm_copies_cut_the_wait(monkeypatch):
-    _parts(monkeypatch, 1.2)
+    _parts(monkeypatch, 2.0)
     st = types.SimpleNamespace(voice_brain_memory_s=1.5, voice_brain_memory_warm_s=0.2, voice_brain_yaad=False)
     conv = "c_warm_%d" % int(time.time() * 1000)
 
@@ -52,7 +52,7 @@ def test_warm_copies_cut_the_wait(monkeypatch):
         t0 = time.monotonic()
         first = await santosh._brain_memory("t", conv, "x", st)       # cold: waits the whole 1.5 s, coder late
         t1 = time.monotonic() - t0
-        await asyncio.sleep(1.0)                                    # the late part finishes and is kept
+        await asyncio.sleep(0.8)                                    # the late part finishes and is kept
         t0 = time.monotonic()
         second = await santosh._brain_memory("t", conv, "x", st)    # warm: 0.2 s, the kept copy used
         return first, t1, second, time.monotonic() - t0
