@@ -175,6 +175,22 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (13 Nov 2026, owner: "NOW PERFECT SAVE THE STATE TILL NOW" after her v0.879 PC test): branch
+  `stable-2026-11-13-pc-v879` = commit 2b0983420 = v0.879.0, pubspec 0.879.0+878 - cut at the LIVE commit (public healthz
+  0.879.0, chat_brain glm:openrouter:qwen/qwen3.8-27b). The PC + call line of 12-13 Nov: v0.874 PC SASTA (Qwen 27B worker +
+  Sonnet rescue), v0.875 PC MANAGER COST (manager on Qwen 27B), v0.876 EK BHASHA CALL (Hinglish calls), v0.877 PC STEADY
+  (progress list, popups, thinking on screen), v0.878 CREDIT ROKE NAHI (402 wait + smaller retry, partial not failed),
+  v0.879 EK KAAM EK BAAR (one call job at a time on her PC, slow AI step said + retried once, 1500-token PC credit hold).
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): markers present (APP_VERSION 0.879.0, BrainSlow + CreditLow,
+  voice._pc_in_use, steady.note_thought) and **95 tests green, 0 failed** (v0879 / v0878 / v0876 steady + call language /
+  v0875 / v0867 / v0866 / v0851 / v0863 / v0860 / v0660 / routines / test_pc_operator). Her VPS .env has no PC_MAX_TOKENS /
+  PC_BRAIN_TIMEOUT_S override (checked).
+  **NOT VERIFIED / CAVEATS:** the 402 wait-and-retry has not fired live yet (no 402 after the deploy); her Google sign-in is
+  still dead (both accounts, invalid_grant - Profile > Google Drive > 'Google Drive jodiye'); OpenRouter balance is low (402s
+  return if it runs out); two test_v0617_kuchh_na_chhoote tests are older reds (fail without this work too). APK release
+  `v0.879.0-b2576`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.879.0-b2576/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-13-pc-v879` as the branch.
 - SAVE THE STATE (11 Nov 2026, owner: "SAVE THE STATE" after the CONNECTORS PAGE went live): branch
   `stable-2026-11-11-connectors-v782` = commit 48c3eda0c = v0.782.0, pubspec 0.782.0+781 - cut at the LIVE commit (healthz 0.782.0;
   the live files in ~/apps/santosh-core hash-checked against this commit: main.py, connectors.js, donepage.py, oneline.py, v2.html, v2.js
