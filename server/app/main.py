@@ -5567,6 +5567,11 @@ from .aiapps.mcp import make_router as _aiapps_mcp_router  # noqa: E402  (app ke
 for _mk in (_aiapps_builder_router, _aiapps_keys_router, _aiapps_owner_router, _aiapps_public_router, _aiapps_mcp_router):
     app.include_router(_mk(require_key, current_tenant))
 
+# v0.877 HOOLA AGENT API (docs/HOOLA_API_PLAN.md): companies call Hoola's own tools with one key, paid from an INR wallet.
+# Off until HOOLA_API_ENABLED=true; public routes = a Hoola API key, portal = the company's login, admin = the operator.
+from .hoolaapi.api import make_router as _hoolaapi_router  # noqa: E402
+app.include_router(_hoolaapi_router(require_key, current_tenant))
+
 # HOOLA PROMPTING (docs/HOOLA_PROMPTING_PLAN.md P1-P3): her rough line -> a brief she can see and edit -> the prompt each
 # engine wants. Text only: no route here sends, spends, builds or publishes.
 from .prompting.api import make_router as _prompting_router  # noqa: E402
