@@ -426,6 +426,7 @@ class Settings(BaseSettings):
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
     pc_via_openrouter: bool = True          # v0.866 Sonnet for her PC work (manager + PC loop) billed to the OpenRouter key
     pc_openrouter_sonnet: str = "anthropic/claude-sonnet-5.5"   # the OpenRouter id (read from openrouter.ai/api/v1/models)
+    pc_manager_openrouter_model: str = "qwen/qwen3.8-27b"   # v0.875 PC MANAGER COST: the model the PC manager turn runs on through OpenRouter (was Sonnet: ~Rs 200 of a day's test); set anthropic/claude-sonnet-5.5 to go back
     pc_manager: bool = True                 # v0.864 PC MANAGER: a chat / call turn about her PC runs on pc_manager_model with the PC rules
     pc_manager_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for that turn
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)

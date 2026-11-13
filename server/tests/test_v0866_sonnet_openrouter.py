@@ -66,5 +66,5 @@ def test_manager_turn_rides_openrouter_when_keyed(live, monkeypatch):  # noqa: F
         return await orig(brain, system, history, settings, tools, live, max_tokens)
     monkeypatch.setattr(santosh, "_think", spy)
     asyncio.run(santosh.run_turn(live["conv"], "Mere PC pe Chrome mein Swiggy se pizza order karo"))
-    assert picked[0] == ("glm", "openrouter:anthropic/claude-sonnet-5.5")
+    assert picked[0] == ("glm", "openrouter:qwen/qwen3.8-27b")
     assert "MANAGER OF THE JOB" in seen[0]["system"]

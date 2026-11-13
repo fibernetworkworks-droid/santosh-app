@@ -368,6 +368,19 @@ def _image_parts(blocks: list) -> list[dict]:
     return out[:8]
 
 
+def _cache_system(model: str, msgs: list[dict]) -> None:
+    """v0.875 an Anthropic model reached through OpenRouter caches a long system prompt only when it is marked
+    (cache_control): the same prompt is then read at a tenth of the price on every later turn. Other models: unchanged."""
+    try:
+        if not str(model).startswith("anthropic/") or not is_openrouter():
+            return
+        if msgs and msgs[0].get("role") == "system" and isinstance(msgs[0].get("content"), str):
+            msgs[0] = {"role": "system", "content": [{"type": "text", "text": msgs[0]["content"],
+                                                       "cache_control": {"type": "ephemeral"}}]}
+    except Exception:
+        pass
+
+
 def to_openai(system: str, tools: list[dict], messages: list[dict]) -> tuple[list[dict], list[dict]]:
     msgs: list[dict] = [{"role": "system", "content": system}]
     for m in messages:
@@ -642,6 +655,7 @@ async def _openai_create(brain: str, system: str, tools: list[dict], messages: l
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
+    _cache_system(model, msgs)
     body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
                   "temperature": st.glm_temperature, **extra}
     if fns:
@@ -669,6 +683,7 @@ def _stream_body(brain: str, system: str, tools: list[dict], messages: list[dict
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
+    _cache_system(model, msgs)
     body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
                   "temperature": st.glm_temperature, "stream": True, **extra}
     if fns:

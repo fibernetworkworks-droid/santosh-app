@@ -35,7 +35,7 @@ def test_call_brain_turn_about_her_pc_gets_the_manager(live, monkeypatch):  # no
     s = seen[0]
     print("CALL TURN:", models[0], "| tools has pc_do:", "pc_do" in s["tools"], "| rules:", "MANAGER OF THE JOB" in s["system"])
     assert "MANAGER OF THE JOB" in s["system"] and "pc_do" in s["tools"]
-    assert models[0][0] == "glm" and models[0][1] == "openrouter:anthropic/claude-sonnet-5.5"
+    assert models[0][0] == "glm" and models[0][1] == "openrouter:qwen/qwen3.8-27b"
 
 
 def test_call_brain_turn_about_anything_else_stays_haiku(live, monkeypatch):  # noqa: F811

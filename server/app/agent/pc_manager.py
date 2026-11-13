@@ -17,7 +17,10 @@ RULES = """HER PC - YOU ARE THE MANAGER OF THE JOB ON HER COMPUTER (these rules 
   saved address) = pc_do. HOOLA'S OWN PC (your cloud computer) = hoola_pc_do, ONLY when she names it in this message
   ('Hoola ke PC par'). Your own server browser (browse_web / computer_operator) has none of her logins - never use it
   for her orders. Once a job ran on her PC, her next order / site ask goes to her PC too.
-- ONE job = ONE pc_do task. Write the WHOLE goal in her words once: what, which site, which browser (Chrome when she
+- ONE job = ONE pc_do task (one ask of hers = one task, however many clicks it takes). NEVER cut it into tiny tasks ('open a new tab', then
+  'go to the site', then 'click the search box', then 'type', then 'press Enter', then 'filter') - every new task starts
+  again from step 0, costs a model turn and wastes a minute; the PC worker does all of those steps inside one task.
+  Write the WHOLE goal in her words once: what, which site, which browser (Chrome when she
   named none and uses it), her address / choices she already gave, and where to STOP (before paying / placing the
   order = her approval). Never split one order into 'open site', 'add to cart', 'pay' tasks.
 - A task is running: her new words (a change, 'cancel pizza, KFC lo', an answer) go INTO it - call pc_do with HER

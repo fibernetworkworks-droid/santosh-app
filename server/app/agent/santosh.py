@@ -2216,8 +2216,9 @@ async def _turn_model(t: "_Turn"):
             # v0.866 SONNET VIA OPENROUTER: the same Sonnet manager, billed to her OpenRouter credit (the OpenAI-shaped
             # brain path with an 'openrouter:' model, the way her console model pick already runs)
             brain = "glm"
-            llm.MODEL_NOW.set("openrouter:" + str(getattr(settings, "pc_openrouter_sonnet", "")
-                                                   or "anthropic/claude-sonnet-5.5"))
+            llm.MODEL_NOW.set("openrouter:" + str(getattr(settings, "pc_manager_openrouter_model", "")
+                                                   or getattr(settings, "pc_openrouter_sonnet", "")
+                                                   or "anthropic/claude-sonnet-5.5"))   # v0.875 Qwen 27B by default
             _MODEL_NOW.set("")
             PC_MANAGER["turns"] += 1
         if state.get("pc_turn") and not _or_key and _claude_ready():

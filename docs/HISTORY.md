@@ -3597,3 +3597,13 @@ Built (all behind settings, Sonnet / Qwen Max one `model=` pick away):
 - `pc/operator.py`: playbook appended to the system prompt, over_budget checked before each step, observe note added to the turn's result, steps_max capped at start; Op fields rescue_left / rescues / sigs / shots / err_run.
 - Tests `test_v0867_pc_sasta.py` (16). Log lines: `pc brain qwen27 qwen/qwen3.8-27b step N ... (rescue)`, `pc rescue <id> step N #k -> <model> for 3 steps | <why>`.
 NOT VERIFIED: no live Qwen 27B PC step; the spend cap is an estimate held in memory (a restart resets it); the step cap defaults to 64 so it changes nothing until lowered.
+
+
+## v0.875.0 PC MANAGER COST (owner: "FIX IT PERMANENTLY")
+
+Her OpenRouter activity for 13 Nov: Claude Sonnet 5.5 $2.36, Qwen3.8 27B $0.132. The Qwen line = the cheap PC worker (v0.874); the Sonnet line = the PC MANAGER turn (v0.864 / v0.866 pinned it to Sonnet via OpenRouter, ignoring CHAT_LLM / GLM_MODEL). A manager turn re-sends the chat, the PC rules and every tool in view with no prompt cache, and her log showed one job cut into 8 tiny tasks (open tab, go to the site, click the box, type, Enter, filter) = 8+ manager turns.
+- `pc_manager_openrouter_model` (default `qwen/qwen3.8-27b`) - `agent/santosh.py` manager branch uses it (falls back to `pc_openrouter_sonnet`); `anthropic/claude-sonnet-5.5` there = the old behaviour.
+- `agent/llm.py` `_cache_system`: an Anthropic model reached through OpenRouter gets `cache_control: ephemeral` on its system message in both OpenAI-style body builders; other models untouched.
+- `agent/pc_manager.py` RULES: one ask = one pc_do task, never tiny tasks.
+- Tests `test_v0875_pc_manager_cost.py` (5); test_v0866 / test_v0874 pins moved to the Qwen manager.
+NOT VERIFIED: Qwen 27B as the manager on her server (tool choice, task writing); the cache saving is OpenRouter's, not measured here.
