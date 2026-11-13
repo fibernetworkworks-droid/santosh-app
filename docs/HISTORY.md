@@ -3767,3 +3767,28 @@ Fix:
   hands the next steps to the strong helper. No planner / checker came back; nothing clicks by itself.
 - `pc task end` logs `drifts=N` and `job: <last done items>`.
 Tests `test_v0882_pc_job_yaad.py` (8). NOT VERIFIED on her PC.
+
+
+## v0.883.0 CALL PC SEEDHA - the call answers, the PC task works (owner: "CHECK THE LOGS --- GIVE COMMAND I WILL PASTE HERE" -> diagnosis -> "go")
+
+Her 13 Nov 08:28-08:40 calls (Swiggy pizza, Task Manager) showed v0.881 connect (instant) and v0.882 job card (4 follow-ups
+"continue, not restart", tasks 16-51 s) working, and six remaining causes:
+1. A call ask that looked big (`goal.looks_big`) made the call brain a long job: 16k cap (one Qwen call 38.4 s) and it kept
+   calling tools while the PC task ran (9 calls, msgs 37 -> 55), holding the chat lock - her next words waited 21 / 22 / 58 s
+   ("lock 58.4s"). Now: `state["big"]` never on a call turn; once pc_do / hoola_pc_do / pc_team succeeded on a call turn
+   (`state["pc_handed"]`), `_pc_watch` tools (pc_do / pc_team / pc_task_result / pc_status / pc_devices / kaam_status) are
+   held with "answer her now in one short line" (`CALL_PC_HELD`). Other tools still run.
+2. A follow-up with no PC word ("isse minimize kar do") lost the PC tools (tools 64 -> 77 via tool_search), the task
+   started 36 s after her ask. Now `pc_manager.wanted` is True on a call turn when her PC worked in the last 10 min.
+3. The Web Studio block (`turnmode`) took 2.7 s on a call turn - skipped on calls.
+4. Her Chrome's page tools (page_elements / page_text / tabs / page_type) worked until 03:47 and failed on every task from
+   03:51 (after Hoola Desktop was paused and resumed); each failure a step, two in a row a Sonnet rescue. Now
+   `steady.lane_skip`: 2 failures in a task = SKIPPED (not an ERROR, so no rescue) with "use the screenshot", and every
+   failed `pc act` logs `ERROR | <first 200 chars>` so the real reason shows next time. The reason itself is NOT known yet.
+5. Hoola's own banner sat over the page; the model clicked it, a new tab opened, the Cart tab was lost. Prompt rule: Hoola's
+   window / banner is never a target or a popup to close. (Keeping it out of the click area would be a desktop change - not done.)
+6. Task Manager runs as administrator: Windows blocks a normal app's input (UIPI), so minimize took 20 steps / 61 s; and
+   Ctrl+Shift+Esc is a blocked key. `steady.admin_note`: after 2 unchanged screens on an admin-looking front window, said once
+   ("Yeh window admin mode mein hai... aap khud kar dijiye"); prompt: open Task Manager with open_app, never drive admin windows.
+Also: the connect answer spoke "[Team job: ..." word for word - `pcconnect._short_task` speaks only the short goal.
+Tests: test_v0883_call_pc_seedha.py (8). NOT VERIFIED on her server or PC.

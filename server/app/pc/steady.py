@@ -46,6 +46,10 @@ EVERY TURN (v0.876 - she watches you work, live):
   ignore it unless it covers what you need. A popup button that sends / pays / deletes / installs needs ask_approval.
 - If your last action changed nothing on the screen, do NOT send it again: something is in the way or it was the
   wrong target - look again and try another way (page_elements, a keyboard shortcut, Esc, scroll).
+- HOOLA'S OWN WINDOW / BANNER (Hoola Desktop, its status bar or a 'Hoola' toast) is NEVER a target and never a popup to
+  close: clicking it opens a new tab or steals the focus. Click around it; if it covers what you need, scroll.
+- Ctrl+Shift+Esc, Win+R, Win+X and Win+L are refused - open Task Manager with open_app 'Task Manager'. Task Manager and
+  other admin windows cannot be clicked or typed into from here: read them, never try to move / close them.
 """
 
 PASSIVE = {"wait", "screenshot", "scroll", "zoom", "tabs", "downloads", "page_text", "page_elements", "ax_snapshot",
@@ -395,3 +399,48 @@ def drift(op: Any) -> str:
         return (f"\nNOTE (Hoola): {idle} steps without a new part of the task done. Task: \"{str(op.task)[:200]}\". "
                 "Check what is left and do it; if it cannot be done, call done with status partial and say why.")
     return ""
+
+
+# --- v0.883 BROWSER LANE: her Chrome's page tools (page_elements / page_text / tabs / page_type ...) failed on every
+# task since 03:51 on 13 Nov (after a pause / resume) - each failure a wasted step and, two in a row, a Sonnet rescue.
+# Two failures in one task = the lane is down for THAT task: further calls are skipped at once with a plain line
+# (not an ERROR, so the rescue does not fire on it) and the model works from the screenshot.
+LANE = {"page_elements", "page_text", "page_type", "page_click", "page_select", "page_fill_form", "tabs",
+        "switch_tab", "wait_for", "downloads"}
+LANE_DOWN_AFTER = 2
+LANE_SKIP = ("SKIPPED: her browser's page tools are not answering on this PC in this task. Do not call page_* / tabs "
+             "again - use the screenshot with click / type / key (Ctrl+Tab, Ctrl+L, Ctrl+F) instead.")
+
+
+def lane_skip(op: Any, name: str) -> str:
+    """The skip line when the browser lane already failed twice in this task, else ''."""
+    if name in LANE and int(getattr(op, "lane_fails", 0) or 0) >= LANE_DOWN_AFTER:
+        return LANE_SKIP
+    return ""
+
+
+def lane_seen(op: Any, name: str, msg: str) -> None:
+    """Count a browser-lane failure (and a success resets it)."""
+    if name not in LANE:
+        return
+    if str(msg or "").lstrip().startswith("ERROR"):
+        op.lane_fails = int(getattr(op, "lane_fails", 0) or 0) + 1
+    else:
+        op.lane_fails = 0
+
+
+# --- v0.883 ADMIN WINDOWS: Windows does not let a normal app click or type into a window that runs as administrator
+# (Task Manager, an installer, an admin terminal) - her 13 Nov "minimize Task Manager" took 20 steps and 61 s.
+_ADMIN = ("task manager", "registry editor", "administrator:", "user account control", "computer management",
+          "services", "device manager", "event viewer", "setup", "installer")
+
+
+def admin_note(op: Any) -> str:
+    """After 2 unchanged screens on an admin-looking front window: say so once, and stop trying."""
+    w = str(getattr(op, "window", "") or "").lower()
+    if int(getattr(op, "unchanged", 0) or 0) < 2 or not any(k in w for k in _ADMIN) or getattr(op, "_admin_said", False):
+        return ""
+    op._admin_said = True
+    return ("\nADMIN WINDOW: the window in front ('" + w[:60] + "') most likely runs as administrator - Windows blocks a "
+            "normal app's clicks and keys there, so trying again will not work. Stop trying; finish with done and tell "
+            "her plainly: 'Yeh window admin mode mein hai, main use control nahi kar sakta - aap khud kar dijiye.'")

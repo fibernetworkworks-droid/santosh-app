@@ -44,6 +44,14 @@ _PCWORDS = re.compile(r"\b(?:pc|laptop|computer|desktop|chrome|edge|browser|swig
                       r"mangao|mangwa|kharid|checkout|cancel)\b", re.I)
 
 
+def _on_call() -> bool:
+    try:
+        from .santosh import VOICE_BRAIN_NOW
+        return bool(VOICE_BRAIN_NOW.get())
+    except Exception:
+        return False
+
+
 def wanted(settings, ctx, conv: str, tenant: str, request: str, adm=None) -> bool:
     """Is THIS turn about her PC? (her place named / a PC job running or just run here / the pc tools admitted /
     her PC worked in the last 45 min and her words are about a site, an order or the computer)."""
@@ -64,6 +72,8 @@ def wanted(settings, ctx, conv: str, tenant: str, request: str, adm=None) -> boo
         from ..pc import operator as pcop
         if pcop.live_for(tenant, conv) is not None and any(o.kind != pcop.HOOLA_PC_KIND for o in pcop.running_all(tenant)):
             return True
+        if pcop.her_pc_recent(tenant, 10 * 60) and _on_call():
+            return True     # v0.883 a call follow-up ("isse minimize karo") right after a PC task needs no PC word
         return pcop.her_pc_recent(tenant) and bool(_PCWORDS.search(str(request or "")))
     except Exception:
         return False

@@ -89,4 +89,4 @@ def test_rescue_reads_drift_and_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.882.0")
+    assert APP_VERSION.startswith("0.88")

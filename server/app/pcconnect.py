@@ -48,6 +48,15 @@ def only_connect(text: str) -> bool:
     return True
 
 
+def _short_task(task: str) -> str:
+    """v0.883 the spoken task: the '[Team job: ...]' goal only, never the long instruction read out word for word."""
+    t = str(task or "").strip()
+    m = re.match(r"\[(?:Team job|Job)\s*:\s*([^\]]+)\]", t, re.I)
+    t = (m.group(1) if m else t).strip()
+    t = re.split(r"(?<=[.!?।])\s", t, maxsplit=1)[0]
+    return t[:90].rstrip(" ,;:")
+
+
 def status_line(tenant_id: str, hinglish: bool = True) -> str:
     """One spoken line from the hub's own state: her PC online / control off / paused / offline (+ the task running)."""
     try:
@@ -64,7 +73,7 @@ def status_line(tenant_id: str, hinglish: bool = True) -> str:
     try:
         from .pc import operator
         o = operator.busy(tenant_id, d.get("device_id"))
-        doing = (o.task or "")[:90] if o else ""
+        doing = _short_task(o.task or "") if o else ""
     except Exception:
         doing = ""
     if d.get("paused"):

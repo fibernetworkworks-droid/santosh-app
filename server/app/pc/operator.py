@@ -2894,13 +2894,17 @@ async def _run(op: Op) -> None:
                     moved = "screenshot"
                     continue
                 t_act = time.monotonic()
+                _skip = steady.lane_skip(op, name)          # v0.883 the browser lane already failed twice here
                 try:
-                    msg = await _do(op, name, a)
+                    msg = _skip or await _do(op, name, a)
                     is_err = msg.startswith("REFUSED")
                 except Exception as e:
                     msg, is_err = f"ERROR: {e}", True
+                if not _skip:
+                    steady.lane_seen(op, name, msg)
+                _bad = is_err or msg.startswith("ERROR")
                 log.info("pc act %s %s %.1fs%s", op.id, name, time.monotonic() - t_act,   # v0.862 which action is slow
-                         " ERROR" if is_err or msg.startswith("ERROR") else "")
+                         (" ERROR | " + msg[:200].replace("\n", " ")) if _bad else (" SKIPPED" if _skip else ""))
                 if not is_err and not msg.startswith("ERROR"):
                     _speak(op, name)               # v0.858 a live call hears a milestone only once it really happened
                 try:   # v0.876 PC STEADY: what really worked goes on the progress list; a repeated aim gets a note
@@ -2932,6 +2936,7 @@ async def _run(op: Op) -> None:
             try:   # v0.876 PC STEADY: nothing moved? something on top? then what is already done
                 did = steady.acted(uses, results)
                 prev_text += steady.screen_note(op, shot, did)
+                prev_text += steady.admin_note(op)   # v0.883 an admin window cannot be driven
                 prev_text += await steady.sweep(op, _pc, before_windows, before_title, did,
                                                 any(n in FOCUS_MOVERS for n in did))
                 prev_text += steady.progress_block(op)

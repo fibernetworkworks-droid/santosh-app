@@ -1441,7 +1441,8 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
                    "answer_only": bool(getattr(settings, "chat_answer_only", False))}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
-    state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
+    state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and not VOICE_BRAIN_NOW.get()
+                        and _goal.looks_big(user_text or ""))   # v0.883 never on a call: 16k room + 38 s calls + it stayed on the line
     if state["big"]:   # v0.558 a big ask thinks at effort xhigh from its FIRST call: thinking tokens count, give it the long-job room
         state["max_tokens"] = max(state.get("max_tokens") or 0, int(settings.agent_goal_max_tokens or 16000))
     # v0.272 SOCH KE JAWAB step 1: a HARD question (analysis, calculation, decision, plan, root cause, proof, deep
@@ -1492,7 +1493,8 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             log.exception("procedure hint failed")
     try:   # v0.782 TEEN MODE: the mode's rules + this website's standing instructions / approved plan
         from . import turnmode as _tmode
-        _tm_txt = _tmode.rules() + await asyncio.to_thread(_tmode.site_block, tenant_id)
+        # v0.883 a call never reads the Web Studio block (2.7 s on her 13 Nov 08:29 call)
+        _tm_txt = "" if VOICE_BRAIN_NOW.get() else _tmode.rules() + await asyncio.to_thread(_tmode.site_block, tenant_id)
         if _tm_txt:
             state["hint"] = (state.get("hint") or "") + _tm_txt
     except Exception:
@@ -1979,6 +1981,15 @@ def _request(history: list[dict], system: str, tools, brain: str, conversation_i
 
 
 PROMPT_STATS = {"small": 0, "small_chars": 0}
+CALL_PC_HELD = {"n": 0}   # v0.883 PC checks refused on a call turn after the task was handed to the PC
+
+
+def _pc_watch(name: str) -> bool:
+    """A tool that checks or re-sends the running PC task (not a different kind of work)."""
+    return name in ("pc_do", "hoola_pc_do", "pc_team", "pc_task_result", "pc_status", "pc_devices", "kaam_status",
+                    "hoola_pc_task_result")
+
+
 PC_MANAGER = {"turns": 0}   # v0.864 turns about her PC that ran on pc_manager_model with the PC rules
 
 
@@ -2549,6 +2560,12 @@ async def _turn_tools(t: "_Turn", blocks: list):
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
                         "content": "The user tapped Stop. Do not continue this task; say in one line what was done."}
             held = breaker.before(b["name"], b.get("input") or {})
+            if not held and VOICE_BRAIN_NOW.get() and state.get("pc_handed") and _pc_watch(b["name"]):
+                # v0.883 her 13 Nov call: after the PC task started, the call brain kept checking it (9 calls, 58 s)
+                # and her next words waited behind that turn. The task speaks its own updates on the call.
+                CALL_PC_HELD["n"] += 1
+                held = ("NOT RUN: the PC task is already running and tells her its own progress on this call. Do not "
+                        "check it or send it again. Answer her now in one short line and end your turn.")
             if held:                       # circuit breaker: steered / constrained / stopped, the call does not run
                 return {"type": "tool_result", "tool_use_id": b["id"], "is_error": True, "content": held}
             ran_tools = True
@@ -2579,6 +2596,8 @@ async def _turn_tools(t: "_Turn", blocks: list):
                     content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
                 state["calls"].append(call)
+                if fine and b["name"] in ("pc_do", "hoola_pc_do", "pc_team") and VOICE_BRAIN_NOW.get():
+                    state["pc_handed"] = True       # v0.883 the job is on the PC now; this call turn only answers
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "done", "id": b["id"],
                                                       "args": livework.args_brief(args_in)})   # v0.171 again: late joiners see it too
                 _work(conversation_id, b["id"], shown, label, livework.phase_of(out), args_in, out)
