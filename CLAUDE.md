@@ -185,6 +185,23 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (13 Nov 2026, later, owner: "PERFECT SAVE THE STATE" after her v0.880-v0.883 call + PC tests): branch
+  `stable-2026-11-13-pc-v883` = commit 4102ab852 = v0.883.0, pubspec 0.883.0+882 - cut at the LIVE commit (public healthz
+  0.883.0, chat_brain glm:openrouter:qwen/qwen3.8-27b). On top of the v0.879 save: v0.880 TEZ CALL (PC hand-off 4 s, warm call
+  memory, GLM timing log), v0.881 PC JUDA HAI ('connect to my PC' answered at once from the hub - seen live, 0 ms), v0.882 PC
+  JOB YAAD (job card per PC, follow-ups continue not restart - seen live on 4 Swiggy follow-ups; drift guard), v0.883 CALL PC
+  SEEDHA (call turn never long-job, stops watching a handed-off PC task, call follow-up keeps the PC tools, page tools skipped
+  after 2 failures with the error logged, admin windows said once, Hoola's banner never a target).
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): markers present (APP_VERSION 0.883.0, steady lane_skip /
+  admin_note / remember / drift, santosh _pc_watch + CALL_PC_HELD, pcconnect only_connect / _short_task) and **134 tests green,
+  0 failed** (v0883 / v0882 / v0881 / v0880 / v0879 / v0878 / v0876 steady / v0875 / v0867 / v0864 / v0863 / v0660 / routines /
+  test_pc_operator / test_voice).
+  **NOT VERIFIED / CAVEATS:** v0.883's call changes not yet seen on a live call; WHY her Chrome page tools fail since 03:51
+  (after a pause / resume) is still unknown - the next `pc act ... ERROR |` log line will say; Task Manager-like admin windows
+  stay out of reach by Windows design; older reds unchanged (test_v0644 call memory, test_v0636 old results, test_v0173 pc
+  memory window). APK release `v0.883.0-b2589`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.883.0-b2589/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-13-pc-v883` as the branch.
 - SAVE THE STATE (13 Nov 2026, owner: "NOW PERFECT SAVE THE STATE TILL NOW" after her v0.879 PC test): branch
   `stable-2026-11-13-pc-v879` = commit 2b0983420 = v0.879.0, pubspec 0.879.0+878 - cut at the LIVE commit (public healthz
   0.879.0, chat_brain glm:openrouter:qwen/qwen3.8-27b). The PC + call line of 12-13 Nov: v0.874 PC SASTA (Qwen 27B worker +
