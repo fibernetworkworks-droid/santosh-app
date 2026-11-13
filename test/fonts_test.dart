@@ -12,6 +12,9 @@ void main() {
       'Literata-Regular.ttf', 'Literata-Medium.ttf', 'Literata-SemiBold.ttf', 'Literata-Italic.ttf',
       'SchibstedGrotesk-Regular.ttf', 'SchibstedGrotesk-Medium.ttf', 'SchibstedGrotesk-SemiBold.ttf',
       'SchibstedGrotesk-Bold.ttf', 'JetBrainsMono-Regular.ttf', 'JetBrainsMono-Medium.ttf',
+      // v0.892 Literata cut at Claude's dark weights (360 / 530) + the Dyslexic chat font
+      'LiterataDark-Regular.ttf', 'LiterataDark-SemiBold.ttf', 'LiterataDark-Italic.ttf',
+      'OpenDyslexic-Regular.otf', 'OpenDyslexic-Bold.otf',
     ];
     for (final f in files) {
       final file = File('assets/fonts/$f');

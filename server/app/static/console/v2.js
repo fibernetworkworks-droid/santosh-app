@@ -289,6 +289,8 @@ function themeSync() {
   const t = TH.theme(), z = TH.size();
   $$('[data-theme-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeSet === t)));
   $$('[data-size-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.sizeSet === z)));
+  const f = TH.chatFont ? TH.chatFont() : 'serif';
+  $$('[data-font-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.fontSet === f)));
   const c = $('#calmSw'); if (c) c.setAttribute('aria-checked', String(TH.calm()));
   const g = $('#glowSw'); if (g) g.setAttribute('aria-checked', String(TH.glow()));
   $$('.themeseg').forEach(seg => { const bs = $$('button', seg), i = Math.max(0, bs.findIndex(b => b.getAttribute('aria-checked') === 'true'));
@@ -297,9 +299,10 @@ function themeSync() {
 TH?.onChange(themeSync); themeSync();
 if (window.ResizeObserver) new ResizeObserver(() => themeSync()).observe(document.querySelector('#app .side') || document.body);
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-theme-set],[data-size-set],#calmSw,#glowSw'); if (!b || !TH) return;
+  const b = e.target.closest('[data-theme-set],[data-size-set],[data-font-set],#calmSw,#glowSw'); if (!b || !TH) return;
   if (b.dataset.themeSet) TH.setTheme(b.dataset.themeSet, e);
   else if (b.dataset.sizeSet) TH.setSize(b.dataset.sizeSet);
+  else if (b.dataset.fontSet) TH.setChatFont(b.dataset.fontSet);
   else if (b.id === 'calmSw') TH.setCalm(!TH.calm());
   else if (b.id === 'glowSw') TH.setGlow(!TH.glow());
 });
@@ -311,6 +314,8 @@ function appearanceHTML() {
     <div class="tcards" role="radiogroup" aria-label="Theme">${card('light', 'Light', `<span class="pvs pvL"></span>${mini('pvL')}`)}${card('dark', 'Dark', `<span class="pvs pvD"></span>${mini('pvD')}`)}${card('system', 'System', mini('pvL') + mini('pvD'))}</div>
     <div class="aprow"><div><b>Text size</b><span>Chat text and the sidebar.</span></div>
       <div class="themeseg sizeseg" role="radiogroup" aria-label="Text size"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-size-set="sm" aria-checked="false">Small</button><button type="button" role="radio" data-size-set="md" aria-checked="false">Default</button><button type="button" role="radio" data-size-set="lg" aria-checked="false">Large</button></div></div>
+    <div class="aprow"><div><b>Chat font</b><span>How Hoola's replies are written. Your messages stay as they are.</span></div>
+      <div class="themeseg fontseg" role="radiogroup" aria-label="Chat font"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-font-set="serif" aria-checked="false">Serif</button><button type="button" role="radio" data-font-set="sans" aria-checked="false">Sans</button><button type="button" role="radio" data-font-set="system" aria-checked="false">System</button><button type="button" role="radio" data-font-set="dyslexic" aria-checked="false">Dyslexic</button></div></div>
     <div class="aprow"><div><b>Reduce motion</b><span>Replies appear at once. No glow, fades or moving borders.</span></div><button type="button" class="swt" role="switch" id="calmSw" aria-checked="false" aria-label="Reduce motion"><i></i></button></div>
     <div class="aprow"><div><b>Live border glow</b><span>The soft light that runs round a card while Hoola works or waits for you.</span></div><button type="button" class="swt" role="switch" id="glowSw" aria-checked="true" aria-label="Live border glow"><i></i></button></div>
   </div>`;

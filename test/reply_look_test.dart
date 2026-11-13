@@ -82,6 +82,24 @@ void main() {
     expect(gaps, [16, 24, 8]);
   });
 
+  // v0.892 CLAUDE KE AKSHAR: claude.ai thins its reply in dark mode (360 / 530); the phone uses Literata cut at those
+  // weights, and her chat font choice changes only the reply (headings follow, code stays mono).
+  test('the reply font follows the mode and her chat font', () {
+    ChatFont.current = 'serif';
+    expect(HoolaType.reply(HoolaColors.light).fontFamily, 'Literata');
+    expect(HoolaType.reply(HoolaColors.darkSet).fontFamily, 'Literata Dark');
+    expect(HoolaType.replyH1(HoolaColors.darkSet).fontFamily, 'Literata Dark');
+    ChatFont.current = 'sans';
+    expect(HoolaType.reply(HoolaColors.darkSet).fontFamily, HoolaFont.sans);
+    ChatFont.current = 'dyslexic';
+    expect(HoolaType.reply(HoolaColors.light).fontFamily, 'OpenDyslexic');
+    expect(HoolaType.replyH2(HoolaColors.light).fontWeight, FontWeight.w700);
+    ChatFont.current = 'system';
+    expect(HoolaType.reply(HoolaColors.light).fontFamily, 'Roboto');
+    expect(HoolaType.code(HoolaColors.light).fontFamily, HoolaFont.mono);
+    ChatFont.current = 'serif';
+  });
+
   test('a capitals title reads as a sentence; business words and normal titles stay', () {
     expect(sentenceCase('FROM WHERE THEY EARN MONEY'), 'From where they earn money');
     expect(sentenceCase('MAKE GST REPORT PDF'), 'Make GST report PDF');

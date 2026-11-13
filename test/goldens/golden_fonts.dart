@@ -37,6 +37,7 @@ Future<void> loadHoolaFamilies() async {
     HoolaFont.sans: ['SchibstedGrotesk-Regular', 'SchibstedGrotesk-Medium', 'SchibstedGrotesk-SemiBold', 'SchibstedGrotesk-Bold'],
     HoolaFont.serif: ['Literata-Regular', 'Literata-Medium', 'Literata-SemiBold', 'Literata-Italic'],
     HoolaFont.mono: ['JetBrainsMono-Regular', 'JetBrainsMono-Medium'],
+    HoolaFont.serifDark: ['LiterataDark-Regular', 'LiterataDark-SemiBold', 'LiterataDark-Italic'],   // v0.892
   };
   for (final e in fams.entries) {
     final l = FontLoader(e.key);
@@ -45,4 +46,8 @@ Future<void> loadHoolaFamilies() async {
     }
     await l.load();
   }
+  final d = FontLoader(HoolaFont.dyslexic);   // v0.892 the Dyslexic chat font ships as OpenType (.otf)
+  d.addFont(rootBundle.load('assets/fonts/OpenDyslexic-Regular.otf'));
+  d.addFont(rootBundle.load('assets/fonts/OpenDyslexic-Bold.otf'));
+  await d.load();
 }
