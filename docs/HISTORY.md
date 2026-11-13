@@ -3630,3 +3630,20 @@ Hinglish and "say the reply IN THE CALL'S LANGUAGE (an English reply is never re
 Tests: test_v0876_call_language.py 7; test_v0728 English-call test now sets VOICE_LANGUAGE=en; test_v0630 filler pin moved
 to the Hinglish line. Pre-existing reds (stash-proven, untouched): test_human_voice x4, test_v0728 every_tool_label,
 test_v114 lock, test_v119 x2. NOT VERIFIED on a live call. Back to English calls: VOICE_LANGUAGE=en in the VPS .env.
+
+## v0.877.0 HOOLA AGENT API - companies call Hoola's tools with one key and pay from an INR wallet (owner: "means we developed employees, tools etc can directly be used by different companies via our Hoola API" -> "now let's work on development of different portal endpoints for Hoola AI agent")
+
+Research first (13 Nov 2026, official terms of 14 providers + OpenRouter's 121-provider list): reselling raw model API access is forbidden by
+every provider without a signed deal, while building your own product on top is allowed - so the API sells Hoola's WORK, not a model pipe.
+Plan + phases + open owner decisions: `docs/HOOLA_API_PLAN.md`.
+
+Built (phase 1): `server/app/hoolaapi/` -
+- `models.py` hapi_keys / hapi_wallets / hapi_ledger / hapi_calls (self-healing `ensure_tables`, registered in `db.init_db`); the ledger is append-only (ORM guard + SQLite trigger) and unique per (type, ref_type, ref_id).
+- `catalog.py` an ALLOWLIST of 6 read / compute tools (api_box, mospi, duniya, reach, scrape_page, pylab) with default INR prices in micro-INR and a `hoola_api_prices` override; the test reads every name for send / pay / delete / pc words.
+- `service.py` `hk_live_` keys (shown once, sha256 only, per-key tools / rpm / rph / concurrent / daily INR cap; the AI Apps `Limiter` reused), wallet (atomic conditional debit + ledger row in one transaction), one call = validate args against the tool's schema -> charge -> run `agent.tools.dispatch` as the company's own tenant with actor `api:<key id>` (120 s limit) -> refund on any failure (exception, timeout, `error`, `ok:false`); usage log keeps metadata only.
+- `api.py` public `/api/hoola-api/v1/{tools, tools/{name}, balance, usage}` (OpenAI-shaped errors, `x-hoola-request-id` + `x-hoola-cost-inr`), portal `/api/hoola-portal/{me, catalog, wallet, ledger, usage, keys}`, admin `/api/hoola-admin/{overview, wallets/{t}/credit (reason required, idempotency key), wallets/{t}/suspend}` (operator tenant only).
+- Switches: `hoola_api_enabled` (OFF until the owner flips it), `hoola_api_prices`.
+
+Tests: `server/tests/test_v0877_hoola_api.py` 24 - off by default, key once / hash only, wrong / revoked key 401, allowlist (send / pay / pc tools 404), per-key tool list, charged exactly + runs as the company's tenant with an api actor, empty wallet 402 and the tool never runs, failure / error dict / `ok:false` / timeout refunded, bad arguments 400 and not charged, daily cap, rate limit 429 + Retry-After, 10 parallel calls on a wallet worth 3 = exactly 3 succeed and the balance ends at 0, ledger append-only, same credit event counts once, admin operator-only + reason, suspended wallet, metadata-only log, price override, portal. Also run by hand against the REAL duniya / pylab / api_box through the real dispatch: balance equalled the ledger sum.
+
+NOT BUILT: UPI top-up + GST invoice (phase 2), employees as API (phase 3), voice, MCP, console portal page, per-tool third-party terms checks. NOT VERIFIED: no real company or money, no Postgres run, limits are per process.

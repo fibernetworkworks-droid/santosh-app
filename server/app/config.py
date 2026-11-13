@@ -608,6 +608,8 @@ class Settings(BaseSettings):
     seekh_keep_media: bool = True          # v0.785 the learner keeps its own copy of an uploaded video (the chat lane is swept after 24 h)
     seekh_media_max_mb: int = 1024         # v0.785 kept videos per owner; over it the oldest copies go (the learned steps stay)
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
+    hoola_api_enabled: bool = False       # v0.877 HOOLA AGENT API: companies call Hoola's tools with a Hoola key (/api/hoola-api/v1); OFF until the owner flips it
+    hoola_api_prices: str = ""             # v0.877 optional JSON {"tool": micro_inr} overriding the catalogue's default per-call prices
     vocal_page: bool = True                # v0.787 HOOLA VOCAL: the console voice studio (speech, dialogue, readings, her voices, effects)
     hoola_code_page: bool = True          # v0.748 HOOLA CODE: Developer Sahayak as a console page (sessions, live steps, plan, PR, reviews)
     design_page: bool = True              # v0.777 HOOLA DESIGN: the multiplayer design editor (/console/design, /api/design/*, app/design)
