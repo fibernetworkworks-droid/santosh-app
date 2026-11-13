@@ -2172,6 +2172,55 @@ class Api {
     }
   }
 
+  /// v0.889 ONE stream for all her chats (the console's /api/console/stream): every event of every chat, tagged with
+  /// its chat. The phone reads only two things from it - which chats are working (typing on / off) and which got a
+  /// new reply while she was in another chat - so each chat stays its own session, as on the web console. Ends when
+  /// the server has many chats off (404) or the key is refused (401); reconnects by itself on a network blip.
+  Stream<SantoshEvent> accountEvents({int after = 0}) async* {
+    var last = after;
+    var backoff = 2;
+    while (true) {
+      final client = http.Client();
+      try {
+        final req = http.Request('GET', _u('/api/console/stream', {'after': '$last'}))
+          ..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
+        final res = await client.send(req);
+        if (res.statusCode == 401 || res.statusCode == 404) {
+          client.close();
+          return;
+        }
+        backoff = 2;
+        final lines = res.stream.transform(utf8.decoder).transform(const LineSplitter());
+        final buf = StringBuffer();
+        await for (final line in lines) {
+          if (line.startsWith('data:')) {
+            buf.write(line.substring(5).trimLeft());
+          } else if (line.isEmpty && buf.isNotEmpty) {
+            final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
+            buf.clear();
+            if (ev.id > last) last = ev.id;
+            yield ev;
+          }
+        }
+      } catch (_) {
+        // network blip: wait and resume
+      } finally {
+        client.close();
+      }
+      await Future.delayed(Duration(seconds: backoff));
+      backoff = backoff >= 30 ? 30 : backoff * 2;
+    }
+  }
+
+  /// v0.863 R3s / v0.889 where this chat's newest ask is: {status: queued|working|needs_you|done|..., needs_you, line}.
+  Future<Map<String, dynamic>?> chatResult(String conv) async {
+    try {
+      return Map<String, dynamic>.from(await _send('GET', '/api/conversations/$conv/result') as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// v0.178 the reply being written right now ({turn, seg, seq, text}) so a reload mid-reply continues it; null when none.
   Future<Map<String, dynamic>?> liveReply(String conv) async {
     try {

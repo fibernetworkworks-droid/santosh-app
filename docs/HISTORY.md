@@ -3977,3 +3977,40 @@ WORK IN PROGRESS HIDE THE BOTTOM NAVE PERECTLY".
 Tests: screens_test new-design pictures 35/35 incl. the 48 dp tap-target + label gates, NEW picture 55 (the placeholder +
 the hidden bar, light + dark); design_rules_test green again; flutter analyze back to the baseline 26; test_v0716 status
 vector pin -> viewport 60 / translate -20; server logo tests green. NOT VERIFIED on her phone.
+
+
+## v0.889.0 EK CHAT EK SESSION - every phone chat its own session, like the web console
+
+Owner: "NOW A CHAT SESSION EVERY CHAT HAS ITS INDEPENDENT SESSION CHECK THE WEN CONSOLVE HOW IT HANDLES DEPLOY SAME FOR
+MOBILE CHAT".
+
+How the console does it (`static/console/v2.js` openConv + accountStream, `chatlist.js`): ONE account stream
+(/api/console/stream, every event of every chat tagged `conv`); the open chat renders its own events; another chat's
+`typing` sets its busy spinner, its new reply sets an unread dot, its cards never land in the open chat; opening a chat
+loads its timeline, restores a reply still being written (/live), shows Stop if that chat is busy, and brings back her
+unfinished words for that chat (per-chat draft) - files and receipts belong to their chat.
+
+What the phone had: one chat at a time on a per-chat stream (`/api/conversations/{id}/events`) - right for the open chat -
+but `typing`, `currentStep`, the "Thinking..." placeholder and the typing guard were app-wide and never cleared on a switch
+(Stop, the working row and v0.888's hidden tab bar followed her into another chat), the opened chat's own busy state was
+never read back (typing events are ignored while replaying), the composer box was one widget across chats (her half-typed
+words moved with her), and the drawer only knew other chats' state from the last /api/conversations fetch.
+
+Now (`lib/state.dart`, `lib/api.dart`, `lib/ui/shell/hoola_shell.dart`, `lib/ui/chat/hoola_chat.dart`):
+- `Api.accountEvents` reads /api/console/stream (ends quietly on 404 = many chats off, or 401; reconnects on a blip);
+  `Santosh._accountStream` keeps `busyChats` (typing on / off of every chat; a turn's end refreshes the chat list 1.5 s
+  later for the auto title + result) and `unreadChats` (an assistant reply in another chat, not the placeholder / greeting);
+  opening a chat clears its dot.
+- `_clearStory` (every switch / reload) clears typing, step, placeholder, say line and the guard; `_syncBusy` then reads
+  the opened chat's own state back (account stream, else GET /api/conversations/{id}/result working | queued) and puts
+  typing (with its 75 s guard) back on for that chat only.
+- drafts per chat: `draftFor` / `saveDraft` (memory + prefs `draft.<id>`, a save timer PER CHAT - a single shared timer
+  dropped the other chat's words on a quick switch, found by the new test); the chat screen loads its draft and keeps it.
+- the chat screen is keyed by the chat (`ValueKey('chat:<id>')`): its own scroll, reveal and box; a switch crossfades.
+- drawer rows: spinner = the account stream's busy OR the server's working / queued result; accent dot = a new reply
+  (never on the open chat).
+
+Server unchanged (the account stream, /result and per-chat streams already existed). Tests: NEW test/chat_sessions_test.dart
+(drawer spinner / dot / open chat never dotted; drafts kept per chat incl. the phone copy); screen pictures 35/35, design
+rules + tabs / settings / md / fonts / desk kit green; flutter analyze at the baseline 26. NOT VERIFIED on her phone (needs
+the server's CHAT_SESSIONS / CONSOLE_V2 on, which the web console already uses).

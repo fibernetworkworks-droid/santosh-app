@@ -409,6 +409,14 @@ class Santosh extends ChangeNotifier {
   List<Map<String, dynamic>> doneToday = [];   // v0.177: ticked today — the daily completed feed
 
   StreamSubscription<SantoshEvent>? _sub;
+  // v0.889 every chat its own session (as on the web console): one account stream says which chats are working and
+  // which got a reply while she was elsewhere; her unfinished words are kept per chat.
+  StreamSubscription<SantoshEvent>? _accSub;
+  final Set<String> busyChats = {};
+  final Set<String> unreadChats = {};
+  final Map<String, String> _drafts = {};
+  final Map<String, Timer> _draftSave = {};   // one per chat: a quick switch never drops the other chat's words
+  Timer? _chatsLater;
   final FlutterTts _tts = FlutterTts();
   bool _lastInputWasVoice = false;
   bool _replaying = true;
@@ -527,6 +535,7 @@ class Santosh extends ChangeNotifier {
       connected = true;
       _connectedAt = DateTime.now().toUtc();
       notifyListeners();
+      _accountStream();   // v0.889 which chats work / have news, for every chat at once
       await _openStory();   // v0.158 the chat in order (history from /timeline, then live from where it ended)
       await Device.instance.init();
       await Device.instance.askNotificationPermission();
@@ -604,6 +613,10 @@ class Santosh extends ChangeNotifier {
     } catch (_) {}
     await _sub?.cancel();
     _sub = null;
+    await _accSub?.cancel();
+    _accSub = null;
+    busyChats.clear();
+    unreadChats.clear();
     try {
       await Native.stop();
     } catch (_) {}
@@ -1075,6 +1088,86 @@ class Santosh extends ChangeNotifier {
     _calEvents.clear();
     _picks.clear();
     _steps = null;
+    // v0.889 the working state belongs to the chat that was open: a switch (or a reload) starts clean, then
+    // _syncBusy reads the opened chat's own state back from the server
+    _typingGuard?.cancel();
+    typing = false;
+    currentStep = null;
+    _ackItem = null;
+    _sayItem = null;
+  }
+
+  /// v0.889 is the chat on screen working right now? Once its story is loaded: the account stream's word, else the
+  /// server's turn result. Typing comes back on (with its guard) so Stop, the working row and the hidden tab bar
+  /// belong to this chat only.
+  Future<void> _syncBusy(String conv) async {
+    var busy = busyChats.contains(conv);
+    if (!busy && api != null) {
+      final r = await api!.chatResult(conv);
+      final st = '${r?['status'] ?? ''}';
+      busy = st == 'working' || st == 'queued';
+    }
+    if (conv != conversationId || !busy || typing) return;
+    typing = true;
+    busyChats.add(conv);
+    _typingGuard?.cancel();
+    _typingGuard = Timer(const Duration(seconds: 75), () {
+      if (typing && conversationId == conv) {
+        typing = false;
+        currentStep = null;
+        busyChats.remove(conv);
+        notifyListeners();
+      }
+    });
+    notifyListeners();
+  }
+
+  /// v0.889 the account stream: only which chats work and which have news. The open chat's own events come through
+  /// its own stream (_openStory) as before.
+  void _accountStream() {
+    _accSub?.cancel();
+    final a = api;
+    if (a == null) return;
+    _accSub = a.accountEvents(after: 0).listen((ev) {
+      final c = ev.conv;
+      if (c == null || c.isEmpty) return;
+      if (ev.kind == 'typing') {
+        final on = ev.payload['on'] == true;
+        final had = busyChats.contains(c);
+        if (on) {
+          busyChats.add(c);
+        } else {
+          busyChats.remove(c);
+          _chatsLater?.cancel();   // a new auto title + the chat's result, a moment after the turn ends
+          _chatsLater = Timer(const Duration(milliseconds: 1500), () => unawaited(refreshChats()));
+        }
+        if (had != on) notifyListeners();
+        return;
+      }
+      if (c == conversationId) return;
+      if (ev.kind == 'message' && ev.payload['role'] == 'assistant' && ev.payload['ack'] != true &&
+          ev.payload['source'] != 'greeting' && !unreadChats.contains(c)) {
+        unreadChats.add(c);
+        notifyListeners();
+      }
+    }, onError: (_) {});
+  }
+
+  /// v0.889 her unfinished words, kept per chat (the console keeps them per chat too).
+  String draftFor(String? conv) => conv == null ? '' : (_drafts[conv] ?? _prefs.getString('draft.$conv') ?? '');
+
+  void saveDraft(String? conv, String text) {
+    if (conv == null) return;
+    _drafts[conv] = text;
+    _draftSave[conv]?.cancel();
+    _draftSave[conv] = Timer(const Duration(milliseconds: 400), () {
+      _draftSave.remove(conv);
+      if (text.trim().isEmpty) {
+        unawaited(_prefs.remove('draft.$conv'));
+      } else {
+        unawaited(_prefs.setString('draft.$conv', text));
+      }
+    });
   }
 
   /// Cards in this chat that wait for her now (the "Aapki haan chahiye" strip), newest first.
@@ -1142,6 +1235,7 @@ class Santosh extends ChangeNotifier {
     // the stream says when catching up is over (replay_end); an older server doesn't: give up waiting after 8 s
     _replayGuard?.cancel();
     _replayGuard = Timer(const Duration(seconds: 8), () => _replayDone());
+    unawaited(_syncBusy(conv));   // v0.889 this chat working right now? (its own state, never the last chat's)
     _healTimer?.cancel();
     _healTimer = Timer.periodic(const Duration(seconds: 90), (_) => unawaited(selfCheck()));
   }
@@ -1269,6 +1363,7 @@ class Santosh extends ChangeNotifier {
   Future<void> openChat(String id, {bool remember = true}) async {
     if (id == conversationId || api == null) return;
     conversationId = id;
+    unreadChats.remove(id);   // v0.889 opened = read
     incognito = chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.250
     if (remember) await _prefs.setString('conv', id);
     unawaited(api!.openChat(id).catchError((_) {}));
@@ -1419,6 +1514,8 @@ class Santosh extends ChangeNotifier {
         }
         if (p['on'] != true && !_replaying) _scheduleWorkHide(const Duration(seconds: 4));
         typing = p['on'] == true && !_replaying;
+        final bc = conversationId;
+        if (bc != null && !_replaying) typing ? busyChats.add(bc) : busyChats.remove(bc);
         if (p['on'] == true) _steps = null;
         if (!typing) currentStep = null;
         if (!typing && !_replaying) _thinkFold();   // v0.232 the turn is over: its Soch card folds
@@ -2837,6 +2934,11 @@ class Santosh extends ChangeNotifier {
     _workHide?.cancel();
     _replies.close();
     _sub?.cancel();
+    _accSub?.cancel();
+    for (final d in _draftSave.values) {
+      d.cancel();
+    }
+    _chatsLater?.cancel();
     super.dispose();
   }
 }

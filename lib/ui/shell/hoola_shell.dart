@@ -343,7 +343,8 @@ class _HoolaTab extends StatelessWidget {
         builder: (context, _) => AnimatedSwitcher(
           duration: HoolaMotion.of(context, HoolaMotion.fade),
           child: _hasChat
-              ? KeyedSubtree(key: const ValueKey('chat'), child: HoolaChat(app: app, onTalk: onTalk, onMenu: onMenu))
+              // v0.889 every chat its own session: its own scroll, reveal state and box (a switch crossfades)
+              ? KeyedSubtree(key: ValueKey('chat:${app.conversationId}'), child: HoolaChat(app: app, onTalk: onTalk, onMenu: onMenu))
               : KeyedSubtree(key: const ValueKey('home'), child: HoolaHome(app: app, onTalk: onTalk, onMenu: onMenu)),
         ),
       );
@@ -778,7 +779,9 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
     final st = '${r['status'] ?? ''}';
     Widget? trail;
     String? say;
-    if (st == 'working' || st == 'queued') {
+    final busy = widget.app.busyChats.contains(id);
+    final unread = !on && widget.app.unreadChats.contains(id);
+    if (busy || st == 'working' || st == 'queued') {
       trail = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.8, color: c.accent));
       say = 'working';
     } else if (r['needs_you'] == true || st == 'needs_you') {
@@ -787,6 +790,10 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
     } else if (st == 'failed' || st == 'stuck') {
       trail = Icon(Icons.error_outline_rounded, size: 16, color: c.bad);
       say = 'did not finish';
+    } else if (unread) {
+      // v0.889 a reply came in this chat while she was in another one (the console's unread dot)
+      trail = Container(width: 9, height: 9, decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle));
+      say = 'new reply';
     }
     return Semantics(
       label: say == null ? null : '${title.isEmpty ? 'New chat' : title}, $say',

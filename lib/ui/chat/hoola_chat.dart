@@ -43,7 +43,9 @@ class _HoolaChatState extends State<HoolaChat> {
   final _scroll = ScrollController();
   final _box = TextEditingController();
   final _focus = FocusNode();
-  late final Set<FeedItem> _old = app.feed.toSet();   // on screen when the chat opened: no reveal animation
+  late final Set<FeedItem> _old = app.feed.toSet();
+  /// v0.889 the chat this screen belongs to (the screen is keyed by it): her unfinished words are kept per chat.
+  late final String? _conv = app.conversationId;   // on screen when the chat opened: no reveal animation
   /// Turns whose reply already came in word by word as a live stream: the finished message then shows at once
   /// (revealing it again would look like the reply started over).
   final Set<String> _streamed = {};
@@ -58,6 +60,8 @@ class _HoolaChatState extends State<HoolaChat> {
   void initState() {
     super.initState();
     _lastLen = app.feed.length;
+    _box.text = app.draftFor(_conv);
+    _box.addListener(() => app.saveDraft(_conv, _box.text));
     app.addListener(_onApp);
     _scroll.addListener(_onScroll);
   }

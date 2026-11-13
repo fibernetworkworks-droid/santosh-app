@@ -27,7 +27,7 @@ def _login(c, base, email, pw):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.888.0"
+    assert APP_VERSION == "0.889.0"
 
 
 def test_link_moves_everything_and_old_logins_keep_working(app_site, monkeypatch):
