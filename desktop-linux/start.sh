@@ -16,5 +16,7 @@ openbox &
 /usr/libexec/at-spi-bus-launcher --launch-immediately >/dev/null 2>&1 &
 sleep 0.5
 /usr/libexec/at-spi2-registryd >/dev/null 2>&1 &
-mkdir -p /data/Downloads /data/chrome
+# v0.885 /data/Downloads + /data/work may be symlinks to one user's folder (the pool): never mkdir over them
+mkdir -p /data/profiles
+[ -e /data/Downloads ] || [ -L /data/Downloads ] || mkdir -p /data/Downloads
 exec python /app/agent.py

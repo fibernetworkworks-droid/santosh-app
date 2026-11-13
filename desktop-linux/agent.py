@@ -43,7 +43,7 @@ SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip(
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.5.1"   # v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
+VERSION = "1.6.0"   # v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -71,8 +71,29 @@ POLICY = {   # Chrome enterprise policy (Hoola's own VM): what portals need, not
 }
 POLICY_DIRS = ("/etc/opt/chrome/policies/managed", "/etc/chromium/policies/managed")
 
-for _d in (DATA, DOWNLOADS, PROFILE):
+# v0.885 HOOLA PC POOL (owner: "EVERY HOOLA USER WILL HAS ITS OWN HOOLA PC ... Shared pool AND HUMAN IN LOOP"): one
+# Hoola PC serves many users one after another, so each user gets her OWN folder (Chrome logins, Downloads, work
+# files) under /data/profiles/<key>. /data/Downloads and /data/work are symlinks to the folder of the user being served
+# right now (every old path keeps working). A user's folder is ENCRYPTED (openssl, her own secret that only the server
+# holds) the moment the PC switches to someone else, and shell commands run as the unprivileged 'hoolawork' user who
+# can reach the active folder only - never another user's folder, the PC's token or the encrypted archives.
+PROFILES = DATA / "profiles"
+WORK = DATA / "work"
+WORKER = "hoolawork"
+_KEY_RE = re.compile(r"^[a-f0-9]{8,40}$")
+CUR: dict[str, str] = {"key": "", "secret": ""}
+JOBS: dict[str, dict[str, Any]] = {}      # background commands of the user being served now
+JOB_MAX = 6
+JOB_HOURS = 2
+CACHE_SKIP = ("Cache", "Code Cache", "GPUCache", "Service Worker/CacheStorage", "GrShaderCache", "ShaderCache")
+
+for _d in (DATA, PROFILES):
     _d.mkdir(parents=True, exist_ok=True)
+for _d in (DOWNLOADS, PROFILE):
+    try:
+        _d.mkdir(parents=True, exist_ok=True)
+    except OSError:          # a symlink left pointing at a folder that is locked now: fixed by the next profile
+        pass
 
 
 class ActionError(Exception):
@@ -154,6 +175,7 @@ def _chrome_up() -> None:
         except Exception:
             pass
         _write_policy()
+        _seed_prefs(PROFILE)                 # v0.885 this user's downloads go to her Downloads
         # --no-sandbox: the container runs as root - Chrome refuses to start without it
         # (Debian's chromium wrapper adds it silently for root, Google Chrome does not).
         flags = ["--remote-debugging-port=9222", f"--user-data-dir={PROFILE}", "--no-first-run",
@@ -443,6 +465,289 @@ def _ax_handle(action: str, a: dict[str, Any]) -> dict[str, Any]:
     raise ActionError(f"Unknown action {action}")
 
 
+# ---------------- v0.885 the pool: one locked folder per user ----------------
+def _worker() -> tuple[int, int] | None:
+    """(uid, gid) of the unprivileged shell user, or None (tests / an old image without it: commands run as before)."""
+    if not hasattr(os, "geteuid") or os.geteuid() != 0:
+        return None
+    try:
+        import pwd
+        w = pwd.getpwnam(WORKER)
+        return w.pw_uid, w.pw_gid
+    except (KeyError, ImportError):
+        return None
+
+
+def _real(p: Path) -> Path:
+    try:
+        return p.resolve()
+    except OSError:
+        return p
+
+
+def allowed(path: str | Path) -> bool:
+    """A file action may touch this path: never another user's folder, an encrypted archive or the PC's token."""
+    r = _real(Path(path))
+    root = _real(PROFILES)
+    if r.name == "identity.json" or r.name.endswith(".tar.enc"):
+        return False
+    try:
+        rel = r.relative_to(root)
+    except ValueError:
+        return True
+    return bool(CUR["key"]) and bool(rel.parts) and rel.parts[0] == CUR["key"]
+
+
+def _guard(path: str | Path) -> None:
+    if not allowed(path):
+        raise ActionError("Yeh folder kisi aur user ka hai - Hoola PC par har user apne folder tak hi pahunchta hai.")
+
+
+def _point(link: Path, target: Path) -> None:
+    """Make /data/Downloads (or /data/work) point at the active user's folder."""
+    target.mkdir(parents=True, exist_ok=True)
+    if link.is_symlink():
+        link.unlink()
+    elif link.exists():            # a real folder (old layout) that was not moved: keep it under a dated name
+        link.rename(link.with_name(link.name + ".old-" + time.strftime("%Y%m%d%H%M%S")))
+    link.symlink_to(target)
+
+
+def _walls() -> None:
+    """File permissions that make the folders private (root only; tests skip it)."""
+    w = _worker()
+    if w is None:
+        return
+    uid, gid = w
+    for f, mode in ((DATA, 0o711), (PROFILES, 0o711), (DATA / "identity.json", 0o600)):
+        try:
+            os.chmod(f, mode)
+        except OSError:
+            pass
+    for c in PROFILES.iterdir():
+        try:
+            if c.name == CUR["key"]:
+                os.chmod(c, 0o711)
+                (c / "chrome").mkdir(exist_ok=True)
+                os.chmod(c / "chrome", 0o700)            # cookies / logins: Chrome (root) only
+                for sub in ("Downloads", "files"):
+                    (c / sub).mkdir(exist_ok=True)
+                    os.chown(c / sub, uid, gid)
+                    os.chmod(c / sub, 0o775)
+            else:
+                os.chmod(c, 0o700)
+        except OSError:
+            pass
+
+
+def _stop_chrome() -> None:
+    """Close Chrome (it holds the old user's profile open) and wait until it is really gone."""
+    global _chrome
+    with _chrome_lock:
+        try:   # a clean close first: Chrome writes the user's cookies / logins to disk only on a real shutdown
+            ws = httpx.get(CDP + "/json/version", timeout=2).json().get("webSocketDebuggerUrl", "")
+            if ws:
+                try:
+                    _cdp_call(ws, "Browser.close", {}, timeout=5)
+                except Exception:
+                    pass                       # the socket drops as Chrome closes - that is the success case
+                for _ in range(30):
+                    time.sleep(0.5)
+                    try:
+                        httpx.get(CDP + "/json/version", timeout=1)
+                    except Exception:
+                        break
+                if _chrome is not None:
+                    try:
+                        _chrome.wait(timeout=10)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        if _chrome is not None:
+            try:
+                _chrome.terminate()
+                _chrome.wait(timeout=8)
+            except Exception:
+                try:
+                    _chrome.kill()
+                except Exception:
+                    pass
+            _chrome = None
+        subprocess.run(["pkill", "-f", "--", "--remote-debugging-port=9222"], capture_output=True)
+        for _ in range(20):
+            try:
+                httpx.get(CDP + "/json/version", timeout=1)
+                time.sleep(0.5)
+            except Exception:
+                return
+
+
+def _close_user_apps() -> int:
+    """Every window of the previous user goes (LibreOffice, a PDF viewer...): its files must not show to the next."""
+    pids: set[int] = set()
+    try:
+        out = subprocess.run(["wmctrl", "-lp"], capture_output=True, text=True, timeout=5).stdout
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) > 2 and parts[2].isdigit() and int(parts[2]) not in (0, os.getpid()):
+                pids.add(int(parts[2]))
+    except Exception:
+        pass
+    for pid in pids:
+        try:
+            os.kill(pid, 15)
+        except OSError:
+            pass
+    _stop_chrome()
+    for j in list(JOBS.values()):             # the old user's background commands stop too
+        _kill_job(j)
+    JOBS.clear()
+    return len(pids)
+
+
+def _lock_profile(key: str, secret: str) -> bool:
+    """Encrypt the folder of a user who is not being served any more, then delete the readable copy."""
+    d = PROFILES / key
+    if not key or not secret or not d.is_dir():
+        return False
+    arc = PROFILES / (key + ".tar.enc")
+    tmp = PROFILES / (key + ".tar.enc.tmp")
+    excl = [f"--exclude={key}/chrome/*/{c}" for c in CACHE_SKIP] + [f"--exclude={key}/chrome/{c}" for c in CACHE_SKIP]
+    try:
+        tar = subprocess.Popen(["tar", "-C", str(PROFILES), *excl, "-cf", "-", key], stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL)
+        enc = subprocess.run(["openssl", "enc", "-aes-256-cbc", "-pbkdf2", "-iter", "100000", "-salt",
+                              "-pass", "env:HOOLA_PK", "-out", str(tmp)], stdin=tar.stdout,
+                             env={**os.environ, "HOOLA_PK": secret}, capture_output=True, timeout=600)
+        tar.stdout.close()
+        tar.wait(timeout=60)
+        if tar.returncode == 0 and enc.returncode == 0 and tmp.exists():
+            tmp.replace(arc)
+            os.chmod(arc, 0o600)
+            import shutil
+            shutil.rmtree(d, ignore_errors=True)
+            return True
+    except Exception as e:
+        print(f"profile lock failed: {e}", flush=True)
+    tmp.unlink(missing_ok=True)
+    try:
+        os.chmod(d, 0o700)            # could not encrypt: at least nobody but root reads it
+    except OSError:
+        pass
+    return False
+
+
+def _unlock_profile(key: str, secret: str) -> str:
+    """'' fresh / 'kept' (a readable copy is still there) / 'opened' (decrypted from its archive)."""
+    d = PROFILES / key
+    if d.is_dir():
+        return "kept"
+    arc = PROFILES / (key + ".tar.enc")
+    if not arc.exists():
+        d.mkdir(parents=True, exist_ok=True)
+        return ""
+    dec = subprocess.Popen(["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2", "-iter", "100000", "-pass",
+                            "env:HOOLA_PK", "-in", str(arc)], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           env={**os.environ, "HOOLA_PK": secret})
+    tar = subprocess.run(["tar", "-C", str(PROFILES), "-xf", "-"], stdin=dec.stdout, capture_output=True, timeout=600)
+    dec.stdout.close()
+    dec.wait(timeout=60)
+    if dec.returncode != 0 or tar.returncode != 0 or not d.is_dir():
+        import shutil
+        shutil.rmtree(d, ignore_errors=True)
+        raise ActionError("Is user ka folder khul nahi paya (chabi mel nahi khayi) - kuch nahi badla.")
+    arc.unlink(missing_ok=True)       # the readable copy is the only copy while she is served
+    return "opened"
+
+
+def _migrate_home(key: str) -> bool:
+    """The PC's first user (before the pool) kept her Chrome logins in /data/chrome and files in /data/Downloads:
+    they move into HER folder once, so nothing she was logged into is lost."""
+    d = PROFILES / key
+    moved = False
+    if (DATA / "chrome").is_dir() and not (DATA / "chrome").is_symlink() and not (d / "chrome").exists():
+        d.mkdir(parents=True, exist_ok=True)
+        (DATA / "chrome").rename(d / "chrome")
+        moved = True
+    old = DATA / "Downloads"
+    if old.is_dir() and not old.is_symlink() and not (d / "Downloads").exists():
+        d.mkdir(parents=True, exist_ok=True)
+        old.rename(d / "Downloads")
+        moved = True
+    return moved
+
+
+def _seed_prefs(profile: Path) -> None:
+    """Chrome's own download setting for this profile (the policy file says the same for every profile)."""
+    f = profile / "Default" / "Preferences"
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        d = json.loads(f.read_text()) if f.exists() else {}
+        dl = d.setdefault("download", {})
+        dl.update({"default_directory": str(DOWNLOADS), "prompt_for_download": False, "directory_upgrade": True})
+        d.setdefault("savefile", {})["default_directory"] = str(DOWNLOADS)
+        f.write_text(json.dumps(d))
+    except (OSError, ValueError):
+        pass
+
+
+def use_profile(key: str, secret: str = "", home: bool = False) -> dict[str, Any]:
+    """Switch this PC to one user's folder. Same user again = nothing happens (fast)."""
+    global PROFILE
+    key = str(key or "").strip().lower()
+    if key and not _KEY_RE.match(key):
+        raise ActionError("bad profile key")
+    if key and len(str(secret or "")) < 24:
+        raise ActionError("profile secret missing")
+    if key == CUR["key"] and (not key or (PROFILES / key).is_dir()):
+        return {"profile": key or "home", "switched": False}
+    how = ""
+    if key:                              # open HER folder first: a wrong key changes nothing at all
+        if home and (DATA / "chrome").is_dir() and not (PROFILES / key / "chrome").exists():
+            _stop_chrome()               # Chrome must not hold the old profile open while it moves
+            _migrate_home(key)
+        how = _unlock_profile(key, secret)
+    closed = _close_user_apps()
+    old, old_secret = CUR["key"], CUR["secret"]
+    locked = _lock_profile(old, old_secret) if old and old != key else False
+    if key:
+        base = PROFILES / key
+        PROFILE = base / "chrome"
+        PROFILE.mkdir(parents=True, exist_ok=True)
+        _point(DOWNLOADS, base / "Downloads")
+        _point(WORK, base / "files")
+    else:
+        PROFILE = DATA / "chrome"
+        PROFILE.mkdir(parents=True, exist_ok=True)
+    CUR["key"], CUR["secret"] = key, (secret if key else "")
+    _walls()
+    return {"profile": key or "home", "switched": True, "locked_previous": locked, "opened": how,
+            "windows_closed": closed}
+
+
+# ---------------- v0.885 long commands in the background ----------------
+def _kill_job(j: dict[str, Any]) -> None:
+    p = j.get("proc")
+    if p is not None and p.poll() is None:
+        try:
+            os.killpg(p.pid, 9)
+        except Exception:
+            try:
+                p.kill()
+            except Exception:
+                pass
+
+
+def _run_env() -> dict[str, str]:
+    return {**os.environ, "DISPLAY": DISPLAY, "HOME": str(WORK), "TZ": TZ_NAME}
+
+
+def _as_worker() -> dict[str, Any]:
+    w = _worker()
+    return {"user": w[0], "group": w[1], "extra_groups": []} if w else {}
+
+
 # ---------------- the actions ----------------
 class Actions:
     def __init__(self) -> None:
@@ -587,7 +892,10 @@ class Actions:
         to `wait` s (30, max 60), a timeout is retried once, a crashed tab reloaded once, and a page that did not
         open comes back with problem + hint instead of a silent 'still loading'."""
         url = str(url or "").strip()
-        if not url.lower().startswith(("http://", "https://")):
+        if url.lower().startswith("file://"):      # v0.885 a local file: only the active user's own
+            from urllib.parse import unquote, urlparse
+            _guard(unquote(urlparse(url).path))
+        elif not url.lower().startswith(("http://", "https://")):
             url = "https://" + url
         limit = max(5, min(int(wait or OPEN_WAIT), 60))
         t0 = time.time()
@@ -920,12 +1228,13 @@ class Actions:
         return i
 
     def do_list(self, path: str = "", **_) -> dict[str, Any]:
-        p = Path(path or str(DATA))
+        p = Path(path or str(WORK if CUR["key"] else DATA))
+        _guard(p)
         if not p.is_dir():
             raise ActionError("Yeh folder nahi hai")
         entries = []
         for c in sorted(p.iterdir(), key=lambda c: (not c.is_dir(), c.name.lower()))[:300]:
-            if c.name.startswith("."):
+            if c.name.startswith(".") or not allowed(c):
                 continue
             try:
                 st = c.stat()
@@ -937,6 +1246,7 @@ class Actions:
 
     def do_read(self, path: str = "", max_chars: int = 12000, **_) -> dict[str, Any]:
         p = Path(path)
+        _guard(p)
         if not p.is_file():
             raise ActionError("File nahi mili")
         n = max(500, min(int(max_chars or 12000), 40000))
@@ -970,7 +1280,8 @@ class Actions:
         download link can never pick it up. Same shape as the Windows desktop's do_send_file."""
         p = Path(path)
         if not p.is_absolute():
-            p = DATA / p
+            p = (WORK if CUR["key"] else DATA) / p
+        _guard(p)
         if not p.is_file():
             raise ActionError("File nahi mili")
         size = p.stat().st_size
@@ -1011,18 +1322,77 @@ class Actions:
             raise ActionError(f"Install fail (rc={p.returncode}): {tail[-400:]}")
         return {"installed": names, "pip": bool(pip), "note": tail[-400:] or "installed"}
 
-    def do_run(self, command: str = "", timeout: int = 60, **_) -> dict[str, Any]:
+    def do_run(self, command: str = "", timeout: int = 60, background: bool = False, **_) -> dict[str, Any]:
+        """One shell command in the active user's work folder, as the unprivileged worker user (v0.885). background
+        = it keeps running (up to 2 hours) and run_status reads its output - for long conversions / downloads."""
         cmd = str(command or "").strip()
         if not cmd:
             raise ActionError("Kaunsa command?")
+        cwd = str(WORK if CUR["key"] else DATA)
+        if background:
+            self._reap()
+            live = [j for j in JOBS.values() if j["proc"].poll() is None]
+            if len(live) >= JOB_MAX:
+                raise ActionError(f"{JOB_MAX} commands pehle se chal rahe hain - run_status se dekhiye ya intezaar kijiye.")
+            jid = "job" + str(int(time.time() * 1000))[-8:]
+            logdir = Path(cwd) / ".jobs"
+            logdir.mkdir(parents=True, exist_ok=True)
+            logf = logdir / f"{jid}.log"
+            fh = logf.open("ab")
+            w = _worker()
+            if w:
+                try:
+                    os.chown(logdir, *w)
+                    os.chown(logf, *w)
+                except OSError:
+                    pass
+            proc = subprocess.Popen(["bash", "-c", cmd], stdout=fh, stderr=subprocess.STDOUT, cwd=cwd,
+                                    env=_run_env(), start_new_session=True, **_as_worker())
+            JOBS[jid] = {"proc": proc, "log": logf, "started": time.time(), "cmd": cmd[:200]}
+            return {"job": jid, "running": True, "cwd": cwd,
+                    "note": "Running in the background (max 2 hours). Call run_status with this job id to see output."}
         limit = max(5, min(int(timeout or 60), 180))
         try:
             p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=limit,
-                               env={**os.environ, "DISPLAY": DISPLAY, "HOME": str(DATA)}, cwd=str(DATA))
+                               env=_run_env(), cwd=cwd, **_as_worker())
         except subprocess.TimeoutExpired:
-            raise ActionError(f"Command {limit}s mein ruk gaya (timeout).")
+            raise ActionError(f"Command {limit}s mein ruk gaya (timeout). Lambe kaam ke liye background=true.")
         return {"exit": p.returncode, "stdout": (p.stdout or "")[-6000:],
-                "stderr": (p.stderr or "")[-1500:], "cwd": str(DATA)}
+                "stderr": (p.stderr or "")[-1500:], "cwd": cwd}
+
+    def _reap(self) -> None:
+        for jid, j in list(JOBS.items()):
+            if j["proc"].poll() is None and time.time() - j["started"] > JOB_HOURS * 3600:
+                _kill_job(j)
+                j["killed"] = True
+
+    def do_run_status(self, job: str = "", max_chars: int = 4000, **_) -> dict[str, Any]:
+        self._reap()
+        if not job:
+            return {"jobs": [{"job": k, "running": v["proc"].poll() is None, "cmd": v["cmd"],
+                              "seconds": int(time.time() - v["started"])} for k, v in JOBS.items()]}
+        j = JOBS.get(str(job))
+        if j is None:
+            raise ActionError("Yeh job nahi mila (PC badla ya restart hua).")
+        rc = j["proc"].poll()
+        try:
+            data = j["log"].read_bytes()[-max(500, min(int(max_chars or 4000), 20000)):]
+        except OSError:
+            data = b""
+        return {"job": job, "running": rc is None, "exit": rc, "seconds": int(time.time() - j["started"]),
+                "output": data.decode("utf-8", "replace"), "stopped_after_2h": bool(j.get("killed"))}
+
+    def do_run_stop(self, job: str = "", **_) -> dict[str, Any]:
+        j = JOBS.get(str(job))
+        if j is None:
+            raise ActionError("Yeh job nahi mila.")
+        _kill_job(j)
+        return {"job": job, "stopped": True}
+
+    # ---- v0.885 the pool ----
+    def do_profile(self, key: str = "", secret: str = "", home: bool = False, **_) -> dict[str, Any]:
+        """The server tells this PC whose folder to use before every task (one user at a time)."""
+        return use_profile(key, secret, bool(home))
 
 
 # ---------------- the bridge (same protocol as the Windows desktop) ----------------
@@ -1116,15 +1486,69 @@ class Bridge:
             pass
 
 
+def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str]:
+    """v0.885 software Hoola installed before lives in installed.log; a rebuilt image does not have it any more.
+    Missing apt / pip packages from SUCCESSFUL installs are put back once at boot (in the background)."""
+    f = log_path or (DATA / "installed.log")
+    apt: list[str] = []
+    pipn: list[str] = []
+    try:
+        lines = f.read_text().splitlines()
+    except OSError:
+        return []
+    for line in lines:
+        m = re.match(r"^\S+ \S+ (apt|pip) (.+) rc=0$", line.strip())
+        if not m:
+            continue
+        for n in m.group(2).split():
+            if re.match(r"^[A-Za-z0-9][A-Za-z0-9.+_=<>~-]*$", n):
+                (apt if m.group(1) == "apt" else pipn).append(n)
+    apt = list(dict.fromkeys(apt))
+    pipn = list(dict.fromkeys(pipn))
+    if dry:
+        return apt + ["pip:" + n for n in pipn]
+    miss_apt = [n for n in apt if subprocess.run(["dpkg", "-s", n], capture_output=True).returncode != 0]
+    miss_pip = [n for n in pipn if subprocess.run(["pip", "show", re.split(r"[=<>~]", n)[0]],
+                                                  capture_output=True).returncode != 0]
+    env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
+    if miss_apt:
+        subprocess.run(["apt-get", "update", "-qq"], capture_output=True, timeout=300)
+        subprocess.run(["apt-get", "install", "-y", *miss_apt], capture_output=True, timeout=1800, env=env)
+    if miss_pip:
+        subprocess.run(["pip", "install", "--quiet", "--no-input", *miss_pip], capture_output=True, timeout=1800)
+    if miss_apt or miss_pip:
+        print(f"reinstalled after rebuild: {' '.join(miss_apt + miss_pip)}", flush=True)
+    return miss_apt + miss_pip
+
+
 def main() -> None:
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "check":   # v0.884: docker exec hoola-pc python /app/agent.py check <urls>
-        res = Actions().do_check(sys.argv[2:] or ["https://www.google.com"])
+        global PROFILE
+        try:
+            httpx.get(CDP + "/json/version", timeout=2)
+            own = False                     # a Chrome is already up (serving a user): use it, never stop it
+        except Exception:
+            own = True                      # v0.885 nobody's folder: a throwaway profile, closed afterwards
+            PROFILE = Path("/tmp/hoola-check-profile")
+            PROFILE.mkdir(parents=True, exist_ok=True)
+        try:
+            res = Actions().do_check(sys.argv[2:] or ["https://www.google.com"])
+        finally:
+            if own:
+                _stop_chrome()
         for r in res["sites"]:
             print(f"{'OK  ' if r.get('ok') else 'FAIL'} {r.get('seconds', '-'):>5}s {r['url']}  "
                   f"{r.get('problem') or ''} {r.get('note') or ''} | {r.get('title') or ''}", flush=True)
         return
     print(f"Hoola PC agent {VERSION} -> {SERVER} (display {DISPLAY})", flush=True)
+    for c in PROFILES.iterdir() if PROFILES.is_dir() else []:   # v0.885 left readable by a restart: root only
+        try:
+            if c.is_dir():
+                os.chmod(c, 0o700)
+        except OSError:
+            pass
+    threading.Thread(target=replay_installs, daemon=True).start()
     asyncio.run(Bridge(Actions()).run_forever())
 
 

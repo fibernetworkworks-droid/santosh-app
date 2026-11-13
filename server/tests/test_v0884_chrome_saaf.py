@@ -54,7 +54,7 @@ def test_chrome_is_indian_and_portal_ready(tmp_path):
     for flag in ("--lang={LANG}", "--accept-lang={ACCEPT_LANG}", "--disable-popup-blocking",
                  "--disable-background-timer-throttling"):
         assert flag in src
-    assert '"TZ": TZ_NAME' in src and a.VERSION == "1.5.1"
+    assert '"TZ": TZ_NAME' in src and a.VERSION >= "1.5.1"
     dk = (ROOT / "desktop-linux" / "Dockerfile").read_text()
     assert "ENV TZ=Asia/Kolkata" in dk and "tzdata" in dk
 

@@ -61,12 +61,15 @@ PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": 
 
 # ---- v0.193 HOOLA KA APNA PC: the Linux cloud computer that belongs to Hoola (the coworker VM) ----
 PC_TOOLS.append({"name": "hoola_pc_do", "description": (
-    "[HOOLA KA APNA PC - the cloud computer that belongs to YOU, the coworker] Use ONLY when the job needs desktop "
+    "[HOOLA KA APNA PC - the cloud computer that belongs to YOU, the coworker] Use when the job needs desktop "
     "software she does not have ('ffmpeg se video compress karo', 'LibreOffice mein sheet banao', 'pandoc se "
-    "convert karo'), a desktop app on screen, or when the user said 'aapke computer pe / tumhare PC pe / Hoola ke "
-    "PC pe'. NOT for fetching, collecting or processing data / API lists / reports: use data_fetch, data_read, "
-    "data_note and doc_studio on the server (faster, and the file reaches the chat). A file made here stays on "
-    "this VM, it does NOT come back to the chat (only user_pc_push sends one to HER PC). Hoola uses its OWN Linux "
+    "convert karo'), a desktop app on screen, MANUAL WORK ON A GOVERNMENT / LEGACY PORTAL in Chrome that she hands "
+    "over ('Hoola PC par GST portal pe yeh form bharo'), or when the user said 'aapke computer pe / tumhare PC pe / "
+    "Hoola ke PC pe'. NOT for fetching, collecting or processing data / API lists / reports: use data_fetch, data_read, "
+    "data_note and doc_studio on the server. Files the task makes or downloads (receipts, acknowledgement PDFs) come "
+    "to HER CHAT (the PC sends them), and the task ends with a screenshot of the screen as proof. Every user gets a "
+    "Hoola PC from a shared pool (her own folder and logins on it); if all are busy the task waits in line and starts "
+    "by itself. The SAME portal job for many rows of her sheet = hoola_pc_batch, not this. Hoola uses its OWN Linux "
     "computer in the cloud like a person: sees the screen, opens apps, clicks, types, INSTALLS SOFTWARE (apt/pip, "
     "no permission needed - it is Hoola's own VM) and runs shell commands. "
     "While working there it can also use HER PC for FILES through the bridge: user_pc_search / user_pc_read / "
@@ -79,6 +82,45 @@ PC_TOOLS.append({"name": "hoola_pc_do", "description": (
     "submitting, deleting or paying, and never types passwords/OTPs. Slow (a few seconds per step)."),
     "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW job while a Hoola PC task of this chat runs; her follow-ups go INTO the running task."}}, "required": ["task"]}})
 PC_LABELS.update({"hoola_pc_do": "Hoola ke apne PC par kaam kar raha hoon"})
+
+# v0.885 REPEAT JOBS on Hoola PC (owner: "LEGACY PORTALS AND GOV PORTALS WHERE NEED A HUGE REPEATED MANUAL WORK" +
+# "HUMAN IN LOOP"): the same portal job for every row of her sheet; row 1 she watches, then HER tap runs the rest.
+PC_TOOLS.append({"name": "hoola_pc_batch", "description": (
+    "[HOOLA PC - REPEAT JOB] The SAME manual job on a portal / website / desktop app for EVERY ROW of her Excel or CSV "
+    "('is sheet ke har customer ka form portal pe bharo', '50 invoices ek ek karke upload karo'). action=start: task = "
+    "the job written ONCE with {Column} blanks for what changes per row (column names exactly as in her sheet), "
+    "file_id = her sheet from the chat (or rows = a list of objects). Row 1 runs first and she approves its submits "
+    "like any task; then a confirm card asks HER to run the other rows (you can never approve it - only her tap). Then "
+    "the rows run one by one on the same Hoola PC; money, deletes and OTPs still ask her. At the end one Excel with "
+    "every row's result + proof screenshot comes to her chat. action=status / stop / resume (resume after a pause, "
+    "when she says so) / go (shows her card again when she wants the rest to run). Give the batch_id from start."),
+    "input_schema": {"type": "object", "properties": {
+        "action": {"type": "string", "enum": ["start", "status", "go", "resume", "stop"]},
+        "task": {"type": "string", "description": "start: the job once, with {Column} blanks"},
+        "file_id": {"type": "string", "description": "start: her Excel / CSV in the chat"},
+        "rows": {"type": "array", "items": {"type": "object"}, "description": "start: rows as objects, when there is no file"},
+        "sheet": {"type": "string", "description": "start: which sheet of the Excel (default the first)"},
+        "batch_id": {"type": "string"}}, "required": ["action"]}})
+PC_LABELS.update({"hoola_pc_batch": "Hoola PC par repeat kaam chala raha hoon"})
+
+
+async def hoola_pc_batch(ctx: Ctx, action="start", task="", file_id="", rows=None, sheet="", batch_id="", **_):
+    from ..pc import batch
+    try:
+        if action == "start":
+            r = await batch.create(ctx.tenant_id, ctx.conversation_id, task, file_id=str(file_id or ""), rows=rows,
+                                   sheet=str(sheet or ""))
+            r["say"] = (f"Tell her in one or two lines: {r['rows']} rows; row 1 is starting on Hoola PC now - she watches "
+                        "it and approves its submit; after row 1 a card asks her to run the rest.")
+            return r
+        if not batch_id:
+            jobs = batch.mine(ctx.tenant_id)
+            if not jobs:
+                raise ToolError("No repeat job yet.")
+            batch_id = jobs[0]["id"]
+        return await batch.control(ctx.tenant_id, str(batch_id), str(action))
+    except batch.BatchError as e:
+        raise ToolError(str(e))
 
 
 async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
@@ -209,7 +251,8 @@ async def pc_task_result(ctx: Ctx, session_id, **_):
     return r
 
 
-PC_HANDLERS.update({"pc_do": pc_do, "pc_task_result": pc_task_result, "hoola_pc_do": hoola_pc_do})
+PC_HANDLERS.update({"pc_do": pc_do, "pc_task_result": pc_task_result, "hoola_pc_do": hoola_pc_do,
+                    "hoola_pc_batch": hoola_pc_batch})
 
 
 # ---- v0.836 DESKTOP TEAM + HOOLA PC TEAM: one agent per PC, several PCs at once ----

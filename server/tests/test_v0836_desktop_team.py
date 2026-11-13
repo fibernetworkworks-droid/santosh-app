@@ -277,7 +277,7 @@ def test_registry_family_labels_voice(bz):  # noqa: F811
         assert voice.call_route(n) in ("declared", "kaam")
     assert "pc" in names["pc_do"]["input_schema"]["properties"]
     assert "pc" in names["hoola_pc_do"]["input_schema"]["properties"]
-    assert len(T.TOOLS) == 629   # 627 + pc_team + pc_devices (v0.836 DESKTOP TEAM)
+    assert len(T.TOOLS) == 630   # +1 hoola_pc_batch (v0.885); 627 + pc_team + pc_devices (v0.836 DESKTOP TEAM)
 
 
 def test_prompt_and_vps_ops_team_shapes():
@@ -293,4 +293,4 @@ def test_prompt_and_vps_ops_team_shapes():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.884.0"
+    assert APP_VERSION == "0.885.0"

@@ -551,6 +551,7 @@ async def tick() -> None:
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
+        hoola_batch_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -807,6 +808,22 @@ async def api_box_jobs() -> None:
     from .publicapis import box
     res = await box.check(limit=n)
     log.info("api box health: %s", res)
+
+
+_hb_swept = False
+
+
+async def hoola_batch_jobs() -> None:
+    """v0.885 Hoola PC repeat jobs: once after a start, a job that a restart cut is paused and she is told."""
+    global _hb_swept
+    if _hb_swept:
+        return
+    _hb_swept = True
+    try:
+        from .pc import batch
+        batch.sweep_after_restart()
+    except Exception:
+        log.exception("hoola batch sweep failed")
 
 
 async def research_jobs() -> None:

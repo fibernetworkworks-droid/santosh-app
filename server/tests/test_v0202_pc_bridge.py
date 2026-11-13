@@ -79,7 +79,7 @@ def test_bridge_tools_only_on_the_hoola_operator():
     assert not (set(her) & BRIDGE)                 # HER PC's operator never gets the bridge
     assert set(hoola) & BRIDGE == BRIDGE           # the Hoola PC operator has all four
     added = set(hoola) - set(her)
-    assert added == BRIDGE | {"install", "run"}    # and they join only the v0.193 coworker tools
+    assert added == BRIDGE | {"install", "run", "run_status", "send_to_chat"}    # + the v0.193 coworker tools (v0.885 run_status, send_to_chat)
 
 
 def test_her_operator_still_lacks_install_and_run():
@@ -280,4 +280,4 @@ async def test_pc_upload_direction_to_pc(monkeypatch):
 
 def test_version_pin():
     import app.main as m
-    assert m.APP_VERSION == "0.884.0"
+    assert m.APP_VERSION == "0.885.0"

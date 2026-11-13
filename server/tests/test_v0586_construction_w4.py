@@ -306,7 +306,7 @@ def test_ext_quality_customer(env):
 # ---------------------------------------------------------------- wiring + pins
 def test_registry_593_and_new_tools(env):
     from app.agent.tools import HANDLERS, TOOLS, TOOL_LABELS
-    assert len(TOOLS) == 629, "626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + const_land/plan/ehs/studio/learn/fm (do + dekho)"
+    assert len(TOOLS) == 630, "629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + const_land/plan/ehs/studio/learn/fm (do + dekho)"
     new = ["const_land", "const_land_dekho", "const_plan", "const_plan_dekho", "const_ehs",
            "const_ehs_dekho", "const_studio", "const_studio_dekho", "const_learn",
            "const_learn_dekho", "const_fm", "const_fm_dekho"]
@@ -380,6 +380,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.884.0"
-    assert 'APP_VERSION = "0.884.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.884.0+883" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.885.0"
+    assert 'APP_VERSION = "0.885.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.885.0+884" in (REPO / "pubspec.yaml").read_text()

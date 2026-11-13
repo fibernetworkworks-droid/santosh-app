@@ -292,6 +292,11 @@ import time as _time
 JOBS: dict = {}            # (tenant, device_id) -> card
 
 
+def _dev(op: Any) -> str:
+    """v0.885 HOOLA PC POOL: Hoola's own PCs are shared - her job card follows HER to whichever Hoola PC she gets."""
+    return "hoola_pc" if str(getattr(op, "kind", "") or "") == "hoola_pc" else str(getattr(op, "device_id", "") or "")
+
+
 def _job_minutes() -> float:
     try:
         from ..config import get_settings
@@ -302,12 +307,12 @@ def _job_minutes() -> float:
 
 def remember(op: Any) -> dict | None:
     """A task ended: keep its job card on its PC (her PCs only; empty tasks keep nothing)."""
-    if _job_minutes() <= 0 or not getattr(op, "device_id", ""):
+    if _job_minutes() <= 0 or not _dev(op):
         return None
     rows = [r["text"] for r in (getattr(op, "progress", None) or [])][-12:]
     if not rows and not getattr(op, "carry", ""):
         return None
-    old = JOBS.get((op.tenant, op.device_id)) or {}
+    old = JOBS.get((op.tenant, _dev(op))) or {}
     chained = bool(old) and getattr(op, "carry", "").startswith("EARLIER WORK")   # this task continued that job
     card = {"at": _time.time(), "goal": _mask(str(op.task)[:300]), "task": _mask(str(op.task)[:300]),
             "status": str(getattr(op, "status", "") or ""), "steps": int(getattr(op, "step", 0) or 0),
@@ -315,9 +320,9 @@ def remember(op: Any) -> dict | None:
             "opened": dict(getattr(op, "opened_urls", {}) or {}),
             "window": str(getattr(op, "window", "") or "")[:120],
             "why": _mask(str(getattr(op, "reason", "") or getattr(op, "summary", "") or "")[:200]),
-            "pc": str(getattr(op, "device_name", "") or "PC")}
+            "pc": ("Hoola PC" if _dev(op) == "hoola_pc" else str(getattr(op, "device_name", "") or "PC"))}
     card["done"] = card["done"][-16:]
-    JOBS[(op.tenant, op.device_id)] = card
+    JOBS[(op.tenant, _dev(op))] = card
     return card
 
 
@@ -357,13 +362,13 @@ def job_block(tenant: str) -> str:
     if not out:
         return ""
     return ("\n\nHER PC - THE LAST JOB (any chat or call; this is what is really on her PC now):\n" + "\n".join(out) +
-            "\nA new ask about the SAME job = ONE pc_do task that CONTINUES from there (say what is already open / done, "
+            "\nA new ask about the SAME job = ONE task (pc_do on her PC, hoola_pc_do on Hoola PC) that CONTINUES from there (say what is already open / done, "
             "never 'open a new tab' or start again). A different job = a fresh task.")
 
 
 def carry_job(op: Any) -> bool:
     """A new task on a PC with a fresh job card: the card rides as the task's carry (+ the pages it opened)."""
-    card = job_for(op.tenant, getattr(op, "device_id", ""))
+    card = job_for(op.tenant, _dev(op))
     if not card:
         return False
     op.carry = job_text(card)

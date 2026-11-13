@@ -4,7 +4,7 @@ FROM python:3.12-slim
 
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         xvfb scrot xdotool wmctrl openbox dbus-x11 x11-utils chromium fonts-indic fonts-noto-core \
-        procps curl ca-certificates gnupg at-spi2-core libatk-adaptor tzdata \
+        procps curl ca-certificates gnupg at-spi2-core libatk-adaptor tzdata openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # v1.2.0 Google Chrome stable (the real thing: H.264/AAC/MP3 codecs + Widevine, the exact
@@ -36,6 +36,10 @@ RUN ARCH=$(dpkg --print-architecture) \
          && /usr/local/bin/agent-desktop version; \
        else echo "arch $ARCH: no agent-desktop build, exact mode off (pixel mode still works)"; fi
 ENV HOOLA_AGENT_DESKTOP=/usr/local/bin/agent-desktop
+
+# v0.885 HOOLA PC POOL: shell commands run as this unprivileged user, who reaches only the folder of the user
+# being served (never another user's folder, the PC's token or the encrypted archives)
+RUN useradd -m -u 1500 -s /bin/bash hoolawork
 
 WORKDIR /app
 COPY requirements.txt .

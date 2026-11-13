@@ -359,6 +359,7 @@ LABELS_EN = {
     'hoola_me': 'Checking your Hoola ID',
     'hoola_my_business': 'Managing your business',
     'hoola_pc_do': "Working on Hoola's own PC",
+    'hoola_pc_batch': "Running a repeat job on Hoola's PC",
     'hoola_pick': 'Checking the pick list',
     'hoola_reply': 'Sending a reply',
     'hoola_samaj': 'Checking the community',

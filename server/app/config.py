@@ -445,6 +445,12 @@ class Settings(BaseSettings):
     pc_qwen_thinking: str = "off"           # v0.856 PC SPEED: off by default (it thought before EVERY click); "on" / "" = default
     pc_qwen_provider_sort: str = "latency"  # v0.856 OpenRouter provider.sort for the PC brain: latency | throughput | price | ""
     pc_job_memory_min: float = 45.0   # v0.882 PC JOB YAAD: a PC keeps its last job card this long (0 = off)
+    # v0.885 HOOLA PC POOL (owner: "EVERY HOOLA USER WILL HAS ITS OWN HOOLA PC ... Shared pool AND HUMAN IN LOOP"):
+    # Hoola's own PCs serve every user one at a time (her own locked folder on the PC), a queue when all are busy
+    hoola_pc_pool: bool = True
+    hoola_pc_queue_min: float = 30.0      # a queued Hoola PC task waits this long for a free PC, then says so
+    hoola_pc_proof: bool = True           # every Hoola PC task ends with a screenshot of the screen in her chat
+    hoola_batch_max_rows: int = 500       # rows one repeat job may take
     pc_drift_steps: int = 12          # v0.882 steps with nothing new done before the worker is told (2x = the rescue)
     pc_max_tokens: int = 1500               # v0.879 output room per PC step (4000 held too much OpenRouter credit per request; thinking is off)
     pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane

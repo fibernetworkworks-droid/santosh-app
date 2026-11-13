@@ -422,7 +422,7 @@ def test_purity_no_top_level_httpx():
 
 
 def test_registry_609():
-    assert len(TOOLS) == 629, ("626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). " "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, "
+    assert len(TOOLS) == 630, ("629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL). " "626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). " "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, "
                                "owner 'GO' on the google/skills deploy plan). Was: 607 + 1 duniya "
                                "(v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). "
                                "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). "
@@ -442,4 +442,4 @@ def test_enum_and_label_pins():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.884.0"                       # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.885.0"                       # conscious-bump guard: moves with every release

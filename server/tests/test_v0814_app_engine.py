@@ -180,7 +180,7 @@ def test_the_turn_knows_its_app_and_has_the_tool(ae_env):
     assert AE.prompt_block(T) == "" and "appengine" not in admit.sticky_families("")
     spec = next(t for t in TL.TOOLS if t["name"] == "app_engine")
     assert toolsearch.schema_ok(spec) and TL.FAMILY_OF["app_engine"] == "appengine"
-    assert len(TL.TOOLS) == 629, "626 + 1 app_engine (v0.824 APP ENGINE 1, L8 of the Lovable Studio plan)"
+    assert len(TL.TOOLS) == 630, "629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1, L8 of the Lovable Studio plan)"
 
 
 def test_routes_and_her_key(ae_env, monkeypatch):

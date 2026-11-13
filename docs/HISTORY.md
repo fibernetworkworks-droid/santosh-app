@@ -3827,3 +3827,63 @@ Next (her decisions, 13 Nov): every user gets a Hoola PC through a SHARED POOL (
 THE LOOP for submits; then repeat jobs over a sheet's rows, files back to the chat, a report back with proof.
 
 - v0.884 follow-up (agent 1.5.1): her live check on the VPS - google / incometax / gst / uidai / aaplesarkar OK in 1-2 s; parivahan.gov.in came back "OK" after 40.6 s with NO title (the tab never left about:blank and a blank tab at the deadline counted as fine). Now `_settle` calls that `no_page` with the hint "the site refuses cloud servers, offer HER PC"; test added.
+
+## v0.885.0 HOOLA PC POOL (13 Nov 2026)
+
+Owner: "EVERY HOOLA USER WILL HAS ITS OWN HOOLA PC --- IF USER WANTS THEY CAN GIVE MANUAL TASK TO HOOLA PC ON CHROME AND
+AFTER TASK COMPLETION HOOLA WILL REPORT IT BACK --- IT IS BEST FOR LEGACY PORTALS AND GOV PORTALS WHERE NEED A HUGE
+REPEATED MANUAL WORK ... JUST NEED HOOLA OWN PC TO SEND DOCUMENTS ON CHAT" -> "Shared pool AND HUMAN IN LOOP" (after the
+v0.884 Chrome fix) -> "GO". Frozen-PC exception recorded in CLAUDE.md.
+
+**Shared pool** (`server/app/pc/pool.py`, `hub.pool()` / `hub.hoola_pcs()`): Hoola's own PCs belong to Hoola, not to the
+tenant that paired them. A Hoola PC task for any user picks a FREE one - the PC she used last (`pool.LAST`, her portal
+logins are open there), then her own, then any. A PC working for someone else is never taken over (`busy_any`); all busy =
+the task is `queued` (`operator._start_queued` / `_queued_go`, FIFO `pool.QUEUE`, `queue_place` on the card, gives up after
+`hoola_pc_queue_min` 30 with a plain line). Switch `hoola_pc_pool` (off = only her own Hoola PCs, as before).
+
+**Her own folder on a shared PC** (agent `use_profile` / `do_profile`, server `pool.prepare` before the first step):
+- key = HMAC(server signing key, tenant)[:24], secret = HMAC(..., "secret") - nothing stored; the PC holds the secret only
+  while it serves her.
+- /data/Downloads and /data/work become symlinks to /data/profiles/<key>/{Downloads,files}; Chrome's user-data-dir is
+  /data/profiles/<key>/chrome (Chrome restarted, every window of the previous user closed, background commands killed).
+- the previous user's folder is tar'd (caches skipped) and encrypted with `openssl enc -aes-256-cbc -pbkdf2 -iter 100000`,
+  then the readable copy is deleted; it is decrypted only with her secret (a wrong secret changes nothing).
+- the PC's first user (`home`: the tenant that paired it) gets her old /data/chrome + /data/Downloads moved in once.
+- shell commands (`run`) run as the unprivileged `hoolawork` user (Dockerfile `useradd -u 1500`), cwd/HOME = her work
+  folder; the walls: /data 711, identity.json 600, other folders 700, her Downloads/files owned by hoolawork. Checked here as
+  root: whoami = hoolawork, `cat identity.json` / another folder = Permission denied, her own folder writable.
+- file actions (list / read / send_file / open_url file://) refuse other users' folders, archives and the token (`allowed`).
+- an old agent that does not know `profile` may still serve the user who paired it (legacy shared folder) but never anyone
+  else (`HOOLA_PC_OLD`).
+
+**Files and proof to her chat**: tool `send_to_chat {path, title}` (Hoola PC only) - the PC uploads, the server re-tags
+the row to HER tenant as a phone download (`pool.claim_file`) and posts a `pc_file` card. Every Hoola PC task that ends
+done / partial / failed posts the last screenshot as "Hoola PC screen at the end (proof)" (`_proof`, `hoola_pc_proof`).
+
+**Repeat jobs** (`server/app/pc/batch.py`, tool `hoola_pc_batch`, registry 629 -> 630): her job once with {Column} blanks
++ her Excel / CSV from the chat (or a list). Every blank must be a column (checked before anything runs). Row 1 runs as a
+normal watched task (her card on every submit). Then `operator.ask_tap` shows a confirm card with the proof - only HER tap
+lets rows 2..N run (the model's `go` only shows the card again). Rows run one by one on the same PC with `batch_ok`: a submit
+of the same kind needs no new card, but money / delete / OTP / install / settings always ask (`_batch_needs_tap`). Three
+failures in a row pause; a server restart pauses (worker slot `hoola_batch_jobs` -> `sweep_after_restart`) and marks the
+cut row "CHECK ON PORTAL" (never resubmitted by Hoola). At the end one Excel (every row's inputs, result, what happened,
+proof screenshot link, files sent) comes to her chat. State in `<pc_files_dir>/../hoola_batches/<id>.json`.
+
+**Also**: `run background=true` (up to 2 hours, 6 at once) + `run_status` / `run_stop`; installs from installed.log put
+back after an image rebuild (`replay_installs`, background thread at boot); the PC job card (`steady`) is kept per user
+for Hoola PCs (`_dev` -> "hoola_pc") so a follow-up continues on whichever Hoola PC she gets. Prompt: THIS PC IS SHARED,
+FILES TO HER, LONG COMMANDS, REPEAT JOBS. Agent 1.6.0.
+
+REAL-CHROMIUM WALK here (Xvfb + Chromium 1243, a local page): user A sets a cookie + localStorage, the PC switches to B
+(B sees nothing), back to A after encrypt / decrypt = A's login is there. The walk FOUND that a Chrome stopped with
+SIGTERM drops a fresh login (cookies are written only on a clean shutdown) - `_stop_chrome` now closes it with CDP
+`Browser.close` first. The deploy `check` uses a throwaway profile and never stops a Chrome serving a user.
+
+Tests: NEW `test_v0885_hoola_pc_pool.py` (11: folders lock / open / wrong secret / guard with real openssl, background run +
+install replay, pool order + pool off, another user's task switches the folder + proof, queue never takes over, send_to_chat
+re-tags the file, batch approval never covers money, prompt / tools, rows from Excel / CSV + blanks, the full repeat job
+with her tap, no tap = no rows + restart pause). Pins: registry 630 in 36 suites, bridge tool list, agent version >= 1.5.1.
+Older red unchanged: test_v0173 finished_task (fails on the commit before too).
+
+NOT VERIFIED: nothing has run on her VPS yet (needs vps-ops deploy + pc_deploy); a second real user has not used a Hoola PC;
+encrypting a big Chrome profile takes seconds on each switch between users (not measured on her server).

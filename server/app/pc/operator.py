@@ -85,6 +85,13 @@ Differences from her Windows PC:
   /data/Downloads. open_url waits up to 30 s and reuses the site's tab; when it says PROBLEM, follow its hint:
   'blocked' or a site that never opens = the site refuses cloud servers, tell her and offer HER PC (pc_do);
   'slow' = wait_for a word, never open it again; 'certificate' = never click past the warning, tell her.
+- THIS PC IS SHARED (v0.885): Hoola's PCs serve many users one at a time. You are working for ONE user now; her own
+  folder is what /data/Downloads and /data/work point to (her Chrome logins are hers too). Never look for, open or
+  mention other users' files. Shell commands run in /data/work.
+- FILES TO HER: every file the task produced that she will want (the portal's receipt / acknowledgement PDF, a filled
+  sheet, a converted file) goes to her chat with send_to_chat BEFORE done - never just 'it is in Downloads'.
+- LONG COMMANDS: run with background=true for anything over ~2 minutes, then run_status; never run it twice.
+- REPEAT JOBS: when a task says it is row N of a repeat job, do exactly that row - the same steps as row 1.
 """
 # v0.191 TAPGATE (samajhdaar card): card SIRF asli faisle par jaata hai. Kuch nahi badalne wali step auto-approve
 # (no card), CAPTCHA ek confirm ke baad apne aap type, aur paise/bhejna/delete/order jaise faisle par hi card.
@@ -498,8 +505,19 @@ HOOLA_TOOLS = TOOLS + [
     {"name": "run", "description": "Run ONE shell command inside this VM (max 3 minutes) and get stdout / stderr / exit "
                                      "code. Faster than clicking for anything terminal-shaped: python, curl, unzip, "
                                      "pdftotext, ffmpeg, file conversion, checking a port. Your own VM - no approval needed.",
-     "input_schema": {"type": "object", "properties": {"command": {"type": "string"}, "timeout": {"type": "integer", "description": "seconds, max 180"}},
+     "input_schema": {"type": "object", "properties": {"command": {"type": "string"}, "timeout": {"type": "integer", "description": "seconds, max 180"},
+                                                       "background": {"type": "boolean", "description": "true = a LONG command (big download, conversion of many files): it keeps running up to 2 hours; check it with run_status"}},
                       "required": ["command"]}},
+    {"name": "run_status", "description": "v0.885 Output of a background command started with run background=true (job id), "
+                                          "or no job = the list of background commands.",
+     "input_schema": {"type": "object", "properties": {"job": {"type": "string"}}}},
+    {"name": "send_to_chat", "description": "v0.885 Send ONE file from THIS PC to the user's chat as a download (the receipt / "
+                                            "acknowledgement PDF a portal gave, the filled Excel, a converted file). Use it "
+                                            "for every file the task produced that she will want - before done. Her own chat "
+                                            "only; no approval needed.",
+     "input_schema": {"type": "object", "properties": {"path": {"type": "string", "description": "e.g. /data/Downloads/receipt.pdf"},
+                                                       "title": {"type": "string", "description": "a short name she will understand"}},
+                      "required": ["path"]}},
     # v0.202 THE BRIDGE to the user's personal PC ("Mera PC"): while working on THIS VM the operator can use
     # her PC for files - search / read are read-only; pull copies her file INTO this VM; push copies a finished
     # file back to her PC (the code shows her a confirm card before anything lands there). Her own PC's
@@ -620,6 +638,12 @@ class Op:
     toasts_off: bool = False
     swept_at: int = 0
     popups: int = 0
+    # v0.885 HOOLA PC POOL
+    batch_ok: bool = False         # she approved a repeat job after row 1: submits of the next rows need no card
+    batch_auto: int = 0
+    quiet: bool = False            # a batch row: no own report / proof in the chat (the batch reports once)
+    proof: dict = field(default_factory=dict)      # the end-of-task screenshot as a chat file
+    sent_files: list = field(default_factory=list)
 
     def live(self) -> dict[str, Any]:
         out = {"session_id": self.id, "status": self.status, "step": self.step, "action": self.action,
@@ -631,6 +655,11 @@ class Op:
                "thought": self.thought, "thoughts": self.thoughts[-10:]}
         if self.pending and self.status == "needs_confirm":
             out["pending"] = {"id": self.pending["id"], "label": self.pending["what"]}
+        if self.status == "queued":
+            from . import pool
+            out["queue_place"] = pool.position(self.id)
+        if self.sent_files:
+            out["files_sent"] = self.sent_files[-10:]
         return out
 
 
@@ -728,6 +757,17 @@ STATS = {"held_blind": 0}
 SETTLE_S = {"click": 0.35, "key": 0.35, "type": 0.2, "scroll": 0.25, "drag": 0.3, "focus_window": 0.3, "open_app": 0.8,
             "open_url": 1.0, "window": 0.4, "switch_tab": 0.6,   # v0.184 open_url shorter: the desktop itself waits for the page
             "ax_click": 0.5, "ax_launch": 1.5, "ax_set_value": 0.3}   # v0.471 semantic desktop steps
+
+
+_BATCH_TAP = re.compile(r"(pay|payment|paise|paisa|rupaye|rupees|\u20b9|upi|bank|card|cvv|password|otp|delete|hatana|"
+                        r"remove|uninstall|install|settings)", re.I)
+
+
+def _batch_needs_tap(what: str) -> bool:
+    """v0.885 inside an approved repeat job only submits / saves of the SAME kind go without a card; money, deletes,
+    installs and settings always ask her (approval_words decides money exactly like the tapgate)."""
+    from .. import approval_words
+    return bool(approval_words.money_risk(what or "") or _BATCH_TAP.search(what or ""))
 
 
 def _tapgate(op: Op, what: str) -> tuple[bool, str]:
@@ -870,6 +910,10 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return f"{str(a.get('packages', ''))[:32]} install kar raha hoon (apne PC par)"
     if name == "run":
         return "command chala raha hoon (apne PC par)"
+    if name == "run_status":
+        return "lamba command dekh raha hoon"
+    if name == "send_to_chat":
+        return "file aapki chat mein bhej raha hoon"
     if name == "user_pc_search":
         return "aapke PC par file dhoondh raha hoon"
     if name == "user_pc_read":
@@ -1943,16 +1987,35 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         cmd = str(a.get("command", "")).strip()[:600]
         if not cmd:
             return "REFUSED: empty command."
+        bg = bool(a.get("background"))
         try:
-            r = await _pc(op, "run", {"command": cmd, "timeout": min(int(a.get("timeout") or 60), 180)}, timeout=200)
+            r = await _pc(op, "run", {"command": cmd, "timeout": min(int(a.get("timeout") or 60), 180),
+                                      **({"background": True} if bg else {})}, timeout=200)
         except Exception as e:
             return f"ERROR: {e}"
+        if bg:      # v0.885 a long command keeps running on the PC; run_status reads it later
+            return (f"started in the background as job {r.get('job')} (max 2 hours). Check it with run_status "
+                    f"job={r.get('job')} - do other steps meanwhile, never start it again.")
         out = str(r.get("stdout") or "").strip()
         err = str(r.get("stderr") or "").strip()
         body = out or err or "(no output)"
         if len(body) > 2500:
             body = body[:1200] + " ... [middle cut] ... " + body[-1200:]
         return f"exit={r.get('exit', '?')}\n{body}"[:3600]
+    if name == "run_status":
+        try:
+            r = await _pc(op, "run_status", {"job": str(a.get("job") or "")[:40]}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "run_status") or f"ERROR: {e}"
+        if "jobs" in r:
+            return "background jobs: " + (", ".join(f"{j['job']} ({'running' if j['running'] else 'ended'}, "
+                                                     f"{j['seconds']}s: {j['cmd'][:60]})" for j in r["jobs"]) or "none")
+        state = "STILL RUNNING" if r.get("running") else f"ENDED exit={r.get('exit')}"
+        body = str(r.get("output") or "").strip() or "(no output yet)"
+        return f"job {r.get('job')} {state} after {r.get('seconds')}s" + \
+            (" (stopped: it ran over 2 hours)" if r.get("stopped_after_2h") else "") + f"\n{body[-3000:]}"
+    if name == "send_to_chat":
+        return await _send_to_chat(op, str(a.get("path", "")).strip(), str(a.get("title", "")).strip())
     # v0.202 THE BRIDGE: the user's personal PC is reachable for FILES while the operator works on Hoola's
     # own VM. Search / read are read-only; pull copies her file into this VM; push ALWAYS raises a confirm
     # card in code before anything is written to her PC. All of them route by hub.call_personal (her PC).
@@ -2017,6 +2080,28 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
     return f"Unknown tool {name}"
 
 
+async def _send_to_chat(op: Op, path: str, title: str = "") -> str:
+    """v0.885 a file this Hoola PC made / downloaded goes to HER chat as a download (the portal's receipt, the PDF,
+    the filled Excel). Her own chat only - nothing leaves Hoola."""
+    if not path:
+        return "REFUSED: give the file path on this PC (e.g. /data/Downloads/receipt.pdf - downloads lists them)."
+    try:
+        r = await _pc(op, "send_file", {"path": path}, timeout=200)
+    except Exception as e:
+        return f"ERROR: {e}"
+    fid = str(r.get("file_id") or "")
+    if not fid:
+        return "ERROR: the file did not leave this PC."
+    from . import pool
+    f = await asyncio.to_thread(pool.claim_file, fid, op.tenant)
+    if not f:
+        return "ERROR: the file was not saved on the server."
+    name = str(f.get("name") or Path(path).name)
+    pool.publish(op.conv, f, title or name)
+    op.sent_files.append(name)
+    return f"'{name}' is in her chat now (a download card). Do not send it again."
+
+
 async def _push_to_user_pc(op: Op, path: str) -> str:
     """v0.202 the guarded half of the bridge: her confirm card FIRST (in code, never the model's choice),
     then the VM uploads the file (direction to_pc) and her desktop saves it into her Santosh Inbox."""
@@ -2034,6 +2119,17 @@ async def _push_to_user_pc(op: Op, path: str) -> str:
     except Exception as e:
         return _user_pc_err(e)
     return f"'{name}' copied from THIS VM to the USER'S PC (Santosh Inbox folder)."
+
+
+async def ask_tap(op: Op, what: str) -> bool:
+    """v0.885 a confirm card on a task that already ENDED (a repeat job's 'run the other rows?' after row 1): the same
+    phone card and tap as any step, the task's own status comes back afterwards."""
+    prev = op.status
+    try:
+        return await _approval(op, what)
+    finally:
+        op.status = prev
+        _event(op)
 
 
 async def _approval(op: Op, what: str) -> bool:
@@ -2714,6 +2810,9 @@ async def _run(op: Op) -> None:
         pass
     messages: list[dict] = []
     try:
+        if op.kind == HOOLA_PC_KIND:   # v0.885 the PC switches to HER folder before anything is on its screen
+            from . import pool as _pool
+            await _pool.prepare(op)
         first = await _shot_retry(op)          # v0.185.4 one busy capture at task start must not kill the task
         op.native = _native_on(op)             # v0.859 D1 Claude's own computer toolset on the Claude brain
         op.plan = await _make_plan(op)         # v0.859 D2 checked stages (a short job gets none)
@@ -2876,6 +2975,12 @@ async def _run(op: Op) -> None:
                     continue
                 if name == "ask_approval":
                     what = str(a.get("what", "this step"))
+                    if op.batch_ok and not _batch_needs_tap(what):   # v0.885 she approved the whole batch after row 1
+                        op.batch_auto += 1
+                        results.append({"type": "tool_result", "tool_use_id": u["id"], "content":
+                                        "APPROVED (repeat job: she checked row 1 and approved every row after it). "
+                                        "Do exactly that now."})
+                        continue
                     auto, note = _tapgate(op, what)   # v0.191 samajhdaar card: card sirf asli faislon par
                     if auto:
                         results.append({"type": "tool_result", "tool_use_id": u["id"], "content": note})
@@ -2996,18 +3101,22 @@ async def _run(op: Op) -> None:
             await _shot(op)
         except Exception:
             pass
+        if op.kind == HOOLA_PC_KIND and op.frame and op.status in ("done", "partial", "failed"):
+            try:   # v0.885 the screen at the end, as proof in her chat (a repeat job keeps it for its sheet)
+                await _proof(op)
+            except Exception:
+                log.exception("hoola pc proof failed")
         try:   # v0.173 remember this run for the NEXT task (owner: "Hoola bhool jata hai WhatsApp pehle se khula hai")
             from . import memory
             memory.remember(op.tenant, op.task, op.mem[-14:], op.status, op.summary, op.window)
         except Exception:
             log.exception("pc memory save failed")
         _card = None
-        if op.kind != HOOLA_PC_KIND:
-            try:   # v0.882 PC JOB YAAD: the job outlives the task (next task on this PC, any chat / call)
-                from . import steady as _sd
-                _card = _sd.remember(op)
-            except Exception:
-                log.exception("pc job card save failed")
+        try:   # v0.882 PC JOB YAAD: the job outlives the task (next task on this PC, any chat / call; v0.885 Hoola PC too)
+            from . import steady as _sd
+            _card = _sd.remember(op)
+        except Exception:
+            log.exception("pc job card save failed")
         log.info("pc task end %s status=%s steps=%d %ds stage=%s/%s asks=%s progress=%d repeats=%d popups=%d drifts=%d "
                  "| %s | job: %s", op.id, op.status, op.step,
                  int(time.time() - op.created), op.stage, len(op.plan or []), "yes" if op.answer else "no",
@@ -3029,7 +3138,19 @@ async def _run(op: Op) -> None:
             _report(op)
 
 
+async def _proof(op: Op) -> None:
+    if not getattr(get_settings(), "hoola_pc_proof", True):
+        return
+    from . import pool
+    stamp = time.strftime("%d%b-%H%M")
+    op.proof = await asyncio.to_thread(pool.store_bytes, op.tenant, op.device_id, f"hoola-pc-proof-{stamp}.jpg", op.frame)
+    if not op.quiet:
+        pool.publish(op.conv, op.proof, "Hoola PC screen at the end (proof)")
+
+
 def _report(op: Op) -> None:
+    if op.quiet:          # v0.885 a repeat-job row: the job reports once, at the end
+        return
     own = op.kind == HOOLA_PC_KIND
     pc_name = ("Hoola ke apne PC" if own else "Aapke PC") + (f" ({op.device_name})" if op.device_name else "")
     text = {"done": op.summary or f"{pc_name} par kaam ho gaya.",
@@ -3090,6 +3211,9 @@ def _choose(tenant: str, kind: str, pc: str):
             if kind == HOOLA_PC_KIND:   # v0.194 her PC may be fine while the Hoola PC is down: a clear, separate line
                 raise RuntimeError("HOOLA_PC_OFFLINE: Hoola ka apna PC abhi online nahi hai. Thodi der baad koshish kijiye.")
             raise RuntimeError("PC_OFFLINE")
+        if kind == HOOLA_PC_KIND:       # v0.885 HOOLA PC POOL: a free one (hers last), else her own busy one, else queue
+            from . import pool
+            return pool.pick(tenant) or pool.mine_busy(tenant)
         mine = [c for c in hub.online(tenant) if (c.info or {}).get("kind") == kind]
         free = [c for c in mine if busy(tenant, str(getattr(c, "device_id", "") or "")) is None]
         return (free or mine)[0]
@@ -3111,7 +3235,8 @@ def busy(tenant: str, device_id: str) -> "Op | None":
 
 
 async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "", pc: str = "",
-                team: str = "", replace: bool = True, brain: str = "") -> dict[str, Any]:
+                team: str = "", replace: bool = True, brain: str = "", quiet: bool = False,
+                batch_ok: bool = False) -> dict[str, Any]:
     """Start one PC task. v0.836 DESKTOP TEAM: one task per PC (not per person) - her office PC, her home PC and
     Hoola's own PCs can each work at the same time. A new task on a BUSY PC replaces the old one (the old
     pc_do behaviour) unless replace=False, which raises PcBusy instead (pc_team never cancels her running work)."""
@@ -3119,6 +3244,13 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     _loop = asyncio.get_running_loop()
     _cleanup()
     conn = _choose(tenant, kind, str(pc or "").strip())
+    if conn is not None and (conn.info or {}).get("kind") == HOOLA_PC_KIND:
+        from . import pool as _pool       # v0.885 a Hoola PC working for SOMEONE ELSE is never taken over
+        _o = _pool.busy_any(str(getattr(conn, "device_id", "") or ""))
+        if _o is not None and _o.tenant != tenant:
+            conn = None
+    if conn is None:
+        return await _start_queued(tenant, conv, task, wait, team, brain, quiet, batch_ok)
     ckind = HOOLA_PC_KIND if (conn.info or {}).get("kind") == HOOLA_PC_KIND else ""
     if ckind != HOOLA_PC_KIND and not (conn.info or {}).get("control"):
         raise PermissionError("PC chalane ki permission band hai. PC par Santosh Desktop > Settings > "
@@ -3141,11 +3273,12 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
             carry = ""
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=ckind,
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
+    op.quiet, op.batch_ok = bool(quiet), bool(batch_ok)
     if carry:
         op.carry = carry
         op.opened_urls = dict(getattr(old, "opened_urls", {}) or {})
-    elif ckind != HOOLA_PC_KIND:
-        try:   # v0.882 PC JOB YAAD: the last job on this PC (ended, any chat / call) - continue it, never restart it
+    else:
+        try:   # v0.882 PC JOB YAAD (v0.885: Hoola PC too - her card follows her to any Hoola PC): the last job on this PC (ended, any chat / call) - continue it, never restart it
             from . import steady as _sd
             if _sd.carry_job(op):
                 log.info("pc task %s gets the job card of this PC (continue, not restart)", op.id)
@@ -3177,6 +3310,73 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     if not op.done_event.is_set():
         op.reported = True
     return op.live()
+
+
+async def _start_queued(tenant: str, conv: str, task: str, wait: float, team: str, brain: str, quiet: bool = False,
+                        batch_ok: bool = False) -> dict[str, Any]:
+    """v0.885 every Hoola PC is working for someone: her task waits in line (first come, first served)."""
+    op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=HOOLA_PC_KIND,
+            status="queued", team=team)
+    op.quiet, op.batch_ok = bool(quiet), bool(batch_ok)
+    op.action = "Hoola PC ki line mein intezaar"
+    op.steps_max, op.minutes = _budget(op.task)
+    try:
+        from . import rescue as _rs
+        op.steps_max = _rs.step_cap(op.steps_max)
+    except Exception:
+        pass
+    try:
+        from . import steady as _sd
+        _sd.carry_job(op)
+    except Exception:
+        pass
+    from . import brain as _brain
+    op.brain, op.brain_model, op.brain_note = _brain.choose(brain)
+    OPS[op.id] = op
+    op.task_obj = asyncio.create_task(_queued_go(op))
+    await asyncio.sleep(0)
+    from . import pool
+    log.info("pc task queued %s chat=%s place=%d | %s", op.id, conv, pool.position(op.id), op.task[:160])
+    _event(op)
+    if wait > 0:
+        try:
+            await asyncio.wait_for(asyncio.shield(op.done_event.wait()), min(wait, 20))
+        except asyncio.TimeoutError:
+            pass
+    if not op.done_event.is_set():
+        op.reported = True
+    out = op.live()
+    if op.status == "queued":
+        out["say"] = (f"Every Hoola PC is busy with other work right now; her task is number {pool.position(op.id) or 1} "
+                      "in line and starts by itself on the first free PC. Tell her in one short line.")
+    return out
+
+
+async def _queued_go(op: Op) -> None:
+    from . import pool
+    try:
+        conn = await pool.wait_turn(op)
+    except asyncio.CancelledError:
+        op.status = "cancelled"
+        op.action = "Aapne rok diya"
+        op.done_event.set()
+        _event(op)
+        raise
+    if conn is None or op.status == "cancelled":
+        if op.status != "cancelled":
+            op.status, op.reason = "failed", "every Hoola PC stayed busy"
+            op.summary = "Saare Hoola PC kaafi der tak busy rahe - kaam shuru nahi ho paya. Thodi der baad dobara boliye."
+        op.done_event.set()
+        _event(op)
+        if op.reported:
+            _report(op)
+        return
+    op.device_id, op.device_name = conn.device_id, str((conn.info or {}).get("name") or "")[:60]
+    op.status, op.action = "running", "shuru kar raha hoon"
+    log.info("pc task start %s (from the queue) chat=%s pc=%s brain=%s budget=%d steps/%d min | %s", op.id, op.conv,
+             op.device_name or op.device_id, op.brain_model or op.brain, op.steps_max, op.minutes, op.task[:200])
+    _event(op)
+    await _run(op)
 
 
 def running(tenant: str, device_id: str = "") -> "Op | None":

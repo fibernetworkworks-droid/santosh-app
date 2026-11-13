@@ -69,7 +69,32 @@ class Hub:
         with self._lock:
             return list((self.conns.get(tenant_id) or {}).values())
 
+    # v0.885 HOOLA PC POOL: Hoola's own PCs belong to Hoola, not to the tenant that paired them - every user can be
+    # given one (one task at a time, her own locked folder on it). Her own PCs (Windows desktop) are never pooled.
+    @staticmethod
+    def _pool_on() -> bool:
+        try:
+            from ..config import get_settings
+            return bool(getattr(get_settings(), "hoola_pc_pool", True))
+        except Exception:
+            return False
+
+    def pool(self) -> list[Conn]:
+        """Every online Hoola PC, whichever tenant paired it."""
+        with self._lock:
+            return [c for d in self.conns.values() for c in d.values() if (c.info or {}).get("kind") == HOOLA_PC_KIND]
+
+    def hoola_pcs(self, tenant_id: str) -> list[Conn]:
+        """The Hoola PCs this tenant may use: her own first, then (pool on) everyone else's."""
+        mine = [c for c in self.online(tenant_id) if (c.info or {}).get("kind") == HOOLA_PC_KIND]
+        if not self._pool_on():
+            return mine
+        ids = {getattr(c, "device_id", "") for c in mine}
+        return mine + [c for c in self.pool() if c.device_id not in ids]
+
     def is_online(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> bool:
+        if kind == HOOLA_PC_KIND:
+            return bool(self.hoola_pcs(tenant_id))
         if kind:
             return any((c.info or {}).get("kind") == kind for c in self.online(tenant_id))
         if device_id is None:   # v0.854 no PC named = HER PC: Hoola's own cloud PC being online does not count
@@ -79,6 +104,11 @@ class Hub:
     def _pick(self, tenant_id: str, device_id: str | None = None, kind: str | None = None) -> Conn | None:
         """v0.194 a tenant can have SEVERAL PCs (her Windows PC + Hoola's own cloud PC): pick by kind first,
         then by device_id, else the legacy last-connected one (her PC alone never notices)."""
+        if kind == HOOLA_PC_KIND:   # v0.885 her own Hoola PCs first, then the shared pool
+            hs = self.hoola_pcs(tenant_id)
+            if device_id is not None:
+                return next((c for c in hs if getattr(c, "device_id", "") == device_id), None)
+            return hs[0] if hs else None
         conns = self.online(tenant_id)
         if not conns:
             return None

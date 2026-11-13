@@ -10,6 +10,8 @@
 #   docker compose --profile team up -d        -> Hoola PC + Hoola PC 2 (each pairs once, its own volume)
 #   vps-ops pc_deploy with lines = 1..4         -> the same, any team size; pc_pair lines = 2-CODE pairs PC 2
 # Each PC may use up to 2.5 GB of RAM: an 8 GB server fits about 2.
+# v0.885 HOOLA PC POOL: these PCs serve EVERY Hoola user one at a time (her own encrypted folder on the PC), so more
+# PCs = more users served at once; a user waits in a queue when all are busy.
 services:
   hoola-pc:
     build: .
