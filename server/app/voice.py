@@ -4348,6 +4348,12 @@ class Call:
         me = (loop, self)
         self._register(me)   # v0.646 under the call record + its chat
         CALLS[self.call_id] = self
+        if get_settings().voice_brain:   # v0.880 TEZ CALL: her first ask finds the brain's memory already read
+            try:
+                from .agent import santosh as _bp
+                _bp.brain_prefetch(self.ctx.tenant_id, getattr(self, "conv", "") or self.ctx.conversation_id)
+            except Exception:
+                pass
         await self._setup_voiceid()
         try:   # v0.473 HOOLA CODER: this call becomes a memory session (best-effort, fail-open)
             from . import coder as _coder

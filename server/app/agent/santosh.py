@@ -890,6 +890,14 @@ async def _call_brain_once(brain: str, system: str, history: list[dict], setting
         tools = _ts.loaded(tools)
         history = _ts.fit_refs(history, [], keep=False)
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
+        _t_glm = time.monotonic()
+        try:   # v0.880 TEZ CALL: the OpenRouter / GLM path logged no prep line and no time (her call brain runs here)
+            _pl = _prep_line()
+            if _pl:
+                STATS_PREP["logged"] += 1
+                log.info("%s", _pl)
+        except Exception:
+            pass
         if streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
                                                           live.feed, on_think=live.feed_think,   # v0.171 thinking
@@ -898,6 +906,11 @@ async def _call_brain_once(brain: str, system: str, history: list[dict], setting
             blocks, stop, usage = await llm.openai_create(brain, system, tools, history, cap)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
                  usage.get("route", ""))
+        try:
+            log.info("glm call %.1fs model=%s msgs=%d tools=%d cap=%d voice=%s", time.monotonic() - _t_glm,
+                     llm.model_in_force(), len(history), len(tools or []), int(cap or 0), VOICE_BRAIN_NOW.get())
+        except Exception:
+            pass
         from . import context as _ctx   # v0.237 the gauge learns this brain's real chars-per-token
         _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
@@ -1860,7 +1873,16 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
     loop = asyncio.get_running_loop()
     import contextvars as _cvs
     tasks = [asyncio.ensure_future(loop.run_in_executor(_brain_pool(), _cvs.copy_context().run, fn)) for _, fn in parts]
-    wait_s = float(getattr(settings, "voice_brain_memory_s", 2.5) or 2.5)
+    wait_s = float(getattr(settings, "voice_brain_memory_s", 1.5) or 1.5)
+    # v0.880 TEZ CALL: her 13 Nov calls - facts / coder / cards were 'not ready in 2.5s' on nearly EVERY ask, so each
+    # ask paid the whole wait. When every slow part has a copy from this call's earlier ask (or the warm-up read at
+    # call start, `brain_prefetch`), the ask waits only voice_brain_memory_warm_s for the quick job state and uses
+    # those copies; the fresh reads still finish in their threads and are kept for the next ask.
+    _now = time.time()
+    if all(n == "kaam" or ((conversation_id, n) in _BRAIN_CACHE and _now - _BRAIN_CACHE[(conversation_id, n)][0] < 600)
+           for n, _ in parts):
+        wait_s = min(wait_s, float(getattr(settings, "voice_brain_memory_warm_s", 0.6) or 0.6))
+        STATS_PREP["memory_warm"] = STATS_PREP.get("memory_warm", 0) + 1
     done, pending = await asyncio.wait(tasks, timeout=wait_s)
     out, late = [], []
     for (name, _), t in zip(parts, tasks):
@@ -1874,12 +1896,14 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
             if txt:
                 out.append(txt)
         else:
-            late.append(name)
             # v0.657 the part finishes in its thread and is KEPT for the next ask (before, the next ask re-ran it)
             t.add_done_callback(lambda f, k=(conversation_id, name): _brain_keep(k, f))
             hit = _BRAIN_CACHE.get((conversation_id, name))
-            if name != "kaam" and hit and time.time() - hit[0] < 600 and hit[1]:
-                out.append(hit[1])        # a few minutes old is far better than nothing (job state never: it moves)
+            if name != "kaam" and hit and time.time() - hit[0] < 600:
+                if hit[1]:
+                    out.append(hit[1])    # a few minutes old is far better than nothing (job state never: it moves)
+                continue                  # v0.880 a cached copy (even an empty one) is not a gap - nothing to warn about
+            late.append(name)
     if late:
         # v0.657 never a silent gap: the brain is told what it does NOT have, so it checks instead of guessing
         miss = [_LATE_SAY.get(n, n) for n in late]
@@ -1890,6 +1914,20 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
         log.info("call brain memory: %s not ready in %.1fs, left out of this ask (shared pool queue %d)",
                  ",".join(late), wait_s, looplag.pool_queue())
     return "\n\n".join(out)
+
+
+def brain_prefetch(tenant_id: str, conversation_id: str) -> None:
+    """v0.880 TEZ CALL: warm the call brain's memory copies when a call connects (her first ask used to wait the whole
+    memory timeout). Runs the same reads in the call's own pool, never on the event loop; fail-open."""
+    try:
+        settings = get_settings()
+        if not getattr(settings, "voice_brain_prefetch", True):
+            return
+        loop = asyncio.get_running_loop()
+        loop.create_task(_brain_memory(tenant_id, conversation_id, "", settings))
+        STATS_PREP["prefetch"] = STATS_PREP.get("prefetch", 0) + 1
+    except Exception:
+        pass
 
 
 def _cut_old_results(msgs: list[dict], cap: int) -> list[dict]:

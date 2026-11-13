@@ -788,7 +788,10 @@ class Settings(BaseSettings):
     kaam_stop_words: bool = True   # v0.649 SACH MEIN ROKO: her 'roko / cancel karo' stops running work before the turn waits
     call_split: bool = True   # v0.646 ALAG CALL: a phone that asks (split=1) gets each call on its own record (Calls section)
     voice_brain_yaad: bool = False       # v0.644 diary / facts block on a call brain turn (never ready in time on her calls)
-    voice_brain_memory_s: float = 2.5    # v0.638 a call brain turn waits at most this for diary / job state / coder memory
+    voice_brain_memory_s: float = 1.5    # v0.638 a call brain turn waits at most this for diary / job state / coder memory (v0.880 2.5 -> 1.5)
+    voice_brain_memory_warm_s: float = 0.6   # v0.880 TEZ CALL: the wait when this call already holds a copy of every slow part
+    voice_brain_prefetch: bool = True        # v0.880 TEZ CALL: read the call brain's memory when the call connects
+    voice_brain_pc_wait_s: float = 4.0       # v0.880 TEZ CALL: a call's PC hand-off (pc_do) waits this, not pc_wait_seconds 12 s
     chat_memory_s: float = 6.0          # v0.704 a chat turn reads diary / job state / card news / coder memory in parallel, at most this long
     voice_brain_result_chars: int = 1500   # v0.636 an earlier exchange's tool result cut to this on a call brain turn (0 = keep)
     voice_brain_history: int = 8      # v0.634 (12) -> v0.636 8: a call brain turn reads the summary + this many recent exchanges (0 = the whole chat)

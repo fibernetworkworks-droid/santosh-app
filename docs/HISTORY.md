@@ -3700,3 +3700,31 @@ spoken line on her call + the card) and tries once more; a second timeout raises
 task partial ('the AI did not answer in time, twice ... say continue'). (C) `pc_max_tokens` 1500. Tests
 `test_v0879_one_job.py` (5); the v0851 default pin moved to >= 1500. NOT VERIFIED on her server. If her VPS .env sets
 PC_MAX_TOKENS or PC_BRAIN_TIMEOUT_S, that line wins over the new defaults.
+
+
+## v0.880.0 TEZ CALL - the call brain answers sooner (owner: "NOW LETS WORK ON VOICE CALL SPEED AND REAL TIME REPLY")
+
+Her 13 Nov call log (v0.879): Gemini itself starts a reply in ~1.3-1.4 s (p50), but every santosh_kaam ask took 10-20 s
+("brain answered in 13.2s / 13.6s / 10.1s") and most PC asks hit the 20 s "brain still working" line. Root causes found
+in the log:
+
+1. PC asks: pc_do waits `pc_wait_seconds` (12 s) for the PC task before returning, so the call brain could not speak.
+2. Memory: "call brain memory: facts / coder / cards not ready in 2.5s" on nearly every ask - each ask paid 2.5 s.
+3. Visibility: her call brain runs on the OpenRouter / GLM path, which logged neither the prep line nor a call time,
+   so the model's own share could not be read.
+
+Fixes:
+- `agent/tools.py _call_pc_wait`: on a call's brain turn (`VOICE_BRAIN_NOW`) pc_do / hoola_pc_do / pc_team get
+  `_wait = voice_brain_pc_wait_s` (4 s). Set in the dispatcher; the frozen pc_tools.py is untouched (it already takes
+  `_wait`). The PC task keeps running and speaks its milestones on the call itself (v0.858 `_speak`). A caller's own
+  `_wait` wins; chat turns are unchanged.
+- `agent/santosh._brain_memory`: cap 2.5 -> 1.5 s (`voice_brain_memory_s`); when this call already holds a copy (< 10
+  min) of every slow part it waits only `voice_brain_memory_warm_s` 0.6 s; a cached copy, even an empty one, is no
+  longer reported as a gap. `brain_prefetch` (called from `voice.Call.run`) reads the parts when the call connects, so
+  the first ask is warm too (`voice_brain_prefetch`). Trade-off: the facts-by-meaning part may come from the previous
+  ask's words; the fresh read for this ask finishes in its thread and is used next.
+- `agent/santosh._call_brain_once` GLM branch: the prep line + `glm call N s model msgs tools cap voice=`.
+
+Not changed on purpose: Qwen 3.8 27B's reasoning on call turns (OpenRouter makes some models refuse reasoning off;
+measure first with the new log line). Tests `test_v0880_tez_call.py` (5) + the v0638 default pin moved to 1.5.
+NOT VERIFIED on her server or a real call.

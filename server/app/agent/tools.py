@@ -296,6 +296,28 @@ def _google_refused(ctx: Ctx, e: BaseException) -> str:
     return msg
 
 
+_PC_HANDOFF = ("pc_do", "hoola_pc_do", "pc_team")
+
+
+def _call_pc_wait(name: str, args: dict) -> dict:
+    """v0.880 TEZ CALL: her 13 Nov calls - every PC ask held the call brain ~12 s (`pc_wait_seconds`, waiting for the PC
+    task to finish before the brain could answer), so she heard nothing for 13-20 s. On a call's brain turn the PC
+    hand-off waits only `voice_brain_pc_wait_s` (4 s); the task keeps running and its milestones are spoken on the
+    call by the operator itself. Chat turns, and a caller that passes its own _wait, are unchanged."""
+    if name not in _PC_HANDOFF or "_wait" in args:
+        return args
+    try:
+        from .santosh import VOICE_BRAIN_NOW
+        if not VOICE_BRAIN_NOW.get():
+            return args
+        w = float(getattr(get_settings(), "voice_brain_pc_wait_s", 4.0))
+    except Exception:
+        return args
+    if w < 0:
+        return args
+    return {**args, "_wait": w}
+
+
 async def dispatch(name: str, args: dict, ctx: Ctx):
     h = HANDLERS.get(name)
     if not h:
@@ -335,6 +357,7 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
         raise ToolError(str(e))
     if held is not None:
         return held
+    args = _call_pc_wait(name, args or {})   # v0.880 TEZ CALL: on a call the PC hand-off never holds her line 12 s
     try:
         out = await h(ctx, **(args or {}))
     except Exception as e:
