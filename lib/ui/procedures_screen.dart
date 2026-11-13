@@ -290,6 +290,23 @@ class _ProceduresScreenState extends State<ProceduresScreen> {
   }
 }
 
+/// v0.890 a title she typed in capitals ("FROM WHERE THEY EARN MONEY") reads as a sentence on the card; short
+/// business words stay capitals (GST, PDF, UPI...). Anything not all-capitals is left exactly as it is.
+const _keepCaps = {'GST', 'PDF', 'UPI', 'PAN', 'TDS', 'ITC', 'HSN', 'SEO', 'API', 'URL', 'AI', 'PC', 'ID', 'KYC', 'EMI',
+  'CA', 'HR', 'CRM', 'ERP', 'IT', 'USA', 'UK', 'IOS', 'OTP', 'QR', 'SMS', 'B2B', 'B2C', 'MRP', 'FY', 'Q1', 'Q2', 'Q3', 'Q4'};
+String sentenceCase(String t) {
+  final letters = t.replaceAll(RegExp(r'[^A-Za-z]'), '');
+  if (letters.length < 4 || letters != letters.toUpperCase()) return t;
+  var first = true;
+  return t.replaceAllMapped(RegExp(r'[A-Za-z0-9]+'), (m) {
+    final w = m.group(0)!;
+    final keep = _keepCaps.contains(w);
+    final out = keep ? w : (first ? w[0] + w.substring(1).toLowerCase() : w.toLowerCase());
+    first = false;
+    return out;
+  });
+}
+
 /// Chat card: Hoola just learned a way of doing a multi-step job.
 class ProcedureLearnedCard extends StatelessWidget {
   const ProcedureLearnedCard({super.key, required this.v, required this.app});
@@ -303,8 +320,9 @@ class ProcedureLearnedCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(v['event'] == 'lesson' ? '${app.aName} learned how to fix getting stuck' : '${app.aName} learned to do this task', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-              Text('${v['title'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              Text(v['event'] == 'lesson' ? '${app.aName} learned how to fix getting stuck' : '${app.aName} learned to do this task', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              const SizedBox(height: 2),
+              Text(sentenceCase('${v['title'] ?? ''}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 13)),
             ]),
           ),
           TextButton(

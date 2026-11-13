@@ -270,7 +270,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
             flush();
             spans.add(TextSpan(
               text: label.isEmpty ? href : label,
-              style: TextStyle(color: link, fontWeight: FontWeight.w700, decoration: TextDecoration.underline, decorationColor: link),
+              style: TextStyle(color: link, decoration: TextDecoration.underline, decorationColor: link),   // v0.890 Claude: same weight, underlined
               recognizer: TapGestureRecognizer()..onTap = () => openInApp(href, title: label),
             ));
             i = end + 1;
@@ -296,7 +296,7 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
         final host = Uri.tryParse(href)?.host.replaceFirst('www.', '') ?? href;
         spans.add(TextSpan(
           text: host.isEmpty ? href : '🔗 $host',
-          style: TextStyle(color: link, fontWeight: FontWeight.w700, decoration: TextDecoration.underline, decorationColor: link),
+          style: TextStyle(color: link, decoration: TextDecoration.underline, decorationColor: link),   // v0.890 Claude: same weight, underlined
           recognizer: TapGestureRecognizer()..onTap = () => openInApp(href),
         ));
         i = m.end;

@@ -4014,3 +4014,33 @@ Server unchanged (the account stream, /result and per-chat streams already exist
 (drawer spinner / dot / open chat never dotted; drafts kept per chat incl. the phone copy); screen pictures 35/35, design
 rules + tabs / settings / md / fonts / desk kit green; flutter analyze at the baseline 26. NOT VERIFIED on her phone (needs
 the server's CHAT_SESSIONS / CONSOLE_V2 on, which the web console already uses).
+
+
+## v0.890.0 CLAUDE JAISA LIKHAI - replies shaped the way Claude's apps draw them (owner: the Claude text-pipeline HTML + 3 phone screenshots -> "GO")
+
+The owner's HTML ("How Claude formats text") makes one point that holds: the model writes plain markdown and the app
+draws it. Several of its specifics do not hold up (library class names that are not in the library, a sans reply font
+that contradicts her own measured Claude screenshots), so Hoola keeps its measured serif reply (Literata 16 / 1.5),
+serif headings 20 / 18 / 16 and bold 600.
+
+What her screenshots showed, and the cause:
+- Section titles ("The core difference:", "Alphabet (Android) - Q3 2026, total $127.58B") were whole bold lines at body
+  size. The live reply rules (`agent/core_prompt.py`, chat_small_prompt on) carried ONE formatting line and said nothing
+  about headings.
+- 3-column tables were wider than the phone; the third column (share %) was cut off with no sign that it scrolls.
+
+SERVER: `core_prompt.CORE` gains "How your words look" (5 lines) and `replystyle.CHAT` the same rules: `## ` per part
+of a long answer (`### ` below), never a bold line or a line ending in ":" as a heading, no heading in a short answer;
+bold only list-item openers or one figure; a table only to compare a few items, at most 3 columns, cells a number or
+up to 4 words, units in the header, wider data a list or a file; sources at the end as markdown links; code fenced with
+its language. Core prompt 9,191 -> 9,876 chars (system prompt limit 12,000). No braces in CHAT (voice .format()s it).
+
+PHONE: `lib/ui/chat/hoola_md.dart` `HoolaMdTable` - the table scrolls sideways with a 28-dp fade on the side that has
+more (left appears once scrolled), number columns (every body cell a figure: $, Rs, %, B / cr / x...) right-aligned
+in tabular figures, cells max 220; block gaps 16, 24 above a heading, 8 under it, 8 between list items (the console's
+measured v0.274 / v0.278 numbers; was 14 / 20); `md_text.dart` links underlined at the text's weight (was 700);
+`procedures_screen.dart` learned-task card 600 / 14 and `sentenceCase` for a title typed in capitals (GST / PDF / UPI...
+stay). CI app-screens runs the new phone tests.
+
+Tests: `server/tests/test_v0890_claude_likhai.py` (3), `test/reply_look_test.dart` (6). Goldens retaken.
+NOT VERIFIED: no live reply has been read with the new rules; not seen on her phone yet.

@@ -55,7 +55,12 @@ class HoolaMd extends StatelessWidget {
       final live = streaming && k == blocks.length - 1;
       final list = b.kind == 'li' || b.kind == 'ol';
       final prevList = k > 0 && (blocks[k - 1].kind == 'li' || blocks[k - 1].kind == 'ol');
-      if (kids.isNotEmpty) kids.add(SizedBox(height: list && prevList ? 6 : (b.kind == 'h' ? 20 : 14)));
+      // v0.890 the console's measured gaps (v0.274 / v0.278): 16 between blocks, 24 above a heading, 8 under it,
+      // 8 between list items
+      final prevHead = k > 0 && blocks[k - 1].kind == 'h';
+      if (kids.isNotEmpty) {
+        kids.add(SizedBox(height: list && prevList ? 8 : (b.kind == 'h' ? 24 : (prevHead ? 8 : 16))));
+      }
       switch (b.kind) {
         case 'h':
           final st = b.level <= 1
@@ -106,38 +111,148 @@ class HoolaMd extends StatelessWidget {
 
   Widget _rich(List<InlineSpan> spans, TextStyle s) => Text.rich(TextSpan(style: s, children: spans));
 
-  Widget _table(MdBlock b, HoolaColors c, TextStyle body) {
+  Widget _table(MdBlock b, HoolaColors c, TextStyle body) => HoolaMdTable(rows: b.rows);
+}
+
+/// v0.890 a reply table the Claude way on a phone: a box that scrolls sideways when it is wider than the screen, with
+/// a soft fade on the side that has more (so a cut-off column never looks like the end), number columns right-aligned
+/// in even-width digits, the header row on the sunk colour.
+class HoolaMdTable extends StatefulWidget {
+  const HoolaMdTable({super.key, required this.rows});
+  final List<List<String>> rows;
+
+  /// A cell that is a figure: an amount, a percent, a count ("$102.35B", "54%", "~50%", "Rs 1,200", "(3.4)").
+  static final _num = RegExp(r'^[\s~≈±+\-−(]*(rs\.?|₹|\$|€|£)?\s*[\d][\d,]*(\.\d+)?\s*(%|[kmbt]|cr|l|lakh|x|bn|mn)?\)?\s*$',
+      caseSensitive: false);
+  static bool isNumber(String cell) {
+    final t = cell.replaceAll(RegExp(r'[*_`]'), '').trim();
+    return t.isNotEmpty && _num.hasMatch(t);
+  }
+
+  /// Columns whose every filled body cell is a figure (the header row does not count).
+  static Set<int> numberColumns(List<List<String>> rows) {
+    final out = <int>{};
+    if (rows.length < 2) return out;
+    final cols = rows.map((r) => r.length).reduce((a, x) => a > x ? a : x);
+    for (var k = 0; k < cols; k++) {
+      var seen = 0, ok = true;
+      for (final r in rows.skip(1)) {
+        final v = k < r.length ? r[k].trim() : '';
+        if (v.isEmpty) continue;
+        seen++;
+        if (!isNumber(v)) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok && seen > 0) out.add(k);
+    }
+    return out;
+  }
+
+  @override
+  State<HoolaMdTable> createState() => _HoolaMdTableState();
+}
+
+class _HoolaMdTableState extends State<HoolaMdTable> {
+  final _scroll = ScrollController();
+  bool _left = false, _right = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_edges);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _edges());
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _edges() {
+    if (!mounted || !_scroll.hasClients) return;
+    final p = _scroll.position;
+    final l = p.pixels > 1, r = p.pixels < p.maxScrollExtent - 1;
+    if (l != _left || r != _right) {
+      setState(() {
+        _left = l;
+        _right = r;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final rows = widget.rows;
     final cell = HoolaType.body(c);
-    final cols = b.rows.isEmpty ? 0 : b.rows.map((r) => r.length).reduce((a, x) => a > x ? a : x);
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(border: Border.all(color: c.line), borderRadius: HoolaRadius.r(HoolaRadius.tile)),
-      clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(
-          builder: (context, box) => SingleChildScrollView(
+    final cols = rows.isEmpty ? 0 : rows.map((r) => r.length).reduce((a, x) => a > x ? a : x);
+    final nums = HoolaMdTable.numberColumns(rows);
+    final code = HoolaType.code(c, size: 13).copyWith(backgroundColor: c.code, color: c.codeInk);
+    Widget fade(bool on, bool right) => IgnorePointer(
+          child: AnimatedOpacity(
+            opacity: on ? 1 : 0,
+            duration: HoolaMotion.fade,
+            child: Container(
+              width: 28,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: right ? Alignment.centerRight : Alignment.centerLeft,
+                  end: right ? Alignment.centerLeft : Alignment.centerRight,
+                  colors: [c.bg, c.bg.withOpacity(0)],
+                ),
+              ),
+            ),
+          ),
+        );
+    return Semantics(
+      label: _right ? 'Table, scroll sideways for more columns' : null,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(border: Border.all(color: c.line), borderRadius: HoolaRadius.r(HoolaRadius.tile)),
+        clipBehavior: Clip.antiAlias,
+        child: LayoutBuilder(
+          builder: (context, box) => Stack(children: [
+            NotificationListener<ScrollMetricsNotification>(
+              onNotification: (_) {
+                WidgetsBinding.instance.addPostFrameCallback((_) => _edges());
+                return false;
+              },
+              child: SingleChildScrollView(
+                controller: _scroll,
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minWidth: box.maxWidth),
                   child: Table(
+                    key: const ValueKey('hoola-md-table'),
                     defaultColumnWidth: const IntrinsicColumnWidth(flex: 1),
                     border: TableBorder(
                         horizontalInside: BorderSide(color: c.line), verticalInside: BorderSide(color: c.line)),
                     children: [
-                      for (var r = 0; r < b.rows.length; r++)
+                      for (var r = 0; r < rows.length; r++)
                         TableRow(
                           decoration: r == 0 ? BoxDecoration(color: c.sunk) : null,
                           children: [
                             for (var k = 0; k < cols; k++)
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 240),
-                                  child: _rich(
-                                      mdInline(k < b.rows[r].length ? b.rows[r][k] : '',
-                                          link: c.accent,
-                                          codeStyle: HoolaType.code(c, size: 13)
-                                              .copyWith(backgroundColor: c.code, color: c.codeInk)),
-                                      r == 0 ? cell.copyWith(fontWeight: FontWeight.w600) : cell),
+                                child: Align(
+                                  alignment: nums.contains(k) ? Alignment.centerRight : Alignment.centerLeft,
+                                  widthFactor: 1,
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 220),
+                                    child: Text.rich(
+                                      TextSpan(
+                                        style: (r == 0 ? cell.copyWith(fontWeight: FontWeight.w600) : cell).copyWith(
+                                            fontFeatures: nums.contains(k) ? const [FontFeature.tabularFigures()] : null),
+                                        children: mdInline(k < rows[r].length ? rows[r][k] : '',
+                                            link: c.accent, codeStyle: code),
+                                      ),
+                                      textAlign: nums.contains(k) ? TextAlign.right : TextAlign.left,
+                                    ),
+                                  ),
                                 ),
                               ),
                           ],
@@ -145,7 +260,13 @@ class HoolaMd extends StatelessWidget {
                     ],
                   ),
                 ),
-              )),
+              ),
+            ),
+            Positioned(left: 0, top: 0, bottom: 0, child: fade(_left, false)),
+            Positioned(right: 0, top: 0, bottom: 0, child: fade(_right, true)),
+          ]),
+        ),
+      ),
     );
   }
 }
