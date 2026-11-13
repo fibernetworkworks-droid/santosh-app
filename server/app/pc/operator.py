@@ -2935,6 +2935,7 @@ async def _run(op: Op) -> None:
                 prev_text += await steady.sweep(op, _pc, before_windows, before_title, did,
                                                 any(n in FOCUS_MOVERS for n in did))
                 prev_text += steady.progress_block(op)
+                prev_text += steady.drift(op)    # v0.882 many steps, nothing new done -> told, then the rescue
             except Exception:
                 log.exception("pc steady check failed")
             try:   # v0.867 PC SASTA: the cheap worker is stuck -> the next steps run on the strong helper (one note)
@@ -2986,11 +2987,19 @@ async def _run(op: Op) -> None:
             memory.remember(op.tenant, op.task, op.mem[-14:], op.status, op.summary, op.window)
         except Exception:
             log.exception("pc memory save failed")
-        log.info("pc task end %s status=%s steps=%d %ds stage=%s/%s asks=%s progress=%d repeats=%d popups=%d | %s",
-                 op.id, op.status, op.step,
+        _card = None
+        if op.kind != HOOLA_PC_KIND:
+            try:   # v0.882 PC JOB YAAD: the job outlives the task (next task on this PC, any chat / call)
+                from . import steady as _sd
+                _card = _sd.remember(op)
+            except Exception:
+                log.exception("pc job card save failed")
+        log.info("pc task end %s status=%s steps=%d %ds stage=%s/%s asks=%s progress=%d repeats=%d popups=%d drifts=%d "
+                 "| %s | job: %s", op.id, op.status, op.step,
                  int(time.time() - op.created), op.stage, len(op.plan or []), "yes" if op.answer else "no",
-                 len(op.progress), op.aim_repeats, op.popups,
-                 (op.reason or op.summary or "")[:200])
+                 len(op.progress), op.aim_repeats, op.popups, int(getattr(op, "drifts", 0) or 0),
+                 (op.reason or op.summary or "")[:200],
+                 ("; ".join((_card or {}).get("done", [])[-5:]) or "-")[:300])
         op.action = {"done": "Ho gaya", "partial": "Poora nahi hua", "failed": "Ruk gaya", "cancelled": "Aapne rok diya"}.get(op.status, op.action)
         _work(op, "_end")
         if op.kind != HOOLA_PC_KIND:
@@ -3121,6 +3130,13 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
     if carry:
         op.carry = carry
         op.opened_urls = dict(getattr(old, "opened_urls", {}) or {})
+    elif ckind != HOOLA_PC_KIND:
+        try:   # v0.882 PC JOB YAAD: the last job on this PC (ended, any chat / call) - continue it, never restart it
+            from . import steady as _sd
+            if _sd.carry_job(op):
+                log.info("pc task %s gets the job card of this PC (continue, not restart)", op.id)
+        except Exception:
+            log.exception("pc job card failed")
     if ckind != HOOLA_PC_KIND:              # v0.858 the browser SHE named, else the one she named lately, else Chrome
         op.browser, op.browser_src = _browser_for(tenant, op.task)
     op.steps_max, op.minutes = _budget(op.task)   # v0.184 browser jobs get the bigger budget from the first step

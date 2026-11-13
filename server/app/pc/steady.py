@@ -276,3 +276,122 @@ async def sweep(op: Any, pc, before_windows: list[str], before_title: str, did: 
         return ""
     op.popups += 1
     return "\nON THE SCREEN (Hoola checked): " + " ".join(notes)
+
+
+# ------------------------------------------------------------------ 4. v0.882 PC JOB YAAD - the job outlives its task
+# Her 13 Nov log: the Aadhaar download was started from zero 7 times in 90 minutes, from 8 different chat / call records,
+# because a FINISHED task left nothing behind (carry_from only covers a task REPLACED while running) and every new call
+# is its own record. A job card per PC (not per chat) keeps what really got done for `pc_job_memory_min` minutes; the
+# next task on that PC gets it, from any chat or call, and so does the brain writing that task.
+import time as _time
+
+JOBS: dict = {}            # (tenant, device_id) -> card
+
+
+def _job_minutes() -> float:
+    try:
+        from ..config import get_settings
+        return float(getattr(get_settings(), "pc_job_memory_min", 45) or 0)
+    except Exception:
+        return 45.0
+
+
+def remember(op: Any) -> dict | None:
+    """A task ended: keep its job card on its PC (her PCs only; empty tasks keep nothing)."""
+    if _job_minutes() <= 0 or not getattr(op, "device_id", ""):
+        return None
+    rows = [r["text"] for r in (getattr(op, "progress", None) or [])][-12:]
+    if not rows and not getattr(op, "carry", ""):
+        return None
+    old = JOBS.get((op.tenant, op.device_id)) or {}
+    chained = bool(old) and getattr(op, "carry", "").startswith("EARLIER WORK")   # this task continued that job
+    card = {"at": _time.time(), "goal": _mask(str(op.task)[:300]), "task": _mask(str(op.task)[:300]),
+            "status": str(getattr(op, "status", "") or ""), "steps": int(getattr(op, "step", 0) or 0),
+            "done": ([*(old.get("done") or [])] if chained else []) + rows,
+            "opened": dict(getattr(op, "opened_urls", {}) or {}),
+            "window": str(getattr(op, "window", "") or "")[:120],
+            "why": _mask(str(getattr(op, "reason", "") or getattr(op, "summary", "") or "")[:200]),
+            "pc": str(getattr(op, "device_name", "") or "PC")}
+    card["done"] = card["done"][-16:]
+    JOBS[(op.tenant, op.device_id)] = card
+    return card
+
+
+def job_for(tenant: str, device_id: str) -> dict | None:
+    card = JOBS.get((tenant, device_id))
+    if not card:
+        return None
+    if _time.time() - card["at"] > _job_minutes() * 60:
+        JOBS.pop((tenant, device_id), None)
+        return None
+    return card
+
+
+def job_text(card: dict) -> str:
+    """For the worker of the NEXT task on this PC: what is already done there; continue, never restart."""
+    mins = max(1, int((_time.time() - card["at"]) / 60))
+    return ("EARLIER WORK on this PC (ended %d min ago, %s): job \"%s\". Already DONE - it is still on the screen, do "
+            "NOT redo it (no new tab, no re-opening the site, no retyping):\n- %s\nLast window: %s\nIf this task is the "
+            "SAME job, continue from where it stopped. If it is a different job, ignore this list." %
+            (mins, card["status"] or "ended", card["goal"][:200], "\n- ".join(card["done"][-12:]) or "(nothing)",
+             card["window"] or "-"))
+
+
+def job_block(tenant: str) -> str:
+    """For the brain running her PC (any chat or call): the job card of each of her PCs."""
+    out = []
+    for (t, _dev), _c in list(JOBS.items()):
+        if t != tenant:
+            continue
+        card = job_for(t, _dev)
+        if not card:
+            continue
+        mins = max(1, int((_time.time() - card["at"]) / 60))
+        out.append("- %s, %d min ago (%s): \"%s\". Done: %s. Last window: %s.%s" % (
+            card["pc"], mins, card["status"] or "ended", card["goal"][:160], "; ".join(card["done"][-6:]) or "nothing",
+            card["window"] or "-", (" Stopped because: " + card["why"]) if card["why"] else ""))
+    if not out:
+        return ""
+    return ("\n\nHER PC - THE LAST JOB (any chat or call; this is what is really on her PC now):\n" + "\n".join(out) +
+            "\nA new ask about the SAME job = ONE pc_do task that CONTINUES from there (say what is already open / done, "
+            "never 'open a new tab' or start again). A different job = a fresh task.")
+
+
+def carry_job(op: Any) -> bool:
+    """A new task on a PC with a fresh job card: the card rides as the task's carry (+ the pages it opened)."""
+    card = job_for(op.tenant, getattr(op, "device_id", ""))
+    if not card:
+        return False
+    op.carry = job_text(card)
+    if not getattr(op, "opened_urls", None):
+        op.opened_urls = dict(card.get("opened") or {})
+    return True
+
+
+# ------------------------------------------------------------------ 5. v0.882 drift guard
+def drift(op: Any) -> str:
+    """Steps with nothing NEW on the progress list (scroll / read / failed actions only). After `pc_drift_steps`
+    (12) the worker is told; after twice that, op.drift_stuck asks the rescue (rescue.observe) for the strong helper."""
+    try:
+        from ..config import get_settings
+        limit = int(getattr(get_settings(), "pc_drift_steps", 12) or 0)
+    except Exception:
+        limit = 12
+    if limit <= 0:
+        return ""
+    n = len(getattr(op, "progress", None) or [])
+    if n != getattr(op, "_drift_n", -1):
+        op._drift_n, op._drift_from, op._drift_said = n, int(getattr(op, "step", 0) or 0), 0
+        return ""
+    idle = int(getattr(op, "step", 0) or 0) - int(getattr(op, "_drift_from", 0) or 0)
+    if idle >= 2 * limit and op._drift_said < 2:
+        op._drift_said, op.drift_stuck = 2, True
+        op.drifts = int(getattr(op, "drifts", 0) or 0) + 1
+        return (f"\nNOTE (Hoola): {idle} steps with nothing new done for the task. Stop looking around: do the next "
+                "real part of the task now, or call done with status partial and say exactly what is left.")
+    if idle >= limit and op._drift_said < 1:
+        op._drift_said = 1
+        op.drifts = int(getattr(op, "drifts", 0) or 0) + 1
+        return (f"\nNOTE (Hoola): {idle} steps without a new part of the task done. Task: \"{str(op.task)[:200]}\". "
+                "Check what is left and do it; if it cannot be done, call done with status partial and say why.")
+    return ""

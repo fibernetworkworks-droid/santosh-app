@@ -2164,6 +2164,11 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
     if state.get("pc_turn"):
         from . import pc_manager as _pcm2
         _pc_rules = "\n\n" + _pcm2.RULES
+        try:   # v0.882 PC JOB YAAD: what is really on her PC now, whichever chat or call this is
+            from ..pc import steady as _sdj
+            _pc_rules += _sdj.job_block(tenant_id)
+        except Exception:
+            pass
 
     def _system(fams) -> str:
         if small:

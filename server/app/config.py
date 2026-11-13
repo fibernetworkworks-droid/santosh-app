@@ -444,6 +444,8 @@ class Settings(BaseSettings):
     pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop
     pc_qwen_thinking: str = "off"           # v0.856 PC SPEED: off by default (it thought before EVERY click); "on" / "" = default
     pc_qwen_provider_sort: str = "latency"  # v0.856 OpenRouter provider.sort for the PC brain: latency | throughput | price | ""
+    pc_job_memory_min: float = 45.0   # v0.882 PC JOB YAAD: a PC keeps its last job card this long (0 = off)
+    pc_drift_steps: int = 12          # v0.882 steps with nothing new done before the worker is told (2x = the rescue)
     pc_max_tokens: int = 1500               # v0.879 output room per PC step (4000 held too much OpenRouter credit per request; thinking is off)
     pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane
     pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works

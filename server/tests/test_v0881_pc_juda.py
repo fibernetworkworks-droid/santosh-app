@@ -75,4 +75,4 @@ def test_manager_rule_and_switch():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.881.0")
+    assert APP_VERSION.startswith("0.88")

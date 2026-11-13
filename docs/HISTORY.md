@@ -3743,3 +3743,27 @@ only: online, control off, paused, offline, plus the task running). `voice.Call.
 santosh_kaam branch (before the brain) and in the PC rescue path; switch `voice_pc_connect_fast`. `agent/pc_manager.py`
 RULES: connect / "is it connected" is never a pc_do job; "connect + Amazon" = one task for the Amazon part. Tests
 `test_v0881_pc_juda.py` (18). NOT VERIFIED on her server or a real call.
+
+
+## v0.882.0 PC JOB YAAD - a PC remembers its last job across calls and chats + the drift guard (owner: "also check the long work consistancy of hoola ai on desktop" -> "GO")
+
+Diagnosis from her 13 Nov log (about 2 hours of PC work):
+1. The job was forgotten when a task ended - the Aadhaar download was started from zero 7 times (01:29, 01:32, 01:58,
+   02:01, 02:34, 02:37, 02:57) from 8 different chat / call records. `steady.carry_from` only passed progress to a
+   task that REPLACED a running one; after a task ENDED the next one started blank, and a new call is its own record so
+   the brain there could not see the earlier result either.
+2. One job became 4-6 tiny tasks (step-by-step asks on a call; the previous task had already ended).
+3. Long tasks drifted unchecked - "mobile under 2000" ran 35+ steps until she stopped it; the rescue only reacts to
+   repeats / an unchanged screen / errors, and the planner + checker are off (v0.865).
+
+Fix:
+- `pc/steady.py` JOB CARD per PC (`JOBS[(tenant, device_id)]`, `pc_job_memory_min` 45, her PCs only): `remember(op)` at
+  task end keeps the task, what really got done (the progress list; chained when the task continued the previous job),
+  pages it opened, last window, why it stopped (masked). `carry_job(op)` gives the next task on that PC, from ANY chat or
+  call, an `EARLIER WORK` block (do not redo, continue if it is the same job) + its opened pages. `job_block(tenant)`
+  goes into the PC manager's rules on every PC turn, so the brain on a new call knows what is really on her PC.
+- DRIFT GUARD `steady.drift(op)`: `pc_drift_steps` (12) steps with nothing new on the progress list = a note to the
+  worker (do the next real part or end partial and say what is left); twice that = `op.drift_stuck` -> `rescue.observe`
+  hands the next steps to the strong helper. No planner / checker came back; nothing clicks by itself.
+- `pc task end` logs `drifts=N` and `job: <last done items>`.
+Tests `test_v0882_pc_job_yaad.py` (8). NOT VERIFIED on her PC.
