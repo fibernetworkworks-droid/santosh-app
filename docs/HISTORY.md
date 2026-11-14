@@ -4597,3 +4597,22 @@ pause, settings trust; home light + dark; department filters; one employee; hire
 motion), `test/four_tabs_test.dart` updated to the new flow, goldens 63 (department) + 64 (one employee, hired) with the
 tap-target checks, golden data richer; `server/tests/test_v0910_employees_pro.py` (every catalog group has a card and its
 own drawing, the console's words, routes, trust levels, version). Server unchanged. NOT VERIFIED on her phone.
+
+
+## v0.911.0 DARK LIKE CLAUDE (owner: two screenshots, "CHECK THE DARK MODE DIFFERENCE BETWEEN CLAUDE AND HOOLA" -> "GO")
+
+Measured from her screenshots (pixels, not guesses): Claude's dark page `#131313` (neutral), reply text `#E1E1E1`, the
+typing box `#1D1D1B` with no visible outline, faint text `#7B7A78`, and the brightest thing on screen a muted clay send
+`#80655A`. Hoola's: page `#1D1C1A` (warm, lighter), text `#F3F2EE` (near-white), typing box `#262523` + outline
+`#3A3935`, her bubble `#2F2E2A`, and two near-white blobs `#F2F1EC` - the open tab and the voice button.
+
+Changed `HoolaColors.darkSet` only (light untouched): bg `#141413`, surface + nav `#1E1E1C`, raised `#252523`, sunk +
+code `#262624`, line `#2C2C2A`, lineStrong `#3C3B38`, ink `#E6E5E1`, ink2 `#B2B0A9`, ink3 `#94928B`, pill `#3A3936` with
+onPill `#ECEBE6` (open tab, the black circles of Tools / AI Employees, main buttons, snack bars), navOn `#2E2E2B`, soft
+backgrounds a step darker. Because the pill is grey now, an ON switch in dark takes a light track (`ink2`) and a dark thumb
+(`bg`); the session page's own switch colours were removed so it follows the theme. Every text pair still reads at
+4.5:1 or better (ink3 on sunk 4.87). Old screens drawn through NightGlass.flat use darkSet too, so they follow.
+
+Tests: `test/dark_like_claude_test.dart` (deep neutral page, soft text, surfaces one quiet step apart, no white blobs,
+switch clearly on, light untouched) in the CI unit list; `server/tests/test_v0911_dark_like_claude.py`; the dark
+screenshot set regenerates. NOT VERIFIED on her phone.

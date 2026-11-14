@@ -355,8 +355,6 @@ class _HoolaSessionPageState extends State<HoolaSessionPage> {
                                 setState(() => p['use_main_memory'] = v);
                                 if (!await _save({'use_main_memory': v}) && mounted) setState(() => p['use_main_memory'] = !v);
                               },
-                              activeColor: c.onPill,
-                              activeTrackColor: c.pill,
                               title: Text('Use my main memory here', style: HoolaType.bodyLarge(c).copyWith(fontWeight: FontWeight.w600)),
                               subtitle: Text(
                                   "Off: chats in this session use only this session's own memory (its facts and chats), never your "

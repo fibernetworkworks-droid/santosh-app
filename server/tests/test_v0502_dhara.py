@@ -580,7 +580,7 @@ def test_outputs_pass_mask_ids():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.910.0"
+    assert APP_VERSION == "0.911.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.910.0+909" in pub.read_text()
+    assert "0.911.0+910" in pub.read_text()

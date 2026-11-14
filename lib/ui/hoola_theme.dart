@@ -146,38 +146,45 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
     shadow: Color(0x40000000),
   );
 
+  // v0.911 DARK LIKE CLAUDE (owner: "CHECK THE DARK MODE DIFFERENCE BETWEEN CLAUDE AND HOOLA" -> "GO"): measured from her
+  // screenshots - Claude's dark page is #131313 neutral, its text a soft #E1E1E1, the typing box one quiet step up with no
+  // outline, and nothing on screen is brighter than a muted clay send. Hoola's was lighter and warmer (#1D1C1A), near-white
+  // text, outlined boxes and two near-white blobs (the open tab, the voice button). Now: a deeper neutral page, softer text,
+  // surfaces one step apart, outlines almost gone, and the "pill" (open tab, black circles, main buttons) a soft grey with
+  // light text instead of a white blob. Every text pair still reads at 4.5:1 or better (design_rules_test).
   static const darkSet = HoolaColors(
     dark: true,
-    bg: Color(0xFF1D1C1A),
-    surface: Color(0xFF262523),
-    raised: Color(0xFF2B2A27),
-    sunk: Color(0xFF2F2E2B),
-    line: Color(0xFF3A3936),
-    lineStrong: Color(0xFF4A4945),
-    ink: Color(0xFFF3F1EC),
-    ink2: Color(0xFFBBB8B0),
-    ink3: Color(0xFF9C9890),
+    bg: Color(0xFF141413),
+    surface: Color(0xFF1E1E1C),
+    raised: Color(0xFF252523),
+    sunk: Color(0xFF262624),
+    line: Color(0xFF2C2C2A),
+    lineStrong: Color(0xFF3C3B38),
+    ink: Color(0xFFE6E5E1),
+    ink2: Color(0xFFB2B0A9),
+    ink3: Color(0xFF94928B),
     accent: Color(0xFF9C88FF),
-    accentSoft: Color(0xFF2B2547),
+    accentSoft: Color(0xFF252140),
     onAccent: Color(0xFF14102B),
-    pill: Color(0xFFF3F1EC),
-    onPill: Color(0xFF1B1A17),
+    pill: Color(0xFF3A3936),
+    onPill: Color(0xFFECEBE6),
     ok: Color(0xFF4CC38A),
-    okSoft: Color(0xFF173226),
+    okSoft: Color(0xFF15291F),
     warn: Color(0xFFE8B062),
-    warnSoft: Color(0xFF3A2E1C),
+    warnSoft: Color(0xFF33291A),
     bad: Color(0xFFF07A6A),
-    badSoft: Color(0xFF3D201B),
+    badSoft: Color(0xFF361D19),
     info: Color(0xFF8AB4F8),
-    infoSoft: Color(0xFF1C2A40),
-    code: Color(0xFF2F2E2B),
+    infoSoft: Color(0xFF1A2639),
+    code: Color(0xFF262624),
     codeInk: Color(0xFF8AB4F8),
     codeTerm: Color(0xFFFE8181),
-    nav: Color(0xFF2A2927),
-    navOn: Color(0xFF3D3C38),
+    nav: Color(0xFF1E1E1C),
+    navOn: Color(0xFF2E2E2B),
     scrim: Color(0x99000000),
     shadow: Color(0x80000000),
   );
+
 
   /// The colours of the nearest HoolaTheme (light when a screen is not wrapped yet).
   static HoolaColors of(BuildContext context) => Theme.of(context).extension<HoolaColors>() ?? light;
@@ -481,8 +488,9 @@ ThemeData hoolaTheme(Brightness brightness) {
       shape: RoundedRectangleBorder(borderRadius: HoolaRadius.r(HoolaRadius.card)),
     ),
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? c.onPill : c.surface),
-      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? c.pill : c.lineStrong),
+      // v0.911 in dark the pill is a soft grey, so an ON switch takes the light text tone to stay clearly on
+      thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (c.dark ? c.bg : c.onPill) : c.surface),
+      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (c.dark ? c.ink2 : c.pill) : c.lineStrong),
       trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: c.accent, linearTrackColor: c.line, circularTrackColor: c.line),

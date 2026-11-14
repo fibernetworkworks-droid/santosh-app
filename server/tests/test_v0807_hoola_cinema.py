@@ -80,8 +80,8 @@ def created(box):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.910.0"
-    assert "0.910.0+909" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.911.0"
+    assert "0.911.0+910" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_every_request_shape_matches_the_engines_own_documents():
