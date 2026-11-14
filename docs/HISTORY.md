@@ -4387,3 +4387,36 @@ lone spinner while an app connected. Now the page shows ONLY her apps through Co
 - Tests: test/connect_test.dart (6) + server/tests/test_v0901_connect_composio.py (6); picture 41 now shows the new page.
   NOT VERIFIED on her phone; the real spread of apps across groups depends on Composio's own category names on her
   server.
+
+
+## v0.902.0 PAGE PRO — pages Hoola makes, shown like Claude's artifacts (owner: "NOW LET'S WORK ON ARTIFACT :: CURRENTLY HOOLA ARTIFACT ARE MESSY MAKE IT MORE PROFESSIONAL AND ADVACE", with pictures of Claude's own artifact card in chat, the viewer, its page and share menus)
+
+What was messy: the new chat drew a page as a bare card (title, one status chip, Open); the viewer was still the old
+dark Night Glass screen (glass header, "Hoola Artifact", a v-pill, a popup menu, an orange "building" strip, a dark
+glass versions sheet, a glass change box) inside the new light design, and share only copied a link with a snackbar.
+
+- CARD `lib/ui/chat/hoola_artifact.dart` `HCArtifact` (replaces `HCPage`; `hoolaCardFor('artifact')`): a drawn page
+  thumbnail (title bar, lines, a block; a spinner while it is made, red tint when not made), the label "Page", the
+  title, ONE status line in plain words from `artifactState()` - "Writing the page · 0:23" (the server's real `stage`
+  from v0.725 + a live clock from `started_at`), "Version 3 · made in 0:48" (`build_s`), "Version 2 · the newer one
+  was not made", "Not made", "Stopped" - the summary, the four step marks (Brief read / Writing the page / Checking it
+  opens / Ready) with "Usually 20 to 90 seconds", and a footer: Share (quiet, left) + Open (main, right) when ready,
+  Stop (soft red, POST /api/artifacts/{id}/stop) while it is made, Try again (sends "Make the page ... again") when
+  not made. Tapping the card body opens it.
+- PAGES PILL: "3 pages" in the chat's bottom right (above the composer, hidden while she is scrolled away; the list
+  keeps 60 dp room under the newest reply) -> "Pages in this chat" sheet, newest first, deleted ones left out
+  (`chatPages`).
+- VIEWER `lib/ui/artifact_screen.dart` `ArtifactScreen` redrawn on HoolaColors / HoolaType for everyone (opened inside
+  `HoolaTheme(app.appearance)`): close, the title + "Page · Version 3 of 4 · Shared by link", Versions (when there is
+  more than one), Share and More icons; a 2 dp load line; a building bar ("Making version 4 · Writing the page · 0:21"
+  + Stop), an older-version bar ("You are looking at version 2" + Newest), a failure bar; the page; a pill change box
+  ("Ask for a change to this page", send circle). More = a sheet like Claude's: Open in browser, Copy link (turns on a
+  view-only link), Share…, Versions, Reload, Remove (red, asks first in a sheet). Versions = a sheet with a tick on the
+  one on screen, "Newest", how long ago, and "Undo the last change" (POST /undo: the version before comes back as a new
+  version). Share = `openArtifactShare` (also from the card): turns sharing on, shows the link in mono, Open / Copy link,
+  "Anyone with the link can view this page. They cannot change it.", Stop sharing. The bridge (window.santosh storage /
+  ask), the own-origin navigation rule and the revise call are unchanged.
+- api: `artifactStop`, `artifactUndo`. Server unchanged (both routes existed).
+- The old `ArtifactCard` (the old-look chat) and the call pill are unchanged.
+- Tests: test/page_pro_test.dart (6), picture 59 page cards (light + dark, a11y on), server/tests/test_v0902_page_pro.py
+  (5). NOT VERIFIED on her phone; the viewer itself has no widget test (a WebView does not run in the test host).

@@ -1976,6 +1976,10 @@ class Api {
   Future<Map<String, dynamic>> artifactShare(String id, bool on) async =>
       Map<String, dynamic>.from(await _send('POST', '${_art(id)}/share', body: {'on': on}));
   Future<void> artifactDelete(String id) async => _send('DELETE', _art(id));
+  /// v0.902 stop a page while it is being made (the last ready version stays).
+  Future<void> artifactStop(String id) async => _send('POST', '${_art(id)}/stop');
+  /// v0.902 bring back the version before the newest (as a new version).
+  Future<Map<String, dynamic>> artifactUndo(String id) async => Map<String, dynamic>.from(await _send('POST', '${_art(id)}/undo'));
   Future<Map<String, dynamic>> artifactState(String id) async =>
       Map<String, dynamic>.from(((await _send('GET', '${_art(id)}/state'))['state'] as Map?) ?? const {});
   /// value null deletes the key.

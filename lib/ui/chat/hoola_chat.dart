@@ -27,6 +27,7 @@ import '../md_text.dart' show mdPlain;
 import '../shell/hoola_shell.dart' show HoolaComposer;
 import '../chat_attach.dart' show filesOnlyText;
 import 'hoola_attach.dart';
+import 'hoola_artifact.dart' show PagesPill, chatPages;
 import 'hoola_cards_all.dart';
 import 'hoola_md.dart';
 
@@ -174,6 +175,19 @@ class _HoolaChatState extends State<HoolaChat> {
                 ),
               ),
             ),
+            // v0.902 "3 pages": every page this chat made, one tap away (like Claude's artifacts pill)
+            Positioned(
+              right: HoolaSpace.gutter,
+              bottom: 10,
+              child: IgnorePointer(
+                ignoring: _away,
+                child: AnimatedOpacity(
+                  opacity: _away ? 0 : 1,
+                  duration: HoolaMotion.of(context, HoolaMotion.fade),
+                  child: PagesPill(app: app),
+                ),
+              ),
+            ),
           ]),
         ),
         HoolaComposer(
@@ -212,7 +226,8 @@ class _HoolaChatState extends State<HoolaChat> {
       controller: _scroll,
       reverse: true,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter + 4, 8, HoolaSpace.gutter + 4, 16),
+      // v0.902 room under the newest reply for the pages pill when this chat made pages
+      padding: EdgeInsets.fromLTRB(HoolaSpace.gutter + 4, 8, HoolaSpace.gutter + 4, chatPages(app).isEmpty ? 16 : 60),
       itemCount: working + feed.length + older,
       itemBuilder: (context, i) {
         if (working == 1 && i == 0) {

@@ -185,6 +185,17 @@ void _moreCards(Santosh app) {
     'text': '40 boxes of soan papdi for Diwali', 'buyer': 'Sharma Traders'}));
 }
 
+/// v0.902 PAGE PRO: a page being made and a ready one, with the pages pill.
+void _pageCards(Santosh app) {
+  final at = DateTime(2026, 11, 14, 10, 1).toIso8601String();
+  final now = DateTime.now().toUtc();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Make a dashboard of bank revenues and a GST checklist', 'at': at}));
+  app.feed.add(FeedItem('artifact', {'id': 'a1', 'title': 'Bank revenue dashboard', 'status': 'ready', 'version': 3, 'build_s': 48,
+    'summary': 'Revenue of every listed bank by segment, with a year filter and charts.', 'updated_at': now.toIso8601String()}));
+  app.feed.add(FeedItem('artifact', {'id': 'a2', 'title': 'October GST checklist', 'status': 'building', 'version': 1,
+    'stage': 'writing', 'started_at': now.subtract(const Duration(seconds: 23)).toIso8601String()}));
+}
+
 /// v0.865 R5: a call in progress (the fields the screen reads; no real call is started in a test).
 void _inCall(Santosh app) {
   final c = app.voiceCall;
@@ -419,6 +430,8 @@ void main() {
     // v0.900 every card in the new design
     testWidgets('57 long task cards ($mode)', (t) => _shot(t, '57_long_task_$mode', home, prefs: prefs, prep: _goalChat, a11y: true));
     testWidgets('58 more cards ($mode)', (t) => _shot(t, '58_more_cards_$mode', home, prefs: prefs, prep: _moreCards, a11y: true));
+    // v0.902 PAGE PRO
+    testWidgets('59 page cards ($mode)', (t) => _shot(t, '59_page_cards_$mode', home, prefs: prefs, prep: _pageCards, a11y: true));
     testWidgets('38 new talk ($mode)', (t) => _shot(t, '38_new_talk_$mode', home, prefs: prefs,
         prep: (a) => a.realtimeVoice = true, tab: find.bySemanticsLabel('Start a call')));
     testWidgets('39 new talk in call ($mode)', (t) => _shot(t, '39_new_talk_call_$mode', home, prefs: prefs,

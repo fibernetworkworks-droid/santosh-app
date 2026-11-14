@@ -6,7 +6,7 @@
 //                   then Yes / Not now. Money never moves on this tap: a money card opens the existing approval sheet
 //                   (deliberate slide + fingerprint when the phone has a key); the server checks again.
 //   HCFile          a file Hoola made or brought from her PC: name, size, Open, Share link.
-//   HCPage          a page (artifact): building / ready / not made with the reason, Open.
+//   HCArtifact      a page (artifact) - v0.902 its own card in hoola_artifact.dart (thumbnail, real step + clock, Stop, Share, Open).
 //   HCAny           every other kind with no screen of its own (the v0.555 default card), drawn in the new design.
 // Every other kind keeps its old card in its dark frame for now (hoola_chat.dart `_OldCard`): those are the desk cards
 // R8 moves. Nothing here acts by itself.
@@ -19,8 +19,8 @@ import '../../native.dart';
 import '../../state.dart';
 import '../any_card.dart' show AnyEventCard;
 import '../approve_sheet.dart';
-import '../artifact_screen.dart' show openArtifact;
 import '../hoola_theme.dart';
+import 'hoola_artifact.dart' show HCArtifact;
 
 /// The new-look card for one feed item, or null when the kind still uses its old card.
 Widget? hoolaCardFor(BuildContext context, Santosh app, FeedItem it) {
@@ -30,7 +30,7 @@ Widget? hoolaCardFor(BuildContext context, Santosh app, FeedItem it) {
     case 'pc_file':
       return HCFile(v: it.data, app: app);
     case 'artifact':
-      return HCPage(v: it.data, app: app);
+      return HCArtifact(v: it.data, app: app);
     case 'any_card':
       return HCAny(v: it.data, at: it.at);
   }
@@ -393,46 +393,6 @@ class HCFile extends StatelessWidget {
 }
 
 /// A page (artifact) Hoola made: building, ready (Open) or not made (with the reason).
-class HCPage extends StatelessWidget {
-  const HCPage({super.key, required this.v, required this.app});
-  final Map<String, dynamic> v;
-  final Santosh app;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
-    final status = _s(v['status']).isEmpty ? 'ready' : _s(v['status']);
-    final id = _s(v['id']);
-    final title = _s(v['title']).isEmpty ? 'Page' : _s(v['title']);
-    final version = (v['version'] is num) ? (v['version'] as num).toInt() : 1;
-    final summary = _s(v['summary']);
-    final error = _s(v['error']);
-    final st = switch (status) {
-      'building' => HCStatus.working(c, 'Building · ready in a moment'),
-      'failed' => HCStatus.failed(c, 'Not made'),
-      'deleted' => HCStatus.quiet(c, 'Removed'),
-      _ => HCStatus.done(c, version > 1 ? 'Ready · version $version' : 'Ready'),
-    };
-    return HoolaCard(
-      icon: Icons.auto_awesome_mosaic_outlined,
-      tileTone: c.accent,
-      label: 'Page',
-      title: title,
-      status: st,
-      children: [
-        if (status == 'building') ClipRRect(borderRadius: HoolaRadius.r(4), child: LinearProgressIndicator(minHeight: 3, color: c.accent, backgroundColor: c.sunk)),
-        if (summary.isNotEmpty && status != 'failed')
-          Text(summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(color: c.ink2)),
-        if (status == 'failed') Text(error.isEmpty ? 'It could not be made. Ask ${app.aName} again.' : error, style: HoolaType.body(c).copyWith(color: c.bad)),
-      ],
-      actions: [
-        if (status != 'deleted' && status != 'building' && status != 'failed' && id.isNotEmpty)
-          hcMain(context, 'Open', () => openArtifact(context, app, id, title), icon: Icons.open_in_full_rounded),
-      ],
-    );
-  }
-}
-
 /// The default card for every kind that has no screen of its own, in the new design (same reading of the payload as
 /// the v0.555 AnyEventCard: the title, one sentence, up to 3 facts, progress, the amount, an Open link).
 class HCAny extends StatelessWidget {

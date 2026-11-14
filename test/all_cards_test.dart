@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:santosh/state.dart';
+import 'package:santosh/ui/chat/hoola_artifact.dart';
 import 'package:santosh/ui/chat/hoola_card.dart';
 import 'package:santosh/ui/chat/hoola_cards_all.dart';
 import 'package:santosh/ui/hoola_theme.dart';
@@ -37,7 +38,7 @@ void main() {
       'photo_made': HCPhoto,
       'bazar': HCApproval,
       'pc_file': HCFile,
-      'artifact': HCPage,
+      'artifact': HCArtifact,
       'any_card': HCAny,
     };
     late BuildContext ctx;
