@@ -892,6 +892,7 @@ class CrStepper extends StatelessWidget {
           button: true,
           label: l,
           child: IconButton(
+            tooltip: l,
             onPressed: f == null
                 ? null
                 : () {
