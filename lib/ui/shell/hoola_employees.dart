@@ -362,7 +362,7 @@ class EmployeeStatus extends StatelessWidget {
             ? _LiveDot(color: fg, clock: clock)
             : Container(width: 6, height: 6, decoration: BoxDecoration(color: fg, shape: BoxShape.circle)),
         const SizedBox(width: 6),
-        Text(text, style: HoolaType.label(c).copyWith(color: fg)),
+        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.label(c).copyWith(color: fg))),
       ]),
     );
   }

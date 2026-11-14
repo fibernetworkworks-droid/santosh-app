@@ -106,9 +106,10 @@ void main() {
       await _settle(t);
       final c = mode == 'light' ? HoolaColors.light : HoolaColors.darkSet;
       expect(find.text('AI Employees'), findsOneWidget);
-      for (final w in ['5', 'roles', '3', 'ready to hire', '4', 'departments']) {
+      for (final w in ['5', 'roles', 'ready to hire', 'departments']) {
         expect(find.text(w), findsOneWidget, reason: 'the numbers: $w');
       }
+      expect(find.text('3'), findsNWidgets(2), reason: '3 ready to hire, 3 departments');
       expect(find.text('Your team'), findsOneWidget);
       expect(find.text('Social Media Manager'), findsOneWidget);
       expect(find.text('Open desk'), findsOneWidget);
