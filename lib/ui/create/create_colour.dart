@@ -123,7 +123,14 @@ class _GlassBoxPainter extends BoxPainter {
     final shadow = BoxShadow(
         color: dark ? Colors.black.withOpacity(.5) : CreateHues.third.withOpacity(.14),
         blurRadius: 28, spreadRadius: -12, offset: const Offset(0, 14));
+    // only OUTSIDE the pane: under see-through glass a shadow would read as a dark box inside it
+    canvas.save();
+    canvas.clipPath(Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(rect.inflate(80))
+      ..addRRect(rr));
     canvas.drawRRect(rr.shift(shadow.offset).inflate(shadow.spreadRadius), shadow.toPaint());
+    canvas.restore();
 
     canvas.save();
     canvas.clipRRect(rr);

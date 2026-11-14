@@ -11,6 +11,7 @@ def test_glass_is_painted_with_a_rim_sheen_and_tint():
     assert "class CrGlassDecoration extends Decoration" in s and "class _GlassBoxPainter extends BoxPainter" in s
     assert "Decoration crGlass(" in s and "Color? tint" in s and "Color? base" in s
     assert "PaintingStyle.stroke" in s, "the rim"
+    assert "PathFillType.evenOdd" in s, "the shadow never shows through the glass"
     assert "class _GrainPainter" in s, "a still film grain over the light"
     assert "BackdropFilter" not in s and "ImageFilter.blur" not in s
 
