@@ -1119,6 +1119,7 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
               if (chevron) Icon(Icons.chevron_right_rounded, size: 18, color: c.ink3),
               if (onMenu != null)
                 Semantics(
+                  container: true,   // its own stop for TalkBack, not merged into the chat row
                   button: true,
                   label: 'Chat options: $text',
                   excludeSemantics: true,
