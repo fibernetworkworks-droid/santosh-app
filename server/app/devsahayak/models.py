@@ -26,6 +26,7 @@ class DevSettings(Base):
     rules: Mapped[str] = mapped_column(Text, default="")                 # her coding rules (style, stack)
     seq: Mapped[int] = mapped_column(Integer, default=0)
     archive_after_merge: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # Phase 2: a merged session leaves the list by itself
+    env_pick: Mapped[str | None] = mapped_column(String(40), nullable=True)   # v0.878 the environment her last new session used ('auto' | env id)
 
 
 class DevRepo(Base):
@@ -113,7 +114,27 @@ class DevTask(Base):
     # Phase 6: multi-repo
     refs: Mapped[str | None] = mapped_column(Text, nullable=True)             # JSON list of her other repos attached to READ
     grp: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)   # sessions started together, one per repo to change
+    env_id: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.878 the environment it runs in (None = Auto: each repo's own settings)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class DevEnv(Base):
+    """v0.878 HOOLA CODE ENVIRONMENTS - a named place a session runs in, the way Claude Code's cloud environments work:
+    network access (none / limited / full, the package registries on or off, her allowed hosts), plain environment
+    variables and a setup script. A session picks one on the new-session screen; 'Auto' (no environment) keeps each
+    repo's own settings. Keys never live here: they stay sealed on the repo and are added outside the box."""
+    __tablename__ = "devsahayak_envs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("de"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(60), default="Default")
+    net_level: Mapped[str] = mapped_column(String(8), default="limited")      # none | limited | full
+    pkgs: Mapped[bool] = mapped_column(Boolean, default=True)                 # "Allow package managers" (limited only)
+    hosts: Mapped[str] = mapped_column(Text, default="[]")                    # JSON list of her allowed hosts
+    env_vars: Mapped[str] = mapped_column(Text, default="{}")                 # JSON {NAME: value} - never a secret
+    setup: Mapped[str] = mapped_column(Text, default="")                      # setup script: plain lines, each checked
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 

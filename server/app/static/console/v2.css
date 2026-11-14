@@ -5316,3 +5316,26 @@ html.human #app .landing .halo{display:none}
 /* v0.833 BAHI A1 - connect form + supplier check */
 #app .acd-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
 #app .acd-in{height:38px;padding:0 12px;border:1px solid var(--hair2);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;min-width:170px;flex:1 1 170px}
+
+/* ---- v0.878 HOOLA CODE ENVIRONMENTS: the environment chip (first in the row, like Claude Code) + its dialog */
+#app .hcd-envchip{padding:0 8px 0 10px;cursor:pointer;font:500 13px/1 var(--fd);color:var(--ink);background:var(--surface)}
+#app .hcd-envchip .hcd-ic{width:16px;height:16px;color:var(--mut)}
+#app .hcd-envchip span{max-width:160px;overflow:hidden;text-overflow:ellipsis}
+#app .hcd-dlg:has(#hcdEnvName){width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto}
+#app .hcd-lab{display:block;margin-top:14px;font:500 12.5px/1.4 var(--fd);color:var(--lit)}
+#app .hcd-lab small{font-weight:400;color:var(--mut);margin-left:6px}
+#app .hcd-dlg textarea{width:100%;min-height:64px;margin-top:4px;padding:8px 12px;border:1px solid var(--hair2);border-radius:var(--rc);background:var(--surface);
+  font:400 12.5px/1.5 var(--fm, ui-monospace, monospace);color:var(--ink);resize:vertical;display:block}
+#app .hcd-dlg textarea:focus{outline:none;border-color:var(--pri);box-shadow:var(--focus)}
+#app .hcd-envnet{margin:0;padding:0;border:0}
+#app .hcd-envnet legend{padding:0}
+#app .hcd-envlv{display:flex;align-items:flex-start;gap:10px;margin-top:6px;padding:10px 12px;border:1px solid var(--hair2);border-radius:var(--rc);cursor:pointer}
+#app .hcd-envlv:has(input:checked){border-color:var(--pri);background:color-mix(in srgb,var(--pri) 6%,transparent)}
+#app .hcd-dlg .hcd-envlv input,#app .hcd-dlg .hcd-chk input{flex:none;width:16px;min-width:16px;height:16px;margin:3px 0 0;padding:0;border:0;box-shadow:none;accent-color:var(--pri)}
+#app .hcd-envlv span{display:flex;flex-direction:column;gap:2px}
+#app .hcd-envlv b{font-weight:600;color:var(--ink)}
+#app .hcd-envlv small{color:var(--mut);font-size:12.5px}
+#app .hcd-rec{margin-left:6px;padding:1px 7px;border-radius:999px;font:500 11px/1.6 var(--fd);font-style:normal;color:var(--pri);background:color-mix(in srgb,var(--pri) 12%,transparent)}
+#app .hcd-chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--ink)}
+#app .hcd-dlg .hcd-chk input{margin:0}
+#app .hcd-envnet legend.hcd-lab{margin-top:18px}

@@ -279,7 +279,40 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.start_bg, tenant, str(b.get("kind") or "write"), str(b.get("text") or ""), str(b.get("repo") or ""),
                          int(b.get("issue") or 0), [str(x) for x in files if x][:10], str(b.get("conv") or ""),
                          str(b.get("base") or ""), str(b.get("mode") or ""), str(b.get("model") or ""), str(b.get("effort") or ""),
-                         b.get("images"), b.get("docs"), b.get("refs"), b.get("also"))
+                         b.get("images"), b.get("docs"), b.get("refs"), b.get("also"), "", str(b.get("env") or ""))
+
+    # ---- v0.878 ENVIRONMENTS (Claude Code's cloud environments): picked on the new-session screen
+    async def env_run(fn, *a):
+        from . import envs as EV
+        try:
+            return await asyncio.to_thread(fn, *a)
+        except EV.EnvError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/envs")
+    async def envs_list(archived: bool = False, tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.list_envs, tenant, archived)
+
+    @r.post("/envs")
+    async def envs_create(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.create_env, tenant, _b(body))
+
+    @r.patch("/envs/{eid}")
+    async def envs_update(eid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.update_env, tenant, eid, _b(body))
+
+    @r.post("/envs/{eid}/archive")
+    async def envs_archive(eid: str, tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.archive_env, tenant, eid)
+
+    @r.put("/tasks/{tid}/env")
+    async def task_env(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import envs as EV
+        return await env_run(EV.set_session_env, tenant, tid, str(_b(body).get("env") or ""))
 
     @r.get("/tasks/{tid}/attach/{index}")
     async def attachment(tid: str, index: int, tenant: str = Depends(current_tenant)):

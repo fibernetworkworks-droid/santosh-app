@@ -38,7 +38,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   let COMMENTS = [], DRAFT = null;        // her comments on lines, waiting for her next message; the one she is writing
   let SIDE_AUTO = false;                  // the sessions sidebar stepped aside for the pane (comes back when it closes)
   const BRANCHES = {};                    // repo -> its branches (for Compare against), fetched once
-  const HOME = {text: '', kind: 'auto', issue: 0, base: '', mode: '', model: '', effort: '', files: [], refs: [], also: []};   // the composer, kept while she looks elsewhere
+  const HOME = {text: '', kind: 'auto', issue: 0, base: '', mode: '', model: '', effort: '', files: [], refs: [], also: [], env: ''};
+  let ENVS = {envs: [], auto: {id: 'auto', name: 'Auto', sub: 'Follows your repositories'}, pick: 'auto', net_on: false};   // v0.878 cloud environments   // the composer, kept while she looks elsewhere
   const PICS = new Map();                 // session id + index -> blob: link of a picture she attached
   const MODES = [['ask', 'Ask before the PR', 'Shows the change and waits for your tap'], ['auto', 'Work and open the PR', 'Private repos only - merging is always yours'],
     ['plan', 'Plan first', 'No file is touched until you say yes']];
@@ -84,6 +85,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     stack: '<path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     back: '<path d="M10 6l-6 6 6 6M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     bug: '<rect x="8" y="7" width="8" height="12" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 7a2.5 2.5 0 0 1 5 0M4 13h4M16 13h4M5 8l3 2M19 8l-3 2M5 19l3-2M19 19l-3-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    cloud: '<path d="M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.1 4.5 4.5 0 0 0 7 18z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
     spark: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'};
   const svg = (k, cls = '') => `<svg class="hcd-ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ICON.dot}</svg>`;
   const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
@@ -99,7 +101,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const sub = t => isRun(t) ? 'Working' : t.question ? 'Hoola asks you a question' : (STATUS[t.status] || t.status);
 
   async function load() {
+    const ev = api('GET', '/api/devsahayak/envs').then(r => { ENVS = r; if (!HOME.env) HOME.env = r.pick || 'auto'; }).catch(() => {});
     try { OV = await api('GET', '/api/devsahayak'); } catch (e) { OV = {error: e.message, tasks: [], repos: [], reviews: [], actions: [], settings: {}}; }
+    await ev;
     if (!REPO) REPO = OV.settings?.default_repo || OV.repos?.[0]?.repo || '';
   }
   // On its own page (/console/code) every screen has an address: #/s/<id>, #/reviews, #/settings, #/all - so Back works
@@ -110,7 +114,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   async function open(root) { EL = root || EL; if (!EL) return; clearInterval(POLL); if (shared) return openShared(); await load(); shell();
     if (standalone && location.search) { const u = new URLSearchParams(location.search), g = k => (u.get(k) || '').trim();   // a link may pre-fill the box; it never starts anything
       HOME.text = (g('prompt') || g('q')).slice(0, 20000); HOME.base = g('branch').slice(0, 100); if (MODES.some(m => m[0] === g('mode'))) HOME.mode = g('mode');
-      const r = g('repo') || g('repositories').split(',')[0]; if ((OV.repos || []).some(x => x.repo === r)) REPO = r;
+      const r = g('repo') || g('repositories').split(',')[0], en = g('environment').toLowerCase();
+      const fe = (ENVS.envs || []).find(e => e.id === en || e.name.toLowerCase() === en); if (fe) HOME.env = fe.id; else if (en === 'auto') HOME.env = 'auto'; if ((OV.repos || []).some(x => x.repo === r)) REPO = r;
       history.replaceState(null, '', location.pathname + location.hash); }
     if (standalone) { [VIEW, TID] = fromHash(); window.addEventListener('hashchange', () => { const [v, t] = fromHash(); if (v !== VIEW || t !== TID) show(v, t); }); }
     show(VIEW, TID); }
@@ -155,6 +160,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     EL.addEventListener('drop', ev => { if (!ev.target.closest?.('#hcdAsk')) return; ev.preventDefault(); addFiles(ev.dataTransfer?.files || []); });
     if (window.ResizeObserver) new ResizeObserver(() => { const b = $('[data-act="rail"]'); if (!b) return; const on = railShown();   // the window got narrower / wider: the button tells the truth
       b.setAttribute('aria-pressed', String(on)); b.title = `${on ? 'Hide' : 'Show'} session details`; b.setAttribute('aria-label', b.title); }).observe($('#hcdBody'));
+    EL.addEventListener('input', envForm); EL.addEventListener('change', envForm);
     EL.addEventListener('input', ev => { if (ev.target.id === 'hcdSearch') { Q = ev.target.value; drawList(); } if (ev.target.id === 'hcdNote') grow(ev.target); });
   }
   const body = html => { $('#hcdBody').innerHTML = html; };
@@ -243,6 +249,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       {label: 'Verbose', sub: 'Every step, every diff, and the thinking', checked: P.view === 'verbose', run: () => setView('verbose')}];
     if (shared) return HoolaMenu.open(btn, views, {align: 'start', label: 'Transcript view', width: 270});
     const items = [{label: 'Rename', icon: 'pencil', run: () => askName(t)}];
+    if (inSession) items.push({label: 'Cloud environment…', icon: 'gear', sub: (t.env?.name || 'Auto') + ' · applies from the next message', run: () => envMenu(btn, t)});
     if (inSession) items.push(...views, {sep: true}, {label: t.share?.on ? 'Read-only link…' : 'Share a read-only link…', icon: 'doc', sub: t.share?.on ? 'On - anyone with the link can read this session' : '', disabled: isRun(t), run: () => shareDialog(t)});
     if (t.pr_url) items.push({sep: true}, {label: 'Open the PR on GitHub', icon: 'doc', run: () => window.open(t.pr_url, '_blank', 'noopener')});
     items.push({sep: true}, t.archived ? {label: 'Unarchive', icon: 'restore', run: () => setArchived(t, false)} : {label: 'Archive', icon: 'archive', disabled: isRun(t), run: () => setArchived(t, true)},
@@ -267,6 +274,66 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (['pr_open', 'checks_failed', 'ci_running'].includes(t.status)) items.push({label: 'Check CI again', icon: 'restore', run: () => ACTS.refresh(null)});
     HoolaMenu.open(btn, items, {align: 'end', label: 'Pull request', width: 270});
   }
+  // ------------------------------------------------------------------ v0.878 cloud environments (Claude Code's environment selector) ---
+  const LEVEL = {none: 'No network', limited: 'Limited network', full: 'Full network'};
+  const envName = id => !id || id === 'auto' ? 'Auto' : ((ENVS.envs || []).find(e => e.id === id)?.name || 'Auto');
+  function envMenu(btn, t) {
+    if (!window.HoolaMenu) return;
+    const cur = t ? (t.env?.id || 'auto') : (HOME.env || 'auto');
+    const pick = id => async () => {
+      if (!t) { HOME.env = id; const c = $('#hcdEnv span'); if (c) c.textContent = envName(id); return; }
+      try { await api('PUT', `/api/devsahayak/tasks/${encodeURIComponent(t.id)}/env`, {env: id}); toast(`${envName(id)} from the next message.`); await refreshTask(t.id, false); }
+      catch (e) { toast(e.message, true); } };
+    const items = [{header: 'Cloud environments'},
+      {label: 'Auto', sub: 'Follows your repositories', icon: 'cloud', checked: cur === 'auto', run: pick('auto')},
+      ...(ENVS.envs || []).filter(e => !e.archived).map(e => ({label: e.name, icon: 'cloud', checked: cur === e.id,
+        sub: LEVEL[e.net.level] + (e.net.on || e.net.level === 'none' ? '' : ' (not on yet)') + (e.setup ? ' · setup script' : ''), run: pick(e.id)})),
+      {sep: true}];
+    const mine = (ENVS.envs || []).find(e => e.id === cur);
+    if (mine) items.push({label: `Edit ${mine.name}…`, icon: 'gear', run: () => envDialog(mine)});
+    items.push({label: 'New environment…', icon: 'new', run: () => envDialog(null)});
+    HoolaMenu.open(btn, items, {align: 'start', label: 'Cloud environment', width: 290});
+  }
+  async function envDialog(e) {
+    if (e && !e.id) e = {...e, _new: true};
+    const isNew = !e || e._new;
+    const n = e?.net || {level: 'limited', pkgs: true, hosts: []}, vars = Object.entries(e?.env_vars || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+    const lv = (k, title, sub) => `<label class="hcd-envlv"><input type="radio" name="hcdEnvLv" value="${k}"${n.level === k ? ' checked' : ''}><span><b>${title}</b><small>${sub}</small></span></label>`;
+    const wait = dialog(`<h2>${!isNew ? 'Edit environment' : 'New environment'}</h2>
+      <p class="hcd-mut">Cloud environments are where Hoola Code runs your repo's commands. You can change them any time.</p>
+      <label class="hcd-lab" for="hcdEnvName">Name</label><input id="hcdEnvName" maxlength="60" value="${esc(e?.name || '')}" placeholder="Default" autocomplete="off">
+      <fieldset class="hcd-envnet"><legend class="hcd-lab">Network access</legend>
+        ${lv('none', 'None', 'Sessions cannot reach the internet.')}${lv('limited', 'Limited <em class="hcd-rec">Recommended</em>', 'Sessions reach only what you allow below.')}${lv('full', 'Full', 'Sessions can reach any public site.')}
+        <div id="hcdEnvLim"${n.level === 'limited' ? '' : ' hidden'}>
+          <label class="hcd-chk"><input type="checkbox" id="hcdEnvPkgs"${n.pkgs !== false ? ' checked' : ''}> Allow package managers (PyPI, npm, Maven, crates, Go, RubyGems…)</label>
+          <label class="hcd-lab" for="hcdEnvHosts">Allowed domains <small>one per line, *.example.com for subdomains</small></label>
+          <textarea id="hcdEnvHosts" rows="3" spellcheck="false">${esc((n.hosts || []).join('\n'))}</textarea></div>
+        ${ENVS.net_on ? '' : '<p class="hcd-mut">The network is not switched on for this server yet, so commands run offline until the server check passes. Your choice is kept.</p>'}
+      </fieldset>
+      <label class="hcd-lab" for="hcdEnvVars">Environment variables <small>.env format, one NAME=value per line - never keys or passwords</small></label>
+      <textarea id="hcdEnvVars" rows="3" spellcheck="false" placeholder="NODE_ENV=test">${esc(vars)}</textarea>
+      <label class="hcd-lab" for="hcdEnvSetup">Setup script <small>runs once with the network, before the first command, and is cached</small></label>
+      <textarea id="hcdEnvSetup" rows="4" spellcheck="false" placeholder="pip install -r requirements.txt">${esc(e?.setup || '')}</textarea>
+      <p class="hcd-mut">Keys for an outside API stay in Settings &gt; repo &gt; Keys: the proxy adds them outside the box, in every environment.</p>
+      <div class="hcd-dlgb">${!isNew ? '<button class="hcd-btn danger" value="archive" formnovalidate>Archive</button><span class="hcd-flex"></span>' : ''}<button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">${!isNew ? 'Save changes' : 'Create'}</button></div>`);
+    envForm({target: $('#hcdEnvName')});
+    const r = await wait;
+    if (r === 'archive' && !isNew) { try { await api('POST', `/api/devsahayak/envs/${encodeURIComponent(e.id)}/archive`); toast(`${e.name} archived. Sessions already in it keep running.`);
+      if (HOME.env === e.id) HOME.env = 'auto'; await load(); if (VIEW === 'home') home(); } catch (err) { toast(err.message, true); } return; }
+    if (r !== 'ok') return;
+    const body = {name: (FORM.name || '').trim() || 'Default', net: {level: FORM.level, pkgs: FORM.pkgs, hosts: FORM.hosts}, env_vars: FORM.vars, setup: FORM.setup};
+    try { const out = !isNew ? await api('PATCH', `/api/devsahayak/envs/${encodeURIComponent(e.id)}`, body) : await api('POST', '/api/devsahayak/envs', body);
+      toast(!isNew ? 'Saved.' : `${out.name} created.`); if (isNew) HOME.env = out.id; await load(); if (VIEW === 'home') home(); }
+    catch (err) { toast(err.message, true); envDialog({...(e || {}), id: isNew ? '' : e.id, name: body.name, net: {level: body.net.level, pkgs: body.net.pkgs, hosts: (body.net.hosts || '').split(/\s+/).filter(Boolean)},
+      env_vars: Object.fromEntries((body.env_vars || '').split('\n').filter(x => x.includes('=')).map(x => [x.split('=')[0], x.slice(x.indexOf('=') + 1)])), setup: body.setup}); }
+  }
+  let FORM = {};     // the environment dialog's fields, read as she types (a closed dialog empties itself)
+  function envForm(ev) {
+    const d = ev.target.closest('#hcdDlg'); if (!d || !$('#hcdEnvName')) return;
+    if (ev.target.name === 'hcdEnvLv') { const lim = $('#hcdEnvLim'); if (lim) lim.hidden = ev.target.value !== 'limited'; }
+    FORM = {name: $('#hcdEnvName').value, level: (d.querySelector('input[name=hcdEnvLv]:checked') || {}).value || 'limited', pkgs: !!$('#hcdEnvPkgs')?.checked,
+      hosts: $('#hcdEnvHosts')?.value || '', vars: $('#hcdEnvVars')?.value || '', setup: $('#hcdEnvSetup')?.value || ''};
+  }
   function setView(v) { P.view = v; keep(); SIG.feed = ''; paint(); }
 
   // ------------------------------------------------------------------ one listener ---
@@ -277,6 +344,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       if (b.dataset.menu === 'title') return taskMenu(b, TASK, true);
       if (b.dataset.menu === 'pr') return prMenu(b);
       if (b.dataset.menu === 'plus') return plusMenu(b);
+      if (b.dataset.menu === 'env') return envMenu(b, null);
+      if (b.dataset.menu === 'senv') return envMenu(b, TASK);
       return taskMenu(b, findTask(b.dataset.id), false); }
     if (b.dataset.fold) { const k = b.dataset.fold, on = !OPEN.has(k); on ? OPEN.add(k) : OPEN.delete(k);
       b.setAttribute('aria-expanded', String(on)); const box = b.nextElementSibling; if (box && box.classList.contains('hcd-fin')) box.hidden = !on; return; }
@@ -399,6 +468,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         <button class="hcd-send" id="hcdStart" type="submit" aria-label="Start session" title="Start (Enter)"${repos.length && st.github ? '' : ' disabled'}>${svg('up')}</button>
       </form>
       <div class="hcd-askrow">
+        <button type="button" class="hcd-chip hcd-envchip" id="hcdEnv" data-menu="env" aria-haspopup="menu" title="The cloud environment this session runs in: network access, variables and a setup script">${svg('cloud')}<span>${esc(envName(HOME.env))}</span>${svg('down')}</button>
         <label class="hcd-chip"><span class="hcd-sr">Repo</span><select id="hcdRepo" aria-label="Repo">${repos.map(r => `<option value="${esc(r.repo)}" title="${esc(r.repo)}"${r.repo === REPO ? ' selected' : ''}>${esc(r.repo.split('/')[1] || r.repo)}</option>`).join('') || '<option value="">no repo yet</option>'}</select></label>
         <label class="hcd-chip"><span class="hcd-sr">Branch to work from</span><select id="hcdBase" aria-label="Branch to work from" title="Hoola works from this branch and opens the pull request against it">${baseOptions(REPO)}</select></label>
         <label class="hcd-chip"><span class="hcd-sr">Mode</span><select id="hcdMode" aria-label="Mode" title="${esc((MODES.find(m => m[0] === mode) || MODES[0])[2])}">${MODES.map(([k, n]) => `<option value="${k}"${k === mode ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
@@ -428,7 +498,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       const t = await api('POST', '/api/devsahayak/tasks/start', {kind: HOME.kind, text, repo: REPO, issue: HOME.issue, base: HOME.base, mode: $('#hcdMode').value,
         model: $('#hcdModel')?.value || '', effort: $('#hcdEffort')?.value || '',
         images: HOME.files.filter(f => f.kind === 'image').map(f => ({name: f.name, data: f.data})), docs: HOME.files.filter(f => f.kind === 'text').map(f => ({name: f.name, text: f.text})),
-        refs: HOME.refs, also: HOME.also});
+        refs: HOME.refs, also: HOME.also, env: HOME.env || ''});
       HOME.files.forEach(f => f.url && URL.revokeObjectURL(f.url));
       Object.assign(HOME, {text: '', kind: 'auto', issue: 0, files: [], refs: [], also: []}); line.value = '';      // sent: the box starts empty next time
       await load(); show('session', t.id);

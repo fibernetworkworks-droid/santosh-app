@@ -391,6 +391,22 @@ def _repo_box(tenant: str, full: str) -> tuple[dict[str, str], dict[str, str]]:
         return {}, {}
 
 
+def _session_box(tenant: str, t: Any) -> tuple[dict[str, str], dict[str, str], dict[str, Any]]:
+    """v0.878: what the engine runs THIS session with - the repo's own box settings, with the session's environment laid
+    over them (devsahayak/envs.py). Auto (no environment) = the repo's settings exactly as before."""
+    hers, env = _repo_box(tenant, t.repo)
+    net = _repo_net(tenant, t.repo)
+    env_id = getattr(t, "env_id", None)
+    if not env_id:
+        return hers, env, net
+    try:
+        from . import envs as EV
+        return EV.overlay(tenant, env_id, hers, env, net)
+    except Exception:
+        log.warning("dev environment overlay failed for %s - the repo's own settings", getattr(t, "id", ""), exc_info=True)
+        return hers, env, net
+
+
 def add_repo(tenant: str, full: str, deploy_workflow: str = "", deploy_ref: str = "", notes: str = "") -> dict[str, Any]:
     full = (full or "").strip().removeprefix("https://github.com/").removesuffix(".git").strip("/")
     if not _FULL.match(full):
@@ -536,6 +552,17 @@ def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
     return out
 
 
+def _env_label(t: DevTask) -> dict[str, Any]:
+    """v0.878 the session's environment chip: Auto, or the environment's name."""
+    if not getattr(t, "env_id", None):
+        return {"id": "auto", "name": "Auto"}
+    try:
+        from . import envs as EV
+        return EV.label(t.tenant_id, t.env_id)
+    except Exception:
+        return {"id": t.env_id, "name": "Environment"}
+
+
 def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     ch = _j(t.changes, [])
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
@@ -554,6 +581,7 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
          "proof": _j(t.proof or "", {}),
          "running": t.id in _RUNNING, "stopping": t.id in _STOP,
+         "env": _env_label(t),
          "at": t.created_at.isoformat() if t.created_at else "",
          "updated": t.updated_at.isoformat() if t.updated_at else ""}
     try:                                # G9: the card says what the facts back, never only the model's words
@@ -1213,7 +1241,8 @@ def _progress(tid: str, line: str) -> None:
 _RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
 _BEAT: dict[str, float] = {}    # when each running session last wrote its heartbeat (this process)
 _STOP: set[str] = set()         # her Stop: the loop ends at its next step
-MAX_STEPS = 400
+MAX_STEPS = 1200                 # v0.878 was 400 across ALL rounds: a long multi-round session lost its start
+KEEP_HEAD = 60                   # ... and the first steps (how the session began) are always kept
 
 
 class _Step:
@@ -1235,7 +1264,8 @@ class _Step:
                     return
                 steps = _j(row.steps or "", [])
                 steps.append({**ev, "at": now().isoformat()})
-                row.steps = json.dumps(steps[-MAX_STEPS:])
+                row.steps = json.dumps(steps if len(steps) <= MAX_STEPS else
+                                       steps[:KEEP_HEAD] + [{"k": "gap", "text": "Earlier steps folded"}] + steps[-(MAX_STEPS - KEEP_HEAD - 1):])
         except Exception:
             log.debug("dev step event failed", exc_info=True)
 
@@ -1337,7 +1367,7 @@ def answer(tenant: str, ref: str, text: str) -> dict[str, Any]:
         _log(t, "her answer to Hoola's question")
         tid = t.id
     _Step(tid).event({"k": "note", "text": clean[:2000]})
-    return _in_thread(tenant, tid, _work, tenant, tid, gh(tenant), [], warn)
+    return _in_thread(tenant, tid, _work, tenant, tid, gh(tenant), [], warn, job={"what": "work"})   # v0.878 a restart continues it
 
 
 def set_auto_fix(tenant: str, ref: str, on: bool) -> dict[str, Any]:
@@ -1497,7 +1527,8 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
 
 def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, files: list[str] | None = None,
              conv: str = "", base: str = "", mode: str = "", model: str = "", effort: str = "",
-             images: Any = None, docs: Any = None, refs: Any = None, also: Any = None, grp: str = "") -> dict[str, Any]:
+             images: Any = None, docs: Any = None, refs: Any = None, also: Any = None, grp: str = "",
+             env: str = "") -> dict[str, Any]:
     """The console's Start: the same checks as start(), the row at once, the work in the background.
     Phase 6 (multi-repo): refs = her other repos attached to READ (at most 3, never changed from this session);
     also = her other repos to CHANGE too - each gets its OWN session and its own pull request (same checks, same taps),
@@ -1547,11 +1578,17 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
     refs_l = [x for x in dict.fromkeys(refs_l + also_l)][:3]
     if also_l and not grp:
         grp = new_id("dg")
+    from . import envs as EV                    # v0.878 the environment it runs in ('' = her last pick, 'auto' = none)
+    try:
+        env_id = EV.pick_for_new(tenant, env)
+    except EV.EnvError as e:
+        raise DevError(str(e))
     number = _next_number(tenant)
     with session() as s:
         t = DevTask(tenant_id=tenant, number=number, kind=kind, repo=r.full_name, text=clean, issue=int(issue or 0), conv=conv,
                     base=base or r.default_branch, mode=mode or None, model=model or None, effort=effort or None,
-                    attach=json.dumps(rows) if rows else None, refs=json.dumps(refs_l) if refs_l else None, grp=grp or None)
+                    attach=json.dumps(rows) if rows else None, refs=json.dumps(refs_l) if refs_l else None, grp=grp or None,
+                    env_id=env_id)
         _log(t, f"{KINDS[kind]} shuru (console)")
         s.add(t)
         s.flush()
@@ -1568,7 +1605,7 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
                 "tool, as it is on its default branch. Do your part here and say in explain what the other repo must match.\n</multi_repo>")
         try:
             start_bg(tenant, kind, clean + note, repo=other, mode=mode, model=model, effort=effort, conv=conv,
-                     refs=[r.full_name] + [x for x in refs_l if x != other], grp=grp)
+                     refs=[r.full_name] + [x for x in refs_l if x != other], grp=grp, env=env_id or "auto")
         except (DevError, GhError) as e:
             _progress(tid, f"could not start the session in {other}: {str(e)[:160]}")
     return out
@@ -1593,7 +1630,10 @@ def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]
                 raise DevError("Reviewers' comments are fixed on an open pull request.")
         if not AR.read_comments(tenant, ref)["open"]:
             raise DevError("There are no new reviewer comments on this pull request.")
-    job = {"what": what, "words": str(kw.get("words") or "")[:6000]} if what in ("revise", "fix_ci") else None
+    # v0.878 every background run carries a job, so a restart continues it instead of leaving it looking busy for ever:
+    # plan_ok / begin go on as 'work' (the approved plan is read back from the row), reviewers' comments as a revise round
+    job = ({"what": what, "words": str(kw.get("words") or "")[:6000]} if what in ("revise", "fix_ci")
+           else {"what": "work"} if what in ("plan_ok", "begin") else {"what": "revise", "words": ""})
     return _in_thread(tenant, tid, fn, tenant, ref, job=job, **kw)
 
 
@@ -1730,11 +1770,11 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
     from . import engine as EN
     if EN.on() and _loop_on():
         try:
-            hers, env = _repo_box(tenant, t.repo)
+            hers, env, rnet = _session_box(tenant, t)
             base_sha, read, ctx, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, issue_txt,
                                               on_step=_Step(tid), plan_txt=plan_txt, attach=(att_txt, att_pics),
                                               follow_up=follow_up, resume=resume, hers=hers, env=env,
-                                              net=_repo_net(tenant, t.repo), refs=_j(t.refs or "", []))
+                                              net=rnet, refs=_j(t.refs or "", []))
         except EN.Unavailable as e:
             log.info("workspace engine unavailable for %s (%s): the old loop", tid, e)
             base_sha = None
@@ -1993,10 +2033,10 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
             if "<ci_log>" in extra and _setting("dev_spec_fix", False):
                 from . import specialists as SP
                 spec = SP.fix_addendum(extra, paths)
-            hers, env = _repo_box(tenant, t.repo)
+            hers, env, rnet = _session_box(tenant, t)
             _, read, _, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, on_step=_Step(t.id),
                                      ref_sha=ref, follow_up=extra, system_extra=spec, resume=resume, hers=hers, env=env,
-                                     net=_repo_net(tenant, t.repo), refs=_j(t.refs or "", []))
+                                     net=rnet, refs=_j(t.refs or "", []))
             read = []
         except EN.Unavailable as e:
             log.info("workspace engine unavailable for round %s (%s)", t.id, e)
@@ -3064,7 +3104,9 @@ def _sweep_ws() -> None:
     with session() as s:
         keep = {t.id for t in s.scalars(select(DevTask).where(DevTask.archived_at.is_(None),
                                                               DevTask.status.notin_(("merged", "closed")))).all()}
-    EN.sweep(keep)
+        protect = {t.id for t in s.scalars(select(DevTask).where(DevTask.archived_at.is_(None), DevTask.status.in_(
+            ("pr_open", "checks_failed", "ci_running", "ready", "plan_wait")))).all()}
+    EN.sweep(keep, protect=protect)             # v0.878 an open PR's working copy is never swept for age alone
 
 
 def _beat_fresh(job: dict[str, Any], seconds: int) -> bool:
@@ -3127,6 +3169,38 @@ def _resume_cut_runs() -> None:
             log.info("devsahayak resume %s: %s", tid, e)
 
 
+def _ci_bg(tenant: str, tid: str, at: datetime) -> Any:
+    """v0.878: one CI-loop step in its OWN thread. A red run starts a fix round that can work for up to an hour; inside
+    the worker tick it was cut after 300 s (the thread went on untracked) and the next minute started a SECOND round on
+    the same session. Here the session is in _RUNNING while the step works, so Stop reaches it and no minute doubles it."""
+    import threading
+    _RUNNING.add(tid)
+    _STOP.discard(tid)
+
+    def go() -> None:
+        from . import loop as L
+        from .. import usage
+        acc: dict[str, Any] = {}
+        try:
+            with usage.run_meter(acc):          # Phase 3: a fix round's model calls belong to the session too
+                _ci_step(tenant, tid, at)
+        except L.Stopped:
+            _set(tid, status="checks_failed", error="Stopped by her - the CI fix round was not pushed.")
+        except (DevError, GhError) as e:
+            log.info("devsahayak ci loop %s: %s", tid, e)
+        except Exception:
+            log.exception("devsahayak ci loop %s failed", tid)
+        finally:
+            _add_cost(tid, acc)
+            _RUNNING.discard(tid)
+            _STOP.discard(tid)
+            _BEAT.pop(tid, None)
+
+    th = threading.Thread(target=go, name=f"dev-ci-{tid}", daemon=True)
+    th.start()
+    return th
+
+
 def tick(at: datetime | None = None) -> None:
     """Every minute: open Hoola PRs' CI every 5 min (card when the result changes), running deploys every minute."""
     at = at or now()
@@ -3151,15 +3225,15 @@ def tick(at: datetime | None = None) -> None:
                                                           .limit(60)).all()]
         looping = [(t.tenant_id, t.id) for t in s.scalars(select(DevTask).where(DevTask.status == "ci_running")
                                                            .limit(30)).all()]
+    ci_threads: list[Any] = []
     for tenant, tid in looping:                 # v0.351 the CI loop: every minute while her CI runs on the draft PR
-        acc: dict[str, Any] = {}
-        try:
-            from .. import usage
-            with usage.run_meter(acc):          # Phase 3: a fix round's model calls belong to the session too
-                _ci_step(tenant, tid, at)
-            _add_cost(tid, acc)
-        except (DevError, GhError) as e:
-            log.info("devsahayak ci loop %s: %s", tid, e)
+        if tid in _RUNNING:                     # v0.878 a fix round from an earlier minute is still working: never a second one
+            continue
+        ci_threads.append(_ci_bg(tenant, tid, at))
+    import time as _time
+    until = _time.time() + 20                   # a quick CI check ends inside the tick as before; a fix round goes on alone
+    for th in ci_threads:
+        th.join(max(0.0, until - _time.time()))
     with session() as s:
         running = s.scalars(select(DevAction).where(DevAction.status == "running")).all()
         for a in running:

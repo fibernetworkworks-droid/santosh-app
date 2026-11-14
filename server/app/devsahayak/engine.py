@@ -824,6 +824,8 @@ class Tools:
         if not up.get("ok"):
             return None, f"[no network for this command: the proxy is not running ({str(up.get('why') or '')[:120]})]\n"
         try:
+            if self.net.get("pkgs", True) is False:      # v0.878 an environment with "Allow package managers" off
+                return NET.grant(level, list(self.net.get("hosts") or []), inject, ttl, pkgs=False), ""
             return NET.grant(level, list(self.net.get("hosts") or []), inject, ttl), ""
         except OSError as e:
             return None, f"[no network for this command: {e.__class__.__name__}]\n"
@@ -971,6 +973,31 @@ def compact(messages: list[dict], keep_tail: int = 8) -> list[dict]:
     head = {"role": "user", "content": "<earlier_in_this_session>\n" + summary + "\n</earlier_in_this_session>\n"
                                        "That is the summary of the session so far. Continue from where it stopped."}
     return [head] + messages[cut:]
+
+
+def net_words(net: dict[str, Any] | None) -> str:
+    """v0.878: the network this session's environment gives bash, in words for the model ('' = none, the old text holds).
+    Only said when the proxy really can give it (dev_net on); otherwise the model is never promised a network."""
+    net = net or {}
+    level = str(net.get("level") or "none")
+    if level == "none":
+        return ""
+    try:
+        from ..devlab import net as NET
+        if not NET.on():
+            return ""
+    except Exception:
+        return ""
+    if level == "full":
+        reach = "any public http(s) host (never private addresses or her server)"
+    else:
+        hosts = [str(h) for h in (net.get("hosts") or [])][:20]
+        parts = (["the package registries (PyPI, npm, Maven, crates, Go, RubyGems, NuGet, Packagist, pub.dev)"]
+                 if net.get("pkgs", True) is not False else []) + (["her allowed hosts: " + ", ".join(hosts)] if hosts else [])
+        reach = " and ".join(parts) or "nothing (no host is allowed)"
+    return ("NETWORK FOR THIS SESSION (this overrides every 'no internet' line above): bash commands go out through an "
+            f"allow-list proxy and can reach {reach}. Installing dependencies with the repo's own package manager is fine. "
+            "A blocked host answers 403 from the proxy: say so in risk instead of working around it.")
 
 
 # ---------------------------------------------------------------- the run
@@ -1165,7 +1192,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                                "" if sp.get("confirm") else str(sp.get("test") or ""), "\n".join(x for x in (follow_up, ref_note) if x))
         msgs = [{"role": "user", "content": ([{"type": "text", "text": first}] + list(pics)) if pics else first}]
     extra_ecc = ecc_system(ses.walk(), str(getattr(t, "text", "") or ""))
-    system = SYSTEM + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
+    netw = net_words(net)                                 # v0.878 the model is told the network its environment really has
+    system = (SYSTEM + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
+              + ("\n\n" + netw if netw else ""))
+    if netw:
+        toolset = [({**x, "description": x["description"].replace("NO internet", "the network described under NETWORK")}
+                    if x.get("name") == "bash" else x) for x in toolset]
     round_tools = toolset + [t_ for t_ in tools_for_round() if t_ not in TOOLS]   # + the ECC agent tool
     gate_on, gated = bool(_set("dev_ecc_gate", True)), False
     reality = {"done": False, "verdict": ""}                # v0.814 The Agency's reality checker, once a round
@@ -1392,8 +1424,9 @@ def forget(tid: str) -> None:
     shutil.rmtree(folder(tid), ignore_errors=True)
 
 
-def sweep(keep_ids: set[str] | None = None, days: float | None = None) -> list[str]:
-    """Free the disk: a session folder whose task is gone / finished, or untouched for `dev_ws_keep_days`, goes."""
+def sweep(keep_ids: set[str] | None = None, days: float | None = None, protect: set[str] | None = None) -> list[str]:
+    """Free the disk: a session folder whose task is gone / finished, or untouched for `dev_ws_keep_days`, goes.
+    v0.878: a folder in `protect` (an open PR, a plan or CI wait) never goes for age alone - its conversation lives there."""
     days = float(days if days is not None else (_set("dev_ws_keep_days", 14) or 14))
     gone = []
     r = root()
@@ -1402,7 +1435,7 @@ def sweep(keep_ids: set[str] | None = None, days: float | None = None) -> list[s
     for d in r.iterdir():
         if not d.is_dir() or d.name in LIVE:
             continue
-        old = time.time() - d.stat().st_mtime > days * 86400
+        old = time.time() - d.stat().st_mtime > days * 86400 and d.name not in (protect or set())
         if (keep_ids is not None and d.name not in keep_ids) or old:
             shutil.rmtree(d, ignore_errors=True)
             gone.append(d.name)

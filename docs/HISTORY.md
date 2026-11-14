@@ -3647,3 +3647,69 @@ Built (phase 1): `server/app/hoolaapi/` -
 Tests: `server/tests/test_v0877_hoola_api.py` 24 - off by default, key once / hash only, wrong / revoked key 401, allowlist (send / pay / pc tools 404), per-key tool list, charged exactly + runs as the company's tenant with an api actor, empty wallet 402 and the tool never runs, failure / error dict / `ok:false` / timeout refunded, bad arguments 400 and not charged, daily cap, rate limit 429 + Retry-After, 10 parallel calls on a wallet worth 3 = exactly 3 succeed and the balance ends at 0, ledger append-only, same credit event counts once, admin operator-only + reason, suspended wallet, metadata-only log, price override, portal. Also run by hand against the REAL duniya / pylab / api_box through the real dispatch: balance equalled the ledger sum.
 
 NOT BUILT: UPI top-up + GST invoice (phase 2), employees as API (phase 3), voice, MCP, console portal page, per-tool third-party terms checks. NOT VERIFIED: no real company or money, no Postgres run, limits are per process.
+
+## v0.878.0 HOOLA CODE ENVIRONMENTS + LONG-RUN FIXES (owner: "NOW LETS WORK ON HOOLA CODE. IN APP SIDE AND CONSOLE SIDE. CHECK THE CLAUDE CODE DESIGN IN APP. CHECK BOTH IS ALL HOOLA CODE IS WORKING OR NOT FROM ENVIRONMENT ATTACHMENT TO LONG CODE DEVELOPMENT")
+
+**What was checked before building.**
+- An audit of server, console and phone. The 27 Hoola Code suites ran 232 passed, 4 skipped (the skips need the `hoola-devlab` Docker image).
+- Claude Code's web, desktop and mobile Code tab, read from Anthropic's docs and her 4 phone screenshots. The spec is in `docs/research/claude_code/00_UI_SPEC.md`.
+
+**Finding.** Hoola Code had every box setting, but only per repo. It had no ENVIRONMENT, the named thing Claude Code's session picks first.
+
+**Built: environments** (`devsahayak/envs.py`, table `devsahayak_envs`, `DevTask.env_id`, `DevSettings.env_pick`).
+- **Default.** Every tenant gets a "Default" environment the first time she looks: Limited network, package managers on.
+- **Fields:**
+  - Name.
+  - Network access: None, Limited (with the "Allow package managers" switch and allowed domains) or Full.
+  - Variables in `.env` text. A name or value that looks like a secret is refused.
+  - A setup script. Each line is checked; sudo, docker and service commands are refused.
+- **Archive, never delete.** At least one environment is always kept.
+- **Auto** means no environment: each repo's own Settings, exactly as before.
+- **Routes:**
+  - GET/POST `/api/devsahayak/envs`
+  - PATCH `/envs/{id}`
+  - POST `/envs/{id}/archive`
+  - PUT `/tasks/{id}/env` (applies from the next round)
+  - `tasks/start` takes `env` (`''` = her last pick)
+- **How a session uses it** (`overlay` via `service._session_box`):
+  - Its variables are laid over the repo's.
+  - Its setup lines run after the repo's own setup command.
+  - Its network (and the package-manager switch, via `net.allow_for(pkgs=)` / `grant(pkgs=)`) is what each command's pass carries.
+  - Repo keys still go through the proxy in every environment.
+  - With `dev_net` off, no pass is ever made.
+- **The model is told the truth** (`engine.net_words`). It used to be told "no internet" even when the repo had a network.
+- **Console:**
+  - The first chip of the composer row is the environment, with a menu of Auto, her environments, "Edit …" and "New environment…".
+  - The dialog has name, network radio cards, package managers, allowed domains, variables, setup script and Archive.
+  - The session menu has "Cloud environment…".
+  - `?environment=` pre-fills it.
+  - Styles are in the `v0.878` block at the end of v2.css; the page stamps are 0.878.0.
+- **Phone** (`lib/ui/devsahayak_new.dart`, on hoola_theme, no glass):
+  - A New session page laid out like her screenshots:
+    - "Ready when you are".
+    - An environment chip opening the Select environment sheet: Auto "Follows your repositories", her environments each with a gear, and "+ Create environment".
+    - A repository chip opening the Repositories sheet: owner over name, search, "+ Connect more".
+    - A mode chip.
+    - The composer "Type or hold to talk", with the mic (hold to talk) and send.
+  - DevEnvPage, "Create a new environment": Name, None / Limited (Recommended) / Full, the package managers switch, allowed domains, variables, setup script, Create / Save changes, Archive.
+
+**Fixed (audit findings):**
+1. **CI fix rounds.** They ran inside the worker tick, which is cut at 300 s, so the next minute started a SECOND round on the same session. Now `_ci_bg` runs each step in its own thread with the session in `_RUNNING`. Stop reaches it, and the tick skips it. A quick check still finishes inside the tick (20 s join).
+2. **Lost runs after a restart.** `answer()` and background `plan_ok` / `begin` / `fix_comments` had no job, so after a restart they looked busy forever. They now carry one and resume.
+3. **Sweeping.** An open PR's working copy is never swept for age alone (`engine.sweep(protect=)`).
+4. **Step history.** It was capped at 400 for the whole session. It is now 1200, and the first 60 are always kept, with one "gap" marker.
+5. **Phone:**
+   - Review and Merge send the repo (they failed with several repos and no default).
+   - The chat card's Plan OK uses `/bg/plan_ok`.
+
+**Tests:** `test_v0878_hoola_code_envs.py` 12.
+
+**NOT VERIFIED:**
+- The phone screens compile first on CI (no Dart here).
+- The network part needs `dev_net` on after `python -m app.devlab net` passes on her server.
+- No real Docker box ran here.
+
+**Still NOT built:**
+- Network secrets stored on the environment (keys stay per repo).
+- On the phone: branch, model and effort chips, the diff with line comments, and attachments.
+- Teleport to a local terminal.
