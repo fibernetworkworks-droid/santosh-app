@@ -716,14 +716,14 @@ class Santosh extends ChangeNotifier {
 
   /// [voice]: typed by speaking in chat (reply is read aloud). [spoken]: from the voice screen
   /// (the server keeps the reply short and speakable).
-  Future<bool> send(String text, {bool voice = false, bool spoken = false, List<String> files = const []}) async {
+  Future<bool> send(String text, {bool voice = false, bool spoken = false, List<String> files = const [], bool research = false}) async {
     text = text.trim();
     if (text.isEmpty || api == null || conversationId == null) return false;
     _lastInputWasVoice = voice;
     pushLocation(); // "near me", directions and cab pickup use where the phone is
     feelUser(text);
     try {
-      await api!.sendMessage(conversationId!, text, voice: spoken, files: files);
+      await api!.sendMessage(conversationId!, text, voice: spoken, files: files, research: research);
       return true;
     } catch (e) {
       error = 'Message was not sent: $e';

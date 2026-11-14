@@ -10,11 +10,14 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../state.dart';
 import '../bazar_screen.dart';
 import '../calls_sheet.dart';
+import '../chat/hoola_attach.dart';
 import '../chat/hoola_chat.dart';
+import '../chat_attach.dart' show TrayFile, openAttachment;
 import '../glass.dart';
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
@@ -25,6 +28,9 @@ import 'hoola_tabs.dart';
 import '../memory_page_screen.dart';
 import '../today_screen.dart';
 import '../voice_screen.dart';
+
+/// v0.895 the composer's Add sheet asks the shell for a tab (Connectors = 2, Your computers = 4).
+final hoolaTabRequest = ValueNotifier<int?>(null);
 
 /// The Hoola mark (the owner's logo) as drawn in the app.
 
@@ -42,6 +48,25 @@ class _HoolaShellState extends State<HoolaShell> {
   bool _talkOpen = false;
 
   Santosh get app => widget.app;
+
+  @override
+  void initState() {
+    super.initState();
+    hoolaTabRequest.addListener(_tabAsked);
+  }
+
+  @override
+  void dispose() {
+    hoolaTabRequest.removeListener(_tabAsked);
+    super.dispose();
+  }
+
+  void _tabAsked() {
+    final i = hoolaTabRequest.value;
+    if (i == null || !mounted) return;
+    hoolaTabRequest.value = null;
+    _go(i);
+  }
 
   /// v0.888 the tab bar steps aside while Hoola is working in the open chat (the Hoola tab with a chat on it).
   bool get _navHidden => _tab == 0 && app.typing && app.feed.any((f) => f.kind == 'message');
@@ -507,8 +532,13 @@ class HoolaComposer extends StatefulWidget {
 class _HoolaComposerState extends State<HoolaComposer> {
   late final TextEditingController _text = widget.controller ?? TextEditingController();
   bool _typing = false;
-  /// Files added with +: name, the server's file id once uploaded (null while uploading), upload error.
-  final List<({String name, String? id, String? error})> _files = [];
+  /// v0.895 files in the typing box: each shows at once (a photo is its own picture) and goes up in the background,
+  /// three at a time; Send waits for the ones still going up.
+  final List<TrayFile> _files = [];
+  int _inFlight = 0;
+  bool _waitingToSend = false;
+  /// v0.895 Claude's Research switch (Add sheet): the next messages ask for deep research until she turns it off.
+  bool _research = false;
 
   @override
   void initState() {
@@ -526,36 +556,173 @@ class _HoolaComposerState extends State<HoolaComposer> {
     super.dispose();
   }
 
-  bool get _uploading => _files.any((f) => f.id == null && f.error == null);
-  List<String> get _ready => [for (final f in _files) if (f.id != null) f.id!];
+  bool get _uploading => _files.any((f) => f.uploading);
+  List<String> get _ready => [for (final f in _files) if (f.done) '${f.sent!['file_id']}'];
+  bool get _canSend => _typing || _files.any((f) => f.err == null);
 
-  /// + : pick files; each goes up at once (the same upload as the chat's paperclip) and waits as a chip.
-  Future<void> _add() async {
-    final res = await FilePicker.platform.pickFiles(withData: true, allowMultiple: true);
-    if (res == null) return;
-    for (final f in res.files) {
-      if (f.bytes == null) continue;
-      final i = _files.length;
-      setState(() => _files.add((name: f.name, id: null, error: null)));
-      try {
-        final r = await widget.app.attachChatFile(f.name, f.bytes!);
-        if (mounted) setState(() => _files[i] = (name: f.name, id: '${r['file_id']}', error: null));
-      } catch (e) {
-        if (mounted) setState(() => _files[i] = (name: f.name, id: null, error: '$e'));
+  void _toast(String t) => ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(t)));
+
+  /// Puts picked files in the box (20 at most, 30 MB each, like Claude) and starts their uploads.
+  void _take(List<({String name, List<int> bytes, int size})> picked) {
+    if (picked.isEmpty) return;
+    var room = hoolaMaxFiles - _files.length;
+    if (room <= 0) {
+      _toast('Up to $hoolaMaxFiles files in one message');
+      return;
+    }
+    if (picked.length > room) _toast('Up to $hoolaMaxFiles files in one message - added the first $room');
+    for (final p in picked.take(room)) {
+      final t = TrayFile(p.name, p.bytes);
+      if (p.size > hoolaMaxBytes) {
+        t.err = 'Over ${hoolaMaxBytes ~/ 1024 ~/ 1024} MB';
+      } else if (p.bytes.isEmpty) {
+        t.err = 'Empty file';
+      } else if (p.bytes.length > hoolaMaxBytes) {
+        t.err = 'Over ${hoolaMaxBytes ~/ 1024 ~/ 1024} MB';
       }
+      _files.add(t);
+    }
+    setState(() {});
+    _pump();
+  }
+
+  /// Three uploads at a time; each tile shows its own progress.
+  void _pump() {
+    for (final f in _files) {
+      if (_inFlight >= 3) break;
+      if (f.uploading && !_started.contains(f)) _upload(f);
+    }
+  }
+
+  final Set<TrayFile> _started = {};
+
+  Future<void> _upload(TrayFile f) async {
+    _started.add(f);
+    _inFlight++;
+    try {
+      final r = await widget.app.attachChatFile(f.name, f.bytes, onProgress: (p) {
+        if (mounted && _files.contains(f)) setState(() => f.pct = p);
+      });
+      f.sent = r;
+      final m = '${r['media'] ?? ''}';
+      if (m.isNotEmpty && m != 'other') f.media = m;
+    } catch (e) {
+      f.err = _why(e);
+    }
+    _inFlight--;
+    if (!mounted) return;
+    setState(() {});
+    _pump();
+    if (_waitingToSend && !_uploading) _send();
+  }
+
+  String _why(Object e) {
+    final t = '$e';
+    if (t.contains('413')) return 'Too big';
+    if (t.contains('khatarnak') || t.toLowerCase().contains('unsafe')) return 'Refused: unsafe';
+    if (t.contains('Not connected')) return 'Not connected';
+    return 'Not added';
+  }
+
+  void _retry(TrayFile f) {
+    setState(() {
+      f.err = null;
+      f.pct = 0;
+      _started.remove(f);
+    });
+    _pump();
+  }
+
+  void _remove(TrayFile f) => setState(() {
+        _files.remove(f);
+        _started.remove(f);
+      });
+
+  /// + : Claude's Add sheet - Camera / Photos / Files, Research and Memory switches, Connectors / computers / team.
+  Future<void> _add() async {
+    final pick = await showHoolaAddSheet(context, app: widget.app, research: _research, onResearch: (v) {
+      if (mounted) setState(() => _research = v);
+    });
+    if (pick == null || !mounted) return;
+    switch (pick) {
+      case HoolaAddPick.camera:
+        await _camera();
+      case HoolaAddPick.photos:
+        await _photos();
+      case HoolaAddPick.files:
+        await _pickFiles();
+      case HoolaAddPick.connectors:
+        hoolaTabRequest.value = 2;
+      case HoolaAddPick.computers:
+        hoolaTabRequest.value = 4;
+      case HoolaAddPick.team:
+        await hoolaOpenNew(context, widget.app, HoolaTeam(app: widget.app));
+    }
+  }
+
+  Future<void> _camera() async {
+    try {
+      final x = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 90, maxWidth: 3000, maxHeight: 3000);
+      if (x == null) return;
+      final b = await x.readAsBytes();
+      _take([(name: x.name, bytes: b, size: b.length)]);
+    } catch (e) {
+      _toast('The camera did not open: $e');
+    }
+  }
+
+  /// Photos AND videos, several at once (the phone's own photo picker).
+  Future<void> _photos() async {
+    try {
+      final xs = await ImagePicker().pickMultipleMedia();
+      final out = <({String name, List<int> bytes, int size})>[];
+      for (final x in xs.take(hoolaMaxFiles)) {
+        final n = await x.length();
+        out.add((name: x.name, bytes: n > hoolaMaxBytes ? const <int>[] : await x.readAsBytes(), size: n));
+      }
+      _take(out);
+    } catch (e) {
+      _toast('Photos did not open: $e');
+    }
+  }
+
+  /// Any file: documents, APKs, ZIPs, audio, code... several at once.
+  Future<void> _pickFiles() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(withData: true, allowMultiple: true, type: FileType.any);
+      if (res == null) return;
+      _take([
+        for (final f in res.files)
+          (name: f.name, bytes: f.size > hoolaMaxBytes ? const <int>[] : (f.bytes ?? const <int>[]), size: f.size),
+      ]);
+    } catch (e) {
+      _toast('Files did not open: $e');
     }
   }
 
   Future<void> _send() async {
     var t = _text.text.trim();
+    if (!_canSend) return;
+    if (_uploading) {
+      // Claude sends when the last one is up: hold the message, the tiles keep showing their progress
+      setState(() => _waitingToSend = true);
+      return;
+    }
+    _waitingToSend = false;
     final ids = _ready;
-    if ((t.isEmpty && ids.isEmpty) || _uploading) return;
+    if (t.isEmpty && ids.isEmpty) {
+      setState(() {});
+      return;
+    }
     if (t.isEmpty) t = ids.length == 1 ? 'Here is a file' : 'Here are ${ids.length} files';
     HapticFeedback.lightImpact();
     final keep = List.of(_files);
     _text.clear();
-    setState(_files.clear);
-    final ok = await widget.app.send(t, files: ids);
+    setState(() {
+      _files.clear();
+      _started.clear();
+    });
+    final ok = await widget.app.send(t, files: ids, research: _research);
     if (!ok && mounted) {
       _text.text = t;   // nothing lost when it did not go
       setState(() => _files.addAll(keep));
@@ -599,34 +766,48 @@ class _HoolaComposerState extends State<HoolaComposer> {
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: c.surface,
-          borderRadius: HoolaRadius.r(HoolaRadius.pill),
+          // v0.895 a pill on one line; a rounded card (Claude's 28) once files or the Research chip sit in it
+          borderRadius: (_files.isEmpty && !_research) ? HoolaRadius.r(HoolaRadius.pill) : BorderRadius.circular(28),
           border: Border.all(color: c.line),
           boxShadow: HoolaShadow.float(c),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (_files.isNotEmpty)
+          // v0.895 Claude's tray: big thumbnails, a dark x on each, a spinner while each goes up
+          HoolaAttachTray(
+            files: _files,
+            onRemove: _remove,
+            onRetry: _retry,
+            onOpen: (f) => openAttachment(context, widget.app, [for (final x in _files) if (x.done) x.view],
+                [for (final x in _files) if (x.done) x].indexOf(f)),
+          ),
+          if (_research)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+                child: InputChip(
+                  avatar: Icon(Icons.travel_explore_rounded, size: 16, color: c.accent),
+                  label: Text('Research', style: HoolaType.small(c).copyWith(color: c.ink, fontWeight: FontWeight.w500)),
+                  backgroundColor: c.accentSoft,
+                  side: BorderSide.none,
+                  deleteIconColor: c.ink2,
+                  deleteButtonTooltipMessage: 'Turn Research off',
+                  onDeleted: () => setState(() => _research = false),
+                ),
+              ),
+            ),
+          if (_waitingToSend && _uploading)
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
-              child: Wrap(spacing: 8, runSpacing: 8, children: [
-                for (var i = 0; i < _files.length; i++)
-                  InputChip(
-                    avatar: _files[i].id == null && _files[i].error == null
-                        ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.ink3))
-                        : Icon(_files[i].error != null ? Icons.error_outline_rounded : Icons.insert_drive_file_outlined,
-                            size: 16, color: _files[i].error != null ? c.bad : c.ink2),
-                    label: Text(_files[i].error != null ? '${_files[i].name} · not added' : _files[i].name,
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(color: c.ink)),
-                    backgroundColor: c.sunk,
-                    side: BorderSide.none,
-                    deleteIconColor: c.ink3,
-                    onDeleted: () => setState(() => _files.removeAt(i)),
-                  ),
-              ]),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Sends when the files are up', style: HoolaType.small(c)),
+              ),
             ),
           // end-aligned: on one line every control centres on the field (all 48 dp); a long message grows upward
           // and the controls stay at its foot
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            ctl('Add a file or photo', Icons.add_rounded, _add),
+            ctl('Add photos, files and more', Icons.add_rounded, _add),
             Expanded(
               child: TextField(
                 controller: _text,
@@ -653,7 +834,7 @@ class _HoolaComposerState extends State<HoolaComposer> {
             AnimatedSwitcher(
               duration: HoolaMotion.of(context, HoolaMotion.menu),
               transitionBuilder: (child, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: child)),
-              child: (_typing || _ready.isNotEmpty)
+              child: _canSend
                   ? KeyedSubtree(key: const ValueKey('send'), child: ctl('Send', Icons.arrow_upward_rounded, _send, filled: true, bg: c.accent))
                   : (widget.working && widget.onStop != null)
                   ? KeyedSubtree(key: const ValueKey('stop'), child: ctl('Stop', Icons.stop_rounded, widget.onStop!, filled: true))

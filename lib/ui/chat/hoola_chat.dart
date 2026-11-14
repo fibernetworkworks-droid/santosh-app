@@ -27,6 +27,8 @@ import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import '../md_text.dart' show mdPlain;
 import '../shell/hoola_shell.dart' show HoolaComposer;
+import '../chat_attach.dart' show filesOnlyText;
+import 'hoola_attach.dart';
 import 'hoola_card.dart';
 import 'hoola_md.dart';
 
@@ -247,7 +249,7 @@ class _HoolaChatState extends State<HoolaChat> {
         final me = it.data['role'] == 'user';
         final text = '${it.data['text'] ?? ''}';
         final files = (it.data['files'] as List?) ?? const [];
-        if (me) return _Mine(text: text, files: files, selecting: _selecting == it, onLongPress: () => _menu(it, text, true));
+        if (me) return _Mine(app: app, text: text, files: files, selecting: _selecting == it, onLongPress: () => _menu(it, text, true));
         final reply = fresh
             ? _Reveal(text: text, builder: (t, live) => HoolaMd(t, streaming: live, selectable: _selecting == it))
             : HoolaMd(text, selectable: _selecting == it);
@@ -417,9 +419,11 @@ class _Reconnecting extends StatelessWidget {
   }
 }
 
-/// Her message: a quiet bubble on the right; her files as small tiles above it.
+/// Her message: a quiet bubble on the right; v0.895 her files land above it like Claude's - one photo large in its own
+/// shape, several as big thumbnails in a row she can swipe (the row runs the full width, starting at the right edge).
 class _Mine extends StatelessWidget {
-  const _Mine({required this.text, required this.files, required this.selecting, required this.onLongPress});
+  const _Mine({required this.app, required this.text, required this.files, required this.selecting, required this.onLongPress});
+  final Santosh app;
   final String text;
   final List files;
   final bool selecting;
@@ -427,54 +431,32 @@ class _Mine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    final names = [for (final f in files) if (f is Map) '${f['name'] ?? 'file'}'];
-    final onlyFiles = names.isNotEmpty && RegExp(r'^here (is a file|are \d+ files)$', caseSensitive: false).hasMatch(text.trim());
+    final hasFiles = files.any((f) => f is Map);
+    final onlyFiles = hasFiles &&
+        (RegExp(r'^here (is a file|are \d+ files)$', caseSensitive: false).hasMatch(text.trim()) || filesOnlyText(text, files));
     final style = HoolaType.bodyLarge(c);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18, left: 48),
+      padding: const EdgeInsets.only(bottom: 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        if (names.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Wrap(alignment: WrapAlignment.end, spacing: 6, runSpacing: 6, children: [
-              for (final n in names)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(color: c.surface, borderRadius: HoolaRadius.r(HoolaRadius.tile), border: Border.all(color: c.line)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(_fileIcon(n), size: 16, color: c.ink2),
-                    const SizedBox(width: 6),
-                    ConstrainedBox(constraints: const BoxConstraints(maxWidth: 180),
-                        child: Text(n, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(color: c.ink))),
-                  ]),
-                ),
-            ]),
-          ),
+        if (hasFiles) HoolaSentFiles(files: files, app: app),
         if (!onlyFiles && text.trim().isNotEmpty)
-          GestureDetector(
-            onLongPress: onLongPress,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-              decoration: BoxDecoration(
-                color: c.sunk,
-                borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(6)),
+          Padding(
+            padding: const EdgeInsets.only(left: 48),
+            child: GestureDetector(
+              onLongPress: onLongPress,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                decoration: BoxDecoration(
+                  color: c.sunk,
+                  borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(6)),
+                ),
+                child: selecting ? SelectableText(text, style: style) : Text(text, style: style),
               ),
-              child: selecting ? SelectableText(text, style: style) : Text(text, style: style),
             ),
           ),
       ]),
     );
-  }
-
-  static IconData _fileIcon(String n) {
-    final e = n.toLowerCase().split('.').last;
-    if (const {'jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'}.contains(e)) return Icons.image_outlined;
-    if (const {'mp4', 'mov', 'webm', 'mkv'}.contains(e)) return Icons.movie_outlined;
-    if (const {'mp3', 'wav', 'm4a', 'ogg', 'aac'}.contains(e)) return Icons.graphic_eq_rounded;
-    if (e == 'pdf') return Icons.picture_as_pdf_outlined;
-    if (const {'xls', 'xlsx', 'csv'}.contains(e)) return Icons.table_chart_outlined;
-    return Icons.insert_drive_file_outlined;
   }
 }
 

@@ -446,6 +446,9 @@ class Api {
       (await _send('PUT', '/api/memory/about', body: {'text': text}) as Map)['about'] as Map? ?? {});
   Future<Map<String, dynamic>> aboutMeRebuild() async => Map<String, dynamic>.from(
       (await _send('POST', '/api/memory/about/rebuild', timeout: const Duration(seconds: 90)) as Map)['about'] as Map? ?? {});
+  /// v0.895 her memory switches as they are now (the Add sheet's Memory row).
+  Future<Map<String, dynamic>> memorySettings() async =>
+      Map<String, dynamic>.from((await _send('GET', '/api/memory/settings') as Map)['switches'] as Map? ?? {});
   Future<Map<String, dynamic>> memorySwitches({bool? auto, bool? recall, bool? sensitive}) async =>
       Map<String, dynamic>.from((await _send('PUT', '/api/memory/settings', body: {
         if (auto != null) 'auto': auto,
@@ -535,13 +538,13 @@ class Api {
   Future<Map<String, dynamic>> chatFile(String conv, String filename, List<int> bytes, {void Function(double)? onProgress}) =>
       uploadFile('/api/conversations/$conv/files', filename, bytes, onProgress: onProgress);
 
-  Future<void> sendMessage(String conv, String text, {bool voice = false, List<String> files = const []}) async {
+  Future<void> sendMessage(String conv, String text, {bool voice = false, List<String> files = const [], bool research = false}) async {
     final id = '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${math.Random().nextInt(1 << 30).toRadixString(36)}';
     Object? last;
     for (var i = 0; i < 3; i++) {
       try {
         await _send('POST', '/api/conversations/$conv/messages',
-            body: {'text': text, 'client_id': id, if (voice) 'voice': true, if (files.isNotEmpty) 'files': files},
+            body: {'text': text, 'client_id': id, if (voice) 'voice': true, if (files.isNotEmpty) 'files': files, if (research) 'research': true},
             timeout: const Duration(seconds: 20));
         return;
       } on ApiException catch (e) {

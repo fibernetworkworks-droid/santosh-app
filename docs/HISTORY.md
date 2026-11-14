@@ -4139,3 +4139,36 @@ Her two screenshots (a recovery-paths reply) against claude.ai's own stylesheet 
 Tests: `test/reply_look_test.dart` (+1: term colour / size / room), `server/tests/test_v0894_claude_code_fade.py` (2). Version sweep
 0.893.0 -> 0.894.0 (pubspec +893, console stamps 35). Pre-existing red, untouched: test_v0222_saaf_chat::test_rulebook_allows_light_formatting_now
 (fails without this change too). NOT VERIFIED on her phone.
+
+
+## v0.895.0 ATTACH LIKE CLAUDE (owner, with four Claude screenshots: "NOW LETS WORK ON UPLOAD OF IMAGE, VIDEO, APK, DOCUMENT ETC --- MAKE IT PERFECTLY SAME AS CLAUDE DOES. 1) MULTIFILE ATTACHMENT 2) ANY FILE ATTACHMENT 3) OPTION LIKE CLAUDE HAS IN ADD SECTION 4) IN CHAT SPACE IMAGES AND ALL FILES SHOULD LAND PROPERLY")
+
+What the new-design phone had: the composer's + opened only the file picker, picked files sat as small name chips, uploads
+went one after another, and in the chat her files showed as name pills (photos never as pictures). Server: 6 files a
+message, 25 MB a file, Hinglish upload errors.
+
+Now (`lib/ui/chat/hoola_attach.dart`, the composer in `lib/ui/shell/hoola_shell.dart`, `_Mine` in `lib/ui/chat/hoola_chat.dart`):
+1. **Tray** - 100 dp rounded thumbnails inside the composer (it turns from a pill into a 28-radius card): a photo shows
+   its own bytes at once, a video its frame once up, a PDF its first page, text its first lines, anything else (APK, ZIP,
+   audio, Office) its icon + name + "APK · 18.1 MB"; a dark round x (c.pill / c.onPill) on each; a spinner with the real
+   upload % while it goes up; red edge + reason + Retry when it did not ("Over 30 MB" has no Retry). Uploads run three at
+   a time; tapping Send while some are still going up holds the message ("Sends when the files are up") and sends after
+   the last one.
+2. **Any file, many files** - Camera (image_picker camera), Photos (pickMultipleMedia: photos AND videos, several),
+   Files (file_picker FileType.any, several: APK, ZIP, PDF, Office, audio, code...). 20 files a message and 30 MB a file
+   (Claude's limits) on the phone (`hoolaMaxFiles` / `hoolaMaxBytes`), the console (v2.js addFiles) and the server
+   (`chatfiles.MAX_FILES` / `MAX_BYTES`, `NewMessage.files` max 20, `shown` / `context` take 20).
+3. **Add sheet** (`showHoolaAddSheet`, Claude's "Add to session"): Camera / Photos / Files tiles; Research switch (a chip
+   in the composer while on; each message carries `research: true` and the server puts `main.RESEARCH_NOTE` beside her
+   words - her bubble stays her words); Connectors (Connect tab) / Your computers (Computer tab) via `hoolaTabRequest`;
+   AI team (HoolaTeam); Memory switch = her memory switches (GET / PUT /api/memory/settings, auto + recall together).
+   Claude's Permission / Devices / Skills rows have no Hoola twin and were not invented.
+4. **In the chat** (`HoolaSentFiles`): her files land above her bubble - one photo / video alone large in its own shape
+   (max 260 x 320, radius 18), several as a right-aligned row of 112 dp thumbnails she can swipe; tap = the full-screen
+   viewer (photos / video / audio) or the phone's own app (PDF, APK, any file). Each tile and each x is its own
+   TalkBack item (found by the test: siblings in a Stack merged and the x vanished from the screen reader).
+
+Upload errors now English ("The file is empty.", "...over 30 MB; share a Drive link instead.", "This file looks unsafe").
+Tests: `test/attach_like_claude_test.dart` (4), `server/tests/test_v0895_attach_like_claude.py` (2). Pre-existing red,
+untouched: `test_chat_files.py::test_any_file_attaches_and_reaches_hoola` patches `main.run_turn`, which the turn no
+longer passes through (fails on 0.894.0 too). NOT VERIFIED on her phone (camera / photo picker / a real APK upload).

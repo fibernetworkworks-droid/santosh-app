@@ -11,7 +11,8 @@ import threading
 from collections import OrderedDict
 from typing import Any
 
-MAX_BYTES = 25 * 1024 * 1024
+MAX_BYTES = 30 * 1024 * 1024        # v0.895 Claude's limit: 30 MB a file, 20 files a message
+MAX_FILES = 20
 LEADS_MAX = 10 * 1024 * 1024
 SNIPPET_CHARS = 280                   # v0.279 first characters of a text file shown on its chat tile
 _META: "OrderedDict[str, dict]" = OrderedDict()      # file_id -> what was found when it was attached
@@ -32,14 +33,14 @@ def store(tenant: str, name: str, data: bytes, content_type: str = "") -> dict[s
     from .net import media
     from .pc.service import public_file
     if not data:
-        raise FileError("File khaali hai.")
+        raise FileError("The file is empty.")
     if len(data) > MAX_BYTES:
-        raise FileError(f"File {MAX_BYTES // 1024 // 1024} MB se badi hai; Drive link bhejiye.")
+        raise FileError(f"The file is over {MAX_BYTES // 1024 // 1024} MB; share a Drive link instead.")
     name = (name or "file").replace("\\", "/").rsplit("/", 1)[-1][:180] or "file"
     from . import filecheck
     rt = filecheck.real_type(name, data)
     if rt["danger"]:
-        raise FileError(f"Yeh file khatarnak lag rahi hai: {rt['note']}. Hoola ne nahi li (kisi ne bheji ho to mat kholiye).")
+        raise FileError(f"This file looks unsafe: {rt['note']}. Hoola did not take it (if someone sent it to you, do not open it).")
     mt = content_type if content_type and content_type != "application/octet-stream" else (mimetypes.guess_type(name)[0] or "")
     row = ms.store_bytes(tenant, name, data, "mail")
     try:
@@ -109,7 +110,7 @@ def _meta(tenant: str, fid: str) -> dict[str, Any] | None:
 
 def shown(tenant: str, file_ids: list[str]) -> list[dict[str, Any]]:
     out = []
-    for fid in file_ids[:6]:
+    for fid in file_ids[:MAX_FILES]:
         m = _meta(tenant, fid)
         if m:
             if "url" not in m:
@@ -121,7 +122,7 @@ def shown(tenant: str, file_ids: list[str]) -> list[dict[str, Any]]:
 
 def context(tenant: str, file_ids: list[str], voice: bool = False) -> str:
     lines = []
-    for fid in file_ids[:6]:
+    for fid in file_ids[:MAX_FILES]:
         m = _meta(tenant, fid)
         if not m:
             continue

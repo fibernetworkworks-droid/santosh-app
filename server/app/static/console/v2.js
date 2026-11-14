@@ -1826,7 +1826,7 @@ composer.addEventListener('submit', async e => {
   if (FILES.some(f => f.err)) return toast('A file did not upload. Tap Retry on it, or remove it.', true);
   if (FILES.some(f => !f.file_id)) return toast('File upload in progress…');
   if (text.length > INLINE_MAX) {   // v0.227.2 very long text rides as an attached .txt file, like a pasted-text chip
-    if (FILES.length >= 6) return toast('This text is very long. Remove a file so it can go as an attachment.', true);
+    if (FILES.length >= 20) return toast('This text is very long. Remove a file so it can go as an attachment.', true);
     const origin0 = CONV, pasted = new File([text], `pasted-text-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.txt`, {type: 'text/plain'});
     msg.value = ''; await addFiles([pasted]);
     if (CONV !== origin0 || !FILES.some(f => f.name === pasted.name && f.file_id)) { msg.value = text; return; }
@@ -1852,12 +1852,12 @@ $('#fileIn').addEventListener('change', e => { const picked = [...e.target.files
 async function addFiles(list) {     // paperclip, drag and drop, pasted screenshots: one path
   const origin = CONV, target = FILES;
   if (!origin) return;
-  const picked = list.slice(0, Math.max(0, 6 - target.length));
-  if (list.length > picked.length) toast('Up to 6 files at a time.');
+  const picked = list.slice(0, Math.max(0, 20 - target.length));   // v0.895 Claude's limits: 20 files, 30 MB each
+  if (list.length > picked.length) toast('Up to 20 files in one message.');
   if (picked.length) msg.focus();
   const jobs = [];
   for (const f of picked) {
-    if (f.size > 25 * 1024 * 1024) { toast(`${f.name}: files over 25 MB are not supported.`, true); continue; }
+    if (f.size > 30 * 1024 * 1024) { toast(`${f.name}: files over 30 MB are not supported.`, true); continue; }
     const up = await shrink(f);   // v0.173 big pictures shrink here: upload fast, phone data saved
     if (up !== f) toast(`${f.name}: shrunk (${Math.round(f.size / 1024)} KB → ${Math.round(up.size / 1024)} KB).`);
     if (CONV !== origin || FILES !== target) return;
