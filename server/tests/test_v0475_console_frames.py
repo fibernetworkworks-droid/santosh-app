@@ -128,11 +128,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'v0.907.0 TOOLS PRO' in main and 'hoola_tools' not in main  # the newest-story precedent (v0.898.0 carries the marker; older stories live in git history)
+    assert 'v0.908.0 CHAT MENU' in main and 'hoola_tools' not in main  # the newest-story precedent (v0.898.0 carries the marker; older stories live in git history)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.907.0+906' in pub
+    assert 'version: 0.908.0+907' in pub

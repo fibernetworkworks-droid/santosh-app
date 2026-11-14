@@ -25,6 +25,7 @@ import '../talk/hoola_talk.dart';
 import 'hoola_settings.dart';
 import 'hoola_computer.dart';
 import 'hoola_employees.dart';
+import 'hoola_chat_menu.dart';
 import 'hoola_nav_icons.dart';
 import 'hoola_tabs.dart';
 import 'hoola_tools.dart';
@@ -173,6 +174,17 @@ class _HoolaShellState extends State<HoolaShell> {
               onMade: () {
                 Navigator.of(context).maybePop();
                 hoolaOpenNew(context, app, HoolaPageFrame(child: HoolaMade(app: app)));
+              },
+              // v0.908 the console's Archive list
+              onArchive: () {
+                Navigator.of(context).maybePop();
+                hoolaOpenNew(context, app, HoolaArchivePage(
+                  app: app,
+                  onOpenChat: (id) async {
+                    _go(0);
+                    await app.openChat(id);
+                  },
+                ));
               },
               onSettings: () {
                 Navigator.of(context).maybePop();
@@ -947,6 +959,7 @@ class HoolaDrawer extends StatefulWidget {
     required this.onSettings,
     this.onWork,
     this.onMade,
+    this.onArchive,
   });
   final Santosh app;
   final VoidCallback onNewChat;
@@ -955,6 +968,7 @@ class HoolaDrawer extends StatefulWidget {
   final VoidCallback onMemory;
   final VoidCallback onSettings;
   final VoidCallback? onWork, onMade;   // v0.898
+  final VoidCallback? onArchive;        // v0.908 the console's Archive list
   @override
   State<HoolaDrawer> createState() => _HoolaDrawerState();
 }
@@ -982,7 +996,9 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
         child: ListenableBuilder(
           listenable: app,
           builder: (context, _) {
-            final chats = app.chatList;
+            // v0.908 like the console: pinned chats in their own group on top, then Recents
+            final pinned = [for (final ch in app.chatList) if (ch['pinned'] == true) ch];
+            final chats = [for (final ch in app.chatList) if (ch['pinned'] != true) ch];
             final shown = _all ? chats : chats.take(9).toList();
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Padding(
@@ -991,8 +1007,13 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
               ),
               Expanded(
                 child: ListView(padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+                  if (pinned.isNotEmpty) ...[
+                    _section('Pinned', c),
+                    for (final ch in pinned) _chatRow(ch, c),
+                    const SizedBox(height: 6),
+                  ],
                   _section('Recents', c),
-                  if (chats.isEmpty) Padding(
+                  if (chats.isEmpty && pinned.isEmpty) Padding(
                     padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
                     child: Text('No chats yet', style: HoolaType.body(c).copyWith(color: c.ink3)),
                   ),
@@ -1005,6 +1026,7 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
                   if (widget.onMade != null) _row(c, Icons.layers_outlined, 'Made by ${app.aName}', widget.onMade!),
                   _row(c, Icons.call_outlined, 'Calls', widget.onCalls),
                   _row(c, Icons.lightbulb_outline_rounded, 'What ${app.aName} remembers', widget.onMemory),
+                  if (widget.onArchive != null) _row(c, Icons.archive_outlined, 'Archive', widget.onArchive!),
                 ]),
               ),
               Padding(
@@ -1072,27 +1094,42 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
     return Semantics(
       label: say == null ? null : '${title.isEmpty ? 'New chat' : title}, $say',
       child: _row(c, call ? Icons.call_outlined : Icons.chat_bubble_outline_rounded, title.isEmpty ? 'New chat' : title,
-          () => widget.onOpenChat(id), selected: on, trail: trail),
+          () => widget.onOpenChat(id), selected: on, trail: trail,
+          // v0.908 the console's chat menu: ⋯ beside every chat, or hold the chat
+          onMenu: call || id.isEmpty ? null : () => hoolaChatMenu(context, widget.app, ch)),
     );
   }
 
   Widget _row(HoolaColors c, IconData? icon, String text, VoidCallback onTap,
-          {bool selected = false, bool chevron = false, Widget? trail}) =>
+          {bool selected = false, bool chevron = false, Widget? trail, VoidCallback? onMenu}) =>
       Material(
         color: selected ? c.sunk : Colors.transparent,
         borderRadius: HoolaRadius.r(HoolaRadius.tile),
         child: InkWell(
           borderRadius: HoolaRadius.r(HoolaRadius.tile),
           onTap: onTap,
+          onLongPress: onMenu,
           child: SizedBox(
-            height: 46,
+            height: 48,
             child: Row(children: [
               const SizedBox(width: 10),
               if (icon != null) ...[Icon(icon, size: 18, color: c.ink2), const SizedBox(width: 14)],
               Expanded(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.bodyLarge(c))),
               if (trail != null) ...[const SizedBox(width: 8), trail],
               if (chevron) Icon(Icons.chevron_right_rounded, size: 18, color: c.ink3),
-              const SizedBox(width: 10),
+              if (onMenu != null)
+                Semantics(
+                  button: true,
+                  label: 'Chat options: $text',
+                  excludeSemantics: true,
+                  child: InkResponse(
+                    onTap: onMenu,
+                    radius: 22,
+                    child: SizedBox(width: 44, height: 48, child: Icon(Icons.more_horiz_rounded, size: 20, color: c.ink3)),
+                  ),
+                )
+              else
+                const SizedBox(width: 10),
             ]),
           ),
         ),

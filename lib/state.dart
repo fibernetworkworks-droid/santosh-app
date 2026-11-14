@@ -1351,6 +1351,69 @@ class Santosh extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // ---- v0.908 the chat menu (owner: "EVERY CHAT NAME SHOULD BE EDITED, DELETED SAME AS CONSOLE HAS"): rename, pin,
+  // archive / restore, delete - the console's own PATCH / DELETE. Each returns null when done, else the reason.
+  // The list changes on screen at once and is read again from the server after.
+  Future<String?> _chatAct(String id, Future<void> Function(Api a) call, void Function() local) async {
+    final a = api;
+    if (a == null) return 'Not connected';
+    try {
+      await call(a);
+    } catch (e) {
+      return e is ApiException ? e.message : '$e';
+    }
+    local();
+    notifyListeners();
+    unawaited(refreshChats());
+    return null;
+  }
+
+  Future<String?> renameChat(String id, String title) {
+    final t = title.trim();
+    if (t.isEmpty) return Future.value('The name cannot be empty');
+    final name = t.length > 120 ? t.substring(0, 120) : t;
+    return _chatAct(id, (a) => a.chatPatch(id, {'title': name}), () {
+      for (final c in chatList) {
+        if (c['id'] == id) c['title'] = name;
+      }
+    });
+  }
+
+  Future<String?> pinChat(String id, bool on) => _chatAct(id, (a) => a.chatPatch(id, {'pinned': on}), () {
+        for (final c in chatList) {
+          if (c['id'] == id) c['pinned'] = on;
+        }
+      });
+
+  /// Archive (or restore): an archived chat leaves Recents; the open one makes room for a new chat.
+  Future<String?> archiveChat(String id, bool on) async {
+    final err = await _chatAct(id, (a) => a.chatPatch(id, {'archived': on}), () {
+      if (on) chatList.removeWhere((c) => c['id'] == id);
+    });
+    if (err == null && on && id == conversationId) unawaited(newChat());
+    return err;
+  }
+
+  Future<String?> deleteChat(String id) async {
+    final err = await _chatAct(id, (a) => a.chatDelete(id), () {
+      chatList.removeWhere((c) => c['id'] == id);
+      busyChats.remove(id);
+      unreadChats.remove(id);
+    });
+    if (err == null && id == conversationId) unawaited(newChat());
+    return err;
+  }
+
+  /// Her archived chats (the console's Archive list).
+  Future<List<Map<String, dynamic>>> archivedChats() async {
+    try {
+      final r = await api!.chats(archived: true);
+      return List<Map<String, dynamic>>.from(((r['conversations'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Open one of her old chats.
   /// v0.646 `remember: false` = a call record from the Calls section: shown now, but the app still reopens on her chat.
   /// v0.738 parity gap 12: her earlier message edited -> the chat continues from there (the old version is kept on

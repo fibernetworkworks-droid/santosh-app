@@ -361,7 +361,13 @@ class Api {
           query: {'limit': '$limit', if (before > 0) 'before': '$before', 'own': 'true', 'calls': 'true'}) as Map);   // v0.897 every chat its own
   Future<Map<String, dynamic>> timelineHead(String conv, {int n = 40}) async => Map<String, dynamic>.from(
       await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n', 'own': 'true'}) as Map);
-  Future<Map<String, dynamic>> chats() async => Map<String, dynamic>.from(await _send('GET', '/api/conversations') as Map);
+  Future<Map<String, dynamic>> chats({bool archived = false}) async => Map<String, dynamic>.from(
+      await _send('GET', '/api/conversations', query: archived ? const {'archived': 'true'} : null) as Map);
+  /// v0.908 the console's chat menu on the phone: rename (title), pin, archive - the same PATCH the console sends.
+  Future<Map<String, dynamic>> chatPatch(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/conversations/${Uri.encodeComponent(id)}', body: body) as Map? ?? const {});
+  /// v0.908 delete (the server keeps the rows; the chat leaves the list, search and its link).
+  Future<void> chatDelete(String id) async => _send('DELETE', '/api/conversations/${Uri.encodeComponent(id)}');
   Future<void> openChat(String conv) async => _send('POST', '/api/conversations/$conv/open');
   /// v0.648 KAAM KA HISAAB: running / waiting for her / finished in the last 7 days (each row names its chat or call).
   Future<Map<String, dynamic>> kaamList() async => Map<String, dynamic>.from(await _send('GET', '/api/kaam/list') as Map);
