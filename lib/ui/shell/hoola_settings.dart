@@ -248,6 +248,30 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
     if (mounted) setState(() {});
   }
 
+  Future<void> _pickCallLook() async {
+    final c = HoolaColors.of(context);
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          for (final l in Santosh.callLooks)
+            ListTile(
+              title: Text(Santosh.callLookLabels[l]!, style: HoolaType.bodyLarge(c)),
+              subtitle: Text(l == 'pill' ? 'A living pill of light between the call buttons' : 'A soft light rises from the bottom, the mic in the middle',
+                  style: HoolaType.small(c)),
+              trailing: app.callLook == l ? Icon(Icons.check_rounded, color: c.accent) : null,
+              onTap: () => Navigator.pop(ctx, l),
+            ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (picked == null) return;
+    await app.setCallLook(picked);
+    if (mounted) setState(() {});
+  }
+
   static const _fontNote = {
     'serif': 'A book-like serif, the default',
     'sans': 'The same font as the app',
@@ -506,6 +530,13 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
                     onSelectionChanged: (v) => app.setAppearance(v.first),
                   ),
                 ]),
+              ),
+              HoolaRow(
+                title: 'Call look',
+                sub: Santosh.callLookLabels[app.callLook] ?? 'Glow from below',
+                icon: Icons.graphic_eq_rounded,
+                trailing: _chev(c),
+                onTap: _pickCallLook,
               ),
               HoolaRow(
                 title: 'Chat font',

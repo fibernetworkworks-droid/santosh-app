@@ -108,6 +108,18 @@ class Santosh extends ChangeNotifier {
     await _prefs.setString('chat_font', f);
     notifyListeners();
   }
+  /// v0.896 CALL GLOW: how the live call looks - 'glow' = a light from below with the mic in the middle (Claude),
+  /// 'pill' = a living pill of light between the buttons (Gemini). Settings > Call look and the gear in the call.
+  static const callLooks = ['glow', 'pill'];
+  static const callLookLabels = {'glow': 'Glow from below', 'pill': 'Living pill'};
+  String get callLook {
+    final v = _prefs.getString('call_look') ?? 'glow';
+    return callLooks.contains(v) ? v : 'glow';
+  }
+  Future<void> setCallLook(String v) async {
+    await _prefs.setString('call_look', callLooks.contains(v) ? v : 'glow');
+    notifyListeners();
+  }
   bool get configured => apiKey.isNotEmpty;
   /// Background mode: a native service keeps Santosh working while the app is closed.
   bool get background => _prefs.getBool('bg') ?? true;

@@ -4172,3 +4172,34 @@ Upload errors now English ("The file is empty.", "...over 30 MB; share a Drive l
 Tests: `test/attach_like_claude_test.dart` (4), `server/tests/test_v0895_attach_like_claude.py` (2). Pre-existing red,
 untouched: `test_chat_files.py::test_any_file_attaches_and_reaches_hoola` patches `main.run_turn`, which the turn no
 longer passes through (fails on 0.894.0 too). NOT VERIFIED on her phone (camera / photo picker / a real APK upload).
+
+
+## v0.896.0 CALL GLOW - the live call like Claude and Gemini (owner: two screen videos of Claude's voice mode and Gemini Live -> "first show me here the animation" -> a live preview artifact -> "GO GLOW FROM BELOW and living pill like gemini both")
+
+Read from her videos frame by frame: Claude's voice mode folds the typing box into a call bar (+, model chip, speaker,
+white X), puts a mic in the middle, swaps the greeting for "Hold tight, connecting…" then "Let's talk, <name>" while
+its mark folds to a dot and blooms back, lights the bottom with a soft blue-grey dome, shows her words in a bubble at
+the top right, and drains the light when muted. Gemini Live lights the whole lower half and puts a living pill of
+moving light between camera / share / mic / X.
+
+Built into `lib/ui/talk/hoola_talk.dart` (the R5 call screen; the call engine CallSession is untouched):
+- `CallMotion` - one ChangeNotifier stepped by the screen's Ticker every frame: smoothed voice level (her inLevel
+  while she talks, his outLevel while he speaks, a slow breath when quiet, a little more while working), how far the
+  light has risen (lit only in a call, not muted, not on hold), the her/him colour mix, and the mark's rings. Only the
+  painters and the mark repaint per frame; the rest of the screen rebuilds on call events as before.
+- `CallMark` - the app mark's four layers (assets/images/mark_*.png, tinted with the accent): folds to the core for
+  0.26 s when the call starts opening, then the rings turn opposite ways (300 / 380 deg a second) while it connects
+  or works, and settle into place on the next full turn. Reduced motion = still.
+- `CallGlowPainter` - a wide dome from the bottom edge + three soft lights drifting inside it; height and brightness
+  follow the level; her colour = the theme's info blue, his = the accent violet. No raw colours (design ratchet).
+- `CallPillPainter` - Gemini's pill: moving lights lit from below inside a dark pill, a warm touch while he speaks,
+  dim when muted. Tap = stop him.
+- Layout: back arrow, "Live · clock", a gear (Call look) on top; the mark + serif line until words come; her words
+  in a bubble top right; his words in serif (19) in the middle; a quiet status line only when there is something to
+  say (working, speaking = "Tap to stop", mic off, hold, link). Glow look: mic (56, red when muted, "Come back" on
+  hold) above + / Type / End; pill look: + / Type / pill / mic / End.
+- `app.callLook` ('glow' default | 'pill', pref call_look) + Settings > Call look + the gear sheet in the call.
+
+Tests: `test/call_glow_test.dart` (3), `server/tests/test_v0896_call_glow.py` (2); the screen pictures
+(test/goldens, incl. the R9 tap-target and 200 % text checks) run clean. Pictures of both looks in dark and light were
+checked by eye. NOT VERIFIED on her phone (the live level feel, 60 fps on her device).
