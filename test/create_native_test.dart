@@ -266,7 +266,7 @@ void main() {
     await store.load();
     await t.pumpWidget(_host(CreateImage(store: store)));
     await _settle(t);
-    await t.tap(find.bySemanticsLabel('More pictures'));
+    await t.tap(find.byTooltip('More pictures'));
     await t.pump();
     expect(find.text('Create · about ₹6'), findsOneWidget);
     await t.tap(find.text('Best'));
