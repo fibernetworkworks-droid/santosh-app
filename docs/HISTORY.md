@@ -4420,3 +4420,26 @@ glass versions sheet, a glass change box) inside the new light design, and share
 - The old `ArtifactCard` (the old-look chat) and the call pill are unchanged.
 - Tests: test/page_pro_test.dart (6), picture 59 page cards (light + dark, a11y on), server/tests/test_v0902_page_pro.py
   (5). NOT VERIFIED on her phone; the viewer itself has no widget test (a WebView does not run in the test host).
+
+
+## v0.903.0 NAV PRO - the phone tab bar redrawn (owner: "CHECK THE BOTTOM NAV. MAKE IT MORE ALLINED AND PROFESSIONAL, PREMIUM AND SOFT. AI EMPLOYEE CHOOSE IS EXDING ICON AREA. ALSO PROVIDE EVERY NAV PERFECT UNIQUE HD ICONS")
+
+Her screenshots: the selected tab's pill was the whole cell and the label sat inside it, so "AI Employees" ran past
+the pill; the Hoola tab was the violet brand picture while the other three were stock Material icons of different
+weights.
+
+- `lib/ui/shell/hoola_nav_icons.dart` (new): `NavGlyph` hoola / employees / tools / computer drawn by
+  `NavIconPainter` on one 24-unit grid with one stroke (1.7) - sharp at every density, one family. Hoola = the mark
+  (two rings cut where the 45-degree needle passes, the core); AI Employees = a person with the AI spark; Tools =
+  three rounded tiles and a round one; Computer = a screen with a prompt on its stand. `on` 0..1 blends outline ->
+  filled (the prompt is cut out of the filled screen).
+- `HoolaNav` (hoola_shell.dart): one soft floating bar (hairline border, the float shadow), four equal cells
+  (`_NavItem`); the selected one shows a 60 x 32 accentSoft pill behind the ICON only that grows out from 36 wide,
+  the icon turns accent and fills, the label below goes ink 600; press = scale .94, a new tab = a selection tick;
+  label in a FittedBox (scale down) so a long label at a big text size never runs past its cell; text clamped at
+  1.4x; Semantics carries selected + onTap.
+- Tests: `test/nav_pro_test.dart` (icons paint; at 320 / 360 / 412 dp and 100 / 130 / 200 % text the label and the
+  pill stay inside their cell, the pill above the label, centred; equal cells, one icon line; tap + semantics), in
+  app-screens.yml; picture 60 tab bar (each tab selected, light / dark, 100 % and 200 %);
+  `server/tests/test_v0903_nav_pro.py` (4).
+- NOT VERIFIED on her phone.

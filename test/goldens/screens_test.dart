@@ -18,6 +18,7 @@ import 'package:santosh/state.dart';
 import 'package:santosh/ui/desk/desk_kit.dart';
 import 'package:santosh/ui/hoola_theme.dart';
 import 'package:santosh/ui/shell/hoola_settings.dart';
+import 'package:santosh/ui/shell/hoola_shell.dart' show HoolaNav;
 import 'package:santosh/ui/shell/hoola_employees.dart';
 import 'package:santosh/ui/shell/hoola_connect.dart';
 import 'package:santosh/ui/shell/hoola_tabs.dart';
@@ -432,6 +433,14 @@ void main() {
     testWidgets('58 more cards ($mode)', (t) => _shot(t, '58_more_cards_$mode', home, prefs: prefs, prep: _moreCards, a11y: true));
     // v0.902 PAGE PRO
     testWidgets('59 page cards ($mode)', (t) => _shot(t, '59_page_cards_$mode', home, prefs: prefs, prep: _pageCards, a11y: true));
+    // v0.903 NAV PRO: the tab bar with each tab selected in turn, at normal and at 200 % text
+    for (final text in [1.0, 2.0]) {
+      testWidgets('60 tab bar ${(text * 100).round()} ($mode)', (t) => _shot(t, '60_tab_bar_${(text * 100).round()}_$mode',
+          (a) => HoolaTheme(appearance: mode, child: Scaffold(body: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                for (var i = 0; i < 4; i++) Padding(padding: const EdgeInsets.only(bottom: 14), child: HoolaNav(tab: i, onTap: (_) {})),
+              ]))),
+          prefs: prefs, a11y: text == 1.0, text: text));
+    }
     testWidgets('38 new talk ($mode)', (t) => _shot(t, '38_new_talk_$mode', home, prefs: prefs,
         prep: (a) => a.realtimeVoice = true, tab: find.bySemanticsLabel('Start a call')));
     testWidgets('39 new talk in call ($mode)', (t) => _shot(t, '39_new_talk_call_$mode', home, prefs: prefs,

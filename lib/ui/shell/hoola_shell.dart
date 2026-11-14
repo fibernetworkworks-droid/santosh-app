@@ -25,6 +25,7 @@ import '../talk/hoola_talk.dart';
 import 'hoola_settings.dart';
 import 'hoola_computer.dart';
 import 'hoola_employees.dart';
+import 'hoola_nav_icons.dart';
 import 'hoola_tabs.dart';
 import 'hoola_tools.dart';
 import '../memory_page_screen.dart';
@@ -264,76 +265,132 @@ class _OldLook extends StatelessWidget {
 }
 
 // ------------------------------------------------------------------------------------------------ the tab bar
+/// v0.903 NAV PRO: one soft floating bar, four equal cells. The selected tab shows a small violet pill behind its
+/// ICON only (the label sits below it, never inside), its icon fills in and turns violet, its label goes to ink.
+/// Icons are vectors drawn on one grid (hoola_nav_icons.dart). A label too long for its cell at a big text size
+/// shrinks to fit instead of running past the cell.
 class HoolaNav extends StatelessWidget {
   const HoolaNav({super.key, required this.tab, required this.onTap});
   final int tab;
   final ValueChanged<int> onTap;
 
-  static const _items = [
-    (null, null, 'Hoola'),
-    (Icons.badge_outlined, Icons.badge_rounded, 'AI Employees'),   // v0.898
-    (Icons.apps_outlined, Icons.apps_rounded, 'Tools'),             // v0.898
-    (Icons.computer_outlined, Icons.computer_rounded, 'Computer'),   // v0.890
+  static const items = [
+    (NavGlyph.hoola, 'Hoola'),
+    (NavGlyph.employees, 'AI Employees'),   // v0.898
+    (NavGlyph.tools, 'Tools'),              // v0.898
+    (NavGlyph.computer, 'Computer'),        // v0.890
   ];
 
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    // R9: the bar grows with the phone's text size (labels capped at 1.6x so five tabs still fit), never overflows
+    // R9: the bar grows with the phone's text size (labels capped at 1.4x), never overflows
     return MediaQuery.withClampedTextScaling(
-      maxScaleFactor: 1.6,
+      maxScaleFactor: 1.4,
       child: Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 68),
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          color: c.nav,
-          borderRadius: HoolaRadius.r(HoolaRadius.pill),
-          border: Border.all(color: c.line),
-          boxShadow: HoolaShadow.float(c),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: c.nav,
+            borderRadius: HoolaRadius.r(HoolaRadius.pill),
+            border: Border.all(color: c.line, width: .8),
+            boxShadow: HoolaShadow.float(c),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(child: _NavItem(glyph: items[i].$1, label: items[i].$2, selected: tab == i, onTap: () => onTap(i))),
+            ]),
+          ),
         ),
-        child: Row(children: [
-          for (var i = 0; i < _items.length; i++)
-            Expanded(
-              child: Semantics(
-                button: true,
-                selected: tab == i,
-                label: _items[i].$3,
-                excludeSemantics: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(i),
-                  child: AnimatedContainer(
-                    duration: HoolaMotion.of(context, HoolaMotion.menu),
-                    curve: HoolaMotion.ease,
-                    decoration: BoxDecoration(
-                      color: tab == i ? c.navOn : Colors.transparent,
-                      borderRadius: HoolaRadius.r(HoolaRadius.pill),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatefulWidget {
+  const _NavItem({required this.glyph, required this.label, required this.selected, required this.onTap});
+  final NavGlyph glyph;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _down = false;
+
+  void _press(bool v) {
+    if (_down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final quick = HoolaMotion.of(context, HoolaMotion.page);
+    return Semantics(
+      button: true,
+      selected: widget.selected,
+      label: widget.label,
+      onTap: widget.onTap,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _press(true),
+        onTapUp: (_) => _press(false),
+        onTapCancel: () => _press(false),
+        onTap: () {
+          if (!widget.selected) HapticFeedback.selectionClick();
+          widget.onTap();
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: widget.selected ? 1 : 0),
+            duration: quick,
+            curve: HoolaMotion.ease,
+            builder: (context, t, _) => AnimatedScale(
+              scale: _down ? .94 : 1,
+              duration: HoolaMotion.of(context, HoolaMotion.menu),
+              curve: HoolaMotion.ease,
+              child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                // the soft pill grows out from behind the icon
+                SizedBox(
+                  height: 32,
+                  width: 64,
+                  child: Stack(alignment: Alignment.center, children: [
+                    if (t > 0)
+                      Opacity(
+                      opacity: t,
+                      child: Container(
+                        width: 36 + 24 * t,
+                        height: 32,
+                        decoration: BoxDecoration(color: c.accentSoft, borderRadius: HoolaRadius.r(HoolaRadius.pill)),
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-                      if (_items[i].$1 == null)
-                        const HoolaMark(size: 24, animate: false)   // v0.888 the tinted drawing (the app-icon file is white now)
-                      else
-                        AnimatedSwitcher(
-                          duration: HoolaMotion.of(context, HoolaMotion.menu),
-                          child: Icon(tab == i ? _items[i].$2 : _items[i].$1,
-                              key: ValueKey(tab == i), size: 23, color: tab == i ? c.ink : c.ink2),
-                        ),
-                      const SizedBox(height: 3),
-                      Text(_items[i].$3,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: HoolaType.label(c).copyWith(
-                              color: tab == i ? c.ink : c.ink2, fontWeight: tab == i ? FontWeight.w600 : FontWeight.w500)),
-                    ]),
+                    NavIcon(glyph: widget.glyph, on: t, cut: c.accentSoft, color: Color.lerp(c.ink2, c.accent, t)!),
+                  ]),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(widget.label,
+                        maxLines: 1,
+                        style: HoolaType.label(c).copyWith(
+                          color: Color.lerp(c.ink2, c.ink, t),
+                          fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w500,
+                          letterSpacing: .1,
+                        )),
                   ),
                 ),
-              ),
+              ]),
             ),
-        ]),
-      ),
+          ),
+        ),
       ),
     );
   }
