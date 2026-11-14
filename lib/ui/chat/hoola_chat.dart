@@ -129,7 +129,7 @@ class _HoolaChatState extends State<HoolaChat> {
   FeedItem? get _lastReply {
     for (var i = app.feed.length - 1; i >= 0; i--) {
       final f = app.feed[i];
-      if (f.data['ack'] == true) continue;   // v0.888 the "Thinking, one minute..." placeholder is not a reply
+      if (f.data['ack'] == true || feedIsGreeting(f)) continue;   // v0.906 nor the greeting   // v0.888 the "Thinking, one minute..." placeholder is not a reply
       if (f.kind == 'message' && '${f.data['role']}' == 'assistant') return f;
       if (f.kind == 'message') return null;   // her message is newer than any reply
     }
@@ -209,7 +209,7 @@ class _HoolaChatState extends State<HoolaChat> {
   }
 
   Widget _list(HoolaColors c) {
-    final feed = app.feed;
+    final feed = [for (final f in app.feed) if (!feedIsGreeting(f)) f];   // v0.906 the automatic greeting is not shown
     final working = (app.typing || _acked) && !_writing ? 1 : 0;
     final older = app.hasOlder ? 1 : 0;
     final last = _lastReply;

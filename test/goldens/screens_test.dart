@@ -18,7 +18,7 @@ import 'package:santosh/state.dart';
 import 'package:santosh/ui/desk/desk_kit.dart';
 import 'package:santosh/ui/hoola_theme.dart';
 import 'package:santosh/ui/shell/hoola_settings.dart';
-import 'package:santosh/ui/shell/hoola_shell.dart' show HoolaComposer, HoolaNav;
+import 'package:santosh/ui/shell/hoola_shell.dart' show HoolaComposer, HoolaHome, HoolaNav;
 import 'package:santosh/ui/shell/hoola_employees.dart';
 import 'package:santosh/ui/shell/hoola_connect.dart';
 import 'package:santosh/ui/shell/hoola_tabs.dart';
@@ -455,6 +455,25 @@ void main() {
       expect(nav.top - composer.bottom, moreOrLessEquals(12, epsilon: .6), reason: 'composer to tab bar');
       expect(nav.left, moreOrLessEquals(0, epsilon: .5));
     }
+    // v0.906 her ask: "When click on new chat it must land on chat typing section not directly creating new chat and
+    // avatar reply" - a new chat holding only the server's greeting is still the home with the composer.
+    void greeting(Santosh a) => a.feed.add(FeedItem('message', {'role': 'assistant', 'source': 'greeting',
+          'text': 'Hello! I am Santosh, your AI coworker. What shall we get done today?', 'at': DateTime(2026, 11, 14, 16, 32).toIso8601String()}));
+    testWidgets('62 new chat = home, greeting hidden ($mode)', (t) => _shot(t, '62_new_chat_$mode', home, prefs: prefs,
+        prep: greeting, check: (t) {
+          expect(find.byType(HoolaHome), findsOneWidget, reason: 'the home with the composer, not the chat view');
+          expect(find.textContaining('your AI coworker', findRichText: true), findsNothing, reason: 'the automatic greeting is not shown');
+          gap(t);
+        }));
+    testWidgets('62 first message: the chat, no greeting above it ($mode)', (t) => _shot(t, '62_first_message_$mode', home,
+        prefs: prefs, prep: (a) {
+          greeting(a);
+          a.feed.add(FeedItem('message', {'role': 'user', 'text': 'Make a Diwali offer poster', 'at': DateTime(2026, 11, 14, 16, 33).toIso8601String()}));
+        }, check: (t) {
+          expect(find.byType(HoolaHome), findsNothing);
+          expect(find.textContaining('Make a Diwali offer poster', findRichText: true), findsWidgets);
+          expect(find.textContaining('your AI coworker', findRichText: true), findsNothing);
+        }));
     for (final inset in [0.0, 24.0]) {
       final n = inset.round();
       testWidgets('61 composer gap home $n ($mode)', (t) => _shot(t, '61_gap_home_${n}_$mode', home, prefs: prefs,

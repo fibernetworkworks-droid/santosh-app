@@ -39,6 +39,10 @@ const waitStatuses = {
 const needsHerMaxH = 48;
 
 /// Does this chat card wait for her right now (by its own latest state)?
+/// v0.906 the line the server writes into every new chat ("Hello! I am Santosh, your AI coworker...") - not a reply:
+/// a chat holding only this is still empty (the home with the composer shows), and the new chat never draws it.
+bool feedIsGreeting(FeedItem f) => f.kind == 'message' && f.data['source'] == 'greeting';
+
 bool feedNeedsHer(FeedItem f) {
   if (f.kind == 'message' || f.kind == 'note' || f.kind == 'steps') return false;
   final d = f.data;

@@ -4473,3 +4473,21 @@ Padding, no second animation); the keyboard case stays 0. Every tab page gets th
 TESTS: golden 61 (`test/goldens/screens_test.dart`, home + a chat, light + dark, gesture area 0 and 24 dp) measures
 nav.top - composer.bottom = 12 dp on the real shell; `_shot` gained `inset` + `check`; server
 `test_v0905_nav_gap.py` (3). NOT VERIFIED on her phone.
+
+
+## v0.906.0 NEW CHAT HOME - New chat lands on the typing screen (owner: "When click on new chat it must land on chat typing section not directly creating new chat and avthar reply... Fix this")
+
+ROOT CAUSE: `POST /api/conversations` (server/app/main.py create_conversation) writes a greeting into every new chat
+("Hello! I am <avatar>, your AI coworker. What shall we get done today?", event payload source "greeting"). The phone's
+Hoola tab (`_HoolaTab._hasChat`) switched from the home (greeting, quick starts, composer) to the chat view as soon as
+ANY message was in the feed, so New chat showed an empty chat with that line and its Copy / Read aloud / Share / Ask
+again row - it looked like a chat had been made and the avatar had replied.
+
+FIX (phone only; the console uses the same greeting): `feedIsGreeting(FeedItem)` in lib/state.dart. `_hasChat` ignores
+it, so a chat holding only the greeting is the home with the composer; `HoolaChat._list` and `_lastReply` skip it, so
+once she sends her first message the chat starts with her message and nothing above it. Old chats lose only that one
+automatic line.
+
+TESTS: golden 62 (light + dark): a chat with only the greeting = HoolaHome, greeting text not drawn, composer 12 dp above
+the tab bar; first message = the chat view with no greeting. Server `test_v0906_new_chat_home.py` (4). NOT VERIFIED on
+her phone.

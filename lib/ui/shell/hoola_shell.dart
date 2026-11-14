@@ -446,7 +446,9 @@ class _HoolaTab extends StatelessWidget {
   final VoidCallback onTalk;
   final VoidCallback onMenu;
 
-  bool get _hasChat => app.feed.any((f) => f.kind == 'message');
+  // v0.906 (owner: "When click on new chat it must land on chat typing section not directly creating new chat and
+  // avatar reply"): the server's greeting in a new chat does not count - only a real message opens the chat view.
+  bool get _hasChat => app.feed.any((f) => f.kind == 'message' && !feedIsGreeting(f));
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
