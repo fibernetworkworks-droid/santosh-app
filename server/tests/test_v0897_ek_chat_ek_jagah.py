@@ -92,4 +92,4 @@ def test_phone_asks_for_its_own_chat_and_new_chat_lets_the_old_one_go():
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.898.0"
+    assert main.APP_VERSION == "0.899.0"

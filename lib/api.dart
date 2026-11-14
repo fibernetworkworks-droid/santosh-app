@@ -2137,89 +2137,107 @@ class Api {
   /// never stored) — the chat answers word by word like a person, not all at once after the model finishes.
   /// v0.897 [own] = this chat and the calls made from it only (EK CHAT EK JAGAH); without it the old v0.158 stream
   /// that also carried every card of her other chats.
-  Stream<SantoshEvent> events(String conv, {int after = 0, bool live = false, bool own = true}) async* {
+  Stream<SantoshEvent> events(String conv, {int after = 0, bool live = false, bool own = true}) {
     var last = after;
-    var backoff = 1;
-    while (true) {
-      try {
-        final req = http.Request('GET', _u('/api/conversations/$conv/events', {
-          'after': '$last',
-          if (live) 'live': '1',
-          if (own) 'own': '1',
-        }))
-          ..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
-        final client = http.Client();
-        final res = await client.send(req);
-        if (res.statusCode == 401 || res.statusCode == 404) {
-          client.close();
-          throw ApiException(res.statusCode, res.statusCode == 401 ? 'Wrong API key' : 'Conversation not found');
-        }
-        backoff = 1;
-        final lines = res.stream.transform(utf8.decoder).transform(const LineSplitter());
-        final buf = StringBuffer();
-        await for (final line in lines) {
-          if (line.startsWith('data:')) {
-            buf.write(line.substring(5).trimLeft());
-          } else if (line.isEmpty && buf.isNotEmpty) {
-            final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
-            buf.clear();
-            if (ev.isMarker || ev.isLive) {
-              yield ev; // v0.158 replay_end / resync · v0.178 the reply being written (id 0, order never moves)
-            } else if (ev.id > last) {
-              last = ev.id;
-              yield ev;
+    return _sse(
+      () => _u('/api/conversations/$conv/events', {
+        'after': '$last',
+        if (live) 'live': '1',
+        if (own) 'own': '1',
+      }),
+      onRefused: (code) => ApiException(code, code == 401 ? 'Wrong API key' : 'Conversation not found'),
+      keep: (ev) {
+        if (ev.isMarker || ev.isLive) return true;   // v0.158 replay_end / resync · v0.178 the reply being written
+        if (ev.id <= last) return false;
+        last = ev.id;
+        return true;
+      },
+      firstWait: 1,
+      maxWait: 16,
+    );
+  }
+
+  /// v0.899 NAYA CHAT KHULE (owner: "When click on new chat it won't open new chat"): one live SSE reader that STOPS
+  /// THE MOMENT IT IS CANCELLED. These streams used to be `async*` generators; cancelling one that sits in an
+  /// `await for` only finishes when the generator reaches its next `yield` - and a quiet chat sends nothing but
+  /// `: ping` comments, so that yield never came. Since v0.897 a chat streams only its own events, so on a quiet
+  /// chat `await _sub?.cancel()` waited for ever: New chat (and switching chats) stayed stuck on the old chat. Here
+  /// cancel closes the HTTP client, the read fails at once, and nothing more is delivered.
+  /// [onRefused] = a 401 / 404 ends the stream (an error when it returns one, quietly when null).
+  Stream<SantoshEvent> _sse(
+    Uri Function() url, {
+    required Object? Function(int status) onRefused,
+    required bool Function(SantoshEvent ev) keep,
+    int firstWait = 2,
+    int maxWait = 30,
+  }) {
+    late final StreamController<SantoshEvent> out;
+    http.Client? client;
+    var stopped = false;
+    Future<void> run() async {
+      var backoff = firstWait;
+      while (!stopped) {
+        final c = http.Client();
+        client = c;
+        try {
+          final req = http.Request('GET', url())..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
+          final res = await c.send(req);
+          if (stopped) break;
+          if (res.statusCode == 401 || res.statusCode == 404) {
+            final err = onRefused(res.statusCode);
+            if (err != null && !out.isClosed) out.addError(err);
+            break;
+          }
+          backoff = firstWait;
+          final lines = res.stream.transform(utf8.decoder).transform(const LineSplitter());
+          final buf = StringBuffer();
+          await for (final line in lines) {
+            if (stopped) break;
+            if (line.startsWith('data:')) {
+              buf.write(line.substring(5).trimLeft());
+            } else if (line.isEmpty && buf.isNotEmpty) {
+              final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
+              buf.clear();
+              if (keep(ev) && !stopped && !out.isClosed) out.add(ev);
             }
           }
+        } catch (_) {
+          // network blip (or our own cancel closing the client): wait and resume, unless stopped
+        } finally {
+          c.close();
+          if (identical(client, c)) client = null;
         }
-        client.close();
-      } on ApiException {
-        rethrow;
-      } catch (_) {
-        // network blip: wait and resume
+        if (stopped) break;
+        await Future.delayed(Duration(seconds: backoff));
+        backoff = backoff >= maxWait ? maxWait : backoff * 2;
       }
-      await Future.delayed(Duration(seconds: backoff));
-      backoff = backoff >= 16 ? 16 : backoff * 2;
+      if (!out.isClosed) await out.close();
     }
+
+    out = StreamController<SantoshEvent>(
+      onListen: () => unawaited(run()),
+      onCancel: () {
+        stopped = true;
+        client?.close();   // the read in flight ends now, not at the chat's next event
+      },
+    );
+    return out.stream;
   }
 
   /// v0.889 ONE stream for all her chats (the console's /api/console/stream): every event of every chat, tagged with
   /// its chat. The phone reads only two things from it - which chats are working (typing on / off) and which got a
   /// new reply while she was in another chat - so each chat stays its own session, as on the web console. Ends when
   /// the server has many chats off (404) or the key is refused (401); reconnects by itself on a network blip.
-  Stream<SantoshEvent> accountEvents({int after = 0}) async* {
+  Stream<SantoshEvent> accountEvents({int after = 0}) {
     var last = after;
-    var backoff = 2;
-    while (true) {
-      final client = http.Client();
-      try {
-        final req = http.Request('GET', _u('/api/console/stream', {'after': '$last'}))
-          ..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
-        final res = await client.send(req);
-        if (res.statusCode == 401 || res.statusCode == 404) {
-          client.close();
-          return;
-        }
-        backoff = 2;
-        final lines = res.stream.transform(utf8.decoder).transform(const LineSplitter());
-        final buf = StringBuffer();
-        await for (final line in lines) {
-          if (line.startsWith('data:')) {
-            buf.write(line.substring(5).trimLeft());
-          } else if (line.isEmpty && buf.isNotEmpty) {
-            final ev = SantoshEvent.fromJson(Map<String, dynamic>.from(jsonDecode(buf.toString()) as Map));
-            buf.clear();
-            if (ev.id > last) last = ev.id;
-            yield ev;
-          }
-        }
-      } catch (_) {
-        // network blip: wait and resume
-      } finally {
-        client.close();
-      }
-      await Future.delayed(Duration(seconds: backoff));
-      backoff = backoff >= 30 ? 30 : backoff * 2;
-    }
+    return _sse(
+      () => _u('/api/console/stream', {'after': '$last'}),
+      onRefused: (_) => null,   // many chats off on this server (404) or the key refused (401): just end
+      keep: (ev) {
+        if (ev.id > last) last = ev.id;
+        return true;
+      },
+    );
   }
 
   /// v0.863 R3s / v0.889 where this chat's newest ask is: {status: queued|working|needs_you|done|..., needs_you, line}.

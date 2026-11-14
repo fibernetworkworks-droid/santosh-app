@@ -4281,3 +4281,31 @@ Tests: test/four_tabs_test.dart (4), server/tests/test_v0898_chaar_tab.py (3), t
 Employees, Tools, Connectors / Made / Work pages, AI Employees + Tools at 200 % text) - all 58 clean.
 NOT VERIFIED on her phone: the WebView sign-in, and downloads / file pickers inside console pages (a WebView does not
 hand downloads to the phone by itself - "Open in the browser" is the way for those).
+
+
+## v0.899.0 NAYA CHAT KHULE — New chat opens again (owner: "When click on new chat it won't open new chat ... Check and resolve")
+
+Her screenshot: the new-design drawer, New chat tapped, nothing changed. ROOT CAUSE: the phone's live chat stream
+(`Api.events`) and the account stream (`Api.accountEvents`) were `async*` generators. Cancelling a subscription to an
+async* stream while the generator sits in `await for` does not stop it there - the cancel future completes only when
+the generator reaches its next `yield`. The server keeps a quiet chat open with `: ping` comments only, which never
+yield. Before v0.897 the phone's stream also carried every other chat's cards, so some event came soon and the cancel
+finished late but finished; since v0.897 each chat streams only its own events, so on a quiet chat
+`await _sub?.cancel()` (top of `newChat`, `_openStory`, `_connect`) waited for ever - New chat and switching chats
+stayed on the old chat, and the old connection stayed open on the server.
+
+FIX (phone only, server unchanged):
+- `Api._sse(url, onRefused, keep, firstWait, maxWait)` = one SSE reader on a `StreamController`: `onCancel` sets
+  `stopped` and closes the HTTP client, so the read in flight fails at once and nothing more is delivered; same
+  backoff as before (chat 1 -> 16 s, account 2 -> 30 s), a 401 / 404 ends the chat stream with the ApiException
+  (account stream ends quietly), an id already seen is never delivered twice, markers + live events pass through.
+- `Santosh._dropSub()` lets go of the stream without waiting (`unawaited(cancel())`); every `await _sub?.cancel()`
+  is gone. `newChat` sets `conversationId = null` before anything is awaited, so the screen changes at once.
+
+TESTS: `test/new_chat_test.dart` (added to the app-screens CI line): a real local SSE server that only pings - the
+chat stream and the account stream both stop within a second of cancel and the server sees the connection close;
+events still arrive in order with a seen id dropped; a 401 ends the stream with the error.
+`server/tests/test_v0899_naya_chat_khule.py` (4) pins the source shape + version. Version 0.899.0 (pubspec
+0.899.0+898; pins + console stamps swept). Pre-existing red, not this work: `test_v0718_seekh_console::test_version_pins`
+(its story marker was already gone at v0.898). NOT VERIFIED on her phone; Flutter is not runnable in the sandbox, the
+phone test runs first on CI.

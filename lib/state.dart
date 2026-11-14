@@ -503,6 +503,13 @@ class Santosh extends ChangeNotifier {
     connect();
   }
 
+  /// v0.899 let go of the live stream without waiting on it (a stream that is slow to stop never holds the screen).
+  void _dropSub() {
+    final s = _sub;
+    _sub = null;
+    unawaited(s?.cancel());
+  }
+
   Future<void> connect({bool fresh = false, bool incognito = false}) async {
     if (_connecting) return;
     _connecting = true;
@@ -518,7 +525,7 @@ class Santosh extends ChangeNotifier {
     error = null;
     _keyRefused = false;
     if (fresh) conversationId = null;   // v0.897 a new chat on the way: nothing typed meanwhile goes into the old one
-    await _sub?.cancel();
+    _dropSub();
     _clearStory();
     _storyLimit = 60;
     hasOlder = false;
@@ -637,7 +644,7 @@ class Santosh extends ChangeNotifier {
     try {
       await api?.logout();
     } catch (_) {}
-    await _sub?.cancel();
+    _dropSub();
     _sub = null;
     await _accSub?.cancel();
     _accSub = null;
@@ -1203,7 +1210,7 @@ class Santosh extends ChangeNotifier {
   Future<void> _openStory({bool reload = false}) async {
     final conv = conversationId;
     if (conv == null || api == null) return;
-    await _sub?.cancel();
+    _dropSub();
     _replaying = true;
     var after = 0;
     try {
@@ -1249,7 +1256,7 @@ class Santosh extends ChangeNotifier {
     // v0.897 only the chat on screen streams into the screen: an older open that finished late (she switched
     // quickly) used to start its own live stream beside the new one, and both chats' words landed in one place
     if (conv != conversationId) return;
-    await _sub?.cancel();
+    _dropSub();
     _sub = api!.events(conv, after: after, live: true).listen(_onEvent, onError: (e) {
       connected = false;
       if (e is ApiException && e.status == 401) {
@@ -1402,9 +1409,10 @@ class Santosh extends ChangeNotifier {
     }
     final prev = conversationId;
     final prevIncognito = this.incognito;
-    await _sub?.cancel();
-    _sub = null;
     conversationId = null;            // from here nothing can go into the old chat
+    final old = _sub;
+    _sub = null;
+    unawaited(old?.cancel());         // v0.899 never wait on the old chat's stream: the new chat opens now
     _clearStory();
     hasOlder = false;
     typing = false;
