@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.896.0"   # v0.896.0 CALL GLOW (owner, after the live preview built from her Claude + Gemini voice-call videos: "GO GLOW FROM BELOW and living pill like gemini both"): the phone's live call looks and moves like those two calls in Hoola's colours - the Hoola mark folds to its dot, opens and turns while it connects ("Hold tight, connecting…" -> "Let's talk, <name>"), a light rises from the bottom and follows the voice every frame (blue while she speaks, Hoola violet while he speaks, drains away when muted), her words in a bubble at the top right and his in serif in the middle; two looks she picks in Settings > Call look or the gear in the call: Glow from below (mic in the middle, + / Type / End) and Living pill (a pill of moving light between the buttons, tap = stop him). Previous: v0.895.0 ATTACH LIKE CLAUDE.
+APP_VERSION = "0.897.0"   # v0.897.0 EK CHAT EK JAGAH (owner: "NOW CURRENTLY ALL CHAT IS COME IN ONE SESSION. CHECK THE APP SIDE CODE FIRST"): the phone read every chat with the v0.158 one-chat rule - each chat's timeline + live stream also carried every card of all her other chats - so every chat looked like the same one; the phone now asks own (+ calls): this chat and the calls made from it only, like the console (old apps keep the old stream). New chat on the phone no longer runs the whole reconnect (the old chat id stayed live until the slow bootstrap came back, so what she typed meanwhile went into the old chat, and a tap during a reconnect did nothing): the old chat is let go first, one small call makes the new one (her untouched empty chat reused, as on the console); a slower chat load never takes over the screen or opens a second live stream. Previous: v0.896.0 CALL GLOW.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -918,7 +918,7 @@ REPLAY_MAX = 3000   # v0.158 more events than this to catch up = the app reloads
 
 
 @app.get("/api/conversations/{conversation_id}/events", dependencies=[Depends(require_key)])
-async def events(conversation_id: str, request: Request, after: int = 0, live: int = 0,
+async def events(conversation_id: str, request: Request, after: int = 0, live: int = 0, own: int = 0,
                  tenant: str = Depends(current_tenant)):
     """Server-sent events: everything after `after` (this chat + cards from her other chats), then live.
 
@@ -927,11 +927,15 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
     catch up sends `resync` so the app reloads the chat in order instead of showing a broken one.
 
     v0.161 `live=1`: also the reply being written (reply_start / delta / delta_reset / reply_end, never stored, sent
-    without an SSE id). Without it (older apps) the stream is exactly as before."""
+    without an SSE id). Without it (older apps) the stream is exactly as before.
+
+    v0.897 `own=1` (EK CHAT EK JAGAH, owner: "ALL CHAT IS COME IN ONE SESSION"): this chat and the calls made from it
+    only - her other chats' cards stay in their own chats (older apps without it keep the v0.158 one-chat stream)."""
     _conv_or_404(conversation_id, tenant)
     from . import convs
     last = int(request.headers.get("last-event-id") or after or 0)
-    q = bus.subscribe(conversation_id, tenant)
+    mine = bool(own)
+    q = bus.subscribe(conversation_id, tenant, own=mine)
     convs.mark(tenant, conversation_id, "stream")
 
     async def gen():
@@ -940,7 +944,7 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
             if last > 0:
                 total = 0
                 while True:
-                    page = await asyncio.to_thread(bus.backlog, conversation_id, sent, 500, tenant)
+                    page = await asyncio.to_thread(bus.backlog, conversation_id, sent, 500, tenant, mine)
                     for ev in page:
                         sent = ev["id"]
                         yield f"id: {ev['id']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
@@ -948,11 +952,11 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
                     if len(page) < 500:
                         break
                     if total >= REPLAY_MAX:   # away too long: reload the chat in order
-                        sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant)
+                        sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant, mine)
                         yield f"data: {json.dumps({'id': 0, 'kind': 'resync', 'payload': {'why': 'gap'}})}\n\n"
                         break
             else:
-                sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant)   # the app loads /timeline first
+                sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant, mine)   # the app loads /timeline first
             yield f"data: {json.dumps({'id': 0, 'kind': 'replay_end', 'payload': {'last': sent}})}\n\n"
             typed_at = time.monotonic()
             while True:
@@ -987,7 +991,7 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
                     # the loop - the high-water mark then dropped it for good (a card / message seen only on a reload).
                     # On a gap the events in between are read back from the database first, in order.
                     try:
-                        gap = await asyncio.to_thread(bus.backlog, conversation_id, sent, 50, tenant)
+                        gap = await asyncio.to_thread(bus.backlog, conversation_id, sent, 50, tenant, mine)
                     except Exception:
                         gap = []
                     for g in gap:
@@ -1061,21 +1065,21 @@ def chat_feedback(conversation_id: str, body: FeedbackIn, tenant: str = Depends(
 
 @app.get("/api/conversations/{conversation_id}/timeline", dependencies=[Depends(require_key)])
 def chat_timeline(conversation_id: str, limit: int = 60, before: int = 0, steps: bool = False, own: bool = False,
-                  tenant: str = Depends(current_tenant)):
+                  calls: bool = False, tenant: str = Depends(current_tenant)):
     """v0.158 the chat in order: messages and each card once where it first appeared, in its latest state (cards from
     her other chats too), newest page last; `before` = the page before that event id.
     v0.171 `steps=1` (the console): tool-call step events ride along so the transcript keeps what each turn did."""
     _conv_or_404(conversation_id, tenant)
     from .events import timeline
-    return timeline(conversation_id, tenant, limit, before, steps=steps, own=own)
+    return timeline(conversation_id, tenant, limit, before, steps=steps, own=own, calls=calls)   # v0.897 calls: the phone
 
 
 @app.get("/api/conversations/{conversation_id}/timeline/head", dependencies=[Depends(require_key)])
-def chat_timeline_head(conversation_id: str, n: int = 40, tenant: str = Depends(current_tenant)):
+def chat_timeline_head(conversation_id: str, n: int = 40, own: bool = False, tenant: str = Depends(current_tenant)):
     """v0.158 the app's self-check: the newest story ids in order (missing / out of order on the phone = reload)."""
     _conv_or_404(conversation_id, tenant)
     from .events import head
-    return head(conversation_id, tenant, n)
+    return head(conversation_id, tenant, n, own=own)
 
 
 def _export_name(conv: Conversation, ext: str) -> str:

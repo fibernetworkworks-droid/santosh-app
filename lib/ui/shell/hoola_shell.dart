@@ -107,7 +107,7 @@ class _HoolaShellState extends State<HoolaShell> {
   Future<void> _newChat() async {
     Navigator.of(context).maybePop();   // the drawer
     _go(0);
-    await app.connect(fresh: true);
+    await app.newChat();
   }
 
   @override
@@ -414,7 +414,7 @@ class _HoolaHomeState extends State<HoolaHome> {
           const SizedBox(width: 6),
           IconButton(tooltip: 'Open chats', onPressed: widget.onMenu, icon: Icon(Icons.menu_rounded, color: c.ink)),
           const Spacer(),
-          IconButton(tooltip: 'New chat', onPressed: () => app.connect(fresh: true), icon: Icon(Icons.edit_square, color: c.ink, size: 22)),
+          IconButton(tooltip: 'New chat', onPressed: () => app.newChat(), icon: Icon(Icons.edit_square, color: c.ink, size: 22)),
           const SizedBox(width: 6),
         ]),
       ),

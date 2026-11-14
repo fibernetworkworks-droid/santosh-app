@@ -517,6 +517,7 @@ class Santosh extends ChangeNotifier {
   Future<void> _connect({bool fresh = false, bool incognito = false}) async {
     error = null;
     _keyRefused = false;
+    if (fresh) conversationId = null;   // v0.897 a new chat on the way: nothing typed meanwhile goes into the old one
     await _sub?.cancel();
     _clearStory();
     _storyLimit = 60;
@@ -1207,6 +1208,7 @@ class Santosh extends ChangeNotifier {
     var after = 0;
     try {
       final tl = await api!.timeline(conv, limit: _storyLimit);
+      if (conv != conversationId) return;   // v0.897 she moved to another chat while this one loaded
       _clearStory();
       for (final j in (tl['events'] as List? ?? const [])) {
         await _onEvent(SantoshEvent.fromJson(Map<String, dynamic>.from(j as Map)));
@@ -1244,6 +1246,10 @@ class Santosh extends ChangeNotifier {
         }
       }
     } catch (_) {}
+    // v0.897 only the chat on screen streams into the screen: an older open that finished late (she switched
+    // quickly) used to start its own live stream beside the new one, and both chats' words landed in one place
+    if (conv != conversationId) return;
+    await _sub?.cancel();
     _sub = api!.events(conv, after: after, live: true).listen(_onEvent, onError: (e) {
       connected = false;
       if (e is ApiException && e.status == 401) {
@@ -1382,14 +1388,51 @@ class Santosh extends ChangeNotifier {
     }
   }
 
+  /// v0.897 EK CHAT EK JAGAH (owner: "ALL CHAT IS COME IN ONE SESSION"): New chat. It used to run the whole
+  /// reconnect (`connect(fresh: true)`): the screen went empty at once, but the chat id stayed the OLD one until the
+  /// slow bootstrap call came back - whatever she typed in that time went into the old chat - and when a reconnect
+  /// was already running the tap did nothing at all. Now the old chat is let go first (nothing can be sent into it),
+  /// one small call makes the new chat (her untouched empty one is reused, as on the console) and it opens like any
+  /// other chat. Not connected = the full reconnect as before.
+  Future<void> newChat({bool incognito = false}) async {
+    final a = api;
+    if (a == null || !connected) {
+      await connect(fresh: true, incognito: incognito);
+      return;
+    }
+    final prev = conversationId;
+    final prevIncognito = this.incognito;
+    await _sub?.cancel();
+    _sub = null;
+    conversationId = null;            // from here nothing can go into the old chat
+    _clearStory();
+    hasOlder = false;
+    typing = false;
+    currentStep = null;
+    notifyListeners();
+    try {
+      final id = await a.newConversation(reuse: !incognito, incognito: incognito);
+      if (conversationId != null) return;   // she opened another chat meanwhile: that one wins
+      await openChat(id, isIncognito: incognito);
+    } catch (e) {
+      if (conversationId == null && prev != null) {
+        conversationId = prev;
+        this.incognito = prevIncognito;
+        await _openStory();
+      }
+      error = 'A new chat could not be started: $e';
+      notifyListeners();
+    }
+  }
+
   /// v0.862 R3 read a reply aloud with the phone's voice (the same cleaning as spoken replies).
   Future<void> readAloud(String text) => _speak(text);
 
-  Future<void> openChat(String id, {bool remember = true}) async {
+  Future<void> openChat(String id, {bool remember = true, bool? isIncognito}) async {
     if (id == conversationId || api == null) return;
     conversationId = id;
     unreadChats.remove(id);   // v0.889 opened = read
-    incognito = chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.250
+    incognito = isIncognito ?? chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.250
     if (remember) await _prefs.setString('conv', id);
     unawaited(api!.openChat(id).catchError((_) {}));
     if (remember) unawaited(Native.chatLink(serverUrl, apiKey, id));   // v0.646 the background stream stays on her chat

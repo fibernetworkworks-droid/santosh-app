@@ -4203,3 +4203,41 @@ Built into `lib/ui/talk/hoola_talk.dart` (the R5 call screen; the call engine Ca
 Tests: `test/call_glow_test.dart` (3), `server/tests/test_v0896_call_glow.py` (2); the screen pictures
 (test/goldens, incl. the R9 tap-target and 200 % text checks) run clean. Pictures of both looks in dark and light were
 checked by eye. NOT VERIFIED on her phone (the live level feel, 60 fps on her device).
+
+
+## v0.897.0 EK CHAT EK JAGAH - every phone chat its own (owner: "NOW CURRENTLY ALL CHAT IS COME IN ONE SESSION. CHECK THE APP SIDE CODE FIRST")
+
+Checked the app side first, as asked. Three faults, one of them the root cause:
+
+1. ROOT CAUSE - the phone read every chat with the v0.158 one-chat rule. `GET /api/conversations/{id}/timeline` and
+   the live `/events` stream (subscribed WITH the tenant) both carried every card of ALL her other chats (every kind
+   outside `events.LOCAL_KINDS`: files, pages, approvals, email drafts, jobs...). So whichever chat she opened showed
+   the cards of all of them - every chat looked like the same session. The console stopped doing this in v0.227.4
+   (`own=true` on its timeline); the phone never got the same switch, even after v0.889 made the phone "per chat".
+   Fix: the phone now asks `own`:
+   - timeline `own=true&calls=true` -> `events.timeline(own, calls)` -> `_story(calls=True)`: this chat + the call
+     records made from it (`events.calls_of(conv)`: Conversation.kind == 'call' and origin_conv == conv; v0.647 put a
+     call's cards on its own record, and they belong to the chat the call came from);
+   - head `own=true` -> the same story for the self-check (otherwise it would reload the chat forever);
+   - events `own=1` -> `bus.subscribe(own=True)` (no tenant fan-in), `bus.backlog(own=True)`, `bus.last_id(own=True)`;
+     `bus.publish` now also hands a call record's CARDS (not only its local kinds) to the chat it came from, so an own
+     stream still hears what a call made; old subscribers get each event once (dedupe).
+   Old apps without the flag keep the old one-chat stream.
+2. New chat ran the whole reconnect (`connect(fresh: true)`): `_connect` cleared the screen at once, but
+   `conversationId` stayed the OLD chat until the slow `/api/bootstrap` (me, lists, routines, avatar, pending actions,
+   usage; 45 s timeout) came back - anything she typed in that time was sent into the old chat; and while a reconnect
+   was already running (`_connecting`), the tap did nothing at all. Now `Santosh.newChat({incognito})`: cancel the
+   old stream, `conversationId = null` (send() refuses, the composer keeps her words), one
+   `POST /api/conversations?reuse=true` (her untouched empty chat reused, as the console's New chat), then
+   `openChat(id, isIncognito:)`; not connected = the old full reconnect; a failure goes back to the old chat and says
+   so. Every New chat button (shell drawer + home, new chat top bar, old chat screen incl. incognito) uses it;
+   `connect(fresh: true)` itself now drops the old chat id first too.
+3. `_openStory` race: switching chats quickly let an older, slower load finish after the new one - it replaced the
+   screen with the old chat and started a SECOND live stream beside the new one. Now it stops when the chat on screen
+   changed (after the timeline call and before the stream starts) and cancels any stream before starting its own.
+
+Tests: `server/tests/test_v0897_ek_chat_ek_jagah.py` (4: own timeline / head / backlog keep other chats out and the
+chat's calls in, old apps unchanged; own live stream hears its calls not other chats; the phone source asks own and
+New chat lets go first). Phone analyze unchanged (27 baseline), phone chat tests green. Older red seen on the way and
+proven on the untouched tree: test_v0178_realtime::test_crashed_turn_still_replies_and_typing_goes_off.
+NOT VERIFIED on her phone; the server part needs the VPS deploy.

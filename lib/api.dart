@@ -357,9 +357,10 @@ class Api {
           timeout: const Duration(seconds: 45)) as Map);   // v0.158.1 the first open after a server restart can be slow
   // ---- v0.158 the chat in order, old chats, self-check, call cards ----
   Future<Map<String, dynamic>> timeline(String conv, {int limit = 60, int before = 0}) async => Map<String, dynamic>.from(
-      await _send('GET', '/api/conversations/$conv/timeline', query: {'limit': '$limit', if (before > 0) 'before': '$before'}) as Map);
+      await _send('GET', '/api/conversations/$conv/timeline',
+          query: {'limit': '$limit', if (before > 0) 'before': '$before', 'own': 'true', 'calls': 'true'}) as Map);   // v0.897 every chat its own
   Future<Map<String, dynamic>> timelineHead(String conv, {int n = 40}) async => Map<String, dynamic>.from(
-      await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n'}) as Map);
+      await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n', 'own': 'true'}) as Map);
   Future<Map<String, dynamic>> chats() async => Map<String, dynamic>.from(await _send('GET', '/api/conversations') as Map);
   Future<void> openChat(String conv) async => _send('POST', '/api/conversations/$conv/open');
   /// v0.648 KAAM KA HISAAB: running / waiting for her / finished in the last 7 days (each row names its chat or call).
@@ -419,7 +420,10 @@ class Api {
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));
   Future<void> disconnect(String provider) async => _send('DELETE', '/api/connections/$provider');
   Uri googleSignInUrl() => _u('/auth/google/start');
-  Future<String> newConversation() async => (await _send('POST', '/api/conversations'))['id'] as String;
+  /// v0.897 [reuse] = her newest untouched empty chat instead of one more (the console's New chat does the same);
+  /// [incognito] = a chat that stays out of her memory.
+  Future<String> newConversation({bool reuse = false, bool incognito = false}) async => (await _send('POST', '/api/conversations',
+      query: {if (reuse) 'reuse': 'true', if (incognito) 'incognito': 'true'}))['id'] as String;
   Future<void> checkConversation(String id) async => _send('GET', '/api/conversations/$id/messages');
   /// Stop the task Hoola is running in this conversation (after the current step).
   Future<void> stopTurn(String id) async => _send('POST', '/api/conversations/$id/stop');
@@ -2131,7 +2135,9 @@ class Api {
   /// Server-sent events with automatic reconnect that resumes from the last event id.
   /// v0.178 `live: true` also streams the reply as it is written (reply_start / delta / reply_end, live-only,
   /// never stored) — the chat answers word by word like a person, not all at once after the model finishes.
-  Stream<SantoshEvent> events(String conv, {int after = 0, bool live = false}) async* {
+  /// v0.897 [own] = this chat and the calls made from it only (EK CHAT EK JAGAH); without it the old v0.158 stream
+  /// that also carried every card of her other chats.
+  Stream<SantoshEvent> events(String conv, {int after = 0, bool live = false, bool own = true}) async* {
     var last = after;
     var backoff = 1;
     while (true) {
@@ -2139,6 +2145,7 @@ class Api {
         final req = http.Request('GET', _u('/api/conversations/$conv/events', {
           'after': '$last',
           if (live) 'live': '1',
+          if (own) 'own': '1',
         }))
           ..headers.addAll({..._headers, 'Accept': 'text/event-stream'});
         final client = http.Client();

@@ -601,7 +601,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (widget.onVoice != null)
             IconButton(tooltip: app.g('Bolkar baat karein'), onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
           IconButton(tooltip: app.g('Purani chats'), onPressed: _showChats, icon: const Icon(Icons.history_rounded, color: C.chip)),
-          IconButton(tooltip: app.g('Naya chat'), onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
+          IconButton(tooltip: app.g('Naya chat'), onPressed: () => app.newChat(), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
         ]),
       );
 
@@ -726,7 +726,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         TextButton.icon(
                           onPressed: () {
                             Navigator.pop(ctx);
-                            app.connect(fresh: true);
+                            app.newChat();
                           },
                           icon: const Icon(Icons.add_comment_outlined, size: 18),
                           label: Text(app.g('Naya chat')),
@@ -734,7 +734,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         TextButton(   // v0.250 a chat Hoola never remembers
                           onPressed: () {
                             Navigator.pop(ctx);
-                            app.connect(fresh: true, incognito: true);
+                            app.newChat(incognito: true);
                           },
                           child: Text('🕶 ${app.g('Incognito')}'),
                         ),

@@ -154,7 +154,7 @@ class _HoolaChatState extends State<HoolaChat> {
     return ListenableBuilder(
       listenable: app,
       builder: (context, _) => Column(children: [
-        _TopBar(title: _title, incognito: app.incognito, onMenu: widget.onMenu, onNew: () => app.connect(fresh: true)),
+        _TopBar(title: _title, incognito: app.incognito, onMenu: widget.onMenu, onNew: () => app.newChat()),
         if (!app.connected && app.configured) const _Reconnecting(),
         Expanded(
           child: Stack(children: [
