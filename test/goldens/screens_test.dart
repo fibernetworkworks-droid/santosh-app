@@ -18,7 +18,7 @@ import 'package:santosh/state.dart';
 import 'package:santosh/ui/desk/desk_kit.dart';
 import 'package:santosh/ui/hoola_theme.dart';
 import 'package:santosh/ui/shell/hoola_settings.dart';
-import 'package:santosh/ui/shell/hoola_shell.dart' show HoolaNav;
+import 'package:santosh/ui/shell/hoola_shell.dart' show HoolaComposer, HoolaNav;
 import 'package:santosh/ui/shell/hoola_employees.dart';
 import 'package:santosh/ui/shell/hoola_connect.dart';
 import 'package:santosh/ui/shell/hoola_tabs.dart';
@@ -312,11 +312,16 @@ void _tabsData(Santosh app) {
 
 Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) screen,
     {void Function(Santosh app)? prep, Finder? tab, Map<String, Object> prefs = const {}, Duration settle = const Duration(milliseconds: 900),
-    bool a11y = false, double text = 1.0}) async {
+    bool a11y = false, double text = 1.0, double inset = 0, void Function(WidgetTester t)? check}) async {
   final app = await _app(prefs: prefs);
   prep?.call(app);
   t.view.physicalSize = _logical * _ratio;
   t.view.devicePixelRatio = _ratio;
+  // v0.905 the phone's own gesture / button area at the bottom of the screen
+  if (inset > 0) {
+    t.view.padding = FakeViewPadding(bottom: inset * _ratio);
+    t.view.viewPadding = FakeViewPadding(bottom: inset * _ratio);
+  }
   addTearDown(t.view.reset);
 
   await t.pumpWidget(MaterialApp(
@@ -340,6 +345,7 @@ Future<void> _shot(WidgetTester t, String name, Widget Function(Santosh app) scr
     await t.pump(settle);
   }
   await t.pump(const Duration(milliseconds: 100));
+  check?.call(t);
   await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/$name.png'));
   if (a11y) {
     // R9 TalkBack + touch: every tap target is big enough (48 dp) and has a name a screen reader can say.
@@ -440,6 +446,21 @@ void main() {
                 for (var i = 0; i < 4; i++) Padding(padding: const EdgeInsets.only(bottom: 14), child: HoolaNav(tab: i, onTap: (_) {})),
               ]))),
           prefs: prefs, a11y: text == 1.0, text: text));
+    }
+    // v0.905 her ask: "THE GAP BETWEEN BOTTOM NAV AND A CHAT IS LARGE" - the composer's pill sits 12 dp above the tab
+    // bar on the home and in a chat, with no gesture area and with a 24 dp one (the bar sits above it, the gap stays).
+    void gap(WidgetTester t) {
+      final composer = t.getRect(find.byType(HoolaComposer).last);
+      final nav = t.getRect(find.byType(HoolaNav).last);
+      expect(nav.top - composer.bottom, moreOrLessEquals(12, epsilon: .6), reason: 'composer to tab bar');
+      expect(nav.left, moreOrLessEquals(0, epsilon: .5));
+    }
+    for (final inset in [0.0, 24.0]) {
+      final n = inset.round();
+      testWidgets('61 composer gap home $n ($mode)', (t) => _shot(t, '61_gap_home_${n}_$mode', home, prefs: prefs,
+          inset: inset, check: gap));
+      testWidgets('61 composer gap chat $n ($mode)', (t) => _shot(t, '61_gap_chat_${n}_$mode', home, prefs: prefs,
+          prep: _richChat, inset: inset, check: gap));
     }
     testWidgets('38 new talk ($mode)', (t) => _shot(t, '38_new_talk_$mode', home, prefs: prefs,
         prep: (a) => a.realtimeVoice = true, tab: find.bySemanticsLabel('Start a call')));

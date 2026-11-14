@@ -35,6 +35,10 @@ import '../voice_screen.dart';
 /// v0.895 the composer's Add sheet asks the shell for a tab (v0.898: Your computers = 3).
 final hoolaTabRequest = ValueNotifier<int?>(null);
 
+/// v0.905 the space between the bottom of a page and the top of the tab bar. The composer keeps 8 dp under itself, so
+/// the composer's pill sits 12 dp above the tab bar - the same as the tab bar's side gutters.
+const double navGap = 4;
+
 /// The Hoola mark (the owner's logo) as drawn in the app.
 
 class HoolaShell extends StatefulWidget {
@@ -182,16 +186,14 @@ class _HoolaShellState extends State<HoolaShell> {
               bottom: false,
               child: ListenableBuilder(
                 listenable: Listenable.merge([app, app.voiceCall]),
+                // v0.905 the room under the page = the tab bar's REAL height (the Scaffold measures it and hands it
+                // down as bottom padding because extendBody is on: the bar, the call pill, the phone's own gesture
+                // area), plus a small gap - so the composer always sits [navGap] above the tab bar. It was a fixed
+                // 96 dp, ~24-30 dp more than the bar, which left a big empty band between the chat and the tabs.
+                // While the bar slides away its height folds frame by frame, so the chat follows it exactly.
                 builder: (context, child) {
-                  final hide = _navHidden;
-                  final pill = app.voiceCall.inCall ? HoolaSpace.touch + 8 : 0.0;
-                  final bottom = keyboard ? 0.0 : hide ? MediaQuery.viewPaddingOf(context).bottom + 6 + pill : 96.0;
-                  return AnimatedPadding(
-                    duration: HoolaMotion.of(context, HoolaMotion.page),
-                    curve: HoolaMotion.ease,
-                    padding: EdgeInsets.only(bottom: bottom),
-                    child: child,
-                  );
+                  final bottom = keyboard ? 0.0 : MediaQuery.paddingOf(context).bottom + navGap;
+                  return Padding(padding: EdgeInsets.only(bottom: bottom), child: child);
                 },
                 child: AnimatedSwitcher(
                   duration: HoolaMotion.of(context, HoolaMotion.fade),

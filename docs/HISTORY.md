@@ -4455,3 +4455,21 @@ weights.
   the darker one on the near-white pill).
 - `test/nav_pro_test.dart`: one black pill, no violet tile, the open icon white, closed icons ink2, the Hoola logo's
   colour open / closed; `server/tests/test_v0904_nav_black.py` (3). NOT VERIFIED on her phone.
+
+
+## v0.905.0 NAV GAP - the composer sits 12 dp above the tab bar (owner: "CHECK THE GAP BETWEEN BOTTOM NAV AND A CHAT IS LARGE MAKE IT PERFECTLY ALLINED")
+
+ROOT CAUSE: the new-design shell (`lib/ui/shell/hoola_shell.dart`) has `extendBody: true` and the page reserved a FIXED
+96 dp at its bottom for the tab bar. The bar (HoolaNav: 8 dp outer bottom pad + 7 dp inner pad x2 + 56 dp cell + the
+border) is ~80 dp, so ~16 dp of empty space sat above it, plus the composer's own 8 dp = a ~24-30 dp band between the
+composer pill and the tabs (her screenshot); with a phone gesture area the numbers moved again because 96 never counted it.
+
+FIX: the page's bottom room = `MediaQuery.paddingOf(context).bottom + navGap` (navGap = 4). With extendBody the Scaffold
+hands the bottom bar's MEASURED height down as the body's bottom padding (the bar, the call pill when a call is on, the
+SafeArea gesture inset), so the composer's pill always sits 8 + 4 = 12 dp above the bar - the bar's own side gutter.
+While Hoola works the bar slides away (`_SlideAway` folds its height) and the page follows it frame by frame (plain
+Padding, no second animation); the keyboard case stays 0. Every tab page gets the same room.
+
+TESTS: golden 61 (`test/goldens/screens_test.dart`, home + a chat, light + dark, gesture area 0 and 24 dp) measures
+nav.top - composer.bottom = 12 dp on the real shell; `_shot` gained `inset` + `check`; server
+`test_v0905_nav_gap.py` (3). NOT VERIFIED on her phone.
