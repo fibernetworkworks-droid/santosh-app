@@ -4562,3 +4562,38 @@ max. NOT BUILT: drag a chat onto a session (the console's drag and drop) - the m
 TESTS: `test/sessions_test.dart` (the console's calls against a recording local server + fold kept; the drawer: Sessions
 group above Recents, fold / open, + buttons, the menu's Add to session picker; the session page without a server says
 why) on the CI unit line; server `test_v0909_sessions.py` (4). NOT VERIFIED on her phone.
+
+
+## v0.910.0 AI EMPLOYEES PRO (owner: "NOW LETS WORK ON AI EMPLOYEE CURRENTLY IT IS LOOK AI MADE AND STALE MAKE IT PROFESSIONAL AND PERFECT. FIRST CHECK HOW CONSOLVE SHOW THE DATA PROPERLY BASED ON EMPLOYEE CATOGARY. MAKE IT VERY STUNING AND USER FRIENDLY.... FIRST SHOW ME THE PERFECT DESIGN HERE. PREMIUM , ADVANCE , SOFT AND STUNING" -> "GO BUILD")
+
+Read first: the console hub (`server/app/static/console/employees.js`): department cards with line art and a ready line ->
+a department page with filters and role cards -> a side panel per role (does / needs / never, trust ladder seekh / saathi /
+bharosa, Hire / Open desk / Pause / Resume / Let go). The phone tab (v0.898) was one flat list with chips. Design canvas
+claude.ai/artifact/VkbWNUPLT1s7UYycxjhnjJ (home light + dark, a department, one employee) -> "GO BUILD".
+
+Built in `lib/ui/shell/hoola_employees.dart` (the whole file rewritten; `employeeConsolePath` + `HoolaEmployees.debugList` kept):
+- `hoolaDepts`: the twelve catalog groups in the hub's order, each with the console's own line (Construction and Voice got
+  lines of their own; the console has none for them) and its own 24-unit drawing; `hoolaDeptOf` keeps an unknown group
+  visible with a plain drawing. `employeeMono` = the console's `ini()`.
+- `HoolaStaff` (ChangeNotifier): one list for the tab and the pages it opens (a hire on the employee page shows on the
+  department page and the home at once); `act` (hire / pause / resume / leave), `setTrust` (PUT /api/employees/{key}/settings).
+- Home: serif title + one line, the numbers card (roles / ready to hire / departments), Your team (two cards side by side,
+  more scroll; working dot that breathes, trust level, Open desk 48 dp), search across every role (results as role cards
+  with their department), department grid (2 columns, 3 on a tablet, 1 with big text): `DeptBadge` draws itself in then
+  floats, "4 of 6 ready", a ready bar that fills, a green count of her people there.
+- `HoolaDepartmentPage`: back, the drawing big, name in serif, the line, chips (roles / ready / on your team), All / Ready /
+  My team / Soon on a black pill (48 dp), role cards (initials black when it can be hired, grey when coming; status chip:
+  Ready to hire / On your team · working / paused / Coming soon).
+- `HoolaEmployeePage`: initials in serif on black with a soft ring going out, name, status, pitch in serif; "How much it does
+  on its own": Learning / Partner / Trusted with her words (Seekh / Saathi / Bharosa) - tap to read; once hired, Learning /
+  Partner can be set from here ("Use Partner"), Trusted is turned on from its desk; What it does (ticks), What it needs
+  (numbered), It will never (quiet minus, dashed-feel outline); bottom bar: Hire <name> (then its desk opens, as before) or
+  Open desk + Pause / Resume + Let go (asks first); Coming soon disabled.
+- Motion: cards rise in one after another, drawings draw in, bars fill; then floats / pulses on one seconds clock; reduce
+  motion = all still and no frames.
+
+Tests: `test/employees_pro_test.dart` (initials / counts / departments; the console's calls on a local server: GET, hire,
+pause, settings trust; home light + dark; department filters; one employee; hired employee trust + let go asks; reduce
+motion), `test/four_tabs_test.dart` updated to the new flow, goldens 63 (department) + 64 (one employee, hired) with the
+tap-target checks, golden data richer; `server/tests/test_v0910_employees_pro.py` (every catalog group has a card and its
+own drawing, the console's words, routes, trust levels, version). Server unchanged. NOT VERIFIED on her phone.

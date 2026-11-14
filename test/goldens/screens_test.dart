@@ -251,17 +251,33 @@ void _tabsData(Santosh app) {
   };
   // v0.898 the AI Employees tab
   HoolaEmployees.debugList = [
-    {'key': 'seo', 'name': 'SEO Specialist', 'group': 'Business', 'status': 'hired', 'live': true,
-     'pitch': 'Gets your website found on Google and AI search'},
-    {'key': 'social', 'name': 'Social Media Manager', 'group': 'Business', 'status': 'paused', 'live': true,
-     'pitch': 'Plans, posts and answers on Instagram and Facebook'},
-    {'key': 'accounts', 'name': 'GST & Accounts', 'group': 'Finance & Banking', 'live': true,
-     'pitch': 'Your GST returns, credit, bills and the CA pack'},
-    {'key': 'tutor', 'name': 'Guru Sahayak', 'group': 'Education, Research & Lab', 'live': true,
-     'pitch': 'A patient tutor for every student'},
-    {'key': 'const_qs', 'name': 'Quantity Surveyor', 'group': 'Construction', 'live': false,
-     'pitch': 'Measures, rate analysis and bills of quantities'},
+    {'key': 'seo', 'name': 'SEO Specialist', 'group': 'Business', 'live': true,
+     'pitch': 'Gets your business found on Google and in AI answers. Works 24/7 on your website and Google profile.',
+     'does': ['Full audit of your website every week (up to 500 pages) with a fix list',
+              'Watches your site every hour: down, blocked from Google, pages dropped',
+              'A 90-day plan you approve, worked as a weekly board'],
+     'needs': ['Your website address', 'Google sign-in for Search Console (and Analytics, if you use it)'],
+     'never': ['Buy links or fake reviews', 'Publish anything on your site or Google profile without your OK', 'Promise a ranking']},
+    {'key': 'social', 'name': 'Social Media Manager', 'group': 'Business', 'status': 'hired', 'trust': 'saathi', 'live': true,
+     'pitch': 'Runs your Instagram and Facebook Page like a good agency: plans the month, writes the posts, learns what works.'},
+    {'key': 'accounts', 'name': 'GST & Accounts', 'group': 'Business', 'status': 'hired', 'trust': 'seekh', 'live': true,
+     'pitch': 'Every bill in one register, GST prepared and checked before the deadlines.'},
+    {'key': 'telecaller', 'name': 'Telecaller', 'group': 'Business', 'live': false,
+     'pitch': 'Calls your leads and customers with a script, notes every answer.'},
+    {'key': 'paisa_sahayak', 'name': 'Paisa Sahayak (money safety)', 'group': 'Finance & Banking', 'live': true,
+     'pitch': 'Reads a loan\'s real cost, finds hidden bank charges and warns about scams.'},
+    {'key': 'tutor', 'name': 'Personal Tutor (Guru Sahayak)', 'group': 'Education, Research & Lab', 'live': true,
+     'pitch': 'Teaches one learner at a time: a hint first, then a step, the full answer last.'},
+    {'key': 'game_dev', 'name': 'Game Developer', 'group': 'Game Development, Simulation & VR', 'live': true,
+     'pitch': 'Makes original games from your words, tests them itself and gives you a link to play.'},
+    {'key': 'const_qs', 'name': 'QS Desk (Naap-Rate)', 'group': 'Construction & Real Estate', 'live': true,
+     'pitch': 'IS 1200 take-off with the formula trail, rate build-up, BOQ and cost control.'},
+    {'key': 'fea', 'name': 'Structural Analysis (FEA)', 'group': 'Research, CAD, Hardware & Industrial Tech', 'live': false,
+     'pitch': 'Will the part break? Stress, deflection and safety factor with plots.'},
+    {'key': 'cad', 'name': 'CAD Engineer', 'group': 'Research, CAD, Hardware & Industrial Tech', 'live': true,
+     'pitch': 'Turns your words and sizes into a real 3D part: STEP and STL files plus a dimensioned drawing.'},
   ];
+
   // v0.901 the Connect page: Composio apps only, by category
   Map<String, dynamic> ca(String k, String n, String line, String g, String gn, String st, [int tools = 40]) =>
       {'toolkit': k, 'name': n, 'line': line, 'group': g, 'group_name': gn, 'status': st, 'tools': tools};
@@ -502,6 +518,16 @@ void main() {
         }));
     testWidgets('41 new connectors page ($mode)', (t) => _shot(t, '41_new_connect_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaConnectorsPage(app: a)), prefs: prefs, prep: _tabsData, a11y: true));
+    // v0.910 AI EMPLOYEES PRO: a department and one employee
+    testWidgets('63 employees department ($mode)', (t) => _shot(t, '63_employees_dept_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaDepartmentPage(staff: HoolaStaff(a)..load(), group: 'Business')),
+        prefs: prefs, prep: _tabsData, a11y: true, settle: const Duration(seconds: 2)));
+    testWidgets('64 employees one employee ($mode)', (t) => _shot(t, '64_employees_one_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaEmployeePage(staff: HoolaStaff(a)..load(), employeeKey: 'seo')),
+        prefs: prefs, prep: _tabsData, a11y: true, settle: const Duration(seconds: 2)));
+    testWidgets('64 employees hired ($mode)', (t) => _shot(t, '64_employees_hired_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaEmployeePage(staff: HoolaStaff(a)..load(), employeeKey: 'social')),
+        prefs: prefs, prep: _tabsData, a11y: true, settle: const Duration(seconds: 2)));
     testWidgets('42 new made page ($mode)', (t) => _shot(t, '42_new_made_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaPageFrame(child: HoolaMade(app: a))), prefs: prefs, prep: _tabsData, a11y: true));
     testWidgets('45 new work page ($mode)', (t) => _shot(t, '45_new_work_$mode',

@@ -62,14 +62,22 @@ void main() {
        'does': ['Prepares GSTR-1'], 'never': ['Files without your OK']},
     ];
     addTearDown(() => HoolaEmployees.debugList = null);
+    t.view.physicalSize = const Size(390 * 3, 2400 * 3);
+    t.view.devicePixelRatio = 3;
+    addTearDown(t.view.reset);
     await t.pumpWidget(_host(app, HoolaEmployees(app: app)));
-    await t.pumpAndSettle();
+    await t.pump();
+    await t.pump(const Duration(seconds: 2));
     expect(find.text('AI Employees'), findsOneWidget);
-    expect(find.text('1 working for you · 1 ready to hire'), findsOneWidget);
-    expect(find.textContaining('Working for you'), findsOneWidget);
-    expect(find.text('Hire'), findsOneWidget);
+    expect(find.text('Your team'), findsOneWidget);
+    expect(find.text('Working'), findsOneWidget, reason: 'who works for her, first');
+    expect(find.text('Finance & Banking'), findsOneWidget, reason: 'a card per department');
+    await t.tap(find.text('Finance & Banking'));
+    await t.pump();
+    await t.pump(const Duration(seconds: 2));
     await t.tap(find.text('GST & Accounts'));
-    await t.pumpAndSettle();
+    await t.pump();
+    await t.pump(const Duration(seconds: 2));
     expect(find.text('Hire GST & Accounts'), findsOneWidget);
     expect(find.text('Files without your OK'), findsOneWidget);
   });
