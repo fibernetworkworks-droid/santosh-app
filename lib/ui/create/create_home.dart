@@ -185,44 +185,37 @@ class _ModePills extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _modes.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final on = i == picked;
-          return Semantics(
-            button: true,
-            selected: on,
-            label: _modes[i].name,
-            excludeSemantics: true,
-            onTap: () => onPick(i),
-            child: Material(
-              color: on ? c.pill : c.surface,
-              shape: StadiumBorder(side: BorderSide(color: on ? c.pill : c.line)),
-              child: InkWell(
-                customBorder: const StadiumBorder(),
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  onPick(i);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    CrIcon(_modes[i].glyph, size: 16, color: on ? c.onPill : c.ink2),
-                    const SizedBox(width: 7),
-                    Text(_modes[i].name,
-                        style: HoolaType.body(c).copyWith(fontSize: 14, fontWeight: FontWeight.w500, color: on ? c.onPill : c.ink2)),
-                  ]),
-                ),
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      for (var i = 0; i < _modes.length; i++)
+        Semantics(
+          button: true,
+          selected: i == picked,
+          label: _modes[i].name,
+          excludeSemantics: true,
+          onTap: () => onPick(i),
+          child: Material(
+            color: i == picked ? c.pill : c.surface,
+            shape: StadiumBorder(side: BorderSide(color: i == picked ? c.pill : c.line)),
+            child: InkWell(
+              customBorder: const StadiumBorder(),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onPick(i);
+              },
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  CrIcon(_modes[i].glyph, size: 16, color: i == picked ? c.onPill : c.ink2),
+                  const SizedBox(width: 7),
+                  Text(_modes[i].name,
+                      style: HoolaType.body(c).copyWith(fontSize: 14, fontWeight: FontWeight.w500, color: i == picked ? c.onPill : c.ink2)),
+                ]),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+    ]);
   }
 }
 
@@ -315,10 +308,12 @@ class _ToolGrid extends StatelessWidget {
                       CrDisc(t.glyph),
                       const Spacer(),
                       if (t.tag.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(10)),
-                          child: Text(t.tag, style: HoolaType.label(c)),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(10)),
+                            child: Text(t.tag, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.label(c)),
+                          ),
                         ),
                     ]),
                     const SizedBox(height: 12),
@@ -350,7 +345,7 @@ class _Recent extends StatelessWidget {
         TextButton(onPressed: onAll, child: const Text('See all')),
       ]),
       SizedBox(
-        height: 172,
+        height: 196,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: items.length,

@@ -209,7 +209,6 @@ void main() {
   testWidgets('the ask box opens the right tool with her words in it', (t) async {
     _phone(t);
     final sem = t.ensureSemantics();
-    addTearDown(sem.dispose);
     final app = await _app();
     await t.pumpWidget(_host(HoolaCreate(app: app)));
     await _settle(t);
@@ -221,6 +220,7 @@ void main() {
     expect(find.text('Describe the picture'), findsOneWidget);
     expect(find.text('A poster of chai'), findsOneWidget);
     expect(t.takeException(), isNull);
+    sem.dispose();
     await _done(t, app);
   });
 
@@ -261,7 +261,6 @@ void main() {
   testWidgets('Image: the count changes the price on the button; Video: Haan sits on the price card', (t) async {
     _phone(t);
     final sem = t.ensureSemantics();
-    addTearDown(sem.dispose);
     final app = await _app();
     final store = CreateStore(app);
     await store.load();
@@ -278,13 +277,13 @@ void main() {
     expect(find.text('Nothing is spent until you tap Haan on the price card.'), findsOneWidget);
     expect(find.text('You are never charged more than this price.'), findsOneWidget);
     expect(t.takeException(), isNull);
+    sem.dispose();
     await _done(t, app, store);
   });
 
   testWidgets('My creations: Select ticks, and Delete asks first', (t) async {
     _phone(t);
     final sem = t.ensureSemantics();
-    addTearDown(sem.dispose);
     final app = await _app();
     final store = CreateStore(app);
     await store.load();
@@ -306,6 +305,7 @@ void main() {
     await t.pump();
     expect(find.textContaining('1 chosen'), findsOneWidget);
     expect(t.takeException(), isNull);
+    sem.dispose();
     await _done(t, app, store);
   });
 

@@ -372,7 +372,7 @@ class CrPage extends StatelessWidget {
               child: Row(children: [
                 const SizedBox(width: HoolaSpace.s12),
                 SizedBox(
-                  width: 76,
+                  width: 88,
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: CrRoundButton(glyph: CrGlyph.back, label: 'Back', onTap: () => Navigator.of(context).maybePop()),
@@ -385,7 +385,7 @@ class CrPage extends StatelessWidget {
                         style: HoolaType.title(c).copyWith(fontSize: 15.5)),
                   ),
                 ),
-                SizedBox(width: 76, child: Align(alignment: Alignment.centerRight, child: trailing)),
+                SizedBox(width: 88, child: Align(alignment: Alignment.centerRight, child: trailing)),
                 const SizedBox(width: HoolaSpace.s12),
               ]),
             ),
@@ -634,7 +634,10 @@ class CrChip extends StatelessWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (glyph != null) ...[CrIcon(glyph!, size: 15, color: on ? c.onPill : c.ink2), const SizedBox(width: 6)],
               if (on && glyph == null) ...[CrIcon(CrGlyph.check, size: 13, color: c.onPill), const SizedBox(width: 6)],
-              Text(label, style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: FontWeight.w500, color: on ? c.onPill : c.ink2)),
+              Flexible(
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: FontWeight.w500, color: on ? c.onPill : c.ink2)),
+              ),
             ]),
           ),
         ),
@@ -1028,7 +1031,10 @@ class CrSmall extends StatelessWidget {
               else
                 CrIcon(glyph, size: 14, color: c.ink),
               const SizedBox(width: 6),
-              Text(busy ? 'Working…' : label, style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+              Flexible(
+                child: Text(busy ? 'Working…' : label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+              ),
             ]),
           ),
         ),

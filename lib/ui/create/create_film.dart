@@ -91,12 +91,15 @@ class _CrApprovalCardState extends State<CrApprovalCard> {
       edge: c.warn.withOpacity(.6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: c.warnSoft, borderRadius: BorderRadius.circular(12)),
-            child: Text('Waiting for your Haan', style: HoolaType.label(c).copyWith(color: c.warn)),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: c.warnSoft, borderRadius: BorderRadius.circular(12)),
+              child: Text('Waiting for your Haan', maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: HoolaType.label(c).copyWith(color: c.warn)),
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 10),
           Text(crRupees(inr), style: HoolaType.title(c).copyWith(fontSize: 18)),
         ]),
         const SizedBox(height: 10),
