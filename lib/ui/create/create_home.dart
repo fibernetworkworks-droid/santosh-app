@@ -283,6 +283,8 @@ class _Compose extends StatelessWidget {
             hintMaxLines: 3,
             hintStyle: HoolaType.bodyLarge(c).copyWith(color: c.ink3, fontSize: 16, height: 1.5),
             border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
             filled: false,
             isDense: true,
             contentPadding: EdgeInsets.zero,
@@ -292,10 +294,8 @@ class _Compose extends StatelessWidget {
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final f in mode.facts)
             Container(
-              height: 30,
-              padding: const EdgeInsets.symmetric(horizontal: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
               decoration: BoxDecoration(color: crWash(c), borderRadius: BorderRadius.circular(15)),
-              alignment: Alignment.center,
               child: Text(f, style: HoolaType.small(c).copyWith(color: c.ink2, fontSize: 12.5, fontWeight: FontWeight.w500)),
             ),
         ]),

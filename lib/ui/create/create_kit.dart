@@ -1035,6 +1035,8 @@ class CrTextCard extends StatelessWidget {
             hintText: hint,
             hintStyle: HoolaType.bodyLarge(c).copyWith(color: c.ink3, fontSize: 15.5),
             border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
             filled: false,
             isDense: true,
             contentPadding: EdgeInsets.zero,
