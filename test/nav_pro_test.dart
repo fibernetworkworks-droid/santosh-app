@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:santosh/ui/hoola_mark.dart';
 import 'package:santosh/ui/hoola_theme.dart';
 import 'package:santosh/ui/shell/hoola_nav_icons.dart';
 import 'package:santosh/ui/shell/hoola_shell.dart';
@@ -48,7 +49,7 @@ void main() {
         final cell = t.getRect(find.ancestor(of: find.text('AI Employees'), matching: find.byType(Expanded)).first);
         final label = t.getRect(find.text('AI Employees'));
         final pill = t.getRect(find.byWidgetPredicate((w) =>
-            w is Container && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).color == HoolaColors.light.accentSoft));
+            w is Container && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).color == HoolaColors.light.pill));
         expect(label.left, greaterThanOrEqualTo(cell.left - .5));
         expect(label.right, lessThanOrEqualTo(cell.right + .5));
         expect(pill.left, greaterThanOrEqualTo(cell.left));
@@ -89,5 +90,24 @@ void main() {
     final h = t.ensureSemantics();
     expect(t.getSemantics(find.bySemanticsLabel('Hoola')), containsSemantics(label: 'Hoola', isButton: true, isSelected: true, hasTapAction: true));
     h.dispose();
+  });
+
+  testWidgets('v0.904 black: a solid black pill + white icon, no violet tile, the Hoola tab keeps its violet logo', (t) async {
+    _phone(t, 390);
+    await t.pumpWidget(_bar(2));
+    await t.pumpAndSettle();
+    final c = HoolaColors.light;
+    bool tile(Widget w, Color k) => w is Container && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).color == k;
+    expect(find.byWidgetPredicate((w) => tile(w, c.pill)), findsOneWidget, reason: 'one black pill, on the open tab');
+    expect(find.byWidgetPredicate((w) => tile(w, c.accentSoft)), findsNothing, reason: 'no violet tile any more');
+    final icons = t.widgetList<NavIcon>(find.byType(NavIcon)).toList();
+    expect(icons.length, 3);
+    expect(icons.firstWhere((i) => i.glyph == NavGlyph.tools).color, c.onPill);
+    expect(icons.where((i) => i.glyph != NavGlyph.tools).every((i) => i.color == c.ink2), isTrue);
+    expect(t.widget<HoolaMark>(find.byType(HoolaMark)).color, isNull, reason: 'closed Hoola tab = its own violet');
+
+    await t.pumpWidget(_bar(0));
+    await t.pumpAndSettle();
+    expect(t.widget<HoolaMark>(find.byType(HoolaMark)).color, HoolaColors.darkSet.accent, reason: 'lighter violet on the black pill');
   });
 }

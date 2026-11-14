@@ -14,8 +14,8 @@ def test_icons_are_vectors_for_all_four_tabs():
 def test_bar_uses_them_and_the_pill_sits_behind_the_icon():
     shell = (ROOT / "lib/ui/shell/hoola_shell.dart").read_text()
     nav = shell[shell.index("class HoolaNav "):shell.index("/// While a call runs")]
-    assert "NavIcon(" in nav and "Icons." not in nav and "HoolaMark(" not in nav
-    assert "c.accentSoft" in nav and "FittedBox" in nav and "BoxFit.scaleDown" in nav
+    assert "NavIcon(" in nav and "Icons." not in nav
+    assert "FittedBox" in nav and "BoxFit.scaleDown" in nav
     assert "HapticFeedback.selectionClick" in nav and "onTap: widget.onTap" in nav
 
 
@@ -27,5 +27,5 @@ def test_ci_runs_the_nav_test_and_takes_the_picture():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.903.0")
-    assert "version: 0.903.0+902" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION.startswith("0.904.0")
+    assert "version: 0.904.0+903" in (ROOT / "pubspec.yaml").read_text()

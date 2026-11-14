@@ -265,8 +265,9 @@ class _OldLook extends StatelessWidget {
 }
 
 // ------------------------------------------------------------------------------------------------ the tab bar
-/// v0.903 NAV PRO: one soft floating bar, four equal cells. The selected tab shows a small violet pill behind its
-/// ICON only (the label sits below it, never inside), its icon fills in and turns violet, its label goes to ink.
+/// v0.903 NAV PRO: one soft floating bar, four equal cells. v0.904 NAV BLACK (owner: "DONT PUT PINK EVERY WHERE ...
+/// MAKE IT PERFECT BLACK" -> option A): the selected tab shows a solid black pill behind its ICON only (the label sits
+/// below it, never inside), its icon fills in white, its label goes to ink; the Hoola tab keeps its own violet logo.
 /// Icons are vectors drawn on one grid (hoola_nav_icons.dart). A label too long for its cell at a big text size
 /// shrinks to fit instead of running past the cell.
 class HoolaNav extends StatelessWidget {
@@ -367,10 +368,18 @@ class _NavItemState extends State<_NavItem> {
                       child: Container(
                         width: 36 + 24 * t,
                         height: 32,
-                        decoration: BoxDecoration(color: c.accentSoft, borderRadius: HoolaRadius.r(HoolaRadius.pill)),
+                        decoration: BoxDecoration(color: c.pill, borderRadius: HoolaRadius.r(HoolaRadius.pill)),
                       ),
                     ),
-                    NavIcon(glyph: widget.glyph, on: t, cut: c.accentSoft, color: Color.lerp(c.ink2, c.accent, t)!),
+                    if (widget.glyph == NavGlyph.hoola)
+                      // v0.904: the Hoola tab keeps its own violet Hoola logo; on the black pill the lighter violet
+                      // (the one dark mode uses) so it still reads
+                      HoolaMark(
+                          size: 24,
+                          animate: false,
+                          color: widget.selected ? (c.dark ? HoolaColors.light.accent : HoolaColors.darkSet.accent) : null)
+                    else
+                      NavIcon(glyph: widget.glyph, on: t, cut: c.pill, color: Color.lerp(c.ink2, c.onPill, t)!),
                   ]),
                 ),
                 const SizedBox(height: 4),

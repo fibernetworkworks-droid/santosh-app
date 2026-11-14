@@ -4443,3 +4443,15 @@ weights.
   app-screens.yml; picture 60 tab bar (each tab selected, light / dark, 100 % and 200 %);
   `server/tests/test_v0903_nav_pro.py` (4).
 - NOT VERIFIED on her phone.
+
+
+## v0.904.0 NAV BLACK - the open tab in black, the Hoola logo kept (owner: "DONT PUT PINK EVERY WHERE .. LOOKS AI MADE. MAKE IT PERFECT BLACK CHOOSE" -> canvas claude.ai/artifact/EwpHty5Bd4MZKZRjwaC7o9, four options A-D -> "ALSO KEEP PRIVOIUS HOOLA LOGO AS IT IS" -> "GO WITH FIRST WITH UPDATED DESIGN")
+
+- `HoolaNav` / `_NavItem` (hoola_shell.dart): the open tab's pill is `c.pill` (#1B1A17 light, #F3F1EC dark = the
+  composer's call button), the icon fills in `c.onPill`, the prompt on the filled screen is cut in `c.pill`, the
+  label goes ink 600; closed tabs ink2 outline. No `accentSoft` / `accent` in the bar.
+- The Hoola tab draws `HoolaMark(size: 24, animate: false)` again (the v0.888 violet logo), not the drawn glyph;
+  when its tab is open it sits on the black pill in the lighter violet (`HoolaColors.darkSet.accent`; in dark mode
+  the darker one on the near-white pill).
+- `test/nav_pro_test.dart`: one black pill, no violet tile, the open icon white, closed icons ink2, the Hoola logo's
+  colour open / closed; `server/tests/test_v0904_nav_black.py` (3). NOT VERIFIED on her phone.
