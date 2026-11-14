@@ -70,6 +70,10 @@ void main() {
     }
     final icons = [for (final e in find.byType(NavIcon).evaluate()) t.getRect(find.byWidget(e.widget)).center.dy];
     expect(icons.toSet().length, 1, reason: 'icons share one baseline');
+    final labels = [for (final w in ['Hoola', 'AI Employees', 'Tools', 'Computer']) t.getRect(find.text(w)).center.dy];
+    for (final y in labels) {
+      expect((y - labels.first).abs(), lessThan(.5), reason: 'labels share one line');
+    }
     for (final r in [for (final e in find.byType(NavIcon).evaluate()) t.getRect(find.byWidget(e.widget))]) {
       expect(r.width, 24);
     }

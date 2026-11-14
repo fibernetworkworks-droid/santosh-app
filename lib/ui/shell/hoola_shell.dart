@@ -376,6 +376,8 @@ class _NavItemState extends State<_NavItem> {
                 const SizedBox(height: 4),
                 SizedBox(
                   width: double.infinity,
+                  // one line box for every label, so a label that shrinks to fit still sits on the same line as the rest
+                  height: MediaQuery.textScalerOf(context).scale(12) * 1.3 + 1,
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(widget.label,
