@@ -4792,3 +4792,63 @@ NOT BUILT: UPI top-up + GST invoice (phase 2), employees as API (phase 3), voice
 - Network secrets stored on the environment (keys stay per repo).
 - On the phone: branch, model and effort chips, the diff with line comments, and attachments.
 - Teleport to a local terminal.
+
+## v0.914.0 HOOLA CODE LIKE CLAUDE CODE - the console and phone rebuilt to the approved design (owner: "CHECK THE CLAUDE CODE INTERFACE, FEATURE, UI/UX ETC -- WE WANT EXACT SAME FOR HOOLA CODE CONSOLE SIDE --- SHOW ME THE DESIGN FIRST HERE" -> "ADD PHONE VIEW AND SCHEDULED TASKS SCREEN ALSO... ADD ALL 100% claude code feature in hoola code" -> "NOW CHECK THE MINUTE DESIGN FIX" -> "GO BUILD")
+
+The design came first this time: a design canvas (claude.ai/artifact/RqivHmdqNni1XAZknHhbRT) with 17 console screens and 8 phone
+screens, polished in a second pass (one icon set, a 9-step type scale, one accent, drawn controls), then approved. Its source files and
+pictures are kept in `docs/design/hoola_code/` (the `.dc.html` files are the exact numbers; the `.png` files are what she approved).
+
+**Console (/console/code, `static/console/code.js` + NEW `static/console/hoolacode.css`).**
+- Styles left `v2.css`: the v0.807 block moved unchanged into `hoolacode.css`, then a v0.914 layer on top. That layer sets the page's
+  own tokens (warm neutral light + dark: bg #FAF9F6 / #1C1B1A, one violet accent #5B45E0 / #9C88FF for picked, working and on; the
+  ink pill is the main button) and redraws every component. The v0.878 environment styles live there too; the conflict that had
+  dropped them is repaired.
+- Sidebar: mark + "Hoola Code" (Literata), search and collapse; New session / Search (= Sessions page) / Scheduled (count) / Reviews /
+  Environments / More (All sessions, Settings, Back to Hoola). Recents are one line per session with marks: pull request open (green),
+  working (violet dot), needs you (amber), cloud. The state rides the row's tooltip; ⋯ appears on hover. You + settings sit at the
+  bottom. Grouping by repo or status is still in the sort menu (default is now one Recents list).
+- Home: "New session" bar, the Hoola mark, "Ready when you are", the environment card (current one ✓ + Choose environment), the lede,
+  and the box docked at the bottom with its settings row (environment, repo, branch, mode, model, effort, usage ring). The starter
+  buttons are gone (not in the design). The repo / branch / mode / model / effort pickers are still the browser's own lists, styled
+  as quiet chips; the environment picker is the menu.
+- Session: the title bar has the title and ⌄, a status pill or "PR #n · checks passing" (opens GitHub), Changes +a −b, details,
+  working copy, ⋯ (same menu as the title, now with Open in: Copy checkout command / GitHub), and Share.
+- The plan is ONE card in the conversation: "Plan · waits for you", size, the goal, steps, files, done-when, risks, and Approve plan /
+  Not now (ids `#hcdYes` / `#hcdCancel` kept). "Hoola asks" is a card with the question in serif, her choices, and Type my own answer.
+  "Open the pull request?" is a "Needs your OK" card. The model + mode line sits under the box.
+- Rail: flat sections. A NEW Environment section (name, Ready while it works, gear = change environment, repo, branch), Changes, the
+  checks, reviewers' comments, working copy, passes, Progress with a bar + "Step n of m · min", and Session.
+- The Changes pane takes the rail's place (rail hidden, PR pill hidden). Files are tabs; diff rows are full-width green / red; the
+  comment box is unchanged in behaviour.
+- Share: one dialog, "Share this session", Private / Anyone with the link (7 days). Once shared: the link row with Copy link, Stop
+  sharing, Done. Picking Private + Done stops it too. The design's "Team" is left out: there is no team visibility on the server.
+- Sessions page ("Search"): search + repo filter, tabs All / Working·n / Needs you·n / Archived, cards grouped Working / Needs you /
+  Earlier, each with its dot, "repo · environment · state · PR", +/−, how long ago, and ⋯.
+- Scheduled tasks: a table (task + text, trigger badge Schedule / GitHub / API + when, repository, next run, last run in colour, an
+  on/off switch), tabs All / Active / Paused, "+ New task" opening the form in a dialog (`#hcdSchedF`; adds an optional Name), and
+  a page per task at `#/scheduled/<id>`: switch, Trigger address…, Delete, Run now, four facts, the prompt, and History.
+  The design's model / environment fields for a task are left out: schedules do not store them yet.
+- Settings: a section list (GitHub and pull requests, Repositories, Environments, Rules and limits, Usage) beside the cards. Every
+  section stays on one page, so every earlier control and test still works. NEW: an Environments section (list, Edit, New
+  environment) and Usage this month. The Environments row in the sidebar jumps there.
+- The environment dialog has two columns (name + network on the left; variables, setup script and the keys note on the right).
+- NOT in the console, said plainly: the design's "Open in Terminal" / "Hoola Desktop" (no such client exists), a context-% meter
+  (the server does not report one), "Your PC" in the environment menu, and a star for the default environment.
+
+**Phone (`lib/ui/devsahayak_kit.dart`, `devsahayak_new.dart`, `devsahayak_session.dart`, `devsahayak_drawer.dart`;
+`devsahayak_screen.dart` keeps the chat cards and the old tabs as `DevCodeSettingsPage`).**
+- Built by a helper agent to the 8 phone screens: New session, environment sheet, repository sheet, create / edit environment,
+  session, Changes, sessions drawer, Scheduled tasks (+ form).
+- `CodeColors` was added to `hoola_theme.dart` because the design-rules ratchet forbids raw colours in screen files.
+- Departures, each because the server lacks the thing: no context % (the session's cost instead), no "Mark ready" route ("Open the
+  PR" / "Ask to merge" instead), no command-permission ask, no files on a follow-up, and the true limits (at most 3 repos, a schedule
+  at most once a day).
+- `test/hoola_code_phone_test.dart` has pure checks only.
+
+**Tests.** The console suites were moved to the new design (Recents list, Back to Hoola under More, sizes 36 / 30 / 26 buttons, 32
+chips, 40 fields, 32 composer buttons, rail 320, column 780, sidebar 260; the Scheduled flow list → dialog → task page; the share
+copy). 45 browser tests green.
+
+**NOT VERIFIED:** the phone Dart has not compiled anywhere yet (no Flutter in the sandbox; CI is the first compile). The console has
+not been seen on her VPS yet.

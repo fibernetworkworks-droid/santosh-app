@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code phone · Changes and PR</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1C1B1A}</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif; overflow: hidden;">
+  <header style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 4px; border-bottom: 1px solid #2E2C29;">
+    <a href="PhoneSession.dc.html" aria-label="Back" style="width: 48px; height: 48px; display: grid; place-items: center; color: #F3F1EC;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <span style="flex: 1; display: flex; flex-direction: column;"><span style="font-size: 16px; font-weight: 600;">Changes</span><span style="font: 13px 'JetBrains Mono', monospace; color: #9C9890;">hoola/fix-cart-total → main</span></span>
+    <span style="font: 13px 'JetBrains Mono', monospace; padding-right: 12px;"><span style="color: #4CC38A;">+42</span> <span style="color: #F07A6A;">−9</span></span>
+  </header>
+  <div style="flex: none; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #2E2C29;">
+    <div style="display: flex; align-items: center; gap: 10px;"><span style="padding: 3px 9px; border-radius: 999px; background: #233A2E; color: #4CC38A; font-size: 13px; font-weight: 600;">Draft PR #214</span><span style="font-size: 14px; color: #BBB8B0;">CI <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg> 3 of 3 passed</span></div>
+    <div style="display: flex; gap: 8px;">
+      <button style="flex: 1; min-height: 46px; border: 0; border-radius: 999px; background: #F3F1EC; color: #1B1A17; font: 600 15px 'Schibsted Grotesk', sans-serif;">Mark ready</button>
+      <button style="flex: 1; min-height: 46px; border: 1px solid #3A3835; border-radius: 999px; background: none; color: #F3F1EC; font: 500 15px 'Schibsted Grotesk', sans-serif;">View on GitHub</button>
+    </div>
+    <label style="display: flex; align-items: center; gap: 12px; min-height: 40px;"><span style="flex: 1; display: flex; flex-direction: column;"><span style="font-size: 15px;">Auto-fix</span><span style="font-size: 13px; color: #9C9890;">Fix failing CI and review comments by itself</span></span><span role="switch" aria-checked="true" aria-label="Auto-fix" style="width: 46px; height: 28px; flex: none; border-radius: 999px; background: #9C88FF; display: flex; justify-content: flex-end; align-items: center; padding: 3px; box-sizing: border-box;"><span style="width: 22px; height: 22px; border-radius: 50%; background: #F3F1EC;"></span></span></label>
+  </div>
+  <div style="flex: none; display: flex; gap: 8px; padding: 10px 16px; overflow: hidden;">
+    <span style="padding: 7px 12px; border-radius: 999px; background: #2F2D2A; font: 13px 'JetBrains Mono', monospace; white-space: nowrap;">cart/service.py</span>
+    <span style="padding: 7px 12px; border-radius: 999px; border: 1px solid #3A3835; font: 13px 'JetBrains Mono', monospace; color: #BBB8B0; white-space: nowrap;">tests/test_cart.py</span>
+  </div>
+  <div style="flex: 1; overflow: hidden; font: 13px/1.65 'JetBrains Mono', monospace;">
+    <sc-for list="{{ lines }}" as="l" hint-placeholder-count="12">
+      <div style="{{ l.style }}"><span style="width: 30px; flex: none; text-align: right; color: #6E6B65;">{{ l.n }}</span><span style="width: 14px; flex: none; text-align: center;">{{ l.sign }}</span><span style="white-space: pre; overflow: hidden; text-overflow: ellipsis;">{{ l.text }}</span></div>
+    </sc-for>
+    <div style="margin: 8px 12px; padding: 12px; border: 1px solid #3A3835; border-radius: 12px; background: #232220; font-family: 'Schibsted Grotesk', sans-serif; display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 13px; color: #9C9890;">Comment on line 41</span>
+      <span style="font-size: 15px;">Use Decimal here, not float.</span>
+      <span style="font-size: 13px; color: #B7A9FF;">Goes with your next message</span>
+    </div>
+  </div>
+  <div style="flex: none; padding: 10px 16px 18px; border-top: 1px solid #2E2C29; font-size: 13px; color: #9C9890; text-align: center;">Long-press a line to comment · merging is always your tap</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const base = 'display: flex; gap: 6px; padding: 0 12px; ';
+    const L = [
+      [36, ' ', 'def apply_coupon(cart, code):'],
+      [37, '-', '    rate = COUPONS[code]'],
+      [37, '+', '    if not code:'],
+      [38, '+', '        return cart.total'],
+      [39, '+', '    rate = COUPONS.get(code)'],
+      [40, '+', '    if rate is None:'],
+      [41, '+', '        raise CouponError(code)'],
+      [42, ' ', '    off = cart.total * rate'],
+      [43, '-', '    return cart.total - off'],
+      [43, '+', '    return round(cart.total - off, 2)'],
+      [44, ' ', ''],
+      [45, ' ', 'def total(cart):']
+    ];
+    const bg = (s) => s === '+' ? 'background: #1A3226; color: #CFEEDC;' : s === '-' ? 'background: #36211E; color: #F4D2CC;' : 'color: #BBB8B0;';
+    return { lines: L.map(([n, s, t]) => ({ n, sign: s === ' ' ? '' : s, text: t, style: base + bg(s) })) };
+  }
+}
+</script>
+</body>
+</html>

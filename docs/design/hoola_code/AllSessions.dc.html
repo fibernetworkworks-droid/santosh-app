@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code · All sessions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1C1B1A}
+a{color:#B7A9FF}a:hover{color:#D3C9FF}
+</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif;">
+<dc-import name="Sidebar" hint-size="260px,900px"></dc-import>
+<main style="flex: 999 1 560px; min-width: 0; padding: 32px 48px; display: flex; flex-direction: column; gap: 18px; max-width: 1100px; box-sizing: border-box;">
+  <h1 style="margin: 0; font-family: Literata, serif; font-weight: 500; font-size: 32px;">Sessions</h1>
+  <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+    <label for="q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search sessions</label>
+    <input id="q" value="cart" style="flex: 1 1 320px; height: 42px; padding: 0 14px; border: 1px solid #3A3835; border-radius: 12px; background: #232220; color: #F3F1EC; font: 15px 'Schibsted Grotesk', sans-serif;">
+    <button style="height: 42px; padding: 0 14px; border: 1px solid #3A3835; border-radius: 12px; background: none; color: #D9D6CE; font: 500 14px 'Schibsted Grotesk', sans-serif;">Repo: all<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></button>
+    <button style="height: 42px; padding: 0 14px; border: 1px solid #3A3835; border-radius: 12px; background: none; color: #D9D6CE; font: 500 14px 'Schibsted Grotesk', sans-serif;">Group: status<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></button>
+  </div>
+  <div role="tablist" style="display: flex; gap: 4px; border-bottom: 1px solid #2E2C29;">
+    <button role="tab" aria-selected="true" style="height: 38px; padding: 0 14px; border: 0; border-bottom: 2px solid #F3F1EC; background: none; color: #F3F1EC; font: 500 14px 'Schibsted Grotesk', sans-serif;">All</button>
+    <button role="tab" aria-selected="false" style="height: 38px; padding: 0 14px; border: 0; background: none; color: #9C9890; font: 500 14px 'Schibsted Grotesk', sans-serif;">Working · 1</button>
+    <button role="tab" aria-selected="false" style="height: 38px; padding: 0 14px; border: 0; background: none; color: #9C9890; font: 500 14px 'Schibsted Grotesk', sans-serif;">Needs you · 1</button>
+    <button role="tab" aria-selected="false" style="height: 38px; padding: 0 14px; border: 0; background: none; color: #9C9890; font: 500 14px 'Schibsted Grotesk', sans-serif;">Archived</button>
+  </div>
+  <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 13px; color: #9C9890; padding: 6px 4px;">{{ g.name }}</div>
+      <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2">
+        <div style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid #2E2C29; border-radius: 12px;">
+          <span style="{{ r.dot }}" aria-hidden="true"></span>
+          <a href="Session.dc.html" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; color: #F3F1EC; text-decoration: none;"><span style="font-size: 15px;">{{ r.name }}</span><span style="font-size: 13px; color: #9C9890;">{{ r.sub }}</span></a>
+          <span style="font: 13px 'JetBrains Mono', monospace;"><span style="color: #4CC38A;">{{ r.add }}</span> <span style="color: #F07A6A;">{{ r.del }}</span></span>
+          <span style="font-size: 13px; color: #9C9890; width: 90px; text-align: right;">{{ r.when }}</span>
+          <a href="SessionMenu.dc.html" aria-label="Session menu" style="width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: #D9D6CE; text-decoration: none;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><circle cx="5.5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="18.5" cy="12" r="1.6"></circle></svg></a>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dot = (c) => 'width: 9px; height: 9px; border-radius: 50%; flex: none; background: ' + c + ';';
+    const split = (g) => g.map((x) => ({ ...x, rows: x.rows.map((r) => { const p = (r.diff || '').split(' '); return { ...r, add: p[0] || '', del: p[1] || '' }; }) }));
+    return { groups: split([
+      { name: 'Working', rows: [{ name: 'Add cart discount codes', sub: 'shop-api · Default · Sonnet 5.5', diff: '+64 −12', when: 'now', dot: dot('#9C88FF') }] },
+      { name: 'Needs you', rows: [{ name: 'Cart page slow on phones', sub: 'shop-web · asks: "Keep the old API?"', diff: '', when: '20 min', dot: dot('#E8B062') }] },
+      { name: 'Earlier', rows: [
+        { name: 'Fix cart total crash', sub: 'shop-api · PR #14 merged', diff: '+18 −3', when: '2 days', dot: dot('#4CC38A') },
+        { name: 'Write tests for cart API', sub: 'shop-api · PR #9 closed', diff: '+120', when: '1 week', dot: dot('#9C9890') }
+      ] }
+    ]) };
+  }
+}
+</script>
+</body>
+</html>

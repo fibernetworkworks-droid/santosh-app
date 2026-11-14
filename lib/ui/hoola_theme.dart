@@ -608,3 +608,136 @@ class HoolaTheme extends StatelessWidget {
     );
   }
 }
+
+// ------------------------------------------------------------------------------------------------ Hoola Code colours
+/// v0.879 HOOLA CODE PHONE (owner-approved design docs/design/hoola_code/Phone*.png): the coding screens' own warm
+/// charcoal set, measured from the design (bg #1C1B1A, sheet #232220, cream main button, the one violet accent) and a
+/// light twin for Light mode. Only lib/ui/devsahayak_*.dart use it; every other screen keeps HoolaColors.
+@immutable
+class CodeColors {
+  const CodeColors({
+    required this.dark,
+    required this.bg,
+    required this.sheet,
+    required this.surface,
+    required this.raised,
+    required this.chip,
+    required this.card,
+    required this.drawer,
+    required this.field,
+    required this.handle,
+    required this.line,
+    required this.line2,
+    required this.line3,
+    required this.ink,
+    required this.ink2,
+    required this.ink3,
+    required this.ink4,
+    required this.ink5,
+    required this.radioOff,
+    required this.accent,
+    required this.onAccent,
+    required this.accentInk,
+    required this.accentTint,
+    required this.green,
+    required this.greenSoft,
+    required this.red,
+    required this.amber,
+    required this.cream,
+    required this.onCream,
+    required this.knob,
+    required this.addBg,
+    required this.addInk,
+    required this.delBg,
+    required this.delInk,
+    required this.scrim,
+  });
+  final bool dark;
+  final Color bg, sheet, surface, raised, chip, card, drawer, field, handle;
+  final Color line, line2, line3;
+  final Color ink, ink2, ink3, ink4, ink5, radioOff;
+  final Color accent, onAccent, accentInk, accentTint;
+  final Color green, greenSoft, red, amber;
+  final Color cream, onCream, knob;
+  final Color addBg, addInk, delBg, delInk;
+  final Color scrim;
+
+  static const darkSet = CodeColors(
+    dark: true,
+    bg: Color(0xFF1C1B1A),
+    sheet: Color(0xFF232220),
+    surface: Color(0xFF262523),
+    raised: Color(0xFF2F2D2A),
+    chip: Color(0xFF2A2826),
+    card: Color(0xFF201F1D),
+    drawer: Color(0xFF171615),
+    field: Color(0xFF1F1E1C),
+    handle: Color(0xFF4A4945),
+    line: Color(0xFF2E2C29),
+    line2: Color(0xFF34322F),
+    line3: Color(0xFF3A3835),
+    ink: Color(0xFFF3F1EC),
+    ink2: Color(0xFFD9D6CE),
+    ink3: Color(0xFFBBB8B0),
+    ink4: Color(0xFF9C9890),
+    ink5: Color(0xFF6E6B65),
+    radioOff: Color(0xFF5A5853),
+    accent: Color(0xFF9C88FF),
+    onAccent: Color(0xFF14102B),
+    accentInk: Color(0xFFB7A9FF),
+    accentTint: Color(0xFF2B2947),
+    green: Color(0xFF4CC38A),
+    greenSoft: Color(0xFF233A2E),
+    red: Color(0xFFF07A6A),
+    amber: Color(0xFFE8B062),
+    cream: Color(0xFFF3F1EC),
+    onCream: Color(0xFF1B1A17),
+    knob: Color(0xFFF3F1EC),
+    addBg: Color(0xFF1A3226),
+    addInk: Color(0xFFCFEEDC),
+    delBg: Color(0xFF36211E),
+    delInk: Color(0xFFF4D2CC),
+    scrim: Color(0x80000000),
+  );
+
+  static const lightSet = CodeColors(
+    dark: false,
+    bg: Color(0xFFFAF9F6),
+    sheet: Color(0xFFFFFFFF),
+    surface: Color(0xFFF1F0EC),
+    raised: Color(0xFFE8E6E1),
+    chip: Color(0xFFEDEBE6),
+    card: Color(0xFFFFFFFF),
+    drawer: Color(0xFFF3F2EE),
+    field: Color(0xFFFFFFFF),
+    handle: Color(0xFFC9C6BF),
+    line: Color(0xFFE5E3DD),
+    line2: Color(0xFFE0DED8),
+    line3: Color(0xFFD3D1CA),
+    ink: Color(0xFF1B1A17),
+    ink2: Color(0xFF3A3934),
+    ink3: Color(0xFF57554F),
+    ink4: Color(0xFF6F6C65),
+    ink5: Color(0xFF8A8780),
+    radioOff: Color(0xFFA9A69F),
+    accent: Color(0xFF5B45E0),
+    onAccent: Color(0xFFFFFFFF),
+    accentInk: Color(0xFF5B45E0),
+    accentTint: Color(0xFFEEEBFD),
+    green: Color(0xFF1F7A52),
+    greenSoft: Color(0xFFE3F2EA),
+    red: Color(0xFFB8361F),
+    amber: Color(0xFFB7791F),
+    cream: Color(0xFF1B1A17),
+    onCream: Color(0xFFFFFFFF),
+    knob: Color(0xFFFFFFFF),
+    addBg: Color(0xFFE6F4EC),
+    addInk: Color(0xFF14532D),
+    delBg: Color(0xFFFBE7E3),
+    delInk: Color(0xFF7A1F12),
+    scrim: Color(0x66141310),
+  );
+
+  /// The set for the nearest HoolaTheme (Light / Dark / System, like every redesigned screen).
+  static CodeColors of(BuildContext context) => HoolaColors.of(context).dark ? darkSet : lightSet;
+}

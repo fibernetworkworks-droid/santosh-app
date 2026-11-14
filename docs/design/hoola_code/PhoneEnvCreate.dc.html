@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code phone · Create environment</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1C1B1A}</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif; overflow: hidden;">
+  <header style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid #2E2C29;">
+    <a href="PhoneEnv.dc.html" aria-label="Back" style="width: 48px; height: 48px; display: grid; place-items: center; color: #F3F1EC; text-decoration: none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <span style="flex: 1; text-align: center; font-size: 17px; font-weight: 600;">Create a new environment</span>
+    <span style="width: 48px;"></span>
+  </header>
+  <div style="flex: 1; overflow: hidden; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 18px; -webkit-mask-image: linear-gradient(#000 82%, transparent); mask-image: linear-gradient(#000 82%, transparent);">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <label for="en" style="font-size: 14px; color: #BBB8B0;">Name</label>
+      <input id="en" value="Node CI" style="height: 50px; padding: 0 14px; border: 1px solid #3A3835; border-radius: 12px; background: #262523; color: #F3F1EC; font: 16px 'Schibsted Grotesk', sans-serif;">
+    </div>
+    <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px;">
+      <legend style="font-size: 14px; color: #BBB8B0; padding: 0 0 8px;">Network access</legend>
+      <div style="border: 1px solid #3A3835; border-radius: 14px; overflow: hidden;">
+        <sc-for list="{{ nets }}" as="n" hint-placeholder-count="3">
+          <label style="{{ n.style }}"><span role="radio" aria-checked="{{ n.on }}" style="{{ n.dot }}"><span style="{{ n.inner }}"></span></span><span style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 16px; font-weight: 600;">{{ n.name }}</span><span style="font-size: 14px; color: #BBB8B0; line-height: 1.4;">{{ n.sub }}</span></span></label>
+        </sc-for>
+      </div>
+    </fieldset>
+    <label style="display: flex; align-items: center; gap: 12px; min-height: 48px;"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px;">Allow package managers</span><span style="font-size: 13px; color: #9C9890;">npm, PyPI, crates.io and other registries</span></span><span role="switch" aria-checked="true" aria-label="Allow package managers" style="width: 46px; height: 28px; flex: none; border-radius: 999px; background: #9C88FF; display: flex; justify-content: flex-end; align-items: center; padding: 3px; box-sizing: border-box;"><span style="width: 22px; height: 22px; border-radius: 50%; background: #F3F1EC;"></span></span></label>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <label for="ad" style="font-size: 14px; color: #BBB8B0;">Allowed domains · one per line</label>
+      <textarea id="ad" rows="2" style="padding: 12px 14px; border: 1px solid #3A3835; border-radius: 12px; background: #262523; color: #F3F1EC; font: 14px 'JetBrains Mono', monospace; resize: none;">api.razorpay.com
+registry.example.in</textarea>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <label for="ev" style="font-size: 14px; color: #BBB8B0;">Environment variables · .env format</label>
+      <textarea id="ev" rows="2" style="padding: 12px 14px; border: 1px solid #3A3835; border-radius: 12px; background: #262523; color: #F3F1EC; font: 14px 'JetBrains Mono', monospace; resize: none;">NODE_ENV=test
+CI=1</textarea>
+      <span style="font-size: 13px; color: #9C9890;">Not for secrets. Add keys in Settings → Network secrets.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <label for="ss" style="font-size: 14px; color: #BBB8B0;">Setup script · runs once, then cached</label>
+      <textarea id="ss" rows="2" style="padding: 12px 14px; border: 1px solid #3A3835; border-radius: 12px; background: #262523; color: #F3F1EC; font: 14px 'JetBrains Mono', monospace; resize: none;">npm ci
+npx playwright install chromium</textarea>
+    </div>
+  </div>
+  <div style="flex: none; padding: 12px 16px 20px; border-top: 1px solid #2E2C29; background: #1C1B1A;">
+    <a href="PhoneEnv.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 52px; border-radius: 999px; background: #F3F1EC; color: #1B1A17; text-decoration: none; font-size: 17px; font-weight: 600;">Create environment</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const base = 'display: flex; gap: 12px; padding: 13px 14px; cursor: pointer;';
+    const n = [
+      { name: 'None', sub: 'No internet at all', on: false },
+      { name: 'Limited (Recommended)', sub: 'Package registries and the domains you list', on: true },
+      { name: 'Full', sub: 'Any public website', on: false }
+    ];
+    const dot = (on) => 'width: 20px; height: 20px; flex: none; margin-top: 2px; border-radius: 50%; box-sizing: border-box; display: grid; place-items: center; border: 2px solid ' + (on ? '#9C88FF' : '#5A5853') + ';';
+    const inner = (on) => 'width: 10px; height: 10px; border-radius: 50%; background: ' + (on ? '#9C88FF' : 'transparent') + ';';
+    return { nets: n.map((x, i) => ({ ...x, dot: dot(x.on), inner: inner(x.on), style: base + (i ? ' border-top: 1px solid #34322F;' : '') + (x.on ? ' background: #2B2947;' : '') })) };
+  }
+}
+</script>
+</body>
+</html>

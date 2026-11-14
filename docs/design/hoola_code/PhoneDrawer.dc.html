@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code phone · Sessions drawer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#1C1B1A}</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; display: flex; background: #0F0E0D; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif; overflow: hidden;">
+  <nav aria-label="Sessions" style="width: 322px; height: 100%; flex: none; background: #171615; display: flex; flex-direction: column; border-right: 1px solid #2E2C29;">
+    <div style="display: flex; align-items: center; gap: 10px; height: 60px; padding: 0 16px;">
+      <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#9C88FF"></circle><path d="M8 7v10M16 7v10M8 12h8" stroke="#14102B" stroke-width="2.4" stroke-linecap="round" fill="none"></path></svg>
+      <span style="flex: 1; font-size: 17px; font-weight: 600;">Hoola Code</span>
+    </div>
+    <div style="padding: 0 12px; display: flex; flex-direction: column; gap: 2px;">
+      <a href="PhoneHome.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: 12px; background: #262523; color: #F3F1EC; text-decoration: none; font-size: 16px; font-weight: 500;"><span aria-hidden="true" style="font-size: 20px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M12 5v14M5 12h14"></path></svg></span>New session</a>
+      <a href="PhoneScheduled.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: 12px; color: #E8E5DE; text-decoration: none; font-size: 16px;"><span aria-hidden="true" style="font-size: 18px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg></span>Scheduled tasks<span style="margin-left: auto; font-size: 13px; color: #9C9890;">3</span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: 12px; color: #E8E5DE; text-decoration: none; font-size: 16px;"><span aria-hidden="true" style="font-size: 18px;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-right: 0.4em;"><path d="M7 18h10a4 4 0 0 0 .6-7.9A6 6 0 0 0 6.6 9 4.5 4.5 0 0 0 7 18z"></path></svg></span>Environments</a>
+    </div>
+    <div style="margin: 12px 12px 6px; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-radius: 12px; background: #1F1E1C; border: 1px solid #2E2C29; color: #9C9890; font-size: 15px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Search sessions</div>
+    <div style="display: flex; gap: 6px; padding: 4px 16px 8px; font-size: 13px;"><span style="padding: 5px 11px; border-radius: 999px; background: #2F2D2A;">Active</span><span style="padding: 5px 11px; border-radius: 999px; color: #9C9890;">Archived</span><span style="padding: 5px 11px; border-radius: 999px; color: #9C9890;">All repos<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></span></div>
+    <div style="flex: 1; overflow: hidden; padding: 0 8px;">
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+        <div style="padding: 12px 10px 4px; font-size: 13px; color: #9C9890;">{{ g.label }}</div>
+        <sc-for list="{{ g.items }}" as="s" hint-placeholder-count="3">
+          <div style="{{ s.style }}"><span style="{{ s.dot }}"></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.title }}</span><span style="font-size: 13px; color: #9C9890; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.sub }}</span></span></div>
+        </sc-for>
+      </sc-for>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 16px; border-top: 1px solid #2E2C29;">
+      <span style="width: 36px; height: 36px; border-radius: 50%; background: #E8B062; color: #1B1A17; display: grid; place-items: center; font-weight: 600;">M</span>
+      <span style="flex: 1; display: flex; flex-direction: column;"><span style="font-size: 15px;">Meghana</span><span style="font-size: 13px; color: #9C9890;">Rs 680 of Rs 2,000 this month</span></span>
+      <span aria-label="Settings" style="font-size: 20px; color: #BBB8B0;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></span>
+    </div>
+  </nav>
+  <a href="PhoneSession.dc.html" aria-label="Close drawer" style="flex: 1; background: rgba(0,0,0,.5);"></a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = 'display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 10px; border-radius: 12px;';
+    const dot = (c) => 'width: 8px; height: 8px; flex: none; border-radius: 50%; background: ' + c + ';';
+    const mk = (t, sub, c, on) => ({ title: t, sub, dot: dot(c), style: row + (on ? ' background: #262523;' : '') });
+    return { groups: [
+      { label: 'Today', items: [
+        mk('Fix cart total crash', 'santosh-app · working', '#9C88FF', true),
+        mk('Nightly dependency check', 'santosh-app · scheduled · PR #213', '#4CC38A', false),
+        mk('Why is login slow?', 'shop-backend · needs you', '#E8B062', false)
+      ] },
+      { label: 'Yesterday', items: [
+        mk('Add GST invoice export', 'santosh-app · merged', '#6E6B65', false),
+        mk('Clinic site contact form', 'clinic-website · PR #18 open', '#4CC38A', false),
+        mk('Write tests for coupons', 'santosh-app · done', '#6E6B65', false)
+      ] }
+    ] };
+  }
+}
+</script>
+</body>
+</html>
