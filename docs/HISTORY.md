@@ -4106,3 +4106,15 @@ was checked by eye (thinner, wraps narrower).
 Tests: server/tests/test_v0892_claude_akshar.py (6), test/reply_look_test.dart +1, fonts_test + golden loader;
 test_v0249 / test_v0240 pins moved to the variable font link and the real stamp count (35).
 NOT VERIFIED: on her phone / her browser.
+
+## v0.893.0 HOOLA COMPUTER TOOLS (14 Nov 2026)
+
+Owner: "TESTED CHECK THE LOGS -- HOOLA PC IS NOT FUCTIONING PROPERLY". Her log after the v0.892 deploy: no `pc task`
+line at all; the turns ran on Qwen 27B with 42-56 tools, scraped translate.google.com in the server browser and tried
+Google Search (402, Gemini credit gone, Parallel answered). ROOT CAUSE: the tools a turn sees come from her words
+(`admit.plan_for` -> `_pc_wanted`: only "PC" words) and `pc_manager.wanted` (her own PC only, returns False for
+hoolapc), so a Hoola PC chat never had hoola_pc_do in view. FIX: `agent/santosh.py` admits the pc family for every
+computer chat (`computer.place_of`, why "computer chat"). Tests `test_v0893_computer_tools.py` (a real turn in a Hoola
+PC chat sees hoola_pc_do - fails without the fix; the same words in an ordinary chat do not). Also read from the log,
+not code faults: 13 Nov 16:43 her own PC's Hoola Desktop was paused; 16:56 a deploy restart cut a running Hoola PC task
+(PC_OFFLINE). NOT VERIFIED on her server.
