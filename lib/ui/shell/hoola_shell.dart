@@ -355,7 +355,7 @@ class _NavItemState extends State<_NavItem> {
               scale: _down ? .94 : 1,
               duration: HoolaMotion.of(context, HoolaMotion.menu),
               curve: HoolaMotion.ease,
-              child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+              child: Column(mainAxisSize: MainAxisSize.min, children: [   // top-aligned: a label that shrinks never moves its icon
                 // the soft pill grows out from behind the icon
                 SizedBox(
                   height: 32,
