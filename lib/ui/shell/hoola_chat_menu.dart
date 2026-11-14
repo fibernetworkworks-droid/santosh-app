@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../state.dart';
 import '../hoola_theme.dart';
+import 'hoola_sessions.dart';
 
 String chatTitle(Map<String, dynamic> ch) {
   final t = '${ch['title'] ?? ''}'.trim();
@@ -30,6 +31,13 @@ Future<void> hoolaChatMenu(BuildContext context, Santosh app, Map<String, dynami
             onTap: () => Navigator.pop(ctx, 'pin'),
           ),
         _MenuRow(icon: Icons.edit_outlined, label: 'Rename', onTap: () => Navigator.pop(ctx, 'rename')),
+        // v0.909 the console's "Add to session" / "Change session"
+        if (app.sessionsOn && !archived)
+          _MenuRow(
+            icon: Icons.folder_outlined,
+            label: '${ch['project_id'] ?? ''}'.isEmpty ? 'Add to session' : 'Change session',
+            onTap: () => Navigator.pop(ctx, 'session'),
+          ),
         if (!archived)
           _MenuRow(icon: Icons.compress_rounded, label: 'Compact chat', onTap: () => Navigator.pop(ctx, 'compact')),
         _MenuRow(
@@ -54,6 +62,9 @@ Future<void> hoolaChatMenu(BuildContext context, Santosh app, Map<String, dynami
       if (name == null || name == title || !context.mounted) return;
       err = await app.renameChat(id, name);
       if (err == null && context.mounted) _toast(context, 'Renamed.');
+    case 'session':
+      await hoolaPickSession(context, app, ch);
+      return;
     case 'compact':
       try {
         final r = await app.api!.compactNow(id);
@@ -146,7 +157,8 @@ class _MenuRow extends StatelessWidget {
 }
 
 /// The rename box: the old name selected, Save / Cancel; returns the new name (or null).
-Future<String?> hoolaRenameSheet(BuildContext context, Santosh app, String current) {
+Future<String?> hoolaRenameSheet(BuildContext context, Santosh app, String current,
+    {String title = 'Rename chat', String hint = 'Chat name', String action = 'Save', int max = 120}) {
   final c = HoolaColors.of(context);
   final box = TextEditingController(text: current)..selection = TextSelection(baseOffset: 0, extentOffset: current.length);
   return showModalBottomSheet<String>(
@@ -169,16 +181,16 @@ Future<String?> hoolaRenameSheet(BuildContext context, Santosh app, String curre
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text('Rename chat', style: HoolaType.heading(c)),
+                Text(title, style: HoolaType.heading(c)),
                 const SizedBox(height: 14),
                 TextField(
                   controller: box,
                   autofocus: true,
-                  maxLength: 120,
+                  maxLength: max,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => save(),
                   style: HoolaType.bodyLarge(c),
-                  decoration: const InputDecoration(hintText: 'Chat name', counterText: ''),
+                  decoration: InputDecoration(hintText: hint, counterText: ''),
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
@@ -188,7 +200,7 @@ Future<String?> hoolaRenameSheet(BuildContext context, Santosh app, String curre
                       foregroundColor: c.onPill,
                       shape: const StadiumBorder(),
                       minimumSize: const Size.fromHeight(HoolaSpace.touchMain)),
-                  child: const Text('Save'),
+                  child: Text(action),
                 ),
                 const SizedBox(height: 8),
                 TextButton(

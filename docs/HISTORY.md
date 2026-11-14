@@ -4537,3 +4537,28 @@ TESTS: `test/chat_menu_test.dart` (the four calls against a recording local serv
 refused + the archive list; the drawer: pinned group, a ⋯ per chat, hold opens the menu, Delete asks first and Cancel
 deletes nothing, Rename shows the old name) on the CI unit line; server `test_v0908_chat_menu.py` (4). NOT VERIFIED on
 her phone.
+
+
+## v0.909.0 SESSIONS - the console's sessions on the phone (owner: "ADD SESSIONS ALSO SAME AS CONSOLE")
+
+The console's sessions (= projects since v0.193: `static/console/projects.js` + the session sections in `chatlist.js`):
+a named folder of chats with an emoji, instructions every chat in it follows, its own memory notes and the "Use my main
+memory here" switch (v0.609), files, and its chats. The phone had none of it.
+
+BUILT (phone only; routes existed): drawer (`hoola_shell.dart` HoolaDrawer) - a Sessions part when the server has them
+(`sessionsOn`, a 404 hides it): "Sessions" + "+" (new session -> its page), each session a header row (chevron folds /
+unfolds - kept in prefs `sess_closed`, emoji + name opens the session page, chat count, a dot when a folded session has
+a working / new chat, "+" = a new chat inside it) with its chats under it, indented; those chats leave Pinned / Recents.
+Chat menu (`hoola_chat_menu.dart`): Add to session / Change session -> `hoolaPickSession` (her sessions with a tick on
+the current one, New session, Remove from session). `lib/ui/shell/hoola_sessions.dart`: HoolaSessionPage (emoji tile +
+name, tap to change each; New chat in this session; Instructions and Memory boxes saved 0.7 s after typing with a
+"Saved" mark; Use my main memory here; Files - add up to 10 at once, 25 MB each, remove asks first; Chats - tap opens;
+Delete session asks first: "Its chats stay; they just leave the session."), `hoolaNewSession`. State: sessions /
+sessionsOn / closedSessions, refreshSessions, toggleSession, createSession, moveChat, newChatIn, deleteSession. Api:
+sessions, session, sessionCreate / Patch / Delete, sessionFileAdd / Remove, sessionChats (/api/console/conversations
+?project=), newConversationIn (POST /api/conversations?project_id=). `hoolaRenameSheet` takes title / hint / action /
+max. NOT BUILT: drag a chat onto a session (the console's drag and drop) - the menu's picker does it on the phone.
+
+TESTS: `test/sessions_test.dart` (the console's calls against a recording local server + fold kept; the drawer: Sessions
+group above Recents, fold / open, + buttons, the menu's Add to session picker; the session page without a server says
+why) on the CI unit line; server `test_v0909_sessions.py` (4). NOT VERIFIED on her phone.

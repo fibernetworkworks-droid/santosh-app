@@ -1404,6 +1404,84 @@ class Santosh extends ChangeNotifier {
     return err;
   }
 
+  // ---- v0.909 sessions (owner: "ADD SESSIONS ALSO SAME AS CONSOLE"): the console's sessions (projects) on the phone.
+  List<Map<String, dynamic>> sessions = [];
+  /// False when the server has sessions switched off (CHAT_PROJECTS): the drawer then shows no Sessions part.
+  bool sessionsOn = false;
+  final Set<String> closedSessions = {};
+  bool _closedRead = false;
+
+  Future<void> refreshSessions() async {
+    final a = api;
+    if (a == null) return;
+    if (!_closedRead) {
+      _closedRead = true;
+      closedSessions.addAll(_prefs.getStringList('sess_closed') ?? const []);
+    }
+    try {
+      sessions = await a.sessions();
+      sessionsOn = true;
+    } on ApiException catch (e) {
+      if (e.status == 404) sessionsOn = false;
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  /// A session's chats folded away in the drawer (kept, like the console).
+  void toggleSession(String id) {
+    if (!closedSessions.remove(id)) closedSessions.add(id);
+    unawaited(_prefs.setStringList('sess_closed', closedSessions.toList()));
+    notifyListeners();
+  }
+
+  /// A new session; its id, or throws with the server's reason.
+  Future<String> createSession(String name) async {
+    final p = await api!.sessionCreate(name.trim());
+    await refreshSessions();
+    return '${p['id']}';
+  }
+
+  /// Move a chat into a session (or out of it with null) - the console's "Add to session" / "Change session".
+  Future<String?> moveChat(String id, String? sessionId) async {
+    final err = await _chatAct(id, (a) => a.chatPatch(id, {'project_id': sessionId}), () {
+      for (final c in chatList) {
+        if (c['id'] == id) c['project_id'] = sessionId ?? '';
+      }
+    });
+    if (err == null) unawaited(refreshSessions());
+    return err;
+  }
+
+  /// A new chat inside a session, opened at once (the console's "+" on a session).
+  Future<String?> newChatIn(String sessionId) async {
+    final a = api;
+    if (a == null) return 'Not connected';
+    try {
+      final id = await a.newConversationIn(sessionId);
+      await openChat(id);
+    } catch (e) {
+      return e is ApiException ? e.message : '$e';
+    }
+    unawaited(refreshChats());
+    unawaited(refreshSessions());
+    return null;
+  }
+
+  Future<String?> deleteSession(String id) async {
+    try {
+      await api!.sessionDelete(id);
+    } catch (e) {
+      return e is ApiException ? e.message : '$e';
+    }
+    sessions.removeWhere((p) => p['id'] == id);
+    for (final c in chatList) {
+      if (c['project_id'] == id) c['project_id'] = '';   // its chats stay; they just leave the session
+    }
+    notifyListeners();
+    unawaited(refreshChats());
+    return null;
+  }
+
   /// Her archived chats (the console's Archive list).
   Future<List<Map<String, dynamic>>> archivedChats() async {
     try {

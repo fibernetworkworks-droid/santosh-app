@@ -26,6 +26,7 @@ import 'hoola_settings.dart';
 import 'hoola_computer.dart';
 import 'hoola_employees.dart';
 import 'hoola_chat_menu.dart';
+import 'hoola_sessions.dart';
 import 'hoola_nav_icons.dart';
 import 'hoola_tabs.dart';
 import 'hoola_tools.dart';
@@ -174,6 +175,26 @@ class _HoolaShellState extends State<HoolaShell> {
               onMade: () {
                 Navigator.of(context).maybePop();
                 hoolaOpenNew(context, app, HoolaPageFrame(child: HoolaMade(app: app)));
+              },
+              // v0.909 sessions: a session's page, "+" = a new chat inside it
+              onSession: (id) {
+                Navigator.of(context).maybePop();
+                hoolaOpenNew(context, app, HoolaSessionPage(
+                  app: app,
+                  id: id,
+                  onOpenChat: (chat) async {
+                    _go(0);
+                    if (chat.isNotEmpty) await app.openChat(chat);
+                  },
+                ));
+              },
+              onNewChatIn: (id) async {
+                Navigator.of(context).maybePop();
+                _go(0);
+                final err = await app.newChatIn(id);
+                if (err != null && context.mounted) {
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(err), behavior: SnackBarBehavior.floating));
+                }
               },
               // v0.908 the console's Archive list
               onArchive: () {
@@ -960,6 +981,8 @@ class HoolaDrawer extends StatefulWidget {
     this.onWork,
     this.onMade,
     this.onArchive,
+    this.onSession,
+    this.onNewChatIn,
   });
   final Santosh app;
   final VoidCallback onNewChat;
@@ -969,6 +992,8 @@ class HoolaDrawer extends StatefulWidget {
   final VoidCallback onSettings;
   final VoidCallback? onWork, onMade;   // v0.898
   final VoidCallback? onArchive;        // v0.908 the console's Archive list
+  final ValueChanged<String>? onSession;     // v0.909 a session's page
+  final ValueChanged<String>? onNewChatIn;   // v0.909 "+" on a session = a new chat inside it
   @override
   State<HoolaDrawer> createState() => _HoolaDrawerState();
 }
@@ -979,7 +1004,10 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => widget.app.refreshChats());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.app.refreshChats();
+      widget.app.refreshSessions();   // v0.909
+    });
   }
 
   @override
@@ -996,9 +1024,13 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
         child: ListenableBuilder(
           listenable: app,
           builder: (context, _) {
+            // v0.909 like the console: Sessions first (each a group of its chats), then pinned chats, then Recents
+            final sessOn = app.sessionsOn;
+            final secIds = {for (final p in app.sessions) '${p['id']}'};
+            bool inSec(Map<String, dynamic> ch) => sessOn && secIds.contains('${ch['project_id'] ?? ''}');
             // v0.908 like the console: pinned chats in their own group on top, then Recents
-            final pinned = [for (final ch in app.chatList) if (ch['pinned'] == true) ch];
-            final chats = [for (final ch in app.chatList) if (ch['pinned'] != true) ch];
+            final pinned = [for (final ch in app.chatList) if (ch['pinned'] == true && !inSec(ch)) ch];
+            final chats = [for (final ch in app.chatList) if (ch['pinned'] != true && !inSec(ch)) ch];
             final shown = _all ? chats : chats.take(9).toList();
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Padding(
@@ -1007,6 +1039,17 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
               ),
               Expanded(
                 child: ListView(padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+                  if (sessOn) ...[
+                    _sessionsLabel(c),
+                    for (final p in app.sessions) ...[
+                      _sessionHead(p, [for (final ch in app.chatList) if ('${ch['project_id'] ?? ''}' == '${p['id']}') ch], c),
+                      if (!app.closedSessions.contains('${p['id']}'))
+                        for (final ch in app.chatList)
+                          if ('${ch['project_id'] ?? ''}' == '${p['id']}')
+                            Padding(padding: const EdgeInsets.only(left: 18), child: _chatRow(ch, c)),
+                    ],
+                    const SizedBox(height: 6),
+                  ],
                   if (pinned.isNotEmpty) ...[
                     _section('Pinned', c),
                     for (final ch in pinned) _chatRow(ch, c),
@@ -1058,6 +1101,96 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
           },
         ),
       ),
+    );
+  }
+
+  // v0.909 "Sessions" + the console's "+" (a new session, then its page)
+  Widget _sessionsLabel(HoolaColors c) => Row(children: [
+        Expanded(child: _section('Sessions', c)),
+        Semantics(
+          container: true,
+          button: true,
+          label: 'New session',
+          excludeSemantics: true,
+          child: InkResponse(
+            radius: 22,
+            onTap: () async {
+              final id = await hoolaNewSession(context, widget.app);
+              if (id != null) widget.onSession?.call(id);
+            },
+            child: SizedBox(width: 44, height: 40, child: Icon(Icons.add_rounded, size: 20, color: c.ink2)),
+          ),
+        ),
+      ]);
+
+  /// One session: fold / unfold, its emoji + name (opens its page), how many chats, "+" = a new chat inside it.
+  Widget _sessionHead(Map<String, dynamic> p, List<Map<String, dynamic>> rows, HoolaColors c) {
+    final id = '${p['id']}';
+    final name = sessionName(p);
+    final closed = widget.app.closedSessions.contains(id);
+    final live = closed && rows.any((r) => widget.app.busyChats.contains('${r['id']}') || widget.app.unreadChats.contains('${r['id']}'));
+    return SizedBox(
+      height: 48,
+      child: Row(children: [
+        Semantics(
+          container: true,
+          button: true,
+          label: '${closed ? 'Open' : 'Fold'} session: $name',
+          excludeSemantics: true,
+          child: InkResponse(
+            radius: 20,
+            onTap: () => widget.app.toggleSession(id),
+            child: SizedBox(
+              width: 36,
+              height: 48,
+              child: AnimatedRotation(
+                turns: closed ? 0 : .25,
+                duration: HoolaMotion.of(context, HoolaMotion.menu),
+                child: Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Semantics(
+            container: true,
+            button: true,
+            label: 'Session $name, ${rows.length} chats',
+            excludeSemantics: true,
+            child: InkWell(
+              borderRadius: HoolaRadius.r(HoolaRadius.tile),
+              onTap: () => widget.onSession?.call(id),
+              child: SizedBox(
+                height: 48,
+                child: Row(children: [
+                  Text(sessionEmoji(p), style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: HoolaType.bodyLarge(c).copyWith(fontWeight: FontWeight.w600)),
+                  ),
+                  if (live) ...[
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                  ],
+                  if (rows.isNotEmpty) Text('${rows.length}', style: HoolaType.small(c)),
+                ]),
+              ),
+            ),
+          ),
+        ),
+        Semantics(
+          container: true,
+          button: true,
+          label: 'New chat in $name',
+          excludeSemantics: true,
+          child: InkResponse(
+            radius: 22,
+            onTap: () => widget.onNewChatIn?.call(id),
+            child: SizedBox(width: 44, height: 48, child: Icon(Icons.add_rounded, size: 20, color: c.ink2)),
+          ),
+        ),
+      ]),
     );
   }
 

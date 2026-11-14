@@ -68,4 +68,4 @@ def test_workspace_shows_the_task_a_call_started(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.908.0")
+    assert APP_VERSION.startswith("0.909.0")

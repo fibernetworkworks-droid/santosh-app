@@ -31,4 +31,4 @@ def test_ordinary_chat_does_not_get_pc_tools_for_the_same_words(live, monkeypatc
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.908.0")
+    assert APP_VERSION.startswith("0.909.0")

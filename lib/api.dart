@@ -366,6 +366,25 @@ class Api {
   /// v0.908 the console's chat menu on the phone: rename (title), pin, archive - the same PATCH the console sends.
   Future<Map<String, dynamic>> chatPatch(String id, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PATCH', '/api/conversations/${Uri.encodeComponent(id)}', body: body) as Map? ?? const {});
+  // ---- v0.909 sessions (the console's projects, /api/projects): name, emoji, instructions, memory, files, chats ----
+  Future<List<Map<String, dynamic>>> sessions() async => _ml((await _send('GET', '/api/projects') as Map)['projects']);
+  Future<Map<String, dynamic>> session(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/projects/${Uri.encodeComponent(id)}') as Map);
+  Future<Map<String, dynamic>> sessionCreate(String name) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/projects', body: {'name': name}) as Map);
+  Future<Map<String, dynamic>> sessionPatch(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('PATCH', '/api/projects/${Uri.encodeComponent(id)}', body: body) as Map? ?? const {});
+  Future<void> sessionDelete(String id) async => _send('DELETE', '/api/projects/${Uri.encodeComponent(id)}');
+  Future<Map<String, dynamic>> sessionFileAdd(String id, String name, List<int> bytes) =>
+      uploadFile('/api/projects/${Uri.encodeComponent(id)}/files', name, bytes, tries: 1);
+  Future<void> sessionFileRemove(String id, String fid) async =>
+      _send('DELETE', '/api/projects/${Uri.encodeComponent(id)}/files/${Uri.encodeComponent(fid)}');
+  /// The session's chats (all of them, like the console's session page).
+  Future<List<Map<String, dynamic>>> sessionChats(String id) async =>
+      _ml((await _send('GET', '/api/console/conversations', query: {'project': id}) as Map)['conversations']);
+  /// A new chat inside a session (the console's "+ New chat in this session").
+  Future<String> newConversationIn(String sessionId) async =>
+      '${(await _send('POST', '/api/conversations', query: {'project_id': sessionId}) as Map)['id']}';
   /// v0.908 delete (the server keeps the rows; the chat leaves the list, search and its link).
   Future<void> chatDelete(String id) async => _send('DELETE', '/api/conversations/${Uri.encodeComponent(id)}');
   Future<void> openChat(String conv) async => _send('POST', '/api/conversations/$conv/open');
