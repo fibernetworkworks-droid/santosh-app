@@ -50,8 +50,9 @@ jobs:
       # 200 % text pictures do not overflow - a failure here fails the job (the pictures still upload)
       - name: Every screen rendered and passed its checks
         run: |
-          if grep -qE "\[E\]" screens.log; then
-            grep -E "\[E\]" screens.log | sed 's/^/::error::/' | head -20
+          # v0.903: a picture file that does not even compile prints "Failed to load", not [E] - that fails too
+          if grep -qE "\[E\]|Failed to load|❌" screens.log; then
+            grep -E "\[E\]|Failed to load|❌|Error:" screens.log | sed 's/^/::error::/' | head -20
             exit 1
           fi
       - name: One contact sheet of every picture

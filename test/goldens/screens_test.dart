@@ -262,39 +262,39 @@ void _tabsData(Santosh app) {
      'pitch': 'Measures, rate analysis and bills of quantities'},
   ];
   // v0.901 the Connect page: Composio apps only, by category
-  Map<String, dynamic> app(String k, String n, String line, String g, String gn, String st, [int tools = 40]) =>
+  Map<String, dynamic> ca(String k, String n, String line, String g, String gn, String st, [int tools = 40]) =>
       {'toolkit': k, 'name': n, 'line': line, 'group': g, 'group_name': gn, 'status': st, 'tools': tools};
   HoolaConnectDebug.home = {
     'configured': true, 'total': 1612, 'connected': 3,
     'mine': [
-      app('slack', 'Slack', 'Send messages and read channels', 'mail', 'Mail & chat', 'ready'),
-      app('notion', 'Notion', 'Pages, notes and databases', 'projects', 'Projects & tasks', 'ready'),
-      app('hubspot', 'HubSpot', 'Contacts, deals and notes', 'crm', 'Sales & CRM', 'ready'),
+      ca('slack', 'Slack', 'Send messages and read channels', 'mail', 'Mail & chat', 'ready'),
+      ca('notion', 'Notion', 'Pages, notes and databases', 'projects', 'Projects & tasks', 'ready'),
+      ca('hubspot', 'HubSpot', 'Contacts, deals and notes', 'crm', 'Sales & CRM', 'ready'),
     ],
     'featured': [
-      app('razorpay', 'Razorpay', 'Payments, refunds and settlements', 'money', 'Money & payments', 'needs_link'),
-      app('zoho_books', 'Zoho Books', 'Invoices, bills and reports', 'money', 'Money & payments', 'needs_link'),
-      app('calendly', 'Calendly', 'Booking links and events', 'calendar', 'Calendar & meetings', 'needs_link'),
-      app('canva', 'Canva', 'Designs and brand kits', 'docs', 'Docs & files', 'needs_link'),
+      ca('razorpay', 'Razorpay', 'Payments, refunds and settlements', 'money', 'Money & payments', 'needs_link'),
+      ca('zoho_books', 'Zoho Books', 'Invoices, bills and reports', 'money', 'Money & payments', 'needs_link'),
+      ca('calendly', 'Calendly', 'Booking links and events', 'calendar', 'Calendar & meetings', 'needs_link'),
+      ca('canva', 'Canva', 'Designs and brand kits', 'docs', 'Docs & files', 'needs_link'),
     ],
     'groups': [
       {'id': 'mail', 'name': 'Mail & chat', 'count': 142, 'connected': 1, 'top': [
-        app('slack', 'Slack', 'Send messages and read channels', 'mail', 'Mail & chat', 'ready'),
-        app('microsoft_teams', 'Microsoft Teams', 'Post to teams and chats', 'mail', 'Mail & chat', 'needs_link'),
-        app('telegram', 'Telegram', 'Send from your bot', 'mail', 'Mail & chat', 'needs_key'),
+        ca('slack', 'Slack', 'Send messages and read channels', 'mail', 'Mail & chat', 'ready'),
+        ca('microsoft_teams', 'Microsoft Teams', 'Post to teams and chats', 'mail', 'Mail & chat', 'needs_link'),
+        ca('telegram', 'Telegram', 'Send from your bot', 'mail', 'Mail & chat', 'needs_key'),
       ]},
       {'id': 'crm', 'name': 'Sales & CRM', 'count': 96, 'connected': 1, 'top': [
-        app('hubspot', 'HubSpot', 'Contacts, deals and notes', 'crm', 'Sales & CRM', 'ready'),
-        app('salesforce', 'Salesforce', 'Leads, accounts and reports', 'crm', 'Sales & CRM', 'needs_link'),
-        app('pipedrive', 'Pipedrive', 'Move deals through your pipeline', 'crm', 'Sales & CRM', 'needs_link'),
+        ca('hubspot', 'HubSpot', 'Contacts, deals and notes', 'crm', 'Sales & CRM', 'ready'),
+        ca('salesforce', 'Salesforce', 'Leads, accounts and reports', 'crm', 'Sales & CRM', 'needs_link'),
+        ca('pipedrive', 'Pipedrive', 'Move deals through your pipeline', 'crm', 'Sales & CRM', 'needs_link'),
       ]},
       {'id': 'money', 'name': 'Money & payments', 'count': 71, 'top': [
-        app('razorpay', 'Razorpay', 'Payments, refunds and settlements', 'money', 'Money & payments', 'needs_link'),
-        app('stripe', 'Stripe', 'Charges, customers and payouts', 'money', 'Money & payments', 'needs_link'),
+        ca('razorpay', 'Razorpay', 'Payments, refunds and settlements', 'money', 'Money & payments', 'needs_link'),
+        ca('stripe', 'Stripe', 'Charges, customers and payouts', 'money', 'Money & payments', 'needs_link'),
       ]},
       {'id': 'projects', 'name': 'Projects & tasks', 'count': 118, 'connected': 1, 'top': [
-        app('notion', 'Notion', 'Pages, notes and databases', 'projects', 'Projects & tasks', 'ready'),
-        app('jira', 'Jira', 'Issues, sprints and comments', 'projects', 'Projects & tasks', 'needs_link'),
+        ca('notion', 'Notion', 'Pages, notes and databases', 'projects', 'Projects & tasks', 'ready'),
+        ca('jira', 'Jira', 'Issues, sprints and comments', 'projects', 'Projects & tasks', 'needs_link'),
       ]},
       {'id': 'marketing', 'name': 'Marketing', 'count': 104, 'top': []},
       {'id': 'calendar', 'name': 'Calendar & meetings', 'count': 38, 'top': []},
