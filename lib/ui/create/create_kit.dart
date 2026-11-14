@@ -19,6 +19,9 @@ import '../../native.dart';
 import '../../state.dart';
 import '../hoola_theme.dart';
 import '../shell/hoola_tool_icons.dart' show svgPath;
+import 'create_colour.dart';
+
+export 'create_colour.dart';
 
 // ------------------------------------------------------------------------------------------------ the store
 /// Everything the Create screens read and start. One per Create visit; screens listen to it.
@@ -158,6 +161,8 @@ class CreateStore extends ChangeNotifier {
       jobs.values.where((j) => j['kind'] == kind && j['status'] == 'failed' && !dismissed.contains('${j['id']}')).toList();
   List<Map<String, dynamic>> shelf(String kind) => items.where((i) => i['kind'] == kind).toList();
   List<Map<String, dynamic>> get films => _list(studio['projects']);
+  /// v0.913 everything being made right now, any kind.
+  List<Map<String, dynamic>> get making => jobs.values.where((j) => j['status'] == 'running').toList();
 
   void _keepPolling() {
     if (_poll != null || _disposed) return;
@@ -317,22 +322,31 @@ class _CrIconPainter extends CustomPainter {
   bool shouldRepaint(_CrIconPainter o) => o.color != color || o.path != path || o.fill != fill;
 }
 
-/// The black circle every Create tool sits on.
+/// v0.913 the colour circle every Create tool sits on: its own hue (pictures pink, clips blue, films gold, songs green,
+/// voices lilac), the drawing in dark ink on it.
 class CrDisc extends StatelessWidget {
-  const CrDisc(this.glyph, {super.key, this.size = 44});
+  const CrDisc(this.glyph, {super.key, this.size = 44, this.hue});
   final CrGlyph glyph;
   final double size;
+  final CrHue? hue;
   @override
-  Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: c.pill, shape: BoxShape.circle),
-      alignment: Alignment.center,
-      child: CrIcon(glyph, size: size * .45, color: c.onPill),
-    );
-  }
+  Widget build(BuildContext context) =>
+      CrOrb(hue: hue ?? crHueOf(glyph), size: size, child: CrIcon(glyph, size: size * .44, color: CreateHues.onHue));
+}
+
+/// The hue a tool's drawing belongs to.
+CrHue crHueOf(CrGlyph g) => switch (g) {
+      CrGlyph.image || CrGlyph.pen || CrGlyph.camera || CrGlyph.wand => CrHue.image,
+      CrGlyph.video || CrGlyph.dub || CrGlyph.grid || CrGlyph.layers => CrHue.video,
+      CrGlyph.film || CrGlyph.cut || CrGlyph.brand || CrGlyph.folder || CrGlyph.book => CrHue.film,
+      CrGlyph.music || CrGlyph.cinema || CrGlyph.globe => CrHue.song,
+      _ => CrHue.voice,
+    };
+
+/// A painted scene picked by a creation's id (the same one every time).
+String crSceneFor(Object? seed) {
+  const names = ['sunset', 'diya', 'ocean', 'rose', 'rain', 'forest', 'temple', 'neon', 'chai', 'clay', 'mint', 'desert'];
+  return names[('$seed'.codeUnits.fold<int>(0, (a, b) => a + b)) % names.length];
 }
 
 /// The soft tiles behind a placeholder picture: four quiet tones from the theme, picked by a creation's id.
@@ -345,7 +359,9 @@ Color crTone(HoolaColors c, Object? seed) {
 /// A Create page: the round back button, a centred title, an optional right button, the scrolling body and, pinned at
 /// the bottom over a soft fade, the main action (with its price).
 class CrPage extends StatelessWidget {
-  const CrPage({super.key, required this.title, required this.children, this.action, this.trailing, this.onRefresh});
+  const CrPage({super.key, required this.title, required this.children, this.action, this.trailing, this.onRefresh, this.hue});
+  /// v0.913 the page's colour (its moving light, main button, picked chips); the surrounding page's when null.
+  final CrHue? hue;
   final String title;
   final List<Widget> children;
   final Widget? action;
@@ -361,9 +377,14 @@ class CrPage extends StatelessWidget {
       children: children,
     );
     if (onRefresh != null) list = RefreshIndicator(onRefresh: onRefresh!, child: list);
-    return Scaffold(
+    final h = hue ?? CrHue.of(context);
+    return CrHueScope(
+      hue: h,
+      child: Scaffold(
       backgroundColor: c.bg,
-      body: SafeArea(
+      body: Stack(children: [
+        Positioned.fill(child: CrAura(hue: h)),
+        SafeArea(
         bottom: false,
         child: Stack(children: [
           Column(children: [
@@ -404,8 +425,8 @@ class CrPage extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [c.bg.withOpacity(0), c.bg, c.bg],
-                      stops: const [0, .32, 1],
+                      colors: [c.bg.withOpacity(0), c.bg.withOpacity(.92), c.bg],
+                      stops: const [0, .38, 1],
                     ),
                   ),
                   child: action,
@@ -414,6 +435,8 @@ class CrPage extends StatelessWidget {
             ),
         ]),
       ),
+      ]),
+    ),
     );
   }
 }
@@ -435,18 +458,21 @@ class CrRoundButton extends StatelessWidget {
         width: size < 48 ? 48.0 : size,
         height: size < 48 ? 48.0 : size,
         child: Center(
-          child: Material(
-            color: c.surface,
-            shape: CircleBorder(side: BorderSide(color: c.line)),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onTap == null
-                  ? null
-                  : () {
-                      HapticFeedback.selectionClick();
-                      onTap!();
-                    },
-              child: SizedBox(width: size, height: size, child: Center(child: CrIcon(glyph, size: 18, color: c.ink))),
+          child: DecoratedBox(
+            decoration: crGlass(c, shape: BoxShape.circle, strong: true),
+            child: Material(
+              type: MaterialType.transparency,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onTap == null
+                    ? null
+                    : () {
+                        HapticFeedback.selectionClick();
+                        onTap!();
+                      },
+                child: SizedBox(width: size, height: size, child: Center(child: CrIcon(glyph, size: 18, color: c.ink))),
+              ),
             ),
           ),
         ),
@@ -466,6 +492,7 @@ class CrMain extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
+    final hue = CrHue.of(context);
     final on = onTap != null && !busy;
     return Semantics(
       button: true,
@@ -473,31 +500,45 @@ class CrMain extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       onTap: on ? onTap : null,
-      child: Material(
-        color: on ? c.pill : c.pill.withOpacity(.45),
-        borderRadius: BorderRadius.circular(height / 2),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(height / 2),
-          onTap: on
-              ? () {
-                  HapticFeedback.lightImpact();
-                  onTap!();
-                }
-              : null,
-          child: SizedBox(
-            height: height,
-            child: Center(
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (busy)
-                  SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.onPill))
-                else if (glyph != null)
-                  CrIcon(glyph!, size: 18, color: c.onPill),
-                if (busy || glyph != null) const SizedBox(width: 10),
-                Flexible(
-                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: HoolaType.button(c, color: c.onPill).copyWith(fontSize: height < 52 ? 14.5 : 16)),
+      child: AnimatedOpacity(
+        opacity: on ? 1 : .5,
+        duration: HoolaMotion.of(context, HoolaMotion.menu),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: hue.gradient,
+            borderRadius: BorderRadius.circular(height / 2),
+            boxShadow: on ? [BoxShadow(color: hue.a.withOpacity(.38), blurRadius: 22, spreadRadius: -8, offset: const Offset(0, 8))] : null,
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            borderRadius: BorderRadius.circular(height / 2),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(height / 2),
+              onTap: on
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      onTap!();
+                    }
+                  : null,
+              child: SizedBox(
+                height: height,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (busy)
+                        const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: CreateHues.onHue))
+                      else if (glyph != null)
+                        CrIcon(glyph!, size: 18, color: CreateHues.onHue),
+                      if (busy || glyph != null) const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: HoolaType.button(c, color: CreateHues.onHue).copyWith(fontSize: height < 52 ? 14.5 : 16)),
+                      ),
+                    ]),
+                  ),
                 ),
-              ]),
+              ),
             ),
           ),
         ),
@@ -517,24 +558,27 @@ class CrQuiet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    return Material(
-      color: c.surface,
-      shape: StadiumBorder(side: BorderSide(color: c.lineStrong)),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap == null
-            ? null
-            : () {
-                HapticFeedback.selectionClick();
-                onTap!();
-              },
-        child: Container(
-          height: height,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          alignment: Alignment.center,
-          width: expand ? double.infinity : null,
-          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500, color: onTap == null ? c.ink3 : (color ?? c.ink))),
+    return DecoratedBox(
+      decoration: crGlass(c, radius: height / 2, strong: true),
+      child: Material(
+        type: MaterialType.transparency,
+        shape: const StadiumBorder(),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap == null
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  onTap!();
+                },
+          child: Container(
+            height: height,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            alignment: Alignment.center,
+            width: expand ? double.infinity : null,
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500, color: onTap == null ? c.ink3 : (color ?? c.ink))),
+          ),
         ),
       ),
     );
@@ -554,12 +598,7 @@ class CrCard extends StatelessWidget {
     final c = HoolaColors.of(context);
     final r = BorderRadius.circular(22);
     final box = Container(
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: r,
-        border: Border.all(color: edge ?? c.line, width: edge == null ? 1 : 1.4),
-        boxShadow: c.dark ? null : HoolaShadow.card(c),
-      ),
+      decoration: crGlass(c, radius: 22, edge: edge),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
@@ -612,15 +651,25 @@ class CrChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
+    final hue = CrHue.of(context);
     return Semantics(
       button: true,
       selected: on,
       label: label,
       excludeSemantics: true,
       onTap: onTap,
-      child: crTap48(onTap, Material(
-        color: on ? c.pill : c.surface,
-        shape: StadiumBorder(side: BorderSide(color: on ? c.pill : c.line)),
+      child: crTap48(onTap, AnimatedContainer(
+        duration: HoolaMotion.of(context, HoolaMotion.menu),
+        curve: HoolaMotion.ease,
+        decoration: BoxDecoration(
+          gradient: on ? hue.gradient : null,
+          color: on ? null : crWash(c),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: on ? Colors.transparent : (c.dark ? Colors.white.withOpacity(.06) : Colors.transparent)),
+        ),
+        child: Material(
+        type: MaterialType.transparency,
+        shape: const StadiumBorder(),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: () {
@@ -632,16 +681,17 @@ class CrChip extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 48),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (glyph != null) ...[CrIcon(glyph!, size: 15, color: on ? c.onPill : c.ink2), const SizedBox(width: 6)],
-              if (on && glyph == null) ...[CrIcon(CrGlyph.check, size: 13, color: c.onPill), const SizedBox(width: 6)],
+              if (glyph != null) ...[CrIcon(glyph!, size: 15, color: on ? CreateHues.onHue : c.ink2), const SizedBox(width: 6)],
+              if (on && glyph == null) ...[const CrIcon(CrGlyph.check, size: 13, color: CreateHues.onHue), const SizedBox(width: 6)],
               Flexible(
                 child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: FontWeight.w500, color: on ? c.onPill : c.ink2)),
+                    style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: on ? FontWeight.w600 : FontWeight.w500,
+                        color: on ? CreateHues.onHue : c.ink2)),
               ),
             ]),
           ),
         ),
-      )),
+      ))),
     );
   }
 }
@@ -681,9 +731,10 @@ class CrSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
+    final hue = CrHue.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(height / 2 + 4)),
+      decoration: crGlass(c, radius: height / 2 + 4),
       child: Row(children: [
         for (final o in options)
           Expanded(
@@ -705,14 +756,15 @@ class CrSegment extends StatelessWidget {
                   height: height,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: o == picked ? c.surface : c.sunk,
+                    gradient: o == picked ? hue.gradient : null,
                     borderRadius: BorderRadius.circular(height / 2),
-                    boxShadow: o == picked && !c.dark ? HoolaShadow.card(c) : null,
+                    boxShadow: o == picked ? [BoxShadow(color: hue.a.withOpacity(.3), blurRadius: 14, spreadRadius: -6, offset: const Offset(0, 5))] : null,
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(o, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: FontWeight.w500, color: o == picked ? c.ink : c.ink2)),
+                        style: HoolaType.body(c).copyWith(fontSize: 13.5, fontWeight: o == picked ? FontWeight.w600 : FontWeight.w500,
+                            color: o == picked ? CreateHues.onHue : c.ink2)),
                   ),
                 ))),
               ),
@@ -734,6 +786,7 @@ class CrTiles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
+    final hue = CrHue.of(context);
     return LayoutBuilder(builder: (context, box) {
       final w = (box.maxWidth - 8 * (cols - 1)) / cols;
       return Wrap(spacing: 8, runSpacing: 8, children: [
@@ -746,12 +799,13 @@ class CrTiles extends StatelessWidget {
               label: o,
               excludeSemantics: true,
               onTap: () => onPick(o),
-              child: Material(
-                color: o == picked && !swatch ? c.pill : c.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(color: o == picked ? (swatch ? c.ink : c.pill) : c.line, width: o == picked && swatch ? 1.6 : 1),
-                ),
+              child: Container(
+                decoration: o == picked && !swatch
+                    ? BoxDecoration(gradient: hue.gradient, borderRadius: BorderRadius.circular(14))
+                    : crGlass(c, radius: 14, edge: o == picked ? hue.b : null),
+                child: Material(
+                type: MaterialType.transparency,
+                borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () {
@@ -773,12 +827,12 @@ class CrTiles extends StatelessWidget {
                                 fontSize: 13,
                                 height: 1.25,
                                 fontWeight: o == picked ? FontWeight.w600 : FontWeight.w500,
-                                color: o == picked ? (swatch ? c.ink : c.onPill) : c.ink2)),
+                                color: o == picked ? (swatch ? c.ink : CreateHues.onHue) : c.ink2)),
                       ),
                     ]),
                   ),
                 ),
-              ),
+              )),
             ),
           ),
       ]);
@@ -904,7 +958,7 @@ class CrStepper extends StatelessWidget {
     return Container(
       height: height,
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
+      decoration: crGlass(c, radius: 18),
       child: Row(children: [
         b(CrGlyph.minus, 'Less $label', onLess),
         Expanded(
@@ -939,7 +993,7 @@ class CrSwitch extends StatelessWidget {
               Text(sub, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
             ]),
           ),
-          Switch(value: value, onChanged: (v) {
+          Switch(value: value, activeColor: CreateHues.onHue, activeTrackColor: CrHue.of(context).a, onChanged: (v) {
             HapticFeedback.selectionClick();
             onChanged(v);
           }),
@@ -1014,9 +1068,11 @@ class CrSmall extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       onTap: busy ? null : onTap,
-      child: crTap48(busy ? null : onTap, Material(
-        color: c.surface,
-        shape: StadiumBorder(side: BorderSide(color: c.line)),
+      child: crTap48(busy ? null : onTap, Container(
+        decoration: BoxDecoration(color: crWash(c), borderRadius: BorderRadius.circular(18)),
+        child: Material(
+        type: MaterialType.transparency,
+        shape: const StadiumBorder(),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: busy || onTap == null ? null : onTap,
@@ -1037,7 +1093,7 @@ class CrSmall extends StatelessWidget {
             ]),
           ),
         ),
-      )),
+      ))),
     );
   }
 }
@@ -1052,7 +1108,7 @@ class CrNote extends StatelessWidget {
     final c = HoolaColors.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
-      decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(18)),
+      decoration: crGlass(c, radius: 18),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(padding: const EdgeInsets.only(top: 1), child: CrIcon(glyph, size: 17, color: c.ink2)),
         const SizedBox(width: 10),
@@ -1096,14 +1152,15 @@ class CrJobRow extends StatelessWidget {
     return CrCard(
       edge: failed ? c.bad.withOpacity(.5) : null,
       child: Row(children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(color: tone ?? crTone(c, job['id']), borderRadius: BorderRadius.circular(12)),
-          alignment: Alignment.center,
-          child: failed
-              ? CrIcon(CrGlyph.info, size: 20, color: c.bad)
-              : SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.ink2)),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: SizedBox(
+            width: 52,
+            height: 52,
+            child: failed
+                ? Container(color: c.badSoft, alignment: Alignment.center, child: CrIcon(CrGlyph.info, size: 20, color: c.bad))
+                : Stack(fit: StackFit.expand, children: [CrScene(crSceneFor(job['id'])), const CrSheen()]),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1117,10 +1174,7 @@ class CrJobRow extends StatelessWidget {
             else ...[
               Text(step.isEmpty ? 'Making it now…' : 'Making it · $step', style: HoolaType.small(c).copyWith(fontSize: 12.5)),
               const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(minHeight: 5, backgroundColor: c.sunk, color: c.ink),
-              ),
+              const CrBar(height: 5),
             ],
           ]),
         ),
@@ -1274,6 +1328,7 @@ class _CrAudioCardState extends State<CrAudioCard> {
     final total = v?.duration ?? Duration.zero;
     final pos = v?.position ?? Duration.zero;
     final frac = total.inMilliseconds == 0 ? 0.0 : (pos.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0);
+    final hue = crS(widget.item['kind']) == 'song' ? CrHue.song : CrHue.voice;
     return CrCard(
       child: Column(children: [
         Row(children: [
@@ -1281,27 +1336,20 @@ class _CrAudioCardState extends State<CrAudioCard> {
             button: true,
             label: playing ? 'Pause ${crS(widget.item['title'])}' : 'Play ${crS(widget.item['title'])}',
             excludeSemantics: true,
-            child: Material(
-              color: c.pill,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _loading ? null : _toggle,
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Center(
-                    child: _loading
-                        ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.onPill))
-                        : playing
-                            ? Row(mainAxisSize: MainAxisSize.min, children: [
-                                Container(width: 4, height: 15, decoration: BoxDecoration(color: c.onPill, borderRadius: BorderRadius.circular(2))),
-                                const SizedBox(width: 4),
-                                Container(width: 4, height: 15, decoration: BoxDecoration(color: c.onPill, borderRadius: BorderRadius.circular(2))),
-                              ])
-                            : CrIcon(CrGlyph.play, size: 18, color: c.onPill),
-                  ),
-                ),
+            child: GestureDetector(
+              onTap: _loading ? null : _toggle,
+              child: CrOrb(
+                hue: hue,
+                size: 52,
+                child: _loading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: CreateHues.onHue))
+                    : playing
+                        ? Row(mainAxisSize: MainAxisSize.min, children: [
+                            Container(width: 4, height: 15, decoration: BoxDecoration(color: CreateHues.onHue, borderRadius: BorderRadius.circular(2))),
+                            const SizedBox(width: 4),
+                            Container(width: 4, height: 15, decoration: BoxDecoration(color: CreateHues.onHue, borderRadius: BorderRadius.circular(2))),
+                          ])
+                        : const CrIcon(CrGlyph.play, size: 18, color: CreateHues.onHue),
               ),
             ),
           ),
@@ -1317,7 +1365,7 @@ class _CrAudioCardState extends State<CrAudioCard> {
           CrRoundButton(glyph: CrGlyph.down, label: 'Save or share', onTap: () => crShareItem(context, widget.app, widget.item)),
         ]),
         const SizedBox(height: 12),
-        _Wave(seed: crS(widget.item['id']), frac: frac),
+        _Wave(seed: crS(widget.item['id']), frac: frac, hue: hue),
         const SizedBox(height: 6),
         Row(children: [
           Text(_t(pos), style: HoolaType.small(c).copyWith(fontSize: 12)),
@@ -1331,23 +1379,25 @@ class _CrAudioCardState extends State<CrAudioCard> {
 
 /// A quiet waveform drawn from the item's id (the same shape every time), filled up to where it is playing.
 class _Wave extends StatelessWidget {
-  const _Wave({required this.seed, required this.frac});
+  const _Wave({required this.seed, required this.frac, required this.hue});
   final String seed;
   final double frac;
+  final CrHue hue;
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
     return ExcludeSemantics(
-      child: SizedBox(height: 34, width: double.infinity, child: CustomPaint(painter: _WavePainter(seed, frac, c.ink, c.lineStrong))),
+      child: SizedBox(height: 40, width: double.infinity, child: CustomPaint(painter: _WavePainter(seed, frac, hue, crWash(c).withOpacity(.9)))),
     );
   }
 }
 
 class _WavePainter extends CustomPainter {
-  _WavePainter(this.seed, this.frac, this.on, this.off);
+  _WavePainter(this.seed, this.frac, this.hue, this.off);
   final String seed;
   final double frac;
-  final Color on, off;
+  final CrHue hue;
+  final Color off;
   @override
   void paint(Canvas canvas, Size size) {
     const n = 44;
@@ -1356,7 +1406,9 @@ class _WavePainter extends CustomPainter {
     for (var i = 0; i < n; i++) {
       final env = math.sin(math.pi * (i + .5) / n);
       final h = math.max(4.0, size.height * (.25 + .75 * r.nextDouble()) * (.35 + .65 * env));
-      final paint = Paint()..color = (i + .5) / n <= frac ? on : off;
+      // played bars carry the hue from its left colour to its right; the rest stay quiet (all of it in the hue before play)
+      final played = frac == 0 || (i + .5) / n <= frac;
+      final paint = Paint()..color = played ? Color.lerp(hue.a, hue.b, i / n)!.withOpacity(frac == 0 ? .55 : 1) : off;
       canvas.drawRRect(
           RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(w * (i + .5), size.height / 2), width: w * .55, height: h),
               const Radius.circular(2)),
@@ -1365,7 +1417,7 @@ class _WavePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WavePainter o) => o.frac != frac || o.on != on;
+  bool shouldRepaint(_WavePainter o) => o.frac != frac || o.hue != hue || o.off != off;
 }
 
 /// What a kind is called in a sentence (Song, Voice-over…).

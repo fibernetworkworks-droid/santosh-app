@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -164,6 +165,25 @@ void main() {
     await server.close(force: true);
   });
 
+  test('v0.913 every Create colour carries its dark words (>= 4.5:1), and every scene is drawn from the theme', () {
+    double lum(Color c) {
+      double ch(double v) => v <= .03928 ? v / 12.92 : math.pow((v + .055) / 1.055, 2.4).toDouble();
+      return .2126 * ch(c.red / 255) + .7152 * ch(c.green / 255) + .0722 * ch(c.blue / 255);
+    }
+    double ratio(Color a, Color b) {
+      final x = lum(a), y = lum(b);
+      return (math.max(x, y) + .05) / (math.min(x, y) + .05);
+    }
+    for (final h in CrHue.values) {
+      for (final col in h.pair) {
+        expect(ratio(col, CreateHues.onHue), greaterThanOrEqualTo(4.5), reason: '$h $col');
+      }
+    }
+    expect(CreateScene.all.length, 12);
+    expect(crHueOf(CrGlyph.music), CrHue.song);
+    expect(crHueOf(CrGlyph.voice), CrHue.voice);
+  });
+
   test('small helpers read like the console', () {
     expect(crRupees(3), '₹3');
     expect(crRupees(7.5), '₹7.5');
@@ -177,29 +197,36 @@ void main() {
   });
 
   for (final mode in ['light', 'dark']) {
-    testWidgets('$mode Create home: the question, five modes, ten tools on black, recent, starters', (t) async {
+    testWidgets('$mode Create home: the question, five kinds in colour, twelve studios on colour circles, camera moves, recent', (t) async {
       _phone(t);
       final app = await _app();
       await t.pumpWidget(_host(HoolaCreate(app: app), mode: mode));
       await _settle(t);
-      expect(find.text('What shall we create today?'), findsOneWidget);
-      for (final m in ['Film', 'Picture', 'Video clip', 'Song', 'Voice-over']) {
+      expect(find.text('What are we\nmaking today?'), findsOneWidget);
+      for (final m in ['Picture', 'Clip', 'Film', 'Song', 'Voice']) {
         expect(find.text(m), findsWidgets, reason: 'mode $m');
       }
       for (final tool in ['Director', 'Image', 'Video', 'Music', 'Dubbing', 'Video editor', 'Script writer', 'AI casting', 'Hoola Cinema']) {
         expect(find.text(tool), findsWidgets, reason: 'tool $tool');
       }
-      expect(find.text('Storyboard free'), findsOneWidget, reason: 'Film is the first mode');
+      expect(find.text('About ₹3'), findsOneWidget, reason: 'Picture is the first kind');
       await t.tap(find.text('Song').first);
       await t.pump();
-      expect(find.text('About ₹7'), findsOneWidget, reason: 'the mode changes the price line');
+      expect(find.text('About ₹7'), findsOneWidget, reason: 'the kind changes the price line');
+      final page = t.widget<CrPage>(find.byType(CrPage));
+      expect(page.hue, CrHue.song, reason: 'the page takes the colour of the kind');
+      for (final mv in ['Dolly in', 'Orbit', 'Crane up', 'Crash zoom']) {
+        expect(find.text(mv), findsWidgets, reason: 'camera move $mv');
+      }
+      expect(find.byType(CrMove), findsWidgets, reason: 'the camera moves are moving pictures');
+      expect(find.text('Making now'), findsOneWidget, reason: 'what is being made shows on the home');
       expect(find.text('Recent'), findsOneWidget);
       expect(find.text('Diwali offer poster'), findsWidgets);
-      final c = mode == 'light' ? HoolaColors.light : HoolaColors.darkSet;
       final discs = t.widgetList<CrDisc>(find.byType(CrDisc)).length;
-      expect(discs, greaterThanOrEqualTo(10), reason: 'every tool on its own black circle');
+      expect(discs, greaterThanOrEqualTo(12), reason: 'every studio on its own colour circle');
       for (final box in t.widgetList<Container>(find.descendant(of: find.byType(CrDisc), matching: find.byType(Container)))) {
-        expect((box.decoration as BoxDecoration).color, c.pill);
+        final g = (box.decoration as BoxDecoration).gradient as LinearGradient;
+        expect(CrHue.values.map((h) => h.pair.toString()), contains(g.colors.toString()), reason: 'a Create hue');
       }
       expect(t.takeException(), isNull);
       await _done(t, app);
@@ -215,7 +242,7 @@ void main() {
     await t.tap(find.text('Picture').first);
     await t.pump();
     await t.enterText(find.byType(TextField).first, 'A poster of chai');
-    await t.tap(find.bySemanticsLabel('Start picture'));
+    await t.tap(find.bySemanticsLabel('Continue with picture'));
     await _settle(t);
     expect(find.text('Describe the picture'), findsOneWidget);
     expect(find.text('A poster of chai'), findsOneWidget);

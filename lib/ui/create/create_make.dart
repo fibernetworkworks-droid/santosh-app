@@ -151,7 +151,7 @@ class _CreateImageState extends State<CreateImage> {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'Image',
+        hue: CrHue.image, title: 'Image',
         onRefresh: () => store.load(quiet: true),
         action: Row(children: [
           SizedBox(
@@ -214,9 +214,9 @@ class _CreateImageState extends State<CreateImage> {
                             child: Container(
                               width: 26,
                               height: 26,
-                              decoration: BoxDecoration(color: c.pill, shape: BoxShape.circle, border: Border.all(color: c.bg, width: 2)),
+                              decoration: BoxDecoration(color: CrHue.of(context).a, shape: BoxShape.circle, border: Border.all(color: c.bg, width: 2)),
                               alignment: Alignment.center,
-                              child: Text('×', style: TextStyle(color: c.onPill, fontSize: 14, height: 1)),
+                              child: Text('×', style: TextStyle(color: CreateHues.onHue, fontSize: 14, height: 1)),
                             ),
                           ),
                         ),
@@ -235,7 +235,7 @@ class _CreateImageState extends State<CreateImage> {
           ),
           crGap,
           CrLabel('Style', note: _style == 'Auto' ? 'Hoola picks the look' : _style),
-          CrTiles(options: _imgStyles, picked: _style, onPick: (v) => setState(() => _style = v)),
+          _StyleGrid(picked: _style, onPick: (v) => setState(() => _style = v)),
           crGap,
           const CrLabel('Shape'),
           _ShapeRow(options: _imgShapes, picked: _shape, onPick: (v) => setState(() => _shape = v)),
@@ -289,6 +289,47 @@ class _CreateImageState extends State<CreateImage> {
   }
 }
 
+/// v0.913 the picture styles as painted tiles, three to a row; the picked one is ringed in the page's colour.
+const _styleArt = {
+  'Auto': 'sunset', 'Photoreal': 'forest', 'Cinematic': 'rain', 'Festive glow': 'diya', 'Product studio': 'mint',
+  'Watercolour': 'rose', 'Anime': 'neon', '3D clay': 'clay', 'Indian folk art': 'temple',
+};
+
+class _StyleGrid extends StatelessWidget {
+  const _StyleGrid({required this.picked, required this.onPick});
+  final String picked;
+  final ValueChanged<String> onPick;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return LayoutBuilder(builder: (context, box) {
+      final w = (box.maxWidth - 16) / 3;
+      return Wrap(spacing: 8, runSpacing: 12, children: [
+        for (final o in _imgStyles)
+          SizedBox(
+            width: w,
+            child: Column(children: [
+              SizedBox(
+                height: w * .86,
+                child: CrArtCard(
+                  art: CrScene(_styleArt[o] ?? 'sunset'),
+                  picked: o == picked,
+                  radius: 16,
+                  label: 'Style $o',
+                  onTap: () => onPick(o),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(o, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                  style: HoolaType.small(c).copyWith(
+                      fontSize: 12.5, color: o == picked ? c.ink : c.ink2, fontWeight: o == picked ? FontWeight.w600 : FontWeight.w500)),
+            ]),
+          ),
+      ]);
+    });
+  }
+}
+
 class _ShapeRow extends StatelessWidget {
   const _ShapeRow({required this.options, required this.picked, required this.onPick});
   final List<String> options;
@@ -316,9 +357,9 @@ class _ShapeRow extends StatelessWidget {
                 duration: HoolaMotion.of(context, HoolaMotion.menu),
                 height: 64,
                 decoration: BoxDecoration(
-                  color: options[i] == picked ? c.pill : c.surface,
+                  gradient: options[i] == picked ? CrHue.of(context).gradient : null,
+                  color: options[i] == picked ? null : crWash(c),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: options[i] == picked ? c.pill : c.line),
                 ),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Builder(builder: (_) {
@@ -329,12 +370,12 @@ class _ShapeRow extends StatelessWidget {
                       height: p[1] * k,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(3),
-                        border: Border.all(color: options[i] == picked ? c.onPill : c.ink2, width: 1.6),
+                        border: Border.all(color: options[i] == picked ? CreateHues.onHue : c.ink2, width: 1.6),
                       ),
                     );
                   }),
                   const SizedBox(height: 6),
-                  Text(options[i], style: HoolaType.label(c).copyWith(color: options[i] == picked ? c.onPill : c.ink2)),
+                  Text(options[i], style: HoolaType.label(c).copyWith(color: options[i] == picked ? CreateHues.onHue : c.ink2)),
                 ]),
               ),
             ),
@@ -361,7 +402,7 @@ class _QualityCard extends StatelessWidget {
       onTap: onTap,
       child: CrCard(
         onTap: onTap,
-        edge: on ? c.ink : null,
+        edge: on ? CrHue.of(context).b : null,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -375,9 +416,9 @@ class _QualityCard extends StatelessWidget {
             width: 22,
             height: 22,
             decoration: BoxDecoration(
-                color: on ? c.pill : null, shape: BoxShape.circle, border: on ? null : Border.all(color: c.lineStrong)),
+                color: on ? CrHue.of(context).a : null, shape: BoxShape.circle, border: on ? null : Border.all(color: c.lineStrong)),
             alignment: Alignment.center,
-            child: on ? CrIcon(CrGlyph.check, size: 12, color: c.onPill) : null,
+            child: on ? CrIcon(CrGlyph.check, size: 12, color: CreateHues.onHue) : null,
           ),
         ]),
       ),
@@ -414,16 +455,16 @@ class _PictureGrid extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Stack(fit: StackFit.expand, children: [
-                      Container(color: c.sunk),
-                      const _Sheen(),
-                      Center(
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.ink2)),
-                          const SizedBox(height: 8),
-                          Text(crS(j['step']).isEmpty ? 'Painting…' : 'Painting ${crS(j['step'])}',
-                              style: HoolaType.small(c).copyWith(color: c.ink2)),
-                        ]),
+                      CrScene(crSceneFor(j['id'])),
+                      const CrSheen(),
+                      Positioned(
+                        left: 8,
+                        top: 8,
+                        right: 8,
+                        child: Align(alignment: Alignment.centerLeft, child: CrBadge(crS(j['step']).isEmpty ? 'Painting…' : 'Painting ${crS(j['step'])}',
+                            leading: const SizedBox(width: 11, height: 11, child: CircularProgressIndicator(strokeWidth: 1.6, color: Colors.white)))),
                       ),
+                      const Positioned(left: 10, right: 10, bottom: 10, child: CrBar(height: 4, onDark: true)),
                     ]),
                   ),
                 ),
@@ -456,48 +497,6 @@ class _PictureGrid extends StatelessWidget {
         ]);
       }),
     ]);
-  }
-}
-
-/// A soft light that slides across a tile while it paints (still under reduce motion).
-class _Sheen extends StatefulWidget {
-  const _Sheen();
-  @override
-  State<_Sheen> createState() => _SheenState();
-}
-
-class _SheenState extends State<_Sheen> with SingleTickerProviderStateMixin {
-  late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (HoolaMotion.reduced(context)) {
-      _a.stop();
-    } else if (!_a.isAnimating) {
-      _a.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _a.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
-    return AnimatedBuilder(
-      animation: _a,
-      builder: (_, __) => FractionalTranslation(
-        translation: Offset(-1 + 2 * _a.value, 0),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [c.sunk.withOpacity(0), c.surface.withOpacity(.55), c.sunk.withOpacity(0)]),
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -580,7 +579,7 @@ class _CreateMusicState extends State<CreateMusic> {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'Music',
+        hue: CrHue.song, title: 'Music',
         onRefresh: () => store.load(quiet: true),
         action: CrMain(label: 'Make the ${_kind.toLowerCase()} · about ₹7', busy: _busy, onTap: _create, glyph: CrGlyph.music),
         children: [
@@ -722,7 +721,7 @@ class _CreateVoiceState extends State<CreateVoice> {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'Voice-over',
+        hue: CrHue.voice, title: 'Voice-over',
         onRefresh: () => store.load(quiet: true),
         action: CrMain(label: 'Make the voice-over · a few paise', busy: _busy, onTap: _create, glyph: CrGlyph.voice),
         children: [
@@ -766,11 +765,11 @@ class _CreateVoiceState extends State<CreateVoice> {
                         Container(
                           width: 40,
                           height: 40,
-                          decoration: BoxDecoration(color: v.$1 == 'mine' ? c.pill : crTone(c, v.$1), shape: BoxShape.circle),
+                          decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: (v.$1 == 'mine' ? CrHue.voice : const [CrHue.image, CrHue.video, CrHue.song, CrHue.film][v.$1.length % 4]).pair), shape: BoxShape.circle),
                           alignment: Alignment.center,
                           child: v.$1 == 'mine'
-                              ? CrIcon(CrGlyph.voice, size: 18, color: c.onPill)
-                              : Text(v.$2.isEmpty ? '?' : v.$2.substring(0, 1), style: HoolaType.title(c).copyWith(fontSize: 15)),
+                              ? CrIcon(CrGlyph.voice, size: 18, color: CreateHues.onHue)
+                              : Text(v.$2.isEmpty ? '?' : v.$2.substring(0, 1), style: HoolaType.title(c).copyWith(fontSize: 15, color: CreateHues.onHue)),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -783,11 +782,11 @@ class _CreateVoiceState extends State<CreateVoice> {
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                              color: v.$1 == _voice ? c.pill : null,
+                              color: v.$1 == _voice ? CrHue.voice.a : null,
                               shape: BoxShape.circle,
                               border: v.$1 == _voice ? null : Border.all(color: c.lineStrong)),
                           alignment: Alignment.center,
-                          child: v.$1 == _voice ? CrIcon(CrGlyph.check, size: 12, color: c.onPill) : null,
+                          child: v.$1 == _voice ? CrIcon(CrGlyph.check, size: 12, color: CreateHues.onHue) : null,
                         ),
                       ]),
                     ),
@@ -927,7 +926,7 @@ class _CreateDubState extends State<CreateDub> {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'Dubbing',
+        hue: CrHue.video, title: 'Dubbing',
         onRefresh: () => store.load(quiet: true),
         action: CrMain(
           label: 'Dub into ${_to.length} ${_to.length == 1 ? 'language' : 'languages'}',
@@ -1153,7 +1152,7 @@ class _CreateScriptState extends State<CreateScript> {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'Script writer',
+        hue: CrHue.image, title: 'Script writer',
         action: Row(children: [
           CrRoundButton(glyph: CrGlyph.down, label: 'Save or share the script', size: 56, onTap: has ? _download : null),
           const SizedBox(width: 10),
@@ -1305,7 +1304,7 @@ class _CreateCastingState extends State<CreateCasting> {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'AI casting',
+        hue: CrHue.voice, title: 'AI casting',
         onRefresh: () => store.load(quiet: true),
         action: CrMain(label: 'Cast this character · about ₹12', busy: _busy, onTap: _cast, glyph: CrGlyph.cast),
         children: [

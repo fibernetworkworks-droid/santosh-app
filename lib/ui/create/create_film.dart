@@ -139,16 +139,19 @@ mixin _StudioPoll<T extends StatefulWidget> on State<T> {
 
 // ------------------------------------------------------------------------------------------------ 3 · Video
 class CreateVideo extends StatefulWidget {
-  const CreateVideo({super.key, required this.store, this.prompt = ''});
+  const CreateVideo({super.key, required this.store, this.prompt = '', this.camera = ''});
   final CreateStore store;
   final String prompt;
+  /// v0.913 a camera move picked on the home's moving cards.
+  final String camera;
   @override
   State<CreateVideo> createState() => _CreateVideoState();
 }
 
 class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo> {
   late final _q = TextEditingController(text: widget.prompt);
-  String _cam = 'Auto', _aspect = '9:16', _res = '720p', _lang = 'Hindi', _model = '', _auto = 'quality';
+  late String _cam = _cams.any((x) => x.$1 == widget.camera) ? widget.camera : 'Auto';
+  String _aspect = '9:16', _res = '720p', _lang = 'Hindi', _model = '', _auto = 'quality';
   int _sec = 3, _takes = 1;   // index into _secs (8 s)
   bool _audio = true, _busy = false, _improving = false;
   Map<String, dynamic>? _price;
@@ -316,7 +319,7 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'Video',
+        hue: CrHue.video, title: 'Video',
         onRefresh: () => store.reloadStudio(),
         action: Row(children: [
           CrQuiet(label: 'Free preview', onTap: _busy ? null : () => _create(true)),
@@ -352,9 +355,7 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
           ),
           crGap,
           CrLabel('Camera', note: _cams.firstWhere((x) => x.$1 == _cam).$3),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final x in _cams) CrChip(label: x.$1, on: x.$1 == _cam, onTap: () => setState(() => _cam = x.$1)),
-          ]),
+          _CameraGrid(picked: _cam, onPick: (v) => setState(() => _cam = v)),
           crGap,
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
@@ -391,15 +392,17 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(18)),
+            decoration: crGlass(c, radius: 22, strong: true),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
+                Container(width: 8, height: 8, decoration: const BoxDecoration(color: CreateHues.done, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text('This clip · ${_secs[_sec]} s · $_res${_audio ? ' · sound' : ''}${_takes > 1 ? ' · $_takes takes' : ''}',
                       style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14)),
                 ),
                 Text(p == null ? (_priceErr.isEmpty ? '…' : '–') : '≈ ${crRupees((p['inr'] as num?) ?? 0)}',
-                    style: HoolaType.title(c).copyWith(fontSize: 16)),
+                    style: HoolaType.title(c).copyWith(fontSize: 20)),
               ]),
               if (p != null && crS(p['name']).isNotEmpty) ...[
                 const SizedBox(height: 4),
@@ -429,6 +432,48 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
         ],
       ),
     );
+  }
+}
+
+/// v0.913 the twelve camera moves as moving pictures, three to a row; the picked one is ringed and ticked.
+const _camArt = {
+  'Auto': 'sunset', 'Static': 'clay', 'Dolly in': 'rose', 'Dolly out': 'desert', 'Crash zoom': 'neon', 'Orbit': 'mint',
+  'Crane up': 'temple', 'Tracking': 'forest', 'Pan': 'chai', 'Drone': 'ocean', 'Handheld': 'rain', 'Low angle': 'diya',
+};
+
+class _CameraGrid extends StatelessWidget {
+  const _CameraGrid({required this.picked, required this.onPick});
+  final String picked;
+  final ValueChanged<String> onPick;
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final w = (box.maxWidth - 16) / 3;
+      return Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final x in _cams)
+          SizedBox(
+            width: w,
+            height: w * 1.08,
+            child: CrArtCard(
+              art: CrMove(move: x.$1, child: CrScene(_camArt[x.$1] ?? 'sunset')),
+              title: x.$1,
+              picked: x.$1 == picked,
+              radius: 16,
+              label: '${x.$1}. ${x.$3}',
+              trailing: x.$1 == picked
+                  ? Container(
+                      width: 24,
+                      height: 24,
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      alignment: Alignment.center,
+                      child: const CrIcon(CrGlyph.check, size: 13, color: CreateHues.onHue),
+                    )
+                  : null,
+              onTap: () => onPick(x.$1),
+            ),
+          ),
+      ]);
+    });
   }
 }
 
@@ -624,7 +669,7 @@ class _CreateDirectorState extends State<CreateDirector> with _StudioPoll<Create
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => CrPage(
-        title: 'Director',
+        hue: CrHue.film, title: 'Director',
         onRefresh: () => store.reloadStudio(),
         trailing: _new
             ? null
@@ -909,7 +954,7 @@ class _CreateFilmState extends State<CreateFilm> {
     final c = HoolaColors.of(context);
     final v = _v;
     if (v.isEmpty) {
-      return CrPage(title: 'Director', children: [
+      return CrPage(hue: CrHue.film, title: 'Director', children: [
         const SizedBox(height: 80),
         Center(
           child: _err.isEmpty
@@ -928,7 +973,7 @@ class _CreateFilmState extends State<CreateFilm> {
     final nx = _next();
     final prefs = crMap(v['prefs']);
     return CrPage(
-      title: 'Director',
+      hue: CrHue.film, title: 'Director',
       onRefresh: _load,
       action: Container(
         height: 56,
@@ -961,13 +1006,13 @@ class _CreateFilmState extends State<CreateFilm> {
             excludeSemantics: true,
             onTap: _sendChange,
             child: Material(
-              color: c.pill,
+              color: CrHue.film.a,
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: _sendChange,
                 child: SizedBox(width: 48, height: 48,
-                    child: Center(child: Transform.rotate(angle: -1.5708, child: CrIcon(CrGlyph.chevron, size: 18, color: c.onPill)))),
+                    child: Center(child: Transform.rotate(angle: -1.5708, child: CrIcon(CrGlyph.chevron, size: 18, color: CreateHues.onHue)))),
               ),
             ),
           ),
@@ -1005,7 +1050,8 @@ class _CreateFilmState extends State<CreateFilm> {
                   child: Container(
                     height: 5,
                     decoration: BoxDecoration(
-                      color: st[i] == 2 ? c.ink : st[i] == 1 ? c.ink3 : c.sunk,
+                      gradient: st[i] == 0 ? null : CrHue.film.gradient,
+                      color: st[i] == 0 ? crWash(c) : null,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
@@ -1022,14 +1068,14 @@ class _CreateFilmState extends State<CreateFilm> {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: st[i] == 2 ? c.okSoft : st[i] == 1 ? c.pill : null,
+                        color: st[i] == 2 ? CreateHues.done : st[i] == 1 ? CrHue.film.a : null,
                         shape: BoxShape.circle,
                         border: st[i] == 0 ? Border.all(color: c.lineStrong) : null,
                       ),
                       alignment: Alignment.center,
                       child: st[i] == 2
-                          ? CrIcon(CrGlyph.check, size: 12, color: c.ok)
-                          : Text('${i + 1}', style: HoolaType.label(c).copyWith(color: st[i] == 1 ? c.onPill : c.ink3)),
+                          ? const CrIcon(CrGlyph.check, size: 12, color: CreateHues.onHue)
+                          : Text('${i + 1}', style: HoolaType.label(c).copyWith(color: st[i] == 1 ? CreateHues.onHue : c.ink3)),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1293,18 +1339,11 @@ class _SceneCard extends StatelessWidget {
               width: 72,
               height: 96,
               child: Stack(fit: StackFit.expand, children: [
-                CrNetImage(app: app, url: crS(s['keyframe']), seed: '${s['id']}'),
-                Positioned(
-                  left: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(.55), borderRadius: BorderRadius.circular(10)),
-                    child: Text('$n', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                  ),
-                ),
+                if (crS(s['keyframe']).isEmpty) CrScene(crSceneFor(s['id'])) else CrNetImage(app: app, url: crS(s['keyframe']), seed: '${s['id']}'),
+                Positioned(left: 6, top: 6, child: CrBadge('$n')),
+                if (phase == 'paint' || phase == 'video' || phase == 'queued') const CrSheen(),
                 if (phase == 'paint' || phase == 'video' || phase == 'queued')
-                  Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.ink2))),
+                  const Positioned(left: 6, right: 6, bottom: 6, child: CrBar(height: 4, onDark: true)),
               ]),
             ),
           ),
@@ -1444,7 +1483,7 @@ class _CreateEditorState extends State<CreateEditor> {
     final shown = versions.isEmpty ? null : versions.last;
     final working = latest != null && !const ['done', 'failed', 'cancelled'].contains(crS(latest['status']));
     return CrPage(
-      title: 'Video editor',
+      hue: CrHue.film, title: 'Video editor',
       onRefresh: _load,
       action: CrMain(label: 'Make the edit', busy: _busy, onTap: _make, glyph: CrGlyph.cut),
       children: [

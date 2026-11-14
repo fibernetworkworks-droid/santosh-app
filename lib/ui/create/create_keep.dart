@@ -46,59 +46,135 @@ Future<void> crOpenItem(BuildContext context, CreateStore store, Map<String, dyn
   }
 }
 
+/// v0.913 a picture in a dark room: the picture large (pinch to look closer), round glass buttons on top, and a glass
+/// panel below with what it is, "Bring it to life" (Hoola Cinema turns a picture into a clip) and the quiet actions.
 class _PictureView extends StatelessWidget {
   const _PictureView({required this.store, required this.item});
   final CreateStore store;
   final Map<String, dynamic> item;
+
+  Future<void> _delete(BuildContext context) async {
+    if (await crConfirmDelete(context, 1) && context.mounted) {
+      try {
+        await store.delete(crS(item['id']));
+        if (context.mounted) Navigator.of(context).maybePop();
+      } catch (e) {
+        if (context.mounted) crToast(context, crError(e));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
     final m = crMap(item['meta']);
-    return CrPage(
-      title: crKindName(crS(item['kind'])),
-      trailing: CrRoundButton(glyph: CrGlyph.share, label: 'Save or share', onTap: () => crShareItem(context, store.app, item)),
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: InteractiveViewer(
-            maxScale: 5,
-            child: CrItemImage(app: store.app, item: item, fit: BoxFit.contain, cache: 1600),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(crS(item['title']), style: HoolaType.title(c)),
-        const SizedBox(height: 4),
-        Text([crWhen(item['created']), m['aspect'], m['quality'] == 'best' ? 'Best quality' : '', 'Made with AI']
-            .map(crS)
-            .where((s) => s.isNotEmpty)
-            .join(' · '), style: HoolaType.small(c)),
-        if (crS(m['description']).isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Text(crS(m['description']), style: HoolaType.body(c).copyWith(color: c.ink2)),
-        ],
-        crGap,
-        Row(children: [
-          Expanded(
-            child: CrQuiet(
-              label: 'Delete',
-              color: c.bad,
-              expand: true,
-              onTap: () async {
-                if (await crConfirmDelete(context, 1) && context.mounted) {
-                  try {
-                    await store.delete(crS(item['id']));
-                    if (context.mounted) Navigator.of(context).maybePop();
-                  } catch (e) {
-                    if (context.mounted) crToast(context, crError(e));
-                  }
-                }
-              },
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    // the room is always dark, whatever the phone's theme: the picture is the only light in it
+    final c = HoolaColors.darkSet;
+    final facts = [crWhen(item['created']), crS(m['aspect']), m['quality'] == 'best' ? 'Best quality' : '', 'Made with AI']
+        .where((s) => s.isNotEmpty)
+        .toList();
+    Widget act(CrGlyph g, String label, VoidCallback onTap, {Color? tint}) => Semantics(
+          button: true,
+          label: label,
+          excludeSemantics: true,
+          onTap: onTap,
+          child: crPress(
+            onTap: onTap,
+            child: SizedBox(
+              width: 64,
+              child: Column(children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: crGlass(c, shape: BoxShape.circle, strong: true),
+                  alignment: Alignment.center,
+                  child: CrIcon(g, size: 19, color: tint ?? c.ink),
+                ),
+                const SizedBox(height: 6),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.small(c).copyWith(color: c.ink2, fontSize: 12)),
+              ]),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(flex: 2, child: CrMain(label: 'Save or share', glyph: CrGlyph.share, onTap: () => crShareItem(context, store.app, item))),
-        ]),
-      ],
+        );
+    return Theme(
+      data: hoolaTheme(Brightness.dark),
+      child: CrHueScope(
+        hue: CrHue.image,
+        child: Scaffold(
+          backgroundColor: CreateHues.night,
+          body: Stack(children: [
+            Positioned.fill(
+              child: InteractiveViewer(
+                maxScale: 5,
+                child: Center(child: CrItemImage(app: store.app, item: item, fit: BoxFit.contain, cache: 1600)),
+              ),
+            ),
+            // a dark fade at the top and the bottom so the buttons and words always read
+            const Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 140,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color.fromARGB(150, 9, 8, 14), Color.fromARGB(0, 9, 8, 14)],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Row(children: [
+                  CrRoundButton(glyph: CrGlyph.back, label: 'Back', onTap: () => Navigator.of(context).maybePop()),
+                  const Spacer(),
+                  CrRoundButton(glyph: CrGlyph.share, label: 'Save or share', onTap: () => crShareItem(context, store.app, item)),
+                ]),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12 + bottom,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                decoration: crGlass(c, radius: 26, strong: true),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(crS(item['title']), maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.title(c).copyWith(fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text(facts.join(' · '), style: HoolaType.small(c).copyWith(color: c.ink2)),
+                  if (crS(m['description']).isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(crS(m['description']), maxLines: 3, overflow: TextOverflow.ellipsis,
+                        style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14)),
+                  ],
+                  const SizedBox(height: 14),
+                  CrHueScope(
+                    hue: CrHue.video,
+                    child: CrMain(
+                      label: 'Bring it to life',
+                      glyph: CrGlyph.video,
+                      height: 50,
+                      onTap: () => hoolaOpenNew(context, store.app, CreateCinema(store: store)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+                    act(CrGlyph.share, 'Share', () => crShareItem(context, store.app, item)),
+                    act(CrGlyph.down, 'Save', () => crShareItem(context, store.app, item)),
+                    act(CrGlyph.trash, 'Delete', () => _delete(context), tint: c.bad),
+                  ]),
+                ]),
+              ),
+            ),
+          ]),
+        ),
+      ),
     );
   }
 }
@@ -309,7 +385,7 @@ class _CreateLibraryState extends State<CreateLibrary> {
       builder: (context, _) {
         final list = _list;
         return CrPage(
-          title: 'My creations',
+          hue: CrHue.video, title: 'My creations',
           onRefresh: () => store.load(quiet: true),
           trailing: TextButton(
             onPressed: () => setState(() {
@@ -340,7 +416,7 @@ class _CreateLibraryState extends State<CreateLibrary> {
                 hintText: 'Search your creations',
                 prefixIcon: Padding(padding: const EdgeInsets.all(14), child: CrIcon(CrGlyph.search, size: 18, color: c.ink3)),
                 filled: true,
-                fillColor: c.sunk,
+                fillColor: crWash(c),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
               ),
             ),
@@ -367,18 +443,23 @@ class _CreateLibraryState extends State<CreateLibrary> {
               CrNote(store.items.isEmpty ? 'What you make in Create is kept here.' : 'Nothing matches. Try another word or kind.',
                   glyph: CrGlyph.info)
             else
-              LayoutBuilder(builder: (context, box) {
-                final w = (box.maxWidth - 12) / 2;
-                return Wrap(spacing: 12, runSpacing: 14, children: [
-                  for (final it in list)
-                    SizedBox(
-                      width: w,
+              // v0.913 a wall of two columns of different heights, like a gallery
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final col in [0, 1]) ...[
+                  if (col == 1) const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(children: [
+                  for (var i = col; i < list.length; i += 2)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: _Tile(
+                        height: const [214.0, 176.0, 236.0, 192.0, 168.0, 224.0][i % 6],
+                        item: list[i],
                         store: store,
-                        item: it,
                         selecting: _select,
-                        on: _picked.contains(it['id']),
+                        on: _picked.contains(list[i]['id']),
                         onTap: () {
+                          final it = list[i];
                           if (_select) {
                             HapticFeedback.selectionClick();
                             setState(() => _picked.contains(it['id']) ? _picked.remove(it['id']) : _picked.add(crS(it['id'])));
@@ -388,12 +469,14 @@ class _CreateLibraryState extends State<CreateLibrary> {
                         },
                         onLong: () => setState(() {
                           _select = true;
-                          _picked.add(crS(it['id']));
+                          _picked.add(crS(list[i]['id']));
                         }),
                       ),
                     ),
-                ]);
-              }),
+                    ]),
+                  ),
+                ],
+              ]),
           ],
         );
       },
@@ -402,14 +485,15 @@ class _CreateLibraryState extends State<CreateLibrary> {
 }
 
 class _Tile extends StatelessWidget {
-  const _Tile({required this.store, required this.item, required this.selecting, required this.on, required this.onTap, required this.onLong});
+  const _Tile({required this.store, required this.item, required this.selecting, required this.on, required this.onTap, required this.onLong,
+      this.height = 200});
   final CreateStore store;
   final Map<String, dynamic> item;
   final bool selecting, on;
   final VoidCallback onTap, onLong;
+  final double height;
   @override
   Widget build(BuildContext context) {
-    final c = HoolaColors.of(context);
     final kind = crS(item['kind']);
     final glyph = switch (kind) {
       'song' => CrGlyph.music,
@@ -419,6 +503,7 @@ class _Tile extends StatelessWidget {
       'cast' => CrGlyph.cast,
       _ => CrGlyph.image,
     };
+    final pic = crS(item['mime']).startsWith('image/');
     return Semantics(
       button: true,
       selected: on,
@@ -426,54 +511,38 @@ class _Tile extends StatelessWidget {
       excludeSemantics: true,
       onTap: onTap,
       child: GestureDetector(
-        onTap: onTap,
         onLongPress: onLong,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          AnimatedContainer(
-            duration: HoolaMotion.of(context, HoolaMotion.menu),
-            padding: EdgeInsets.all(on ? 3 : 0),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: on ? c.ink : Colors.transparent, width: 2)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(
-                aspectRatio: kind == 'cast' ? 16 / 9 : 1,
-                child: Stack(fit: StackFit.expand, children: [
-                  CrItemImage(app: store.app, item: item, cache: 480),
-                  if (!crS(item['mime']).startsWith('image/')) Center(child: CrIcon(glyph, size: 28, color: c.ink2)),
-                  Positioned(
-                    left: 8,
-                    bottom: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.black.withOpacity(.55), borderRadius: BorderRadius.circular(12)),
-                      child: Text(crKindName(kind), style: const TextStyle(color: Colors.white, fontSize: 12)),
+        child: SizedBox(
+          width: double.infinity,
+          height: height,
+          child: CrArtCard(
+            art: pic
+                ? CrItemImage(app: store.app, item: item, cache: 480)
+                : Stack(fit: StackFit.expand, children: [
+                    CrScene(crSceneFor(item['id'])),
+                    Center(child: CrIcon(glyph, size: 30, color: Colors.white)),
+                  ]),
+            badge: CrBadge(crKindName(kind)),
+            title: crS(item['title']),
+            line: crWhen(item['created']),
+            picked: on,
+            label: '${crKindName(kind)}: ${crS(item['title'])}',
+            trailing: selecting
+                ? Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: on ? Colors.white : Colors.white.withOpacity(.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(.8), width: 1.5),
                     ),
-                  ),
-                  if (selecting)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          color: on ? c.pill : c.surface.withOpacity(.9),
-                          shape: BoxShape.circle,
-                          border: on ? null : Border.all(color: c.lineStrong),
-                        ),
-                        alignment: Alignment.center,
-                        child: on ? CrIcon(CrGlyph.check, size: 13, color: c.onPill) : null,
-                      ),
-                    ),
-                ]),
-              ),
-            ),
+                    alignment: Alignment.center,
+                    child: on ? const CrIcon(CrGlyph.check, size: 13, color: CreateHues.onHue) : null,
+                  )
+                : null,
+            onTap: onTap,
           ),
-          const SizedBox(height: 6),
-          Text(crS(item['title']), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: HoolaType.small(c).copyWith(color: c.ink, fontWeight: FontWeight.w500, fontSize: 13.5)),
-          Text(crWhen(item['created']), style: HoolaType.small(c).copyWith(fontSize: 12)),
-        ]),
+        ),
       ),
     );
   }
@@ -635,7 +704,7 @@ class _CreateBrandState extends State<CreateBrand> {
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.ink)),
         );
     return CrPage(
-      title: 'Brand kit',
+      hue: CrHue.film, title: 'Brand kit',
       action: CrMain(label: 'Save brand kit', busy: _saving, onTap: _save, glyph: CrGlyph.check),
       children: [
         Semantics(
@@ -823,7 +892,7 @@ class _CreateCinemaState extends State<CreateCinema> {
     final today = crMap(_o['today']);
     final jobs = crList(_o['jobs']);
     return CrPage(
-      title: 'Hoola Cinema',
+      hue: CrHue.song, title: 'Hoola Cinema',
       onRefresh: _load,
       children: [
         const CrIntro('Change a video like a film studio',

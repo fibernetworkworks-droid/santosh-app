@@ -4676,3 +4676,37 @@ Tests: `test/create_native_test.dart` (store against a local server, helpers, ho
 screens light + dark with their own controls, price on the button, Haan wording, Select + Delete asks first, wiring +
 design rules), goldens 65 create home / 66 create image / 67 create film (light + dark, tap-target + label checks),
 `server/tests/test_v0912_create_native.py`. NOT VERIFIED on her phone; Cinema's tools are not native yet.
+
+
+## v0.913.0 CREATE IN COLOUR
+
+Owner: "CURRENT CREATE DESIGN LOOKS VERY STATIC AS A VIDEO GENERATION AND IMAGE GENERATION... IT SHOULD BE USER FRIENDLY,
+COLOUR FULL, HUMAN NATIVE GLASSY, ADVANCE. DO DEEP RESEARCH ON APP DESIGN LOOK OF GOOGLE FLOW, RUNWAY, HIGGSFIELD,
+OPENART ETC" -> research + design canvas claude.ai/artifact/HXF8gGUqohSnZBnohRkbtu (8 boards) -> "GO BUILD. BUILD IT
+HUMAN ADVANCE DESIGN.. IT SHOULD NOT LOOK LIKE AI MADE".
+
+What was taken from each: Kling / Pika = a media-first home you start from; Higgsfield = camera moves picked as moving
+cards instead of typed; Google Flow = how a clip starts (only Words is wired today - the studio has no "her photo as the
+start frame" route, so Frames / Keep-the-same were NOT built); Runway / OpenArt = the engine chip in the box, a live job
+card, a filterable gallery. Hoola's own rule stays: the price first, nothing spent before Haan.
+
+- `lib/ui/hoola_theme.dart`: `CreateHues` (pictures #FF7AB6->#FFB15C, clips #8B7BFF->#45DCFF, films #FFC34D->#FF7A6B,
+  songs #3EEAA8->#47C6FF, voices #B9A3FF->#FF8CC6; words on them `onHue` #14121C, every pair >= 4.5:1 - tested) and
+  `CreateScene` (12 painted scenes: sky, glows, shapes, ground, rain).
+- NEW `lib/ui/create/create_colour.dart`: `CrHue` + `CrHueScope` (CrPage puts its hue there), `CrAura` (three soft lights
+  drifting over 16 s), `crGlass` (see-through colour + a lighter top edge + a hairline; NO blur - the design rules),
+  `CrScene`, `CrMove` (Dolly in / out, Orbit, Pan, Tracking, Crane up, Crash zoom, Handheld, Drone, Low angle, Static),
+  `CrArtCard` (picture card, dark fade, badge, picked ring, press sinks), `CrBadge`, `CrSheen`, `CrBar` (hue bar, moving
+  when no share is known), `CrOrb`, `CrHead`. Every animation stops under reduce motion.
+- `create_kit.dart`: CrPage(hue:) + the light behind; round buttons, cards, quiet buttons, steppers, notes in glass; the
+  main button, picked chips, segments and tiles in the page hue; CrDisc = a colour circle in its tool's hue (`crHueOf`);
+  job rows = a painted tile with a sheen + a hue bar; the audio waveform in the song / voice colours; `store.making`.
+- Home rebuilt: "What are we making today?", one switch of five kinds (Picture / Clip / Film / Song / Voice; the page,
+  facts, price and Continue button follow), Making now, Try a camera move (moving cards -> Video with that move),
+  Every studio (12 colour circles), Recent, Start from an idea (a two-column wall), Film projects + guides.
+- Image: styles as painted tiles; a picture being made = its painted tile + a badge + a hue bar. Video: the twelve
+  camera moves as moving tiles (`CreateVideo(camera:)`), the price box in glass. My creations: a two-column picture
+  wall. A picture opens in a dark room (pinch to zoom, glass panel, Bring it to life -> Hoola Cinema, Share / Save /
+  Delete asks first). Film: the step bar and scene cards in colour.
+- Tests: test/create_native_test.dart (home expectations, hue contrast), goldens 68_create_video + 69_create_library,
+  server/tests/test_v0913_create_colour.py. NOT VERIFIED on her phone.

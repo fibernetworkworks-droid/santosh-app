@@ -320,6 +320,73 @@ class HoolaShadow {
       ];
 }
 
+// ------------------------------------------------------------------------------------------------ v0.913 Create colour
+/// v0.913 CREATE IN COLOUR (design canvas claude.ai/artifact/HXF8gGUqohSnZBnohRkbtu): Create is the one place in Hoola
+/// that is colourful. Each kind of thing has its own pair (left -> right of every main button, picked chip and orb);
+/// text on a pair is always [onHue] (every pair holds >= 4.5:1 against it, tested). Nothing outside lib/ui/create
+/// should use these.
+class CreateHues {
+  static const image = [Color(0xFFFF7AB6), Color(0xFFFFB15C)];   // pictures: pink to orange
+  static const video = [Color(0xFF8B7BFF), Color(0xFF45DCFF)];   // clips: violet to blue
+  static const film = [Color(0xFFFFC34D), Color(0xFFFF7A6B)];    // films: gold to coral
+  static const song = [Color(0xFF3EEAA8), Color(0xFF47C6FF)];    // songs: green to blue
+  static const voice = [Color(0xFFB9A3FF), Color(0xFFFF8CC6)];   // voices: lilac to pink
+  /// The third light in the moving colour behind a page.
+  static const third = Color(0xFF8B7BFF);
+  static const onHue = Color(0xFF14121C);
+  /// A step that is done.
+  static const done = Color(0xFF3EEAA8);
+  /// The dark room a picture or a clip is opened in.
+  static const night = Color(0xFF09080E);
+}
+
+/// A painted stand-in for a picture (a camera move's card, a style, an idea to start from): a sky of three colours,
+/// lights that glow, solid shapes and a dark ground line. Drawn by lib/ui/create/create_glass.dart.
+class CreateScene {
+  const CreateScene(this.sky, {this.glows = const [], this.shapes = const [], this.ground, this.groundTop = .8, this.rain = false});
+  final List<Color> sky;
+  /// (x, y, radius as a share of the width, the bright core, the glow round it)
+  final List<(double, double, double, Color, Color)> glows;
+  /// (x, y, radius as a share of the width, fill, rim)
+  final List<(double, double, double, Color, Color)> shapes;
+  final Color? ground;
+  final double groundTop;
+  final bool rain;
+
+  static const sunset = CreateScene([Color(0xFF2A1B5C), Color(0xFFB23F7B), Color(0xFFFF9B57)],
+      glows: [(.7, .34, .09, Color(0xFFFFF1C2), Color(0xFFFFB25E))], ground: Color(0xFF3A1846), groundTop: .8);
+  static const diya = CreateScene([Color(0xFF160A2A), Color(0xFF55175C), Color(0xFFB8441E)], glows: [
+    (.26, .62, .045, Color(0xFFFFE08A), Color(0xFFFF9F2E)),
+    (.55, .55, .04, Color(0xFFFFE08A), Color(0xFFFF9F2E)),
+    (.8, .66, .035, Color(0xFFFFE08A), Color(0xFFFF9F2E)),
+  ], ground: Color(0xFF2B1030), groundTop: .78);
+  static const ocean = CreateScene([Color(0xFF07183A), Color(0xFF0E6E92), Color(0xFF5FE3C4)],
+      glows: [(.24, .22, .12, Color(0xFFD4FDFF), Color(0xFF7CF0FF))], ground: Color(0xFF0C3E66), groundTop: .82);
+  static const rose = CreateScene([Color(0xFFFF6FA3), Color(0xFFC864D6), Color(0xFF9A5CFF)],
+      glows: [(.5, .4, .14, Color(0xFFFFE3EE), Color(0xFFFFB8D6))], shapes: [(.5, .8, .13, Color(0xFF2A1340), Color(0xFF5B2A7A))]);
+  static const rain = CreateScene([Color(0xFF0B1026), Color(0xFF26397A), Color(0xFFD8963A)],
+      glows: [(.7, .7, .06, Color(0xFFFFD9A0), Color(0xFFFFB54D))], rain: true);
+  static const forest = CreateScene([Color(0xFF123A2E), Color(0xFF2A8A5E), Color(0xFFC9EC6E)],
+      glows: [(.76, .22, .07, Color(0xFFF6FFC9), Color(0xFFE2F79A))], ground: Color(0xFF0A2A1E), groundTop: .8);
+  static const desert = CreateScene([Color(0xFFFBD6A2), Color(0xFFEC8A55), Color(0xFF9A3B3F)],
+      glows: [(.3, .3, .07, Color(0xFFFFF4D6), Color(0xFFFFE3A8))], ground: Color(0xFF8A3A2E), groundTop: .82);
+  static const mint = CreateScene([Color(0xFFC2F7E6), Color(0xFF8EDDD0), Color(0xFF52C3B5)],
+      shapes: [(.5, .56, .14, Color(0xFFFFFFFF), Color(0xFFE8FFF7))]);
+  static const neon = CreateScene([Color(0xFF0A0618), Color(0xFF140B38), Color(0xFF1D1050)],
+      glows: [(.3, .4, .2, Color(0xFFFF8BE6), Color(0xFFFF4FD8)), (.72, .62, .2, Color(0xFF9EF2FF), Color(0xFF40E0FF))]);
+  static const clay = CreateScene([Color(0xFFFFE9D9), Color(0xFFFAD0BC), Color(0xFFF7B9A5)],
+      shapes: [(.46, .46, .17, Color(0xFFFFD7B8), Color(0xFFF2A47A)), (.66, .62, .1, Color(0xFFBFE3FF), Color(0xFF9CCDF2))]);
+  static const temple = CreateScene([Color(0xFFFFB36B), Color(0xFFE0607A), Color(0xFF4B2766)],
+      glows: [(.5, .3, .09, Color(0xFFFFF0C8), Color(0xFFFFD58A))], ground: Color(0xFF2B1640), groundTop: .78);
+  static const chai = CreateScene([Color(0xFFFFD9A3), Color(0xFFD9895A), Color(0xFF5A2614)],
+      glows: [(.5, .3, .1, Color(0xFFFFF6E8), Color(0xFFFFE6C8))], shapes: [(.5, .64, .13, Color(0xFF7A3E1E), Color(0xFFC4743C))]);
+
+  static const all = {
+    'sunset': sunset, 'diya': diya, 'ocean': ocean, 'rose': rose, 'rain': rain, 'forest': forest,
+    'desert': desert, 'mint': mint, 'neon': neon, 'clay': clay, 'temple': temple, 'chai': chai,
+  };
+}
+
 // ------------------------------------------------------------------------------------------------ motion
 /// Every movement in one place. When the phone asks for less motion (Accessibility > Remove animations), every
 /// transition becomes a short fade and springs stop.

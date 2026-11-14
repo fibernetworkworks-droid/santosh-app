@@ -26,6 +26,7 @@ import 'package:santosh/ui/shell/hoola_tabs.dart';
 import 'package:santosh/ui/shell/hoola_tools.dart';
 import 'package:santosh/ui/create/create_film.dart';
 import 'package:santosh/ui/create/create_home.dart';
+import 'package:santosh/ui/create/create_keep.dart';
 import 'package:santosh/ui/create/create_kit.dart';
 import 'package:santosh/ui/create/create_make.dart';
 import '../create_native_test.dart' show createData;
@@ -549,6 +550,12 @@ void main() {
               return CreateFilm(store: st, project: 'Diwali at Sharma Sweets');
             })),
         prefs: prefs, prep: createPrep, a11y: true));
+    // v0.913 CREATE IN COLOUR: the Video page's moving camera moves and the library wall
+    testWidgets('68 create video ($mode)', (t) => _shot(t, '68_create_video_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateVideo(store: CreateStore(a)..load(), camera: 'Orbit')),
+        prefs: prefs, prep: createPrep, a11y: true));
+    testWidgets('69 create library ($mode)', (t) => _shot(t, '69_create_library_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: CreateLibrary(store: CreateStore(a)..load())), prefs: prefs, prep: createPrep, a11y: true));
     testWidgets('42 new made page ($mode)', (t) => _shot(t, '42_new_made_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaPageFrame(child: HoolaMade(app: a))), prefs: prefs, prep: _tabsData, a11y: true));
     testWidgets('45 new work page ($mode)', (t) => _shot(t, '45_new_work_$mode',
