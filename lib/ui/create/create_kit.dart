@@ -888,9 +888,7 @@ class CrStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    Widget b(CrGlyph g, String l, VoidCallback? f) => Semantics(
-          button: true,
-          label: l,
+    Widget b(CrGlyph g, String l, VoidCallback? f) => SizedBox(
           child: IconButton(
             tooltip: l,
             onPressed: f == null
