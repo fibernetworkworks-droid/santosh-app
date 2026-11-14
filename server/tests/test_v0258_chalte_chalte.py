@@ -142,5 +142,5 @@ def test_the_console_already_folds_the_tool_noise_like_claude():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.893.0"
-    assert "0.893.0+892" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.894.0"
+    assert "0.894.0+893" in (ROOT / "pubspec.yaml").read_text()

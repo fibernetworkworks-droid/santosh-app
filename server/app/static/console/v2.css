@@ -5337,3 +5337,15 @@ html.human #app .landing .halo{display:none}
 #app .textmd .mdh,.textmd .mdh{font-family:var(--fchat);font-weight:var(--rb)}
 #app .fontseg{min-width:320px}
 @media(max-width:560px){#app .fontseg{min-width:0;width:100%}}
+
+
+/* ================= v0.894 CLAUDE KA CODE + FADE (owner: "FONT AND BOLDNESS PERFECT ... FIND THE MISSING THING") =================
+   claude.ai .ReactMarkdown code: 0.9rem, colour --danger-000 (light hsl(0 58.6% 34.1%), dark hsl(0 98.4% 75.1%)),
+   a 5 % ink tint, a 0.5px border at 25 %, padding 1px 4px, corners .3rem. Hoola's reply terms were violet chips that read
+   as links. And the reply now fades into the page above the composer instead of being cut through a line. */
+:root{--codeterm:hsl(0 58.6% 34.1%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--codeterm:hsl(0 98.4% 75.1%)}}
+:root[data-theme="dark"]{--codeterm:hsl(0 98.4% 75.1%)}
+#app .mh .txt code:not(pre code),#app .textmd code:not(pre code){background:rgb(var(--fg-rgb) / .05);border:.5px solid rgb(var(--fg-rgb) / .14);border-radius:.3rem;padding:1px 4px;font-size:.9em;color:var(--codeterm);white-space:pre-wrap;font-weight:400}
+#composer{position:relative}
+#composer::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:28px;pointer-events:none;z-index:2;background:linear-gradient(to top,var(--chat-paper),transparent)}

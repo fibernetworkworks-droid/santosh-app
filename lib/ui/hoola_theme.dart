@@ -79,6 +79,7 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
     required this.infoSoft,
     required this.code,
     required this.codeInk,
+    required this.codeTerm,
     required this.nav,
     required this.navOn,
     required this.scrim,
@@ -106,6 +107,7 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
   final Color info, infoSoft;
   final Color code;        // inline code chip / code block
   final Color codeInk;
+  final Color codeTerm;    // v0.894 a `term` inside a reply: Claude's muted red (claude.ai .ReactMarkdown code)
   final Color nav;         // the floating tab bar
   final Color navOn;       // the selected tab's pill
   final Color scrim;       // behind a sheet
@@ -137,6 +139,7 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
     infoSoft: Color(0xFFE6EEFB),
     code: Color(0xFFF1F0EC),
     codeInk: Color(0xFF2B5DB8),
+    codeTerm: Color(0xFF8A2424),
     nav: Color(0xFFFFFFFF),
     navOn: Color(0xFFECEBE6),
     scrim: Color(0x66141310),
@@ -169,6 +172,7 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
     infoSoft: Color(0xFF1C2A40),
     code: Color(0xFF2F2E2B),
     codeInk: Color(0xFF8AB4F8),
+    codeTerm: Color(0xFFFE8181),
     nav: Color(0xFF2A2927),
     navOn: Color(0xFF3D3C38),
     scrim: Color(0x99000000),
@@ -187,7 +191,7 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
         (accent, bg, 'accent/bg'), (accent, surface, 'accent/surface'),
         (ok, surface, 'ok/surface'), (warn, warnSoft, 'warn/warnSoft'), (warn, surface, 'warn/surface'),
         (bad, surface, 'bad/surface'), (bad, badSoft, 'bad/badSoft'),
-        (codeInk, code, 'codeInk/code'), (info, surface, 'info/surface'),
+        (codeInk, code, 'codeInk/code'), (codeTerm, bg, 'codeTerm/bg'), (info, surface, 'info/surface'),
       ];
 
   @override
@@ -206,7 +210,7 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
       pill: l(pill, other.pill), onPill: l(onPill, other.onPill),
       ok: l(ok, other.ok), okSoft: l(okSoft, other.okSoft), warn: l(warn, other.warn), warnSoft: l(warnSoft, other.warnSoft),
       bad: l(bad, other.bad), badSoft: l(badSoft, other.badSoft), info: l(info, other.info), infoSoft: l(infoSoft, other.infoSoft),
-      code: l(code, other.code), codeInk: l(codeInk, other.codeInk), nav: l(nav, other.nav), navOn: l(navOn, other.navOn),
+      code: l(code, other.code), codeInk: l(codeInk, other.codeInk), codeTerm: l(codeTerm, other.codeTerm), nav: l(nav, other.nav), navOn: l(navOn, other.navOn),
       scrim: l(scrim, other.scrim), shadow: l(shadow, other.shadow),
     );
   }

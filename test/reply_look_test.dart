@@ -100,6 +100,23 @@ void main() {
     ChatFont.current = 'serif';
   });
 
+  testWidgets('a `term` reads like Claude: muted red on a faint tint with room each side, not a blue link', (t) async {
+    await t.pumpWidget(_host(const HoolaMd('Check `drive.google.com` now')));
+    final rich = t.widgetList<RichText>(find.byType(RichText)).firstWhere((r) => r.text.toPlainText().contains('drive'));
+    TextSpan? term;
+    rich.text.visitChildren((s) {
+      if (s is TextSpan && s.text == 'drive.google.com') term = s;
+      return true;
+    });
+    expect(term, isNotNull);
+    expect(term!.style!.color, HoolaColors.light.codeTerm);
+    expect(term!.style!.color, isNot(HoolaColors.light.accent));
+    expect(term!.style!.fontSize, 13.5);
+    expect(rich.text.toPlainText(), contains('\u00A0drive.google.com\u00A0'));
+    // a plain paragraph gets no padding characters
+    expect(mdInline('no code here').length, 1);
+  });
+
   test('a capitals title reads as a sentence; business words and normal titles stay', () {
     expect(sentenceCase('FROM WHERE THEY EARN MONEY'), 'From where they earn money');
     expect(sentenceCase('MAKE GST REPORT PDF'), 'Make GST report PDF');
