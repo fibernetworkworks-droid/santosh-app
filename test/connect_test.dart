@@ -27,6 +27,12 @@ Map<String, dynamic> _home() => {
       ],
     };
 
+void _tall(WidgetTester t) {
+  t.view.physicalSize = const Size(1170, 6000);   // a phone 390 wide and tall enough to hold the whole page
+  t.view.devicePixelRatio = 3;
+  addTearDown(t.view.reset);
+}
+
 Future<Santosh> _app() async {
   SharedPreferences.setMockInitialValues({'a_name': 'Santosh', 'a_gender': 'm', 'new_look': true, 'appearance': 'light'});
   return Santosh.load();
@@ -55,6 +61,7 @@ void main() {
   });
 
   testWidgets('the home shows only apps, by category, and the way to built-in tools', (t) async {
+    _tall(t);
     final app = await _app();
     HoolaConnectDebug.home = _home();
     var more = 0;
@@ -67,14 +74,14 @@ void main() {
     expect(find.text('Most used by Indian businesses'), findsOneWidget);
     expect(find.text('Browse by category'), findsOneWidget);
     expect(find.text('Add key'), findsOneWidget);   // Telegram is a key app
-    await t.scrollUntilVisible(find.text('Built-in tools'), 300, scrollable: find.byType(Scrollable).first);
-    await t.tap(find.text('Built-in tools'));
+        await t.tap(find.text('Built-in tools'));
     expect(more, 1);
     HoolaConnectDebug.home = null;
     app.dispose();
   });
 
   testWidgets('tapping an app opens its sheet with one big Connect button', (t) async {
+    _tall(t);
     final app = await _app();
     HoolaConnectDebug.home = _home();
     await t.pumpWidget(MaterialApp(
