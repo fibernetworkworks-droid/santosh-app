@@ -4303,7 +4303,7 @@ FIX (phone only, server unchanged):
   is gone. `newChat` sets `conversationId = null` before anything is awaited, so the screen changes at once.
 
 TESTS: `test/new_chat_test.dart` (added to the app-screens CI line): a real local SSE server that only pings - the
-chat stream and the account stream both stop within a second of cancel and the server sees the connection close;
+chat stream and the account stream both stop within a second of cancel (the old generator never stopped);
 events still arrive in order with a seen id dropped; a 401 ends the stream with the error.
 `server/tests/test_v0899_naya_chat_khule.py` (4) pins the source shape + version. Version 0.899.0 (pubspec
 0.899.0+898; pins + console stamps swept). Pre-existing red, not this work: `test_v0718_seekh_console::test_version_pins`
