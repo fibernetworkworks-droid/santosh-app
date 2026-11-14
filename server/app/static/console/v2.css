@@ -5339,3 +5339,10 @@ html.human #app .landing .halo{display:none}
 #app .hcd-chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--ink)}
 #app .hcd-dlg .hcd-chk input{margin:0}
 #app .hcd-envnet legend.hcd-lab{margin-top:18px}
+/* v0.878 the composer row stays ONE line with the environment chip in it: chips give up width (ellipsis) before wrapping */
+#app .hcd-askrow{flex-wrap:nowrap;min-width:0}
+#app .hcd-askrow>.hcd-chip{flex:0 1 auto;min-width:0}
+#app .hcd-askrow>.hcd-chip select{min-width:0;max-width:170px;field-sizing:content}
+#app .hcd-askrow>.hcd-envchip{flex:0 0 auto}
+#app .hcd-askrow>.hcd-envchip span{min-width:0;max-width:120px}
+#app .hcd-askrow>.hcd-use,#app .hcd-askrow>.hcd-flex{flex:none}
