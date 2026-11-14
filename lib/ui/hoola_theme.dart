@@ -343,7 +343,7 @@ class CreateHues {
 /// A painted stand-in for a picture (a camera move's card, a style, an idea to start from): a sky of three colours,
 /// lights that glow, solid shapes and a dark ground line. Drawn by lib/ui/create/create_glass.dart.
 class CreateScene {
-  const CreateScene(this.sky, {this.glows = const [], this.shapes = const [], this.ground, this.groundTop = .8, this.rain = false});
+  const CreateScene(this.sky, {this.glows = const [], this.shapes = const [], this.ground, this.groundTop = .8, this.rainy = false});
   final List<Color> sky;
   /// (x, y, radius as a share of the width, the bright core, the glow round it)
   final List<(double, double, double, Color, Color)> glows;
@@ -351,7 +351,7 @@ class CreateScene {
   final List<(double, double, double, Color, Color)> shapes;
   final Color? ground;
   final double groundTop;
-  final bool rain;
+  final bool rainy;
 
   static const sunset = CreateScene([Color(0xFF2A1B5C), Color(0xFFB23F7B), Color(0xFFFF9B57)],
       glows: [(.7, .34, .09, Color(0xFFFFF1C2), Color(0xFFFFB25E))], ground: Color(0xFF3A1846), groundTop: .8);
@@ -365,7 +365,7 @@ class CreateScene {
   static const rose = CreateScene([Color(0xFFFF6FA3), Color(0xFFC864D6), Color(0xFF9A5CFF)],
       glows: [(.5, .4, .14, Color(0xFFFFE3EE), Color(0xFFFFB8D6))], shapes: [(.5, .8, .13, Color(0xFF2A1340), Color(0xFF5B2A7A))]);
   static const rain = CreateScene([Color(0xFF0B1026), Color(0xFF26397A), Color(0xFFD8963A)],
-      glows: [(.7, .7, .06, Color(0xFFFFD9A0), Color(0xFFFFB54D))], rain: true);
+      glows: [(.7, .7, .06, Color(0xFFFFD9A0), Color(0xFFFFB54D))], rainy: true);
   static const forest = CreateScene([Color(0xFF123A2E), Color(0xFF2A8A5E), Color(0xFFC9EC6E)],
       glows: [(.76, .22, .07, Color(0xFFF6FFC9), Color(0xFFE2F79A))], ground: Color(0xFF0A2A1E), groundTop: .8);
   static const desert = CreateScene([Color(0xFFFBD6A2), Color(0xFFEC8A55), Color(0xFF9A3B3F)],

@@ -176,7 +176,7 @@ class _ScenePainter extends CustomPainter {
       canvas.drawCircle(at, rad * .82, Paint()..color = o.$4);
       canvas.drawCircle(at.translate(-rad * .32, -rad * .34), rad * .2, Paint()..color = Colors.white.withOpacity(.28));
     }
-    if (s.rain) {
+    if (s.rainy) {
       final p = Paint()
         ..color = Colors.white.withOpacity(.12)
         ..strokeWidth = 1.2;
