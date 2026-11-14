@@ -42,6 +42,26 @@ const _ws = {'technical': 'Technical', 'content': 'Content', 'local': 'Local', '
 const _cols = [['planned', 'Planned'], ['doing', 'Doing'], ['waiting_her', 'Waiting for you'], ['done', 'Done'], ['skipped', 'Skipped']];
 
 // ------------------------------------------------------------------ the hub
+/// v0.898 the phone's own desk for an employee, or null when its desk lives on the web console only (the AI
+/// Employees tab then opens the console's desk). The old screen below falls back to the SEO Desk instead.
+Widget? employeeDeskNative(Santosh app, String key) {
+  const game = {'game_dev', 'procgen_dev', 'physics_dev', 'audio_dev', 'haptics_dev', 'netcode_dev', 'xr_dev', 'sim_dev',
+                'twin_arch', 'vfx_td'};
+  const ent = {'erp', 'crm_arch', 'tpm', 'bpa', 'ecom_arch', 'health_int', 'bank_int', 'supply_opt', 'plm', 'regtech'};
+  if (key == 'seo') return SeoDeskScreen(app: app);
+  if (key == 'social') return SocialDeskScreen(app: app);
+  if (key == 'cad') return CadDeskScreen(app: app);
+  if (game.contains(key)) return GameDeskScreen(app: app);
+  if (key == 'architect') return ArchDeskScreen(app: app);
+  if (key == 'tutor') return GuruScreen(app: app);
+  if (key == 'school_office') return DaftarScreen(app: app);
+  if (key == 'curriculum' || key == 'school_register') return ShikshaScreen(app: app);
+  if (key == 'research') return ShodhScreen(app: app);
+  if (key == 'lab') return PrayogScreen(app: app);
+  if (ent.contains(key)) return EnterpriseScreen(app: app, role: key);
+  return null;
+}
+
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key, required this.app});
   final Santosh app;

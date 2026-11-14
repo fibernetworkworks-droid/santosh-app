@@ -421,4 +421,4 @@ def test_the_spec_promises_the_envelope_and_the_hints():
 
 def test_app_version_is_the_conscious_bump():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.897.0"
+    assert APP_VERSION == "0.898.0"

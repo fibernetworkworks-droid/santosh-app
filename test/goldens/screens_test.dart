@@ -18,7 +18,9 @@ import 'package:santosh/state.dart';
 import 'package:santosh/ui/desk/desk_kit.dart';
 import 'package:santosh/ui/hoola_theme.dart';
 import 'package:santosh/ui/shell/hoola_settings.dart';
+import 'package:santosh/ui/shell/hoola_employees.dart';
 import 'package:santosh/ui/shell/hoola_tabs.dart';
+import 'package:santosh/ui/shell/hoola_tools.dart';
 import 'package:santosh/main.dart';
 import 'package:santosh/ui/employees_screen.dart';
 import 'package:santosh/ui/glass.dart';
@@ -186,6 +188,19 @@ void _tabsData(Santosh app) {
       {'id': 'notion', 'name': 'Notion', 'status': 'needs_link', 'does': 'Your pages and databases'},
     ],
   };
+  // v0.898 the AI Employees tab
+  HoolaEmployees.debugList = [
+    {'key': 'seo', 'name': 'SEO Specialist', 'group': 'Business', 'status': 'hired', 'live': true,
+     'pitch': 'Gets your website found on Google and AI search'},
+    {'key': 'social', 'name': 'Social Media Manager', 'group': 'Business', 'status': 'paused', 'live': true,
+     'pitch': 'Plans, posts and answers on Instagram and Facebook'},
+    {'key': 'accounts', 'name': 'GST & Accounts', 'group': 'Finance & Banking', 'live': true,
+     'pitch': 'Your GST returns, credit, bills and the CA pack'},
+    {'key': 'tutor', 'name': 'Guru Sahayak', 'group': 'Education, Research & Lab', 'live': true,
+     'pitch': 'A patient tutor for every student'},
+    {'key': 'const_qs', 'name': 'Quantity Surveyor', 'group': 'Construction', 'live': false,
+     'pitch': 'Measures, rate analysis and bills of quantities'},
+  ];
   HoolaTabsDebug.apps = [
     {'pack_id': 'swiggy', 'name': 'Swiggy', 'status': 'needs_link', 'does': 'Food orders and tracking'},
     {'pack_id': 'indiamart', 'name': 'IndiaMART', 'status': 'ready', 'no_login': true, 'does': 'Supplier prices city by city'},
@@ -303,7 +318,7 @@ void main() {
     final prefs = <String, Object>{'new_look': true, 'appearance': mode};
     testWidgets('30 new home ($mode)', (t) => _shot(t, '30_new_home_$mode', home, prefs: prefs, a11y: true));
     testWidgets('31 new drawer ($mode)', (t) => _shot(t, '31_new_drawer_$mode', home, prefs: prefs, prep: chats, tab: find.byTooltip('Open chats')));
-    testWidgets('32 new work tab ($mode)', (t) => _shot(t, '32_new_work_$mode', home, prefs: prefs, a11y: true, tab: find.text('Work')));
+    testWidgets('32 new employees tab ($mode)', (t) => _shot(t, '32_new_employees_$mode', home, prefs: prefs, prep: _tabsData, a11y: true, tab: find.text('AI Employees')));
     // v0.862 R3 the new chat
     testWidgets('33 new chat ($mode)', (t) => _shot(t, '33_new_chat_$mode', home, prefs: prefs, prep: _richChat, a11y: true));
     testWidgets('34 new chat working ($mode)', (t) => _shot(t, '34_new_chat_working_$mode', home, prefs: prefs,
@@ -317,10 +332,15 @@ void main() {
           a.realtimeVoice = true;
           _inCall(a);
         }, tab: find.bySemanticsLabel('Start a call')));
-    // v0.866 R6 the three tabs in the new design, with a week of her work, things made and connections
-    testWidgets('40 new work ($mode)', (t) => _shot(t, '40_new_work_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Work'), a11y: true));
-    testWidgets('41 new connect ($mode)', (t) => _shot(t, '41_new_connect_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Connect'), a11y: true));
-    testWidgets('42 new made ($mode)', (t) => _shot(t, '42_new_made_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Made'), a11y: true));
+    // v0.898 the four tabs: Hoola, AI Employees, Tools, Computer; Work, Made and Connectors as pages of their own
+    testWidgets('40 new tools ($mode)', (t) => _shot(t, '40_new_tools_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Tools'), a11y: true));
+    testWidgets('41 new connectors page ($mode)', (t) => _shot(t, '41_new_connect_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaConnectorsPage(app: a)), prefs: prefs, prep: _tabsData, a11y: true));
+    testWidgets('42 new made page ($mode)', (t) => _shot(t, '42_new_made_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaPageFrame(child: HoolaMade(app: a))), prefs: prefs, prep: _tabsData, a11y: true));
+    testWidgets('45 new work page ($mode)', (t) => _shot(t, '45_new_work_$mode',
+        (a) => HoolaTheme(appearance: a.appearance, child: HoolaPageFrame(child: HoolaWork(app: a, onOpenChat: (_) {}, onTeam: () {}, onToday: () {}))),
+        prefs: prefs, prep: _tabsData, a11y: true));
     // v0.867 R7 Settings and Your AI team
     testWidgets('43 new settings ($mode)', (t) => _shot(t, '43_new_settings_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: prefs, a11y: true));
@@ -343,7 +363,8 @@ void main() {
   final big = <String, Object>{'new_look': true, 'appearance': 'dark'};
   testWidgets('50 home at 200 % text', (t) => _shot(t, '50_text200_home', home, prefs: big, text: 2));
   testWidgets('51 chat at 200 % text', (t) => _shot(t, '51_text200_chat', home, prefs: big, prep: _richChat, text: 2));
-  testWidgets('52 work at 200 % text', (t) => _shot(t, '52_text200_work', home, prefs: big, prep: _tabsData, tab: find.text('Work'), text: 2));
+  testWidgets('52 employees at 200 % text', (t) => _shot(t, '52_text200_employees', home, prefs: big, prep: _tabsData, tab: find.text('AI Employees'), text: 2));
+  testWidgets('56 tools at 200 % text', (t) => _shot(t, '56_text200_tools', home, prefs: big, prep: _tabsData, tab: find.text('Tools'), text: 2));
   testWidgets('53 settings at 200 % text', (t) => _shot(t, '53_text200_settings',
       (a) => HoolaTheme(appearance: a.appearance, child: HoolaSettings(app: a, onReset: () {})), prefs: big, text: 2));
   testWidgets('54 desk at 200 % text', (t) async {

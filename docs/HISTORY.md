@@ -4241,3 +4241,43 @@ chat's calls in, old apps unchanged; own live stream hears its calls not other c
 New chat lets go first). Phone analyze unchanged (27 baseline), phone chat tests green. Older red seen on the way and
 proven on the untouched tree: test_v0178_realtime::test_crashed_turn_still_replies_and_typing_goes_off.
 NOT VERIFIED on her phone; the server part needs the VPS deploy.
+
+
+## v0.898.0 CHAAR TAB - Hoola, AI Employees, Tools, Computer (owner: "NOW CHECK THE BOTTOM NAV REMOVE :: WORK SECTION INSTEAD PUT AI EMPLOYEE, REMOVE CONNECTOR INSTEAD PUT TOOLS IN TOOLS (SHOW ALL HOOLA FEATURES INTERACTIVE, VOCAL, FLOW, WEB DEVELOPMENT, APP DEVELOPMENT, CREATE, DESIGN, PROMPTING SAME AS CONSOLE PANEL SHOWN, REMOVE THE MADE -- WE WILL KEEP IT AT DIFFERENT POSITION ---- BOTTOM WILL HAVE 4 SECTION --- HOOLA, AI EMPLOYEE, TOOLS, COMPUTER")
+
+The new-design tab bar (`HoolaNav` in lib/ui/shell/hoola_shell.dart) was Hoola / Work / Connect / Made / Computer. Now:
+
+- **Hoola** - unchanged (home + chat).
+- **AI Employees** (`lib/ui/shell/hoola_employees.dart`) - the console's AI Employees hub in the new design, on the
+  same list (GET /api/employees). Header "N working for you · M ready to hire"; search; department chips; "Working for
+  you" first (shown once - not repeated under its department); every department below; Soon / Hire / Working /
+  Paused pills. A tap opens the employee's card (what it does, what it needs, what it will never do) with Hire, or
+  Open desk + Pause / Resume + Let go (asks first). A desk the phone has opens in the app (`employeeDeskNative` in
+  employees_screen.dart - SEO, Social, CAD, the Game Desk roles, Architecture, Education, Enterprise); any other
+  opens the console's own desk (`employeeConsolePath`: Film, Leads, GST & Accounts, the department desks, the 21
+  Construction seats; Kaan = Hoola Flow; unknown = the console hub). "Every desk and tool" at the bottom = the old
+  Your AI team list.
+- **Tools** (`lib/ui/shell/hoola_tools.dart`) - every studio of the console as a tile: Create, Hoola Interactive,
+  Hoola Vocal, Hoola Flow, Web Development, App Development, Hoola Design, Prompting; then More: Hoola Code, Game Dev,
+  Connectors (the old Connect tab as a page). With big phone text the tiles become rows (nothing cut at 200 %).
+  A tap opens that studio's own console page INSIDE the app (`hoola_console_page.dart`): a WebView first loads the
+  server's /healthz (same origin), puts her key into the console's own storage (`hoola.console.token`, the same
+  Bearer the app already uses), then opens the page - so it is exactly the console's page, already signed in. Mic
+  requests are allowed (Flow, Vocal); links to other sites open in the phone's browser; back walks the page's own
+  history first; a bar with back, the title, reload and open in the browser.
+- **Computer** - unchanged (v0.890).
+
+Work and Made left the tab bar and live in the drawer ("Work", "Made by <avatar>") as pages with a back arrow
+(`HoolaPageFrame`). The + sheet's Connectors opens the Connectors page; Your computers = tab 3.
+
+Console: v2.js opens a requested page from `/console/?v=<view>&a=<arg>` (only a view it really has - its own
+section or one of the standalone apps; the address is reset so a reload does not reopen it) - that is how Tools
+opens Interactive / Vocal / Create and how an employee's console desk opens on that employee.
+
+Also fixed on the way: test_v0475_console_frames::test_app_version_story had been red since v0.896 (its marker
+lived in an older version story) - moved to the newest story, the v0.476 precedent.
+
+Tests: test/four_tabs_test.dart (4), server/tests/test_v0898_chaar_tab.py (3), the screen pictures updated (AI
+Employees, Tools, Connectors / Made / Work pages, AI Employees + Tools at 200 % text) - all 58 clean.
+NOT VERIFIED on her phone: the WebView sign-in, and downloads / file pickers inside console pages (a WebView does not
+hand downloads to the phone by itself - "Open in the browser" is the way for those).

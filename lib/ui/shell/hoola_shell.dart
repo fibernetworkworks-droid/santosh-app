@@ -1,6 +1,7 @@
 // v0.861 R2 THE SHELL (docs/HOOLA_APP_REDESIGN_PLAN.md R2): the Claude-style frame of the app in Hoola's brand.
 //
-//   4 tabs in a floating pill bar: Hoola (home + chat) · Work · Connect · Made
+//   4 tabs in a floating pill bar: Hoola (home + chat) · AI Employees · Tools · Computer (v0.898, owner: "BOTTOM WILL
+//   HAVE 4 SECTION --- HOOLA, AI EMPLOYEE, TOOLS, COMPUTER"; Work and Made moved to the drawer, Connectors into Tools)
 //   a drawer (her recent chats + calls, All chats, what Santosh remembers, her avatar -> Settings, New chat)
 //   the pill composer (+ · "Type or hold to talk" · mic · the black voice button that opens Talk)
 //
@@ -13,7 +14,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../state.dart';
-import '../bazar_screen.dart';
 import '../calls_sheet.dart';
 import '../chat/hoola_attach.dart';
 import '../chat/hoola_chat.dart';
@@ -24,12 +24,14 @@ import '../hoola_theme.dart';
 import '../talk/hoola_talk.dart';
 import 'hoola_settings.dart';
 import 'hoola_computer.dart';
+import 'hoola_employees.dart';
 import 'hoola_tabs.dart';
+import 'hoola_tools.dart';
 import '../memory_page_screen.dart';
 import '../today_screen.dart';
 import '../voice_screen.dart';
 
-/// v0.895 the composer's Add sheet asks the shell for a tab (Connectors = 2, Your computers = 4).
+/// v0.895 the composer's Add sheet asks the shell for a tab (v0.898: Your computers = 3).
 final hoolaTabRequest = ValueNotifier<int?>(null);
 
 /// The Hoola mark (the owner's logo) as drawn in the app.
@@ -118,21 +120,9 @@ class _HoolaShellState extends State<HoolaShell> {
           final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
           final pages = <Widget>[
             _HoolaTab(app: app, onTalk: _openTalk, onMenu: () => _scaffold.currentState?.openDrawer()),
-            // v0.866 R6 the three tabs in the new design; the old pages stay one tap away from each
-            HoolaWork(
-              app: app,
-              onOpenChat: (id) async {
-                _go(0);
-                await app.openChat(id);
-              },
-              onTeam: () => hoolaOpenNew(context, app, HoolaTeam(app: app)),
-              onToday: () => _openOld(TodayScreen(app: app, onTab: (i) {
-                Navigator.of(context).maybePop();
-                _go(i == 1 ? 0 : i == 3 ? 2 : 1);
-              })),
-            ),
-            HoolaConnect(app: app, onMore: () => _openOld(BazarScreen(app: app))),
-            HoolaMade(app: app),
+            // v0.898 the four tabs: Hoola, AI Employees, Tools, Computer (Work + Made live in the drawer now)
+            HoolaEmployees(app: app),
+            HoolaTools(app: app),
             HoolaComputer(app: app),   // v0.890 Hoola Computer: Hoola PC + Your PC, their own chats
           ];
           return Scaffold(
@@ -154,6 +144,30 @@ class _HoolaShellState extends State<HoolaShell> {
               onMemory: () {
                 Navigator.of(context).maybePop();
                 _openOld(MemoryPageScreen(app: app));
+              },
+              // v0.898 Work and Made left the tab bar: here, one tap away
+              onWork: () {
+                Navigator.of(context).maybePop();
+                hoolaOpenNew(context, app, Builder(builder: (ctx) => HoolaPageFrame(
+                      child: HoolaWork(
+                        app: app,
+                        onOpenChat: (id) async {
+                          Navigator.of(ctx).maybePop();
+                          _go(0);
+                          await app.openChat(id);
+                        },
+                        onTeam: () => hoolaOpenNew(ctx, app, HoolaTeam(app: app)),
+                        onToday: () => _openOld(TodayScreen(app: app, onTab: (_) {
+                          Navigator.of(ctx).maybePop();   // Today
+                          Navigator.of(ctx).maybePop();   // Work
+                          _go(0);
+                        })),
+                      ),
+                    )));
+              },
+              onMade: () {
+                Navigator.of(context).maybePop();
+                hoolaOpenNew(context, app, HoolaPageFrame(child: HoolaMade(app: app)));
               },
               onSettings: () {
                 Navigator.of(context).maybePop();
@@ -257,9 +271,8 @@ class HoolaNav extends StatelessWidget {
 
   static const _items = [
     (null, null, 'Hoola'),
-    (Icons.work_outline_rounded, Icons.work_rounded, 'Work'),
-    (Icons.power_outlined, Icons.power_rounded, 'Connect'),
-    (Icons.layers_outlined, Icons.layers_rounded, 'Made'),
+    (Icons.badge_outlined, Icons.badge_rounded, 'AI Employees'),   // v0.898
+    (Icons.apps_outlined, Icons.apps_rounded, 'Tools'),             // v0.898
     (Icons.computer_outlined, Icons.computer_rounded, 'Computer'),   // v0.890
   ];
 
@@ -652,9 +665,9 @@ class _HoolaComposerState extends State<HoolaComposer> {
       case HoolaAddPick.files:
         await _pickFiles();
       case HoolaAddPick.connectors:
-        hoolaTabRequest.value = 2;
+        await hoolaOpenNew(context, widget.app, HoolaConnectorsPage(app: widget.app));   // v0.898 inside Tools now
       case HoolaAddPick.computers:
-        hoolaTabRequest.value = 4;
+        hoolaTabRequest.value = 3;
       case HoolaAddPick.team:
         await hoolaOpenNew(context, widget.app, HoolaTeam(app: widget.app));
     }
@@ -860,6 +873,8 @@ class HoolaDrawer extends StatefulWidget {
     required this.onCalls,
     required this.onMemory,
     required this.onSettings,
+    this.onWork,
+    this.onMade,
   });
   final Santosh app;
   final VoidCallback onNewChat;
@@ -867,6 +882,7 @@ class HoolaDrawer extends StatefulWidget {
   final VoidCallback onCalls;
   final VoidCallback onMemory;
   final VoidCallback onSettings;
+  final VoidCallback? onWork, onMade;   // v0.898
   @override
   State<HoolaDrawer> createState() => _HoolaDrawerState();
 }
@@ -913,6 +929,8 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
                     _row(c, null, 'All chats', () => setState(() => _all = true), chevron: true),
                   Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Divider(color: c.line, indent: 8, endIndent: 8)),
                   _section('More', c),
+                  if (widget.onWork != null) _row(c, Icons.work_outline_rounded, 'Work', widget.onWork!),
+                  if (widget.onMade != null) _row(c, Icons.layers_outlined, 'Made by ${app.aName}', widget.onMade!),
                   _row(c, Icons.call_outlined, 'Calls', widget.onCalls),
                   _row(c, Icons.lightbulb_outline_rounded, 'What ${app.aName} remembers', widget.onMemory),
                 ]),

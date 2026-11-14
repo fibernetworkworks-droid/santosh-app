@@ -462,6 +462,13 @@ async function enter() {
   }
   if (ME.arena && window.HoolaArena && !AR) { AR = HoolaArena({api, esc, toast}); if (!NAV.some(([k]) => k === 'arena')) NAV.push(['arena', 'Arena']); }   // v0.312 owner only
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
+  // v0.898 TOOLS on the phone: /console/?v=<view>&a=<arg> opens straight on that page (the app's Tools tab and an AI
+  // employee's desk link here); only a view the console really has, else the chat stays
+  try {
+    const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev'];
+    if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
+  } catch (e) { /* the chat stays */ }
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
     CH = HoolaChats({api, esc, toast, current: () => CONV, open: id => { go('chat'); openConv(id); }, loaded: () => drawHead(),
                      jump: (c, e) => jumpTo(c, e), newChat: () => $('#newChat').click(), avatar: () => AV,
