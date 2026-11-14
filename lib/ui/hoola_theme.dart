@@ -306,6 +306,11 @@ class HoolaShadow {
   /// Only floating things carry a shadow: the composer, the tab bar, menus, sheets.
   static List<BoxShadow> float(HoolaColors c) =>
       [BoxShadow(color: c.shadow.withOpacity(c.dark ? .5 : .18), blurRadius: 28, spreadRadius: -12, offset: const Offset(0, 8))];
+  /// v0.907 a resting card that can be tapped (the Tools studios): barely lifted off the page.
+  static List<BoxShadow> card(HoolaColors c) => [
+        BoxShadow(color: c.shadow.withOpacity(c.dark ? .3 : .04), blurRadius: 2, offset: const Offset(0, 1)),
+        BoxShadow(color: c.shadow.withOpacity(c.dark ? .6 : .22), blurRadius: 24, spreadRadius: -16, offset: const Offset(0, 10)),
+      ];
 }
 
 // ------------------------------------------------------------------------------------------------ motion

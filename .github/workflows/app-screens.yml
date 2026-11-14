@@ -28,7 +28,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Unit tests (fonts bundled, markdown, design rules)
-        run: flutter test test/fonts_test.dart test/md_text_test.dart test/design_rules_test.dart test/desk_kit_test.dart test/hoola_tabs_test.dart test/hoola_settings_test.dart test/reply_look_test.dart test/chat_sessions_test.dart test/new_chat_test.dart test/all_cards_test.dart test/connect_test.dart test/page_pro_test.dart test/nav_pro_test.dart
+        run: flutter test test/fonts_test.dart test/md_text_test.dart test/design_rules_test.dart test/desk_kit_test.dart test/hoola_tabs_test.dart test/hoola_settings_test.dart test/reply_look_test.dart test/chat_sessions_test.dart test/new_chat_test.dart test/all_cards_test.dart test/connect_test.dart test/page_pro_test.dart test/nav_pro_test.dart test/tools_pro_test.dart
       - name: Take the screen pictures
         run: |
           set -o pipefail

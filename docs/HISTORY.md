@@ -4491,3 +4491,27 @@ automatic line.
 TESTS: golden 62 (light + dark): a chat with only the greeting = HoolaHome, greeting text not drawn, composer 12 dp above
 the tab bar; first message = the chat view with no greeting. Server `test_v0906_new_chat_home.py` (4). NOT VERIFIED on
 her phone.
+
+
+## v0.907.0 TOOLS PRO - the Tools tab, option B (owner: "NOW LETS WORK ON TOOLS SECTION ... PINK ICON CARD MAKE IT MORE PREMIUM PROFESSIONAL AND SOFT WITH BLACK PERFECT ALINED ICONS WITH A CARD ANIMATION. FIRST SHOW ME IT HERE")
+
+Design first on the canvas claude.ai/artifact/KMa7vVmS1EpWNRBqCvB8SX (A soft tiles / B black badge / C one list, light +
+dark), then her rounds: "DIFFRENT UNIQUE ICON FOR ALL WITH BIG SIZE", "SHOW THE ICON AT CENTER ALL", "ALSO EVERY ICON WITH
+SLIGHT AND PEFRECT ANIMATION", "GO WITH B".
+
+BUILT: `lib/ui/shell/hoola_tool_icons.dart` - ToolGlyph x11 (Create wand + sparkles, Interactive presenter + speech
+bubble, Vocal headphones + sound bars, Flow mic + lines of text, Web browser + code, App phone of tiles, Design pen curve
++ handle, Prompting chat bubble + spark, Code braces + cursor, Game gamepad + buttons, Connectors plug), each a still part
+and a moving part as SVG path data on one 24-unit grid, stroke 1.7 (the tab bar's family), read by a small path-data
+reader (`svgPath`: M L H V C S Q A Z); `draw` 0..1 draws the still part in; a seconds clock drives one quiet motion per
+drawing (twinkle, bob, eq, write, breathe, pulse, tilt, spin, blink, press, plug; phase offset per card so they never move
+together). `lib/ui/shell/hoola_tools.dart`: HoolaTools is stateful - opening controller (cards rise 18 dp + scale .965 ->
+1 one by one 55 ms apart, the badge pops with a slight back-ease and turns -8 deg -> 0, the drawing draws itself) and a
+1-hour repeating clock; `ToolBadge` = the drawing at .53 of a black circle (`c.pill` / `c.onPill`, near-white in dark);
+cards = `c.surface` + `c.line` border + new `HoolaShadow.card`, content centred, title + line 2 lines each (grid height
+from the text size, so nothing is cut); press sinks the card (.965) and the badge (.93); big text keeps rows, now with the
+badges; Hoola Code / Game Dev / Connectors rows carry badges too. Reduce motion = opening skipped, clock stopped.
+
+TESTS: `test/tools_pro_test.dart` (every drawing paints through its whole motion; light + dark: 11 badges, all different,
+black circle, icon + name centred in the card, never cut; the cards rise one after another and the clock keeps running;
+reduce motion = no frames) on the CI unit line; server `test_v0907_tools_pro.py` (3). NOT VERIFIED on her phone.
