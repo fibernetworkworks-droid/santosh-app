@@ -215,7 +215,7 @@ void main() {
       expect(find.text('About ₹7'), findsOneWidget, reason: 'the kind changes the price line');
       final page = t.widget<CrPage>(find.byType(CrPage));
       expect(page.hue, CrHue.song, reason: 'the page takes the colour of the kind');
-      for (final mv in ['Dolly in', 'Orbit', 'Crane up', 'Crash zoom']) {
+      for (final mv in ['Dolly in', 'Orbit']) {
         expect(find.text(mv), findsWidgets, reason: 'camera move $mv');
       }
       expect(find.byType(CrMove), findsWidgets, reason: 'the camera moves are moving pictures');

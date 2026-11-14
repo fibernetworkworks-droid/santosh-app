@@ -248,31 +248,33 @@ class _CrMoveState extends State<CrMove> with SingleTickerProviderStateMixin {
   Matrix4 _at(double t) {
     final e = Curves.easeInOut.transform(t);
     final m = Matrix4.identity();
-    void scale(double s) => m.scale(s, s, 1);
+    // doubles only: Matrix4.translate / scale throw UnimplementedError for an int
+    void scale(double s) => m.scale(s, s, 1.0);
+    void move(double x, double y) => m.translate(x, y, 0.0);
     switch (widget.move) {
       case 'Dolly in' || 'Auto' || 'Low angle':
         scale(1 + .3 * e);
       case 'Dolly out':
         scale(1.3 - .3 * e);
       case 'Orbit' || 'Pan':
-        m.translate(-14 + 28 * e, 0);
+        move(-14 + 28 * e, 0);
         scale(1.22);
       case 'Tracking':
-        m.translate(14 - 28 * e, 0);
+        move(14 - 28 * e, 0);
         scale(1.22);
       case 'Crane up':
-        m.translate(0, 16 - 30 * e);
+        move(0, 16 - 30 * e);
         scale(1.26);
       case 'Crash zoom':
         final k = t < .4 ? 0.0 : (t < .55 ? Curves.easeOutCubic.transform((t - .4) / .15) : 1.0);
         scale(1 + .6 * k);
       case 'Handheld':
         final a = t * math.pi * 2;
-        m.translate(4 * math.sin(a), 3 * math.cos(a * 2));
+        move(4 * math.sin(a), 3 * math.cos(a * 2));
         m.rotateZ(.012 * math.sin(a * 3));
         scale(1.16);
       case 'Drone':
-        m.translate(-8 + 16 * e, 0);
+        move(-8 + 16 * e, 0);
         m.rotateZ(-.06 + .1 * e);
         scale(1.12 + .3 * e);
       default:
@@ -574,15 +576,21 @@ class CrHead extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
-        Expanded(child: Semantics(header: true, child: Text(text, style: HoolaType.heading(c).copyWith(fontSize: 17)))),
+        Expanded(flex: 3, child: Semantics(header: true, child: Text(text, style: HoolaType.heading(c).copyWith(fontSize: 17)))),
         if (link != null)
-          TextButton(
-            onPressed: onLink,
-            style: TextButton.styleFrom(foregroundColor: c.ink2, minimumSize: const Size(48, 48)),
-            child: Text(link!, style: HoolaType.small(c).copyWith(color: c.ink2, fontWeight: FontWeight.w500)),
+          Flexible(
+            child: TextButton(
+              onPressed: onLink,
+              style: TextButton.styleFrom(foregroundColor: c.ink2, minimumSize: const Size(48, 48)),
+              child: Text(link!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: HoolaType.small(c).copyWith(color: c.ink2, fontWeight: FontWeight.w500)),
+            ),
           )
         else if (note.isNotEmpty)
-          Text(note, style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink2)),
+          Flexible(
+            child: Text(note, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right,
+                style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink2)),
+          ),
       ]),
     );
   }
