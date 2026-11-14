@@ -566,6 +566,15 @@ class _TeamStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cards = [for (final e in team) _TeamCard(staff: staff, e: e, clock: clock)];
+    // with big text (her phone's text size) the cards go one under the other, full width, so nothing is cut
+    if (MediaQuery.textScalerOf(context).scale(10) > 13) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: HoolaSpace.gutter),
+        child: Column(children: [
+          for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(height: 12), IntrinsicHeight(child: cards[i])],
+        ]),
+      );
+    }
     if (team.length <= 2) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: HoolaSpace.gutter),
@@ -609,11 +618,11 @@ class _TeamCard extends StatelessWidget {
           EmployeeMono(e: e, size: 40),
           const Spacer(),
           if (paused)
-            Text('Paused', style: HoolaType.label(c).copyWith(color: c.warn))
+            Flexible(child: Text('Paused', maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.label(c).copyWith(color: c.warn)))
           else ...[
             _LiveDot(color: c.ok, clock: clock),
             const SizedBox(width: 6),
-            Text('Working', style: HoolaType.label(c).copyWith(color: c.ok)),
+            Flexible(child: Text('Working', maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.label(c).copyWith(color: c.ok))),
           ],
         ]),
         const SizedBox(height: 12),
