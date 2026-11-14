@@ -74,11 +74,11 @@ void main() {
     final it = FeedItem('open', {'pack': 'Swiggy', 'message': 'Your order is ready to pay in Swiggy'});
     await t.pumpWidget(_host((c) => hoolaCardAll(c, app, it)!));
     expect(find.byType(HoolaCard), findsOneWidget);
-    expect(find.byType(OutlinedButton), findsNothing);
+    expect(find.byWidgetPredicate((w) => w is OutlinedButton), findsNothing);
     await t.tap(find.text('Details'));
     await t.pumpAndSettle();
     expect(find.byType(BottomSheet), findsOneWidget);
-    expect(find.byType(OutlinedButton), findsOneWidget, reason: 'the old card, with its button, in the sheet');
+    expect(find.byWidgetPredicate((w) => w is OutlinedButton), findsOneWidget, reason: 'the old card, with its button, in the sheet');
 
     final ask = FeedItem('studio_approval', {'id': 's1', 'status': 'pending', 'title': 'Make the Diwali reel for ₹120'});
     await t.pumpWidget(_host((c) => hoolaCardAll(c, app, ask)!));
