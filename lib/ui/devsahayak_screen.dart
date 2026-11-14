@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import '../native.dart';
 import '../state.dart';
 import 'desk/desk_kit.dart';
+import 'devsahayak_new.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -197,9 +198,8 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
   int _tab = 0;
   bool _busy = false;
   List<Map<String, dynamic>> _prs = [];
-  final TextEditingController _ask = TextEditingController();
   String _repo = '';
-  String _mode = '';
+  final String _mode = '';   // v0.878 the mode is picked on the New session page now
 
   @override
   void initState() {
@@ -209,7 +209,6 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
 
   @override
   void dispose() {
-    _ask.dispose();
     super.dispose();
   }
 
@@ -250,71 +249,37 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
 
   String get _modeNow => _mode.isNotEmpty ? _mode : (_st['ask_before_pr'] == true ? 'ask' : 'auto');
 
-  Future<void> _start() async {
-    final text = _ask.text.trim();
-    if (text.isEmpty) {
-      _snack(context, 'Describe the task, or paste the error.');
-      return;
-    }
-    final repo = _repoNow;
-    if (repo.isEmpty) {
-      _snack(context, 'Add a repo first, in Repos.');
-      return;
-    }
-    final r = await _run('POST', '/api/devsahayak/tasks/start', {'kind': 'auto', 'text': text, 'repo': repo, 'mode': _modeNow});
-    if (r != null && _s(r['id']).isNotEmpty && mounted) {
-      _ask.clear();
-      _openTask(_s(r['id']));
-    }
+  /// v0.878 New session opens its own page, like Claude Code's mobile Code tab: the environment chip, the repository
+  /// chip and one composer (devsahayak_new.dart).
+  Future<void> _newPage() async {
+    final id = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => DevNewSessionPage(app: widget.app, repos: List<String>.of(_repoNames), repo: _repoNow, mode: _modeNow, modes: _modes)));
+    if (!mounted) return;
+    await _load();
+    if (id != null && id.isNotEmpty) _openTask(id);
   }
 
   Widget _newSession() {
-    final names = _repoNames;
-    final repo = _repoNow;
-    return Glass(
-      padding: const EdgeInsets.all(12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('New session', style: display(15)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _ask,
-          minLines: 2,
-          maxLines: 6,
-          maxLength: 20000,
-          textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(hintText: 'Describe a task, or paste an error and its stack trace', counterText: ''),
-        ),
-        const SizedBox(height: 6),
-        Row(children: [
-          Expanded(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: repo.isEmpty ? null : repo,
-              hint: const Text('No repo yet'),
-              dropdownColor: const Color(0xFF17122F),
-              underline: const SizedBox.shrink(),
-              items: [for (final n in names) DropdownMenuItem<String>(value: n, child: Text(_repoShort(n), overflow: TextOverflow.ellipsis))],
-              onChanged: _busy ? null : (v) => setState(() => _repo = v ?? ''),
-            ),
-          ),
+    return Press(
+      onTap: _busy ? null : _newPage,
+      child: Glass(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(children: [
+          const Icon(Icons.add_circle_outline_rounded, color: C.accent),
           const SizedBox(width: 10),
           Expanded(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _modeNow,
-              dropdownColor: const Color(0xFF17122F),
-              underline: const SizedBox.shrink(),
-              items: [for (final m in _modes) DropdownMenuItem<String>(value: m[0], child: Text(m[1], overflow: TextOverflow.ellipsis))],
-              onChanged: _busy ? null : (v) => setState(() => _mode = v ?? ''),
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('New session', style: display(15)),
+              const SizedBox(height: 2),
+              Text(_repoNow.isEmpty ? 'Pick an environment and a repository' : 'In ${_repoShort(_repoNow)} · pick an environment',
+                  style: const TextStyle(fontSize: 12, color: C.muted)),
+            ]),
           ),
+          const Icon(Icons.chevron_right_rounded, color: C.muted),
         ]),
-        const SizedBox(height: 8),
-        GradientButton(label: 'Start', icon: Icons.arrow_upward_rounded, height: 46, onTap: _busy ? null : _start),
-        const SizedBox(height: 6),
-        const Text('Hoola works on its own branch and opens a pull request. Nothing is merged without you.',
-            style: TextStyle(fontSize: 12, color: C.muted)),
-      ]),
+      ),
     );
   }
 
@@ -452,7 +417,7 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
     final reviews = _list(_d?['reviews']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: GlassButton(label: 'See open PRs', icon: Icons.call_split_rounded, onTap: _busy ? null : () => _loadPrs(''))),
+        Expanded(child: GlassButton(label: 'See open PRs', icon: Icons.call_split_rounded, onTap: _busy ? null : () => _loadPrs(_repoNow))),
       ]),
       const SizedBox(height: 8),
       for (final p in _prs)
@@ -465,11 +430,11 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
             IconButton(
                 tooltip: 'Review',
                 icon: const Icon(Icons.rate_review_rounded),
-                onPressed: _busy ? null : () => _run('POST', '/api/devsahayak/reviews', {'pr': p['number']})),
+                onPressed: _busy ? null : () => _run('POST', '/api/devsahayak/reviews', {'repo': _s(p['repo']).isNotEmpty ? _s(p['repo']) : _repoNow, 'pr': p['number']})),
             IconButton(
                 tooltip: 'Merge card',
                 icon: const Icon(Icons.merge_rounded),
-                onPressed: _busy ? null : () => _run('POST', '/api/devsahayak/merge_request', {'pr': p['number']})),
+                onPressed: _busy ? null : () => _run('POST', '/api/devsahayak/merge_request', {'repo': _s(p['repo']).isNotEmpty ? _s(p['repo']) : _repoNow, 'pr': p['number']})),
           ]),
         ),
       const SizedBox(height: 8),
@@ -1290,7 +1255,7 @@ class _DevTaskCardState extends State<DevTaskCard> {
 
   Future<void> _planOk() async {
     setState(() => _busy = true);
-    final r = await _call(context, widget.app, 'POST', '/api/devsahayak/tasks/${_s(_t['id'])}/plan-ok', {'hash': _s(_t['hash'])});
+    final r = await _call(context, widget.app, 'POST', '/api/devsahayak/tasks/${_s(_t['id'])}/bg/plan_ok', {'hash': _s(_t['hash'])});
     if (mounted) setState(() {
       _busy = false;
       if (r != null && _s(r['id']).isNotEmpty) _after = r;
