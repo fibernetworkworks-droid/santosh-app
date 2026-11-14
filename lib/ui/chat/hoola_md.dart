@@ -29,7 +29,10 @@ class HoolaMd extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
     final body = compact ? HoolaType.body(c) : HoolaType.reply(c);
-    final code = HoolaType.code(c, size: compact ? 13 : 14).copyWith(backgroundColor: c.code, color: c.codeInk);
+    // v0.893 a short `term` like Claude's (claude.ai .ReactMarkdown code): 0.9 of the text, muted red, a 5 % ink tint
+    // with a little room each side - blue on blue read as a link
+    final code = HoolaType.code(c, size: compact ? 12.5 : 13.5)
+        .copyWith(backgroundColor: c.ink.withOpacity(c.dark ? .09 : .05), color: c.codeTerm);
     List<InlineSpan> inline(String s, {bool live = false}) {
       if (!live) return mdInline(s, link: c.accent, codeStyle: code);
       final m = _tail.firstMatch(s);
@@ -190,7 +193,7 @@ class _HoolaMdTableState extends State<HoolaMdTable> {
     final cell = HoolaType.body(c);
     final cols = rows.isEmpty ? 0 : rows.map((r) => r.length).reduce((a, x) => a > x ? a : x);
     final nums = HoolaMdTable.numberColumns(rows);
-    final code = HoolaType.code(c, size: 13).copyWith(backgroundColor: c.code, color: c.codeInk);
+    final code = HoolaType.code(c, size: 12.5).copyWith(backgroundColor: c.ink.withOpacity(c.dark ? .09 : .05), color: c.codeTerm);
     Widget fade(bool on, bool right) => IgnorePointer(
           child: AnimatedOpacity(
             opacity: on ? 1 : 0,

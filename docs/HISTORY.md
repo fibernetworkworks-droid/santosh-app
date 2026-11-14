@@ -4106,3 +4106,25 @@ was checked by eye (thinner, wraps narrower).
 Tests: server/tests/test_v0892_claude_akshar.py (6), test/reply_look_test.dart +1, fonts_test + golden loader;
 test_v0249 / test_v0240 pins moved to the variable font link and the real stamp count (35).
 NOT VERIFIED: on her phone / her browser.
+
+
+## v0.893.0 CLAUDE KA CODE + FADE (owner, after v0.892 on her phone: "CHECK THE FONT AND BOLDNESS --- IT IS PERFECT -- STILL SEEM TO OBSERVED SOMETHING MISSING --- AS HOW CLAUDE CHAT IS PERFECT -- FIND THE MISSING THING")
+
+Her two screenshots (a recovery-paths reply) against claude.ai's own stylesheet (assets-proxy .../c6a992d55-CGuUmOei.css):
+
+1. **Inline code.** Claude: `.ReactMarkdown code{border:.5px solid rgb(border-300 / .25); background-color:rgb(text-200 / .05);
+   font-size:.9rem; color:hsl(var(--danger-000)); padding:1px 4px; border-radius:.3rem; white-space:pre-wrap}`, --danger-000 light
+   `0 58.6% 34.1%` / dark `0 98.4% 75.1%`. Hoola: JetBrains Mono 14 in BLUE (`codeInk`) on a flat sunk background with no room -
+   `drive.google.com` / `DCIM` read as links. Now: phone colour role `codeTerm` (#8A2424 light / #FE8181 dark, held to 4.5:1 on bg by
+   the palette test), the term 13.5 (12.5 compact) on a 5 % ink tint (9 % dark), with a no-break space in the code's own font (letter
+   spacing -0.3 em, ~4px) each side so the chip never sits flush on its letters and never breaks off its word (only when the new chat
+   passes its code style; the old MdText renderer is unchanged). The first try used U+202F in the text font - a fallback font with a
+   taller line box drew notches at the chip corners; seen in a rendered picture and replaced. Code blocks keep `codeInk`.
+   Console: `#app .mh .txt code:not(pre code)` + `.textmd` = the same rule with `--codeterm` (was the violet accent chip).
+2. **The edge above the composer.** Claude fades messages into the page (from-bg-100 gradients, mask-image fades); Hoola's list
+   was cut through a line where it met the composer. Phone `_Fade` (IgnorePointer gradients of `c.bg`): 32 dp above the composer, 14 dp
+   under the top bar. Console `#composer::before` 28px `linear-gradient(to top,var(--chat-paper),transparent)`, z-index 2, no clicks.
+
+Tests: `test/reply_look_test.dart` (+1: term colour / size / room), `server/tests/test_v0893_claude_code_fade.py` (2). Version sweep
+0.892.0 -> 0.893.0 (pubspec +892, console stamps 35). Pre-existing red, untouched: test_v0222_saaf_chat::test_rulebook_allows_light_formatting_now
+(fails without this change too). NOT VERIFIED on her phone.

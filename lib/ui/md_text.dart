@@ -176,6 +176,15 @@ final _wordRe = RegExp(r'[A-Za-z0-9\u0900-\u097F]', unicode: true);
 bool _word(String c) => _wordRe.hasMatch(c);
 
 /// Inline marks of one block -> spans. [streaming]: an open mark styles the rest instead of showing.
+/// v0.893 a `term` with a little room each side, like Claude's (padding 1px 4px): a no-break space in the
+/// code's own font on the same tint, so the chip never ends flush on its letters and never breaks off its word.
+InlineSpan _codeSpan(String t, TextStyle code, bool room) {
+  if (!room || code.backgroundColor == null) return TextSpan(text: t, style: code);
+  // a no-break space in the code's own font (same line box - no notch), drawn about 4px wide
+  final gap = TextSpan(text: '\u00A0', style: code.copyWith(letterSpacing: -(code.fontSize ?? 14) * .3));
+  return TextSpan(children: [gap, TextSpan(text: t, style: code), gap]);
+}
+
 List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const Color(0xFFA78BFA), TextStyle? codeStyle}) {
   final spans = <InlineSpan>[];
   final buf = StringBuffer();
@@ -197,13 +206,13 @@ List<InlineSpan> mdInline(String s, {bool streaming = false, Color link = const 
       final j = s.indexOf('`', i + 1);
       if (j > i + 1) {
         flush();
-        spans.add(TextSpan(text: s.substring(i + 1, j), style: code));
+        spans.add(_codeSpan(s.substring(i + 1, j), code, codeStyle != null));
         i = j + 1;
         continue;
       }
       if (j < 0 && streaming) {
         flush();
-        if (i + 1 < n) spans.add(TextSpan(text: s.substring(i + 1), style: code));
+        if (i + 1 < n) spans.add(_codeSpan(s.substring(i + 1), code, codeStyle != null));
         break;
       }
     }

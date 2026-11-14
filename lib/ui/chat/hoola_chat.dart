@@ -157,6 +157,10 @@ class _HoolaChatState extends State<HoolaChat> {
         Expanded(
           child: Stack(children: [
             _list(c),
+            // v0.893 the reply fades into the page where it meets the composer and the top bar, like Claude's
+            // (claude.ai: from-bg-100 gradients / mask-image fades) - a hard cut through a line looked unfinished
+            Positioned(left: 0, right: 0, top: 0, height: 14, child: IgnorePointer(child: _Fade(c.bg, down: true))),
+            Positioned(left: 0, right: 0, bottom: 0, height: 32, child: IgnorePointer(child: _Fade(c.bg, down: false))),
             Positioned(
               left: 0,
               right: 0,
@@ -972,5 +976,23 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
             widget.builder(_words.take(n).join(), true),
           ]);
         },
+      );
+}
+
+/// v0.893 the page colour fading to clear: at the top it runs down, at the bottom it runs up.
+class _Fade extends StatelessWidget {
+  const _Fade(this.color, {required this.down});
+  final Color color;
+  final bool down;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: down ? Alignment.topCenter : Alignment.bottomCenter,
+            end: down ? Alignment.bottomCenter : Alignment.topCenter,
+            colors: [color, color.withOpacity(0)],
+          ),
+        ),
       );
 }
