@@ -8,6 +8,7 @@
 // is its own test, so one screen that cannot render on a test machine never hides the others' pictures.
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -489,7 +490,16 @@ void main() {
           _inCall(a);
         }, tab: find.bySemanticsLabel('Start a call')));
     // v0.898 the four tabs: Hoola, AI Employees, Tools, Computer; Work, Made and Connectors as pages of their own
-    testWidgets('40 new tools ($mode)', (t) => _shot(t, '40_new_tools_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Tools'), a11y: true));
+    // v0.907 with the app's real fonts: no studio's name or line is cut (the unit test's stand-in font is too wide)
+    testWidgets('40 new tools ($mode)', (t) => _shot(t, '40_new_tools_$mode', home, prefs: prefs, prep: _tabsData, tab: find.text('Tools'), a11y: true,
+        check: (t) {
+          for (final e in find.byType(Text).evaluate()) {
+            final p = e.renderObject;
+            if (p is RenderParagraph && (e.widget as Text).maxLines == 2) {
+              expect(p.didExceedMaxLines, isFalse, reason: '${(e.widget as Text).data} is cut');
+            }
+          }
+        }));
     testWidgets('41 new connectors page ($mode)', (t) => _shot(t, '41_new_connect_$mode',
         (a) => HoolaTheme(appearance: a.appearance, child: HoolaConnectorsPage(app: a)), prefs: prefs, prep: _tabsData, a11y: true));
     testWidgets('42 new made page ($mode)', (t) => _shot(t, '42_new_made_$mode',

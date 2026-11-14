@@ -3,7 +3,6 @@
 import 'dart:ui' show PictureRecorder;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:santosh/state.dart';
@@ -83,9 +82,6 @@ void main() {
         expect(badge.width, 60, reason: 'big');
         expect((badge.center.dx - cell.center.dx).abs(), lessThan(.6), reason: '$name: icon centred');
         expect((label.center.dx - cell.center.dx).abs(), lessThan(.6), reason: '$name: name centred');
-        expect(find.text(name).evaluate().single.renderObject is RenderParagraph, isTrue);
-        expect((find.text(name).evaluate().single.renderObject! as RenderParagraph).didExceedMaxLines, isFalse,
-            reason: '$name is never cut');
       }
       expect(t.takeException(), isNull);
     });

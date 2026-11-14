@@ -212,7 +212,7 @@ class _TileState extends State<_Tile> {
                         onHighlightChanged: (v) => setState(() => _down = v),
                         onTap: () => hoolaOpenConsole(context, widget.app, tool.path, tool.title),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                             Opacity(
                               opacity: pop,
