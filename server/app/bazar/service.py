@@ -1552,12 +1552,24 @@ def _cmp():
     return composio
 
 
-def composio_apps(tenant_id: str, q: str = "", category: str = "", offset: int = 0, limit: int = 40) -> dict[str, Any]:
+def composio_home(tenant_id: str) -> dict[str, Any]:
+    """v0.901 her phone's Connect page in one call (her apps, featured, the ten groups with their top apps)."""
+    from . import composio
+    with session() as s:
+        user = ensure_user(s, tenant_id)
+        if not composio.configured():
+            return {"configured": False, "total": 0, "connected": 0, "mine": [], "featured": [], "groups": []}
+        return {"configured": True, **composio.home(s, user.id)}
+
+
+def composio_apps(tenant_id: str, q: str = "", category: str = "", offset: int = 0, limit: int = 40,
+                  group: str = "", sort: str = "") -> dict[str, Any]:
     from . import composio
     with session() as s:
         user = ensure_user(s, tenant_id)
         st = core_settings()
-        res = composio.apps(s, user.id, q, category, offset, limit) if composio.configured() else {"apps": [], "total": 0}
+        res = (composio.apps(s, user.id, q, category, offset, limit, group, sort) if composio.configured()
+               else {"apps": [], "total": 0})
         return {"configured": composio.configured(), **res,
                 "calls_this_month": composio.used(s, user.id), "monthly_cap": st.composio_user_monthly_calls,
                 "how": "ready = bazar_run pack_id=cmp-<app> tool=<SLUG>; needs_link = action=connect toolkit=<app>; "

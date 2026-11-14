@@ -46,25 +46,6 @@ void main() {
     expect(items.map((m) => m.kind), ['picture', 'audio', 'page', 'document']);
   });
 
-  test('connect: connected, add, built in; an app is listed once', () {
-    final p = connectSections({
-      'packs': [
-        {'id': 'swiggy', 'name': 'Swiggy', 'status': 'needs_link'},
-        {'id': 'gmail', 'name': 'Gmail', 'status': 'ready'},
-        {'id': 'calc', 'name': 'Calculator', 'status': 'core'},
-        {'id': 'demo', 'name': 'Demo bill', 'status': 'demo'},
-        {'pack_id': 'zomato', 'name': 'Zomato again', 'status': 'ready'},
-      ]
-    }, [
-      {'pack_id': 'zomato', 'name': 'Zomato', 'status': 'ready'},
-      {'pack_id': 'blinkit', 'name': 'Blinkit', 'status': 'needs_link'},
-      {'pack_id': 'soon', 'name': 'Later', 'status': 'coming'},
-    ]);
-    expect(p.connected.map((i) => i.name), ['Gmail', 'Zomato']);
-    expect(p.add.map((i) => i.name), ['Blinkit', 'Swiggy']);
-    expect(p.builtin.map((i) => i.name), ['Calculator']);
-  });
-
   test('when: today / yesterday / date', () {
     final now = DateTime.now();
     expect(hoolaWhen(DateTime(now.year, now.month, now.day, 9, 5)), 'Today 09:05');

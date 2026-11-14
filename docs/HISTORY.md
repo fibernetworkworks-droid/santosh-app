@@ -4355,3 +4355,35 @@ console stamps swept).
 NOT VERIFIED on her phone; Flutter is not runnable here, the phone code compiles first on CI. NOT REDRAWN one by one:
 the ~360 desk cards behind HCLegacy keep their old full card in the Details sheet (dark) - each can get its own new card
 later without touching the dispatcher.
+
+
+## v0.901.0 CONNECT — only Composio apps, by category (owner: "just show a composio connector in here. Make it more premium and category wise perfectly. Show me the design here first" -> design canvas claude.ai/artifact/CRtSQ8Ew7RN2w3GyaxsC49 -> "GO")
+
+Her Connect page mixed 166 built-in plugins (UPI apps, banks, brokers) with Composio apps in one long A-Z list, with a
+lone spinner while an app connected. Now the page shows ONLY her apps through Composio, in ten plain groups.
+
+- SERVER `bazar/composio.py`: `GROUPS` (mail, crm, money, projects, marketing, calendar, docs, store, data, dev + more)
+  and `group_of(slug, cats)`: popular apps pinned (`_SLUG_GROUP`), else the first group whose word appears in the app's
+  Composio categories (specific words first: "Email Marketing" -> marketing, "Customer Support" -> crm), else "more".
+  `home(s, user_id)` = her apps + `FEATURED` (Razorpay, Zoho Books, Notion, Slack, HubSpot ... only those in the
+  catalogue and connectable) + every group with its count, her connected count and its top three connectable apps (an
+  app Newtika has not switched on is never a top pick); a sign-in she just finished is checked with Composio once
+  (`account(check=True)`) so the page says Connected, not Waiting. `apps()` gains `group` + `sort` (popular / az /
+  connected) and every row carries `group` / `group_name`; a search also returns the groups that match. Status for
+  apps she never joined is worked out without a database read (`_quick_status`). Routes: GET /api/composio/home,
+  /api/composio/apps?group=&sort=; service `composio_home`.
+- PHONE `lib/ui/shell/hoola_connect.dart` (the old Connect + `connectSections` removed from hoola_tabs.dart):
+  serif title + "N connected · 1,6xx ready to add", search (debounced, matching categories as chips + apps), group chips,
+  Your apps (big icons with a green tick), Most used by Indian businesses (2-column cards), Browse by category (first
+  four groups as cards of their top apps, the rest as tiles, More apps last), the sign-in promise, Built-in tools ->
+  the old Bazar screen. `ConnectGroupPage`: icon + name + counts, search inside, Popular / A-Z / Connected segments,
+  Connected first, "Show N more". The app sheet: logo, group, what Hoola can do there, Actions / Sign in / Price,
+  What Hoola will do (read what she lets it, ask before send / delete / pay, never sees her password - Composio), one
+  big button: Connect <App> (opens the app's own sign-in page, the row then says Waiting), Add your <App> key (a sheet,
+  typed there only, never in chat), Connected + Remove (asks first), Coming soon (disabled, says why). Coming back from
+  the sign-in page reloads the page (app resume + the santosh://bazar link) and shows "<App> is connected".
+- Not built from the design: per-app "Try asking" examples (no honest source per app yet) and "Ask for it" on a
+  coming-soon app (no route to record the ask).
+- Tests: test/connect_test.dart (6) + server/tests/test_v0901_connect_composio.py (6); picture 41 now shows the new page.
+  NOT VERIFIED on her phone; the real spread of apps across groups depends on Composio's own category names on her
+  server.

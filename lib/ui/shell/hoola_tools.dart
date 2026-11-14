@@ -10,6 +10,7 @@ import '../bazar_screen.dart';
 import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
 import 'hoola_settings.dart' show hoolaOpenNew, hoolaOpenOld;
+import 'hoola_connect.dart';
 import 'hoola_tabs.dart';
 
 /// One studio: its name, what it does in a line, its icon, and the console page it opens.
