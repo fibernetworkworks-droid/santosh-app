@@ -61,7 +61,9 @@ class HoolaCard extends StatelessWidget {
     this.tileTone,
     this.children = const [],
     this.actions = const [],
+    this.lead = const [],
     this.highlight = false,
+    this.whenMono = false,
   });
   final IconData icon;
   final String title;
@@ -71,10 +73,14 @@ class HoolaCard extends StatelessWidget {
   final HCStatus? status;
   final Color? tileTone;
   final List<Widget> children;
-  /// Buttons docked at the bottom, left to right (the main one last).
+  /// Buttons docked at the bottom on the right, left to right (the main one last).
   final List<Widget> actions;
-  /// A card waiting for her answer gets a stronger edge.
+  /// v0.900 quiet buttons docked at the bottom on the LEFT (Details, Hide steps, Not now).
+  final List<Widget> lead;
+  /// A card waiting for her answer gets an amber edge and a soft lift.
   final bool highlight;
+  /// v0.900 `when` is a clock (tabular figures).
+  final bool whenMono;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +92,8 @@ class HoolaCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.surface,
           borderRadius: HoolaRadius.r(HoolaRadius.cardLg),
-          border: Border.all(color: highlight ? c.lineStrong : c.line),
+          border: Border.all(color: highlight ? Color.lerp(c.line, c.warn, .45)! : c.line),
+          boxShadow: highlight ? [BoxShadow(color: c.warn.withOpacity(.14), blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -12)] : null,
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -98,7 +105,12 @@ class HoolaCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Row(children: [
                     Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.label(c).copyWith(color: c.ink3))),
-                    if (when.isNotEmpty) Text(when, style: HoolaType.label(c).copyWith(color: c.ink3)),
+                    if (when.isNotEmpty)
+                      Text(when,
+                          style: HoolaType.label(c).copyWith(
+                              color: c.ink3,
+                              fontFamily: whenMono ? HoolaFont.mono : null,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
                   ]),
                 ),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -126,11 +138,13 @@ class HoolaCard extends StatelessWidget {
               for (final w in children) ...[const SizedBox(height: 12), w],
             ]),
           ),
-          if (actions.isNotEmpty)
+          if (actions.isNotEmpty || lead.isNotEmpty)
             Container(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              padding: const EdgeInsets.fromLTRB(6, 8, 10, 10),
               decoration: BoxDecoration(border: Border(top: BorderSide(color: c.line))),
-              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              child: Row(children: [
+                for (var i = 0; i < lead.length; i++) ...[if (i > 0) const SizedBox(width: 4), Flexible(child: lead[i])],
+                const Spacer(),
                 for (var i = 0; i < actions.length; i++) ...[if (i > 0) const SizedBox(width: 8), actions[i]],
               ]),
             ),
@@ -314,9 +328,9 @@ class HCApproval extends StatelessWidget {
           const HCNote('You can also say "yes, do it" on a call or in the chat.', icon: Icons.graphic_eq_rounded),
         if (message.isNotEmpty) Text(message, style: HoolaType.body(c).copyWith(color: c.ink2)),
       ],
+      lead: [if (pending) hcQuiet(context, 'Not now', busy ? null : () => app.decideBazar(_s(v['id']), 'reject'))],
       actions: [
         if (pending) ...[
-          hcQuiet(context, 'Not now', busy ? null : () => app.decideBazar(_s(v['id']), 'reject')),
           hcMain(context, money ? 'Review and approve' : 'Yes, do it', () {
             HapticFeedback.mediumImpact();
             // money: the deliberate slide (+ fingerprint when the phone has a key). Anything else: this card IS the
@@ -365,11 +379,13 @@ class HCFile extends StatelessWidget {
       label: _made ? 'Made by ${app.aName}' : 'From your PC',
       title: name,
       status: HCStatus.quiet(HoolaColors.of(context), [if (ext.isNotEmpty) ext, if (size.isNotEmpty) size, 'link works for 24 h'].join(' · ')),
-      actions: [
+      lead: [
         hcQuiet(context, 'Share link', () async {
           final url = await _url();
           await Native.openExternal(url: 'https://wa.me/?text=${Uri.encodeComponent('$name: $url')}');
         }),
+      ],
+      actions: [
         hcMain(context, 'Open', () async => Native.openExternal(url: await _url()), icon: Icons.open_in_new_rounded),
       ],
     );
@@ -420,9 +436,14 @@ class HCPage extends StatelessWidget {
 /// The default card for every kind that has no screen of its own, in the new design (same reading of the payload as
 /// the v0.555 AnyEventCard: the title, one sentence, up to 3 facts, progress, the amount, an Open link).
 class HCAny extends StatelessWidget {
-  const HCAny({super.key, required this.v, this.at});
+  const HCAny({super.key, required this.v, this.at, this.label, this.lead = const [], this.main});
   final Map<String, dynamic> v;
   final DateTime? at;
+  /// v0.900 the desk name (HCLegacy passes a friendly one); null = from the kind.
+  final String? label;
+  /// v0.900 quiet buttons on the left (Details) and the main button (Review) - HCLegacy's way to the full card.
+  final List<Widget> lead;
+  final Widget? main;
 
   static const _titleKeys = ['title', 'name', 'label', 'what', 'subject', 'brief', 'task', 'number'];
   static const _lineKeys = ['say', 'summary', 'text', 'reason', 'message', 'detail', 'now', 'stage_label'];
@@ -476,9 +497,9 @@ class HCAny extends StatelessWidget {
         'stopped' => Icons.stop_circle_outlined,
         _ => Icons.check_rounded,
       },
-      label: desk,
+      label: label ?? desk,
       when: hcAgo(at),
-      title: tk.isEmpty ? desk : _s(v[tk]),
+      title: tk.isEmpty ? (label ?? desk) : _s(v[tk]),
       status: st,
       highlight: state == 'ask',
       children: [
@@ -497,8 +518,11 @@ class HCAny extends StatelessWidget {
         if (facts.isNotEmpty) Column(children: [for (final f in facts) HCFact(f.key, f.value)]),
         if (money && state == 'ask') const HCNote('Money is approved only in the app with your fingerprint, never by voice.'),
       ],
+      lead: lead,
       actions: [
-        if (link.isNotEmpty)
+        if (main != null)
+          main!
+        else if (link.isNotEmpty)
           hcMain(context, 'Open', () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication).catchError((_) => false),
               icon: Icons.open_in_new_rounded),
       ],

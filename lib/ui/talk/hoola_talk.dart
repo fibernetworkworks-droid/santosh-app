@@ -27,9 +27,8 @@ import '../../state.dart';
 import '../artifact_screen.dart' show ArtifactCallPill;
 import '../attach.dart';
 import '../browser_live.dart' show BrowserCallThumb;
-import '../chat/hoola_card.dart';
-import '../chat_screen.dart' show feedCard;
-import '../glass.dart' show santoshTheme;
+import '../chat/hoola_card.dart' show HCNote;
+import '../chat/hoola_cards_all.dart';
 import '../hoola_theme.dart';
 
 class HoolaTalk extends StatefulWidget {
@@ -436,16 +435,8 @@ class _HoolaTalkState extends State<HoolaTalk> with SingleTickerProviderStateMix
 
   Widget _cards(HoolaColors c, List<FeedItem> cards) {
     final focus = _focus != null && cards.contains(_focus) ? _focus! : cards.last;
-    final mine = hoolaCardFor(context, app, focus);
-    Widget card = mine ??
-        ClipRRect(
-          borderRadius: HoolaRadius.r(HoolaRadius.cardLg),
-          child: Theme(
-            data: santoshTheme(),
-            child: ColoredBox(color: santoshTheme().scaffoldBackgroundColor,
-                child: Padding(padding: const EdgeInsets.fromLTRB(8, 8, 8, 0), child: feedCard(context, app, focus) ?? const SizedBox.shrink())),
-          ),
-        );
+    // v0.900 the same new-design cards as the chat (Details / Review opens a kind's full card)
+    Widget card = hoolaCardAll(context, app, focus) ?? const SizedBox.shrink();
     return Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 8, 4),

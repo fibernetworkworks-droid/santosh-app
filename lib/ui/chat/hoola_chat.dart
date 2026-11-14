@@ -9,8 +9,8 @@
 //   long-press any message = Copy · Quote · Edit (hers) · Ask again (the newest reply) · Select text · Read aloud
 //   scrolled up      = a round "to the newest" button with the count of what arrived
 //   no connection    = "Reconnecting…" under the top bar, gone when it is back
-// Every card (approval, draft, payment, plan ...) is still the card the old chat draws (feedCard), shown in its own
-// dark frame until R4 redraws the cards. Nothing about sending, the stream or the server changed: the same Santosh
+// Every card is drawn in the new design (v0.900 hoola_cards_all.dart): redrawn cards, and for every other kind the
+// new card read from its data with Details opening the full card. Nothing about sending, the stream or the server changed: the same Santosh
 // state drives both chats.
 import 'dart:async';
 import 'dart:io';
@@ -21,15 +21,13 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../native.dart';
 import '../../state.dart';
-import '../chat_screen.dart' show feedCard;
-import '../glass.dart' show santoshTheme;
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import '../md_text.dart' show mdPlain;
 import '../shell/hoola_shell.dart' show HoolaComposer;
 import '../chat_attach.dart' show filesOnlyText;
 import 'hoola_attach.dart';
-import 'hoola_card.dart';
+import 'hoola_cards_all.dart';
 import 'hoola_md.dart';
 
 class HoolaChat extends StatefulWidget {
@@ -288,11 +286,8 @@ class _HoolaChatState extends State<HoolaChat> {
           child: Text('${it.data['text'] ?? ''}', textAlign: TextAlign.center, style: HoolaType.small(c)),
         );
       default:
-        final mine = hoolaCardFor(context, app, it);   // v0.864 R4 the cards redrawn so far
-        if (mine != null) return mine;
-        final card = feedCard(context, app, it);
-        if (card == null) return const SizedBox.shrink();
-        return _OldCard(child: card);
+        // v0.900 every kind in the new design: redrawn cards, the R4 cards, and HCLegacy (Details opens the full card)
+        return hoolaCardAll(context, app, it) ?? const SizedBox.shrink();
     }
   }
 
@@ -892,28 +887,6 @@ class _NewestButton extends StatelessWidget {
 }
 
 /// An old card (Night Glass) in its own dark frame until R4 redraws the cards.
-class _OldCard extends StatelessWidget {
-  const _OldCard({required this.child});
-  final Widget child;
-  @override
-  Widget build(BuildContext context) {
-    final old = santoshTheme();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: ClipRRect(
-        borderRadius: HoolaRadius.r(HoolaRadius.cardLg),
-        child: Theme(
-          data: old,
-          child: ColoredBox(
-            color: old.scaffoldBackgroundColor,
-            child: Padding(padding: const EdgeInsets.fromLTRB(8, 8, 8, 0), child: child),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// A reply that just arrived appears word by word at reading speed (34 ms a word, capped at 10 s), the newest
 /// words lighter; history shows at once. Reduce motion = all at once.
 class _Reveal extends StatefulWidget {

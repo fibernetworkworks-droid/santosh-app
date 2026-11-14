@@ -4309,3 +4309,49 @@ events still arrive in order with a seen id dropped; a 401 ends the stream with 
 0.899.0+898; pins + console stamps swept). Pre-existing red, not this work: `test_v0718_seekh_console::test_version_pins`
 (its story marker was already gone at v0.898). NOT VERIFIED on her phone; Flutter is not runnable in the sandbox, the
 phone test runs first on CI.
+
+
+## v0.900.0 SAB CARD NAYE — every chat card in the new design (owner: "check the card in chat space looks stale and random ... make it perfect human native and smooth and advance ... show me design here first ... check all cards" -> canvas -> "GO BUILD ALL CARDS")
+
+Her screenshot: the "LONG TASK IN PROGRESS" card in the new chat - a black slab with a gradient tile, shouting caps,
+a ⏳ emoji and a big outlined Stop bar. THE CHECK: the chat can show 375 card kinds built from 319 old widgets; the new
+design (v0.864 R4) had redrawn only 4 (approval, file, page, default) and drew every other kind in the old Night Glass
+widgets inside a dark frame (`hoola_chat.dart _OldCard`). The old widgets cannot simply be recoloured: glass.dart's `C`
+is a block of compile-time constants used in `const` widgets all over the app.
+
+DESIGN FIRST: a canvas of six boards (long task / needs your yes / working now / made for you / receipts and quiet
+notes / dark mode), claude.ai/artifact/6B4C1xWkAUSeveMq7BKDuL. One anatomy for every card: a quiet label line (where
+it comes from + when), a tinted tile, the title, the status in plain words with a coloured dot (violet working, amber
+needs you, green done, red did not work), the body, the buttons docked at the bottom - quiet ones LEFT, the main one
+RIGHT; a card waiting for her gets an amber edge and a soft lift.
+
+BUILT (`lib/ui/chat/hoola_cards_all.dart`, one door `hoolaCardAll` used by the chat and the live call):
+- HCGoal (goal): thin step bar (green done, violet running), finished steps with a tick, the running step with what
+  Hoola is doing now (`app.currentStep`), numbered steps waiting, a live clock (the goal event now carries
+  `started_at` / `updated_at`, server `agent/goal.py`), Hide steps, soft red Stop, "Go on" when the budget paused it,
+  the four-part end report; a finished job with more than 6 steps folds them behind Steps.
+- HCOperatorTask (operator_task): the live screen (OperatorFrame, tap = live view), the stage as an italic thinking
+  line, Watch / Details, Stop (operatorCancel).
+- HCOperatorAsk (operator_ask): approve = Yes / No; choice and question = choice rows + "Or say something else" +
+  Choose / Send (operatorAnswer); OTP / CAPTCHA / secret / payment / takeover never get a box in the chat card - Answer
+  opens the old guarded card.
+- HCQuietLine: memory_used ("Used from memory: ..." + See = the forget sheet), memory_saved ("Remembered: ..." + Undo =
+  forget), compact ("Older messages kept as a summary" + View) - one quiet line under the reply, not a card.
+- HCCalendar (Join Meet / Open calendar), HCPlaces (numbered rows, Directions / Call / Website, Show all), HCPhoto (large
+  picture, Share / Save, full-screen view), HCReconnect (Reconnect / Check), HCLinkApp (Connect).
+- HCLegacy = every other kind: the new card read from its data (HCAny: title, one line, up to three facts, progress,
+  amount) with a friendly desk name (`hcDesk`) + Details (or Review when it waits for her) opening that kind's full
+  old card in a sheet that redraws live - every button it ever had is one tap away.
+- The card shell (`hoola_card.dart HoolaCard`): `lead` (left), `whenMono` (a clock), the amber edge; HCApproval's Not now
+  and HCFile's Share link moved left.
+
+TESTS: `test/all_cards_test.dart` (5: the dispatch for the redrawn kinds, 14 other kinds -> HCLegacy and a kind with no
+card stays invisible, Details opens the old card's button in a sheet / Review on a waiting card, the long task card
+incl. its clock and Hide steps and the done report, a job's choice answered in the card and an OTP that never gets a
+box); pictures 57 (long task, choice, memory line, done task) and 58 (calendar, places, a desk card) light + dark with
+the tap-target gate; `server/tests/test_v0900_sab_card_naye.py` (4). Version 0.900.0 (pubspec 0.900.0+899; pins +
+console stamps swept).
+
+NOT VERIFIED on her phone; Flutter is not runnable here, the phone code compiles first on CI. NOT REDRAWN one by one:
+the ~360 desk cards behind HCLegacy keep their old full card in the Details sheet (dark) - each can get its own new card
+later without touching the dispatcher.

@@ -99,6 +99,7 @@ def _row_view(r: GoalRun) -> dict[str, Any]:
             "status": r.status or "working",
             "reason": r.reason or "", "rounds": r.rounds or 1, "done": done, "total": len(steps),
             "stage": stage, "pct": pct, "hold": r.hold or "", "report": _report_of(r),
+            "started_at": (_aware(r.started_at) or now()).isoformat(),   # v0.900 the card's clock
             "updated_at": (_aware(r.updated_at) or now()).isoformat()}
 
 
@@ -124,7 +125,9 @@ def _publish(conv: str, view: dict[str, Any]) -> None:
                                "done": view["done"], "total": view["total"], "reason": view["reason"][:200],
                                "hold": view.get("hold", ""),   # v0.223 "limit" = the card asks "Aage badhaun?"
                                "report": view.get("report"),   # v0.228 kya hua / kya bana / kya baaki / aapko kya karna hai
-                               "milestone": view.get("milestone", "")})   # v0.228 set ONLY on the one event that pushes
+                               "milestone": view.get("milestone", ""),   # v0.228 set ONLY on the one event that pushes
+                               # v0.900 the phone card's live clock and its finished time
+                               "started_at": view.get("started_at", ""), "updated_at": view.get("updated_at", "")})
 
 
 def _mutate(tenant: str, goal_id: str, fn, milestone: list[str] | None = None) -> dict[str, Any]:

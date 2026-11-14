@@ -137,6 +137,53 @@ void _madeChat(Santosh app) {
   app.feed.add(any);
 }
 
+/// v0.900 every card in the new design: a long task running, a question from a job, a memory line, a finished task.
+void _goalChat(Santosh app) {
+  final at = DateTime(2026, 11, 14, 10, 1).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Deep research on Indian banking with revenues, make a PDF', 'at': at}));
+  app.feed.add(FeedItem('goal', {
+    'id': 'g1', 'title': 'Deep research on Indian banking: banks and revenues', 'status': 'working',
+    'started_at': DateTime.now().toUtc().subtract(const Duration(minutes: 4, seconds: 12)).toIso8601String(),
+    'done': 1, 'total': 6, 'pct': 17,
+    'steps': [
+      {'n': 1, 'text': 'Bank list and sector overview', 'state': 'done'},
+      {'n': 2, 'text': 'Public sector bank revenues', 'state': 'current'},
+      {'n': 3, 'text': 'Private sector bank revenues', 'state': 'pending'},
+      {'n': 4, 'text': 'Small finance banks and RRBs', 'state': 'pending'},
+      {'n': 5, 'text': 'Check every figure against two sources', 'state': 'pending'},
+      {'n': 6, 'text': 'Build the PDF', 'state': 'pending'},
+    ],
+  }));
+  app.feed.add(FeedItem('operator_ask', {
+    'id': 'q1', 'kind': 'choice', 'status': 'pending', 'site': 'swiggy.com', 'reason': 'Which pizza should I add?',
+    'options': ['Margherita · ₹249', 'Farmhouse · ₹399', 'Peppy Paneer · ₹379'],
+  }));
+  app.feed.add(FeedItem('memory_used', {'items': [{'label': 'Your GSTIN', 'text': '27AAGCB1286Q1ZL'}]}));
+  app.feed.add(FeedItem('goal', {
+    'id': 'g2', 'title': 'October GST summary for the CA', 'status': 'done', 'done': 3, 'total': 3, 'pct': 100,
+    'steps': [
+      {'n': 1, 'text': 'Read 38 bills', 'state': 'done'},
+      {'n': 2, 'text': 'Match against GSTR-2B', 'state': 'done'},
+      {'n': 3, 'text': 'Build the PDF', 'state': 'done'},
+    ],
+    'report': {'summary': 'Two bills are missing from 2B; the PDF is ready.', 'bana': ['October_GST_summary.pdf']},
+  }));
+}
+
+/// v0.900 a calendar entry, places nearby and a desk card that keeps its full card behind Details.
+void _moreCards(Santosh app) {
+  final at = DateTime(2026, 11, 14, 10, 1).toIso8601String();
+  app.feed.add(FeedItem('message', {'role': 'user', 'text': 'Book a call with the CA and find a chemist nearby', 'at': at}));
+  app.feed.add(FeedItem('calendar_event', {'title': 'Call with CA Kulkarni', 'status': 'added', 'start': 'Tue 18 Nov, 4:00 pm',
+    'end': 'Tue 18 Nov, 4:30 pm', 'meet_link': 'https://meet.google.com/abc', 'link': 'https://calendar.google.com'}));
+  app.feed.add(FeedItem('maps_places', {'title': 'Chemists', 'near': 'Ramdaspeth', 'places': [
+    {'name': 'Sai Medical & General', 'rating': 4.6, 'distance_km': 0.6, 'open_now': true, 'maps_link': 'https://maps.google.com/?q=1'},
+    {'name': 'Apollo Pharmacy', 'rating': 4.3, 'distance_km': 1.2, 'open_now': true, 'maps_link': 'https://maps.google.com/?q=2'},
+  ]}));
+  app.feed.add(FeedItem('thok_order', {'order_id': 'o1', 'title': 'Order from Sharma Traders', 'status': 'pending',
+    'text': '40 boxes of soan papdi for Diwali', 'buyer': 'Sharma Traders'}));
+}
+
 /// v0.865 R5: a call in progress (the fields the screen reads; no real call is started in a test).
 void _inCall(Santosh app) {
   final c = app.voiceCall;
@@ -325,6 +372,9 @@ void main() {
         prep: (a) => _richChat(a, working: true)));
     testWidgets('36 new cards ($mode)', (t) => _shot(t, '36_new_cards_$mode', home, prefs: prefs, prep: _cardsChat, a11y: true));
     testWidgets('37 new made cards ($mode)', (t) => _shot(t, '37_new_made_$mode', home, prefs: prefs, prep: _madeChat));
+    // v0.900 every card in the new design
+    testWidgets('57 long task cards ($mode)', (t) => _shot(t, '57_long_task_$mode', home, prefs: prefs, prep: _goalChat, a11y: true));
+    testWidgets('58 more cards ($mode)', (t) => _shot(t, '58_more_cards_$mode', home, prefs: prefs, prep: _moreCards, a11y: true));
     testWidgets('38 new talk ($mode)', (t) => _shot(t, '38_new_talk_$mode', home, prefs: prefs,
         prep: (a) => a.realtimeVoice = true, tab: find.bySemanticsLabel('Start a call')));
     testWidgets('39 new talk in call ($mode)', (t) => _shot(t, '39_new_talk_call_$mode', home, prefs: prefs,
