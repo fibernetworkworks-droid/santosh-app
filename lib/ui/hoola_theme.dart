@@ -107,7 +107,7 @@ class HoolaColors extends ThemeExtension<HoolaColors> {
   final Color info, infoSoft;
   final Color code;        // inline code chip / code block
   final Color codeInk;
-  final Color codeTerm;    // v0.893 a `term` inside a reply: Claude's muted red (claude.ai .ReactMarkdown code)
+  final Color codeTerm;    // v0.894 a `term` inside a reply: Claude's muted red (claude.ai .ReactMarkdown code)
   final Color nav;         // the floating tab bar
   final Color navOn;       // the selected tab's pill
   final Color scrim;       // behind a sheet

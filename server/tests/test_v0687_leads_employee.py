@@ -107,6 +107,6 @@ def test_no_leads_tool_checks_is_hired():
 # ---------------------------------------------------------------- the version
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.893.0"
+    assert APP_VERSION == "0.894.0"
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.893.0+892" in pub.read_text()
+    assert "0.894.0+893" in pub.read_text()

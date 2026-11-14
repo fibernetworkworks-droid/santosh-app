@@ -4107,8 +4107,19 @@ Tests: server/tests/test_v0892_claude_akshar.py (6), test/reply_look_test.dart +
 test_v0249 / test_v0240 pins moved to the variable font link and the real stamp count (35).
 NOT VERIFIED: on her phone / her browser.
 
+## v0.893.0 HOOLA COMPUTER TOOLS (14 Nov 2026)
 
-## v0.893.0 CLAUDE KA CODE + FADE (owner, after v0.892 on her phone: "CHECK THE FONT AND BOLDNESS --- IT IS PERFECT -- STILL SEEM TO OBSERVED SOMETHING MISSING --- AS HOW CLAUDE CHAT IS PERFECT -- FIND THE MISSING THING")
+Owner: "TESTED CHECK THE LOGS -- HOOLA PC IS NOT FUCTIONING PROPERLY". Her log after the v0.892 deploy: no `pc task`
+line at all; the turns ran on Qwen 27B with 42-56 tools, scraped translate.google.com in the server browser and tried
+Google Search (402, Gemini credit gone, Parallel answered). ROOT CAUSE: the tools a turn sees come from her words
+(`admit.plan_for` -> `_pc_wanted`: only "PC" words) and `pc_manager.wanted` (her own PC only, returns False for
+hoolapc), so a Hoola PC chat never had hoola_pc_do in view. FIX: `agent/santosh.py` admits the pc family for every
+computer chat (`computer.place_of`, why "computer chat"). Tests `test_v0893_computer_tools.py` (a real turn in a Hoola
+PC chat sees hoola_pc_do - fails without the fix; the same words in an ordinary chat do not). Also read from the log,
+not code faults: 13 Nov 16:43 her own PC's Hoola Desktop was paused; 16:56 a deploy restart cut a running Hoola PC task
+(PC_OFFLINE). NOT VERIFIED on her server.
+
+## v0.894.0 CLAUDE KA CODE + FADE (built as 0.893.0; their HOOLA COMPUTER TOOLS took 0.893.0, both kept; owner, after v0.892 on her phone: "CHECK THE FONT AND BOLDNESS --- IT IS PERFECT -- STILL SEEM TO OBSERVED SOMETHING MISSING --- AS HOW CLAUDE CHAT IS PERFECT -- FIND THE MISSING THING")
 
 Her two screenshots (a recovery-paths reply) against claude.ai's own stylesheet (assets-proxy .../c6a992d55-CGuUmOei.css):
 
@@ -4125,6 +4136,6 @@ Her two screenshots (a recovery-paths reply) against claude.ai's own stylesheet 
    was cut through a line where it met the composer. Phone `_Fade` (IgnorePointer gradients of `c.bg`): 32 dp above the composer, 14 dp
    under the top bar. Console `#composer::before` 28px `linear-gradient(to top,var(--chat-paper),transparent)`, z-index 2, no clicks.
 
-Tests: `test/reply_look_test.dart` (+1: term colour / size / room), `server/tests/test_v0893_claude_code_fade.py` (2). Version sweep
-0.892.0 -> 0.893.0 (pubspec +892, console stamps 35). Pre-existing red, untouched: test_v0222_saaf_chat::test_rulebook_allows_light_formatting_now
+Tests: `test/reply_look_test.dart` (+1: term colour / size / room), `server/tests/test_v0894_claude_code_fade.py` (2). Version sweep
+0.893.0 -> 0.894.0 (pubspec +893, console stamps 35). Pre-existing red, untouched: test_v0222_saaf_chat::test_rulebook_allows_light_formatting_now
 (fails without this change too). NOT VERIFIED on her phone.

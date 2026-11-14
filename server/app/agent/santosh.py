@@ -2152,6 +2152,13 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why.setdefault("pc", "pc manager")
     except Exception:
         log.exception("pc manager check failed")
+    try:   # v0.893 HOOLA COMPUTER: a computer's own chat always has the PC tools in view (her words need not say 'PC')
+        from .. import computer as _hcomp
+        if adm is not None and _hcomp.place_of(conversation_id):
+            adm.admit_families(["pc"])
+            adm.why["pc"] = "computer chat"
+    except Exception:
+        log.exception("computer chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

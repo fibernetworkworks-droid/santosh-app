@@ -176,7 +176,7 @@ final _wordRe = RegExp(r'[A-Za-z0-9\u0900-\u097F]', unicode: true);
 bool _word(String c) => _wordRe.hasMatch(c);
 
 /// Inline marks of one block -> spans. [streaming]: an open mark styles the rest instead of showing.
-/// v0.893 a `term` with a little room each side, like Claude's (padding 1px 4px): a no-break space in the
+/// v0.894 a `term` with a little room each side, like Claude's (padding 1px 4px): a no-break space in the
 /// code's own font on the same tint, so the chip never ends flush on its letters and never breaks off its word.
 InlineSpan _codeSpan(String t, TextStyle code, bool room) {
   if (!room || code.backgroundColor == null) return TextSpan(text: t, style: code);
