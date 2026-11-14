@@ -315,4 +315,4 @@ def test_version_pins():
     pub = ROOT / "pubspec.yaml"
     assert "version: 0.913.0+912" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.912.0" in html and "console/v2.js?v=0.912.0" in html
+    assert "console/seekh.js?v=0.913.0" in html and "console/v2.js?v=0.913.0" in html

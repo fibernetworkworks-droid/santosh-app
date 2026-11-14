@@ -72,4 +72,4 @@ def test_version():
     from app.main import APP_VERSION
     assert APP_VERSION == "0.913.0"
     assert "0.913.0+912" in (ROOT / "pubspec.yaml").read_text()
-    assert (CON / "v2.html").read_text().count("?v=0.912.0") == 35
+    assert (CON / "v2.html").read_text().count("?v=0.913.0") == 35
