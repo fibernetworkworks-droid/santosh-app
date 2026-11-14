@@ -46,6 +46,7 @@ void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   test('rename, pin, archive, delete send the console\'s own calls and change the list at once', () async {
+    HttpOverrides.global = null;   // the widget-test binding answers every real request with 400; this test talks to its own local server
     final (server, seen) = await _server();
     final app = await _app();
     app.api = Api('http://127.0.0.1:${server.port}', 'k');
@@ -74,6 +75,7 @@ void main() {
   });
 
   testWidgets('the drawer: pinned group, a ⋯ beside every chat, hold to open, Delete asks first', (t) async {
+    final sem = t.ensureSemantics();
     final app = await _app();
     app.chatList = [
       {'id': 'p', 'title': 'Monthly GST Summary', 'pinned': true},
@@ -127,5 +129,6 @@ void main() {
     await t.tap(find.text('Cancel'));
     await t.pumpAndSettle();
     app.dispose();
+    sem.dispose();
   });
 }
