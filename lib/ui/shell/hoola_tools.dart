@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../../state.dart';
 import '../bazar_screen.dart';
+import '../create/create_home.dart';
 import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
 import 'hoola_settings.dart' show hoolaOpenNew, hoolaOpenOld;
@@ -35,6 +36,11 @@ const List<HoolaTool> hoolaMoreTools = [
   (title: 'Hoola Code', sub: 'Work on your code on GitHub', glyph: ToolGlyph.code, path: '/console/code'),
   (title: 'Game Dev', sub: 'Make, test and ship games', glyph: ToolGlyph.game, path: '/console/games'),
 ];
+
+/// Opens one studio: Create is the app's own native studio (v0.912 CREATE NATIVE); the rest are their console pages.
+Future<void> hoolaOpenStudio(BuildContext context, Santosh app, HoolaTool t) => t.title == 'Create'
+    ? hoolaOpenNew(context, app, HoolaCreate(app: app))
+    : hoolaOpenConsole(context, app, t.path, t.title);
 
 /// v0.907 TOOLS PRO (option B of claude.ai/artifact/KMa7vVmS1EpWNRBqCvB8SX): every studio a soft white card, its
 /// own drawing centred on a black circle (the same black as the call button and the open tab), name and line centred
@@ -104,7 +110,7 @@ class _HoolaToolsState extends State<HoolaTools> with TickerProviderStateMixin {
         if (big)
           HoolaGroup(children: [
             for (var i = 0; i < hoolaStudios.length; i++)
-              row(hoolaStudios[i], i, () => hoolaOpenConsole(context, app, hoolaStudios[i].path, hoolaStudios[i].title)),
+              row(hoolaStudios[i], i, () => hoolaOpenStudio(context, app, hoolaStudios[i])),
           ])
         else
           Padding(
@@ -210,7 +216,7 @@ class _TileState extends State<_Tile> {
                       clipBehavior: Clip.antiAlias,
                       child: InkWell(
                         onHighlightChanged: (v) => setState(() => _down = v),
-                        onTap: () => hoolaOpenConsole(context, widget.app, tool.path, tool.title),
+                        onTap: () => hoolaOpenStudio(context, widget.app, tool),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

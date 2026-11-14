@@ -4616,3 +4616,63 @@ backgrounds a step darker. Because the pill is grey now, an ON switch in dark ta
 Tests: `test/dark_like_claude_test.dart` (deep neutral page, soft text, surfaces one quiet step apart, no white blobs,
 switch clearly on, light untouched) in the CI unit list; `server/tests/test_v0911_dark_like_claude.py`; the dark
 screenshot set regenerates. NOT VERIFIED on her phone.
+
+
+## v0.912.0 CREATE NATIVE - every Create page as a native phone screen
+
+Owner: "NOW LETS WORK ON CREATE IN TOOL SECTION::: CHECK FIRST THE CONSOLE PAGES IN CREATE ALL ... MAKE A REAL APP NATIVE
+SCREENS FOR ALL PREMIUM, ADVANCE, USER-FRIENDLY AND PROFESSIONAL. WORK IN EVERY MINUTE DETAILS IN APP PROPERLY. SHOW ME THE
+DESIGN HERE PROPERLY" -> 13-board design canvas claude.ai/artifact/SARfWkfWm8ZtmmnAcU8dYn -> "GO BUILD".
+
+Before: Tools > Create opened the console's Create studio (`/console/?v=creative`) in a WebView. Now it opens the app's own
+studio in the new design, built from a read of every console Create page (`server/app/static/console/studio.js`, `cinema.js`).
+
+Files (all new, `lib/ui/create/`):
+- `create_kit.dart` - `CreateStore` (one per visit: GET /api/create, /api/create/items, /api/create/jobs, /api/studio,
+  /api/brand/kit in parallel; `start` = POST /api/create/jobs with the open chat's id so the result also lands in her chat;
+  polls running jobs every 2.5 s and reloads the shelf when one ends; `write` = /api/create/write; `delete`; `saveKit`;
+  `debugData` test seam), the Create drawings (`CrGlyph`, own 24-unit strokes read by `svgPath`), and the blocks: `CrPage`
+  (round back button, centred title, right slot, pinned bottom action over a fade), `CrMain` / `CrQuiet` / `CrRoundButton`,
+  `CrCard`, `CrLabel`, `CrChip` (+ `crTap48` = 48 dp tap room), `CrSegment`, `CrTiles`, `CrSettings` + `crPick` sheet,
+  `CrStepper`, `CrSwitch`, `CrTextCard`, `CrSmall`, `CrNote`, `CrIntro`, `CrJobRow`, `CrAudioCard` (play with her key via
+  video_player, drawn waveform), `crShareItem` / `crShareBytes` (temp file -> the phone's share sheet).
+- `create_home.dart` - `HoolaCreate`: "What shall we create today?", five modes (Film / Picture / Video clip / Song /
+  Voice-over - each changes the hint, the settings line and the price), the ask box that opens the right tool with her
+  words, quick chips, ten tools on black circles, Recent rail, starters, Film projects / Brand kit / My creations / How-to
+  guides; `CreateGuides`.
+- `create_make.dart` - Image (New / Change my photo, Enhance via /api/studio/improve kind=image, up to 3 references from her
+  own photos (uploaded to the chat), brand colours switch, 9 styles, 6 shapes, Standard ₹3 / Best ₹12, count 1-4 with the
+  total on the button, Keep out, painting tiles), Music (Song / Instrumental / Jingle / Score, 12 styles, language / singers /
+  mood / length, tempo, lyrics + Write with Hoola), Voice-over (11 languages, Your Hoola's voice + the server's voices by
+  gender, 6 styles, pace with an estimated length), Dubbing (her video, up to 4 languages incl. All languages, keep
+  background sound), Script writer (6 formats, length / language / tone, the script editable and saved as she types via
+  PUT /api/create/items/{id}/text, quick rewrites, Turn it into a film, her scripts), AI casting (name, looks, 4 styles,
+  voice, the four-view sheets).
+- `create_film.dart` - Video (model sheet incl. Hoola Auto quality / value / cheapest, Improve, 12 camera moves, shape,
+  length 4-15 s, resolution / sound / takes / spoken language, live price from POST /api/studio/price, Free preview +
+  Create = POST /api/studio/projects then=preview|generate, clips with their price cards), Director (films list + new film
+  with shape / length / language / music, storyboard free), `CreateFilm` (8 steps read from the studio view, spent so far,
+  the next step with its price (plan / keyframes / generate / assemble) + Skip pictures / Free preview, price cards with
+  Haan / Not now via `studioDecide` (fingerprint proof), Stop while working, cast + Add a character, storyboard timeline +
+  scene cards (edit a scene), final film play + share, "Change something" sent to her chat), Video editor (/api/video/jobs:
+  up to 8 clips in order (reorder), quick asks, made for / length / captions, latest version play / share / change in words,
+  post caption copy).
+- `create_keep.dart` - `crOpenItem` (picture full screen with zoom, video with her key, audio sheet, script text),
+  My creations (search, kinds, sort, Select many -> Save to phone / Delete with a confirm), Brand kit (live poster preview
+  from her colours, logo upload with clean background, name / tagline / tone / phone / website, five colour roles with
+  swatches or a code, lettering), Hoola Cinema (the hub with its rules, key state, today's jobs, recent jobs; its tools
+  open in the console's own Cinema page, signed in).
+
+Wiring: `lib/ui/shell/hoola_tools.dart` `hoolaOpenStudio` (Create = native, every other studio = its console page).
+Console: `v2.js` `go('creative', arg)` now passes `arg` to `CREATE.open`, so `/console/?v=creative&a=cinema` opens Cinema
+straight away (an unknown arg falls back to the studio home inside studio.js).
+
+Rules kept: every paid studio step is a server price card that waits for her Haan; the Free preview spends nothing;
+references and videos are her own files; delete asks first; a real person's face needs their recorded yes (Cinema,
+casting copy). Design: no raw colours / blur / tiny or heavy type in `lib/ui/create/` (tested); every control has 48 dp of
+tap room and a name for TalkBack (Semantics with its own onTap where a card hides its children).
+
+Tests: `test/create_native_test.dart` (store against a local server, helpers, home light + dark, the ask box, all 14
+screens light + dark with their own controls, price on the button, Haan wording, Select + Delete asks first, wiring +
+design rules), goldens 65 create home / 66 create image / 67 create film (light + dark, tap-target + label checks),
+`server/tests/test_v0912_create_native.py`. NOT VERIFIED on her phone; Cinema's tools are not native yet.

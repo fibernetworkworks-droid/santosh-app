@@ -199,7 +199,7 @@ function drawNav() {
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
 }
 function go(v, arg) {
-  if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
+  if (v === 'creative' && CREATE) { CREATE.open(arg); return; }    // v0.259 Create = the full-screen Create Studio; v0.912 ?a=<tool> opens that tool (the phone's Cinema)
   if (v === 'gamedev') { location.assign('/console/games' + (arg ? '#/game/' + encodeURIComponent(arg) : '')); return; }   // v0.783 Hoola Game Dev = its own app
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page

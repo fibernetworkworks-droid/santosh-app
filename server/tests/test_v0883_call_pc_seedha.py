@@ -70,4 +70,4 @@ def test_prompt_rules():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.911.0")
+    assert APP_VERSION.startswith("0.912.0")
