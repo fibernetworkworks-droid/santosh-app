@@ -4,6 +4,7 @@
 // on a budget phone). The painted scenes stand in for a picture where there is none yet (a camera move, a style, an
 // idea to start from); the camera moves really move, and everything stands still when the phone asks for less motion.
 import 'dart:math' as math;
+import 'dart:ui' show PointMode;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,21 +37,144 @@ class CrHueScope extends InheritedWidget {
 }
 
 // ------------------------------------------------------------------------------------------------ glass
-/// Glass: a see-through surface with a lighter top edge and a hairline, over the colour light behind the page.
-BoxDecoration crGlass(HoolaColors c, {double radius = 22, Color? edge, bool strong = false, BoxShape shape = BoxShape.rectangle}) {
-  final base = c.dark ? Colors.white.withOpacity(strong ? .1 : .065) : Colors.white.withOpacity(strong ? .78 : .62);
-  final hi = c.dark ? Colors.white.withOpacity(strong ? .17 : .13) : Colors.white.withOpacity(.86);
-  return BoxDecoration(
-    shape: shape,
-    borderRadius: shape == BoxShape.circle ? null : BorderRadius.circular(radius),
-    gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [hi, base], stops: const [0, .5]),
-    border: Border.all(color: edge ?? (c.dark ? Colors.white.withOpacity(.12) : c.ink.withOpacity(.08)), width: edge == null ? 1 : 1.4),
-    boxShadow: [
-      BoxShadow(
-          color: c.dark ? Colors.black.withOpacity(.4) : CreateHues.third.withOpacity(.12),
-          blurRadius: 30, spreadRadius: -14, offset: const Offset(0, 14)),
-    ],
-  );
+/// Glass: a see-through surface over the colour light behind the page - a lit top, a soft diagonal sheen, a rim that
+/// catches the light on its top-left edge and the page's hue on its lower-right one, and (with [tint]) a breath of
+/// that hue inside. Painted, never blurred (the design rules: blur costs frames on a budget phone). [base] paints a
+/// solid colour first, for a dock that must hide what scrolls under it.
+Decoration crGlass(HoolaColors c,
+        {double radius = 22, Color? edge, bool strong = false, BoxShape shape = BoxShape.rectangle, Color? tint, Color? base}) =>
+    CrGlassDecoration(
+        dark: c.dark, ink: c.ink, radius: radius, edge: edge, strong: strong, circle: shape == BoxShape.circle, tint: tint, base: base);
+
+class CrGlassDecoration extends Decoration {
+  const CrGlassDecoration({
+    required this.dark,
+    required this.ink,
+    this.radius = 22,
+    this.edge,
+    this.strong = false,
+    this.circle = false,
+    this.tint,
+    this.base,
+  });
+  final bool dark, strong, circle;
+  final Color ink;
+  final double radius;
+  final Color? edge, tint, base;
+
+  RRect shape(Rect r) => RRect.fromRectAndRadius(r, Radius.circular(circle ? r.shortestSide / 2 : math.min(radius, r.shortestSide / 2)));
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _GlassBoxPainter(this);
+
+  @override
+  Path getClipPath(Rect rect, TextDirection textDirection) => Path()..addRRect(shape(rect));
+
+  @override
+  bool hitTest(Size size, Offset position, {TextDirection? textDirection}) => shape(Offset.zero & size).contains(position);
+
+  CrGlassDecoration _with(Color? e, Color? t) =>
+      CrGlassDecoration(dark: dark, ink: ink, radius: radius, edge: e, strong: strong, circle: circle, tint: t, base: base);
+
+  @override
+  Decoration? lerpFrom(Decoration? a, double t) {
+    if (a is CrGlassDecoration && a.circle == circle) {
+      if (t >= 1) return this;
+      if (t <= 0) return a;
+      return _with(Color.lerp(a.edge ?? Colors.transparent, edge ?? Colors.transparent, t), Color.lerp(a.tint, tint, t));
+    }
+    return super.lerpFrom(a, t);
+  }
+
+  @override
+  Decoration? lerpTo(Decoration? b, double t) {
+    if (b is CrGlassDecoration && b.circle == circle) {
+      if (t <= 0) return this;
+      if (t >= 1) return b;
+      return _with(Color.lerp(edge ?? Colors.transparent, b.edge ?? Colors.transparent, t), Color.lerp(tint, b.tint, t));
+    }
+    return super.lerpTo(b, t);
+  }
+
+  @override
+  bool operator ==(Object o) =>
+      o is CrGlassDecoration &&
+      o.dark == dark && o.strong == strong && o.circle == circle && o.ink == ink && o.radius == radius &&
+      o.edge == edge && o.tint == tint && o.base == base;
+
+  @override
+  int get hashCode => Object.hash(dark, strong, circle, ink, radius, edge, tint, base);
+}
+
+class _GlassBoxPainter extends BoxPainter {
+  _GlassBoxPainter(this.d);
+  final CrGlassDecoration d;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size;
+    if (size == null || size.isEmpty) return;
+    final rect = offset & size;
+    final rr = d.shape(rect);
+    final dark = d.dark;
+    final strong = d.strong;
+
+    // the shadow under the pane (BoxShadow's own paint)
+    final shadow = BoxShadow(
+        color: dark ? Colors.black.withOpacity(.5) : CreateHues.third.withOpacity(.14),
+        blurRadius: 28, spreadRadius: -12, offset: const Offset(0, 14));
+    canvas.drawRRect(rr.shift(shadow.offset).inflate(shadow.spreadRadius), shadow.toPaint());
+
+    canvas.save();
+    canvas.clipRRect(rr);
+    if (d.base != null) canvas.drawRect(rect, Paint()..color = d.base!);
+    // the pane: lit at the top, clearer below
+    final fill = dark
+        ? [Colors.white.withOpacity(strong ? .17 : .13), Colors.white.withOpacity(strong ? .085 : .06), Colors.white.withOpacity(strong ? .06 : .035)]
+        : [Colors.white.withOpacity(strong ? .95 : .88), Colors.white.withOpacity(strong ? .8 : .68), Colors.white.withOpacity(strong ? .72 : .58)];
+    canvas.drawRect(rect,
+        Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: fill, stops: const [0, .45, 1]).createShader(rect));
+    // a breath of the page's hue, coming in from the top-left corner
+    if (d.tint != null) {
+      final at = rect.topLeft + Offset(rect.width * .12, 0);
+      final r = math.max(rect.width, rect.height) * 1.05;
+      canvas.drawRect(rect, Paint()
+        ..shader = RadialGradient(colors: [d.tint!.withOpacity(dark ? .2 : .13), d.tint!.withOpacity(0)])
+            .createShader(Rect.fromCircle(center: at, radius: r)));
+      final low = rect.bottomRight - Offset(rect.width * .1, 0);
+      canvas.drawRect(rect, Paint()
+        ..shader = RadialGradient(colors: [CreateHues.third.withOpacity(dark ? .1 : .06), CreateHues.third.withOpacity(0)])
+            .createShader(Rect.fromCircle(center: low, radius: r * .7)));
+    }
+    // a soft diagonal sheen, as light lies on glass
+    canvas.drawRect(rect, Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Colors.white.withOpacity(0), Colors.white.withOpacity(dark ? .06 : .3), Colors.white.withOpacity(0)],
+        stops: const [.08, .26, .46],
+      ).createShader(rect));
+    canvas.restore();
+
+    // the rim: bright where the light comes from, the hue where it leaves
+    final rim = rr.deflate(.6);
+    if (d.edge != null) {
+      canvas.drawRRect(rim, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..color = d.edge!);
+    } else {
+      final far = d.tint ?? (dark ? Colors.white : d.ink);
+      final colors = dark
+          ? [Colors.white.withOpacity(strong ? .42 : .32), Colors.white.withOpacity(.08), far.withOpacity(d.tint != null ? .3 : .06)]
+          : [Colors.white, Colors.white.withOpacity(.55), (d.tint ?? d.ink).withOpacity(d.tint != null ? .22 : .08)];
+      canvas.drawRRect(rim, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1
+        ..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors, stops: const [0, .5, 1])
+            .createShader(rect));
+    }
+  }
 }
 
 /// The soft fill of an unpicked chip or a quiet tray.
@@ -88,12 +212,11 @@ class _CrAuraState extends State<CrAura> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
     return IgnorePointer(
-      child: RepaintBoundary(
-        child: CustomPaint(
-          painter: _AuraPainter(_a, widget.hue, c.dark),
-          size: Size.infinite,
-        ),
-      ),
+      child: Stack(fit: StackFit.expand, children: [
+        RepaintBoundary(child: CustomPaint(painter: _AuraPainter(_a, widget.hue, c.dark), size: Size.infinite)),
+        // a fine still grain over the light, like film: colour that looks made, not rendered
+        RepaintBoundary(child: CustomPaint(painter: _GrainPainter(c.dark), size: Size.infinite)),
+      ]),
     );
   }
 }
@@ -107,25 +230,51 @@ class _AuraPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final v = Curves.easeInOut.transform(t.value);
     final w = size.width;
-    final top = math.min(size.height, w * 1.6);
+    final h = size.height;
     void blob(Offset at, double r, Color col, double alpha) {
       canvas.drawCircle(
         at,
         r,
         Paint()
-          ..shader = RadialGradient(colors: [col.withOpacity(alpha), col.withOpacity(0)])
+          ..shader = RadialGradient(colors: [col.withOpacity(alpha), col.withOpacity(alpha * .45), col.withOpacity(0)], stops: const [0, .45, 1])
               .createShader(Rect.fromCircle(center: at, radius: r)),
       );
     }
 
-    final k = dark ? 1.0 : 1.18;
-    blob(Offset(w * (.18 + .06 * v), top * (.22 + .05 * v)), w * .62, hue.a, .34 * k);
-    blob(Offset(w * (.86 - .05 * v), top * (.14 + .06 * v)), w * .55, hue.b, .3 * k);
-    blob(Offset(w * (.55 + .04 * v), top * (.46 - .04 * v)), w * .5, CreateHues.third, .2 * k);
+    // the light lives across the whole page, not just its top: glass far down the page has colour to show through
+    final k = dark ? 1.0 : 1.15;
+    blob(Offset(w * (.14 + .07 * v), h * (.08 + .03 * v)), w * .78, hue.a, .4 * k);
+    blob(Offset(w * (.9 - .06 * v), h * (.18 + .04 * v)), w * .66, hue.b, .34 * k);
+    blob(Offset(w * (.5 + .06 * v), h * (.44 - .03 * v)), w * .62, CreateHues.third, .24 * k);
+    blob(Offset(w * (.08 + .05 * v), h * (.7 + .04 * v)), w * .6, hue.b, .22 * k);
+    blob(Offset(w * (.92 - .05 * v), h * (.9 - .03 * v)), w * .7, hue.a, .26 * k);
   }
 
   @override
   bool shouldRepaint(_AuraPainter o) => o.hue != hue || o.dark != dark;
+}
+
+class _GrainPainter extends CustomPainter {
+  _GrainPainter(this.dark);
+  final bool dark;
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final rnd = math.Random(7);
+    final n = (size.width * size.height / 240).clamp(0, 4000).toInt();
+    final light = <Offset>[], shade = <Offset>[];
+    for (var i = 0; i < n; i++) {
+      (i.isEven ? light : shade).add(Offset(rnd.nextDouble() * size.width, rnd.nextDouble() * size.height));
+    }
+    final p = Paint()
+      ..strokeWidth = 1.1
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPoints(PointMode.points, light, p..color = Colors.white.withOpacity(dark ? .035 : .18));
+    canvas.drawPoints(PointMode.points, shade, p..color = Colors.black.withOpacity(dark ? .12 : .03));
+  }
+
+  @override
+  bool shouldRepaint(_GrainPainter o) => o.dark != dark;
 }
 
 // ------------------------------------------------------------------------------------------------ painted scenes
@@ -373,6 +522,21 @@ class CrArtCard extends StatelessWidget {
               ),
             ),
           ),
+        // v0.914 the card reads as glass over a picture: light on its top-left, a bright hairline round the edge
+        IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(color: Colors.white.withOpacity(.2), width: 1),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.white.withOpacity(.16), Colors.white.withOpacity(0)],
+                stops: const [0, .34],
+              ),
+            ),
+          ),
+        ),
         if (badge != null) Positioned(left: 8, top: 8, right: 44, child: Align(alignment: Alignment.centerLeft, child: badge!)),
         if (trailing != null) Positioned(right: 8, top: 8, child: trailing!),
         if (words)
@@ -576,7 +740,7 @@ class CrHead extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
-        Expanded(flex: 3, child: Semantics(header: true, child: Text(text, style: HoolaType.heading(c).copyWith(fontSize: 17)))),
+        Expanded(flex: 3, child: Semantics(header: true, child: Text(text, style: HoolaType.heading(c).copyWith(fontSize: 19, fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontWeight: FontWeight.w500, letterSpacing: -.2)))),
         if (link != null)
           Flexible(
             child: TextButton(

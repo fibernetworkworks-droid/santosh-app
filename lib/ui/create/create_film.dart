@@ -392,7 +392,7 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            decoration: crGlass(c, radius: 22, strong: true),
+            decoration: crGlass(c, radius: 22, strong: true, tint: CrHue.of(context).a),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Container(width: 8, height: 8, decoration: const BoxDecoration(color: CreateHues.done, shape: BoxShape.circle)),

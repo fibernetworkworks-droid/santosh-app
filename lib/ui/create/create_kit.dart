@@ -419,17 +419,22 @@ class CrPage extends StatelessWidget {
               bottom: 0,
               child: IgnorePointer(
                 ignoring: false,
+                // v0.914 a solid glass dock: nothing that scrolls under it shows through the button and the stepper
                 child: Container(
-                  padding: EdgeInsets.fromLTRB(HoolaSpace.s20, 24, HoolaSpace.s20, 14 + bottom),
+                  padding: EdgeInsets.fromLTRB(HoolaSpace.s12, 18, HoolaSpace.s12, 10 + bottom),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [c.bg.withOpacity(0), c.bg.withOpacity(.92), c.bg],
-                      stops: const [0, .38, 1],
+                      colors: [c.bg.withOpacity(0), c.bg.withOpacity(.85), c.bg],
+                      stops: const [0, .45, 1],
                     ),
                   ),
-                  child: action,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: crGlass(c, radius: 32, strong: true, tint: h.a, base: c.bg),
+                    child: action,
+                  ),
                 ),
               ),
             ),
@@ -503,11 +508,22 @@ class CrMain extends StatelessWidget {
       child: AnimatedOpacity(
         opacity: on ? 1 : .5,
         duration: HoolaMotion.of(context, HoolaMotion.menu),
-        child: DecoratedBox(
+        child: Container(
           decoration: BoxDecoration(
             gradient: hue.gradient,
             borderRadius: BorderRadius.circular(height / 2),
-            boxShadow: on ? [BoxShadow(color: hue.a.withOpacity(.38), blurRadius: 22, spreadRadius: -8, offset: const Offset(0, 8))] : null,
+            boxShadow: on ? [BoxShadow(color: hue.a.withOpacity(.45), blurRadius: 24, spreadRadius: -8, offset: const Offset(0, 9))] : null,
+          ),
+          // v0.914 a lit top and a bright rim, like a glass bead in the page's colour
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(height / 2),
+            border: Border.all(color: Colors.white.withOpacity(.34), width: 1),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.white.withOpacity(.34), Colors.white.withOpacity(.06), Colors.white.withOpacity(0)],
+              stops: const [0, .48, .5],
+            ),
           ),
           child: Material(
             type: MaterialType.transparency,
@@ -532,8 +548,11 @@ class CrMain extends StatelessWidget {
                         CrIcon(glyph!, size: 18, color: CreateHues.onHue),
                       if (busy || glyph != null) const SizedBox(width: 10),
                       Flexible(
-                        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: HoolaType.button(c, color: CreateHues.onHue).copyWith(fontSize: height < 52 ? 14.5 : 16)),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(label, maxLines: 1,
+                              style: HoolaType.button(c, color: CreateHues.onHue).copyWith(fontSize: height < 52 ? 14.5 : 16)),
+                        ),
                       ),
                     ]),
                   ),
@@ -598,7 +617,7 @@ class CrCard extends StatelessWidget {
     final c = HoolaColors.of(context);
     final r = BorderRadius.circular(22);
     final box = Container(
-      decoration: crGlass(c, radius: 22, edge: edge),
+      decoration: crGlass(c, radius: 22, edge: edge, tint: CrHue.of(context).a),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
@@ -734,7 +753,7 @@ class CrSegment extends StatelessWidget {
     final hue = CrHue.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: crGlass(c, radius: height / 2 + 4),
+      decoration: crGlass(c, radius: height / 2 + 4, tint: CrHue.of(context).a),
       child: Row(children: [
         for (final o in options)
           Expanded(
@@ -958,7 +977,7 @@ class CrStepper extends StatelessWidget {
     return Container(
       height: height,
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: crGlass(c, radius: 18),
+      decoration: crGlass(c, radius: 18, tint: CrHue.of(context).b),
       child: Row(children: [
         b(CrGlyph.minus, 'Less $label', onLess),
         Expanded(

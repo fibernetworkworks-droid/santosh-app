@@ -12,7 +12,7 @@ def test_the_colour_system_lives_in_the_theme():
     for kind in ("image", "video", "film", "song", "voice"):
         assert f"static const {kind} = [Color(" in theme, kind
     colour = (CREATE / "create_colour.dart").read_text()
-    for part in ("enum CrHue", "class CrAura", "BoxDecoration crGlass(", "class CrScene", "class CrMove", "class CrArtCard",
+    for part in ("enum CrHue", "class CrAura", "Decoration crGlass(", "class CrScene", "class CrMove", "class CrArtCard",
                  "class CrBar", "class CrSheen", "class CrOrb"):
         assert part in colour, part
     # everything that moves stands still when the phone asks for less motion
@@ -38,5 +38,5 @@ def test_design_rules_hold():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.913.0"
-    assert "version: 0.913.0+912" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.914.0"
+    assert "version: 0.914.0+913" in (ROOT / "pubspec.yaml").read_text()

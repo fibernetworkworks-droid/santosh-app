@@ -217,7 +217,7 @@ class _ModeSwitch extends StatelessWidget {
     final c = HoolaColors.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: crGlass(c, radius: 28),
+      decoration: crGlass(c, radius: 28, tint: CrHue.of(context).a),
       child: Row(children: [
         for (var i = 0; i < _modes.length; i++)
           Expanded(
@@ -270,7 +270,7 @@ class _Compose extends StatelessWidget {
     final c = HoolaColors.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 14, 14),
-      decoration: crGlass(c, radius: 26, strong: true),
+      decoration: crGlass(c, radius: 26, strong: true, tint: CrHue.of(context).a),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         TextField(
           controller: controller,
@@ -347,7 +347,7 @@ class _Studios extends StatelessWidget {
     final c = HoolaColors.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(6, 16, 6, 10),
-      decoration: crGlass(c, radius: 24),
+      decoration: crGlass(c, radius: 24, tint: CrHue.of(context).b),
       child: LayoutBuilder(builder: (context, box) {
         final w = box.maxWidth / 4;
         return Wrap(children: [

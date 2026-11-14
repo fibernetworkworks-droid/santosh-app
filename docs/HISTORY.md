@@ -4710,3 +4710,26 @@ card, a filterable gallery. Hoola's own rule stays: the price first, nothing spe
   Delete asks first). Film: the step bar and scene cards in colour.
 - Tests: test/create_native_test.dart (home expectations, hue contrast), goldens 68_create_video + 69_create_library,
   server/tests/test_v0913_create_colour.py. NOT VERIFIED on her phone.
+
+
+## v0.914.0 CREATE GLASS (owner, with three phone screenshots of v0.913: "Make it more glassy and advance and perfrect")
+
+What her screenshots showed: on the dark page the v0.913 "glass" was a flat grey pane (white 6-17 % with a 1 px grey
+hairline), the colour light only lived in the top of the page (`top = min(height, width * 1.6)`), so cards lower down
+had nothing to show through; on the Image page the bottom action faded over the style tiles so tiles showed through
+the stepper, and "Create · about ₹6" was cut by the ellipsis.
+
+- `crGlass` now returns `CrGlassDecoration` (a custom Decoration, every caller passes it as `decoration:`): shadow
+  (BoxShadow's own paint), lit-top fill, optional `tint` = a radial breath of the page hue from the top-left plus a
+  violet one from the lower-right, a soft diagonal sheen, and a gradient rim (white on the top-left, the hue on the
+  lower-right; a picked `edge` stays a solid 1.6 px line); `base` paints a solid colour first. lerpFrom / lerpTo
+  between two glasses, clip path + hit test on the rounded shape. Never a blur (the design rules).
+- CrAura: five light pools across the whole page height (hue a / b / violet, drifting 16 s, still under reduce
+  motion) + `_GrainPainter`, a still seeded film grain in its own RepaintBoundary (drawPoints, one call).
+- Cards, the kinds switch, the ask box, the studios tray, the stepper, segments and the film price box carry
+  `tint: CrHue.of(context)`.
+- CrPage bottom action: a solid glass dock (`base: c.bg`, radius 32) over a short fade - nothing scrolls through.
+- CrMain: glossy top + bright rim (`foregroundDecoration`), the label in `FittedBox(scaleDown)` so it shrinks, not cut.
+- CrArtCard: a glass hairline + top-left light over the picture; CrHead headings in Literata 19 / w500.
+- Tests: `server/tests/test_v0914_create_glass.py` (4); test_v0913's "BoxDecoration crGlass(" pin is now
+  "Decoration crGlass("; flutter tests and goldens unchanged (CI is the compiler). NOT VERIFIED on her phone.
