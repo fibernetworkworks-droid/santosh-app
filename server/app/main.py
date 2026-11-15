@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.918.0"   # v0.918.0 SLAB REVERTED (owner, after the v0.917 pictures: "No revert it"): v0.917 SLAB EVERYWHERE taken back whole - the thick slab is again only the Create home Every studio card (`_SlabGlass`), every other Create sheet is the v0.914 glass again, and the chat composer + chat cards are back to their plain surfaces; code = v0.916.0 STUDIO SLAB. Previous: v0.917.0 SLAB EVERYWHERE (reverted).
+APP_VERSION = "0.919.0"   # v0.919.0 REAL CAMERA (owner, after the animated design canvas claude.ai/artifact/KZ2Svgxm8fZPrEWt5zjKYD: "I WANT REAL VIDEO AT EVERY PLACE OF CAMERA ANGLE NOT ANIMATED"): every camera move tile plays REAL footage - twelve 5-second clips of the SAME chai-stall scene, one per move (`showcase.CAMS`, slots cam_<move>, studio camera keys), made through the hidden showcase film's NORMAL price cards (opening pictures, then draft 720p clips; her Haan on each, POST /api/studio/showcase/camera, owner only); the server cuts each clip into a small looping WebP (`showcase.tile_of`, 320 px, 12 fps, 4 s, kind=tile) so twelve tiles play at once; phone `CrCamArt` on the Video page grid + the home camera cards, the painted move underneath until the clip exists; owner-only `_CamMaker` card under the grid with the steps and the price cards; 1 server. Previous: v0.918.0 SLAB REVERTED.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -3379,9 +3379,10 @@ async def studio_showcase_act(action: str, tenant: str = Depends(current_tenant)
     from .studio import showcase
     if tenant != get_settings().tenant_id:
         raise HTTPException(403, "The showcase is made by the owner")
-    fn = {"setup": showcase.setup, "pictures": showcase.ask_pictures, "clips": showcase.ask_clips}.get(action)
+    fn = {"setup": showcase.setup, "pictures": showcase.ask_pictures, "clips": showcase.ask_clips,
+          "camera": showcase.ask_camera}.get(action)
     if not fn:
-        raise HTTPException(400, "action = setup | pictures | clips")
+        raise HTTPException(400, "action = setup | pictures | clips | camera")
     try:
         if action != "setup":
             await showcase.setup()
@@ -3397,8 +3398,9 @@ def studio_showcase_file(slot: str, kind: str = "pic"):
         f = showcase.file_for(slot, kind)
     except showcase.ShowcaseError as e:
         raise HTTPException(404, str(e))
-    return FileResponse(f, media_type="video/mp4" if kind == "clip" else ("image/png" if f.suffix == ".png" else "image/jpeg"),
-                        headers={"Cache-Control": "private, max-age=86400"})
+    media = ("video/mp4" if kind == "clip" else "image/webp" if kind == "tile"
+             else "image/png" if f.suffix == ".png" else "image/jpeg")
+    return FileResponse(f, media_type=media, headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.get("/api/studio/apis", dependencies=[Depends(require_key)])

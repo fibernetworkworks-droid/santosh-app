@@ -33,6 +33,7 @@ class CreateStore extends ChangeNotifier {
   Map<String, dynamic> studio = const {};        // GET /api/studio: films, models, month spend
   Map<String, dynamic> kit = const {};           // GET /api/brand/kit
   List<Map<String, dynamic>> items = const [];   // GET /api/create/items: her shelf, newest first
+  Map<String, dynamic> showcase = const {};      // v0.919 GET /api/studio/showcase: the real camera-move clips (+ the owner's panel)
   final Map<String, Map<String, dynamic>> jobs = {};   // jobs started or seen this visit, by id
   final Set<String> dismissed = {};
   bool loading = false;
@@ -50,6 +51,7 @@ class CreateStore extends ChangeNotifier {
       studio = _m(d['studio']);
       kit = _m(d['kit']);
       items = _list(d['items']);
+      showcase = _m(d['showcase']);
       for (final j in _list(d['jobs'])) {
         jobs['${j['id']}'] = j;
       }
@@ -72,6 +74,7 @@ class CreateStore extends ChangeNotifier {
       _try(() => api.call('GET', '/api/create/jobs')),
       _try(() => api.call('GET', '/api/studio')),
       _try(() => api.call('GET', '/api/brand/kit')),
+      _try(() => api.call('GET', '/api/studio/showcase')),
     ]);
     if (res[0] is Map) conf = _m(res[0]);
     if (res[1] is Map) items = _list((res[1] as Map)['items']);
@@ -82,6 +85,7 @@ class CreateStore extends ChangeNotifier {
     }
     if (res[3] is Map) studio = _m(res[3]);
     if (res[4] is Map) kit = _m(res[4]);
+    if (res[5] is Map) showcase = _m(res[5]);
     error = res.every((r) => r == null) ? 'The server did not answer. Pull down to try again.' : '';
     loading = false;
     _tell();
@@ -104,6 +108,22 @@ class CreateStore extends ChangeNotifier {
       _tell();
     } catch (_) {}
   }
+
+  /// v0.919 the real camera-move clips: which are made, and (for the owner) the price cards that make them.
+  Future<void> reloadShowcase() async {
+    final api = app.api;
+    if (api == null || debugData != null) return;
+    try {
+      showcase = _m(await api.call('GET', '/api/studio/showcase'));
+      _tell();
+    } catch (_) {}
+  }
+
+  /// The showcase slot of a camera move: "Dolly in" -> cam_dolly_in.
+  String camSlot(String move) => 'cam_${move.toLowerCase().replaceAll(' ', '_')}';
+
+  /// A real clip of this camera move is made and can play in its tile.
+  bool camReady(String move) => _m(_m(showcase['slots'])[camSlot(move)])['clip'] == true;
 
   Future<void> reloadStudio() async {
     final api = app.api;
@@ -1272,6 +1292,26 @@ class CrItemImage extends StatelessWidget {
     if (api == null || !crS(item['mime']).startsWith('image/')) return tone;
     return Image.network(api.createItemUrl(crS(item['id'])),
         headers: api.authHeaders, fit: fit, cacheWidth: cache, errorBuilder: (_, __, ___) => tone);
+  }
+}
+
+/// v0.919 a camera move as REAL footage: the clip Hoola made of that move plays in the tile (a small looping picture the
+/// server cuts from the clip, so twelve tiles play at once without twelve video players). Until it is made, or while it
+/// loads, the painted move shows underneath.
+class CrCamArt extends StatelessWidget {
+  const CrCamArt({super.key, required this.store, required this.move, required this.fallback});
+  final CreateStore store;
+  final String move;
+  final Widget fallback;
+  @override
+  Widget build(BuildContext context) {
+    final api = store.app.api;
+    if (api == null || !store.camReady(move)) return fallback;
+    return Stack(fit: StackFit.expand, children: [
+      fallback,
+      Image.network(api.absolute('/api/studio/showcase/file/${store.camSlot(move)}?kind=tile'),
+          headers: api.authHeaders, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+    ]);
   }
 }
 

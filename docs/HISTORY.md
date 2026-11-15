@@ -4787,3 +4787,23 @@ the stepper, and "Create · about ₹6" was cut by the ellipsis.
 sheets, and the chat composer (`HoolaComposer`) and card shell (`HoolaCard`) are back to `c.surface` + `c.line` + their
 old shadows. test_v0917 removed, test_v0916 restored; `server/tests/test_v0918_slab_reverted.py`. Docs keep the
 v0.917 entry for the record.
+
+
+## v0.919.0 REAL CAMERA (owner, after the animated design canvas claude.ai/artifact/KZ2Svgxm8fZPrEWt5zjKYD: "I WANT REAL VIDEO AT EVERY PLACE OF CAMERA ANGLE NOT ANIMATED")
+
+- Server `studio/showcase.py`: `CAMS` = twelve camera moves (Auto ... Low angle, slot ids `cam_<move>` = the phone's
+  names), each a 5 s shot of the SAME scene (`CAM_SCENE`: a woman in a mustard kurta with masala chai at a chai stall at
+  golden hour) + the move in words + the studio camera key where one exists (`catalog.CAMERA`). `setup()` adds them to a
+  showcase made before (existing shots kept). `ask_camera()` = the normal price cards in two steps: opening pictures
+  (`keyframes`), then draft 720p clips (`generate(..., "draft", ...)`) - each waits for her Haan (+ fingerprint);
+  POST /api/studio/showcase/camera, owner only. `status()` gains cams / cam_pictures / cam_clips.
+- `tile_of(clip)`: ffmpeg cuts the clip into a 320 px square looping animated WebP (4 s, 12 fps, quality 62), made once
+  beside the clip; GET /api/studio/showcase/file/{slot}?kind=tile serves it as image/webp. A picture, not a video player,
+  so all twelve tiles play at once on a budget phone.
+- Phone: `CreateStore.showcase` (GET /api/studio/showcase) + `camSlot` / `camReady`; `CrCamArt` puts the real tile over
+  the painted move (the painted one stays underneath until the clip is made / while it loads) on the Video page camera
+  grid and the home "Try a camera move" cards; owner-only `_CamMaker` card under the grid: step 1 / 2 counts, the price
+  card (CrApprovalCard), painting / filming, errors; gone once all twelve play.
+- Tests: `server/tests/test_v0919_real_camera.py` (incl. a real ffmpeg tile); test_v0329 counts the camera shots.
+- NOT VERIFIED: no real clip made yet - needs the VPS deploy, then her taps on the two price cards (prices shown on the
+  cards; 12 pictures + 12 draft clips). The footage is AI video, not stock footage.

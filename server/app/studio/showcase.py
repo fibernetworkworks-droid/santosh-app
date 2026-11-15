@@ -61,7 +61,33 @@ SLOTS: list[tuple[str, str]] = [
     ("sty8", "Madhubani folk-art style painting of a peacock and lotus flowers, bold lines, natural colours"),
 ]
 CLIPS = ["film0", "film2", "film3", "film7"]          # the four moving previews (each starts from its picture)
-SLOT_IDS = {s for s, _ in SLOTS}
+
+# v0.919 CAMERA MOVES (owner: "I WANT REAL VIDEO AT EVERY PLACE OF CAMERA ANGLE NOT ANIMATED"): one real clip per camera
+# move on the phone's Video page, all of the SAME chai-stall scene so only the camera differs. Slot id = "cam_" + the
+# move's name in lower case with "_" for spaces (the phone's own names). camera = studio catalog key (None = in words).
+CAM_SCENE = ("Real-life cinematic footage: a young Indian woman in a mustard-yellow kurta holds a clay cup of steaming masala "
+             "chai at a roadside chai stall at golden hour, string lights and warm bokeh behind her")
+CAMS: list[tuple[str, str, str | None]] = [
+    ("cam_auto", "a gentle slow push in, the most natural move for the moment", None),
+    ("cam_static", "the camera holds perfectly still on a tripod, only the steam and the people move", "static"),
+    ("cam_dolly_in", "the camera rolls slowly towards her face", "dolly_in"),
+    ("cam_dolly_out", "the camera rolls slowly back and reveals the whole chai stall and the street", "dolly_out"),
+    ("cam_crash_zoom", "a sudden fast crash zoom from the wide street straight into her face", None),
+    ("cam_orbit", "the camera circles around her while she sips", "orbit"),
+    ("cam_crane_up", "the camera rises up and over the stall, showing the busy street", "crane_up"),
+    ("cam_tracking", "she walks along the market lane holding the chai and the camera moves alongside her", "tracking"),
+    ("cam_pan", "the camera turns slowly across the stall from left to right", "pan_right"),
+    ("cam_drone", "the chai stall and the busy street seen from high above, the camera flying forward", "drone"),
+    ("cam_handheld", "close and real, a natural handheld camera with a light human wobble", "handheld"),
+    ("cam_low_angle", "a low hero angle looking up at her, slow push in", "low_angle"),
+]
+CAM_IDS = [c for c, _, _ in CAMS]
+SLOT_IDS = {s for s, _ in SLOTS} | set(CAM_IDS)
+
+
+def _cam_shots() -> list[dict]:
+    return [{"id": sid, "prompt": f"{CAM_SCENE}; {move}. {STYLE}", "duration": 5, "kind": "scene", **({"camera": cam} if cam else {})}
+            for sid, move, cam in CAMS]
 
 
 class ShowcaseError(Exception):
@@ -79,11 +105,18 @@ async def setup() -> dict[str, Any]:
     if not st.pdir(NAME).joinpath("project.json").exists():
         st.create(NAME, aspect="3:4", style="cinematic", language="Hindi", budget_usd=12.0,
                   brief="Hoola Create showcase: real pictures and clips for the studio pages")
-        st.storyboard_set(NAME, [{"id": sid, "prompt": f"{text}. {STYLE}", "duration": 5, "kind": "scene"} for sid, text in SLOTS])
+        st.storyboard_set(NAME, [{"id": sid, "prompt": f"{text}. {STYLE}", "duration": 5, "kind": "scene"} for sid, text in SLOTS]
+                          + _cam_shots())
         p = st.load(NAME)
         p["hidden"] = True                  # never in her film lists, so "Make the shots" can't be tapped for all 36 by mistake
         p.setdefault("prefs", {})["cast_skip"] = True
         st.save(p)
+    else:                                   # v0.919 a showcase made before the camera moves: add their shots, keep the rest
+        p = st.load(NAME)
+        have = {x["id"] for x in p["shots"]}
+        new = [x for x in _cam_shots() if x["id"] not in have]
+        if new:
+            st.storyboard_set(NAME, list(p["shots"]) + new)
     return status()
 
 
@@ -118,6 +151,24 @@ async def ask_clips() -> dict[str, Any]:
     if any(not shots.get(c, {}).get("keyframe") for c in want):   # else the clip card would paint (and charge) those pictures again
         raise ShowcaseError("Make the pictures first: each clip starts from its picture.")
     return await ss.generate(owner(), NAME, "final", want)
+
+
+async def ask_camera() -> dict[str, Any]:
+    """v0.919 the twelve camera-move clips, in two NORMAL price cards: first their opening pictures, then the clips
+    (draft 720p, 5 s each: they play small, in a tile). Nothing is made or charged before her Haan on each card."""
+    from . import service as ss
+    st = await ss.studio(owner())
+    p = st.load(NAME)
+    _one_card(p)
+    shots = {s["id"]: s for s in p["shots"]}
+    no_pic = [c for c in CAM_IDS if not shots.get(c, {}).get("keyframe")]
+    if no_pic:
+        return await ss.keyframes(owner(), NAME, no_pic)
+    made = {sid for sid, vs in p.get("variants", {}).items() if any(Path(v["file"]).is_file() for v in vs)}
+    want = [c for c in CAM_IDS if c not in made]
+    if not want:
+        raise ShowcaseError("All twelve camera videos are already made.")
+    return await ss.generate(owner(), NAME, "draft", want)
 
 
 def _project() -> dict | None:
@@ -163,17 +214,44 @@ def status() -> dict[str, Any]:
     m = manifest()
     return {"set_up": True, "slots": len(SLOTS), "clips": len(CLIPS), "pictures_made": sum(1 for x in m.values() if x["pic"]),
             "clips_made": sum(1 for c in CLIPS if m.get(c, {}).get("clip")), "painting": v.get("painting") or [],
+            "cams": len(CAM_IDS), "cam_pictures": sum(1 for c in CAM_IDS if m.get(c, {}).get("pic")),
+            "cam_clips": sum(1 for c in CAM_IDS if m.get(c, {}).get("clip")),
             "working": bool(v.get("working")), "pics_error": v.get("pics_error") or "", "error": v.get("error") or "",
             "approvals": [a for a in (v.get("approvals") or []) if a.get("status") == "pending"],
             "picture_inr": ss._inr(ss.KEYFRAME_USD), "spent_inr": ss._inr(p.get("spent_usd") or 0)}
 
 
+def tile_of(clip: Path) -> Path:
+    """v0.919 a small looping picture of a clip for a phone tile: 4 s, 12 frames a second, 320 px square, animated WebP
+    (decoded like a picture, so twelve tiles play at once without twelve video players). Made once, then kept."""
+    import subprocess
+    out = clip.with_name(clip.stem + ".tile.webp")
+    if out.is_file() and out.stat().st_mtime >= clip.stat().st_mtime:
+        return out
+    tmp = out.with_name(out.name + ".part.webp")
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(clip), "-t", "4", "-an",
+           "-vf", "fps=12,scale=320:320:force_original_aspect_ratio=increase:flags=lanczos,crop=320:320",
+           "-c:v", "libwebp_anim", "-quality", "62", "-loop", "0", str(tmp)]
+    try:
+        subprocess.run(cmd, check=True, timeout=90, capture_output=True)
+    except (OSError, subprocess.SubprocessError) as e:
+        tmp.unlink(missing_ok=True)
+        raise ShowcaseError(f"Could not make the tile: {e}") from e
+    tmp.replace(out)
+    return out
+
+
 def file_for(slot: str, kind: str) -> Path:
-    if slot not in SLOT_IDS or kind not in ("pic", "clip"):
+    if slot not in SLOT_IDS or kind not in ("pic", "clip", "tile"):
         raise ShowcaseError("Unknown showcase item")
     p = _project()
     if not p:
         raise ShowcaseError("The showcase is not made yet")
+    if kind == "tile":
+        f = _clip_file(p, slot)
+        if not f:
+            raise ShowcaseError("Not made yet")
+        return tile_of(f)
     if kind == "clip":
         f = _clip_file(p, slot)
     else:

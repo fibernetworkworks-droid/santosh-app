@@ -355,7 +355,8 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
           ),
           crGap,
           CrLabel('Camera', note: _cams.firstWhere((x) => x.$1 == _cam).$3),
-          _CameraGrid(picked: _cam, onPick: (v) => setState(() => _cam = v)),
+          _CameraGrid(store: widget.store, picked: _cam, onPick: (v) => setState(() => _cam = v)),
+          _CamMaker(store: widget.store),
           crGap,
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
@@ -442,7 +443,8 @@ const _camArt = {
 };
 
 class _CameraGrid extends StatelessWidget {
-  const _CameraGrid({required this.picked, required this.onPick});
+  const _CameraGrid({required this.store, required this.picked, required this.onPick});
+  final CreateStore store;
   final String picked;
   final ValueChanged<String> onPick;
   @override
@@ -455,7 +457,7 @@ class _CameraGrid extends StatelessWidget {
             width: w,
             height: w * 1.08,
             child: CrArtCard(
-              art: CrMove(move: x.$1, child: CrScene(_camArt[x.$1] ?? 'sunset')),
+              art: CrCamArt(store: store, move: x.$1, fallback: CrMove(move: x.$1, child: CrScene(_camArt[x.$1] ?? 'sunset'))),
               title: x.$1,
               picked: x.$1 == picked,
               radius: 16,
@@ -474,6 +476,94 @@ class _CameraGrid extends StatelessWidget {
           ),
       ]);
     });
+  }
+}
+
+/// v0.919 the owner's panel under the camera moves: the twelve REAL camera clips are made in two normal price cards
+/// (their opening pictures, then the 5-second clips), each waiting for her Haan. Only the owner gets it; it goes away
+/// once all twelve play.
+class _CamMaker extends StatefulWidget {
+  const _CamMaker({required this.store});
+  final CreateStore store;
+  @override
+  State<_CamMaker> createState() => _CamMakerState();
+}
+
+class _CamMakerState extends State<_CamMaker> {
+  bool _busy = false;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 8), (_) {
+      final o = crMap(widget.store.showcase['owner']);
+      if (o['working'] == true || crList(o['painting']).isNotEmpty || crList(o['approvals']).isNotEmpty) widget.store.reloadShowcase();
+    });
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _ask() async {
+    final api = widget.store.app.api;
+    if (api == null) return;
+    setState(() => _busy = true);
+    try {
+      await api.call('POST', '/api/studio/showcase/camera');
+    } catch (e) {
+      if (mounted) crToast(context, crError(e));
+    }
+    await widget.store.reloadShowcase();
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final o = crMap(widget.store.showcase['owner']);
+    final cams = crInt(o['cams']), pics = crInt(o['cam_pictures']), clips = crInt(o['cam_clips']);
+    if (o.isEmpty || cams == 0 || clips >= cams) return const SizedBox.shrink();
+    final appr = crList(o['approvals']);
+    final working = o['working'] == true || crList(o['painting']).isNotEmpty;
+    final err = crS(o['error']).isNotEmpty ? crS(o['error']) : crS(o['pics_error']);
+    final step = pics < cams ? 'Step 1 of 2: an opening picture for each move ($pics of $cams made)' : 'Step 2 of 2: a 5-second clip of each move ($clips of $cams made)';
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: CrCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Real videos for these moves', style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(step, style: HoolaType.small(c).copyWith(fontSize: 12.5)),
+          const SizedBox(height: 2),
+          Text('Only you see this. The price shows first; nothing is spent before your Haan.',
+              style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink3)),
+          if (err.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(err, style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.bad)),
+          ],
+          const SizedBox(height: 12),
+          if (appr.isNotEmpty)
+            for (final a in appr) CrApprovalCard(app: widget.store.app, approval: a, onDone: widget.store.reloadShowcase)
+          else if (working)
+            Row(children: [
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(pics < cams ? 'Painting the pictures…' : 'Filming the clips…', style: HoolaType.small(c))),
+            ])
+          else
+            CrMain(
+              label: pics < cams ? 'Show the price for the pictures' : 'Show the price for the clips',
+              height: 48,
+              busy: _busy,
+              onTap: _ask,
+            ),
+        ]),
+      ),
+    );
   }
 }
 
