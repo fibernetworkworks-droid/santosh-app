@@ -333,6 +333,11 @@ def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL
     from ..config import get_settings
     st = get_settings()
     model = getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or getattr(st, "anthropic_model", "")
+    try:                                  # v0.930 the model that really answered (the v0.929 card said Opus while Qwen ran)
+        from ..devsahayak import brain as _B
+        model = _B.model_for() if _B.brain_name() == "qwen" else model
+    except Exception:
+        pass
     skipped = [r for r in rows if r.get("skipped")]
     rows_all, rows = rows, [r for r in rows if not r.get("skipped")]
     need_test = [r for r in rows if r.get("test") is not None]

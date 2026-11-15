@@ -5136,3 +5136,12 @@ NEW: vps-ops `codelog` = `server/tools/codelog.py 6 santosh.db` (sqlite read-onl
 effort, ask, step counts, every pass / read / edit / search / bash / say line with its time, explanation, error) + the "hoola
 code qwen" / devsahayak log lines + errors near them. The INFO lines go to santosh-error.log (Python logging writes stderr).
 NOT VERIFIED: on her server; the root of the lock (who held the database > 5 s) is not known.
+
+
+## v0.930.0 QWEN CARD (owner: "CARD DONE CHECK")
+
+vps-ops code_card run 457 (15 Nov 2026 10:52 UTC, server v0.929.0, Hoola Code on Qwen 3.8 27B via OpenRouter): 11/12 jobs
+fully right (92 %); works 12/12, stayed in scope 12/12, project rules 12/12, good tests 9/10 (fix tests proving the bug 5/5),
+6.1 steps and 1.1 min a job. Miss: tests_for_discount - its own new test failed (1 failed, 3 passed). Claude Opus scored 12/12
+on the same set (v0.382 save). The card printed "claude-opus-5-5" because quality/codecard.py read dev_loop_model / site_model,
+not the brain - it now prints brain.model_for() when Hoola Code is on Qwen. Not yet run on Qwen: code_card_hard, code_card_mobile.
