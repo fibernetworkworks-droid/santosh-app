@@ -40,11 +40,11 @@ const List<HoolaTool> hoolaMoreTools = [
 
 /// Opens one studio: Create (v0.912 CREATE NATIVE) and Hoola Code (v0.921 HOOLA CODE NATIVE) are the app's own native
 /// screens; the rest are their console pages.
-Future<void> hoolaOpenStudio(BuildContext context, Santosh app, HoolaTool t) => switch (t.title) {
-      'Create' => hoolaOpenNew(context, app, HoolaCreate(app: app)),
-      'Hoola Code' => hoolaOpenNew(context, app, HoolaCode(app: app)),
-      _ => hoolaOpenConsole(context, app, t.path, t.title),
-    };
+Future<void> hoolaOpenStudio(BuildContext context, Santosh app, HoolaTool t) => t.title == 'Create'
+    ? hoolaOpenNew(context, app, HoolaCreate(app: app))
+    : t.title == 'Hoola Code'
+        ? hoolaOpenNew(context, app, HoolaCode(app: app))
+        : hoolaOpenConsole(context, app, t.path, t.title);
 
 /// v0.907 TOOLS PRO (option B of claude.ai/artifact/KMa7vVmS1EpWNRBqCvB8SX): every studio a soft white card, its
 /// own drawing centred on a black circle (the same black as the call button and the open tab), name and line centred

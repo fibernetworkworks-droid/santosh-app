@@ -126,6 +126,10 @@ TextStyle codeSans(HoolaColors c, {double size = 15, FontWeight weight = FontWei
     TextStyle(fontFamily: HoolaFont.sans, fontSize: size, fontWeight: weight, color: color ?? c.ink, height: height);
 
 // ---------------------------------------------------------------------------------------------- pieces
+/// A label that shrinks with an ellipsis when its row has a width to share, and keeps its own width when it has none
+/// (a chip in a sideways-scrolling row or beside a title: a Flexible there has no width and throws).
+Widget codeShrink(BoxConstraints box, Widget label) => box.hasBoundedWidth ? Flexible(child: label) : label;
+
 /// The +12 −4 count, in green and red.
 class CodeStat extends StatelessWidget {
   const CodeStat(this.added, this.removed, {super.key, this.size = 12});
@@ -225,16 +229,16 @@ class CodeMain extends StatelessWidget {
             height: math.max(48, height),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-                if (busy)
-                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.onPill))
-                else if (icon != null)
-                  Icon(icon, size: 18, color: c.onPill),
-                if (busy || icon != null) const SizedBox(width: 8),
-                Flexible(
-                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 15, weight: FontWeight.w600, color: c.onPill)),
-                ),
-              ]),
+              child: LayoutBuilder(
+                builder: (_, box) => Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                  if (busy)
+                    SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.onPill))
+                  else if (icon != null)
+                    Icon(icon, size: 18, color: c.onPill),
+                  if (busy || icon != null) const SizedBox(width: 8),
+                  codeShrink(box, Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 15, weight: FontWeight.w600, color: c.onPill))),
+                ]),
+              ),
             ),
           ),
         ),
@@ -268,10 +272,12 @@ class CodeOutline extends StatelessWidget {
             height: math.max(48, height),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-                if (icon != null) ...[Icon(icon, size: 17, color: ink), const SizedBox(width: 7)],
-                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 14.5, weight: FontWeight.w500, color: ink))),
-              ]),
+              child: LayoutBuilder(
+                builder: (_, box) => Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                  if (icon != null) ...[Icon(icon, size: 17, color: ink), const SizedBox(width: 7)],
+                  codeShrink(box, Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 14.5, weight: FontWeight.w500, color: ink))),
+                ]),
+              ),
             ),
           ),
         ),
@@ -308,17 +314,19 @@ class CodeChip extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: on ? c.pill : c.line),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (icon != null) ...[Icon(icon, size: 16, color: on ? c.onPill : c.ink2), const SizedBox(width: 6)],
-              Flexible(
-                child: Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: mono ? codeMono(c, size: 12.5, color: fg) : codeSans(c, size: 13, weight: FontWeight.w500, color: fg)),
-              ),
-              if (trailing != null) ...[const SizedBox(width: 6), trailing!],
-              if (chevron) ...[const SizedBox(width: 4), Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: on ? c.onPill : c.ink3)],
-            ]),
+            child: LayoutBuilder(
+              builder: (_, box) => Row(mainAxisSize: MainAxisSize.min, children: [
+                if (icon != null) ...[Icon(icon, size: 16, color: on ? c.onPill : c.ink2), const SizedBox(width: 6)],
+                codeShrink(
+                    box,
+                    Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: mono ? codeMono(c, size: 12.5, color: fg) : codeSans(c, size: 13, weight: FontWeight.w500, color: fg))),
+                if (trailing != null) ...[const SizedBox(width: 6), trailing!],
+                if (chevron) ...[const SizedBox(width: 4), Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: on ? c.onPill : c.ink3)],
+              ]),
+            ),
           ),
         ),
       ),

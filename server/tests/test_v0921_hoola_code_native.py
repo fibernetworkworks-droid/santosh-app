@@ -62,7 +62,7 @@ def test_both_doors_open_it():
     tools = (ROOT / "lib/ui/shell/hoola_tools.dart").read_text()
     team = (ROOT / "lib/ui/shell/hoola_team_list.dart").read_text()
     settings = (ROOT / "lib/ui/shell/hoola_settings.dart").read_text()
-    assert "'Hoola Code' => hoolaOpenNew(context, app, HoolaCode(app: app))" in tools
+    assert "? hoolaOpenNew(context, app, HoolaCode(app: app))" in tools
     assert "(a) => HoolaCode(app: a)" in team and "DevsahayakScreen" not in team
     assert "w is HoolaCode ? hoolaOpenNew" in settings
 
