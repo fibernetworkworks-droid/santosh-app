@@ -4807,3 +4807,29 @@ v0.917 entry for the record.
 - Tests: `server/tests/test_v0919_real_camera.py` (incl. a real ffmpeg tile); test_v0329 counts the camera shots.
 - NOT VERIFIED: no real clip made yet - needs the VPS deploy, then her taps on the two price cards (prices shown on the
   cards; 12 pictures + 12 draft clips). The footage is AI video, not stock footage.
+
+
+## v0.920.0 CAMERA ALIVE - the design's moving scene in every camera tile (owner: "use this and deploy for now" on the Camera moves alive design canvas)
+
+The owner pointed at the design canvas (claude.ai/code/artifact/963d3031-ec12-47c5-ae90-3b03a65e2b7a, the same canvas as
+claude.ai/artifact/KZ2Svgxm8fZPrEWt5zjKYD) and asked to ship it for now, while AI video of each move waits (Higgsfield is
+on hold, no key).
+
+- `CrCamScene(move)` in lib/ui/create/create_colour.dart: a Ticker + one CustomPainter drawing the 200 x 200 scene, fit as
+  "slice" over the tile. Layers as in the design: bg (sun + hills, the hill row repeats every 100), mid (ground + chai
+  stall with awning and bulbs, or lamp posts when Tracking), subj (her in a yellow kurta, red dupatta, a cup of chai with
+  two steam wisps on 2.6 s, the second 1.1 s late), fg (table with cup + oranges, or road dashes when Tracking), all inside
+  a rig layer.
+- Each move = the design's CSS keyframes as numbers: Auto 7 s parallax push; Dolly in / out 5 s holds at 0-12 % and 78-90 %;
+  Crash zoom 3.4 s punch to 1.95 x (cubic .7,0,.9,.4) about the face; Orbit 4.5 s layers sliding opposite ways + her
+  scaleX .84; Crane up 5 s layers dropping 4 / 16 / 24 / 52; Tracking hills / posts / road scrolling at 6 / 1.6 / .8 s + a
+  .4 s bob; Pan 5 s +-20; Drone 6 s pull up and away about (110, 168); Handheld 2.2 s small shake + tilt about (100, 100);
+  Low angle 5 s her large from below about (123, 172); Static holds and only the steam moves.
+- Colours per move in `CreateCamScene` (lib/ui/hoola_theme.dart; sky top / bottom, hill, ground + the fixed scene colours),
+  so the Create files stay free of raw colours (design ratchet).
+- Used as the fallback art of `CrCamArt` in the Video page `_CameraGrid` and the home "Try a camera move" cards; a v0.919
+  real clip still plays on top when one exists. The old `_camArt` painted-scene map is gone; `CrMove` stays for its test.
+- Reduce motion = still (the clock rests at 0, steam shown resting).
+- Tests: server/tests/test_v0920_camera_alive.py; test/create_native_test.dart now looks for CrCamScene on the home;
+  test_v0913 checks "CrCamScene(move:" in the home.
+- NOT VERIFIED on her phone; the painter compiles first on CI.

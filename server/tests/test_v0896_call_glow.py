@@ -20,4 +20,4 @@ def test_call_screen_has_both_looks():
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.919.0"
+    assert main.APP_VERSION == "0.920.0"

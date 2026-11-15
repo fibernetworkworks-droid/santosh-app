@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'dart:ui' show PointMode;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../hoola_theme.dart';
@@ -447,6 +448,333 @@ class _CrMoveState extends State<CrMove> with SingleTickerProviderStateMixin {
           builder: (_, child) => Transform(alignment: Alignment.center, transform: _at(_a.value), child: child),
         ),
       );
+}
+
+/// v0.920 one camera move, alive: the chai stall at dusk (sun + hills, stall or lamp posts, her with a cup of chai,
+/// the table up front) drawn in four layers that move the way that camera move moves - the near layers more than
+/// the far ones, so a dolly, a crane or an orbit reads as a real camera. Design canvas KZ2Svgxm8fZPrEWt5zjKYD.
+/// Still under reduce motion (and the steam rests).
+class CrCamScene extends StatefulWidget {
+  const CrCamScene({super.key, required this.move, this.still = false});
+  final String move;
+  final bool still;
+  @override
+  State<CrCamScene> createState() => _CrCamSceneState();
+}
+
+class _CrCamSceneState extends State<CrCamScene> with SingleTickerProviderStateMixin {
+  final _clock = ValueNotifier<double>(0);
+  late final Ticker _ticker = createTicker((d) => _clock.value = d.inMicroseconds / 1e6);
+
+  void _run() {
+    final hold = widget.still || HoolaMotion.reduced(context);
+    if (hold) {
+      if (_ticker.isActive) _ticker.stop();
+      _clock.value = 0;
+    } else if (!_ticker.isActive) {
+      _ticker.start();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _run();
+  }
+
+  @override
+  void didUpdateWidget(CrCamScene old) {
+    super.didUpdateWidget(old);
+    if (old.still != widget.still) _run();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+        child: CustomPaint(painter: _CamScenePainter(widget.move, _clock), size: Size.infinite),
+      );
+}
+
+class _CamScenePainter extends CustomPainter {
+  _CamScenePainter(this.move, this.clock) : super(repaint: clock);
+  final String move;
+  final ValueNotifier<double> clock;
+
+  // ---- time helpers (CSS keyframes in the design, as numbers)
+  static double _ease(double p) => Curves.easeInOut.transform(p.clamp(0.0, 1.0));
+  static double _alt(double s, double dur) {
+    final p = (s / dur) % 2;
+    return _ease(p > 1 ? 2 - p : p);
+  }
+
+  static double _loop(double s, double dur) => (s / dur) % 1;
+
+  /// A value through keys (at, value, the curve from that key to the next), p in 0..1.
+  static double _keys(double p, List<(double, double, Curve)> k) {
+    for (var i = 0; i < k.length - 1; i++) {
+      final a = k[i], b = k[i + 1];
+      if (p <= b.$1) {
+        if (b.$1 == a.$1) return b.$2;
+        final f = a.$3.transform(((p - a.$1) / (b.$1 - a.$1)).clamp(0.0, 1.0));
+        return a.$2 + (b.$2 - a.$2) * f;
+      }
+    }
+    return k.last.$2;
+  }
+
+  static double _lerp(double a, double b, double t) => a + (b - a) * t;
+
+  // ---- matrix helpers: CSS "scale(a) translate(x, y)" about an origin
+  static Matrix4 _st(double sx, double sy, double x, double y, [double ox = 122, double oy = 112]) =>
+      Matrix4.translationValues(ox, oy, 0)
+        ..scale(sx, sy, 1.0)
+        ..translate(x, y, 0.0)
+        ..translate(-ox, -oy, 0.0);
+  static Matrix4 _s(double k, [double ox = 122, double oy = 112]) => _st(k, k, 0, 0, ox, oy);
+  static Matrix4 _t(double x, double y) => Matrix4.translationValues(x, y, 0);
+
+  static const _io = Curves.easeInOut;
+  static const _crashIn = Cubic(.7, 0, .9, .4);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = clock.value;
+    final pal = CreateCamScene.all[move] ?? CreateCamScene.all['Auto']!;
+    final tracking = move == 'Tracking';
+    Matrix4? rig, bg, mid, subj, fg;
+    double hillsX = 0, postsX = 0, roadX = 0;
+
+    switch (move) {
+      case 'Auto':
+        final e = _alt(s, 7);
+        bg = _st(_lerp(1, 1.04, e), _lerp(1, 1.04, e), _lerp(0, -3, e), 0);
+        mid = _st(_lerp(1, 1.09, e), _lerp(1, 1.09, e), _lerp(0, -5, e), 0);
+        subj = _st(_lerp(1, 1.14, e), _lerp(1, 1.14, e), _lerp(0, -6, e), 0);
+        fg = _st(_lerp(1, 1.22, e), _lerp(1, 1.22, e), _lerp(0, -10, e), 0);
+      case 'Dolly in' || 'Dolly out':
+        final p = _loop(s, 5);
+        final inn = move == 'Dolly in';
+        double k(double far) => inn
+            ? _keys(p, [(0, 1, _io), (.12, 1, _io), (.78, far, _io), (.9, far, _io), (1, 1, _io)])
+            : _keys(p, [(0, far, _io), (.12, far, _io), (.78, 1, _io), (.9, 1, _io), (1, far, _io)]);
+        bg = _s(k(1.07));
+        mid = _s(k(inn ? 1.18 : 1.2));
+        subj = _s(k(inn ? 1.34 : 1.4));
+        fg = _s(k(inn ? 1.62 : 1.7));
+      case 'Crash zoom':
+        final p = _loop(s, 3.4);
+        rig = _s(_keys(p, [(0, 1, _io), (.38, 1, _crashIn), (.46, 1.95, _io), (.8, 1.95, _io), (.92, 1, _io), (1, 1, _io)]), 123, 98);
+      case 'Orbit':
+        final e = _alt(s, 4.5);
+        bg = _t(_lerp(18, -18, e), 0);
+        mid = _t(_lerp(10, -10, e), 0);
+        final raw = (s / 4.5) % 2;
+        final p = raw > 1 ? 2 - raw : raw;
+        subj = _st(_keys(p, [(0, 1, _io), (.5, .84, _io), (1, 1, _io)]), 1, 0, 0);
+        fg = _t(_lerp(-46, 46, e), 0);
+      case 'Crane up':
+        final e = _alt(s, 5);
+        bg = _t(0, 4 * e);
+        mid = _t(0, 16 * e);
+        subj = _t(0, 24 * e);
+        fg = _t(0, 52 * e);
+      case 'Tracking':
+        hillsX = -100 * _loop(s, 6);
+        postsX = -60 * _loop(s, 1.6);
+        roadX = -40 * _loop(s, .8);
+        subj = _t(0, -2 * _alt(s, .4));
+      case 'Pan':
+        rig = _t(_lerp(20, -20, _alt(s, 5)), 0);
+      case 'Drone':
+        final e = _alt(s, 6);
+        bg = _s(_lerp(1.2, 1, e), 110, 168);
+        mid = _s(_lerp(1.5, .9, e), 110, 168);
+        subj = _s(_lerp(1.6, .82, e), 110, 168);
+        fg = _st(_lerp(2.2, .7, e), _lerp(2.2, .7, e), 0, _lerp(0, 30, e), 110, 168);
+      case 'Handheld':
+        final p = _loop(s, 2.2);
+        final ks = [0.0, .17, .33, .5, .67, .83, 1.0];
+        double at(List<double> v) => _keys(p, [for (var i = 0; i < ks.length; i++) (ks[i], v[i], _io)]);
+        final x = at([0, 1.6, -1.2, .8, -1.6, 1, 0]);
+        final y = at([0, -1, .8, 1.4, -.6, .4, 0]);
+        final r = at([0, .5, -.4, .3, -.5, .2, 0]) * math.pi / 180;
+        rig = Matrix4.translationValues(100, 100, 0)
+          ..translate(x, y, 0.0)
+          ..rotateZ(r)
+          ..translate(-100.0, -100.0, 0.0);
+      case 'Low angle':
+        final e = _alt(s, 5);
+        final k = _lerp(1.25, 1.33, e);
+        subj = _st(k, k, 0, _lerp(0, -3, e), 123, 172);
+        bg = _t(0, _lerp(28, 32, e));
+        mid = _t(0, _lerp(22, 25, e));
+        final f = _lerp(1.2, 1.24, e);
+        fg = Matrix4.translationValues(0, _lerp(14, 16, e), 0)..multiply(_s(f));
+      default:
+        break; // Static: the camera holds, only the steam moves
+    }
+
+    // fit a 200 x 200 picture over the tile, cut at the sides (like "slice")
+    final k = math.max(size.width, size.height) / 200;
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    canvas.translate((size.width - 200 * k) / 2, (size.height - 200 * k) / 2);
+    canvas.scale(k, k);
+
+    const box = Rect.fromLTWH(0, 0, 200, 200);
+    canvas.drawRect(box, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [pal.skyTop, pal.skyBottom]).createShader(box));
+
+    void layer(Matrix4? m, void Function() draw) {
+      canvas.save();
+      if (m != null) canvas.transform(m.storage);
+      draw();
+      canvas.restore();
+    }
+
+    final fill = Paint();
+    Paint col(Color c) => fill..color = c;
+
+    layer(rig, () {
+      // far: the sun and rolling hills
+      layer(bg, () {
+        canvas.drawCircle(const Offset(152, 46), 15, col(CreateCamScene.sun.withOpacity(.9)));
+        canvas.save();
+        canvas.translate(hillsX, 0);
+        final hills = Path()..moveTo(-100, 128);
+        // the design's "q25 -18 50 0 t50 0 ...": one bump up, one dip down, so the row repeats every 100
+        var up = true;
+        for (var x = -100.0; x < 300; x += 50) {
+          hills.quadraticBezierTo(x + 25, up ? 110 : 146, x + 50, 128);
+          up = !up;
+        }
+        hills
+          ..lineTo(300, 200)
+          ..lineTo(-100, 200)
+          ..close();
+        canvas.drawPath(hills, col(pal.hill));
+        canvas.restore();
+      });
+      // middle: the ground and the chai stall (or lamp posts going by when tracking)
+      layer(mid, () {
+        canvas.drawRect(const Rect.fromLTWH(-100, 140, 400, 80), col(pal.ground));
+        if (!tracking) {
+          canvas.drawRect(const Rect.fromLTWH(28, 96, 4, 46), col(CreateCamScene.wood));
+          canvas.drawRect(const Rect.fromLTWH(86, 96, 4, 46), col(CreateCamScene.wood));
+          canvas.drawPath(
+              Path()
+                ..moveTo(22, 96)
+                ..lineTo(30, 84)
+                ..lineTo(88, 84)
+                ..lineTo(96, 96)
+                ..close(),
+              col(CreateCamScene.awning));
+          final stripe = Paint()
+            ..color = CreateCamScene.stripe
+            ..strokeWidth = 5;
+          canvas.drawLine(const Offset(42, 84), const Offset(40, 96), stripe);
+          canvas.drawLine(const Offset(58, 84), const Offset(58, 96), stripe);
+          canvas.drawLine(const Offset(74, 84), const Offset(76, 96), stripe);
+          canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(26, 118, 68, 24), const Radius.circular(2)), col(CreateCamScene.counter));
+          for (final b in const [Offset(44, 102), Offset(60, 104), Offset(76, 102)]) {
+            canvas.drawCircle(b, 2.5, col(CreateCamScene.bulb));
+          }
+        } else {
+          canvas.save();
+          canvas.translate(postsX, 0);
+          for (var x = -60.0; x <= 240; x += 60) {
+            canvas.drawRect(Rect.fromLTWH(x, 92, 3, 50), col(CreateCamScene.post));
+            canvas.drawCircle(Offset(x + 1.5, 90), 4, col(CreateCamScene.bulb));
+          }
+          canvas.restore();
+        }
+      });
+      // her, with a cup of chai and its steam
+      layer(subj, () {
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(116, 146, 5, 24), const Radius.circular(2)), col(CreateCamScene.post));
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(125, 146, 5, 24), const Radius.circular(2)), col(CreateCamScene.post));
+        canvas.drawPath(
+            Path()
+              ..moveTo(110, 150)
+              ..quadraticBezierTo(112, 116, 123, 112)
+              ..quadraticBezierTo(134, 116, 136, 150)
+              ..close(),
+            col(CreateCamScene.kurta));
+        canvas.drawPath(
+            Path()
+              ..moveTo(114, 118)
+              ..quadraticBezierTo(124, 132, 134, 120)
+              ..lineTo(136, 128)
+              ..quadraticBezierTo(124, 140, 112, 126)
+              ..close(),
+            col(CreateCamScene.dupatta));
+        canvas.drawCircle(const Offset(123, 100), 10, col(CreateCamScene.skin));
+        canvas.drawPath(
+            Path()
+              ..moveTo(113, 99)
+              ..quadraticBezierTo(114, 88, 123, 88)
+              ..quadraticBezierTo(133, 88, 133, 99)
+              ..quadraticBezierTo(128, 93, 123, 94)
+              ..quadraticBezierTo(117, 93, 113, 99)
+              ..close(),
+            col(CreateCamScene.hair));
+        canvas.drawPath(
+            Path()
+              ..moveTo(132, 120)
+              ..quadraticBezierTo(142, 128, 138, 136),
+            Paint()
+              ..color = CreateCamScene.skin
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 4
+              ..strokeCap = StrokeCap.round);
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(134, 132, 8, 9), const Radius.circular(1.5)), col(CreateCamScene.cup));
+        void steam(double delay, double x, double dx, double up) {
+          final p = s == 0 ? .4 : _loop(s - delay, 2.6);
+          final o = _keys(p, [(0, 0, _io), (.4, .85, _io), (1, 0, _io)]);
+          if (o <= 0) return;
+          final y = _lerp(4, -10, _ease(p));
+          canvas.drawPath(
+              Path()
+                ..moveTo(x, 128 + y)
+                ..quadraticBezierTo(x + dx, 123 + y, x, 128 - up + y),
+              Paint()
+                ..color = Colors.white.withOpacity(o)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.4
+                ..strokeCap = StrokeCap.round);
+        }
+
+        steam(0, 136, -3, 9);
+        steam(1.1, 140, 3, 10);
+      });
+      // near: the table with a cup and two oranges (or the road rushing by when tracking)
+      layer(fg, () {
+        if (!tracking) {
+          canvas.drawRect(const Rect.fromLTWH(-20, 172, 240, 40), col(CreateCamScene.table));
+          canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(30, 160, 9, 12), const Radius.circular(1.5)), col(CreateCamScene.cup));
+          canvas.drawCircle(const Offset(178, 166), 9, col(CreateCamScene.orange));
+          canvas.drawCircle(const Offset(188, 171), 7, col(CreateCamScene.orange2));
+        } else {
+          canvas.save();
+          canvas.translate(roadX, 0);
+          final dash = Paint()..color = Colors.white.withOpacity(.4);
+          for (var x = 0.0; x <= 240; x += 40) {
+            canvas.drawRect(Rect.fromLTWH(x, 186, 20, 3), dash);
+          }
+          canvas.restore();
+        }
+      });
+    });
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_CamScenePainter old) => old.move != move || old.clock != clock;
 }
 
 // ------------------------------------------------------------------------------------------------ pieces

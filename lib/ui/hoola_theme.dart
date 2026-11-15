@@ -387,6 +387,44 @@ class CreateScene {
   };
 }
 
+/// v0.920 the "Camera moves alive" scene (design canvas KZ2Svgxm8fZPrEWt5zjKYD): one chai stall at dusk, drawn in
+/// four layers, its colours per camera move. Drawn by CrCamScene in lib/ui/create/create_colour.dart.
+class CreateCamScene {
+  const CreateCamScene(this.skyTop, this.skyBottom, this.hill, this.ground);
+  final Color skyTop, skyBottom, hill, ground;
+
+  static const sun = Color(0xFFFFE6A8);
+  static const wood = Color(0xFF3A2418);
+  static const awning = Color(0xFFE85D4A);
+  static const stripe = Color(0xFFFFF1E0);
+  static const counter = Color(0xFF6B3F2A);
+  static const bulb = Color(0xFFFFD27A);
+  static const post = Color(0xFF2A1A14);
+  static const kurta = Color(0xFFF2C14E);
+  static const dupatta = Color(0xFFD9534F);
+  static const skin = Color(0xFF8D5A3B);
+  static const hair = Color(0xFF1B1210);
+  static const cup = Color(0xFFF4E1C1);
+  static const table = Color(0xFF24140F);
+  static const orange = Color(0xFFF59E0B);
+  static const orange2 = Color(0xFFFB923C);
+
+  static const all = {
+    'Auto': CreateCamScene(Color(0xFF2E1B4E), Color(0xFFF28A6B), Color(0xFF6B2F5C), Color(0xFF3A1D33)),
+    'Static': CreateCamScene(Color(0xFFFCE3D2), Color(0xFFE9A07A), Color(0xFFC77B5E), Color(0xFF7A4632)),
+    'Dolly in': CreateCamScene(Color(0xFF3B1C5A), Color(0xFFE86FB0), Color(0xFF5A2266), Color(0xFF2B1236)),
+    'Dolly out': CreateCamScene(Color(0xFFF7B267), Color(0xFFE2694A), Color(0xFFA84A3C), Color(0xFF5B2A22)),
+    'Crash zoom': CreateCamScene(Color(0xFF1E1B4B), Color(0xFF7C3AED), Color(0xFF3B2A7A), Color(0xFF1A1033)),
+    'Orbit': CreateCamScene(Color(0xFFBFF0E1), Color(0xFF4FA894), Color(0xFF2E7D6B), Color(0xFF1F4D44)),
+    'Crane up': CreateCamScene(Color(0xFFF9A26C), Color(0xFFC2456E), Color(0xFF7A2D4F), Color(0xFF3D1830)),
+    'Tracking': CreateCamScene(Color(0xFF9FD9B7), Color(0xFF2F7A55), Color(0xFF24694A), Color(0xFF163D2C)),
+    'Pan': CreateCamScene(Color(0xFFFBD7A5), Color(0xFFD27A4A), Color(0xFF9B4A2E), Color(0xFF4E2618)),
+    'Drone': CreateCamScene(Color(0xFF8FD3F4), Color(0xFF1E6D8A), Color(0xFF155A6E), Color(0xFF0E3644)),
+    'Handheld': CreateCamScene(Color(0xFF2B2F6B), Color(0xFFE58F4E), Color(0xFF3B2E63), Color(0xFF1C1638)),
+    'Low angle': CreateCamScene(Color(0xFF3A1C4D), Color(0xFFA8456A), Color(0xFF4A1F48), Color(0xFF22101F)),
+  };
+}
+
 // ------------------------------------------------------------------------------------------------ motion
 /// Every movement in one place. When the phone asks for less motion (Accessibility > Remove animations), every
 /// transition becomes a short fade and springs stop.

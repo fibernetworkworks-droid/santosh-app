@@ -173,7 +173,7 @@ class _HoolaCreateState extends State<HoolaCreate> {
                 child: CrHueScope(
                   hue: CrHue.video,
                   child: CrArtCard(
-                    art: CrCamArt(store: _store, move: _moves[i].$1, fallback: CrMove(move: _moves[i].$1, child: CrScene(_moves[i].$3))),
+                    art: CrCamArt(store: _store, move: _moves[i].$1, fallback: CrCamScene(move: _moves[i].$1)),
                     badge: const CrBadge('5 s', leading: CrIcon(CrGlyph.video, size: 13, color: Colors.white)),
                     title: _moves[i].$1,
                     line: _moves[i].$2,

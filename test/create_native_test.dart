@@ -218,7 +218,7 @@ void main() {
       for (final mv in ['Dolly in', 'Orbit']) {
         expect(find.text(mv), findsWidgets, reason: 'camera move $mv');
       }
-      expect(find.byType(CrMove), findsWidgets, reason: 'the camera moves are moving pictures');
+      expect(find.byType(CrCamScene), findsWidgets, reason: 'the camera moves are moving pictures');
       expect(find.text('Making now'), findsOneWidget, reason: 'what is being made shows on the home');
       expect(find.text('Recent'), findsOneWidget);
       expect(find.text('Diwali offer poster'), findsWidgets);

@@ -437,11 +437,6 @@ class _CreateVideoState extends State<CreateVideo> with _StudioPoll<CreateVideo>
 }
 
 /// v0.913 the twelve camera moves as moving pictures, three to a row; the picked one is ringed and ticked.
-const _camArt = {
-  'Auto': 'sunset', 'Static': 'clay', 'Dolly in': 'rose', 'Dolly out': 'desert', 'Crash zoom': 'neon', 'Orbit': 'mint',
-  'Crane up': 'temple', 'Tracking': 'forest', 'Pan': 'chai', 'Drone': 'ocean', 'Handheld': 'rain', 'Low angle': 'diya',
-};
-
 class _CameraGrid extends StatelessWidget {
   const _CameraGrid({required this.store, required this.picked, required this.onPick});
   final CreateStore store;
@@ -457,7 +452,7 @@ class _CameraGrid extends StatelessWidget {
             width: w,
             height: w * 1.08,
             child: CrArtCard(
-              art: CrCamArt(store: store, move: x.$1, fallback: CrMove(move: x.$1, child: CrScene(_camArt[x.$1] ?? 'sunset'))),
+              art: CrCamArt(store: store, move: x.$1, fallback: CrCamScene(move: x.$1)),
               title: x.$1,
               picked: x.$1 == picked,
               radius: 16,
