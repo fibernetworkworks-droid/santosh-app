@@ -120,6 +120,22 @@ def model_json(system: str, prompt: str, max_tokens: int = 12000) -> dict[str, A
     """Claude via the website builder's helper (Opus first, then the chat model, then the cheap brain). Tests replace this."""
     from ..site import ai
     from . import brain as _B
+    if _B.brain_name() == "qwen":                   # v0.926 HOOLA CODE ON QWEN: the one-shot calls too
+        out: dict[str, Any] = {}
+        ask = prompt
+        try:
+            for _ in range(2):
+                blocks, _stop = _B.call(system + "\n\nReply with ONLY one JSON object (no markdown fence, no text before or after).",
+                                        [{"role": "user", "content": ask}], [], max_tokens=max_tokens)
+                out = ai.parse_json("".join(b.get("text", "") for b in blocks if b.get("type") == "text"))
+                if out:
+                    break
+                ask = prompt + "\n\n(Your last answer was not valid JSON. Send only the JSON object.)"
+        except Exception as e:
+            raise DevError(f"Model nahi mila: {e}")
+        if not out:
+            raise DevError("Model se saaf jawab nahi aaya; dobara koshish kijiye.")
+        return out
     try:
         with _B.claude_only():                      # v0.784 USE CLAUDE: Hoola Code's one-shot calls are Claude's too
             return ai.ask_json(system, prompt, max_tokens=max_tokens, kind="build")
@@ -642,6 +658,14 @@ def _pretty_model(m: str) -> str:
     return " ".join(w if w[:1].isdigit() else w[:1].upper() + w[1:] for w in x.replace("-", " ").split())
 
 
+def _pretty_qwen(m: str) -> str:
+    """qwen/qwen3.8-27b -> Qwen 3.8 27B."""
+    x = (m or "").split("/")[-1]
+    x = re.sub(r"^qwen", "Qwen ", x, flags=re.I)
+    return " ".join(w.upper() if re.fullmatch(r"\d+b", w, re.I) else (w if w[:1].isdigit() else w[:1].upper() + w[1:])
+                    for w in x.replace("-", " ").split())
+
+
 def models(tenant: str = "") -> dict[str, Any]:
     """What may write the code, and what WILL. Hoola Code calls Claude through the Anthropic SDK; two server rules sit
     in front of it - SAB GLM (every Claude call answered by the owner's GLM brain) and claude_one_model (every Claude
@@ -652,6 +676,12 @@ def models(tenant: str = "") -> dict[str, Any]:
     default = str(getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "") or st.anthropic_model)
     ids = list(dict.fromkeys(x for x in (default, str(st.anthropic_model or ""), str(getattr(st, "chat_simple_model", "") or "")) if x))
     forced = None
+    from . import brain as _B
+    if _B.brain_name() == "qwen":                    # v0.926 HOOLA CODE ON QWEN: one model answers, so no picker
+        qm = _B.qwen_model()
+        return {"options": [{"id": qm, "label": _pretty_qwen(qm)}], "default": qm, "brain": "qwen",
+                "forced": {"model": _pretty_qwen(qm), "why": "Hoola Code runs on this model through OpenRouter (the server's own setting)."},
+                "efforts": list(EFFORTS), "default_effort": str(getattr(st, "dev_loop_effort", "high") or "high")}
     if bool(getattr(st, "dev_claude", True)):        # v0.784 USE CLAUDE: Hoola Code stands the server's model rules aside
         return {"options": [{"id": m, "label": _pretty_model(m)} for m in ids], "default": default, "forced": None,
                 "efforts": list(EFFORTS), "default_effort": str(getattr(st, "dev_loop_effort", "high") or "high")}

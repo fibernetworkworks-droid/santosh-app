@@ -457,7 +457,7 @@ def _anthropic_brain(system: str, messages: list[dict], tools: list[dict]) -> tu
     dev_claude is on), adaptive thinking, prompt caching, and old tool output trimmed in place past a budget."""
     from ..config import get_settings
     from . import brain as _B
-    if not get_settings().anthropic_api_key and _B.CLIENT is None:
+    if _B.brain_name() == "claude" and not get_settings().anthropic_api_key and _B.CLIENT is None:
         raise LoopUnavailable("no ANTHROPIC_API_KEY")
     _B.trim(messages, int(getattr(get_settings(), "dev_ws_clear_chars", 180000) or 180000))
     return _B.call(system, messages, tools)

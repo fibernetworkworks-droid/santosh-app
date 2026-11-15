@@ -69,6 +69,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("APP_ENGINE_PUBLISH_CHECKS", "false")  # v0.832 older App Engine suites publish without the scans; test_v0832 turns them on
     monkeypatch.setenv("CHAT_WORK_IN_TURN", "false")  # PARITY Phase 4: older suites pin background crews / research + the 900 s turn; test_parity_p4 checks in-turn
     monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
+    monkeypatch.setenv("DEV_BRAIN", "claude")         # v0.926 older Hoola Code suites pin the Claude brain; test_v0926 checks Qwen
     monkeypatch.setenv("PC_MODEL", "sonnet")          # v0.851 older PC suites pin the Claude loop; test_v0851_pc_brain checks Qwen
     monkeypatch.setenv("PC_PLAN", "false")            # v0.859 D2 / D4 / D1 off for the older PC suites (their fake model
     monkeypatch.setenv("PC_VERIFY", "false")          # client would also get the planner / checker calls); the D1-D4

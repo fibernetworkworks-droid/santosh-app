@@ -193,6 +193,11 @@ class Settings(BaseSettings):
     # v0.784 HOOLA CODE ENGINE (owner: "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE"): devsahayak/engine.py + brain.py
     dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
     dev_think: bool = True                  # ... with adaptive thinking
+    # v0.926 HOOLA CODE ON QWEN (owner: "27B FOR CODING ALSO"): every Hoola Code call on Qwen through OpenRouter
+    dev_brain: str = "qwen"                 # "qwen" = OpenRouter (dev_qwen_model) | "claude" = Claude's own (dev_claude rules)
+    dev_qwen_model: str = "qwen/qwen3.8-27b"   # the coder, plans, reviews, agents, compaction, hint and memory all on this
+    dev_qwen_timeout_s: float = 180.0       # one Qwen request waits this long (its own clock, never the chat's 45 s GLM one)
+    dev_qwen_fallback_claude: bool = False  # a failed Qwen call is NOT moved to Claude unless this is on (no surprise Opus bill)
     dev_hint: bool = True                   # Hoola Code Phase 5: one small model call when a round ends suggests her next message (ghost text)
     dev_hint_model: str = "claude-haiku-5-5"   # ... on this model
     dev_net: bool = False                   # Hoola Code Phase 6: network levels + outside secrets for the box (allow-list proxy). OFF until `python -m app.devlab net` passes on the server

@@ -5055,3 +5055,34 @@ unchanged. NOT VERIFIED on her phone; she needs the v0.923 APK.
 - RULE: under the new theme a bare field must turn off enabledBorder + focusedBorder + filled, not just border.
 - Test: `test_v0924_hoola_code_first_screen.py::test_v0925_bar_has_one_outline`.
 - NOT VERIFIED on her phone (CI compiles the Dart).
+
+
+## v0.926.0 HOOLA CODE ON QWEN (owner: "Now check hoola code to qwen" -> the check -> "27B FOR CODING ALSO")
+
+THE CHECK: every Hoola Code model call already goes through one function, `devsahayak/brain.py` `call()` (engine round,
+compaction, subagents, specialists / plans / reviews via the loop, hint, memory); the one-shot writer / reviewer go through
+`service.model_json`. With `dev_claude` on they all ran on Claude Opus 5.5 through the Anthropic key - so real sessions
+needed Anthropic credit while her chat already runs on Qwen 3.8 27B through OpenRouter. Switching `dev_claude` off was NOT
+the answer: the shared GLM door gives a request 45 s, pauses itself for 10 min after 2 failures (for every user's chat too),
+follows the chat's model and drops the coder's effort.
+
+BUILT: `dev_brain` ("qwen" default | "claude"), `dev_qwen_model` (qwen/qwen3.8-27b), `dev_qwen_timeout_s` 180,
+`dev_qwen_fallback_claude` False. `brain.call` -> `_qwen_call`: messages + tools through `llm.to_openai` (unsigned Claude
+thinking from older rounds dropped), POST https://openrouter.ai/api/v1/chat/completions with the server's OpenRouter key
+(`providers.key_of`), `reasoning` = her effort (xhigh / max -> high; think off -> low) with `exclude: true` and room added to
+max_tokens, `provider.require_parameters` (only providers that really take tools), temperature 0.2, header X-Title Hoola Code;
+3 tries on a timeout / 5xx / empty answer, a 400-404 (402 carries `llm.CREDIT_LOW_LINE`) raised at once; the answer back
+through `llm.from_openai` in the same block shapes; usage metered with `usage.from_openai`. A Claude model id picked for a
+call (hint / memory ask for Haiku) means nothing on Qwen; a qwen/ pick wins. No OpenRouter key = Claude, logged once.
+`service.model_json` on Qwen = `brain.call` + `site.ai.parse_json`, one retry on bad JSON. `service.models()` = the forced
+model "Qwen 3.8 27B" (console chip + phone sheet already show `forced`). `loop._anthropic_brain` no longer refuses when only
+the Claude key is missing.
+
+FOUND + FIXED: `usage.price_of` drops the provider part ("qwen/") before matching, so the v0.852 "qwen/qwen3.8-max-0902"
+price never matched (counted at the fallback price); both Qwen keys now carry no prefix; 27B priced at $0.15 / $1.875 /
+cache read $0.0375 per million (OpenRouter /models, 15 Nov 2026).
+
+Tests: `test_v0926_hoola_code_qwen.py` (10); conftest pins `DEV_BRAIN=claude` for the older Hoola Code suites. Back to
+Claude: `DEV_BRAIN=claude` in the VPS .env + pm2 restart.
+NOT VERIFIED: no live Qwen coding round; the coding cards (vps-ops code_card / code_card_hard) have not been run on Qwen;
+whether OpenRouter caches Qwen requests automatically is not confirmed.

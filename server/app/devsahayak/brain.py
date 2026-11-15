@@ -13,7 +13,14 @@ What every coding call now gets, and why:
   ("run the tool again if you need it") - Anthropic's own context-editing idea. Done in place and in one go, so the
   cached prefix changes rarely.
 
-Tests replace CLIENT (a fake with .messages.create)."""
+v0.926 HOOLA CODE ON QWEN (owner: "27B FOR CODING ALSO"): with `dev_brain` "qwen" (the default) every one of those
+calls goes to Qwen on OpenRouter (`dev_qwen_model`, qwen/qwen3.8-27b) on its OWN request - its own clock
+(`dev_qwen_timeout_s`), its own retries, never the chat's GLM door, so a slow coding step can never pause anyone's chat.
+Her effort becomes Qwen's reasoning effort (reasoning text kept out of the answer and out of the history, so a session
+can move back to Claude at any time). No OpenRouter key = Claude, said in the log. A failed Qwen call is never quietly
+moved to Claude (`dev_qwen_fallback_claude` off).
+
+Tests replace CLIENT (a fake with .messages.create) and QWEN_POST (a fake that answers one OpenRouter request)."""
 from __future__ import annotations
 
 import contextlib
@@ -25,7 +32,8 @@ from typing import Any
 log = logging.getLogger("santosh.devsahayak.brain")
 
 CLIENT: Any = None                      # tests: a fake with .messages.create(**kw)
-STATE = {"think_refused": False, "effort_refused": False, "calls": 0, "cleared": 0}
+QWEN_POST: Any = None                   # tests: a fake(url, body, headers, timeout) -> the OpenRouter JSON answer
+STATE = {"think_refused": False, "effort_refused": False, "calls": 0, "cleared": 0, "qwen_calls": 0, "qwen_failed": 0}
 CLEARED = "[older tool output cleared to keep the session small - run the tool again if you need it]"
 PICK = threading.local()                # model / effort chosen for THIS session (the composer), set by the caller
 
@@ -35,8 +43,40 @@ def _settings():
     return get_settings()
 
 
+def _or_key() -> str:
+    try:
+        from ..agent import providers as _pv
+        return _pv.key_of("openrouter")
+    except Exception:
+        return ""
+
+
+def brain_name() -> str:
+    """Which brain answers Hoola Code: "qwen" (OpenRouter) or "claude"."""
+    st = _settings()
+    if str(getattr(st, "dev_brain", "claude") or "claude").strip().lower() != "qwen":
+        return "claude"
+    if QWEN_POST is not None or _or_key():
+        return "qwen"
+    if not STATE.get("no_key_said"):
+        STATE["no_key_said"] = True
+        log.warning("Hoola Code is set to Qwen but the server has no OpenRouter key - answering on Claude")
+    return "claude"
+
+
+def qwen_model() -> str:
+    """The Qwen model: a qwen/ model she picked for this session, else dev_qwen_model (a Claude pick - the hint and
+    memory callers ask for Haiku - means nothing on the Qwen brain)."""
+    picked = str(getattr(PICK, "model", "") or "")
+    if picked.startswith("qwen/"):
+        return picked
+    return str(getattr(_settings(), "dev_qwen_model", "") or "qwen/qwen3.8-27b")
+
+
 def model_for() -> str:
     st = _settings()
+    if brain_name() == "qwen":
+        return qwen_model()
     return (getattr(PICK, "model", "") or getattr(st, "dev_loop_model", "") or getattr(st, "site_model", "")
             or st.anthropic_model)
 
@@ -98,6 +138,94 @@ def _refused(e: Exception, word: str) -> bool:
 def call(system: str, messages: list[dict], tools: list[dict], max_tokens: int = 16000,
          think: bool | None = None) -> tuple[list[dict], str]:
     """One model step with tools. Returns (content blocks incl. thinking, stop_reason)."""
+    if brain_name() == "qwen":
+        try:
+            return _qwen_call(system, messages, tools, max_tokens, think)
+        except Exception as e:
+            STATE["qwen_failed"] += 1
+            if not (bool(getattr(_settings(), "dev_qwen_fallback_claude", False)) and _settings().anthropic_api_key):
+                raise
+            log.warning("Hoola Code Qwen call failed (%s) - asking Claude once (dev_qwen_fallback_claude)", str(e)[:160])
+            return _claude_call(system, messages, tools, max_tokens, think)
+    return _claude_call(system, messages, tools, max_tokens, think)
+
+
+EFFORT_TO_REASONING = {"low": "low", "medium": "medium", "high": "high", "xhigh": "high", "max": "high"}
+ROOM = {"low": 2048, "medium": 4096, "high": 8192}       # reasoning tokens counted inside max_tokens on OpenRouter
+
+
+class QwenError(RuntimeError):
+    pass
+
+
+def _qwen_post(url: str, body: dict, headers: dict, timeout: float) -> dict:
+    if QWEN_POST is not None:
+        return QWEN_POST(url, body, headers, timeout)
+    import httpx
+    with httpx.Client(timeout=timeout) as c:
+        r = c.post(url, json=body, headers=headers)
+    if r.status_code >= 400:
+        from ..agent import llm
+        line = (" | " + llm.CREDIT_LOW_LINE) if r.status_code == 402 else ""
+        raise QwenError(f"OpenRouter answered {r.status_code}: {r.text[:300]}{line}")
+    return r.json()
+
+
+def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
+               think: bool | None) -> tuple[list[dict], str]:
+    """One Hoola Code step on Qwen through OpenRouter, answered in the same block shapes a Claude call returns."""
+    import time
+    from ..agent import llm
+    st = _settings()
+    model = qwen_model()
+    msgs, fns = llm.to_openai(system, [t for t in tools if isinstance(t, dict) and t.get("name")], messages)
+    want_think = bool(getattr(st, "dev_think", True)) if think is None else think
+    effort = getattr(PICK, "effort", "") or str(getattr(st, "dev_loop_effort", "high") or "high")
+    level = EFFORT_TO_REASONING.get(effort.lower(), "high") if want_think else "low"
+    body: dict[str, Any] = {"model": model, "messages": msgs, "max_tokens": int(max_tokens) + ROOM[level],
+                            "temperature": 0.2, "reasoning": {"effort": level, "exclude": True},
+                            "provider": {"require_parameters": True}}
+    if fns:
+        body["tools"] = fns
+        body["tool_choice"] = "auto"
+    headers = {"Authorization": f"Bearer {_or_key()}", "X-Title": "Hoola Code"}
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    timeout = float(getattr(st, "dev_qwen_timeout_s", 180) or 180)
+    last: Exception | None = None
+    for i in range(3):
+        if i:
+            time.sleep(3 * i)
+        try:
+            data = _qwen_post(url, body, headers, timeout)
+        except QwenError as e:
+            last = e
+            m = str(e)
+            if any(f" {c}:" in m for c in ("400", "401", "402", "403", "404")):
+                raise                                         # a refused request is not fixed by asking again
+            continue
+        except Exception as e:                                # timeout / network: one more try
+            last = e
+            continue
+        if data.get("error"):
+            last = QwenError(f"OpenRouter error: {str(data['error'])[:300]}")
+            continue
+        blocks, stop = llm.from_openai(data)
+        if not blocks:
+            last = QwenError("Qwen sent an empty answer")
+            continue
+        STATE["calls"] += 1
+        STATE["qwen_calls"] += 1
+        try:
+            from .. import usage
+            usage.from_openai(model, dict(data.get("usage") or {}))
+        except Exception:
+            pass
+        return blocks, stop
+    raise QwenError(f"Qwen ({model}) did not answer: {last}")
+
+
+def _claude_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
+                 think: bool | None) -> tuple[list[dict], str]:
     st = _settings()
     model = model_for()
     sys_blocks, tl, msgs = _cacheable(system, tools, messages)
