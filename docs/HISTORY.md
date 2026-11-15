@@ -5041,3 +5041,17 @@ unchanged. NOT VERIFIED on her phone; she needs the v0.923 APK.
   session's environment (PUT /tasks/{id}/env, from the next round); the working row shows the spinning Hoola mark.
 - Tests: NEW `test_v0924_hoola_code_first_screen.py`; `test_v0921` covers code_start.dart and the two env routes.
 - NOT VERIFIED: no Flutter here - CI compiles the Dart first; not seen on her phone.
+
+## v0.925.0 HOOLA CODE BAR CLEAN (owner, her phone screenshot of the v0.924 New session screen: "Check the chat typing section ... Make it perfect ALINED like the CLUDE CODE is ... Perfect primium and ALINED")
+
+- ROOT CAUSE: the new-design theme (`hoola_theme.dart` `inputDecorationTheme`) gives every TextField an outlined, filled
+  pill (`border`, `enabledBorder`, `focusedBorder`, `filled: true`). A field that sets only `border: InputBorder.none`
+  still gets the theme's `enabledBorder` / `focusedBorder` and fill, so the Hoola Code bar drew a second rounded outline
+  round "Type or hold to talk" inside its own pill.
+- FIX: `code_kit.codeBareInput` = every border off (border / enabled / focused / disabled / error / focusedError), no
+  fill, no counter, 48 dp line, dense padding; the bar's field uses it with `textAlignVertical: center`, a violet cursor
+  and 6 dp after the + circle; the repository search field too. The Hoola Computer chat box (`hoola_computer.dart`)
+  had the same bug and gets the same three lines. The main chat composer already did this (v0.888).
+- RULE: under the new theme a bare field must turn off enabledBorder + focusedBorder + filled, not just border.
+- Test: `test_v0924_hoola_code_first_screen.py::test_v0925_bar_has_one_outline`.
+- NOT VERIFIED on her phone (CI compiles the Dart).

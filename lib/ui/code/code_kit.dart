@@ -128,6 +128,27 @@ TextStyle codeSans(HoolaColors c, {double size = 15, FontWeight weight = FontWei
 // ---------------------------------------------------------------------------------------------- pieces
 /// A label that shrinks with an ellipsis when its row has a width to share, and keeps its own width when it has none
 /// (a chip in a sideways-scrolling row or beside a title: a Flexible there has no width and throws).
+/// v0.925 A bare text field inside a drawn box (the bar, a search pill). The app theme gives every field an outlined,
+/// filled pill (enabledBorder / focusedBorder / filled), and those win over `border: InputBorder.none` alone - that drew
+/// a second outline inside the Hoola Code bar. Every border off, no fill, a 48 dp line.
+InputDecoration codeBareInput(HoolaColors c, {required String hint, double size = 16, EdgeInsets? padding, double minHeight = 48}) =>
+    InputDecoration(
+      hintText: hint,
+      hintMaxLines: 1,
+      hintStyle: codeSans(c, size: size, color: c.ink3),
+      filled: false,
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
+      disabledBorder: InputBorder.none,
+      errorBorder: InputBorder.none,
+      focusedErrorBorder: InputBorder.none,
+      counterText: '',
+      isDense: true,
+      constraints: BoxConstraints(minHeight: minHeight),
+      contentPadding: padding ?? const EdgeInsets.symmetric(vertical: 12),
+    );
+
 Widget codeShrink(BoxConstraints box, Widget label) => box.hasBoundedWidth ? Flexible(child: label) : label;
 
 /// The +12 −4 count, in green and red.

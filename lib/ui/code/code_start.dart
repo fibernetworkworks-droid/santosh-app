@@ -371,7 +371,7 @@ class _CodeBarState extends State<CodeBar> with SingleTickerProviderStateMixin {
           Expanded(
             key: const ValueKey('field'),
             child: Padding(
-              padding: EdgeInsets.only(left: widget.onPlus == null ? 14 : 2),
+              padding: EdgeInsets.only(left: widget.onPlus == null ? 14 : 6, right: 2),
               child: TextField(
                 controller: widget.controller,
                 focusNode: widget.focus,
@@ -380,14 +380,9 @@ class _CodeBarState extends State<CodeBar> with SingleTickerProviderStateMixin {
                 maxLength: widget.maxLength,
                 textInputAction: TextInputAction.newline,
                 style: codeSans(c, size: 16, height: 1.45),
-                decoration: InputDecoration(
-                  hintText: widget.hint,
-                  hintStyle: codeSans(c, size: 16, color: c.ink3),
-                  border: InputBorder.none,
-                  counterText: '',
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
-                ),
+                textAlignVertical: TextAlignVertical.center,
+                cursorColor: c.accent,
+                decoration: codeBareInput(c, hint: widget.hint),
               ),
             ),
           ),
@@ -677,8 +672,8 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
                           controller: q,
                           onChanged: (_) => set(() {}),
                           style: codeSans(c, size: 15),
-                          decoration: InputDecoration(
-                              hintText: 'Search your repositories', hintStyle: codeSans(c, size: 15, color: c.ink3), border: InputBorder.none, isDense: true),
+                          cursorColor: c.accent,
+                          decoration: codeBareInput(c, hint: 'Search your repositories', size: 15, minHeight: 44, padding: EdgeInsets.zero),
                         ),
                       ),
                     ]),

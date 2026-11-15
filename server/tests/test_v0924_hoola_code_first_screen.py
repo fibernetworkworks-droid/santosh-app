@@ -62,5 +62,21 @@ def test_design_rules():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.924.0"' in main and "v0.924.0 HOOLA CODE FIRST SCREEN" in main
-    assert "version: 0.924.0+923" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.925.0"' in main and "HOOLA CODE" in main
+    assert "version: 0.925.0+924" in (ROOT / "pubspec.yaml").read_text()
+
+
+def test_v0925_bar_has_one_outline():
+    """v0.925 (owner, her phone: a second outlined box drawn round 'Type or hold to talk'): the app theme's
+    enabledBorder / focusedBorder / filled win over border: InputBorder.none, so every bare field turns them all off."""
+    kit = (CODE / "code_kit.dart").read_text()
+    i = kit.index("InputDecoration codeBareInput(")
+    body = kit[i:i + 1200]
+    for k in ("filled: false", "enabledBorder: InputBorder.none", "focusedBorder: InputBorder.none",
+              "disabledBorder: InputBorder.none", "errorBorder: InputBorder.none", "focusedErrorBorder: InputBorder.none"):
+        assert k in body, k
+    assert "decoration: codeBareInput(c, hint: widget.hint)" in START
+    assert "decoration: codeBareInput(c, hint: 'Search your repositories'" in START
+    assert "border: InputBorder.none" not in START          # no field here relies on border alone any more
+    comp = (ROOT / "lib/ui/shell/hoola_computer.dart").read_text()
+    assert "enabledBorder: InputBorder.none" in comp and "filled: false" in comp

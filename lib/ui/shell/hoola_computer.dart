@@ -572,7 +572,10 @@ class _ComputerSpaceState extends State<ComputerSpace> {
                     onSubmitted: (_) => _send(),
                     style: HoolaType.body(c),
                     decoration: InputDecoration(
+                      filled: false,   // v0.925: the theme's outlined, filled field otherwise draws a box inside the bar
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
                       hintText: 'Tell ${_name[_w]} what to do…',
                       hintStyle: HoolaType.body(c).copyWith(color: c.ink3),
                     ),
