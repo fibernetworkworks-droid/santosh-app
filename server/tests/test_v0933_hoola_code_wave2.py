@@ -148,5 +148,5 @@ def test_the_push_tap_runs_in_the_background_and_a_retry_reuses_its_branch():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.933.0"' in main and "HOOLA CODE WAVE 2" in main
-    assert "version: 0.933.0+932" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.934.0"' in main
+    assert "version: 0.934.0+933" in (ROOT / "pubspec.yaml").read_text()

@@ -72,6 +72,9 @@ on:
           - code_card
           - code_card_hard
           - code_card_mobile
+          - code_card_engine
+          - code_card_engine_hard
+          - code_card_engine_claude
           - auth_check
           - glm_check
           - review_card
@@ -106,7 +109,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 50   # v0.934 the real-engine coding card needs room (its own runs cap at 43 min)
     steps:
       - name: Prepare SSH
         env:
@@ -615,6 +618,17 @@ jobs:
                 # that must keep behaviour, a vague ask that needs ONE question. ~12 Opus jobs, roughly Rs 300-700, ~5-12 min.
                 echo 'cd $CORE && echo "== node: $(command -v node || echo missing - JavaScript jobs will be skipped)"'
                 echo 'cd $CORE && timeout 840 .venv/bin/python -m app.quality code --set 2 --label vps-ops 2>&1 | tail -40' ;;
+              code_card_engine)
+                # v0.934 WAVE 3: the same 12 jobs through THE engine her Hoola Code sessions use (a real working copy,
+                # bash in the locked box, the model she runs - Qwen 27B by default), not the older 8-tool loop. Needs
+                # Docker + the devlab base image (built here if missing). ~12 jobs, roughly 10-25 min.
+                echo 'cd $CORE && timeout 2580 .venv/bin/python -m app.quality code --engine --label vps-ops-engine 2>&1 | tail -40' ;;
+              code_card_engine_hard)
+                echo 'cd $CORE && echo "== node: $(command -v node || echo missing - JavaScript jobs will be skipped)"'
+                echo 'cd $CORE && timeout 2580 .venv/bin/python -m app.quality code --set 2 --engine --label vps-ops-engine 2>&1 | tail -40' ;;
+              code_card_engine_claude)
+                # the same real-engine card on Claude (needs Anthropic credit), so Qwen and Claude are compared fairly
+                echo 'cd $CORE && timeout 2580 .venv/bin/python -m app.quality code --engine --brain claude --label vps-ops-engine-claude 2>&1 | tail -40' ;;
               code_card_mobile)
                 # MOBILE CARD: set 3 - the languages Hoola's own app is written in. 5 Dart jobs (a Flutter app's logic layer)
                 # + 5 Kotlin jobs (an Android app's domain layer), checked with the real Dart SDK / kotlinc. First run

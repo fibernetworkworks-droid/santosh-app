@@ -3,7 +3,7 @@
    | longjobs [--hours 24]   (v0.347 how her real long jobs went)
    | longcard [--check | --status | --k 3 --only id,id --limit N --parallel 3 --max-min 75 --label x]
      (v0.443 LONG CARD: 25 long jobs x k through the real loop, judged on the end state)
-   | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
+   | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--engine [--brain qwen|claude]] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
    | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
    | leads [--live] [--only id,id] [--limit N] [--kind tool|rule] [--label x]   (v0.540 LEADS card: reachability + walls)
@@ -216,6 +216,18 @@ def _code(argv: list[str]) -> int:
     kw = {"spec": True} if "--spec" in argv else {}          # v0.402 fix jobs with the ECC fixer specialist
     if val("--kind"):
         kw["kind"] = val("--kind")
+    if "--engine" in argv:                                    # v0.934 WAVE 3: the engine her sessions really use
+        import os
+        from ..config import get_settings
+        brain = val("--brain")
+        if brain in ("qwen", "claude"):
+            os.environ["DEV_BRAIN"] = brain                   # score Qwen and Claude on the same jobs
+        os.environ.setdefault("DEV_WS_STEPS", "60")           # a practice job is small: its own caps, not her session's
+        os.environ.setdefault("DEV_WS_MINUTES", "10")
+        os.environ.setdefault("DEV_WS_LIVE", "3")
+        os.environ["DEV_MEMORY"] = "false"                    # a practice job never writes repo memory
+        get_settings.cache_clear()
+        kw["engine"] = True
     cd = K.save(K.card(only=only or None, limit=int(val("--limit") or 0), set_=int(val("--set") or 1), **kw), val("--label"))
     print("\n".join(K.lines(cd)))
     print(f"\n  saved: {cd['file']}")

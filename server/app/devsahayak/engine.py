@@ -51,6 +51,9 @@ SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".mypy_cach
 READ_LINES = 2000
 OUT_CAP = 30000
 STATS = {"runs": 0, "continued": 0, "compacted": 0, "bash": 0, "waited": 0}
+# v0.934 WAVE 3: the coding card runs THE engine her sessions use (a real working copy, bash in the box), not the old
+# 8-tool loop. A card job's repo is a set of files, so its session id maps to them here instead of a GitHub clone.
+LOCAL_FILES: dict[str, dict[str, str]] = {}
 
 
 class Unavailable(Exception):
@@ -207,7 +210,16 @@ class Session:
         if exists(self.tid) and self.meta.get("sha") == sha:
             return {"reused": True}
         from ..devlab import service as LS
-        m = LS.materialize(repo_full, sha, token)
+        if self.tid in LOCAL_FILES:                       # v0.934 the coding card's practice repo: files, no GitHub
+            import tempfile
+            d = tempfile.mkdtemp(prefix="hoola-card-ws-")
+            for rel, text in LOCAL_FILES[self.tid].items():
+                fp = Path(d) / rel
+                fp.parent.mkdir(parents=True, exist_ok=True)
+                fp.write_text(text, "utf-8")
+            m = {"ok": True, "dir": d, "mb": 0}
+        else:
+            m = LS.materialize(repo_full, sha, token)
         if not m.get("ok"):
             raise Unavailable(m.get("why") or "the repo could not be fetched")
         if self.repo.exists():

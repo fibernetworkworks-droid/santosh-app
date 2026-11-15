@@ -5233,3 +5233,27 @@ Owner: "GO WAVE 2" on the Hoola Code deep check.
 Tests: NEW `server/tests/test_v0933_hoola_code_wave2.py` (8). Hoola Code + box suites re-run file by file: only the three
 reds that fail the same before this work (v0447 ai employees premium, v0473 coder routes, v093 place); v0768 passes alone.
 NOT VERIFIED on her server: the Docker paths are tested with fakes (no Docker daemon here).
+
+
+## v0.934.0 HOOLA CODE WAVE 3
+
+Owner: "GO WAVE 3" on the Hoola Code deep check. The deep check found the coding card measured the OLD 8-tool loop
+(`devsahayak/loop.py` on an in-memory GitHub) while her sessions run the workspace engine (`devsahayak/engine.py`), so the
+11/12 and 11/12 Qwen scores were not scores of what she uses.
+
+- `engine.LOCAL_FILES` (tid -> files): `Session.ensure` writes a card job's practice repo into a temp folder instead of
+  cloning from GitHub; everything after that is the real engine: local git, secrets hidden, Claude Code's tools, bash in the
+  locked box, compaction, the ECC gate / reality check when on.
+- `quality/codecard.py`: `run_task_engine` (a session id per job, `_CardGh` answers the base sha, the working copy and the
+  LOCAL_FILES entry removed after, an engine error = one honest row), `engine_ready` (the box + git, else the card refuses
+  to run rather than fall back), `card(engine=True)` (parallel = DEV_WS_LIVE), the result says engine 'workspace' and
+  box commands a job, saved as code[N]-engine-<time>.json.
+- `python -m app.quality code --engine [--brain qwen|claude]`: DEV_BRAIN for this process only, practice caps
+  DEV_WS_STEPS 60 / DEV_WS_MINUTES 10 / DEV_WS_LIVE 3 (unless set), DEV_MEMORY off (a practice job never writes repo memory).
+- vps-ops: code_card_engine (set 1), code_card_engine_hard (set 2), code_card_engine_claude (set 1 on Claude, needs
+  Anthropic credit); the job limit moves 25 -> 50 minutes (each run caps itself at 43).
+
+Tests: NEW `server/tests/test_v0934_card_real_engine.py` (5: a scripted job right through the real engine with nothing left
+behind, an engine error = one row, no box = refused, CLI + vps-ops, version); the card suites (v0360 / v0365 / v0371 / v0378
+/ v0402 / v0926) + engine suites pass; v0378 pin moved 25 -> 50.
+NOT VERIFIED: no real-engine card has run on her server yet (no Docker here).
