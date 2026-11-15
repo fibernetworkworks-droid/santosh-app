@@ -539,7 +539,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
             child: Row(children: [
               const HoolaMark(size: 22),   // v0.937 the Hoola mark, turning, like the Hoola chat's working row
               const SizedBox(width: 10),
-              Expanded(
+              Flexible(                              // v0.938 the words and the clock sit together, not at the far edge
                 child: AnimatedSwitcher(
                   duration: HoolaMotion.of(context, HoolaMotion.fade),
                   layoutBuilder: (cur, prev) => Stack(alignment: Alignment.centerLeft, children: [...prev, if (cur != null) cur]),
@@ -547,7 +547,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(codeClock(secs), style: codeMono(c, size: 12, color: c.ink3)),
+              Text('· ${codeClock(secs)}',              // v0.938 same sans and size as the words beside it
+                  style: codeSans(c, size: 16, color: c.ink3).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ]),
           ),
         ),

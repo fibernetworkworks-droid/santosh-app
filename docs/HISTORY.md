@@ -5363,3 +5363,13 @@ Her five points from the video, each with what was found:
 
 Tests: NEW `test_v0937_hoola_code_steady.py` (5); pins moved in test_v0935 / v0936 / v0928 / v0475; version 0.937.0
 (pubspec 0.937.0+936). NOT VERIFIED on her phone (CI compiles the Dart).
+
+
+## v0.938.0 HOOLA CODE CLOCK BESIDE (owner, her phone screenshot of a Hoola Code session: "CHECK THE THINKING ... HAS TIMING AT EXTREEM CORNER ... MAKE IT NEAR TO THINKING ... WITH MATCHING FONT WITH THINKING")
+
+The working row drew its words in an `Expanded` and the clock after it in JetBrains Mono 12, so the clock sat at the far
+right edge in a different, smaller font ("Thinking ............ 4:45"). Now the words are `Flexible` (they take only their
+own width) and the clock follows them as "· 4:45" in the same Schibsted Grotesk 16 as the words, in the quieter ink3
+colour, with tabular figures so the line does not jitter as the seconds change. The turning Hoola mark (v0.937) stays in
+front. Phone only (`lib/ui/code/code_session.dart` `_runningRow`); server unchanged except the version story.
+Tests: NEW `test_v0938_code_clock_beside.py` (2). Version 0.938.0 (pubspec 0.938.0+937). NOT VERIFIED on her phone.
