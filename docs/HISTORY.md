@@ -4833,3 +4833,38 @@ on hold, no key).
 - Tests: server/tests/test_v0920_camera_alive.py; test/create_native_test.dart now looks for CrCamScene on the home;
   test_v0913 checks "CrCamScene(move:" in the home.
 - NOT VERIFIED on her phone; the painter compiles first on CI.
+
+## v0.921.0 HOOLA CODE NATIVE (owner, on the design canvas claude.ai/artifact/GF4AtP5MNfV8kARgTGymuh: "OPTION B ::: SAME AS HOOLA CHAT SCREEN ... SHOW ME ALL HOOLA CODE SCREEN HERE FIRST ... PERMIUM AND PERFECT SAME AS CLUDE CODE" -> "GO")
+
+The audit before it: the phone had two doors to Hoola Code that did not agree - Tools > Hoola Code opened the console
+page in a WebView (no file chooser there, so attaching did not work), Your AI team > Developer opened the old
+DevsahayakScreen in the old frame. Both now open ONE native screen drawn in the new design (hoola_theme.dart only, no
+glass, no blur, nothing under 12):
+
+- `lib/ui/code/code_kit.dart` - small readers (cs / cm / cl / ci), `codeCall` (server calls, shows the server's own
+  `say`), status words, grouping (Working / Needs you / Earlier), clocks, and the parts every page uses: top bar,
+  black main button, outline, chip, card, badge, section, the turning ring (still under reduce motion), bottom sheet,
+  choice row, field (secret option), switch row.
+- `code_home.dart` - `HoolaCode`: "What should we build today?", the one composer (repo, branch, Ask / Plan first /
+  Auto, model + effort, up to 3 pictures and 3 text files, slash words /plan /fix /tests /docs /explain /feature),
+  starter chips, sessions grouped, 5 s refresh while one runs; `showCodeNewSession` = the same composer in a sheet.
+- `code_session.dart` - `CodeSessionPage`, laid out like the chat: her bubble + files, Hoola's words in the reply
+  serif, steps folded into "Worked for 2m 14s · 18 steps" cards (open while running), the latest to-do list as a Plan
+  card, the plan waiting for her yes (Yes, start = `bg/plan_ok` with the plan's hash), one question with tap choices,
+  ready card (Open the pull request = `push` with the hash), PR card with CI / proof / own review / reviewers'
+  comments and Fix it, Merge = a merge card she answers (`merge_request` then `actions/{id}/decide`, a forced merge
+  needs her reason); composer modes note / answer / plan change / revise; More: stop, thinking, changes, GitHub,
+  rewind to a checkpoint, cancel, archive, delete.
+- `code_changes.dart` - unified diff with old / new line numbers, This round vs the base branch (`compare`),
+  long-press a line to comment; comments ride her next message.
+- `code_more.dart` - Pull requests (open PRs of a repo with Review, Hoola's draft reviews with Comment / Request
+  changes / Approve, posted with the review's hash, merge / deploy cards waiting for her yes, Ask for a deploy),
+  Scheduled tasks (switch, Run now, history, delete, new), Repos & GitHub (fine-grained token typed only here, repos
+  with setup / test / internet level / keys / events, What Hoola remembers, the four switches + merge method).
+
+Doors: `hoolaOpenStudio` switch ('Hoola Code' -> native), the AI team entry -> `HoolaCode`, Settings opens it in the new
+frame; `test/hoola_settings_test.dart` maps DevsahayakScreen -> HoolaCode (redrawn). The old screen stays for the chat
+cards. Server unchanged. Tests: server/tests/test_v0921_hoola_code_native.py (screens, every route the phone calls is
+served, her taps keep their hashes, doors, design rules, version).
+NOT VERIFIED: compiled first by CI (no Flutter here); not yet on her phone; real runs need the VPS on a current
+version (it read 0.902.0 at the audit) and Anthropic credit.

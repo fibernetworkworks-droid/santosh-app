@@ -15,8 +15,11 @@ void main() {
   test('every screen the old Main page opened is in Settings or Your AI team, once', () {
     final opened = {for (final m in RegExp(r'builder: \(_\) => (\w+)\(').allMatches(old)) m.group(1)!};
     expect(opened.length, greaterThan(100));
+    // a screen redrawn natively keeps the old one's place under its new name
+    const redrawn = {'DevsahayakScreen': 'HoolaCode'};   // v0.921 HOOLA CODE NATIVE
     final missing = <String>[], twice = <String>[];
-    for (final s in opened) {
+    for (final o in opened) {
+      final s = redrawn[o] ?? o;
       final inSettings = RegExp('\\b$s\\(').hasMatch(settings);
       final n = RegExp('\\(a\\) => $s\\(').allMatches(team).length;
       if (!inSettings && n == 0) missing.add(s);

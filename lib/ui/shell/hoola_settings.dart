@@ -22,6 +22,7 @@ import '../avatar_look.dart';
 import '../avatar_setup_screen.dart';
 import '../bahar_screen.dart';
 import '../call_quality_screen.dart';
+import '../code/code_home.dart';
 import '../enterprise_screen.dart';
 import '../glass.dart';
 import '../hoola_net_screen.dart';
@@ -1030,7 +1031,10 @@ class _HoolaTeamState extends State<HoolaTeam> {
                   icon: e.icon,
                   tint: g == 'Hire and manage' ? c.accent : null,
                   trailing: _chev(c),
-                  onTap: () => hoolaOpenOld(context, e.open(app)),
+                  onTap: () {
+                    final w = e.open(app);
+                    w is HoolaCode ? hoolaOpenNew(context, app, w) : hoolaOpenOld(context, w);
+                  },
                 ),
             ]),
           ],

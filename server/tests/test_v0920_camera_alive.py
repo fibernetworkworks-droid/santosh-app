@@ -42,5 +42,5 @@ def test_tiles_use_it_and_real_clip_stays_on_top():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.920.0"' in main and "v0.920.0 CAMERA ALIVE" in main
-    assert "version: 0.920.0+919" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.921.0"' in main and "v0.920.0 CAMERA ALIVE" in main
+    assert "version: 0.921.0+920" in (ROOT / "pubspec.yaml").read_text()

@@ -32,7 +32,7 @@ import '../daftar_screen.dart';
 import '../darzi_screen.dart';
 import '../deal_screen.dart';
 import '../devops_screen.dart';
-import '../devsahayak_screen.dart';
+import '../code/code_home.dart';
 import '../docwriter_screen.dart';
 import '../dosti_screen.dart';
 import '../dpo_screen.dart';
@@ -228,7 +228,7 @@ List<HoolaTeamEntry> hoolaTeamEntries(Santosh app) => [
         (a) => CallCentreScreen(app: a)),
     HoolaTeamEntry("Software and IT", Icons.terminal_rounded, 'Developer',
         'Write code, bug-fix PRs, tests, reviews; merge / deploy with your yes',
-        (a) => DevsahayakScreen(app: a)),
+        (a) => HoolaCode(app: a)),
     HoolaTeamEntry("Software and IT", Icons.bug_report_rounded, 'App tester (QA)',
         'Test cases, bugs, re-checks after fixes, is the release ready?',
         (a) => QaScreen(app: a)),

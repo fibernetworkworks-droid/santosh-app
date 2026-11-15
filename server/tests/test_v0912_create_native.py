@@ -28,7 +28,7 @@ def test_the_same_routes_as_the_console():
 
 def test_tools_tab_opens_native_create_and_console_opens_a_tool():
     tools = (ROOT / "lib/ui/shell/hoola_tools.dart").read_text()
-    assert "t.title == 'Create'" in tools and "HoolaCreate(app: app)" in tools
+    assert "'Create' => hoolaOpenNew" in tools and "HoolaCreate(app: app)" in tools
     v2 = (ROOT / "server/app/static/console/v2.js").read_text()
     assert "if (v === 'creative' && CREATE) { CREATE.open(arg); return; }" in v2
     studio = (ROOT / "server/app/static/console/studio.js").read_text()
@@ -48,5 +48,5 @@ def test_design_rules_and_ci():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.920.0"
-    assert "version: 0.920.0+919" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.921.0"
+    assert "version: 0.921.0+920" in (ROOT / "pubspec.yaml").read_text()
