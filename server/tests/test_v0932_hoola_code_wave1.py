@@ -163,5 +163,5 @@ def test_her_note_at_the_finish_line_is_read(monkeypatch):
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.932.0"' in main and "HOOLA CODE WAVE 1" in main
-    assert "version: 0.932.0+931" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.933.0"' in main
+    assert "version: 0.933.0+932" in (ROOT / "pubspec.yaml").read_text()

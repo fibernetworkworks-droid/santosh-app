@@ -5201,3 +5201,35 @@ Tests: NEW `server/tests/test_v0932_hoola_code_wave1.py` (10). Hoola Code suites
 alone (failed only under 6-way parallel load); v0447 ai employees premium, v0473 coder routes, v093 place fail the same
 on the code before this change.
 NOT VERIFIED on her server. Waves 2-3 not built.
+
+
+## v0.933.0 HOOLA CODE WAVE 2
+
+Owner: "GO WAVE 2" on the Hoola Code deep check.
+
+1. DEPENDENCIES IN THE BOX (`devsahayak/engine.py` `Tools._image`, `devlab/spec.py`): the repo's setup command read from
+   its files / CI / the language default now runs by itself (`dev_auto_setup`, default on; her own setup always did) - before,
+   `confirm=True` meant it waited for a tap nobody was asked for and tests ran with nothing installed. A CACHED snapshot keeps
+   what setup put in the image (pip --user, Go / Cargo caches) but not node_modules written into /work, so a new working copy
+   with package.json and no node_modules gets the setup run once in place (network on, that copy only). A missing or stale base
+   image is built in `_image` (a failed build = the note, and bash refuses with it); a snapshot removed by prune is rebuilt.
+   Default setups: Python = install requirements.txt, else `-e .` when pyproject / setup.py exist, else nothing; Go / Rust
+   without `|| true` - a failed install is no longer cached as a good snapshot.
+2. SESSIONS ON A PR (`devsahayak/service.py` `_fail`, PR_LIVE): every failure path (start, begin, plan_ok, push, CI fix,
+   background thread) goes through `_fail` - with an open PR the status stays pr_open / checks_failed / ci_running and the
+   error is said; Stop and cancel keep a PR session on its PR; `revise` + the restart resume accept ci_running (follow-ups no
+   longer refused for up to 45 min); start / begin / plan_ok / the continue path catch every exception (a refused Qwen call
+   left the session at 'new' with no job row).
+3. WORDS (`guess_kind`, `wants_change`): a read word next to a fault word ("dekho aur theek karo", "500 error deta hai,
+   dekho") = fix; theek / thik / sahi kar / solve / resolve / patch count as change words; after an explanation only a change
+   word or a plain yes (haan / go / do it) turns the session into work - "thanks!" no longer starts a coding round.
+4. LINE ENDINGS (`edit` / `multi_edit` / `write`): a CRLF file is edited in LF and written back in CRLF (bytes, no newline
+   translation), so one changed line is one changed line; `read` splits on real line breaks only (`_lines`) and marks a line
+   cut at 2,000 characters.
+5. THE PUSH TAP (`api.py` /push -> `in_background(..., "push")`): the card (status ready + hash) is checked at once, then the
+   commit / PR / lab proof / own review run in a tracked background thread (job `push`); a retry commits ON TOP of the
+   hoola/* branch the first try made (`on_top`) and reuses its already-open PR.
+
+Tests: NEW `server/tests/test_v0933_hoola_code_wave2.py` (8). Hoola Code + box suites re-run file by file: only the three
+reds that fail the same before this work (v0447 ai employees premium, v0473 coder routes, v093 place); v0768 passes alone.
+NOT VERIFIED on her server: the Docker paths are tested with fakes (no Docker daemon here).

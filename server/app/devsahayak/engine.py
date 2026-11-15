@@ -629,13 +629,14 @@ class Tools:
             self.s.meta["hidden"] = sorted(set(self.s.meta.get("hidden") or []) | {rel})
             self.s.save_meta()
             return "This file holds secrets: Hoola hid its content on purpose."
-        lines = text.splitlines()
+        lines = _lines(text)                              # v0.933 real line breaks only (form feeds stay in the line)
         start = max(1, int(offset or 1))
         n = max(1, min(int(limit or READ_LINES), READ_LINES))
         part = lines[start - 1:start - 1 + n]
         self.read.add(rel)
         self.trail.append(f"read {rel}")
-        body = "\n".join(f"{i:>6}\t{ln[:2000]}" for i, ln in enumerate(part, start))
+        body = "\n".join(f"{i:>6}\t{ln[:2000]}" + (f"  [line cut: {len(ln)} chars; edit around it, not inside the cut]"
+                                                     if len(ln) > 2000 else "") for i, ln in enumerate(part, start))
         more = len(lines) - (start - 1 + len(part))
         return (body or "(empty file)") + (f"\n... {more} more lines (offset={start + len(part)})" if more > 0 else "")
 
@@ -649,7 +650,10 @@ class Tools:
             return "Refused: read the file before overwriting it (or use edit)."
         new = not f.exists()
         f.parent.mkdir(parents=True, exist_ok=True)
-        f.write_text(str(content))
+        body = str(content)
+        if not new and _crlf(f) and "\r\n" not in body:  # v0.933 a Windows-style file keeps its line endings
+            body = body.replace("\n", "\r\n")
+        f.write_bytes(body.encode("utf-8"))
         self.read.add(rel)
         self.trail.append(("created " if new else "wrote ") + rel)
         return f"{'Created' if new else 'Wrote'} {rel} ({len(str(content).splitlines())} lines)."
@@ -679,13 +683,20 @@ class Tools:
             return f"No file '{path}'. Use write to create it."
         if rel not in self.read:
             return "Refused: read the file before editing it."
-        text = f.read_text("utf-8", errors="replace")
+        raw = f.read_bytes().decode("utf-8", errors="replace")
+        crlf = "\r\n" in raw                             # v0.933 edit in LF, write back in the file's own line endings
+        text = raw.replace("\r\n", "\n") if crlf else raw
         before = text
-        for i, e in enumerate(edits or []):
-            text, err = self._apply(text, str(e.get("old_string", "")), str(e.get("new_string", "")), bool(e.get("replace_all")))
+        for i, e in enumerate(edits if isinstance(edits, list) else []):
+            if not isinstance(e, dict):
+                return f"Not applied{'' if _one else f' (edit {i + 1})'}: each edit needs old_string and new_string."
+            o, nw = str(e.get("old_string", "")), str(e.get("new_string", ""))
+            if crlf:
+                o, nw = o.replace("\r\n", "\n"), nw.replace("\r\n", "\n")
+            text, err = self._apply(text, o, nw, bool(e.get("replace_all")))
             if err:
                 return f"Not applied{'' if _one else f' (edit {i + 1})'}: {err}"
-        f.write_text(text)
+        f.write_bytes((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
         self.trail.append(f"edited {rel}")
         add, rem, _ = R.changed_lines(before, text)
         return f"Edited {rel} (+{add} -{rem})."
@@ -756,22 +767,46 @@ class Tools:
 
     # ------------------------------------------------------------ bash in the box
     def _image(self) -> tuple[str, str]:
-        """The box image for bash: the repo's dependency snapshot when it declares a setup (built once, cached by its lock
-        files), else the plain base image. Returns (image, note)."""
+        """The box image for bash: the repo's dependency snapshot (built once, cached by its lock files), else the plain
+        base image. Returns (image, note); image '' = the box cannot run (note says why).
+        v0.933 WAVE 2: (1) the repo's own setup runs by itself (`dev_auto_setup`) - before, a setup read from the repo /
+        its CI / the language default waited for a tap nobody was asked for, so most repos ran tests with nothing
+        installed; (2) a CACHED snapshot keeps what setup put in the image (pip --user, Go / Cargo caches) but not what it
+        wrote into the working copy (node_modules) - a new working copy gets setup run once in place; (3) a missing or
+        stale base image is built here, and said, instead of a cryptic docker error; (4) a snapshot removed by prune is
+        rebuilt instead of 'Unable to find image'."""
         from ..devlab import box
         from ..devlab import service as LS
+        if self.image and self.image != box.BASE_IMAGE and not box.has_image(self.image):
+            self.image = ""                               # pruned since the last round: build it again
         if self.image:
             return self.image, ""
+        av = box.available()
+        if not av.get("ok"):
+            return "", "[The box is not available on this server: " + str(av.get("why", ""))[:200] + "]\n"
+        if not av.get("base_built") or av.get("base_stale"):
+            b = box.build_base(nocache=bool(av.get("base_stale")))
+            if not b.get("ok"):
+                return "", ("[The test box's base image could not be built on this server, so no command can run: "
+                            + str(b.get("why", ""))[:200] + ". Say so in risk.]\n")
         sp = self.spec or {}
         note = ""
         img = box.BASE_IMAGE
         mine = str(self.hers.get("setup") or "")           # her own setup command for this repo always counts as declared
-        if sp.get("setup") and (mine or not sp.get("confirm")):
+        auto = bool(_set("dev_auto_setup", True))
+        if sp.get("setup") and (mine or not sp.get("confirm") or auto):
             import hashlib
             key = str(sp.get("deps_key", "")) + ("-" + hashlib.sha1(mine.encode()).hexdigest()[:6] if mine else "")
             snap = LS.snapshot(self.s.meta.get("repo", ""), str(self.s.repo), sp["setup"], key)
             if snap.get("ok"):
                 img = snap["image"]
+                if snap.get("cached") and _needs_local_deps(self.s.repo):
+                    r = box.run_in(img, str(self.s.repo), f"set -o pipefail; cd {box.WORK}; {sp['setup']}",
+                                   timeout=box.SETUP_TIMEOUT, network=True)
+                    if int(r.get("rc") or 0) != 0:
+                        note = ("[The repo's packages could not be installed in this working copy (exit "
+                                f"{r.get('rc')}), so tests that need them will fail. Say so in risk.]\n")
+                note = note or f"[The repo's dependencies are installed (setup: {sp['setup'][:120]}).]\n"
             else:
                 note = "[The repo's dependency setup failed, so they are NOT installed: " + str(snap.get("why", ""))[:300] + "]\n"
         elif sp.get("setup") and sp.get("confirm"):
@@ -797,10 +832,9 @@ class Tools:
                     "read such a value from the environment instead.")
         if self.bash_runs >= int(_set("dev_ws_bash_runs", 80) or 80):
             return "Refused: the command limit for this round is used up. Finish with what you have."
-        av = box.available()
-        if not av.get("ok"):
-            return "The box is not available on this server right now: " + str(av.get("why", ""))[:200]
         img, note = self._image()
+        if not img:
+            return note.strip("[]\n ") or "The box is not available on this server right now."
         lim = max(5, min(int(timeout or 300), 600))
         self.bash_runs += 1
         STATS["bash"] += 1
@@ -905,6 +939,29 @@ class Tools:
         except Exception as e:                            # v0.932 one odd call never ends her whole session
             log.warning("hoola code tool %s failed: %s", name, e, exc_info=True)
             return f"{name} could not run with these arguments ({e.__class__.__name__}: {str(e)[:200]}). Check them and try again."
+
+
+def _needs_local_deps(repo: Path) -> bool:
+    """v0.933 setup that writes INTO the working copy (npm / pnpm / yarn -> node_modules) is not in a cached image."""
+    try:
+        return (Path(repo) / "package.json").is_file() and not (Path(repo) / "node_modules").is_dir()
+    except OSError:
+        return False
+
+
+def _crlf(f: Path) -> bool:
+    try:
+        return b"\r\n" in f.read_bytes()[:200_000]
+    except OSError:
+        return False
+
+
+def _lines(text: str) -> list[str]:
+    """v0.933 the file's own lines: split on \\n only (str.splitlines also splits on form feed and other separators,
+    so read's line numbers drifted from the real file)."""
+    t = (text or "").replace("\r\n", "\n")
+    out = t.split("\n")
+    return out[:-1] if out and out[-1] == "" else out
 
 
 def _loose(v: Any) -> Any:

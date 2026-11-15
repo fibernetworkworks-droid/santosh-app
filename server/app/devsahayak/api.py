@@ -397,7 +397,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.post("/tasks/{tid}/push")
     async def push(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await run(S.push, tenant, tid, str(_b(body).get("hash") or ""), by_tap=True)
+        # v0.933 her tap is checked at once; the commit, the PR and Hoola's own review run in the background
+        return await run(S.in_background, tenant, tid, "push", hash_=str(_b(body).get("hash") or ""))
 
     @r.post("/tasks/{tid}/plan-ok")
     async def plan_ok(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

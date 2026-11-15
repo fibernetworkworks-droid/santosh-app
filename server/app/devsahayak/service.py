@@ -710,7 +710,8 @@ _KIND_WORDS = (("explain", re.compile(r"(?i)^\s*(explain|what does|how does|why 
                ("tests", re.compile(r"(?i)\b(write|add|more)\s+(unit\s+|the\s+)?tests?\b|\btest (coverage|cases?)\b|\btests? (likho|likhiye)\b")),
                ("docs", re.compile(r"(?i)\b(readme|docstrings?|documentation|changelog)\b|\b(write|update|add)\s+(the\s+)?docs\b")),
                ("fix", re.compile(r"(?i)\b(fix|bug|crash(es|ed|ing)?|error|exception|traceback|fails?|failing|broken|not working|"
-                                  r"wrong|500|404|regression|theek karo|nahi chal)\b|Traceback \(most recent call last\)")))
+                                  r"wrong|500|404|regression|theek karo|thik karo|theek kar do|thik kar do|sahi karo|"
+                                  r"sahi kar do|nahi chal|kaam nahi kar|solve|resolve)\b|Traceback \(most recent call last\)")))
 
 
 # v0.929 (her first Qwen session: "read all fnw ai node project first properly" became a WRITE job that planned, searched
@@ -721,13 +722,25 @@ _READ_ASK = re.compile(r"(?i)\b(read|study|understand|go through|look (at|throug
                        r"padho|padh lo|padhke|samjho|samajh lo|dekho|dekh lo|batao|bataiye)\b")
 _CHANGE_ASK = re.compile(r"(?i)\b(add|build|make|create|change|implement|write|update|remove|delete|refactor|rename|"
                          r"migrate|upgrade|fix|improve|replace|move|convert|generate|set ?up|deploy|banao|badlo|likho|"
-                         r"jodo|hatao|sudharo)\b")
+                         r"jodo|hatao|sudharo|theek|thik|sahi kar|bana do|kar do|solve|resolve|patch)\b")
+
+
+_FIX_ASK = dict(_KIND_WORDS)["fix"]
+
+
+def wants_change(text: str) -> bool:
+    """v0.933 her follow-up after an explanation asks for work only when it says so ("yes, fix it", "theek karo");
+    a "thanks!" or another question keeps the session an explanation (it used to start a full coding round)."""
+    return bool(_CHANGE_ASK.search(text or "") or _FIX_ASK.search(text or "")
+                or re.search(r"(?i)^\s*(yes|haan|ha|ok|okay|go|go ahead|do it|kar do|kijiye|karo)\b[\s,.!]*$", text or ""))
 
 
 def guess_kind(text: str) -> str:
     """Phase 3: the page no longer asks what kind of work it is - her words say it. Rules only, no model call; the
     first rule that matches wins, and anything else is 'write'. A slash command (/tests, /explain ...) names it outright."""
-    if _READ_ASK.search(text or "") and not _CHANGE_ASK.search(text or ""):
+    # v0.933 a read word next to a bug ("checkout 500 error deta hai, dekho", "login dekho aur theek karo") is a fix,
+    # not an explanation: the read rule wins only when nothing asks for a change AND nothing names a fault.
+    if _READ_ASK.search(text or "") and not _CHANGE_ASK.search(text or "") and not _FIX_ASK.search(text or ""):
         return "explain"
     for kind, rx in _KIND_WORDS:
         if rx.search(text or ""):
@@ -1038,9 +1051,9 @@ def start(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, fil
         tid = t.id
     try:
         return _work(tenant, tid, g, files or [], warn)
-    except (DevError, GhError) as e:
-        _set(tid, status="failed", error=str(e))
-        raise DevError(str(e))
+    except Exception as e:
+        _fail(tid, str(e))
+        raise DevError(str(e)) from e  # v0.933 any failure (a refused model call too) is said, never left 'new'
 
 
 def _repo_or_blank(tenant: str, target: str) -> DevRepo | None:
@@ -1122,9 +1135,30 @@ def begin(tenant: str, ref: str, repo: str = "", conv: str = "", actor: str = "o
     g = gh(tenant)
     try:
         return _work(tenant, tid, g, [], "", ask_pr=True)
-    except (DevError, GhError) as e:
-        _set(tid, status="failed", error=str(e))
-        raise DevError(str(e))
+    except Exception as e:
+        _fail(tid, str(e))
+        raise DevError(str(e)) from e  # v0.933 any failure (a refused model call too) is said, never left 'new'
+
+
+PR_LIVE = ("pr_open", "checks_failed", "ci_running")
+
+
+def _fail(tid: str, error: str) -> None:
+    """v0.933 a round that breaks on a session whose pull request is OPEN never cuts the session off its PR: the status
+    stays a PR status (the tick keeps watching CI, her follow-ups keep working) and the error is said. Without a PR it is
+    'failed' as before."""
+    with session() as s:
+        t = s.get(DevTask, tid)
+        if t is None:
+            return
+        t.error = str(error)[:2000]
+        if t.pr_number and t.status != "merged":
+            if t.status not in PR_LIVE:
+                t.status = "pr_open"
+            _log(t, f"this round did not finish, the PR stays open: {error}"[:200])
+        else:
+            t.status = "failed"
+            _log(t, f"failed: {error}"[:200])
 
 
 def _set(tid: str, **kw: Any) -> None:
@@ -1603,18 +1637,21 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
         except L.Stopped:
             with session() as s:
                 row = s.get(DevTask, tid)
-                if row is not None and row.status not in ("pr_open", "checks_failed", "merged"):
+                if row is not None and row.pr_number and row.status != "merged":
+                    row.status = row.status if row.status in PR_LIVE else "pr_open"   # v0.933 her PR stays hers to follow
+                elif row is not None and row.status not in ("pr_open", "checks_failed", "merged"):
                     row.status = "cancelled"
                 _log(row, "stopped by her - nothing was pushed") if row is not None else None
             _Step(tid).event({"k": "stopped"})
         except (DevError, GhError) as e:
             with session() as s:
                 row = s.get(DevTask, tid)
-                if row is not None and row.status not in ("failed", "refused"):
-                    row.status, row.error = "failed", str(e)[:2000]
+                st = row.status if row is not None else ""
+            if row is not None and st not in ("failed", "refused"):
+                _fail(tid, str(e))
         except Exception as e:
             log.exception("dev background work failed")
-            _set(tid, status="failed", error=f"Something broke while working: {e.__class__.__name__}")
+            _fail(tid, f"Something broke while working: {e.__class__.__name__}")
         finally:
             _add_cost(tid, acc)
             _RUNNING.discard(tid)
@@ -1744,7 +1781,16 @@ def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]
     with session() as s:
         tid = _find_task(s, tenant, ref).id
     from . import around as AR
-    fn = {"plan_ok": plan_ok, "revise": revise, "fix_ci": fix_ci, "begin": begin, "fix_comments": AR.fix_comments}[what]
+    fn = {"plan_ok": plan_ok, "revise": revise, "fix_ci": fix_ci, "begin": begin, "fix_comments": AR.fix_comments,
+          "push": push}[what]
+    if what == "push":                          # v0.933 her "Open the pull request" tap: the card is checked NOW, the
+        with session() as s:                    # commit / PR / own review run in the background (a phone request never
+            t = _find_task(s, tenant, ref)      # waits for an hour of review, and the tick never starts a second one)
+            if t.status != "ready":
+                raise DevError(f"This change is '{STATUS.get(t.status, t.status)}', not waiting for your OK.")
+            if str(kw.get("hash_") or "") != t.hash:
+                raise DevError("The card changed; look at the new one.")
+        kw["by_tap"] = True
     if what == "plan_ok":                       # the card checks run now, so a wrong hash is told at once
         with session() as s:
             t = _find_task(s, tenant, ref)
@@ -1761,7 +1807,8 @@ def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]
     # v0.878 every background run carries a job, so a restart continues it instead of leaving it looking busy for ever:
     # plan_ok / begin go on as 'work' (the approved plan is read back from the row), reviewers' comments as a revise round
     job = ({"what": what, "words": str(kw.get("words") or "")[:6000]} if what in ("revise", "fix_ci")
-           else {"what": "work"} if what in ("plan_ok", "begin") else {"what": "revise", "words": ""})
+           else {"what": "work"} if what in ("plan_ok", "begin") else {"what": "push"} if what == "push"
+           else {"what": "revise", "words": ""})
     return _in_thread(tenant, tid, fn, tenant, ref, job=job, **kw)
 
 
@@ -1839,9 +1886,9 @@ def plan_ok(tenant: str, ref: str, hash_: str, by_tap: bool = False, note: str =
     g = gh(tenant)
     try:
         return _work(tenant, t.id, g, [], warn, plan=pl)
-    except (DevError, GhError) as e:
-        _set(t.id, status="failed", error=str(e))
-        raise DevError(str(e))
+    except Exception as e:
+        _fail(t.id, str(e))
+        raise DevError(str(e)) from e  # v0.933 any failure (a refused model call too) is said, never left 'new'
 
 
 def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_pr: bool = False,
@@ -2014,6 +2061,9 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         raise DevError("Default branch par Hoola kabhi push nahi karta.")
     try:
         head_now = g.branch_sha(t.repo, t.base)
+        # v0.933 a retry after a failed PR step: the hoola/* branch already exists on GitHub (the first try made it), so
+        # the new commit goes ON TOP of it - a commit on the base head is never a fast-forward and failed every time
+        on_top = g.branch_sha(t.repo, t.branch) or ""
         for c in changes:                      # base moved: only fine if our files did not change underneath
             if c.get("old_sha") and head_now != t.base_sha:
                 _, sha_now = g.file(t.repo, c["path"], head_now)
@@ -2026,7 +2076,11 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
         local = _lab_proof(tenant, t, changes)           # v0.531 the lab answers in seconds, if she has turned it on
         tests_first = [] if local.get("state") in ("proven_local", "not_proven_local", "odd") else \
             _proof_tests(t, changes, has_ci)             # v0.447 ECC PHASE 3: else the test commit goes in on its own
-        if tests_first:
+        if on_top:
+            tests_first = []                             # the proof split only makes sense on a fresh branch
+            sha = g.commit_files(t.repo, t.branch, on_top, [(c["path"], c["new"]) for c in changes],
+                                 f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
+        elif tests_first:
             sha = g.commit_files(t.repo, t.branch, head_now,
                                  [(c["path"], c["new"]) for c in changes if c["path"] in tests_first],
                                  f"test: {t.pr_title}\n\nTest that reproduces the bug. It is EXPECTED TO FAIL on this commit - "
@@ -2037,9 +2091,15 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
                                  f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         # v0.445 ECC PHASE 2: even a repo with no CI gets the draft + loop, because the loop now holds the OWN-REVIEW gate
         ci_loop = bool(_setting("dev_ci_loop", True)) and (has_ci or bool(_setting("dev_self_review", True)))
-        pr = g.open_pr(t.repo, t.branch, t.base, t.pr_title, t.pr_body, True if ci_loop else cfg.draft_pr)
+        try:
+            pr = g.open_pr(t.repo, t.branch, t.base, t.pr_title, t.pr_body, True if ci_loop else cfg.draft_pr)
+        except GhError as e:                             # v0.933 the PR from the first try is already there: use it
+            pr = next((p for p in g.open_prs(t.repo) if str((p.get("head") or {}).get("ref") or "") == t.branch), None)
+            if not pr:
+                raise
+            log.info("devsahayak %s: PR #%s already open for %s (%s)", t.id, pr.get("number"), t.branch, e)
     except GhError as e:
-        _set(t.id, status="failed", error=str(e))
+        _fail(t.id, str(e))
         raise DevError(str(e))
     with session() as s:
         row = s.get(DevTask, t.id)
@@ -2112,14 +2172,19 @@ def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = No
         if t.status in CONTINUE and not t.pr_number and EN.on() and EN.exists(t.id):
             cont = t.id
             t.status, t.error = "new", ""
-            if t.kind == "explain" and guess_kind(clean) != "explain":
-                t.kind = guess_kind(clean)                 # "yes, fix it" after an explanation = now do the work
+            if t.kind == "explain" and wants_change(clean):   # "yes, fix it" after an explanation = now do the work
+                g = guess_kind(clean)
+                t.kind = g if g != "explain" else "fix"
             _log(t, "her follow-up: the session continues")
     if cont:                                               # outside the session: the work opens its own
-        return _work(tenant, cont, gh(tenant), [], warn, follow_up=f"<her_follow_up>\n{clean}\n</her_follow_up>")
+        try:
+            return _work(tenant, cont, gh(tenant), [], warn, follow_up=f"<her_follow_up>\n{clean}\n</her_follow_up>")
+        except Exception as e:                             # v0.933 never left at 'new'
+            _fail(cont, str(e))
+            raise DevError(str(e)) from e
     with session() as s:
         t = _find_task(s, tenant, ref)
-        if t.status not in ("pr_open", "checks_failed", "ready", "refused"):
+        if t.status not in ("pr_open", "checks_failed", "ci_running", "ready", "refused"):   # v0.933 + while CI runs
             raise DevError(f"This session is '{STATUS.get(t.status, t.status)}' - start a new session.")
         if t.rounds >= 6:
             raise DevError("Is PR par bahut round ho gaye; naya kaam shuru kijiye.")
@@ -2331,7 +2396,8 @@ def cancel(tenant: str, ref: str) -> dict[str, Any]:
         t = _find_task(s, tenant, ref)
         if t.status in ("merged",):
             raise DevError("Merge ho chuka; ab cancel nahi.")
-        t.status = "cancelled"
+        # v0.933 with an open PR, cancel stops the work in hand but keeps the session on its PR (follow-ups still work)
+        t.status = ("pr_open" if t.status not in PR_LIVE else t.status) if t.pr_number else "cancelled"
         _log(t, "cancel")
         _STOP.add(t.id)                     # v0.748 a running loop ends at its next step
         pr = t.pr_number
@@ -3028,7 +3094,7 @@ def _proof_land(tenant: str, t: DevTask, g: Gh, verdict: str, ci: dict[str, Any]
         sha = g.commit_files(t.repo, t.branch, parent, [(c["path"], c["new"]) for c in changes],
                              f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
     except GhError as e:
-        _set(t.id, status="failed", error=str(e))
+        _fail(t.id, str(e))
         raise DevError(str(e))
     pf.update({"state": verdict, "fix_sha": sha, "failed": (ci.get("failed") or [])[:3]})
     with session() as s:
@@ -3282,7 +3348,7 @@ def _resume_cut_runs() -> None:
             g = gh(tenant)
             if what == "fix_ci":
                 _in_thread(tenant, tid, fix_ci, tenant, tid, job=job)
-            elif what == "revise" and status in ("pr_open", "checks_failed", "ready", "refused"):
+            elif what == "revise" and status in ("pr_open", "checks_failed", "ci_running", "ready", "refused"):
                 extra = f"<her_change>\n{words}\n</her_change>\nApply her change to the work below." if words else ""
                 _in_thread(tenant, tid, _round, tenant, row, extra, "", resume=True, job=job)
             elif status in ("new", "failed", "cancelled", "explained"):

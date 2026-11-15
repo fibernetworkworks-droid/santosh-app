@@ -207,6 +207,7 @@ class Settings(BaseSettings):
     dev_ws_steps: int = 150                 # ... model steps in one round
     dev_ws_minutes: int = 60                # ... minutes in one round
     dev_ws_bash_runs: int = 80              # ... box commands in one round
+    dev_auto_setup: bool = True             # v0.933 the repo's own setup (from its files / CI / the language default) runs in the box by itself
     dev_ws_clear_chars: int = 180000        # ... past this, old tool output is trimmed (brain.trim)
     dev_ws_compact_chars: int = 480000      # ... past this, the older conversation is summarised (engine.compact)
     dev_ws_keep_days: int = 14              # ... an idle session's working copy is kept this long

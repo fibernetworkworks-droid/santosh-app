@@ -25,12 +25,15 @@ SECRETY = re.compile(r"(?i)(password|passwd|secret|token|api[_-]?key|aws_|privat
 
 LANGS = {
     "python": {"files": ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile", "tox.ini"),
-               "setup": "python3 -m pip install --user -r requirements.txt || python3 -m pip install --user -e . || true",
+               # v0.933 no `|| true`: a failed install (a network blip) was cached as a good snapshot until the lock
+               # files changed; a repo with nothing to install still passes
+               "setup": ("if [ -f requirements.txt ]; then python3 -m pip install --user -r requirements.txt; "
+                         "elif [ -f pyproject.toml ] || [ -f setup.py ]; then python3 -m pip install --user -e .; fi"),
                "test": "python3 -m pytest -q", "one": "python3 -m pytest -q {path}"},
     "node": {"files": ("package.json", "pnpm-lock.yaml", "yarn.lock", "package-lock.json"),
              "setup": "npm ci || npm install", "test": "npm test --silent", "one": "npm test --silent -- {path}"},
-    "go": {"files": ("go.mod",), "setup": "go mod download || true", "test": "go test ./...", "one": "go test {path}"},
-    "rust": {"files": ("Cargo.toml",), "setup": "cargo fetch || true", "test": "cargo test", "one": "cargo test {path}"},
+    "go": {"files": ("go.mod",), "setup": "go mod download", "test": "go test ./...", "one": "go test {path}"},
+    "rust": {"files": ("Cargo.toml",), "setup": "cargo fetch", "test": "cargo test", "one": "cargo test {path}"},
 }
 LOCKS = ("requirements.txt", "pyproject.toml", "poetry.lock", "Pipfile.lock", "package.json", "package-lock.json",
          "pnpm-lock.yaml", "yarn.lock", "go.mod", "go.sum", "Cargo.toml", "Cargo.lock", "setup.py", "setup.cfg",
