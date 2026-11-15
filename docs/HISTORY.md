@@ -4778,3 +4778,12 @@ the stepper, and "Create · about ₹6" was cut by the ellipsis.
   amber tint. The chat page itself keeps its plain background (no moving colour light there).
 - Tests: test_v0916 now checks the slab lives in create_colour.dart; `server/tests/test_v0917_slab_everywhere.py`.
   NOT VERIFIED on her phone.
+
+
+## v0.918.0 SLAB REVERTED (owner, after the v0.917 pictures: "No revert it")
+
+`git revert` of v0.917.0 (02765fa2): the thick slab is back to living only on the Create home Every studio card
+(`_SlabGlass` in create_home.dart), `_GlassBoxPainter` no longer draws the inner edge / glare / bottom colour on other
+sheets, and the chat composer (`HoolaComposer`) and card shell (`HoolaCard`) are back to `c.surface` + `c.line` + their
+old shadows. test_v0917 removed, test_v0916 restored; `server/tests/test_v0918_slab_reverted.py`. Docs keep the
+v0.917 entry for the record.

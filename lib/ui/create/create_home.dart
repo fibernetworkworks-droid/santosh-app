@@ -382,14 +382,16 @@ class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
+    final hue = CrHue.of(context);
     // v0.916 C - THICK SLAB (design canvas claude.ai/artifact/C8e12Hvwi1Cy8WUCPtNmbk): a heavier piece of glass that
-    // holds its own heading, a double edge for its thickness, a still glare across the top-left corner (all three now
-    // drawn by crGlass itself, v0.917), and a pool of each bead's colour on the glass. The slab itself never moves; only the drawings do.
+    // holds its own heading, a double edge for its thickness, a still glare across the top-left corner, and a pool of
+    // each bead's colour on the glass. The slab itself never moves; only the drawings do.
     return Container(
       decoration: crGlass(c, radius: 32, strong: true, tint: CrHue.of(context).b),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
         child: Stack(children: [
+          Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _SlabGlass(c.dark, hue.b)))),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 18, 8, 10),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -490,6 +492,54 @@ class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
       ),
     );
   }
+}
+
+/// The still glass of the studios slab: a second edge inside the first (its thickness), a glare across the top-left
+/// corner, and a soft colour along the bottom. Painted once, never moves.
+class _SlabGlass extends CustomPainter {
+  _SlabGlass(this.dark, this.hue);
+  final bool dark;
+  final Color hue;
+  @override
+  void paint(Canvas canvas, Size s) {
+    if (s.isEmpty) return;
+    final r = Offset.zero & s;
+    // the inner edge, 5 px in
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(r.deflate(5), const Radius.circular(27)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = Colors.white.withOpacity(dark ? .08 : .45));
+    // the glare across the top-left corner
+    canvas.save();
+    canvas.translate(s.width * .02, -s.height * .08);
+    canvas.rotate(-.42);
+    final band = Rect.fromLTWH(-s.width * .3, 0, s.width * .55, s.height * .9);
+    canvas.drawRect(
+        band,
+        Paint()
+          ..shader = LinearGradient(colors: [
+            Colors.white.withOpacity(0),
+            Colors.white.withOpacity(dark ? .07 : .38),
+            Colors.white.withOpacity(0),
+          ], stops: const [0, .45, .9])
+              .createShader(band));
+    canvas.restore();
+    // colour rising from the bottom edge
+    final low = Rect.fromLTWH(0, s.height * .7, s.width, s.height * .3);
+    canvas.drawRect(
+        low,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [hue.withOpacity(0), hue.withOpacity(dark ? .1 : .14)],
+          ).createShader(low));
+  }
+
+  @override
+  bool shouldRepaint(_SlabGlass o) => o.dark != dark || o.hue != hue;
 }
 
 class _Recent extends StatelessWidget {

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.917.0"   # v0.917.0 SLAB EVERYWHERE (owner, on her v0.916 Create home screenshot: "Make same thik slab for all the sections sheet even a chat section"): the design-C thick glass slab is now crGlass itself - every glass sheet at least 56 dp on its short side (Create: the kinds switch, the ask box, Making now, cards, trays, the bottom dock, every Create page) gets the second edge 5 dp inside, the still glare across its top-left corner and its colour rising from the bottom; chips, round buttons and beads stay plain glass; the chat composer and every chat card (HoolaCard shell, so all card kinds) are the same strong glass slab in violet (a card waiting for her keeps an amber edge and tint); 1 server. Previous: v0.916.0 STUDIO SLAB.
+APP_VERSION = "0.918.0"   # v0.918.0 SLAB REVERTED (owner, after the v0.917 pictures: "No revert it"): v0.917 SLAB EVERYWHERE taken back whole - the thick slab is again only the Create home Every studio card (`_SlabGlass`), every other Create sheet is the v0.914 glass again, and the chat composer + chat cards are back to their plain surfaces; code = v0.916.0 STUDIO SLAB. Previous: v0.917.0 SLAB EVERYWHERE (reverted).
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

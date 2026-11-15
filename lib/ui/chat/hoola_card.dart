@@ -19,7 +19,6 @@ import '../../native.dart';
 import '../../state.dart';
 import '../any_card.dart' show AnyEventCard;
 import '../approve_sheet.dart';
-import '../create/create_colour.dart' show crGlass;
 import '../hoola_theme.dart';
 import 'hoola_artifact.dart' show HCArtifact;
 
@@ -90,9 +89,12 @@ class HoolaCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Container(
-        // v0.917 every chat card is the same thick glass slab as Create; a card waiting for her keeps its amber edge
-        decoration: crGlass(c,
-            radius: HoolaRadius.cardLg, strong: true, tint: highlight ? c.warn : CreateHues.third, edge: highlight ? Color.lerp(c.line, c.warn, .6) : null),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: HoolaRadius.r(HoolaRadius.cardLg),
+          border: Border.all(color: highlight ? Color.lerp(c.line, c.warn, .45)! : c.line),
+          boxShadow: highlight ? [BoxShadow(color: c.warn.withOpacity(.14), blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -12)] : null,
+        ),
         clipBehavior: Clip.antiAlias,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Padding(

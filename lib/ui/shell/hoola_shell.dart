@@ -15,7 +15,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../state.dart';
 import '../calls_sheet.dart';
-import '../create/create_colour.dart' show crGlass;
 import '../chat/hoola_attach.dart';
 import '../chat/hoola_chat.dart';
 import '../chat_attach.dart' show TrayFile, openAttachment;
@@ -883,9 +882,13 @@ class _HoolaComposerState extends State<HoolaComposer> {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Container(
         padding: const EdgeInsets.all(4),
-        // v0.895 a pill on one line; a rounded card (Claude's 28) once files or the Research chip sit in it.
-        // v0.917 the same thick glass slab as Create (second edge, still glare, colour from the bottom).
-        decoration: crGlass(c, radius: (_files.isEmpty && !_research) ? 999 : 28, strong: true, tint: CreateHues.third),
+        decoration: BoxDecoration(
+          color: c.surface,
+          // v0.895 a pill on one line; a rounded card (Claude's 28) once files or the Research chip sit in it
+          borderRadius: (_files.isEmpty && !_research) ? HoolaRadius.r(HoolaRadius.pill) : BorderRadius.circular(28),
+          border: Border.all(color: c.line),
+          boxShadow: HoolaShadow.float(c),
+        ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           // v0.895 Claude's tray: big thumbnails, a dark x on each, a spinner while each goes up
           HoolaAttachTray(
