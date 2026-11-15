@@ -4763,3 +4763,18 @@ the stepper, and "Create · about ₹6" was cut by the ellipsis.
 - `_TrayLight` (the band that crossed the tray each cycle) removed - the slab never moves; the drawings keep their
   v0.915 moves and the rise-in.
 - Tests: test_v0915 no longer pins `_TrayLight`; `server/tests/test_v0916_studio_slab.py`. NOT VERIFIED on her phone.
+
+
+## v0.917.0 SLAB EVERYWHERE (owner, on her v0.916 Create home screenshot: "Make same thik slab for all the sections sheet even a chat section")
+
+- `_GlassBoxPainter` (create_colour.dart): any non-circle glass whose short side is >= 56 dp is drawn as the design-C
+  thick slab - a still glare band across the top-left corner, the tint (else violet) rising from the bottom edge, and a
+  second hairline 5 dp inside the rim (the glass's thickness). Chips, round buttons, steppers under 56 and beads stay
+  plain glass. So every Create sheet (kinds switch, ask box, Making now, CrCard, trays, the bottom dock, Image / Video /
+  Film / Library pages) is a slab.
+- Create home `_SlabGlass` removed - the studios slab is now plain `crGlass` (no double edge).
+- Chat: the composer (`HoolaComposer`, hoola_shell.dart) and the card shell (`HoolaCard`, hoola_card.dart, so every
+  card kind) use `crGlass(..., strong: true, tint: CreateHues.third)`; a card waiting for her keeps an amber edge and an
+  amber tint. The chat page itself keeps its plain background (no moving colour light there).
+- Tests: test_v0916 now checks the slab lives in create_colour.dart; `server/tests/test_v0917_slab_everywhere.py`.
+  NOT VERIFIED on her phone.

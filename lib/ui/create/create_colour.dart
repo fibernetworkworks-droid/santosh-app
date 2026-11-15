@@ -37,7 +37,7 @@ class CrHueScope extends InheritedWidget {
 }
 
 // ------------------------------------------------------------------------------------------------ glass
-/// Glass: a see-through surface over the colour light behind the page - a lit top, a soft diagonal sheen, a rim that
+/// Glass (v0.917 a THICK SLAB when it is big enough: a second edge inside, a still glare, colour from the bottom): a see-through surface over the colour light behind the page - a lit top, a soft diagonal sheen, a rim that
 /// catches the light on its top-left edge and the page's hue on its lower-right one, and (with [tint]) a breath of
 /// that hue inside. Painted, never blurred (the design rules: blur costs frames on a budget phone). [base] paints a
 /// solid colour first, for a dock that must hide what scrolls under it.
@@ -161,7 +161,47 @@ class _GlassBoxPainter extends BoxPainter {
         colors: [Colors.white.withOpacity(0), Colors.white.withOpacity(dark ? .06 : .3), Colors.white.withOpacity(0)],
         stops: const [.08, .26, .46],
       ).createShader(rect));
+    // v0.917 THICK SLAB (design C, now on every glass section that is big enough to read as a sheet): a still glare
+    // across the top-left corner and the page's colour rising from the bottom edge
+    final slab = !d.circle && size.shortestSide >= 56;
+    if (slab) {
+      canvas.save();
+      canvas.translate(rect.left + rect.width * .02, rect.top - rect.height * .08);
+      canvas.rotate(-.42);
+      final band = Rect.fromLTWH(-rect.width * .3, 0, math.min(rect.width * .55, 260), rect.height * 1.1 + 40);
+      canvas.drawRect(
+          band,
+          Paint()
+            ..shader = LinearGradient(colors: [
+              Colors.white.withOpacity(0),
+              Colors.white.withOpacity(dark ? .06 : .34),
+              Colors.white.withOpacity(0),
+            ], stops: const [0, .45, .9])
+                .createShader(band));
+      canvas.restore();
+      final low = Rect.fromLTWH(rect.left, rect.top + rect.height * .62, rect.width, rect.height * .38);
+      final hue = d.tint ?? CreateHues.third;
+      canvas.drawRect(
+          low,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [hue.withOpacity(0), hue.withOpacity(dark ? .08 : .12)],
+            ).createShader(low));
+    }
     canvas.restore();
+
+    // the second edge just inside the first: the glass's thickness
+    if (slab) {
+      final inner = rr.deflate(5);
+      canvas.drawRRect(
+          inner,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = Colors.white.withOpacity(dark ? .07 : .42));
+    }
 
     // the rim: bright where the light comes from, the hue where it leaves
     final rim = rr.deflate(.6);
