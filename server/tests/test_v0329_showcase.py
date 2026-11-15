@@ -37,7 +37,7 @@ def test_setup_is_free_hidden_and_one_shot_per_slot(env, monkeypatch):
         assert o["set_up"] and o["slots"] == len(sc.SLOTS) == 36 and o["clips"] == 4 and o["spent_inr"] == 0
         st = await ss.studio(sc.owner())
         p = st.load(sc.NAME)
-        assert p["hidden"] is True and [s["id"] for s in p["shots"]] == [s for s, _ in sc.SLOTS]
+        assert p["hidden"] is True and [s["id"] for s in p["shots"]] == [s for s, _ in sc.SLOTS] + sc.CAM_IDS   # v0.919 + the camera moves
         assert all("No words, letters" in s["prompt"] and s["duration"] == 5 for s in p["shots"])
         assert sc.NAME not in [x["project"] for x in ss.listing(sc.owner())]          # never in her film lists
         assert sc.NAME in [x["project"] for x in ss.listing(sc.owner(), hidden=True)]
@@ -53,7 +53,7 @@ def test_price_cards_one_at_a_time_and_clips_after_pictures(env, monkeypatch):
         await sc.setup()
         (await ss.studio(sc.owner())).painter = lambda prompt, aspect, refs: _jpg()     # the picture engine is "on" (never called here)
         r = await sc.ask_pictures()
-        assert r["waiting_owner"] and abs(r["usd"] - 36 * ss.KEYFRAME_USD) < 1e-6        # the normal opening-pictures card
+        assert r["waiting_owner"] and abs(r["usd"] - (36 + 12) * ss.KEYFRAME_USD) < 1e-6        # the normal opening-pictures card
         try:
             await sc.ask_pictures()
             raise AssertionError("a second card while one waits")

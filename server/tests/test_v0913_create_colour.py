@@ -24,7 +24,7 @@ def test_every_page_has_its_hue_and_the_home_follows_the_kind():
     for hue in ("CrHue.image", "CrHue.video", "CrHue.film", "CrHue.song", "CrHue.voice"):
         assert f"hue: {hue}" in src, hue
     home = (CREATE / "create_home.dart").read_text()
-    assert "hue: m.hue" in home and "_ModeSwitch" in home and "CrMove(move:" in home and "'Making now'" in home
+    assert "hue: m.hue" in home and "_ModeSwitch" in home and "CrCamScene(move:" in home and "'Making now'" in home
     assert "CreateVideo(store: _store, prompt: words, camera: camera)" in home, "a camera card opens Video with that move"
     film = (CREATE / "create_film.dart").read_text()
     assert "_CameraGrid" in film and "this.camera = ''" in film
@@ -38,5 +38,5 @@ def test_design_rules_hold():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.917.0"
-    assert "version: 0.917.0+916" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.921.0"
+    assert "version: 0.921.0+920" in (ROOT / "pubspec.yaml").read_text()

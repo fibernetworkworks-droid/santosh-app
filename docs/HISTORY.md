@@ -4764,6 +4764,76 @@ the stepper, and "Create · about ₹6" was cut by the ellipsis.
   v0.915 moves and the rise-in.
 - Tests: test_v0915 no longer pins `_TrayLight`; `server/tests/test_v0916_studio_slab.py`. NOT VERIFIED on her phone.
 
+
+## v0.917.0 SLAB EVERYWHERE (owner, on her v0.916 Create home screenshot: "Make same thik slab for all the sections sheet even a chat section")
+
+- `_GlassBoxPainter` (create_colour.dart): any non-circle glass whose short side is >= 56 dp is drawn as the design-C
+  thick slab - a still glare band across the top-left corner, the tint (else violet) rising from the bottom edge, and a
+  second hairline 5 dp inside the rim (the glass's thickness). Chips, round buttons, steppers under 56 and beads stay
+  plain glass. So every Create sheet (kinds switch, ask box, Making now, CrCard, trays, the bottom dock, Image / Video /
+  Film / Library pages) is a slab.
+- Create home `_SlabGlass` removed - the studios slab is now plain `crGlass` (no double edge).
+- Chat: the composer (`HoolaComposer`, hoola_shell.dart) and the card shell (`HoolaCard`, hoola_card.dart, so every
+  card kind) use `crGlass(..., strong: true, tint: CreateHues.third)`; a card waiting for her keeps an amber edge and an
+  amber tint. The chat page itself keeps its plain background (no moving colour light there).
+- Tests: test_v0916 now checks the slab lives in create_colour.dart; `server/tests/test_v0917_slab_everywhere.py`.
+  NOT VERIFIED on her phone.
+
+
+## v0.918.0 SLAB REVERTED (owner, after the v0.917 pictures: "No revert it")
+
+`git revert` of v0.917.0 (02765fa2): the thick slab is back to living only on the Create home Every studio card
+(`_SlabGlass` in create_home.dart), `_GlassBoxPainter` no longer draws the inner edge / glare / bottom colour on other
+sheets, and the chat composer (`HoolaComposer`) and card shell (`HoolaCard`) are back to `c.surface` + `c.line` + their
+old shadows. test_v0917 removed, test_v0916 restored; `server/tests/test_v0918_slab_reverted.py`. Docs keep the
+v0.917 entry for the record.
+
+
+## v0.919.0 REAL CAMERA (owner, after the animated design canvas claude.ai/artifact/KZ2Svgxm8fZPrEWt5zjKYD: "I WANT REAL VIDEO AT EVERY PLACE OF CAMERA ANGLE NOT ANIMATED")
+
+- Server `studio/showcase.py`: `CAMS` = twelve camera moves (Auto ... Low angle, slot ids `cam_<move>` = the phone's
+  names), each a 5 s shot of the SAME scene (`CAM_SCENE`: a woman in a mustard kurta with masala chai at a chai stall at
+  golden hour) + the move in words + the studio camera key where one exists (`catalog.CAMERA`). `setup()` adds them to a
+  showcase made before (existing shots kept). `ask_camera()` = the normal price cards in two steps: opening pictures
+  (`keyframes`), then draft 720p clips (`generate(..., "draft", ...)`) - each waits for her Haan (+ fingerprint);
+  POST /api/studio/showcase/camera, owner only. `status()` gains cams / cam_pictures / cam_clips.
+- `tile_of(clip)`: ffmpeg cuts the clip into a 320 px square looping animated WebP (4 s, 12 fps, quality 62), made once
+  beside the clip; GET /api/studio/showcase/file/{slot}?kind=tile serves it as image/webp. A picture, not a video player,
+  so all twelve tiles play at once on a budget phone.
+- Phone: `CreateStore.showcase` (GET /api/studio/showcase) + `camSlot` / `camReady`; `CrCamArt` puts the real tile over
+  the painted move (the painted one stays underneath until the clip is made / while it loads) on the Video page camera
+  grid and the home "Try a camera move" cards; owner-only `_CamMaker` card under the grid: step 1 / 2 counts, the price
+  card (CrApprovalCard), painting / filming, errors; gone once all twelve play.
+- Tests: `server/tests/test_v0919_real_camera.py` (incl. a real ffmpeg tile); test_v0329 counts the camera shots.
+- NOT VERIFIED: no real clip made yet - needs the VPS deploy, then her taps on the two price cards (prices shown on the
+  cards; 12 pictures + 12 draft clips). The footage is AI video, not stock footage.
+
+
+## v0.920.0 CAMERA ALIVE - the design's moving scene in every camera tile (owner: "use this and deploy for now" on the Camera moves alive design canvas)
+
+The owner pointed at the design canvas (claude.ai/code/artifact/963d3031-ec12-47c5-ae90-3b03a65e2b7a, the same canvas as
+claude.ai/artifact/KZ2Svgxm8fZPrEWt5zjKYD) and asked to ship it for now, while AI video of each move waits (Higgsfield is
+on hold, no key).
+
+- `CrCamScene(move)` in lib/ui/create/create_colour.dart: a Ticker + one CustomPainter drawing the 200 x 200 scene, fit as
+  "slice" over the tile. Layers as in the design: bg (sun + hills, the hill row repeats every 100), mid (ground + chai
+  stall with awning and bulbs, or lamp posts when Tracking), subj (her in a yellow kurta, red dupatta, a cup of chai with
+  two steam wisps on 2.6 s, the second 1.1 s late), fg (table with cup + oranges, or road dashes when Tracking), all inside
+  a rig layer.
+- Each move = the design's CSS keyframes as numbers: Auto 7 s parallax push; Dolly in / out 5 s holds at 0-12 % and 78-90 %;
+  Crash zoom 3.4 s punch to 1.95 x (cubic .7,0,.9,.4) about the face; Orbit 4.5 s layers sliding opposite ways + her
+  scaleX .84; Crane up 5 s layers dropping 4 / 16 / 24 / 52; Tracking hills / posts / road scrolling at 6 / 1.6 / .8 s + a
+  .4 s bob; Pan 5 s +-20; Drone 6 s pull up and away about (110, 168); Handheld 2.2 s small shake + tilt about (100, 100);
+  Low angle 5 s her large from below about (123, 172); Static holds and only the steam moves.
+- Colours per move in `CreateCamScene` (lib/ui/hoola_theme.dart; sky top / bottom, hill, ground + the fixed scene colours),
+  so the Create files stay free of raw colours (design ratchet).
+- Used as the fallback art of `CrCamArt` in the Video page `_CameraGrid` and the home "Try a camera move" cards; a v0.919
+  real clip still plays on top when one exists. The old `_camArt` painted-scene map is gone; `CrMove` stays for its test.
+- Reduce motion = still (the clock rests at 0, steam shown resting).
+- Tests: server/tests/test_v0920_camera_alive.py; test/create_native_test.dart now looks for CrCamScene on the home;
+  test_v0913 checks "CrCamScene(move:" in the home.
+- NOT VERIFIED on her phone; the painter compiles first on CI.
+
 ## v0.877.0 HOOLA AGENT API - companies call Hoola's tools with one key and pay from an INR wallet (owner: "means we developed employees, tools etc can directly be used by different companies via our Hoola API" -> "now let's work on development of different portal endpoints for Hoola AI agent")
 
 Research first (13 Nov 2026, official terms of 14 providers + OpenRouter's 121-provider list): reselling raw model API access is forbidden by
@@ -4847,7 +4917,7 @@ NOT BUILT: UPI top-up + GST invoice (phase 2), employees as API (phase 3), voice
 - On the phone: branch, model and effort chips, the diff with line comments, and attachments.
 - Teleport to a local terminal.
 
-## v0.917.0 HOOLA CODE LIKE CLAUDE CODE (built as 0.914; their CREATE GLASS / GLASS STUDIOS / STUDIO SLAB took 0.914-0.916, all kept) - the console and phone rebuilt to the approved design (owner: "CHECK THE CLAUDE CODE INTERFACE, FEATURE, UI/UX ETC -- WE WANT EXACT SAME FOR HOOLA CODE CONSOLE SIDE --- SHOW ME THE DESIGN FIRST HERE" -> "ADD PHONE VIEW AND SCHEDULED TASKS SCREEN ALSO... ADD ALL 100% claude code feature in hoola code" -> "NOW CHECK THE MINUTE DESIGN FIX" -> "GO BUILD")
+## v0.921.0 HOOLA CODE LIKE CLAUDE CODE (built as 0.914; their CREATE GLASS ... CAMERA ALIVE took 0.914-0.920, all kept) - the console and phone rebuilt to the approved design (owner: "CHECK THE CLAUDE CODE INTERFACE, FEATURE, UI/UX ETC -- WE WANT EXACT SAME FOR HOOLA CODE CONSOLE SIDE --- SHOW ME THE DESIGN FIRST HERE" -> "ADD PHONE VIEW AND SCHEDULED TASKS SCREEN ALSO... ADD ALL 100% claude code feature in hoola code" -> "NOW CHECK THE MINUTE DESIGN FIX" -> "GO BUILD")
 
 The design came first this time: a design canvas (claude.ai/artifact/RqivHmdqNni1XAZknHhbRT) with 17 console screens and 8 phone
 screens, polished in a second pass (one icon set, a 9-step type scale, one accent, drawn controls), then approved. Its source files and
