@@ -204,6 +204,7 @@ class Settings(BaseSettings):
     dev_events: bool = True                 # Hoola Code Phase 6: GitHub events (a signed repository webhook) may start a scheduled task
     dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
+    dev_make: bool = True                    # v0.939 Hoola Code makes PRDs / pages / prototypes / artboards / sheets as cards (DEV_MAKE)
     dev_ws_steps: int = 150                 # ... model steps in one round
     dev_ws_minutes: int = 60                # ... minutes in one round
     dev_ws_bash_runs: int = 80              # ... box commands in one round

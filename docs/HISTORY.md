@@ -5373,3 +5373,48 @@ own width) and the clock follows them as "· 4:45" in the same Schibsted Grotesk
 colour, with tabular figures so the line does not jitter as the seconds change. The turning Hoola mark (v0.937) stays in
 front. Phone only (`lib/ui/code/code_session.dart` `_runningRow`); server unchanged except the version story.
 Tests: NEW `test_v0938_code_clock_beside.py` (2). Version 0.938.0 (pubspec 0.938.0+937). NOT VERIFIED on her phone.
+
+## v0.939.0 HOOLA CODE MAKES THINGS (owner, on the design canvas claude.ai/artifact/BjGPb7Tkqfx6QqpgkDznxH -> "GO BUILD")
+
+She asked for Hoola Code to make artifacts, artboards, prototypes, PRDs and sheets the way Claude does, saw the 8-screen
+design and said GO BUILD.
+
+**Server (`server/app/devsahayak/made.py`, tool `make`):** the model makes a thing in parts so the card can say what it
+writes now: `start` (kind doc | page | prototype | artboard | sheet, title, part names) -> `write` (one section / screen /
+tab, checked for its kind) -> `finish` (the file is built). Kinds: doc = Markdown sections joined under one `# title`;
+page = HTML fragments in one page; prototype = one `<section class="hs-screen">` per screen and a small inline script that
+moves between them on `data-go="Screen"` / `href="#Screen"`; artboard = each screen in a sandboxed srcdoc iframe, scaled
+side by side; sheet = JSON `{columns, rows}` per tab -> an .xlsx (openpyxl, header row bold + frozen, formulas kept as
+formulas). HTML fragments may not carry outside scripts, `<html>/<head>/<body>`, iframes / objects / embeds. A sheet's
+preview works out SUM / AVERAGE / MIN / MAX / COUNT / ROUND / ABS / IF and + - * / with A1 refs and ranges; anything else is
+shown as the formula and named (the model is told at write and finish; the viewer says it too) - never a made-up number.
+A change = `start` with the id: a new version that keeps every part (carried by reference), only rewritten parts count as
+changed; a version with nothing written is dropped. Going back (`POST /tasks/{id}/made/{mid}/restore`) makes a NEW version
+from the old one; nothing is deleted. Limits: 20 things a session, 12 parts, 30 versions. Stored under
+`data/devsahayak/made/<task>/<thing>/` (meta.json + v<n>/part<i>.txt + out.*), apart from the working copy so the sweep of
+old working copies does not take them.
+
+**Serving:** `GET /api/devsahayak/made/{tid}/{mid}/{v}/{name}?exp&sig` (public router, HMAC on the server secret, 24 h,
+only out.md / out.html / out.xlsx); HTML always with `Content-Security-Policy: sandbox allow-scripts allow-popups;
+default-src 'none'` + inline script / style, Google Fonts, data: / https images only - its own opaque origin, it can never
+read the console's stored sign-in. `GET /tasks/{id}/made/{mid}?v=` = the viewer's data (versions, the document text, the
+sheet preview, a fresh signed link; a page still being made is built on the spot for Peek).
+
+**Engine wiring:** `make` rides `tools_for_round()` (switch `dev_make`, default on), handled in the round like `memory`,
+the working line says "Writing <part>" (`_make_words`), the system prompt gets `made.HOWTO`; each `start` emits ONE step
+`{"k":"made","id","v"}` (the card reads the live state from the session view's `made` list, so the thread never doubles a
+card). A round that only made things no longer ends with "(Koi file badalne layak nahi mili.)".
+
+**Phone (`lib/ui/code/code_made.dart`):** `CodeMadeCard` (making: the part it writes now, the parts as ticked / current /
+waiting chips, a clock, Peek; ready: its own drawn picture per kind, title, kind + facts, Updated + what changed for a new
+version; Open + Share link / Download under the newest card); earlier versions of a thing = one faint line;
+`showCodeMadeList` = Made in this session with All / Docs / Designs / Sheets; `CodeMadeViewer` = doc as Read (HoolaMd,
+selectable) or Markdown, page / prototype / artboard in a WebView on the signed link (Restart for a prototype), sheet as a
+table with a formula bar, tabs and what the preview could not work out; Versions sheet with Bring back; "Ask for a change"
+pops back and the session sends `Change the <kind> "<title>" (make id <id>): <her words>` as her next message. Session:
+`k == 'made'` steps draw the cards, a "N made" pill beside the Newest / Changes pills.
+
+**NOT BUILT (said plainly):** before / after pictures of a changed page (the card names the changed parts instead), Ask
+Hoola about a selected sentence, Save to repo, Open in Google Sheets (Download opens the .xlsx in her sheets app), the
+console web page. **NOT VERIFIED:** on her phone (CI compiles the Dart first), and Qwen making a real thing end to end.
+Tests: `server/tests/test_v0939_hoola_code_makes.py` (7).

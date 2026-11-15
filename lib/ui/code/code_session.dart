@@ -18,6 +18,7 @@ import '../hoola_theme.dart';
 import 'code_changes.dart';
 import 'code_home.dart';
 import 'code_kit.dart';
+import 'code_made.dart';
 import 'code_start.dart';
 import 'code_words.dart';
 
@@ -353,6 +354,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     final c = HoolaColors.of(context);
     final t = _t;
     final (a, r) = t == null ? (0, 0) : codeStat(t);
+    final madeN = t == null ? 0 : cl(t['made']).length;
     return Scaffold(
       backgroundColor: c.bg,
       body: SafeArea(
@@ -380,8 +382,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                     onRefresh: _load,
                     color: c.ink,
                     child: Stack(fit: StackFit.expand, children: [
-                      ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 ? 76 : 24), children: _body(c, t)),
-                      if (_away || a + r > 0)
+                      ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || madeN > 0 ? 76 : 24), children: _body(c, t)),
+                      if (_away || a + r > 0 || madeN > 0)
                         Positioned(
                           bottom: 12,
                           left: 0,
@@ -390,6 +392,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                             if (_away) CodeNewestButton(onTap: () => _toEnd()),
                             if (_away && a + r > 0) const SizedBox(width: 10),
                             if (a + r > 0) _changesPill(c, a, r),
+                            if ((_away || a + r > 0) && madeN > 0) const SizedBox(width: 10),
+                            if (madeN > 0) _madePill(c, cl(t['made'])),
                           ]),
                         ),
                       if (_selecting != null)
@@ -428,6 +432,16 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     var si = -1;
     var sayN = 0;
     var drewRunning = false;
+    // v0.939 the things it made: the full card sits with each thing's newest version, earlier versions are one faint line
+    final made = {for (final m in cl(t['made'])) cs(m['id']): m};
+    final lastOf = <String, int>{};
+    var lastMade = -1;
+    for (var i = 0; i < steps.length; i++) {
+      if (cs(steps[i]['k']) == 'made') {
+        lastOf[cs(steps[i]['id'])] = i;
+        lastMade = i;
+      }
+    }
     void flush({required bool last}) {
       if (group.isEmpty) return;
       final now = running && last && live.isEmpty;
@@ -448,6 +462,23 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         out.add(_firstSays >= 0 && i >= _firstSays && (_landed[i] ?? 0) < _words(text).length
             ? _land(text, i, done: true, actions: actions)
             : _reply(text, 'say$si', actions: actions));
+      } else if (k == 'made') {
+        final row = made[cs(s['id'])];
+        if (row != null) {
+          flush(last: false);
+          out.add(lastOf[cs(s['id'])] == si
+              ? CodeMadeCard(
+                  key: ValueKey('made${cs(s['id'])}'),
+                  row: row,
+                  newest: si == lastMade,
+                  onOpen: () => _openMade(row),
+                  onShare: () => codeMadeShare(context, widget.app, widget.id, row))
+              : CodeMadeEarlier(
+                  key: ValueKey('made${cs(s['id'])}v${ci(s['v'])}'),
+                  title: cs(row['title']),
+                  v: ci(s['v']),
+                  onOpen: () => _openMade(row, version: ci(s['v']))));
+        }
       } else if (k == 'note') {
         flush(last: false);
         out.add(_her(c, cs(s['text']), const [], small: true, key: 'note$si'));
@@ -491,6 +522,37 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   }
 
   static const _explainKey = 1 << 20;
+
+  /// v0.939 a thing it made, full screen; a change she asks for there goes to Hoola as her next message.
+  Future<void> _openMade(Map<String, dynamic> row, {int version = 0}) async {
+    final ask = await Navigator.of(context).push<String>(MaterialPageRoute(
+        builder: (_) => HoolaTheme(
+            appearance: widget.app.appearance,
+            child: CodeMadeViewer(app: widget.app, taskId: widget.id, madeId: cs(row['id']), version: version))));
+    if (ask == null || ask.trim().isEmpty || !mounted) return;
+    await _send('Change the ${cs(row['kind_label']).toLowerCase()} "${cs(row['title'])}" (make id ${cs(row['id'])}): ${ask.trim()}');
+  }
+
+  Widget _madePill(HoolaColors c, List<Map<String, dynamic>> made) => Semantics(
+        button: true,
+        label: '${cPlural(made.length, 'thing')} made in this session',
+        child: Material(
+          color: c.surface,
+          shape: StadiumBorder(side: BorderSide(color: c.lineStrong)),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: () => showCodeMadeList(context, widget.app, widget.id, made, onOpen: (r) => _openMade(r)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.layers_outlined, size: 16, color: c.ink2),
+                const SizedBox(width: 6),
+                Text('${made.length} made', style: codeSans(c, size: 13, weight: FontWeight.w500)),
+              ]),
+            ),
+          ),
+        ),
+      );
 
   /// v0.935 a new message of Hoola's landing word by word (done = the whole message is here; else it is still being
   /// written and more words come with the next check).

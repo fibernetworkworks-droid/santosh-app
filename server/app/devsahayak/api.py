@@ -67,6 +67,17 @@ def make_public_router() -> APIRouter:
             raise HTTPException(401, "Refused.")
         return {"ok": True, "started": int(out.get("started") or 0)}
 
+    @p.get("/made/{tid}/{mid}/{v}/{name}")
+    async def made_file(tid: str, mid: str, v: int, name: str, exp: int = 0, sig: str = ""):
+        """v0.939 a thing Hoola Code made, on its signed link (her viewer's WebView / download). HTML is served with a
+        sandbox CSP: its own opaque origin, no network but Google Fonts."""
+        from . import made as MD
+        got = await asyncio.to_thread(MD.open_file, tid, mid, v, name, exp, sig)
+        if got is None:
+            raise HTTPException(404, "This link is not active.")
+        body, ctype, head = got
+        return Response(content=body, media_type=ctype, headers=head)
+
     @p.get("/labcheck")
     async def labcheck(request: Request):
         """Phase 6: for `python -m app.devlab net` - says whether a header arrived, as a fingerprint, never the value."""
@@ -390,6 +401,15 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/tasks/{tid}/rewind")
     async def ws_rewind(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.ws_rewind, tenant, tid, int(_b(body).get("n") or 0))
+
+    @r.get("/tasks/{tid}/made/{mid}")
+    async def made_detail(tid: str, mid: str, v: int = 0, tenant: str = Depends(current_tenant)):
+        """v0.939 one thing it made: versions, the document / sheet preview, a signed link to the file."""
+        return await run(S.made_detail, tenant, tid, mid, v)
+
+    @r.post("/tasks/{tid}/made/{mid}/restore")
+    async def made_restore(tid: str, mid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.made_restore, tenant, tid, mid, int(_b(body).get("v") or 0))
 
     @r.get("/tasks/{tid}")
     async def get_task(tid: str, tenant: str = Depends(current_tenant)):

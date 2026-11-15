@@ -576,6 +576,12 @@ def tools_for_round() -> list[dict[str, Any]]:
             extra.append(M.TOOL)                          # the repo's memory (claude-mem's three steps)
     except Exception:
         pass
+    try:
+        from . import made as MD
+        if MD.on():
+            extra.append(MD.TOOL)                         # v0.939 the things it makes beside the code (PRD, prototype, sheet...)
+    except Exception:
+        pass
     return TOOLS + extra
 
 
@@ -1089,6 +1095,13 @@ def now_words(name: str, inp: dict[str, Any]) -> str:
             "other_repo": "Reading another repo"}.get(name, "Working")
 
 
+def _make_words(inp: dict[str, Any]) -> str:
+    """v0.939 the working line while it makes a thing: "Writing Users and needs"."""
+    act, part = str(inp.get("action") or ""), str(inp.get("part") or "").strip()[:60]
+    return {"start": "Starting " + (str(inp.get("title") or "").strip()[:60] or "a new version"),
+            "write": f"Writing {part}" if part else "Writing a part", "finish": "Putting it together"}.get(act, "Making it")
+
+
 # ---------------------------------------------------------------- page events
 def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[str, Any]]:
     o = str(out or "")
@@ -1407,6 +1420,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     netw = net_words(net)                                 # v0.878 the model is told the network its environment really has
     system = (SYSTEM + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
               + ("\n\n" + netw if netw else ""))
+    try:
+        from . import made as MD
+        if MD.on():
+            system += "\n\n" + MD.HOWTO                 # v0.939 when she asks for a PRD / prototype / sheet: the make tool
+    except Exception:
+        pass
     if netw:
         toolset = [({**x, "description": x["description"].replace("NO internet", "the network described under NETWORK")}
                     if x.get("name") == "bash" else x) for x in toolset]
@@ -1522,6 +1541,18 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     emit(ev)
                 tools.trail.append(f"memory {inp.get('action', '')}")
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:30000]})
+                continue
+            if b["name"] == "make":                        # v0.939 a PRD / page / prototype / artboard / sheet, part by part
+                from . import made as MD
+                NOW_STEP[tid] = _make_words(inp)
+                try:
+                    out, ev = MD.tool(tid, inp)
+                finally:
+                    NOW_STEP.pop(tid, None)
+                if ev:
+                    emit(ev)
+                tools.trail.append(f"make {inp.get('action', '')}")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:20000]})
                 continue
             if b["name"] == "agent":
                 out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")

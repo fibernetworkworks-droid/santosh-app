@@ -734,7 +734,39 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
         v["refs"] = [str(x).split("/")[-1] for x in _j(t.refs or "", [])]      # Phase 6: her other repos attached to read
         v["group"] = _group(t)                                                  # ... and the sessions doing the same job in other repos
         v["pr_comments"] = (_j(t.pr_notes or "", {}).get("open") or [])[:30]   # reviewers' comments not acted on yet
+        v["made"] = _made(t.id)                                                 # v0.939 the PRDs, prototypes, sheets it made
     return v
+
+
+def _made(tid: str) -> list[dict[str, Any]]:
+    try:
+        from . import made as MD
+        return MD.listing(tid)
+    except Exception:
+        log.debug("dev made list failed", exc_info=True)
+        return []
+
+
+def made_detail(tenant: str, ref: str, mid: str, v: int = 0, base_url: str = "") -> dict[str, Any]:
+    """v0.939 one thing Hoola Code made, for her viewer: its versions, the document / sheet preview, a signed link."""
+    from . import made as MD
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    try:
+        return MD.detail(tid, mid, v, base_url)
+    except ValueError as e:
+        raise DevError(str(e))
+
+
+def made_restore(tenant: str, ref: str, mid: str, v: int) -> dict[str, Any]:
+    """v0.939 Undo / go back = her tap: a new version made from an old one."""
+    from . import made as MD
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    try:
+        return MD.restore(tid, mid, v)
+    except ValueError as e:
+        raise DevError(str(e))
 
 
 # ---------------------------------------------------------------- Phase 3: the composer (mode, model, branch, attachments, cost)
@@ -2040,7 +2072,8 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
             _log(row, "samjha diya")
             s.flush()
             asks = explain.rstrip().endswith("?")      # a vague ask was answered with ONE question: no tail after it
-            say = (explain or "Samjhaya.") + ("" if asks else " Fix chahiye to bolo 'fix karo'." if t.kind == "explain" else
+            made = bool(_made(tid))                    # v0.939 it made a PRD / prototype / sheet: that IS the work
+            say = (explain or "Samjhaya.") + ("" if asks or made else " Fix chahiye to bolo 'fix karo'." if t.kind == "explain" else
                                                 " (Koi file badalne layak nahi mili.)") + warn
             return _card(tenant, row, say)
     prep = _prepare(tenant, t, out, read, g, base_sha)
