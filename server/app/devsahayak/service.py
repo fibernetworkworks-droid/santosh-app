@@ -2228,6 +2228,11 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
 CONTINUE = ("explained", "failed", "cancelled")   # v0.784 sessions that take a follow-up in the same working copy
 
 
+def cPlural_n(comments: Any) -> str:
+    n = len(comments) if isinstance(comments, list) else 0
+    return f"{n} line" + ("" if n == 1 else "s")
+
+
 def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = None) -> dict[str, Any]:
     """Her change in words -> a new commit on the SAME hoola/* branch (or a new prepared change). Her comments on lines
     of the diff (the Changes pane) ride with the message; comments alone are enough."""
@@ -2235,6 +2240,9 @@ def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = No
     block = _comments_block(comments)
     if not clean and not block:
         raise DevError("Write what to change, or comment on a line.")
+    # v0.940 her follow-up is HER message in the thread (it was never written down, so after the first message
+    # nothing she sent showed on her screen); comments alone show as one line
+    said = clean[:2000] if clean else f"Comments on {cPlural_n(comments)} of the change"
     clean = (clean + ("\n\n" if clean and block else "") + block).strip()
     from . import engine as EN
     cont = ""
@@ -2248,6 +2256,7 @@ def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = No
                 t.kind = g if g != "explain" else "fix"
             _log(t, "her follow-up: the session continues")
     if cont:                                               # outside the session: the work opens its own
+        _Step(cont).event({"k": "note", "text": said, "her": True})
         try:
             return _work(tenant, cont, gh(tenant), [], warn, follow_up=f"<her_follow_up>\n{clean}\n</her_follow_up>")
         except Exception as e:                             # v0.933 never left at 'new'
@@ -2260,6 +2269,7 @@ def revise(tenant: str, ref: str, words: str, conv: str = "", comments: Any = No
         if t.rounds >= 6:
             raise DevError("Is PR par bahut round ho gaye; naya kaam shuru kijiye.")
         s.expunge(t)
+    _Step(t.id).event({"k": "note", "text": said, "her": True})
     return _round(tenant, t, f"<her_change>\n{clean}\n</her_change>\nApply her change to the work below.", warn)
 
 

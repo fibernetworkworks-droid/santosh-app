@@ -1584,7 +1584,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             results.append({"type": "text", "text": "<her_note_while_you_work>\n" + "\n".join(notes)
                             + "\n</her_note_while_you_work>\nTake this into account from your next step."})
             for n in notes:
-                emit({"k": "note", "text": n[:600]})
+                emit({"k": "note", "text": n[:2000], "her": True})
         msgs.append({"role": "user", "content": results})
         ses.save_messages(msgs)
         if finish is not None:

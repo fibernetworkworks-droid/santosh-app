@@ -5418,3 +5418,23 @@ pops back and the session sends `Change the <kind> "<title>" (make id <id>): <he
 Hoola about a selected sentence, Save to repo, Open in Google Sheets (Download opens the .xlsx in her sheets app), the
 console web page. **NOT VERIFIED:** on her phone (CI compiles the Dart first), and Qwen making a real thing end to end.
 Tests: `server/tests/test_v0939_hoola_code_makes.py` (7).
+
+## v0.940.0 HOOLA CODE HER MESSAGES (owner, her phone screenshot: "New session 1st msg sent by user seen in chat screen .. thereafter any msg send by user not seen in chat screen")
+
+**Root cause:** the phone draws her FIRST message from the session's text and every later one from a `note` step in the
+session's steps. Only two doors wrote that step - an answer to Hoola's one question (`service.answer`) and a note the
+engine reads while it works. A follow-up after a finished round goes through `service.revise` (the phone's `bg/revise`),
+which started the next round with her words in the model's prompt but never wrote them into the thread - so after the
+first message nothing she sent showed on her screen.
+
+**Fix (server):** `revise` writes her words as `{"k": "note", "text": ..., "her": true}` before the round starts, on both
+paths (the session continues in its working copy / a change on the open PR); comments on lines alone show as one line
+("Comments on 2 lines of the change"), never the raw comment block. A restart that continues a cut revise round does not
+call `revise` again, so her message is written once. The engine's note while working keeps 2,000 characters (was 600).
+
+**Fix (phone, `lib/ui/code/code_session.dart`):** her later messages are drawn full size like her first (were the small
+style); what she sends shows at once as her bubble with "Sending…" until the server has written it (matched on its first
+80 characters); a note queued while Hoola works is her bubble with "Hoola reads it at its next step" (was a grey line); a
+send that fails takes the bubble away and puts her words back in the box.
+
+Tests: `server/tests/test_v0940_code_her_messages.py` (4). NOT VERIFIED on her phone.

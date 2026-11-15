@@ -20,5 +20,5 @@ def test_gap_is_measured_on_the_real_shell():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.939.0"
-    assert "version: 0.939.0+938" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.940.0"
+    assert "version: 0.940.0+939" in (ROOT / "pubspec.yaml").read_text()

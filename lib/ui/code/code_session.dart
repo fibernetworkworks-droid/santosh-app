@@ -50,6 +50,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   bool _loading = false;
   int _firstSays = -1;                // Hoola's messages already there when the page opened show at once
   bool _explainAtOpen = false;        // v0.937 a closing answer that arrives while she watches lands like the rest
+  String? _sent;                      // v0.940 her message just sent, shown until the server writes it into the thread
+  int _sentAt = 0;
+  bool _sentSeen = false;
   DateTime? _runSeen;                 // v0.937 the last check that said it works (a one-check gap never blinks the page)
   Map<String, dynamic> _runCarry = const {};
   final Map<int, int> _landed = {};   // v0.935 how many words of each new message have landed
@@ -193,6 +196,15 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     final text = (words ?? _msg.text).trim();
     final comments = (mode == 'note' || mode == 'revise') ? CodeComments.of(widget.id) : const <Map<String, dynamic>>[];
     if (mode == 'off' || (text.isEmpty && comments.isEmpty && mode != 'plan')) return;
+    if (text.isNotEmpty && mode != 'plan') {
+      setState(() {
+        _sent = text;
+        _sentAt = cl(t['steps']).length;
+        _away = false;
+      });
+      if (words == null) _msg.clear();
+      _toEnd();
+    }
     final r = switch (mode) {
       'note' => await _run('POST', '$_base/note', {'text': text, 'comments': comments}),
       'answer' => await _run('POST', '$_base/answer', {'text': text}),
@@ -202,6 +214,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     if (r != null) {
       if (comments.isNotEmpty) CodeComments.clear(widget.id);
       if (words == null) _msg.clear();
+    } else if (_sent == text && mounted) {
+      setState(() => _sent = null);     // it did not go: her words go back into the box
+      if (words == null && _msg.text.isEmpty) _msg.text = text;
     }
   }
 
@@ -414,6 +429,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   // ---------------------------------------------------------------------------------------------- the thread
   List<Widget> _body(HoolaColors c, Map<String, dynamic> t) {
     final steps = cl(t['steps']);
+    _sentSeen = false;
     final running = codeRunning(t);
     final st = cs(t['status']);
     final out = <Widget>[_her(c, cs(t['text']), cl(t['attach']))];
@@ -481,7 +497,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         }
       } else if (k == 'note') {
         flush(last: false);
-        out.add(_her(c, cs(s['text']), const [], small: true, key: 'note$si'));
+        // v0.940 every message she sends after the first is HER message, drawn like the first one
+        out.add(Padding(padding: const EdgeInsets.only(top: 18), child: _her(c, cs(s['text']), const [], key: 'note$si')));
+        if (_sent != null && si >= _sentAt && _same(cs(s['text']), _sent!)) _sentSeen = true;
       } else if (k == 'todo') {
         todo = s;
       } else if (k == 'think') {
@@ -493,9 +511,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     flush(last: true);
     if (live.isNotEmpty) out.add(_land(live, sayN, done: false));
     if (todo != null && cl(todo['items']).isNotEmpty) out.add(_todo(c, cl(todo['items'])));
-    for (final n in running ? ((t['notes'] as List?) ?? const []) : const []) {
-      if (cs(n).isNotEmpty) out.add(Padding(padding: const EdgeInsets.only(top: 10), child: Text('Queued for its next step: ${cs(n)}', style: codeSans(c, size: 13, color: c.ink3))));
+    final queued = [for (final n in running ? ((t['notes'] as List?) ?? const []) : const []) if (cs(n).isNotEmpty) cs(n)];
+    for (final n in queued) {
+      if (_sent != null && _same(n, _sent!)) _sentSeen = true;
+      out.add(_herWaiting(c, n, 'Hoola reads it at its next step'));
     }
+    // v0.940 what she just sent shows at once, before the server has written it down
+    if (_sent != null && !_sentSeen) out.add(_herWaiting(c, _sent!, 'Sending…'));
+    if (_sentSeen) _sent = null;
     if (!running) {
       if (!said && cs(t['explain']).isNotEmpty) {
         final ex = cs(t['explain']);
@@ -522,6 +545,22 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   }
 
   static const _explainKey = 1 << 20;
+
+  bool _same(String a, String b) {
+    String k(String x) => x.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final x = k(a), y = k(b);
+    if (x.isEmpty || y.isEmpty) return false;
+    final n = x.length < y.length ? x.length : y.length;
+    return x.substring(0, n > 80 ? 80 : n) == y.substring(0, n > 80 ? 80 : n);
+  }
+
+  Widget _herWaiting(HoolaColors c, String text, String note) => Padding(
+        padding: const EdgeInsets.only(top: 18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Opacity(opacity: .72, child: _her(c, text, const [], key: 'wait${text.hashCode}')),
+          Padding(padding: const EdgeInsets.only(top: 4, right: 4), child: Text(note, style: codeSans(c, size: 12, color: c.ink3))),
+        ]),
+      );
 
   /// v0.939 a thing it made, full screen; a change she asks for there goes to Hoola as her next message.
   Future<void> _openMade(Map<String, dynamic> row, {int version = 0}) async {
