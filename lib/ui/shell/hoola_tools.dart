@@ -137,7 +137,7 @@ class _HoolaToolsState extends State<HoolaTools> with TickerProviderStateMixin {
         const HoolaSection('More'),
         HoolaGroup(children: [
           for (var i = 0; i < hoolaMoreTools.length; i++)
-            row(hoolaMoreTools[i], 8 + i, () => hoolaOpenConsole(context, app, hoolaMoreTools[i].path, hoolaMoreTools[i].title)),
+            row(hoolaMoreTools[i], 8 + i, () => hoolaOpenStudio(context, app, hoolaMoreTools[i])),
           row((title: 'Connectors', sub: 'Your apps and accounts linked to ${app.aName}', glyph: ToolGlyph.connectors, path: ''), 10,
               () => hoolaOpenNew(context, app, HoolaConnectorsPage(app: app))),
         ]),

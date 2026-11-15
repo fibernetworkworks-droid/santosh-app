@@ -63,6 +63,8 @@ def test_both_doors_open_it():
     team = (ROOT / "lib/ui/shell/hoola_team_list.dart").read_text()
     settings = (ROOT / "lib/ui/shell/hoola_settings.dart").read_text()
     assert "? hoolaOpenNew(context, app, HoolaCode(app: app))" in tools
+    # the More row (Hoola Code lives there) goes through the same opener, never straight to the web page
+    assert "row(hoolaMoreTools[i], 8 + i, () => hoolaOpenStudio(context, app, hoolaMoreTools[i]))" in tools
     assert "(a) => HoolaCode(app: a)" in team and "DevsahayakScreen" not in team
     assert "w is HoolaCode ? hoolaOpenNew" in settings
 
@@ -83,5 +85,5 @@ def test_design_rules():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.922.0"' in main and "v0.922.0 HOOLA CODE NATIVE" in main
-    assert "version: 0.922.0+921" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.923.0"' in main and "v0.922.0 HOOLA CODE NATIVE" in main
+    assert "version: 0.923.0+922" in (ROOT / "pubspec.yaml").read_text()

@@ -5010,3 +5010,11 @@ cards. Server unchanged. Tests: server/tests/test_v0921_hoola_code_native.py (sc
 served, her taps keep their hashes, doors, design rules, version).
 NOT VERIFIED: compiled first by CI (no Flutter here); not yet on her phone; real runs need the VPS on a current
 version (it read 0.902.0 at the audit) and Anthropic credit.
+
+## v0.923.0 HOOLA CODE DOOR (owner, after deploying v0.922: "DEPLOYED. BUT APP SHOWING OLD WEB INTERFACE")
+
+v0.922 made `hoolaOpenStudio` open the native `HoolaCode` screen for 'Hoola Code', but on the Tools tab Hoola Code is not one of
+the studio tiles: it is a row in the "More" list (`hoolaMoreTools`, with Game Dev), and that row called `hoolaOpenConsole` straight,
+so the tap still loaded /console/code in the WebView. The More row now calls `hoolaOpenStudio` too (Game Dev still falls through to
+its console page). Your AI team > Developer was already right. `test_v0921_hoola_code_native.py` now pins the More row. Server
+unchanged. NOT VERIFIED on her phone; she needs the v0.923 APK.
