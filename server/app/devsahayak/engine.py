@@ -443,7 +443,11 @@ Rules that never bend:
 - Every bash command runs in a fresh box (nothing you start keeps running) and git there is read-only: Hoola
   records your changes itself, so never commit, stash or reset in bash.
 - Before each set of tool calls, write one or two short sentences to her: what you found and what you will do next
-  (e.g. "The crash comes from the new permission check. Adding it now."). No lists, no headings there.
+  (e.g. "The crash comes from **the new permission check**. Adding it now."). At most 40 words, no lists, no headings,
+  and put the one thing that matters most (the cause, the file, the result) in **bold**. Never repeat or restate
+  what you already told her, and never retell her request.
+- Your final answer: one short line with the result first, then at most five short points. Bold only what she must
+  notice or decide.
 - Give every bash call a short plain description of what it is for; she sees that line, not the command.
 - A vague request gets ONE clear question (done with the question in explain ending in '?'), and no edits.
 - Her rules for this repo and the repo's own AGENTS.md / CLAUDE.md / CONTRIBUTING come before your habits.
@@ -1039,6 +1043,40 @@ def _ing(words: str) -> str:
     return f"{g} {rest}".strip()
 
 
+_LISTY = re.compile(r"\n\s*(?:[-*\u2022] |\d+[.)] |#)|```")
+_SENT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9*`\"'(])")
+
+
+def short_say(text: str, sentences: int = 3, words: int = 60) -> str:
+    """v0.937 Hoola's words between steps, Claude Code's way: two or three short lines, never a wall. Cut only at the
+    end of a sentence, as a prefix of what was written (so the phone's live words and the saved step agree)."""
+    text = (text or "").strip()
+    m = _LISTY.search(text)
+    if m and text[:m.start()].strip():
+        text = text[:m.start()].strip()                     # a list or code between steps: only the words before it
+    parts = _SENT.split(text)
+    out, n = "", 0
+    for i, p in enumerate(parts[:sentences]):
+        w = len(p.split())
+        if i and n + w > words:
+            break
+        out = p if not out else out + " " + p
+        n += w
+    return text[:len(out)].rstrip() if text.startswith(out) else out
+
+
+def said_before(text: str, recent: list[str]) -> bool:
+    """v0.937 the same paragraph twice (Qwen restating what it just said) is shown once."""
+    words = set(re.findall(r"[a-z0-9_.]+", text.lower()))
+    if len(words) < 6:
+        return False
+    for old in recent[-4:]:
+        prev = set(re.findall(r"[a-z0-9_.]+", old.lower()))
+        if prev and len(words & prev) / len(words) >= 0.7:
+            return True
+    return False
+
+
 def now_words(name: str, inp: dict[str, Any]) -> str:
     """The step running right now, as her working line says it."""
     inp = inp if isinstance(inp, dict) else {}
@@ -1382,6 +1420,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     t0, steps, nudged, finish = time.time(), 0, 0, None
     last_text, cut_in_row = "", 0                         # v0.932 her answer is never thrown away
     explain_ask = getattr(t, "kind", "") == "explain"
+    recent: list[str] = []                                  # v0.937 what Hoola already told her this round
     while steps < max_steps and time.time() - t0 < minutes * 60:
         if stopped and stopped():
             ses.save_messages(msgs)
@@ -1399,7 +1438,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 log.warning("hoola code compaction failed for %s: %s", getattr(t, "id", ""), e)
                 B.trim(msgs, compact_at // 2)
         tid = getattr(t, "id", "")
-        B.TEXT_SINK.fn = (lambda txt, _tid=tid: LIVE_TEXT.__setitem__(_tid, txt)) if tid else None   # v0.935 her phone reads the words as they come
+        B.TEXT_SINK.fn = (lambda txt, _tid=tid: LIVE_TEXT.__setitem__(_tid, short_say(txt))) if tid else None   # v0.935 her phone reads the words as they come; v0.937 never past 3 lines while it writes
         try:
             blocks, stop = B.call(system, msgs, round_tools)
         finally:
@@ -1409,7 +1448,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             if b.get("type") == "thinking" and str(b.get("thinking") or "").strip():
                 emit({"k": "think", "text": scrub(str(b["thinking"]).strip())[:1500]})    # Phase 5: shown in the Thinking view only
             if b.get("type") == "text" and str(b.get("text") or "").strip():
-                emit({"k": "say", "text": str(b["text"]).strip()[:20000]})    # v0.935 kept whole (was cut at 800)
+                txt = str(b["text"]).strip()[:20000]                         # v0.935 kept whole (was cut at 800)
+                if stop == "tool_use":
+                    txt = short_say(txt)                                      # v0.937 words between steps: 2-3 lines
+                if not said_before(txt, recent):                              # v0.937 the same paragraph never twice
+                    emit({"k": "say", "text": txt})
+                    recent.append(txt)
         LIVE_TEXT.pop(tid, None)                          # its words are a step now: the live copy goes
         said = "\n\n".join(str(b.get("text") or "").strip() for b in blocks
                              if b.get("type") == "text" and str(b.get("text") or "").strip())

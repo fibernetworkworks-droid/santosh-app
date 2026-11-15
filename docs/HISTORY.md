@@ -5326,3 +5326,40 @@ Phone (`lib/ui/code/code_session.dart`, `code_words.dart`, `code_kit.dart`, `cod
 Tests: `test_v0936_hoola_code_claude_feed.py`; pins in v0926 / v0928 / v0935 moved to the new code.
 NOT VERIFIED on her phone (CI compiles the Dart first). Qwen may not always write the short sentences or descriptions;
 the fallback words cover commands.
+
+
+## v0.937.0 HOOLA CODE STEADY - the screen stops flipping, words land slowly, the Hoola mark (owner, her screen recording of a Hoola Code session)
+
+Her five points from the video, each with what was found:
+
+1. "WHEN HOOLA CODE GIVE FEED ENTIRE CHAT SECTION VIBRATE" + 5. "PLAN CARD ... HTML CREATION PREVIEW CARD ... COMMING AND GOING"
+   - ROOT CAUSE (one, for both): her session sat in `ci_running` ("CI running · PR #22 · No CI on this repo"). The worker runs
+     `devsahayak.service.tick()` on every worker tick (`worker_tick_seconds` 2 s + the other slots), and the CI loop in it had
+     NO throttle (its docstring said "every minute"): each tick started `_ci_bg`, which put the session in `_RUNNING` for
+     the GitHub look. The task view's `running` flipped true / false every 1-3 s, so the phone swapped the typing box with
+     "This session is finished · New session", the PR card and the "Thinking" row in and out, and the list height changed
+     under her finger. The deploy log proved one server process (pm2 fork, one `santosh`), so it was not a worker split.
+   - Fix: `service._ci_due(tid)` = one CI look per session a minute (`dev_ci_poll_s`, default 60); `_QUIET` = in
+     `_RUNNING` for a CI look only, so the view's `running` (and `service.running`) stay false; `_ci_step` takes the session
+     out of `_QUIET` before every branch that starts real work (a fix round, the own review, the proof step), so a real
+     fix round still shows as working. It also stops ~30 GitHub calls a minute per waiting session.
+   - Phone, defensive: the page keeps its working look for 3 s across a check that says "not running" with the same
+     status (`_runSeen` / `_runCarry`); only new STEPS move the page (the growing live words no longer start an animated
+     scroll every second that fought the per-word jump); landing never jumps against a scroll already moving
+     (`isScrollingNotifier`); the list's bottom room no longer changes when she scrolls up; one keyed working row.
+2. "REPLY TEXT LANDING ... VERY FAST AND INSTANT"
+   - `CodeLanding` 34 ms -> 52 ms a word (~19 a second; catch-up 26 ms only past 160 waiting words), and the newest four
+     words fade in step by step (`HoolaMd fade`: .82 / .62 / .42 / .22 ink, faintest last; off for the Hoola chat).
+   - A closing answer (`explain`) that arrives while she watches now lands instead of appearing at once.
+3. "BEFORE THINKING THERE SHOULD BE THE EXISTING HOOLA ANIMATE ICON": the working row starts with the turning `HoolaMark`
+   (size 22, still under reduce motion), like the Hoola chat's working row; its words cross-fade when the step changes.
+4. "FEED ... VERY LARGE AND IMPROPERLY ALINED ... 2 TO 3 LINER ... NOT UNWANTED FEED": her session showed long paragraphs
+   between steps and the same paragraph two or three times (Qwen restating). `engine.short_say` = words between steps
+   (an answer that also calls tools) cut at a sentence end to 3 sentences / 60 words, a list or code block cut to the
+   words before it, applied to the live words too (`LIVE_TEXT` via the stream sink) so the phone never shows more than
+   the saved step; `engine.said_before` drops a paragraph whose words are 70 % the same as one of the last four this
+   round. The rules: at most 40 words, the one thing that matters in **bold**, never repeat, never retell her request;
+   the final answer result first, at most five short points.
+
+Tests: NEW `test_v0937_hoola_code_steady.py` (5); pins moved in test_v0935 / v0936 / v0928 / v0475; version 0.937.0
+(pubspec 0.937.0+936). NOT VERIFIED on her phone (CI compiles the Dart).

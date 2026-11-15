@@ -86,7 +86,7 @@ def test_only_the_engines_main_call_streams_and_its_words_are_shown_while_it_run
         EN.LIVE_TEXT.pop("tid1", None)
     src = (ROOT / "server/app/devsahayak/engine.py").read_text()
     assert "B.TEXT_SINK.fn = None" in src and "LIVE_TEXT.pop(tid, None)" in src and "LIVE_TEXT.pop(t.id, None)" in src
-    assert '"text": str(b["text"]).strip()[:20000]' in src   # Hoola's words kept whole (were cut at 800)
+    assert 'txt = str(b["text"]).strip()[:20000]' in src   # Hoola's words kept whole (were cut at 800)
 
 
 def test_the_phone_draws_the_feed_like_the_hoola_chat():
@@ -97,11 +97,11 @@ def test_the_phone_draws_the_feed_like_the_hoola_chat():
     assert "if (running && live.isEmpty && !drewRunning) out.add(_runningRow(c, t, const []));" in ses   # v0.936 the working line
     assert "if (live.isNotEmpty) out.add(_land(live, sayN, done: false));" in ses
     assert "final every = live ? 1 : 10;" in ses             # every second while it works
-    assert "class CodeLanding" in words and "(waiting > 80 ? 17 : 34)" in words
+    assert "class CodeLanding" in words and "(waiting > 160 ? 26 : 52)" in words   # v0.937 slower, each word fading in
     assert "class CodeShimmer" in words and "HoolaMotion.reduced(context)" in words
 
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.936.0"' in main
-    assert "version: 0.936.0+935" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.937.0"' in main
+    assert "version: 0.937.0+936" in (ROOT / "pubspec.yaml").read_text()

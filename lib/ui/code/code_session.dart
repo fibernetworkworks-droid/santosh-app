@@ -48,6 +48,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   int _pollEvery = 0;                 // v0.935 1 s while it works, 10 s when it is quiet
   bool _loading = false;
   int _firstSays = -1;                // Hoola's messages already there when the page opened show at once
+  bool _explainAtOpen = false;        // v0.937 a closing answer that arrives while she watches lands like the rest
+  DateTime? _runSeen;                 // v0.937 the last check that said it works (a one-check gap never blinks the page)
+  Map<String, dynamic> _runCarry = const {};
   final Map<int, int> _landed = {};   // v0.935 how many words of each new message have landed
   final _msg = TextEditingController();
   final _focus = FocusNode();
@@ -90,12 +93,22 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     if (api == null || _loading) return;
     _loading = true;
     try {
-      final t = cm(await api.call('GET', _base));
+      var t = cm(await api.call('GET', _base));
       if (!mounted) return;
+      // v0.937 a round ends and the next part starts (a CI look, the PR step) with a check or two between: the page
+      // keeps its working look for 3 s instead of flashing "finished" and back
+      if (codeRunning(t)) {
+        _runSeen = DateTime.now();
+        _runCarry = {'live': t['live'], 'now': t['now'], 'status': t['status']};
+      } else if (_runSeen != null && DateTime.now().difference(_runSeen!) < const Duration(seconds: 3) &&
+          cs(_runCarry['status']) == cs(t['status']) && cs(t['question']).isEmpty) {
+        t = {...t, 'running': true, 'live': _runCarry['live'], 'now': _runCarry['now']};
+      }
       final steps = cl(t['steps']);
-      final n = steps.length + cs(t['live']).length;
+      final n = steps.length;                 // v0.937 only new steps move the page; growing words follow on their own
       final first = _seen < 0;
       if (first) {
+        _explainAtOpen = cs(t['explain']).isNotEmpty;
         _firstSays = steps.where((s) => cs(s['k']) == 'say').length;
         final writing = cs(t['live']);
         if (writing.isNotEmpty) _landed[_firstSays] = _words(writing).length;   // opened mid-sentence: carry on from here
@@ -137,7 +150,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   /// A landing message said how far it got: follow it to the end unless she scrolled up.
   void _landedTo(int i, int words) {
     _landed[i] = words;
-    if (!_away) _toEnd(animate: false);
+    // v0.937 pinned to the end while words land - but never against a scroll already moving (that fight shook the page)
+    if (!_away && !(_scroll.hasClients && _scroll.position.isScrollingNotifier.value)) _toEnd(animate: false);
   }
 
   /// A merge card she asked for earlier and has not answered is offered again.
@@ -366,7 +380,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                     onRefresh: _load,
                     color: c.ink,
                     child: Stack(fit: StackFit.expand, children: [
-                      ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || _away ? 76 : 24), children: _body(c, t)),
+                      ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 ? 76 : 24), children: _body(c, t)),
                       if (_away || a + r > 0)
                         Positioned(
                           bottom: 12,
@@ -452,7 +466,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       if (cs(n).isNotEmpty) out.add(Padding(padding: const EdgeInsets.only(top: 10), child: Text('Queued for its next step: ${cs(n)}', style: codeSans(c, size: 13, color: c.ink3))));
     }
     if (!running) {
-      if (!said && cs(t['explain']).isNotEmpty) out.add(_reply(cs(t['explain']), 'explain', actions: true));
+      if (!said && cs(t['explain']).isNotEmpty) {
+        final ex = cs(t['explain']);
+        out.add(!_explainAtOpen && _firstSays >= 0 && (_landed[_explainKey] ?? 0) < _words(ex).length
+            ? _land(ex, _explainKey, done: true, actions: true)     // v0.937 it lands, it does not appear at once
+            : _reply(ex, 'explain', actions: true));
+      }
       if (st == 'plan_wait' && cm(t['plan']).isNotEmpty) out.add(_plan(c, t));
       if (cs(t['question']).isNotEmpty) out.addAll(_question(c, t));
       if ((st == 'failed' || st == 'refused') && cs(t['error']).isNotEmpty) {
@@ -470,6 +489,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     if (running && live.isEmpty && !drewRunning) out.add(_runningRow(c, t, const []));
     return out;
   }
+
+  static const _explainKey = 1 << 20;
 
   /// v0.935 a new message of Hoola's landing word by word (done = the whole message is here; else it is still being
   /// written and more words come with the next check).
@@ -503,6 +524,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                 : _nowWords(steps.last);
     final secs = DateTime.now().difference(codeTime(cs(t['run_at']).isEmpty ? cs(t['at']) : cs(t['run_at'])) ?? DateTime.now()).inSeconds;
     return Padding(
+      key: const ValueKey('working'),       // v0.937 one working row that keeps its turning mark between checks
       padding: const EdgeInsets.only(top: 6),
       child: Semantics(
         liveRegion: true,
@@ -515,9 +537,15 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
           child: Container(
             constraints: const BoxConstraints(minHeight: 44),
             child: Row(children: [
-              Text('>_', style: codeMono(c, size: 15, color: c.ink3)),
+              const HoolaMark(size: 22),   // v0.937 the Hoola mark, turning, like the Hoola chat's working row
               const SizedBox(width: 10),
-              Expanded(child: CodeShimmer(label, style: codeSans(c, size: 16, color: c.ink2))),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: HoolaMotion.of(context, HoolaMotion.fade),
+                  layoutBuilder: (cur, prev) => Stack(alignment: Alignment.centerLeft, children: [...prev, if (cur != null) cur]),
+                  child: CodeShimmer(label, key: ValueKey(label), style: codeSans(c, size: 16, color: c.ink2)),
+                ),
+              ),
               const SizedBox(width: 8),
               Text(codeClock(secs), style: codeMono(c, size: 12, color: c.ink3)),
             ]),

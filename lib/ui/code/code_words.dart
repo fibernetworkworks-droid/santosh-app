@@ -111,7 +111,7 @@ class CodeReply extends StatelessWidget {
               ? null
               : () => codeMessageMenu(context, app, text,
                   mine: false, onQuote: onQuote == null ? null : () => onQuote!(plain), onSelect: onSelect),
-          child: HoolaMd(text, streaming: streaming, selectable: selecting, sans: true),
+          child: HoolaMd(text, streaming: streaming, selectable: selecting, sans: true, fade: true),
         ),
         if (actions)
           Padding(
@@ -227,7 +227,7 @@ class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStat
       _ticker.stop();
       return;
     }
-    _carry += dt.inMicroseconds / 1000 / (waiting > 80 ? 17 : 34);
+    _carry += dt.inMicroseconds / 1000 / (waiting > 160 ? 26 : 52);   // v0.937 ~19 words a second, each fading in
     final step = _carry.floor();
     if (step <= 0) return;
     _carry -= step;

@@ -13,7 +13,7 @@ import '../hoola_theme.dart';
 import '../md_text.dart';
 
 class HoolaMd extends StatelessWidget {
-  const HoolaMd(this.text, {super.key, this.streaming = false, this.selectable = false, this.compact = false, this.sans = false});
+  const HoolaMd(this.text, {super.key, this.streaming = false, this.selectable = false, this.compact = false, this.sans = false, this.fade = false});
   final String text;
   final bool streaming;
   final bool selectable;
@@ -23,6 +23,12 @@ class HoolaMd extends StatelessWidget {
 
   /// v0.936 the app's sans at 17 / 1.55 instead of the reply serif (Hoola Code, like Claude Code's own words).
   final bool sans;
+
+  /// v0.937 Hoola Code: the newest four words of a streaming block fade in step by step (faintest last), so each word
+  /// rises out of the page as it lands instead of appearing at full ink.
+  final bool fade;
+  static final _fadeTail = RegExp(r'(\S+\s+){0,3}\S*\s*$');
+  static const _fadeSteps = [.82, .62, .42, .22];
 
   /// The last few plain words of a streaming block, drawn lighter. Only when they hold no mark of their own.
   static final _tail = RegExp(r'(\S+\s+){0,2}\S*\s*$');
@@ -43,7 +49,7 @@ class HoolaMd extends StatelessWidget {
         .copyWith(backgroundColor: c.ink.withOpacity(c.dark ? .09 : .05), color: c.codeTerm);
     List<InlineSpan> inline(String s, {bool live = false}) {
       if (!live) return mdInline(s, link: c.accent, codeStyle: code);
-      final m = _tail.firstMatch(s);
+      final m = (fade ? _fadeTail : _tail).firstMatch(s);
       final tail = m?.group(0) ?? '';
       if (tail.trim().isEmpty || tail.length >= s.length || _marks.any(tail.contains)) {
         return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
@@ -53,6 +59,14 @@ class HoolaMd extends StatelessWidget {
       final opens =
           '**'.allMatches(head).length.isOdd || '`'.allMatches(head).length.isOdd || '~~'.allMatches(head).length.isOdd;
       if (opens) return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
+      if (fade) {
+        final words = RegExp(r'\S+\s*').allMatches(tail).map((x) => x.group(0)!).toList();
+        return [
+          ...mdInline(head, streaming: true, link: c.accent, codeStyle: code),
+          for (var i = 0; i < words.length; i++)
+            TextSpan(text: words[i], style: TextStyle(color: c.ink.withOpacity(_fadeSteps[words.length - 1 - i > 3 ? 3 : words.length - 1 - i]))),
+        ];
+      }
       return [
         ...mdInline(head, streaming: true, link: c.accent, codeStyle: code),
         TextSpan(text: tail, style: TextStyle(color: c.ink.withOpacity(.42))),

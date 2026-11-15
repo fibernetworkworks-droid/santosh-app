@@ -696,7 +696,7 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "tier": t.tier or "", "plan": _j(t.plan or "", {}),
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
          "proof": _j(t.proof or "", {}),
-         "running": t.id in _RUNNING, "stopping": t.id in _STOP,
+         "running": t.id in _RUNNING and t.id not in _QUIET, "stopping": t.id in _STOP,
          "env": _env_label(t),
          # v0.927 times carry their zone: SQLite hands created_at back without one, and a phone in India read the
          # bare time as local - every working clock started at 5:30:00
@@ -1422,6 +1422,8 @@ def _progress(tid: str, line: str) -> None:
 
 # ---------------------------------------------------------------- v0.748 HOOLA CODE: the console's live session
 _RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
+_QUIET: set[str] = set()        # v0.937 in _RUNNING only for a quick CI look: not "working" on her screen
+_CI_AT: dict[str, float] = {}   # v0.937 when each session's CI was last looked at (once a minute, not every worker tick)
 _RUN_AT: dict[str, str] = {}    # v0.927 when the running round started (the phone + console clock counts from it)
 _BEAT: dict[str, float] = {}    # when each running session last wrote its heartbeat (this process)
 _STOP: set[str] = set()         # her Stop: the loop ends at its next step
@@ -1517,7 +1519,7 @@ def stop(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def running(tid: str) -> bool:
-    return tid in _RUNNING
+    return tid in _RUNNING and tid not in _QUIET
 
 
 def drop_note(tenant: str, ref: str, index: int) -> dict[str, Any]:
@@ -3269,9 +3271,11 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
     rounds = int(t.ci_round or 0)
     g = gh(tenant)
     if (_j(t.proof or "", {}) or {}).get("state") == "wait":    # v0.447 her CI is running the test-only commit
+        _QUIET.discard(tid)
         return _proof_step(tenant, t, g, ci, state, waited)
     if state == "success":
         tail = f" ({rounds} fix round ke baad)" if rounds else ""
+        _QUIET.discard(tid)
         return _ready_or_self_review(tenant, t, g, f"{t.number}: aapka CI PASS{tail}. PR #{t.pr_number} review ke liye "
                                                    "taiyaar hai. Merge sirf aapke tap se." + say_tail)
     if state == "failure" and t.auto_fix is False:
@@ -3302,19 +3306,23 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
             s.expunge(row)
         fails = ci.get("failures") or []
         log_txt = "\n".join(f"[{f.get('name')}] {f.get('text')}" for f in fails)[:12000]
+        _QUIET.discard(tid)
         return _round(tenant, row, f"<ci_log>\n{log_txt}\n</ci_log>\nHer CI FAILED on this draft PR branch (round "
                                    f"{rounds + 1}). Explore, find the real cause and fix it (fix the code, not the test - "
                                    "unless the test is wrong: then say why in risk).", "")
     sr0 = _j(t.self_review or "", {}) or {}
     if state in ("none", None, "") and "has_ci" in sr0 and not sr0.get("has_ci"):
         # v0.445 no CI in this repo at all: no point waiting 15 minutes, the own review is the only check there is
+        _QUIET.discard(tid)
         return _ready_or_self_review(tenant, t, g, f"{t.number}: is repo mein CI nahi hai, isliye test nahi chale - PR "
                                                    f"#{t.pr_number} review ke liye taiyaar hai, dhyaan se dekhiye. Merge sirf aapke tap se." + say_tail)
     if state in ("none", None, "") and waited >= float(_setting("dev_ci_wait_min", 15)):
+        _QUIET.discard(tid)
         return _ready_or_self_review(tenant, t, g, f"{t.number}: is PR par {int(waited)} minute mein koi CI nahi chala, "
                                                    f"isliye test nahi chale - PR #{t.pr_number} review ke liye taiyaar hai, "
                                                    "dhyaan se dekhiye." + say_tail)
     if state == "pending" and waited >= float(_setting("dev_ci_max_min", 45)):
+        _QUIET.discard(tid)
         return _ready_or_self_review(tenant, t, g, f"{t.number}: CI {int(waited)} minute se chal raha hai; PR "
                                                    f"#{t.pr_number} review ke liye taiyaar kar diya - CI ka nateeja aate hi "
                                                    "bataunga." + say_tail)
@@ -3405,6 +3413,7 @@ def _ci_bg(tenant: str, tid: str, at: datetime) -> Any:
     the same session. Here the session is in _RUNNING while the step works, so Stop reaches it and no minute doubles it."""
     import threading
     _RUNNING.add(tid)
+    _QUIET.add(tid)                             # v0.937 a CI look is quiet; a fix round below says it is working
     _STOP.discard(tid)
 
     def go() -> None:
@@ -3423,12 +3432,22 @@ def _ci_bg(tenant: str, tid: str, at: datetime) -> Any:
         finally:
             _add_cost(tid, acc)
             _RUNNING.discard(tid)
+            _QUIET.discard(tid)
             _STOP.discard(tid)
             _BEAT.pop(tid, None)
 
     th = threading.Thread(target=go, name=f"dev-ci-{tid}", daemon=True)
     th.start()
     return th
+
+
+def _ci_due(tid: str) -> bool:
+    """v0.937 one CI look per session a minute (dev_ci_poll_s). The worker runs tick() every ~2 s."""
+    import time as _t
+    if _t.time() - _CI_AT.get(tid, 0.0) < float(_setting("dev_ci_poll_s", 60)):
+        return False
+    _CI_AT[tid] = _t.time()
+    return True
 
 
 def tick(at: datetime | None = None) -> None:
@@ -3458,6 +3477,8 @@ def tick(at: datetime | None = None) -> None:
     ci_threads: list[Any] = []
     for tenant, tid in looping:                 # v0.351 the CI loop: every minute while her CI runs on the draft PR
         if tid in _RUNNING:                     # v0.878 a fix round from an earlier minute is still working: never a second one
+            continue
+        if not _ci_due(tid):                    # v0.937 the worker ticks every ~2 s: a look every tick flipped her screen
             continue
         ci_threads.append(_ci_bg(tenant, tid, at))
     import time as _time

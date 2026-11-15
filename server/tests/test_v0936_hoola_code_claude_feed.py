@@ -62,9 +62,9 @@ def test_the_phone_draws_claude_codes_feed():
     # each part = one faint line that opens the steps sheet
     assert "Widget _group(HoolaColors c, List<Map<String, dynamic>> g)" in ses and "onTap: () => _openSteps(label, g)" in ses
     assert "'ran ${cPlural(n({'bash'}), 'command')}'" in ses
-    # the running line: >_ and her words, never the command
+    # the running line: the Hoola mark (v0.937, was >_) and her words, never the command
     run = ses[ses.index("Widget _runningRow("):ses.index("Widget _changesPill(")]
-    assert "'>_'" in run and "cs(t['now'])" in run and "cmd" not in run
+    assert "HoolaMark(" in run and "cs(t['now'])" in run and "cmd" not in run
     # the sheet: X + title, "Ran" + plain words, the command only under the arrow
     sheet = words[words.index("class CodeStepsSheet"):]
     assert "'Ran', _s(s['desc'])" in sheet and "Icons.close_rounded" in sheet
@@ -79,5 +79,5 @@ def test_the_phone_draws_claude_codes_feed():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.936.0"' in main
-    assert "version: 0.936.0+935" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.937.0"' in main
+    assert "version: 0.937.0+936" in (ROOT / "pubspec.yaml").read_text()
