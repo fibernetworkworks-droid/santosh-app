@@ -5018,3 +5018,26 @@ the studio tiles: it is a row in the "More" list (`hoolaMoreTools`, with Game De
 so the tap still loaded /console/code in the WebView. The More row now calls `hoolaOpenStudio` too (Game Dev still falls through to
 its console page). Your AI team > Developer was already right. `test_v0921_hoola_code_native.py` now pins the More row. Server
 unchanged. NOT VERIFIED on her phone; she needs the v0.923 APK.
+
+## v0.924.0 HOOLA CODE FIRST SCREEN (owner, on her Claude Code New session screenshot: "CHECK THE CLAUDE CODE 1ST SCREEN ... WE WANT SAME ... FOR HOOLA CODE WHEN ITS OWN HOOLA CODE CHAT SESSION ... AND BAR ... SHOW ME PERFECT PREMIUM DESIGN" -> design canvas claude.ai/artifact/Au9zBc5gmkVsNLwVc41rCM (7 screens) -> "GO")
+
+- NEW `lib/ui/code/code_start.dart`:
+  - `CodeNewSessionPage` (opened by `showCodeNewSession`, pops with the new session's id): top bar back + "New session";
+    centre the animated Hoola mark (`HoolaMark(size: 58)`) + "Ready when you are" (Literata 30); while she talks the
+    centre shows her live words; "Connect GitHub first" when no token.
+  - chips above the bar: environment (`CodeBarChip`, Auto + her environments from GET /api/devsahayak/envs, network /
+    variables / setup line, New environment opens the existing `DevEnvPage`, network-not-on and keys-outside-the-box
+    notes) and repository (GitHub mark drawn from its path via `svgPath`, Add repository sheet: search over 4+, her
+    repos with owner / private / language, Branch to work from via /branches, "Give Hoola more repositories" opens
+    Repos & GitHub, "Use <repo>").
+  - `CodeBar`: + (sheet: pictures, text file, how it works, model), the field, the mic (tap = dictate, hold = talk with a
+    violet listening pill, clock and a sound-level wave, slide left 70 px = cancel and her words come back, let go =
+    send; a let-go before the mic is ready never leaves it on), the round send (ink pill with words, grey without) or
+    Stop (while Hoola works and the field is empty). Reduce motion = still wave, no ring.
+  - tasks/start body gains `env` (her pick; server already took it since v0.878).
+- `code_home.dart`: the in-page composer is gone; home = list + a docked New session button; the quick chips open the
+  New session screen prefilled. `CodeDraft` + `codeModes` stay there.
+- `code_session.dart`: the typing box is `CodeBar` (+ = the session menu); an environment chip above it changes the
+  session's environment (PUT /tasks/{id}/env, from the next round); the working row shows the spinning Hoola mark.
+- Tests: NEW `test_v0924_hoola_code_first_screen.py`; `test_v0921` covers code_start.dart and the two env routes.
+- NOT VERIFIED: no Flutter here - CI compiles the Dart first; not seen on her phone.

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.923.0"   # v0.923.0 HOOLA CODE DOOR (owner, after the v0.922 deploy: "APP SHOWING OLD WEB INTERFACE"): Tools > More > Hoola Code still opened the console web page - v0.922 rewired only the studio tiles, and Hoola Code lives in the More list, whose row called the web page directly; the More row now goes through the same opener, so Hoola Code opens the native phone screen; server unchanged; 1 server. Previous: v0.922.0 HOOLA CODE NATIVE.
+APP_VERSION = "0.924.0"   # v0.924.0 HOOLA CODE FIRST SCREEN (owner, on her Claude Code New session screenshot: "WE WANT SAME ... FOR HOOLA CODE ... AND BAR" -> design canvas claude.ai/artifact/Au9zBc5gmkVsNLwVc41rCM -> "GO"): a Hoola Code session now starts on its own New session screen (lib/ui/code/code_start.dart: back + New session, the Hoola mark + "Ready when you are", an environment chip and an Add repository chip with branch, one pill bar: +, Type or hold to talk, mic - tap to dictate, hold to talk, slide left to cancel, let go to send - and a round send that stays grey until there are words), the same bar inside every session (Stop while Hoola works, an environment chip that changes the session environment); tasks/start now sends env; home keeps the list + a New session button; server unchanged; 1 server. Previous: v0.923.0 HOOLA CODE DOOR.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

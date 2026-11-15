@@ -6,14 +6,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CODE = ROOT / "lib/ui/code"
-FILES = {n: (CODE / f"code_{n}.dart").read_text() for n in ("kit", "home", "session", "changes", "more")}
+FILES = {n: (CODE / f"code_{n}.dart").read_text() for n in ("kit", "home", "session", "changes", "more", "start")}
 ALL = "\n".join(FILES.values())
 API = (ROOT / "server/app/devsahayak/api.py").read_text()
 
 
 def test_the_ten_screens_exist():
     assert "class HoolaCode extends StatefulWidget" in FILES["home"]            # 1 home
-    assert "class CodeComposer" in FILES["home"] and "showCodeNewSession" in FILES["home"]  # 7 new session
+    assert "class CodeNewSessionPage" in FILES["start"] and "showCodeNewSession" in FILES["start"]  # 7 new session (v0.924)
     assert "class CodeSessionPage extends StatefulWidget" in FILES["session"]   # 2 / 3 / 4 / 6 session, plan, question, PR
     assert "class CodeChangesPage extends StatefulWidget" in FILES["changes"]   # 5 changes + comments
     for c in ("class CodePrsPage", "class CodeScheduledPage", "class CodeSettingsPage"):  # 8 / 9 / 10
@@ -37,6 +37,7 @@ CALLS = [
     ("/schedules/{x}", "/api/devsahayak/schedules/${"), ("/schedules/{x}/run", "/run'"), ("/settings", "/api/devsahayak/settings'"),
     ("/token", "/api/devsahayak/token'"), ("/repos", "/api/devsahayak/repos'"), ("/repos/{x}/{x}", "/api/devsahayak/repos/${full.split"),
     ("/github_repos", "/api/devsahayak/github_repos'"), ("/memory", "/api/devsahayak/memory'"),
+    ("/envs", "/api/devsahayak/envs'"), ("/tasks/{x}/env", "$_base/env'"),
 ]
 
 
@@ -85,5 +86,5 @@ def test_design_rules():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.923.0"' in main and "v0.922.0 HOOLA CODE NATIVE" in main
-    assert "version: 0.923.0+922" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.924.0"' in main and "HOOLA CODE" in main
+    assert "version: 0.924.0+923" in (ROOT / "pubspec.yaml").read_text()

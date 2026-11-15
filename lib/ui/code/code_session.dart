@@ -8,10 +8,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../state.dart';
+import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import 'code_changes.dart';
 import 'code_home.dart';
 import 'code_kit.dart';
+import 'code_start.dart';
 
 /// Her comments on lines of a change, kept per session until they go with her next message.
 class CodeComments {
@@ -887,8 +889,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 2, 6, 8),
             child: Row(children: [
-              const CodeMark(size: 18),
-              const SizedBox(width: 8),
+              const HoolaMark(size: 20),
+              const SizedBox(width: 9),
               Expanded(child: Text(stopping ? 'Stopping after this step' : now, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 13.5, color: c.ink2))),
               Text(codeClock(secs), style: codeMono(c, size: 12, color: c.ink3)),
             ]),
@@ -909,40 +911,63 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                   })),
             ),
           ),
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
-          decoration: BoxDecoration(
-            color: c.surface,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: c.line.withOpacity(.8)),
-            boxShadow: c.dark ? null : [BoxShadow(color: c.shadow.withOpacity(.16), blurRadius: 24, spreadRadius: -16, offset: const Offset(0, 8))],
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-              child: TextField(
-                controller: _msg,
-                focusNode: _focus,
-                minLines: 1,
-                maxLines: 5,
-                maxLength: 4000,
-                onChanged: (_) => setState(() {}),
-                style: codeSans(c, size: 15.5, height: 1.4),
-                decoration: InputDecoration(
-                  hintText: hints[mode],
-                  hintStyle: codeSans(c, size: 15.5, color: c.ink3),
-                  border: InputBorder.none,
-                  counterText: '',
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
+          child: Row(children: [
+            CodeBarChip(
+              icon: Icon(_envName(t) == 'Auto' ? Icons.auto_mode_rounded : Icons.cloud_outlined, size: 17, color: c.ink2),
+              label: _envName(t),
+              semantics: 'Environment: ${_envName(t)}',
+              onTap: () => _pickEnv(t),
             ),
-            if (_msg.text.trim().isNotEmpty || comments > 0 || mode == 'plan' || !running)
-              _round(c, Icons.arrow_upward_rounded, mode == 'plan' && _msg.text.trim().isEmpty ? 'Yes, start' : 'Send', _busy ? null : () => _send()),
-            if (running) _round(c, null, stopping ? 'Stopping' : 'Stop', (_busy || stopping) ? null : () => _run('POST', '$_base/stop')),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(running ? 'Your notes reach Hoola between steps' : 'Changes go on the same branch',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 13, color: c.ink3)),
+            ),
           ]),
+        ),
+        CodeBar(
+          app: widget.app,
+          controller: _msg,
+          focus: _focus,
+          hint: hints[mode] ?? 'Reply to Hoola',
+          maxLength: 4000,
+          onPlus: _more,
+          plusLabel: 'Session menu',
+          canSendEmpty: comments > 0 || mode == 'plan',
+          sendLabel: mode == 'plan' && _msg.text.trim().isEmpty ? 'Yes, start' : 'Send',
+          onSend: _busy ? null : () => _send(),
+          onStop: running ? () => _run('POST', '$_base/stop') : null,
+          stopLabel: stopping ? 'Stopping' : 'Stop',
+          busy: _busy || stopping,
         ),
       ]),
     );
+  }
+
+  String _envName(Map<String, dynamic> t) {
+    final e = cm(t['env']);
+    final n = cs(e['name']);
+    return n.isEmpty ? 'Auto' : n;
+  }
+
+  /// The environment of this session; a change applies from the next round (PUT /tasks/{id}/env).
+  Future<void> _pickEnv(Map<String, dynamic> t) async {
+    final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak/envs', quiet: true);
+    if (!mounted) return;
+    final now = cs(cm(t['env'])['id']).isEmpty ? 'auto' : cs(cm(t['env'])['id']);
+    final envs = [for (final e in cl(r?['envs'])) if (e['archived'] != true) e];
+    final pick = await codeSheet<String>(context, widget.app,
+        title: 'Environment',
+        body: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              CodeChoiceRow(label: 'Auto', sub: 'Follows each repo\'s own settings', on: now == 'auto', onTap: () => Navigator.pop(ctx, 'auto')),
+              for (final e in envs)
+                CodeChoiceRow(label: cs(e['name']), sub: cs(cm(e['net'])['level']), on: cs(e['id']) == now, onTap: () => Navigator.pop(ctx, cs(e['id']))),
+              Text('A round already running keeps what it started with.', style: codeSans(HoolaColors.of(ctx), size: 13, color: HoolaColors.of(ctx).ink3)),
+            ]));
+    if (pick == null || pick == now || !mounted) return;
+    await _run('PUT', '$_base/env', {'env': pick});
   }
 
   String _nowWords(Map<String, dynamic> s) => switch (cs(s['k'])) {
@@ -956,27 +981,5 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         'pass' => 'Checking its own work',
         _ => 'Working',
       };
-
-  Widget _round(HoolaColors c, IconData? icon, String label, VoidCallback? onTap) => Semantics(
-        button: true,
-        label: label,
-        child: InkResponse(
-          onTap: onTap,
-          radius: 24,
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(color: onTap == null ? c.lineStrong : c.pill, shape: BoxShape.circle),
-                child: icon != null
-                    ? Icon(icon, size: 19, color: c.onPill)
-                    : Center(child: Container(width: 12, height: 12, decoration: BoxDecoration(color: c.onPill, borderRadius: BorderRadius.circular(2)))),
-              ),
-            ),
-          ),
-        ),
-      );
 }
+
