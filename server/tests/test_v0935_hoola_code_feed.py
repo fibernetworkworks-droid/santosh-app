@@ -94,15 +94,14 @@ def test_the_phone_draws_the_feed_like_the_hoola_chat():
     words = (ROOT / "lib/ui/code/code_words.dart").read_text()
     composer = ses[ses.index("Widget _composer("):ses.index("String _envName(")]
     assert "HoolaMark" not in composer                       # the working row is no longer pinned above the typing box
-    assert "if (running) out.add(_working(c, t, writing: live.isNotEmpty));" in ses
+    assert "if (running && live.isEmpty && !drewRunning) out.add(_runningRow(c, t, const []));" in ses   # v0.936 the working line
     assert "if (live.isNotEmpty) out.add(_land(live, sayN, done: false));" in ses
     assert "final every = live ? 1 : 10;" in ses             # every second while it works
     assert "class CodeLanding" in words and "(waiting > 80 ? 17 : 34)" in words
     assert "class CodeShimmer" in words and "HoolaMotion.reduced(context)" in words
-    assert "'Worked for ${codeLong(secs)}" in ses and "working\n            ? _sofar(g)" in ses
 
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.935.0"' in main
-    assert "version: 0.935.0+934" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.936.0"' in main
+    assert "version: 0.936.0+935" in (ROOT / "pubspec.yaml").read_text()

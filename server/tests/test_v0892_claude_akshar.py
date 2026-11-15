@@ -70,6 +70,6 @@ def test_phone_chat_font_setting():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.935.0"
-    assert "0.935.0+934" in (ROOT / "pubspec.yaml").read_text()
-    assert (CON / "v2.html").read_text().count("?v=0.935.0") == 35
+    assert APP_VERSION == "0.936.0"
+    assert "0.936.0+935" in (ROOT / "pubspec.yaml").read_text()
+    assert (CON / "v2.html").read_text().count("?v=0.936.0") == 35

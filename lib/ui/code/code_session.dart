@@ -41,7 +41,6 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   Map<String, dynamic>? _merge;
   String? _error;
   bool _busy = false, _thinking = false, _lookedForMerge = false;
-  final Set<int> _open = {};
   String? _selecting;                 // v0.928 the message whose text she is selecting
   bool _away = false;                 // she scrolled up: the Newest arrow shows and nothing pulls her down
   int _seen = -1;                     // how many steps were drawn last time (new ones follow her to the end)
@@ -345,28 +344,16 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       body: SafeArea(
         child: Column(children: [
           CodeTopBar(
+            centered: true,
+            line: false,
             title: t == null ? 'Hoola Code' : codeTitle(t),
-            sub: t == null ? '' : [cRepoShort(cs(t['repo'])), cs(t['branch'])].where((e) => e.isNotEmpty).join(' · '),
+            sub: t == null ? '' : [cRepoShort(cs(t['repo'])), _envName(t)].where((e) => e.isNotEmpty).join(' · '),
             actions: [
-              if (a + r > 0)
-                Semantics(
-                  button: true,
-                  label: 'Changes: $a lines added, $r removed',
-                  child: InkWell(
-                    onTap: _changes,
-                    borderRadius: BorderRadius.circular(18),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Container(
-                        height: 36,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.line)),
-                        child: Center(child: CodeStat(a, r)),
-                      ),
-                    ),
-                  ),
-                ),
-              CodeIconButton(icon: Icons.more_horiz_rounded, label: 'More', onTap: t == null ? null : _more),
+              if (t != null && codeRunning(t))
+                Semantics(label: 'Hoola is working', child: const SizedBox(width: 44, height: 44, child: Center(child: CodeRing(size: 20))))
+              else
+                const SizedBox(width: 44),
+              CodeIconButton(icon: Icons.more_vert_rounded, label: 'Session menu', onTap: t == null ? null : _more),
             ],
           ),
           Expanded(
@@ -379,9 +366,18 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                     onRefresh: _load,
                     color: c.ink,
                     child: Stack(fit: StackFit.expand, children: [
-                      ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), children: _body(c, t)),
-                      if (_away)
-                        Positioned(bottom: 12, left: 0, right: 0, child: Center(child: CodeNewestButton(onTap: () => _toEnd()))),
+                      ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || _away ? 76 : 24), children: _body(c, t)),
+                      if (_away || a + r > 0)
+                        Positioned(
+                          bottom: 12,
+                          left: 0,
+                          right: 0,
+                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            if (_away) CodeNewestButton(onTap: () => _toEnd()),
+                            if (_away && a + r > 0) const SizedBox(width: 10),
+                            if (a + r > 0) _changesPill(c, a, r),
+                          ]),
+                        ),
                       if (_selecting != null)
                         Positioned(
                           top: 8,
@@ -409,7 +405,6 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     if (live.isNotEmpty && cs(newestSay['text']).trim().startsWith(live)) live = '';   // already a step: drawn once
     // the steps between Hoola's words: the newest show as light rows while it works, the rest fold into one line
     final group = <Map<String, dynamic>>[];
-    var gi = 0;
     Map<String, dynamic>? todo;
     var said = false;
     var lastSay = -1;
@@ -418,11 +413,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     }
     var si = -1;
     var sayN = 0;
+    var drewRunning = false;
     void flush({required bool last}) {
       if (group.isEmpty) return;
-      final now = running && last;
-      out.add(_group(c, List.of(group), gi, inline: now && live.isEmpty, working: now));
-      gi++;
+      final now = running && last && live.isEmpty;
+      out.add(now ? _runningRow(c, t, List.of(group)) : _group(c, List.of(group)));
+      drewRunning = drewRunning || now;
       group.clear();
     }
 
@@ -471,7 +467,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       if (st == 'ready' && cs(t['hash']).isNotEmpty) out.add(_ready(c, t));
       if (ci(t['pr_number']) != 0) out.add(_pr(c, t));
     }
-    if (running) out.add(_working(c, t, writing: live.isNotEmpty));
+    if (running && live.isEmpty && !drewRunning) out.add(_runningRow(c, t, const []));
     return out;
   }
 
@@ -494,34 +490,67 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         ),
       );
 
-  /// v0.935 the working row at the end of the thread, like the Hoola chat: the mark, the real step in a soft moving
-  /// light, the clock.
-  Widget _working(HoolaColors c, Map<String, dynamic> t, {required bool writing}) {
+  /// v0.936 the step running now, Claude Code's way: >_ and what it is doing in her words (never the raw command) in a
+  /// soft moving light, the clock on the right; a tap opens the steps of this part.
+  Widget _runningRow(HoolaColors c, Map<String, dynamic> t, List<Map<String, dynamic>> g) {
     final steps = cl(t['steps']);
     final label = t['stopping'] == true
         ? 'Stopping after this step'
-        : writing
-            ? 'Writing'
+        : cs(t['now']).isNotEmpty
+            ? cs(t['now'])
             : steps.isEmpty
                 ? 'Starting'
                 : _nowWords(steps.last);
     final secs = DateTime.now().difference(codeTime(cs(t['run_at']).isEmpty ? cs(t['at']) : cs(t['run_at'])) ?? DateTime.now()).inSeconds;
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.only(top: 6),
       child: Semantics(
         liveRegion: true,
+        button: g.isNotEmpty,
         label: 'Hoola is working: $label',
         excludeSemantics: true,
-        child: Row(children: [
-          const HoolaMark(size: 22),
-          const SizedBox(width: 10),
-          Expanded(child: CodeShimmer(label, style: codeSans(c, size: 15, color: c.ink2))),
-          const SizedBox(width: 8),
-          Text(codeClock(secs), style: codeMono(c, size: 12, color: c.ink3)),
-        ]),
+        child: InkWell(
+          onTap: g.isEmpty ? null : () => _openSteps(_summary(g), g),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Row(children: [
+              Text('>_', style: codeMono(c, size: 15, color: c.ink3)),
+              const SizedBox(width: 10),
+              Expanded(child: CodeShimmer(label, style: codeSans(c, size: 16, color: c.ink2))),
+              const SizedBox(width: 8),
+              Text(codeClock(secs), style: codeMono(c, size: 12, color: c.ink3)),
+            ]),
+          ),
+        ),
       ),
     );
   }
+
+  /// v0.936 "Changes +12 −3", floating above the typing box: opens the change.
+  Widget _changesPill(HoolaColors c, int a, int r) => Semantics(
+        button: true,
+        label: 'Changes: $a lines added, $r removed',
+        excludeSemantics: true,
+        child: Material(
+          color: c.surface,
+          shape: StadiumBorder(side: BorderSide(color: c.lineStrong)),
+          elevation: 2,
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: _changes,
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('Changes', style: codeSans(c, size: 15, weight: FontWeight.w500)),
+                const SizedBox(width: 8),
+                CodeStat(a, r, size: 13),
+              ]),
+            ),
+          ),
+        ),
+      );
 
   /// v0.928 Hoola's words like a Hoola chat reply (renderer, long-press sheet, Copy · Read aloud · Share on the newest).
   Widget _reply(String text, String key, {bool actions = false}) => CodeReply(
@@ -570,88 +599,92 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: c.sunk,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(6)),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: _selecting == key
-                  ? SelectableText(text, style: codeSans(c, size: small ? 14.5 : 15.5, height: 1.45))
+                  ? SelectableText(text, style: codeSans(c, size: small ? 15.5 : 17, height: 1.45))
                   : GestureDetector(
                       onLongPress: () => _herMenu(text, key),
-                      child: Text(text, style: codeSans(c, size: small ? 14.5 : 15.5, height: 1.45)),
+                      child: Text(text, style: codeSans(c, size: small ? 15.5 : 17, height: 1.45)),
                     ),
             ),
           ]),
         ),
       );
 
-  int _secs(List<Map<String, dynamic>> g) {
-    final a = codeTime(cs(g.first['at']));
-    final b = codeTime(cs(g.last['at']));
-    if (a == null) return 0;
-    return (b ?? DateTime.now()).difference(a).inSeconds;
-  }
-
-  /// One group of steps. While it works the newest group shows as light rows; any other group is one quiet line
-  /// ("Worked for 1m 52s · 17 steps", or what it has done so far while its words are being written) that opens
-  /// to its rows on a tap.
-  Widget _group(HoolaColors c, List<Map<String, dynamic>> g, int i, {required bool inline, required bool working}) {
-    final rows = g.length > 60 ? g.sublist(g.length - 60) : g;
-    final drawn = rows.map((s) => _step(c, s)).whereType<Widget>().toList();
-    if (inline) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: drawn),
-      );
+  /// v0.936 one part of the work between two of Hoola's messages = ONE faint line ("Ran 3 commands", "Searched the
+  /// code, read 2 files", "Edited LoginActivity.java +12 −3"), no icon, no box; a tap opens the steps inside it.
+  Widget _group(HoolaColors c, List<Map<String, dynamic>> g) {
+    final label = _summary(g);
+    var add = 0, rem = 0;
+    for (final s in g) {
+      if (const {'edit', 'new'}.contains(cs(s['k']))) {
+        add += ci(s['added']);
+        rem += ci(s['removed']);
+      }
     }
-    final open = _open.contains(i);
-    final counted = g.where((s) => !const {'think', 'pass', 'ckpt'}.contains(cs(s['k']))).length;
-    final secs = _secs(g);
-    final label = counted == 0
-        ? _passTitle(g)
-        : working
-            ? _sofar(g)
-            : secs > 0
-                ? 'Worked for ${codeLong(secs)} · ${cPlural(counted, 'step')}'
-                : cPlural(counted, 'step');
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Semantics(
+      padding: const EdgeInsets.only(top: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Semantics(
           button: true,
-          label: open ? 'Hide the steps' : 'Show the steps',
+          label: '$label. Show the steps',
+          excludeSemantics: true,
           child: InkWell(
-            onTap: () => setState(() => open ? _open.remove(i) : _open.add(i)),
-            borderRadius: BorderRadius.circular(10),
+            onTap: () => _openSteps(label, g),
+            borderRadius: BorderRadius.circular(12),
             child: Container(
               constraints: const BoxConstraints(minHeight: 44),
-              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.subject_rounded, size: 16, color: c.ink3),
-                const SizedBox(width: 8),
-                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 14, color: c.ink2))),
-                const SizedBox(width: 2),
-                Icon(open ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded, size: 18, color: c.ink3),
+                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 16, color: c.ink3))),
+                if (add + rem > 0) ...[const SizedBox(width: 8), CodeStat(add, rem, size: 12)],
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right_rounded, size: 18, color: c.ink3),
               ]),
             ),
           ),
         ),
-        if (open) Padding(padding: const EdgeInsets.only(left: 2, bottom: 4), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: drawn)),
-      ]),
+      ),
     );
   }
 
-  /// What a group has done so far, in her words ("Read 11 files, looked in 6 folders").
-  String _sofar(List<Map<String, dynamic>> g) {
+  /// What a part of the work did, in her words.
+  String _summary(List<Map<String, dynamic>> g) {
     int n(Set<String> ks) => g.where((s) => ks.contains(cs(s['k']))).length;
+    final edits = g.where((s) => const {'edit', 'new'}.contains(cs(s['k']))).map((s) => cs(s['path']).split('/').last).toSet().toList();
     final parts = <String>[
+      if (n({'search', 'grep', 'usages'}) > 0) 'searched the code',
       if (n({'read'}) > 0) 'read ${cPlural(n({'read'}), 'file')}',
       if (n({'list'}) > 0) 'looked in ${cPlural(n({'list'}), 'folder')}',
-      if (n({'search', 'grep', 'usages'}) > 0) 'searched ${cPlural(n({'search', 'grep', 'usages'}), 'time')}',
-      if (n({'edit', 'new'}) > 0) 'changed ${cPlural(n({'edit', 'new'}), 'file')}',
-      if (n({'bash', 'check'}) > 0) 'ran ${cPlural(n({'bash', 'check'}), 'command')}',
+      if (n({'bash'}) > 0) 'ran ${cPlural(n({'bash'}), 'command')}',
+      if (n({'check'}) > 0) 'ran your tests',
+      if (edits.length == 1) 'edited ${edits.first}' else if (edits.length > 1) 'edited ${cPlural(edits.length, 'file')}',
+      if (n({'agent'}) > 0) 'asked ${cPlural(n({'agent'}), 'helper')}',
     ];
-    if (parts.isEmpty) return cPlural(g.length, 'step');
+    if (parts.isEmpty) return _passTitle(g);
     final line = parts.take(3).join(', ');
     return line[0].toUpperCase() + line.substring(1);
+  }
+
+  /// The steps inside one line, as a sheet (Claude Code's "Ran 3 commands"): one row each, what it did in plain words;
+  /// the command, its output and the lines of an edit only after a tap on that row.
+  void _openSteps(String title, List<Map<String, dynamic>> g) {
+    final rows = [for (final s in g) if (!const {'think', 'ckpt', 'todo'}.contains(cs(s['k']))) s];
+    if (rows.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: HoolaColors.of(context).surface,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .6,
+        maxChildSize: .92,
+        builder: (ctx, scroll) => CodeStepsSheet(title: title, steps: rows, scroll: scroll, fallback: (s) => _step(HoolaColors.of(ctx), s)),
+      ),
+    );
   }
 
   Widget _line(HoolaColors c, IconData icon, List<InlineSpan> spans, {Color? iconColor, Widget? trailing, bool live = false}) => Container(
@@ -1049,7 +1082,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       );
     }
     const hints = {
-      'note': 'Add a note while it works…',
+      'note': 'Reply or hold to talk',
       'answer': 'Answer Hoola…',
       'plan': 'A note to go with your yes…',
       'revise': 'Ask for a change on the same pull request…',
@@ -1065,38 +1098,34 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
             padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
             child: Text('${cPlural(comments, 'comment')} on lines goes with your next message', style: codeSans(c, size: 13, color: c.accent)),
           ),
-        if (hint.isNotEmpty && _msg.text.isEmpty)
+        if (!running)
           Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: CodeChip(hint, icon: Icons.lightbulb_outline_rounded, onTap: () => setState(() {
-                    _msg.text = hint;
-                    _msg.selection = TextSelection.collapsed(offset: hint.length);
-                  })),
-            ),
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
+            child: Row(children: [
+              CodeBarChip(
+                icon: Icon(_envName(t) == 'Auto' ? Icons.auto_mode_rounded : Icons.cloud_outlined, size: 17, color: c.ink2),
+                label: _envName(t),
+                semantics: 'Environment: ${_envName(t)}',
+                onTap: () => _pickEnv(t),
+              ),
+              const SizedBox(width: 12),
+              if (cs(t['model_label']).isNotEmpty)
+                Expanded(
+                  child: Text(cs(t['model_label']), maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 14, color: c.ink2)),
+                ),
+            ]),
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
-          child: Row(children: [
-            CodeBarChip(
-              icon: Icon(_envName(t) == 'Auto' ? Icons.auto_mode_rounded : Icons.cloud_outlined, size: 17, color: c.ink2),
-              label: _envName(t),
-              semantics: 'Environment: ${_envName(t)}',
-              onTap: () => _pickEnv(t),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(running ? 'Your notes reach Hoola between steps' : 'Changes go on the same branch',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 13, color: c.ink3)),
-            ),
-          ]),
-        ),
         CodeBar(
           app: widget.app,
           controller: _msg,
           focus: _focus,
-          hint: hints[mode] ?? 'Reply to Hoola',
+          hint: hints[mode] ?? 'Reply or hold to talk',
+          top: hint.isNotEmpty && _msg.text.isEmpty
+              ? CodeChip(hint, chevron: true, onTap: () => setState(() {
+                    _msg.text = hint;
+                    _msg.selection = TextSelection.collapsed(offset: hint.length);
+                  }))
+              : null,
           maxLength: 4000,
           onPlus: _more,
           plusLabel: 'Session menu',
@@ -1135,16 +1164,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     await _run('PUT', '$_base/env', {'env': pick});
   }
 
+  /// Between two steps (the step itself, when running, comes from the server's "now"): what it is doing.
   String _nowWords(Map<String, dynamic> s) => switch (cs(s['k'])) {
-        'read' => 'Reading ${cs(s['path'])}',
-        'search' || 'grep' || 'usages' => 'Searching the code',
-        'edit' || 'new' => 'Writing ${cs(s['path'])}',
-        'bash' => s.containsKey('rc') ? 'Working' : 'Running ${cs(s['cmd'])}',
-        'check' => 'Checked your tests',
-        'say' || 'think' => 'Thinking',
         'wait' => 'Waiting for a free coding slot',
-        'pass' => cs(s['state']) == 'end' ? 'Working' : _passWords(cs(s['name'])),
-        _ => 'Working',
+        'pass' => cs(s['state']) == 'end' ? 'Thinking' : _passWords(cs(s['name'])),
+        _ => 'Thinking',
       };
 
   /// v0.927 what a pass is doing, in her words (the plan pass only reads; it was shown as "Checking its own work").

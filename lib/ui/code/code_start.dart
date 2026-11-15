@@ -125,6 +125,7 @@ class CodeBar extends StatefulWidget {
     this.canSendEmpty = false,
     this.onListening,
     this.maxLength = 20000,
+    this.top,
   });
   final Santosh app;
   final TextEditingController controller;
@@ -142,6 +143,8 @@ class CodeBar extends StatefulWidget {
   final bool canSendEmpty;
   final ValueChanged<bool>? onListening;
   final int maxLength;
+  /// v0.936 a line inside the bar above the field (Hoola's suggested next message as a chip, like Claude Code).
+  final Widget? top;
   @override
   State<CodeBar> createState() => _CodeBarState();
 }
@@ -275,6 +278,16 @@ class _CodeBarState extends State<CodeBar> with SingleTickerProviderStateMixin {
         ),
       );
 
+  /// The bar's row, with her suggested next message above it when there is one (never while listening).
+  Widget _withTop(Widget row) {
+    final top = widget.top;
+    if (top == null || _listening) return row;
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(padding: const EdgeInsets.fromLTRB(8, 6, 8, 4), child: Align(alignment: Alignment.centerLeft, child: top)),
+      row,
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
@@ -339,7 +352,7 @@ class _CodeBarState extends State<CodeBar> with SingleTickerProviderStateMixin {
             ? null
             : [BoxShadow(color: c.shadow.withOpacity(.14), blurRadius: 24, spreadRadius: -14, offset: const Offset(0, 8))],
       ),
-      child: Row(crossAxisAlignment: _listening ? CrossAxisAlignment.center : CrossAxisAlignment.end, children: [
+      child: _withTop(Row(crossAxisAlignment: _listening ? CrossAxisAlignment.center : CrossAxisAlignment.end, children: [
         if (_listening) ...[
           Container(key: const ValueKey('dot'), width: 8, height: 8, decoration: BoxDecoration(color: _cancel ? c.bad : c.accent, shape: BoxShape.circle)),
           const SizedBox(width: 10),
@@ -404,7 +417,7 @@ class _CodeBarState extends State<CodeBar> with SingleTickerProviderStateMixin {
                   child: widget.busy
                       ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.onPill))
                       : Icon(Icons.arrow_upward_rounded, size: 20, color: live && widget.onSend != null ? c.onPill : c.ink3)),
-      ]),
+      ])),
     );
 
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [

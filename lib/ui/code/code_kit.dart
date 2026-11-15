@@ -203,10 +203,13 @@ class CodeIconButton extends StatelessWidget {
 
 /// The top bar: back, a title (and a mono line under it), the actions on the right.
 class CodeTopBar extends StatelessWidget {
-  const CodeTopBar({super.key, required this.title, this.sub = '', this.actions = const [], this.close = false, this.line = true});
+  const CodeTopBar({super.key, required this.title, this.sub = '', this.actions = const [], this.close = false, this.line = true,
+      this.centered = false});
   final String title, sub;
   final List<Widget> actions;
   final bool close, line;
+  /// v0.936 the session's bar: title in the middle, "repo · environment" under it in the sans (Claude Code's top bar).
+  final bool centered;
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
@@ -221,10 +224,15 @@ class CodeTopBar extends StatelessWidget {
             label: close ? 'Close' : 'Back',
             onTap: () => Navigator.of(context).maybePop()),
         Expanded(
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 16, weight: FontWeight.w600, height: 1.25)),
-            if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeMono(c, size: 12, color: c.ink3)),
-          ]),
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+              children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 16, weight: FontWeight.w600, height: 1.25)),
+                if (sub.isNotEmpty)
+                  Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: centered ? codeSans(c, size: 13, color: c.ink3, height: 1.3) : codeMono(c, size: 12, color: c.ink3)),
+              ]),
         ),
         ...actions,
         const SizedBox(width: 4),

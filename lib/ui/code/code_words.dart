@@ -64,6 +64,7 @@ void codeMessageMenu(BuildContext context, Santosh app, String text,
           if (onQuote != null) row(Icons.format_quote_rounded, 'Quote in my reply', onQuote),
           if (mine && onEdit != null) row(Icons.edit_outlined, 'Edit and send again', onEdit, sub: 'Your words go back in the box to change'),
           if (!mine) row(Icons.volume_up_outlined, 'Read aloud', () => app.readAloud(plain)),
+          if (!mine) row(Icons.ios_share_rounded, 'Share', () => codeShareText(context, plain)),
           if (onSelect != null) row(Icons.text_fields_rounded, 'Select text', onSelect),
           const SizedBox(height: 8),
         ]),
@@ -110,7 +111,7 @@ class CodeReply extends StatelessWidget {
               ? null
               : () => codeMessageMenu(context, app, text,
                   mine: false, onQuote: onQuote == null ? null : () => onQuote!(plain), onSelect: onSelect),
-          child: HoolaMd(text, streaming: streaming, selectable: selecting),
+          child: HoolaMd(text, streaming: streaming, selectable: selecting, sans: true),
         ),
         if (actions)
           Padding(
@@ -120,8 +121,7 @@ class CodeReply extends StatelessWidget {
                 await Clipboard.setData(ClipboardData(text: plain));
                 if (context.mounted) codeToast(context, 'Copied');
               }),
-              b(Icons.volume_up_outlined, 'Read aloud', () => app.readAloud(plain)),
-              b(Icons.ios_share_rounded, 'Share', () => codeShareText(context, plain)),
+              b(Icons.play_arrow_outlined, 'Read aloud', () => app.readAloud(plain)),
             ]),
           ),
       ]),
@@ -310,4 +310,187 @@ class _Slide extends GradientTransform {
   final double v;
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) => Matrix4.translationValues(bounds.width * (1.2 - 2.4 * v), 0, 0);
+}
+
+/// v0.936 the steps inside one line of the work, Claude Code's sheet: a close button and the line as its title, then one
+/// row per step - an icon, what it did in bold ("Ran", "Read", "Edited") and in plain grey words what for - joined by a
+/// thin line. A command's text and output, or an edit's lines, only open under the row's arrow.
+class CodeStepsSheet extends StatefulWidget {
+  const CodeStepsSheet({super.key, required this.title, required this.steps, required this.scroll, required this.fallback});
+  final String title;
+  final List<Map<String, dynamic>> steps;
+  final ScrollController scroll;
+  final Widget? Function(Map<String, dynamic> step) fallback;
+
+  @override
+  State<CodeStepsSheet> createState() => _CodeStepsSheetState();
+}
+
+class _CodeStepsSheetState extends State<CodeStepsSheet> {
+  final Set<int> _open = {};
+
+  static String _s(Object? v) => v == null ? '' : '$v';
+
+  /// (icon, verb, words, can open)
+  (IconData, String, String, bool) _row(Map<String, dynamic> s) {
+    final k = _s(s['k']);
+    final path = _s(s['path']).split('/').last;
+    switch (k) {
+      case 'bash':
+        return (Icons.terminal_rounded, 'Ran', _s(s['desc']).isNotEmpty ? _s(s['desc']) : 'a command', true);
+      case 'read':
+        return (Icons.description_outlined, 'Read', path, false);
+      case 'list':
+        return (Icons.folder_open_rounded, 'Looked in', _s(s['path']).isEmpty ? 'the repo' : _s(s['path']), false);
+      case 'search' || 'grep' || 'usages':
+        return (Icons.search_rounded, 'Searched', _s(s['q']).isNotEmpty ? 'for ${_s(s['q'])}' : 'the code', false);
+      case 'edit':
+        return (Icons.edit_outlined, 'Edited', path, (s['diff'] as List?)?.isNotEmpty ?? false);
+      case 'new':
+        return (Icons.note_add_outlined, 'Wrote', path, (s['diff'] as List?)?.isNotEmpty ?? false);
+      case 'check':
+        return (Icons.fact_check_outlined, 'Ran', s['ok'] == true ? 'your tests · passed' : 'your tests · failed', false);
+      case 'agent':
+        return (Icons.groups_outlined, 'Asked', _s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper', false);
+      default:
+        return (Icons.circle_outlined, '', '', false);
+    }
+  }
+
+  Widget _detail(HoolaColors c, Map<String, dynamic> s) {
+    final mono = codeMono(c, size: 12.5, color: c.ink2);
+    final box = BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line));
+    if (_s(s['k']) == 'bash') {
+      final rc = s['rc'];
+      final ok = rc == 0 && s['timed_out'] != true;
+      final tail = [for (final x in (s['tail'] as List?) ?? const []) _s(x)];
+      final secs = s['seconds'];
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: box,
+          child: Text.rich(TextSpan(children: [
+            TextSpan(text: '\$ ${_s(s['cmd'])}', style: codeMono(c, size: 12.5, color: c.ink)),
+            if (tail.isNotEmpty) TextSpan(text: '\n${tail.take(24).join('\n')}', style: mono),
+          ])),
+        ),
+        const SizedBox(height: 6),
+        Text(
+            [
+              if (s['timed_out'] == true) 'Timed out' else if (rc != null) (ok ? 'Passed' : 'Failed'),
+              if (rc != null) 'exit $rc',
+              if (secs != null) '${secs is num ? secs.round() : secs}s',
+            ].join(' · '),
+            style: codeSans(c, size: 13, color: s['timed_out'] == true || (rc != null && !ok) ? c.bad : c.ink3)),
+      ]);
+    }
+    final lines = [for (final x in (s['diff'] as List?) ?? const []) _s(x)];
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: box,
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final l in lines)
+          Container(
+            color: l.startsWith('+') ? c.okSoft : (l.startsWith('-') ? c.badSoft : null),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(l, style: codeMono(c, size: 12.5, color: l.startsWith('+') ? c.ok : (l.startsWith('-') ? c.bad : c.ink2))),
+          ),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final kids = <Widget>[];
+    for (var i = 0; i < widget.steps.length; i++) {
+      final s = widget.steps[i];
+      final (icon, verb, words, can) = _row(s);
+      final last = i == widget.steps.length - 1;
+      final open = _open.contains(i);
+      final Widget head = verb.isEmpty
+          ? Container(constraints: const BoxConstraints(minHeight: 52), alignment: Alignment.centerLeft, child: widget.fallback(s))
+          : Semantics(
+              button: can,
+              label: '$verb $words${can ? (open ? '. Hide the details' : '. Show the details') : ''}',
+              excludeSemantics: true,
+              child: InkWell(
+                onTap: can ? () => setState(() => open ? _open.remove(i) : _open.add(i)) : null,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 52),
+                  child: Row(children: [
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(children: [
+                          TextSpan(text: verb, style: codeSans(c, size: 16, weight: FontWeight.w500)),
+                          TextSpan(text: '  $words', style: codeSans(c, size: 16, color: c.ink3)),
+                        ]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (_s(s['k']) == 'edit' || _s(s['k']) == 'new') ...[
+                      const SizedBox(width: 6),
+                      CodeStat((s['added'] as num?)?.toInt() ?? 0, (s['removed'] as num?)?.toInt() ?? 0, size: 12),
+                    ],
+                    if (can) ...[
+                      const SizedBox(width: 4),
+                      Icon(open ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded, size: 20, color: c.ink3),
+                    ],
+                  ]),
+                ),
+              ),
+            );
+      kids.add(IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SizedBox(
+            width: 30,
+            child: Column(children: [
+              SizedBox(
+                  height: 52,
+                  child: Center(
+                      child: verb.isEmpty
+                          ? Container(width: 5, height: 5, decoration: BoxDecoration(color: c.lineStrong, shape: BoxShape.circle))
+                          : Icon(icon, size: 21, color: c.ink2))),
+              if (!last) Expanded(child: Center(child: Container(width: 1, color: c.lineStrong))),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              head,
+              if (open) Padding(padding: const EdgeInsets.only(bottom: 12), child: _detail(c, s)),
+            ]),
+          ),
+        ]),
+      ));
+    }
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+        child: Row(children: [
+          Semantics(
+            button: true,
+            label: 'Close',
+            excludeSemantics: true,
+            child: InkResponse(
+              onTap: () => Navigator.of(context).maybePop(),
+              radius: 24,
+              child: SizedBox(width: 48, height: 48, child: Icon(Icons.close_rounded, size: 24, color: c.ink)),
+            ),
+          ),
+          Expanded(
+            child: Text(widget.title, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: codeSans(c, size: 18, weight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 48),
+        ]),
+      ),
+      Expanded(
+        child: ListView(controller: widget.scroll, padding: const EdgeInsets.fromLTRB(20, 8, 20, 28), children: kids),
+      ),
+    ]);
+  }
 }

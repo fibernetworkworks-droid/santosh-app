@@ -153,8 +153,8 @@ def test_price_and_version():
     from app import usage
     assert usage.price_of("qwen/qwen3.8-27b")[0]["out"] == 1.875
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.935.0"' in main and "HOOLA CODE" in main
-    assert "version: 0.935.0+934" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.936.0"' in main and "HOOLA CODE" in main
+    assert "version: 0.936.0+935" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_v0927_times_carry_their_zone_and_the_round_start():
@@ -172,7 +172,7 @@ def test_v0927_times_carry_their_zone_and_the_round_start():
         d = (ROOT / "lib/ui/code" / f).read_text()
         assert "DateTime.tryParse" not in d and "cs(t['run_at'])" in d
     ses = (ROOT / "lib/ui/code/code_session.dart").read_text()
-    assert "'plan' => 'Planning · reading the code'" in ses and "counted == 0\n        ? _passTitle(g)" in ses
+    assert "'plan' => 'Planning · reading the code'" in ses and "if (parts.isEmpty) return _passTitle(g);" in ses
     assert "TASK.run_at || TASK.at" in (ROOT / "server/app/static/console/code.js").read_text()
     assert 'log.info("hoola code qwen %s %.1fs' in (ROOT / "server/app/devsahayak/brain.py").read_text()
 

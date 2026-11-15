@@ -657,6 +657,28 @@ def _live_text(tid: str) -> str:
         return ""
 
 
+def _now_step(tid: str) -> str:
+    """v0.936 the step running right now, in her words ("Running the unit tests")."""
+    if tid not in _RUNNING:
+        return ""
+    try:
+        from . import engine as EN
+        return EN.NOW_STEP.get(tid, "")
+    except Exception:
+        return ""
+
+
+def _model_label(t: DevTask) -> str:
+    """v0.936 the model chip: the model that really answers this session and its effort."""
+    try:
+        from . import brain as _B
+        name = _pretty_qwen(_B.qwen_model()) if _B.brain_name() == "qwen" else _pretty_model(t.model or "")
+    except Exception:
+        name = _pretty_model(t.model or "")
+    eff = (t.effort or "").strip()
+    return f"{name} · {eff[:1].upper() + eff[1:]}" if name and eff else name
+
+
 def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     ch = _j(t.changes, [])
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
@@ -681,7 +703,9 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "at": _aware(t.created_at).isoformat() if t.created_at else "",
          "updated": _aware(t.updated_at).isoformat() if t.updated_at else "",
          "run_at": _RUN_AT.get(t.id, ""),
-         "live": _live_text(t.id)}
+         "live": _live_text(t.id),
+         "now": _now_step(t.id),
+         "model_label": _model_label(t)}
     try:                                # G9: the card says what the facts back, never only the model's words
         from . import truth as TR
         if TR.on():

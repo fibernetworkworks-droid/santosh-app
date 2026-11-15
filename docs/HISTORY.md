@@ -5292,3 +5292,37 @@ Tests: `test_v0935_hoola_code_feed.py` (stream assembled + words out as they com
 streams + live view, phone source pins, version); pins in v0926 / v0928 moved to the new shapes.
 NOT VERIFIED: on her phone (CI compiles the Dart first); no live streamed Qwen call from here; the Claude brain path
 does not stream (its words still land word by word on the phone).
+
+
+## v0.936.0 HOOLA CODE LIKE CLAUDE CODE - the conversation feed
+
+Owner, on screenshots of this Claude Code session ("CHECK HOW CLAUDE CODE A PERFECT SMALL 2 SENTENCE FEED AND COMMAND RUN,
+CREATED FILES ETC IN FAINT ... FIRST SHOW ME THE WORK STRUCTURE") -> canvas claude.ai/artifact/27Hw4XRUj5qG83sWaeX2J5
+round 2 (A while it works, B the steps sheet, C done, the rules) -> "I WANT COMMAND RUNNED/RAN ... DONT EXPOSE THE RUN
+COMMAND TILL USER CLICK ON ARROW" (sheet redrawn) -> "PERFECT. DEPLOY SAME AS DEFINED ARTIFACT".
+
+Server (`devsahayak/engine.py`, `service.py`):
+- SYSTEM: one or two short sentences before each set of tool calls (what it found, what next), no lists there; a plain
+  description on every bash call.
+- bash tool `description` ("3-8 plain words starting with a verb"); `t_bash(..., description="")`; the bash step carries
+  `desc` = the model's words or `cmd_words(cmd)` (tests / style / types / build / install / search / changes / list /
+  look at a file / run a script / "Run a command").
+- `NOW_STEP[tid]` = `now_words(tool, input)` while a tool runs ("Running the unit tests", "Reading LoginActivity.java",
+  "Searching the code"; never the raw command) -> task view "now"; `model_label` ("Qwen 3.8 27B · High").
+
+Phone (`lib/ui/code/code_session.dart`, `code_words.dart`, `code_kit.dart`, `code_start.dart`, `chat/hoola_md.dart`):
+- Every part of the work between two of Hoola's messages = ONE faint line (16 px, ink3, no icon, no box): "Ran 3
+  commands", "Searched the code, read 2 files", "Edited LoginActivity.java" + the green / red count, chevron. While it
+  works the newest part is the running line ">_ <now>" in the moving light with the clock.
+- A tap opens `CodeStepsSheet`: close X + the line as its title, one row per step (icon, bold "Ran" / "Read" / "Edited" /
+  "Searched", plain grey words), joined by a thin line; a command's `$ cmd`, output tail and "Passed · exit 0 · 41s", or
+  an edit's lines, open only under that row's arrow.
+- Hoola Code's words in the app sans at 17 / 1.55 (`HoolaMd(sans: true)`), her bubble 17 with round corners.
+- Top bar centred: title, "repo · environment", a spinner while it works, the session menu. "Changes +a -r" floats above
+  the typing box beside the Newest arrow. The suggested next message is a chip inside the typing box; the environment
+  chip and the model name sit above it when idle. Copy + Read aloud under the newest reply (Share moved to the long-press
+  sheet).
+
+Tests: `test_v0936_hoola_code_claude_feed.py`; pins in v0926 / v0928 / v0935 moved to the new code.
+NOT VERIFIED on her phone (CI compiles the Dart first). Qwen may not always write the short sentences or descriptions;
+the fallback words cover commands.

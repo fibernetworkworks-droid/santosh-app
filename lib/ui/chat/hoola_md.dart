@@ -13,13 +13,16 @@ import '../hoola_theme.dart';
 import '../md_text.dart';
 
 class HoolaMd extends StatelessWidget {
-  const HoolaMd(this.text, {super.key, this.streaming = false, this.selectable = false, this.compact = false});
+  const HoolaMd(this.text, {super.key, this.streaming = false, this.selectable = false, this.compact = false, this.sans = false});
   final String text;
   final bool streaming;
   final bool selectable;
 
   /// Smaller body (15 sans) for places that are not a reply: step details, notes.
   final bool compact;
+
+  /// v0.936 the app's sans at 17 / 1.55 instead of the reply serif (Hoola Code, like Claude Code's own words).
+  final bool sans;
 
   /// The last few plain words of a streaming block, drawn lighter. Only when they hold no mark of their own.
   static final _tail = RegExp(r'(\S+\s+){0,2}\S*\s*$');
@@ -28,7 +31,12 @@ class HoolaMd extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    final body = compact ? HoolaType.body(c) : HoolaType.reply(c);
+    TextStyle headStyle(TextStyle st) => sans ? st.copyWith(fontFamily: HoolaFont.sans, fontWeight: FontWeight.w600) : st;
+    final body = compact
+        ? HoolaType.body(c)
+        : sans
+            ? TextStyle(fontFamily: HoolaFont.sans, fontSize: 17, fontWeight: FontWeight.w400, color: c.ink, height: 1.55)
+            : HoolaType.reply(c);
     // v0.894 a short `term` like Claude's (claude.ai .ReactMarkdown code): 0.9 of the text, muted red, a 5 % ink tint
     // with a little room each side - blue on blue read as a link
     final code = HoolaType.code(c, size: compact ? 12.5 : 13.5)
@@ -66,11 +74,11 @@ class HoolaMd extends StatelessWidget {
       }
       switch (b.kind) {
         case 'h':
-          final st = b.level <= 1
+          final st = headStyle(b.level <= 1
               ? HoolaType.replyH1(c)
               : b.level == 2
                   ? HoolaType.replyH2(c)
-                  : HoolaType.replyH3(c);
+                  : HoolaType.replyH3(c));
           kids.add(_rich(inline(b.text, live: live), compact ? st.copyWith(fontSize: (st.fontSize ?? 16) - 2) : st));
           break;
         case 'li':

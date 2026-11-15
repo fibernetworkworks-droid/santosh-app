@@ -93,6 +93,7 @@ def exists(tid: str) -> bool:
 _SLOTS: dict[str, Any] = {"n": 0, "sem": None}
 _SLOT_LOCK = threading.Lock()
 LIVE: set[str] = set()
+NOW_STEP: dict[str, str] = {}    # v0.936 the step running right now, in her words ("Running the unit tests")
 LIVE_TEXT: dict[str, str] = {}   # v0.935 the words of the step Hoola is writing right now, per session
 
 
@@ -403,6 +404,9 @@ TOOLS: list[dict[str, Any]] = [
      "the repo's dependencies installed when it declares them. Use it to run tests, a build, a linter, a script, git diff. "
      "Not for reading or editing files (use read / edit). Output is cut to the start and the end when long.",
      "input_schema": {"type": "object", "properties": {"command": {"type": "string"},
+                      "description": {"type": "string", "description": "ALWAYS give it: what this command is for, in 3-8 "
+                                      "plain words she understands, starting with a verb (e.g. 'Run the unit tests', "
+                                      "'Find where the sync service starts'). She sees this line, not the command."},
                       "timeout": {"type": "integer", "description": "seconds, at most 600"}}, "required": ["command"]}},
     {"name": "todo_write", "description": "Your to-do list for this job (she sees it). Send the WHOLE list each time; mark one item "
      "in_progress while you work on it and completed as soon as it is done.",
@@ -438,6 +442,9 @@ Rules that never bend:
 - Never run destructive commands outside the working copy; there is no network, so do not try to install from it.
 - Every bash command runs in a fresh box (nothing you start keeps running) and git there is read-only: Hoola
   records your changes itself, so never commit, stash or reset in bash.
+- Before each set of tool calls, write one or two short sentences to her: what you found and what you will do next
+  (e.g. "The crash comes from the new permission check. Adding it now."). No lists, no headings there.
+- Give every bash call a short plain description of what it is for; she sees that line, not the command.
 - A vague request gets ONE clear question (done with the question in explain ending in '?'), and no edits.
 - Her rules for this repo and the repo's own AGENTS.md / CLAUDE.md / CONTRIBUTING come before your habits.
 - Write to her in plain, short English."""
@@ -831,7 +838,7 @@ class Tools:
         self.s.save_meta()
         return img, note
 
-    def t_bash(self, command: str, timeout: int = 0) -> str:
+    def t_bash(self, command: str, timeout: int = 0, description: str = "") -> str:
         from ..devlab import box
         from ..devlab import spec as SPEC
         cmd = str(command or "").strip()
@@ -989,6 +996,61 @@ def _loose(v: Any) -> Any:
     return v
 
 
+# ---------------------------------------------------------------- her words for a step (v0.936)
+_CMD_WORDS = [
+    (r"\b(pytest|jest|vitest|mocha|phpunit|rspec|unittest|go test|cargo test|npm (run )?test|yarn test|pnpm test|gradlew\S* test|mvn test|flutter test|dart test)\b", "Run the tests"),
+    (r"\b(eslint|ruff|flake8|pylint|black --check|prettier|golangci|clippy|lint)\b", "Check the code style"),
+    (r"\b(tsc|mypy|pyright)\b", "Check the types"),
+    (r"\b(build|assemble|compile|gradlew|mvn|cargo build|go build|make)\b", "Build the project"),
+    (r"\b(pip|npm|yarn|pnpm|poetry|bundle|composer) (install|ci|add|sync)\b", "Install the dependencies"),
+    (r"^\s*(grep|rg|ag|find|fd)\b", "Search the files"),
+    (r"^\s*git (diff|status|log|show|blame)\b", "Look at the changes"),
+    (r"^\s*(ls|tree|du)\b", "List the files"),
+    (r"^\s*(cat|head|tail|sed -n|less|wc)\b", "Look at a file"),
+    (r"^\s*(python3?|node|ruby|php|bash|sh|deno|go run)\b", "Run a script"),
+]
+
+
+def cmd_words(cmd: str, desc: Any = None) -> str:
+    """What a command was for, in her words: the model's own description, else a guess from the command itself."""
+    d = " ".join(str(desc or "").split())[:90].rstrip(".")
+    if d:
+        return d[:1].upper() + d[1:]
+    c = str(cmd or "")
+    for rx, words in _CMD_WORDS:
+        if re.search(rx, c, re.I):
+            return words
+    return "Run a command"
+
+
+_ING = {"run": "Running", "check": "Checking", "build": "Building", "find": "Finding", "search": "Searching",
+        "install": "Installing", "look": "Looking", "list": "Listing", "read": "Reading", "test": "Testing",
+        "compile": "Compiling", "start": "Starting", "see": "Seeing", "make": "Making", "add": "Adding", "fix": "Fixing",
+        "update": "Updating", "count": "Counting", "show": "Showing", "open": "Opening", "try": "Trying",
+        "verify": "Verifying", "confirm": "Confirming", "print": "Printing", "get": "Getting", "lint": "Linting"}
+
+
+def _ing(words: str) -> str:
+    """'Run the unit tests' -> 'Running the unit tests'."""
+    head, _, rest = words.partition(" ")
+    g = _ING.get(head.lower())
+    if not g:
+        return f"Running: {words[:1].lower() + words[1:]}" if words else "Running a command"
+    return f"{g} {rest}".strip()
+
+
+def now_words(name: str, inp: dict[str, Any]) -> str:
+    """The step running right now, as her working line says it."""
+    inp = inp if isinstance(inp, dict) else {}
+    p = str(inp.get("path") or "").lstrip("./").split("/")[-1]
+    if name == "bash":
+        return _ing(cmd_words(str(inp.get("command") or ""), inp.get("description")))
+    return {"read": f"Reading {p}" if p else "Reading a file", "edit": f"Editing {p}", "multi_edit": f"Editing {p}",
+            "write": f"Writing {p}", "grep": "Searching the code", "glob": "Looking for files",
+            "ls": f"Looking in {p or 'the repo'}", "show_diff": "Checking its own change", "todo_write": "Planning the steps",
+            "other_repo": "Reading another repo"}.get(name, "Working")
+
+
 # ---------------------------------------------------------------- page events
 def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[str, Any]]:
     o = str(out or "")
@@ -1030,7 +1092,8 @@ def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[s
                  "diff": [("+ " + x)[:180] for x in body.splitlines()[:10]]}]
     if name == "bash":
         lb = getattr(tools, "last_bash", None) or {}
-        return [{"k": "bash", "cmd": lb.get("cmd", str(inp.get("command") or "")[:300]), "rc": lb.get("rc"),
+        cmd = lb.get("cmd", str(inp.get("command") or "")[:300])
+        return [{"k": "bash", "cmd": cmd, "desc": cmd_words(cmd, inp.get("description")), "rc": lb.get("rc"),
                  "seconds": lb.get("secs"), "timed_out": lb.get("timed_out"), "tail": lb.get("tail", [])}]
     if name == "todo_write":
         return [{"k": "todo", "items": tools.todos}]
@@ -1420,7 +1483,11 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
                 continue
-            out = tools.run(b["name"], inp)
+            NOW_STEP[tid] = now_words(b["name"], inp)     # v0.936 what it is doing this moment, for her working line
+            try:
+                out = tools.run(b["name"], inp)
+            finally:
+                NOW_STEP.pop(tid, None)
             try:
                 for ev in event(tools, b["name"], inp, out):
                     emit(ev)
