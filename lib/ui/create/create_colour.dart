@@ -138,7 +138,7 @@ class _GlassBoxPainter extends BoxPainter {
     // the pane: lit at the top, clearer below
     final fill = dark
         ? [Colors.white.withOpacity(strong ? .17 : .13), Colors.white.withOpacity(strong ? .085 : .06), Colors.white.withOpacity(strong ? .06 : .035)]
-        : [Colors.white.withOpacity(strong ? .95 : .88), Colors.white.withOpacity(strong ? .8 : .68), Colors.white.withOpacity(strong ? .72 : .58)];
+        : [Colors.white.withOpacity(strong ? .95 : .82), Colors.white.withOpacity(strong ? .8 : .58), Colors.white.withOpacity(strong ? .72 : .44)];
     canvas.drawRect(rect,
         Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: fill, stops: const [0, .45, 1]).createShader(rect));
     // a breath of the page's hue, coming in from the top-left corner
@@ -452,10 +452,12 @@ class _CrMoveState extends State<CrMove> with SingleTickerProviderStateMixin {
 // ------------------------------------------------------------------------------------------------ pieces
 /// A colour circle with a drawing on it (a studio, a voice). [child] sits on the hue in its dark ink.
 class CrOrb extends StatelessWidget {
-  const CrOrb({super.key, required this.hue, required this.child, this.size = 52});
+  const CrOrb({super.key, required this.hue, required this.child, this.size = 52, this.sweep});
   final CrHue hue;
   final Widget child;
   final double size;
+  /// v0.915 a light passing across the bead (0..1), null = none.
+  final double? sweep;
   @override
   Widget build(BuildContext context) => Container(
         width: size,
@@ -463,11 +465,144 @@ class CrOrb extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: hue.pair),
-          boxShadow: [BoxShadow(color: hue.a.withOpacity(.32), blurRadius: 16, spreadRadius: -6, offset: const Offset(0, 6))],
+          boxShadow: [
+            BoxShadow(color: hue.a.withOpacity(.38), blurRadius: 18, spreadRadius: -6, offset: const Offset(0, 7)),
+            BoxShadow(color: hue.b.withOpacity(.22), blurRadius: 10, spreadRadius: -4, offset: const Offset(0, 2)),
+          ],
         ),
+        // a bright hairline round the bead, like the edge of glass
+        foregroundDecoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(.42), width: 1)),
         alignment: Alignment.center,
-        child: child,
+        child: Stack(alignment: Alignment.center, children: [
+          Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _OrbGlass(sweep)))),
+          child,
+        ]),
       );
+}
+
+/// The glass on a colour bead: a lit cap on top, a soft glow in the bottom, and (while the drawing moves) a band of light
+/// crossing it. Painted, never blurred.
+class _OrbGlass extends CustomPainter {
+  _OrbGlass(this.sweep);
+  final double? sweep;
+  @override
+  void paint(Canvas canvas, Size s) {
+    if (s.isEmpty) return;
+    final r = Offset.zero & s;
+    canvas.save();
+    canvas.clipPath(Path()..addOval(r));
+    final cap = Rect.fromLTWH(s.width * .17, s.height * .05, s.width * .66, s.height * .44);
+    canvas.drawOval(
+        cap,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white.withOpacity(.55), Colors.white.withOpacity(0)],
+          ).createShader(cap));
+    final low = Offset(s.width * .5, s.height * 1.04);
+    canvas.drawCircle(
+        low,
+        s.width * .5,
+        Paint()
+          ..shader = RadialGradient(colors: [Colors.white.withOpacity(.26), Colors.white.withOpacity(0)])
+              .createShader(Rect.fromCircle(center: low, radius: s.width * .5)));
+    final w = sweep;
+    if (w != null && w > 0 && w < 1) {
+      final p = w.clamp(0.0, 1.0);
+      final a = (p - .16).clamp(0.0, 1.0), b = (p + .16).clamp(0.0, 1.0);
+      canvas.drawRect(
+          r,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white.withOpacity(0), Colors.white.withOpacity(.42), Colors.white.withOpacity(0)],
+              stops: [a, p, b],
+            ).createShader(r));
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_OrbGlass o) => o.sweep != sweep;
+}
+
+/// v0.915 each drawing's own small move: [a] runs 0..1 once, the drawing ends where it began.
+Matrix4 crGlyphMove(String kind, double a, double px) {
+  final s = math.sin(a * math.pi); // 0 -> 1 -> 0
+  final w = math.sin(a * math.pi * 2); // 0 -> 1 -> -1 -> 0
+  final u = px / 24;
+  var dx = 0.0, dy = 0.0, rot = 0.0, sc = 1.0;
+  switch (kind) {
+    case 'image': // the picture tilts like a print picked up
+      rot = .16 * w;
+      sc = 1 + .1 * s;
+    case 'video': // rolls forward
+      dx = 2.2 * u * w;
+      sc = 1 + .07 * s;
+    case 'film': // the clapper claps
+      rot = -.3 * s;
+      dy = -1.2 * u * s;
+    case 'music': // a note hops
+      dy = -3.2 * u * s;
+      rot = .18 * w;
+    case 'voice': // breathes
+      sc = 1 + .14 * s;
+    case 'dub': // two voices, one after the other
+      dx = 2.4 * u * w;
+      rot = .1 * w;
+    case 'cut': // snips
+      rot = .42 * w;
+    case 'pen': // writes a little line
+      dx = 2.6 * u * w;
+      dy = -1.6 * u * s;
+      rot = -.18 * s;
+    case 'cast': // a person steps up
+      dy = -2.6 * u * s;
+      sc = 1 + .06 * s;
+    case 'cinema': // the reel turns
+      rot = math.pi / 2 * Curves.easeInOutCubic.transform(a);
+      sc = 1 + .05 * s;
+    case 'brand': // the star turns one point and shines
+      rot = 2 * math.pi / 5 * Curves.easeInOutCubic.transform(a);
+      sc = 1 + .16 * s;
+    case 'grid': // the tiles settle into place
+      rot = math.pi / 2 * Curves.easeInOutCubic.transform(a);
+      sc = 1 - .1 * s;
+    default:
+      sc = 1 + .08 * s;
+  }
+  return Matrix4.identity()
+    ..translate(dx, dy, 0.0)
+    ..rotateZ(rot)
+    ..scale(sc, sc, 1.0);
+}
+
+/// Rings that spread from a sound bead while it moves (voice, music).
+class CrRings extends CustomPainter {
+  CrRings(this.a, this.color);
+  final double a;
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size s) {
+    if (a <= 0 || a >= 1) return;
+    final c = s.center(Offset.zero);
+    for (final lag in const [0.0, .3]) {
+      final t = ((a - lag) / (1 - lag)).clamp(0.0, 1.0);
+      if (t <= 0) continue;
+      canvas.drawCircle(
+          c,
+          s.width / 2 * (1 + .42 * t),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6
+            ..color = color.withOpacity(.55 * (1 - t)));
+    }
+  }
+
+  @override
+  bool shouldRepaint(CrRings o) => o.a != a || o.color != color;
 }
 
 /// A small dark see-through label over a picture (5 s, 4:5, Scene 2).

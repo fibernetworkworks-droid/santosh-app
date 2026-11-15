@@ -325,13 +325,23 @@ class _CrIconPainter extends CustomPainter {
 /// v0.913 the colour circle every Create tool sits on: its own hue (pictures pink, clips blue, films gold, songs green,
 /// voices lilac), the drawing in dark ink on it.
 class CrDisc extends StatelessWidget {
-  const CrDisc(this.glyph, {super.key, this.size = 44, this.hue});
+  const CrDisc(this.glyph, {super.key, this.size = 44, this.hue, this.beat});
   final CrGlyph glyph;
   final double size;
   final CrHue? hue;
+  /// v0.915 how far through its own small move the drawing is (0..1); null = still.
+  final double? beat;
   @override
-  Widget build(BuildContext context) =>
-      CrOrb(hue: hue ?? crHueOf(glyph), size: size, child: CrIcon(glyph, size: size * .44, color: CreateHues.onHue));
+  Widget build(BuildContext context) {
+    final h = hue ?? crHueOf(glyph);
+    final b = beat;
+    final on = b != null && b > 0 && b < 1;
+    Widget icon = CrIcon(glyph, size: size * .44, color: CreateHues.onHue);
+    if (on) icon = Transform(alignment: Alignment.center, transform: crGlyphMove(glyph.name, b!, size * .44), child: icon);
+    final orb = CrOrb(hue: h, size: size, sweep: on ? b : null, child: icon);
+    if (!on || (glyph != CrGlyph.voice && glyph != CrGlyph.music && glyph != CrGlyph.dub)) return orb;
+    return CustomPaint(painter: CrRings(b!, h.b), child: orb);
+  }
 }
 
 /// The hue a tool's drawing belongs to.

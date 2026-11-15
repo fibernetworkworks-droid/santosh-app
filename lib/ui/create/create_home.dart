@@ -339,47 +339,136 @@ class _Compose extends StatelessWidget {
 }
 
 /// Twelve studios as colour circles, four to a row, in one glass card.
-class _Studios extends StatelessWidget {
+/// v0.915 every studio on a glass bead, and every drawing has its own small move: a wave runs across the tray, one
+/// bead after another, with a band of light crossing each bead as it moves; they rise in once when the tray first
+/// shows. Still under reduce motion.
+class _Studios extends StatefulWidget {
   const _Studios({required this.onTap});
   final void Function(String) onTap;
   @override
+  State<_Studios> createState() => _StudiosState();
+}
+
+class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
+  late final AnimationController _beat = AnimationController(vsync: this, duration: const Duration(milliseconds: 6400));
+  late final AnimationController _rise = AnimationController(vsync: this, duration: const Duration(milliseconds: 760));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (HoolaMotion.reduced(context)) {
+      _beat.stop();
+      _rise.value = 1;
+    } else {
+      if (!_beat.isAnimating) _beat.repeat();
+      if (_rise.value == 0 && !_rise.isAnimating) _rise.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _beat.dispose();
+    _rise.dispose();
+    super.dispose();
+  }
+
+  /// This bead's place in the wave: 0..1 while it moves, null while it rests.
+  double? _beatOf(int i) {
+    if (!_beat.isAnimating) return null;
+    final row = i ~/ 4, col = i % 4;
+    final v = ((_beat.value - (row + col) * .085) % 1 + 1) % 1;
+    return v < .26 ? v / .26 : null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 16, 6, 10),
-      decoration: crGlass(c, radius: 24, tint: CrHue.of(context).b),
-      child: LayoutBuilder(builder: (context, box) {
-        final w = box.maxWidth / 4;
-        return Wrap(children: [
-          for (final t in _tools)
-            SizedBox(
-              width: w,
-              child: Semantics(
-                button: true,
-                label: t.name,
-                excludeSemantics: true,
-                onTap: () => onTap(t.name),
-                child: crPress(
-                  onTap: () => onTap(t.name),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(children: [
-                      CrDisc(t.glyph, size: 52, hue: t.hue),
-                      const SizedBox(height: 7),
-                      SizedBox(
-                        height: 32,
-                        child: Text(t.name, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
-                            style: HoolaType.small(c).copyWith(color: c.ink, fontSize: 12.5, height: 1.25)),
-                      ),
-                    ]),
-                  ),
-                ),
-              ),
+    return Stack(children: [
+      Container(
+        padding: const EdgeInsets.fromLTRB(6, 18, 6, 10),
+        decoration: crGlass(c, radius: 26, tint: CrHue.of(context).b),
+        child: LayoutBuilder(builder: (context, box) {
+          final w = box.maxWidth / 4;
+          return AnimatedBuilder(
+            animation: Listenable.merge([_beat, _rise]),
+            builder: (context, _) => Wrap(children: [
+              for (var i = 0; i < _tools.length; i++) _cell(c, i, w),
+            ]),
+          );
+        }),
+      ),
+      // a slow light crossing the whole tray, once a cycle
+      Positioned.fill(
+        child: IgnorePointer(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(26),
+            child: AnimatedBuilder(
+              animation: _beat,
+              builder: (_, __) => CustomPaint(painter: _TrayLight(_beat.isAnimating ? _beat.value : -1, c.dark)),
             ),
-        ]);
-      }),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _cell(HoolaColors c, int i, double w) {
+    final t = _tools[i];
+    final r = Curves.easeOutBack.transform(((_rise.value * 1.6 - i * .05)).clamp(0.0, 1.0));
+    return SizedBox(
+      width: w,
+      child: Semantics(
+        button: true,
+        label: t.name,
+        excludeSemantics: true,
+        onTap: () => widget.onTap(t.name),
+        child: crPress(
+          onTap: () => widget.onTap(t.name),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(children: [
+              Transform.translate(
+                offset: Offset(0, 14 * (1 - r)),
+                child: Transform.scale(scale: .7 + .3 * r, child: CrDisc(t.glyph, size: 54, hue: t.hue, beat: _beatOf(i))),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 32,
+                child: Text(t.name, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
+                    style: HoolaType.small(c).copyWith(color: c.ink, fontSize: 12.5, height: 1.25, fontWeight: FontWeight.w500)),
+              ),
+            ]),
+          ),
+        ),
+      ),
     );
   }
+}
+
+/// A wide soft band of light that crosses the studios tray in the first part of each cycle.
+class _TrayLight extends CustomPainter {
+  _TrayLight(this.v, this.dark);
+  final double v;
+  final bool dark;
+  @override
+  void paint(Canvas canvas, Size s) {
+    if (v < 0 || v > .45) return;
+    final p = v / .45;
+    final r = Offset.zero & s;
+    final a = (p - .12).clamp(0.0, 1.0), b = (p + .12).clamp(0.0, 1.0);
+    canvas.drawRect(
+        r,
+        Paint()
+          ..shader = LinearGradient(
+            begin: const Alignment(-1, -.6),
+            end: const Alignment(1, .6),
+            colors: [Colors.white.withOpacity(0), Colors.white.withOpacity(dark ? .07 : .3), Colors.white.withOpacity(0)],
+            stops: [a, p, b],
+          ).createShader(r));
+  }
+
+  @override
+  bool shouldRepaint(_TrayLight o) => o.v != v || o.dark != dark;
 }
 
 class _Recent extends StatelessWidget {

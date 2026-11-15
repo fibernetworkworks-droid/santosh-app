@@ -4733,3 +4733,20 @@ the stepper, and "Create · about ₹6" was cut by the ellipsis.
 - CrArtCard: a glass hairline + top-left light over the picture; CrHead headings in Literata 19 / w500.
 - Tests: `server/tests/test_v0914_create_glass.py` (4); test_v0913's "BoxDecoration crGlass(" pin is now
   "Decoration crGlass("; flutter tests and goldens unchanged (CI is the compiler). NOT VERIFIED on her phone.
+
+
+## v0.915.0 GLASS STUDIOS (owner, on her v0.914 screenshot of the Create home: "MAKE EVERY STUDIO MORE GLASSY AND ANIMATE EVERY ICON")
+
+- `CrOrb` (create_colour.dart): the colour bead is glass - `_OrbGlass` paints a lit cap on top and a soft glow at the
+  bottom, a white hairline rings it (foregroundDecoration), two coloured shadows; `sweep` = a band of light crossing it.
+- `crGlyphMove(kind, a, px)`: one small move per drawing that ends where it began - image tilts, video rolls forward,
+  film (clapper) claps, music hops, voice breathes, dub swings, cut snips, pen writes, cast steps up, cinema turns a
+  quarter, brand (star) turns one point and shines, grid settles a quarter turn. `CrRings` spreads two rings from the
+  sound beads (voice, music, dubbing) while they move.
+- `CrDisc(beat:)` = how far through its move the drawing is; null = still (every other CrDisc unchanged).
+- Create home `_Studios` -> `_StudiosState`: one 6.4 s controller plays the moves as a diagonal wave across the 4x3
+  tray (each bead moves for ~26 % of the cycle), a slow light (`_TrayLight`) crosses the whole tray once a cycle, the
+  beads rise in once (easeOutBack, staggered). Reduce motion: no moves, no light, beads in place.
+- Light-mode glass more see-through (non-strong fill .82 / .58 / .44).
+- Test `server/tests/test_v0915_glass_studios.py`; test/create_native_test.dart unchanged (CrDisc keeps one gradient
+  Container). NOT VERIFIED on her phone.
