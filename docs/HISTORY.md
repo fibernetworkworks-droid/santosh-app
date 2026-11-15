@@ -4710,6 +4710,60 @@ card, a filterable gallery. Hoola's own rule stays: the price first, nothing spe
   Delete asks first). Film: the step bar and scene cards in colour.
 - Tests: test/create_native_test.dart (home expectations, hue contrast), goldens 68_create_video + 69_create_library,
   server/tests/test_v0913_create_colour.py. NOT VERIFIED on her phone.
+
+
+## v0.914.0 CREATE GLASS (owner, with three phone screenshots of v0.913: "Make it more glassy and advance and perfrect")
+
+What her screenshots showed: on the dark page the v0.913 "glass" was a flat grey pane (white 6-17 % with a 1 px grey
+hairline), the colour light only lived in the top of the page (`top = min(height, width * 1.6)`), so cards lower down
+had nothing to show through; on the Image page the bottom action faded over the style tiles so tiles showed through
+the stepper, and "Create · about ₹6" was cut by the ellipsis.
+
+- `crGlass` now returns `CrGlassDecoration` (a custom Decoration, every caller passes it as `decoration:`): shadow
+  (BoxShadow's own paint), lit-top fill, optional `tint` = a radial breath of the page hue from the top-left plus a
+  violet one from the lower-right, a soft diagonal sheen, and a gradient rim (white on the top-left, the hue on the
+  lower-right; a picked `edge` stays a solid 1.6 px line); `base` paints a solid colour first. lerpFrom / lerpTo
+  between two glasses, clip path + hit test on the rounded shape. Never a blur (the design rules).
+- CrAura: five light pools across the whole page height (hue a / b / violet, drifting 16 s, still under reduce
+  motion) + `_GrainPainter`, a still seeded film grain in its own RepaintBoundary (drawPoints, one call).
+- Cards, the kinds switch, the ask box, the studios tray, the stepper, segments and the film price box carry
+  `tint: CrHue.of(context)`.
+- CrPage bottom action: a solid glass dock (`base: c.bg`, radius 32) over a short fade - nothing scrolls through.
+- CrMain: glossy top + bright rim (`foregroundDecoration`), the label in `FittedBox(scaleDown)` so it shrinks, not cut.
+- CrArtCard: a glass hairline + top-left light over the picture; CrHead headings in Literata 19 / w500.
+- Tests: `server/tests/test_v0914_create_glass.py` (4); test_v0913's "BoxDecoration crGlass(" pin is now
+  "Decoration crGlass("; flutter tests and goldens unchanged (CI is the compiler). NOT VERIFIED on her phone.
+
+
+## v0.915.0 GLASS STUDIOS (owner, on her v0.914 screenshot of the Create home: "MAKE EVERY STUDIO MORE GLASSY AND ANIMATE EVERY ICON")
+
+- `CrOrb` (create_colour.dart): the colour bead is glass - `_OrbGlass` paints a lit cap on top and a soft glow at the
+  bottom, a white hairline rings it (foregroundDecoration), two coloured shadows; `sweep` = a band of light crossing it.
+- `crGlyphMove(kind, a, px)`: one small move per drawing that ends where it began - image tilts, video rolls forward,
+  film (clapper) claps, music hops, voice breathes, dub swings, cut snips, pen writes, cast steps up, cinema turns a
+  quarter, brand (star) turns one point and shines, grid settles a quarter turn. `CrRings` spreads two rings from the
+  sound beads (voice, music, dubbing) while they move.
+- `CrDisc(beat:)` = how far through its move the drawing is; null = still (every other CrDisc unchanged).
+- Create home `_Studios` -> `_StudiosState`: one 6.4 s controller plays the moves as a diagonal wave across the 4x3
+  tray (each bead moves for ~26 % of the cycle), a slow light (`_TrayLight`) crosses the whole tray once a cycle, the
+  beads rise in once (easeOutBack, staggered). Reduce motion: no moves, no light, beads in place.
+- Light-mode glass more see-through (non-strong fill .82 / .58 / .44).
+- Test `server/tests/test_v0915_glass_studios.py`; test/create_native_test.dart unchanged (CrDisc keeps one gradient
+  Container). NOT VERIFIED on her phone.
+
+
+## v0.916.0 STUDIO SLAB (owner: "CHECK THE FULL CARD EVERY STUDIO ... MAKE PERFECT STATIC GLASSY ... SHOW ME THE DESIGN HERE FIRST" -> design canvas claude.ai/artifact/C8e12Hvwi1Cy8WUCPtNmbk with A clear pane / B glass wells / C thick slab -> "C")
+
+- Create home `_StudiosState.build`: the Every studio card is one strong glass slab (`crGlass` radius 32, strong, hue
+  tint) clipped to its shape; the heading "Every studio" (Literata 22) and a "12 tools" glass pill moved INSIDE it (the
+  CrHead above it is gone).
+- `_SlabGlass` paints, once: a second edge 5 px inside the first (the glass's thickness), a still glare band across
+  the top-left corner, colour rising from the bottom edge.
+- Each bead stands on a soft pool of its own colour on the glass (a radial ellipse under the CrDisc).
+- `_TrayLight` (the band that crossed the tray each cycle) removed - the slab never moves; the drawings keep their
+  v0.915 moves and the rise-in.
+- Tests: test_v0915 no longer pins `_TrayLight`; `server/tests/test_v0916_studio_slab.py`. NOT VERIFIED on her phone.
+
 ## v0.877.0 HOOLA AGENT API - companies call Hoola's tools with one key and pay from an INR wallet (owner: "means we developed employees, tools etc can directly be used by different companies via our Hoola API" -> "now let's work on development of different portal endpoints for Hoola AI agent")
 
 Research first (13 Nov 2026, official terms of 14 providers + OpenRouter's 121-provider list): reselling raw model API access is forbidden by
@@ -4793,7 +4847,7 @@ NOT BUILT: UPI top-up + GST invoice (phase 2), employees as API (phase 3), voice
 - On the phone: branch, model and effort chips, the diff with line comments, and attachments.
 - Teleport to a local terminal.
 
-## v0.914.0 HOOLA CODE LIKE CLAUDE CODE - the console and phone rebuilt to the approved design (owner: "CHECK THE CLAUDE CODE INTERFACE, FEATURE, UI/UX ETC -- WE WANT EXACT SAME FOR HOOLA CODE CONSOLE SIDE --- SHOW ME THE DESIGN FIRST HERE" -> "ADD PHONE VIEW AND SCHEDULED TASKS SCREEN ALSO... ADD ALL 100% claude code feature in hoola code" -> "NOW CHECK THE MINUTE DESIGN FIX" -> "GO BUILD")
+## v0.917.0 HOOLA CODE LIKE CLAUDE CODE (built as 0.914; their CREATE GLASS / GLASS STUDIOS / STUDIO SLAB took 0.914-0.916, all kept) - the console and phone rebuilt to the approved design (owner: "CHECK THE CLAUDE CODE INTERFACE, FEATURE, UI/UX ETC -- WE WANT EXACT SAME FOR HOOLA CODE CONSOLE SIDE --- SHOW ME THE DESIGN FIRST HERE" -> "ADD PHONE VIEW AND SCHEDULED TASKS SCREEN ALSO... ADD ALL 100% claude code feature in hoola code" -> "NOW CHECK THE MINUTE DESIGN FIX" -> "GO BUILD")
 
 The design came first this time: a design canvas (claude.ai/artifact/RqivHmdqNni1XAZknHhbRT) with 17 console screens and 8 phone
 screens, polished in a second pass (one icon set, a 9-step type scale, one accent, drawn controls), then approved. Its source files and
