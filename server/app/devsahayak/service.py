@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -51,7 +52,46 @@ class DevError(Exception):
     pass
 
 
-def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
+# v0.932 THE LOST CARDS: almost every card was published from inside `with session()` right after s.flush(), i.e.
+# while this thread still held SQLite's write lock; the event's own session then waited 5 s and failed with
+# "database is locked" (the v0.929 retry failed the same way). Now a card published while this thread has an
+# unfinished write waits for that write to commit and goes out right after it (in order); with no write open it goes
+# out at once, as before.
+_W = threading.local()
+
+
+def _writing() -> list:
+    lst = getattr(_W, "open", None)
+    if lst is None:
+        lst = _W.open = []
+    return lst
+
+
+def _after_flush(sess, ctx) -> None:
+    lst = _writing()
+    if sess not in lst:
+        lst.append(sess)
+
+
+def _end_tx(sess, trans) -> None:
+    if getattr(trans, "parent", None) is not None:
+        return
+    lst = _writing()
+    if sess in lst:
+        lst.remove(sess)
+
+
+try:
+    from sqlalchemy import event as _sa_event
+    from sqlalchemy.orm import Session as _SASession
+    if not _sa_event.contains(_SASession, "after_flush", _after_flush):
+        _sa_event.listen(_SASession, "after_flush", _after_flush)
+        _sa_event.listen(_SASession, "after_transaction_end", _end_tx)
+except Exception:  # noqa: BLE001 - without the hooks cards go out at once, as before
+    log.debug("dev publish hooks not installed", exc_info=True)
+
+
+def _publish_now(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
     from ..events import bus
     try:
         if not conv:
@@ -59,7 +99,7 @@ def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
             conv = home_conv(tenant)
         try:
             bus.publish(conv, kind, payload)
-        except Exception as e:                  # v0.929 her session's card was lost to a 5 s "database is locked"
+        except Exception as e:                  # a write from ANOTHER thread held the lock: once more
             if "locked" not in str(e).lower():
                 raise
             import time as _time
@@ -67,6 +107,26 @@ def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
             bus.publish(conv, kind, payload)
     except Exception:
         log.exception("devsahayak publish failed")
+
+
+def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
+    open_ = [x for x in _writing() if getattr(x, "in_transaction", lambda: False)()]
+    if not open_:
+        _publish_now(tenant, kind, payload, conv)
+        return
+    sess = open_[-1]
+
+    def _send(_s) -> None:
+        _publish_now(tenant, kind, payload, conv)
+
+    def _lost(_s) -> None:
+        log.warning("devsahayak card %s not sent: its change was rolled back", kind)
+
+    try:
+        _sa_event.listen(sess, "after_commit", _send, once=True)
+        _sa_event.listen(sess, "after_rollback", _lost, once=True)
+    except Exception:  # noqa: BLE001
+        _publish_now(tenant, kind, payload, conv)
 
 
 def _j(v: str, d: Any) -> Any:
@@ -1561,11 +1621,23 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
             _RUN_AT.pop(tid, None)
             _STOP.discard(tid)
             _BEAT.pop(tid, None)
+            left: list[str] = []
             with session() as s:
                 row = s.get(DevTask, tid)
                 if row is not None:
+                    left = [str(x) for x in _j(row.notes or "", []) if str(x).strip()]
                     row.notes = None
                     row.job = None
+            if left:                            # v0.932 a note that came in after the last step is never dropped quietly
+                try:
+                    with session() as s:
+                        row = s.get(DevTask, tid)
+                        if row is not None:
+                            _card(tenant, row, "Your note came in just as Hoola finished this round, so it was not "
+                                               "read yet: \"" + " / ".join(left)[:600] + "\". Send it again as a "
+                                               "follow-up and Hoola will continue from here.")
+                except Exception:
+                    log.debug("dev late note card failed", exc_info=True)
             try:
                 from . import around as AR
                 AR.make_hint(tid)               # Phase 5: one small call - her likely next message, as ghost text

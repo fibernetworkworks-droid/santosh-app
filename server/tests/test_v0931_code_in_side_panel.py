@@ -34,5 +34,5 @@ def test_design_rules_and_version():
     btn = SHELL[i:]
     assert "Color(0x" not in btn and "blur" not in btn.lower() and "w800" not in btn and "w900" not in btn
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.931.0"' in main and "HOOLA CODE IN THE SIDE PANEL" in main
-    assert "version: 0.931.0+930" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.932.0"' in main
+    assert "version: 0.932.0+931" in (ROOT / "pubspec.yaml").read_text()

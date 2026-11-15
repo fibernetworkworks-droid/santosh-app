@@ -127,12 +127,28 @@ def _git(repo: Path, *args: str, timeout: int = 120) -> tuple[int, str]:
         return _git_run(repo, *args, timeout=timeout)
 
 
+# v0.932 the server's git in a working copy the box can write runs with NONE of the server's secrets in its
+# environment and with every git setting that can start a program switched off (the .git folder itself is read-only
+# inside the box, devlab/box.py).
+GIT_SAFE = ("-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.pager=cat",
+            "-c", "core.editor=true", "-c", "protocol.ext.allow=never",
+            "-c", "core.sshCommand=false", "-c", "credential.helper=")
+_GIT_ENV_KEEP = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TZ")
+
+
+def _git_env() -> dict[str, str]:
+    env = {k: os.environ[k] for k in _GIT_ENV_KEEP if k in os.environ}
+    env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_CONFIG_NOSYSTEM": "1", "GIT_AUTHOR_NAME": "Hoola",
+                "GIT_AUTHOR_EMAIL": "hoola@localhost", "GIT_COMMITTER_NAME": "Hoola",
+                "GIT_COMMITTER_EMAIL": "hoola@localhost"})
+    return env
+
+
 def _git_run(repo: Path, *args: str, timeout: int = 120) -> tuple[int, str]:
-    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_AUTHOR_NAME": "Hoola", "GIT_AUTHOR_EMAIL": "hoola@localhost",
-           "GIT_COMMITTER_NAME": "Hoola", "GIT_COMMITTER_EMAIL": "hoola@localhost"}
+    env = _git_env()
     try:
-        p = subprocess.run(["git", "-C", str(repo), "-c", "core.quotepath=off", "-c", "commit.gpgsign=false", *args],
-                           capture_output=True, text=True, timeout=timeout, env=env)
+        p = subprocess.run(["git", "-C", str(repo), "-c", "core.quotepath=off", "-c", "commit.gpgsign=false",
+                            *GIT_SAFE, *args], capture_output=True, text=True, timeout=timeout, env=env)
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except subprocess.TimeoutExpired:
         return 124, f"[git timed out after {timeout}s]"
@@ -407,6 +423,8 @@ Rules that never bend:
 - Files marked "This file holds secrets" are hidden from you on purpose: never try to read around it, never change it.
 - Never touch .github/workflows unless she allowed it. Never add secrets, tokens or personal data to code.
 - Never run destructive commands outside the working copy; there is no network, so do not try to install from it.
+- Every bash command runs in a fresh box (nothing you start keeps running) and git there is read-only: Hoola
+  records your changes itself, so never commit, stash or reset in bash.
 - A vague request gets ONE clear question (done with the question in explain ending in '?'), and no edits.
 - Her rules for this repo and the repo's own AGENTS.md / CLAUDE.md / CONTRIBUTING come before your habits.
 - Write to her in plain, short English."""
@@ -871,12 +889,34 @@ class Tools:
         fn = getattr(self, "t_" + name, None)
         if fn is None:
             return f"Unknown tool {name}."
+        inp = inp if isinstance(inp, dict) else {}
+        if B.BROKEN_KEY in inp:                          # v0.932 the call's arguments were not valid JSON
+            return (f"Your call to {name} did not run: its arguments were not valid JSON (they start: "
+                    f"{str(inp[B.BROKEN_KEY])[:160]!r}). Send the call again with valid JSON. For a big file, write a "
+                    "small first version and then add to it with edit, instead of one very large write.")
         try:
-            return fn(**{k: v for k, v in (inp or {}).items() if not k.startswith("_")})
+            return fn(**{k: _loose(v) for k, v in inp.items() if not k.startswith("_")})
         except TypeError as e:
             return f"Wrong arguments for {name}: {e}"
         except OSError as e:
             return f"{name} failed: {e.__class__.__name__}: {str(e)[:200]}"
+        except (Stopped, Unavailable):
+            raise
+        except Exception as e:                            # v0.932 one odd call never ends her whole session
+            log.warning("hoola code tool %s failed: %s", name, e, exc_info=True)
+            return f"{name} could not run with these arguments ({e.__class__.__name__}: {str(e)[:200]}). Check them and try again."
+
+
+def _loose(v: Any) -> Any:
+    """v0.932 Qwen sometimes sends a list or an object as JSON TEXT (todos='[{...}]', edits='[...]'): read it back."""
+    if isinstance(v, str):
+        t = v.strip()
+        if (t.startswith("[") and t.endswith("]")) or (t.startswith("{") and t.endswith("}")):
+            try:
+                return json.loads(t)
+            except ValueError:
+                return v
+    return v
 
 
 # ---------------------------------------------------------------- page events
@@ -1206,6 +1246,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     clear_at = int(_set("dev_ws_clear_chars", 180000) or 180000)
     compact_at = int(_set("dev_ws_compact_chars", 480000) or 480000)
     t0, steps, nudged, finish = time.time(), 0, 0, None
+    last_text, cut_in_row = "", 0                         # v0.932 her answer is never thrown away
+    explain_ask = getattr(t, "kind", "") == "explain"
     while steps < max_steps and time.time() - t0 < minutes * 60:
         if stopped and stopped():
             ses.save_messages(msgs)
@@ -1214,8 +1256,14 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         if B.size(msgs) > clear_at:
             B.trim(msgs, clear_at)
         if B.size(msgs) > compact_at:
-            msgs = compact(msgs)
-            emit({"k": "compact", "text": "Older part of the session summarised to keep going"})
+            try:
+                msgs = compact(msgs)
+                emit({"k": "compact", "text": "Older part of the session summarised to keep going"})
+            except (Stopped, Unavailable):
+                raise
+            except Exception as e:                        # v0.932 a failed summary never ends the round: trim harder
+                log.warning("hoola code compaction failed for %s: %s", getattr(t, "id", ""), e)
+                B.trim(msgs, compact_at // 2)
         blocks, stop = B.call(system, msgs, round_tools)
         msgs.append({"role": "assistant", "content": blocks})
         for b in blocks:
@@ -1223,16 +1271,30 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 emit({"k": "think", "text": scrub(str(b["thinking"]).strip())[:1500]})    # Phase 5: shown in the Thinking view only
             if b.get("type") == "text" and str(b.get("text") or "").strip():
                 emit({"k": "say", "text": str(b["text"]).strip()[:800]})
+        said = "\n\n".join(str(b.get("text") or "").strip() for b in blocks
+                             if b.get("type") == "text" and str(b.get("text") or "").strip())
+        if said:
+            last_text = said
         uses = [b for b in blocks if b.get("type") == "tool_use"]
         if not uses:
-            if stop == "max_tokens":
-                msgs.append({"role": "user", "content": "[Your answer was cut. Continue with the tools.]"})
+            if stop == "max_tokens" and cut_in_row < 3:
+                cut_in_row += 1
+                msgs.append({"role": "user", "content": "[Your answer was cut. Continue with the tools; split a big "
+                                                        "write into a small file plus edits.]"})
                 continue
+            # v0.932 like Claude Code, a reply in words with no tool call is the answer: an explain ask ends here;
+            # any other ask gets ONE reminder (per stretch of work) to finish with done, then its words are kept.
+            if said and (explain_ask or nudged >= 1):
+                finish = {"explain": said}
+                ses.save_messages(msgs)
+                break
             if nudged >= 1:
                 break
             nudged += 1
-            msgs.append({"role": "user", "content": "[Use the tools to continue, or call done if this round is finished.]"})
+            msgs.append({"role": "user", "content": "[Use the tools to continue, or call done (with your answer in "
+                                                    "explain) if this round is finished.]"})
             continue
+        nudged, cut_in_row = 0, 0
         results = []
         agent_calls = [b for b in uses if b["name"] == "agent"]
         agent_out: dict[str, str] = {}
@@ -1282,16 +1344,24 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
                 continue
             out = tools.run(b["name"], inp)
-            for ev in event(tools, b["name"], inp, out):
-                emit(ev)
+            try:
+                for ev in event(tools, b["name"], inp, out):
+                    emit(ev)
+            except Exception as e:                        # v0.932 a page event never ends the round
+                log.warning("hoola code event for %s failed: %s", b["name"], e)
             results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
         notes = []
-        if inbox and finish is None:
+        if inbox:                                         # v0.932 also read at done: a note that came in is never lost
             try:
                 notes = [str(x)[:2000] for x in (inbox() or []) if str(x).strip()]
             except Exception:
                 notes = []
         if notes:
+            if finish is not None:                        # she wrote while it was finishing: her note comes first
+                finish = None
+                results = [r if r.get("content") != "Finished." else
+                           {**r, "content": "Not finished yet: she just wrote to you (below). Do what she asks, then call done again."}
+                           for r in results]
             results.append({"type": "text", "text": "<her_note_while_you_work>\n" + "\n".join(notes)
                             + "\n</her_note_while_you_work>\nTake this into account from your next step."})
             for n in notes:
@@ -1302,7 +1372,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             break
     finished = finish is not None
     if finish is None:
-        finish = {"explain": "The step / time limit for this round was reached; what was done so far is below for review.",
+        why = ("The step / time limit for this round was reached" if steps >= max_steps or time.time() - t0 >= minutes * 60
+               else "Hoola stopped without calling done")
+        finish = {"explain": (last_text + "\n\n" if last_text else "") + why + "; what was done so far is below for review.",
                   "risk": "The round ended before Hoola called done - review the diff carefully."}
     ses.meta["read"] = sorted(tools.read)[-500:]
     q = str(finish.get("explain") or "").strip()

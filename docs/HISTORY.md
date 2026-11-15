@@ -5166,3 +5166,38 @@ Code button beside the title) -> "GO WITH B".
 - Tests: NEW `server/tests/test_v0931_code_in_side_panel.py`; `test_v0898_chaar_tab.py`, `test/four_tabs_test.dart`,
   `test/tools_pro_test.dart` (10 tool drawings) updated. Phone only, server unchanged except the version story.
 - NOT VERIFIED on her phone (CI compiles the Dart first).
+
+
+## v0.932.0 HOOLA CODE WAVE 1
+
+Owner: "NOW GO DEEP CHECK THE HOOLA CODE BACKEND --- IS ALL IS PERFECT WITH ALL ADVANCE CODING SKILLS LIKE CLAUDE CODE"
+-> a three-part deep check (the engine loop on Qwen, the session lifecycle, the test box; ~25 findings) -> "GO WAVE 1".
+
+1. LOST CARDS (`devsahayak/service.py` `_publish`): almost every Hoola Code card was published inside `with session()`
+   right after `s.flush()`, while the thread held SQLite's write lock; the event's own session waited 5 s and failed
+   with "database is locked" (reproduced: 5.0 s then the error; the v0.929 retry failed the same way). Now a thread-
+   local list of sessions with an unfinished write (SQLAlchemy `after_flush` / `after_transaction_end` on Session) is
+   kept; a card published while one is open is sent from that session's `after_commit` (in order); a rolled-back save
+   sends nothing (logged). No open write = sent at once, as before.
+2. THE GIT WALL: the working copy (with its .git) was mounted read-write in the box and its top folder is 0o777; a test
+   or a dependency's install script could plant `core.fsmonitor` / hooks that the SERVER's git (`engine._git_run`, run
+   with the full `os.environ`) then executed outside the box. Now `devlab/box.py` mounts `<copy>/.git` read-only at
+   `/work/.git`, and server git runs with `_git_env()` (PATH, HOME, LANG, LC_ALL, TMPDIR, TZ only, GIT_CONFIG_NOSYSTEM)
+   and `GIT_SAFE` (fsmonitor off, hooksPath /dev/null, pager cat, editor true, protocol.ext never, sshCommand false,
+   no credential helper). The coder is told git in the box is read-only and every command runs in a fresh box.
+3. ANSWERS KEPT (`engine._round`): a reply in words with no tool call is the answer, like Claude Code - an explain ask
+   ends there; any other ask gets one reminder per stretch of work (the count resets after a tool step), then its
+   words become the explanation. A loop that ends without done keeps the last words it said and says which limit ended
+   it. A cut answer is asked to continue at most 3 times in a row.
+4. ODD TOOL CALLS: `brain._keep_broken` keeps every Qwen tool call whose arguments are not valid JSON (llm.from_openai
+   dropped them silently) as a tool_use the engine answers with "your arguments were not valid JSON ... split a big
+   write"; `Tools.run` reads a list / object sent as JSON text (`_loose`) and turns any other exception into words for
+   the model (Stopped / Unavailable still pass); a page-event error and a failed compaction (trim harder) never end the
+   round.
+5. HER NOTES: the inbox is read at done too - a note that arrives as Hoola finishes cancels the finish ("Not finished
+   yet: she just wrote to you"); a note left after the round ends gets a card asking her to send it as a follow-up.
+
+Tests: NEW `server/tests/test_v0932_hoola_code_wave1.py` (10). Hoola Code suites re-run: v0748 / v0768 / v0789 pass
+alone (failed only under 6-way parallel load); v0447 ai employees premium, v0473 coder routes, v093 place fail the same
+on the code before this change.
+NOT VERIFIED on her server. Waves 2-3 not built.

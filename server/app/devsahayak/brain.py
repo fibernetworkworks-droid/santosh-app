@@ -26,6 +26,10 @@ from __future__ import annotations
 import contextlib
 import copy
 import logging
+import json
+import re
+import time
+import uuid
 import threading
 from typing import Any
 
@@ -214,6 +218,7 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
             last = QwenError(f"OpenRouter error: {str(data['error'])[:300]}")
             continue
         blocks, stop = llm.from_openai(data)
+        blocks, stop = _keep_broken(data, blocks, stop)
         if not blocks:
             last = QwenError("Qwen sent an empty answer")
             continue
@@ -230,6 +235,41 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
             pass
         return blocks, stop
     raise QwenError(f"Qwen ({model}) did not answer: {last}")
+
+
+BROKEN_KEY = "_broken"
+
+
+def _keep_broken(data: dict, blocks: list[dict], stop: str) -> tuple[list[dict], str]:
+    """v0.932 a tool call whose arguments are not valid JSON (Qwen does this, most of all on a big write) used to be
+    dropped by llm.from_openai without a word: the model never learned its edit did not happen and went on (tests on
+    unedited code), or the reply read as cut and repeated to the step cap. Each broken call is kept as a tool_use whose
+    input carries only the broken text, so the engine answers it with "your arguments were not valid JSON"."""
+    try:
+        calls = ((data.get("choices") or [{}])[0].get("message") or {}).get("tool_calls") or []
+    except Exception:
+        return blocks, stop
+    kept = {b.get("id") for b in blocks if b.get("type") == "tool_use"}
+    added = 0
+    for tc in calls:
+        fn = tc.get("function") or {}
+        raw = fn.get("arguments") or "{}"
+        try:
+            ok = isinstance(json.loads(raw), dict)
+        except (ValueError, TypeError):
+            ok = False
+        if ok:
+            continue
+        tid = re.sub(r"[^a-zA-Z0-9_-]", "_", str(tc.get("id") or "")) or f"call_{uuid.uuid4().hex[:12]}"
+        if tid in kept:
+            continue
+        blocks.append({"type": "tool_use", "id": tid, "name": str(fn.get("name") or "unknown"),
+                       "input": {BROKEN_KEY: str(raw)[:400]}})
+        added += 1
+    if added:
+        log.warning("hoola code qwen: %d tool call(s) with broken arguments sent back to the model", added)
+        stop = "tool_use"
+    return blocks, stop
 
 
 def _claude_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
