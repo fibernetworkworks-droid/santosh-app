@@ -8,12 +8,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../state.dart';
+import '../chat/hoola_md.dart';
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import 'code_changes.dart';
 import 'code_home.dart';
 import 'code_kit.dart';
 import 'code_start.dart';
+import 'code_words.dart';
 
 /// Her comments on lines of a change, kept per session until they go with her next message.
 class CodeComments {
@@ -36,6 +38,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   String? _error;
   bool _busy = false, _thinking = false, _lookedForMerge = false;
   final Set<int> _open = {};
+  String? _selecting;                 // v0.928 the message whose text she is selecting
+  bool _away = false;                 // she scrolled up: the Newest arrow shows and nothing pulls her down
+  int _seen = -1;                     // how many steps were drawn last time (new ones follow her to the end)
   Timer? _poll, _tick;
   final _msg = TextEditingController();
   final _focus = FocusNode();
@@ -46,7 +51,19 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(() {
+      final away = _scroll.hasClients && _scroll.position.maxScrollExtent - _scroll.offset > 240;
+      if (away != _away && mounted) setState(() => _away = away);
+    });
     _load();
+  }
+
+  void _toEnd({bool animate = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      final end = _scroll.position.maxScrollExtent;
+      animate ? _scroll.animateTo(end, duration: const Duration(milliseconds: 260), curve: Curves.easeOut) : _scroll.jumpTo(end);
+    });
   }
 
   @override
@@ -67,10 +84,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     try {
       final t = cm(await api.call('GET', _base));
       if (!mounted) return;
+      final n = cl(t['steps']).length;
+      final first = _seen < 0;
       setState(() {
         _t = t;
         _error = null;
       });
+      if (n != _seen && (first || !_away)) _toEnd(animate: !first);   // new words follow her unless she scrolled up
+      _seen = n;
       if (_live(t)) {
         _poll ??= Timer.periodic(const Duration(seconds: 3), (_) => _load());
         _tick ??= Timer.periodic(const Duration(seconds: 1), (_) {
@@ -328,7 +349,17 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     color: c.ink,
-                    child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), children: _body(c, t)),
+                    child: Stack(fit: StackFit.expand, children: [
+                      ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), children: _body(c, t)),
+                      if (_away)
+                        Positioned(bottom: 12, left: 0, right: 0, child: Center(child: CodeNewestButton(onTap: () => _toEnd()))),
+                      if (_selecting != null)
+                        Positioned(
+                          top: 8,
+                          right: 12,
+                          child: CodeChip('Done selecting', icon: Icons.check_rounded, onTap: () => setState(() => _selecting = null)),
+                        ),
+                    ]),
                   ),
           ),
           if (t != null) _composer(c, t),
@@ -348,6 +379,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     var gi = 0;
     Map<String, dynamic>? todo;
     var said = false;
+    var lastSay = -1;
+    for (var i = 0; i < steps.length; i++) {
+      if (cs(steps[i]['k']) == 'say') lastSay = i;
+    }
+    var si = -1;
     void flush({required bool last}) {
       if (group.isEmpty) return;
       out.add(_group(c, List.of(group), gi, open: (running && last) || _open.contains(gi)));
@@ -356,14 +392,15 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     }
 
     for (final s in steps) {
+      si++;
       final k = cs(s['k']);
       if (k == 'say') {
         flush(last: false);
         said = true;
-        out.add(Padding(padding: const EdgeInsets.only(top: 14), child: Text(cs(s['text']), style: HoolaType.reply(c))));
+        out.add(_reply(cs(s['text']), 'say$si', actions: si == lastSay && !running));
       } else if (k == 'note') {
         flush(last: false);
-        out.add(_her(c, cs(s['text']), const [], small: true));
+        out.add(_her(c, cs(s['text']), const [], small: true, key: 'note$si'));
       } else if (k == 'todo') {
         todo = s;
       } else if (k == 'think') {
@@ -378,7 +415,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       if (cs(n).isNotEmpty) out.add(Padding(padding: const EdgeInsets.only(top: 10), child: Text('Queued for its next step: ${cs(n)}', style: codeSans(c, size: 13, color: c.ink3))));
     }
     if (!running) {
-      if (!said && cs(t['explain']).isNotEmpty) out.add(Padding(padding: const EdgeInsets.only(top: 14), child: Text(cs(t['explain']), style: HoolaType.reply(c))));
+      if (!said && cs(t['explain']).isNotEmpty) out.add(_reply(cs(t['explain']), 'explain', actions: true));
       if (st == 'plan_wait' && cm(t['plan']).isNotEmpty) out.add(_plan(c, t));
       if (cs(t['question']).isNotEmpty) out.addAll(_question(c, t));
       if ((st == 'failed' || st == 'refused') && cs(t['error']).isNotEmpty) {
@@ -396,7 +433,29 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     return out;
   }
 
-  Widget _her(HoolaColors c, String text, List<Map<String, dynamic>> attach, {bool small = false}) => Padding(
+  /// v0.928 Hoola's words like a Hoola chat reply (renderer, long-press sheet, Copy · Read aloud · Share on the newest).
+  Widget _reply(String text, String key, {bool actions = false}) => CodeReply(
+        app: widget.app,
+        text: text,
+        actions: actions,
+        selecting: _selecting == key,
+        onQuote: _mode(_t ?? const {}) == 'off' ? null : (q) => codeQuoteInto(_msg, _focus, q),
+        onSelect: () => setState(() => _selecting = key),
+      );
+
+  void _herMenu(String text, String key) => codeMessageMenu(context, widget.app, text,
+      mine: true,
+      onQuote: _mode(_t ?? const {}) == 'off' ? null : () => codeQuoteInto(_msg, _focus, text),
+      onEdit: _mode(_t ?? const {}) == 'off'
+          ? null
+          : () {
+              _msg.text = text;
+              _msg.selection = TextSelection.collapsed(offset: text.length);
+              _focus.requestFocus();
+            },
+      onSelect: () => setState(() => _selecting = key));
+
+  Widget _her(HoolaColors c, String text, List<Map<String, dynamic>> attach, {bool small = false, String key = 'ask'}) => Padding(
         padding: EdgeInsets.only(top: small ? 12 : 0, left: 48),
         child: Align(
           alignment: Alignment.centerRight,
@@ -423,7 +482,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                 color: c.sunk,
                 borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(6)),
               ),
-              child: Text(text, maxLines: small ? 6 : 16, overflow: TextOverflow.ellipsis, style: codeSans(c, size: small ? 14.5 : 15.5, height: 1.45)),
+              child: _selecting == key
+                  ? SelectableText(text, style: codeSans(c, size: small ? 14.5 : 15.5, height: 1.45))
+                  : GestureDetector(
+                      onLongPress: () => _herMenu(text, key),
+                      child: Text(text, style: codeSans(c, size: small ? 14.5 : 15.5, height: 1.45)),
+                    ),
             ),
           ]),
         ),
@@ -666,7 +730,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   List<Widget> _question(HoolaColors c, Map<String, dynamic> t) {
     final choices = ((cm(t['ws'])['choices'] as List?) ?? const []).map(cs).where((e) => e.isNotEmpty).take(4).toList();
     return [
-      Padding(padding: const EdgeInsets.only(top: 14), child: Text(cs(t['question']), style: HoolaType.reply(c))),
+      Padding(padding: const EdgeInsets.only(top: 14), child: HoolaMd(cs(t['question']))),
       for (final ch in choices)
         Padding(
           padding: const EdgeInsets.only(top: 8),

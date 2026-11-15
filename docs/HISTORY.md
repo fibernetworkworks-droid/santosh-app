@@ -5106,3 +5106,18 @@ pass words by name (plan = "Planning · reading the code", ci_fix = "Fixing the 
 work"); `_passTitle` for a card with only a pass. Every Hoola Code Qwen call now logs "hoola code qwen <model> <s> effort= in=
 out= tools= calls= stop=" and every failed try its reason, so `vps-ops errors` / pm2 logs show how fast 27B is answering.
 NOT VERIFIED: on her phone; the Qwen step times have not been read from her server yet.
+
+
+## v0.928.0 HOOLA CODE CHAT LIKE HOOLA CHAT (owner: "Make all chat feature same as hoola chat... App... Everything")
+
+The gap, read from the code: the phone Hoola Code session drew Hoola's words as one plain Text (no headings, lists, tables or
+code blocks), had no Copy / Read aloud / Share, no long-press, cut her message at 16 lines and never followed new words.
+BUILT (app only): `lib/ui/code/code_words.dart` - CodeReply (the chat's HoolaMd renderer + long-press sheet + Copy · Read aloud
+· Share on the newest reply, sharing as a text file through Native.shareFile like the chat), codeMessageMenu (Copy, Quote in my
+reply, Edit and send again = her words back in the box, Read aloud, Select text), codeQuoteInto, CodeNewestButton; the session
+uses them for every "say" step, the explanation and Hoola's question; her bubble long-press + SelectableText while selecting +
+a "Done selecting" chip; new steps scroll her to the end unless she scrolled more than 240 px up, then a Newest arrow shows.
+NOT CARRIED OVER, on purpose: Good / Not right and Ask again (the chat's rateReply / retryLastReply work on chat turns; Hoola
+Code has no rating or retry route yet), files on follow-up messages (the server takes attachments only on the first message
+of a session), the voice-call button (a call is not a coding session).
+NOT VERIFIED: on her phone (CI compiles the Dart first).
