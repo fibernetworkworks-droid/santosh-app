@@ -4750,3 +4750,16 @@ the stepper, and "Create · about ₹6" was cut by the ellipsis.
 - Light-mode glass more see-through (non-strong fill .82 / .58 / .44).
 - Test `server/tests/test_v0915_glass_studios.py`; test/create_native_test.dart unchanged (CrDisc keeps one gradient
   Container). NOT VERIFIED on her phone.
+
+
+## v0.916.0 STUDIO SLAB (owner: "CHECK THE FULL CARD EVERY STUDIO ... MAKE PERFECT STATIC GLASSY ... SHOW ME THE DESIGN HERE FIRST" -> design canvas claude.ai/artifact/C8e12Hvwi1Cy8WUCPtNmbk with A clear pane / B glass wells / C thick slab -> "C")
+
+- Create home `_StudiosState.build`: the Every studio card is one strong glass slab (`crGlass` radius 32, strong, hue
+  tint) clipped to its shape; the heading "Every studio" (Literata 22) and a "12 tools" glass pill moved INSIDE it (the
+  CrHead above it is gone).
+- `_SlabGlass` paints, once: a second edge 5 px inside the first (the glass's thickness), a still glare band across
+  the top-left corner, colour rising from the bottom edge.
+- Each bead stands on a soft pool of its own colour on the glass (a radial ellipse under the CrDisc).
+- `_TrayLight` (the band that crossed the tray each cycle) removed - the slab never moves; the drawings keep their
+  v0.915 moves and the rise-in.
+- Tests: test_v0915 no longer pins `_TrayLight`; `server/tests/test_v0916_studio_slab.py`. NOT VERIFIED on her phone.

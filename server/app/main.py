@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.915.0"   # v0.915.0 GLASS STUDIOS (owner, on her v0.914 screenshot of Every studio: "MAKE EVERY STUDIO MORE GLASSY AND ANIMATE EVERY ICON"): every studio bead is glass (`CrOrb`: a lit cap, a bottom glow, a bright hairline, a band of light crossing it while it moves), every drawing has its own small move (`crGlyphMove`: the picture tilts, the clip rolls, the clapper claps, a note hops, the voice breathes with rings, the scissors snip, the pen writes, the reel and the star turn, the tiles settle), played as a wave across the tray (`_StudiosState`, 6.4 s cycle) with a slow light crossing the tray and the beads rising in once; light glass more see-through; all still under reduce motion; 1 server. Previous: v0.914.0 CREATE GLASS.
+APP_VERSION = "0.916.0"   # v0.916.0 STUDIO SLAB (owner, on her v0.915 phone screenshot: "PERFECT ... CHECK THE FULL CARD EVERY STUDIO ... MAKE PERFECT STATIC GLASSY ... SHOW ME THE DESIGN FIRST" -> design canvas claude.ai/artifact/C8e12Hvwi1Cy8WUCPtNmbk -> "C"): the Every studio card is a still thick glass slab - the heading and a "12 tools" pill inside it, a second edge 5 px in for its thickness, a still glare across the top-left corner, colour rising from its bottom edge (`_SlabGlass`), a pool of each bead's colour on the glass under it; the light that swept across the tray is gone (the slab never moves), the drawings keep their moves; 1 server. Previous: v0.915.0 GLASS STUDIOS.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

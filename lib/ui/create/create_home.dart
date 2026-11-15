@@ -185,7 +185,6 @@ class _HoolaCreateState extends State<HoolaCreate> {
             ),
           ),
           crGap,
-          const CrHead('Every studio', note: '12 tools'),
           _Studios(onTap: _go),
           crGap,
           _Recent(store: _store, onAll: () => _go('My creations')),
@@ -383,33 +382,59 @@ class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    return Stack(children: [
-      Container(
-        padding: const EdgeInsets.fromLTRB(6, 18, 6, 10),
-        decoration: crGlass(c, radius: 26, tint: CrHue.of(context).b),
-        child: LayoutBuilder(builder: (context, box) {
-          final w = box.maxWidth / 4;
-          return AnimatedBuilder(
-            animation: Listenable.merge([_beat, _rise]),
-            builder: (context, _) => Wrap(children: [
-              for (var i = 0; i < _tools.length; i++) _cell(c, i, w),
+    final hue = CrHue.of(context);
+    // v0.916 C - THICK SLAB (design canvas claude.ai/artifact/C8e12Hvwi1Cy8WUCPtNmbk): a heavier piece of glass that
+    // holds its own heading, a double edge for its thickness, a still glare across the top-left corner, and a pool of
+    // each bead's colour on the glass. The slab itself never moves; only the drawings do.
+    return Container(
+      decoration: crGlass(c, radius: 32, strong: true, tint: CrHue.of(context).b),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Stack(children: [
+          Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _SlabGlass(c.dark, hue.b)))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 18, 8, 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 10, 16),
+                child: Row(children: [
+                  Expanded(
+                    child: Semantics(
+                      header: true,
+                      child: Text('Every studio',
+                          style: HoolaType.heading(c).copyWith(
+                              fontSize: 22,
+                              fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -.2)),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: c.dark ? Colors.white.withOpacity(.1) : Colors.white.withOpacity(.6),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: Colors.white.withOpacity(c.dark ? .16 : .9)),
+                    ),
+                    child: Text('${_tools.length} tools',
+                        style: HoolaType.small(c).copyWith(fontSize: 12.5, color: c.ink2, fontWeight: FontWeight.w500)),
+                  ),
+                ]),
+              ),
+              LayoutBuilder(builder: (context, box) {
+                final w = box.maxWidth / 4;
+                return AnimatedBuilder(
+                  animation: Listenable.merge([_beat, _rise]),
+                  builder: (context, _) => Wrap(children: [
+                    for (var i = 0; i < _tools.length; i++) _cell(c, i, w),
+                  ]),
+                );
+              }),
             ]),
-          );
-        }),
-      ),
-      // a slow light crossing the whole tray, once a cycle
-      Positioned.fill(
-        child: IgnorePointer(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(26),
-            child: AnimatedBuilder(
-              animation: _beat,
-              builder: (_, __) => CustomPaint(painter: _TrayLight(_beat.isAnimating ? _beat.value : -1, c.dark)),
-            ),
           ),
-        ),
+        ]),
       ),
-    ]);
+    );
   }
 
   Widget _cell(HoolaColors c, int i, double w) {
@@ -429,9 +454,33 @@ class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
             child: Column(children: [
               Transform.translate(
                 offset: Offset(0, 14 * (1 - r)),
-                child: Transform.scale(scale: .7 + .3 * r, child: CrDisc(t.glyph, size: 54, hue: t.hue, beat: _beatOf(i))),
+                child: Transform.scale(
+                  scale: .7 + .3 * r,
+                  child: SizedBox(
+                    width: 64,
+                    height: 62,
+                    child: Stack(alignment: Alignment.topCenter, clipBehavior: Clip.none, children: [
+                      // the bead's colour falling on the glass under it
+                      Positioned(
+                        top: 40,
+                        child: SizedBox(
+                          width: 56,
+                          height: 22,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.rectangle,
+                              borderRadius: BorderRadius.circular(40),
+                              gradient: RadialGradient(colors: [t.hue.b.withOpacity(c.dark ? .28 : .34), t.hue.b.withOpacity(0)]),
+                            ),
+                          ),
+                        ),
+                      ),
+                      CrDisc(t.glyph, size: 54, hue: t.hue, beat: _beatOf(i)),
+                    ]),
+                  ),
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 0),
               SizedBox(
                 height: 32,
                 child: Text(t.name, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
@@ -445,30 +494,52 @@ class _StudiosState extends State<_Studios> with TickerProviderStateMixin {
   }
 }
 
-/// A wide soft band of light that crosses the studios tray in the first part of each cycle.
-class _TrayLight extends CustomPainter {
-  _TrayLight(this.v, this.dark);
-  final double v;
+/// The still glass of the studios slab: a second edge inside the first (its thickness), a glare across the top-left
+/// corner, and a soft colour along the bottom. Painted once, never moves.
+class _SlabGlass extends CustomPainter {
+  _SlabGlass(this.dark, this.hue);
   final bool dark;
+  final Color hue;
   @override
   void paint(Canvas canvas, Size s) {
-    if (v < 0 || v > .45) return;
-    final p = v / .45;
+    if (s.isEmpty) return;
     final r = Offset.zero & s;
-    final a = (p - .12).clamp(0.0, 1.0), b = (p + .12).clamp(0.0, 1.0);
+    // the inner edge, 5 px in
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(r.deflate(5), const Radius.circular(27)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = Colors.white.withOpacity(dark ? .08 : .45));
+    // the glare across the top-left corner
+    canvas.save();
+    canvas.translate(s.width * .02, -s.height * .08);
+    canvas.rotate(-.42);
+    final band = Rect.fromLTWH(-s.width * .3, 0, s.width * .55, s.height * .9);
     canvas.drawRect(
-        r,
+        band,
+        Paint()
+          ..shader = LinearGradient(colors: [
+            Colors.white.withOpacity(0),
+            Colors.white.withOpacity(dark ? .07 : .38),
+            Colors.white.withOpacity(0),
+          ], stops: const [0, .45, .9])
+              .createShader(band));
+    canvas.restore();
+    // colour rising from the bottom edge
+    final low = Rect.fromLTWH(0, s.height * .7, s.width, s.height * .3);
+    canvas.drawRect(
+        low,
         Paint()
           ..shader = LinearGradient(
-            begin: const Alignment(-1, -.6),
-            end: const Alignment(1, .6),
-            colors: [Colors.white.withOpacity(0), Colors.white.withOpacity(dark ? .07 : .3), Colors.white.withOpacity(0)],
-            stops: [a, p, b],
-          ).createShader(r));
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [hue.withOpacity(0), hue.withOpacity(dark ? .1 : .14)],
+          ).createShader(low));
   }
 
   @override
-  bool shouldRepaint(_TrayLight o) => o.v != v || o.dark != dark;
+  bool shouldRepaint(_SlabGlass o) => o.dark != dark || o.hue != hue;
 }
 
 class _Recent extends StatelessWidget {
