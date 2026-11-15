@@ -5121,3 +5121,18 @@ NOT CARRIED OVER, on purpose: Good / Not right and Ask again (the chat's rateRep
 Code has no rating or retry route yet), files on follow-up messages (the server takes attachments only on the first message
 of a session), the voice-call button (a call is not a coding session).
 NOT VERIFIED: on her phone (CI compiles the Dart first).
+
+
+## v0.929.0 HOOLA CODE READS (owner: "DEPLOY DONE CHECK. ALSO CHECK THE RECENT CONVERSATION LOGS ... NEED LOT OF WORK")
+
+Read from the v0.928 deploy log (the 40-line error tail just before the restart): her session D-0002 on fnw-flow-ai, kind
+"write", ended "(Koi file badalne layak nahi mili.)" and its devsahayak_task event INSERT failed with "database is locked" at
+09:54:33 (SQLite's 5 s wait). Cause 1: `guess_kind` knew only explain (starting words) / tests / docs / fix, so "read all fnw ai
+node project first properly" fell to write -> standard tier -> a read-only plan pass -> a coding round with nothing to change.
+FIXED: `_READ_ASK` (read, study, understand, go through, look at, walk me through, summarise, overview, analyse, audit, review the
+/ my / whole, tell me about, explore, padho, samjho, dekho, batao) with no `_CHANGE_ASK` word = explain (plan.assess makes explain
+trivial: no plan pass, no branch, no PR). Cause 2: `_publish` now waits 1.5 s and publishes once more on "locked".
+NEW: vps-ops `codelog` = `server/tools/codelog.py 6 santosh.db` (sqlite read-only: number, kind, tier, status, rounds, model,
+effort, ask, step counts, every pass / read / edit / search / bash / say line with its time, explanation, error) + the "hoola
+code qwen" / devsahayak log lines + errors near them. The INFO lines go to santosh-error.log (Python logging writes stderr).
+NOT VERIFIED: on her server; the root of the lock (who held the database > 5 s) is not known.

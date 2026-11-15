@@ -57,7 +57,14 @@ def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
         if not conv:
             from ..net.service import home_conv
             conv = home_conv(tenant)
-        bus.publish(conv, kind, payload)
+        try:
+            bus.publish(conv, kind, payload)
+        except Exception as e:                  # v0.929 her session's card was lost to a 5 s "database is locked"
+            if "locked" not in str(e).lower():
+                raise
+            import time as _time
+            _time.sleep(1.5)
+            bus.publish(conv, kind, payload)
     except Exception:
         log.exception("devsahayak publish failed")
 
@@ -646,9 +653,22 @@ _KIND_WORDS = (("explain", re.compile(r"(?i)^\s*(explain|what does|how does|why 
                                   r"wrong|500|404|regression|theek karo|nahi chal)\b|Traceback \(most recent call last\)")))
 
 
+# v0.929 (her first Qwen session: "read all fnw ai node project first properly" became a WRITE job that planned, searched
+# for something to change and ended "Koi file badalne layak nahi mili"): an ask to read / understand / go through / review
+# the code, with no word asking for a change, is an explanation - read only, no branch, no pull request.
+_READ_ASK = re.compile(r"(?i)\b(read|study|understand|go through|look (at|through)|walk me through|summari[sz]e|overview|"
+                       r"analy[sz]e|audit|review (the|my|this|whole|all|entire)|tell me (about|how|what)|explore|"
+                       r"padho|padh lo|padhke|samjho|samajh lo|dekho|dekh lo|batao|bataiye)\b")
+_CHANGE_ASK = re.compile(r"(?i)\b(add|build|make|create|change|implement|write|update|remove|delete|refactor|rename|"
+                         r"migrate|upgrade|fix|improve|replace|move|convert|generate|set ?up|deploy|banao|badlo|likho|"
+                         r"jodo|hatao|sudharo)\b")
+
+
 def guess_kind(text: str) -> str:
     """Phase 3: the page no longer asks what kind of work it is - her words say it. Rules only, no model call; the
     first rule that matches wins, and anything else is 'write'. A slash command (/tests, /explain ...) names it outright."""
+    if _READ_ASK.search(text or "") and not _CHANGE_ASK.search(text or ""):
+        return "explain"
     for kind, rx in _KIND_WORDS:
         if rx.search(text or ""):
             return kind
