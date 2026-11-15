@@ -19,5 +19,5 @@ def test_phone_test_pins_it():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.926.0")
-    assert "version: 0.926.0+925" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION.startswith("0.927.0")
+    assert "version: 0.927.0+926" in (ROOT / "pubspec.yaml").read_text()

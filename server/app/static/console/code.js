@@ -817,7 +817,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         const u = URL.createObjectURL(b); PICS.set(k, u); const now = EL.querySelector(`#hcdCol img[data-att="${img.dataset.att}"]`); if (now && TASK?.id === t.id) now.src = u; }).catch(() => PICS.delete(k)); });
   }
   const put = (id, key, html) => { if (SIG[key] === html) return false; const el = $(id); if (!el) return false; el.innerHTML = html; SIG[key] = html; return true; };
-  function tick() { const c = $('#hcdClock'); if (c && TASK?.running && !TASK.stopping) c.textContent = `Working · ${dur(Math.max(0, (Date.now() - Date.parse(TASK.at)) / 1000))}`; }
+  function tick() { const c = $('#hcdClock'); if (c && TASK?.running && !TASK.stopping) c.textContent = `Working · ${dur(Math.max(0, (Date.now() - Date.parse(TASK.run_at || TASK.at)) / 1000))}`; }
   function paint() {
     const t = TASK; if (!t || !$('#hcdTop')) return;
     const files = editedFiles(t), railOn = railShown();

@@ -195,16 +195,20 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
     for i in range(3):
         if i:
             time.sleep(3 * i)
+        t0 = time.time()
         try:
             data = _qwen_post(url, body, headers, timeout)
         except QwenError as e:
             last = e
             m = str(e)
+            log.warning("hoola code qwen %s try %d failed %.1fs: %s", model, i + 1, time.time() - t0, m[:240])
             if any(f" {c}:" in m for c in ("400", "401", "402", "403", "404")):
                 raise                                         # a refused request is not fixed by asking again
             continue
         except Exception as e:                                # timeout / network: one more try
             last = e
+            log.warning("hoola code qwen %s try %d failed %.1fs: %s %s", model, i + 1, time.time() - t0,
+                        e.__class__.__name__, str(e)[:200])
             continue
         if data.get("error"):
             last = QwenError(f"OpenRouter error: {str(data['error'])[:300]}")
@@ -213,6 +217,10 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
         if not blocks:
             last = QwenError("Qwen sent an empty answer")
             continue
+        u = dict(data.get("usage") or {})
+        log.info("hoola code qwen %s %.1fs effort=%s in=%s out=%s tools=%d calls=%d stop=%s", model, time.time() - t0,
+                 level, u.get("prompt_tokens"), u.get("completion_tokens"), len(fns),
+                 sum(1 for b in blocks if b.get("type") == "tool_use"), stop)
         STATE["calls"] += 1
         STATE["qwen_calls"] += 1
         try:

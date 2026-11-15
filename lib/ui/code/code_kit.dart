@@ -108,8 +108,16 @@ String codeLong(int seconds) {
   return '${s ~/ 3600}h ${((s % 3600) ~/ 60).toString().padLeft(2, '0')}m';
 }
 
+/// v0.927 a server time, always read as UTC when it carries no zone (a bare time was read as India time = +5:30).
+DateTime? codeTime(String iso) {
+  final v = iso.trim();
+  if (v.isEmpty) return null;
+  final zoned = RegExp(r'(Z|[+-]\d\d:?\d\d)$').hasMatch(v);
+  return DateTime.tryParse(zoned ? v : '${v}Z');
+}
+
 String codeAgo(String iso) {
-  final d = DateTime.tryParse(iso);
+  final d = codeTime(iso);
   if (d == null) return '';
   final m = DateTime.now().difference(d).inMinutes;
   if (m < 1) return 'just now';

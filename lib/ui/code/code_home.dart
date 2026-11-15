@@ -212,7 +212,7 @@ class _HoolaCodeState extends State<HoolaCode> {
 
   Widget _row(HoolaColors c, Map<String, dynamic> t, String group) {
     final need = group == 'need';
-    final secs = DateTime.now().difference(DateTime.tryParse(cs(t['at'])) ?? DateTime.now()).inSeconds;
+    final secs = DateTime.now().difference(codeTime(cs(t['run_at']).isEmpty ? cs(t['at']) : cs(t['run_at'])) ?? DateTime.now()).inSeconds;
     final words = cs(t['question']).isNotEmpty ? 'Hoola asks you a question' : codeStatus(t);
     final (a, r) = codeStat(t);
     return CodeCard(

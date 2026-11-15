@@ -153,5 +153,25 @@ def test_price_and_version():
     from app import usage
     assert usage.price_of("qwen/qwen3.8-27b")[0]["out"] == 1.875
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.926.0"' in main and "HOOLA CODE ON QWEN" in main
-    assert "version: 0.926.0+925" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.927.0"' in main and "HOOLA CODE ON QWEN" in main
+    assert "version: 0.927.0+926" in (ROOT / "pubspec.yaml").read_text()
+
+
+def test_v0927_times_carry_their_zone_and_the_round_start():
+    """v0.927 (owner's phone: the working clock read 5:30:57 on a one-minute plan pass): SQLite hands created_at back
+    without a zone and the phone read the bare time as India time. Every time now carries +00:00, the running round
+    has its own start (run_at), and the phone reads any bare time as UTC."""
+    from datetime import datetime
+    src = (ROOT / "server/app/devsahayak/service.py").read_text()
+    assert '"at": _aware(t.created_at).isoformat()' in src and '"run_at": _RUN_AT.get(t.id, "")' in src
+    assert "_RUN_AT[tid] = now().isoformat()" in src and "_RUN_AT.pop(tid, None)" in src
+    assert S._aware(datetime(2026, 11, 15, 9, 40)).isoformat().endswith("+00:00")
+    kit = (ROOT / "lib/ui/code/code_kit.dart").read_text()
+    assert "DateTime? codeTime(String iso)" in kit and "'${v}Z'" in kit
+    for f in ("code_session.dart", "code_home.dart"):
+        d = (ROOT / "lib/ui/code" / f).read_text()
+        assert "DateTime.tryParse" not in d and "cs(t['run_at'])" in d
+    ses = (ROOT / "lib/ui/code/code_session.dart").read_text()
+    assert "'plan' => 'Planning · reading the code'" in ses and "counted == 0 ? _passTitle(g)" in ses
+    assert "TASK.run_at || TASK.at" in (ROOT / "server/app/static/console/code.js").read_text()
+    assert 'log.info("hoola code qwen %s %.1fs' in (ROOT / "server/app/devsahayak/brain.py").read_text()

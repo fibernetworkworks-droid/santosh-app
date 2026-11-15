@@ -430,8 +430,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       );
 
   int _secs(List<Map<String, dynamic>> g) {
-    final a = DateTime.tryParse(cs(g.first['at']));
-    final b = DateTime.tryParse(cs(g.last['at']));
+    final a = codeTime(cs(g.first['at']));
+    final b = codeTime(cs(g.last['at']));
     if (a == null) return 0;
     return (b ?? DateTime.now()).difference(a).inSeconds;
   }
@@ -458,7 +458,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                   Icon(Icons.subject_rounded, size: 17, color: c.ink2),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(secs > 0 ? 'Worked for ${codeLong(secs)} · ${cPlural(counted, 'step')}' : cPlural(counted, 'step'),
+                    child: Text(counted == 0 ? _passTitle(g) : secs > 0 ? 'Worked for ${codeLong(secs)} · ${cPlural(counted, 'step')}' : cPlural(counted, 'step'),
                         style: codeSans(c, size: 13.5, weight: FontWeight.w500)),
                   ),
                   Icon(open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 18, color: c.ink3),
@@ -877,7 +877,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       'revise': 'Ask for a change on the same pull request…',
     };
     final hint = mode == 'revise' ? cs(t['hint']) : '';
-    final secs = DateTime.now().difference(DateTime.tryParse(cs(t['at'])) ?? DateTime.now()).inSeconds;
+    final secs = DateTime.now().difference(codeTime(cs(t['run_at']).isEmpty ? cs(t['at']) : cs(t['run_at'])) ?? DateTime.now()).inSeconds;
     final stopping = t['stopping'] == true;
     final steps = cl(t['steps']);
     final now = steps.isEmpty ? 'Starting' : _nowWords(steps.last);
@@ -978,8 +978,24 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         'check' => 'Checked your tests',
         'say' || 'think' => 'Thinking',
         'wait' => 'Waiting for a free coding slot',
-        'pass' => 'Checking its own work',
+        'pass' => cs(s['state']) == 'end' ? 'Working' : _passWords(cs(s['name'])),
         _ => 'Working',
       };
+
+  /// v0.927 what a pass is doing, in her words (the plan pass only reads; it was shown as "Checking its own work").
+  static String _passWords(String name) => switch (name) {
+        'plan' => 'Planning · reading the code',
+        'ci' || 'ci_fix' => 'Fixing the failed checks',
+        'comments' => "Reading the reviewers' comments",
+        _ => 'Checking its own work',
+      };
+
+  /// A step group with nothing counted yet (only a pass has started) says what is going on, never "0 steps".
+  String _passTitle(List<Map<String, dynamic>> g) {
+    for (final s in g.reversed) {
+      if (cs(s['k']) == 'pass') return cs(s['state']) == 'end' ? 'Getting ready' : _passWords(cs(s['name']));
+    }
+    return 'Getting ready';
+  }
 }
 

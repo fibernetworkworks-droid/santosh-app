@@ -5086,3 +5086,23 @@ Tests: `test_v0926_hoola_code_qwen.py` (10); conftest pins `DEV_BRAIN=claude` fo
 Claude: `DEV_BRAIN=claude` in the VPS .env + pm2 restart.
 NOT VERIFIED: no live Qwen coding round; the coding cards (vps-ops code_card / code_card_hard) have not been run on Qwen;
 whether OpenRouter caches Qwen requests automatically is not confirmed.
+
+
+## v0.927.0 HOOLA CODE CLOCK (owner, her phone on her first Qwen session: "Check the misbahebiour for hoola code ... Is it properly deployed and inline or not")
+
+Her screenshot: session "read all fnw ai node project first properly", step card "0 steps" with "Plan pass started · reads only
+- nothing is changed", working row "Checking its own work 5:30:57".
+DEPLOYED: yes - healthz 0.926.0, VPS ops run 454 (deploy) green, clean restart, the OpenRouter model profile for
+qwen/qwen3.8-27b loaded.
+WHAT WAS WRONG: (1) the clock - SQLite returns created_at without a zone, `view()` sent "2026-11-15T09:44:10" and the phone's
+DateTime.tryParse read it as local India time, so every working clock started at 5:30:00 (the console's Date.parse the same);
+also it counted from the SESSION's start, not the running round. (2) the words - a pass event (k "pass") was always
+"Checking its own work", so the read-only plan pass looked like a self-review; and a step card holding only that pass said
+"0 steps".
+FIXED: `service.view` sends `_aware(...)` times (+00:00) for at / updated, PR review rows and checks rows; `_RUN_AT[tid]` set
+when `_in_thread` starts a round and dropped when it ends, sent as `run_at`; phone `code_kit.codeTime` (bare time = UTC) used
+by the session working row, the step-card durations, the home list and `codeAgo`; console tick uses `TASK.run_at || TASK.at`;
+pass words by name (plan = "Planning · reading the code", ci_fix = "Fixing the failed checks", review = "Checking its own
+work"); `_passTitle` for a card with only a pass. Every Hoola Code Qwen call now logs "hoola code qwen <model> <s> effort= in=
+out= tools= calls= stop=" and every failed try its reason, so `vps-ops errors` / pm2 logs show how fast 27B is answering.
+NOT VERIFIED: on her phone; the Qwen step times have not been read from her server yet.

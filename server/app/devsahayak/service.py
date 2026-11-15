@@ -598,8 +598,11 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "proof": _j(t.proof or "", {}),
          "running": t.id in _RUNNING, "stopping": t.id in _STOP,
          "env": _env_label(t),
-         "at": t.created_at.isoformat() if t.created_at else "",
-         "updated": t.updated_at.isoformat() if t.updated_at else ""}
+         # v0.927 times carry their zone: SQLite hands created_at back without one, and a phone in India read the
+         # bare time as local - every working clock started at 5:30:00
+         "at": _aware(t.created_at).isoformat() if t.created_at else "",
+         "updated": _aware(t.updated_at).isoformat() if t.updated_at else "",
+         "run_at": _RUN_AT.get(t.id, "")}
     try:                                # G9: the card says what the facts back, never only the model's words
         from . import truth as TR
         if TR.on():
@@ -1269,6 +1272,7 @@ def _progress(tid: str, line: str) -> None:
 
 # ---------------------------------------------------------------- v0.748 HOOLA CODE: the console's live session
 _RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
+_RUN_AT: dict[str, str] = {}    # v0.927 when the running round started (the phone + console clock counts from it)
 _BEAT: dict[str, float] = {}    # when each running session last wrote its heartbeat (this process)
 _STOP: set[str] = set()         # her Stop: the loop ends at its next step
 MAX_STEPS = 1200                 # v0.878 was 400 across ALL rounds: a long multi-round session lost its start
@@ -1497,6 +1501,7 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
     if tid in _RUNNING:
         raise DevError("Hoola is already working on this.")
     _RUNNING.add(tid)
+    _RUN_AT[tid] = now().isoformat()
     _STOP.discard(tid)
     try:
         with session() as s:
@@ -1533,6 +1538,7 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
         finally:
             _add_cost(tid, acc)
             _RUNNING.discard(tid)
+            _RUN_AT.pop(tid, None)
             _STOP.discard(tid)
             _BEAT.pop(tid, None)
             with session() as s:
@@ -2246,7 +2252,7 @@ def review_view(r: DevReview) -> dict[str, Any]:
     return {"id": r.id, "repo": r.repo, "pr_number": r.pr_number, "pr_title": r.pr_title, "author": r.author,
             "head_sha": r.head_sha[:12], "summary": r.summary, "suggest": r.suggest, "comments": _j(r.comments, []),
             "findings": _j(r.findings, []), "hash": r.hash if r.status == "draft" else "", "status": r.status,
-            "posted_event": r.posted_event, "url": r.url, "at": r.created_at.isoformat() if r.created_at else ""}
+            "posted_event": r.posted_event, "url": r.url, "at": _aware(r.created_at).isoformat() if r.created_at else ""}
 
 
 def pr_diff(files: list[dict[str, Any]], limit: int = 60) -> tuple[list[dict[str, Any]], list[str], dict[str, Any],
@@ -2486,7 +2492,7 @@ def action_view(a: DevAction) -> dict[str, Any]:
             "head_sha": a.head_sha[:12], "method": a.method, "workflow": a.workflow, "ref": a.ref, "inputs": _j(a.inputs, {}),
             "ci_state": a.ci_state, "ci": _j(a.ci, {}), "notes": _j(a.notes, []), "hash": a.hash if a.status == "waiting" else "",
             "status": a.status, "force_reason": a.force_reason, "result": _j(a.result, {}),
-            "needs_force": a.ci_state in ("failure", "pending"), "at": a.created_at.isoformat() if a.created_at else ""}
+            "needs_force": a.ci_state in ("failure", "pending"), "at": _aware(a.created_at).isoformat() if a.created_at else ""}
 
 
 def merge_request(tenant: str, repo: str = "", pr_number: int = 0, method: str = "", task: str = "", conv: str = "") -> dict[str, Any]:
