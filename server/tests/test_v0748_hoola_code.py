@@ -145,7 +145,9 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.locator(".sn[data-v='code']").click()                   # v0.768: the row opens Hoola Code's own page
     pg.wait_for_selector(".hcd-home")
     home = pg.locator(".hcd").text_content()
-    assert "What should Hoola code today?" in home and "Working" in home and "Plan waits for your OK" in home and "<b>Orders to Postgres</b>" in home
+    assert "Ready when you are" in home and "<b>Orders to Postgres</b>" in home      # v0.914 the approved design: one line per session in Recents
+    tips = " ".join(pg.locator("#hcdSide .hcd-sessb").evaluate_all("bs => bs.map(b => b.title)"))
+    assert "Working" in tips and "Plan waits for your OK" in tips                    # its state rides the row's tooltip + its marks
     assert pg.locator("#hcdMode option").count() == 3          # Phase 3: the kind is read from her words; the row has the mode
     pg.locator("[data-tid='dt1']").click()
     pg.wait_for_selector(".hcd-step")
@@ -155,6 +157,6 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.locator("[data-tid='dt2']").click()
     pg.wait_for_selector("#hcdYes")
     p = pg.locator(".hcd-card").text_content()
-    assert "orders in Postgres" in p and "31 tests pass" in p and "waits for your OK" in p
+    assert "orders in Postgres" in p and "31 tests pass" in p and "waits for you" in p
     assert not errs, errs
     ctx.close()

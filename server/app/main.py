@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.921.0"   # v0.921.0 HOOLA CODE NATIVE (owner, on the design canvas claude.ai/artifact/GF4AtP5MNfV8kARgTGymuh: "SAME AS HOOLA CHAT SCREEN ... PERMIUM AND PERFECT SAME AS CLUDE CODE" -> "GO"): Hoola Code is a native phone screen in the new design (lib/ui/code/): home (one composer: repo, branch, mode Ask / Plan first / Auto, model, pictures + text files, slash words; sessions as Needs you / Working / Earlier), one session like the chat (serif replies, folded "Worked for" steps, the plan card waiting for her yes, one question with choices, the pull request card with checks, Fix it, merge only on her yes), Changes with old / new line numbers and comments on lines that ride her next message, Pull requests (her team's open PRs, Hoola's draft reviews she posts, merge / deploy cards), Scheduled tasks, Repos & GitHub (token typed only there); Tools > Hoola Code and Your AI team > Developer both open it; the same /api/devsahayak routes; 1 server. Previous: v0.920.0 CAMERA ALIVE.
+APP_VERSION = "0.922.0"   # v0.922.0 HOOLA CODE NATIVE (built as 0.921) (owner, on the design canvas claude.ai/artifact/GF4AtP5MNfV8kARgTGymuh: "SAME AS HOOLA CHAT SCREEN ... PERMIUM AND PERFECT SAME AS CLUDE CODE" -> "GO"): Hoola Code is a native phone screen in the new design (lib/ui/code/): home (one composer: repo, branch, mode Ask / Plan first / Auto, model, pictures + text files, slash words; sessions as Needs you / Working / Earlier), one session like the chat (serif replies, folded "Worked for" steps, the plan card waiting for her yes, one question with choices, the pull request card with checks, Fix it, merge only on her yes), Changes with old / new line numbers and comments on lines that ride her next message, Pull requests (her team's open PRs, Hoola's draft reviews she posts, merge / deploy cards), Scheduled tasks, Repos & GitHub (token typed only there); Tools > Hoola Code and Your AI team > Developer both open it; the same /api/devsahayak routes; 1 server. Previous: v0.921.0 HOOLA CODE LIKE CLAUDE CODE (their console + phone rebuild, kept whole).
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -5568,6 +5568,11 @@ from .aiapps.mcp import make_router as _aiapps_mcp_router  # noqa: E402  (app ke
 
 for _mk in (_aiapps_builder_router, _aiapps_keys_router, _aiapps_owner_router, _aiapps_public_router, _aiapps_mcp_router):
     app.include_router(_mk(require_key, current_tenant))
+
+# v0.877 HOOLA AGENT API (docs/HOOLA_API_PLAN.md): companies call Hoola's own tools with one key, paid from an INR wallet.
+# Off until HOOLA_API_ENABLED=true; public routes = a Hoola API key, portal = the company's login, admin = the operator.
+from .hoolaapi.api import make_router as _hoolaapi_router  # noqa: E402
+app.include_router(_hoolaapi_router(require_key, current_tenant))
 
 # HOOLA PROMPTING (docs/HOOLA_PROMPTING_PLAN.md P1-P3): her rough line -> a brief she can see and edit -> the prompt each
 # engine wants. Text only: no route here sends, spends, builds or publishes.

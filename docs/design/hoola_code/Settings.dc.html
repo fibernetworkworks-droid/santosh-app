@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code · Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1C1B1A}
+a{color:#B7A9FF}a:hover{color:#D3C9FF}
+</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif;">
+<dc-import name="Sidebar" hint-size="260px,900px"></dc-import>
+<main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 32px; align-content: flex-start;">
+  <h1 style="margin: 0; width: 100%; font-family: Literata, serif; font-weight: 500; font-size: 32px;">Settings</h1>
+  <nav aria-label="Settings sections" style="flex: 0 0 190px; display: flex; flex-direction: column; gap: 2px; font-size: 14px;">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="8"><a href="#" style="{{ t.style }}">{{ t.name }}</a></sc-for>
+  </nav>
+  <div style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 18px; max-width: 760px;">
+    <section style="border: 1px solid #2E2C29; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">GitHub</h2>
+      <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 36px; height: 36px; border-radius: 50%; background: #E8B062; color: #1B1A17; display: grid; place-items: center; font-weight: 600;">M</span><span style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span>Connected as @meghana</span><span style="font-size: 13px; color: #9C9890;">Hoola GitHub app · 6 repositories</span></span><button style="height: 36px; padding: 0 14px; border: 1px solid #3A3835; border-radius: 999px; background: none; color: #F3F1EC; font: 500 14px 'Schibsted Grotesk', sans-serif;">Connect more repos</button></div>
+      <p style="margin: 0; font-size: 13px; color: #9C9890; line-height: 1.5;">Hoola can push only to its own hoola/… branches. It cannot delete branches, push tags, or reach a repo you did not add to the session.</p>
+    </section>
+    <section style="border: 1px solid #2E2C29; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px;">
+      <h2 style="margin: 0 0 8px; font-size: 16px; font-weight: 600;">Pull requests</h2>
+      <sc-for list="{{ toggles }}" as="s" hint-placeholder-count="4">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #2A2826;"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 15px;">{{ s.name }}</span><span style="font-size: 13px; color: #9C9890;">{{ s.sub }}</span></span><span role="switch" aria-checked="{{ s.on }}" aria-label="{{ s.name }}" style="{{ s.sw }}"><span style="width: 18px; height: 18px; border-radius: 50%; background: #F3F1EC;"></span></span></div>
+      </sc-for>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #2A2826;"><span style="flex: 1; font-size: 15px;">Merge method</span><button type="button" aria-haspopup="listbox" aria-label="Merge method" style="height: 34px; padding: 0 10px; border: 1px solid #3A3835; border-radius: 8px; background: #1C1B1A; color: #F3F1EC; font: 14px 'Schibsted Grotesk', sans-serif; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer;"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Squash</span><svg width="14px" height="14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; color: #9C9890;"><path d="M6 9l6 6 6-6"></path></svg></button></div>
+    </section>
+    <section style="border: 1px solid #2E2C29; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Usage this month</h2>
+      <div style="height: 8px; border-radius: 8px; background: #2F2D2A;"><div style="width: 34%; height: 8px; border-radius: 8px; background: #9C88FF;"></div></div>
+      <div style="display: flex; justify-content: space-between; font-size: 14px; color: #BBB8B0;"><span>Rs 680 of Rs 2,000</span><span>Resets 1 Dec</span></div>
+    </section>
+  </div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const names = ['GitHub and pull requests', 'Environments', 'Project rules', 'What Hoola remembers', 'Connectors', 'Notifications', 'Usage', 'Remote Control'];
+    const base = 'display: block; padding: 8px 12px; border-radius: 8px; color: #E8E5DE; text-decoration: none;';
+    const sw = (on) => 'width: 38px; height: 22px; flex: none; border-radius: 999px; display: flex; align-items: center; padding: 2px; box-sizing: border-box; background: ' + (on ? '#9C88FF' : '#3A3835') + '; justify-content: ' + (on ? 'flex-end' : 'flex-start') + ';';
+    const t = [
+      { name: 'Draft pull requests first', sub: 'Marked ready only when CI passes', on: true },
+      { name: 'Auto-fix CI failures', sub: 'Up to 3 rounds, then it asks you', on: true },
+      { name: 'Ask before opening a PR', sub: 'Public repositories always ask', on: false },
+      { name: 'Archive sessions after merge', sub: 'They move to Archived', on: true }
+    ];
+    return {
+      tabs: names.map((n, i) => ({ name: n, style: base + (i === 0 ? ' background: #2A2825;' : '') })),
+      toggles: t.map((x) => ({ ...x, sw: sw(x.on) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

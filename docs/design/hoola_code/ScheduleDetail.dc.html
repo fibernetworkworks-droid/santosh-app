@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code · Scheduled task</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1C1B1A}
+a{color:#B7A9FF}a:hover{color:#D3C9FF}
+</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #1C1B1A; color: #F3F1EC; font-family: 'Schibsted Grotesk', system-ui, sans-serif;">
+<dc-import name="Sidebar" hint-size="260px,900px"></dc-import>
+<main style="flex: 999 1 560px; min-width: 0; padding: 30px 48px; display: flex; flex-direction: column; gap: 20px; max-width: 1100px; box-sizing: border-box;">
+  <a href="Scheduled.dc.html" style="font-size: 14px; color: #BBB8B0; text-decoration: none;"><svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-right: 2px;"><path d="M15 6l-6 6 6 6"></path></svg> Scheduled tasks</a>
+  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+    <h1 style="margin: 0; flex: 1; min-width: 260px; font-family: Literata, serif; font-weight: 500; font-size: 28px;">Nightly dependency check</h1>
+    <span role="switch" aria-checked="true" aria-label="Task on" style="width: 38px; height: 22px; border-radius: 999px; display: flex; justify-content: flex-end; align-items: center; padding: 2px; box-sizing: border-box; background: #9C88FF;"><span style="width: 18px; height: 18px; border-radius: 50%; background: #F3F1EC;"></span></span>
+    <button style="height: 38px; padding: 0 16px; border: 1px solid #3A3835; border-radius: 999px; background: none; color: #F3F1EC; font: 500 14px 'Schibsted Grotesk', sans-serif;">Edit</button>
+    <button style="height: 38px; padding: 0 16px; border: 0; border-radius: 999px; background: #F3F1EC; color: #1B1A17; font: 600 14px 'Schibsted Grotesk', sans-serif;">Run now</button>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
+    <div style="padding: 14px 16px; border: 1px solid #2E2C29; border-radius: 12px;"><div style="font-size: 13px; color: #9C9890;">Trigger</div><div style="margin-top: 4px; font-size: 15px;">Daily 02:00 IST</div></div>
+    <div style="padding: 14px 16px; border: 1px solid #2E2C29; border-radius: 12px;"><div style="font-size: 13px; color: #9C9890;">Next run</div><div style="margin-top: 4px; font-size: 15px;">Tonight 02:00</div></div>
+    <div style="padding: 14px 16px; border: 1px solid #2E2C29; border-radius: 12px;"><div style="font-size: 13px; color: #9C9890;">Repository · environment</div><div style="margin-top: 4px; font-size: 15px;">shop-api · Default</div></div>
+    <div style="padding: 14px 16px; border: 1px solid #2E2C29; border-radius: 12px;"><div style="font-size: 13px; color: #9C9890;">Model</div><div style="margin-top: 4px; font-size: 15px;">Sonnet 5.5 · Medium</div></div>
+  </div>
+  <div style="padding: 14px 16px; border: 1px solid #2E2C29; border-radius: 12px; font-family: Literata, serif; font-size: 15px; line-height: 1.55; color: #E8E5DE;">Update outdated packages, run the tests, and open a pull request only if everything passes.</div>
+  <h2 style="margin: 6px 0 0; font-size: 16px; font-weight: 600;">History</h2>
+  <div style="border: 1px solid #2E2C29; border-radius: 14px; overflow: hidden;">
+    <sc-for list="{{ runs }}" as="r" hint-placeholder-count="5">
+      <a href="Session.dc.html" style="display: grid; grid-template-columns: 160px 120px 1fr 120px; gap: 12px; align-items: center; padding: 13px 18px; border-bottom: 1px solid #2E2C29; color: #F3F1EC; text-decoration: none; font-size: 14px;">
+        <span style="color: #D9D6CE;">{{ r.when }}</span>
+        <span style="{{ r.st }}">{{ r.status }}</span>
+        <span style="color: #BBB8B0;">{{ r.note }}</span>
+        <span style="font-size: 13px; color: #9C9890; text-align: right;">{{ r.took }}</span>
+      </a>
+    </sc-for>
+  </div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const col = { Succeeded: '#4CC38A', Failed: '#F07A6A', Cancelled: '#E8B062', Skipped: '#9C9890' };
+    const runs = [
+      { when: 'Today 02:00', status: 'Succeeded', note: 'PR #21 opened · 4 packages updated, 48 tests pass', took: '6 min' },
+      { when: 'Yesterday 02:00', status: 'Succeeded', note: 'Nothing to update', took: '2 min' },
+      { when: '12 Nov 02:00', status: 'Failed', note: 'Tests failed after updating fastapi · no PR opened', took: '9 min' },
+      { when: '11 Nov 14:20', status: 'Cancelled', note: 'Run now · stopped by you', took: '1 min' },
+      { when: '11 Nov 02:00', status: 'Skipped', note: 'GitHub access was off for this repo', took: '—' }
+    ];
+    return { runs: runs.map((r) => ({ ...r, st: 'font-weight: 500; color: ' + col[r.status] + ';' })) };
+  }
+}
+</script>
+</body>
+</html>

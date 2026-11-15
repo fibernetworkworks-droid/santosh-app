@@ -123,10 +123,10 @@ JS_MEASURE = """() => {
   const all = s => [...document.querySelectorAll(s)].filter(vis);
   const h = e => Math.round(e.getBoundingClientRect().height * 10) / 10;
   const out = {bad: []};
-  all('.hcd-btn').forEach(b => { const want = b.classList.contains('sm') ? (b.closest('.hcd-row') ? 24 : 28) : 34; if (Math.abs(h(b) - want) > 0.6) out.bad.push(`button "${b.textContent.trim().slice(0, 24)}" is ${h(b)}px, not ${want}`); });
-  all('.hcd-chip').forEach(c => { if (Math.abs(h(c) - 34) > 0.6) out.bad.push(`chip "${c.textContent.trim().slice(0, 20)}" is ${h(c)}px`); });
-  all('.hcd-f input:not([type=checkbox]), .hcd-f select, .hcd-inline > input, .hcd-search, .hcd-dlg input, .hcd-dlg select').forEach(i => { if (Math.abs(h(i) - 34) > 0.6) out.bad.push(`field ${i.name || i.id || i.placeholder} is ${h(i)}px`); });
-  all('.hcd-send, .hcd-plus, .hcd-stop').forEach(b => { if (Math.abs(h(b) - 36) > 0.6) out.bad.push(`composer button is ${h(b)}px`); });
+  all('.hcd-btn').forEach(b => { const want = b.classList.contains('sm') ? (b.closest('.hcd-row') ? 26 : 30) : 36; if (Math.abs(h(b) - want) > 0.6) out.bad.push(`button "${b.textContent.trim().slice(0, 24)}" is ${h(b)}px, not ${want}`); });
+  all('.hcd-chip').forEach(c => { const want = c.classList.contains('hcd-filter') ? 40 : c.closest('.hcd-trig') ? 34 : 32; if (Math.abs(h(c) - want) > 0.6) out.bad.push(`chip "${c.textContent.trim().slice(0, 20)}" is ${h(c)}px, not ${want}`); });
+  all('.hcd-f input:not([type=checkbox]), .hcd-f select, .hcd-inline > input, .hcd-dlg input:not([type=radio]):not([type=checkbox]), .hcd-dlg select').filter(i => !i.closest('.hcd-chip')).forEach(i => { if (Math.abs(h(i) - 40) > 0.6) out.bad.push(`field ${i.name || i.id || i.placeholder} is ${h(i)}px`); });
+  all('.hcd-send, .hcd-plus, .hcd-stop').forEach(b => { if (Math.abs(h(b) - 32) > 0.6) out.bad.push(`composer button is ${h(b)}px`); });
   // one row = one centre line
   all('.hcd-acts, .hcd-inline, .hcd-askrow, .hcd-dlgb, .hcd-top, .hcd-ph').forEach(row => { const kids = [...row.children].filter(vis).filter(k => !k.classList.contains('hcd-flex')); const lines = {};
     kids.forEach(k => { const r = k.getBoundingClientRect(); const key = Math.round(r.top / 20); (lines[key] = lines[key] || []).push(r.top + r.height / 2); });
@@ -187,10 +187,8 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     # 1 home
     pg.goto(base + "/console/code")
     pg.wait_for_selector("#hcdLine")
-    assert pg.locator("#hcdStarts .hcd-start").count() == 4
+    assert pg.locator(".hcd-hero h1").text_content() == "Ready when you are" and pg.locator(".hcd-envcard").count() == 1   # v0.914 the approved home
     check(pg, "home", errs)
-    pg.locator('[data-act="starter"]').first.click()
-    assert pg.locator("#hcdLine").input_value() == "Fix this bug: " and pg.evaluate("document.activeElement.id") == "hcdLine"
     # 2 a finished session
     pg.goto(base + "/console/code#/s/dt1")
     pg.wait_for_selector("#hcdRail .hcd-rc")
@@ -230,12 +228,17 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     check(pg, "dialog", errs)
     pg.locator("#hcdDlg").get_by_role("button", name="Cancel").click()
     # 8-11 the pages
-    for name, hash_, sel in (("scheduled", "#/scheduled", "#hcdSchedF"), ("reviews", "#/reviews", "#hcdRevNew"), ("settings", "#/settings", "#hcdTok"), ("all-sessions", "#/all", "#hcdAllF")):
+    for name, hash_, sel in (("scheduled", "#/scheduled", ".hcd-schedp"), ("scheduled-task", "#/scheduled/ds1", "main[data-sched]"), ("reviews", "#/reviews", "#hcdRevNew"), ("settings", "#/settings", "#hcdTok"), ("all-sessions", "#/all", "#hcdAllF")):
         pg.goto(base + "/console/code" + hash_)
         pg.wait_for_selector(sel)
         if name == "all-sessions":
             pg.wait_for_selector(".hcd-arow")
         check(pg, name, errs)
+        if name == "scheduled":
+            pg.locator("[data-act=schednew]").click()
+            pg.wait_for_selector("#hcdSchedF")
+            check(pg, "scheduled-new", errs)
+            pg.keyboard.press("Escape")
     ctx.close()
     # dark, the same scale
     ctx, pg, errs = page(dark=True)
@@ -264,7 +267,7 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     pg.wait_for_selector("#hcdLine")
     pg.wait_for_timeout(500)
     assert pg.evaluate("() => { document.querySelector('[data-go=scheduled]').click(); return document.querySelector('#hcdBody').classList.contains('hcd-enter'); }") is True
-    pg.wait_for_selector("#hcdSchedF")
+    pg.wait_for_selector(".hcd-schedp")
     pg.wait_for_timeout(500)
     assert pg.evaluate("document.querySelector('#hcdBody').classList.contains('hcd-enter')") is False     # a later repaint will not move
     ctx.close()

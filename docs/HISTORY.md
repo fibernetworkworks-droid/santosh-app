@@ -4834,7 +4834,149 @@ on hold, no key).
   test_v0913 checks "CrCamScene(move:" in the home.
 - NOT VERIFIED on her phone; the painter compiles first on CI.
 
-## v0.921.0 HOOLA CODE NATIVE (owner, on the design canvas claude.ai/artifact/GF4AtP5MNfV8kARgTGymuh: "OPTION B ::: SAME AS HOOLA CHAT SCREEN ... SHOW ME ALL HOOLA CODE SCREEN HERE FIRST ... PERMIUM AND PERFECT SAME AS CLUDE CODE" -> "GO")
+## v0.877.0 HOOLA AGENT API - companies call Hoola's tools with one key and pay from an INR wallet (owner: "means we developed employees, tools etc can directly be used by different companies via our Hoola API" -> "now let's work on development of different portal endpoints for Hoola AI agent")
+
+Research first (13 Nov 2026, official terms of 14 providers + OpenRouter's 121-provider list): reselling raw model API access is forbidden by
+every provider without a signed deal, while building your own product on top is allowed - so the API sells Hoola's WORK, not a model pipe.
+Plan + phases + open owner decisions: `docs/HOOLA_API_PLAN.md`.
+
+Built (phase 1): `server/app/hoolaapi/` -
+- `models.py` hapi_keys / hapi_wallets / hapi_ledger / hapi_calls (self-healing `ensure_tables`, registered in `db.init_db`); the ledger is append-only (ORM guard + SQLite trigger) and unique per (type, ref_type, ref_id).
+- `catalog.py` an ALLOWLIST of 6 read / compute tools (api_box, mospi, duniya, reach, scrape_page, pylab) with default INR prices in micro-INR and a `hoola_api_prices` override; the test reads every name for send / pay / delete / pc words.
+- `service.py` `hk_live_` keys (shown once, sha256 only, per-key tools / rpm / rph / concurrent / daily INR cap; the AI Apps `Limiter` reused), wallet (atomic conditional debit + ledger row in one transaction), one call = validate args against the tool's schema -> charge -> run `agent.tools.dispatch` as the company's own tenant with actor `api:<key id>` (120 s limit) -> refund on any failure (exception, timeout, `error`, `ok:false`); usage log keeps metadata only.
+- `api.py` public `/api/hoola-api/v1/{tools, tools/{name}, balance, usage}` (OpenAI-shaped errors, `x-hoola-request-id` + `x-hoola-cost-inr`), portal `/api/hoola-portal/{me, catalog, wallet, ledger, usage, keys}`, admin `/api/hoola-admin/{overview, wallets/{t}/credit (reason required, idempotency key), wallets/{t}/suspend}` (operator tenant only).
+- Switches: `hoola_api_enabled` (OFF until the owner flips it), `hoola_api_prices`.
+
+Tests: `server/tests/test_v0877_hoola_api.py` 24 - off by default, key once / hash only, wrong / revoked key 401, allowlist (send / pay / pc tools 404), per-key tool list, charged exactly + runs as the company's tenant with an api actor, empty wallet 402 and the tool never runs, failure / error dict / `ok:false` / timeout refunded, bad arguments 400 and not charged, daily cap, rate limit 429 + Retry-After, 10 parallel calls on a wallet worth 3 = exactly 3 succeed and the balance ends at 0, ledger append-only, same credit event counts once, admin operator-only + reason, suspended wallet, metadata-only log, price override, portal. Also run by hand against the REAL duniya / pylab / api_box through the real dispatch: balance equalled the ledger sum.
+
+NOT BUILT: UPI top-up + GST invoice (phase 2), employees as API (phase 3), voice, MCP, console portal page, per-tool third-party terms checks. NOT VERIFIED: no real company or money, no Postgres run, limits are per process.
+
+## v0.878.0 HOOLA CODE ENVIRONMENTS + LONG-RUN FIXES (owner: "NOW LETS WORK ON HOOLA CODE. IN APP SIDE AND CONSOLE SIDE. CHECK THE CLAUDE CODE DESIGN IN APP. CHECK BOTH IS ALL HOOLA CODE IS WORKING OR NOT FROM ENVIRONMENT ATTACHMENT TO LONG CODE DEVELOPMENT")
+
+**What was checked before building.**
+- An audit of server, console and phone. The 27 Hoola Code suites ran 232 passed, 4 skipped (the skips need the `hoola-devlab` Docker image).
+- Claude Code's web, desktop and mobile Code tab, read from Anthropic's docs and her 4 phone screenshots. The spec is in `docs/research/claude_code/00_UI_SPEC.md`.
+
+**Finding.** Hoola Code had every box setting, but only per repo. It had no ENVIRONMENT, the named thing Claude Code's session picks first.
+
+**Built: environments** (`devsahayak/envs.py`, table `devsahayak_envs`, `DevTask.env_id`, `DevSettings.env_pick`).
+- **Default.** Every tenant gets a "Default" environment the first time she looks: Limited network, package managers on.
+- **Fields:**
+  - Name.
+  - Network access: None, Limited (with the "Allow package managers" switch and allowed domains) or Full.
+  - Variables in `.env` text. A name or value that looks like a secret is refused.
+  - A setup script. Each line is checked; sudo, docker and service commands are refused.
+- **Archive, never delete.** At least one environment is always kept.
+- **Auto** means no environment: each repo's own Settings, exactly as before.
+- **Routes:**
+  - GET/POST `/api/devsahayak/envs`
+  - PATCH `/envs/{id}`
+  - POST `/envs/{id}/archive`
+  - PUT `/tasks/{id}/env` (applies from the next round)
+  - `tasks/start` takes `env` (`''` = her last pick)
+- **How a session uses it** (`overlay` via `service._session_box`):
+  - Its variables are laid over the repo's.
+  - Its setup lines run after the repo's own setup command.
+  - Its network (and the package-manager switch, via `net.allow_for(pkgs=)` / `grant(pkgs=)`) is what each command's pass carries.
+  - Repo keys still go through the proxy in every environment.
+  - With `dev_net` off, no pass is ever made.
+- **The model is told the truth** (`engine.net_words`). It used to be told "no internet" even when the repo had a network.
+- **Console:**
+  - The first chip of the composer row is the environment, with a menu of Auto, her environments, "Edit …" and "New environment…".
+  - The dialog has name, network radio cards, package managers, allowed domains, variables, setup script and Archive.
+  - The session menu has "Cloud environment…".
+  - `?environment=` pre-fills it.
+  - Styles are in the `v0.878` block at the end of v2.css; the page stamps are 0.878.0.
+- **Phone** (`lib/ui/devsahayak_new.dart`, on hoola_theme, no glass):
+  - A New session page laid out like her screenshots:
+    - "Ready when you are".
+    - An environment chip opening the Select environment sheet: Auto "Follows your repositories", her environments each with a gear, and "+ Create environment".
+    - A repository chip opening the Repositories sheet: owner over name, search, "+ Connect more".
+    - A mode chip.
+    - The composer "Type or hold to talk", with the mic (hold to talk) and send.
+  - DevEnvPage, "Create a new environment": Name, None / Limited (Recommended) / Full, the package managers switch, allowed domains, variables, setup script, Create / Save changes, Archive.
+
+**Fixed (audit findings):**
+1. **CI fix rounds.** They ran inside the worker tick, which is cut at 300 s, so the next minute started a SECOND round on the same session. Now `_ci_bg` runs each step in its own thread with the session in `_RUNNING`. Stop reaches it, and the tick skips it. A quick check still finishes inside the tick (20 s join).
+2. **Lost runs after a restart.** `answer()` and background `plan_ok` / `begin` / `fix_comments` had no job, so after a restart they looked busy forever. They now carry one and resume.
+3. **Sweeping.** An open PR's working copy is never swept for age alone (`engine.sweep(protect=)`).
+4. **Step history.** It was capped at 400 for the whole session. It is now 1200, and the first 60 are always kept, with one "gap" marker.
+5. **Phone:**
+   - Review and Merge send the repo (they failed with several repos and no default).
+   - The chat card's Plan OK uses `/bg/plan_ok`.
+
+**Tests:** `test_v0878_hoola_code_envs.py` 12.
+
+**NOT VERIFIED:**
+- The phone screens compile first on CI (no Dart here).
+- The network part needs `dev_net` on after `python -m app.devlab net` passes on her server.
+- No real Docker box ran here.
+
+**Still NOT built:**
+- Network secrets stored on the environment (keys stay per repo).
+- On the phone: branch, model and effort chips, the diff with line comments, and attachments.
+- Teleport to a local terminal.
+
+## v0.921.0 HOOLA CODE LIKE CLAUDE CODE (built as 0.914; their CREATE GLASS ... CAMERA ALIVE took 0.914-0.920, all kept) - the console and phone rebuilt to the approved design (owner: "CHECK THE CLAUDE CODE INTERFACE, FEATURE, UI/UX ETC -- WE WANT EXACT SAME FOR HOOLA CODE CONSOLE SIDE --- SHOW ME THE DESIGN FIRST HERE" -> "ADD PHONE VIEW AND SCHEDULED TASKS SCREEN ALSO... ADD ALL 100% claude code feature in hoola code" -> "NOW CHECK THE MINUTE DESIGN FIX" -> "GO BUILD")
+
+The design came first this time: a design canvas (claude.ai/artifact/RqivHmdqNni1XAZknHhbRT) with 17 console screens and 8 phone
+screens, polished in a second pass (one icon set, a 9-step type scale, one accent, drawn controls), then approved. Its source files and
+pictures are kept in `docs/design/hoola_code/` (the `.dc.html` files are the exact numbers; the `.png` files are what she approved).
+
+**Console (/console/code, `static/console/code.js` + NEW `static/console/hoolacode.css`).**
+- Styles left `v2.css`: the v0.807 block moved unchanged into `hoolacode.css`, then a v0.914 layer on top. That layer sets the page's
+  own tokens (warm neutral light + dark: bg #FAF9F6 / #1C1B1A, one violet accent #5B45E0 / #9C88FF for picked, working and on; the
+  ink pill is the main button) and redraws every component. The v0.878 environment styles live there too; the conflict that had
+  dropped them is repaired.
+- Sidebar: mark + "Hoola Code" (Literata), search and collapse; New session / Search (= Sessions page) / Scheduled (count) / Reviews /
+  Environments / More (All sessions, Settings, Back to Hoola). Recents are one line per session with marks: pull request open (green),
+  working (violet dot), needs you (amber), cloud. The state rides the row's tooltip; ⋯ appears on hover. You + settings sit at the
+  bottom. Grouping by repo or status is still in the sort menu (default is now one Recents list).
+- Home: "New session" bar, the Hoola mark, "Ready when you are", the environment card (current one ✓ + Choose environment), the lede,
+  and the box docked at the bottom with its settings row (environment, repo, branch, mode, model, effort, usage ring). The starter
+  buttons are gone (not in the design). The repo / branch / mode / model / effort pickers are still the browser's own lists, styled
+  as quiet chips; the environment picker is the menu.
+- Session: the title bar has the title and ⌄, a status pill or "PR #n · checks passing" (opens GitHub), Changes +a −b, details,
+  working copy, ⋯ (same menu as the title, now with Open in: Copy checkout command / GitHub), and Share.
+- The plan is ONE card in the conversation: "Plan · waits for you", size, the goal, steps, files, done-when, risks, and Approve plan /
+  Not now (ids `#hcdYes` / `#hcdCancel` kept). "Hoola asks" is a card with the question in serif, her choices, and Type my own answer.
+  "Open the pull request?" is a "Needs your OK" card. The model + mode line sits under the box.
+- Rail: flat sections. A NEW Environment section (name, Ready while it works, gear = change environment, repo, branch), Changes, the
+  checks, reviewers' comments, working copy, passes, Progress with a bar + "Step n of m · min", and Session.
+- The Changes pane takes the rail's place (rail hidden, PR pill hidden). Files are tabs; diff rows are full-width green / red; the
+  comment box is unchanged in behaviour.
+- Share: one dialog, "Share this session", Private / Anyone with the link (7 days). Once shared: the link row with Copy link, Stop
+  sharing, Done. Picking Private + Done stops it too. The design's "Team" is left out: there is no team visibility on the server.
+- Sessions page ("Search"): search + repo filter, tabs All / Working·n / Needs you·n / Archived, cards grouped Working / Needs you /
+  Earlier, each with its dot, "repo · environment · state · PR", +/−, how long ago, and ⋯.
+- Scheduled tasks: a table (task + text, trigger badge Schedule / GitHub / API + when, repository, next run, last run in colour, an
+  on/off switch), tabs All / Active / Paused, "+ New task" opening the form in a dialog (`#hcdSchedF`; adds an optional Name), and
+  a page per task at `#/scheduled/<id>`: switch, Trigger address…, Delete, Run now, four facts, the prompt, and History.
+  The design's model / environment fields for a task are left out: schedules do not store them yet.
+- Settings: a section list (GitHub and pull requests, Repositories, Environments, Rules and limits, Usage) beside the cards. Every
+  section stays on one page, so every earlier control and test still works. NEW: an Environments section (list, Edit, New
+  environment) and Usage this month. The Environments row in the sidebar jumps there.
+- The environment dialog has two columns (name + network on the left; variables, setup script and the keys note on the right).
+- NOT in the console, said plainly: the design's "Open in Terminal" / "Hoola Desktop" (no such client exists), a context-% meter
+  (the server does not report one), "Your PC" in the environment menu, and a star for the default environment.
+
+**Phone (`lib/ui/devsahayak_kit.dart`, `devsahayak_new.dart`, `devsahayak_session.dart`, `devsahayak_drawer.dart`;
+`devsahayak_screen.dart` keeps the chat cards and the old tabs as `DevCodeSettingsPage`).**
+- Built by a helper agent to the 8 phone screens: New session, environment sheet, repository sheet, create / edit environment,
+  session, Changes, sessions drawer, Scheduled tasks (+ form).
+- `CodeColors` was added to `hoola_theme.dart` because the design-rules ratchet forbids raw colours in screen files.
+- Departures, each because the server lacks the thing: no context % (the session's cost instead), no "Mark ready" route ("Open the
+  PR" / "Ask to merge" instead), no command-permission ask, no files on a follow-up, and the true limits (at most 3 repos, a schedule
+  at most once a day).
+- `test/hoola_code_phone_test.dart` has pure checks only.
+
+**Tests.** The console suites were moved to the new design (Recents list, Back to Hoola under More, sizes 36 / 30 / 26 buttons, 32
+chips, 40 fields, 32 composer buttons, rail 320, column 780, sidebar 260; the Scheduled flow list → dialog → task page; the share
+copy). 45 browser tests green.
+
+**NOT VERIFIED:** the phone Dart has not compiled anywhere yet (no Flutter in the sandbox; CI is the first compile). The console has
+not been seen on her VPS yet.
+## v0.922.0 HOOLA CODE NATIVE (built as 0.921; their HOOLA CODE LIKE CLAUDE CODE took 0.921 - both kept) (owner, on the design canvas claude.ai/artifact/GF4AtP5MNfV8kARgTGymuh: "OPTION B ::: SAME AS HOOLA CHAT SCREEN ... SHOW ME ALL HOOLA CODE SCREEN HERE FIRST ... PERMIUM AND PERFECT SAME AS CLUDE CODE" -> "GO")
 
 The audit before it: the phone had two doors to Hoola Code that did not agree - Tools > Hoola Code opened the console
 page in a WebView (no file chooser there, so attaching did not work), Your AI team > Developer opened the old

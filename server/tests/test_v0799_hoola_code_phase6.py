@@ -608,6 +608,8 @@ def test_phase6_in_a_browser(arena_server):  # noqa: F811
     assert "Also reads" in rail and "shop-docs" in rail and "Same job in" in rail and "shop-web · PR #9" in rail
     # --- Scheduled: start on a GitHub event
     pg.goto(base + "/console/code#/scheduled")
+    pg.wait_for_selector("[data-act=schednew]")
+    pg.locator("[data-act=schednew]").click()                              # v0.914 the form opens in a dialog
     pg.wait_for_selector("#hcdSchedF")
     sf = pg.locator("#hcdSchedF")
     assert sf.locator("[name=days]").is_visible() and not sf.locator("[name=label]").is_visible()

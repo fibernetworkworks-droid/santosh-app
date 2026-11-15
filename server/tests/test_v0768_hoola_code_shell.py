@@ -185,8 +185,8 @@ def _shot(pg, name):
 def test_typing_survives_a_refresh_and_steps_fold(arena_server):  # noqa: F811
     ctx, pg, errs, calls, state = _console(arena_server)
     home = pg.locator(".hcd").text_content()
-    assert "What should Hoola code today?" in home and "<b>Orders to Postgres</b>" in home       # her title is text, never HTML
-    assert pg.locator(".hcd-lbl").all_text_contents()[:2] == ["shop-api", "site"]                 # grouped by repo
+    assert "Ready when you are" in home and "<b>Orders to Postgres</b>" in home       # her title is text, never HTML
+    assert pg.locator(".hcd-lbl").all_text_contents()[:1] == ["Recents"]                            # v0.914 one Recents list, like the design (group by repo is in the sort menu)
     _shot(pg, "1-home")
     pg.locator("[data-tid='dt1']").click()
     pg.wait_for_selector(".hcd-fold")
@@ -226,20 +226,20 @@ def test_layout_rail_sidebar_menus(arena_server):  # noqa: F811
     pg.locator("[data-tid='dt1']").click()
     pg.wait_for_selector("#hcdRail .hcd-rc")
     box = lambda sel: pg.locator(sel).bounding_box()                                              # noqa: E731
-    assert box("#hcdRail")["width"] == 300 and box("#hcdCol")["width"] >= 600                 # the chat is never squeezed
+    assert box("#hcdRail")["width"] == 320 and box("#hcdCol")["width"] >= 600                 # the chat is never squeezed
     rail = pg.locator("#hcdRail").text_content()
     assert "Changes" in rail and "Progress" in rail and "Run your tests" in rail and "app/auth/views.py" in rail
     for sel in ("#hcdSteer", "#hcdStop", "#hcdTop"):                                              # nothing pushed out of view
         b = box(sel)
         assert b["x"] >= 0 and b["x"] + b["width"] <= 1280 and b["y"] + b["height"] <= 900, sel
     pg.locator("[data-act='rail']").click()
-    assert pg.locator("#hcdRail").is_hidden() and box("#hcdCol")["width"] == 760
+    assert pg.locator("#hcdRail").is_hidden() and box("#hcdCol")["width"] == 780
     pg.locator("[data-act='rail']").click()
     assert pg.locator("#hcdRail").is_visible()
     pg.locator("[data-act='side']").click()
     assert box("#hcdSide")["width"] == 52 and pg.locator("#hcdSide [data-tid]").count() == 2      # running + needs-you stay one click away
     pg.locator("[data-act='side']").click()
-    assert box("#hcdSide")["width"] == 272
+    assert box("#hcdSide")["width"] == 260
     # the session menu: rename goes to the server, Verbose opens every step
     pg.locator("[data-menu='title']").click()
     pg.get_by_role("menuitemradio", name="Verbose").or_(pg.get_by_text("Verbose", exact=True)).first.click()
@@ -287,7 +287,9 @@ def test_its_own_page_with_its_own_sidebar(arena_server):  # noqa: F811
     assert pg.url.endswith("/console/code") and pg.title() == "Hoola Code"
     assert pg.locator("#snav").count() == 0 and pg.locator("#hcdSide").count() == 1               # the console's sidebar is not here
     assert pg.locator("#hcdSide").bounding_box()["x"] == 0
-    assert pg.locator("#hcdSide a[href='/console/']").text_content() == "Back to Hoola"
+    pg.locator("#hcdSide [data-menu='more']").click()                                            # v0.914 Back to Hoola lives in More, like the design
+    assert pg.get_by_role("menuitem", name="Back to Hoola").count() == 1
+    pg.keyboard.press("Escape")
     pg.locator("[data-tid='dt2']").click()
     pg.wait_for_selector("#hcdYes")
     assert pg.url.endswith("/console/code#/s/dt2")

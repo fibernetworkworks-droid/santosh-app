@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hoola Code sidebar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500&display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+<style>body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern','liga'}::placeholder{color:#8F8B84;opacity:1}textarea{resize:none}[role=menu],[role=listbox]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35)!important}[role=dialog]{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 30px 80px rgba(0,0,0,.6)!important}form,section{box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}</style>
+</helmet>
+<nav aria-label="Hoola Code" style="width: 260px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #171615; border-right: 1px solid #2E2C29; padding: 10px 8px; color: #E8E5DE; font-family: 'Schibsted Grotesk', system-ui, sans-serif;">
+  <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 10px;">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#9C88FF"></circle><path d="M8 7v10M16 7v10M8 12h8" stroke="#14102B" stroke-width="2.4" stroke-linecap="round" fill="none"></path></svg>
+    <span style="font-family: Literata, serif; font-size: 18px; font-weight: 500; flex: 1;">Hoola Code</span>
+    <button aria-label="Search sessions" style="width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: #D9D6CE;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M16 16l4 4"></path></svg></button>
+    <button aria-label="Collapse sidebar" style="width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: #D9D6CE;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path></svg></button>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 8px; font-size: 14px;">
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; color: #E8E5DE; text-decoration: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New session</a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; color: #E8E5DE; text-decoration: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M16 16l4 4"></path></svg>Search</a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; color: #E8E5DE; text-decoration: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3"></path></svg>Projects<span style="margin-left: 6px; font-size: 12px; color: #BBB8B0; background: #2A2825; padding: 1px 6px; border-radius: 6px;">Beta</span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; color: #E8E5DE; text-decoration: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h11v11H8zM5 8v12h11"></path></svg>Artifacts</a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; color: #E8E5DE; text-decoration: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14v11H5zM9 8V5h6v3"></path></svg>Customize</a>
+    <a href="#" style="display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; color: #E8E5DE; text-decoration: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="18" cy="12" r="1.4"></circle></svg>More</a>
+  </div>
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 22px 10px 6px; font-size: 12px; color: #9C9890;"><span>Recents<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></span><span aria-hidden="true"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em;"><path d="M8 5v14M5 16l3 3 3-3M16 19V5M13 8l3-3 3 3"></path></svg></span></div>
+  <div style="display: flex; flex-direction: column; gap: 1px; font-size: 14px;">
+    <sc-for list="{{ items }}" as="it" hint-placeholder-count="7">
+      <a href="{{ it.href }}" style="{{ it.rowStyle }}">
+        <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ it.name }}</span>
+        <sc-if value="{{ it.pr }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4CC38A" stroke-width="1.8" role="img" aria-label="Pull request open"><circle cx="6" cy="6" r="2"></circle><circle cx="6" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle><path d="M6 8v8M18 16V9a3 3 0 0 0-3-3h-4"></path></svg></sc-if>
+        <sc-if value="{{ it.running }}" hint-placeholder-val="{{ false }}"><span role="img" aria-label="Working" style="width: 8px; height: 8px; border-radius: 50%; background: #9C88FF;"></span></sc-if>
+        <sc-if value="{{ it.needs }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E8B062" stroke-width="1.8" stroke-linejoin="round" role="img" aria-label="Needs you"><path d="M12 4l9 16H3zM12 10v4M12 17v.5"></path></svg></sc-if>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C9890" stroke-width="1.8" stroke-linejoin="round" role="img" aria-label="Cloud session"><path d="M7 18h10a4 4 0 0 0 .6-7.9A6 6 0 0 0 6.6 9 4.5 4.5 0 0 0 7 18z"></path></svg>
+      </a>
+    </sc-for>
+  </div>
+  <div style="flex: 1;"></div>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border-top: 1px solid #2E2C29;">
+    <span style="width: 26px; height: 26px; border-radius: 50%; background: #E8B062; color: #1B1A17; display: grid; place-items: center; font-size: 12px; font-weight: 600;">M</span>
+    <span style="flex: 1; font-size: 14px;">Meghana <span style="color: #9C9890; font-size: 12px;">· Pro<svg width="0.9em" height="0.9em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; vertical-align: -0.125em; margin-left: 3px;"><path d="M6 9l6 6 6-6"></path></svg></span></span>
+    <button aria-label="Settings" style="width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: #D9D6CE;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></button>
+  </div>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":null},"$preview":{"width":260,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active ?? '';
+    const rows = [
+      { name: 'Fix cart total crash', pr: true, running: false, needs: false, href: 'Session.dc.html' },
+      { name: 'Add GST invoice export', pr: false, running: true, needs: false, href: '#' },
+      { name: 'Explain the payment webhook', pr: false, running: false, needs: false, href: '#' },
+      { name: 'Shop app login bug', pr: false, running: false, needs: true, href: '#' },
+      { name: 'Write tests for orders API', pr: false, running: false, needs: false, href: '#' },
+      { name: 'Upgrade Flutter packages', pr: false, running: false, needs: false, href: '#' },
+      { name: 'Repository review', pr: false, running: false, needs: false, href: '#' }
+    ];
+    const base = 'display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; color: #E8E5DE; text-decoration: none;';
+    return { items: rows.map((r) => ({ ...r, rowStyle: base + (r.name === active ? ' background: #2A2825;' : '') })) };
+  }
+}
+</script>
+</body>
+</html>

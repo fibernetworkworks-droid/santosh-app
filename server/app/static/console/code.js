@@ -32,16 +32,17 @@
    Nothing reaches GitHub from this page except through the existing tap routes (push / plan-ok / post / decide). */
 window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''}) {
   let EL = null, VIEW = 'home', TID = '', OV = null, TASK = null, POLL = 0, KIND = 'fix', REPO = '', MERGE = null;
-  let Q = '', ALL = {tab: 'active', q: '', rows: null}, SIG = {}, WIRED = null;
+  let Q = '', ALL = {tab: 'active', q: '', rows: null, repo: ''}, SIG = {}, WIRED = null;
   const OPEN = new Set();                 // folds she opened (kept across repaints)
   let PANE = null;                        // the Changes pane: {path, base, cmp, rows} - null = closed
   let COMMENTS = [], DRAFT = null;        // her comments on lines, waiting for her next message; the one she is writing
   let SIDE_AUTO = false;                  // the sessions sidebar stepped aside for the pane (comes back when it closes)
   const BRANCHES = {};                    // repo -> its branches (for Compare against), fetched once
-  const HOME = {text: '', kind: 'auto', issue: 0, base: '', mode: '', model: '', effort: '', files: [], refs: [], also: []};   // the composer, kept while she looks elsewhere
+  const HOME = {text: '', kind: 'auto', issue: 0, base: '', mode: '', model: '', effort: '', files: [], refs: [], also: [], env: ''};
+  let ENVS = {envs: [], auto: {id: 'auto', name: 'Auto', sub: 'Follows your repositories'}, pick: 'auto', net_on: false};   // v0.878 cloud environments   // the composer, kept while she looks elsewhere
   const PICS = new Map();                 // session id + index -> blob: link of a picture she attached
-  const MODES = [['ask', 'Ask before the PR', 'Shows the change and waits for your tap'], ['auto', 'Work and open the PR', 'Private repos only - merging is always yours'],
-    ['plan', 'Plan first', 'No file is touched until you say yes']];
+  const MODES = [['ask', 'Ask first', 'Ask before the PR: shows the change and waits for your tap'], ['auto', 'Auto PR', 'Works and opens the PR (private repos only) - merging is always yours'],
+    ['plan', 'Plan first', 'Plan first: no file is touched until you say yes']];
   const SLASH = [['plan', 'Plan first, wait for my OK'], ['fix', 'Fix a bug, with a test'], ['feature', 'Build a feature'], ['tests', 'Write tests'],
     ['docs', 'Write docs'], ['explain', 'Explain code, change nothing'], ['issue', 'Work on a GitHub issue: /issue 12'], ['review', 'Review a pull request: /review 12']];
   const rs = n => 'Rs ' + (n >= 100 ? Math.round(n).toLocaleString('en-IN') : (+n || 0).toFixed(2));
@@ -49,7 +50,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const $ = s => EL && EL.querySelector(s);
   const P = (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('hoola.code.ui') || '{}') || {}; } catch (e) { /* private window */ }
     return {side: p.side === 'min' ? 'min' : p.side === 'open' ? 'open' : (window.innerWidth < 760 ? 'min' : 'open'),   // a narrow window starts with the slim bar rail: ['on', 'off'].includes(p.rail) ? p.rail : 'auto',
-      group: ['status', 'none'].includes(p.group) ? p.group : 'repo', show: ['run', 'need'].includes(p.show) ? p.show : 'all',
+      group: ['status', 'repo'].includes(p.group) ? p.group : 'none', show: ['run', 'need'].includes(p.show) ? p.show : 'all',
       view: ['verbose', 'thinking'].includes(p.view) ? p.view : 'normal'}; })();
   const keep = () => { try { localStorage.setItem('hoola.code.ui', JSON.stringify(P)); } catch (e) { /* fine without it */ } };
 
@@ -80,10 +81,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
     pr: '<circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="18" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 8.4v7.2M18 15.6V10a4 4 0 0 0-4-4h-2.5M13.5 3.5L11 6l2.5 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     clock: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-    gear: '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    gear: '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
     stack: '<path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     back: '<path d="M10 6l-6 6 6 6M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     bug: '<rect x="8" y="7" width="8" height="12" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 7a2.5 2.5 0 0 1 5 0M4 13h4M16 13h4M5 8l3 2M19 8l-3 2M5 19l3-2M19 19l-3-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    cloud: '<path d="M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.1 4.5 4.5 0 0 0 7 18z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    warn: '<path d="M12 4l9 16H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    folder: '<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    share: '<path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     spark: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'};
   const svg = (k, cls = '') => `<svg class="hcd-ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ICON.dot}</svg>`;
   const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
@@ -99,18 +104,21 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const sub = t => isRun(t) ? 'Working' : t.question ? 'Hoola asks you a question' : (STATUS[t.status] || t.status);
 
   async function load() {
+    const ev = api('GET', '/api/devsahayak/envs').then(r => { ENVS = r; if (!HOME.env) HOME.env = r.pick || 'auto'; }).catch(() => {});
     try { OV = await api('GET', '/api/devsahayak'); } catch (e) { OV = {error: e.message, tasks: [], repos: [], reviews: [], actions: [], settings: {}}; }
+    await ev;
     if (!REPO) REPO = OV.settings?.default_repo || OV.repos?.[0]?.repo || '';
   }
   // On its own page (/console/code) every screen has an address: #/s/<id>, #/reviews, #/settings, #/all - so Back works
   // and a link can open one session.
   const fromHash = () => { const m = /^#\/(s|reviews|settings|all|scheduled)(?:\/(.+))?$/.exec(location.hash || '');
-    return !m ? ['home', ''] : m[1] === 's' ? ['session', decodeURIComponent(m[2] || '')] : [m[1], '']; };
-  const toHash = (view, tid) => view === 'session' && tid ? '#/s/' + encodeURIComponent(tid) : view === 'home' ? '#/' : '#/' + view;
+    return !m ? ['home', ''] : m[1] === 's' ? ['session', decodeURIComponent(m[2] || '')] : m[1] === 'scheduled' ? ['scheduled', decodeURIComponent(m[2] || '')] : [m[1], '']; };
+  const toHash = (view, tid) => view === 'session' && tid ? '#/s/' + encodeURIComponent(tid) : view === 'scheduled' && tid ? '#/scheduled/' + encodeURIComponent(tid) : view === 'home' ? '#/' : '#/' + view;
   async function open(root) { EL = root || EL; if (!EL) return; clearInterval(POLL); if (shared) return openShared(); await load(); shell();
     if (standalone && location.search) { const u = new URLSearchParams(location.search), g = k => (u.get(k) || '').trim();   // a link may pre-fill the box; it never starts anything
       HOME.text = (g('prompt') || g('q')).slice(0, 20000); HOME.base = g('branch').slice(0, 100); if (MODES.some(m => m[0] === g('mode'))) HOME.mode = g('mode');
-      const r = g('repo') || g('repositories').split(',')[0]; if ((OV.repos || []).some(x => x.repo === r)) REPO = r;
+      const r = g('repo') || g('repositories').split(',')[0], en = g('environment').toLowerCase();
+      const fe = (ENVS.envs || []).find(e => e.id === en || e.name.toLowerCase() === en); if (fe) HOME.env = fe.id; else if (en === 'auto') HOME.env = 'auto'; if ((OV.repos || []).some(x => x.repo === r)) REPO = r;
       history.replaceState(null, '', location.pathname + location.hash); }
     if (standalone) { [VIEW, TID] = fromHash(); window.addEventListener('hashchange', () => { const [v, t] = fromHash(); if (v !== VIEW || t !== TID) show(v, t); }); }
     show(VIEW, TID); }
@@ -155,6 +163,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     EL.addEventListener('drop', ev => { if (!ev.target.closest?.('#hcdAsk')) return; ev.preventDefault(); addFiles(ev.dataTransfer?.files || []); });
     if (window.ResizeObserver) new ResizeObserver(() => { const b = $('[data-act="rail"]'); if (!b) return; const on = railShown();   // the window got narrower / wider: the button tells the truth
       b.setAttribute('aria-pressed', String(on)); b.title = `${on ? 'Hide' : 'Show'} session details`; b.setAttribute('aria-label', b.title); }).observe($('#hcdBody'));
+    EL.addEventListener('input', envForm); EL.addEventListener('change', envForm);
     EL.addEventListener('input', ev => { if (ev.target.id === 'hcdSearch') { Q = ev.target.value; drawList(); } if (ev.target.id === 'hcdNote') grow(ev.target); });
   }
   const body = html => { $('#hcdBody').innerHTML = html; };
@@ -170,22 +179,33 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         ${ts.map(t => `<button type="button" class="hcd-icb" data-tid="${esc(t.id)}" title="${esc(t.title || t.number)}" aria-label="${esc(t.title || t.number)}"><i class="hcd-dot ${dotc(t)}"></i></button>`).join('')}`;
       return;
     }
-    side.innerHTML = `<div class="hcd-sh">${standalone ? '<img class="hcd-mark" src="/static/hoola-mark.png" alt="" width="24" height="24">' : ''}<b>Hoola Code</b><span class="hcd-flex"></span><button type="button" class="hcd-icb" data-act="side" aria-label="Collapse the sessions sidebar" title="Collapse sidebar">${svg('side')}</button></div>
-      <button type="button" class="hcd-new" data-go="home">${svg('new')}New session</button>
-      <button type="button" class="hcd-nav${VIEW === 'reviews' ? ' on' : ''}" data-go="reviews">${svg('pr')}<span>Review a pull request</span></button>
-      <button type="button" class="hcd-nav${VIEW === 'scheduled' ? ' on' : ''}" data-go="scheduled">${svg('clock')}<span>Scheduled</span>${(OV?.schedules || []).filter(x => x.enabled && x.days !== 'off').length ? `<span class="hcd-count">${(OV.schedules || []).filter(x => x.enabled && x.days !== 'off').length}</span>` : ''}</button>
-      <label class="hcd-sr" for="hcdSearch">Search sessions</label><input id="hcdSearch" class="hcd-search" type="search" placeholder="Search sessions" value="${esc(Q)}" autocomplete="off">
+    // v0.914 the sidebar as in the approved design (docs/design/hoola_code/Sidebar.dc.html): mark + name, search and
+    // collapse; New session / Search / Scheduled / Reviews / Environments; Recents with their status marks; you + settings.
+    const nSched = (OV?.schedules || []).filter(x => x.enabled).length, who = (OV?.settings?.login || 'You');
+    side.innerHTML = `<div class="hcd-sh">${standalone ? '<img class="hcd-mark" src="/static/hoola-mark.png" alt="" width="24" height="24">' : ''}<b class="hcd-brand">Hoola Code</b><span class="hcd-flex"></span>
+        <button type="button" class="hcd-icb" data-act="find" aria-label="Search sessions" title="Search sessions">${svg('search')}</button>
+        <button type="button" class="hcd-icb" data-act="side" aria-label="Collapse the sessions sidebar" title="Collapse sidebar">${svg('side')}</button></div>
+      <div class="hcd-navs">
+        <button type="button" class="hcd-new" data-go="home">${svg('new')}<span>New session</span></button>
+        <button type="button" class="hcd-nav${VIEW === 'all' ? ' on' : ''}" data-go="all">${svg('search')}<span>Search</span></button>
+        <button type="button" class="hcd-nav${VIEW === 'scheduled' ? ' on' : ''}" data-go="scheduled">${svg('clock')}<span>Scheduled</span>${nSched ? `<span class="hcd-count">${nSched}</span>` : ''}</button>
+        <button type="button" class="hcd-nav${VIEW === 'reviews' ? ' on' : ''}" data-go="reviews">${svg('pr')}<span>Reviews</span></button>
+        <button type="button" class="hcd-nav" data-act="envs">${svg('cloud')}<span>Environments</span></button>
+        ${standalone ? `<button type="button" class="hcd-nav" data-menu="more">${svg('more')}<span>More</span></button>` : ''}
+      </div>
+      <label class="hcd-sr" for="hcdSearch">Search sessions</label><input id="hcdSearch" class="hcd-search" type="search" placeholder="Search sessions" value="${esc(Q)}" autocomplete="off"${Q || P.find ? '' : ' hidden'}>
       <div class="hcd-list" id="hcdList"></div>
-      <button type="button" class="hcd-nav${VIEW === 'all' ? ' on' : ''}" data-go="all">${svg('stack')}<span>View all</span></button>
       <span class="hcd-flex"></span>
-      <button type="button" class="hcd-nav${VIEW === 'settings' ? ' on' : ''}" data-go="settings">${svg('gear')}<span>Settings</span></button>
-      ${standalone ? `<a class="hcd-nav" href="/console/">${svg('back')}<span>Back to Hoola</span></a>` : ''}`;
+      <div class="hcd-me-row"><span class="hcd-av" aria-hidden="true">${esc(who.charAt(0).toUpperCase())}</span><span class="hcd-who">${esc(who)}</span>
+        <button type="button" class="hcd-icb${VIEW === 'settings' ? ' on' : ''}" data-go="settings" aria-label="Settings" title="Settings">${svg('gear')}</button></div>`;
     drawList();
   }
-  const row = t => `<div class="hcd-sess${t.id === TID && VIEW === 'session' ? ' on' : ''}"><button type="button" class="hcd-sessb" data-tid="${esc(t.id)}">
-      <span class="hcd-st"><i class="hcd-dot ${dotc(t)}"></i><span>${esc(t.title || t.number)}</span></span>
-      <small>${P.group === 'repo' ? '' : esc((t.repo || '').split('/')[1] || '') + ' · '}${esc(sub(t))} · ${esc(ago(t.updated || t.at))}</small></button>
-      <span class="hcd-stat">${stat(t)}</span>
+  // one line per session, like the design: the name, then its marks (pull request, working, needs you), the cloud
+  const marks = t => `${t.pr_number && ['pr_open', 'checks_failed', 'ci_running'].includes(t.status) ? `<span class="hcd-mk pr" role="img" aria-label="Pull request open">${svg('pr')}</span>` : ''}${isRun(t)
+    ? '<span class="hcd-mk run" role="img" aria-label="Working"><i></i></span>' : needsYou(t) ? `<span class="hcd-mk need" role="img" aria-label="Needs you">${svg('warn')}</span>` : ''}<span class="hcd-mk cl" role="img" aria-label="Cloud session">${svg('cloud')}</span>`;
+  const row = t => `<div class="hcd-sess${t.id === TID && VIEW === 'session' ? ' on' : ''}"><button type="button" class="hcd-sessb" data-tid="${esc(t.id)}" title="${esc((t.repo || '') + ' · ' + sub(t) + ' · ' + ago(t.updated || t.at))}">
+      <span class="hcd-st"><span>${esc(t.title || t.number)}</span></span></button>
+      <span class="hcd-marks">${marks(t)}</span>
       <button type="button" class="hcd-icb hcd-rowm" data-menu="row" data-id="${esc(t.id)}" aria-label="More for ${esc(t.title || t.number)}">${svg('more')}</button></div>`;
   function drawList() {
     const box = $('#hcdList'); if (!box) return;
@@ -194,14 +214,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (P.show !== 'all') ts = ts.filter(t => group(t) === P.show);
     const head = (name, first) => `<div class="hcd-lbl"><span>${esc(name)}</span>${first ? `<button type="button" class="hcd-icb" data-menu="group" aria-label="Group and sort" title="Group and sort">${svg('sort')}</button>` : ''}</div>`;
     let out = '';
-    if (!ts.length) out = head('Sessions', true) + `<p class="hcd-mut hcd-none">${q || P.show !== 'all' ? 'No sessions match.' : 'No sessions yet.'}</p>`;
+    if (!ts.length) out = head('Recents', true) + `<p class="hcd-mut hcd-none">${q || P.show !== 'all' ? 'No sessions match.' : 'No sessions yet.'}</p>`;
     else if (P.group === 'repo') {
       const by = new Map(); ts.forEach(t => { const k = (t.repo || '').split('/')[1] || t.repo || 'No repo'; (by.get(k) || by.set(k, []).get(k)).push(t); });
       let first = true; by.forEach((list, k) => { out += head(k, first) + list.map(row).join(''); first = false; });
     } else if (P.group === 'status') {
       let first = true; [['run', 'Running'], ['need', 'Needs you'], ['old', 'Earlier']].forEach(([g, name]) => { const list = ts.filter(t => group(t) === g);
         if (list.length) { out += head(name, first) + list.map(row).join(''); first = false; } });
-    } else out = head('Sessions', true) + ts.map(row).join('');
+    } else out = head('Recents', true) + ts.map(row).join('');
     box.innerHTML = out;
   }
 
@@ -243,8 +263,12 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       {label: 'Verbose', sub: 'Every step, every diff, and the thinking', checked: P.view === 'verbose', run: () => setView('verbose')}];
     if (shared) return HoolaMenu.open(btn, views, {align: 'start', label: 'Transcript view', width: 270});
     const items = [{label: 'Rename', icon: 'pencil', run: () => askName(t)}];
+    if (inSession) items.push({label: 'Cloud environment…', icon: 'gear', sub: (t.env?.name || 'Auto') + ' · applies from the next message', run: () => envMenu(btn, t)});
     if (inSession) items.push(...views, {sep: true}, {label: t.share?.on ? 'Read-only link…' : 'Share a read-only link…', icon: 'doc', sub: t.share?.on ? 'On - anyone with the link can read this session' : '', disabled: isRun(t), run: () => shareDialog(t)});
-    if (t.pr_url) items.push({sep: true}, {label: 'Open the PR on GitHub', icon: 'doc', run: () => window.open(t.pr_url, '_blank', 'noopener')});
+    if (inSession && (t.branch || t.pr_url)) items.push({header: 'Open in'});
+    if (inSession && t.branch && t.pr_number) items.push({label: 'Copy checkout command', icon: 'braces', sub: `git checkout ${t.branch}`, run: async () => { const cmd = `git fetch origin ${t.branch} && git checkout ${t.branch}`;
+      try { await navigator.clipboard.writeText(cmd); toast('Copied: ' + cmd); } catch (e) { toast(cmd); } }});
+    if (t.pr_url) items.push(inSession ? {label: 'GitHub', icon: 'doc', sub: `Pull request #${t.pr_number}`, run: () => window.open(t.pr_url, '_blank', 'noopener')} : {sep: true}, ...(inSession ? [] : [{label: 'Open the PR on GitHub', icon: 'doc', run: () => window.open(t.pr_url, '_blank', 'noopener')}]));
     items.push({sep: true}, t.archived ? {label: 'Unarchive', icon: 'restore', run: () => setArchived(t, false)} : {label: 'Archive', icon: 'archive', disabled: isRun(t), run: () => setArchived(t, true)},
       {label: 'Delete…', icon: 'trash', danger: true, disabled: isRun(t), run: () => askDelete(t)});
     HoolaMenu.open(btn, items, {align: inSession ? 'start' : 'end', label: 'Session', width: 250});
@@ -267,16 +291,85 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (['pr_open', 'checks_failed', 'ci_running'].includes(t.status)) items.push({label: 'Check CI again', icon: 'restore', run: () => ACTS.refresh(null)});
     HoolaMenu.open(btn, items, {align: 'end', label: 'Pull request', width: 270});
   }
+  // ------------------------------------------------------------------ v0.878 cloud environments (Claude Code's environment selector) ---
+  const LEVEL = {none: 'No network', limited: 'Limited network', full: 'Full network'};
+  const envName = id => !id || id === 'auto' ? 'Auto' : ((ENVS.envs || []).find(e => e.id === id)?.name || 'Auto');
+  function envMenu(btn, t) {
+    if (!window.HoolaMenu) return;
+    const cur = t ? (t.env?.id || 'auto') : (HOME.env || 'auto');
+    const pick = id => async () => {
+      if (!t) { HOME.env = id; if (VIEW === 'home') { keepHome(); home(); } return; }
+      try { await api('PUT', `/api/devsahayak/tasks/${encodeURIComponent(t.id)}/env`, {env: id}); toast(`${envName(id)} from the next message.`); await refreshTask(t.id, false); }
+      catch (e) { toast(e.message, true); } };
+    const items = [{header: 'Cloud environments'},
+      {label: 'Auto', sub: 'Follows your repositories', icon: 'cloud', checked: cur === 'auto', run: pick('auto')},
+      ...(ENVS.envs || []).filter(e => !e.archived).map(e => ({label: e.name, icon: 'cloud', checked: cur === e.id,
+        sub: LEVEL[e.net.level] + (e.net.on || e.net.level === 'none' ? '' : ' (not on yet)') + (e.setup ? ' · setup script' : ''), run: pick(e.id)})),
+      {sep: true}];
+    const mine = (ENVS.envs || []).find(e => e.id === cur);
+    if (mine) items.push({label: `Edit ${mine.name}…`, icon: 'gear', run: () => envDialog(mine)});
+    items.push({label: 'New environment…', icon: 'new', run: () => envDialog(null)});
+    HoolaMenu.open(btn, items, {align: 'start', label: 'Cloud environment', width: 290});
+  }
+  async function envDialog(e) {
+    if (e && !e.id) e = {...e, _new: true};
+    const isNew = !e || e._new;
+    const n = e?.net || {level: 'limited', pkgs: true, hosts: []}, vars = Object.entries(e?.env_vars || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+    const lv = (k, title, sub) => `<label class="hcd-envlv"><input type="radio" name="hcdEnvLv" value="${k}"${n.level === k ? ' checked' : ''}><span><b>${title}</b><small>${sub}</small></span></label>`;
+    const wait = dialog(`<h2>${!isNew ? 'Edit environment' : 'New environment'}</h2>
+      <p class="hcd-mut">Cloud environments are where Hoola Code runs your repo's commands. You can change them any time.</p>
+      <div class="hcd-envcols"><div class="hcd-envcol">
+      <label class="hcd-lab" for="hcdEnvName">Name</label><input id="hcdEnvName" maxlength="60" value="${esc(e?.name || '')}" placeholder="Default" autocomplete="off">
+      <fieldset class="hcd-envnet"><legend class="hcd-lab">Network access</legend>
+        ${lv('none', 'None', 'Sessions cannot reach the internet.')}${lv('limited', 'Limited <em class="hcd-rec">Recommended</em>', 'Sessions reach only what you allow below.')}${lv('full', 'Full', 'Sessions can reach any public site.')}
+        <div id="hcdEnvLim"${n.level === 'limited' ? '' : ' hidden'}>
+          <label class="hcd-chk"><input type="checkbox" id="hcdEnvPkgs"${n.pkgs !== false ? ' checked' : ''}> Allow package managers (PyPI, npm, Maven, crates, Go, RubyGems…)</label>
+          <label class="hcd-lab" for="hcdEnvHosts">Allowed domains <small>one per line, *.example.com for subdomains</small></label>
+          <textarea id="hcdEnvHosts" rows="3" spellcheck="false">${esc((n.hosts || []).join('\n'))}</textarea></div>
+        ${ENVS.net_on ? '' : '<p class="hcd-mut">The network is not switched on for this server yet, so commands run offline until the server check passes. Your choice is kept.</p>'}
+      </fieldset></div><div class="hcd-envcol">
+      <label class="hcd-lab" for="hcdEnvVars">Environment variables <small>.env format, one NAME=value per line - never keys or passwords</small></label>
+      <textarea id="hcdEnvVars" rows="3" spellcheck="false" placeholder="NODE_ENV=test">${esc(vars)}</textarea>
+      <label class="hcd-lab" for="hcdEnvSetup">Setup script <small>runs once with the network, before the first command, and is cached</small></label>
+      <textarea id="hcdEnvSetup" rows="4" spellcheck="false" placeholder="pip install -r requirements.txt">${esc(e?.setup || '')}</textarea>
+      <p class="hcd-mut">Keys for an outside API are added in Settings &gt; Repositories &gt; Keys added outside the box: the proxy adds them after the request leaves the box, so Hoola never sees them.</p></div></div>
+      <div class="hcd-dlgb">${!isNew ? '<button class="hcd-btn danger" value="archive" formnovalidate>Archive</button><span class="hcd-flex"></span>' : ''}<button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">${!isNew ? 'Save changes' : 'Create'}</button></div>`);
+    envForm({target: $('#hcdEnvName')});
+    const r = await wait;
+    if (r === 'archive' && !isNew) { try { await api('POST', `/api/devsahayak/envs/${encodeURIComponent(e.id)}/archive`); toast(`${e.name} archived. Sessions already in it keep running.`);
+      if (HOME.env === e.id) HOME.env = 'auto'; await load(); if (VIEW === 'home') home(); else if (VIEW === 'settings') settings(); } catch (err) { toast(err.message, true); } return; }
+    if (r !== 'ok') return;
+    const body = {name: (FORM.name || '').trim() || 'Default', net: {level: FORM.level, pkgs: FORM.pkgs, hosts: FORM.hosts}, env_vars: FORM.vars, setup: FORM.setup};
+    try { const out = !isNew ? await api('PATCH', `/api/devsahayak/envs/${encodeURIComponent(e.id)}`, body) : await api('POST', '/api/devsahayak/envs', body);
+      toast(!isNew ? 'Saved.' : `${out.name} created.`); if (isNew) HOME.env = out.id; await load(); if (VIEW === 'home') home(); else if (VIEW === 'settings') settings(); }
+    catch (err) { toast(err.message, true); envDialog({...(e || {}), id: isNew ? '' : e.id, name: body.name, net: {level: body.net.level, pkgs: body.net.pkgs, hosts: (body.net.hosts || '').split(/\s+/).filter(Boolean)},
+      env_vars: Object.fromEntries((body.env_vars || '').split('\n').filter(x => x.includes('=')).map(x => [x.split('=')[0], x.slice(x.indexOf('=') + 1)])), setup: body.setup}); }
+  }
+  let FORM = {};     // the environment dialog's fields, read as she types (a closed dialog empties itself)
+  function envForm(ev) {
+    const d = ev.target.closest('#hcdDlg'); if (!d || !$('#hcdEnvName')) return;
+    if (ev.target.name === 'hcdEnvLv') { const lim = $('#hcdEnvLim'); if (lim) lim.hidden = ev.target.value !== 'limited'; }
+    FORM = {name: $('#hcdEnvName').value, level: (d.querySelector('input[name=hcdEnvLv]:checked') || {}).value || 'limited', pkgs: !!$('#hcdEnvPkgs')?.checked,
+      hosts: $('#hcdEnvHosts')?.value || '', vars: $('#hcdEnvVars')?.value || '', setup: $('#hcdEnvSetup')?.value || ''};
+  }
   function setView(v) { P.view = v; keep(); SIG.feed = ''; paint(); }
+  function moreMenu(btn) {
+    if (!window.HoolaMenu) return;
+    HoolaMenu.open(btn, [{label: 'All sessions', icon: 'doc', run: () => show('all')}, {label: 'Settings', icon: 'gear', run: () => show('settings')},
+      {sep: true}, {label: 'Back to Hoola', icon: 'restore', run: () => { location.href = '/console/'; }}], {align: 'start', label: 'More', width: 220});
+  }
 
   // ------------------------------------------------------------------ one listener ---
   function onClick(ev) {
     const b = ev.target.closest('[data-act],[data-go],[data-tid],[data-fold],[data-menu],[data-kind]'); if (!b || !EL.contains(b)) return;
     if (b.dataset.menu) { ev.preventDefault();
       if (b.dataset.menu === 'group') return groupMenu(b);
-      if (b.dataset.menu === 'title') return taskMenu(b, TASK, true);
+      if (b.dataset.menu === 'title' || b.dataset.menu === 'smenu') return taskMenu(b, TASK, true);
       if (b.dataset.menu === 'pr') return prMenu(b);
       if (b.dataset.menu === 'plus') return plusMenu(b);
+      if (b.dataset.menu === 'env') return envMenu(b, null);
+      if (b.dataset.menu === 'senv') return envMenu(b, TASK);
+      if (b.dataset.menu === 'more') return moreMenu(b);
       return taskMenu(b, findTask(b.dataset.id), false); }
     if (b.dataset.fold) { const k = b.dataset.fold, on = !OPEN.has(k); on ? OPEN.add(k) : OPEN.delete(k);
       b.setAttribute('aria-expanded', String(on)); const box = b.nextElementSibling; if (box && box.classList.contains('hcd-fin')) box.hidden = !on; return; }
@@ -386,10 +479,18 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const mode = HOME.mode || (st.ask_before_pr ? 'ask' : 'auto');
     const ring = us.limit_inr > 0 ? `<span class="hcd-use" title="${rs(us.spent_inr)} of your ${rs(us.limit_inr)} monthly limit, across all of Hoola"><svg viewBox="0 0 20 20" width="18" height="18" role="img" aria-label="${Math.round(us.pct)} percent of this month's limit used"><circle cx="10" cy="10" r="7.5" fill="none" stroke="var(--hair2)" stroke-width="3"/><circle cx="10" cy="10" r="7.5" fill="none" stroke="${us.over ? 'var(--bad)' : us.pct >= 80 ? 'var(--warn)' : 'var(--pri)'}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${(Math.min(100, us.pct) * 0.4712).toFixed(1)} 47.2" transform="rotate(-90 10 10)"/></svg>${Math.round(us.pct)}%</span>`
       : us.spent_inr > 0 ? `<span class="hcd-use" title="This month, across all of Hoola. No monthly limit is set.">${rs(us.spent_inr)} this month</span>` : '';
-    body(`<main class="hcd-home">
+    const env = HOME.env || 'auto', envSub = env === 'auto' ? 'Follows your repositories' : (() => { const e = (ENVS.envs || []).find(x => x.id === env); return e ? LEVEL[e.net.level] + (e.setup ? ' · setup script' : '') : ''; })();
+    body(`<main class="hcd-home"><div class="hcd-hbar">New session</div>
+      <div class="hcd-hero">
       ${OV?.error ? `<p class="hcd-err">${esc(OV.error)}</p>` : ''}
-      <h1>What should Hoola code today?</h1>
+      <img class="hcd-heromark" src="/static/hoola-mark.png" alt="" width="56" height="56">
+      <h1>Ready when you are</h1>
+      <div class="hcd-envcard"><div class="hcd-envnow">${svg('cloud')}<span><b>${esc(envName(env))}</b><small>${esc(envSub)}</small></span>${svg('ok', 'ok')}</div>
+        <button type="button" class="hcd-envpick" data-menu="env">Choose environment${svg('down')}</button></div>
       ${setup}
+      <p class="hcd-lede">Hoola works on its own branch in a cloud environment, runs your tests and opens a pull request. Nothing is merged without you.</p>
+      </div>
+      <div class="hcd-dock">
       <form class="hcd-ask" id="hcdAsk">
         <div class="hcd-tray" id="hcdTray" hidden></div>
         <label for="hcdLine" class="hcd-sr">Describe the task</label>
@@ -399,6 +500,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         <button class="hcd-send" id="hcdStart" type="submit" aria-label="Start session" title="Start (Enter)"${repos.length && st.github ? '' : ' disabled'}>${svg('up')}</button>
       </form>
       <div class="hcd-askrow">
+        <button type="button" class="hcd-chip hcd-envchip" id="hcdEnv" data-menu="env" aria-haspopup="menu" title="The cloud environment this session runs in: network access, variables and a setup script">${svg('cloud')}<span>${esc(envName(HOME.env))}</span>${svg('down')}</button>
         <label class="hcd-chip"><span class="hcd-sr">Repo</span><select id="hcdRepo" aria-label="Repo">${repos.map(r => `<option value="${esc(r.repo)}" title="${esc(r.repo)}"${r.repo === REPO ? ' selected' : ''}>${esc(r.repo.split('/')[1] || r.repo)}</option>`).join('') || '<option value="">no repo yet</option>'}</select></label>
         <label class="hcd-chip"><span class="hcd-sr">Branch to work from</span><select id="hcdBase" aria-label="Branch to work from" title="Hoola works from this branch and opens the pull request against it">${baseOptions(REPO)}</select></label>
         <label class="hcd-chip"><span class="hcd-sr">Mode</span><select id="hcdMode" aria-label="Mode" title="${esc((MODES.find(m => m[0] === mode) || MODES[0])[2])}">${MODES.map(([k, n]) => `<option value="${k}"${k === mode ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
@@ -407,9 +509,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
           : (ms.options || []).length ? `<label class="hcd-chip"><span class="hcd-sr">Model</span><select id="hcdModel" aria-label="Model">${ms.options.map(o => `<option value="${esc(o.id)}"${o.id === (HOME.model || ms.default) ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
             <label class="hcd-chip"><span class="hcd-sr">Effort</span><select id="hcdEffort" aria-label="Effort" title="How hard the model thinks: higher is slower and costs more">${(ms.efforts || []).map(e => `<option value="${e}"${e === (HOME.effort || ms.default_effort) ? ' selected' : ''}>${e[0].toUpperCase() + e.slice(1)}</option>`).join('')}</select></label>` : ''}
         ${ring}
-      </div>
-      ${HOME.text || setup ? '' : `<div class="hcd-starts" id="hcdStarts">${STARTS.map(([ic, label], i) => `<button type="button" class="hcd-start" data-act="starter" data-i="${i}">${svg(ic)}${esc(label)}</button>`).join('')}</div>`}
-      <p class="hcd-lede">Hoola works on its own branch, runs your tests, and opens a pull request. Nothing is merged without you.</p>
+      </div></div>
     </main>`);
     drawTray(); loadBranches(REPO);
     $('#hcdLine')?.focus();
@@ -428,7 +528,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       const t = await api('POST', '/api/devsahayak/tasks/start', {kind: HOME.kind, text, repo: REPO, issue: HOME.issue, base: HOME.base, mode: $('#hcdMode').value,
         model: $('#hcdModel')?.value || '', effort: $('#hcdEffort')?.value || '',
         images: HOME.files.filter(f => f.kind === 'image').map(f => ({name: f.name, data: f.data})), docs: HOME.files.filter(f => f.kind === 'text').map(f => ({name: f.name, text: f.text})),
-        refs: HOME.refs, also: HOME.also});
+        refs: HOME.refs, also: HOME.also, env: HOME.env || ''});
       HOME.files.forEach(f => f.url && URL.revokeObjectURL(f.url));
       Object.assign(HOME, {text: '', kind: 'auto', issue: 0, files: [], refs: [], also: []}); line.value = '';      // sent: the box starts empty next time
       await load(); show('session', t.id);
@@ -515,13 +615,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   function planHTML(t) {
     const pl = t.plan || {};
     const li = xs => (xs || []).map(x => `<li>${esc(typeof x === 'string' ? x : `${x.path || ''}${x.why ? ' - ' + x.why : ''}`)}</li>`).join('');
-    return `<section class="hcd-card" aria-labelledby="hcdPlanH"><div class="hcd-sh"><h2 id="hcdPlanH">The plan</h2><span class="hcd-pill warn">${esc(t.tier || 'large')} job · waits for your OK</span></div>
-      ${pl.goal ? `<p><b>Goal:</b> ${esc(pl.goal)}</p>` : ''}
+    const nf = (pl.files || []).length;
+    return `<section class="hcd-card hcd-plan" aria-labelledby="hcdPlanH"><div class="hcd-sh"><span class="hcd-badge warn">Plan · waits for you</span><span class="hcd-mut">${esc((t.tier || 'large').replace(/^./, c => c.toUpperCase()))} change${nf ? ' · ' + plural(nf, 'file') : ''}</span></div>
+      <h2 id="hcdPlanH">${esc(pl.goal || 'The plan')}</h2>
+      ${pl.steps?.length ? `<ol class="hcd-plsteps">${li(pl.steps)}</ol>` : ''}
       ${pl.files?.length ? `<h3>Files it will change</h3><ul class="mono">${li(pl.files)}</ul>` : ''}
-      ${pl.steps?.length ? `<h3>Steps</h3><ol>${li(pl.steps)}</ol>` : ''}
-      ${pl.done_when?.length ? `<h3>Done when</h3><ul>${li(pl.done_when)}</ul>` : ''}
+      ${pl.done_when?.length ? `<p class="hcd-mut"><b>Done when:</b> ${esc(pl.done_when.map(x => typeof x === 'string' ? x : x.why || '').join('; '))}</p>` : ''}
       ${pl.risk ? `<div class="hcd-risk"><h3>Risks</h3><p>${esc(String(pl.risk))}</p></div>` : ''}
-      <p class="hcd-mut">Nothing is touched until you say yes.</p></section>`;
+      ${shared ? '' : `<div class="hcd-acts"><button type="button" class="hcd-btn pri" id="hcdYes" data-act="yes">Approve plan</button><button type="button" class="hcd-btn" id="hcdCancel" data-act="cancel">Not now</button><span class="hcd-mut">Nothing is touched until you approve. A note in the box below goes with it.</span></div>`}</section>`;
   }
   function recap(t) {
     const ci = t.ci?.state;
@@ -650,12 +751,20 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (!t.running && t.kind !== 'explain' && files.length) checks.push(kv('Security checks', `<span class="hcd-c ${(t.checks || []).length ? 'warn' : 'ok'}">${(t.checks || []).length ? plural(t.checks.length, 'note') : 'Clean'}</span>`));
     const acts = actsFor(t).filter(a => !a.includes('data-act="fixcomments"'));      // the reviewers' card below has that button
     const sg = {done: svg('ok', 'ok'), bad: svg('bad', 'bad'), now: '<i class="hcd-pulse sm" aria-hidden="true"></i>', off: svg('bad'), todo: '<i class="hcd-ring" aria-hidden="true"></i>'};
-    return `<section class="hcd-rc" aria-labelledby="hcdRcC"><h2 id="hcdRcC">Changes<span class="hcd-stat">${stat({files})}</span></h2>
+    const env = t.env || {id: 'auto', name: 'Auto'}, rows = stages(t), doneN = rows.filter(r => r[1] === 'done').length;
+    const last = (t.steps || []).length ? (t.steps || [])[(t.steps || []).length - 1].at : '', mins = Math.max(1, Math.round(((t.running ? Date.now() : Date.parse(last || t.at)) - Date.parse(t.at)) / 60000));
+    return `<section class="hcd-rc hcd-envrc" aria-labelledby="hcdRcE"><h2 id="hcdRcE">Environment</h2>
+        <div class="hcd-envl">${svg('cloud')}<b>${esc(env.name || 'Auto')}</b><span class="hcd-flex"></span>${t.running ? '<span class="hcd-c ok">Ready</span>' : ''}${shared ? '' : `<button type="button" class="hcd-icb" data-menu="senv" aria-label="Change the cloud environment" title="Cloud environment">${svg('gear')}</button>`}</div>
+        <div class="hcd-envl">${svg('read')}<span>${esc(t.repo || '')}</span></div>
+        ${t.branch ? `<div class="hcd-envl">${svg('pr')}<code class="hcd-br">${esc(t.branch)}</code></div>` : ''}</section>
+      <section class="hcd-rc" aria-labelledby="hcdRcC"><h2 id="hcdRcC">Changes<span class="hcd-stat">${stat({files})}</span></h2>
         ${files.length ? files.map(f => `<button type="button" class="hcd-file" data-act="file" data-path="${esc(f.path)}" title="Open ${esc(f.path)} in Changes"><code>${esc(f.path)}</code><span><em class="add">+${f.added || 0}</em> <em class="del">−${f.removed || 0}</em></span></button>`).join('') : '<p class="hcd-mut">No changes yet.</p>'}
         ${t.pr_number ? `<div class="hcd-row"><span>Pull request</span><b>#${t.pr_number} · ${esc(STATUS[t.status] || t.status)}</b>${shared ? '' : `<button type="button" class="hcd-icb" data-menu="pr" aria-label="Pull request menu: auto-fix, checkout command" title="Pull request menu">${svg('more')}</button>`}</div>` : ''}${checks.join('')}
         ${acts.length ? `<div class="hcd-acts">${acts.join('')}</div>` : ''}</section>
       ${commentsCard(t)}${wsCard(t)}${passCard(t)}
-      <section class="hcd-rc" aria-labelledby="hcdRcP"><h2 id="hcdRcP">Progress</h2>${stages(t).map(([name, s, note]) => `<div class="hcd-stage ${s}">${sg[s]}<span>${name}</span><small>${esc(note)}</small></div>`).join('')}</section>
+      <section class="hcd-rc" aria-labelledby="hcdRcP"><h2 id="hcdRcP">Progress</h2>
+        <div class="hcd-prog" role="progressbar" aria-valuemin="0" aria-valuemax="${rows.length}" aria-valuenow="${doneN}" aria-label="Progress"><i style="width:${Math.round(100 * doneN / Math.max(1, rows.length))}%"></i></div>
+        <p class="hcd-mut hcd-progn">Step ${Math.min(rows.length, doneN + (t.running ? 1 : 0)) || doneN} of ${rows.length} · ${mins} min</p>${rows.map(([name, s, note]) => `<div class="hcd-stage ${s}">${sg[s]}<span>${name}</span><small>${esc(note)}</small></div>`).join('')}</section>
       <section class="hcd-rc" aria-labelledby="hcdRcS"><h2 id="hcdRcS">Session</h2>${kv('Repo', esc(t.repo || ''))}${t.branch ? kv('Branch', `<code>${esc(t.branch)}</code>`) : ''}
         ${t.base ? kv('Works from', `<code>${esc(t.base)}</code>`) : ''}${kv('Kind', esc((KINDS.find(k => k[0] === t.kind) || [0, t.kind])[1]))}
         ${t.mode ? kv('Mode', esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])) : ''}${t.tier ? kv('Job size', esc(t.tier)) : ''}
@@ -673,6 +782,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         <div class="hcd-cc" id="hcdCc"></div>
         <form class="hcd-cp" id="hcdSteer"><label for="hcdNote" class="hcd-sr">Message Hoola</label>
           <textarea id="hcdNote" rows="1" maxlength="4000"></textarea><span class="hcd-hintk" id="hcdHintK" aria-hidden="true"></span><span class="hcd-cpb" id="hcdCpB"></span></form>
+        <div class="hcd-cpmeta" id="hcdCpMeta"></div>
       </main><section class="hcd-pane" id="hcdPane" aria-label="Changes" hidden></section><aside class="hcd-rail" id="hcdRail" aria-label="Session details"></aside></div>`;
   /* The read-only page of ONE shared session (/console/code/shared/<token>): the same drawing, nothing that acts. */
   async function openShared() {
@@ -713,11 +823,13 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const files = editedFiles(t), railOn = railShown();
     put('#hcdTop', 'top', `${shared ? `<img class="hcd-mark" src="/static/hoola-mark.png" alt="" width="24" height="24"><b class="hcd-title ro">${esc(t.title || t.number)}</b>` : `<button type="button" class="hcd-title" data-act="rename" title="Rename">${esc(t.title || t.number)}</button>`}
       <button type="button" class="hcd-icb" data-menu="title" aria-label="${shared ? 'Transcript view' : 'Session menu: rename, transcript view, share, archive, delete'}" title="${shared ? 'Transcript view' : 'Session menu'}">${svg('down')}</button>
-      ${!shared && t.share?.on ? `<button type="button" class="hcd-pill warn hcd-shon" data-act="share" title="Anyone with the link can read this session">Shared</button>` : ''}
       <span class="hcd-flex"></span>
-      ${t.running ? `<span class="hcd-live" id="hcdClock">${t.stopping ? 'Stopping after this step' : 'Working'}</span>` : `<span class="hcd-pill ${dotc(t)}">${esc(STATUS[t.status] || t.status)}</span>`}
-      ${files.length ? `<button type="button" class="hcd-btn sm" data-act="changes" aria-pressed="${!!PANE}">Changes <span class="hcd-stat">${stat({files})}</span></button>` : ''}
-      <button type="button" class="hcd-icb" data-act="rail" aria-pressed="${railOn}" aria-label="${railOn ? 'Hide' : 'Show'} session details" title="${railOn ? 'Hide' : 'Show'} session details">${svg('rail')}</button>`);
+      ${t.running ? `<span class="hcd-live" id="hcdClock">${t.stopping ? 'Stopping after this step' : 'Working'}</span>` : t.pr_number && !shared ? `<a class="hcd-prpill ${dotc(t)}" href="${esc(t.pr_url || '#')}" target="_blank" rel="noopener noreferrer" title="Open the pull request on GitHub">${svg('pr')}PR #${t.pr_number} · ${esc(t.ci?.state === 'success' ? 'checks passing' : t.ci?.state === 'failure' ? 'checks failing' : STATUS[t.status] || t.status)}</a>` : `<span class="hcd-pill ${dotc(t)}">${esc(STATUS[t.status] || t.status)}</span>`}
+      ${files.length ? `<button type="button" class="hcd-btn sm hcd-chg" data-act="changes" aria-pressed="${!!PANE}" title="${PANE ? 'Close' : 'Open'} the Changes pane">Changes <span class="hcd-stat">${stat({files})}</span></button>` : ''}
+      <button type="button" class="hcd-icb" data-act="rail" aria-pressed="${railOn}" aria-label="${railOn ? 'Hide' : 'Show'} session details" title="${railOn ? 'Hide' : 'Show'} session details">${svg('rail')}</button>
+      ${!shared && t.ws?.exists ? `<button type="button" class="hcd-icb" data-act="files" data-path="" aria-label="Browse the working copy" title="Browse the working copy">${svg('folder')}</button>` : ''}
+      ${shared ? '' : `<button type="button" class="hcd-icb" data-menu="smenu" aria-label="More for this session" title="More">${svg('more')}</button>
+      <button type="button" class="hcd-btn sm hcd-sharebtn${t.share?.on ? ' hcd-shon' : ''}" data-act="share" title="${t.share?.on ? 'Anyone with the link can read this session' : 'Share a read-only copy'}">${svg('share')}${t.share?.on ? 'Shared' : 'Share'}</button>`}`);
     tick();
     const feed = $('#hcdFeed'), atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80;
     if (put('#hcdCol', 'feed', feedHTML(t)) && atBottom) feed.scrollTop = feed.scrollHeight;
@@ -735,6 +847,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (f.dataset.mode !== mode || ta.dataset.ph !== ph) { f.dataset.mode = mode; f.hidden = mode === 'off'; ta.placeholder = ph; ta.dataset.ph = ph; ta.dataset.hint = hint;
       ta.setAttribute('aria-description', hint ? 'Suggested message. Press Tab to use it.' : ''); }
     put('#hcdHintK', 'hintk', hint ? '<kbd>Tab</kbd>' : '');
+    const ms = OV?.models || {}, mlab = ms.forced ? ms.forced.model : ((ms.options || []).find(o => o.id === (t.model || ms.default)) || {label: t.model || ''}).label;
+    put('#hcdCpMeta', 'cpm', shared || mode === 'off' ? '' : `${mlab ? `<span>${esc(mlab)}${t.effort && !ms.forced ? ` <em>${esc(t.effort[0].toUpperCase() + t.effort.slice(1))}</em>` : ''}</span>` : ''}${t.mode ? `<span>${esc((MODES.find(m => m[0] === t.mode) || [0, t.mode])[1])}</span>` : ''}`);
     put('#hcdCpB', 'cpb', t.running ? `<button type="button" class="hcd-stop" id="hcdStop" data-act="stop"${t.stopping ? ' disabled' : ''}>${svg('stop')}Stop</button>`
       : `<button type="submit" class="hcd-send" aria-label="Send" title="Send (Enter)">${svg('up')}</button>`);
   }
@@ -742,15 +856,15 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (shared) return `<div class="hcd-ask2 soft"><span><b>Read-only.</b> Someone shared this coding session with you from Hoola Code. You can read it; nothing here can change anything.${t.until ? ' The link works until ' + esc(new Date(t.until).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})) + '.' : ''}</span></div>`;
     if (t.running) return '';
     if (t.question) { const ch = (t.ws || {}).choices || [];          // Hoola may offer 2-4 answers to tap; her own words still work
-      return `<div class="hcd-ask2 col" id="hcdQ"><b>Hoola asks before it changes anything:</b><span>${esc(t.question)}</span>
-        ${ch.length ? `<div class="hcd-acts" id="hcdChoices">${ch.map((c, i) => `<button type="button" class="hcd-btn" data-act="choice" data-i="${i}">${esc(c)}</button>`).join('')}</div>` : ''}</div>`; }
-    if (t.status === 'plan_wait') return `<div class="hcd-ask2"><b>Start on this plan?</b><span class="hcd-flex"></span><button type="button" class="hcd-btn" id="hcdCancel" data-act="cancel">Cancel job</button><button type="button" class="hcd-btn pri" id="hcdYes" data-act="yes">Yes, start</button></div>`;
-    if (MERGE) { const a = MERGE; return `<div class="hcd-ask2 col"><div class="hcd-ask2r"><b>${esc(a.method)} merge PR #${a.pr_number} into ${esc(a.base)}?</b><span class="hcd-mut">commit <code>${esc(a.head_sha)}</code> · CI ${esc((CI[a.ci_state] || ['', a.ci_state])[1])}</span><span class="hcd-flex"></span>
+      return `<div class="hcd-ask2 col hcd-qcard" id="hcdQ"><span class="hcd-badge info">Hoola asks</span><p class="hcd-qtext">${esc(t.question)}</p>
+        <div class="hcd-acts" id="hcdChoices">${ch.map((c, i) => `<button type="button" class="hcd-btn" data-act="choice" data-i="${i}">${esc(c)}</button>`).join('')}<button type="button" class="hcd-btn ghost" data-act="ownanswer">Type my own answer</button></div></div>`; }
+    if (t.status === 'plan_wait') return '';
+    if (MERGE) { const a = MERGE; return `<div class="hcd-ask2 col"><span class="hcd-badge bad">Needs your OK</span><div class="hcd-ask2r"><b>${esc(a.method)} merge PR #${a.pr_number} into ${esc(a.base)}?</b><span class="hcd-mut">commit <code>${esc(a.head_sha)}</code> · CI ${esc((CI[a.ci_state] || ['', a.ci_state])[1])}</span><span class="hcd-flex"></span>
         <button type="button" class="hcd-btn" data-act="mergeno">Not now</button><button type="button" class="hcd-btn ok" data-act="mergeyes">Merge</button></div>
         ${(a.notes || []).map(n => `<p class="hcd-mut">${esc(n)}</p>`).join('')}
         ${a.needs_force ? '<label class="hcd-f"><span>CI is not green - write why you still want to merge (8+ characters)</span><input id="hcdForce" maxlength="300"></label>' : ''}
         <p class="hcd-mut">If anything is pushed after this card, it goes stale and asks again.</p></div>`; }
-    if (t.status === 'ready' && t.hash) return `<div class="hcd-ask2"><b>The change is ready. Open the pull request?</b><span class="hcd-flex"></span><button type="button" class="hcd-btn pri" id="hcdPush" data-act="push">Open the pull request</button></div>`;
+    if (t.status === 'ready' && t.hash) return `<div class="hcd-ask2 col"><span class="hcd-badge bad">Needs your OK</span><p>The change is ready. Open a pull request on <b>${esc(t.repo)}</b>?${(OV?.repos || []).find(r => r.repo === t.repo && !r.private) ? ' It is a public repository, so Hoola always asks first.' : ''}</p><div class="hcd-acts"><button type="button" class="hcd-btn pri" id="hcdPush" data-act="push">Open the PR</button></div></div>`;
     if (t.status === 'ci_running') return `<div class="hcd-ask2 soft"><span>Waiting for your CI on GitHub. ${t.auto_fix ? 'If it fails, Hoola fixes it and tries again.' : 'Auto-fix is off for this pull request, so a failure waits for you.'}</span><span class="hcd-flex"></span><button type="button" class="hcd-btn" data-act="refresh">Check now</button></div>`;
     if (!canRev(t) && !t.question) return `<div class="hcd-ask2 soft"><span>This session is finished.</span><span class="hcd-flex"></span><button type="button" class="hcd-btn" data-go="home">New session</button></div>`;
     return '';
@@ -859,6 +973,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const pointText = o => `${o.path ? o.path + (o.line ? ':' + o.line : '') + ' - ' : ''}${o.body || o.text || o.problem || ''}`;
   const ACTS = {
     side: () => { P.side = P.side === 'min' ? 'open' : 'min'; keep(); drawSide(); },
+    find: () => { if (P.side === 'min') { P.side = 'open'; keep(); } P.find = true; drawSide(); const s = $('#hcdSearch'); if (s) { s.hidden = false; s.focus(); } },
+    envs: () => { P.stab = 'envs'; show('settings'); },
     rail: () => { P.rail = railShown() ? 'off' : ($('#hcdBody').clientWidth < 780 ? 'on' : 'auto'); keep(); $('.hcd').dataset.rail = P.rail; SIG.top = ''; paint(); },   // 'on' = an overlay she opened on a narrow window
     rename: () => askName(TASK),
     share: () => shareDialog(TASK),
@@ -869,9 +985,18 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     scheddel: async b => { const sc = (OV?.schedules || []).find(x => x.id === b.dataset.id); if (!sc) return;
       const r = await dialog(`<h2>Delete "${esc(sc.title)}"?</h2><p class="hcd-mut">It will not run again and its trigger address stops working. The sessions it already made stay in your list.</p>
         <div class="hcd-dlgb"><button class="hcd-btn" value="no">Cancel</button><button class="hcd-btn danger" value="ok">Delete</button></div>`);
-      if (r !== 'ok') return; await busy(b, async () => { await api('DELETE', `/api/devsahayak/schedules/${encodeURIComponent(sc.id)}`); await load(); drawSide(); scheduled(); }); },
+      if (r !== 'ok') return; await busy(b, async () => { await api('DELETE', `/api/devsahayak/schedules/${encodeURIComponent(sc.id)}`); await load(); show('scheduled', ''); }); },
+    schednew: () => schedForm(),
+    schedopen: b => show('scheduled', b.dataset.id),
+    schedtab: b => { P.stabS = b.dataset.tab; scheduled(); },
+    sjump: b => { const s = $('#' + b.dataset.to); if (s) s.scrollIntoView({block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+      EL.querySelectorAll('.hcd-snavb').forEach(x => x.classList.toggle('on', x.dataset.to === b.dataset.to)); },
+    envnew: () => envDialog(null),
+    envedit: b => envDialog((ENVS.envs || []).find(e => e.id === b.dataset.id)),
+    dlgclose: () => { const d = $('#hcdDlg'); if (d.open) d.close(); },
     schedtrig: b => triggerDialog((OV?.schedules || []).find(x => x.id === b.dataset.id)),
     copy: async b => { try { await navigator.clipboard.writeText(b.dataset.text || ''); toast('Copied.'); } catch (e) { toast('Select the text and copy it.', true); } },
+    ownanswer: () => { const ta = $('#hcdNote'); if (ta) ta.focus(); },
     choice: b => busy(b, async () => { const c = ((TASK.ws || {}).choices || [])[+b.dataset.i]; if (c) await sendMessage(c); }),
     files: b => browse(b.dataset.path || ''),
     rewind: async b => { const n = +b.dataset.n;
@@ -906,7 +1031,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     mergeyes: b => busy(b, async () => { const r = await api('POST', `/api/devsahayak/actions/${encodeURIComponent(MERGE.id)}/decide`, {yes: true, hash: MERGE.hash, force_reason: $('#hcdForce')?.value || ''});
       toast(r.say || 'Merged.'); MERGE = null; await again(); }),
     mergeno: b => busy(b, async () => { await api('POST', `/api/devsahayak/actions/${encodeURIComponent(MERGE.id)}/decide`, {yes: false, hash: MERGE.hash}); MERGE = null; await again(); }),
-    alltab: b => { ALL.tab = b.dataset.tab; ALL.rows = null; allSessions(); },
+    alltab: b => { const was = ALL.tab === 'archived', now = b.dataset.tab === 'archived'; ALL.tab = b.dataset.tab; if (was !== now) ALL.rows = null; allSessions(); },
     unarch: b => setArchived(findTask(b.dataset.id), false),
     arch: b => setArchived(findTask(b.dataset.id), true),
     del: b => askDelete(findTask(b.dataset.id)),
@@ -915,14 +1040,28 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   // ------------------------------------------------------------------ all sessions ---
   async function allSessions() {
     const arch = ALL.tab === 'archived';
-    const draw = () => body(`<main class="hcd-page"><h1>All sessions</h1>
-      <div class="hcd-tabs" role="tablist"><button type="button" role="tab" aria-selected="${!arch}" data-act="alltab" data-tab="active">Active</button><button type="button" role="tab" aria-selected="${arch}" data-act="alltab" data-tab="archived">Archived</button>
-        <form class="hcd-inline" id="hcdAllF"><label class="hcd-sr" for="hcdAllQ">Search all sessions</label><input id="hcdAllQ" type="search" placeholder="Search by words, title or repo" value="${esc(ALL.q)}"><button class="hcd-btn" type="submit">Search</button></form></div>
-      ${ALL.rows === null ? '<p class="hcd-mut">Loading…</p>' : ALL.rows.length ? ALL.rows.map(t => `<div class="hcd-arow"><button type="button" class="hcd-sessb" data-tid="${esc(t.id)}"><span class="hcd-st"><i class="hcd-dot ${dotc(t)}"></i><span>${esc(t.title || t.number)}</span></span>
-          <small>${esc(t.repo || '')} · ${esc(sub(t))} · ${esc(ago(t.updated || t.at))}</small></button><span class="hcd-stat">${stat(t)}</span>
-          ${arch ? `<button type="button" class="hcd-btn sm" data-act="unarch" data-id="${esc(t.id)}">Unarchive</button>` : `<button type="button" class="hcd-btn sm" data-act="arch" data-id="${esc(t.id)}"${isRun(t) ? ' disabled' : ''}>Archive</button>`}
-          <button type="button" class="hcd-btn sm" data-act="del" data-id="${esc(t.id)}"${isRun(t) ? ' disabled' : ''}>Delete</button></div>`).join('')
-        : `<p class="hcd-mut">${arch ? 'Nothing archived.' : 'No sessions found.'}</p>`}</main>`);
+    const rowA = t => `<div class="hcd-arow"><i class="hcd-dot ${dotc(t)}"></i><button type="button" class="hcd-sessb" data-tid="${esc(t.id)}"><span class="hcd-st"><span>${esc(t.title || t.number)}</span></span>
+          <small>${esc((t.repo || '').split('/')[1] || t.repo || '')}${t.env?.name ? ' · ' + esc(t.env.name) : ''} · ${t.question ? 'asks: "' + esc(String(t.question).slice(0, 60)) + '"' : esc(sub(t))}${t.pr_number ? ' · PR #' + t.pr_number : ''}</small></button>
+          <span class="hcd-stat">${stat(t)}</span><span class="hcd-when">${esc(ago(t.updated || t.at).replace(' ago', ''))}</span>
+          ${arch ? `<button type="button" class="hcd-btn sm" data-act="unarch" data-id="${esc(t.id)}">Unarchive</button>` : ''}
+          <button type="button" class="hcd-icb" data-menu="row" data-id="${esc(t.id)}" aria-label="More for ${esc(t.title || t.number)}">${svg('more')}</button></div>`;
+    const draw = () => {
+      const rows = ALL.rows || [], f = ALL.repo ? rows.filter(t => t.repo === ALL.repo) : rows, by = g => f.filter(t => group(t) === g);
+      const tab = (k, name, n) => `<button type="button" role="tab" aria-selected="${ALL.tab === k}" data-act="alltab" data-tab="${k}">${name}${n ? ` · ${n}` : ''}</button>`;
+      let list = '';
+      if (ALL.rows === null) list = '<p class="hcd-mut">Loading…</p>';
+      else if (arch) list = f.length ? f.map(rowA).join('') : '<p class="hcd-mut">Nothing archived.</p>';
+      else { const shown = ALL.tab === 'run' ? [['run', 'Working']] : ALL.tab === 'need' ? [['need', 'Needs you']] : [['run', 'Working'], ['need', 'Needs you'], ['old', 'Earlier']];
+        shown.forEach(([g, name]) => { const xs = by(g); if (xs.length) list += `<h2 class="hcd-grp">${name}</h2>${xs.map(rowA).join('')}`; });
+        if (!list) list = '<p class="hcd-mut">No sessions found.</p>'; }
+      body(`<main class="hcd-page hcd-allp"><h1>Sessions</h1>
+      <form class="hcd-inline hcd-allbar" id="hcdAllF"><label class="hcd-sr" for="hcdAllQ">Search sessions</label><input id="hcdAllQ" type="search" placeholder="Search by words, title or repo" value="${esc(ALL.q)}">
+        <label class="hcd-chip hcd-filter"><span class="hcd-sr">Repo</span><select id="hcdAllRepo" aria-label="Repo"><option value="">Repo: all</option>${(OV?.repos || []).map(r => `<option value="${esc(r.repo)}"${ALL.repo === r.repo ? ' selected' : ''}>${esc(r.repo.split('/')[1] || r.repo)}</option>`).join('')}</select></label>
+        <button class="hcd-btn" type="submit">Search</button></form>
+      <div class="hcd-tabs" role="tablist">${tab('active', 'All', 0)}${tab('run', 'Working', arch || ALL.rows === null ? 0 : by('run').length)}${tab('need', 'Needs you', arch || ALL.rows === null ? 0 : by('need').length)}${tab('archived', 'Archived', 0)}</div>
+      <div class="hcd-alist">${list}</div></main>`);
+      const rf = $('#hcdAllRepo'); if (rf) rf.addEventListener('change', () => { ALL.repo = rf.value; draw(); });
+    };
     draw();
     if (ALL.rows === null) {
       try { ALL.rows = (await api('GET', `/api/devsahayak/tasks?limit=100&archived=${arch ? 1 : 0}&q=${encodeURIComponent(ALL.q)}`)).tasks || []; } catch (e) { ALL.rows = []; toast(e.message, true); }
@@ -934,25 +1073,65 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const DAYS = [['daily', 'Every day'], ['weekdays', 'Monday to Friday'], ['weekly:0', 'Every Monday'], ['weekly:1', 'Every Tuesday'], ['weekly:2', 'Every Wednesday'], ['weekly:3', 'Every Thursday'],
     ['weekly:4', 'Every Friday'], ['weekly:5', 'Every Saturday'], ['weekly:6', 'Every Sunday'], ['off', 'Only on Run now or its trigger']];
   const until = iso => { const m = Math.round((Date.parse(iso || '') - Date.now()) / 60000); return !isFinite(m) ? '' : m < 1 ? 'in a minute' : m < 60 ? `in ${m} min` : m < 1440 ? `in ${Math.round(m / 60)} h` : `in ${Math.round(m / 1440)} days`; };
+  const runStat = r => r ? ({merged: ['ok', 'Merged'], pr_open: ['ok', 'Succeeded'], ready: ['ok', 'Succeeded'], explained: ['ok', 'Succeeded'], failed: ['bad', 'Failed'],
+    checks_failed: ['bad', 'Failed'], refused: ['bad', 'Failed'], cancelled: ['warn', 'Cancelled']}[r.status] || ['soft', STATUS[r.status] || r.status_label || r.status]) : ['soft', 'Never run'];
+  const trigBadge = sc => sc.event ? '<span class="hcd-badge gh">GitHub</span>' : sc.days === 'off' ? '<span class="hcd-badge api">API</span>' : '<span class="hcd-badge sch">Schedule</span>';
+  const sw = (on, attrs, label) => `<button type="button" class="hcd-sw" role="switch" aria-checked="${on}" aria-label="${esc(label)}" ${attrs}><i></i></button>`;
   function scheduled() {
     const list = OV?.schedules || [], repos = OV?.repos || [], ready = repos.length && OV?.settings?.github;
-    frame(`<main class="hcd-page"><h1>Scheduled tasks</h1>
-      <p class="hcd-lede">A coding task that starts by itself. Every run is an ordinary session with the same checks - and merging is always your tap.</p>
-      <form class="hcd-card hcd-schedf" id="hcdSchedF"><h2>New scheduled task</h2>
+    if (TID) { const sc = list.find(x => x.id === TID); if (sc) return schedDetail(sc); }
+    const tab = P.stabS || 'all', shown = list.filter(x => tab === 'all' || (tab === 'on' ? x.enabled : !x.enabled));
+    const t2 = (k, name, n) => `<button type="button" role="tab" aria-selected="${tab === k}" data-act="schedtab" data-tab="${k}">${name} · ${n}</button>`;
+    frame(`<main class="hcd-page hcd-schedp"><div class="hcd-phead"><div><h1>Scheduled tasks</h1>
+      <p class="hcd-lede">Hoola starts a session by itself on a schedule, when your program calls it, or on a GitHub event. Every run opens its own branch and pull request; merging stays yours.</p></div>
+      <button type="button" class="hcd-btn pri" data-act="schednew"${ready ? '' : ' disabled title="Connect GitHub and add a repo in Settings first"'}>${svg('new')}New task</button></div>
+      <div class="hcd-tabs" role="tablist">${t2('all', 'All', list.length)}${t2('on', 'Active', list.filter(x => x.enabled).length)}${t2('off', 'Paused', list.filter(x => !x.enabled).length)}</div>
+      ${shown.length ? `<div class="hcd-table" role="table" aria-label="Scheduled tasks"><div class="hcd-tr hcd-th" role="row"><span role="columnheader">Task</span><span role="columnheader">Trigger</span><span role="columnheader">Repository</span><span role="columnheader">Next run</span><span role="columnheader">Last run</span><span role="columnheader">On</span></div>
+        ${shown.map(sc => { const last = (sc.runs || [])[0], ls = runStat(last); return `<div class="hcd-tr" role="row" data-sched="${esc(sc.id)}">
+          <button type="button" class="hcd-tcell hcd-tname" data-act="schedopen" data-id="${esc(sc.id)}"><b>${esc(sc.title)}</b><small>${esc(sc.text)}</small></button>
+          <span class="hcd-tcell">${trigBadge(sc)}<span>${esc(sc.when)}</span></span>
+          <span class="hcd-tcell"><code class="hcd-br">${esc((sc.repo || '').split('/')[1] || sc.repo)}</code></span>
+          <span class="hcd-tcell">${!sc.enabled ? 'Paused' : sc.event ? 'On event' : sc.next_run ? 'Next run ' + esc(until(sc.next_run)) : 'On call'}</span>
+          <span class="hcd-tcell"><span class="hcd-c ${ls[0]}">${esc(ls[1])}</span></span>
+          <span class="hcd-tcell">${sw(!!sc.enabled, `data-act="schedtoggle" data-id="${esc(sc.id)}" data-on="${sc.enabled ? 1 : 0}"`, (sc.enabled ? 'Pause ' : 'Resume ') + sc.title)}</span></div>`; }).join('')}</div>`
+        : `<p class="hcd-mut">${list.length ? 'Nothing here.' : 'No scheduled tasks yet.'}</p>`}
+      <p class="hcd-mut">Times are India time. A schedule runs at most once a day; a run still working is not started twice. If GitHub access is lost, runs are skipped and you are told.</p></main>`);
+  }
+  function schedDetail(sc) {
+    const runs = sc.runs || [], card = (k, v) => `<div class="hcd-kv"><small>${k}</small><b>${v}</b></div>`;
+    frame(`<main class="hcd-page hcd-schedp" data-sched="${esc(sc.id)}"><button type="button" class="hcd-back" data-go="scheduled">${svg('chev', 'hcd-flip')}Scheduled tasks</button>
+      <div class="hcd-phead"><h1>${esc(sc.title)}</h1><span class="hcd-flex"></span>${sw(!!sc.enabled, `data-act="schedtoggle" data-id="${esc(sc.id)}" data-on="${sc.enabled ? 1 : 0}"`, sc.enabled ? 'Pause it' : 'Resume it')}
+        <button type="button" class="hcd-btn" data-act="schedtrig" data-id="${esc(sc.id)}">Trigger address…</button><button type="button" class="hcd-btn" data-act="scheddel" data-id="${esc(sc.id)}">Delete</button>
+        <button type="button" class="hcd-btn pri" data-act="schedrun" data-id="${esc(sc.id)}">Run now</button></div>
+      <div class="hcd-kvs">${card('Trigger', esc(sc.when) + (sc.days !== 'off' && !sc.event ? ' IST' : ''))}${card('Next run', !sc.enabled ? 'Paused' : sc.event ? 'On event' : sc.next_run ? esc(until(sc.next_run)) : 'On call')}
+        ${card('Repository', esc((sc.repo || '').split('/')[1] || sc.repo))}${card('After the change', sc.mode === 'auto' ? 'Opens the pull request' : 'Waits for your tap')}</div>
+      <p class="hcd-prompt">${esc(sc.text)}</p>
+      ${sc.last_note ? `<p class="hcd-err">${esc(sc.last_note)}</p>` : ''}
+      ${sc.event && !((OV?.repos || []).find(r => r.repo === sc.repo)?.events || {}).on ? `<p class="hcd-err">GitHub events are not connected for this repo yet. Connect them in <button type="button" class="hcd-link" data-go="settings">Settings</button>.</p>` : ''}
+      <h2 class="hcd-grp">History</h2>
+      ${runs.length ? `<div class="hcd-table hcd-hist">${runs.map(r => { const ls = runStat(r); return `<button type="button" class="hcd-tr" data-tid="${esc(r.id)}"><span class="hcd-tcell">${esc(ago(r.at))}</span><span class="hcd-tcell"><span class="hcd-c ${ls[0]}">${esc(ls[1])}</span></span>
+          <span class="hcd-tcell hcd-tgrow">${esc(r.title || r.number)}${r.pr_number ? ' · PR #' + r.pr_number : ''}</span></button>`; }).join('')}</div>` : '<p class="hcd-mut">It has not run yet.</p>'}</main>`);
+  }
+  function schedForm() {
+    const repos = OV?.repos || [], d = $('#hcdDlg');
+    d.innerHTML = `<form class="hcd-schedf" id="hcdSchedF"><h2>New scheduled task</h2>
+        <label class="hcd-f"><span>Name <small>optional - Hoola names it from the task</small></span><input name="title" maxlength="120" placeholder="Nightly dependency check"></label>
         <label class="hcd-f"><span>What should Hoola do each time?</span><textarea name="text" rows="3" maxlength="6000" required placeholder="Update the dependencies that have a security fix, run the tests, and say what changed"></textarea></label>
-        <div class="hcd-inline">
-          <label class="hcd-chip">Repo <select name="repo" aria-label="Repo">${repos.map(r => `<option value="${esc(r.repo)}"${r.repo === REPO ? ' selected' : ''}>${esc(r.repo.split('/')[1] || r.repo)}</option>`).join('') || '<option value="">no repo yet</option>'}</select></label>
-          <label class="hcd-chip">Starts <select name="event" aria-label="What starts it"><option value="">On a schedule</option>${EVENTS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>
+        <div class="hcd-trig"><div class="hcd-trigh"><b>Trigger</b></div>
+          <div class="hcd-inline"><label class="hcd-chip">Starts <select name="event" aria-label="What starts it"><option value="">On a schedule</option>${EVENTS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>
           <label class="hcd-chip" data-for="clock">When <select name="days" aria-label="When">${DAYS.map(([k, n]) => `<option value="${k}"${k === 'weekdays' ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
           <label class="hcd-chip" data-for="clock">At <input type="time" name="at" value="09:00" aria-label="Time, India time" title="India time"></label>
           <label class="hcd-chip" data-for="issue_opened issue_labeled" hidden>Label <input name="label" maxlength="60" size="10" placeholder="hoola" aria-label="Issue label"></label>
           <label class="hcd-chip" data-for="ci_failed push" hidden>Branch <input name="branch" maxlength="100" size="10" placeholder="default" aria-label="Branch"></label>
-          <label class="hcd-chip" data-for="issue_opened issue_labeled pr_opened push" hidden>By <select name="who" aria-label="Whose events count"><option value="me">Only me</option><option value="anyone">Anyone in the repo (private repos)</option></select></label>
-          <label class="hcd-chip">Then <select name="mode" aria-label="What happens with the change"><option value="ask">Wait for my tap</option><option value="auto">Open the pull request</option></select></label>
-          <span class="hcd-flex"></span><button class="hcd-btn pri" type="submit"${ready ? '' : ' disabled'}>Schedule it</button></div>
-        <p class="hcd-mut" data-for="issue_opened issue_labeled pr_opened ci_failed push" hidden>GitHub events must be connected for the repo first (Settings > the repo > GitHub events). The event's own words reach Hoola as information, never as instructions. A new pull request from someone else gets a draft review; posting it is your tap.</p>
-        <p class="hcd-mut" data-for="clock">Times are India time. A task runs at most once a day; a run still working is not started twice. "Open the pull request" works on private repos - a public repo always waits for your tap.</p></form>
-      ${list.length ? list.map(schedHTML).join('') : '<p class="hcd-mut">No scheduled tasks yet.</p>'}</main>`);
+          <label class="hcd-chip" data-for="issue_opened issue_labeled pr_opened push" hidden>By <select name="who" aria-label="Whose events count"><option value="me">Only me</option><option value="anyone">Anyone in the repo (private repos)</option></select></label></div>
+          <p class="hcd-mut" data-for="clock">India time. A task runs at most once a day; a run still working is not started twice. Your own program can also start it - make a trigger token after saving.</p>
+          <p class="hcd-mut" data-for="issue_opened issue_labeled pr_opened ci_failed push" hidden>GitHub events must be connected for the repo first (Settings > the repo > GitHub events). The event's own words reach Hoola as information, never as instructions. A new pull request from someone else gets a draft review; posting it is your tap.</p></div>
+        <div class="hcd-grid2"><label class="hcd-f"><span>Repository</span><select name="repo" aria-label="Repo">${repos.map(r => `<option value="${esc(r.repo)}"${r.repo === REPO ? ' selected' : ''}>${esc(r.repo)}</option>`).join('') || '<option value="">no repo yet</option>'}</select></label>
+          <label class="hcd-f"><span>After the change</span><select name="mode" aria-label="What happens with the change"><option value="ask">Wait for my tap</option><option value="auto">Open the pull request</option></select></label></div>
+        <p class="hcd-mut">"Open the pull request" works on private repos - a public repo always waits for your tap.</p>
+        <div class="hcd-dlgb"><span class="hcd-flex"></span><button type="button" class="hcd-btn" data-act="dlgclose">Cancel</button><button class="hcd-btn pri" type="submit">Create task</button></div></form>`;
+    d.showModal(); d.querySelector('[name=text]').focus();
+    d.addEventListener('close', () => setTimeout(() => { if (!d.open) d.innerHTML = ''; }, 0), {once: true});
   }
   const EVENTS = [['issue_labeled', 'On an issue label'], ['issue_opened', 'On a new issue'], ['pr_opened', 'On a new pull request'], ['ci_failed', 'On a CI failure'], ['push', 'On a push']];
   function schedFields(f) {       // show only the fields the chosen start needs
@@ -978,9 +1157,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   async function newSchedule(f) {
     const b = f.querySelector('button[type="submit"]'); b.disabled = true;
     const ev = f.event.value, body = {text: f.text.value.trim(), repo: f.repo.value, days: ev ? 'off' : f.days.value, at: f.at.value || '09:00', mode: f.mode.value};
+    if (f.title && f.title.value.trim()) body.title = f.title.value.trim();
     if (ev) { body.event = ev; body.filter = {label: f.label.value.trim(), branch: f.branch.value.trim(), who: f.who.value}; }
     try { await api('POST', '/api/devsahayak/schedules', body);
-      toast('Scheduled.'); await load(); drawSide(); scheduled(); }
+      toast('Scheduled.'); const d = $('#hcdDlg'); if (d.open) d.close(); await load(); drawSide(); scheduled(); }
     catch (e) { toast(e.message, true); b.disabled = false; }
   }
   async function triggerDialog(sc) {
@@ -1005,20 +1185,24 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   // ------------------------------------------------------------------ a read-only link to one session (Phase 5) ---
   async function shareDialog(t) {
     if (!t) return;
+    const radio = (on, title, sub2, v) => `<label class="hcd-vis${on ? ' on' : ''}"><input type="radio" name="hcdVis" value="${v}"${on ? ' checked' : ''}><span><b>${title}</b><small>${sub2}</small></span></label>`;
     try {
       if (!t.share?.on) {
-        const r = await dialog(`<h2>Share a read-only link?</h2>
-          <p class="hcd-mut">Anyone who has the link can read this session without signing in: your words, Hoola's steps, and the code changes in <b>${esc((t.repo || '').split('/')[1] || t.repo)}</b>. They cannot change, send or start anything.</p>
-          <p class="hcd-mut">The link works for 7 days and you can stop it at any time. Attached files and your account name are not shown.</p>
-          <div class="hcd-dlgb"><button class="hcd-btn" value="no">Cancel</button><button class="hcd-btn pri" value="ok">Make the link</button></div>`);
+        const r = await dialog(`<h2>Share this session</h2>
+          <p class="hcd-mut">People get a read-only copy of the conversation as it is now: your words, Hoola's steps and the code changes in <b>${esc((t.repo || '').split('/')[1] || t.repo)}</b>. Your code, keys and environment are never shared, and they cannot change, send or start anything.</p>
+          <fieldset class="hcd-visg"><legend class="hcd-sr">Who can open it</legend>${radio(true, 'Private', 'Only you', 'private')}${radio(false, 'Anyone with the link', 'No sign-in needed · stops working after 7 days', 'link')}</fieldset>
+          <div class="hcd-dlgb"><span class="hcd-flex"></span><button class="hcd-btn" value="no">Cancel</button><button class="hcd-btn pri" value="ok" id="hcdShareGo">Make the link</button></div>`);
         if (r !== 'ok') return;
         await api('POST', `/api/devsahayak/tasks/${encodeURIComponent(t.id)}/share`, {on: true}); await refreshTask(t.id, false); t = TASK;
       }
       const url = location.origin + t.share.path;
-      const r = await dialog(`<h2>Read-only link</h2><p class="hcd-mut">Anyone with this link can read the session until ${esc(new Date(t.share.until).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}))}.</p>
-        <pre class="hcd-term" id="hcdShareUrl">${esc(url)}</pre>
-        <div class="hcd-dlgb"><button class="hcd-btn danger" value="stop">Stop sharing</button><button type="button" class="hcd-btn" data-act="copy" data-text="${esc(url)}">Copy the link</button><button class="hcd-btn pri" value="ok">Done</button></div>`);
-      if (r === 'stop') { await api('POST', `/api/devsahayak/tasks/${encodeURIComponent(t.id)}/share`, {on: false}); toast('The link no longer works.'); await refreshTask(t.id, false); }
+      const r = await dialog(`<h2>Share this session</h2>
+        <p class="hcd-mut">Anyone with this link can read the session until ${esc(new Date(t.share.until).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}))}. Attached files and your account name are not shown.</p>
+        <fieldset class="hcd-visg"><legend class="hcd-sr">Who can open it</legend>${radio(false, 'Private', 'Only you - stops the link', 'private')}${radio(true, 'Anyone with the link', 'Stops working after 7 days', 'link')}</fieldset>
+        <div class="hcd-linkrow"><code id="hcdShareUrl">${esc(url)}</code><button type="button" class="hcd-btn sm pri" data-act="copy" data-text="${esc(url)}">Copy link</button></div>
+        <div class="hcd-dlgb"><button class="hcd-btn danger ghost" value="stop">Stop sharing</button><span class="hcd-flex"></span><button class="hcd-btn" value="ok">Done</button></div>`);
+      const pick = r === 'ok' && !(EL.querySelector('#hcdDlg input[name=hcdVis][value=link]') || {}).checked;
+      if (r === 'stop' || pick) { await api('POST', `/api/devsahayak/tasks/${encodeURIComponent(t.id)}/share`, {on: false}); toast('The link no longer works.'); await refreshTask(t.id, false); }
     } catch (e) { toast(e.message, true); }
   }
 
@@ -1053,12 +1237,16 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   function settings() {
     const st = OV?.settings || {}, repos = OV?.repos || [];
     const sw = (k, label, sub2) => `<label class="hcd-tg"><span>${label}<small>${sub2}</small></span><input type="checkbox" data-sw="${k}"${st[k] ? ' checked' : ''}></label>`;
-    frame(`<main class="hcd-page"><h1>Settings</h1><div class="hcd-grid">
-      <section class="hcd-card"><h2>GitHub access</h2><p class="hcd-mut">A fine-grained token, typed only here. It is locked away on the server and never shown to the AI or the chat.</p>
+    const us = OV?.usage || {}, envs = (ENVS.envs || []).filter(e => !e.archived);
+    const nav = [['hcdSecGit', 'GitHub and pull requests'], ['hcdSecRepos', 'Repositories'], ['hcdSecEnvs', 'Environments'], ['hcdSecRules', 'Rules and limits'], ['hcdSecUse', 'Usage']];
+    frame(`<main class="hcd-page hcd-setp"><h1>Settings</h1><div class="hcd-setgrid">
+      <nav class="hcd-snav" aria-label="Settings sections">${nav.map(([id, n], i) => `<button type="button" class="hcd-snavb${i === 0 ? ' on' : ''}" data-act="sjump" data-to="${id}">${n}</button>`).join('')}</nav>
+      <div class="hcd-grid">
+      <section class="hcd-card" id="hcdSecGit"><h2>GitHub access</h2><p class="hcd-mut">A fine-grained token, typed only here. It is locked away on the server and never shown to the AI or the chat.</p>
         <p>${st.github ? `<span class="hcd-c ok">Connected</span>${st.login ? ' as <b>' + esc(st.login) + '</b>' : ''}${st.token_label ? ' · ' + esc(st.token_label) : ''}` : '<span class="hcd-c warn">Not connected</span>'}</p>
         <form class="hcd-inline" id="hcdTok"><label for="hcdTokIn" class="hcd-sr">GitHub token</label><input id="hcdTokIn" type="password" autocomplete="off" placeholder="github_pat_…"><button class="hcd-btn" type="submit">Save</button>${st.github ? '<button class="hcd-btn" type="button" id="hcdTokDel">Forget</button>' : ''}</form>
         ${(st.permissions || []).length ? `<p class="hcd-mut">Needs: ${esc(st.permissions.join(', '))}.</p>` : ''}</section>
-      <section class="hcd-card"><h2>Repos Hoola may work in</h2>
+      <section class="hcd-card" id="hcdSecRepos"><h2>Repositories Hoola may work in</h2>
         ${repos.map(r => `<div class="hcd-repo"><code>${esc(r.repo)}</code><span class="hcd-mut">${r.private ? 'private' : 'public · asks before a PR'}${r.language ? ' · ' + esc(r.language) : ''}</span><button type="button" class="hcd-btn sm" data-rmrepo="${esc(r.repo)}">Remove</button></div>
           <details class="hcd-rbox"${r.setup_cmd || r.test_cmd || Object.keys(r.env_vars || {}).length || (r.net || {}).level !== 'none' || ((r.net || {}).secrets || []).length || (r.events || {}).on ? ' open' : ''}><summary>How this repo runs in the box</summary>
             <form class="hcd-rboxf" data-repobox="${esc(r.repo)}">
@@ -1085,19 +1273,26 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
               <p class="hcd-mut">${(r.events || {}).on ? `<span class="hcd-c ok">Connected</span>${(r.events.last || {}).at ? ' · last event ' + esc(ago(r.events.last.at)) : ' · nothing received yet'}${r.events.by_hoola ? '' : ' · webhook added by you'}` : 'GitHub can tell Hoola when an issue is labelled, a pull request is opened, a CI run fails or something is pushed - to start one of your scheduled tasks.'}</p>
               <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-events="${esc(r.repo)}" data-on="${(r.events || {}).on ? 1 : 0}">${(r.events || {}).on ? 'Disconnect' : 'Connect GitHub events'}</button></div></div></details>`).join('') || '<p class="hcd-mut">No repos yet.</p>'}
         <form class="hcd-inline" id="hcdAddRepo"><label for="hcdRepoIn" class="hcd-sr">Repo</label><input id="hcdRepoIn" placeholder="owner/name" maxlength="200"><button class="hcd-btn" type="submit">Add</button></form></section>
-      <section class="hcd-card"><h2>How Hoola works</h2>
+      <section class="hcd-card"><h2>Pull requests</h2>
         ${sw('ask_before_pr', 'Ask me before opening a pull request', 'Public repos always ask')}
         ${sw('draft_pr', 'Open pull requests as drafts', 'Marked ready when CI is green')}
         ${sw('allow_workflows', 'Allow edits to .github/workflows', 'Off: CI files are never touched')}
         ${sw('archive_after_merge', 'Archive a session when its pull request is merged', 'It stays under View all > Archived')}
         <label class="hcd-f"><span>Merge method</span><select data-set="merge_method">${['squash', 'merge', 'rebase'].map(m => `<option${m === st.merge_method ? ' selected' : ''}>${m}</option>`).join('')}</select></label>
         <label class="hcd-f"><span>Reviews of teammates' PRs</span><select data-set="review_post"><option value="draft"${st.review_post === 'draft' ? ' selected' : ''}>Draft - I post them</option><option value="direct"${st.review_post === 'direct' ? ' selected' : ''}>Post comments directly</option></select></label></section>
-      <section class="hcd-card"><h2>Limits and your rules</h2>
+      <section class="hcd-card" id="hcdSecEnvs"><div class="hcd-sh"><h2>Cloud environments</h2><span class="hcd-flex"></span><button type="button" class="hcd-btn sm" data-act="envnew">${svg('new')}New environment</button></div>
+        <p class="hcd-mut">Where Hoola Code runs your repo's commands: network access, variables and a setup script. "Auto" follows each repo's own settings.</p>
+        ${envs.length ? envs.map(e => `<div class="hcd-repo">${svg('cloud')}<b>${esc(e.name)}</b><span class="hcd-mut">${esc(LEVEL[e.net.level])}${e.net.level === 'limited' && e.net.pkgs !== false ? ' · package managers' : ''}${e.setup ? ' · setup script' : ''}</span><span class="hcd-flex"></span><button type="button" class="hcd-btn sm" data-act="envedit" data-id="${esc(e.id)}">Edit</button></div>`).join('') : '<p class="hcd-mut">No environments yet.</p>'}</section>
+      <section class="hcd-card" id="hcdSecRules"><h2>Limits and your rules</h2>
         <label class="hcd-f"><span>Files per change</span><input type="number" min="1" max="60" data-set="max_files" value="${+st.max_files || 20}"></label>
         <label class="hcd-f"><span>Lines per change</span><input type="number" min="20" max="5000" data-set="max_lines" value="${+st.max_lines || 1500}"></label>
         <label class="hcd-f"><span>Your coding rules (Hoola follows them every time)</span><textarea rows="4" data-set="rules" maxlength="4000">${esc(st.rules || '')}</textarea></label>
         <p class="hcd-mut">Always on: ${esc((st.never || []).slice(0, 4).join(' · '))}</p></section>
-    </div></main>`);
+      <section class="hcd-card" id="hcdSecUse"><h2>Usage this month</h2>
+        ${us.limit_inr > 0 ? `<div class="hcd-prog"><i style="width:${Math.min(100, Math.round(us.pct || 0))}%"></i></div><div class="hcd-row"><span>${rs(us.spent_inr || 0)} of ${rs(us.limit_inr)}</span><b>${Math.round(us.pct || 0)}%</b></div>`
+          : `<p class="hcd-mut">${us.spent_inr > 0 ? rs(us.spent_inr) + ' this month across all of Hoola. No monthly limit is set.' : 'Nothing spent this month yet.'}</p>`}</section>
+    </div></div></main>`);
+    if (P.stab) { const id = {envs: 'hcdSecEnvs', repos: 'hcdSecRepos'}[P.stab]; P.stab = ''; if (id) setTimeout(() => ACTS.sjump({dataset: {to: id}}), 0); }
     EL.querySelectorAll('[data-repobox]').forEach(f => f.addEventListener('submit', async ev => { ev.preventDefault();
       const env = {}; String(f.env.value || '').split('\n').forEach(l => { const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
       const [o, n] = f.dataset.repobox.split('/');
@@ -1134,10 +1329,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
             <div class="hcd-dlgb"><button type="button" class="hcd-btn" data-act="copy" data-text="${esc(r.url)}">Copy the URL</button><button type="button" class="hcd-btn" data-act="copy" data-text="${esc(r.secret)}">Copy the secret</button><button class="hcd-btn pri" value="ok">Done</button></div>`); }
         await load(); settings();
       } catch (e) { toast(e.message, true); b.disabled = false; } }));
-    $('#hcdTok').addEventListener('submit', async ev => { ev.preventDefault(); const v = $('#hcdTokIn').value.trim(); if (!v) return;
+    $('#hcdTok')?.addEventListener('submit', async ev => { ev.preventDefault(); const v = $('#hcdTokIn').value.trim(); if (!v) return;
       try { await api('PUT', '/api/devsahayak/token', {token: v}); $('#hcdTokIn').value = ''; toast('GitHub connected.'); await load(); settings(); } catch (e) { toast(e.message, true); } });
     $('#hcdTokDel')?.addEventListener('click', async () => { if (!confirm('Forget the GitHub token?')) return; try { await api('DELETE', '/api/devsahayak/token'); await load(); settings(); } catch (e) { toast(e.message, true); } });
-    $('#hcdAddRepo').addEventListener('submit', async ev => { ev.preventDefault(); const v = $('#hcdRepoIn').value.trim(); if (!v) return;
+    $('#hcdAddRepo')?.addEventListener('submit', async ev => { ev.preventDefault(); const v = $('#hcdRepoIn').value.trim(); if (!v) return;
       try { await api('POST', '/api/devsahayak/repos', {repo: v}); await load(); settings(); } catch (e) { toast(e.message, true); } });
     EL.querySelectorAll('[data-rmrepo]').forEach(b => b.addEventListener('click', async () => { if (!confirm(`Remove ${b.dataset.rmrepo}? Nothing changes on GitHub.`)) return;
       const [o, n] = b.dataset.rmrepo.split('/'); try { await api('DELETE', `/api/devsahayak/repos/${encodeURIComponent(o)}/${encodeURIComponent(n)}`); await load(); settings(); } catch (e) { toast(e.message, true); } }));
