@@ -3,6 +3,10 @@
 // the one question with choices, the pull request with its checks and Merge, and the typing box (a note while it
 // works, her answer, her note with the plan, or a change on the same PR). Opening the PR, merging and a plan's start
 // are her taps; the server re-checks every one.
+// v0.935 HOOLA CODE FEED (owner, on the design canvas claude.ai/artifact/27Hw4XRUj5qG83sWaeX2J5 -> "GO"): the working row
+// sits at the end of the thread like the Hoola chat (never pinned above the typing box), the newest steps show as light
+// rows while it works and fold into one line when its words start, and Hoola's words land word by word at the Hoola
+// chat's reading speed from the server's live stream ("live"), checked every second while it works.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -42,6 +46,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   bool _away = false;                 // she scrolled up: the Newest arrow shows and nothing pulls her down
   int _seen = -1;                     // how many steps were drawn last time (new ones follow her to the end)
   Timer? _poll, _tick;
+  int _pollEvery = 0;                 // v0.935 1 s while it works, 10 s when it is quiet
+  bool _loading = false;
+  int _firstSays = -1;                // Hoola's messages already there when the page opened show at once
+  final Map<int, int> _landed = {};   // v0.935 how many words of each new message have landed
   final _msg = TextEditingController();
   final _focus = FocusNode();
   final _scroll = ScrollController();
@@ -80,26 +88,37 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
 
   Future<void> _load() async {
     final api = widget.app.api;
-    if (api == null) return;
+    if (api == null || _loading) return;
+    _loading = true;
     try {
       final t = cm(await api.call('GET', _base));
       if (!mounted) return;
-      final n = cl(t['steps']).length;
+      final steps = cl(t['steps']);
+      final n = steps.length + cs(t['live']).length;
       final first = _seen < 0;
+      if (first) {
+        _firstSays = steps.where((s) => cs(s['k']) == 'say').length;
+        final writing = cs(t['live']);
+        if (writing.isNotEmpty) _landed[_firstSays] = _words(writing).length;   // opened mid-sentence: carry on from here
+      }
       setState(() {
         _t = t;
         _error = null;
       });
       if (n != _seen && (first || !_away)) _toEnd(animate: !first);   // new words follow her unless she scrolled up
       _seen = n;
-      if (_live(t)) {
-        _poll ??= Timer.periodic(const Duration(seconds: 3), (_) => _load());
+      final live = _live(t);
+      final every = live ? 1 : 10;
+      if (_pollEvery != every) {
+        _poll?.cancel();
+        _poll = Timer.periodic(Duration(seconds: every), (_) => _load());
+        _pollEvery = every;
+      }
+      if (live) {
         _tick ??= Timer.periodic(const Duration(seconds: 1), (_) {
           if (mounted) setState(() {});
         });
       } else {
-        _poll?.cancel();
-        _poll = null;
         _tick?.cancel();
         _tick = null;
       }
@@ -108,8 +127,18 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         _findMerge(t);
       }
     } catch (e) {
-      if (mounted) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
+      if (mounted && _t == null) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
+    } finally {
+      _loading = false;
     }
+  }
+
+  static List<String> _words(String text) => text.split(RegExp(r'(?<=\s)'));
+
+  /// A landing message said how far it got: follow it to the end unless she scrolled up.
+  void _landedTo(int i, int words) {
+    _landed[i] = words;
+    if (!_away) _toEnd(animate: false);
   }
 
   /// A merge card she asked for earlier and has not answered is offered again.
@@ -374,7 +403,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     final running = codeRunning(t);
     final st = cs(t['status']);
     final out = <Widget>[_her(c, cs(t['text']), cl(t['attach']))];
-    // the steps between Hoola's words fold into one "Worked for" group each
+    // v0.935 the words Hoola is writing right now (the server's live stream), unless they are already a step
+    var live = running ? cs(t['live']).trim() : '';
+    final newestSay = steps.lastWhere((s) => cs(s['k']) == 'say', orElse: () => const <String, dynamic>{});
+    if (live.isNotEmpty && cs(newestSay['text']).trim().startsWith(live)) live = '';   // already a step: drawn once
+    // the steps between Hoola's words: the newest show as light rows while it works, the rest fold into one line
     final group = <Map<String, dynamic>>[];
     var gi = 0;
     Map<String, dynamic>? todo;
@@ -384,9 +417,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       if (cs(steps[i]['k']) == 'say') lastSay = i;
     }
     var si = -1;
+    var sayN = 0;
     void flush({required bool last}) {
       if (group.isEmpty) return;
-      out.add(_group(c, List.of(group), gi, open: (running && last) || _open.contains(gi)));
+      final now = running && last;
+      out.add(_group(c, List.of(group), gi, inline: now && live.isEmpty, working: now));
       gi++;
       group.clear();
     }
@@ -397,7 +432,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       if (k == 'say') {
         flush(last: false);
         said = true;
-        out.add(_reply(cs(s['text']), 'say$si', actions: si == lastSay && !running));
+        final i = sayN++;
+        final text = cs(s['text']);
+        final actions = si == lastSay && !running;
+        out.add(_firstSays >= 0 && i >= _firstSays && (_landed[i] ?? 0) < _words(text).length
+            ? _land(text, i, done: true, actions: actions)
+            : _reply(text, 'say$si', actions: actions));
       } else if (k == 'note') {
         flush(last: false);
         out.add(_her(c, cs(s['text']), const [], small: true, key: 'note$si'));
@@ -410,6 +450,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       }
     }
     flush(last: true);
+    if (live.isNotEmpty) out.add(_land(live, sayN, done: false));
     if (todo != null && cl(todo['items']).isNotEmpty) out.add(_todo(c, cl(todo['items'])));
     for (final n in running ? ((t['notes'] as List?) ?? const []) : const []) {
       if (cs(n).isNotEmpty) out.add(Padding(padding: const EdgeInsets.only(top: 10), child: Text('Queued for its next step: ${cs(n)}', style: codeSans(c, size: 13, color: c.ink3))));
@@ -430,7 +471,56 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       if (st == 'ready' && cs(t['hash']).isNotEmpty) out.add(_ready(c, t));
       if (ci(t['pr_number']) != 0) out.add(_pr(c, t));
     }
+    if (running) out.add(_working(c, t, writing: live.isNotEmpty));
     return out;
+  }
+
+  /// v0.935 a new message of Hoola's landing word by word (done = the whole message is here; else it is still being
+  /// written and more words come with the next check).
+  Widget _land(String text, int i, {required bool done, bool actions = false}) => CodeLanding(
+        key: ValueKey('land$i'),
+        text: text,
+        from: _landed[i] ?? 0,
+        done: done,
+        onLanded: (n) => _landedTo(i, n),
+        builder: (shown, streaming) => CodeReply(
+          app: widget.app,
+          text: shown,
+          streaming: streaming,
+          actions: actions && !streaming,
+          selecting: _selecting == 'land$i',
+          onQuote: _mode(_t ?? const {}) == 'off' ? null : (q) => codeQuoteInto(_msg, _focus, q),
+          onSelect: () => setState(() => _selecting = 'land$i'),
+        ),
+      );
+
+  /// v0.935 the working row at the end of the thread, like the Hoola chat: the mark, the real step in a soft moving
+  /// light, the clock.
+  Widget _working(HoolaColors c, Map<String, dynamic> t, {required bool writing}) {
+    final steps = cl(t['steps']);
+    final label = t['stopping'] == true
+        ? 'Stopping after this step'
+        : writing
+            ? 'Writing'
+            : steps.isEmpty
+                ? 'Starting'
+                : _nowWords(steps.last);
+    final secs = DateTime.now().difference(codeTime(cs(t['run_at']).isEmpty ? cs(t['at']) : cs(t['run_at'])) ?? DateTime.now()).inSeconds;
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Semantics(
+        liveRegion: true,
+        label: 'Hoola is working: $label',
+        excludeSemantics: true,
+        child: Row(children: [
+          const HoolaMark(size: 22),
+          const SizedBox(width: 10),
+          Expanded(child: CodeShimmer(label, style: codeSans(c, size: 15, color: c.ink2))),
+          const SizedBox(width: 8),
+          Text(codeClock(secs), style: codeMono(c, size: 12, color: c.ink3)),
+        ]),
+      ),
+    );
   }
 
   /// v0.928 Hoola's words like a Hoola chat reply (renderer, long-press sheet, Copy · Read aloud · Share on the newest).
@@ -500,58 +590,82 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     return (b ?? DateTime.now()).difference(a).inSeconds;
   }
 
-  Widget _group(HoolaColors c, List<Map<String, dynamic>> g, int i, {required bool open}) {
+  /// One group of steps. While it works the newest group shows as light rows; any other group is one quiet line
+  /// ("Worked for 1m 52s · 17 steps", or what it has done so far while its words are being written) that opens
+  /// to its rows on a tap.
+  Widget _group(HoolaColors c, List<Map<String, dynamic>> g, int i, {required bool inline, required bool working}) {
+    final rows = g.length > 60 ? g.sublist(g.length - 60) : g;
+    final drawn = rows.map((s) => _step(c, s)).whereType<Widget>().toList();
+    if (inline) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: drawn),
+      );
+    }
+    final open = _open.contains(i);
     final counted = g.where((s) => !const {'think', 'pass', 'ckpt'}.contains(cs(s['k']))).length;
     final secs = _secs(g);
+    final label = counted == 0
+        ? _passTitle(g)
+        : working
+            ? _sofar(g)
+            : secs > 0
+                ? 'Worked for ${codeLong(secs)} · ${cPlural(counted, 'step')}'
+                : cPlural(counted, 'step');
     return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: CodeCard(
-        padding: EdgeInsets.zero,
-        radius: 14,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Semantics(
-            button: true,
-            label: open ? 'Hide the steps' : 'Show the steps',
-            child: InkWell(
-              onTap: () => setState(() => open ? _open.remove(i) : _open.add(i)),
-              child: Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(border: open ? Border(bottom: BorderSide(color: c.sunk)) : null),
-                child: Row(children: [
-                  Icon(Icons.subject_rounded, size: 17, color: c.ink2),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(counted == 0 ? _passTitle(g) : secs > 0 ? 'Worked for ${codeLong(secs)} · ${cPlural(counted, 'step')}' : cPlural(counted, 'step'),
-                        style: codeSans(c, size: 13.5, weight: FontWeight.w500)),
-                  ),
-                  Icon(open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 18, color: c.ink3),
-                ]),
-              ),
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Semantics(
+          button: true,
+          label: open ? 'Hide the steps' : 'Show the steps',
+          child: InkWell(
+            onTap: () => setState(() => open ? _open.remove(i) : _open.add(i)),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 44),
+              alignment: Alignment.centerLeft,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.subject_rounded, size: 16, color: c.ink3),
+                const SizedBox(width: 8),
+                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 14, color: c.ink2))),
+                const SizedBox(width: 2),
+                Icon(open ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded, size: 18, color: c.ink3),
+              ]),
             ),
           ),
-          if (open)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: (g.length > 60 ? g.sublist(g.length - 60) : g).map((s) => _step(c, s)).whereType<Widget>().toList()),
-            ),
-        ]),
-      ),
+        ),
+        if (open) Padding(padding: const EdgeInsets.only(left: 2, bottom: 4), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: drawn)),
+      ]),
     );
   }
 
+  /// What a group has done so far, in her words ("Read 11 files, looked in 6 folders").
+  String _sofar(List<Map<String, dynamic>> g) {
+    int n(Set<String> ks) => g.where((s) => ks.contains(cs(s['k']))).length;
+    final parts = <String>[
+      if (n({'read'}) > 0) 'read ${cPlural(n({'read'}), 'file')}',
+      if (n({'list'}) > 0) 'looked in ${cPlural(n({'list'}), 'folder')}',
+      if (n({'search', 'grep', 'usages'}) > 0) 'searched ${cPlural(n({'search', 'grep', 'usages'}), 'time')}',
+      if (n({'edit', 'new'}) > 0) 'changed ${cPlural(n({'edit', 'new'}), 'file')}',
+      if (n({'bash', 'check'}) > 0) 'ran ${cPlural(n({'bash', 'check'}), 'command')}',
+    ];
+    if (parts.isEmpty) return cPlural(g.length, 'step');
+    final line = parts.take(3).join(', ');
+    return line[0].toUpperCase() + line.substring(1);
+  }
+
   Widget _line(HoolaColors c, IconData icon, List<InlineSpan> spans, {Color? iconColor, Widget? trailing, bool live = false}) => Container(
-        constraints: const BoxConstraints(minHeight: 32),
+        constraints: const BoxConstraints(minHeight: 30),
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           SizedBox(width: 18, child: live ? const CodeRing(size: 14) : Icon(icon, size: 16, color: iconColor ?? c.ink3)),
           const SizedBox(width: 10),
-          Expanded(child: Text.rich(TextSpan(style: codeSans(c, size: 13.5, color: c.ink2, height: 1.35), children: spans))),
+          Expanded(child: Text.rich(TextSpan(style: codeSans(c, size: 14, color: c.ink2, height: 1.35), children: spans))),
           if (trailing != null) ...[const SizedBox(width: 8), trailing],
         ]),
       );
 
-  TextSpan _code(HoolaColors c, String s) => TextSpan(text: s, style: codeMono(c, size: 12.5));
+  TextSpan _code(HoolaColors c, String s) => TextSpan(text: s, style: codeMono(c, size: 13, color: c.ink));
 
   Widget? _step(HoolaColors c, Map<String, dynamic> s) {
     final k = cs(s['k']);
@@ -941,24 +1055,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       'revise': 'Ask for a change on the same pull request…',
     };
     final hint = mode == 'revise' ? cs(t['hint']) : '';
-    final secs = DateTime.now().difference(codeTime(cs(t['run_at']).isEmpty ? cs(t['at']) : cs(t['run_at'])) ?? DateTime.now()).inSeconds;
     final stopping = t['stopping'] == true;
-    final steps = cl(t['steps']);
-    final now = steps.isEmpty ? 'Starting' : _nowWords(steps.last);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
       decoration: BoxDecoration(color: c.bg),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (running)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 2, 6, 8),
-            child: Row(children: [
-              const HoolaMark(size: 20),
-              const SizedBox(width: 9),
-              Expanded(child: Text(stopping ? 'Stopping after this step' : now, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 13.5, color: c.ink2))),
-              Text(codeClock(secs), style: codeMono(c, size: 12, color: c.ink3)),
-            ]),
-          ),
         if (comments > 0)
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),

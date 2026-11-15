@@ -207,6 +207,7 @@ class Settings(BaseSettings):
     dev_ws_steps: int = 150                 # ... model steps in one round
     dev_ws_minutes: int = 60                # ... minutes in one round
     dev_ws_bash_runs: int = 80              # ... box commands in one round
+    dev_stream: bool = True                 # v0.935 Qwen's words reach the phone as they are written (OpenRouter stream)
     dev_auto_setup: bool = True             # v0.933 the repo's own setup (from its files / CI / the language default) runs in the box by itself
     dev_ws_clear_chars: int = 180000        # ... past this, old tool output is trimmed (brain.trim)
     dev_ws_compact_chars: int = 480000      # ... past this, the older conversation is summarised (engine.compact)

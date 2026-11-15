@@ -175,6 +175,72 @@ def _qwen_post(url: str, body: dict, headers: dict, timeout: float) -> dict:
     return r.json()
 
 
+# v0.935 the live words of the step being written: the engine sets TEXT_SINK.fn around its main call and the phone
+# reads the growing text (task view "live"); a call with no sink (plans, reviews, agents, compaction) never streams.
+TEXT_SINK = threading.local()
+QWEN_STREAM = None          # tests: fn(url, body, headers, timeout, on_text) -> the same dict a plain answer gives
+
+
+def _qwen_stream(url: str, body: dict, headers: dict, timeout: float, on_text) -> dict:
+    """One streamed Qwen answer through OpenRouter (server-sent events), put back into the shape of a plain answer
+    so llm.from_openai reads it unchanged. Every new piece of the reply's words goes to on_text(the whole text so far)."""
+    if QWEN_STREAM is not None:
+        return QWEN_STREAM(url, body, headers, timeout, on_text)
+    import httpx
+    body = {**body, "stream": True, "usage": {"include": True}}
+    text: list[str] = []
+    calls: dict[int, dict] = {}
+    finish, usage, model = "", {}, ""
+    with httpx.Client(timeout=httpx.Timeout(timeout, connect=20.0)) as c:
+        with c.stream("POST", url, json=body, headers=headers) as r:
+            if r.status_code >= 400:
+                r.read()
+                from ..agent import llm
+                line = (" | " + llm.CREDIT_LOW_LINE) if r.status_code == 402 else ""
+                raise QwenError(f"OpenRouter answered {r.status_code}: {r.text[:300]}{line}")
+            for raw in r.iter_lines():
+                if not raw or not raw.startswith("data:"):
+                    continue                                  # ": OPENROUTER PROCESSING" keep-alives
+                data = raw[5:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    ch = json.loads(data)
+                except ValueError:
+                    continue
+                if ch.get("error"):
+                    raise QwenError(f"OpenRouter error: {str(ch['error'])[:300]}")
+                model = ch.get("model") or model
+                if ch.get("usage"):
+                    usage = ch["usage"]
+                for choice in ch.get("choices") or []:
+                    d = choice.get("delta") or {}
+                    if d.get("content"):
+                        text.append(str(d["content"]))
+                        try:
+                            on_text("".join(text))
+                        except Exception:
+                            pass
+                    for tc in d.get("tool_calls") or []:
+                        i = int(tc.get("index") or 0)
+                        slot = calls.setdefault(i, {"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+                        if tc.get("id"):
+                            slot["id"] = tc["id"]
+                        fn = tc.get("function") or {}
+                        if fn.get("name"):
+                            slot["function"]["name"] += str(fn["name"])
+                        if fn.get("arguments"):
+                            slot["function"]["arguments"] += str(fn["arguments"])
+                    if choice.get("finish_reason"):
+                        finish = choice["finish_reason"]
+    msg: dict[str, Any] = {"role": "assistant", "content": "".join(text)}
+    if calls:
+        msg["tool_calls"] = [calls[i] for i in sorted(calls)]
+    if not finish:
+        finish = "tool_calls" if calls else "stop"
+    return {"model": model, "choices": [{"finish_reason": finish, "message": msg}], "usage": usage}
+
+
 def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
                think: bool | None) -> tuple[list[dict], str]:
     """One Hoola Code step on Qwen through OpenRouter, answered in the same block shapes a Claude call returns."""
@@ -201,7 +267,12 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
             time.sleep(3 * i)
         t0 = time.time()
         try:
-            data = _qwen_post(url, body, headers, timeout)
+            sink = getattr(TEXT_SINK, "fn", None)
+            if sink is not None and QWEN_POST is None and bool(getattr(st, "dev_stream", True)):
+                sink("")                                      # a try again starts its words over
+                data = _qwen_stream(url, body, headers, timeout, sink)
+            else:
+                data = _qwen_post(url, body, headers, timeout)
         except QwenError as e:
             last = e
             m = str(e)

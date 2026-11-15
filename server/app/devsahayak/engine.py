@@ -93,6 +93,7 @@ def exists(tid: str) -> bool:
 _SLOTS: dict[str, Any] = {"n": 0, "sem": None}
 _SLOT_LOCK = threading.Lock()
 LIVE: set[str] = set()
+LIVE_TEXT: dict[str, str] = {}   # v0.935 the words of the step Hoola is writing right now, per session
 
 
 def _sem() -> threading.Semaphore:
@@ -1212,6 +1213,7 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
     finally:
         alive.set()
         LIVE.discard(t.id)
+        LIVE_TEXT.pop(t.id, None)
         sem.release()
 
 
@@ -1333,13 +1335,19 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             except Exception as e:                        # v0.932 a failed summary never ends the round: trim harder
                 log.warning("hoola code compaction failed for %s: %s", getattr(t, "id", ""), e)
                 B.trim(msgs, compact_at // 2)
-        blocks, stop = B.call(system, msgs, round_tools)
+        tid = getattr(t, "id", "")
+        B.TEXT_SINK.fn = (lambda txt, _tid=tid: LIVE_TEXT.__setitem__(_tid, txt)) if tid else None   # v0.935 her phone reads the words as they come
+        try:
+            blocks, stop = B.call(system, msgs, round_tools)
+        finally:
+            B.TEXT_SINK.fn = None
         msgs.append({"role": "assistant", "content": blocks})
         for b in blocks:
             if b.get("type") == "thinking" and str(b.get("thinking") or "").strip():
                 emit({"k": "think", "text": scrub(str(b["thinking"]).strip())[:1500]})    # Phase 5: shown in the Thinking view only
             if b.get("type") == "text" and str(b.get("text") or "").strip():
-                emit({"k": "say", "text": str(b["text"]).strip()[:800]})
+                emit({"k": "say", "text": str(b["text"]).strip()[:20000]})    # v0.935 kept whole (was cut at 800)
+        LIVE_TEXT.pop(tid, None)                          # its words are a step now: the live copy goes
         said = "\n\n".join(str(b.get("text") or "").strip() for b in blocks
                              if b.get("type") == "text" and str(b.get("text") or "").strip())
         if said:

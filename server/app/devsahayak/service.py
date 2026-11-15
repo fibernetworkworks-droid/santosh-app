@@ -646,6 +646,17 @@ def _env_label(t: DevTask) -> dict[str, Any]:
         return {"id": t.env_id, "name": "Environment"}
 
 
+def _live_text(tid: str) -> str:
+    """v0.935 the words of the step Hoola is writing right now (empty between steps and when no round runs)."""
+    if tid not in _RUNNING:
+        return ""
+    try:
+        from . import engine as EN
+        return EN.LIVE_TEXT.get(tid, "")[-20000:]
+    except Exception:
+        return ""
+
+
 def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
     ch = _j(t.changes, [])
     v = {"id": t.id, "number": t.number, "kind": t.kind, "kind_label": KINDS.get(t.kind, t.kind), "repo": t.repo,
@@ -669,7 +680,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          # bare time as local - every working clock started at 5:30:00
          "at": _aware(t.created_at).isoformat() if t.created_at else "",
          "updated": _aware(t.updated_at).isoformat() if t.updated_at else "",
-         "run_at": _RUN_AT.get(t.id, "")}
+         "run_at": _RUN_AT.get(t.id, ""),
+         "live": _live_text(t.id)}
     try:                                # G9: the card says what the facts back, never only the model's words
         from . import truth as TR
         if TR.on():

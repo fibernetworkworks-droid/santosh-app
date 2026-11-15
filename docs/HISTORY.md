@@ -5257,3 +5257,38 @@ Tests: NEW `server/tests/test_v0934_card_real_engine.py` (5: a scripted job righ
 behind, an engine error = one row, no box = refused, CLI + vps-ops, version); the card suites (v0360 / v0365 / v0371 / v0378
 / v0402 / v0926) + engine suites pass; v0378 pin moved 25 -> 50.
 NOT VERIFIED: no real-engine card has run on her server yet (no Docker here).
+
+
+## v0.935.0 HOOLA CODE FEED - the working feed like the Hoola chat and Claude Code
+
+Owner, on her phone screenshots of a running Hoola Code session ("Working 1:36" pinned above the typing box, the reply
+appearing at once): "WHY WORKING IS AT BOTTOM OF CHAT SPACE --- IT MUST BE SAME AS HOOLA CHAT AND CLAUDE CODE WORKING,
+FEED, ANIMATION ... CHAT REPLY IS APPEARING DIRECTLY ... SHOW ME THE WORK BEFORE DEVELOPMENT" -> design canvas
+claude.ai/artifact/27Hw4XRUj5qG83sWaeX2J5 (Now / While it works / The answer lands / Done / The numbers) -> "GO".
+
+Server:
+- `devsahayak/brain.py` `_qwen_stream`: the Qwen step through OpenRouter as server-sent events (`stream: true`,
+  `usage: {include: true}`), text deltas joined and handed to `on_text(the whole text so far)`, tool-call pieces joined
+  by index, keep-alive comments skipped, an error chunk or a 4xx = QwenError as before; put back into the plain answer
+  shape so `llm.from_openai` + `_keep_broken` read it unchanged. Used ONLY when `brain.TEXT_SINK.fn` is set (the
+  engine sets it around its main call; plans, reviews, agents, compaction and the card's QWEN_POST hook never stream)
+  and `dev_stream` is on. A try again calls the sink with "" first. Test hook `QWEN_STREAM`.
+- `engine.py`: `LIVE_TEXT[tid]` = the words being written; cleared once they become a `say` step and at the end of the
+  round. `say` steps kept to 20,000 characters (were cut at 800).
+- `service.task_view` "live" (only while the round runs in this process).
+
+Phone (`lib/ui/code/code_session.dart`, `code_words.dart`):
+- The working row is at the END of the thread (HoolaMark 22 + the real step, "Writing" while words stream, "Stopping
+  after this step"; `CodeShimmer` = a soft light passing over the words, still under reduce motion; clock) - no longer
+  pinned above the typing box.
+- While it works the newest group of steps shows as light rows (14 px, file names mono 13); every other group is one
+  quiet line that opens on a tap. "Worked for N · M steps" only for a finished group; a group folded while its words
+  are written says what it did so far ("Read 11 files, looked in 6 folders").
+- New messages land word by word (`CodeLanding`: 34 ms a word, 17 ms when more than 80 words wait, newest words lighter
+  through HoolaMd streaming), carrying on from the live words when they turn into a step; history shows at once.
+- Checks every 1 s while it works, 10 s when quiet; one check at a time.
+
+Tests: `test_v0935_hoola_code_feed.py` (stream assembled + words out as they come, refused stream, only the main call
+streams + live view, phone source pins, version); pins in v0926 / v0928 moved to the new shapes.
+NOT VERIFIED: on her phone (CI compiles the Dart first); no live streamed Qwen call from here; the Claude brain path
+does not stream (its words still land word by word on the phone).

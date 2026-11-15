@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -74,10 +75,11 @@ void codeMessageMenu(BuildContext context, Santosh app, String text,
 /// Hoola's words in a session: the Hoola chat's renderer, the long-press sheet, and (on the newest reply) the action row.
 class CodeReply extends StatelessWidget {
   const CodeReply({super.key, required this.app, required this.text, this.actions = false, this.selecting = false,
-      this.onQuote, this.onSelect});
+      this.onQuote, this.onSelect, this.streaming = false});
   final Santosh app;
   final String text;
   final bool actions;
+  final bool streaming;               // v0.935 still landing: the newest words drawn lighter
   final bool selecting;
   final void Function(String text)? onQuote;
   final VoidCallback? onSelect;
@@ -108,7 +110,7 @@ class CodeReply extends StatelessWidget {
               ? null
               : () => codeMessageMenu(context, app, text,
                   mine: false, onQuote: onQuote == null ? null : () => onQuote!(plain), onSelect: onSelect),
-          child: HoolaMd(text, selectable: selecting),
+          child: HoolaMd(text, streaming: streaming, selectable: selecting),
         ),
         if (actions)
           Padding(
@@ -159,4 +161,153 @@ class CodeNewestButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// v0.935 a new message of Hoola's landing word by word at the Hoola chat's reading speed (34 ms a word, twice as fast
+/// when more than 80 words wait), the newest words lighter. [text] may still grow (Hoola is writing it: [done] false);
+/// [from] = words already shown, so a message that moved from "being written" to "said" carries on where it was.
+/// Reduce motion = all of it at once.
+class CodeLanding extends StatefulWidget {
+  const CodeLanding({super.key, required this.text, required this.from, required this.done, required this.onLanded, required this.builder});
+  final String text;
+  final int from;
+  final bool done;
+  final void Function(int words) onLanded;
+  final Widget Function(String shown, bool streaming) builder;
+
+  @override
+  State<CodeLanding> createState() => _CodeLandingState();
+}
+
+class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker = createTicker(_onTick);
+  late int _n = widget.from;
+  Duration _last = Duration.zero;
+  double _carry = 0;
+  bool _reduced = false;
+
+  List<String> get _words => widget.text.split(RegExp(r'(?<=\s)'));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduced = HoolaMotion.reduced(context);
+    _go();
+  }
+
+  @override
+  void didUpdateWidget(CodeLanding old) {
+    super.didUpdateWidget(old);
+    if (widget.from > _n) _n = widget.from;
+    _go();
+  }
+
+  void _go() {
+    final total = _words.length;
+    if (_reduced) {
+      if (_n != total) {
+        _n = total;
+        widget.onLanded(_n);
+      }
+      return;
+    }
+    if (_n < total && !_ticker.isActive) {
+      _last = Duration.zero;
+      _carry = 0;
+      _ticker.start();
+    }
+  }
+
+  void _onTick(Duration elapsed) {
+    final dt = elapsed - _last;
+    _last = elapsed;
+    final total = _words.length;
+    final waiting = total - _n;
+    if (waiting <= 0) {
+      _ticker.stop();
+      return;
+    }
+    _carry += dt.inMicroseconds / 1000 / (waiting > 80 ? 17 : 34);
+    final step = _carry.floor();
+    if (step <= 0) return;
+    _carry -= step;
+    setState(() => _n = (_n + step).clamp(0, total));
+    widget.onLanded(_n);
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = _words;
+    final n = _n.clamp(0, w.length);
+    final shown = w.take(n).join();
+    if (shown.trim().isEmpty) return const SizedBox.shrink();
+    return widget.builder(shown, !widget.done || n < w.length);
+  }
+}
+
+/// v0.935 the working row's words with a soft light passing across them (still under reduce motion).
+class CodeShimmer extends StatefulWidget {
+  const CodeShimmer(this.text, {super.key, required this.style});
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<CodeShimmer> createState() => _CodeShimmerState();
+}
+
+class _CodeShimmerState extends State<CodeShimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (HoolaMotion.reduced(context)) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final words = AnimatedSwitcher(
+      duration: HoolaMotion.of(context, HoolaMotion.fade),
+      layoutBuilder: (cur, prev) => Stack(alignment: Alignment.centerLeft, children: [...prev, if (cur != null) cur]),
+      child: Text(widget.text, key: ValueKey(widget.text), maxLines: 1, overflow: TextOverflow.ellipsis, style: widget.style),
+    );
+    if (HoolaMotion.reduced(context)) return words;
+    return AnimatedBuilder(
+      animation: _c,
+      child: words,
+      builder: (context, child) => ShaderMask(
+        blendMode: BlendMode.srcIn,
+        shaderCallback: (r) => LinearGradient(
+          colors: [c.ink3, c.ink3, c.ink, c.ink3, c.ink3],
+          stops: const [0, .38, .5, .62, 1],
+          transform: _Slide(_c.value),
+        ).createShader(r),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _Slide extends GradientTransform {
+  const _Slide(this.v);
+  final double v;
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) => Matrix4.translationValues(bounds.width * (1.2 - 2.4 * v), 0, 0);
 }
