@@ -153,7 +153,7 @@ class _HoolaChatState extends State<HoolaChat> {
     return ListenableBuilder(
       listenable: app,
       builder: (context, _) => Column(children: [
-        _TopBar(title: _title, incognito: app.incognito, onMenu: widget.onMenu, onNew: () => app.newChat()),
+        _TopBar(title: _title, incognito: app.incognito, onMenu: widget.onMenu),
         if (!app.connected && app.configured) const _Reconnecting(),
         Expanded(
           child: Stack(children: [
@@ -384,11 +384,10 @@ class _HoolaChatState extends State<HoolaChat> {
 // ======================================================================================== pieces
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.incognito, required this.onMenu, required this.onNew});
+  const _TopBar({required this.title, required this.incognito, required this.onMenu});
   final String title;
   final bool incognito;
   final VoidCallback onMenu;
-  final VoidCallback onNew;
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
@@ -403,8 +402,8 @@ class _TopBar extends StatelessWidget {
             Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: HoolaType.title(c))),
           ]),
         ),
-        IconButton(tooltip: 'New chat', onPressed: onNew, icon: Icon(Icons.edit_square, color: c.ink, size: 22)),
-        const SizedBox(width: 6),
+        // v0.931 no new-chat icon top right (New chat lives in the side panel); the space keeps the title centred
+        const SizedBox(width: 54),
       ]),
     );
   }

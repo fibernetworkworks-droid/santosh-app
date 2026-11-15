@@ -45,9 +45,11 @@ void main() {
     addTearDown(t.view.reset);
     await t.pumpWidget(_host(app, HoolaTools(app: app)));
     for (final w in ['Create', 'Hoola Interactive', 'Hoola Vocal', 'Hoola Flow', 'Web Development', 'App Development',
-                     'Hoola Design', 'Prompting', 'Hoola Code', 'Game Dev', 'Connectors']) {
+                     'Hoola Design', 'Prompting', 'Game Dev', 'Connectors']) {
       expect(find.text(w), findsOneWidget, reason: w);
     }
+    // v0.931 Hoola Code moved to the side panel's Code button
+    expect(find.text('Hoola Code'), findsNothing);
     await t.tap(find.text('Hoola Interactive'));
     await t.tap(find.text('Web Development'));
     await t.tap(find.text('Prompting'));

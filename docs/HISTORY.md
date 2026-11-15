@@ -5145,3 +5145,24 @@ fully right (92 %); works 12/12, stayed in scope 12/12, project rules 12/12, goo
 6.1 steps and 1.1 min a job. Miss: tests_for_discount - its own new test failed (1 failed, 3 passed). Claude Opus scored 12/12
 on the same set (v0.382 save). The card printed "claude-opus-5-5" because quality/codecard.py read dev_loop_model / site_model,
 not the brain - it now prints brain.model_for() when Hoola Code is on Qwen. Not yet run on Qwen: code_card_hard, code_card_mobile.
+
+
+## v0.931.0 HOOLA CODE IN THE SIDE PANEL
+
+Owner, on her phone screenshots (home + side panel): "IN SIDE PANEL -- ON TOP SHOW A HOOLA CODE ICON FOR GOING TO HOOLA
+CODE. REMOVE THE HOOLA CODE FROM TOOL SECTION. ALSO CHECK ON TOP RIGHT CORNER A NEW CHAT ICON REMOVE THAT .... SHOW ME
+THE DESIGN FIRST" -> design canvas claude.ai/artifact/8ceUMqUfgX68HvhVTtmMet (A = a full Hoola Code row, B = a small
+Code button beside the title) -> "GO WITH B".
+
+- `lib/ui/shell/hoola_shell.dart`: the drawer header is a Row - the Hoola title + `HoolaCodeButton` (48 dp stadium on the
+  surface colour with a hairline, a 34 dp black (`c.pill`) circle with the terminal icon, the word Code; a violet
+  `c.accent` dot on the circle while one of her Hoola Code sessions has `running: true`). The drawer reads
+  GET /api/devsahayak once when it opens (`_checkCode`, a failure = no dot). A tap closes the panel and opens the native
+  `HoolaCode` screen through `hoolaOpenNew`.
+- `lib/ui/shell/hoola_tools.dart`: Hoola Code removed from `hoolaMoreTools` (More = Game Dev + Connectors);
+  `hoolaOpenStudio` keeps its Hoola Code branch, and AI team > Developer still opens it.
+- Home top bar and the chat top bar (`lib/ui/chat/hoola_chat.dart` `_TopBar`): the `edit_square` New chat icon is gone;
+  New chat lives in the side panel. The chat keeps a 54 dp space on the right so its title stays centred.
+- Tests: NEW `server/tests/test_v0931_code_in_side_panel.py`; `test_v0898_chaar_tab.py`, `test/four_tabs_test.dart`,
+  `test/tools_pro_test.dart` (10 tool drawings) updated. Phone only, server unchanged except the version story.
+- NOT VERIFIED on her phone (CI compiles the Dart first).

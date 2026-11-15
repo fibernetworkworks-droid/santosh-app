@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.930.0"   # v0.930.0 QWEN CARD (owner: "CARD DONE CHECK"): the first coding card on Qwen 3.8 27B (vps-ops code_card, run 457) = 11/12 jobs fully right (92 %), works 12/12, in scope 12/12, project rules 12/12, good tests 9/10, 6.1 steps and 1.1 min a job; the one miss (tests_for_discount) wrote a test that fails on its own; Claude Opus had 12/12 on this set; the card header still said claude-opus-5-5 because it printed the setting, not the brain - it now names the model that really answered; 1 server. Previous: v0.929.0 HOOLA CODE READS.
+APP_VERSION = "0.931.0"   # v0.931.0 HOOLA CODE IN THE SIDE PANEL (owner, on her phone home + side panel: "ON TOP SHOW A HOOLA CODE ICON ... REMOVE THE HOOLA CODE FROM TOOL SECTION ... TOP RIGHT CORNER A NEW CHAT ICON REMOVE THAT" -> design canvas claude.ai/artifact/8ceUMqUfgX68HvhVTtmMet -> "GO WITH B"): the side panel shows a Code button beside the Hoola title (black code circle + Code, a violet dot while a Hoola Code session is working, one quiet GET /api/devsahayak when the panel opens) that closes the panel and opens Hoola Code; Hoola Code left the Tools tab (More = Game Dev + Connectors; AI team > Developer still opens it); no new-chat icon top right on the home or in a chat (New chat lives in the side panel); phone only. Previous: v0.930.0 QWEN CARD.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

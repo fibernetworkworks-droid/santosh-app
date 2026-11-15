@@ -1,7 +1,7 @@
 // v0.898 TOOLS TAB (owner: "REMOVE CONNECTOR INSTEAD PUT TOOLS IN TOOLS (SHOW ALL HOOLA FEATURES INTERACTIVE, VOCAL,
 // FLOW, WEB DEVELOPMENT, APP DEVELOPMENT, CREATE, DESIGN, PROMPTING SAME AS CONSOLE PANEL SHOWN"): every Hoola studio
 // as a tile; a tap opens that studio's own web console page inside the app, already signed in (hoolaOpenConsole), so
-// the phone shows exactly what the console shows. Below them: Hoola Code, Game Dev, and Connectors (the old Connect
+// the phone shows exactly what the console shows. Below them: Game Dev and Connectors (Hoola Code: the side panel's Code button, v0.931) (the old Connect
 // tab, in the app's own design).
 import 'dart:math' as math;
 
@@ -34,7 +34,7 @@ const List<HoolaTool> hoolaStudios = [
 ];
 
 const List<HoolaTool> hoolaMoreTools = [
-  (title: 'Hoola Code', sub: 'Work on your code on GitHub', glyph: ToolGlyph.code, path: '/console/code'),
+  // v0.931 Hoola Code moved to the side panel (the Code button beside the title)
   (title: 'Game Dev', sub: 'Make, test and ship games', glyph: ToolGlyph.game, path: '/console/games'),
 ];
 

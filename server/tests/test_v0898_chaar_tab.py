@@ -19,12 +19,13 @@ def test_phone_tabs_and_tools():
         assert gone not in shell, gone
     tools = (ROOT / "lib/ui/shell/hoola_tools.dart").read_text()
     for t in ("Create", "Hoola Interactive", "Hoola Vocal", "Hoola Flow", "Web Development", "App Development",
-              "Hoola Design", "Prompting", "Hoola Code", "Game Dev"):
+              "Hoola Design", "Prompting", "Game Dev"):
         assert f"title: '{t}'" in tools, t
+    assert "title: 'Hoola Code'" not in tools and "HoolaCodeButton(" in shell   # v0.931 Hoola Code: the side panel
     page = (ROOT / "lib/ui/shell/hoola_console_page.dart").read_text()
     assert "localStorage.setItem('hoola.console.token'" in page and "/healthz" in page
 
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.930.0"
+    assert main.APP_VERSION == "0.931.0"

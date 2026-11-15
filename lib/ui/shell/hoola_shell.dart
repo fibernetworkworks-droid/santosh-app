@@ -18,6 +18,7 @@ import '../calls_sheet.dart';
 import '../chat/hoola_attach.dart';
 import '../chat/hoola_chat.dart';
 import '../chat_attach.dart' show TrayFile, openAttachment;
+import '../code/code_home.dart' show HoolaCode;
 import '../glass.dart';
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
@@ -531,9 +532,8 @@ class _HoolaHomeState extends State<HoolaHome> {
         child: Row(children: [
           const SizedBox(width: 6),
           IconButton(tooltip: 'Open chats', onPressed: widget.onMenu, icon: Icon(Icons.menu_rounded, color: c.ink)),
+          // v0.931 (owner: "TOP RIGHT CORNER A NEW CHAT ICON REMOVE THAT"): New chat lives in the side panel only
           const Spacer(),
-          IconButton(tooltip: 'New chat', onPressed: () => app.newChat(), icon: Icon(Icons.edit_square, color: c.ink, size: 22)),
-          const SizedBox(width: 6),
         ]),
       ),
       Expanded(
@@ -1000,6 +1000,7 @@ class HoolaDrawer extends StatefulWidget {
 
 class _HoolaDrawerState extends State<HoolaDrawer> {
   bool _all = false;
+  bool _codeLive = false;   // v0.931 one of her Hoola Code sessions is working
 
   @override
   void initState() {
@@ -1007,7 +1008,28 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.app.refreshChats();
       widget.app.refreshSessions();   // v0.909
+      _checkCode();
     });
+  }
+
+  /// v0.931 one quiet read when the panel opens: is a Hoola Code session working right now? (a failure = no dot)
+  Future<void> _checkCode() async {
+    final api = widget.app.api;
+    if (api == null) return;
+    try {
+      final r = await api.call('GET', '/api/devsahayak');
+      final tasks = r is Map ? r['tasks'] : null;
+      final live = tasks is List && tasks.any((t) => t is Map && t['running'] == true);
+      if (mounted && live != _codeLive) setState(() => _codeLive = live);
+    } catch (_) {}
+  }
+
+  /// v0.931 the panel closes first, then Hoola Code opens on top of the app.
+  void _openCode() {
+    final nav = Navigator.of(context);
+    final app = widget.app;
+    Scaffold.maybeOf(context)?.closeDrawer();
+    hoolaOpenNew(nav.context, app, HoolaCode(app: app));
   }
 
   @override
@@ -1033,9 +1055,14 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
             final chats = [for (final ch in app.chatList) if (ch['pinned'] != true && !inSec(ch)) ch];
             final shown = _all ? chats : chats.take(9).toList();
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              // v0.931 HOOLA CODE IN THE SIDE PANEL (option B of claude.ai/artifact/8ceUMqUfgX68HvhVTtmMet): the Code
+              // button beside the title opens Hoola Code; a violet dot while one of her sessions is working.
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-                child: Text('Hoola', style: HoolaType.hero(c)),
+                padding: const EdgeInsets.fromLTRB(20, 18, 12, 8),
+                child: Row(children: [
+                  Expanded(child: Text('Hoola', style: HoolaType.hero(c))),
+                  HoolaCodeButton(live: _codeLive, onTap: _openCode),
+                ]),
               ),
               Expanded(
                 child: ListView(padding: const EdgeInsets.symmetric(horizontal: 12), children: [
@@ -1268,4 +1295,62 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
           ),
         ),
       );
+}
+
+
+/// v0.931 HOOLA CODE IN THE SIDE PANEL (option B): the small "Code" pill beside the side panel's title - the black
+/// code circle and the word, a violet dot on it while a Hoola Code session is working.
+class HoolaCodeButton extends StatelessWidget {
+  const HoolaCodeButton({super.key, required this.onTap, this.live = false});
+  final VoidCallback onTap;
+  final bool live;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Semantics(
+      button: true,
+      label: live ? 'Open Hoola Code, a session is working' : 'Open Hoola Code',
+      excludeSemantics: true,
+      child: Material(
+        color: c.surface,
+        shape: StadiumBorder(side: BorderSide(color: c.line)),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: SizedBox(
+            height: 48,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 16, 0),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Stack(clipBehavior: Clip.none, children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(color: c.pill, shape: BoxShape.circle),
+                    child: Icon(Icons.terminal_rounded, size: 19, color: c.onPill),
+                  ),
+                  if (live)
+                    Positioned(
+                      top: -1,
+                      right: -1,
+                      child: Container(
+                        width: 11,
+                        height: 11,
+                        decoration: BoxDecoration(color: c.accent, shape: BoxShape.circle, border: Border.all(color: c.surface, width: 2)),
+                      ),
+                    ),
+                ]),
+                const SizedBox(width: 8),
+                Text('Code', style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
