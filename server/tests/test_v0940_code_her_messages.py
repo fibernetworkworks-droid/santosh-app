@@ -42,7 +42,7 @@ def test_every_door_writes_her_words():
     assert rev.count('_Step(cont).event({"k": "note", "text": said, "her": True})') == 1     # the session continues
     assert rev.count('_Step(t.id).event({"k": "note", "text": said, "her": True})') == 1     # a change on the PR
     eng = (ROOT / "server/app/devsahayak/engine.py").read_text()
-    assert 'emit({"k": "note", "text": n[:2000], "her": True})' in eng                        # a note read while working
+    assert 'emit({"k": "note", "text": n[:6000], "her": True})' in eng                        # a note read while working
 
 
 def test_the_phone_shows_her_messages_at_once_and_full_size():
@@ -57,5 +57,5 @@ def test_the_phone_shows_her_messages_at_once_and_full_size():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.944.0"' in main
-    assert "version: 0.944.0+943" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.945.0"' in main
+    assert "version: 0.945.0+944" in (ROOT / "pubspec.yaml").read_text()

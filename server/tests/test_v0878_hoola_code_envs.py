@@ -227,14 +227,15 @@ def test_long_sessions_keep_how_they_began(dev):  # noqa: F811
         st.event({"k": "say", "text": f"step {i}"})
     with S.session() as s:
         steps = json.loads(s.get(DevTask, tid).steps)
-    assert len(steps) <= S.MAX_STEPS
+    assert len(steps) <= S.STEPS_CEILING                  # v0.945 Hoola's words are conversation: none folded away
     assert steps[0]["text"] == "step 0" and steps[-1]["text"] == f"step {S.MAX_STEPS + 49}"
+    assert sum(1 for x in steps if x.get("k") == "say") == S.MAX_STEPS + 50
     assert sum(1 for x in steps if x.get("k") == "gap") == 1
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.944.0")
+    assert APP_VERSION.startswith("0.945.0")
 
 
 # ---------------------------------------------------------------- the console page

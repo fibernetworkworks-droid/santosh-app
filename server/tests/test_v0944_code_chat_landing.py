@@ -32,7 +32,7 @@ def test_a_long_session_never_folds_away_the_conversation():
     steps[300] = {"k": "say", "text": "Done with the header.", "n": 300}
     steps[310] = {"k": "round", "secs": 90, "n": 310}
     out = S.fold_steps(steps)
-    assert len(out) <= S.MAX_STEPS + 3
+    assert len(out) <= S.STEPS_CEILING
     kinds = {(x["k"], x["n"]) for x in out}
     assert ("note", 200) in kinds and ("say", 300) in kinds and ("round", 310) in kinds
     assert any(x["k"] == "gap" for x in out) and [x["n"] for x in out] == sorted(x["n"] for x in out)   # still in order
@@ -83,5 +83,5 @@ def test_the_phone_lands_by_step_number_and_asks_only_for_new_steps():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.944.0"' in main
-    assert "version: 0.944.0+943" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.945.0"' in main
+    assert "version: 0.945.0+944" in (ROOT / "pubspec.yaml").read_text()

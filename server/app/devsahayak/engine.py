@@ -91,6 +91,7 @@ def exists(tid: str) -> bool:
 
 # ---------------------------------------------------------------- the two live slots
 _SLOTS: dict[str, Any] = {"n": 0, "sem": None}
+KEEP_CP_COPIES = 20             # v0.945 conversation copies kept for going back (older checkpoints fall back to the count)
 _SLOT_LOCK = threading.Lock()
 LIVE: set[str] = set()
 NOW_STEP: dict[str, str] = {}    # v0.936 the step running right now, in her words ("Running the unit tests")
@@ -349,6 +350,17 @@ class Session:
         sha = _commit(self.repo, f"checkpoint: {label[:80]}")
         cps = self.meta.setdefault("checkpoints", [])
         cp = {"n": len(cps) + 1, "sha": sha, "label": label[:160], "messages": n_messages, "at": time.time()}
+        # v0.945 a copy of the conversation as it is now: after a compaction the message count no longer points at
+        # the same place, so going back restores this copy (the count stays as the fallback for older checkpoints)
+        try:
+            if self.msg_path.is_file():
+                (self.dir / f"messages.cp{cp['n']}.json").write_text(self.msg_path.read_text())
+                cp["copy"] = True
+                for old in cps[:-(KEEP_CP_COPIES - 1)] if len(cps) >= KEEP_CP_COPIES else []:
+                    (self.dir / f"messages.cp{old.get('n')}.json").unlink(missing_ok=True)
+                    old.pop("copy", None)
+        except OSError:
+            log.debug("checkpoint copy failed", exc_info=True)
         cps.append(cp)
         self.save_meta()
         return cp
@@ -362,8 +374,19 @@ class Session:
         if rc != 0:
             raise ValueError("Could not go back: " + out.strip()[:200])
         _git(self.repo, "clean", "-q", "-fd")
-        msgs = self.messages()[: int(cp.get("messages") or 0)]
+        copy = self.dir / f"messages.cp{cp['n']}.json"
+        msgs = None
+        if cp.get("copy") and copy.is_file():
+            try:
+                msgs = json.loads(copy.read_text())
+            except ValueError:
+                msgs = None
+        if msgs is None:
+            msgs = self.messages()[: int(cp.get("messages") or 0)]
         self.save_messages(msgs)
+        for c in cps:
+            if int(c["n"]) > int(n):
+                (self.dir / f"messages.cp{c.get('n')}.json").unlink(missing_ok=True)
         self.meta["checkpoints"] = [c for c in cps if int(c["n"]) <= int(n)]
         self.save_meta()
         return cp
@@ -1075,6 +1098,8 @@ def short_say(text: str, sentences: int = 3, words: int = 60) -> str:
     """v0.937 Hoola's words between steps, Claude Code's way: two or three short lines, never a wall. Cut only at the
     end of a sentence, as a prefix of what was written (so the phone's live words and the saved step agree)."""
     text = (text or "").strip()
+    if "?" in text and len(text) <= 3000:
+        return text                                         # v0.945 words that ask her something are never cut
     m = _LISTY.search(text)
     if m and text[:m.start()].strip():
         text = text[:m.start()].strip()                     # a list or code between steps: only the words before it
@@ -1106,7 +1131,7 @@ def live_sink(tid: str, txt: str, recent: list[str]) -> None:
     cut = short_say(txt)
     if LIVE_FULL.get(tid) or len(txt.split()) > len(cut.split()) + 25:
         LIVE_FULL[tid] = True
-        LIVE_TEXT[tid] = txt
+        LIVE_TEXT[tid] = txt[:20000]                        # v0.945 the start stays put; the saved step is cut the same way
     else:
         LIVE_TEXT[tid] = cut
 
@@ -1212,9 +1237,64 @@ COMPACT_SYSTEM = ("You summarise a coding session so the work can continue in a 
                   "to-do items, and her rules. Plain text, under 1,500 words. No greeting.")
 
 
+HER_WORDS_MAX = 40000             # v0.945 her own words carried whole through every compaction, up to this much
+
+
+def _her_words(messages: list[dict]) -> tuple[list[str], str]:
+    """v0.945 her own words in the conversation (the request, every follow-up, every note) and the summary an earlier
+    compaction left - so condensing never loses what she asked, only Hoola's working detail."""
+    hers: list[str] = []
+    prev = ""
+
+    def one(text: str) -> None:
+        nonlocal prev
+        text = str(text or "")
+        if text.startswith("<earlier_in_this_session>"):
+            m = re.search(r"<earlier_in_this_session>\n?(.*?)\n?</earlier_in_this_session>", text, re.S)
+            prev = (m.group(1) if m else "").strip()
+            hers.extend(x.strip() for x in re.findall(r"<her_words>\n?(.*?)\n?</her_words>", text, re.S) if x.strip())
+            return
+        if text.startswith("Task kind:"):
+            m = re.search(r"<request>\n?(.*?)\n?</request>", text, re.S)
+            if m and m.group(1).strip():
+                hers.append(m.group(1).strip())
+            return
+        tagged = re.findall(r"<(her_note_while_you_work|her_follow_up|her_change|her_comments_on_the_diff)>\n?(.*?)\n?</\1>", text, re.S)
+        if tagged:
+            hers.extend(x.strip()[:6000] for _, x in tagged if x.strip())
+            return
+        if text.startswith("The screenshots from look") or text.startswith("[an earlier look") or text.startswith("<"):
+            return
+        t = re.sub(r"\n\n\(The working copy is as you left it[^)]*\)\s*$", "", text).strip()
+        if t:
+            hers.append(t[:6000])
+
+    for m in messages:
+        if m.get("role") != "user":
+            continue
+        c = m.get("content")
+        if isinstance(c, str):
+            one(c)
+        else:
+            for blk in c or []:
+                if isinstance(blk, dict) and blk.get("type") == "text":
+                    one(blk.get("text"))
+    if sum(len(x) for x in hers) > HER_WORDS_MAX and len(hers) > 1:   # the first ask + the newest ones that fit
+        first, rest, room = hers[0][:12000], [], HER_WORDS_MAX - min(len(hers[0]), 12000)
+        for x in reversed(hers[1:]):
+            if len(x) > room:
+                break
+            rest.insert(0, x)
+            room -= len(x)
+        hers = [first] + ([f"[{len(hers) - 1 - len(rest)} earlier messages of hers are in the summary]"] if len(rest) < len(hers) - 1 else []) + rest
+    return hers, prev
+
+
 def compact(messages: list[dict], keep_tail: int = 8) -> list[dict]:
     """The older part of the conversation -> one summary message; the newest turns stay as they are. The cut is made
-    just before an ASSISTANT message, so every kept tool_result keeps its tool_use."""
+    just before an ASSISTANT message, so every kept tool_result keeps its tool_use. v0.945: her own words (the
+    request, follow-ups, notes) ride along word for word and an earlier summary is handed over whole; a long session
+    is cut in the middle, never its start."""
     if len(messages) <= keep_tail + 2:
         return messages
     cut = len(messages) - keep_tail
@@ -1223,31 +1303,41 @@ def compact(messages: list[dict], keep_tail: int = 8) -> list[dict]:
     if cut <= 1:
         return messages
     old = messages[:cut]
+    hers, prev = _her_words(old)
     text = []
     for m in old:
         c = m.get("content")
         if isinstance(c, str):
+            if c.startswith("<earlier_in_this_session>"):
+                continue                                   # handed over whole below
             text.append(f"[{m['role']}] {c[:6000]}")
             continue
         for b in c or []:
             if not isinstance(b, dict):
                 continue
             if b.get("type") == "text":
+                if str(b.get("text") or "").startswith("<earlier_in_this_session>"):
+                    continue
                 text.append(f"[{m['role']}] {str(b.get('text'))[:4000]}")
             elif b.get("type") == "tool_use":
                 text.append(f"[tool call] {b.get('name')} {json.dumps(b.get('input'))[:600]}")
             elif b.get("type") == "tool_result":
                 cc = b.get("content")
                 text.append(f"[tool result] {str(cc)[:1200]}")
-    blob = "\n".join(text)[-160000:]
-    blocks, _ = B.call(COMPACT_SYSTEM, [{"role": "user", "content": "<session>\n" + blob + "\n</session>\nSummarise it."}],
-                       [], max_tokens=6000, think=False)
+    blob = "\n".join(text)
+    if len(blob) > 160000:                                 # the start (how it began) and the newest work, not just the end
+        blob = blob[:50000] + "\n[... the middle of the session is left out ...]\n" + blob[-110000:]
+    ask = ("<earlier_summary>\n" + prev + "\n</earlier_summary>\n" if prev else "") + "<session>\n" + blob + "\n</session>\n"
+    ask += "Summarise it." + (" The earlier summary is part of it: keep what still matters from it." if prev else "")
+    blocks, _ = B.call(COMPACT_SYSTEM, [{"role": "user", "content": ask}], [], max_tokens=6000, think=False)
     summary = "\n".join(str(b.get("text") or "") for b in blocks if b.get("type") == "text").strip()
     if not summary:
         return messages
     STATS["compacted"] += 1
+    words = "".join(f"<her_words>\n{x}\n</her_words>\n" for x in hers)
     head = {"role": "user", "content": "<earlier_in_this_session>\n" + summary + "\n</earlier_in_this_session>\n"
-                                       "That is the summary of the session so far. Continue from where it stopped."}
+                                       + ("Her own words so far, as she wrote them (what she asked still holds unless she changed it):\n" + words if words else "")
+                                       + "That is the summary of the session so far. Continue from where it stopped."}
     return [head] + messages[cut:]
 
 
@@ -1573,7 +1663,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     txt = short_say(txt)                                      # v0.937 words between steps: 2-3 lines
                 shown = bool(LIVE_TEXT.get(tid))                              # v0.944 she already watched these words come in
                 if shown or not said_before(txt, recent):                     # v0.937 the same paragraph never twice
-                    emit({"k": "say", "text": txt})                           # ... but words she watched never vanish
+                    emit({"k": "say", "text": txt[:20000]})                           # ... but words she watched never vanish
                     recent.append(txt)
                     last_said = txt
         LIVE_TEXT.pop(tid, None)                          # its words are a step now: the live copy goes
@@ -1725,7 +1815,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         notes = []
         if inbox:                                         # v0.932 also read at done: a note that came in is never lost
             try:
-                notes = [str(x)[:2000] for x in (inbox() or []) if str(x).strip()]
+                notes = [str(x)[:6000] for x in (inbox() or []) if str(x).strip()]
             except Exception:
                 notes = []
         if notes:
@@ -1737,7 +1827,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             results.append({"type": "text", "text": "<her_note_while_you_work>\n" + "\n".join(notes)
                             + "\n</her_note_while_you_work>\nTake this into account from your next step."})
             for n in notes:
-                emit({"k": "note", "text": n[:2000], "her": True})
+                emit({"k": "note", "text": n[:6000], "her": True})
         if look_pics:
             results.append({"type": "text", "text": "The screenshots from look (phone first, then computer):"})
             results.extend(look_pics)

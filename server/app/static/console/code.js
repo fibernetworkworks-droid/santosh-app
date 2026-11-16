@@ -553,12 +553,12 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'note': return `<div class="hcd-me sm">${esc(s.text)}<small>you, while Hoola worked</small></div>`;
       case 'rules': return `<div class="hcd-step">${svg('list')}<span>Read the repo's rules · ${(s.paths || []).map(p).join(', ')}</span>${at}</div>`;
       case 'read': return `<div class="hcd-step">${svg('read')}<span>Read ${p(s.path)}${s.lines && s.lines[0] ? ` · lines ${s.lines[0]}–${s.lines[1] || 'end'}` : ''}</span>${at}</div>`;
-      case 'search': return `<div class="hcd-step">${svg('search')}<span>Searched ${p(s.q)} · ${plural(s.n, 'file')}</span>${at}</div>`;
+      case 'search': return `<div class="hcd-step">${svg('search')}<span>Searched ${p(s.q)} · ${plural(s.num ?? s.n, 'file')}</span>${at}</div>`;
       case 'list': return `<div class="hcd-step">${svg('list')}<span>Looked in folder ${p(s.path || '/')}</span>${at}</div>`;
-      case 'usages': return `<div class="hcd-step">${svg('search')}<span>Found where ${p(s.name)} is used · ${plural(s.n, 'place')}</span>${at}</div>`;
+      case 'usages': return `<div class="hcd-step">${svg('search')}<span>Found where ${p(s.name)} is used · ${plural(s.num ?? s.n, 'place')}</span>${at}</div>`;
       case 'edit': case 'new': { const lab = `${s.k === 'new' ? 'Created' : 'Edited'} ${p(s.path)} <em class="add">+${s.added || 0}</em>${s.k === 'edit' ? ` <em class="del">−${s.removed || 0}</em>` : ''}${s.by ? ` · by ${esc(s.by)}` : ''}`;
         return s.diff && s.diff.length ? fold('e' + i, lab, diffHTML(s.diff), 'row', verbose) : `<div class="hcd-step">${svg(s.k === 'new' ? 'new' : 'edit')}<span>${lab}</span>${at}</div>`; }
-      case 'diff': return `<div class="hcd-step">${svg('read')}<span>Checked its own change · ${plural(s.n, 'file')}</span>${at}</div>`;
+      case 'diff': return `<div class="hcd-step">${svg('read')}<span>Checked its own change · ${plural(s.num ?? s.n, 'file')}</span>${at}</div>`;
       case 'check': return `<div class="hcd-step ${s.ok ? 'ok' : 'bad'}">${svg(s.ok ? 'ok' : 'bad')}<span><b>Ran your tests</b>${s.only ? ` (${esc(s.only)})` : ''} · <span class="${s.ok ? 'add' : 'del'}">${s.ok ? 'passed' : 'failed'}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}${s.cmd ? ` · ${p(s.cmd)}` : ''}</span>${at}</div>${!s.ok && s.tail && s.tail.length ? `<pre class="hcd-diff">${s.tail.map(x => `<span class="${/fail|error|assert/i.test(x) ? 'del' : 'ctx'}">${esc(x)}</span>`).join('\n')}</pre>` : ''}`;
       case 'check_off': return `<div class="hcd-step">${svg('bad')}<span>Your tests could not run here - this change is not measured</span>${at}</div>`;
       case 'grep': return `<div class="hcd-step">${svg('search')}<span>Searched the test log for ${p(s.q)}</span>${at}</div>`;
@@ -568,20 +568,20 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'todo': return `<div class="hcd-todo">${(s.items || []).map(x => `<div class="hcd-td ${esc(x.status)}"><i aria-hidden="true">${x.status === 'completed' ? '✓' : x.status === 'in_progress' ? '●' : '○'}</i><span>${esc(x.content)}</span></div>`).join('')}</div>`;
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;
-      case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.n))} saved - you can go back to here</span>${at}</div>`;
-      case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>Went back to checkpoint ${esc(String(s.n))}.</b> The working copy and the conversation are as they were then.</span>${at}</div>`;
+      case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.num ?? s.n))} saved - you can go back to here</span>${at}</div>`;
+      case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>Went back to checkpoint ${esc(String(s.num ?? s.n))}.</b> The working copy and the conversation are as they were then.</span>${at}</div>`;
       case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
         if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}) · ${esc(s.task || '')}</span>${at}</div>`;
         const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
         return s.report ? fold('a' + i, lab, `<pre class="hcd-term">${esc(s.report)}</pre>`, 'row', verbose) : `<div class="hcd-step ok">${svg('ok')}<span>${lab}</span>${at}</div>`; }
       case 'memory': { /* Hoola Code memory: the repo's notes from earlier sessions */
-        const what = s.action === 'remembered' ? `Wrote ${plural(s.n || 0, 'note')} to this repo's memory` : s.action === 'save' ? `Saved a note to this repo's memory${s.title ? ': ' + esc(s.title) : ''}`
-          : s.action === 'search' ? `Searched this repo's memory${s.q ? ' for ' + p(s.q) : ''} · ${plural(s.n || 0, 'note')}` : `Read ${plural(s.n || 0, 'note')} from this repo's memory`;
+        const what = s.action === 'remembered' ? `Wrote ${plural(s.num ?? s.n ?? 0, 'note')} to this repo's memory` : s.action === 'save' ? `Saved a note to this repo's memory${s.title ? ': ' + esc(s.title) : ''}`
+          : s.action === 'search' ? `Searched this repo's memory${s.q ? ' for ' + p(s.q) : ''} · ${plural(s.num ?? s.n ?? 0, 'note')}` : `Read ${plural(s.num ?? s.n ?? 0, 'note')} from this repo's memory`;
         return `<div class="hcd-step dim">${svg('list')}<span>${what}</span>${at}</div>`; }
       case 'reality': { /* v0.814 The Agency's reality checker, the last look before a round finishes */
         const ok = s.verdict === 'ready', lab = `<b>Reality check</b> · <span class="${ok ? 'add' : s.verdict === 'needs_work' ? 'del' : ''}">${ok ? 'ready' : s.verdict === 'needs_work' ? 'needs work - back to it' : 'no clear verdict'}</span>`;
         return s.text ? fold('r' + i, lab, `<pre class="hcd-term">${esc(s.text)}</pre>`, 'row', verbose || !ok) : `<div class="hcd-step">${svg(ok ? 'ok' : 'bad')}<span>${lab}</span>${at}</div>`; }
-      case 'gate': return `<div class="hcd-step bad">${svg('bad')}<span><b>Quality check before finishing</b> · ${plural(s.n || 0, 'thing')} to clean up${(s.items || []).length ? ': ' + (s.items || []).slice(0, 3).map(x => p(x)).join(', ') : ''}</span>${at}</div>`;
+      case 'gate': return `<div class="hcd-step bad">${svg('bad')}<span><b>Quality check before finishing</b> · ${plural(s.num ?? s.n ?? 0, 'thing')} to clean up${(s.items || []).length ? ': ' + (s.items || []).slice(0, 3).map(x => p(x)).join(', ') : ''}</span>${at}</div>`;
       case 'stopped': return `<div class="hcd-step bad">${svg('bad')}<span><b>Stopped.</b> Nothing was pushed.</span>${at}</div>`;
       default: return '';
     }

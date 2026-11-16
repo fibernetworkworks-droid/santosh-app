@@ -39,7 +39,7 @@ class CodeSessionPage extends StatefulWidget {
   State<CodeSessionPage> createState() => _CodeSessionPageState();
 }
 
-class _CodeSessionPageState extends State<CodeSessionPage> {
+class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingObserver {
   Map<String, dynamic>? _t;
   Map<String, dynamic>? _merge;
   String? _error;
@@ -57,7 +57,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   String _liveHead = '';              // v0.944 the start of the words being written now (a new reply starts from zero)
   int _fullAt = 0;                    // v0.944 when the whole session (diff, log) was last fetched
   String? _sent;                      // v0.940 her message just sent, shown until the server writes it into the thread
-  int _sentAt = 0;
+  int _sentAt = -1;                   // v0.945 the newest step number when she sent it
+  bool _wantFull = false;             // v0.945 a whole fetch asked for while a check was running: it follows at once
+  bool _resumed = false;              // v0.945 back from the background: what came meanwhile shows at once, not word by word
   bool _sentSeen = false;
   DateTime? _runSeen;                 // v0.937 the last check that said it works (a one-check gap never blinks the page)
   Map<String, dynamic> _runCarry = const {};
@@ -71,6 +73,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scroll.addListener(() {
       final away = _scroll.hasClients && _scroll.position.maxScrollExtent - _scroll.offset > 240;
       if (away != _away && mounted) setState(() => _away = away);
@@ -78,16 +81,40 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     _load();
   }
 
-  void _toEnd({bool animate = true}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  void _toEnd({bool animate = true, int tries = 4}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!_scroll.hasClients) return;
       final end = _scroll.position.maxScrollExtent;
-      animate ? _scroll.animateTo(end, duration: const Duration(milliseconds: 260), curve: Curves.easeOut) : _scroll.jumpTo(end);
+      if (animate) {
+        await _scroll.animateTo(end, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+      } else {
+        _scroll.jumpTo(end);
+      }
+      // v0.945 the list builds lazily, so its true end is known only once the last rows are laid out: go again
+      if (tries > 1 && mounted && _scroll.hasClients && _scroll.position.maxScrollExtent - _scroll.offset > 1) {
+        _toEnd(animate: false, tries: tries - 1);
+      }
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // v0.945 in the background the page stops asking every second; back on screen it reads the session whole once
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _poll?.cancel();
+      _poll = null;
+      _pollEvery = 0;
+      _tick?.cancel();
+      _tick = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _resumed = true;
+      _load(full: true);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
     _tick?.cancel();
     _msg.dispose();
@@ -98,9 +125,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
 
   bool _live(Map<String, dynamic> t) => codeRunning(t) || const {'ci_running', 'new'}.contains(cs(t['status']));
 
-  Future<void> _load({bool full = false}) async {
+  Future<void> _load({bool full = false, bool replace = false}) async {
     final api = widget.app.api;
-    if (api == null || _loading) return;
+    if (api == null) return;
+    if (_loading) {
+      if (full) _wantFull = true;                     // v0.945 never lost: it runs as soon as this check ends
+      return;
+    }
     _loading = true;
     try {
       // v0.944 a check asks only for the steps after the newest one it holds and leaves the diff / log out; the whole
@@ -117,13 +148,24 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
           return _load(full: true);
         }
         t = {
-          for (final k in const ['diff', 'file_diffs', 'log', 'pr_body', 'found']) if (old.containsKey(k)) k: old[k],
+          ...old,                                       // v0.945 what a check leaves out (diff, log, working copy) stays
           ...t,
           'steps': [...cl(old['steps']), ...fresh.where((x) => _stepN(x, -1) > _lastN)],
         };
         if (codeRunning(old) && !codeRunning(t)) Future.microtask(() => _load(full: true));   // a round ended: the diff changed
       } else {
         _fullAt = DateTime.now().millisecondsSinceEpoch;
+        if (prev != null && !replace) {
+          // v0.945 a whole fetch never takes away a message she already saw (a long session folds old work steps on
+          // the server): the steps she holds stay, in step order, and new ones join them
+          final fresh = cl(t['steps']);
+          final have = {for (final x in fresh) _stepN(x, -1)};
+          t = {
+            ...t,
+            'steps': [...fresh, ...cl(prev['steps']).where((x) => !have.contains(_stepN(x, -1)))]
+              ..sort((a, b) => _stepN(a, -1).compareTo(_stepN(b, -1))),
+          };
+        }
       }
       final allSteps = cl(t['steps']);
       if (allSteps.isNotEmpty) _lastN = _stepN(allSteps.last, allSteps.length - 1);
@@ -134,7 +176,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         _runCarry = {'live': t['live'], 'now': t['now'], 'status': t['status']};
       } else if (_runSeen != null && DateTime.now().difference(_runSeen!) < const Duration(seconds: 3) &&
           cs(_runCarry['status']) == cs(t['status']) && cs(t['question']).isEmpty) {
-        t = {...t, 'running': true, 'live': _runCarry['live'], 'now': _runCarry['now']};
+        // v0.945 the words it was writing became a message already: they are not drawn a second time
+        final says = cl(t['steps']).where((x) => cs(x['k']) == 'say').toList();
+        final saved = says.isNotEmpty && _stepN(says.last, -1) > _lastSayN;
+        t = {...t, 'running': true, 'live': saved ? '' : _runCarry['live'], 'now': _runCarry['now']};
       }
       final steps = cl(t['steps']);
       final n = steps.length;                 // v0.937 only new steps move the page; growing words follow on their own
@@ -155,6 +200,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
           _explainSeen = cs(t['explain']);
           _landed.remove('explain');
         }
+      }
+      if (_resumed) {
+        // v0.945 back from the background: what arrived meanwhile is shown whole, the page does not replay it
+        _resumed = false;
+        _openN = _lastN;
+        _landed.clear();
+        if (writing.isNotEmpty) _landed['live'] = _words(writing).length;
       }
       final says0 = steps.where((x) => cs(x['k']) == 'say').toList();
       _lastSayN = says0.isEmpty ? -1 : _stepN(says0.last, -1);
@@ -188,6 +240,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       if (mounted && _t == null) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
     } finally {
       _loading = false;
+      if (_wantFull && mounted) {
+        _wantFull = false;
+        Future.microtask(() => _load(full: true));
+      }
     }
   }
 
@@ -244,7 +300,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     if (text.isNotEmpty && mode != 'plan') {
       setState(() {
         _sent = text;
-        _sentAt = cl(t['steps']).length;
+        _sentAt = _lastN;                             // v0.945 by step number, not by place in the list
         _away = false;
       });
       if (words == null) _msg.clear();
@@ -454,10 +510,18 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                         ? const CodeRing(size: 22)
                         : Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center, style: codeSans(c, color: c.ink2))))
                 : RefreshIndicator(
-                    onRefresh: () => _load(full: true),
+                    onRefresh: () => _load(full: true, replace: true),
                     color: c.ink,
                     child: Stack(fit: StackFit.expand, children: [
-                      ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || madeN > 0 ? 76 : 24), children: _body(c, t)),
+                      Builder(builder: (_) {
+                        // v0.945 a long session lays out only the rows on screen
+                        final rows = _body(c, t);
+                        return ListView.builder(
+                            controller: _scroll,
+                            padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || madeN > 0 ? 76 : 24),
+                            itemCount: rows.length,
+                            itemBuilder: (_, i) => rows[i]);
+                      }),
                       if (_away || a + r > 0 || madeN > 0)
                         Positioned(
                           bottom: 12,
@@ -527,9 +591,31 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       group.clear();
     }
 
+    // v0.945 what a "go back to a checkpoint" undid stays readable but greyed out
+    final undone = <(int, int)>[
+      for (final s in steps)
+        if (cs(s['k']) == 'rewind' && ci(s['from']) >= 0 && s.containsKey('from')) (ci(s['from']), _stepN(s, -1)),
+    ];
+    var dimFrom = out.length;
+    var dimOn = false;
+    void dimEnd() {
+      if (!dimOn) return;
+      for (var j = dimFrom; j < out.length; j++) {
+        out[j] = Opacity(opacity: .45, child: out[j]);
+      }
+    }
+
     for (final s in steps) {
       si++;
       final k = cs(s['k']);
+      final sn0 = _stepN(s, si);
+      final u = undone.any((r) => sn0 > r.$1 && sn0 < r.$2);
+      if (u != dimOn) {
+        flush(last: false);
+        dimEnd();
+        dimFrom = out.length;
+        dimOn = u;
+      }
       if (k == 'say') {
         flush(last: false);
         final text = cs(s['text']);
@@ -540,7 +626,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         final key = 'n$sn';
         out.add(_openN > -2 && sn > _openN && (_landed[key] ?? 0) < _words(text).length
             ? _land(text, key, done: true, actions: actions)
-            : _reply(text, 'say$si', actions: actions));
+            : _reply(text, 'say$sn', actions: actions));
       } else if (k == 'round') {
         // v0.944 where one piece of work ended: "Worked for 3m 12s", like Claude Code
         flush(last: false);
@@ -568,7 +654,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
           flush(last: false);
           out.add(Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: CodeServerCard(key: ValueKey('srv${cs(s['id'])}${cs(s['state'])}$si'), app: widget.app, step: s)));
+              child: CodeServerCard(key: ValueKey('srv${cs(s['id'])}${cs(s['state'])}${_stepN(s, si)}'), app: widget.app, step: s)));
         } else {
           group.add(s);
         }
@@ -577,12 +663,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         flush(last: false);
         out.add(Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: CodeLookCard(key: ValueKey('look$si'), app: widget.app, id: widget.id, step: s)));
+            child: CodeLookCard(key: ValueKey('look${_stepN(s, si)}'), app: widget.app, id: widget.id, step: s)));
       } else if (k == 'note') {
         flush(last: false);
         // v0.940 every message she sends after the first is HER message, drawn like the first one
-        out.add(Padding(padding: const EdgeInsets.only(top: 18), child: _her(c, cs(s['text']), const [], key: 'note$si')));
-        if (_sent != null && si >= _sentAt && _same(cs(s['text']), _sent!)) _sentSeen = true;
+        out.add(Padding(padding: const EdgeInsets.only(top: 18), child: _her(c, cs(s['text']), const [], key: 'note${_stepN(s, si)}')));
+        if (_sent != null && _stepN(s, si) > _sentAt && _same(cs(s['text']), _sent!)) _sentSeen = true;
       } else if (k == 'todo') {
         todo = s;
       } else if (k == 'think') {
@@ -592,6 +678,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       }
     }
     flush(last: true);
+    dimEnd();
     if (!running && cl(t['risky_files']).isNotEmpty) out.add(CodeRiskyNote(files: cl(t['risky_files'])));
     if (live.isNotEmpty) out.add(_land(live, 'live', done: false));
     if (todo != null && cl(todo['items']).isNotEmpty) out.add(_todo(c, cl(todo['items'])));
@@ -937,17 +1024,17 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       case 'read':
         return _line(c, Icons.description_outlined, [const TextSpan(text: 'Read '), _code(c, cs(s['path']))]);
       case 'search':
-        return _line(c, Icons.search_rounded, [const TextSpan(text: 'Searched '), _code(c, cs(s['q'])), TextSpan(text: ' · ${cPlural(ci(s['n']), 'place')}')]);
+        return _line(c, Icons.search_rounded, [const TextSpan(text: 'Searched '), _code(c, cs(s['q'])), TextSpan(text: ' · ${cPlural(ci(s['num'] ?? s['n']), 'place')}')]);
       case 'list':
         return _line(c, Icons.folder_open_rounded, [const TextSpan(text: 'Looked in '), _code(c, cs(s['path']).isEmpty ? '/' : cs(s['path']))]);
       case 'usages':
-        return _line(c, Icons.search_rounded, [const TextSpan(text: 'Found where '), _code(c, cs(s['name'])), TextSpan(text: ' is used · ${cPlural(ci(s['n']), 'place')}')]);
+        return _line(c, Icons.search_rounded, [const TextSpan(text: 'Found where '), _code(c, cs(s['name'])), TextSpan(text: ' is used · ${cPlural(ci(s['num'] ?? s['n']), 'place')}')]);
       case 'edit':
         return _line(c, Icons.edit_outlined, [const TextSpan(text: 'Edited '), _code(c, cs(s['path']))], trailing: CodeStat(ci(s['added']), ci(s['removed']), size: 12));
       case 'new':
         return _line(c, Icons.add_rounded, [const TextSpan(text: 'Wrote '), _code(c, cs(s['path']))], trailing: CodeStat(ci(s['added']), 0, size: 12));
       case 'diff':
-        return _line(c, Icons.difference_outlined, [TextSpan(text: 'Checked its own change · ${cPlural(ci(s['n']), 'file')}')]);
+        return _line(c, Icons.difference_outlined, [TextSpan(text: 'Checked its own change · ${cPlural(ci(s['num'] ?? s['n']), 'file')}')]);
       case 'check':
         {
           final ok = s['ok'] == true;
@@ -980,9 +1067,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       case 'wait':
         return _line(c, Icons.hourglass_empty_rounded, [TextSpan(text: cs(s['text']).isEmpty ? 'Waiting for a free coding slot' : cs(s['text']))]);
       case 'ckpt':
-        return _line(c, Icons.bookmark_border_rounded, [TextSpan(text: 'Checkpoint ${ci(s['n'])} saved')]);
+        return _line(c, Icons.bookmark_border_rounded, [TextSpan(text: 'Checkpoint ${ci(s['num'] ?? s['n'])} saved')]);
       case 'rewind':
-        return _line(c, Icons.undo_rounded, [TextSpan(text: 'Went back to checkpoint ${ci(s['n'])}')]);
+        return _line(c, Icons.undo_rounded, [
+          TextSpan(text: 'Went back to checkpoint ${ci(s['num'] ?? s['n'])}${ci(s['from']) >= 0 && s.containsKey('from') ? ' - the greyed part above was undone' : ''}')
+        ]);
       case 'pass':
         {
           const names = {'plan': 'Plan pass', 'review': "Hoola's own review", 'ci_fix': 'CI fix round', 'comments': "Reviewers' comments"};

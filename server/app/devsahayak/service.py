@@ -704,7 +704,13 @@ def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
         cp = EN.rewind(tid, n)
     except ValueError as e:
         raise DevError(str(e))
-    _Step(tid).event({"k": "rewind", "n": cp["n"], "text": cp.get("label", "")[:80]})
+    with session() as s:
+        row = s.get(DevTask, tid)
+        steps = _j(row.steps or "", []) if row is not None else []
+    # v0.945 the step where that checkpoint was saved: what came after it is undone (the phone dims it)
+    since = next((int(x.get("n", -1)) for x in reversed(steps) if isinstance(x, dict) and x.get("k") == "ckpt"
+                  and int(x.get("num", -1)) == int(cp["n"])), -1)
+    _Step(tid).event({"k": "rewind", "n": cp["n"], "from": since, "text": cp.get("label", "")[:80]})
     with session() as s:
         row = s.get(DevTask, tid)
         _log(row, f"rewound to checkpoint {cp['n']}")
@@ -729,7 +735,7 @@ def _live_text(tid: str) -> str:
         return ""
     try:
         from . import engine as EN
-        return EN.LIVE_TEXT.get(tid, "")[-20000:]
+        return EN.LIVE_TEXT.get(tid, "")[:20000]
     except Exception:
         return ""
 
@@ -1190,17 +1196,23 @@ def get_task(tenant: str, ref: str, since: int | None = None) -> dict[str, Any]:
     """The session for her page. since = the last step number the phone has: only newer steps come back and the heavy
     parts (diff, per-file diffs, log, PR body) stay out - the phone asks for them when she opens Changes (v0.944)."""
     with session() as s:
-        v = task_view(_find_task(s, tenant, ref), True)
+        t = _find_task(s, tenant, ref)
+        if since is None:
+            v = task_view(t, True)
+        else:                                           # v0.945 a check each second: no git status, no diffs, no log
+            v = task_view(t, False)
+            v["steps"] = _j(t.steps or "", [])
+            v["notes"] = [str(x) for x in _j(t.notes or "", [])]
+            v["notes_waiting"] = len(v["notes"])
+            v["made"] = _made(t.id)
     steps = v.get("steps") or []
     for i, x in enumerate(steps):
         if isinstance(x, dict) and "n" not in x:
             x["n"] = i                                  # older sessions: a step's place is its number
-    v["last_n"] = steps[-1]["n"] if steps and isinstance(steps[-1], dict) else -1
+    v["last_n"] = max((int(x.get("n", -1)) for x in steps if isinstance(x, dict)), default=-1)
     if since is not None:
         v["steps"] = [x for x in steps if isinstance(x, dict) and int(x.get("n", -1)) > since]
         v["since"] = since
-        for k in ("diff", "file_diffs", "log", "pr_body", "found", "text_full"):
-            v.pop(k, None)
     return v
 
 
@@ -1598,7 +1610,7 @@ KEEP_HEAD = 60                   # ... and the first steps (how the session bega
 # v0.944 the conversation itself is never folded away: her messages, Hoola's words, the round markers and the things it
 # made stay; only the work steps in the middle of a very long session are folded
 CONVO_KINDS = {"say", "note", "round", "made", "look"}
-KEEP_CONVO = 600
+STEPS_CEILING = 2000             # v0.945 only work steps fold; her messages and Hoola's words stay up to this many steps
 
 
 def fold_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1609,8 +1621,8 @@ def fold_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     tail_n = MAX_STEPS // 2
     tail = mid[-tail_n:]
     folded = mid[:-tail_n]
-    room = max(0, MAX_STEPS - KEEP_HEAD - 1 - tail_n)       # never past MAX_STEPS, even a session that is all talk
-    convo = [x for x in folded if x.get("k") in CONVO_KINDS][-min(KEEP_CONVO, room):] if room else []
+    room = max(0, STEPS_CEILING - KEEP_HEAD - 1 - tail_n)   # v0.945 the whole conversation, up to a hard ceiling
+    convo = [x for x in folded if x.get("k") in CONVO_KINDS][-room:] if room else []
     kept = {id(x) for x in convo}
     dropped = [x for x in folded if id(x) not in kept and x.get("k") != "gap"]
     gap = dict(next((x for x in folded if x.get("k") == "gap"), None) or {"k": "gap", "text": "Earlier steps folded"})
@@ -1618,6 +1630,19 @@ def fold_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
         gap["n"] = dropped[0].get("n", 0)                   # the gap takes the number of the first step it stands for
     out = head + [gap] + convo + tail
     return sorted(out, key=lambda x: x.get("n", -1)) if all("n" in x for x in out) else out
+
+
+_STEP_LOCKS: dict[str, Any] = {}
+_STEP_LOCKS_GUARD = threading.Lock()
+
+
+def _step_lock(tid: str) -> Any:
+    """v0.945 one lock per session: two writers (a round + its helper agents, or a note) never lose each other's step."""
+    with _STEP_LOCKS_GUARD:
+        lk = _STEP_LOCKS.get(tid)
+        if lk is None:
+            lk = _STEP_LOCKS[tid] = threading.Lock()
+        return lk
 
 
 class _Step:
@@ -1632,13 +1657,16 @@ class _Step:
         _progress(self.tid, line)
 
     def event(self, ev: dict[str, Any]) -> None:
+        ev = dict(ev)
+        if "n" in ev:
+            ev["num"] = ev.pop("n")             # v0.945 a step's own count (checkpoint 3, 12 files) is num; n is the step number
         try:
-            with session() as s:
+            with _step_lock(self.tid), session() as s:   # v0.945 helper agents write from their own threads: one at a time
                 row = s.get(DevTask, self.tid)
                 if row is None:
                     return
                 steps = _j(row.steps or "", [])
-                last_n = steps[-1].get("n", len(steps) - 1) if steps else -1
+                last_n = max((int(x.get("n", -1)) for x in steps if isinstance(x, dict)), default=len(steps) - 1)
                 steps.append({**ev, "at": now().isoformat(), "n": int(last_n) + 1})   # v0.944 a stable number per step
                 row.steps = json.dumps(fold_steps(steps))
         except Exception:
@@ -1677,6 +1705,14 @@ def _take_notes(tid: str) -> list[str]:
         return notes
 
 
+def _boxed(tid: str) -> bool:
+    try:
+        from . import engine as EN
+        return bool(EN.on() and EN.exists(tid))
+    except Exception:
+        return False
+
+
 def add_note(tenant: str, ref: str, text: str, comments: Any = None) -> dict[str, Any]:
     """Her words while the work runs: the loop reads them before its next step (never mid-tool). Her comments on lines
     of the diff ride along in the same note."""
@@ -1687,11 +1723,13 @@ def add_note(tenant: str, ref: str, text: str, comments: Any = None) -> dict[str
         raise DevError("Write what Hoola should know.")
     with session() as s:
         t = _find_task(s, tenant, ref)
-        if t.id not in _RUNNING:
+        if t.id not in _RUNNING and not (t.job and _boxed(t.id)):   # v0.945 a round a restart cut still takes her note
             raise DevError("Hoola is not working on this right now - use 'Ask for a change' instead.")
         notes = _j(t.notes or "", [])
-        notes.append(clean[:6000 if block else 2000])
-        t.notes = json.dumps(notes[-10:])
+        if len(notes) >= 10:                              # v0.945 never dropped: she is told to wait instead
+            raise DevError("Hoola has 10 of your notes still to read - wait a moment for it to take them in.")
+        notes.append(clean[:6000])
+        t.notes = json.dumps(notes)
         _log(t, "her note while working")
     return {"ok": True, "queued": True, "warn": warn.strip()}
 
@@ -3547,12 +3585,19 @@ def _sweep_ws() -> None:
     EN.sweep(keep, protect=protect)             # v0.878 an open PR's working copy is never swept for age alone
 
 
-def _beat_fresh(job: dict[str, Any], seconds: int) -> bool:
+_PROC_START = now()
+
+
+def _beat_fresh(job: dict[str, Any], seconds: int, restart: bool = False) -> bool:
     try:
         at = datetime.fromisoformat(str(job.get("beat") or ""))
     except ValueError:
         return False
     at = at if at.tzinfo else at.replace(tzinfo=now().tzinfo)
+    # v0.945 a beat from before this server started, once 30 s have passed (a live round beats every 20 s), is a round
+    # the restart cut: it is picked up now, not after the full wait
+    if restart and at < _PROC_START and (now() - _PROC_START).total_seconds() > 30:
+        return False
     return (now() - at).total_seconds() < seconds
 
 
@@ -3566,7 +3611,7 @@ def _resume_cut_runs() -> None:
         rows = [(t.tenant_id, t.id, _j(t.job or "", {})) for t in
                 s.scalars(select(DevTask).where(DevTask.job.is_not(None)).limit(40)).all()]
     for tenant, tid, job in rows:
-        if not job or tid in _RUNNING or _beat_fresh(job, 180):
+        if not job or tid in _RUNNING or _beat_fresh(job, 180, restart=True):
             continue
         boxed = EN.on() and EN.exists(tid)
         if not boxed and _beat_fresh(job, 1800):
