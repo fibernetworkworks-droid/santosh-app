@@ -5813,3 +5813,32 @@ Now (`devsahayak/ghapp.py`, `service.github_connect_url` / `github_installed`, `
 Owner, once: App settings > Callback URL = https://hoola.ainewtika.com/api/devsahayak/github/installed, Generate a
 new client secret, add both repo secrets, run vps-ops github_app. Tests `test_v0956_github_one_tap.py` (7).
 NOT VERIFIED on her phone.
+
+## v0.957.0 HOOLA CODE SMOOTH (owner, her screen recording: "CHECK HOW THE PLAN CARD VIBRATES ... A REPLY LANDS VERY FAST IT MUST BE PERFECT SMOOTH AND CONSISTENT AND MEDIUM SLOW ... CHAT LANDING, CONVERSATION FLAWS")
+
+Read from her 3 min 14 s recording frame by frame (a 9-step Bridle-removal job on Qwen):
+- The plan (Hoola's todo list) was a ~300 px card drawn at the END of the thread, under the words being written. Every
+  wrapped word, every new step line and every coming and going of the working row pushed it up and down.
+- The working row ("Thinking · 1:20") was drawn only while no words streamed: it vanished when words began and came
+  back when they were saved - 44 px each time, shaking everything under it.
+- Two scroll moves fought: a 260 ms slide to an end measured at its start, then a snap to the true end once the lazy
+  list laid the last rows out; words landing also jumped the list on every tick.
+- Words landed at ~19 a second and leapt to ~38 a second once 160 waited.
+- Two messages could land at once in two places (the previous one still landing while the next one's live words began).
+
+Fixed (phone only, `lib/ui/code/code_session.dart` + `code_words.dart`):
+- `_planDock`: the plan is a dock just above the typing box, like Claude Code's todo list - one steady line (the step it
+  is on, "4 of 9", a bar that slides with `TweenAnimationBuilder`), a tap opens every step (`AnimatedSize`, at most 40 %
+  of the screen, scrolls inside). Never in the thread.
+- The working row is always the last row while it works; the part working now folds into it, and while words stream the
+  part is a faint line where it stays once those words are saved, so nothing moves when they are.
+- One follow mechanism, `_stick()`: after layout, while she has not scrolled up and is not touching the screen, jump to
+  the true end; called on every build, every landed word and every `ScrollMetricsNotification` (the thread grew). The
+  Newest button still slides. `findChildIndexCallback` keeps keyed rows (landing words, the working row) alive when a
+  row above them comes or goes.
+- `CodeLanding.msPerWord`: 90 ms a word (~11 a second) up to 60 waiting, easing by smoothstep to 45 ms (~22 a second)
+  at 300 waiting - the pace never steps.
+- `CodeLanding.hold`: one message lands at a time, in order; a newer one waits for the one above it.
+
+Tests: `server/tests/test_v0957_hoola_code_smooth.py` (5), v0935 / v0937 pins moved. NOT VERIFIED on her phone (CI
+compiles the Dart first).

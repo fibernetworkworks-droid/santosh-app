@@ -65,18 +65,18 @@ def test_the_phone_is_steady_and_the_words_land_slowly():
     # no flip on a one-check gap, no scroll fight, the list end fixed
     assert "DateTime.now().difference(_runSeen!) < const Duration(seconds: 3)" in ses
     assert "final n = steps.length;" in ses
-    assert "_scroll.position.isScrollingNotifier.value" in ses
+    assert "p.isScrollingNotifier.value" in ses   # v0.957 the one follow (_stick) never pulls against her scroll
     assert "a + r > 0 || _away ? 76 : 24" not in ses
     # the Hoola mark on the working row, one row kept between checks
     run = ses[ses.index("Widget _runningRow("):ses.index("Widget _changesPill(")]
     assert "const HoolaMark(size: 22)" in run and "ValueKey('working')" in run and "'>_'" not in run
     # slower landing, each word fading in; the closing answer lands too
-    assert "(waiting > 160 ? 26 : 52)" in words and "sans: true, fade: true" in words
+    assert "CodeLanding.msPerWord(waiting)" in words and "sans: true, fade: true" in words
     assert "final bool fade;" in md and "_fadeSteps = [.82, .62, .42, .22]" in md
     assert "_land(ex, 'explain', done: true, actions: true)" in ses
 
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.956.0"' in main
-    assert "version: 0.956.0+955" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.957.0"' in main
+    assert "version: 0.957.0+956" in (ROOT / "pubspec.yaml").read_text()

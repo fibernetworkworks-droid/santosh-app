@@ -424,5 +424,5 @@ def test_first_visit_race_on_the_connectors_user_row(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.956.0"
-    assert "0.956.0+955" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.957.0"
+    assert "0.957.0+956" in (REPO / "pubspec.yaml").read_text()
