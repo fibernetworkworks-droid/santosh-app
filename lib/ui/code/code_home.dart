@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../state.dart';
+import '../hoola_auto.dart' show AutoHomePage;
 import '../hoola_theme.dart';
 import 'code_kit.dart';
 import 'code_more.dart';
@@ -30,6 +31,8 @@ class _HoolaCodeState extends State<HoolaCode> {
   String? _error;
   bool _all = false;
   Timer? _poll;
+  int _autoAll = -1; // v0.954 Hoola Auto projects (-1 = the server has none / not read yet)
+  int _autoNeed = 0;
 
   @override
   void initState() {
@@ -46,6 +49,7 @@ class _HoolaCodeState extends State<HoolaCode> {
   Future<void> _load() async {
     final api = widget.app.api;
     if (api == null) return;
+    _loadAuto();
     try {
       final r = await api.call('GET', '/api/devsahayak');
       if (!mounted) return;
@@ -63,6 +67,47 @@ class _HoolaCodeState extends State<HoolaCode> {
     } catch (e) {
       if (mounted) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
     }
+  }
+
+  // v0.954 the door to Hoola Auto on this screen (it was only in the old drawer, which this screen never shows)
+  Future<void> _loadAuto() async {
+    try {
+      final ps = cl(cm(await widget.app.api!.call('GET', '/api/auto/projects'))['projects']);
+      if (!mounted) return;
+      setState(() {
+        _autoAll = ps.length;
+        _autoNeed = ps.where((p) => cs(p['state']) == 'need').length;
+      });
+    } catch (_) {
+      // a server without Hoola Auto: the card still opens it and says so there
+    }
+  }
+
+  Widget _autoCard(HoolaColors c) {
+    final sub = _autoNeed > 0
+        ? '$_autoNeed ${_autoNeed == 1 ? 'project needs' : 'projects need'} you'
+        : _autoAll > 0
+            ? '$_autoAll ${_autoAll == 1 ? 'project' : 'projects'} · intake, talk, monitor'
+            : 'Hand over a whole client project to a team of agents';
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: CodeCard(
+        key: const ValueKey('code-home-auto'),
+        edge: _autoNeed > 0 ? c.warn : null,
+        onTap: () => _go(AutoHomePage(app: widget.app)),
+        child: Row(children: [
+          Icon(Icons.hub_outlined, size: 22, color: _autoNeed > 0 ? c.warn : c.ink),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Hoola Auto', style: codeSans(c, size: 15, weight: FontWeight.w500)),
+              Text(sub, style: codeSans(c, size: 13, color: c.ink2)),
+            ]),
+          ),
+          Icon(Icons.chevron_right_rounded, color: c.ink3),
+        ]),
+      ),
+    );
   }
 
   Future<void> _open(String id) async {
@@ -160,6 +205,7 @@ class _HoolaCodeState extends State<HoolaCode> {
           CodeChip('Review a PR', onTap: () => _go(CodePrsPage(app: widget.app))),
         ]),
       ),
+      _autoCard(c),
       if (tasks.isEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 28),

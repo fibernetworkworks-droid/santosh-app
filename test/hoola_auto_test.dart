@@ -97,4 +97,12 @@ void main() {
     await t.tap(find.text('Reopen'));
     expect(acts.last, 'reopen');
   });
+
+  test('v0.954 the Hoola Code home (the screen Tools > Hoola Code opens) has the Hoola Auto door', () {
+    final s = File('lib/ui/code/code_home.dart').readAsStringSync();
+    expect(s.contains("show AutoHomePage"), isTrue);
+    expect(s.contains('_go(AutoHomePage(app: widget.app))'), isTrue, reason: 'the card opens Hoola Auto');
+    expect(s.contains("'/api/auto/projects'"), isTrue, reason: 'the card counts projects that need her');
+    expect(s.contains('_autoCard(c),'), isTrue, reason: 'the card is drawn on the home');
+  });
 }

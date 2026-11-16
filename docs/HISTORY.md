@@ -5765,3 +5765,12 @@ setting the App's owner makes; her users never see it), and the Setup URL page i
 - An install made on GitHub itself (no signed state) now says "tap Connect GitHub in the app" instead of "link expired".
 - Owner step, once: App settings > Post installation > Setup URL = `https://hoola.ainewtika.com/api/devsahayak/github/installed`.
 - Tests: `test_v0953_github_back_to_app.py` (4). NOT VERIFIED on her phone.
+
+## v0.954.0 HOOLA AUTO DOOR (built as 0.953; their GITHUB BACK TO APP took 0.953, both kept)
+
+Owner, her phone screenshot of the Hoola Code home after the v0.950 deploy: "now hoola auto in app". The v0.947 Hoola Auto
+row was put in `lib/ui/devsahayak_drawer.dart` (the old Hoola Code drawer). Tools > Hoola Code and the side-panel Code button
+open the native home `lib/ui/code/code_home.dart` (v0.922), which has no drawer - so on her phone there was no way in.
+Now the home draws a Hoola Auto card under the chips: it opens `AutoHomePage`, and reads GET /api/auto/projects to say
+"N projects need you" (amber edge) or how many projects there are; a server without Hoola Auto still shows the card.
+Phone only; test in `test/hoola_auto_test.dart`. NOT VERIFIED on her phone (CI compiles it first).
