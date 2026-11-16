@@ -49,6 +49,7 @@ Output = one answer. She never sees several models talking.
 | D7 | ULTRA = **one model**, as in the plan (16 Nov: "ALL AS PER PLAN"). |
 | D8 | The Indian-language benchmark is chosen **by research** (16 Nov: "DO RESEARCH") - section 8.4. |
 | D9 | A model that moves two levels in a table refresh is **applied automatically** (16 Nov: "AUTO"). |
+| D10 | Every kind of work has a pool of **10-20 models** (2-4 per level), not 1-3 (16 Nov: "MIN 10 MODEL MAX 20 MODELS"). Levels are quality bands below the best model of that kind (section 8.2). |
 
 ---
 
@@ -284,8 +285,12 @@ one fix round for the writer (the research claim check `research/claims.py` alre
 3. One score per model per kind of work: ranks normalised per source, then averaged across that kind's sources.
 4. Missing from one board = the other boards decide (not marked down). On **no** board for that kind = **not used**
    for that kind until it appears.
-5. The level tables are cut from those scores (bands per kind), saved as one dated file, and that file is what a
-   message reads (4: same inputs = same choice).
+5. The level tables are cut from those scores, saved as one dated file, and that file is what a message reads
+   (4: same inputs = same choice). **Pool size 10-20 per kind (D10), up to 4 per level.** Levels = quality bands below
+   the best model of that kind (ULTRA within 25 rating points, MAX 25-50, HIGH 50-80, MID 80-120, LOW 120-190), so LOW
+   holds the smaller, faster models; a board too small for bands splits its best 20 into five equal groups. Only
+   models OpenRouter lists that day, that take the input and give the output the work needs, added in the last 18
+   months. Cut by `docs/research/pipeline/tools/build.py`.
 6. A new table is compared with the last one; a big jump (a model moving two levels) is **applied by itself** (D9)
    and written in the table's change log so it can be seen later.
 

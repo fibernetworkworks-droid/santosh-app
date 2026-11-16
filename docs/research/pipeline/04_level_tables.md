@@ -1,113 +1,319 @@
-# Pipeline 04 - the first level tables (16 Nov 2026, for her approval)
+# Pipeline 04 - the level tables, 10-20 models per kind of work (16 Nov 2026, for her approval)
 
-Cut by hand from research 01-03 (`01_text.md`, `02_media_languages.md`, `03_indian_languages.md`). This is the FIRST
-copy, for her to approve; once the feed is built (plan P0) the tables are cut by code from the same sources on a
-schedule and these are replaced.
+Owner, 16 Nov: "WHY ONLY 3 OR 2 OR 1 MODELS -- WE EVER FIELD WITH MIN 10 MODEL MAX 20 MODELS". Replaces the first copy
+(1-3 models per level). Built by `pipe2/build.py` from the LMArena dataset (`lmarena-ai/leaderboard-dataset`, CC-BY-4.0,
+boards published 9-12 Nov 2026) + OpenRouter `/api/v1/models?output_modalities=all` (723 models), read 16 Nov 2026.
 
-**Every model id below was checked against OpenRouter's `/api/v1/models?output_modalities=all` on 16 Nov 2026 (723
-models) - all are listed.** Ids are in the key at the end.
+## How each pool was cut
 
-Rules used to cut them:
-- Order inside a level = leaderboard order; the Box still ranks by reliability -> speed -> score at run time (plan 4).
-- **A level with no scored model uses the nearest filled level above it** (then below). A model on no board for that
-  kind of work is not used for it (plan 8.2.4).
-- Only models reachable through OpenRouter (her words: "INPUT WILL BE OPENROUTER"). Better models that are not on
-  OpenRouter are listed under each table as "not reachable yet".
+1. Every board row with at least 200 votes, matched to an OpenRouter model id (exact name, or a hand-checked alias for
+   media names like "Dreamina Seedance 2.5 (720p)" = `bytedance/seedance-2.5`).
+2. Only models OpenRouter lists **today**, that can take the input and give the output the work needs (tool calling,
+   structured output, image input, image / video output), and that were added to OpenRouter after 16 May 2025
+   (older models are being retired).
+3. Score = the board rating; where a kind reads two board categories, their average.
+4. **Levels are quality bands below the best model of that kind**, so LOW really holds the smaller, faster models
+   instead of the 20th-best big one: ULTRA within 25 points of the best, MAX 25-50 below, HIGH 50-80, MID 80-120,
+   LOW 120-190. Up to 4 models per level = up to 20 per kind.
+5. Where a board is too small for bands (documents, images, video), the best 20 are split into five equal groups.
+6. Voice and music boards are not in the LMArena data; those pools were cut by hand from the boards named on them.
 
-## The tables
+## Count per kind of work
 
-| Kind | LOW | MID | HIGH | MAX | ULTRA | From |
-|---|---|---|---|---|---|---|
-| `route` | DeepSeek V4.1 Flash, Haiku 5.5 | Gemini 3.6 Flash, Gemini 4 Hydrogen | = `chat` HIGH | = `chat` MAX | = `chat` ULTRA | speed + chat |
-| `plan` | Gemini 4 Hydrogen, Haiku 5.5 | Kimi K3.1 Pro, Grok 4.6 | Sonnet 5.5, GPT-6.1 Terra | Opus 5.5, Gemini 4 Argon | Fable 5.2, GPT-6 Astra | reasoning |
-| `chat` | Gemini 4 Hydrogen, Haiku 5.5 | Gemini 3.8 Flash, Muse Spark 1.3 | Fable 5.1, GPT-6 Astra | Gemini 4 Argon, Opus 5.5, Muse Wonder | Gemini 4 Carbon, Fable 5.2 | Arena Text, AA, LiveBench |
-| `write` | Gemini 4 Hydrogen, Haiku 5.5 | Gemini 3.8 Flash, Muse Spark 1.3 | Fable 5.1, GPT-6 Astra | Gemini 4 Argon, Opus 5.5, Muse Wonder | Gemini 4 Carbon, Fable 5.2 | same as chat |
-| `summarise` | Haiku 5.5, Gemini 4 Hydrogen | Gemini 3.8 Flash, Sonnet 5.5 | Fable 5.1, Opus 5.5 | Kimi K3.1 Pro, Step 5 Preview | Kimi K3, Fable 5.2 | chat + long docs |
-| `write.lang` (world) | Gemma 4 31B, Gemini 3.5 Flash-Lite | Qwen3.8 Max, GLM 5.3 Flash | Gemini 4 Hydrogen, Gemini 3.8 Flash | Fable 5.1, Opus 5.5 | Gemini 4 Carbon, Gemini 4 Argon | Arena non-English + per-language views |
-| `write.lang` (Indian) **thin** | as world | as world | as world | as world | as world | Arena non-English only (no Indian board) |
-| `translate` | as `write.lang` | | | | | same |
-| `reason` | Gemini 4 Hydrogen, DeepSeek V4.1 Flash | Kimi K3.1 Pro, Grok 4.6 | Sonnet 5.5, Gemini 4 Carbon, GPT-6.1 Terra | GPT-6.1 Sol, Gemini 4 Argon, Opus 5.5 | Fable 5.2, GPT-6 Astra | LiveBench, FrontierMath |
-| `research` | Gemini 3.5 Flash | Qwen3.8 Max, GPT-6.1 Terra | Fable 5.1, GPT-6 Sol | GPT-5.6 Sol, Gemini 4 Carbon, Opus 5.5 | GPT-6.1 Sol, GPT-6 Astra | Arena Search, FACTS Search, Vals |
-| `facts` | Gemini 4 Hydrogen, GPT-6 Luna | GPT-6.1 Terra, Opus 5.5 | GPT-6 Astra, GPT-6.1 Sol | Gemini 4 Carbon, Gemini 4 Argon | Fable 5.2 | SimpleQA Verified, AA-Omniscience, FACTS |
-| `check` | as `facts` | | | | | same |
-| `extract` *(proxy)* | Gemini 4 Hydrogen, MiniMax M3 | GPT-6.1 Terra, Muse Wonder | GPT-6.1 Sol, Fable 5.2 | Gemini 4 Argon, GPT-6 Astra | Gemini 4 Carbon | LiveBench Data Analysis, IFBench |
-| `read.long` | Haiku 5.5 | Sonnet 5.5, GPT-6 Astra | Fable 5.1, Opus 5.5, MiMo V2.6 Pro | Kimi K3.1 Pro, Step 5 Preview | Kimi K3, Fable 5.2 | AA-LCR, MLCR, Arena Document |
-| `read.pdf` | Gemma 4 31B | Gemini 3.5 Flash | Gemini 3.8 Flash, Gemini 3.7 Flash | Fable 5, GPT-5.5 | Fable 5.1, Opus 5 | Arena Document |
-| `read.image` | Gemma 4 31B, Gemini 3.5 Flash-Lite | GLM 5.3 Flash, GPT-5.5 | Qwen3.8 Max, Muse Spark 1.3 | Fable 5.1, Gemini 3.8 Flash | Fable 5, Opus 5.5 | Arena Vision |
-| `tools` | Gemini 3.5 Flash, GLM 4.7 Flash | GLM 5.3, Qwen3.8 Max | Gemini 4 Carbon, Sonnet 5.5 | GPT-6 Astra, Fable 5.1, Opus 5.5 | Fable 5.2, Gemini 4 Argon | MCP Atlas, LiveBench Agentic, tau3 |
-| `code` | DeepSeek V4.1 Flash | GPT-6.1 Terra, MiniMax M3.1 Flash | Sonnet 5.5, Fable 5.1, Qwen4 Max | Gemini 4 Carbon, GPT-6 Astra, Kimi K3.1 Pro | Fable 5.2, Opus 5.5 | Arena WebDev, SWE-Bench Pro V2, Terminal-Bench 4, LiveBench |
-| `code.small` | as `code` | | | | | same |
-| `image.make` | Nano Banana 2, Seedream 5.5 | MAI-Image-2.6, Grok Imagine Image 2 | GPT-Image-2, Nano Banana 2.1 | GPT-Image-2.6 Flare, GPT-Image-2.5 Flare | GPT-Image-2.6 Sunburst, GPT-Image-2.5 Sunburst | Arena T2I, AA |
-| `image.edit` | MAI-Image-2.6 Flash | Seedream 5.5, Nano Banana 2.1, MAI-Image-2.6 | GPT-Image-2, Grok Imagine Image 2 | GPT-Image-2.5 Flare, GPT-Image-2.6 Flare | GPT-Image-2.5 Sunburst, GPT-Image-2.6 Sunburst | Arena Edit, AA |
-| `video.make` | = MID (no scored small model) | Gemini Omni 1.1 Flash, HeyGen Video 1 | Seedance 2.0, FLUX 3 Video, Grok Imagine Video 1.5 | Wan 3.0 | Gemini Omni 1.2 Flash (text), Seedance 2.5 (picture) | Arena T2V / I2V, AA |
-| `speech.in` (world) | Qwen3 ASR 1.7B, Voxtral Mini Transcribe 3 | Voxtral Small Transcribe 3, Gemini 3.5 Transcribe | Nemotron 3.5 Transcribe, Universal 3.5 Pro | Scribe v2, MAI-Transcribe-2 | GPT Transcribe, Muse Voice Transcribe | AA WER, Open ASR |
-| `speech.in` (Indian) | Nemotron 3.5 Transcribe | GPT Transcribe, Scribe v2 | Gemini 3.8 Flash, Muse Voice Transcribe | Gemini 3.5 Transcribe | MAI-Transcribe-2 | voiceofindia STT (15 languages) + Open ASR Hindi |
-| `speech.out` (world) | Gemini 3.8 Flash-Lite TTS, Gemini 3.1 Flash TTS | Qwen Audio 3.0 TTS Plus, MiniMax Speech 2.8 HD | Simba 3.5, Fish Drama 3 | Eleven v4 Turbo, Gemini 3.8 Flash TTS | Eleven v4 | AA TTS, TTS Arena |
-| `speech.out` (Indian) | = MID | Gemini 3.8 Flash-Lite TTS | Gemini 3.1 Flash TTS | Gemini 3.8 Flash TTS | Eleven v4 | voiceofindia TTS (10 languages) |
-| `music.make` | Lyria 3 Clip | Lyria 3 Pro | = MID | = MID | = MID | Music Arena, AA (only Lyria is on OpenRouter) |
-| `embed` | not researched yet - Hoola keeps its current embedder | | | | | - |
-
-**Per-language note for `write.lang` (world):** where a language has its own Arena view, its leader goes first in its
-level - Chinese: Gemini 4 Hydrogen; Japanese / Korean: Fable 5.1; Spanish: Opus 5; French / German / Russian: Gemini 4
-Argon / Carbon.
-
-## Not reachable yet (better on a board, not on OpenRouter)
 | Kind | Models |
 |---|---|
-| `read.pdf` | specialist OCR models (OXR-1.0, PaddleOCR-VL-1.6, MinerU2.5-Pro, GLM-OCR) - open weights, self-host |
-| `video.make` | Utopai X, SkyReels V4, Muse Video, HiDream-O1 |
-| `speech.in` | Alibaba Fun-Realtime-ASR, ElevenLabs Scribe v3, Azure Speech, Fonada Kapture-v3; Indian: Bodhan Indic Transcribe, Sarvam Saaras v3, Amazon Transcribe |
-| `speech.out` | Cartesia Sonic 3.6, Qwen-Audio 3.1 TTS Plus, Inworld, Hume Octave, Gradium, Maya 2 Native |
-| `music.make` | ACE Music v1, Suno v6, Mureka V9.5, Lyria 3.5, Eleven Music, Stable Audio 3, Riffusion FUZZ |
-| `image.make` | Kling Image 4.0, Reve 2.1, Canva Craft |
+| chat | 19 |
+| write | 20 |
+| summarise | 19 |
+| reason | 20 |
+| code | 19 |
+| tools (proxy) | 18 |
+| extract (proxy) | 20 |
+| read.long | 20 |
+| facts + check (proxy) | 19 |
+| research (proxy) | 19 |
+| write.lang / translate | 18 |
+| read.image | 20 |
+| read.pdf | 20 |
+| image.make | 20 |
+| image.edit | 20 |
+| video.make | 18 |
+| speech.in (world) | 17 |
+| speech.in (Indian languages) - only 8 reachable | 8 |
+| speech.out (world) | 17 |
+| speech.out (Indian languages) - only 4 reachable | 4 |
+| music.make - only 2 reachable | 2 |
 
-## Weak spots (said plainly)
-- **Indian-language text, translation and Hinglish:** no public board ranks current models. The Indian rows use the
-  pooled non-English Arena view as a stand-in. See plan section 12.
-- **`extract`:** no real board; proxy boards only.
-- **Several numbers came through one aggregator (BenchLeader)** and were not checked on each board's own site.
-- **Name matches guessed:** MiniMax H3 = hailuo-3 (left out of the video table for that reason).
-- **Low-vote board entries** (GPT-Image-2.6, Gemini Omni 1.2) can move a lot week to week.
+**Not used for routing:** the score is a quality signal only. Inside a level the Box still ranks by reliability, then
+speed, then score (plan section 4). Price is not in it (D5).
 
-## Key: short name -> OpenRouter id
-| Short name | Id | Short name | Id |
-|---|---|---|---|
-| Fable 5.2 | anthropic/claude-fable-5.2 | Fable 5.1 | anthropic/claude-fable-5.1 |
-| Fable 5 | anthropic/claude-fable-5 | Opus 5.5 | anthropic/claude-opus-5.5 |
-| Opus 5 | anthropic/claude-opus-5 | Sonnet 5.5 | anthropic/claude-sonnet-5.5 |
-| Haiku 5.5 | anthropic/claude-haiku-5.5 | Gemini 4 Carbon | google/gemini-4-carbon |
-| Gemini 4 Argon | google/gemini-4-argon | Gemini 4 Hydrogen | google/gemini-4-hydrogen |
-| Gemini 3.8 Flash | google/gemini-3.8-flash | Gemini 3.7 Flash | google/gemini-3.7-flash |
-| Gemini 3.6 Flash | google/gemini-3.6-flash | Gemini 3.5 Flash | google/gemini-3.5-flash |
-| Gemini 3.5 Flash-Lite | google/gemini-3.5-flash-lite | Gemma 4 31B | google/gemma-4-31b-it |
-| GPT-6 Astra | openai/gpt-6-astra | GPT-6.1 Sol | openai/gpt-6.1-sol |
-| GPT-6 Sol | openai/gpt-6-sol | GPT-5.6 Sol | openai/gpt-5.6-sol |
-| GPT-6.1 Terra | openai/gpt-6.1-terra | GPT-6 Luna | openai/gpt-6-luna |
-| GPT-5.5 | openai/gpt-5.5 | Muse Wonder | meta/muse-wonder |
-| Muse Spark 1.3 | meta/muse-spark-1.3 | Kimi K3 | moonshotai/kimi-k3 |
-| Kimi K3.1 Pro | moonshotai/kimi-k3.1-pro | Grok 4.6 | x-ai/grok-4.6 |
-| Qwen4 Max | qwen/qwen4-max | Qwen3.8 Max | qwen/qwen3.8-max-0902 |
-| GLM 5.3 | z-ai/glm-5.3 | GLM 5.3 Flash | z-ai/glm-5.3-flash |
-| GLM 4.7 Flash | z-ai/glm-4.7-flash | DeepSeek V4.1 Flash | deepseek/deepseek-v4.1-flash-1017 |
-| MiniMax M3.1 Flash | minimax/minimax-m3.1-flash | MiniMax M3 | minimax/minimax-m3 |
-| Step 5 Preview | stepfun/step-5-preview | MiMo V2.6 Pro | xiaomi/mimo-v2.6-pro |
-| GPT-Image-2.6 Sunburst | openai/gpt-image-2.6-sunburst | GPT-Image-2.5 Sunburst | openai/gpt-image-2.5-sunburst |
-| GPT-Image-2.6 Flare | openai/gpt-image-2.6-flare | GPT-Image-2.5 Flare | openai/gpt-image-2.5-flare |
-| GPT-Image-2 | openai/gpt-image-2 | Nano Banana 2.1 | google/gemini-nano-banana-2.1 |
-| Nano Banana 2 | google/gemini-3.1-flash-image | MAI-Image-2.6 | microsoft/mai-image-2.6 |
-| MAI-Image-2.6 Flash | microsoft/mai-image-2.6-flash | Grok Imagine Image 2 | x-ai/grok-imagine-image-2.0 |
-| Seedream 5.5 | bytedance-seed/seedream-5-5 | Gemini Omni 1.2 Flash | google/gemini-omni-1.2-flash |
-| Gemini Omni 1.1 Flash | google/gemini-omni-1.1-flash | Seedance 2.5 | bytedance/seedance-2.5 |
-| Seedance 2.0 | bytedance/seedance-2.0 | Wan 3.0 | alibaba/wan-3.0 |
-| FLUX 3 Video | black-forest-labs/flux-3-video | Grok Imagine Video 1.5 | x-ai/grok-imagine-video-1.5 |
-| HeyGen Video 1 | heygen/heygen-video-1 | GPT Transcribe | openai/gpt-transcribe |
-| Muse Voice Transcribe | meta/muse-voice-transcribe-1.0 | Scribe v2 | elevenlabs/scribe-v2 |
-| MAI-Transcribe-2 | microsoft/mai-transcribe-2 | Nemotron 3.5 Transcribe | nvidia/nemotron-3.5-transcribe |
-| Universal 3.5 Pro | assemblyai/universal-3-5-pro | Voxtral Small Transcribe 3 | mistralai/voxtral-small-transcribe-3-0 |
-| Gemini 3.5 Transcribe | google/gemini-3.5-transcribe | Qwen3 ASR 1.7B | qwen/qwen3-asr-1.7b |
-| Voxtral Mini Transcribe 3 | mistralai/voxtral-mini-transcribe-3-0 | Eleven v4 | elevenlabs/eleven-v4 |
-| Eleven v4 Turbo | elevenlabs/eleven-v4-turbo | Gemini 3.8 Flash TTS | google/gemini-3.8-flash-tts |
-| Gemini 3.8 Flash-Lite TTS | google/gemini-3.8-flash-lite-tts | Gemini 3.1 Flash TTS | google/gemini-3.1-flash-tts-preview |
-| Simba 3.5 | speechify/simba-3.5 | Fish Drama 3 | fish-audio/drama-3 |
-| Qwen Audio 3.0 TTS Plus | qwen/qwen-audio-3.0-tts-plus | MiniMax Speech 2.8 HD | minimax/speech-2.8-hd |
-| Lyria 3 Pro | google/lyria-3-pro-preview | Lyria 3 Clip | google/lyria-3-clip-preview |
+## chat - 19 models
+
+Source: LMArena text - overall; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `qwen/qwen3.5-122b-a10b` 1418, `qwen/qwen3-next-80b-a3b-instruct` 1417, `google/gemini-2.5-flash` 1417, `openai/gpt-5.2` 1416 |
+| MID | `anthropic/claude-sonnet-4.6` 1458, `google/gemini-2.5-pro` 1458, `openai/gpt-5.6-sol` 1457, `moonshotai/kimi-k2.6` 1455 |
+| HIGH | `qwen/qwen3.8-max-0902` 1485, `meta/muse-spark-1.2` 1483, `google/gemini-3.5-flash` 1483, `google/gemini-3.1-pro-preview` 1480 |
+| MAX | `anthropic/claude-fable-5.1` 1512, `anthropic/claude-opus-5` 1506, `meta/muse-wonder` 1503, `google/gemini-4-hydrogen` 1502 |
+| ULTRA | `google/gemini-4-carbon` 1538, `google/gemini-4-argon` 1530, `anthropic/claude-opus-5.5` 1514 |
+
+## write - 20 models
+
+Source: LMArena text - creative writing; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `z-ai/glm-4.6` 1412, `anthropic/claude-opus-4.1` 1412, `deepseek/deepseek-r1-0528` 1405, `tencent/hy3` 1405 |
+| MID | `openai/gpt-5.6-sol` 1451, `qwen/qwen3.7-max` 1447, `deepseek/deepseek-v4-pro-0813` 1446, `anthropic/claude-opus-4.5` 1444 |
+| HIGH | `qwen/qwen3.8-max-0902` 1482, `google/gemini-3.5-flash` 1471, `xiaomi/mimo-v2.6-pro` 1468, `meta/muse-spark-1.3` 1467 |
+| MAX | `anthropic/claude-opus-4.6` 1504, `anthropic/claude-fable-5` 1494, `anthropic/claude-opus-5` 1494, `google/gemini-3.8-flash` 1493 |
+| ULTRA | `google/gemini-4-argon` 1533, `google/gemini-4-carbon` 1532, `anthropic/claude-opus-5.5` 1532, `anthropic/claude-fable-5.1` 1514 |
+
+## summarise - 19 models
+
+Source: LMArena text - longer query + overall; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `qwen/qwen3-235b-a22b-thinking-2507` 1423, `mistralai/mistral-large-2512` 1422, `deepseek/deepseek-v3.2-exp` 1421, `z-ai/glm-4.5` 1421 |
+| MID | `moonshotai/kimi-k3.1-pro` 1464, `moonshotai/kimi-k2.6` 1462, `google/gemini-3-flash-preview` 1459, `anthropic/claude-sonnet-4.5` 1457 |
+| HIGH | `google/gemini-3.7-flash` 1491, `meta/muse-spark-1.3` 1490, `qwen/qwen3.8-max-0902` 1489, `google/gemini-3.5-flash` 1483 |
+| MAX | `anthropic/claude-fable-5.1` 1518, `google/gemini-4-hydrogen` 1513, `anthropic/claude-opus-5` 1511, `anthropic/claude-opus-4.6` 1510 |
+| ULTRA | `google/gemini-4-carbon` 1544, `google/gemini-4-argon` 1538, `anthropic/claude-opus-5.5` 1521 |
+
+## reason - 20 models
+
+Source: LMArena text - math + hard prompts; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `z-ai/glm-4.5` 1428, `qwen/qwen3-vl-235b-a22b-instruct` 1427, `anthropic/claude-haiku-5.5` 1427, `qwen/qwen3.5-122b-a10b` 1426 |
+| MID | `moonshotai/kimi-k3.1-pro` 1471, `openai/gpt-6.1-sol` 1470, `anthropic/claude-opus-4.5` 1470, `google/gemini-3-flash-preview` 1469 |
+| HIGH | `meta/muse-spark-1.3` 1500, `z-ai/glm-5.3-flash` 1497, `google/gemini-3.5-flash` 1497, `meta/muse-wonder` 1496 |
+| MAX | `anthropic/claude-opus-5.5` 1526, `anthropic/claude-opus-4.6` 1521, `google/gemini-3.8-flash` 1518, `google/gemini-4-hydrogen` 1513 |
+| ULTRA | `google/gemini-4-carbon` 1551, `google/gemini-4-argon` 1543, `anthropic/claude-opus-5` 1529, `anthropic/claude-fable-5.1` 1528 |
+
+## code - 19 models
+
+Source: LMArena text - coding + software/IT; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `openai/gpt-5.2` 1438, `openai/gpt-5.4-mini` 1438, `z-ai/glm-4.5` 1438, `qwen/qwen3.5-122b-a10b` 1436 |
+| MID | `moonshotai/kimi-k2.5` 1478, `qwen/qwen3.8-27b` 1477, `stepfun/step-5-preview` 1477, `x-ai/grok-4.5` 1473 |
+| HIGH | `meta/muse-spark-1.2` 1506, `z-ai/glm-5.3-flash` 1505, `moonshotai/kimi-k3` 1502, `qwen/qwen3.8-max-0902` 1501 |
+| MAX | `xiaomi/mimo-v2.6-pro` 1531, `anthropic/claude-opus-4.6` 1530, `anthropic/claude-opus-5` 1529, `anthropic/claude-fable-5.1` 1526 |
+| ULTRA | `google/gemini-4-carbon` 1558, `google/gemini-4-argon` 1541, `anthropic/claude-opus-5.5` 1538 |
+
+## tools (proxy) - 18 models
+
+Source: LMArena text - instruction following + multi-turn; tool calling required on OpenRouter; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `qwen/qwen3.8-27b` 1434, `minimax/minimax-m3` 1433, `google/gemini-3.5-flash-lite` 1432, `tencent/hy3` 1432 |
+| MID | `google/gemini-3.5-flash` 1474, `openai/gpt-5.6-sol` 1472, `anthropic/claude-opus-4.5` 1472, `meta/muse-spark-1.1` 1471 |
+| HIGH | `meta/muse-wonder` 1504, `anthropic/claude-fable-5` 1504, `google/gemini-4-hydrogen` 1502, `anthropic/claude-opus-4.7` 1502 |
+| MAX | `anthropic/claude-opus-5.5` 1519, `anthropic/claude-opus-4.6` 1516, `anthropic/claude-opus-5` 1508, `anthropic/claude-fable-5.1` 1506 |
+| ULTRA | `google/gemini-4-carbon` 1554, `google/gemini-4-argon` 1542 |
+
+## extract (proxy) - 20 models
+
+Source: LMArena text - instruction following; structured output required on OpenRouter; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `openai/gpt-5.2-chat` 1417, `mistralai/mistral-medium-3-5` 1416, `anthropic/claude-haiku-4.5` 1414, `deepseek/deepseek-v3.2` 1413 |
+| MID | `anthropic/claude-sonnet-4.5` 1459, `meta/muse-spark-1.1` 1457, `openai/gpt-6-astra` 1456, `openai/gpt-5.6-terra` 1455 |
+| HIGH | `anthropic/claude-sonnet-5.5` 1487, `google/gemini-3.7-flash` 1485, `moonshotai/kimi-k3` 1484, `qwen/qwen3.8-max-0902` 1483 |
+| MAX | `anthropic/claude-fable-5` 1503, `anthropic/claude-opus-4.7` 1498, `meta/muse-wonder` 1494, `google/gemini-3.8-flash` 1493 |
+| ULTRA | `google/gemini-4-carbon` 1540, `google/gemini-4-argon` 1536, `anthropic/claude-opus-5.5` 1535, `anthropic/claude-opus-4.6` 1521 |
+
+## read.long - 20 models
+
+Source: LMArena text - longer query; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `deepseek/deepseek-v3.2` 1428, `google/gemma-4-26b-a4b-it` 1428, `reflection/beam-1.0-501b-a23b` 1428, `openai/gpt-5.2-chat` 1427 |
+| MID | `moonshotai/kimi-k2.6` 1468, `moonshotai/kimi-k3.1-pro` 1468, `z-ai/glm-5.1` 1467, `x-ai/grok-4.5` 1462 |
+| HIGH | `meta/muse-wonder` 1497, `google/gemini-3.7-flash` 1494, `qwen/qwen3.8-max-0902` 1493, `moonshotai/kimi-k3` 1490 |
+| MAX | `anthropic/claude-fable-5.1` 1523, `anthropic/claude-opus-4.6` 1518, `anthropic/claude-opus-5` 1516, `anthropic/claude-fable-5` 1510 |
+| ULTRA | `google/gemini-4-carbon` 1549, `google/gemini-4-argon` 1547, `anthropic/claude-opus-5.5` 1528, `google/gemini-4-hydrogen` 1524 |
+
+## facts + check (proxy) - 19 models
+
+Source: LMArena text - expert + hard prompts; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `google/gemma-4-26b-a4b-it` 1443, `~deepseek/deepseek-v4-flash-latest` 1443, `openai/gpt-5.2-chat` 1441, `anthropic/claude-opus-4.1` 1441 |
+| MID | `qwen/qwen3.7-max` 1486, `z-ai/glm-5.2` 1484, `google/gemini-3.1-pro-preview` 1484, `openai/gpt-5.6-terra` 1482 |
+| HIGH | `meta/muse-wonder` 1514, `anthropic/claude-opus-4.7` 1513, `google/gemini-3.7-flash` 1506, `meta/muse-spark-1.3` 1506 |
+| MAX | `google/gemini-4-hydrogen` 1539, `anthropic/claude-opus-5` 1539, `anthropic/claude-fable-5.1` 1537, `anthropic/claude-opus-4.6` 1534 |
+| ULTRA | `google/gemini-4-carbon` 1566, `google/gemini-4-argon` 1549, `anthropic/claude-opus-5.5` 1543 |
+
+## research (proxy) - 19 models
+
+Source: LMArena text - expert + hard prompts; tool calling required; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `google/gemma-4-26b-a4b-it` 1443, `~deepseek/deepseek-v4-flash-latest` 1443, `openai/gpt-5.2-chat` 1441, `anthropic/claude-opus-4.1` 1441 |
+| MID | `qwen/qwen3.7-max` 1486, `z-ai/glm-5.2` 1484, `google/gemini-3.1-pro-preview` 1484, `openai/gpt-5.6-terra` 1482 |
+| HIGH | `meta/muse-wonder` 1514, `anthropic/claude-opus-4.7` 1513, `google/gemini-3.7-flash` 1506, `meta/muse-spark-1.3` 1506 |
+| MAX | `google/gemini-4-hydrogen` 1539, `anthropic/claude-opus-5` 1539, `anthropic/claude-fable-5.1` 1537, `anthropic/claude-opus-4.6` 1534 |
+| ULTRA | `google/gemini-4-carbon` 1566, `google/gemini-4-argon` 1549, `anthropic/claude-opus-5.5` 1543 |
+
+## write.lang / translate - 18 models
+
+Source: LMArena text - non-English; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `deepseek/deepseek-r1-0528` 1412, `reflection/beam-1.0-501b-a23b` 1412, `google/gemini-3.1-flash-lite` 1411, `google/gemini-2.5-flash` 1409 |
+| MID | `google/gemini-2.5-pro` 1452, `anthropic/claude-opus-4.8` 1451, `moonshotai/kimi-k3.1-pro` 1450, `deepseek/deepseek-v4.1-flash-1017` 1450 |
+| HIGH | `meta/muse-spark-1.3` 1483, `anthropic/claude-fable-5` 1482, `anthropic/claude-opus-4.7` 1480, `meta/muse-spark-1.2` 1478 |
+| MAX | `anthropic/claude-fable-5.1` 1507, `anthropic/claude-opus-5.5` 1503, `anthropic/claude-opus-5` 1500, `google/gemini-4-hydrogen` 1495 |
+| ULTRA | `google/gemini-4-carbon` 1534, `google/gemini-4-argon` 1523 |
+
+## read.image - 20 models
+
+Source: LMArena vision - overall + OCR; quality bands (Elo below the best: 0-25 / 25-50 / 50-80 / 80-120 / 120-190).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `openai/gpt-5-mini` 1201, `google/gemini-2.5-flash-lite` 1200, `openai/gpt-5.4-nano` 1200, `mistralai/mistral-medium-3.1` 1174 |
+| MID | `openai/gpt-5.2` 1251, `qwen/qwen3-vl-235b-a22b-instruct` 1250, `mistralai/mistral-large-4-0` 1249, `openai/gpt-5.4-mini` 1249 |
+| HIGH | `anthropic/claude-sonnet-5` 1279, `qwen/qwen3.8-27b` 1275, `openai/gpt-5.6-terra` 1273, `google/gemini-3.5-flash-lite` 1273 |
+| MAX | `openai/gpt-5.4` 1306, `google/gemini-3.6-flash` 1303, `openai/gpt-5.5` 1300, `google/gemini-3.1-pro-preview` 1300 |
+| ULTRA | `anthropic/claude-fable-5` 1331, `anthropic/claude-opus-5.5` 1328, `anthropic/claude-fable-5.1` 1325, `google/gemini-3.8-flash` 1324 |
+
+## read.pdf - 20 models
+
+Source: LMArena document; rank split of the best 20 (board too small for bands).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `meta/muse-spark-1.1` 1464, `google/gemini-3.5-flash` 1462, `anthropic/claude-sonnet-5` 1460, `google/gemini-3.6-flash` 1456 |
+| MID | `meta/muse-spark-1.3` 1473, `openai/gpt-5.6-terra` 1468, `openai/gpt-6-astra` 1467, `anthropic/claude-opus-4.5` 1466 |
+| HIGH | `openai/gpt-5.6-sol` 1480, `google/gemini-3.7-flash` 1476, `anthropic/claude-opus-4.8` 1475, `openai/gpt-5.4` 1473 |
+| MAX | `anthropic/claude-opus-4.7` 1496, `openai/gpt-5.5` 1484, `google/gemini-3.8-flash` 1482, `anthropic/claude-sonnet-4.6` 1482 |
+| ULTRA | `anthropic/claude-fable-5.1` 1515, `anthropic/claude-opus-5` 1509, `anthropic/claude-opus-4.6` 1508, `anthropic/claude-fable-5` 1497 |
+
+## image.make - 20 models
+
+Source: LMArena text-to-image; rank split of the best 20 (board too small for bands).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `minimax/minimax-h3-image` 1197, `recraft/recraft-v4.1-utility-pro` 1169, `black-forest-labs/flux.2-max` 1161, `black-forest-labs/flux.2-flex` 1156 |
+| MID | `google/gemini-3.1-flash-lite-image` 1249, `bytedance-seed/seedream-5-0-pro` 1248, `google/gemini-3-pro-image` 1246, `qwen/qwen-image-2.1-pro` 1227 |
+| HIGH | `meta/muse-image` 1266, `google/gemini-3.1-flash-image` 1256, `qwen/qwen-image-3-pro` 1254, `microsoft/mai-image-2.5` 1252 |
+| MAX | `openai/gpt-image-2` 1382, `microsoft/mai-image-2.6` 1330, `google/gemini-nano-banana-2.1` 1328, `x-ai/grok-imagine-image-2.0` 1318 |
+| ULTRA | `openai/gpt-image-2.5-sunburst` 1429, `openai/gpt-image-2.6-sunburst` 1406, `openai/gpt-image-2.5-flare` 1398, `openai/gpt-image-2.6-flare` 1384 |
+
+## image.edit - 20 models
+
+Source: LMArena image edit; rank split of the best 20 (board too small for bands).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `bytedance-seed/seedream-4.5` 1302, `bytedance-seed/seedream-5-0-lite` 1293, `google/gemini-2.5-flash-image` 1292, `black-forest-labs/flux.2-max` 1262 |
+| MID | `google/gemini-3.1-flash-image` 1387, `qwen/qwen-image-2.1-pro` 1363, `minimax/minimax-h3-image` 1359, `google/gemini-3.1-flash-lite-image` 1313 |
+| HIGH | `meta/muse-image` 1401, `microsoft/mai-image-2.5` 1400, `bytedance-seed/seedream-5-0-pro` 1392, `google/gemini-3-pro-image` 1391 |
+| MAX | `openai/gpt-image-2.6-flare` 1460, `x-ai/grok-imagine-image-2.0` 1437, `microsoft/mai-image-2.6` 1428, `google/gemini-nano-banana-2.1` 1427 |
+| ULTRA | `openai/gpt-image-2.5-sunburst` 1519, `openai/gpt-image-2.5-flare` 1484, `openai/gpt-image-2.6-sunburst` 1476, `openai/gpt-image-2` 1462 |
+
+## video.make - 18 models
+
+Source: LMArena text-to-video + image-to-video; rank split of the best 20 (board too small for bands).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `alibaba/wan-2.6` 1316, `minimax/hailuo-2.3` 1234, `runway/gen-4.5` 1223, `kwaivgi/kling-video-o1` 1201 |
+| MID | `google/veo-3.1` 1381, `x-ai/grok-imagine-video` 1376, `google/veo-3.1-fast` 1374, `kwaivgi/kling-v3.0-pro` 1353 |
+| HIGH | `black-forest-labs/flux-3-video` 1471, `x-ai/grok-imagine-video-1.5` 1470, `alibaba/happyhorse-1.0` 1436, `alibaba/wan-2.7` 1382 |
+| MAX | `bytedance/seedance-2.0` 1482, `alibaba/wan-3.0` 1479, `minimax/hailuo-3` 1475 |
+| ULTRA | `google/gemini-omni-1.2-flash` 1522, `google/gemini-omni-1.1-flash` 1500, `bytedance/seedance-2.5` 1487 |
+
+## speech.in (world) - 17 models
+
+Source: AA speech-to-text WER (to 2.6 %) then HF Open ASR average WER (from 5.93 %).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `mistralai/voxtral-small-24b-2507-stt`, `openai/whisper-large-v3`, `mistralai/voxtral-mini-3b-2507`, `openai/whisper-large-v3-turbo` |
+| MID | `openai/gpt-transcribe`, `meta/muse-voice-transcribe-1.0`, `nvidia/parakeet-tdt-0.6b-v3`, `qwen/qwen3-asr-0.6b` |
+| HIGH | `nvidia/nemotron-3.5-transcribe`, `qwen/qwen3-asr-1.7b`, `assemblyai/universal-3-5-pro` |
+| MAX | `mistralai/voxtral-mini-transcribe-3-0`, `x-ai/grok-stt-2.0`, `google/gemini-3.5-transcribe` |
+| ULTRA | `microsoft/mai-transcribe-2`, `elevenlabs/scribe-v2`, `mistralai/voxtral-small-transcribe-3-0` |
+
+## speech.in (Indian languages) - only 8 reachable - 8 models
+
+Source: voiceofindia.ai STT (15 Indian languages, OI-WER) + HF Open ASR Hindi WER.
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `nvidia/nemotron-3.5-transcribe`, `assemblyai/universal-3-5-pro` |
+| MID | `openai/gpt-transcribe` |
+| HIGH | `meta/muse-voice-transcribe-1.0`, `elevenlabs/scribe-v2` |
+| MAX | `google/gemini-3.5-transcribe`, `google/gemini-3.8-flash` |
+| ULTRA | `microsoft/mai-transcribe-2` |
+
+## speech.out (world) - 17 models
+
+Source: AA text-to-speech arena + TTS Arena V2 (16 Nov 2026).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `elevenlabs/eleven-flash-v2.5`, `google/gemini-3.1-flash-tts-preview`, `hexgrad/kokoro-82m`, `fish-audio/s1` |
+| MID | `elevenlabs/eleven-turbo-v2.5`, `qwen/qwen-audio-3.0-tts-plus`, `minimax/speech-2.8-turbo`, `google/gemini-3.8-flash-lite-tts` |
+| HIGH | `google/gemini-3.8-flash-tts`, `fish-audio/drama-3`, `elevenlabs/eleven-multilingual-v2` |
+| MAX | `minimax/speech-2.8-hd`, `fish-audio/s2-pro`, `speechify/simba-3.5` |
+| ULTRA | `elevenlabs/eleven-v4`, `elevenlabs/eleven-v4-turbo`, `elevenlabs/eleven-v3` |
+
+## speech.out (Indian languages) - only 4 reachable - 4 models
+
+Source: voiceofindia.ai TTS vote arena (10 Indian languages).
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | (none scored - uses the nearest level) |
+| MID | `google/gemini-3.8-flash-lite-tts` |
+| HIGH | `google/gemini-3.1-flash-tts-preview` |
+| MAX | `google/gemini-3.8-flash-tts` |
+| ULTRA | `elevenlabs/eleven-v4` |
+
+## music.make - only 2 reachable - 2 models
+
+Source: Music Arena + AA music.
+
+| Level | Models (OpenRouter id) |
+|---|---|
+| LOW | `google/lyria-3-clip-preview` |
+| MID | (none scored - uses the nearest level) |
+| HIGH | `google/lyria-3-pro-preview` |
+| MAX | (none scored - uses the nearest level) |
+| ULTRA | (none scored - uses the nearest level) |
+
+## Below 10, said plainly
+
+- **Indian-language speech in (8), Indian-language speech out (4), music (2):** OpenRouter does not carry the other
+  scored models. The better ones need direct company routes: speech in - Sarvam Saaras v3, Bodhan Indic Transcribe,
+  Amazon Transcribe, Azure Speech, Fonada Kapture, AI4Bharat IndicConformer (self-host); speech out - Cartesia Sonic,
+  Maya; music - ACE Music, Suno (no official API found), Mureka, Eleven Music, Stable Audio, Riffusion.
+- **Indian-language text:** the `write.lang / translate` pool (18) is ranked on the pooled non-English vote; no board
+  ranks Hindi / Marathi / Tamil text yet (research 03).
+
+## Other caveats
+
+- `tools`, `extract`, `facts`, `research` are **proxies** (no live public tool-calling / extraction / search board in the
+  CC-BY data); the AA, BFCL-current and Search-arena numbers in research 01 are not in this cut.
+- Arena votes alone: newer models it has not scored much (Claude Fable 5.2, GPT-6 Astra, GPT-6.1 Sol) sit low or are
+  missing although other boards put them at the top; they move up once a second board is in the feed.
+- Name matches checked by hand but not confirmed by the vendor: MiniMax H3 = `minimax/hailuo-3`, Grok Voice Transcribe
+  2.0 = `x-ai/grok-stt-2.0`, OpenAudio S2 = `fish-audio/s2-pro`, Qwen-Image 2.1 = `qwen/qwen-image-2.1-pro`.
+- Every id above was listed by OpenRouter on 16 Nov 2026 (checked by the script).
