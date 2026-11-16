@@ -1609,7 +1609,8 @@ def fold_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     tail_n = MAX_STEPS // 2
     tail = mid[-tail_n:]
     folded = mid[:-tail_n]
-    convo = [x for x in folded if x.get("k") in CONVO_KINDS][-KEEP_CONVO:]
+    room = max(0, MAX_STEPS - KEEP_HEAD - 1 - tail_n)       # never past MAX_STEPS, even a session that is all talk
+    convo = [x for x in folded if x.get("k") in CONVO_KINDS][-min(KEEP_CONVO, room):] if room else []
     kept = {id(x) for x in convo}
     dropped = [x for x in folded if id(x) not in kept and x.get("k") != "gap"]
     gap = dict(next((x for x in folded if x.get("k") == "gap"), None) or {"k": "gap", "text": "Earlier steps folded"})

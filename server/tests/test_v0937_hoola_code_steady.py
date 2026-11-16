@@ -53,8 +53,8 @@ def test_words_between_steps_are_two_or_three_lines_and_never_repeated():
     b = "There's already a NetworkMap screen with technician positions and a track endpoint. Let me read its DTOs and screen."
     assert EN.said_before(b, [a]) and not EN.said_before("The tests pass now. Opening the pull request.", [a])
     src = (ROOT / "server/app/devsahayak/engine.py").read_text()
-    assert "LIVE_TEXT.__setitem__(_tid, short_say(txt))" in src     # never past 3 lines while it writes either
-    assert 'if stop == "tool_use":\n                    txt = short_say(txt)' in src
+    assert "LIVE_TEXT[tid] = cut" in src     # never past 3 lines while it writes either
+    assert 'if stop == "tool_use" and not ends and not LIVE_FULL.get(tid):\n                    txt = short_say(txt)' in src
     assert "At most 40 words" in EN.SYSTEM and "**bold**" in EN.SYSTEM and "Never repeat" in EN.SYSTEM
 
 
@@ -73,7 +73,7 @@ def test_the_phone_is_steady_and_the_words_land_slowly():
     # slower landing, each word fading in; the closing answer lands too
     assert "(waiting > 160 ? 26 : 52)" in words and "sans: true, fade: true" in words
     assert "final bool fade;" in md and "_fadeSteps = [.82, .62, .42, .22]" in md
-    assert "_land(ex, _explainKey, done: true, actions: true)" in ses
+    assert "_land(ex, 'explain', done: true, actions: true)" in ses
 
 
 def test_version():

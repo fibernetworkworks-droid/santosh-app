@@ -1366,8 +1366,6 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
     the same checkout. Returns the old loop's (base_sha, read, ctx, out)."""
     if not on():
         raise Unavailable("dev_workspace is off")
-    import time as _time
-    t_round = _time.time()                                  # v0.944 the round's own clock: "Worked for 3m 12s"
     from ..devlab import box
     av = box.available()
     if not av.get("ok"):
@@ -1539,6 +1537,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     last_text, cut_in_row = "", 0                         # v0.932 her answer is never thrown away
     explain_ask = getattr(t, "kind", "") == "explain"
     recent: list[str] = []                                  # v0.937 what Hoola already told her this round
+    t_round = time.time()                                   # v0.944 the round's own clock: "Worked for 3m 12s"
     last_said = ""                                          # v0.944 the newest words she saw (the closing answer is not repeated)
     while steps < max_steps and time.time() - t0 < minutes * 60:
         if stopped and stopped():
@@ -1761,7 +1760,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     # session, shown only when Hoola had said nothing else - so in almost every session she never saw it)
     if q and q.strip() != last_said.strip():          # a question stays in the thread too (the phone draws its card instead)
         emit({"k": "say", "text": q[:20000], "final": True})
-    emit({"k": "round", "secs": int(_time.time() - t_round), "text": "Worked for " + clock_words(int(_time.time() - t_round))})
+    emit({"k": "round", "secs": int(time.time() - t_round), "text": "Worked for " + clock_words(int(time.time() - t_round))})
     ses.save_messages(msgs)
     label = (follow_up or t.text or "")[:120].replace("\n", " ")
     cp = ses.checkpoint(label, len(msgs))

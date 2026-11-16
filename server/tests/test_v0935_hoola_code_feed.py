@@ -95,7 +95,7 @@ def test_the_phone_draws_the_feed_like_the_hoola_chat():
     composer = ses[ses.index("Widget _composer("):ses.index("String _envName(")]
     assert "HoolaMark" not in composer                       # the working row is no longer pinned above the typing box
     assert "if (running && live.isEmpty && !drewRunning) out.add(_runningRow(c, t, const []));" in ses   # v0.936 the working line
-    assert "if (live.isNotEmpty) out.add(_land(live, sayN, done: false));" in ses
+    assert "if (live.isNotEmpty) out.add(_land(live, 'live', done: false));" in ses
     assert "final every = live ? 1 : 10;" in ses             # every second while it works
     assert "class CodeLanding" in words and "(waiting > 160 ? 26 : 52)" in words   # v0.937 slower, each word fading in
     assert "class CodeShimmer" in words and "HoolaMotion.reduced(context)" in words

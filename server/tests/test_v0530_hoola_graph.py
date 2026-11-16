@@ -763,7 +763,7 @@ def test_no_config_reads_in_graph_module():
 def test_version_pins():
     from app.main import APP_VERSION
     assert APP_VERSION == "0.944.0"
-    assert "0.940.0+939" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert "0.944.0+943" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
     assert line.startswith('APP_VERSION = "0.944.0"')
     # story pin moved to the newest story (the newest-story precedent; the P3
