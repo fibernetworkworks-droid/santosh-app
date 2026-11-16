@@ -5663,3 +5663,11 @@ A whole client project run by specialist agents on top of Hoola Code. The full c
   another tenant, the environment view.
 - NOT BUILT: Jira / Slack / Figma / cloud / error-tracker connections, the live voice intake call, the Watch agent, staging
   deploys beyond her CI, adding intake sources from the phone. NOT VERIFIED with a real repo, model or phone.
+
+
+## v0.948.0 HOOLA CODE HARD CARD FIXES
+
+(built as 0.947; their HOOLA AUTO took 0.947, both kept) (owner: "Check" on the hard coding card on her server: 10/12 on Qwen 3.8 27B): the two misses fixed - js_fix_gst_split went red on package-lock.json, which the box's own npm install rewrote in the working copy: a lock file whose package list (package.json / pyproject.toml / Cargo.toml / go.mod ...) did not change stays out of the change (`engine.install_noise`); vague_ask died after 877 s on "Qwen sent an empty answer" three times - it thought until its room ran out: each empty try now thinks one level less (high -> medium -> low) and keeps the room, so the words fit (`brain._qwen_call`); the coding card reads a deleted file (v0.946 deletions have no content); 1 server. NOT VERIFIED: run VPS ops > code_card_engine_hard again.
+
+
+Files: `server/app/devsahayak/engine.py` (`LOCK_OF`, `install_noise`, harvest), `server/app/devsahayak/brain.py` (empty answer -> lower effort), `server/app/quality/codecard.py` (deletions). Tests `server/tests/test_v0948_code_hard_card_fixes.py` (4).

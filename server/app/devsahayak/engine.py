@@ -1030,6 +1030,19 @@ class Tools:
             return f"{name} could not run with these arguments ({e.__class__.__name__}: {str(e)[:200]}). Check them and try again."
 
 
+LOCK_OF = {"package-lock.json": "package.json", "npm-shrinkwrap.json": "package.json", "yarn.lock": "package.json",
+           "pnpm-lock.yaml": "package.json", "poetry.lock": "pyproject.toml", "Pipfile.lock": "Pipfile",
+           "Cargo.lock": "Cargo.toml", "go.sum": "go.mod", "composer.lock": "composer.json", "Gemfile.lock": "Gemfile"}
+
+
+def install_noise(path: str, changed: set[str]) -> bool:
+    """v0.947 a lock file that changed while its package list did not was rewritten by the box's own install (npm
+    install in the working copy), not by Hoola's work: it stays out of the change (a hard-card job went red on it)."""
+    d, _, name = path.rpartition("/")
+    man = LOCK_OF.get(name)
+    return bool(man) and ((d + "/" if d else "") + man) not in changed
+
+
 def _needs_local_deps(repo: Path) -> bool:
     """v0.933 setup that writes INTO the working copy (npm / pnpm / yarn -> node_modules) is not in a cached image."""
     try:
@@ -1892,8 +1905,13 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     # ---- harvest: what changed in this round, in the shape the rest of the pipeline already checks
     files, skipped = [], []
     hidden = set(ses.meta.get("hidden") or [])
-    for row in ses.changed():
+    changed_rows = ses.changed()
+    changed_paths = {r["path"] for r in changed_rows}
+    for row in changed_rows:
         p = row["path"]
+        if install_noise(p, changed_paths):
+            skipped.append(f"{p} (rewritten by the package install, not by Hoola)")
+            continue
         if p in hidden:
             skipped.append(f"{p} (holds secrets)")
             continue

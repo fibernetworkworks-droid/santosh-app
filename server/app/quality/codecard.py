@@ -311,7 +311,7 @@ def run_task(task: dict, steps: int = STEPS, minutes: float = MINUTES, spec: boo
     except Exception as e:  # noqa: BLE001 - one broken job never stops the card
         return {"id": task["id"], "kind": task["kind"], "right": False, "works": False, "scope": True, "rules": True,
                 "test": None, "why": [f"loop error: {str(e)[:160]}"], "seconds": round(time.time() - t0), "steps": 0}
-    changed = {f["path"]: f["content"] for f in out.get("files") or []}
+    changed = {f["path"]: ("" if f.get("delete") else f.get("content", "")) for f in out.get("files") or []}
     row = score(task, changed, out)
     loop = (ctx.get("found") or {}).get("loop") or {}
     row.update(seconds=round(time.time() - t0), steps=loop.get("steps", 0), finished=loop.get("finished", False),
@@ -362,7 +362,7 @@ def run_task_engine(task: dict) -> dict[str, Any]:
             EN.forget(tid)
         except Exception:
             pass
-    changed = {f["path"]: f["content"] for f in out.get("files") or []}
+    changed = {f["path"]: ("" if f.get("delete") else f.get("content", "")) for f in out.get("files") or []}
     row = score(task, changed, out)
     loop = (ctx.get("found") or {}).get("loop") or {}
     row.update(seconds=round(time.time() - t0), steps=loop.get("steps", 0), finished=loop.get("finished", False),

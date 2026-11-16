@@ -262,6 +262,7 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
     url = "https://openrouter.ai/api/v1/chat/completions"
     timeout = float(getattr(st, "dev_qwen_timeout_s", 180) or 180)
     last: Exception | None = None
+    lower = {"high": "medium", "medium": "low", "low": "low"}
     for i in range(3):
         if i:
             time.sleep(3 * i)
@@ -291,7 +292,16 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
         blocks, stop = llm.from_openai(data)
         blocks, stop = _keep_broken(data, blocks, stop)
         if not blocks:
+            # v0.947 an empty answer is almost always the model thinking until its room ran out (a vague ask on high
+            # effort): the next try thinks one level less and keeps the room, so the words fit
             last = QwenError("Qwen sent an empty answer")
+            fin = str(((data.get("choices") or [{}])[0] or {}).get("finish_reason") or "")
+            log.warning("hoola code qwen %s try %d empty (finish=%s, effort=%s)", model, i + 1, fin, level)
+            if level != "low":
+                room = ROOM[level]
+                level = lower[level]
+                body["reasoning"] = {"effort": level, "exclude": True}
+                body["max_tokens"] = int(max_tokens) + room
             continue
         u = dict(data.get("usage") or {})
         log.info("hoola code qwen %s %.1fs effort=%s in=%s out=%s tools=%d calls=%d stop=%s", model, time.time() - t0,
