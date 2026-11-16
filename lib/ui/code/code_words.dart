@@ -76,8 +76,9 @@ void codeMessageMenu(BuildContext context, Santosh app, String text,
 /// Hoola's words in a session: the Hoola chat's renderer, the long-press sheet, and (on the newest reply) the action row.
 class CodeReply extends StatelessWidget {
   const CodeReply({super.key, required this.app, required this.text, this.actions = false, this.selecting = false,
-      this.onQuote, this.onSelect, this.streaming = false});
+      this.onQuote, this.onSelect, this.streaming = false, this.tail});
   final Santosh app;
+  final List<double>? tail;           // v0.960 the ink of the newest words, worked out every frame by CodeLanding
   final String text;
   final bool actions;
   final bool streaming;               // v0.935 still landing: the newest words drawn lighter
@@ -111,7 +112,7 @@ class CodeReply extends StatelessWidget {
               ? null
               : () => codeMessageMenu(context, app, text,
                   mine: false, onQuote: onQuote == null ? null : () => onQuote!(plain), onSelect: onSelect),
-          child: HoolaMd(text, streaming: streaming, selectable: selecting, sans: true, fade: true),
+          child: HoolaMd(text, streaming: streaming, selectable: selecting, sans: true, fade: true, tail: tail),
         ),
         if (actions)
           Padding(
@@ -175,7 +176,9 @@ class CodeLanding extends StatefulWidget {
   final int from;
   final bool done;
   final void Function(int words) onLanded;
-  final Widget Function(String shown, bool streaming) builder;
+
+  /// v0.960 [tail] = how much ink each of the newest words has (oldest first, 0..1), worked out every frame.
+  final Widget Function(String shown, bool streaming, List<double> tail) builder;
 
   /// v0.957 how long each word takes to land. Medium slow and steady - about 11 words a second, so a reply reads as
   /// written, not dropped in (it was ~19 a second and leapt to ~38 with a backlog). A long backlog speeds it up only
@@ -188,15 +191,25 @@ class CodeLanding extends StatefulWidget {
     return slow + (fast - slow) * (t * t * (3 - 2 * t));   // smoothstep: the pace eases, it never steps
   }
 
+  /// v0.960 a new word rises from faint to full ink over this long, frame by frame, the same for every word whatever
+  /// the pace (it jumped a shade each time the next word landed, and not at all when code was near the end).
+  static const fadeMs = 280.0;
+
+  /// v0.960 the ink of the newest words (oldest first) from how long ago each one appeared.
+  static List<double> tailInk(List<double> agesMs) =>
+      [for (final a in agesMs) (a / fadeMs).clamp(.06, 1.0).toDouble()];
+
   @override
   State<CodeLanding> createState() => _CodeLandingState();
 }
 
 class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker(_onTick);
-  late int _n = widget.from;
+  late int _n = widget.from;                     // words shown
+  double _carry = 0;                             // part of the next word's time already gone
+  final _clock = Stopwatch()..start();
+  final Map<int, double> _born = {};             // v0.960 word index -> when it appeared (ms), the newest few only
   Duration _last = Duration.zero;
-  double _carry = 0;
   bool _reduced = false;
 
   List<String> get _words => widget.text.split(RegExp(r'(?<=\s)'));
@@ -215,6 +228,8 @@ class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStat
     _go();
   }
 
+  bool get _fading => _born.values.any((t) => _clock.elapsedMilliseconds - t < CodeLanding.fadeMs);
+
   void _go() {
     final total = _words.length;
     if (_reduced) {
@@ -228,9 +243,8 @@ class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStat
       if (_ticker.isActive) _ticker.stop();
       return;
     }
-    if (_n < total && !_ticker.isActive) {
+    if ((_n < total || _fading) && !_ticker.isActive) {
       _last = Duration.zero;
-      _carry = 0;
       _ticker.start();
     }
   }
@@ -241,15 +255,28 @@ class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStat
     final total = _words.length;
     final waiting = total - _n;
     if (waiting <= 0) {
-      _ticker.stop();
+      _carry = 0;
+      if (!_fading) {
+        _ticker.stop();
+        _born.clear();
+      }
+      setState(() {});                           // the last words finish rising
       return;
     }
     _carry += dt.inMicroseconds / 1000 / CodeLanding.msPerWord(waiting);   // v0.957 an even, medium-slow pace
     final step = _carry.floor();
-    if (step <= 0) return;
-    _carry -= step;
-    setState(() => _n = (_n + step).clamp(0, total));
-    widget.onLanded(_n);
+    if (step > 0) {
+      _carry -= step;
+      final now = _clock.elapsedMilliseconds.toDouble();
+      final to = (_n + step).clamp(0, total);
+      for (var k = _n; k < to; k++) {
+        _born[k] = now;
+      }
+      _born.removeWhere((k, _) => k < to - 8);
+      _n = to;
+      widget.onLanded(_n);
+    }
+    setState(() {});                             // every frame: the newest words keep rising
   }
 
   @override
@@ -264,7 +291,17 @@ class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStat
     final n = _n.clamp(0, w.length);
     final shown = w.take(n).join();
     if (shown.trim().isEmpty) return const SizedBox.shrink();
-    return widget.builder(shown, !widget.done || n < w.length);
+    final now = _clock.elapsedMilliseconds.toDouble();
+    final ages = <double>[];
+    if (!_reduced) {
+      for (var k = n - 1; k >= 0 && k >= n - 8; k--) {
+        final b = _born[k];
+        if (b == null || now - b >= CodeLanding.fadeMs) break;
+        ages.insert(0, now - b);
+      }
+    }
+    final tail = CodeLanding.tailInk(ages);
+    return widget.builder(shown, !widget.done || n < w.length || tail.isNotEmpty, tail);
   }
 }
 

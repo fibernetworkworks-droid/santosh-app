@@ -5901,3 +5901,28 @@ Fixes (`server/app/pipeline/`):
 Live here (16 Nov, real boards): full read 5 min 35 s, complete, 0 warnings, every kind 10-20 models; the next run on the
 same commit 1.2 s. Tests: `test_v0959_pipeline_feed_limits.py` (5) + the v0.958 suite updated. NOT VERIFIED on her server
 (run vps-ops deploy, then vps-ops pipeline_feed - about 5-6 minutes the first time).
+
+## v0.960.0 HOOLA CODE GLIDE (built as 0.958; their v0.958 + v0.959 took the numbers, both kept; owner, after v0.957: "STILL NEED LOT OF WORK --- NEED MORE SMOOTH LANDING OF TEXT --- FIND THE FLAW")
+
+Four flaws in how a Hoola Code reply lands on the phone, found in the code behind her v0.957 recording:
+1. The fade of the newest words moved only when the NEXT word landed - four fixed shades (`_fadeSteps`), so at ~11 words
+   a second each word stepped darker 4 times instead of rising.
+2. The fade switched OFF for the whole tail whenever a `code name`, a bracket or a bold mark was among the newest four
+   words (`_marks.any(tail.contains)`) - in Hoola Code that is most lines, so words popped in at full ink half the time.
+   The landing looked smooth on one line and abrupt on the next.
+3. A wrapped line pushed everything under it (the working row) down a whole line in one frame, and the follow jumped
+   the same line.
+4. When the words being written became a saved message, the landing widget's key changed (`landlive` -> `landn<step>`),
+   so it was rebuilt from scratch: the newest words flashed to full ink and the size reset.
+
+Fixed (phone only):
+- `CodeLanding` keeps when each word appeared (`_born`) and rebuilds every frame while words land or still rise; each
+  word goes from faint to full ink over `fadeMs` 280 ms by its own clock, the same whatever the pace.
+- `HoolaMd(tail:)` + `_inkTail`: the newest words drawn at the ink given; a word with its own marks (`name`, **bold**)
+  is drawn with them and still rises (inline code's colour and tint fade with it); only a mark left open across words
+  keeps the tail plain.
+- The landing reply sits in an `AnimatedSize` (180 ms, ease-out), so a new line grows in; the thread follows it frame by
+  frame through the v0.957 `_stick` + `ScrollMetricsNotification`.
+- `_keyOf`: the landing widget's id moves with the words from live to saved; a new reply gets a fresh id.
+
+Tests: `server/tests/test_v0960_hoola_code_glide.py` (4). NOT VERIFIED on her phone (CI compiles the Dart first).

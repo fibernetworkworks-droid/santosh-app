@@ -211,8 +211,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         // v0.944 the words being written become a message: it carries on from the word it had reached
         final says = steps.where((x) => cs(x['k']) == 'say').toList();
         final newest = says.isEmpty ? -1 : _stepN(says.last, -1);
-        if (newest > _lastSayN && _landed.containsKey('live')) _landed['n$newest'] = _landed.remove('live')!;
-        if (writing.isNotEmpty && (_liveHead.isEmpty || !writing.startsWith(_liveHead))) _landed['live'] = 0;   // a new reply
+        if (newest > _lastSayN && _landed.containsKey('live')) {
+          _landed['n$newest'] = _landed.remove('live')!;
+          _keyOf['n$newest'] = _keyOf.remove('live') ?? 'live';   // v0.960 the same widget carries on
+        }
+        if (writing.isNotEmpty && (_liveHead.isEmpty || !writing.startsWith(_liveHead))) {
+          _landed['live'] = 0;                                     // a new reply
+          _keyOf['live'] = 'live${++_liveSeq}';
+        }
         if (cs(t['explain']) != _explainSeen) {
           _explainSeen = cs(t['explain']);
           _landed.remove('explain');
@@ -831,23 +837,36 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     final hold = _landBusy;
     if ((_landed[i] ?? 0) < total) _landBusy = true;
     return CodeLanding(
-        key: ValueKey('land$i'),
+        // v0.960 the same widget carries on when the words being written become a saved message (its key moves with
+        // them): it was rebuilt from scratch at that moment, so the newest words flashed to full ink and the size reset
+        key: ValueKey('land${_keyOf[i] ?? i}'),
         text: text,
         from: _landed[i] ?? 0,
         done: done,
         hold: hold,
         onLanded: (n) => _landedTo(i, n),
-        builder: (shown, streaming) => CodeReply(
-          app: widget.app,
-          text: shown,
-          streaming: streaming,
-          actions: actions && !streaming,
-          selecting: _selecting == 'land$i',
-          onQuote: _mode(_t ?? const {}) == 'off' ? null : (q) => codeQuoteInto(_msg, _focus, q),
-          onSelect: () => setState(() => _selecting = 'land$i'),
+        // v0.960 a new line grows in over a moment instead of pushing everything under it down a whole line at once;
+        // the thread follows it frame by frame (ScrollMetricsNotification -> _stick), so the page glides
+        builder: (shown, streaming, tail) => AnimatedSize(
+          duration: HoolaMotion.of(context, const Duration(milliseconds: 180)),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: CodeReply(
+            app: widget.app,
+            text: shown,
+            streaming: streaming,
+            tail: tail,
+            actions: actions && !streaming,
+            selecting: _selecting == 'land$i',
+            onQuote: _mode(_t ?? const {}) == 'off' ? null : (q) => codeQuoteInto(_msg, _focus, q),
+            onSelect: () => setState(() => _selecting = 'land$i'),
+          ),
         ),
       );
   }
+
+  final Map<String, String> _keyOf = {};  // v0.960 landing -> its widget's id, kept when live words become a message
+  int _liveSeq = 0;
 
   final Map<String, int> _landTotal = {};
   bool _landBusy = false;               // set while the thread is built: a message above is still landing

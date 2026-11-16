@@ -13,8 +13,13 @@ import '../hoola_theme.dart';
 import '../md_text.dart';
 
 class HoolaMd extends StatelessWidget {
-  const HoolaMd(this.text, {super.key, this.streaming = false, this.selectable = false, this.compact = false, this.sans = false, this.fade = false});
+  const HoolaMd(this.text,
+      {super.key, this.streaming = false, this.selectable = false, this.compact = false, this.sans = false, this.fade = false, this.tail});
   final String text;
+
+  /// v0.960 Hoola Code: the ink of the newest words (oldest first, 0..1), worked out every frame by the landing, so a
+  /// word rises smoothly instead of a shade per landed word. Null = the old four fixed steps.
+  final List<double>? tail;
   final bool streaming;
   final bool selectable;
 
@@ -49,6 +54,8 @@ class HoolaMd extends StatelessWidget {
         .copyWith(backgroundColor: c.ink.withOpacity(c.dark ? .09 : .05), color: c.codeTerm);
     List<InlineSpan> inline(String s, {bool live = false}) {
       if (!live) return mdInline(s, link: c.accent, codeStyle: code);
+      final ink = tail;
+      if (fade && ink != null) return _inkTail(s, ink, c, code);
       final m = (fade ? _fadeTail : _tail).firstMatch(s);
       final tail = m?.group(0) ?? '';
       if (tail.trim().isEmpty || tail.length >= s.length || _marks.any(tail.contains)) {
@@ -135,6 +142,38 @@ class HoolaMd extends StatelessWidget {
   }
 
   Widget _rich(List<InlineSpan> spans, TextStyle s) => Text.rich(TextSpan(style: s, children: spans));
+
+  /// v0.960 the newest words of the block being written, each at its own ink. A word that carries its own marks
+  /// (`name`, **bold**) is drawn with them and still rises (it used to switch the fade off for the whole tail, so
+  /// words near code popped in at full ink). Only a mark left open across words keeps the tail plain.
+  static final _word = RegExp(r'\S+\s*');
+  List<InlineSpan> _inkTail(String s, List<double> ink, HoolaColors c, TextStyle code) {
+    if (ink.isEmpty) return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
+    final all = _word.allMatches(s).toList();
+    final k = ink.length > all.length ? all.length : ink.length;
+    if (k == 0) return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
+    final cut = all[all.length - k].start;
+    final head = s.substring(0, cut);
+    bool open(String x) =>
+        '**'.allMatches(x).length.isOdd || '`'.allMatches(x).length.isOdd || '~~'.allMatches(x).length.isOdd ||
+        '['.allMatches(x).length != ']'.allMatches(x).length;
+    if (open(head)) return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
+    final out = <InlineSpan>[if (head.isNotEmpty) ...mdInline(head, streaming: true, link: c.accent, codeStyle: code)];
+    final ofs = ink.length - k;
+    for (var i = 0; i < k; i++) {
+      final w = all[all.length - k + i].group(0)!;
+      final a = ink[ofs + i];
+      final st = code.copyWith(color: code.color?.withOpacity((code.color?.opacity ?? 1) * a),
+          backgroundColor: code.backgroundColor?.withOpacity((code.backgroundColor?.opacity ?? 1) * a));
+      out.add(TextSpan(
+        style: TextStyle(color: c.ink.withOpacity(a)),
+        children: open(w)
+            ? [TextSpan(text: w)]                  // half a mark: plain until it closes
+            : mdInline(w, streaming: true, link: c.accent.withOpacity(a), codeStyle: st),
+      ));
+    }
+    return out;
+  }
 
   Widget _table(MdBlock b, HoolaColors c, TextStyle body) => HoolaMdTable(rows: b.rows);
 }
