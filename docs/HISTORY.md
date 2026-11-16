@@ -5751,3 +5751,17 @@ Every other job passed (works 11/12, scope 12/12, rules 12/12, good tests 7/7).
 - The card's miss line now prints what Hoola said (`said: ...`), so the next read is not blind.
 - Tests: `test_v0952_code_unclear_ask.py` (4).
 - NOT VERIFIED: rerun vps-ops `code_card_engine_hard`.
+
+## v0.953.0 GITHUB BACK TO APP (owner, after installing the Hoola Code GitHub App: "But why not redirecting to hoola app" -> "need one tap GitHub access connection")
+
+She installed the App and landed on GitHub's own settings page. Two causes: the App had no Setup URL saved (a one-time
+setting the App's owner makes; her users never see it), and the Setup URL page itself only said "return to the app".
+
+- `GET /api/devsahayak/github/installed` now answers with the shared sign-in done page (`bazar/donepage.render`): on
+  the phone it jumps to `santosh://github?ok=1` after a moment, with a Back to Hoola button.
+- Phone: manifest intent filter `santosh://github`, `MainActivity` -> `github:ok=`, `lib/main.dart` handles it BEFORE
+  the fallback that treats any other link as a session token. The Connecting GitHub sheet already polls, so it closes
+  on its own when the app comes back.
+- An install made on GitHub itself (no signed state) now says "tap Connect GitHub in the app" instead of "link expired".
+- Owner step, once: App settings > Post installation > Setup URL = `https://hoola.ainewtika.com/api/devsahayak/github/installed`.
+- Tests: `test_v0953_github_back_to_app.py` (4). NOT VERIFIED on her phone.

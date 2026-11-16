@@ -171,6 +171,9 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         widget.app.onBazarLinked(t.endsWith('=1'));
         return;
       }
+      if (t.startsWith('github:')) {   // v0.953 back from installing the GitHub App: the Connecting sheet is polling
+        return;
+      }
       if (t.startsWith('mail:')) {
         widget.app.onMailLinked(t.endsWith('=1'));
         return;

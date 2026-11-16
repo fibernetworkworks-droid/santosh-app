@@ -551,6 +551,7 @@ class MainActivity : FlutterActivity() {
             data.scheme == "santosh" && data.host == "bazar" -> "bazar:linked=" + (data.getQueryParameter("linked") ?: "0")
             data.scheme == "santosh" && data.host == "tv" -> "tv:" + (data.getQueryParameter("ch") ?: return)
             data.scheme == "santosh" && data.host == "scroll" -> "scroll:open"
+            data.scheme == "santosh" && data.host == "github" -> "github:ok=" + (data.getQueryParameter("ok") ?: "0")   // v0.953 Hoola Code GitHub App
             data.scheme == "santosh" && data.host == "mail" -> "mail:ok=" + (data.getQueryParameter("ok") ?: "0")
             data.scheme == "santosh" && data.host == "calendar" -> "calendar:ok=" + (data.getQueryParameter("ok") ?: "0")
             data.scheme == "santosh" && data.host in setOf("sheets", "drive", "forms", "slides", "photos", "youtube") -> data.host + ":ok=" + (data.getQueryParameter("ok") ?: "0")

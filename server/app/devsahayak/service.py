@@ -617,7 +617,9 @@ def github_installed(installation_id: int, state: str, setup_action: str = "") -
     from . import ghapp
     tenant = ghapp.read_state(state)
     if not tenant:
-        return {"ok": False, "why": "This link has expired. Start again from the app."}
+        # v0.953 no signed state = she installed / changed it on GitHub itself, so Hoola cannot tell whose it is
+        return {"ok": False, "why": ("Open Hoola Code in the app and tap Connect GitHub - that links this install to you."
+                                     if not state else "This link has expired. Tap Connect GitHub in the app again.")}
     if not installation_id:
         return {"ok": False, "why": "No installation. Pick at least one repository."}
     account = ghapp.account_of(int(installation_id))
