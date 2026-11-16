@@ -6050,3 +6050,24 @@ FIX: (1) the count goes to the new message whose text starts with the live words
 rows, the round line) is not drawn yet, and the question / ready / PR cards wait too - the thread lands top to bottom;
 not applied while she has scrolled up (an off-screen landing does not move, nothing should stay hidden). Phone only.
 Tests `test_v0964_hoola_code_order.py` (3). NOT VERIFIED on her phone.
+
+## v0.965.0 HOOLA PIPELINE P2 FIX (owner: "DONE CHECK" after deploy + pipeline_on)
+
+Her check (vps-ops pipeline_on 16:34 -> effective True, pipeline_sheets 16:36 -> "no job sheets yet", pipeline_off 16:38)
+found no sheet. This session cannot start vps-ops jobs (GitHub answers 403 to a workflow dispatch), so the server log
+could not be read from here; reading the code instead found a real bug:
+
+- `santosh.run_turn` called `turnbox.begin(conversation_id, user_text, tenant_id, ...)` but the signature is
+  `begin(conv, tenant, text, ...)` - her words went in as the account and the account id as her words. Every live sheet
+  would have read kind `chat` with the account id as the ask, and her own model pick could never apply. The P2 test
+  missed it because it used "hi" for both. Now passed by name.
+- NEW test `test_run_turn_gives_the_box_her_words_and_her_account`: a real reasoning ask through `run_turn` must land on
+  the sheet as itself (her account, her words, reason / HIGH, the HIGH model) - fails on the old code.
+- The Box now says once per process in the log when the server has no tables (`pipeline box: no tables at <path>`) -
+  before, a Box with no tables was silent.
+- `pipeline_sheets` prints where the tables are (present / MISSING) and the running server's own Box log lines
+  (`pipeline box ...` from santosh-error.log), so the next check shows whether a message reached the Box at all.
+
+NOT KNOWN: why her 16:34-16:36 window had no sheet at all - the swapped arguments still write a sheet, so either no
+chat message was sent in those two minutes, or the server could not see the tables; the new pipeline_sheets output
+answers which. NOT VERIFIED with a real model answer. 2 tests (+ the pipeline suites, 108 passed).

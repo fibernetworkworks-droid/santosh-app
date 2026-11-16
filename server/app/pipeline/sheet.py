@@ -154,6 +154,8 @@ def main() -> int:
     """vps-ops `pipeline_sheets`: the newest 15 sheets, one block each (read-only)."""
     from ..config import get_settings
     print(f"pipeline_on = {bool(getattr(get_settings(), 'pipeline_on', False))}")
+    cur = store.root() / "current.json"
+    print(f"tables: {cur.resolve()} - {'present' if cur.exists() else 'MISSING (the Box stays off without them)'}")
     rows = recent(n=15)
     if not rows:
         print("no job sheets yet - a sheet is written for each chat message once pipeline_on is true")

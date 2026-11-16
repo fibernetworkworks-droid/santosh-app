@@ -290,7 +290,9 @@ jobs:
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective pipeline_on =\", get_settings().pipeline_on)"' ;;
               pipeline_sheets)
                 # v0.963 HOOLA PIPELINE P2: the newest job sheets - one per chat message that went through the Box (read-only)
-                echo 'cd $CORE && timeout 60 .venv/bin/python -m app.pipeline.sheet' ;;
+                echo 'cd $CORE && timeout 60 .venv/bin/python -m app.pipeline.sheet'
+                # v0.965: what the running server itself said about the Box (begin / done lines, a failed begin)
+                echo 'L=$HOME/.pm2/logs/santosh-error.log; echo; echo "== the server log (Box lines)"; tail -n 60000 $L | grep -aE "pipeline box|pipeline_on" | cut -c1-300 | tail -n 40' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'

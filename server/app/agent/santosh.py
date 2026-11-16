@@ -3209,8 +3209,8 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     _bx = None
     try:   # v0.963 HOOLA PIPELINE P2: a one-part message through the Box (pipeline_on; off = today's turn exactly)
         from ..pipeline import turnbox as _tbox
-        _bx = _tbox.begin(conversation_id, user_text, tenant_id or get_settings().tenant_id, actor or "owner",
-                          bool(voice or VOICE_BRAIN_NOW.get()))
+        _bx = _tbox.begin(conversation_id, tenant=tenant_id or get_settings().tenant_id, text=user_text,
+                          actor=actor or "owner", voice=bool(voice or VOICE_BRAIN_NOW.get()))
     except Exception:   # noqa: BLE001 - the Box never stops her turn
         log.exception("pipeline box begin failed")
         _bx = None

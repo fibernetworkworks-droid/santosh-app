@@ -119,6 +119,10 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
         return None
     doc = tables()
     if not doc:
+        if not STATS.get("no_tables_said"):      # said once per process, so a silent Box is never a mystery
+            STATS["no_tables_said"] = 1
+            log.warning("pipeline box: no tables at %s - today's turn (run the feed: vps-ops pipeline_feed)",
+                        (store.root() / "current.json").resolve())
         return None
     t0 = time.time()
     pin = ""

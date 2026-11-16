@@ -174,6 +174,40 @@ def test_run_turn_runs_on_the_box_model(box, monkeypatch):
     assert sh["status"] == "done" and sh["parts"][0]["applied"]
 
 
+def test_run_turn_gives_the_box_her_words_and_her_account(box, monkeypatch):
+    """v0.965: the live chat turn passed her words as the account and the account as her words - every live sheet
+    read 'chat' with the account id as the ask. A real reasoning ask through run_turn must land as itself."""
+    from app.agent import llm, santosh
+    from app.pipeline import sheet as S
+    seen = {}
+
+    async def fake(conv, text, *a, **k):
+        seen["model"] = llm.MODEL_NOW.get()
+        return "Jawab 168 piece."
+
+    monkeypatch.setattr(santosh, "_run_turn", fake)
+    monkeypatch.setenv("CHAT_GRAPH", "false")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    ask = "Agar 3 machine 5 din mein 120 piece banati hain to 7 machine 9 din mein kitne?"
+    asyncio.run(santosh.run_turn("c12", ask, "tenant_meghana"))
+    sh = S.recent(conv="c12")[0]
+    assert sh["tenant"] == "tenant_meghana" and sh["ask"].startswith("Agar 3 machine")
+    assert sh["parts"][0]["kind"] == "reason" and sh["parts"][0]["level"] == "HIGH"
+    assert seen["model"] == "openrouter:a/high1"
+
+
+def test_no_tables_is_said_once(box, caplog):
+    from app.pipeline import store
+    (store.root() / "current.json").unlink()
+    box._TABLES.update({"mtime": None, "doc": None})
+    box.STATS.pop("no_tables_said", None)
+    with caplog.at_level("WARNING", logger="santosh.pipeline"):
+        assert box.begin("c13", "t", "hi") is None
+        assert box.begin("c13", "t", "hi") is None
+    assert sum("no tables at" in r.getMessage() for r in caplog.records) == 1
+
+
 def test_sheets_route(box):
     from fastapi.testclient import TestClient
     from app.main import app
