@@ -64,7 +64,7 @@ def final_check(answer: str, user_text: str = "", facts: list[dict] | None = Non
                           if f.get("source") == "her" and isinstance(f.get("value"), (int, float))])
         for v in F.key_figures(answer or "", asked=user_text or ""):
             if not F.near(v, pool):
-                problems.append(f"figure {v:g} is in no fact the turn had")
+                problems.append(f"figure {int(v) if float(v).is_integer() else v} is in no fact the turn had")
     if files:
         checked.append("files")
         for p in files:

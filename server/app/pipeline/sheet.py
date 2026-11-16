@@ -78,7 +78,10 @@ def set_state(sh: dict, n: int, state: str, **extra: Any) -> None:
 def finish(sh: dict, check: dict | None = None) -> None:
     sh["check"] = check
     sh["ended"] = time.time()
-    sh["status"] = "failed" if any(p["state"] == "failed" for p in sh["parts"]) else "done"
+    if any(p["state"] == "waiting_tap" for p in sh["parts"]):
+        sh["status"] = "waiting_tap"        # P3: a branch waits for her tap; parts.tick carries it on
+    else:
+        sh["status"] = "failed" if any(p["state"] == "failed" for p in sh["parts"]) else "done"
     save(sh)
 
 
@@ -138,6 +141,18 @@ def unfinished(conv: str) -> dict | None:
     return json.loads(r[0]) if r else None
 
 
+def waiting_tap(n: int = 50) -> list[dict]:
+    """P3: the sheets with a branch waiting for her tap (newest first)."""
+    with _LOCK:
+        c = _db()
+        try:
+            rows = c.execute("SELECT data FROM sheets WHERE status = 'waiting_tap' ORDER BY at DESC LIMIT ?",
+                             (int(n),)).fetchall()
+        finally:
+            c.close()
+    return [json.loads(r[0]) for r in rows]
+
+
 def sweep(now: float | None = None) -> int:
     cut = (now if now is not None else time.time()) - KEEP_DAYS * 86400
     with _LOCK:
@@ -164,11 +179,18 @@ def main() -> int:
         when = time.strftime("%d %b %H:%M:%S", time.localtime(sh["at"]))
         chk = sh.get("check") or {}
         print(f"\n{when}  {sh['status']}  box {sh.get('box_ms', '?')} ms  ask: {sh.get('ask', '')[:80]!r}")
+        if sh.get("multi"):
+            print(f"  {len(sh['parts'])} parts, plan by {sh.get('plan_by', 'code')}"
+                  + (f" ({sh.get('planner')}, {sh.get('plan_s')} s)" if sh.get("planner") else ""))
         for p in sh["parts"]:
-            m = (p.get("model") or {}).get("id") or "-"
+            m = p.get("ran_on") or (p.get("model") or {}).get("id") or "-"
             bk = ", ".join(b["id"] for b in p.get("backups") or []) or "-"
             print(f"  part {p['n']}: {p.get('kind')} ({p.get('language')}) {p.get('level')} -> {m}  [backups {bk}]  "
-                  f"{p['state']}")
+                  f"{p['state']}" + (f"  after {p['after']}" if p.get("after") else "")
+                  + (f"  {p['seconds']} s" if p.get("seconds") is not None else "")
+                  + (f"  ({p['ask'][:60]!r})" if sh.get("multi") else ""))
+            for nd in (p.get("out") or {}).get("not_done") or []:
+                print(f"    not done: {nd[:140]}")
             print("    " + ("ran on this model" if p.get("applied") else f"not through the Box: {p.get('not_applied')}"))
         if chk:
             print("  check: " + ("ok" if chk.get("ok") else "; ".join(chk.get("problems") or []))

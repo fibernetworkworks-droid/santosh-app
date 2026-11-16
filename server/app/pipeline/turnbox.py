@@ -10,9 +10,13 @@ Only while `pipeline_on` is True (default OFF until P7 - off = today's routing e
          record (two failures in 10 minutes = paused, the Box picks a backup next time); a good answer keeps the same
          model for this chat for 30 minutes
 
+P3 (v0.967): a message with several parts is planned (code, then the LOW planner - `parts.py`): the parts before the
+reply run as workers side by side where they can, the last part (the writer) is this chat turn on its own model, and
+the sheet + the final check cover every part.
+
 Not through the Box (the sheet says why, the turn runs as today): calls (a later phase), routines / wakes / long-job
-rounds, several parts in one message (P3's planner), media work (the studios keep their price cards - P5), a server
-whose chat runs on Claude or OmniRoute, no OpenRouter key.
+rounds, media work as the whole message (the studios keep their price cards - P5), a server whose chat runs on Claude
+or OmniRoute, no OpenRouter key.
 """
 from __future__ import annotations
 
@@ -35,6 +39,10 @@ from .choose import out_of
 log = logging.getLogger("santosh.pipeline")
 
 TOOL_SINK: contextvars.ContextVar[list | None] = contextvars.ContextVar("hoola_box_tools", default=None)
+# P3: (tool name, raw result) of the part running now - a card she must tap is read from it (parts.cards_in)
+TOOL_RAW: contextvars.ContextVar[list | None] = contextvars.ContextVar("hoola_box_raw", default=None)
+# P3: this turn's Box record, read by the parts hook inside the chat turn (santosh._run_turn)
+CURRENT: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_box_current", default=None)
 # True while a turn runs on the Box's choice: the chat loop keeps it (no switch to Claude for hard / long asks)
 APPLIED: contextvars.ContextVar[bool] = contextvars.ContextVar("hoola_box_applied", default=False)
 PAUSE_FAILS = 2
@@ -103,13 +111,18 @@ def her_words(text: str) -> tuple[str, list[str]]:
 
 
 # ------------------------------------------------------------------ one turn
-def _why_not(actor: str, voice: bool, r: dict) -> str:
+def _why_not_turn(actor: str, voice: bool) -> str:
     if voice:
         return "a live call - not through the Box yet"
     if not (actor == "owner" or actor.startswith("approved:")):
         return f"a {actor} turn - not through the Box yet"
-    if r.get("several_parts"):
-        return "several parts in one message - the planner comes in P3"
+    return ""
+
+
+def _why_not(actor: str, voice: bool, r: dict) -> str:
+    w = _why_not_turn(actor, voice)
+    if w:
+        return w
     if out_of(r["kind"]) != "text":
         return f"{r['kind']} - the studio keeps its own engine and price card until P5"
     m = r.get("model") or {}
@@ -134,6 +147,9 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
     st = get_settings()
     if not bool(getattr(st, "pipeline_on", False)):
         return None
+    from . import parts as P
+    if P.CONTINUING.get():
+        return None              # her tap let a paused branch go on: parts.continue_sheet runs that turn itself
     doc = tables()
     if not doc:
         if not STATS.get("no_tables_said"):      # said once per process, so a silent Box is never a mystery
@@ -159,6 +175,11 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
     why_not = _why_not(actor or "owner", bool(voice), r)
     if any(n.startswith("place:") for n in notes):
         why_not = "a Hoola PC turn - the PC side keeps its own model"
+    elif r.get("several_parts") and len(P.split(words)) > 1 and not _why_not_turn(actor or "owner", bool(voice)):
+        try:
+            return _begin_multi(conv, tenant, words, doc, pin, t0)
+        except Exception as e:   # noqa: BLE001 - a plan that cannot be made: today's one-part turn
+            log.warning("pipeline box: planning failed (%s) - one part", str(e)[:120])
     part = {"kind": r["kind"], "language": r["language"], "level": r["level"], "level_used": r.get("level_used"),
             "level_why": r["level_why"], "signals": r["signals"], "model": r["model"], "backups": r["backups"],
             "why": r["choose_why"], "applied": not why_not, "not_applied": why_not}
@@ -179,12 +200,76 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
     log.warning("pipeline box %s: %s %s -> %s (%s) %.1f ms%s", conv, r["kind"], r["level"],
                 (r["model"] or {}).get("id") or "-", "applied" if not why_not else "not applied", ms,
                 f" - {why_not}" if why_not else "")
-    return {"sheet": sh, "tok": tok, "sink": sink, "sink_tok": sink_tok, "app_tok": app_tok, "t0": t0,
-            "text": words}
+    b = {"sheet": sh, "tok": tok, "sink": sink, "sink_tok": sink_tok, "app_tok": app_tok, "t0": t0,
+         "text": words, "doc": doc}
+    b["cur_tok"] = CURRENT.set(b)
+    return b
+
+
+def _apply_writer(b: dict) -> None:
+    """The last part (her chat turn) runs on its own model when it can (text out, an OpenRouter model, OpenRouter brain)."""
+    from . import parts as P
+    sh = b["sheet"]
+    w = sh["parts"][-1]
+    why = _why_not("owner", False, {**w, "model": P.runnable(w) or w.get("model")})
+    m = P.runnable(w)
+    w["applied"], w["not_applied"] = (not why and bool(m)), why
+    if w["applied"]:
+        from ..agent import llm
+        w["ran_on"] = m["id"]
+        b["writer_tok"] = llm.MODEL_NOW.set("openrouter:" + m["id"])
+        APPLIED.set(True)
+
+
+def _begin_multi(conv: str, tenant: str, words: str, doc: dict, pin: str, t0: float) -> dict:
+    """P3: a message with several parts. The code plan now (milliseconds); the LOW planner + the worker parts run
+    inside the chat turn (parts.run_for_turn). A restart re-running the same ask keeps the parts already done."""
+    from . import parts as P
+    old = S.unfinished(conv)
+    reused = bool(old and old.get("multi") and old.get("ask") == S._mask(words) and time.time() - old["at"] < 3600)
+    if reused:
+        sh = old
+        P.STATS["reused"] += 1
+        for p in sh["parts"]:
+            if p["state"] == "running":
+                p["state"] = "waiting"      # cut by the restart: runs again; done parts are kept
+    else:
+        parts = P.size(P.code_plan(words), doc, conv=conv, pin=pin, health=health(), now=t0)
+        sh = S.new(conv, tenant, words, parts, read_on=doc.get("read_on") or "", surface="chat", now=t0)
+        sh["multi"] = True
+        sh["plan_by"] = "code"
+    sink: list = []
+    b = {"sheet": sh, "tok": None, "sink": sink, "sink_tok": TOOL_SINK.set(sink), "app_tok": APPLIED.set(False),
+         "t0": t0, "text": words, "doc": doc, "multi": True, "reused": reused}
+    _apply_writer(b)
+    sh["box_ms"] = round((time.time() - t0) * 1000, 1)
+    S.save(sh)
+    STATS["turns"] += 1
+    STATS["multi"] = STATS.get("multi", 0) + 1
+    b["cur_tok"] = CURRENT.set(b)
+    log.warning("pipeline box %s: %d parts (%s plan%s) %.1f ms", conv, len(sh["parts"]), sh.get("plan_by"),
+                ", restart keeps the done ones" if reused else "", sh["box_ms"])
+    return b
+
+
+def replan(b: dict, plan: list[dict]) -> None:
+    """The planner's plan replaces the code plan before any part ran (same sheet)."""
+    from . import parts as P
+    sh = b["sheet"]
+    parts = P.size(plan, b["doc"], conv=sh["conv"], health=health())
+    sh["parts"] = [{"n": i, "state": "waiting", "tries": 0, "out": None, **p} for i, p in enumerate(parts, 1)]
+    if b.get("writer_tok") is not None:
+        from ..agent import llm
+        llm.MODEL_NOW.reset(b.pop("writer_tok"))
+    _apply_writer(b)
+    S.save(sh)
 
 
 def saw(name: str, out: Any) -> None:
     """Every tool result of a Box turn (from santosh._run_tool) - the facts list's source."""
+    raw = TOOL_RAW.get()
+    if raw is not None and len(raw) < 60:
+        raw.append((name, out))
     sink = TOOL_SINK.get()
     if sink is None:
         return
@@ -205,19 +290,21 @@ def end(b: dict | None, answer: str, failed: bool = False) -> dict | None:
         tools_out = list(b["sink"])
         facts = K.facts_from(b["text"], tools_out)
         files = K.files_from(tools_out)
-        chk = K.final_check(answer or "", b["text"], facts, files, [], tools_ran=len(tools_out))
-        part = sh["parts"][0]
+        # P3: the writer is the last part; every other part's not-done must be said in the reply (6.10)
+        not_done = [x for p in sh["parts"][:-1] for x in ((p.get("out") or {}).get("not_done") or [])]
+        chk = K.final_check(answer or "", b["text"], facts, files, not_done, tools_ran=len(tools_out))
+        part = sh["parts"][-1]
         empty = not str(answer or "").strip()
         bad = bool(failed or empty)
         pkg = S.package(result=str(answer or "")[:4000], facts=[f for f in facts if f["source"] != "her"][:80],
                         files=files, notes=[], not_done=["no answer"] if empty else [])
-        S.set_state(sh, 1, "failed" if bad else "done", out=pkg, tools_ran=len(tools_out))
+        S.set_state(sh, part["n"], "failed" if bad else "done", out=pkg, tools_ran=len(tools_out))
         S.finish(sh, chk)
         if not chk["ok"]:
             STATS["check_problems"] += 1
         if bad:
             STATS["failed"] += 1
-        m = (part.get("model") or {}).get("id")
+        m = part.get("ran_on") or (part.get("model") or {}).get("id")
         if part.get("applied") and m:
             note(m, not bad)
             if not bad:
@@ -229,12 +316,18 @@ def end(b: dict | None, answer: str, failed: bool = False) -> dict | None:
         log.warning("pipeline box: closing the sheet failed (%s)", str(e)[:120])
         return None
     finally:
+        for k in ("tok", "writer_tok"):
+            try:
+                if b.get(k) is not None:
+                    from ..agent import llm
+                    llm.MODEL_NOW.reset(b[k])
+            except Exception:   # noqa: BLE001 - a different context (reset across tasks) just leaves it
+                pass
         try:
-            if b.get("tok") is not None:
-                from ..agent import llm
-                llm.MODEL_NOW.reset(b["tok"])
-        except Exception:   # noqa: BLE001 - a different context (reset across tasks) just leaves it
-            pass
+            if b.get("cur_tok") is not None:
+                CURRENT.reset(b["cur_tok"])
+        except Exception:   # noqa: BLE001
+            CURRENT.set(None)
         try:
             TOOL_SINK.reset(b["sink_tok"])
         except Exception:   # noqa: BLE001

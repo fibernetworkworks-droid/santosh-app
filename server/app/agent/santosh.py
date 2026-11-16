@@ -3597,6 +3597,16 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             bus.publish(conversation_id, "typing", {"on": False})
             return STOPPED_IN_PREP
         _stopped.discard(conversation_id)
+        try:   # v0.967 HOOLA PIPELINE P3: a message with several parts - the parts before the reply run now, side by
+            # side where they can (the chat lock is held, her message is saved; Stop stops them); this turn writes
+            from ..pipeline import parts as _plparts
+            _pblock = await _plparts.run_for_turn(conversation_id, ctx, settings, tenant_id, _turn_id)
+            if _pblock:
+                _with_memory(history, _pblock)
+        except asyncio.CancelledError:
+            raise
+        except Exception:   # noqa: BLE001 - the parts never stop her turn: it answers as today
+            log.exception("pipeline parts failed")
         _h0 = len(history)
         from .. import livereply
         # v0.191 a wake turn never streams into an already-open channel (a live call owns its own reply stream);

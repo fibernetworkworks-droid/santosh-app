@@ -83,7 +83,7 @@ def test_not_through_the_box_for_calls_and_background(box, kw, why):
 def test_several_parts_and_media_wait_for_later_phases(box):
     from app.agent import llm
     b = box.begin("c3", "t", "Find prices, and then make a table; then a PDF")
-    assert "P3" in b["sheet"]["parts"][0]["not_applied"] and llm.MODEL_NOW.get() == ""
+    assert b.get("multi") and len(b["sheet"]["parts"]) == 3      # v0.967 P3: several parts are planned now
     box.end(b, "x")
     b = box.begin("c3", "t", "Ek Diwali sale ka poster banao")
     assert "image.make" in b["sheet"]["parts"][0]["not_applied"] and llm.MODEL_NOW.get() == ""

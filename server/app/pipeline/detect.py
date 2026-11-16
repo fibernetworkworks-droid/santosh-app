@@ -31,16 +31,20 @@ HINGLISH = re.compile(r"(?i)\b(hai|hain|kya|karo|kar|kijiye|mujhe|mera|meri|mere
                       r"kitne|bata\w*|chahiye|banao|bana|likho|bhejo|abhi|kal|wala|wali|ka|ke|ki|ko|mein|rahega|"
                       r"raha|rahi|hoga|dijiye|aur|bhi|yeh|woh|kyun|kab|kahan)\b")
 NAME_IN = re.compile(r"(?i)\b(?:in|into|mein|me)\s+([a-z]+)\b|\b([a-z]+)\s+(?:mein|me|main)\b")
+# v0.967: a language named on the thing to make ("a Hindi PDF report", "Marathi letter")
+NAME_ON = re.compile(r"(?i)\b([a-z]+)\s+(?:(?:pdf|word|short|long|detailed)\s+){0,2}(?:report|letter|article|essay|"
+                     r"story|summary|version|document|email|message|speech|post|caption|notice|application)\b")
 
 
 def language(text: str) -> str:
     """The language she wants the answer in: a language she names ('Hindi mein likho', 'in Tamil') wins, then her
     script, then Hinglish words; else English."""
     t = str(text or "")
-    for m in NAME_IN.finditer(t):
-        for g in m.groups():
-            if g and g.lower() in NAMED:
-                return NAMED[g.lower()]
+    for rx in (NAME_IN, NAME_ON):
+        for m in rx.finditer(t):
+            for g in m.groups():
+                if g and g.lower() in NAMED:
+                    return NAMED[g.lower()]
     counts: dict[str, int] = {}
     for ch in t:
         for lang, a, b in SCRIPTS:
@@ -74,13 +78,17 @@ TRANSLATE = R(r"\b(translat\w*|anuvad|anuvaad|tarjuma)\b|\b(?:in|into|mein|me)\s
 SUMMARISE = R(r"\b(summar\w*|saar|saransh|tl;?dr|short mein bata\w*|chhota kar\w*|key points|main points|nichod)\b")
 EXTRACT = R(r"\b(extract|nikaal\w*|nikal\w*|pull out|list (?:all|the|every)|table (?:bana\w*|mein)|in a table|"
             r"fields?|columns?|rows?|json|csv)\b")
+# v0.967: making a table / comparison sheet of things already known is arranging, not finding out (plan 11: LOW)
+TABLE = R(r"\b(?:make|create|build|bana\w*|prepare)\s+(?:a|an|ek|the)?\s*(?:[\w-]+\s+){0,3}(?:table|chart|sheet|"
+          r"comparison)\b|\btable\s+(?:of|bana\w*)\b")
 CODE = R(r"\b(code|function|script|bug|repo|pull request|\bpr\b|python|javascript|typescript|dart|kotlin|sql|regex|"
          r"api endpoint|stack ?trace|traceback|compile|refactor|unit test)\b")
 CODE_SMALL = R(r"\b(script|snippet|regex|function|formula|one.liner|chhota code|small code|sql query)\b")
 RESEARCH = R(r"\b(research|find out|pata (?:karo|lagao)|dhoondh\w*|search (?:for|the web)|latest|news|sources?|"
              r"compare\w*|competitors?|top \d+)\b")
 WRITE_DOC = R(r"\b(report|letter|article|essay|blog|story|kahani|speech|proposal|email|notice|application|patra|"
-              r"chitthi)\b.*\b(likh\w*|write|draft|prepare)\b|\b(likh\w*|write|draft|prepare)\b.*\b(report|letter|"
+              r"chitthi)\b.*\b(likh\w*|write|draft|prepare)\b|\b(likh\w*|write|draft|prepare|make|create|bana\w*)\b.*"
+              r"\b(report|letter|"
               r"article|essay|blog|story|kahani|speech|proposal|email|notice|application|patra|chitthi)\b")
 WRITE = R(r"\b(report|letter|article|essay|blog|story|kahani|script|speech|proposal|email|mail|post|caption|"
           r"description|bio|resume|cv|notice|application|patra|chitthi)\b.*\b(likh\w*|write|draft|bana\w*|prepare|"
@@ -160,6 +168,8 @@ def kind(text: str, attachments: list[dict] | None = None, surface: str = "chat"
         return out("code.small" if CODE_SMALL.search(t) or len(t.split()) < 40 else "code", "about code")
     if WRITE_DOC.search(t):
         return out("write", "asks for a piece of writing")
+    if TABLE.search(t):
+        return out("extract", "arrange what is known into a table")
     if RESEARCH.search(t):
         return out("research", "needs finding things out")
     if max(input_words, len(t.split())) >= 3000:

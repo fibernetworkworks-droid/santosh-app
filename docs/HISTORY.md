@@ -6089,3 +6089,46 @@ Her server, 17:04-17:06 (v0.965 deployed, pipeline_on): the fix held - her sum's
 
 3 tests (111 passed in the pipeline + routines set). NOT VERIFIED on her server. Still her decision: chat MID picks
 Claude Sonnet 4.6 (more than the Qwen 27B chat today).
+
+## v0.967.0 HOOLA PIPELINE P3 (owner: "GO P3" on docs/HOOLA_PIPELINE_PLAN.md)
+
+Her live check of v0.966 first (17:21, her server): her Hinglish sum read `reason (hinglish) HIGH` on the HIGH model,
+check ok, answer in 22 s; the sheet holds only her words. Then P3 = a message with several parts:
+
+- **Plan** (`pipeline/parts.py`): `code_plan` cuts her words where she joined jobs (", and", "phir", ";", a list) in
+  milliseconds - gathering parts (research, facts, reading, summary, translation) wait on nothing, any other part waits
+  for every part before it, the last part writes. Then `model_plan` asks the LOW `plan` model (the `reason` table) for
+  one JSON plan, 10 s at most, outside the chat brain's pause record; `check_plan` accepts only 2-8 parts each with
+  its words and waiting only on EARLIER parts (a loop, a later part, an empty ask = thrown away, the code plan stands).
+- **Size**: each part's own kind + level + model + two backups from its own words (`box.choose_for`); a picture /
+  video / voice part before the reply is driven by a worker on the `tools` table (the studio's price card stays, D6).
+- **Run**: every part but the last is a focused worker = the crew's sub-agent runner (`team._run_agent`) on the part's
+  own model (`llm.MODEL_NOW` inside its own task), side by side when nothing is in between, a part that needs another
+  part's result waits for it and gets its hand-off package (6.3); research parts get the search / fetch tools and the
+  research report rule. It runs inside her chat turn after her message is saved and the chat lock is held
+  (`santosh._run_turn`, after the Stop-in-preparation check), so Stop stops every part and one job runs per chat.
+- **Write**: the last part is her chat turn itself on its own model, told every package, every not-done item and the
+  waiting branches (`writer_block`) - one reply, one voice. The final check covers every part: figures held to every
+  part's facts, every part's not-done must be said.
+- **Her tap per branch (6.9)**: a worker whose tool made a card she must tap (`turnpark.card_of`: bazar confirm
+  cards, email drafts, studio price cards) = `waiting_tap`; parts after it wait (`blocked_by`), the other parts go on,
+  the sheet is `waiting_tap`. The worker slot `pipeline_branch_jobs` (every 20 s, pipeline_on only) reads each card's
+  own row: yes = the parts after it run and a turn (actor `approved:card`, line "[Card answered by her tap] ...") tells
+  her the rest on the writer's model; Not now = only that branch ends; no tap in `pipeline_tap_wait_h` (24 h) = ends.
+- **Restart**: the sheet is saved after every part; a restart re-runs her turn and `begin` takes the unfinished sheet
+  of the same ask (within an hour): done parts are not done again, a part cut mid-way runs again.
+- **Time**: one limit for the parts before the reply (`pipeline_parts_s` 300 s); a part still running is cut, marked
+  failed and the reply must say it.
+- Reading fixes found on the worked example: "make a Hindi PDF report" now reads Hindi (a language named on the thing
+  to make) and as writing (`make` / `create` / `banao` + report / letter ...); "make a (price comparison) table" reads
+  as `extract` (arranging, LOW), not research or reasoning. The final check prints a big figure as `3100000`, not
+  `3.1e+06`.
+- `pipeline_sheets` shows the parts, who planned them, each part's words, what it waited on, its seconds and its
+  not-done lines; `/api/pipeline/sheets` stats carry `parts`.
+
+13 tests (`test_v0967_pipeline_p3.py`): the code plan, the plan check, the planner on the LOW model + fallbacks, the
+EV example end to end through `run_turn` (5 research parts side by side, the table after all five with their packages,
+the Hindi writer on the write.lang model, check ok), an invented figure + an unsaid failure caught, a card pausing only
+its branch + her yes carrying it on, Not now ending only that branch, cards from raw tool results, restart keeps done
+parts, the time limit, one-part messages unchanged, a call not planned, the wiring. 97 pipeline tests pass. NOT
+VERIFIED on her server or with a real planner / worker model.

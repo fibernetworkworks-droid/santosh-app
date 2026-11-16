@@ -551,7 +551,7 @@ async def tick() -> None:
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
-        hoola_batch_jobs, pipeline_jobs,
+        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -857,6 +857,15 @@ async def pipeline_jobs() -> None:
         await asyncio.to_thread(_plsh.sweep)
     except Exception:
         log.exception("pipeline sheet sweep failed")
+
+
+async def pipeline_branch_jobs() -> None:
+    """v0.967 HOOLA PIPELINE P3: a part that waited for her tap goes on once she taps (every 20 s; pipeline_on only)."""
+    try:
+        from .pipeline import parts as _plparts
+        await _plparts.tick()
+    except Exception:
+        log.exception("pipeline branch tick failed")
 
 
 async def research_jobs() -> None:
