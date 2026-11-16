@@ -614,7 +614,7 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
     final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak/github/connect', quiet: true);
     final url = cs(r?['url']);
     if (url.isEmpty || !mounted) return;
-    await Native.openExternal(url: url);
+    await Native.openExternal(url: url, package: 'browser');   // v0.956 the browser, never the GitHub app
     if (!mounted) return;
     final c = HoolaColors.of(context);
     var tries = 0;
@@ -635,7 +635,7 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
                 });
               }
               return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-                Text('Pick the repositories Hoola may work on in the browser, then come back here. Nothing to type — no token.',
+                Text('Sign in on GitHub and pick the repositories Hoola may work on. Hoola brings you back here by itself — nothing to type, no token.',
                     style: codeSans(c, size: 14, color: c.ink2, height: 1.5)),
                 const SizedBox(height: 14),
                 Row(children: [const CodeRing(size: 18), const SizedBox(width: 10), Text('Waiting for GitHub…', style: codeSans(c, size: 14, color: c.ink3))]),

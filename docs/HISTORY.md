@@ -5788,3 +5788,28 @@ moved from the prompt into code (`server/app/devsahayak/engine.py`):
 - `unclear_finish(explain)` makes sure the closing words hold ONE question (at most 3 '?'); with none it adds a fixed
   Hinglish question asking what goes wrong, with an example.
 Tests `server/tests/test_v0955_code_ask_first.py` (4, one on a real git repo). NOT VERIFIED: rerun code_card_engine_hard.
+
+## v0.956.0 GITHUB ONE TAP (owner: "GITHUB STILL NOT REDIRECTING TO APP")
+
+Why v0.953 never brought her back: (1) `Native.openExternal(url)` was a plain ACTION_VIEW, so the GitHub app (it
+claims github.com links) could take the install page and never redirect; (2) the App was already installed on her
+account, and an existing install never carries the signed `state` back, so `/github/installed` could not tell whose
+it was; (3) donepage's `setTimeout(location.href='santosh://...')` has no user gesture, and Chrome blocks it.
+
+Now (`devsahayak/ghapp.py`, `service.github_connect_url` / `github_installed`, `api.py`, `MainActivity.kt`,
+`code_more.dart`):
+- the phone opens the browser (`openExternal package 'browser'` -> `browserPackage`: default browser, else Chrome,
+  never a github package);
+- with `GITHUB_APP_CLIENT_ID` + `GITHUB_APP_CLIENT_SECRET` set, Connect opens GitHub's sign-in for the App
+  (`authorize_url`, redirect_uri = PUBLIC_BASE_URL + /api/devsahayak/github/installed); the callback trades the code
+  for a user token used once (`user_token`), asks `GET /user/installations`, and binds only an install on that list
+  (`pick_install`: the id GitHub sent if listed, else her own account, else the newest). No install yet = 302 to
+  `installations/new?state=`; the Setup URL without a code = 302 through the sign-in. An installation id in the URL
+  alone no longer binds anything (it could have been someone else's);
+- Android: a successful bind answers 302 to `intent://github?ok=1#Intent;scheme=santosh;package=com.newtika.santosh;
+  S.browser_fallback_url=...;end`, the fallback `/github/done` page's button is the same intent link;
+- vps-ops `github_app` also writes the client id / secret from repo secrets HOOLA_GITHUB_APP_CLIENT_ID /
+  HOOLA_GITHUB_APP_CLIENT_SECRET and prints `oauth_ready()` + the callback URL.
+Owner, once: App settings > Callback URL = https://hoola.ainewtika.com/api/devsahayak/github/installed, Generate a
+new client secret, add both repo secrets, run vps-ops github_app. Tests `test_v0956_github_one_tap.py` (7).
+NOT VERIFIED on her phone.

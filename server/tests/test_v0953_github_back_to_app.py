@@ -11,7 +11,7 @@ def test_installed_page_goes_back_into_the_app(env, monkeypatch):
     from fastapi.testclient import TestClient
     from app.main import app
     from app.devsahayak import service as S
-    monkeypatch.setattr(S, "github_installed", lambda i, st, a="": {"ok": True, "account": "meghana"})
+    monkeypatch.setattr(S, "github_installed", lambda i, st, a="", c="": {"ok": True, "account": "meghana"})
     r = TestClient(app).get("/api/devsahayak/github/installed?installation_id=7&state=x&setup_action=install")
     assert r.status_code == 200 and "GitHub connected" in r.text
     assert "santosh://github?ok=1" in r.text and "location.href" in r.text
@@ -36,5 +36,5 @@ def test_phone_handles_the_github_link():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.955.0"' in main
-    assert "version: 0.955.0+954" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.956.0"' in main
+    assert "version: 0.956.0+955" in (ROOT / "pubspec.yaml").read_text()

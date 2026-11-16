@@ -609,26 +609,53 @@ def github_connect_url(tenant: str) -> dict[str, Any]:
     from . import ghapp
     if not ghapp.configured():
         raise DevError("GitHub App is not set up on this server. Add a token in Repos & GitHub instead.")
-    return {"url": ghapp.install_url(ghapp.make_state(tenant)), "slug": ghapp.slug()}
+    state = ghapp.make_state(tenant)
+    if ghapp.oauth_ready():                     # v0.956 sign in on GitHub first: works whether or not the App is installed
+        return {"url": ghapp.authorize_url(state), "slug": ghapp.slug(), "mode": "signin"}
+    return {"url": ghapp.install_url(state), "slug": ghapp.slug(), "mode": "install"}
 
 
-def github_installed(installation_id: int, state: str, setup_action: str = "") -> dict[str, Any]:
-    """The GitHub App's callback after she installs / picks repos. Binds the installation to her tenant."""
-    from . import ghapp
-    tenant = ghapp.read_state(state)
-    if not tenant:
-        # v0.953 no signed state = she installed / changed it on GitHub itself, so Hoola cannot tell whose it is
-        return {"ok": False, "why": ("Open Hoola Code in the app and tap Connect GitHub - that links this install to you."
-                                     if not state else "This link has expired. Tap Connect GitHub in the app again.")}
-    if not installation_id:
-        return {"ok": False, "why": "No installation. Pick at least one repository."}
-    account = ghapp.account_of(int(installation_id))
+def _bind(tenant: str, installation_id: int, account: str) -> None:
     with session() as s:
         st = _settings_row(s, tenant)
         st.gh_installation_id = int(installation_id)
         st.gh_account = account or st.gh_account
         if account and not st.login:
             st.login = account
+
+
+def github_installed(installation_id: int, state: str, setup_action: str = "", code: str = "") -> dict[str, Any]:
+    """The GitHub App's callback (sign-in callback and Setup URL). Binds the installation to her tenant.
+
+    v0.956: with the App's client id + secret set, an install is bound ONLY when GitHub's sign-in shows it is hers
+    (`ghapp.user_installations`): no install yet = she is sent to install it (the state rides along, so she comes back
+    here), and the Setup URL without a sign-in is sent through the sign-in first. Without them, the v0.942 way."""
+    from . import ghapp
+    tenant = ghapp.read_state(state)
+    if not tenant:
+        # v0.953 no signed state = she installed / changed it on GitHub itself, so Hoola cannot tell whose it is
+        return {"ok": False, "why": ("Open Hoola Code in the app and tap Connect GitHub - that links this install to you."
+                                     if not state else "This link has expired. Tap Connect GitHub in the app again.")}
+    if ghapp.oauth_ready():
+        if not code:                            # the Setup URL after an install: prove it is hers with the sign-in
+            return {"ok": False, "redirect": ghapp.authorize_url(state)}
+        try:
+            tok = ghapp.user_token(code)
+            rows = ghapp.user_installations(tok)
+            login = ghapp.user_login(tok)
+        except Exception as e:
+            log.warning("github sign-in failed: %s", e)
+            return {"ok": False, "why": "GitHub sign-in did not finish. Tap Connect GitHub in the app again."}
+        pick = ghapp.pick_install(rows, login, int(installation_id or 0))
+        if pick is None:                        # signed in, nothing installed yet: install it, then come back here
+            return {"ok": False, "redirect": ghapp.install_url(state)}
+        account = str((pick.get("account") or {}).get("login") or "") or login
+        _bind(tenant, int(pick.get("id") or 0), account)
+        return {"ok": True, "account": account}
+    if not installation_id:
+        return {"ok": False, "why": "No installation. Pick at least one repository."}
+    account = ghapp.account_of(int(installation_id))
+    _bind(tenant, int(installation_id), account)
     return {"ok": True, "account": account}
 
 

@@ -219,6 +219,8 @@ class Settings(BaseSettings):
     github_app_id: str = ""                  # v0.942 Hoola Code GitHub App (connect like Claude Code, no PAT): the App ID
     github_app_slug: str = ""                # ... the App slug (the install URL is github.com/apps/<slug>/installations/new)
     github_app_private_key: str = ""         # ... the App private key, PEM, in the VPS .env only (literal \n accepted)
+    github_app_client_id: str = ""           # v0.956 the App's Client ID: Connect signs her in on GitHub (one tap) and proves which install is hers
+    github_app_client_secret: str = ""       # ... the App's client secret, VPS .env only (without both, Connect falls back to the install page)
     dev_vps_cmd_timeout_s: int = 900         # ... a single command on her server may run this long before it is cut (15 min)
     dev_vps_offline_s: int = 90              # ... no check-in for this long = the server reads offline
     dev_ws_steps: int = 150                 # ... model steps in one round

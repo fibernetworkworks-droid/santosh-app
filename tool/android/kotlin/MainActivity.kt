@@ -602,6 +602,19 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /** v0.956 the phone's web browser: her default one, else Chrome, else any browser that is not the GitHub app. */
+    private fun browserPackage(): String? = try {
+        val probe = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"))
+        val def = packageManager.resolveActivity(probe, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+            ?.activityInfo?.packageName
+        if (def != null && def != "android" && !def.contains("github")) def
+        else {
+            val all = packageManager.queryIntentActivities(probe, 0).map { it.activityInfo.packageName }
+                .filter { it != "android" && !it.contains("github") }
+            all.firstOrNull { it == "com.android.chrome" } ?: all.firstOrNull()
+        }
+    } catch (_: Exception) { null }
+
     private fun installed(pkg: String): Boolean = try {
         packageManager.getPackageInfo(pkg, 0); true
     } catch (_: Exception) { false }
@@ -620,7 +633,11 @@ class MainActivity : FlutterActivity() {
                     return UpiPay.open(this, uri, pkg) { installed(it) }
                 }
                 val i = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                if (pkg.isNotBlank() && installed(pkg)) i.setPackage(pkg)
+                if (pkg == "browser") {
+                    // v0.956 a web browser, never an app that claims the link (the GitHub app swallowed the
+                    // install / sign-in page and never sent her back to Hoola)
+                    browserPackage()?.let { i.setPackage(it) }
+                } else if (pkg.isNotBlank() && installed(pkg)) i.setPackage(pkg)
                 try { startActivity(i); return "ok" } catch (_: Exception) { i.setPackage(null); startActivity(i); return "ok" }
             }
             if (pkg.isNotBlank()) {
