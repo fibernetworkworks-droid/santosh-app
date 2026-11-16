@@ -528,6 +528,41 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def made_restore(tid: str, mid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.made_restore, tenant, tid, mid, int(_b(body).get("v") or 0))
 
+    @r.get("/tasks/{tid}/stream")
+    async def task_stream(tid: str, request: Request, tenant: str = Depends(current_tenant)):
+        """v0.962 the words Hoola is writing, pushed to her phone as they come (it asked once a second, so words came in
+        bursts): every 100 ms what changed - the added words (`add`, or the whole `live` when a new reply starts), the
+        step working now, a new step number, a round starting or ending. Live only, nothing stored; `: ping` when quiet."""
+        from fastapi.responses import StreamingResponse
+        try:
+            real = await asyncio.to_thread(S.task_id, tenant, tid)
+        except S.DevError:
+            raise HTTPException(404, "Not found")   # the phone's stream ends quietly instead of retrying for ever
+
+        async def gen():
+            last: dict[str, Any] = {}
+            quiet = 0.0
+            yield f"data: {json.dumps({'id': 0, 'kind': 'code_open', 'payload': S.live_state(real)}, ensure_ascii=False)}\n\n"
+            last = S.live_state(real)
+            while True:
+                if await request.is_disconnected():
+                    break
+                await asyncio.sleep(0.1)
+                cur = S.live_state(real)
+                ev = S.live_delta(last, cur)
+                last = cur
+                if ev:
+                    quiet = 0.0
+                    yield f"data: {json.dumps({'id': 0, 'kind': 'code_live', 'payload': ev}, ensure_ascii=False)}\n\n"
+                else:
+                    quiet += 0.1
+                    if quiet >= 15:
+                        quiet = 0.0
+                        yield ": ping\n\n"
+
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
     @r.get("/tasks/{tid}")
     async def get_task(tid: str, since: int | None = None, tenant: str = Depends(current_tenant)):
         return await run(S.get_task, tenant, tid, since)

@@ -53,8 +53,9 @@ def test_words_between_steps_are_two_or_three_lines_and_never_repeated():
     b = "There's already a NetworkMap screen with technician positions and a track endpoint. Let me read its DTOs and screen."
     assert EN.said_before(b, [a]) and not EN.said_before("The tests pass now. Opening the pull request.", [a])
     src = (ROOT / "server/app/devsahayak/engine.py").read_text()
-    assert "LIVE_TEXT[tid] = cut" in src     # never past 3 lines while it writes either
-    assert 'if stop == "tool_use" and not ends and not LIVE_FULL.get(tid):\n                    txt = short_say(txt)' in src
+    # v0.962 (owner: "GO BUILD 1 2 3" after the Claude Code comparison) the words are never cut any more - the model
+    # keeps them short itself; short_say stays for older callers
+    assert "LIVE_TEXT[tid] = txt[:20000]" in src and "txt = short_say(txt)" not in src
     assert "At most 40 words" in EN.SYSTEM and "**bold**" in EN.SYSTEM and "Never repeat" in EN.SYSTEM
 
 
@@ -78,5 +79,5 @@ def test_the_phone_is_steady_and_the_words_land_slowly():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.961.0"' in main
-    assert "version: 0.961.0+960" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.962.0"' in main
+    assert "version: 0.962.0+961" in (ROOT / "pubspec.yaml").read_text()

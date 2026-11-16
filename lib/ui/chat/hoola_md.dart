@@ -54,7 +54,7 @@ class HoolaMd extends StatelessWidget {
         .copyWith(backgroundColor: c.ink.withOpacity(c.dark ? .09 : .05), color: c.codeTerm);
     List<InlineSpan> inline(String s, {bool live = false}) {
       if (!live) return mdInline(s, link: c.accent, codeStyle: code);
-      final ink = tail;
+      final ink = this.tail;            // the field (a local `tail` below would hide it)
       if (fade && ink != null) return _inkTail(s, ink, c, code);
       final m = (fade ? _fadeTail : _tail).firstMatch(s);
       final tail = m?.group(0) ?? '';

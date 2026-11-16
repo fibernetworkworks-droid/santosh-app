@@ -476,7 +476,8 @@ Rules that never bend:
 - Every bash command runs in a fresh box (nothing you start keeps running) and git there is read-only: Hoola
   records your changes itself, so never commit, stash or reset in bash.
 - Before each set of tool calls, write one or two short sentences to her: what you found and what you will do next
-  (e.g. "The crash comes from **the new permission check**. Adding it now."). At most 40 words, no lists, no headings,
+  (e.g. "The crash comes from **the new permission check**. Adding it now."). At most 40 words - she sees them whole, word
+  by word as you write, nothing is cut, so keep them that short yourself - no lists, no headings,
   and put the one thing that matters most (the cause, the file, the result) in **bold**. Never repeat or restate
   what you already told her, and never retell her request.
 - Your final answer: one short line with the result first, then at most five short points. Bold only what she must
@@ -1221,26 +1222,36 @@ def short_say(text: str, sentences: int = 3, words: int = 60) -> str:
     return text[:len(out)].rstrip() if text.startswith(out) else out
 
 
-LIVE_FULL: dict[str, bool] = {}   # v0.944 this reply grew past the 2-3 line cut while she watched: it stays whole
-LIVE_MIN_WORDS = 10               # v0.944 a reply shows once it has this many words (a repeat is caught before she sees it)
+LIVE_FULL: dict[str, bool] = {}   # v0.944 kept for old callers; since v0.962 every reply streams whole
+LIVE_MIN_WORDS = 4                # v0.962 a reply shows from its 4th word (was 10: every reply started late)
+LIVE_SURE_WORDS = 10              # until then a reply that STARTS like a recent one waits, so a repeat is still caught
+
+
+def _starts_like(txt: str, recent: list[str]) -> bool:
+    """v0.962 the first four words are those of one of the last few messages: it may be a repeat, so wait and see."""
+    head = re.findall(r"[a-z0-9_.]+", txt.lower())[:4]
+    if len(head) < 4:
+        return False
+    return any(re.findall(r"[a-z0-9_.]+", old.lower())[:4] == head for old in recent[-4:])
 
 
 def live_sink(tid: str, txt: str, recent: list[str]) -> None:
-    """v0.944 the words Hoola is writing, for her phone. Held until a repeat can be told (then never shown, so a dropped
-    repeat never vanishes from her screen); a reply that runs well past the 2-3 line cut is streamed whole and kept
-    whole (it is the answer, not a line between steps), so what she watched and what is saved always agree."""
+    """v0.944 the words Hoola is writing, for her phone. v0.961: shown from the 4th word (a reply starting like a recent
+    one waits for 10 words, so a repeat can still be told and never shown), and never cut - what she watches is what is
+    saved, whole (the 2-3 line cut stopped Hoola's words mid-thought; the model is told to keep them short instead)."""
     txt = (txt or "").strip()
     if not txt:
         return
     if not LIVE_TEXT.get(tid):
-        if len(txt.split()) < LIVE_MIN_WORDS or said_before(txt, recent):
+        n = len(txt.split())
+        if n < LIVE_MIN_WORDS:
             return
-    cut = short_say(txt)
-    if LIVE_FULL.get(tid) or len(txt.split()) > len(cut.split()) + 25:
-        LIVE_FULL[tid] = True
-        LIVE_TEXT[tid] = txt[:20000]                        # v0.945 the start stays put; the saved step is cut the same way
-    else:
-        LIVE_TEXT[tid] = cut
+        if n < LIVE_SURE_WORDS and _starts_like(txt, recent):
+            return
+        if n >= LIVE_SURE_WORDS and said_before(txt, recent):
+            return
+    LIVE_FULL[tid] = True
+    LIVE_TEXT[tid] = txt[:20000]
 
 
 def clock_words(secs: int) -> str:
@@ -1778,8 +1789,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             if b.get("type") == "text" and str(b.get("text") or "").strip():
                 txt = str(b["text"]).strip()[:20000]                         # v0.935 kept whole (was cut at 800)
                 ends = stop != "tool_use" or any(x.get("type") == "tool_use" and x.get("name") == "done" for x in blocks)
-                if stop == "tool_use" and not ends and not LIVE_FULL.get(tid):
-                    txt = short_say(txt)                                      # v0.937 words between steps: 2-3 lines
+                # v0.962 never cut: the 2-3 line cut (v0.937) stopped her words mid-thought; the model keeps them short
                 shown = bool(LIVE_TEXT.get(tid))                              # v0.944 she already watched these words come in
                 if shown or not said_before(txt, recent):                     # v0.937 the same paragraph never twice
                     emit({"k": "say", "text": txt[:20000]})                           # ... but words she watched never vanish

@@ -47,7 +47,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   String? _selecting;                 // v0.928 the message whose text she is selecting
   bool _away = false;                 // she scrolled up: the Newest arrow shows and nothing pulls her down
   int _seen = -1;                     // how many steps were drawn last time (new ones follow her to the end)
-  Timer? _poll, _tick;
+  Timer? _pollTimer, _tick;
   int _pollEvery = 0;                 // v0.935 1 s while it works, 10 s when it is quiet
   bool _loading = false;
   int _openN = -2;                    // v0.944 the newest step number when the page opened: older messages show at once
@@ -64,6 +64,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   DateTime? _runSeen;                 // v0.937 the last check that said it works (a one-check gap never blinks the page)
   Map<String, dynamic> _runCarry = const {};
   final Map<String, int> _landed = {};   // v0.935 how many words of each new message have landed (key: n<step> / live / explain)
+  // v0.962 the live stream (words pushed as Hoola writes them, like Claude Code): while it runs, the page reads its words
+  // from here and asks the server for the whole session only when a step comes, or every 5 s as a safety net
+  StreamSubscription<dynamic>? _liveSub;
+  bool _streaming = false;
+  String _streamLive = '';
+  DateTime _loadedAt = DateTime(2000);
   final _msg = TextEditingController();
   final _focus = FocusNode();
   final _scroll = ScrollController();
@@ -78,6 +84,53 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       final away = _scroll.hasClients && _scroll.position.maxScrollExtent - _scroll.offset > 240;
       if (away != _away && mounted) setState(() => _away = away);
     });
+    _load();
+    _listen();
+  }
+
+  void _listen() {
+    final api = widget.app.api;
+    if (api == null || _liveSub != null) return;
+    _liveSub = api.codeStream(widget.id).listen((ev) {
+      if (!mounted) return;
+      _streaming = true;
+      _onLive(ev.kind, ev.payload);
+    }, onDone: () {
+      _streaming = false;                 // an older server, or the key refused: the page asks once a second again
+      _liveSub = null;
+    }, onError: (_) {});
+  }
+
+  void _unlisten() {
+    _liveSub?.cancel();
+    _liveSub = null;
+    _streaming = false;
+  }
+
+  /// v0.962 one live event: the words grow as they are written (no 1 s bursts), the working row says the step working
+  /// now, and a new step or a round starting / ending fetches only what is new.
+  void _onLive(String kind, Map<String, dynamic> p) {
+    if (kind != 'code_open' && kind != 'code_live') return;
+    if (kind == 'code_open' || p.containsKey('live')) _streamLive = cs(p['live']);
+    if (p.containsKey('add')) _streamLive += cs(p['add']);
+    final t = _t;
+    if (t == null) return;
+    final writing = _streamLive.trim();
+    if (writing.isNotEmpty && (_liveHead.isEmpty || !writing.startsWith(_liveHead))) {
+      _landed['live'] = 0;                // a new reply: from its first word, under a fresh widget
+      _keyOf['live'] = 'live${++_liveSeq}';
+    }
+    if (writing.isNotEmpty) _liveHead = writing.length > 24 ? writing.substring(0, 24) : writing;
+    final next = <String, dynamic>{...t, 'live': _streamLive};
+    if (p.containsKey('now')) next['now'] = p['now'];
+    setState(() => _t = next);
+    final n = p['n'];
+    if ((n is num && n.toInt() > _lastN) || p.containsKey('running')) _load();
+  }
+
+  /// The once-a-second check; with the live stream on it only runs every 5 s (steps already fetch when they come).
+  void _poll() {
+    if (_streaming && DateTime.now().difference(_loadedAt) < const Duration(seconds: 5)) return;
     _load();
   }
 
@@ -118,21 +171,24 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // v0.945 in the background the page stops asking every second; back on screen it reads the session whole once
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
-      _poll?.cancel();
-      _poll = null;
+      _pollTimer?.cancel();
+      _pollTimer = null;
       _pollEvery = 0;
+      _unlisten();
       _tick?.cancel();
       _tick = null;
     } else if (state == AppLifecycleState.resumed) {
       _resumed = true;
       _load(full: true);
+      _listen();
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _poll?.cancel();
+    _pollTimer?.cancel();
+    _unlisten();
     _tick?.cancel();
     _msg.dispose();
     _focus.dispose();
@@ -150,6 +206,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       return;
     }
     _loading = true;
+    _loadedAt = DateTime.now();
     try {
       // v0.944 a check asks only for the steps after the newest one it holds and leaves the diff / log out; the whole
       // session comes on open, after anything she does, every 30 s, and when a round finishes
@@ -198,6 +255,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         final saved = says.isNotEmpty && _stepN(says.last, -1) > _lastSayN;
         t = {...t, 'running': true, 'live': saved ? '' : _runCarry['live'], 'now': _runCarry['now']};
       }
+      // v0.962 with the live stream on, the words being written come from the stream only (a check that answers a
+      // moment later never puts back older words under the ones already added)
+      if (_streaming) t = {...t, 'live': _streamLive};
       final steps = cl(t['steps']);
       final n = steps.length;                 // v0.937 only new steps move the page; growing words follow on their own
       final first = _seen < 0;
@@ -243,8 +303,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       final live = _live(t);
       final every = live ? 1 : 10;
       if (_pollEvery != every) {
-        _poll?.cancel();
-        _poll = Timer.periodic(Duration(seconds: every), (_) => _load());
+        _pollTimer?.cancel();
+        _pollTimer = Timer.periodic(Duration(seconds: every), (_) => _poll());
         _pollEvery = every;
       }
       if (live) {

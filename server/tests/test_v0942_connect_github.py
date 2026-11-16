@@ -104,8 +104,8 @@ def test_the_doors_and_the_phone_are_wired():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.961.0"' in main
-    assert "version: 0.961.0+960" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.962.0"' in main
+    assert "version: 0.962.0+961" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_a_base64_key_from_the_vps_ops_job_is_read_and_the_job_exists(env, monkeypatch):

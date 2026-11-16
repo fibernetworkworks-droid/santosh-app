@@ -5970,3 +5970,28 @@ on a call = tools HIGH.
 
 Tests `test_v0961_pipeline_choose.py` (65). NOT VERIFIED on her server; the reliability / speed record is empty until
 P4 / P7 fill it, so today the leaderboard score decides inside a level.
+## v0.962.0 HOOLA CODE LIVE (built as 0.961; their HOOLA PIPELINE P1 took 0.961, both kept; owner, after the Hoola Code vs Claude Code comparison: "GO BUILD 1 2 3")
+
+The comparison found three places Hoola Code was behind Claude Code in how words land:
+1. **Words came in 1 s bursts.** The phone asked the server once a second (`GET /tasks/{id}?since=n`), so the words Hoola
+   wrote arrived in batches and the phone's pacing had to hide them. Now `GET /api/devsahayak/tasks/{id}/stream` (SSE)
+   checks the session's in-memory state every 100 ms (`service.live_state`: `engine.LIVE_TEXT`, `NOW_STEP`, the newest
+   step number `STEP_N` written by `_Step.event`, whether a round runs - no database) and sends only what changed
+   (`service.live_delta`: `add` = words added, `live` = a new reply, `now`, `n`, `running`), a `: ping` when quiet, 404 for
+   a session that is not hers. Phone: `Api.codeStream` (the v0.899 `_sse` reader that stops the moment it is cancelled);
+   `code_session.dart` `_onLive` grows the words, updates the working row's step, and fetches only when a new step comes
+   or a round starts / ends; the once-a-second check runs every 5 s while the stream is on (a net), and the words being
+   written come from the stream only, so a check that answers late never puts older words back. Paused in the
+   background, back on resume. An older server ends the stream quietly and the page polls once a second as before.
+2. **Every reply started late.** Live words showed only from the 10th word (so a repeated paragraph could be dropped
+   before she saw it). Now from the 4th (`LIVE_MIN_WORDS` 4); a reply whose first four words match a recent message
+   waits until 10 (`LIVE_SURE_WORDS`, `_starts_like`) so the repeat check still runs before she sees it.
+3. **Words between steps were cut** to 2-3 sentences (`short_say`), sometimes mid-thought. Now never cut, live or saved;
+   the prompt says she sees them whole as they are written, so the model keeps them under 40 words itself. `short_say`
+   stays for older callers.
+
+Also fixes the v0.960 build: in `HoolaMd` the new `tail` field was hidden by a local `tail` in the same closure
+(`final ink = this.tail;`).
+
+Tests: `server/tests/test_v0962_hoola_code_live.py` (5); v0937 / v0944 pins moved to the new behaviour. NOT VERIFIED on
+her phone or through her server's front door (Caddy passes the chat's SSE, so it should pass this one too).

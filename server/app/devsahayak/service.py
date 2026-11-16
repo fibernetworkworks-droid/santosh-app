@@ -1221,6 +1221,35 @@ def _find_task(s, tenant: str, ref: str) -> DevTask:
     return t
 
 
+def task_id(tenant: str, ref: str) -> str:
+    """v0.962 her session's id (refused like get_task when it is not hers) - the live stream checks this once."""
+    with session() as s:
+        return _find_task(s, tenant, ref).id
+
+
+def live_state(tid: str) -> dict[str, Any]:
+    """v0.962 what the live stream sends: the words being written, the step working now, the newest step number and
+    whether a round runs. All in this process's memory - read ten times a second, no database."""
+    return {"live": _live_text(tid), "now": _now_step(tid) if tid in _RUNNING else "", "n": STEP_N.get(tid, -1),
+            "running": tid in _RUNNING}
+
+
+def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
+    """v0.962 what changed between two live states (pure): only the added words when the reply grew, the whole words
+    when a new reply started (or they were taken back), and the step / number / running flag that moved."""
+    ev: dict[str, Any] = {}
+    was, now_live = str(last.get("live") or ""), str(cur.get("live") or "")
+    if now_live != was:
+        if was and now_live.startswith(was):
+            ev["add"] = now_live[len(was):]
+        else:
+            ev["live"] = now_live
+    for k in ("now", "n", "running"):
+        if cur.get(k) != last.get(k):
+            ev[k] = cur.get(k)
+    return ev
+
+
 def get_task(tenant: str, ref: str, since: int | None = None) -> dict[str, Any]:
     """The session for her page. since = the last step number the phone has: only newer steps come back and the heavy
     parts (diff, per-file diffs, log, PR body) stay out - the phone asks for them when she opens Changes (v0.944)."""
@@ -1635,6 +1664,7 @@ def _progress(tid: str, line: str) -> None:
 
 
 # ---------------------------------------------------------------- v0.748 HOOLA CODE: the console's live session
+STEP_N: dict[str, int] = {}      # v0.962 newest step number per session (this process), read by the live stream
 _RUNNING: set[str] = set()      # tasks whose work runs in a background thread right now (this process)
 _QUIET: set[str] = set()        # v0.937 in _RUNNING only for a quick CI look: not "working" on her screen
 _CI_AT: dict[str, float] = {}   # v0.937 when each session's CI was last looked at (once a minute, not every worker tick)
@@ -1707,6 +1737,7 @@ class _Step:
                 last_n = max((int(x.get("n", -1)) for x in steps if isinstance(x, dict)), default=len(steps) - 1)
                 steps.append({**ev, "at": now().isoformat(), "n": int(last_n) + 1})   # v0.944 a stable number per step
                 row.steps = json.dumps(fold_steps(steps))
+            STEP_N[self.tid] = int(last_n) + 1        # v0.962 the live stream tells her phone a new step is there
         except Exception:
             log.debug("dev step event failed", exc_info=True)
 

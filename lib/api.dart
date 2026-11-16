@@ -2274,6 +2274,18 @@ class Api {
     );
   }
 
+  /// v0.962 a Hoola Code session's live words, pushed as they are written (the page asked once a second, so words came
+  /// in bursts): `code_open` = the state now, `code_live` = what changed ({add} words added, {live} a new reply, {now}
+  /// the step working, {n} a new step, {running}). Ends quietly on an older server (404) or a refused key; reconnects
+  /// by itself on a network blip.
+  Stream<SantoshEvent> codeStream(String task) => _sse(
+        () => _u('/api/devsahayak/tasks/${Uri.encodeComponent(task)}/stream'),
+        onRefused: (_) => null,
+        keep: (_) => true,
+        firstWait: 1,
+        maxWait: 8,
+      );
+
   /// v0.863 R3s / v0.889 where this chat's newest ask is: {status: queued|working|needs_you|done|..., needs_you, line}.
   Future<Map<String, dynamic>?> chatResult(String conv) async {
     try {
