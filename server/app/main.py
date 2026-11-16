@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.957.0"   # v0.957.0 HOOLA CODE SMOOTH (owner, her screen recording: "CHECK HOW THE PLAN CARD VIBRATES ... A REPLY LANDS VERY FAST IT MUST BE PERFECT SMOOTH AND CONSISTENT AND MEDIUM SLOW ... CHAT LANDING, CONVERSATION FLAWS"): the plan is a steady dock above the typing box (one line: the step it is on, N of M, a sliding bar; a tap opens every step) instead of a 300 px card at the end of the thread; the working row stays the last row while words stream (it vanished and came back, 44 px each time); one follow mechanism after layout (no 260 ms slide racing a snap); keyed rows keep their state; words land at an even ~11 a second, a backlog speeds it up gradually to ~22; one message lands at a time, in order; phone only; 5 tests. Previous: v0.956.0 GITHUB ONE TAP. v0.956.0 GITHUB ONE TAP (owner: "GITHUB STILL NOT REDIRECTING TO APP" after v0.953): three reasons it never came back - the phone opened github.com with a plain link (the GitHub app could swallow it), an App already installed never sends the signed state (so Hoola could not tell whose install it was), and a page script jumping to santosh:// on a timer is blocked by Chrome. Now the phone opens the browser (`openExternal package browser`, `browserPackage` skips the GitHub app), Connect signs her in on GitHub with the App's client id + secret (`ghapp.authorize_url` / `user_token` / `user_installations`) and binds ONLY an install GitHub lists as hers (no install yet = straight to the install page with the state, Setup URL without a sign-in = through the sign-in first), and Android goes back into the app with an intent link in the same redirect (`api.github_intent`, fallback `/github/done` with one tap); without the client id + secret the v0.942 install page stays; vps-ops github_app writes HOOLA_GITHUB_APP_CLIENT_ID / _SECRET; 7 tests. NOT VERIFIED on her phone; needs the App's Callback URL + client secret.
+APP_VERSION = "0.958.0"   # v0.958.0 HOOLA PIPELINE P0 (owner: "GO P0" on docs/HOOLA_PIPELINE_PLAN.md): the feed - every day the server reads the public leaderboards (the LMArena dataset on Hugging Face, CC-BY-4.0, incl. its agent / search / factuality / webdev boards; OpenRouter's model list; voiceofindia.ai once a month in the server's browser) and cuts 10-20 models per kind of work into LOW / MID / HIGH / MAX / ULTRA by quality bands, only models that exist today and can do the work, routed OpenRouter -> fal / Kie / Eden -> the maker's own API (`server/app/pipeline/`: kinds, names, sources, cut, store, feed); saves data/pipeline/tables-<date>.json + current.json + changes.jsonl (a two-level jump applied and logged), warns on a pool under 10 / a stale board / a model gone from OpenRouter, keeps yesterday's table when a board cannot be read; worker slot pipeline_jobs, GET /api/pipeline/tables, vps-ops pipeline_feed, switch pipeline_feed; reads public data only - no model call, no key, nothing chooses a model from it yet (P1); 10 tests. Previous: v0.957.0 HOOLA CODE SMOOTH (owner, her screen recording: "CHECK HOW THE PLAN CARD VIBRATES ... A REPLY LANDS VERY FAST IT MUST BE PERFECT SMOOTH AND CONSISTENT AND MEDIUM SLOW ... CHAT LANDING, CONVERSATION FLAWS"): the plan is a steady dock above the typing box (one line: the step it is on, N of M, a sliding bar; a tap opens every step) instead of a 300 px card at the end of the thread; the working row stays the last row while words stream (it vanished and came back, 44 px each time); one follow mechanism after layout (no 260 ms slide racing a snap); keyed rows keep their state; words land at an even ~11 a second, a backlog speeds it up gradually to ~22; one message lands at a time, in order; phone only; 5 tests.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -379,6 +379,20 @@ def _model_reads() -> list[str] | str:
         return _mp.get().get("inputs") if _mp.known() else "unknown"
     except Exception:
         return "unknown"
+
+
+@app.get("/api/pipeline/tables", dependencies=[Depends(require_key)])
+def pipeline_tables(kind: str = "") -> dict:
+    """v0.958 HOOLA PIPELINE P0: the current level tables (one kind, or all) + the recent changes + warnings."""
+    from .pipeline import store as _pls
+    cur = _pls.read_current()
+    if not cur:
+        return {"ready": False, "note": "the feed has not run yet (it runs once a day; vps-ops pipeline_feed runs it now)"}
+    tables = cur.get("tables") or {}
+    if kind:
+        tables = {kind: tables.get(kind)} if kind in tables else {}
+    return {"ready": True, "read_on": cur.get("read_on"), "board_dates": cur.get("board_dates"),
+            "warnings": cur.get("warnings") or [], "tables": tables, "changes": _pls.recent_changes(100)}
 
 
 @app.get("/api/model/profile", dependencies=[Depends(require_key)])

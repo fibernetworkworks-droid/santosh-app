@@ -551,7 +551,7 @@ async def tick() -> None:
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
         team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
-        hoola_batch_jobs,
+        hoola_batch_jobs, pipeline_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -824,6 +824,29 @@ async def hoola_batch_jobs() -> None:
         batch.sweep_after_restart()
     except Exception:
         log.exception("hoola batch sweep failed")
+
+
+_pl_last = 0.0
+
+
+async def pipeline_jobs() -> None:
+    """v0.958 HOOLA PIPELINE P0: rebuild the level tables once a day from the public leaderboards (feed.py).
+    Looks every 10 minutes; runs in a thread (plain HTTP + one monthly browser read); a failure is logged, never raised."""
+    global _pl_last
+    import time
+    if time.time() - _pl_last < 600:
+        return
+    _pl_last = time.time()
+    s = get_settings()
+    if not getattr(s, "pipeline_feed", False):
+        return
+    from .pipeline import feed, store
+    if store.age_s() < float(getattr(s, "pipeline_every_h", 24) or 24) * 3600:
+        return
+    try:
+        await asyncio.to_thread(feed.run)
+    except Exception:
+        log.exception("pipeline feed failed")
 
 
 async def research_jobs() -> None:

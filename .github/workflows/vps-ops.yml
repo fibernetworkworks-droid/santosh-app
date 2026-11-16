@@ -21,6 +21,7 @@ on:
           - codelog
           - voicecheck
           - mospi_check
+          - pipeline_feed
           - architect_check
           - proof_apps
           - aiapp_proof
@@ -265,6 +266,10 @@ jobs:
               arena_numbers)
                 # v0.414 the Design Arena runs so far (read-only, free): version, sites, score summary, rupees - before / after numbers
                 echo 'cd $CORE && timeout 120 .venv/bin/python -c "import json; from app.db import init_db; init_db(); from app.site import arena as A; print(json.dumps(A.runs(10), ensure_ascii=False, indent=1, default=str))" 2>&1 | tail -150' ;;
+              pipeline_feed)
+                # v0.958 HOOLA PIPELINE P0: rebuild the level tables now from the public leaderboards (reads public
+                # data only - no model call, no key) and print each kind's pool, the changes and any warnings.
+                echo 'cd $CORE && timeout 900 .venv/bin/python -m app.pipeline.feed' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'

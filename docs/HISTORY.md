@@ -5842,3 +5842,40 @@ Fixed (phone only, `lib/ui/code/code_session.dart` + `code_words.dart`):
 
 Tests: `server/tests/test_v0957_hoola_code_smooth.py` (5), v0935 / v0937 pins moved. NOT VERIFIED on her phone (CI
 compiles the Dart first).
+
+## v0.958.0 HOOLA PIPELINE P0 - the feed (owner: "GO P0" on `docs/HOOLA_PIPELINE_PLAN.md`)
+
+P0 of the HOOLA PROCESS BOX plan: the daily feed that keeps the level tables fresh from PUBLIC leaderboards (D1: never
+Hoola's own tests). Nothing chooses a model yet - that is P1. New package `server/app/pipeline/`:
+
+- `kinds.py` - the 25 kinds of work as data: which boards rank each kind (LMArena text categories, webdev, agent +
+  agent_tool_hallucination, search + search_factuality, text_factuality, vision, document, text_to_image, image_edit,
+  text_to_video, image_to_video), what the model must do (output kind, tools / structured output / image input), the
+  languages; `SAME` (route = chat, plan = reason, code.small = code, check = facts, translate = write.lang), `NOT_RANKED`
+  (embed). Levels by points below the best of the kind: ULTRA 0-25, MAX 25-50, HIGH 50-80, MID 80-120, LOW 120-190, up
+  to 4 a level; a pool too thin for bands = rank split of the best 20 (D10: 10-20 models a kind).
+- `sources.py` - LMArena's `lmarena-ai/leaderboard-dataset` (CC-BY-4.0) through the datasets-server `/rows` (paged 100,
+  3 tries a page; `/filter` answered 500s), OpenRouter's `/api/v1/models?output_modalities=all`, voiceofindia.ai STT +
+  TTS boards (read with the server's Chromium, monthly) with their parsers.
+- `names.py` - board names -> OpenRouter ids (normalised + an alias table for media names); `ROUTES` = models not on
+  OpenRouter through other multi-model providers (fal, Kie, Eden) and then the maker's own API (`direct:<maker>`, D12);
+  a provider whose terms or permission are not settled is marked and left out (WaveSpeed = needs_permission).
+- `cut.py` - points per board (rating boards: best minus rating, >= `pipeline_min_votes` votes; rank boards: rank spread
+  over 190), averaged and normalised, filtered by what the model can do and by age (548 days), cut into levels.
+- `manual.json` - hand-kept pools for speech in / out and music (no public board), warned when older than
+  `pipeline_manual_days`; `snapshot/` = the voiceofindia pages read on 16 Nov, used when the browser cannot read them.
+- `store.py` - `tables-<date>.json` + `current.json` (atomic) in `data/pipeline`, `changes.jsonl` (joined / left /
+  moved, a 2-level move marked big and applied automatically, D9).
+- `feed.py` - one run: every board once, a failed board = a warning and yesterday's table kept, stale board dates
+  (21 days) warned, Indian speech tables from voiceofindia, then save + a log line; `python -m app.pipeline.feed [--dry]`.
+
+Wiring: worker slot `pipeline_jobs` (checks every 10 min, runs when the tables are older than `pipeline_every_h` 24,
+in a thread), switches `pipeline_feed` (on; off in conftest), `pipeline_dir`, `pipeline_voi_days`, `pipeline_min_votes`,
+`pipeline_stale_board_days`; `GET /api/pipeline/tables[?kind=]` (her key) = tables, board dates, warnings, recent
+changes; vps-ops job `pipeline_feed`.
+
+Live run here (16 Nov 2026, real boards): 21 kinds, each with 10-20 models (music 10, speech 17, the rest 18-20), 0
+warnings, 724 OpenRouter models read, about 2.5 minutes. Tests: `server/tests/test_v0958_pipeline_feed.py` (10:
+parsers, bands + rank split, filters, score boards, dated deterministic writes, changes + big jumps, a failed board keeps
+yesterday, manual pool warning, worker slot, route). Artificial Analysis is not read (its site terms are non-commercial).
+NOT VERIFIED on her server (needs vps-ops deploy, then vps-ops pipeline_feed).

@@ -597,6 +597,14 @@ class Settings(BaseSettings):
     chat_models: str = "nvidia/nemotron-3.5-super-vl:free,thinkingmachines/inkling-2-small:free,google/gemma-4-31b-it:free"
                                            # the owner's list beside GLM_MODEL (OpenRouter slugs, comma-separated)
     model_choice_dir: str = ""             # '' = data/model_choice
+    # v0.958 HOOLA PIPELINE P0 (docs/HOOLA_PIPELINE_PLAN.md): the feed - public leaderboards -> dated level tables
+    pipeline_feed: bool = True               # the daily feed (reads public data only; no model call, no key)
+    pipeline_dir: str = ""                   # "" = data/pipeline
+    pipeline_every_h: int = 24               # rebuild the tables once a day
+    pipeline_voi_days: int = 30              # voiceofindia.ai boards read once a month (no download offered)
+    pipeline_manual_days: int = 90           # warn when the hand-kept voice / music pools are older
+    pipeline_min_votes: int = 200            # a board row needs this many votes to count
+    pipeline_stale_board_days: int = 21      # warn when a board stopped publishing
     model_profile: bool = True             # v0.739 the chat model's abilities READ from OpenRouter's model list (pictures,
                                            # reasoning, tools, window) - a new GLM_MODEL needs no code change; off = old
     model_profile_dir: str = ""            # '' = data/modelprofile
