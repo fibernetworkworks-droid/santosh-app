@@ -204,6 +204,12 @@ class Settings(BaseSettings):
     dev_events: bool = True                 # Hoola Code Phase 6: GitHub events (a signed repository webhook) may start a scheduled task
     dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
+    # v0.947 HOOLA AUTO: a whole client project run by specialist agents on Hoola Code sessions
+    auto_enabled: bool = True               # the conductor moves running Auto projects on (worker, every minute)
+    auto_parallel: int = 3                  # Hoola Code sessions ONE Auto project may have running or queued at once
+    auto_task_inr: float = 25.0             # the estimate per agent task used for the plan's price (real spend is counted)
+    auto_cap_inr: float = 1500.0            # a new project's cost cap until the plan proposes one (she changes it at G3)
+    auto_client_days: int = 30              # how long a client intake link works
     dev_make: bool = True                    # v0.939 Hoola Code makes PRDs / pages / prototypes / artboards / sheets as cards (DEV_MAKE)
     dev_vps: bool = False                    # v0.941 HOOLA CODE ON YOUR SERVER: pair a VPS (her server calls out), run approved commands as the hoola user. OFF until her first pair (DEV_VPS)
     dev_code_map: bool = True                # v0.943 Hoola Code's code map: names per file in the first message + the code_map tool (DEV_CODE_MAP)

@@ -1231,7 +1231,7 @@ async def employee_jobs() -> None:
     except Exception:
         log.exception("callcentre tick failed")
     # v0.137 Tech suite: CI / deploy polling, renewals, alerts, morning notes, scheduled test runs (each throttles itself)
-    for _mod in ("devsahayak", "qa", "itadmin", "ispnoc", "cyber", "devops", "docwriter", "appreview", "product"):
+    for _mod in ("devsahayak", "hoolaauto", "qa", "itadmin", "ispnoc", "cyber", "devops", "docwriter", "appreview", "product"):
         try:
             import importlib
             _svc = importlib.import_module(f".{_mod}.service", __package__)

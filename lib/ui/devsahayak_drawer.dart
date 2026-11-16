@@ -10,6 +10,7 @@ import 'devsahayak_kit.dart';
 import 'devsahayak_new.dart';
 import 'devsahayak_screen.dart' show DevCodeSettingsPage;
 import 'devsahayak_session.dart';
+import 'hoola_auto.dart' show AutoHomePage;
 import 'hoola_theme.dart';
 
 const List<String> _needsStatus = ['plan_wait', 'ready', 'checks_failed', 'refused'];
@@ -78,10 +79,23 @@ class _DevCodeDrawerState extends State<DevCodeDrawer> {
   String _q = '';
   final _search = TextEditingController();
 
+  int _autoNeed = 0;   // v0.947 Hoola Auto projects waiting for her
+
   @override
   void initState() {
     super.initState();
     _loadOverview();
+    _loadAuto();
+  }
+
+  Future<void> _loadAuto() async {
+    try {
+      final r = hcM(await widget.app.api!.call('GET', '/api/auto/projects'));
+      if (!mounted) return;
+      setState(() => _autoNeed = hcList(r['projects']).where((p) => hcS(p['state']) == 'need').length);
+    } catch (_) {
+      // no count when the server has no Hoola Auto yet
+    }
   }
 
   @override
@@ -223,6 +237,10 @@ class _DevCodeDrawerState extends State<DevCodeDrawer> {
                   if (widget.current.isNotEmpty) DevCodeNav.toHomeNav(nav);
                 });
               }, filled: true),
+              const SizedBox(height: 2),
+              _navRow(c, Icons.hub_outlined, 'Hoola Auto',
+                  () => _go((nav) => nav.push(MaterialPageRoute<void>(builder: (_) => AutoHomePage(app: widget.app)))),
+                  trail: _autoNeed > 0 ? '$_autoNeed need you' : ''),
               const SizedBox(height: 2),
               _navRow(c, Icons.schedule_rounded, 'Scheduled tasks',
                   () => _go((nav) => nav.push(MaterialPageRoute<void>(builder: (_) => DevScheduledPage(app: widget.app)))),

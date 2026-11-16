@@ -89,7 +89,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     warn: '<path d="M12 4l9 16H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     folder: '<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
     share: '<path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-    spark: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>'};
+    spark: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    auto: '<circle cx="6" cy="6" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="6" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.2 6h7.6M6 8.2v7.6M18 8.2v7.6M8.2 18h7.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'};
   const svg = (k, cls = '') => `<svg class="hcd-ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ICON.dot}</svg>`;
   const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
@@ -102,6 +103,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const dotc = t => ({run: 'run', need: 'warn'}[group(t)] || (t.status === 'merged' ? 'ok' : t.status === 'failed' ? 'bad' : 'soft'));
   const stat = t => { let a = 0, r = 0; (t.files || []).forEach(f => { a += f.added || 0; r += f.removed || 0; }); return (a || r) ? `<em class="add">+${a}</em> <em class="del">−${r}</em>` : ''; };
   const sub = t => isRun(t) ? 'Working' : t.question ? 'Hoola asks you a question' : (STATUS[t.status] || t.status);
+  // v0.947 HOOLA AUTO (hoolaauto.js): whole client projects run by specialist agents, drawn into this page's body at #/auto/...
+  const AUTO = !shared && window.HoolaAuto ? window.HoolaAuto({api, esc, toast, svg, nav: (v, t) => show(v, t), dialog: h => dialog(h),
+    step: (s, t0, i) => stepHTML(s, t0, i, false)}) : null;
 
   async function load() {
     const ev = api('GET', '/api/devsahayak/envs').then(r => { ENVS = r; if (!HOME.env) HOME.env = r.pick || 'auto'; }).catch(() => {});
@@ -111,9 +115,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   }
   // On its own page (/console/code) every screen has an address: #/s/<id>, #/reviews, #/settings, #/all - so Back works
   // and a link can open one session.
-  const fromHash = () => { const m = /^#\/(s|reviews|settings|all|scheduled)(?:\/(.+))?$/.exec(location.hash || '');
-    return !m ? ['home', ''] : m[1] === 's' ? ['session', decodeURIComponent(m[2] || '')] : m[1] === 'scheduled' ? ['scheduled', decodeURIComponent(m[2] || '')] : [m[1], '']; };
-  const toHash = (view, tid) => view === 'session' && tid ? '#/s/' + encodeURIComponent(tid) : view === 'scheduled' && tid ? '#/scheduled/' + encodeURIComponent(tid) : view === 'home' ? '#/' : '#/' + view;
+  const fromHash = () => { const m = /^#\/(s|reviews|settings|all|scheduled|auto)(?:\/(.+))?$/.exec(location.hash || '');
+    return !m ? ['home', ''] : m[1] === 's' ? ['session', decodeURIComponent(m[2] || '')] : ['scheduled', 'auto'].includes(m[1]) ? [m[1], decodeURIComponent(m[2] || '')] : [m[1], '']; };
+  const toHash = (view, tid) => view === 'session' && tid ? '#/s/' + encodeURIComponent(tid) : view === 'scheduled' && tid ? '#/scheduled/' + encodeURIComponent(tid)
+    : view === 'auto' ? '#/auto' + (tid ? '/' + tid.split('/').map(encodeURIComponent).join('/') : '') : view === 'home' ? '#/' : '#/' + view;
   async function open(root) { EL = root || EL; if (!EL) return; clearInterval(POLL); if (shared) return openShared(); await load(); shell();
     if (standalone && location.search) { const u = new URLSearchParams(location.search), g = k => (u.get(k) || '').trim();   // a link may pre-fill the box; it never starts anything
       HOME.text = (g('prompt') || g('q')).slice(0, 20000); HOME.base = g('branch').slice(0, 100); if (MODES.some(m => m[0] === g('mode'))) HOME.mode = g('mode');
@@ -127,10 +132,12 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   function show(view, tid) {
     if (VIEW === 'home') keepHome();
     if ((tid || '') !== TID || view !== 'session') { COMMENTS = []; DRAFT = null; if (PANE) closePane(true); }
-    VIEW = view; TID = tid || ''; clearInterval(POLL); MERGE = null; SIG = {}; window.HoolaMenu?.close();
+    VIEW = view; TID = tid || ''; clearInterval(POLL); MERGE = null; SIG = {}; window.HoolaMenu?.close(); AUTO?.leave();
     if (standalone && location.hash !== toHash(VIEW, TID) && !(VIEW === 'home' && !location.hash)) location.hash = toHash(VIEW, TID);
-    if (standalone) document.title = VIEW === 'session' ? 'Hoola Code' : ({reviews: 'Review a PR', settings: 'Settings', all: 'All sessions', scheduled: 'Scheduled tasks'}[VIEW] || 'Hoola Code') + (VIEW === 'home' ? '' : ' · Hoola Code');
+    if (standalone) document.title = VIEW === 'session' ? 'Hoola Code' : ({reviews: 'Review a PR', settings: 'Settings', all: 'All sessions', scheduled: 'Scheduled tasks', auto: 'Hoola Auto'}[VIEW] || 'Hoola Code') + (VIEW === 'home' ? '' : ' · Hoola Code');
     drawSide();
+    AUTO?.refresh().then(ch => { if (ch) drawSide(); });       // v0.947 the sidebar's Hoola Auto row + projects
+    if (view === 'auto' && AUTO) return AUTO.draw(TID, $('#hcdBody'));
     const bd = $('#hcdBody'); if (bd) { bd.classList.add('hcd-enter'); clearTimeout(show._t); show._t = setTimeout(() => bd.classList.remove('hcd-enter'), 320); }   // a page comes in once; a later repaint does not move
     if (view === 'session' && TID) return session(TID);
     if (view === 'reviews') return reviews();
@@ -176,17 +183,24 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       const ts = (OV?.tasks || []).filter(t => group(t) !== 'old').slice(0, 8);
       side.innerHTML = `<button type="button" class="hcd-icb" data-act="side" aria-label="Open the sessions sidebar" title="Open sidebar">${svg('side')}</button>
         <button type="button" class="hcd-icb line" data-go="home" aria-label="New session" title="New session">${svg('new')}</button>
+        ${AUTO ? `<button type="button" class="hcd-icb${VIEW === 'auto' ? ' on' : ''}" data-auto="" aria-label="Hoola Auto" title="Hoola Auto">${svg('auto')}</button>` : ''}
         ${ts.map(t => `<button type="button" class="hcd-icb" data-tid="${esc(t.id)}" title="${esc(t.title || t.number)}" aria-label="${esc(t.title || t.number)}"><i class="hcd-dot ${dotc(t)}"></i></button>`).join('')}`;
       return;
     }
     // v0.914 the sidebar as in the approved design (docs/design/hoola_code/Sidebar.dc.html): mark + name, search and
     // collapse; New session / Search / Scheduled / Reviews / Environments; Recents with their status marks; you + settings.
     const nSched = (OV?.schedules || []).filter(x => x.enabled).length, who = (OV?.settings?.login || 'You');
+    const aps = AUTO ? AUTO.cached() : [], aNeed = aps.filter(x => x.state === 'need').length, apid = VIEW === 'auto' ? TID.split('/')[0] : '';
+    const aMark = x => x.state === 'need' ? `<span class="hcd-mk need" role="img" aria-label="Needs you">${svg('warn')}</span>` : x.state === 'run' ? '<span class="hcd-mk run" role="img" aria-label="Agents working"><i></i></span>'
+      : x.state === 'done' ? `<span class="hcd-mk hca-okmk" role="img" aria-label="Handed over">${svg('ok')}</span>` : '';
+    const aGroup = aps.length ? `<div class="hcd-lbl"><span>Hoola Auto</span></div>${aps.slice(0, 8).map(x => `<div class="hcd-sess${x.id === apid ? ' on' : ''}"><button type="button" class="hcd-sessb" data-auto="${esc(x.id)}" title="${esc(x.phase_label)}">
+      <span class="hcd-st"><span>${esc(x.name)}</span></span></button><span class="hcd-marks">${x.state === 'run' || x.state === 'intake' ? `<small class="hca-sp">${esc(x.pct)}%</small>` : ''}${aMark(x)}</span></div>`).join('')}` : '';
     side.innerHTML = `<div class="hcd-sh">${standalone ? '<img class="hcd-mark" src="/static/hoola-mark.png" alt="" width="24" height="24">' : ''}<b class="hcd-brand">Hoola Code</b><span class="hcd-flex"></span>
         <button type="button" class="hcd-icb" data-act="find" aria-label="Search sessions" title="Search sessions">${svg('search')}</button>
         <button type="button" class="hcd-icb" data-act="side" aria-label="Collapse the sessions sidebar" title="Collapse sidebar">${svg('side')}</button></div>
       <div class="hcd-navs">
         <button type="button" class="hcd-new" data-go="home">${svg('new')}<span>New session</span></button>
+        ${AUTO ? `<button type="button" class="hcd-nav${VIEW === 'auto' ? ' on' : ''}" data-auto="">${svg('auto')}<span>Hoola Auto</span>${aNeed ? `<span class="hcd-count hca-cnt">${aNeed}</span>` : ''}</button>` : ''}
         <button type="button" class="hcd-nav${VIEW === 'all' ? ' on' : ''}" data-go="all">${svg('search')}<span>Search</span></button>
         <button type="button" class="hcd-nav${VIEW === 'scheduled' ? ' on' : ''}" data-go="scheduled">${svg('clock')}<span>Scheduled</span>${nSched ? `<span class="hcd-count">${nSched}</span>` : ''}</button>
         <button type="button" class="hcd-nav${VIEW === 'reviews' ? ' on' : ''}" data-go="reviews">${svg('pr')}<span>Reviews</span></button>
@@ -194,6 +208,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         ${standalone ? `<button type="button" class="hcd-nav" data-menu="more">${svg('more')}<span>More</span></button>` : ''}
       </div>
       <label class="hcd-sr" for="hcdSearch">Search sessions</label><input id="hcdSearch" class="hcd-search" type="search" placeholder="Search sessions" value="${esc(Q)}" autocomplete="off"${Q || P.find ? '' : ' hidden'}>
+      ${aGroup}
       <div class="hcd-list" id="hcdList"></div>
       <span class="hcd-flex"></span>
       <div class="hcd-me-row"><span class="hcd-av" aria-hidden="true">${esc(who.charAt(0).toUpperCase())}</span><span class="hcd-who">${esc(who)}</span>
@@ -361,7 +376,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
 
   // ------------------------------------------------------------------ one listener ---
   function onClick(ev) {
-    const b = ev.target.closest('[data-act],[data-go],[data-tid],[data-fold],[data-menu],[data-kind]'); if (!b || !EL.contains(b)) return;
+    const b = ev.target.closest('[data-act],[data-go],[data-tid],[data-fold],[data-menu],[data-kind],[data-auto]'); if (!b || !EL.contains(b)) return;
+    if (b.dataset.auto !== undefined && !b.disabled) { ev.preventDefault(); return show('auto', b.dataset.auto); }   // v0.947 HOOLA AUTO
     if (b.dataset.menu) { ev.preventDefault();
       if (b.dataset.menu === 'group') return groupMenu(b);
       if (b.dataset.menu === 'title' || b.dataset.menu === 'smenu') return taskMenu(b, TASK, true);

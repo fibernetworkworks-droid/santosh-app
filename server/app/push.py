@@ -286,6 +286,8 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         if t.get("status") in ("checks_failed", "refused", "explained") or (t.get("number") and _say.startswith(str(t.get("number"))) and "CI" in _say):
             return (f"{name}: Developer: {t.get('number', '')}", _say)
         return None
+    if kind == "auto_needs":     # v0.947 HOOLA AUTO: a gate or an agent waits for her
+        return (f"Hoola Auto: {str(p.get('name') or 'project')[:60]}", _say or "Needs your tap")
     _tech = {"devsahayak_merge": "Merge needs your yes", "devsahayak_deploy": "Deploy needs your yes",
              "devsahayak_push": "Opening a PR needs your yes", "devsahayak_plan": "Plan ready: needs your yes to start", "devsahayak_review": "Code review ready",
              "qa_bug": "New bug found", "qa_export": "GitHub issue: needs your yes",
@@ -670,7 +672,7 @@ PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo
               # v0.133 Seva suite
               "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call",
               # v0.137 Tech suite
-              "devsahayak_merge", "devsahayak_deploy", "devsahayak_push", "devsahayak_plan", "devsahayak_review", "devsahayak_task", "qa_bug", "qa_export", "qa_run", "itadmin_change", "itadmin_renewal", "itadmin_checklist", "itadmin_review", "itadmin_day", "ispnoc_change", "ispnoc_fault", "ispnoc_alert", "ispnoc_day", "cyber_action", "cyber_alerts", "cyber_incident", "cyber_advisory", "cyber_day", "devops_build", "devops_deploy", "devops_alert", "devops_day", "docwriter_publish", "docwriter_sync", "appreview_handoff", "appreview_alert", "product_publish", "product_day", "product_backlog",
+              "auto_needs", "devsahayak_merge", "devsahayak_deploy", "devsahayak_push", "devsahayak_plan", "devsahayak_review", "devsahayak_task", "qa_bug", "qa_export", "qa_run", "itadmin_change", "itadmin_renewal", "itadmin_checklist", "itadmin_review", "itadmin_day", "ispnoc_change", "ispnoc_fault", "ispnoc_alert", "ispnoc_day", "cyber_action", "cyber_alerts", "cyber_incident", "cyber_advisory", "cyber_day", "devops_build", "devops_deploy", "devops_alert", "devops_day", "docwriter_publish", "docwriter_sync", "appreview_handoff", "appreview_alert", "product_publish", "product_day", "product_backlog",
               # v0.139 Safar suite
               "customs_filing", "customs_alert", "customs_day", "travel_booking", "travel_quote", "travel_reminder", "travel_day", "warehouse_adjust", "warehouse_day", "fleet_spend", "fleet_alert", "fleet_day", "courier_card", "courier_parcel", "courier_day", "drivers_alert", "drivers_plan", "drivers_day", "logistics_ewb", "logistics_alert", "logistics_day",
               # v0.144 Makaan suite

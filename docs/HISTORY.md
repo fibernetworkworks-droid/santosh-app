@@ -5630,3 +5630,36 @@ Files: `server/app/devsahayak/service.py` (`_Step.event` num + `_step_lock`, `fo
 
 
 Files: `server/app/devsahayak/service.py` (`_until_done`, `CONTINUE_WORDS`, `_why_broke`, `_ACC` / `_spent_inr` / `_over_budget`, `_ci_round_back`, `_round(hers_round=)`, CI watch after a commit, `_ci_ready` draft check, `_prepare` / `_merge_files` deletions, `_plan_reminders`), `server/app/devsahayak/engine.py` (words-only finish, `OVER` + `budget_hit`, deletions harvested, `Tools._deps_changed`), `server/app/devsahayak/gh.py` (`commit_files` deletions). Tests `server/tests/test_v0946_code_on_its_own.py` (12).
+
+## v0.947.0 HOOLA AUTO (owner: a separate Hoola Auto section inside Code, console + app -> design canvas claude.ai/artifact/1JwAQ3KaPuxzusDHf1UzPz -> "GO BUILD")
+
+A whole client project run by specialist agents on top of Hoola Code. The full contract is `docs/HOOLA_AUTO.md`; in short:
+- Server `server/app/hoolaauto/` (models, roster, service, api). Tables auto_projects / answers / sources / gates / tasks /
+  events / changes / msgs (db.init_db + ensure_tables). Routes `/api/auto/*` (her sign-in) and the public client door
+  `/api/auto/c/{token}/*` + page `/auto/intake/{token}` (static/auto/intake.*; noindex, never framed, microphone allowed for
+  the browser's own speech-to-text).
+- Intake: 30 questions in 10 sections (roster.INTAKE); every answer keeps its source (her, the client, a document, a
+  recording via Kaan, pasted email / WhatsApp, a repo scan read through her token); a source that disagrees = a conflict she
+  settles; words scrubbed (Hoola Code's _clean_text + any "password / pin / otp / cvv / secret / token / api key: <value>").
+- Gates G1..G8 (roster.GATES), each tap carrying the gate's hash; asking for changes re-runs that step with her words.
+  G1 plan (Analyst + Planner, one model call; non-session roles get no tasks, sprints clamped 1-4, estimate Rs 25 a task),
+  G2 design (Architect + UX), G3 plan + price -> the project branch hoola/auto-<slug>-<id> made from main in every repo,
+  G4 per sprint, G5 per change request, G6 UAT, G7 go-live PRs (opened, never merged by Hoola), golive_merge = her tap with
+  the head sha (red / pending CI needs her written reason), G8 handover after the Docs agent's session.
+- The conductor (`tick`, worker Tech-suite loop): snapshot -> read every open Hoola Code session (outside our transactions:
+  the first draft held a write lock while calling Hoola Code and SQLite locked) -> merge a task's PR into the project branch
+  only when its base IS the project branch and live CI is green / none -> cost cap check (stops every session, pauses) ->
+  start ready tasks (deps done, same sprint, no gate waiting) up to `auto_parallel` 3 via start_bg(mode auto, base = the
+  project branch, her environment) -> a finished sprint opens G4, the handover sprint G8.
+- Agent chat: one model call decides in_spec (goes into the running session as a note, else onto the next task: "Applied to
+  task N") / change (a priced CR + G5; nothing built before her yes) / question.
+- Notifications: push kind `auto_needs`, sent through Hoola Code's _publish (after commit, to her home chat). The first
+  draft published from inside an open transaction - every gate waited on SQLite's lock (suite 119 s -> 27 s after the fix).
+- Console: `static/console/hoolaauto.js` + hooks in code.js (sidebar row + project group, #/auto routes) + the
+  `v0.947 HOOLA AUTO` block in hoolacode.css. Phone: `lib/ui/hoola_auto.dart` (home, mission control, agent session, tasks
+  sheet, feed, gates + gate, intake, environments) + the drawer row; test/hoola_auto_test.dart (source checks).
+- Tests `server/tests/test_v0947_hoola_auto.py` (fake model / GitHub / Hoola Code sessions): intake + conflicts, the client
+  link, gates + hashes + changes, the whole run intake -> handover, her main branch guard, the cost cap, agent chat + CR,
+  another tenant, the environment view.
+- NOT BUILT: Jira / Slack / Figma / cloud / error-tracker connections, the live voice intake call, the Watch agent, staging
+  deploys beyond her CI, adding intake sources from the phone. NOT VERIFIED with a real repo, model or phone.
