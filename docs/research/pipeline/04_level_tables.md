@@ -299,7 +299,23 @@ Source: Music Arena + AA music.
 | MAX | (none scored - uses the nearest level) |
 | ULTRA | (none scored - uses the nearest level) |
 
-## Below 10, said plainly
+## Short pools after other providers (research 05, D11)
+
+| Kind | Before | After | Added (provider) |
+|---|---|---|---|
+| speech.in (Indian) | 8 | **10** | Amazon Transcribe (Eden AI) - MAX, Azure Speech (Eden AI) - LOW |
+| music.make | 2 | **8** | ULTRA Suno v6, Suno v6 Mini (Kie.ai); MAX Mureka V9.5, Lyria 3.5 (fal) + Lyria 3 Pro; HIGH Stable Audio 3 Medium, ElevenLabs Music v2.5 (fal); LOW Lyria 3 Clip |
+| speech.out (Indian) | 4 | 4 | nothing: the other scored Indian voices (Cartesia Sonic 3.6, Maya 2 Native) are vendor-only |
+
+**Better models from other providers that join full pools** (the weakest drops to keep 20): video - SkyReels V4
+(WaveSpeed, HIGH, only after their written permission), Sora 2 Pro (fal, MID), Vidu Q3 Pro (Replicate / WaveSpeed, MID),
+PixVerse V5.6 (fal, LOW); images - Reve 2.1 (fal, HIGH, check it is live), Ideogram 4 (fal, LOW).
+
+**Still below 10 without vendor APIs:** Indian voice out (4) and music (8). The best Indian speech models (Sarvam
+Saaras v3 / Bulbul, Bodhan, Cartesia Sonic 3.6, Maya 2) are sold only by the companies themselves - not through
+OpenRouter or any multi-model provider.
+
+## Below 10, said plainly (before research 05)
 
 - **Indian-language speech in (8), Indian-language speech out (4), music (2):** OpenRouter does not carry the other
   scored models. The better ones need direct company routes: speech in - Sarvam Saaras v3, Bodhan Indic Transcribe,
