@@ -50,14 +50,18 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   Timer? _poll, _tick;
   int _pollEvery = 0;                 // v0.935 1 s while it works, 10 s when it is quiet
   bool _loading = false;
-  int _firstSays = -1;                // Hoola's messages already there when the page opened show at once
-  bool _explainAtOpen = false;        // v0.937 a closing answer that arrives while she watches lands like the rest
+  int _openN = -2;                    // v0.944 the newest step number when the page opened: older messages show at once
+  String _explainSeen = '';           // v0.937 a closing answer that arrives while she watches lands like the rest
+  int _lastN = -1;                    // v0.944 the newest step the phone holds: each check asks only for newer ones
+  int _lastSayN = -1;                 // v0.944 the newest of Hoola's messages seen (its live words hand over to it)
+  String _liveHead = '';              // v0.944 the start of the words being written now (a new reply starts from zero)
+  int _fullAt = 0;                    // v0.944 when the whole session (diff, log) was last fetched
   String? _sent;                      // v0.940 her message just sent, shown until the server writes it into the thread
   int _sentAt = 0;
   bool _sentSeen = false;
   DateTime? _runSeen;                 // v0.937 the last check that said it works (a one-check gap never blinks the page)
   Map<String, dynamic> _runCarry = const {};
-  final Map<int, int> _landed = {};   // v0.935 how many words of each new message have landed
+  final Map<String, int> _landed = {};   // v0.935 how many words of each new message have landed (key: n<step> / live / explain)
   final _msg = TextEditingController();
   final _focus = FocusNode();
   final _scroll = ScrollController();
@@ -94,13 +98,35 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
 
   bool _live(Map<String, dynamic> t) => codeRunning(t) || const {'ci_running', 'new'}.contains(cs(t['status']));
 
-  Future<void> _load() async {
+  Future<void> _load({bool full = false}) async {
     final api = widget.app.api;
     if (api == null || _loading) return;
     _loading = true;
     try {
-      var t = cm(await api.call('GET', _base));
+      // v0.944 a check asks only for the steps after the newest one it holds and leaves the diff / log out; the whole
+      // session comes on open, after anything she does, every 30 s, and when a round finishes
+      final prev = _t;
+      final delta = !full && prev != null && _lastN >= 0 && DateTime.now().millisecondsSinceEpoch - _fullAt < 30000;
+      var t = cm(await api.call('GET', _base, query: delta ? {'since': '$_lastN'} : null));
       if (!mounted) return;
+      if (delta) {
+        final old = prev!;
+        final fresh = cl(t['steps']);
+        if (ci(t['last_n']) < _lastN) {                 // the server's list went back (should not happen): read it whole
+          _loading = false;
+          return _load(full: true);
+        }
+        t = {
+          for (final k in const ['diff', 'file_diffs', 'log', 'pr_body', 'found']) if (old.containsKey(k)) k: old[k],
+          ...t,
+          'steps': [...cl(old['steps']), ...fresh.where((x) => _stepN(x, -1) > _lastN)],
+        };
+        if (codeRunning(old) && !codeRunning(t)) Future.microtask(() => _load(full: true));   // a round ended: the diff changed
+      } else {
+        _fullAt = DateTime.now().millisecondsSinceEpoch;
+      }
+      final allSteps = cl(t['steps']);
+      if (allSteps.isNotEmpty) _lastN = _stepN(allSteps.last, allSteps.length - 1);
       // v0.937 a round ends and the next part starts (a CI look, the PR step) with a check or two between: the page
       // keeps its working look for 3 s instead of flashing "finished" and back
       if (codeRunning(t)) {
@@ -113,12 +139,26 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       final steps = cl(t['steps']);
       final n = steps.length;                 // v0.937 only new steps move the page; growing words follow on their own
       final first = _seen < 0;
+      final writing = cs(t['live']).trim();
       if (first) {
-        _explainAtOpen = cs(t['explain']).isNotEmpty;
-        _firstSays = steps.where((s) => cs(s['k']) == 'say').length;
-        final writing = cs(t['live']);
-        if (writing.isNotEmpty) _landed[_firstSays] = _words(writing).length;   // opened mid-sentence: carry on from here
+        _openN = _lastN;
+        _explainSeen = cs(t['explain']);
+        _openExplain = cs(t['explain']);
+        if (writing.isNotEmpty) _landed['live'] = _words(writing).length;   // opened mid-sentence: carry on from here
+      } else {
+        // v0.944 the words being written become a message: it carries on from the word it had reached
+        final says = steps.where((x) => cs(x['k']) == 'say').toList();
+        final newest = says.isEmpty ? -1 : _stepN(says.last, -1);
+        if (newest > _lastSayN && _landed.containsKey('live')) _landed['n$newest'] = _landed.remove('live')!;
+        if (writing.isNotEmpty && (_liveHead.isEmpty || !writing.startsWith(_liveHead))) _landed['live'] = 0;   // a new reply
+        if (cs(t['explain']) != _explainSeen) {
+          _explainSeen = cs(t['explain']);
+          _landed.remove('explain');
+        }
       }
+      final says0 = steps.where((x) => cs(x['k']) == 'say').toList();
+      _lastSayN = says0.isEmpty ? -1 : _stepN(says0.last, -1);
+      _liveHead = writing.length > 24 ? writing.substring(0, 24) : writing;
       setState(() {
         _t = t;
         _error = null;
@@ -151,10 +191,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     }
   }
 
+  /// v0.944 a step's own number (older sessions: its place in the list).
+  static int _stepN(Map<String, dynamic> s, int fallback) => s['n'] is num ? (s['n'] as num).toInt() : fallback;
+
   static List<String> _words(String text) => text.split(RegExp(r'(?<=\s)'));
 
   /// A landing message said how far it got: follow it to the end unless she scrolled up.
-  void _landedTo(int i, int words) {
+  void _landedTo(String i, int words) {
     _landed[i] = words;
     // v0.937 pinned to the end while words land - but never against a scroll already moving (that fight shook the page)
     if (!_away && !(_scroll.hasClients && _scroll.position.isScrollingNotifier.value)) _toEnd(animate: false);
@@ -175,7 +218,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     if (_busy) return null;
     setState(() => _busy = true);
     final r = await codeCall(context, widget.app, method, path, body: body);
-    await _load();
+    await _load(full: true);
     if (mounted) setState(() => _busy = false);
     return r;
   }
@@ -371,6 +414,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
   }
 
   Future<void> _changes() async {
+    await _load(full: true);                          // v0.944 checks leave the diff out: fetch it before showing it
     final t = _t;
     if (t == null) return;
     final send = await Navigator.of(context).push<bool>(MaterialPageRoute<bool>(
@@ -410,7 +454,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                         ? const CodeRing(size: 22)
                         : Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center, style: codeSans(c, color: c.ink2))))
                 : RefreshIndicator(
-                    onRefresh: _load,
+                    onRefresh: () => _load(full: true),
                     color: c.ink,
                     child: Stack(fit: StackFit.expand, children: [
                       ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || madeN > 0 ? 76 : 24), children: _body(c, t)),
@@ -456,13 +500,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     // the steps between Hoola's words: the newest show as light rows while it works, the rest fold into one line
     final group = <Map<String, dynamic>>[];
     Map<String, dynamic>? todo;
-    var said = false;
     var lastSay = -1;
+    var hasFinal = false;
     for (var i = 0; i < steps.length; i++) {
       if (cs(steps[i]['k']) == 'say') lastSay = i;
+      if (steps[i]['final'] == true) hasFinal = true;
     }
+    final question = cs(t['question']).trim();
     var si = -1;
-    var sayN = 0;
     var drewRunning = false;
     // v0.939 the things it made: the full card sits with each thing's newest version, earlier versions are one faint line
     final made = {for (final m in cl(t['made'])) cs(m['id']): m};
@@ -487,13 +532,19 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       final k = cs(s['k']);
       if (k == 'say') {
         flush(last: false);
-        said = true;
-        final i = sayN++;
         final text = cs(s['text']);
+        final sn = _stepN(s, si);
+        // v0.944 the question card already shows this question: the message is not drawn twice
+        if (s['final'] == true && question.isNotEmpty && text.trim() == question && si == lastSay) continue;
         final actions = si == lastSay && !running;
-        out.add(_firstSays >= 0 && i >= _firstSays && (_landed[i] ?? 0) < _words(text).length
-            ? _land(text, i, done: true, actions: actions)
+        final key = 'n$sn';
+        out.add(_openN > -2 && sn > _openN && (_landed[key] ?? 0) < _words(text).length
+            ? _land(text, key, done: true, actions: actions)
             : _reply(text, 'say$si', actions: actions));
+      } else if (k == 'round') {
+        // v0.944 where one piece of work ended: "Worked for 3m 12s", like Claude Code
+        flush(last: false);
+        out.add(_roundLine(c, cs(s['text']).isNotEmpty ? cs(s['text']) : 'Worked for ${codeClock(ci(s['secs']))}'));
       } else if (k == 'made') {
         final row = made[cs(s['id'])];
         if (row != null) {
@@ -542,7 +593,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     }
     flush(last: true);
     if (!running && cl(t['risky_files']).isNotEmpty) out.add(CodeRiskyNote(files: cl(t['risky_files'])));
-    if (live.isNotEmpty) out.add(_land(live, sayN, done: false));
+    if (live.isNotEmpty) out.add(_land(live, 'live', done: false));
     if (todo != null && cl(todo['items']).isNotEmpty) out.add(_todo(c, cl(todo['items'])));
     final queued = [for (final n in running ? ((t['notes'] as List?) ?? const []) : const []) if (cs(n).isNotEmpty) cs(n)];
     for (final n in queued) {
@@ -553,10 +604,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     if (_sent != null && !_sentSeen) out.add(_herWaiting(c, _sent!, 'Sending…'));
     if (_sentSeen) _sent = null;
     if (!running) {
-      if (!said && cs(t['explain']).isNotEmpty) {
-        final ex = cs(t['explain']);
-        out.add(!_explainAtOpen && _firstSays >= 0 && (_landed[_explainKey] ?? 0) < _words(ex).length
-            ? _land(ex, _explainKey, done: true, actions: true)     // v0.937 it lands, it does not appear at once
+      // v0.944 older sessions keep their closing answer only on the session: shown when no message carries it
+      final ex = cs(t['explain']).trim();
+      final lastText = lastSay < 0 ? '' : cs(steps[lastSay]['text']).trim();
+      if (!hasFinal && ex.isNotEmpty && ex != lastText && ex != question) {
+        out.add(_seen >= 0 && _explainSeen.isNotEmpty && !_explainAtOpenSeen && (_landed['explain'] ?? 0) < _words(ex).length
+            ? _land(ex, 'explain', done: true, actions: true)     // v0.937 it lands, it does not appear at once
             : _reply(ex, 'explain', actions: true));
       }
       if (st == 'plan_wait' && cm(t['plan']).isNotEmpty) out.add(_plan(c, t));
@@ -577,7 +630,20 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
     return out;
   }
 
-  static const _explainKey = 1 << 20;
+  bool get _explainAtOpenSeen => _openExplain == cs(_t?['explain']) && _openExplain.isNotEmpty;
+  String _openExplain = '';
+
+  Widget _roundLine(HoolaColors c, String text) => Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 2),
+        child: Row(children: [
+          Expanded(child: Divider(color: c.line, height: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(text, style: codeSans(c, size: 12.5, color: c.ink3).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+          ),
+          Expanded(child: Divider(color: c.line, height: 1)),
+        ]),
+      );
 
   bool _same(String a, String b) {
     String k(String x) => x.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -628,7 +694,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
 
   /// v0.935 a new message of Hoola's landing word by word (done = the whole message is here; else it is still being
   /// written and more words come with the next check).
-  Widget _land(String text, int i, {required bool done, bool actions = false}) => CodeLanding(
+  Widget _land(String text, String i, {required bool done, bool actions = false}) => CodeLanding(
         key: ValueKey('land$i'),
         text: text,
         from: _landed[i] ?? 0,

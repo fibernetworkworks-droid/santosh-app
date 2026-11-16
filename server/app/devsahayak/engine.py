@@ -1089,6 +1089,39 @@ def short_say(text: str, sentences: int = 3, words: int = 60) -> str:
     return text[:len(out)].rstrip() if text.startswith(out) else out
 
 
+LIVE_FULL: dict[str, bool] = {}   # v0.944 this reply grew past the 2-3 line cut while she watched: it stays whole
+LIVE_MIN_WORDS = 10               # v0.944 a reply shows once it has this many words (a repeat is caught before she sees it)
+
+
+def live_sink(tid: str, txt: str, recent: list[str]) -> None:
+    """v0.944 the words Hoola is writing, for her phone. Held until a repeat can be told (then never shown, so a dropped
+    repeat never vanishes from her screen); a reply that runs well past the 2-3 line cut is streamed whole and kept
+    whole (it is the answer, not a line between steps), so what she watched and what is saved always agree."""
+    txt = (txt or "").strip()
+    if not txt:
+        return
+    if not LIVE_TEXT.get(tid):
+        if len(txt.split()) < LIVE_MIN_WORDS or said_before(txt, recent):
+            return
+    cut = short_say(txt)
+    if LIVE_FULL.get(tid) or len(txt.split()) > len(cut.split()) + 25:
+        LIVE_FULL[tid] = True
+        LIVE_TEXT[tid] = txt
+    else:
+        LIVE_TEXT[tid] = cut
+
+
+def clock_words(secs: int) -> str:
+    secs = max(0, int(secs))
+    if secs < 60:
+        return f"{secs}s"
+    m, s_ = divmod(secs, 60)
+    if m < 60:
+        return f"{m}m {s_:02d}s"
+    h, m = divmod(m, 60)
+    return f"{h}h {m:02d}m"
+
+
 def said_before(text: str, recent: list[str]) -> bool:
     """v0.937 the same paragraph twice (Qwen restating what it just said) is shown once."""
     words = set(re.findall(r"[a-z0-9_.]+", text.lower()))
@@ -1333,6 +1366,8 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
     the same checkout. Returns the old loop's (base_sha, read, ctx, out)."""
     if not on():
         raise Unavailable("dev_workspace is off")
+    import time as _time
+    t_round = _time.time()                                  # v0.944 the round's own clock: "Worked for 3m 12s"
     from ..devlab import box
     av = box.available()
     if not av.get("ok"):
@@ -1504,6 +1539,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     last_text, cut_in_row = "", 0                         # v0.932 her answer is never thrown away
     explain_ask = getattr(t, "kind", "") == "explain"
     recent: list[str] = []                                  # v0.937 what Hoola already told her this round
+    last_said = ""                                          # v0.944 the newest words she saw (the closing answer is not repeated)
     while steps < max_steps and time.time() - t0 < minutes * 60:
         if stopped and stopped():
             ses.save_messages(msgs)
@@ -1521,7 +1557,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 log.warning("hoola code compaction failed for %s: %s", getattr(t, "id", ""), e)
                 B.trim(msgs, compact_at // 2)
         tid = getattr(t, "id", "")
-        B.TEXT_SINK.fn = (lambda txt, _tid=tid: LIVE_TEXT.__setitem__(_tid, short_say(txt))) if tid else None   # v0.935 her phone reads the words as they come; v0.937 never past 3 lines while it writes
+        LIVE_FULL.pop(tid, None)
+        B.TEXT_SINK.fn = (lambda txt, _tid=tid, _r=list(recent): live_sink(_tid, txt, _r)) if tid else None   # v0.935 her phone reads the words as they come
         try:
             blocks, stop = B.call(system, msgs, round_tools)
         finally:
@@ -1532,12 +1569,16 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 emit({"k": "think", "text": scrub(str(b["thinking"]).strip())[:1500]})    # Phase 5: shown in the Thinking view only
             if b.get("type") == "text" and str(b.get("text") or "").strip():
                 txt = str(b["text"]).strip()[:20000]                         # v0.935 kept whole (was cut at 800)
-                if stop == "tool_use":
+                ends = stop != "tool_use" or any(x.get("type") == "tool_use" and x.get("name") == "done" for x in blocks)
+                if stop == "tool_use" and not ends and not LIVE_FULL.get(tid):
                     txt = short_say(txt)                                      # v0.937 words between steps: 2-3 lines
-                if not said_before(txt, recent):                              # v0.937 the same paragraph never twice
-                    emit({"k": "say", "text": txt})
+                shown = bool(LIVE_TEXT.get(tid))                              # v0.944 she already watched these words come in
+                if shown or not said_before(txt, recent):                     # v0.937 the same paragraph never twice
+                    emit({"k": "say", "text": txt})                           # ... but words she watched never vanish
                     recent.append(txt)
+                    last_said = txt
         LIVE_TEXT.pop(tid, None)                          # its words are a step now: the live copy goes
+        LIVE_FULL.pop(tid, None)
         said = "\n\n".join(str(b.get("text") or "").strip() for b in blocks
                              if b.get("type") == "text" and str(b.get("text") or "").strip())
         if said:
@@ -1716,6 +1757,11 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     ch = [str(c).strip()[:80] for c in (finish.get("choices") or []) if str(c).strip()][:4] if isinstance(finish.get("choices"), list) else []
     if q.endswith("?") and len(ch) >= 2:
         ses.meta["ask"] = {"q": q[:600], "choices": ch}
+    # v0.944 the closing answer is a message in the conversation, at the end of THIS round (it was only kept on the
+    # session, shown only when Hoola had said nothing else - so in almost every session she never saw it)
+    if q and q.strip() != last_said.strip():          # a question stays in the thread too (the phone draws its card instead)
+        emit({"k": "say", "text": q[:20000], "final": True})
+    emit({"k": "round", "secs": int(_time.time() - t_round), "text": "Worked for " + clock_words(int(_time.time() - t_round))})
     ses.save_messages(msgs)
     label = (follow_up or t.text or "")[:120].replace("\n", " ")
     cp = ses.checkpoint(label, len(msgs))

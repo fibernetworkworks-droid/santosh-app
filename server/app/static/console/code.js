@@ -547,6 +547,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const at = `<span class="hcd-t">${esc(since(t0, s.at))}</span>`;
     switch (s.k) {
       case 'say': return `<p class="hcd-say">${esc(s.text)}</p>`;
+      case 'round': return `<div class="hcd-step dim">${svg('ok')}<span>${esc(s.text || 'Worked')}</span>${at}</div>`;   // v0.944 one piece of work ended
       case 'think': return showThink() ? `<div class="hcd-think"><small>Thinking</small>${esc(s.text)}</div>` : '';
       case 'pass': return `<div class="hcd-step dim">${svg(s.state === 'end' ? (s.ok === false ? 'bad' : 'ok') : 'dot')}<span>${esc(PASS[s.name] || s.name)} ${s.state === 'end' ? 'ended' : 'started'}${s.note ? ' · ' + esc(s.note) : ''}</span>${at}</div>`;
       case 'note': return `<div class="hcd-me sm">${esc(s.text)}<small>you, while Hoola worked</small></div>`;
@@ -638,7 +639,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   function doneHTML(t) {
     const parts = [];
     if (t.error && ['failed', 'refused'].includes(t.status)) parts.push(`<div class="hcd-block bad"><b>${t.status === 'refused' ? 'A safety rule stopped this change.' : 'It could not finish.'}</b> ${esc(t.error)}</div>`);
-    if (t.explain) parts.push(`<div class="hcd-say">${esc(t.explain)}</div>`);
+    if (t.explain && !(t.steps || []).some(x => x.final)) parts.push(`<div class="hcd-say">${esc(t.explain)}</div>`);   // v0.944 the closing answer is a message now
     const sr = t.self_review || {}, pts = (sr.verdict && sr.verdict !== 'ok' ? sr.problems || [] : []).slice(0, 8), canFix = canRev(t);
     if (pts.length) parts.push(`<section class="hcd-card hcd-rev" aria-labelledby="hcdRevH"><div class="hcd-sh"><h2 id="hcdRevH">Hoola's own review</h2><span class="hcd-pill warn">${plural(pts.length, 'point')} left open</span></div>
       ${pts.map((x, i) => { const o = typeof x === 'string' ? {body: x} : x, where = o.path ? `${o.path}${o.line ? ':' + o.line : ''}` : '';

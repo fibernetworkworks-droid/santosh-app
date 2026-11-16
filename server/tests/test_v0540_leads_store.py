@@ -19,7 +19,7 @@ from app.leads.models import LeadContact, LeadRun, LeadOutreach, ensure_tables
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.943.0"
+    assert APP_VERSION == "0.944.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
     assert "0.940.0+939" in pub.read_text()

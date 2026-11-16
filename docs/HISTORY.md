@@ -5584,3 +5584,33 @@ Switches (all on): `dev_code_map`, `dev_look`, `dev_look_pictures`, `dev_learn`.
 NOT VERIFIED on her server or phone; the look tool needs Playwright's Chromium on the VPS (the console's other browser checks
 already use it; `HOOLA_CHROMIUM` points at it where the default path is missing). Still not live from last week: the server pairing
 (v0.941, `DEV_VPS=true`) and the GitHub App (v0.942, the App + three .env lines).
+
+
+## v0.944.0 HOOLA CODE CHAT LANDING (owner: "LETS WORK ON CHAT CONVERSATION LANDING IN HOOLA CODE CHAT .... FIND THE ISSUE AND FLAWS IN IT FIRST" -> "GO")
+
+Diagnosis first (nine flaws), then all fixed:
+1. The closing answer (the `done` tool's explain = "what I did") was saved only on the session (`DevTask.explain`) and the
+   phone drew it only when the WHOLE session had no `say` step - nearly every session has words between steps, so she
+   almost never saw it. Now `engine.run` emits it as `{"k": "say", "final": true}` at the end of its round (skipped when
+   it equals the last words she saw), never cut to 3 lines (a reply that ends the round - no tool, or `done` - is never
+   short_say'd).
+2. Each round's answer is kept in the thread (was overwritten on the session) and sits after its own round.
+3. `said_before` dropped a reply as a repeat AFTER its words had streamed to her phone - they vanished. Now
+   `engine.live_sink` holds live words until 10 words (a repeat is caught before it shows) and a reply she watched is
+   never dropped.
+4. Live words were capped at 3 sentences while streaming, so a long final answer stalled and then jumped; a reply that
+   runs 25+ words past the cut streams whole and is saved whole (`LIVE_FULL`), so what she watched and what is saved agree.
+5. Over 1,200 steps the middle was cut, her messages and Hoola's words included, and the phone's landing (counted by say
+   index) shifted. Every step now has a stable number `n` (`_Step.event`), and `service.fold_steps` folds only work steps -
+   say / note / round / made / look are kept (600 at most from the middle).
+6. "Worked for 3m 12s" marker per round (`{"k": "round", "secs"}`): a faint divider on the phone, a dim row on the console.
+7. A second closing answer started half-shown (the phone kept the earlier answer's word count) - landing now keys on the
+   step number; a new reply / answer starts from word 0; live words hand their count over to the message they become.
+8. The phone fetched the whole session (all steps, the full diff, per-file diffs, log) every second while Hoola worked.
+   `GET /api/devsahayak/tasks/{id}?since=<n>` returns only newer steps and leaves diff / file_diffs / log / pr_body / found
+   out; the phone asks for the whole session on open, after her taps, every 30 s, when a round ends and before Changes.
+9. A question was shown twice (message + card) - the phone skips the message when the card shows the same question.
+
+Older sessions (no `final` step) still show their answer, now whenever it differs from the last message. Console
+(`static/console/code.js`) draws the round row and no longer repeats the answer when a final message exists.
+Tests `test_v0944_code_chat_landing.py`. NOT VERIFIED on her phone (CI compiles the Dart).

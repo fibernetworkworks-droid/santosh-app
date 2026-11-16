@@ -1186,9 +1186,22 @@ def _find_task(s, tenant: str, ref: str) -> DevTask:
     return t
 
 
-def get_task(tenant: str, ref: str) -> dict[str, Any]:
+def get_task(tenant: str, ref: str, since: int | None = None) -> dict[str, Any]:
+    """The session for her page. since = the last step number the phone has: only newer steps come back and the heavy
+    parts (diff, per-file diffs, log, PR body) stay out - the phone asks for them when she opens Changes (v0.944)."""
     with session() as s:
-        return task_view(_find_task(s, tenant, ref), True)
+        v = task_view(_find_task(s, tenant, ref), True)
+    steps = v.get("steps") or []
+    for i, x in enumerate(steps):
+        if isinstance(x, dict) and "n" not in x:
+            x["n"] = i                                  # older sessions: a step's place is its number
+    v["last_n"] = steps[-1]["n"] if steps and isinstance(steps[-1], dict) else -1
+    if since is not None:
+        v["steps"] = [x for x in steps if isinstance(x, dict) and int(x.get("n", -1)) > since]
+        v["since"] = since
+        for k in ("diff", "file_diffs", "log", "pr_body", "found", "text_full"):
+            v.pop(k, None)
+    return v
 
 
 # ---------------------------------------------------------------- the work
@@ -1582,6 +1595,30 @@ MAX_STEPS = 1200                 # v0.878 was 400 across ALL rounds: a long mult
 KEEP_HEAD = 60                   # ... and the first steps (how the session began) are always kept
 
 
+# v0.944 the conversation itself is never folded away: her messages, Hoola's words, the round markers and the things it
+# made stay; only the work steps in the middle of a very long session are folded
+CONVO_KINDS = {"say", "note", "round", "made", "look"}
+KEEP_CONVO = 600
+
+
+def fold_steps(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep a long session's steps under MAX_STEPS without ever dropping the conversation. Pure."""
+    if len(steps) <= MAX_STEPS:
+        return steps
+    head, mid = steps[:KEEP_HEAD], steps[KEEP_HEAD:]
+    tail_n = MAX_STEPS // 2
+    tail = mid[-tail_n:]
+    folded = mid[:-tail_n]
+    convo = [x for x in folded if x.get("k") in CONVO_KINDS][-KEEP_CONVO:]
+    kept = {id(x) for x in convo}
+    dropped = [x for x in folded if id(x) not in kept and x.get("k") != "gap"]
+    gap = dict(next((x for x in folded if x.get("k") == "gap"), None) or {"k": "gap", "text": "Earlier steps folded"})
+    if "n" not in gap and dropped:
+        gap["n"] = dropped[0].get("n", 0)                   # the gap takes the number of the first step it stands for
+    out = head + [gap] + convo + tail
+    return sorted(out, key=lambda x: x.get("n", -1)) if all("n" in x for x in out) else out
+
+
 class _Step:
     """The step callback handed to loop.run / plan_run: called with the old one-line log (unchanged), plus three
     optional hooks the loop looks for - event (a structured step for the page), inbox (her notes while it works),
@@ -1600,9 +1637,9 @@ class _Step:
                 if row is None:
                     return
                 steps = _j(row.steps or "", [])
-                steps.append({**ev, "at": now().isoformat()})
-                row.steps = json.dumps(steps if len(steps) <= MAX_STEPS else
-                                       steps[:KEEP_HEAD] + [{"k": "gap", "text": "Earlier steps folded"}] + steps[-(MAX_STEPS - KEEP_HEAD - 1):])
+                last_n = steps[-1].get("n", len(steps) - 1) if steps else -1
+                steps.append({**ev, "at": now().isoformat(), "n": int(last_n) + 1})   # v0.944 a stable number per step
+                row.steps = json.dumps(fold_steps(steps))
         except Exception:
             log.debug("dev step event failed", exc_info=True)
 

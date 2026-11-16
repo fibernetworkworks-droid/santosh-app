@@ -500,8 +500,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.made_restore, tenant, tid, mid, int(_b(body).get("v") or 0))
 
     @r.get("/tasks/{tid}")
-    async def get_task(tid: str, tenant: str = Depends(current_tenant)):
-        return await run(S.get_task, tenant, tid)
+    async def get_task(tid: str, since: int | None = None, tenant: str = Depends(current_tenant)):
+        return await run(S.get_task, tenant, tid, since)
 
     @r.post("/tasks/{tid}/push")
     async def push(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
