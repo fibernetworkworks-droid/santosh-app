@@ -514,7 +514,7 @@ def test_version_stamps():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     main = (root / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.948.0"' in main
+    assert 'APP_VERSION = "0.949.0"' in main
     pubspec = (root.parent / "pubspec.yaml").read_text(encoding="utf-8")
     m = _re.search(r"version:\s*(\S+)", pubspec)
-    assert m and m.group(1) == "0.948.0+947"
+    assert m and m.group(1) == "0.949.0+948"

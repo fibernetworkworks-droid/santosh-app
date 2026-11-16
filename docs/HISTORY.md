@@ -5671,3 +5671,17 @@ A whole client project run by specialist agents on top of Hoola Code. The full c
 
 
 Files: `server/app/devsahayak/engine.py` (`LOCK_OF`, `install_noise`, harvest), `server/app/devsahayak/brain.py` (empty answer -> lower effort), `server/app/quality/codecard.py` (deletions). Tests `server/tests/test_v0948_code_hard_card_fixes.py` (4).
+
+## v0.949.0 HOOLA CODE ANSWER NOW (owner: "DONE CHECK" after v0.948)
+
+Her rerun of code_card_engine_hard on v0.948 (qwen/qwen3.8-27b): 11/12 fully right, works 11/12, scope 12/12, rules 12/12,
+good tests 7/7, 14.5 min. The v0.948 lock-file fix held - js_fix_gst_split is OK. The vague ask ("Checkout mein kuch
+gadbad hai, theek kar do.") still failed: the log shows "try 1 empty (finish=length, effort=high)", "try 2 ... medium",
+"try 3 ... low" - the model thought until its room ran out at every effort level, 730 s, 0 steps.
+
+Fix (`devsahayak/brain.py` `_qwen_call`): when all three tries came back empty, two last tries run with `brain.ANSWER_NOW`
+added as a final user line for that call only ("your last answers came back empty ... make your next tool call, or ask
+her ONE short question"), room = max_tokens + ROOM["high"]: first with thinking off (`reasoning: {"enabled": false}`),
+then - if OpenRouter answers 400 because the model needs thinking - with thinking low. A failure that was not an empty
+answer (timeout, refusal) gets no extra tries and is said as before. Tests: test_v0949_code_answer_now.py (4).
+NOT VERIFIED: whether Qwen 3.8 27B on OpenRouter accepts thinking off - the next hard card run shows it.
