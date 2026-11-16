@@ -1413,6 +1413,11 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                              _meta.get("actor", ""))
     except Exception:
         pass
+    try:   # v0.963 HOOLA PIPELINE P2: a Box turn keeps every tool result for its facts list (no-op otherwise)
+        from ..pipeline import turnbox as _tbox
+        _tbox.saw(name, out)
+    except Exception:
+        pass
     return out
 
 
@@ -2246,9 +2251,14 @@ async def _turn_model(t: "_Turn"):
         # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
         # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
         _long_now = bool(state.get("goal") or state.get("extended") or state.get("auto_plan") or state.get("big"))
-        if _long_now and brain != "claude" and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
+        try:   # v0.963 HOOLA PIPELINE P2: the Box chose this turn's model from the level tables - its choice stands
+            from ..pipeline import turnbox as _tbx
+            _boxed = bool(_tbx.APPLIED.get())
+        except Exception:
+            _boxed = False
+        if _long_now and brain != "claude" and not _boxed and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
             brain = "claude"   # v0.331 a long job runs on Claude even when a cheaper brain answers ordinary chat
-        if state.get("hard") and brain != "claude" and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
+        if state.get("hard") and brain != "claude" and not _boxed and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
             brain = "claude"   # v0.429 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
         _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
@@ -3196,14 +3206,29 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         from .. import usage as _usage
         from ..db import now as _now
         _tc_tok, _tc_t0 = _usage._TURN.set(_tc_acc), _now()
+    _bx = None
+    try:   # v0.963 HOOLA PIPELINE P2: a one-part message through the Box (pipeline_on; off = today's turn exactly)
+        from ..pipeline import turnbox as _tbox
+        _bx = _tbox.begin(conversation_id, user_text, tenant_id or get_settings().tenant_id, actor or "owner",
+                          bool(voice or VOICE_BRAIN_NOW.get()))
+    except Exception:   # noqa: BLE001 - the Box never stops her turn
+        log.exception("pipeline box begin failed")
+        _bx = None
     try:
-        return await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
+        _out = await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
                                save_user)
+        if _bx is not None:
+            _tbox.end(_bx, _out, failed=turn_failed_since(conversation_id, _bx["t0"]))
+        return _out
     except asyncio.CancelledError:
+        if _bx is not None:
+            _tbox.end(_bx, "", failed=True)
         raise
     except BaseException as e:   # noqa: BLE001 - the last line of defence: silence is worse than any error text
         log.exception("agent turn crashed outside its guard")
         _mark_failed(conversation_id)
+        if _bx is not None:
+            _tbox.end(_bx, "", failed=True)
         try:
             text = _friendly_error(e, tenant_id, actor or "owner", bool(VOICE_BRAIN_NOW.get()))
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "error"})

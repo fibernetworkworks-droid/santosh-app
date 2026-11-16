@@ -852,6 +852,11 @@ async def pipeline_jobs() -> None:
         await asyncio.to_thread(feed.run)
     except Exception:
         log.exception("pipeline feed failed")
+    try:   # v0.963 P2: job sheets older than 30 days go (once a day, with the feed)
+        from .pipeline import sheet as _plsh
+        await asyncio.to_thread(_plsh.sweep)
+    except Exception:
+        log.exception("pipeline sheet sweep failed")
 
 
 async def research_jobs() -> None:

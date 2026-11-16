@@ -23,6 +23,9 @@ on:
           - mospi_check
           - pipeline_feed
           - pipeline_try
+          - pipeline_on
+          - pipeline_off
+          - pipeline_sheets
           - architect_check
           - proof_apps
           - aiapp_proof
@@ -275,6 +278,19 @@ jobs:
                 # v0.961 HOOLA PIPELINE P1: what the Box WOULD choose for a fixed set of asks (kind, language, level and
                 # why, model + two backups) from today's tables - code only, no model call; nothing is routed yet.
                 echo 'cd $CORE && timeout 120 .venv/bin/python -m app.pipeline.box' ;;
+              pipeline_on|pipeline_off)
+                # v0.963 HOOLA PIPELINE P2: her one-part chat messages through the Box (pipeline_on) or back to today's
+                # routing (pipeline_off). PIPELINE_ON in $CORE/.env, restart, health, the effective value printed back.
+                [ "$JOB" = pipeline_on ] && V=true || V=false
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo "if grep -q '^PIPELINE_ON=' \$CORE/.env; then sed -i 's#^PIPELINE_ON=.*#PIPELINE_ON=$V#' \$CORE/.env; else printf 'PIPELINE_ON=$V\\n' >> \$CORE/.env; fi"
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective pipeline_on =\", get_settings().pipeline_on)"' ;;
+              pipeline_sheets)
+                # v0.963 HOOLA PIPELINE P2: the newest job sheets - one per chat message that went through the Box (read-only)
+                echo 'cd $CORE && timeout 60 .venv/bin/python -m app.pipeline.sheet' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'

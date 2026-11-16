@@ -93,5 +93,5 @@ def test_vps_ops_writes_the_client_id_and_secret():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.962.0"' in main
-    assert "version: 0.962.0+961" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.963.0"' in main
+    assert "version: 0.963.0+962" in (ROOT / "pubspec.yaml").read_text()

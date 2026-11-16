@@ -5995,3 +5995,41 @@ Also fixes the v0.960 build: in `HoolaMd` the new `tail` field was hidden by a l
 
 Tests: `server/tests/test_v0962_hoola_code_live.py` (5); v0937 / v0944 pins moved to the new behaviour. NOT VERIFIED on
 her phone or through her server's front door (Caddy passes the chat's SSE, so it should pass this one too).
+
+
+## v0.963.0 HOOLA PIPELINE P2 - a one-part chat message through the Box (owner: "GO P2")
+
+P2 of `docs/HOOLA_PIPELINE_PLAN.md`: the job sheet, the hand-off package and the final check, for a ONE-part
+message. Behind `pipeline_on` (default False until P7 - off = today's turn byte for byte; `turnbox.begin` returns None).
+
+- `server/app/pipeline/turnbox.py` - `begin` (in `santosh.run_turn`, before `_run_turn`): reads the tables copy (kept in
+  memory, re-read only when current.json changes - the message holds that object, a refresh replaces it, never mutates),
+  her model pick as the pin (`modelchoice.chosen`), `box.choose_for(..., tools=True)` (a chat turn needs tools), opens a
+  sheet with one part and, when the part's work is text, the chosen route is OpenRouter, the chat runs on its
+  OpenAI-shaped brain (`llm.cheap_brain() == "glm"`) and the OpenRouter key is set, sets `llm.MODEL_NOW =
+  "openrouter:<id>"` for the turn + `APPLIED` so the chat loop no longer switches a hard / long ask to Claude. Measured
+  here: ~1.4 ms to choose, ~4-5 ms with the sheet writes (the first message of a process pays module loading once).
+  `saw` (in `santosh._run_tool`) keeps every tool result of the turn for the facts list. `end`: hand-off package
+  (result, facts with their sources, files, notes, not_done), the final check, the part done / failed, the outage record,
+  the same model for this chat + kind + level for 30 minutes.
+- Not through the Box (the sheet records the reason, the turn runs as today): a live call, routine / wake / goal turns,
+  several parts in one message (P3's planner), media work (studios + price cards, P5), a model on another route, a server
+  whose chat is on Claude / OmniRoute, no OpenRouter key.
+- `sheet.py` - one sheet per message in its own `data/pipeline/sheets.db` (WAL): id, chat, tenant, tables date, the ask
+  masked + cut to 200 chars, parts (kind, language, level + why, signals, model + 2 backups + why, applied or the reason,
+  state waiting / running / waiting_tap / done / failed, tries, the package), the check, `box_ms`; `unfinished(chat)` for
+  P3's restart pickup; swept after 30 days by the worker's pipeline slot. CLI `python -m app.pipeline.sheet`.
+- `check.py` - plan 6.10 in code: key figures in the answer held to the facts (her words + tool results; only when a
+  tool ran), files named by a path must exist, every not_done item said. A problem is RECORDED; the one fix round one
+  level up is P4 (plan 5.3 + the hand-over rule book already in handover.py).
+- Outage record (plan D1): per model, in this process - 2 failed / empty answers in 10 minutes = paused (step 1 removes
+  it, a backup takes over); a success rate counts only after 3 answers (one bad answer is not a record).
+- `GET /api/pipeline/sheets?conv=&n=`; vps-ops `pipeline_on` / `pipeline_off` (PIPELINE_ON in the VPS .env + restart +
+  the effective value printed back) and `pipeline_sheets`.
+
+Tests `test_v0963_pipeline_p2.py` (14): off = None; one part applied (model in force, sheet running -> done, package,
+sticky, box_ms < 30); calls / routines / several parts / media / no OpenRouter brain not applied with reasons; the check
+holds a figure to a tool's result and flags an invented one; files + not_done; two failures pause and the backup takes
+over; her pick as pin; sheet states / restart / sweep / package shape; `run_turn` runs on the Box model; the route; the
+Claude switch guarded. NOT VERIFIED: no real model answered through the Box here (no key in this sandbox) - the first
+real turns after `pipeline_on` on her server are the test; `pipeline_sheets` shows each one.

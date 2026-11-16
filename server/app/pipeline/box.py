@@ -40,7 +40,7 @@ def recall(chat: str, kind: str, level: str, now: float | None = None) -> dict |
 def choose_for(text: str, *, attachments: list[dict] | None = None, surface: str = "chat", doc: dict | None = None,
                her_level: str = "", her_ultra: bool = False, pin: str = "", call_waiting: bool = False,
                size_tokens: int = 0, health: dict | None = None, chat: str = "", floor: str = "",
-               now: float | None = None) -> dict[str, Any]:
+               now: float | None = None, tools: bool = False) -> dict[str, Any]:
     """One part, end to end. `doc` = the tables copy this message holds (default: the current tables)."""
     doc = C.snapshot(doc if doc is not None else store.read_current())
     now = now if now is not None else time.time()
@@ -49,7 +49,7 @@ def choose_for(text: str, *, attachments: list[dict] | None = None, surface: str
     lv = L.level_for(d["kind"], sig, language=d["language"], her_level=her_level, her_ultra=her_ultra,
                      call_waiting=call_waiting or surface == "call", floor=floor)
     need = {"kind": d["kind"], "level": lv["level"], "language": d["language"], "surface": surface, "pin": pin,
-            "size_tokens": size_tokens}
+            "size_tokens": size_tokens, "tools": tools}
     pick = C.choose(doc, need, health=health, sticky=recall(chat, d["kind"], lv["level"], now) if chat else None,
                     now=now)
     return {"kind": d["kind"], "language": d["language"], "parts": d["parts"],

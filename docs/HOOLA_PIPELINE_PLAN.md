@@ -359,7 +359,7 @@ as "not reachable yet". A level with no scored model uses the nearest filled lev
 |---|---|---|
 | P0 | Feed: read the boards, the name map, dated level tables, `docs/research/pipeline/` | Tables for every kind of work, each with its sources and date - **BUILT v0.958.0** (`server/app/pipeline/`, daily on the worker, `GET /api/pipeline/tables`, vps-ops `pipeline_feed`) |
 | P1 | Kinds + levels + choose, as pure code with tests (no model call) | The same inputs always give the same model; every rule in 3-5 has a test - **BUILT v0.961.0** (`pipeline/detect.py`, `levels.py`, `choose.py`, `handover.py`, `box.py`; `GET /api/pipeline/choose`, vps-ops `pipeline_try`; 65 tests) |
-| P2 | The job sheet + hand-off package + the final check, for a ONE-part message | Chat answers through the Box with no added delay |
+| P2 | The job sheet + hand-off package + the final check, for a ONE-part message | Chat answers through the Box with no added delay - **BUILT v0.963.0** (`pipeline/turnbox.py`, `sheet.py`, `check.py`; ~5 ms a message; behind `pipeline_on`; vps-ops `pipeline_on` / `pipeline_off` / `pipeline_sheets`) |
 | P3 | Planner + parts side by side + waiting on each other + her tap per branch | The EV example (11) runs end to end |
 | P4 | Hand-over rules + moving up + the call head start + limits + queues | Each failure case in 5.2 has a test with a fake model |
 | P5 | Hoola Code, background jobs, studios on the Box | Their fixed model settings retired, old values kept as a fallback switch |
