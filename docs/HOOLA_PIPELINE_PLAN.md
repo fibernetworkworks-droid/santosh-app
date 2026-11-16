@@ -31,7 +31,7 @@ Nothing in this document is built yet. Read it before touching model choice anyw
  which model did which part and why
 ```
 
-Input = the models reachable through OpenRouter (plus the few direct providers Hoola already has).
+Input = the models reachable through OpenRouter first, then other multi-model providers for what OpenRouter lacks (D11).
 Output = one answer. She never sees several models talking.
 
 ---
@@ -50,6 +50,7 @@ Output = one answer. She never sees several models talking.
 | D8 | The Indian-language benchmark is chosen **by research** (16 Nov: "DO RESEARCH") - section 8.4. |
 | D9 | A model that moves two levels in a table refresh is **applied automatically** (16 Nov: "AUTO"). |
 | D10 | Every kind of work has a pool of **10-20 models** (2-4 per level), not 1-3 (16 Nov: "MIN 10 MODEL MAX 20 MODELS"). Levels are quality bands below the best model of that kind (section 8.2). |
+| D11 | A model not on OpenRouter is reached through **another multi-model provider like OpenRouter** (16 Nov: "WE WILL GET IT FROM OTHER LLM PROVIDERS LIKE OPENROUTER"). OpenRouter stays first; the others fill the gaps. Keys only in the VPS .env. Which providers: research 05. |
 
 ---
 
