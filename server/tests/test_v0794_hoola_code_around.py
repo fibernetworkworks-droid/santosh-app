@@ -108,7 +108,7 @@ def test_reviewers_comments_are_data_fixed_once_on_her_tap(box, monkeypatch):
     assert S.FAKE.files_at(S.FAKE.refs[t2["branch"]])["a.md"] == "1\n"
     with pytest.raises(S.DevError, match="no new reviewer comments"):   # the same comments are never asked twice
         S.in_background(T, t["id"], "fix_comments")
-    assert S.get_task(T, t["id"])["status"] == "pr_open"                # ... and "nothing to fix" is not a failed session
+    assert S.get_task(T, t["id"])["status"] == "ci_running"             # ... and "nothing to fix" is not a failed session (v0.946 CI watches the fix)
 
 
 def test_comments_fix_by_itself_only_on_a_private_repo_with_auto_fix(box, monkeypatch):

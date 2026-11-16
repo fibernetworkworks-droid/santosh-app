@@ -144,11 +144,14 @@ class Gh:
         return self.req("GET", f"/repos/{full}/issues/{int(n)}")
 
     # ---- write (only on hoola/* branches)
-    def commit_files(self, full: str, branch: str, parent: str, files: list[tuple[str, str]], message: str) -> str:
+    def commit_files(self, full: str, branch: str, parent: str, files: list[tuple[str, str | None]], message: str) -> str:
         if not branch.startswith("hoola/"):
             raise GhError("Hoola sirf hoola/* branch par commit karta hai.")
         tree = []
         for path, text in files:
+            if text is None:                    # v0.946 a deletion: GitHub's trees API removes a path given sha null
+                tree.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
+                continue
             b = self.req("POST", f"/repos/{full}/git/blobs", {"content": text, "encoding": "utf-8"})
             tree.append({"path": path, "mode": "100644", "type": "blob", "sha": b["sha"]})
         base_tree = self.req("GET", f"/repos/{full}/git/commits/{parent}").get("tree", {}).get("sha")

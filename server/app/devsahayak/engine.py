@@ -91,6 +91,7 @@ def exists(tid: str) -> bool:
 
 # ---------------------------------------------------------------- the two live slots
 _SLOTS: dict[str, Any] = {"n": 0, "sem": None}
+OVER: dict[str, Any] = {}       # v0.946 per session: has it reached its spending limit? (checked before each step)
 KEEP_CP_COPIES = 20             # v0.945 conversation copies kept for going back (older checkpoints fall back to the count)
 _SLOT_LOCK = threading.Lock()
 LIVE: set[str] = set()
@@ -727,7 +728,24 @@ class Tools:
         f.write_bytes(body.encode("utf-8"))
         self.read.add(rel)
         self.trail.append(("created " if new else "wrote ") + rel)
-        return f"{'Created' if new else 'Wrote'} {rel} ({len(str(content).splitlines())} lines)."
+        return f"{'Created' if new else 'Wrote'} {rel} ({len(str(content).splitlines())} lines)." + self._deps_changed(rel)
+
+    def _deps_changed(self, rel: str) -> str:
+        """v0.946 a package was added mid-task (requirements.txt, package.json, a lock file...): the box's dependency
+        snapshot is keyed on these files, so it is dropped and the repo's own setup installs them again (with the
+        network its environment allows) before the next command - before, the new package was never installed."""
+        from ..devlab import spec as SPEC
+        from ..devlab import service as LS
+        if rel not in SPEC.LOCKS:
+            return ""
+        try:
+            self.spec = {**(self.spec or {}), "deps_key": SPEC.deps_key(LS.read_some(str(self.s.repo), list(SPEC.LOCKS)))}
+        except Exception:
+            return ""
+        self.image = ""
+        self.s.meta["image"] = ""
+        self.s.save_meta()
+        return " The dependency list changed: the box installs it again before the next command."
 
     def _apply(self, text: str, old: str, new: str, every: bool) -> tuple[str, str]:
         if old == new:
@@ -770,7 +788,7 @@ class Tools:
         f.write_bytes((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
         self.trail.append(f"edited {rel}")
         add, rem, _ = R.changed_lines(before, text)
-        return f"Edited {rel} (+{add} -{rem})."
+        return f"Edited {rel} (+{add} -{rem})." + self._deps_changed(rel)
 
     def t_glob(self, pattern: str, path: str = "") -> str:
         start = self._rel(path) if path else ""
@@ -1470,6 +1488,7 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
     ses = Session(t.id)
     hook = lambda name: getattr(on_step, name, None) if on_step is not None else None   # noqa: E731
     ev_fn, inbox, stopped, beat = hook("event"), hook("inbox"), hook("stopped"), hook("beat")
+    OVER[str(getattr(t, "id", ""))] = hook("over_budget")   # v0.946 the session's spending limit, read each step
 
     def emit(ev: dict[str, Any]) -> None:
         if ev_fn:
@@ -1629,10 +1648,15 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     recent: list[str] = []                                  # v0.937 what Hoola already told her this round
     t_round = time.time()                                   # v0.944 the round's own clock: "Worked for 3m 12s"
     last_said = ""                                          # v0.944 the newest words she saw (the closing answer is not repeated)
+    over = OVER.get(str(getattr(t, "id", "")))
+    budget_hit = False
     while steps < max_steps and time.time() - t0 < minutes * 60:
         if stopped and stopped():
             ses.save_messages(msgs)
             raise Stopped("stopped")
+        if over and over():
+            budget_hit = True                               # v0.946 never past her limit: the round ends here, said
+            break
         steps += 1
         if B.size(msgs) > clear_at:
             B.trim(msgs, clear_at)
@@ -1682,7 +1706,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             # v0.932 like Claude Code, a reply in words with no tool call is the answer: an explain ask ends here;
             # any other ask gets ONE reminder (per stretch of work) to finish with done, then its words are kept.
             if said and (explain_ask or nudged >= 1):
-                finish = {"explain": said}
+                finish = {"explain": said, "words_only": not explain_ask}
                 ses.save_messages(msgs)
                 break
             if nudged >= 1:
@@ -1836,8 +1860,18 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         if finish is not None:
             break
     finished = finish is not None
+    # v0.946 a change ended in words, not with done: its own checks (the quality gate, the reality check) never ran, so
+    # it is not finished - unless the words ask her something, or nothing in the copy changed (then words ARE the answer)
+    if finish is not None and finish.get("words_only") and not str(finish.get("explain") or "").rstrip().endswith("?"):
+        try:
+            finished = not ses.changed()
+        except Exception:
+            finished = True
+        if not finished:
+            finish["risk"] = "Hoola ended this round in words, not with done: its own checks before finishing did not run."
     if finish is None:
-        why = ("The step / time limit for this round was reached" if steps >= max_steps or time.time() - t0 >= minutes * 60
+        why = ("This session reached its spending limit, so it stopped here" if budget_hit else
+               "The step / time limit for this round was reached" if steps >= max_steps or time.time() - t0 >= minutes * 60
                else "Hoola stopped without calling done")
         finish = {"explain": (last_text + "\n\n" if last_text else "") + why + "; what was done so far is below for review.",
                   "risk": "The round ended before Hoola called done - review the diff carefully."}
@@ -1864,7 +1898,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             skipped.append(f"{p} (holds secrets)")
             continue
         if row["st"] == "D":
-            skipped.append(f"{p} (deleted - Hoola does not delete files through a PR yet; delete it yourself if wanted)")
+            files.append({"path": p, "why": "deleted", "delete": True})   # v0.946 a deletion goes into the PR too
             continue
         if R.BINARY_EXT.search(p):
             skipped.append(f"{p} (binary)")
@@ -1894,7 +1928,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     found = {"trace": [], "errors": [], "words": [], "read": sorted(tools.read)[:200], "checks": [],
              "hidden": sorted(hidden), "tree_size": len(ses.walk()), "issue": bool(issue_txt), "rules": [],
              "engine": "workspace",
-             "loop": {"steps": steps, "searched": [], "trail": tools.trail[-60:], "finished": finished,
+             "loop": {"steps": steps, "searched": [], "trail": tools.trail[-60:], "finished": finished, "budget": budget_hit,
                       "bash": tools.bash_runs, "continued": continuing, "checkpoint": cp["n"],
                       "reality": reality["verdict"]}}
     return sha, [], {"found": found, "context": ""}, out

@@ -298,7 +298,7 @@ def test_token_sealed_and_fix_pr(dev, monkeypatch):
     monkeypatch.setattr(S, "model_json", lambda *a, **k: {"explain": "test galat tha", "files": [
         {"path": "tests/test_calc.py", "why": "fix", "edits": [{"find": "def test_empty():", "replace": "def test_empty_cart():"}]}]})
     r2 = S.fix_ci(T, "D-0001")
-    assert r2["status"] == "pr_open" and fake.prs[1]["head"]["sha"] != head
+    assert r2["status"] == "ci_running" and fake.prs[1]["head"]["sha"] != head   # v0.946 CI watches the new commit
     assert "test_empty_cart" in fake.files_at(fake.refs[v["branch"]])["tests/test_calc.py"]
 
 

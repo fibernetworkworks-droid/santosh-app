@@ -774,7 +774,7 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "explain": t.explain, "branch": t.branch, "pr_number": t.pr_number, "pr_url": t.pr_url, "head_sha": t.head_sha[:12],
          "ci": _j(t.ci, {}), "error": t.error, "hash": t.hash if t.status in ("ready", "plan_wait") else "",
          "files": [{"path": c["path"], "why": c.get("why", ""), "added": c.get("added", 0), "removed": c.get("removed", 0),
-                    "new": not c.get("old_sha")} for c in ch],
+                    "new": not c.get("old_sha"), "deleted": bool(c.get("delete"))} for c in ch],
          "checks": _j(t.checks, []), "risk": t.risk, "test_plan": t.test_plan, "rounds": t.rounds,
          "tier": t.tier or "", "plan": _j(t.plan or "", {}),
          "self_round": int(t.self_round or 0), "self_review": _j(t.self_review or "", {}),
@@ -1503,6 +1503,15 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
         if path in known and known[path].get("hidden"):
             problems.append(f"{path}: is file mein secret hai, Hoola ise nahi badalta")
             continue
+        if f.get("delete"):                     # v0.946 a file deleted in the working copy goes into the PR as a deletion
+            old, old_sha = (known[path]["text"], known[path]["sha"]) if path in known else g.file(t.repo, path, ref)
+            if not old_sha:
+                continue                         # nothing there to delete
+            _, rem, _ = R.changed_lines(old, "")
+            total += rem
+            changes.append({"path": path, "why": str(f.get("why") or "deleted")[:200], "old_sha": old_sha, "new": "",
+                            "delete": True, "added": 0, "removed": rem, "diff": R.unified(path, old, "")[:20000]})
+            continue
         if path in known:
             old, old_sha = known[path]["text"], known[path]["sha"]
         else:
@@ -1694,6 +1703,9 @@ class _Step:
     def stopped(self) -> bool:
         return self.tid in _STOP
 
+    def over_budget(self) -> bool:
+        return _over_budget(self.tid)
+
 
 def _take_notes(tid: str) -> list[str]:
     with session() as s:
@@ -1871,6 +1883,72 @@ def delete_task(tenant: str, ref: str) -> dict[str, Any]:
     return {"ok": True, "deleted": tid, "pr_left_open": pr or 0}
 
 
+CONTINUE_WORDS = ("<continue_on_your_own>\nThe last round stopped before you called done. Carry on from where you are: "
+                  "finish the work, run the checks, then call done with your answer. Do not start over.\n"
+                  "</continue_on_your_own>")
+
+
+def _until_done(tid: str, call: Callable[[str, bool], Any], follow_up: str) -> tuple[Any, bool, str]:
+    """v0.946 a round that hit its step / time limit or ended without done is NOT the end: it goes on by itself, in
+    the same conversation and working copy, up to dev_auto_continue more rounds (her Stop and the spending limit still
+    end it). Returns (the engine's result, finished, why it is not finished)."""
+    n = int(_setting("dev_auto_continue", 3) or 0)
+    fu, k = follow_up, 0
+    while True:
+        res = call(fu, k == 0)
+        lp = ((res[2] or {}).get("found") or {}).get("loop") or {}
+        done = bool(lp.get("finished", True))
+        if done:
+            return res, True, ""
+        if lp.get("budget") or _over_budget(tid):
+            return res, False, "it reached this session's spending limit"
+        if tid in _STOP or k >= n:
+            return res, False, f"it did not finish in {k + 1} round{'s' if k else ''}"
+        k += 1
+        _Step(tid).event({"k": "ws", "text": f"The round stopped before it was done - going on by itself ({k} of {n})"})
+        fu = CONTINUE_WORDS
+
+
+def _why_broke(e: BaseException) -> str:
+    """v0.946 what stopped the work, in words she can act on (it said only the error's class name)."""
+    try:
+        from . import brain as B
+        if isinstance(e, B.QwenError):
+            txt = str(e)
+            if "402" in txt or "credit" in txt.lower():
+                return ("The coding model could not answer: the OpenRouter account is out of credit. Add credit at "
+                        "openrouter.ai, then send a message to go on - the working copy is kept.")
+            if "429" in txt:
+                return "The coding model is busy (too many requests). Send a message in a minute to go on - the working copy is kept."
+            return "The coding model did not answer (" + txt[:160] + "). Send a message to go on - the working copy is kept."
+    except Exception:
+        pass
+    if isinstance(e, TimeoutError):
+        return "A step took too long and was stopped. Send a message to go on - the working copy is kept."
+    return f"Something broke while working ({e.__class__.__name__}). Send a message to go on - the working copy is kept."
+
+
+_ACC: dict[str, dict[str, Any]] = {}     # v0.946 the model calls of the run going on now (saved to the row when it ends)
+
+
+def _spent_inr(tid: str) -> float:
+    from .. import usage
+    try:
+        with session() as s:
+            row = s.get(DevTask, tid)
+            usd = float((_j(row.cost or "", {}) or {}).get("usd") or 0) if row is not None else 0.0
+    except Exception:
+        usd = 0.0
+    usd += float((_ACC.get(tid) or {}).get("usd") or 0)
+    return usd * usage.usd_inr()
+
+
+def _over_budget(tid: str) -> bool:
+    """v0.946 a session never spends past its limit (dev_session_inr_cap, 0 = no limit): checked before each step."""
+    cap = float(_setting("dev_session_inr_cap", 1500) or 0)
+    return cap > 0 and _spent_inr(tid) >= cap
+
+
 def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict[str, Any] | None = None,
                **kw: Any) -> dict[str, Any]:
     """Run one piece of the work in the background so the page can watch it; errors land on the task row.
@@ -1896,6 +1974,7 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
         from . import loop as L
         from .. import usage
         acc: dict[str, Any] = {}
+        _ACC[tid] = acc
         try:
             with usage.run_meter(acc):          # Phase 3: this session's own model calls, nothing else's
                 fn(*a, **kw)
@@ -1916,9 +1995,10 @@ def _in_thread(tenant: str, tid: str, fn: Callable[..., Any], *a: Any, job: dict
                 _fail(tid, str(e))
         except Exception as e:
             log.exception("dev background work failed")
-            _fail(tid, f"Something broke while working: {e.__class__.__name__}")
+            _fail(tid, _why_broke(e))
         finally:
             _add_cost(tid, acc)
+            _ACC.pop(tid, None)
             _RUNNING.discard(tid)
             _RUN_AT.pop(tid, None)
             _STOP.discard(tid)
@@ -2065,7 +2145,7 @@ def in_background(tenant: str, ref: str, what: str, **kw: Any) -> dict[str, Any]
                 raise DevError("The plan changed; look at the new one.")
     if what == "fix_comments":                  # told at once when there is nothing to fix (never a failed session)
         with session() as s:
-            if _find_task(s, tenant, ref).status not in ("pr_open", "checks_failed"):
+            if _find_task(s, tenant, ref).status not in ("pr_open", "checks_failed", "ci_running"):
                 raise DevError("Reviewers' comments are fixed on an open pull request.")
         if not AR.read_comments(tenant, ref)["open"]:
             raise DevError("There are no new reviewer comments on this pull request.")
@@ -2205,16 +2285,17 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         s.flush()
     plan_txt = P.as_text(plan or {})
     base_sha = read = ctx = out = None
+    unfinished = ""                                        # v0.946 why the work is not finished ('' = it is)
     # v0.784 THE WORKSPACE ENGINE: a real working copy, Claude Code's tools, bash in the locked box, a conversation that
     # continues. Anything that keeps it from running here (no box, no git, the switch off) falls back to the old loop.
     from . import engine as EN
     if EN.on() and _loop_on():
         try:
             hers, env, rnet = _session_box(tenant, t)
-            base_sha, read, ctx, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, issue_txt,
-                                              on_step=_Step(tid), plan_txt=plan_txt, attach=(att_txt, att_pics),
-                                              follow_up=follow_up, resume=resume, hers=hers, env=env,
-                                              net=rnet, refs=_j(t.refs or "", []))
+            (base_sha, read, ctx, out), finished, unfinished = _until_done(tid, lambda fu, first: EN.run(
+                g, t, _token(tenant), cfg.rules, cfg.allow_workflows, issue_txt, on_step=_Step(tid), plan_txt=plan_txt,
+                attach=(att_txt, att_pics) if first else None, follow_up=fu, resume=resume and first, hers=hers, env=env,
+                net=rnet, refs=_j(t.refs or "", [])), follow_up)
         except EN.Unavailable as e:
             log.info("workspace engine unavailable for %s (%s): the old loop", tid, e)
             base_sha = None
@@ -2293,12 +2374,15 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         row.branch = f"hoola/{row.number.lower()}-{R.slug(row.pr_title, 28)}"
         row.hash = R.card_hash(row.id, row.repo, row.branch, base_sha, *[c["path"] + c["new"] for c in prep["changes"]])
         # Phase 3: 'ask' = this session waits for her PR tap, 'auto' = it does not (a PUBLIC repo always asks), no mode = her setting
-        if public or ask_pr or (t.mode or "") == "ask" or ((t.mode or "") != "auto" and cfg.ask_before_pr):
+        # v0.946 work that is not finished never goes out by itself: it waits for her look, with the reason
+        if unfinished or public or ask_pr or (t.mode or "") == "ask" or ((t.mode or "") != "auto" and cfg.ask_before_pr):
             row.status = "ready"
-            _log(row, "PR ke liye haan ka intezaar")
+            _log(row, "not finished: waiting for her" if unfinished else "PR ke liye haan ka intezaar")
             s.flush()
             v = task_view(row)
-            say = (f"{row.number}: {len(prep['changes'])} file(s) taiyaar. " + ("Repo PUBLIC hai, PR sab ko dikhega: " if public else "")
+            say = ((f"{row.number}: Hoola is not finished - {unfinished}. {len(prep['changes'])} file(s) changed so far: look at "
+                    "them, then open the PR or say what to do next." + warn) if unfinished else
+                   f"{row.number}: {len(prep['changes'])} file(s) taiyaar. " + ("Repo PUBLIC hai, PR sab ko dikhega: " if public else "")
                    + "PR kholne ke liye aapki haan chahiye (card)." + warn)
             v["say"] = say
             v["public"] = public
@@ -2344,16 +2428,16 @@ def push(tenant: str, ref: str, hash_: str, by_tap: bool = False, _internal: boo
             _proof_tests(t, changes, has_ci)             # v0.447 ECC PHASE 3: else the test commit goes in on its own
         if on_top:
             tests_first = []                             # the proof split only makes sense on a fresh branch
-            sha = g.commit_files(t.repo, t.branch, on_top, [(c["path"], c["new"]) for c in changes],
+            sha = g.commit_files(t.repo, t.branch, on_top, [(c["path"], None if c.get("delete") else c["new"]) for c in changes],
                                  f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         elif tests_first:
             sha = g.commit_files(t.repo, t.branch, head_now,
-                                 [(c["path"], c["new"]) for c in changes if c["path"] in tests_first],
+                                 [(c["path"], None if c.get("delete") else c["new"]) for c in changes if c["path"] in tests_first],
                                  f"test: {t.pr_title}\n\nTest that reproduces the bug. It is EXPECTED TO FAIL on this commit - "
                                  f"that red run is the proof the bug is real. The fix is the next commit.\n"
                                  f"{t.number} by Hoola Developer Sahayak")
         else:
-            sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], c["new"]) for c in changes],
+            sha = g.commit_files(t.repo, t.branch, head_now, [(c["path"], None if c.get("delete") else c["new"]) for c in changes],
                                  f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
         # v0.445 ECC PHASE 2: even a repo with no CI gets the draft + loop, because the loop now holds the OWN-REVIEW gate
         ci_loop = bool(_setting("dev_ci_loop", True)) and (has_ci or bool(_setting("dev_self_review", True)))
@@ -2487,7 +2571,7 @@ def fix_ci(tenant: str, ref: str) -> dict[str, Any]:
         _pass(t.id, "ci_fix", "end")
 
 
-def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False) -> dict[str, Any]:
+def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False, hers_round: bool = True) -> dict[str, Any]:
     g = gh(tenant)
     cfg = _cfg(tenant)
     on_branch = t.status in ("pr_open", "checks_failed", "ci_running")
@@ -2495,6 +2579,7 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
     read = []
     paths = [c["path"] for c in _j(t.changes, [])]
     out = None
+    unfinished = ""
     from . import engine as EN
     if EN.on() and _loop_on():                       # v0.784 the same session continues, in the same working copy
         try:
@@ -2503,9 +2588,9 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
                 from . import specialists as SP
                 spec = SP.fix_addendum(extra, paths)
             hers, env, rnet = _session_box(tenant, t)
-            _, read, _, out = EN.run(g, t, _token(tenant), cfg.rules, cfg.allow_workflows, on_step=_Step(t.id),
-                                     ref_sha=ref, follow_up=extra, system_extra=spec, resume=resume, hers=hers, env=env,
-                                     net=rnet, refs=_j(t.refs or "", []))
+            (_, read, _, out), _fin, unfinished = _until_done(t.id, lambda fu, first: EN.run(
+                g, t, _token(tenant), cfg.rules, cfg.allow_workflows, on_step=_Step(t.id), ref_sha=ref, follow_up=fu,
+                system_extra=spec, resume=resume and first, hers=hers, env=env, net=rnet, refs=_j(t.refs or "", [])), extra)
             read = []
         except EN.Unavailable as e:
             log.info("workspace engine unavailable for round %s (%s)", t.id, e)
@@ -2561,9 +2646,15 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
         prep = _prepare(tenant, t, out, read, g, ref)
     with session() as s:
         row = s.get(DevTask, t.id)
-        row.rounds += 1
+        if hers_round:                       # v0.946 her limit counts HER rounds; CI and reviewers' rounds have their own
+            row.rounds += 1
         if out.get("explain"):
             row.explain = str(out["explain"])[:3000]
+        if unfinished and on_branch:         # v0.946 half-done work is never pushed onto her PR by itself
+            _log(row, f"round not finished ({unfinished}): nothing pushed")
+            s.flush()
+            return _card(tenant, row, f"{row.number}: Hoola is not finished on PR #{row.pr_number} - {unfinished}. Nothing "
+                                      "was pushed; the working copy keeps the work. Say 'go on' to continue." + warn)
         if prep["problems"]:
             _log(row, "badlav roka: " + "; ".join(prep["problems"])[:150])
             s.flush()
@@ -2584,7 +2675,7 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
         s.flush()        # the round count, the security notes and Hoola's explanation were set above: write them BEFORE letting go of the row (they were silently lost on every round on an open PR, so the "6 rounds" limit never counted)
         s.expunge(row)
     try:
-        sha = g.commit_files(t.repo, t.branch, t.head_sha, [(c["path"], c["new"]) for c in prep["changes"]],
+        sha = g.commit_files(t.repo, t.branch, t.head_sha, [(c["path"], None if c.get("delete") else c["new"]) for c in prep["changes"]],
                              f"{t.number}: changes after review (Hoola)")
     except GhError as e:
         raise DevError(str(e))
@@ -2600,7 +2691,9 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
         if row.status == "ci_running":           # v0.351 the CI loop goes on: wait for CI on the new commit
             row.ci_since = now()
         else:
-            row.status = "pr_open"
+            # v0.946 a new commit on her open PR (her change, reviewers' comments): the CI loop watches it, so a red run
+            # is fixed by itself and a green one is said, instead of nobody looking
+            row.status, row.ci_since, row.ci_round = "ci_running", now(), 0
         row.ci = json.dumps({"state": "pending", "say": "CI dobara chalega"})
         _log(row, f"naya commit {sha[:7]}")
         s.flush()
@@ -2609,12 +2702,13 @@ def _round(tenant: str, t: DevTask, extra: str, warn: str, resume: bool = False)
 
 def _merge_files(old: list[dict[str, Any]], new: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """For a prepared change: the earlier full contents, with the new answer applied on top (edits apply to our new text)."""
-    by = {c["path"]: {"path": c["path"], "why": c.get("why", ""), "content": c["new"]} for c in old}
+    by = {c["path"]: ({"path": c["path"], "why": c.get("why", ""), "delete": True} if c.get("delete") else
+                      {"path": c["path"], "why": c.get("why", ""), "content": c["new"]}) for c in old}
     for f in new:
         if not isinstance(f, dict):
             continue
         p = str(f.get("path") or "")
-        if p in by and f.get("edits"):
+        if p in by and f.get("edits") and not by[p].get("delete"):
             by[p]["content"] = _apply(f, by[p]["content"])
         else:
             by[p] = f
@@ -3219,7 +3313,8 @@ def _ci_ready(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str, Any]:
     """The loop is over: draft -> ready for review (GraphQL); a token that may not do it gets a one-tap note instead."""
     note = ""
     try:
-        g.mark_ready(t.repo, t.pr_number)
+        if g.pr(t.repo, t.pr_number).get("draft", True):   # v0.946 a PR that is already ready is left as it is
+            g.mark_ready(t.repo, t.pr_number)
     except GhError as e:
         note = " (Draft se 'Ready for review' GitHub par ek tap mein kar dijiye - token ko yeh ijazat nahi mili.)"
         log.info("devsahayak mark ready %s: %s", t.id, e)
@@ -3367,7 +3462,7 @@ def _proof_land(tenant: str, t: DevTask, g: Gh, verdict: str, ci: dict[str, Any]
     pf = _j(t.proof or "", {}) or {}
     try:
         parent = g.branch_sha(t.repo, t.branch)
-        sha = g.commit_files(t.repo, t.branch, parent, [(c["path"], c["new"]) for c in changes],
+        sha = g.commit_files(t.repo, t.branch, parent, [(c["path"], None if c.get("delete") else c["new"]) for c in changes],
                              f"{t.pr_title}\n\n{t.number} by Hoola Developer Sahayak")
     except GhError as e:
         _fail(t.id, str(e))
@@ -3547,7 +3642,7 @@ def _ci_step(tenant: str, tid: str, at: datetime | None = None, say_tail: str = 
         _QUIET.discard(tid)
         return _round(tenant, row, f"<ci_log>\n{log_txt}\n</ci_log>\nHer CI FAILED on this draft PR branch (round "
                                    f"{rounds + 1}). Explore, find the real cause and fix it (fix the code, not the test - "
-                                   "unless the test is wrong: then say why in risk).", "")
+                                   "unless the test is wrong: then say why in risk).", "", hers_round=False)
     sr0 = _j(t.self_review or "", {}) or {}
     if state in ("none", None, "") and "has_ci" in sr0 and not sr0.get("has_ci"):
         # v0.445 no CI in this repo at all: no point waiting 15 minutes, the own review is the only check there is
@@ -3665,6 +3760,7 @@ def _ci_bg(tenant: str, tid: str, at: datetime) -> Any:
         from . import loop as L
         from .. import usage
         acc: dict[str, Any] = {}
+        _ACC[tid] = acc
         try:
             with usage.run_meter(acc):          # Phase 3: a fix round's model calls belong to the session too
                 _ci_step(tenant, tid, at)
@@ -3672,10 +3768,14 @@ def _ci_bg(tenant: str, tid: str, at: datetime) -> Any:
             _set(tid, status="checks_failed", error="Stopped by her - the CI fix round was not pushed.")
         except (DevError, GhError) as e:
             log.info("devsahayak ci loop %s: %s", tid, e)
-        except Exception:
+            _ci_round_back(tid)
+        except Exception as e:
             log.exception("devsahayak ci loop %s failed", tid)
+            _ci_round_back(tid)
+            _set(tid, error=_why_broke(e))
         finally:
             _add_cost(tid, acc)
+            _ACC.pop(tid, None)
             _RUNNING.discard(tid)
             _QUIET.discard(tid)
             _STOP.discard(tid)
@@ -3686,6 +3786,18 @@ def _ci_bg(tenant: str, tid: str, at: datetime) -> Any:
     return th
 
 
+def _ci_round_back(tid: str) -> None:
+    """v0.946 a CI fix round that broke (the model did not answer, GitHub refused) did not fix anything: it does not
+    use up one of the rounds, so the next look tries again."""
+    try:
+        with session() as s:
+            row = s.get(DevTask, tid)
+            if row is not None and row.status == "ci_running" and int(row.ci_round or 0) > 0:
+                row.ci_round = int(row.ci_round) - 1
+    except Exception:
+        log.debug("ci round back failed", exc_info=True)
+
+
 def _ci_due(tid: str) -> bool:
     """v0.937 one CI look per session a minute (dev_ci_poll_s). The worker runs tick() every ~2 s."""
     import time as _t
@@ -3693,6 +3805,26 @@ def _ci_due(tid: str) -> bool:
         return False
     _CI_AT[tid] = _t.time()
     return True
+
+
+def _plan_reminders(at: datetime) -> None:
+    """v0.946 a plan waiting for her yes is said once more after dev_plan_remind_h hours (the work cannot start alone,
+    and before this nothing told her again)."""
+    hours = float(_setting("dev_plan_remind_h", 2) or 0)
+    if hours <= 0:
+        return
+    with session() as s:
+        rows = s.scalars(select(DevTask).where(DevTask.status == "plan_wait").limit(40)).all()
+        for t in rows:
+            pl = _j(t.plan or "", {}) or {}
+            since = _aware(t.updated_at) if t.updated_at else None
+            if pl.get("reminded") or since is None or (at - since).total_seconds() < hours * 3600:
+                continue
+            pl["reminded"] = at.isoformat()
+            t.plan = json.dumps(pl)
+            s.flush()
+            _card(t.tenant_id, t, f"{t.number}: the plan for '{(t.title or t.text)[:60]}' is still waiting for your yes - "
+                                  "Hoola starts as soon as you say so, or tell it what to change.")
 
 
 def tick(at: datetime | None = None) -> None:
@@ -3706,6 +3838,10 @@ def tick(at: datetime | None = None) -> None:
         _resume_cut_runs()
     except Exception:
         log.exception("devsahayak resume of cut runs failed")
+    try:
+        _plan_reminders(at)
+    except Exception:
+        log.debug("plan reminders failed", exc_info=True)
     try:
         from . import around as AR
         AR.tick_schedules(at)                   # Phase 5: scheduled coding tasks that are due

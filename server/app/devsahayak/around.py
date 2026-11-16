@@ -355,7 +355,7 @@ def make_hint(tid: str) -> str:
     try:
         with session() as s:
             t = s.get(DevTask, tid)
-            if t is None or t.status in ("merged", "closed", "plan_wait", "new", "ci_running"):
+            if t is None or t.status in ("merged", "closed", "plan_wait", "new"):   # v0.946 + while CI checks her new commit
                 return ""
             facts = (f"Her ask: {t.text[:600]}\nHow the round ended: {S.STATUS.get(t.status, t.status)}\n"
                      f"What the assistant said: {(t.explain or '')[:800]}\nRisk it named: {(t.risk or '')[:300]}\n"
@@ -438,7 +438,7 @@ def fix_comments(tenant: str, ref: str) -> dict[str, Any]:
     got = read_comments(tenant, ref)
     with session() as s:
         t = S._find_task(s, tenant, ref)
-        if not got["open"] or t.status not in ("pr_open", "checks_failed"):
+        if not got["open"] or t.status not in ("pr_open", "checks_failed", "ci_running"):
             return S.task_view(t)                # nothing to do is not a failure (the tap path says so before it starts)
         notes = _j(t.pr_notes or "", {})
         notes["seen"] = sorted(set(notes.get("seen") or []) | {c["id"] for c in got["open"]})[-400:]
