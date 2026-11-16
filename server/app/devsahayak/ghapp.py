@@ -61,7 +61,11 @@ def check() -> dict[str, Any]:
     try:
         app = _req("GET", "/app", _app_jwt(), app_jwt=True)
     except urllib.error.HTTPError as e:
-        return {"ok": False, "why": f"GitHub said {e.code}: the App id and the key do not match, or the key is wrong"}
+        if e.code == 404:
+            return {"ok": False, "why": "GitHub said 404: no GitHub App has this App ID - check the number next to 'App ID' on the App's page"}
+        if e.code == 401:
+            return {"ok": False, "why": "GitHub said 401: this private key does not belong to this App - generate a new key on the App's page"}
+        return {"ok": False, "why": f"GitHub said {e.code}: the App ID and the key do not match"}
     except Exception as e:
         return {"ok": False, "why": f"could not reach GitHub: {str(e)[:120]}"}
     got_slug = str(app.get("slug") or "")
