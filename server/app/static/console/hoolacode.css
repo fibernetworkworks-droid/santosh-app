@@ -1002,7 +1002,8 @@ html,body{background:var(--bg)}
 #app .hca-needc{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:14px;line-height:1.5}
 #app .hca-needc>span:nth-child(2){flex:1 1 320px}
 #app .hca-msplit{grid-template-columns:minmax(0,1fr) 320px}
-#app .hca-atable .hcd-tr{grid-template-columns:minmax(0,1fr) 170px 100px 130px 80px;min-height:62px}
+#app .hca-atable .hcd-tr{grid-template-columns:minmax(0,1fr) 150px 90px 110px 72px;min-height:62px}
+#app .hca-aname{display:flex;flex-direction:column;align-items:stretch;justify-content:center;min-width:0}
 #app .hca-aname b{display:block;font-size:14px;font-weight:500}
 #app .hca-aname small{display:block;margin-top:3px;font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #app .hca-st{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--dim)}
