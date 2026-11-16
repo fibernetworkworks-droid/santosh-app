@@ -17,5 +17,5 @@ def test_the_clock_sits_beside_the_words_in_the_same_font():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.950.0"' in main
-    assert "version: 0.950.0+949" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.951.0"' in main
+    assert "version: 0.951.0+950" in (ROOT / "pubspec.yaml").read_text()

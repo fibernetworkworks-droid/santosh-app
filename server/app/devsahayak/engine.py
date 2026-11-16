@@ -474,6 +474,7 @@ Rules that never bend:
   notice or decide.
 - Give every bash call a short plain description of what it is for; she sees that line, not the command.
 - A vague request gets ONE clear question (done with the question in explain ending in '?'), and no edits.
+- A file you make only to try something (a probe, scratch or debug script) is deleted before done; it never ships.
 - Her rules for this repo and the repo's own AGENTS.md / CLAUDE.md / CONTRIBUTING come before your habits.
 - Write to her in plain, short English."""
 
@@ -1033,6 +1034,24 @@ class Tools:
 LOCK_OF = {"package-lock.json": "package.json", "npm-shrinkwrap.json": "package.json", "yarn.lock": "package.json",
            "pnpm-lock.yaml": "package.json", "poetry.lock": "pyproject.toml", "Pipfile.lock": "Pipfile",
            "Cargo.lock": "Cargo.toml", "go.sum": "go.mod", "composer.lock": "composer.json", "Gemfile.lock": "Gemfile"}
+
+
+SCRATCH = re.compile(r"(^|/)(probe|scratch|tmp|temp|debug|try|repro|check_me)[^/]*\.(py|js|ts|mjs|sh|txt|json|out|log)$", re.I)
+TEST_DIRS = re.compile(r"(^|/)(tests?|__tests__|spec)/", re.I)
+
+
+def scratch_files(rows: list[dict[str, str]]) -> list[str]:
+    """v0.951 new files that look like something made only to try things out (probe.py, scratch.js, debug_x.py): her hard
+    card's vague ask went red because a probe.py the model wrote to look around stayed in the change. Files under a
+    tests folder are real tests, never scratch."""
+    return [r["path"] for r in rows if r.get("st") == "A" and SCRATCH.search(r["path"]) and not TEST_DIRS.search(r["path"])]
+
+
+def scratch_text(paths: list[str]) -> str:
+    return ("Not finished yet: these new files look like scratch you made to try something - " + ", ".join(paths[:8]) +
+            ". Delete them (rm, with a short description) before done, unless they really belong in her change - then "
+            "say why in explain. If her request was too unclear to act on, there should be no changes at all: ask her "
+            "ONE short question instead.")
 
 
 def install_noise(path: str, changed: set[str]) -> bool:
@@ -1756,6 +1775,13 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     emit({"k": "gate", "n": len(problems), "items": [f"{p['path']}:{p['line']} {p['what']}" for p in problems[:8]]})
                     results.append({"type": "tool_result", "tool_use_id": b["id"], "content": ecc.gate_text(problems)})
                     continue
+                if not reality.get("scratch"):            # v0.951 one look for leftover scratch files
+                    left = scratch_files(ses.changed())
+                    if left:
+                        reality["scratch"] = True
+                        emit({"k": "gate", "n": len(left), "items": [f"{p} looks like a scratch file" for p in left[:8]]})
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content": scratch_text(left)})
+                        continue
                 if not reality["done"] and getattr(t, "kind", "") != "explain":
                     note = reality_check(tools, ses, t, follow_up, inp, emit, stopped)
                     reality["done"] = True

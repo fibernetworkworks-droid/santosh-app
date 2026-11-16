@@ -5718,3 +5718,19 @@ The four things v0.947 HOOLA AUTO said it did not have, built:
 
 Tests: `server/tests/test_v0949_hoola_auto_more.py` (fake model, GitHub, Composio, Figma, probe). NOT VERIFIED with a real
 Composio app, Figma file, live site, model or phone; the phone compiles first on CI.
+
+## v0.951.0 HOOLA CODE NO SCRATCH (owner: "Check" after v0.949)
+
+Her rerun of code_card_engine_hard on v0.949 (qwen/qwen3.8-27b): 11/12, works 11/12, scope 11/12, rules 12/12, good
+tests 7/7, 15.6 min. The v0.949 answer-now tries worked - the vague ask no longer died on three empty answers (13 steps,
+754 s) - but Qwen then wrote a probe.py to look around the checkout and finished with it still in the working copy:
+"changed probe.py; guessed and changed files". Also seen: three OpenRouter 429 "could not verify available credits in
+time" (admission control) - each passed on the next try.
+
+Fix (`devsahayak/engine.py`): `scratch_files(rows)` = new files whose name looks like a try-out (probe / scratch / tmp /
+temp / debug / try / repro / check_me + a script or text extension), never a file under a tests folder; at `done` the
+round gets ONE look (before the reality check): leftovers listed on the card as a gate event and the model told to delete
+them, explain why they belong, or - if the request was too unclear - ask ONE question with no changes. SYSTEM: "A file you
+make only to try something ... is deleted before done; it never ships." `brain.ANSWER_NOW` now says an unclear request =
+done with ONE question, no exploring or edits. Tests: test_v0951_code_no_scratch.py (4).
+NOT VERIFIED: the next hard card run.

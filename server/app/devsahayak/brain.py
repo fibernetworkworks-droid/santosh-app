@@ -158,8 +158,9 @@ EFFORT_TO_REASONING = {"low": "low", "medium": "medium", "high": "high", "xhigh"
 ROOM = {"low": 2048, "medium": 4096, "high": 8192}       # reasoning tokens counted inside max_tokens on OpenRouter
 
 
-ANSWER_NOW = ("(Hoola: your last answers came back empty - you thought until your room ran out. Answer now, briefly: "
-              "make your next tool call, or if her request is too unclear to act on, ask her ONE short question in plain words.)")
+ANSWER_NOW = ("(Hoola: your last answers came back empty - you thought until your room ran out. Answer now, briefly. "
+              "If her request does not say what is wrong or what she wants changed, do not explore or edit anything: call "
+              "done with ONE short question in explain, ending in '?'. Otherwise make your next tool call.)")
 
 
 class QwenError(RuntimeError):
