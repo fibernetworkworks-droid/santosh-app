@@ -260,7 +260,7 @@ one fix round for the writer (the research claim check `research/claims.py` alre
 
 ## 8. The leaderboard feed
 
-### 8.1 Sources per kind of work (to be verified live before use, terms read)
+### 8.1 Sources per kind of work (first read 16 Nov 2026 - `docs/research/pipeline/01-03`)
 
 | Kind | Sources |
 |---|---|
@@ -289,13 +289,37 @@ one fix round for the writer (the research claim check `research/claims.py` alre
 6. A new table is compared with the last one; a big jump (a model moving two levels) is **applied by itself** (D9)
    and written in the table's change log so it can be seen later.
 
-### 8.4 Indian languages (D8)
-Chosen by research (running 16 Nov). Until a benchmark is picked and written here, `write.lang` / `translate` for
-Indian languages use the best multilingual scores and are marked "thin".
+**What the automatic feed may read (from the terms read 16 Nov 2026):**
+
+| Source | Automatic feed | Why |
+|---|---|---|
+| LMArena data (`lmarena-ai/leaderboard-dataset` on Hugging Face) | **yes - main source** | CC-BY-4.0: free to reuse with credit. Covers text (incl. language views), vision, documents, search, webdev, images, image edit, video. The arena.ai site itself blocks automated reads - use the dataset. |
+| OpenRouter models API | **yes** | the catalogue, what each model takes / gives, uptime. Their terms bar scraping the website; the API is the allowed route. Use `?output_modalities=all` - the plain call lists only text models. |
+| Music Arena dataset | yes | CC-BY-4.0 |
+| HF Open ASR, TTS Arena V2 | after a terms check | data is published (Gradio config / JSON); terms not found yet |
+| voiceofindia.ai (Indian speech) | read by hand, monthly | no download or API |
+| Artificial Analysis | **not until confirmed** | free API needs credit, but the site licence says personal, non-commercial use; confirm with them or take their paid data plan in the pricing phase (D5) |
+| BenchLeader (aggregator) | no | it mirrors other boards; their scores are not relicensed by it |
+| SWE-bench Verified, Aider, LiveCodeBench, BFCL, tau2-bench, Fiction.LiveBench, MMMU, LiveBench maths / agentic coding | no - stale | newest entries Jan 2025 - Jun 2026 |
+
+Hoola credits the boards it uses (CC-BY) on a 'How Hoola picks models' page.
 
 ### 8.3 Model tables
-Filled in `docs/research/pipeline/` (one file per kind of work, with the date read and the sources). The code reads
-the dated tables file, never this document.
+First copy, cut by hand for her approval: `docs/research/pipeline/04_level_tables.md` (every id checked on
+OpenRouter 16 Nov 2026). From P0 on, code cuts them from the feed; the code reads the dated tables file, never this
+document. **Only models reachable through OpenRouter** ("INPUT WILL BE OPENROUTER"); better models elsewhere are listed
+as "not reachable yet". A level with no scored model uses the nearest filled level above it.
+
+### 8.4 Indian languages (D8) - research 16 Nov 2026 (`docs/research/pipeline/03_indian_languages.md`)
+- **Speech: covered.** voiceofindia.ai (AI4Bharat / IIT Madras) - speech-to-text on 15 Indian languages (held-out,
+  native-checked phone speech) and a text-to-speech vote arena on 10 languages, both with Nov 2026 models. Used for
+  `speech.in` / `speech.out` (Indian).
+- **Text, translation, Hinglish: no public board ranks current models.** The AI4Bharat text arena has no board yet,
+  LMArena has no Indian-language view, the Artificial Analysis Hindi view is stale, MILU has only self-reported numbers,
+  and Hinglish has no benchmark at all. Until she decides (section 12), these rows use LMArena's pooled non-English
+  view and are marked **thin**.
+- The best public Indian test sets (to run on a shortlist if she agrees): MILU (10 languages, exam questions,
+  CC BY 4.0), IN22 (translation, 22 languages, CC-BY-4.0), COMI-LINGUA (Hinglish, CC-BY-4.0).
 
 ---
 
@@ -371,6 +395,10 @@ Each phase ships behind a switch (`pipeline_on`, default OFF until P7); off = to
 
 Answered 16 Nov: ULTRA (D7), the Indian benchmark (D8, by research), big jumps (D9).
 
-1. **Region rules:** any users whose data must stay with certain providers? Until she says, none.
+1. **Indian-language text (new, 16 Nov):** no public board ranks current models on Hindi / Marathi / Tamil... text or
+   Hinglish. Use only the pooled non-English Arena view (pure D1), or also run the PUBLIC Indian test sets (MILU, IN22,
+   COMI-LINGUA - made by AI4Bharat and others, not by Hoola) on a shortlist of about 10 models, re-run when a new model
+   appears? Recommended: run them; otherwise Indian-language choices are a guess.
+2. **Region rules:** any users whose data must stay with certain providers? Until she says, none.
 
 Pricing questions wait for P8 (D5).
