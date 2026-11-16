@@ -601,6 +601,7 @@ class Settings(BaseSettings):
     pipeline_feed: bool = True               # the daily feed (reads public data only; no model call, no key)
     pipeline_dir: str = ""                   # "" = data/pipeline
     pipeline_every_h: int = 24               # rebuild the tables once a day
+    pipeline_retry_min: int = 60             # v0.959: a run that could not read every board tries again after this
     pipeline_voi_days: int = 30              # voiceofindia.ai boards read once a month (no download offered)
     pipeline_manual_days: int = 90           # warn when the hand-kept voice / music pools are older
     pipeline_min_votes: int = 200            # a board row needs this many votes to count

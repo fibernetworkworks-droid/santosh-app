@@ -841,7 +841,12 @@ async def pipeline_jobs() -> None:
     if not getattr(s, "pipeline_feed", False):
         return
     from .pipeline import feed, store
-    if store.age_s() < float(getattr(s, "pipeline_every_h", 24) or 24) * 3600:
+    every = float(getattr(s, "pipeline_every_h", 24) or 24) * 3600
+    cur = store.read_current() or {}
+    if cur and cur.get("complete") is not True:   # a board was never read (rate limit, outage): try again sooner
+        rm = getattr(s, "pipeline_retry_min", 60)
+        every = min(every, float(60 if rm is None else rm) * 60)
+    if store.age_s() < every:
         return
     try:
         await asyncio.to_thread(feed.run)

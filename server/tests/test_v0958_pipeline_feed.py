@@ -46,6 +46,9 @@ def pl(tmp_path, monkeypatch):
         text += _rows([(f"Model {i}", 1500 - i * 9) for i in range(30)], cat=c)
     boards = {"text": text}
     monkeypatch.setattr(S, "openrouter", _cat)
+    shas = iter(range(10_000))                    # a new dataset commit every run: every board is read again
+    monkeypatch.setattr(S, "dataset_sha", lambda: f"sha{next(shas)}")
+    monkeypatch.setattr(S, "_sleep", lambda s: None)
     monkeypatch.setattr(S, "config_rows", lambda c, **k: boards.get(c, []))
     monkeypatch.setattr(S, "voi_tts", lambda: (_ for _ in ()).throw(RuntimeError("no browser here")))
     monkeypatch.setattr(S, "voi_stt", lambda: (_ for _ in ()).throw(RuntimeError("no browser here")))
@@ -133,8 +136,8 @@ def test_a_board_that_fails_keeps_yesterdays_table(pl, monkeypatch):
     S.reset()
     monkeypatch.setattr(S, "config_rows", lambda c, **k: (_ for _ in ()).throw(RuntimeError("down")))
     d = feed.run()["doc"]
-    assert d["tables"]["chat"]["n"] >= 10 and "kept the last table" in " ".join(d["tables"]["chat"]["warnings"])
-    assert any("not read" in w for w in d["warnings"])
+    assert d["tables"]["chat"]["n"] >= 10 and d["complete"]          # v0.959: the last good read of each board is used
+    assert any("used its last good read" in w for w in d["warnings"])
 
 
 def test_hand_kept_pool_warns_when_a_model_leaves_openrouter(pl):

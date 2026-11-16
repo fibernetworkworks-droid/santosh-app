@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import urllib.parse
 from typing import Any
 
@@ -27,6 +28,29 @@ def _get(url: str, timeout: float = 40.0) -> Any:
     return r.json()
 
 
+_sleep = time.sleep          # tests replace it
+PAGE_PAUSE = 0.6             # seconds between two pages of the dataset server - its limit is per address (her 16 Nov run: 429)
+TRIES = 6
+
+
+def _wait_for(e: Exception, attempt: int) -> float:
+    """How long to wait before the next try: the server's own Retry-After on a 429, else 5, 10, 20, 40, 60 s."""
+    resp = getattr(e, "response", None)
+    code = getattr(resp, "status_code", 0) or 0
+    if code == 429:
+        try:
+            return min(90.0, max(1.0, float(resp.headers.get("Retry-After") or 0) or 5.0 * 2 ** attempt))
+        except Exception:   # noqa: BLE001
+            return min(60.0, 5.0 * 2 ** attempt)
+    return min(20.0, 2.0 * (attempt + 1))
+
+
+def dataset_sha() -> str:
+    """The dataset's current commit on Hugging Face - one call. The same sha = the same boards, nothing to re-read."""
+    d = _get(f"https://huggingface.co/api/datasets/{DATASET}")
+    return str((d or {}).get("sha") or "")
+
+
 _CONFIG: dict[str, list[dict]] = {}
 
 
@@ -39,13 +63,15 @@ def config_rows(config: str, page: int = 100, max_rows: int = 20000) -> list[dic
     off = 0
     while off < max_rows:
         last: Exception | None = None
-        for _ in range(3):                       # the dataset server has short hiccups; three tries per page
+        for attempt in range(TRIES):             # short hiccups and its rate limit: wait as it asks, then try again
             try:
                 d = _get(f"{DS}/rows?dataset={urllib.parse.quote(DATASET)}&config={config}&split=latest"
                          f"&offset={off}&length={page}")
                 break
             except Exception as e:   # noqa: BLE001
                 last = e
+                if attempt < TRIES - 1:
+                    _sleep(_wait_for(e, attempt))
         else:
             raise last or RuntimeError("rows not read")
         got = [r.get("row") or {} for r in (d.get("rows") or [])]
@@ -54,6 +80,7 @@ def config_rows(config: str, page: int = 100, max_rows: int = 20000) -> list[dic
         off += page
         if not got or off >= total:
             break
+        _sleep(PAGE_PAUSE)
     _CONFIG[config] = rows
     return rows
 

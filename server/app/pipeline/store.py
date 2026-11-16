@@ -97,3 +97,30 @@ def cache_get(name: str, max_age_s: float) -> Any:
 
 def cache_put(name: str, data: Any) -> None:
     _write(root() / "cache" / f"{name}.json", data)
+
+
+class Busy(Exception):
+    """Another feed run holds the lock (the worker's daily run and a vps-ops run at the same time)."""
+
+
+class lock:
+    """One feed run at a time on this machine - two runs at once doubled the calls and met the rate limit (16 Nov)."""
+
+    def __enter__(self):
+        import fcntl
+        root().mkdir(parents=True, exist_ok=True)
+        self.f = open(root() / "feed.lock", "w")
+        try:
+            fcntl.flock(self.f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            self.f.close()
+            raise Busy("a feed run is already going")
+        return self
+
+    def __exit__(self, *a):
+        import fcntl
+        try:
+            fcntl.flock(self.f, fcntl.LOCK_UN)
+        finally:
+            self.f.close()
+        return False

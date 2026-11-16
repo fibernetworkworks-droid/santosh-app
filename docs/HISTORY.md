@@ -5879,3 +5879,25 @@ warnings, 724 OpenRouter models read, about 2.5 minutes. Tests: `server/tests/te
 parsers, bands + rank split, filters, score boards, dated deterministic writes, changes + big jumps, a failed board keeps
 yesterday, manual pool warning, worker slot, route). Artificial Analysis is not read (its site terms are non-commercial).
 NOT VERIFIED on her server (needs vps-ops deploy, then vps-ops pipeline_feed).
+
+## v0.959.0 HOOLA PIPELINE FEED LIMITS (owner: "DONE CHECK" after vps-ops deploy + pipeline_feed)
+
+Deploy was fine (healthz 0.958.0). The first live feed run on the VPS met Hugging Face's dataset server limit: 429 Too
+Many Requests on 29 of 30 LMArena boards, so chat / write / summarise / reason / code / extract / read.long / write.lang /
+read.image / image.make came out with 0 models, and the half-empty tables still counted as today's (the worker would not
+have tried again for 24 h). Cause: the worker's own first run (no tables yet, starts at boot) and her vps-ops run went at
+the same time, each reading ~140 pages of 100 rows with no pause.
+
+Fixes (`server/app/pipeline/`):
+- `store.lock` - one feed run at a time on the machine; a second run is refused ("another run is going"), not doubled.
+- `sources.config_rows` - a 0.6 s pause between pages, 6 tries a page, waits the server's own `Retry-After` on a 429
+  (else 5, 10, 20, 40, 60 s; `_wait_for`).
+- `sources.dataset_sha` + `feed._read_boards` - the boards are kept on disk (`cache/lmarena_boards.json`, only the fields
+  the cut uses) with the dataset's commit; the same commit = no board read at all (most days one call). A board that
+  cannot be read uses its last good read, said plainly; only a board never read stays empty.
+- The tables say `complete` + `missing_boards`; a run that is not complete is tried again after `pipeline_retry_min`
+  (60) instead of 24 h (worker `pipeline_jobs`; a table from before this version counts as not complete).
+
+Live here (16 Nov, real boards): full read 5 min 35 s, complete, 0 warnings, every kind 10-20 models; the next run on the
+same commit 1.2 s. Tests: `test_v0959_pipeline_feed_limits.py` (5) + the v0.958 suite updated. NOT VERIFIED on her server
+(run vps-ops deploy, then vps-ops pipeline_feed - about 5-6 minutes the first time).

@@ -98,7 +98,60 @@ def _manual(kind: str, by_id: dict, warnings: list[str]) -> dict:
     return t
 
 
+KEEP = ("model_name", "rating", "score", "rank", "vote_count", "leaderboard_publish_date", "category")
+
+
+def _slim(rows: list[dict]) -> list[dict]:
+    return [{k: r[k] for k in KEEP if k in r} for r in rows]
+
+
+def _read_boards(needed: list[tuple], warnings: list[str]) -> tuple[dict[tuple, list], list[str]]:
+    """Every board the kinds need. The boards are kept on disk with the dataset's commit: the same commit = no
+    re-read (most days one call). A board that cannot be read uses its last good read, said plainly; only a board
+    never read before stays empty. Returns (boards, boards still missing)."""
+    try:
+        sha = S.dataset_sha()
+    except Exception as e:   # noqa: BLE001
+        sha = ""
+        warnings.append(f"dataset version not read ({str(e)[:80]}) - reading every board")
+    last = store.cache_get("lmarena_boards", float("inf")) or {}
+    kept: dict[str, list] = last.get("boards") or {}
+    if sha and last.get("sha") == sha and all(f"{c}/{k}" in kept for c, k in needed):
+        return {b: kept[f"{b[0]}/{b[1]}"] for b in needed}, []
+    S.reset()
+    boards: dict[tuple, list] = {}
+    missing: list[str] = []
+    fresh: dict[str, list] = {}
+    for b in needed:
+        key = f"{b[0]}/{b[1]}"
+        try:
+            boards[b] = _slim(S.board(*b))
+            fresh[key] = boards[b]
+        except Exception as e:   # noqa: BLE001
+            if key in kept:
+                boards[b] = kept[key]
+                warnings.append(f"board {key} not read ({str(e)[:80]}) - used its last good read")
+            else:
+                boards[b] = []
+                missing.append(key)
+                warnings.append(f"board {key} not read: {str(e)[:120]}")
+    if fresh:
+        store.cache_put("lmarena_boards", {"sha": sha if not missing and len(fresh) == len(needed) else "",
+                                           "boards": {**kept, **fresh}})
+    return boards, missing
+
+
 def run(write: bool = True, now: float | None = None) -> dict:
+    """One feed run under the lock (a second run at the same time is refused, not doubled)."""
+    try:
+        with store.lock():
+            return _run(write, now)
+    except store.Busy:
+        log.warning("pipeline feed: another run is going - skipped")
+        return {"busy": True, "doc": None, "changes": []}
+
+
+def _run(write: bool, now: float | None) -> dict:
     now = now or time.time()
     warnings: list[str] = []
     min_votes = int(_s("pipeline_min_votes", 200) or 200)
@@ -106,19 +159,14 @@ def run(write: bool = True, now: float | None = None) -> dict:
     idx = N.index(cat)
     by_id = {m["id"]: m for m in cat if m.get("id")}
 
-    S.reset()
     needed = sorted({b for spec in KINDS.values() for b in spec.get("boards", [])}
                     | {("text", lang) for lang in KINDS["write.lang"].get("languages", [])})
-    boards: dict[tuple, list] = {}
+    boards, missing = _read_boards(needed, warnings)
     dates: dict[str, str] = {}
     for b in needed:
-        try:
-            boards[b] = S.board(*b)
-            d = next((r.get("leaderboard_publish_date") for r in boards[b] if r.get("leaderboard_publish_date")), "")
-            dates[f"{b[0]}/{b[1]}"] = str(d or "")
-        except Exception as e:   # noqa: BLE001
-            boards[b] = []
-            warnings.append(f"board {b[0]}/{b[1]} not read: {str(e)[:120]}")
+        d = next((r.get("leaderboard_publish_date") for r in boards[b] if r.get("leaderboard_publish_date")), "")
+        if d:
+            dates[f"{b[0]}/{b[1]}"] = str(d)
     stale = int(_s("pipeline_stale_board_days", 21) or 21)
     for b, d in dates.items():
         try:
@@ -152,7 +200,8 @@ def run(write: bool = True, now: float | None = None) -> dict:
             if w.startswith("only "):
                 warnings.append(f"{kind}: {w}")
     doc = {"read_on": dt.date.fromtimestamp(now).isoformat(), "made_at": dt.datetime.fromtimestamp(now).isoformat(),
-           "version": 1, "board_dates": dates, "openrouter_models": len(cat), "tables": tables, "warnings": warnings}
+           "version": 1, "board_dates": dates, "openrouter_models": len(cat), "tables": tables, "warnings": warnings,
+           "complete": not missing, "missing_boards": missing}
     changes = store.save(doc) if write else []
     counts = " ".join(f"{k}={t['n']}" for k, t in tables.items() if "n" in t)
     log.warning("pipeline feed %s: %s | %d changes (%d big) | %d warnings", doc["read_on"], counts, len(changes),
@@ -165,6 +214,9 @@ def run(write: bool = True, now: float | None = None) -> dict:
 def main(argv: list[str]) -> int:
     logging.basicConfig(level=logging.WARNING, format="%(message)s")
     r = run(write="--dry" not in argv)
+    if r.get("busy"):
+        print("pipeline feed: another run is going right now (the server's own daily run) - try again in a few minutes")
+        return 0
     d = r["doc"]
     print(f"pipeline feed {d['read_on']} - {d['openrouter_models']} OpenRouter models")
     for kind, t in d["tables"].items():
@@ -176,6 +228,8 @@ def main(argv: list[str]) -> int:
     print(f"changes: {len(r['changes'])} (big: {sum(1 for c in r['changes'] if c.get('big'))})")
     for c in r["changes"][:40]:
         print("  ", c)
+    print(f"complete: {d['complete']}" + (f" (boards never read: {', '.join(d['missing_boards'])})"
+                                         if d["missing_boards"] else ""))
     print(f"warnings: {len(d['warnings'])}")
     for w in d["warnings"]:
         print("  -", w)
