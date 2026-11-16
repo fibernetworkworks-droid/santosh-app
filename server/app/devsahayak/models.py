@@ -27,6 +27,8 @@ class DevSettings(Base):
     seq: Mapped[int] = mapped_column(Integer, default=0)
     archive_after_merge: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # Phase 2: a merged session leaves the list by itself
     env_pick: Mapped[str | None] = mapped_column(String(40), nullable=True)   # v0.878 the environment her last new session used ('auto' | env id)
+    gh_installation_id: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.942 GitHub App install id (the Claude-Code-style connect; no PAT). Token minted on demand, never stored
+    gh_account: Mapped[str | None] = mapped_column(String(100), nullable=True)       # ... the account the app is installed on (@login / org)
 
 
 class DevRepo(Base):

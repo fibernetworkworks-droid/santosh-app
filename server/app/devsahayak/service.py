@@ -221,10 +221,22 @@ def _settings_row(s, tenant: str) -> DevSettings:
 
 
 def settings(tenant: str) -> dict[str, Any]:
+    try:
+        from . import ghapp
+        app_ok = ghapp.configured()
+    except Exception:
+        app_ok = False
     with session() as s:
         st = _settings_row(s, tenant)
-        return {"github": bool(st.token_sealed) or bool(_site_token(tenant)), "token_label": st.token_label or
-                ("Website wala GitHub token" if _site_token(tenant) and not st.token_sealed else ""), "login": st.login,
+        inst = getattr(st, "gh_installation_id", None)
+        app_on = bool(app_ok and inst)
+        github = app_on or bool(st.token_sealed) or bool(_site_token(tenant))
+        label = (f"@{getattr(st, 'gh_account', '') or st.login} · GitHub App" if app_on else
+                 (st.token_label or ("Website wala GitHub token" if _site_token(tenant) and not st.token_sealed else "")))
+        return {"github": github, "token_label": label, "login": st.login,
+                # v0.942 how GitHub is connected: app (install, no PAT) is the way; pat stays as a fallback
+                "connect_mode": "app" if app_on else ("pat" if st.token_sealed else ""),
+                "app_available": bool(app_ok), "app_connected": app_on, "account": getattr(st, "gh_account", "") or "",
                 "default_repo": st.default_repo, "review_post": st.review_post, "ask_before_pr": st.ask_before_pr,
                 "draft_pr": st.draft_pr, "allow_workflows": st.allow_workflows, "merge_method": st.merge_method,
                 "max_files": st.max_files, "max_lines": st.max_lines, "rules": st.rules, "permissions": list(_perms()),
@@ -307,6 +319,15 @@ def _token(tenant: str) -> str:
     with session() as s:
         st = s.get(DevSettings, tenant)
         sealed = st.token_sealed if st else ""
+        inst = getattr(st, "gh_installation_id", None) if st else None
+    # v0.942 connected like Claude Code (a GitHub App install): mint a short-lived token, nothing stored
+    if inst:
+        try:
+            from . import ghapp
+            if ghapp.configured():
+                return ghapp.installation_token(int(inst))
+        except Exception:
+            log.warning("ghapp token mint failed", exc_info=True)
     if sealed:
         try:
             return vault().open(sealed)
@@ -556,11 +577,67 @@ def remove_repo(tenant: str, full: str) -> dict[str, Any]:
 
 
 def github_repos(tenant: str) -> list[dict[str, Any]]:
+    # v0.942 App mode: the repos she installed the App on (not every repo of her account)
+    with session() as s:
+        st = s.get(DevSettings, tenant)
+        inst = getattr(st, "gh_installation_id", None) if st else None
+    if inst:
+        try:
+            from . import ghapp
+            if ghapp.configured():
+                return [{"repo": r.get("full_name"), "private": r.get("private"), "language": r.get("language")}
+                        for r in ghapp.installed_repos(int(inst))][:200]
+        except Exception as e:
+            raise DevError(f"GitHub se repos nahi mile: {e}")
     try:
         return [{"repo": r.get("full_name"), "private": r.get("private"), "language": r.get("language")}
                 for r in gh(tenant).my_repos()][:100]
     except GhError as e:
         raise DevError(str(e))
+
+
+# ---------------------------------------------------------------- v0.942 connect GitHub like Claude Code (a GitHub App install)
+def github_app_available() -> bool:
+    try:
+        from . import ghapp
+        return ghapp.configured()
+    except Exception:
+        return False
+
+
+def github_connect_url(tenant: str) -> dict[str, Any]:
+    from . import ghapp
+    if not ghapp.configured():
+        raise DevError("GitHub App is not set up on this server. Add a token in Repos & GitHub instead.")
+    return {"url": ghapp.install_url(ghapp.make_state(tenant)), "slug": ghapp.slug()}
+
+
+def github_installed(installation_id: int, state: str, setup_action: str = "") -> dict[str, Any]:
+    """The GitHub App's callback after she installs / picks repos. Binds the installation to her tenant."""
+    from . import ghapp
+    tenant = ghapp.read_state(state)
+    if not tenant:
+        return {"ok": False, "why": "This link has expired. Start again from the app."}
+    if not installation_id:
+        return {"ok": False, "why": "No installation. Pick at least one repository."}
+    account = ghapp.account_of(int(installation_id))
+    with session() as s:
+        st = _settings_row(s, tenant)
+        st.gh_installation_id = int(installation_id)
+        st.gh_account = account or st.gh_account
+        if account and not st.login:
+            st.login = account
+    return {"ok": True, "account": account}
+
+
+def github_disconnect(tenant: str) -> dict[str, Any]:
+    with session() as s:
+        st = _settings_row(s, tenant)
+        acc = getattr(st, "gh_account", "") or ""
+        st.gh_installation_id = None
+        st.gh_account = None
+    return {"ok": True, "account": acc,
+            "say": "GitHub disconnected. To fully remove it, uninstall the Hoola app on GitHub > Settings > Applications."}
 
 
 def _repo(tenant: str, name: str = "") -> DevRepo:

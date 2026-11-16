@@ -5502,3 +5502,44 @@ wired; the phone screen is drawn; the version. Version ritual 0.941.0 (pubspec 0
 compile first on CI; admin-via-granted-sudoers and the auto-off sweep are written from the spec, not watched on a
 live server. The frozen PC / desktop files are untouched — this is its own lane, borrowing only the
 call-Hoola-out pairing idea.
+
+## v0.942.0 CONNECT GITHUB LIKE CLAUDE CODE — a GitHub App install, no pasted token (owner: "Now a git hub connect directly like claude code has .. no manual pat put")
+
+Claude Code connects GitHub by having you INSTALL its GitHub App on the repos you choose; it never asks for a
+personal access token, and the tokens it uses are minted on demand, server-side, short-lived (about an hour) and
+scoped to exactly the repos you installed on. Hoola now does the same with its OWN GitHub App — she taps Connect,
+picks her repos on GitHub, comes back, done. Nothing is typed; nothing is stored but the installation id.
+
+**The flow.**
+1. *Connect* (phone, `lib/ui/code/code_more.dart` › Repos & GitHub): `GET /api/devsahayak/github/connect` returns
+   the App install URL carrying a signed `state`; the app opens it (`Native.openExternal`) and shows "Pick the
+   repositories… then come back", polling settings until she is connected.
+2. On GitHub she installs the Hoola app and picks repos. GitHub sends her to the App's Setup URL,
+   `GET <base>/api/devsahayak/github/installed?installation_id=…&state=…` (public): the signed `state` maps the
+   callback back to her tenant, the installation id is stored, and a small "GitHub connected — return to the app"
+   page is shown.
+3. *Remove* calls `POST /api/devsahayak/github/disconnect` (clears the installation; she uninstalls the app on
+   GitHub to finish).
+
+**Tokens, never stored.** `devsahayak/ghapp.py`: an RS256 App JWT (PyJWT, the App id + private key from the .env) →
+`POST /app/installations/{id}/access_tokens` mints a ~1-hour installation token, cached ~50 min in memory. A signed
+`state` (`make_state` / `read_state`, hmac over the server secret, 1-hour window) binds GitHub's callback to her
+tenant with no login round-trip. `service._token` returns an installation token when she is app-connected (the
+sealed-PAT path stays as a fallback), `github_repos` lists the repos she installed on
+(`GET /installation/repositories`, not every repo of her account), and `settings` adds `connect_mode` (app | pat),
+`app_available`, `app_connected` and `account`.
+
+**The owner sets the App up once** (GitHub › Settings › Developer settings › GitHub Apps) with repository
+permissions Contents RW, Pull requests RW, Checks R, Actions RW, Webhooks RW, Setup URL
+`<base>/api/devsahayak/github/installed`, and puts `GITHUB_APP_ID`, `GITHUB_APP_SLUG` and `GITHUB_APP_PRIVATE_KEY`
+(PEM, literal `\n` accepted) in the VPS .env. Until then `app_available` is false and the fine-grained-token paste
+still works, unchanged.
+
+**Tests** `test_v0942_connect_github.py` (5): the App JWT signs RS256 and the signed state maps back to her (tampered
+/ stale states refused); connect binds the installation and `_token` mints a scoped token (never a stored PAT),
+`github_repos` lists the installed repos, disconnect clears it; the PAT path still works when no App is configured;
+the doors + phone are wired; the version. Version ritual 0.942.0 (pubspec 0.942.0+941, v2.html 35 stamps @ 0.942.0,
+pins swept, the test_v0475 marker).
+
+**NOT VERIFIED:** no GitHub App is configured here, so no real install or token mint has happened — the JWT, state
+and token-mint paths are unit-tested with a throwaway RSA key and fakes; the phone compiles on CI.

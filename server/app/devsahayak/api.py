@@ -114,6 +114,30 @@ def make_public_router() -> APIRouter:
         from . import vps as V
         b = dict(body or {})
         return await _vps(V.report, _bearer(request), str(b.get("cmd_id") or ""), int(b.get("exit_code") or 0), str(b.get("output") or ""))
+
+    @p.get("/github/installed")
+    async def github_installed(installation_id: int = 0, setup_action: str = "", state: str = "", code: str = ""):
+        """v0.942 the GitHub App's Setup URL: GitHub sends her here after she installs / picks repos. Binds the
+        installation to her tenant (from the signed state), then shows a short 'return to the app' page."""
+        from . import service as S
+        out = await asyncio.to_thread(S.github_installed, int(installation_id or 0), state, setup_action)
+        ok = bool(out.get("ok"))
+        acc = out.get("account") or ""
+        head = "GitHub connected" if ok else "Could not connect"
+        line = (f"Hoola can now work on the repositories you chose{(' on ' + acc) if acc else ''}. "
+                "Return to the Hoola app — Hoola Code is ready.") if ok else (out.get("why") or "Please try again from the app.")
+        html = (
+            "<!doctype html><html lang=en><head><meta charset=utf-8>"
+            "<meta name=viewport content='width=device-width,initial-scale=1'>"
+            "<title>" + head + "</title><style>"
+            "body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#FAF9F6;color:#1B1A17;"
+            "display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}"
+            ".c{max-width:360px;text-align:center}.d{width:56px;height:56px;border-radius:28px;margin:0 auto 16px;"
+            "display:flex;align-items:center;justify-content:center;background:" + ("#1F7A52" if ok else "#B8361F") + ";color:#fff;font-size:28px}"
+            "h1{font-size:20px;margin:0 0 8px}p{font-size:15px;line-height:1.5;color:#57554F;margin:0}"
+            "</style></head><body><div class=c><div class=d>" + ("✓" if ok else "!") + "</div>"
+            "<h1>" + head + "</h1><p>" + line + "</p></div></body></html>")
+        return Response(content=html, media_type="text/html; charset=utf-8")
     return p
 
 
@@ -585,5 +609,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def server_decide(sid: str, cid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         from . import vps as V
         return await run(V.decide, tenant, cid, str(_b(body).get("choice") or ""))
+
+    # ---- v0.942 connect GitHub like Claude Code (a GitHub App install, no pasted token)
+    @r.get("/github/connect")
+    async def github_connect(tenant: str = Depends(current_tenant)):
+        return await run(S.github_connect_url, tenant)
+
+    @r.post("/github/disconnect")
+    async def github_disconnect(tenant: str = Depends(current_tenant)):
+        return await run(S.github_disconnect, tenant)
 
     return r

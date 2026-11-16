@@ -206,6 +206,9 @@ class Settings(BaseSettings):
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
     dev_make: bool = True                    # v0.939 Hoola Code makes PRDs / pages / prototypes / artboards / sheets as cards (DEV_MAKE)
     dev_vps: bool = False                    # v0.941 HOOLA CODE ON YOUR SERVER: pair a VPS (her server calls out), run approved commands as the hoola user. OFF until her first pair (DEV_VPS)
+    github_app_id: str = ""                  # v0.942 Hoola Code GitHub App (connect like Claude Code, no PAT): the App ID
+    github_app_slug: str = ""                # ... the App slug (the install URL is github.com/apps/<slug>/installations/new)
+    github_app_private_key: str = ""         # ... the App private key, PEM, in the VPS .env only (literal \n accepted)
     dev_vps_cmd_timeout_s: int = 900         # ... a single command on her server may run this long before it is cut (15 min)
     dev_vps_offline_s: int = 90              # ... no check-in for this long = the server reads offline
     dev_ws_steps: int = 150                 # ... model steps in one round

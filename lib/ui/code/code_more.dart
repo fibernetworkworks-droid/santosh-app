@@ -4,6 +4,7 @@
 // and connecting are all her taps; the server re-checks every one.
 import 'package:flutter/material.dart';
 
+import '../../native.dart';
 import '../../state.dart';
 import '../hoola_theme.dart';
 import 'code_kit.dart';
@@ -608,6 +609,43 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
     if (ok == true && v.isNotEmpty && mounted) await _act('PUT', '/api/devsahayak/token', {'token': v});
   }
 
+  // v0.942 connect GitHub like Claude Code: open the App install page, she picks her repos there, no token typed
+  Future<void> _connectGithub() async {
+    final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak/github/connect', quiet: true);
+    final url = cs(r?['url']);
+    if (url.isEmpty || !mounted) return;
+    await Native.openExternal(url: url);
+    if (!mounted) return;
+    final c = HoolaColors.of(context);
+    var tries = 0;
+    await codeSheet<bool>(context, widget.app,
+        title: 'Connecting GitHub',
+        body: (ctx) => StatefulBuilder(builder: (ctx, set) {
+              Future<void> check() async {
+                final s = await codeCall(ctx, widget.app, 'GET', '/api/devsahayak', quiet: true);
+                if (cm(s?['settings'])['app_connected'] == true && ctx.mounted) Navigator.pop(ctx, true);
+              }
+              if (tries == 0) {
+                tries = 1;
+                Future.doWhile(() async {
+                  await Future<void>.delayed(const Duration(seconds: 3));
+                  if (!ctx.mounted) return false;
+                  await check();
+                  return ctx.mounted && (tries++) < 40;
+                });
+              }
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                Text('Pick the repositories Hoola may work on in the browser, then come back here. Nothing to type — no token.',
+                    style: codeSans(c, size: 14, color: c.ink2, height: 1.5)),
+                const SizedBox(height: 14),
+                Row(children: [const CodeRing(size: 18), const SizedBox(width: 10), Text('Waiting for GitHub…', style: codeSans(c, size: 14, color: c.ink3))]),
+                const SizedBox(height: 14),
+                CodeMain("I'm done", onTap: () => Navigator.pop(ctx, true)),
+              ]);
+            }));
+    if (mounted) await _load();
+  }
+
   Future<void> _addRepo() async {
     final mine = await codeCall(context, widget.app, 'GET', '/api/devsahayak/github_repos', quiet: true);
     if (!mounted) return;
@@ -719,11 +757,18 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(linked ? 'GitHub is connected' : 'GitHub is not connected', style: codeSans(c, size: 15, weight: FontWeight.w500)),
-                Text(linked ? cs(st['token_label']) : 'A fine-grained token, typed only here', maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 12.5, color: c.ink3)),
+                Text(linked
+                        ? cs(st['token_label'])
+                        : (st['app_available'] == true ? 'Pick your repos on GitHub — no token to type' : 'A fine-grained token, typed only here'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 12.5, color: c.ink3)),
               ]),
             ),
-            if (linked)
+            if (st['app_connected'] == true)
+              CodeChip('Remove', onTap: _busy ? null : () => _act('POST', '/api/devsahayak/github/disconnect'))
+            else if (linked)
               CodeChip('Remove', onTap: _busy ? null : () => _act('DELETE', '/api/devsahayak/token'))
+            else if (st['app_available'] == true)
+              CodeChip('Connect', on: true, onTap: _busy ? null : _connectGithub)
             else
               CodeChip('Connect', on: true, onTap: _busy ? null : _token),
           ]),
