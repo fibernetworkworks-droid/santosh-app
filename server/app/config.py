@@ -606,6 +606,7 @@ class Settings(BaseSettings):
     pipeline_manual_days: int = 90           # warn when the hand-kept voice / music pools are older
     pipeline_min_votes: int = 200            # a board row needs this many votes to count
     pipeline_stale_board_days: int = 21      # warn when a board stopped publishing
+    pipeline_on: bool = False                # v0.961 P1: route messages through the Box (OFF until P7; off = today's routing)
     model_profile: bool = True             # v0.739 the chat model's abilities READ from OpenRouter's model list (pictures,
                                            # reasoning, tools, window) - a new GLM_MODEL needs no code change; off = old
     model_profile_dir: str = ""            # '' = data/modelprofile

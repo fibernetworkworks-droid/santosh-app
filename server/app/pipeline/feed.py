@@ -141,6 +141,28 @@ def _read_boards(needed: list[tuple], warnings: list[str]) -> tuple[dict[tuple, 
     return boards, missing
 
 
+def models_info(tables: dict, by_id: dict) -> dict[str, dict]:
+    """v0.961 P1: what each OpenRouter model in the tables can do - window, inputs, outputs, tools, structured output -
+    so choosing (plan 4, step 1) never calls OpenRouter while a message waits."""
+    out: dict[str, dict] = {}
+    for t in tables.values():
+        views = [t] + list((t.get("by_language") or {}).values())
+        for v in views:
+            for lv in (v.get("levels") or {}).values():
+                for m in lv:
+                    info = by_id.get(m.get("id")) if m.get("route") == "openrouter" else None
+                    if not info or m["id"] in out:
+                        continue
+                    a = info.get("architecture") or {}
+                    sp = set(info.get("supported_parameters") or [])
+                    out[m["id"]] = {"ctx": int(info.get("context_length") or 0),
+                                    "ins": sorted(a.get("input_modalities") or []),
+                                    "outs": sorted(a.get("output_modalities") or []),
+                                    "tools": "tools" in sp,
+                                    "structured": bool({"structured_outputs", "response_format"} & sp)}
+    return out
+
+
 def run(write: bool = True, now: float | None = None) -> dict:
     """One feed run under the lock (a second run at the same time is refused, not doubled)."""
     try:
@@ -199,7 +221,7 @@ def _run(write: bool, now: float | None) -> dict:
         for w in t.get("warnings") or []:
             if w.startswith("only "):
                 warnings.append(f"{kind}: {w}")
-    doc = {"read_on": dt.date.fromtimestamp(now).isoformat(), "made_at": dt.datetime.fromtimestamp(now).isoformat(),
+    doc = {"models": models_info(tables, by_id), "read_on": dt.date.fromtimestamp(now).isoformat(), "made_at": dt.datetime.fromtimestamp(now).isoformat(),
            "version": 1, "board_dates": dates, "openrouter_models": len(cat), "tables": tables, "warnings": warnings,
            "complete": not missing, "missing_boards": missing}
     changes = store.save(doc) if write else []

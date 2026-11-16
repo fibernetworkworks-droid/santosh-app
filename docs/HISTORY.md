@@ -5926,3 +5926,47 @@ Fixed (phone only):
 - `_keyOf`: the landing widget's id moves with the words from live to saved; a new reply gets a fresh id.
 
 Tests: `server/tests/test_v0960_hoola_code_glide.py` (4). NOT VERIFIED on her phone (CI compiles the Dart first).
+
+
+## v0.961.0 HOOLA PIPELINE P1 - kinds + levels + choose + hand-over as pure code (owner: "GO P1")
+
+P1 of `docs/HOOLA_PIPELINE_PLAN.md`: every rule of plan sections 3-5 written as code with a test; no model call,
+no message routed yet (`pipeline_on` stays False until P7).
+
+- `server/app/pipeline/detect.py` - section 2 + 5.1: the kind of work and the language of a ONE-part ask, by code in
+  milliseconds. What she attached outranks what she wrote (picture + edit words = image.edit, picture = read.image,
+  PDF = read.pdf / summarise / extract, recording = speech.in), then making (video / music / picture / speech), actions
+  (send / remind / book = tools), translation, summary, code (code.small for snippets; Hoola Code = code), a piece of
+  writing, research, very long text, extraction, facts, the existing hard-ask check (reason), else chat. Language: a
+  language she names wins, then her script (Devanagari = Hindi unless Marathi words), then Hinglish words, else English;
+  writing in a non-English language becomes write.lang, speech in an Indian language reads the Indian speech table.
+  `parts` counts joiners - more than one part is P3's planner.
+- `levels.py` - section 3: start level per kind (3.1, Indian write.lang starts HIGH), one raise per signal (3.2: hard,
+  big, costly, exact, deep_research, failed_check), a signal that made the kind does not raise it again (`INHERENT`:
+  a hard ask is `reason` because it is hard; research gathers checked facts - plan 11 keeps five-company research at
+  MID), limits (3.3): her level wins, a part she waits for on a call stops at HIGH, ULTRA only when she asks for the
+  best / a MAX try failed the check / hard AND costly, never lower than the level the part already reached (floor).
+- `choose.py` - section 4: step 1 removes routes not ready, wrong output, missing input (picture / file / audio), no
+  tools when tools are needed, a window under input + 30 %, paused models, routes / companies not allowed; step 2 ranks
+  by reliability, speed, score - order per surface (call = speed, Hoola Code = score, background = reliability,
+  chat = reliability then speed); step 3 = main + two backups from other companies first. Her model pick is a pin for
+  parts it can do; ULTRA = one model (D7) with backups from MAX; an empty level reads the nearest filled level above
+  (8.3); write.lang / translate read a language's own board, else the pooled one marked thin; `same_as` and
+  `not_ranked` followed; `snapshot()` = the copy a message keeps (a refresh never changes a running answer); the model a
+  chat used for the same kind + level is kept 30 minutes while healthy (5.1, `box.remember` / `recall`).
+- `handover.py` - 5.2 + 5.3: error / refusal / empty = next backup at the same level; first word late (call 3 s, chat
+  8 s, background 30 s) = backup, on a call a race; failed check = one level up once, failed again = delivered with the
+  problem said; outgrew the window = a bigger same-level model; she asked for better = one level up; at most two model
+  changes, then stop and say so.
+- `box.py` - `choose_for(text, ...)` end to end for one part (what P2 will call); CLI `python -m app.pipeline.box`
+  prints the choice for a fixed set of 13 asks; vps-ops `pipeline_try` runs it.
+- `feed.py` - the tables file now carries `models`: each OpenRouter model's window, inputs, outputs, tools, structured
+  output, so choosing never calls OpenRouter while a message waits. Takes effect at the next feed run.
+- `GET /api/pipeline/choose?text=&surface=&attach=&level=&pin=` - the preview (owner key).
+
+Run on her 16 Nov tables here: "hi" = chat MID; poster = image.make MID; "customers ko GST reminder bhej do" =
+tools MAX (costly); Hindi report = write.lang HIGH; EV research = research MID; word problem = reason HIGH; a reminder
+on a call = tools HIGH.
+
+Tests `test_v0961_pipeline_choose.py` (65). NOT VERIFIED on her server; the reliability / speed record is empty until
+P4 / P7 fill it, so today the leaderboard score decides inside a level.

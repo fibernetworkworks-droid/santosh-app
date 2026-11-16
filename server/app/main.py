@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.960.0"   # v0.960.0 HOOLA CODE GLIDE (built as 0.958; their v0.958 + v0.959 took the numbers, both kept; owner, after v0.957: "STILL NEED LOT OF WORK --- NEED MORE SMOOTH LANDING OF TEXT --- FIND THE FLAW"): four flaws in how a Hoola Code reply lands - the newest words' fade moved only when the next word landed (four fixed shades), the fade switched off whenever a code name / bracket / bold mark was among the last words (most Hoola Code lines), each wrapped line pushed the working row down a whole line in one frame, and the landing widget was rebuilt when live words became a saved message; now each word rises over 280 ms by its own clock every frame, words with their own marks still rise, new lines grow in (AnimatedSize) while the thread follows frame by frame, and the widget's key moves with the words; phone only; 4 tests. Previous: v0.959.0 HOOLA PIPELINE FEED LIMITS. v0.959.0 HOOLA PIPELINE FEED LIMITS (owner: "DONE CHECK" after deploy + pipeline_feed on the VPS): the first live feed run met Hugging Face's rate limit (429 on 29 of 30 boards - the worker's boot run and her vps-ops run went at once, ~140 pages each with no pause), so 10 kinds came out empty; now one run at a time (store.lock), a pause between pages, the server's Retry-After obeyed (sources._wait_for), boards kept with the dataset's commit (same commit = no re-read), a failed board uses its last good read, and a run that could not read every board tries again in an hour (pipeline_retry_min); live here: full read 5.5 min complete 0 warnings, next run 1.2 s.
+APP_VERSION = "0.961.0"   # v0.961.0 HOOLA PIPELINE P1 (owner: "GO P1" on docs/HOOLA_PIPELINE_PLAN.md): the Box's rules as pure code - the kind of work + language of a one-part ask read by code (pipeline/detect.py), its level from the start level + one raise per signal + the limits (her choice wins, a call caps at HIGH, ULTRA only when she asks / a MAX try failed / hard and costly, never down inside a message; pipeline/levels.py), one model + two backups from the level tables (remove what cannot do it, rank by reliability / speed / score per surface, other companies for backups, her pick as a pin, ULTRA = one model, an empty level uses the next one up, the same model for 30 minutes; pipeline/choose.py) and the hand-over rule book (backup / race on a call / one level up / at most two changes; pipeline/handover.py); the feed now saves each model's window, inputs and tools; GET /api/pipeline/choose previews a choice, vps-ops pipeline_try prints it for a set of asks; nothing is routed yet (pipeline_on off until P7); 65 tests. Previous: v0.960.0 HOOLA CODE GLIDE. v0.960.0 HOOLA CODE GLIDE (built as 0.958; their v0.958 + v0.959 took the numbers, both kept; owner, after v0.957: "STILL NEED LOT OF WORK --- NEED MORE SMOOTH LANDING OF TEXT --- FIND THE FLAW"): four flaws in how a Hoola Code reply lands - the newest words' fade moved only when the next word landed (four fixed shades), the fade switched off whenever a code name / bracket / bold mark was among the last words (most Hoola Code lines), each wrapped line pushed the working row down a whole line in one frame, and the landing widget was rebuilt when live words became a saved message; now each word rises over 280 ms by its own clock every frame, words with their own marks still rise, new lines grow in (AnimatedSize) while the thread follows frame by frame, and the widget's key moves with the words; phone only; 4 tests. Previous: v0.959.0 HOOLA PIPELINE FEED LIMITS. v0.959.0 HOOLA PIPELINE FEED LIMITS (owner: "DONE CHECK" after deploy + pipeline_feed on the VPS): the first live feed run met Hugging Face's rate limit (429 on 29 of 30 boards - the worker's boot run and her vps-ops run went at once, ~140 pages each with no pause), so 10 kinds came out empty; now one run at a time (store.lock), a pause between pages, the server's Retry-After obeyed (sources._wait_for), boards kept with the dataset's commit (same commit = no re-read), a failed board uses its last good read, and a run that could not read every board tries again in an hour (pipeline_retry_min); live here: full read 5.5 min complete 0 warnings, next run 1.2 s.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -393,6 +393,24 @@ def pipeline_tables(kind: str = "") -> dict:
         tables = {kind: tables.get(kind)} if kind in tables else {}
     return {"ready": True, "read_on": cur.get("read_on"), "board_dates": cur.get("board_dates"),
             "warnings": cur.get("warnings") or [], "tables": tables, "changes": _pls.recent_changes(100)}
+
+
+@app.get("/api/pipeline/choose", dependencies=[Depends(require_key)])
+def pipeline_choose(text: str, surface: str = "chat", attach: str = "", level: str = "", pin: str = "") -> dict:
+    """v0.961 HOOLA PIPELINE P1: what the Box would choose for one ask (kind, level, model + two backups, and why).
+    A preview only - code, no model call; no message is routed through it (`pipeline_on` stays off until P7)."""
+    from .pipeline import box as _plb
+    from .pipeline import store as _pls
+    if surface not in ("chat", "call", "code", "background"):
+        raise HTTPException(422, "surface: chat | call | code | background")
+    if not _pls.read_current():
+        return {"ready": False, "note": "the feed has not run yet (vps-ops pipeline_feed runs it now)"}
+    att = [{"type": a.strip()} for a in attach.split(",") if a.strip()]
+    try:
+        return {"ready": True, **_plb.choose_for(text[:6000], attachments=att, surface=surface, her_level=level,
+                                                pin=pin)}
+    except ValueError as e:
+        raise HTTPException(422, str(e))
 
 
 @app.get("/api/model/profile", dependencies=[Depends(require_key)])
