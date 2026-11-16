@@ -84,7 +84,62 @@ def make_public_router() -> APIRouter:
         import hashlib
         v = request.headers.get("x-hoola-lab-check") or ""
         return {"seen": hashlib.sha256(v.encode()).hexdigest()[:16] if v else ""}
+
+    # ---- v0.941 the helper on HER server talks to Hoola here. Its only credential is its token (we keep its hash).
+    def _bearer(request: Request) -> str:
+        auth = request.headers.get("authorization") or ""
+        return auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+
+    async def _vps(fn, *a):
+        from . import vps as V
+        try:
+            return await asyncio.to_thread(fn, *a)
+        except V.VpsError as e:
+            raise HTTPException(400, str(e))
+
+    @p.post("/vps/enroll")
+    async def vps_enroll(body: dict = Body(default={})):
+        from . import vps as V
+        b = dict(body or {})
+        return await _vps(V.enroll, str(b.get("code") or ""), b.get("facts") if isinstance(b.get("facts"), dict) else {})
+
+    @p.post("/vps/check-in")
+    async def vps_checkin(request: Request, body: dict = Body(default={})):
+        from . import vps as V
+        b = dict(body or {})
+        return await _vps(V.check_in, _bearer(request), b.get("facts") if isinstance(b.get("facts"), dict) else {})
+
+    @p.post("/vps/report")
+    async def vps_report(request: Request, body: dict = Body(default={})):
+        from . import vps as V
+        b = dict(body or {})
+        return await _vps(V.report, _bearer(request), str(b.get("cmd_id") or ""), int(b.get("exit_code") or 0), str(b.get("output") or ""))
     return p
+
+
+def make_install_router() -> APIRouter:
+    """v0.941 the two files her server fetches at setup: GET /vps/install (the one line's script) and /vps/agent.py.
+    The 6-digit code is her own bash argument, so the SAME script serves everyone and carries no secret."""
+    from . import vps as V
+    g = APIRouter()
+
+    @g.get("/vps/install")
+    async def vps_install():
+        try:
+            text = await asyncio.to_thread(V.install_script)
+        except V.VpsError as e:
+            raise HTTPException(404, str(e))
+        return Response(content=text, media_type="text/x-shellscript; charset=utf-8")
+
+    @g.get("/vps/agent.py")
+    async def vps_agent():
+        try:
+            text = await asyncio.to_thread(V.agent_source)
+        except V.VpsError as e:
+            raise HTTPException(404, str(e))
+        return Response(content=text, media_type="text/x-python; charset=utf-8")
+
+    return g
 
 
 def make_router(require_key, current_tenant) -> APIRouter:
@@ -496,5 +551,39 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def rules():
         from . import rules as R
         return {"never": list(R.NEVER), "owasp": R.OWASP, "limits": R.LIMITS}
+
+    # ---- v0.941 HOOLA CODE ON YOUR SERVER (she pairs a VPS; her server calls out; every change is her tap)
+    @r.get("/servers")
+    async def servers(tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.overview, tenant)
+
+    @r.post("/servers/pair")
+    async def servers_pair(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.pair_start, tenant, str(_b(body).get("name") or ""))
+
+    @r.get("/servers/{sid}")
+    async def server_detail(sid: str, tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.detail, tenant, sid)
+
+    @r.put("/servers/{sid}")
+    async def server_access(sid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        b = _b(body)
+        return await run(V.set_access, tenant, sid,
+                         access=b.get("access"), folders=b.get("folders"), admin_cmds=b.get("admin_cmds"),
+                         auto_off_days=b.get("auto_off_days"), name=b.get("name"))
+
+    @r.post("/servers/{sid}/disconnect")
+    async def server_disconnect(sid: str, tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.disconnect, tenant, sid)
+
+    @r.post("/servers/{sid}/cmds/{cid}/decide")
+    async def server_decide(sid: str, cid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import vps as V
+        return await run(V.decide, tenant, cid, str(_b(body).get("choice") or ""))
 
     return r

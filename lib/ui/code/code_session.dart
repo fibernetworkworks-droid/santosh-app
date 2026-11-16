@@ -19,6 +19,7 @@ import 'code_changes.dart';
 import 'code_home.dart';
 import 'code_kit.dart';
 import 'code_made.dart';
+import 'code_vps.dart';
 import 'code_start.dart';
 import 'code_words.dart';
 
@@ -494,6 +495,16 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                   title: cs(row['title']),
                   v: ci(s['v']),
                   onOpen: () => _openMade(row, version: ci(s['v']))));
+        }
+      } else if (k == 'server') {
+        // v0.941 a command on her own server: a waiting one shows the approval card; a refused one says so
+        if (cs(s['state']) == 'waiting' || cs(s['state']) == 'refused') {
+          flush(last: false);
+          out.add(Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: CodeServerCard(key: ValueKey('srv${cs(s['id'])}${cs(s['state'])}$si'), app: widget.app, step: s)));
+        } else {
+          group.add(s);
         }
       } else if (k == 'note') {
         flush(last: false);

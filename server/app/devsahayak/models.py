@@ -214,3 +214,49 @@ class DevAction(Base):
     conv: Mapped[str] = mapped_column(String(40), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DevServer(Base):
+    """v0.941 HOOLA CODE ON YOUR SERVER: one server she paired. Her server calls Hoola (long-poll), so no port is
+    opened and no password or SSH key is kept here. The helper on the server runs as its own unprivileged `hoola`
+    user; the access rules live BOTH here and in that helper, so they hold even if this server were ever broken into."""
+    __tablename__ = "devsahayak_servers"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ds"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(80), default="")
+    status: Mapped[str] = mapped_column(String(12), default="pairing")   # pairing | online | offline | removing | removed
+    # pairing: the 6-digit code and a sealed enrollment secret, both short-lived
+    pair_code: Mapped[str] = mapped_column(String(12), default="")       # the 6 digits she pastes (cleared once paired)
+    pair_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    agent_hash: Mapped[str] = mapped_column(String(64), default="")      # sha256 of the agent's long-lived token (never the token itself)
+    facts: Mapped[str] = mapped_column(Text, default="{}")               # {os, cpus, mem_mb, disk_free_gb, agent_ver} the helper reported
+    last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # the access rules the helper enforces (she sets them; the helper reads them on every check-in)
+    access: Mapped[str] = mapped_column(String(8), default="ask")        # look | ask | trust
+    folders: Mapped[str] = mapped_column(Text, default="[]")             # folders she allows work in (trust / look scope)
+    admin_cmds: Mapped[str] = mapped_column(Text, default="[]")          # the few root commands she ticked (still ask)
+    auto_off_days: Mapped[int] = mapped_column(Integer, default=7)       # 0 = never; the helper removes itself after this many idle days
+    trusted: Mapped[str | None] = mapped_column(Text, nullable=True)     # ["<folder>|<program>"] she tapped "Always in this folder" for (nullable: self-heals)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class DevServerCmd(Base):
+    """One command for a paired server: proposed by a session, run by the helper only when approved. The output and
+    every decision are logged here and on the server. The helper refuses the never-list by code, whatever is sent."""
+    __tablename__ = "devsahayak_server_cmds"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("dsc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    server_id: Mapped[str] = mapped_column(String(40), index=True)
+    task_id: Mapped[str] = mapped_column(String(40), default="")
+    cmd: Mapped[str] = mapped_column(Text, default="")                   # the exact command, shown to her before it runs
+    folder: Mapped[str] = mapped_column(String(300), default="")         # the folder it runs in
+    reason: Mapped[str] = mapped_column(Text, default="")                # one line: what it does / why
+    reads_only: Mapped[bool] = mapped_column(Boolean, default=False)     # a look-only command (logs, status, a file in her folders)
+    status: Mapped[str] = mapped_column(String(10), default="waiting")
+    # waiting (needs her tap) | allowed (queued for the helper) | running | done | refused (never-list) | no (she said no) | failed | stale
+    decided: Mapped[str] = mapped_column(String(8), default="")          # "once" | "always" | "no"
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output: Mapped[str] = mapped_column(Text, default="")                # scrubbed, first + last lines kept
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

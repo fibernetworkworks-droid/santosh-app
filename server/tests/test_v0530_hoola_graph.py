@@ -765,7 +765,7 @@ def test_version_pins():
     assert APP_VERSION == "0.940.0"
     assert "0.940.0+939" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.940.0"')
+    assert line.startswith('APP_VERSION = "0.941.0"')
     # story pin moved to the newest story (the newest-story precedent; the P3
     # markers live in the Previous chain and git history)
     # the P6 story pins moved to the P7 suite (the newest-story precedent;

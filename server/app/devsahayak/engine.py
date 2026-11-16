@@ -582,6 +582,12 @@ def tools_for_round() -> list[dict[str, Any]]:
             extra.append(MD.TOOL)                         # v0.939 the things it makes beside the code (PRD, prototype, sheet...)
     except Exception:
         pass
+    try:
+        from . import vps as VP
+        if VP.on():
+            extra.append(VP.SERVER_TOOL)                  # v0.941 run approved commands on her own server
+    except Exception:
+        pass
     return TOOLS + extra
 
 
@@ -1421,6 +1427,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     system = (SYSTEM + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
               + ("\n\n" + netw if netw else ""))
     try:
+        from . import vps as VP
+        if VP.on():
+            system += "\n\n" + VP.HOWTO                 # v0.941 she can connect her own server: the server tool
+    except Exception:
+        pass
+    try:
         from . import made as MD
         if MD.on():
             system += "\n\n" + MD.HOWTO                 # v0.939 when she asks for a PRD / prototype / sheet: the make tool
@@ -1553,6 +1565,20 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     emit(ev)
                 tools.trail.append(f"make {inp.get('action', '')}")
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:20000]})
+                continue
+            if b["name"] == "server":                      # v0.941 run an approved command on her own server
+                from . import vps as VP
+                act = str(inp.get("action") or "")
+                NOW_STEP[tid] = {"list": "Looking at her servers", "run": f"On her server: {str(inp.get('cmd') or '')[:60]}",
+                                 "result": "Reading the result from her server"}.get(act, "Her server")
+                try:
+                    out, ev = VP.server_tool(str(getattr(t, "tenant_id", "") or ""), {**inp, "_task": t.id}, emit=emit)
+                finally:
+                    NOW_STEP.pop(tid, None)
+                if ev:
+                    emit(ev)
+                tools.trail.append(f"server {act}")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:40000]})
                 continue
             if b["name"] == "agent":
                 out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")

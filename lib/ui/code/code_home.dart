@@ -10,6 +10,7 @@ import '../../state.dart';
 import '../hoola_theme.dart';
 import 'code_kit.dart';
 import 'code_more.dart';
+import 'code_vps.dart';
 import 'code_session.dart';
 import 'code_start.dart';
 
@@ -98,6 +99,7 @@ class _HoolaCodeState extends State<HoolaCode> {
               Expanded(child: Text('Hoola Code', style: codeSans(c, size: 17, weight: FontWeight.w600))),
               CodeIconButton(icon: Icons.call_split_rounded, label: 'Pull requests', onTap: ov == null ? null : () => _go(CodePrsPage(app: widget.app))),
               CodeIconButton(icon: Icons.schedule_rounded, label: 'Scheduled tasks', onTap: ov == null ? null : () => _go(CodeScheduledPage(app: widget.app))),
+              CodeIconButton(icon: Icons.dns_rounded, label: 'Servers', onTap: () => _go(CodeServersPage(app: widget.app))),
               CodeIconButton(icon: Icons.tune_rounded, label: 'Repos and GitHub', onTap: ov == null ? null : () => _go(CodeSettingsPage(app: widget.app))),
             ]),
           ),

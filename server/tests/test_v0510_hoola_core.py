@@ -811,10 +811,10 @@ def test_app_version_pin():
 
 def test_pubspec_pin():
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.940.0+939" in pub
+    assert "version: 0.941.0+940" in pub
 
 
 def test_main_story_markers():
     main = (REPO_ROOT / "server/app/main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.940.0"' in main
+    assert 'APP_VERSION = "0.941.0"' in main
     assert "HOOLA CORE" in main and "aep" in main and "langchain" in main

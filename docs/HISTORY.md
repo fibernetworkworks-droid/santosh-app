@@ -5438,3 +5438,67 @@ style); what she sends shows at once as her bubble with "Sending…" until the s
 send that fails takes the bubble away and puts her words back in the box.
 
 Tests: `server/tests/test_v0940_code_her_messages.py` (4). NOT VERIFIED on her phone.
+
+## v0.941.0 HOOLA CODE ON YOUR SERVER — pair a VPS the simple, safe way (owner: "Now how hoola code will take access of user vps .. give a perfect simple and secure way in hoola app")
+
+Claude Code reaches a server by running ON it (install Claude Code there, drive it from the phone with
+`claude remote-control`); the server connects out, nothing dials in, and it asks before each command. Hoola
+takes that exact model and sets it up FOR HER, because her users are not developers: one pasted line instead of
+a full install + sign-in, an unprivileged `hoola` user instead of whoever logged in (often root), and the safety
+rules shipped already set instead of hand-written.
+
+**The shape.** HER server calls Hoola. The helper on her server opens an outbound long-poll and asks for work;
+this server never dials in, so no inbound port is opened, no firewall rule changes, and Hoola keeps NO password
+and NO SSH key that could open her server. The helper runs as its own unprivileged `hoola` user and is root only
+for the exact admin commands she grants ON the server.
+
+**Connect once (~1 minute), in the app (`lib/ui/code/code_vps.dart`, 3 screens + the approval card; design
+canvas claude.ai/artifact/B9nNvYXJTyMwH8mTfCJep5):**
+1. *Servers* — she names a server and taps Connect. A safety note lists the six promises.
+2. *Pair* — one line she pastes on her server: `curl -fsSL <base>/vps/install | sudo bash -s <6-digit code>`.
+   The SAME script serves everyone (`GET /vps/install`); the 6-digit code is her own bash argument, so the
+   script carries no secret. "See what it installs" opens the script. The page moves on by itself once her
+   server answers.
+3. *One Server* — a green Connected banner with the server's size; the three access levels (Look only / Ask me
+   first / Trust my folders); her folders; the few admin commands she ticks; "Switch off when unused"; the
+   activity log; Disconnect.
+
+**In a session.** A new `server` tool in a Hoola Code round: a look-only command (logs, status, disk, a file in
+a folder she allowed) and, with Trust on, a known-safe step (git pull, tests, restart her app) in one of her
+folders run by themselves and stream back; every other command WAITS for her tap, shown with the exact text and
+Allow once / Always in this folder / No (`CodeServerCard`). "Always" also lets that command run by itself in that
+folder from then on.
+
+**The never-list, refused in three places** — the session tool, the server (`devsahayak/vps.py` `classify`), and
+the helper itself (`deploy/hoola-vps/agent.py` `refused`), so the refusal holds even if Hoola's own server were
+ever broken into: deleting trees, wiping disks, changing a user / password / SSH, opening a firewall port,
+download-and-run from outside, reading a secret file (.env, keys), a root shell, shutdown. It can never be
+approved. Every command and its output are scrubbed of anything that looks like a key, kept on her server
+(`/var/log/hoola-agent.log`) and in the app.
+
+**Server (`server/app/devsahayak/vps.py`, routes in `api.py`, `main.py` mounts the install router):**
+- `DevServer` / `DevServerCmd` tables (`models.py`); the helper's token is kept only as a sha256 hash.
+- Pairing: `pair_start` (6 digits, 10 min) → `enroll` (the helper binds once, gets a long-lived token + the
+  config) → `check_in` (outbound long-poll: online + the approved commands) → `report` (the result). Public
+  routes `/api/devsahayak/vps/enroll|check-in|report`; `/vps/install` + `/vps/agent.py` serve the files.
+- Her screens: `overview` / `detail` / `set_access` / `disconnect` / `decide`, authed routes
+  `/api/devsahayak/servers*`.
+- `propose` / `wait_result` for the session tool; `classify` returns refuse | reads | trusted | admin | write.
+- The helper (`deploy/hoola-vps/agent.py` + `install.sh`): stdlib only, the installer makes the `hoola` user
+  with `/usr/sbin/nologin`, a systemd service (`NoNewPrivileges`-off only so granted sudo works, `ProtectHome`
+  read-only, `PrivateTmp`), a `hoola-agent allow "<cmd>" | remove | status` control command (the ONLY way to
+  grant root to a command, via a narrow sudoers drop-in), and removes everything (service, sudoers, files, the
+  `hoola` user) on `remove`.
+- Switch `dev_vps` (OFF until her first pair) + `dev_vps_cmd_timeout_s` / `dev_vps_offline_s`.
+
+**Tests** `test_v0941_hoola_code_vps.py` (7): the never-list refused everywhere + the installer carries no
+secret; pair → enroll (token hash only, a code used twice refused) → set access → check-in hands the approved
+command once → report → read back; a change waits for her tap and "always" grants the folder, "no" refuses, the
+never-list can never be approved; disconnect tears the helper down on its next check-in; the doors + tool are
+wired; the phone screen is drawn; the version. Version ritual 0.941.0 (pubspec 0.941.0+940, v2.html stamps 35 @
+0.941.0, the test pins swept, the test_v0475 newest-story marker).
+
+**NOT VERIFIED:** no real VPS has enrolled and no real command has run; the helper, the installer and the Dart
+compile first on CI; admin-via-granted-sudoers and the auto-off sweep are written from the spec, not watched on a
+live server. The frozen PC / desktop files are untouched — this is its own lane, borrowing only the
+call-Hoola-out pairing idea.

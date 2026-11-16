@@ -8,6 +8,7 @@ import '../../state.dart';
 import '../hoola_theme.dart';
 import 'code_kit.dart';
 import 'code_session.dart';
+import 'code_vps.dart';
 
 Future<void> _openSession(BuildContext context, Santosh app, String id) async {
   if (id.isEmpty) return;
@@ -736,6 +737,24 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
           ),
         const SizedBox(height: 8),
         CodeOutline('Add a repo', icon: Icons.add_rounded, onTap: _busy || !linked ? null : _addRepo),
+        const CodeSection('Your servers'),
+        CodeCard(
+          radius: 18,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => HoolaTheme(appearance: widget.app.appearance, child: CodeServersPage(app: widget.app)))),
+          child: Row(children: [
+            Container(width: 40, height: 40, decoration: BoxDecoration(color: c.pill, shape: BoxShape.circle),
+                child: Icon(Icons.dns_rounded, size: 20, color: c.onPill)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Connect a server', style: codeSans(c, size: 15, weight: FontWeight.w500)),
+                Text('Deploy, read logs and restart your app on your own VPS', maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 12.5, color: c.ink3)),
+              ]),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
+          ]),
+        ),
         const CodeSection('How Hoola works'),
         CodeCard(
           radius: 18,

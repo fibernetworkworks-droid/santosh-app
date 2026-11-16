@@ -205,6 +205,9 @@ class Settings(BaseSettings):
     dev_workspace: bool = True              # a real working copy per session + bash in the locked box + a conversation that continues
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
     dev_make: bool = True                    # v0.939 Hoola Code makes PRDs / pages / prototypes / artboards / sheets as cards (DEV_MAKE)
+    dev_vps: bool = False                    # v0.941 HOOLA CODE ON YOUR SERVER: pair a VPS (her server calls out), run approved commands as the hoola user. OFF until her first pair (DEV_VPS)
+    dev_vps_cmd_timeout_s: int = 900         # ... a single command on her server may run this long before it is cut (15 min)
+    dev_vps_offline_s: int = 90              # ... no check-in for this long = the server reads offline
     dev_ws_steps: int = 150                 # ... model steps in one round
     dev_ws_minutes: int = 60                # ... minutes in one round
     dev_ws_bash_runs: int = 80              # ... box commands in one round
