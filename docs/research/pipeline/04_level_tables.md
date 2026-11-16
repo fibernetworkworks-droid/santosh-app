@@ -304,7 +304,7 @@ Source: Music Arena + AA music.
 | Kind | Before | After | Added (provider) |
 |---|---|---|---|
 | speech.in (Indian) | 8 | **10** -> **20** with direct makers (D12, below) | Amazon Transcribe + Azure (Eden AI) |
-| music.make | 2 | **8** | ULTRA Suno v6, Suno v6 Mini (Kie.ai); MAX Mureka V9.5, Lyria 3.5 (fal) + Lyria 3 Pro; HIGH Stable Audio 3 Medium, ElevenLabs Music v2.5 (fal); LOW Lyria 3 Clip |
+| music.make | 2 | **8** -> **10** with Mureka V9 (AA 1063, Mureka direct / fal) - MID and ElevenLabs Music v1 (Music Arena 1055) - LOW (ElevenLabs direct) | ULTRA Suno v6, Suno v6 Mini (Kie.ai); MAX Mureka V9.5, Lyria 3.5 (fal) + Lyria 3 Pro; HIGH Stable Audio 3 Medium, ElevenLabs Music v2.5 (fal); LOW Lyria 3 Clip |
 | speech.out (Indian) | 4 | 4 -> **20** with direct makers (D12, below) | |
 
 **Better models from other providers that join full pools** (the weakest drops to keep 20): video - SkyReels V4
