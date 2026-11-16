@@ -158,6 +158,10 @@ EFFORT_TO_REASONING = {"low": "low", "medium": "medium", "high": "high", "xhigh"
 ROOM = {"low": 2048, "medium": 4096, "high": 8192}       # reasoning tokens counted inside max_tokens on OpenRouter
 
 
+ANSWER_NOW = ("(Hoola: your last answers came back empty - you thought until your room ran out. Answer now, briefly: "
+              "make your next tool call, or if her request is too unclear to act on, ask her ONE short question in plain words.)")
+
+
 class QwenError(RuntimeError):
     pass
 
@@ -263,8 +267,18 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
     timeout = float(getattr(st, "dev_qwen_timeout_s", 180) or 180)
     last: Exception | None = None
     lower = {"high": "medium", "medium": "low", "low": "low"}
-    for i in range(3):
-        if i:
+    empties = 0
+    # v0.949 three empty answers in a row (her hard card: a vague ask thought past its room even on low effort) get two
+    # last tries told to answer now - thinking off, then thinking low if this model will not run without it
+    rescue = [{"enabled": False}, {"effort": "low", "exclude": True}]
+    for i in range(3 + len(rescue)):
+        if i >= 3:
+            if empties < 3:
+                break                                         # the tries failed for another reason: say that one
+            body = {**body, "reasoning": rescue[i - 3], "max_tokens": int(max_tokens) + ROOM["high"],
+                    "messages": msgs + [{"role": "user", "content": ANSWER_NOW}]}
+            level = "off" if i == 3 else "low"
+        elif i:
             time.sleep(3 * i)
         t0 = time.time()
         try:
@@ -278,6 +292,8 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
             last = e
             m = str(e)
             log.warning("hoola code qwen %s try %d failed %.1fs: %s", model, i + 1, time.time() - t0, m[:240])
+            if i == 3 and " 400:" in m:
+                continue                                      # this model will not run with thinking off
             if any(f" {c}:" in m for c in ("400", "401", "402", "403", "404")):
                 raise                                         # a refused request is not fixed by asking again
             continue
@@ -297,7 +313,8 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
             last = QwenError("Qwen sent an empty answer")
             fin = str(((data.get("choices") or [{}])[0] or {}).get("finish_reason") or "")
             log.warning("hoola code qwen %s try %d empty (finish=%s, effort=%s)", model, i + 1, fin, level)
-            if level != "low":
+            empties += 1
+            if i < 3 and level != "low":
                 room = ROOM[level]
                 level = lower[level]
                 body["reasoning"] = {"effort": level, "exclude": True}
