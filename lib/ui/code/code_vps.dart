@@ -348,7 +348,7 @@ class _CodeServerPageState extends State<CodeServerPage> {
                       _folderBox(c, folders),
                       const CodeSection('Admin commands it may ask for'),
                       _adminBox(c, admin),
-                      const CodeSection('Activity', trailing: Text('Also kept on your server', style: codeSans(c, size: 12, color: c.ink3))),
+                      CodeSection('Activity', trailing: Text('Also kept on your server', style: codeSans(c, size: 12, color: c.ink3))),
                       _activityBox(c, activity),
                       const SizedBox(height: 14),
                       CodeSwitchRow(
