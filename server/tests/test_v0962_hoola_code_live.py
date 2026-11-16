@@ -71,3 +71,4 @@ def test_the_phone_reads_the_stream():
     assert "if (_streaming) t = {...t, 'live': _streamLive};" in ses             # a late check never puts older words back
     assert "_streaming && DateTime.now().difference(_loadedAt) < const Duration(seconds: 5)" in ses
     assert "_unlisten();" in ses and "_listen();" in ses
+    assert "final cleared = writing.isEmpty && cs(t['live']).trim().isNotEmpty;" in ses   # saved words never blink out

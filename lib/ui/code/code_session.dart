@@ -121,11 +121,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       _keyOf['live'] = 'live${++_liveSeq}';
     }
     if (writing.isNotEmpty) _liveHead = writing.length > 24 ? writing.substring(0, 24) : writing;
-    final next = <String, dynamic>{...t, 'live': _streamLive};
+    // the words just became a saved message: they stay on screen until the fetch brings that message (they vanished
+    // for a moment and came back otherwise); the fetch then hands them over to it
+    final cleared = writing.isEmpty && cs(t['live']).trim().isNotEmpty;
+    final next = <String, dynamic>{...t, 'live': cleared ? t['live'] : _streamLive};
     if (p.containsKey('now')) next['now'] = p['now'];
     setState(() => _t = next);
     final n = p['n'];
-    if ((n is num && n.toInt() > _lastN) || p.containsKey('running')) _load();
+    if (cleared || (n is num && n.toInt() > _lastN) || p.containsKey('running')) _load();
   }
 
   /// The once-a-second check; with the live stream on it only runs every 5 s (steps already fetch when they come).
