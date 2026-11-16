@@ -783,6 +783,7 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "live": _live_text(t.id),
          "now": _now_step(t.id),
          "model_label": _model_label(t)}
+    v["risky_files"] = risky_files([f["path"] for f in v["files"]], ch)   # v0.943 files that change how tools / CI / agents run
     try:                                # G9: the card says what the facts back, never only the model's words
         from . import truth as TR
         if TR.on():
@@ -802,6 +803,9 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
         v["notes"] = [str(x) for x in _j(t.notes or "", [])]      # v0.768 her queued words, shown until Hoola reads them
         v["notes_waiting"] = len(v["notes"])
         v["ws"] = ws_view(t.id)                                    # v0.784 the working copy: checkpoints, to-do, live / slots
+        _wsp = [str(c.get("path", "")) for c in (v["ws"].get("changed") or []) if isinstance(c, dict)]
+        if _wsp:                                                   # v0.943 ... and its changed files, still being worked on
+            v["risky_files"] = risky_files(sorted(set([f["path"] for f in v["files"]] + _wsp)), ch)
         v["can_continue"] = bool(v["ws"].get("exists")) and t.status in CONTINUE and not t.pr_number
         v["hint"] = (t.hint or "") if not v["running"] else ""          # Phase 5: a suggested next message (ghost text)
         v["share"] = {"on": bool(t.share and t.share_until and _aware(t.share_until) > now()),
@@ -813,6 +817,44 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
         v["pr_comments"] = (_j(t.pr_notes or "", {}).get("open") or [])[:30]   # reviewers' comments not acted on yet
         v["made"] = _made(t.id)                                                 # v0.939 the PRDs, prototypes, sheets it made
     return v
+
+
+# v0.943 files that change how her tools, her CI or a coding agent behave: a change to one of these can run code on
+# her machines or steer the next session, so the change card shows them in red before she merges (Cursor's
+# CurXecute / DuneSlide class of bug: a committed config file the agent's own tools then obey)
+_RISKY = [
+    (re.compile(r"(^|/)\.hoola/"), "Hoola's own settings for this repo (the box's setup and test commands)"),
+    (re.compile(r"(^|/)(AGENTS|CLAUDE|GEMINI)\.md$", re.I), "rules a coding agent reads and follows"),
+    (re.compile(r"(^|/)(\.cursorrules|\.cursor/|\.claude/|\.mcp\.json$|\.windsurfrules)"), "settings a coding agent obeys"),
+    (re.compile(r"(^|/)\.github/(workflows|actions)/"), "what her CI runs, with her repo's secrets"),
+    (re.compile(r"(^|/)(\.gitlab-ci\.yml|\.circleci/|azure-pipelines\.yml|Jenkinsfile)$"), "what her CI runs"),
+    (re.compile(r"(^|/)\.vscode/(settings|tasks|launch)\.json$"), "commands her editor can run"),
+    (re.compile(r"(^|/)\.gitmodules$"), "other repos pulled in"),
+    (re.compile(r"(^|/)\.devcontainer/"), "how her dev container starts"),
+]
+_INSTALL_HOOK = re.compile(r'"(preinstall|install|postinstall|prepare|prepublish)"\s*:')
+
+
+def risky_files(paths: list[str], changes: list[dict[str, Any]] | None = None) -> list[dict[str, str]]:
+    """[{path, why}] for the changed files that steer tools / CI / agents. Pure."""
+    out: list[dict[str, str]] = []
+    diffs = {c.get("path", ""): str(c.get("diff", "") or c.get("new", "") or "") for c in (changes or []) if isinstance(c, dict)}
+    for p in paths:
+        why = next((w for rx, w in _RISKY if rx.search(p)), "")
+        if not why and p.split("/")[-1] == "package.json" and _INSTALL_HOOK.search(diffs.get(p, "")):
+            why = "an install script that runs on npm install"
+        if why:
+            out.append({"path": p, "why": why})
+    return out
+
+
+def look_shot(tenant: str, ref: str, name: str) -> Any:
+    """v0.943 one screenshot Hoola Code took with look (a Path, or None)."""
+    from . import engine as EN, look as LK
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        tid = t.id
+    return LK.shot_path(EN.Session(tid).dir, name)
 
 
 def _made(tid: str) -> list[dict[str, Any]]:

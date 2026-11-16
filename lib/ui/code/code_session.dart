@@ -16,6 +16,7 @@ import '../chat/hoola_md.dart';
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import 'code_changes.dart';
+import 'code_files.dart';
 import 'code_home.dart';
 import 'code_kit.dart';
 import 'code_made.dart';
@@ -290,6 +291,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
               if (codeRunning(t)) row(ctx, Icons.stop_circle_outlined, 'Stop after this step', 'stop', color: c.bad),
               row(ctx, Icons.psychology_outlined, _thinking ? 'Hide what Hoola thought' : 'Show what Hoola thought', 'think'),
               if (cl(t['files']).isNotEmpty) row(ctx, Icons.difference_outlined, 'See the changes', 'changes'),
+              if ((t['ws'] as Map?)?['exists'] == true) row(ctx, Icons.folder_open_outlined, 'Browse the files', 'files'),
               if (cs(t['pr_url']).isNotEmpty) row(ctx, Icons.open_in_new_rounded, 'Open on GitHub', 'github'),
               if (!codeRunning(t) && cps.length > 1) row(ctx, Icons.undo_rounded, 'Go back to an earlier checkpoint', 'rewind'),
               if (cs(t['status']) == 'plan_wait') row(ctx, Icons.close_rounded, 'Cancel this job', 'cancel'),
@@ -305,6 +307,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         setState(() => _thinking = !_thinking);
       case 'changes':
         _changes();
+      case 'files':
+        _files();
       case 'github':
         codeOpenGithub(cs(t['pr_url']));
       case 'rewind':
@@ -353,6 +357,17 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
                 CodeChoiceRow(label: 'Checkpoint ${ci(cp['n'])}', sub: cs(cp['label']), on: false, onTap: () => Navigator.pop(ctx, ci(cp['n']))),
             ]));
     if (n != null && n > 0) _run('POST', '$_base/rewind', {'n': n});
+  }
+
+  // v0.943 her own look at the working copy; picked lines come back quoted into her next message
+  Future<void> _files() async {
+    final quote = await Navigator.of(context).push<String>(MaterialPageRoute<String>(
+        builder: (_) => HoolaTheme(appearance: widget.app.appearance, child: CodeFilesPage(app: widget.app, id: widget.id))));
+    if (!mounted || quote == null || quote.isEmpty) return;
+    final cur = _msg.text.trim();
+    _msg.text = cur.isEmpty ? quote : '$cur\n\n$quote';
+    _msg.selection = TextSelection.collapsed(offset: _msg.text.length);
+    setState(() {});
   }
 
   Future<void> _changes() async {
@@ -506,6 +521,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
         } else {
           group.add(s);
         }
+      } else if (k == 'look') {
+        // v0.943 the page Hoola opened in a real browser to check its own change
+        flush(last: false);
+        out.add(Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: CodeLookCard(key: ValueKey('look$si'), app: widget.app, id: widget.id, step: s)));
       } else if (k == 'note') {
         flush(last: false);
         // v0.940 every message she sends after the first is HER message, drawn like the first one
@@ -520,6 +541,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> {
       }
     }
     flush(last: true);
+    if (!running && cl(t['risky_files']).isNotEmpty) out.add(CodeRiskyNote(files: cl(t['risky_files'])));
     if (live.isNotEmpty) out.add(_land(live, sayN, done: false));
     if (todo != null && cl(todo['items']).isNotEmpty) out.add(_todo(c, cl(todo['items'])));
     final queued = [for (final n in running ? ((t['notes'] as List?) ?? const []) : const []) if (cs(n).isNotEmpty) cs(n)];

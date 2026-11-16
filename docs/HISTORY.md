@@ -5543,3 +5543,44 @@ pins swept, the test_v0475 marker).
 
 **NOT VERIFIED:** no GitHub App is configured here, so no real install or token mint has happened — the JWT, state
 and token-mint paths are unit-tested with a throwaway RSA key and fakes; the phone compiles on CI.
+
+
+## v0.943.0 HOOLA CODE CATCHES UP (owner, on the Cursor comparison page's "Where it is behind": "WORK ON IT AND DEPLOY ALL FOR HOOLA PROPERLY")
+
+The Cursor research page listed five places Hoola Code was behind. What this release does about each:
+
+1. **No index of the code** -> `devsahayak/repoindex.py`. Every source file's top-level names (functions, classes, types) with
+   line numbers, read by small regexes per language (Python, JS/TS/Vue/Svelte, Go, Java/Kotlin/C#/Swift, Rust, Dart, Ruby, PHP,
+   C/C++), plus the module arrows from `archdesk/repomap.py` (imports, never guessed). The first message of a session carries a
+   `<repo_map>` (files matching her words first, then the most depended-on, fitted to 5,000 chars; a huge repo reads the files
+   matching her words first and says when it stopped). New tool `code_map`: `find` a name -> file:line, `refs` -> the lines that
+   use it (60), `file` -> the names a file defines (always the file as it is now). The map is cached 2 minutes per session and
+   dropped after any write / edit / bash. Secrets (`SECRET_FILES`) are never read; links are never followed. Measured here on
+   Hoola's own repo: 6,694 paths, 1,698 source files read in 6.2 s.
+2. **Doesn't open a browser to check the app it changed** -> `devsahayak/look.py`, tool `look`. A page of the working copy is
+   opened in the server's headless Chromium on a phone (390 x 844, touch) and a computer (1280 x 800). It returns screenshots,
+   console errors, files the page asked for that are not there (404 / failed), and what is plainly broken on a phone (no
+   viewport tag, wider than the screen, pictures that did not load, tap targets under 40 px, text under 12 px). Walls: the page
+   is served from 127.0.0.1 by a server that answers only regular files inside the copy (no link anywhere on the path, no
+   secret file, no listing); every browser request to anything else is refused and named, so a page that needs its own server or
+   an API is SAID, never called checked. Screenshots go to the model unless its OpenRouter profile says it reads no pictures
+   (`dev_look_pictures`), only the newest look's pictures stay in the conversation (`engine._drop_old_looks`), 24 are kept per
+   session for her phone (GET `/api/devsahayak/tasks/{id}/shots/{name}`). A built app: the box builds first, then look at
+   dist/index.html. Checked here on real Chromium (the internet request was refused, the console error and the 404 were caught).
+3. **Doesn't learn from use** -> `devsahayak/learned.py`. Her earlier sessions on the same repo (her tenant only, last 40) are
+   read in code: merged vs closed without merging (closed titles = what she did not want), her follow-up messages that push back
+   ("no", "not like this", "galat", "revert"...) in her words, her notes on plans, CI red after the first push, files her merged
+   work touched. It rides the first message as `<what_worked_here>`, quoted as data, never as new instructions. (The per-repo
+   memory of findings from v0.828 is still there; this adds her outcomes.)
+4. **Risky files** (from the Cursor CVEs: a committed config the agent's own tools obey) -> `service.risky_files`: `.hoola/`,
+   AGENTS.md / CLAUDE.md / GEMINI.md, .cursor / .claude / .mcp.json / .cursorrules, .github/workflows + actions, other CI files,
+   .vscode settings / tasks / launch, .gitmodules, .devcontainer, and a package.json that adds an install script. Task view
+   `risky_files`; the phone shows them in red on the session and the Changes page before she merges.
+5. **No editor** -> not an editor, but `lib/ui/code/code_files.dart`: Browse the files (folders with New / Changed badges, a file
+   with line numbers, secrets hidden), tap lines and "Ask Hoola about these lines" quotes them with path + line numbers into her
+   next message. Next-edit suggestions are NOT built (her users are not people who type code all day).
+
+Switches (all on): `dev_code_map`, `dev_look`, `dev_look_pictures`, `dev_learn`. Tests `test_v0943_hoola_code_catches_up.py` (10).
+NOT VERIFIED on her server or phone; the look tool needs Playwright's Chromium on the VPS (the console's other browser checks
+already use it; `HOOLA_CHROMIUM` points at it where the default path is missing). Still not live from last week: the server pairing
+(v0.941, `DEV_VPS=true`) and the GitHub App (v0.942, the App + three .env lines).

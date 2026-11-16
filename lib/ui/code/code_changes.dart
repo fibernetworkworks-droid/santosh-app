@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../state.dart';
 import '../hoola_theme.dart';
+import 'code_files.dart';
 import 'code_kit.dart';
 import 'code_session.dart';
 
@@ -149,6 +150,7 @@ class _CodeChangesPageState extends State<CodeChangesPage> {
             ]),
           ),
           if (_loading) LinearProgressIndicator(minHeight: 2, color: c.ink, backgroundColor: c.sunk),
+          CodeRiskyNote(files: cl(t['risky_files'])),
           if (files.isNotEmpty)
             SizedBox(
               height: 48,

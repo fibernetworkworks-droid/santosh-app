@@ -477,6 +477,15 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def ws_files(tid: str, path: str = "", tenant: str = Depends(current_tenant)):
         return await run(S.ws_files, tenant, tid, path)
 
+    @r.get("/tasks/{tid}/shots/{name}")
+    async def look_shot(tid: str, name: str, tenant: str = Depends(current_tenant)):
+        """v0.943 a screenshot Hoola Code took of the page it changed."""
+        from fastapi.responses import FileResponse
+        p = await run(S.look_shot, tenant, tid, name)
+        if p is None:
+            raise HTTPException(404, "No such screenshot.")
+        return FileResponse(str(p), media_type="image/png")
+
     @r.post("/tasks/{tid}/rewind")
     async def ws_rewind(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.ws_rewind, tenant, tid, int(_b(body).get("n") or 0))

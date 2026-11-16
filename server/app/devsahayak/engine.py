@@ -588,6 +588,18 @@ def tools_for_round() -> list[dict[str, Any]]:
             extra.append(VP.SERVER_TOOL)                  # v0.941 run approved commands on her own server
     except Exception:
         pass
+    try:
+        from . import repoindex as RX
+        if RX.on():
+            extra.append(RX.CODE_MAP_TOOL)                # v0.943 find / refs / file on the code map
+    except Exception:
+        pass
+    try:
+        from . import look as LK
+        if LK.on():
+            extra.append(LK.LOOK_TOOL)                    # v0.943 open the page it changed in a real browser
+    except Exception:
+        pass
     return TOOLS + extra
 
 
@@ -1098,7 +1110,8 @@ def now_words(name: str, inp: dict[str, Any]) -> str:
     return {"read": f"Reading {p}" if p else "Reading a file", "edit": f"Editing {p}", "multi_edit": f"Editing {p}",
             "write": f"Writing {p}", "grep": "Searching the code", "glob": "Looking for files",
             "ls": f"Looking in {p or 'the repo'}", "show_diff": "Checking its own change", "todo_write": "Planning the steps",
-            "other_repo": "Reading another repo"}.get(name, "Working")
+            "other_repo": "Reading another repo", "code_map": "Reading the code map",
+            "look": f"Opening {p} in a browser" if p else "Opening the page in a browser"}.get(name, "Working")
 
 
 def _make_words(inp: dict[str, Any]) -> str:
@@ -1258,7 +1271,46 @@ def _first_message(t: Any, rules: str, issue_txt: str, plan_txt: str, attach_txt
             + (f"\nHidden (they hold secrets): {', '.join(hidden[:20])}\n" if hidden else "")
             + "\nTop level: " + ", ".join(top) + "\n" + rules_txt
             + _memory_primer(t)
+            + _learned_primer(t)
+            + _repo_map(ses, str(getattr(t, "text", "") or ""))
             + "\nStart by exploring. Call done when this round is finished.")
+
+
+def _drop_old_looks(msgs: list[dict]) -> None:
+    """v0.943 an earlier look's screenshots leave the conversation (they cost a lot on every step); a line stays."""
+    for m in msgs:
+        c = m.get("content")
+        if m.get("role") != "user" or not isinstance(c, list):
+            continue
+        if not any(isinstance(b, dict) and b.get("type") == "text" and str(b.get("text", "")).startswith("The screenshots from look")
+                   for b in c):
+            continue
+        m["content"] = [({"type": "text", "text": "[an earlier look's screenshot, removed]"}
+                         if isinstance(b, dict) and b.get("type") == "image" else b) for b in c]
+
+
+def _learned_primer(t: Any) -> str:
+    """v0.943 what her earlier sessions on this repo showed (devsahayak/learned.py); '' when nothing."""
+    try:
+        from . import learned as LN
+        txt = LN.primer(t)
+        return ("\n" + txt + "\n") if txt else ""
+    except Exception as e:
+        log.warning("learned block left out: %s", e)
+        return ""
+
+
+def _repo_map(ses: "Session", request: str) -> str:
+    """v0.943 the code map: source files with the names they define, matching files first (devsahayak/repoindex.py)."""
+    try:
+        from . import repoindex as RX
+        if not RX.on():
+            return ""
+        txt = RX.map_text(RX.build(ses.repo, ses.walk(), request), request)
+        return ("\n" + txt + "\n") if txt else ""
+    except Exception as e:                                # the map never stops a session
+        log.warning("repo map left out: %s", e)
+        return ""
 
 
 def _memory_primer(t: Any) -> str:
@@ -1511,6 +1563,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             continue
         nudged, cut_in_row = 0, 0
         results = []
+        look_pics: list[dict[str, Any]] = []               # v0.943 screenshots go after every tool result
         agent_calls = [b for b in uses if b["name"] == "agent"]
         agent_out: dict[str, str] = {}
         if agent_calls:                                     # v0.794 ECC agents: read / run ones side by side
@@ -1580,6 +1633,34 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 tools.trail.append(f"server {act}")
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:40000]})
                 continue
+            if b["name"] == "code_map":                    # v0.943 the code map: find / refs / file
+                from . import repoindex as RX
+                NOW_STEP[tid] = {"find": f"Finding {str(inp.get('name') or '')[:40]}", "refs": f"Finding uses of {str(inp.get('name') or '')[:40]}",
+                                 "file": f"Mapping {str(inp.get('path') or '')[:60]}"}.get(str(inp.get("action") or ""), "Reading the code map")
+                try:
+                    out = RX.run_tool(ses.repo, ses.walk(), inp, RX.cached(tid, ses.repo, ses.walk()))
+                finally:
+                    NOW_STEP.pop(tid, None)
+                tools.trail.append(f"code map {inp.get('action', '')} {str(inp.get('name') or inp.get('path') or '')[:40]}")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:20000]})
+                continue
+            if b["name"] == "look":                        # v0.943 open the page in a real browser, phone + computer
+                from . import look as LK
+                NOW_STEP[tid] = f"Opening {str(inp.get('path') or '')[:60]} in a browser"
+                try:
+                    blocks, ev, line = LK.run_tool(ses.repo, ses.dir, inp)
+                finally:
+                    NOW_STEP.pop(tid, None)
+                if ev:
+                    emit(ev)
+                tools.trail.append(line)
+                results.append({"type": "tool_result", "tool_use_id": b["id"],
+                                "content": "\n".join(x["text"] for x in blocks if x.get("type") == "text")[:20000]})
+                pics = [x for x in blocks if x.get("type") == "image"]
+                if pics:
+                    _drop_old_looks(msgs)                  # only the newest screenshots stay in the conversation
+                    look_pics.extend(pics)
+                continue
             if b["name"] == "agent":
                 out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
@@ -1589,6 +1670,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 out = tools.run(b["name"], inp)
             finally:
                 NOW_STEP.pop(tid, None)
+            if b["name"] in ("write", "edit", "multi_edit", "bash"):
+                try:                                       # v0.943 the code map is read again after a change
+                    from . import repoindex as RX
+                    RX.forget(tid)
+                except Exception:
+                    pass
             try:
                 for ev in event(tools, b["name"], inp, out):
                     emit(ev)
@@ -1611,6 +1698,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                             + "\n</her_note_while_you_work>\nTake this into account from your next step."})
             for n in notes:
                 emit({"k": "note", "text": n[:2000], "her": True})
+        if look_pics:
+            results.append({"type": "text", "text": "The screenshots from look (phone first, then computer):"})
+            results.extend(look_pics)
         msgs.append({"role": "user", "content": results})
         ses.save_messages(msgs)
         if finish is not None:

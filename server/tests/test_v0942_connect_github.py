@@ -104,5 +104,5 @@ def test_the_doors_and_the_phone_are_wired():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.942.0"' in main
-    assert "version: 0.942.0+941" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.943.0"' in main
+    assert "version: 0.943.0+942" in (ROOT / "pubspec.yaml").read_text()

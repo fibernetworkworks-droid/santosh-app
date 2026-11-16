@@ -206,6 +206,10 @@ class Settings(BaseSettings):
     dev_ws_live: int = 2                    # ... sessions that may RUN at once on the server (owner: 2); the rest wait their turn
     dev_make: bool = True                    # v0.939 Hoola Code makes PRDs / pages / prototypes / artboards / sheets as cards (DEV_MAKE)
     dev_vps: bool = False                    # v0.941 HOOLA CODE ON YOUR SERVER: pair a VPS (her server calls out), run approved commands as the hoola user. OFF until her first pair (DEV_VPS)
+    dev_code_map: bool = True                # v0.943 Hoola Code's code map: names per file in the first message + the code_map tool (DEV_CODE_MAP)
+    dev_look: bool = True                    # v0.943 the look tool: open a changed page in the server's browser, phone + computer (DEV_LOOK)
+    dev_look_pictures: bool = True           # ... and hand the screenshots to the model (off = words only)
+    dev_learn: bool = True                   # v0.943 <what_worked_here>: what her earlier sessions on the repo showed (DEV_LEARN)
     github_app_id: str = ""                  # v0.942 Hoola Code GitHub App (connect like Claude Code, no PAT): the App ID
     github_app_slug: str = ""                # ... the App slug (the install URL is github.com/apps/<slug>/installations/new)
     github_app_private_key: str = ""         # ... the App private key, PEM, in the VPS .env only (literal \n accepted)
