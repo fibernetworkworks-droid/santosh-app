@@ -46,6 +46,9 @@ Output = one answer. She never sees several models talking.
 | D4 | Built for a **global audience, India included**. Language is part of the kind of work. |
 | D5 | **Pricing later.** Order: development -> deployment -> pricing. No price enters the choice until the pricing phase. |
 | D6 | Her tap stays where Hoola already asks for it (sending, sharing, deleting, money, paid generation). A part that waits for her tap pauses **only its own branch**; the other parts keep going. During development the existing price cards for paid image / video stay exactly as they are; how the Box shows prices is part of the pricing phase. |
+| D7 | ULTRA = **one model**, as in the plan (16 Nov: "ALL AS PER PLAN"). |
+| D8 | The Indian-language benchmark is chosen **by research** (16 Nov: "DO RESEARCH") - section 8.4. |
+| D9 | A model that moves two levels in a table refresh is **applied automatically** (16 Nov: "AUTO"). |
 
 ---
 
@@ -125,7 +128,7 @@ Each signal raises a part **one** level. Most parts get zero or one raise.
   is not capped.
 - **ULTRA only when:** she asked for it, OR a MAX try failed the check, OR the job is both hard AND costly.
 - **Level only goes up inside one message, never down.** The next message starts fresh.
-- ULTRA = one model for now. Two top models + a third comparing them is an **open option** (section 12).
+- ULTRA = **one model** (D7).
 
 ---
 
@@ -283,8 +286,12 @@ one fix round for the writer (the research claim check `research/claims.py` alre
    for that kind until it appears.
 5. The level tables are cut from those scores (bands per kind), saved as one dated file, and that file is what a
    message reads (4: same inputs = same choice).
-6. A new table is compared with the last one; a big jump (a model moving two levels) is held for her look before it
-   is used.
+6. A new table is compared with the last one; a big jump (a model moving two levels) is **applied by itself** (D9)
+   and written in the table's change log so it can be seen later.
+
+### 8.4 Indian languages (D8)
+Chosen by research (running 16 Nov). Until a benchmark is picked and written here, `write.lang` / `translate` for
+Indian languages use the best multilingual scores and are marked "thin".
 
 ### 8.3 Model tables
 Filled in `docs/research/pipeline/` (one file per kind of work, with the date read and the sources). The code reads
@@ -362,10 +369,8 @@ Each phase ships behind a switch (`pipeline_on`, default OFF until P7); off = to
 
 ## 12. Open questions (hers)
 
-1. **ULTRA:** one model, or two top models + a third comparing them (only for the rare costly cases)?
-2. **Indian languages:** public boards cover them thinly. Which Indian benchmark does she trust (Hindi / Marathi ...)?
-   Until one is chosen, `write.lang` for Indian languages uses the best multilingual scores and is marked "thin".
-3. **Big jumps in the tables (8.2.6):** hold for her look, or apply by itself?
-4. **Region rules:** any users whose data must stay with certain providers?
+Answered 16 Nov: ULTRA (D7), the Indian benchmark (D8, by research), big jumps (D9).
+
+1. **Region rules:** any users whose data must stay with certain providers? Until she says, none.
 
 Pricing questions wait for P8 (D5).
