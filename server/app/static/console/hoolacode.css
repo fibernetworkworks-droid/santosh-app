@@ -1058,6 +1058,42 @@ html,body{background:var(--bg)}
 #app .hca-sp{font:12px var(--fd);color:var(--dim);margin-right:4px}
 #app .hcd-mk.hca-okmk{color:var(--ok)}
 #app .hca-cnt{background:var(--warn-soft);color:var(--warn)}
+/* v0.949 talk to the Intake agent, sources from her apps, the Monitor (hoolaauto.js talk / appSource / monitor) */
+#app .hca-tmain{display:flex;flex-direction:column;gap:10px;min-height:440px}
+#app .hca-tlist{flex:1;min-height:260px;max-height:56vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:4px 2px 8px}
+#app .hca-tlive{min-height:20px;margin:0;font:14px/1.4 var(--fd);color:var(--lit);font-style:italic}
+#app .hca-tlive:empty{min-height:0}
+#app .hca-heard{display:flex;align-items:center;gap:4px;margin-top:4px;font-size:11.5px;color:var(--dim)}
+#app .hca-heard .hcd-ic{width:11px;height:11px}
+#app .hca-got{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:1.4;color:var(--ok)}
+#app .hca-got .hcd-ic{flex:none;width:13px;height:13px}
+#app .hca-aloud{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);cursor:pointer}
+#app .hca-mic{display:inline-flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;padding:0;border:1px solid var(--hair2);border-radius:50%;background:var(--bg);color:var(--ink);cursor:pointer}
+#app .hca-mic:hover{background:var(--sunk)}
+#app .hca-mic .hcd-ic{width:18px;height:18px}
+#app .hca-mic.on{border-color:var(--pri);background:var(--pri);color:var(--on-acc,#fff);box-shadow:0 0 0 4px var(--pri-soft)}
+#app .hca-tside{display:flex;flex-direction:column;gap:10px}
+#app .hca-tside .hca-q{margin:0}
+#app .hca-apps .hca-opt{align-items:center}
+#app .hca-apps .hca-opt>span:nth-child(2){flex:1;min-width:0}
+#app .hca-wtop .hca-erow{border-top:0}
+#app .hca-swl{font-size:13px;color:var(--mut);min-width:24px}
+#app .hca-wlast{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--mut)}
+#app .hca-wform{display:flex;flex-direction:column;gap:12px}
+#app .hca-wform .hcd-f{margin:0}
+#app .hca-feedrow{display:grid;grid-template-columns:160px minmax(0,1fr) auto auto;gap:8px;align-items:center}
+#app .hca-feedrow select,#app .hca-feedrow input{width:100%;min-width:0;height:36px;padding:0 10px;border:1px solid var(--hair2);border-radius:var(--rc);background:var(--surface);color:var(--ink);font:13.5px var(--fd);box-sizing:border-box}
+#app .hca-feedrow select:focus,#app .hca-feedrow input:focus{outline:none;border-color:var(--pri);box-shadow:var(--focus)}
+#app .hca-tmain .hca-composer:focus-within{border-color:var(--pri);box-shadow:var(--focus)}
+#app .hca-tmain .hca-composer textarea:focus,#app .hca-tmain .hca-composer textarea:focus-visible{outline:none;box-shadow:none;border:0}
+#app .hca-alert{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+#app .hca-card>h3+.hca-alert{border-top:0;padding-top:4px}
+#app .hca-alert.dismissed,#app .hca-alert.resolved{opacity:.72}
+#app .hca-ahead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14.5px}
+#app .hca-ahead b{font-weight:600;color:var(--ink)}
+#app .hca-adet{margin:0;font-size:14px;line-height:1.5;color:var(--lit);white-space:pre-wrap;word-break:break-word}
+#app .hca-afix{margin:0;font-size:13.5px;color:var(--ink)}
+@media (max-width:860px){ #app .hca-feedrow{grid-template-columns:minmax(0,1fr) auto} #app .hca-feedrow input{grid-column:1 / -1} }
 @media (max-width:1100px){
   #app .hca-split3{grid-template-columns:180px minmax(0,1fr)}
   #app .hca-side{grid-column:1 / -1}

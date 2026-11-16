@@ -3,7 +3,8 @@
    code.js owns the shell, the sidebar and the address; this file draws the Auto screens into #hcdBody:
      #/auto                       home - every project
      #/auto/<pid>                 the right screen for the project's phase
-     #/auto/<pid>/mission|intake|sources|env|gates
+     #/auto/<pid>/mission|intake|sources|env|gates|monitor
+     #/auto/<pid>/talk            v0.949 talk to the Intake agent (the browser hears and speaks; the server gets text)
      #/auto/<pid>/gate/<gid>      one gate (her tap carries the gate's hash)
      #/auto/<pid>/agent/<role>    one agent: its chat, its session's steps, its tasks
    Strict CSP: no inline handlers; every server string goes through esc(). */
@@ -28,7 +29,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     ['Agents build', 'Each in its own live session'], ['You approve gates', 'Demo, changes, UAT, go-live, handover']];
 
   // ------------------------------------------------------------------ plumbing
-  function leave() { clearInterval(TIMER); TIMER = 0; }
+  function leave() { clearInterval(TIMER); TIMER = 0; talkQuiet(); }
   function poll(fn, ms) { clearInterval(TIMER); const me = ROUTE; TIMER = setInterval(() => { if (ROUTE !== me) return leave(); if (!document.hidden) fn(); }, ms); }
   async function refresh() {
     try { const r = await api('GET', A + '/projects'); const s = JSON.stringify(r.projects.map(p => [p.id, p.name, p.state])); const changed = s !== SIG; SIG = s; LIST = r; return changed; }
@@ -40,7 +41,9 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     if (root._hca) return; root._hca = true;
     root.addEventListener('click', ev => { const b = ev.target.closest('[data-ha]'); if (!b || !root.contains(b)) return; const f = ACT[b.dataset.ha]; if (f) { ev.preventDefault(); f(b); } });
     root.addEventListener('submit', ev => { const f = ev.target; if (!f.dataset || !f.dataset.haf) return; ev.preventDefault(); const h = SUB[f.dataset.haf]; if (h) h(f); });
-    root.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.target.id === 'hcaMsg') { ev.preventDefault(); SUB.msg(ev.target.form); } });
+    root.addEventListener('keydown', ev => { if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing) return;
+      if (ev.target.id === 'hcaMsg') { ev.preventDefault(); SUB.msg(ev.target.form); }
+      else if (ev.target.id === 'hcaTalkIn') { ev.preventDefault(); SUB.talk(ev.target.form); } });
   }
   const page = (inner, cls = '', keepScroll = false) => { const y = keepScroll ? (BODY.querySelector('.hca-page') || {}).scrollTop || 0 : 0;
     BODY.innerHTML = `<main class="hca-page ${cls}"><div class="hca-in">${inner}</div></main>`; if (y) BODY.querySelector('.hca-page').scrollTop = y; };
@@ -59,6 +62,8 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       if (view === 'sources') return await sources(pid);
       if (view === 'env') return await envs(pid);
       if (view === 'gates') return await gateList(pid);
+      if (view === 'talk') return await talk(pid);
+      if (view === 'monitor') return await monitor(pid);
       if (view === 'gate' && arg) return await gate(pid, arg);
       if (view === 'agent' && arg) return await agent(pid, arg);
       return await routeProject(pid);
@@ -74,13 +79,13 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     }
     return go(`${pid}/mission`);
   }
-  // the project's title bar + its sub-nav (Mission / Intake / Sources / Environments / Gates)
+  // the project's title bar + its sub-nav (Mission / Intake / Sources / Environments / Gates / Monitor)
   function head(p, on, right = '') {
     document.title = `${p.name} · Hoola Auto`;
     const tab = (k, name) => `<button type="button" role="tab" aria-selected="${on === k}" data-auto="${esc(p.id)}/${k}">${name}</button>`;
     return `<button type="button" class="hcd-back" data-auto="">${svg('chev', 'hcd-flip')}Hoola Auto</button>
       <div class="hca-phead"><div><h1>${esc(p.name)}</h1><p class="hca-sub">${esc(p.client || 'No client name yet')} · ${esc(p.phase_label || '')}${p.paused ? ' · <b class="hca-warn">Paused</b>' : ''}</p></div>${right}</div>
-      <div class="hcd-tabs hca-ptabs" role="tablist">${tab('mission', 'Mission control')}${tab('intake', 'Intake')}${tab('sources', 'Sources')}${tab('env', 'Environments')}${tab('gates', 'Gates')}</div>`;
+      <div class="hcd-tabs hca-ptabs" role="tablist">${tab('mission', 'Mission control')}${tab('intake', 'Intake')}${tab('sources', 'Sources')}${tab('env', 'Environments')}${tab('gates', 'Gates')}${tab('monitor', 'Monitor')}</div>`;
   }
 
   // ------------------------------------------------------------------ home
@@ -185,7 +190,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
           <form class="hca-inline" data-haf="answer" data-key="${esc(nx.key)}"><label class="hcd-sr" for="hcaAsk">Your answer</label><input id="hcaAsk" name="v" maxlength="4000" placeholder="Type my own answer" autocomplete="off"><button class="hcd-btn sm">Answer</button></form>`}
         <small class="hca-src">${esc(nx.section)} · ${v.of - v.answered} questions left · never type passwords or keys here</small></section>`
       : `<section class="hca-card hca-ask"><span class="hcd-badge gh">All answered</span><p class="hca-q">Every question has an answer. Send it for review when you are ready.</p></section>`;
-    page(`${head(p, 'intake', `<div class="hca-hbtns"><button type="button" class="hcd-btn" data-ha="addsrc">Add a source</button>
+    page(`${head(p, 'intake', `<div class="hca-hbtns"><button type="button" class="hcd-btn" data-auto="${esc(pid)}/talk">${MIC}Talk to the Intake agent</button><button type="button" class="hcd-btn" data-ha="addsrc">Add a source</button>
         <button type="button" class="hcd-btn pri" data-ha="review"${v.can_review ? '' : ' disabled title="Attach a repository first, or the scope is already signed off"'}>Send for review</button></div>`)}
       <div class="hca-meter"><span>${v.answered} of ${v.of} answered · ${v.counts.found} for the client to confirm · ${v.counts.conflict} conflict${v.counts.conflict === 1 ? '' : 's'}</span>${bar(100 * v.answered / Math.max(1, v.of))}</div>
       <div class="hca-linkrow">${link.on ? `Client link on (…${esc(link.tail)}), works until ${esc(new Date(link.until).toLocaleDateString('en-IN'))}${link.signed ? ' · <b class="hca-ok">client signed off</b>' : ''}
@@ -226,15 +231,18 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     ['doc', 'Upload documents', 'RFP, requirements PDF, Word, spreadsheets, notes.', 'read'],
     ['recording', 'Meeting recording', 'A call or video. It is transcribed; answers carry the minute they were said.', 'clock'],
     ['text', 'Forward email or WhatsApp', 'Paste an email thread or a WhatsApp chat export.', 'list'],
-    ['call', 'Call with the Intake agent', 'Not in this version.', 'spark'],
+    ['talk', 'Talk to the Intake agent', 'Speak or type; it asks one question at a time and records what you say.', 'spark'],
+    ['app', 'From an app', 'Jira, Linear, Slack, Notion, Confluence, Trello, Asana, ClickUp, Google Docs or a Figma file. Read only.', 'cloud'],
     ['repo', 'Read connected systems', 'The project repo, read only. Nothing is changed.', 'folder']];
   async function addSource(pid) {
     const r = await dialog(`<h2>Add an intake source</h2><p class="hcd-mut">The Intake agent reads it, fills the answers it can and marks where each came from. Your client confirms anything it found.</p>
-      <div class="hca-opts">${OPTS.map(o => `<button class="hca-opt" value="${o[0]}"${o[0] === 'call' ? ' disabled' : ''}>${svg(o[3])}<span><b>${o[1]}</b><small>${o[2]}</small></span></button>`).join('')}</div>
+      <div class="hca-opts">${OPTS.map(o => `<button class="hca-opt" value="${o[0]}">${svg(o[3])}<span><b>${o[1]}</b><small>${o[2]}</small></span></button>`).join('')}</div>
       <p class="hcd-mut">Hoola never asks your client for passwords, card numbers or one-time codes.</p>
       <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button></div>`);
     if (!r || r === 'no') return;
     if (r === 'link') return clientLink(pid, true);
+    if (r === 'talk') return go(`${pid}/talk`);
+    if (r === 'app') return appSource(pid);
     let b = {kind: r};
     if (r === 'doc' || r === 'recording') {
       const ok = await dialog(`<h2>${r === 'doc' ? 'Upload a document' : 'Upload a recording'}</h2>
@@ -253,6 +261,184 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       b.name = d.querySelector('#hcaTName')?.value.trim() || ''; b.text = d.querySelector('#hcaText')?.value || '';
     }
     try { await api('POST', `${A}/projects/${enc(pid)}/sources`, b); toast('Reading it now. Answers appear as they are found.'); draw(ROUTE, BODY); } catch (e) { toast(e.message, true); }
+  }
+  // ------------------------------------------------------------------ v0.949 sources from her apps
+  const APPST = {ready: ['Connected', 'ok'], needs_link: ['Sign in once', 'warn'], needs_key: ['Add its key', 'warn'], needs_setup: ['Not on this server', 'soft'], not_set_up: ['Not on this server', 'soft']};
+  const appChip = a => { const w = APPST[a.state] || ['', 'soft']; return `<span class="hcd-c ${w[1]}">${esc(w[0])}</span>`; };
+  // Sign in = the app's own page, opened from a real link in the dialog (a window opened after a server call is blocked)
+  async function signIn(key, name) {
+    const r = await api('POST', `${A}/apps/${enc(key)}/connect`);
+    if (r.status === 'ready') { toast(`${name} is connected.`); return true; }
+    if (!r.url) { await dialog(`<h2>${esc(name)}</h2><p class="hca-prose">${esc(r.say || 'This app cannot be connected from here.')}</p>
+      <div class="hcd-dlgb"><button class="hcd-btn pri" value="ok">OK</button></div>`); return false; }
+    const ok = await dialog(`<h2>Sign in to ${esc(name)}</h2><p class="hcd-mut">${esc(r.say || '')}</p>
+      <p><a class="hcd-btn pri" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Open ${esc(name)} sign-in</a></p>
+      <p class="hcd-mut">Hoola only reads from ${esc(name)}. It never writes there.</p>
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn" value="ok">I signed in - refresh</button></div>`);
+    return ok === 'ok';
+  }
+  async function appSource(pid) {
+    for (let round = 0; round < 6; round++) {
+      let apps = [];
+      try { apps = (await api('GET', `${A}/apps?use=intake`)).apps || []; } catch (e) { return toast(e.message, true); }
+      const key = await dialog(`<h2>Read from an app</h2><p class="hcd-mut">One read, with the app's read tools only. What comes back is information for the Intake agent, never instructions.</p>
+        <div class="hca-opts hca-apps">${apps.map(a => `<button class="hca-opt" value="${esc(a.key)}"><span class="hca-ini">${esc(a.name.slice(0, 2).toUpperCase())}</span>
+          <span><b>${esc(a.name)}</b><small>${esc(a.hint)}</small></span>${appChip(a)}</button>`).join('') || '<p class="hcd-mut">No apps on this server.</p>'}</div>
+        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button></div>`);
+      const a = apps.find(x => x.key === key);
+      if (!a) return;
+      if (a.state === 'ready') {
+        const ok = await dialog(`<h2>Read from ${esc(a.name)}</h2><label class="hcd-f"><span>What to read</span><input id="hcaAppWhat" maxlength="300" required placeholder="${esc(a.hint)}" autocomplete="off"></label>
+          <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">Read it</button></div>`);
+        const what = (document.querySelector('#hcdDlg #hcaAppWhat') || {}).value || '';
+        if (ok !== 'ok' || !what.trim()) return;
+        try { await api('POST', `${A}/projects/${enc(pid)}/sources`, {kind: 'app', app: a.key, what: what.trim()}); toast('Reading it now. Answers appear as they are found.'); draw(ROUTE, BODY); }
+        catch (e) { toast(e.message, true); }
+        return;
+      }
+      if (a.state === 'needs_link') { let again = false; try { again = await signIn(a.key, a.name); } catch (e) { toast(e.message, true); } if (!again) return; continue; }
+      await dialog(`<h2>${esc(a.name)}</h2><p class="hca-prose">${esc(a.say || '')}</p>${a.key === 'figma' ? '<p class="hcd-mut">Add your Figma personal access token in Hoola Design &gt; Import from Figma (read access to file content), then come back.</p>' : '<p class="hcd-mut">Connect it in Hoola Connectors, then come back.</p>'}
+        <div class="hcd-dlgb"><button class="hcd-btn pri" value="ok">OK</button></div>`);
+      return;
+    }
+  }
+
+  // ------------------------------------------------------------------ v0.949 talk to the Intake agent
+  const MIC = '<svg class="hcd-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let TALK = {pid: '', msgs: [], aloud: true, rec: null, listening: false, last: null};
+  function talkQuiet() {
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* nothing to stop */ }
+    if (TALK.rec) { try { TALK.rec.abort(); } catch (e) { /* already stopped */ } TALK.rec = null; }
+    TALK.listening = false;
+  }
+  function sayAloud(text) {
+    if (!TALK.aloud || !text || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text), vs = window.speechSynthesis.getVoices() || [];
+      u.lang = 'en-IN'; u.voice = vs.find(v => v.lang === 'en-IN') || vs.find(v => /^en/i.test(v.lang)) || null;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* a browser without a voice: the words stay on the screen */ }
+  }
+  function talkChat() {
+    const el = document.getElementById('hcaTalkList'); if (!el) return;
+    el.innerHTML = TALK.msgs.map(m => m.who === 'you' ? `<div class="hca-you">${esc(m.text)}${m.spoken ? `<small class="hca-heard">${MIC}heard</small>` : ''}</div>`
+      : `<div class="hca-say"><p>${esc(m.text)}</p>${(m.got || []).map(g => `<span class="hca-got">${svg('ok', 'ok')}Recorded: ${esc(g.q)} - ${esc(g.value)}</span>`).join('')}
+        <small class="hca-when">Intake · ${esc(hhmm(m.at))}</small></div>`).join('') || '<p class="hcd-mut">Starting…</p>';
+    el.scrollTop = el.scrollHeight;
+  }
+  function talkSide() {
+    const el = document.getElementById('hcaTalkSide'), v = TALK.last; if (!el || !v) return;
+    el.innerHTML = `<h3>Progress</h3><div class="hca-meter"><span>${esc(v.answered)} of ${esc(v.of)} answered</span>${bar(100 * v.answered / Math.max(1, v.of), v.complete ? 'ok' : '')}</div>
+      ${v.next ? `<p class="hcd-mut">Next question</p><p class="hca-q">${esc(v.next.q)}</p>${(v.next.choices || []).length ? `<div class="hca-choices">${v.next.choices.map(c => `<button type="button" class="hcd-btn sm" data-ha="talkpick" data-val="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}`
+        : '<p class="hca-ok">Every question has an answer.</p>'}
+      <p class="hcd-mut">Spoken answers come in as <b>Found</b>: a word can be heard wrong, so you confirm them on the intake list.</p>
+      <button type="button" class="hcd-btn sm" data-auto="${esc(TALK.pid)}/intake">Back to the intake list</button>`;
+  }
+  function talkMic() {
+    const b = document.getElementById('hcaTalkMic'); if (!b) return;
+    b.classList.toggle('on', TALK.listening); b.setAttribute('aria-pressed', TALK.listening ? 'true' : 'false');
+    b.setAttribute('aria-label', TALK.listening ? 'Stop listening' : 'Speak');
+  }
+  async function talkSend(said, spoken) {
+    const pid = TALK.pid;
+    if (said) TALK.msgs.push({who: 'you', text: said, spoken, at: new Date().toISOString()});
+    talkChat();
+    const live = document.getElementById('hcaTalkLive'); if (live) { live.textContent = said ? 'Intake is thinking…' : ''; }
+    try {
+      const r = await api('POST', `${A}/projects/${enc(pid)}/talk`, {said, spoken: !!spoken});
+      if (TALK.pid !== pid) return;
+      TALK.msgs.push({who: 'agent', text: r.reply, got: r.got || [], at: new Date().toISOString()}); TALK.last = r;
+      if (r.warn) toast(r.warn, true);
+      talkChat(); talkSide(); sayAloud(r.speak || r.reply);
+    } catch (e) {
+      toast(e.message, true);
+      const ta = document.getElementById('hcaTalkIn'); if (ta && said && !ta.value) ta.value = said;
+      if (said) TALK.msgs.pop(); talkChat();
+    } finally { const l = document.getElementById('hcaTalkLive'); if (l) l.textContent = ''; }
+  }
+  function talkListen() {
+    if (!SR) return;
+    if (TALK.listening && TALK.rec) { try { TALK.rec.stop(); } catch (e) { /* stopped */ } return; }
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* no voice */ }
+    const rec = new SR(); let final = '';
+    rec.lang = 'en-IN'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    rec.onresult = ev => { let interim = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const t = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) final += t; else interim += t; }
+      const l = document.getElementById('hcaTalkLive'); if (l) l.textContent = (final + ' ' + interim).trim(); };
+    rec.onerror = ev => { const why = ev && ev.error; if (why === 'not-allowed' || why === 'service-not-allowed') toast('The microphone is blocked. Allow it in the browser, or type instead.', true);
+      else if (why && why !== 'no-speech' && why !== 'aborted') toast('Could not hear that. Try again or type.', true); };
+    rec.onend = () => { TALK.listening = false; TALK.rec = null; talkMic(); const t = final.trim();
+      const l = document.getElementById('hcaTalkLive'); if (l && !t) l.textContent = '';
+      if (t && document.getElementById('hcaTalkList')) talkSend(t, true); };
+    TALK.rec = rec; TALK.listening = true; talkMic();
+    try { rec.start(); } catch (e) { TALK.listening = false; TALK.rec = null; talkMic(); toast('Could not start the microphone.', true); }
+  }
+  async function talk(pid) {
+    const p = await api('GET', `${A}/projects/${enc(pid)}`);
+    const fresh = TALK.pid !== pid;
+    if (fresh) TALK = {pid, msgs: [], aloud: TALK.aloud, rec: null, listening: false, last: null};
+    page(`${head(p, 'intake')}
+      <div class="hca-split2 hca-talk"><section class="hca-card hca-tmain"><div class="hca-sh"><b>Talk to the Intake agent</b>
+          <label class="hca-aloud"><input type="checkbox" id="hcaAloud"${TALK.aloud ? ' checked' : ''}> Read replies aloud</label></div>
+        <div id="hcaTalkList" class="hca-tlist" aria-live="polite"></div>
+        <p id="hcaTalkLive" class="hca-tlive" aria-live="polite"></p>
+        <form class="hca-composer" data-haf="talk">${SR ? `<button type="button" class="hca-mic" id="hcaTalkMic" data-ha="talkmic" aria-pressed="false" aria-label="Speak">${MIC}</button>` : ''}
+          <label class="hcd-sr" for="hcaTalkIn">Your answer</label><textarea id="hcaTalkIn" rows="1" maxlength="2000" placeholder="${SR ? 'Tap the mic and speak, or type' : 'Type your answer'}"></textarea>
+          <button class="hcd-send" aria-label="Send">${svg('up')}</button></form>
+        <p class="hcd-mut hca-cnote">${SR ? 'Your browser hears your words and reads the replies aloud; Hoola gets the text only.' : 'This browser cannot hear speech - type instead.'} Never say passwords, OTPs or card numbers.</p></section>
+        <aside class="hca-card hca-tside" id="hcaTalkSide"><p class="hcd-mut">Starting…</p></aside></div>`);
+    document.getElementById('hcaAloud').addEventListener('change', ev => { TALK.aloud = ev.target.checked; if (!TALK.aloud) { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* none */ } } });
+    talkChat(); talkSide();
+    if (fresh || !TALK.msgs.length) await talkSend('', false);
+  }
+
+  // ------------------------------------------------------------------ v0.949 the Monitor (after go-live)
+  const AKIND = {site: ['Site down', 'bad'], slow: ['Slow', 'warn'], ci: ['CI red', 'bad'], feed: ['Feed', 'warn']};
+  const ASTATE = {open: ['Open', 'warn'], fixing: ['Fixing', 'run'], dismissed: ['Dismissed', 'soft'], resolved: ['Cleared', 'ok']};
+  let WFEEDS = null;
+  function feedRows(apps) {
+    const opt = (f, a) => `<option value="${esc(a.key)}"${f.app === a.key ? ' selected' : ''}>${esc(a.name)}${a.state === 'ready' ? '' : ' (not connected)'}</option>`;
+    return WFEEDS.map((f, i) => { const a = apps.find(x => x.key === f.app);
+      return `<div class="hca-feedrow"><label class="hcd-sr" for="hcaFApp${i}">App</label><select id="hcaFApp${i}" name="fapp">${apps.map(x => opt(f, x)).join('')}</select>
+        <label class="hcd-sr" for="hcaFWhat${i}">What to watch</label><input id="hcaFWhat${i}" name="fwhat" maxlength="300" value="${esc(f.what || '')}" placeholder="${esc(a ? a.hint : '')}" autocomplete="off">
+        ${a && a.state !== 'ready' ? `<button type="button" class="hcd-btn sm" data-ha="appsign" data-key="${esc(a.key)}" data-name="${esc(a.name)}" data-state="${esc(a.state)}" data-say="${esc(a.say || '')}">${a.state === 'needs_link' ? 'Sign in' : 'How to connect'}</button>` : ''}
+        <button type="button" class="hcd-icb" data-ha="feeddel" data-i="${i}" aria-label="Remove this feed" title="Remove">${svg('x')}</button></div>`; }).join('');
+  }
+  function watchBody(f, on) {
+    const feeds = []; const apps = f.querySelectorAll('[name=fapp]'), whats = f.querySelectorAll('[name=fwhat]');
+    apps.forEach((s, i) => { const w = (whats[i] || {}).value || ''; if (s.value) feeds.push({app: s.value, what: w.trim()}); });
+    return {url: f.querySelector('#hcaWUrl').value.trim(), every_min: +f.querySelector('#hcaWEvery').value || 60, feeds, on};
+  }
+  function keepFeeds() { const f = BODY.querySelector('form[data-haf=watch]'); if (f) WFEEDS = watchBody(f, false).feeds; }
+  let WAPPS = [];
+  async function monitor(pid, keep = false) {
+    const [p, v] = await Promise.all([api('GET', `${A}/projects/${enc(pid)}`), api('GET', `${A}/projects/${enc(pid)}/watch`)]);
+    WAPPS = v.apps || [];
+    if (!keep || !WFEEDS) WFEEDS = (v.feeds || []).map(x => ({...x}));
+    const every = [[15, '15 minutes'], [30, '30 minutes'], [60, '1 hour'], [180, '3 hours'], [360, '6 hours'], [1440, '1 day']];
+    const alerts = v.alerts || [];
+    const arow = a => { const k = AKIND[a.kind] || [a.kind, 'soft'], st = ASTATE[a.state] || [a.state, 'soft'];
+      return `<div class="hca-alert ${esc(a.state)}"><div class="hca-ahead"><span class="hcd-badge ${k[1]}">${esc(k[0])}</span><b>${esc(a.title)}</b><span class="hcd-flex"></span><span class="hcd-c ${st[1]}">${esc(st[0])}</span></div>
+        ${a.detail ? `<p class="hca-adet">${esc(a.detail)}</p>` : ''}
+        <small class="hca-src">${a.repo ? esc(a.repo) + ' · ' : ''}seen ${esc(a.times)} time${a.times === 1 ? '' : 's'} · first ${esc(ago(a.first_at))}${a.times > 1 ? ` · last ${esc(ago(a.last_at))}` : ''}</small>
+        ${a.state === 'fixing' && a.fix ? `<p class="hca-afix">${esc(a.fix.say || 'A fix is running in Hoola Code.')}${a.fix.url ? ` <a class="hcd-link" href="${esc(a.fix.url)}" target="_blank" rel="noopener">Pull request #${esc(a.fix.pr)}</a>` : ''}${a.fix.id ? ` <a class="hcd-link" href="#/s/${esc(a.fix.id)}">Open the session</a>` : ''}</p>` : ''}
+        <div class="hca-choices">${a.state === 'open' ? `<button type="button" class="hcd-btn pri sm" data-ha="afix" data-id="${esc(a.id)}">Fix it</button><button type="button" class="hcd-btn sm" data-ha="aact" data-what="dismiss" data-id="${esc(a.id)}">Dismiss</button>`
+          : a.state === 'dismissed' ? `<button type="button" class="hcd-btn sm" data-ha="aact" data-what="reopen" data-id="${esc(a.id)}">Reopen</button>` : ''}</div></div>`; };
+    page(`${head(p, 'monitor', `<div class="hca-hbtns"><button type="button" class="hcd-btn" data-ha="wcheck">Check now</button></div>`)}
+      <section class="hca-card hca-wtop"><div class="hca-erow"><span class="hca-ini">${svg('spark')}</span><span class="hca-en"><b>Monitor agent</b><small>${esc(v.says || '')}</small></span>
+        <button type="button" class="hcd-sw" role="switch" aria-checked="${v.on ? 'true' : 'false'}" aria-label="Monitor on" data-ha="wtoggle"><i></i></button><span class="hca-swl">${v.on ? 'On' : 'Off'}</span></div>
+        <p class="hca-wlast">${v.last_at ? `Last check ${esc(ago(v.last_at))}: ${esc(v.last_say || '')} · ${esc(v.checks)} check${v.checks === 1 ? '' : 's'} so far` : 'No check yet.'}${v.live ? '' : ' <b class="hca-warn">Runs after go-live.</b>'}</p></section>
+      <form class="hca-card hca-wform" data-haf="watch"><h3>What it watches</h3>
+        <label class="hcd-f"><span>Live app address <small>checked from the server, public addresses only</small></span><input id="hcaWUrl" type="url" maxlength="400" value="${esc(v.url || '')}" placeholder="https://shop.example.com" autocomplete="off"></label>
+        <label class="hcd-f"><span>Check every</span><select id="hcaWEvery">${every.map(([m, l]) => `<option value="${m}"${+v.every_min === m ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        <p class="hcd-mut">CI on the main branch of ${esc((v.repos || []).join(', ') || 'no repo yet')} is read every time.</p>
+        <fieldset class="hca-fs"><legend>Feeds from your apps <small>up to 5 · read only</small></legend><div id="hcaFeeds">${feedRows(WAPPS)}</div>
+          ${WFEEDS.length < 5 ? `<button type="button" class="hcd-btn sm" data-ha="feedadd"${WAPPS.length ? '' : ' disabled'}>${svg('new')}Add a feed</button>` : ''}</fieldset>
+        <div class="hca-actions"><button class="hcd-btn pri">Save</button></div></form>
+      <section class="hca-card"><h3>Problems${v.open ? ` · <span class="hca-warn">${esc(v.open)} open</span>` : ''}</h3>${alerts.map(arow).join('') || '<p class="hcd-mut">Nothing found yet.</p>'}
+        <p class="hcd-mut">A fix starts only on your tap: Hoola Code opens a pull request against your main branch, and you merge it yourself.</p></section>`);
   }
   async function clientLink(pid, on) {
     try {
@@ -338,7 +524,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     const gateNow = (m.needs || []).find(x => x.kind === 'gate');
     const right = `<div class="hca-hbtns">${pr.paused ? `<button type="button" class="hcd-btn pri" data-ha="pause" data-on="0">Resume</button>` : `<button type="button" class="hcd-btn" data-ha="pause" data-on="1">Pause all</button>`}</div>`;
     const need = x => x.kind === 'gate' ? `<div class="hca-needc"><span class="hcd-badge warn">Needs your OK</span><span>${esc(x.text)}</span><button type="button" class="hcd-btn pri sm" data-auto="${esc(pid)}/gate/${esc(x.id)}">Open</button></div>`
-      : x.kind === 'task' ? `<div class="hca-needc"><span class="hcd-badge warn">Needs you</span><span>${esc(x.text)}</span><button type="button" class="hcd-btn sm" data-auto="${esc(pid)}/agent/${esc(x.role)}">Open agent</button></div>`
+      : x.kind === 'task' ? `<div class="hca-needc"><span class="hcd-badge warn">Needs you</span><span>${esc(x.text)}</span><button type="button" class="hcd-btn sm" data-auto="${esc(pid)}/${x.role === 'monitor' ? 'monitor' : 'agent/' + esc(x.role)}">Open agent</button></div>`
       : `<div class="hca-needc"><span class="hcd-badge">Paused</span><span>${esc(x.text)}</span><button type="button" class="hcd-btn pri sm" data-ha="pause" data-on="0">Resume</button></div>`;
     const tasks = pr.tasks || {};
     const gl = (p.golive || []).filter(x => x.pr);
@@ -352,7 +538,7 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
       <div class="hca-split2 hca-msplit"><div>
         <div class="hcd-tabs" role="tablist">${tab('all', 'All', ag.length)}${tab('working', 'Working', n('working'))}${tab('needs', 'Needs you', n('needs'))}${tab('done', 'Done', n('done'))}</div>
         <div class="hcd-table hca-atable" role="table" aria-label="Agents"><div class="hcd-tr hcd-th" role="row"><span role="columnheader">Agent · working on</span><span role="columnheader">Its tasks</span><span role="columnheader">Share</span><span role="columnheader">State</span><span role="columnheader">Time</span></div>
-          ${ag.filter(keep).map(a => `<button type="button" class="hcd-tr" role="row" data-auto="${esc(pid)}/agent/${esc(a.role)}">
+          ${ag.filter(keep).map(a => `<button type="button" class="hcd-tr" role="row" data-auto="${esc(pid)}/${a.role === 'monitor' ? 'monitor' : 'agent/' + esc(a.role)}">
             <span class="hcd-tcell hca-aname"><b>${esc(a.label)}</b><small>${esc(a.step || '')}</small></span>
             <span class="hcd-tcell">${a.session ? `<span class="hca-pl"><span>${a.done} of ${a.tasks}</span><em>${pct(a.pct)}%</em></span>${bar(a.pct, a.state === 'done' ? 'ok' : a.state === 'needs' ? 'warn' : '')}` : '<span class="hcd-mut">planning</span>'}</span>
             <span class="hcd-tcell hca-mono">${a.role === 'reviewer' ? 'every change' : a.share !== '' && a.share != null ? esc(a.share) + '%' : ''}</span>
@@ -472,12 +658,38 @@ window.HoolaAuto = function ({api, esc, toast, nav, svg, dialog, step}) {
     cr: b => busy(b, '', async () => { await api('POST', `${A}/projects/${enc(pidOf())}/gates/${enc(b.dataset.gid)}/decide`, {yes: b.dataset.yes === '1', hash: b.dataset.hash});
       AG_SIG = ''; await draw(ROUTE, BODY); }),
     task: b => busy(b, '', async () => { await api('POST', `${A}/projects/${enc(pidOf())}/tasks/${enc(b.dataset.tid)}/${b.dataset.what}`); AG_SIG = ''; await draw(ROUTE, BODY); }),
+    // v0.949 talk, the Monitor
+    talkmic: () => talkListen(),
+    talkpick: b => { if (!BUSY) busy(null, '', () => talkSend(b.dataset.val, false)); },
+    appsign: async b => {
+      keepFeeds();
+      if (b.dataset.state !== 'needs_link') { await dialog(`<h2>${esc(b.dataset.name)}</h2><p class="hca-prose">${esc(b.dataset.say || '')}</p><div class="hcd-dlgb"><button class="hcd-btn pri" value="ok">OK</button></div>`); return; }
+      let again = false; try { again = await signIn(b.dataset.key, b.dataset.name); } catch (e) { toast(e.message, true); }
+      if (again) monitor(pidOf(), true).catch(fail);
+    },
+    feedadd: () => { keepFeeds(); if (WFEEDS.length < 5) { const first = WAPPS.find(a => a.state === 'ready') || WAPPS[0]; WFEEDS.push({app: first ? first.key : '', what: ''}); }
+      const box = document.getElementById('hcaFeeds'); if (box) monitor(pidOf(), true).catch(fail); },
+    feeddel: b => { keepFeeds(); WFEEDS.splice(+b.dataset.i, 1); monitor(pidOf(), true).catch(fail); },
+    wtoggle: b => { const f = BODY.querySelector('form[data-haf=watch]'); if (!f) return; const on = b.getAttribute('aria-checked') !== 'true';
+      busy(null, '', async () => { await api('PUT', `${A}/projects/${enc(pidOf())}/watch`, watchBody(f, on)); toast(on ? 'The Monitor is on.' : 'The Monitor is off.'); await monitor(pidOf()); }); },
+    wcheck: b => busy(b, 'Checking…', async () => { await api('POST', `${A}/projects/${enc(pidOf())}/watch/check`); await monitor(pidOf()); }),
+    afix: async b => {
+      const r = await dialog(`<h2>Fix this problem?</h2><p class="hca-prose">Hoola Code will open a pull request against your main branch. You merge it yourself.</p>
+        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">Start the fix</button></div>`);
+      if (r !== 'ok') return;
+      busy(b, 'Starting…', async () => { await api('POST', `${A}/projects/${enc(pidOf())}/alerts/${enc(b.dataset.id)}/fix`); toast('The fix started in Hoola Code.'); await monitor(pidOf()); });
+    },
+    aact: b => busy(b, '', async () => { await api('POST', `${A}/projects/${enc(pidOf())}/alerts/${enc(b.dataset.id)}/${b.dataset.what}`); await monitor(pidOf()); }),
   };
   const SUB = {
     answer: f => { const val = (f.querySelector('[name=v]') || {}).value || ''; busy(f.querySelector('button'), 'Saving', async () => {
       const r = await api('PUT', `${A}/projects/${enc(pidOf())}/intake/${enc(f.dataset.key)}`, {value: val}); if (r && r.warn) toast(r.warn, true); await draw(ROUTE, BODY); }); },
     repos: f => { const v = f.querySelector('input').value.split(/[\s,]+/).filter(Boolean); busy(f.querySelector('button'), 'Saving', async () => { await api('PATCH', `${A}/projects/${enc(pidOf())}`, {repos: v}); await draw(ROUTE, BODY); }); },
     cap: f => { const v = +f.querySelector('input').value; busy(f.querySelector('button'), 'Saving', async () => { await api('PATCH', `${A}/projects/${enc(pidOf())}`, {cap_inr: v}); toast('Cost cap saved.'); await draw(ROUTE, BODY); }); },
+    talk: f => { const ta = f.querySelector('textarea'), text = ta.value.trim(); if (!text || BUSY) return; ta.value = '';
+      busy(null, '', () => talkSend(text, false)); },
+    watch: f => { const on = (BODY.querySelector('[data-ha=wtoggle]') || {}).getAttribute?.('aria-checked') === 'true';
+      busy(f.querySelector('button.pri'), 'Saving', async () => { const v = await api('PUT', `${A}/projects/${enc(pidOf())}/watch`, watchBody(f, on)); WFEEDS = null; toast('Saved.'); await monitor(pidOf()); }); },
     msg: f => { const ta = f.querySelector('textarea'), text = ta.value.trim(); if (!text) return;
       busy(f.querySelector('button'), '', async () => { const parts = ROUTE.split('/'); const r = await api('POST', `${A}/projects/${enc(parts[0])}/agents/${enc(parts[2])}/message`, {text});
         ta.value = ''; if (r && r.warn) toast(r.warn, true); AG_SIG = ''; await agent(parts[0], parts[2]); }); },

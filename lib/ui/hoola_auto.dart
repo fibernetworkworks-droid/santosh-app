@@ -3,12 +3,20 @@
 /// agents, live feed), one agent (its conversation, current session steps, change requests, tasks), a gate (G1-G8, the
 /// go-live merge), the intake (Hoola asks, found answers, conflicts, the client link) and the environments.
 /// All on the server's /api/auto routes; every gate is her tap carrying the gate's hash.
+/// v0.949: add a source on the phone (text, document, recording, repo scan, a connected app), talk to the Intake agent
+/// (turn by turn: the phone hears and speaks, the server gets text), and the Monitor after go-live (alerts, Fix it).
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import 'devsahayak_drawer.dart' show devOpenSession, hcTime;
@@ -502,6 +510,7 @@ class _AutoProjectPageState extends State<AutoProjectPage> {
         item('intake', Icons.assignment_outlined, 'Client intake'),
         item('env', Icons.cloud_outlined, 'Environments'),
         item('gates', Icons.flag_outlined, 'Gates G1 to G8'),
+        item('monitor', Icons.notifications_active_outlined, 'Monitor after go-live'),
         item('pause', paused ? Icons.play_arrow_rounded : Icons.pause_rounded, paused ? 'Start the agents again' : 'Pause all agents'),
         const SizedBox(height: 12),
       ]);
@@ -510,6 +519,7 @@ class _AutoProjectPageState extends State<AutoProjectPage> {
     if (pick == 'intake') _push(AutoIntakePage(app: widget.app, pid: widget.id));
     if (pick == 'env') _push(AutoEnvPage(app: widget.app, pid: widget.id));
     if (pick == 'gates') _push(AutoGatesPage(app: widget.app, pid: widget.id));
+    if (pick == 'monitor') _push(AutoMonitorPage(app: widget.app, pid: widget.id));
     if (pick == 'pause') await _patch({'paused': !paused});
   }
 
@@ -597,10 +607,42 @@ class _AutoProjectPageState extends State<AutoProjectPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
+                _monitorRow(c, agents),
               ]),
             ),
           ),
         ]),
+      ),
+    );
+  }
+
+  Widget _monitorRow(CodeColors c, List<Map<String, dynamic>> agents) {
+    final mon = agents.firstWhere((a) => hcS(a['role']) == 'monitor', orElse: () => <String, dynamic>{});
+    final st = hcS(mon['state']);
+    return Material(
+      color: c.card,
+      borderRadius: HoolaRadius.r(HoolaRadius.card),
+      child: InkWell(
+        borderRadius: HoolaRadius.r(HoolaRadius.card),
+        onTap: () => _push(AutoMonitorPage(app: widget.app, pid: widget.id)),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(borderRadius: HoolaRadius.r(HoolaRadius.card), border: Border.all(color: c.line)),
+          child: Row(children: [
+            HcDot(autoStateColor(c, st)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Monitor', style: HcType.ui(c, 15, weight: FontWeight.w500)),
+                Text(hcS(mon['step']).isNotEmpty ? hcS(mon['step']) : 'Watches the live app after go-live',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 13, color: st == 'needs' ? c.amber : c.ink4)),
+              ]),
+            ),
+            Icon(Icons.chevron_right_rounded, color: c.ink4),
+          ]),
+        ),
       ),
     );
   }
@@ -1598,6 +1640,7 @@ class _AutoIntakePageState extends State<AutoIntakePage> {
   final _ans = TextEditingController();
   bool _busy = false;
   Timer? _t;
+  Timer? _fast;
 
   String get _path => '$_base/${widget.pid}';
 
@@ -1611,6 +1654,7 @@ class _AutoIntakePageState extends State<AutoIntakePage> {
   @override
   void dispose() {
     _t?.cancel();
+    _fast?.cancel();
     _ans.dispose();
     super.dispose();
   }
@@ -1618,11 +1662,26 @@ class _AutoIntakePageState extends State<AutoIntakePage> {
   Future<void> _load() async {
     try {
       final v = await _call(widget.app, 'GET', '$_path/intake');
-      if (mounted) setState(() => _v = v);
+      if (!mounted) return;
+      setState(() => _v = v);
+      _fast?.cancel();                       // a source still being read: look again in 3 s, stop when none is
+      if (autoAnyReading(hcList(v['sources']))) _fast = Timer(const Duration(seconds: 3), _load);
     } catch (e) {
       if (mounted && _v == null) hcSay(context, '$e');
     }
   }
+
+  Future<void> _addSource() async {
+    final added = await hcSheet<bool>(context, (_) => AutoAddSourceSheet(app: widget.app, pid: widget.pid), tall: true);
+    if (added == true && mounted) {
+      hcSay(context, 'Added. The Intake agent is reading it.');
+      await _load();
+    }
+  }
+
+  void _talk() => Navigator.of(context)
+      .push(MaterialPageRoute<void>(builder: (_) => AutoTalkPage(app: widget.app, pid: widget.pid)))
+      .then((_) => _load());
 
   Future<void> _do(Future<Map<String, dynamic>> Function() fn) async {
     setState(() => _busy = true);
@@ -1734,7 +1793,9 @@ class _AutoIntakePageState extends State<AutoIntakePage> {
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), children: [
                       _Bar(of == 0 ? 0 : 100 * got / of, height: 6),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
+                      HcOutlineButton(label: 'Talk to the Intake agent', icon: Icons.mic_none_rounded, onTap: _talk),
+                      const SizedBox(height: 12),
                       if (next.isNotEmpty) _asks(c, next),
                       if (found.isNotEmpty) ...[
                         const SizedBox(height: 16),
@@ -1765,24 +1826,26 @@ class _AutoIntakePageState extends State<AutoIntakePage> {
                         ]),
                       ),
                       const SizedBox(height: 16),
-                      Text('Sources', style: HcType.ui(c, 15, weight: FontWeight.w600)),
+                      Row(children: [
+                        Expanded(child: Text('Sources', style: HcType.ui(c, 15, weight: FontWeight.w600))),
+                        ConstrainedBox(constraints: const BoxConstraints(maxWidth: 170), child: HcOutlineButton(label: 'Add source', icon: Icons.add_rounded, height: 40, size: 14, onTap: _addSource)),
+                      ]),
                       const SizedBox(height: 6),
                       for (final s in hcList(v['sources']))
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(children: [
-                            Expanded(child: Text(hcS(s['name']), maxLines: 1, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 14))),
-                            Text(
-                                hcS(s['status']) == 'reading'
-                                    ? 'Reading'
-                                    : hcS(s['status']) == 'failed'
-                                        ? 'Could not read'
-                                        : '${hcInt(s['answers'])} answers',
-                                style: HcType.ui(c, 13, color: hcS(s['status']) == 'failed' ? c.red : c.ink4)),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(children: [
+                              Expanded(child: Text(hcS(s['name']), maxLines: 1, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 14))),
+                              Text(autoSourceState(s),
+                                  style: HcType.ui(c, 13, color: hcS(s['status']) == 'failed' ? c.red : c.ink4)),
+                            ]),
+                            if (hcS(s['status']) == 'failed' && hcS(s['note']).isNotEmpty)
+                              Text(hcS(s['note']), maxLines: 2, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 12, color: c.ink4)),
                           ]),
                         ),
                       if (hcList(v['sources']).isEmpty)
-                        Text('Add documents, recordings or chats from the web console; the Intake agent reads them.',
+                        Text('Add a document, a recording, a pasted chat, a repo scan or an app; the Intake agent reads it.',
                             style: HcType.ui(c, 13, color: c.ink4, height: 1.4)),
                     ]),
                   ),
@@ -2028,6 +2091,903 @@ class _AutoEnvPageState extends State<AutoEnvPage> {
                   : () => Navigator.of(context)
                       .pushReplacement(MaterialPageRoute<void>(builder: (_) => AutoIntakePage(app: widget.app, pid: widget.pid))),
             ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ================================================================================================== v0.949 add a source
+/// The kinds of source she can add from the phone: key, icon, label, line.
+const List<(String, IconData, String, String)> autoSourceKinds = [
+  ('text', Icons.chat_bubble_outline_rounded, 'Paste email or chat', 'An email, or a WhatsApp or Slack chat'),
+  ('doc', Icons.description_outlined, 'Document', 'PDF, Word, text, Excel, PowerPoint or Markdown'),
+  ('recording', Icons.mic_none_rounded, 'Recording', 'A call or a meeting: mp3, m4a, wav, ogg, webm or mp4'),
+  ('repo', Icons.code_rounded, 'Repo scan', 'Reads the README and the file list of a repo'),
+  ('app', Icons.apps_rounded, 'From an app', 'Jira, Linear, Slack, Notion, Figma and more'),
+];
+const int autoMaxSourceBytes = 12 * 1024 * 1024;
+const List<String> autoDocTypes = ['pdf', 'docx', 'txt', 'xlsx', 'pptx', 'md'];
+const List<String> autoAudioTypes = ['mp3', 'm4a', 'wav', 'ogg', 'webm', 'mp4'];
+
+/// A source row's state in words.
+String autoSourceState(Map<String, dynamic> s) {
+  switch (hcS(s['status'])) {
+    case 'reading':
+      return 'Reading';
+    case 'failed':
+      return 'Could not read';
+    default:
+      final n = hcInt(s['answers']);
+      return n == 1 ? '1 answer' : '$n answers';
+  }
+}
+
+bool autoAnyReading(List<Map<String, dynamic>> sources) => sources.any((s) => hcS(s['status']) == 'reading');
+
+/// "Files up to 12 MB" check: '' when the size is fine, else what to say.
+String autoSizeProblem(int bytes) =>
+    bytes > autoMaxSourceBytes ? 'Files up to 12 MB. This one is ${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB.' : '';
+
+/// The first screen of the add-source sheet: one row per kind.
+class AutoSourceKindList extends StatelessWidget {
+  const AutoSourceKindList({super.key, required this.onPick});
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = CodeColors.of(context);
+    return Container(
+      decoration: _cardBox(c),
+      child: Column(children: [
+        for (var i = 0; i < autoSourceKinds.length; i++)
+          InkWell(
+            onTap: () => onPick(autoSourceKinds[i].$1),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 60),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: c.line))),
+              child: Row(children: [
+                Icon(autoSourceKinds[i].$2, color: c.ink2),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(autoSourceKinds[i].$3, style: HcType.ui(c, 15, weight: FontWeight.w500)),
+                    Text(autoSourceKinds[i].$4, style: HcType.ui(c, 12, color: c.ink4)),
+                  ]),
+                ),
+                Icon(Icons.chevron_right_rounded, color: c.ink4),
+              ]),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+class AutoAddSourceSheet extends StatefulWidget {
+  const AutoAddSourceSheet({super.key, required this.app, required this.pid});
+  final Santosh app;
+  final String pid;
+
+  @override
+  State<AutoAddSourceSheet> createState() => _AutoAddSourceSheetState();
+}
+
+class _AutoAddSourceSheetState extends State<AutoAddSourceSheet> {
+  String _kind = '';
+  bool _busy = false;
+  final _name = TextEditingController();
+  final _text = TextEditingController();
+  final _what = TextEditingController();
+  List<String> _repos = const [];
+  String _repo = '';
+  List<Map<String, dynamic>> _apps = const [];
+  bool _appsLoaded = false;
+  Map<String, dynamic> _app = const {};
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _text.dispose();
+    _what.dispose();
+    super.dispose();
+  }
+
+  Future<void> _post(Map<String, dynamic> body) async {
+    setState(() => _busy = true);
+    try {
+      await _call(widget.app, 'POST', '$_base/${widget.pid}/sources', body: body);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        hcSay(context, '$e');
+      }
+    }
+  }
+
+  Future<void> _pickFile(String kind) async {
+    final res = await FilePicker.platform
+        .pickFiles(withData: true, type: FileType.custom, allowedExtensions: kind == 'doc' ? autoDocTypes : autoAudioTypes);
+    if (!mounted || res == null || res.files.isEmpty) return;
+    final f = res.files.first;
+    final bytes = f.bytes;
+    if (bytes == null) {
+      hcSay(context, 'The file could not be read on this phone. Try another one.');
+      return;
+    }
+    final big = autoSizeProblem(bytes.length);
+    if (big.isNotEmpty) {
+      hcSay(context, big);
+      return;
+    }
+    await _post({'kind': kind, 'name': f.name, 'data': base64Encode(bytes)});
+  }
+
+  Future<void> _loadRepos() async {
+    try {
+      final v = await _call(widget.app, 'GET', '$_base/${widget.pid}/env');
+      if (!mounted) return;
+      setState(() {
+        _repos = [for (final r in hcList(v['repos'])) if (hcS(r['repo']).isNotEmpty) hcS(r['repo'])];
+        if (_repos.isNotEmpty) _repo = _repos.first;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadApps() async {
+    try {
+      final v = await _call(widget.app, 'GET', '/api/auto/apps?use=intake');
+      if (mounted) setState(() => _apps = hcList(v['apps']));
+    } catch (e) {
+      if (mounted) hcSay(context, '$e');
+    } finally {
+      if (mounted) setState(() => _appsLoaded = true);
+    }
+  }
+
+  Future<void> _connect(Map<String, dynamic> a) async {
+    try {
+      final r = await _call(widget.app, 'POST', '/api/auto/apps/${hcS(a['key'])}/connect');
+      final url = hcS(r['url']);
+      if (url.isNotEmpty) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        if (mounted) hcSay(context, 'Sign in, then tap Refresh.');
+      } else if (mounted) {
+        hcSay(context, hcS(r['say']).isNotEmpty ? hcS(r['say']) : 'Already connected.');
+      }
+    } catch (e) {
+      if (mounted) hcSay(context, '$e');
+    }
+  }
+
+  void _choose(String kind) {
+    if (kind == 'doc' || kind == 'recording') {
+      _pickFile(kind);
+      return;
+    }
+    setState(() => _kind = kind);
+    if (kind == 'repo') _loadRepos();
+    if (kind == 'app') _loadApps();
+  }
+
+  Widget _field(CodeColors c, TextEditingController ctl, String hint, {int lines = 1}) => TextField(
+        controller: ctl,
+        minLines: lines,
+        maxLines: lines == 1 ? 1 : 12,
+        style: HcType.ui(c, 15),
+        cursorColor: c.accent,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: HcType.ui(c, 15, color: c.ink5),
+          filled: true,
+          fillColor: c.field,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          enabledBorder: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.tile), borderSide: BorderSide(color: c.line3)),
+          focusedBorder: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.tile), borderSide: BorderSide(color: c.accent)),
+        ),
+      );
+
+  Widget _body(CodeColors c) {
+    switch (_kind) {
+      case 'text':
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _field(c, _name, 'Name, e.g. Email from Dr. Sai'),
+          const SizedBox(height: 10),
+          _field(c, _text, 'Paste the email or chat here', lines: 8),
+          const SizedBox(height: 12),
+          HcCreamButton(
+              label: 'Add source',
+              busy: _busy,
+              onTap: _busy ? null : () => _post({'kind': 'text', 'name': _name.text.trim(), 'text': _text.text})),
+        ]);
+      case 'repo':
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Hoola reads the README and the file list (read only).', style: HcType.ui(c, 13, color: c.ink4, height: 1.4)),
+          const SizedBox(height: 8),
+          for (final r in _repos)
+            InkWell(
+              onTap: () => setState(() => _repo = r),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Row(children: [
+                  Icon(_repo == r ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                      color: _repo == r ? c.accent : c.ink4),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(r, style: HcType.mono(c, 14))),
+                ]),
+              ),
+            ),
+          if (_repos.isEmpty) Text('The project\'s first repository is scanned.', style: HcType.ui(c, 13, color: c.ink4)),
+          const SizedBox(height: 12),
+          HcCreamButton(label: 'Scan the repo', busy: _busy, onTap: _busy ? null : () => _post({'kind': 'repo', 'name': _repo})),
+        ]);
+      case 'app':
+        if (_app.isNotEmpty) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('What should Hoola read from ${hcS(_app['name'])}?', style: HcType.ui(c, 15, weight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            _field(c, _what, hcS(_app['hint'])),
+            const SizedBox(height: 8),
+            Text('One read, read only. What comes back is data for the Intake agent.',
+                style: HcType.ui(c, 12, color: c.ink4, height: 1.4)),
+            const SizedBox(height: 12),
+            HcCreamButton(
+                label: 'Add source',
+                busy: _busy,
+                onTap: _busy ? null : () => _post({'kind': 'app', 'app': hcS(_app['key']), 'what': _what.text.trim()})),
+          ]);
+        }
+        if (!_appsLoaded) return Padding(padding: const EdgeInsets.all(20), child: _loading(c));
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(
+            decoration: _cardBox(c),
+            child: Column(children: [
+              for (var i = 0; i < _apps.length; i++) _appRow(c, _apps[i], i == 0),
+            ]),
+          ),
+          const SizedBox(height: 10),
+          HcOutlineButton(label: 'Refresh', icon: Icons.refresh_rounded, onTap: _loadApps),
+        ]);
+      default:
+        return AutoSourceKindList(onPick: _choose);
+    }
+  }
+
+  Widget _appRow(CodeColors c, Map<String, dynamic> a, bool first) {
+    final st = hcS(a['state']);
+    final ready = st == 'ready';
+    final canLink = st == 'needs_link' || st == 'needs_key';
+    return Container(
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(border: first ? null : Border(top: BorderSide(color: c.line))),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(hcS(a['name']), style: HcType.ui(c, 15, weight: FontWeight.w500)),
+            Text(hcS(a['say']), style: HcType.ui(c, 12, color: ready ? c.green : c.ink4)),
+          ]),
+        ),
+        if (ready)
+          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 120), child: HcOutlineButton(label: 'Use', height: 38, size: 14, onTap: () => setState(() => _app = a)))
+        else if (canLink)
+          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 120), child: HcOutlineButton(label: 'Sign in', height: 38, size: 14, onTap: () => _connect(a))),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = CodeColors.of(context);
+    final title = _kind.isEmpty ? 'Add a source' : autoSourceKinds.firstWhere((k) => k.$1 == _kind).$3;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        HcSheetHead(
+          title: title,
+          sub: _kind.isEmpty ? 'The Intake agent reads it and marks where every answer came from' : '',
+          trailing: _kind.isEmpty
+              ? null
+              : HcIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  label: 'Back',
+                  onTap: () => setState(() {
+                        if (_app.isNotEmpty) {
+                          _app = const {};
+                        } else {
+                          _kind = '';
+                        }
+                      })),
+        ),
+        const SizedBox(height: 12),
+        if (_busy && (_kind.isEmpty)) Padding(padding: const EdgeInsets.all(12), child: _loading(c)),
+        _body(c),
+      ]),
+    );
+  }
+}
+
+// ================================================================================================== v0.949 talk to Intake
+class AutoTalkPage extends StatefulWidget {
+  const AutoTalkPage({super.key, required this.app, required this.pid});
+  final Santosh app;
+  final String pid;
+
+  @override
+  State<AutoTalkPage> createState() => _AutoTalkPageState();
+}
+
+class _AutoTalkPageState extends State<AutoTalkPage> {
+  final _stt = SpeechToText();
+  final _tts = FlutterTts();
+  final _ctl = TextEditingController();
+  final _scroll = ScrollController();
+  final List<Map<String, dynamic>> _msgs = [];
+  bool _sttReady = false, _listening = false, _gotFinal = false, _busy = false, _speak = true, _complete = false;
+  String _heard = '', _note = '';
+  int _answered = 0, _of = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tts.setLanguage('en-IN');
+    _tts.setSpeechRate(.48);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _send('', spoken: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tts.stop();
+    _stt.cancel();
+    _ctl.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _toEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+      });
+
+  Future<void> _send(String said, {required bool spoken}) async {
+    final words = said.trim();
+    setState(() {
+      _busy = true;
+      if (words.isNotEmpty) _msgs.add({'who': 'you', 'text': words});
+      _heard = '';
+    });
+    _toEnd();
+    try {
+      final r = await _call(widget.app, 'POST', '$_base/${widget.pid}/talk', body: {'said': words, 'spoken': spoken});
+      if (!mounted) return;
+      setState(() {
+        _msgs.add({'who': 'agent', 'text': hcS(r['reply']), 'got': hcList(r['got'])});
+        _answered = hcInt(r['answered']);
+        _of = hcInt(r['of']);
+        _complete = r['complete'] == true;
+        if (hcS(r['warn']).isNotEmpty) _note = hcS(r['warn']);
+      });
+      _toEnd();
+      if (_speak && hcS(r['speak']).isNotEmpty) await _tts.speak(hcS(r['speak']));
+    } catch (e) {
+      if (mounted) hcSay(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _mic() async {
+    if (_listening) {
+      await _stt.stop(); // the final result follows
+      return;
+    }
+    await _tts.stop();
+    _sttReady = _sttReady ||
+        await _stt.initialize(
+          onStatus: (s) {
+            if ((s == 'done' || s == 'notListening') && _listening && !_gotFinal) {
+              Future.delayed(const Duration(milliseconds: 400), () {
+                if (!mounted || !_listening || _gotFinal) return;
+                setState(() => _listening = false);
+                if (_heard.trim().isNotEmpty) _send(_heard, spoken: true);
+              });
+            }
+          },
+          onError: (SpeechRecognitionError e) {
+            if (mounted) setState(() => _listening = false);
+          },
+        );
+    if (!mounted) return;
+    if (!_sttReady) {
+      setState(() => _note = 'Microphone permission is needed to talk. Allow the mic for Hoola in the phone settings, or type below.');
+      return;
+    }
+    _gotFinal = false;
+    setState(() {
+      _heard = '';
+      _listening = true;
+      _note = '';
+    });
+    await _stt.listen(
+      localeId: 'en_IN',
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(milliseconds: 3500),
+      partialResults: true,
+      cancelOnError: true,
+      onResult: (r) {
+        if (!mounted) return;
+        setState(() => _heard = r.recognizedWords);
+        if (r.finalResult) {
+          _gotFinal = true;
+          setState(() => _listening = false);
+          if (r.recognizedWords.trim().isNotEmpty) _send(r.recognizedWords, spoken: true);
+        }
+      },
+    );
+  }
+
+  Widget _bubble(CodeColors c, Map<String, dynamic> m) {
+    final me = hcS(m['who']) == 'you';
+    final got = hcList(m['got']);
+    return Align(
+      alignment: me ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 5),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          decoration: me
+              ? BoxDecoration(color: c.raised, borderRadius: HoolaRadius.r(18))
+              : _cardBox(c),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (!me) Text('Intake agent', style: HcType.ui(c, 12, weight: FontWeight.w600, color: c.accentInk)),
+            Text(hcS(m['text']), style: me ? HcType.ui(c, 15, height: 1.4) : HcType.serif(c, 16, height: 1.45)),
+            for (final g in got) ...[
+              const SizedBox(height: 6),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(padding: const EdgeInsets.only(top: 2), child: Icon(Icons.check_rounded, size: 14, color: c.green)),
+                const SizedBox(width: 6),
+                Expanded(
+                    child: Text('${hcS(g['q'])} ${hcS(g['value'])}',
+                        style: HcType.ui(c, 12, color: c.ink3, height: 1.35))),
+              ]),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = CodeColors.of(context);
+    return Scaffold(
+      backgroundColor: c.bg,
+      body: SafeArea(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _Head(
+            title: 'Talk to the Intake agent',
+            sub: _of == 0 ? '' : '$_answered of $_of answered${_complete ? ' · complete' : ''}',
+            trailing: [
+              HcIconButton(
+                  icon: _speak ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  label: _speak ? 'Speak replies: on' : 'Speak replies: off',
+                  onTap: () {
+                    setState(() => _speak = !_speak);
+                    if (!_speak) _tts.stop();
+                  }),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+            child: Text('Spoken answers come in as Found - confirm them on the intake list.',
+                style: HcType.ui(c, 12, color: c.ink4, height: 1.4)),
+          ),
+          Expanded(
+            child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 4, 16, 12), children: [
+              for (final m in _msgs) _bubble(c, m),
+              if (_busy) Padding(padding: const EdgeInsets.all(12), child: _loading(c)),
+            ]),
+          ),
+          if (_note.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Text(_note, style: HcType.ui(c, 13, color: c.amber, height: 1.4)),
+            ),
+          if (_listening || _heard.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Text(_heard.isEmpty ? 'Listening…' : _heard, style: HcType.ui(c, 15, color: c.ink2, height: 1.4)),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Semantics(
+                button: true,
+                label: _listening ? 'Stop listening' : 'Talk',
+                excludeSemantics: true,
+                child: Material(
+                  color: _listening ? c.accent : c.raised,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _busy ? null : _mic,
+                    child: SizedBox(
+                      width: 76,
+                      height: 76,
+                      child: Icon(_listening ? Icons.stop_rounded : Icons.mic_rounded, size: 34, color: _listening ? c.bg : c.ink),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ctl,
+                    minLines: 1,
+                    maxLines: 4,
+                    style: HcType.ui(c, 15),
+                    cursorColor: c.accent,
+                    decoration: InputDecoration(
+                      hintText: 'Or type the answer',
+                      hintStyle: HcType.ui(c, 15, color: c.ink5),
+                      filled: true,
+                      fillColor: c.field,
+                      enabledBorder:
+                          OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.tile), borderSide: BorderSide(color: c.line3)),
+                      focusedBorder: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.tile), borderSide: BorderSide(color: c.accent)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                HcIconButton(
+                    icon: Icons.arrow_upward_rounded,
+                    label: 'Send',
+                    color: c.accent,
+                    onTap: _busy
+                        ? null
+                        : () {
+                            final t = _ctl.text;
+                            if (t.trim().isEmpty) return;
+                            _ctl.clear();
+                            _tts.stop();
+                            _send(t, spoken: false);
+                          }),
+              ]),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ================================================================================================== v0.949 the Monitor
+const List<(int, String)> autoEvery = [(15, '15 min'), (30, '30 min'), (60, '1 hour'), (180, '3 hours'), (360, '6 hours'), (1440, '1 day')];
+
+String autoEveryLabel(int min) => autoEvery.firstWhere((e) => e.$1 == min, orElse: () => (min, '$min min')).$2;
+
+String _alertWord(String s) =>
+    const {'open': 'Needs you', 'fixing': 'Fixing', 'dismissed': 'Dismissed', 'resolved': 'Cleared'}[s] ?? s;
+
+/// One problem the Monitor found. onAct('fix' | 'dismiss' | 'reopen'); onOpen(url) for the fix's pull request.
+class AutoAlertCard extends StatelessWidget {
+  const AutoAlertCard({super.key, required this.alert, required this.onAct, this.onOpen});
+  final Map<String, dynamic> alert;
+  final ValueChanged<String> onAct;
+  final ValueChanged<String>? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = CodeColors.of(context);
+    final st = hcS(alert['state']);
+    final fix = hcM(alert['fix']);
+    final times = hcInt(alert['times']);
+    final edge = st == 'open' ? c.amber : null;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _cardBox(c, edge: edge),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _Badge(_alertWord(st),
+              fill: c.chip, ink: st == 'open' ? c.amber : (st == 'resolved' ? c.green : (st == 'fixing' ? c.accentInk : c.ink4))),
+          const Spacer(),
+          Text(times > 1 ? 'seen $times times' : _at(hcS(alert['first_at'])), style: HcType.ui(c, 12, color: c.ink4)),
+        ]),
+        const SizedBox(height: 8),
+        Text(hcS(alert['title']), style: HcType.ui(c, 15, weight: FontWeight.w600, height: 1.35)),
+        if (hcS(alert['detail']).isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(hcS(alert['detail']), maxLines: 4, overflow: TextOverflow.ellipsis, style: HcType.ui(c, 13, color: c.ink3, height: 1.4)),
+        ],
+        if (st == 'fixing' && hcS(fix['say']).isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(hcS(fix['say']), style: HcType.ui(c, 13, color: c.accentInk)),
+        ],
+        const SizedBox(height: 10),
+        if (st == 'open')
+          Row(children: [
+            Expanded(child: HcCreamButton(label: 'Fix it', height: 44, size: 15, onTap: () => onAct('fix'))),
+            const SizedBox(width: 8),
+            Expanded(child: HcOutlineButton(label: 'Dismiss', height: 44, size: 14, onTap: () => onAct('dismiss'))),
+          ])
+        else if (st == 'fixing' && hcS(fix['url']).isNotEmpty && onOpen != null)
+          HcOutlineButton(label: 'Open pull request', icon: Icons.open_in_new_rounded, height: 42, size: 14, onTap: () => onOpen!(hcS(fix['url'])))
+        else if (st == 'dismissed')
+          HcOutlineButton(label: 'Reopen', height: 42, size: 14, onTap: () => onAct('reopen')),
+      ]),
+    );
+  }
+}
+
+class AutoMonitorPage extends StatefulWidget {
+  const AutoMonitorPage({super.key, required this.app, required this.pid});
+  final Santosh app;
+  final String pid;
+
+  @override
+  State<AutoMonitorPage> createState() => _AutoMonitorPageState();
+}
+
+class _AutoMonitorPageState extends State<AutoMonitorPage> {
+  Map<String, dynamic>? _v;
+  bool _seeded = false, _busy = false, _on = false;
+  final _url = TextEditingController();
+  int _every = 60;
+  final List<(String, TextEditingController)> _feeds = [];
+  Timer? _t;
+
+  String get _path => '$_base/${widget.pid}';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _t = Timer.periodic(const Duration(seconds: 20), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    _url.dispose();
+    for (final f in _feeds) {
+      f.$2.dispose();
+    }
+    super.dispose();
+  }
+
+  void _seed(Map<String, dynamic> v) {
+    _on = v['on'] == true;
+    _url.text = hcS(v['url']);
+    _every = hcInt(v['every_min']) == 0 ? 60 : hcInt(v['every_min']);
+    for (final f in _feeds) {
+      f.$2.dispose();
+    }
+    _feeds
+      ..clear()
+      ..addAll([for (final f in hcList(v['feeds'])) (hcS(f['app']), TextEditingController(text: hcS(f['what'])))]);
+    _seeded = true;
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await _call(widget.app, 'GET', '$_path/watch');
+      if (!mounted) return;
+      setState(() {
+        _v = v;
+        if (!_seeded) _seed(v);
+      });
+    } catch (e) {
+      if (mounted && _v == null) hcSay(context, '$e');
+    }
+  }
+
+  Future<void> _run(Future<Map<String, dynamic>> Function() fn, {String done = ''}) async {
+    setState(() => _busy = true);
+    try {
+      final v = await fn();
+      if (!mounted) return;
+      setState(() => _v = v);
+      if (done.isNotEmpty) hcSay(context, done);
+    } catch (e) {
+      if (mounted) hcSay(context, '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _save() => _run(
+      () => _call(widget.app, 'PUT', '$_path/watch', body: {
+            'url': _url.text.trim(),
+            'every_min': _every,
+            'feeds': [for (final f in _feeds) {'app': f.$1, 'what': f.$2.text.trim()}],
+            'on': _on,
+          }),
+      done: 'Saved.');
+
+  Future<void> _check() => _run(() => _call(widget.app, 'POST', '$_path/watch/check'));
+
+  Future<void> _act(Map<String, dynamic> a, String what) async {
+    if (what == 'fix') {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (d) {
+          final c = CodeColors.of(d);
+          return AlertDialog(
+            backgroundColor: c.sheet,
+            title: Text('Start a fix?', style: HcType.ui(c, 18, weight: FontWeight.w600)),
+            content: Text('Hoola Code will open a pull request against your main branch. You merge it yourself.',
+                style: HcType.ui(c, 15, color: c.ink2, height: 1.4)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(d, false), child: Text('Not now', style: HcType.ui(c, 15, color: c.ink3))),
+              TextButton(onPressed: () => Navigator.pop(d, true), child: Text('Start the fix', style: HcType.ui(c, 15, color: c.accent))),
+            ],
+          );
+        },
+      );
+      if (ok != true || !mounted) return;
+    }
+    await _run(() => _call(widget.app, 'POST', '$_path/alerts/${hcS(a['id'])}/$what'),
+        done: what == 'fix' ? 'Fix started in Hoola Code.' : '');
+  }
+
+  Future<void> _pickApp(int i) async {
+    final apps = hcList(_v?['apps']);
+    final key = await hcSheet<String>(context, (sheet) {
+      final c = CodeColors.of(sheet);
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        const HcSheetHead(title: 'Watch which app?'),
+        for (final a in apps)
+          ListTile(
+            minVerticalPadding: 12,
+            title: Text(hcS(a['name']), style: HcType.ui(c, 16)),
+            subtitle: Text(hcS(a['say']), style: HcType.ui(c, 12, color: hcS(a['state']) == 'ready' ? c.green : c.ink4)),
+            onTap: () => Navigator.pop(sheet, hcS(a['key'])),
+          ),
+        const SizedBox(height: 12),
+      ]);
+    });
+    if (key == null || !mounted) return;
+    setState(() {
+      if (i < 0) {
+        _feeds.add((key, TextEditingController()));
+      } else {
+        _feeds[i] = (key, _feeds[i].$2);
+      }
+    });
+  }
+
+  String _appName(String key) {
+    final a = hcList(_v?['apps']).firstWhere((x) => hcS(x['key']) == key, orElse: () => <String, dynamic>{});
+    return hcS(a['name']).isNotEmpty ? hcS(a['name']) : key;
+  }
+
+  String _hint(String key) {
+    final a = hcList(_v?['apps']).firstWhere((x) => hcS(x['key']) == key, orElse: () => <String, dynamic>{});
+    return hcS(a['hint']).isNotEmpty ? hcS(a['hint']) : 'What to read';
+  }
+
+  Widget _input(CodeColors c, TextEditingController ctl, String hint) => TextField(
+        controller: ctl,
+        style: HcType.ui(c, 15),
+        cursorColor: c.accent,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: HcType.ui(c, 15, color: c.ink5),
+          filled: true,
+          fillColor: c.field,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          enabledBorder: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.tile), borderSide: BorderSide(color: c.line3)),
+          focusedBorder: OutlineInputBorder(borderRadius: HoolaRadius.r(HoolaRadius.tile), borderSide: BorderSide(color: c.accent)),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final c = CodeColors.of(context);
+    final v = _v;
+    final alerts = hcList(v?['alerts']);
+    return Scaffold(
+      backgroundColor: c.bg,
+      body: SafeArea(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _Head(
+            title: 'Monitor',
+            sub: v == null ? '' : (hcInt(v['open']) > 0 ? '${hcInt(v['open'])} need you' : (v['live'] == true ? 'Live project' : 'Starts after go-live')),
+          ),
+          Expanded(
+            child: v == null
+                ? _loading(c)
+                : RefreshIndicator(
+                    color: c.accent,
+                    onRefresh: _load,
+                    child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), children: [
+                      Text(hcS(v['says']), style: HcType.ui(c, 14, color: c.ink3, height: 1.45)),
+                      const SizedBox(height: 12),
+                      if (alerts.isNotEmpty) ...[
+                        Text('Problems', style: HcType.ui(c, 15, weight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        for (final a in alerts) ...[
+                          AutoAlertCard(
+                            alert: a,
+                            onAct: (w) => _act(a, w),
+                            onOpen: (u) => launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        const SizedBox(height: 8),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: _cardBox(c),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          Row(children: [
+                            Expanded(child: Text('Watch this project', style: HcType.ui(c, 15, weight: FontWeight.w600))),
+                            HcSwitch(value: _on, label: 'Watch this project', onChanged: (x) => setState(() => _on = x)),
+                          ]),
+                          const SizedBox(height: 8),
+                          Text('The live address', style: HcType.ui(c, 13, color: c.ink4)),
+                          const SizedBox(height: 4),
+                          _input(c, _url, 'https://shop.example.com'),
+                          const SizedBox(height: 12),
+                          Text('Check every', style: HcType.ui(c, 13, color: c.ink4)),
+                          const SizedBox(height: 6),
+                          Wrap(spacing: 6, runSpacing: 6, children: [
+                            for (final e in autoEvery)
+                              HcFilterChip(label: e.$2, on: _every == e.$1, outlined: true, onTap: () => setState(() => _every = e.$1)),
+                          ]),
+                          const SizedBox(height: 12),
+                          Text('Feeds (read only, up to 5)', style: HcType.ui(c, 13, color: c.ink4)),
+                          const SizedBox(height: 6),
+                          for (var i = 0; i < _feeds.length; i++)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(children: [
+                                ConstrainedBox(constraints: const BoxConstraints(maxWidth: 130), child: HcOutlineButton(label: _appName(_feeds[i].$1), height: 44, size: 14, onTap: () => _pickApp(i))),
+                                const SizedBox(width: 8),
+                                Expanded(child: _input(c, _feeds[i].$2, _hint(_feeds[i].$1))),
+                                HcIconButton(
+                                    icon: Icons.delete_outline_rounded,
+                                    label: 'Remove feed',
+                                    onTap: () {
+                                      final gone = _feeds.removeAt(i);
+                                      setState(() {});
+                                      WidgetsBinding.instance.addPostFrameCallback((_) => gone.$2.dispose());
+                                    }),
+                              ]),
+                            ),
+                          if (_feeds.length < 5)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: HcOutlineButton(label: 'Add a feed', icon: Icons.add_rounded, height: 42, size: 14, onTap: () => _pickApp(-1)),
+                            ),
+                        ]),
+                      ),
+                      const SizedBox(height: 12),
+                      if (hcS(v['last_say']).isNotEmpty)
+                        Text('Last check ${_at(hcS(v['last_at']))}: ${hcS(v['last_say'])}',
+                            style: HcType.ui(c, 13, color: c.ink4, height: 1.4)),
+                      if (v['repos'] is List && (v['repos'] as List).isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text('CI on the main branch of ${(v['repos'] as List).join(', ')} is read too.',
+                              style: HcType.ui(c, 13, color: c.ink4, height: 1.4)),
+                        ),
+                    ]),
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(children: [
+              Expanded(child: HcOutlineButton(label: 'Check now', icon: Icons.refresh_rounded, onTap: _busy ? null : _check)),
+              const SizedBox(width: 8),
+              Expanded(child: HcCreamButton(label: 'Save', height: 46, size: 15, busy: _busy, onTap: _busy ? null : _save)),
+            ]),
           ),
         ]),
       ),
