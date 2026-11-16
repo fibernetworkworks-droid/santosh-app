@@ -16,6 +16,37 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 
+APP_PACKAGE = "com.newtika.santosh"
+
+
+def _android(request: Any) -> bool:
+    return "android" in str(request.headers.get("user-agent") or "").lower()
+
+
+def _done_url(request: Any, ok: bool, acc: str) -> str:
+    from urllib.parse import urlencode
+    from ..config import get_settings
+    base = (get_settings().public_base_url or "").strip().rstrip("/") or str(request.base_url).rstrip("/")
+    return f"{base}/api/devsahayak/github/done?" + urlencode({"ok": 1 if ok else 0, "acc": acc})
+
+
+def github_intent(ok: bool, fallback: str = "") -> str:
+    """v0.956 santosh://github?ok=1 as an Android intent link: Chrome opens an app from a redirect or a tap only this
+    way (a page script jumping to santosh:// on a timer is blocked), and with no app it opens the fallback page."""
+    from urllib.parse import quote
+    fb = f"S.browser_fallback_url={quote(fallback, safe='')};" if fallback else ""
+    return f"intent://github?ok={1 if ok else 0}#Intent;scheme=santosh;package={APP_PACKAGE};{fb}end"
+
+
+def github_page(ok: bool, acc: str, why: str, android: bool) -> str:
+    from ..bazar import donepage
+    head = "GitHub connected" if ok else "Could not connect"
+    line = (f"Hoola can now work on the repositories you chose{(' on ' + acc) if acc else ''}. Tap below to go back to "
+            "Hoola.") if ok else (why or "Please try again from the app.")
+    link = github_intent(ok) if android else "santosh://github?ok=" + ("1" if ok else "0")
+    return donepage.render(ok, head, line, link, "GitHub")
+
+
 def make_public_router() -> APIRouter:
     """Phase 5: the two doors that are NOT behind her sign-in, each with its own secret in the address or the header.
     - GET  /api/devsahayak/shared/{token}: the read-only view of ONE session she shared (random token, 7 days).
@@ -116,21 +147,26 @@ def make_public_router() -> APIRouter:
         return await _vps(V.report, _bearer(request), str(b.get("cmd_id") or ""), int(b.get("exit_code") or 0), str(b.get("output") or ""))
 
     @p.get("/github/installed")
-    async def github_installed(installation_id: int = 0, setup_action: str = "", state: str = "", code: str = ""):
-        """v0.942 the GitHub App's Setup URL: GitHub sends her here after she installs / picks repos. Binds the
-        installation to her tenant (from the signed state), then shows a short 'return to the app' page."""
+    async def github_installed(request: Request, installation_id: int = 0, setup_action: str = "", state: str = "",
+                               code: str = ""):
+        """v0.942 the GitHub App's Setup URL, v0.956 also its sign-in callback: binds the installation to her tenant
+        (only one GitHub's sign-in shows is hers, when the App has a client id + secret), then sends her back."""
+        from fastapi.responses import RedirectResponse
         from . import service as S
-        out = await asyncio.to_thread(S.github_installed, int(installation_id or 0), state, setup_action)
+        out = await asyncio.to_thread(S.github_installed, int(installation_id or 0), state, setup_action, code)
+        if out.get("redirect"):                 # v0.956 on to GitHub's sign-in / install page, then back here
+            return RedirectResponse(str(out["redirect"]), status_code=302)
         ok = bool(out.get("ok"))
-        acc = out.get("account") or ""
-        # v0.953 one page for every sign-in (bazar/donepage): the phone goes straight back into the Hoola app,
-        # a console tab is told and closes - she never has to find her way back
-        from ..bazar import donepage
-        head = "GitHub connected" if ok else "Could not connect"
-        line = (f"Hoola can now work on the repositories you chose{(' on ' + acc) if acc else ''}. "
-                "Taking you back to Hoola.") if ok else (out.get("why") or "Please try again from the app.")
-        html = donepage.render(ok, head, line, "santosh://github?ok=" + ("1" if ok else "0"), "GitHub")
-        return Response(content=html, media_type="text/html; charset=utf-8")
+        acc = str(out.get("account") or "")
+        if ok and _android(request):            # v0.956 straight back into the app: an intent link in the same redirect
+            return RedirectResponse(github_intent(True, _done_url(request, True, acc)), status_code=302)
+        return Response(content=github_page(ok, acc, str(out.get("why") or ""), _android(request)),
+                        media_type="text/html; charset=utf-8")
+
+    @p.get("/github/done")
+    async def github_done(request: Request, ok: int = 0, acc: str = ""):
+        """v0.956 the page the intent link falls back to (the app could not be opened by itself): one tap back."""
+        return Response(content=github_page(bool(ok), acc[:80], "", _android(request)), media_type="text/html; charset=utf-8")
     return p
 
 

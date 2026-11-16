@@ -143,6 +143,81 @@ def install_url(state: str) -> str:
     return f"{base}?state={state}" if state else base
 
 
+# ------------------------------------------------------------------ v0.956 sign in with GitHub (one tap, like Claude Code)
+# The install page alone cannot say WHOSE install it is: an App already installed never sends the signed state back,
+# and an installation id in a URL proves nothing. So Connect signs her in on GitHub (the App's own user authorization;
+# when she has said yes once it passes straight through) and Hoola asks GitHub which installs of THIS App she can
+# reach. Only an install on that list is bound to her. Nothing is kept from the sign-in: the user token is used once.
+_WEB = "https://github.com"
+
+
+def oauth_ready() -> bool:
+    st = get_settings()
+    return bool(configured() and (getattr(st, "github_app_client_id", "") or "").strip()
+                and (getattr(st, "github_app_client_secret", "") or "").strip())
+
+
+def callback_url() -> str:
+    base = (getattr(get_settings(), "public_base_url", "") or "").strip().rstrip("/")
+    return f"{base}/api/devsahayak/github/installed" if base else ""
+
+
+def authorize_url(state: str) -> str:
+    from urllib.parse import urlencode
+    q = {"client_id": (get_settings().github_app_client_id or "").strip(), "state": state}
+    cb = callback_url()
+    if cb:
+        q["redirect_uri"] = cb
+    return f"{_WEB}/login/oauth/authorize?{urlencode(q)}"
+
+
+def user_token(code: str) -> str:
+    """Trade the one-time code for a user token (used at once, never stored)."""
+    st = get_settings()
+    body = {"client_id": (st.github_app_client_id or "").strip(),
+            "client_secret": (st.github_app_client_secret or "").strip(), "code": code}
+    cb = callback_url()
+    if cb:
+        body["redirect_uri"] = cb
+    req = urllib.request.Request(_WEB + "/login/oauth/access_token", data=json.dumps(body).encode(), method="POST",
+                                 headers={"Accept": "application/json", "Content-Type": "application/json",
+                                          "User-Agent": "Hoola-Code"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        out = json.loads(r.read().decode() or "{}")
+    tok = str(out.get("access_token") or "")
+    if not tok:
+        raise RuntimeError(str(out.get("error_description") or out.get("error") or "GitHub did not sign you in"))
+    return tok
+
+
+def user_installations(token: str) -> list[dict[str, Any]]:
+    """The installs of THIS App the signed-in user can reach (GET /user/installations), newest first."""
+    app_id = str((get_settings().github_app_id or "").strip())
+    out = _req("GET", "/user/installations?per_page=100", token)
+    rows = out.get("installations") if isinstance(out, dict) else None
+    keep = [i for i in (rows or []) if not app_id or str(i.get("app_id") or "") == app_id]
+    return sorted(keep, key=lambda i: str(i.get("updated_at") or i.get("created_at") or ""), reverse=True)
+
+
+def user_login(token: str) -> str:
+    try:
+        return str((_req("GET", "/user", token) or {}).get("login") or "")
+    except Exception:
+        return ""
+
+
+def pick_install(rows: list[dict[str, Any]], login: str, wanted: int = 0) -> dict[str, Any] | None:
+    """The install to bind: the one GitHub just sent (if it is on her list), else her own account's, else the newest."""
+    if wanted:
+        for i in rows:
+            if int(i.get("id") or 0) == int(wanted):
+                return i
+    for i in rows:
+        if login and str((i.get("account") or {}).get("login") or "").lower() == login.lower():
+            return i
+    return rows[0] if rows else None
+
+
 # ------------------------------------------------------------------ the signed state (maps the callback back to her)
 def _secret() -> bytes:
     st = get_settings()

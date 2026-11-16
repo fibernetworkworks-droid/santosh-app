@@ -134,6 +134,8 @@ jobs:
           GH_APP_ID_IN: ${{ secrets.HOOLA_GITHUB_APP_ID }}       # v0.943 github_app: Hoola Code's GitHub App, from repo secrets
           GH_APP_SLUG_IN: ${{ secrets.HOOLA_GITHUB_APP_SLUG }}
           GH_APP_KEY_IN: ${{ secrets.HOOLA_GITHUB_APP_KEY }}     # the whole .pem text; sent base64 on one line, masked
+          GH_APP_CID_IN: ${{ secrets.HOOLA_GITHUB_APP_CLIENT_ID }}      # v0.956 optional: sign-in Connect (one tap)
+          GH_APP_CSEC_IN: ${{ secrets.HOOLA_GITHUB_APP_CLIENT_SECRET }}
         run: |
           GH_APP_KEY_B64=""
           if [ "$JOB" = "github_app" ]; then
@@ -142,6 +144,8 @@ jobs:
             case "$GH_APP_KEY_IN" in *"-----BEGIN"*"PRIVATE KEY-----"*) : ;; *) echo "::error::secret HOOLA_GITHUB_APP_KEY is not a .pem private key (paste the whole file text)"; exit 1 ;; esac
             GH_APP_KEY_B64=$(printf '%s\n' "$GH_APP_KEY_IN" | tr -d '\r' | base64 -w0)
             echo "::add-mask::$GH_APP_KEY_B64"
+            case "$GH_APP_CID_IN" in *[!A-Za-z0-9._-]*) echo "::error::secret HOOLA_GITHUB_APP_CLIENT_ID has odd characters"; exit 1 ;; esac
+            case "$GH_APP_CSEC_IN" in *[!A-Za-z0-9]*) echo "::error::secret HOOLA_GITHUB_APP_CLIENT_SECRET has odd characters (copy it again)"; exit 1 ;; esac
           fi
           # inputs go through env + strict checks, never straight into the script (no injection)
           case "$LINES_IN" in ''|*[!0-9]*) N=300 ;; *) N=$LINES_IN ;; esac
@@ -761,10 +765,12 @@ jobs:
                 echo "setv GITHUB_APP_ID '$GH_APP_ID_IN'"
                 echo "setv GITHUB_APP_SLUG '$GH_APP_SLUG_IN'"
                 echo "setv GITHUB_APP_PRIVATE_KEY '$GH_APP_KEY_B64'"
-                echo 'for k in GITHUB_APP_ID GITHUB_APP_SLUG GITHUB_APP_PRIVATE_KEY; do if grep -qE "^$k=.+" $CORE/.env; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
+                [ -n "$GH_APP_CID_IN" ] && echo "setv GITHUB_APP_CLIENT_ID '$GH_APP_CID_IN'"
+                [ -n "$GH_APP_CSEC_IN" ] && echo "setv GITHUB_APP_CLIENT_SECRET '$GH_APP_CSEC_IN'"
+                echo 'for k in GITHUB_APP_ID GITHUB_APP_SLUG GITHUB_APP_PRIVATE_KEY GITHUB_APP_CLIENT_ID GITHUB_APP_CLIENT_SECRET; do if grep -qE "^$k=.+" $CORE/.env; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
-                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.devsahayak import ghapp; print(\"== GitHub App check:\", ghapp.check())"' ;;
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.devsahayak import ghapp; print(\"== GitHub App check:\", ghapp.check()); print(\"== one-tap sign-in ready:\", ghapp.oauth_ready(), ghapp.callback_url())"' ;;
               zoo_check)
                 # v0.463.1 ZOO kie live proof: catalog counts per gateway, key presence, then ONE REAL cheap
                 # kie image (nano-banana-2-lite, a few credits of the owner's kie balance) on a throw-away
