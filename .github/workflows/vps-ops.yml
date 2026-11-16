@@ -92,6 +92,7 @@ on:
           - zoo_key
           - zoo_check
           - engine_attach
+          - github_app
           - coder_flip
           - docs7_flip
       lines:
@@ -130,7 +131,18 @@ jobs:
           LINES_IN: ${{ inputs.lines }}
           ENGINE_KEY_IN: ${{ secrets.HOOLA_ENGINE_KEY }}   # v0.462.x engine_attach: the SAME repo secret the Interactive lab puts in Modal; interpolated runner-side, masked by GitHub
           ZOO_KIE_KEY_IN: ${{ secrets.ZOO_KIE_KEY }}   # v0.463.1 zoo_key: runner-side interpolation (the pc_pair pattern); GitHub masks the value in every log
+          GH_APP_ID_IN: ${{ secrets.HOOLA_GITHUB_APP_ID }}       # v0.943 github_app: Hoola Code's GitHub App, from repo secrets
+          GH_APP_SLUG_IN: ${{ secrets.HOOLA_GITHUB_APP_SLUG }}
+          GH_APP_KEY_IN: ${{ secrets.HOOLA_GITHUB_APP_KEY }}     # the whole .pem text; sent base64 on one line, masked
         run: |
+          GH_APP_KEY_B64=""
+          if [ "$JOB" = "github_app" ]; then
+            case "$GH_APP_ID_IN" in ''|*[!0-9]*) echo "::error::secret HOOLA_GITHUB_APP_ID missing or not a number"; exit 1 ;; esac
+            case "$GH_APP_SLUG_IN" in ''|*[!a-z0-9-]*) echo "::error::secret HOOLA_GITHUB_APP_SLUG missing or not a slug (a-z 0-9 -)"; exit 1 ;; esac
+            case "$GH_APP_KEY_IN" in *"-----BEGIN"*"PRIVATE KEY-----"*) : ;; *) echo "::error::secret HOOLA_GITHUB_APP_KEY is not a .pem private key (paste the whole file text)"; exit 1 ;; esac
+            GH_APP_KEY_B64=$(printf '%s\n' "$GH_APP_KEY_IN" | tr -d '\r' | base64 -w0)
+            echo "::add-mask::$GH_APP_KEY_B64"
+          fi
           # inputs go through env + strict checks, never straight into the script (no injection)
           case "$LINES_IN" in ''|*[!0-9]*) N=300 ;; *) N=$LINES_IN ;; esac
           [ "$N" -lt 50 ] && N=50; [ "$N" -gt 2000 ] && N=2000
@@ -739,6 +751,20 @@ jobs:
                 echo 'grep -E "^AVATAR_ENGINE_URL=" $CORE/.env'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }' ;;
+              github_app)
+                # v0.943 HOOLA CODE'S GITHUB APP: write GITHUB_APP_ID / GITHUB_APP_SLUG / GITHUB_APP_PRIVATE_KEY into $CORE/.env
+                # from the repo secrets HOOLA_GITHUB_APP_ID / _SLUG / _KEY (the key base64 on one line, masked in every log; ghapp
+                # decodes it). Idempotent: old lines replaced. Then GitHub itself is asked whether the id + key work (GET /app).
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'setv(){ if grep -q "^$1=" $CORE/.env; then sed -i "s#^$1=.*#$1=$2#" $CORE/.env; else printf "%s=%s\\n" "$1" "$2" >> $CORE/.env; fi; }'
+                echo "setv GITHUB_APP_ID '$GH_APP_ID_IN'"
+                echo "setv GITHUB_APP_SLUG '$GH_APP_SLUG_IN'"
+                echo "setv GITHUB_APP_PRIVATE_KEY '$GH_APP_KEY_B64'"
+                echo 'for k in GITHUB_APP_ID GITHUB_APP_SLUG GITHUB_APP_PRIVATE_KEY; do if grep -qE "^$k=.+" $CORE/.env; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.devsahayak import ghapp; print(\"== GitHub App check:\", ghapp.check())"' ;;
               zoo_check)
                 # v0.463.1 ZOO kie live proof: catalog counts per gateway, key presence, then ONE REAL cheap
                 # kie image (nano-banana-2-lite, a few credits of the owner's kie balance) on a throw-away

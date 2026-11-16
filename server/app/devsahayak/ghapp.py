@@ -42,7 +42,31 @@ def _private_key() -> str:
     # the .env often carries the PEM with literal \n; make it real newlines
     if "\\n" in raw and "-----BEGIN" in raw:
         raw = raw.replace("\\n", "\n")
+    if "-----BEGIN" not in raw:
+        # v0.943 the vps-ops github_app job writes the PEM base64-encoded on one line (no awk, no newlines in .env)
+        try:
+            import base64
+            dec = base64.b64decode(raw, validate=False).decode("utf-8", errors="strict")
+            if "-----BEGIN" in dec:
+                raw = dec.strip()
+        except Exception:
+            pass
     return raw
+
+
+def check() -> dict[str, Any]:
+    """Ask GitHub whether the App id + private key work (GET /app with the App JWT). Names only, never the key."""
+    if not configured():
+        return {"ok": False, "why": "GITHUB_APP_ID or GITHUB_APP_PRIVATE_KEY is missing or unreadable"}
+    try:
+        app = _req("GET", "/app", _app_jwt(), app_jwt=True)
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "why": f"GitHub said {e.code}: the App id and the key do not match, or the key is wrong"}
+    except Exception as e:
+        return {"ok": False, "why": f"could not reach GitHub: {str(e)[:120]}"}
+    got_slug = str(app.get("slug") or "")
+    return {"ok": True, "app": got_slug, "slug_matches": (not slug()) or got_slug == slug(),
+            "installs": app.get("installations_count")}
 
 
 def slug() -> str:

@@ -106,3 +106,18 @@ def test_version():
     main = (ROOT / "server/app/main.py").read_text()
     assert 'APP_VERSION = "0.943.0"' in main
     assert "version: 0.943.0+942" in (ROOT / "pubspec.yaml").read_text()
+
+
+def test_a_base64_key_from_the_vps_ops_job_is_read_and_the_job_exists(env, monkeypatch):
+    """v0.943: the owner cannot SSH from her phone, so vps-ops `github_app` writes the key base64 on one line."""
+    import base64
+    pem = _key()
+    monkeypatch.setenv("GITHUB_APP_ID", "42")
+    monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", base64.b64encode(pem.encode()).decode())
+    from app.config import get_settings
+    get_settings.cache_clear()  # type: ignore[attr-defined]
+    from app.devsahayak import ghapp
+    assert ghapp._private_key() == pem.strip() and ghapp.configured() and ghapp._app_jwt()
+    wf = (ROOT / ".github/workflows/vps-ops.yml").read_text()
+    assert "- github_app" in wf and "HOOLA_GITHUB_APP_KEY" in wf and '::add-mask::$GH_APP_KEY_B64' in wf
+    assert "ghapp.check()" in wf
