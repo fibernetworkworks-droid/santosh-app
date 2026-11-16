@@ -35,7 +35,7 @@ def test_lines_grow_in_and_the_widget_carries_on():
     land = SESSION[SESSION.index("Widget _land("):SESSION.index("final Map<String, String> _keyOf")]
     assert "AnimatedSize(" in land and "tail: tail," in land
     assert "key: ValueKey('land${_keyOf[i] ?? i}')" in land
-    assert "_keyOf['n$newest'] = _keyOf.remove('live') ?? 'live';" in SESSION
+    assert "_keyOf[key] = _keyOf.remove('live') ?? 'live';" in SESSION   # v0.964 the message carrying the words
     assert "_keyOf['live'] = 'live${++_liveSeq}';" in SESSION
 
 

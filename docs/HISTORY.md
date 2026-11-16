@@ -6033,3 +6033,20 @@ holds a figure to a tool's result and flags an invented one; files + not_done; t
 over; her pick as pin; sheet states / restart / sweep / package shape; `run_turn` runs on the Box model; the route; the
 Claude switch guarded. NOT VERIFIED: no real model answered through the Box here (no key in this sandbox) - the first
 real turns after `pipeline_on` on her server are the test; `pipeline_sheets` shows each one.
+
+## v0.964.0 HOOLA CODE IN ORDER (owner, her screen recording 16 Nov 21:55: "CHECK VIDEO IN CHAT SECTION A FINAL CHAT APPEAR FIRST THEN A FEED APPEARS")
+
+What the recording showed (frames at 2 fps): she sent "NOW READ THE NEURAL SECTION", the long "I've read the Neural
+section end to end. Here's the full picture: ..." message streamed in live (v0.962 works), and the moment the round
+ended the closing answer ("Read the Neural section in depth ... What do you want to change or add?") + "Worked for 41s"
+appeared whole at the bottom while the long message above it started landing again from its first word for ~15 s.
+
+ROOT CAUSE `code_session.dart` `_load`: when live words become a saved message, the count of words already shown moved
+from 'live' to the NEWEST saved message. One check brought two new messages (the long one + the closing answer), so the
+closing answer got the count (more words than it has = shown whole at once) and the long message had none (from 0).
+
+FIX: (1) the count goes to the new message whose text starts with the live words (fallback the oldest new one);
+(2) while building the thread, once a message is still landing, every newer step after it (the next message, step
+rows, the round line) is not drawn yet, and the question / ready / PR cards wait too - the thread lands top to bottom;
+not applied while she has scrolled up (an off-screen landing does not move, nothing should stay hidden). Phone only.
+Tests `test_v0964_hoola_code_order.py` (3). NOT VERIFIED on her phone.

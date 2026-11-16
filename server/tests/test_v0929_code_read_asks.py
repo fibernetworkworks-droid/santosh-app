@@ -41,5 +41,5 @@ def test_codelog_job():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.963.0"' in main
-    assert "version: 0.963.0+962" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.964.0"' in main
+    assert "version: 0.964.0+963" in (ROOT / "pubspec.yaml").read_text()

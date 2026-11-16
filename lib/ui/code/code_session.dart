@@ -272,11 +272,16 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         if (writing.isNotEmpty) _landed['live'] = _words(writing).length;   // opened mid-sentence: carry on from here
       } else {
         // v0.944 the words being written become a message: it carries on from the word it had reached
-        final says = steps.where((x) => cs(x['k']) == 'say').toList();
-        final newest = says.isEmpty ? -1 : _stepN(says.last, -1);
-        if (newest > _lastSayN && _landed.containsKey('live')) {
-          _landed['n$newest'] = _landed.remove('live')!;
-          _keyOf['n$newest'] = _keyOf.remove('live') ?? 'live';   // v0.960 the same widget carries on
+        // v0.964 one check can bring TWO new messages (the long one it was writing live + the closing answer): the
+        // words already shown belong to the message that carries those words, never simply to the newest one (the
+        // closing answer popped up whole and the long message above it started again from its first word)
+        final fresh = steps.where((x) => cs(x['k']) == 'say' && _stepN(x, -1) > _lastSayN).toList();
+        if (fresh.isNotEmpty && _landed.containsKey('live')) {
+          final head = _liveHead.trim();
+          final to = fresh.firstWhere((x) => head.isNotEmpty && cs(x['text']).trim().startsWith(head), orElse: () => fresh.first);
+          final key = 'n${_stepN(to, -1)}';
+          _landed[key] = _landed.remove('live')!;
+          _keyOf[key] = _keyOf.remove('live') ?? 'live';   // v0.960 the same widget carries on
         }
         if (writing.isNotEmpty && (_liveHead.isEmpty || !writing.startsWith(_liveHead))) {
           _landed['live'] = 0;                                     // a new reply
@@ -717,6 +722,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       si++;
       final k = cs(s['k']);
       final sn0 = _stepN(s, si);
+      // v0.964 everything after a message that is still landing waits for it (in order, like Claude Code): a newer
+      // message, the step rows and the "Worked for" line no longer show before the words above them have landed
+      if (_landBusy && _openN > -2 && sn0 > _openN && !_away) break;
       final u = undone.any((r) => sn0 > r.$1 && sn0 < r.$2);
       if (u != dimOn) {
         flush(last: false);
@@ -799,7 +807,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     // v0.940 what she just sent shows at once, before the server has written it down
     if (_sent != null && !_sentSeen) out.add(_herWaiting(c, _sent!, 'Sending…'));
     if (_sentSeen) _sent = null;
-    if (!running) {
+    if (!running && !(_landBusy && !_away)) {
+      // v0.964 the question / PR / ready cards wait until the closing words above them have landed
       // v0.944 older sessions keep their closing answer only on the session: shown when no message carries it
       final ex = cs(t['explain']).trim();
       final lastText = lastSay < 0 ? '' : cs(steps[lastSay]['text']).trim();

@@ -78,7 +78,7 @@ def test_the_engine_makes_the_closing_answer_a_message_and_marks_the_round():
 def test_the_phone_lands_by_step_number_and_asks_only_for_new_steps():
     f = (ROOT / "lib/ui/code/code_session.dart").read_text()
     assert "{'since': '$_lastN'}" in f and "_load(full: true)" in f
-    assert "_landed['n$newest'] = _landed.remove('live')!" in f        # the words being written hand over to the message
+    assert "_landed[key] = _landed.remove('live')!" in f             # v0.964 the words being written hand over to the message carrying them
     assert "k == 'round'" in f and "_roundLine(" in f
     assert "s['final'] == true && question.isNotEmpty" in f          # a question is not drawn twice
     assert "!hasFinal && ex.isNotEmpty" in f                          # older sessions still show their answer
@@ -87,5 +87,5 @@ def test_the_phone_lands_by_step_number_and_asks_only_for_new_steps():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.963.0"' in main
-    assert "version: 0.963.0+962" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.964.0"' in main
+    assert "version: 0.964.0+963" in (ROOT / "pubspec.yaml").read_text()
