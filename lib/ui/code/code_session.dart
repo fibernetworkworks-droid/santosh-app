@@ -81,6 +81,23 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     _load();
   }
 
+  /// v0.957 ONE way the thread follows the newest words: after each layout, while she has not scrolled up, it sits at the
+  /// true end - no 260 ms slide racing a snap (the plan card and the words above it shook between the two).
+  bool _stickQueued = false;
+  void _stick() {
+    if (_away || _stickQueued) return;
+    _stickQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _stickQueued = false;
+      if (!mounted || _away || !_scroll.hasClients) return;
+      final p = _scroll.position;
+      if (p.isScrollingNotifier.value) return;       // her finger or a fling: never pulled against it
+      if ((p.maxScrollExtent - p.pixels).abs() > .5) _scroll.jumpTo(p.maxScrollExtent);
+    });
+  }
+
+  bool _planOpen = false;             // v0.957 the plan dock above the typing box, folded to one line until she opens it
+
   void _toEnd({bool animate = true, int tries = 4}) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!_scroll.hasClients) return;
@@ -215,7 +232,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _t = t;
         _error = null;
       });
-      if (n != _seen && (first || !_away)) _toEnd(animate: !first);   // new words follow her unless she scrolled up
+      if (first || !_away) _stick();     // v0.957 new words follow her unless she scrolled up (one mechanism, no slide)
       _seen = n;
       final live = _live(t);
       final every = live ? 1 : 10;
@@ -254,9 +271,15 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
 
   /// A landing message said how far it got: follow it to the end unless she scrolled up.
   void _landedTo(String i, int words) {
+    final was = _landed[i] ?? 0;
     _landed[i] = words;
-    // v0.937 pinned to the end while words land - but never against a scroll already moving (that fight shook the page)
-    if (!_away && !(_scroll.hasClients && _scroll.position.isScrollingNotifier.value)) _toEnd(animate: false);
+    // v0.957 a message finished landing: the next one waiting below it starts now
+    if (was < (_landTotal[i] ?? 1 << 30) && words >= (_landTotal[i] ?? 1 << 30) && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
+    _stick();                           // v0.957 the same follow as everything else: after layout, never mid-scroll
   }
 
   /// A merge card she asked for earlier and has not answered is offered again.
@@ -304,7 +327,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _away = false;
       });
       if (words == null) _msg.clear();
-      _toEnd();
+      _stick();
     }
     final r = switch (mode) {
       'note' => await _run('POST', '$_base/note', {'text': text, 'comments': comments}),
@@ -516,11 +539,22 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                       Builder(builder: (_) {
                         // v0.945 a long session lays out only the rows on screen
                         final rows = _body(c, t);
-                        return ListView.builder(
-                            controller: _scroll,
-                            padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || madeN > 0 ? 76 : 24),
-                            itemCount: rows.length,
-                            itemBuilder: (_, i) => rows[i]);
+                        // v0.957 a row with a key (the words landing now, the working row) keeps its state when a row
+                        // above it comes or goes - it was rebuilt from scratch, so its fade and turning mark restarted
+                        final at = <Key, int>{for (var i = 0; i < rows.length; i++) if (rows[i].key != null) rows[i].key!: i};
+                        _stick();
+                        return NotificationListener<ScrollMetricsNotification>(
+                          onNotification: (_) {
+                            _stick();                 // the thread grew (a word wrapped, a row came): stay at the end
+                            return false;
+                          },
+                          child: ListView.builder(
+                              controller: _scroll,
+                              padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || madeN > 0 ? 76 : 24),
+                              itemCount: rows.length,
+                              findChildIndexCallback: (k) => at[k],
+                              itemBuilder: (_, i) => rows[i]),
+                        );
                       }),
                       if (_away || a + r > 0 || madeN > 0)
                         Positioned(
@@ -544,6 +578,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                     ]),
                   ),
           ),
+          if (t != null && _todoItems(t).isNotEmpty) _planDock(c, _todoItems(t)),
           if (t != null) _composer(c, t),
         ]),
       ),
@@ -554,6 +589,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   List<Widget> _body(HoolaColors c, Map<String, dynamic> t) {
     final steps = cl(t['steps']);
     _sentSeen = false;
+    _landBusy = false;
     final running = codeRunning(t);
     final st = cs(t['status']);
     final out = <Widget>[_her(c, cs(t['text']), cl(t['attach']))];
@@ -563,7 +599,6 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     if (live.isNotEmpty && cs(newestSay['text']).trim().startsWith(live)) live = '';   // already a step: drawn once
     // the steps between Hoola's words: the newest show as light rows while it works, the rest fold into one line
     final group = <Map<String, dynamic>>[];
-    Map<String, dynamic>? todo;
     var lastSay = -1;
     var hasFinal = false;
     for (var i = 0; i < steps.length; i++) {
@@ -572,7 +607,6 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     }
     final question = cs(t['question']).trim();
     var si = -1;
-    var drewRunning = false;
     // v0.939 the things it made: the full card sits with each thing's newest version, earlier versions are one faint line
     final made = {for (final m in cl(t['made'])) cs(m['id']): m};
     final lastOf = <String, int>{};
@@ -583,11 +617,16 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         lastMade = i;
       }
     }
+    var nowGroup = const <Map<String, dynamic>>[];
     void flush({required bool last}) {
       if (group.isEmpty) return;
-      final now = running && last && live.isEmpty;
-      out.add(now ? _runningRow(c, t, List.of(group)) : _group(c, List.of(group)));
-      drewRunning = drewRunning || now;
+      // v0.957 the part working now folds into the ONE working row at the very end (drawn below); with words streaming
+      // it is a faint line where it will stay once those words are saved, so nothing moves when they are
+      if (running && last && live.isEmpty) {
+        nowGroup = List.of(group);
+      } else {
+        out.add(_group(c, List.of(group)));
+      }
       group.clear();
     }
 
@@ -670,7 +709,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         out.add(Padding(padding: const EdgeInsets.only(top: 18), child: _her(c, cs(s['text']), const [], key: 'note${_stepN(s, si)}')));
         if (_sent != null && _stepN(s, si) > _sentAt && _same(cs(s['text']), _sent!)) _sentSeen = true;
       } else if (k == 'todo') {
-        todo = s;
+        // v0.957 the plan shows in the dock above the typing box (_planDock), never in the thread
       } else if (k == 'think') {
         if (_thinking) group.add(s);
       } else {
@@ -681,7 +720,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     dimEnd();
     if (!running && cl(t['risky_files']).isNotEmpty) out.add(CodeRiskyNote(files: cl(t['risky_files'])));
     if (live.isNotEmpty) out.add(_land(live, 'live', done: false));
-    if (todo != null && cl(todo['items']).isNotEmpty) out.add(_todo(c, cl(todo['items'])));
+    // v0.957 the plan is the dock above the typing box, not a 300 px card at the end of the thread that every new word
+    // and every coming and going of the working row pushed up and down
     final queued = [for (final n in running ? ((t['notes'] as List?) ?? const []) : const []) if (cs(n).isNotEmpty) cs(n)];
     for (final n in queued) {
       if (_sent != null && _same(n, _sent!)) _sentSeen = true;
@@ -713,7 +753,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       if (st == 'ready' && cs(t['hash']).isNotEmpty) out.add(_ready(c, t));
       if (ci(t['pr_number']) != 0) out.add(_pr(c, t));
     }
-    if (running && live.isEmpty && !drewRunning) out.add(_runningRow(c, t, const []));
+    // v0.957 the working row stays at the end the whole time it works - also while its words stream (it vanished then
+    // and came back, 44 px each time, which shook everything under it)
+    if (running) out.add(_runningRow(c, t, nowGroup));
     return out;
   }
 
@@ -781,11 +823,19 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
 
   /// v0.935 a new message of Hoola's landing word by word (done = the whole message is here; else it is still being
   /// written and more words come with the next check).
-  Widget _land(String text, String i, {required bool done, bool actions = false}) => CodeLanding(
+  Widget _land(String text, String i, {required bool done, bool actions = false}) {
+    // v0.957 one message lands at a time, in order: a newer one waits until the one above it has fully landed (two
+    // places growing at once made the page jump between them)
+    final total = _words(text).length;
+    _landTotal[i] = total;
+    final hold = _landBusy;
+    if ((_landed[i] ?? 0) < total) _landBusy = true;
+    return CodeLanding(
         key: ValueKey('land$i'),
         text: text,
         from: _landed[i] ?? 0,
         done: done,
+        hold: hold,
         onLanded: (n) => _landedTo(i, n),
         builder: (shown, streaming) => CodeReply(
           app: widget.app,
@@ -797,6 +847,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           onSelect: () => setState(() => _selecting = 'land$i'),
         ),
       );
+  }
+
+  final Map<String, int> _landTotal = {};
+  bool _landBusy = false;               // set while the thread is built: a message above is still landing
 
   /// v0.936 the step running now, Claude Code's way: >_ and what it is doing in her words (never the raw command) in a
   /// soft moving light, the clock on the right; a tap opens the steps of this part.
@@ -1097,40 +1151,110 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     }
   }
 
-  Widget _todo(HoolaColors c, List<Map<String, dynamic>> items) {
+  /// v0.957 the newest plan Hoola wrote (its todo list), or nothing.
+  static List<Map<String, dynamic>> _todoItems(Map<String, dynamic> t) {
+    final steps = cl(t['steps']);
+    for (var i = steps.length - 1; i >= 0; i--) {
+      if (cs(steps[i]['k']) == 'todo') return cl(steps[i]['items']).take(20).toList();
+    }
+    return const [];
+  }
+
+  /// v0.957 the plan as a dock just above the typing box, like Claude Code's todo list: one steady line (the step it is
+  /// on, "4 of 9", a bar that slides) that never moves with the thread; a tap opens every step. It was a 300 px card at
+  /// the end of the thread that jumped every time a word wrapped or the working row came and went.
+  Widget _planDock(HoolaColors c, List<Map<String, dynamic>> items) {
     final done = items.where((x) => cs(x['status']) == 'completed').length;
+    final cur = items.firstWhere((x) => cs(x['status']) == 'in_progress',
+        orElse: () => items.firstWhere((x) => cs(x['status']) != 'completed', orElse: () => const <String, dynamic>{}));
+    final now = cur.isEmpty ? 'All done' : cs(cur['content']);
+    final fade = HoolaMotion.of(context, HoolaMotion.fade);
+    Widget mark(String st) => SizedBox(
+          width: 20,
+          child: Text(switch (st) { 'completed' => '✓', 'in_progress' => '●', _ => '○' },
+              style: codeSans(c, size: 13.5, color: switch (st) { 'completed' => c.ok, 'in_progress' => c.accent, _ => c.lineStrong })),
+        );
     return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: CodeCard(
-        radius: 14,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text('Plan', style: codeSans(c, size: 13.5, weight: FontWeight.w600))),
-            Text('$done of ${items.length} done', style: codeSans(c, size: 12.5, color: c.ink3)),
-          ]),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(value: items.isEmpty ? 0 : done / items.length, minHeight: 4, color: c.ink, backgroundColor: c.sunk),
-          ),
-          const SizedBox(height: 8),
-          for (final x in items.take(12))
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
+      child: Semantics(
+        button: true,
+        label: 'Plan: $done of ${items.length} done. Now: $now. ${_planOpen ? 'Hide the steps' : 'Show every step'}',
+        excludeSemantics: true,
+        child: Material(
+          color: c.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: c.line)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => setState(() => _planOpen = !_planOpen),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 SizedBox(
-                  width: 20,
-                  child: Text(switch (cs(x['status'])) { 'completed' => '✓', 'in_progress' => '●', _ => '○' },
-                      style: codeSans(c, size: 13.5, color: switch (cs(x['status'])) { 'completed' => c.ok, 'in_progress' => c.accent, _ => c.lineStrong })),
+                  height: 24,
+                  child: Row(children: [
+                    Text('Plan', style: codeSans(c, size: 13.5, weight: FontWeight.w600)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: fade,
+                        layoutBuilder: (cur0, prev) => Stack(alignment: Alignment.centerLeft, children: [...prev, if (cur0 != null) cur0]),
+                        child: Text(_planOpen ? '' : now,
+                            key: ValueKey(_planOpen ? '' : now),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: codeSans(c, size: 13.5, color: c.ink2)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('$done of ${items.length}',
+                        style: codeSans(c, size: 12.5, color: c.ink3).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                    AnimatedRotation(
+                      turns: _planOpen ? .5 : 0,
+                      duration: fade,
+                      child: Icon(Icons.expand_less_rounded, size: 20, color: c.ink3),
+                    ),
+                  ]),
                 ),
-                Expanded(
-                  child: Text(cs(x['content']),
-                      style: codeSans(c, size: 13.5, color: cs(x['status']) == 'in_progress' ? c.ink : c.ink2, height: 1.4)),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(end: items.isEmpty ? 0 : done / items.length),
+                    duration: const Duration(milliseconds: 420),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, v, __) => LinearProgressIndicator(value: v, minHeight: 3, color: c.ink, backgroundColor: c.sunk),
+                  ),
+                ),
+                AnimatedSize(
+                  duration: HoolaMotion.of(context, const Duration(milliseconds: 220)),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: !_planOpen
+                      ? const SizedBox(width: double.infinity)
+                      : ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .4),
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              for (final x in items)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 3),
+                                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    mark(cs(x['status'])),
+                                    Expanded(
+                                      child: Text(cs(x['content']),
+                                          style: codeSans(c, size: 13.5, color: cs(x['status']) == 'in_progress' ? c.ink : c.ink2, height: 1.4)),
+                                    ),
+                                  ]),
+                                ),
+                            ]),
+                          ),
+                        ),
                 ),
               ]),
             ),
-        ]),
+          ),
+        ),
       ),
     );
   }

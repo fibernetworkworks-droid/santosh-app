@@ -301,4 +301,4 @@ def test_status_function_doors(w5_env):
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.956.0"
+    assert APP_VERSION == "0.957.0"

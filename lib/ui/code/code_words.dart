@@ -168,12 +168,25 @@ class CodeNewestButton extends StatelessWidget {
 /// [from] = words already shown, so a message that moved from "being written" to "said" carries on where it was.
 /// Reduce motion = all of it at once.
 class CodeLanding extends StatefulWidget {
-  const CodeLanding({super.key, required this.text, required this.from, required this.done, required this.onLanded, required this.builder});
+  const CodeLanding(
+      {super.key, required this.text, required this.from, required this.done, required this.onLanded, required this.builder, this.hold = false});
   final String text;
+  final bool hold;                    // v0.957 an earlier message is still landing: this one waits its turn (one at a time)
   final int from;
   final bool done;
   final void Function(int words) onLanded;
   final Widget Function(String shown, bool streaming) builder;
+
+  /// v0.957 how long each word takes to land. Medium slow and steady - about 11 words a second, so a reply reads as
+  /// written, not dropped in (it was ~19 a second and leapt to ~38 with a backlog). A long backlog speeds it up only
+  /// gradually (never a jump in pace), down to ~22 a second once 300 words wait, so it never falls minutes behind.
+  static double msPerWord(int waiting) {
+    const slow = 90.0, fast = 45.0, from = 60, to = 300;
+    if (waiting <= from) return slow;
+    if (waiting >= to) return fast;
+    final t = (waiting - from) / (to - from);
+    return slow + (fast - slow) * (t * t * (3 - 2 * t));   // smoothstep: the pace eases, it never steps
+  }
 
   @override
   State<CodeLanding> createState() => _CodeLandingState();
@@ -211,6 +224,10 @@ class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStat
       }
       return;
     }
+    if (widget.hold) {
+      if (_ticker.isActive) _ticker.stop();
+      return;
+    }
     if (_n < total && !_ticker.isActive) {
       _last = Duration.zero;
       _carry = 0;
@@ -227,7 +244,7 @@ class _CodeLandingState extends State<CodeLanding> with SingleTickerProviderStat
       _ticker.stop();
       return;
     }
-    _carry += dt.inMicroseconds / 1000 / (waiting > 160 ? 26 : 52);   // v0.937 ~19 words a second, each fading in
+    _carry += dt.inMicroseconds / 1000 / CodeLanding.msPerWord(waiting);   // v0.957 an even, medium-slow pace
     final step = _carry.floor();
     if (step <= 0) return;
     _carry -= step;
