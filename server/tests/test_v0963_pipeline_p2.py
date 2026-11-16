@@ -222,3 +222,41 @@ def test_the_box_choice_is_not_switched_to_claude_for_hard_asks():
     assert "_boxed = bool(_tbx.APPLIED.get())" in src
     assert 'state.get("hard") and brain != "claude" and not _boxed' in src
     assert '_long_now and brain != "claude" and not _boxed' in src
+
+
+NOTE = "\n\n[Web console language preference: Reply in English unless I explicitly request another language.]"
+
+
+def test_console_notes_are_not_her_words(box):
+    """v0.966: her live sum came with the console's English note on the end and was read as English."""
+    from app.pipeline import sheet as S
+    ask = "Agar 3 machine 5 din mein 120 piece banati hain to 7 machine 9 din mein kitne?"
+    assert box.her_words(ask + NOTE) == (ask, ["language preference: Reply in English unless I explicitly request "
+                                               "another language."])
+    b = box.begin("c14", "t", ask + NOTE)
+    p = b["sheet"]["parts"][0]
+    assert p["kind"] == "reason" and p["language"] == "hinglish"
+    assert S.get(b["sheet"]["id"])["ask"] == ask
+    box.end(b, "15 machine-din mein 120 piece, to 1 machine-din mein 8; 7 x 9 = 63 machine-din = 504 piece.")
+
+
+def test_console_chips_research_and_hoola_pc(box):
+    from app.agent import llm
+    b = box.begin("c15", "t", "EV makers in India" + "\n\n[Web console mode: deep research - research this "
+                  "thoroughly from several good sources and cite them]" + NOTE)
+    assert b["sheet"]["parts"][0]["kind"] == "research"
+    box.end(b, "x")
+    b = box.begin("c16", "t", "GST portal se invoice nikalo\n\n[Web console place: do this on Hoola PC (your own "
+                  "cloud computer)]" + NOTE)
+    assert "Hoola PC" in b["sheet"]["parts"][0]["not_applied"] and llm.MODEL_NOW.get() == ""
+    box.end(b, "x")
+
+
+def test_check_accepts_one_step_on_her_figures():
+    from app.pipeline import check as K
+    facts = K.facts_from("3 machine 5 din mein 120 piece; 7 machine 9 din", ["result: 504"])
+    ok = K.final_check("3 x 5 = 15 machine-din; 7 x 9 = 63; jawab 504 piece.", "3 machine 5 din 120 piece 7 9",
+                       facts, tools_ran=1)
+    assert ok["ok"], ok
+    bad = K.final_check("Jawab 777 piece.", "3 machine 5 din 120 piece", facts, tools_ran=1)
+    assert not bad["ok"] and "777" in bad["problems"][0]

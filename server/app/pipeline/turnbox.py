@@ -20,6 +20,7 @@ import contextvars
 import json
 import logging
 import os
+import re
 import threading
 import time
 from typing import Any
@@ -85,6 +86,22 @@ def health(now: float | None = None) -> dict[str, dict]:
     return out
 
 
+# ------------------------------------------------------------------ her own words
+# v0.966: the web console adds notes after her words ("[Web console language preference: Reply in English ...]",
+# the Deep research / Hoola PC chips). They are not her ask - read as words they made a Hinglish sum "English".
+CONSOLE_NOTES = re.compile(r"(?:\s*\[Web console [^\]\n]*\])+\s*$")
+
+
+def her_words(text: str) -> tuple[str, list[str]]:
+    """Her own words + the console notes that rode after them."""
+    t = str(text or "")
+    m = CONSOLE_NOTES.search(t)
+    if not m:
+        return t, []
+    notes = re.findall(r"\[Web console ([^\]\n]*)\]", m.group(0))
+    return t[:m.start()].rstrip(), notes
+
+
 # ------------------------------------------------------------------ one turn
 def _why_not(actor: str, voice: bool, r: dict) -> str:
     if voice:
@@ -131,17 +148,21 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
         pin = modelchoice.chosen(tenant) or ""
     except Exception:   # noqa: BLE001
         pin = ""
+    words, notes = her_words(text)
+    read = words + (" (deep research)" if any(n.startswith("mode: deep research") for n in notes) else "")
     try:
-        r = B.choose_for(text or "", surface="chat", doc=doc, pin=pin, chat=conv, health=health(), tools=True,
+        r = B.choose_for(read, surface="chat", doc=doc, pin=pin, chat=conv, health=health(), tools=True,
                          now=t0)
     except Exception as e:   # noqa: BLE001 - the Box never breaks her turn
         log.warning("pipeline box: choosing failed (%s) - today's turn", str(e)[:120])
         return None
     why_not = _why_not(actor or "owner", bool(voice), r)
+    if any(n.startswith("place:") for n in notes):
+        why_not = "a Hoola PC turn - the PC side keeps its own model"
     part = {"kind": r["kind"], "language": r["language"], "level": r["level"], "level_used": r.get("level_used"),
             "level_why": r["level_why"], "signals": r["signals"], "model": r["model"], "backups": r["backups"],
             "why": r["choose_why"], "applied": not why_not, "not_applied": why_not}
-    sh = S.new(conv, tenant, text, [part], read_on=doc.get("read_on") or "", surface="chat", now=t0)
+    sh = S.new(conv, tenant, words, [part], read_on=doc.get("read_on") or "", surface="chat", now=t0)
     S.set_state(sh, 1, "running")
     tok = None
     if not why_not:
@@ -159,7 +180,7 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
                 (r["model"] or {}).get("id") or "-", "applied" if not why_not else "not applied", ms,
                 f" - {why_not}" if why_not else "")
     return {"sheet": sh, "tok": tok, "sink": sink, "sink_tok": sink_tok, "app_tok": app_tok, "t0": t0,
-            "text": text or ""}
+            "text": words}
 
 
 def saw(name: str, out: Any) -> None:

@@ -6071,3 +6071,21 @@ could not be read from here; reading the code instead found a real bug:
 NOT KNOWN: why her 16:34-16:36 window had no sheet at all - the swapped arguments still write a sheet, so either no
 chat message was sent in those two minutes, or the server could not see the tables; the new pipeline_sheets output
 answers which. NOT VERIFIED with a real model answer. 2 tests (+ the pipeline suites, 108 passed).
+
+## v0.966.0 HOOLA PIPELINE P2 READS HER WORDS (owner: "DONE CHECK" on v0.965)
+
+Her server, 17:04-17:06 (v0.965 deployed, pipeline_on): the fix held - her sum's sheet shows her words, kind
+`reason`, level HIGH, run on the HIGH model (`z-ai/glm-5.3-flash`, backups `google/gemini-3.5-flash`,
+`meta/muse-wonder`), Box 70 ms; "GOOD" = chat MID on `anthropic/claude-sonnet-4.6`, 45 ms. Two misses fixed:
+
+- Language read `en` for a Hinglish sum: the web console appends `[Web console language preference: Reply in English
+  ...]` (and the Deep research / Hoola PC chips as `[Web console mode: ...]` / `[Web console place: ...]`) after her
+  words, and the Box read them as her words. `turnbox.her_words` splits them off; the Box reads only her words, a Deep
+  research chip still makes it research, a Hoola PC chip = not through the Box (the PC side keeps its own model), the
+  sheet stores only her words, the final check holds figures to her words.
+- The final check flagged `figure 15` in a worked answer (3 x 5 from her own question). `check.one_step` adds one
+  step of arithmetic (x, +, -, /) on HER figures only (at most 12 of them) to the known figures; an invented number is
+  still flagged (test).
+
+3 tests (111 passed in the pipeline + routines set). NOT VERIFIED on her server. Still her decision: chat MID picks
+Claude Sonnet 4.6 (more than the Qwen 27B chat today).

@@ -38,6 +38,21 @@ def files_from(tool_outputs: list[str]) -> list[str]:
     return found
 
 
+def one_step(nums: list[float], cap: int = 12) -> list[float]:
+    """v0.966: one step of arithmetic on her own figures (3 x 5 = 15 in a worked answer is a working step, not an
+    invented fact). Only her figures, at most 12 of them, so the check keeps its teeth."""
+    ns = list(dict.fromkeys(nums))[:cap]
+    out: list[float] = []
+    for i, a in enumerate(ns):
+        for b in ns[i + 1:]:
+            out += [a * b, a + b, abs(a - b)]
+            if b:
+                out.append(a / b)
+            if a:
+                out.append(b / a)
+    return out
+
+
 def final_check(answer: str, user_text: str = "", facts: list[dict] | None = None, files: list[str] | None = None,
                 not_done: list[str] | None = None, tools_ran: int = 0) -> dict[str, Any]:
     problems: list[str] = []
@@ -45,6 +60,8 @@ def final_check(answer: str, user_text: str = "", facts: list[dict] | None = Non
     if tools_ran and facts is not None:
         checked.append("figures")
         pool = [float(f["value"]) for f in facts if isinstance(f.get("value"), (int, float))]
+        pool += one_step([float(f["value"]) for f in facts
+                          if f.get("source") == "her" and isinstance(f.get("value"), (int, float))])
         for v in F.key_figures(answer or "", asked=user_text or ""):
             if not F.near(v, pool):
                 problems.append(f"figure {v:g} is in no fact the turn had")
