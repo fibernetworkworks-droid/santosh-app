@@ -5774,3 +5774,17 @@ open the native home `lib/ui/code/code_home.dart` (v0.922), which has no drawer 
 Now the home draws a Hoola Auto card under the chips: it opens `AutoHomePage`, and reads GET /api/auto/projects to say
 "N projects need you" (amber edge) or how many projects there are; a server without Hoola Auto still shows the card.
 Phone only; test in `test/hoola_auto_test.dart`. NOT VERIFIED on her phone (CI compiles it first).
+
+## v0.955.0 HOOLA CODE ASK FIRST (owner: "Done, check")
+
+Hard card on v0.952 = 11/12 again. The vague ask ("Checkout mein kuch gadbad hai, theek kar do.") took 26 steps / 628 s and
+changed `_probe.py` + `tests/test_api.py`: the v0.952 note and the one done reminder were not enough for Qwen. So the rule
+moved from the prompt into code (`server/app/devsahayak/engine.py`):
+- `Tools.ask_only` (set when `unclear_ask` matches her first ask): `_guard_write` refuses every write / edit with
+  `ASK_ONLY_REFUSAL`.
+- The round is capped at `dev_unclear_steps` (10) steps.
+- At the end of the round `Session.undo_round()` puts index + files back to the round's base (`git read-tree -u --reset`,
+  HEAD kept), so a file a command wrote is gone too.
+- `unclear_finish(explain)` makes sure the closing words hold ONE question (at most 3 '?'); with none it adds a fixed
+  Hinglish question asking what goes wrong, with an example.
+Tests `server/tests/test_v0955_code_ask_first.py` (4, one on a real git repo). NOT VERIFIED: rerun code_card_engine_hard.

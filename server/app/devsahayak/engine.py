@@ -392,6 +392,15 @@ class Session:
         self.save_meta()
         return cp
 
+    def undo_round(self) -> bool:
+        """v0.955 put the working copy back to this round's base (HEAD stays): index + files match the base again,
+        files the round added are removed. Used when her request named no symptom: such a round changes nothing."""
+        ref = self.meta.get("round_base") or self.meta.get("base") or "HEAD"
+        with _git_lock(self.repo):
+            _git_run(self.repo, "add", "-A")
+            rc, _out = _git_run(self.repo, "read-tree", "-u", "--reset", ref)
+        return rc == 0
+
     def mark_pushed(self, head_sha: str) -> None:
         """After a push: the next round's diff starts here; the checkout now matches the PR branch at `head_sha`."""
         self.meta["round_base"] = _commit(self.repo, f"pushed {head_sha[:12]}")
@@ -663,6 +672,7 @@ class Tools:
         self.spec = lab_spec
         self.bash_runs = 0
         self.trail: list[str] = []
+        self.ask_only = False                             # v0.955 her request named no symptom: nothing is written
 
     # ------------------------------------------------------------ paths
     def _rel(self, path: str) -> str:
@@ -673,6 +683,8 @@ class Tools:
     def _guard_write(self, rel: str) -> str:
         if not rel:
             return "Refused: that path is outside the working copy."
+        if self.ask_only:
+            return ASK_ONLY_REFUSAL
         if rel in self.hidden:
             return "Refused: this file holds secrets; it cannot be changed."
         if self.s.real(rel) is None:
@@ -1082,6 +1094,21 @@ def unclear_text(changed: bool) -> str:
     return ("Not finished yet: her request named no symptom, so this round ends with ONE short question to her in explain, "
             "ending in '?' (which step fails, what she sees). " + ("Put back the files you changed on a guess first. "
             if changed else "") + "Then call done again.")
+
+
+ASK_ONLY_REFUSAL = ("Refused: her request names no symptom, so this round changes no files. Read what you need, then "
+                    "call done with ONE short question in explain, ending in '?'.")
+UNCLEAR_QUESTION = ("Kya galat ho raha hai, thoda batayein - koi error dikhta hai, total galat aata hai, ya koi step "
+                    "kaam nahi karta? Ek example (kya kiya, kya dikha, kya chahiye tha) se main seedha theek kar dunga?")
+
+
+def unclear_finish(explain: str) -> str:
+    """v0.955 the closing words of an unclear ask always hold ONE question (at most 3 '?')."""
+    e = str(explain or "").strip()
+    if e.endswith("?") and e.count("?") <= 3:
+        return e
+    e = e.replace("?", ".")
+    return ((e[:600] + "\n\n") if e else "") + UNCLEAR_QUESTION
 
 
 def install_noise(path: str, changed: set[str]) -> bool:
@@ -1704,6 +1731,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     gate_on, gated = bool(_set("dev_ecc_gate", True)), False
     reality = {"done": False, "verdict": ""}                # v0.814 The Agency's reality checker, once a round
     max_steps = int(_set("dev_ws_steps", 150) or 150)
+    if unclear:                                           # v0.955 a no-symptom ask: a short look, no edits, one question
+        tools.ask_only = True
+        max_steps = min(max_steps, int(_set("dev_unclear_steps", 10) or 10))
     minutes = float(_set("dev_ws_minutes", 60) or 60)
     clear_at = int(_set("dev_ws_clear_chars", 180000) or 180000)
     compact_at = int(_set("dev_ws_compact_chars", 480000) or 480000)
@@ -1956,6 +1986,15 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                else "Hoola stopped without calling done")
         finish = {"explain": (last_text + "\n\n" if last_text else "") + why + "; what was done so far is below for review.",
                   "risk": "The round ended before Hoola called done - review the diff carefully."}
+    if unclear:                                           # v0.955 nothing she did not ask for stays, and she gets her question
+        try:
+            if ses.changed():
+                ses.undo_round()
+                emit({"k": "ws", "text": "Put back the files changed on a guess - asking you first"})
+        except Exception as e:  # noqa: BLE001
+            log.warning("hoola code undo of an unclear round failed: %s", e)
+        finish = {**finish, "explain": unclear_finish(str(finish.get("explain") or "")), "risk": ""}
+        finished = True
     ses.meta["read"] = sorted(tools.read)[-500:]
     q = str(finish.get("explain") or "").strip()
     ch = [str(c).strip()[:80] for c in (finish.get("choices") or []) if str(c).strip()][:4] if isinstance(finish.get("choices"), list) else []
