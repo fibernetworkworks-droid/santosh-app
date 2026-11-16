@@ -1054,6 +1054,36 @@ def scratch_text(paths: list[str]) -> str:
             "ONE short question instead.")
 
 
+# v0.952 "something is broken, fix it" with no symptom named: Hoola asks ONE question (her hard card's vague ask kept
+# exploring for 10 minutes and then explained instead of asking)
+UNCLEAR = re.compile(r"(?i)\b(kuch gadbad|gadbad hai|gadbad ho|kuch galat|theek kar ?do|thik kar ?do|theek karo|thik karo|"
+                     r"sahi kar ?do|sahi karo|kaam nahi kar\w*|chal nahi raha|something('s| is) (wrong|off|broken)|"
+                     r"not working|doesn'?t work|fix it)\b")
+NAMED = re.compile(r"(?i)(`|\b[\w/-]+\.(py|js|ts|tsx|jsx|dart|kt|swift|go|rb|java|css|html|json)\b|traceback|exception|"
+                   r"error|errno|\b[A-Z][A-Za-z]*Error\b|\b\d{3}\b|\bline \d+|https?://|\bwhen\b|\bjab\b|\binstead\b|"
+                   r"\bshould\b|\bchahiye\b|\bexpected\b|\bbut\b|\blekin\b|\bpar\b)")
+
+
+def unclear_ask(text: str) -> bool:
+    """v0.952 her words say something is wrong but name no symptom: no error, file, input, expected-vs-seen. Short asks
+    only - a long message almost always carries what she sees."""
+    s = str(text or "").strip()
+    return bool(s) and len(s.split()) <= 16 and bool(UNCLEAR.search(s)) and not NAMED.search(s)
+
+
+UNCLEAR_NOTE = ("<hoola_note>Her request says something is wrong but names no symptom (no error, screen, input or "
+                "behaviour she sees). Do not guess and do not edit or create any file. A quick look is fine if it helps "
+                "you ask well (two or three reads at most, no scripts), then call done with ONE short question in "
+                "explain, ending in '?' - for example which step fails or what she sees. If you noticed something that "
+                "may be the problem, name it inside the question.</hoola_note>")
+
+
+def unclear_text(changed: bool) -> str:
+    return ("Not finished yet: her request named no symptom, so this round ends with ONE short question to her in explain, "
+            "ending in '?' (which step fails, what she sees). " + ("Put back the files you changed on a guess first. "
+            if changed else "") + "Then call done again.")
+
+
 def install_noise(path: str, changed: set[str]) -> bool:
     """v0.947 a lock file that changed while its package list did not was rewritten by the box's own install (npm
     install in the working copy), not by Hoola's work: it stays out of the change (a hard-card job went red on it)."""
@@ -1628,6 +1658,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     ses.meta.pop("ask", None)                             # a new round: an earlier question of Hoola's is behind us
     resumed = bool(resume) and bool(msgs) and not made.get("refreshed") and (not follow_up or _said(msgs, follow_up))
     continuing = bool(msgs) and (bool(follow_up) or resumed)
+    unclear = (not follow_up and getattr(t, "kind", "") in ("fix", "write")
+               and unclear_ask(str(getattr(t, "text", "") or "")))      # v0.952 her first ask names no symptom
     if resumed:
         # the server restarted in the middle of this round: the working copy and the conversation are on disk as the
         # last finished step left them, so the round goes on from there instead of starting again
@@ -1646,7 +1678,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     else:
         att_txt, pics = (attach or ("", []))
         first = _first_message(t, rules, issue_txt, plan_txt, att_txt, ses,
-                               "" if sp.get("confirm") else str(sp.get("test") or ""), "\n".join(x for x in (follow_up, ref_note) if x))
+                               "" if sp.get("confirm") else str(sp.get("test") or ""),
+                               "\n".join(x for x in (follow_up, ref_note, UNCLEAR_NOTE if unclear else "") if x))
         msgs = [{"role": "user", "content": ([{"type": "text", "text": first}] + list(pics)) if pics else first}]
     extra_ecc = ecc_system(ses.walk(), str(getattr(t, "text", "") or ""))
     netw = net_words(net)                                 # v0.878 the model is told the network its environment really has
@@ -1774,6 +1807,15 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     from . import ecc
                     emit({"k": "gate", "n": len(problems), "items": [f"{p['path']}:{p['line']} {p['what']}" for p in problems[:8]]})
                     results.append({"type": "tool_result", "tool_use_id": b["id"], "content": ecc.gate_text(problems)})
+                    continue
+                if unclear and not reality.get("asked") and not str(inp.get("explain") or "").rstrip().endswith("?"):
+                    reality["asked"] = True                # v0.952 an unclear ask ends in ONE question, once reminded
+                    try:
+                        moved = bool(ses.changed())
+                    except Exception:
+                        moved = False
+                    emit({"k": "gate", "n": 1, "items": ["her request named no symptom: ask her one question"]})
+                    results.append({"type": "tool_result", "tool_use_id": b["id"], "content": unclear_text(moved)})
                     continue
                 if not reality.get("scratch"):            # v0.951 one look for leftover scratch files
                     left = scratch_files(ses.changed())

@@ -225,7 +225,8 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
         said = f"{out.get('explain', '')} {out.get('cause', '')}"
         row["works"] = not real and "?" in said and said.count("?") <= 3
         if not row["works"]:
-            row["why"].append("guessed and changed files" if real else "did not ask one clear question")
+            row["why"].append("guessed and changed files" if real else
+                              "did not ask one clear question (said: " + (" ".join(said.split())[:160] or "nothing") + ")")
         row["test"] = None
         row["right"] = row["works"]
         return row

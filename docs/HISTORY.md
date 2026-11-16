@@ -5734,3 +5734,20 @@ them, explain why they belong, or - if the request was too unclear - ask ONE que
 make only to try something ... is deleted before done; it never ships." `brain.ANSWER_NOW` now says an unclear request =
 done with ONE question, no exploring or edits. Tests: test_v0951_code_no_scratch.py (4).
 NOT VERIFIED: the next hard card run.
+
+## v0.952.0 HOOLA CODE UNCLEAR ASK (owner: "Check" on the hard card after v0.951 = 11/12)
+
+The v0.951 scratch check held: the vague ask ("Checkout mein kuch gadbad hai, theek kar do.") left no files. But Qwen
+explored for 10 steps / 607 s and ended with an explanation that had no question in it ("did not ask one clear question").
+Every other job passed (works 11/12, scope 12/12, rules 12/12, good tests 7/7).
+
+- `engine.unclear_ask(text)`: a short ask (<= 16 words) with "something is wrong, fix it" words (kuch gadbad, theek kar
+  do, kaam nahi kar raha, not working...) and nothing named (no file, error, number, url, "when / jab", expected vs seen).
+  Only for her FIRST ask of a fix / write session, never a follow-up.
+- Such an ask gets `UNCLEAR_NOTE` in her first message: do not guess or edit, at most a quick look, then done with ONE
+  short question ending in '?', naming what was noticed inside the question.
+- At done, once: an explain that does not end in '?' is sent back (`unclear_text`; "put back the files you changed on a
+  guess" when the copy changed).
+- The card's miss line now prints what Hoola said (`said: ...`), so the next read is not blind.
+- Tests: `test_v0952_code_unclear_ask.py` (4).
+- NOT VERIFIED: rerun vps-ops `code_card_engine_hard`.

@@ -72,5 +72,5 @@ def test_phone_connect_page_is_composio_only():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.951.0")
-    assert "version: 0.951.0+950" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION.startswith("0.952.0")
+    assert "version: 0.952.0+951" in (ROOT / "pubspec.yaml").read_text()
