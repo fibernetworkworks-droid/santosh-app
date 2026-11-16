@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
+from . import more as M
 from . import service as S
 
 
@@ -106,6 +107,36 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def message(pid: str, role: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await _run(S.message, tenant, pid, role, str(_b(body).get("text") or ""))
 
+    # v0.949 talk to the Intake agent, sources from her apps, the Monitor after go-live
+    @r.get("/apps")
+    async def apps(use: str = "", tenant: str = Depends(current_tenant)):
+        return await _run(M.apps_view, tenant, use)
+
+    @r.post("/apps/{key}/connect")
+    async def app_connect(key: str, tenant: str = Depends(current_tenant)):
+        return await _run(M.connect_app, tenant, key)
+
+    @r.post("/projects/{pid}/talk")
+    async def talk(pid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await _run(M.talk, tenant, pid, str(b.get("said") or ""), bool(b.get("spoken", True)))
+
+    @r.get("/projects/{pid}/watch")
+    async def watch(pid: str, tenant: str = Depends(current_tenant)):
+        return await _run(M.watch_view, tenant, pid)
+
+    @r.put("/projects/{pid}/watch")
+    async def watch_set(pid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await _run(M.watch_set, tenant, pid, _b(body))
+
+    @r.post("/projects/{pid}/watch/check")
+    async def watch_check(pid: str, tenant: str = Depends(current_tenant)):
+        return await _run(M.check, tenant, pid)
+
+    @r.post("/projects/{pid}/alerts/{aid}/{what}")
+    async def alert(pid: str, aid: str, what: str, tenant: str = Depends(current_tenant)):
+        return await _run(M.alert_act, tenant, pid, aid, what)
+
     @r.post("/projects/{pid}/tasks/{tid}/{what}")
     async def task_act(pid: str, tid: str, what: str, tenant: str = Depends(current_tenant)):
         if what == "skip":
@@ -133,6 +164,11 @@ def make_public_router() -> APIRouter:
     async def confirm(token: str, body: dict = Body(default={})):
         b = _b(body)
         return await _run(S.client_confirm, token, str(b.get("key") or ""), str(b.get("pick") or ""))
+
+    @p.post("/{token}/talk")
+    async def talk(token: str, body: dict = Body(default={})):
+        b = _b(body)
+        return await _run(M.client_talk, token, str(b.get("said") or ""), bool(b.get("spoken", True)))
 
     @p.post("/{token}/signoff")
     async def signoff(token: str):

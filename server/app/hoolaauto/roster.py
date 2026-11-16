@@ -20,6 +20,8 @@ ROLES: list[tuple[str, str, str, str | None, str]] = [
     ("devops", "DevOps", "ship", "write", "Sets up CI, the build and staging deploys."),
     ("release", "Release", "ship", None, "Opens the go-live pull request to your main branch at G7."),
     ("docs", "Docs", "ship", "docs", "Writes the README, the runbook and the handover pack."),
+    ("monitor", "Monitor", "ship", None, "After go-live, watches the live app, CI on your main branch and your error tracker; "
+                                         "a fix starts only on your tap."),
 ]
 ROLE = {r[0]: r for r in ROLES}
 SESSION_ROLES = {r[0] for r in ROLES if r[3]}
@@ -85,7 +87,7 @@ INTAKE: list[tuple[str, list[tuple[str, str, list[str]]]]] = [
 FIELDS: dict[str, tuple[str, str, list[str]]] = {k: (sec, q, ch) for sec, rows in INTAKE for k, q, ch in rows}
 ORDER: list[str] = [k for _sec, rows in INTAKE for k, _q, _ch in rows]
 
-SOURCE_LABEL = {"form": "Client form", "doc": "Document", "call": "Recording", "repo": "Repo scan", "chat": "Pasted chat",
+SOURCE_LABEL = {"form": "Client form", "doc": "Document", "call": "Recording", "repo": "Repo scan", "chat": "Pasted chat", "app": "Connected app",
                 "you": "You", "client": "Client", "": "Not given yet"}
 
 # The 8 gates. code, name, when, what her tap means

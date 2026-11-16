@@ -382,8 +382,22 @@ def env_view(tenant: str, pid: str) -> dict[str, Any]:
                 "Every step an agent takes is in its session and in the live feed.",
                 "The project stops at its cost cap and asks you.",
             ],
-            "not_connected": "Jira, Slack, Figma, cloud consoles and error trackers are not connected in this version: "
-                             "agents read what you paste or upload as an intake source."}
+            "not_connected": _apps_line(tenant)}
+
+
+def _apps_line(tenant: str) -> str:
+    """v0.949 which of her apps the Intake agent and the Monitor can read (read only), in one plain line."""
+    try:
+        from . import more as M
+        apps = M.apps_view(tenant)["apps"]
+    except Exception:
+        return "Her apps could not be read just now."
+    ready = [a["name"] for a in apps if a["state"] == "ready"]
+    if ready:
+        return (f"Connected for reading: {', '.join(ready)}. Add them as an intake source or a Monitor feed. "
+                "Other apps: sign in from the source picker. Hoola only reads them; it never writes to your apps.")
+    return ("No app is connected for reading yet (Jira, Linear, Slack, Notion, Figma, Sentry ...). Sign in from the source "
+            "picker or the Monitor screen; until then agents read what you paste or upload.")
 
 
 # ------------------------------------------------------------------------------------------------ intake
@@ -577,8 +591,8 @@ EXTRACT_SYSTEM = ("You are the Intake agent of a software company. You read ONE 
 
 def add_source(tenant: str, pid: str, b: dict[str, Any], background: bool = True) -> dict[str, Any]:
     kind = str(b.get("kind") or "doc")
-    if kind not in ("doc", "recording", "text", "repo"):
-        raise AutoError("kind = doc | recording | text | repo")
+    if kind not in ("doc", "recording", "text", "repo", "app"):
+        raise AutoError("kind = doc | recording | text | repo | app")
     name = str(b.get("name") or "").strip()[:200]
     text, data = "", b""
     if kind in ("doc", "recording"):
@@ -593,6 +607,15 @@ def add_source(tenant: str, pid: str, b: dict[str, Any], background: bool = True
         if len(text) < 20:
             raise AutoError("Paste the email or chat text.")
         name = name or "Pasted text"
+    elif kind == "app":                       # v0.949 one read of her connected app (Composio) or a Figma file
+        from . import more as M
+        app, what = str(b.get("app") or ""), str(b.get("what") or "").strip()[:300]
+        if app not in M.APP or not M.APP[app][3]:
+            raise AutoError("Pick one of the apps on the list.")
+        if not what:
+            raise AutoError(f"Say what to read from {M.APP[app][1]}: {M.APP[app][2]}.")
+        text = json.dumps({"app": app, "what": what})
+        name = f"{M.APP[app][1]} · {what}"[:200]
     with session() as s:
         p = _proj(s, tenant, pid)
         if kind == "repo":
@@ -624,6 +647,10 @@ def _read_source_safe(tenant: str, sid: str, data: bytes) -> None:
 def _source_text(tenant: str, src: AutoSource, data: bytes) -> str:
     if src.kind == "text":
         return src.text
+    if src.kind == "app":
+        from . import more as M
+        spec = _j(src.text, {})
+        return M.read_app(tenant, str(spec.get("app") or ""), str(spec.get("what") or ""))
     if src.kind == "doc":
         from .. import docread
         r = docread.read_text(src.name, "", data, limit=SOURCE_TEXT_CAP, max_pages=80)
@@ -677,7 +704,7 @@ def read_source(tenant: str, sid: str, data: bytes = b"") -> None:
         p = s.get(AutoProject, src.project_id)
         _charge(p)
         ans = _answers(s, p.id)
-        kind = {"doc": "doc", "recording": "call", "text": "chat", "repo": "repo"}[src_kind]
+        kind = {"doc": "doc", "recording": "call", "text": "chat", "repo": "repo", "app": "app"}[src_kind]
         for row in (out.get("answers") or [])[:60]:
             if not isinstance(row, dict):
                 continue
@@ -1177,6 +1204,11 @@ def tick() -> None:
             tick_project(tenant, pid)
         except Exception:
             log.exception("auto tick %s failed", pid)
+    try:                                              # v0.949 the Monitor after go-live
+        from . import more as M
+        M.watch_tick()
+    except Exception:
+        log.exception("auto monitor tick failed")
 
 
 def tick_project(tenant: str, pid: str) -> None:
@@ -1438,6 +1470,16 @@ def _agents(s: Any, p: AutoProject, tasks: list[AutoTask]) -> list[dict[str, Any
             elif key == "release":
                 state = "done" if _j(p.golive, []) else "wait"
                 step = "Go-live pull requests opened" if state == "done" else "Starts at G7"
+            elif key == "monitor":                  # v0.949 after go-live: the live app, CI on main, her feeds
+                from .models import AutoAlert, AutoWatch
+                w = s.get(AutoWatch, p.id)
+                n_open = len(s.scalars(select(AutoAlert.id).where(AutoAlert.project_id == p.id, AutoAlert.state == "open")).all())
+                if n_open:
+                    state, step = "needs", f"{n_open} problem(s) on the live app wait for you"
+                elif w is not None and w.on and p.phase in ("handover", "done"):
+                    state, step = "working", (w.last_say or "Watching the live app")[:160]
+                else:
+                    state, step = "wait", "Starts after go-live" if p.phase not in ("handover", "done") else "Switched off"
             elif key == "intake":
                 got, of = _answered(s, p.id)
                 state, step = ("done" if plan_done else "working"), f"{got} of {of} inputs, each with its source"

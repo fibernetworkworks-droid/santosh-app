@@ -392,7 +392,7 @@ def test_env_view_says_what_is_and_is_not_connected(auto):
     p = _project(S)
     v = S.env_view(T, p["id"])
     assert v["ready"] and v["repos"][0]["ci"] == "Found" and v["repos"][0]["keys"] == ["api.razorpay.com"]
-    assert "not connected in this version" in v["not_connected"]
+    assert "No app is connected for reading yet" in v["not_connected"]      # v0.949: apps are readable now
     p2 = S.create_project(T, {"name": "No repo yet"})
     assert p2["phase"] == "setup" and not S.env_view(T, p2["id"])["ready"]
     with pytest.raises(S.AutoError):
@@ -402,5 +402,5 @@ def test_env_view_says_what_is_and_is_not_connected(auto):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.948.0"
-    assert "0.948.0+947" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.949.0"
+    assert "0.949.0+948" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

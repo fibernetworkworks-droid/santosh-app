@@ -33,5 +33,5 @@ def test_drawer_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.948.0"
-    assert "version: 0.948.0+947" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.949.0"
+    assert "version: 0.949.0+948" in (ROOT / "pubspec.yaml").read_text()

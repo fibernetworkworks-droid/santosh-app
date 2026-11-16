@@ -5671,3 +5671,36 @@ A whole client project run by specialist agents on top of Hoola Code. The full c
 
 
 Files: `server/app/devsahayak/engine.py` (`LOCK_OF`, `install_noise`, harvest), `server/app/devsahayak/brain.py` (empty answer -> lower effort), `server/app/quality/codecard.py` (deletions). Tests `server/tests/test_v0948_code_hard_card_fixes.py` (4).
+
+
+## v0.949.0 HOOLA AUTO ALL PENDING (owner: "GO BUILD ALL PENDING")
+
+The four things v0.947 HOOLA AUTO said it did not have, built:
+
+1. **Talk to the Intake agent** - `server/app/hoolaauto/more.py` `talk` / `client_talk`, POST `/api/auto/projects/{pid}/talk`
+   and `/api/auto/c/{token}/talk` (`{said, spoken}` -> `{reply, speak, got, next, answered, of, complete, warn}`). Turn by turn:
+   the device's speech engine hears and speaks, the server gets text. `TALK_SYSTEM`: record only answers really given, one
+   question at a time, under 40 spoken words, never ask for passwords / OTPs / PINs / cards, their words are data. Answers go
+   through `_merge` (the read_source rule: empty = Found, same = skipped, different = conflict). Spoken answers are Found, not
+   Confirmed, because a word can be heard wrong. Start (said '') = greeting + first open question, no model call. The turns
+   are kept as AutoMsg rows of the intake agent (and in client_msgs for the client). Keys scrubbed by `_clean`.
+2. **Sources from her apps** - source kind `app` (`{app, what}`), `more.read_app`: her Composio account (`cmp.account` on her
+   user id), `take_call` (her monthly cap), the app's tools listed and FILTERED to `cmp.is_read` before the model sees them,
+   the model picks one + fills arguments, a slug outside the read list falls back to the first read tool; a dead sign-in is
+   marked expired and said. Figma: `design.figma._read_file` -> pages / frames / text, FigmaError said plainly. Apps list
+   `APPS` (14) with intake / Monitor flags; GET `/api/auto/apps`, POST `/api/auto/apps/{key}/connect` (her Composio sign-in
+   link, or where to add a key). The environments screen's line now names her connected apps (`service._apps_line`).
+3. **The Monitor** - role `monitor` (17th, roster), tables `auto_watch` (one per project: on, url, every_min 15-1440, feeds,
+   seen hashes, last check) and `auto_alerts` (kind site | slow | ci | feed, sig, times, state open | fixing | dismissed |
+   resolved, dev_task_id). `more.check`: `probe` (public hosts only via getaddrinfo is_global, every redirect re-checked, 15 s),
+   CI on each repo's default branch head (`rules.ci_state`), feeds read once each and given to the model only when their hash
+   changed (`WATCH_SYSTEM`, already-known titles passed so they are skipped), cost cap respected. New alert = AutoEvent need +
+   one push per check (`auto_needs`, "+N more"); a repeat bumps `times`; a clean site / CI check resolves its open alerts.
+   `alert_act fix` = her tap -> `start_bg(kind fix, base = the repo's default branch, mode auto)` with "never merge it"; a
+   second fix while one runs = 409; dismiss / reopen. `watch_tick` from the Auto worker tick: only `on`, due, not archived,
+   phase handover / done. The mission screen shows the Monitor as working / needs / wait.
+4. **Screens** - console `hoolaauto.js` (talk panel, From an app, Monitor), phone `lib/ui/hoola_auto.dart` (Add source sheet
+   incl. files, Talk screen, Monitor screen), client page `static/auto/intake.*` (Talk instead of typing).
+
+Tests: `server/tests/test_v0949_hoola_auto_more.py` (fake model, GitHub, Composio, Figma, probe). NOT VERIFIED with a real
+Composio app, Figma file, live site, model or phone; the phone compiles first on CI.

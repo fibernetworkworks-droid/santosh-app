@@ -35,10 +35,10 @@ SCREEN SHOULD HAVE ITS OWN CHAT" + intake from the outside world. Design: claude
 
 ## Code
 - Server `server/app/hoolaauto/`: `models.py` (auto_projects, auto_answers, auto_sources, auto_gates, auto_tasks,
-  auto_events, auto_changes, auto_msgs; registered in db.init_db + `ensure_tables`), `roster.py` (16 agents, the 30
+  auto_events, auto_changes, auto_msgs, auto_watch, auto_alerts; registered in db.init_db + `ensure_tables`), `roster.py` (17 agents incl. the Monitor, the 30
   intake questions, the 8 gates, the phases), `service.py` (projects, environments view, intake + sources + client link,
   plan / design calls, gates, the conductor `tick` / `tick_project`, change requests, agent chat, the screens' views),
-  `api.py` (`/api/auto/*` behind her sign-in; public `/api/auto/c/{token}/*`).
+  `more.py` (talk, app sources, the Monitor), `api.py` (`/api/auto/*` behind her sign-in; public `/api/auto/c/{token}/*`).
 - Page `/auto/intake/{token}` = `server/app/static/auto/intake.html|js|css` (no sign-in, noindex, never framed).
 - Console: `server/app/static/console/hoolaauto.js` + hooks in `code.js` (sidebar row + project group, `#/auto...`
   routes) + the `v0.947 HOOLA AUTO` block in `hoolacode.css`.
@@ -47,13 +47,32 @@ SCREEN SHOULD HAVE ITS OWN CHAT" + intake from the outside world. Design: claude
 - Settings: `auto_enabled`, `auto_parallel` 3, `auto_task_inr` 25 (the estimate per task), `auto_cap_inr` 1500,
   `auto_client_days` 30.
 
-## Not built in this version (said in the product too)
-- Jira / Slack / Figma / cloud consoles / error trackers are not connected: agents read what she pastes or uploads.
-- "Call with the Intake agent" (a live voice intake) - the option is shown as not in this version.
-- The Watch agent after go-live (errors in production) and staging deploys by the DevOps agent beyond what her CI does.
-- Cost: real spend = Hoola Code's metered session cost + an estimate per planning / chat call (Rs 4).
+## v0.949 - the pending pieces, built
+- **Talk to the Intake agent** (`more.talk`, `more.client_talk`; POST `/api/auto/projects/{pid}/talk`, `/api/auto/c/{token}/talk`):
+  a spoken or typed conversation, turn by turn. The phone (speech_to_text + flutter_tts) or the browser (SpeechRecognition +
+  speechSynthesis) hears and speaks; the server gets text only. A turn records only answers really given, as **Found** (a
+  word can be heard wrong - she confirms them on the intake list); a different value = a conflict she settles. Start = a
+  greeting + the first open question, no model call. Same rate limit for the client as their typed answers.
+- **Sources from her apps** (source kind `app`; GET `/api/auto/apps?use=intake|watch`, POST `/api/auto/apps/{key}/connect`):
+  Jira, Linear, Slack, Notion, Confluence, Trello, Asana, ClickUp, Google Docs through HER Composio sign-in - one read, with
+  a READ tool only (write tools are never offered to the model, and a slug it names that is not on the read list is not
+  run); a Figma file through her Figma token (pages, frames, text). Answers keep "Connected app" as their source.
+- **The Monitor** (17th role, tables `auto_watch` / `auto_alerts`; GET/PUT `/projects/{pid}/watch`, POST `/watch/check`,
+  POST `/alerts/{aid}/fix|dismiss|reopen`): after go-live (phase handover / done), every 15-1440 min: the live address from
+  the server (public hosts only, each redirect re-checked, 15 s; 5xx / no answer = down, over 8 s = slow), CI on each repo's
+  main branch, and up to 5 feeds (Sentry, Datadog, Vercel, Render, Jira, Linear, Slack) read once each - an unchanged feed
+  is not given to the model again. A new problem = one alert + one push (`auto_needs`); the same problem again counts
+  (`times`), never doubles; a clean check resolves its old alerts. **Fix = her tap**: a Hoola Code `fix` session against her
+  main branch; its pull request is merged by her in Hoola Code, never here.
+- Screens: console (talk panel on Intake, "From an app" in Add source, Monitor screen), phone (Add source sheet, Talk screen,
+  Monitor screen), client page ("Talk instead of typing").
+
+## Still not built
+- Writing to her apps (Hoola only reads them), staging deploys by the DevOps agent beyond her CI, auto-fix without her tap.
+- The talk is turn by turn through the device's speech engine, not a streaming call on Hoola's voice engine.
+- Cost: real spend = Hoola Code's metered session cost + an estimate per planning / chat / talk / Monitor call (Rs 4).
 - Parallelism is bounded by the server: `dev_ws_live` (2) sessions run at once; raising it needs a bigger server.
 
 ## Not verified
-No real GitHub repo, model or phone has run a Hoola Auto project yet: every test uses a fake model, a fake GitHub and
-fake Hoola Code sessions. The phone Dart compiles first on CI.
+No real GitHub repo, model, Composio app, Figma file, live site or phone has run a Hoola Auto project yet: every test uses
+fakes. The phone Dart compiles first on CI. Composio's read-tool names differ per app and are picked live by the model.

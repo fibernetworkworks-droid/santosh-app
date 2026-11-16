@@ -27,6 +27,7 @@
     const r = await fetch(BASE + path, opt);
     let data = null; try { data = await r.json(); } catch (e) { /* no body */ }
     if (r.status === 404) { const x = new Error('dead'); x.dead = true; throw x; }
+    if (r.status === 429) throw new Error('Too many answers today - try again tomorrow.');
     if (!r.ok) throw new Error((data && typeof data.detail === 'string' && data.detail) || 'Something went wrong. Please try again.');
     return data;
   }
@@ -60,6 +61,108 @@
     rec.onend = () => { listening = false; render(); };
     rec.onerror = () => { listening = false; render(); };
     listening = true; rec.start(); render();
+  }
+
+  // ---- v0.949 talk with the Intake agent: a spoken (or typed) conversation, turn by turn. The browser hears the words
+  // with its own speech engine and reads the agent's reply aloud; the server gets text only.
+  const TK = {open: false, msgs: [], said: '', interim: '', busy: false, err: '', answered: 0, of: 0, complete: false,
+              warn: '', rec: null, listening: false, started: false};
+
+  function stopVoice() { try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* none */ } }
+
+  function say(text) {
+    if (!text || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+    stopVoice();
+    const u = new SpeechSynthesisUtterance(text);
+    const vs = window.speechSynthesis.getVoices() || [];
+    const v = vs.find(x => /en[-_]IN/i.test(x.lang)) || vs.find(x => /^en/i.test(x.lang));
+    if (v) u.voice = v;
+    u.lang = (v && v.lang) || 'en-IN';
+    window.speechSynthesis.speak(u);
+  }
+
+  async function turn(said, spoken) {
+    if (TK.busy) return;
+    TK.busy = true; TK.err = ''; TK.interim = '';
+    if (said) TK.msgs.push({who: 'you', text: said});
+    render();
+    let got = [];
+    try {
+      const out = await call('POST', '/talk', {said: said || '', spoken: !!spoken});
+      TK.msgs.push({who: 'agent', text: out.reply || '', got: out.got || []});
+      TK.answered = out.answered || 0; TK.of = out.of || 0; TK.complete = !!out.complete; TK.warn = out.warn || '';
+      got = out.got || [];
+      say(out.speak || out.reply || '');
+    } catch (e) {
+      if (e.dead) { TK.busy = false; return dead(); }
+      TK.err = e.message;
+    }
+    TK.busy = false;
+    if (got.length) await load(); else render();
+  }
+
+  function openTalk() {
+    TK.open = true; render();
+    if (!TK.started) { TK.started = true; turn('', false); }
+    setTimeout(() => document.getElementById('ci-talk')?.scrollIntoView({behavior: 'smooth', block: 'start'}), 0);
+  }
+
+  function closeTalk() {
+    stopVoice();
+    if (TK.rec && TK.listening) { try { TK.rec.abort(); } catch (e) { /* none */ } }
+    TK.open = false; TK.listening = false; render();
+  }
+
+  function talkMic() {
+    if (!SR || TK.busy) return;
+    if (TK.listening && TK.rec) { TK.rec.stop(); return; }
+    stopVoice();
+    const r = new SR(); r.lang = 'en-IN'; r.interimResults = true; r.continuous = false;
+    let fin = '';
+    r.onresult = ev => {
+      let inter = ''; fin = '';
+      for (const x of ev.results) { if (x.isFinal) fin += x[0].transcript; else inter += x[0].transcript; }
+      TK.interim = (fin + ' ' + inter).trim();
+      const el = document.getElementById('ci-talk-heard'); if (el) el.textContent = TK.interim;
+    };
+    r.onerror = ev => { TK.listening = false; if (ev && ev.error && ev.error !== 'no-speech' && ev.error !== 'aborted') TK.err = 'The microphone did not work here. Type instead.'; render(); };
+    r.onend = () => { TK.listening = false; const t = fin.trim(); TK.interim = ''; if (t) turn(t, true); else render(); };
+    TK.rec = r; TK.listening = true; TK.interim = '';
+    try { r.start(); } catch (e) { TK.listening = false; }
+    render();
+  }
+
+  function talkSend() {
+    const t = TK.said.trim(); if (!t || TK.busy) return;
+    TK.said = ''; turn(t, false);
+  }
+
+  function talkPanel() {
+    const ta = h('textarea', {id: 'ci-talk-in', class: 'ci-in', rows: '1', placeholder: 'Type here', 'aria-label': 'Your reply to the Intake agent',
+      oninput: e => { TK.said = e.target.value; const b = document.getElementById('ci-talk-send'); if (b) b.disabled = TK.busy || !TK.said.trim(); },
+      onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); talkSend(); } }});
+    ta.value = TK.said;
+    const log = h('div', {class: 'ci-talk-log', id: 'ci-talk-log', 'aria-live': 'polite'},
+      TK.msgs.map(m => h('div', {class: 'ci-tb ' + (m.who === 'agent' ? 'agent' : 'you')},
+        h('span', {}, m.text),
+        (m.got || []).map(g => h('span', {class: 'ci-tgot'}, '✓ ' + g.q + ' ', h('b', {}, g.value))))),
+      TK.listening ? h('div', {class: 'ci-tb you heard', id: 'ci-talk-heard'}, TK.interim || 'Listening…') : null,
+      TK.busy ? h('div', {class: 'ci-tb agent wait'}, 'Thinking…') : null);
+    return h('section', {class: 'ci-card ci-talk', id: 'ci-talk', 'aria-label': 'Talk with the Intake agent'},
+      h('div', {class: 'ci-talk-hd'},
+        h('span', {class: 'ci-talk-tt'}, h('b', {}, 'Talk with the Intake agent'),
+          h('span', {}, TK.of ? `${TK.answered} of ${TK.of} answered` : 'Answer by speaking or typing')),
+        h('button', {type: 'button', class: 'ci-btn ci-sm', onclick: closeTalk}, 'Close')),
+      log,
+      TK.err ? h('div', {class: 'ci-err', role: 'alert'}, TK.err) : null,
+      TK.warn ? h('div', {class: 'ci-warn', role: 'status'}, TK.warn) : null,
+      SR ? null : h('span', {class: 'ci-note'}, 'This browser cannot hear speech - type instead.'),
+      h('div', {class: 'ci-talk-bar'},
+        SR ? h('button', {type: 'button', class: 'ci-btn ci-mic' + (TK.listening ? ' on' : ''), 'aria-pressed': TK.listening ? 'true' : 'false',
+          disabled: TK.busy, onclick: talkMic}, TK.listening ? 'Stop' : 'Speak') : null,
+        ta,
+        h('button', {type: 'button', id: 'ci-talk-send', class: 'ci-btn pri', disabled: TK.busy || !TK.said.trim(), onclick: talkSend}, 'Send')),
+      h('span', {class: 'ci-note'}, 'Your browser turns your voice into words; only the words are sent. Answers you give here show below as "Please check".'));
   }
 
   // ---- pieces
@@ -125,7 +228,7 @@
       h('div', {class: 'ci-row'},
         h('button', {type: 'button', class: 'ci-btn pri ci-next', disabled: busy || !(picked || typed.trim()), onclick: sendQ}, 'Next question'),
         SR ? h('button', {type: 'button', class: 'ci-btn ci-mic' + (listening ? ' on' : ''), 'aria-pressed': listening ? 'true' : 'false',
-          onclick: () => talk(document.getElementById('ci-answer'))}, listening ? 'Listening… tap to stop' : 'Talk instead of typing') : null));
+          onclick: () => talk(document.getElementById('ci-answer'))}, listening ? 'Listening… tap to stop' : 'Speak your answer') : null));
   }
 
   function nextOk() {
@@ -176,7 +279,10 @@
     const main = h('main', {class: 'ci-main'},
       h('div', {}, h('h1', {}, `Hi${D.client ? ' ' + D.client : ''}, let's plan your ${D.project || 'project'}`),
         h('p', {class: 'ci-sub'}, D.can_answer ? `${D.of - D.answered} questions left · saved as you go`
-          : 'The scope is signed off, so this page is read-only now. Ask the team for any change.')),
+          : 'The scope is signed off, so this page is read-only now. Ask the team for any change.'),
+        D.can_answer && !TK.open ? h('button', {type: 'button', class: 'ci-btn ci-talkbtn', onclick: openTalk},
+          h('span', {class: 'ci-dot', 'aria-hidden': 'true'}), 'Talk instead of typing') : null),
+      D.can_answer && TK.open ? talkPanel() : null,
       h('div', {class: 'ci-prog'}, h('div', {class: 'ci-bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(D.pct)},
         h('i', {style: `width:${D.pct}%`})), h('small', {}, `${D.answered} of ${D.of} answered · ${D.pct}%`)),
       err ? h('div', {class: 'ci-err', role: 'alert'}, err) : null,
@@ -189,11 +295,12 @@
       sections());
     const dock = D.can_answer && D.next && D.next.state !== 'conflict' ? h('div', {class: 'ci-dock'},
       SR ? h('button', {type: 'button', class: 'ci-btn', onclick: () => { const t = document.getElementById('ci-answer'); if (t) { t.scrollIntoView({block: 'center'}); talk(t); } }},
-        listening ? 'Stop' : 'Talk instead') : null,
+        listening ? 'Stop' : 'Speak') : null,
       h('button', {type: 'button', class: 'ci-btn pri ci-next', disabled: busy || !(picked || typed.trim()), onclick: sendQ}, 'Next question')) : null;
     const focusId = document.activeElement && document.activeElement.id;
-    app.replaceChildren(top(), h('div', {class: 'ci-wrap'}, nav(), main, side()), dock || '');
-    if (focusId === 'ci-answer') { const t = document.getElementById('ci-answer'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
+    app.replaceChildren(top(), h('div', {class: 'ci-wrap'}, nav(), main, side()), (TK.open ? '' : dock) || '');
+    if (focusId === 'ci-answer' || focusId === 'ci-talk-in') { const t = document.getElementById(focusId); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
+    const lg = document.getElementById('ci-talk-log'); if (lg) lg.scrollTop = lg.scrollHeight;
   }
 
   if (!TOKEN || TOKEN.length < 20) dead(); else load();

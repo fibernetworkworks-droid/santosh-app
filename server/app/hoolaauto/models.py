@@ -151,7 +151,40 @@ class AutoMsg(Base):
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
-TABLES = (AutoProject, AutoAnswer, AutoSource, AutoGate, AutoTask, AutoEvent, AutoChange, AutoMsg)
+class AutoWatch(Base):
+    """v0.949 the Monitor agent after go-live: what it watches for one project. One row per project.
+    feeds = [{app, what}] read-only reads of her connected apps (an error tracker, a cloud console, Slack ...)."""
+    __tablename__ = "auto_watch"
+    project_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    on: Mapped[bool] = mapped_column(Boolean, default=False)
+    url: Mapped[str] = mapped_column(String(400), default="")       # the live app (checked from the server, public hosts only)
+    every_min: Mapped[int] = mapped_column(Integer, default=60)
+    feeds: Mapped[str] = mapped_column(Text, default="[]")
+    seen: Mapped[str] = mapped_column(Text, default="{}")            # {feed_key: hash of what it read last time}
+    last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_say: Mapped[str] = mapped_column(Text, default="")          # the last check, in words
+    checks: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class AutoAlert(Base):
+    """One problem the Monitor found. sig = what makes it the same problem (never two open alerts for one).
+    state: open | fixing | dismissed | resolved. dev_task_id = the Hoola Code fix session she started with her tap."""
+    __tablename__ = "auto_alerts"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("aa"))
+    project_id: Mapped[str] = mapped_column(String(40), index=True)
+    kind: Mapped[str] = mapped_column(String(12), default="")        # site | slow | ci | feed
+    sig: Mapped[str] = mapped_column(String(80), default="", index=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    repo: Mapped[str] = mapped_column(String(160), default="")
+    state: Mapped[str] = mapped_column(String(10), default="open")
+    times: Mapped[int] = mapped_column(Integer, default=1)
+    dev_task_id: Mapped[str] = mapped_column(String(40), default="")
+    first_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (AutoProject, AutoAnswer, AutoSource, AutoGate, AutoTask, AutoEvent, AutoChange, AutoMsg, AutoWatch, AutoAlert)
 
 
 def ensure_tables() -> None:
