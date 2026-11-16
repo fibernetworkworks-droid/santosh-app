@@ -65,3 +65,10 @@ None names India as restricted.
 
 Still vendor-only: Sarvam, Bodhan, Scribe v3, Fun-ASR, Zoom Scribe, Cartesia Sonic 3.6, Maya 2, Qwen-Audio 3.1,
 HiDream, Luma Ray3. No route: Fonada Kapture, Kling Image 4.0, Utopai X, Muse Video, Riffusion, Hume Octave.
+
+## Direct makers (D12, owner 16 Nov: "WE WILL KEEP THERE API DIRECTLY")
+One key each, VPS .env only. Speech in: Bodhan (`api.bodhan.ai/v1`), Sarvam (`api.sarvam.ai`), Maya Research, Gnani,
+Microsoft Azure (or via Eden), OpenAI (GPT Live Transcribe). Speech out: Cartesia (`sonic-3.6`; Sonic 3 / 3.5 also on
+Together), Maya Research, Murf, Gnani, Smallest AI, Mirai Minds, Chariot, TeenageWorks, Sarvam, Google (Gemini 2.5 Pro
+TTS, Chirp 3 HD), Microsoft (MAI Voice 1). Others vendor-only from research 05: ElevenLabs Scribe v3, Alibaba Fun-ASR,
+Zoom Scribe, Qwen-Audio 3.1, Luma Ray3, HiDream-O1 (approval needed). Each maker's terms are read before its key goes in.

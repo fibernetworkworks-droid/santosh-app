@@ -51,6 +51,7 @@ Output = one answer. She never sees several models talking.
 | D9 | A model that moves two levels in a table refresh is **applied automatically** (16 Nov: "AUTO"). |
 | D10 | Every kind of work has a pool of **10-20 models** (2-4 per level), not 1-3 (16 Nov: "MIN 10 MODEL MAX 20 MODELS"). Levels are quality bands below the best model of that kind (section 8.2). |
 | D11 | A model not on OpenRouter is reached through **another multi-model provider like OpenRouter** (16 Nov: "WE WILL GET IT FROM OTHER LLM PROVIDERS LIKE OPENROUTER"). OpenRouter stays first; the others fill the gaps. Keys only in the VPS .env. Providers (research 05): fal.ai, Kie.ai, Eden AI (terms to read first); WaveSpeed only after written permission. |
+| D12 | A model that **no** multi-model provider carries is reached through **its maker's own API** (16 Nov: "THOSE DONT HAVE LLM PROVIDER WE WILL KEEP THERE API DIRECTLY"). Order: OpenRouter -> other multi-model provider -> maker's own API. One key per maker, VPS .env only. |
 
 ---
 

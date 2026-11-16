@@ -303,9 +303,9 @@ Source: Music Arena + AA music.
 
 | Kind | Before | After | Added (provider) |
 |---|---|---|---|
-| speech.in (Indian) | 8 | **10** | Amazon Transcribe (Eden AI) - MAX, Azure Speech (Eden AI) - LOW |
+| speech.in (Indian) | 8 | **10** -> **20** with direct makers (D12, below) | Amazon Transcribe + Azure (Eden AI) |
 | music.make | 2 | **8** | ULTRA Suno v6, Suno v6 Mini (Kie.ai); MAX Mureka V9.5, Lyria 3.5 (fal) + Lyria 3 Pro; HIGH Stable Audio 3 Medium, ElevenLabs Music v2.5 (fal); LOW Lyria 3 Clip |
-| speech.out (Indian) | 4 | 4 | nothing: the other scored Indian voices (Cartesia Sonic 3.6, Maya 2 Native) are vendor-only |
+| speech.out (Indian) | 4 | 4 -> **20** with direct makers (D12, below) | |
 
 **Better models from other providers that join full pools** (the weakest drops to keep 20): video - SkyReels V4
 (WaveSpeed, HIGH, only after their written permission), Sora 2 Pro (fal, MID), Vidu Q3 Pro (Replicate / WaveSpeed, MID),
@@ -314,6 +314,36 @@ PixVerse V5.6 (fal, LOW); images - Reve 2.1 (fal, HIGH, check it is live), Ideog
 **Still below 10 without vendor APIs:** Indian voice out (4) and music (8). The best Indian speech models (Sarvam
 Saaras v3 / Bulbul, Bodhan, Cartesia Sonic 3.6, Maya 2) are sold only by the companies themselves - not through
 OpenRouter or any multi-model provider.
+
+## Indian voice pools, full boards + direct makers (D12, voiceofindia.ai read in full 16 Nov 2026)
+
+Route: **OR** OpenRouter, **fal / Kie / Eden** multi-model provider, **direct** = the maker's own API.
+
+### speech.in (Indian languages) - 20 models
+Board: voiceofindia.ai speech-to-text, 32 models, 21,020 held-out phone samples in 15 languages, OI-WER (lower = better).
+
+| Level | Models (OI-WER, route) |
+|---|---|
+| ULTRA | Bodhan Indic Transcribe Core 3.39 % (direct), Sarvam Saaras v3 3.69 % (direct), Bodhan Indic Transcribe Flex 4.01 % (direct), Amazon Transcribe 4.69 % (Eden / AWS) |
+| MAX | MAI-Transcribe-2 4.79 % (OR), MAI-Transcribe-1.5 4.91 % (OR), Gemini 3.5 Transcribe 5.59 % (OR), ElevenLabs Scribe v2 5.76 % (OR) |
+| HIGH | Azure Fast Transcription 5.77 % (Eden / Azure), Maya Transcribe One 5.85 % (direct), Gemini 3.8 Flash 6.25 % (OR), Nemotron 3.5 Transcribe 6.59 % (OR) |
+| MID | Azure Realtime Transcription 6.80 % (Azure), Gemini 3 Flash 6.81 % (OR), GPT Transcribe 6.94 % (OR), Gnani Prisma v2.5 7.24 % (direct) |
+| LOW | Grok Voice Transcribe 2.0 7.84 % (OR), GPT Live Transcribe 8.42 % (OpenAI direct), Gemma E4B 8.80 % (OR), Deepgram Nova 3 8.94 % (OR) |
+
+Left out: SraVaani (open weights only - would need self-hosting), Grok streaming (same model as Grok 2.0 for this use).
+
+### speech.out (Indian languages) - 20 models
+Board: voiceofindia.ai text-to-speech, 23 models, 44,405 blind votes by native listeners in 10 languages.
+
+| Level | Models (Elo, route) |
+|---|---|
+| ULTRA | ElevenLabs v4 1119 (OR), Gemini 3.8 Flash TTS 1101 (OR), Cartesia Sonic 3.6 1100 (direct), Gemini 3.1 Flash TTS 1084 (OR) |
+| MAX | Gemini 3.8 Flash-Lite TTS 1071 (OR), Maya 2 Native 1063 (direct), Cartesia Sonic 3.5 1052 (Together / direct), Gemini 2.5 Pro TTS 1050 (Google direct) |
+| HIGH | Murf Falcon 1037 (direct), Gnani Vachana TTS v3 1028 (direct), ElevenLabs v3 1028 (OR), Smallest AI Lightning 3.1 Pro 1026 (direct) |
+| MID | Mirai Minds Mira-TTS 1007 (direct), Chariot TTS-v0 988 (direct), Cartesia Sonic 3 982 (Together / direct), Google Chirp 3 HD 972 (Google direct) |
+| LOW | Sarvam Bulbul v3 972 (direct), MiniMax Speech 2.8 HD 965 (OR), TeenageWorks Teen-V1 963 (direct), Microsoft MAI Voice 1 924 (Azure / direct) |
+
+Note: Sarvam Bulbul v3 sits LOW on this independent board (972, 9,360 votes) although Sarvam's own numbers put it higher.
 
 ## Below 10, said plainly (before research 05)
 
