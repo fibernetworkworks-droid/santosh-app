@@ -84,8 +84,9 @@ def _copy_staff(main_id: str, twin_id: str) -> int:
     return n
 
 
-def make(main, kind: str):
-    """A new twin of `main` (kind 'preview' | 'draft'): same plan + structure, no rows, her staff accounts copied."""
+def make(main, kind: str, staff: bool = True):
+    """A new twin of `main` (kind 'preview' | 'draft' | 'check'): same plan + structure, no rows, her staff accounts
+    copied (not for a rule check, which brings its own people)."""
     from ..appmaker.models import AppProject
     with session() as s:
         t = AppProject(id=new_id("app"), tenant_id=main.tenant_id, number="", name=main.name, brief=main.brief,
@@ -95,7 +96,8 @@ def make(main, kind: str):
         s.add(t)
         s.flush()
         s.expunge(t)
-    _copy_staff(main.id, t.id)
+    if staff:
+        _copy_staff(main.id, t.id)
     return t
 
 

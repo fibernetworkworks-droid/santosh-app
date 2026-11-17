@@ -1496,6 +1496,12 @@ def change_schema(r: AppProject, ops: dict[str, Any], words: str = "") -> dict[s
         AN._CACHE.clear() if hasattr(AN, "_CACHE") else None
     except Exception:                                    # noqa: BLE001
         pass
+    try:                                                  # v0.990 B3: a website's data rules are tested again
+        from ..site import rulecheck as RC
+        if r.status == "web":
+            RC.after_change(r)
+    except Exception:                                    # noqa: BLE001
+        log.debug("rule tests after change", exc_info=True)
     return {"rev": be["rev"], "done": done, "say": "; ".join(done) + ". Rows mein abhi dikhega; form mein agli build se."}
 
 

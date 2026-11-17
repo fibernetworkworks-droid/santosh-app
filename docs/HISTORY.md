@@ -6635,3 +6635,9 @@ preview_file), `site/build.py` (bind in assemble), `site/applink.py` (project ->
 carry on Accept, drop on Discard), `appmaker/connect.py` (fire / run refuse twins), `appmaker/logic/engine.py` (tick /
 notify skip twins), `appmaker/service.py` (twins out of the app list), `site/assets/hoola-app.js` (screens()),
 `site/assets/hoola-site.css`. Tests: `test_v0989_live_screens_own_data.py`.
+
+## v0.990.0 PROVE THE RULES (owner: "GO B3" on docs/research/lovable/03_backend_vs_hoola.md): a website's data rules (who may add, see, change and remove entries in each list; staff-only and private fields) were enforced on every call but never tested for websites. Now `site/rulecheck.py` plays them through the real engine (appmaker.backend create / rows / update / delete, logic hooks included) on a throwaway copy of the lists (a twin, kind check, its own people, dropped after) by a visitor, two members and an admin; each answer must be what the rule says; the result is kept per website with a fingerprint of the rules; it runs again in the background after a list / rule change (`backend.change_schema`, `logic.apply`, switch site_rule_tests_bg) and before going live when the rules changed; a FAIL blocks going live (`hosting.blockers`, not a skippable dialog); GET / POST /api/sites/{ref}/rule-tests; Web Studio Cloud tab > Safety > Rule tests with Run again. 7 tests incl. a planted leak that is caught and blocks. NOT VERIFIED on her server.
+
+Files: NEW `server/app/site/rulecheck.py`; `site/twin.py` (make staff=), `site/hosting.py` (blockers), `appmaker/backend.py`
+(change_schema hook), `appmaker/logic/service.py` (apply hook), `main.py` (rule-tests routes), `config.py`
+(site_rule_tests_bg), `static/console/webstudio.js` (Cloud > Rule tests). Tests: `test_v0990_prove_rules.py`.

@@ -85,6 +85,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
     monkeypatch.setenv("CHAT_MODEL_CHOICE", "false")   # v0.740 older suites pin one model for every turn; test_v0740 checks the dropdown
     monkeypatch.setenv("STUDIO_DESIGN_QUESTIONS", "false")  # v0.784 older Studio walks pin Build going straight to the workspace; test_v0784 checks the card
+    monkeypatch.setenv("SITE_RULE_TESTS_BG", "false")   # v0.990 B3 no background rule-test threads in other suites; test_v0990 runs them
     monkeypatch.setenv("STUDIO_ASK_FIRST", "false")   # v0.988 older Build walks pin one plan call straight to the workspace; test_v0988 checks the questions
     monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile
     monkeypatch.setenv("CHAT_FILES_BY_CODE", "false")  # v0.738 older suites pin pylab keeping only png / csv / xlsx files

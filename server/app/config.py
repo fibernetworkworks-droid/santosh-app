@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     usage_month_usd: float = 0.0           # v0.98 server ceiling of AI spend per owner per month (0 = none)
     studio_modes: bool = True             # v0.782 TEEN MODE: Studio Plan / Chat refuse changing tools on the server
     studio_design_questions: bool = False  # v0.784 SAWAAL CARD; v0.988 OFF: the owner had the page removed - the design is chosen by the AI from her words
+    site_rule_tests_bg: bool = True   # v0.990 B3: a website's data rules are tested again in the background after a list / rule change
     studio_ask_first: bool = True   # v0.988 PROMPT FIRST: the AI reads her ask first and asks what it must know before any plan / preview
     studio_ai_design: bool = True   # v0.988 PROMPT FIRST: look 1's colours, font pair and text sizes come from the AI's reading of her words
     app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse

@@ -1349,7 +1349,8 @@
       return;
     }
     pane.innerHTML = viewsBar() + `<div class="split"><nav class="subnav" aria-label="Lists"><div class="h">Data</div>${cols.map((c, i) => `<button type="button" data-coll="${esc(S(c.key))}" ${i ? '' : 'aria-current="page"'}>${esc(S(c.label))}${M(a.counts)[c.key] != null ? `<span class="sp"></span><span class="mut sm">${esc(S(M(a.counts)[c.key]))}</span>` : ''}</button>`).join('')}
-        <div class="h">People</div><button type="button" data-coll="__members">Members and logins</button></nav><div class="main" id="wsCloud"></div></div>`;
+        <div class="h">People</div><button type="button" data-coll="__members">Members and logins</button>
+        <div class="h">Safety</div><button type="button" data-coll="__rules">Rule tests</button></nav><div class="main" id="wsCloud"></div></div>`;
     openColl(S(cols[0].key));
   }
 
@@ -1363,6 +1364,23 @@
         const rows = L(m.members);
         box.innerHTML = `<h2 style="font-size:18px">Members and logins</h2>${rows.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">Name</th><th scope="col">Mobile / email</th><th scope="col">Role</th></tr></thead><tbody>
           ${rows.map(x => `<tr><td>${esc(S(x.name) || '—')}</td><td>${esc(S(x.phone || x.email || x.login))}</td><td>${esc(S(x.role))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">Nobody has signed up yet.</p>'}`;
+        return;
+      }
+      if (key === '__rules') {                       // v0.990 B3: the data rules played by a visitor, two members and an admin
+        const draw = t => {
+          const bad = L(t.failed), all = L(t.checks);
+          box.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><h2 style="font-size:18px" class="sp">Rule tests</h2>
+              ${pill(t.ok ? 'Passed' : bad.length + ' failed', t.ok ? 'ok' : 'bad')}<button class="b" type="button" id="wsRulesRun">Run again</button></div>
+            <p>${esc(S(t.say))}</p><p class="mut sm">Played on a throwaway copy of your lists through the same server code every visitor uses; your entries and members are never touched. A failed rule stops the website going live until it is fixed.</p>
+            ${all.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">List</th><th scope="col">Check</th><th scope="col">Should be</th><th scope="col">Was</th></tr></thead>
+              <tbody>${[...bad, ...all.filter(c => c.ok)].slice(0, 300).map(c => `<tr><td>${esc(S(c.list))}</td><td>${esc(S(c.check))}${c.note ? `<div class="mut sm">${esc(S(c.note))}</div>` : ''}</td><td>${esc(S(c.want))}</td><td>${c.ok ? esc(S(c.got)) : pill(S(c.got), 'bad')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+          const btn = $('#wsRulesRun');
+          if (btn) btn.addEventListener('click', async () => {
+            btn.disabled = true; btn.textContent = 'Running…';
+            try { draw(await api('POST', `/api/sites/${enc(CUR.id)}/rule-tests`)); } catch (er) { toast(er.message, true); btn.disabled = false; btn.textContent = 'Run again'; }
+          });
+        };
+        draw(await api('GET', `/api/sites/${enc(CUR.id)}/rule-tests`));
         return;
       }
       const r = await api('GET', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}`);

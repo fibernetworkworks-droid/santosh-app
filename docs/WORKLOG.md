@@ -3209,3 +3209,10 @@ Ask: "GO B1 B2" (Lovable backend research plan): portal screens with real data; 
 Built: site/screens.py (screens tied to real lists at build) + hoola-app.js screens(); site/twin.py (preview / draft twin
 projects, ~p dataset, Accept carries structure not rows, twins never call outside services)
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.990.0 PROVE THE RULES
+Ask: "GO B3" (Lovable backend plan): test a website's data rules, block going live on a failure
+Built: site/rulecheck.py (rules played by a visitor, two members and an admin on a throwaway twin); after changes + before
+going live; FAIL blocks; Studio Cloud > Rule tests
+Deploy: server only (vps-ops deploy).

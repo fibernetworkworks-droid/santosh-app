@@ -325,6 +325,13 @@ def blockers(r: Site) -> list[str]:
     if chk.get("tier") == "quick":           # v0.789 the last change had only the quick check of its own page
         out.append("the last change had the quick check only (its own page); the full check of every page runs first "
                    "(about a minute), then tap Go live again")
+    if not getattr(r, "draft_of", ""):                 # v0.990 B3: the website's data rules must pass their tests
+        from . import applink as AL
+        if AL.linked_id(r):
+            from . import rulecheck as RC
+            bad = RC.blocker(r)
+            if bad:
+                out.append(bad)
     if r.status != "ready":
         out.append(f"website abhi '{r.status}' hai")
     if not r.version:
