@@ -30,6 +30,10 @@ class AppProject(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # v0.978 L13b: a BRANCH = a named copy of an app (own preview + preview data, never live), merged back by her tap
+    branch_of: Mapped[str | None] = mapped_column(String(40), nullable=True, default="")
+    branch_name: Mapped[str | None] = mapped_column(String(80), nullable=True, default="")
+    branch_base: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0)      # the app's version it started from
 
 
 def ensure_table() -> None:

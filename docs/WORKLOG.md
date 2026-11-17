@@ -3166,3 +3166,9 @@ Task ID: v0.856.0 LANGGRAPH G9
 Ask: GO BOTH (after G8).
 Built: Hoola Code honest done + told once; studio price cards park the graph; 11 tests.
 Deploy:
+
+---
+Task ID: v0.978.0 APP ENGINE BRANCHES + E8 (built as 0.976)
+Ask: GO APP ENGINE BRANCHES AND E8.
+Built: appengine/branches.py (named copies, three-way merge by file, named conflicts, Cloud replay, her tap) + Studio Branches tab; E8 small-site looks with their own page bodies; 8 tests.
+Deploy: server only (vps-ops deploy).

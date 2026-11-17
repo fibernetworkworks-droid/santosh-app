@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.977.0"   # v0.977.0 MORE MENU (built as 0.976; their HOOLA PIPELINE P6 took 0.976, both kept; owner, her sidebar screenshot: "remove Work, Made by Santosh, AI Apps, Arena --- show 2 things in More -- Work and replace Made by Santosh by name Docs and files -- AI Apps and Arena just hide it for now"): in the app design the sidebar rows are AI Employees / Tools / Computer / More / Customize; More opens a small menu with Work and Docs and files (the old Made by page, its title renamed), the waiting-for-you count rides on More; AI Apps and Arena rows hidden (pages still there); 3 tests updated. Previous: v0.976.0 HOOLA PIPELINE P6. v0.976.0 HOOLA PIPELINE P6 (built as 0.975; their SIDEBAR LIKE CLAUDE took 0.975, both kept; owner: "GO P6"; v0.972 P5 + v0.971 verified live first - her margin message ran through the Box on Opus 4.6 and passed the check): the receipt line under a Box reply - which model did which part ("Made with Research: Claude Sonnet 4.6 (5 parts) · Writing: Claude Opus 4.6"), a tap opens each part with its level and any hand-over (which model took over from which, and why); one model_receipt event per Box message (pipeline/receipt.py, published when the sheet closes, kept in its own chat, never pushed, back on reload), only parts the Box really ran, no price (D5); console v2.js + .mreceipt, phone lib/ui/model_receipt.dart in the new design and the old chat screen; switch pipeline_receipt; 9 tests. NOT VERIFIED on her server or phone.
+APP_VERSION = "0.978.0"   # v0.978.0 APP ENGINE BRANCHES + E8 (built as 0.976; their HOOLA PIPELINE P6 took 0.976 and MORE MENU 0.977, all kept; owner: "GO APP ENGINE BRANCHES AND E8"): App Engine branches = named copies of an app (own files, own preview, own preview data, never live, <= 3 per app) merged back by HER tap with a three-way merge by file, a part changed in both named and settled first, Hoola Cloud list changes replayed as one run (appengine/branches.py, Studio Branches tab, routes /api/appengine/{ref}/branches*, tool branch_new / branches); E8 = a small site's three looks each write every section in their own design (site_look_own_bodies, <= 12 sections), the picked look's files become the site. Previous: v0.977.0 MORE MENU (built as 0.976; their HOOLA PIPELINE P6 took 0.976, both kept; owner, her sidebar screenshot: "remove Work, Made by Santosh, AI Apps, Arena --- show 2 things in More -- Work and replace Made by Santosh by name Docs and files -- AI Apps and Arena just hide it for now"): in the app design the sidebar rows are AI Employees / Tools / Computer / More / Customize; More opens a small menu with Work and Docs and files (the old Made by page, its title renamed), the waiting-for-you count rides on More; AI Apps and Arena rows hidden (pages still there); 3 tests updated. Previous: v0.976.0 HOOLA PIPELINE P6. v0.976.0 HOOLA PIPELINE P6 (built as 0.975; their SIDEBAR LIKE CLAUDE took 0.975, both kept; owner: "GO P6"; v0.972 P5 + v0.971 verified live first - her margin message ran through the Box on Opus 4.6 and passed the check): the receipt line under a Box reply - which model did which part ("Made with Research: Claude Sonnet 4.6 (5 parts) · Writing: Claude Opus 4.6"), a tap opens each part with its level and any hand-over (which model took over from which, and why); one model_receipt event per Box message (pipeline/receipt.py, published when the sheet closes, kept in its own chat, never pushed, back on reload), only parts the Box really ran, no price (D5); console v2.js + .mreceipt, phone lib/ui/model_receipt.dart in the new design and the old chat screen; switch pipeline_receipt; 9 tests. NOT VERIFIED on her server or phone.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -9474,6 +9474,38 @@ def _ghs(fn, *a, **kw):
         return _ae(fn, *a, **kw)
     except GS.SyncError as e:
         raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/appengine/{ref}/branches", dependencies=[Depends(require_key)])
+async def appengine_branches(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.978 L13b: the app's open branches (named copies with their own preview + preview data, never live)."""
+    from .appengine import branches as BR
+    return await asyncio.to_thread(_ae, BR.listing, tenant, ref)
+
+
+@app.post("/api/appengine/{ref}/branches", dependencies=[Depends(require_key)])
+async def appengine_branch_new(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appengine import branches as BR
+    return await asyncio.to_thread(_ae, BR.create, tenant, ref, str(body.get("name") or ""))
+
+
+@app.get("/api/appengine/{ref}/branches/{bid}/compare", dependencies=[Depends(require_key)])
+async def appengine_branch_compare(ref: str, bid: str, tenant: str = Depends(current_tenant)):
+    from .appengine import branches as BR
+    return await asyncio.to_thread(_ae, BR.compare, tenant, ref, bid)
+
+
+@app.post("/api/appengine/{ref}/branches/{bid}/accept", dependencies=[Depends(require_key)])
+async def appengine_branch_accept(ref: str, bid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap: a three-way merge by file; a part both changed must be settled (resolutions {id: site|branch}) first."""
+    from .appengine import branches as BR
+    return await asyncio.to_thread(_ae, BR.accept, tenant, ref, bid, dict(body.get("resolutions") or {}), bool(body.get("confirm")))
+
+
+@app.delete("/api/appengine/{ref}/branches/{bid}", dependencies=[Depends(require_key)])
+async def appengine_branch_discard(ref: str, bid: str, confirm: bool = False, tenant: str = Depends(current_tenant)):
+    from .appengine import branches as BR
+    return await asyncio.to_thread(_ae, BR.discard, tenant, ref, bid, confirm)
 
 
 @app.get("/api/appengine/{ref}/github", dependencies=[Depends(require_key)])

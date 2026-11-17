@@ -708,6 +708,8 @@ class Settings(BaseSettings):
     site_look_parallel: int = 6            # v0.324 look sections written at the same time (3 looks x hero + page top)
     site_full_looks: bool = True           # v0.649 WEB STUDIO: each of the 3 looks is the WHOLE site (every page), words written once
     site_full_looks_max: int = 40          # v0.649 above this many sections the looks stay page tops (a big site would cost too much)
+    site_look_own_bodies: bool = True     # v0.978 E8: a small site's looks each write EVERY section in their own design (not one shared body)
+    site_look_own_bodies_max: int = 12    # v0.978 E8: at most this many sections in the whole plan; above it the shared-body rule stays (cost)
     site_kit: bool = True                  # v0.330 one design kit per site (.k-* components every section uses)
     site_critique_pages: int = 6           # v0.292 pages Opus reviews from their real screenshots (site_critique=all)
     site_max_pages: int = 150              # v0.315 BADI WEBSITE: most pages one site may have (designed + list items + legal)

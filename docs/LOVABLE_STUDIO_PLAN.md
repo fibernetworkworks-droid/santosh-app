@@ -146,7 +146,7 @@ Shiprocket, MSG91), her-tap money and publishing, ops after launch (errors, spee
 - **E7 Live slots durable**: `site/stream.py` slots move from process memory to a small on-disk ring (or the DB) so a
   restart or a second worker does not lose the live view (gap D9).
 - **E8 Looks with their own bodies**: allow a look to differ in body sections for small sites (<= 12 sections), keep
-  the shared-body rule above it (cost).
+  the shared-body rule above it (cost). BUILT v0.978 (`site.service._own_bodies`, switch `site_look_own_bodies`, cap `site_look_own_bodies_max` 12).
 
 ## 5. The App Engine (new) - the Lovable-grade lane
 
@@ -281,7 +281,7 @@ The ledger of attempts is kept per error fingerprint so the model sees what fail
 | L10 | HOOLA CLOUD | `hoola.ts` over the existing backend, server-enforced rules, additive migrations, preview vs live data | rule audit + migration refusal tests |
 | L11 | SABOOT | auto tests on rule changes + browser check before done (App Engine); quick scan + deep scan; publish block | planted bad-rule app refused at publish |
 | L12 | GHAR + SHURUAAT | home redesign (greeting, typewriter, chips, real starter projects with thumbnails), the home -> workspace transition, "Setting the stage" with real steps | browser walk |
-| L13 | DRAFT | E6 drafts on the Site Engine, then App Engine branches | conflict-named merge test |
+| L13 | DRAFT | E6 drafts on the Site Engine, then App Engine branches | conflict-named merge test (BUILT: drafts v0.838, App Engine branches v0.978) |
 | L14 | GITHUB DO TARAF | two-way sync for App Engine projects (one branch), import from ZIP / another builder's export | round-trip test |
 | L15 | PROOF | the L0 card again + 3 proof apps (a clinic site, a coaching portal with roles + payments, a dispatch dashboard), owner walks them | numbers before vs after |
 

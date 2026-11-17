@@ -58,6 +58,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("PC_VIA_OPENROUTER", "false")  # v0.866 older PC suites pin the Anthropic Sonnet path; test_v0866 turns it on
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
     monkeypatch.setenv("SITE_FULL_LOOKS", "false")    # v0.649 older site suites pin page-top looks; test_v0649 checks the whole site
+    monkeypatch.setenv("SITE_LOOK_OWN_BODIES", "false")  # v0.978 E8 older full-look suites pin one shared body; test_v0975 turns it on
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku

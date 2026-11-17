@@ -6342,3 +6342,43 @@ added to menu.js) and Docs and files (`bana`, the old "Made by <avatar>" page; i
 the app design). More is lit when either page is open and carries Work's waiting count / "N working". AI Apps and Arena
 pages and routes are untouched, only their rows are hidden. Tests: v0975 walk asserts the rows + the two-item menu;
 v0970 / v0973 row pins moved. test_v0285 menus crisp was already red. NOT VERIFIED on her server.
+
+
+## v0.978.0 APP ENGINE BRANCHES + E8 (built as 0.976; their HOOLA PIPELINE P6 took 0.976 and MORE MENU 0.977, all kept) (owner: "GO APP ENGINE BRANCHES AND E8")
+
+The two pieces left after L15 ("IS ALL WEB DEVELOPMENT WORK DONE" -> App Engine branches + E8 were the gaps).
+
+**App Engine branches** (the second half of L13 of docs/LOVABLE_STUDIO_PLAN.md) - `server/app/appengine/branches.py`:
+- A branch = a hidden AppProject row (`branch_of`, `branch_name`, `branch_base` - new nullable columns on `ae_projects`,
+  added by `_add_missing_columns` on old databases) with its OWN `src/`, own preview token + slug, own Hoola Cloud schema
+  copy and its OWN preview data (cloud site_key `ae:<branch id>:p`, seeded with marked samples); the app's preview and
+  live data are never touched. `branch.json` keeps the base version, base schema version, base look and base packages;
+  `base_src/` = the app's files as they were (the merge's common ancestor; never depends on pruned versions).
+- `list_` hides branches; `publish` refuses a branch; `delete_app` refuses an app with open branches; max 3 open; no
+  branch of a branch; duplicate names refused; discard = her tap (confirm).
+- `merge_plan` = THREE-WAY BY FILE over the files Hoola may write (`RL.writable`; locked tooling is refreshed anyway):
+  only-branch changes (new / changed / deleted) come in, only-app changes stay, both = a NAMED conflict (path + what each
+  side did). The look (palette / values) the same way; packages the branch added come in; Hoola Cloud = the branch's
+  migrations after the base schema version - replayed onto the app as ONE `apply_changes` run (refused = nothing at all
+  changes, said by name); a conflict when the app also changed its lists; data-loss changes are never replayed but queued
+  on the app's own "I accept data loss" card.
+- `accept(resolutions {id: site|branch}, confirm)` = her tap: an unsettled conflict -> 409 and nothing written; incoming
+  files checked against the app's rules first, then Cloud, then look + packages, then files under the app's lock; the app
+  rebuilds once (one new version); the branch row, files and preview data are removed. Entry files are never deleted.
+- Routes: GET/POST `/api/appengine/{ref}/branches`, GET `/branches/{bid}/compare`, POST `/branches/{bid}/accept`,
+  DELETE `/branches/{bid}?confirm=true`. Tool `app_engine`: `branch_new {name}`, `branches` (never accept / discard).
+  The prompt block tells the model when it works in a branch.
+- Studio (`appengine.js`): a Branches tab (start, list with "N to bring in" + "changed in both" pill, What would change,
+  choose Keep the app's / Take the branch's per conflict, Accept into the app behind a confirm, Discard); a branch's
+  workspace shows a "Branch: <name>" pill, Back to the app, Accept or discard, and no Publish.
+
+**E8 Looks with their own bodies** - `site/service._own_bodies`: when full looks are on and the WHOLE plan has at most
+`site_look_own_bodies_max` (12) sections, every remaining section is written by EACH of the three looks in its own design
+(streamed to that look's live canvas), saved only in `looks/<i>/<page>__<type>.json`; nothing enters the site's sections
+until she picks; `choose_look` now copies every `*__*.json` of the picked look (was home only), so the build writes no page
+again. Above the cap the v0.649 rule stays (written once, shared). The look carries `own_bodies`; the Studio says "every
+page in its own design". Switch `site_look_own_bodies` (conftest pins it off for the older full-look suites).
+
+Tests: `server/tests/test_v0978_branches_e8.py` (8: hidden copy / never live / limits, the conflict-named merge with
+nothing half done, look + Cloud + file conflicts taken from the branch, routes, a browser walk of the Branches tab, E8 own
+bodies + pick, E8 above the cap). NOT VERIFIED on her server or with a real model (the fake site AI writes the sections).

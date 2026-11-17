@@ -155,6 +155,7 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
            "created_at": r.created_at.isoformat() if r.created_at else "", "updated_at": r.updated_at.isoformat() if r.updated_at else "",
            "published_at": r.published_at.isoformat() if r.published_at else "",
            "held": held(r.id),
+           "branch_of": r.branch_of or "", "branch_name": r.branch_name or "", "branch_base": int(r.branch_base or 0),
            "last_build": {k: lb.get(k) for k in ("ok", "seconds", "version", "types_ok", "types", "build_problems", "at", "why", "queued", "runner")}}
     if full:
         try:
@@ -229,7 +230,9 @@ def _esc(s: str) -> str:
 def list_(tenant: str) -> list[dict[str, Any]]:
     ensure_table()
     with session() as s:
-        rows = s.scalars(select(AppProject).where(AppProject.tenant_id == tenant).order_by(AppProject.updated_at.desc())).all()
+        rows = s.scalars(select(AppProject).where(AppProject.tenant_id == tenant)
+                         .where((AppProject.branch_of == "") | (AppProject.branch_of.is_(None)))   # v0.978 branches live inside their app
+                         .order_by(AppProject.updated_at.desc())).all()
         for r in rows:
             s.expunge(r)
     return [view(r, False) for r in rows]
@@ -258,6 +261,9 @@ def delete_app(tenant: str, ref: str) -> dict[str, Any]:
     r = _load(tenant, ref)
     if r.live_version:
         raise AppEngineError("This app is live; take it down first (Studio > Publish > Take down).", 409)
+    from . import branches as BR
+    if not r.branch_of and BR.open_of(r):
+        raise AppEngineError("This app has open branches; accept or discard them first (Studio > Branches).", 409)
     from sqlalchemy import delete as _sqldel
     from ..site import webapp as W
     from . import cloud as CL
@@ -806,6 +812,8 @@ def publish(tenant: str, ref: str, version: int, confirm: bool = False) -> dict[
     v = int(version or 0)
     if not confirm:
         raise AppEngineError("Going live needs her tap in the Studio (confirm).", 403)
+    if r.branch_of:
+        raise AppEngineError("A branch never goes live. Accept it into its app first, then publish the app.", 409)
     if not v or v > int(r.version or 0):
         raise AppEngineError(f"There is no built version {v}.", 404)
     bl = publish_check(r, v)
@@ -1006,6 +1014,9 @@ def prompt_block(tenant: str) -> str:
         state += CL.prompt_block(r)
     except Exception:                                # noqa: BLE001
         pass
+    if r.branch_of:                                  # v0.978 a branch knows it is one
+        from . import branches as BR
+        state += "; " + BR.prompt_line(r)
     return (f"<app_engine_project>\nYou are working on App Engine app {r.number} \"{r.name}\" (app id {r.id}), a real "
             f"React 18 + TypeScript + Vite + Tailwind v4 app; {state}. Change it ONLY with the app_engine tool "
             "(view / search before you edit; edit_lines for small changes; write for a new file). Rules the tool "

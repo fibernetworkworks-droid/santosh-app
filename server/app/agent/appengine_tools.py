@@ -11,8 +11,8 @@ from typing import Any
 
 from .tools import Ctx, ToolError
 
-READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests"}
-CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change"}
+READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests", "branches"}
+CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change", "branch_new"}
 
 APPENGINE_TOOLS = [
     {"name": "app_engine", "description": (
@@ -49,11 +49,14 @@ APPENGINE_TOOLS = [
         "the rules are played against the real rule engine and the answer says if they held; after a build of an app "
         "that saves data a real browser walks it at phone and desktop size - read those lines, and never say it is done "
         "while one says FAILED. action=tests plays the rules now; action=scan (what=quick|deep) lists what would block "
-        "going live: personal data readable by anyone, secrets in the code, failing rules or browser walk."),
+        "going live: personal data readable by anyone, secrets in the code, failing rules or browser walk. BRANCHES: "
+        "action=branch_new {name} starts a named copy of the app (own preview + own sample data, never live) to try a bigger "
+        "change safely - then work in it with app=<the branch id>; action=branches lists them with what accepting would "
+        "bring in and any part changed in both. Accepting a branch into the app (or discarding it) is HER tap in the Studio."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES)},
          "app": {"type": "string", "description": "the app id or number (default: the app this Studio chat is about)"},
-         "name": {"type": "string", "description": "create: the app's name"},
+         "name": {"type": "string", "description": "create: the app's name; branch_new: the branch's name"},
          "brief": {"type": "string", "description": "create: what she asked for, in her words"},
          "palette": {"type": "string", "enum": ["calm", "warm", "fresh", "bold", "night"]},
          "values": {"type": "object", "description": "tokens: {bg, surface, ink, primary, accent: #rrggbb, radius: number, head, body}"},
@@ -123,6 +126,11 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
         return AE.add_dependency(t, a, kw.get("package") or "")
     if action == "tokens":
         return AE.set_tokens(t, a, kw.get("values") or {}, kw.get("palette") or "")
+    if action in ("branches", "branch_new"):
+        from ..appengine import branches as BR
+        if action == "branches":
+            return BR.listing(t, a)
+        return BR.create(t, a, kw.get("name") or "")
     if action == "build":
         res = AE.wait_build(t, a)
         return _prove(t, a, res)

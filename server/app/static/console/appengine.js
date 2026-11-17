@@ -103,7 +103,7 @@
   async function workspace(id, tab) {
     const {api, APP} = k();
     if (ST.id !== id) Object.assign(ST, {id, conv: '', rows: [], waiting: false, file: '', fileCode: null, err: '', sig: '', device: 'pc'});
-    ST.tab = ['preview', 'code', 'design', 'cloud', 'versions', 'publish'].includes(tab) ? tab : 'preview';
+    ST.tab = ['preview', 'code', 'design', 'cloud', 'versions', 'branches', 'publish'].includes(tab) ? tab : 'preview';
     ST.app = await api('GET', `/api/appengine/${enc(id)}`);
     ST.conv = S(ST.app.conversation_id);
     if (!ST.conv) ST.conv = await newConv(ST.app);
@@ -136,11 +136,15 @@
       <span class="pill ${c}" id="aeState">${esc(t)}</span><span class="sp"></span>
       ${a.live_version ? `<a class="b ghost sm" href="${esc(a.live_url)}" target="_blank" rel="noopener">${ico('ext', 15)}Live: version ${esc(a.live_version)}</a>` : ''}
       <button class="b sm" type="button" data-ae="build">${ico('hist', 15)}Rebuild</button>
-      <button class="b pri sm" type="button" data-ae="tab" data-ae-tab="publish">Publish</button>`;
+      ${a.branch_of ? `<span class="pill v" id="aeBranchPill">Branch: ${esc(a.branch_name)}</span>
+        <a class="b ghost sm" href="#/app/${enc(a.branch_of)}">Back to the app</a>
+        <a class="b pri sm" href="#/app/${enc(a.branch_of)}/branches">Accept or discard</a>`
+        : '<button class="b pri sm" type="button" data-ae="tab" data-ae-tab="publish">Publish</button>'}`;
   }
 
   function drawTabs() {
-    const T = [['preview', 'Preview'], ['code', 'Code'], ['design', 'Design'], ['cloud', 'Cloud'], ['versions', 'Versions'], ['publish', 'Publish']];
+    const T = ST.app && ST.app.branch_of ? [['preview', 'Preview'], ['code', 'Code'], ['design', 'Design'], ['cloud', 'Cloud'], ['versions', 'Versions']]
+      : [['preview', 'Preview'], ['code', 'Code'], ['design', 'Design'], ['cloud', 'Cloud'], ['versions', 'Versions'], ['branches', 'Branches'], ['publish', 'Publish']];
     const el = document.getElementById('aeTabs'); if (!el) return;
     el.innerHTML = T.map(([key, label]) => `<button type="button" role="tab" aria-selected="${ST.tab === key}" data-ae="tab" data-ae-tab="${key}">${label}</button>`).join('');
   }
@@ -235,6 +239,13 @@
           <a class="b ghost sm" href="${esc(a.preview)}__v/${esc(v.version)}/" target="_blank" rel="noopener">Open</a></li>`).join('')}</ol>` : '<p class="mut">No version yet.</p>'}</div>`;
       return;
     }
+    if (ST.tab === 'branches') {                                // v0.978 L13b: try a bigger change on a copy, merge it back by her tap
+      el.innerHTML = `<div class="ae-pad"><h3>Branches</h3>
+        <p class="mut sm">A branch is a copy of this app with its own preview and its own sample data. Change it as much as you like - the app, its data and the live version are not touched. When you like it, accept it: what only the branch changed comes in, and anything changed in both is shown so you choose.</p>
+        <form class="ae-row" data-ae-form="br-new"><input name="name" maxlength="60" placeholder="branch name, e.g. new checkout" aria-label="Branch name"><button class="b pri" type="submit">Start a branch</button></form>
+        <div id="aeBranches" class="mut sm">Loading...</div></div>`;
+      drawBranches(); return;
+    }
     if (ST.tab === 'publish') {
       el.innerHTML = `<div class="ae-pad"><h3>Publish</h3>
         ${a.live_version ? `<p>Version <b>${esc(a.live_version)}</b> is live at <a href="${esc(a.live_url)}" target="_blank" rel="noopener">${esc(location.origin + a.live_url)}</a>.</p>` : '<p class="mut">This app is not live.</p>'}
@@ -254,6 +265,59 @@
     }
   }
 
+
+  /* ----- v0.978 L13b BRANCHES: named copies, a three-way merge by file, her tap to accept ----- */
+  async function drawBranches(openId, cmp) {
+    const box = document.getElementById('aeBranches'); if (!box) return;
+    const {esc} = k();
+    let d; try { d = await k().api('GET', `/api/appengine/${enc(ST.id)}/branches`); } catch (e) { box.textContent = e.message; return; }
+    if (!document.getElementById('aeBranches')) return;
+    const bs = L(d.branches);
+    box.className = '';
+    if (!bs.length) { box.innerHTML = `<p class="mut sm">No open branches. You can keep up to ${esc(d.max)}.</p>`; return; }
+    box.innerHTML = `<ul class="ae-brlist">${bs.map(b => {
+      const c = b.changes || {}, br = b.branch || {};
+      return `<li class="ae-br" data-br="${esc(b.id)}"><div class="ae-row"><b>${esc(br.name)}</b>
+        <span class="mut sm">from version ${esc(br.base_version)} · ${esc(c.incoming || 0)} change(s) to bring in${b.conflicts ? ` · <span class="pill warn">${esc(b.conflicts)} changed in both</span>` : ''}</span><span class="sp"></span>
+        <a class="b ghost sm" href="#/app/${enc(b.id)}">Open the branch</a>
+        ${b.preview ? `<a class="b ghost sm" href="${esc(b.preview)}" target="_blank" rel="noopener">Preview</a>` : ''}
+        <button class="b sm" type="button" data-ae="br" data-ae-br="compare" data-ae-bid="${esc(b.id)}">What would change</button>
+        <button class="b ghost sm" type="button" data-ae="br" data-ae-br="discard" data-ae-bid="${esc(b.id)}">Discard</button></div>
+        ${openId === b.id && cmp ? brCmpHtml(cmp, b.id) : ''}</li>`; }).join('')}</ul>`;
+  }
+  function brCmpHtml(c, bid) {
+    const {esc} = k(), inc = L(c.incoming), cf = L(c.conflicts), st = L(c.stays);
+    return `<div class="panel" id="aeBrCmp"><b>${esc(c.say)}</b>
+      ${c.behind ? `<p class="mut sm">The app moved on ${esc(c.behind)} version(s) since the branch started; the app's own changes stay.</p>` : ''}
+      ${inc.length ? `<ul class="dflist">${inc.slice(0, 20).map(x => `<li>${esc(x.what)} <span class="mut sm">${esc(x.how)}</span></li>`).join('')}</ul>` : ''}
+      ${cf.length ? `<div class="dfconf"><b>Changed in both - you choose:</b>${cf.map(x => `<fieldset class="dfc" data-item="${esc(x.id)}"><legend>${esc(x.what)} <span class="mut sm">(${esc(x.app)}; ${esc(x.branch)})</span></legend>
+        <label><input type="radio" name="b-${esc(x.id)}" value="site"> Keep the app's</label><label><input type="radio" name="b-${esc(x.id)}" value="branch"> Take the branch's</label></fieldset>`).join('')}</div>` : ''}
+      ${st.length ? `<p class="mut sm">Stays as the app has it: ${st.slice(0, 6).map(x => esc(x.what)).join(', ')}${st.length > 6 ? '…' : ''}</p>` : ''}
+      <div class="ae-row"><button class="b pri" type="button" data-ae="br" data-ae-br="accept" data-ae-bid="${esc(bid)}" ${inc.length || cf.length ? '' : 'disabled'}>Accept into the app</button></div></div>`;
+  }
+  async function brAct(w, bid) {
+    const {api, toast, go} = k(), base = `/api/appengine/${enc(ST.id)}/branches`;
+    try {
+      if (w === 'compare') { drawBranches(bid, await api('GET', `${base}/${enc(bid)}/compare`)); return; }
+      if (w === 'discard') {
+        if (!(await confirmBox('Discard this branch? Its changes and its preview data go; the app is not touched.', 'Discard the branch'))) return;
+        const r = await api('DELETE', `${base}/${enc(bid)}?confirm=true`); toast(S(r.say)); drawBranches(); return;
+      }
+      if (w === 'accept') {
+        const res = {}; let open = 0;
+        document.querySelectorAll('#aeBrCmp .dfc').forEach(f => { const v = f.querySelector('input:checked')?.value; if (v) res[f.dataset.item] = v; else open += 1; });
+        if (open) { toast(`Choose for ${open} part(s) changed in both first.`, true); return; }
+        if (!(await confirmBox('Accept this branch into the app? The app rebuilds as one new version and the branch is removed. Nothing goes live until you publish.', 'Accept the branch'))) return;
+        const r = await api('POST', `${base}/${enc(bid)}/accept`, {confirm: true, resolutions: res});
+        toast(S(r.say).slice(0, 220)); ST.app = {...ST.app, ...r}; drawTop(); drawBranches(); return;
+      }
+    } catch (e) { toast(e.message, true); drawBranches(); }
+  }
+  async function brNew(f) {
+    const {api, toast, go} = k(); const name = S(f.name.value).trim();
+    try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/branches`, {name}); toast(S(r.say).slice(0, 220)); f.reset(); drawBranches(); }
+    catch (e) { toast(e.message, true); }
+  }
 
   /* ----- v0.839 L14 GITHUB DO TARAF: one branch, both directions, her tap for every move ----- */
   async function drawGit(cmp) {
@@ -535,6 +599,7 @@
       await drawView(); return;
     }
     if (what === 'git') { gitAct(b.dataset.aeGit); return; }
+    if (what === 'br') { brAct(b.dataset.aeBr, b.dataset.aeBid); return; }
     if (what === 'chk') {
       const box = document.getElementById('aeChecks'); const w = b.dataset.aeChk;
       if (box) box.innerHTML = '<span class="mut">Checking... a browser check can take up to a minute.</span>';
@@ -596,7 +661,7 @@
     const f = e.target.closest && e.target.closest('[data-ae-form]');
     if (!f) return;
     e.preventDefault(); e.stopPropagation();
-    if (f.dataset.aeForm === 'new') createApp(f); else if (f.dataset.aeForm === 'say') say(f); else if (f.dataset.aeForm === 'git-link') gitLink(f); else if (f.dataset.aeForm === 'imp-zip' || f.dataset.aeForm === 'imp-gh') importApp(f);
+    if (f.dataset.aeForm === 'new') createApp(f); else if (f.dataset.aeForm === 'say') say(f); else if (f.dataset.aeForm === 'git-link') gitLink(f); else if (f.dataset.aeForm === 'br-new') brNew(f); else if (f.dataset.aeForm === 'imp-zip' || f.dataset.aeForm === 'imp-gh') importApp(f);
   }, true);
   document.addEventListener('keydown', e => {
     if ((e.key === 's' || e.key === 'S') && !e.metaKey && !e.ctrlKey && !e.altKey && ST.tab === 'preview' && document.querySelector('[data-ae-root]')

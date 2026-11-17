@@ -338,7 +338,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                              "concept": (lk.get("dna") or {}).get("concept", ""), "idea": (lk.get("dna") or {}).get("idea", ""),
                              "signature": (lk.get("dna") or {}).get("signature", ""),
                              # v0.649 WEB STUDIO: the look as a clickable site (every page when `full`, else the page top)
-                             "full": bool(lk.get("full")),
+                             "full": bool(lk.get("full")), "own_bodies": bool(lk.get("own")),
                              "preview": (preview_url(r) + f"__looks/{i}/{'full' if lk.get('full') else 'site'}/")
                              if preview_url(r) else ""} for i, lk in enumerate(_j(r.looks, []))],
                   "chosen_look": _j(r.look, {}).get("from"),
@@ -1446,6 +1446,8 @@ def _make_looks(r: Site) -> None:
     for i in range(len(styles)):
         d = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
+        for old in [*d.glob("*__*.json"), d / "own.json"]:   # v0.978 E8: a new round of looks never carries the last round's parts
+            old.unlink(missing_ok=True)
         dirs.append(d)
     _work(r, "start", "3 looks ban rahe hain", f"{len(styles) * (1 + len(more))} hisse ek saath", act=False)
 
@@ -1529,6 +1531,7 @@ def _make_looks(r: Site) -> None:
         return
     for i, lk in enumerate(looks):
         lk["full"] = bool(full[i]) if i < len(full) else False
+        lk["own"] = lk["full"] and (dirs[i] / "own.json").exists()     # v0.978 E8: this look wrote its own page bodies
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
               board=_board(r, now_line="3 looks taiyaar: ek chuniye"))
     _work(r, "waiting", "Look chuniye", "3 looks taiyaar")
@@ -1558,6 +1561,9 @@ def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str,
     total = len(todo) + len(tops)
     if total > max(1, int(getattr(st, "site_full_looks_max", 40) or 40)):
         return [False] * n
+    if n > 1 and todo and getattr(st, "site_look_own_bodies", True) and \
+            total <= max(1, int(getattr(st, "site_look_own_bodies_max", 12) or 12)):
+        return _own_bodies(r, views, toks, secs, dirs, plan, todo)
     lock = threading.Lock()
     done = {"n": 0}
 
@@ -1605,6 +1611,57 @@ def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str,
     return out
 
 
+def _own_bodies(r: Site, views: list, toks: list, secs: list[dict[str, dict[str, Any]]], dirs: list[Path],
+                plan: dict[str, Any], todo: list) -> list[bool]:
+    """v0.978 E8 LOOKS WITH THEIR OWN BODIES: a small site (at most SITE_LOOK_OWN_BODIES_MAX sections) has every remaining
+    section written by EACH look in its own design, so the three looks differ in their bodies too, not only in their
+    home tops. Nothing goes into the site's own sections until she picks: choose_look copies the picked look's files."""
+    from concurrent.futures import ThreadPoolExecutor
+    st = _settings()
+    n = len(views)
+    lock = threading.Lock()
+    done = {"n": 0}
+    jobs = [(i, *t) for i in range(n) for t in todo]
+
+    def one(job) -> None:
+        i, p, s, k, others = job
+        if _load(r.id).stop:
+            return
+        try:
+            out = write_section(views[i], p["slug"], s, others, live={"look": i})
+            secs[i][k] = out
+            (dirs[i] / f"{k}.json").write_text(json.dumps(out))
+        except Exception as e:                 # one part that fails is written by the real build after she picks
+            log.info("own-body look %s section %s skipped: %s", i, k, e)
+        with lock:
+            done["n"] += 1
+            ACT.step(r.tenant_id, r.id, "Every page of each look, in its own design", f"Look {i + 1}: {p['title']} page → "
+                     f"{T.label_of(s['type'])}", key="pages", done=done["n"], total=len(jobs))
+    _work(r, "start", "Every page of each look", f"{len(jobs)} parts, each look in its own design", act=False)
+    ACT.step(r.tenant_id, r.id, "Every page of each look, in its own design", f"{len(jobs)} page parts ({len(todo)} for each look)",
+             key="pages", done=0, total=len(jobs))
+    width = max(1, min(12, int(getattr(st, "site_look_parallel", 6) or 1)))
+    with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"lookown-{r.id[:6]}") as ex:
+        list(ex.map(_in_ctx(one), jobs))
+    if _load(r.id).stop:
+        return [False] * n
+    ACT.step(r.tenant_id, r.id, "Putting every page of each look together", f"{n} complete sites", key="assemble")
+    shared = _sections(r)                      # only what some look missed (normally nothing)
+    photos = {p["name"]: p for p in _j(r.photos, [])}
+    out = []
+    for i in range(n):
+        ctx = _ctx(r)
+        ctx["tokens"], ctx["plan"], ctx["alts"], ctx["blog"] = toks[i], plan, [], []
+        try:
+            B.assemble(ctx, plan, {**shared, **secs[i]}, photos, dirs[i] / "full")
+            (dirs[i] / "own.json").write_text(json.dumps({"own": True, "sections": sorted(secs[i])}))
+            out.append(True)
+        except Exception:
+            log.info("own-body look %s not assembled", i, exc_info=True)
+            out.append(False)
+    return out
+
+
 def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = None, conv: str = "") -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)
@@ -1630,7 +1687,7 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
         if hero.exists():
             shutil.copy(hero, B.src_dir(tenant, r.id) / "sections" / "home__hero.json")
             done["home__hero"] = "done"
-        for f in ld.glob("home__*.json"):     # v0.292 the look's other sections are kept, not written again
+        for f in ld.glob("*__*.json"):         # v0.292 the look's other sections are kept, not written again (v0.978 E8: every page's)
             shutil.copy(f, B.src_dir(tenant, r.id) / "sections" / f.name)
             done[f.stem] = "done"
         r.board = _jd(_board(r, states=done, now_line="Banana shuru"))
