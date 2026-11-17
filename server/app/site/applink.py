@@ -41,6 +41,8 @@ def linked_id(r) -> str:
 
 
 def project(r):
+    """The App Sahayak project behind the site. v0.989 B2: a site loaded for its preview pages (`r._ds == 'p'`, from
+    /api/site-app/<site>~p) gets the preview twin - same lists and rules, its own rows and members."""
     from ..appmaker.models import AppProject
     pid = linked_id(r)
     if not pid:
@@ -49,7 +51,10 @@ def project(r):
         p = s.get(AppProject, pid)
         if p is not None:
             s.expunge(p)
-        return p
+    if p is not None and getattr(r, "_ds", "") == "p":
+        from . import twin as TW
+        return TW.preview_of(p)
+    return p
 
 
 def link(tenant: str, ref: str) -> dict[str, Any]:

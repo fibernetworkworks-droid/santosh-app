@@ -1050,6 +1050,135 @@
     current().then(draw).catch(function () { draw(null); });
   }
 
+  // ---------------------------------------------------------------- v0.989 B1 LIVE SCREENS: designed app screens, real rows
+  // A screen the build tied to a list (data-hoola-screen + data-bound + data-list + data-fields) shows the rows this visitor
+  // may see - the server checks every rule on every call, exactly like the account pages. The designed sample rows inside
+  // [data-hoola-live] stay only in the Studio preview (its own dataset) while the list is empty; on the live site an empty
+  // list says so and a list that needs a login says that.
+  var PREVIEW = meta.getAttribute('data-ds') === 'preview';
+  function scrFields(c, box) {
+    var want = (box.getAttribute('data-fields') || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var fs = (c.fields || []).filter(function (f) { return !f.hidden && (!want.length || want.indexOf(f.key) >= 0); });
+    if (want.length) fs.sort(function (a, b) { return want.indexOf(a.key) - want.indexOf(b.key); });
+    return fs.length ? fs : (c.fields || []).slice(0, 4);
+  }
+  function cell(f, r) {
+    var v = shown(f, r);
+    if (f.type === 'choice' && v) return el('span', {'class': 'hs-pill', 'data-v': v, text: v});
+    if (f.type === 'number' || f.type === 'money' || f.type === 'currency') return el('span', {'class': 'hs-num', text: v});
+    return d.createTextNode(v);
+  }
+  function scrMsg(live, text) {
+    live.textContent = '';
+    var p = el('p', {'class': 'muted hs-screen-msg', text: text});
+    if (live.tagName === 'TBODY') { var td = el('td', {colspan: '99'}, [p]); live.appendChild(el('tr', {}, [td])); } else live.appendChild(p);
+    live.setAttribute('data-live', '');
+  }
+  function scrRows(box, live, c, rows, typ, after) {
+    var fs = scrFields(c, box);
+    live.textContent = '';
+    if (live.tagName === 'TBODY') {
+      rows.forEach(function (r) { var tr = el('tr'); fs.forEach(function (f) { var td = el('td'); td.appendChild(cell(f, r)); tr.appendChild(td); }); live.appendChild(tr); });
+    } else if (typ === 'screen_board' && boardField(c)) {
+      var bf = boardField(c), cols = {};
+      (bf.options || []).forEach(function (o) { cols[o] = []; });
+      rows.forEach(function (r) { var k = String(r[bf.key] || ''); (cols[k] = cols[k] || []).push(r); });
+      Object.keys(cols).forEach(function (k) {
+        var col = el('div', {'class': 'hs-board-col'}, [el('h3', {text: k || '-'})]);
+        cols[k].forEach(function (r) { col.appendChild(el('article', {'class': 'card'}, [el('strong', {text: labelOf(c, r)})])); });
+        live.appendChild(col);
+      });
+    } else if (typ === 'screen_detail') {
+      var dl = el('dl', {'class': 'hs-detail'}), r0 = rows[0];
+      fs.forEach(function (f) { dl.appendChild(el('dt', {text: f.label})); var dd = el('dd'); dd.appendChild(cell(f, r0)); dl.appendChild(dd); });
+      live.appendChild(dl);
+    } else {
+      var df = typ === 'screen_calendar' ? dateField(c) : null;
+      if (df) rows = rows.slice().sort(function (a, b) { return String(a[df.key] || '').localeCompare(String(b[df.key] || '')); });
+      rows.forEach(function (r) {
+        var card = el('article', {'class': 'card'});
+        fs.forEach(function (f, i) { var v = shown(f, r); if (!v) return; var p = el('p', {}, i ? [el('strong', {text: f.label + ': '})] : []); p.appendChild(cell(f, r)); card.appendChild(p); });
+        if (r._actions) rowActions(card, c, r, after);
+        live.appendChild(card);
+      });
+    }
+    live.setAttribute('data-live', '');
+    box.querySelectorAll('[data-sample-chip]').forEach(function (x) { x.hidden = true; });
+  }
+  function scrStats(box) {
+    box.querySelectorAll('[data-hoola-stat]').forEach(function (st) {
+      var c = C(st.getAttribute('data-list') || ''), agg = st.getAttribute('data-hoola-stat') || 'count';
+      var num = st.querySelector('[data-hoola-num]') || st;
+      if (!c) return;
+      call('GET', '/c/' + c.key).then(function (j) {
+        var rows = j.rows || [];
+        if (!rows.length && PREVIEW) return;          // the preview keeps its designed number until there is data
+        var n = rows.length;
+        if (agg.indexOf('sum:') === 0) { var k = agg.slice(4); n = rows.reduce(function (s, r) { return s + (parseFloat(r[k]) || 0); }, 0); }
+        num.textContent = n.toLocaleString(LANG === 'en' ? 'en-IN' : undefined);
+        st.setAttribute('data-live', '');
+      }).catch(function () { if (!PREVIEW) { num.textContent = '-'; st.setAttribute('data-live', ''); } });
+    });
+  }
+  function scrAdd(box, c, after) {
+    box.querySelectorAll('[data-hoola-add]').forEach(function (b) {
+      if (b.getAttribute('data-wired')) return;
+      b.setAttribute('data-wired', '1');
+      b.addEventListener('click', function () {
+        var old = box.querySelector('.hs-screen-add');
+        if (old) { old.remove(); return; }
+        var panel = el('div', {'class': 'hs-screen-add'});
+        if (!c || !canCreate(c)) panel.appendChild(el('p', {'class': 'muted', text: me ? t.staffonly : t.need}));
+        else panel.appendChild(formView(c, null, function () { panel.remove(); after(); }));
+        var at = box.querySelector('[data-hoola-live]');      // the form goes just above the rows' block (a direct child of the screen)
+        while (at && at.parentNode !== box) at = at.parentNode;
+        box.insertBefore(panel, at || null);
+      });
+    });
+  }
+  function screen1(box) {
+    var typ = box.getAttribute('data-hoola-screen') || '', c = C(box.getAttribute('data-list') || '');
+    var live = box.querySelector('[data-hoola-live]'), again = function () { screen1(box); };
+    scrStats(box);
+    scrAdd(box, c, again);
+    if (typ === 'screen_signin' || typ === 'screen_settings' || !live) return;
+    if (typ === 'screen_approvals') {
+      call('GET', '/approvals').then(function (j) {
+        var rows = (j.approvals || []).filter(function (a) { return a.status === 'pending'; });
+        if (!rows.length) { if (!PREVIEW) scrMsg(live, t.empty); return; }
+        live.textContent = '';
+        rows.forEach(function (a) {
+          var card = el('article', {'class': 'card'}, [el('h3', {text: (a.title || a.coll) + ': ' + a.label}),
+            el('p', {'class': 'muted', text: a.from + ' → ' + a.to + ' · ' + t.waiting + ': ' + a.waiting_for})]);
+          if (a.can_decide) card.appendChild(decideButtons(a.id, again));
+          live.appendChild(card);
+        });
+        live.setAttribute('data-live', '');
+        box.querySelectorAll('[data-sample-chip]').forEach(function (x) { x.hidden = true; });
+      }).catch(function () { if (!PREVIEW) scrMsg(live, me ? t.staffonly : t.need); });
+      return;
+    }
+    if (!c) return;
+    if (typ === 'screen_form') {
+      if (!canCreate(c)) { if (!PREVIEW) scrMsg(live, me ? t.staffonly : t.need); return; }
+      live.textContent = ''; live.appendChild(formView(c, null, again)); live.setAttribute('data-live', '');
+      box.querySelectorAll('[data-sample-chip]').forEach(function (x) { x.hidden = true; });
+      return;
+    }
+    if (!canRead(c)) { if (!PREVIEW) scrMsg(live, me ? t.staffonly : t.need); return; }
+    call('GET', '/c/' + c.key).then(function (j) {
+      var rows = j.rows || [];
+      if (!rows.length) { if (!PREVIEW) scrMsg(live, t.empty); return; }
+      scrRows(box, live, c, rows, typ, again);
+    }).catch(function (er) { if (!PREVIEW) scrMsg(live, er.code === 401 || er.code === 403 ? (me ? t.staffonly : t.need) : er.message); });
+  }
+  function screens() {
+    var boxes = d.querySelectorAll('[data-hoola-screen][data-bound]');
+    if (!boxes.length) return;
+    boxes.forEach(screen1);
+    LIVE.views.push(function () { boxes.forEach(screen1); });
+  }
+
   function all() {
     REFS = {}; LIVE.views = []; LIVE.dots = [];
     queueBoards();
@@ -1058,6 +1187,7 @@
     d.querySelectorAll('[data-hoola-app="form"]').forEach(form);
     d.querySelectorAll('[data-hoola-app="admin"]').forEach(admin);
     lists();
+    screens();                         // v0.989 B1 LIVE SCREENS
   }
   function start() {
     call('GET', '/schema').then(function (s) {

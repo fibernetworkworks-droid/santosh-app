@@ -595,14 +595,20 @@ APP_LOOK_NOTE = """This is the top of a WEB APP / PORTAL (one of three alternati
 front door - the system's name, one line of what it does, a Sign in button and the main user's top action - in the given
 design style. NOT a marketing hero: no big photo, no slogan, no 'Welcome to'. The app's main screen sits right under it."""
 
-SCREEN_NOTE = """APP SCREEN (v0.714): draw a REAL working screen of this app, not a marketing section - compact app chrome
-(screen title, toolbar / filters / tabs as the type needs), the type's own layout, no slogans, no stock photos. Wrap the
-screen in <div class="hoola-screen" data-hoola-screen="@@TYPE@@" data-sample> and show a small visible chip "Sample data"
-in its title row. Fill it with 4-8 believable SAMPLE rows / tiles / cards for THIS business in India (Indian names,
-₹ amounts, dates, statuses) as plain text - never [blanks] here; this sample data is marked and never goes live as fact.
-Buttons and inputs look real (styled, with labels) but do nothing yet - no <form> element; never a password / OTP / card field - a sign-in
-screen places <div data-hoola-app="login"></div> for Hoola's own sign-in. Tables scroll sideways on a phone; status
-shows as coloured pills; numbers right-aligned; empty space is used like a real product (Linear, Stripe, Notion)."""
+SCREEN_NOTE = """APP SCREEN (v0.714): draw a REAL working screen of this app, not a marketing section -
+compact app chrome (screen title, toolbar / filters / tabs as the type needs), the type's own layout, no slogans, no stock
+photos. This screen shows REAL data from one of the site's lists (given below as LISTS): Hoola's page script fills it.
+Wrap the screen in <div class="hoola-screen" data-hoola-screen="@@TYPE@@" data-list="LIST_KEY" data-fields="f1,f2,f3"
+data-sample> using a real list key and its real field keys (the columns / card lines, in order). In the title row put a
+small chip <span data-sample-chip>Sample data</span> and, where adding makes sense, a button with data-hoola-add.
+Put the 4-8 believable SAMPLE rows / cards / tiles (Indian names, ₹ amounts, dates, statuses for THIS business) inside ONE
+element marked data-hoola-live (for a table: the <tbody data-hoola-live>; for cards / a board / a calendar: their
+container). They show only in the preview while the list is empty and are replaced by the visitor's real rows. Dashboard
+KPI tiles: <div data-hoola-stat="count" data-list="LIST_KEY"> (or data-hoola-stat="sum:FIELD") with the number inside an
+element marked data-hoola-num. Buttons and inputs look real (styled, with labels); no <form> element; never a password /
+OTP / card field - a sign-in screen places <div data-hoola-app="login"></div> for Hoola's own sign-in. Tables scroll
+sideways on a phone; status shows as coloured pills; numbers right-aligned; empty space is used like a real product
+(Linear, Stripe, Notion)."""
 
 HERO_LOOK_NOTE = """This hero is ONE of three alternative looks the owner will choose between, so make it a strong, distinct
 expression of the given design style (layout, type scale, motion, shapes). It must work alone at the top of the page."""

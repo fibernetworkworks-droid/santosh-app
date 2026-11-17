@@ -439,3 +439,15 @@ form[data-hoola-config] [data-config-summary]{display:block;color:var(--c-muted)
 .hs-u-radius-lg{border-radius:22px!important}.hs-u-radius-full{border-radius:999px!important}
 .hs-u-align-left{text-align:left!important}.hs-u-align-center{text-align:center!important}.hs-u-align-right{text-align:right!important}
 .hs-u-weight-400{font-weight:400!important}.hs-u-weight-600{font-weight:600!important}.hs-u-weight-700{font-weight:700!important}
+
+/* v0.989 B1 LIVE SCREENS: a tied app screen. On the live site its designed sample rows never show (hidden until the real
+   rows arrive) and the "Sample data" chip is gone; the Studio preview (html[data-hoola-ds]) keeps them while a list is empty. */
+html:not([data-hoola-ds]) .hoola-screen[data-bound] [data-hoola-live]:not([data-live]){visibility:hidden}
+html:not([data-hoola-ds]) .hoola-screen[data-bound] [data-sample-chip]{display:none}
+.hoola-screen .hs-pill{display:inline-block;padding:.1rem .55rem;border-radius:999px;font-size:.82em;font-weight:600;background:color-mix(in srgb,var(--c-primary,#5b45e0) 12%,transparent);color:var(--c-ink,inherit)}
+.hoola-screen .hs-num{font-variant-numeric:tabular-nums}
+.hoola-screen .hs-screen-msg{padding:1rem;text-align:center}
+.hoola-screen .hs-screen-add{margin:.75rem 0;padding:1rem;border:1px solid var(--c-line);border-radius:var(--radius,10px)}
+.hoola-screen .hs-board-col{min-width:14rem}
+.hoola-screen .hs-detail{display:grid;grid-template-columns:max-content 1fr;gap:.4rem 1rem}
+.hoola-screen .hs-detail dt{font-weight:600}

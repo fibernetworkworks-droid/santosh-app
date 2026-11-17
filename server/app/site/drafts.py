@@ -96,10 +96,42 @@ def create(tenant: str, ref: str, name: str) -> dict[str, Any]:
     src, dst = B.src_dir(tenant, r.id), B.src_dir(tenant, did)
     shutil.rmtree(dst, ignore_errors=True)
     shutil.copytree(src, dst, dirs_exist_ok=True)
+    _own_data(did)                                   # v0.989 B2: the draft's data is its own (it was the live site's)
     S._edits_path(S._load(did)).write_text("[]")
     S._after_edit(S._load(did), f"Draft '{name}' started from v{r.version}")
     return {**S.view(S._load(did), False), "say": f"Draft '{name}' started from v{r.version}. Change it freely - your website is not touched. "
             "It has its own data (nothing visitors sent is in it) and its own private preview link."}
+
+
+def _own_data(draft_id: str) -> None:
+    """v0.989 B2 SEPARATE DATA: a draft of a linked website copied the website's `link`, so it read and wrote the LIVE
+    rows while saying it had its own data. Now the draft gets its own twin project (same lists / rules, no rows, her staff
+    accounts) and links to that."""
+    from . import applink as AL
+    from . import twin as TW
+    with session() as s:
+        d = s.get(Site, draft_id)
+        if d is None:
+            return
+        s.expunge(d)
+    main = AL.project(d)
+    if main is None:
+        return
+    t = TW.make(main, "draft")
+    with session() as s:
+        d = s.get(Site, draft_id)
+        app = json.loads(d.app or "{}") if d.app else {}
+        d.app = json.dumps({**(app if isinstance(app, dict) else {}), "link": t.id}, ensure_ascii=False)
+
+
+def _data_twin(d: Site) -> str:
+    """The draft's own data project id ('' when the draft has none)."""
+    from . import twin as TW
+    try:
+        pid = str((json.loads(d.app or "{}") or {}).get("link") or "")
+    except (TypeError, ValueError):
+        return ""
+    return pid if TW.is_twin(TW._load(pid)) else ""
 
 
 def listing(tenant: str, ref: str) -> dict[str, Any]:
@@ -191,6 +223,14 @@ def accept(tenant: str, ref: str, draft_id: str, resolutions: dict[str, str] | N
     S._edits_path(r).write_text("[]")
     name = d.draft_name
     S._after_edit(S._load(r.id), f"Merged draft '{name}'")
+    moved = []                                       # v0.989 B2: the lists / fields the draft added, never its rows
+    tw = _data_twin(d)
+    if tw:
+        from . import applink as AL
+        from . import twin as TW
+        main = AL.project(r)
+        moved = TW.carry(tw, main.id) if main is not None else []
+        TW.drop(tw)
     shutil.rmtree(B.site_dir(tenant, d.id), ignore_errors=True)
     with session() as s:
         from .models import SiteVersion
@@ -202,7 +242,9 @@ def accept(tenant: str, ref: str, draft_id: str, resolutions: dict[str, str] | N
     kept = [c["say"] for c in plan["conflicts"] if res.get(c["item"]) == "site"]
     return {**S.view(S._load(r.id), False), "merged": True, "applied": len(applied),
             "say": f"Draft '{name}' merged into the website as a new version ({len(applied)} part(s) came across"
-                   + (f"; kept the website's own for: {', '.join(kept)}" if kept else "") + "). Undo it from History. No data was moved."}
+                   + (f"; kept the website's own for: {', '.join(kept)}" if kept else "") + "). Undo it from History. "
+                   + (f"New in the website's data: {', '.join(moved)}. " if moved else "")
+                   + "The draft's rows and test accounts were not moved.", "data_moved": moved}
 
 
 def discard(tenant: str, ref: str, draft_id: str) -> dict[str, Any]:
@@ -214,6 +256,10 @@ def discard(tenant: str, ref: str, draft_id: str) -> dict[str, Any]:
     if S.busy(d.id):
         raise DraftError("The draft is working on something; stop it first.", 409)
     shutil.rmtree(B.site_dir(tenant, d.id), ignore_errors=True)
+    tw = _data_twin(d)
+    if tw:
+        from . import twin as TW
+        TW.drop(tw)
     with session() as s:
         from .models import SiteVersion
         x = s.get(Site, d.id)

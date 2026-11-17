@@ -1155,6 +1155,10 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 problems.extend(f"{key}: {x}" for x in lprob0)
             if "data-hoola-3d=" in h:
                 rich["three"] = True
+            if "data-hoola-screen" in h:        # v0.989 B1 LIVE SCREENS: tie the screen to the site's real list
+                from . import screens as SC
+                h, sprob = SC.bind(h, site.get("app") or {})
+                problems.extend(f"{key}: {x}" for x in sprob)
             if "data-hoola-posts" in h:          # v0.366 the latest posts as cards
                 from . import blog as BL
                 h = BL.latest_cards(h, site.get("blog") or [], rel, lambda n: pic(n).replace("__REL__", rel),

@@ -856,7 +856,10 @@ def _tell_owner_of_row(r: AppProject, coll: str, row_id: str, old: dict[str, Any
 
 
 def notify(r: AppProject, to: str, title: str, body: str, d: dict[str, Any]) -> None:
+    from ...site import twin as TW
     from .. import backend as BE
+    if TW.is_twin(r):                               # v0.989 B2 a test in the preview / a draft never notifies anyone
+        return
     ids: list[str] = []
     if to == "owner":
         try:
@@ -1265,8 +1268,11 @@ def tick(force: bool = False) -> int:
             s.expunge(a)
     ran = 0
     at = datetime.now(timezone.utc)
+    from ...site import twin as TW
     for r in apps:
         try:
+            if TW.is_twin(r):                       # v0.989 B2 preview / draft data runs no timed jobs
+                continue
             c = compiled(r)
             if not c:
                 continue
