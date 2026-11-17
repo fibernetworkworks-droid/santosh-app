@@ -1447,7 +1447,8 @@ def compact(messages: list[dict], keep_tail: int = 8) -> list[dict]:
         blob = blob[:50000] + "\n[... the middle of the session is left out ...]\n" + blob[-110000:]
     ask = ("<earlier_summary>\n" + prev + "\n</earlier_summary>\n" if prev else "") + "<session>\n" + blob + "\n</session>\n"
     ask += "Summarise it." + (" The earlier summary is part of it: keep what still matters from it." if prev else "")
-    blocks, _ = B.call(COMPACT_SYSTEM, [{"role": "user", "content": ask}], [], max_tokens=6000, think=False)
+    with B.part("summarise"):                             # v0.972 P5: compaction is its own part (LOW)
+        blocks, _ = B.call(COMPACT_SYSTEM, [{"role": "user", "content": ask}], [], max_tokens=6000, think=False)
     summary = "\n".join(str(b.get("text") or "") for b in blocks if b.get("type") == "text").strip()
     if not summary:
         return messages
@@ -1582,6 +1583,7 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
         raise Unavailable("git is not installed on the server")
     B.PICK.model = getattr(t, "model", "") or ""
     B.PICK.effort = getattr(t, "effort", "") or ""
+    B.session(t)                                          # v0.972 P5: the Box reads her words + keeps the model
     sha = ref_sha or g.branch_sha(t.repo, t.base)
     if not sha:
         raise Unavailable(f"branch {t.base} not found")

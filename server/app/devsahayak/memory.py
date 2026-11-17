@@ -475,8 +475,9 @@ def capture(t: Any, follow_up: str, ctx: dict[str, Any], out: dict[str, Any], me
     old = (getattr(B.PICK, "model", ""), getattr(B.PICK, "effort", ""))
     B.PICK.model, B.PICK.effort = str(_set("dev_memory_model", "claude-haiku-5-5") or ""), "low"
     try:
-        blocks, _ = B.call(system, [{"role": "user", "content": "<round>\n" + _record(t, follow_up, ctx, out, says)
-                                     + "\n</round>"}], [], max_tokens=3000, think=False)
+        with B.part("summarise"):                     # v0.972 P5: the memory observer is a small part (LOW)
+            blocks, _ = B.call(system, [{"role": "user", "content": "<round>\n" + _record(t, follow_up, ctx, out, says)
+                                         + "\n</round>"}], [], max_tokens=3000, think=False)
     except Exception as e:
         log.warning("memory capture failed: %s", e)
         return res

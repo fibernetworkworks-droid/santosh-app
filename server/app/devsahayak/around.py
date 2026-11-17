@@ -365,7 +365,9 @@ def make_hint(tid: str) -> str:
         old = (getattr(B.PICK, "model", ""), getattr(B.PICK, "effort", ""))
         B.PICK.model, B.PICK.effort = str(S._setting("dev_hint_model", "claude-haiku-5-5") or ""), "low"
         try:
-            blocks, _stop = B.call(HINT_SYSTEM, [{"role": "user", "content": facts}], [], max_tokens=60, think=False)
+            with B.part("summarise"):                 # v0.972 P5: the hint is a small part (LOW)
+                blocks, _stop = B.call(HINT_SYSTEM, [{"role": "user", "content": facts}], [], max_tokens=60,
+                                       think=False)
         finally:
             B.PICK.model, B.PICK.effort = old
         text = " ".join(str(b.get("text") or "") for b in blocks if b.get("type") == "text").strip().strip('"').strip()

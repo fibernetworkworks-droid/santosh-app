@@ -70,7 +70,7 @@ def test_one_part_runs_on_the_chosen_model_and_the_sheet_closes(box):
 
 @pytest.mark.parametrize("kw,why", [
     ({"voice": True}, "live call"),
-    ({"actor": "routine"}, "routine turn"),
+    ({"actor": "team"}, "team turn"),        # v0.972 P5: routine / wake / long-job turns now go through (surface background)
 ])
 def test_not_through_the_box_for_calls_and_background(box, kw, why):
     from app.agent import llm

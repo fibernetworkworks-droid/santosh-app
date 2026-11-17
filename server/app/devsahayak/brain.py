@@ -40,6 +40,7 @@ QWEN_POST: Any = None                   # tests: a fake(url, body, headers, time
 STATE = {"think_refused": False, "effort_refused": False, "calls": 0, "cleared": 0, "qwen_calls": 0, "qwen_failed": 0}
 CLEARED = "[older tool output cleared to keep the session small - run the tool again if you need it]"
 PICK = threading.local()                # model / effort chosen for THIS session (the composer), set by the caller
+PART = threading.local()                # v0.972 P5: this call's kind of work (code / plan / check / summarise), her ask, the session
 
 
 def _settings():
@@ -75,6 +76,36 @@ def qwen_model() -> str:
     if picked.startswith("qwen/"):
         return picked
     return str(getattr(_settings(), "dev_qwen_model", "") or "qwen/qwen3.8-27b")
+
+
+@contextlib.contextmanager
+def part(kind: str):
+    """v0.972 P5: the calls inside are this kind of work for the Box (the plan pass, the review, compaction ...)."""
+    old = getattr(PART, "kind", "")
+    PART.kind = kind
+    try:
+        yield
+    finally:
+        PART.kind = old
+
+
+def session(t: Any = None) -> None:
+    """v0.972 P5: the session this thread works for (her words raise the level, its id keeps the model)."""
+    PART.ask = str(getattr(t, "text", "") or "")[:4000] if t is not None else ""
+    PART.key = str(getattr(t, "id", "") or "") if t is not None else ""
+    PART.kind = ""
+
+
+def _box(tools: bool) -> dict | None:
+    """v0.972 P5: the Box's model + backups for this call, or None (the fixed dev_qwen_model)."""
+    try:
+        from ..pipeline import surfaces as SF
+    except Exception:   # noqa: BLE001
+        return None
+    picked = str(getattr(PICK, "model", "") or "")
+    pin = picked if "/" in picked else ""          # an OpenRouter id she picked; a Claude name means nothing here
+    return SF.code_choice(getattr(PART, "kind", "") or "code", ask=getattr(PART, "ask", "") or "", pin=pin,
+                          tools=tools, key=getattr(PART, "key", "") or "", effort=getattr(PICK, "effort", "") or "")
 
 
 def model_for() -> str:
@@ -248,11 +279,38 @@ def _qwen_stream(url: str, body: dict, headers: dict, timeout: float, on_text) -
 
 def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
                think: bool | None) -> tuple[list[dict], str]:
-    """One Hoola Code step on Qwen through OpenRouter, answered in the same block shapes a Claude call returns."""
+    """One Hoola Code step through OpenRouter. v0.972 P5: on the model the Box chose for this kind of work, handed
+    over to its backups when it fails (at most two changes); Box off / no tables = dev_qwen_model as before."""
+    has_tools = any(isinstance(t, dict) and t.get("name") for t in tools)
+    bx = _box(has_tools)
+    if not bx:
+        return _qwen_one(qwen_model(), system, messages, tools, max_tokens, think)
+    from ..pipeline import surfaces as SF
+    order = [bx["model"]["id"]] + [b["id"] for b in bx["backups"]][:2]
+    key = getattr(PART, "key", "") or ""
+    last: Exception | None = None
+    for i, model in enumerate(order):
+        try:
+            out = _qwen_one(model, system, messages, tools, max_tokens, think, tries=2 if i < len(order) - 1 else 3)
+        except Exception as e:   # noqa: BLE001 - the Box's rule: the next backup at the same level
+            last = e
+            m = str(e)
+            if any(w in m.lower() for w in ("key limit", "insufficient credits", " 401:", " 402:")):
+                raise                                    # her key / credit: another model will not fix it
+            SF.code_failed(model, order[i + 1] if i + 1 < len(order) else "", m)
+            continue
+        SF.code_ok(model)
+        SF.code_used(bx["kind"], bx["level"], model, key)
+        return out
+    raise last or QwenError("no model answered")
+
+
+def _qwen_one(model: str, system: str, messages: list[dict], tools: list[dict], max_tokens: int,
+              think: bool | None, tries: int = 3) -> tuple[list[dict], str]:
+    """One Hoola Code step on one OpenRouter model, answered in the same block shapes a Claude call returns."""
     import time
     from ..agent import llm
     st = _settings()
-    model = qwen_model()
     msgs, fns = llm.to_openai(system, [t for t in tools if isinstance(t, dict) and t.get("name")], messages)
     want_think = bool(getattr(st, "dev_think", True)) if think is None else think
     effort = getattr(PICK, "effort", "") or str(getattr(st, "dev_loop_effort", "high") or "high")
@@ -273,6 +331,8 @@ def _qwen_call(system: str, messages: list[dict], tools: list[dict], max_tokens:
     # last tries told to answer now - thinking off, then thinking low if this model will not run without it
     rescue = [{"enabled": False}, {"effort": "low", "exclude": True}]
     for i in range(3 + len(rescue)):
+        if i >= tries and i < 3:
+            continue                                          # v0.972 a Box model with a backup gets fewer tries
         if i >= 3:
             if empties < 3:
                 break                                         # the tries failed for another reason: say that one

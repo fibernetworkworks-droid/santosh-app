@@ -6221,3 +6221,45 @@ brain paused for 10 minutes, llm.cheap_brain() went None and the Box stood aside
   flagged "figure 1.12 is in no fact".
 - pipeline_sheets prints each hand-over (event, from -> to, why) and "ran on <model>".
 Tests `test_v0971_pipeline_p4_fix.py` (9). NOT VERIFIED on her server.
+
+## v0.972.0 HOOLA PIPELINE P5 - Hoola Code, background jobs and the studios on the Box (owner: "GO P5")
+
+P5 of `docs/HOOLA_PIPELINE_PLAN.md` ("Hoola Code, background jobs, studios on the Box - their fixed model settings
+retired, old values kept as a fallback switch"). Before it: v0.971.0 verified on her server for the margin message
+(through the Box on Opus 4.6, the 1.12 check passed); the ban-fix path not re-sent yet.
+
+NEW `server/app/pipeline/surfaces.py` - the one place the other surfaces ask the Box.
+
+**Hoola Code** (`devsahayak/brain.py`): every OpenRouter coding call asks the Box for its kind of work through
+`surfaces.code_choice` - the round / sub-agents / one-shot writer = `code` (starts HIGH), the plan pass = `plan` (LOW,
+reads the reason table), the PR review = `check` (with tools it reads the code table), compaction + the memory observer
++ the next-message hint = `summarise` (LOW); ranked score first (surface `code`), OpenRouter route only. Her words
+raise the level as on chat (`brain.session(t)` keeps her task text + the session id; "production / payment / deploy" =
+costly -> MAX), her effort max / xhigh raises a code call one level (never to ULTRA), her composer pick is a pin when it
+is an OpenRouter id (a Claude name set by the hint / memory callers means nothing there). `_qwen_call` now runs the
+model + up to two backups (`_qwen_one` per model, two tries when a backup is left): a refused / failed model hands over
+(`pipeline box hand-over (code): a -> b`), its failure goes into the Box's outage record and a banned / gone one is off
+for the day (runner.model_failed -> mark_dead); her key / credit (401 / 402 / key limit / insufficient credits) is
+raised at once and never blamed on a model; the model that answered is kept for the session's same kind of work
+(box.remember, 30 min). Callers marked: engine round `B.session(t)`, compaction `B.part("summarise")`, loop.pick
+`_B.session(t)`, plan_run `PART.kind = "plan"`, review_run `"check"`, memory + hint `B.part("summarise")`.
+FALLBACK = the old fixed `dev_qwen_model`, exactly as before, when `pipeline_on` or `pipeline_code` is off, the server
+has no tables, or the Box chose nothing on OpenRouter. `dev_brain claude` stays Claude (her explicit setting).
+
+**Background jobs** (`pipeline/turnbox.py`): routine / wake / goal (long-job rounds) / nudge turns go through the same
+chat-turn Box with surface `background` (reliability first, the 30 s first-word limit, every call through the P4
+hand-over runner); "better answer" and the several-parts planner stay for her own messages. `pipeline_background` off
+= "a routine turn - pipeline_background is off" on the sheet. `pipeline_sheets` marks a non-chat sheet `[background]`.
+
+**Studios - the Box ranks, the studio runs** (D6: engines, keys and price cards unchanged): `surfaces.studio_order`
+reorders the models a studio can already run by the kind's table (the level itself, then above, then below; paused /
+banned left out; names matched exactly after dropping the maker prefix and -preview / -latest / date tails - so
+seedance-2.0 never matches seedance-2.0-fast). Video: Hoola Auto "quality" (`Studio.model_for` -> `box_order`) orders
+the shot's own ready route by video.make (draft MID / final HIGH / premium MAX; talk shots keep Sync 3; value / cheap
+modes and her own picks unchanged); the price card prices the model the run will use, as before. Pictures:
+`photogen.models_for(quality, edit)` orders the chain by image.make / image.edit (fast MID / best HIGH) and each model's
+result goes into the outage record. NOT ordered (one engine each on this server): music (Lyria), voice-over (Gemini
+voice). A model the tables rank but the studio cannot run is never forced (logged `pipeline box video studio: ...`).
+
+Switches (all under `pipeline_on`, which stays OFF by default until P7): `pipeline_code`, `pipeline_background`,
+`pipeline_studios`, each default True. Tests `test_v0972_pipeline_p5.py` (17). NOT VERIFIED on her server.

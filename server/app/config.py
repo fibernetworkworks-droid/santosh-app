@@ -611,6 +611,9 @@ class Settings(BaseSettings):
     pipeline_tap_wait_h: int = 24            # v0.967 P3: a branch waiting for her tap ends after this
     pipeline_fix_round: bool = True          # v0.968 P4: a failed check gets ONE fix round one level up (5.3)
     pipeline_calls: bool = False             # v0.968 P4: live-call brain asks through the Box (head start) - off
+    pipeline_code: bool = True               # v0.972 P5: Hoola Code calls choose their model in the Box (off = dev_qwen_model)
+    pipeline_background: bool = True         # v0.972 P5: routine / wake / long-job turns through the Box (reliability first)
+    pipeline_studios: bool = True            # v0.972 P5: video / image studios run the Box's order of their own models
     pipeline_dead_h: float = 24.0            # v0.970 a banned / gone model stays out of the Box's choices this long
     pipeline_company_cap: int = 8            # v0.968 P4: model calls at once per company (6.8)
     pipeline_user_cap: int = 6               # v0.968 P4: model calls at once per user (6.8)

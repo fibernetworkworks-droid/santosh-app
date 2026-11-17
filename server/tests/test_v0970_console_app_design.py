@@ -107,4 +107,4 @@ def test_the_console_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.971.0")
+    assert APP_VERSION.startswith("0.972.0")

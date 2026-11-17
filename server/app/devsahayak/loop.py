@@ -450,6 +450,7 @@ def pick(t: Any = None) -> None:
     PICK.effort = str(getattr(t, "effort", "") or "")
     from . import brain as _B                      # v0.784 the shared brain reads the same choice
     _B.PICK.model, _B.PICK.effort = PICK.model, PICK.effort
+    _B.session(t)                                  # v0.972 P5: the Box reads her words + keeps the session's model
 
 
 def _anthropic_brain(system: str, messages: list[dict], tools: list[dict]) -> tuple[list[dict], str]:
@@ -747,6 +748,8 @@ def review_run(g, repo: str, head_sha: str, pr_text: str, diffs: str, valid: dic
     """The review loop. Returns {summary, verdict, comments, loop}; comments = [{path, line, body, severity}] on added lines
     only (the comment tool refuses any other line and says which lines it may use)."""
     pick(None)
+    from . import brain as _B
+    _B.PART.kind = "check"                         # v0.972 P5: the review is its own part for the Box
     STATS["runs"] += 1
     paths = [x["path"] for x in g.tree(repo, head_sha)]
     ws = Workspace(g, repo, head_sha, paths, False)
@@ -868,6 +871,8 @@ def plan_run(g, t, rules: str, extra_files: list[str], issue_txt: str = "", max_
     loop}. It cannot edit (the edit tools are not given, and anything else is refused), so a plan is never a half-done
     change. The edit loop runs afterwards with this plan in front of it."""
     pick(t)
+    from . import brain as _B
+    _B.PART.kind = "plan"                          # v0.972 P5: the plan pass is its own part for the Box (LOW)
     STATS["runs"] += 1
     base_sha = g.branch_sha(t.repo, t.base)
     paths = [x["path"] for x in g.tree(t.repo, base_sha)]

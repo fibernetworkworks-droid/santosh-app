@@ -135,9 +135,21 @@ def her_words(text: str) -> tuple[str, list[str]]:
 
 
 # ------------------------------------------------------------------ one turn
+# v0.972 P5: turns Hoola runs on its own (her routines, a finished job's wake turn, the rounds of a long job)
+BACKGROUND = {"routine", "wake", "goal", "nudge"}
+
+
+def background(actor: str) -> bool:
+    return actor in BACKGROUND and bool(getattr(get_settings(), "pipeline_background", True))
+
+
 def _why_not_turn(actor: str, voice: bool) -> str:
     if voice and not bool(getattr(get_settings(), "pipeline_calls", False)):
         return "a live call - not through the Box yet (pipeline_calls)"
+    if background(actor):
+        return ""
+    if actor in BACKGROUND:
+        return f"a {actor} turn - pipeline_background is off"
     if not (actor == "owner" or actor.startswith("approved:")):
         return f"a {actor} turn - not through the Box yet"
     return ""
@@ -148,7 +160,7 @@ def _why_not(actor: str, voice: bool, r: dict) -> str:
     if w:
         return w
     if out_of(r["kind"]) != "text":
-        return f"{r['kind']} - the studio keeps its own engine and price card until P5"
+        return f"{r['kind']} - the studio runs it on its own engine and price card (in the Box's order)"
     m = r.get("model") or {}
     if not m:
         return "no model in the tables can do this part"
@@ -190,11 +202,12 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
         pin = ""
     words, notes = her_words(text)
     read = words + (" (deep research)" if any(n.startswith("mode: deep research") for n in notes) else "")
-    surface = "call" if voice else "chat"
+    bg = not voice and background(actor or "owner")
+    surface = "call" if voice else ("background" if bg else "chat")
     try:
         r = B.choose_for(read, surface=surface, doc=doc, pin=pin, chat=conv, health=health(), tools=True,
                          now=t0)
-        if BETTER.search(words):          # P4 (5.2): she asked for better -> the SAME job, one level up
+        if BETTER.search(words) and not bg:          # P4 (5.2): she asked for better -> the SAME job, one level up
             from .levels import up_one
             prev = next(iter(S.recent(conv=conv, n=1)), None)
             same = bool(prev and len(prev.get("parts") or []) == 1 and t0 - float(prev.get("at") or 0) < 1800)
@@ -214,7 +227,8 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
     why_not = _why_not(actor or "owner", bool(voice), r)
     if any(n.startswith("place:") for n in notes):
         why_not = "a Hoola PC turn - the PC side keeps its own model"
-    elif r.get("several_parts") and len(P.split(words)) > 1 and not _why_not_turn(actor or "owner", bool(voice)):
+    elif r.get("several_parts") and not bg and len(P.split(words)) > 1 and not _why_not_turn(actor or "owner",
+                                                                                              bool(voice)):
         try:
             return _begin_multi(conv, tenant, words, doc, pin, t0)
         except Exception as e:   # noqa: BLE001 - a plan that cannot be made: today's one-part turn

@@ -178,7 +178,9 @@ def main() -> int:
     for sh in rows:
         when = time.strftime("%d %b %H:%M:%S", time.localtime(sh["at"]))
         chk = sh.get("check") or {}
-        print(f"\n{when}  {sh['status']}  box {sh.get('box_ms', '?')} ms  ask: {sh.get('ask', '')[:80]!r}")
+        surf = sh.get("surface") or "chat"
+        print(f"\n{when}  {sh['status']}  box {sh.get('box_ms', '?')} ms" + (f"  [{surf}]" if surf != "chat" else "")
+              + f"  ask: {sh.get('ask', '')[:80]!r}")
         if sh.get("multi"):
             print(f"  {len(sh['parts'])} parts, plan by {sh.get('plan_by', 'code')}"
                   + (f" ({sh.get('planner')}, {sh.get('plan_s')} s)" if sh.get("planner") else ""))
