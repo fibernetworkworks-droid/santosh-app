@@ -6275,3 +6275,11 @@ On top of v0.970 WEB CONSOLE APP DESIGN, behind the same switch (`console_app_de
 - **Chat**: the header without its rule, title on the left; the box docked at the bottom with the disclaimer under it.
 - Tests: NEW `test_v0973_console_claude_chat.py` (shape pins, every new rule behind `html.appd`, a real-browser walk light + dark: rows, greeting beside the mark, placeholder, box shape, Session chip, ghost, Send hidden until typed, the + menu, the chat view); `test_v0970` pins moved to the new rows / words.
 - NOT VERIFIED: on her server; the chat view in the test is switched by hand (the test server streams no reply).
+
+## v0.974.0 CLEAN HOME — the console home without the extras (owner, her screenshot of the live v0.973 home: "remove inprogress section, incognito icon, hoola pc online")
+
+In the app design (`html.appd`) the home now shows only the Hoola mark + "Good morning, <name>", the rounded box and Session / model under it, like Claude:
+- the In progress cards (`#liveJobs`) are hidden on the home - waiting / running work stays in Work (the sidebar's violet count);
+- the private-chat ghost is gone (`#incogBtn` removed from `appChrome`) - Incognito chat stays in the chat menu;
+- the "Hoola PC online" pill (`.lhead`) is hidden on the home - Computer in the sidebar shows the PCs.
+CSS rule at the end of `appdesign.css`; `test_v0973_console_claude_chat.py` checks the three are gone. NOT VERIFIED on her server.

@@ -313,3 +313,7 @@ html.appd #app .side .shd{padding:6px 2px 10px 10px}
 html.appd #app .side .console-controls{margin-top:auto;padding:6px 2px}
 html.appd #app #composer::before,html.appd #app #composer::after{display:none}
 html.appd #app #composer:focus-within{border-color:var(--dim);box-shadow:0 1px 2px rgb(0 0 0 / .04),0 10px 30px -14px rgb(0 0 0 / .16)}
+
+/* v0.974 a clean home (owner, her screenshot: "remove inprogress section, incognito icon, hoola pc online"): only the
+   greeting, the box and Session / model - work in progress lives in Work, a private chat in the chat menu */
+html.appd #app .landing .lhead,html.appd #app .landing #liveJobs{display:none !important}

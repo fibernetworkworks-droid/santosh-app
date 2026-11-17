@@ -104,7 +104,6 @@ function appHome() {
 // "Hoola" + the Code pill + the sidebar button; the home is the mark beside a serif greeting over a rounded typing box,
 // Session and the model under it, a private-chat button top right; "+" opens files, Deep research, Hoola PC, Improve
 // and every tool (Claude's + menu) instead of a row of chips
-const GHOST = '<path d="M6 20V11a6 6 0 0 1 12 0v9l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5Z"/><circle cx="10" cy="11" r=".8" fill="currentColor"/><circle cx="14" cy="11" r=".8" fill="currentColor"/>';
 function plusMenu(b) {
   if (!window.HoolaMenu) { $('#fileIn').click(); return; }
   const on = id => $('#' + id)?.getAttribute('aria-pressed') === 'true', imp = $('#impBtn');
@@ -138,14 +137,11 @@ function appChrome() {
     const n = at.cloneNode(false); n.innerHTML = svg('<path d="M12 5v14M5 12h14"/>'); n.setAttribute('aria-label', 'Add photos, files and more');
     n.setAttribute('aria-haspopup', 'menu'); at.replaceWith(n); n.addEventListener('click', () => plusMenu(n));
   }
-  const lh = document.querySelector('.landing .lhead');
-  if (lh && !$('#incogBtn')) lh.insertAdjacentHTML('beforeend', `<button type="button" class="ib incog" id="incogBtn" aria-label="Private chat" title="Private chat - nothing from it goes into ${esc(AV)}'s memory">${svg(GHOST)}</button>`);
   const rl = document.querySelector('.side > .slabel'); if (rl) rl.textContent = 'Recents';
   const sl = $('#slotLand');
   if (sl && !$('#appUnder')) sl.insertAdjacentHTML('afterend', `<div class="appunder" id="appUnder"><button type="button" class="uchip" id="sessBtn" aria-haspopup="menu"><span class="sl">Session</span>${svg('<path d="M6 9l6 6 6-6"/>')}</button><span class="ugap"></span></div>`);
 }
 document.addEventListener('click', e => {
-  if (e.target.closest?.('#incogBtn')) newIncognito();
   const sb = e.target.closest?.('#sessBtn'); if (sb) sessMenu(sb);
 });
 document.addEventListener('click', e => {   // v0.970 a start pill goes straight to Hoola, like the app

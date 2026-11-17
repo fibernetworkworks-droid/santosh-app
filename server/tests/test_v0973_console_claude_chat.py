@@ -25,7 +25,7 @@ def test_the_shell_is_claudes_shape():
     assert "['main', 'Customize']" in JS
     assert "How can ${AV} help you today?" in JS
     assert "function plusMenu(" in JS and "label: 'Deep research'" in JS and "label: 'Use Hoola PC'" in JS
-    assert "function sessMenu(" in JS and "id=\"sessBtn\"" in JS and "id=\"incogBtn\"" in JS
+    assert "function sessMenu(" in JS and "id=\"sessBtn\"" in JS and "incogBtn" not in JS   # v0.974 no ghost on the home
     for k in ("clip:", "search:", "spark:", "grid:"):
         assert k in MENU
     # every new rule stays behind the switch
@@ -57,7 +57,7 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
             greet:q('#greet').textContent, gfont:g('#greet').fontFamily, mark:!!q('.landing .hmark svg'),
             row:Math.abs(r('.landing .hmark').top + r('.landing .hmark').height/2 - (r('#greet').top + r('#greet').height/2)) < 8,
             pills:g('.landing .pills').display, ph:q('#msg').placeholder, box:g('#composer').borderRadius,
-            under:!!q('#appUnder #sessBtn'), incog:!!q('#incogBtn'), sidemark:g('.side .shd .mk').display,
+            under:!!q('#appUnder #sessBtn'), incog:!!q('#incogBtn'), clean:getComputedStyle(q('.landing .lhead')).display==='none' && getComputedStyle(q('#liveJobs')).display==='none', sidemark:g('.side .shd .mk').display,
             newc:g('.side .newc').backgroundColor, send:g('#sendBtn').display,
             plusLeft:r('#attach').left < r('#micBtn').left, field:r('#msg').bottom <= r('#attach').top + 2,
             boxIn:r('#composer').right <= r('.landing').right}}""")
@@ -66,7 +66,7 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
         assert re.match(r"Good (morning|afternoon|evening)", m["greet"]), m
         assert "Literata" in m["gfont"] and m["mark"] and m["row"], m
         assert m["pills"] == "none" and m["ph"] == "How can Santosh help you today?", m
-        assert m["box"] == "20px" and m["under"] and m["incog"], m
+        assert m["box"] == "20px" and m["under"] and not m["incog"] and m["clean"], m   # v0.974 clean home
         assert m["newc"] in ("rgba(0, 0, 0, 0)", "transparent"), m
         assert m["send"] == "none" and m["plusLeft"] and m["field"] and m["boxIn"], m
         if shots:
@@ -99,4 +99,4 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.973.0")
+    assert APP_VERSION.startswith("0.974.0")
