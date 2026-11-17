@@ -4,6 +4,9 @@ from pathlib import Path
 
 import pytest
 
+# v0.979 HOOLA PIPELINE P7: no held-out share in the suites (it is random); the P7 tests turn it on themselves
+os.environ.setdefault("PIPELINE_HOLDOUT_PCT", "0")
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 

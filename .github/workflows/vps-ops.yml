@@ -26,6 +26,7 @@ on:
           - pipeline_on
           - pipeline_off
           - pipeline_sheets
+          - pipeline_watch
           - architect_check
           - proof_apps
           - aiapp_proof
@@ -293,6 +294,11 @@ jobs:
                 echo 'cd $CORE && timeout 60 .venv/bin/python -m app.pipeline.sheet'
                 # v0.965: what the running server itself said about the Box (begin / done lines, a failed begin)
                 echo 'L=$HOME/.pm2/logs/santosh-error.log; echo; echo "== the server log (Box lines)"; tail -n 60000 $L | grep -aE "pipeline box|pipeline_on" | cut -c1-300 | tail -n 40' ;;
+              pipeline_watch)
+                # v0.979 HOOLA PIPELINE P7: the week's watch (read-only) - every chat message timed, the Box vs today's
+                # routing (the held-out share), the outage record, and the verdict (ready / watching / slower and why)
+                echo 'cd $CORE && timeout 120 .venv/bin/python -m app.pipeline.watch'
+                echo 'L=$HOME/.pm2/logs/santosh-error.log; echo; echo "== the server log (hand-overs, models off)"; tail -n 80000 $L | grep -aE "pipeline box hand-over|pipeline box: .* is off" | cut -c1-260 | tail -n 30' ;;
               mospi_check)
                 # v0.349 can the live server reach MoSPI's statistics MCP? (one free read call, exact reason on failure)
                 echo 'echo "== DNS"; getent hosts mcp.mospi.gov.in || echo "DNS: no answer"'

@@ -119,6 +119,15 @@ def _push(q: asyncio.Queue, data: dict) -> None:
             pass
 
 
+
+def _heard(conv: str, kind: str, payload: dict) -> None:
+    """v0.979 HOOLA PIPELINE P7: the first word of a reply, for the watch's timings."""
+    try:
+        from .pipeline import watch as _w
+        _w.heard(conv, kind, payload)
+    except Exception:   # noqa: BLE001
+        pass
+
 class EventBus:
     def __init__(self) -> None:
         self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
@@ -153,6 +162,8 @@ class EventBus:
                 except RuntimeError:
                     pass  # that loop is closed
             return data
+        if kind == "message":   # v0.979 P7: the watch keeps the first word that reached her (never breaks a publish)
+            _heard(conversation_id, kind, payload)
         with session() as s:
             ev = Event(conversation_id=conversation_id, campaign_id=campaign_id, kind=kind, payload=payload,
                        call_id=(call or None) and str(call)[:40])
@@ -223,6 +234,8 @@ class EventBus:
         assert kind in STREAM_KINDS, kind
         data = {"id": 0, "kind": kind, "payload": payload, "at": datetime.now(timezone.utc).isoformat(),
                 "call": CALL.get() or None, "conv": conversation_id, "live": True}
+        if kind == "delta":   # v0.979 P7
+            _heard(conversation_id, kind, payload)
         for q in list(self._subs.get(conversation_id, ())) + self._account(conversation_id):
             loop = self._loops.get(id(q))
             try:

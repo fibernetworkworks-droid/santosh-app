@@ -123,6 +123,11 @@ def code_failed(old: str, new: str, why: str) -> None:
     R.model_failed("openrouter:" + old, why)
     STATS["code_handovers"] += 1
     log.warning("pipeline box hand-over (code): %s -> %s (%s)", old, new or "-", (why or "")[:140])
+    try:   # v0.979 P7
+        from . import watch as W
+        W.outage(old, "handover", f"code -> {new or '-'}: {(why or '')[:120]}")
+    except Exception:   # noqa: BLE001
+        pass
 
 
 def code_ok(model_id: str) -> None:

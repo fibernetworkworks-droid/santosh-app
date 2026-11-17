@@ -36,5 +36,5 @@ def test_phone_handles_the_github_link():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.978.0"' in main
-    assert "version: 0.978.0+977" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.979.0"' in main
+    assert "version: 0.979.0+978" in (ROOT / "pubspec.yaml").read_text()

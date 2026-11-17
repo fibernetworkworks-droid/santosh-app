@@ -77,6 +77,12 @@ def note(model_id: str, ok: bool, now: float | None = None) -> None:
     with _OLOCK:
         rows = [r for r in _OUT.get(model_id, []) if t - r[0] <= 3600] + [(t, ok)]
         _OUT[model_id] = rows[-50:]
+    if not ok:
+        try:   # v0.979 P7: every failure written down, so the week's outage record survives a restart
+            from . import watch as W
+            W.outage(model_id, "fail", now=t)
+        except Exception:   # noqa: BLE001
+            pass
 
 
 _DEAD: dict[str, tuple[float, str]] = {}   # model id -> (until, why): banned / gone for her account (this process)
@@ -92,6 +98,11 @@ def mark_dead(model_id: str, why: str, now: float | None = None) -> None:
         _DEAD[model_id] = (t + hours * 3600, (why or "")[:200])
     if fresh:
         log.warning("pipeline box: %s is off for %.0f h (%s)", model_id, hours, (why or "")[:160])
+        try:
+            from . import watch as W
+            W.outage(model_id, "dead", why, now=t)
+        except Exception:   # noqa: BLE001
+            pass
 
 
 def health(now: float | None = None) -> dict[str, dict]:
@@ -233,6 +244,10 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
             return _begin_multi(conv, tenant, words, doc, pin, t0)
         except Exception as e:   # noqa: BLE001 - a plan that cannot be made: today's one-part turn
             log.warning("pipeline box: planning failed (%s) - one part", str(e)[:120])
+    if not why_not and surface == "chat":   # v0.979 P7: a held-out share runs today's way - the fair comparison
+        from . import watch as W
+        if W.hold_out():
+            why_not = W.HELD + ": timed as today's turn"
     part = {"kind": r["kind"], "language": r["language"], "level": r["level"], "level_used": r.get("level_used"),
             "level_why": r["level_why"], "signals": r["signals"], "model": r["model"], "backups": r["backups"],
             "why": r["choose_why"], "applied": not why_not, "not_applied": why_not}

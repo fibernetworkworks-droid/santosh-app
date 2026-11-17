@@ -3231,6 +3231,13 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         from ..db import now as _now
         _tc_tok, _tc_t0 = _usage._TURN.set(_tc_acc), _now()
     _bx = None
+    _wt = None
+    try:   # v0.979 HOOLA PIPELINE P7: the clock for this message (first word + whole reply), Box or not
+        from ..pipeline import watch as _wtch
+        _wt = _wtch.start(conversation_id, tenant=tenant_id or get_settings().tenant_id, actor=actor or "owner",
+                          voice=bool(voice or VOICE_BRAIN_NOW.get()))
+    except Exception:   # noqa: BLE001
+        _wt = None
     try:   # v0.963 HOOLA PIPELINE P2: a one-part message through the Box (pipeline_on; off = today's turn exactly)
         from ..pipeline import turnbox as _tbox
         _bx = _tbox.begin(conversation_id, tenant=tenant_id or get_settings().tenant_id, text=user_text,
@@ -3238,6 +3245,12 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
     except Exception:   # noqa: BLE001 - the Box never stops her turn
         log.exception("pipeline box begin failed")
         _bx = None
+    if _wt is not None:
+        try:
+            _wtch.place(_wt, _bx)
+        except Exception:   # noqa: BLE001
+            _wt = None
+    _wt_ok = False
     try:
         _out = await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
                                save_user)
@@ -3248,6 +3261,8 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
                     await _tbox.fix_round(_bx, _out, _chk)
                 except Exception:   # noqa: BLE001 - the reply already reached her
                     log.exception("pipeline fix round failed")
+        _wt_ok = bool(str(_out or "").strip()) and not (_wt is not None and turn_failed_since(conversation_id,
+                                                                                               _wt["t0"]))
         return _out
     except asyncio.CancelledError:
         if _bx is not None:
@@ -3268,6 +3283,11 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
             log.exception("even the crash reply failed")
             return ""
     finally:
+        if _wt is not None:
+            try:
+                _wtch.stop(_wt, ok=_wt_ok)
+            except Exception:   # noqa: BLE001
+                pass
         if _tc_tok is not None:
             from .. import turncost as _tcost, usage as _usage
             try:

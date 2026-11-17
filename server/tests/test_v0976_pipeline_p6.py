@@ -119,4 +119,4 @@ def test_console_and_phone_draw_it():
 
 def test_version():
     src = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.978.0"' in src and "v0.977.0 MORE MENU" in src
+    assert "v0.976.0 HOOLA PIPELINE P6" in (ROOT / "docs/HISTORY.md").read_text()   # later stories drop it from main.py

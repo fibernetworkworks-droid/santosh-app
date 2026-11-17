@@ -169,6 +169,11 @@ def _switch(hand: dict, event: str, why: str) -> bool:
         STATS["bigger"] += 1
     _record(hand, {"event": event, "from": old, "to": m.get("id"), "why": why[:160], "at": round(time.time(), 1)})
     log.warning("pipeline box hand-over: %s -> %s (%s: %s)", old, m.get("id"), event, why[:120])
+    try:   # v0.979 P7: the hand-over written down for the week's read-back
+        from . import watch as W
+        W.outage(old or "", "handover", f"{event} -> {m.get('id')}: {why[:120]}")
+    except Exception:   # noqa: BLE001
+        pass
     return True
 
 

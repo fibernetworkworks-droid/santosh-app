@@ -6382,3 +6382,41 @@ page in its own design". Switch `site_look_own_bodies` (conftest pins it off for
 Tests: `server/tests/test_v0978_branches_e8.py` (8: hidden copy / never live / limits, the conflict-named merge with
 nothing half done, look + Cloud + file conflicts taken from the branch, routes, a browser walk of the Branches tab, E8 own
 bodies + pick, E8 above the cap). NOT VERIFIED on her server or with a real model (the fake site AI writes the sections).
+
+## v0.979.0 HOOLA PIPELINE P7 - the week's watch (built as 0.977.0; their MORE MENU took 0.977.0 and APP ENGINE BRANCHES 0.978.0, all kept; owner: "GO P7")
+
+Plan section 10, P7: "deploy, watch the outage record + timings for a week - done when no message is slower than
+before for one-part asks". Built: the thing that watches, and the rule that says done. The week itself is hers.
+
+- **Every chat message timed** (`server/app/pipeline/watch.py`): `santosh.run_turn` starts a clock before the Box
+  chooses, `events.bus` hands the watch the first streamed word (`delta`) or whole reply (`message`) that reaches her
+  screen (the "Ek second" ack line, error lines and empty deltas do not count), and the turn's end writes one row:
+  group, kind, level, model (the one that really answered), first-word seconds, whole-reply seconds, ok, hand-overs.
+  Only her own chat messages (owner / her approved turns), never a live call or a background turn.
+- **Groups**: `box` (one part the Box ran), `box_multi` (several parts - more work, left out of the speed rule),
+  `before` (today's routing: `pipeline_on` off, or the HELD-OUT share), `skipped` (Box on but it did not run it - media,
+  no tables, a Hoola PC turn; counted with the reason, never compared).
+- **The held-out share** (`pipeline_holdout_pct` 10): while the Box is on, about one one-part chat message in ten runs
+  today's way - same week, same chats, same server, same hours - so "slower than before" is measured, not remembered.
+  Its sheet says "held out for the P7 watch" and it gets no receipt line (the Box did not choose its model). Off in the
+  test suites (conftest pins 0).
+- **The outage record written down**: every failure (`turnbox.note`), every banned / gone model (`mark_dead`) and every
+  hand-over (chat runner + Hoola Code) goes to `data/pipeline/watch.db` beside the sheets, so a week survives restarts.
+  The report counts pauses by turnbox's own rule (two failures within 10 minutes). Kept 60 days; no words of hers.
+- **The verdict, in code**: after `pipeline_watch_days` (7) since the first Box message and `pipeline_watch_min` (30)
+  timed messages in BOTH groups, the Box's median and slowest-10 % (nearest rank, no interpolation) first word and whole
+  reply must each be within `pipeline_watch_slack` (10 %) + 0.3 s of `before`, and its failed share no more than 2
+  points higher. States: watching (says what it still waits for), slower (names each slower number), ready. Turning the
+  Box on for good stays her tap (vps-ops `pipeline_on`).
+- **Read it**: vps-ops `pipeline_watch` (the table per group, per day, per kind of work, per model with fails / pauses /
+  hand-overs / off, why messages skipped the Box, then the server log's hand-over and model-off lines);
+  `GET /api/pipeline/watch?days=7`. Switch `pipeline_watch` (off = nothing written, no held-out share).
+- Tests `server/tests/test_v0979_pipeline_p7.py` (12): a Box turn through the real `run_turn` timed with its first word
+  (ack not counted), Box off = before, the held-out share runs today's model with no receipt, calls / team turns not
+  timed, several parts = box_multi, error lines are not a first word, the outage record written (banned + hand-over +
+  two fails = one pause), the verdict waits then passes, names a slower first word but not a whole reply inside the
+  slack, more failures = not ready, route + CLI, switch off writes nothing, wiring. `test_v0976` version test now reads
+  its marker from this file (later stories drop it from main.py).
+
+NOT VERIFIED: no week has been watched on her server; the first numbers come from her first messages after deploy.
+The held-out share means about 1 in 10 of her one-part messages runs on today's model during the week, on purpose.
