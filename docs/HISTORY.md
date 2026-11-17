@@ -6460,3 +6460,27 @@ with send / stop inside and the row below in order, note text, gauge 64% hot, no
 arrow, working = Stop 32x32 with no text and the empty Send hidden, /inc offers no Incognito). Pre-existing reds checked on
 the clean tree and untouched: test_v0719 (toolsBtn), test_v0740 browser (model under the box since v0.973).
 NOT VERIFIED on her server.
+
+## v0.982.0 BUBBLE LINES
+
+Owner, her chat screenshot after v0.981 went live: the first line of her own wrapped message ("Page "Radiant Broadband
+Panel" (v2) mein error aa raha hai: Uncaught ...", sent by the page card's fix button) sat pushed right and its bottom
+was cut by the line below.
+
+ROOT CAUSE: v0.970's `appdesign.css` put `background`, `border-radius` and `padding:12px 18px` on `.mu .mut` - but
+`.mut` is an inline `<span>`. On a wrapped inline element the side padding applies only to the first and last line
+boxes, and the vertical padding does not move lines but each line's background is painted with it, so every next
+line's background covered the bottom of the line above. One-line messages looked right, which is why it hid since
+v0.970.
+
+FIX (console only, app design): `html.appd #app .mu:not(.fonly)` carries the bubble (background `--you`, 20 px
+corners, 12/18 px padding); `.mu .mut` is `display:block` with no background / padding. Files-only messages
+(`.mu.fonly`) keep no bubble.
+
+Tests: NEW `test_v0982_console_bubble.py` - shape + a real-browser walk sending her exact message: it wraps, every
+line starts on the same left edge, lines are >= 20 px apart, the text sits inside the bubble's padding, the span has
+no background or padding. NOT VERIFIED on her server.
+
+ALSO SEEN in the same screenshot, NOT fixed here: her fix-the-page message got "The AI service is busy or unreachable
+right now (ref 4576bd)". That line is `santosh._friendly_error` for a timeout / 429 / 5xx / empty answer; the real
+error is only in the server log under that ref - needs a VPS ops > errors run.

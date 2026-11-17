@@ -154,7 +154,10 @@ html.appd .disclaim{font:400 12px var(--fb);color:var(--dim)}
 /* ---------- the chat: her words in a soft bubble, Hoola's reply as a page ---------- */
 html.appd #app .chead{border-bottom:1px solid var(--line);background:var(--bg)}
 html.appd #app .chead h1{font:500 16px var(--fb);color:var(--ink)}
-html.appd #app .mu .mut{background:var(--you);color:var(--ink);border-radius:20px;padding:12px 18px;font:400 16px/1.5 var(--fb);border:0;box-shadow:none}
+/* v0.982 the bubble is the .mu box, never the inline .mut span: padding + background on a wrapped inline span
+   indented only its first line and each next line's background painted over the line above (her screenshot) */
+html.appd #app .mu:not(.fonly){background:var(--you);border:0;box-shadow:none;border-radius:20px;padding:12px 18px}
+html.appd #app .mu .mut{display:block;background:none;color:var(--ink);border-radius:0;padding:0;font:400 16px/1.5 var(--fb);border:0;box-shadow:none}
 html.appd #app .txt.textmd,html.appd #app .mh .txt{font-family:var(--fr);font-size:16px;line-height:1.5;color:var(--chat-ink)}
 html.appd #app .textmd code,html.appd #app .txt code{color:var(--codeterm);background:rgb(var(--fg-rgb) / .05)}
 
