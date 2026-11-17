@@ -23,6 +23,8 @@
   const store = {get(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} }};
   const TOKEN = store.get('hoola.console.token');
+  // v0.987 HOOLA LOGO: the real Hoola mark (mark.js, the same drawing as the app and the console), not a gradient ring
+  const hoolaMark = () => (window.HoolaMark ? HoolaMark.svg({mono: true}) : '<span></span>');
   const APP = $('#ws');
   if (!TOKEN) { location.replace('/console/'); return; }
 
@@ -169,7 +171,7 @@
     const rec = SITES.filter(v => !isStar(v.id)).slice(0, 8).map(recRow).join('');
     const nav = (h, k, label, ic) => `<a class="nav" href="${h}" ${cur === k ? 'aria-current="page"' : ''}>${ico(ic)}${esc(label)}</a>`;
     return `<aside class="side" aria-label="Web Studio">
-      <div class="brand"><div class="mark" aria-hidden="true"><span></span></div><div><b>Hoola</b><span>Web Studio</span></div></div>
+      <div class="brand"><div class="mark" aria-hidden="true">${hoolaMark()}</div><div><b>Hoola</b><span>Web Studio</span></div></div>
       <button class="new" type="button" data-act="new" title="New website (${MAC ? '⌘' : 'Ctrl'} K)"><span>${ico('plus', 16)}New website</span><kbd>${MAC ? '⌘ K' : 'Ctrl K'}</kbd></button>
       ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites/search', 'search', 'Search', 'search')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/starred', 'starred', 'Starred', 'star')}${nav('#/apps', 'apps', 'Apps', 'app')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
       ${st.length ? `<div class="lbl">Starred</div>${st.map(recRow).join('')}` : ''}
@@ -486,7 +488,7 @@
       : ['Reading your idea.', 'Planning the pages and what each one holds.', 'Choosing colours and fonts, and setting up the website.'];
     const t0 = nowS();
     APP.innerHTML = `<div class="wsp wsp-in" data-pending="${plan ? 'plan' : 'build'}">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">${plan ? 'New plan' : 'New website'}</span>${pill(plan ? 'Writing the plan' : 'Starting', 'v')}<span class="sp"></span>
         <a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
@@ -587,7 +589,7 @@
     const q = await api('GET', '/api/site-design/questions?brief=' + encodeURIComponent(text)).catch(() => null);
     if (!q || q.skip || !L(q.questions).length) return {design: null};
     APP.innerHTML = `<div class="wsp wsp-in" data-questions="1">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">New website</span>${pill('A few choices', 'v')}<span class="sp"></span></header>
       <form class="wsq" id="wsQ" aria-labelledby="wsQh">
         <div class="qhead"><h1 id="wsQh">A few quick choices</h1>
@@ -680,7 +682,7 @@
     const words = store.get('hoola.ws.spec.words.' + id);
     const log = (() => { try { return JSON.parse(sessionStorage.getItem('hoola.ws.spec.log.' + id) || '[]'); } catch { return []; } })();
     APP.innerHTML = `<div class="wsp">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a>
         <span class="pname">${esc(S(CARD.name) || 'New website')}</span>${pill('Plan mode · nothing built yet', 'v')}<span class="sp"></span>
         <a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
@@ -760,7 +762,7 @@
   function drawShell() {
     const v = CUR, mode = chatMode();
     APP.innerHTML = `<div class="wsp">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
         <span class="pname">${esc(name(v))}</span>${v.draft_of ? pill('Draft · ' + S(v.draft_name), 'v') : ''}<button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
         <span class="tsave">Every change is saved as a version</span>
         <button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>

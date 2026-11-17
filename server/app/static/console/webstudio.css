@@ -672,3 +672,7 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 @media (prefers-reduced-motion:reduce){.doc.peek .pkp li{animation:none}}
 .comp .send:disabled{opacity:.35;cursor:not-allowed}
 .doc.peek p.pkf{font-size:13px;color:var(--mut)}
+
+/* v0.987 HOOLA LOGO: the Web Studio shows the real Hoola mark (mark.js) in Hoola violet where the gradient ring was */
+.mark:has(svg){background:none;border-radius:0;color:var(--pri)}
+.mark svg{width:100%;height:100%;display:block}

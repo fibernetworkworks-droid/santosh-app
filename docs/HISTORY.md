@@ -6588,3 +6588,12 @@ Tests: `test_v0986_plan_peek.py` 8 (version, partial-plan reader, the plan strea
 no stream, deepen never shrinks the view, build_now names the stages + clears STAGE, static pins, a browser walk: folded
 message, card in view, draft kept, the plan growing in the preview, Show all). NOT VERIFIED on her server with a real Qwen
 plan.
+
+## v0.987.0 HOOLA LOGO - the real Hoola mark in the Web Studio (owner, her Web Studio home screenshot: "THIS PAGE IS GOOD AND PERFECT ::: JUST PUT THE HOOLA LOGO THERE")
+
+The Web Studio's logo spot (sidebar brand + the top bar of every workspace screen, 5 places in webstudio.js) was a CSS
+gradient ring, not the Hoola logo. webstudio.html now loads mark.js (the one drawing the app and the console use) before
+webstudio.js, `hoolaMark()` draws `HoolaMark.svg({mono: true})` in each spot, and `.mark:has(svg)` drops the gradient and
+colours it Hoola violet (`--pri`, light + dark). Nothing else on the home page changed. App Studio shares the stylesheet but
+keeps its ring (the rule only applies where the mark is drawn). Tests: test_v0987_hoola_logo.py (3, incl. a browser check that
+the sidebar mark is the SVG with no gradient). NOT VERIFIED in her browser.

@@ -3190,3 +3190,9 @@ Task ID: v0.986.0 PLAN PEEK
 Ask: her screenshot of the Web Studio Starting screen - no proper loading in the chat, chat not exposed, stale preview, what is it working on.
 Built: long first message folds + work card in view; the architect's plan streamed into the stage file while the start screen watches (ai.TEXT_SINK, architect.peek_of / _Peeker, activity.peek) and drawn in the preview page by page; real stage steps; typing box kept for the workspace; 8 tests incl. a browser walk.
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.987.0 HOOLA LOGO
+Ask: her Web Studio home screenshot - "this page is good and perfect, just put the Hoola logo there".
+Built: the gradient ring in the Web Studio sidebar + top bars replaced with the real Hoola mark (mark.js, violet); 3 tests.
+Deploy: server only (vps-ops deploy).
