@@ -137,7 +137,11 @@ function appChrome() {
     const n = at.cloneNode(false); n.innerHTML = svg('<path d="M12 5v14M5 12h14"/>'); n.setAttribute('aria-label', 'Add photos, files and more');
     n.setAttribute('aria-haspopup', 'menu'); at.replaceWith(n); n.addEventListener('click', () => plusMenu(n));
   }
-  const rl = document.querySelector('.side > .slabel'); if (rl) rl.textContent = 'Recents';
+  const rl = document.querySelector('.side > .slabel');   // v0.975 Recents folds like Claude's (state in chatlist.js)
+  if (rl && !rl.dataset.side) { rl.innerHTML = `Recents${svg('<path d="M6 9l6 6 6-6"/>')}`; rl.dataset.side = 'recents';
+    rl.setAttribute('role', 'button'); rl.tabIndex = 0; rl.setAttribute('aria-expanded', 'true'); }
+  const pj = $('#projects');   // v0.975 Pinned sits above Sessions and Recents, like Claude's
+  if (pj && !$('#pinbox')) pj.insertAdjacentHTML('beforebegin', '<div class="pinbox" id="pinbox"></div>');
   const sl = $('#slotLand');
   if (sl && !$('#appUnder')) sl.insertAdjacentHTML('afterend', `<div class="appunder" id="appUnder"><button type="button" class="uchip" id="sessBtn" aria-haspopup="menu"><span class="sl">Session</span>${svg('<path d="M6 9l6 6 6-6"/>')}</button><span class="ugap"></span></div>`);
 }

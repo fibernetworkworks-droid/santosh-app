@@ -6283,3 +6283,29 @@ In the app design (`html.appd`) the home now shows only the Hoola mark + "Good m
 - the private-chat ghost is gone (`#incogBtn` removed from `appChrome`) - Incognito chat stays in the chat menu;
 - the "Hoola PC online" pill (`.lhead`) is hidden on the home - Computer in the sidebar shows the PCs.
 CSS rule at the end of `appdesign.css`; `test_v0973_console_claude_chat.py` checks the three are gone. NOT VERIFIED on her server.
+
+## v0.975.0 SIDEBAR LIKE CLAUDE + FULL WHITE (owner: her Claude + Hoola sidebar screenshots, "same font, size, dark word type for all"; her Claude home, "background is full white, make same for Hoola chat" -> canvas claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 10-12 -> "GO BUILD")
+
+Measured from her screenshots: Claude's sidebar rows sit 34 px apart (32 px rows, 2 px gap) in near-black #141413 at 14 px,
+labels 12 px grey #73726C; Claude's page is pure #FFFFFF with a white box, a thin grey line and a soft shadow. Her Hoola
+shot showed 15 px rows 38 px tall at a lighter weight with grey icons, and Pinned under Recents.
+
+All behind the app design (`html.appd`, switch `console_app_design`):
+- `appdesign.css` light tokens: `--bg #FFFFFF`, `--side-bg #FAFAF9`, `--nav-on #EFEFEC`, `--you/--bubble #F4F4F2`,
+  `--chat-paper #FFFFFF`; new `--side-ink` (#141413 light / #F2F1EC dark), `--side-dim` (#73726C / #9C9A92),
+  `--side-line`, `--box-line #D9D9D6`. Dark tokens otherwise unchanged.
+- The v0.975 block: New chat / Search / section rows 32 px (min-height too - v2.css had 34-36 px minimums), 14 px / 500,
+  18 px icons in the word's ink; chats 14 px / 450 at 32 px; labels 12 px grey with chevrons; Hoola 24 px; account name
+  14 px, handle 12 px, 26 px circle; the box border `--box-line` + soft shadow; `.main` on `--bg`.
+- `chatlist.js`: in the app design, pinned chats (outside sessions) draw into `#pinbox` above Sessions under a
+  "Pinned ›" header, closed until she opens it (state `hoola.side.v1` in localStorage), a dot when a pinned chat is
+  busy / has a new reply; the ordinary chats lose the Today / Yesterday labels; "Recents ⌄" folds the list; row clicks and
+  the chat menu work in `#pinbox` too. Archive view empties `#pinbox`.
+- `v2.js` appChrome: "Recents" gets its chevron + `data-side="recents"` (button role, keyboard Enter / Space) and the
+  `#pinbox` holder before `#projects`.
+
+Tests: NEW test_v0975_console_sidebar_white.py (2: shape + a real-browser walk in light and dark - 32 px / 14 px / 500 rows,
+18 px icons, #141413 words, 12 px grey labels, Pinned folded first then opens to its chat, Recents folds and opens, no day
+labels, white page + #FAFAF9 sidebar, dark words #F2F1EC); test_v0970 pins moved (page white, New chat radius 8 px).
+Already red before this change and untouched: test_v142 conversations, test_v0285 menus crisp, test_v0288 sidebar visible x2.
+NOT VERIFIED on her server.

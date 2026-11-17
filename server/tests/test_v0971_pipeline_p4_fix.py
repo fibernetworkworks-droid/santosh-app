@@ -120,4 +120,4 @@ def test_the_sheet_print_shows_the_hand_over(box, capsys):
 
 def test_version():
     src = (pathlib.Path(__file__).parents[1] / "app" / "main.py").read_text()
-    assert 'APP_VERSION = "0.974.0"' in src and "v0.971.0 HOOLA PIPELINE P4 FIX" in src
+    assert 'APP_VERSION = "0.975.0"' in src and "v0.971.0 HOOLA PIPELINE P4 FIX" in src

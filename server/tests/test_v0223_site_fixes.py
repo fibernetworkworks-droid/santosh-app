@@ -243,5 +243,5 @@ def test_rejoining_a_domain_drops_the_old_cloudflare_hostnames(host_env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.974.0"
-    assert "0.974.0+973" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.975.0"
+    assert "0.975.0+974" in (REPO / "pubspec.yaml").read_text()

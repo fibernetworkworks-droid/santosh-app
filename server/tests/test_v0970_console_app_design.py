@@ -30,7 +30,8 @@ def _app(name: str, dark: bool = False) -> str:
 def test_tokens_are_the_apps_own_colours():
     light = CSS[CSS.index("html.appd{"):CSS.index("@media (prefers-color-scheme: dark)")]
     dark = CSS[CSS.index('html.appd[data-theme="dark"]{'):]
-    for token, role in [("--bg", "bg"), ("--surface", "surface"), ("--sunk", "sunk"), ("--ink", "ink"), ("--mut", "ink2"),
+    assert "--bg:#FFFFFF" in light   # v0.975 the page full white like Claude (the app keeps its paper)
+    for token, role in [("--surface", "surface"), ("--sunk", "sunk"), ("--ink", "ink"), ("--mut", "ink2"),
                         ("--pri", "accent"), ("--line", "line"), ("--pill", "pill"), ("--ok", "ok"), ("--warn", "warn"),
                         ("--bad", "bad")]:
         assert f"{token}:{_app(role)}" in light, (token, role)
@@ -85,11 +86,11 @@ def test_the_console_in_a_real_browser(arena_server):  # noqa: F811
             newc:g('.side .newc').borderRadius}}""")
         assert m["rows"] == ["Work", "Made by Santosh", "AI Employees", "Tools"], m   # v0.973 Claude's rows
         assert m["mark"], m
-        assert m["bg"] == ("rgb(250, 249, 246)" if scheme == "light" else "rgb(20, 20, 19)"), m
+        assert m["bg"] == ("rgb(255, 255, 255)" if scheme == "light" else "rgb(20, 20, 19)"), m
         assert re.match(r"Good (morning|afternoon|evening)", m["greet"]), m
         assert "Literata" in m["gfont"], m
         assert "Make this month's GST summary" in m["pills"], m   # still drawn; v0.973 hides them like Claude
-        assert m["newc"] == "10px", m   # v0.973 New chat is a plain row
+        assert m["newc"] == "8px", m   # v0.973 New chat is a plain row (v0.975 Claude's 8 px)
         if shots:
             pg.screenshot(path=f"{shots}/home-{scheme}.png")
         pg.click("#snav .sn[data-v=kaam]")
@@ -108,4 +109,4 @@ def test_the_console_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.974.0")
+    assert APP_VERSION.startswith("0.975.0")

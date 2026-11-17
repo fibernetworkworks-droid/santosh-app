@@ -11,7 +11,7 @@
 
 /* ---------- tokens: light ---------- */
 html.appd{
-  --bg:#FAF9F6; --side-bg:#F4F3EF; --surface:#FFFFFF; --raise:#FFFFFF; --sunk:#F1F0EC; --edge-hi:#FFFFFF;
+  --bg:#FFFFFF; --side-bg:#FAFAF9; --surface:#FFFFFF; --raise:#FFFFFF; --sunk:#F1F0EC; --edge-hi:#FFFFFF;
   --code-bg:#F1F0EC;
   --ink:#1B1A17; --mut:#57554F; --dim:#6F6C65; --lit:#2C2B27; --soft:#24231F;
   --pri:#5B45E0; --pri-hover:#4A35CF; --pri-soft:#EEEBFD; --pri-ink:#3E2CB5; --on-acc:#FFFFFF; --btn:#1B1A17;
@@ -22,9 +22,10 @@ html.appd{
   --fg-rgb:27 26 23; --surf-rgb:255 255 255; --acc-rgb:91 69 224; --ok-rgb:31 122 82; --bad-rgb:184 54 31;
   --line:#E5E3DD; --hair:#E5E3DD; --hair2:#D3D1CA;
   --glass:var(--surface); --glass2:var(--sunk); --glass3:#ECEBE6;
-  --you:#F1F0EC; --bubble:#F1F0EC; --seg-on:#FFFFFF;
-  --chat-ink:#1B1A17; --chat-paper:#FAF9F6;
-  --pill:#1B1A17; --on-pill:#FFFFFF; --nav-on:#ECEBE6; --codeterm:#8A2424;
+  --you:#F4F4F2; --bubble:#F4F4F2; --seg-on:#FFFFFF;
+  --chat-ink:#1B1A17; --chat-paper:#FFFFFF;
+  --pill:#1B1A17; --on-pill:#FFFFFF; --nav-on:#EFEFEC;
+  --side-ink:#141413; --side-dim:#73726C; --side-line:#ECECE9; --box-line:#D9D9D6; --codeterm:#8A2424;
   --sh:0 1px 2px rgb(0 0 0 / .04),0 10px 24px -16px rgb(0 0 0 / .22);
   --sh2:0 1px 2px rgb(0 0 0 / .04),0 8px 28px -12px rgb(0 0 0 / .18);
   --grad:linear-gradient(90deg,#5B45E0,#5B45E0);
@@ -48,6 +49,7 @@ html.appd{
   --glass3:#2E2E2B; --you:#262624; --bubble:#262624; --seg-on:#2E2E2B;
   --chat-ink:#E6E5E1; --chat-paper:#141413;
   --pill:#3A3936; --on-pill:#ECEBE6; --nav-on:#2E2E2B; --codeterm:#FE8181;
+  --side-ink:#F2F1EC; --side-dim:#9C9A92; --side-line:#2C2C2A; --box-line:#3C3B38;
   --sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6);
   --sh2:0 1px 2px rgb(0 0 0 / .3),0 8px 28px -12px rgb(0 0 0 / .5);
   --grad:linear-gradient(90deg,#9C88FF,#9C88FF); --ring:conic-gradient(#9C88FF,#9C88FF);
@@ -67,6 +69,7 @@ html.appd[data-theme="dark"]{
   --glass3:#2E2E2B; --you:#262624; --bubble:#262624; --seg-on:#2E2E2B;
   --chat-ink:#E6E5E1; --chat-paper:#141413;
   --pill:#3A3936; --on-pill:#ECEBE6; --nav-on:#2E2E2B; --codeterm:#FE8181;
+  --side-ink:#F2F1EC; --side-dim:#9C9A92; --side-line:#2C2C2A; --box-line:#3C3B38;
   --sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6);
   --sh2:0 1px 2px rgb(0 0 0 / .3),0 8px 28px -12px rgb(0 0 0 / .5);
   --grad:linear-gradient(90deg,#9C88FF,#9C88FF); --ring:conic-gradient(#9C88FF,#9C88FF);
@@ -317,3 +320,47 @@ html.appd #app #composer:focus-within{border-color:var(--dim);box-shadow:0 1px 2
 /* v0.974 a clean home (owner, her screenshot: "remove inprogress section, incognito icon, hoola pc online"): only the
    greeting, the box and Session / model - work in progress lives in Work, a private chat in the chat menu */
 html.appd #app .landing .lhead,html.appd #app .landing #liveJobs{display:none !important}
+
+/* v0.975 SIDEBAR LIKE CLAUDE + FULL WHITE (owner: her Claude + Hoola sidebar screenshots, "same font, size, dark word
+   type for all" + "Claude chat background is full white, make same for Hoola chat" -> design canvas
+   claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 10-12 -> "GO BUILD"). Light: page #FFFFFF, sidebar #FAFAF9,
+   her bubble #F4F4F2, the box a thin #D9D9D6 line. Sidebar at Claude's sizes: rows 14 px / 500 / 32 px tall, 2 px
+   apart, 18 px icons in the word's ink; chats 14 px / 450; labels 12 px grey; every word one ink (--side-ink). */
+html.appd #app .side{background:var(--side-bg);border-right-color:var(--side-line)}
+html.appd #app .side .shd .mk span:not(.hmk){font-size:24px;color:var(--side-ink)}
+html.appd #app .side .codepill{height:30px;font:500 14px var(--fb);color:var(--side-ink);padding:0 11px 0 3px}
+html.appd #app .side #collapse{width:32px;height:32px;border-radius:8px;color:var(--side-ink)}
+html.appd #app .side #collapse svg{width:18px;height:18px}
+html.appd #app .side .newc,html.appd #app .side .sn,html.appd #app .side .srch{height:32px;min-height:32px;padding:0 8px;gap:10px;border-radius:8px;
+  font:500 14px/20px var(--fb);color:var(--side-ink)}
+html.appd #app .side .newc .txt{color:var(--side-ink)}
+html.appd #app .side .newc svg,html.appd #app .side .sn svg,html.appd #app .side .srch svg{width:18px;height:18px;stroke-width:1.7;color:var(--side-ink)}
+html.appd #app .side .sn[aria-current="true"],html.appd #app .side .sn[aria-current="true"] svg{color:var(--side-ink)}
+html.appd #app .side .sn .hmk,html.appd #app .side .sn .hmk svg{width:18px;height:18px}
+html.appd #app .side .sn .ct{min-width:18px;height:18px;padding:0 5px;font:600 11px var(--fb)}
+html.appd #app .side .rc{height:32px;min-height:32px;padding:0 8px;border-radius:8px;font:450 14px/20px var(--fb);color:var(--side-ink)}
+html.appd #app .side .rc:hover,html.appd #app .side .rc[aria-current="true"],html.appd #app .side .rcw.cur .rc{color:var(--side-ink)}
+html.appd #app .side .rcw{margin-bottom:2px}
+html.appd #app .side .slabel,html.appd #app .side .rg,html.appd #app .side .pjl{display:flex;align-items:center;gap:3px;
+  font:500 12px var(--fb);color:var(--side-dim);padding:0 8px;height:28px;margin-top:12px;text-transform:none;letter-spacing:0}
+html.appd #app .side .pjl .pjadd{margin-left:auto;color:var(--side-dim)}
+html.appd #app .side [data-side]{cursor:pointer;border-radius:8px;width:100%;box-sizing:border-box}
+html.appd #app .side [data-side]:hover{color:var(--side-ink)}
+html.appd #app .side [data-side]:focus-visible{outline:2px solid var(--pri);outline-offset:-2px}
+html.appd #app .side [data-side] svg{width:13px;height:13px;stroke-width:2;flex:none;transition:transform .15s ease}
+html.appd #app .side .plab[aria-expanded="false"] svg{transform:none}
+html.appd #app .side .plab[aria-expanded="true"] svg{transform:rotate(90deg)}
+html.appd #app .side .slabel[data-side="recents"][aria-expanded="false"] svg{transform:rotate(-90deg)}
+html.appd #app .side .pdot{margin-left:auto;width:6px;height:6px;border-radius:9px;background:var(--pri)}
+html.appd #app .side.rclosed #recents{display:none}
+html.appd #app .side .pinbox:empty{display:none}
+html.appd #app .side .sgh .sgn,html.appd #app .side .sgh .sgn-n{color:var(--side-ink);font:500 14px var(--fb)}
+html.appd #app .side .user b{font:500 14px var(--fb);color:var(--side-ink)}
+html.appd #app .side .user #uhandle{font:400 12px var(--fb);color:var(--side-dim)}
+html.appd #app .side .user .uini{width:26px;height:26px;font:600 12px var(--fb)}
+html.appd #app .side .user{border-top-color:var(--side-line)}
+html.appd #app .side .recents,html.appd #app .side .pinbox{padding:0;gap:0}
+html:not(.appd) .pinbox{display:none}
+/* the page: pure white in light; the box a thin line with a soft shadow */
+html.appd #app .main{background:var(--bg)}
+html.appd #app #composer{border-color:var(--box-line);box-shadow:0 1px 2px rgb(0 0 0 / .03),0 8px 20px -10px rgb(0 0 0 / .12)}
