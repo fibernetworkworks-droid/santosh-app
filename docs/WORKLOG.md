@@ -3172,3 +3172,9 @@ Task ID: v0.978.0 APP ENGINE BRANCHES + E8 (built as 0.976)
 Ask: GO APP ENGINE BRANCHES AND E8.
 Built: appengine/branches.py (named copies, three-way merge by file, named conflicts, Cloud replay, her tap) + Studio Branches tab; E8 small-site looks with their own page bodies; 8 tests.
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.980.0 STUDIO STAMPS
+Ask: DONE CHECK (after v0.978 deploy).
+Built: live check of branches + E8; the three Studio pages' frozen ?v=0.849.0 stamps now move with every release.
+Deploy: server only (vps-ops deploy).

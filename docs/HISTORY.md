@@ -6420,3 +6420,16 @@ before for one-part asks". Built: the thing that watches, and the rule that says
 
 NOT VERIFIED: no week has been watched on her server; the first numbers come from her first messages after deploy.
 The held-out share means about 1 in 10 of her one-part messages runs on today's model during the week, on purpose.
+
+
+## v0.980.0 STUDIO STAMPS (owner: "DONE CHECK" on v0.978 APP ENGINE BRANCHES + E8)
+
+Live check after her deploy: healthz 0.979.0 (contains v0.978), `/api/appengine/{ref}/branches` and `/branches/{bid}/compare`
+answer 401 without a key (mounted, key-protected), the served `appengine.js` carries the Branches tab code, the served
+`webstudio.js` the E8 "own design" label. FOUND: `webstudio.html`, `appstudio.html` and `gamedev.html` loaded every script
+and stylesheet as `?v=0.849.0`. The version ritual replaces only stamps equal to the last version, so once a ritual missed
+these pages (at 0.849) they never moved again; with no Cache-Control a browser may keep the old file for hours by heuristic
+freshness, so Studio changes since 0.849 could be invisible to her until a reload. Now these three pages carry the release
+stamp and move with the ritual like `v2.html`. `test_v0801_app_studio_premium::test_page_carries_a_fresh_stamp` pinned the
+frozen literal; it now checks the stamp equals APP_VERSION (the test's own stated intent). NOT VERIFIED: E8 and branches
+not yet exercised in her browser; no real model build of a small site's own-body looks.
