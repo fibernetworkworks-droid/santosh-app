@@ -84,7 +84,7 @@ def test_the_console_in_a_real_browser(arena_server):  # noqa: F811
             bg:g('body').backgroundColor, greet:document.getElementById('greet').textContent,
             gfont:g('#greet').fontFamily, pills:[...document.querySelectorAll('.landing .pill')].map(p=>p.textContent.trim()),
             newc:g('.side .newc').borderRadius}}""")
-        assert m["rows"] == ["Work", "Made by Santosh", "AI Employees", "Tools"], m   # v0.973 Claude's rows
+        assert m["rows"][:3] == ["AI Employees", "Tools", "Computer"], m   # v0.976 Work + Docs and files under More
         assert m["mark"], m
         assert m["bg"] == ("rgb(255, 255, 255)" if scheme == "light" else "rgb(20, 20, 19)"), m
         assert re.match(r"Good (morning|afternoon|evening)", m["greet"]), m
@@ -109,4 +109,4 @@ def test_the_console_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.976.0")
+    assert APP_VERSION.startswith("0.977.0")

@@ -6332,3 +6332,13 @@ Phone: `lib/ui/model_receipt.dart` `ModelReceiptLine` (44 dp tap row, Semantics 
 (parts, level, hand-overs); state.dart feeds `model_receipt`; the new design draws it through `HCQuietLine`, the old
 chat screen through `feedCard`. Hoola Code sessions are not chat replies and get no receipt line yet.
 Tests `test_v0976_pipeline_p6.py` (9). NOT VERIFIED on her server or phone (the Dart compiles first on CI).
+
+## v0.977.0 MORE MENU (built as 0.976; their HOOLA PIPELINE P6 took 0.976, both kept; owner, her sidebar screenshot: "remove Work, Made by Santosh, AI Apps, Arena --- show 2 things in More -- Work and replace Made by Santosh by name Docs and files -- AI Apps and Arena just hide it for now")
+
+App design only (`html.appd`). `v2.js` `appNav()` rows: AI Employees, Tools, Computer, any other NAV page not in
+`APP_HIDE` (`aiapps`, `arena`), More, Customize. More is a `.sn` button with `data-more` (NOT `data-v`: the global
+`[data-v]` handler would call go('more')) that opens a HoolaMenu (`moreMenu`, `APP_MORE`): Work (`aaj`, briefcase icon
+added to menu.js) and Docs and files (`bana`, the old "Made by <avatar>" page; its title line now "· Docs and files" in
+the app design). More is lit when either page is open and carries Work's waiting count / "N working". AI Apps and Arena
+pages and routes are untouched, only their rows are hidden. Tests: v0975 walk asserts the rows + the two-item menu;
+v0970 / v0973 row pins moved. test_v0285 menus crisp was already red. NOT VERIFIED on her server.

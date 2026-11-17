@@ -21,7 +21,7 @@ MENU = (CON / "menu.js").read_text(encoding="utf-8")
 
 
 def test_the_shell_is_claudes_shape():
-    assert "return [['aaj', 'Work'], ['bana', `Made by ${AV}`], ['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer']," in JS
+    assert "return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More'], ['main', 'Customize']];" in JS   # v0.976
     assert "['main', 'Customize']" in JS
     assert "How can ${AV} help you today?" in JS
     assert "function plusMenu(" in JS and "label: 'Deep research'" in JS and "label: 'Use Hoola PC'" in JS
@@ -61,7 +61,7 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
             newc:g('.side .newc').backgroundColor, send:g('#sendBtn').display,
             plusLeft:r('#attach').left < r('#micBtn').left, field:r('#msg').bottom <= r('#attach').top + 2,
             boxIn:r('#composer').right <= r('.landing').right}}""")
-        assert m["rows"][:5] == ["Work", "Made by Santosh", "AI Employees", "Tools", "Computer"], m
+        assert m["rows"][:3] == ["AI Employees", "Tools", "Computer"], m   # v0.976
         assert m["rows"][-1] == "Customize", m
         assert re.match(r"Good (morning|afternoon|evening)", m["greet"]), m
         assert "Literata" in m["gfont"] and m["mark"] and m["row"], m
@@ -99,4 +99,4 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.976.0")
+    assert APP_VERSION.startswith("0.977.0")
