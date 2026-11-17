@@ -51,7 +51,9 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5-5"
     usage_month_usd: float = 0.0           # v0.98 server ceiling of AI spend per owner per month (0 = none)
     studio_modes: bool = True             # v0.782 TEEN MODE: Studio Plan / Chat refuse changing tools on the server
-    studio_design_questions: bool = True  # v0.784 SAWAAL CARD: up to four visual design questions before a Studio Build
+    studio_design_questions: bool = False  # v0.784 SAWAAL CARD; v0.988 OFF: the owner had the page removed - the design is chosen by the AI from her words
+    studio_ask_first: bool = True   # v0.988 PROMPT FIRST: the AI reads her ask first and asks what it must know before any plan / preview
+    studio_ai_design: bool = True   # v0.988 PROMPT FIRST: look 1's colours, font pair and text sizes come from the AI's reading of her words
     app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse
     app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)
     app_engine_runner: str = "box"        # v0.814 "box" = Docker, no network (production); "local" = host node (dev / tests only)

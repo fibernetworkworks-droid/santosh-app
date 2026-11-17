@@ -3196,3 +3196,9 @@ Task ID: v0.987.0 HOOLA LOGO
 Ask: her Web Studio home screenshot - "this page is good and perfect, just put the Hoola logo there".
 Built: the gradient ring in the Web Studio sidebar + top bars replaced with the real Hoola mark (mark.js, violet); 3 tests.
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.988.0 PROMPT FIRST
+Ask: "every website looks the same / ISP portal became a marketing page" - remove the choices page, the AI understands her words, picks design + fonts + sizes, asks questions when needed, a portal = login + data; check thinking.
+Built: choices page removed; AI reads + asks first (architect.understand, questions card in the chat); the plan's design block -> look 1 (colours, font pair, --fs-* sizes); portal = sign-in + signed-in data pages; failed portal plan stops honestly; 10 tests.
+Deploy: server only (vps-ops deploy).

@@ -97,58 +97,37 @@ def test_look_one_is_built_from_her_picks(site_env):
 
 
 def test_studio_source_wiring():
+    # v0.988 PROMPT FIRST (owner: "FIRST REMOVE THAT PAGE ENTIERLY"): the choices page is gone from the Studio. This test
+    # pinned the card; it now pins its removal - Build goes from her words to Hoola's own reading (and questions).
     js = (CON / "webstudio.js").read_text(encoding="utf-8")
     css = (CON / "webstudio.css").read_text(encoding="utf-8")
-    i = js.index("if (kind === 'ask') {")
-    assert js.index("await askDesign(t)", i) < js.index("drawPending(plan, t)", i)   # the card comes before the wait
-    assert "if (design) body.design = design" in js and "/api/site-design/questions?brief=" in js
-    assert "Skip, Hoola picks" in js and "Build with these" in js and "[Hoola template #" in js
-    assert ".qopt:has(input:checked)" in css and "prefers-reduced-motion:reduce){.wsq{animation:none}" in css
-    assert "backdrop-filter:blur" not in css[css.index("v0.784 SAWAAL CARD"):]      # CRISP TEXT: no blur under words
+    assert "askDesign" not in js and "qOption" not in js and "/api/site-design/questions?brief=" not in js
+    assert "body.design = design" not in js and "Skip, Hoola picks" not in js and "[Hoola template #" in js
+    assert ".qopt:has(input:checked)" not in css and ".wsq{" not in css
+    assert "backdrop-filter:blur" not in css[css.index("v0.988 PROMPT FIRST"):]      # CRISP TEXT: no blur under words
 
 
-def test_question_card_in_a_real_browser(arena_server, arch_env, monkeypatch):
+def test_no_choices_page_in_a_real_browser(arena_server, arch_env, monkeypatch):
+    # v0.988: was test_question_card_in_a_real_browser. Even with the old switch on, sending her words never opens the
+    # choices page and the request carries no picks - the design comes from Hoola's reading of her words.
     _on(monkeypatch)
     from app.site import checks as C
     monkeypatch.setattr(C, "run", lambda *a, **k: (_ for _ in ()).throw(C.CheckError("no screenshots in this test")))
     base, browser, key = arena_server
-    shots = os.environ.get("CONSOLE_SHOTS")
     errors, bodies = [], []
-    for width in (1440, 390):
-        ctx = browser.new_context(viewport={"width": width, "height": 900})
-        ctx.add_init_script(f"try {{ localStorage.setItem('hoola.console.token', '{key}') }} catch (e) {{}}")
-        page = ctx.new_page()
-        page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("request", lambda r: bodies.append(r.post_data) if r.method == "POST" and r.url.endswith("/api/sites") else None)
-        page.goto(base + "/console/web")
-        page.wait_for_selector("#wsAsk", timeout=20000)
-        page.fill("#wsAsk", "Sharma Sweets mithai dukaan ki website, online order WhatsApp par")
-        page.keyboard.press("Enter")
-        page.wait_for_selector("#wsQ", timeout=10000)
-        assert page.locator("#wsQ fieldset").count() == 4 and page.locator("#wsQ .qopt").count() == 16
-        assert page.locator("#wsQ input:checked").count() == 4                      # one choice ready in each
-        wide = page.evaluate("""() => [...document.querySelectorAll('#wsQ *, .qbar')].filter(e => e.getBoundingClientRect().right > innerWidth + 1).slice(0, 5).map(e => e.className + ' ' + Math.round(e.getBoundingClientRect().right))""")
-        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), (width, wide, page.evaluate("[document.documentElement.scrollWidth, innerWidth]"))
-        page.wait_for_function("document.fonts.check(\"16px 'hq-yatra_hind-h'\") || document.fonts.status === 'loaded'")
-        if shots:
-            page.wait_for_timeout(900)
-            page.screenshot(path=f"{shots}/sawaal-{width}.png", full_page=True)
-        if width == 390:                                                             # Back = her words stay in the box
-            page.click("#wsQ [data-q='back']")
-            page.wait_for_selector("#wsAsk")
-            assert "Sharma Sweets" in page.input_value("#wsAsk")
-            ctx.close()
-            continue
-        page.click("#wsQ .qk-palette .qopt >> nth=2")
-        page.click("#wsQ .qk-hero .qopt >> nth=1")
-        pal = page.get_attribute("#wsQ .qk-palette .qopt >> nth=2 >> input", "value")
-        hero = page.get_attribute("#wsQ .qk-hero .qopt >> nth=1 >> input", "value")
-        page.click("#wsQ button[type=submit]")
-        page.wait_for_selector("#ws .lks button", timeout=120000)
-        body = json.loads(next(b for b in bodies if b))
-        assert body["design"]["palette"] == pal and body["design"]["hero"] == hero and body["deep"] is True
-        assert "Your choices" in page.inner_text("#ws .lks")
-        if shots:
-            page.screenshot(path=f"{shots}/sawaal-looks.png")
-        ctx.close()
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    ctx.add_init_script(f"try {{ localStorage.setItem('hoola.console.token', '{key}') }} catch (e) {{}}")
+    page = ctx.new_page()
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.on("request", lambda r: bodies.append(r.post_data) if r.method == "POST" and r.url.endswith("/api/sites") else None)
+    page.goto(base + "/console/web")
+    page.wait_for_selector("#wsAsk", timeout=20000)
+    page.fill("#wsAsk", "Sharma Sweets mithai dukaan ki website, online order WhatsApp par")
+    page.keyboard.press("Enter")
+    page.wait_for_selector("[data-pending]", timeout=10000)
+    assert page.locator("form.wsq, [data-questions]").count() == 0
+    page.wait_for_selector("#ws .lks button", timeout=120000)
+    body = json.loads(next(b for b in bodies if b))
+    assert "design" not in body and body["deep"] is True
+    ctx.close()
     assert not errors, errors

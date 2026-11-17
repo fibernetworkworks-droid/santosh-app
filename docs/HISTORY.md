@@ -6597,3 +6597,32 @@ webstudio.js, `hoolaMark()` draws `HoolaMark.svg({mono: true})` in each spot, an
 colours it Hoola violet (`--pri`, light + dark). Nothing else on the home page changed. App Studio shares the stylesheet but
 keeps its ring (the rule only applies where the mark is drawn). Tests: test_v0987_hoola_logo.py (3, incl. a browser check that
 the sidebar mark is the SVG with no gradient). NOT VERIFIED in her browser.
+
+## v0.988.0 PROMPT FIRST - the Web Studio reads her words, asks, and designs from them (owner: "VERY BAD ... EVERY TIME AI BUILD SAME LANDING PAGE FOR ALL INPUTS ... FIRST REMOVE THAT PAGE ENTIERLY ... AI WILL UNDERSTAND IT PROPERLY AND FIND THE PERFECT DESIGN, FONT, FONT SIZE ... ASK THE QUERIES TO USER IF REQUIRED ... ISP PORTAL ... A LOGIN PAGE AND A PORATL WITH ITS DATA ... ALSO CHECK THAT HOOLA WEB DEVLOPMENT HAVE THAT THINKING CAPABILTIY")
+
+Root causes: (1) the v0.784 "A few quick choices" page ran BEFORE any AI call and was built from keyword matching
+(`designq.questions` -> `library.understand`), and every look's style / palette / font pair came from the same fixed
+tables (`L.brief`, `B.tokens`); the AI only wrote the art direction and the section text. (2) When the architect's plan
+call failed, `_build_now` fell back to `S.new` = the library's page set for the business type: a marketing landing page,
+even for "Build the ISP portal". (3) A plan the model labelled `lead_site` stayed a marketing site though her words said
+portal.
+
+Built: the choices page is gone from the Studio (`askDesign`, `qOption`, the card CSS removed; `studio_design_questions`
+default off). Build mode: `architect.understand` = one short AI read of her words (UNDERSTAND prompt: ask only what
+changes WHAT gets built, never colours / fonts / layout, max 3 questions with tap options) -> when it has questions,
+`build_now` returns them and nothing is planned; the Studio shows them in the chat (`askCard` / `askFirst`: tap answers,
+her own words, Skip) and the plan is drawn from her words + answers (`with_answers`, POST /api/sites `qa` + `asked`); an
+ask of 40+ words skips the round. The plan carries a `design` block (feel, font pair id, palette, corners, base text size
+14-19 px + heading ratio 1.10-1.42) checked in code (`design_of`: only real ids, hex colours, sizes in range) and look 1
+is built from it (`design_ref` source "ai" -> `designq.PENDING` in `approve`; `build.type_scale` / `type_css` = --fs-base /
+--fs-h1..h3 / --fs-lead read by hoola-site.css with the old sizes as fallbacks; `build.carry` keeps the font pair + type on
+a colour edit - they used to fall back to the style's defaults). A "portal / dashboard / login" ask is always a system:
+kind portal, the sign-in on the front door and at least one signed-in page with a data screen (`_app_pages`); the home =
+compact front door, sign-in, then the main screen filled with samples (`site_plan`). A failed portal plan stops honestly
+with her words kept (`_no_marketing_fallback`, 502); only a plain website may still start plainly.
+
+Thinking: yes - the plan call runs with reasoning on (EFFORT site_art = xhigh, sections / critique high); on Qwen the
+reasoning is requested but excluded from the answer, so it is not shown to her.
+
+Tests: test_v0988_prompt_first.py (10, incl. a browser walk of the questions card); test_v0784's two Studio pins now pin
+the page's removal. NOT VERIFIED on her server with a real model.

@@ -549,75 +549,48 @@
     }, plan ? 14000 : 6000);
   }
 
-  /* ================= v0.784 SAWAAL CARD (L3): a few design choices she can SEE before a Build ================= */
-  const WIRES = {               // the top of the home page as a wireframe (from the hero's own description, server side)
-    split: '<rect x="8" y="14" width="46" height="7" rx="2"/><rect x="8" y="25" width="38" height="4" rx="2" class="l"/><rect x="8" y="33" width="30" height="4" rx="2" class="l"/><rect x="8" y="44" width="20" height="8" rx="4" class="a"/><rect x="64" y="10" width="48" height="56" rx="4" class="p"/>',
-    full: '<rect x="4" y="6" width="112" height="64" rx="4" class="p"/><rect x="22" y="26" width="76" height="8" rx="2" class="w"/><rect x="34" y="38" width="52" height="4" rx="2" class="w"/><rect x="48" y="48" width="24" height="8" rx="4" class="a"/>',
-    grid: '<rect x="8" y="8" width="60" height="7" rx="2"/><rect x="8" y="19" width="40" height="4" rx="2" class="l"/><rect x="8" y="30" width="32" height="18" rx="3" class="p"/><rect x="44" y="30" width="32" height="18" rx="3" class="p"/><rect x="80" y="30" width="32" height="18" rx="3" class="p"/><rect x="8" y="52" width="32" height="14" rx="3" class="p"/><rect x="44" y="52" width="32" height="14" rx="3" class="p"/><rect x="80" y="52" width="32" height="14" rx="3" class="p"/>',
-    type: '<rect x="8" y="12" width="104" height="14" rx="3"/><rect x="8" y="30" width="86" height="14" rx="3"/><rect x="8" y="50" width="50" height="4" rx="2" class="l"/><rect x="8" y="58" width="22" height="8" rx="4" class="a"/>',
-    centre: '<rect x="24" y="14" width="72" height="8" rx="2"/><rect x="32" y="26" width="56" height="4" rx="2" class="l"/><rect x="48" y="36" width="24" height="8" rx="4" class="a"/><rect x="14" y="50" width="92" height="18" rx="4" class="p"/>',
-  };
-  const wire = k => `<svg class="wire" viewBox="0 0 120 76" aria-hidden="true">${WIRES[k] || WIRES.centre}</svg>`;
-  function qFont(o) {           // each font pair shown in its own type (the bundled woff2 files, nothing from outside)
-    if (!o) return {h: 'inherit', b: 'inherit'};
-    let st = $('#wsQFonts'); if (!st) { st = document.createElement('style'); st.id = 'wsQFonts'; document.head.appendChild(st); }
-    const h = `hq-${o.id}-h`, b = `hq-${o.id}-b`;
-    if (!st.textContent.includes(`'${h}'`)) {
-      st.textContent += (o.head_url ? `@font-face{font-family:'${h}';src:url(${o.head_url}) format('woff2');font-display:swap}` : '')
-        + (o.body_url ? `@font-face{font-family:'${b}';src:url(${o.body_url}) format('woff2');font-display:swap}` : '');
-    }
-    return {h: o.head_url ? `'${h}',serif` : 'inherit', b: o.body_url ? `'${b}',sans-serif` : 'inherit'};
+  /* ================= v0.988 PROMPT FIRST: Hoola reads her words, then asks what it must know (the v0.784 choices page is gone) ===== */
+  function askCard(v) {
+    const qs = L(v.questions);
+    return `<div class="chatact wcard qcard" id="wsAskQ" role="group" aria-labelledby="wsAskQh">
+      <div class="step whead"><span class="wt"><b id="wsAskQh">A few questions first</b>${S(v.reading) ? `<span>${esc(S(v.reading))}</span>` : ''}</span></div>
+      <p class="sm aqn">The answers change what gets built. Tap what fits, write your own, or skip and Hoola decides.</p>
+      <form id="wsAskF">${qs.map((q, i) => `<fieldset class="aq"><legend>${esc(S(q.q))}</legend>
+        ${L(q.options).length ? `<div class="aqo">${L(q.options).map((o, k) => `<label class="aqc"><input type="checkbox" name="o${i}" value="${esc(S(o))}" id="wsAq${i}-${k}"><span>${esc(S(o))}</span></label>`).join('')}</div>` : ''}
+        <input class="in aqt" name="t${i}" maxlength="400" aria-label="Your own answer" placeholder="Or write your own answer"></fieldset>`).join('')}
+        <div class="aqb"><button class="b ghost" type="button" data-aq="skip">Skip, Hoola decides</button><span class="sp"></span>
+          <button class="b pri" type="submit">Answer and plan${ico('arrow', 16)}</button></div></form></div>`;
   }
-  function qOption(q, o, i) {
-    const c = M(o.colours), id = `wsq-${q.id}-${i}`;
-    let art = '';
-    if (q.kind === 'style') {
-      const f = qFont(o.font);
-      art = `<span class="qart qstyle" style="background:${HEX(c.bg)};color:${HEX(c.ink)};border-radius:${Math.min(16, Number(o.radius) || 0)}px">
-        <b style="font-family:${esc(f.h)}">Aa</b><i style="background:${HEX(c.primary)};border-radius:${Math.min(12, Number(o.radius) || 0)}px"></i><i class="ac" style="background:${HEX(c.accent)}"></i></span>`;
-    } else if (q.kind === 'palette') {
-      art = `<span class="qart qpal">${['bg', 'surface', 'ink', 'primary', 'accent'].map(k => `<i style="background:${HEX(c[k])}" title="${k} ${HEX(c[k])}"></i>`).join('')}</span>`;
-    } else if (q.kind === 'fonts') {
-      const f = qFont(o);
-      art = `<span class="qart qfont"><b style="font-family:${esc(f.h)}">${esc(S(o.head))}</b><span style="font-family:${esc(f.b)}">Fresh every morning, made with care.</span></span>`;
-    } else if (q.kind === 'hero') art = `<span class="qart qhero">${wire(S(o.wire))}</span>`;
-    return `<label class="qopt" for="${id}"><input type="radio" id="${id}" name="${esc(q.id)}" value="${esc(S(o.id))}"${i === 0 ? ' checked' : ''}>
-      ${art}<span class="qtxt"><b>${esc(S(o.label))}</b>${o.line && q.kind !== 'palette' ? `<span class="mut sm">${esc(S(o.line))}</span>` : ''}</span></label>`;
-  }
-  async function askDesign(text) {
-    // resolves {design} (null = Hoola picks) or null (she went back); a failed read never blocks her Build
-    const q = await api('GET', '/api/site-design/questions?brief=' + encodeURIComponent(text)).catch(() => null);
-    if (!q || q.skip || !L(q.questions).length) return {design: null};
-    APP.innerHTML = `<div class="wsp wsp-in" data-questions="1">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a><span class="tsep" aria-hidden="true">/</span>
-        <span class="pname">New website</span>${pill('A few choices', 'v')}<span class="sp"></span></header>
-      <form class="wsq" id="wsQ" aria-labelledby="wsQh">
-        <div class="qhead"><h1 id="wsQh">A few quick choices</h1>
-          <p class="mut">So the first design is yours. Pick what you like, or skip and Hoola picks. Two more designs come with it, so you can still compare.</p>
-          <blockquote class="qask">${esc(text.length > 220 ? text.slice(0, 220) + '…' : text)}</blockquote></div>
-        ${L(q.questions).map(x => `<fieldset class="qset qk-${esc(S(x.kind))}"><legend>${esc(S(x.title))}</legend>
-          <div class="qopts">${L(x.options).map((o, i) => qOption(x, o, i)).join('')}</div></fieldset>`).join('')}
-        <div class="qbar"><button class="b ghost" type="button" data-q="back">${ico('back', 16)}Back</button><span class="sp"></span>
-          <button class="b" type="button" data-q="skip">Skip, Hoola picks</button>
-          <button class="b pri" type="submit">Build with these${ico('arrow', 16)}</button></div>
-      </form></div>`;
-    document.title = 'A few choices · Hoola Web Studio';
-    const f = $('#wsQ');
-    f.querySelector('input')?.focus();
+  function askAnswers(v) {
+    // resolves [{q, a}] (her answers), [] (skip: Hoola decides) - never sends anything by itself
+    const f = $('#wsAskF');
     return new Promise(res => {
-      const done = v => { removeEventListener('keydown', esc_); res(v); };
-      const esc_ = e => { if (e.key === 'Escape' && $('#wsQ')) { e.preventDefault(); done(null); } };
-      addEventListener('keydown', esc_);
-      f.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); done({design: Object.fromEntries(new FormData(f))}); });
-      f.addEventListener('click', e => {
-        const b = e.target.closest('[data-q]'); if (!b) return;
-        e.stopPropagation();
-        done(b.dataset.q === 'skip' ? {design: null} : null);
+      f.addEventListener('submit', e => {
+        e.preventDefault(); e.stopPropagation();
+        const fd = new FormData(f);
+        res(L(v.questions).map((q, i) => ({q: S(q.q), a: [...fd.getAll('o' + i), S(fd.get('t' + i)).trim()].filter(Boolean).join('; ')})).filter(x => x.a));
       });
+      f.addEventListener('click', e => { const b = e.target.closest('[data-aq]'); if (!b) return; e.stopPropagation(); res([]); });
     });
   }
+  async function askFirst(v, text) {
+    // the pending screen turns into Hoola's questions: no plan, no preview until she answers (or skips)
+    clearInterval(drawPending._t);
+    const card = $('#wsPendMsgs .wcard'); if (card) card.outerHTML = askCard(v);
+    const pk = $('#wsPeek');
+    if (pk) pk.innerHTML = `<article class="doc peek"><div class="pkh"><b>Nothing is planned yet</b></div>
+      <p class="mut sm">Hoola read your message${S(v.kind) ? ` as a <b>${esc(S(v.kind).replace(/_/g, ' '))}</b>` : ''} and needs a few answers first. The plan, the design and the preview start from your words and your answers.</p></article>`;
+    const pill_ = $('.wsp .top .pill'); if (pill_) pill_.textContent = 'Questions';
+    pendScroll();
+    $('#wsAskF input')?.focus();
+    const qa = await askAnswers(v);
+    const shown = text + (qa.length ? '\n\n' + qa.map(x => `${x.q} ${x.a}`).join('\n') : '');
+    const ticket = 'st-' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+    drawPending(false, shown, ticket);
+    return {qa, ticket};
+  }
 
-  async function startFromAsk(text, design = null, ticket = '') {
+  async function startFromAsk(text, ticket = '') {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const conv = await newConv('');
     try {
@@ -631,8 +604,11 @@
       const body = {brief: text, conversation_id: conv, deep: true, ticket};   // v0.708 a system ask is planned deep first
       if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.686 the template's library card
       TPLSEL = null;
-      if (design) body.design = design;                // v0.784 her picks on the question card = look 1
-      const v = await api('POST', '/api/sites', body);
+      let v = await api('POST', '/api/sites', body);
+      if (L(v.questions).length && !v.id) {           // v0.988 PROMPT FIRST: Hoola asks before it plans
+        const got = await askFirst(v, text);
+        v = await api('POST', '/api/sites', {...body, ticket: got.ticket, qa: got.qa, asked: true});
+      }
       store.set(convKey(v.id), conv);
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website · ${name(v)}`}).catch(() => {});
       if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the three full looks start now
@@ -2468,15 +2444,9 @@
       if (kind === 'ask') {
         const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return toast('Write one line about the website.', true);
         const plan = store.get(MODE_KEY) === 'plan';
-        let design = null;
-        if (!plan && !(TPLSEL && t.includes('[Hoola template #'))) {   // v0.784 a template already has its design
-          const got = await askDesign(t);
-          if (got === null) { PREFILL = t; drawHome('home'); return; }
-          design = got.design;
-        }
         const ticket = plan ? '' : 'st-' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
         drawPending(plan, t, ticket);               // v0.707: straight into the workspace, the work shows there
-        try { await startFromAsk(t, design, ticket); }
+        try { await startFromAsk(t, ticket); }   // v0.988 no choices page: Hoola reads her words and asks if it must
         catch (er) {
           clearInterval(drawPending._t);
           PREFILL = t; drawHome('home');            // back home with her words still in the box and the reason under it

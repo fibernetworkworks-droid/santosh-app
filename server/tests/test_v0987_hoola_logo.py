@@ -11,7 +11,7 @@ CONSOLE = Path(__file__).parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.987.0")
+    assert APP_VERSION.startswith("0.988.0")
     assert "v0.987.0 HOOLA LOGO" in (Path(__file__).parents[1] / "app" / "main.py").read_text()
 
 
@@ -20,7 +20,7 @@ def test_the_real_mark_everywhere_the_ring_was():
     html = (CONSOLE / "webstudio.html").read_text()
     css = (CONSOLE / "webstudio.css").read_text()
     assert '<div class="mark" aria-hidden="true"><span></span></div>' not in js     # no gradient ring left
-    assert js.count('<div class="mark" aria-hidden="true">${hoolaMark()}</div>') == 5
+    assert js.count('<div class="mark" aria-hidden="true">${hoolaMark()}</div>') == 4   # v0.988: the choices page (one of the 5) was removed
     assert "HoolaMark.svg({mono: true})" in js
     assert html.index("/static/console/mark.js") < html.index("/static/console/webstudio.js")
     assert ".mark:has(svg){background:none" in css and "color:var(--pri)" in css

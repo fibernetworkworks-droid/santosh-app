@@ -47,7 +47,7 @@ def test_the_architect_plans_screens_and_names_a_main_screen():
     for p in thin["pages"]:
         p["sections"] = [x for x in p["sections"] if not str(x.get("type", "")).startswith("screen_")]
     tsp = AR.clean(thin, "school portal")
-    assert tsp["main_screen"] == "" and ("a main screen built from app screens", False) in AR.checks(tsp)
+    assert tsp["main_screen"] == "dashboard" and ("a main screen built from app screens", True) in AR.checks(tsp)   # v0.988 a system with no data page gets one
 
 
 def test_a_systems_home_is_a_front_door_plus_its_main_screen():
@@ -56,14 +56,14 @@ def test_a_systems_home_is_a_front_door_plus_its_main_screen():
     plan = AR.site_plan(sp, {}, {"pages": [], "cta": "call"})
     home = plan["pages"][0]
     types = [x["type"] for x in home["sections"]]
-    assert types[:2] == ["hero", "screen_table"] and home.get("main_screen")
+    assert types[:3] == ["hero", "screen_signin", "screen_table"] and home.get("main_screen")  # v0.988 PROMPT FIRST: a portal home carries the sign-in right after its front door
     assert AR.APP_FRONT_DOOR in home["sections"][0]["design"] and "NOT a marketing hero" in home["sections"][0]["design"]
     assert plan["spec"]["main_screen"] == "mark-attendance" and plan["spec"]["main_title"] == "Mark attendance"
     none = json.loads(json.dumps(PORTAL))                                     # a system with no screen at all: a dashboard
     for p in none["pages"]:
         p["sections"] = [x for x in p["sections"] if not str(x.get("type", "")).startswith("screen_")]
     hp = AR.site_plan(AR.clean(none, "school portal"), {}, {"pages": [], "cta": "call"})["pages"][0]
-    assert [x["type"] for x in hp["sections"]][:2] == ["hero", "screen_dashboard"]
+    assert [x["type"] for x in hp["sections"]][:3] == ["hero", "screen_signin", "screen_dashboard"]   # v0.988 sign-in before the main screen
     br = json.loads(json.dumps(PORTAL))                                       # a brochure keeps its own home as planned
     br["kind"] = "brochure"
     bp = AR.site_plan(AR.clean(br, "school site"), {}, {"pages": [], "cta": "call"})["pages"][0]
@@ -86,7 +86,7 @@ def test_the_looks_show_the_main_screen_and_the_writer_draws_a_real_screen(deep_
     got = c.post(f"/api/site-architect/{card['id']}/approve", json={"hash": card["hash"]}).json()
     r = S._load(got["site"])
     assert S.is_app_plan(json.loads(r.plan))
-    assert [s["type"] for s in S._look_sections(r)] == ["screen_table"]       # SITE_LOOK_SECTIONS=1 still shows the screen
+    assert [s["type"] for s in S._look_sections(r)] == ["screen_signin", "screen_table"]   # SITE_LOOK_SECTIONS=1 still shows the screen; v0.988 + the sign-in
     assert any(AI.APP_LOOK_NOTE[:60] in p for p in seen)                      # the look's top is an app front door
     assert not any(AI.HERO_LOOK_NOTE[:60] in p for p in seen)
     scr = [p for p in seen if 'data-hoola-screen="screen_table"' in p]

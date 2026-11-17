@@ -1372,7 +1372,7 @@ def _look_sections(r: Site) -> list[dict[str, Any]]:
     rest = [s for s in home.get("sections", []) if s["type"] != "hero" and ok(s["type"])]
     if is_app_plan(plan):                      # v0.714 SCREENS FIRST: a system's looks show its main screen, filled
         rest = [s for s in rest if T.is_screen(s["type"])] + [s for s in rest if not T.is_screen(s["type"])]
-        n = max(n, 2)
+        n = max(n, 3)                          # v0.988 the sign-in AND the main screen with its data, never one without the other
     return rest[:n - 1]
 
 
@@ -2350,7 +2350,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
     tokens = res.get("tokens") or {}
     if tokens:
         tk = B.tokens(r.style, tk.get("palette") or "paper_ink", None,
-                      {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **tokens,
+                      {**B.carry(tk), **{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **tokens,
                        "radius": tokens.get("radius", tk.get("radius"))})
         look["tokens"] = tk
         look["her_tokens"] = True             # v0.606 colours / type she asked for are hers (look.py never flags them)
@@ -3026,7 +3026,7 @@ def set_theme(tenant: str, ref: str, tokens: dict[str, Any]) -> dict[str, Any]:
         if k != "radius" and not B._hex_ok(str(v)):
             raise SiteError(f"{k}: '{v}' rang nahi lagta (jaise #7C5CFF).")
     new_tk = B.tokens(r.style, tk.get("palette") or "paper_ink", None,
-                      {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **want,
+                      {**B.carry(tk), **{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **want,
                        "radius": want.get("radius", tk.get("radius"))})
     _push_edit(r, {"kind": "theme", "what": "rang / shape", "before": tk})
     _save(r.id, look={**look, "tokens": new_tk})

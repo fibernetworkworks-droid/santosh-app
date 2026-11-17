@@ -39,7 +39,7 @@ def qwen_env(env, monkeypatch, tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.987.0")
+    assert APP_VERSION.startswith("0.988.0")
     assert "v0.986.0 PLAN PEEK" in (Path(__file__).parents[1] / "app" / "main.py").read_text()
 
 
@@ -144,7 +144,7 @@ def test_build_now_names_the_real_stages(site_env, monkeypatch):
 def test_the_start_screen_shows_its_work_statically():
     js = (CONSOLE / "webstudio.js").read_text()
     css = (CONSOLE / "webstudio.css").read_text()
-    pend = js[js.index("function drawPending("):js.index("/* ================= v0.784 SAWAAL CARD")]
+    pend = js[js.index("function drawPending("):js.index("/* ================= v0.988 PROMPT FIRST")]   # v0.988: the next block was renamed
     assert "textarea rows=\"2\" disabled" not in pend and 'id="wsPendTa"' in pend    # she can write while it works
     assert "${pendMe(text)}" in pend and "pendScroll();" in pend and "peekView(r.peek" in pend
     assert "data-t0=\"${Number(x.at)}\"" in pend                               # the running step's clock keeps ticking

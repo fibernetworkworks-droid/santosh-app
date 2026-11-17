@@ -103,11 +103,45 @@ def tokens(style: str, palette: str, brand: dict[str, str] | None = None, overri
     fonts = T.FONTS.get(st["fonts"]) or T.FONTS["poppins_mukta"]
     if (overrides or {}).get("fonts") in T.FONTS:     # v0.567 her design's type, mapped to a pair Hoola ships
         fonts = T.FONTS[overrides["fonts"]]
+    fkey = overrides["fonts"] if (overrides or {}).get("fonts") in T.FONTS else st["fonts"]
     radius = int((overrides or {}).get("radius", st["radius"]) or 0)
-    return {"style": style, "palette": palette, "bg": pal["bg"], "surface": pal["surface"], "ink": pal["ink"],
-            "muted": muted, "line": line, "primary": pal["primary"], "on_primary": on_p, "accent": pal["accent"],
-            "on_accent": on_a, "primary_text": primary_text, "accent_text": accent_text, "head": fonts["head"], "body": fonts["body"], "deva": fonts["deva"],
-            "radius": max(0, min(radius, 40))}
+    out = {"style": style, "palette": palette, "bg": pal["bg"], "surface": pal["surface"], "ink": pal["ink"],
+           "muted": muted, "line": line, "primary": pal["primary"], "on_primary": on_p, "accent": pal["accent"],
+           "on_accent": on_a, "primary_text": primary_text, "accent_text": accent_text, "head": fonts["head"], "body": fonts["body"], "deva": fonts["deva"],
+           "radius": max(0, min(radius, 40)), "fonts": fkey}
+    out.update(type_scale(overrides))               # v0.988 the text size the AI chose for her words (else the CSS default)
+    return out
+
+
+def type_scale(src: dict[str, Any] | None) -> dict[str, Any]:
+    """v0.988 PROMPT FIRST: base text size (14-19 px) and heading ratio (1.10-1.42) - the AI picks them from her words (a
+    dense portal reads small and steady, a brand site big). Out of range = left out, so the CSS default stands."""
+    s = src or {}
+    try:
+        base, ratio = float(s.get("base_px") or 0), float(s.get("scale") or 0)
+    except (TypeError, ValueError):
+        return {}
+    if not (14 <= base <= 19 and 1.10 <= ratio <= 1.42):
+        return {}
+    return {"base_px": round(base, 1), "scale": round(ratio, 3)}
+
+
+def carry(tk: dict[str, Any]) -> dict[str, Any]:
+    """What a colour edit must keep when it rebuilds the tokens: the font pair and the type scale (they used to fall back
+    to the style's defaults on every colour change)."""
+    return {k: tk[k] for k in ("fonts", "base_px", "scale") if tk.get(k)}
+
+
+def type_css(tk: dict[str, Any]) -> str:
+    """The text sizes as CSS variables, from the chosen base + ratio (empty = the stylesheet's own sizes)."""
+    ts = type_scale(tk)
+    if not ts:
+        return ""
+    b, r = ts["base_px"], ts["scale"]
+    px = lambda n: round(b * r ** n, 1)   # noqa: E731
+    return (f"--fs-base:{b}px;--fs-h1:clamp({px(3.2)}px,{px(2.6)}px + 2.4vw,{px(5)}px);"
+            f"--fs-h2:clamp({px(2.2)}px,{px(1.8)}px + 1.4vw,{px(3.4)}px);--fs-h3:clamp({px(1.2)}px,{px(1)}px + .5vw,{px(1.8)}px);"
+            f"--fs-lead:{px(0.8)}px;")
 
 
 def _font_slug(fam: str) -> str:
@@ -141,8 +175,8 @@ def tokens_css(tk: dict[str, Any], rel: str = "") -> str:
             f"--c-bg:{tk['bg']};--c-surface:{tk['surface']};--c-ink:{tk['ink']};--c-muted:{tk['muted']};--c-line:{tk['line']};"
             f"--c-primary:{tk['primary']};--c-on-primary:{tk['on_primary']};--c-accent:{tk['accent']};"
             f"--c-on-accent:{tk['on_accent']};--c-primary-text:{tk.get('primary_text', tk['primary'])};"
-            f"--c-accent-text:{tk.get('accent_text', tk['accent'])};--font-head:{head};--font-body:{body};--radius:{tk['radius']}px;--gutter:20px"
-            "}")
+            f"--c-accent-text:{tk.get('accent_text', tk['accent'])};--font-head:{head};--font-body:{body};--radius:{tk['radius']}px;--gutter:20px;"
+            + type_css(tk) + "}")
 
 
 # ---------------------------------------------------------------- sanitising what the model wrote
