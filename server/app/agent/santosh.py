@@ -898,7 +898,31 @@ async def _call_brain_once(brain: str, system: str, history: list[dict], setting
                 log.info("%s", _pl)
         except Exception:
             pass
-        if streaming:
+        _hand = None
+        if brain == "glm":
+            try:   # v0.968 HOOLA PIPELINE P4: a Box part's calls go through its hand-over runner (backups, late first
+                # word, call head start, bigger window, queues); no Box part = today's call exactly
+                from ..pipeline import runner as _bxrun
+                _hand = _bxrun.HAND.get()
+            except Exception:
+                _hand = None
+        if _hand is not None:
+            def _bx_make(first):
+                if streaming:
+                    def _w(fn):
+                        if fn is None:
+                            return None
+
+                        def _g(*a, **k):
+                            first()
+                            return fn(*a, **k)
+                        return _g
+                    return llm.openai_stream(brain, system, tools, history, cap, _w(live.feed),
+                                             on_think=_w(live.feed_think), on_tool=_w(getattr(live, "feed_tool", None)))
+                return llm.openai_create(brain, system, tools, history, cap)
+            blocks, stop, usage = await _bxrun.call(_hand, _bx_make, streaming=streaming,
+                                                    reset=(live.reset if live is not None else None))
+        elif streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
                                                           live.feed, on_think=live.feed_think,   # v0.171 thinking
                                                           on_tool=getattr(live, "feed_tool", None))   # parity Phase 6
@@ -3218,7 +3242,12 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         _out = await _run_turn(conversation_id, user_text, tenant_id, voice, context, actor, place, client_id,
                                save_user)
         if _bx is not None:
-            _tbox.end(_bx, _out, failed=turn_failed_since(conversation_id, _bx["t0"]))
+            _chk = _tbox.end(_bx, _out, failed=turn_failed_since(conversation_id, _bx["t0"]))
+            if _chk and not _chk.get("ok"):
+                try:   # v0.968 P4: the reply failed the check - ONE fix round one level up (a short correction)
+                    await _tbox.fix_round(_bx, _out, _chk)
+                except Exception:   # noqa: BLE001 - the reply already reached her
+                    log.exception("pipeline fix round failed")
         return _out
     except asyncio.CancelledError:
         if _bx is not None:

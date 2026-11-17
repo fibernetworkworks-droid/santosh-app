@@ -6145,3 +6145,30 @@ the tail continues with the marks the head left open. A code span across words i
 a cut inside a code span, an italic (single star) or a link still being written fall back to the whole-block renderer
 (its own streaming rules, no per-word fade for that moment). Phone only. Tests `test_v0968_hoola_code_no_stars.py` (4,
 the logic mirrored in Python). NOT VERIFIED on her phone.
+
+## v0.969.0 HOOLA PIPELINE P4 (owner: "GO P4" on docs/HOOLA_PIPELINE_PLAN.md; built as 0.968.0 - their HOOLA CODE NO STARS took 0.968.0, both kept)
+
+P4 = the hand-over rules (plan 5.2 + 5.3 + 6.8) carried out on real model calls, not just decided (P1's
+`handover.next_move` was pure). NEW `server/app/pipeline/runner.py`: every model call of a Box part (the one-part
+chat turn, the P3 writer, each P3 worker) runs through `runner.call(hand, make)`, with a per-part HAND contextvar.
+- error / refusal / empty answer -> the next backup at the SAME level, at once; words of the failed try already on
+  her screen are reset first.
+- no first word in time (streaming, chat limit 8 s) -> the slow call is stopped and the backup starts.
+- a live call (non-streaming, surface call) -> the backup starts AT the limit and the first good answer wins; the
+  loser is cancelled (head start, silence is the worst case on a call).
+- the part outgrew the window -> a same-level model with a bigger ctx from the message's tables copy (`_bigger`).
+- at most two changes per part, then the last error goes up as today. Every move is written to the sheet's part
+  (`handover` rows, `ran_on`) and logged `pipeline box hand-over: a -> b (event: why)`.
+- `llm.BOX_OWNS`: while the Box owns a call its failure goes to the Box's outage record (2 in 10 min = paused), never
+  to the whole OpenRouter brain's pause / breaker.
+NEW `server/app/pipeline/limits.py`: per-user (`pipeline_user_cap` 6) and per-company (`pipeline_company_cap` 8)
+asyncio queues, first come first served, a call waits its turn instead of being refused.
+MOVING UP (5.3): a worker whose report fails `parts.worker_check` (empty, figures with no source in its inputs /
+tool outputs) runs once more one level up with the problems named; a second failure = a not_done line. The writer's
+failed final check = `turnbox.fix_round` (switch `pipeline_fix_round`): the next level's model writes a short
+correction ("OK" = false alarm, nothing posted; still failing = a plain line). "better answer please" in the same
+chat within 30 min = the previous sheet's ask one level up (`turnbox.BETTER`).
+CALLS: `pipeline_calls` (default False) lets a live call's brain asks into the Box on surface "call".
+Tests `test_v0969_pipeline_p4.py` (21, fake models): every 5.2 case, the race both ways, bigger window, two-change
+cap, worker / writer fix rounds, better, queues, breaker untouched, the santosh call path, HAND lifecycle, calls off.
+NOT VERIFIED on her server or with a real model failure.

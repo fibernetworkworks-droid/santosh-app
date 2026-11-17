@@ -245,25 +245,19 @@ def _brief(part: dict, inputs: list[dict]) -> str:
     return "\n".join(lines)
 
 
-async def _run_worker(sh: dict, part: dict, inputs: list[dict], ctx_info: dict, sink: list) -> None:
-    """One worker part end to end on its own model; writes its state + package to the sheet. Never raises
-    (except CancelledError - the time limit or Stop)."""
+async def _work_once(part: dict, m: dict | None, task: str, inputs: list[dict], ctx_info: dict,
+                     hand: dict | None) -> tuple[dict, list, list]:
+    """One run of a worker on model `m` (its calls through the hand-over runner when `hand` is given)."""
     from ..agent import llm, team
+    from . import runner as R
     from . import turnbox as TB
-    n = part["n"]
-    m = runnable(part)
-    part["applied"] = bool(m)
-    part["not_applied"] = "" if m else "no OpenRouter model for this part - the chat's own brain ran it"
-    if m:
-        part["ran_on"] = m["id"]
-    S.set_state(sh, n, "running")
     tok = llm.MODEL_NOW.set("openrouter:" + m["id"]) if m else None
+    h_tok = R.HAND.set(hand) if hand is not None else None
     mine: list = []
     raw: list = []
     s_tok, r_tok = TB.TOOL_SINK.set(mine), TB.TOOL_RAW.set(raw)
-    t0 = time.time()
     try:
-        spec = {"name": f"{part['label']} {n}", "task": _brief(part, inputs),
+        spec = {"name": f"{part['label']} {part['n']}", "task": task,
                 "tools": RESEARCH_TOOLS if part["kind"] in ("research", "facts") else []}
         st = ctx_info["settings"]
         limit = float(ctx_info.get("limit_s") or 300)
@@ -274,20 +268,99 @@ async def _run_worker(sh: dict, part: dict, inputs: list[dict], ctx_info: dict, 
     finally:
         TB.TOOL_SINK.reset(s_tok)
         TB.TOOL_RAW.reset(r_tok)
+        if h_tok is not None:
+            R.HAND.reset(h_tok)
         if tok is not None:
             llm.MODEL_NOW.reset(tok)
+    return r, mine, raw
+
+
+def worker_check(part: dict, deliverable: str, inputs: list[dict], tool_outputs: list[str]) -> dict:
+    """6.10 for one worker part: its report's figures must come from its own tools, the parts it was given, or the
+    words of its job. Checked only when its tools ran (a report from the model's own knowledge has no facts list)."""
+    given = part["ask"] + "\n" + "\n".join(str((i.get("out") or {}).get("result") or "") for i in inputs)
+    facts = K.facts_from(given, tool_outputs)
+    return K.final_check(deliverable, given, facts, None, None, tools_ran=len(tool_outputs))
+
+
+def _up_model(part: dict, level: str, doc: dict) -> dict | None:
+    try:
+        r = B.choose_for(part["ask"], surface="chat", doc=doc, tools=True, floor=level)
+    except Exception:   # noqa: BLE001
+        return None
+    src = {"model": r["model"], "backups": r["backups"]}
+    return runnable(src)
+
+
+async def _run_worker(sh: dict, part: dict, inputs: list[dict], ctx_info: dict, sink: list) -> None:
+    """One worker part end to end on its own model; writes its state + package to the sheet. Never raises
+    (except CancelledError - the time limit or Stop). P4: its calls go through the hand-over runner (backup on an
+    error / empty answer / late first word, bigger window), and a report whose figures fail the check runs ONCE more
+    one level up with the problems named; failed again = delivered with the problem said (plan 5.3)."""
+    from . import handover as HO
+    from . import runner as R
+    from . import turnbox as TB
+    n = part["n"]
+    m = runnable(part)
+    part["applied"] = bool(m)
+    part["not_applied"] = "" if m else "no OpenRouter model for this part - the chat's own brain ran it"
+    if m:
+        part["ran_on"] = m["id"]
+    S.set_state(sh, n, "running")
+    src = part.get("driver") or part
+    hand = (R.new_hand(kind=part["kind"], level=part["level"], surface="chat", model=m,
+                       backups=[x for x in (src.get("backups") or []) if x.get("id") != m["id"]],
+                       tenant=ctx_info.get("tenant") or "", doc=ctx_info.get("doc"), sheet=sh, n=n,
+                       language=part.get("language") or "") if m else None)
+    t0 = time.time()
+    task = _brief(part, inputs)
+    r, mine, raw = await _work_once(part, m, task, inputs, ctx_info, hand)
+    deliv = str(r.get("deliverable") or "")
+    check_note = ""
+    if r.get("ok") and mine and hand is not None and getattr(get_settings(), "pipeline_fix_round", True):
+        chk = worker_check(part, deliv, inputs, mine)
+        part["check"] = chk
+        if not chk["ok"]:
+            mv = HO.next_move(hand["part"], "failed_check", problems=chk["problems"])
+            up = _up_model(part, mv["level"], ctx_info.get("doc") or {}) if mv["action"] == "up" else None
+            if up:
+                STATS["fix_rounds"] = STATS.get("fix_rounds", 0) + 1
+                part.setdefault("handover", []).append(
+                    {"event": "failed_check", "from": hand["current"].get("id"), "to": up["id"],
+                     "level": mv["level"], "why": "; ".join(chk["problems"][:3])[:200], "at": round(time.time(), 1)})
+                part["level_used"] = mv["level"]
+                part["ran_on"] = up["id"]
+                S.save(sh)
+                hand2 = R.new_hand(kind=part["kind"], level=mv["level"], surface="chat", model=up, backups=[],
+                                   tenant=ctx_info.get("tenant") or "", doc=ctx_info.get("doc"), sheet=sh, n=n,
+                                   language=part.get("language") or "")
+                hand2["part"]["moved_up"] = True
+                fix = (task + "\n\nYour earlier report had these problems, found by Hoola's check: "
+                       + "; ".join(chk["problems"][:6]) + ". Do the job again: every figure must come from a tool "
+                       "result you got now or the facts above; say plainly what you could not confirm.")
+                r2, mine2, raw2 = await _work_once(part, up, fix, inputs, ctx_info, hand2)
+                if r2.get("ok"):
+                    r, mine, raw = r2, mine + mine2, raw + raw2
+                    deliv = str(r.get("deliverable") or "")
+                    chk2 = worker_check(part, deliv, inputs, mine)
+                    part["check"] = chk2
+                    if not chk2["ok"]:
+                        check_note = "; ".join(chk2["problems"][:3])
+            else:
+                check_note = "; ".join(chk["problems"][:3])
     sink.extend(mine)
     facts = [{**f, "source": f"part{n}:{f['source']}"} for f in K.facts_from("", mine) if f["source"] != "her"]
     files = K.files_from(mine)
     cards = [c for c in cards_in(raw) if card_answer(c) == "waiting"]
-    deliv = str(r.get("deliverable") or "")
     not_done: list[str] = []
     if cards:
         not_done.append(f"{part['label']} waits for her tap: " + "; ".join(c.get("title") or c["kind"] for c in cards))
     elif not r.get("ok"):
         not_done.append(f"{part['label']} ({part['ask'][:80]}) could not be finished: {deliv[:160] or 'no result'}")
+    if check_note:
+        not_done.append(f"{part['label']} figures not confirmed by a source: {check_note[:200]}")
     pkg = S.package(result=deliv[:4000], facts=facts[:80], files=files, notes=[], not_done=not_done)
-    if m:
+    if hand is None and m:
         TB.note(m["id"], bool(r.get("ok")) or bool(cards))
     secs = round(time.time() - t0, 1)
     if cards:
@@ -396,7 +469,8 @@ async def run_for_turn(conv: str, ctx, settings, tenant: str, turn_id: str) -> s
     limit = float(getattr(settings, "pipeline_parts_s", 300) or 300)
     info = {"settings": settings, "team_id": "box_" + sh["id"][3:], "mission": b["text"][:1200],
             "families": set(getattr(getattr(ctx, "admit", None), "families", set()) or set()), "tenant": tenant,
-            "conv": conv, "turn_id": turn_id, "place": getattr(ctx, "place", None), "limit_s": limit}
+            "conv": conv, "turn_id": turn_id, "place": getattr(ctx, "place", None), "limit_s": limit,
+            "doc": b.get("doc")}
     await run_workers(sh, info, b["sink"], limit)
     return writer_block(sh)
 
@@ -447,7 +521,7 @@ async def continue_sheet(sh: dict) -> str:
     sink: list = []
     info = {"settings": st, "team_id": "box_" + sh["id"][3:], "mission": "", "families": set(),
             "tenant": sh["tenant"], "conv": sh["conv"], "turn_id": "", "place": None,
-            "limit_s": float(getattr(st, "pipeline_parts_s", 300) or 300)}
+            "limit_s": float(getattr(st, "pipeline_parts_s", 300) or 300), "doc": TB.tables()}
     for p in freed:     # in order: a freed part may need another freed part
         if p["state"] != "waiting":
             continue

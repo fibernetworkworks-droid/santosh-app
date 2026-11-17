@@ -111,8 +111,15 @@ def pause_refuses(brain: str) -> bool:
     return True
 
 
+# v0.968 HOOLA PIPELINE P4: while the Box runs a part, a failure belongs to that MODEL (the Box's outage record and its
+# backups handle it), not to the whole OpenRouter brain - one bad model must not pause every other model on the brain
+BOX_OWNS: contextvars.ContextVar[bool] = contextvars.ContextVar("hoola_box_owns", default=False)
+
+
 async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
                         max_tokens: int) -> tuple[list[dict], str, dict]:
+    if BOX_OWNS.get():
+        return await _openai_create(brain, system, tools, messages, max_tokens)
     if pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
@@ -126,6 +133,8 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
                         on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
+    if BOX_OWNS.get():
+        return await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
     if pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:

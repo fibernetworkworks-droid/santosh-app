@@ -53,6 +53,10 @@ def box(env, tmp_path, monkeypatch):
     tok = llm.MODEL_NOW.set("")
     yield T
     llm.MODEL_NOW.reset(tok)
+    from app.pipeline import runner as R
+    T.APPLIED.set(False)        # a test that simulates a crash never closes its turn: nothing leaks into the next one
+    T.CURRENT.set(None)
+    R.HAND.set(None)
     get_settings.cache_clear()
 
 
