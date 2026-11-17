@@ -27,7 +27,7 @@ def test_fade_is_timed_per_word_every_frame():
 def test_marks_near_the_end_no_longer_switch_the_fade_off():
     assert "List<InlineSpan> _inkTail(" in MD and "if (fade && ink != null) return _inkTail(s, ink, c, code);" in MD
     tail = MD[MD.index("List<InlineSpan> _inkTail("):]
-    assert "mdInline(w, streaming: true" in tail                      # a word with its own marks still rises
+    assert "mdInline(balanced(core, open), streaming: true" in tail   # v0.968 a word with its own marks still rises, balanced
     assert "codeStyle: st" in tail and "withOpacity" in tail           # inline code fades with it
 
 

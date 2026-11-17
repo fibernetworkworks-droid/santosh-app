@@ -145,32 +145,92 @@ class HoolaMd extends StatelessWidget {
 
   /// v0.960 the newest words of the block being written, each at its own ink. A word that carries its own marks
   /// (`name`, **bold**) is drawn with them and still rises (it used to switch the fade off for the whole tail, so
-  /// words near code popped in at full ink). Only a mark left open across words keeps the tail plain.
+  /// words near code popped in at full ink).
+  /// v0.968 a mark that spans several words (**15s polling**) never shows its stars: the marks open at each word's
+  /// start are put back in front of it and closed after it, so every word is drawn with the style it is in (her
+  /// recording showed "**15s polling**" raw while it landed - an open word was drawn as plain text).
   static final _word = RegExp(r'\S+\s*');
+
+  /// The marks still open after [s], starting from [open] (code first: nothing inside a code span is a mark).
+  static List<String> marksAfter(String s, List<String> open) {
+    final st = List<String>.of(open);
+    var i = 0;
+    while (i < s.length) {
+      if (st.isNotEmpty && st.last == '`') {
+        if (s[i] == '`') st.removeLast();
+        i++;
+        continue;
+      }
+      if (s[i] == '`') {
+        st.add('`');
+        i++;
+        continue;
+      }
+      var hit = false;
+      for (final mk in const ['**', '~~']) {
+        if (s.startsWith(mk, i)) {
+          if (st.contains(mk)) {
+            st.removeAt(st.lastIndexOf(mk));
+          } else {
+            st.add(mk);
+          }
+          i += 2;
+          hit = true;
+          break;
+        }
+      }
+      if (!hit) i++;
+    }
+    return st;
+  }
+
+  /// [text] with the marks open before it put back in front and the marks open after it closed, so mdInline draws
+  /// it in its style and never shows a star.
+  static String balanced(String text, List<String> before) {
+    final after = marksAfter(text, before);
+    return before.join() + text + after.reversed.join();
+  }
+
   List<InlineSpan> _inkTail(String s, List<double> ink, HoolaColors c, TextStyle code) {
-    if (ink.isEmpty) return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
+    List<InlineSpan> whole() => mdInline(s, streaming: true, link: c.accent, codeStyle: code);
+    if (ink.isEmpty) return whole();
     final all = _word.allMatches(s).toList();
     final k = ink.length > all.length ? all.length : ink.length;
-    if (k == 0) return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
+    if (k == 0) return whole();
+    // a link still being written keeps the whole block on the renderer's own streaming rules
+    if ('['.allMatches(s).length != ']'.allMatches(s).length) return whole();
+    // an *italic* run across words is left to the renderer too (a single star is not tracked word by word)
+    if (s.replaceAll('**', '').contains('*')) return whole();
     final cut = all[all.length - k].start;
     final head = s.substring(0, cut);
-    bool open(String x) =>
-        '**'.allMatches(x).length.isOdd || '`'.allMatches(x).length.isOdd || '~~'.allMatches(x).length.isOdd ||
-        '['.allMatches(x).length != ']'.allMatches(x).length;
-    if (open(head)) return mdInline(s, streaming: true, link: c.accent, codeStyle: code);
-    final out = <InlineSpan>[if (head.isNotEmpty) ...mdInline(head, streaming: true, link: c.accent, codeStyle: code)];
+    var open = marksAfter(head, const []);
+    if (open.contains('`')) return whole();   // a code chip split by the cut would draw as two chips
+    final out = <InlineSpan>[
+      if (head.isNotEmpty) ...mdInline(balanced(head, const []), streaming: true, link: c.accent, codeStyle: code)
+    ];
     final ofs = ink.length - k;
-    for (var i = 0; i < k; i++) {
-      final w = all[all.length - k + i].group(0)!;
+    var i = 0;
+    while (i < k) {
+      // a `code span` across several words stays one chip: its words land together (ink of its first word)
+      var w = all[all.length - k + i].group(0)!;
       final a = ink[ofs + i];
+      i++;
+      while (i < k && marksAfter(w.trimRight(), open).contains('`')) {
+        w += all[all.length - k + i].group(0)!;
+        i++;
+      }
+      final core = w.trimRight();
+      final gap = w.substring(core.length);
       final st = code.copyWith(color: code.color?.withOpacity((code.color?.opacity ?? 1) * a),
           backgroundColor: code.backgroundColor?.withOpacity((code.backgroundColor?.opacity ?? 1) * a));
-      out.add(TextSpan(
-        style: TextStyle(color: c.ink.withOpacity(a)),
-        children: open(w)
-            ? [TextSpan(text: w)]                  // half a mark: plain until it closes
-            : mdInline(w, streaming: true, link: c.accent.withOpacity(a), codeStyle: st),
-      ));
+      final seen = core.replaceAll('**', '').replaceAll('~~', '').replaceAll('`', '');
+      final kids = <InlineSpan>[
+        if (seen.isNotEmpty)
+          ...mdInline(balanced(core, open), streaming: true, link: c.accent.withOpacity(a), codeStyle: st),
+        if (gap.isNotEmpty) TextSpan(text: gap),
+      ];
+      open = marksAfter(core, open);
+      if (kids.isNotEmpty) out.add(TextSpan(style: TextStyle(color: c.ink.withOpacity(a)), children: kids));
     }
     return out;
   }

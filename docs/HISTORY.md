@@ -6132,3 +6132,16 @@ the Hindi writer on the write.lang model, check ok), an invented figure + an uns
 its branch + her yes carrying it on, Not now ending only that branch, cards from raw tool results, restart keeps done
 parts, the time limit, one-part messages unchanged, a call not planned, the wiring. 97 pipeline tests pass. NOT
 VERIFIED on her server or with a real planner / worker model.
+
+## v0.968.0 HOOLA CODE NO STARS (owner: "FIX THE RAW STARS ALSO", after her 16 Nov screen recording)
+
+Seen in the recording: while "I've read the Neural section end to end..." landed, a list item showed
+`**15s polling** while visible` with its stars for a moment before turning bold. CAUSE: `HoolaMd._inkTail` (v0.960 per-word
+fade) drew a word that opened or closed a mark (`**15s`, `polling**`) as plain text ("half a mark: plain until it closes"),
+so a bold run across words was raw for as long as it sat in the fading tail. FIX: `marksAfter(text, open)` tracks the marks
+open (`**`, `~~`, a code span) and `balanced(text, before)` puts the open marks back in front of each word and closes what
+is still open after it, so mdInline draws every word in its style with no star; the head is drawn balanced the same way and
+the tail continues with the marks the head left open. A code span across words is one unit (one chip, it lands together);
+a cut inside a code span, an italic (single star) or a link still being written fall back to the whole-block renderer
+(its own streaming rules, no per-word fade for that moment). Phone only. Tests `test_v0968_hoola_code_no_stars.py` (4,
+the logic mirrored in Python). NOT VERIFIED on her phone.
