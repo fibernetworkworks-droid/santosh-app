@@ -1,0 +1,181 @@
+# Lovable: server-side logic of an app's backend (as of 17 Nov 2026)
+
+Research only. No code changed. Written for the Hoola Web Studio / App Engine plan (`docs/LOVABLE_STUDIO_PLAN.md`).
+Read `00_INDEX.md` first for the stack overview; this file goes deeper on the backend.
+
+How sure each line is:
+- **[docs]** docs.lovable.dev pages fetched as `.md` on 17 Nov 2026, the changelog, and the lovable.dev blog. Lovable's own words.
+- **[3rd]** third-party pages (TanStack's own adapter docs, search results). Directional.
+- **[inferred]** my reasoning from the above. No source says it.
+- lovable.dev itself sits behind a Cloudflare challenge. It was not fetched and not worked around.
+
+## 0. The background, checked and corrected
+
+- [docs] Two stacks live side by side. Apps created before 13 May 2026 are React + Vite (client-rendered) with server code as Supabase-style **edge functions** on the "built-in backend" (Lovable Cloud). Apps created from 13 May 2026 are **TanStack Start**, server-rendered, and "run their server code inside the app itself, as server functions and API routes. Many newer apps have no edge functions at all."
+- [docs] Correction: the 13 May switch did **not** cover Enterprise. Changelog 18 May: default "except on Enterprise plans". Enterprise followed on 22 Jun 2026.
+- [docs] The Cloudflare Workers detail comes from the blog (1 Jun 2026, Fabian Hedin), not the docs pages. Its table: runtime "Static hosting (Cloudflare Pages)" -> "Cloudflare Workers"; server logic "Edge Functions" -> "TanStack Server Functions"; secrets "In Supabase" -> "Cloudflare Workers bindings"; database, auth, storage, realtime stay "Supabase".
+- [docs] The docs pages themselves never say "Cloudflare". The only trace is the hosting FAQ: the project cache "is not the standard Workers Cache API". The Logs view calls it "your deployed server worker".
+- [docs] Correction: migrations as **Drizzle files** did not arrive with TanStack Start. Changelog dates it **7 Oct 2026** ("Cloud database changes are now recorded as Drizzle migrations"). Before that, migrations were SQL under `supabase/migrations/`. Both setups still exist.
+- [docs] An old app can be upgraded in place (changelog 28 Jul 2026; usually 10-35 credits; `/` -> "Migrate to TanStack Start"). Edge functions that outside services call at a fixed address (payment webhooks, scheduled jobs, AI assistants) are **left where they are**; code only the app itself calls moves into the app.
+
+Sources: docs.lovable.dev/features/edge-functions.md, /changelog.md, /features/upgrade-to-tanstack-start.md, /features/hosting.md, /features/logs.md, /features/database.md, lovable.dev/blog/building-apps-using-tanstack-start
+
+## 1. Server functions and edge functions
+
+### How the agent writes them
+- [docs] The user never writes or creates one. "You don't create edge functions yourself. Describe what you need in the project chat, and Lovable writes, deploys, and maintains the function." There is no create button in the Edge functions view.
+- [docs] New stack: the server boundary is `createServerFn`, "transformed at build time by a Vite plugin". The server bundle keeps the handler; the client bundle gets "a typed `fetch()` call to the server endpoint". Server-only code is marked with `*.server.ts` files or the `@tanstack/react-start/server-only` module. (blog)
+- [docs] Server code can sit in the same file as the component that uses it; the build splits it. Old stack: a separate edge function "deployed independently of the app code that called it". (blog)
+- [docs] Webhooks and jobs on the new stack are **API routes** in the app. Built-in payments use `https://project--<id>-dev.lovable.app/api/public/payments/webhook?env=sandbox` (live drops `-dev`). On the old stack: `https://<ref>.supabase.co/functions/v1/payments-webhook?env=sandbox`.
+- [inferred] The `/api/public/...` path suggests a convention that public, unauthenticated routes live under `/api/public/`. Not documented.
+- [docs] Old-stack edge functions are Deno (`Deno.env.get(...)`, Deno test runner), code in `supabase/functions/`.
+
+### Where they run and when they go live
+- [docs] Server functions and edge functions "run on separate services, so a limit or a timeout on one does not apply to the other".
+- [docs] Server functions and API routes are part of the app: "changes to them go live when you publish". Edge functions deploy separately; restoring an old version redeploys the edge functions from that version.
+- [docs] You can ask Lovable to deploy one or more chosen edge functions. A restore "fails outright" when the project is at its maximum number of functions.
+- [docs] Pages render on the server for every visitor; routes with no per-request data are prerendered as flat HTML at deploy time, and "Lovable's AI applies this automatically when a route qualifies". (blog)
+
+### How the browser calls them, and how the signed-in user reaches them
+- [docs] Browser -> server function = an RPC `fetch()` generated by the build (blog). Browser -> edge function = an HTTP call to the function URL.
+- [docs] Auth: "your app sends the access token with each request to your app's backend to show who the person is." Access token is short-lived with no setting to change it; refresh token renews it; tokens are stored on the person's device.
+- [docs] Three database roles: `anon`, `authenticated`, `service_role`. Browser code uses a **publishable key** (public by design; RLS protects data). "Newer apps also have a server-only admin client that uses the service role and skips your policies."
+- [docs] The docs stress that server code is reachable by anyone: "Anyone who knows the address of a server function or an edge function can send it a request, so each function has to check who sent the request." "A function running on the server is still callable by a client."
+- [docs] "Lovable does not offer a separate, restricted database login for server code." For server code that must respect a user's policies, "have it act as that user".
+- [3rd/inferred] The exact middleware Lovable generates to put the bearer token on server-function calls (names, `src/start.ts` wiring) is **not documented**. One search found only unofficial gists. Needs a real synced repo to confirm.
+
+### Limits
+- [docs] Edge functions: a per-project maximum number of functions; a deploy fails once it is reached. Time, memory and bundle-size limits are not published: "contact support for the figures that apply to your project".
+- [docs] Server functions: no published CPU or time limit. "Can my runtime limits be raised? Not with a setting in Lovable."
+- [docs] Free workspaces only: 1,000 server requests per project per 10 seconds (a page load or a server-function call; static files do not count). Above it requests are "refused, not queued"; visitors see "App temporarily unavailable"; background calls get an error. Paid plans have no visitor or bandwidth cap.
+- [inferred] The real ceiling is Cloudflare Workers' own (CPU time, subrequests). Lovable does not name it.
+
+### Logs the user and the agent can read
+- [docs] **More -> Settings -> Logs**. Types: Server logs (TanStack Start only, "your deployed server worker"), Function edge logs, Edge logs (default on the old stack), Function logs, Authentication, PostgreSQL, Realtime, Storage.
+- [docs] Text search, time window (up to 5 days relative), status filter. "Logs do not stream live. Click Refresh." JSON download.
+- [docs] Retention is not stated; "The range the viewer offers does not tell you how long Lovable keeps your logs." Not audit evidence.
+- [docs] Edge functions view: status, invocations, success rate; per function a chart, Copy URL, View logs, View code.
+- [docs] Connector requests are in a separate Activity tab (method, path, status, timing; never bodies; 90 days shown).
+- [docs] Agent permissions include "Read analytics: Query logs to investigate issues" and "Read backend logs", both **Always allow** by default.
+
+### How errors come back into the chat
+- [docs] Build errors: a **Try to fix** button on the activity card; "Lovable scans the logs, finds the issue, and attempts a fix." The Publish dialog blocks publishing while the latest build fails and offers the same button.
+- [docs] 10 free fixes per account (shared with security-finding fixes, across all workspaces); each frees up 24 h after use; beyond that a fix costs credits like a normal message.
+- [docs] Runtime / backend errors have no auto button: "If a function fails, Lovable shows the error so you can ask it to fix the problem." The user may paste a log entry into the chat.
+- [docs] Debug guide: Try to fix "once or twice", then describe the bug, then Plan mode for the root cause, then revert.
+
+Sources: /features/edge-functions.md, /features/logs.md, /features/hosting.md, /features/authentication.md, /features/database-access.md, /tips-tricks/security-best-practices.md, /features/projects/chat.md, /prompting/prompting-debugging.md, /integrations/connector-activity.md, /features/cloud.md, the blog above
+
+## 2. Secrets
+
+- [docs] Secrets are per project, encrypted, **write-only** ("its value can never be viewed again in Lovable, only replaced or deleted"), and "never reach the browser". Old stack: injected into edge functions. New stack: Workers bindings "injected into the Worker as bindings at request time, so rotating one takes effect on the next request without a rebuild" (blog).
+- [docs] The usual path is the **secure prompt**: when a feature needs a key, the chat shows a form naming the secret (often the exact env var, e.g. `STRIPE_SECRET_KEY`), explains why and where to get it, shows an example of a well-formed value and warns on a bad format (the warning "never blocks you"). **Skip** builds the rest without it.
+- [docs] Values you set in two places (e.g. your own webhook signing secret) get a **Generate** + **Copy** button.
+- [docs] "Lovable does not repeat a stored secret value, or anything derived from it such as its first characters or its length, in the project chat, in logs, or in your code."
+- [docs] **Pasted key in chat**: Lovable "automatically detects API keys pasted into the project chat". If it recognises the tool, it offers to set up a **connector** (form pre-filled; or reuse an existing workspace connection). Surprise: "Lovable saves your key as a project secret when you send the message, whether or not you set up the connection."
+- [docs] **More -> Settings -> Secrets** shows names and dates only; values are trimmed of edge spaces on save.
+- [docs] Reserved prefixes: `SUPABASE_` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`) and `LOVABLE_` (`LOVABLE_API_KEY`, `LOVABLE_CRON_SECRET`). Badges: **Lovable** (managed, cannot delete), **Not in use** (shadowed by same name).
+- [docs] Public values: anything `VITE_` is "build-time, browser-exposed" and lives in the committed `.env` (e.g. `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`). Adding a `VITE_` name to Secrets is rejected. Do **not** gitignore `.env`. Unprefixed vars are server-only.
+- [docs] Rotation: only `LOVABLE_API_KEY` has a **Rotate** action (editor or above); the old key may work up to an hour. Other secrets are rotated at the provider and re-entered. Database password: "Rotate my database password" in chat, confirmed, never shown.
+- [docs] External Supabase: secrets live in the user's Supabase project. Surprise: Lovable projects sharing one Supabase project "overwrite each other's secrets, including `LOVABLE_API_KEY`".
+
+Sources: /features/secrets.md, /features/security.md, /features/build-secrets.md, /integrations/security.md, /integrations/supabase.md, the blog
+
+## 3. Jobs, webhooks in, calls out, connectors
+
+### Scheduled jobs
+- [docs] Created only by asking in chat (or by SQL). The **Jobs** view (**More -> Database -> Manage -> Jobs**) only lists, shows the schedule in plain words, last run, run history (Succeeded / Failed / Running), Enable / Disable. Not live; Refresh.
+- [docs] Schedules are five-field cron, minimum once a minute. "A database-only job you write in SQL yourself can run more often than once a minute, with an interval schedule such as `30 seconds`." The migration guide says to recreate them with `cron.schedule` SQL -> it is **pg_cron** in Postgres.
+- [docs] A job that triggers app work sends an **HTTP request** to a public address: an API route on the new stack, an edge function on the old one. Lovable stores `LOVABLE_CRON_SECRET` and adds a check named **`authenticateCronRequest`** that rejects calls without it.
+- [docs] Jobs at most twice an hour get a fixed per-job jitter of up to 29 s after the minute (API-route jobs only).
+- [docs] "The call the job makes times out after a few seconds, and your app's handler is cancelled with it." Long work must be started, acknowledged, and finished outside that request.
+- [docs] Durable multi-step workflows: the **Inngest** connector.
+
+### Webhooks in
+- [docs] Payment webhooks are registered by Lovable (see 4). For a self-managed Stripe account, "by default, the integration does not use webhooks: your app checks payment and subscription status directly with Stripe"; on request Lovable writes the webhook function and the user creates the endpoint in Stripe and pastes the signing secret into the secure prompt.
+- [docs] The glossary and edge-function page name "handling webhooks" as a core edge-function use.
+
+### Calls out to third-party APIs
+- [docs] Pattern Lovable steers to: secret in Secrets -> call in server code -> frontend calls that server code.
+- [docs] Most catalog integrations are **connectors** that route through a **connector gateway**: the app holds `LOVABLE_API_KEY` + an opaque per-connection key; provider tokens never enter the project; the gateway does OAuth and token refresh; limit 1,000 requests/minute per connector per project; outbound from fixed ranges `185.41.150.0/25` and `2a07:8241:fca::/48` (allowlistable).
+- [docs] Two kinds: **app + chat connectors** (one shared account, also usable by the agent while building, e.g. reading real HubSpot stages) and **app user connectors** (each end user OAuths their own account; gateway returns 401 `credential_refresh_token_expired` and generated code asks to reconnect).
+- [docs] The agent asks for approval before any **write** through a connector (Allow once / Always allow / Skip); reads run freely.
+- [docs] Some connectors are "Managed by Lovable" (its credentials, billed in credits). Admins can add custom REST connectors.
+- [docs] Shopify: Lovable can create a sandbox dev store (claim within 30 days) and build the storefront; Shopify handles payments and stock.
+
+Sources: /features/jobs.md, /integrations/stripe.md, /integrations/app-connectors.md, /integrations/app-user-connectors.md, /integrations/security.md, /integrations/inngest.md, /integrations/shopify.md, /tips-tricks/external-deployment-hosting.md, /llms.txt
+
+## 4. Payments built in
+
+- [docs] Two providers: **Paddle** (merchant of record, 5% + 50c, flat 10% under $10) and **Stripe** (standard rates; optional MoR via Managed Payments). Lovable recommends one by what you sell. Digital goods by default; physical -> Shopify or Stripe. Pro plan or higher. One provider per project; switching does not migrate products or subscriptions.
+- [docs] **Lovable creates the provider account**. Paddle: a form (email not already on Paddle, legal name, project name, AUP). Stripe: email, name, country -> a Lovable-created Stripe "sandbox" account the user later **claims**, optionally linking to an existing Stripe account, and installs "the Lovable app" on live, "which connects your live API keys and webhooks".
+- [docs] Keys: **Lovable holds them** ("the credentials Lovable holds for your provider"). If the user rotates/deletes them in the provider dashboard, the Payments tab shows "The live API key is invalid" and the fix is to contact support.
+- [docs] Test vs live maps to preview vs published app. Preview checkout accepts only test cards (4242..., 3DS 3220, fail 0002) and shows a test banner. Publishing syncs **products and prices** test -> live (not discounts). "Avoid editing products directly in your provider's dashboard."
+- [docs] Webhooks: Lovable registers **two** endpoints per environment: the app's handler (URL ends `?env=sandbox` / `?env=live`) and a Lovable monitoring copy at `https://api.lovable.dev/projects/<project-id>/payments-webhook/<environment>`. Deleting the app's endpoint means "purchases still succeed, but subscriptions never activate".
+- [docs] Go-live: a **readiness check** reads the live site for privacy, terms and refund pages and genuine content; then KYC/KYB; Paddle also reviews the domain.
+- [docs] Payments tab: test/live toggle, revenue, transactions, refunds, go-live checklist. Projects with payments cannot be remixed. Disconnect (type `DISCONNECT`) deletes keys and webhooks; subscriptions keep billing.
+- [docs] Own Stripe account (Free plan allowed): `rk_`/`sk_` key in a **Connect Stripe** form, checked with Stripe, stored as `STRIPE_SECRET_KEY`; subscriptions matched by **email**; one key at a time, so a live key makes preview payments real.
+
+Sources: /features/payments.md, /integrations/stripe.md, /integrations/shopify.md
+
+## 5. The AI gateway
+
+- [docs] "Built-in AI connector": no provider account or key. Lovable auto-generates a per-project **`LOVABLE_API_KEY`** (rotatable; regenerated on remix; separate from workspace API keys) and writes "a secure backend function" that calls the model. Exception: live voice, where "the browser streams audio directly to the voice model" and the server starts the call.
+- [docs] Streaming: server-sent events, set up automatically for chat features. Chat can stream the model's "thinking" above the answer. Optional "priority processing" (faster tier, premium price).
+- [3rd] Endpoint (from TanStack AI's Lovable adapter, not Lovable's docs): base `https://ai.gateway.lovable.dev/v1`, headers `Authorization: Bearer` and `Lovable-API-Key`, OpenAI-style **Responses** API by default, Chat Completions optional, model ids with a provider prefix (`openai/...`, `google/...`). Video is a job you poll.
+- [docs] Models (17 Nov 2026), picked by the agent or named by the user: chat default **GPT-6 Astra**; GPT, Gemini (3.8 Flash, 4 Argon...) and **Claude** (Fable 5.1, Opus 5.5, Sonnet 5, Haiku 4.5; new stack only, since 23 Sep 2026) families; plus image, video, music, embedding, TTS, STT, live-voice models and **Jev 1.13** (typed classify/score).
+- [docs] Errors: **429 Too Many Requests** = workspace requests-per-minute limit (requests, not tokens). **402 Payment Required** = workspace out of credits. Extra caps: concurrent video clips 1 (Free) / 10 (paid) per project; concurrent voice calls 5 / 20 per workspace.
+- [docs] Cost: billed as "AI gateway usage" in credits at rates "based on the underlying provider model costs". Grant: 4 credits/month (Free, Pro, Business; "temporary offering"). Live voice bills connected time incl. silence, 15 s minimum. Cancelled requests may still bill. No bring-your-own-key on the built-in connector; for that, call the provider from server code with your own secret.
+- [docs] **More -> AI** dashboard: credits, requests, success rate, average time, per-request run list with model + cost. "AI app context" keeps full request/response (secrets removed, 90 days) so the agent can debug prompts; on by default on Free/Pro, off on Business/Enterprise. Enterprise: zero-data-retention models only unless enabled; EU inference option.
+
+Sources: /features/ai.md, /features/ai-chat.md, /introduction/credits-and-usage.md, /integrations/app-connectors.md, tanstack.com/ai/latest/docs/adapters/lovable.md
+
+## 6. Emails and domains
+
+- [docs] **Lovable Emails** (built in, paid plans): no provider account or key. Two kinds: **auth emails** (6 templates: confirm signup, password reset, invite, magic link, email change, reauthentication; need the built-in backend) and **app emails** (transactional, generated templates, sent from server code; on TanStack Start they work without Cloud since 7 Sep 2026).
+- [docs] 50,000 emails/month per paid workspace, then 4 credits per 1,000. Hourly caps: Pro 100 app / 500 auth; Business 300 / 3,000; Enterprise 1,000 / 10,000. Rejected (not queued) above the cap.
+- [docs] Sending domain: a `notify.` subdomain by default; SPF, DKIM, DMARC set up; DNS written via **Entri** or manually; DNS re-checked continuously. Unsubscribe link + suppression list added to app emails automatically.
+- [docs] Resend, Mailgun, Brevo etc. are connectors; the docs steer ordinary transactional mail to Lovable Emails.
+- [docs] Custom web domains: paid plan, A record `185.158.133.1` (shared), auto SSL, can be bought in Lovable.
+
+Sources: /features/custom-emails.md, /integrations/resend.md, /features/hosting.md, /changelog.md
+
+## 7. How the agent verifies backend work
+
+- [docs] **Tests it writes on its own**: "When you add or change a rule in your app, Lovable adds a small test for it", and runs the tests covering the change "before Lovable reports the work as done". Rules = price, limit, permission, date, who can do what. Not for copy or styling.
+- [docs] On the new stack these tests also cover "backend logic that runs as part of the app". Edge functions are the exception: **edge tests** (Deno test runner) only when asked. Frontend tests: Vitest + React Testing Library + jsdom in `src/test`.
+- [docs] **Direct edge function calls**: the agent calls a function with chosen input and reads request + response; "If you are logged in, authenticated calls can use your current session." Only when requested. Documented loop: call to reproduce -> fix -> call again -> add an edge test.
+- [inferred] The docs describe direct calls only for edge functions; there is no documented equivalent tool for calling a TanStack server function directly. Browser testing covers it indirectly.
+- [docs] **Browser testing**: a remote browser on the preview (clicks, forms, screenshots, console + network). Can sign in to built-in-auth apps. Slow, so Lovable tries faster checks first.
+- [docs] **Logs**: the agent reads backend logs and analytics by default permission. AI calls: it reads the AI activity (and full bodies when AI app context is on).
+- [docs] **Security**: Quick scan (seconds; RLS / database settings, npm dependency audit, unauthenticated MCP server) runs every time the Publish dialog opens. Deep scan (whole-code review: access control, abusable endpoints, injection, leaked secrets, payment tampering, auth bypass, data exposure) runs on demand or scheduled (Enterprise). Critical findings open a "Review security findings" dialog on Publish; admins can block publishing. Scans are free; fixes use the 10 free fixes.
+- [docs] Database changes: "Lovable also refuses changes that could break your published app, such as dropping or renaming a table or column, and reaches the same result by adding" (expand-only by default; the permission "Execute backward incompatible database migrations" defaults to **Never allow**).
+
+Sources: /features/testing.md, /features/browser-testing.md, /features/agent-mode.md, /features/security.md, /features/security-view.md, /features/cloud.md, /features/database.md
+
+## 8. Lock-in and export
+
+- [docs] Stated stance: "you are never locked in"; "Lovable does not rely on proprietary data stores."
+- [docs] Code: **Git sync** (GitHub, GitLab, Bitbucket; two-way; one branch at a time; all plans) or **Download codebase** zip (paid). Migration files are in the code.
+- [docs] New stack elsewhere: `@lovable.dev/vite-tanstack-config` builds through **Nitro** presets (fixed inside Lovable). Vercel / Netlify / Cloudflare Pages auto-detected, or `NITRO_PRESET=node-server` -> `node .output/server/index.mjs`. Secrets must be re-set at the new host.
+- [docs] Frontend can move while the built-in backend stays; AI and connectors keep working then.
+- [docs] Built-in backend = Supabase underneath, but **no dashboard and no direct DB connection** to load your own dump. Data leaves as an **export**: PostgreSQL custom-format `.backup` (zstd; `pg_restore`, Postgres 16+), including the `auth` schema and **password hashes** (users keep passwords; sessions do not). Storage files download separately. Daily backups, about 14 days, self-serve restore.
+- [docs] Moving the backend: no one-step migration either way (built-in <-> own Supabase). Manual: restore export, re-create auth providers and redirect URLs, re-set secrets ("not part of the export"), deploy `supabase/functions/` with the CLI, recreate `cron.schedule` jobs.
+- [docs] What stays tied to Lovable: AI gateway calls and connector calls "keep running through Lovable until you replace them"; managed OAuth / token refresh only on the built-in backend; Lovable-created Paddle accounts cannot be reconnected after disconnect.
+- [docs] Own Supabase from day one: link a Supabase org; Lovable deploys edge functions and runs migrations there (each migration shown for approval); secrets live in Supabase.
+
+Sources: /tips-tricks/deployment-hosting-ownership.md, /tips-tricks/external-deployment-hosting.md, /features/database-backups.md, /integrations/github.md, /integrations/supabase.md, /features/payments.md
+
+## 9. Not found / open
+
+- [docs-gap] No published CPU, memory, or wall-time limit for server functions or edge functions.
+- [docs-gap] The exact auth middleware for server functions and the template file layout on the new stack.
+- [docs-gap] The AI gateway URL and headers are not in Lovable's docs (only in TanStack's adapter).
+- [docs-gap] Log retention period.
+- [docs-gap] Whether a server function can be called directly by the agent the way an edge function can.
+
+## 10. Notes for Hoola (inferred)
+
+- [inferred] Lovable's backend safety rests on four habits worth copying: keys only through a typed form (and a paste is caught and moved), every public route checks its caller (the named `authenticateCronRequest` pattern), expand-only migrations by default, and a quick scan wired into Publish.
+- [inferred] Lovable owns the payment provider account and the keys. That is the opposite of Hoola's "her keys, her tap" rule; the idea to copy is the test/live split mapped to preview/published and the readiness check before going live.
+- [inferred] The weak spot Lovable admits: runtime backend errors are not auto-caught into a "Try to fix" card the way build errors are; the user pastes logs.
