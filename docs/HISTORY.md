@@ -6263,3 +6263,15 @@ voice). A model the tables rank but the studio cannot run is never forced (logge
 
 Switches (all under `pipeline_on`, which stays OFF by default until P7): `pipeline_code`, `pipeline_background`,
 `pipeline_studios`, each default True. Tests `test_v0972_pipeline_p5.py` (17). NOT VERIFIED on her server.
+
+## v0.973.0 CLAUDE-STYLE CHAT — the web console's chat shaped like Claude's (owner: her Claude screenshot -> "SHOW DESIGN HERE FIRST" -> boards 6-9 on claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL -> "SHOW SIDE BAR TOP LIKE THIS" -> "GO BUILD")
+
+On top of v0.970 WEB CONSOLE APP DESIGN, behind the same switch (`console_app_design`, `html.appd`); off = the console as it was.
+
+- **Sidebar top**: "Hoola" in Literata 26, the Code pill (outlined, black circle with `<>`, shown when Hoola Code is on), the sidebar button on the right (its icon mirrored). The sidebar mark is gone, as in her picture.
+- **Rows** (`v2.js appNav`): New chat and Search are plain rows like Claude's "New" / "Search"; then Work (one violet count = cards waiting for her), Made by <avatar>, AI Employees, Tools, Computer, any owner page (Arena, AI Apps...), Customize (= the Account page). The Hoola row and the Voice call row left (New chat and the call button cover them). Sessions + Recents keep chatlist.js / projects.js; "Recent chats" reads "Recents"; the Hinglish empty line for Sessions is hidden. Theme switcher + export leave the sidebar (Customize has Appearance; the chat header has export).
+- **Home**: the Hoola mark beside "Good morning, <name>" (Claude's words: Good morning / afternoon / evening) in Literata 40, the rounded box (20px corners, the field on top, + left, mic + call right, violet Send only once she types), under it Session (`sessMenu`: start this chat in a session / No session / New session) and the model chip (moved there on the home, back beside the mic in a chat). Start pills + tagline are hidden (still drawn). A private-chat (ghost) button top right = `newIncognito`.
+- **+ menu** (`plusMenu`, menu.js gains clip / search / spark / grid icons): Add photos and files, Deep research, Use Hoola PC, Improve my prompt (when Prompting is on), Everything <avatar> can do. A chosen option shows as a chip in the box; the old chip row is hidden.
+- **Chat**: the header without its rule, title on the left; the box docked at the bottom with the disclaimer under it.
+- Tests: NEW `test_v0973_console_claude_chat.py` (shape pins, every new rule behind `html.appd`, a real-browser walk light + dark: rows, greeting beside the mark, placeholder, box shape, Session chip, ghost, Send hidden until typed, the + menu, the chat view); `test_v0970` pins moved to the new rows / words.
+- NOT VERIFIED: on her server; the chat view in the test is switched by hand (the test server streams no reply).

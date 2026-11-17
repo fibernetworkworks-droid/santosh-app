@@ -62,7 +62,7 @@ let HUMAN = false;
 // sidebar, the Hoola mark + a serif greeting + the app's start pills on the home, every studio on the Tools page
 let APPD = false;
 const MARK = () => (window.HoolaMark ? HoolaMark.svg({mono: true}) : '');
-const APP_WORD = h => h < 5 ? 'Good night' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 21 ? 'Evening' : 'Good night';
+const APP_WORD = h => h < 4 ? 'Good evening' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';   // v0.973 Claude's words
 // the studios that sit on the Tools page (the app's Tools tab), in the app's order: name + one line
 const APP_TOOLS = [['creative', 'Create', 'Pictures, videos, songs and voice-overs'], ['interactive', 'Interactive', 'Explainer videos from one line'],
   ['vocal', 'Vocal', 'Voices, readings and sound'], ['flow', 'Flow', 'Speak and it types for you'],
@@ -99,15 +99,55 @@ function appHome() {
   box.innerHTML = P.map(([i, t, v]) => v ? `<button type="button" class="pill" data-v="${v}"><i class="wdot" aria-hidden="true"></i>${esc(t)}</button>`
     : `<button type="button" class="pill" data-send="${esc(t)}">${svg(PILL_IC[i])}${esc(t)}</button>`).join('');
 }
-// v0.970 the parts of the shell the app draws differently: the Hoola mark beside the name and on the home, a "+" for files
+// v0.970 the parts of the shell the app draws differently: the Hoola mark on the home, a "+" for files
+// v0.973 CLAUDE-STYLE CHAT (owner: her Claude screenshot -> design canvas boards 6-9 -> "GO BUILD"): the sidebar top is
+// "Hoola" + the Code pill + the sidebar button; the home is the mark beside a serif greeting over a rounded typing box,
+// Session and the model under it, a private-chat button top right; "+" opens files, Deep research, Hoola PC, Improve
+// and every tool (Claude's + menu) instead of a row of chips
+const GHOST = '<path d="M6 20V11a6 6 0 0 1 12 0v9l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5Z"/><circle cx="10" cy="11" r=".8" fill="currentColor"/><circle cx="14" cy="11" r=".8" fill="currentColor"/>';
+function plusMenu(b) {
+  if (!window.HoolaMenu) { $('#fileIn').click(); return; }
+  const on = id => $('#' + id)?.getAttribute('aria-pressed') === 'true', imp = $('#impBtn');
+  const items = [{label: 'Add photos and files', icon: 'clip', run: () => $('#fileIn').click()}, {sep: true},
+    {label: 'Deep research', sub: 'Several good sources, with citations', icon: 'search', checked: on('qDeep'), run: () => $('#qDeep').click()},
+    {label: 'Use Hoola PC', sub: "Do it on Hoola's own cloud computer", icon: 'monitor', checked: on('qPc'), run: () => $('#qPc').click()}];
+  if (imp && !imp.hidden) items.push({label: 'Improve my prompt', sub: 'See what Hoola understood first', icon: 'spark', run: () => imp.click()});
+  items.push({sep: true}, {label: `Everything ${AV} can do`, icon: 'grid', run: () => go('kaam')});
+  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 280});
+}
+function sessName() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `${p.emoji || ''} ${p.name}`.trim() : ''; }
+function drawSess() { const b = $('#sessBtn'); if (b) b.querySelector('.sl').textContent = sessName() || 'Session'; }
+function sessMenu(b) {
+  if (!window.HoolaMenu) return;
+  const list = PJ?.list?.() || [], cur = CH?.find(CONV)?.project_id || '';
+  const start = async pid => {
+    try { const c = await api('POST', '/api/conversations?reuse=1' + (pid ? '&project_id=' + encodeURIComponent(pid) : ''));
+          go('chat'); await openConv(c.id, true); loadRecents(); drawSess(); msg.focus(); }
+    catch (e) { toast(e.message, true); }
+  };
+  const items = [{header: 'Start this chat in a session'}, {label: 'No session', checked: !cur, run: () => start('')},
+    ...list.map(p => ({label: `${p.emoji || ''} ${p.name}`.trim(), checked: p.id === cur, run: () => start(p.id)})),
+    {sep: true}, {label: 'New session', run: () => $('#pjNew')?.click()}];
+  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Choose a session', width: 260});
+}
 function appChrome() {
-  const mk = document.querySelector('.side .shd .mk');
-  if (mk && !mk.querySelector('.hmk')) mk.insertAdjacentHTML('afterbegin', `<span class="hmk" aria-hidden="true">${MARK()}</span>`);
   const hi = document.querySelector('.landing .hi');
   if (hi && !hi.querySelector('.hmark')) hi.insertAdjacentHTML('afterbegin', `<span class="hmark" aria-hidden="true">${MARK()}</span>`);
   const at = document.getElementById('attach');
-  if (at) { at.innerHTML = svg('<path d="M12 5v14M5 12h14"/>'); at.setAttribute('aria-label', 'Add photos, files and more'); }
+  if (at) {   // a fresh "+" (the old one only opened the file picker) that opens Claude's + menu
+    const n = at.cloneNode(false); n.innerHTML = svg('<path d="M12 5v14M5 12h14"/>'); n.setAttribute('aria-label', 'Add photos, files and more');
+    n.setAttribute('aria-haspopup', 'menu'); at.replaceWith(n); n.addEventListener('click', () => plusMenu(n));
+  }
+  const lh = document.querySelector('.landing .lhead');
+  if (lh && !$('#incogBtn')) lh.insertAdjacentHTML('beforeend', `<button type="button" class="ib incog" id="incogBtn" aria-label="Private chat" title="Private chat - nothing from it goes into ${esc(AV)}'s memory">${svg(GHOST)}</button>`);
+  const rl = document.querySelector('.side > .slabel'); if (rl) rl.textContent = 'Recents';
+  const sl = $('#slotLand');
+  if (sl && !$('#appUnder')) sl.insertAdjacentHTML('afterend', `<div class="appunder" id="appUnder"><button type="button" class="uchip" id="sessBtn" aria-haspopup="menu"><span class="sl">Session</span>${svg('<path d="M6 9l6 6 6-6"/>')}</button><span class="ugap"></span></div>`);
 }
+document.addEventListener('click', e => {
+  if (e.target.closest?.('#incogBtn')) newIncognito();
+  const sb = e.target.closest?.('#sessBtn'); if (sb) sessMenu(sb);
+});
 document.addEventListener('click', e => {   // v0.970 a start pill goes straight to Hoola, like the app
   const b = e.target.closest('[data-send]'); if (!b) return;
   go('chat'); msg.value = b.dataset.send; msg.dispatchEvent(new Event('input')); composer.requestSubmit();
@@ -226,6 +266,10 @@ IC.call = '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2
 let JOBS = [];          // v0.222 her live jobs (working / waiting) for the home row and the Today badge
 function navBadge(k) {
   if (k !== 'aaj') return '';
+  if (APPD) {   // v0.973 one violet count of what waits for her, else a quiet "1 working"
+    const r = JOBS.filter(j => j.state === 'working').length;
+    return QUEUE.length ? `<span class="ct txt" title="Waiting for your OK">${QUEUE.length}</span>` : r ? `<span class="lv txt" title="${r} running now"><i></i>${r} working</span>` : '';
+  }
   if (HUMAN) {   // v0.743 words, not bare numbers
     const r = JOBS.filter(j => j.state === 'working').length;
     return (QUEUE.length ? `<span class="ct hx txt" title="Waiting for your approval">${QUEUE.length} need${QUEUE.length === 1 ? 's' : ''} you</span>`
@@ -235,13 +279,14 @@ function navBadge(k) {
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
 const IC_APP = {aaj: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
-  bana: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>'};
-function appNav() {   // v0.970 the app's four tabs first, then her work
-  const own = ['chat', 'hire', 'kaam', 'computer', 'aaj', 'bana', 'baat', ...APP_TOOLS.map(t => t[0])];
-  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row under Your work
+  bana: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>',
+  main: '<path d="M4 9.5h16v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M8.5 9.5V7a3.5 3.5 0 0 1 7 0v2.5"/>'};
+function appNav() {   // v0.973 Claude's rows with Hoola's places: New chat + Search sit above, then these
+  const own = ['chat', 'hire', 'kaam', 'computer', 'aaj', 'bana', 'baat', 'main', ...APP_TOOLS.map(t => t[0])];
+  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before Customize
   const more = NAV.filter(([k]) => !own.includes(k));
-  return [['chat', 'Hoola'], ['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ['-', 'Your work'],
-    ['aaj', 'Work'], ['bana', `Made by ${AV}`], ['baat', 'Voice call'], ...more];
+  return [['aaj', 'Work'], ['bana', `Made by ${AV}`], ['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'],
+    ...more, ['main', 'Customize']];
 }
 function drawNav() {
   const cp = document.querySelector('.side .codepill'); if (cp) cp.hidden = !(APPD && NAV.some(([k]) => k === 'code'));
@@ -423,6 +468,7 @@ async function enter() {
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
   $('#greet').innerHTML = esc(APPD ? APP_WORD(h) : HUMAN ? HOUR_WORD(h) : h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
   humanTagline();
+  if (APPD) landing(!$('#landing').hidden);   // v0.973 her avatar's name in the box, the model under it
   loadModels();                                  // v0.740 the model dropdown in the composer
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
@@ -609,12 +655,17 @@ $('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scroll
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
-  msg.placeholder = HUMAN ? (on ? `What should ${AV} do? For example: “Reply to my supplier and attach the invoice”` : `Reply to ${AV}…`)
+  if (APPD) {   // v0.973 the model sits under the box on the home, beside the mic in a chat
+    const mb = $('#modelBtn'); if (mb) { if (on) $('#appUnder')?.appendChild(mb); else composer.querySelector('.row')?.insertBefore(mb, $('#micBtn')); }
+    drawSess();
+  }
+  msg.placeholder = APPD ? (on ? `How can ${AV} help you today?` : `Reply to ${AV}…`) : HUMAN ? (on ? `What should ${AV} do? For example: “Reply to my supplier and attach the invoice”` : `Reply to ${AV}…`)
     : on ? 'Ask anything, attach a file, or describe what you want to create' : `Reply to ${AV}…  (/ for commands)`;
   drawHead();
 }
 /* v0.222 R3: the conversation header - title, its session, export and the chat's own menu */
 function drawHead() {
+  if (APPD) drawSess();   // v0.973 the Session chip under the home box follows the chat
   const on = !$('#thread').hidden; $('#chead').hidden = !on; if (!on) return;
   const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id);
   $('#ctitle').textContent = c?.title || 'New chat';

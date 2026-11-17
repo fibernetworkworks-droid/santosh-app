@@ -34,5 +34,5 @@ def test_design_rules_and_version():
     btn = SHELL[i:]
     assert "Color(0x" not in btn and "blur" not in btn.lower() and "w800" not in btn and "w900" not in btn
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.972.0"' in main
-    assert "version: 0.972.0+971" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.973.0"' in main
+    assert "version: 0.973.0+972" in (ROOT / "pubspec.yaml").read_text()

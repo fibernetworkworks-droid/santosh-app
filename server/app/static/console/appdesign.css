@@ -212,3 +212,104 @@ html.appd #hire .ae-bar,html.appd #hire .ae-meter{background:var(--sunk)}
 html.appd #hire .ae-bar i,html.appd #hire .ae-meter i{background:var(--pill)}
 html.appd #hire .ae-hire,html.appd #hire .btn.go{background:var(--pill);color:var(--on-pill);border:0;border-radius:999px}
 html.appd #hire .ae-seekh-go{background:var(--pill);color:var(--on-pill);border:0;border-radius:999px;box-shadow:none}
+
+/* ==========================================================================================================
+   v0.973 CLAUDE-STYLE CHAT (owner: her Claude screenshot -> "SHOW DESIGN HERE FIRST" -> design canvas
+   claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 6-9 -> "SHOW SIDE BAR TOP LIKE THIS" -> "GO BUILD").
+   Claude's chat on Hoola's colours: the sidebar top = "Hoola" + the Code pill + the sidebar button; New chat and
+   Search are plain rows; Work (one violet count) / Made by / AI Employees / Tools / Computer / Customize; Pinned and
+   Recents; the account at the bottom. The home = the mark beside a serif greeting over a rounded typing box (the
+   field on top, + left, mic + call right), Session and the model under it, a private-chat button top right.
+   ========================================================================================================== */
+/* sidebar top: Hoola · Code pill · sidebar button */
+html.appd #app .side .shd{padding:10px 4px 12px 10px;gap:8px;justify-content:flex-start}
+html.appd #app .side .shd .mk{flex:1;min-width:0;justify-content:flex-start}
+html.appd #app .side .shd .mk .hmk{display:none}
+html.appd #app .side .shd .mk span:not(.hmk){font-size:26px}
+html.appd #app .side .codepill{margin-left:0;background:var(--surface);gap:7px;font:500 14px var(--fb);padding:0 12px 0 4px}
+html.appd #app .side .codepill:hover{background:var(--surface);border-color:var(--dim)}
+html.appd #app .side #collapse{width:36px;height:36px;border-radius:10px;color:var(--mut);background:transparent;flex:none}
+html.appd #app .side #collapse:hover{background:var(--nav-on)}
+html.appd #app .side #collapse svg{width:20px;height:20px;stroke-width:1.7;transform:scaleX(-1)}
+html.appd #app.collapsed .side .codepill{display:none}
+/* New chat + Search: plain rows like Claude's "New" and "Search" */
+html.appd #app .side .newc{height:38px;margin:0 0 2px;padding:0 10px;border-radius:10px;background:transparent;color:var(--ink);
+  justify-content:flex-start;gap:12px;font:450 15px var(--fb)}
+html.appd #app .side .newc .txt{color:var(--ink)}
+html.appd #app .side .newc svg{color:var(--ink);stroke-width:2}
+html.appd #app .side .newc:hover{background:var(--nav-on);filter:none}
+html.appd #app .side .sn,html.appd #app .side .srch{height:38px;padding:0 10px;border-radius:10px;font:450 15px var(--fb)}
+html.appd #app .side .srch{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:var(--ink);cursor:pointer}
+html.appd #app .side .srch:hover{background:var(--nav-on)}
+html.appd #app .side .srch svg{width:20px;height:20px;stroke-width:1.7;color:var(--mut)}
+html.appd #app .side .srch kbd{display:none}
+html.appd #app .side .sn svg{color:var(--ink)}
+html.appd #app .side .sn .ct{min-width:20px;height:20px;padding:0 6px;background:var(--pri);color:var(--on-acc);font:600 12px var(--fb)}
+html.appd #app .side .sn .lv{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font:400 12px var(--fb);color:var(--dim)}
+html.appd #app .side .sn .lv i{width:6px;height:6px;border-radius:9px;background:var(--pri)}
+/* Sessions / Pinned / Recents labels, Claude's small grey headers */
+html.appd #app .side .slabel,html.appd #app .side .rg,html.appd #app .side .pjl{font:500 13px var(--fb);color:var(--dim);padding:16px 10px 6px;
+  text-transform:none;letter-spacing:0}
+html.appd #app .side .pjempty{display:none}
+html.appd #app .side .rc{height:36px;padding:0 10px;border-radius:10px;font:400 15px var(--fb)}
+/* the bottom: the account only (theme + export live in Customize and the chat header) */
+html.appd #app .side .themeseg,html.appd #app .side #exportBtn{display:none !important}
+html.appd #app .side .user{padding:12px 6px}
+html.appd #app .side .user .uini{width:30px;height:30px;font:600 13px var(--fb)}
+html.appd #app .side .user b{font:500 15px var(--fb);color:var(--ink)}
+html.appd #app .side .user #uhandle{font:400 13px var(--fb);color:var(--dim)}
+
+/* home: the mark beside the serif greeting, then the box, then Session · model */
+html.appd #app .landing{justify-content:center;gap:0;padding-bottom:12vh}
+html.appd #app .landing .hi{flex-direction:row;gap:16px;margin-bottom:28px}
+html.appd #app .landing .hi .hmark,html.appd #app .landing .hi .hmark svg{width:40px;height:40px}
+html.appd #app .landing .hi h1{font-size:40px;letter-spacing:-.6px;line-height:1.15;text-align:left}
+html.appd #app .landing .tagline,html.appd #app .landing .pills{display:none}
+html.appd #app .landing .slot{width:min(720px,100%)}
+html.appd #app .landing .jobs{margin-top:28px;width:min(720px,100%)}
+html.appd #app .lhead{top:12px;right:16px;align-items:center}
+html.appd #app .lhead .incog{width:36px;height:36px;border-radius:10px;border:0;background:transparent;color:var(--mut);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+html.appd #app .lhead .incog:hover{background:var(--nav-on);color:var(--ink)}
+html.appd #app .lhead .incog svg{width:20px;height:20px;stroke-width:1.7}
+html.appd .appunder{display:flex;align-items:center;gap:4px;width:min(720px,100%);padding:8px 6px 0;box-sizing:border-box}
+html.appd .appunder .ugap{flex:1}
+html.appd .appunder .uchip,html.appd .appunder .modelb{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:0;
+  border-radius:8px;background:transparent;color:var(--ink);font:500 15px var(--fb);cursor:pointer;box-shadow:none}
+html.appd .appunder .uchip:hover,html.appd .appunder .modelb:hover{background:var(--nav-on)}
+html.appd .appunder svg{width:14px;height:14px;stroke-width:2;color:var(--dim)}
+html:not(.appd) .appunder{display:none}
+
+/* the typing box: a rounded rectangle, the field on top, + left, mic + call right (Send appears once she types) */
+html.appd #app #composer,html.appd #app .landing .box,html.appd #app .dock .box{border-radius:20px;border:1px solid var(--hair2);
+  background:var(--surface);box-shadow:0 1px 2px rgb(0 0 0 / .04),0 10px 30px -14px rgb(0 0 0 / .16);padding:16px 12px 10px 18px;
+  backdrop-filter:none;-webkit-backdrop-filter:none}
+html.appd #app #composer textarea{font:400 16px/1.5 var(--fb);padding:0;min-height:48px}
+html.appd #app .dock #composer textarea{min-height:24px}
+html.appd #app #composer .row{gap:4px;padding:0;margin:12px -4px 0 -10px;flex-wrap:nowrap}
+html.appd #app #composer #attach{margin-right:auto;color:var(--ink)}
+html.appd #app #composer #toolsBtn,html.appd #app #composer .who,html.appd #app #composer #impBtn{display:none !important}
+html.appd #app #composer .qchips{margin-right:auto}
+html.appd #app #composer .qc[aria-pressed="false"]{display:none}
+html.appd #app #composer .qc[aria-pressed="true"]{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;font:500 13px var(--fb)}
+html.appd #app #composer .ib,html.appd #app #composer .callb{width:36px;height:36px;min-width:36px;border-radius:10px;color:var(--mut);background:transparent}
+html.appd #app #composer .ib:hover,html.appd #app #composer .callb:hover{background:var(--sunk);color:var(--ink)}
+html.appd #app #composer .ib svg,html.appd #app #composer .callb svg{width:20px;height:20px}
+html.appd #app #composer .callb{color:var(--ink)}
+html.appd #app #composer .send{width:36px;height:36px;min-width:36px;border-radius:10px;background:var(--pri);color:var(--on-acc)}
+html.appd #app #composer .send:disabled{display:none}
+html.appd #app #composer .modelb{height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:500 14px var(--fb)}
+html.appd #app #composer .modelb:hover{background:var(--sunk)}
+html.appd #app .dock .disclaim{text-align:center;font:400 12px var(--fb);color:var(--dim);margin-top:8px}
+
+/* the chat: Claude's header (the title on the left, no rule under it) */
+html.appd #app .chead{border-bottom:0;background:var(--bg);justify-content:flex-start}
+html.appd #app .chead h1{font:500 15px var(--fb);text-align:left}
+/* spacing: Claude's rows sit 2px apart, the header close to the top */
+html.appd #app .side{gap:2px;padding:6px 8px 0}
+html.appd #app .side #snav{display:flex;flex-direction:column;gap:2px;margin:0}
+html.appd #app .side .newc,html.appd #app .side .srch{margin:0;width:100%}
+html.appd #app .side .shd{padding:6px 2px 10px 10px}
+html.appd #app .side .console-controls{margin-top:auto;padding:6px 2px}
+html.appd #app #composer::before,html.appd #app #composer::after{display:none}
+html.appd #app #composer:focus-within{border-color:var(--dim);box-shadow:0 1px 2px rgb(0 0 0 / .04),0 10px 30px -14px rgb(0 0 0 / .16)}

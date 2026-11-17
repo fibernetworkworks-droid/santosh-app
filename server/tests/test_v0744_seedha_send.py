@@ -27,6 +27,7 @@ def test_send_inside_the_box_and_no_avatar_face(arena_server):  # noqa: F811
         pg.route("**/api/model/choices", lambda r: r.fulfill(json=CH))
         pg.goto(base + "/console/")
         pg.wait_for_selector("#modelBtn:not([hidden])")
+        pg.fill("#msg", "hi")   # v0.973 Send shows once she types, like Claude
         pg.wait_for_timeout(300)
         m = pg.evaluate("""()=>{const c=document.getElementById('composer').getBoundingClientRect(),
             s=document.getElementById('sendBtn').getBoundingClientRect(),

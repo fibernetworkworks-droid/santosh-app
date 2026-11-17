@@ -51,9 +51,10 @@ def test_scoped_behind_the_switch_and_loaded_after_v2():
 
 
 def test_sidebar_home_and_tools_follow_the_app():
-    assert "['chat', 'Hoola'], ['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer']" in JS
+    # v0.973 CLAUDE-STYLE CHAT reshaped the sidebar: Claude's rows with Hoola's places
+    assert "['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer']" in JS
     assert "APPD = !!CONFIG.app_design" in JS and "classList.toggle('appd', APPD)" in JS
-    assert "h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 21 ? 'Evening'" in JS
+    assert "h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'" in JS
     assert "Make this month's GST summary" in JS and "data-send" in JS
     assert "class=\"apptools\"" in JS and "['code', 'Hoola Code'," in JS
     assert 'class="codepill" data-v="code"' in HTML
@@ -82,13 +83,13 @@ def test_the_console_in_a_real_browser(arena_server):  # noqa: F811
             bg:g('body').backgroundColor, greet:document.getElementById('greet').textContent,
             gfont:g('#greet').fontFamily, pills:[...document.querySelectorAll('.landing .pill')].map(p=>p.textContent.trim()),
             newc:g('.side .newc').borderRadius}}""")
-        assert m["rows"] == ["Hoola", "AI Employees", "Tools", "Computer"], m
-        assert m["mark"] and m["side"], m
+        assert m["rows"] == ["Work", "Made by Santosh", "AI Employees", "Tools"], m   # v0.973 Claude's rows
+        assert m["mark"], m
         assert m["bg"] == ("rgb(250, 249, 246)" if scheme == "light" else "rgb(20, 20, 19)"), m
-        assert re.match(r"(Morning|Afternoon|Evening|Good night)", m["greet"]), m
+        assert re.match(r"Good (morning|afternoon|evening)", m["greet"]), m
         assert "Literata" in m["gfont"], m
-        assert "Make this month's GST summary" in m["pills"], m
-        assert m["newc"] == "999px", m
+        assert "Make this month's GST summary" in m["pills"], m   # still drawn; v0.973 hides them like Claude
+        assert m["newc"] == "10px", m   # v0.973 New chat is a plain row
         if shots:
             pg.screenshot(path=f"{shots}/home-{scheme}.png")
         pg.click("#snav .sn[data-v=kaam]")
@@ -107,4 +108,4 @@ def test_the_console_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.972.0")
+    assert APP_VERSION.startswith("0.973.0")
