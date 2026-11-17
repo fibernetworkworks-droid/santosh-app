@@ -46,6 +46,7 @@ def box(env, tmp_path, monkeypatch):
     (store.root() / "current.json").write_text(json.dumps(_doc()))
     T._TABLES.update({"mtime": None, "doc": None})
     T._OUT.clear()
+    T._DEAD.clear()
     B._STICKY.clear()
     from app.agent import llm, providers
     monkeypatch.setattr(llm, "cheap_brain", lambda: "glm")
@@ -57,6 +58,8 @@ def box(env, tmp_path, monkeypatch):
     T.APPLIED.set(False)        # a test that simulates a crash never closes its turn: nothing leaks into the next one
     T.CURRENT.set(None)
     R.HAND.set(None)
+    R.TURN_SWAP.set(None)
+    T._DEAD.clear()
     get_settings.cache_clear()
 
 

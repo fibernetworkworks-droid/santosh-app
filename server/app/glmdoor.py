@@ -215,12 +215,14 @@ def _count(data: dict, model: str) -> None:
 
 async def acreate(kw: dict) -> Any:
     from .agent import llm
+    owned = llm.box_owned()
     try:
         msg = await _acreate(kw)
-    except Exception:
-        llm.brain_result(brain(), False)
+    except Exception as e:
+        llm._box_failed(e) if owned else llm.brain_result(brain(), False)
         raise
-    llm.brain_result(brain(), True)
+    if not owned:
+        llm.brain_result(brain(), True)
     return msg
 
 
@@ -242,12 +244,14 @@ async def _acreate(kw: dict) -> Any:
 
 def create_sync(kw: dict) -> Any:
     from .agent import llm
+    owned = llm.box_owned()
     try:
         msg = _create_sync(kw)
-    except Exception:
-        llm.brain_result(brain(), False)
+    except Exception as e:
+        llm._box_failed(e) if owned else llm.brain_result(brain(), False)
         raise
-    llm.brain_result(brain(), True)
+    if not owned:
+        llm.brain_result(brain(), True)
     return msg
 
 

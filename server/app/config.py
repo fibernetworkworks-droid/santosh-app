@@ -611,6 +611,7 @@ class Settings(BaseSettings):
     pipeline_tap_wait_h: int = 24            # v0.967 P3: a branch waiting for her tap ends after this
     pipeline_fix_round: bool = True          # v0.968 P4: a failed check gets ONE fix round one level up (5.3)
     pipeline_calls: bool = False             # v0.968 P4: live-call brain asks through the Box (head start) - off
+    pipeline_dead_h: float = 24.0            # v0.970 a banned / gone model stays out of the Box's choices this long
     pipeline_company_cap: int = 8            # v0.968 P4: model calls at once per company (6.8)
     pipeline_user_cap: int = 6               # v0.968 P4: model calls at once per user (6.8)
     pipeline_on: bool = False                # v0.961 P1: route messages through the Box (OFF until P7; off = today's routing)

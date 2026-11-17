@@ -116,18 +116,42 @@ def pause_refuses(brain: str) -> bool:
 BOX_OWNS: contextvars.ContextVar[bool] = contextvars.ContextVar("hoola_box_owns", default=False)
 
 
+def box_owned() -> bool:
+    """v0.970 P4 FIX: a call that runs on a model the Box chose belongs to that MODEL, not to the whole brain - the
+    Box part itself (BOX_OWNS) AND every other call of a Box turn (the after-turn checks, facts, titles, ...). Her live
+    v0.969 test: a banned ULTRA model was handed over in 2.5 s, but the turn's other calls still asked the banned model,
+    failed twice and paused the whole OpenRouter brain for 10 minutes - her next two messages left the Box."""
+    if BOX_OWNS.get():
+        return True
+    try:
+        from ..pipeline import turnbox as _tb
+        return bool(_tb.APPLIED.get()) and (MODEL_NOW.get() or "").startswith("openrouter:")
+    except Exception:
+        return False
+
+
+def _box_failed(e: BaseException) -> None:
+    try:
+        from ..pipeline import runner as _rn
+        _rn.model_failed(model_in_force(), str(e))
+    except Exception:
+        pass
+
+
 async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
                         max_tokens: int) -> tuple[list[dict], str, dict]:
     if BOX_OWNS.get():
         return await _openai_create(brain, system, tools, messages, max_tokens)
-    if pause_refuses(brain):
+    owned = box_owned()
+    if not owned and pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
         out = await _openai_create(brain, system, tools, messages, max_tokens)
-    except Exception:
-        brain_result(brain, False)
+    except Exception as e:
+        _box_failed(e) if owned else brain_result(brain, False)
         raise
-    brain_result(brain, True)
+    if not owned:
+        brain_result(brain, True)
     return out
 
 
@@ -135,14 +159,16 @@ async def openai_stream(brain: str, system: str, tools: list[dict], messages: li
                         on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
     if BOX_OWNS.get():
         return await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
-    if pause_refuses(brain):
+    owned = box_owned()
+    if not owned and pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
         out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
-    except Exception:
-        brain_result(brain, False)
+    except Exception as e:
+        _box_failed(e) if owned else brain_result(brain, False)
         raise
-    brain_result(brain, True)
+    if not owned:
+        brain_result(brain, True)
     return out
 
 
@@ -176,9 +202,21 @@ def glm_ready() -> bool:
         return bool(get_settings().glm_api_key)
 
 
+def _live(model: str) -> str:
+    """v0.970 a Box model handed over this message (refused / banned / failed) is replaced by the model that took over,
+    for every later call of the turn - never asked again."""
+    if not model.startswith("openrouter:"):
+        return model
+    try:
+        from ..pipeline import runner as _rn
+        return _rn.live(model)
+    except Exception:
+        return model
+
+
 def model_in_force() -> str:
     """The model this call runs on: her dropdown pick, else GLM_MODEL from .env."""
-    return MODEL_NOW.get() or (get_settings().glm_model or "")
+    return _live(MODEL_NOW.get()) or (get_settings().glm_model or "")
 
 
 def omniroute_ready() -> bool:
@@ -666,7 +704,7 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         else:
             extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
         label = "GLM"
-    return (st.glm_base_url.rstrip("/") + "/chat/completions", MODEL_NOW.get() or st.glm_model, label,
+    return (st.glm_base_url.rstrip("/") + "/chat/completions", _live(MODEL_NOW.get()) or st.glm_model, label,
             {"Authorization": f"Bearer {st.glm_api_key}"}, extra)
 
 

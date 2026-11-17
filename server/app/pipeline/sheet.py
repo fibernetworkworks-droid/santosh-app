@@ -183,7 +183,7 @@ def main() -> int:
             print(f"  {len(sh['parts'])} parts, plan by {sh.get('plan_by', 'code')}"
                   + (f" ({sh.get('planner')}, {sh.get('plan_s')} s)" if sh.get("planner") else ""))
         for p in sh["parts"]:
-            m = p.get("ran_on") or (p.get("model") or {}).get("id") or "-"
+            m = (p.get("model") or {}).get("id") or p.get("ran_on") or "-"
             bk = ", ".join(b["id"] for b in p.get("backups") or []) or "-"
             print(f"  part {p['n']}: {p.get('kind')} ({p.get('language')}) {p.get('level')} -> {m}  [backups {bk}]  "
                   f"{p['state']}" + (f"  after {p['after']}" if p.get("after") else "")
@@ -191,7 +191,13 @@ def main() -> int:
                   + (f"  ({p['ask'][:60]!r})" if sh.get("multi") else ""))
             for nd in (p.get("out") or {}).get("not_done") or []:
                 print(f"    not done: {nd[:140]}")
-            print("    " + ("ran on this model" if p.get("applied") else f"not through the Box: {p.get('not_applied')}"))
+            for h in p.get("handover") or []:
+                print(f"    hand-over ({h.get('event')}): {h.get('from')} -> {h.get('to')}  {str(h.get('why') or '')[:110]}")
+            if p.get("applied"):
+                print("    " + (f"ran on {p['ran_on']}" if p.get("ran_on") and p["ran_on"] != (p.get("model") or {}).get("id")
+                                 else "ran on this model"))
+            else:
+                print(f"    not through the Box: {p.get('not_applied')}")
         if chk:
             print("  check: " + ("ok" if chk.get("ok") else "; ".join(chk.get("problems") or []))
                   + (f" (checked {', '.join(chk.get('checked') or [])})" if chk.get("checked") else " (no tools ran)"))

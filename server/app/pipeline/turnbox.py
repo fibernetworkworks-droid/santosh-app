@@ -79,13 +79,33 @@ def note(model_id: str, ok: bool, now: float | None = None) -> None:
         _OUT[model_id] = rows[-50:]
 
 
+_DEAD: dict[str, tuple[float, str]] = {}   # model id -> (until, why): banned / gone for her account (this process)
+
+
+def mark_dead(model_id: str, why: str, now: float | None = None) -> None:
+    """v0.970 a model OpenRouter will not run for her (banned / no endpoints / gone) is left out of every choice for
+    `pipeline_dead_h` hours (default 24) - the chooser sees it as paused, so the next message starts on a backup."""
+    t = now if now is not None else time.time()
+    hours = float(getattr(get_settings(), "pipeline_dead_h", 24) or 24)
+    with _OLOCK:
+        fresh = model_id not in _DEAD or _DEAD[model_id][0] < t
+        _DEAD[model_id] = (t + hours * 3600, (why or "")[:200])
+    if fresh:
+        log.warning("pipeline box: %s is off for %.0f h (%s)", model_id, hours, (why or "")[:160])
+
+
 def health(now: float | None = None) -> dict[str, dict]:
     t = now if now is not None else time.time()
     out: dict[str, dict] = {}
     with _OLOCK:
+        for mid, (until, why) in list(_DEAD.items()):
+            if until > t:
+                out[mid] = {"paused": True, "dead": why}
         for mid, rows in _OUT.items():
             recent = [r for r in rows if t - r[0] <= 3600]
             if not recent:
+                continue
+            if mid in out:
                 continue
             fails = [r for r in recent if not r[1] and t - r[0] <= PAUSE_WINDOW_S]
             h: dict = {"paused": len(fails) >= PAUSE_FAILS}
@@ -227,6 +247,8 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
     b = {"sheet": sh, "tok": tok, "sink": sink, "sink_tok": sink_tok, "app_tok": app_tok, "t0": t0,
          "text": words, "doc": doc, "hand_tok": hand_tok, "conv": conv, "tenant": tenant}
     b["cur_tok"] = CURRENT.set(b)
+    from . import runner as R
+    b["swap_tok"] = R.TURN_SWAP.set({})
     return b
 
 
@@ -276,6 +298,8 @@ def _begin_multi(conv: str, tenant: str, words: str, doc: dict, pin: str, t0: fl
     STATS["turns"] += 1
     STATS["multi"] = STATS.get("multi", 0) + 1
     b["cur_tok"] = CURRENT.set(b)
+    from . import runner as R
+    b["swap_tok"] = R.TURN_SWAP.set({})
     log.warning("pipeline box %s: %d parts (%s plan%s) %.1f ms", conv, len(sh["parts"]), sh.get("plan_by"),
                 ", restart keeps the done ones" if reused else "", sh["box_ms"])
     return b
@@ -374,6 +398,13 @@ def end(b: dict | None, answer: str, failed: bool = False) -> dict | None:
             APPLIED.reset(b["app_tok"])
         except Exception:   # noqa: BLE001
             APPLIED.set(False)
+        try:
+            from . import runner as R
+            if b.get("swap_tok") is not None:
+                R.TURN_SWAP.reset(b["swap_tok"])
+        except Exception:   # noqa: BLE001
+            from . import runner as R
+            R.TURN_SWAP.set(None)
 
 
 # ------------------------------------------------------------------ P4: the fix round for the reply (plan 5.3 + 6.10)

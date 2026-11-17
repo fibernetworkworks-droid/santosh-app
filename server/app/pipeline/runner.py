@@ -30,6 +30,60 @@ STATS = {"calls": 0, "switches": 0, "races": 0, "race_backup_won": 0, "late": 0,
 TOO_LONG = re.compile(r"(?i)context[_ ]length|maximum context|too many tokens|prompt is too long|context window|"
                       r"reduce the length|exceeds? the (?:max|context)")
 REFUSED = re.compile(r"(?i)content[_ ]filter|refus|safety|policy violation")
+# v0.970 her live v0.969 test: OpenRouter answered 403 "Model google/gemini-4-carbon-... is banned" for her account -
+# a model that cannot answer at all (banned / gone / not offered to her) is off for a day, not tried every message
+HARD = re.compile(r"(?i)\bis banned\b|\bbanned\b|no endpoints found|not a valid model|model[^.]{0,60}(?:not found|does not "
+                  r"exist|no longer available)|no allowed providers|not available in your region")
+KEY_LEVEL = re.compile(r"(?i)key limit|insufficient credits|credit|quota|rate.?limit|\b429\b|unauthor|\b401\b")
+# failed model id -> the model that took over, for THIS message only (turnbox.begin opens it, end drops it; the turn's
+# tasks share the one dict). A Box part's own attempt always runs on exactly the model it names (EXACT).
+TURN_SWAP: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_box_swap", default=None)
+EXACT: contextvars.ContextVar[bool] = contextvars.ContextVar("hoola_box_exact", default=False)
+
+
+def _swapped(old: str, new: str) -> None:
+    d = TURN_SWAP.get()
+    if d is not None and old and new and old != new:
+        d[old] = new
+
+
+def live(model: str) -> str:
+    """'openrouter:<id>' with a model handed over in this message replaced by the one that took over (followed
+    again if that one was handed over too), so the rest of the turn never asks the failed model again."""
+    if not model.startswith("openrouter:") or EXACT.get():
+        return model
+    d = TURN_SWAP.get()
+    if not d:
+        return model
+    mid = model.split(":", 1)[1]
+    for _ in range(3):
+        if mid not in d:
+            break
+        mid = d[mid]
+    return "openrouter:" + mid
+
+
+def hard(why: str) -> bool:
+    return bool(HARD.search(why or "")) and not KEY_LEVEL.search(why or "")
+
+
+def model_failed(model: str, why: str) -> None:
+    """A call of a Box turn outside a Box part failed (a check, a title, the facts): the failure goes to that model's
+    outage record; a banned / gone model is off for a day. The whole OpenRouter brain is never paused for it."""
+    mid = model.split(":", 1)[1] if model.startswith("openrouter:") else model
+    if not mid:
+        return
+    _note(mid, False)
+    if hard(why):
+        _dead(mid, why)
+
+
+def _dead(mid: str, why: str) -> None:
+    try:
+        from . import turnbox as TB
+        TB.mark_dead(mid, why)
+    except Exception:   # noqa: BLE001
+        log.debug("mark dead failed", exc_info=True)
 
 
 class Late(Exception):
@@ -109,6 +163,7 @@ def _switch(hand: dict, event: str, why: str) -> bool:
     old = hand["current"].get("id")
     hand["current"] = dict(m)
     hand["used"].append(m.get("id"))
+    _swapped(old, m.get("id"))
     STATS["switches"] += 1
     if mv["action"] == "bigger":
         STATS["bigger"] += 1
@@ -150,10 +205,12 @@ async def _attempt(hand: dict, make: Make, first: Callable[[], None]) -> tuple:
     m = hand["current"]
     tok = llm.MODEL_NOW.set("openrouter:" + str(m.get("id")))
     own = llm.BOX_OWNS.set(True)
+    ex = EXACT.set(True)
     try:
         async with LM.slot(hand.get("tenant") or "", m.get("id")):
             return await make(first)
     finally:
+        EXACT.reset(ex)
         llm.BOX_OWNS.reset(own)
         llm.MODEL_NOW.reset(tok)
 
@@ -186,6 +243,8 @@ async def call(hand: dict, make: Make, *, streaming: bool = False, reset: Callab
         except Exception as e:   # noqa: BLE001 - the rules decide: backup, bigger window, or give up
             STATS["errors"] += 1
             _note(model_id, False)
+            if hard(str(e)):
+                _dead(model_id, str(e))
             if reset is not None and started.is_set():
                 reset()          # words of the failed try already on her screen go away before the backup writes
             if not _switch(hand, _event_of(e), str(e)):
@@ -246,6 +305,7 @@ async def _race(hand: dict, make: Make, first_task: asyncio.Future, limit: float
                 if t is second:
                     STATS["race_backup_won"] += 1
                     hand["current"] = dict(nxt)
+                    _swapped(first_model, nxt.get("id"))
                     _record(hand, {"event": "late", "from": first_model, "to": nxt.get("id"),
                                    "why": f"call: backup started at {limit:g} s and answered first",
                                    "at": round(time.time(), 1)})

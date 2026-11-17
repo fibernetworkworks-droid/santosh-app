@@ -6197,3 +6197,27 @@ console, built as one layer that can be switched off.
 - Tests `test_v0970_console_app_design.py` (5): tokens read from hoola_theme.dart itself, everything scoped + loaded after
   v2.css, sidebar / home / Tools code, a real-Chromium walk light + dark (four tabs, marks, page colour, Literata greeting,
   pills, black New chat, Tools grid, AI Employees, no page errors). NOT VERIFIED on her server.
+
+## v0.971.0 HOOLA PIPELINE P4 FIX (owner: "CHECK" on her v0.969 test run; built as 0.970.0 - their WEB CONSOLE APP DESIGN took 0.970.0, both kept)
+
+Her pipeline_sheets after the P4 test prompts (17 Nov 03:09-03:14 UTC): plain, GST and better-answer messages went
+through the Box; then the margin and blog messages said "not through the Box: this server's chat does not run on its
+OpenRouter brain". The server log showed why: "better answer please" moved MAX -> ULTRA and picked
+google/gemini-4-carbon; OpenRouter answered 403 "Model google/gemini-4-carbon-20261110 is banned"; the runner handed
+over to anthropic/claude-opus-4.6 in 2.5 s and the reply came (the first live P4 hand-over). But the turn-wide model
+(llm.MODEL_NOW set by turnbox.begin) still named the banned model, so the turn's other calls (after-turn checks,
+facts, titles through the SDK door) asked it, failed twice and tripped the glm brain breaker: the whole OpenRouter
+brain paused for 10 minutes, llm.cheap_brain() went None and the Box stood aside.
+- `runner.TURN_SWAP` (one dict per message, opened in turnbox.begin, dropped in end): a hand-over records failed ->
+  took over; `llm._live` makes every later call of that message (model_in_force, _target) ask the model that took
+  over; a Box part's own attempt runs on exactly its model (`runner.EXACT`).
+- `llm.box_owned()`: every call of a Box turn on a Box model belongs to that MODEL - openai_create / openai_stream and
+  glmdoor acreate / create_sync never count it on the brain breaker; it goes to the Box outage record
+  (`runner.model_failed`).
+- A banned / gone model (403 banned, 404 no endpoints, not a valid model; NOT a key / credit / rate 403-429) is off for
+  `pipeline_dead_h` (24) hours (`turnbox.mark_dead`, health() reports it paused), so the next message starts on a
+  backup.
+- `check.one_step`: a percent of hers is a rate (12% -> 1.12 / 0.88 / 0.12, 12% of 120 = 14.4) - her margin ask was
+  flagged "figure 1.12 is in no fact".
+- pipeline_sheets prints each hand-over (event, from -> to, why) and "ran on <model>".
+Tests `test_v0971_pipeline_p4_fix.py` (9). NOT VERIFIED on her server.

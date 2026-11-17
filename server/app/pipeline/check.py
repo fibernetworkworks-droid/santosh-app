@@ -43,6 +43,11 @@ def one_step(nums: list[float], cap: int = 12) -> list[float]:
     invented fact). Only her figures, at most 12 of them, so the check keeps its teeth."""
     ns = list(dict.fromkeys(nums))[:cap]
     out: list[float] = []
+    # v0.970 a percent of hers is a rate too: 12% -> x 1.12 / x 0.88 / 0.12 (her live v0.969 margin ask: "figure 1.12
+    # is in no fact" - it was 1 + 12%), and a percent of another of her figures (12% of 120 = 14.4)
+    pcts = [p for p in ns if 0 < p <= 100]
+    for p in pcts:
+        out += [1 + p / 100, 1 - p / 100, p / 100]
     for i, a in enumerate(ns):
         for b in ns[i + 1:]:
             out += [a * b, a + b, abs(a - b)]
@@ -50,6 +55,9 @@ def one_step(nums: list[float], cap: int = 12) -> list[float]:
                 out.append(a / b)
             if a:
                 out.append(b / a)
+        for p in pcts:
+            if p != a:
+                out += [a * p / 100, a * (1 + p / 100), a * (1 - p / 100)]
     return out
 
 
