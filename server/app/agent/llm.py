@@ -531,6 +531,22 @@ class LLMError(RuntimeError):
     pass
 
 
+class LLMCut(LLMError):
+    """v0.983 the answer ran out of room before anything usable was finished (a cut tool call was dropped)."""
+
+
+STATS_CUT = {"grown": 0, "still_cut": 0}
+
+
+def cut_room(max_tokens) -> int:
+    """v0.983 the room a cut answer is asked again with: chat_cut_room (16k) or 4x the old cap, whichever is bigger,
+    never above chat_cut_max. 0 = it already had that room, asking again would only cut again."""
+    st = get_settings()
+    old = int(max_tokens or 0)
+    big = min(max(int(getattr(st, "chat_cut_room", 16000) or 0), old * 4), int(getattr(st, "chat_cut_max", 32000) or 0))
+    return big if big > old else 0
+
+
 # a busy or briefly unreachable model is worth another try before the turn falls back to another brain
 TRANSIENT_STATUS = {408, 409, 425, 429, 500, 502, 503, 504, 529}
 
@@ -767,6 +783,22 @@ async def _openai_create(brain: str, system: str, tools: list[dict], messages: l
     except ValueError as e:
         raise LLMError(f"{label} sent a broken answer: {e}") from e
     blocks, stop = from_openai(data)
+    if not blocks and stop == "max_tokens":
+        # v0.983 cut before anything usable (a long tool call, e.g. a whole page): once more with real room
+        big = cut_room(body.get("max_tokens"))
+        if big:
+            STATS_CUT["grown"] += 1
+            log.warning("%s ran out of room at max_tokens %s; asking again with %s", label, body.get("max_tokens"), big)
+            body["max_tokens"] = big
+            r = await _post_with_retry(url, body, headers, label)
+            try:
+                data = r.json()
+            except ValueError as e:
+                raise LLMError(f"{label} sent a broken answer: {e}") from e
+            blocks, stop = from_openai(data)
+        if not blocks:
+            STATS_CUT["still_cut"] += 1
+            raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
     if not blocks:
         raise LLMError(f"{label} returned an empty answer")
     usage = dict(data.get("usage") or {})
@@ -813,6 +845,8 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
     tries = 1 + max(0, get_settings().llm_retries)
     credit_left = len(CREDIT_WAITS)
     tries += credit_left            # a credit hold's retries do not use up the ordinary ones
+    tries += 1                      # v0.983 one more for a cut answer asked again with real room
+    grown = False
     for i in range(tries):
         wait = min(RETRY_DELAY * (2 ** i), 5.0)
         text: list[str] = []
@@ -882,6 +916,19 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
             await asyncio.sleep(wait)
             continue
         blocks, stop = from_openai(_assemble("".join(text), calls, finish))
+        if not blocks and stop == "max_tokens":
+            # v0.983 cut before anything usable (a long tool call, e.g. a whole page rewrite at the chat's 2000): the
+            # half call was dropped, so ask once more with real room instead of calling it an empty answer
+            big = 0 if grown else cut_room(body.get("max_tokens"))
+            if big:
+                grown = True
+                STATS_CUT["grown"] += 1
+                log.warning("%s ran out of room at max_tokens %s; asking again with %s", label, body.get("max_tokens"),
+                            big)
+                body["max_tokens"] = big
+                continue
+            STATS_CUT["still_cut"] += 1
+            raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
         if not blocks:
             raise LLMError(f"{label} returned an empty answer")
         if not usage:   # some gateways send no usage on streams: a fair estimate keeps the monthly limit honest

@@ -1259,6 +1259,10 @@ def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "
         # v0.742 AIHubMix free models: 100 requests a day / 10 a minute / 1M tokens a day shared - said plainly
         head = ("The free AIHubMix limit is used up for now (10 a minute, 100 a day, 1M tokens a day across its free "
                 "models). Try again in a minute, tomorrow for the daily limit, or pick another model.")
+    elif "ran out of room before finishing" in low:
+        # v0.983 the answer (a long tool call, e.g. a whole page) did not fit even with the bigger room: not an outage
+        head = ("That answer was too long to finish in one go. Ask for a smaller part at a time - for a page, "
+                "name the one section to change.")
     elif _ctx.is_overflow(s):
         head = "This chat has become too long. Start a new chat and say the same thing there - I will still remember the earlier parts."
     elif busy:

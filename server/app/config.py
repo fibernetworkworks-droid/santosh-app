@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     usage_usd_inr: float = 88.0            # v0.98 rupees per dollar for the Kharcha screen
     agent_max_steps: int = 24              # v0.78: more room to finish (the circuit breaker still stops loops)
     agent_max_tokens: int = 2000
+    # v0.983 a cut answer with nothing usable (a long tool call, e.g. a whole page) is asked again ONCE with this room
+    chat_cut_room: int = 16000
+    chat_cut_max: int = 32000
     chat_heal_ai: bool = True              # v0.158 after a call, a cheap model judges if its cards were relevant
     agent_self_check: bool = True          # v0.78 Pakka kaam: check the real results before saying done
     draft_check: bool = True               # v0.223 Draft jaanch: the last look at a reply (free in code + one

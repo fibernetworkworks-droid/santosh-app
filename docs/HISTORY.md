@@ -6484,3 +6484,26 @@ no background or padding. NOT VERIFIED on her server.
 ALSO SEEN in the same screenshot, NOT fixed here: her fix-the-page message got "The AI service is busy or unreachable
 right now (ref 4576bd)". That line is `santosh._friendly_error` for a timeout / 429 / 5xx / empty answer; the real
 error is only in the server log under that ref - needs a VPS ops > errors run.
+
+## v0.983.0 CUT ROOM — a page rewrite cut at the token cap is asked again with room, never called "busy" (owner: "DONE CHECK" on the VPS ops errors run)
+
+Her page-fix message ("Page ... mein error aa raha hai ... Isse theek karke naya version banao") got "The AI service is busy
+or unreachable right now" three times on 17 Nov (refs 4576bd 08:25, f6120f 08:29, 319cf7 08:59). The errors run showed the
+real line each time: `LLMError: OpenRouter returned an empty answer`, after a ~70 s call on `qwen/qwen3.8-27b` with
+`cap=2000` (the chat's `agent_max_tokens`) on a 178k-token chat.
+
+Root cause: the model was rewriting the whole page inside a tool call. At 2000 tokens the call was cut half way;
+`llm.from_openai` drops a tool call whose arguments are not whole JSON (never run with broken inputs - v0.221), so nothing
+was left and `_openai_stream` raised "empty answer". `_same_model_retry_ok` does not retry that, and the Box runner's backup
+would have had the same 2000 cap - so it could never succeed. `_friendly_error` filed it under "busy".
+
+Fix (`server/app/agent/llm.py`): `LLMCut(LLMError)` + `cut_room(max_tokens)` = max(`chat_cut_room` 16000, 4x the cap),
+at most `chat_cut_max` 32000, 0 when it already had that room. A cut answer with nothing usable (`stop == "max_tokens"`,
+no blocks) is asked again ONCE with that room - in `_openai_stream` (one extra try; partial tool text re-fed from scratch)
+and in `openai_create` - so the chat, the Box runner and plain calls are all covered. Still cut = `LLMCut`, and
+`santosh._friendly_error` says "That answer was too long to finish in one go. Ask for a smaller part at a time - for a page,
+name the one section to change." - not "busy". A true empty answer (finish stop, nothing) is unchanged.
+
+Tests `server/tests/test_v0983_cut_room.py` (4): cut page rewrite asked again with >= 16k and the whole call runs; still cut
+= one retry only + the honest line; room rules; true empty unchanged (all 4 fail on the old llm.py).
+NOT VERIFIED on her server: the next page fix on the live chat is the test.
