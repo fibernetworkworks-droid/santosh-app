@@ -3178,3 +3178,9 @@ Task ID: v0.980.0 STUDIO STAMPS
 Ask: DONE CHECK (after v0.978 deploy).
 Built: live check of branches + E8; the three Studio pages' frozen ?v=0.849.0 stamps now move with every release.
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.984.0 WEB ON QWEN (built as 0.983)
+Ask: FIRST GIVE WEB DEVLOPMENT QWEN 3.8 MODEL -- THEN WE WILL START THE ENTIER WEB PANEL END TO END TEST.
+Built: every Web Studio model call (site/ai.py WEB_KINDS: build, site_art, site_critique, site_edit, name + the architect) on Qwen 3.8 27B via OpenRouter, own clock, no quiet Opus fallback; Studio shows the real model; 14 tests.
+Deploy: server only (vps-ops deploy).

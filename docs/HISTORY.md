@@ -6507,3 +6507,29 @@ name the one section to change." - not "busy". A true empty answer (finish stop,
 Tests `server/tests/test_v0983_cut_room.py` (4): cut page rewrite asked again with >= 16k and the whole call runs; still cut
 = one retry only + the honest line; room rules; true empty unchanged (all 4 fail on the old llm.py).
 NOT VERIFIED on her server: the next page fix on the live chat is the test.
+
+## v0.984.0 WEB ON QWEN (built as 0.983; their CUT ROOM took 0.983, both kept) (owner: "FIRST GIVE WEB DEVLOPMENT QWEN 3.8 MODEL -- THEN WE WILL START THE ENTIER WEB PANEL END TO END TEST")
+
+Before this, the Web Studio's site engine called Claude Opus for every design / section / fix (`site/ai.py`
+`_ask_app`, Anthropic SDK), and the plan architect went the same way; with CLAUDE_ALL_GLM on, the SDK door could
+quietly answer some of those calls from the GLM brain on its 45 s clock - too short for a 16k-token plan.
+
+Now every call the Web Studio makes (`WEB_KINDS` = build, site_art, site_critique, site_edit, name - only `site/`
+asks with these kinds; App Sahayak, PDF, SEO and Social keep their own kinds and models) goes to Qwen 3.8 through
+OpenRouter on the server's OpenRouter key (`_ask_qwen`, reusing Hoola Code's `devsahayak/brain._qwen_post` /
+`_qwen_stream`):
+- settings `web_brain` "qwen" (| "claude"), `web_qwen_model` "qwen/qwen3.8-27b" (qwen/qwen3.8-max-0902 = the bigger
+  one), `web_qwen_timeout_s` 300, `web_qwen_max_tokens` 32000, `web_qwen_fallback_claude` False;
+- thinking room per job from the old effort table (art / sections / critique high, small edits medium, name medium),
+  reasoning excluded from the answer; three tries with growing waits; an empty answer thinks one level less with the
+  room kept; a refused request (400-404, incl. 402 no credit) is said at once, in English, naming the model;
+- a section being written for the live canvas streams its words through `_qwen_stream` into the same slot as before;
+- pictures (critique screenshots, her design screenshots) go as `image_url` parts;
+- the architect's `_ask` takes the Qwen path even when `architect_opus` is on;
+- the Studio names the real model: site view `model`, the price estimate (now priced through `usage.price_of`, so
+  Qwen's price matches), the art-direction card, "Hoola is designing / planning" in webstudio.js and build.js,
+  server lines that said "Opus";
+- no OpenRouter key or `WEB_BRAIN=claude` = the old Opus path unchanged; conftest pins claude for the older suites.
+
+Tests: test_v0984_web_qwen.py (14). NOT VERIFIED: no real Qwen website build on her server yet - the end-to-end
+Web Studio test she asked for next is that check.

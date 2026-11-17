@@ -1270,7 +1270,7 @@
       if (!LIVE.codeKey || !LIVE.slots[LIVE.codeKey] || (!writing(LIVE.slots[LIVE.codeKey]) && act.length && !LIVE.codePinned)) LIVE.codeKey = S((act[0] || show[show.length - 1] || {}).key);
       tabs.innerHTML = show.map(x => `<button type="button" data-lcode="${esc(x.key)}" aria-current="${x.key === LIVE.codeKey ? 'page' : 'false'}">${writing(x) ? '<span class="dot v"></span>' : ''}<span class="ell">${esc(S(x.label))}</span></button>`).join('') || '<span class="mut sm">The code shows here as it is written.</span>';
       const sl = LIVE.slots[LIVE.codeKey];
-      const txt = !sl ? '' : sl.state === 'think' && !sl.html ? '// Opus is designing this section…' : (S(sl.html) + (sl.css ? '\n\n/* styles */\n' + S(sl.css) : ''));
+      const txt = !sl ? '' : sl.state === 'think' && !sl.html ? '// Hoola is designing this section…' : (S(sl.html) + (sl.css ? '\n\n/* styles */\n' + S(sl.css) : ''));
       const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
       if (pre.dataset.k !== S(LIVE.codeKey) || pre.textContent.length !== txt.length) {
         pre.textContent = txt; pre.dataset.k = S(LIVE.codeKey);

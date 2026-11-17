@@ -190,8 +190,8 @@ CRITIQUE_TOKENS = {"in": 6000, "out": 3000}
 
 def _usd(model: str, t: dict[str, int], n: int = 1) -> float:
     try:
-        from ..usage import _prices
-        p = _prices().get(model) or _prices().get("*") or {"in": 4.0, "out": 20.0}
+        from ..usage import price_of            # v0.984 longest-prefix match, so "qwen/qwen3.8-27b" prices right
+        p = price_of(model)[0] or {"in": 4.0, "out": 20.0}
     except Exception:
         p = {"in": 4.0, "out": 20.0}
     return n * (t["in"] * p.get("in", 4.0) + t["out"] * p.get("out", 20.0)) / 1_000_000
@@ -226,8 +226,8 @@ def estimate(plan: dict[str, Any], have: int = 0, looks: int = 3, photos: int = 
     pics = f", {photos} photos" if photos else ""
     return {"sections": total, "to_write": todo, "usd": round(usd, 2), "inr": inr, "inr_low": lo, "inr_high": hi,
             "photos": photos, "photos_inr": pic_inr,
-            "model": AI.app_model_label() if AI._opus_kind("build") else model,
-            "say": f"Andaaza: ₹{lo}–₹{hi} AI kharcha ({todo} sections{pics}, {AI.app_model_label()})"}
+            "model": AI.label_for("build"),
+            "say": f"Andaaza: ₹{lo}–₹{hi} AI kharcha ({todo} sections{pics}, {AI.label_for('build')})"}
 
 
 # ---------------------------------------------------------------- Opus looks at its own home page

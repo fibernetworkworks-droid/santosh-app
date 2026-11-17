@@ -324,7 +324,8 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
          "client": r.client, "updated_at": r.updated_at.isoformat() if r.updated_at else "",
          "activity": ACT.read(r.tenant_id, r.id),
          "name_by": _j(r.facts, {}).get("name_by", ""),             # v0.671 hoola = a name Hoola made up
-         "draft_of": r.draft_of or "", "draft_name": r.draft_name or "", "draft_base": int(r.draft_base or 0)}   # v0.837 L13
+         "draft_of": r.draft_of or "", "draft_name": r.draft_name or "", "draft_base": int(r.draft_base or 0),   # v0.837 L13
+         "model": AI.label_for("build")}                       # v0.984 the model writing this site (Qwen 3.8 by default)
     if full:
         plan = _j(r.plan, {})
         checks = _j(r.checks, {})
@@ -370,7 +371,7 @@ def _dna_view(dna: dict[str, Any] | None) -> dict[str, Any] | None:
     lay = dna.get("layout") or {}
     return {"concept": dna.get("concept"), "idea": dna.get("idea"), "signature": dna.get("signature"),
             "layout": f"{lay.get('system')} · {lay.get('hero')} hero · {lay.get('rhythm')}",
-            "motion": (dna.get("motion") or {}).get("language", ""), "model": AI.app_model_label()}
+            "motion": (dna.get("motion") or {}).get("language", ""), "model": AI.label_for("site_art")}
 
 
 def _estimate(r: Site, plan: dict[str, Any]) -> dict[str, Any] | None:
@@ -1142,7 +1143,7 @@ def set_languages(tenant: str, ref: str, extra: Any) -> dict[str, Any]:
     if not _start(r.id, "translate"):
         _SAVE_PENDING.add(r.id)
     return {**view(_load(r.id), False), "languages": [first] + want,
-            "say": (f"{names} version bana raha hoon; har hissa Opus likhega, phir nayi version." if want
+            "say": (f"{names} version bana raha hoon; har hissa " + AI.label_for("site_edit") + " likhega, phir nayi version." if want
                     else "Doosri bhashayen hata raha hoon; nayi version banegi.")}
 
 
@@ -3643,7 +3644,7 @@ def code_ask(tenant: str, ref: str, instruction: str, path: str = "", conv: str 
         CD.save_task(_code_dir(r), task, {"status": "failed", "say": "Website abhi kisi aur kaam mein hai; thodi der baad."})
         raise SiteError("Website abhi kisi aur kaam mein hai; thodi der baad kahiye.")
     t = CD.load_task(_code_dir(r), task) or {}
-    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Code badal raha hoon (Opus)...",
+    return {"task": task, "status": t.get("status", "working"), "say": t.get("say") or "Code badal raha hoon (" + AI.label_for("site_edit") + ")...",
             **({k: t[k] for k in ("diff", "files", "summary", "removed") if k in t})}
 
 
@@ -3689,7 +3690,7 @@ def _code_change(r: Site, instruction: str, keys: list[str]) -> dict[str, Any]:
                       12000, "site_edit")
     got = (raw or {}).get("files") if isinstance(raw, dict) else None
     if not isinstance(got, list) or not got:
-        return {"status": "failed", "say": "Opus se badla hua code nahi aaya; dobara kahiye ya zyada saaf likhiye."}
+        return {"status": "failed", "say": AI.label_for("site_edit") + " se badla hua code nahi aaya; dobara kahiye ya zyada saaf likhiye."}
     befores, diffs, changed, problems = {}, [], [], []
     for f in got[:6]:
         if not isinstance(f, dict) or f.get("key") not in keys:

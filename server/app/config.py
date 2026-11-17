@@ -702,6 +702,14 @@ class Settings(BaseSettings):
     cinema_daily_jobs: int = 20           # Cinema jobs one person may start in an IST day (each spends the server's video-engine credits)
     seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
+    # v0.984 WEB ON QWEN (owner: "FIRST GIVE WEB DEVLOPMENT QWEN 3.8 MODEL"): every Web Studio model call - the plan
+    # architect, art direction, every section, fixes, changes, looks, critique, translations, the name - on Qwen 3.8
+    # through OpenRouter (the server's OpenRouter key), its own request and clock, never the chat's 45 s GLM door
+    web_brain: str = "qwen"                  # "qwen" = OpenRouter (web_qwen_model) | "claude" = the old Opus path
+    web_qwen_model: str = "qwen/qwen3.8-27b"   # same model as the chat + Hoola Code; qwen/qwen3.8-max-0902 = the bigger one
+    web_qwen_timeout_s: float = 300.0        # one website call waits this long (a 16k-token plan takes minutes)
+    web_qwen_max_tokens: int = 32000         # the most one call may ask for (answer + thinking room)
+    web_qwen_fallback_claude: bool = False   # a failed Qwen call is NOT moved to Opus unless this is on (no surprise bill)
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
     site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)

@@ -156,8 +156,8 @@ def _ask(system: str, prompt: str, max_tokens: int, kind: str) -> dict[str, Any]
     for any ask. The architect's plan is ONE call per website and it decides everything after it, so it runs on the
     Website Sahayak's own Opus (`architect_opus`, default on): the GLM door and the one-model rule stand aside for it."""
     from ..config import get_settings
-    if not bool(getattr(get_settings(), "architect_opus", True)):
-        return AI.ask_json(system, prompt, max_tokens, kind)
+    if not bool(getattr(get_settings(), "architect_opus", True)) or AI.web_qwen():
+        return AI.ask_json(system, prompt, max_tokens, kind)      # v0.984 WEB ON QWEN: the plan on Qwen 3.8 too
     from .. import glmdoor
     from .. import usage as U
     a, b = glmdoor.CLAUDE_ONLY.set(True), U.ONE_MODEL_BYPASS.set(True)

@@ -294,7 +294,7 @@ window.HoolaBuild = function (C) {
     const run = busy(o);
     studio.querySelector('.stnow').innerHTML = (nowText || o.v) ? `<div class="stn ${run ? 'run' : S(o.v?.status) === 'failed' || an.status === 'failed' ? 'bad' : 'idle'}">
         ${run ? spin(22) : '<span class="stok" aria-hidden="true">✓</span>'}
-        <div><b>${run ? 'Now: ' : ''}${esc(nowText || S(o.v?.say) || '')}</b><span>${esc(run ? (anWorking(o) ? `Build machine${an.rounds ? ' · round ' + an.rounds : ''}` : `${S(o.v?.model) || 'Opus 5.5'} is writing · each part shows here as it is built`) : anShown ? S(an.say) : S(o.v?.say && nowText ? o.v.say : ''))}</span></div>
+        <div><b>${run ? 'Now: ' : ''}${esc(nowText || S(o.v?.say) || '')}</b><span>${esc(run ? (anWorking(o) ? `Build machine${an.rounds ? ' · round ' + an.rounds : ''}` : `${S(o.v?.model) || 'Hoola'} is writing · each part shows here as it is built`) : anShown ? S(an.say) : S(o.v?.say && nowText ? o.v.say : ''))}</span></div>
         ${o.v && !anShown && N(b.total) && !['planned', 'looks'].includes(S(o.v.status)) ? `<div class="stpct"><b>${N(b.pct)}%</b><span>${N(b.done)} / ${N(b.total)} ${o.type === 'site' ? 'hisse' : 'screens'}</span></div>` : ''}</div>` : '';
     studio.querySelector('.stst').innerHTML = stages(o);
     const tabs = tabsOf(o); if (!tabs.some(x => x[0] === o.tab)) o.tab = tabs[0][0];
@@ -415,7 +415,7 @@ window.HoolaBuild = function (C) {
   }
   function planPane(o) {
     const v = o.v || {}, pl = M(v.plan), qs = L(v.questions);
-    if (o.type === 'site' && v.mapping) return `<div class="stempty">${spin()} Opus is planning the whole site map: pages, menu groups and lists of pages…</div>`;
+    if (o.type === 'site' && v.mapping) return `<div class="stempty">${spin()} ${esc(S(v.model) || 'Hoola')} is planning the whole site map: pages, menu groups and lists of pages…</div>`;
     const list = o.type === 'site'
       ? (v.size ? bigPlan(v, pl) : L(pl.pages).map(p => `<div class="bln">• <b>${esc(p.title)}</b>: ${esc(L(p.sections).join(', '))}</div>`).join(''))
       : `<div class="bln"><b>${L(pl.screens).length + L(pl.code_screens).length} screens</b>${L(pl.tabs).length ? ` · bottom tabs: ${esc(L(pl.tabs).join(' · '))}` : ''}</div>`

@@ -57,6 +57,130 @@ def _opus_kind(kind: str) -> bool:
         (kind in SITE_KINDS and bool(getattr(get_settings(), "site_opus", True)))
 
 
+WEB_KINDS = SITE_KINDS + ("name",)    # v0.984 every call the Web Studio makes (site/ is the only caller of these)
+WEB_LABEL = {"qwen/qwen3.8-27b": "Qwen 3.8 27B", "qwen/qwen3.8-max-0902": "Qwen 3.8 Max"}
+WEB_STATS = {"calls": 0, "retries": 0, "failed": 0, "fallback_claude": 0}
+
+
+def web_qwen() -> bool:
+    """v0.984 WEB ON QWEN: the Web Studio's calls go to Qwen 3.8 through OpenRouter (web_brain "qwen") when the server
+    has an OpenRouter key; "claude" or no key = the old Opus path."""
+    st = get_settings()
+    if str(getattr(st, "web_brain", "qwen") or "").lower() != "qwen":
+        return False
+    try:
+        from ..devsahayak import brain as DB
+        return bool(DB._or_key())
+    except Exception:   # noqa: BLE001
+        return False
+
+
+def web_model() -> str:
+    return (getattr(get_settings(), "web_qwen_model", "") or "qwen/qwen3.8-27b").strip()
+
+
+def label_for(kind: str = "build") -> str:
+    """The model name the Studio shows for a website job."""
+    if kind in WEB_KINDS and web_qwen():
+        m = web_model()
+        return WEB_LABEL.get(m, m)
+    return app_model_label()
+
+
+def _openai_content(prompt: str, images: list[bytes] | None) -> Any:
+    if not images:
+        return prompt
+    import base64
+    parts: list[dict[str, Any]] = []
+    for b in images[:4]:
+        kind = "image/png" if b[:8] == b"\x89PNG\r\n\x1a\n" else "image/webp" if b[8:12] == b"WEBP" else "image/jpeg"
+        parts.append({"type": "image_url", "image_url": {"url": f"data:{kind};base64,{base64.b64encode(b).decode()}"}})
+    parts.append({"type": "text", "text": prompt})
+    return parts
+
+
+def _ask_qwen(system: str, prompt: str, max_tokens: int, kind: str, images: list[bytes] | None = None,
+              effort: str = "") -> str:
+    """One Web Studio call on Qwen 3.8 via OpenRouter: thinking room per job (art + plans high, sections high, small
+    edits medium), its own clock, three tries with growing waits, a refused request said at once. A section written for
+    the live canvas streams its words to the screen exactly like the Opus path did."""
+    from ..devsahayak import brain as DB
+    st = get_settings()
+    model = web_model()
+    eff = (effort or EFFORT.get(kind, "medium" if kind == "name" else "high")).lower()
+    level = DB.EFFORT_TO_REASONING.get(eff, "high")
+    cap = max(4000, int(getattr(st, "web_qwen_max_tokens", 32000) or 32000))
+    body: dict[str, Any] = {"model": model, "temperature": 0.4,
+                            "messages": [{"role": "system", "content": system},
+                                         {"role": "user", "content": _openai_content(prompt, images)}],
+                            "max_tokens": min(cap, int(max_tokens) + DB.ROOM[level]),
+                            "reasoning": {"effort": level, "exclude": True}}
+    headers = {"Authorization": f"Bearer {DB._or_key()}", "X-Title": "Hoola Web Studio"}
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    timeout = float(getattr(st, "web_qwen_timeout_s", 300) or 300)
+    WEB_STATS["calls"] += 1
+    last: Exception | None = None
+    lower = {"high": "medium", "medium": "low", "low": "low"}
+    for i in range(3):
+        if i:
+            WEB_STATS["retries"] += 1
+            time.sleep(min(20.0, 3.0 * (2 ** (i - 1))))
+        t0 = time.time()
+        try:
+            if _live(kind):
+                from . import stream as ST
+                ST.reset()
+                data = DB._qwen_stream(url, body, headers, timeout, lambda txt: ST.feed(txt))
+                ST.feed(str((((data.get("choices") or [{}])[0] or {}).get("message") or {}).get("content") or ""),
+                        force=True)
+            else:
+                data = DB._qwen_post(url, body, headers, timeout)
+        except DB.QwenError as e:
+            last = e
+            log.warning("web qwen %s %s try %d failed %.1fs: %s", model, kind, i + 1, time.time() - t0, str(e)[:240])
+            if any(f" {c}:" in str(e) for c in ("400", "401", "402", "403", "404")):
+                break                                         # a refused request is not fixed by asking again
+            continue
+        except Exception as e:   # noqa: BLE001 - timeout / network: try again
+            last = e
+            log.warning("web qwen %s %s try %d failed %.1fs: %s %s", model, kind, i + 1, time.time() - t0,
+                        e.__class__.__name__, str(e)[:200])
+            continue
+        if data.get("error"):
+            last = DB.QwenError(f"OpenRouter error: {str(data['error'])[:300]}")
+            continue
+        msg = (((data.get("choices") or [{}])[0] or {}).get("message") or {})
+        text = msg.get("content") or ""
+        if isinstance(text, list):
+            text = "".join(str(p.get("text") or "") for p in text if isinstance(p, dict))
+        u = dict(data.get("usage") or {})
+        if not str(text).strip():
+            # thought until its room ran out: think one level less, keep the room for the words
+            last = DB.QwenError("Qwen sent an empty answer")
+            body = {**body, "reasoning": {"effort": lower[level], "exclude": True}}   # a new request, never the sent one
+            level = lower[level]
+            log.warning("web qwen %s %s try %d empty", model, kind, i + 1)
+            continue
+        log.info("web qwen %s %s %.1fs effort=%s in=%s out=%s", model, kind, time.time() - t0, level,
+                 u.get("prompt_tokens"), u.get("completion_tokens"))
+        try:
+            from .. import usage
+            usage.from_openai(model, u)
+        except Exception:   # noqa: BLE001
+            pass
+        return str(text)
+    if bool(getattr(st, "web_qwen_fallback_claude", False)) and st.anthropic_api_key:
+        WEB_STATS["fallback_claude"] += 1
+        log.warning("web: Qwen unavailable, Opus answers (WEB_QWEN_FALLBACK_CLAUDE on): %s", last)
+        return _ask_app(system, prompt, max_tokens, kind, images, effort) if _opus_kind(kind) else \
+            _ask_claude(system, prompt, max_tokens, kind)
+    WEB_STATS["failed"] += 1
+    refused = last is not None and any(f" {c}:" in str(last) for c in ("400", "401", "402", "403", "404"))
+    why = "OpenRouter refused the request" if refused else "it did not answer in time"
+    raise AiError(f"{label_for(kind)} did not answer ({why}). Please try again in a little while. "
+                  f"[{str(last)[:160] if last else 'error'}]")
+
+
 def _app_client():
     global _APP_CLIENT
     if _APP_CLIENT is None:
@@ -144,7 +268,7 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
     """v0.140 Owner's rule: App Sahayak designs and builds with Claude Opus 5.5. Busy / overloaded / timeouts are tried
     again with growing waits; nothing falls back to another model unless APP_MODEL_FALLBACK is switched on."""
     st = get_settings()
-    model = model_for(kind) if kind in SITE_KINDS + DOC_KINDS else app_model()
+    model = _claude_model(kind) if kind in SITE_KINDS + DOC_KINDS else app_model()
     tries = max(1, int(getattr(st, "app_model_tries", 5) or 5))
     if not st.anthropic_api_key:
         if getattr(st, "app_model_fallback", False) and not images:
@@ -187,6 +311,12 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
 
 
 def model_for(kind: str) -> str:
+    if kind in WEB_KINDS and web_qwen():
+        return web_model()
+    return _claude_model(kind)
+
+
+def _claude_model(kind: str) -> str:
     st = get_settings()
     if kind in DOC_KINDS:
         return getattr(st, "doc_model", "") or app_model()
@@ -207,12 +337,18 @@ def _client():
 
 def ask(system: str, prompt: str, max_tokens: int = 6000, kind: str = "build", images: list[bytes] | None = None,
         effort: str = "") -> str:
+    if kind in WEB_KINDS and web_qwen():
+        return _ask_qwen(system, prompt, max_tokens, kind, images, effort)
     if _opus_kind(kind):
         return _ask_app(system, prompt, max_tokens, kind, images, effort)
+    return _ask_claude(system, prompt, max_tokens, kind)
+
+
+def _ask_claude(system: str, prompt: str, max_tokens: int, kind: str) -> str:
     st = get_settings()
     if st.anthropic_api_key:
         last: Exception | None = None
-        for model in dict.fromkeys([model_for(kind), st.anthropic_model]):
+        for model in dict.fromkeys([_claude_model(kind), st.anthropic_model]):
             for attempt in range(2):
                 try:
                     msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
