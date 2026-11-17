@@ -70,6 +70,7 @@ def test_home_reads_like_a_person_in_a_real_browser(arena_server):  # noqa: F811
     assert "Writing the price list" in card and "6 min so far" in card and "Working" in card, card
     assert pg.locator("#jobGrid .jbar").count() == 0                       # no made-up progress bar
     assert "1 working" in pg.locator("#snav").text_content()
-    assert "For example" in (pg.locator("#msg").get_attribute("placeholder") or "")
+    ph = pg.locator("#msg").get_attribute("placeholder") or ""
+    assert "For example" in ph or ph == "How can Santosh help you today?", ph   # v0.973 the app design asks like Claude
     assert not errs, errs
     ctx.close()
