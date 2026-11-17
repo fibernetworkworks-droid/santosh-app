@@ -39,11 +39,13 @@ LOCAL_KINDS = LIVE_ONLY | {
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
     "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
     "ledger",        # parity Phase 5: the turn's work receipt (step data shown in the steps fold)
+    "model_receipt", # v0.975 HOOLA PIPELINE P6: which model did which part of this chat's reply
 }
 # v0.646 ALAG CALL: what a call does on its own record that stays THERE (her words, tool rows, the receipt...). Every
 # other local kind - phone actions (alarm, open app, home devices), list refreshes, places - also reaches the live
 # streams of the chat she called from, because her phone is listening there.
 CALL_ONLY_KINDS = LIVE_ONLY | {"message", "upload", "call_receipt", "gyaan_sources", "memory_saved", "memory_used",
+                               "model_receipt",
                                "procedure", "compact", "speaker", "voice"}
 # phone actions are done once, live (or through pending actions): never replayed as chat history
 ACTIONS = {"device_action", "device_action_result", "home_device", "bt_request", "phonedoc_open", "bazar_open", "bazar_link"}

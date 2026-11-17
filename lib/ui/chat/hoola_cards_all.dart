@@ -32,6 +32,7 @@ import '../desk_cards.dart' show showCompactSheet;
 import '../drive_screen.dart' show DriveScreen;
 import '../glass.dart' show santoshTheme;
 import '../hoola_theme.dart';
+import '../model_receipt.dart' show ModelReceiptLine;
 import '../operator_screen.dart' show OperatorFrame, openOperatorLive;
 import 'hoola_card.dart';
 
@@ -722,6 +723,10 @@ class _HCQuietLineState extends State<HCQuietLine> {
         if (left.isEmpty) return const SizedBox.shrink();
         final labels = {for (final x in left) _s(x['label']).isEmpty ? 'Memory' : _s(x['label'])}.join(', ');
         return _line(context, icon: Icons.lightbulb_outline_rounded, lead: 'Used from memory: ', text: labels, act: 'See', onAct: () => _forgetUsed(items));
+      case 'model_receipt':   // v0.975 P6: which model did which part
+        final rc = HoolaColors.of(context);
+        return Padding(
+            padding: const EdgeInsets.only(bottom: 10), child: ModelReceiptLine(v: v, ink: rc.ink, muted: rc.ink2));
       default: // compact
         final n = (v['exchanges'] as num?)?.toInt() ?? 0;
         return _line(context,
@@ -1061,6 +1066,7 @@ Widget? hoolaCardAll(BuildContext context, Santosh app, FeedItem it) {
       return HCOperatorAsk(key: ValueKey('hoq${it.data['id']}'), app: app, it: it);
     case 'memory_saved':
     case 'memory_used':
+    case 'model_receipt':
     case 'compact':
       return HCQuietLine(app: app, it: it);
     case 'google_reconnect':

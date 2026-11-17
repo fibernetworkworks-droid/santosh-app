@@ -140,6 +140,7 @@ import 'live_santosh.dart';
 import 'work_strip.dart';
 import 'gyaan_screen.dart';
 import 'postgres_screen.dart' show PgWriteCard;
+import 'model_receipt.dart' show ModelReceiptLine;
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.app, this.onVoice});
@@ -2031,6 +2032,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MemorySavedChip(v: it.data, app: app);
     case 'memory_used':
       return MemoryUsedChip(v: it.data, app: app);
+    case 'model_receipt':   // v0.975 HOOLA PIPELINE P6
+      return ModelReceiptLine(v: it.data, ink: C.ink, muted: C.muted);
     case 'compact':
       return CompactChip(v: it.data, app: app);
     case 'pg_write':

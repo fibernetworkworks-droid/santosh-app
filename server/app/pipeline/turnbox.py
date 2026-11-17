@@ -379,6 +379,11 @@ def end(b: dict | None, answer: str, failed: bool = False) -> dict | None:
             note(m, not bad)
             if not bad:
                 B.remember(sh["conv"], part["kind"], part["level"], m)
+        try:   # P6: the receipt line under the reply - which model did which part
+            from . import receipt as RC
+            RC.publish(sh)
+        except Exception:   # noqa: BLE001
+            pass
         log.warning("pipeline box %s: done %s, check %s%s", sh["conv"], "failed" if bad else "ok",
                     "ok" if chk["ok"] else "problems", "" if chk["ok"] else " - " + "; ".join(chk["problems"][:3]))
         return chk

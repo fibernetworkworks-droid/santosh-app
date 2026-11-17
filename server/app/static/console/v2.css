@@ -4872,3 +4872,16 @@ html.human #app .landing .halo{display:none}
 #app .mh .txt code:not(pre code),#app .textmd code:not(pre code){background:rgb(var(--fg-rgb) / .05);border:.5px solid rgb(var(--fg-rgb) / .14);border-radius:.3rem;padding:1px 4px;font-size:.9em;color:var(--codeterm);white-space:pre-wrap;font-weight:400}
 #composer{position:relative}
 #composer::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:28px;pointer-events:none;z-index:2;background:linear-gradient(to top,var(--chat-paper),transparent)}
+
+/* v0.975 HOOLA PIPELINE P6: the receipt line under a reply - which model did which part (quiet, folds open) */
+.mreceipt{margin:6px 0 2px;font-size:12.5px;color:var(--mut);max-width:680px}
+.mreceipt summary{cursor:pointer;list-style:none;display:inline-flex;gap:4px;align-items:baseline;flex-wrap:wrap;padding:2px 0}
+.mreceipt summary::-webkit-details-marker{display:none}
+.mreceipt summary:hover{color:var(--ink)}
+.mreceipt .mr-k{font-weight:500;color:var(--ink)}
+.mreceipt .mr-h{color:var(--mut)}
+.mreceipt .mr-row{display:flex;gap:10px;align-items:baseline;padding:4px 0 0 2px}
+.mreceipt .mr-row b{font-weight:500;color:var(--ink);min-width:88px}
+.mreceipt .mr-lv{font-size:11.5px;letter-spacing:.02em;color:var(--mut)}
+.mreceipt .mr-note{color:var(--mut);font-style:italic}
+.mreceipt .mr-ho{padding:2px 0 0 100px;color:var(--mut)}

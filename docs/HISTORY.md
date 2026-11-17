@@ -6309,3 +6309,26 @@ Tests: NEW test_v0975_console_sidebar_white.py (2: shape + a real-browser walk i
 labels, white page + #FAFAF9 sidebar, dark words #F2F1EC); test_v0970 pins moved (page white, New chat radius 8 px).
 Already red before this change and untouched: test_v142 conversations, test_v0285 menus crisp, test_v0288 sidebar visible x2.
 NOT VERIFIED on her server.
+
+## v0.976.0 HOOLA PIPELINE P6 - the receipt line: which model did which part (built as 0.975.0; their SIDEBAR LIKE CLAUDE took 0.975.0, both kept; owner: "GO P6")
+
+P6 of `docs/HOOLA_PIPELINE_PLAN.md` ("Receipt line on phone + console - she can see which model did which part").
+Before it: v0.971.0 + v0.972.0 checked live on the margin message (through the Box on Opus 4.6, the check passed).
+
+NEW `server/app/pipeline/receipt.py`: when a Box sheet closes (`turnbox.end`) ONE `model_receipt` event is published
+into the chat the sheet belongs to: `say` ("Research: Claude Sonnet 4.6 (2 parts) · Writing: Claude Opus 4.6", same
+label + model grouped with a count), `parts` (label from `parts.LABEL`, the model that REALLY answered = `ran_on`,
+its pretty name, level used, a plain note for a part that did not finish / waits for her tap / was cut, the first pick
+kept as `chosen` when a hand-over moved it, and each hand-over as "<to> took over from <from> (<why in words>)"),
+`handovers` count. Only parts the Box really ran are named - a part not applied (the server's own chat model, which
+the Box did not choose) is left out, and a message with none gets no receipt. Names: `pretty()` drops the maker,
+date tails and preview / latest, upper-cases GPT / GLM ("z-ai/glm-5.3-flash" -> "GLM 5.3 Flash"). No price (D5).
+The event is LOCAL to its chat (events.LOCAL_KINDS + CALL_ONLY_KINDS), stored (it comes back on reload), never pushed.
+Switch `pipeline_receipt` (default True, needs `pipeline_on`).
+
+Console (`v2.js` renderCard + `.mreceipt` in v2.css): a quiet "Made with ..." line under the reply that folds open to
+one row per part (label, model, level, note) and the hand-over lines; checked by eye in light + dark.
+Phone: `lib/ui/model_receipt.dart` `ModelReceiptLine` (44 dp tap row, Semantics label) + `showModelReceipt` sheet
+(parts, level, hand-overs); state.dart feeds `model_receipt`; the new design draws it through `HCQuietLine`, the old
+chat screen through `feedCard`. Hoola Code sessions are not chat replies and get no receipt line yet.
+Tests `test_v0976_pipeline_p6.py` (9). NOT VERIFIED on her server or phone (the Dart compiles first on CI).

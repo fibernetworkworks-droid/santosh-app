@@ -248,7 +248,8 @@ def test_the_reply_fix_round_posts_a_correction_or_nothing_on_a_false_alarm(box,
     chk = box.end(b, "The blue shirt costs Rs 2,350.")
     assert not chk["ok"]
     assert asyncio.run(box.fix_round(b, "The blue shirt costs Rs 2,350.", chk)) == ""
-    assert not posted and seen["model"].startswith("openrouter:a/high")      # one level up from MID
+    assert not [k for k, _ in posted if k != "model_receipt"]                # v0.975 P6: only the receipt line
+    assert seen["model"].startswith("openrouter:a/high")                     # one level up from MID
     answers["v"] = "Sudhaar: blue shirt ka daam Rs 1,499 hai."
     out = asyncio.run(box.fix_round(b, "The blue shirt costs Rs 2,350.", chk))
     assert "1,499" in out and posted[-1][1]["source"] == "box_fix" and saved
