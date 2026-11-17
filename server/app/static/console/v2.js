@@ -142,8 +142,37 @@ function appChrome() {
     rl.setAttribute('role', 'button'); rl.tabIndex = 0; rl.setAttribute('aria-expanded', 'true'); }
   const pj = $('#projects');   // v0.975 Pinned sits above Sessions and Recents, like Claude's
   if (pj && !$('#pinbox')) pj.insertAdjacentHTML('beforebegin', '<div class="pinbox" id="pinbox"></div>');
+  barChrome();
   const sl = $('#slotLand');
   if (sl && !$('#appUnder')) sl.insertAdjacentHTML('afterend', `<div class="appunder" id="appUnder"><button type="button" class="uchip" id="sessBtn" aria-haspopup="menu"><span class="sl">Session</span>${svg('<path d="M6 9l6 6 6-6"/>')}</button><span class="ugap"></span></div>`);
+}
+/* v0.981 CHAT BAR LIKE CLAUDE (owner: her Claude + Hoola chat bar screenshots -> canvas boards 13-14 -> "GO BUILD"):
+   in a chat the box is ONE line with send / stop inside on the right; +, mic and call sit under it on the left, a short
+   honest line in the middle, the memory gauge and the model on the right. Stop is an icon. On the home the box stays
+   tall with its buttons inside (landing() moves send / stop between the two). */
+function barChrome() {
+  const f = $('#composer'); if (!f || $('#cline')) return;
+  const line = document.createElement('div'); line.className = 'cline'; line.id = 'cline';
+  const inn = document.createElement('div'); inn.className = 'cin';
+  f.insertBefore(line, $('#files')); line.append($('#files'), inn); inn.append($('#msg'));
+  const st = $('#stopBtn'); if (st) { st.textContent = ''; st.setAttribute('aria-label', 'Stop'); st.title = 'Stop'; st.classList.add('stopi'); }
+  const sd = $('#sendBtn');
+  if (sd) sd.innerHTML = svg('<path d="M19 6v5a3 3 0 0 1-3 3H6"/><path d="M10 10l-4 4 4 4"/>').replace('<svg', '<svg class="sret"')
+                       + svg('<path d="M12 19V5M6 11l6-6 6 6"/>').replace('<svg', '<svg class="sup"');
+  inn.append(st, sd);
+  const row = f.querySelector('.row');
+  if (row && !$('#cnote')) {
+    row.insertAdjacentHTML('beforeend', `<span class="cnote" id="cnote"><span class="aname">${esc(AV)}</span> is AI and can make mistakes.</span>`);
+    const m = $('#cMeter'); if (m) { m.classList.add('cgauge'); m.textContent = ''; row.append(m); }
+  }
+}
+function barPlace(home) {   // home = the tall box with the buttons inside; chat = send / stop inside the one-line box
+  const row = composer.querySelector('.row'), inn = $('#cline .cin'); if (!row || !inn) return;
+  const st = $('#stopBtn'), sd = $('#sendBtn');
+  if (home) row.append(st, sd); else inn.append(st, sd);
+  composer.classList.toggle('home', !!home);
+  msg.style.height = 'auto';   // the field was sized for the other box; measure it again in this one
+  if (msg.value) msg.style.height = Math.min(200, msg.scrollHeight) + 'px';
 }
 document.addEventListener('click', e => {
   const sb = e.target.closest?.('#sessBtn'); if (sb) sessMenu(sb);
@@ -633,13 +662,6 @@ async function loadRecents() {
 }
 $('#recents').addEventListener('click', e => { if (CH) return; const b = e.target.closest('[data-conv]'); if (b) { openConv(b.dataset.conv); go('chat'); } });
 $('#searchBtn').addEventListener('click', () => CH?.openSearch());
-/* v0.250 incognito chat: Hoola reads her memory there but keeps nothing from it (no facts, search, diary, page) */
-var INCOG = new Set();   // var: drawHead may run before this line during start-up
-async function newIncognito() {
-  try { const c = await api('POST', '/api/conversations?incognito=1'); INCOG.add(c.id); go('chat'); await openConv(c.id, true);
-        drawHead(); msg.focus(); toast('Incognito chat - nothing from here goes into Hoola\'s memory.'); }
-  catch (e) { toast(e.message, true); }
-}
 $('#newChat').addEventListener('click', async () => {
   // v0.231 New chat opens her untouched empty chat if she has one (never a pile of identical "Naya chat" rows)
   try { const c = await api('POST', '/api/conversations?reuse=1'); go('chat'); await openConv(c.id, true); loadRecents(); msg.focus(); }
@@ -666,7 +688,8 @@ function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
   if (APPD) {   // v0.973 the model sits under the box on the home, beside the mic in a chat
-    const mb = $('#modelBtn'); if (mb) { if (on) $('#appUnder')?.appendChild(mb); else composer.querySelector('.row')?.insertBefore(mb, $('#micBtn')); }
+    const mb = $('#modelBtn'); if (mb) { if (on) $('#appUnder')?.appendChild(mb); else composer.querySelector('.row')?.appendChild(mb); }
+    barPlace(on);
     drawSess();
   }
   msg.placeholder = APPD ? (on ? `How can ${AV} help you today?` : `Reply to ${AV}…`) : HUMAN ? (on ? `What should ${AV} do? For example: “Reply to my supplier and attach the invoice”` : `Reply to ${AV}…`)
@@ -679,13 +702,20 @@ function drawHead() {
   const on = !$('#thread').hidden; $('#chead').hidden = !on; if (!on) return;
   const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id);
   $('#ctitle').textContent = c?.title || 'New chat';
-  const inc = !!(c?.incognito || INCOG?.has(CONV));   // v0.250
-  const t = $('#ctag'); t.hidden = !p && !inc; t.textContent = p ? `${p.emoji || '📁'} ${p.name}` : inc ? '🕶 Incognito' : '';
+  // v0.981 no Incognito chip any more (owner: "remove incognito entirely"); only a session's name shows here
+  const t = $('#ctag'); t.hidden = !p; t.textContent = p ? `${p.emoji || '📁'} ${p.name}` : '';
   $('#cMore').hidden = !c;
   meter();
 }
 /* v0.244 PHASE 3A the "how full" meter (Claude Code's context meter): % of the window, compaction at 75% */
 let METER_T = 0;
+/* v0.981 the memory meter as a small gauge under the chat bar: a slice that grows as the chat fills */
+function memGauge(pct) {
+  const p = Math.max(0, Math.min(100, Number(pct) || 0)), a = 2 * Math.PI * Math.max(p, 10) / 100;
+  const x = (9 + 5 * Math.sin(a)).toFixed(2), y = (9 - 5 * Math.cos(a)).toFixed(2), big = p > 50 ? 1 : 0;
+  const slice = p >= 100 ? '<circle cx="9" cy="9" r="5" class="mgf"/>' : `<path class="mgf" d="M9 9V4A5 5 0 ${big} 1 ${x} ${y}Z"/>`;
+  return `<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><circle cx="9" cy="9" r="7.2" fill="none" stroke="currentColor" stroke-width="1.5"/>${slice}</svg>`;
+}
 async function meter() {
   const el = $('#cMeter'); if (!el) return;
   const id = CONV; if (!id) { el.hidden = true; return; }
@@ -696,7 +726,9 @@ async function meter() {
       if (id !== CONV) return;
       if (r.mode !== 'claude') { el.hidden = true; return; }
       const pct = Math.round(Number(r.percent || 0));
-      el.textContent = `Memory ${pct}%`; el.hidden = false;
+      if (APPD) { el.innerHTML = memGauge(pct); el.title = `Memory ${pct}% full · tap to see the summary`; el.setAttribute('aria-label', `Memory ${pct}% full`); }
+      else el.textContent = `Memory ${pct}%`;
+      el.hidden = false;
       el.classList.toggle('hot', pct >= 60);
     } catch (e) { el.hidden = true; }
   }, 300);
@@ -1897,7 +1929,6 @@ msg.addEventListener('keydown', e => {
 const SLASH = {open: false, items: [], sel: 0};
 const SLASH_CMDS = [
   ['new', 'New chat', 'start a new chat', () => $('#newChat').click()],
-  ['incognito', 'Incognito chat', 'Hoola remembers nothing from it', () => newIncognito()],
   ['search', 'Search chats', 'the Ctrl K search', () => CH?.openSearch()],
   ['export', 'Export chat', 'Markdown or JSON file', () => $('#exportBtn').click()],
   ['stop', 'Stop', 'stop the running job', () => $('#stopBtn').click()],

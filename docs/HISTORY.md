@@ -6433,3 +6433,30 @@ freshness, so Studio changes since 0.849 could be invisible to her until a reloa
 stamp and move with the ritual like `v2.html`. `test_v0801_app_studio_premium::test_page_carries_a_fresh_stamp` pinned the
 frozen literal; it now checks the stamp equals APP_VERSION (the test's own stated intent). NOT VERIFIED: E8 and branches
 not yet exercised in her browser; no real model build of a small site's own-body looks.
+
+## v0.981.0 CHAT BAR LIKE CLAUDE (built as 0.980; their STUDIO STAMPS took 0.980, both kept)
+
+Owner, with her Claude and Hoola chat bar screenshots: "CHECK THE CLAUDE CHAT BAR AND HOOLA CHAT BAR --- MAKE PERFECTLY
+SAME AS CLAUDE ... STOP NAME --- JUST SHOW A ICON ... REMOVE INCOGNITO ENTIERLY ... CHANGE MEMORY TO ICON AND SHOW IT AT
+CHAT BAR BOTTOM" -> design canvas claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 13-14 -> "GO BUILD".
+
+Console only (app design, `console_app_design`), server untouched:
+- `v2.js barChrome()` (run once from `appChrome`): the composer gets `#cline` (the files tray + `.cin` = the textarea, Stop
+  and Send); the old `.row` stays below it and gains `#cnote` ("<avatar> is AI and can make mistakes.") and `#cMeter` moved
+  out of the chat header. Send carries two drawings: a grey return arrow (empty) and the up arrow (typed). Stop loses its
+  "■ Stop" text (aria-label "Stop") and becomes a 32 px black square button.
+- `barPlace(home)` (called from `landing`): on the home the box stays tall with Send / Stop in the row (`#composer.home`);
+  in a chat they move into the one-line box. The textarea is re-measured on every move (it kept the home box's 48 px).
+- `memGauge(pct)`: the memory meter in the app design is an 18 px circle with a violet slice that grows (orange from 60%);
+  title "Memory N% full · tap to see the summary"; a tap still opens the summary dialog.
+- Incognito removed from the console: `newIncognito`, `INCOG`, the `/incognito` slash command and the header chip are gone.
+  The server's incognito support is unchanged, so old incognito chats stay private.
+- `appdesign.css` block "v0.981 CHAT BAR LIKE CLAUDE": the form has no border in a chat, `.cline` carries the 14 px box;
+  the row is ordered + / mic / call / chips / note / memory / model with CSS `order`; `.dock .disclaim` hidden (the note
+  is in the row); the empty Send hides while Stop shows.
+
+Tests: NEW `test_v0981_console_chat_bar.py` (shape + a real-browser walk: home keeps the tall box, chat = one line 40-48 px
+with send / stop inside and the row below in order, note text, gauge 64% hot, no disclaimer, no header tags, typed = up
+arrow, working = Stop 32x32 with no text and the empty Send hidden, /inc offers no Incognito). Pre-existing reds checked on
+the clean tree and untouched: test_v0719 (toolsBtn), test_v0740 browser (model under the box since v0.973).
+NOT VERIFIED on her server.

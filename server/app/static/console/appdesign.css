@@ -364,3 +364,51 @@ html:not(.appd) .pinbox{display:none}
 /* the page: pure white in light; the box a thin line with a soft shadow */
 html.appd #app .main{background:var(--bg)}
 html.appd #app #composer{border-color:var(--box-line);box-shadow:0 1px 2px rgb(0 0 0 / .03),0 8px 20px -10px rgb(0 0 0 / .12)}
+
+/* v0.981 CHAT BAR LIKE CLAUDE (owner: her Claude + Hoola chat bar screenshots -> design canvas
+   claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL boards 13-14 -> "GO BUILD"). In a chat: ONE line box (16 px words, send / stop
+   inside on the right, 14 px corners); under it +, mic, call on the left, a short honest line in the middle, the memory
+   gauge and the model on the right. Send = grey return arrow when empty, black arrow once typed; Stop = a black square
+   icon, no word. On the home (#composer.home) the box stays tall with its buttons inside. */
+html.appd #app #composer:not(.home){border:0;background:transparent;box-shadow:none;padding:0;border-radius:0}
+html.appd #app #composer:not(.home):focus-within{box-shadow:none}
+html.appd #app #composer:not(.home) .cline{background:var(--surface);border:1px solid var(--box-line);border-radius:14px;
+  box-shadow:0 1px 2px rgb(0 0 0 / .03),0 6px 16px -10px rgb(0 0 0 / .14)}
+html.appd #app #composer:not(.home) .cline:focus-within{border-color:var(--dim)}
+html.appd #app #composer .cin{display:flex;align-items:flex-end;gap:6px}
+html.appd #app #composer:not(.home) .cin{padding:6px 7px 6px 16px;min-height:32px}
+html.appd #app #composer:not(.home) textarea{flex:1;min-height:24px;padding:4px 0;font:400 16px/1.5 var(--fb)}
+html.appd #app #composer.home .cin textarea{flex:1}
+html.appd #app #composer:not(.home) .row{margin:4px -2px 0;gap:2px;height:36px;align-items:center}
+html.appd #app #composer:not(.home) #attach{order:1;margin-right:0}
+html.appd #app #composer:not(.home) #micBtn{order:2}
+html.appd #app #composer:not(.home) .callb{order:3}
+html.appd #app #composer:not(.home) .qchips{order:4;margin-right:0}
+html.appd #app #composer:not(.home) .cnote{order:5}
+html.appd #app #composer:not(.home) .cgauge{order:6}
+html.appd #app #composer:not(.home) .modelb{order:7}
+html.appd #app #composer:not(.home) .row .ib,html.appd #app #composer:not(.home) .row .callb{width:32px;height:32px;min-width:32px;border-radius:8px;color:var(--ink)}
+html.appd #app #composer:not(.home) .row .ib svg,html.appd #app #composer:not(.home) .row .callb svg{width:18px;height:18px}
+html.appd #app #composer .cnote{flex:1;min-width:0;text-align:center;font:400 12px var(--fb);color:var(--dim);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;padding:0 10px}
+html.appd #app #composer.home .cnote,html.appd #app #composer.home .cgauge{display:none !important}
+html.appd #app #composer .cgauge{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;padding:0;
+  border:0;border-radius:8px;background:transparent;color:var(--mut);cursor:pointer}
+html.appd #app #composer .cgauge[hidden]{display:none}
+html.appd #app #composer .cgauge:hover{background:var(--sunk);color:var(--ink)}
+html.appd #app #composer .cgauge .mgf{fill:var(--pri)}
+html.appd #app #composer .cgauge.hot .mgf{fill:#C2410C}
+html.appd #app .dock .disclaim{display:none}
+/* send: grey return arrow when empty, a black button once she types; hidden while Stop shows and nothing is typed */
+html.appd #app #composer .send{width:32px;height:32px;min-width:32px;border-radius:9px;background:var(--pill);color:var(--on-pill)}
+html.appd #app #composer .send svg{width:16px;height:16px;stroke-width:2.2}
+html.appd #app #composer .send .sret{display:none}
+html.appd #app #composer .send:disabled{display:inline-flex;background:transparent;color:var(--dim);cursor:default}
+html.appd #app #composer .send:disabled .sret{display:block;stroke-width:1.8}
+html.appd #app #composer .send:disabled .sup{display:none}
+html.appd #app #composer.home .send:disabled{display:none}
+html.appd #app #composer .stopi:not([hidden]) ~ .send:disabled{display:none}
+html.appd #app #composer .stopb.stopi{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;
+  padding:0;border:0;border-radius:9px;background:var(--pill);color:var(--on-pill);font-size:0;box-shadow:none}
+html.appd #app #composer .stopb.stopi[hidden]{display:none}
+html.appd #app #composer .stopb.stopi::before{content:"";width:11px;height:11px;border-radius:2.5px;background:currentColor}
