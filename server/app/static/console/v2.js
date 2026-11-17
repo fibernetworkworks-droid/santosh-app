@@ -58,6 +58,18 @@ let CONFIG = {google: false, v2: true};
    real step and time on work cards, "1 needs you" in the sidebar, plain spend, Ask again / Good answer / Not right,
    "Slide to approve / Not now", one-colour start icons, no emoji headings. Switch console_human (server) -> CONFIG.human. */
 let HUMAN = false;
+// v0.970 WEB CONSOLE APP DESIGN: the phone app's design (appdesign.css, html.appd) - the app's four tabs on top of the
+// sidebar, the Hoola mark + a serif greeting + the app's start pills on the home, every studio on the Tools page
+let APPD = false;
+const MARK = () => (window.HoolaMark ? HoolaMark.svg({mono: true}) : '');
+const APP_WORD = h => h < 5 ? 'Good night' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 21 ? 'Evening' : 'Good night';
+// the studios that sit on the Tools page (the app's Tools tab), in the app's order: name + one line
+const APP_TOOLS = [['creative', 'Create', 'Pictures, videos, songs and voice-overs'], ['interactive', 'Interactive', 'Explainer videos from one line'],
+  ['vocal', 'Vocal', 'Voices, readings and sound'], ['flow', 'Flow', 'Speak and it types for you'],
+  ['webdev', 'Web Development', 'Websites and web apps that go live'], ['appdev', 'App Development', 'Android and iPhone apps'],
+  ['design', 'Design', 'Screens, posters and layouts'], ['prompting', 'Prompting', 'Turn a rough line into a clear brief'],
+  ['code', 'Hoola Code', 'Changes to your code, as pull requests'], ['gamedev', 'Game Dev', 'Games built and tested for you'],
+  ['connectors', 'Connectors', 'Your apps, MCP servers and public APIs']];
 const HOUR_WORD = h => h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 function soFar(iso) {   // "6 min so far" from a server time
   const t = Date.parse(iso || ''); if (!t) return '';
@@ -65,6 +77,7 @@ function soFar(iso) {   // "6 min so far" from a server time
   return m < 1 ? 'just started' : m < 60 ? m + ' min so far' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min so far';
 }
 function humanTagline() {   // one plain sentence: what is waiting, what is running, else ready
+  if (APPD) return appHome();
   if (!HUMAN) return; const el = document.querySelector('.tagline'); if (!el) return;
   const w = QUEUE.length, r = JOBS.filter(j => j.state === 'working').length;
   const n = (k, one, many) => k === 1 ? one : k + ' ' + many;
@@ -72,6 +85,33 @@ function humanTagline() {   // one plain sentence: what is waiting, what is runn
     : r ? `${esc(AV)} is working on ${n(r, 'one job', 'jobs')} for you right now.`
     : `${esc(AV)} is ready. Say what you need done, in your own words.`;
 }
+// v0.970 the app's home line ("Santosh is ready. 2 things need you.") and its start pills: a waiting approval first,
+// then three everyday jobs that go straight to Hoola (the app sends them on a tap)
+const PILL_IC = {doc: '<path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>', chat: '<path d="M4 5h16v11H9l-5 4Z"/>',
+  cal: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/>'};
+function appHome() {
+  const el = document.querySelector('.landing .tagline'), w = QUEUE.length, r = JOBS.filter(j => j.state === 'working').length;
+  if (el) el.textContent = w ? `${AV} is ready. ${w} ${w === 1 ? 'thing needs' : 'things need'} you.`
+    : r ? `${AV} is working on ${r === 1 ? 'one job' : r + ' jobs'} for you.` : `${AV} is ready.`;
+  const box = document.querySelector('.landing .pills'); if (!box) return;
+  const P = [...(w ? [['dot', `Review ${w} waiting ${w === 1 ? 'approval' : 'approvals'}`, 'aaj']] : []),
+    ['doc', "Make this month's GST summary"], ['chat', "Reply to today's WhatsApp leads"], ['cal', "Plan tomorrow's calls"]];
+  box.innerHTML = P.map(([i, t, v]) => v ? `<button type="button" class="pill" data-v="${v}"><i class="wdot" aria-hidden="true"></i>${esc(t)}</button>`
+    : `<button type="button" class="pill" data-send="${esc(t)}">${svg(PILL_IC[i])}${esc(t)}</button>`).join('');
+}
+// v0.970 the parts of the shell the app draws differently: the Hoola mark beside the name and on the home, a "+" for files
+function appChrome() {
+  const mk = document.querySelector('.side .shd .mk');
+  if (mk && !mk.querySelector('.hmk')) mk.insertAdjacentHTML('afterbegin', `<span class="hmk" aria-hidden="true">${MARK()}</span>`);
+  const hi = document.querySelector('.landing .hi');
+  if (hi && !hi.querySelector('.hmark')) hi.insertAdjacentHTML('afterbegin', `<span class="hmark" aria-hidden="true">${MARK()}</span>`);
+  const at = document.getElementById('attach');
+  if (at) { at.innerHTML = svg('<path d="M12 5v14M5 12h14"/>'); at.setAttribute('aria-label', 'Add photos, files and more'); }
+}
+document.addEventListener('click', e => {   // v0.970 a start pill goes straight to Hoola, like the app
+  const b = e.target.closest('[data-send]'); if (!b) return;
+  go('chat'); msg.value = b.dataset.send; msg.dispatchEvent(new Event('input')); composer.requestSubmit();
+});
 function showLogin(err) {
   $('#app').hidden = true; $('#login').hidden = false; if (err) { $('#lerr').textContent = err; $('#lerr').hidden = false; }
   $('#gbtn').disabled = false;
@@ -79,6 +119,8 @@ function showLogin(err) {
 async function boot() {
   try { CONFIG = await api('GET', '/api/console/config'); } catch {}
   HUMAN = !!CONFIG.human; document.documentElement.classList.toggle('human', HUMAN);   // v0.743 SAAF INSAANI
+  APPD = !!CONFIG.app_design; document.documentElement.classList.toggle('appd', APPD);   // v0.970 the app's design
+  if (APPD) appChrome();
   const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error'), gApps = u.searchParams.get('google') === 'apps';
   if (code || err) history.replaceState(null, '', '/console/');
   if (code) {
@@ -192,8 +234,27 @@ function navBadge(k) {
   const live = JOBS.length ? `<span class="lv txt" title="${JOBS.length} running now"><i></i>${JOBS.length}</span>` : '';
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
+const IC_APP = {aaj: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  bana: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>'};
+function appNav() {   // v0.970 the app's four tabs first, then her work
+  const own = ['chat', 'hire', 'kaam', 'computer', 'aaj', 'bana', 'baat', ...APP_TOOLS.map(t => t[0])];
+  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row under Your work
+  const more = NAV.filter(([k]) => !own.includes(k));
+  return [['chat', 'Hoola'], ['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ['-', 'Your work'],
+    ['aaj', 'Work'], ['bana', `Made by ${AV}`], ['baat', 'Voice call'], ...more];
+}
 function drawNav() {
+  const cp = document.querySelector('.side .codepill'); if (cp) cp.hidden = !(APPD && NAV.some(([k]) => k === 'code'));
+  if (APPD) {
+    const studio = new Set(APP_TOOLS.map(t => t[0])), cur = k => k === VIEW || (k === 'hire' && /desk$/.test(VIEW)) || (k === 'kaam' && studio.has(VIEW));
+    $('#snav').innerHTML = appNav().map(([k, n]) => k === '-' ? `<div class="snl">${esc(n)}</div>`
+      : `<button class="sn" data-v="${k}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
+    return drawTabs();
+  }
   $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW || (k === 'hire' && /desk$/.test(VIEW))}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
+  drawTabs();
+}
+function drawTabs() {
   const T = [['chat','Chat'],['aaj','Today'],['baat',''],['kaam','Tools'],['main','Account']];
   $('#tabbar').innerHTML = T.map(([k, n]) => k === 'baat' ? `<div class="mid"><button class="baat" data-v="baat" aria-label="Voice call">${svg(IC.baat).replace('currentColor', '#1B1030')}</button></div>`
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
@@ -360,7 +421,7 @@ async function enter() {
   $('#uname').textContent = ME.owner || ME.email || 'You'; $('#uhandle').textContent = `${AV} · ${ME.handle || ''}`;
   $('#uini').textContent = (ME.owner || ME.email || 'H').trim().charAt(0).toUpperCase();
   const h = new Date().getHours(), first = (ME.owner && ME.owner !== 'Hoola user') ? ME.owner.split(' ')[0] : '';
-  $('#greet').innerHTML = esc(HUMAN ? HOUR_WORD(h) : h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
+  $('#greet').innerHTML = esc(APPD ? APP_WORD(h) : HUMAN ? HOUR_WORD(h) : h < 12 ? 'Good morning' : h < 17 ? 'Hello' : 'Good evening') + (first ? `, <span class="gname">${esc(first)}</span>` : '');
   humanTagline();
   loadModels();                                  // v0.740 the model dropdown in the composer
   if (window.HoolaEmployees && !EMP) {           // v0.317 Employees for everyone; a desk only once its employee is hired
@@ -2066,7 +2127,10 @@ function usePrompt(id) {
 document.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) usePrompt(b.dataset.say); });
 function drawKaam(q = '') {
   const qq = q.trim().toLowerCase(), total = KAAM.reduce((n, g) => n + g[4].length, 0);
-  $('#kaam').innerHTML = `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:500">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
+  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || NAV.some(([n]) => n === k)) : [];
+  $('#kaam').innerHTML = (studios.length ? `<div class="apphead"><h2>Tools</h2><p>Everything ${esc(AV)} can make with you, in one place.</p></div>
+    <div class="apptools">${studios.map(([k, n, l]) => `<button type="button" class="apptool" data-v="${k}"><span class="disc">${svg(IC[k] || IC.creative)}</span><b>${esc(n)}</b><span class="tl">${esc(l)}</span></button>`).join('')}</div>` : '')
+    + `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:500">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="kq" placeholder="Search: GST, reel, OTP, TV…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips">${KAAM.map(g => `<a class="chip" href="#k-${g[0]}" style="text-decoration:none"><span>${g[1]}</span>${esc(g[2])}</a>`).join('')}</div>
     ${KAAM.map(g => { const items = g[4].filter(t => !qq || (t[1] + ' ' + t[2] + ' ' + t[3] + ' ' + g[2]).toLowerCase().includes(qq)); if (!items.length) return '';

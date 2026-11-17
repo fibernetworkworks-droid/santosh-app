@@ -500,6 +500,7 @@ class Settings(BaseSettings):
     prompt_cache: bool = True               # v0.86 Anthropic prompt caching on tools + conversation (faster replies)
     console_v2: bool = True                 # v0.170 Console v2 master switch: the Night-Glass v2 shell serves /console (?legacy=1 = the old page) and turns the four chat phases on below in one go
     console_human: bool = True             # v0.743 SAAF INSAANI: the console talks like a person (same design)
+    console_app_design: bool = True        # v0.970 the phone app's design on the web console (appdesign.css + app sidebar / home / Tools); off = the console as it was
     console_stream: bool = False            # v0.161 replies stream word by word (live-only delta events, /live, retry, thumbs)
     chat_sessions: bool = False             # v0.162 many chats: titles, pin / archive / delete, search, edit + branches
     side_panel: bool = False                # v0.163 finished work (pages, files, videos, sites, apps) opens beside the chat

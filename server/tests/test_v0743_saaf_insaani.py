@@ -63,9 +63,9 @@ def test_home_reads_like_a_person_in_a_real_browser(arena_server):  # noqa: F811
             break
         pg.wait_for_timeout(100)
     assert pg.evaluate("document.documentElement.classList.contains('human')")
-    assert "working on one job for you right now" in pg.locator(".tagline").text_content()
+    assert "working on one job for you" in pg.locator(".tagline").text_content()   # v0.970 the app line: "Santosh is working on one job for you."
     g = pg.locator("#greet").text_content()
-    assert g.startswith(("Good morning", "Good afternoon", "Good evening")), g
+    assert g.startswith(("Good morning", "Good afternoon", "Good evening", "Morning", "Afternoon", "Evening", "Good night")), g   # v0.970 the app's words
     card = pg.locator("#jobGrid .job").first.text_content()
     assert "Writing the price list" in card and "6 min so far" in card and "Working" in card, card
     assert pg.locator("#jobGrid .jbar").count() == 0                       # no made-up progress bar

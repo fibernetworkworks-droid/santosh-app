@@ -6172,3 +6172,28 @@ CALLS: `pipeline_calls` (default False) lets a live call's brain asks into the B
 Tests `test_v0969_pipeline_p4.py` (21, fake models): every 5.2 case, the race both ways, bigger window, two-change
 cap, worker / writer fix rounds, better, queues, breaker untouched, the santosh call path, HAND lifecycle, calls off.
 NOT VERIFIED on her server or with a real model failure.
+
+## v0.970.0 WEB CONSOLE APP DESIGN (owner: "CURRENTLY IN WEBCONSOLE LOOK AI MADE --- CHECK THE APP DESIGN AND APPEND SAME FOR WEBCONSOLE --- EXTRACT ALL APP DESIGN ... SHOW ME WEB CONSOLE DESIGN HERE FIRST" -> design canvas claude.ai/artifact/QMSQEVcnpFv4aHq6JTJ4aL -> "GO BUILD")
+
+The phone app's design system (lib/ui/hoola_theme.dart + the R1-R9 shell, chat, cards, AI Employees, Tools) on the web
+console, built as one layer that can be switched off.
+
+- NEW `server/app/static/console/appdesign.css`, linked after v2.css and improve.css, every rule under `html.appd`.
+  Tokens = the app's colour roles: light bg #FAF9F6 / surface #FFF / sunk #F1F0EC / ink #1B1A17 / ink2 #57554F /
+  accent #5B45E0 / line #E5E3DD / pill #1B1A17 / ok-warn-bad; dark = the app's darkSet (#141413, #1E1E1C, #E6E5E1,
+  #9C88FF, pill #3A3936). The old brand glow tokens (--grad, --ring, saffron / magenta) collapse to the one violet: no
+  gradients, glass or glow. Radii 16 / 12 / 8, side 272.
+- Components: sidebar rows 40 px / 12 corners / nav-on fill, New chat a black pill, the Hoola mark beside the name and on
+  the Hoola row, a Code pill beside the title when Hoola Code is on; home = mark 60 + Literata 40 greeting + tagline + the
+  app's start pills; typing bar = + / field / mic / black call circle, violet Send (grey while empty); her words in a soft
+  20-corner bubble, replies Literata 16 / 1.5, inline code in the app's red term colour; HoolaCard shapes; buttons = black
+  pill main / quiet outline; AI Employees hub with a serif title, no tinted hero, quiet cards, monochrome department art.
+- `v2.js`: `APPD` from the config key `app_design` (server switch `console_app_design`, default on), `appNav()` = Hoola /
+  AI Employees / Tools / Computer, then Your work (Work, Made by <avatar>, Voice call); the studio rows leave the sidebar and
+  sit on the Tools page as black-circle cards (`APP_TOOLS`, only the ones whose page is switched on + Connectors), the Tools
+  row lights while a studio is open; `appHome()` = "Santosh is ready. N things need you." + start pills (a waiting
+  approval first -> Work; three jobs that go straight to Hoola via `data-send`); `appChrome()` puts the mark in and turns
+  the paperclip into "+"; greeting words like the app (Morning / Afternoon / Evening / Good night).
+- Tests `test_v0970_console_app_design.py` (5): tokens read from hoola_theme.dart itself, everything scoped + loaded after
+  v2.css, sidebar / home / Tools code, a real-Chromium walk light + dark (four tabs, marks, page colour, Literata greeting,
+  pills, black New chat, Tools grid, AI Employees, no page errors). NOT VERIFIED on her server.
