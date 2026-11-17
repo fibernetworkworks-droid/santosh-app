@@ -156,14 +156,14 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
 
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                        on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
+                        on_text, on_think=None, on_tool=None, on_reset=None) -> tuple[list[dict], str, dict]:
     if BOX_OWNS.get():
-        return await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
+        return await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool, on_reset)
     owned = box_owned()
     if not owned and pause_refuses(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
-        out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
+        out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool, on_reset)
     except Exception as e:
         _box_failed(e) if owned else brain_result(brain, False)
         raise
@@ -783,22 +783,26 @@ async def _openai_create(brain: str, system: str, tools: list[dict], messages: l
     except ValueError as e:
         raise LLMError(f"{label} sent a broken answer: {e}") from e
     blocks, stop = from_openai(data)
-    if not blocks and stop == "max_tokens":
-        # v0.983 cut before anything usable (a long tool call, e.g. a whole page): once more with real room
+    for _grow in range(2):
+        # v0.983 / v0.984 cut before the tool call was finished (a long tool call, e.g. a whole page): again with room
+        calls = ((data.get("choices") or [{}])[0].get("message") or {}).get("tool_calls")
+        if not (stop == "max_tokens" and (not blocks or (calls and not any(b["type"] == "tool_use" for b in blocks)))):
+            break
         big = cut_room(body.get("max_tokens"))
-        if big:
-            STATS_CUT["grown"] += 1
-            log.warning("%s ran out of room at max_tokens %s; asking again with %s", label, body.get("max_tokens"), big)
-            body["max_tokens"] = big
-            r = await _post_with_retry(url, body, headers, label)
-            try:
-                data = r.json()
-            except ValueError as e:
-                raise LLMError(f"{label} sent a broken answer: {e}") from e
-            blocks, stop = from_openai(data)
-        if not blocks:
-            STATS_CUT["still_cut"] += 1
-            raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
+        if not big:
+            break
+        STATS_CUT["grown"] += 1
+        log.warning("%s ran out of room at max_tokens %s; asking again with %s", label, body.get("max_tokens"), big)
+        body["max_tokens"] = big
+        r = await _post_with_retry(url, body, headers, label)
+        try:
+            data = r.json()
+        except ValueError as e:
+            raise LLMError(f"{label} sent a broken answer: {e}") from e
+        blocks, stop = from_openai(data)
+    if not blocks and stop == "max_tokens":
+        STATS_CUT["still_cut"] += 1
+        raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
     if not blocks:
         raise LLMError(f"{label} returned an empty answer")
     usage = dict(data.get("usage") or {})
@@ -835,7 +839,7 @@ def _assemble(text: str, calls: dict[int, dict], finish: str = "") -> dict:
 
 
 async def _openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                         on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
+                         on_text, on_think=None, on_tool=None, on_reset=None) -> tuple[list[dict], str, dict]:
     """v0.161 the same answer as openai_create, but the words reach `on_text` as the model writes them. Tool-call
     arguments are joined and parsed only when the answer is complete (never partial JSON). Retries only before the
     first word arrived (after that the caller resets the words and falls back to the other brain).
@@ -845,8 +849,8 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
     tries = 1 + max(0, get_settings().llm_retries)
     credit_left = len(CREDIT_WAITS)
     tries += credit_left            # a credit hold's retries do not use up the ordinary ones
-    tries += 1                      # v0.983 one more for a cut answer asked again with real room
-    grown = False
+    tries += 2                      # v0.983 / v0.984 up to two more for a cut answer asked again with real room
+    grows = 0
     for i in range(tries):
         wait = min(RETRY_DELAY * (2 ** i), 5.0)
         text: list[str] = []
@@ -916,19 +920,27 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
             await asyncio.sleep(wait)
             continue
         blocks, stop = from_openai(_assemble("".join(text), calls, finish))
-        if not blocks and stop == "max_tokens":
-            # v0.983 cut before anything usable (a long tool call, e.g. a whole page rewrite at the chat's 2000): the
-            # half call was dropped, so ask once more with real room instead of calling it an empty answer
-            big = 0 if grown else cut_room(body.get("max_tokens"))
+        if stop == "max_tokens" and (not blocks or (calls and not any(b["type"] == "tool_use" for b in blocks))):
+            # v0.983 / v0.984 cut before the tool call was finished (a whole page written in one call at the chat's
+            # 2000): the half call was dropped, so ask again with real room (16k, then up to chat_cut_max) instead of
+            # an "empty answer" or a turn that keeps re-writing the page at the same small cap. Words already shown
+            # are cleared first so they are not said twice.
+            big = cut_room(body.get("max_tokens")) if grows < 2 else 0
             if big:
-                grown = True
+                grows += 1
                 STATS_CUT["grown"] += 1
                 log.warning("%s ran out of room at max_tokens %s; asking again with %s", label, body.get("max_tokens"),
                             big)
                 body["max_tokens"] = big
+                if text and on_reset is not None:
+                    try:
+                        on_reset()
+                    except Exception:
+                        pass
                 continue
-            STATS_CUT["still_cut"] += 1
-            raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
+            if not blocks:
+                STATS_CUT["still_cut"] += 1
+                raise LLMCut(f"{label} ran out of room before finishing its answer (max_tokens {body.get('max_tokens')})")
         if not blocks:
             raise LLMError(f"{label} returned an empty answer")
         if not usage:   # some gateways send no usage on streams: a fair estimate keeps the monthly limit honest

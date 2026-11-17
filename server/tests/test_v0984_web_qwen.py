@@ -47,8 +47,8 @@ def qwen(monkeypatch, tmp_path):
 def test_version():
     import pathlib
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.984.0")
-    assert "v0.984.0 WEB ON QWEN" in (pathlib.Path(AI.__file__).parents[1] / "main.py").read_text()
+    assert APP_VERSION.startswith("0.985.0")
+    assert "v0.985.0 PAGE ROOM" in (pathlib.Path(AI.__file__).parents[1] / "main.py").read_text()
 
 
 def test_defaults_are_qwen_38_27b():

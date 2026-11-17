@@ -6533,3 +6533,28 @@ OpenRouter on the server's OpenRouter key (`_ask_qwen`, reusing Hoola Code's `de
 
 Tests: test_v0984_web_qwen.py (14). NOT VERIFIED: no real Qwen website build on her server yet - the end-to-end
 Web Studio test she asked for next is that check.
+
+## v0.985.0 PAGE ROOM — a page written in the chat is asked again with room when cut; a cut-off page is never saved (built as 0.984; their WEB ON QWEN took 0.984, both kept)
+
+Owner, her screenshot: "WHY RESULT IS NOT SHOWING IN ARTIFACT PROPERLY". The Radiant Broadband Panel preview (v3) was
+blank and Hoola itself said the page is ~73,000 characters and "a single write keeps getting cut off at around 10,000".
+
+Root cause: with `chat_artifact_direct` the chat model writes the page ITSELF inside the `artifact` tool call. The chat's
+`agent_max_tokens` is 2000 (+ reasoning room), ~8-10k characters, so every whole-page write was cut part-way. v0.983 asked
+again only when NOTHING usable came back; here a line of words came before the call, so `from_openai` returned the text,
+dropped the half-written call (never run with broken inputs) and the turn went on - the model tried again at the same
+small cap, over and over. A cut-off page that did get through (written in pieces) was saved and drew a blank preview.
+
+Fix:
+- `agent/llm.py`: a cut answer whose tool call was dropped (finish length / broken arguments, no whole call left) - with or
+  without words before it - is asked again with room, up to twice: `cut_room` 2000 -> 16k -> `chat_cut_max` 32k tokens,
+  in `_openai_stream` and `openai_create` (so the Box runner path is covered). `openai_stream(on_reset=)` clears the words
+  already shown first (santosh passes `live.reset`), so they are not said twice. Still cut with nothing = `LLMCut`.
+- `artifacts.py`: `cut_off(kind, src)` - an html page with an opening `<html>` / `<body>` but no closing one, or an
+  unclosed `<script>` / `<style>`, is refused on create / update / rewrite (`EditError`, nothing stored, the old version
+  stays) and the model is told to change the page with `action=update` instead of saving part of it.
+
+Tests `server/tests/test_v0985_page_room.py` (4): words + cut page call asked again with >= 16k and the words cleared;
+room steps 2000 -> 16k -> 32k and never a fourth ask; a cut-off page is never saved and the old version stays; small
+fragments / markdown pass. `test_v0983_cut_room` updated (up to two bigger asks). The 5 reds in test_v161_stream /
+test_v0969 when run together are the same on the commit before this change (test order). NOT VERIFIED on her server.

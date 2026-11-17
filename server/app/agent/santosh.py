@@ -918,14 +918,16 @@ async def _call_brain_once(brain: str, system: str, history: list[dict], setting
                             return fn(*a, **k)
                         return _g
                     return llm.openai_stream(brain, system, tools, history, cap, _w(live.feed),
-                                             on_think=_w(live.feed_think), on_tool=_w(getattr(live, "feed_tool", None)))
+                                             on_think=_w(live.feed_think), on_tool=_w(getattr(live, "feed_tool", None)),
+                                             on_reset=live.reset)
                 return llm.openai_create(brain, system, tools, history, cap)
             blocks, stop, usage = await _bxrun.call(_hand, _bx_make, streaming=streaming,
                                                     reset=(live.reset if live is not None else None))
         elif streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
                                                           live.feed, on_think=live.feed_think,   # v0.171 thinking
-                                                          on_tool=getattr(live, "feed_tool", None))   # parity Phase 6
+                                                          on_tool=getattr(live, "feed_tool", None),   # parity Phase 6
+                                                          on_reset=live.reset)   # v0.984 a cut answer asked again
         else:
             blocks, stop, usage = await llm.openai_create(brain, system, tools, history, cap)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),

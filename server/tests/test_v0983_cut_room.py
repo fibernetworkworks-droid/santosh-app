@@ -71,7 +71,7 @@ def test_still_cut_says_too_long_not_busy(glm):
     seen = _serve(glm, [_cut_stream()])
     with pytest.raises(glm.LLMCut):
         _run(glm)
-    assert len(seen) == 2                                   # asked again exactly once, never a loop
+    assert len(seen) == 3 and seen[-1] == 32000             # v0.984: up to two bigger asks, never a loop
     from app.agent import santosh
     line = santosh._friendly_error(glm.LLMCut("OpenRouter ran out of room before finishing its answer (max_tokens 16000)"))
     assert "too long to finish" in line and "busy" not in line

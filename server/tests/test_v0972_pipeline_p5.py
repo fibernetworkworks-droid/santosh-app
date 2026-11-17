@@ -267,4 +267,4 @@ def test_switches_and_version():
     assert f["pipeline_studios"].default is True
     assert f["pipeline_on"].default is False              # the Box itself stays off until P7
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.984.0")
+    assert APP_VERSION.startswith("0.985.0")
