@@ -20,6 +20,8 @@ import hashlib
 import json
 import logging
 import re
+import time
+from contextvars import ContextVar
 from typing import Any
 
 from ..db import now, session
@@ -155,6 +157,16 @@ def _ask(system: str, prompt: str, max_tokens: int, kind: str) -> dict[str, Any]
     (claude_one_model) - the smallest models, which give back the same generic Home / About / Services / Contact set
     for any ask. The architect's plan is ONE call per website and it decides everything after it, so it runs on the
     Website Sahayak's own Opus (`architect_opus`, default on): the GLM door and the one-model rule stand aside for it."""
+    sink = _watch("deepen" if kind == "site_edit" else "first")
+    tok = AI.TEXT_SINK.set(sink) if sink else None
+    try:
+        return _ask_inner(system, prompt, max_tokens, kind)
+    finally:
+        if tok is not None:
+            AI.TEXT_SINK.reset(tok)
+
+
+def _ask_inner(system: str, prompt: str, max_tokens: int, kind: str) -> dict[str, Any]:
     from ..config import get_settings
     if not bool(getattr(get_settings(), "architect_opus", True)) or AI.web_qwen():
         return AI.ask_json(system, prompt, max_tokens, kind)      # v0.984 WEB ON QWEN: the plan on Qwen 3.8 too
@@ -342,10 +354,20 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool =
     _plan_log(spec, "first")
     if not spec["pages"]:
         raise ArchError("Plan samajh nahi aaya; thoda aur bataiye (kaun use karega, kya karega).", 502)
+    _show(spec)
     spec = _deepen(spec, words, tier)
+    _show(spec)
     p = _new_project(tenant, spec, conv)
+    if needs_data(spec):
+        _say("Writing the data and the rules: who can see and change what.")
     data = _data_draft(p, spec, logic_ask) if needs_data(spec) else dict(NO_DATA)
     return _save_card(p.id, spec, data, publish=not quiet)
+
+
+def _show(spec: dict[str, Any]) -> None:
+    stg = STAGE.get()
+    if stg is not None:
+        stg[1](_peek_spec(spec))
 
 
 def _outside(spec: dict[str, Any]) -> list[dict[str, Any]]:
@@ -405,8 +427,11 @@ def depth(spec: dict[str, Any]) -> dict[str, Any]:
 def _deepen(spec: dict[str, Any], words: str, tier: str) -> dict[str, Any]:
     """v0.708 a thin plan goes back to the architect ONCE with its gaps named; the deeper answer is kept only when it is
     really deeper (fewer gaps) and still has pages."""
-    gaps = depth(spec)["gaps"]
+    dp = depth(spec)
+    gaps = dp["gaps"]
+    _say(f"Checking the plan: {dp['passed']} of {dp['total']} checks pass.")
     if gaps:
+        _say(f"Filling {len(gaps)} gap{'s' if len(gaps) != 1 else ''} in the plan: " + ", ".join(gaps[:3]) + ("…" if len(gaps) > 3 else "."))
         try:
             raw = _ask(_system() + "\n\n" + DEEPEN,
                               json.dumps({"her_words": words, "size_by_code": spec.get("complexity") or tier,
@@ -847,6 +872,90 @@ def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) ->
                      "main_title": next((p["title"] for p in spec.get("pages") or [] if p["slug"] == main), "")}}
 
 
+# v0.986 PLAN PEEK: while build_now runs, the start screen's step + peek writers (None everywhere else)
+STAGE: ContextVar[Any] = ContextVar("architect_stage", default=None)
+_STR = r'"((?:[^"\\]|\\.)*)'           # a JSON string's text, closed or still being written
+FOR_WORD = {"public": "Public", "member": "Signed-in users", "staff": "Staff"}
+
+
+def _unq(x: str) -> str:
+    try:
+        return json.loads('"' + x.rstrip("\\") + '"')
+    except ValueError:
+        return x.replace('\\"', '"').replace("\\n", " ")
+
+
+def peek_of(text: str) -> dict[str, Any]:
+    """v0.986 what a plan holds SO FAR, read from its half-written JSON: the name, the summary, the kind and every page
+    with its sections (the last page is the one being written). Pure; a partial string is shown as far as it got."""
+    t = text or ""
+    out: dict[str, Any] = {"name": "", "summary": "", "kind": "", "pages": []}
+    m = re.search(r'"name"\s*:\s*' + _STR, t)
+    p0 = t.find('"pages"')
+    if m and (p0 < 0 or m.start() < p0):
+        out["name"] = _unq(m.group(1))[:120]
+    for k in ("summary", "kind"):
+        m = re.search(r'"%s"\s*:\s*' % k + _STR, t)
+        if m and (p0 < 0 or m.start() < p0):
+            out[k] = _unq(m.group(1))[:400 if k == "summary" else 40]
+    if p0 < 0:
+        return out
+    body = t[p0:]
+    end = re.search(r'\]\s*,\s*"(?:flows|features|stories|payments|notifications|integrations|app_words|quality|phases)"', body)
+    if end:
+        body = body[:end.start()]
+    heads = list(re.finditer(r'"title"\s*:\s*' + _STR, body))
+    for i, h in enumerate(heads[:40]):
+        part = body[h.end(): heads[i + 1].start() if i + 1 < len(heads) else len(body)]
+        f = re.search(r'"for"\s*:\s*"(public|member|staff)"', part)
+        secs = []
+        for sm in re.finditer(r'"type"\s*:\s*"([a-z0-9_]+)"(?:\s*,\s*"name"\s*:\s*' + _STR + ')?', part):
+            nm = _unq(sm.group(2) or "") if sm.group(2) else ""
+            secs.append((nm or sm.group(1).replace("_", " "))[:40])
+        pm = re.search(r'"purpose"\s*:\s*' + _STR, part)
+        out["pages"].append({"title": _unq(h.group(1))[:60], "for": FOR_WORD.get(f.group(1) if f else "", ""),
+                             "purpose": _unq(pm.group(1))[:160] if pm else "", "sections": secs[:14]})
+    return out
+
+
+def _peek_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    """The finished plan in the same shape as peek_of (the exact pages after the checks, not the half-written text)."""
+    return {"name": spec.get("name") or "", "summary": spec.get("summary") or "", "kind": spec.get("kind") or "",
+            "pages": [{"title": p["title"], "for": FOR_WORD.get(p.get("for") or "", ""), "purpose": p.get("purpose") or "",
+                       "sections": [(x.get("name") or x.get("type") or "").replace("_", " ")[:40]
+                                    for x in p.get("sections") or []][:14]} for p in (spec.get("pages") or [])[:40]],
+            "done": True}
+
+
+def _watch(label: str):
+    """A text sink for one architect call: the plan so far is written beside the step at most once a second, and a
+    second pass (deepen) only replaces what is shown once it has as many pages as the first one did."""
+    stg = STAGE.get()
+    if stg is None:
+        return None
+    _, put = stg
+    state = {"at": 0.0, "best": len((getattr(put, "last", None) or {}).get("pages") or [])}
+
+    def sink(txt: str) -> None:
+        now = time.time()
+        if now - state["at"] < 1.0:
+            return
+        pk = peek_of(txt)
+        if not (pk["name"] or pk["pages"]):
+            return
+        if len(pk["pages"]) < state["best"] and label == "deepen":
+            return
+        state["at"], state["best"] = now, max(state["best"], len(pk["pages"]))
+        put({**pk, "pass": label})
+    return sink
+
+
+def _say(label: str, note: str = "") -> None:
+    stg = STAGE.get()
+    if stg is not None:
+        stg[0](label, note)
+
+
 def _stager(tenant: str, ticket: str):
     """v0.835 L12: the home -> workspace wait shows REAL server steps. The Studio sends a ticket with her ask; each stage of
     this call is written under it (the same activity log the build uses) and GET /api/sites/stage/<ticket> reads it."""
@@ -861,9 +970,32 @@ def _stager(tenant: str, ticket: str):
 def build_now(tenant: str, words: str, conv: str = "", ticket: str = "") -> dict[str, Any]:
     """v0.711 Build mode for EVERY ask (v0.708: web app / portal asks only): her Build tap IS the yes, so the same deep plan is drawn (quietly)
     and built at once - the site gets the plan's structure instead of the library's marketing page set."""
-    from . import service as S
     st, fin = _stager(tenant, ticket)
     st("Reading your idea.")
+    ok = len(re.sub(r"[^a-z0-9-]", "", str(ticket or "").lower())) >= 8
+    tok = STAGE.set((st, _Peeker(tenant, ticket))) if ok else None     # v0.986 the plan is seen as it is written
+    try:
+        return _build_now(tenant, words, conv, st, fin)
+    finally:
+        if tok is not None:
+            STAGE.reset(tok)
+
+
+class _Peeker:
+    """Writes the plan so far beside the start screen's steps; remembers the last thing it showed."""
+
+    def __init__(self, tenant: str, ticket: str):
+        self.sid = "stage-" + re.sub(r"[^a-z0-9-]", "", str(ticket or "").lower())[:40]
+        self.tenant, self.last = tenant, None
+
+    def __call__(self, data: dict[str, Any]) -> None:
+        from . import activity as AC
+        self.last = data
+        AC.peek(self.tenant, self.sid, data)
+
+
+def _build_now(tenant: str, words: str, conv: str, st, fin) -> dict[str, Any]:
+    from . import service as S
     try:
         st("Planning the pages and what each one holds.")
         c = draft(tenant, words, conv, quiet=True)
@@ -872,10 +1004,12 @@ def build_now(tenant: str, words: str, conv: str = "", ticket: str = "") -> dict
             fin("Could not start", "error")
             raise
         log.warning("build mode: architect plan failed, plain site path: %s", e)
+        st("The deep plan did not come; starting the website straight from your words.")
         v = S.new(tenant, words, conv)
         return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
     except Exception:                            # v0.715 any other failure of the plan never kills her Build tap
         log.exception("build mode: architect plan crashed, plain site path")
+        st("The deep plan did not come; starting the website straight from your words.")
         v = S.new(tenant, words, conv)
         return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
     st("Choosing colours and fonts, and setting up the website.")

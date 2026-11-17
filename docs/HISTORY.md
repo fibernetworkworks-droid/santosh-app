@@ -6558,3 +6558,33 @@ Tests `server/tests/test_v0985_page_room.py` (4): words + cut page call asked ag
 room steps 2000 -> 16k -> 32k and never a fourth ask; a cut-off page is never saved and the old version stays; small
 fragments / markdown pass. `test_v0983_cut_room` updated (up to two bigger asks). The 5 reds in test_v161_stream /
 test_v0969 when run together are the same on the commit before this change (test order). NOT VERIFIED on her server.
+
+## v0.986.0 PLAN PEEK — the Web Studio start screen shows its work (owner, her screenshot: "WHEN MSG DROP -- SHOWING LIKE THIS. NO PROPER LOADING ... NOT CHAT SECTION EXPOSED ... EVERY THING FEEL STALE AND NON FUCTIONAL --- WHAT KIND ON PREVIEW IT IS WORKING ON")
+
+What she saw after sending the long Halden & Co. test brief: her message filling the chat, nothing under it, a grey skeleton
+on the right and a locked typing box - for the whole plan call (minutes on Qwen 3.8 since v0.984). Three causes: the
+"Setting the stage" card sat below her long message with no scroll; the server published only "Reading your idea" /
+"Planning the pages" for the one long architect call (and its deepen round); the preview had nothing to show until the
+whole plan came back.
+
+- Her message: over 360 characters / 7 lines it folds to ~6 lines with a fade + Show all; the work card is scrolled into view.
+- The plan as it is written: `site/ai.py` TEXT_SINK (a ContextVar). Only while build_now runs for the start screen
+  (`architect.STAGE`), the architect's call is streamed - Qwen through `DB._qwen_stream`, Claude through `_watched`
+  (messages.stream) - and every piece goes to `_watch`'s sink, which reads the half-written JSON with `architect.peek_of`
+  (name, summary, kind, every page with its for / purpose / sections, the last page = the one being written) and writes it
+  beside the steps at most once a second (`activity.peek`, returned by GET /api/sites/stage/<ticket>). The deepen round only
+  replaces what is shown once it has as many pages; after each pass the exact checked plan is shown (`_show`, done: true).
+  The answer itself is unchanged; no watcher = the old non-streamed call.
+- Real steps: "Checking the plan: n of m checks pass.", "Filling N gaps in the plan: ...", "Writing the data and the rules",
+  "The deep plan did not come; starting the website straight from your words." (the plain-path fallback). The first two
+  labels stay exactly as v0.835 pinned them.
+- The preview (`peekView`): empty = an honest line + skeleton (still `.doc.skel`), then the name, kind, summary, page cards
+  with section chips and a "N pages · M sections so far" count; the page being written is tinted.
+- The typing box is open: what she writes is kept (localStorage `hoola.ws.pend.draft`) and put in the workspace composer
+  when it opens - never sent by itself; Send stays off (dimmed) until then.
+- The running step keeps its live clock between polls (redrawn only when the steps change).
+
+Tests: `test_v0986_plan_peek.py` 8 (version, partial-plan reader, the plan streaming into the stage on Qwen, no watcher =
+no stream, deepen never shrinks the view, build_now names the stages + clears STAGE, static pins, a browser walk: folded
+message, card in view, draft kept, the plan growing in the preview, Show all). NOT VERIFIED on her server with a real Qwen
+plan.

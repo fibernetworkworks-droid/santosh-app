@@ -449,6 +449,38 @@
   /* v0.707 SEEDHA WORKSPACE: the moment she sends, the page moves to the workspace (her words in the chat, a live work
      card with the real clock, the plan / site area filling in) - it never sits on the home under a small note while
      the server writes the plan. When the server answers, the real plan / website opens in the same place. */
+  /* v0.986 PLAN PEEK: the start screen never sits on a grey skeleton. Her long message folds (Show all) so the work
+     card is in view, she can write her next message while Hoola works (kept for the workspace), and the preview shows
+     the plan as Hoola writes it: the name, every page and its sections, read from the model's own words. */
+  const PEND_KEY = 'hoola.ws.pend.draft';
+  function pendMe(text) {
+    const long = S(text).length > 360 || S(text).split('\n').length > 7;
+    return long ? `<div class="me clip" id="wsPendMe"><div class="mtx">${esc(text)}</div><button class="b ghost sm more" type="button" data-act="pend-more" aria-expanded="false">Show all</button></div>`
+      : `<div class="me">${esc(text)}</div>`;
+  }
+  function pendScroll() {
+    const m = $('#wsPendMsgs'), c = m && m.querySelector('.wcard');
+    if (m && c) m.scrollTop = Math.max(0, c.offsetTop - m.offsetTop - 120);
+  }
+  function peekView(pk, plan) {
+    const head = `<div class="pkh"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><b>${plan ? 'The plan is being written' : 'What Hoola is planning'}</b><span class="sp"></span>`;
+    if (!pk || !(S(pk.name) || L(pk.pages).length)) {
+      return `<article class="doc skel peek" aria-busy="true">${head}</div>
+        <p class="mut sm">Hoola is reading your message and choosing the pages. Each page and its sections appear here the moment they are written, then the three looks.</p>
+        <div class="skl"><i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk w70"></i></div></article>`;
+    }
+    const pages = L(pk.pages), secs = pages.reduce((n, p) => n + L(p.sections).length, 0), done = !!pk.done;
+    const kind = S(pk.kind).replace(/_/g, ' ');
+    return `<article class="doc peek" aria-busy="${done ? 'false' : 'true'}" aria-label="The plan so far">
+      ${head}<span class="cnt">${pages.length} page${pages.length === 1 ? '' : 's'} · ${secs} section${secs === 1 ? '' : 's'}${done ? '' : ' so far'}</span></div>
+      ${S(pk.name) ? `<h2 class="pkn">${esc(S(pk.name))}</h2>` : ''}${kind ? `<span class="tag">${esc(kind)}</span>` : ''}
+      ${S(pk.summary) ? `<p class="pks">${esc(S(pk.summary))}</p>` : ''}
+      <ol class="pkp">${pages.map((p, i) => `<li class="${!done && i === pages.length - 1 ? 'now' : ''}"><div class="pt"><b>${esc(S(p.title))}</b>${S(p.for) ? `<span class="tag">${esc(S(p.for))}</span>` : ''}</div>
+        ${S(p.purpose) ? `<p class="mut sm">${esc(S(p.purpose))}</p>` : ''}
+        ${L(p.sections).length ? `<div class="pkc">${L(p.sections).map(x => `<span>${esc(S(x))}</span>`).join('')}</div>` : ''}</li>`).join('')}</ol>
+      <p class="mut sm pkf">${done ? 'The plan is set. Next: three full looks of this website to pick from.' : 'Still writing…'}</p></article>`;
+  }
+
   function drawPending(plan, text, ticket = '') {
     const steps = plan ? ['Reading your words', 'Choosing the pages, users and data', 'Writing the plan document']
       : ['Reading your idea.', 'Planning the pages and what each one holds.', 'Choosing colours and fonts, and setting up the website.'];
@@ -459,22 +491,24 @@
         <a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola">
-          <div class="msgs" id="wsPendMsgs" aria-live="polite"><div class="me">${esc(text)}</div>
+          <div class="msgs" id="wsPendMsgs" aria-live="polite">${pendMe(text)}
             <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Setting the stage'}</b><span id="wsPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
               <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
               <ol class="acts" id="wsPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
-              <div class="wfoot"><span class="ell">${plan ? 'About a minute. Nothing is built until you say so.' : 'About a minute, then the three looks appear here.'}</span></div></div></div>
-          <form class="comp" aria-disabled="true"><textarea rows="2" disabled placeholder="You can write here once ${plan ? 'the plan' : 'the website'} opens…"></textarea>
-            <div class="cbar"><span class="mut sm">${plan ? 'Plan mode' : 'Build mode'}</span><span class="sp"></span><button class="send" type="button" disabled aria-label="Send">${ico('up', 16)}</button></div></form>
+              <div class="wfoot"><span class="ell">${plan ? 'About a minute. Nothing is built until you say so.' : 'A big website takes a few minutes. The plan fills in on the right as Hoola writes it.'}</span></div></div></div>
+          <form class="comp" data-form="pend" aria-describedby="wsPendNote"><label for="wsPendTa" class="sr">Write your next message</label>
+            <textarea id="wsPendTa" rows="2" maxlength="4000" placeholder="Write your next message: it waits here and is ready to send when ${plan ? 'the plan' : 'the website'} opens…">${esc(store.get(PEND_KEY) || '')}</textarea>
+            <div class="cbar"><span class="mut sm" id="wsPendNote">${plan ? 'Plan mode' : 'Build mode'} · Hoola is working on your first message</span><span class="sp"></span><button class="send" type="button" disabled aria-label="Send (opens when the workspace is ready)" title="Opens when the workspace is ready">${ico('up', 16)}</button></div></form>
         </section>
         <section class="pane" aria-label="${plan ? 'Plan' : 'Website'}">
           <div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">${plan ? 'Plan' : 'Preview'}</button><button type="button" disabled>${plan ? 'Preview' : 'Code'}</button></nav></div>
-          <div class="stage"><article class="doc skel" aria-busy="true" aria-label="${plan ? 'The plan is being written' : 'The website is starting'}">
-            <i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk"></i><i class="sk w70"></i><i class="sk w50"></i></article></div>
+          <div class="stage" id="wsPeek">${peekView(null, plan)}</div>
         </section></div></div>`;
     document.title = `${plan ? 'New plan' : 'New website'} · Hoola Web Studio`;
+    pendScroll();
     startTick();
     clearInterval(drawPending._t);
+    drawPending._sig = drawPending._psig = '';
     if (ticket) {          // v0.835 L12: the steps are the server's own (what the call is really doing), never client-timed labels
       let seq = 0;
       drawPending._t = setInterval(async () => {
@@ -483,12 +517,19 @@
         try { r = await api('GET', `/api/sites/stage/${enc(ticket)}`); } catch (e) { return; }
         if (me !== seq || !$('#wsPendSteps') || !L(r.steps).length) return;
         CLOCK = Number(r.now) - Date.now() / 1000;
-        ol.innerHTML = L(r.steps).map(x => {
-          const run = x.state === 'run', end = x.end || r.now;
-          return `<li class="${run ? 'run' : x.state === 'error' ? 'bad' : 'ok'}">${run ? '<span class="spin" aria-hidden="true"></span>' : tick}<div class="sl"><span class="ell">${esc(S(x.label))}</span></div><span class="tm">${esc(dur(end - x.at))}</span></li>`;
-        }).join('');
+        const sig = L(r.steps).map(x => [x.label, x.state, x.note].join('~')).join('|');
+        if (sig !== drawPending._sig) {       // the running step keeps its live clock (data-t0) between polls
+          drawPending._sig = sig;
+          ol.innerHTML = L(r.steps).map(x => {
+            const run = x.state === 'run', end = x.end || r.now;
+            return `<li class="${run ? 'run' : x.state === 'error' ? 'bad' : 'ok'}">${run ? '<span class="spin" aria-hidden="true"></span>' : tick}<div class="sl"><span class="ell">${esc(S(x.label))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${run ? `<span class="tm" data-t0="${Number(x.at)}"></span>` : `<span class="tm">${esc(dur(end - x.at))}</span>`}</li>`;
+          }).join('');
+          tickClocks();
+        }
         const cur = L(r.steps).filter(x => x.state === 'run').pop() || L(r.steps).pop();
         const nw = $('#wsPendNow'); if (nw && cur) nw.textContent = S(cur.label);
+        const pk = $('#wsPeek'), psig = JSON.stringify(r.peek || null);
+        if (pk && r.peek && psig !== drawPending._psig) { drawPending._psig = psig; pk.innerHTML = peekView(r.peek, false); }
       }, 1200);
       return;
     }
@@ -744,6 +785,8 @@
         <section class="pane" id="wsPane" aria-label="Website"></section>
       </div></div>`;
     document.title = `${name(v)} · Hoola Web Studio`;
+    const pd = S(store.get(PEND_KEY)).trim();       // v0.986 what she wrote while the website was starting: kept, never sent
+    if (pd) { const ta = $('#wsTh'); if (ta && !S(ta.value).trim()) ta.value = pd; store.set(PEND_KEY, ''); }
     drawState(); drawPane();
   }
 
@@ -2252,6 +2295,10 @@
     }
     const act = d.act; if (!act) return;
     if (act === 'new') { if (location.hash && location.hash !== '#/') go('#/'); else $('#wsAsk')?.focus(); return; }
+    if (act === 'pend-more') {                     // v0.986 her long first message, folded so the work card stays in view
+      const m = $('#wsPendMe'), open = m && m.classList.toggle('open');
+      b.textContent = open ? 'Show less' : 'Show all'; b.setAttribute('aria-expanded', open ? 'true' : 'false'); return;
+    }
     if (act === 'reload') { const fr = APP.querySelector('.frame iframe'); if (fr) fr.src = fr.src; return; }
     if (act === 'select') {
       if (!CUR || !hasVersion(CUR)) return toast('Selecting on the page opens once the first version is built.', true);
@@ -2360,6 +2407,7 @@
     const k = {wsTplInd: 'sector', wsTplGoal: 'kind', wsTplStyle: 'style'}[e.target.id]; if (!k) return;
     TPL[k] = S(e.target.value); loadTpl(true);
   });
+  APP.addEventListener('input', e => { if (e.target.id === 'wsPendTa') store.set(PEND_KEY, S(e.target.value)); });   // v0.986
   APP.addEventListener('input', e => {
     if (e.target.id !== 'wsFind') return;
     const q = S(e.target.value).trim().toLowerCase(); let shown = 0;

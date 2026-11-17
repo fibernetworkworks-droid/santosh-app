@@ -3184,3 +3184,9 @@ Task ID: v0.984.0 WEB ON QWEN (built as 0.983)
 Ask: FIRST GIVE WEB DEVLOPMENT QWEN 3.8 MODEL -- THEN WE WILL START THE ENTIER WEB PANEL END TO END TEST.
 Built: every Web Studio model call (site/ai.py WEB_KINDS: build, site_art, site_critique, site_edit, name + the architect) on Qwen 3.8 27B via OpenRouter, own clock, no quiet Opus fallback; Studio shows the real model; 14 tests.
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.986.0 PLAN PEEK
+Ask: her screenshot of the Web Studio Starting screen - no proper loading in the chat, chat not exposed, stale preview, what is it working on.
+Built: long first message folds + work card in view; the architect's plan streamed into the stage file while the start screen watches (ai.TEXT_SINK, architect.peek_of / _Peeker, activity.peek) and drawn in the preview page by page; real stage steps; typing box kept for the workspace; 8 tests incl. a browser walk.
+Deploy: server only (vps-ops deploy).

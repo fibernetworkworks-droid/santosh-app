@@ -7,6 +7,7 @@ import json
 import logging
 import re
 import time
+from contextvars import ContextVar
 from typing import Any
 
 from ..config import get_settings
@@ -133,6 +134,8 @@ def _ask_qwen(system: str, prompt: str, max_tokens: int, kind: str, images: list
                 data = DB._qwen_stream(url, body, headers, timeout, lambda txt: ST.feed(txt))
                 ST.feed(str((((data.get("choices") or [{}])[0] or {}).get("message") or {}).get("content") or ""),
                         force=True)
+            elif TEXT_SINK.get() is not None:              # v0.986 the plan is seen while it is written
+                data = DB._qwen_stream(url, body, headers, timeout, _sink)
             else:
                 data = DB._qwen_post(url, body, headers, timeout)
         except DB.QwenError as e:
@@ -238,6 +241,20 @@ def _app_request(model: str, system: str, prompt: str, max_tokens: int, kind: st
     return kw
 
 
+# v0.986 PLAN PEEK: a caller that wants to SEE a long answer while it is written (the architect's plan on the Studio's
+# start screen) sets this to a function that gets the whole text so far. The answer itself is unchanged.
+TEXT_SINK: ContextVar[Any] = ContextVar("site_text_sink", default=None)
+
+
+def _sink(txt: str) -> None:
+    f = TEXT_SINK.get()
+    if f is not None:
+        try:
+            f(txt)
+        except Exception:   # noqa: BLE001 - watching never breaks the call
+            log.debug("text sink failed", exc_info=True)
+
+
 def _live(kind: str) -> bool:
     """v0.664 ASLI SAMAY: a section being written for the Web Studio's live canvas streams its words to the screen."""
     from . import stream as ST
@@ -256,6 +273,22 @@ def _streamed(req: dict[str, Any]):
         ST.feed("".join(buf), force=True)
         msg = stm.get_final_message()
     try:   # wave 9: a streamed section was never counted (the usage meter wraps only create) - every live-build Opus call
+        from .. import usage
+        usage.from_anthropic(usage.one_model(dict(req)).get("model", req.get("model", "")), msg)
+    except Exception:   # noqa: BLE001
+        pass
+    return msg
+
+
+def _watched(req: dict[str, Any]):
+    """v0.986 the same request, streamed to TEXT_SINK (the plan on the start screen); the final message is unchanged."""
+    buf: list[str] = []
+    with _app_client().messages.stream(**req) as stm:
+        for piece in stm.text_stream:
+            buf.append(piece)
+            _sink("".join(buf))
+        msg = stm.get_final_message()
+    try:
         from .. import usage
         usage.from_anthropic(usage.one_model(dict(req)).get("model", req.get("model", "")), msg)
     except Exception:   # noqa: BLE001
@@ -283,7 +316,8 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
     while attempt < tries:
         try:
             req = _app_request(model, system, prompt, max_tokens, kind, images, effort)
-            msg = _streamed(req) if _live(kind) else _app_client().messages.create(**req)
+            msg = (_streamed(req) if _live(kind) else _watched(req) if TEXT_SINK.get() is not None
+                   else _app_client().messages.create(**req))
             STATS["app_thinking"] = STATS.get("app_thinking", 0) + sum(1 for b in msg.content if getattr(b, "type", "") == "thinking")
             return "".join(getattr(b, "text", "") or "" for b in msg.content if getattr(b, "type", "text") == "text")
         except Exception as e:

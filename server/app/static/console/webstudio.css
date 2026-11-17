@@ -647,3 +647,28 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .dflist{margin:6px 0;padding-left:18px;font-size:13.5px;line-height:1.6}
 .dfconf{display:flex;flex-direction:column;gap:6px;margin:8px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
 .dfc{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px}.dfc legend{font-weight:600;padding:0 0 2px}
+
+/* v0.986 PLAN PEEK: the start screen shows its work - a folded long message, a typing box that keeps her words,
+   the plan growing in the preview (name, pages, their sections) as Hoola writes it */
+.me.clip .mtx{max-height:9.2em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.me.clip.open .mtx{max-height:none;-webkit-mask-image:none;mask-image:none}
+.me.clip .more{display:block;margin:6px 0 0 auto;padding:2px 8px;font-size:12.5px}
+.doc.peek{display:flex;flex-direction:column;gap:10px;min-height:420px}
+.doc.peek .pkh{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut)}.doc.peek .pkh b{color:var(--ink);font-weight:600}
+.doc.peek .pkh .dots{padding:0}.doc.peek[aria-busy="false"] .pkh .dots{display:none}
+.doc.peek .pkn{font-size:24px;line-height:1.25;margin:4px 0 0;font-weight:600;color:var(--ink)}
+.doc.peek .pks{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink)}
+.doc.peek .tag{align-self:flex-start;font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--mut);text-transform:capitalize}
+.doc.peek .skl{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.doc.peek .pkp{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.doc.peek .pkp li{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--raise);animation:ws-pk .32s ease-out backwards}
+.doc.peek .pkp li.now{border-color:color-mix(in srgb,var(--pri) 45%,var(--line));background:var(--pri-soft2)}
+.doc.peek .pt{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}.doc.peek .pt .tag{align-self:center}
+.doc.peek .pkp p{margin:3px 0 0}
+.doc.peek .pkc{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.doc.peek .pkc span{font-size:12px;padding:3px 8px;border-radius:7px;background:var(--sunk);color:var(--ink);text-transform:capitalize}
+.doc.peek .pkf{margin:4px 0 0}
+@keyframes ws-pk{from{opacity:0;transform:translateY(4px)}}
+@media (prefers-reduced-motion:reduce){.doc.peek .pkp li{animation:none}}
+.comp .send:disabled{opacity:.35;cursor:not-allowed}
+.doc.peek p.pkf{font-size:13px;color:var(--mut)}
