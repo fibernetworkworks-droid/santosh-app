@@ -304,7 +304,7 @@ def test_do_install_and_run_shapes(hop):
 
 def test_say_lines_for_the_coworker_surface(hop):
     operator, pc, bz = hop
-    assert "install" in operator._say("install", {"packages": "ffmpeg"})
+    assert "install" in operator._say("install", {"packages": "ffmpeg"}).lower()
     assert "command" in operator._say("run", {"command": "ls"})
 
 
@@ -329,7 +329,7 @@ async def test_report_words_for_hoolapc(bz, monkeypatch):  # noqa: F811
     from app.agent import where
     where.remember("c1", "hoola ka apna pc pe video compress karo")   # v0.238: the cloud-PC lock sticks only when SHE named it
     operator._report(op)
-    assert "Hoola ke apne PC par poora nahi ho paya" in sent["notify"]
+    assert "could not be finished" in sent["notify"]
     assert "HOOLA'S OWN PC" in sent["inject"]
     # v0.858 a FINISHED task no longer locks the chat for 45 min (unrelated asks were pulled to the PC); the place
     # she named stays for her short follow-ups

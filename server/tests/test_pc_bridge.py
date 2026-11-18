@@ -137,7 +137,7 @@ def test_pair_code_is_single_use_and_checked(world):
     from santosh_desktop.bridge import pair
     code = world["phone"].post("/api/pc/pair/start").json()["code"]
     pair(world["base"], code, "PC", "Windows")
-    with pytest.raises(ValueError, match="galat"):
+    with pytest.raises(ValueError, match="wrong"):
         pair(world["base"], code, "PC2", "Windows")
     with pytest.raises(ValueError):
         pair(world["base"], "000000", "PC3", "Windows")
@@ -185,7 +185,7 @@ def test_end_to_end(world):
                      {"voucher_type": "Receipt", "party": "sharma traders", "amount": 20000, "ledger": "Cash"})
         assert ap["needs_approval"] and not FakeTally.imports
         out = svc.decide("default", ap["approval_id"], "approve")
-        assert "entry ho gayi" in out["outcome"]["message"]
+        assert "entry made" in out["outcome"]["message"]
         xml = FakeTally.imports[-1]
         assert "<LEDGERNAME>Cash</LEDGERNAME><ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE><AMOUNT>-20000.00</AMOUNT>" in xml
         assert "<LEDGERNAME>Sharma Traders</LEDGERNAME><ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE><AMOUNT>20000.00</AMOUNT>" in xml
@@ -234,9 +234,9 @@ def test_pc_control_is_off_by_default_and_refuses_secrets(tmp_path, monkeypatch)
     cfg = Config(server="http://x", folders=[str(tmp_path)])
     acts = Actions(cfg, Index(tmp_path / "i.db"))
     import pytest as _p
-    with _p.raises(ActionError, match="permission band"):
+    with _p.raises(ActionError, match="Permission to control the PC is off"):
         acts.handle("screen", {})
-    with _p.raises(ActionError, match="permission band"):
+    with _p.raises(ActionError, match="Permission to control the PC is off"):
         acts.handle("control", {"op": "click", "x": 1, "y": 1})
     assert acts.info()["control"] is False
     c = Control()

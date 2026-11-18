@@ -167,7 +167,7 @@ def test_old_desktop_gets_a_clean_upgrade_note(op, monkeypatch):
     ])
     _wire_claude(monkeypatch, claude)
     run(operator.start("default", bz["conv"], "window bada karo", wait=5))
-    assert any("SantoshDesktop.exe install kijiye" in str(b["content"]) for b in _tool_results(claude))
+    assert any("Install the new SantoshDesktop.exe" in str(b["content"]) for b in _tool_results(claude))
 
 
 def test_prompt_promises_the_whole_pc(op):

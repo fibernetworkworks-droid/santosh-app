@@ -101,10 +101,10 @@ def test_alias_round_trip_add_find_remove(monkeypatch):
     assert store[key]["Path"] == r"C:\Apps\Hoola"
     # remove, then remove again - the second one must still be ok (idempotent undo)
     out2 = ap.set_enabled(False)
-    assert out2["ok"] and out2["on"] is False and "hata diya" in out2["message"]
+    assert out2["ok"] and out2["on"] is False and "removed" in out2["message"]
     assert key not in store and ap.enabled() is False
     out3 = ap.set_enabled(False)
-    assert out3["ok"] and "pehle se nahi" in out3["message"]
+    assert out3["ok"] and "was not there" in out3["message"]
 
 
 def test_non_windows_refuses(monkeypatch):
@@ -208,20 +208,20 @@ def test_operator_do_unsupported(opc):
     operator, pc = opc
     pc.reply = {"ok": False, "on": False, "supported": False, "message": "Yeh alias sirf Windows PC par banta hai."}
     out = asyncio.run(operator._do(_op(operator), "app_paths", {"on": True}))
-    assert "alias nahi laga" in out and "Windows" in out
+    assert "The alias could not be added" in out and "Windows" in out
 
 
 def test_operator_do_old_desktop_gets_upgrade_line(opc):
     operator, pc = opc
     pc.err = RuntimeError("Unknown action app_paths")
     out = asyncio.run(operator._do(_op(operator), "app_paths", {"on": True}))
-    assert "naya SantoshDesktop.exe" in out        # the _OLD_DESKTOP upgrade line, nothing broke
+    assert "new SantoshDesktop.exe" in out        # the _OLD_DESKTOP upgrade line, nothing broke
 
 
 def test_say_lines(opc):
     operator, _ = opc
-    assert "alias jod" in operator._say("app_paths", {"on": True})
-    assert "hata" in operator._say("app_paths", {"on": False})
+    assert "Adding the 'hoola' alias" in operator._say("app_paths", {"on": True})
+    assert "Removing" in operator._say("app_paths", {"on": False})
 
 
 def test_desktop_says_covers_app_paths(opc):
