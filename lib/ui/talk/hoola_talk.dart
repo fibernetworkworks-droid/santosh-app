@@ -29,6 +29,7 @@ import '../attach.dart';
 import '../browser_live.dart' show BrowserCallThumb;
 import '../chat/hoola_card.dart' show HCNote;
 import '../chat/hoola_cards_all.dart';
+import '../chat/hoola_thread.dart' show kThreadMsPerWord, kThreadSoftMs;
 import '../hoola_theme.dart';
 
 class HoolaTalk extends StatefulWidget {
@@ -96,6 +97,9 @@ class _HoolaTalkState extends State<HoolaTalk> with SingleTickerProviderStateMix
   int _seenCards = 0;
   bool _cardsOpen = true;
   Timer? _clock;
+  /// His words as they were the last time the screen was drawn: what was already there never lands a second time
+  /// (the screen opened in the middle of a reply, or the middle came back after the cards / the keyboard).
+  String _replySeen = '';
 
   Santosh get app => widget.app;
   CallSession get call => app.voiceCall;
@@ -104,6 +108,7 @@ class _HoolaTalkState extends State<HoolaTalk> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     call.screenOpen = true;
+    _replySeen = call.inCall ? call.reply : '';
     if (!call.inCall) app.voiceMode = true;   // replies here are spoken by the call
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && call.inCall) setState(() {});
@@ -248,6 +253,8 @@ class _HoolaTalkState extends State<HoolaTalk> with SingleTickerProviderStateMix
           _seenCards = cards.length;
           final tray = cards.isNotEmpty && _cardsOpen;
           final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+          final saidBefore = _replySeen;
+          _replySeen = call.inCall ? call.reply : '';
           final pill = app.callLook == 'pill';
           return Stack(children: [
             // the light from below, under everything
@@ -268,7 +275,7 @@ class _HoolaTalkState extends State<HoolaTalk> with SingleTickerProviderStateMix
                       ? _cards(c, cards)
                       : keyboard
                           ? const SizedBox.shrink()
-                          : _middle(c, cards),
+                          : _middle(c, cards, saidBefore),
                 ),
                 if (_status != null)
                   Padding(
@@ -330,7 +337,8 @@ class _HoolaTalkState extends State<HoolaTalk> with SingleTickerProviderStateMix
       );
 
   /// The middle: the mark + greeting until words come, then her bubble (top right) and his words (serif).
-  Widget _middle(HoolaColors c, List<FeedItem> cards) {
+  /// [saidBefore] = his words that were already on screen at the last draw (they are shown whole; new ones land).
+  Widget _middle(HoolaColors c, List<FeedItem> cards, String saidBefore) {
     final talked = call.inCall && (call.heard.isNotEmpty || call.reply.isNotEmpty);
     final fade = HoolaMotion.of(context, HoolaMotion.fade);
     final speaking = call.act == CallAct.speaking;
@@ -398,7 +406,9 @@ class _HoolaTalkState extends State<HoolaTalk> with SingleTickerProviderStateMix
                     reverse: true,
                     child: SizedBox(
                       width: double.infinity,
-                      child: Text(call.reply, style: HoolaType.reply(c).copyWith(fontSize: 19, height: 1.45)),
+                      // the words land one by one at the chat's pace (the call's own look - 19 / 1.45 serif - stays)
+                      child: _CaptionLanding(call.reply, already: saidBefore, ink: c.ink,
+                          style: HoolaType.reply(c).copyWith(fontSize: 19, height: 1.45)),
                     ),
                   ),
                 ),
@@ -765,4 +775,138 @@ class CallPillPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CallPillPainter o) => o.c != c || o.muted != muted || o.m != m;
+}
+
+/// What he says, landing word by word at the pace every Hoola chat shares (chat/hoola_thread.dart: 34 ms a word,
+/// each new word rising to full ink over 460 ms). His captions come in pieces - a piece used to appear all at once.
+/// Only the landing is here: the call keeps its own look (one serif block), so the kit's reply widget is not used.
+class _CaptionLanding extends StatefulWidget {
+  const _CaptionLanding(this.text, {required this.already, required this.ink, required this.style});
+  final String text;
+  /// The words that were on screen before this was shown: drawn whole, never landed again.
+  final String already;
+  final Color ink;
+  final TextStyle style;
+  @override
+  State<_CaptionLanding> createState() => _CaptionLandingState();
+}
+
+class _CaptionLandingState extends State<_CaptionLanding> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker = createTicker(_tick);
+  final _clock = Stopwatch()..start();
+  Duration? _prev;
+  List<String> _words = const [];
+  int _shown = 0;
+  final _born = <int>[];      // when each shown word landed (ms on _clock)
+  double _budget = 0;
+
+  static List<String> _split(String s) => s.isEmpty ? const [] : s.split(RegExp(r'(?<=\s)'));
+
+  /// Reduce motion: every word is there at once.
+  static bool get _still => WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+
+  void _show(int n) {
+    while (_born.length < n) {
+      _born.add(-100000);
+    }
+    if (_shown < n) _shown = n;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _words = _split(widget.text);
+    final had = widget.already;
+    if (_still) {
+      _show(_words.length);
+    } else if (had.isNotEmpty && widget.text.startsWith(had)) {
+      var chars = 0, n = 0;
+      for (final w in _words) {
+        if (chars + w.length > had.length) break;
+        chars += w.length;
+        n++;
+      }
+      _show(n);
+    }
+    _kick();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CaptionLanding old) {
+    super.didUpdateWidget(old);
+    if (old.text == widget.text) return;
+    final before = _words.take(_shown).join();
+    _words = _split(widget.text);
+    if (!widget.text.startsWith(before)) {
+      // the caption was replaced, not continued: the new words land from the first one
+      _shown = 0;
+      _born.clear();
+      _budget = 0;
+    }
+    if (_shown > _words.length) _shown = _words.length;
+    if (_born.length > _shown) _born.removeRange(_shown, _born.length);
+    if (_still) _show(_words.length);
+    _kick();
+  }
+
+  bool get _fading => _born.isNotEmpty && _clock.elapsedMilliseconds - _born.last < kThreadSoftMs;
+
+  void _kick() {
+    if (!mounted) return;
+    if (_shown >= _words.length && !_fading) return;
+    if (!_ticker.isActive) {
+      if (_budget < kThreadMsPerWord) _budget = kThreadMsPerWord.toDouble();   // the first word comes at once
+      _prev = null;
+      _ticker.start();
+    }
+  }
+
+  void _tick(Duration elapsed) {
+    final dt = _prev == null ? 0.0 : (elapsed - _prev!).inMicroseconds / 1000.0;
+    _prev = elapsed;
+    final waiting = _words.length - _shown;
+    if (waiting > 0) {
+      _budget += dt;
+      final steady = (_budget / kThreadMsPerWord).floor();
+      _budget -= steady * kThreadMsPerWord;
+      var n = steady + (waiting ~/ 80).clamp(0, 2);
+      if (n > waiting) n = waiting;
+      if (n > 0) {
+        final now = _clock.elapsedMilliseconds;
+        for (var i = 0; i < n; i++) {
+          _born.add(now);
+        }
+        _shown += n;
+      }
+    } else {
+      _budget = 0;
+    }
+    if (_shown >= _words.length && !_fading) _ticker.stop();
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // all there and at full ink: the plain text, exactly as the call drew it before
+    if (_shown >= _words.length && !_fading) return Text(widget.text, style: widget.style);
+    final now = _clock.elapsedMilliseconds;
+    var first = _shown;                       // the first word that is still rising
+    while (first > 0 && now - _born[first - 1] < kThreadSoftMs) {
+      first--;
+    }
+    return Text.rich(TextSpan(style: widget.style, children: [
+      if (first > 0) TextSpan(text: _words.take(first).join()),
+      for (var i = first; i < _shown; i++)
+        TextSpan(
+          text: _words[i],
+          style: TextStyle(color: widget.ink.withOpacity(Curves.ease.transform(((now - _born[i]) / kThreadSoftMs).clamp(0.0, 1.0)))),
+        ),
+    ]));
+  }
 }

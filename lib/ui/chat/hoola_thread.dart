@@ -35,12 +35,14 @@ final _threadClock = Stopwatch()..start();
 List<String> _threadWords(String s) => s.isEmpty ? const [] : s.split(RegExp(r'(?<=\s)'));
 
 /// The kit's colours as the dark set, for a thread drawn inside an old-design (always dark) screen.
+ThemeData? _dark;
+
 class HoolaOnDark extends StatelessWidget {
   const HoolaOnDark({super.key, required this.child});
   final Widget child;
   @override
   Widget build(BuildContext context) {
-    final theme = hoolaTheme(Brightness.dark);
+    final theme = _dark ??= hoolaTheme(Brightness.dark);   // built once: old screens wrap every message
     return Theme(data: theme, child: DefaultTextStyle(style: HoolaType.body(theme.extension<HoolaColors>()!), child: child));
   }
 }
@@ -512,11 +514,12 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
     if (msgs.isEmpty && !widget.working && widget.empty != null) return widget.empty!;
     return NotificationListener<ScrollMetricsNotification>(
       onNotification: (n) {
-        if (_stick) _later();
+        if (n.depth == 0 && _stick) _later();
         return false;
       },
       child: NotificationListener<ScrollNotification>(
         onNotification: (n) {
+          if (n.depth != 0 || n.metrics.axis != Axis.vertical) return false;   // a wide table scrolling sideways
           if (n is ScrollEndNotification || (n is ScrollUpdateNotification && n.dragDetails != null)) {
             _stick = n.metrics.maxScrollExtent - n.metrics.pixels < 80;
           }
