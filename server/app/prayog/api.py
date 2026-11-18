@@ -47,7 +47,7 @@ def make_router(require_key=None, current_tenant=None) -> APIRouter:
     def get_lab(lab_id: str):
         lab = S.get(lab_id)
         if not lab:
-            raise HTTPException(404, "Yeh lab nahi mila")
+            raise HTTPException(404, "Lab not found")
         return {"lab": lab, "note": S.NOTE}
 
     @r.get("/api/prayog/kernels.js")

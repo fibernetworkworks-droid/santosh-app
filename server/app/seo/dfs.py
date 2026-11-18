@@ -55,7 +55,7 @@ def save_login(tenant: str, site_id: str, login: str, password: str) -> dict[str
     from .. import accounts as acc
     login, password = str(login or "").strip(), str(password or "").strip()
     if "@" not in login or len(password) < 6:
-        raise DfsError("DataForSEO ka login (email) aur API password chahiye: app.dataforseo.com > API Access.")
+        raise DfsError("DataForSEO login (email) and API password are needed: app.dataforseo.com > API Access.")
     info = _post_raw(login, password, "GET", "/v3/appendix/user_data", None)
     res = ((info.get("tasks") or [{}])[0].get("result") or [{}])[0] or {}
     with session() as s:
@@ -72,7 +72,7 @@ def forget_login(tenant: str, site_id: str) -> dict[str, Any]:
         r = _intel(s, tenant, site_id)
         r.dfs_login_enc = r.dfs_pw_enc = None
         r.dfs_mask = ""
-    return {"connected": False, "say": "DataForSEO login hata diya. Chahein to app.dataforseo.com par API password bhi badal dijiye."}
+    return {"connected": False, "say": "DataForSEO login removed. If you like, also change your API password at app.dataforseo.com."}
 
 
 def _creds(tenant: str, site_id: str) -> tuple[str, str, str]:
@@ -85,8 +85,8 @@ def _creds(tenant: str, site_id: str) -> tuple[str, str, str]:
     st = get_settings()
     if getattr(st, "dataforseo_shared", False) and st.dataforseo_login and st.dataforseo_password:
         return st.dataforseo_login, st.dataforseo_password, "shared"
-    raise DfsError("DataForSEO juda nahi hai. SEO Desk > Search intel mein apna DataForSEO login daaliye (app.dataforseo.com, "
-                   "naye account mein $1 free; phir pay-as-you-go).")
+    raise DfsError("DataForSEO is not connected. Enter your DataForSEO login in SEO Desk > Search intel (app.dataforseo.com, "
+                   "new accounts get $1 free; then pay-as-you-go).")
 
 
 def status(tenant: str, site_id: str) -> dict[str, Any]:
@@ -115,16 +115,16 @@ def _post_raw(login: str, password: str, method: str, path: str, body: Any) -> d
     try:
         r = c.request(method, API + path, json=body, headers={"Authorization": f"Basic {tok}", "Content-Type": "application/json"})
     except httpx.HTTPError as e:
-        raise DfsError(f"DataForSEO se baat nahi hui ({type(e).__name__}).")
+        raise DfsError(f"Could not reach DataForSEO ({type(e).__name__}).")
     finally:
         if _http is None:
             c.close()
     if r.status_code == 401:
-        raise DfsError("DataForSEO ne login nahi maana (email / API password galat). API Access page se dobara copy kijiye.")
+        raise DfsError("DataForSEO rejected the login (wrong email or API password). Copy them again from the API Access page.")
     try:
         js = r.json()
     except ValueError:
-        raise DfsError(f"DataForSEO ka jawab samajh nahi aaya ({r.status_code}).")
+        raise DfsError(f"Could not read DataForSEO's answer ({r.status_code}).")
     code = int(js.get("status_code") or 0)
     if r.status_code >= 400 or (code and code >= 40000):
         raise DfsError(_msg(code, str(js.get("status_message") or r.text[:200])))
@@ -133,10 +133,10 @@ def _post_raw(login: str, password: str, method: str, path: str, body: Any) -> d
 
 def _msg(code: int, text: str) -> str:
     if code == 40200 or "payment" in text.lower() or "balance" in text.lower():
-        return "DataForSEO balance khatam: app.dataforseo.com par top-up kijiye (Hoola kabhi khud paise nahi bharta)."
+        return "DataForSEO balance is used up: top up at app.dataforseo.com (Hoola never adds money by itself)."
     if code in (40204,) or "subscription" in text.lower() or "access denied" in text.lower():
-        return ("DataForSEO: is data ke liye unke account mein alag access chahiye (Backlinks API ke liye unki subscription "
-                "chalu karni padti hai). " + text[:120])
+        return ("DataForSEO: this data needs separate access on your DataForSEO account (the Backlinks API needs its own subscription "
+                "to be switched on). " + text[:120])
     return f"DataForSEO: {text[:240]}"
 
 
@@ -145,8 +145,8 @@ def call(tenant: str, site_id: str, path: str, task: dict[str, Any]) -> list[dic
     reports is added after."""
     st = status(tenant, site_id)
     if st["spent_usd"] >= st["cap_usd"]:
-        raise DfsError(f"Is mahine ki DataForSEO seema (${st['cap_usd']}) poori ho gayi (${st['spent_usd']} kharch). "
-                       "Seema badhani ho to Search intel mein badaliye.")
+        raise DfsError(f"This month's DataForSEO limit (${st['cap_usd']}) reached (${st['spent_usd']} spent). "
+                       "To raise the limit, change it in Search intel.")
     login, pw, _via = _creds(tenant, site_id)
     js = _post_raw(login, pw, "POST", path, [task])
     t = (js.get("tasks") or [{}])[0] or {}
@@ -226,7 +226,7 @@ def gap(tenant: str, site_id: str, mine: str, theirs: str, limit: int = 300) -> 
                      "your_position": (m or {}).get("position")})
     rows.sort(key=lambda r: -r["volume"])
     return {"mine": _dom(mine), "theirs": _dom(theirs), "gap": rows[:60],
-            "say": f"{_dom(theirs)} {len(rows)} aise shabdon par top 20 mein hai jahan aap nahi."}
+            "say": f"{_dom(theirs)} {len(rows)} ranks in the top 20 for keywords where you do not."}
 
 
 def backlinks(tenant: str, site_id: str, domain: str, limit: int = 30) -> dict[str, Any]:

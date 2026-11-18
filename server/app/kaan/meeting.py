@@ -63,6 +63,6 @@ def minutes(row: dict[str, Any]) -> dict[str, Any]:
             "task": row.get("task"), "model": row.get("model"), "duration_s": row.get("duration_s"),
             "n_turns": len(turns), "turns": per_turn, "keywords": keywords,
             "action_candidates": candidates,
-            "note": ("yeh structure + stats + cue-based candidates hain, pakka faisla nahi - saar (summary) "
-                     "Santosh likhegi jab aap kahein; speaker naam diarize ke names se aate hain, bina "
-                     "naam ke turn number hi sach hai.")}
+            "note": ("this is structure + stats + cue-based candidates, not a final decision - Hoola writes the summary "
+                     "when you ask; speaker names come from the diarize names, and without "
+                     "a name the turn number is the only truth.")}

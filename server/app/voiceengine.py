@@ -78,7 +78,7 @@ def choose(tenant: str, engine: str) -> dict[str, Any]:
     if engine not in ENGINES:
         raise ValueError("engine must be one of: " + ", ".join(ENGINES))
     if engine == "openai" and not allowed(tenant):
-        raise PermissionError("Real voice (OpenAI) abhi trial mein hai - sirf owner ke liye.")
+        raise PermissionError("Real voice (OpenAI) is in trial for now - owner only.")
     if engine in MORE and not allowed(tenant, engine):
         raise PermissionError(f"{MORE[engine]['name']} is not open for your account yet.")
     with _LOCK:
