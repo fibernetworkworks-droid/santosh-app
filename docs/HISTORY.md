@@ -6886,3 +6886,11 @@ v0.305 serving branch removed, live / queue doors join too), `main.py` (the Clou
 `test_v0414_ek_dimaag2.py` setups now write the old site's data straight into the v0.305 tables (commented pin change: a
 public call links at once). Not merged: the two schema op vocabularies (Cloud's runs on top, written into B's lists), the
 website shop's own tables, the ISP archetype. Deploy: the usual vps-ops deploy; nothing in the .env.
+
+## v0.999.8 HOOLA CODE SAME LOOK (built as 0.999.7; their ONE BACKEND took 0.999.7 - REBASE PROTOCOL, both kept) — Hoola Code in the console's look (18 Nov 2026; owner: "GO" after three previews)
+
+- `static/console/hoolacode.css`: the v0.914 `:root` warm-paper token blocks removed (light + dark) - the page inherits v2.css tokens; new end blocks: title bar left, `.hcd-new.on`, the typing box (`.hcd-ask` / `.hcd-cp` hairline + soft shadow, grey send while the placeholder shows, `.hcd-askrow>.hcd-flex{flex:1}` = two groups, chips stay 32 px for the scale test), `span.hcd-heromark`.
+- `code.js`: `hcd-new` gets `on` at home; the hero mark = `HoolaMark.think(56)` with the PNG as fallback.
+- `hoolacode.html`: loads mark.js; every stamp 0.950.0 -> 0.999.8 (they had not moved since v0.950, so a browser could keep old files).
+- Checked: test_v0807_hoola_code_design (17 views measured) + test_v0924; home, a done session (light + dark) looked at by eye. The other pages take the same tokens but were not each looked at.
+- NOT VERIFIED on her browser.

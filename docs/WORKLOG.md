@@ -3237,3 +3237,8 @@ Ask: "LETS CONTINUE THE NEXT WORK" -> B4 of the Lovable backend plan (one backen
 Built: App Engine apps on App Sahayak's backend (one project + preview twin each, data moved on first touch, journal / backups /
 logic / OTP / 2FA / sessions), the v0.305 site engine retired (unlinked sites join on their first call)
 Not verified: her server
+
+Task ID: v0.999.8 HOOLA CODE SAME LOOK
+Ask: Hoola Code looks stale; make it like Claude Code + Hoola chat; show first.
+Built: console tokens, title left, sidebar row, typing box, animated mark; three previews; GO.
+Deploy:
