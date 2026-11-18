@@ -230,7 +230,7 @@ def test_dataforseo_login_sealed_costed_capped(I):
         row.spend = json.dumps(sp)
     with pytest.raises(dfs.DfsError) as e:
         dfs.domain_overview(T, sid, "sharmadental.example")
-    assert "seema" in str(e.value)
+    assert "raise the limit" in str(e.value)
     dfs.forget_login(T, sid)
     assert dfs.status(T, sid)["connected"] is False
 
