@@ -71,7 +71,7 @@ def forget(tenant_id: str) -> None:
 
 def _ago(ts: int) -> str:
     m = max(0, int((time.time() - ts) / 60))
-    return "abhi" if m < 1 else f"{m} min pehle" if m < 120 else f"{m // 60} ghante pehle"
+    return "just now" if m < 1 else f"{m} min ago" if m < 120 else f"{m // 60} h ago"
 
 
 def prompt_block(tenant_id: str) -> str:

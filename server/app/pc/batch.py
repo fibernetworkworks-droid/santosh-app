@@ -226,8 +226,8 @@ async def _run(tenant: str, bid: str) -> None:
             if res["status"] != "done":
                 b["state"] = "stopped"
                 save(b)
-                _tell(b["conv"], f"Repeat job: row 1 poora nahi hua ({res['summary'][:200] or res['status']}). "
-                                  "Baaki rows shuru nahi ki - pehle row 1 theek karein.")
+                _tell(b["conv"], f"Repeat job: row 1 was not completed ({res['summary'][:200] or res['status']}). "
+                                  "The other rows were not started - fix row 1 first.")
                 return
         if not b.get("go"):
             if not await ask_go(b):
@@ -249,13 +249,13 @@ async def _run(tenant: str, bid: str) -> None:
             if res["status"] == "cancelled":
                 b["state"] = "stopped"
                 save(b)
-                _tell(b["conv"], f"Repeat job rok diya gaya (row {i + 1} par). {_counts(b)}")
+                _tell(b["conv"], f"Repeat job stopped (at row {i + 1}). {_counts(b)}")
                 return
             if fails >= FAIL_RUN:
                 b["state"] = "paused"
                 save(b)
-                _tell(b["conv"], f"Repeat job ruk gaya: {FAIL_RUN} rows lagatar fail hui (row {i + 1}: "
-                                  f"{res['summary'][:200]}). {_counts(b)} Theek karke boliye 'repeat job chalu karo'.")
+                _tell(b["conv"], f"Repeat job paused: {FAIL_RUN} rows failed in a row (row {i + 1}: "
+                                  f"{res['summary'][:200]}). {_counts(b)} Fix the problem, then say 'start the repeat job'.")
                 return
         b["state"] = "done"
         save(b)
@@ -275,7 +275,7 @@ async def _run(tenant: str, bid: str) -> None:
             b = load(tenant, bid)
             b["state"], b["error"] = "paused", f"{type(e).__name__}: {e}"[:300]
             save(b)
-            _tell(b["conv"], f"Repeat job ruk gaya ({b['error'][:150]}). {_counts(b)}")
+            _tell(b["conv"], f"Repeat job paused ({b['error'][:150]}). {_counts(b)}")
         except Exception:
             pass
 
@@ -288,17 +288,17 @@ async def ask_go(b: dict[str, Any]) -> bool:
     save(b)
     left = len(b["rows"]) - sum(1 for r in b["results"] if r)
     first = b["results"][0] or {}
-    what = (f"Repeat job: row 1 ho gaya ({first.get('summary', '')[:160]}). Proof screenshot chat mein hai. Baaki "
-            f"{left} rows isi tarah chalaun? Same tarah ka submit apne aap hoga; paise / delete / OTP par phir bhi poochunga.")
+    what = (f"Repeat job: row 1 is done ({first.get('summary', '')[:160]}). The proof screenshot is in the chat. Run the other "
+            f"{left} rows the same way? The same kind of submit will happen by itself; I will still ask before money / delete / OTP.")
     if op is None:
-        _tell(b["conv"], what + " (Haan ke liye boliye: 'repeat job chalao'.)")
+        _tell(b["conv"], what + " (To say yes, say 'run the repeat job'.)")
         return False
     ok = await operator.ask_tap(op, what)
     b = load(b["tenant"], b["id"])
     if not ok:
         b["state"] = "waiting_go"
         save(b)
-        _tell(b["conv"], "Repeat job: baaki rows abhi nahi chalayi. Jab chalani ho, boliye 'repeat job chalao'.")
+        _tell(b["conv"], "Repeat job: the other rows were not run. When you want them, say 'run the repeat job'.")
         return False
     b["go"], b["state"] = True, "running"
     save(b)
@@ -308,7 +308,7 @@ async def ask_go(b: dict[str, Any]) -> bool:
 def _counts(b: dict[str, Any]) -> str:
     rs = [r for r in b["results"] if r]
     done = sum(1 for r in rs if r["status"] == "done")
-    return f"{done} ho gayi, {len(rs) - done} nahi hui, {len(b['rows']) - len(rs)} baaki."
+    return f"{done} done, {len(rs) - done} failed, {len(b['rows']) - len(rs)} pending."
 
 
 def sheet_bytes(b: dict[str, Any]) -> bytes:
@@ -342,7 +342,7 @@ async def finish(b: dict[str, Any]) -> None:
     f = await asyncio.to_thread(pool.store_bytes, b["tenant"], b.get("pc", ""),
                                 f"repeat-job-{time.strftime('%d%b-%H%M')}.xlsx", data)
     pool.publish(b["conv"], f, "Repeat job results (every row)")
-    _tell(b["conv"], f"Repeat job poora: {_counts(b)} Har row ka nateeja aur proof Excel mein hai.")
+    _tell(b["conv"], f"Repeat job finished: {_counts(b)} The result and proof for every row are in the Excel file.")
 
 
 # ------------------------------------------------------------------ her controls
@@ -413,9 +413,9 @@ def sweep_after_restart() -> int:
         save(b)
         n += 1
         try:
-            _tell(b["conv"], f"Repeat job server restart se ruk gaya" + (f" (row {cut + 1} beech mein kata - portal "
-                              "par check kar lijiye)" if cut is not None else "") + f". {_counts(b)} Aage chalane ke "
-                              "liye boliye 'repeat job chalu karo'.")
+            _tell(b["conv"], f"Repeat job paused by a server restart" + (f" (row {cut + 1} was cut in the middle - check the portal)"
+                              if cut is not None else "") + f". {_counts(b)} To continue, "
+                              "say 'start the repeat job'.")
         except Exception:
             pass
     return n

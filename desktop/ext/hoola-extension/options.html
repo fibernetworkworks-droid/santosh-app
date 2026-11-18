@@ -21,25 +21,25 @@
 </head>
 <body>
 <h1>Hoola extension</h1>
-<p class="lead">Jis page par padh rahi hain use Hoola ki conversation mein bhejiye - right-click
-&gt; "Hoola ko bhejiye", ya <b>Ctrl+Shift+H</b>. Pairing bilkul PC jaisi: phone ka 6 anko ka code.</p>
+<p class="lead">Send the page you are reading to your Hoola conversation - right-click
+&gt; "Send to Hoola", or press <b>Ctrl+Shift+H</b>. Pairing works just like a PC: the phone's 6-digit code.</p>
 
 <div class="card">
   <label for="server">Hoola server</label>
   <input id="server" placeholder="https://hoola.ainewtika.com">
-  <label for="code">Phone par Mera PC &gt; "PC jodiye" ka 6 anko ka code</label>
+  <label for="code">The 6-digit code from My PC &gt; "Connect a PC" on the phone</label>
   <input id="code" placeholder="123456" inputmode="numeric" maxlength="6">
-  <button id="pair">Jodiye</button>
-  <button id="unpair" class="ghost">Alag karein</button>
+  <button id="pair">Connect</button>
+  <button id="unpair" class="ghost">Unpair</button>
   <div id="state"></div>
 </div>
 
 <div class="card">
-  <b style="font-size:13px">Pehli baar browser mein lagane ke 3 kadam</b>
+  <b style="font-size:13px">3 steps to add it to the browser the first time</b>
   <ol>
-    <li>chrome://extensions kholiye (address bar mein likhiye)</li>
-    <li>Right-top <b>Developer mode</b> on kijiye</li>
-    <li><b>Load unpacked</b> dabaiye aur yeh folder chuniye:
+    <li>Open chrome://extensions (type it in the address bar)</li>
+    <li>Turn on <b>Developer mode</b> (top right)</li>
+    <li>Click <b>Load unpacked</b> and choose this folder:
         <br><code id="dir" style="font-size:11px">%LOCALAPPDATA%\Hoola\chrome-extension</code></li>
   </ol>
 </div>

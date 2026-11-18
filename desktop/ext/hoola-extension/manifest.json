@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hoola",
   "version": "1.10.0",
-  "description": "Jis page par padh rahi hain use Hoola ko bhejiye - sawaal ke saath. Jawab Hoola ki conversation mein. W5: live captions bhi - tab ka audio Hoola ke kaan door par.",
+  "description": "Send the page you are reading to Hoola, with a question. The answer comes in your Hoola conversation. Also live captions from the tab audio.",
   "default_locale": "en",
   "icons": {
     "16": "icons/hoola16.png",
@@ -16,7 +16,7 @@
   "background": { "service_worker": "background.js" },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Hoola ko bhejiye",
+    "default_title": "Send to Hoola",
     "default_icon": {
       "16": "icons/hoola16.png",
       "32": "icons/hoola32.png",
@@ -27,7 +27,7 @@
   "commands": {
     "send-page": {
       "suggested_key": { "default": "Ctrl+Shift+H", "mac": "Command+Shift+H" },
-      "description": "Yeh page Hoola ko bhejiye (sawaal popup mein likh sakti hain)"
+      "description": "Send this page to Hoola (you can type a question in the popup)"
     }
   }
 }

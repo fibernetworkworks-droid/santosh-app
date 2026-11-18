@@ -29,7 +29,7 @@ def send(cfg, text: str = "", url: str = "", title: str = "", selection: str = "
     """Bhej do. cfg = the desktop Config (server + token). Jawab honest dict: ok / accepted /
     conversation_id, ya ok=False with a message she can act on."""
     if not getattr(cfg, "paired", False):
-        return {"ok": False, "message": "Hoola Desktop paired nahi hai - pehle phone se pair kijiye."}
+        return {"ok": False, "message": "Hoola Desktop is not paired - pair it from the phone first."}
     body: dict[str, str] = {}
     if text.strip():
         body["text"] = text.strip()[:8000]
@@ -40,22 +40,22 @@ def send(cfg, text: str = "", url: str = "", title: str = "", selection: str = "
     if selection.strip():
         body["selection"] = selection.strip()[:4000]
     if not body:
-        return {"ok": False, "message": "Kuch bhejiye - ek sawaal ya ek page."}
+        return {"ok": False, "message": "Send something - a question or a page."}
     body["client_id"] = cid or client_id()
     c = http or httpx.Client(timeout=TIMEOUT)
     try:
         r = c.post(cfg.server.rstrip("/") + "/api/pc/quickask", json=body,
                    headers={"Authorization": f"Bearer {cfg.token}"})
     except Exception as e:
-        return {"ok": False, "message": f"Server tak nahi pahuncha: {type(e).__name__}"}
+        return {"ok": False, "message": f"Could not reach the server: {type(e).__name__}"}
     if r.status_code == 401:
-        return {"ok": False, "message": "Yeh device hata diya gaya - Hoola Desktop mein dobara pair kijiye."}
+        return {"ok": False, "message": "This device was removed - pair Hoola Desktop again."}
     if r.status_code == 429:
         try:
             msg = r.json().get("detail", "")
         except ValueError:
             msg = ""
-        return {"ok": False, "message": msg or "Bahut jaldi bahut sawaal - thodi der baad."}
+        return {"ok": False, "message": msg or "Too many questions too quickly - try again in a little while."}
     if r.status_code >= 400:
         try:
             msg = r.json().get("detail") or r.text
@@ -70,15 +70,15 @@ def send(cfg, text: str = "", url: str = "", title: str = "", selection: str = "
 def messages(cfg, conversation_id: str, after: int = 0, http: httpx.Client | None = None) -> dict[str, Any]:
     """The read-back: the window's ask box shows the answer where she asked (the popup's poll)."""
     if not getattr(cfg, "paired", False):
-        return {"ok": False, "message": "Hoola Desktop paired nahi hai."}
+        return {"ok": False, "message": "Hoola Desktop is not paired."}
     c = http or httpx.Client(timeout=TIMEOUT)
     try:
         r = c.get(cfg.server.rstrip("/") + "/api/pc/quickask/messages",
                   params={"conversation_id": conversation_id, "after": int(after)},
                   headers={"Authorization": f"Bearer {cfg.token}"})
     except Exception as e:
-        return {"ok": False, "message": f"Server tak nahi pahuncha: {type(e).__name__}"}
+        return {"ok": False, "message": f"Could not reach the server: {type(e).__name__}"}
     if r.status_code >= 400:
-        return {"ok": False, "message": "Jawab nahi mila (conversation is device ki nahi ya server busy)."}
+        return {"ok": False, "message": "No answer found (the conversation does not belong to this device, or the server is busy)."}
     d = r.json()
     return {"ok": True, "messages": d.get("messages", [])}

@@ -8,12 +8,12 @@ async function init() {
   const st = await chrome.storage.local.get(["server", "token", "lastConversationId", "lastSentAt"]);
   const server = (st.server || DEFAULT_SERVER).replace(/\/+$/, "");
   if (!st.token) {
-    $("pairline").textContent = "Pair nahi hai - Options mein 6 anko ka code daaliye.";
+    $("pairline").textContent = "Not paired - enter the 6-digit code in Options.";
     $("pairline").style.color = "#D93C3C";
   } else {
     const when = st.lastSentAt ? new Date(st.lastSentAt).toLocaleString() : "";
-    $("pairline").textContent = "Pair hai · server " + server.replace(/^https?:\/\//, "") +
-                                (when ? " · aakhri bheja: " + when : "");
+    $("pairline").textContent = "Paired · server " + server.replace(/^https?:\/\//, "") +
+                                (when ? " · last sent: " + when : "");
     $("pairline").style.color = "#0E9F6E";
     loadReplies(st.lastConversationId);
   }
@@ -41,18 +41,18 @@ function capState(msg, bad) {
 
 async function captionsStart() {
   $("capstart").disabled = true;
-  capState("Session khol raha hoon…", false);
+  capState("Opening the session…", false);
   const out = await chrome.runtime.sendMessage({ kind: "captions-start" });
   $("capstart").disabled = false;
   if (!out || !out.ok) {
-    capState((out && out.message) || "Session nahi khula.", true);
+    capState((out && out.message) || "The session did not open.", true);
     return;
   }
   capSid = out.sid;
   await chrome.storage.local.set({ capSid, capStartedAt: Date.now() });
   $("capstop").disabled = false;
   $("caps").innerHTML = "";
-  capState("Live · " + (out.model || "base") + " · captions aa rahe hain…", false);
+  capState("Live · " + (out.model || "base") + " · captions are coming in…", false);
   clearInterval(capPoll);
   capPoll = setInterval(pollCaptions, 3000);
   pollCaptions();
@@ -66,9 +66,9 @@ async function pollCaptions() {
     const r = await fetch(server + "/api/kaan/live/" + encodeURIComponent(capSid), {
       headers: { "Authorization": "Bearer " + st.token },
     });
-    if (!r.ok) { capState("Session ki sthiti nahi mili (HTTP " + r.status + ").", true); return; }
+    if (!r.ok) { capState("Could not get the session status (HTTP " + r.status + ").", true); return; }
     const d = await r.json();
-    if (d.status !== "live") { stopPolling("Session band ho gaya."); return; }
+    if (d.status !== "live") { stopPolling("The session has ended."); return; }
     const secs = Math.round(d.duration_s || 0);
     capState("Live · " + secs + "s · " + (d.n_phrases || 0) + " phrase(s)", false);
     const box = $("caps");
@@ -80,13 +80,13 @@ async function pollCaptions() {
       box.appendChild(div);
     }
   } catch (e) {
-    capState("Server tak poll nahi pahuncha.", true);
+    capState("Could not reach the server to poll.", true);
   }
 }
 
 async function captionsStop() {
   $("capstop").disabled = true;
-  capState("Band kar raha hoon…", false);
+  capState("Stopping…", false);
   const out = await chrome.runtime.sendMessage({ kind: "captions-stop" });
   clearInterval(capPoll); capPoll = null;
   await chrome.storage.local.remove(["capSid", "capStartedAt"]);
@@ -94,9 +94,9 @@ async function captionsStop() {
   $("capstop").disabled = true;
   capSid = "";
   if (out && out.ok) {
-    capState("Transcript ban gayi" + (out.transcript_id ? " - " + out.transcript_id : "") + ". Conversation mein dikhegi.", false);
+    capState("Transcript created" + (out.transcript_id ? " - " + out.transcript_id : "") + ". It will show in the conversation.", false);
   } else {
-    capState((out && out.message) || "Band nahi hua.", true);
+    capState((out && out.message) || "Could not stop it.", true);
   }
 }
 
@@ -125,18 +125,18 @@ function say(msg, bad) {
 
 async function send(text, withPage) {
   $("sendpage").disabled = $("sendask").disabled = true;
-  say("Bhej raha hoon…", false);
+  say("Sending…", false);
   const out = await chrome.runtime.sendMessage({ kind: "send-page", text });
   $("sendpage").disabled = $("sendask").disabled = false;
   if (out && out.ok) {
     $("ask").value = "";
-    say(out.duplicate ? "Yeh sawaal pehle hi ja chuka tha." :
-        (withPage ? "Page bhej diya - Hoola padh kar jawab de rahi hai." : "Sawaal bhej diya - jawab conversation mein."),
+    say(out.duplicate ? "This question was already sent." :
+        (withPage ? "Page sent - Hoola is reading it and will answer." : "Question sent - the answer comes in the conversation."),
         false);
     const st = await chrome.storage.local.get("lastConversationId");
     loadReplies(st.lastConversationId);
   } else {
-    say((out && out.message) || "Nahi bheja.", true);
+    say((out && out.message) || "Not sent.", true);
   }
 }
 

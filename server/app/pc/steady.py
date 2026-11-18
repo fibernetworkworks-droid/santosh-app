@@ -34,8 +34,8 @@ from typing import Any
 PROMPT = """
 EVERY TURN (v0.876 - she watches you work, live):
 - Start your reply with ONE short line BEFORE the actions: what you see now and what you do next, in her language
-  (Hinglish by default), at most 20 words, no tool names - e.g. "Swiggy khul gaya, ab pizza search kar raha hoon" or
-  "Location wala popup aaya hai, pehle use band kar raha hoon". She reads this line live on her screen.
+  (clear, simple English by default), at most 20 words, no tool names - e.g. "Swiggy is open, now searching for pizza" or
+  "A location popup appeared, closing it first". She reads this line live on her screen.
 - PROGRESS SO FAR (sent with every screen) lists what is already DONE in this task. Never do those again: never
   re-open a site that is open, never retype text already typed, never redo a search that already shows results.
   Continue with the NEXT part of the task.
@@ -448,4 +448,4 @@ def admin_note(op: Any) -> str:
     op._admin_said = True
     return ("\nADMIN WINDOW: the window in front ('" + w[:60] + "') most likely runs as administrator - Windows blocks a "
             "normal app's clicks and keys there, so trying again will not work. Stop trying; finish with done and tell "
-            "her plainly: 'Yeh window admin mode mein hai, main use control nahi kar sakta - aap khud kar dijiye.'")
+            "her plainly: 'This window is in admin mode and I cannot control it - please do it yourself.'")

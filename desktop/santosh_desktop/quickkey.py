@@ -72,7 +72,7 @@ class QuickKey:
         user32 = ctypes.windll.user32
         self._thread_id = ctypes.windll.kernel32.GetCurrentThreadId()
         if not user32.RegisterHotKey(None, HOTKEY_ID, MODIFIERS, VK_H):
-            self.error = f"{KEY_NAME} doosre app ke paas hai - wahi shortcut pehle se chal raha hai."
+            self.error = f"{KEY_NAME} is already used by another app - that shortcut is already running."
             return
         self.registered = True
         msg = _MSG()

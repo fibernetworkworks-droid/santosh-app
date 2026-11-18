@@ -211,7 +211,7 @@ def _chrome_up() -> None:
             return
         except Exception:
             time.sleep(0.5)
-    raise ActionError("Chrome nahi khula (CDP ready nahi hua) - /tmp/chrome_err.log par dekho")
+    raise ActionError("Chrome did not open (CDP was not ready) - see /tmp/chrome_err.log")
 
 
 def _targets() -> list[dict[str, Any]]:
@@ -222,7 +222,7 @@ def _targets() -> list[dict[str, Any]]:
 def _active_target() -> dict[str, Any]:
     ts = _targets()
     if not ts:
-        raise ActionError("Koi page khula nahi hai")
+        raise ActionError("No page is open")
     act = _active_window()
     for t in ts:
         if act and t.get("title") == act:
@@ -500,7 +500,7 @@ def allowed(path: str | Path) -> bool:
 
 def _guard(path: str | Path) -> None:
     if not allowed(path):
-        raise ActionError("Yeh folder kisi aur user ka hai - Hoola PC par har user apne folder tak hi pahunchta hai.")
+        raise ActionError("This folder belongs to another user - on the Hoola PC every user can only reach their own folder.")
 
 
 def _point(link: Path, target: Path) -> None:
@@ -656,7 +656,7 @@ def _unlock_profile(key: str, secret: str) -> str:
     if dec.returncode != 0 or tar.returncode != 0 or not d.is_dir():
         import shutil
         shutil.rmtree(d, ignore_errors=True)
-        raise ActionError("Is user ka folder khul nahi paya (chabi mel nahi khayi) - kuch nahi badla.")
+        raise ActionError("This user's folder could not be opened (the key did not match) - nothing changed.")
     arc.unlink(missing_ok=True)       # the readable copy is the only copy while she is served
     return "opened"
 
@@ -847,14 +847,14 @@ class Actions:
         if cmd == "@browser":
             cmd = _browser_exe()          # v1.2.0 google-chrome when present, chromium otherwise
         if cmd is None and low in self._APPS:
-            raise ActionError("Terminal yahan nahi khulta - run action use kijiye (yeh Hoola ka apna VM hai).")
+            raise ActionError("A terminal cannot be opened here - use the run action (this is Hoola's own VM).")
         if cmd is None:
             for cand in (low, low.replace(" ", "-"), low.replace(" ", "_")):
                 if subprocess.run(["which", cand], capture_output=True).returncode == 0:
                     cmd = cand
                     break
         if cmd is None:
-            raise ActionError(f"{name} install nahi hai. Pehle install action se install kijiye.")
+            raise ActionError(f"{name} is not installed. Install it first with the install action.")
         args = [cmd, str(DATA)] if cmd == "xdg-open" else [cmd]
         subprocess.Popen(args, env={**os.environ, "DISPLAY": DISPLAY},
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -864,7 +864,7 @@ class Actions:
     def do_focus(self, title: str = "", **_) -> dict[str, Any]:
         t = str(title or "")
         if subprocess.run(["wmctrl", "-a", t], capture_output=True, env={**os.environ, "DISPLAY": DISPLAY}).returncode != 0:
-            raise ActionError(f"'{t}' naam ki koi window nahi mili")
+            raise ActionError(f"No window named '{t}' was found")
         return {"focused": _active_window() or t}
 
     def do_window(self, op: str = "", title: str = "", **_) -> dict[str, Any]:
@@ -1064,7 +1064,7 @@ class Actions:
     def _ref_sel(self, ref: int) -> str:
         sel = self._els.get(int(ref or 0))
         if not sel:
-            raise ActionError(f"ref {ref} gaya - pehle page_elements dobara chalao (page badla ya naya session)")
+            raise ActionError(f"ref {ref} is gone - run page_elements again first (the page changed or this is a new session)")
         return sel
 
     def _js_on_ref(self, sel: str, body: str) -> Any:
@@ -1081,7 +1081,7 @@ class Actions:
             const before = location.href; el.click();
             return {ok:true, was: before, now: location.href, title: document.title}; """)
         if not r.get("ok"):
-            raise ActionError(f"click nahi hua ({r.get('err', '?')}) - page_elements dobara chalao")
+            raise ActionError(f"click failed ({r.get('err', '?')}) - run page_elements again")
         t = _active_target()
         return {"clicked": True, "title": t.get("title", ""), "url": t.get("url", ""),
                 "navigated": r.get("was") != r.get("now")}
@@ -1112,9 +1112,9 @@ class Actions:
         t = _active_target()
         r = _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
         if not r.get("ok"):
-            raise ActionError(f"type nahi hua ({r.get('err', '?')}) - page_elements dobara chalao")
+            raise ActionError(f"type failed ({r.get('err', '?')}) - run page_elements again")
         return {"typed": True, "length": r.get("length"), "matches": r.get("matches"),
-                "note": "value kabhi wapas nahi aati (sirf length + match)"}
+                "note": "the value is never returned (only length + match)"}
 
     def do_page_select(self, ref: int, value: str = "", **_) -> dict[str, Any]:
         _chrome_up()
@@ -1137,7 +1137,7 @@ class Actions:
         t = _active_target()
         r = _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
         if not r.get("ok"):
-            raise ActionError(f"select nahi hua ({r.get('err', '?')})"
+            raise ActionError(f"select failed ({r.get('err', '?')})"
                               + (f" - options: {', '.join((r.get('options') or [])[:12])}" if r.get("options") else ""))
         return {"selected": r.get("picked")}
 
@@ -1173,7 +1173,7 @@ class Actions:
         _chrome_up()
         want = str(text or "").strip()
         if not want:
-            raise ActionError("Kis text ka intezaar?")
+            raise ActionError("Which text should it wait for?")
         end = time.time() + max(2, min(int(seconds or 15), 20))
         while time.time() < end:
             t = _active_target()
@@ -1181,7 +1181,7 @@ class Actions:
             if want.lower() in body.lower():
                 return {"found": True, "title": t.get("title", "")}
             time.sleep(1.0)
-        return {"found": False, "note": f"'{want[:60]}' {int(seconds or 15)}s mein nahi dikha"}
+        return {"found": False, "note": f"'{want[:60]}' did not appear within {int(seconds or 15)}s"}
 
     def do_tabs(self, **_) -> dict[str, Any]:
         _chrome_up()
@@ -1201,7 +1201,7 @@ class Actions:
             q = str(tab or "").lower()
             pick = next((t for t in ts if q in (t.get("title") or "").lower()), None)
         if pick is None:
-            raise ActionError("Waisa koi tab nahi khula")
+            raise ActionError("No such tab is open")
         httpx.get(CDP + f"/json/activate/{pick['id']}", timeout=5)
         subprocess.run(["wmctrl", "-a", (pick.get("title") or "")[:80]], capture_output=True,
                        env={**os.environ, "DISPLAY": DISPLAY})
@@ -1231,7 +1231,7 @@ class Actions:
         p = Path(path or str(WORK if CUR["key"] else DATA))
         _guard(p)
         if not p.is_dir():
-            raise ActionError("Yeh folder nahi hai")
+            raise ActionError("This is not a folder")
         entries = []
         for c in sorted(p.iterdir(), key=lambda c: (not c.is_dir(), c.name.lower()))[:300]:
             if c.name.startswith(".") or not allowed(c):
@@ -1248,12 +1248,12 @@ class Actions:
         p = Path(path)
         _guard(p)
         if not p.is_file():
-            raise ActionError("File nahi mili")
+            raise ActionError("File not found")
         n = max(500, min(int(max_chars or 12000), 40000))
         try:
             text = p.read_text(errors="ignore")[:n]
         except Exception as e:
-            raise ActionError(f"Padh nahi paya: {e}")
+            raise ActionError(f"Could not read it: {e}")
         return {"path": str(p), "name": p.name, "text": text}
 
     def do_save_file(self, file_id: str = "", name: str = "", url: str = "", **_) -> dict[str, Any]:
@@ -1271,7 +1271,7 @@ class Actions:
                 for chunk in r.iter_bytes():
                     out.write(chunk)
         return {"saved_path": str(dest), "name": dest.name,
-                "message": f"{dest.name} Hoola PC ke Downloads mein save ho gayi."}
+                "message": f"{dest.name} was saved in the Hoola PC Downloads folder."}
 
     def do_send_file(self, path: str = "", **_) -> dict[str, Any]:
         """v0.202 the PC-to-PC bridge: hand one of MY files to the server so the USER'S personal PC can
@@ -1283,7 +1283,7 @@ class Actions:
             p = (WORK if CUR["key"] else DATA) / p
         _guard(p)
         if not p.is_file():
-            raise ActionError("File nahi mili")
+            raise ActionError("File not found")
         size = p.stat().st_size
         if size > MAX_SEND:
             raise ActionError(f"{p.name} is {size // (1024 * 1024)} MB; the limit is 50 MB.")
@@ -1300,9 +1300,9 @@ class Actions:
     def do_install(self, packages: str = "", pip: bool = False, **_) -> dict[str, Any]:
         pkgs = str(packages or "").strip()
         if not pkgs:
-            raise ActionError("Batayiye kya install karna hai")
+            raise ActionError("Say what to install")
         if any(ch in pkgs for ch in ";|&`$>\n"):
-            raise ActionError("Ek baar mein sirf package naam (koi shell nahi). Alag-alag naam dijiye.")
+            raise ActionError("Package names only (no shell). Give the names separately.")
         names = pkgs.split()
         if pip:
             cmd = ["pip", "install", "--quiet", "--no-input", *names]
@@ -1313,7 +1313,7 @@ class Actions:
         try:
             p = subprocess.run(cmd, capture_output=True, text=True, timeout=480, env=env)
         except subprocess.TimeoutExpired:
-            raise ActionError("Install ne 8 minute mein jawab nahi diya (network dheema hai). Dobara koshish kijiye.")
+            raise ActionError("The install did not answer within 8 minutes (the network is slow). Try again.")
         tail = ((p.stdout or "") + (p.stderr or ""))[-1500:]
         line = f"{time.strftime('%m-%d %H:%M')} {'pip' if pip else 'apt'} {pkgs} rc={p.returncode}"
         with (DATA / "installed.log").open("a") as fh:
@@ -1333,7 +1333,7 @@ class Actions:
             self._reap()
             live = [j for j in JOBS.values() if j["proc"].poll() is None]
             if len(live) >= JOB_MAX:
-                raise ActionError(f"{JOB_MAX} commands pehle se chal rahe hain - run_status se dekhiye ya intezaar kijiye.")
+                raise ActionError(f"{JOB_MAX} commands are already running - check with run_status or wait.")
             jid = "job" + str(int(time.time() * 1000))[-8:]
             logdir = Path(cwd) / ".jobs"
             logdir.mkdir(parents=True, exist_ok=True)
@@ -1356,7 +1356,7 @@ class Actions:
             p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=limit,
                                env=_run_env(), cwd=cwd, **_as_worker())
         except subprocess.TimeoutExpired:
-            raise ActionError(f"Command {limit}s mein ruk gaya (timeout). Lambe kaam ke liye background=true.")
+            raise ActionError(f"The command stopped after {limit}s (timeout). For long work use background=true.")
         return {"exit": p.returncode, "stdout": (p.stdout or "")[-6000:],
                 "stderr": (p.stderr or "")[-1500:], "cwd": cwd}
 
@@ -1373,7 +1373,7 @@ class Actions:
                               "seconds": int(time.time() - v["started"])} for k, v in JOBS.items()]}
         j = JOBS.get(str(job))
         if j is None:
-            raise ActionError("Yeh job nahi mila (PC badla ya restart hua).")
+            raise ActionError("This job was not found (the PC changed or restarted).")
         rc = j["proc"].poll()
         try:
             data = j["log"].read_bytes()[-max(500, min(int(max_chars or 4000), 20000)):]
@@ -1385,7 +1385,7 @@ class Actions:
     def do_run_stop(self, job: str = "", **_) -> dict[str, Any]:
         j = JOBS.get(str(job))
         if j is None:
-            raise ActionError("Yeh job nahi mila.")
+            raise ActionError("This job was not found.")
         _kill_job(j)
         return {"job": job, "stopped": True}
 
@@ -1463,7 +1463,7 @@ class Bridge:
                     print("unpaired by the server; waiting for a new pair code", flush=True)
                     (DATA / "identity.json").unlink(missing_ok=True)
                     continue
-                print(f"connection toota, {int(delay)}s mein dobara… ({type(e).__name__})", flush=True)
+                print(f"connection lost, retrying in {int(delay)}s… ({type(e).__name__})", flush=True)
             finally:
                 self.ws = None
             await asyncio.sleep(delay)

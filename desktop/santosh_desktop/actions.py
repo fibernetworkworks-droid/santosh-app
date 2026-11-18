@@ -74,15 +74,15 @@ class Actions:
     def _file(self, path: str) -> Path:
         p = allowed(path, self.cfg.folders, self.cfg.inbox)
         if not p.is_file():
-            raise ActionError("File nahi mili (shayad hata di ya naam badal gaya). Dobara search kariye.")
+            raise ActionError("File not found (it may have been deleted or renamed). Search again.")
         return p
 
     # ---------------- actions ----------------
     # ---------------- using the PC (screen, mouse, keyboard, apps) ----------------
     def _control_on(self) -> None:
         if not self.cfg.control_enabled:
-            raise ActionError("PC chalane ki permission band hai. PC par Hoola Desktop > Settings > "
-                              "'Hoola ko PC chalane dein' on kijiye.")
+            raise ActionError("Permission to control the PC is off. On the PC, open Hoola Desktop > Settings > "
+                              "turn on 'Let Hoola control the PC'.")
 
     def do_screen(self, max_width: int = 1280, monitor: str = "primary", **_) -> dict[str, Any]:
         self._control_on()
@@ -107,7 +107,7 @@ class Actions:
 
     def do_open_app(self, name: str = "", **_) -> dict[str, Any]:
         self._control_on()
-        self.log(f"App khol raha hoon: {name}")
+        self.log(f"Opening app: {name}")
         return self.control.open_app(name)
 
     def do_focus(self, title: str = "", **_) -> dict[str, Any]:
@@ -123,7 +123,7 @@ class Actions:
     def do_open_url(self, url: str = "", **_) -> dict[str, Any]:
         """v1.4 Open a site as a new tab in the browser she already uses, and wait for the page to load."""
         self._control_on()
-        self.log(f"Site khol raha hoon: {url[:80]}")
+        self.log(f"Opening site: {url[:80]}")
         return self.control.open_url(url)
 
     # ---------------- v1.4 browser intelligence (Chrome / Edge / Firefox, read-only) ----------------
@@ -155,7 +155,7 @@ class Actions:
             out = browser.page_click(ref)
         except browser.BrowserUnavailable as e:
             raise ActionError(str(e))
-        self.log(f"Element #{ref} par click (semantic)")
+        self.log(f"Click on element #{ref} (semantic)")
         return out
 
     def do_page_type(self, ref: int, text: str = "", clear: bool = True, **_) -> dict[str, Any]:
@@ -165,7 +165,7 @@ class Actions:
             out = browser.page_type(ref, str(text or "")[:4000], clear=bool(clear))
         except browser.BrowserUnavailable as e:
             raise ActionError(str(e))
-        self.log(f"Element #{ref} mein likha (semantic, {out.get('length', 0)} akshar)")
+        self.log(f"Typed into element #{ref} (semantic, {out.get('length', 0)} characters)")
         return out
 
     def do_page_select(self, ref: int, value: str = "", **_) -> dict[str, Any]:
@@ -215,7 +215,7 @@ class Actions:
             out = browser.switch_tab(tab, int(index or 0))
         except browser.BrowserUnavailable as e:
             raise ActionError(str(e))
-        self.log(f"Tab par gaya: {(tab or index)!s:.60}")
+        self.log(f"Switched to tab: {(tab or index)!s:.60}")
         return out
 
     def do_downloads(self, minutes: int = 15, **_) -> dict[str, Any]:
@@ -236,7 +236,7 @@ class Actions:
         self._control_on()
         if not axtree.available():
             raise ActionError("Semantic desktop mode needs the agent-desktop helper beside SantoshDesktop.exe "
-                              "(naya SantoshDesktop.exe install kijiye). Pixel mode abhi bhi chal raha hai.")
+                              "(install the new SantoshDesktop.exe). Pixel mode still works.")
 
     def do_ax_status(self, **_) -> dict[str, Any]:
         self._ax()
@@ -295,7 +295,7 @@ class Actions:
             out = axtree.set_value(str(ref or ""), str(text or "")[:4000])
         except axtree.AxError as e:
             raise ActionError(str(e))
-        self.log(f"AX likha {out.get('ref', '')[:24]} ({out.get('length', 0)} akshar)")
+        self.log(f"AX typed {out.get('ref', '')[:24]} ({out.get('length', 0)} characters)")
         return out
 
     def do_ax_press(self, keys: str = "", app: str = "", **_) -> dict[str, Any]:
@@ -316,7 +316,7 @@ class Actions:
             out = axtree.launch(str(name or ""))
         except axtree.AxError as e:
             raise ActionError(str(e))
-        self.log(f"AX khol raha hoon: {out.get('launched', '')[:60]}")
+        self.log(f"AX opening: {out.get('launched', '')[:60]}")
         return out
 
     def do_ax_wait(self, app: str = "", text: str = "", window: str = "", seconds: int = 10, **_) -> dict[str, Any]:
@@ -341,7 +341,7 @@ class Actions:
         return out
 
     def do_ax_get(self, ref: str = "", property: str = "text", **_) -> dict[str, Any]:
-        return self._axcall(axtree.get, "AX padha: {property}", str(ref or ""), str(property or "text"))
+        return self._axcall(axtree.get, "AX read: {property}", str(ref or ""), str(property or "text"))
 
     def do_ax_is(self, ref: str = "", state: str = "visible", **_) -> dict[str, Any]:
         return self._axcall(axtree.is_state, "AX check: {state} = {value}", str(ref or ""), str(state or "visible"))
@@ -350,11 +350,11 @@ class Actions:
         return self._axcall(axtree.act, "AX {op} ({delivery})", str(op or ""), str(ref or ""))
 
     def do_ax_select(self, ref: str = "", value: str = "", **_) -> dict[str, Any]:
-        return self._axcall(axtree.select, "AX chuna: {selected}", str(ref or ""), str(value or ""))
+        return self._axcall(axtree.select, "AX chose: {selected}", str(ref or ""), str(value or ""))
 
     def do_ax_type(self, ref: str = "", text: str = "", interval_ms: int = 0, **_) -> dict[str, Any]:
         """Keyboard-style typing BY REF over a pipe; only the length comes back (the text never leaves the PC)."""
-        return self._axcall(axtree.type_text, "AX type ({length} akshar)", str(ref or ""), str(text or "")[:4000],
+        return self._axcall(axtree.type_text, "AX typed ({length} characters)", str(ref or ""), str(text or "")[:4000],
                             int(interval_ms or 0))
 
     def do_ax_scroll(self, ref: str = "", direction: str = "down", amount: int = 3, **_) -> dict[str, Any]:
@@ -364,26 +364,26 @@ class Actions:
         from .control import BLOCKED_APP_WORDS
         if re.search(r"(santosh|hoola)\s*desktop|explorer\.exe|^explorer$", str(app or ""), re.I) or \
                 BLOCKED_APP_WORDS.search(str(app or "")):
-            raise ActionError("Yeh app Hoola band nahi karta (Hoola Desktop / Windows Explorer / system tools).")
-        return self._axcall(axtree.close_app, "AX band kiya: {app}", str(app or ""))
+            raise ActionError("Hoola does not close this app (Hoola Desktop / Windows Explorer / system tools).")
+        return self._axcall(axtree.close_app, "AX closed: {app}", str(app or ""))
 
     def do_ax_displays(self, **_) -> dict[str, Any]:
         return self._axcall(axtree.displays, "AX screens: {count}")
 
     def do_ax_window_shot(self, app: str = "", window_id: str = "", **_) -> dict[str, Any]:
-        return self._axcall(axtree.window_shot, "AX window ki photo: {app}", str(app or ""), str(window_id or ""))
+        return self._axcall(axtree.window_shot, "AX window picture: {app}", str(app or ""), str(window_id or ""))
 
     def do_ax_surfaces(self, app: str = "", **_) -> dict[str, Any]:
         return self._axcall(axtree.surfaces, "AX surfaces: {count}", str(app or ""))
 
     def do_ax_open_surface(self, surface: str = "", **_) -> dict[str, Any]:
-        return self._axcall(axtree.open_surface, "AX khola: {opened}", str(surface or ""))
+        return self._axcall(axtree.open_surface, "AX opened: {opened}", str(surface or ""))
 
     def do_ax_notifications(self, app: str = "", text: str = "", limit: int = 10, **_) -> dict[str, Any]:
         return self._axcall(axtree.notifications, "AX notifications: {count}", str(app or ""), str(text or ""), int(limit or 10))
 
     def do_ax_notification_dismiss(self, index: int = 1, expected_app: str = "", expected_title: str = "", **_) -> dict[str, Any]:
-        return self._axcall(axtree.dismiss_notification, "AX notification hatayi: {dismissed}", int(index or 1),
+        return self._axcall(axtree.dismiss_notification, "AX notification dismissed: {dismissed}", int(index or 1),
                             str(expected_app or ""), str(expected_title or ""))
 
     def do_ax_notification_action(self, index: int = 1, action: str = "", expected_app: str = "", expected_title: str = "",
@@ -394,11 +394,11 @@ class Actions:
     def do_ax_clipboard(self, op: str = "get", text: str = "", **_) -> dict[str, Any]:
         op = str(op or "get").lower()
         if op == "get":
-            return self._axcall(axtree.clipboard_get, "AX clipboard padha")
+            return self._axcall(axtree.clipboard_get, "AX clipboard read")
         if op == "set":
-            return self._axcall(axtree.clipboard_set, "AX clipboard mein rakha ({length} akshar)", str(text or ""))
+            return self._axcall(axtree.clipboard_set, "AX clipboard set ({length} characters)", str(text or ""))
         if op == "clear":
-            return self._axcall(axtree.clipboard_clear, "AX clipboard saaf")
+            return self._axcall(axtree.clipboard_clear, "AX clipboard cleared")
         raise ActionError("op must be get / set / clear")
 
     def do_ax_batch(self, steps: list | None = None, **_) -> dict[str, Any]:
@@ -412,8 +412,8 @@ class Actions:
         """v1.7 Win+R 'hoola': HKCU App Paths alias SantoshDesktop.exe par (user-level, no admin)."""
         self._control_on()
         out = app_paths.set_enabled(bool(on))
-        self.log("Win+R alias 'hoola' joda" if out.get("on") else
-                 ("Win+R alias 'hoola' hata diya" if out.get("ok") else "Win+R alias nahi bana"))
+        self.log("Win+R alias 'hoola' added" if out.get("on") else
+                 ("Win+R alias 'hoola' removed" if out.get("ok") else "Win+R alias could not be made"))
         return out
 
     # ---------------- v1.8.0 POWERTRYS RUN DOOR (W2b: plugin install + hotkey fallback) --------
@@ -433,11 +433,11 @@ class Actions:
         if out.get("plugin"):
             self.log("PowerToys Run plugin 'hoola' joda")
         elif on and out.get("ok") and not out.get("pt_present"):
-            self.log("PowerToys nahi mila - Ctrl+Alt+H hotkey door on")
+            self.log("PowerToys not found - Ctrl+Alt+H hotkey door is on")
         elif out.get("ok"):
-            self.log("PowerToys Run plugin 'hoola' hata diya")
+            self.log("PowerToys Run plugin 'hoola' removed")
         else:
-            self.log("PowerToys Run plugin nahi laga")
+            self.log("PowerToys Run plugin could not be added")
         return out
 
     # ---------------- v1.9.0 W3 BROWSER EXTENSION (the 'send page to Hoola' door) --------
@@ -454,7 +454,7 @@ class Actions:
         elif out.get("ok"):
             self.log("Browser extension files hata di")
         else:
-            self.log("Browser extension nahi lagi: " + str(out.get("message", ""))[:80])
+            self.log("Browser extension could not be added: " + str(out.get("message", ""))[:80])
         return out
 
     def do_status(self, **_) -> dict[str, Any]:
@@ -464,7 +464,7 @@ class Actions:
 
     def do_search(self, query: str = "", kind: str = "any", limit: int = 20, **_) -> dict[str, Any]:
         res = self.index.search(query, kind or "any", int(limit or 20), self.cfg.folders)
-        self.log(f"Search: {query} ({len(res)} mili)")
+        self.log(f"Search: {query} ({len(res)} found)")
         return {"query": query, "results": res, "count": len(res), "indexed": self.index.count()}
 
     def do_list(self, path: str = "", **_) -> dict[str, Any]:
@@ -472,7 +472,7 @@ class Actions:
             return {"folders": [{"path": str(r), "name": r.name or str(r)} for r in roots(self.cfg.folders)]}
         p = allowed(path, self.cfg.folders, self.cfg.inbox)
         if not p.is_dir():
-            raise ActionError("Yeh folder nahi hai")
+            raise ActionError("This is not a folder")
         entries = []
         for c in sorted(p.iterdir(), key=lambda c: (not c.is_dir(), c.name.lower()))[:300]:
             if c.name.startswith("."):
@@ -505,7 +505,7 @@ class Actions:
                                files={"file": (p.name, fh, "application/octet-stream")}, data={"path": str(p)})
         if r.status_code >= 400:
             raise ActionError(f"Upload failed ({r.status_code}): {r.text[:160]}")
-        self.log(f"Phone par bheja: {p.name}")
+        self.log(f"Sent to phone: {p.name}")
         return r.json()
 
     def do_save_file(self, file_id: str = "", name: str = "", url: str = "", **_) -> dict[str, Any]:
@@ -524,8 +524,8 @@ class Actions:
                         raise ActionError("File too big")
                     out.write(chunk)
         tmp.replace(dest)
-        self.log(f"Phone se aayi file: {dest.name} (Santosh Inbox)")
-        return {"saved_path": str(dest), "name": dest.name, "message": f"{dest.name} PC ke 'Santosh Inbox' folder mein save ho gayi."}
+        self.log(f"File from phone: {dest.name} (Santosh Inbox)")
+        return {"saved_path": str(dest), "name": dest.name, "message": f"{dest.name} was saved in the PC's 'Santosh Inbox' folder."}
 
     OPEN_EXT = {".xlsx", ".xlsm", ".xls", ".csv", ".docx", ".doc", ".pdf", ".txt", ".pptx", ".odt", ".ods", ".jpg",
                 ".jpeg", ".png", ".md"}
@@ -567,7 +567,7 @@ class Actions:
         found.sort(key=lambda x: -x[0])
         out = [{"name": c.name, "path": str(c), "size": size, "modified": time.strftime("%Y-%m-%d %H:%M", time.localtime(m))}
                for m, c, size in found[:max(1, min(int(limit or 30), 100))]]
-        self.log(f"Nayi files dekhi ({len(out)})")
+        self.log(f"Checked new files ({len(out)})")
         return {"files": out, "count": len(out)}
 
     def do_print(self, path: str = "", copies: int = 1, **_) -> dict[str, Any]:
@@ -578,8 +578,8 @@ class Actions:
                 os.startfile(str(p), "print")  # type: ignore[attr-defined]
             else:
                 subprocess.run(["lp", str(p)], check=True, capture_output=True, timeout=60)
-        self.log(f"Print bheja: {p.name} × {copies}")
-        return {"printed": p.name, "copies": copies, "message": f"{p.name} print ho raha hai ({copies})."}
+        self.log(f"Sent to print: {p.name} × {copies}")
+        return {"printed": p.name, "copies": copies, "message": f"{p.name} is printing ({copies})."}
 
     def do_tally_report(self, report: str = "", from_date: str = "", to_date: str = "", party: str = "",
                         company: str = "", **_) -> dict[str, Any]:

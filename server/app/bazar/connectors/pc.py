@@ -56,7 +56,7 @@ def _call(ctx: Ctx, action: str, args: dict[str, Any]) -> dict[str, Any]:
         return hub.call_sync(ctx.user.id, action, args)
     except PcOffline:
         raise ToolError("PC_OFFLINE: The PC is offline. Ask the user to switch it on and open Santosh Desktop "
-                        "(or pair one: Santosh app > Main > Mera PC).")
+                        "(or pair one: Santosh app > Main > My PC).")
     except PcError as e:
         raise ToolError(f"PC: {e}")
 
@@ -69,14 +69,14 @@ class PcExecutor:
 
     def call(self, pack: Pack, tool: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any] | NeedsApproval:
         if tool not in SCHEMAS:
-            raise ToolError(f"Mera PC has no tool '{tool}'")
+            raise ToolError(f"My PC has no tool '{tool}'")
         if tool == "print":
             if not str(args.get("path") or "").strip():
                 raise ToolError("Which file? Give its path from search.")
             copies = max(1, min(int(args.get("copies") or 1), 20))
             name = str(args["path"]).replace("\\", "/").split("/")[-1]
-            return NeedsApproval(tier=2, title=f"PC par print: {name}", payee="Mera PC", amount_paise=0,
-                                 items=[{"name": f"{name} × {copies}", "price_paise": None}], pay_method="PC ka printer",
+            return NeedsApproval(tier=2, title=f"Print on PC: {name}", payee="My PC", amount_paise=0,
+                                 items=[{"name": f"{name} × {copies}", "price_paise": None}], pay_method="PC printer",
                                  action={"executor": "pc", "pack_id": pack.id, "name": "print",
                                          "args": {"path": args["path"], "copies": copies}})
         if tool == "tally_voucher":
@@ -107,10 +107,10 @@ class PcExecutor:
             f = pcs.get_file(out["file_id"])
             if f is None or f.tenant_id != ctx.user.id:
                 raise ToolError("PC: the file did not arrive")
-            return {"pc_file": pcs.public_file(f), "message": f"{f.name} phone par bhej diya."}
+            return {"pc_file": pcs.public_file(f), "message": f"{f.name} sent to your phone."}
         return out
 
     def execute(self, pack: Pack, action: str, args: dict[str, Any], ctx: Ctx) -> dict[str, Any]:
         out = _call(ctx, action, args)
-        msg = {"print": "PC par print bhej diya.", "tally_voucher": "Tally mein entry ho gayi."}.get(action, "Ho gaya.")
+        msg = {"print": "Sent to the PC printer.", "tally_voucher": "The Tally entry was made."}.get(action, "Done.")
         return {"status": "done", "message": out.get("message") or msg, **{k: v for k, v in out.items() if k != "message"}}

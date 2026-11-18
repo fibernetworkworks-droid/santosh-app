@@ -17,12 +17,12 @@ PACK = "pc-bridge"
 _NAMES = {"pc_status": "status", "pc_search": "search", "pc_list": "list", "pc_read": "read",
           "pc_send_to_phone": "send_file", "pc_print": "print", "tally_report": "tally_report", "tally_entry": "tally_voucher"}
 
-PC_TOOLS = [{"name": api, "description": "[HER PC - say 'aapka PC'] " + SCHEMAS[tool][0], "input_schema": SCHEMAS[tool][1]}
+PC_TOOLS = [{"name": api, "description": "[HER PC - say 'your PC'] " + SCHEMAS[tool][0], "input_schema": SCHEMAS[tool][1]}
             for api, tool in _NAMES.items()]
 
-PC_LABELS = {"pc_status": "PC dekh raha hoon", "pc_search": "PC par file dhoondh raha hoon", "pc_list": "PC ka folder dekh raha hoon",
-             "pc_read": "File padh raha hoon", "pc_send_to_phone": "File phone par bhej raha hoon",
-             "pc_print": "Print taiyar kar raha hoon", "tally_report": "Tally dekh raha hoon", "tally_entry": "Tally entry taiyar kar raha hoon"}
+PC_LABELS = {"pc_status": "Checking the PC", "pc_search": "Searching for a file on the PC", "pc_list": "Looking at a PC folder",
+             "pc_read": "Reading a file", "pc_send_to_phone": "Sending a file to the phone",
+             "pc_print": "Preparing a print", "tally_report": "Checking Tally", "tally_entry": "Preparing a Tally entry"}
 
 log = logging.getLogger("santosh.pcop")
 
@@ -43,29 +43,29 @@ PC_HANDLERS = {api: _handler(api) for api in _NAMES}
 
 # ---- Santosh uses the PC like a person (Santosh PC Operator) ----
 PC_TOOLS.append({"name": "pc_do", "description": (
-    "[HER PC - say 'aapka PC', never 'mera PC'] Santosh uses the user's OWN computer like a person: sees the screen, "
+    "[HER PC - say 'your PC', never 'my PC'] Santosh uses the user's OWN computer like a person: sees the screen, "
     "opens apps, clicks, types, presses keys, to finish a task end to end in ANY desktop app (Tally, Excel, Word, "
     "Chrome ON HER PC, Busy, Marg, email apps, any software). Use when the user wants something DONE on HER PC that the "
-    "file/Tally tools can't do: 'Excel mein sales sheet banao', 'Tally kholo aur ledger dikhao', 'mere PC pe Chrome mein "
-    "IRCTC kholo', 'laptop pe yeh site kholo', 'Word mein letter likho'. A website job she did NOT put on her PC goes to "
+    "file/Tally tools can't do: 'make a sales sheet in Excel', 'open Tally and show the ledger', 'open IRCTC in Chrome "
+    "on my PC', 'open this site on the laptop', 'write a letter in Word'. A website job she did NOT put on her PC goes to "
     "your own browser (browse_web / computer_operator), not here. "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
-    "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Santosh "
-    "ko PC chalane dein' switched on in Santosh Desktop. Slow (a few seconds per step). While her PC task runs, her "
+    "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Let Hoola "
+    "control the PC' switched on in Santosh Desktop. Slow (a few seconds per step). While her PC task runs, her "
     "follow-ups go here too (pc_do again): they steer THAT task - never hoola_pc_do / browse_web for them."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which of HER PCs, by her name for it ('office', 'ghar laptop'). Never a Hoola PC (that is hoola_pc_do). Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW, different job while a PC task is running. Leave out for her follow-ups ('Chrome mein karo', 'yeh wala lo'): they go INTO the running task."}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which of HER PCs, by her name for it ('office', 'home laptop'). Never a Hoola PC (that is hoola_pc_do). Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW, different job while a PC task is running. Leave out for her follow-ups ('use Chrome', 'take this one'): they go INTO the running task."}}, "required": ["task"]}})
 PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or result of a pc_do task (session_id).",
                  "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
-PC_LABELS.update({"pc_do": "Aapke PC par kaam kar raha hoon", "pc_task_result": "Aapke PC ka kaam dekh raha hoon"})
+PC_LABELS.update({"pc_do": "Working on your PC", "pc_task_result": "Checking your PC task"})
 
 
 # ---- v0.193 HOOLA KA APNA PC: the Linux cloud computer that belongs to Hoola (the coworker VM) ----
 PC_TOOLS.append({"name": "hoola_pc_do", "description": (
     "[HOOLA KA APNA PC - the cloud computer that belongs to YOU, the coworker] Use when the job needs desktop "
-    "software she does not have ('ffmpeg se video compress karo', 'LibreOffice mein sheet banao', 'pandoc se "
-    "convert karo'), a desktop app on screen, MANUAL WORK ON A GOVERNMENT / LEGACY PORTAL in Chrome that she hands "
-    "over ('Hoola PC par GST portal pe yeh form bharo'), or when the user said 'aapke computer pe / tumhare PC pe / "
-    "Hoola ke PC pe'. NOT for fetching, collecting or processing data / API lists / reports: use data_fetch, data_read, "
+    "software she does not have ('compress a video with ffmpeg', 'make a sheet in LibreOffice', 'convert with "
+    "pandoc'), a desktop app on screen, MANUAL WORK ON A GOVERNMENT / LEGACY PORTAL in Chrome that she hands "
+    "over ('fill this form on the GST portal on the Hoola PC'), or when the user said 'on your computer / on your PC / "
+    "on the Hoola PC'. NOT for fetching, collecting or processing data / API lists / reports: use data_fetch, data_read, "
     "data_note and doc_studio on the server. Files the task makes or downloads (receipts, acknowledgement PDFs) come "
     "to HER CHAT (the PC sends them), and the task ends with a screenshot of the screen as proof. Every user gets a "
     "Hoola PC from a shared pool (her own folder and logins on it); if all are busy the task waits in line and starts "
@@ -73,21 +73,21 @@ PC_TOOLS.append({"name": "hoola_pc_do", "description": (
     "computer in the cloud like a person: sees the screen, opens apps, clicks, types, INSTALLS SOFTWARE (apt/pip, "
     "no permission needed - it is Hoola's own VM) and runs shell commands. "
     "While working there it can also use HER PC for FILES through the bridge: user_pc_search / user_pc_read / "
-    "user_pc_pull bring one of her files into its VM (put that in the task when her file is the input: 'meri "
-    "Excel Hoola ke PC pe kholo' = pull it first), user_pc_push hands a finished file back to her PC (she "
+    "user_pc_pull bring one of her files into its VM (put that in the task when her file is the input: 'open my "
+    "Excel on the Hoola PC' = pull it first), user_pc_push hands a finished file back to her PC (she "
     "approves on the phone). "
-    "Her-PC jobs ('mere PC pe') stay with pc_do; quick web look-ups stay with browse_web. Chromium is the browser here (her own Chrome is on HER PC: pc_do); "
+    "Her-PC jobs ('on my PC') stay with pc_do; quick web look-ups stay with browse_web. Chromium is the browser here (her own Chrome is on HER PC: pc_do); "
     "files live in /data. Same safety rules as pc_do for anything that leaves the VM (sends, submits, pays). "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting or paying, and never types passwords/OTPs. Slow (a few seconds per step)."),
     "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW job while a Hoola PC task of this chat runs; her follow-ups go INTO the running task."}}, "required": ["task"]}})
-PC_LABELS.update({"hoola_pc_do": "Hoola ke apne PC par kaam kar raha hoon"})
+PC_LABELS.update({"hoola_pc_do": "Working on Hoola's own PC"})
 
 # v0.885 REPEAT JOBS on Hoola PC (owner: "LEGACY PORTALS AND GOV PORTALS WHERE NEED A HUGE REPEATED MANUAL WORK" +
 # "HUMAN IN LOOP"): the same portal job for every row of her sheet; row 1 she watches, then HER tap runs the rest.
 PC_TOOLS.append({"name": "hoola_pc_batch", "description": (
     "[HOOLA PC - REPEAT JOB] The SAME manual job on a portal / website / desktop app for EVERY ROW of her Excel or CSV "
-    "('is sheet ke har customer ka form portal pe bharo', '50 invoices ek ek karke upload karo'). action=start: task = "
+    "('fill the portal form for every customer in this sheet', 'upload the 50 invoices one by one'). action=start: task = "
     "the job written ONCE with {Column} blanks for what changes per row (column names exactly as in her sheet), "
     "file_id = her sheet from the chat (or rows = a list of objects). Row 1 runs first and she approves its submits "
     "like any task; then a confirm card asks HER to run the other rows (you can never approve it - only her tap). Then "
@@ -101,7 +101,7 @@ PC_TOOLS.append({"name": "hoola_pc_batch", "description": (
         "rows": {"type": "array", "items": {"type": "object"}, "description": "start: rows as objects, when there is no file"},
         "sheet": {"type": "string", "description": "start: which sheet of the Excel (default the first)"},
         "batch_id": {"type": "string"}}, "required": ["action"]}})
-PC_LABELS.update({"hoola_pc_batch": "Hoola PC par repeat kaam chala raha hoon"})
+PC_LABELS.update({"hoola_pc_batch": "Running a repeat job on the Hoola PC"})
 
 
 async def hoola_pc_batch(ctx: Ctx, action="start", task="", file_id="", rows=None, sheet="", batch_id="", **_):
@@ -128,7 +128,7 @@ async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, 
     from ..pc.hub import HOOLA_PC_KIND
     task = str(task or "").strip()
     if len(task) < 3:
-        raise ToolError("Batayiye Hoola ke PC par kya karna hai")
+        raise ToolError("Tell me what to do on the Hoola PC")
     # v0.858 a follow-up while Hoola's PC works on this chat's task goes INTO that task (it started a parallel task on
     # another Hoola PC, or cancelled the running one and lost its progress)
     live = [o for o in operator.running_all(ctx.tenant_id) if o.kind == operator.HOOLA_PC_KIND
@@ -139,7 +139,7 @@ async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, 
         del op.notes[:-6]
         out = op.live()
         out.pop("timeline", None)
-        out.update(where="Hoola ka apna PC - the SAME task that is already running", steered=True,
+        out.update(where="Hoola's own PC - the SAME task that is already running", steered=True,
                    say="Her words went INTO the task already running on Hoola's PC. Tell her in one short line.")
         return out
     try:
@@ -149,14 +149,14 @@ async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, 
         if "PC_NOT_FOUND" in str(e):
             raise ToolError(str(e).split(": ", 1)[-1] + ". Ask her which PC, or call pc_devices.")
         if "HOOLA_PC_OFFLINE" in str(e):
-            raise ToolError("Hoola ka apna PC abhi online nahi hai. Thodi der baad boliye.")
+            raise ToolError("Hoola's own PC is not online right now. Try again in a little while.")
         if "PC_OFFLINE" in str(e):
-            raise ToolError("Hoola ka apna PC abhi online nahi hai. Thodi der baad boliye.")
+            raise ToolError("Hoola's own PC is not online right now. Try again in a little while.")
         raise ToolError(str(e))
     r.pop("timeline", None)
-    r.setdefault("where", "Hoola ka apna PC (the cloud computer owned by Hoola, Linux + Chromium)")
+    r.setdefault("where", "Hoola's own PC (the cloud computer owned by Hoola, Linux + Chromium)")
     if r["status"] in ("running", "needs_confirm"):
-        r["say"] = ("Still working on Hoola ke apne PC (live card in chat; a confirm card appears if a step needs "
+        r["say"] = ("Still working on Hoola's own PC (live card in chat; a confirm card appears if a step needs "
                     "approval). The result is posted automatically; if asked before that, call pc_task_result with "
                     f"session_id '{r['session_id']}'.")
     return r
@@ -166,7 +166,7 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
     from ..pc import operator
     task = str(task or "").strip()
     if len(task) < 3:
-        raise ToolError("Batayiye PC par kya karna hai")
+        raise ToolError("Tell me what to do on the PC")
     # v0.858 a pc_do while her PC task in THIS chat is still running = her follow-up ('Chrome mein karo', 'Margherita
     # lo') for THAT task: it goes into the running task, never a fresh task that throws the work away
     live = operator.live_for(ctx.tenant_id, ctx.conversation_id)
@@ -195,7 +195,7 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
             live.reported = True
         out = live.live()
         out.pop("timeline", None)
-        out.update(where="Aapka PC (HER computer) - the SAME task that is already running", steered=not repeat,
+        out.update(where="Your PC (HER computer) - the SAME task that is already running", steered=not repeat,
                    say=(("The PC task already has these instructions; nothing new was passed in. " if repeat else
                          "Her words went INTO the PC task that is already running; no new task was started. ") +
                         ("It has finished - tell her its result." if live.done_event.is_set() else
@@ -224,10 +224,10 @@ async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
                             "NOT move her job there by yourself: tell her her PC is off and ASK in one line whether to do "
                             "it on Hoola's own PC instead; only on her yes call hoola_pc_do.")
         if "PC_OFFLINE" in str(e):
-            raise ToolError("Aapka PC offline hai. PC on karke Santosh Desktop kholiye (ya Santosh app > Mera PC se jodiye).")
+            raise ToolError("Your PC is offline. Switch it on and open Santosh Desktop (or connect one from the Santosh app > My PC).")
         raise ToolError(str(e))
     r.pop("timeline", None)
-    r.setdefault("where", "Aapka PC (HER computer, Santosh Desktop) - not your own browser")
+    r.setdefault("where", "Your PC (HER computer, Santosh Desktop) - not your own browser")
     if r["status"] in ("running", "needs_confirm"):
         r["say"] = ("Still working on the PC (live card in chat; a confirm card appears if a step needs approval). The "
                     "result is posted to the chat automatically. Do NOT call pc_do again to check on it or to repeat its "
@@ -338,7 +338,7 @@ async def pc_team(ctx: Ctx, tasks=None, goal="", _wait=None, **_):
                 problems.append(f"'{t.get('pc')}': that PC already has a part - give it ONE task that does both")
                 continue
             if (conn.info or {}).get("kind") != HOOLA_PC_KIND and not (conn.info or {}).get("control"):
-                problems.append(f"'{t.get('pc')}': Hoola may not drive this PC (switch 'Hoola ko PC chalane dein' on there)")
+                problems.append(f"'{t.get('pc')}': Hoola may not drive this PC (switch 'Let Hoola control the PC' on there)")
                 continue
         taken.add(conn.device_id)
         plan.append((t, conn))

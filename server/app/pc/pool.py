@@ -121,8 +121,8 @@ async def prepare(op) -> dict[str, Any]:
         if "Unknown action" in str(e):
             if home:          # an old Hoola PC agent serving the user who paired it: the old shared folder, as before
                 return {"profile": "legacy"}
-            raise RuntimeError("HOOLA_PC_OLD: yeh Hoola PC purana hai (har user ka alag folder nahi bana sakta) - "
-                               "vps-ops pc_deploy se use naya kijiye.")
+            raise RuntimeError("HOOLA_PC_OLD: this Hoola PC is out of date (it cannot make a separate folder per user) - "
+                               "update it with vps-ops pc_deploy.")
         raise
     LAST[op.tenant] = op.device_id
     if r.get("switched"):

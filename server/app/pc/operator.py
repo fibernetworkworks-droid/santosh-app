@@ -171,7 +171,7 @@ How to work:
     surface=menu / sheet / alert to read THAT, never the whole window again.
   - Dense apps (Excel, Tally): first ax_snapshot with skeleton=true, then ax_snapshot with root=<ref> to drill
     into one region. Slow apps (Chromium, Electron): raise timeout_ms before deciding the tree is empty.
-  - If the PC answers that the agent-desktop helper is missing, say pixel mode bhi kaam karta hai and continue
+  - If the PC answers that the agent-desktop helper is missing, say the pixel mode works too and continue
     with the pixel lane - do not get stuck retrying ax_*.
   - v0.842 the full exact kit: ax_get / ax_is CHECK a value or state before and after you change it (is Save
     enabled? did the cell take 500?); ax_act checks / unchecks / toggles / expands / collapses / clears /
@@ -202,20 +202,20 @@ How to work:
 - HER NEW WORDS: a user message 'HER NEW WORDS' arrives while you work = she just said it in chat or on the call.
   Follow it now; where it differs from the task, her new words win.
 - Read what is on the screen and report it accurately; never invent numbers.
-- When the task is done, call done with a short answer in the user's language (Hinglish by default) with the key facts.
+- When the task is done, call done with a short answer in the user's language (clear, simple English by default) with the key facts.
   If you cannot finish, call done(success=false) with what you did and what is left.
 
 Safety rules (always):
 - ask_approval SIRF asli faislon se pehle: SENDS (email, WhatsApp, message), the FINAL form that creates/changes
   something real (places an order, books, registers), SAVES OVER / DELETES files or data, PAYS, INSTALLS/UNINSTALLS,
   CHANGES system settings, or POSTS publicly. Say exactly what will happen. Only continue after it says approved.
-- ask_approval IN steps ke liye KABHI mat maango (kuch nahi badalti, system inhe khud approve kar deta hai): sites,
-  apps ya tabs kholna, search, page padhna, fields bharna, cart/wishlist mein add karna, filters, sorting, popup /
-  cookie banner / notification / dialog band karna, file download, copy, login (password waise bhi tumhara kaam nahi),
-  page par continue / next dabana. Seedha karo.
-- CAPTCHA: is task ki PEHLI CAPTCHA par ask_approval("CAPTCHA mein '<what you read>' likhu?") karo aur manzoori ke
-  baad type karo (uska jawab correction ho to approval refused: dobara padho). Uski ek manzoori ke baad system is
-  task ki har aage ki CAPTCHA apne aap approve kar deta hai — aage ki CAPTCHAs poochhe bina seedha type karo.
+- NEVER use ask_approval for these steps (they change nothing, the system approves them itself): opening sites,
+  apps or tabs, searching, reading a page, filling fields, adding to a cart / wishlist, filters, sorting, closing a
+  popup / cookie banner / notification / dialog, file download, copy, login (a password is not your job anyway),
+  pressing continue / next on a page. Just do it.
+- CAPTCHA: for the FIRST CAPTCHA of this task use ask_approval("Type '<what you read>' for the CAPTCHA?") and type
+  it after approval (if the answer corrects it, the approval is refused: read it again). After that one approval
+  the system approves every later CAPTCHA of this task by itself: type later CAPTCHAs directly without asking.
 - Aadhaar / PAN / voter ID / any ID number and every other number (mobile, account, consumer, GSTIN, amounts): type
   them yourself. ID numbers appear as references like {id:ab12cd34ef}: type the reference exactly, the PC gets the real
   number (ID LOCKER below lists what she has saved).
@@ -224,7 +224,7 @@ Safety rules (always):
 - OTP the site sends to her phone (Aadhaar, DigiLocker, portals): CLICK the OTP box first, then call ask_otp. She says /
   types it on her phone and the system types it into that box for you; never type an OTP yourself, never read one out
   from the screen. A bank / card / payment OTP is hers: ask_approval telling her to type it on the PC herself.
-- CAPTCHA: read it from the screenshot, then ask_approval("CAPTCHA mein '<what you read>' likhu?") and type it after
+- CAPTCHA: read it from the screenshot, then ask_approval("Type '<what you read>' for the CAPTCHA?") and type it after
   approval (if she corrects it in her answer, the approval is refused: read it again or ask again).
 - Never open Command Prompt, PowerShell, Terminal, Registry Editor or the Run dialog. Don't change security settings.
 - Don't close windows with unsaved work of the user's unless the task needs it (ask first).
@@ -428,32 +428,32 @@ TOOLS = [
     {"name": "app_paths", "description":
             "ONE-TIME SETUP: make Win+R open Hoola on this PC - writes the user-level App Paths alias "
             "'hoola' -> SantoshDesktop.exe (HKCU, no admin, no autostart, nothing else changes; on=false "
-            "removes it). Windows-only. ALWAYS ask_approval('Win+R se 'hoola' likhne par Hoola khul jaye - "
-            "isliye ek chhota Windows alias jodu?') FIRST - it changes a Windows setting - then call with "
-            "on=true. Use when she says 'Win+R se hoola khulwao' / 'hoola ek command bana do'.",
-     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = alias jodo, false = hatao"}}}},
+            "removes it). Windows-only. ALWAYS ask_approval('Add a small Windows alias so typing 'hoola' in "
+            "Win+R opens Hoola?') FIRST - it changes a Windows setting - then call with "
+            "on=true. Use when she says 'open Hoola with Win+R' / 'make hoola a command'.",
+     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = add the alias, false = remove it"}}}},
     # v0.484 W2b POWERTRYS RUN: the same 'hoola' door inside PowerToys Run (Alt+Space).
     {"name": "pt_run", "description":
             "ONE-TIME SETUP: make Alt+Space 'hoola' open Hoola on this PC - installs the Hoola plugin into "
             "PowerToys Run's user-level plugins folder (%LOCALAPPDATA%, no admin, only Hoola's own folder "
-            "changes; PowerToys restart baad mein ek baar). PowerToys NA hone par Hoola khud Ctrl+Alt+H "
-            "global hotkey door on kar deta hai (wahi window laata hai). on=false dono doors hata deta hai. "
-            "Windows-only. ALWAYS ask_approval('Alt+Space par 'hoola' likhne se Hoola khul jaye - isliye "
-            "PowerToys Run ka plugin jodu?') FIRST - it changes a Windows setting - then call with on=true. "
-            "Use when she says 'Hoola ko PowerToys Run se khulwao' / 'Alt+Space se hoola khulwao'.",
-     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = plugin jodo, false = hatao"}}}},
+            "changes; restart PowerToys once afterwards). Without PowerToys, Hoola turns on a Ctrl+Alt+H "
+            "global hotkey door that opens the same window. on=false removes both doors. "
+            "Windows-only. ALWAYS ask_approval('Add the PowerToys Run plugin so typing 'hoola' after Alt+Space "
+            "opens Hoola?') FIRST - it changes a Windows setting - then call with on=true. "
+            "Use when she says 'open Hoola from PowerToys Run' / 'open Hoola with Alt+Space'.",
+     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = add the plugin, false = remove it"}}}},
     {"name": "ext", "description":
-            "ONE-TIME SETUP: Hoola ka browser extension (Chrome/Edge) is PC par lagao - jis page par "
-            "padh rahi hain use right-click ya Ctrl+Shift+H se Hoola ki conversation mein bhej sakti hain "
-            "(jawab wahan aata hai). Extension ki files %LOCALAPPDATA%\\Hoola\\chrome-extension mein "
-            "jaati hain (sirf Hoola ka apna folder, no admin, no browser policy); ek baar chrome://extensions "
-            "> Developer mode > 'Load unpacked' us folder se karna hota hai - desktop ki window ke "
-            "'Browser extension' card par bhi yahi kadam likhe hain. Pairing extension ke Options mein phone "
-            "ke 6 anko ke code se hoti hai. on=false files hata deta hai. Windows-only. ALWAYS "
-            "ask_approval('Browser mein page Hoola ko bhejne wala extension jodu?') FIRST - it changes the "
-            "PC's files - then call with on=true. Use when she says 'Hoola extension lagao' / 'page Hoola ko "
-            "bhejne wala extension'.",
-     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = files jodo, false = hatao"}}}},
+            "ONE-TIME SETUP: install the Hoola browser extension (Chrome/Edge) on this PC - the page she is "
+            "reading can be sent to her Hoola conversation with a right-click or Ctrl+Shift+H "
+            "(the answer comes back there). The extension files go to %LOCALAPPDATA%\\Hoola\\chrome-extension "
+            "(only Hoola's own folder, no admin, no browser policy); once, she must open chrome://extensions "
+            "> Developer mode > 'Load unpacked' and pick that folder - the desktop window's "
+            "'Browser extension' card lists the same steps. Pairing is done in the extension's Options with "
+            "the phone's 6-digit code. on=false removes the files. Windows-only. ALWAYS "
+            "ask_approval('Add the extension that sends a page to Hoola from the browser?') FIRST - it changes the "
+            "PC's files - then call with on=true. Use when she says 'install the Hoola extension' / 'the "
+            "extension that sends pages to Hoola'.",
+     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = add the files, false = remove them"}}}},
     {"name": "screenshot", "description": "Look again without doing anything. monitor 'primary' (default) or 'all' = every "
                                           "monitor stitched into one picture (use when the thing you need may be on her "
                                           "second screen).",
@@ -705,7 +705,7 @@ def _work(op: Op, name: str) -> None:
 def _event(op: Op) -> None:
     try:
         own = op.kind == HOOLA_PC_KIND
-        site = ("Hoola ka PC" if own else "Aapka PC") + (f" · {op.device_name}" if op.device_name else "")
+        site = ("Hoola's PC" if own else "Your PC") + (f" · {op.device_name}" if op.device_name else "")
         bus.publish(op.conv, "browser", {"session_id": op.id, "status": op.status, "source": "pc",
                                          "site": site, "pc": op.device_name, "device_id": op.device_id,
                                          "team": op.team,
@@ -781,24 +781,24 @@ def _tapgate(op: Op, what: str) -> tuple[bool, str]:
     w = what or ""
     if _CAPTCHA.search(w):
         if op.captcha_ok:
-            return True, ("APPROVED (auto: aapne is task mein pehli CAPTCHA manzoor kar di thi — ab is task ki har CAPTCHA "
-                          "apne aap type hoti hai). Do exactly that now.")
+            return True, ("APPROVED (auto: the user approved the first CAPTCHA in this task, so every CAPTCHA in this task "
+                          "is now typed automatically). Do exactly that now.")
         return False, ""
     if not approval_words.money_risk(w) and _ALWAYS_OK.search(w):
         STATS["tapgate_auto"] = STATS.get("tapgate_auto", 0) + 1
-        return True, ("APPROVED (auto — popup/cookie jaisi chhoti cheez hai, card nahi bheja gaya). Do exactly that now.")
+        return True, ("APPROVED (auto: a small thing like a popup or cookie banner, so no card was sent). Do exactly that now.")
     if approval_words.money_risk(w) or _STAYS_ASK.search(w):
         return False, ""                     # asli faisla: card jaata hai
     if _BENIGN.search(w):
         STATS["tapgate_auto"] = STATS.get("tapgate_auto", 0) + 1
-        return True, ("APPROVED (auto — is step ka koi asar nahi, isliye card nahi bheja gaya). "
-                      "Do exactly that now; aage aise steps ke liye ask_approval mat karo.")
+        return True, ("APPROVED (auto: this step changes nothing, so no card was sent). "
+                      "Do exactly that now; do not use ask_approval for steps like this.")
     return False, ""                         # unclear: card jaata hai (safe default)
 
 
 # v0.166 a desktop older than 1.3.0 answers 'Unknown action open_url' etc.; the model gets a clean upgrade line instead
-_OLD_DESKTOP = "Yeh Santosh Desktop purana hai. PC par naya SantoshDesktop.exe install kijiye (Hoola app > Mera PC > " \
-               "Link copy), phir dobara boliye."
+_OLD_DESKTOP = "This Santosh Desktop is out of date. Install the new SantoshDesktop.exe on the PC (Hoola app > My PC > " \
+               "Copy link), then ask again."
 
 
 def _say(name: str, a: dict[str, Any]) -> str:
@@ -806,132 +806,132 @@ def _say(name: str, a: dict[str, Any]) -> str:
     sitting at the PC would say). Privacy-safe by design: never the text being typed, never an OTP/ID value, and a
     URL shows only its host. The card refreshes live on every step (owner: 'task real time mein dikhe')."""
     if name == "click":
-        return "double-click kar raha hoon" if a.get("double") else ("right-click kar raha hoon" if a.get("button") == "right" else "click kar raha hoon")
+        return "Double-clicking" if a.get("double") else ("Right-clicking" if a.get("button") == "right" else "Clicking")
     if name == "type":
         n = len(str(a.get("text", "")))
-        return f"likh raha hoon ({n} akshar)" if n else "likh raha hoon"
+        return f"Typing ({n} characters)" if n else "Typing"
     if name == "key":
-        return f"'{str(a.get('keys', ''))[:24]}' daba raha hoon"
+        return f"Pressing '{str(a.get('keys', ''))[:24]}'"
     if name == "scroll":
-        return "scroll kar raha hoon"
+        return "Scrolling"
     if name == "drag":
-        return "drag kar raha hoon"
+        return "Dragging"
     if name == "open_app":
-        return f"{str(a.get('name', ''))[:30]} khol raha hoon"
+        return f"Opening {str(a.get('name', ''))[:30]}"
     if name == "open_url":
         from urllib.parse import urlparse
         try:
             host = urlparse(str(a.get("url", ""))).hostname or str(a.get("url", ""))
         except Exception:
             host = str(a.get("url", ""))
-        return f"{host[:36]} khol raha hoon"
+        return f"Opening {host[:36]}"
     if name == "screenshot":
-        return "dono screen dekh raha hoon" if str(a.get("monitor") or "") == "all" else "dobara dekh raha hoon"
+        return "Looking at both screens" if str(a.get("monitor") or "") == "all" else "Looking again"
     if name == "window":
-        return f"window {a.get('op', '')} kar raha hoon"
+        return f"Window: {a.get('op', '')}"
     if name == "list_apps":
-        return "apps aur windows dekh raha hoon"
+        return "Looking at apps and windows"
     if name == "focus_window":
-        return f"'{str(a.get('title', ''))[:40]}' saamne la raha hoon"
+        return f"Bringing '{str(a.get('title', ''))[:40]}' to the front"
     if name == "page_text":
-        return "page ka text padh raha hoon"
+        return "Reading the page text"
     if name == "page_elements":
-        return "page ke elements gin raha hoon (exact mode)"
+        return "Listing the page elements (exact mode)"
     if name == "page_click":
-        return f"page ke element #{a.get('ref', '?')} par click kar raha hoon"
+        return f"Clicking page element #{a.get('ref', '?')}"
     if name in ("ax_snapshot", "ax_text", "ax_find"):
         app = str(a.get("app") or "")[:28]
-        return f"{app} ke screen ka naksha padh raha hoon (exact mode)" if app else "screen ka naksha padh raha hoon (exact mode)"
+        return f"Reading the screen map of {app} (exact mode)" if app else "Reading the screen map (exact mode)"
     if name == "ax_click":
-        return f"{str(a.get('ref', ''))[:22]} par click kar raha hoon (exact mode)"
+        return f"Clicking {str(a.get('ref', ''))[:22]} (exact mode)"
     if name == "ax_set_value":
-        return f"field mein likh raha hoon ({len(str(a.get('text', '')))} akshar, exact mode)"
+        return f"Typing in the field ({len(str(a.get('text', '')))} characters, exact mode)"
     if name == "ax_press":
-        return f"'{str(a.get('keys', ''))[:24]}' daba raha hoon (exact mode)"
+        return f"Pressing '{str(a.get('keys', ''))[:24]}' (exact mode)"
     if name in ("ax_get", "ax_is"):
-        return "value check kar raha hoon (exact mode)"
+        return "Checking the value (exact mode)"
     if name == "ax_act":
-        return f"{str(a.get('op', '')).replace('_', ' ')[:16]} kar raha hoon (exact mode)"
+        return f"Doing: {str(a.get('op', '')).replace('_', ' ')[:16]} (exact mode)"
     if name == "ax_select":
-        return f"'{str(a.get('value', ''))[:28]}' chun raha hoon (exact mode)"
+        return f"Choosing '{str(a.get('value', ''))[:28]}' (exact mode)"
     if name == "ax_type":
-        return f"field mein type kar raha hoon ({len(str(a.get('text', '')))} akshar, exact mode)"
+        return f"Typing in the field ({len(str(a.get('text', '')))} characters, exact mode)"
     if name == "ax_scroll":
-        return f"{a.get('direction', 'down')} scroll kar raha hoon (exact mode)"
+        return f"Scrolling {a.get('direction', 'down')} (exact mode)"
     if name == "ax_window_shot":
-        return f"{str(a.get('app') or 'window')[:28]} ki photo le raha hoon"
+        return f"Taking a picture of {str(a.get('app') or 'window')[:28]}"
     if name == "ax_displays":
-        return "screens gin raha hoon"
+        return "Counting the screens"
     if name == "ax_system":
-        return f"{a.get('surface', '')} khol raha hoon"
+        return f"Opening {a.get('surface', '')}"
     if name == "ax_notifications":
-        return "notifications padh raha hoon"
+        return "Reading notifications"
     if name == "ax_notification":
-        return "notification hata raha hoon" if str(a.get("action", "")).lower() == "dismiss" else \
-            f"notification par '{str(a.get('action', ''))[:20]}' daba raha hoon"
+        return "Dismissing the notification" if str(a.get("action", "")).lower() == "dismiss" else \
+            f"Pressing '{str(a.get('action', ''))[:20]}' on the notification"
     if name == "ax_clipboard":
-        return {"get": "clipboard padh raha hoon", "set": "clipboard mein text rakh raha hoon"}.get(
-            str(a.get("op", "")), "clipboard saaf kar raha hoon")
+        return {"get": "Reading the clipboard", "set": "Putting text on the clipboard"}.get(
+            str(a.get("op", "")), "Clearing the clipboard")
     if name == "ax_close_app":
-        return f"{str(a.get('app', ''))[:28]} band kar raha hoon"
+        return f"Closing {str(a.get('app', ''))[:28]}"
     if name == "ax_batch":
-        return f"{len(a.get('steps') or [])} exact steps ek saath kar raha hoon"
+        return f"Doing {len(a.get('steps') or [])} exact steps together"
     if name == "ax_launch":
-        return f"{str(a.get('name', ''))[:30]} khol raha hoon (exact mode)"
+        return f"Opening {str(a.get('name', ''))[:30]} (exact mode)"
     if name == "ax_wait":
-        return "kholne ka intezaar kar raha hoon (exact mode)"
+        return "Waiting for it to open (exact mode)"
     if name == "app_paths":
-        return ("Win+R ka 'hoola' alias jod raha hoon" if a.get("on", True)
-                else "Win+R wala alias hata raha hoon")
+        return ("Adding the 'hoola' alias for Win+R" if a.get("on", True)
+                else "Removing the Win+R alias")
     if name == "pt_run":
-        return ("PowerToys Run ka 'hoola' plugin jod raha hoon" if a.get("on", True)
-                else "PowerToys Run wala plugin hata raha hoon")
+        return ("Adding the 'hoola' plugin for PowerToys Run" if a.get("on", True)
+                else "Removing the PowerToys Run plugin")
     if name == "ext":
-        return ("Browser extension ki files jod raha hoon (chrome://extensions mein ek baar 'Load "
-                "unpacked' karna hoga)" if a.get("on", True) else "Browser extension ki files hata raha hoon")
+        return ("Adding the browser extension files (you load them once in chrome://extensions with 'Load "
+                "unpacked')" if a.get("on", True) else "Removing the browser extension files")
     if name in ("ax_status", "ax_apps"):
-        return "apps ki asli list dekh raha hoon (exact mode)"
+        return "Reading the real list of apps (exact mode)"
     if name == "page_type":
-        return f"field #{a.get('ref', '?')} bhar raha hoon"
+        return f"Filling field #{a.get('ref', '?')}"
     if name == "page_select":
-        return "dropdown se chun raha hoon"
+        return "Choosing from the dropdown"
     if name == "page_fill_form":
-        return "poora form ek saath bhar raha hoon"
+        return "Filling the whole form at once"
     if name == "wait_for":
-        return "page par aane ka intezaar…"
+        return "Waiting for the page to load…"
     if name == "tabs":
-        return "browser tabs dekh raha hoon"
+        return "Looking at the browser tabs"
     if name == "switch_tab":
         t = str(a.get("tab") or a.get("index") or "")
-        return f"tab par ja raha hoon ({t[:30]})" if t else "tab badal raha hoon"
+        return f"Switching to the tab ({t[:30]})" if t else "Switching tab"
     if name == "downloads":
-        return "Downloads check kar raha hoon"
+        return "Checking Downloads"
     if name == "install":
-        return f"{str(a.get('packages', ''))[:32]} install kar raha hoon (apne PC par)"
+        return f"Installing {str(a.get('packages', ''))[:32]} (on its own PC)"
     if name == "run":
-        return "command chala raha hoon (apne PC par)"
+        return "Running a command (on its own PC)"
     if name == "run_status":
-        return "lamba command dekh raha hoon"
+        return "Checking the long command"
     if name == "send_to_chat":
-        return "file aapki chat mein bhej raha hoon"
+        return "Sending the file to your chat"
     if name == "user_pc_search":
-        return "aapke PC par file dhoondh raha hoon"
+        return "Searching for a file on your PC"
     if name == "user_pc_read":
-        return "aapki PC file padh raha hoon"
+        return "Reading a file from your PC"
     if name == "user_pc_pull":
-        return "aapke PC se file apne PC par la raha hoon"
+        return "Copying a file from your PC to its own PC"
     if name == "user_pc_push":
-        return "file aapke PC par bhej raha hoon (manzoori aayegi)"
+        return "Sending a file to your PC (approval needed)"
     if name == "wait":
-        return "khulne ka intezaar…"
+        return "Waiting for it to open…"
     if name == "ask_approval":
-        return "aapki manzoori ka intezaar…"
+        return "Waiting for your approval…"
     if name == "ask_otp":
-        return "OTP ka intezaar…"
+        return "Waiting for the OTP…"
     if name == "ask_user":
-        return "aapse pooch raha hoon…"
+        return "Asking you…"
     if name == "done":
-        return "nateeja taiyaar kar raha hoon"
+        return "Preparing the result"
     return name
 
 
@@ -1640,11 +1640,11 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         except Exception as e:
             return _desktop_says(e, "app_paths") or f"ERROR: {e}"
         if r.get("ok") and r.get("on"):
-            return (f"Win+R alias ready: ab Win+R mein 'hoola' likhne se Hoola Desktop khulta hai "
+            return (f"Win+R alias ready: typing 'hoola' in Win+R now opens Hoola Desktop "
                     f"({r.get('exe', '')})")
         if r.get("ok"):
-            return f"Done: {r.get('message', 'alias hata diya')}"
-        return f"alias nahi laga: {r.get('message', 'yeh PC support nahi karta')}"
+            return f"Done: {r.get('message', 'alias removed')}"
+        return f"The alias could not be added: {r.get('message', 'this PC does not support it')}"
     if name == "pt_run":
         # v0.484 W2b: the PowerToys Run plugin install (or the Ctrl+Alt+H fallback when PowerToys is
         # absent); the desktop gates it behind PC control and only ever touches its own plugin folder.
@@ -1654,16 +1654,16 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         except Exception as e:
             return _desktop_says(e, "pt_run") or f"ERROR: {e}"
         if not r.get("ok"):
-            return f"plugin nahi laga: {r.get('message', 'yeh PC support nahi karta')}"
+            return f"The plugin could not be added: {r.get('message', 'this PC does not support it')}"
         if on and r.get("plugin"):
-            return (f"PowerToys Run plugin ready: Alt+Space dabakar 'hoola' likhiye - Hoola Desktop khulta hai "
-                    f"({r.get('dir', '')}). PowerToys ko ek baar restart kijiye.")
+            return (f"PowerToys Run plugin ready: press Alt+Space and type 'hoola' to open Hoola Desktop "
+                    f"({r.get('dir', '')}). Restart PowerToys once.")
         if on and not r.get("pt_present"):
             hk = r.get("hotkey") or {}
             if hk.get("registered"):
-                return f"PowerToys yahan nahi hai, isliye hotkey door on kar diya: {hk.get('message', 'Ctrl+Alt+H dabaiye')}"
-            return f"PowerToys nahi mila aur hotkey bhi nahi bana: {hk.get('message', r.get('message', ''))}"
-        return f"Done: {r.get('message', 'hata diya')}"
+                return f"PowerToys is not here, so the hotkey door is on: {hk.get('message', 'press Ctrl+Alt+H')}"
+            return f"PowerToys was not found and the hotkey could not be set: {hk.get('message', r.get('message', ''))}"
+        return f"Done: {r.get('message', 'removed')}"
     if name == "ext":
         # v0.487 W3: the browser-extension files install (the 'send page to Hoola' door); the
         # desktop gates it behind PC control and only ever touches its own %LOCALAPPDATA% folder.
@@ -1673,12 +1673,12 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         except Exception as e:
             return _desktop_says(e, "ext") or f"ERROR: {e}"
         if not r.get("ok"):
-            return f"extension nahi lagi: {r.get('message', 'yeh PC support nahi karta')}"
+            return f"The extension could not be added: {r.get('message', 'this PC does not support it')}"
         if on:
-            return (f"Extension ki files lag gayi ({r.get('dir', '')}). Ab ek baar chrome://extensions "
-                    f"kholiye > Developer mode on > 'Load unpacked' > wahi folder chuniye. Pairing "
-                    f"extension ke Options mein phone ke 6 anko ke code se hoti hai.")
-        return f"Done: {r.get('message', 'files hata di')}"
+            return (f"The extension files are in place ({r.get('dir', '')}). Once, open chrome://extensions "
+                    f"> turn on Developer mode > 'Load unpacked' > choose that folder. Pairing "
+                    f"is done in the extension's Options with the 6-digit code from the phone.")
+        return f"Done: {r.get('message', 'files removed')}"
     if name == "list_apps":
         r = await _pc(op, "apps", {}, timeout=25)
         return "Installed apps: " + ", ".join(r.get("apps", [])[:250]) + ". Open windows: " + ", ".join(r.get("windows", [])[:20])
@@ -2106,7 +2106,7 @@ async def _push_to_user_pc(op: Op, path: str) -> str:
     """v0.202 the guarded half of the bridge: her confirm card FIRST (in code, never the model's choice),
     then the VM uploads the file (direction to_pc) and her desktop saves it into her Santosh Inbox."""
     fname = Path(path).name
-    ok = await _approval(op, f"Hoola PC ki file '{fname}' aapke PC ke Santosh Inbox mein save karni hai")
+    ok = await _approval(op, f"Save the Hoola PC file '{fname}' into the Santosh Inbox on your PC?")
     if not ok:
         return "REFUSED: the user did not approve saving this file on their PC. Do not push it again without a new OK."
     try:
@@ -2163,27 +2163,27 @@ async def _ask_otp(op: Op, a: dict[str, Any]) -> str:
     except (TypeError, ValueError):
         digits = 0
     site = str(a.get("reason") or "website")[:80]
-    req = PcOtp(id="pcotp_" + secrets.token_hex(6), reason=f"{site} ne aapke phone par OTP bheja hai",
+    req = PcOtp(id="pcotp_" + secrets.token_hex(6), reason=f"{site} sent an OTP to your phone",
                 digits=digits if 4 <= digits <= 8 else 0)
     op.otp = req
-    op.action = "OTP ka intezaar"
+    op.action = "Waiting for the OTP"
     _event(op)
     try:
-        bus.publish(op.conv, "operator_ask", {**req.public(), "task_id": op.id, "task": op.task[:200], "site": "Aapka PC", "place": "pc"})
+        bus.publish(op.conv, "operator_ask", {**req.public(), "task_id": op.id, "task": op.task[:200], "site": "Your PC", "place": "pc"})
     except Exception:
         log.exception("pc otp card")
-    n = f"{req.digits} ankon ka " if req.digits else ""
+    n = f"a {req.digits}-digit " if req.digits else "an "
     try:
         from ..voice import inject
-        inject(op.conv, f"(Aapke PC par {site} ne abhi aapke phone par {n}OTP bheja hai. Ask her out loud right now, one short "
+        inject(op.conv, f"(On her PC, {site} just sent {n}OTP to her phone. Ask her out loud right now, one short "
                         "line. When she says the digits the system types them into the box by itself: you only say "
                         "'mil gaya, bhar diya'. Never say the digits yourself.)")
     except Exception:
         pass
     try:
         from ..agent.santosh import _save
-        note = (f"Aapke PC par {site} ne aapke phone par {n}OTP bheja hai. Bas yahan likh dijiye ya call par bol dijiye, main "
-                "khud PC ke box mein bhar dunga. SMS aaye to 'Allow' dabaiye.")
+        note = (f"On your PC, {site} sent {n}OTP to your phone. Just type it here or say it on the call, and I will "
+                "enter it in the box on the PC myself. If an SMS permission prompt appears, tap 'Allow'.")
         _save(op.conv, "assistant", [{"type": "text", "text": note}], display=note)
         bus.publish(op.conv, "message", {"role": "assistant", "text": note, "source": "pc"})
     except Exception:
@@ -2214,7 +2214,7 @@ async def _ask_otp(op: Op, a: dict[str, Any]) -> str:
         req.status = "failed"
         msg = f"Could not type the OTP into the PC ({type(e).__name__}). Click the OTP box and ask_otp again."
     op.otp = None
-    op.action = "OTP bhar diya" if req.status == "approved" else op.action
+    op.action = "OTP entered" if req.status == "approved" else op.action
     _otp_card(op, req)
     return msg
 
@@ -2350,7 +2350,7 @@ def answer_from_chat(tenant: str, conv: str, text: str) -> dict | None:
         pass
     if not _is_answer(op, t) or not give_answer(tenant, t, conv):
         return None
-    return {"ok": True, "say": f"Theek hai, \"{t[:80]}\" - PC par wahi kar raha hoon."}
+    return {"ok": True, "say": f"Okay, \"{t[:80]}\" - doing that on the PC."}
 
 
 def _inject(op: "Op", text: str) -> int:
@@ -2371,14 +2371,14 @@ def _option_line(opts: list) -> str:
 
 
 async def _ask_user(op: "Op", a: dict[str, Any]) -> str:
-    q = str(a.get("question") or "").strip()[:300] or "Aage kya karun?"
+    q = str(a.get("question") or "").strip()[:300] or "What should I do next?"
     opts = [str(o).strip()[:120] for o in (a.get("options") or []) if str(o).strip()][:8]
     op.ask = {"id": "pcask_" + secrets.token_hex(6), "question": q, "options": opts, "at": time.time()}
     log.info("pc task %s asks her: %s | options: %s", op.id, q[:160], ", ".join(str(o)[:40] for o in opts[:6]))
     op.answer, op.answer_event = "", asyncio.Event()
-    op.action = "Aapse pooch raha hoon"
+    op.action = "Asking you"
     _event(op)
-    note = q + ("\n" + _option_line(opts) if opts else "") + "\n\nBas likh dijiye ya call par bol dijiye."
+    note = q + ("\n" + _option_line(opts) if opts else "") + "\n\nJust type your answer here or say it on the call."
     try:
         from ..agent.santosh import _save
         home = chat_of(op.conv)        # a side record of a call is hidden: the question lands in her chat
@@ -2402,7 +2402,7 @@ async def _ask_user(op: "Op", a: dict[str, Any]) -> str:
         pass
     said, op.answer, op.ask = op.answer, "", None
     log.info("pc task %s got her answer: %s", op.id, str(said)[:120])
-    op.action = "Aage badh raha hoon"
+    op.action = "Moving on"
     _event(op)
     if op.status == "cancelled":
         return "cancelled"
@@ -2950,7 +2950,7 @@ async def _run(op: Op) -> None:
                                                    "missing and call done again, or done(success=false) saying what is left."})
                         continue
                 if name == "done":
-                    op.summary = str(a.get("answer") or text or "Ho gaya.")[:4000]
+                    op.summary = str(a.get("answer") or text or "Done.")[:4000]
                     op.status = "done" if a.get("success", True) else "partial"
                     finished = True
                     results.append({"type": "tool_result", "tool_use_id": u["id"], "content": "ok"})
@@ -3071,7 +3071,7 @@ async def _run(op: Op) -> None:
             messages.append({"role": "user", "content": results})
         if op.status == "running":
             op.status = "partial"
-            op.summary = op.summary or f"Samay/steps khatam ({op.step} steps). Aakhri screen: {op.window}."
+            op.summary = op.summary or f"Out of time or steps ({op.step} steps). Last screen: {op.window}."
     except asyncio.CancelledError:
         op.status = "cancelled"
         raise
@@ -3095,7 +3095,7 @@ async def _run(op: Op) -> None:
             log.exception("pc operator failed")
         if op.status in ("running", "needs_confirm"):
             op.status, op.reason = "failed", f"{type(e).__name__}: {e}"[:300]
-            op.summary = op.summary or f"PC par kaam ruk gaya: {e}"[:600]
+            op.summary = op.summary or f"The PC task stopped: {e}"[:600]
     finally:
         try:
             await _shot(op)
@@ -3123,7 +3123,7 @@ async def _run(op: Op) -> None:
                  len(op.progress), op.aim_repeats, op.popups, int(getattr(op, "drifts", 0) or 0),
                  (op.reason or op.summary or "")[:200],
                  ("; ".join((_card or {}).get("done", [])[-5:]) or "-")[:300])
-        op.action = {"done": "Ho gaya", "partial": "Poora nahi hua", "failed": "Ruk gaya", "cancelled": "Aapne rok diya"}.get(op.status, op.action)
+        op.action = {"done": "Done", "partial": "Not finished", "failed": "Stopped", "cancelled": "You stopped it"}.get(op.status, op.action)
         _work(op, "_end")
         if op.kind != HOOLA_PC_KIND:
             HER_PC_AT[op.tenant] = time.time()
@@ -3152,10 +3152,10 @@ def _report(op: Op) -> None:
     if op.quiet:          # v0.885 a repeat-job row: the job reports once, at the end
         return
     own = op.kind == HOOLA_PC_KIND
-    pc_name = ("Hoola ke apne PC" if own else "Aapke PC") + (f" ({op.device_name})" if op.device_name else "")
-    text = {"done": op.summary or f"{pc_name} par kaam ho gaya.",
-            "partial": f"{pc_name} par poora nahi ho paya. {op.summary}",
-            "cancelled": f"{pc_name} ka kaam rok diya gaya."}.get(op.status, f"{pc_name} par kaam ruk gaya. {op.summary or op.reason}")
+    pc_name = ("Hoola's own PC" if own else "Your PC") + (f" ({op.device_name})" if op.device_name else "")
+    text = {"done": op.summary or f"The task on {pc_name} is done.",
+            "partial": f"The task on {pc_name} could not be finished. {op.summary}",
+            "cancelled": f"The task on {pc_name} was stopped."}.get(op.status, f"The task on {pc_name} stopped. {op.summary or op.reason}")
     if op.brain_note:
         text = text.strip() + " (" + op.brain_note + ")"
     try:
@@ -3164,9 +3164,9 @@ def _report(op: Op) -> None:
         log.exception("pc op notify failed")
     try:
         whose = ("HOOLA'S OWN PC (the cloud computer that belongs to you - not her machine, not your browser)"
-                 if own else "HER PC (aapka PC, not your own browser)")
+                 if own else "HER PC (her own computer, not your own browser)")
         _inject(op, f"(Result from {whose}: «{text[:1500]}». Tell the user this now in one or two "
-                        "short lines." + (" Say it happened on Hoola ke apne PC par." if own else
+                        "short lines." + (" Say it happened on Hoola's own PC." if own else
                                           " Say it happened on her PC.") + ")")
     except Exception:
         pass
@@ -3209,7 +3209,7 @@ def _choose(tenant: str, kind: str, pc: str):
     if kind:
         if not hub.is_online(tenant, kind=kind):
             if kind == HOOLA_PC_KIND:   # v0.194 her PC may be fine while the Hoola PC is down: a clear, separate line
-                raise RuntimeError("HOOLA_PC_OFFLINE: Hoola ka apna PC abhi online nahi hai. Thodi der baad koshish kijiye.")
+                raise RuntimeError("HOOLA_PC_OFFLINE: Hoola's own PC is not online right now. Try again in a little while.")
             raise RuntimeError("PC_OFFLINE")
         if kind == HOOLA_PC_KIND:       # v0.885 HOOLA PC POOL: a free one (hers last), else her own busy one, else queue
             from . import pool
@@ -3253,8 +3253,8 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
         return await _start_queued(tenant, conv, task, wait, team, brain, quiet, batch_ok)
     ckind = HOOLA_PC_KIND if (conn.info or {}).get("kind") == HOOLA_PC_KIND else ""
     if ckind != HOOLA_PC_KIND and not (conn.info or {}).get("control"):
-        raise PermissionError("PC chalane ki permission band hai. PC par Santosh Desktop > Settings > "
-                              "'Santosh ko PC chalane dein' on kijiye, phir dobara boliye.")
+        raise PermissionError("Permission to control the PC is off. On the PC, open Santosh Desktop > Settings > "
+                              "turn on 'Let Hoola control the PC', then ask again.")
     dev = str(getattr(conn, "device_id", "") or "")
     old = busy(tenant, dev) if dev else None
     if old is not None:
@@ -3318,7 +3318,7 @@ async def _start_queued(tenant: str, conv: str, task: str, wait: float, team: st
     op = Op(id="pcop_" + secrets.token_hex(6), tenant=tenant, conv=conv, task=task.strip()[:4000], kind=HOOLA_PC_KIND,
             status="queued", team=team)
     op.quiet, op.batch_ok = bool(quiet), bool(batch_ok)
-    op.action = "Hoola PC ki line mein intezaar"
+    op.action = "Waiting in line for the Hoola PC"
     op.steps_max, op.minutes = _budget(op.task)
     try:
         from . import rescue as _rs
@@ -3358,21 +3358,21 @@ async def _queued_go(op: Op) -> None:
         conn = await pool.wait_turn(op)
     except asyncio.CancelledError:
         op.status = "cancelled"
-        op.action = "Aapne rok diya"
+        op.action = "You stopped it"
         op.done_event.set()
         _event(op)
         raise
     if conn is None or op.status == "cancelled":
         if op.status != "cancelled":
             op.status, op.reason = "failed", "every Hoola PC stayed busy"
-            op.summary = "Saare Hoola PC kaafi der tak busy rahe - kaam shuru nahi ho paya. Thodi der baad dobara boliye."
+            op.summary = "All Hoola PCs stayed busy for a long time, so the task could not start. Ask again in a little while."
         op.done_event.set()
         _event(op)
         if op.reported:
             _report(op)
         return
     op.device_id, op.device_name = conn.device_id, str((conn.info or {}).get("name") or "")[:60]
-    op.status, op.action = "running", "shuru kar raha hoon"
+    op.status, op.action = "running", "Starting"
     log.info("pc task start %s (from the queue) chat=%s pc=%s brain=%s budget=%d steps/%d min | %s", op.id, op.conv,
              op.device_name or op.device_id, op.brain_model or op.brain, op.steps_max, op.minutes, op.task[:200])
     _event(op)

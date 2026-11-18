@@ -14,9 +14,9 @@ async function init() {
   const st = await chrome.storage.local.get(["server", "token", "deviceId"]);
   $("server").value = st.server || DEFAULT_SERVER;
   if (st.token && st.deviceId) {
-    say("Pair hai (device " + String(st.deviceId).slice(0, 12) + "…) - phone ke Mera PC se hata bhi sakti hain.", "ok");
+    say("Paired (device " + String(st.deviceId).slice(0, 12) + "…) - you can also remove it from My PC on the phone.", "ok");
   } else {
-    say("Pair nahi hai - phone par Hoola app > Mera PC > 'PC jodiye' kholkar code yahan daaliye.");
+    say("Not paired - on the phone open the Hoola app > My PC > 'Connect a PC' and enter the code here.");
   }
   $("pair").addEventListener("click", pair);
   $("unpair").addEventListener("click", unpair);
@@ -26,19 +26,19 @@ async function pair() {
   const server = $("server").value.trim().replace(/\/+$/, "");
   const code = $("code").value.trim();
   if (!/^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)/.test(server)) {
-    say("Server https:// se shuru hona chahiye (ya localhost).", "bad");
+    say("The server address must start with https:// (or be localhost).", "bad");
     return;
   }
   if (!/^\d{6}$/.test(code)) {
-    say("6 anko ka code daaliye (phone > Mera PC > 'PC jodiye').", "bad");
+    say("Enter the 6-digit code (phone > My PC > 'Connect a PC').", "bad");
     return;
   }
   if (!(await ensureOriginAllowed(server))) {
-    say("Is server address ki permission nahi mili - browser ne mana kar diya.", "bad");
+    say("Permission for this server address was not granted - the browser refused.", "bad");
     return;
   }
   $("pair").disabled = true;
-  say("Jud raha hoon…");
+  say("Connecting…");
   try {
     const r = await fetch(server + "/api/pc/pair", {
       method: "POST",
@@ -47,13 +47,13 @@ async function pair() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.token) {
-      say("Pair nahi hua: " + (d.detail || ("HTTP " + r.status)) + " (code purana to nahi? naya code leijiye.)", "bad");
+      say("Pairing failed: " + (d.detail || ("HTTP " + r.status)) + " (is the code old? get a new code.)", "bad");
       return;
     }
     await chrome.storage.local.set({ server, token: d.token, deviceId: d.device_id });
-    say("Pair ho gaya! Ab kisi bhi page par right-click > 'Hoola ko bhejiye', ya Ctrl+Shift+H.", "ok");
+    say("Paired. Now right-click any page > 'Send to Hoola', or press Ctrl+Shift+H.", "ok");
   } catch (e) {
-    say("Server tak nahi pahuncha: " + server, "bad");
+    say("Could not reach the server: " + server, "bad");
   } finally {
     $("pair").disabled = false;
   }
@@ -61,7 +61,7 @@ async function pair() {
 
 async function unpair() {
   await chrome.storage.local.remove(["token", "deviceId", "lastConversationId", "lastSentAt"]);
-  say("Alag kar diya (yahan se). Phone ke Mera PC se device ko revoke karna behtar hai - wahan se ka poora band hota hai.");
+  say("Unpaired (from here). It is better to also revoke the device from My PC on the phone - that closes it completely.");
 }
 
 async function ensureOriginAllowed(server) {
