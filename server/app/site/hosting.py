@@ -292,7 +292,8 @@ def _sec_headers(m: dict[str, Any]) -> dict[str, str]:
     base = (_st().public_base_url or "").rstrip("/")
     h = dict(B.security_headers(base + "/api/site-forms/x" if base else ""))
     h["Strict-Transport-Security"] = "max-age=31536000"
-    return h
+    from . import gsignin as GS                      # v0.995 B6 Google's sign-in hosts only for a site that turned it on
+    return GS.headers(h, str(m.get("site") or ""))
 
 
 # ---------------------------------------------------------------- launch (her tap)

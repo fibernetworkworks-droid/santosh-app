@@ -24,7 +24,7 @@ SCHEMA = {"collections": [
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.994.0"
+    assert APP_VERSION == "0.995.0"
 
 
 # ---------------------------------------------------------------- B1: binding screens to real lists

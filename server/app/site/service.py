@@ -3336,6 +3336,8 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     if f.suffix == ".woff2":
         ctype = "font/woff2"
     headers = {**B.security_headers(form_endpoint(r)), "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store"}
+    from . import gsignin as GS                     # v0.995 B6 the preview may load Google's sign-in when the site has it on
+    headers = GS.headers(headers, r.id)
     data = f.read_bytes()
     if f.suffix == ".html":
         data = preview_dataset(data, r)

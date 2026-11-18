@@ -3223,3 +3223,10 @@ Ask: "GO B5" (Lovable backend plan): run the website's backend from the Web Stud
 Built: Cloud tab = entries add / change / delete, member roles, change log, backups + restore, secrets, outside services,
 usage + limits; site/backend_tab.py + 3 routes, the rest on the existing /api/apps routes
 Deploy: server only (vps-ops deploy).
+
+---
+Task ID: v0.995.0 SIGN-IN, FILES, EMAIL
+Ask: "GO B6" (Lovable backend plan, gap 7): Google sign-in, private files, sign-in + transactional emails for websites
+Built: gsignin.py (Google on websites, per-site CSP), sitemail.py (codes, reset, receipts, SMTP, cap, log), Studio Cloud >
+Sign-in / Files / Emails, login box Google button + Email code + Forgot password; built as 0.993 / 0.994, their IN LINE + SIDE ARROW took those
+Not verified: her server, a real Google client id, a real mail service

@@ -91,7 +91,7 @@ def run(name, args, ctx):
 # ---------------------------------------------------------------- registry + version
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.994.0"
+    assert APP_VERSION == "0.995.0"
 
 
 def test_registry_one_tool_seven_actions():

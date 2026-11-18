@@ -748,6 +748,15 @@ class Settings(BaseSettings):
     site_sms_provider: str = ""            # v0.434 website phone-OTP login: "" off | msg91 (DLT registered, her account)
     msg91_authkey: str = ""                # v0.434 MSG91 auth key (VPS .env only)
     msg91_otp_template: str = ""           # v0.434 MSG91 OTP template id (DLT approved)
+    # v0.995 B6 website sign-in codes + receipts by email, through HER own transactional mail service over SMTP
+    # (ZeptoMail / Amazon SES / Brevo all give SMTP logins). Keys in the VPS .env only. "" = off; capture = tests only.
+    site_mail_provider: str = ""           # "" off | smtp | capture
+    site_mail_smtp_host: str = ""
+    site_mail_smtp_port: int = 587         # 587 STARTTLS, 465 SSL
+    site_mail_smtp_user: str = ""
+    site_mail_smtp_password: str = ""
+    site_mail_from: str = ""               # the sending address on her domain, verified with her mail service
+    site_mail_daily: int = 300             # emails one website may send in a day (codes + receipts)
     site_app_link: bool = True             # v0.414 every website web app runs on App Sahayak's backend + DIMAAG (old v0.305 sites moved by the worker)
     site_journeys: bool = True             # v0.402 visitor journeys (menu / form / shop / blog / language) on every version
     site_arena_max_inr: float = 3000       # v0.307 Design Arena: rupee ceiling of one run (each site ~Rs 100-300 with Opus)

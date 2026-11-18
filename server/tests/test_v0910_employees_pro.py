@@ -42,5 +42,5 @@ def test_the_three_levels_and_tests_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.994.0"
-    assert "version: 0.994.0+993" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.995.0"
+    assert "version: 0.995.0+994" in (ROOT / "pubspec.yaml").read_text()
