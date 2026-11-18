@@ -396,7 +396,7 @@ def saw(name: str, out: Any) -> None:
     except Exception:   # noqa: BLE001
         txt = str(out)
     if len(sink) < 60:
-        sink.append(str(txt)[:8000])
+        sink.append(str(txt)[:24000])   # v0.999.4 web results run long; a cut one lost real figures
 
 
 def end(b: dict | None, answer: str, failed: bool = False) -> dict | None:

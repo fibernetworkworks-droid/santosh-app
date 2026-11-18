@@ -42,6 +42,7 @@ MODEL_CHECK = (
     "(only when the facts list is not empty);\n"
     "3. it says something was done, sent, made or booked that the facts do not show;\n"
     "4. it contradicts the facts.\n"
+    "What Hoola knows about her (her name, city, business, memory) counts as hers too.\n"
     "Advice, ideas, recipes, examples and suggested amounts, times or steps that the draft OFFERS as suggestions are "
     "fine - never flag those. Names and figures from the earlier chat count as hers. "
     "Never complain about style, tone, length or formatting. Answer with JSON only: {\"ok\": true} or "
@@ -109,6 +110,22 @@ def chat_lines(conv: str, n: int = 4, cap: int = 400) -> str:
     return "\n".join(reversed(out))
 
 
+def about_her(tenant: str, conv: str, cap: int = 3000) -> str:
+    """v0.999.4 what the writer was told about her (profile + memory page + pinned facts + project), so the checker
+    does not call her own name, company or state 'not in her message' (her live test: the sign-off 'Meghna Anil Ingle,
+    Director, Newtika Private Limited' and GST state code 27 were sent back)."""
+    if not tenant:
+        return ""
+    try:
+        from ..agent import core_prompt as CP
+        t = CP.chat_context(tenant, conv or "")
+    except Exception as e:   # noqa: BLE001 - no profile = the chat only
+        log.warning("pipeline checkers: her profile unreadable (%s)", str(e)[:100])
+        return ""
+    t = re.sub(r"\n{3,}", "\n\n", (t or "").strip())
+    return t[:cap]
+
+
 def _worth_a_model(b: dict, draft: str, tools_ran: int) -> bool:
     st = get_settings()
     sh = b.get("sheet") or {}
@@ -174,7 +191,7 @@ def _parse(text: str) -> list[str]:
     return [str(p).strip()[:240] for p in (d.get("problems") or []) if str(p).strip()][:4]
 
 
-async def model_check(b: dict, draft: str, facts: list[dict]) -> tuple[list[str], str]:
+async def model_check(b: dict, draft: str, facts: list[dict], about: str = "") -> tuple[list[str], str]:
     """(problems, checker model id). Never raises; a failure = no problems."""
     m = pick_checker(b)
     if not m:
@@ -183,6 +200,7 @@ async def model_check(b: dict, draft: str, facts: list[dict]) -> tuple[list[str]
     earlier = chat_lines(((b.get("sheet") or {}).get("conv")) or b.get("conv") or "")
     msg = (f"Her message:\n{str(b.get('text') or '')[:3000]}\n\n"
            + (f"Her earlier messages in this chat:\n{earlier}\n\n" if earlier else "")
+           + (f"What Hoola knows about her:\n{about}\n\n" if about else "")
            + f"Facts the job had:\n{fact_lines}\n\nThe draft reply:\n{draft[:8000]}")
     from ..agent import llm
     tok = llm.MODEL_NOW.set("openrouter:" + m["id"])
@@ -215,7 +233,14 @@ async def review(b: dict | None, draft: str) -> str:
     b["reviewed"] = True
     STATS["reviews"] += 1
     tools_out = list(b.get("sink") or [])
-    facts = K.facts_from(b.get("text") or "", tools_out) + chat_facts(sh.get("conv") or b.get("conv") or "")
+    conv = sh.get("conv") or b.get("conv") or ""
+    about = await asyncio.to_thread(about_her, b.get("tenant") or sh.get("tenant") or "", conv)   # DB reads off the loop
+    facts = K.facts_from(b.get("text") or "", tools_out) + chat_facts(conv)
+    try:
+        from ..research import figures as F
+        facts += [{"value": v, "source": "memory"} for v in F.numbers(about)]
+    except Exception:   # noqa: BLE001
+        pass
     files = K.files_from(tools_out)
     not_done = [x for p in (sh.get("parts") or [])[:-1] for x in ((p.get("out") or {}).get("not_done") or [])]
     chk = K.final_check(draft, b.get("text") or "", facts, files, not_done, tools_ran=len(tools_out))
@@ -224,7 +249,7 @@ async def review(b: dict | None, draft: str) -> str:
         STATS["code_problems"] += 1
     by = ["code"]
     if _worth_a_model(b, draft, len(tools_out)):
-        mp, mid = await model_check(b, draft, facts)
+        mp, mid = await model_check(b, draft, facts, about)
         if mid:
             by.append(mid)
         if mp:

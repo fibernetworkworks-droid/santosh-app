@@ -111,7 +111,7 @@ def test_version():
     assert APP_VERSION.startswith("0.999")
 
 
-# ------------------------------------------------------------------ v0.999.3 her live test fixes (18 Nov)
+# ------------------------------------------------------------------ v0.999.4 her live test fixes (18 Nov)
 def test_a_chat_writer_gets_room_before_its_first_word():
     from app.pipeline import handover as H
     assert H.first_word_limit("chat") >= 20 and H.first_word_limit("call") == 3.0
@@ -156,7 +156,7 @@ def test_figures_from_her_earlier_messages_count_as_facts(box):
     assert not any("9500" in p or "4200" in p for p in r["problems"])
 
 
-# ------------------------------------------------------------------ v0.999.3 her second live test (18 Nov 14:10)
+# ------------------------------------------------------------------ v0.999.4 her second live test (18 Nov 14:10)
 CREDIT_ERR = ('OpenRouter error 402: {"error":{"message":"This request requires more credits, or fewer max_tokens."}} '
               '| OpenRouter credit is low')
 
@@ -192,7 +192,7 @@ def test_a_paused_brain_does_not_move_her_chat_past_the_box(box, monkeypatch):
     assert TB._why_not("owner", False, r) == ""
 
 
-# ------------------------------------------------------------------ v0.999.3 the model checker reads like a reviewer
+# ------------------------------------------------------------------ v0.999.4 the model checker reads like a reviewer
 def test_the_model_checker_lets_suggestions_through():
     from app.pipeline import checkers as CK
     assert "never flag those" in CK.MODEL_CHECK
@@ -220,3 +220,46 @@ def test_the_model_checker_sees_her_earlier_messages(box, monkeypatch):
     probs, mid = asyncio.run(CK.model_check(b, "Tea should sell Rs 6,300 more.", []))
     assert probs == [] and mid == DS
     assert "tea Rs 42,000" in seen["msg"] and seen["msg"].count("Grow sales 15%") == 1
+
+
+def test_the_checker_knows_what_hoola_knows_about_her(box, monkeypatch):
+    """v0.999.4 her live test: the sign-off with her own name / company and GST state code 27 (Maharashtra, from her
+    profile) were sent back as 'not in her message'."""
+    import asyncio
+    from app import db
+    from app.agent import llm, core_prompt as CP
+    from app.pipeline import checkers as CK
+    with db.session() as s:
+        s.add(db.Conversation(id="conv_ab", tenant_id="t1"))
+        s.add(db.Message(conversation_id="conv_ab", role="user", content="Write to Ramesh", display="Write to Ramesh"))
+        s.commit()
+    monkeypatch.setattr(CP, "chat_context", lambda tenant, conv, *a, **k:
+                        "She: name Meghna Anil Ingle, city Akola. Her memory page: Director of Newtika Private "
+                        "Limited, GST state code 27.")
+    seen = {}
+
+    async def fake(brain, system, tools, messages, mx):
+        seen["msg"] = messages[0]["content"]
+        seen["sys"] = system
+        return [{"type": "text", "text": '{"ok": true}'}], "end_turn", {}
+    monkeypatch.setattr(llm, "_openai_create", fake)
+    sh = {"conv": "conv_ab", "tenant": "t1", "parts": [{"model": {"id": GLM}, "ran_on": GLM, "applied": True,
+                                                          "level": "MAX"}]}
+    b = {"doc": _p4._doc(), "text": "Write to Ramesh", "tenant": "t1", "conv": "conv_ab", "sheet": sh,
+         "sink": ["search result"]}
+    note = asyncio.run(CK.review(b, "Regards, Meghna Anil Ingle, Director, Newtika Private Limited (GST code 27)."))
+    assert "Meghna Anil Ingle" in seen["msg"] and "What Hoola knows about her" in seen["msg"]
+    assert "counts as hers" in seen["sys"]
+    assert "figure 27" not in note        # her profile's figures are facts for the code check too
+    assert note == ""
+
+
+def test_long_tool_results_keep_their_figures(box):
+    from app.pipeline import turnbox as TB
+    sink: list = []
+    tok = TB.TOOL_SINK.set(sink)
+    try:
+        TB.saw("web_search", "x" * 12000 + " 22 carat Rs 1,14,500 per 10 g")
+    finally:
+        TB.TOOL_SINK.reset(tok)
+    assert "1,14,500" in sink[0]
