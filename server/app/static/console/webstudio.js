@@ -290,7 +290,7 @@
       </section>
       <section class="wrap" id="wsStarters" hidden><div class="sec"><h2 id="wsStartersH">Starting points</h2><span class="mut sm">Pick one, change any word, then send. Thumbnails show the look each one is built in.</span></div>
         <div class="sgrid" id="wsStartGrid"></div></section>
-      ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
+      ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length ? `<a class="more" href="#/sites">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : '<div class="panel mut">No website yet. Write one line above.</div>'}</section>
       <section class="wrap"><div class="sec"><h2>Or start from</h2></div><div class="starts">
@@ -2416,8 +2416,8 @@
     if (d.cmode) { setChatMode(d.cmode); return; }
     if (d.chip) { HOME.kind = HOME.kind === d.chip ? '' : d.chip; drawStarters(); return; }
     if (d.starter) { chooseStarter(d.starter); return; }
-    if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
-      const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
+    if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `Build a ${d.type} website: `; go('#/'); return; }
+      const t = $('#wsAsk'); if (t) { t.value = `Build a ${d.type} website: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     if (d.src) { if (d.src === 'focus') { drawSource(''); $('#wsAsk')?.focus(); } else { drawSource(d.src); $('#wsSrc input')?.focus(); } return; }
     if (d.live === 'follow' || d.live === 'code') {        // v0.664 live build toggles
       if (d.live === 'follow') { LIVE.follow = !LIVE.follow; b.setAttribute('aria-pressed', String(LIVE.follow)); if (LIVE.follow) followPage(); }
