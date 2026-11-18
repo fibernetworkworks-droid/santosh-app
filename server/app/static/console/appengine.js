@@ -25,7 +25,6 @@
 
   const k = () => (K = K || window.HoolaWSKit);
   const enc = encodeURIComponent;
-  const secs = s => { s = Math.max(0, Math.round(s)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
 
   function stop() { clearTimeout(ST.poll); ST.poll = null; }
   addEventListener('hashchange', () => { if (!/^#\/app\//.test(location.hash)) stop(); });
@@ -102,18 +101,16 @@
   /* ================= the workspace ================= */
   async function workspace(id, tab) {
     const {api, APP} = k();
-    if (ST.id !== id) Object.assign(ST, {id, conv: '', rows: [], waiting: false, file: '', fileCode: null, err: '', sig: '', device: 'pc'});
+    if (ST.id !== id) Object.assign(ST, {id, conv: '', rows: [], waiting: false, file: '', fileCode: null, err: '', sig: '', device: 'pc', sendNow: false});
     ST.tab = ['preview', 'code', 'design', 'cloud', 'versions', 'branches', 'publish'].includes(tab) ? tab : 'preview';
     ST.app = await api('GET', `/api/appengine/${enc(id)}`);
     ST.conv = S(ST.app.conversation_id);
     if (!ST.conv) ST.conv = await newConv(ST.app);
     APP.innerHTML = `<div class="ae-shell" data-ae-root>
       <header class="ae-top" id="aeTop"></header>
-      <div class="ae-body"><section class="ae-chat" aria-label="Hoola chat"><div class="ae-msgs" id="aeMsgs" aria-live="polite"></div>
+      <div class="ae-body"><section class="ae-chat" aria-label="Hoola chat"><div class="ae-msgs" id="aeMsgs"><div id="aeHist" class="hck-tight"></div></div>
         <div class="ae-pills" id="aePills" hidden></div>
-        <form class="ae-comp" data-ae-form="say"><label for="aeSay" class="sr">Message Hoola</label>
-          <textarea id="aeSay" rows="2" maxlength="6000" placeholder="Tell Hoola what to change…"></textarea>
-          <button class="go" type="submit" aria-label="Send">${k().ico('up', 18)}</button></form></section>
+        <div class="ae-comp"><div id="aeBar"></div></div></section>
         <section class="ae-pane"><nav class="ae-tabs" id="aeTabs" role="tablist"></nav><div class="ae-view" id="aeView"></div></section></div></div>`;
     drawTop(); drawTabs(); await drawView(); await readChat(); readErrs(); tick();
   }
@@ -508,40 +505,94 @@
     if (e.target && e.target.id === 'aePkText') { ST.ptext = S(e.target.value); livePreview(); const b = document.querySelector('[data-ae="pk-apply"]'); if (b) b.disabled = false; }
   });
 
-  /* ----- the chat ----- */
+  /* ----- the chat: drawn by the chat kit (chatkit.js) -----
+     The list is polled; the kit works out what is new. Her line shows the moment she sends, ONE working row (the
+     mark + the clock) runs while Hoola works, a reply that arrives lands word by word at the shared pace, and Copy /
+     Read aloud sit under the newest reply. The box is the kit's pill: Send becomes Stop while Hoola works. */
+  let AK = null;
+  const AKD = {running: false, again: false};
+  const AKOPT = {startedAt: 0, onEnd: () => { if (AK) { AK.ending = false; drawChat(); } }};
+  const tms = a => { const t = S(a); if (!t) return 0; const ms = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + 'Z'); return isNaN(ms) ? 0 : ms; };
+  function chatKit() {
+    const root = document.getElementById('aeHist'), host = document.getElementById('aeBar');
+    if (!root || !host || !window.HoolaChat) return null;
+    if (!AK || AK.root !== root) {
+      AKOPT.scroller = document.getElementById('aeMsgs');
+      AK = {root, t: window.HoolaChat.mount(root, AKOPT), key: null, n: 0, locals: new Set(), ending: false, list: [], conv: ''};
+      AK.bar = window.HoolaChat.bar(host, {placeholder: 'Tell Hoola what to change…', onSend: text => say(text), onStop: () => stopTurn()});
+      AK.bar.input.id = 'aeSay'; AK.bar.input.maxLength = 6000;
+    }
+    return AK;
+  }
   async function readChat() {
-    const {api} = k();
+    const {api, clean} = k();
     if (!ST.conv) return;
     try {
       const r = await api('GET', `/api/conversations/${enc(ST.conv)}/messages?limit=60`);
-      ST.rows = L(r.messages).filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+      const local = ST.rows.filter(m => S(m.id).startsWith('local-'));
+      ST.rows = [...L(r.messages).filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim()), ...local];
     } catch { return; }
-    const talk = ST.rows; let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
+    const talk = ST.rows.filter(m => !S(m.id).startsWith('local-')); let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
     ST.waiting = lu >= 0 && !talk.slice(lu + 1).some(m => m.role === 'assistant');
+    // a line she sent that is not in the list yet: Hoola has it and is working (the row never blinks off and on)
+    const now = Date.now();
+    ST.rows = ST.rows.filter(m => !S(m.id).startsWith('local-') || (now - m.sent < 15 * 60e3 && !talk.some(x => x.role === 'user' && Number(x.id) > m.after && clean(S(x.text)).trim() === m.text)));
+    if (ST.rows.length > talk.length) ST.waiting = true;
     drawChat();
   }
 
   function drawChat() {
-    const {esc, md, clean} = k(), el = document.getElementById('aeMsgs'); if (!el) return;
-    const sig = ST.rows.map(m => m.id).join(',') + ST.waiting;
-    if (sig === ST.sig && !ST.waiting) return;
-    ST.sig = sig;
-    const body = ST.rows.map(m => m.role === 'user'
-      ? `<div class="ae-me">${esc(clean(S(m.text)))}</div>`
-      : `<div class="ae-hoola"><b class="sm">Hoola</b><div class="mdb">${md ? md.render(S(m.text)) : esc(S(m.text))}</div></div>`).join('');
-    const last = ST.rows.filter(m => m.role === 'user').pop();
-    const since = last ? Math.max(0, Date.now() / 1000 - (Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(S(last.at)) ? S(last.at) : S(last.at) + 'Z') / 1000)) : 0;
-    el.innerHTML = (body || '<p class="mut ae-hint">Tell Hoola what this app should do, or what to change. Hoola edits the code, builds it, and shows you the new version on the right.</p>')
-      + (ST.waiting ? `<div class="ae-work" role="status"><span class="dot v"></span>Hoola is working on the app… ${secs(since)}</div>` : '');
-    el.scrollTop = el.scrollHeight;
+    if (AKD.running) { AKD.again = true; return; }
+    AKD.running = true;
+    try { do { AKD.again = false; chatOnce(); } while (AKD.again); } finally { AKD.running = false; }
+  }
+  function chatOnce() {
+    const {clean} = k(), K = chatKit(); if (!K) return;
+    K.bar.working = ST.waiting;
+    if (K.conv !== ST.conv) { K.conv = ST.conv; K.list = []; }
+    // the polled list only grows here: a row keeps its place for as long as this chat is open
+    const top = K.list.reduce((a, m) => Math.max(a, Number(m.id) || 0), 0);
+    for (const m of ST.rows) if (!S(m.id).startsWith('local-') && (Number(m.id) || 0) > top) K.list.push({id: m.id, role: m.role === 'user' ? 'her' : 'hoola', text: m.role === 'user' ? clean(S(m.text)).trim() : S(m.text), at: m.at});
+    const locals = ST.rows.filter(m => S(m.id).startsWith('local-'));
+    const empty = !K.list.length && !locals.length && !ST.waiting;
+    const key = ST.conv + (empty ? '|new' : '|t');
+    const msgs = empty ? [{id: 'hint', role: 'raw', html: '<p class="mut ae-hint">Tell Hoola what this app should do, or what to change. Hoola edits the code, builds it, and shows you the new version on the right.</p>'}] : K.list;
+    if (K.key !== key) { K.t.sync({key, messages: msgs, working: false}); Object.assign(K, {key, n: msgs.length, locals: new Set(), ending: false}); }
+    else if (msgs.length > K.n) {
+      const reply = msgs.slice(K.n).some(m => m.role === 'hoola');
+      K.t.sync({key, messages: msgs, working: reply ? false : K.t.busy && !K.ending});
+      K.n = msgs.length;
+      if (reply) K.ending = K.t.busy;                        // it lands to its end first; the row for more work comes after
+    }
+    const fresh = locals.filter(m => !K.locals.has(m.id));
+    if (fresh.length) {
+      if (K.ending && K.t.busy) { if (!ST.sendNow) return; K.t.end(); }   // she just sent: the reply still landing is shown whole
+      for (const m of fresh) { K.t.her(m.text, {pending: true}); K.locals.add(m.id); }
+    }
+    ST.sendNow = false;
+    if (K.ending) return;
+    if (ST.waiting && !K.t.busy) { const last = [...K.list].reverse().find(m => m.role === 'her'); AKOPT.startedAt = !locals.length && last ? tms(last.at) : 0; }
+    K.t.sync({key, messages: msgs, working: ST.waiting, label: 'Working on the app'});
   }
 
-  async function say(form) {
-    const {toast} = k(), ta = form.querySelector('textarea'), text = S(ta.value).trim();
+  /* her line goes at once: into the thread, then to Hoola */
+  async function say(text, note) {
+    const {toast} = k(); text = S(text).trim();
     if (!text) return;
-    ta.value = '';
-    ST.rows.push({id: 'local-' + Date.now(), role: 'user', text}); ST.waiting = true; ST.sig = ''; drawChat();
-    try { await send(ST.app, ST.conv, text); drawPills(); } catch (e) { ta.value = text; ST.waiting = false; toast(e.message, true); }
+    const after = ST.rows.reduce((a, m) => Math.max(a, Number(m.id) || 0), 0);
+    const row = {id: 'local-' + Date.now(), role: 'user', text, after, sent: Date.now()};
+    ST.rows.push(row); ST.waiting = true; ST.sendNow = true; drawChat();
+    try { await send(ST.app, ST.conv, text); drawPills(); if (note) toast(note); }
+    catch (e) {
+      ST.rows = ST.rows.filter(m => m !== row); ST.waiting = false;
+      if (AK && !AK.bar.value) AK.bar.value = text;
+      toast(e.message, true); readChat();
+    }
+  }
+  async function stopTurn() {
+    const {api, toast} = k(); if (!ST.conv) return;
+    try { await api('POST', `/api/conversations/${enc(ST.conv)}/stop`, {}); toast('Stopping after the step it is on.'); }
+    catch (e) { toast(e.message, true); }
   }
 
   /* ----- the loop: the app row (status / version) + the chat ----- */
@@ -611,8 +662,7 @@
     if (what === 'fixerr') {
       const x = L(ST.errs).find(y => y.fp === b.dataset.aeFp); if (!x) return;
       const text = `Fix this error the preview reported: "${S(x.message).slice(0, 300)}"${x.file ? ` (at ${x.file} line ${x.line})` : ''}.`;
-      ST.rows.push({id: 'local-' + Date.now(), role: 'user', text}); ST.waiting = true; ST.sig = ''; drawChat();
-      try { await send(ST.app, ST.conv, text); toast('Sent to Hoola.'); } catch (e) { ST.waiting = false; toast(e.message, true); }
+      await say(text, 'Sent to Hoola.');
       return;
     }
     if (what === 'build') {
@@ -661,14 +711,13 @@
     const f = e.target.closest && e.target.closest('[data-ae-form]');
     if (!f) return;
     e.preventDefault(); e.stopPropagation();
-    if (f.dataset.aeForm === 'new') createApp(f); else if (f.dataset.aeForm === 'say') say(f); else if (f.dataset.aeForm === 'git-link') gitLink(f); else if (f.dataset.aeForm === 'br-new') brNew(f); else if (f.dataset.aeForm === 'imp-zip' || f.dataset.aeForm === 'imp-gh') importApp(f);
+    if (f.dataset.aeForm === 'new') createApp(f); else if (f.dataset.aeForm === 'git-link') gitLink(f); else if (f.dataset.aeForm === 'br-new') brNew(f); else if (f.dataset.aeForm === 'imp-zip' || f.dataset.aeForm === 'imp-gh') importApp(f);
   }, true);
   document.addEventListener('keydown', e => {
     if ((e.key === 's' || e.key === 'S') && !e.metaKey && !e.ctrlKey && !e.altKey && ST.tab === 'preview' && document.querySelector('[data-ae-root]')
         && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '') && !(e.target && e.target.isContentEditable)) {
       const b = document.querySelector('[data-ae="select"]'); if (b) { e.preventDefault(); act(b); } return;
     }
-    if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.id === 'aeSay') { e.preventDefault(); e.target.form.requestSubmit(); }
   });
 
   window.HoolaAppEngine = {

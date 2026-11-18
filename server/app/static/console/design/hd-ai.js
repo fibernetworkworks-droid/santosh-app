@@ -8,7 +8,12 @@
    The server sizes words from a table of letter widths, not the real font. Every frame it makes carries the mark
    `aiSettle`; an editor that sees the mark runs the real layout once over that frame (fonts loaded first) and takes
    the mark off. That is the only edit this file makes without being asked, and it is one merged undo step.
-   Text from the server (names, notes, errors) is always set with textContent. */
+   Text from the server (names, notes, errors) is always set with textContent - or handed to the shared chat kit, whose
+   markdown renderer escapes every character first.
+   HOOLA CHAT KIT (console/chatkit.js): the panel talks like every Hoola chat. Her ask is a bubble, ONE working row
+   with the clock shows while Hoola designs, what it did lands word by word as a reply with Copy / Read aloud under
+   it. The composer (size chips, Use my brand, Design) and the buttons that act on the result (Remove, Revert, Try
+   again, Make variations) stay this panel's own. Nothing about what it does to the canvas changed. */
 (function () {
   'use strict';
   const HD = window.HD = window.HD || {};
@@ -20,7 +25,7 @@
     ['poster', 'Poster'], ['card', 'Business card'], ['slide', 'Slide'], ['logo', 'Logo'], ['android', 'Android'], ['whatsapp', 'WhatsApp status']];
   const IDEAS = ['A home screen for a food delivery app', 'Diwali sale poster for my sweet shop', 'Landing page for a yoga studio',
     'Instagram post: grand opening this Sunday', 'A business card for a boutique'];
-  const st = {open: false, busy: false, prompt: '', preset: '', brand: true, at: null, last: null, error: '', t0: 0, tick: 0, panel: null, fab: null, note: ''};
+  const st = {open: false, busy: false, prompt: '', preset: '', brand: true, at: null, last: null, error: '', t0: 0, panel: null, fab: null, note: '', box: null, thread: null};
   try { st.brand = localStorage.getItem('hoola.design.ai.brand') !== '0'; } catch (e) { /* private window */ }
 
   const canEdit = () => !!(HD.app && HD.app.file) && !!(HD.tools && HD.tools.u && HD.tools.u.canEdit());
@@ -111,11 +116,13 @@
     const snap = mode === 'edit' ? snapshot(sel) : null;
     const count = Math.max(1, Math.min(VARIATIONS, opts.variations || 1));
     st.busy = true; st.error = ''; st.note = ''; st.t0 = performance.now(); st.step = count > 1 ? [0, count] : null;
-    paint(); startClock();
+    const T = thread();
+    if (T) { T.her(prompt); T.begin(mode === 'edit' ? 'Changing it…' : 'Designing…'); }
+    paint();
     const made = [], notes = [];
     let engine = '', res = null, failed = '';
     for (let i = 0; i < count; i++) {
-      if (count > 1) { st.step = [i + 1, count]; body.variant = i + 1; delete body.x; delete body.y; paint(); }
+      if (count > 1) { st.step = [i + 1, count]; body.variant = i + 1; delete body.x; delete body.y; if (T) T.label('Designing option ' + (i + 1) + ' of ' + count + '…'); }
       try { res = await request(body); } catch (e) { failed = (e && e.message) || 'Hoola could not design this.'; break; }
       engine = res.engine || engine;
       if (res.notes) notes.push(res.notes);
@@ -126,7 +133,7 @@
       await settle(roots);
       for (const r of roots) if (HD.store.has(r)) made.push(r);
     }
-    stopClock(); st.busy = false;
+    st.busy = false;
     const secs = Math.max(1, Math.round((performance.now() - st.t0) / 1000));
     if (mode === 'edit' && res && !failed) {
       const touched = (res.touched || []).filter(id => typeof id === 'string');
@@ -141,9 +148,49 @@
       try { HD.sel.set(made); HD.render.zoomToFit(made, true); } catch (e) { /* the frames are there even if the view did not move */ }
       st.at = null; st.prompt = '';
     }
-    if (failed) st.error = failed;
+    const fresh = !!st.last && st.last.secs === secs && st.last.prompt === prompt && (mode === 'edit' ? !failed && !!res : made.length > 0);
+    const said = fresh ? resultText(st.last) : failed ? '' : 'Nothing was added.';
+    st.note = T ? '' : said;                      // with the thread, the thread says it
     paint();
     if (st.panel) { const f = st.panel.querySelector(failed ? '.hdai-in' : '.hdai-acts button'); if (f) f.focus({preventScroll: true}); }
+    if (T) {
+      if (said) await T.final(said);              // what Hoola did lands like any reply
+      T.end();
+      const ho = st.box && st.box.firstChild && st.box.firstChild.lastElementChild;
+      if (ho && ho.classList.contains('hck-ho') && !ho.childElementCount) ho.remove();
+      if (failed) T.raw({node: h('p', {class: 'hdai-err', role: 'alert', text: failed})});
+      if (st.box) st.box.scrollTop = st.box.scrollHeight;
+    } else if (failed) { st.error = failed; paint(); }
+  }
+  /* the panel's thread: one mount for as long as the page lives (re-used across paints and across close / open) */
+  function thread() {
+    if (st.thread) return st.thread;
+    if (!window.HoolaChat) return null;
+    const root = h('div', {class: 'hck-tight'});
+    st.box = h('div', {class: 'hdai-thread'}, root);
+    st.thread = window.HoolaChat.mount(root, {scroller: st.box});
+    return st.thread;
+  }
+  function dropThread() { if (st.thread) st.thread.clear(); }
+  /* what Hoola did, in words (the kit lands them); the buttons that act on it stay in resultView() */
+  function resultText(L) {
+    const out = [];
+    if (L.mode === 'new') {
+      const names = L.roots.map(id => { const n = HD.store.get(id); return n ? (n.name || 'Frame') + ' (' + Math.round(n.w) + ' × ' + Math.round(n.h) + ')' : null; }).filter(Boolean);
+      out.push((names.length > 1 ? names.length + ' frames added' : 'Added ' + (names[0] || 'a frame')) + ' in ' + L.secs + ' s.');
+      if (L.engine === 'template') out.push('No AI model is set up on this server, so this is one of Hoola’s built-in layouts filled from your words. Every [blank] is a fact only you know.');
+      else if (L.notes) out.push(String(L.notes));
+      const extra = [];
+      if (L.fixed) extra.push(L.fixed + (L.fixed === 1 ? ' text colour was' : ' text colours were') + ' changed so the words read clearly');
+      if (L.blanked) extra.push(L.blanked + (L.blanked === 1 ? ' fact' : ' facts') + ' nobody gave became a [blank]');
+      if (extra.length) out.push(extra.join('; ') + '.');
+    } else {
+      const n = L.touched.length;
+      out.push((n ? n + (n === 1 ? ' layer' : ' layers') + ' changed' : 'Nothing needed to change') + ' in ' + L.secs + ' s.');
+      if (L.notes) out.push(String(L.notes));
+      if (L.refused && L.refused.length) out.push('Not done (an edit never deletes or moves layers): ' + L.refused.slice(0, 4).join(', '));
+    }
+    return out.join('\n\n');
   }
   function removeLast() {
     const L = st.last; if (!L || L.mode !== 'new') return;
@@ -179,60 +226,53 @@
   function variations() { const L = st.last; if (!L || L.mode !== 'new') return; return ask({prompt: L.prompt, mode: 'new', variations: VARIATIONS, beside: true}); }
 
   /* ---------------------------------------------------------------- the composer */
-  function startClock() { stopClock(); st.tick = setInterval(() => { const el = st.panel && st.panel.querySelector('.hdai-secs'); if (el) el.textContent = secsText(); }, 250); }
-  function stopClock() { clearInterval(st.tick); st.tick = 0; }
-  function secsText() { const s = Math.floor((performance.now() - st.t0) / 1000); return s + ' s'; }
   function chip(value, label) {
     return h('button', {class: 'hdai-chip' + (st.preset === value ? ' on' : ''), type: 'button', 'aria-pressed': st.preset === value ? 'true' : 'false', text: label,
       on: {click: () => { st.preset = value; paint(); const f = st.panel && st.panel.querySelector('.hdai-in'); if (f) f.focus({preventScroll: true}); }}});
   }
   function resultView() {
-    const L = st.last, box = h('div', {class: 'hdai-result', role: 'status', 'aria-live': 'polite'});
+    /* the words are in the thread; here are the things she can do with the result */
+    const L = st.last, box = h('div', {class: 'hdai-result'});
     if (L.mode === 'new') {
-      const names = L.roots.map(id => { const n = HD.store.get(id); return n ? (n.name || 'Frame') + ' (' + Math.round(n.w) + ' × ' + Math.round(n.h) + ')' : null; }).filter(Boolean);
-      box.appendChild(h('p', {class: 'hdai-done'}, ui.icon('check', 14), h('span', {text: (names.length > 1 ? names.length + ' frames added' : 'Added ' + (names[0] || 'a frame')) + ' in ' + L.secs + ' s'})));
-      if (L.engine === 'template') box.appendChild(h('p', {class: 'hdai-sub', text: 'No AI model is set up on this server, so this is one of Hoola’s built-in layouts filled from your words. Every [blank] is a fact only you know.'}));
-      else if (L.notes) box.appendChild(h('p', {class: 'hdai-sub', text: L.notes}));
-      const extra = [];
-      if (L.fixed) extra.push(L.fixed + (L.fixed === 1 ? ' text colour was' : ' text colours were') + ' changed so the words read clearly');
-      if (L.blanked) extra.push(L.blanked + (L.blanked === 1 ? ' fact' : ' facts') + ' nobody gave became a [blank]');
-      if (extra.length) box.appendChild(h('p', {class: 'hdai-sub', text: extra.join('; ') + '.'}));
       box.appendChild(h('div', {class: 'hdai-acts'},
         h('button', {class: 'hd-btn', type: 'button', text: 'Remove', on: {click: removeLast}}),
         h('button', {class: 'hd-btn', type: 'button', text: 'Try again', on: {click: again}}),
         h('button', {class: 'hd-btn', type: 'button', text: 'Make variations (' + VARIATIONS + ')', title: VARIATIONS + ' more designs for the same words, side by side', on: {click: variations}})));
     } else {
-      const n = L.touched.length;
-      box.appendChild(h('p', {class: 'hdai-done'}, ui.icon('check', 14), h('span', {text: (n ? n + (n === 1 ? ' layer' : ' layers') + ' changed' : 'Nothing needed to change') + ' in ' + L.secs + ' s'})));
-      if (L.notes) box.appendChild(h('p', {class: 'hdai-sub', text: L.notes}));
-      if (L.refused && L.refused.length) box.appendChild(h('p', {class: 'hdai-sub', text: 'Not done (an edit never deletes or moves layers): ' + L.refused.slice(0, 4).join(', ')}));
       box.appendChild(h('div', {class: 'hdai-acts'},
-        n ? h('button', {class: 'hd-btn', type: 'button', text: 'Revert', on: {click: revertLast}}) : null,
+        L.touched.length ? h('button', {class: 'hd-btn', type: 'button', text: 'Revert', on: {click: revertLast}}) : null,
         h('button', {class: 'hd-btn', type: 'button', text: 'Try again', on: {click: again}})));
     }
     return box;
   }
   function paint() {
     syncFab();
-    if (!st.open) { if (st.panel) { st.panel.remove(); st.panel = null; } return; }
+    if (!st.open) {
+      if (st.panel) {
+        // the thread is kept for the next open; what is already on screen must not animate in again
+        if (st.box) st.box.querySelectorAll('.hck-bub,.hck-acts').forEach(n => { n.style.animation = 'none'; });
+        st.panel.remove(); st.panel = null;
+      }
+      return;
+    }
     const stage = document.querySelector('.hd-stage');
     if (!stage) { st.open = false; return; }
     if (!st.panel || !stage.contains(st.panel)) { st.panel = h('section', {class: 'hdai-panel', role: 'dialog', 'aria-label': 'Ask Hoola'}); stage.appendChild(st.panel);
       st.panel.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } });
       st.panel.addEventListener('pointerdown', ev => ev.stopPropagation()); st.panel.addEventListener('wheel', ev => ev.stopPropagation()); }
     const keep = st.panel.querySelector('.hdai-in'), hadFocus = keep && document.activeElement === keep, caret = keep ? keep.selectionStart : null;
-    ui.clear(st.panel);
+    /* everything is redrawn except the thread: it stays in place, so nothing in it lands or rises twice */
+    thread();
+    for (const c of Array.from(st.panel.children)) if (c !== st.box) c.remove();
     const sel = selIds(), editing = sel.length > 0;
     const head = h('header', {class: 'hdai-head'}, h('span', {class: 'hdai-mark'}, ui.icon('spark', 16)), h('strong', {text: 'Ask Hoola'}),
       h('span', {class: 'hdai-mode', text: editing ? 'Change the ' + sel.length + (sel.length === 1 ? ' selected layer' : ' selected layers') : 'A new design'}),
       h('button', {class: 'hd-ib hdai-x', type: 'button', title: 'Close  (Esc)', 'aria-label': 'Close', on: {click: close}}, ui.icon('close')));
-    st.panel.appendChild(head);
+    if (st.box) { if (st.box.parentNode !== st.panel) st.panel.appendChild(st.box); st.panel.insertBefore(head, st.box); }
+    else st.panel.appendChild(head);
     if (st.busy) {
-      st.panel.appendChild(h('div', {class: 'hdai-busy', role: 'status', 'aria-live': 'polite'}, h('span', {class: 'hdai-spin', 'aria-hidden': 'true'}),
-        h('span', {text: st.step ? 'Designing option ' + st.step[0] + ' of ' + st.step[1] + '…' : (editing ? 'Hoola is changing it…' : 'Hoola is designing…')}),
-        h('span', {class: 'hdai-secs', text: secsText()})));
-      st.panel.appendChild(h('p', {class: 'hdai-quote', text: st.prompt}));
-      return;
+      if (!st.box) st.panel.appendChild(h('p', {class: 'hdai-sub', role: 'status', text: editing ? 'Hoola is changing it…' : 'Hoola is designing…'}));
+      return;                                    // her ask and the working row (with the clock) are in the thread
     }
     const input = h('textarea', {class: 'hdai-in', rows: 3, maxlength: PROMPT_MAX, 'aria-label': editing ? 'What should change?' : 'What should Hoola design?',
       placeholder: editing ? 'What should change?  e.g. make it more premium · dark theme · translate to Hindi · add a pricing section' : 'What should Hoola design?  e.g. ' + IDEAS[Math.floor(Date.now() / 60000) % IDEAS.length]});
@@ -279,7 +319,7 @@
     if (!root || watchMount.done) return;
     watchMount.done = true;
     let t = 0;
-    const later = () => { clearTimeout(t); t = setTimeout(() => { wireStore(); if (st.panel && !document.contains(st.panel)) { st.panel = null; st.open = false; st.last = null; st.busy = false; stopClock(); } syncFab(); scanMarks(1500); }, 60); };
+    const later = () => { clearTimeout(t); t = setTimeout(() => { wireStore(); if (st.panel && !document.contains(st.panel)) { st.panel = null; st.open = false; st.last = null; st.busy = false; dropThread(); } syncFab(); scanMarks(1500); }, 60); };
     new MutationObserver(later).observe(root, {childList: true});
     later();
   }

@@ -89,18 +89,20 @@ button,input,textarea{font:inherit;color:inherit}
 .ci-talk-tt b{font-weight:600;font-size:15px}
 .ci-talk-tt span{font-size:12.5px;color:var(--mut)}
 .ci-sm{height:32px;padding:0 12px;font-size:13px}
-.ci-talk-log{display:flex;flex-direction:column;gap:8px;max-height:340px;min-height:80px;overflow:auto;padding:2px}
-.ci-tb{font-size:14.5px;line-height:1.45;padding:10px 13px;border-radius:14px;max-width:88%;display:flex;flex-direction:column;gap:4px;
-  overflow-wrap:anywhere}
-.ci-tb.agent{align-self:flex-start;background:var(--pri-soft);color:var(--ink)}
-.ci-tb.you{align-self:flex-end;background:#F1EFEA}
-.ci-tb.heard{color:var(--mut);font-style:italic}
-.ci-tb.wait{color:var(--mut)}
+.ci-talk-log{max-height:420px;min-height:96px;overflow:auto;padding:4px 2px}
+.ci-heard{margin:0;font-size:14px;line-height:1.45;color:var(--mut);font-style:italic}
+.ci-tgots{display:flex;flex-direction:column;gap:2px}
 .ci-tgot{font-size:12.5px;color:var(--ok)}
 .ci-tgot b{font-weight:500;color:var(--lit)}
-.ci-talk-bar{display:flex;gap:8px;align-items:flex-end}
-.ci-talk-bar .ci-in{flex:1;min-width:0;min-height:40px;height:40px;padding:8px 12px;resize:none;line-height:1.45}
-.ci-talk-bar .ci-btn{flex:none}
+.ci-app [hidden]{display:none !important}
+/* HOOLA CHAT KIT (chatkit.css): the talk is the main chat's own thread. This page is always light (data-theme="light"
+   on <html>, so the kit never goes dark with the visitor's device); here its tokens get this page's names. The kit's
+   numbers are not changed. */
+.hck,.hck-bar,.hck-jump{--hck-hair:var(--line);--hck-hair2:var(--hair);--hck-bubble:#F1EFEA;--hck-surface:var(--sur);--hck-sunk:#F1EFEA;--hck-violet:var(--pri);
+  --hck-soft:var(--pri-soft);--hck-softink:var(--pri);--hck-code:#F4F2ED;--hck-pill:var(--ink);--hck-onpill:#fff;
+  --hck-fb:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
+.hck-bar [data-b="mic"][aria-pressed="true"]{background:var(--pri-soft);color:var(--pri)}       /* she is being heard */
+.hck-bar .hck-ib:disabled{opacity:.35;cursor:default}
 @media (max-width:1080px){.ci-wrap{grid-template-columns:200px minmax(0,1fr)}.ci-side{grid-column:2;position:static}}
 @media (max-width:760px){
   .ci-top{padding:0 16px;height:56px}

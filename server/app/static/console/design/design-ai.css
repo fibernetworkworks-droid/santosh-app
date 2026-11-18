@@ -1,5 +1,6 @@
 /* HOOLA DESIGN - styles for hd-ai.js (D5 AI: "Ask Hoola"). Tokens come from design.css; nothing here uses a held
-   transform or a blur over text (the console's crisp-text rule), and the working mark only fades. */
+   transform or a blur over text (the console's crisp-text rule); the working row and the landing words are the
+   shared chat kit's own (the same motion as the main chat). */
 .hdai-fab{position:absolute;left:0;right:0;bottom:16px;margin:0 auto;width:max-content;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 12px;
   border-radius:999px;border:1px solid var(--hair2);background:var(--surface);color:var(--ink);font:500 13px/1 var(--fb);box-shadow:var(--sh2);cursor:pointer;z-index:6}
 .hdai-fab svg{color:var(--pri)}
@@ -31,13 +32,13 @@
 .hdai-err{margin:0;padding:8px 10px;border-radius:9px;background:rgb(var(--bad-rgb) / .09);color:var(--bad);font-size:13px}
 .hdai-sub{margin:0;color:var(--mut);font-size:12.5px}
 .hdai-result{display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid var(--line)}
-.hdai-done{margin:0;display:flex;align-items:center;gap:6px;font-weight:500;color:var(--ok)}
-.hdai-done span{color:var(--ink)}
 .hdai-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
-.hdai-busy{display:flex;align-items:center;gap:10px;padding:10px 2px 2px;font-weight:500}
-.hdai-secs{margin-left:auto;color:var(--mut);font-variant-numeric:tabular-nums;font-weight:400}
-.hdai-spin{width:10px;height:10px;border-radius:50%;background:var(--pri);flex:none;animation:hdai-pulse 1.1s ease-in-out infinite}
-.hdai-quote{margin:0;padding:8px 10px;border-radius:9px;background:var(--sunk);color:var(--mut);font-size:13px;max-height:66px;overflow:hidden;white-space:pre-wrap;word-break:break-word}
-@keyframes hdai-pulse{0%,100%{opacity:.25}50%{opacity:1}}
-@media (prefers-reduced-motion:reduce){ .hdai-spin{animation:none} }
+/* the panel's thread is the shared Hoola chat kit (console/chatkit.css, loaded before this file): her ask, the ONE
+   working row with the clock, the reply landing. The editor's tokens are the console's, so only the bubble is set. */
+.hdai-thread{max-height:min(44vh,340px);overflow:auto;padding:6px 2px 4px;flex:none}
+.hdai-thread:has(.hck:empty){display:none}
+.hdai-thread .hdai-err{align-self:stretch}
+.hck,.hck-bar,.hck-jump{--hck-bubble:var(--sunk)}
+.hck-txt .w{animation:hckWord .46s ease both}
+@media (prefers-reduced-motion:reduce){ .hck-txt .w{animation:none} }
 @media (max-width:720px){ .hdai-hint{display:none} }

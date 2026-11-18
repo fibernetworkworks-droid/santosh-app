@@ -24,17 +24,9 @@
 .ae-body{flex:1 1 auto;display:grid;grid-template-columns:minmax(300px,380px) 1fr;min-height:0}
 .ae-chat{display:flex;flex-direction:column;border-right:1px solid var(--line);min-height:0;background:var(--raise)}
 .ae-msgs{flex:1 1 auto;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
-.ae-me{align-self:flex-end;max-width:86%;background:var(--pri-soft);color:var(--ink);border-radius:14px 14px 4px 14px;padding:9px 12px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
-.ae-hoola{display:flex;flex-direction:column;gap:4px;font-size:15px;line-height:1.55;overflow-wrap:anywhere}
-.ae-hoola .mdb p{margin:0 0 10px}.ae-hoola .mdb p:last-child{margin:0}
-.ae-hint{font-size:14px;line-height:1.5}
-.ae-work{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--mut)}
-.ae-work .dot{width:8px;height:8px;border-radius:50%;background:var(--pri);animation:ae-pulse 1.4s ease-in-out infinite}
-@keyframes ae-pulse{0%,100%{opacity:.35}50%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.ae-work .dot{animation:none}}
-.ae-comp{display:flex;align-items:flex-end;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--bg)}
-.ae-comp textarea{flex:1 1 auto;border:1px solid var(--hair);border-radius:12px;padding:9px 12px;font:inherit;font-size:14.5px;resize:none;background:var(--bg);color:var(--ink);min-height:44px;max-height:180px;box-sizing:border-box}
-.ae-comp textarea:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.ae-hint{font-size:14px;line-height:1.5;margin:0}
+/* the chat is drawn by the chat kit (chatkit.css): #aeHist = the thread, #aeBar = the box (tokens: webstudio.css) */
+.ae-comp{padding:10px 12px 12px;border-top:1px solid var(--line);background:var(--bg)}
 .ae-pane{display:flex;flex-direction:column;min-height:0;min-width:0}
 .ae-tabs{display:flex;gap:2px;padding:0 14px;border-bottom:1px solid var(--line);overflow-x:auto}
 .ae-tabs button{height:42px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:none;color:var(--mut);font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap}
