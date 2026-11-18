@@ -37,7 +37,8 @@
     done: 'Done', skip: 'Did not come', back2: 'Back in line', yourturn: 'It is your turn now.', closed: 'The queue is closed.',
     notify: 'Notifications on this browser', notifyon: 'Notify me', notifyoff: 'Stop notifications', notifyno: 'This browser cannot show notifications.',
     notifyok: 'Notifications are on for this browser.', notifyblocked: 'Notifications are blocked in this browser settings.', unread: 'new',
-    nothread: 'No messages yet.'};
+    nothread: 'No messages yet.', mail: 'Email code', forgot: 'Forgot password?', newpw: 'New password (8+ characters)',
+    setpw: 'Set new password', orwith: 'or', gfail: 'Google sign-in did not load. Use email instead.'};
   var T = {
     en: EN,
     hinglish: {login: 'Login', signup: 'Naya account', otp: 'Mobile OTP', email: 'Email', pw: 'Password (8+ akshar)', name: 'Aapka naam',
@@ -181,6 +182,17 @@
     return Promise.all(ups).then(function () { return out; });
   }
 
+  var GSI = null;
+  function gsi() {                                     // v0.994 B6 Google Identity Services, loaded once and only when needed
+    if (!GSI) GSI = new Promise(function (ok, no) {
+      if (window.google && window.google.accounts && window.google.accounts.id) { ok(); return; }
+      var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+      sc.onload = function () { ok(); }; sc.onerror = function () { GSI = null; no(new Error(t.gfail)); };
+      document.head.appendChild(sc);
+    });
+    return GSI;
+  }
+
   // ---------------------------------------------------------------- login: email / mobile OTP / 2-step
   function login(box) {
     box.textContent = '';
@@ -198,9 +210,10 @@
       f.textContent = '';
       if (mode !== 'twofa') {
         var tabs = el('div', {'class': 'btns', role: 'tablist'});
-        ['login', 'signup', 'otp'].forEach(function (m) {
+        ['login', 'signup', 'otp', 'mail'].forEach(function (m) {
           if (m === 'signup' && schema.signup === false) return;
           if (m === 'otp' && !sec.otp) return;
+          if (m === 'mail' && !sec.email_code) return;          // v0.994 B6 sign in with a code by email
           tabs.appendChild(el('button', {type: 'button', role: 'tab', 'aria-selected': String(mode === m), 'class': 'btn ' + (mode === m ? 'btn-primary' : 'btn-ghost'), text: t[m]}));
           tabs.lastChild.addEventListener('click', function () { mode = m; state = {}; draw(); });
         });
@@ -220,6 +233,19 @@
           f.querySelector('[name=phone]').value = state.phone;
           if (schema.signup !== false) { f.appendChild(input({key: 'name', label: t.name, type: 'text'})); f.appendChild(consentBox()); }
         }
+      } else if (mode === 'mail' || mode === 'reset') {        // v0.994 B6 email code: sign in, or set a new password
+        f.appendChild(input({key: 'email', label: t.email, type: 'email', required: true}));
+        if (state.email) f.querySelector('[name=email]').value = state.email;
+        if (state.sent) {
+          f.appendChild(el('p', {'class': 'muted', text: t.sentto + ' ' + state.sent}));
+          f.appendChild(input({key: 'code', label: t.code, type: 'text', required: true}));
+          f.querySelector('[name=code]').setAttribute('autocomplete', 'one-time-code');
+          f.querySelector('[name=code]').setAttribute('inputmode', 'numeric');
+          if (mode === 'reset') {
+            var np = input({key: 'password', label: t.newpw, type: 'text', required: true}), npi = np.querySelector('input');
+            npi.type = 'password'; npi.autocomplete = 'new-password'; f.appendChild(np);
+          } else if (schema.signup !== false) { f.appendChild(input({key: 'name', label: t.name, type: 'text'})); f.appendChild(consentBox()); }
+        }
       } else {
         if (mode === 'signup') f.appendChild(input({key: 'name', label: t.name, type: 'text'}));
         f.appendChild(input({key: 'email', label: t.email, type: 'email', required: true}));
@@ -228,9 +254,36 @@
         f.appendChild(pw);
         if (mode === 'signup') f.appendChild(consentBox());
       }
-      var label = mode === 'otp' ? (state.sent ? t.verify : t.getcode) : mode === 'twofa' ? t.verify : t[mode];
+      var label = mode === 'otp' || mode === 'mail' ? (state.sent ? t.verify : t.getcode) : mode === 'reset' ? (state.sent ? t.setpw : t.getcode)
+        : mode === 'twofa' ? t.verify : t[mode];
       f.appendChild(el('button', {type: 'submit', 'class': 'btn btn-primary', text: label}));
-      if (mode === 'otp' && state.sent) f.appendChild(btn(t.resend, 'btn-ghost', function () { state.sent = ''; draw(); }));
+      if ((mode === 'otp' || mode === 'mail' || mode === 'reset') && state.sent) f.appendChild(btn(t.resend, 'btn-ghost', function () { state.sent = ''; draw(); }));
+      if (mode === 'login' && sec.email_code) f.appendChild(btn(t.forgot, 'btn-ghost', function () { mode = 'reset'; state = {}; draw(); }));
+      if (mode === 'login' || mode === 'signup') googleBox();
+    }
+    // v0.994 B6 Google sign-in: Google's own button gives an ID token, the server checks it (signature, her client id,
+    // a single-use nonce). The page loads Google's script only on a website that has Google sign-in on.
+    function googleBox() {
+      var sg = schema.sign || {};
+      if ((sg.ways || []).indexOf('google') < 0 || !sg.google_server_client_id) return;
+      var slot = el('div', {'class': 'hs-app-gbtn'}), wrap = el('div', {'class': 'hs-app-google'}, [el('p', {'class': 'muted', text: t.orwith}), slot]);
+      var tick = f.querySelector('[name=consent]');
+      if (!tick && schema.signup !== false) { var cb = consentBox(); wrap.appendChild(cb); tick = cb.querySelector('input'); }
+      f.appendChild(wrap);
+      googleBtn(slot, tick);
+    }
+    function googleBtn(slot, tick) {
+      Promise.all([gsi(), call('POST', '/google/nonce')]).then(function (a) {
+        var n = a[1].nonce;
+        window.google.accounts.id.initialize({client_id: (schema.sign || {}).google_server_client_id, nonce: n, ux_mode: 'popup',
+          callback: function (resp) {
+            call('POST', '/google', {id_token: resp.credential, nonce: n, consent: !!(tick && tick.checked)}).then(done)
+              .catch(function (er) { msg(f, er.message, false); googleBtn(slot, tick); });   // a nonce is single use: a fresh one
+          }});
+        slot.textContent = '';
+        window.google.accounts.id.renderButton(slot, {type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
+          shape: 'pill', logo_alignment: 'left', locale: LANG});
+      }).catch(function () { slot.textContent = t.gfail; });
     }
     function consentBox() {
       var id = 'hc-' + Math.random().toString(36).slice(2, 7);
@@ -246,6 +299,13 @@
         state.phone = q('phone');
         p = call('POST', '/otp/start', {phone: state.phone}).then(function (j) { state.sent = j.sent_to; draw(); return null; });
       } else if (mode === 'otp') p = call('POST', '/otp/verify', {phone: state.phone, code: q('code'), name: q('name'), consent: q('consent') === true});
+      else if ((mode === 'mail' || mode === 'reset') && !state.sent) {
+        state.email = q('email');
+        p = call('POST', '/email-code/start', {email: state.email, purpose: mode === 'reset' ? 'reset' : 'login'})
+          .then(function (j) { state.sent = j.sent_to; draw(); return null; });
+      } else if (mode === 'mail' || mode === 'reset') p = call('POST', '/email-code/verify', {email: state.email, code: q('code'),
+        purpose: mode === 'reset' ? 'reset' : 'login', password: mode === 'reset' ? q('password') : undefined, name: q('name'),
+        consent: q('consent') === true});
       else p = call('POST', '/' + mode, {email: q('email'), password: q('password'), name: q('name'), consent: mode === 'signup' ? q('consent') === true : undefined});
       p.then(function (j) { if (j) done(j); }).catch(function (er) { msg(f, er.message, false); });
     });

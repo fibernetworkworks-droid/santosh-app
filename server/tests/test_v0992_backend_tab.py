@@ -17,7 +17,7 @@ JS = Path(__file__).resolve().parents[1] / "app" / "static" / "console" / "webst
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.993.0"
+    assert APP_VERSION == "0.994.0"
 
 
 def _linked(sid, key=""):

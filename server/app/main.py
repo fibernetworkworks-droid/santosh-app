@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.993.0"   # v0.993.0 IN LINE (owner, three screenshots of a long bank-list job: "CHECK THE LOADING. MAKE IT INLINED WITH CONVERSATION"): once Hoola had written some words, the working row ("Reading the web page 1m 57s") was appended as the next row of the whole chat (`placeProgress` -> col), so it took the 44px gap between messages (~60px from the words) and floated loose above the box; now, once the turn has words, it sits inside that reply (`TURN.bd`, class inturn) right under its last line on the words' left edge, like the "Worked for" rows; before any words it stays the reply's first row under her message. 3 tests incl. a browser walk that fails on the old code (measured: 0-20px under the last line, same left edge). NOT VERIFIED on her server. Previous: v0.992.0 BACKEND TAB. v0.992.0 BACKEND TAB (built as 0.991; their SAME LANDING took 0.991, both kept; owner: "GO B5" on docs/research/lovable/03_backend_vs_hoola.md): the owner could not run her website backend from the Web Studio (the Cloud pane was a read-only table + a member list; backups, secrets, outside services and limits lived only under /api/apps/* with no screen). The Cloud tab now runs it: entries she can add / change / delete (the same field checks, rules and logic as every visitor, each in the change log), member roles, the change log (who changed what and when), backups + restore (back up now, download all data, restore to a backup or any minute - what would change shown first, her confirm, a safety backup first), secrets (typed once in a password box, sealed at once, never shown again) + outside services (approved by her tap) + recent runs, usage + limits; NEW `site/backend_tab.py` + GET /api/sites/{ref}/backend (one overview), POST /api/sites/{ref}/app/rows/{key}, GET /api/sites/{ref}/app/log; the rest rides the existing /api/apps/{ref}/* routes. 6 tests incl. a browser walk. NOT VERIFIED on her server.
+APP_VERSION = "0.994.0"   # v0.994.0 SIGN-IN, FILES, EMAIL (built as 0.993; their IN LINE took 0.993, both kept; owner: "GO B6" on docs/research/lovable/03_backend_vs_hoola.md, gap 7): her website had no Google sign-in (only her native apps had it), no place to see the files its visitors sent and no email at all. Now: Google sign-in for the website with HER web client id (Studio Cloud > Sign-in, the origins to add listed); the page uses Google Identity Services and the server checks the ID token itself (signature, audience, single-use nonce; the same member table, so a password account on the same email stays one person; a new account still needs the privacy tick); Google is allowed by the CSP only for a site that turned it on (`site/gsignin.py`); Cloud > Files lists every file (private unless in a list anyone may read, which entry holds it) and an unused one can be deleted on her confirm; Cloud > Emails = sign-in codes + "Forgot password?" (6 digits, hash only, 10 min, 5 tries, the answer never says who has an account, a new password signs out everywhere) and receipts per list that repeat nothing the visitor typed, through HER own mail service over SMTP (SITE_MAIL_* in the VPS .env), daily cap, log without bodies, never from a preview copy (`site/sitemail.py`); 9 tests incl. a browser walk. NOT VERIFIED on her server, with a real Google client or a real mail service. Previous: v0.993.0 IN LINE (owner, three screenshots of a long bank-list job: "CHECK THE LOADING. MAKE IT INLINED WITH CONVERSATION"): once Hoola had written some words, the working row ("Reading the web page 1m 57s") was appended as the next row of the whole chat (`placeProgress` -> col), so it took the 44px gap between messages (~60px from the words) and floated loose above the box; now, once the turn has words, it sits inside that reply (`TURN.bd`, class inturn) right under its last line on the words' left edge, like the "Worked for" rows; before any words it stays the reply's first row under her message. 3 tests incl. a browser walk that fails on the old code (measured: 0-20px under the last line, same left edge). NOT VERIFIED on her server.; Previous: v0.992.0 BACKEND TAB; v0.991.0 SAME LANDING; v0.990.0 PROVE THE RULES; v0.989.0 LIVE SCREENS + OWN DATA; v0.988.0 PROMPT FIRST; v0.987.0 HOOLA LOGO; v0.986.0 PLAN PEEK; v0.985.0 PAGE ROOM; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -10393,6 +10393,27 @@ async def site_app_2fa_login(site_id: str, request: Request):
     return await _site_pub(site_id, "2fa_login", request, await _json_body(request))
 
 
+# v0.994 B6 SIGN-IN, FILES, EMAIL: Google sign-in on the website (the ID token checked here) + email codes
+@app.post("/api/site-app/{site_id}/google/nonce")
+async def site_app_google_nonce(site_id: str, request: Request):
+    return await _site_pub(site_id, "sign_nonce", request)
+
+
+@app.post("/api/site-app/{site_id}/google")
+async def site_app_google(site_id: str, request: Request):
+    return await _site_pub(site_id, "google", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/email-code/start")
+async def site_app_mail_code_start(site_id: str, request: Request):
+    return await _site_pub(site_id, "mail_code_start", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/email-code/verify")
+async def site_app_mail_code_verify(site_id: str, request: Request):
+    return await _site_pub(site_id, "mail_code_verify", request, await _json_body(request))
+
+
 @app.post("/api/site-app/{site_id}/2fa/{step}")
 async def site_app_2fa(site_id: str, step: str, request: Request):
     if step not in ("start", "confirm", "off"):
@@ -10685,6 +10706,45 @@ async def sites_app_log(ref: str, coll: str = "", limit: int = 200, tenant: str 
     """v0.991 B5: who changed what and when."""
     from .site import backend_tab as BT
     return await asyncio.to_thread(_bt, BT.change_log, tenant, ref, coll, limit)
+
+
+@app.get("/api/sites/{ref}/signin", dependencies=[Depends(require_key)])
+async def sites_signin(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.994 B6: Google sign-in for this website (her web client id, the origins to add in Google Cloud)."""
+    from .site import gsignin as GS
+    return await asyncio.to_thread(_bt, GS.view, tenant, ref)
+
+
+@app.put("/api/sites/{ref}/signin", dependencies=[Depends(require_key)])
+async def sites_signin_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import gsignin as GS
+    return await asyncio.to_thread(_bt, GS.save, tenant, ref, body or {})
+
+
+@app.get("/api/sites/{ref}/files", dependencies=[Depends(require_key)])
+async def sites_files(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.994 B6: every file the website's visitors and staff sent (private unless in a list anyone may read)."""
+    from .site import backend_tab as BT
+    return await asyncio.to_thread(_bt, BT.files, tenant, ref)
+
+
+@app.delete("/api/sites/{ref}/files/{fid}", dependencies=[Depends(require_key)])
+async def sites_file_delete(ref: str, fid: str, tenant: str = Depends(current_tenant)):
+    from .site import backend_tab as BT
+    return await asyncio.to_thread(_bt, BT.delete_file, tenant, ref, fid)
+
+
+@app.get("/api/sites/{ref}/mail", dependencies=[Depends(require_key)])
+async def sites_mail(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.994 B6: the website's emails (sign-in codes, receipts), the send log without bodies."""
+    from .site import backend_tab as BT
+    return await asyncio.to_thread(_bt, BT.mail, tenant, ref)
+
+
+@app.put("/api/sites/{ref}/mail", dependencies=[Depends(require_key)])
+async def sites_mail_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import backend_tab as BT
+    return await asyncio.to_thread(_bt, BT.mail_save, tenant, ref, body or {})
 
 
 # ---- v0.306 HOOLA DESIGN ARENA: fixed briefs built + judged, runs compared, blind duels vs other builders (owner only)

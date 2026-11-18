@@ -81,3 +81,94 @@ def change_log(tenant: str, ref: str, coll: str = "", limit: int = 200) -> dict[
     for x in rows:
         x["by"] = words.get(x.get("by"), x.get("by"))
     return {"log": rows}
+
+
+# ---------------------------------------------------------------- v0.994 B6 files (private by default) and emails
+def _used_by(p) -> dict[str, list[dict[str, str]]]:
+    """Which entries hold each file: one read of the website's rows, matched in memory."""
+    from ..appmaker import backend as BE
+    from sqlalchemy import select
+    from ..db import session
+    from . import webapp as W
+    sch = BE.schema(p)
+    kinds = {c["key"]: [f["key"] for f in c.get("fields") or [] if f.get("type") in BE.EXTRA_TYPES]
+             for c in sch.get("collections") or []}
+    out: dict[str, list[dict[str, str]]] = {}
+    with session() as s:
+        for x in s.scalars(select(W.SiteAppRow).where(W.SiteAppRow.site_id == BE.bid(p))).all():
+            keys = kinds.get(x.coll) or []
+            if not keys:
+                continue
+            d = BE._j(x.data, {})
+            for k in keys:
+                for v in (d.get(k) if isinstance(d.get(k), list) else [d.get(k)]):
+                    if isinstance(v, str) and v:
+                        out.setdefault(v, []).append({"list": x.coll, "row": x.id})
+    return out
+
+
+def files(tenant: str, ref: str) -> dict[str, Any]:
+    """Every file her visitors and staff sent: private unless it sits in a list anyone may read (then it is public)."""
+    import json as _json
+    from ..appmaker import backend as BE
+    from ..db import session
+    from . import webapp as W
+    _r, _schema, _who, p = _linked(tenant, ref)
+    d = BE._files(p)
+    used = _used_by(p)
+    metas = sorted(d.glob("f_*.json"), key=lambda f: f.stat().st_mtime, reverse=True)[:500]
+    owners: dict[str, str] = {}
+    ids = set()
+    rows = []
+    for f in metas:
+        try:
+            m = _json.loads(f.read_text())
+        except (ValueError, OSError):
+            continue
+        ids.add(m.get("owner") or "")
+        rows.append((f.stem, m))
+    with session() as s:
+        for mem in s.query(W.SiteAppMember).filter(W.SiteAppMember.id.in_([i for i in ids if i])).all():
+            owners[mem.id] = mem.name or mem.email
+    out, total = [], 0
+    for fid, m in rows:
+        size = int(m.get("size") or 0)
+        total += size
+        kind = m.get("kind") or "photo"
+        out.append({"id": fid, "kind": kind, "size": size, "at": m.get("at", ""), "public": bool(m.get("public")),
+                    "by": owners.get(m.get("owner") or "", "a visitor" if not m.get("owner") else "a removed member"),
+                    "used_in": used.get(fid, [])[:5]})
+    return {"app": {"id": p.id}, "files": out, "count": len(out), "bytes": total,
+            "say": ("Files are private: only the person who sent one, your staff and you can open it. A file becomes "
+                    "public only when it sits in a list anyone may read.")}
+
+
+def delete_file(tenant: str, ref: str, fid: str) -> dict[str, Any]:
+    """Her tap: a file no entry uses any more is removed for good (one an entry still holds is refused)."""
+    from ..appmaker import backend as BE
+    from . import webapp as W
+    _r, _schema, _who, p = _linked(tenant, ref)
+    if BE._file_meta(p, fid) is None:
+        raise W.AppError("not found", 404)
+    if _used_by(p).get(fid):
+        raise W.AppError("An entry still holds this file; delete or change that entry first.", 409)
+    d = BE._files(p)
+    for f in d.glob(fid + ".*"):
+        f.unlink(missing_ok=True)
+    log.info("site file %s removed by the owner", fid)
+    return {"ok": True}
+
+
+def mail(tenant: str, ref: str) -> dict[str, Any]:
+    from . import sitemail as SM
+    _r, schema, _who, p = _linked(tenant, ref)
+    return {**SM.settings(p), **SM.log_view(p, 100),
+            "lists": [{"key": c["key"], "label": c.get("label") or c["key"]}
+                      for c in schema.get("collections") or [] if not str(c.get("key", "")).startswith("_")]}
+
+
+def mail_save(tenant: str, ref: str, body: dict[str, Any]) -> dict[str, Any]:
+    from . import sitemail as SM
+    _r, _schema, _who, p = _linked(tenant, ref)
+    SM.save_settings(p, body)
+    return mail(tenant, ref)

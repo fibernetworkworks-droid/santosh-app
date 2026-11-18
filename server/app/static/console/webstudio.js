@@ -1349,8 +1349,9 @@
       return;
     }
     pane.innerHTML = viewsBar() + `<div class="split"><nav class="subnav" aria-label="Lists"><div class="h">Data</div>${cols.map((c, i) => `<button type="button" data-coll="${esc(S(c.key))}" ${i ? '' : 'aria-current="page"'}>${esc(S(c.label))}${M(a.counts)[c.key] != null ? `<span class="sp"></span><span class="mut sm">${esc(S(M(a.counts)[c.key]))}</span>` : ''}</button>`).join('')}
-        <div class="h">People</div><button type="button" data-coll="__members">Members and logins</button>
-        <div class="h">Backend</div><button type="button" data-coll="__log">Change log</button><button type="button" data-coll="__backups">Backups and restore</button>
+        <div class="h">People</div><button type="button" data-coll="__members">Members and logins</button><button type="button" data-coll="__signin">Sign-in</button>
+        <div class="h">Backend</div><button type="button" data-coll="__files">Files</button><button type="button" data-coll="__mail">Emails</button>
+        <button type="button" data-coll="__log">Change log</button><button type="button" data-coll="__backups">Backups and restore</button>
         <button type="button" data-coll="__secrets">Secrets and outside services</button><button type="button" data-coll="__usage">Usage and limits</button>
         <div class="h">Safety</div><button type="button" data-coll="__rules">Rule tests</button></nav><div class="main" id="wsCloud"></div></div>`;
     openColl(S(cols[0].key));
@@ -1393,6 +1394,7 @@
         return;
       }
       if (key === '__log' || key === '__backups' || key === '__secrets' || key === '__usage') return backendPane(box, key);
+      if (key === '__signin' || key === '__files' || key === '__mail') return accessPane(box, key);
       const r = await api('GET', `/api/sites/${enc(CUR.id)}/app/rows/${enc(key)}`);
       const c = M(r.collection), fields = L(c.fields).slice(0, 8), rows = L(r.rows);
       const val = (row, k) => { const d = M(row.data || row); const x = d[k]; return x == null ? '' : typeof x === 'object' ? JSON.stringify(x) : S(x); };
@@ -1504,6 +1506,64 @@
     $('#wsUseForm')?.addEventListener('submit', async ev => {
       ev.preventDefault(); const fd = new FormData(ev.target), b = {}; fd.forEach((v, k) => { if (S(v) !== '') b[k] = Number(v); });
       try { const r = await api('PUT', `/api/apps/${ref}/usage`, b); toast(S(r?.say) || 'Limits saved.'); backendPane(box, key); } catch (er) { toast(er.message, true); }
+    });
+  }
+
+  /* ---------- v0.994 B6 SIGN-IN, FILES, EMAIL: Google sign-in, the website's files, its sign-in + receipt emails ---------- */
+  async function accessPane(box, key) {
+    const head = t => `<h2 style="font-size:18px">${esc(t)}</h2>`, when = t => S(t).replace('T', ' ').slice(0, 16);
+    const kb = n => { n = Number(n) || 0; return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; };
+    if (key === '__signin') {
+      const g = await api('GET', `/api/sites/${enc(CUR.id)}/signin`);
+      box.innerHTML = head('Sign-in') + `<section class="cardp"><h3>Email and password</h3><p class="mut sm">Always on. Mobile OTP and email codes show in the login box when their service is set up.</p></section>
+        <form class="cardp" id="wsGForm"><div style="display:flex;align-items:center;gap:10px"><h3 class="sp">Sign in with Google</h3>${pill(g.ready ? 'On' : 'Off', g.ready ? 'ok' : '')}</div>
+          <p class="mut sm">${esc(S(g.how))}</p>
+          ${L(g.origins).length ? `<p class="mut sm">Authorized JavaScript origins to add:</p>${L(g.origins).map(o => `<div class="kv"><code>${esc(S(o))}</code></div>`).join('')}` : ''}
+          <label class="fld">Web client ID<input class="in" name="client_id" value="${esc(S(g.client_id))}" placeholder="1234567890-abc123.apps.googleusercontent.com" autocomplete="off" spellcheck="false"></label>
+          <label class="inl"><input type="checkbox" name="on" ${g.on ? 'checked' : ''}> Show "Sign in with Google" in the website's login box</label>
+          <p class="mut sm">A new account made with Google still needs the privacy-notice tick. Someone who already has a password account with the same email stays one person.</p>
+          <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save</button></div></form>`;
+      $('#wsGForm')?.addEventListener('submit', async ev => {
+        ev.preventDefault(); const fd = new FormData(ev.target);
+        try { const r = await api('PUT', `/api/sites/${enc(CUR.id)}/signin`, {client_id: S(fd.get('client_id')).trim(), on: fd.get('on') === 'on'}); toast(S(r.say) || 'Saved.'); accessPane(box, key); }
+        catch (er) { toast(er.message, true); }
+      });
+      return;
+    }
+    if (key === '__files') {
+      const f = await api('GET', `/api/sites/${enc(CUR.id)}/files`), rows = L(f.files), ref = enc(S(M(f.app).id));
+      box.innerHTML = head('Files') + `<p class="mut sm">${esc(S(f.say))}</p><p class="mut sm">${rows.length} files, ${esc(kb(f.bytes))} in all.</p>
+        ${rows.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">File</th><th scope="col">Sent by</th><th scope="col">When</th><th scope="col">Who can open it</th><th scope="col">Used in</th><th scope="col"><span class="ws-sr">Actions</span></th></tr></thead>
+          <tbody>${rows.map(x => `<tr><td>${esc(S(x.kind))} <span class="mut sm">${esc(kb(x.size))}</span></td><td>${esc(S(x.by))}</td><td class="nw">${esc(when(x.at))}</td>
+            <td>${x.public ? pill('Anyone', 'warn') : pill('Private', 'ok')}</td><td class="mut sm">${L(x.used_in).length ? esc(L(x.used_in).map(u => S(u.list)).join(', ')) : 'not used'}</td>
+            <td class="nw"><button class="b ghost sm" type="button" data-fopen="${esc(S(x.id))}">Open</button>${L(x.used_in).length ? '' : `<button class="b ghost sm" type="button" data-fdel="${esc(S(x.id))}">Delete…</button>`}</td></tr>`).join('')}</tbody></table></div>`
+          : '<p class="mut">No files yet. Photos, documents and videos sent through your website\'s forms show here.</p>'}`;
+      box.querySelectorAll('[data-fopen]').forEach(b => b.addEventListener('click', async () => {
+        try { const res = await api('GET', `/api/apps/${ref}/files/${enc(b.dataset.fopen)}`, undefined, {raw: true}); const url = URL.createObjectURL(await res.blob());
+          window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 60000); } catch (er) { toast(er.message, true); }
+      }));
+      box.querySelectorAll('[data-fdel]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Delete this file for good? No entry uses it, and it cannot be brought back.')) return;
+        try { await api('DELETE', `/api/sites/${enc(CUR.id)}/files/${enc(b.dataset.fdel)}`); toast('Deleted.'); accessPane(box, key); } catch (er) { toast(er.message, true); }
+      }));
+      return;
+    }
+    const m = await api('GET', `/api/sites/${enc(CUR.id)}/mail`), lists = L(m.lists), rec = L(m.receipts), log = L(m.log);
+    box.innerHTML = head('Emails') + (m.ready ? `<p class="mut sm">Sent from <code>${esc(S(m.from))}</code> through your mail service. ${esc(S(m.sent_today))} sent today${m.daily_cap ? ` of ${esc(S(m.daily_cap))} a day` : ''}.</p>`
+        : '<section class="cardp"><p><b>No mail service is set up yet.</b></p><p class="mut sm">Emails go through your own transactional mail service (ZeptoMail, Amazon SES or Brevo give an SMTP login). Its login is added on the server (SITE_MAIL_* in the server settings), never typed in chat. Until then nothing is sent and the login box does not offer email codes.</p></section>') +
+      `<form class="cardp" id="wsMailForm"><h3>Sign-in emails</h3>
+        <label class="inl"><input type="checkbox" name="codes" ${m.codes ? 'checked' : ''}> "Email me a code" and "Forgot password?" in the login box</label>
+        <p class="mut sm">A code works for 10 minutes and only once; the email never says whether an account exists. A new password signs that person out everywhere.</p>
+        <h3 style="margin-top:12px">Receipts</h3><p class="mut sm">After a signed-in visitor adds an entry, one short email says it arrived. It repeats nothing they typed.</p>
+        ${lists.length ? lists.map(c => `<label class="inl"><input type="checkbox" name="rc" value="${esc(S(c.key))}" ${rec.includes(S(c.key)) ? 'checked' : ''}> ${esc(S(c.label))}</label>`).join('') : '<p class="mut">No lists yet.</p>'}
+        <label class="fld">Replies go to<input class="in" name="reply_to" type="email" value="${esc(S(m.reply_to))}" placeholder="you@yourbusiness.in"></label>
+        <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save</button></div></form>
+      ${log.length ? `<h3>Sent lately</h3><div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">To</th><th scope="col">Result</th></tr></thead>
+        <tbody>${log.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.kind).replace('_', ' '))}</td><td>${esc(S(x.to))}</td><td>${x.ok ? pill('Sent', 'ok') : pill(S(x.why) || 'Not sent', 'bad')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+    $('#wsMailForm')?.addEventListener('submit', async ev => {
+      ev.preventDefault(); const fd = new FormData(ev.target);
+      try { await api('PUT', `/api/sites/${enc(CUR.id)}/mail`, {codes: fd.get('codes') === 'on', receipts: fd.getAll('rc').map(String), reply_to: S(fd.get('reply_to')).trim()}); toast('Saved.'); accessPane(box, key); }
+      catch (er) { toast(er.message, true); }
     });
   }
 
