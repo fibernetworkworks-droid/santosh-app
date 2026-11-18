@@ -122,7 +122,7 @@ class LekhakDoc(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     number: Mapped[str] = mapped_column(String(12), default="")
     kind: Mapped[str] = mapped_column(String(20), default="letter")     # letter kinds | translation | typing | grammar | convert
-    lang: Mapped[str] = mapped_column(String(10), default="hi")
+    lang: Mapped[str] = mapped_column(String(10), default="en")
     title: Mapped[str] = mapped_column(String(200), default="")
     parts: Mapped[str] = mapped_column(Text, default="{}")              # letter parts (to, subject, body...) or {text}
     source: Mapped[str] = mapped_column(Text, default="")               # her words / original text

@@ -34,7 +34,7 @@ class SamCommunity(Base):
     chat_id: Mapped[str] = mapped_column(String(80), index=True)           # Telegram chat id / Mandali gid
     name: Mapped[str] = mapped_column(String(160), default="")
     kind: Mapped[str] = mapped_column(String(16), default="group")
-    language: Mapped[str] = mapped_column(String(12), default="hinglish")
+    language: Mapped[str] = mapped_column(String(12), default="english")
     rules: Mapped[str] = mapped_column(Text, default="")
     welcome_on: Mapped[bool] = mapped_column(Boolean, default=True)
     faq_auto: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -175,7 +175,7 @@ class SamTemplate(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     community_id: Mapped[str] = mapped_column(String(40), default="")
     kind: Mapped[str] = mapped_column(String(10), default="welcome")
-    language: Mapped[str] = mapped_column(String(12), default="hinglish")
+    language: Mapped[str] = mapped_column(String(12), default="english")
     text: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(10), default="draft")      # draft | approved
     approved_hash: Mapped[str] = mapped_column(String(64), default="")

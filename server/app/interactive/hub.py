@@ -137,7 +137,7 @@ def _new_project(tenant: str, d: dict[str, Any], *, title: str, scenes: list[dic
     if avatar_id and not any(a["id"] == avatar_id for a in d["avatars"]):
         avatar_id = ""
     p = {"id": "iv_" + uuid.uuid4().hex[:10], "title": _clip(title, 80) or "Untitled", "ask": "", "facts": facts,
-         "shape": shape, "lang": lang if lang in S.LANGS else "hi",
+         "shape": shape, "lang": lang if lang in S.LANGS else "en",
          "aspect": "9:16" if shape == "reel" else (aspect if aspect in ("16:9", "1:1") else "16:9"),
          "avatar_id": avatar_id, "brand": _clip(d["brand"].get("name"), 40),
          "scenes": [S.clean_scene(s, her, trust_numbers=True) for s in scenes[:S.MAX_SCENES]],
@@ -520,4 +520,4 @@ def voice_sample(lang: str) -> bytes:
     from . import lab
     line = {"hi": "Namaste, aapke video mein meri awaaz aisi sunai degi.", "mr": "Namaskar, tumchya video madhe mi asa bolto."}.get(
         lang, "Hello, this is how I sound in your videos.")
-    return lab.voice(line, lang=lang if lang in S.LANGS else "hi")
+    return lab.voice(line, lang=lang if lang in S.LANGS else "en")

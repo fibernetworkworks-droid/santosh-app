@@ -41,7 +41,7 @@ _CLOSE = {"hinglish", "hindi", "english"}
 
 
 def needs_translation(src_lang: str, dst_lang: str) -> bool:
-    s, d = (src_lang or "hinglish").lower(), (dst_lang or "hinglish").lower()
+    s, d = (src_lang or "english").lower(), (dst_lang or "english").lower()
     if s == d:
         return False
     return not (s in _CLOSE and d in _CLOSE and d == "hinglish")     # Hinglish readers read Hindi / English fine

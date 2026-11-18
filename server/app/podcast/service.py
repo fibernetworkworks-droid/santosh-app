@@ -337,7 +337,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             elif k == "phone":
                 st.phone = R.phone(v) or ""
             elif k == "language":
-                st.language = re.sub(r"[^A-Za-z-]", "", str(v))[:10] or "hi"
+                st.language = re.sub(r"[^A-Za-z-]", "", str(v))[:10] or "en"
             else:
                 setattr(st, k, R.clean(v, 4000 if k in ("description", "release_terms", "rules", "address") else 400))
         return _settings_view(st)
@@ -950,7 +950,7 @@ def transcribe(tenant: str, episode: str, file_id: str = "", text: str = "", act
     with session() as s:
         e = _ep(s, tenant, episode)
         au = _j(e.audio, {})
-        lang = _st(s, tenant).language or "hi"
+        lang = _st(s, tenant).language or "en"
     src = ""
     if file_id or text:
         raw = text
@@ -1325,7 +1325,7 @@ def read_save(tenant: str, episode: str, sponsor: str, script: str, slot: str = 
         if not txt:
             raise PodcastError("The read needs a script (the brand's / your words).")
         if fix:
-            txt = R.add_disclosure(txt, p.brand, {"hi": "hi", "mr": "mr", "en": "en"}.get(lang, "hinglish"))
+            txt = R.add_disclosure(txt, p.brand, {"hi": "hi", "mr": "mr", "en": "en"}.get(lang, "en"))
         r = next((x for x in _reads(s, e) if x.sponsor_id == p.id and x.slot == slot), None)
         if r is None:
             r = PodcastRead(tenant_id=tenant, episode_id=e.id, sponsor_id=p.id, slot=slot)

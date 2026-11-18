@@ -1450,7 +1450,7 @@ def release_files(tenant: str, ref: str, conv: str = "") -> dict:
 
 
 # ---------------------------------------------------------------- publishing: HER tap only
-def _public_text(what: str, ref_obj: dict | None, tenant: str, lang: str = "both") -> str:
+def _public_text(what: str, ref_obj: dict | None, tenant: str, lang: str = "english") -> str:
     if what == "roadmap":
         return roadmap_text(tenant, public=True)
     n = ref_obj["notes"]
@@ -1462,7 +1462,7 @@ def _public_text(what: str, ref_obj: dict | None, tenant: str, lang: str = "both
     return "\n".join(parts).rstrip() + "\n"
 
 
-def publish_request(tenant: str, what: str = "release", ref: str = "", dest: str = "copy", lang: str = "both", conv: str = "") -> dict:
+def publish_request(tenant: str, what: str = "release", ref: str = "", dest: str = "copy", lang: str = "english", conv: str = "") -> dict:
     """Prepares the card. Nothing leaves until decide_publish(by_tap=True) from her app."""
     if what not in ("release", "roadmap"):
         raise ProductError("release or roadmap")

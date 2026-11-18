@@ -75,7 +75,7 @@ def think(tenant: str, peer: str, body: dict[str, Any], kind: str) -> dict[str, 
     from ..avatar.service import get as avatar_get
     from .ai import LANG_NAMES, llm_json
     a = avatar_get(tenant)
-    lang = a["rules"].get("language", "hinglish")
+    lang = a["rules"].get("language", "english")
     owner = idn.ensure(tenant).owner_name or "the owner"
     system = THINK_SYSTEM.format(name=a["name"], owner=owner, peer=idn.label(idn.peer_card(peer)),
                                  lang=LANG_NAMES.get(lang, lang))

@@ -68,7 +68,7 @@ class NotebookAudio(Base):
     notebook_id: Mapped[str] = mapped_column(String(40), index=True)
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     conversation_id: Mapped[str] = mapped_column(String(40), default="")
-    language: Mapped[str] = mapped_column(String(12), default="hinglish")
+    language: Mapped[str] = mapped_column(String(12), default="en")
     style: Mapped[str] = mapped_column(String(16), default="deep_dive")
     focus: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(12), default="writing")   # writing | speaking | ready | failed

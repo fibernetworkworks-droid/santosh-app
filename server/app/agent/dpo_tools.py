@@ -103,7 +103,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "dpia":
             return S.dpia(t, _s(a.get("activity")), a.get("answers") or {}, actor)
         if action == "notice":
-            return S.notice_draft(t, _s(a.get("lang") or "hi"), a.get("activities"), actor)
+            return S.notice_draft(t, _s(a.get("lang") or "en"), a.get("activities"), actor)
         if action == "notice_edit":
             return S.notice_edit(t, _s(a.get("notice")), _s(a.get("text")), actor)
         if action == "notice_publish":

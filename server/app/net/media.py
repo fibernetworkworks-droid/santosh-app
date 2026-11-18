@@ -229,7 +229,7 @@ def understand(tenant: str, info: dict[str, Any], name: str, mime: str, data: by
     """A short description of what is inside, in the owner's language. '' when nothing could look at it."""
     from ..avatar.service import get as avatar_get
     from .ai import LANG_NAMES
-    lang_key = avatar_get(tenant)["rules"].get("language", "hinglish")
+    lang_key = avatar_get(tenant)["rules"].get("language", "english")
     system = SEE_SYSTEM.format(lang=LANG_NAMES.get(lang_key, lang_key))
     kind = info.get("media")
     prompt = f"File name: {name[:120]}. Describe it for my owner."

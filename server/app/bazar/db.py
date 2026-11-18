@@ -27,7 +27,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)  # = Santosh tenant id
     phone: Mapped[str] = mapped_column(String(20), default="")
     name: Mapped[str] = mapped_column(String(120), default="")
-    language: Mapped[str] = mapped_column(String(8), default="hi")
+    language: Mapped[str] = mapped_column(String(8), default="en")
     city: Mapped[str] = mapped_column(String(80), default="")
     pincode: Mapped[str] = mapped_column(String(10), default="")
     cap_per_order_paise: Mapped[int] = mapped_column(Integer, default=0)

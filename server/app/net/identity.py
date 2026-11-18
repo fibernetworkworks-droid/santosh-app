@@ -274,7 +274,7 @@ def my_card(tenant: str) -> dict[str, Any]:
     return {"address": address(row.uid), "handle": row.handle, "owner_name": row.owner_name or owner_name(tenant),
             "avatar_name": name, "avatar_gender": gender, "avatar_look": a.get("look", ""), "public_key": row.public_key, "server": domain(),
             "verified": row.verified, "business": row.business and row.business_verified,
-            "language": a["rules"].get("language", "hinglish")}
+            "language": a["rules"].get("language", "english")}
 
 
 def remember_peer(card: dict[str, Any]) -> dict[str, Any]:

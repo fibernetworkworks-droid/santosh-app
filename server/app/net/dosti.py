@@ -816,7 +816,7 @@ def _answer(row_id: str) -> str:
     owner = idn.ensure(tenant).owner_name or "your owner"
     exps = experiences(tenant, 8, shareable=True) if st["share_work"] else []
     skills = shareable_skills(tenant, 5) if st["share_skills"] else []
-    system = RULES.format(name=a["name"], owner=owner, peer=who, lang=(a["rules"] or {}).get("language", "hinglish"))
+    system = RULES.format(name=a["name"], owner=owner, peer=who, lang=(a["rules"] or {}).get("language", "english"))
     prompt = ("MY_EXPERIENCE (general, may be told):\n" + json.dumps([{"id": e["id"], "title": e["title"], "kind":
               e["category_word"], "how": e["summary"], "learned": e["learned"]} for e in exps], ensure_ascii=False) +
               "\nMY_SKILLS (may be offered):\n" + json.dumps([{"ref": k["ref"], "name": k["name"]} for k in skills],

@@ -75,7 +75,7 @@ def health() -> dict:
     return _call("/health", method="GET", timeout=60.0).json()
 
 
-def voice(text: str, *, lang: str = "hi", model: str = "chatterbox", ref_audio: bytes | None = None,
+def voice(text: str, *, lang: str = "en", model: str = "chatterbox", ref_audio: bytes | None = None,
           ref_text: str = "", description: str = "") -> bytes:
     """Speak `text` and return WAV bytes. `ref_audio` clones that voice - only ever the user's own, recorded live."""
     text = (text or "").strip()

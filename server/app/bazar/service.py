@@ -104,7 +104,7 @@ def ensure_user(s, tenant_id: str) -> User:
     u = s.get(User, tenant_id)
     prof = s.get(CoreProfile, tenant_id)
     if u is None:
-        u = User(id=tenant_id, language="hi", cap_per_order_paise=st.default_cap_per_order_paise,
+        u = User(id=tenant_id, language="en", cap_per_order_paise=st.default_cap_per_order_paise,
                  cap_per_day_paise=st.default_cap_per_day_paise, profile={})
         s.add(u)
         try:

@@ -354,7 +354,7 @@ def _read_image(ctx: Ctx, name: str, mtype: str, data: bytes) -> dict[str, Any]:
         from .file_tools import _owner_lang
         lang = _owner_lang(ctx.tenant_id)
     except Exception:
-        lang = "hinglish"
+        lang = "english"
     r = ocr.read(data, lang)
     if r and r.get("text"):
         out["text"] = r["text"][:15000]

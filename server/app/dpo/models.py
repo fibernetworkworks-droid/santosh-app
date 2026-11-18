@@ -60,7 +60,7 @@ class DpoNotice(Base):
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("dpn"))
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    lang: Mapped[str] = mapped_column(String(4), default="hi")
+    lang: Mapped[str] = mapped_column(String(4), default="en")
     activity_ids: Mapped[str] = mapped_column(Text, default="[]")
     text: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(10), default="draft")       # draft | waiting | published | old | rejected
