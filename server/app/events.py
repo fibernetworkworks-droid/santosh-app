@@ -40,6 +40,7 @@ LOCAL_KINDS = LIVE_ONLY | {
     "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
     "ledger",        # parity Phase 5: the turn's work receipt (step data shown in the steps fold)
     "model_receipt", # v0.975 HOOLA PIPELINE P6: which model did which part of this chat's reply
+    "model_switch",  # C1 ONE WRITER: the one line when this chat's writer changes
 }
 # v0.646 ALAG CALL: what a call does on its own record that stays THERE (her words, tool rows, the receipt...). Every
 # other local kind - phone actions (alarm, open app, home devices), list refreshes, places - also reaches the live

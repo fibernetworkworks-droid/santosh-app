@@ -246,8 +246,20 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
             log.warning("pipeline box: planning failed (%s) - one part", str(e)[:120])
     if not why_not and surface == "chat":   # v0.979 P7: a held-out share runs today's way - the fair comparison
         from . import watch as W
-        if W.hold_out():
+        if W.hold_out(conv):                # C1: per CHAT, so a chat never swaps between the Box and today's model
             why_not = W.HELD + ": timed as today's turn"
+    wd = None
+    if not why_not and surface in ("chat", "background"):
+        # C1 ONE WRITER: the model that talks to her is chosen once per chat and kept (pipeline/writer.py)
+        try:
+            from . import writer as WR
+            wd = WR.decide(conv, r, doc=doc, health=health(), pin=pin, surface=surface, now=t0)
+            if wd["event"] != "none":
+                r = {**r, "model": wd["model"], "backups": wd["backups"], "level_used": wd["level"],
+                     "choose_why": list(r.get("choose_why") or []) + [f"writer: {wd['event']}"]}
+        except Exception as e:   # noqa: BLE001 - the message's own pick then
+            log.warning("pipeline box: writer choice failed (%s)", str(e)[:120])
+            wd = None
     part = {"kind": r["kind"], "language": r["language"], "level": r["level"], "level_used": r.get("level_used"),
             "level_why": r["level_why"], "signals": r["signals"], "model": r["model"], "backups": r["backups"],
             "why": r["choose_why"], "applied": not why_not, "not_applied": why_not}
@@ -278,6 +290,9 @@ def begin(conv: str, tenant: str, text: str, actor: str = "owner", voice: bool =
     b["cur_tok"] = CURRENT.set(b)
     from . import runner as R
     b["swap_tok"] = R.TURN_SWAP.set({})
+    if wd and wd.get("note"):
+        from . import writer as WR
+        WR.say(conv, wd["note"], to=(r.get("model") or {}).get("id") or "", event=wd["event"])
     return b
 
 
@@ -286,6 +301,17 @@ def _apply_writer(b: dict) -> None:
     from . import parts as P
     sh = b["sheet"]
     w = sh["parts"][-1]
+    try:   # C1 ONE WRITER: the last part (the reply) is written by the chat's writer
+        from . import writer as WR
+        d = WR.decide(b.get("conv") or sh["conv"], {k: w.get(k) for k in ("model", "backups", "level", "level_used",
+                                                                         "kind", "language")},
+                      doc=b.get("doc"), health=health(), pin=b.get("pin") or "")
+        if d["event"] != "none":
+            w["model"], w["backups"], w["level_used"] = d["model"], d["backups"], d["level"]
+        if d.get("note"):
+            b["writer_note"] = (d["note"], d["event"], (d["model"] or {}).get("id") or "")
+    except Exception as e:   # noqa: BLE001
+        log.warning("pipeline box: writer choice failed (%s)", str(e)[:120])
     why = _why_not("owner", False, {**w, "model": P.runnable(w) or w.get("model")})
     m = P.runnable(w)
     w["applied"], w["not_applied"] = (not why and bool(m)), why
@@ -320,8 +346,13 @@ def _begin_multi(conv: str, tenant: str, words: str, doc: dict, pin: str, t0: fl
         sh["plan_by"] = "code"
     sink: list = []
     b = {"sheet": sh, "tok": None, "sink": sink, "sink_tok": TOOL_SINK.set(sink), "app_tok": APPLIED.set(False),
-         "t0": t0, "text": words, "doc": doc, "multi": True, "reused": reused, "conv": conv, "tenant": tenant}
+         "t0": t0, "text": words, "doc": doc, "multi": True, "reused": reused, "conv": conv, "tenant": tenant,
+         "pin": pin}
     _apply_writer(b)
+    if b.get("writer_note"):
+        from . import writer as WR
+        note, ev, to = b.pop("writer_note")
+        WR.say(conv, note, to=to, event=ev)
     sh["box_ms"] = round((time.time() - t0) * 1000, 1)
     S.save(sh)
     STATS["turns"] += 1
@@ -394,6 +425,12 @@ def end(b: dict | None, answer: str, failed: bool = False) -> dict | None:
             note(m, not bad)
             if not bad:
                 B.remember(sh["conv"], part["kind"], part["level"], m)
+            hand = [h for h in part.get("handover") or [] if h.get("to") == m and h.get("from")]
+            if hand and not bad:   # C1: the writer failed mid-reply; the model that finished it writes from now on
+                from . import writer as WR
+                line = WR.handed(sh["conv"], m, part.get("level_used") or part.get("level") or "",
+                                 hand[-1].get("event") or "")
+                WR.say(sh["conv"], line, frm=hand[-1].get("from") or "", to=m, event="handed")
         try:   # P6: the receipt line under the reply - which model did which part
             from . import receipt as RC
             RC.publish(sh)
@@ -457,6 +494,13 @@ async def fix_round(b: dict | None, answer: str, chk: dict | None) -> str:
         return ""
     st = get_settings()
     if not bool(getattr(st, "pipeline_fix_round", True)):
+        return ""
+    if b.get("reviewed") or not bool(getattr(st, "pipeline_fix_after", False)):
+        # C1: the checkers ran BEFORE she saw the reply and the writer fixed it inside the one reply; a second
+        # "correction" message under it is never posted (switch pipeline_fix_after brings the old note back)
+        sh = b["sheet"]
+        sh["check"] = {**chk, "fix": "checked before the reply - no second message"}
+        S.save(sh)
         return ""
     sh = b["sheet"]
     part = sh["parts"][-1]

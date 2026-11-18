@@ -2810,6 +2810,9 @@ class Santosh extends ChangeNotifier {
       case 'model_receipt':   // v0.975 HOOLA PIPELINE P6: which model did which part of this reply
         feed.add(FeedItem('model_receipt', Map<String, dynamic>.from(p)));
         break;
+      case 'model_switch':   // C1 ONE WRITER: the one line when this chat's writer changes
+        feed.add(FeedItem('model_switch', Map<String, dynamic>.from(p)));
+        break;
       case 'compact':   // v0.242 FULL CLAUDE MODE Phase 2: older messages folded into one checkpoint summary
         feed.add(FeedItem('compact', Map<String, dynamic>.from(p)));
         break;

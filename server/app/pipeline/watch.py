@@ -181,13 +181,18 @@ def stop(rec: dict | None, ok: bool = True, now: float | None = None) -> dict | 
 HELD = "held out for the P7 watch"
 
 
-def hold_out() -> bool:
+def hold_out(conv: str = "") -> bool:
     """True for about `pipeline_holdout_pct` % of one-part chat messages while the Box is on: that message runs as
-    today's turn and is timed as `before`, so the week has a fair comparison."""
+    today's turn and is timed as `before`, so the week has a fair comparison. C1: with a chat id the choice is made
+    per CHAT (the same chat is always held out or always not), so one chat never swaps models between messages."""
     pct = float(getattr(get_settings(), "pipeline_holdout_pct", 10) or 0)
     if pct <= 0 or not on():
         return False
-    hit = random.random() * 100 < pct
+    if conv:
+        import hashlib
+        hit = int(hashlib.sha1(conv.encode()).hexdigest()[:8], 16) % 10000 < pct * 100
+    else:
+        hit = random.random() * 100 < pct
     if hit:
         STATS["held_out"] += 1
     return hit

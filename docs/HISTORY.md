@@ -6730,3 +6730,48 @@ made = her list + links + file names in notes that say made / saved / created, i
 requirements: libarchive-c; the deploy log prints "RAR reader ready" or the one command (`sudo apt-get install -y
 libarchive13`) - ZIP and TAR need nothing. Tests `test_v0997_khula_pitara.py` 14 incl. real RAR4 + RAR5 files from the
 rarfile project (ISC, tests/files/RAR_SAMPLES_LICENSE.txt). NOT VERIFIED on her server or with her RAR.
+
+## v0.998.0 ONE WRITER - one writer per chat, several workers, several checkers (C1 of docs/CLAUDE_CHAT_100_PLAN.md)
+
+Owner, after the Claude chat research: "OUR OBJECTIVE WAS ONE PROMPT -- MULTIMODEL -- PERFECT RESULT" -> "GO C1 --
+CONCEPT:: 1 WRITER, SEVERAL WORKER, SEVERAL CHECKER".
+
+**The fault.** The Box (v0.958-v0.979) chose the model for every message, so the model that TALKS to her changed from
+message to message (and inside one on a hand-over); 1 in 10 messages was held out at random on today's routing (another
+model again); and a reply that failed the final check got a second "correction" message under it, written by a model one
+level up. One chat spoke in several voices, and the fix came after the wrong answer had been read.
+
+**What changed.**
+- `pipeline/writer.py` - THE WRITER. Chosen on the chat's first Box message (at least `pipeline_writer_floor` MID, so a
+  chat that opens with "hi" keeps a capable model), stored in `data/pipeline/writers.db` (90 days), kept for every later
+  message. It changes only: `up` (a later ask needs a higher level - the chat moves up, never back down), `moved` (the
+  writer is paused / banned, or cannot do this message: a picture it cannot read, no tools), `handed` (it failed
+  mid-reply and a backup finished it - the backup writes from then on). Each change is ONE quiet line, a `model_switch`
+  event (local to its chat, never pushed; console v2.js `.note.mswitch`, phone HCQuietLine + the old chat screen). Her
+  own dropdown pick is always the writer (nothing said). A routine / wake never chooses the chat's writer but uses it.
+  `turnbox.begin` (one part) and `turnbox._apply_writer` (the reply part of a P3 message) both go through it.
+- Workers: unchanged - P3 parts run side by side, each on the best model for its kind; they never speak to her.
+- `pipeline/checkers.py` - THE CHECKERS, run on the writer's draft BEFORE it is shown (both chat loops,
+  `santosh._box_review` from `_turn_after_model`): the code check (every key figure in her words or a tool result,
+  files exist, what a part could not do is said) on every draft, plus a model checker from ANOTHER company than the
+  writer (kind check, `pipeline_checker_level` MID; falls back to the chat board) when tools ran, several parts, a
+  HIGH+ ask or a draft of `pipeline_checker_min_chars` (700); JSON answer, at most 4 problems, 25 s clock, a failure =
+  no problems (never blocks). Problems go back to the SAME writer as one note ("write the whole answer again ... say
+  plainly what is not confirmed"); the streamed draft is retracted and the rewrite lands in the same reply. One round per
+  message. The review is on the job sheet (`review`: by, problems).
+- `turnbox.fix_round` no longer posts the after-reply correction (`pipeline_fix_after` False brings it back); the sheet
+  says "checked before the reply - no second message".
+- `watch.hold_out(conv)` - the held-out share is per CHAT (sha1 of the chat id), so a chat is always Box or always
+  today's model.
+- The "Made with" receipt is unchanged (her v0.976 ask).
+
+**Tests.** `test_v0998_one_writer.py` 19: pinned at MID, kept when the Box would pick another, up once never down,
+off -> moved with a line, cannot read a picture -> moved, her pick wins silently, routines never pin, switch off, two
+messages of one chat on one writer after the 30-minute sticky is cleared, hand-over mid-reply moves the writer + says
+so, holdout per chat, code checker sends a wrong figure back once, model checker is another company and its problems
+count, a failing checker never blocks, short no-tool answers get only the code check, checkers switch, and a full chat
+turn on both loops (wrong draft -> checker -> same writer rewrites -> only the fixed answer is ever her reply, no
+box_fix message); test_v0969's fix-round test now covers the switch. Pipeline suites 67 + 125 green.
+
+**NOT VERIFIED** on her server: no live chat has run through one writer + the checkers; the model checker adds a few
+seconds after the words finish on the turns where it runs.

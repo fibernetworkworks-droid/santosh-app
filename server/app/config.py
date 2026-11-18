@@ -620,6 +620,13 @@ class Settings(BaseSettings):
     pipeline_code: bool = True               # v0.972 P5: Hoola Code calls choose their model in the Box (off = dev_qwen_model)
     pipeline_background: bool = True         # v0.972 P5: routine / wake / long-job turns through the Box (reliability first)
     pipeline_studios: bool = True            # v0.972 P5: video / image studios run the Box's order of their own models
+    pipeline_one_writer: bool = True        # C1: one writer per chat (pipeline/writer.py) - workers + checkers any model
+    pipeline_writer_floor: str = "MID"      # C1: the first writer of a chat is chosen at least at this level
+    pipeline_checkers: bool = True          # C1: the draft is checked BEFORE she sees it (pipeline/checkers.py)
+    pipeline_checker_level: str = "MID"     # C1: the model checker's level (another company than the writer)
+    pipeline_checker_min_chars: int = 700   # C1: a model check for a draft this long even with no tools / parts
+    pipeline_checker_s: float = 25.0        # C1: the model checker's clock; late = no problems (never blocks)
+    pipeline_fix_after: bool = False        # C1: the old correction message AFTER the reply (off: fixed inside it)
     pipeline_receipt: bool = True            # v0.975 P6: the line under a Box reply naming which model did which part
     pipeline_dead_h: float = 24.0            # v0.970 a banned / gone model stays out of the Box's choices this long
     pipeline_company_cap: int = 8            # v0.968 P4: model calls at once per company (6.8)

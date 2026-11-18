@@ -247,6 +247,11 @@ def test_the_reply_fix_round_posts_a_correction_or_nothing_on_a_false_alarm(box,
     box.saw("shop_search", {"items": [{"price": 1499}]})
     chk = box.end(b, "The blue shirt costs Rs 2,350.")
     assert not chk["ok"]
+    # C1: by default the checkers fix the reply BEFORE she sees it, so no second message is ever posted after it
+    assert asyncio.run(box.fix_round(b, "The blue shirt costs Rs 2,350.", chk)) == "" and "model" not in seen
+    from app.config import get_settings
+    monkeypatch.setenv("PIPELINE_FIX_AFTER", "true")          # the old correction note, behind its switch
+    get_settings.cache_clear()
     assert asyncio.run(box.fix_round(b, "The blue shirt costs Rs 2,350.", chk)) == ""
     assert not [k for k, _ in posted if k != "model_receipt"]                # v0.975 P6: only the receipt line
     assert seen["model"].startswith("openrouter:a/high")                     # one level up from MID

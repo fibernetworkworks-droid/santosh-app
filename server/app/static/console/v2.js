@@ -1181,7 +1181,7 @@ function live(state) {
 /* ================= cards ================= */
 const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employee question', operator_ask:'The website job needs you', operator_task:'Website job',
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
-  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory', model_receipt:'Made with',
+  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory', model_receipt:'Made with', model_switch:'Model',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
   payroll_run:'Salary run', google_reconnect:'Reconnect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
@@ -1443,6 +1443,12 @@ function renderCard(kind, p, at, live) {
       rows.map(r => `<div class="mr-row"><b>${esc(r.label || 'Part')}</b><span>${esc(r.name || r.model || '')}</span>` +
         `<span class="mr-lv">${esc(r.level || '')}</span>${r.note ? `<span class="mr-note">${esc(r.note)}</span>` : ''}</div>` +
         (r.handover || []).map(h => `<div class="mr-ho">${esc(h.to)} took over from ${esc(h.from)}${h.why ? ' (' + esc(h.why) + ')' : ''}</div>`).join('')).join('');
+    turn().bd.appendChild(el); return;
+  }
+  // C1 ONE WRITER: the one quiet line when this chat's writer changes (it moved up, it was off, it was handed over)
+  if (kind === 'model_switch') {
+    if (!p.text) return;
+    const el = document.createElement('div'); el.className = 'note mswitch'; el.textContent = p.text;
     turn().bd.appendChild(el); return;
   }
   if (kind === 'memory_saved' || kind === 'procedure') {
@@ -1945,7 +1951,7 @@ const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'memory_used', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
-  'maps_places', 'ledger', 'model_receipt',
+  'maps_places', 'ledger', 'model_receipt', 'model_switch',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {

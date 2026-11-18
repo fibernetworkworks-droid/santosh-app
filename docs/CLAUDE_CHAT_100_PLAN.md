@@ -198,7 +198,7 @@ because every later phase is judged by it.
 - `python -m app.quality claudechat`, plus a vps-ops job.
 - Prints the score per rule, so each later phase shows what it moved.
 
-### C1. One model per chat
+### C1. One model per chat - BUILT v0.998.0 as "one writer, several workers, several checkers" (owner's concept)
 - The Box chooses once, at the first message, and the chat keeps that model.
 - A hand-over happens only on a hard failure (error, refusal, timeout). It is shown once as a small notice: "Switched to
   X for this reply because Y".

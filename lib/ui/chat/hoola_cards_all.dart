@@ -724,6 +724,10 @@ class _HCQuietLineState extends State<HCQuietLine> {
         if (left.isEmpty) return const SizedBox.shrink();
         final labels = {for (final x in left) _s(x['label']).isEmpty ? 'Memory' : _s(x['label'])}.join(', ');
         return _line(context, icon: Icons.lightbulb_outline_rounded, lead: 'Used from memory: ', text: labels, act: 'See', onAct: () => _forgetUsed(items));
+      case 'model_switch':   // C1 ONE WRITER: this chat's writer changed - one quiet line, said once
+        final t = _s(v['text']);
+        if (t.isEmpty) return const SizedBox.shrink();
+        return _line(context, icon: Icons.swap_horiz_rounded, lead: '', text: t);
       case 'model_receipt':   // v0.975 P6: which model did which part
         final rc = HoolaColors.of(context);
         return Padding(
@@ -1068,6 +1072,7 @@ Widget? hoolaCardAll(BuildContext context, Santosh app, FeedItem it) {
     case 'memory_saved':
     case 'memory_used':
     case 'model_receipt':
+    case 'model_switch':
     case 'compact':
       return HCQuietLine(app: app, it: it);
     case 'google_reconnect':

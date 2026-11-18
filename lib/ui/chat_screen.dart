@@ -2034,6 +2034,10 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return MemoryUsedChip(v: it.data, app: app);
     case 'model_receipt':   // v0.975 HOOLA PIPELINE P6
       return ModelReceiptLine(v: it.data, ink: C.ink, muted: C.muted);
+    case 'model_switch':   // C1 ONE WRITER: this chat's writer changed - one quiet line
+      return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text('${it.data['text'] ?? ''}', style: TextStyle(color: C.muted, fontSize: 13)));
     case 'compact':
       return CompactChip(v: it.data, app: app);
     case 'pg_write':

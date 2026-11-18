@@ -2442,6 +2442,16 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 return "model"
         plain_nudge = None   # parity Phase 5b: the checks already ran before the answer was shown
+        if texts and stop not in ("tool_use", "max_tokens") and not plain_loop_on(settings):
+            box_nudge = await _box_review("\n\n".join(texts))
+            if box_nudge:   # C1 THE CHECKERS on the old loop too: the draft goes back to the same writer
+                _save(conversation_id, "assistant", blocks, display=None)
+                if live is not None:
+                    live.retract()
+                STATS_PLAIN["box_sent_back"] = STATS_PLAIN.get("box_sent_back", 0) + 1
+                history.append({"role": "user", "content": [{"type": "text", "text": box_nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": box_nudge}])
+                return "model"
         if texts and stop not in ("tool_use", "max_tokens") and plain_loop_on(settings):
             final_text = "\n\n".join(texts)
             srcs = None
@@ -2460,6 +2470,17 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                 STATS_PLAIN["replaced"] += 1
                 history.append({"role": "user", "content": [{"type": "text", "text": plain_nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": plain_nudge}])
+                return "model"
+            box_nudge = await _box_review(final_text)
+            if box_nudge:
+                # C1 THE CHECKERS: a Box reply is checked before it is hers; a problem goes back to the SAME writer,
+                # which writes the whole answer again inside this one reply (never a second message)
+                _save(conversation_id, "assistant", blocks, display=None)
+                if live is not None:
+                    live.retract()
+                STATS_PLAIN["box_sent_back"] = STATS_PLAIN.get("box_sent_back", 0) + 1
+                history.append({"role": "user", "content": [{"type": "text", "text": box_nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": box_nudge}])
                 return "model"
             shown = "\n\n".join(texts)
             if state.get("correct"):   # still false after its one correction: said INSIDE the same reply
@@ -2549,6 +2570,19 @@ async def _turn_after_model(t: "_Turn", blocks: list, stop: str) -> str:
                                                                                mcp_route, tools)
         t.sys_fams, t.system = sys_fams, system
         t.blocks, t.stop = blocks, stop
+
+
+async def _box_review(final_text: str) -> str:
+    """C1: the Box's checkers on this turn's draft ('' = it stands, else the note back to the writer)."""
+    try:
+        from ..pipeline import turnbox as _tb, checkers as _ck
+        cur = _tb.CURRENT.get()
+        if cur is None:
+            return ""
+        return await _ck.review(cur, final_text)
+    except Exception:   # noqa: BLE001 - a checker never stops her reply
+        log.exception("pipeline checkers failed")
+        return ""
 
 
 GOAL_NUDGES_MAX = 8   # v0.187 the goal nudge's cap a turn (G3: the check node's budget reads the same number)
