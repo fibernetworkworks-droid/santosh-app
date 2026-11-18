@@ -442,6 +442,25 @@ def _collapse(rows) -> list[dict]:
     return sorted(items.values(), key=lambda it: it["first"].id)
 
 
+def _working(conversation_id: str) -> dict[str, Any]:
+    """v0.996 BACK TO WORK: is this chat working right now, and since when (the turn's `typing` on). The console used a
+    busy flag it remembered from its stream - it could be stale (a finished chat opened as 'Thinking' with Stop for ever)
+    and it did not know when the turn began (the clock restarted at 0s on every return)."""
+    try:
+        from .chats import _busy
+        if not _busy(conversation_id):
+            return {"busy": False}
+        with session() as s:
+            ev = s.scalars(select(Event).where((Event.conversation_id == conversation_id) & (Event.kind == "typing"))
+                           .order_by(Event.id.desc()).limit(20)).all()
+            on = next((e for e in ev if isinstance(e.payload, dict) and e.payload.get("on")), None)
+            if on is None:
+                return {"busy": True}
+            return {"busy": True, "busy_since": _utc(on.created_at).isoformat(), "busy_from": on.id}
+    except Exception:
+        return {}
+
+
 def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0, steps: bool = False,
              own: bool = False, calls: bool = False) -> dict[str, Any]:
     """The chat in order (see the module doc). `before` = load the page before that event id.
@@ -461,7 +480,8 @@ def timeline(conversation_id: str, tenant: str, limit: int = 60, before: int = 0
         o["key"] = it["key"]
         if it["latest"].call_id and not o.get("call"):
             o["call"] = it["latest"].call_id
-    return {"events": out, "has_more": bool(older) or len(rows) >= 6000,
+    work = _working(conversation_id) if not before else {}
+    return {"events": out, "has_more": bool(older) or len(rows) >= 6000, **work,
             "before": page[0]["first"].id if page else 0,
             "last_event_id": (bus.last_id(conversation_id, own=True) if mine else bus.last_id(conversation_id, tenant))
             if not before else 0,

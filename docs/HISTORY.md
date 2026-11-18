@@ -6675,3 +6675,23 @@ mail_save; `site/hosting.py` + `site/service.py` CSP via gsignin.headers; `main.
 (Cloud > Sign-in / Files / Emails, accessPane). Tests: `test_v0995_signin_files_mail.py`. Deploy: SITE_MAIL_PROVIDER=smtp +
 SITE_MAIL_SMTP_HOST / _PORT / _USER / _PASSWORD + SITE_MAIL_FROM in the VPS .env for emails; Google needs only her client id in
 the Studio. A live site gets the new login-box script with its next built version.
+
+## v0.996.0 BACK TO WORK — a working chat comes back exactly as it was (owner: "WHEN ONE SESSION IS WORKING AND WE START NEW SESSION AND AGAIN COMEBACK TO WORKING SESSION ---- WORKING SESSION WORK GET HANGED AND SHOW UNWANTED THING IN CHAT SPACE. FIRST FIND THE EXACT ISSUE AND FIX THIS PERFECTLY")
+
+Found by walking it in a real browser (chat A working: steps, words, a note, a long step running; open chat B; steps go on in A; back to A).
+Coming back, `openConv` redrew the chat from the timeline, and:
+1. `renderEvents` skipped every `step` event - the running turn lost its steps; the working row was rebuilt by `typing(true)` as
+   "Thinking… 1s" (the clock restarted) and stayed so until the NEXT step, which on a long tool is minutes = it looked hung.
+2. The `/live` snapshot was pushed into its block unconditionally: after a note (`tag(new_block=True)`) the live block is empty, so the
+   note's words were reset to nothing (and an empty block hid the working row).
+3. Working-or-not came from `CH.isBusy` (a flag the page remembered from its stream) - stale = a finished chat opens with "Thinking"
+   and Stop for ever; missed = a working chat opens looking idle.
+
+Fix: `events._working(conv)` -> the timeline (first page only) carries `busy` (the chat lock, the same truth as the chat list) +
+`busy_since` / `busy_from` (its last typing-on). The console syncs the sidebar flag from it and calls `renderEvents(events, any,
+liveFrom)`: every event of the running turn goes through the LIVE path at the time it happened (`REPLAY_AT` / `nowMs()` in
+`liveStep` / `foldLive`; `resumeStep` = running at its first event, done at its last) - steps into the one working row, words folding
+them into "Worked for", replies of the turn left not-done (no Copy / Retry mid-turn), the turn's block kept as TURN so what comes next
+lands in it. `/live` text goes in only when there are words and the block is not already a saved message. Then the row shows the step
+it is on, under the words, with the clock from the turn's start. Tests `test_v0996_back_to_work.py` (5; 2 browser walks: the round
+trip + a stale busy flag). NOT VERIFIED on her server. Phone: not changed (it keeps its own per-chat state since v0.889).

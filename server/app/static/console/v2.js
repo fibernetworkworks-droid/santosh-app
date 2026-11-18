@@ -900,7 +900,11 @@ let SIMPLE_PROGRESS = null;
    every phase, so it reads total elapsed, not time-in-this-step. It stays blank for the first second so a quick
    reply never flashes "0s". */
 let PROGRESS_T0 = 0, PROGRESS_TIMER = 0;
-let LAST_WORD_AT = 0;   // v0.302: when a word was last written into the chat, for the watchdog above
+let LAST_WORD_AT = 0;
+/* v0.996 BACK TO WORK: while a working chat is redrawn from the server, its steps happened in the past - the step
+   rows and the "Worked for" fold read the time of the event, not the time of the redraw */
+let REPLAY_AT = 0;
+const nowMs = () => REPLAY_AT || Date.now();   // v0.302: when a word was last written into the chat, for the watchdog above
 function fmtSecs(s) { return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
 function progressTick() {
   if (!SIMPLE_PROGRESS) return;
@@ -982,7 +986,7 @@ function liveStep(p) {
     const el = document.createElement('details'); el.className = 'tools hmfold'; el.open = false; el.hidden = true;
     el.innerHTML = `<summary><span class="sm"></span>${HM_DN}</summary><div class="tl"></div>`;
     const tl = SIMPLE_PROGRESS.querySelector('.wsteps .tl'); tl.innerHTML = '';
-    g = t.live = {el, tl, rows: new Map(), t0: Date.now(), n: 0, cur: ''};
+    g = t.live = {el, tl, rows: new Map(), t0: nowMs(), n: 0, cur: ''};
     put(t, el);
     if (SIMPLE_PROGRESS) placeProgress();
   }
@@ -992,7 +996,7 @@ function liveStep(p) {
   if (!r) {
     r = document.createElement('div'); r.className = 'ts run';
     r.innerHTML = '<span class="ic"><span class="hm-spin"></span></span><span class="tx"></span><span class="tm"></span>';
-    r._t0 = Date.now(); g.rows.set(id, r); g.n++; g.tl.appendChild(r);
+    r._t0 = nowMs(); g.rows.set(id, r); g.n++; g.tl.appendChild(r);
   }
   r.querySelector('.tx').textContent = p.label || p.tool || 'Working';
   if (p.state !== 'done' && p.state !== 'error') g.cur = p.label || p.tool || g.cur;
@@ -1000,14 +1004,14 @@ function liveStep(p) {
     r.classList.remove('run'); r.classList.toggle('err', p.state === 'error');
     const ic = r.querySelector('.ic'); ic.className = p.state === 'error' ? 'ic' : 'ic hm-tick';
     ic.innerHTML = p.state === 'error' ? '!' : HM_TICK;
-    const s = (Date.now() - r._t0) / 1000; r.querySelector('.tm').textContent = s < 1 ? '<1s' : s.toFixed(1) + 's';
+    const s = Math.max(0, nowMs() - r._t0) / 1000; r.querySelector('.tm').textContent = s < 1 ? '<1s' : s.toFixed(1) + 's';
   }
   scrollDown();
 }
 function foldLive(t = TURN) {
   const g = t?.live; if (!g) return;
   t.live = null;
-  const secs = Math.max(1, Math.round((Date.now() - g.t0) / 1000));
+  const secs = Math.max(1, Math.round((nowMs() - g.t0) / 1000));
   const tl = g.el.querySelector('.tl'); while (g.tl.firstChild) tl.appendChild(g.tl.firstChild);
   g.el.hidden = false; g.el.open = !!t.stepsOpen;
   g.el.querySelector('.sm').textContent = `Worked for ${fmtSecs(secs)}`;   // v0.721 no step count, just the arrow
@@ -1648,24 +1652,45 @@ function onEvent(ev) {
 
 /* ================= open a conversation ================= */
 let LOADING = false, PENDING = [], BEFORE = 0, HAS_MORE = false, OLDER = false, ANY = false;
-function renderEvents(events, any) {
+function renderEvents(events, any, liveFrom = 0) {
   flushStepBuf();
+  let seen = false;
   for (const ev of events) {
     const p = {...(ev.payload || {})};
+    // v0.996 BACK TO WORK (owner: "WHEN ONE SESSION IS WORKING AND WE START NEW SESSION AND AGAIN COMEBACK TO WORKING
+    // SESSION ---- WORKING SESSION WORK GET HANGED AND SHOW UNWANTED THING IN CHAT SPACE"): the events of the turn that
+    // is still running are drawn the way they were drawn live - its steps in the one working row, its words folding
+    // them into "Worked for" - instead of dropping its steps and restarting at "Thinking… 1s"
+    const now = liveFrom && ev.id > liveFrom;
+    REPLAY_AT = now ? (Date.parse(ev.at) || 0) : 0;
+    if (now && !seen) { seen = true; flushStepBuf(); if (!TYPING) typing(true); }
+    if (now && ev.kind === 'step') { resumeStep(ev, p); continue; }
     if (p.role === 'user' && typeof p.text === 'string') p.text = stripHints(p.text);
     if (ev.kind === 'message') {
       flushStepBuf();
       if (p.role === 'user') userBubble(p.text, p.files, ev.id, null, ev.at);
       else if (!any || p.source === 'greeting') continue;   // v0.234 no greeting row in the thread
-      else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn; }
+      else if (p.turn && window.HoolaStream) { replyMessage(p, true, ev.id, ev.at); if (SINK === col) LAST_TURN = p.turn;
+        if (now) REPLIES.get(p.turn).done = false; }          // v0.996 a reply still being written gets no Copy / Retry row
       else hoolaText(p.text || '', p.source, ev.id, ev.at);
     }
     else if (ev.kind === 'step') continue;   // v0.171 the transcript keeps what each turn did (steps=1)
     else if (ev.kind === 'ledger') { flushStepBuf(); ledgerLine(p.line, SINK, null); }   // parity Phase 5
     else { flushStepBuf(); renderCard(ev.kind, p, ev.at); }
   }
+  REPLAY_AT = 0;
   flushStepBuf();
+  return seen;
 }
+/* v0.996 one step of the running turn, at the time it really ran (running at its first event, done at its last) */
+function resumeStep(ev, p) {
+  const t0 = Math.min(Date.now(), Date.parse(ev.at) || Date.now());
+  REPLAY_AT = t0; liveStep({...p, state: 'running'});
+  if (p.state === 'done' || p.state === 'error') { REPLAY_AT = Math.max(t0, Math.min(Date.now(), Date.parse(ev.updated_at || ev.at) || t0)); liveStep(p); }
+  REPLAY_AT = 0;
+  if (p.state !== 'done' && p.state !== 'error') RESUME_STEP = p;
+}
+let RESUME_STEP = null;
 async function openConv(id, fresh, opts = {}) {
   if (!CH) stopStream();
   LOADING = true; PENDING = [];
@@ -1702,11 +1727,16 @@ async function openConv(id, fresh, opts = {}) {
   const any = tl.events.some(e => e.kind === 'message' && e.payload?.source !== 'greeting')   // v0.231 only the greeting = home
     || (!fresh && !!B && tl.events.some(e => B.kinds.has(e.kind)));           // a chat with a build in it opens on the thread
   ANY = any; landing(!any);
-  renderEvents(tl.events, any);
+  // v0.996 working or not is the server's word at this moment (a remembered flag went stale: a finished chat opened as
+  // "Thinking" with Stop for ever, and a working one could open looking idle)
+  const busy = typeof tl.busy === 'boolean' ? tl.busy : !!CH?.isBusy(id);
+  if (typeof tl.busy === 'boolean') CH?.busy(id, tl.busy);
+  RESUME_STEP = null;
+  const resumed = renderEvents(tl.events, any, busy ? (tl.busy_from || 0) : 0);
   REPLIES.forEach(R => { drawActs(R); closeTurnTools(R.t); });
   BEFORE = tl.before || 0; HAS_MORE = !!tl.has_more; drawBranches(tl.branches || []);
-  TURN = null; LAST = tl.last_event_id || 0;
-  if (CH?.isBusy(id)) typing(true);          // that chat is working: Stop shows, the dots wait for its words
+  if (!resumed) TURN = null;                 // the running turn keeps its block: what comes next lands in it
+  LAST = tl.last_event_id || 0;
   // a reply still being written (she reloaded mid-reply): its words so far, then the stream goes on from there
   if (CONFIG.stream && window.HoolaStream) {
     try {
@@ -1716,10 +1746,20 @@ async function openConv(id, fresh, opts = {}) {
         const R = reply(s.turn);
         R.done = false; R.acts?.remove(); R.seq = s.seq; LAST_TURN = s.turn; landing(false);
         if (s.think) thinkEvent({turn: s.turn, seg: s.seg, text: s.think});   // v0.171 mid-thought reload: the card reopens
-        const S = seg(R, s.seg); S.pacer.reset(); S.pacer.push(s.text || ''); S.pacer.flush();
+        // v0.996 only words that are not on the screen yet: a block that is already a saved message (a note, a line
+        // between steps) is never wiped by an empty live block, and no empty block is drawn before its first word
+        const had = R.segs.get(s.seg);
+        if (s.text && !(had && had.pacer.finalText !== null)) { const S = seg(R, s.seg); S.pacer.reset(); S.pacer.push(s.text); S.pacer.flush(); }
         TURN = R.t; $('#stopBtn').hidden = false; live('run');
       }
     } catch {}
+  }
+  if (busy) {   // v0.996 the working row as it was: under the words, the step it is on, the clock from the turn's start
+    if (!TYPING) typing(true);
+    const t0 = Date.parse(tl.busy_since || '');
+    if (t0 && t0 <= Date.now()) PROGRESS_T0 = t0;
+    simpleProgress(RESUME_STEP ? 'step' : 'typing', RESUME_STEP || {});
+    progressTick();
   }
   scrollDown(true); drawHead();
   drawRail();                            // v0.178 the day rail rebuilds with the chat
