@@ -1,1 +1,0 @@
-{"kind": "observation", "enqueued_at_epoch": 1795003639, "conv": "c1", "tenant": "default", "tool": "research_run", "args": {}, "result": "{\"ok\": true}", "ok": true, "ms": 1, "turn_id": "", "actor": "", "at": "2026-11-18T12:07:19+0000", "seq": 1795003639403}
