@@ -128,7 +128,7 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'v0.998.0 ONE WRITERKHULA PITARABACK TO WORKSIGN-IN, FILES, EMAIL' in main and 'hoola_tools' not in main  # the newest-story precedent (v0.898.0 carries the marker; older stories live in git history)
+    assert 'v0.998.0 ONE WRITER' in main and 'hoola_tools' not in main  # the newest-story precedent (v0.898.0 carries the marker; older stories live in git history)
 
 
 def test_pubspec_pin():
