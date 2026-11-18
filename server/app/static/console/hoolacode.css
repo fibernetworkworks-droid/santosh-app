@@ -1106,3 +1106,26 @@ html,body{background:var(--bg)}
 #app .hcd-side .hcd-sh .hcd-brand{font:500 19px/1 var(--fr)}
 /* the box: one quiet hairline + the console's soft shadow (no tinted ring until she types in it) */
 #app .hcd-switch i,#app .hcd-sw i,#app .hcd-tg input[type=checkbox]::after{background:#fff}
+/* ---- v1.000 the typing box (owner, on the first preview: "MAKE THIS MORE PROPER AND PROFESSIONAL"): one quiet
+   hairline box like Claude Code's - no violet glow, the send button grey until there are words, and the settings row
+   split in two: where the work happens on the left (environment, repo, branch, mode), how it is done on the right
+   (model, effort, this month's use). */
+#app .hcd-ask,#app .hcd-cp{align-items:center;gap:6px;min-height:52px;padding:9px 10px;border:1px solid var(--hair2);border-radius:14px;
+  background:var(--surface);box-shadow:0 1px 2px rgb(var(--sh-rgb) / .04),0 6px 20px -12px rgb(var(--sh-rgb) / .14);transition:border-color .14s var(--ease),box-shadow .14s var(--ease)}
+#app .hcd-cp{padding-left:16px}
+#app .hcd-ask:focus-within,#app .hcd-cp:focus-within{border-color:var(--dim);box-shadow:0 1px 2px rgb(var(--sh-rgb) / .05),0 8px 24px -12px rgb(var(--sh-rgb) / .18)}
+#app .hcd-ask textarea#hcdLine,#app .hcd-cp textarea#hcdNote{outline:none !important;padding:6px 4px;min-height:32px;font:400 15px/20px var(--fd)}
+#app .hcd-ask .hcd-plus,#app .hcd-ask .hcd-send,#app .hcd-cp .hcd-send{width:32px;height:32px;margin:0;align-self:flex-end;box-shadow:none}
+#app .hcd-ask .hcd-plus{color:var(--mut)}
+#app .hcd-ask .hcd-plus:hover{background:var(--sunk);color:var(--ink)}
+#app .hcd-ask .hcd-send,#app .hcd-cp .hcd-send{background:var(--pri);color:var(--on-acc);transition:background-color .14s var(--ease),color .14s var(--ease)}
+#app .hcd-ask .hcd-send:hover,#app .hcd-cp .hcd-send:hover{background:var(--pri-hover)}
+#app .hcd-ask textarea:placeholder-shown~.hcd-send,#app .hcd-cp textarea:placeholder-shown~.hcd-send,#app .hcd-ask .hcd-send:disabled{background:var(--sunk);color:var(--dim);opacity:1}
+#app .hcd-askrow{gap:0;margin-top:8px;padding:0 4px}
+#app .hcd-askrow>.hcd-flex{flex:1 1 0;min-width:8px}
+#app .hcd-askrow .hcd-chip{height:32px;padding:0 8px;border-radius:8px;color:var(--mut);font:400 13px/1 var(--fd);gap:5px}
+#app .hcd-askrow .hcd-chip:hover,#app .hcd-askrow .hcd-chip:focus-within{background:var(--sunk);color:var(--ink);border-color:transparent;box-shadow:none}
+#app .hcd-askrow .hcd-chip .hcd-ic{width:15px;height:15px;color:var(--dim)}
+#app .hcd-askrow .hcd-chip select{padding-right:15px;background-size:10px 10px}
+#app .hcd-askrow .hcd-use{height:32px;padding:0 4px 0 8px;font-size:12.5px;color:var(--mut)}
+#app .hcd-askrow .hcd-use svg{width:15px;height:15px}
