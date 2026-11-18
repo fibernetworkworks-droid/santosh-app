@@ -3357,7 +3357,9 @@ body.albon{overflow:hidden}
 #app .wtog:hover{color:var(--ink);background:var(--glass)}
 #app .wtog:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
 #app .hm-dn{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
-#app .simple-progress.wopen .wtog .hm-dn,#app .tools.hmfold[open]>summary .hm-dn{transform:rotate(180deg)}
+/* v0.994 SIDE ARROW (owner: "IN LOADING MAKE IT HORIZONTAL DURING WORK. WHEN USER CLICK ON IT IT GETS DOWN"): folded = the arrow points right, opened = it turns down (was down, then upside down) */
+#app .simple-progress .wtog .hm-dn,#app .tools.hmfold>summary .hm-dn{transform:rotate(-90deg)}
+#app .simple-progress.wopen .wtog .hm-dn,#app .tools.hmfold[open]>summary .hm-dn{transform:none}
 #app .simple-progress .wsteps{flex:0 0 100%;display:none;margin:2px 0 0 12px;padding-left:22px;border-left:1px solid var(--hair)}
 #app .simple-progress.wopen .wsteps{display:block}
 #app .simple-progress .wsteps .tl{padding:2px 0}
